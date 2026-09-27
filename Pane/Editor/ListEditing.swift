@@ -36,7 +36,10 @@ enum ListEditing {
                 let replacement = newIndent + String(line.dropFirst(list.indent.count))
                 return TextEdit(range: NSRange(location: lineRange.location, length: (line as NSString).length), replacement: replacement, caret: lineRange.location + (replacement as NSString).length)
             }
-            return TextEdit(range: NSRange(location: lineRange.location, length: (line as NSString).length), replacement: "", caret: lineRange.location)
+            // Leaving a list keeps a blank line after it, so what follows isn't swallowed by the last item.
+            let afterList = lineRange.location > 0 && ListPrefix(line: ns.substring(with: ns.lineRange(for: NSRange(location: lineRange.location - 1, length: 0)))) != nil
+            let replacement = afterList ? "\n" : ""
+            return TextEdit(range: NSRange(location: lineRange.location, length: (line as NSString).length), replacement: replacement, caret: lineRange.location + (replacement as NSString).length)
         }
         let insert = "\n" + list.continuation
         return TextEdit(range: selection, replacement: insert, caret: selection.location + (insert as NSString).length)

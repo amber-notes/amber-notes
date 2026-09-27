@@ -33,6 +33,21 @@ struct RootView: View {
         }
         .onChange(of: selectedNote) { old, _ in discardIfEmpty(old) }
         .focusedSceneValue(\.newNoteAction, newNote)
+        .focusedSceneValue(\.editorController, editor)
+        .focusedSceneValue(\.deleteNoteAction, deleteAction)
+    }
+
+    private var deleteAction: (() -> Void)? {
+        guard selectedNote != nil else { return nil }
+        return { deleteSelected() }
+    }
+
+    private func deleteSelected() {
+        guard let id = selectedNote, let n = context.note(id) else { return }
+        withAnimation(.snappy(duration: 0.25)) {
+            if n.trashedAt == nil { context.trash(n) } else { context.purge(n) }
+            selectedNote = nil
+        }
     }
 
     private func newNote() {
@@ -83,22 +98,62 @@ private struct NewNoteActionKey: FocusedValueKey {
     typealias Value = () -> Void
 }
 
+private struct DeleteNoteActionKey: FocusedValueKey {
+    typealias Value = () -> Void
+}
+
+private struct EditorControllerKey: FocusedValueKey {
+    typealias Value = EditorController
+}
+
 extension FocusedValues {
     var newNoteAction: (() -> Void)? {
         get { self[NewNoteActionKey.self] }
         set { self[NewNoteActionKey.self] = newValue }
+    }
+    var deleteNoteAction: (() -> Void)? {
+        get { self[DeleteNoteActionKey.self] }
+        set { self[DeleteNoteActionKey.self] = newValue }
+    }
+    var editorController: EditorController? {
+        get { self[EditorControllerKey.self] }
+        set { self[EditorControllerKey.self] = newValue }
     }
 }
 
 #if os(macOS)
 struct PaneCommands: Commands {
     @FocusedValue(\.newNoteAction) private var newNote
+    @FocusedValue(\.deleteNoteAction) private var deleteNote
+    @FocusedValue(\.editorController) private var editor
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
             Button("New Note") { newNote?() }
                 .keyboardShortcut("n")
                 .disabled(newNote == nil)
+        }
+        CommandGroup(after: .pasteboard) {
+            Divider()
+            Button("Delete Note") { deleteNote?() }
+                .keyboardShortcut(.delete, modifiers: .command)
+                .disabled(deleteNote == nil)
+        }
+        CommandMenu("Format") {
+            Button("Title") { editor?.heading(1) }.keyboardShortcut("1", modifiers: [.command, .shift])
+            Button("Heading") { editor?.heading(2) }.keyboardShortcut("2", modifiers: [.command, .shift])
+            Button("Subheading") { editor?.heading(3) }.keyboardShortcut("3", modifiers: [.command, .shift])
+            Button("Body") { editor?.heading(0) }.keyboardShortcut("0", modifiers: [.command, .shift])
+            Divider()
+            Button("Bold") { editor?.bold() }.keyboardShortcut("b")
+            Button("Italic") { editor?.italic() }.keyboardShortcut("i")
+            Button("Strikethrough") { editor?.strikethrough() }.keyboardShortcut("x", modifiers: [.command, .shift])
+            Button("Code") { editor?.code() }.keyboardShortcut("k", modifiers: [.command, .shift])
+            Divider()
+            Button("Checklist") { editor?.checklist() }.keyboardShortcut("l", modifiers: [.command, .shift])
+            Button("Bulleted List") { editor?.bulletList() }.keyboardShortcut("7", modifiers: [.command, .shift])
+            Button("Table") { editor?.insertTable() }.keyboardShortcut("t", modifiers: [.command, .option])
+            Button("Link") { editor?.insertLink() }.keyboardShortcut("k")
         }
     }
 }

@@ -33,7 +33,8 @@ import AppKit
     @Test func returnOnEmptyItemEndsList() {
         let t = "- a\n- "
         let e = ListEditing.returnKey(in: t, selection: NSRange(location: 6, length: 0))
-        #expect(apply(t, e) == "- a\n")
+        #expect(apply(t, e) == "- a\n\n")
+        #expect(e?.caret == 5)
     }
 
     @Test func returnOnEmptyNestedItemOutdents() {
