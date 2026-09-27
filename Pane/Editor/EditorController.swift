@@ -8,6 +8,8 @@ final class EditorController {
     /// Set by the platform text view while it is on screen.
     @ObservationIgnored weak var target: (any EditorTarget)?
     var isEditing = false
+    /// A card waiting to be created or edited in the card sheet.
+    var cardRequest: CardEditRequest?
 
     func perform(_ make: (String, NSRange) -> TextEdit?) {
         guard let t = target else { return }
@@ -56,6 +58,20 @@ final class EditorController {
     }
 
     func focus() { target?.focusEditor() }
+
+    func newCard() { cardRequest = CardEditRequest(index: nil, title: "", content: "") }
+
+    func saveCard(_ request: CardEditRequest, title: String, content: String) {
+        target?.saveCard(index: request.index, markdown: CardBlocks.markdown(title: title, content: content))
+    }
+}
+
+struct CardEditRequest: Identifiable {
+    let id = UUID()
+    /// nil for a new card.
+    var index: Int?
+    var title: String
+    var content: String
 }
 
 @MainActor
@@ -64,4 +80,5 @@ protocol EditorTarget: AnyObject {
     var currentSelection: NSRange { get }
     func apply(_ edit: TextEdit)
     func focusEditor()
+    func saveCard(index: Int?, markdown: String)
 }

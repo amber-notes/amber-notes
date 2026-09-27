@@ -23,6 +23,11 @@ struct NoteDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         #endif
         .toolbar { toolbar }
+        .sheet(item: Binding(get: { controller.cardRequest }, set: { controller.cardRequest = $0 })) { req in
+            CardEditorSheet(title: req.title, content: req.content, isNew: req.index == nil) { title, content in
+                controller.saveCard(req, title: title, content: content)
+            }
+        }
         #if os(iOS)
         .toolbar(controller.isEditing ? .hidden : .automatic, for: .bottomBar)
         .animation(.snappy(duration: 0.2), value: controller.isEditing)
@@ -65,6 +70,8 @@ struct NoteDetailView: View {
                 .help("Checklist (⇧⌘L)")
             Button("Table", systemImage: "tablecells", action: controller.insertTable)
                 .help("Table (⌥⌘T)")
+            Button("Card", systemImage: "rectangle.stack", action: controller.newCard)
+                .help("Collapsible card (⇧⌘C)")
         }
         ToolbarSpacer(.fixed)
         ToolbarItemGroup {

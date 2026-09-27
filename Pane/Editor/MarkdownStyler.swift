@@ -20,6 +20,7 @@ final class LineDecoration: NSObject {
         case code(first: Bool, last: Bool)
         case rule
         case table(header: Bool, first: Bool, last: Bool, columns: [CGFloat], width: CGFloat)
+        case card(index: Int)
     }
     let kind: Kind
     /// Where the marker is centered, from the fragment's leading edge.
@@ -74,6 +75,10 @@ struct ListPrefix: Equatable {
 /// except on the lines the caret is on, where it shows dimmed so you can edit it.
 struct MarkdownStyler {
     var bodySize = EditorMetrics.body
+    /// Style the first plain line as the title (off for card contents).
+    var firstLineIsTitle = true
+    /// Height to reserve for a card shown as a view (collapsed or expanded).
+    var cardHeight: (CardBlock) -> CGFloat = { _ in 64 }
 
     var bodyFont: PFont { .systemFont(ofSize: bodySize) }
     var monoFont: PFont { .monospacedSystemFont(ofSize: bodySize * 0.88, weight: .regular) }
@@ -101,7 +106,9 @@ struct MarkdownStyler {
     }
 
     /// Restyles the whole storage. `active` is the caret's selection.
-    func apply(to storage: NSTextStorage, active: NSRange) {
+    /// Returns the cards to show as views (those the caret isn't inside).
+    @discardableResult
+    func apply(to storage: NSTextStorage, active: NSRange) -> [CardBlock] {
         let text = storage.string
         let ns = text as NSString
         let full = NSRange(location: 0, length: ns.length)
@@ -116,7 +123,7 @@ struct MarkdownStyler {
         storage.beginEditing()
         defer { storage.endEditing() }
         storage.setAttributes(typingAttributes, range: full)
-        guard ns.length > 0 else { return }
+        guard ns.length > 0 else { return [] }
 
         let map = UTF16Map(text)
         let doc = Document(parsing: text, options: [.disableSmartOpts])
@@ -163,8 +170,9 @@ struct MarkdownStyler {
 
             if !sawTitle {
                 sawTitle = true
-                // The first line is the title, as in Apple Notes.
-                if !trimmed.hasPrefix("#") {
+                // The first plain line is the title, as in Apple Notes.
+                let plain = !trimmed.hasPrefix("#") && !trimmed.hasPrefix(">") && !trimmed.hasPrefix("<") && ListPrefix(line: line) == nil
+                if firstLineIsTitle && plain {
                     storage.addAttribute(.font, value: headingFont(1), range: lineRange)
                     let p = baseParagraph()
                     p.paragraphSpacing = 6
@@ -202,6 +210,49 @@ struct MarkdownStyler {
         for table in walker.tables {
             layoutTable(table, storage: storage, isActive: isActive)
         }
+
+        return styleCards(storage, isActive: isActive)
+    }
+
+    /// Cards collapse into one reserved line that the editor covers with a card view.
+    /// With the caret inside, the raw `<details>` source shows instead, tags dimmed.
+    private func styleCards(_ storage: NSTextStorage, isActive: (NSRange) -> Bool) -> [CardBlock] {
+        let ns = storage.string as NSString
+        var shown: [CardBlock] = []
+        for card in CardBlocks.find(in: storage.string) {
+            let lines = ns.lineRange(for: card.range)
+            if isActive(card.range) {
+                let tags = try! NSRegularExpression(pattern: #"</?details[^>]*>|</?summary>"#, options: .caseInsensitive)
+                for m in tags.matches(in: ns as String, range: card.range) {
+                    storage.addAttributes([.foregroundColor: PColor.paneTertiary, .font: monoFont], range: m.range)
+                }
+                continue
+            }
+            storage.removeAttribute(.paneLine, range: lines)
+            storage.addAttributes(hidden, range: card.range)
+            storage.removeAttribute(.kern, range: card.range)
+            storage.removeAttribute(.link, range: card.range)
+            let first = ns.lineRange(for: NSRange(location: card.range.location, length: 0))
+            let height = cardHeight(card)
+            let head = NSMutableParagraphStyle()
+            head.minimumLineHeight = height
+            head.maximumLineHeight = height
+            head.paragraphSpacingBefore = 6
+            head.paragraphSpacing = 10
+            storage.addAttribute(.paragraphStyle, value: head, range: first)
+            storage.addAttribute(.paneLine, value: LineDecoration(.card(index: card.index)), range: first)
+            let rest = NSRange(location: NSMaxRange(first), length: NSMaxRange(lines) - NSMaxRange(first))
+            if rest.length > 0 {
+                let flat = NSMutableParagraphStyle()
+                flat.minimumLineHeight = 0.01
+                flat.maximumLineHeight = 0.01
+                flat.lineSpacing = 0
+                flat.paragraphSpacing = 0
+                storage.addAttribute(.paragraphStyle, value: flat, range: rest)
+            }
+            shown.append(card)
+        }
+        return shown
     }
 
     /// Lays a GFM table out as a grid: pipes are hidden and each cell is

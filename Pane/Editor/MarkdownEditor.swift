@@ -7,21 +7,100 @@ struct MarkdownEditor: View {
     let header: String
     let controller: EditorController
     var autofocus = false
+    var identifier = "editor"
+    var titleLine = true
     let onChange: (String) -> Void
 
     var body: some View {
-        PlatformEditor(initialText: initialText, header: header, controller: controller, autofocus: autofocus, onChange: onChange)
+        PlatformEditor(initialText: initialText, header: header, controller: controller, autofocus: autofocus, identifier: identifier, titleLine: titleLine, onChange: onChange)
     }
 }
 
 /// Behaviour shared by the UIKit and AppKit text views.
 @MainActor
 final class EditorCore {
-    let styler = MarkdownStyler()
+    var styler = MarkdownStyler()
     let layoutDelegate = DecoratingLayoutDelegate()
     var onChange: (String) -> Void = { _ in }
     var applyingEdit = false
     private var lastActiveLine: NSRange?
+    /// Cards currently shown as views, and which of them are open.
+    private(set) var cards: [CardBlock] = []
+    private var expanded: Set<String> = []
+    /// Called after a restyle, so the view can place card views.
+    var onCardsChanged: () -> Void = {}
+
+    init() {
+        styler.cardHeight = { [weak self] card in CardMetrics.height(card, expanded: self?.isExpanded(card) ?? false) }
+    }
+
+    private func key(_ c: CardBlock) -> String { "\(c.index)|\(c.title)" }
+    func isExpanded(_ c: CardBlock) -> Bool { expanded.contains(key(c)) }
+
+    /// Where each card view goes, in text-view coordinates.
+    func cardFrames(layout: NSTextLayoutManager?, origin: CGPoint) -> [(CardBlock, CGRect)] {
+        guard let tlm = layout, let tcm = tlm.textContentManager, let container = tlm.textContainer else { return [] }
+        let width = container.size.width - container.lineFragmentPadding * 2
+        var out: [(CardBlock, CGRect)] = []
+        for card in cards {
+            guard let loc = tcm.location(tcm.documentRange.location, offsetBy: card.range.location) else { continue }
+            tlm.ensureLayout(for: NSTextRange(location: loc))
+            guard let frag = tlm.textLayoutFragment(for: loc), let line = frag.textLineFragments.first else { continue }
+            let y = frag.layoutFragmentFrame.minY + line.typographicBounds.minY + origin.y
+            out.append((card, CGRect(x: origin.x + container.lineFragmentPadding, y: y, width: width, height: styler.cardHeight(card))))
+        }
+        return out
+    }
+
+    func actions(for card: CardBlock, in target: EditorTarget, storage: NSTextStorage, controller: EditorController?, selection: @escaping () -> NSRange?) -> CardActions {
+        CardActions(
+            toggleExpanded: { [weak self] in
+                guard let self else { return }
+                let k = self.key(card)
+                if self.expanded.contains(k) { self.expanded.remove(k) } else { self.expanded.insert(k) }
+                self.restyle(storage, selection: selection(), force: true)
+            },
+            edit: { controller?.cardRequest = CardEditRequest(index: card.index, title: card.title, content: card.content) },
+            toggleCheckbox: { offset in
+                let ns = target.currentText as NSString
+                var start = card.contentRange.location
+                for _ in 0..<offset {
+                    let r = ns.lineRange(for: NSRange(location: start, length: 0))
+                    start = NSMaxRange(r)
+                }
+                if let e = ListEditing.toggleCheckbox(in: target.currentText, lineStart: start) {
+                    target.apply(TextEdit(range: e.range, replacement: e.replacement, caret: -1))
+                }
+            },
+            unwrap: {
+                target.apply(TextEdit(range: card.range, replacement: card.content, caret: -1))
+            },
+            delete: {
+                let ns = target.currentText as NSString
+                var r = card.range
+                if NSMaxRange(r) < ns.length { r.length += 1 }
+                target.apply(TextEdit(range: r, replacement: "", caret: -1))
+            }
+        )
+    }
+
+    /// Replaces card `index` (or inserts a new one after the caret's line).
+    func cardEdit(index: Int?, markdown: String, text: String, selection: NSRange) -> TextEdit {
+        let ns = text as NSString
+        if let index, let card = CardBlocks.find(in: text).first(where: { $0.index == index }) {
+            return TextEdit(range: card.range, replacement: markdown, caret: -1)
+        }
+        let line = ns.lineRange(for: NSRange(location: min(selection.location, ns.length), length: 0))
+        let lineText = ns.substring(with: line).trimmingCharacters(in: .whitespacesAndNewlines)
+        if lineText.isEmpty {
+            let body = markdown + "\n"
+            return TextEdit(range: NSRange(location: line.location, length: line.length), replacement: body + (NSMaxRange(line) < ns.length ? "\n" : ""), caret: line.location + (body as NSString).length)
+        }
+        let insertAt = NSMaxRange(line)
+        let lead = ns.substring(with: line).hasSuffix("\n") ? "\n" : "\n\n"
+        let body = lead + markdown + "\n"
+        return TextEdit(range: NSRange(location: insertAt, length: 0), replacement: body, caret: insertAt + (body as NSString).length)
+    }
 
     /// Restyles if the text changed or the caret moved to another line.
     /// `selection` is nil when you're not editing: then all syntax stays hidden.
@@ -33,7 +112,8 @@ final class EditorCore {
         }
         if !force, line == lastActiveLine { return }
         lastActiveLine = line
-        styler.apply(to: storage, active: selection ?? NSRange(location: NSNotFound, length: 0))
+        cards = styler.apply(to: storage, active: selection ?? NSRange(location: NSNotFound, length: 0))
+        onCardsChanged()
     }
 
     /// Checkbox hit test: `point` is in text-container coordinates.
@@ -55,11 +135,15 @@ private struct PlatformEditor: UIViewRepresentable {
     let header: String
     let controller: EditorController
     let autofocus: Bool
+    let identifier: String
+    let titleLine: Bool
     let onChange: (String) -> Void
 
     func makeUIView(context: Context) -> PaneTextView {
         let view = PaneTextView(frame: .zero)
+        view.core.styler.firstLineIsTitle = titleLine
         view.configure(text: initialText, header: header)
+        view.accessibilityIdentifier = identifier
         view.core.onChange = onChange
         controller.target = view
         view.controller = controller
@@ -82,9 +166,12 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
     private let headerLabel = UILabel()
     private let readableWidth: CGFloat = 680
 
+    private var cardHosts: [Int: UIHostingController<CardView>] = [:]
+
     func configure(text: String, header: String) {
         textLayoutManager?.delegate = core.layoutDelegate
         delegate = self
+        core.onCardsChanged = { [weak self] in self?.setNeedsLayout() }
         backgroundColor = .clear
         alwaysBounceVertical = true
         keyboardDismissMode = .interactive
@@ -116,9 +203,40 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
     override func layoutSubviews() {
         super.layoutSubviews()
         let side = max(20, (bounds.width - readableWidth) / 2)
-        let inset = UIEdgeInsets(top: 44, left: side, bottom: 120, right: side)
+        let inset = UIEdgeInsets(top: (headerLabel.text ?? "").isEmpty ? 14 : 44, left: side, bottom: 120, right: side)
         if textContainerInset != inset { textContainerInset = inset }
         headerLabel.frame = CGRect(x: 0, y: 12, width: bounds.width, height: 18)
+        layoutCards()
+    }
+
+    /// Places a live card view over each collapsed `<details>` block.
+    private func layoutCards() {
+        let frames = core.cardFrames(layout: textLayoutManager, origin: CGPoint(x: textContainerInset.left, y: textContainerInset.top))
+        let live = Set(frames.map { $0.0.index })
+        for (i, host) in cardHosts where !live.contains(i) {
+            host.view.removeFromSuperview()
+            cardHosts[i] = nil
+        }
+        for (card, frame) in frames {
+            let view = CardView(card: card, expanded: core.isExpanded(card),
+                                actions: core.actions(for: card, in: self, storage: textStorage, controller: controller) { [weak self] in self?.editingSelection })
+            let host = cardHosts[card.index] ?? {
+                let h = UIHostingController(rootView: view)
+                h.view.backgroundColor = .clear
+                h.sizingOptions = []
+                addSubview(h.view)
+                cardHosts[card.index] = h
+                return h
+            }()
+            host.rootView = view
+            if host.view.frame != frame {
+                UIView.animate(withDuration: 0.22, delay: 0, options: [.beginFromCurrentState, .allowUserInteraction]) { host.view.frame = frame }
+            }
+        }
+    }
+
+    func saveCard(index: Int?, markdown: String) {
+        apply(core.cardEdit(index: index, markdown: markdown, text: text, selection: selectedRange))
     }
 
     // MARK: EditorTarget
@@ -260,6 +378,8 @@ private struct PlatformEditor: NSViewRepresentable {
     let header: String
     let controller: EditorController
     let autofocus: Bool
+    let identifier: String
+    let titleLine: Bool
     let onChange: (String) -> Void
 
     func makeNSView(context: Context) -> NSScrollView {
@@ -269,7 +389,9 @@ private struct PlatformEditor: NSViewRepresentable {
         scroll.autohidesScrollers = true
         scroll.scrollerStyle = .overlay
         let view = PaneTextView(frame: .zero)
+        view.core.styler.firstLineIsTitle = titleLine
         view.configure(text: initialText, header: header)
+        view.setAccessibilityIdentifier(identifier)
         view.core.onChange = onChange
         view.controller = controller
         controller.target = view
@@ -293,9 +415,12 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
     private let headerLabel = NSTextField(labelWithString: "")
     private let readableWidth: CGFloat = 720
 
+    private var cardHosts: [Int: NSHostingView<CardView>] = [:]
+
     func configure(text: String, header: String) {
         textLayoutManager?.delegate = core.layoutDelegate
         delegate = self
+        core.onCardsChanged = { [weak self] in DispatchQueue.main.async { self?.layoutCards() } }
         drawsBackground = false
         isRichText = false
         allowsUndo = true
@@ -333,9 +458,43 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
     override func setFrameSize(_ newSize: NSSize) {
         super.setFrameSize(newSize)
         let side = max(28, (newSize.width - readableWidth) / 2)
-        let inset = NSSize(width: side, height: 44)
+        let inset = NSSize(width: side, height: headerLabel.stringValue.isEmpty ? 14 : 44)
         if textContainerInset != inset { textContainerInset = inset }
         headerLabel.frame = NSRect(x: 0, y: 14, width: newSize.width, height: 16)
+        DispatchQueue.main.async { [weak self] in self?.layoutCards() }
+    }
+
+    /// Places a live card view over each collapsed `<details>` block.
+    func layoutCards() {
+        let frames = core.cardFrames(layout: textLayoutManager, origin: textContainerOrigin)
+        let live = Set(frames.map { $0.0.index })
+        for (i, host) in cardHosts where !live.contains(i) {
+            host.removeFromSuperview()
+            cardHosts[i] = nil
+        }
+        for (card, frame) in frames {
+            let view = CardView(card: card, expanded: core.isExpanded(card),
+                                actions: core.actions(for: card, in: self, storage: textStorage!, controller: controller) { [weak self] in self?.editingSelection })
+            let host = cardHosts[card.index] ?? {
+                let h = NSHostingView(rootView: view)
+                h.sizingOptions = []
+                addSubview(h)
+                cardHosts[card.index] = h
+                return h
+            }()
+            host.rootView = view
+            if host.frame != frame {
+                NSAnimationContext.runAnimationGroup { ctx in
+                    ctx.duration = 0.22
+                    ctx.allowsImplicitAnimation = true
+                    host.animator().frame = frame
+                }
+            }
+        }
+    }
+
+    func saveCard(index: Int?, markdown: String) {
+        apply(core.cardEdit(index: index, markdown: markdown, text: string, selection: selectedRange()))
     }
 
     override var isFlipped: Bool { true }

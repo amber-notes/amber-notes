@@ -30,6 +30,7 @@
 		BBF4C5B35A481BA9E9F080C2 /* AppleNotesLiveTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A537C18B9F9C98B1862B423 /* AppleNotesLiveTests.swift */; };
 		C2A23F349B49F07B95A1E81C /* NoteListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AFF5865DFB1F37542A9EF3A /* NoteListView.swift */; };
 		C91AD532185EEF6D3196303E /* PaneApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7CEFF21553A58628006C975 /* PaneApp.swift */; };
+		C92A1740AA6FC088348BE70D /* CardBlocksTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EB5E8CAAED9F1EBC8AC802B /* CardBlocksTests.swift */; };
 		C9D0E2AA403DB799EAD7F7FD /* SyncEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D802554DDA691DB172FD65B2 /* SyncEngine.swift */; };
 		CAAE18D747495AB2B9B6ED27 /* Markdown in Frameworks */ = {isa = PBXBuildFile; productRef = 70F1EFF162FA5AB6FF4CC29D /* Markdown */; };
 		CD71F1E4803FE64FB4C22727 /* DogfoodTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D735696D027A23734B8C6C30 /* DogfoodTests.swift */; };
@@ -37,8 +38,10 @@
 		D5172EAA6E1EC9CF69A58910 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 38265D7768AAF6ACDB9D048A /* Supabase */; };
 		D7A40F0ADA041C2F9447F606 /* NoteDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86273B1C8845B00B4D51E8A9 /* NoteDetailView.swift */; };
 		DE9535A124D745998C35A4FA /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 508D7FDAAB7702C132913D85 /* SignInView.swift */; };
+		E044F7333C115050602C4CB5 /* CardBlocks.swift in Sources */ = {isa = PBXBuildFile; fileRef = 152AB056B027D05A48239BF2 /* CardBlocks.swift */; };
 		EAB87CE00ACD15BD840A9B73 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3891EC4D2DC7BF10221F3CBC /* SettingsView.swift */; };
 		ECC26EE8B9227D9F7F6B5E9C /* DemoData.swift in Sources */ = {isa = PBXBuildFile; fileRef = D058AF887BE21AC49E51A5C7 /* DemoData.swift */; };
+		ED60264B582697DA27C9AFC3 /* CardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24F0468D706470F75BC78618 /* CardView.swift */; };
 		F25FA34F43518D77EB9C9120 /* EditorController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96BF2077E54147D5949A2E4B /* EditorController.swift */; };
 /* End PBXBuildFile section */
 
@@ -64,6 +67,9 @@
 		020E4F46F8521511BB37EAAA /* MarkdownEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownEditor.swift; sourceTree = "<group>"; };
 		07F39A5C43FC5474BC9B28E4 /* MarkdownStyler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownStyler.swift; sourceTree = "<group>"; };
 		0C246BB0AA36AD5C69E3BB96 /* ListEditingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListEditingTests.swift; sourceTree = "<group>"; };
+		0EB5E8CAAED9F1EBC8AC802B /* CardBlocksTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardBlocksTests.swift; sourceTree = "<group>"; };
+		152AB056B027D05A48239BF2 /* CardBlocks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardBlocks.swift; sourceTree = "<group>"; };
+		24F0468D706470F75BC78618 /* CardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardView.swift; sourceTree = "<group>"; };
 		2E2167FA347940753904964C /* PaneTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PaneTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		331EDF0C10DE153F5969F58D /* SessionStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStorage.swift; sourceTree = "<group>"; };
 		37C6B4F675EF00B712CB8496 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -161,6 +167,7 @@
 			isa = PBXGroup;
 			children = (
 				8A537C18B9F9C98B1862B423 /* AppleNotesLiveTests.swift */,
+				0EB5E8CAAED9F1EBC8AC802B /* CardBlocksTests.swift */,
 				0C246BB0AA36AD5C69E3BB96 /* ListEditingTests.swift */,
 				6F02A8CE43D7031D271CA25B /* RichTextTests.swift */,
 			);
@@ -183,6 +190,8 @@
 		AF489D245E2E747C33A5983F /* Editor */ = {
 			isa = PBXGroup;
 			children = (
+				152AB056B027D05A48239BF2 /* CardBlocks.swift */,
+				24F0468D706470F75BC78618 /* CardView.swift */,
 				CC4C25B7D160D0B147F9EC20 /* DecoratedLayoutFragment.swift */,
 				96BF2077E54147D5949A2E4B /* EditorController.swift */,
 				66EF04EADC63E3E6A4AD79B4 /* FormatBar.swift */,
@@ -369,6 +378,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				BBF4C5B35A481BA9E9F080C2 /* AppleNotesLiveTests.swift in Sources */,
+				C92A1740AA6FC088348BE70D /* CardBlocksTests.swift in Sources */,
 				582627587918D7195B435F61 /* ListEditingTests.swift in Sources */,
 				7F6BFCC3E30CB53BB780058D /* RichTextTests.swift in Sources */,
 			);
@@ -380,6 +390,8 @@
 			files = (
 				039FA59088DF11BD28A3096C /* AppleNotesImport.swift in Sources */,
 				088BB78B4A790B24F552FB83 /* Backend.swift in Sources */,
+				E044F7333C115050602C4CB5 /* CardBlocks.swift in Sources */,
+				ED60264B582697DA27C9AFC3 /* CardView.swift in Sources */,
 				5DF4070A3BE600B9F2D1F641 /* DecoratedLayoutFragment.swift in Sources */,
 				ECC26EE8B9227D9F7F6B5E9C /* DemoData.swift in Sources */,
 				F25FA34F43518D77EB9C9120 /* EditorController.swift in Sources */,

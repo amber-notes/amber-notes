@@ -101,6 +101,10 @@ final class DecoratedLayoutFragment: NSTextLayoutFragment {
                 ctx.fill(CGRect(x: o.x + 10, y: o.y + h - 0.5, width: w - 20, height: 0.5))
             }
 
+        case .card:
+            // The editor places a live card view over this line.
+            break
+
         case .rule:
             ctx.setFillColor(PColor.paneSeparator.cgColor)
             ctx.fill(CGRect(x: o.x, y: o.y + firstLineMidY, width: containerWidth, height: 1))

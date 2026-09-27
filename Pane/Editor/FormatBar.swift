@@ -32,6 +32,7 @@ struct FormatBar: View {
                     .accessibilityIdentifier("editor.format")
                     BarButton("Checklist", "checklist", action: controller.checklist)
                     BarButton("Table", "tablecells", action: controller.insertTable)
+                    BarButton("Card", "rectangle.stack", action: controller.newCard)
                     BarButton("Link", "link", action: controller.insertLink)
                 }
                 .padding(.horizontal, 4)

@@ -171,6 +171,7 @@ struct PaneCommands: Commands {
             Button("Checklist") { editor?.checklist() }.keyboardShortcut("l", modifiers: [.command, .shift])
             Button("Bulleted List") { editor?.bulletList() }.keyboardShortcut("7", modifiers: [.command, .shift])
             Button("Table") { editor?.insertTable() }.keyboardShortcut("t", modifiers: [.command, .option])
+            Button("Card") { editor?.newCard() }.keyboardShortcut("c", modifiers: [.command, .shift])
             Button("Link") { editor?.insertLink() }.keyboardShortcut("k")
         }
     }

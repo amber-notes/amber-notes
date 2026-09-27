@@ -90,6 +90,16 @@ enum Seed {
 
     > Quotes, `inline code`, ~~strikethrough~~ and [links](https://apple.com) all work.
 
+    <details>
+    <summary>Cards hold the details</summary>
+
+    Tuck extra information into a card. Tap it to open, and it scrolls on its own.
+
+    - [ ] Tap the circle inside a card
+    - Use **Edit Card** to change what's in it
+
+    </details>
+
     | Shortcut | Does |
     | --- | --- |
     | ⌘B | Bold |

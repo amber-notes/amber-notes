@@ -113,4 +113,45 @@ final class DogfoodTests: XCTestCase {
         shot("in-new-folder")
         #endif
     }
+
+    func testCards() throws {
+        pause(1)
+        #if os(iOS)
+        app.staticTexts["Lisbon"].firstMatch.tap()
+        #endif
+        let card = app.descendants(matching: .any).matching(identifier: "card.Hotel booking").firstMatch
+        XCTAssertTrue(card.waitForExistence(timeout: 5), "the card should show as a view")
+        pause()
+        shot("card-collapsed")
+        app.buttons["Expand Hotel booking"].firstMatch.tap()
+        pause(1)
+        shot("card-expanded")
+        // Tick "Ask for a late checkout" inside the card.
+        let circles = app.buttons.matching(NSPredicate(format: "label == 'circle' OR label == 'Circle'"))
+        if circles.count > 0 { circles.element(boundBy: 0).tap() }
+        pause(1)
+        shot("card-ticked")
+        let editor = app.textViews["editor"]
+        XCTAssertTrue((editor.value as? String ?? "").contains("- [x] Ask for a late checkout"), "ticking inside the card edits the note")
+
+        // New card from the format bar.
+        editor.tap()
+        pause()
+        app.buttons["Card"].firstMatch.tap()
+        let title = app.textFields["card.titleField"]
+        XCTAssertTrue(title.waitForExistence(timeout: 3))
+        title.tap()
+        title.typeText("Packing extras")
+        let body = app.textViews["card.contentEditor"]
+        XCTAssertTrue(body.waitForExistence(timeout: 3))
+        body.tap()
+        body.typeText("- [ ] Adapter\nSunscreen")
+        shot("card-new-sheet")
+        app.buttons["card.save"].tap()
+        pause(1)
+        app.buttons["editor.done"].firstMatch.tap()
+        pause(1)
+        shot("card-added")
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "card.Packing extras").firstMatch.waitForExistence(timeout: 3))
+    }
 }
