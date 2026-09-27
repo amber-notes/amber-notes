@@ -42,6 +42,7 @@
 		CAAE18D747495AB2B9B6ED27 /* Markdown in Frameworks */ = {isa = PBXBuildFile; productRef = 70F1EFF162FA5AB6FF4CC29D /* Markdown */; };
 		CD71F1E4803FE64FB4C22727 /* DogfoodTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D735696D027A23734B8C6C30 /* DogfoodTests.swift */; };
 		CE83A43DEE7F67D56C93CA98 /* RichPaste.swift in Sources */ = {isa = PBXBuildFile; fileRef = 550E4D52A7E05ECB1417CCD0 /* RichPaste.swift */; };
+		D14C6D2DBF7C50C88BC145EE /* TableChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FDB2F2130F537884D8B99BB /* TableChart.swift */; };
 		D5172EAA6E1EC9CF69A58910 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 38265D7768AAF6ACDB9D048A /* Supabase */; };
 		D7A40F0ADA041C2F9447F606 /* NoteDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86273B1C8845B00B4D51E8A9 /* NoteDetailView.swift */; };
 		DA08C4E61E013AC39F713172 /* tracker-sample.xlsx in Resources */ = {isa = PBXBuildFile; fileRef = BB13DA6BCCFA3953F88228D7 /* tracker-sample.xlsx */; };
@@ -91,6 +92,7 @@
 		41682433DF625FE3A5BBD36E /* PaneUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PaneUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		47C2F5BCCDFA4A6D60E39708 /* Platform.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Platform.swift; sourceTree = "<group>"; };
 		483CA88017A03E92EEC52DFD /* AppleNotesImport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleNotesImport.swift; sourceTree = "<group>"; };
+		4FDB2F2130F537884D8B99BB /* TableChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TableChart.swift; sourceTree = "<group>"; };
 		508D7FDAAB7702C132913D85 /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
 		52D997E7DDEDD95A01EC24BA /* Backend.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Backend.xcconfig; sourceTree = "<group>"; };
 		550E4D52A7E05ECB1417CCD0 /* RichPaste.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichPaste.swift; sourceTree = "<group>"; };
@@ -239,6 +241,7 @@
 				07F39A5C43FC5474BC9B28E4 /* MarkdownStyler.swift */,
 				47C2F5BCCDFA4A6D60E39708 /* Platform.swift */,
 				05B6AF305F5DBAA32ED5B888 /* TableCard.swift */,
+				4FDB2F2130F537884D8B99BB /* TableChart.swift */,
 			);
 			path = Editor;
 			sourceTree = "<group>";
@@ -471,6 +474,7 @@
 				DE9535A124D745998C35A4FA /* SignInView.swift in Sources */,
 				C9D0E2AA403DB799EAD7F7FD /* SyncEngine.swift in Sources */,
 				614286CB03EEBD9C31A0CEDF /* TableCard.swift in Sources */,
+				D14C6D2DBF7C50C88BC145EE /* TableChart.swift in Sources */,
 				6280E775B1AFF2B8F8DC4F8F /* TypedTable.swift in Sources */,
 				105C2E3316639A90FAF84346 /* XLSXImporter.swift in Sources */,
 			);

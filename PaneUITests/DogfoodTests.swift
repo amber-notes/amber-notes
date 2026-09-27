@@ -221,6 +221,9 @@ final class DogfoodTests: XCTestCase {
         pause(1.5)
         shot("tracker-logged")
         XCTAssertTrue(app.buttons["table.log"].label.contains("Edit today"), "after logging, the button edits today's entry")
+        app.buttons["table.chart"].firstMatch.tap()
+        pause(1.5)
+        shot("tracker-chart")
     }
 
     /// The demo: every feature at a watchable pace.

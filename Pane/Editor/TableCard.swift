@@ -21,6 +21,7 @@ struct TableCardView: View {
     let log: () -> Void
     let edit: (Int) -> Void
     let toggleExpanded: () -> Void
+    @State private var showChart = false
 
     private var shown: [(offset: Int, cells: [String])] {
         Array(table.recentRows.prefix(expanded ? 14 : TableCardMetrics.visibleRows))
@@ -35,6 +36,14 @@ struct TableCardView: View {
                     .font(.system(size: EditorMetrics.body, weight: .semibold))
                     .monospacedDigit()
                 Spacer()
+                Button { showChart = true } label: {
+                    Image(systemName: "chart.xyaxis.line")
+                        .font(.system(size: 14, weight: .semibold))
+                        .frame(width: 32, height: 32)
+                }
+                .buttonStyle(.glass)
+                .accessibilityLabel("Trends")
+                .accessibilityIdentifier("table.chart")
                 Button(action: log) {
                     Label(hasToday ? "Edit today" : "Log today", systemImage: hasToday ? "pencil" : "plus")
                         .font(.system(size: EditorMetrics.body * 0.88, weight: .semibold))
@@ -105,6 +114,7 @@ struct TableCardView: View {
         .glassEffect(.regular, in: .rect(cornerRadius: 18))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("table.card")
+        .sheet(isPresented: $showChart) { TableChartSheet(table: table) }
     }
 
     private var hasToday: Bool { table.rowIndex(for: .now) != nil }
