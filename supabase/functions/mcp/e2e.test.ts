@@ -129,3 +129,35 @@ Deno.test({ name: "another user's token sees nothing, and a read-only token can'
     await call("delete_note", { id });
   }
 });
+
+const api = Deno.env.get("PANE_API");
+const anon = Deno.env.get("PANE_ANON");
+const userJwt = Deno.env.get("PANE_USER_JWT");
+Deno.test({ name: "files: list and fetch through a short-lived link", ignore: !enabled || !api || !userJwt }, async () => {
+  const sub = JSON.parse(atob(userJwt!.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))).sub;
+  const id = crypto.randomUUID();
+  const path = `${sub}/${id}/report.csv`;
+  const up = await fetch(`${api}/storage/v1/object/files/${path}`, {
+    method: "POST", headers: { authorization: `Bearer ${userJwt}`, apikey: anon!, "content-type": "text/csv" }, body: "a,b\n1,2\n",
+  });
+  assertEquals(up.status, 200, await up.text());
+  const row = await fetch(`${api}/rest/v1/attachments`, {
+    method: "POST", headers: { authorization: `Bearer ${userJwt}`, apikey: anon!, "content-type": "application/json" },
+    body: JSON.stringify({ id, filename: "report.csv", content_type: "public.comma-separated-values-text", size: 8, storage_path: path }),
+  });
+  assertEquals(row.status, 201, await row.text());
+  // Someone else's path is refused by RLS.
+  const bad = await fetch(`${api}/rest/v1/attachments`, {
+    method: "POST", headers: { authorization: `Bearer ${userJwt}`, apikey: anon!, "content-type": "application/json" },
+    body: JSON.stringify({ id: crypto.randomUUID(), filename: "x", storage_path: `00000000-0000-0000-0000-000000000000/x/x` }),
+  });
+  assert(bad.status >= 400, "storage_path outside your folder must be refused");
+  await bad.body?.cancel();
+
+  const listed = await call("list_files", { query: "report" });
+  assert(listed.data.files.some((f: { id: string }) => f.id === id));
+  const got = await call("get_file", { id: `pane-file:${id}` });
+  assert(!got.error, got.text);
+  const bytes = await fetch(got.data.download_url).then((r) => r.text());
+  assertEquals(bytes, "a,b\n1,2\n");
+});

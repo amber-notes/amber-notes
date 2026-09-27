@@ -157,6 +157,18 @@ export const tools: Tool[] = [
     inputSchema: { type: "object", properties: { ...noteRef, revision_id: int("Revision id from note_history.") }, required: ["revision_id"] },
     annotations: write,
   },
+  {
+    name: "list_files", title: "List files",
+    description: "Files kept in Pane (PDFs, spreadsheets, images…), newest first, with the notes that embed them.",
+    inputSchema: { type: "object", properties: { query: str("Filter by filename."), limit: int("Default 30.") } },
+    annotations: read,
+  },
+  {
+    name: "get_file", title: "Get a file",
+    description: "Details of a file and a download link valid for 10 minutes, so you can fetch and read it (PDF, spreadsheet, image…).",
+    inputSchema: { type: "object", properties: { id: str("File id from list_files or a pane-file: link in a note.") }, required: ["id"] },
+    annotations: read,
+  },
   // ChatGPT's connector conventions.
   {
     name: "search", title: "Search",
@@ -457,6 +469,42 @@ const handlers: Record<string, (tx: Tx, a: Args, ctx: ToolContext) => Promise<un
     if (!rows.length) throw new ToolError("No such revision for this note. Use note_history.");
     await tx`select set_config('pane.source', 'restore', true)`;
     return { restored: await save(tx, n, rows[0].body) };
+  },
+
+  async list_files(tx, a) {
+    const q = typeof a.query === "string" ? a.query.trim() : "";
+    const rows = await tx<{ id: string; filename: string; content_type: string; size: string; created_at: Date }[]>`
+      select id, filename, content_type, size, created_at from public.attachments
+      where deleted_at is null ${q ? tx`and filename ilike ${"%" + q + "%"}` : tx``}
+      order by created_at desc limit ${clampInt(a.limit, 30, 200) || 30}`;
+    const files = [];
+    for (const r of rows) {
+      const notes = await tx<{ id: string; title: string }[]>`
+        select id, title from public.notes where deleted_at is null and body like ${"%pane-file:" + r.id + "%"} limit 5`;
+      files.push({ id: r.id, filename: r.filename, type: r.content_type, bytes: Number(r.size), added: iso(r.created_at), in_notes: notes });
+    }
+    return { files };
+  },
+
+  async get_file(tx, a) {
+    const id = String(a.id ?? "").replace(/^pane-file:/, "");
+    const rows = await tx<{ id: string; filename: string; content_type: string; size: string; storage_path: string }[]>`
+      select id, filename, content_type, size, storage_path from public.attachments where id = ${id}::uuid and deleted_at is null`.catch(() => []);
+    if (!rows.length) throw new ToolError(`No file with id ${id}. Use list_files.`);
+    const f = rows[0];
+    // The row was read under RLS, so this path belongs to the caller.
+    const base = Deno.env.get("SUPABASE_URL")!;
+    const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const res = await fetch(`${base}/storage/v1/object/sign/files/${f.storage_path.split("/").map(encodeURIComponent).join("/")}`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${key}`, apikey: key, "content-type": "application/json" },
+      body: JSON.stringify({ expiresIn: 600 }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok || !body.signedURL) throw new ToolError("The file isn't uploaded yet. Open Pane on the device that added it so it can sync.");
+    // Locally the runtime sees an internal hostname; PANE_PUBLIC_URL gives the reachable one.
+    const publicBase = Deno.env.get("PANE_PUBLIC_URL") ?? base;
+    return { id: f.id, filename: f.filename, type: f.content_type, bytes: Number(f.size), download_url: `${publicBase}/storage/v1${body.signedURL}`, expires_in_seconds: 600 };
   },
 
   async search(tx, a) {
