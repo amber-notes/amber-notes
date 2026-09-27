@@ -13,22 +13,30 @@ if ! xcodebuild -project Pane.xcodeproj -scheme Pane -destination "platform=macO
   grep -E "error:" "$OUT/build.log" | sort -u | head -20
   echo "BUILD FAILED"; exit 1
 fi
-# The window opens at a known size; record the screen area it will occupy once it appears.
+# Record the app window's screen area, and stop the moment the window closes
+# so nothing else on the screen ends up in the video.
 (
   for i in {1..60}; do
     W=$(swift scripts/window-id.swift Pane 2>/dev/null)
     [ -n "$W" ] && break
     sleep 0.5
   done
-  if [ -n "$W" ]; then
-    set -- ${=W}
-    screencapture -x -v -V 45 -R "$2,$3,$4,$5" "$OUT/video.mov" >/dev/null 2>&1
-  fi
+  [ -z "$W" ] && exit 0
+  set -- ${=W}
+  screencapture -x -v -V 180 -R "$2,$3,$4,$5" "$OUT/raw.mov" >/dev/null 2>&1 &
+  CAP=$!
+  START=$(date +%s.%N)
+  while [ -n "$(swift scripts/window-id.swift Pane 2>/dev/null)" ]; do sleep 0.2; done
+  END=$(date +%s.%N)
+  kill -INT $CAP 2>/dev/null; wait $CAP 2>/dev/null
+  # Cut a second off the end to drop the frames after the window closed.
+  DUR=$(echo "$END - $START - 1.0" | bc)
+  ffmpeg -v error -y -i "$OUT/raw.mov" -t "$DUR" -c:v libx264 -crf 22 -pix_fmt yuv420p -an "$OUT/video.mp4" && rm -f "$OUT/raw.mov"
 ) &
 REC=$!
 rm -rf "$OUT/result.xcresult"
 TEST_RUNNER_PANE_SHOTS="$OUT" xcodebuild -resultBundlePath "$OUT/result.xcresult" -project Pane.xcodeproj -scheme Pane -destination "platform=macOS" -derivedDataPath build/ddmac \
-  CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= PROVISIONING_PROFILE_SPECIFIER= test-without-building -only-testing:PaneUITests/MacDogfoodTests > "$OUT/test.log" 2>&1 || true
+  CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= PROVISIONING_PROFILE_SPECIFIER= test-without-building -only-testing:"${ONLY:-PaneUITests/MacDogfoodTests}" > "$OUT/test.log" 2>&1 || true
 grep -E "error:|failed|passed" "$OUT/test.log" | grep -v Connection | tail -8
 wait $REC 2>/dev/null || true
 # Pull the step screenshots out of the result bundle.
@@ -44,6 +52,7 @@ for test in manifest:
         name = a.get("suggestedHumanReadableName", "")
         base = name.split("_")[0] if name else ""
         if base[:2].isdigit():
-            shutil.copy(os.path.join(att, a["exportedFileName"]), os.path.join(out, base + ".png"))
+            ext = os.path.splitext(a["exportedFileName"])[1] or ".png"
+            shutil.copy(os.path.join(att, a["exportedFileName"]), os.path.join(out, base + ext))
 PY
 echo "$OUT"

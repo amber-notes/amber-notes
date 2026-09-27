@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		005CA83D3102FABCDD0EA094 /* MacImportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BBAD3D7E5ED5CA9C34129EE /* MacImportTests.swift */; };
+		039FA59088DF11BD28A3096C /* AppleNotesImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 483CA88017A03E92EEC52DFD /* AppleNotesImport.swift */; };
 		2FA68FA597287DDE2B9834A4 /* Library.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEFA368EF8F56909D229B913 /* Library.swift */; };
 		312E09D4D8448F881D9DF560 /* MarkdownStyler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07F39A5C43FC5474BC9B28E4 /* MarkdownStyler.swift */; };
 		329CDFF2E1D412083D1CC558 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9676DA5BDCEE33EF5357B9BF /* Assets.xcassets */; };
@@ -17,13 +19,17 @@
 		5DF4070A3BE600B9F2D1F641 /* DecoratedLayoutFragment.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC4C25B7D160D0B147F9EC20 /* DecoratedLayoutFragment.swift */; };
 		637B62F72EAF63CEBE29212D /* ListEditing.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBE4742CB403A340CF931A03 /* ListEditing.swift */; };
 		64991D36601107180C3C7B49 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F9EEA5AC460DA18550E8304 /* Models.swift */; };
+		7F6BFCC3E30CB53BB780058D /* RichTextTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F02A8CE43D7031D271CA25B /* RichTextTests.swift */; };
 		8074971A34AC94F5B9F9E20F /* MacDogfoodTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F84812729F33EB0AD525982F /* MacDogfoodTests.swift */; };
+		815B2825F87ACCB4644BFDEB /* RichTextToMarkdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99375A4ACF211AEE18EC4EC3 /* RichTextToMarkdown.swift */; };
 		8A0AA1360D9AF1F034EEFBA9 /* Platform.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47C2F5BCCDFA4A6D60E39708 /* Platform.swift */; };
 		9C0EAC3CEB28D1B88D6F3E91 /* MarkdownEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 020E4F46F8521511BB37EAAA /* MarkdownEditor.swift */; };
+		BBF4C5B35A481BA9E9F080C2 /* AppleNotesLiveTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A537C18B9F9C98B1862B423 /* AppleNotesLiveTests.swift */; };
 		C2A23F349B49F07B95A1E81C /* NoteListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AFF5865DFB1F37542A9EF3A /* NoteListView.swift */; };
 		C91AD532185EEF6D3196303E /* PaneApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7CEFF21553A58628006C975 /* PaneApp.swift */; };
 		CAAE18D747495AB2B9B6ED27 /* Markdown in Frameworks */ = {isa = PBXBuildFile; productRef = 70F1EFF162FA5AB6FF4CC29D /* Markdown */; };
 		CD71F1E4803FE64FB4C22727 /* DogfoodTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D735696D027A23734B8C6C30 /* DogfoodTests.swift */; };
+		CE83A43DEE7F67D56C93CA98 /* RichPaste.swift in Sources */ = {isa = PBXBuildFile; fileRef = 550E4D52A7E05ECB1417CCD0 /* RichPaste.swift */; };
 		D7A40F0ADA041C2F9447F606 /* NoteDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86273B1C8845B00B4D51E8A9 /* NoteDetailView.swift */; };
 		ECC26EE8B9227D9F7F6B5E9C /* DemoData.swift in Sources */ = {isa = PBXBuildFile; fileRef = D058AF887BE21AC49E51A5C7 /* DemoData.swift */; };
 		F25FA34F43518D77EB9C9120 /* EditorController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96BF2077E54147D5949A2E4B /* EditorController.swift */; };
@@ -54,12 +60,19 @@
 		37C6B4F675EF00B712CB8496 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		41682433DF625FE3A5BBD36E /* PaneUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PaneUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		47C2F5BCCDFA4A6D60E39708 /* Platform.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Platform.swift; sourceTree = "<group>"; };
+		483CA88017A03E92EEC52DFD /* AppleNotesImport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleNotesImport.swift; sourceTree = "<group>"; };
+		550E4D52A7E05ECB1417CCD0 /* RichPaste.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichPaste.swift; sourceTree = "<group>"; };
 		5F9EEA5AC460DA18550E8304 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		66EF04EADC63E3E6A4AD79B4 /* FormatBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormatBar.swift; sourceTree = "<group>"; };
+		6BBAD3D7E5ED5CA9C34129EE /* MacImportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacImportTests.swift; sourceTree = "<group>"; };
+		6F02A8CE43D7031D271CA25B /* RichTextTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextTests.swift; sourceTree = "<group>"; };
+		84CD20246C83DA20F0BE392A /* Pane-mac.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Pane-mac.entitlements"; sourceTree = "<group>"; };
 		86273B1C8845B00B4D51E8A9 /* NoteDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteDetailView.swift; sourceTree = "<group>"; };
+		8A537C18B9F9C98B1862B423 /* AppleNotesLiveTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleNotesLiveTests.swift; sourceTree = "<group>"; };
 		8AFF5865DFB1F37542A9EF3A /* NoteListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteListView.swift; sourceTree = "<group>"; };
 		9676DA5BDCEE33EF5357B9BF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		96BF2077E54147D5949A2E4B /* EditorController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorController.swift; sourceTree = "<group>"; };
+		99375A4ACF211AEE18EC4EC3 /* RichTextToMarkdown.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextToMarkdown.swift; sourceTree = "<group>"; };
 		BEFA368EF8F56909D229B913 /* Library.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Library.swift; sourceTree = "<group>"; };
 		CC4C25B7D160D0B147F9EC20 /* DecoratedLayoutFragment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DecoratedLayoutFragment.swift; sourceTree = "<group>"; };
 		D058AF887BE21AC49E51A5C7 /* DemoData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoData.swift; sourceTree = "<group>"; };
@@ -99,6 +112,8 @@
 			children = (
 				BEFA368EF8F56909D229B913 /* Library.swift */,
 				5F9EEA5AC460DA18550E8304 /* Models.swift */,
+				550E4D52A7E05ECB1417CCD0 /* RichPaste.swift */,
+				99375A4ACF211AEE18EC4EC3 /* RichTextToMarkdown.swift */,
 			);
 			path = Model;
 			sourceTree = "<group>";
@@ -108,6 +123,7 @@
 			children = (
 				9676DA5BDCEE33EF5357B9BF /* Assets.xcassets */,
 				37C6B4F675EF00B712CB8496 /* Info.plist */,
+				84CD20246C83DA20F0BE392A /* Pane-mac.entitlements */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -115,6 +131,7 @@
 		451CDF5843BEC3A11116B7C5 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				483CA88017A03E92EEC52DFD /* AppleNotesImport.swift */,
 				86273B1C8845B00B4D51E8A9 /* NoteDetailView.swift */,
 				8AFF5865DFB1F37542A9EF3A /* NoteListView.swift */,
 				EA6ECF7DA4BD18007EE9AD20 /* RootView.swift */,
@@ -126,7 +143,9 @@
 		8FE159B9DD6C403A6275906B /* PaneTests */ = {
 			isa = PBXGroup;
 			children = (
+				8A537C18B9F9C98B1862B423 /* AppleNotesLiveTests.swift */,
 				0C246BB0AA36AD5C69E3BB96 /* ListEditingTests.swift */,
+				6F02A8CE43D7031D271CA25B /* RichTextTests.swift */,
 			);
 			path = PaneTests;
 			sourceTree = "<group>";
@@ -181,6 +200,7 @@
 			children = (
 				D735696D027A23734B8C6C30 /* DogfoodTests.swift */,
 				F84812729F33EB0AD525982F /* MacDogfoodTests.swift */,
+				6BBAD3D7E5ED5CA9C34129EE /* MacImportTests.swift */,
 			);
 			path = PaneUITests;
 			sourceTree = "<group>";
@@ -308,7 +328,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BBF4C5B35A481BA9E9F080C2 /* AppleNotesLiveTests.swift in Sources */,
 				582627587918D7195B435F61 /* ListEditingTests.swift in Sources */,
+				7F6BFCC3E30CB53BB780058D /* RichTextTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -316,6 +338,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				039FA59088DF11BD28A3096C /* AppleNotesImport.swift in Sources */,
 				5DF4070A3BE600B9F2D1F641 /* DecoratedLayoutFragment.swift in Sources */,
 				ECC26EE8B9227D9F7F6B5E9C /* DemoData.swift in Sources */,
 				F25FA34F43518D77EB9C9120 /* EditorController.swift in Sources */,
@@ -329,6 +352,8 @@
 				C2A23F349B49F07B95A1E81C /* NoteListView.swift in Sources */,
 				C91AD532185EEF6D3196303E /* PaneApp.swift in Sources */,
 				8A0AA1360D9AF1F034EEFBA9 /* Platform.swift in Sources */,
+				CE83A43DEE7F67D56C93CA98 /* RichPaste.swift in Sources */,
+				815B2825F87ACCB4644BFDEB /* RichTextToMarkdown.swift in Sources */,
 				585C653A4AED30554E5D1C32 /* RootView.swift in Sources */,
 				4430BD8F09B8AF0C608223C2 /* SidebarView.swift in Sources */,
 			);
@@ -340,6 +365,7 @@
 			files = (
 				CD71F1E4803FE64FB4C22727 /* DogfoodTests.swift in Sources */,
 				8074971A34AC94F5B9F9E20F /* MacDogfoodTests.swift in Sources */,
+				005CA83D3102FABCDD0EA094 /* MacImportTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -493,6 +519,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "Pane/Resources/Pane-mac.entitlements";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -608,6 +635,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "Pane/Resources/Pane-mac.entitlements";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;

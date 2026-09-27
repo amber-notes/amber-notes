@@ -136,6 +136,15 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
 
     func focusEditor() { becomeFirstResponder() }
 
+    override func paste(_ sender: Any?) {
+        if let md = RichPaste.markdownFromPasteboard() {
+            let sel = selectedRange
+            apply(TextEdit(range: sel, replacement: md, caret: sel.location + (md as NSString).length))
+            return
+        }
+        super.paste(sender)
+    }
+
     // MARK: Delegate
 
     func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
@@ -325,6 +334,15 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
     }
 
     func focusEditor() { window?.makeFirstResponder(self) }
+
+    override func paste(_ sender: Any?) {
+        if let md = RichPaste.markdownFromPasteboard() {
+            let sel = selectedRange()
+            apply(TextEdit(range: sel, replacement: md, caret: sel.location + (md as NSString).length))
+            return
+        }
+        pasteAsPlainText(sender)
+    }
 
     // MARK: Delegate
 

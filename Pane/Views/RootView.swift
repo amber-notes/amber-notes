@@ -9,6 +9,7 @@ struct RootView: View {
     @State private var visibility: NavigationSplitViewVisibility = .all
     @State private var editor = EditorController()
     @State private var justCreated: UUID?
+    @State private var showImport = false
     @AppStorage("lastScope") private var lastScopeData: Data = Data()
 
     var body: some View {
@@ -34,6 +35,10 @@ struct RootView: View {
         .onChange(of: selectedNote) { old, _ in discardIfEmpty(old) }
         .focusedSceneValue(\.newNoteAction, newNote)
         .focusedSceneValue(\.editorController, editor)
+        .focusedSceneValue(\.importAction, { showImport = true })
+        #if os(macOS)
+        .sheet(isPresented: $showImport) { AppleNotesImportView() }
+        #endif
         .focusedSceneValue(\.deleteNoteAction, deleteAction)
     }
 
@@ -102,6 +107,10 @@ private struct DeleteNoteActionKey: FocusedValueKey {
     typealias Value = () -> Void
 }
 
+private struct ImportActionKey: FocusedValueKey {
+    typealias Value = () -> Void
+}
+
 private struct EditorControllerKey: FocusedValueKey {
     typealias Value = EditorController
 }
@@ -115,6 +124,10 @@ extension FocusedValues {
         get { self[DeleteNoteActionKey.self] }
         set { self[DeleteNoteActionKey.self] = newValue }
     }
+    var importAction: (() -> Void)? {
+        get { self[ImportActionKey.self] }
+        set { self[ImportActionKey.self] = newValue }
+    }
     var editorController: EditorController? {
         get { self[EditorControllerKey.self] }
         set { self[EditorControllerKey.self] = newValue }
@@ -126,12 +139,17 @@ struct PaneCommands: Commands {
     @FocusedValue(\.newNoteAction) private var newNote
     @FocusedValue(\.deleteNoteAction) private var deleteNote
     @FocusedValue(\.editorController) private var editor
+    @FocusedValue(\.importAction) private var importNotes
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
             Button("New Note") { newNote?() }
                 .keyboardShortcut("n")
                 .disabled(newNote == nil)
+        }
+        CommandGroup(replacing: .importExport) {
+            Button("Import from Apple Notes…") { importNotes?() }
+                .disabled(importNotes == nil)
         }
         CommandGroup(after: .pasteboard) {
             Divider()

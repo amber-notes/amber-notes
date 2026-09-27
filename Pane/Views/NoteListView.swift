@@ -11,6 +11,7 @@ struct NoteListView: View {
     @Query(sort: \Note.updatedAt, order: .reverse) private var notes: [Note]
     @State private var search = ""
     @State private var fileDropTargeted = false
+    @State private var collapsed: Set<String> = []
 
     private var scoped: [Note] {
         notes.filter { n in
@@ -48,7 +49,10 @@ struct NoteListView: View {
                     .selectionDisabled()
             }
             ForEach(DateBucket.sections(filtered), id: \.0) { section in
-                Section(section.0) {
+                Section(isExpanded: Binding(
+                    get: { !collapsed.contains(section.0) },
+                    set: { open in withAnimation(.snappy(duration: 0.22)) { if open { collapsed.remove(section.0) } else { collapsed.insert(section.0) } } }
+                )) {
                     ForEach(section.1) { note in
                         NoteRow(note: note, query: search, showFolder: scope == .all || !search.isEmpty)
                             .tag(note.id)
@@ -70,6 +74,11 @@ struct NoteListView: View {
                             }
                             .contextMenu { menu(for: note) }
                     }
+                } header: {
+                    Text(section.0)
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(.primary)
+                        .textCase(nil)
                 }
             }
         }
