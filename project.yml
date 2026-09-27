@@ -6,6 +6,9 @@ options:
     macOS: "26.0"
   createIntermediateGroups: true
 packages:
+  ZIPFoundation:
+    url: https://github.com/weichsel/ZIPFoundation
+    from: 0.9.19
   Supabase:
     url: https://github.com/supabase/supabase-swift
     from: 2.31.0
@@ -33,6 +36,7 @@ targets:
     dependencies:
       - package: Markdown
       - package: Supabase
+      - package: ZIPFoundation
     info:
       path: Pane/Resources/Info.plist
       properties:
@@ -65,7 +69,11 @@ targets:
   PaneTests:
     type: bundle.unit-test
     supportedDestinations: [iOS, macOS]
-    sources: [PaneTests]
+    sources:
+      - path: PaneTests
+        excludes: [Fixtures]
+      - path: PaneTests/Fixtures
+        buildPhase: resources
     dependencies:
       - target: Pane
     settings:

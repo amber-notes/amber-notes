@@ -14,6 +14,7 @@ struct SidebarView: View {
     @State private var nameDraft = ""
     @State private var dropTarget: UUID?
     @State private var showSettings = false
+    @FocusedValue(\.importSheetAction) private var importSheet
     @Environment(Backend.self) private var backend: Backend?
     @Environment(SyncEngine.self) private var sync: SyncEngine?
 
@@ -52,8 +53,13 @@ struct SidebarView: View {
         .toolbar {
             #if os(iOS)
             ToolbarItem(placement: .bottomBar) {
-                Button("New Folder", systemImage: "folder.badge.plus") { startNewFolder(nil) }
-                    .accessibilityIdentifier("sidebar.newFolder")
+                Menu {
+                    Button("New Folder", systemImage: "folder.badge.plus") { startNewFolder(nil) }
+                    Button("Import Spreadsheet as Table", systemImage: "tablecells.badge.ellipsis") { importSheet?() }
+                } label: {
+                    Label("New Folder", systemImage: "folder.badge.plus")
+                } primaryAction: { startNewFolder(nil) }
+                .accessibilityIdentifier("sidebar.newFolder")
             }
             ToolbarSpacer(.flexible, placement: .bottomBar)
             ToolbarItem(placement: .bottomBar) {

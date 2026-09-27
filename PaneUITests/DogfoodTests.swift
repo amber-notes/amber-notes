@@ -186,4 +186,28 @@ final class DogfoodTests: XCTestCase {
         }
         app.swipeDown(velocity: .fast)
     }
+
+    func testTracker() throws {
+        pause(1)
+        #if os(iOS)
+        app.staticTexts["Evening tracker"].firstMatch.tap()
+        #endif
+        let card = app.descendants(matching: .any).matching(identifier: "table.card").firstMatch
+        XCTAssertTrue(card.waitForExistence(timeout: 5), "typed tables show as a table card")
+        pause(1)
+        shot("tracker-card")
+        app.buttons["table.log"].firstMatch.tap()
+        pause(1)
+        shot("tracker-form")
+        app.buttons["7"].firstMatch.tap()
+        let eight = app.buttons.matching(identifier: "8").element(boundBy: 1)
+        if eight.exists { eight.tap() }
+        app.buttons["Yes"].firstMatch.tap()
+        pause()
+        shot("tracker-filled")
+        app.buttons["row.save"].tap()
+        pause(1.5)
+        shot("tracker-logged")
+        XCTAssertTrue(app.buttons["table.log"].label.contains("Edit today"), "after logging, the button edits today's entry")
+    }
 }

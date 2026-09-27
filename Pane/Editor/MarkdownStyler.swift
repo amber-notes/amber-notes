@@ -79,6 +79,7 @@ struct MarkdownStyler {
     var firstLineIsTitle = true
     /// Height to reserve for a card shown as a view (collapsed or expanded).
     var cardHeight: (CardBlock) -> CGFloat = { _ in 64 }
+    var tableHeight: (TypedTable) -> CGFloat = { TableCardMetrics.height($0, expanded: false) }
 
     var bodyFont: PFont { .systemFont(ofSize: bodySize) }
     var monoFont: PFont { .monospacedSystemFont(ofSize: bodySize * 0.88, weight: .regular) }
@@ -212,8 +213,47 @@ struct MarkdownStyler {
         }
 
         let cards = styleCards(storage, isActive: isActive)
+        let tables = styleTypedTables(storage, isActive: isActive, skip: cards.map(\.range) + walker.codeRanges)
         let embeds = styleEmbeds(storage, isActive: isActive, skip: cards.map(\.range) + walker.codeRanges)
-        return StyledBlocks(cards: cards, embeds: embeds)
+        return StyledBlocks(cards: cards, embeds: embeds, tables: tables)
+    }
+
+    /// Typed tables become a table card; with the caret inside, the markdown shows.
+    private func styleTypedTables(_ storage: NSTextStorage, isActive: (NSRange) -> Bool, skip: [NSRange]) -> [TypedTable] {
+        let ns = storage.string as NSString
+        var shown: [TypedTable] = []
+        for t in TypedTable.find(in: storage.string) {
+            if skip.contains(where: { NSIntersectionRange($0, t.range).length > 0 }) { continue }
+            let lines = ns.lineRange(for: t.range)
+            let first = ns.lineRange(for: NSRange(location: t.range.location, length: 0))
+            if isActive(t.range) {
+                storage.addAttributes([.foregroundColor: PColor.paneTertiary, .font: monoFont], range: NSRange(location: first.location, length: first.length))
+                continue
+            }
+            storage.removeAttribute(.paneLine, range: lines)
+            storage.addAttributes(hidden, range: t.range)
+            storage.removeAttribute(.kern, range: t.range)
+            let h = tableHeight(t)
+            let head = NSMutableParagraphStyle()
+            head.minimumLineHeight = h
+            head.maximumLineHeight = h
+            head.paragraphSpacingBefore = 6
+            head.paragraphSpacing = 10
+            storage.addAttribute(.paragraphStyle, value: head, range: first)
+            let rest = NSRange(location: NSMaxRange(first), length: NSMaxRange(lines) - NSMaxRange(first))
+            if rest.length > 0 {
+                let flat = NSMutableParagraphStyle()
+                flat.minimumLineHeight = 0.01
+                flat.maximumLineHeight = 0.01
+                flat.lineSpacing = 0
+                flat.paragraphSpacing = 0
+                storage.addAttribute(.paragraphStyle, value: flat, range: rest)
+            }
+            var t = t
+            t.index = shown.count
+            shown.append(t)
+        }
+        return shown
     }
 
     /// File, image and link lines become one reserved line for a live view.
@@ -448,6 +488,7 @@ struct MarkdownStyler {
 struct StyledBlocks {
     var cards: [CardBlock] = []
     var embeds: [LineEmbed] = []
+    var tables: [TypedTable] = []
 }
 
 /// Maps swift-markdown's line/column (UTF-8) locations onto UTF-16 offsets.

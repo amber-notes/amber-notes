@@ -18,6 +18,7 @@ struct NoteDetailView: View {
             .fileImporter(isPresented: $importing, allowedContentTypes: [.item], allowsMultipleSelection: true, onCompletion: attach)
             .onAppear(perform: wireController)
             .sheet(item: cardBinding, content: cardSheet)
+            .sheet(item: rowBinding, content: rowSheet)
     }
 
     private var editor: some View {
@@ -51,6 +52,16 @@ struct NoteDetailView: View {
 
     private var cardBinding: Binding<CardEditRequest?> {
         Binding(get: { controller.cardRequest }, set: { controller.cardRequest = $0 })
+    }
+
+    private var rowBinding: Binding<TableRowRequest?> {
+        Binding(get: { controller.tableRequest }, set: { controller.tableRequest = $0 })
+    }
+
+    private func rowSheet(_ r: TableRowRequest) -> some View {
+        TableRowSheet(columns: r.columns, values: r.values, isNew: r.rowIndex == nil,
+                      onSave: { controller.saveRow(r, values: $0) },
+                      onDelete: { controller.saveRow(r, values: nil) })
     }
 
     private func cardSheet(_ req: CardEditRequest) -> some View {

@@ -11,6 +11,8 @@ final class EditorController {
     var isEditing = false
     /// A card waiting to be created or edited in the card sheet.
     var cardRequest: CardEditRequest?
+    /// A typed-table row waiting to be added or edited.
+    var tableRequest: TableRowRequest?
     /// The file being shown in Quick Look.
     var previewURL: URL?
     /// Files being fetched from the server.
@@ -108,6 +110,36 @@ final class EditorController {
 
     func saveCard(_ request: CardEditRequest, title: String, content: String) {
         target?.saveCard(index: request.index, markdown: CardBlocks.markdown(title: title, content: content))
+    }
+}
+
+struct TableRowRequest: Identifiable {
+    let id = UUID()
+    var tableIndex: Int
+    /// nil for a new row.
+    var rowIndex: Int?
+    var columns: [TypedTable.Column]
+    var values: [String]
+}
+
+extension EditorController {
+    /// Writes a row back into the table's markdown (nil values deletes the row).
+    func saveRow(_ r: TableRowRequest, values: [String]?) {
+        perform { text, _ in
+            let all = TypedTable.find(in: text)
+            guard r.tableIndex < all.count else { return nil }
+            var t = all[r.tableIndex]
+            if let values {
+                if let i = r.rowIndex, i < t.rows.count { t.rows[i] = values } else { t.rows.append(values) }
+                // Keep dated rows in order.
+                if let col = t.columns.firstIndex(where: { $0.type == .date }) {
+                    t.rows.sort { $0[col] < $1[col] }
+                }
+            } else if let i = r.rowIndex, i < t.rows.count {
+                t.rows.remove(at: i)
+            }
+            return TextEdit(range: t.range, replacement: t.markdown, caret: -1)
+        }
     }
 }
 

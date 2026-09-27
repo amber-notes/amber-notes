@@ -154,6 +154,13 @@ extension ModelContext {
         return made
     }
 
+    /// Turns a spreadsheet's first sheet into a note with a typed table.
+    func importSpreadsheet(_ url: URL, into scope: Scope) throws -> Note {
+        let (title, table) = try XLSXImporter.table(from: url)
+        let note = createNote(in: scope, body: "\(title)\n\n\(table.markdown)\n")
+        return note
+    }
+
     func attachment(_ id: UUID) -> Attachment? {
         try? fetch(FetchDescriptor<Attachment>(predicate: #Predicate { $0.id == id })).first
     }

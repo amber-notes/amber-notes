@@ -1,5 +1,6 @@
 import SwiftData
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Three columns, like Apple Notes: folders, notes, the note.
 struct RootView: View {
@@ -10,6 +11,8 @@ struct RootView: View {
     @State private var editor = EditorController()
     @State private var justCreated: UUID?
     @State private var showImport = false
+    @State private var importingSheet = false
+    @State private var importError: String?
     @AppStorage("lastScope") private var lastScopeData: Data = Data()
 
     var body: some View {
@@ -36,6 +39,19 @@ struct RootView: View {
         .focusedSceneValue(\.newNoteAction, newNote)
         .focusedSceneValue(\.editorController, editor)
         .focusedSceneValue(\.importAction, { showImport = true })
+        .focusedSceneValue(\.importSheetAction, { importingSheet = true })
+        .fileImporter(isPresented: $importingSheet, allowedContentTypes: [.spreadsheet, UTType(filenameExtension: "xlsx") ?? .data]) { result in
+            guard case .success(let url) = result else { return }
+            do {
+                let note = try context.importSpreadsheet(url, into: scope == .trash ? .all : (scope ?? .all))
+                selectedNote = note.id
+            } catch {
+                importError = error.localizedDescription
+            }
+        }
+        .alert("Couldn't import", isPresented: Binding(get: { importError != nil }, set: { if !$0 { importError = nil } })) {
+            Button("OK") {}
+        } message: { Text(importError ?? "") }
         #if os(macOS)
         .sheet(isPresented: $showImport) { AppleNotesImportView() }
         #endif
@@ -107,6 +123,10 @@ private struct DeleteNoteActionKey: FocusedValueKey {
     typealias Value = () -> Void
 }
 
+private struct ImportSheetActionKey: FocusedValueKey {
+    typealias Value = () -> Void
+}
+
 private struct ImportActionKey: FocusedValueKey {
     typealias Value = () -> Void
 }
@@ -124,6 +144,10 @@ extension FocusedValues {
         get { self[DeleteNoteActionKey.self] }
         set { self[DeleteNoteActionKey.self] = newValue }
     }
+    var importSheetAction: (() -> Void)? {
+        get { self[ImportSheetActionKey.self] }
+        set { self[ImportSheetActionKey.self] = newValue }
+    }
     var importAction: (() -> Void)? {
         get { self[ImportActionKey.self] }
         set { self[ImportActionKey.self] = newValue }
@@ -140,6 +164,7 @@ struct PaneCommands: Commands {
     @FocusedValue(\.deleteNoteAction) private var deleteNote
     @FocusedValue(\.editorController) private var editor
     @FocusedValue(\.importAction) private var importNotes
+    @FocusedValue(\.importSheetAction) private var importSheet
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
@@ -150,6 +175,8 @@ struct PaneCommands: Commands {
         CommandGroup(replacing: .importExport) {
             Button("Import from Apple Notes…") { importNotes?() }
                 .disabled(importNotes == nil)
+            Button("Import Spreadsheet as Table…") { importSheet?() }
+                .disabled(importSheet == nil)
         }
         CommandGroup(after: .pasteboard) {
             Divider()

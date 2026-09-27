@@ -27,12 +27,15 @@ final class EditorCore {
     /// Cards and embeds currently shown as views, and which cards are open.
     private(set) var cards: [CardBlock] = []
     private(set) var embeds: [LineEmbed] = []
+    private(set) var tables: [TypedTable] = []
+    private var expandedTables: Set<Int> = []
     private var expanded: Set<String> = []
     /// Called after a restyle, so the view can place card views.
     var onCardsChanged: () -> Void = {}
 
     init() {
         styler.cardHeight = { [weak self] card in CardMetrics.height(card, expanded: self?.isExpanded(card) ?? false) }
+        styler.tableHeight = { [weak self] t in TableCardMetrics.height(t, expanded: self?.expandedTables.contains(t.index) ?? false) }
     }
 
     private func key(_ c: CardBlock) -> String { "\(c.index)|\(c.title)" }
@@ -54,6 +57,23 @@ final class EditorCore {
             guard let f = frame(at: card.range.location, height: styler.cardHeight(card)) else { continue }
             let view = CardView(card: card, expanded: isExpanded(card), actions: actions(for: card, in: target, storage: storage, controller: controller, selection: selection))
             out.append(("c\(card.index)", f, AnyView(view)))
+        }
+        for t in tables {
+            guard let f = frame(at: t.range.location, height: styler.tableHeight(t)) else { continue }
+            let view = TableCardView(
+                table: t,
+                expanded: expandedTables.contains(t.index),
+                log: {
+                    let today = t.rowIndex(for: .now)
+                    controller?.tableRequest = TableRowRequest(tableIndex: t.index, rowIndex: today, columns: t.columns, values: today.map { t.rows[$0] } ?? t.blankRow())
+                },
+                edit: { i in controller?.tableRequest = TableRowRequest(tableIndex: t.index, rowIndex: i, columns: t.columns, values: t.rows[i]) },
+                toggleExpanded: { [weak self] in
+                    guard let self else { return }
+                    if self.expandedTables.contains(t.index) { self.expandedTables.remove(t.index) } else { self.expandedTables.insert(t.index) }
+                    self.restyle(storage, selection: selection(), force: true)
+                })
+            out.append(("t\(t.index)", f, AnyView(view)))
         }
         for e in embeds {
             let maxW: CGFloat = { if case .image = e.kind { return 420 } else { return 460 } }()
@@ -132,6 +152,7 @@ final class EditorCore {
         let blocks = styler.apply(to: storage, active: selection ?? NSRange(location: NSNotFound, length: 0))
         cards = blocks.cards
         embeds = blocks.embeds
+        tables = blocks.tables
         onCardsChanged()
     }
 

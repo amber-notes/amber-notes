@@ -32,6 +32,26 @@ enum DemoData {
             n.updatedAt = .now.addingTimeInterval(-1800)
         }
 
+        // A tracker like an evening check-in spreadsheet, as a typed table.
+        var tracker = TypedTable(columns: [
+            .init(name: "Date", type: .date),
+            .init(name: "Work hours", type: .number),
+            .init(name: "Energy (1-10)", type: .scale(1, 10)),
+            .init(name: "Mood (1-10)", type: .scale(1, 10)),
+            .init(name: "Diet on plan", type: .choice(["Yes", "No"])),
+            .init(name: "Strength", type: .choice(["Yes", "No", "N/A"])),
+            .init(name: "What helped today?", type: .text),
+        ], rows: [])
+        let sample = [("6", "7", "8", "Yes", "Yes", "Early night"), ("4", "5", "6", "No", "N/A", ""), ("7", "8", "7", "Yes", "No", "Walk after lunch"),
+                      ("5", "6", "6", "Yes", "Yes", ""), ("8", "8", "9", "Yes", "N/A", "Deep work morning"), ("3", "4", "5", "No", "No", "Too much coffee")]
+        for (i, r) in sample.enumerated() {
+            let d = Calendar.current.date(byAdding: .day, value: -(sample.count - i), to: .now)!
+            tracker.rows.append([TypedTable.day(d), r.0, r.1, r.2, r.3, r.4, r.5])
+        }
+        let t = context.createNote(in: .folder(main.id), body: "Evening tracker\n\nFill in once a day, it takes a minute.\n\n\(tracker.markdown)\n")
+        t.updatedAt = .now.addingTimeInterval(-300)
+        t.isPinned = true
+
         for (folder, body, offset, pinned) in items {
             let n = context.createNote(in: .folder(folder.id), body: body)
             n.updatedAt = .now.addingTimeInterval(offset)
