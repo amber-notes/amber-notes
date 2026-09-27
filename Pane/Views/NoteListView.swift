@@ -1,0 +1,228 @@
+import SwiftData
+import SwiftUI
+import UniformTypeIdentifiers
+
+struct NoteListView: View {
+    @Environment(\.modelContext) private var context
+    let scope: Scope
+    @Binding var selection: UUID?
+    let onNewNote: () -> Void
+
+    @Query(sort: \Note.updatedAt, order: .reverse) private var notes: [Note]
+    @State private var search = ""
+    @State private var fileDropTargeted = false
+
+    private var scoped: [Note] {
+        notes.filter { n in
+            guard n.deletedAt == nil else { return false }
+            switch scope {
+            case .all: return n.trashedAt == nil
+            case .trash: return n.trashedAt != nil
+            case .folder(let id): return n.trashedAt == nil && n.folder?.id == id
+            }
+        }
+    }
+
+    private var filtered: [Note] {
+        let q = search.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else { return scoped }
+        let base = scope == .trash ? scoped : notes.filter { $0.deletedAt == nil && $0.trashedAt == nil }
+        return base.filter { $0.body.localizedStandardContains(q) }
+    }
+
+    private var title: String {
+        switch scope {
+        case .all: "All Notes"
+        case .trash: "Recently Deleted"
+        case .folder(let id): context.folder(id)?.name ?? "Notes"
+        }
+    }
+
+    var body: some View {
+        List(selection: $selection) {
+            if scope == .trash && !scoped.isEmpty && search.isEmpty {
+                Text("Notes are deleted forever after 30 days.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .listRowSeparator(.hidden)
+                    .selectionDisabled()
+            }
+            ForEach(DateBucket.sections(filtered), id: \.0) { section in
+                Section(section.0) {
+                    ForEach(section.1) { note in
+                        NoteRow(note: note, query: search, showFolder: scope == .all || !search.isEmpty)
+                            .tag(note.id)
+                            .draggable(PaneDragItem(kind: .note, id: note.id)) {
+                                Label(note.title, systemImage: "note.text")
+                                    .padding(.horizontal, 12).padding(.vertical, 8)
+                                    .glassEffect(.regular, in: .capsule)
+                            }
+                            .swipeActions(edge: .leading) {
+                                if note.trashedAt == nil {
+                                    Button(note.isPinned ? "Unpin" : "Pin", systemImage: note.isPinned ? "pin.slash" : "pin") {
+                                        withAnimation(.snappy) { context.togglePin(note) }
+                                    }
+                                    .tint(.orange)
+                                }
+                            }
+                            .swipeActions(edge: .trailing) {
+                                deleteButton(note)
+                            }
+                            .contextMenu { menu(for: note) }
+                    }
+                }
+            }
+        }
+        .animation(.snappy(duration: 0.28), value: filtered.map(\.id))
+        .overlay {
+            if filtered.isEmpty { emptyState }
+        }
+        .overlay {
+            if fileDropTargeted {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .strokeBorder(Color.accentColor.opacity(0.7), style: StrokeStyle(lineWidth: 2, dash: [7, 5]))
+                    .padding(8)
+                    .transition(.opacity)
+                    .allowsHitTesting(false)
+            }
+        }
+        .dropDestination(for: URL.self) { urls, _ in
+            context.importFiles(urls, into: scope == .trash ? .all : scope) > 0
+        } isTargeted: { t in
+            withAnimation(.easeOut(duration: 0.15)) { fileDropTargeted = t }
+        }
+        .searchable(text: $search, placement: .automatic, prompt: "Search")
+        .navigationTitle(title)
+        #if os(macOS)
+        .navigationSubtitle("\(scoped.count) notes")
+        #endif
+        .onKeyPress(.delete) {
+            guard let id = selection, let n = context.note(id) else { return .ignored }
+            remove(n); return .handled
+        }
+        .toolbar {
+            #if os(iOS)
+            ToolbarItem(placement: .bottomBar) { Spacer() }
+            ToolbarItem(placement: .status) {
+                Text(scoped.count == 1 ? "1 Note" : "\(scoped.count) Notes")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+            }
+            ToolbarItem(placement: .bottomBar) {
+                Button("New Note", systemImage: "square.and.pencil", action: onNewNote)
+                    .accessibilityIdentifier("list.newNote")
+            }
+            #else
+            ToolbarItem {
+                Button("New Note", systemImage: "square.and.pencil", action: onNewNote)
+                    .accessibilityIdentifier("list.newNote")
+            }
+            #endif
+        }
+    }
+
+    @ViewBuilder
+    private var emptyState: some View {
+        if !search.isEmpty {
+            ContentUnavailableView.search(text: search)
+        } else if scope == .trash {
+            ContentUnavailableView("No Deleted Notes", systemImage: "trash", description: Text("Notes you delete stay here for 30 days."))
+        } else {
+            ContentUnavailableView {
+                Label("No Notes", systemImage: "note.text")
+            } actions: {
+                Button("Create a note", action: onNewNote)
+                    .buttonStyle(.glass)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func deleteButton(_ note: Note) -> some View {
+        Button(note.trashedAt == nil ? "Delete" : "Delete Forever", systemImage: "trash", role: .destructive) { remove(note) }
+    }
+
+    @ViewBuilder
+    private func menu(for note: Note) -> some View {
+        if note.trashedAt != nil {
+            Button("Recover", systemImage: "arrow.uturn.backward") { withAnimation(.snappy) { context.restore(note) } }
+            deleteButton(note)
+        } else {
+            Button(note.isPinned ? "Unpin Note" : "Pin Note", systemImage: note.isPinned ? "pin.slash" : "pin") {
+                withAnimation(.snappy) { context.togglePin(note) }
+            }
+            Menu("Move to", systemImage: "folder") {
+                ForEach(context.allFolders().sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }) { f in
+                    Button(f.name) { withAnimation(.snappy) { context.move(note, to: f) } }
+                        .disabled(note.folder?.id == f.id)
+                }
+            }
+            ShareLink(item: note.body, preview: SharePreview(note.title))
+            Button("Duplicate", systemImage: "plus.square.on.square") {
+                let copy = context.createNote(in: note.folder.map { .folder($0.id) } ?? .all, body: note.body)
+                selection = copy.id
+            }
+            Divider()
+            deleteButton(note)
+        }
+    }
+
+    private func remove(_ note: Note) {
+        let wasSelected = selection == note.id
+        let ordered = filtered
+        withAnimation(.snappy(duration: 0.25)) {
+            if note.trashedAt == nil { context.trash(note) } else { context.purge(note) }
+            if wasSelected {
+                // Select the neighbour, as Apple Notes does.
+                if let i = ordered.firstIndex(where: { $0.id == note.id }) {
+                    let rest = ordered.filter { $0.id != note.id }
+                    selection = rest.isEmpty ? nil : rest[min(i, rest.count - 1)].id
+                } else { selection = nil }
+            }
+        }
+    }
+}
+
+struct NoteRow: View {
+    let note: Note
+    var query: String = ""
+    var showFolder = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(note.title)
+                .font(.headline)
+                .lineLimit(1)
+            HStack(spacing: 6) {
+                Text(DateBucket.rowDate(note.updatedAt))
+                    .monospacedDigit()
+                    .foregroundStyle(.primary.opacity(0.75))
+                Text(snippet)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            .font(.subheadline)
+            if showFolder, let f = note.folder {
+                Label(f.name, systemImage: "folder")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .labelStyle(.titleAndIcon)
+            }
+        }
+        .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("note.\(note.title)")
+    }
+
+    /// With a search, show the matching line instead of the preview.
+    private var snippet: String {
+        let q = query.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else { return note.preview }
+        for line in note.body.split(separator: "\n") where line.localizedStandardContains(q) {
+            let clean = NoteText.stripMarkup(String(line))
+            if !clean.isEmpty, clean != note.title { return clean }
+        }
+        return note.preview
+    }
+}

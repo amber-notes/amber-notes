@@ -1,0 +1,76 @@
+name: Pane
+options:
+  bundleIdPrefix: dev.emilwagman
+  deploymentTarget:
+    iOS: "26.0"
+    macOS: "26.0"
+  createIntermediateGroups: true
+packages:
+  Markdown:
+    url: https://github.com/swiftlang/swift-markdown
+    from: 0.6.0
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGN_IDENTITY: "-"
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    SWIFT_STRICT_CONCURRENCY: complete
+targets:
+  Pane:
+    type: application
+    supportedDestinations: [iOS, macOS]
+    sources: [Pane]
+    dependencies:
+      - package: Markdown
+    info:
+      path: Pane/Resources/Info.plist
+      properties:
+        CFBundleDisplayName: Pane
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: true
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        LSApplicationCategoryType: public.app-category.productivity
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: dev.emilwagman.pane.item
+            UTTypeDescription: Pane item
+            UTTypeConformsTo: [public.data]
+            UTTypeTagSpecification: {}
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.emilwagman.pane
+        GENERATE_INFOPLIST_FILE: NO
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ENABLE_HARDENED_RUNTIME: YES
+  PaneTests:
+    type: bundle.unit-test
+    supportedDestinations: [iOS, macOS]
+    sources: [PaneTests]
+    dependencies:
+      - target: Pane
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+  PaneUITests:
+    type: bundle.ui-testing
+    supportedDestinations: [iOS, macOS]
+    sources: [PaneUITests]
+    dependencies:
+      - target: Pane
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: Pane
+schemes:
+  Pane:
+    build:
+      targets:
+        Pane: all
+    test:
+      targets: [PaneTests, PaneUITests]

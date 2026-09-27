@@ -1,0 +1,7 @@
+build/
+DerivedData/
+*.xcodeproj/xcuserdata/
+.DS_Store
+.env
+supabase/.temp/
+supabase/.branches/
