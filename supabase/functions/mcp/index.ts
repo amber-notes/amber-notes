@@ -13,6 +13,7 @@ const SERVER_INFO = { name: "pane", title: "Pane notes", version: "1.0.0" };
 const INSTRUCTIONS = `Pane is the user's personal notes app. Notes are markdown; the first line is the title.
 Start with get_overview or search_notes to find things. Read a note before editing it.
 Prefer edit_note (exact find/replace) and append_to_note over replace_note_body, so nothing else changes.
+Trackers are typed tables: use read_table, then log_table_row (it validates values and upserts by date).
 Checklists are "- [ ] item" lines; use set_checklist_item to tick them. To tuck details into a collapsible card
 (shown as a tappable card in the app), write: <details>\n<summary>Card title</summary>\n\ncontent in markdown\n\n</details>. Deleted notes go to Recently Deleted
 and can be restored; every edit keeps the previous version (note_history / restore_revision).`;

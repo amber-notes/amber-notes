@@ -161,3 +161,23 @@ Deno.test({ name: "files: list and fetch through a short-lived link", ignore: !e
   const bytes = await fetch(got.data.download_url).then((r) => r.text());
   assertEquals(bytes, "a,b\n1,2\n");
 });
+
+Deno.test({ name: "typed tables: read, log, validate, update by date", ignore: !enabled }, async () => {
+  const body = "Mood log\n\n<!-- pane-table: Date=date; Energy=scale 1-10; Diet=choice Yes|No; Notes=text -->\n| Date | Energy | Diet | Notes |\n| --- | --- | --- | --- |\n| 2026-09-25 | 6 | No |  |\n";
+  const id = (await call("create_note", { body })).data.created.id;
+  const read = await call("read_table", { id });
+  assertEquals(read.data.columns[1].type, "scale 1-10");
+  const bad = await call("log_table_row", { id, values: { Energy: 11 } });
+  assert(bad.error);
+  assertStringIncludes(bad.text, "from 1 to 10");
+  const added = await call("log_table_row", { id, values: { Date: "2026-09-26", Energy: 8, diet: "yes", Notes: "Walk | sun" } });
+  assert(!added.error, added.text);
+  const again = await call("log_table_row", { id, values: { Date: "2026-09-26", Energy: 9 } });
+  assert(again.data.updated_row, "same date updates the row");
+  const after = await call("read_table", { id });
+  assertEquals(after.data.rows.length, 2);
+  assertEquals(after.data.rows[1], { Date: "2026-09-26", Energy: "9", Diet: "Yes", Notes: "Walk | sun" });
+  assert(!(await call("delete_table_row", { id, date: "2026-09-25" })).error);
+  assertEquals((await call("read_table", { id })).data.total_rows, 1);
+  await call("delete_note", { id });
+});

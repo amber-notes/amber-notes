@@ -1,7 +1,7 @@
 // The note tools. Each runs in a transaction as the token's owner (RLS applies).
 
 import type { Sql, TransactionSql } from "npm:postgres@3.4.5";
-import { appendText, applyEdits, outline, previewOf, setChecklistItem, sliceLines, titleOf, type Edit } from "./notes.ts";
+import { appendText, applyEdits, coerce, findTables, outline, previewOf, replaceTable, setChecklistItem, sliceLines, titleOf, typeSpec, type Edit, type Table } from "./notes.ts";
 
 export type ToolContext = { sql: Sql; userId: string; client: string; canWrite: boolean };
 export class ToolError extends Error {}
@@ -169,6 +169,32 @@ export const tools: Tool[] = [
     inputSchema: { type: "object", properties: { id: str("File id from list_files or a pane-file: link in a note.") }, required: ["id"] },
     annotations: read,
   },
+  {
+    name: "read_table", title: "Read a tracker table",
+    description: "Reads a typed table (tracker) in a note: its columns with their types and allowed values, and rows as objects. Use before logging so you use the right column names and values.",
+    inputSchema: { type: "object", properties: { ...noteRef, table: int("Which table in the note, 0-based. Default 0."), last: int("Only the last N rows.") } },
+    annotations: read,
+  },
+  {
+    name: "log_table_row", title: "Log a row",
+    description: "Adds a row to a typed table, or updates the row for that date if one exists (date defaults to today). Values are checked against each column's type: scales must be in range, choices must be one of the options.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ...noteRef,
+        table: int("Which table in the note, 0-based. Default 0."),
+        values: { type: "object", description: "Column name → value. Omitted columns stay as they are (or empty for a new row).", additionalProperties: true },
+      },
+      required: ["values"],
+    },
+    annotations: write,
+  },
+  {
+    name: "delete_table_row", title: "Delete a row",
+    description: "Removes the row for a date (or at a 0-based index) from a typed table.",
+    inputSchema: { type: "object", properties: { ...noteRef, table: int("Default 0."), date: str("yyyy-mm-dd."), index: int("0-based row index.") } },
+    annotations: { ...write, destructiveHint: true },
+  },
   // ChatGPT's connector conventions.
   {
     name: "search", title: "Search",
@@ -280,6 +306,13 @@ async function save(tx: Tx, note: NoteRow, body: string, expected?: unknown) {
     returning version, updated_at`;
   if (!rows.length) throw new ToolError(`The note changed since version ${expected}. Read it again and retry.`);
   return { id: note.id, title: titleOf(body), version: Number(rows[0].version), updated: iso(rows[0].updated_at) };
+}
+
+function pickTable(body: string, which: unknown): Table {
+  const all = findTables(body);
+  if (!all.length) throw new ToolError("This note has no typed table. Typed tables start with a <!-- pane-table: … --> line above a markdown table.");
+  const i = clampInt(which, 0, all.length - 1);
+  return all[i];
 }
 
 // MARK: Handlers
@@ -505,6 +538,60 @@ const handlers: Record<string, (tx: Tx, a: Args, ctx: ToolContext) => Promise<un
     // Locally the runtime sees an internal hostname; PANE_PUBLIC_URL gives the reachable one.
     const publicBase = Deno.env.get("PANE_PUBLIC_URL") ?? base;
     return { id: f.id, filename: f.filename, type: f.content_type, bytes: Number(f.size), download_url: `${publicBase}/storage/v1${body.signedURL}`, expires_in_seconds: 600 };
+  },
+
+  async read_table(tx, a) {
+    const n = await findNote(tx, a);
+    const t = pickTable(n.body, a.table);
+    const rows = t.rows.map((r) => Object.fromEntries(t.columns.map((c, i) => [c.name, r[i]])));
+    const last = clampInt(a.last, 0, 10000);
+    return {
+      note: { id: n.id, title: n.title },
+      columns: t.columns.map((c) => ({ name: c.name, type: typeSpec(c.type) })),
+      rows: last ? rows.slice(-last) : rows,
+      total_rows: rows.length,
+    };
+  },
+
+  async log_table_row(tx, a) {
+    const n = await findNote(tx, a);
+    const t = pickTable(n.body, a.table);
+    const values = (a.values ?? {}) as Record<string, unknown>;
+    const byName = new Map(t.columns.map((c, i) => [c.name.toLowerCase(), i]));
+    const unknown = Object.keys(values).filter((k) => !byName.has(k.toLowerCase()));
+    if (unknown.length) throw new ToolError(`Unknown column(s): ${unknown.join(", ")}. Columns: ${t.columns.map((c) => c.name).join(", ")}.`);
+    // "Today" is the owner's local day (PANE_TIMEZONE, default Europe/Stockholm), not UTC.
+    const tz = Deno.env.get("PANE_TIMEZONE") ?? "Europe/Stockholm";
+    const today = new Intl.DateTimeFormat("sv-SE", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+    const dateCol = t.columns.findIndex((c) => c.type.kind === "date");
+    let row: string[] = t.columns.map(() => "");
+    let updated = false;
+    try {
+      const incoming = new Map<number, string>();
+      for (const [k, v] of Object.entries(values)) {
+        const i = byName.get(k.toLowerCase())!;
+        incoming.set(i, coerce(v, t.columns[i], today));
+      }
+      if (dateCol >= 0 && !incoming.get(dateCol)) incoming.set(dateCol, today);
+      const existing = dateCol >= 0 ? t.rows.findIndex((r) => r[dateCol] === incoming.get(dateCol)) : -1;
+      if (existing >= 0) { row = [...t.rows[existing]]; updated = true; }
+      for (const [i, v] of incoming) row[i] = v;
+      if (existing >= 0) t.rows[existing] = row; else t.rows.push(row);
+      if (dateCol >= 0) t.rows.sort((x, y) => x[dateCol].localeCompare(y[dateCol]));
+    } catch (e) { throw new ToolError((e as Error).message); }
+    await save(tx, n, replaceTable(n.body, t));
+    return { note: n.title, [updated ? "updated_row" : "added_row"]: Object.fromEntries(t.columns.map((c, i) => [c.name, row[i]])) };
+  },
+
+  async delete_table_row(tx, a) {
+    const n = await findNote(tx, a);
+    const t = pickTable(n.body, a.table);
+    const dateCol = t.columns.findIndex((c) => c.type.kind === "date");
+    const i = typeof a.date === "string" && dateCol >= 0 ? t.rows.findIndex((r) => r[dateCol] === a.date) : Number.isInteger(a.index) ? Number(a.index) : -1;
+    if (i < 0 || i >= t.rows.length) throw new ToolError("No such row. Use read_table to see dates and indexes.");
+    const [gone] = t.rows.splice(i, 1);
+    await save(tx, n, replaceTable(n.body, t));
+    return { deleted_row: Object.fromEntries(t.columns.map((c, k) => [c.name, gone[k]])) };
   },
 
   async search(tx, a) {

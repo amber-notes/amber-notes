@@ -134,3 +134,118 @@ export function outline(body: string) {
   const words = body.split(/\s+/).filter(Boolean).length;
   return { headings, checklist: { open, done }, lines: lines.length, words };
 }
+
+// MARK: Typed tables
+// A markdown table preceded by <!-- pane-table: Col=type; ... --> (types: text, number, date,
+// scale a-b, choice A|B|C). Same format as the app's TypedTable.
+
+export type ColType = { kind: "text" | "number" | "date" } | { kind: "scale"; min: number; max: number } | { kind: "choice"; options: string[] };
+export type Table = { columns: { name: string; type: ColType }[]; rows: string[][]; start: number; end: number };
+
+export function parseType(s: string): ColType {
+  const t = s.trim();
+  const l = t.toLowerCase();
+  if (l === "number" || l === "date") return { kind: l };
+  const sc = t.match(/^scale\s*(\d+)\s*-\s*(\d+)/i);
+  if (sc) return { kind: "scale", min: +sc[1], max: +sc[2] };
+  if (l.startsWith("choice")) {
+    const options = t.slice(6).split("|").map((o) => o.trim()).filter(Boolean);
+    if (options.length) return { kind: "choice", options };
+  }
+  return { kind: "text" };
+}
+
+export function typeSpec(t: ColType): string {
+  return t.kind === "scale" ? `scale ${t.min}-${t.max}` : t.kind === "choice" ? `choice ${t.options.join("|")}` : t.kind;
+}
+
+export function tableCells(line: string): string[] {
+  let s = line.trim();
+  if (s.startsWith("|")) s = s.slice(1);
+  if (s.endsWith("|") && !s.endsWith("\\|")) s = s.slice(0, -1);
+  const out: string[] = [];
+  let cur = "";
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] === "\\" && s[i + 1] === "|") { cur += "|"; i++; continue; }
+    if (s[i] === "|") { out.push(cur.trim()); cur = ""; continue; }
+    cur += s[i];
+  }
+  out.push(cur.trim());
+  return out;
+}
+
+export function findTables(body: string): Table[] {
+  const lines = body.split("\n");
+  const out: Table[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const c = lines[i].trim();
+    if (!(c.startsWith("<!--") && c.endsWith("-->") && c.includes("pane-table:"))) continue;
+    const spec = c.slice(c.indexOf("pane-table:") + 11, c.lastIndexOf("-->"));
+    const types = new Map<string, ColType>();
+    for (const part of spec.split(";")) {
+      const eq = part.indexOf("=");
+      if (eq > 0) types.set(part.slice(0, eq).trim().toLowerCase(), parseType(part.slice(eq + 1)));
+    }
+    let j = i + 1;
+    const tl: string[] = [];
+    while (j < lines.length && lines[j].trim().startsWith("|")) tl.push(lines[j++]);
+    if (tl.length < 2) continue;
+    const header = tableCells(tl[0]);
+    const columns = header.map((name) => ({ name, type: types.get(name.toLowerCase()) ?? { kind: "text" as const } }));
+    const rows = tl.slice(1).filter((l) => !/^[\s|:-]+$/.test(l)).map((l) => {
+      const c = tableCells(l);
+      return columns.map((_, k) => c[k] ?? "");
+    });
+    out.push({ columns, rows, start: i, end: j - 1 });
+    i = j - 1;
+  }
+  return out;
+}
+
+export function tableMarkdown(t: Table): string {
+  const cell = (v: string) => (v === "" ? " " : v.replace(/\|/g, "\\|").replace(/\n/g, " "));
+  const row = (c: string[]) => "| " + c.map(cell).join(" | ") + " |";
+  return [
+    "<!-- pane-table: " + t.columns.map((c) => `${c.name}=${typeSpec(c.type)}`).join("; ") + " -->",
+    row(t.columns.map((c) => c.name)),
+    "|" + t.columns.map(() => " --- ").join("|") + "|",
+    ...t.rows.map(row),
+  ].join("\n");
+}
+
+export function replaceTable(body: string, t: Table): string {
+  const lines = body.split("\n");
+  lines.splice(t.start, t.end - t.start + 1, ...tableMarkdown(t).split("\n"));
+  return lines.join("\n");
+}
+
+/** Checks and normalises a value for a column; throws a message the model can fix. */
+export function coerce(value: unknown, col: { name: string; type: ColType }, today: string): string {
+  if (value === null || value === undefined || value === "") return "";
+  const s = String(value).trim();
+  const t = col.type;
+  switch (t.kind) {
+    case "number": {
+      const n = Number(s.replace(",", "."));
+      if (!Number.isFinite(n)) throw new Error(`${col.name} must be a number (got "${s}").`);
+      return String(n);
+    }
+    case "scale": {
+      const n = Number(s);
+      if (!Number.isInteger(n) || n < t.min || n > t.max) throw new Error(`${col.name} must be a whole number from ${t.min} to ${t.max} (got "${s}").`);
+      return String(n);
+    }
+    case "choice": {
+      const hit = t.options.find((o) => o.toLowerCase() === s.toLowerCase());
+      if (!hit) throw new Error(`${col.name} must be one of ${t.options.join(", ")} (got "${s}").`);
+      return hit;
+    }
+    case "date": {
+      if (s.toLowerCase() === "today") return today;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) throw new Error(`${col.name} must be a date like 2026-09-27 (got "${s}").`);
+      return s;
+    }
+    default:
+      return s;
+  }
+}
