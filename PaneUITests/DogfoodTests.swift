@@ -182,6 +182,7 @@ final class DogfoodTests: XCTestCase {
     /// Scrolls the list until the note is on screen, then opens it.
     func openNote(_ title: String) {
         let row = app.staticTexts[title].firstMatch
+        if !(row.exists && row.isHittable) { app.swipeDown(); app.swipeDown() }
         var tries = 0
         while !(row.exists && row.isHittable) && tries < 6 {
             app.swipeUp()
@@ -220,5 +221,74 @@ final class DogfoodTests: XCTestCase {
         pause(1.5)
         shot("tracker-logged")
         XCTAssertTrue(app.buttons["table.log"].label.contains("Edit today"), "after logging, the button edits today's entry")
+    }
+
+    /// The demo: every feature at a watchable pace.
+    func testTour() throws {
+        pause(2.5)
+        // Tracker: log tonight.
+        openNote("Evening tracker")
+        pause(2)
+        app.buttons["table.log"].firstMatch.tap()
+        pause(1.5)
+        app.buttons["7"].firstMatch.tap(); pause(0.6)
+        let eight = app.buttons.matching(identifier: "8").element(boundBy: 1)
+        if eight.exists { eight.tap() }
+        pause(0.6)
+        app.buttons["Yes"].firstMatch.tap(); pause(1)
+        app.buttons["row.save"].tap()
+        pause(2.5)
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        pause(1.2)
+
+        // A card.
+        openNote("Lisbon")
+        pause(1.5)
+        app.buttons["Expand Hotel booking"].firstMatch.tap()
+        pause(2.5)
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        pause(1.2)
+
+        // Files.
+        openNote("Trip documents")
+        pause(2)
+        app.descendants(matching: .any).matching(identifier: "file.Flight itinerary.pdf").firstMatch.tap()
+        pause(2.5)
+        closePreview()
+        pause(1)
+        app.swipeUp()
+        pause(2)
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        pause(1.2)
+
+        // Write a note.
+        app.swipeDown(); app.swipeDown()
+        app.buttons["list.newNote"].firstMatch.tap()
+        pause(1)
+        let editor = app.textViews["editor"]
+        editor.typeText("Sunday reset\n")
+        editor.typeText("Plan the week, **slowly**.\n\n")
+        editor.typeText("## Must do\n- [ ] Book the dentist\nCall the bank\n\n")
+        editor.typeText("> One thing at a time.")
+        pause(1.5)
+        app.buttons["editor.done"].firstMatch.tap()
+        pause(2.5)
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        pause(1.5)
+
+        // Search and folders.
+        let searchButton = app.buttons["Search"].firstMatch
+        if searchButton.exists { searchButton.tap(); pause(0.6) }
+        app.searchFields.firstMatch.typeText("lisbon")
+        pause(2)
+        closeSearch()
+        pause(1)
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        pause(2.5)
+    }
+
+    func closeSearch() {
+        let close = app.buttons["Close"].firstMatch
+        if close.exists { close.tap() } else if app.buttons["Cancel"].firstMatch.exists { app.buttons["Cancel"].firstMatch.tap() }
     }
 }
