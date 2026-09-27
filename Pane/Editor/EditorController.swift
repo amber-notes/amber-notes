@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import UniformTypeIdentifiers
 
 /// Lets toolbars and menus drive whichever editor is on screen.
 @MainActor
@@ -10,6 +11,50 @@ final class EditorController {
     var isEditing = false
     /// A card waiting to be created or edited in the card sheet.
     var cardRequest: CardEditRequest?
+    /// The file being shown in Quick Look.
+    var previewURL: URL?
+    /// Files being fetched from the server.
+    var downloading: Set<UUID> = []
+    /// Looks up a file by id (set by the note screen, which has the model context).
+    @ObservationIgnored var resolveAttachment: (UUID) -> Attachment? = { _ in nil }
+    /// Copies files into Pane (set by the note screen, which has the model context).
+    @ObservationIgnored var addFiles: ([URL]) -> [Attachment] = { _ in [] }
+    @ObservationIgnored var addData: (Data, String, UTType) -> Attachment? = { _, _, _ in nil }
+    /// Opens the file picker (set by the note screen).
+    @ObservationIgnored var attach: () -> Void = {}
+    /// Fetches a file that isn't on this device yet.
+    @ObservationIgnored var download: @MainActor (Attachment) async -> Bool = { _ in false }
+
+    func openAttachment(_ id: UUID) {
+        guard let a = resolveAttachment(id) else { return }
+        let url = FileStore.url(for: a.id, filename: a.filename)
+        if FileStore.exists(a) { previewURL = url; return }
+        downloading.insert(id)
+        Task {
+            let ok = await download(a)
+            downloading.remove(id)
+            if ok { previewURL = url }
+        }
+    }
+
+    /// Inserts embed lines for files at the caret, each on its own line.
+    func insertFiles(_ files: [Attachment]) {
+        guard !files.isEmpty else { return }
+        perform { text, sel in
+            let ns = text as NSString
+            let line = ns.lineRange(for: NSRange(location: min(sel.location, ns.length), length: 0))
+            let lineText = ns.substring(with: line).trimmingCharacters(in: .whitespacesAndNewlines)
+            let block = files.map(\.markdown).joined(separator: "\n")
+            if lineText.isEmpty {
+                let body = block + "\n"
+                return TextEdit(range: NSRange(location: line.location, length: line.length), replacement: body + (NSMaxRange(line) < ns.length && !ns.substring(with: line).hasSuffix("\n") ? "\n" : ""), caret: line.location + (body as NSString).length)
+            }
+            let at = NSMaxRange(line)
+            let lead = ns.substring(with: line).hasSuffix("\n") ? "" : "\n"
+            let body = lead + block + "\n"
+            return TextEdit(range: NSRange(location: at, length: 0), replacement: body, caret: at + (body as NSString).length)
+        }
+    }
 
     func perform(_ make: (String, NSRange) -> TextEdit?) {
         guard let t = target else { return }

@@ -83,9 +83,10 @@ final class SyncEngine {
         let ch = client.channel("pane-sync")
         let notes = ch.postgresChange(AnyAction.self, schema: "public", table: "notes")
         let folders = ch.postgresChange(AnyAction.self, schema: "public", table: "folders")
+        let files = ch.postgresChange(AnyAction.self, schema: "public", table: "attachments")
         try? await ch.subscribeWithError()
         channel = ch
-        for stream in [notes, folders] {
+        for stream in [notes, folders, files] {
             realtimeTasks.append(Task { [weak self] in
                 for await _ in stream { self?.schedule(after: 0.25) }
             })
@@ -102,6 +103,7 @@ final class SyncEngine {
     // MARK: Push
 
     private func push(_ client: SupabaseClient) async throws {
+        try await pushFiles(client)
         let folders = ((try? context.fetch(FetchDescriptor<Folder>(predicate: #Predicate { $0.dirty }))) ?? [])
             .sorted { depth($0) < depth($1) } // parents first, for the foreign key
         for f in folders {
@@ -140,6 +142,43 @@ final class SyncEngine {
             }
         }
         try? context.save()
+    }
+
+    private func storagePath(_ a: Attachment) -> String? {
+        guard let uid = backend.userID else { return nil }
+        return "\(uid.uuidString.lowercased())/\(a.id.uuidString.lowercased())/\(a.filename)"
+    }
+
+    /// Uploads new files, then their metadata.
+    private func pushFiles(_ client: SupabaseClient) async throws {
+        let files = (try? context.fetch(FetchDescriptor<Attachment>(predicate: #Predicate { $0.dirty || !$0.uploaded }))) ?? []
+        for a in files {
+            guard let path = storagePath(a) else { continue }
+            if !a.uploaded, a.deletedAt == nil {
+                guard FileStore.exists(a) else { continue }
+                let data = try Data(contentsOf: FileStore.url(for: a.id, filename: a.filename))
+                try await client.storage.from("files").upload(path, data: data, options: FileOptions(contentType: a.type.preferredMIMEType ?? "application/octet-stream", upsert: true))
+                a.uploaded = true
+            }
+            let row = AttachmentDTO(id: a.id, filename: a.filename, content_type: a.contentType, size: a.size, storage_path: path, created_at: a.createdAt, updated_at: .now, deleted_at: a.deletedAt)
+            try await client.from("attachments").upsert(row).execute()
+            a.dirty = false
+        }
+    }
+
+    /// Fetches a file's bytes from Storage to this device.
+    func download(_ a: Attachment) async -> Bool {
+        guard let client = backend.client, let path = storagePath(a) else { return false }
+        do {
+            let data = try await client.storage.from("files").download(path: path)
+            let url = FileStore.url(for: a.id, filename: a.filename)
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try data.write(to: url, options: .atomic)
+            return true
+        } catch {
+            log.error("download failed: \(String(describing: error), privacy: .public)")
+            return false
+        }
     }
 
     /// The server changed this note since we last saw it, and so did we.
@@ -197,6 +236,27 @@ final class SyncEngine {
         }
         // Parents after every folder exists.
         for r in folderRows { byID[r.id]?.parent = r.parent_id.flatMap { byID[$0] } }
+
+        let fileRows: [AttachmentDTO] = try await client.from("attachments").select()
+            .gt("server_updated_at", value: since.formatted(Date.ISO8601FormatStyle(includingFractionalSeconds: true)))
+            .order("server_updated_at").limit(2000).execute().value
+        for r in fileRows {
+            let a = context.attachment(r.id) ?? {
+                let a = Attachment(id: r.id, filename: r.filename, contentType: r.content_type, size: r.size)
+                context.insert(a)
+                return a
+            }()
+            guard !a.dirty || a.uploaded else { continue }
+            a.filename = r.filename
+            a.contentType = r.content_type
+            a.size = r.size
+            a.createdAt = r.created_at
+            a.deletedAt = r.deleted_at
+            a.uploaded = true
+            a.dirty = false
+            if let s = r.server_updated_at, s > newest { newest = s }
+            changed = true
+        }
 
         var offset = 0
         while true {
@@ -348,6 +408,37 @@ struct NoteDTO: Codable {
     }
 
     var patch: Patch { Patch(body: body, folder_id: folder_id, is_pinned: is_pinned, updated_at: updated_at, trashed_at: trashed_at, deleted_at: deleted_at) }
+}
+
+struct AttachmentDTO: Codable {
+    var id: UUID
+    var filename: String
+    var content_type: String
+    var size: Int64
+    var storage_path: String
+    var created_at: Date
+    var updated_at: Date
+    var deleted_at: Date?
+    var server_updated_at: Date?
+
+    enum CodingKeys: String, CodingKey { case id, filename, content_type, size, storage_path, created_at, updated_at, deleted_at, server_updated_at }
+
+    init(id: UUID, filename: String, content_type: String, size: Int64, storage_path: String, created_at: Date, updated_at: Date, deleted_at: Date?) {
+        self.id = id; self.filename = filename; self.content_type = content_type; self.size = size
+        self.storage_path = storage_path; self.created_at = created_at; self.updated_at = updated_at; self.deleted_at = deleted_at
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(filename, forKey: .filename)
+        try c.encode(content_type, forKey: .content_type)
+        try c.encode(size, forKey: .size)
+        try c.encode(storage_path, forKey: .storage_path)
+        try c.encode(created_at, forKey: .created_at)
+        try c.encode(updated_at, forKey: .updated_at)
+        try c.encode(deleted_at, forKey: .deleted_at)
+    }
 }
 
 extension ModelContext {

@@ -1,37 +1,83 @@
+import QuickLook
 import SwiftData
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct NoteDetailView: View {
     @Environment(\.modelContext) private var context
+    @Environment(SyncEngine.self) private var sync: SyncEngine?
+    @State private var importing = false
     @Bindable var note: Note
     let controller: EditorController
     var autofocus = false
     let onNewNote: () -> Void
 
     var body: some View {
-        MarkdownEditor(initialText: note.body, header: DateBucket.header(note.updatedAt), controller: controller, autofocus: autofocus) { text in
-            guard text != note.body else { return }
-            note.body = text
-            note.touch()
-        }
-        .ignoresSafeArea(.container, edges: .bottom)
-        .safeAreaInset(edge: .top, spacing: 0) {
-            if note.trashedAt != nil { trashBanner }
-        }
-        .navigationTitle("")
-        #if os(iOS)
-        .navigationBarTitleDisplayMode(.inline)
-        #endif
-        .toolbar { toolbar }
-        .sheet(item: Binding(get: { controller.cardRequest }, set: { controller.cardRequest = $0 })) { req in
-            CardEditorSheet(title: req.title, content: req.content, isNew: req.index == nil) { title, content in
-                controller.saveCard(req, title: title, content: content)
+        chrome(editor)
+            .quickLookPreview(previewBinding)
+            .fileImporter(isPresented: $importing, allowedContentTypes: [.item], allowsMultipleSelection: true, onCompletion: attach)
+            .onAppear(perform: wireController)
+            .sheet(item: cardBinding, content: cardSheet)
+    }
+
+    private var editor: some View {
+        MarkdownEditor(initialText: note.body, header: DateBucket.header(note.updatedAt), controller: controller, autofocus: autofocus, onChange: save)
+    }
+
+    private func chrome(_ content: some View) -> some View {
+        content
+            .ignoresSafeArea(.container, edges: .bottom)
+            .safeAreaInset(edge: .top, spacing: 0) {
+                if note.trashedAt != nil { trashBanner }
             }
+            .navigationTitle("")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar(controller.isEditing ? .hidden : .automatic, for: .bottomBar)
+            .animation(.snappy(duration: 0.2), value: controller.isEditing)
+            #endif
+            .toolbar { toolbar }
+    }
+
+    private func save(_ text: String) {
+        guard text != note.body else { return }
+        note.body = text
+        note.touch()
+    }
+
+    private func attach(_ result: Result<[URL], Error>) {
+        if case .success(let urls) = result { controller.insertFiles(context.addAttachments(urls)) }
+    }
+
+    private var cardBinding: Binding<CardEditRequest?> {
+        Binding(get: { controller.cardRequest }, set: { controller.cardRequest = $0 })
+    }
+
+    private func cardSheet(_ req: CardEditRequest) -> some View {
+        CardEditorSheet(title: req.title, content: req.content, isNew: req.index == nil) { title, content in
+            controller.saveCard(req, title: title, content: content)
         }
-        #if os(iOS)
-        .toolbar(controller.isEditing ? .hidden : .automatic, for: .bottomBar)
-        .animation(.snappy(duration: 0.2), value: controller.isEditing)
-        #endif
+    }
+
+    private var previewBinding: Binding<URL?> {
+        Binding(get: { controller.previewURL }, set: { controller.previewURL = $0 })
+    }
+
+    /// Gives the editor what it needs from this screen: files, downloads, the picker.
+    private func wireController() {
+        let context = self.context
+        let sync = self.sync
+        controller.resolveAttachment = { id in context.attachment(id) }
+        controller.download = { a in await sync?.download(a) ?? false }
+        controller.attach = { importing = true }
+        controller.addFiles = { urls in context.addAttachments(urls) }
+        controller.addData = { data, name, type in
+            guard let a = try? FileStore.importData(data, filename: name, type: type) else { return nil }
+            context.insert(a)
+            try? context.save()
+            SyncSignal.changed()
+            return a
+        }
     }
 
     private var trashBanner: some View {
@@ -58,6 +104,9 @@ struct NoteDetailView: View {
         ToolbarItem(placement: .bottomBar) {
             Button("Table", systemImage: "tablecells", action: controller.insertTable)
         }
+        ToolbarItem(placement: .bottomBar) {
+            Button("Attach", systemImage: "paperclip") { importing = true }
+        }
         ToolbarSpacer(.flexible, placement: .bottomBar)
         ToolbarItem(placement: .bottomBar) {
             Button("New Note", systemImage: "square.and.pencil", action: onNewNote)
@@ -72,6 +121,8 @@ struct NoteDetailView: View {
                 .help("Table (⌥⌘T)")
             Button("Card", systemImage: "rectangle.stack", action: controller.newCard)
                 .help("Collapsible card (⇧⌘C)")
+            Button("Attach", systemImage: "paperclip") { importing = true }
+                .help("Attach a file (⇧⌘A)")
         }
         ToolbarSpacer(.fixed)
         ToolbarItemGroup {

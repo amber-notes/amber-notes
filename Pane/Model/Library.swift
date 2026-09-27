@@ -130,19 +130,41 @@ extension ModelContext {
         old.forEach(purge)
     }
 
-    /// Imports dropped plain-text or markdown files as notes.
-    func importFiles(_ urls: [URL], into scope: Scope) -> Int {
-        var count = 0
+    /// Imports dropped files: markdown and text become notes; anything else
+    /// (PDFs, spreadsheets, images…) becomes a note holding the file.
+    @discardableResult
+    func importFiles(_ urls: [URL], into scope: Scope) -> [Note] {
+        var made: [Note] = []
         for url in urls {
-            let access = url.startAccessingSecurityScopedResource()
-            defer { if access { url.stopAccessingSecurityScopedResource() } }
-            guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
-            let name = url.deletingPathExtension().lastPathComponent
-            let body = NoteText.title(of: text) == name || text.hasPrefix("# ") ? text : "# \(name)\n\n\(text)"
-            createNote(in: scope, body: body)
-            count += 1
+            let ext = url.pathExtension.lowercased()
+            if ["md", "markdown", "txt", "text"].contains(ext) {
+                let access = url.startAccessingSecurityScopedResource()
+                defer { if access { url.stopAccessingSecurityScopedResource() } }
+                guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
+                let name = url.deletingPathExtension().lastPathComponent
+                let body = NoteText.title(of: text) == name || text.hasPrefix("# ") ? text : "# \(name)\n\n\(text)"
+                made.append(createNote(in: scope, body: body))
+            } else if let a = try? FileStore.importFile(at: url) {
+                insert(a)
+                let title = (a.filename as NSString).deletingPathExtension
+                made.append(createNote(in: scope, body: "\(title)\n\n\(a.markdown)\n"))
+            }
         }
-        return count
+        try? save()
+        return made
+    }
+
+    func attachment(_ id: UUID) -> Attachment? {
+        try? fetch(FetchDescriptor<Attachment>(predicate: #Predicate { $0.id == id })).first
+    }
+
+    /// Copies files into Pane for embedding in a note.
+    func addAttachments(_ urls: [URL]) -> [Attachment] {
+        let files = urls.compactMap { try? FileStore.importFile(at: $0) }
+        files.forEach(insert)
+        try? save()
+        SyncSignal.changed()
+        return files
     }
 }
 

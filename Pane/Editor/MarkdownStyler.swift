@@ -106,9 +106,9 @@ struct MarkdownStyler {
     }
 
     /// Restyles the whole storage. `active` is the caret's selection.
-    /// Returns the cards to show as views (those the caret isn't inside).
+    /// Returns the cards and embeds to show as views (those the caret isn't on).
     @discardableResult
-    func apply(to storage: NSTextStorage, active: NSRange) -> [CardBlock] {
+    func apply(to storage: NSTextStorage, active: NSRange) -> StyledBlocks {
         let text = storage.string
         let ns = text as NSString
         let full = NSRange(location: 0, length: ns.length)
@@ -123,7 +123,7 @@ struct MarkdownStyler {
         storage.beginEditing()
         defer { storage.endEditing() }
         storage.setAttributes(typingAttributes, range: full)
-        guard ns.length > 0 else { return [] }
+        guard ns.length > 0 else { return StyledBlocks() }
 
         let map = UTF16Map(text)
         let doc = Document(parsing: text, options: [.disableSmartOpts])
@@ -211,7 +211,37 @@ struct MarkdownStyler {
             layoutTable(table, storage: storage, isActive: isActive)
         }
 
-        return styleCards(storage, isActive: isActive)
+        let cards = styleCards(storage, isActive: isActive)
+        let embeds = styleEmbeds(storage, isActive: isActive, skip: cards.map(\.range) + walker.codeRanges)
+        return StyledBlocks(cards: cards, embeds: embeds)
+    }
+
+    /// File, image and link lines become one reserved line for a live view.
+    private func styleEmbeds(_ storage: NSTextStorage, isActive: (NSRange) -> Bool, skip: [NSRange]) -> [LineEmbed] {
+        var shown: [LineEmbed] = []
+        let ns = storage.string as NSString
+        for e in LineEmbed.find(in: storage.string) {
+            if skip.contains(where: { NSIntersectionRange($0, e.range).length > 0 }) { continue }
+            let line = ns.lineRange(for: e.range)
+            if isActive(e.range) {
+                storage.addAttribute(.foregroundColor, value: PColor.paneSecondary, range: e.range)
+                continue
+            }
+            storage.removeAttribute(.paneLine, range: line)
+            storage.addAttributes(hidden, range: e.range)
+            storage.removeAttribute(.link, range: e.range)
+            storage.removeAttribute(.kern, range: e.range)
+            let p = NSMutableParagraphStyle()
+            p.minimumLineHeight = e.height
+            p.maximumLineHeight = e.height
+            p.paragraphSpacingBefore = 4
+            p.paragraphSpacing = 8
+            storage.addAttribute(.paragraphStyle, value: p, range: line)
+            var e = e
+            e.index = shown.count
+            shown.append(e)
+        }
+        return shown
     }
 
     /// Cards collapse into one reserved line that the editor covers with a card view.
@@ -414,6 +444,12 @@ struct MarkdownStyler {
     }
 }
 
+/// What the styler turned into live views.
+struct StyledBlocks {
+    var cards: [CardBlock] = []
+    var embeds: [LineEmbed] = []
+}
+
 /// Maps swift-markdown's line/column (UTF-8) locations onto UTF-16 offsets.
 struct UTF16Map {
     private var lineStarts: [Int] = [0] // UTF-8 offset where each line starts
@@ -457,6 +493,7 @@ private struct StyleWalker: MarkupWalker {
     var codeLineStarts = IndexSet()
     var tableLineStarts = IndexSet()
     var tables: [NSRange] = []
+    var codeRanges: [NSRange] = []
 
     private var ns: NSString { storage.string as NSString }
 
@@ -559,6 +596,7 @@ private struct StyleWalker: MarkupWalker {
             starts.insert(line.location)
         }
         codeLineStarts.formUnion(starts)
+        codeRanges.append(r)
     }
 
     mutating func visitTable(_ table: Markdown.Table) {

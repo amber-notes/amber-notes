@@ -33,7 +33,7 @@ struct FormatBar: View {
                     BarButton("Checklist", "checklist", action: controller.checklist)
                     BarButton("Table", "tablecells", action: controller.insertTable)
                     BarButton("Card", "rectangle.stack", action: controller.newCard)
-                    BarButton("Link", "link", action: controller.insertLink)
+                    BarButton("Attach", "paperclip") { controller.attach() }
                 }
                 .padding(.horizontal, 4)
                 .glassEffect(.regular.interactive(), in: .capsule)
@@ -79,15 +79,6 @@ private struct BarIcon: View {
             .foregroundStyle(.primary)
             .frame(width: 44, height: 44)
             .contentShape(.rect)
-    }
-}
-
-/// Buttons dip slightly on press.
-struct PressScale: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.94 : 1)
-            .animation(.snappy(duration: 0.18), value: configuration.isPressed)
     }
 }
 

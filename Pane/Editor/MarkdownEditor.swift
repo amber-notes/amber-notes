@@ -24,8 +24,9 @@ final class EditorCore {
     var onChange: (String) -> Void = { _ in }
     var applyingEdit = false
     private var lastActiveLine: NSRange?
-    /// Cards currently shown as views, and which of them are open.
+    /// Cards and embeds currently shown as views, and which cards are open.
     private(set) var cards: [CardBlock] = []
+    private(set) var embeds: [LineEmbed] = []
     private var expanded: Set<String> = []
     /// Called after a restyle, so the view can place card views.
     var onCardsChanged: () -> Void = {}
@@ -37,17 +38,33 @@ final class EditorCore {
     private func key(_ c: CardBlock) -> String { "\(c.index)|\(c.title)" }
     func isExpanded(_ c: CardBlock) -> Bool { expanded.contains(key(c)) }
 
-    /// Where each card view goes, in text-view coordinates.
-    func cardFrames(layout: NSTextLayoutManager?, origin: CGPoint) -> [(CardBlock, CGRect)] {
+    /// Every live view to place over the text: cards and embeds, keyed for reuse.
+    func overlays(layout: NSTextLayoutManager?, origin: CGPoint, target: EditorTarget, storage: NSTextStorage, controller: EditorController?, selection: @escaping () -> NSRange?) -> [(key: String, frame: CGRect, view: AnyView)] {
         guard let tlm = layout, let tcm = tlm.textContentManager, let container = tlm.textContainer else { return [] }
         let width = container.size.width - container.lineFragmentPadding * 2
-        var out: [(CardBlock, CGRect)] = []
-        for card in cards {
-            guard let loc = tcm.location(tcm.documentRange.location, offsetBy: card.range.location) else { continue }
+        func frame(at offset: Int, height: CGFloat, maxWidth: CGFloat = .infinity) -> CGRect? {
+            guard let loc = tcm.location(tcm.documentRange.location, offsetBy: offset) else { return nil }
             tlm.ensureLayout(for: NSTextRange(location: loc))
-            guard let frag = tlm.textLayoutFragment(for: loc), let line = frag.textLineFragments.first else { continue }
+            guard let frag = tlm.textLayoutFragment(for: loc), let line = frag.textLineFragments.first else { return nil }
             let y = frag.layoutFragmentFrame.minY + line.typographicBounds.minY + origin.y
-            out.append((card, CGRect(x: origin.x + container.lineFragmentPadding, y: y, width: width, height: styler.cardHeight(card))))
+            return CGRect(x: origin.x + container.lineFragmentPadding, y: y, width: min(width, maxWidth), height: height)
+        }
+        var out: [(String, CGRect, AnyView)] = []
+        for card in cards {
+            guard let f = frame(at: card.range.location, height: styler.cardHeight(card)) else { continue }
+            let view = CardView(card: card, expanded: isExpanded(card), actions: actions(for: card, in: target, storage: storage, controller: controller, selection: selection))
+            out.append(("c\(card.index)", f, AnyView(view)))
+        }
+        for e in embeds {
+            let maxW: CGFloat = { if case .image = e.kind { return 420 } else { return 460 } }()
+            guard let f = frame(at: e.range.location, height: e.height, maxWidth: maxW) else { continue }
+            let remove = {
+                let ns = target.currentText as NSString
+                var r = ns.lineRange(for: e.range)
+                if NSMaxRange(r) == ns.length, r.location > 0 { r = NSRange(location: r.location - 1, length: r.length + 1) }
+                target.apply(TextEdit(range: r, replacement: "", caret: -1))
+            }
+            out.append((e.key, f, AnyView(EmbedView(embed: e, controller: controller, remove: remove))))
         }
         return out
     }
@@ -112,7 +129,9 @@ final class EditorCore {
         }
         if !force, line == lastActiveLine { return }
         lastActiveLine = line
-        cards = styler.apply(to: storage, active: selection ?? NSRange(location: NSNotFound, length: 0))
+        let blocks = styler.apply(to: storage, active: selection ?? NSRange(location: NSNotFound, length: 0))
+        cards = blocks.cards
+        embeds = blocks.embeds
         onCardsChanged()
     }
 
@@ -129,6 +148,7 @@ final class EditorCore {
 
 #if os(iOS)
 import UIKit
+import UniformTypeIdentifiers
 
 private struct PlatformEditor: UIViewRepresentable {
     let initialText: String
@@ -160,17 +180,18 @@ private struct PlatformEditor: UIViewRepresentable {
     }
 }
 
-final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestureRecognizerDelegate {
+final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestureRecognizerDelegate, UITextDropDelegate {
     let core = EditorCore()
     weak var controller: EditorController?
     private let headerLabel = UILabel()
     private let readableWidth: CGFloat = 680
 
-    private var cardHosts: [Int: UIHostingController<CardView>] = [:]
+    private var cardHosts: [String: UIHostingController<AnyView>] = [:]
 
     func configure(text: String, header: String) {
         textLayoutManager?.delegate = core.layoutDelegate
         delegate = self
+        textDropDelegate = self
         core.onCardsChanged = { [weak self] in self?.setNeedsLayout() }
         backgroundColor = .clear
         alwaysBounceVertical = true
@@ -209,28 +230,28 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
         layoutCards()
     }
 
-    /// Places a live card view over each collapsed `<details>` block.
+    /// Places live views (cards, files, links) over their reserved lines.
     private func layoutCards() {
-        let frames = core.cardFrames(layout: textLayoutManager, origin: CGPoint(x: textContainerInset.left, y: textContainerInset.top))
-        let live = Set(frames.map { $0.0.index })
-        for (i, host) in cardHosts where !live.contains(i) {
+        let items = core.overlays(layout: textLayoutManager, origin: CGPoint(x: textContainerInset.left, y: textContainerInset.top),
+                                  target: self, storage: textStorage, controller: controller) { [weak self] in self?.editingSelection }
+        let live = Set(items.map(\.key))
+        for (k, host) in cardHosts where !live.contains(k) {
             host.view.removeFromSuperview()
-            cardHosts[i] = nil
+            cardHosts[k] = nil
         }
-        for (card, frame) in frames {
-            let view = CardView(card: card, expanded: core.isExpanded(card),
-                                actions: core.actions(for: card, in: self, storage: textStorage, controller: controller) { [weak self] in self?.editingSelection })
-            let host = cardHosts[card.index] ?? {
-                let h = UIHostingController(rootView: view)
+        for item in items {
+            let host = cardHosts[item.key] ?? {
+                let h = UIHostingController(rootView: item.view)
                 h.view.backgroundColor = .clear
                 h.sizingOptions = []
                 addSubview(h.view)
-                cardHosts[card.index] = h
+                cardHosts[item.key] = h
+                h.view.frame = item.frame
                 return h
             }()
-            host.rootView = view
-            if host.view.frame != frame {
-                UIView.animate(withDuration: 0.22, delay: 0, options: [.beginFromCurrentState, .allowUserInteraction]) { host.view.frame = frame }
+            host.rootView = item.view
+            if host.view.frame != item.frame {
+                UIView.animate(withDuration: 0.22, delay: 0, options: [.beginFromCurrentState, .allowUserInteraction]) { host.view.frame = item.frame }
             }
         }
     }
@@ -258,12 +279,63 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
     func focusEditor() { becomeFirstResponder() }
 
     override func paste(_ sender: Any?) {
+        let pb = UIPasteboard.general
+        if !pb.hasStrings, let image = pb.image, let png = image.pngData() {
+            if let a = controller?.addData(png, "Image \(Date.now.formatted(.iso8601.year().month().day().time(includingFractionalSeconds: false))).png".replacingOccurrences(of: ":", with: "."), .png) {
+                controller?.insertFiles([a])
+            }
+            return
+        }
         if let md = RichPaste.markdownFromPasteboard() {
             let sel = selectedRange
             apply(TextEdit(range: sel, replacement: md, caret: sel.location + (md as NSString).length))
             return
         }
         super.paste(sender)
+    }
+
+    // MARK: Dropping files
+
+    private func isFileDrop(_ session: UIDropSession) -> Bool {
+        session.items.contains { item in
+            let types = item.itemProvider.registeredTypeIdentifiers.compactMap(UTType.init)
+            return !types.contains { $0.conforms(to: .plainText) || $0.conforms(to: .url) && !$0.conforms(to: .fileURL) }
+        }
+    }
+
+    func textDroppableView(_ view: UIView & UITextDroppable, proposalForDrop drop: UITextDropRequest) -> UITextDropProposal {
+        let p = UITextDropProposal(operation: .copy)
+        if isFileDrop(drop.dropSession) { p.dropAction = .insert }
+        return p
+    }
+
+    func textDroppableView(_ view: UIView & UITextDroppable, willPerformDrop drop: UITextDropRequest) {
+        guard isFileDrop(drop.dropSession) else { return }
+        let position = drop.dropPosition
+        let providers = drop.dropSession.items.map(\.itemProvider)
+        Task { @MainActor in
+            var urls: [URL] = []
+            for p in providers {
+                guard let type = p.registeredTypeIdentifiers.first else { continue }
+                let name = p.suggestedName
+                let url: URL? = await withCheckedContinuation { cont in
+                    _ = p.loadFileRepresentation(forTypeIdentifier: type) { src, _ in
+                        guard let src else { cont.resume(returning: nil); return }
+                        // The provided file is deleted after this returns: copy it out.
+                        let dir = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+                        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+                        let ext = src.pathExtension
+                        let fname = name.map { ext.isEmpty || $0.hasSuffix(".\(ext)") ? $0 : "\($0).\(ext)" } ?? src.lastPathComponent
+                        let dest = dir.appending(path: fname)
+                        cont.resume(returning: (try? FileManager.default.copyItem(at: src, to: dest)) != nil ? dest : nil)
+                    }
+                }
+                if let url { urls.append(url) }
+            }
+            guard !urls.isEmpty else { return }
+            self.selectedTextRange = self.textRange(from: position, to: position)
+            self.controller?.insertFiles(self.controller?.addFiles(urls) ?? [])
+        }
     }
 
     // MARK: Delegate
@@ -415,7 +487,7 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
     private let headerLabel = NSTextField(labelWithString: "")
     private let readableWidth: CGFloat = 720
 
-    private var cardHosts: [Int: NSHostingView<CardView>] = [:]
+    private var cardHosts: [String: NSHostingView<AnyView>] = [:]
 
     func configure(text: String, header: String) {
         textLayoutManager?.delegate = core.layoutDelegate
@@ -428,6 +500,7 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
         isAutomaticDashSubstitutionEnabled = false
         isAutomaticTextReplacementEnabled = false
         isAutomaticLinkDetectionEnabled = false
+        registerForDraggedTypes([.fileURL])
         smartInsertDeleteEnabled = false
         usesFindBar = true
         isIncrementalSearchingEnabled = true
@@ -464,30 +537,31 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
         DispatchQueue.main.async { [weak self] in self?.layoutCards() }
     }
 
-    /// Places a live card view over each collapsed `<details>` block.
+    /// Places live views (cards, files, links) over their reserved lines.
     func layoutCards() {
-        let frames = core.cardFrames(layout: textLayoutManager, origin: textContainerOrigin)
-        let live = Set(frames.map { $0.0.index })
-        for (i, host) in cardHosts where !live.contains(i) {
+        guard let storage = textStorage else { return }
+        let items = core.overlays(layout: textLayoutManager, origin: textContainerOrigin,
+                                  target: self, storage: storage, controller: controller) { [weak self] in self?.editingSelection }
+        let live = Set(items.map(\.key))
+        for (k, host) in cardHosts where !live.contains(k) {
             host.removeFromSuperview()
-            cardHosts[i] = nil
+            cardHosts[k] = nil
         }
-        for (card, frame) in frames {
-            let view = CardView(card: card, expanded: core.isExpanded(card),
-                                actions: core.actions(for: card, in: self, storage: textStorage!, controller: controller) { [weak self] in self?.editingSelection })
-            let host = cardHosts[card.index] ?? {
-                let h = NSHostingView(rootView: view)
+        for item in items {
+            let host = cardHosts[item.key] ?? {
+                let h = NSHostingView(rootView: item.view)
                 h.sizingOptions = []
+                h.frame = item.frame
                 addSubview(h)
-                cardHosts[card.index] = h
+                cardHosts[item.key] = h
                 return h
             }()
-            host.rootView = view
-            if host.frame != frame {
+            host.rootView = item.view
+            if host.frame != item.frame {
                 NSAnimationContext.runAnimationGroup { ctx in
                     ctx.duration = 0.22
                     ctx.allowsImplicitAnimation = true
-                    host.animator().frame = frame
+                    host.animator().frame = item.frame
                 }
             }
         }
@@ -516,12 +590,50 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
     func focusEditor() { window?.makeFirstResponder(self) }
 
     override func paste(_ sender: Any?) {
+        let pb = NSPasteboard.general
+        if let urls = pb.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL], !urls.isEmpty {
+            controller?.insertFiles(controller?.addFiles(urls) ?? [])
+            return
+        }
+        if pb.string(forType: .string) == nil, let data = pb.data(forType: .png) ?? pb.data(forType: .tiff).flatMap({ NSBitmapImageRep(data: $0)?.representation(using: .png, properties: [:]) }) {
+            if let a = controller?.addData(data, "Image \(Date.now.formatted(.iso8601.year().month().day().time(includingFractionalSeconds: false))).png".replacingOccurrences(of: ":", with: "."), .png) {
+                controller?.insertFiles([a])
+            }
+            return
+        }
         if let md = RichPaste.markdownFromPasteboard() {
             let sel = selectedRange()
             apply(TextEdit(range: sel, replacement: md, caret: sel.location + (md as NSString).length))
             return
         }
         pasteAsPlainText(sender)
+    }
+
+    // MARK: Dropping files
+
+    private func droppedFiles(_ info: NSDraggingInfo) -> [URL] {
+        (info.draggingPasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL]) ?? []
+    }
+
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        droppedFiles(sender).isEmpty ? super.draggingEntered(sender) : .copy
+    }
+
+    override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
+        guard !droppedFiles(sender).isEmpty else { return super.draggingUpdated(sender) }
+        // Show where the file will land.
+        let at = characterIndexForInsertion(at: convert(sender.draggingLocation, from: nil))
+        setSelectedRange(NSRange(location: at, length: 0))
+        return .copy
+    }
+
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        let urls = droppedFiles(sender)
+        guard !urls.isEmpty else { return super.performDragOperation(sender) }
+        let at = characterIndexForInsertion(at: convert(sender.draggingLocation, from: nil))
+        setSelectedRange(NSRange(location: at, length: 0))
+        controller?.insertFiles(controller?.addFiles(urls) ?? [])
+        return true
     }
 
     // MARK: Delegate

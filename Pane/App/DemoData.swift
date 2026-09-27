@@ -1,5 +1,7 @@
 import Foundation
+import ImageIO
 import SwiftData
+import UniformTypeIdentifiers
 
 /// Realistic sample notes for recordings and UI tests (`-demo`).
 @MainActor
@@ -21,6 +23,15 @@ enum DemoData {
             (main, "Snippets\n\n```swift\nlet greeting = \"Hello\"\nprint(greeting)\n```", -45 * day, false),
             (travel, "Packing\n\n- [ ] Passport\n- [ ] Chargers\n- [ ] Rain jacket", -80 * day, false),
         ]
+        // Files: a PDF, a spreadsheet and an image, generated so the demo needs nothing external.
+        if let pdf = try? FileStore.importData(samplePDF(), filename: "Flight itinerary.pdf", type: .pdf),
+           let csv = try? FileStore.importData(Data("Day,Energy,Mood,Diet\nMon,7,8,Yes\nTue,6,7,No\nWed,8,8,Yes\n".utf8), filename: "Tracker export.csv", type: .commaSeparatedText),
+           let png = try? FileStore.importData(samplePNG(), filename: "Sunset.png", type: .png) {
+            [pdf, csv, png].forEach(context.insert)
+            let n = context.createNote(in: .folder(travel.id), body: "Trip documents\n\nEverything for the Lisbon trip in one place.\n\n\(pdf.markdown)\n\(csv.markdown)\n\n\(png.markdown)\n\nhttps://www.visitlisboa.com\n")
+            n.updatedAt = .now.addingTimeInterval(-1800)
+        }
+
         for (folder, body, offset, pinned) in items {
             let n = context.createNote(in: .folder(folder.id), body: body)
             n.updatedAt = .now.addingTimeInterval(offset)
@@ -28,5 +39,38 @@ enum DemoData {
             n.isPinned = pinned
         }
         try? context.save()
+    }
+
+    static func samplePDF() -> Data {
+        let data = NSMutableData()
+        var box = CGRect(x: 0, y: 0, width: 595, height: 842)
+        guard let consumer = CGDataConsumer(data: data), let ctx = CGContext(consumer: consumer, mediaBox: &box, nil) else { return Data() }
+        ctx.beginPDFPage(nil)
+        ctx.setFillColor(CGColor(red: 0.96, green: 0.68, blue: 0.2, alpha: 1))
+        ctx.fill(CGRect(x: 48, y: 740, width: 499, height: 56))
+        ctx.setFillColor(CGColor(gray: 0.85, alpha: 1))
+        for i in 0..<12 { ctx.fill(CGRect(x: 48, y: 680 - i * 36, width: [499, 420, 460, 380][i % 4], height: 12)) }
+        ctx.endPDFPage()
+        ctx.closePDF()
+        return data as Data
+    }
+
+    static func samplePNG() -> Data {
+        let w = 800, h = 440
+        guard let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return Data() }
+        let colors = [CGColor(red: 0.98, green: 0.62, blue: 0.25, alpha: 1), CGColor(red: 0.55, green: 0.3, blue: 0.6, alpha: 1)] as CFArray
+        if let g = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors, locations: [0, 1]) {
+            ctx.drawLinearGradient(g, start: CGPoint(x: 0, y: h), end: CGPoint(x: 0, y: 0), options: [])
+        }
+        ctx.setFillColor(CGColor(red: 1, green: 0.85, blue: 0.5, alpha: 1))
+        ctx.fillEllipse(in: CGRect(x: 320, y: 120, width: 160, height: 160))
+        ctx.setFillColor(CGColor(red: 0.15, green: 0.1, blue: 0.2, alpha: 1))
+        ctx.fill(CGRect(x: 0, y: 0, width: w, height: 120))
+        guard let img = ctx.makeImage() else { return Data() }
+        let out = NSMutableData()
+        guard let dest = CGImageDestinationCreateWithData(out, "public.png" as CFString, 1, nil) else { return Data() }
+        CGImageDestinationAddImage(dest, img, nil)
+        CGImageDestinationFinalize(dest)
+        return out as Data
     }
 }

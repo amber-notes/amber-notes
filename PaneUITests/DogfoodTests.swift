@@ -154,4 +154,36 @@ final class DogfoodTests: XCTestCase {
         shot("card-added")
         XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "card.Packing extras").firstMatch.waitForExistence(timeout: 3))
     }
+
+    func testFiles() throws {
+        pause(1)
+        #if os(iOS)
+        app.staticTexts["Trip documents"].firstMatch.tap()
+        #endif
+        let pdf = app.descendants(matching: .any).matching(identifier: "file.Flight itinerary.pdf").firstMatch
+        XCTAssertTrue(pdf.waitForExistence(timeout: 5), "the PDF shows as a file card")
+        pause(2)
+        shot("files-in-note")
+        pdf.tap()
+        pause(2)
+        shot("pdf-quicklook")
+        closePreview()
+        pause(1)
+        app.descendants(matching: .any).matching(identifier: "file.Tracker export.csv").firstMatch.tap()
+        pause(2)
+        shot("csv-quicklook")
+        closePreview()
+        pause(1)
+        app.swipeUp()
+        pause(2)
+        shot("image-and-link")
+    }
+
+    func closePreview() {
+        for label in ["Done", "Close", "Dismiss"] where app.buttons[label].firstMatch.exists {
+            app.buttons[label].firstMatch.tap()
+            return
+        }
+        app.swipeDown(velocity: .fast)
+    }
 }

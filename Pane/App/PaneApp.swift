@@ -12,7 +12,7 @@ struct PaneApp: App {
         let inMemory = args.contains("-uitest") || args.contains("-synctest") || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
         if inMemory { UserDefaults.standard.removeObject(forKey: "lastScope") }
         let config = ModelConfiguration("Pane", isStoredInMemoryOnly: inMemory)
-        container = try! ModelContainer(for: Folder.self, Note.self, configurations: config)
+        container = try! ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: config)
         let backend = Backend()
         _backend = State(initialValue: backend)
         _sync = State(initialValue: SyncEngine(backend: backend, context: container.mainContext))

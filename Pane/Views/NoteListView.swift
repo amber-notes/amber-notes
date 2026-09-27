@@ -99,7 +99,9 @@ struct NoteListView: View {
             }
         }
         .dropDestination(for: URL.self) { urls, _ in
-            context.importFiles(urls, into: scope == .trash ? .all : scope) > 0
+            let made = context.importFiles(urls, into: scope == .trash ? .all : scope)
+            if let first = made.first { selection = first.id }
+            return !made.isEmpty
         } isTargeted: { t in
             withAnimation(.easeOut(duration: 0.15)) { fileDropTargeted = t }
         }
