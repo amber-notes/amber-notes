@@ -1,0 +1,472 @@
+// The note tools. Each runs in a transaction as the token's owner (RLS applies).
+
+import type { Sql, TransactionSql } from "npm:postgres@3.4.5";
+import { appendText, applyEdits, outline, previewOf, setChecklistItem, sliceLines, titleOf, type Edit } from "./notes.ts";
+
+export type ToolContext = { sql: Sql; userId: string; client: string; canWrite: boolean };
+export class ToolError extends Error {}
+
+type Tx = TransactionSql;
+type Args = Record<string, unknown>;
+type Tool = {
+  name: string;
+  title: string;
+  description: string;
+  inputSchema: Record<string, unknown>;
+  annotations: { readOnlyHint: boolean; destructiveHint?: boolean; idempotentHint?: boolean; openWorldHint: false };
+};
+
+const str = (d: string) => ({ type: "string", description: d });
+const int = (d: string) => ({ type: "integer", description: d });
+const bool = (d: string) => ({ type: "boolean", description: d });
+const noteRef = {
+  id: str("Note id (preferred)."),
+  title: str("Note title, if you don't have the id. Must match one note."),
+};
+const read = { readOnlyHint: true, openWorldHint: false } as const;
+const write = { readOnlyHint: false, destructiveHint: false, openWorldHint: false } as const;
+
+export const tools: Tool[] = [
+  {
+    name: "get_overview", title: "Overview of the notes",
+    description: "Start here. Folders with counts, pinned notes and the most recently edited notes.",
+    inputSchema: { type: "object", properties: {} }, annotations: read,
+  },
+  {
+    name: "search_notes", title: "Search notes",
+    description: "Full-text search across titles and bodies. Returns ranked notes with a highlighted snippet («match»).",
+    inputSchema: { type: "object", properties: { query: str("Words or a phrase. Supports \"quoted phrases\", OR and -exclusions."), limit: int("Max results, default 10.") }, required: ["query"] },
+    annotations: read,
+  },
+  {
+    name: "list_notes", title: "List notes",
+    description: "List notes, newest first, optionally in one folder. Use for browsing; use search_notes to find something.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        folder: str("Folder name or path like \"Work/Q4 planning\". Omit for all notes."),
+        pinned_only: bool("Only pinned notes."),
+        recently_deleted: bool("List notes in Recently Deleted instead."),
+        sort: { type: "string", enum: ["updated", "created", "title"], description: "Default updated." },
+        limit: int("Default 30, max 200."),
+        offset: int("For paging."),
+      },
+    },
+    annotations: read,
+  },
+  {
+    name: "read_note", title: "Read a note",
+    description: "Returns a note's markdown with its folder, dates, version and outline. For long notes, read a line range; set line_numbers to see where headings are.",
+    inputSchema: { type: "object", properties: { ...noteRef, start_line: int("First line, 1-based."), end_line: int("Last line, inclusive."), line_numbers: bool("Prefix each line with its number.") } },
+    annotations: read,
+  },
+  {
+    name: "create_note", title: "Create a note",
+    description: "Creates a note from markdown. The first line becomes the title (write it as plain text or '# Title').",
+    inputSchema: { type: "object", properties: { body: str("Markdown. First line is the title."), folder: str("Folder name or path. Created if it doesn't exist. Default: Notes."), pinned: bool("Pin it.") }, required: ["body"] },
+    annotations: write,
+  },
+  {
+    name: "edit_note", title: "Edit a note",
+    description: "Precise edits: each old_text must match the note exactly once (copy it from read_note) and is replaced by new_text. Edits apply in order. Fails without changing anything if one doesn't match.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ...noteRef,
+        edits: { type: "array", items: { type: "object", properties: { old_text: str("Exact existing text."), new_text: str("Replacement; empty string deletes."), replace_all: bool("Replace every occurrence.") }, required: ["old_text", "new_text"] } },
+        expected_version: int("Version from read_note; the edit fails if the note changed since."),
+      },
+      required: ["edits"],
+    },
+    annotations: write,
+  },
+  {
+    name: "append_to_note", title: "Add to a note",
+    description: "Adds markdown to the end of a note, or to the end (or start) of the section under a heading. Good for logs, lists and journals.",
+    inputSchema: { type: "object", properties: { ...noteRef, text: str("Markdown to add."), under_heading: str("Heading text whose section gets the text."), at_start: bool("Add at the start of the note/section instead of the end.") }, required: ["text"] },
+    annotations: write,
+  },
+  {
+    name: "replace_note_body", title: "Rewrite a note",
+    description: "Replaces the whole note with new markdown. Use only for full rewrites; prefer edit_note. The old version stays in history.",
+    inputSchema: { type: "object", properties: { ...noteRef, body: str("The complete new markdown."), expected_version: int("Version from read_note, to avoid overwriting newer changes.") }, required: ["body"] },
+    annotations: { ...write, destructiveHint: true },
+  },
+  {
+    name: "set_checklist_item", title: "Tick a checklist item",
+    description: "Checks or unchecks a '- [ ] item' line, matched by its text.",
+    inputSchema: { type: "object", properties: { ...noteRef, item: str("The item's text (or a unique part of it)."), checked: bool("true to check, false to uncheck.") }, required: ["item", "checked"] },
+    annotations: { ...write, idempotentHint: true },
+  },
+  {
+    name: "move_note", title: "Move a note",
+    description: "Moves a note to a folder (created if missing).",
+    inputSchema: { type: "object", properties: { ...noteRef, folder: str("Folder name or path.") }, required: ["folder"] },
+    annotations: { ...write, idempotentHint: true },
+  },
+  {
+    name: "pin_note", title: "Pin or unpin",
+    description: "Pins a note to the top of the list, or unpins it.",
+    inputSchema: { type: "object", properties: { ...noteRef, pinned: bool("true to pin.") }, required: ["pinned"] },
+    annotations: { ...write, idempotentHint: true },
+  },
+  {
+    name: "delete_note", title: "Delete a note",
+    description: "Moves a note to Recently Deleted (kept 30 days, restorable with restore_note).",
+    inputSchema: { type: "object", properties: { ...noteRef } },
+    annotations: { ...write, destructiveHint: true },
+  },
+  {
+    name: "restore_note", title: "Restore a deleted note",
+    description: "Brings a note back from Recently Deleted.",
+    inputSchema: { type: "object", properties: { id: str("Note id.") }, required: ["id"] },
+    annotations: { ...write, idempotentHint: true },
+  },
+  {
+    name: "list_folders", title: "List folders",
+    description: "All folders as paths, with note counts.",
+    inputSchema: { type: "object", properties: {} }, annotations: read,
+  },
+  {
+    name: "create_folder", title: "Create a folder",
+    description: "Creates a folder; use a path like \"Work/Clients\" to nest it.",
+    inputSchema: { type: "object", properties: { path: str("Folder path.") }, required: ["path"] },
+    annotations: { ...write, idempotentHint: true },
+  },
+  {
+    name: "rename_folder", title: "Rename a folder",
+    description: "Renames a folder.",
+    inputSchema: { type: "object", properties: { folder: str("Current name or path."), new_name: str("New name.") }, required: ["folder", "new_name"] },
+    annotations: write,
+  },
+  {
+    name: "delete_folder", title: "Delete a folder",
+    description: "Deletes a folder and sub-folders; their notes go to Recently Deleted.",
+    inputSchema: { type: "object", properties: { folder: str("Name or path.") }, required: ["folder"] },
+    annotations: { ...write, destructiveHint: true },
+  },
+  {
+    name: "note_history", title: "Note history",
+    description: "Earlier versions of a note, newest first, with who changed it (app or an AI client).",
+    inputSchema: { type: "object", properties: { ...noteRef, limit: int("Default 10.") } },
+    annotations: read,
+  },
+  {
+    name: "restore_revision", title: "Restore an earlier version",
+    description: "Puts an earlier version (from note_history) back as the note's body. The current body is kept in history too.",
+    inputSchema: { type: "object", properties: { ...noteRef, revision_id: int("Revision id from note_history.") }, required: ["revision_id"] },
+    annotations: write,
+  },
+  // ChatGPT's connector conventions.
+  {
+    name: "search", title: "Search",
+    description: "Search the user's notes. Returns ids for fetch.",
+    inputSchema: { type: "object", properties: { query: str("Search query.") }, required: ["query"] },
+    annotations: read,
+  },
+  {
+    name: "fetch", title: "Fetch",
+    description: "Fetch a note by id (from search) as full text.",
+    inputSchema: { type: "object", properties: { id: str("Note id.") }, required: ["id"] },
+    annotations: read,
+  },
+];
+
+const writeTools = new Set(tools.filter((t) => !t.annotations.readOnlyHint).map((t) => t.name));
+
+export async function runTool(name: string, args: Args, ctx: ToolContext): Promise<unknown> {
+  if (!tools.some((t) => t.name === name)) throw new ToolError(`Unknown tool ${name}.`);
+  if (writeTools.has(name) && !ctx.canWrite) throw new ToolError("This access token is read-only.");
+  return await ctx.sql.begin(async (tx) => {
+    await tx`select set_config('role', 'authenticated', true),
+                    set_config('request.jwt.claims', ${JSON.stringify({ sub: ctx.userId, role: "authenticated" })}, true),
+                    set_config('pane.source', 'mcp', true),
+                    set_config('pane.client', ${ctx.client}, true)`;
+    return await handlers[name](tx, args, ctx);
+  });
+}
+
+// MARK: Helpers
+
+type NoteRow = { id: string; body: string; title: string; folder_id: string | null; is_pinned: boolean; created_at: Date; updated_at: Date; trashed_at: Date | null; version: string };
+type FolderRow = { id: string; name: string; parent_id: string | null; sort_index: number };
+
+async function folders(tx: Tx): Promise<FolderRow[]> {
+  return await tx<FolderRow[]>`select id, name, parent_id, sort_index from public.folders where deleted_at is null order by sort_index, name`;
+}
+
+function pathOf(id: string | null, all: FolderRow[]): string {
+  const parts: string[] = [];
+  let cur = all.find((f) => f.id === id);
+  let guard = 0;
+  while (cur && guard++ < 32) {
+    parts.unshift(cur.name);
+    cur = all.find((f) => f.id === cur!.parent_id);
+  }
+  return parts.join("/");
+}
+
+async function findFolder(tx: Tx, ref: string, create: boolean): Promise<FolderRow> {
+  const all = await folders(tx);
+  const byId = all.find((f) => f.id === ref);
+  if (byId) return byId;
+  const parts = ref.split("/").map((p) => p.trim()).filter(Boolean);
+  if (!parts.length) throw new ToolError("Folder name is empty.");
+  // A single name may be nested anywhere; a path must match from the top.
+  if (parts.length === 1) {
+    const hits = all.filter((f) => f.name.toLowerCase() === parts[0].toLowerCase());
+    if (hits.length === 1) return hits[0];
+    if (hits.length > 1) throw new ToolError(`"${ref}" matches several folders: ${hits.map((h) => pathOf(h.id, all)).join(", ")}. Use the full path.`);
+  }
+  let parent: FolderRow | null = null;
+  for (const part of parts) {
+    let next = all.find((f) => f.parent_id === (parent?.id ?? null) && f.name.toLowerCase() === part.toLowerCase());
+    if (!next) {
+      if (!create) throw new ToolError(`No folder "${ref}". Folders: ${all.map((f) => pathOf(f.id, all)).join(", ") || "none"}.`);
+      const [row] = await tx<FolderRow[]>`
+        insert into public.folders (id, name, parent_id, sort_index)
+        values (${crypto.randomUUID()}, ${part}, ${parent?.id ?? null}, ${Date.now() / 1000})
+        returning id, name, parent_id, sort_index`;
+      all.push(row);
+      next = row;
+    }
+    parent = next;
+  }
+  return parent!;
+}
+
+async function findNote(tx: Tx, args: Args, includeTrashed = false): Promise<NoteRow> {
+  const id = typeof args.id === "string" ? args.id : undefined;
+  const title = typeof args.title === "string" ? args.title.trim() : undefined;
+  if (id) {
+    const rows = await tx<NoteRow[]>`select * from public.notes where id = ${id}::uuid and deleted_at is null ${includeTrashed ? tx`` : tx`and trashed_at is null`}`
+      .catch(() => [] as NoteRow[]);
+    if (!rows.length) throw new ToolError(`No note with id ${id}.`);
+    return rows[0];
+  }
+  if (!title) throw new ToolError("Give the note's id (preferred) or its title.");
+  const rows = await tx<NoteRow[]>`select * from public.notes where deleted_at is null and trashed_at is null and lower(title) = lower(${title}) order by updated_at desc limit 5`;
+  if (rows.length === 1) return rows[0];
+  if (rows.length > 1) throw new ToolError(`${rows.length} notes are titled "${title}": ${rows.map((r) => r.id).join(", ")}. Use an id.`);
+  const near = await tx<{ id: string; title: string }[]>`select id, title from public.notes where deleted_at is null and trashed_at is null and title ilike ${"%" + title + "%"} order by updated_at desc limit 5`;
+  throw new ToolError(near.length ? `No note titled "${title}". Close matches: ${near.map((n) => `${n.title} (${n.id})`).join("; ")}.` : `No note titled "${title}". Try search_notes.`);
+}
+
+function summary(n: NoteRow, all: FolderRow[]) {
+  return { id: n.id, title: n.title, folder: pathOf(n.folder_id, all), pinned: n.is_pinned, updated: iso(n.updated_at), preview: previewOf(n.body) };
+}
+
+const iso = (d: Date | null) => (d ? new Date(d).toISOString() : null);
+const clampInt = (v: unknown, def: number, max: number) => Math.max(0, Math.min(max, Number.isFinite(Number(v)) ? Math.floor(Number(v)) : def));
+
+async function save(tx: Tx, note: NoteRow, body: string, expected?: unknown) {
+  if (body.length > 5_000_000) throw new ToolError("That note would be over 5 MB.");
+  const rows = await tx<{ version: string; updated_at: Date }[]>`
+    update public.notes set body = ${body}, updated_at = now()
+    where id = ${note.id}
+      ${expected !== undefined && expected !== null ? tx`and version = ${Number(expected)}` : tx``}
+    returning version, updated_at`;
+  if (!rows.length) throw new ToolError(`The note changed since version ${expected}. Read it again and retry.`);
+  return { id: note.id, title: titleOf(body), version: Number(rows[0].version), updated: iso(rows[0].updated_at) };
+}
+
+// MARK: Handlers
+
+const handlers: Record<string, (tx: Tx, a: Args, ctx: ToolContext) => Promise<unknown>> = {
+  async get_overview(tx) {
+    const all = await folders(tx);
+    const counts = await tx<{ folder_id: string | null; n: number }[]>`
+      select folder_id, count(*)::int as n from public.notes where deleted_at is null and trashed_at is null group by folder_id`;
+    const pinned = await tx<NoteRow[]>`select * from public.notes where deleted_at is null and trashed_at is null and is_pinned order by updated_at desc limit 20`;
+    const recent = await tx<NoteRow[]>`select * from public.notes where deleted_at is null and trashed_at is null order by updated_at desc limit 10`;
+    const [{ trashed }] = await tx<{ trashed: number }[]>`select count(*)::int as trashed from public.notes where deleted_at is null and trashed_at is not null`;
+    return {
+      total_notes: counts.reduce((s, c) => s + c.n, 0),
+      folders: all.map((f) => ({ path: pathOf(f.id, all), id: f.id, notes: counts.find((c) => c.folder_id === f.id)?.n ?? 0 })),
+      pinned: pinned.map((n) => summary(n, all)),
+      recently_edited: recent.map((n) => summary(n, all)),
+      recently_deleted: trashed,
+    };
+  },
+
+  async search_notes(tx, a) {
+    const q = String(a.query ?? "").trim();
+    if (!q) throw new ToolError("query is empty.");
+    const all = await folders(tx);
+    const rows = await tx<{ id: string; title: string; folder_id: string | null; updated_at: Date; snippet: string; rank: number }[]>`
+      select * from public.search_notes(${q}, ${clampInt(a.limit, 10, 50) || 10})`;
+    return { query: q, results: rows.map((r) => ({ id: r.id, title: r.title, folder: pathOf(r.folder_id, all), updated: iso(r.updated_at), snippet: r.snippet })) };
+  },
+
+  async list_notes(tx, a) {
+    const all = await folders(tx);
+    const folder = typeof a.folder === "string" && a.folder.trim() ? await findFolder(tx, a.folder, false) : null;
+    const trashed = a.recently_deleted === true;
+    const limit = clampInt(a.limit, 30, 200) || 30;
+    const offset = clampInt(a.offset, 0, 100000);
+    const order = a.sort === "title" ? tx`lower(title) asc` : a.sort === "created" ? tx`created_at desc` : tx`is_pinned desc, updated_at desc`;
+    const rows = await tx<NoteRow[]>`
+      select * from public.notes where deleted_at is null
+        and ${trashed ? tx`trashed_at is not null` : tx`trashed_at is null`}
+        ${folder ? tx`and folder_id = ${folder.id}` : tx``}
+        ${a.pinned_only === true ? tx`and is_pinned` : tx``}
+      order by ${order} limit ${limit + 1} offset ${offset}`;
+    return {
+      folder: folder ? pathOf(folder.id, all) : "All Notes",
+      notes: rows.slice(0, limit).map((n) => summary(n, all)),
+      next_offset: rows.length > limit ? offset + limit : null,
+    };
+  },
+
+  async read_note(tx, a) {
+    const n = await findNote(tx, a, true);
+    const all = await folders(tx);
+    const o = outline(n.body);
+    const ranged = a.start_line !== undefined || a.end_line !== undefined;
+    return {
+      id: n.id, title: n.title, folder: pathOf(n.folder_id, all), pinned: n.is_pinned,
+      created: iso(n.created_at), updated: iso(n.updated_at), version: Number(n.version),
+      in_recently_deleted: n.trashed_at !== null,
+      outline: o,
+      ...(ranged ? { lines: `${a.start_line ?? 1}-${a.end_line ?? o.lines}` } : {}),
+      markdown: sliceLines(n.body, a.start_line as number | undefined, a.end_line as number | undefined, a.line_numbers === true),
+    };
+  },
+
+  async create_note(tx, a) {
+    const body = String(a.body ?? "");
+    if (!body.trim()) throw new ToolError("body is empty.");
+    const folder = await findFolder(tx, typeof a.folder === "string" && a.folder.trim() ? a.folder : "Notes", true);
+    const all = await folders(tx);
+    const [n] = await tx<NoteRow[]>`
+      insert into public.notes (id, body, folder_id, is_pinned)
+      values (${crypto.randomUUID()}, ${body}, ${folder.id}, ${a.pinned === true})
+      returning *`;
+    return { created: summary(n, all), version: Number(n.version) };
+  },
+
+  async edit_note(tx, a) {
+    const n = await findNote(tx, a);
+    if (!Array.isArray(a.edits) || !a.edits.length) throw new ToolError("edits must be a non-empty list.");
+    let body: string;
+    try { body = applyEdits(n.body, a.edits as Edit[]); } catch (e) { throw new ToolError((e as Error).message); }
+    if (body === n.body) return { id: n.id, unchanged: true };
+    return { edited: await save(tx, n, body, a.expected_version), edits_applied: (a.edits as Edit[]).length };
+  },
+
+  async append_to_note(tx, a) {
+    const n = await findNote(tx, a);
+    const text = String(a.text ?? "");
+    if (!text.trim()) throw new ToolError("text is empty.");
+    let body: string;
+    try { body = appendText(n.body, text, typeof a.under_heading === "string" ? a.under_heading : undefined, a.at_start === true); } catch (e) { throw new ToolError((e as Error).message); }
+    return { appended: await save(tx, n, body) };
+  },
+
+  async replace_note_body(tx, a) {
+    const n = await findNote(tx, a);
+    const body = String(a.body ?? "");
+    if (!body.trim()) throw new ToolError("body is empty. To remove the note use delete_note.");
+    return { replaced: await save(tx, n, body, a.expected_version), previous_version_saved: true };
+  },
+
+  async set_checklist_item(tx, a) {
+    const n = await findNote(tx, a);
+    let r: { body: string; matched: string };
+    try { r = setChecklistItem(n.body, String(a.item ?? ""), a.checked === true); } catch (e) { throw new ToolError((e as Error).message); }
+    if (r.body === n.body) return { id: n.id, item: r.matched, checked: a.checked === true, unchanged: true };
+    await save(tx, n, r.body);
+    return { id: n.id, item: r.matched, checked: a.checked === true };
+  },
+
+  async move_note(tx, a) {
+    const n = await findNote(tx, a);
+    const f = await findFolder(tx, String(a.folder ?? ""), true);
+    await tx`update public.notes set folder_id = ${f.id}, updated_at = now() where id = ${n.id}`;
+    const all = await folders(tx);
+    return { id: n.id, title: n.title, folder: pathOf(f.id, all) };
+  },
+
+  async pin_note(tx, a) {
+    const n = await findNote(tx, a);
+    await tx`update public.notes set is_pinned = ${a.pinned === true}, updated_at = now() where id = ${n.id}`;
+    return { id: n.id, title: n.title, pinned: a.pinned === true };
+  },
+
+  async delete_note(tx, a) {
+    const n = await findNote(tx, a);
+    await tx`update public.notes set trashed_at = now(), is_pinned = false, updated_at = now() where id = ${n.id}`;
+    return { id: n.id, title: n.title, moved_to: "Recently Deleted", restore_with: "restore_note" };
+  },
+
+  async restore_note(tx, a) {
+    const n = await findNote(tx, a, true);
+    if (!n.trashed_at) return { id: n.id, title: n.title, already_restored: true };
+    const all = await folders(tx);
+    const folderOk = n.folder_id && all.some((f) => f.id === n.folder_id);
+    const target = folderOk ? n.folder_id : (await findFolder(tx, "Notes", true)).id;
+    await tx`update public.notes set trashed_at = null, folder_id = ${target}, updated_at = now() where id = ${n.id}`;
+    return { id: n.id, title: n.title, restored_to: pathOf(target, await folders(tx)) };
+  },
+
+  async list_folders(tx) {
+    const all = await folders(tx);
+    const counts = await tx<{ folder_id: string; n: number }[]>`
+      select folder_id, count(*)::int as n from public.notes where deleted_at is null and trashed_at is null group by folder_id`;
+    return { folders: all.map((f) => ({ path: pathOf(f.id, all), id: f.id, notes: counts.find((c) => c.folder_id === f.id)?.n ?? 0 })) };
+  },
+
+  async create_folder(tx, a) {
+    const f = await findFolder(tx, String(a.path ?? ""), true);
+    return { id: f.id, path: pathOf(f.id, await folders(tx)) };
+  },
+
+  async rename_folder(tx, a) {
+    const f = await findFolder(tx, String(a.folder ?? ""), false);
+    const name = String(a.new_name ?? "").trim();
+    if (!name || name.includes("/")) throw new ToolError("new_name must be a plain name without '/'.");
+    await tx`update public.folders set name = ${name}, updated_at = now() where id = ${f.id}`;
+    return { id: f.id, path: pathOf(f.id, await folders(tx)) };
+  },
+
+  async delete_folder(tx, a) {
+    const f = await findFolder(tx, String(a.folder ?? ""), false);
+    const all = await folders(tx);
+    const ids = [f.id];
+    for (let i = 0; i < ids.length; i++) all.filter((c) => c.parent_id === ids[i]).forEach((c) => ids.push(c.id));
+    const trashed = await tx`update public.notes set trashed_at = now(), is_pinned = false, updated_at = now()
+      where folder_id = any(${ids}::uuid[]) and trashed_at is null and deleted_at is null returning id`;
+    await tx`update public.folders set deleted_at = now(), updated_at = now() where id = any(${ids}::uuid[])`;
+    return { deleted_folders: ids.length, notes_moved_to_recently_deleted: trashed.length };
+  },
+
+  async note_history(tx, a) {
+    const n = await findNote(tx, a, true);
+    const rows = await tx<{ id: string; version: string; source: string; client: string | null; created_at: Date; body: string }[]>`
+      select id, version, source, client, created_at, body from public.note_revisions where note_id = ${n.id}
+      order by id desc limit ${clampInt(a.limit, 10, 50) || 10}`;
+    return {
+      id: n.id, title: n.title, current_version: Number(n.version),
+      revisions: rows.map((r) => ({ revision_id: Number(r.id), version: Number(r.version), replaced_at: iso(r.created_at), replaced_by: r.client ?? r.source, title: titleOf(r.body), preview: previewOf(r.body, 100), characters: r.body.length })),
+    };
+  },
+
+  async restore_revision(tx, a) {
+    const n = await findNote(tx, a, true);
+    const rows = await tx<{ body: string }[]>`select body from public.note_revisions where id = ${Number(a.revision_id)} and note_id = ${n.id}`;
+    if (!rows.length) throw new ToolError("No such revision for this note. Use note_history.");
+    await tx`select set_config('pane.source', 'restore', true)`;
+    return { restored: await save(tx, n, rows[0].body) };
+  },
+
+  async search(tx, a) {
+    const rows = await tx<{ id: string; title: string }[]>`select id, title from public.search_notes(${String(a.query ?? "")}, 10)`;
+    return { results: rows.map((r) => ({ id: r.id, title: r.title, url: `pane://note/${r.id}` })) };
+  },
+
+  async fetch(tx, a) {
+    const n = await findNote(tx, { id: a.id }, true);
+    const all = await folders(tx);
+    return { id: n.id, title: n.title, text: n.body, url: `pane://note/${n.id}`, metadata: { folder: pathOf(n.folder_id, all), updated: iso(n.updated_at) } };
+  },
+};
