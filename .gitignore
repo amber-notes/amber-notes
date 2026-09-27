@@ -5,3 +5,4 @@ DerivedData/
 .env
 supabase/.temp/
 supabase/.branches/
+.shots/

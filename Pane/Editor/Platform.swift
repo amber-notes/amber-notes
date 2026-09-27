@@ -7,6 +7,7 @@ typealias PFontDescriptor = UIFontDescriptor
 extension PFontDescriptor.SymbolicTraits {
     static let paneBold: Self = .traitBold
     static let paneItalic: Self = .traitItalic
+    static let paneMonoSpace: Self = .traitMonoSpace
 }
 
 extension PFont {
@@ -20,7 +21,8 @@ extension PColor {
     static var paneLabel: PColor { .label }
     static var paneSecondary: PColor { .secondaryLabel }
     static var paneTertiary: PColor { .tertiaryLabel }
-    static var paneFill: PColor { .tertiarySystemFill }
+    static var paneFill: PColor { .secondarySystemBackground }
+    static var panePanel: PColor { UIColor { $0.userInterfaceStyle == .dark ? UIColor(white: 0.13, alpha: 1) : UIColor(white: 0.975, alpha: 1) } }
     static var paneSeparator: PColor { .separator }
 }
 #else
@@ -32,6 +34,7 @@ typealias PFontDescriptor = NSFontDescriptor
 extension PFontDescriptor.SymbolicTraits {
     static let paneBold: Self = .bold
     static let paneItalic: Self = .italic
+    static let paneMonoSpace: Self = .monoSpace
 }
 
 extension PFont {
@@ -45,7 +48,8 @@ extension PColor {
     static var paneLabel: PColor { .labelColor }
     static var paneSecondary: PColor { .secondaryLabelColor }
     static var paneTertiary: PColor { .tertiaryLabelColor }
-    static var paneFill: PColor { .quaternaryLabelColor.withAlphaComponent(0.08) }
+    static var paneFill: PColor { NSColor(name: nil) { $0.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? NSColor(white: 0.19, alpha: 1) : NSColor(white: 0.94, alpha: 1) } }
+    static var panePanel: PColor { NSColor(name: nil) { $0.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? NSColor(white: 0.15, alpha: 1) : NSColor(white: 0.975, alpha: 1) } }
     static var paneSeparator: PColor { .separatorColor }
 }
 #endif

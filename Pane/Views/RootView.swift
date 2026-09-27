@@ -31,6 +31,7 @@ struct RootView: View {
         .onChange(of: scope) { _, new in
             if let new, let data = try? JSONEncoder().encode(new) { lastScopeData = data }
         }
+        .onChange(of: selectedNote) { old, _ in discardIfEmpty(old) }
         .focusedSceneValue(\.newNoteAction, newNote)
     }
 
@@ -45,6 +46,13 @@ struct RootView: View {
         let note = context.createNote(in: target)
         justCreated = note.id
         withAnimation(.snappy(duration: 0.25)) { selectedNote = note.id }
+    }
+
+    /// Leaving a blank note deletes it, like Apple Notes.
+    private func discardIfEmpty(_ id: UUID?) {
+        guard let id, id != selectedNote, let n = context.note(id), n.deletedAt == nil,
+              n.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        context.purge(n)
     }
 
     private func restoreScope() {

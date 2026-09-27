@@ -19,7 +19,7 @@ final class LineDecoration: NSObject {
         case quote
         case code(first: Bool, last: Bool)
         case rule
-        case table(header: Bool, first: Bool, last: Bool)
+        case table(header: Bool, first: Bool, last: Bool, columns: [CGFloat], width: CGFloat)
     }
     let kind: Kind
     /// Where the marker is centered, from the fragment's leading edge.
@@ -105,9 +105,12 @@ struct MarkdownStyler {
         let text = storage.string
         let ns = text as NSString
         let full = NSRange(location: 0, length: ns.length)
-        let activeLines = ns.length == 0 ? NSRange(location: 0, length: 0) : ns.lineRange(for: NSRange(location: min(active.location, ns.length), length: active.length))
+        let editing = active.location != NSNotFound && ns.length > 0
+        let activeLines = editing ? ns.lineRange(for: NSRange(location: min(active.location, ns.length), length: min(active.length, ns.length - min(active.location, ns.length)))) : NSRange(location: NSNotFound, length: 0)
         func isActive(_ r: NSRange) -> Bool {
-            NSIntersectionRange(r, activeLines).length > 0 || (r.location >= activeLines.location && r.location <= NSMaxRange(activeLines))
+            guard editing else { return false }
+            return NSIntersectionRange(r, activeLines).length > 0 || NSLocationInRange(r.location, activeLines)
+                || (r.length == 0 && r.location == NSMaxRange(activeLines))
         }
 
         storage.beginEditing()
@@ -127,7 +130,6 @@ struct MarkdownStyler {
 
         // Line pass: title, lists, checkboxes, quotes, rules, code and table decoration.
         var sawTitle = false
-        var tableRow = 0
         ns.enumerateSubstrings(in: full, options: [.byParagraphs, .substringNotRequired]) { _, lineRange, enclosing, _ in
             let line = ns.substring(with: lineRange)
             let trimmed = line.trimmingCharacters(in: .whitespaces)
@@ -153,28 +155,6 @@ struct MarkdownStyler {
             }
 
             if tableLines.contains(lineRange.location) {
-                let prevIn = lineRange.location > 0 && tableLines.contains(ns.lineRange(for: NSRange(location: lineRange.location - 1, length: 0)).location)
-                tableRow = prevIn ? tableRow + 1 : 0
-                let nextStart = NSMaxRange(enclosing)
-                let next = nextStart < ns.length && tableLines.contains(nextStart)
-                storage.addAttribute(.paneLine, value: LineDecoration(.table(header: tableRow == 0, first: !prevIn, last: !next)), range: enclosing)
-                let p = baseParagraph()
-                p.lineSpacing = 3
-                p.paragraphSpacing = 0
-                p.firstLineHeadIndent = 10
-                p.headIndent = 10
-                storage.addAttribute(.paragraphStyle, value: p, range: enclosing)
-                storage.addAttribute(.font, value: tableRow == 0 ? monoFont.with(.paneBold) : monoFont, range: lineRange)
-                // Pipes and the delimiter row recede.
-                let pipes = try! NSRegularExpression(pattern: #"\||(?<=\|)[ :\-]+(?=\|)"#)
-                let isDelimiter = trimmed.allSatisfy { "|-: ".contains($0) }
-                if isDelimiter {
-                    storage.addAttribute(.foregroundColor, value: PColor.paneTertiary.withAlphaComponent(0.5), range: lineRange)
-                } else {
-                    for m in pipes.matches(in: ns as String, range: lineRange) {
-                        storage.addAttribute(.foregroundColor, value: PColor.paneTertiary, range: m.range)
-                    }
-                }
                 sawTitle = true
                 return
             }
@@ -209,12 +189,125 @@ struct MarkdownStyler {
                 let prefix = NSRange(location: lineRange.location, length: len)
                 storage.addAttributes(hiddenKerned(to: 16, length: len), range: prefix)
                 storage.addAttribute(.paneLine, value: LineDecoration(.quote), range: enclosing)
-                storage.addAttribute(.foregroundColor, value: PColor.paneSecondary, range: NSRange(location: prefix.upperBound, length: lineRange.length - len))
+                let body = NSRange(location: prefix.upperBound, length: lineRange.length - len)
+                storage.enumerateAttribute(.link, in: body) { link, sub, _ in
+                    if link == nil { storage.addAttribute(.foregroundColor, value: PColor.paneSecondary, range: sub) }
+                }
                 let p = (storage.attribute(.paragraphStyle, at: lineRange.location, effectiveRange: nil) as? NSParagraphStyle)?.mutableCopy() as? NSMutableParagraphStyle ?? baseParagraph()
                 p.headIndent = 16
                 storage.addAttribute(.paragraphStyle, value: p, range: enclosing)
             }
         }
+
+        for table in walker.tables {
+            layoutTable(table, storage: storage, isActive: isActive)
+        }
+    }
+
+    /// Lays a GFM table out as a grid: pipes are hidden and each cell is
+    /// pushed to its column with kerning, so the source stays plain markdown.
+    private func layoutTable(_ range: NSRange, storage: NSTextStorage, isActive: (NSRange) -> Bool) {
+        let ns = storage.string as NSString
+        struct Row { var line: NSRange; var enclosing: NSRange; var cells: [NSRange]; var delimiter: Bool }
+        var rows: [Row] = []
+        ns.enumerateSubstrings(in: range, options: [.byParagraphs, .substringNotRequired]) { _, line, enclosing, _ in
+            let text = ns.substring(with: line)
+            let delimiter = text.contains("-") && text.allSatisfy { "|-: \t".contains($0) }
+            rows.append(Row(line: line, enclosing: enclosing, cells: Self.cells(in: line, ns: ns), delimiter: delimiter))
+        }
+        guard !rows.isEmpty else { return }
+        let caretInTable = isActive(range)
+        let pad: CGFloat = 12, gap: CGFloat = 22
+
+        // Header row is bold; everything uses the body face so it reads like text.
+        let headerFont = PFont.systemFont(ofSize: bodySize, weight: .semibold)
+        for (i, row) in rows.enumerated() where !row.delimiter {
+            for c in row.cells where c.length > 0 {
+                storage.enumerateAttribute(.font, in: c) { v, sub, _ in
+                    guard let f = v as? PFont, f.pointSize > 1 else { return }
+                    let base: PFont = f.fontDescriptor.symbolicTraits.contains(.paneMonoSpace) ? f : (i == 0 ? headerFont : bodyFont)
+                    let keep = f.fontDescriptor.symbolicTraits.intersection([.paneItalic, .paneBold])
+                    storage.addAttribute(.font, value: keep.isEmpty ? base : base.with(keep), range: sub)
+                }
+            }
+        }
+
+        let columnCount = rows.map(\.cells.count).max() ?? 0
+        var widths = [CGFloat](repeating: 24, count: columnCount)
+        for row in rows where !row.delimiter {
+            for (i, c) in row.cells.enumerated() where c.length > 0 {
+                widths[i] = max(widths[i], ceil(storage.attributedSubstring(from: c).size().width))
+            }
+        }
+        var starts: [CGFloat] = []
+        var x = pad
+        for w in widths { starts.append(x); x += w + gap }
+        let tableWidth = x - gap + pad
+
+        for (i, row) in rows.enumerated() {
+            let p = baseParagraph()
+            p.lineSpacing = 0
+            p.paragraphSpacing = 0
+            p.paragraphSpacingBefore = 0
+            p.minimumLineHeight = bodySize * 2.1
+            p.lineBreakMode = .byClipping
+            let showRaw = caretInTable && isActive(row.line)
+            if row.delimiter {
+                if caretInTable {
+                    storage.addAttributes([.foregroundColor: PColor.paneTertiary, .font: PFont.systemFont(ofSize: bodySize * 0.7)], range: row.line)
+                    p.minimumLineHeight = bodySize * 1.2
+                } else {
+                    storage.addAttributes(hidden, range: row.line)
+                    p.minimumLineHeight = 1
+                    p.maximumLineHeight = 1
+                }
+            } else if showRaw {
+                // The row being edited shows its pipes so you can see what you type.
+                for m in Self.pipeRegex.matches(in: ns as String, range: row.line) {
+                    storage.addAttribute(.foregroundColor, value: PColor.paneTertiary, range: m.range)
+                }
+                p.firstLineHeadIndent = pad
+            } else {
+                var cursor = row.line.location
+                var penX: CGFloat = 0
+                for (ci, c) in row.cells.enumerated() {
+                    let hiddenRange = NSRange(location: cursor, length: c.location - cursor)
+                    if hiddenRange.length > 0 {
+                        storage.addAttributes(hidden, range: hiddenRange)
+                        storage.addAttribute(.kern, value: starts[ci] - penX, range: NSRange(location: NSMaxRange(hiddenRange) - 1, length: 1))
+                    } else if ci == 0 {
+                        p.firstLineHeadIndent = starts[0]
+                    }
+                    penX = starts[ci] + (c.length > 0 ? ceil(storage.attributedSubstring(from: c).size().width) : 0)
+                    cursor = NSMaxRange(c)
+                }
+                if cursor < NSMaxRange(row.line) {
+                    storage.addAttributes(hidden, range: NSRange(location: cursor, length: NSMaxRange(row.line) - cursor))
+                }
+            }
+            let dividers = starts.dropFirst().map { $0 - gap / 2 }
+            let deco = LineDecoration(.table(header: i == 0, first: i == 0, last: i == rows.count - 1, columns: Array(dividers), width: tableWidth))
+            storage.addAttribute(.paneLine, value: deco, range: row.enclosing)
+            storage.addAttribute(.paragraphStyle, value: p, range: row.enclosing)
+        }
+    }
+
+    private static let pipeRegex = try! NSRegularExpression(pattern: #"(?<!\\)\|"#)
+
+    /// Content ranges of each cell, trimmed; an empty cell is a zero-length range at its end.
+    static func cells(in line: NSRange, ns: NSString) -> [NSRange] {
+        var bounds = pipeRegex.matches(in: ns as String, range: line).map(\.range.location)
+        let text = ns.substring(with: line).trimmingCharacters(in: .whitespaces)
+        if !text.hasPrefix("|") { bounds.insert(line.location - 1, at: 0) }
+        if !text.hasSuffix("|") || bounds.count < 2 { bounds.append(NSMaxRange(line)) }
+        var cells: [NSRange] = []
+        for i in 0..<(bounds.count - 1) {
+            var a = bounds[i] + 1, b = bounds[i + 1]
+            while a < b, [0x20, 0x09].contains(ns.character(at: a)) { a += 1 }
+            while b > a, [0x20, 0x09].contains(ns.character(at: b - 1)) { b -= 1 }
+            cells.append(a == b ? NSRange(location: bounds[i + 1], length: 0) : NSRange(location: a, length: b - a))
+        }
+        return cells
     }
 
     private var hidden: [NSAttributedString.Key: Any] {
@@ -312,6 +405,7 @@ private struct StyleWalker: MarkupWalker {
     let isActive: (NSRange) -> Bool
     var codeLineStarts = IndexSet()
     var tableLineStarts = IndexSet()
+    var tables: [NSRange] = []
 
     private var ns: NSString { storage.string as NSString }
 
@@ -423,6 +517,7 @@ private struct StyleWalker: MarkupWalker {
             starts.insert(line.location)
         }
         tableLineStarts.formUnion(starts)
+        tables.append(ns.lineRange(for: r))
         descendInto(table)
     }
 

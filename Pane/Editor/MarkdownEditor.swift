@@ -23,12 +23,16 @@ final class EditorCore {
     private var lastActiveLine: NSRange?
 
     /// Restyles if the text changed or the caret moved to another line.
-    func restyle(_ storage: NSTextStorage, selection: NSRange, force: Bool) {
+    /// `selection` is nil when you're not editing: then all syntax stays hidden.
+    func restyle(_ storage: NSTextStorage, selection: NSRange?, force: Bool) {
         let ns = storage.string as NSString
-        let line = ns.length == 0 ? NSRange(location: 0, length: 0) : ns.lineRange(for: NSRange(location: min(selection.location, ns.length), length: selection.length))
+        var line = NSRange(location: NSNotFound, length: 0)
+        if let selection, ns.length > 0 {
+            line = ns.lineRange(for: NSRange(location: min(selection.location, ns.length), length: min(selection.length, ns.length - min(selection.location, ns.length))))
+        }
         if !force, line == lastActiveLine { return }
         lastActiveLine = line
-        styler.apply(to: storage, active: selection)
+        styler.apply(to: storage, active: selection ?? NSRange(location: NSNotFound, length: 0))
     }
 
     /// Checkbox hit test: `point` is in text-container coordinates.
@@ -53,11 +57,12 @@ private struct PlatformEditor: UIViewRepresentable {
     let onChange: (String) -> Void
 
     func makeUIView(context: Context) -> PaneTextView {
-        let view = PaneTextView(usingTextLayoutManager: true)
+        let view = PaneTextView(frame: .zero)
         view.configure(text: initialText, header: header)
         view.core.onChange = onChange
         controller.target = view
         view.controller = controller
+        view.inputAccessoryView = FormatBarHost(controller: controller) { [weak view] in view?.resignFirstResponder() }
         if autofocus { DispatchQueue.main.async { view.becomeFirstResponder() } }
         return view
     }
@@ -86,7 +91,7 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
         linkTextAttributes = [:]
         typingAttributes = core.styler.typingAttributes
         self.text = text
-        core.restyle(textStorage, selection: selectedRange, force: true)
+        core.restyle(textStorage, selection: nil, force: true)
 
         headerLabel.font = .systemFont(ofSize: 13, weight: .medium)
         headerLabel.textColor = .tertiaryLabel
@@ -149,18 +154,27 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
 
     private func textDidChange() {
         guard markedTextRange == nil else { return }
-        core.restyle(textStorage, selection: selectedRange, force: true)
+        core.restyle(textStorage, selection: editingSelection, force: true)
         typingAttributes = core.styler.typingAttributes
         core.onChange(text)
     }
 
     func textViewDidChangeSelection(_ textView: UITextView) {
         guard markedTextRange == nil else { return }
-        core.restyle(textStorage, selection: selectedRange, force: false)
+        core.restyle(textStorage, selection: editingSelection, force: false)
     }
 
-    func textViewDidBeginEditing(_ textView: UITextView) { controller?.isEditing = true }
-    func textViewDidEndEditing(_ textView: UITextView) { controller?.isEditing = false }
+    private var editingSelection: NSRange? { isFirstResponder ? selectedRange : nil }
+
+    func textViewDidBeginEditing(_ textView: UITextView) {
+        controller?.isEditing = true
+        core.restyle(textStorage, selection: selectedRange, force: true)
+    }
+
+    func textViewDidEndEditing(_ textView: UITextView) {
+        controller?.isEditing = false
+        core.restyle(textStorage, selection: nil, force: true)
+    }
 
     func textView(_ textView: UITextView, primaryActionFor textItem: UITextItem, defaultAction: UIAction) -> UIAction? {
         if case .link(let url) = textItem.content { return UIAction { _ in UIApplication.shared.open(url) } }
@@ -226,7 +240,7 @@ private struct PlatformEditor: NSViewRepresentable {
         scroll.hasVerticalScroller = true
         scroll.autohidesScrollers = true
         scroll.scrollerStyle = .overlay
-        let view = PaneTextView(usingTextLayoutManager: true)
+        let view = PaneTextView(frame: .zero)
         view.configure(text: initialText, header: header)
         view.core.onChange = onChange
         view.controller = controller
@@ -271,7 +285,7 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
         textContainer?.lineFragmentPadding = 0
         typingAttributes = core.styler.typingAttributes
         string = text
-        core.restyle(textStorage!, selection: selectedRange(), force: true)
+        core.restyle(textStorage!, selection: nil, force: true)
 
         headerLabel.font = .systemFont(ofSize: 11, weight: .medium)
         headerLabel.textColor = .tertiaryLabelColor
@@ -331,18 +345,35 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
 
     func textDidChange(_ notification: Notification) {
         guard !hasMarkedText() else { return }
-        core.restyle(textStorage!, selection: selectedRange(), force: true)
+        core.restyle(textStorage!, selection: editingSelection, force: true)
         typingAttributes = core.styler.typingAttributes
         core.onChange(string)
     }
 
     func textViewDidChangeSelection(_ notification: Notification) {
         guard !hasMarkedText(), let storage = textStorage else { return }
-        core.restyle(storage, selection: selectedRange(), force: false)
+        core.restyle(storage, selection: editingSelection, force: false)
     }
 
-    func textDidBeginEditing(_ notification: Notification) { controller?.isEditing = true }
-    func textDidEndEditing(_ notification: Notification) { controller?.isEditing = false }
+    private var editingSelection: NSRange? { window?.firstResponder === self ? selectedRange() : nil }
+
+    override func becomeFirstResponder() -> Bool {
+        let ok = super.becomeFirstResponder()
+        if ok, let storage = textStorage {
+            controller?.isEditing = true
+            core.restyle(storage, selection: selectedRange(), force: true)
+        }
+        return ok
+    }
+
+    override func resignFirstResponder() -> Bool {
+        let ok = super.resignFirstResponder()
+        if ok, let storage = textStorage {
+            controller?.isEditing = false
+            core.restyle(storage, selection: nil, force: true)
+        }
+        return ok
+    }
 
     // MARK: Checkbox clicks
 

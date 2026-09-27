@@ -23,7 +23,10 @@ struct NoteDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         #endif
         .toolbar { toolbar }
-        .onDisappear(perform: discardIfEmpty)
+        #if os(iOS)
+        .toolbar(controller.isEditing ? .hidden : .automatic, for: .bottomBar)
+        .animation(.snappy(duration: 0.2), value: controller.isEditing)
+        #endif
     }
 
     private var trashBanner: some View {
@@ -44,16 +47,6 @@ struct NoteDetailView: View {
     @ToolbarContentBuilder
     private var toolbar: some ToolbarContent {
         #if os(iOS)
-        ToolbarItemGroup(placement: .keyboard) {
-            formatMenu
-            Button("Checklist", systemImage: "checklist", action: controller.checklist)
-            Button("Table", systemImage: "tablecells", action: controller.insertTable)
-            Button("Link", systemImage: "link", action: controller.insertLink)
-            Spacer()
-            Button("Done", systemImage: "checkmark") {
-                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-            }
-        }
         ToolbarItem(placement: .bottomBar) {
             Button("Checklist", systemImage: "checklist", action: controller.checklist)
         }
@@ -126,11 +119,5 @@ struct NoteDetailView: View {
             Label("More", systemImage: "ellipsis")
         }
         .accessibilityIdentifier("editor.more")
-    }
-
-    /// Leaving a blank note deletes it, like Apple Notes.
-    private func discardIfEmpty() {
-        guard note.deletedAt == nil, note.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-        context.purge(note)
     }
 }

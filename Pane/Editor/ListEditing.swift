@@ -17,6 +17,15 @@ enum ListEditing {
         guard selection.location <= ns.length else { return nil }
         let lineRange = ns.lineRange(for: NSRange(location: selection.location, length: 0))
         let line = ns.substring(with: lineRange).trimmingCharacters(in: .newlines)
+        if let quote = line.range(of: #"^[ \t]*>[ \t]?"#, options: .regularExpression) {
+            let prefixLen = (line[quote] as Substring).utf16.count
+            guard selection.location >= lineRange.location + prefixLen else { return nil }
+            if line[quote.upperBound...].trimmingCharacters(in: .whitespaces).isEmpty {
+                return TextEdit(range: NSRange(location: lineRange.location, length: (line as NSString).length), replacement: "", caret: lineRange.location)
+            }
+            let insert = "\n> "
+            return TextEdit(range: selection, replacement: insert, caret: selection.location + 3)
+        }
         guard let list = ListPrefix(line: line), selection.location >= lineRange.location + list.length else { return nil }
 
         let content = (line as NSString).substring(from: list.length)
@@ -93,6 +102,12 @@ enum ListEditing {
     /// Wraps the selection in a markdown delimiter, or unwraps it.
     static func wrap(in text: String, selection: NSRange, with token: String) -> TextEdit {
         let ns = text as NSString
+        if selection.length == 0, let word = wordRange(in: ns, at: selection.location) {
+            // No selection: act on the word under the caret.
+            var e = wrap(in: text, selection: word, with: token)
+            e.caret = selection.location + (e.replacement.count > word.length ? (token as NSString).length : -(token as NSString).length)
+            return e
+        }
         let t = (token as NSString).length
         let selected = ns.substring(with: selection)
         if selected.hasPrefix(token), selected.hasSuffix(token), selection.length >= t * 2 {
@@ -107,6 +122,19 @@ enum ListEditing {
         let wrapped = token + selected + token
         let caret = selection.length == 0 ? selection.location + t : selection.location + (wrapped as NSString).length
         return TextEdit(range: selection, replacement: wrapped, caret: caret)
+    }
+
+    static func wordRange(in ns: NSString, at location: Int) -> NSRange? {
+        let letters = CharacterSet.alphanumerics
+        func isWord(_ i: Int) -> Bool {
+            guard i >= 0, i < ns.length, let u = Unicode.Scalar(ns.character(at: i)) else { return false }
+            return letters.contains(u)
+        }
+        guard isWord(location) || isWord(location - 1) else { return nil }
+        var a = location, b = location
+        while isWord(a - 1) { a -= 1 }
+        while isWord(b) { b += 1 }
+        return NSRange(location: a, length: b - a)
     }
 
     /// Sets the caret line's heading level (0 = body text).

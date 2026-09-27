@@ -7,7 +7,7 @@ struct PaneApp: App {
 
     init() {
         let args = ProcessInfo.processInfo.arguments
-        let inMemory = args.contains("-uitest")
+        let inMemory = args.contains("-uitest") || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
         let config = ModelConfiguration("Pane", isStoredInMemoryOnly: inMemory)
         container = try! ModelContainer(for: Folder.self, Note.self, configurations: config)
         Seed.ensureLibrary(container.mainContext, demo: args.contains("-demo"))

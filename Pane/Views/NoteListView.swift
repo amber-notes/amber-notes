@@ -73,6 +73,9 @@ struct NoteListView: View {
                 }
             }
         }
+        #if os(iOS)
+        .listStyle(.insetGrouped)
+        #endif
         .animation(.snappy(duration: 0.28), value: filtered.map(\.id))
         .overlay {
             if filtered.isEmpty { emptyState }
@@ -91,8 +94,16 @@ struct NoteListView: View {
         } isTargeted: { t in
             withAnimation(.easeOut(duration: 0.15)) { fileDropTargeted = t }
         }
-        .searchable(text: $search, placement: .automatic, prompt: "Search")
+        #if os(iOS)
+        .searchable(text: $search, placement: .toolbar, prompt: "Search")
+        .searchToolbarBehavior(.minimize)
+        #else
+        .searchable(text: $search, placement: .toolbar, prompt: "Search")
+        #endif
         .navigationTitle(title)
+        #if os(iOS)
+        .navigationBarTitleDisplayMode(.large)
+        #endif
         #if os(macOS)
         .navigationSubtitle("\(scoped.count) notes")
         #endif
@@ -102,13 +113,16 @@ struct NoteListView: View {
         }
         .toolbar {
             #if os(iOS)
-            ToolbarItem(placement: .bottomBar) { Spacer() }
-            ToolbarItem(placement: .status) {
+            ToolbarSpacer(.flexible, placement: .bottomBar)
+            ToolbarItem(placement: .bottomBar) {
                 Text(scoped.count == 1 ? "1 Note" : "\(scoped.count) Notes")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
+                    .fixedSize()
             }
+            .sharedBackgroundVisibility(.hidden)
+            ToolbarSpacer(.flexible, placement: .bottomBar)
             ToolbarItem(placement: .bottomBar) {
                 Button("New Note", systemImage: "square.and.pencil", action: onNewNote)
                     .accessibilityIdentifier("list.newNote")
@@ -204,13 +218,17 @@ struct NoteRow: View {
             }
             .font(.subheadline)
             if showFolder, let f = note.folder {
-                Label(f.name, systemImage: "folder")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                    .labelStyle(.titleAndIcon)
+                HStack(spacing: 4) {
+                    Image(systemName: "folder")
+                        .imageScale(.small)
+                    Text(f.name)
+                }
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+                .padding(.top, 1)
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 1)
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("note.\(note.title)")
     }

@@ -80,11 +80,25 @@ final class DecoratedLayoutFragment: NSTextLayoutFragment {
         case .code(let first, let last):
             panel(ctx, o: o, h: h, first: first, last: last, fill: PColor.paneFill, radius: 10, stroke: nil)
 
-        case .table(let header, let first, let last):
-            panel(ctx, o: o, h: h, first: first, last: last, fill: header ? PColor.paneFill : PColor.paneFill.withAlphaComponent(0.4), radius: 8, stroke: nil)
-            if !last {
-                ctx.setFillColor(PColor.paneSeparator.withAlphaComponent(0.35).cgColor)
-                ctx.fill(CGRect(x: o.x + 8, y: o.y + h - 0.5, width: containerWidth - 16, height: 0.5))
+        case .table(let header, let first, let last, let columns, let width):
+            let w = min(width, containerWidth)
+            if h < 3 {
+                // Collapsed delimiter row: the header's bottom rule.
+                ctx.setFillColor(PColor.paneSeparator.withAlphaComponent(0.6).cgColor)
+                ctx.fill(CGRect(x: o.x, y: o.y, width: w, height: 1))
+                break
+            }
+            let rect = CGRect(x: o.x, y: o.y, width: w, height: h)
+            let path = roundedPath(rect, top: first ? 10 : 0, bottom: last ? 10 : 0)
+            ctx.addPath(path)
+            ctx.setFillColor((header ? PColor.paneFill : PColor.panePanel).cgColor)
+            ctx.fillPath()
+            ctx.setFillColor(PColor.paneSeparator.withAlphaComponent(0.35).cgColor)
+            for x in columns where x < w {
+                ctx.fill(CGRect(x: o.x + x, y: o.y + 6, width: 0.75, height: h - 12))
+            }
+            if !last && !header {
+                ctx.fill(CGRect(x: o.x + 10, y: o.y + h - 0.5, width: w - 20, height: 0.5))
             }
 
         case .rule:
@@ -98,8 +112,14 @@ final class DecoratedLayoutFragment: NSTextLayoutFragment {
         let top: CGFloat = first ? 2 : 0
         let bottom: CGFloat = last ? 2 : 0
         let rect = CGRect(x: o.x, y: o.y + top, width: containerWidth, height: h - top - bottom)
+        ctx.addPath(roundedPath(rect, top: first ? radius : 0, bottom: last ? radius : 0))
+        ctx.setFillColor(fill.cgColor)
+        ctx.fillPath()
+    }
+
+    /// A rectangle with independent top and bottom corner radii.
+    private func roundedPath(_ rect: CGRect, top rt: CGFloat, bottom rb: CGFloat) -> CGPath {
         let path = CGMutablePath()
-        let rt = first ? radius : 0, rb = last ? radius : 0
         path.move(to: CGPoint(x: rect.minX + rt, y: rect.minY))
         path.addLine(to: CGPoint(x: rect.maxX - rt, y: rect.minY))
         path.addArc(tangent1End: CGPoint(x: rect.maxX, y: rect.minY), tangent2End: CGPoint(x: rect.maxX, y: rect.minY + rt), radius: rt)
@@ -110,9 +130,7 @@ final class DecoratedLayoutFragment: NSTextLayoutFragment {
         path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + rt))
         path.addArc(tangent1End: CGPoint(x: rect.minX, y: rect.minY), tangent2End: CGPoint(x: rect.minX + rt, y: rect.minY), radius: rt)
         path.closeSubpath()
-        ctx.addPath(path)
-        ctx.setFillColor(fill.cgColor)
-        ctx.fillPath()
+        return path
     }
 }
 
