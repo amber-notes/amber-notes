@@ -2,6 +2,7 @@ import SwiftUI
 
 /// The live-preview markdown editor. One instance per open note.
 struct MarkdownEditor: View {
+    /// The note's current body. Changes from elsewhere (sync, an AI) flow into the editor.
     let initialText: String
     let header: String
     let controller: EditorController
@@ -70,6 +71,7 @@ private struct PlatformEditor: UIViewRepresentable {
     func updateUIView(_ view: PaneTextView, context: Context) {
         view.core.onChange = onChange
         view.setHeader(header)
+        view.syncExternal(initialText)
         if controller.target !== view { controller.target = view }
     }
 }
@@ -91,6 +93,7 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
         linkTextAttributes = [:]
         typingAttributes = core.styler.typingAttributes
         self.text = text
+        lastReported = text
         core.restyle(textStorage, selection: nil, force: true)
 
         headerLabel.font = .systemFont(ofSize: 13, weight: .medium)
@@ -165,7 +168,23 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
         guard markedTextRange == nil else { return }
         core.restyle(textStorage, selection: editingSelection, force: true)
         typingAttributes = core.styler.typingAttributes
+        lastReported = text
         core.onChange(text)
+    }
+
+    /// The last body we reported or received, to tell outside edits from our own.
+    var lastReported = ""
+
+    func syncExternal(_ new: String) {
+        guard new != lastReported else { return }
+        lastReported = new
+        guard new != text, markedTextRange == nil else { return }
+        let keep = selectedRange
+        let offset = contentOffset
+        text = new
+        selectedRange = NSRange(location: min(keep.location, (new as NSString).length), length: 0)
+        core.restyle(textStorage, selection: editingSelection, force: true)
+        setContentOffset(offset, animated: false)
     }
 
     func textViewDidChangeSelection(_ textView: UITextView) {
@@ -263,6 +282,7 @@ private struct PlatformEditor: NSViewRepresentable {
         guard let view = scroll.documentView as? PaneTextView else { return }
         view.core.onChange = onChange
         view.setHeader(header)
+        view.syncExternal(initialText)
         if controller.target !== view { controller.target = view }
     }
 }
@@ -294,6 +314,7 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
         textContainer?.lineFragmentPadding = 0
         typingAttributes = core.styler.typingAttributes
         string = text
+        lastReported = text
         core.restyle(textStorage!, selection: nil, force: true)
 
         headerLabel.font = .systemFont(ofSize: 11, weight: .medium)
@@ -365,7 +386,21 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
         guard !hasMarkedText() else { return }
         core.restyle(textStorage!, selection: editingSelection, force: true)
         typingAttributes = core.styler.typingAttributes
+        lastReported = string
         core.onChange(string)
+    }
+
+    /// The last body we reported or received, to tell outside edits from our own.
+    var lastReported = ""
+
+    func syncExternal(_ new: String) {
+        guard new != lastReported else { return }
+        lastReported = new
+        guard new != string, !hasMarkedText(), let storage = textStorage else { return }
+        let keep = selectedRange()
+        storage.replaceCharacters(in: NSRange(location: 0, length: storage.length), with: new)
+        setSelectedRange(NSRange(location: min(keep.location, (new as NSString).length), length: 0))
+        core.restyle(storage, selection: editingSelection, force: true)
     }
 
     func textViewDidChangeSelection(_ notification: Notification) {

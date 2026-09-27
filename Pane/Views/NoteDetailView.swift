@@ -12,7 +12,7 @@ struct NoteDetailView: View {
         MarkdownEditor(initialText: note.body, header: DateBucket.header(note.updatedAt), controller: controller, autofocus: autofocus) { text in
             guard text != note.body else { return }
             note.body = text
-            note.updatedAt = .now
+            note.touch()
         }
         .ignoresSafeArea(.container, edges: .bottom)
         .safeAreaInset(edge: .top, spacing: 0) {

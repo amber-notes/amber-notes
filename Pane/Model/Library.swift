@@ -70,27 +70,27 @@ extension ModelContext {
     func trash(_ note: Note) {
         note.trashedAt = .now
         note.isPinned = false
-        note.updatedAt = .now
+        note.touch()
         try? save()
     }
 
     func restore(_ note: Note) {
         note.trashedAt = nil
         if note.folder == nil || note.folder?.deletedAt != nil { note.folder = defaultFolder() }
-        note.updatedAt = .now
+        note.touch()
         try? save()
     }
 
     func purge(_ note: Note) {
         note.deletedAt = .now
         note.body = ""
-        note.updatedAt = .now
+        note.touch()
         try? save()
     }
 
     func togglePin(_ note: Note) {
         note.isPinned.toggle()
-        note.updatedAt = .now
+        note.touch()
         try? save()
     }
 
@@ -98,7 +98,7 @@ extension ModelContext {
         guard note.folder?.id != folder.id else { return }
         note.folder = folder
         note.trashedAt = nil
-        note.updatedAt = .now
+        note.touch()
         try? save()
     }
 
@@ -110,7 +110,7 @@ extension ModelContext {
             cursor = c.parent
         }
         folder.parent = parent
-        folder.updatedAt = .now
+        folder.touch()
         try? save()
     }
 
@@ -119,7 +119,7 @@ extension ModelContext {
         for child in folder.liveChildren { delete(child) }
         for note in folder.liveNotes { trash(note) }
         folder.deletedAt = .now
-        folder.updatedAt = .now
+        folder.touch()
         try? save()
     }
 

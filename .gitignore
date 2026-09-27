@@ -6,3 +6,4 @@ DerivedData/
 supabase/.temp/
 supabase/.branches/
 .shots/
+Config/Backend.local.xcconfig

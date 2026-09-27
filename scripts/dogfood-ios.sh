@@ -24,7 +24,7 @@ xcrun simctl io "$SIM" recordVideo --codec h264 --force "$OUT/video.mp4" &
 REC=$!
 sleep 1
 TEST_RUNNER_PANE_SHOTS="$OUT" xcodebuild -project Pane.xcodeproj -scheme Pane -destination "id=$SIM" -derivedDataPath build/dd \
-  CODE_SIGNING_ALLOWED=NO test-without-building -only-testing:PaneUITests/DogfoodTests 2>&1 \
+  CODE_SIGNING_ALLOWED=NO test-without-building -only-testing:"${ONLY:-PaneUITests/DogfoodTests}" 2>&1 \
   > "$OUT/test.log" || true; grep -E "error|failed|passed|t = " "$OUT/test.log" | tail -40
 kill -INT $REC; wait $REC 2>/dev/null || true
 echo "$OUT"

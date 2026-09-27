@@ -13,6 +13,9 @@ struct SidebarView: View {
     @State private var newFolderParent: Folder??
     @State private var nameDraft = ""
     @State private var dropTarget: UUID?
+    @State private var showSettings = false
+    @Environment(Backend.self) private var backend: Backend?
+    @Environment(SyncEngine.self) private var sync: SyncEngine?
 
     private var live: [Note] { notes.filter { $0.trashedAt == nil && $0.deletedAt == nil } }
     private var trashed: [Note] { notes.filter { $0.trashedAt != nil && $0.deletedAt == nil } }
@@ -62,6 +65,15 @@ struct SidebarView: View {
                     .accessibilityIdentifier("sidebar.newFolder")
             }
             #endif
+            if let backend, backend.client != nil {
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Settings", systemImage: "gearshape") { showSettings = true }
+                        .accessibilityIdentifier("sidebar.settings")
+                }
+            }
+        }
+        .sheet(isPresented: $showSettings) {
+            if let backend { SettingsView(backend: backend, sync: sync) }
         }
         .alert(renaming == nil ? "New Folder" : "Rename Folder", isPresented: Binding(
             get: { renaming != nil || newFolderParent != nil },
@@ -100,7 +112,7 @@ struct SidebarView: View {
         guard !name.isEmpty else { return }
         if let f = renaming {
             f.name = name
-            f.updatedAt = .now
+            f.touch()
             try? context.save()
         } else if let parent = newFolderParent {
             let f = context.createFolder(named: name, parent: parent)

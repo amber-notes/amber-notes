@@ -14,6 +14,10 @@ final class Folder {
     @Relationship(deleteRule: .nullify, inverse: \Note.folder) var notes: [Note] = []
     /// Soft delete, so sync can carry the deletion to other devices.
     var deletedAt: Date?
+    /// Changed here and not yet pushed.
+    var dirty: Bool = true
+    /// The server's version when we last synced; 0 = never uploaded.
+    var serverVersion: Int64 = 0
 
     init(name: String, parent: Folder? = nil, sortIndex: Double = 0) {
         id = UUID()
@@ -29,6 +33,13 @@ final class Folder {
     }
 
     var liveNotes: [Note] { notes.filter { $0.trashedAt == nil && $0.deletedAt == nil } }
+
+    /// Marks a local change for sync.
+    @MainActor func touch() {
+        updatedAt = .now
+        dirty = true
+        SyncSignal.changed()
+    }
 }
 
 /// A note. The body is the whole markdown source; the title is its first line.
@@ -44,6 +55,10 @@ final class Note {
     var trashedAt: Date?
     /// Gone for good; kept only as a tombstone for sync.
     var deletedAt: Date?
+    /// Changed here and not yet pushed.
+    var dirty: Bool = true
+    /// The server's version when we last synced; 0 = never uploaded.
+    var serverVersion: Int64 = 0
 
     init(body: String = "", folder: Folder? = nil) {
         id = UUID()
@@ -54,8 +69,22 @@ final class Note {
         self.folder = folder
     }
 
+    /// Marks a local change for sync.
+    @MainActor func touch() {
+        updatedAt = .now
+        dirty = true
+        SyncSignal.changed()
+    }
+
     var title: String { NoteText.title(of: body) }
     var preview: String { NoteText.preview(of: body) }
+}
+
+/// Lets model changes nudge the sync engine without depending on it.
+@MainActor
+enum SyncSignal {
+    static var onChange: (() -> Void)?
+    static func changed() { onChange?() }
 }
 
 /// Plain-text helpers shared by the list, search and the AI tools.

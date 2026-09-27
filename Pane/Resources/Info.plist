@@ -22,8 +22,17 @@
 	<string>1</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.productivity</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<key>NSAppleEventsUsageDescription</key>
 	<string>Pane reads the Apple Notes you choose to import. It never changes them.</string>
+	<key>PaneSupabaseKey</key>
+	<string>$(PANE_SUPABASE_KEY)</string>
+	<key>PaneSupabaseURL</key>
+	<string>$(PANE_SUPABASE_URL)</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

@@ -6,6 +6,9 @@ options:
     macOS: "26.0"
   createIntermediateGroups: true
 packages:
+  Supabase:
+    url: https://github.com/supabase/supabase-swift
+    from: 2.31.0
   Markdown:
     url: https://github.com/swiftlang/swift-markdown
     from: 0.6.0
@@ -24,8 +27,12 @@ targets:
     type: application
     supportedDestinations: [iOS, macOS]
     sources: [Pane]
+    configFiles:
+      Debug: Config/Backend.xcconfig
+      Release: Config/Backend.xcconfig
     dependencies:
       - package: Markdown
+      - package: Supabase
     info:
       path: Pane/Resources/Info.plist
       properties:
@@ -36,6 +43,10 @@ targets:
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
         UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
         LSApplicationCategoryType: public.app-category.productivity
+        PaneSupabaseURL: $(PANE_SUPABASE_URL)
+        PaneSupabaseKey: $(PANE_SUPABASE_KEY)
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
         NSAppleEventsUsageDescription: Pane reads the Apple Notes you choose to import. It never changes them.
         UTExportedTypeDeclarations:
           - UTTypeIdentifier: dev.emilwagman.pane.item
@@ -71,6 +82,8 @@ targets:
       base:
         GENERATE_INFOPLIST_FILE: YES
         TEST_TARGET_NAME: Pane
+        SWIFT_VERSION: "5.0"
+        SWIFT_STRICT_CONCURRENCY: minimal
 schemes:
   Pane:
     build:

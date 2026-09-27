@@ -1,0 +1,7 @@
+// Which Supabase project the app syncs with. This points at the local dev stack
+// (supabase start); the publishable key below is the standard local-only demo key.
+// For your own project, create Config/Backend.local.xcconfig (gitignored) with the
+// same two settings; it overrides these.
+PANE_SUPABASE_URL = http:/$()/127.0.0.1:56421
+PANE_SUPABASE_KEY = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
+#include? "Backend.local.xcconfig"
