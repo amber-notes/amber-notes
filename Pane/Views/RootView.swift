@@ -31,7 +31,10 @@ struct RootView: View {
             }
         }
         .environment(editor)
-        .onAppear(perform: restoreScope)
+        .onAppear {
+            restoreScope()
+            openFromLaunchArguments()
+        }
         .onChange(of: scope) { _, new in
             if let new, let data = try? JSONEncoder().encode(new) { lastScopeData = data }
         }
@@ -89,6 +92,15 @@ struct RootView: View {
         guard let id, id != selectedNote, let n = context.note(id), n.deletedAt == nil,
               n.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         context.purge(n)
+    }
+
+    /// Test runs can open a note by title: `-uitest -open "Lisbon"`.
+    private func openFromLaunchArguments() {
+        let args = ProcessInfo.processInfo.arguments
+        guard args.contains("-uitest"), let i = args.firstIndex(of: "-open"), i + 1 < args.count else { return }
+        let title = args[i + 1]
+        let all = (try? context.fetch(FetchDescriptor<Note>())) ?? []
+        if let n = all.first(where: { $0.title == title && $0.deletedAt == nil }) { selectedNote = n.id }
     }
 
     private func restoreScope() {

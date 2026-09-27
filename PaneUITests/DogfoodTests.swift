@@ -117,7 +117,7 @@ final class DogfoodTests: XCTestCase {
     func testCards() throws {
         pause(1)
         #if os(iOS)
-        app.staticTexts["Lisbon"].firstMatch.tap()
+        openNote("Lisbon")
         #endif
         let card = app.descendants(matching: .any).matching(identifier: "card.Hotel booking").firstMatch
         XCTAssertTrue(card.waitForExistence(timeout: 5), "the card should show as a view")
@@ -158,7 +158,7 @@ final class DogfoodTests: XCTestCase {
     func testFiles() throws {
         pause(1)
         #if os(iOS)
-        app.staticTexts["Trip documents"].firstMatch.tap()
+        openNote("Trip documents")
         #endif
         let pdf = app.descendants(matching: .any).matching(identifier: "file.Flight itinerary.pdf").firstMatch
         XCTAssertTrue(pdf.waitForExistence(timeout: 5), "the PDF shows as a file card")
@@ -179,6 +179,17 @@ final class DogfoodTests: XCTestCase {
         shot("image-and-link")
     }
 
+    /// Scrolls the list until the note is on screen, then opens it.
+    func openNote(_ title: String) {
+        let row = app.staticTexts[title].firstMatch
+        var tries = 0
+        while !(row.exists && row.isHittable) && tries < 6 {
+            app.swipeUp()
+            tries += 1
+        }
+        row.tap()
+    }
+
     func closePreview() {
         for label in ["Done", "Close", "Dismiss"] where app.buttons[label].firstMatch.exists {
             app.buttons[label].firstMatch.tap()
@@ -190,7 +201,7 @@ final class DogfoodTests: XCTestCase {
     func testTracker() throws {
         pause(1)
         #if os(iOS)
-        app.staticTexts["Evening tracker"].firstMatch.tap()
+        openNote("Evening tracker")
         #endif
         let card = app.descendants(matching: .any).matching(identifier: "table.card").firstMatch
         XCTAssertTrue(card.waitForExistence(timeout: 5), "typed tables show as a table card")

@@ -90,5 +90,29 @@ final class MacDogfoodTests: XCTestCase {
         pause(1)
         shot("recently-deleted")
     }
+
+    func testMacFeatures() throws {
+        XCTAssertTrue(app.windows.firstMatch.waitForExistence(timeout: 5))
+        pause(1)
+        for (title, name) in [("Lisbon", "cards"), ("Trip documents", "files"), ("Evening tracker", "tracker")] {
+            let r = row(title)
+            if !r.isHittable { app.scrollViews.firstMatch.scroll(byDeltaX: 0, deltaY: -400) }
+            r.click()
+            pause(2)
+            shot(name)
+        }
+        app.buttons["Expand Hotel booking"].firstMatch.exists ? app.buttons["Expand Hotel booking"].firstMatch.click() : ()
+        row("Lisbon").click()
+        pause(1)
+        let expand = app.buttons["Expand Hotel booking"].firstMatch
+        if expand.waitForExistence(timeout: 3) { expand.click() }
+        pause(1.5)
+        shot("card-open")
+        row("Evening tracker").click()
+        pause(1)
+        app.buttons["table.log"].firstMatch.click()
+        pause(1.5)
+        shot("tracker-form")
+    }
 }
 #endif
