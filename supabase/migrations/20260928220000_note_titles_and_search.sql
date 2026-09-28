@@ -38,22 +38,30 @@ alter table public.notes add column title text generated always as (public.note_
 create index notes_title on public.notes (user_id, lower(title)) where deleted_at is null;
 
 -- Search: a query's % and _ are text, not wildcards (searching "%" used to match every note).
+-- Ranking uses the full-text rank plus how well the title matches; snippets are built for
+-- the returned rows only (building them for every match was most of the time on big notes).
 create or replace function public.search_notes(q text, max_results int default 20)
 returns table (id uuid, title text, folder_id uuid, updated_at timestamptz, snippet text, rank real)
 language sql stable security invoker set search_path = '' as $$
   with p as (
     select websearch_to_tsquery('simple', q) as tsq,
            '%' || replace(replace(replace(q, '\', '\\'), '%', '\%'), '_', '\_') || '%' as pattern
+  ),
+  hits as (
+    select n.id, n.title, n.folder_id, n.updated_at, n.body,
+           (ts_rank(n.search, p.tsq) * 2
+             + extensions.word_similarity(q, n.title)
+             + case when n.title ilike p.pattern then 1 else 0 end)::real as rank
+    from public.notes n, p
+    where n.deleted_at is null and n.trashed_at is null
+      and (n.search @@ p.tsq or n.body ilike p.pattern)
+    order by rank desc, n.updated_at desc
+    limit least(greatest(max_results, 1), 100)
   )
-  select n.id, n.title, n.folder_id, n.updated_at,
-         ts_headline('simple', n.body, p.tsq,
+  select h.id, h.title, h.folder_id, h.updated_at,
+         ts_headline('simple', h.body, p.tsq,
            'MaxWords=24, MinWords=8, StartSel=«, StopSel=», MaxFragments=2') as snippet,
-         (ts_rank(n.search, p.tsq) * 2
-           + extensions.similarity(n.body, q)
-           + case when n.title ilike p.pattern then 1 else 0 end)::real as rank
-  from public.notes n, p
-  where n.deleted_at is null and n.trashed_at is null
-    and (n.search @@ p.tsq or n.body ilike p.pattern)
-  order by rank desc, n.updated_at desc
-  limit least(greatest(max_results, 1), 100)
+         h.rank
+  from hits h, p
+  order by h.rank desc, h.updated_at desc
 $$;

@@ -489,3 +489,33 @@ Deno.test({ name: "sign-up: emails off the allowlist are refused", ignore: !enab
   assertEquals(r.status, 403, JSON.stringify(body));
   assertStringIncludes(JSON.stringify(body), "private");
 });
+
+Deno.test({ name: "realtime: my changes reach my devices and nobody else's", ignore: !enabled || !api || !userJwt || !otherJwt, sanitizeOps: false, sanitizeResources: false }, async () => {
+  const { createClient } = await import("npm:@supabase/supabase-js@2");
+  const listen = async (jwt: string) => {
+    const c = createClient(api!, anon!, { global: { headers: { authorization: `Bearer ${jwt}` } }, auth: { persistSession: false } });
+    c.realtime.setAuth(jwt);
+    const seen: string[] = [];
+    await new Promise<void>((ok, fail) => {
+      c.channel("t-" + crypto.randomUUID()).on("postgres_changes", { event: "*", schema: "public", table: "notes" }, (p: { new: { id?: string } }) => { if (p.new?.id) seen.push(p.new.id); })
+        .subscribe((status: string) => status === "SUBSCRIBED" ? ok() : status === "CHANNEL_ERROR" || status === "TIMED_OUT" ? fail(new Error(status)) : undefined);
+    });
+    return { c, seen };
+  };
+  const me = await listen(userJwt!);
+  const them = await listen(otherJwt!);
+  // "SUBSCRIBED" arrives a moment before the database side of the subscription is live.
+  await new Promise((r) => setTimeout(r, 1500));
+  const id = (await call("create_note", { body: `Realtime ${crypto.randomUUID().slice(0, 6)}` })).data.created.id;
+  await call("append_to_note", { id, text: "more" });
+  for (let i = 0; i < 50 && !me.seen.includes(id); i++) await new Promise((r) => setTimeout(r, 100));
+  await new Promise((r) => setTimeout(r, 1000));
+  try {
+    assert(me.seen.includes(id), "my device hears about my change");
+    assert(!them.seen.includes(id), "another user never does");
+  } finally {
+    await me.c.removeAllChannels();
+    await them.c.removeAllChannels();
+    await call("delete_note", { id });
+  }
+});
