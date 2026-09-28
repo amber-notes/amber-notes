@@ -7,7 +7,16 @@ struct PaneApp: App {
     @State private var backend: Backend
     @State private var sync: SyncEngine
 
+    /// Unit tests run inside the app. There it stays out of the way: no window,
+    /// no Dock icon, never takes focus from whatever you're doing.
+    static var isUnitTestHost: Bool {
+        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil && !ProcessInfo.processInfo.arguments.contains("-uitest")
+    }
+
     init() {
+        #if os(macOS)
+        if Self.isUnitTestHost { NSApplication.shared.setActivationPolicy(.accessory) }
+        #endif
         let args = ProcessInfo.processInfo.arguments
         let inMemory = args.contains("-uitest") || args.contains("-synctest") || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
         if inMemory { UserDefaults.standard.removeObject(forKey: "lastScope") }
@@ -29,9 +38,13 @@ struct PaneApp: App {
 
     var body: some Scene {
         WindowGroup {
-            AppGate(backend: backend, sync: sync)
-                .tint(Color(PColor.paneAccent))
-                .preferredColorScheme(Self.testScheme)
+            if Self.isUnitTestHost {
+                UnitTestHostView()
+            } else {
+                AppGate(backend: backend, sync: sync)
+                    .tint(Color(PColor.paneAccent))
+                    .preferredColorScheme(Self.testScheme)
+            }
         }
         .modelContainer(container)
         #if os(macOS)
@@ -180,3 +193,25 @@ enum Seed {
     | ⌘⇧L | Checklist |
     """
 }
+
+/// What the app shows while hosting unit tests: nothing, and its window closes itself.
+private struct UnitTestHostView: View {
+    var body: some View {
+        Color.clear
+            .frame(width: 1, height: 1)
+            #if os(macOS)
+            .background(WindowCloser())
+            #endif
+    }
+}
+
+#if os(macOS)
+private struct WindowCloser: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        let v = NSView()
+        DispatchQueue.main.async { v.window?.orderOut(nil) }
+        return v
+    }
+    func updateNSView(_ nsView: NSView, context: Context) {}
+}
+#endif

@@ -115,4 +115,6 @@ protocol EditorTarget: AnyObject {
     func apply(_ edit: TextEdit)
     func focusEditor()
     func insertGrid()
+    /// The keyboard leaves a table, to the line above or below it.
+    func leaveGrid(_ index: Int, below: Bool)
 }

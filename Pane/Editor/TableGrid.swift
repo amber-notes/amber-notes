@@ -174,15 +174,27 @@ struct TableGridView: View {
     let commit: (GridTable) -> Void
     /// Which cell to focus when the table appears (a just-inserted table).
     var initialFocus: GridCell?
+    /// Set when the caret arrows into the table from the text.
+    var focusRequest: GridFocusRequest?
+    /// The whole table is selected in the text (Delete next to it selects it first).
+    var selected = false
+    /// Arrowing out of the top (false) or bottom (true) row hands the keyboard back to the text.
+    var exit: (Bool) -> Void = { _ in }
 
     @State private var draft: GridTable
     @State private var trend: TrendColumn?
     @FocusState private var focus: GridCell?
+    /// Set when the keyboard (not a click) moves between cells: the caret goes to
+    /// the end of the cell's text instead of selecting all of it.
+    @State private var caretToEnd = false
 
-    init(table: GridTable, initialFocus: GridCell?, commit: @escaping (GridTable) -> Void) {
+    init(table: GridTable, initialFocus: GridCell?, focusRequest: GridFocusRequest? = nil, selected: Bool = false, exit: @escaping (Bool) -> Void = { _ in }, commit: @escaping (GridTable) -> Void) {
+        self.selected = selected
         self.table = table
         self.commit = commit
         self.initialFocus = initialFocus
+        self.focusRequest = focusRequest
+        self.exit = exit
         _draft = State(initialValue: table)
     }
 
@@ -199,7 +211,33 @@ struct TableGridView: View {
             .scrollIndicators(total <= available + 0.5 ? .hidden : .automatic)
         }
         .onChange(of: table) { _, new in if new != draft { draft = new } }
-        .onAppear { if let initialFocus { DispatchQueue.main.async { focus = initialFocus } } }
+        .onAppear {
+            if let cell = initialFocus ?? focusRequest?.cell { DispatchQueue.main.async { go(cell) } }
+        }
+        .onChange(of: focusRequest) { _, r in if let r { DispatchQueue.main.async { go(r.cell) } } }
+        .onChange(of: focus) { _, new in
+            guard new != nil, caretToEnd else { return }
+            caretToEnd = false
+            #if os(macOS)
+            // The field selects everything as it takes focus; put a caret at the end instead.
+            // The field selects all once its editor is installed, a turn or two later.
+            func place(_ tries: Int) {
+                DispatchQueue.main.async {
+                    let windows = [NSApp.keyWindow].compactMap { $0 } + NSApp.windows
+                    guard let editor = windows.lazy.compactMap({ $0.firstResponder as? NSTextView }).first(where: { $0.isFieldEditor }) else {
+                        if tries > 0 { place(tries - 1) }
+                        return
+                    }
+                    let end = (editor.string as NSString).length
+                    if editor.selectedRange() != NSRange(location: end, length: 0) {
+                        editor.setSelectedRange(NSRange(location: end, length: 0))
+                    }
+                    if tries > 0 { place(tries - 1) }
+                }
+            }
+            place(3)
+            #endif
+        }
         .sheet(item: $trend) { TableChartSheet(table: draft.typed, column: $0.id) }
     }
 
@@ -247,6 +285,30 @@ struct TableGridView: View {
             }
         }
         .overlay(RoundedRectangle(cornerRadius: 2).strokeBorder(border, lineWidth: 1))
+        // Selected as a whole (about to be deleted): tinted like selected text.
+        .overlay {
+            if selected {
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(Color.accentColor.opacity(0.12))
+                    .strokeBorder(Color.accentColor, lineWidth: 2)
+                    .allowsHitTesting(false)
+            }
+        }
+        .onKeyPress(.upArrow) {
+            guard let f = focus else { return .ignored }
+            if f.row == 0 { exit(false) } else { go(GridCell(row: f.row - 1, column: f.column)) }
+            return .handled
+        }
+        .onKeyPress(.downArrow) {
+            guard let f = focus else { return .ignored }
+            if f.row == draft.rows.count - 1 { exit(true) } else { go(GridCell(row: f.row + 1, column: f.column)) }
+            return .handled
+        }
+        .onKeyPress(.escape) {
+            guard focus != nil else { return .ignored }
+            exit(true)
+            return .handled
+        }
         .onKeyPress(.tab, phases: .down) { press in
             guard let f = focus else { return .ignored }
             step(from: f, by: press.modifiers.contains(.shift) ? -1 : 1, cols: cols)
@@ -330,6 +392,12 @@ struct TableGridView: View {
         .menuIndicator(.hidden)
     }
 
+    /// Moves the keyboard to a cell, caret after its text, like Notes.
+    private func go(_ cell: GridCell) {
+        caretToEnd = true
+        focus = cell
+    }
+
     private var border: Color { Color.secondary.opacity(0.45) }
 
     private func cellBinding(_ r: Int, _ c: Int) -> Binding<String> {
@@ -361,7 +429,7 @@ struct TableGridView: View {
                 commit(draft)
             }
         } while !isText(flat / cols, flat % cols) && (0..<cols).contains(where: { isText(flat / cols, $0) })
-        focus = GridCell(row: flat / cols, column: flat % cols)
+        go(GridCell(row: flat / cols, column: flat % cols))
     }
 
     /// Return moves down a row, adding one at the bottom.
@@ -370,7 +438,7 @@ struct TableGridView: View {
             draft.rows.append(draft.blankRow)
             commit(draft)
         }
-        focus = GridCell(row: f.row + 1, column: f.column)
+        go(GridCell(row: f.row + 1, column: f.column))
     }
 
     private func handle(horizontal: Bool, @ViewBuilder menu: () -> some View) -> some View {

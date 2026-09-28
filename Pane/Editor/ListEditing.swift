@@ -227,3 +227,67 @@ enum ListEditing {
         return TextEdit(range: NSRange(location: lineRange.location, length: prefixLen), replacement: newPrefix, caret: max(lineRange.location, selection.location + delta))
     }
 }
+
+/// A table or embed: one block in the text that the caret goes around.
+struct EditorBlock: Equatable {
+    /// The block's lines, without the final newline.
+    var range: NSRange
+    /// The grid's index when the block is a table.
+    var grid: Int?
+
+    /// Positions inside the block's hidden markdown, both ends included.
+    func contains(_ location: Int) -> Bool { location >= range.location && location <= NSMaxRange(range) }
+
+    static func find(in text: String) -> [EditorBlock] {
+        let ns = text as NSString
+        var out = GridTable.find(in: text).map { g -> EditorBlock in
+            EditorBlock(range: g.range, grid: g.index)
+        }
+        let code = CodeRanges.find(in: text)
+        for e in LineEmbed.find(in: text) where !code.contains(where: { NSLocationInRange(e.range.location, $0) }) {
+            var line = ns.lineRange(for: e.range)
+            if NSMaxRange(line) > line.location, ns.substring(with: NSRange(location: NSMaxRange(line) - 1, length: 1)) == "\n" { line.length -= 1 }
+            out.append(EditorBlock(range: line, grid: nil))
+        }
+        return out.sorted { $0.range.location < $1.range.location }
+    }
+}
+
+/// What to do with a caret that landed where it can't be.
+enum CaretFix: Equatable {
+    case move(Int)
+    /// A table or embed ends the note: add a line after it for the caret.
+    case newLineAfter(Int)
+    /// A table or embed starts the note: add a line before it.
+    case newLineBefore(Int)
+    case enterGrid(Int, GridCell)
+}
+
+/// A request for a grid to take the keyboard, at a cell.
+struct GridFocusRequest: Equatable {
+    var grid: Int
+    var cell: GridCell
+    var token = UUID()
+}
+
+/// Fenced code blocks, which never hold tables or embeds.
+enum CodeRanges {
+    static func find(in text: String) -> [NSRange] {
+        let ns = text as NSString
+        var out: [NSRange] = []
+        var start: Int?
+        ns.enumerateSubstrings(in: NSRange(location: 0, length: ns.length), options: [.byParagraphs, .substringNotRequired]) { _, r, _, _ in
+            let t = ns.substring(with: r).trimmingCharacters(in: .whitespaces)
+            guard t.hasPrefix("```") || t.hasPrefix("~~~") else { return }
+            if let s = start { out.append(NSRange(location: s, length: NSMaxRange(r) - s)); start = nil } else { start = r.location }
+        }
+        return out
+    }
+}
+
+/// What Delete does next to a block.
+enum BlockDelete: Equatable {
+    /// Mark the table (it shows selected); a second press removes it.
+    case arm(Int)
+    case delete(TextEdit)
+}

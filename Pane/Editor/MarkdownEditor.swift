@@ -67,7 +67,10 @@ final class EditorCore {
             f.size.width += GridMetrics.handle
             let focusFirst = pendingGridFocus == g.index
             if focusFirst { pendingGridFocus = nil }
-            let view = TableGridView(table: g, initialFocus: focusFirst ? GridCell(row: 0, column: 0) : nil) { edited in
+            let request = gridFocus?.grid == g.index ? gridFocus : nil
+            let isSelected = armedGrid == g.index
+            let view = TableGridView(table: g, initialFocus: focusFirst ? GridCell(row: 0, column: 0) : nil,
+                                     focusRequest: request, selected: isSelected, exit: { [weak target] below in target?.leaveGrid(g.index, below: below) }) { edited in
                 // Find the table again in the current text: earlier edits may have moved it.
                 let now = GridTable.find(in: target.currentText)
                 guard edited.index < now.count else { return }
@@ -110,12 +113,74 @@ final class EditorCore {
     }
 
     private var lastSelection: NSRange?
+    private var blockCache: (text: String, blocks: [EditorBlock])?
 
-    /// Where the caret should go instead, if it landed inside a list marker.
-    func caretFix(_ text: String, _ selection: NSRange) -> Int? {
-        let fix = ListEditing.caretOutsideMarker(in: text, selection: selection, previous: lastSelection)
-        lastSelection = fix.map { NSRange(location: $0, length: 0) } ?? selection
-        return fix
+    /// Tables and embeds, each a whole block the caret goes around.
+    func blocks(in text: String) -> [EditorBlock] {
+        if let c = blockCache, c.text == text { return c.blocks }
+        let b = EditorBlock.find(in: text)
+        blockCache = (text, b)
+        return b
+    }
+
+    /// Where the caret should go instead, if it landed somewhere it can't be:
+    /// inside a list marker, or inside a table's or embed's hidden markdown.
+    /// `byKeyboard` is true when an arrow key moved it (then it enters a table
+    /// like Notes); a click next to a block puts the caret after it.
+    func caretFix(_ text: String, _ selection: NSRange, byKeyboard: Bool) -> CaretFix? {
+        defer { lastSelection = selection }
+        guard selection.length == 0 else { return nil }
+        if let b = blocks(in: text).first(where: { $0.contains(selection.location) }) {
+            let fromBelow = (lastSelection?.location ?? -1) > NSMaxRange(b.range)
+            let fromAbove = lastSelection.map { $0.location < b.range.location } ?? false
+            if byKeyboard, let g = b.grid, fromAbove || fromBelow {
+                let rows = GridTable.find(in: text).first { $0.index == g }?.rows.count ?? 1
+                return .enterGrid(g, GridCell(row: fromBelow ? rows - 1 : 0, column: 0))
+            }
+            // Clicks land after the block; the keyboard keeps its direction.
+            if byKeyboard, fromBelow { return b.range.location > 0 ? .move(b.range.location - 1) : .newLineBefore(b.range.location) }
+            let after = NSMaxRange(b.range)
+            return after < (text as NSString).length ? .move(after + 1) : .newLineAfter(after)
+        }
+        return ListEditing.caretOutsideMarker(in: text, selection: selection, previous: lastSelection).map { .move($0) }
+    }
+
+    /// A grid cell the keyboard should move into (set when arrowing into a table).
+    var gridFocus: GridFocusRequest?
+
+    /// Delete next to a table or embed, like Notes: an embed goes at once; a table
+    /// is selected first, and a second press removes it. Never merges a line into
+    /// a block's markdown.
+    func deleteNearBlock(_ text: String, _ sel: NSRange, forward: Bool) -> BlockDelete? {
+        let ns = text as NSString
+        let all = blocks(in: text)
+        func removal(_ b: EditorBlock) -> TextEdit {
+            var r = b.range
+            if NSMaxRange(r) < ns.length { r.length += 1 } else if r.location > 0 { r.location -= 1; r.length += 1 }
+            return TextEdit(range: r, replacement: "", caret: min(r.location, ns.length - r.length))
+        }
+        guard sel.length == 0 else { return nil }
+        let hit = forward ? all.first { $0.range.location > 0 && $0.range.location - 1 == sel.location }
+                          : all.first { NSMaxRange($0.range) + 1 == sel.location }
+        guard let b = hit else { armedGrid = nil; return nil }
+        guard let g = b.grid else { return .delete(removal(b)) }
+        if armedGrid == g, armedAt == sel { armedGrid = nil; return .delete(removal(b)) }
+        armedGrid = g
+        armedAt = sel
+        return .arm(g)
+    }
+
+    /// A table marked for deletion by one press of Delete; the next press removes it.
+    private(set) var armedGrid: Int?
+    private var armedAt: NSRange?
+
+    /// Any caret move or edit clears the mark. Returns true if there was one.
+    @discardableResult
+    func disarm(unless sel: NSRange) -> Bool {
+        guard armedGrid != nil, sel != armedAt else { return false }
+        armedGrid = nil
+        armedAt = nil
+        return true
     }
 
     /// Checkbox hit test: `point` is in text-container coordinates.
@@ -335,6 +400,18 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
         if text == "\n", let edit = ListEditing.returnKey(in: self.text, selection: range) {
             apply(edit); return false
         }
+        if text.isEmpty {
+            // Backspace deletes the character before the caret; a selection deletes itself.
+            let sel = selectedRange
+            let forward = sel.length == 0 && range.location == sel.location
+            if let d = core.deleteNearBlock(self.text, sel, forward: forward) {
+                switch d {
+                case .arm: layoutCards()
+                case .delete(let e): apply(e)
+                }
+                return false
+            }
+        }
         if text.isEmpty, range.length == 1, selectedRange.length == 0,
            let edit = ListEditing.backspace(in: self.text, selection: NSRange(location: range.location + 1, length: 0)) {
             apply(edit); return false
@@ -369,8 +446,9 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
 
     func textViewDidChangeSelection(_ textView: UITextView) {
         guard markedTextRange == nil else { return }
-        if isFirstResponder, let fix = core.caretFix(text, selectedRange) {
-            selectedRange = NSRange(location: fix, length: 0)
+        if core.disarm(unless: selectedRange) { layoutCards() }
+        if isFirstResponder, let fix = core.caretFix(text, selectedRange, byKeyboard: false) {
+            resolve(fix)
             return
         }
         core.restyle(textStorage, selection: editingSelection, force: false)
@@ -391,6 +469,37 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
     func textView(_ textView: UITextView, primaryActionFor textItem: UITextItem, defaultAction: UIAction) -> UIAction? {
         if case .link(let url) = textItem.content { return UIAction { _ in UIApplication.shared.open(url) } }
         return defaultAction
+    }
+
+    // MARK: Blocks
+
+    private func resolve(_ fix: CaretFix) {
+        switch fix {
+        case .move(let at):
+            selectedRange = NSRange(location: at, length: 0)
+        case .newLineAfter(let at), .newLineBefore(let at):
+            let after = { if case .newLineAfter = fix { true } else { false } }()
+            DispatchQueue.main.async { [weak self] in
+                self?.apply(TextEdit(range: NSRange(location: at, length: 0), replacement: "\n", caret: after ? at + 1 : at))
+            }
+        case .enterGrid(let grid, let cell):
+            core.gridFocus = GridFocusRequest(grid: grid, cell: cell)
+            layoutCards()
+        }
+    }
+
+    func leaveGrid(_ index: Int, below: Bool) {
+        core.gridFocus = nil
+        guard let g = GridTable.find(in: text).first(where: { $0.index == index }) else { return }
+        becomeFirstResponder()
+        let len = (text as NSString).length
+        if below {
+            if NSMaxRange(g.range) < len { selectedRange = NSRange(location: NSMaxRange(g.range) + 1, length: 0) }
+            else { apply(TextEdit(range: NSRange(location: len, length: 0), replacement: "\n", caret: len + 1)) }
+        } else {
+            if g.range.location > 0 { selectedRange = NSRange(location: g.range.location - 1, length: 0) }
+            else { apply(TextEdit(range: NSRange(location: 0, length: 0), replacement: "\n", caret: 0)) }
+        }
     }
 
     // MARK: Checkbox taps
@@ -666,8 +775,16 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
         switch selector {
         case #selector(insertNewline(_:)):
             if let e = ListEditing.returnKey(in: string, selection: selectedRange()) { apply(e); return true }
-        case #selector(deleteBackward(_:)):
-            if let e = ListEditing.backspace(in: string, selection: selectedRange()) { apply(e); return true }
+        case #selector(deleteBackward(_:)), #selector(deleteForward(_:)):
+            let forward = selector == #selector(deleteForward(_:))
+            if let d = core.deleteNearBlock(string, selectedRange(), forward: forward) {
+                switch d {
+                case .arm: layoutCards()
+                case .delete(let e): apply(e)
+                }
+                return true
+            }
+            if !forward, let e = ListEditing.backspace(in: string, selection: selectedRange()) { apply(e); return true }
         case #selector(insertTab(_:)):
             if let e = ListEditing.indent(in: string, selection: selectedRange(), outdent: false) { apply(e); return true }
         case #selector(insertBacktab(_:)):
@@ -700,8 +817,10 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
 
     func textViewDidChangeSelection(_ notification: Notification) {
         guard !hasMarkedText(), let storage = textStorage else { return }
-        if window?.firstResponder === self, let fix = core.caretFix(string, selectedRange()) {
-            setSelectedRange(NSRange(location: fix, length: 0))
+        if core.disarm(unless: selectedRange()) { layoutCards() }
+        if window?.firstResponder === self,
+           let fix = core.caretFix(string, selectedRange(), byKeyboard: inKeyDown) {
+            resolve(fix)
             return
         }
         core.restyle(storage, selection: editingSelection, force: false)
@@ -725,6 +844,48 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
             core.restyle(storage, selection: nil, force: true)
         }
         return ok
+    }
+
+    // MARK: Blocks
+
+    /// True while a key press is being handled, so caret moves know they came from the keyboard.
+    private var inKeyDown = false
+
+    override func keyDown(with event: NSEvent) {
+        inKeyDown = true
+        defer { inKeyDown = false }
+        super.keyDown(with: event)
+    }
+
+    private func resolve(_ fix: CaretFix) {
+        switch fix {
+        case .move(let at):
+            setSelectedRange(NSRange(location: at, length: 0))
+        case .newLineAfter(let at), .newLineBefore(let at):
+            let after = { if case .newLineAfter = fix { true } else { false } }()
+            // Not while AppKit is still delivering this selection change.
+            DispatchQueue.main.async { [weak self] in
+                self?.apply(TextEdit(range: NSRange(location: at, length: 0), replacement: "\n", caret: after ? at + 1 : at))
+            }
+        case .enterGrid(let grid, let cell):
+            core.gridFocus = GridFocusRequest(grid: grid, cell: cell)
+            layoutCards()
+        }
+    }
+
+    /// The keyboard leaves a table: the caret goes to the line above or below it.
+    func leaveGrid(_ index: Int, below: Bool) {
+        core.gridFocus = nil
+        guard let g = GridTable.find(in: string).first(where: { $0.index == index }) else { return }
+        window?.makeFirstResponder(self)
+        let len = (string as NSString).length
+        if below {
+            if NSMaxRange(g.range) < len { setSelectedRange(NSRange(location: NSMaxRange(g.range) + 1, length: 0)) }
+            else { apply(TextEdit(range: NSRange(location: len, length: 0), replacement: "\n", caret: len + 1)) }
+        } else {
+            if g.range.location > 0 { setSelectedRange(NSRange(location: g.range.location - 1, length: 0)) }
+            else { apply(TextEdit(range: NSRange(location: 0, length: 0), replacement: "\n", caret: 0)) }
+        }
     }
 
     // MARK: Checkbox clicks

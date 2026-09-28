@@ -216,21 +216,15 @@ struct MarkdownStyler {
         return StyledBlocks(embeds: embeds, grids: grids)
     }
 
-    /// Plain tables become an editable grid (a live view over a reserved line), like Notes.
-    /// If the caret lands inside the markdown itself, the aligned source shows instead.
+    /// Tables become an editable grid (a live view over a reserved line), like Notes.
+    /// The caret never enters a table's markdown (see EditorCore.caretFix), so the
+    /// grid always shows, even when a selection runs across it.
     private func styleGrids(_ storage: NSTextStorage, isActive: (NSRange) -> Bool) -> [GridTable] {
         let ns = storage.string as NSString
         var shown: [GridTable] = []
         for g in GridTable.find(in: storage.string) {
             let lines = ns.lineRange(for: g.range)
             let first = ns.lineRange(for: NSRange(location: g.range.location, length: 0))
-            if isActive(g.range) {
-                // The source shows; a typed table's comment line stays quiet.
-                if g.types != nil {
-                    storage.addAttributes([.foregroundColor: PColor.paneTertiary, .font: monoFont], range: first)
-                }
-                continue
-            }
             storage.removeAttribute(.paneLine, range: lines)
             storage.addAttributes(hidden, range: g.range)
             storage.removeAttribute(.kern, range: g.range)
@@ -279,10 +273,6 @@ struct MarkdownStyler {
         for e in LineEmbed.find(in: storage.string) {
             if skip.contains(where: { NSIntersectionRange($0, e.range).length > 0 }) { continue }
             let line = ns.lineRange(for: e.range)
-            if isActive(e.range) {
-                storage.addAttribute(.foregroundColor, value: PColor.paneSecondary, range: e.range)
-                continue
-            }
             storage.removeAttribute(.paneLine, range: line)
             storage.addAttributes(hidden, range: e.range)
             storage.removeAttribute(.link, range: e.range)
