@@ -91,6 +91,7 @@ struct LineEmbed: Equatable {
         case file(UUID, name: String)
         case image(UUID, name: String)
         case link(URL)
+        case note(UUID, name: String)
     }
     var kind: Kind
     /// The line, without its newline.
@@ -99,6 +100,7 @@ struct LineEmbed: Equatable {
 
     private static let fileLine = try! NSRegularExpression(pattern: #"^[ \t]*(!?)\[([^\]]*)\]\(pane-file:([0-9a-fA-F-]{36})\)[ \t]*$"#)
     private static let linkLine = try! NSRegularExpression(pattern: #"^[ \t]*<?(https?://[^\s<>]+)>?[ \t]*$"#)
+    private static let noteLine = try! NSRegularExpression(pattern: #"^[ \t]*\[([^\]]*)\]\(pane-note:([0-9a-fA-F-]{36})\)[ \t]*$"#)
 
     static func find(in text: String) -> [LineEmbed] {
         let ns = text as NSString
@@ -108,6 +110,8 @@ struct LineEmbed: Equatable {
                 let name = ns.substring(with: m.range(at: 2))
                 let image = m.range(at: 1).length > 0
                 out.append(LineEmbed(kind: image ? .image(id, name: name) : .file(id, name: name), range: r, index: out.count))
+            } else if let m = noteLine.firstMatch(in: text, range: r), let id = UUID(uuidString: ns.substring(with: m.range(at: 2))) {
+                out.append(LineEmbed(kind: .note(id, name: ns.substring(with: m.range(at: 1))), range: r, index: out.count))
             } else if let m = linkLine.firstMatch(in: text, range: r), let url = URL(string: ns.substring(with: m.range(at: 1))) {
                 out.append(LineEmbed(kind: .link(url), range: r, index: out.count))
             }
@@ -120,6 +124,7 @@ struct LineEmbed: Equatable {
         case .file: 60
         case .image: 220
         case .link: 76
+        case .note: 58
         }
     }
 
@@ -127,6 +132,7 @@ struct LineEmbed: Equatable {
         switch kind {
         case .file(let id, _), .image(let id, _): "f\(id)"
         case .link(let u): "l\(index)\(u.absoluteString)"
+        case .note(let id, _): "n\(id)"
         }
     }
 }

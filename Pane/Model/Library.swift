@@ -67,7 +67,30 @@ extension ModelContext {
         return f
     }
 
+    /// A note's sub-notes (those that name it as their parent).
+    func subNotes(of note: Note) -> [Note] {
+        let id = note.id
+        return ((try? fetch(FetchDescriptor<Note>(predicate: #Predicate { $0.parentID == id }))) ?? []).filter { $0.deletedAt == nil }
+    }
+
+    /// Creates a sub-note of `parent`, in the same folder.
+    func createSubNote(of parent: Note, body: String = "") -> Note {
+        let n = Note(body: body, folder: parent.folder)
+        n.parentID = parent.id
+        insert(n)
+        try? save()
+        return n
+    }
+
+    /// True when a sub-note is still linked from its parent, so it lives there, not in the list.
+    func isNested(_ note: Note) -> Bool {
+        guard let pid = note.parentID, let parent = self.note(pid), parent.deletedAt == nil else { return false }
+        return parent.body.contains("pane-note:\(note.id.uuidString.lowercased())")
+    }
+
     func trash(_ note: Note) {
+        // A parent takes its sub-notes with it.
+        for child in subNotes(of: note) where child.trashedAt == nil { trash(child) }
         note.trashedAt = .now
         note.isPinned = false
         note.touch()
@@ -75,6 +98,7 @@ extension ModelContext {
     }
 
     func restore(_ note: Note) {
+        for child in subNotes(of: note) where child.trashedAt != nil { restore(child) }
         note.trashedAt = nil
         if note.folder == nil || note.folder?.deletedAt != nil { note.folder = defaultFolder() }
         note.touch()

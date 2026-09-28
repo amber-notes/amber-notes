@@ -24,7 +24,10 @@ struct RootView: View {
                 .navigationSplitViewColumnWidth(min: 260, ideal: 310, max: 420)
         } detail: {
             if let id = selectedNote, let note = context.note(id), note.deletedAt == nil {
-                NoteDetailView(note: note, controller: editor, autofocus: justCreated == id, onNewNote: newNote)
+                NoteDetailView(note: note, controller: editor, autofocus: justCreated == id, onNewNote: newNote) { target, edit in
+                    if edit { justCreated = target }
+                    selectedNote = target
+                }
                     .id(id)
             } else {
                 EmptyDetailView()
@@ -229,7 +232,7 @@ struct PaneCommands: Commands {
             Button("Checklist") { editor?.checklist() }.keyboardShortcut("l", modifiers: [.command, .shift])
             Button("Bulleted List") { editor?.bulletList() }.keyboardShortcut("7", modifiers: [.command, .shift])
             Button("Table") { editor?.insertTable() }.keyboardShortcut("t", modifiers: [.command, .option])
-            Button("Card") { editor?.newCard() }.keyboardShortcut("c", modifiers: [.command, .shift])
+            Button("Sub-note") { editor?.newSubNote() }.keyboardShortcut("n", modifiers: [.command, .shift])
             Button("Link") { editor?.insertLink() }.keyboardShortcut("k")
         }
     }

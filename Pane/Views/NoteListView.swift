@@ -18,6 +18,8 @@ struct NoteListView: View {
     private var scoped: [Note] {
         notes.filter { n in
             guard n.deletedAt == nil else { return false }
+            // Sub-notes live inside their parent, not in the list.
+            if n.parentID != nil, context.isNested(n) { return false }
             switch scope {
             case .all: return n.trashedAt == nil
             case .trash: return n.trashedAt != nil

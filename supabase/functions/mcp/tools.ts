@@ -158,6 +158,12 @@ export const tools: Tool[] = [
     annotations: write,
   },
   {
+    name: "create_sub_note", title: "Create a sub-note",
+    description: "Creates a note that lives inside another note: it's linked from the parent (a [Title](pane-note:id) line added at the end, or under a heading) and doesn't show in the main list.",
+    inputSchema: { type: "object", properties: { ...noteRef, body: str("Markdown for the sub-note. First line is its title."), under_heading: str("Put the link under this heading in the parent.") }, required: ["body"] },
+    annotations: write,
+  },
+  {
     name: "list_files", title: "List files",
     description: "Files kept in Amber Notes (PDFs, spreadsheets, images…), newest first, with the notes that embed them.",
     inputSchema: { type: "object", properties: { query: str("Filter by filename."), limit: int("Default 30.") } },
@@ -226,7 +232,7 @@ export async function runTool(name: string, args: Args, ctx: ToolContext): Promi
 
 // MARK: Helpers
 
-type NoteRow = { id: string; body: string; title: string; folder_id: string | null; is_pinned: boolean; created_at: Date; updated_at: Date; trashed_at: Date | null; version: string };
+type NoteRow = { id: string; body: string; title: string; folder_id: string | null; parent_id: string | null; is_pinned: boolean; created_at: Date; updated_at: Date; trashed_at: Date | null; version: string };
 type FolderRow = { id: string; name: string; parent_id: string | null; sort_index: number };
 
 async function folders(tx: Tx): Promise<FolderRow[]> {
@@ -254,21 +260,25 @@ async function findFolder(tx: Tx, ref: string, create: boolean): Promise<FolderR
   if (parts.length === 1) {
     const hits = all.filter((f) => f.name.toLowerCase() === parts[0].toLowerCase());
     if (hits.length === 1) return hits[0];
+    // Same name at the top level (e.g. two "Notes" after a merge): take the first.
+    const top = hits.filter((f) => f.parent_id === null);
+    if (top.length >= 1) return top[0];
     if (hits.length > 1) throw new ToolError(`"${ref}" matches several folders: ${hits.map((h) => pathOf(h.id, all)).join(", ")}. Use the full path.`);
   }
-  let parent: FolderRow | null = null;
+  let parent = null as FolderRow | null;
   for (const part of parts) {
-    let next = all.find((f) => f.parent_id === (parent?.id ?? null) && f.name.toLowerCase() === part.toLowerCase());
+    const parentId: string | null = parent?.id ?? null;
+    let next: FolderRow | undefined = all.find((f) => f.parent_id === parentId && f.name.toLowerCase() === part.toLowerCase());
     if (!next) {
       if (!create) throw new ToolError(`No folder "${ref}". Folders: ${all.map((f) => pathOf(f.id, all)).join(", ") || "none"}.`);
-      const [row] = await tx<FolderRow[]>`
+      const rows: FolderRow[] = await tx<FolderRow[]>`
         insert into public.folders (id, name, parent_id, sort_index)
-        values (${crypto.randomUUID()}, ${part}, ${parent?.id ?? null}, ${Date.now() / 1000})
+        values (${crypto.randomUUID()}, ${part}, ${parentId}, ${Date.now() / 1000})
         returning id, name, parent_id, sort_index`;
-      all.push(row);
-      next = row;
+      all.push(rows[0]);
+      next = rows[0];
     }
-    parent = next;
+    parent = next ?? null;
   }
   return parent!;
 }
@@ -368,10 +378,14 @@ const handlers: Record<string, (tx: Tx, a: Args, ctx: ToolContext) => Promise<un
     const all = await folders(tx);
     const o = outline(n.body);
     const ranged = a.start_line !== undefined || a.end_line !== undefined;
+    const subs = await tx<{ id: string; title: string }[]>`select id, title from public.notes where parent_id = ${n.id} and deleted_at is null and trashed_at is null`;
+    const parentRow = n.parent_id ? (await tx<{ id: string; title: string }[]>`select id, title from public.notes where id = ${n.parent_id}`)[0] : undefined;
     return {
       id: n.id, title: n.title, folder: pathOf(n.folder_id, all), pinned: n.is_pinned,
       created: iso(n.created_at), updated: iso(n.updated_at), version: Number(n.version),
       in_recently_deleted: n.trashed_at !== null,
+      parent: parentRow ?? null,
+      sub_notes: subs,
       outline: o,
       ...(ranged ? { lines: `${a.start_line ?? 1}-${a.end_line ?? o.lines}` } : {}),
       markdown: sliceLines(n.body, a.start_line as number | undefined, a.end_line as number | undefined, a.line_numbers === true),
@@ -502,6 +516,21 @@ const handlers: Record<string, (tx: Tx, a: Args, ctx: ToolContext) => Promise<un
     if (!rows.length) throw new ToolError("No such revision for this note. Use note_history.");
     await tx`select set_config('pane.source', 'restore', true)`;
     return { restored: await save(tx, n, rows[0].body) };
+  },
+
+  async create_sub_note(tx, a) {
+    const parent = await findNote(tx, a);
+    const body = String(a.body ?? "");
+    if (!body.trim()) throw new ToolError("body is empty.");
+    const [child] = await tx<NoteRow[]>`
+      insert into public.notes (id, body, folder_id, parent_id)
+      values (${crypto.randomUUID()}, ${body}, ${parent.folder_id}, ${parent.id})
+      returning *`;
+    const link = `[${titleOf(body).replace(/[\[\]]/g, "")}](pane-note:${child.id})`;
+    let updated: string;
+    try { updated = appendText(parent.body, link, typeof a.under_heading === "string" ? a.under_heading : undefined); } catch (e) { throw new ToolError((e as Error).message); }
+    await save(tx, parent, updated);
+    return { created: { id: child.id, title: titleOf(body), parent: { id: parent.id, title: parent.title } } };
   },
 
   async list_files(tx, a) {

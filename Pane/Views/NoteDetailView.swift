@@ -11,6 +11,8 @@ struct NoteDetailView: View {
     let controller: EditorController
     var autofocus = false
     let onNewNote: () -> Void
+    /// Opens another note; `edit` puts the keyboard in it.
+    var onOpenNote: (UUID, Bool) -> Void = { _, _ in }
 
     var body: some View {
         chrome(editor)
@@ -29,7 +31,10 @@ struct NoteDetailView: View {
             .ignoresSafeArea(.container, edges: .bottom)
             .background(Color.notePage.ignoresSafeArea())
             .safeAreaInset(edge: .top, spacing: 0) {
-                if note.trashedAt != nil { trashBanner }
+                VStack(spacing: 0) {
+                    if let parent = parentNote { parentLink(parent) }
+                    if note.trashedAt != nil { trashBanner }
+                }
             }
             .navigationTitle("")
             #if os(iOS)
@@ -42,8 +47,53 @@ struct NoteDetailView: View {
 
     private func save(_ text: String) {
         guard text != note.body else { return }
+        let oldTitle = note.title
         note.body = text
         note.touch()
+        if note.title != oldTitle { relabelLinkInParent() }
+    }
+
+    private var parentNote: Note? {
+        guard let pid = note.parentID, let p = context.note(pid), p.deletedAt == nil else { return nil }
+        return p
+    }
+
+    /// "← Parent": sub-notes lead back to the note that holds them.
+    private func parentLink(_ parent: Note) -> some View {
+        HStack {
+            Button { onOpenNote(parent.id, false) } label: {
+                Label(parent.title, systemImage: "chevron.left")
+                    .font(.system(size: 12, weight: .medium))
+                    .lineLimit(1)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.tint)
+            .accessibilityIdentifier("subnote.parent")
+            Spacer()
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 8)
+    }
+
+    /// Keeps the parent's link text in step with this sub-note's title, for readers and AI tools.
+    private func relabelLinkInParent() {
+        guard let parent = parentNote else { return }
+        let id = note.id.uuidString.lowercased()
+        let label = note.title.replacingOccurrences(of: "]", with: ")").replacingOccurrences(of: "[", with: "(")
+        let pattern = #"\[[^\]]*\]\(pane-note:"# + id + #"\)"#
+        let updated = parent.body.replacingOccurrences(of: pattern, with: "[\(label)](pane-note:\(id))", options: .regularExpression)
+        if updated != parent.body {
+            parent.body = updated
+            parent.dirty = true
+            SyncSignal.changed()
+        }
+    }
+
+    /// A new sub-note, linked where the caret is, opened for writing.
+    private func createSubNote() {
+        let child = context.createSubNote(of: note)
+        controller.insertLines(["[New sub-note](pane-note:\(child.id.uuidString.lowercased()))"])
+        onOpenNote(child.id, true)
     }
 
     private func attach(_ result: Result<[URL], Error>) {
@@ -69,6 +119,9 @@ struct NoteDetailView: View {
         let context = self.context
         let sync = self.sync
         controller.resolveAttachment = { id in context.attachment(id) }
+        controller.resolveNote = { id in context.note(id).map { ($0.title, $0.preview) } }
+        controller.openNote = { id in onOpenNote(id, false) }
+        controller.newSubNote = { createSubNote() }
         controller.download = { a in await sync?.download(a) ?? false }
         controller.attach = { importing = true }
         controller.addFiles = { urls in context.addAttachments(urls) }
@@ -158,7 +211,7 @@ struct NoteDetailView: View {
             }
             Section {
                 Button("Bulleted List", systemImage: "list.bullet", action: controller.bulletList)
-                Button("Card", systemImage: "rectangle.stack", action: controller.newCard)
+                Button("Sub-note", systemImage: "doc.badge.plus") { controller.newSubNote() }
                 Button("Link", systemImage: "link", action: controller.insertLink)
             }
         } label: {

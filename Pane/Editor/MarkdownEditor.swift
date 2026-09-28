@@ -24,72 +24,18 @@ final class EditorCore {
     var onChange: (String) -> Void = { _ in }
     var applyingEdit = false
     private var lastActiveLine: NSRange?
-    /// Cards and embeds currently shown as views, and which cards are open.
-    private(set) var cards: [CardBlock] = []
+    /// Live views currently placed over the text.
     private(set) var embeds: [LineEmbed] = []
     private(set) var tables: [TypedTable] = []
     private(set) var grids: [GridTable] = []
     /// A just-inserted table whose first cell should take the keyboard.
     var pendingGridFocus: Int?
     private var expandedTables: Set<Int> = []
-    /// Cards (by position in the note) currently open.
-    private var openCards: Set<Int> = []
     /// Called after a restyle, so the view can place live views.
     var onCardsChanged: () -> Void = {}
 
     init() {
-        styler.cardIsOpen = { [weak self] card in self?.openCards.contains(card.index) ?? false }
         styler.tableHeight = { [weak self] t in TableCardMetrics.height(t, expanded: self?.expandedTables.contains(t.index) ?? false) }
-    }
-
-    func setCard(_ index: Int, open: Bool) {
-        if open { openCards.insert(index) } else { openCards.remove(index) }
-    }
-
-    func toggleCard(_ index: Int) {
-        setCard(index, open: !openCards.contains(index))
-    }
-
-    /// A card's chevron under `point` (text-container coordinates), if any.
-    func cardHead(at point: CGPoint, layout: NSTextLayoutManager?) -> Int? {
-        guard let layout, let fragment = layout.textLayoutFragment(for: point),
-              let p = fragment.textElement as? NSTextParagraph, p.attributedString.length > 0,
-              let panel = p.attributedString.attribute(.paneCard, at: 0, effectiveRange: nil) as? CardPanel,
-              case .head = panel.role else { return nil }
-        // Anywhere left of the title text: the chevron's column.
-        return point.x < 40 ? panel.index : nil
-    }
-
-    /// Return inside a card: from the title it goes to the contents; on an empty
-    /// last line it leaves the card, like ending a list.
-    func cardReturn(in text: String, selection: NSRange) -> TextEdit? {
-        guard selection.length == 0 else { return nil }
-        let ns = text as NSString
-        for card in CardBlocks.find(in: text) where NSLocationInRange(selection.location, NSRange(location: card.summaryLine.location, length: NSMaxRange(card.closeLine) - card.summaryLine.location)) || selection.location == NSMaxRange(card.summaryLine) {
-            if selection.location >= card.summaryLine.location && selection.location <= NSMaxRange(card.summaryLine) {
-                setCard(card.index, open: true)
-                if let first = card.bodyLines.first {
-                    return TextEdit(range: NSRange(location: selection.location, length: 0), replacement: "", caret: NSMaxRange(first))
-                }
-                return TextEdit(range: NSRange(location: NSMaxRange(card.summaryLine), length: 0), replacement: "\n", caret: NSMaxRange(card.summaryLine) + 1)
-            }
-            if let last = card.bodyLines.last, NSLocationInRange(selection.location, NSRange(location: last.location, length: last.length + 1)),
-               ns.substring(with: last).trimmingCharacters(in: .whitespaces).isEmpty, ListPrefix(line: ns.substring(with: last)) == nil {
-                // Leave the card: drop the empty line if there's other content, land after </details>.
-                let keepLine = card.bodyLines.count == 1
-                let afterClose = NSMaxRange(card.closeLine)
-                if afterClose >= ns.length {
-                    let removeRange = keepLine ? NSRange(location: afterClose, length: 0) : NSRange(location: last.location, length: last.length + 1)
-                    if keepLine { return TextEdit(range: removeRange, replacement: "\n", caret: afterClose + 1) }
-                    return TextEdit(range: NSRange(location: last.location, length: ns.length - last.location), replacement: ns.substring(with: card.closeLine) + "\n", caret: last.location + card.closeLine.length + 1)
-                }
-                if keepLine { return TextEdit(range: NSRange(location: afterClose, length: 0), replacement: "", caret: afterClose + 1) }
-                let closeText = ns.substring(with: card.closeLine)
-                return TextEdit(range: NSRange(location: last.location, length: afterClose - last.location), replacement: closeText, caret: last.location + closeText.count + 1)
-            }
-            return nil
-        }
-        return nil
     }
 
     /// An empty 2×2 table after the caret's line; returns the edit and the table's index.
@@ -105,26 +51,6 @@ final class EditorCore {
         return (TextEdit(range: NSRange(location: at, length: empty ? line.length : 0), replacement: body + (empty ? "\n" : ""), caret: at + (body as NSString).length), index)
     }
 
-    /// Inserts an empty open card at the caret, with its title selected.
-    func newCardEdit(text: String, selection: NSRange) -> (TextEdit, NSRange) {
-        let ns = text as NSString
-        let line = ns.lineRange(for: NSRange(location: min(selection.location, ns.length), length: 0))
-        let lineText = ns.substring(with: line).trimmingCharacters(in: .whitespacesAndNewlines)
-        let at: Int
-        var body = CardBlocks.empty + "\n"
-        if lineText.isEmpty {
-            at = line.location
-            if NSMaxRange(line) <= ns.length, line.length == 0, at > 0, !ns.substring(to: at).hasSuffix("\n") { body = "\n" + body }
-        } else {
-            at = NSMaxRange(line)
-            if !ns.substring(with: line).hasSuffix("\n") { body = "\n" + body }
-        }
-        let replaceLen = lineText.isEmpty ? line.length : 0
-        let index = CardBlocks.find(in: ns.substring(to: at)).count
-        setCard(index, open: true)
-        let titleStart = at + (body as NSString).range(of: "Card</summary>").location
-        return (TextEdit(range: NSRange(location: at, length: replaceLen), replacement: body, caret: -1), NSRange(location: titleStart, length: 4))
-    }
 
     /// Every live view to place over the text: cards and embeds, keyed for reuse.
     func overlays(layout: NSTextLayoutManager?, origin: CGPoint, target: EditorTarget, storage: NSTextStorage, controller: EditorController?, selection: @escaping () -> NSRange?) -> [(key: String, frame: CGRect, view: AnyView)] {
@@ -181,23 +107,6 @@ final class EditorCore {
         return out
     }
 
-    /// Replaces card `index` (or inserts a new one after the caret's line).
-    func cardEdit(index: Int?, markdown: String, text: String, selection: NSRange) -> TextEdit {
-        let ns = text as NSString
-        if let index, let card = CardBlocks.find(in: text).first(where: { $0.index == index }) {
-            return TextEdit(range: card.range, replacement: markdown, caret: -1)
-        }
-        let line = ns.lineRange(for: NSRange(location: min(selection.location, ns.length), length: 0))
-        let lineText = ns.substring(with: line).trimmingCharacters(in: .whitespacesAndNewlines)
-        if lineText.isEmpty {
-            let body = markdown + "\n"
-            return TextEdit(range: NSRange(location: line.location, length: line.length), replacement: body + (NSMaxRange(line) < ns.length ? "\n" : ""), caret: line.location + (body as NSString).length)
-        }
-        let insertAt = NSMaxRange(line)
-        let lead = ns.substring(with: line).hasSuffix("\n") ? "\n" : "\n\n"
-        let body = lead + markdown + "\n"
-        return TextEdit(range: NSRange(location: insertAt, length: 0), replacement: body, caret: insertAt + (body as NSString).length)
-    }
 
     /// Restyles if the text changed or the caret moved to another line.
     /// `selection` is nil when you're not editing: then all syntax stays hidden.
@@ -210,7 +119,6 @@ final class EditorCore {
         if !force, line == lastActiveLine { return }
         lastActiveLine = line
         let blocks = styler.apply(to: storage, active: selection ?? NSRange(location: NSNotFound, length: 0))
-        cards = blocks.cards
         embeds = blocks.embeds
         tables = blocks.tables
         grids = blocks.grids
@@ -345,12 +253,6 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
         resignFirstResponder()
     }
 
-    func insertCard() {
-        let (edit, title) = core.newCardEdit(text: text, selection: selectedRange)
-        if !isFirstResponder { becomeFirstResponder() }
-        apply(edit)
-        selectedRange = title
-    }
 
     // MARK: EditorTarget
 
@@ -434,7 +336,7 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
 
     func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
         guard !core.applyingEdit else { return true }
-        if text == "\n", let edit = core.cardReturn(in: self.text, selection: range) ?? ListEditing.returnKey(in: self.text, selection: range) {
+        if text == "\n", let edit = ListEditing.returnKey(in: self.text, selection: range) {
             apply(edit); return false
         }
         if text.isEmpty, range.length == 1, selectedRange.length == 0,
@@ -497,7 +399,7 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
 
     override func gestureRecognizerShouldBegin(_ g: UIGestureRecognizer) -> Bool {
         if g is UITapGestureRecognizer, g.view === self, g.delegate === self {
-            return checkboxLine(for: g.location(in: self)) != nil || cardHead(for: g.location(in: self)) != nil
+            return checkboxLine(for: g.location(in: self)) != nil
         }
         return super.gestureRecognizerShouldBegin(g)
     }
@@ -507,17 +409,7 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
         return core.checkboxLine(at: point, layout: textLayoutManager)
     }
 
-    private func cardHead(for p: CGPoint) -> Int? {
-        core.cardHead(at: CGPoint(x: p.x - textContainerInset.left, y: p.y - textContainerInset.top), layout: textLayoutManager)
-    }
-
     @objc private func handleTap(_ g: UITapGestureRecognizer) {
-        if let card = cardHead(for: g.location(in: self)) {
-            core.toggleCard(card)
-            core.restyle(textStorage, selection: editingSelection, force: true)
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            return
-        }
         guard let line = checkboxLine(for: g.location(in: self)),
               let edit = ListEditing.toggleCheckbox(in: text, lineStart: line) else { return }
         let keep = selectedRange
@@ -689,12 +581,6 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
         apply(edit)
     }
 
-    func insertCard() {
-        let (edit, title) = core.newCardEdit(text: string, selection: selectedRange())
-        window?.makeFirstResponder(self)
-        apply(edit)
-        setSelectedRange(title)
-    }
 
     override var isFlipped: Bool { true }
 
@@ -766,7 +652,7 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
     func textView(_ textView: NSTextView, doCommandBy selector: Selector) -> Bool {
         switch selector {
         case #selector(insertNewline(_:)):
-            if let e = core.cardReturn(in: string, selection: selectedRange()) ?? ListEditing.returnKey(in: string, selection: selectedRange()) { apply(e); return true }
+            if let e = ListEditing.returnKey(in: string, selection: selectedRange()) { apply(e); return true }
         case #selector(deleteBackward(_:)):
             if let e = ListEditing.backspace(in: string, selection: selectedRange()) { apply(e); return true }
         case #selector(insertTab(_:)):
@@ -829,11 +715,6 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
     override func mouseDown(with event: NSEvent) {
         let p = convert(event.locationInWindow, from: nil)
         let point = CGPoint(x: p.x - textContainerOrigin.x, y: p.y - textContainerOrigin.y)
-        if let card = core.cardHead(at: point, layout: textLayoutManager), let storage = textStorage {
-            core.toggleCard(card)
-            core.restyle(storage, selection: editingSelection, force: true)
-            return
-        }
         if let line = core.checkboxLine(at: point, layout: textLayoutManager),
            let edit = ListEditing.toggleCheckbox(in: string, lineStart: line) {
             let keep = selectedRange()

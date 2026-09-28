@@ -16,6 +16,8 @@ struct EmbedView: View {
             ImageEmbed(id: id, name: name, controller: controller, remove: remove)
         case .link(let url):
             LinkCard(url: url, remove: remove)
+        case .note(let id, let name):
+            SubNoteChip(id: id, name: name, controller: controller, remove: remove)
         }
     }
 }
@@ -86,6 +88,57 @@ private struct FileChip: View {
         if t.conforms(to: .presentation) { return .orange }
         return .blue
     }
+}
+
+/// A link to a sub-note: its current title and first line; click to open it.
+private struct SubNoteChip: View {
+    let id: UUID
+    let name: String
+    let controller: EditorController?
+    let remove: () -> Void
+
+    var body: some View {
+        let info = controller?.resolveNote(id)
+        Button { controller?.openNote(id) } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "doc.text")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(.tint)
+                    .frame(width: 34, height: 34)
+                    .background(Color.accentColor.opacity(0.14), in: .rect(cornerRadius: 8, style: .continuous))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(info?.title ?? name)
+                        .font(.system(size: EditorMetrics.body, weight: .semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                    Text(info?.preview ?? "Sub-note")
+                        .font(.system(size: EditorMetrics.body * 0.85))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal, 10)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.paneChip, in: .rect(cornerRadius: 12, style: .continuous))
+            .contentShape(.rect(cornerRadius: 12))
+        }
+        .buttonStyle(PressScale())
+        .contextMenu {
+            Button("Open Sub-note", systemImage: "arrow.right") { controller?.openNote(id) }
+            Divider()
+            Button("Remove Link", systemImage: "link.badge.plus", role: .destructive, action: remove)
+        }
+        .accessibilityIdentifier("subnote.\(info?.title ?? name)")
+    }
+}
+
+extension Color {
+    /// A quiet fill for chips inside a note.
+    static var paneChip: Color { Color(PColor.paneFill) }
 }
 
 private struct ImageEmbed: View {

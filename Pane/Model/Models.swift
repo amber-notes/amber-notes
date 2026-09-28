@@ -51,6 +51,8 @@ final class Note {
     var updatedAt: Date
     var isPinned: Bool
     var folder: Folder?
+    /// Set for a sub-note: the note that links to it.
+    var parentID: UUID?
     /// Moved to Recently Deleted. Purged after 30 days.
     var trashedAt: Date?
     /// Gone for good; kept only as a tombstone for sync.

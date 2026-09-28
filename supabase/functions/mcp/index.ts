@@ -14,8 +14,8 @@ const INSTRUCTIONS = `Amber Notes is the user's personal notes app. Notes are ma
 Start with get_overview or search_notes to find things. Read a note before editing it.
 Prefer edit_note (exact find/replace) and append_to_note over replace_note_body, so nothing else changes.
 Trackers are typed tables: use read_table, then log_table_row (it validates values and upserts by date).
-Checklists are "- [ ] item" lines; use set_checklist_item to tick them. To tuck details into a collapsible card
-(shown as a tappable card in the app), write: <details>\n<summary>Card title</summary>\n\ncontent in markdown\n\n</details>. Deleted notes go to Recently Deleted
+Checklists are "- [ ] item" lines; use set_checklist_item to tick them. A line like [Title](pane-note:<id>) links a sub-note: a whole note that lives inside
+its parent. Use create_sub_note to make one; read it with read_note(id). Deleted notes go to Recently Deleted
 and can be restored; every edit keeps the previous version (note_history / restore_revision).`;
 
 const sql = postgres(Deno.env.get("SUPABASE_DB_URL")!, { max: 3, idle_timeout: 20, prepare: false });
@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
 
   const ctx: ToolContext = { sql, userId: who.user_id, client: who.name, canWrite: who.can_write };
   const batch = Array.isArray(payload);
-  const results = (await Promise.all((batch ? payload : [payload]).map((m) => handle(m, ctx)))).filter((r) => r !== null);
+  const results = (await Promise.all((batch ? (payload as Rpc[]) : [payload as Rpc]).map((m: Rpc) => handle(m, ctx)))).filter((r: unknown) => r !== null);
   if (!results.length) return new Response(null, { status: 202, headers: cors });
   return json(batch ? results : results[0]);
 });

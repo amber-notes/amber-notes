@@ -286,6 +286,7 @@ final class SyncEngine {
 
     private func apply(_ r: NoteDTO, to n: Note) {
         n.body = r.body
+        n.parentID = r.parent_id
         n.isPinned = r.is_pinned
         n.createdAt = r.created_at
         n.updatedAt = r.updated_at
@@ -353,6 +354,7 @@ struct NoteDTO: Codable {
     var id: UUID
     var body: String
     var folder_id: UUID?
+    var parent_id: UUID?
     var is_pinned: Bool
     var created_at: Date
     var updated_at: Date
@@ -365,6 +367,7 @@ struct NoteDTO: Codable {
         id = n.id
         body = n.body
         folder_id = n.folder?.id
+        parent_id = n.parentID
         is_pinned = n.isPinned
         created_at = n.createdAt
         updated_at = n.updatedAt
@@ -372,7 +375,7 @@ struct NoteDTO: Codable {
         deleted_at = n.deletedAt
     }
 
-    enum CodingKeys: String, CodingKey { case id, body, folder_id, is_pinned, created_at, updated_at, trashed_at, deleted_at, version, server_updated_at }
+    enum CodingKeys: String, CodingKey { case id, body, folder_id, parent_id, is_pinned, created_at, updated_at, trashed_at, deleted_at, version, server_updated_at }
 
     /// Client-owned columns only; the server sets version and its own clock.
     func encode(to encoder: Encoder) throws {
@@ -380,6 +383,7 @@ struct NoteDTO: Codable {
         try c.encode(id, forKey: .id)
         try c.encode(body, forKey: .body)
         try c.encode(folder_id, forKey: .folder_id)
+        try c.encode(parent_id, forKey: .parent_id)
         try c.encode(is_pinned, forKey: .is_pinned)
         try c.encode(created_at, forKey: .created_at)
         try c.encode(updated_at, forKey: .updated_at)
@@ -390,6 +394,7 @@ struct NoteDTO: Codable {
     struct Patch: Encodable {
         var body: String
         var folder_id: UUID?
+        var parent_id: UUID?
         var is_pinned: Bool
         var updated_at: Date
         var trashed_at: Date?
@@ -399,15 +404,16 @@ struct NoteDTO: Codable {
             var c = encoder.container(keyedBy: CodingKeys.self)
             try c.encode(body, forKey: .body)
             try c.encode(folder_id, forKey: .folder_id)
+            try c.encode(parent_id, forKey: .parent_id)
             try c.encode(is_pinned, forKey: .is_pinned)
             try c.encode(updated_at, forKey: .updated_at)
             try c.encode(trashed_at, forKey: .trashed_at)
             try c.encode(deleted_at, forKey: .deleted_at)
         }
-        enum CodingKeys: String, CodingKey { case body, folder_id, is_pinned, updated_at, trashed_at, deleted_at }
+        enum CodingKeys: String, CodingKey { case body, folder_id, parent_id, is_pinned, updated_at, trashed_at, deleted_at }
     }
 
-    var patch: Patch { Patch(body: body, folder_id: folder_id, is_pinned: is_pinned, updated_at: updated_at, trashed_at: trashed_at, deleted_at: deleted_at) }
+    var patch: Patch { Patch(body: body, folder_id: folder_id, parent_id: parent_id, is_pinned: is_pinned, updated_at: updated_at, trashed_at: trashed_at, deleted_at: deleted_at) }
 }
 
 struct AttachmentDTO: Codable {

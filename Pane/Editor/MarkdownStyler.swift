@@ -9,28 +9,8 @@ import AppKit
 extension NSAttributedString.Key {
     /// Per-line decoration drawn by `DecoratedLayoutFragment`.
     static let paneLine = NSAttributedString.Key("pane.line")
-    /// The card panel a line belongs to, drawn behind everything else.
-    static let paneCard = NSAttributedString.Key("pane.card")
 }
 
-/// Where a line sits in an inline card.
-final class CardPanel: NSObject {
-    enum Role: Equatable { case head(open: Bool), body }
-    let role: Role
-    let first: Bool
-    let last: Bool
-    let index: Int
-    init(_ role: Role, first: Bool, last: Bool, index: Int) {
-        self.role = role
-        self.first = first
-        self.last = last
-        self.index = index
-    }
-    override func isEqual(_ object: Any?) -> Bool {
-        guard let o = object as? CardPanel else { return false }
-        return o.role == role && o.first == first && o.last == last && o.index == index
-    }
-}
 
 /// What a line of the note should draw beside or behind its text.
 final class LineDecoration: NSObject {
@@ -98,8 +78,6 @@ struct MarkdownStyler {
     /// Style the first plain line as the title (off for card contents).
     var firstLineIsTitle = true
     /// Height to reserve for a card shown as a view (collapsed or expanded).
-    /// Whether a card shows its contents.
-    var cardIsOpen: (CardBlock) -> Bool = { _ in false }
     var tableHeight: (TypedTable) -> CGFloat = { TableCardMetrics.height($0, expanded: false) }
 
     var bodyFont: PFont { .systemFont(ofSize: bodySize) }
@@ -235,11 +213,10 @@ struct MarkdownStyler {
         }
 
         styleUnderlines(storage, isActive: isActive, skip: walker.codeRanges)
-        let cards = styleCards(storage, isActive: isActive)
         let tables = styleTypedTables(storage, isActive: isActive, skip: walker.codeRanges)
         let grids = styleGrids(storage, isActive: isActive)
         let embeds = styleEmbeds(storage, isActive: isActive, skip: walker.codeRanges)
-        return StyledBlocks(cards: cards, embeds: embeds, tables: tables, grids: grids)
+        return StyledBlocks(embeds: embeds, tables: tables, grids: grids)
     }
 
     /// Plain tables become an editable grid (a live view over a reserved line), like Notes.
@@ -355,70 +332,6 @@ struct MarkdownStyler {
             shown.append(e)
         }
         return shown
-    }
-
-    /// Cards are styled in place: the tags vanish, the title becomes a header with a
-    /// chevron, and the contents sit on one panel you edit like the rest of the note.
-    /// A closed card folds its contents to nothing.
-    private func styleCards(_ storage: NSTextStorage, isActive: (NSRange) -> Bool) -> [CardBlock] {
-        let ns = storage.string as NSString
-        let inset: CGFloat = 38 // text sits clear of the chevron
-        var cards: [CardBlock] = []
-        for card in CardBlocks.find(in: storage.string) {
-            // The caret inside a closed card opens it, so you never type into nothing.
-            let open = cardIsOpen(card) || isActive(NSRange(location: NSMaxRange(card.summaryLine), length: max(0, card.closeLine.location - NSMaxRange(card.summaryLine))))
-            let flat = NSMutableParagraphStyle()
-            flat.minimumLineHeight = 0.01
-            flat.maximumLineHeight = 0.01
-            flat.lineSpacing = 0
-            flat.paragraphSpacing = 0
-            func fold(_ line: NSRange) {
-                let enclosing = ns.paragraphRange(for: line)
-                storage.addAttributes(hidden, range: line)
-                storage.removeAttribute(.kern, range: line)
-                storage.removeAttribute(.paneLine, range: enclosing)
-                storage.addAttribute(.paragraphStyle, value: flat, range: enclosing)
-            }
-
-            // The <details> and </details> lines take no space.
-            if card.openLine != card.summaryLine { fold(card.openLine) }
-            fold(card.closeLine)
-
-            // Title line: hide the tags, show the title as a header.
-            let head = ns.paragraphRange(for: card.summaryLine)
-            storage.addAttributes(hidden, range: card.summaryLine)
-            storage.removeAttribute(.kern, range: card.summaryLine)
-            if card.titleRange.location != NSNotFound {
-                storage.addAttributes([.font: PFont.systemFont(ofSize: bodySize, weight: .semibold), .foregroundColor: PColor.paneLabel], range: card.titleRange)
-            }
-            let hp = baseParagraph()
-            hp.firstLineHeadIndent = inset
-            hp.headIndent = inset
-            hp.tailIndent = -16
-            hp.paragraphSpacingBefore = 20 // gap above the card + padding inside it
-            hp.paragraphSpacing = open && !card.bodyLines.isEmpty ? 6 : 22
-            storage.addAttribute(.paragraphStyle, value: hp, range: head)
-            storage.removeAttribute(.paneLine, range: head)
-            let last = !open || card.bodyLines.isEmpty
-            storage.addAttribute(.paneCard, value: CardPanel(.head(open: open), first: true, last: last, index: card.index), range: head)
-
-            // Contents: folded away when closed, otherwise indented onto the panel.
-            for (i, line) in card.bodyLines.enumerated() {
-                let enclosing = ns.paragraphRange(for: line)
-                if !open { fold(line); continue }
-                let current = (storage.attribute(.paragraphStyle, at: enclosing.location, effectiveRange: nil) as? NSParagraphStyle) ?? baseParagraph()
-                let p = current.mutableCopy() as! NSMutableParagraphStyle
-                p.firstLineHeadIndent += inset
-                p.headIndent += inset
-                p.tailIndent = -16
-                let isLast = i == card.bodyLines.count - 1
-                if isLast { p.paragraphSpacing = max(p.paragraphSpacing, 22) }
-                storage.addAttribute(.paragraphStyle, value: p, range: enclosing)
-                storage.addAttribute(.paneCard, value: CardPanel(.body, first: false, last: isLast, index: card.index), range: enclosing)
-            }
-            cards.append(card)
-        }
-        return cards
     }
 
     /// Lays a GFM table out as a grid: pipes are hidden and each cell is
@@ -619,7 +532,6 @@ struct MarkdownStyler {
 
 /// What the styler turned into live views.
 struct StyledBlocks {
-    var cards: [CardBlock] = []
     var embeds: [LineEmbed] = []
     var tables: [TypedTable] = []
     var grids: [GridTable] = []

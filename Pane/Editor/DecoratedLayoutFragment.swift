@@ -8,11 +8,6 @@ import AppKit
 /// Draws a line's decoration (checkbox, bullet, quote bar, code or table panel)
 /// behind its text. One markdown line is one TextKit paragraph.
 final class DecoratedLayoutFragment: NSTextLayoutFragment {
-    var cardPanel: CardPanel? {
-        guard let p = textElement as? NSTextParagraph, p.attributedString.length > 0 else { return nil }
-        return p.attributedString.attribute(.paneCard, at: 0, effectiveRange: nil) as? CardPanel
-    }
-
     var decoration: LineDecoration? {
         guard let p = textElement as? NSTextParagraph, p.attributedString.length > 0 else { return nil }
         return p.attributedString.attribute(.paneLine, at: 0, effectiveRange: nil) as? LineDecoration
@@ -26,7 +21,7 @@ final class DecoratedLayoutFragment: NSTextLayoutFragment {
 
     override var renderingSurfaceBounds: CGRect {
         let base = super.renderingSurfaceBounds
-        guard decoration != nil || cardPanel != nil else { return base }
+        guard decoration != nil else { return base }
         let left = -layoutFragmentFrame.minX
         return base.union(CGRect(x: left - 4, y: -14, width: containerWidth + 8, height: layoutFragmentFrame.height + 28))
     }
@@ -39,11 +34,6 @@ final class DecoratedLayoutFragment: NSTextLayoutFragment {
     }
 
     override func draw(at point: CGPoint, in context: CGContext) {
-        if let panel = cardPanel {
-            context.saveGState()
-            drawCard(panel, at: point, in: context)
-            context.restoreGState()
-        }
         if let d = decoration {
             context.saveGState()
             drawDecoration(d, at: point, in: context)
@@ -117,40 +107,6 @@ final class DecoratedLayoutFragment: NSTextLayoutFragment {
             ctx.setFillColor(PColor.paneSeparator.cgColor)
             ctx.fill(CGRect(x: o.x, y: o.y + firstLineMidY, width: containerWidth, height: 1))
         }
-    }
-
-    /// An inline card: one panel from the title to the last line, with a chevron on the title.
-    /// The fragment starts at the paragraph's indent, so the panel is placed from the container's left edge.
-    private func drawCard(_ c: CardPanel, at o: CGPoint, in ctx: CGContext) {
-        let left = o.x - layoutFragmentFrame.minX
-        let h = layoutFragmentFrame.height
-        let firstLine = textLineFragments.first?.typographicBounds ?? CGRect(x: 0, y: 0, width: 0, height: h)
-        let lastLine = textLineFragments.last?.typographicBounds ?? firstLine
-        let pad: CGFloat = 10
-        let top = c.first ? firstLine.minY - pad : 0
-        let bottom = c.last ? lastLine.maxY - EditorMetrics.lineSpacing + pad : h
-        let rect = CGRect(x: left, y: o.y + top, width: containerWidth, height: bottom - top)
-        ctx.addPath(roundedPath(rect, top: c.first ? 12 : 0, bottom: c.last ? 12 : 0))
-        ctx.setFillColor(PColor.paneFill.cgColor)
-        ctx.fillPath()
-        guard case .head(let open) = c.role else { return }
-        // Chevron: right when closed, down when open.
-        let cx = left + 20, cy = o.y + firstLineMidY
-        let s: CGFloat = 4.5
-        ctx.setStrokeColor(PColor.paneSecondary.cgColor)
-        ctx.setLineWidth(2)
-        ctx.setLineCap(.round)
-        ctx.setLineJoin(.round)
-        if open {
-            ctx.move(to: CGPoint(x: cx - s, y: cy - s / 2))
-            ctx.addLine(to: CGPoint(x: cx, y: cy + s / 2))
-            ctx.addLine(to: CGPoint(x: cx + s, y: cy - s / 2))
-        } else {
-            ctx.move(to: CGPoint(x: cx - s / 2, y: cy - s))
-            ctx.addLine(to: CGPoint(x: cx + s / 2, y: cy))
-            ctx.addLine(to: CGPoint(x: cx - s / 2, y: cy + s))
-        }
-        ctx.strokePath()
     }
 
     /// A panel that joins with its neighbours: only the block's outer corners are round.

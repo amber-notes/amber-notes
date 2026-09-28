@@ -33,7 +33,7 @@ struct FormatBar: View {
                     .accessibilityIdentifier("editor.format")
                     BarButton("Checklist", "checklist", action: controller.checklist)
                     BarButton("Table", "tablecells", action: controller.insertTable)
-                    BarButton("Card", "rectangle.stack", action: controller.newCard)
+                    BarButton("Sub-note", "doc.badge.plus") { controller.newSubNote() }
                     BarButton("Attach", "paperclip") { controller.attach() }
                 }
                 .padding(.horizontal, 4)

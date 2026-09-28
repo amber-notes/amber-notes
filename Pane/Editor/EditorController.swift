@@ -40,11 +40,17 @@ final class EditorController {
     /// Inserts embed lines for files at the caret, each on its own line.
     func insertFiles(_ files: [Attachment]) {
         guard !files.isEmpty else { return }
+        insertLines(files.map(\.markdown))
+    }
+
+    /// Inserts whole lines (embeds, links) at the caret, each on its own line.
+    func insertLines(_ lines: [String]) {
+        guard !lines.isEmpty else { return }
         perform { text, sel in
             let ns = text as NSString
             let line = ns.lineRange(for: NSRange(location: min(sel.location, ns.length), length: 0))
             let lineText = ns.substring(with: line).trimmingCharacters(in: .whitespacesAndNewlines)
-            let block = files.map(\.markdown).joined(separator: "\n")
+            let block = lines.joined(separator: "\n")
             if lineText.isEmpty {
                 let body = block + "\n"
                 return TextEdit(range: NSRange(location: line.location, length: line.length), replacement: body + (NSMaxRange(line) < ns.length && !ns.substring(with: line).hasSuffix("\n") ? "\n" : ""), caret: line.location + (body as NSString).length)
@@ -96,8 +102,12 @@ final class EditorController {
 
     func focus() { target?.focusEditor() }
 
-    /// Drops an empty card into the note at the caret, title selected for typing.
-    func newCard() { target?.insertCard() }
+    /// A sub-note's current title and first line (set by the note screen).
+    @ObservationIgnored var resolveNote: (UUID) -> (title: String, preview: String)? = { _ in nil }
+    /// Opens a note by id (set by the note screen).
+    @ObservationIgnored var openNote: (UUID) -> Void = { _ in }
+    /// Creates a sub-note linked from here (set by the note screen).
+    @ObservationIgnored var newSubNote: () -> Void = {}
 }
 
 struct TableRowRequest: Identifiable {
@@ -137,6 +147,5 @@ protocol EditorTarget: AnyObject {
     var currentSelection: NSRange { get }
     func apply(_ edit: TextEdit)
     func focusEditor()
-    func insertCard()
     func insertGrid()
 }

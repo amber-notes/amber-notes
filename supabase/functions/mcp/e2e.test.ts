@@ -36,7 +36,7 @@ Deno.test({ name: "accepts the token as the last path segment", ignore: !enabled
 Deno.test({ name: "initialize and list tools", ignore: !enabled }, async () => {
   const init = await rpc("initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "e2e", version: "1" } });
   assertEquals(init.body.result.protocolVersion, "2025-06-18");
-  assertEquals(init.body.result.serverInfo.name, "pane");
+  assertEquals(init.body.result.serverInfo.name, "amber-notes");
   const { body } = await rpc("tools/list");
   const names = body.result.tools.map((t: { name: string }) => t.name);
   for (const n of ["search_notes", "read_note", "create_note", "edit_note", "append_to_note", "set_checklist_item", "note_history", "search", "fetch"]) {
@@ -180,4 +180,18 @@ Deno.test({ name: "typed tables: read, log, validate, update by date", ignore: !
   assert(!(await call("delete_table_row", { id, date: "2026-09-25" })).error);
   assertEquals((await call("read_table", { id })).data.total_rows, 1);
   await call("delete_note", { id });
+});
+
+Deno.test({ name: "sub-notes: create, link, read both ways", ignore: !enabled }, async () => {
+  const parent = (await call("create_note", { body: "Trip\n\n## Details\nSee below." })).data.created.id;
+  const made = await call("create_sub_note", { id: parent, body: "Hotel\n\nConfirmation LX-1", under_heading: "Details" });
+  assert(!made.error, made.text);
+  const childId = made.data.created.id;
+  const p = await call("read_note", { id: parent });
+  assertStringIncludes(p.data.markdown, `[Hotel](pane-note:${childId})`);
+  assertEquals(p.data.sub_notes[0].id, childId);
+  const c = await call("read_note", { id: childId });
+  assertEquals(c.data.parent.id, parent);
+  await call("delete_note", { id: parent });
+  await call("delete_note", { id: childId });
 });
