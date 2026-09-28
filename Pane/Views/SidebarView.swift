@@ -5,8 +5,10 @@ enum SidebarStyle {
     /// Notes on the Mac draws folder icons in the text colour; iOS tints them.
     #if os(macOS)
     static let icon = HierarchicalShapeStyle.primary
+    static let iconFont = Font.system(size: 17, weight: .regular)
     #else
     static let icon = TintShapeStyle.tint
+    static let iconFont = Font.body
     #endif
 }
 
@@ -127,7 +129,7 @@ struct SidebarView: View {
                     .foregroundStyle(.secondary)
             }
         } icon: {
-            Image(systemName: icon).foregroundStyle(SidebarStyle.icon)
+            Image(systemName: icon).foregroundStyle(SidebarStyle.icon).font(SidebarStyle.iconFont)
         }
     }
 
@@ -195,6 +197,7 @@ private struct FolderTree: View {
         } icon: {
             Image(systemName: dropTarget == folder.id ? "folder.fill" : "folder")
                 .foregroundStyle(SidebarStyle.icon)
+                .font(SidebarStyle.iconFont)
                 .contentTransition(.symbolEffect(.replace))
         }
         .tag(Scope.folder(folder.id))
