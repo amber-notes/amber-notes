@@ -45,13 +45,12 @@ struct SidebarView: View {
                 ForEach(roots) { folder in
                     FolderTree(folder: folder, dropTarget: $dropTarget, rename: startRename, newSub: startNewFolder, delete: deleteFolder)
                 }
-            } header: {
-                Text("Folders")
-            }
-            Section {
+                // Last in the same list, like Notes.
                 row("Recently Deleted", icon: "trash", count: trashed.count)
                     .tag(Scope.trash)
                     .accessibilityIdentifier("sidebar.trash")
+            } header: {
+                Text("Folders")
             }
         }
         .listStyle(.sidebar)
