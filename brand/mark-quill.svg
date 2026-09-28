@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+<defs>
+ <radialGradient id="body" cx="0.4" cy="0.38" r="0.75"><stop offset="0" stop-color="#FFE08A"/><stop offset="0.35" stop-color="#F8AC2A"/><stop offset="0.75" stop-color="#D2650C"/><stop offset="1" stop-color="#7A2D04"/></radialGradient>
+ <radialGradient id="core" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#FFF4C2" stop-opacity=".9"/><stop offset="1" stop-color="#FFC94A" stop-opacity="0"/></radialGradient>
+ <linearGradient id="rim" x1="0" y1="0" x2="0" y2="1"><stop offset="0.6" stop-color="#FFB547" stop-opacity="0"/><stop offset="1" stop-color="#FFDB8F" stop-opacity=".95"/></linearGradient>
+ <linearGradient id="vane" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#5A2E04"/><stop offset="1" stop-color="#7C4508"/></linearGradient>
+ <filter id="glow" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="0" dy="34" stdDeviation="44" flood-color="#F08A18" flood-opacity=".4"/></filter>
+ <filter id="soft"><feGaussianBlur stdDeviation="2.2"/></filter>
+ <filter id="deep"><feGaussianBlur stdDeviation="5"/></filter>
+ <filter id="b12"><feGaussianBlur stdDeviation="12"/></filter>
+ <clipPath id="clip"><path id="drop" d="M512 150 C 540 150, 560 176, 584 214 C 660 330, 806 450, 806 616 A 294 294 0 0 1 218 616 C 218 450, 364 330, 440 214 C 464 176, 484 150, 512 150 Z"/></clipPath>
+</defs>
+<g filter="url(#glow)"><use href="#drop" fill="url(#body)"/></g>
+<g clip-path="url(#clip)">
+ <ellipse cx="500" cy="590" rx="210" ry="200" fill="url(#core)" filter="url(#b12)"/>
+ <!-- a quill, caught in the resin: vane, shaft and a nib -->
+ <g transform="translate(520 630) rotate(-40)">
+  <g opacity=".82" filter="url(#soft)">
+   <path d="M-150 -2 C -90 -64, 70 -96, 190 -40 C 120 -34, 10 -18, -150 -2 Z" fill="url(#vane)"/>
+   <path d="M-150 2 C -80 34, 60 36, 170 -18 C 90 -6, -20 4, -150 2 Z" fill="#8A4F0A"/>
+   <g stroke="#3F2002" stroke-width="3" stroke-linecap="round" opacity=".55">
+    <path d="M-90 -4 L -64 -44 M -40 -8 L -10 -58 M 10 -12 L 44 -64 M 60 -18 L 96 -62 M 110 -24 L 140 -52"/>
+    <path d="M-90 -2 L -70 22 M -40 -4 L -18 24 M 10 -8 L 32 18 M 60 -12 L 80 8"/>
+   </g>
+   <path d="M-250 10 C -120 2, 60 -16, 200 -46" fill="none" stroke="#3A1D02" stroke-width="7" stroke-linecap="round"/>
+  </g>
+  <!-- the nib sinks deeper: softer, fainter -->
+  <path d="M-300 16 L -250 6 L -250 14 Z" fill="#2E1601" opacity=".5" filter="url(#deep)"/>
+ </g>
+ <g fill="none" stroke="#FFF3CC" stroke-opacity=".7" stroke-width="4">
+  <circle cx="648" cy="468" r="13"/><circle cx="676" cy="504" r="6"/><circle cx="352" cy="718" r="9"/><circle cx="604" cy="790" r="6"/>
+ </g>
+ <use href="#drop" fill="none" stroke="#6A2503" stroke-opacity=".5" stroke-width="44" filter="url(#b12)"/>
+ <use href="#drop" fill="none" stroke="url(#rim)" stroke-width="18"/>
+</g>
+<path d="M392 400 C 420 340, 460 290, 500 250 C 480 320, 450 380, 430 450 Z" fill="#fff" opacity=".82"/>
+<ellipse cx="652" cy="566" rx="18" ry="10" fill="#fff" opacity=".4" transform="rotate(40 652 566)"/>
+</svg>
