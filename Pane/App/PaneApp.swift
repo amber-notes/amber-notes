@@ -38,7 +38,6 @@ struct PaneApp: App {
             return WindowPlacement(CGPoint(x: screen.midX - size.width / 2, y: screen.midY - size.height / 2), size: size)
         }
         .windowResizability(.contentMinSize)
-        .windowStyle(.hiddenTitleBar)
         .windowToolbarStyle(.unified)
         .commands { PaneCommands() }
         #endif
@@ -70,6 +69,8 @@ private struct WindowShaper: NSViewRepresentable {
             let target = compact ? cardSize : CGSize(width: 1180, height: 760)
             // No system title bar or toolbar while signed out: just the card and the window buttons.
             window.toolbar?.isVisible = !compact
+            // Notes' full-height toolbar with large buttons; compact only for the sign-in card.
+            window.toolbarStyle = compact ? .unifiedCompact : .unified
             window.titlebarSeparatorStyle = compact ? .none : .automatic
             // Card mode keeps close and minimise; zoom makes no sense for a fixed-size card.
             window.standardWindowButton(.zoomButton)?.isEnabled = !compact
@@ -108,6 +109,7 @@ struct AppGate: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .ignoresSafeArea()
                     .containerBackground(for: .window) { Backdrop() }
+                    .toolbar(removing: .title)
                     #endif
                     .transition(.opacity)
             case .disabled, .signedIn:

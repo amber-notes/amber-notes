@@ -14,8 +14,18 @@ struct RootView: View {
     @State private var importingSheet = false
     @State private var importError: String?
     @AppStorage("lastScope") private var lastScopeData: Data = Data()
+    @AppStorage("lastNote") private var lastNote: String = ""
 
     var body: some View {
+        imports(lifecycle(split))
+            .focusedSceneValue(\.newNoteAction, newNote)
+            .focusedSceneValue(\.editorController, editor)
+            .focusedSceneValue(\.importAction, { showImport = true })
+            .focusedSceneValue(\.importSheetAction, { importingSheet = true })
+            .focusedSceneValue(\.deleteNoteAction, deleteAction)
+    }
+
+    private var split: some View {
         NavigationSplitView(columnVisibility: $visibility) {
             SidebarView(scope: $scope, onNewNote: newNote)
                 .navigationSplitViewColumnWidth(min: 200, ideal: 230, max: 320)
@@ -30,38 +40,56 @@ struct RootView: View {
                 #endif
         }
         .environment(editor)
-        .onAppear {
-            restoreScope()
-            openFromLaunchArguments()
-        }
-        .onChange(of: scope) { _, new in
-            if let new, let data = try? JSONEncoder().encode(new) { lastScopeData = data }
-        }
-        .onChange(of: selectedNote) { old, _ in discardIfEmpty(old) }
-        .focusedSceneValue(\.newNoteAction, newNote)
-        .focusedSceneValue(\.editorController, editor)
-        .focusedSceneValue(\.importAction, { showImport = true })
-        .focusedSceneValue(\.importSheetAction, { importingSheet = true })
-        .fileImporter(isPresented: $importingSheet, allowedContentTypes: [.spreadsheet, UTType(filenameExtension: "xlsx") ?? .data]) { result in
-            guard case .success(let url) = result else { return }
-            do {
-                let note = try context.importSpreadsheet(url, into: scope == .trash ? .all : (scope ?? .all))
-                selectedNote = note.id
-            } catch {
-                importError = error.localizedDescription
-            }
-        }
-        .alert("Couldn't import", isPresented: Binding(get: { importError != nil }, set: { if !$0 { importError = nil } })) {
-            Button("OK") {}
-        } message: { Text(importError ?? "") }
         #if os(macOS)
-        .sheet(isPresented: $showImport) {
-            AppleNotesImportView { ids in
-                if let first = ids.first { scope = .all; selectedNote = first }
-            }
-        }
+        // The list column shows its own title; no window title in the bar.
+        .toolbar(removing: .title)
         #endif
-        .focusedSceneValue(\.deleteNoteAction, deleteAction)
+    }
+
+    /// Restoring where you were, and remembering it.
+    private func lifecycle(_ content: some View) -> some View {
+        content
+            .onAppear {
+                restoreScope()
+                restoreNote()
+                openFromLaunchArguments()
+            }
+            .onChange(of: scope) { _, new in rememberScope(new) }
+            .onChange(of: selectedNote) { old, new in noteChanged(from: old, to: new) }
+    }
+
+    private func rememberScope(_ new: Scope?) {
+        if let new, let data = try? JSONEncoder().encode(new) { lastScopeData = data }
+    }
+
+    private func noteChanged(from old: UUID?, to new: UUID?) {
+        discardIfEmpty(old)
+        if let new { lastNote = new.uuidString }
+    }
+
+    private func imports(_ content: some View) -> some View {
+        content
+            .fileImporter(isPresented: $importingSheet, allowedContentTypes: [.spreadsheet, UTType(filenameExtension: "xlsx") ?? .data], onCompletion: importSpreadsheet)
+            .alert("Couldn't import", isPresented: Binding(get: { importError != nil }, set: { if !$0 { importError = nil } })) {
+                Button("OK") {}
+            } message: { Text(importError ?? "") }
+            #if os(macOS)
+            .sheet(isPresented: $showImport) {
+                AppleNotesImportView { ids in
+                    if let first = ids.first { scope = .all; selectedNote = first }
+                }
+            }
+            #endif
+    }
+
+    private func importSpreadsheet(_ result: Result<URL, Error>) {
+        guard case .success(let url) = result else { return }
+        do {
+            let note = try context.importSpreadsheet(url, into: scope == .trash ? .all : (scope ?? .all))
+            selectedNote = note.id
+        } catch {
+            importError = error.localizedDescription
+        }
     }
 
     private var deleteAction: (() -> Void)? {
@@ -131,6 +159,20 @@ struct RootView: View {
         if title == "-new" { DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { newNote() }; return }
         let all = (try? context.fetch(FetchDescriptor<Note>())) ?? []
         if let n = all.first(where: { $0.title == title && $0.deletedAt == nil }) { selectedNote = n.id }
+    }
+
+    /// Reopen the note you were on; otherwise the one you edited last.
+    private func restoreNote() {
+        guard selectedNote == nil, !ProcessInfo.processInfo.arguments.contains("-uitest") else { return }
+        if let id = UUID(uuidString: lastNote), let n = context.note(id), n.deletedAt == nil, n.trashedAt == nil {
+            selectedNote = id
+            return
+        }
+        var newest = FetchDescriptor<Note>(sortBy: [SortDescriptor(\.updatedAt, order: .reverse)])
+        newest.fetchLimit = 20
+        if let n = ((try? context.fetch(newest)) ?? []).first(where: { $0.deletedAt == nil && $0.trashedAt == nil && !context.isNested($0) }) {
+            selectedNote = n.id
+        }
     }
 
     private func restoreScope() {
