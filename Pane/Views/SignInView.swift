@@ -19,7 +19,7 @@ struct SignInView: View {
         card
             .padding(.horizontal, 36)
             .padding(.top, 40)
-            .padding(.bottom, 32)
+            .padding(.bottom, 52) // a chin below the link
             .frame(width: 380)
             .environment(\.colorScheme, .dark)
             .onAppear { focus = .email }
