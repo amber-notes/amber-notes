@@ -399,3 +399,93 @@ Deno.test({ name: "injection: hostile strings are just text", ignore: !enabled }
   for (const q of [evil, "') or 1=1 --", "\"unclosed", "!!!", "a & b | c"]) assert(!(await call("search_notes", { query: q })).error, q);
   await call("delete_note", { id: c.data.created.id });
 });
+
+// MARK: Security outside MCP (what the app talks to)
+
+const otherJwt = Deno.env.get("PANE_OTHER_JWT");
+function restAs(jwt: string | null) {
+  const h = (extra: Record<string, string> = {}) => ({ apikey: anon!, ...(jwt ? { authorization: `Bearer ${jwt}` } : {}), "content-type": "application/json", ...extra });
+  return {
+    get: (path: string) => fetch(`${api}/rest/v1/${path}`, { headers: h() }).then(async (r) => ({ status: r.status, json: await r.json().catch(() => null) })),
+    send: (method: string, path: string, body: unknown) => fetch(`${api}/rest/v1/${path}`, { method, headers: h({ prefer: "return=representation" }), body: JSON.stringify(body) }).then(async (r) => ({ status: r.status, json: await r.json().catch(() => null) })),
+  };
+}
+
+Deno.test({ name: "REST: another signed-in user can't read, change or adopt my rows", ignore: !enabled || !api || !userJwt || !otherJwt }, async () => {
+  const s = crypto.randomUUID().slice(0, 6);
+  const mine = (await call("create_note", { body: `REST secret ${s}` })).data.created.id;
+  const them = restAs(otherJwt!);
+  assertEquals((await them.get(`notes?id=eq.${mine}`)).json, []);
+  assertEquals((await them.get(`note_revisions?note_id=eq.${mine}`)).json, []);
+  assertEquals((await them.send("PATCH", `notes?id=eq.${mine}`, { body: "pwned" })).json, []);
+  assertEquals((await them.send("DELETE", `notes?id=eq.${mine}`, {})).json, []);
+  const aSub = JSON.parse(atob(userJwt!.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))).sub;
+  const forged = await them.send("POST", "notes", { id: crypto.randomUUID(), body: "forged", user_id: aSub });
+  assert(forged.status >= 400, "can't create rows owned by someone else");
+  const revision = await them.send("POST", "note_revisions", { note_id: mine, body: "x", version: 1 });
+  assert(revision.status >= 400, "revisions are written by the database only");
+  assertEquals((await them.get("mcp_tokens?select=id,user_id")).json.every((t: { user_id: string }) => t.user_id !== aSub), true);
+  const resolve = await them.send("POST", "rpc/resolve_mcp_token", { token: token });
+  assert(resolve.status >= 400, "clients can't resolve tokens");
+  const allow = await them.get("signup_allowlist");
+  assert(allow.status >= 400 || (Array.isArray(allow.json) && allow.json.length === 0), "the allowlist is private");
+  assertEquals((await call("read_note", { id: mine })).data.version, 1);
+  await call("delete_note", { id: mine });
+});
+
+Deno.test({ name: "REST: nothing is readable without signing in", ignore: !enabled || !api }, async () => {
+  const nobody = restAs(null);
+  for (const t of ["notes", "folders", "note_revisions", "attachments", "mcp_tokens", "signup_allowlist"]) {
+    const r = await nobody.get(`${t}?limit=1`);
+    assert(r.status >= 400 || (Array.isArray(r.json) && r.json.length === 0), `${t} leaked to anon: ${JSON.stringify(r.json)}`);
+  }
+  const mint = await nobody.send("POST", "rpc/create_mcp_token", { token_name: "x" });
+  assert(mint.status >= 400, "anon can't mint tokens");
+});
+
+Deno.test({ name: "tokens: revoking cuts access at once; a revoked token can't be revived by someone else", ignore: !enabled || !api || !userJwt || !otherJwt }, async () => {
+  const me = restAs(userJwt!);
+  const t = await me.send("POST", "rpc/create_mcp_token", { token_name: "Revoke me", write_access: false });
+  const fresh = t.json as string;
+  assertEquals((await rpc("tools/list", {}, fresh)).status, 200);
+  const row = (await me.get("mcp_tokens?name=eq.Revoke%20me&revoked_at=is.null&select=id")).json[0];
+  assertEquals((await me.send("PATCH", `mcp_tokens?id=eq.${row.id}`, { revoked_at: new Date().toISOString() })).status, 200);
+  assertEquals((await rpc("tools/list", {}, fresh)).status, 401);
+  assertEquals((await restAs(otherJwt!).send("PATCH", `mcp_tokens?id=eq.${row.id}`, { revoked_at: null })).json, []);
+  assertEquals((await rpc("tools/list", {}, fresh)).status, 401);
+  // A token can't be upgraded to write access by editing its row.
+  const upgrade = await me.send("PATCH", `mcp_tokens?id=eq.${row.id}`, { can_write: true });
+  assert(upgrade.status >= 400, "can_write isn't editable");
+  const rehash = await me.send("PATCH", `mcp_tokens?id=eq.${row.id}`, { token_hash: "0".repeat(64) });
+  assert(rehash.status >= 400, "token_hash isn't editable");
+  // Revoking is final, even for the owner.
+  await me.send("PATCH", `mcp_tokens?id=eq.${row.id}`, { revoked_at: null });
+  assertEquals((await rpc("tools/list", {}, fresh)).status, 401);
+});
+
+Deno.test({ name: "storage: another user can't read or overwrite my files", ignore: !enabled || !api || !userJwt || !otherJwt }, async () => {
+  const sub = JSON.parse(atob(userJwt!.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))).sub;
+  const path = `${sub}/${crypto.randomUUID()}/secret.txt`;
+  const up = await fetch(`${api}/storage/v1/object/files/${path}`, { method: "POST", headers: { authorization: `Bearer ${userJwt}`, apikey: anon!, "content-type": "text/plain" }, body: "mine" });
+  assertEquals(up.status, 200, await up.text());
+  const read = await fetch(`${api}/storage/v1/object/files/${path}`, { headers: { authorization: `Bearer ${otherJwt}`, apikey: anon! } });
+  assert(read.status >= 400, "other user can't download");
+  await read.body?.cancel();
+  const write = await fetch(`${api}/storage/v1/object/files/${path}`, { method: "PUT", headers: { authorization: `Bearer ${otherJwt}`, apikey: anon!, "content-type": "text/plain", "x-upsert": "true" }, body: "theirs" });
+  assert(write.status >= 400, "other user can't overwrite");
+  await write.body?.cancel();
+  const anonRead = await fetch(`${api}/storage/v1/object/public/files/${path}`);
+  assert(anonRead.status >= 400, "the bucket isn't public");
+  await anonRead.body?.cancel();
+  const still = await fetch(`${api}/storage/v1/object/files/${path}`, { headers: { authorization: `Bearer ${userJwt}`, apikey: anon! } });
+  assertEquals(await still.text(), "mine");
+});
+
+// The hook is config (supabase/config.toml), so a local stack started before it was added
+// doesn't run it: set PANE_CHECK_SIGNUP=1 after `supabase stop && supabase start`.
+Deno.test({ name: "sign-up: emails off the allowlist are refused", ignore: !enabled || !api || Deno.env.get("PANE_CHECK_SIGNUP") !== "1" }, async () => {
+  const r = await fetch(`${api}/auth/v1/signup`, { method: "POST", headers: { apikey: anon!, "content-type": "application/json" }, body: JSON.stringify({ email: `stranger-${crypto.randomUUID().slice(0, 6)}@example.com`, password: "a-long-enough-password" }) });
+  const body = await r.json();
+  assertEquals(r.status, 403, JSON.stringify(body));
+  assertStringIncludes(JSON.stringify(body), "private");
+});
