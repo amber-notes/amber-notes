@@ -1,8 +1,10 @@
 import SwiftUI
 
-/// The one screen between you and your notes when sync is on.
+/// Sign in or create an account. On the Mac this is the whole window; on iPhone
+/// it's a glass card over a warm backdrop.
 struct SignInView: View {
     let backend: Backend
+    @State private var mode: Mode = .signIn
     @State private var email = ""
     @State private var password = ""
     @State private var working = false
@@ -10,90 +12,155 @@ struct SignInView: View {
     @FocusState private var focus: Field?
 
     enum Field { case email, password }
+    enum Mode { case signIn, signUp }
 
     var body: some View {
-        ZStack {
-            Backdrop()
-            VStack(spacing: 22) {
-                VStack(spacing: 10) {
-                    Image("Mark")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 84, height: 84)
-                        .accessibilityHidden(true)
-                    Text("Sign in to Amber Notes")
-                        .font(.title2.weight(.bold))
-                    Text("Your notes sync between your devices and the AI tools you connect.")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                VStack(spacing: 10) {
-                    TextField("Email", text: $email)
-                        .textContentType(.username)
-                        #if os(iOS)
-                        .keyboardType(.emailAddress)
-                        .textInputAutocapitalization(.never)
-                        #endif
-                        .autocorrectionDisabled()
-                        .focused($focus, equals: .email)
-                        .submitLabel(.next)
-                        .onSubmit { focus = .password }
-                        .accessibilityIdentifier("signin.email")
-                    Divider()
-                    SecureField("Password", text: $password)
-                        .textContentType(.password)
-                        .focused($focus, equals: .password)
-                        .submitLabel(.go)
-                        .onSubmit(submit)
-                        .accessibilityIdentifier("signin.password")
-                }
-                .textFieldStyle(.plain)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 12)
-                .background(.fill.tertiary, in: .rect(cornerRadius: 12))
-
-                if let error {
-                    Text(error)
-                        .font(.footnote)
-                        .foregroundStyle(.red)
-                        .transition(.opacity)
-                }
-
-                Button(action: submit) {
-                    HStack(spacing: 8) {
-                        if working { ProgressView().controlSize(.small) }
-                        Text(working ? "Signing in…" : "Sign in")
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 4)
-                }
-                .buttonStyle(.glassProminent)
-                .controlSize(.large)
-                .disabled(email.isEmpty || password.isEmpty || working)
-                .accessibilityIdentifier("signin.submit")
-            }
+        #if os(macOS)
+        card
+            .padding(.horizontal, 36)
+            .padding(.top, 40)
+            .padding(.bottom, 32)
+            .frame(width: 380)
+            .environment(\.colorScheme, .dark)
+            .onAppear { focus = .email }
+        #else
+        card
             .padding(28)
-            .frame(maxWidth: 380)
+            .frame(minWidth: 300, maxWidth: 380)
             .glassEffect(.regular, in: .rect(cornerRadius: 28))
             .padding(20)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background { Backdrop() }
+            .environment(\.colorScheme, .dark)
+            .onAppear { focus = .email }
+        #endif
+    }
+
+    private var card: some View {
+        VStack(spacing: 22) {
+            VStack(spacing: 10) {
+                Image("Mark")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 84, height: 84)
+                    .accessibilityHidden(true)
+                Text(mode == .signIn ? "Sign in to Amber Notes" : "Create your account")
+                    .font(.title2.weight(.bold))
+                    .contentTransition(.opacity)
+                Text(mode == .signIn
+                     ? "Your notes sync between your devices and the AI tools you connect."
+                     : "Use at least 12 characters. This server only accepts invited emails.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(3)
+                    .contentTransition(.opacity)
+            }
+
+            VStack(spacing: 10) {
+                field {
+                TextField("Email", text: $email)
+                    .textContentType(.username)
+                    #if os(iOS)
+                    .keyboardType(.emailAddress)
+                    .textInputAutocapitalization(.never)
+                    #endif
+                    .autocorrectionDisabled()
+                    .focused($focus, equals: .email)
+                    .submitLabel(.next)
+                    .onSubmit { focus = .password }
+                    .accessibilityIdentifier("signin.email")
+                }
+                field {
+                SecureField("Password", text: $password)
+                    .textContentType(mode == .signIn ? .password : .newPassword)
+                    .focused($focus, equals: .password)
+                    .submitLabel(.go)
+                    .onSubmit(submit)
+                    .accessibilityIdentifier("signin.password")
+                }
+            }
+            .textFieldStyle(.plain)
+
+            if let error {
+                Text(error)
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+                    .multilineTextAlignment(.center)
+                    .transition(.opacity)
+            }
+
+            VStack(spacing: 12) {
+                Button(action: submit) {
+                    HStack(spacing: 8) {
+                        if working { ProgressView().controlSize(.small).tint(.black) }
+                        Text(buttonTitle)
+                    }
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.black.opacity(0.85))
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .background(Color.accentColor, in: .capsule)
+                    .shadow(color: Color.accentColor.opacity(canSubmit ? 0.35 : 0), radius: 14, y: 6)
+                    .contentShape(.capsule)
+                }
+                .buttonStyle(PressScale())
+                .disabled(!canSubmit)
+                .opacity(canSubmit || working ? 1 : 0.45)
+                .animation(.easeOut(duration: 0.15), value: canSubmit)
+                .keyboardShortcut(.defaultAction)
+                .accessibilityIdentifier("signin.submit")
+
+                Button(mode == .signIn ? "Create an account" : "I already have an account") {
+                    withAnimation(.snappy(duration: 0.2)) {
+                        mode = mode == .signIn ? .signUp : .signIn
+                        error = nil
+                    }
+                }
+                .buttonStyle(.plain)
+                .font(.callout)
+                .foregroundStyle(.tint)
+                .accessibilityIdentifier("signin.switch")
+            }
         }
-        .environment(\.colorScheme, .dark)
-        .onAppear { focus = .email }
         .animation(.snappy(duration: 0.2), value: error)
     }
 
+    /// One input, as a soft glass pill.
+    private func field(@ViewBuilder _ content: () -> some View) -> some View {
+        content()
+            .font(.body)
+            .padding(.horizontal, 16)
+            .frame(height: 44)
+            .background(.white.opacity(0.07), in: .capsule)
+            .overlay(Capsule().strokeBorder(.white.opacity(0.10), lineWidth: 1))
+    }
+
+    private var buttonTitle: String {
+        switch (mode, working) {
+        case (.signIn, false): "Sign in"
+        case (.signIn, true): "Signing in…"
+        case (.signUp, false): "Create account"
+        case (.signUp, true): "Creating account…"
+        }
+    }
+
+    private var canSubmit: Bool {
+        !email.isEmpty && !working && (mode == .signIn ? !password.isEmpty : password.count >= 12)
+    }
+
     private func submit() {
-        guard !email.isEmpty, !password.isEmpty, !working else { return }
+        guard canSubmit else { return }
         working = true
         error = nil
         Task {
             do {
-                try await backend.signIn(email: email, password: password)
+                if mode == .signIn {
+                    try await backend.signIn(email: email, password: password)
+                } else {
+                    try await backend.signUp(email: email, password: password)
+                }
             } catch {
-                self.error = "That email and password didn't match."
+                self.error = Backend.message(for: error, signingUp: mode == .signUp)
             }
             working = false
         }

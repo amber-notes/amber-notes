@@ -28,16 +28,65 @@ struct PaneApp: App {
         .modelContainer(container)
         #if os(macOS)
         .defaultSize(width: 1180, height: 760)
+        .defaultWindowPlacement { _, context in
+            // Open at a comfortable size, centred, whatever screen is showing.
+            let screen = context.defaultDisplay.visibleRect
+            let size = CGSize(width: min(1180, screen.width - 80), height: min(760, screen.height - 80))
+            return WindowPlacement(CGPoint(x: screen.midX - size.width / 2, y: screen.midY - size.height / 2), size: size)
+        }
+        .windowResizability(.contentMinSize)
+        .windowStyle(.hiddenTitleBar)
         .windowToolbarStyle(.unified)
         .commands { PaneCommands() }
         #endif
     }
 }
 
+#if os(macOS)
+import AppKit
+
+/// Signed out, the window is just the sign-in card: small, glassy, no title bar.
+/// Signed in, it becomes the normal three-column window.
+private struct WindowShaper: NSViewRepresentable {
+    let compact: Bool
+    /// The sign-in card's own size; the compact window wraps it exactly.
+    var cardSize: CGSize = .zero
+
+    func makeNSView(context: Context) -> NSView { NSView() }
+
+    func updateNSView(_ view: NSView, context: Context) {
+        DispatchQueue.main.async {
+            guard let window = view.window else { return }
+            guard !compact || cardSize.height > 0 else { return }
+            let target = compact ? cardSize : CGSize(width: 1180, height: 760)
+            // No system title bar or toolbar while signed out: just the card and the window buttons.
+            window.toolbar?.isVisible = !compact
+            window.titlebarSeparatorStyle = compact ? .none : .automatic
+            // Card mode: no window buttons; the card is the window. (⌘W / ⌘Q still work.)
+            for b in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
+                window.standardWindowButton(b)?.isHidden = compact
+            }
+            window.contentMinSize = compact ? CGSize(width: 300, height: 300) : CGSize(width: 760, height: 520)
+            // Compact: the card is the whole window, title-bar area included.
+            var frame = compact ? CGRect(origin: .zero, size: target) : window.frameRect(forContentRect: CGRect(origin: .zero, size: target))
+            guard abs(window.frame.width - frame.width) > 2 || abs(window.frame.height - frame.height) > 2 else { return }
+            // Grow or shrink around the window's centre.
+            frame.origin = CGPoint(x: window.frame.midX - frame.width / 2, y: window.frame.midY - frame.height / 2)
+            if let screen = window.screen?.visibleFrame {
+                frame.origin.x = min(max(frame.origin.x, screen.minX), screen.maxX - frame.width)
+                frame.origin.y = min(max(frame.origin.y, screen.minY), screen.maxY - frame.height)
+            }
+            window.setFrame(frame, display: true, animate: true)
+        }
+    }
+}
+#endif
+
 /// Sign-in when sync is on and you're signed out; the library otherwise.
 struct AppGate: View {
     let backend: Backend
     let sync: SyncEngine
+    @State private var cardSize: CGSize = .zero
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var phase
 
@@ -46,6 +95,13 @@ struct AppGate: View {
             switch backend.state {
             case .signedOut:
                 SignInView(backend: backend)
+                    #if os(macOS)
+                    .fixedSize()
+                    .onGeometryChange(for: CGSize.self, of: \.size) { cardSize = $0 }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .ignoresSafeArea()
+                    .containerBackground(for: .window) { Backdrop() }
+                    #endif
                     .transition(.opacity)
             case .disabled, .signedIn:
                 RootView()
@@ -54,6 +110,9 @@ struct AppGate: View {
                     .transition(.opacity)
             }
         }
+        #if os(macOS)
+        .background(WindowShaper(compact: backend.state == .signedOut, cardSize: cardSize))
+        #endif
         .animation(.easeOut(duration: 0.25), value: backend.state)
         .task(id: backend.state) {
             guard case .signedIn = backend.state else { await sync.stop(); return }
@@ -64,7 +123,13 @@ struct AppGate: View {
                 sync.schedule()
             }
         }
-        .onChange(of: phase) { _, p in if p == .active { sync.schedule() } }
+        .onChange(of: phase) { _, p in
+            if p == .active {
+                context.drainInbox()
+                sync.schedule()
+            }
+        }
+        .onAppear { context.drainInbox() }
     }
 }
 

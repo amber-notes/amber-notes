@@ -116,7 +116,20 @@ struct NoteListView: View {
         .navigationBarTitleDisplayMode(.large)
         #endif
         #if os(macOS)
-        .navigationSubtitle("\(scoped.count) notes")
+        // The window has no title bar, so the list carries its own title.
+        .safeAreaInset(edge: .top, spacing: 0) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(title).font(.title2.weight(.bold))
+                Text(scoped.count == 1 ? "1 note" : "\(scoped.count) notes")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                Spacer()
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 6)
+            .padding(.bottom, 8)
+        }
         #endif
         .onKeyPress(.delete) {
             guard let id = selection, let n = context.note(id) else { return .ignored }

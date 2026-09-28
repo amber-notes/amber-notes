@@ -78,6 +78,30 @@ final class Backend {
         try await client.auth.signIn(email: email.trimmingCharacters(in: .whitespaces), password: password)
     }
 
+    /// Creates an account. With email confirmation off, this signs you straight in.
+    func signUp(email: String, password: String) async throws {
+        guard let client else { return }
+        try await client.auth.signUp(email: email.trimmingCharacters(in: .whitespaces).lowercased(), password: password)
+    }
+
+    func changePassword(to password: String) async throws {
+        guard let client else { return }
+        try await client.auth.update(user: UserAttributes(password: password))
+    }
+
+    /// Words a person can act on, instead of raw server errors.
+    static func message(for error: Error, signingUp: Bool) -> String {
+        if error is URLError { return "Can't reach the server. Check your connection." }
+        let raw = (error as? AuthError)?.message ?? error.localizedDescription
+        let lower = raw.lowercased()
+        if lower.contains("private") || lower.contains("not allowed") { return "This server only accepts invited emails. Ask its owner to add yours." }
+        if lower.contains("already") { return "That email already has an account. Sign in instead." }
+        if lower.contains("invalid login") || lower.contains("invalid credentials") { return "That email and password didn't match." }
+        if lower.contains("password") && signingUp { return "Pick a longer password: at least 12 characters." }
+        if lower.contains("email") && lower.contains("invalid") { return "That doesn't look like an email address." }
+        return raw
+    }
+
     func signOut() async {
         try? await client?.auth.signOut()
     }
