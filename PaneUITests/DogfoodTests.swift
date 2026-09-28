@@ -178,42 +178,24 @@ final class DogfoodTests: XCTestCase {
         #if os(iOS)
         openNote("Evening tracker")
         #endif
-        let card = app.descendants(matching: .any).matching(identifier: "table.card").firstMatch
-        XCTAssertTrue(card.waitForExistence(timeout: 5), "typed tables show as a table card")
+        let cell = app.descendants(matching: .any).matching(identifier: "grid.1.0").firstMatch
+        XCTAssertTrue(cell.waitForExistence(timeout: 5), "typed tables show as the same grid as plain tables")
         pause(1)
-        shot("tracker-card")
-        app.buttons["table.log"].firstMatch.tap()
+        shot("tracker-grid")
+        let yes = app.descendants(matching: .any).matching(identifier: "grid.1.4").firstMatch
+        if yes.exists { yes.tap() }
         pause(1)
-        shot("tracker-form")
-        app.buttons["7"].firstMatch.tap()
-        let eight = app.buttons.matching(identifier: "8").element(boundBy: 1)
-        if eight.exists { eight.tap() }
-        app.buttons["Yes"].firstMatch.tap()
-        pause()
-        shot("tracker-filled")
-        app.buttons["row.save"].tap()
-        pause(1.5)
-        shot("tracker-logged")
-        XCTAssertTrue(app.buttons["table.log"].label.contains("Edit today"), "after logging, the button edits today's entry")
-        app.buttons["table.chart"].firstMatch.tap()
-        pause(1.5)
-        shot("tracker-chart")
+        shot("tracker-ticked")
     }
 
     /// The demo: every feature at a watchable pace.
     func testTour() throws {
         pause(2.5)
-        // Tracker: log tonight.
+        // Tracker: a typed table, ticked in place.
         openNote("Evening tracker")
         pause(2)
-        app.buttons["table.log"].firstMatch.tap()
-        pause(1.5)
-        app.buttons["7"].firstMatch.tap(); pause(0.6)
-        let eight = app.buttons.matching(identifier: "8").element(boundBy: 1)
-        if eight.exists { eight.tap() }
-        pause(0.6)
-        app.buttons["Yes"].firstMatch.tap(); pause(1)
-        app.buttons["row.save"].tap()
+        let tick = app.descendants(matching: .any).matching(identifier: "grid.1.4").firstMatch
+        if tick.exists { tick.tap() }
         pause(2.5)
         app.navigationBars.buttons.element(boundBy: 0).tap()
         pause(1.2)

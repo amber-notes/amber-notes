@@ -19,7 +19,6 @@ struct NoteDetailView: View {
             .quickLookPreview(previewBinding)
             .fileImporter(isPresented: $importing, allowedContentTypes: [.item], allowsMultipleSelection: true, onCompletion: attach)
             .onAppear(perform: wireController)
-            .sheet(item: rowBinding, content: rowSheet)
     }
 
     private var editor: some View {
@@ -98,16 +97,6 @@ struct NoteDetailView: View {
 
     private func attach(_ result: Result<[URL], Error>) {
         if case .success(let urls) = result { controller.insertFiles(context.addAttachments(urls)) }
-    }
-
-    private var rowBinding: Binding<TableRowRequest?> {
-        Binding(get: { controller.tableRequest }, set: { controller.tableRequest = $0 })
-    }
-
-    private func rowSheet(_ r: TableRowRequest) -> some View {
-        TableRowSheet(columns: r.columns, values: r.values, isNew: r.rowIndex == nil,
-                      onSave: { controller.saveRow(r, values: $0) },
-                      onDelete: { controller.saveRow(r, values: nil) })
     }
 
     private var previewBinding: Binding<URL?> {

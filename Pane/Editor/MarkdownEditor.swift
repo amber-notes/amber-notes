@@ -26,19 +26,13 @@ final class EditorCore {
     private var lastActiveLine: NSRange?
     /// Live views currently placed over the text.
     private(set) var embeds: [LineEmbed] = []
-    private(set) var tables: [TypedTable] = []
     private(set) var grids: [GridTable] = []
     /// A just-inserted table whose first cell should take the keyboard.
     var pendingGridFocus: Int?
-    private var expandedTables: Set<Int> = []
     /// Looks up a file so images can be sized (set by the text view).
     var resolveAttachment: (UUID) -> Attachment? = { _ in nil }
     /// Called after a restyle, so the view can place live views.
     var onCardsChanged: () -> Void = {}
-
-    init() {
-        styler.tableHeight = { [weak self] t in TableCardMetrics.height(t, expanded: self?.expandedTables.contains(t.index) ?? false) }
-    }
 
     /// An empty 2×2 table after the caret's line; returns the edit and the table's index.
     func newGridEdit(text: String, selection: NSRange) -> (TextEdit, Int) {
@@ -66,25 +60,11 @@ final class EditorCore {
             return CGRect(x: origin.x + container.lineFragmentPadding, y: y, width: min(width, maxWidth), height: height)
         }
         var out: [(String, CGRect, AnyView)] = []
-        for t in tables {
-            guard let f = frame(at: t.range.location, height: styler.tableHeight(t)) else { continue }
-            let view = TableCardView(
-                table: t,
-                expanded: expandedTables.contains(t.index),
-                log: {
-                    let today = t.rowIndex(for: .now)
-                    controller?.tableRequest = TableRowRequest(tableIndex: t.index, rowIndex: today, columns: t.columns, values: today.map { t.rows[$0] } ?? t.blankRow())
-                },
-                edit: { i in controller?.tableRequest = TableRowRequest(tableIndex: t.index, rowIndex: i, columns: t.columns, values: t.rows[i]) },
-                toggleExpanded: { [weak self] in
-                    guard let self else { return }
-                    if self.expandedTables.contains(t.index) { self.expandedTables.remove(t.index) } else { self.expandedTables.insert(t.index) }
-                    self.restyle(storage, selection: selection(), force: true)
-                })
-            out.append(("t\(t.index)", f, AnyView(view)))
-        }
         for g in grids {
-            guard let f = frame(at: g.range.location, height: GridMetrics.height(g)) else { continue }
+            // The row handles sit in the margin, so the grid lines up with the text.
+            guard var f = frame(at: g.range.location, height: GridMetrics.height(g)) else { continue }
+            f.origin.x -= GridMetrics.handle
+            f.size.width += GridMetrics.handle
             let focusFirst = pendingGridFocus == g.index
             if focusFirst { pendingGridFocus = nil }
             let view = TableGridView(table: g, initialFocus: focusFirst ? GridCell(row: 0, column: 0) : nil) { edited in
@@ -125,7 +105,6 @@ final class EditorCore {
         }
         let blocks = styler.apply(to: storage, active: selection ?? NSRange(location: NSNotFound, length: 0))
         embeds = blocks.embeds
-        tables = blocks.tables
         grids = blocks.grids
         onCardsChanged()
     }

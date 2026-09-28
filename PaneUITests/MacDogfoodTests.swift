@@ -110,9 +110,8 @@ final class MacDogfoodTests: XCTestCase {
         shot("card-open")
         row("Evening tracker").click()
         pause(1)
-        app.buttons["table.log"].firstMatch.click()
-        pause(1.5)
-        shot("tracker-form")
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "grid.1.0").firstMatch.waitForExistence(timeout: 5))
+        shot("tracker-grid")
     }
 }
 #endif

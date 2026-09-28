@@ -1,15 +1,23 @@
 import SwiftUI
 
-/// A plain markdown table, edited as a grid of cells like Apple Notes.
+/// A markdown table, edited as a grid of cells like Apple Notes.
 /// The note keeps standard markdown; every change is written straight back.
+/// A `<!-- pane-table: … -->` comment above the table gives columns a type.
 struct GridTable: Equatable {
     var rows: [[String]]
     var range: NSRange
     var index: Int
+    /// Column types from the comment; nil for a plain table.
+    var types: [TypedTable.ColumnType]? = nil
 
     var columns: Int { rows.map(\.count).max() ?? 0 }
 
-    /// Plain markdown tables in the text (typed trackers and code blocks excluded).
+    func type(_ column: Int) -> TypedTable.ColumnType {
+        guard let types, column < types.count else { return .text }
+        return types[column]
+    }
+
+    /// All tables in the text (code blocks excluded), typed or plain.
     static func find(in text: String) -> [GridTable] {
         let ns = text as NSString
         var lines: [NSRange] = []
@@ -26,13 +34,16 @@ struct GridTable: Equatable {
             let t = ns.substring(with: lines[i]).trimmingCharacters(in: .whitespaces)
             if t.hasPrefix("```") || t.hasPrefix("~~~") { inCode.toggle(); i += 1; continue }
             if inCode || !isRow(i) || !(i + 1 < lines.count && isDelimiter(i + 1)) { i += 1; continue }
-            let typed = i > 0 && ns.substring(with: lines[i - 1]).contains(TypedTable.marker)
             var j = i
             while isRow(j) { j += 1 }
-            if !typed {
-                let range = NSRange(location: lines[i].location, length: NSMaxRange(lines[j - 1]) - lines[i].location)
-                out.append(from(lines: (i..<j).map { ns.substring(with: lines[$0]) }, range: range, index: out.count))
-            }
+            let body = (i..<j).map { ns.substring(with: lines[$0]) }
+            let above = i > 0 ? ns.substring(with: lines[i - 1]).trimmingCharacters(in: .whitespaces) : ""
+            let typed = above.hasPrefix("<!--") && above.hasSuffix("-->") && above.contains(TypedTable.marker)
+            let start = typed ? lines[i - 1].location : lines[i].location
+            let range = NSRange(location: start, length: NSMaxRange(lines[j - 1]) - start)
+            var g = from(lines: body, range: range, index: out.count)
+            if typed { g.types = TypedTable.parse(comment: above, table: body.map { $0.trimmingCharacters(in: .whitespaces) })?.columns.map(\.type) }
+            out.append(g)
             i = j
         }
         return out
@@ -54,9 +65,67 @@ struct GridTable: Equatable {
             }
             return "| " + cells.joined(separator: " | ") + " |"
         }
-        var out = [line(rows.first ?? []), "|" + Array(repeating: " --- ", count: width).joined(separator: "|") + "|"]
+        var out: [String] = []
+        if (0..<width).contains(where: { type($0) != .text }) {
+            let header = rows.first ?? []
+            let specs = (0..<width).map { c in "\(c < header.count ? header[c] : "")=\(type(c).spec)" }
+            out.append("<!-- \(TypedTable.marker) " + specs.joined(separator: "; ") + " -->")
+        }
+        out += [line(rows.first ?? []), "|" + Array(repeating: " --- ", count: width).joined(separator: "|") + "|"]
         out += rows.dropFirst().map(line)
         return out.joined(separator: "\n")
+    }
+
+    /// A new row, with today's date in the first date column.
+    var blankRow: [String] {
+        let width = max(columns, 1)
+        let dateColumn = (0..<width).first { type($0) == .date }
+        return (0..<width).map { $0 == dateColumn ? TypedTable.day(.now) : "" }
+    }
+
+    /// The typed view the chart reads.
+    var typed: TypedTable {
+        let width = max(columns, 1)
+        let header = rows.first ?? []
+        let cols = (0..<width).map { TypedTable.Column(name: $0 < header.count ? header[$0] : "", type: type($0)) }
+        return TypedTable(columns: cols, rows: rows.dropFirst().map { $0 + Array(repeating: "", count: max(0, width - $0.count)) })
+    }
+
+    /// Widths that fit each column's text, stretched to fill `available`.
+    func columnWidths(available: CGFloat) -> [CGFloat] {
+        let width = max(columns, 1)
+        let font = PFont.systemFont(ofSize: EditorMetrics.body)
+        var natural = (0..<width).map { c -> CGFloat in
+            let longest = rows.map { c < $0.count ? ($0[c] as NSString).size(withAttributes: [.font: font]).width : 0 }.max() ?? 0
+            return min(max(ceil(longest) + 24, 64), 280)
+        }
+        let total = natural.reduce(0, +)
+        if total < available, total > 0 {
+            natural = natural.map { $0 * available / total }
+        }
+        return natural
+    }
+}
+
+extension TypedTable.ColumnType {
+    /// A choice whose first answer is "Yes": shown as a checkbox.
+    var isYesNo: Bool {
+        if case .choice(let o) = self { return o.first?.lowercased() == "yes" }
+        return false
+    }
+
+    var isNumeric: Bool {
+        switch self {
+        case .number, .scale: true
+        default: false
+        }
+    }
+
+    var chartable: Bool {
+        switch self {
+        case .number, .scale, .choice: true
+        default: false
+        }
     }
 }
 
@@ -72,6 +141,33 @@ struct GridCell: Hashable {
     var column: Int
 }
 
+/// The column types you can pick from the column menu.
+private enum ColumnKind: Hashable {
+    case text, number, date, yesNo, other
+
+    init(_ t: TypedTable.ColumnType) {
+        switch t {
+        case .text: self = .text
+        case .number, .scale: self = .number
+        case .date: self = .date
+        case .choice: self = t.isYesNo ? .yesNo : .other
+        }
+    }
+
+    var type: TypedTable.ColumnType {
+        switch self {
+        case .text, .other: .text
+        case .number: .number
+        case .date: .date
+        case .yesNo: .choice(["Yes", "No"])
+        }
+    }
+}
+
+private struct TrendColumn: Identifiable {
+    let id: Int
+}
+
 struct TableGridView: View {
     let table: GridTable
     /// Writes the edited table back into the note.
@@ -80,6 +176,7 @@ struct TableGridView: View {
     var initialFocus: GridCell?
 
     @State private var draft: GridTable
+    @State private var trend: TrendColumn?
     @FocusState private var focus: GridCell?
 
     init(table: GridTable, initialFocus: GridCell?, commit: @escaping (GridTable) -> Void) {
@@ -91,47 +188,53 @@ struct TableGridView: View {
 
     var body: some View {
         GeometryReader { geo in
-            let cols = max(draft.columns, 1)
-            let width = geo.size.width - GridMetrics.handle
-            let colWidth = max(width / CGFloat(cols), 90)
-            VStack(alignment: .leading, spacing: 0) {
-                // Column handle above the focused column.
-                ZStack(alignment: .leading) {
-                    Color.clear.frame(height: GridMetrics.handle)
-                    if let f = focus {
-                        handle(horizontal: true) { columnMenu(f.column) }
-                            .offset(x: GridMetrics.handle + CGFloat(f.column) * colWidth + colWidth / 2 - 14)
-                    }
-                }
-                HStack(alignment: .top, spacing: 0) {
-                    // Row handle beside the focused row.
-                    ZStack(alignment: .top) {
-                        Color.clear.frame(width: GridMetrics.handle)
-                        if let f = focus {
-                            handle(horizontal: false) { rowMenu(f.row) }
-                                .offset(y: CGFloat(f.row) * GridMetrics.row + GridMetrics.row / 2 - 12)
-                        }
-                    }
-                    grid(cols: cols, colWidth: colWidth)
-                }
+            let available = geo.size.width - GridMetrics.handle
+            let widths = draft.columnWidths(available: available)
+            let total = widths.reduce(0, +)
+            ScrollView(.horizontal) {
+                content(widths: widths)
+                    .frame(width: GridMetrics.handle + total, alignment: .leading)
             }
+            .scrollDisabled(total <= available + 0.5)
+            .scrollIndicators(total <= available + 0.5 ? .hidden : .automatic)
         }
         .onChange(of: table) { _, new in if new != draft { draft = new } }
         .onAppear { if let initialFocus { DispatchQueue.main.async { focus = initialFocus } } }
+        .sheet(item: $trend) { TableChartSheet(table: draft.typed, column: $0.id) }
     }
 
-    private func grid(cols: Int, colWidth: CGFloat) -> some View {
-        VStack(spacing: 0) {
+    private func content(widths: [CGFloat]) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Column handle above the focused column.
+            ZStack(alignment: .leading) {
+                Color.clear.frame(height: GridMetrics.handle)
+                if let f = focus, f.column < widths.count {
+                    handle(horizontal: true) { columnMenu(f.column) }
+                        .offset(x: GridMetrics.handle + widths[..<f.column].reduce(0, +) + widths[f.column] / 2 - 14)
+                }
+            }
+            HStack(alignment: .top, spacing: 0) {
+                // Row handle beside the focused row.
+                ZStack(alignment: .top) {
+                    Color.clear.frame(width: GridMetrics.handle)
+                    if let f = focus {
+                        handle(horizontal: false) { rowMenu(f.row) }
+                            .offset(y: CGFloat(f.row) * GridMetrics.row + GridMetrics.row / 2 - 12)
+                    }
+                }
+                grid(widths: widths)
+            }
+        }
+    }
+
+    private func grid(widths: [CGFloat]) -> some View {
+        let cols = widths.count
+        return VStack(spacing: 0) {
             ForEach(0..<draft.rows.count, id: \.self) { r in
                 HStack(spacing: 0) {
                     ForEach(0..<cols, id: \.self) { c in
-                        TextField("", text: cellBinding(r, c))
-                            .textFieldStyle(.plain)
-                            .font(.system(size: EditorMetrics.body))
-                            .padding(.horizontal, 8)
-                            .frame(width: colWidth, height: GridMetrics.row, alignment: .leading)
-                            .focused($focus, equals: GridCell(row: r, column: c))
-                            .onSubmit { move(from: GridCell(row: r, column: c), by: cols) }
+                        cell(r, c, cols: cols)
+                            .frame(width: widths[c], height: GridMetrics.row)
                             .overlay(alignment: .trailing) {
                                 if c < cols - 1 { Rectangle().fill(border).frame(width: 1) }
                             }
@@ -146,38 +249,125 @@ struct TableGridView: View {
         .overlay(RoundedRectangle(cornerRadius: 2).strokeBorder(border, lineWidth: 1))
         .onKeyPress(.tab, phases: .down) { press in
             guard let f = focus else { return .ignored }
-            if press.modifiers.contains(.shift) { step(from: f, by: -1, cols: cols) } else { step(from: f, by: 1, cols: cols) }
+            step(from: f, by: press.modifiers.contains(.shift) ? -1 : 1, cols: cols)
             return .handled
         }
+    }
+
+    @ViewBuilder
+    private func cell(_ r: Int, _ c: Int, cols: Int) -> some View {
+        let type = r == 0 ? .text : draft.type(c)
+        let trailing = draft.type(c).isNumeric
+        if type.isYesNo, case .choice(let options) = type {
+            yesNoCell(r, c, options: options)
+        } else if case .choice(let options) = type {
+            choiceCell(r, c, options: options)
+        } else {
+            TextField("", text: cellBinding(r, c))
+                .textFieldStyle(.plain)
+                .font(.system(size: EditorMetrics.body))
+                .monospacedDigit()
+                .multilineTextAlignment(trailing ? .trailing : .leading)
+                .padding(.horizontal, 8)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: trailing ? .trailing : .leading)
+                .focused($focus, equals: GridCell(row: r, column: c))
+                .onSubmit { move(from: GridCell(row: r, column: c), cols: cols) }
+        }
+    }
+
+    /// Yes is a ticked circle, like a checklist; a tap flips it.
+    private func yesNoCell(_ r: Int, _ c: Int, options: [String]) -> some View {
+        let value = cellBinding(r, c)
+        let yes = options.first ?? "Yes"
+        let no = options.count > 1 ? options[1] : "No"
+        let current = value.wrappedValue
+        let isYes = current.caseInsensitiveCompare(yes) == .orderedSame
+        let isNo = current.isEmpty || current.caseInsensitiveCompare(no) == .orderedSame
+        return Button {
+            value.wrappedValue = isYes ? no : yes
+        } label: {
+            Group {
+                if isYes || isNo {
+                    Image(systemName: isYes ? "checkmark.circle.fill" : "circle")
+                        .font(.system(size: EditorMetrics.checkSize * 0.8))
+                        .foregroundStyle(isYes ? AnyShapeStyle(.tint) : AnyShapeStyle(.tertiary))
+                } else {
+                    Text(current)
+                        .font(.system(size: EditorMetrics.body))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            .padding(.horizontal, 8)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .contextMenu {
+            ForEach(options, id: \.self) { o in Button(o) { value.wrappedValue = o } }
+            Divider()
+            Button("Clear") { value.wrappedValue = "" }
+        }
+        .accessibilityLabel(current.isEmpty ? "Empty" : current)
+    }
+
+    /// Any other list of answers: plain text that opens a menu.
+    private func choiceCell(_ r: Int, _ c: Int, options: [String]) -> some View {
+        let value = cellBinding(r, c)
+        return Menu {
+            ForEach(options, id: \.self) { o in Button(o) { value.wrappedValue = o } }
+            Divider()
+            Button("Clear") { value.wrappedValue = "" }
+        } label: {
+            Text(value.wrappedValue)
+                .font(.system(size: EditorMetrics.body))
+                .foregroundStyle(.primary)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                .padding(.horizontal, 8)
+                .contentShape(.rect)
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .menuIndicator(.hidden)
     }
 
     private var border: Color { Color.secondary.opacity(0.45) }
 
     private func cellBinding(_ r: Int, _ c: Int) -> Binding<String> {
         Binding(
-            get: { c < draft.rows[r].count ? draft.rows[r][c] : "" },
+            get: { r < draft.rows.count && c < draft.rows[r].count ? draft.rows[r][c] : "" },
             set: { value in
+                guard r < draft.rows.count else { return }
                 while draft.rows[r].count <= c { draft.rows[r].append("") }
                 draft.rows[r][c] = value
                 commit(draft)
             })
     }
 
-    /// Tab walks cells; past the last cell it adds a row.
+    /// Cells you type into; checkboxes and menus are skipped by Tab and Return.
+    private func isText(_ r: Int, _ c: Int) -> Bool {
+        if r == 0 { return true }
+        if case .choice = draft.type(c) { return false }
+        return true
+    }
+
+    /// Tab walks the text cells; past the last cell it adds a row.
     private func step(from f: GridCell, by delta: Int, cols: Int) {
-        var flat = f.row * cols + f.column + delta
-        if flat >= draft.rows.count * cols {
-            draft.rows.append(Array(repeating: "", count: cols))
-            commit(draft)
-        }
-        flat = max(0, flat)
+        var flat = f.row * cols + f.column
+        repeat {
+            flat += delta
+            if flat < 0 { return }
+            if flat >= draft.rows.count * cols {
+                draft.rows.append(draft.blankRow)
+                commit(draft)
+            }
+        } while !isText(flat / cols, flat % cols) && (0..<cols).contains(where: { isText(flat / cols, $0) })
         focus = GridCell(row: flat / cols, column: flat % cols)
     }
 
     /// Return moves down a row, adding one at the bottom.
-    private func move(from f: GridCell, by cols: Int) {
+    private func move(from f: GridCell, cols: Int) {
         if f.row == draft.rows.count - 1 {
-            draft.rows.append(Array(repeating: "", count: cols))
+            draft.rows.append(draft.blankRow)
             commit(draft)
         }
         focus = GridCell(row: f.row + 1, column: f.column)
@@ -200,20 +390,55 @@ struct TableGridView: View {
 
     @ViewBuilder
     private func rowMenu(_ r: Int) -> some View {
-        Button("Add Row Above") { edit { $0.rows.insert(Array(repeating: "", count: $0.columns), at: r) } }
-        Button("Add Row Below") { edit { $0.rows.insert(Array(repeating: "", count: $0.columns), at: r + 1) } }
+        Button("Add Row Above") { edit { $0.rows.insert($0.blankRow, at: max(r, 1)) } }
+        Button("Add Row Below") { edit { $0.rows.insert($0.blankRow, at: r + 1) } }
         Divider()
         Button("Delete Row", role: .destructive) { edit { if $0.rows.count > 1 { $0.rows.remove(at: r) } } }
     }
 
     @ViewBuilder
     private func columnMenu(_ c: Int) -> some View {
-        Button("Add Column Before") { edit { t in t.rows = t.rows.map { var r = $0; r.insert("", at: min(c, r.count)); return r } } }
-        Button("Add Column After") { edit { t in t.rows = t.rows.map { var r = $0; r.insert("", at: min(c + 1, r.count)); return r } } }
+        Picker("Type", selection: kindBinding(c)) {
+            Text("Text").tag(ColumnKind.text)
+            Text("Number").tag(ColumnKind.number)
+            Text("Date").tag(ColumnKind.date)
+            Text("Yes/No").tag(ColumnKind.yesNo)
+        }
+        .pickerStyle(.menu)
+        if draft.type(c).chartable {
+            Button("Show Trend") { trend = TrendColumn(id: c) }
+        }
+        Divider()
+        Button("Add Column Before") { edit { t in insertColumn(&t, at: c) } }
+        Button("Add Column After") { edit { t in insertColumn(&t, at: c + 1) } }
         Divider()
         Button("Delete Column", role: .destructive) {
-            edit { t in if t.columns > 1 { t.rows = t.rows.map { var r = $0; if c < r.count { r.remove(at: c) }; return r } } }
+            edit { t in
+                guard t.columns > 1 else { return }
+                t.rows = t.rows.map { var r = $0; if c < r.count { r.remove(at: c) }; return r }
+                if var types = t.types, c < types.count { types.remove(at: c); t.types = types }
+            }
         }
+    }
+
+    private func insertColumn(_ t: inout GridTable, at c: Int) {
+        t.rows = t.rows.map { var r = $0; r.insert("", at: min(c, r.count)); return r }
+        if var types = t.types { types.insert(.text, at: min(c, types.count)); t.types = types }
+    }
+
+    /// Changing the kind keeps a more specific type (a 1–10 scale stays a scale).
+    private func kindBinding(_ c: Int) -> Binding<ColumnKind> {
+        Binding(
+            get: { ColumnKind(draft.type(c)) },
+            set: { kind in
+                guard kind != ColumnKind(draft.type(c)) else { return }
+                edit { t in
+                    var types = t.types ?? []
+                    while types.count < t.columns { types.append(.text) }
+                    types[c] = kind.type
+                    t.types = types
+                }
+            })
     }
 
     private func edit(_ change: (inout GridTable) -> Void) {

@@ -8,10 +8,9 @@ struct TableChartSheet: View {
     @State private var column: Int
     @Environment(\.dismiss) private var dismiss
 
-    init(table: TypedTable) {
+    init(table: TypedTable, column: Int) {
         self.table = table
-        _column = State(initialValue: table.columns.firstIndex { if case .scale = $0.type { true } else { false } }
-            ?? table.columns.firstIndex { $0.type == .number } ?? 0)
+        _column = State(initialValue: column)
     }
 
     private var chartable: [Int] {
@@ -50,7 +49,7 @@ struct TableChartSheet: View {
                 if case .choice = table.columns[column].type {
                     Chart(counts, id: \.0) { item in
                         BarMark(x: .value("Answer", item.0), y: .value("Days", item.1))
-                            .foregroundStyle(item.0 == counts.first?.0 ? Color.green.gradient : Color.orange.gradient)
+                            .foregroundStyle(item.0 == counts.first?.0 ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
                             .cornerRadius(6)
                             .annotation(position: .top) { Text("\(item.1)").font(.caption).monospacedDigit().foregroundStyle(.secondary) }
                     }
@@ -59,14 +58,11 @@ struct TableChartSheet: View {
                     let avg = points.map(\.1).reduce(0, +) / Double(points.count)
                     Chart {
                         ForEach(points, id: \.0) { p in
-                            AreaMark(x: .value("Day", p.0, unit: .day), y: .value("Value", p.1))
-                                .foregroundStyle(.linearGradient(colors: [Color.accentColor.opacity(0.3), .clear], startPoint: .top, endPoint: .bottom))
-                                .interpolationMethod(.monotone)
                             LineMark(x: .value("Day", p.0, unit: .day), y: .value("Value", p.1))
                                 .interpolationMethod(.monotone)
-                                .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                                .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round))
                             PointMark(x: .value("Day", p.0, unit: .day), y: .value("Value", p.1))
-                                .symbolSize(28)
+                                .symbolSize(24)
                         }
                         RuleMark(y: .value("Average", avg))
                             .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))

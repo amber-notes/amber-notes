@@ -9,8 +9,6 @@ final class EditorController {
     /// Set by the platform text view while it is on screen.
     @ObservationIgnored weak var target: (any EditorTarget)?
     var isEditing = false
-    /// A typed-table row waiting to be added or edited.
-    var tableRequest: TableRowRequest?
     /// The file being shown in Quick Look.
     var previewURL: URL?
     /// Files being fetched from the server.
@@ -109,37 +107,6 @@ final class EditorController {
     /// Creates a sub-note linked from here (set by the note screen).
     @ObservationIgnored var newSubNote: () -> Void = {}
 }
-
-struct TableRowRequest: Identifiable {
-    let id = UUID()
-    var tableIndex: Int
-    /// nil for a new row.
-    var rowIndex: Int?
-    var columns: [TypedTable.Column]
-    var values: [String]
-}
-
-extension EditorController {
-    /// Writes a row back into the table's markdown (nil values deletes the row).
-    func saveRow(_ r: TableRowRequest, values: [String]?) {
-        perform { text, _ in
-            let all = TypedTable.find(in: text)
-            guard r.tableIndex < all.count else { return nil }
-            var t = all[r.tableIndex]
-            if let values {
-                if let i = r.rowIndex, i < t.rows.count { t.rows[i] = values } else { t.rows.append(values) }
-                // Keep dated rows in order.
-                if let col = t.columns.firstIndex(where: { $0.type == .date }) {
-                    t.rows.sort { $0[col] < $1[col] }
-                }
-            } else if let i = r.rowIndex, i < t.rows.count {
-                t.rows.remove(at: i)
-            }
-            return TextEdit(range: t.range, replacement: t.markdown, caret: -1)
-        }
-    }
-}
-
 
 @MainActor
 protocol EditorTarget: AnyObject {
