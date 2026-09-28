@@ -25,7 +25,54 @@ import Testing
         #expect(md.contains("1. First"))
         #expect(md.contains("2. Second"))
         #expect(md.contains("~~Cancelled~~"))
-        #expect(md.contains("a \\* star"))
+        // A lone star between spaces can't become emphasis, so it stays as typed.
+        #expect(md.contains("a * star"))
+    }
+
+    // Shapes Apple Notes produces that used to break on import.
+
+    @Test func boldListItemsKeepTheirBulletOutOfTheBold() {
+        let md = RichTextToMarkdown.markdown(fromHTML: "<ul><li><b>Pack early</b></li><li><b>Label:</b> the rest</li></ul>")
+        #expect(md == "- **Pack early**\n- **Label:** the rest")
+    }
+
+    @Test func boldOrderedItemsToo() {
+        let md = RichTextToMarkdown.markdown(fromHTML: "<ol><li><b>One</b> thing</li><li>Two</li></ol>")
+        #expect(md == "1. **One** thing\n2. Two")
+    }
+
+    @Test func aParagraphAfterAListGetsABlankLine() {
+        // Without it markdown folds the paragraph into the last item.
+        let md = RichTextToMarkdown.markdown(fromHTML: "<ul><li>Apples</li><li>Pears</li></ul><div><b>Next</b></div>")
+        #expect(md == "- Apples\n- Pears\n\n**Next**")
+    }
+
+    @Test func lineBreaksInsideAnItemStayInTheItem() {
+        let md = RichTextToMarkdown.markdown(fromHTML: "<ol><li>Taste it.<br><br>Then serve.</li></ol><ul><li><b><br></b>Lead break</li></ul>")
+        #expect(md.contains("1. Taste it.\n\n  Then serve."))
+        #expect(md.contains("- Lead break"))
+        #expect(!md.contains("\u{2028}"))
+    }
+
+    @Test func noEmptyEmphasisOrStrayBullets() {
+        let md = RichTextToMarkdown.markdown(fromHTML: "<ul><li><b>A</b><b>B</b></li></ul><div><b><br></b></div><div>x</div>")
+        #expect(!md.contains("****"))
+        #expect(!md.contains("•"))
+        #expect(!md.contains("\t"))
+        #expect(md.contains("**AB**"))
+    }
+
+    @Test func onlyEscapesWhatWouldBecomeMarkdown() {
+        let md = RichTextToMarkdown.markdown(fromHTML: "<div>snake_case and 2 * 3 and `tick` and _lead</div>")
+        #expect(md.contains("snake_case"))
+        #expect(md.contains("2 * 3"))
+        #expect(md.contains("\\`tick\\`"))
+        #expect(md.contains("\\_lead"))
+    }
+
+    @Test func nonBreakingSpacesBecomeSpaces() {
+        let md = RichTextToMarkdown.markdown(fromHTML: "<div>a&nbsp;b&nbsp;&nbsp;</div>")
+        #expect(md == "a b")
     }
 
     #if os(macOS)

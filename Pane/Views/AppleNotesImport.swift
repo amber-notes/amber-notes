@@ -248,6 +248,8 @@ struct AppleNotesImportView: View {
         var made: [UUID] = []
         for (i, n) in chosen.enumerated() {
             progress = (i, chosen.count)
+            // Importing the same unchanged note again would only make a copy.
+            if context.hasImported(title: n.name, modified: n.modified) { continue }
             guard let html = try? await Task.detached(operation: { try AppleNotesBridge.body(of: n.id) }).value else { continue }
             let md = RichPaste.clean(RichTextToMarkdown.markdown(fromHTML: html))
             let scope: Scope = keepFolders ? .folder(folder(named: n.folder).id) : .all

@@ -48,6 +48,7 @@ enum RichTextToMarkdown {
         var lines: [String] = []
         var index = 0
         var orderedCounters: [Int: Int] = [:]
+        var inList = false
 
         while index < ns.length {
             let para = ns.paragraphRange(for: NSRange(location: index, length: 0))
@@ -67,6 +68,7 @@ enum RichTextToMarkdown {
             #endif
 
             if content.length == 0 {
+                inList = false
                 if !code.isEmpty { code.append(""); continue }
                 if lines.last != "" { lines.append("") }
                 orderedCounters.removeAll()
@@ -79,27 +81,35 @@ enum RichTextToMarkdown {
                 continue
             }
             flushCode(into: &lines)
-            var inline = inlineMarkdown(text, range: content)
             let lists = style?.textLists ?? []
 
             if let list = lists.last {
                 let depth = lists.count - 1
                 let indent = String(repeating: "  ", count: depth)
-                // Strip the marker text the importer rendered, e.g. "•\t" or "1.\t".
-                inline = stripRenderedMarker(inline)
+                // Cut the marker the HTML importer rendered ("\t•\t", "1.\t") before
+                // formatting, so a bold item doesn't wrap its bullet in the bold.
+                let marker = renderedMarkerLength(raw)
+                let body = NSRange(location: content.location + marker, length: content.length - marker)
+                let item = String(ns.substring(with: body).drop { $0 == " " || $0 == "\t" })
+                let inline = softBreaks(inlineMarkdown(text, range: body), continuation: indent + "  ")
                 let format = list.markerFormat.rawValue.lowercased()
                 if format.contains("decimal") || format.contains("roman") || format.contains("alpha") {
                     let n = (orderedCounters[depth] ?? list.startingItemNumber - 1) + 1
                     orderedCounters[depth] = n
                     lines.append("\(indent)\(n). \(inline)")
-                } else if let checked = checklistState(raw, list: list) {
+                } else if let checked = checklistState(item, list: list) {
                     lines.append("\(indent)- [\(checked ? "x" : " ")] \(stripCheckGlyph(inline))")
                 } else {
                     lines.append("\(indent)- \(inline)")
                 }
+                inList = true
                 continue
             }
             orderedCounters.removeAll()
+            // A line straight after a list would join its last item in markdown.
+            if inList, lines.last != "" { lines.append("") }
+            inList = false
+            let inline = softBreaks(inlineMarkdown(text, range: content), continuation: "")
 
             // Headings: a paragraph set wholly in a larger size.
             let size = maxFontSize(text, content)
@@ -126,36 +136,74 @@ enum RichTextToMarkdown {
 
     // MARK: Inline
 
+    /// How a run of text is formatted. Neighbouring runs that look the same are
+    /// written as one, so "**a****b**" never happens.
+    private struct Look: Equatable {
+        var bold = false, italic = false, strike = false, underline = false, mono = false
+        var link: String?
+    }
+
     static func inlineMarkdown(_ text: NSAttributedString, range: NSRange) -> String {
-        var result = ""
+        let ns = text.string as NSString
+        var runs: [(look: Look, text: String)] = []
         text.enumerateAttributes(in: range) { attrs, r, _ in
-            var s = escape((text.string as NSString).substring(with: r))
-            if s.trimmingCharacters(in: .whitespaces).isEmpty { result += s; return }
-            let font = attrs[.font] as? PFont
-            let traits = font?.fontDescriptor.symbolicTraits ?? []
-            // Keep surrounding spaces outside the markers so markdown parses.
-            let lead = String(s.prefix { $0 == " " }), trail = String(s.reversed().prefix { $0 == " " })
-            s = String(s.dropFirst(lead.count).dropLast(trail.count))
-            if traits.contains(.paneMonoSpace) { s = "`" + (text.string as NSString).substring(with: r).trimmingCharacters(in: .whitespaces) + "`" }
-            else {
-                if traits.contains(.paneBold) { s = "**\(s)**" }
-                if traits.contains(.paneItalic) { s = "*\(s)*" }
-                if let strike = attrs[.strikethroughStyle] as? Int, strike != 0 { s = "~~\(s)~~" }
-                if let under = attrs[.underlineStyle] as? Int, under != 0, attrs[.link] == nil { s = "<u>\(s)</u>" }
-            }
+            let traits = (attrs[.font] as? PFont)?.fontDescriptor.symbolicTraits ?? []
+            var look = Look()
+            look.mono = traits.contains(.paneMonoSpace)
+            look.bold = traits.contains(.paneBold)
+            look.italic = traits.contains(.paneItalic)
+            look.strike = (attrs[.strikethroughStyle] as? Int ?? 0) != 0
             if let link = attrs[.link] {
                 let url = (link as? URL)?.absoluteString ?? (link as? String) ?? ""
-                if !url.isEmpty { s = "[\(s)](\(url))" }
+                if !url.isEmpty { look.link = url }
             }
+            look.underline = (attrs[.underlineStyle] as? Int ?? 0) != 0 && look.link == nil
+            let piece = ns.substring(with: r)
+            if let last = runs.last, last.look == look { runs[runs.count - 1].text += piece } else { runs.append((look, piece)) }
+        }
+        var result = ""
+        for (look, raw) in runs {
+            let piece = raw.replacingOccurrences(of: "\u{00A0}", with: " ")
+            // Formatting on bare whitespace (a bold line break) means nothing in markdown.
+            if piece.trimmingCharacters(in: blank).isEmpty { result += piece; continue }
+            // Keep surrounding spaces outside the markers so markdown parses.
+            let lead = String(piece.prefix { blank.contains($0.unicodeScalars.first!) })
+            let trail = String(piece.reversed().prefix { blank.contains($0.unicodeScalars.first!) }.reversed())
+            let core = String(piece.dropFirst(lead.count).dropLast(trail.count))
+            var s: String
+            if look.mono { s = "`" + core + "`" } else {
+                s = escape(core)
+                if look.bold { s = "**\(s)**" }
+                if look.italic { s = "*\(s)*" }
+                if look.strike { s = "~~\(s)~~" }
+                if look.underline { s = "<u>\(s)</u>" }
+            }
+            if let url = look.link { s = "[\(s)](\(url))" }
             result += lead + s + trail
         }
         return result
     }
 
+    private static let blank = CharacterSet.whitespacesAndNewlines.union(CharacterSet(charactersIn: "\u{2028}\u{2029}"))
+
+    /// Escapes only what would otherwise turn into markdown, since every
+    /// backslash is visible while you edit: `snake_case` stays as typed.
     static func escape(_ s: String) -> String {
+        let chars = Array(s)
+        let linkLike = s.contains("](")
         var out = ""
-        for c in s {
-            if "*_`[]\\".contains(c) { out.append("\\") }
+        for (i, c) in chars.enumerated() {
+            let before = i > 0 ? chars[i - 1] : " ", after = i + 1 < chars.count ? chars[i + 1] : " "
+            var needs = false
+            switch c {
+            case "`": needs = true
+            case "*": needs = i == 0 || !(before.isWhitespace && after.isWhitespace)
+            case "_": needs = !(before.isLetter || before.isNumber) || !(after.isLetter || after.isNumber)
+            case "[", "]": needs = linkLike
+            case "\\": needs = after.isPunctuation || after.isSymbol
+            default: break
+            }
+            if needs { out.append("\\") }
             out.append(c)
         }
         return out
@@ -211,11 +259,20 @@ enum RichTextToMarkdown {
         s.replacingOccurrences(of: "**", with: "")
     }
 
-    private static func stripRenderedMarker(_ s: String) -> String {
-        if let r = s.range(of: #"^\s*([•◦▪︎▫︎·\-–—*]|\\?\*|\d+[.)]?|[a-zA-Z][.)]|[ivxlcIVXLC]+[.)]?)\t"#, options: .regularExpression) {
-            return String(s[r.upperBound...])
-        }
-        return s
+    /// Length of the list marker the HTML importer writes into an item's text.
+    private static func renderedMarkerLength(_ raw: String) -> Int {
+        guard let r = raw.range(of: #"^\t?\s*([•◦▪︎▫︎·\-–—*⁃]|\d+[.)]?|[a-zA-Z][.)]|[ivxlcIVXLC]+[.)]?)\t"#, options: .regularExpression) else { return 0 }
+        return raw[r].utf16.count
+    }
+
+    /// A line break inside a paragraph (Shift-Return in Notes) becomes a new
+    /// markdown line; inside a list item the next line is indented to stay in it.
+    /// Breaks at either end are dropped.
+    private static func softBreaks(_ s: String, continuation: String) -> String {
+        let breaks = CharacterSet(charactersIn: "\u{2028}\u{2029}")
+        let parts = s.components(separatedBy: breaks).map { $0.trimmingCharacters(in: .whitespaces) }
+        let kept = parts.drop { $0.isEmpty || $0 == "****" }.reversed().drop { $0.isEmpty || $0 == "****" }.reversed()
+        return kept.enumerated().map { i, line in i == 0 || line.isEmpty ? line : continuation + line }.joined(separator: "\n")
     }
 
     private static let checkGlyphs = CharacterSet(charactersIn: "☐☑☒✓✔︎◯○●⃝")

@@ -59,6 +59,16 @@ extension ModelContext {
     }
 
     @discardableResult
+    /// True when an Apple note was imported before and hasn't changed since:
+    /// a live note with its title, dated to its last edit (imports keep that date).
+    func hasImported(title: String, modified: Date) -> Bool {
+        let stamp = modified.timeIntervalSinceReferenceDate.rounded()
+        return ((try? fetch(FetchDescriptor<Note>())) ?? []).contains {
+            $0.trashedAt == nil && $0.deletedAt == nil && $0.title == title
+                && $0.createdAt.timeIntervalSinceReferenceDate.rounded() == stamp
+        }
+    }
+
     func createFolder(named name: String, parent: Folder? = nil) -> Folder {
         let siblings = allFolders().filter { $0.parent?.id == parent?.id }
         let f = Folder(name: name, parent: parent, sortIndex: (siblings.map(\.sortIndex).max() ?? 0) + 1)
