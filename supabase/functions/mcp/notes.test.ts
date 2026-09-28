@@ -92,3 +92,16 @@ Deno.test("line ranges and outline", () => {
   assertEquals(o.headings, [{ line: 2, level: 2, text: "One" }]);
   assertEquals(o.checklist, { open: 1, done: 1 });
 });
+
+Deno.test("plain tables are tables too, and stay plain when written back", () => {
+  const body = "Keys\n\n| Shortcut | Does |\n| --- | --- |\n| ⌘B | Bold |\n\nText\n\n<!-- pane-table: Date=date; N=number -->\n| Date | N |\n| --- | --- |\n| 2026-09-28 | 1 |";
+  const [plain, tracker] = findTables(body);
+  assertEquals([plain.typed, tracker.typed], [false, true]);
+  assertEquals(plain.rows, [["⌘B", "Bold"]]);
+  plain.rows.push(["⌘I", "Italic"]);
+  const out = replaceTable(body, plain);
+  assertEquals(out.split("\n").slice(2, 6), ["| Shortcut | Does |", "| --- | --- |", "| ⌘B | Bold |", "| ⌘I | Italic |"]);
+  assertEquals(findTables(out)[1].rows, [["2026-09-28", "1"]], "the tracker after it is untouched");
+  // A header without a delimiter row isn't a table (same as the app).
+  assertEquals(findTables("| a | b |\ntext").length, 0);
+});

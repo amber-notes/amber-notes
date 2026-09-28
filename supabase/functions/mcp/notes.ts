@@ -165,7 +165,8 @@ export function outline(body: string) {
 // scale a-b, choice A|B|C). Same format as the app's TypedTable.
 
 export type ColType = { kind: "text" | "number" | "date" } | { kind: "scale"; min: number; max: number } | { kind: "choice"; options: string[] };
-export type Table = { columns: { name: string; type: ColType }[]; rows: string[][]; start: number; end: number };
+/** `typed` tables have a <!-- pane-table: … --> line; plain ones are ordinary markdown tables (all text). */
+export type Table = { columns: { name: string; type: ColType }[]; rows: string[][]; start: number; end: number; typed: boolean };
 
 export function parseType(s: string): ColType {
   const t = s.trim();
@@ -199,33 +200,39 @@ export function tableCells(line: string): string[] {
   return out;
 }
 
+/**
+ * Every table in the note, in order, the way the app finds them: a header row followed by a
+ * delimiter row, optionally with a <!-- pane-table: … --> line right above it that types the
+ * columns. Tables inside code blocks are examples and are skipped.
+ */
 export function findTables(body: string): Table[] {
   const lines = body.split("\n");
   const out: Table[] = [];
+  const isRow = (k: number) => k < lines.length && lines[k].trim().startsWith("|");
+  const isDelimiter = (k: number) => { const t = lines[k]?.trim() ?? ""; return t.startsWith("|") && t.includes("-") && /^[|\-: \t]+$/.test(t); };
   let inCode = false;
   for (let i = 0; i < lines.length; i++) {
     const c = lines[i].trim();
-    // A table shown inside a code block is an example, not a tracker (the app agrees).
     if (c.startsWith("```") || c.startsWith("~~~")) { inCode = !inCode; continue; }
-    if (inCode) continue;
-    if (!(c.startsWith("<!--") && c.endsWith("-->") && c.includes("pane-table:"))) continue;
-    const spec = c.slice(c.indexOf("pane-table:") + 11, c.lastIndexOf("-->"));
+    if (inCode || !isRow(i) || !isDelimiter(i + 1)) continue;
+    const above = i > 0 ? lines[i - 1].trim() : "";
+    const typed = above.startsWith("<!--") && above.endsWith("-->") && above.includes("pane-table:");
     const types = new Map<string, ColType>();
-    for (const part of spec.split(";")) {
-      const eq = part.indexOf("=");
-      if (eq > 0) types.set(part.slice(0, eq).trim().toLowerCase(), parseType(part.slice(eq + 1)));
+    if (typed) {
+      for (const part of above.slice(above.indexOf("pane-table:") + 11, above.lastIndexOf("-->")).split(";")) {
+        const eq = part.indexOf("=");
+        if (eq > 0) types.set(part.slice(0, eq).trim().toLowerCase(), parseType(part.slice(eq + 1)));
+      }
     }
-    let j = i + 1;
-    const tl: string[] = [];
-    while (j < lines.length && lines[j].trim().startsWith("|")) tl.push(lines[j++]);
-    if (tl.length < 2) continue;
-    const header = tableCells(tl[0]);
+    let j = i;
+    while (isRow(j)) j++;
+    const header = tableCells(lines[i]);
     const columns = header.map((name) => ({ name, type: types.get(name.toLowerCase()) ?? { kind: "text" as const } }));
-    const rows = tl.slice(1).filter((l) => !/^[\s|:-]+$/.test(l)).map((l) => {
-      const c = tableCells(l);
-      return columns.map((_, k) => c[k] ?? "");
+    const rows = lines.slice(i + 1, j).filter((l) => !/^[\s|:-]+$/.test(l)).map((l) => {
+      const cells = tableCells(l);
+      return columns.map((_, k) => cells[k] ?? "");
     });
-    out.push({ columns, rows, start: i, end: j - 1 });
+    out.push({ columns, rows, start: typed ? i - 1 : i, end: j - 1, typed });
     i = j - 1;
   }
   return out;
@@ -234,8 +241,10 @@ export function findTables(body: string): Table[] {
 export function tableMarkdown(t: Table): string {
   const cell = (v: string) => (v === "" ? " " : v.replace(/\|/g, "\\|").replace(/\n/g, " "));
   const row = (c: string[]) => "| " + c.map(cell).join(" | ") + " |";
+  // Like the app: the type line is written only when a column has a type.
+  const typed = t.typed || t.columns.some((c) => c.type.kind !== "text");
   return [
-    "<!-- pane-table: " + t.columns.map((c) => `${c.name}=${typeSpec(c.type)}`).join("; ") + " -->",
+    ...(typed ? ["<!-- pane-table: " + t.columns.map((c) => `${c.name}=${typeSpec(c.type)}`).join("; ") + " -->"] : []),
     row(t.columns.map((c) => c.name)),
     "|" + t.columns.map(() => " --- ").join("|") + "|",
     ...t.rows.map(row),

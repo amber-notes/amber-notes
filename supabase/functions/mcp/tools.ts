@@ -177,19 +177,19 @@ export const tools: Tool[] = [
     annotations: read,
   },
   {
-    name: "read_table", title: "Read a tracker table",
-    description: "Reads a typed table (tracker) in a note: its columns with their types and allowed values, and rows as objects. Use before logging so you use the right column names and values.",
-    inputSchema: { type: "object", properties: { ...noteRef, table: int("Which table in the note, 0-based. Default 0."), last: int("Only the last N rows.") } },
+    name: "read_table", title: "Read a table",
+    description: "Reads a table in a note: its columns (with types and allowed values for trackers) and its rows as objects. Use before logging so you use the right column names and values.",
+    inputSchema: { type: "object", properties: { ...noteRef, table: int("Which table in the note, counting every table from 0. Default: the first tracker, else the first table."), last: int("Only the last N rows.") } },
     annotations: read,
   },
   {
     name: "log_table_row", title: "Log a row",
-    description: "Adds a row to a typed table, or updates the row for that date if one exists (date defaults to today). Values are checked against each column's type: scales must be in range, choices must be one of the options.",
+    description: "Adds a row to a table. In a tracker with a date column it updates that date's row if there is one (the date defaults to today). Values are checked against each column's type: scales must be in range, choices one of the options, Yes/No also takes true/false.",
     inputSchema: {
       type: "object",
       properties: {
         ...noteRef,
-        table: int("Which table in the note, 0-based. Default 0."),
+        table: int("Which table in the note, counting every table from 0. Default: the first tracker, else the first table."),
         values: { type: "object", description: "Column name → value. Omitted columns stay as they are (or empty for a new row).", additionalProperties: true },
       },
       required: ["values"],
@@ -198,8 +198,8 @@ export const tools: Tool[] = [
   },
   {
     name: "delete_table_row", title: "Delete a row",
-    description: "Removes the row for a date (or at a 0-based index) from a typed table.",
-    inputSchema: { type: "object", properties: { ...noteRef, table: int("Default 0."), date: str("yyyy-mm-dd."), index: int("0-based row index.") } },
+    description: "Removes the row for a date (trackers) or at a 0-based row index from a table.",
+    inputSchema: { type: "object", properties: { ...noteRef, table: int("Which table, counting from 0. Default: the first tracker, else the first table."), date: str("yyyy-mm-dd."), index: int("0-based row index.") } },
     annotations: { ...write, destructiveHint: true },
   },
   // ChatGPT's connector conventions.
@@ -369,10 +369,13 @@ async function save(tx: Tx, note: NoteRow, body: string, expected?: unknown) {
   return { id: note.id, title: titleOf(body), version: Number(rows[0].version), updated: iso(rows[0].updated_at) };
 }
 
+/** `which` counts every table in the note from 0, like the app; by default the first tracker (typed table), else the first table. */
 function pickTable(body: string, which: unknown): Table {
   const all = findTables(body);
-  if (!all.length) throw new ToolError("This note has no typed table. Typed tables start with a <!-- pane-table: … --> line above a markdown table.");
-  const i = clampInt(which, 0, all.length - 1);
+  if (!all.length) throw new ToolError("This note has no table.");
+  if (which === undefined || which === null) return all.find((t) => t.typed) ?? all[0];
+  const i = wholeNumber(which, "table");
+  if (i < 0 || i >= all.length) throw new ToolError(`table ${i} doesn't exist: this note has ${all.length} table${all.length === 1 ? "" : "s"} (0-${all.length - 1}).`);
   return all[i];
 }
 

@@ -346,7 +346,9 @@ Deno.test({ name: "typed tables: Yes/No takes booleans, tables without dates app
   assert(!logged.error, logged.text);
   const t = await call("read_table", { id });
   assertEquals(t.data.rows, [{ Habit: "Run", Done: "No" }, { Habit: "Read", Done: "Yes" }]);
-  assert((await call("read_table", { id, table: 1 })).data.columns.length === 2, "only one real table; index clamps to it");
+  const second = await call("read_table", { id, table: 1 });
+  assert(second.error, "the table in the code block doesn't count");
+  assertStringIncludes(second.text, "has 1 table (0-0)");
   await call("delete_note", { id });
 });
 
@@ -569,5 +571,21 @@ Deno.test({ name: "arguments: wrong types and ranges get plain explanations, not
   }
   assertEquals((await call("read_note", { id, start_line: 2, end_line: 99 })).data.markdown, "## A\nx");
   assertEquals((await call("edit_note", { id, edits: [{ old_text: "x", new_text: "y" }], expected_version: "1" })).error, false, "a numeric string is fine");
+  await call("delete_note", { id });
+});
+
+Deno.test({ name: "tables: plain grid tables can be read and added to; trackers stay the default", ignore: !enabled }, async () => {
+  const body = "Mixed\n\n| Shortcut | Does |\n| --- | --- |\n| ⌘B | Bold |\n\n<!-- pane-table: Date=date; Energy=scale 1-10 -->\n| Date | Energy |\n| --- | --- |\n| 2026-09-27 | 5 |\n";
+  const id = (await call("create_note", { body })).data.created.id;
+  assertEquals((await call("read_table", { id })).data.columns[1].type, "scale 1-10", "default is the tracker");
+  const plain = await call("read_table", { id, table: 0 });
+  assertEquals(plain.data.rows, [{ Shortcut: "⌘B", Does: "Bold" }]);
+  assert(!(await call("log_table_row", { id, table: 0, values: { Shortcut: "⌘I", Does: "Italic" } })).error);
+  const md = (await call("read_note", { id })).data.markdown;
+  assertStringIncludes(md, "| ⌘I | Italic |");
+  assert(!md.includes("pane-table: Shortcut"), "a plain table stays plain");
+  const bad = await call("read_table", { id, table: 5 });
+  assert(bad.error);
+  assertStringIncludes(bad.text, "has 2 tables");
   await call("delete_note", { id });
 });
