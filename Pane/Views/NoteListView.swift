@@ -154,7 +154,8 @@ struct NoteListView: View {
                 .fixedSize()
             }
             .sharedBackgroundVisibility(.hidden)
-            ToolbarItem(placement: .navigation) {
+            ToolbarSpacer(.flexible)
+            ToolbarItem {
                 Menu {
                     Button("New Folder", systemImage: "folder.badge.plus") { NotificationCenter.default.post(name: .paneNewFolder, object: nil) }
                     Divider()
@@ -168,11 +169,6 @@ struct NoteListView: View {
                 .menuIndicator(.hidden)
                 .tint(.primary)
                 .accessibilityIdentifier("list.more")
-            }
-            ToolbarItem(placement: .primaryAction) {
-                Button("New Note", systemImage: "square.and.pencil", action: onNewNote)
-                    .help("New Note (⌘N)")
-                    .accessibilityIdentifier("list.newNote")
             }
             #endif
         }

@@ -8,6 +8,23 @@ final class SessionStorage: AuthLocalStorage, @unchecked Sendable {
     private let service = "dev.emilwagman.pane.auth"
     private let lock = NSLock()
 
+    /// Unsigned (ad-hoc) Mac builds get a new code identity on every build, so the
+    /// Keychain would ask permission after each install. They use the private file instead.
+    private let useKeychain: Bool = {
+        #if os(macOS)
+        var code: SecCode?
+        guard SecCodeCopySelf([], &code) == errSecSuccess, let code else { return false }
+        var staticCode: SecStaticCode?
+        guard SecCodeCopyStaticCode(code, [], &staticCode) == errSecSuccess, let staticCode else { return false }
+        var info: CFDictionary?
+        guard SecCodeCopySigningInformation(staticCode, SecCSFlags(rawValue: kSecCSSigningInformation), &info) == errSecSuccess,
+              let dict = info as? [String: Any] else { return false }
+        return (dict[kSecCodeInfoTeamIdentifier as String] as? String)?.isEmpty == false
+        #else
+        return true
+        #endif
+    }()
+
     private var fileURL: URL {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appending(path: "Pane", directoryHint: .isDirectory)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -20,13 +37,15 @@ final class SessionStorage: AuthLocalStorage, @unchecked Sendable {
 
     func store(key: String, value: Data) throws {
         lock.lock(); defer { lock.unlock() }
-        SecItemDelete(query(key) as CFDictionary)
-        var add = query(key)
-        add[kSecValueData as String] = value
-        add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
-        if SecItemAdd(add as CFDictionary, nil) == errSecSuccess {
-            try? FileManager.default.removeItem(at: fileURL(for: key))
-            return
+        if useKeychain {
+            SecItemDelete(query(key) as CFDictionary)
+            var add = query(key)
+            add[kSecValueData as String] = value
+            add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
+            if SecItemAdd(add as CFDictionary, nil) == errSecSuccess {
+                try? FileManager.default.removeItem(at: fileURL(for: key))
+                return
+            }
         }
         #if os(iOS)
         try value.write(to: fileURL(for: key), options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
@@ -38,17 +57,19 @@ final class SessionStorage: AuthLocalStorage, @unchecked Sendable {
 
     func retrieve(key: String) throws -> Data? {
         lock.lock(); defer { lock.unlock() }
-        var q = query(key)
-        q[kSecReturnData as String] = true
-        q[kSecMatchLimit as String] = kSecMatchLimitOne
-        var out: AnyObject?
-        if SecItemCopyMatching(q as CFDictionary, &out) == errSecSuccess, let data = out as? Data { return data }
+        if useKeychain {
+            var q = query(key)
+            q[kSecReturnData as String] = true
+            q[kSecMatchLimit as String] = kSecMatchLimitOne
+            var out: AnyObject?
+            if SecItemCopyMatching(q as CFDictionary, &out) == errSecSuccess, let data = out as? Data { return data }
+        }
         return try? Data(contentsOf: fileURL(for: key))
     }
 
     func remove(key: String) throws {
         lock.lock(); defer { lock.unlock() }
-        SecItemDelete(query(key) as CFDictionary)
+        if useKeychain { SecItemDelete(query(key) as CFDictionary) }
         try? FileManager.default.removeItem(at: fileURL(for: key))
     }
 

@@ -114,7 +114,13 @@ struct NoteDetailView: View {
         }
         ToolbarItem(placement: .primaryAction) { moreMenu }
         #else
-        // Like Notes: compose first, the writing tools together, then share and more.
+        // Like Notes: compose first (just right of the divider), the writing tools together, then share and more.
+        ToolbarItem {
+            Button("New Note", systemImage: "square.and.pencil", action: onNewNote)
+                .help("New Note (⌘N)")
+                .accessibilityIdentifier("list.newNote")
+        }
+        ToolbarSpacer(.flexible)
         ToolbarItemGroup {
             formatMenu
             Button("Checklist", systemImage: "checklist", action: controller.checklist)

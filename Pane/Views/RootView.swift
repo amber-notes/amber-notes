@@ -29,6 +29,15 @@ struct RootView: View {
             } else {
                 EmptyDetailView()
                     .background(Color.notePage.ignoresSafeArea())
+                    #if os(macOS)
+                    .toolbar {
+                        ToolbarItem {
+                            Button("New Note", systemImage: "square.and.pencil", action: newNote)
+                                .accessibilityIdentifier("list.newNote")
+                        }
+                        ToolbarSpacer(.flexible)
+                    }
+                    #endif
 
             }
         }
