@@ -9,8 +9,6 @@ final class EditorController {
     /// Set by the platform text view while it is on screen.
     @ObservationIgnored weak var target: (any EditorTarget)?
     var isEditing = false
-    /// A card waiting to be created or edited in the card sheet.
-    var cardRequest: CardEditRequest?
     /// A typed-table row waiting to be added or edited.
     var tableRequest: TableRowRequest?
     /// The file being shown in Quick Look.
@@ -106,11 +104,8 @@ final class EditorController {
 
     func focus() { target?.focusEditor() }
 
-    func newCard() { cardRequest = CardEditRequest(index: nil, title: "", content: "") }
-
-    func saveCard(_ request: CardEditRequest, title: String, content: String) {
-        target?.saveCard(index: request.index, markdown: CardBlocks.markdown(title: title, content: content))
-    }
+    /// Drops an empty card into the note at the caret, title selected for typing.
+    func newCard() { target?.insertCard() }
 }
 
 struct TableRowRequest: Identifiable {
@@ -143,13 +138,6 @@ extension EditorController {
     }
 }
 
-struct CardEditRequest: Identifiable {
-    let id = UUID()
-    /// nil for a new card.
-    var index: Int?
-    var title: String
-    var content: String
-}
 
 @MainActor
 protocol EditorTarget: AnyObject {
@@ -157,5 +145,5 @@ protocol EditorTarget: AnyObject {
     var currentSelection: NSRange { get }
     func apply(_ edit: TextEdit)
     func focusEditor()
-    func saveCard(index: Int?, markdown: String)
+    func insertCard()
 }

@@ -28,6 +28,7 @@ struct RootView: View {
                     .id(id)
             } else {
                 EmptyDetailView()
+                    .background(Color.notePage.ignoresSafeArea())
             }
         }
         .environment(editor)

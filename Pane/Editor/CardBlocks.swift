@@ -20,6 +20,15 @@ struct CardBlock: Equatable {
 
     /// Stable identity across restyles: the block's position among cards.
     var index: Int
+
+    /// The `<details>` line, the `<summary>` line (the same line in the one-line form),
+    /// the title text inside `<summary>`, every line between summary and `</details>`,
+    /// and the `</details>` line.
+    var openLine = NSRange(location: 0, length: 0)
+    var summaryLine = NSRange(location: 0, length: 0)
+    var titleRange = NSRange(location: 0, length: 0)
+    var bodyLines: [NSRange] = []
+    var closeLine = NSRange(location: 0, length: 0)
 }
 
 enum CardBlocks {
@@ -38,11 +47,16 @@ enum CardBlocks {
             guard let o = match(open, lines[i]) else { i += 1; continue }
             var title: String?
             var bodyStart = i + 1
+            var summaryIdx = i
+            var titleRange = NSRange(location: NSNotFound, length: 0)
             if o.range(at: 3).location != NSNotFound {
                 title = ns.substring(with: o.range(at: 3))
+                titleRange = o.range(at: 3)
             } else if i + 1 < lines.count, let s = match(summary, lines[i + 1]) {
                 title = ns.substring(with: s.range(at: 1))
+                titleRange = s.range(at: 1)
                 bodyStart = i + 2
+                summaryIdx = i + 1
             }
             guard let t = title else { i += 1; continue }
             guard let end = (bodyStart..<lines.count).first(where: { match(close, lines[$0]) != nil }) else { break }
@@ -56,11 +70,19 @@ enum CardBlocks {
                 contentRange: content,
                 title: decode(t.trimmingCharacters(in: .whitespaces)),
                 content: ns.substring(with: content),
-                index: blocks.count))
+                index: blocks.count,
+                openLine: lines[i],
+                summaryLine: lines[summaryIdx],
+                titleRange: titleRange,
+                bodyLines: bodyStart < end ? Array(lines[bodyStart..<end]) : [],
+                closeLine: lines[end]))
             i = end + 1
         }
         return blocks
     }
+
+    /// A new, empty card: a title line and one empty line to write in.
+    static let empty = "<details>\n<summary>Card</summary>\n\n</details>"
 
     /// The markdown for a card.
     static func markdown(title: String, content: String) -> String {

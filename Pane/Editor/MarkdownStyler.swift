@@ -9,6 +9,27 @@ import AppKit
 extension NSAttributedString.Key {
     /// Per-line decoration drawn by `DecoratedLayoutFragment`.
     static let paneLine = NSAttributedString.Key("pane.line")
+    /// The card panel a line belongs to, drawn behind everything else.
+    static let paneCard = NSAttributedString.Key("pane.card")
+}
+
+/// Where a line sits in an inline card.
+final class CardPanel: NSObject {
+    enum Role: Equatable { case head(open: Bool), body }
+    let role: Role
+    let first: Bool
+    let last: Bool
+    let index: Int
+    init(_ role: Role, first: Bool, last: Bool, index: Int) {
+        self.role = role
+        self.first = first
+        self.last = last
+        self.index = index
+    }
+    override func isEqual(_ object: Any?) -> Bool {
+        guard let o = object as? CardPanel else { return false }
+        return o.role == role && o.first == first && o.last == last && o.index == index
+    }
 }
 
 /// What a line of the note should draw beside or behind its text.
@@ -20,7 +41,6 @@ final class LineDecoration: NSObject {
         case code(first: Bool, last: Bool)
         case rule
         case table(header: Bool, first: Bool, last: Bool, columns: [CGFloat], width: CGFloat)
-        case card(index: Int)
     }
     let kind: Kind
     /// Where the marker is centered, from the fragment's leading edge.
@@ -78,7 +98,8 @@ struct MarkdownStyler {
     /// Style the first plain line as the title (off for card contents).
     var firstLineIsTitle = true
     /// Height to reserve for a card shown as a view (collapsed or expanded).
-    var cardHeight: (CardBlock) -> CGFloat = { _ in 64 }
+    /// Whether a card shows its contents.
+    var cardIsOpen: (CardBlock) -> Bool = { _ in false }
     var tableHeight: (TypedTable) -> CGFloat = { TableCardMetrics.height($0, expanded: false) }
 
     var bodyFont: PFont { .systemFont(ofSize: bodySize) }
@@ -213,8 +234,8 @@ struct MarkdownStyler {
         }
 
         let cards = styleCards(storage, isActive: isActive)
-        let tables = styleTypedTables(storage, isActive: isActive, skip: cards.map(\.range) + walker.codeRanges)
-        let embeds = styleEmbeds(storage, isActive: isActive, skip: cards.map(\.range) + walker.codeRanges)
+        let tables = styleTypedTables(storage, isActive: isActive, skip: walker.codeRanges)
+        let embeds = styleEmbeds(storage, isActive: isActive, skip: walker.codeRanges)
         return StyledBlocks(cards: cards, embeds: embeds, tables: tables)
     }
 
@@ -284,45 +305,68 @@ struct MarkdownStyler {
         return shown
     }
 
-    /// Cards collapse into one reserved line that the editor covers with a card view.
-    /// With the caret inside, the raw `<details>` source shows instead, tags dimmed.
+    /// Cards are styled in place: the tags vanish, the title becomes a header with a
+    /// chevron, and the contents sit on one panel you edit like the rest of the note.
+    /// A closed card folds its contents to nothing.
     private func styleCards(_ storage: NSTextStorage, isActive: (NSRange) -> Bool) -> [CardBlock] {
         let ns = storage.string as NSString
-        var shown: [CardBlock] = []
+        let inset: CGFloat = 38 // text sits clear of the chevron
+        var cards: [CardBlock] = []
         for card in CardBlocks.find(in: storage.string) {
-            let lines = ns.lineRange(for: card.range)
-            if isActive(card.range) {
-                let tags = try! NSRegularExpression(pattern: #"</?details[^>]*>|</?summary>"#, options: .caseInsensitive)
-                for m in tags.matches(in: ns as String, range: card.range) {
-                    storage.addAttributes([.foregroundColor: PColor.paneTertiary, .font: monoFont], range: m.range)
-                }
-                continue
+            // The caret inside a closed card opens it, so you never type into nothing.
+            let open = cardIsOpen(card) || isActive(NSRange(location: NSMaxRange(card.summaryLine), length: max(0, card.closeLine.location - NSMaxRange(card.summaryLine))))
+            let flat = NSMutableParagraphStyle()
+            flat.minimumLineHeight = 0.01
+            flat.maximumLineHeight = 0.01
+            flat.lineSpacing = 0
+            flat.paragraphSpacing = 0
+            func fold(_ line: NSRange) {
+                let enclosing = ns.paragraphRange(for: line)
+                storage.addAttributes(hidden, range: line)
+                storage.removeAttribute(.kern, range: line)
+                storage.removeAttribute(.paneLine, range: enclosing)
+                storage.addAttribute(.paragraphStyle, value: flat, range: enclosing)
             }
-            storage.removeAttribute(.paneLine, range: lines)
-            storage.addAttributes(hidden, range: card.range)
-            storage.removeAttribute(.kern, range: card.range)
-            storage.removeAttribute(.link, range: card.range)
-            let first = ns.lineRange(for: NSRange(location: card.range.location, length: 0))
-            let height = cardHeight(card)
-            let head = NSMutableParagraphStyle()
-            head.minimumLineHeight = height
-            head.maximumLineHeight = height
-            head.paragraphSpacingBefore = 6
-            head.paragraphSpacing = 10
-            storage.addAttribute(.paragraphStyle, value: head, range: first)
-            storage.addAttribute(.paneLine, value: LineDecoration(.card(index: card.index)), range: first)
-            let rest = NSRange(location: NSMaxRange(first), length: NSMaxRange(lines) - NSMaxRange(first))
-            if rest.length > 0 {
-                let flat = NSMutableParagraphStyle()
-                flat.minimumLineHeight = 0.01
-                flat.maximumLineHeight = 0.01
-                flat.lineSpacing = 0
-                flat.paragraphSpacing = 0
-                storage.addAttribute(.paragraphStyle, value: flat, range: rest)
+
+            // The <details> and </details> lines take no space.
+            if card.openLine != card.summaryLine { fold(card.openLine) }
+            fold(card.closeLine)
+
+            // Title line: hide the tags, show the title as a header.
+            let head = ns.paragraphRange(for: card.summaryLine)
+            storage.addAttributes(hidden, range: card.summaryLine)
+            storage.removeAttribute(.kern, range: card.summaryLine)
+            if card.titleRange.location != NSNotFound {
+                storage.addAttributes([.font: PFont.systemFont(ofSize: bodySize, weight: .semibold), .foregroundColor: PColor.paneLabel], range: card.titleRange)
             }
-            shown.append(card)
+            let hp = baseParagraph()
+            hp.firstLineHeadIndent = inset
+            hp.headIndent = inset
+            hp.tailIndent = -16
+            hp.paragraphSpacingBefore = 20 // gap above the card + padding inside it
+            hp.paragraphSpacing = open && !card.bodyLines.isEmpty ? 6 : 22
+            storage.addAttribute(.paragraphStyle, value: hp, range: head)
+            storage.removeAttribute(.paneLine, range: head)
+            let last = !open || card.bodyLines.isEmpty
+            storage.addAttribute(.paneCard, value: CardPanel(.head(open: open), first: true, last: last, index: card.index), range: head)
+
+            // Contents: folded away when closed, otherwise indented onto the panel.
+            for (i, line) in card.bodyLines.enumerated() {
+                let enclosing = ns.paragraphRange(for: line)
+                if !open { fold(line); continue }
+                let current = (storage.attribute(.paragraphStyle, at: enclosing.location, effectiveRange: nil) as? NSParagraphStyle) ?? baseParagraph()
+                let p = current.mutableCopy() as! NSMutableParagraphStyle
+                p.firstLineHeadIndent += inset
+                p.headIndent += inset
+                p.tailIndent = -16
+                let isLast = i == card.bodyLines.count - 1
+                if isLast { p.paragraphSpacing = max(p.paragraphSpacing, 22) }
+                storage.addAttribute(.paragraphStyle, value: p, range: enclosing)
+                storage.addAttribute(.paneCard, value: CardPanel(.body, first: false, last: isLast, index: card.index), range: enclosing)
+            }
+            cards.append(card)
         }
-        return shown
+        return cards
     }
 
     /// Lays a GFM table out as a grid: pipes are hidden and each cell is
@@ -339,6 +383,44 @@ struct MarkdownStyler {
         guard !rows.isEmpty else { return }
         let caretInTable = isActive(range)
         let pad: CGFloat = 12, gap: CGFloat = 22
+
+        // Editing inside a table: show the whole table as tidy source, monospaced,
+        // pipes faded and lined up, on one panel. Mixing grid rows and raw rows looks broken.
+        if caretInTable {
+            let mono = monoFont
+            let advance = ("0" as NSString).size(withAttributes: [.font: mono]).width
+            var widths: [Int] = []
+            for row in rows {
+                for (i, c) in row.cells.enumerated() {
+                    if widths.count <= i { widths.append(0) }
+                    widths[i] = max(widths[i], c.length)
+                }
+            }
+            for (i, row) in rows.enumerated() {
+                storage.addAttributes([.font: mono, .foregroundColor: row.delimiter ? PColor.paneTertiary : PColor.paneLabel], range: row.line)
+                for m in Self.pipeRegex.matches(in: ns as String, range: row.line) {
+                    storage.addAttribute(.foregroundColor, value: PColor.paneTertiary, range: m.range)
+                }
+                // Pad short cells with kerning so every pipe lines up, without touching the text.
+                for (ci, c) in row.cells.enumerated() where ci < widths.count {
+                    let short = widths[ci] - c.length
+                    let after = NSMaxRange(c)
+                    if short > 0, after < NSMaxRange(row.line) {
+                        storage.addAttribute(.kern, value: CGFloat(short) * advance, range: NSRange(location: after, length: 1))
+                    }
+                }
+                if i == 0 { storage.addAttribute(.font, value: mono.with(.paneBold), range: row.line) }
+                let p = baseParagraph()
+                p.lineSpacing = 2
+                p.paragraphSpacing = 0
+                p.firstLineHeadIndent = 12
+                p.headIndent = 12
+                p.lineBreakMode = .byClipping
+                storage.addAttribute(.paragraphStyle, value: p, range: row.enclosing)
+                storage.addAttribute(.paneLine, value: LineDecoration(.code(first: i == 0, last: i == rows.count - 1)), range: row.enclosing)
+            }
+            return
+        }
 
         // Header row is bold; everything uses the body face so it reads like text.
         let headerFont = PFont.systemFont(ofSize: bodySize, weight: .semibold)

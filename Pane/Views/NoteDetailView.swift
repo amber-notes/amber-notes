@@ -17,7 +17,6 @@ struct NoteDetailView: View {
             .quickLookPreview(previewBinding)
             .fileImporter(isPresented: $importing, allowedContentTypes: [.item], allowsMultipleSelection: true, onCompletion: attach)
             .onAppear(perform: wireController)
-            .sheet(item: cardBinding, content: cardSheet)
             .sheet(item: rowBinding, content: rowSheet)
     }
 
@@ -28,6 +27,7 @@ struct NoteDetailView: View {
     private func chrome(_ content: some View) -> some View {
         content
             .ignoresSafeArea(.container, edges: .bottom)
+            .background(Color.notePage.ignoresSafeArea())
             .safeAreaInset(edge: .top, spacing: 0) {
                 if note.trashedAt != nil { trashBanner }
             }
@@ -50,10 +50,6 @@ struct NoteDetailView: View {
         if case .success(let urls) = result { controller.insertFiles(context.addAttachments(urls)) }
     }
 
-    private var cardBinding: Binding<CardEditRequest?> {
-        Binding(get: { controller.cardRequest }, set: { controller.cardRequest = $0 })
-    }
-
     private var rowBinding: Binding<TableRowRequest?> {
         Binding(get: { controller.tableRequest }, set: { controller.tableRequest = $0 })
     }
@@ -62,12 +58,6 @@ struct NoteDetailView: View {
         TableRowSheet(columns: r.columns, values: r.values, isNew: r.rowIndex == nil,
                       onSave: { controller.saveRow(r, values: $0) },
                       onDelete: { controller.saveRow(r, values: nil) })
-    }
-
-    private func cardSheet(_ req: CardEditRequest) -> some View {
-        CardEditorSheet(title: req.title, content: req.content, isNew: req.index == nil) { title, content in
-            controller.saveCard(req, title: title, content: content)
-        }
     }
 
     private var previewBinding: Binding<URL?> {
@@ -188,5 +178,16 @@ struct NoteDetailView: View {
             Label("More", systemImage: "ellipsis")
         }
         .accessibilityIdentifier("editor.more")
+    }
+}
+
+extension Color {
+    /// The note itself sits on a darker page than the list and sidebar, like Apple Notes.
+    static var notePage: Color {
+        #if os(macOS)
+        Color(nsColor: .textBackgroundColor)
+        #else
+        Color(uiColor: .systemBackground)
+        #endif
     }
 }
