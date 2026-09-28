@@ -87,6 +87,64 @@ enum ListEditing {
         return TextEdit(range: target, replacement: checked ? " " : "x", caret: -1)
     }
 
+    /// How long a tick stays in place before the item moves, so you see it land.
+    static let sortDelay: TimeInterval = 0.6
+
+    /// Like Notes, ticked items sink below the open ones. Rewrites the run of
+    /// checklist lines around `location`: open items first, ticked ones after,
+    /// each group in its written order. Nil when it's already in that order or
+    /// the list is nested (moving a parent would split it from its children).
+    /// `caret` follows the text it was in.
+    static func sortChecklist(in text: String, around location: Int, caret: Int) -> TextEdit? {
+        let ns = text as NSString
+        guard location <= ns.length else { return nil }
+        var lines: [NSRange] = []
+        ns.enumerateSubstrings(in: NSRange(location: 0, length: ns.length), options: [.byLines, .substringNotRequired]) { _, _, r, _ in lines.append(r) }
+        guard let here = lines.firstIndex(where: { NSLocationInRange(location, $0) || $0.location == location }) else { return nil }
+        func item(_ i: Int) -> ListPrefix? {
+            guard let p = ListPrefix(line: ns.substring(with: lines[i])), p.checkbox != nil else { return nil }
+            return p
+        }
+        guard let mine = item(here) else { return nil }
+        var lo = here, hi = here
+        while lo > 0, let p = item(lo - 1), p.indent == mine.indent { lo -= 1 }
+        while hi + 1 < lines.count, let p = item(hi + 1), p.indent == mine.indent { hi += 1 }
+        // A nested line right after the run belongs to its last item: leave it alone.
+        if hi + 1 < lines.count, let next = ListPrefix(line: ns.substring(with: lines[hi + 1])), next.level > mine.level { return nil }
+        let run = Array(lo...hi)
+        let order = run.filter { item($0)?.checkbox == false } + run.filter { item($0)?.checkbox == true }
+        guard order != run else { return nil }
+        // Every line keeps its own text; the last one may lack a newline.
+        func body(_ i: Int) -> String { ns.substring(with: lines[i]).trimmingCharacters(in: .newlines) }
+        let whole = NSRange(location: lines[lo].location, length: NSMaxRange(lines[hi]) - lines[lo].location)
+        let trailing = ns.substring(with: whole).hasSuffix("\n") ? "\n" : ""
+        let replacement = order.map(body).joined(separator: "\n") + trailing
+        var newCaret = -1
+        if let from = run.first(where: { NSLocationInRange(caret, lines[$0]) || (caret == NSMaxRange(lines[$0]) && $0 == hi) }) {
+            let offset = min(caret - lines[from].location, (body(from) as NSString).length)
+            var at = whole.location
+            for i in order {
+                if i == from { newCaret = at + offset; break }
+                at += (body(i) as NSString).length + 1
+            }
+        }
+        return TextEdit(range: whole, replacement: replacement, caret: newCaret)
+    }
+
+    /// The caret never sits inside a list line's hidden marker: it steps over it,
+    /// forwards to the text, or back to the previous line when moving left.
+    static func caretOutsideMarker(in text: String, selection: NSRange, previous: NSRange?) -> Int? {
+        guard selection.length == 0 else { return nil }
+        let ns = text as NSString
+        guard selection.location <= ns.length else { return nil }
+        let line = ns.lineRange(for: NSRange(location: selection.location, length: 0))
+        guard let p = ListPrefix(line: ns.substring(with: line)), !p.ordered else { return nil }
+        let start = line.location + p.length
+        guard selection.location < start else { return nil }
+        if let previous, previous.length == 0, previous.location == start, line.location > 0 { return line.location - 1 }
+        return start
+    }
+
     /// Turns the caret's line into a checklist item, or back into plain text.
     static func toggleChecklist(in text: String, selection: NSRange) -> TextEdit {
         let ns = text as NSString

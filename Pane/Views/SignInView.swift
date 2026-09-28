@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Sign in or create an account. On the Mac this is the whole window; on iPhone
-/// it's a glass card over a warm backdrop.
+/// it's a glass card over a warm backdrop. Both follow light and dark mode.
 struct SignInView: View {
     let backend: Backend
     @State private var mode: Mode = .signIn
@@ -21,7 +21,6 @@ struct SignInView: View {
             .padding(.top, 40)
             .padding(.bottom, 52) // a chin below the link
             .frame(width: 380)
-            .environment(\.colorScheme, .dark)
             .onAppear { focus = .email }
         #else
         card
@@ -31,7 +30,6 @@ struct SignInView: View {
             .padding(20)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background { Backdrop() }
-            .environment(\.colorScheme, .dark)
             .onAppear { focus = .email }
         #endif
     }
@@ -137,8 +135,8 @@ struct SignInView: View {
             .font(.body)
             .padding(.horizontal, 16)
             .frame(height: 44)
-            .background(.white.opacity(0.07), in: .capsule)
-            .overlay(Capsule().strokeBorder(.white.opacity(0.10), lineWidth: 1))
+            .background(.fill.tertiary, in: .capsule)
+            .overlay(Capsule().strokeBorder(.primary.opacity(0.08), lineWidth: 1))
     }
 
     private var buttonTitle: String {
@@ -173,10 +171,12 @@ struct SignInView: View {
     }
 }
 
-/// A plain, warm-dark ground: no glows, no fades.
+/// A plain, warm ground in either appearance: no glows, no fades.
 struct Backdrop: View {
+    @Environment(\.colorScheme) private var scheme
+
     var body: some View {
-        Color(red: 0.105, green: 0.1, blue: 0.11)
+        (scheme == .dark ? Color(red: 0.105, green: 0.1, blue: 0.11) : Color(red: 0.975, green: 0.968, blue: 0.955))
             .ignoresSafeArea()
     }
 }

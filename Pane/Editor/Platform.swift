@@ -55,8 +55,8 @@ extension PColor {
 #endif
 
 extension PColor {
-    /// Pane's accent: a warm amber that reads on glass in light and dark.
-    static var paneAccent: PColor { PColor(red: 0.96, green: 0.68, blue: 0.20, alpha: 1) }
+    /// The warm amber accent: a touch deeper in light mode so it still reads on white.
+    static var paneAccent: PColor { PColor(named: "AccentColor") ?? PColor(red: 0.96, green: 0.68, blue: 0.20, alpha: 1) }
 }
 
 /// Type sizes for the editor. iOS reads at arm's length; the Mac at a desk.

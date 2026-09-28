@@ -20,10 +20,18 @@ struct PaneApp: App {
         if backend.client == nil { Seed.ensureLibrary(container.mainContext, demo: args.contains("-demo")) }
     }
 
+    /// Test runs can pin an appearance: `-uitest -scheme light`. Otherwise the system decides.
+    private static var testScheme: ColorScheme? {
+        let args = ProcessInfo.processInfo.arguments
+        guard args.contains("-uitest"), let i = args.firstIndex(of: "-scheme"), args.indices.contains(i + 1) else { return nil }
+        return args[i + 1] == "light" ? .light : args[i + 1] == "dark" ? .dark : nil
+    }
+
     var body: some Scene {
         WindowGroup {
             AppGate(backend: backend, sync: sync)
                 .tint(Color(PColor.paneAccent))
+                .preferredColorScheme(Self.testScheme)
         }
         .modelContainer(container)
         #if os(macOS)

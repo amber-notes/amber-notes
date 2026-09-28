@@ -33,6 +33,14 @@ final class DecoratedLayoutFragment: NSTextLayoutFragment {
         return b.minY + (b.height - EditorMetrics.lineSpacing) / 2
     }
 
+    /// Where a checkbox centres: halfway up the capitals, on the text's own baseline,
+    /// so the circle sits level with the words whatever the line spacing.
+    private var checkMidY: CGFloat {
+        guard let line = textLineFragments.first else { return firstLineMidY }
+        let font = PFont.systemFont(ofSize: EditorMetrics.body)
+        return line.typographicBounds.minY + line.glyphOrigin.y - font.capHeight / 2
+    }
+
     override func draw(at point: CGPoint, in context: CGContext) {
         if let d = decoration {
             context.saveGState()
@@ -54,7 +62,7 @@ final class DecoratedLayoutFragment: NSTextLayoutFragment {
 
         case .checkbox(let checked):
             let size = EditorMetrics.checkSize
-            let rect = CGRect(x: o.x + d.markerX - size / 2, y: o.y + firstLineMidY - size / 2, width: size, height: size)
+            let rect = CGRect(x: o.x + d.markerX - size / 2, y: o.y + checkMidY - size / 2, width: size, height: size)
             if checked {
                 ctx.setFillColor(PColor.paneAccent.cgColor)
                 ctx.fillEllipse(in: rect)

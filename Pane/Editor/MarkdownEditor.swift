@@ -109,6 +109,15 @@ final class EditorCore {
         onCardsChanged()
     }
 
+    private var lastSelection: NSRange?
+
+    /// Where the caret should go instead, if it landed inside a list marker.
+    func caretFix(_ text: String, _ selection: NSRange) -> Int? {
+        let fix = ListEditing.caretOutsideMarker(in: text, selection: selection, previous: lastSelection)
+        lastSelection = fix.map { NSRange(location: $0, length: 0) } ?? selection
+        return fix
+    }
+
     /// Checkbox hit test: `point` is in text-container coordinates.
     func checkboxLine(at point: CGPoint, layout: NSTextLayoutManager?) -> Int? {
         guard let layout, let fragment = layout.textLayoutFragment(for: point) as? DecoratedLayoutFragment,
@@ -360,6 +369,10 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
 
     func textViewDidChangeSelection(_ textView: UITextView) {
         guard markedTextRange == nil else { return }
+        if isFirstResponder, let fix = core.caretFix(text, selectedRange) {
+            selectedRange = NSRange(location: fix, length: 0)
+            return
+        }
         core.restyle(textStorage, selection: editingSelection, force: false)
     }
 
@@ -403,6 +416,15 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
         apply(edit)
         selectedRange = keep
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        DispatchQueue.main.asyncAfter(deadline: .now() + ListEditing.sortDelay) { [weak self] in self?.sortChecklist(around: line) }
+    }
+
+    /// Ticked items sink below the open ones, a moment after the tick.
+    private func sortChecklist(around line: Int) {
+        let sel = selectedRange
+        guard let edit = ListEditing.sortChecklist(in: text, around: min(line, (text as NSString).length), caret: sel.location) else { return }
+        apply(TextEdit(range: edit.range, replacement: edit.replacement, caret: -1))
+        selectedRange = NSRange(location: edit.caret >= 0 ? edit.caret : sel.location, length: edit.caret >= 0 ? 0 : sel.length)
     }
 
     // MARK: Hardware keyboard
@@ -678,6 +700,10 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
 
     func textViewDidChangeSelection(_ notification: Notification) {
         guard !hasMarkedText(), let storage = textStorage else { return }
+        if window?.firstResponder === self, let fix = core.caretFix(string, selectedRange()) {
+            setSelectedRange(NSRange(location: fix, length: 0))
+            return
+        }
         core.restyle(storage, selection: editingSelection, force: false)
     }
 
@@ -722,9 +748,18 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
             let keep = selectedRange()
             apply(edit)
             setSelectedRange(keep)
+            DispatchQueue.main.asyncAfter(deadline: .now() + ListEditing.sortDelay) { [weak self] in self?.sortChecklist(around: line) }
             return
         }
         super.mouseDown(with: event)
+    }
+
+    /// Ticked items sink below the open ones, a moment after the tick.
+    private func sortChecklist(around line: Int) {
+        let sel = selectedRange()
+        guard let edit = ListEditing.sortChecklist(in: string, around: min(line, (string as NSString).length), caret: sel.location) else { return }
+        apply(TextEdit(range: edit.range, replacement: edit.replacement, caret: -1))
+        setSelectedRange(NSRange(location: edit.caret >= 0 ? edit.caret : sel.location, length: edit.caret >= 0 ? 0 : sel.length))
     }
 }
 #endif

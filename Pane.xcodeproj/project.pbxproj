@@ -61,6 +61,7 @@
 		EAB87CE00ACD15BD840A9B73 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3891EC4D2DC7BF10221F3CBC /* SettingsView.swift */; };
 		ECC26EE8B9227D9F7F6B5E9C /* DemoData.swift in Sources */ = {isa = PBXBuildFile; fileRef = D058AF887BE21AC49E51A5C7 /* DemoData.swift */; };
 		ED60264B582697DA27C9AFC3 /* CardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24F0468D706470F75BC78618 /* CardView.swift */; };
+		EE41FCC568A1B667F8C3BDEB /* ChecklistSortTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFCA13DCB9435718E4F5BF8C /* ChecklistSortTests.swift */; };
 		F0908D82E0F6170762606684 /* tracker-prefixed.xlsx in Resources */ = {isa = PBXBuildFile; fileRef = 591D65AE1B7FABAAE04A733D /* tracker-prefixed.xlsx */; };
 		F25FA34F43518D77EB9C9120 /* EditorController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96BF2077E54147D5949A2E4B /* EditorController.swift */; };
 		F5DFE70493F7E13C3AAA35FD /* HomeScreenTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45E841E864DEFA026AC0CF16 /* HomeScreenTests.swift */; };
@@ -156,6 +157,7 @@
 		D7CEFF21553A58628006C975 /* PaneApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaneApp.swift; sourceTree = "<group>"; };
 		D802554DDA691DB172FD65B2 /* SyncEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncEngine.swift; sourceTree = "<group>"; };
 		DD3E85445C5520F24FAA2DD1 /* Pane.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Pane.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		DFCA13DCB9435718E4F5BF8C /* ChecklistSortTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChecklistSortTests.swift; sourceTree = "<group>"; };
 		E37B37176F6CCA31F99951BE /* Pane-ios.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Pane-ios.entitlements"; sourceTree = "<group>"; };
 		E5A1AE108885E3A9E3B3583A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		E5FF211616E406434EE7DC37 /* SyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncTests.swift; sourceTree = "<group>"; };
@@ -255,6 +257,7 @@
 			isa = PBXGroup;
 			children = (
 				8A537C18B9F9C98B1862B423 /* AppleNotesLiveTests.swift */,
+				DFCA13DCB9435718E4F5BF8C /* ChecklistSortTests.swift */,
 				14CD141158D5B7F6272D4DA9 /* GridTableTests.swift */,
 				0C246BB0AA36AD5C69E3BB96 /* ListEditingTests.swift */,
 				6F02A8CE43D7031D271CA25B /* RichTextTests.swift */,
@@ -520,6 +523,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				BBF4C5B35A481BA9E9F080C2 /* AppleNotesLiveTests.swift in Sources */,
+				EE41FCC568A1B667F8C3BDEB /* ChecklistSortTests.swift in Sources */,
 				D8E460522E8DD23119115323 /* GridTableTests.swift in Sources */,
 				582627587918D7195B435F61 /* ListEditingTests.swift in Sources */,
 				7F6BFCC3E30CB53BB780058D /* RichTextTests.swift in Sources */,

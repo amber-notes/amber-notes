@@ -148,7 +148,7 @@ struct ShareSheet: View {
             .padding(20)
             .glassEffect(.regular, in: .rect(cornerRadius: 28))
             .padding(12)
-            .tint(Color(red: 0.96, green: 0.68, blue: 0.2))
+            .tint(Color("AccentColor"))
             .animation(.snappy(duration: 0.2), value: model.saved)
         }
     }
