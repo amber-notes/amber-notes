@@ -255,6 +255,16 @@ async function descendants(tx: Tx, id: string): Promise<string[]> {
   return rows.map((r) => r.id);
 }
 
+/** A whole number the model sent, or a clear error naming the argument. */
+function wholeNumber(v: unknown, name: string): number {
+  const n = typeof v === "string" && v.trim() !== "" ? Number(v) : v;
+  if (typeof n !== "number" || !Number.isInteger(n)) throw new ToolError(`${name} must be a whole number (got ${JSON.stringify(v)}).`);
+  return n;
+}
+
+/** Long text quoted back in an error, cut to something readable. */
+const quote = (s: string) => JSON.stringify(s.length > 80 ? s.slice(0, 79) + "…" : s);
+
 const bytes = (s: string) => new TextEncoder().encode(s).length;
 const MAX_NOTE_BYTES = 5_000_000;
 
@@ -324,7 +334,7 @@ async function findNote(tx: Tx, args: Args, includeTrashed = false): Promise<Not
   const id = typeof args.id === "string" ? args.id : undefined;
   const title = typeof args.title === "string" ? args.title.trim() : undefined;
   if (id) {
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) throw new ToolError(`"${id}" isn't a note id. Ids look like 3f2b…-…; get one from search_notes or list_notes.`);
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) throw new ToolError(`${quote(id)} isn't a note id. Ids look like 3f2b…-…; get one from search_notes or list_notes.`);
     const rows = await tx<NoteRow[]>`select * from public.notes where id = ${id}::uuid and deleted_at is null`;
     if (!rows.length) throw new ToolError(`No note with id ${id}.`);
     if (rows[0].trashed_at && !includeTrashed) throw new ToolError(`"${rows[0].title}" is in Recently Deleted. Restore it with restore_note first.`);
@@ -333,9 +343,9 @@ async function findNote(tx: Tx, args: Args, includeTrashed = false): Promise<Not
   if (!title) throw new ToolError("Give the note's id (preferred) or its title.");
   const rows = await tx<NoteRow[]>`select * from public.notes where deleted_at is null and trashed_at is null and lower(title) = lower(${title}) order by updated_at desc limit 5`;
   if (rows.length === 1) return rows[0];
-  if (rows.length > 1) throw new ToolError(`${rows.length} notes are titled "${title}": ${rows.map((r) => r.id).join(", ")}. Use an id.`);
+  if (rows.length > 1) throw new ToolError(`${rows.length} notes are titled ${quote(title)}: ${rows.map((r) => r.id).join(", ")}. Use an id.`);
   const near = await tx<{ id: string; title: string }[]>`select id, title from public.notes where deleted_at is null and trashed_at is null and title ilike ${likeText(title)} order by updated_at desc limit 5`;
-  throw new ToolError(near.length ? `No note titled "${title}". Close matches: ${near.map((n) => `${n.title} (${n.id})`).join("; ")}.` : `No note titled "${title}". Try search_notes.`);
+  throw new ToolError(near.length ? `No note titled ${quote(title)}. Close matches: ${near.map((n) => `${n.title} (${n.id})`).join("; ")}.` : `No note titled ${quote(title)}. Try search_notes.`);
 }
 
 function summary(n: NoteRow, all: FolderRow[]) {
@@ -353,7 +363,7 @@ async function save(tx: Tx, note: NoteRow, body: string, expected?: unknown) {
   const rows = await tx<{ version: string; updated_at: Date }[]>`
     update public.notes set body = ${body}, updated_at = now()
     where id = ${note.id}
-      ${expected !== undefined && expected !== null ? tx`and version = ${Number(expected)}` : tx``}
+      ${expected !== undefined && expected !== null ? tx`and version = ${wholeNumber(expected, "expected_version")}` : tx``}
     returning version, updated_at`;
   if (!rows.length) throw new ToolError(`The note changed since version ${expected}. Read it again and retry.`);
   return { id: note.id, title: titleOf(body), version: Number(rows[0].version), updated: iso(rows[0].updated_at) };
@@ -420,6 +430,10 @@ const handlers: Record<string, (tx: Tx, a: Args, ctx: ToolContext) => Promise<un
     const all = await folders(tx);
     const o = outline(n.body);
     const ranged = a.start_line !== undefined || a.end_line !== undefined;
+    const start = a.start_line === undefined ? undefined : wholeNumber(a.start_line, "start_line");
+    const end = a.end_line === undefined ? undefined : wholeNumber(a.end_line, "end_line");
+    if (start !== undefined && start > o.lines) throw new ToolError(`start_line ${start} is past the end: the note has ${o.lines} lines.`);
+    if (start !== undefined && end !== undefined && end < start) throw new ToolError("end_line must be at or after start_line.");
     const subs = await tx<{ id: string; title: string }[]>`select id, title from public.notes where parent_id = ${n.id} and deleted_at is null and trashed_at is null`;
     const parentRow = n.parent_id ? (await tx<{ id: string; title: string }[]>`select id, title from public.notes where id = ${n.parent_id}`)[0] : undefined;
     return {
@@ -429,8 +443,8 @@ const handlers: Record<string, (tx: Tx, a: Args, ctx: ToolContext) => Promise<un
       parent: parentRow ?? null,
       sub_notes: subs,
       outline: o,
-      ...(ranged ? { lines: `${a.start_line ?? 1}-${a.end_line ?? o.lines}` } : {}),
-      markdown: sliceLines(n.body, a.start_line as number | undefined, a.end_line as number | undefined, a.line_numbers === true),
+      ...(ranged ? { lines: `${Math.max(1, start ?? 1)}-${Math.min(o.lines, end ?? o.lines)}` } : {}),
+      markdown: sliceLines(n.body, start, end, a.line_numbers === true),
     };
   },
 
@@ -566,7 +580,7 @@ const handlers: Record<string, (tx: Tx, a: Args, ctx: ToolContext) => Promise<un
 
   async restore_revision(tx, a) {
     const n = await findNote(tx, a, true);
-    const rows = await tx<{ body: string }[]>`select body from public.note_revisions where id = ${Number(a.revision_id)} and note_id = ${n.id}`;
+    const rows = await tx<{ body: string }[]>`select body from public.note_revisions where id = ${wholeNumber(a.revision_id, "revision_id")} and note_id = ${n.id}`;
     if (!rows.length) throw new ToolError("No such revision for this note. Use note_history.");
     await tx`select set_config('pane.source', 'restore', true)`;
     return { restored: await save(tx, n, rows[0].body) };

@@ -551,3 +551,23 @@ Deno.test({ name: "sync: deleting forever leaves no text behind", ignore: !enabl
   assertEquals((await app.get(`note_revisions?note_id=eq.${id}&select=id`)).json, []);
   assert((await call("read_note", { id })).error, "purged notes are gone for AI tools too");
 });
+
+Deno.test({ name: "arguments: wrong types and ranges get plain explanations, not database errors", ignore: !enabled }, async () => {
+  const id = (await call("create_note", { body: "Args\n## A\nx" })).data.created.id;
+  for (const [name, args, says] of [
+    ["restore_revision", { id, revision_id: "abc" }, "revision_id must be a whole number"],
+    ["edit_note", { id, edits: [{ old_text: "x", new_text: "y" }], expected_version: "v2" }, "expected_version must be a whole number"],
+    ["read_note", { id, start_line: 50 }, "past the end: the note has 3 lines"],
+    ["read_note", { id, start_line: 3, end_line: 1 }, "end_line must be at or after"],
+    ["read_note", { title: "y".repeat(5000) }, "…"],
+  ] as [string, Record<string, unknown>, string][]) {
+    const r = await call(name, args);
+    assert(r.error, name);
+    assertStringIncludes(r.text, says);
+    assert(!/syntax|violates|relation|column/i.test(r.text), `database error leaked: ${r.text}`);
+    assert(r.text.length < 400, "errors stay short");
+  }
+  assertEquals((await call("read_note", { id, start_line: 2, end_line: 99 })).data.markdown, "## A\nx");
+  assertEquals((await call("edit_note", { id, edits: [{ old_text: "x", new_text: "y" }], expected_version: "1" })).error, false, "a numeric string is fine");
+  await call("delete_note", { id });
+});
