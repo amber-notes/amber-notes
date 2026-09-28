@@ -45,7 +45,7 @@ struct SignInView: View {
                     .frame(width: 72, height: 72)
                     .accessibilityHidden(true)
                 swap {
-                    Text(mode == .signIn ? "Sign in" : "Create account")
+                    Text(mode == .signIn ? "Sign in to Amber Notes" : "Create account")
                         .font(.title2.weight(.bold))
                 }
             }
