@@ -159,7 +159,7 @@ export const tools: Tool[] = [
   },
   {
     name: "list_files", title: "List files",
-    description: "Files kept in Pane (PDFs, spreadsheets, images…), newest first, with the notes that embed them.",
+    description: "Files kept in Amber Notes (PDFs, spreadsheets, images…), newest first, with the notes that embed them.",
     inputSchema: { type: "object", properties: { query: str("Filter by filename."), limit: int("Default 30.") } },
     annotations: read,
   },
@@ -534,7 +534,7 @@ const handlers: Record<string, (tx: Tx, a: Args, ctx: ToolContext) => Promise<un
       body: JSON.stringify({ expiresIn: 600 }),
     });
     const body = await res.json().catch(() => ({}));
-    if (!res.ok || !body.signedURL) throw new ToolError("The file isn't uploaded yet. Open Pane on the device that added it so it can sync.");
+    if (!res.ok || !body.signedURL) throw new ToolError("The file isn't uploaded yet. Open Amber Notes on the device that added it so it can sync.");
     // Locally the runtime sees an internal hostname; PANE_PUBLIC_URL gives the reachable one.
     const publicBase = Deno.env.get("PANE_PUBLIC_URL") ?? base;
     return { id: f.id, filename: f.filename, type: f.content_type, bytes: Number(f.size), download_url: `${publicBase}/storage/v1${body.signedURL}`, expires_in_seconds: 600 };

@@ -28,7 +28,7 @@ final class DogfoodTests: XCTestCase {
         shot("list")
 
         // Open the welcome note and read it.
-        app.staticTexts["Welcome to Pane"].firstMatch.tap()
+        app.staticTexts["Welcome to Amber Notes"].firstMatch.tap()
         pause(1.2)
         shot("welcome-note")
 

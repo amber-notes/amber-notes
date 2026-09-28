@@ -140,9 +140,9 @@ struct ConnectInstructions: View {
                 }
                 block("Claude and ChatGPT (connector URL)", secretURL,
                       note: "Claude: Settings → Connectors → Add custom connector, paste the URL. ChatGPT: Settings → Apps & Connectors → Advanced → Developer mode, then Create, paste the URL, no authentication. The URL contains the token, so keep it private.")
-                block("Claude Code", "claude mcp add --transport http pane \(server) --header \"Authorization: Bearer \(token)\"",
+                block("Claude Code", "claude mcp add --transport http amber-notes \(server) --header \"Authorization: Bearer \(token)\"",
                       note: "Run in a terminal. Add --scope user to use it in every project.")
-                block("Codex", "[mcp_servers.pane]\nurl = \"\(server)\"\nhttp_headers = { \"Authorization\" = \"Bearer \(token)\" }",
+                block("Codex", "[mcp_servers.amber_notes]\nurl = \"\(server)\"\nhttp_headers = { \"Authorization\" = \"Bearer \(token)\" }",
                       note: "Add to ~/.codex/config.toml.")
             }
             .formStyle(.grouped)

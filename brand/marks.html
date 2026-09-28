@@ -1,0 +1,59 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+html,body{margin:0;background:#121114}
+.row{display:flex;gap:48px;padding:48px}
+.tile{width:360px;text-align:center;color:#bbb;font:600 18px -apple-system}
+svg{width:360px;height:360px;display:block;border-radius:80px}
+</style></head><body><div class="row">
+
+<!-- A: Resin drop with suspended note lines -->
+<div class="tile"><svg viewBox="0 0 1024 1024">
+<defs>
+ <linearGradient id="bgA" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#23201f"/><stop offset="1" stop-color="#141214"/></linearGradient>
+ <radialGradient id="dropA" cx="0.38" cy="0.35" r="0.75"><stop offset="0" stop-color="#FFE0A0"/><stop offset="0.35" stop-color="#F7B23B"/><stop offset="0.8" stop-color="#D9730F"/><stop offset="1" stop-color="#9C4A08"/></radialGradient>
+ <radialGradient id="hiA" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#fff" stop-opacity=".75"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+ <filter id="shA" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="28" stdDeviation="34" flood-color="#E08A1A" flood-opacity=".35"/></filter>
+</defs>
+<rect width="1024" height="1024" fill="url(#bgA)"/>
+<path filter="url(#shA)" fill="url(#dropA)" d="M512 160 C 590 280, 800 420, 800 600 A 288 288 0 0 1 224 600 C 224 420, 434 280, 512 160 Z"/>
+<ellipse cx="420" cy="470" rx="90" ry="60" fill="url(#hiA)" transform="rotate(-35 420 470)"/>
+<g stroke-linecap="round" stroke-width="30" opacity=".55">
+ <line x1="410" y1="610" x2="560" y2="610" stroke="#6E3204"/>
+ <line x1="410" y1="672" x2="614" y2="672" stroke="#7E3C07" opacity=".7"/>
+ <line x1="410" y1="734" x2="520" y2="734" stroke="#7E3C07" opacity=".5"/>
+</g>
+</svg>A · Resin drop</div>
+
+<!-- B: Frosted pane over an amber sun -->
+<div class="tile"><svg viewBox="0 0 1024 1024">
+<defs>
+ <linearGradient id="bgB" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#23201f"/><stop offset="1" stop-color="#141214"/></linearGradient>
+ <radialGradient id="sunB" cx="0.4" cy="0.35" r="0.7"><stop offset="0" stop-color="#FFD98A"/><stop offset="0.55" stop-color="#F5A62A"/><stop offset="1" stop-color="#C85E0B"/></radialGradient>
+ <linearGradient id="glassB" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".30"/><stop offset="1" stop-color="#fff" stop-opacity=".08"/></linearGradient>
+ <linearGradient id="rimB" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".85"/><stop offset=".5" stop-color="#fff" stop-opacity=".15"/><stop offset="1" stop-color="#fff" stop-opacity=".4"/></linearGradient>
+ <filter id="blurB"><feGaussianBlur stdDeviation="26"/></filter>
+ <clipPath id="clipB"><rect x="332" y="312" width="440" height="520" rx="96"/></clipPath>
+</defs>
+<rect width="1024" height="1024" fill="url(#bgB)"/>
+<circle cx="400" cy="420" r="210" fill="url(#sunB)"/>
+<g clip-path="url(#clipB)"><circle cx="400" cy="420" r="210" fill="url(#sunB)" filter="url(#blurB)"/><rect x="332" y="312" width="440" height="520" fill="url(#glassB)"/></g>
+<rect x="332" y="312" width="440" height="520" rx="96" fill="none" stroke="url(#rimB)" stroke-width="5"/>
+<g stroke="#fff" stroke-linecap="round" stroke-width="26" opacity=".85">
+ <line x1="418" y1="640" x2="620" y2="640"/><line x1="418" y1="712" x2="560" y2="712" opacity=".6"/>
+</g>
+</svg>B · Glass over amber</div>
+
+<!-- C: Amber pebble with a single captured stroke -->
+<div class="tile"><svg viewBox="0 0 1024 1024">
+<defs>
+ <linearGradient id="bgC" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#23201f"/><stop offset="1" stop-color="#141214"/></linearGradient>
+ <radialGradient id="stC" cx="0.35" cy="0.3" r="0.85"><stop offset="0" stop-color="#FFE3A6"/><stop offset="0.4" stop-color="#F6AE36"/><stop offset="1" stop-color="#B8560A"/></radialGradient>
+ <radialGradient id="hiC" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#fff" stop-opacity=".7"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+ <filter id="shC" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="26" stdDeviation="32" flood-color="#E08A1A" flood-opacity=".32"/></filter>
+</defs>
+<rect width="1024" height="1024" fill="url(#bgC)"/>
+<rect filter="url(#shC)" x="212" y="212" width="600" height="600" rx="210" fill="url(#stC)"/>
+<ellipse cx="380" cy="350" rx="120" ry="70" fill="url(#hiC)" transform="rotate(-30 380 350)"/>
+<path d="M360 600 C 430 470, 520 470, 560 560 S 660 640, 690 520" fill="none" stroke="#7A3806" stroke-opacity=".55" stroke-width="34" stroke-linecap="round"/>
+</svg>C · Amber pebble</div>
+
+</div></body></html>

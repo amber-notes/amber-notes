@@ -9,8 +9,8 @@ import postgres from "npm:postgres@3.4.5";
 import { tools, runTool, ToolContext, ToolError } from "./tools.ts";
 
 const PROTOCOL_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
-const SERVER_INFO = { name: "pane", title: "Pane notes", version: "1.0.0" };
-const INSTRUCTIONS = `Pane is the user's personal notes app. Notes are markdown; the first line is the title.
+const SERVER_INFO = { name: "amber-notes", title: "Amber Notes", version: "1.0.0" };
+const INSTRUCTIONS = `Amber Notes is the user's personal notes app. Notes are markdown; the first line is the title.
 Start with get_overview or search_notes to find things. Read a note before editing it.
 Prefer edit_note (exact find/replace) and append_to_note over replace_note_body, so nothing else changes.
 Trackers are typed tables: use read_table, then log_table_row (it validates values and upserts by date).
@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
   if (req.method === "GET") {
     // No server-initiated stream; clients fall back to plain POST.
-    return new Response("Pane MCP server. POST JSON-RPC here.", { status: 405, headers: { ...cors, allow: "POST" } });
+    return new Response("Amber Notes MCP server. POST JSON-RPC here.", { status: 405, headers: { ...cors, allow: "POST" } });
   }
   if (req.method === "DELETE") return new Response(null, { status: 204, headers: cors });
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405, headers: cors });
@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
   const token = tokenFrom(req);
   const who = token ? await authenticate(token).catch(() => undefined) : undefined;
   if (!who) {
-    return json({ jsonrpc: "2.0", id: null, error: { code: -32001, message: "Missing or revoked Pane access token. Create one in Pane → Settings → AI access." } }, 401,
+    return json({ jsonrpc: "2.0", id: null, error: { code: -32001, message: "Missing or revoked Amber Notes access token. Create one in Amber Notes → Settings → AI access." } }, 401,
       { "www-authenticate": 'Bearer realm="pane"' });
   }
 

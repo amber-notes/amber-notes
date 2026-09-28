@@ -27,7 +27,7 @@ enum AppleNotesBridge {
         if let error {
             let code = error[NSAppleScript.errorNumber] as? Int
             if code == -1743 {
-                throw Failure.script("Pane isn't allowed to read Apple Notes. Turn it on in System Settings → Privacy & Security → Automation.")
+                throw Failure.script("Amber Notes isn't allowed to read Apple Notes. Turn it on in System Settings → Privacy & Security → Automation.")
             }
             throw Failure.script(error[NSAppleScript.errorMessage] as? String ?? "Apple Notes didn't answer.")
         }
@@ -69,7 +69,7 @@ enum AppleNotesBridge {
     }
 }
 
-/// Pick Apple Notes to copy into Pane. Nothing in Apple Notes is changed.
+/// Pick Apple Notes to copy into Amber Notes. Nothing in Apple Notes is changed.
 struct AppleNotesImportView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
@@ -101,7 +101,7 @@ struct AppleNotesImportView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Import from Apple Notes").font(.title3.bold())
-            Text("Pick the notes to copy into Pane. Your Apple Notes stay as they are.")
+            Text("Pick the notes to copy into Amber Notes. Your Apple Notes stay as they are.")
                 .font(.callout).foregroundStyle(.secondary)
             TextField("Filter", text: $query)
                 .textFieldStyle(.roundedBorder)

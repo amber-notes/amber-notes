@@ -1,4 +1,4 @@
-# Pane
+# Amber Notes
 
 A personal notes app for iPhone and Mac: as simple as Apple Notes, written in markdown,
 synced through your own Supabase project, and open to Claude, ChatGPT, Claude Code and

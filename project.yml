@@ -40,7 +40,8 @@ targets:
     info:
       path: Pane/Resources/Info.plist
       properties:
-        CFBundleDisplayName: Pane
+        CFBundleDisplayName: Amber Notes
+        CFBundleName: Amber Notes
         UILaunchScreen: {}
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: true
@@ -51,7 +52,7 @@ targets:
         PaneSupabaseKey: $(PANE_SUPABASE_KEY)
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
-        NSAppleEventsUsageDescription: Pane reads the Apple Notes you choose to import. It never changes them.
+        NSAppleEventsUsageDescription: Amber Notes reads the Apple Notes you choose to import. It never changes them.
         UTExportedTypeDeclarations:
           - UTTypeIdentifier: dev.emilwagman.pane.item
             UTTypeDescription: Pane item

@@ -37,7 +37,7 @@ final class MacDogfoodTests: XCTestCase {
         pause(1)
         shot("launch")
 
-        row("Welcome to Pane").click()
+        row("Welcome to Amber Notes").click()
         pause(1)
         shot("welcome")
 

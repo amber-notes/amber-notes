@@ -16,12 +16,12 @@ struct SignInView: View {
             Backdrop()
             VStack(spacing: 22) {
                 VStack(spacing: 10) {
-                    Image(systemName: "note.text")
-                        .font(.system(size: 30, weight: .medium))
-                        .foregroundStyle(.tint)
-                        .frame(width: 64, height: 64)
-                        .glassEffect(.regular, in: .rect(cornerRadius: 18))
-                    Text("Sign in to Pane")
+                    Image("Mark")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 84, height: 84)
+                        .accessibilityHidden(true)
+                    Text("Sign in to Amber Notes")
                         .font(.title2.weight(.bold))
                     Text("Your notes sync between your devices and the AI tools you connect.")
                         .font(.callout)

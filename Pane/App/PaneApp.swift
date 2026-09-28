@@ -79,9 +79,9 @@ enum Seed {
     }
 
     static let welcome = """
-    Welcome to Pane
+    Welcome to Amber Notes
 
-    Pane is a place for notes. Write in **markdown** and it styles itself as you type, with the syntax hidden until you need it.
+    Amber Notes is a place for notes. Write in **markdown** and it styles itself as you type, with the syntax hidden until you need it.
 
     ## The basics
     - [ ] Tap a circle to check it off

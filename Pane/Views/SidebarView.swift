@@ -49,7 +49,7 @@ struct SidebarView: View {
             }
             return moved
         }
-        .navigationTitle("Pane")
+        .navigationTitle("Amber Notes")
         .toolbar {
             #if os(iOS)
             ToolbarItem(placement: .bottomBar) {
