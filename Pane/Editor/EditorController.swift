@@ -81,18 +81,9 @@ final class EditorController {
         }
     }
 
+    /// Inserts an empty 2×2 table and puts the keyboard in its first cell.
     func insertTable() {
-        perform { text, sel in
-            let ns = text as NSString
-            let line = ns.lineRange(for: NSRange(location: sel.location, length: 0))
-            let atEmpty = ns.substring(with: line).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            let lead = atEmpty || sel.location == 0 ? "" : "\n\n"
-            let table = "| Column | Column |\n| --- | --- |\n|  |  |\n"
-            let insertAt = atEmpty ? line.location : NSMaxRange(line)
-            let body = lead + table
-            // Caret lands in the first header cell.
-            return TextEdit(range: NSRange(location: insertAt, length: 0), replacement: body, caret: insertAt + (lead as NSString).length + 2)
-        }
+        target?.insertGrid()
     }
 
     func insertLink() {
@@ -147,4 +138,5 @@ protocol EditorTarget: AnyObject {
     func apply(_ edit: TextEdit)
     func focusEditor()
     func insertCard()
+    func insertGrid()
 }

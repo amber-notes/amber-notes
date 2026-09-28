@@ -9,7 +9,7 @@ export function titleOf(body: string): string {
 }
 
 export function stripMarkup(line: string): string {
-  let s = line.trim();
+  let s = line.replace(/<\/?[a-zA-Z][^>]*>/g, "").trim();
   s = s.replace(/^#{1,6}\s+/, "").replace(/^>\s?/, "").replace(/^[-*+]\s+(\[[ xX]\]\s+)?/, "").replace(/^\d+[.)]\s+/, "");
   if (/^(```|~~~)/.test(s) || /^[-*_|:= ]+$/.test(s)) return "";
   s = s.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/\*\*|__|~~|`/g, "");

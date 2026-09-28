@@ -237,8 +237,42 @@ struct MarkdownStyler {
         styleUnderlines(storage, isActive: isActive, skip: walker.codeRanges)
         let cards = styleCards(storage, isActive: isActive)
         let tables = styleTypedTables(storage, isActive: isActive, skip: walker.codeRanges)
+        let grids = styleGrids(storage, isActive: isActive)
         let embeds = styleEmbeds(storage, isActive: isActive, skip: walker.codeRanges)
-        return StyledBlocks(cards: cards, embeds: embeds, tables: tables)
+        return StyledBlocks(cards: cards, embeds: embeds, tables: tables, grids: grids)
+    }
+
+    /// Plain tables become an editable grid (a live view over a reserved line), like Notes.
+    /// If the caret lands inside the markdown itself, the aligned source shows instead.
+    private func styleGrids(_ storage: NSTextStorage, isActive: (NSRange) -> Bool) -> [GridTable] {
+        let ns = storage.string as NSString
+        var shown: [GridTable] = []
+        for var g in GridTable.find(in: storage.string) where !isActive(g.range) {
+            let lines = ns.lineRange(for: g.range)
+            let first = ns.lineRange(for: NSRange(location: g.range.location, length: 0))
+            storage.removeAttribute(.paneLine, range: lines)
+            storage.addAttributes(hidden, range: g.range)
+            storage.removeAttribute(.kern, range: g.range)
+            let h = GridMetrics.height(g)
+            let head = NSMutableParagraphStyle()
+            head.minimumLineHeight = h
+            head.maximumLineHeight = h
+            head.paragraphSpacingBefore = 2
+            head.paragraphSpacing = 8
+            storage.addAttribute(.paragraphStyle, value: head, range: first)
+            let rest = NSRange(location: NSMaxRange(first), length: NSMaxRange(lines) - NSMaxRange(first))
+            if rest.length > 0 {
+                let flat = NSMutableParagraphStyle()
+                flat.minimumLineHeight = 0.01
+                flat.maximumLineHeight = 0.01
+                flat.lineSpacing = 0
+                flat.paragraphSpacing = 0
+                storage.addAttribute(.paragraphStyle, value: flat, range: rest)
+            }
+            g.index = shown.count
+            shown.append(g)
+        }
+        return shown
     }
 
     private static let underline = try! NSRegularExpression(pattern: #"<u>(.+?)</u>"#, options: [.caseInsensitive])
@@ -588,6 +622,7 @@ struct StyledBlocks {
     var cards: [CardBlock] = []
     var embeds: [LineEmbed] = []
     var tables: [TypedTable] = []
+    var grids: [GridTable] = []
 }
 
 /// Maps swift-markdown's line/column (UTF-8) locations onto UTF-16 offsets.

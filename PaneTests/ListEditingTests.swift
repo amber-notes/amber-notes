@@ -109,6 +109,11 @@ import AppKit
         #expect(NoteText.title(of: "") == "New Note")
     }
 
+    @Test func summariesDropTags() {
+        #expect(NoteText.title(of: "Plan\n<u>Phase 1</u> starts") == "Plan")
+        #expect(NoteText.preview(of: "Plan\n<details>\n<summary>Hidden</summary>\n\n<u>Phase 1</u> starts") == "Hidden")
+    }
+
     @Test func previewIsSecondLine() {
         #expect(NoteText.preview(of: "Title\n\n- [ ] [Link](https://x.y) here") == "Link here")
         #expect(NoteText.preview(of: "Only title") == "No additional text")

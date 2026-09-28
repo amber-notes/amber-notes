@@ -28,6 +28,9 @@ final class EditorCore {
     private(set) var cards: [CardBlock] = []
     private(set) var embeds: [LineEmbed] = []
     private(set) var tables: [TypedTable] = []
+    private(set) var grids: [GridTable] = []
+    /// A just-inserted table whose first cell should take the keyboard.
+    var pendingGridFocus: Int?
     private var expandedTables: Set<Int> = []
     /// Cards (by position in the note) currently open.
     private var openCards: Set<Int> = []
@@ -89,6 +92,19 @@ final class EditorCore {
         return nil
     }
 
+    /// An empty 2×2 table after the caret's line; returns the edit and the table's index.
+    func newGridEdit(text: String, selection: NSRange) -> (TextEdit, Int) {
+        let ns = text as NSString
+        let line = ns.lineRange(for: NSRange(location: min(selection.location, ns.length), length: 0))
+        let empty = ns.substring(with: line).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let at = empty ? line.location : NSMaxRange(line)
+        let lead = empty || ns.substring(with: line).hasSuffix("\n") ? "" : "\n"
+        let body = lead + "|  |  |\n| --- | --- |\n|  |  |\n"
+        let index = GridTable.find(in: ns.substring(to: at)).count
+        // The caret ends up after the table, so the table isn't shown as source.
+        return (TextEdit(range: NSRange(location: at, length: empty ? line.length : 0), replacement: body + (empty ? "\n" : ""), caret: at + (body as NSString).length), index)
+    }
+
     /// Inserts an empty open card at the caret, with its title selected.
     func newCardEdit(text: String, selection: NSRange) -> (TextEdit, NSRange) {
         let ns = text as NSString
@@ -139,6 +155,18 @@ final class EditorCore {
                 })
             out.append(("t\(t.index)", f, AnyView(view)))
         }
+        for g in grids {
+            guard let f = frame(at: g.range.location, height: GridMetrics.height(g)) else { continue }
+            let focusFirst = pendingGridFocus == g.index
+            if focusFirst { pendingGridFocus = nil }
+            let view = TableGridView(table: g, initialFocus: focusFirst ? GridCell(row: 0, column: 0) : nil) { edited in
+                // Find the table again in the current text: earlier edits may have moved it.
+                let now = GridTable.find(in: target.currentText)
+                guard edited.index < now.count else { return }
+                target.apply(TextEdit(range: now[edited.index].range, replacement: edited.markdown, caret: -1))
+            }
+            out.append(("g\(g.index)", f, AnyView(view)))
+        }
         for e in embeds {
             let maxW: CGFloat = { if case .image = e.kind { return 420 } else { return 460 } }()
             guard let f = frame(at: e.range.location, height: e.height, maxWidth: maxW) else { continue }
@@ -185,6 +213,7 @@ final class EditorCore {
         cards = blocks.cards
         embeds = blocks.embeds
         tables = blocks.tables
+        grids = blocks.grids
         onCardsChanged()
     }
 
@@ -307,6 +336,13 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
                 UIView.animate(withDuration: 0.22, delay: 0, options: [.beginFromCurrentState, .allowUserInteraction]) { host.view.frame = item.frame }
             }
         }
+    }
+
+    func insertGrid() {
+        let (edit, index) = core.newGridEdit(text: text, selection: selectedRange)
+        core.pendingGridFocus = index
+        apply(edit)
+        resignFirstResponder()
     }
 
     func insertCard() {
@@ -645,6 +681,12 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
                 }
             }
         }
+    }
+
+    func insertGrid() {
+        let (edit, index) = core.newGridEdit(text: string, selection: selectedRange())
+        core.pendingGridFocus = index
+        apply(edit)
     }
 
     func insertCard() {

@@ -8,7 +8,23 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
+        #if os(macOS)
+        // A Mac Settings window: no navigation bar, no Done button.
+        form
+            .frame(width: 520)
+            .frame(minHeight: 460)
+        #else
         NavigationStack {
+            form
+                .navigationTitle("Settings")
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+                }
+        }
+        #endif
+    }
+
+    private var form: some View {
             Form {
                 Section("Account") {
                     if case .signedIn(let email) = backend.state {
@@ -27,14 +43,6 @@ struct SettingsView: View {
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle("Settings")
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
-            }
-        }
-        #if os(macOS)
-        .frame(width: 560, height: 640)
-        #endif
     }
 }
 
@@ -97,7 +105,7 @@ private struct TokenRow: Decodable, Identifiable {
 private struct AIAccessSection: View {
     let client: SupabaseClient
     @State private var tokens: [TokenRow] = []
-    @State private var newName = "Claude"
+    @State private var newName = ""
     @State private var writeAccess = true
     @State private var created: (name: String, token: String)?
     @State private var error: String?
@@ -117,12 +125,13 @@ private struct AIAccessSection: View {
                         .buttonStyle(.borderless)
                 }
             }
+            TextField("New token for", text: $newName, prompt: Text("ChatGPT, Claude, Claude Code…"))
+            Toggle("Can edit notes", isOn: $writeAccess)
             HStack {
-                TextField("Name, e.g. ChatGPT", text: $newName)
-                Toggle("Can edit", isOn: $writeAccess)
-                    .fixedSize()
+                Spacer()
                 Button("Create token") { Task { await create() } }
                     .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .keyboardShortcut(.defaultAction)
             }
             if let error { Text(error).foregroundStyle(.red).font(.footnote) }
         } header: {

@@ -110,7 +110,9 @@ enum NoteText {
 
     /// Removes the markdown syntax that should not show in a one-line summary.
     static func stripMarkup(_ line: String) -> String {
-        var s = line.trimmingCharacters(in: .whitespaces)
+        // Tags such as <u>, <details> and <summary> never show in a summary.
+        var s = line.replacingOccurrences(of: #"</?[a-zA-Z][^>]*>"#, with: "", options: .regularExpression)
+            .trimmingCharacters(in: .whitespaces)
         for prefix in ["###### ", "##### ", "#### ", "### ", "## ", "# ", "> ", "- [ ] ", "- [x] ", "- [X] ", "- ", "* ", "+ "] where s.hasPrefix(prefix) {
             s.removeFirst(prefix.count)
             break

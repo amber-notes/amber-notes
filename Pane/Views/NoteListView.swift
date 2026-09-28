@@ -86,9 +86,6 @@ struct NoteListView: View {
         }
         #if os(iOS)
         .listStyle(.insetGrouped)
-        #else
-        // A calm grey selection, even when the list has focus.
-        .tint(Color(nsColor: .tertiaryLabelColor))
         #endif
         .overlay {
             if filtered.isEmpty { emptyState }

@@ -69,7 +69,11 @@ struct RootView: View {
             Button("OK") {}
         } message: { Text(importError ?? "") }
         #if os(macOS)
-        .sheet(isPresented: $showImport) { AppleNotesImportView() }
+        .sheet(isPresented: $showImport) {
+            AppleNotesImportView { ids in
+                if let first = ids.first { scope = .all; selectedNote = first }
+            }
+        }
         #endif
         .focusedSceneValue(\.deleteNoteAction, deleteAction)
     }
