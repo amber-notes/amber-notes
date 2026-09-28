@@ -62,10 +62,8 @@ private struct WindowShaper: NSViewRepresentable {
             // No system title bar or toolbar while signed out: just the card and the window buttons.
             window.toolbar?.isVisible = !compact
             window.titlebarSeparatorStyle = compact ? .none : .automatic
-            // Card mode: no window buttons; the card is the window. (⌘W / ⌘Q still work.)
-            for b in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
-                window.standardWindowButton(b)?.isHidden = compact
-            }
+            // Card mode keeps close and minimise; zoom makes no sense for a fixed-size card.
+            window.standardWindowButton(.zoomButton)?.isEnabled = !compact
             window.contentMinSize = compact ? CGSize(width: 300, height: 300) : CGSize(width: 760, height: 520)
             // Compact: the card is the whole window, title-bar area included.
             var frame = compact ? CGRect(origin: .zero, size: target) : window.frameRect(forContentRect: CGRect(origin: .zero, size: target))
