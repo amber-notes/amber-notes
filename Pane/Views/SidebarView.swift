@@ -1,6 +1,20 @@
 import SwiftData
 import SwiftUI
 
+enum SidebarStyle {
+    /// Notes on the Mac draws folder icons in the text colour; iOS tints them.
+    #if os(macOS)
+    static let icon = HierarchicalShapeStyle.primary
+    #else
+    static let icon = TintShapeStyle.tint
+    #endif
+}
+
+extension Notification.Name {
+    /// Asks the sidebar to start a new folder (from the list's "⋯" menu).
+    static let paneNewFolder = Notification.Name("pane.newFolder")
+}
+
 struct SidebarView: View {
     @Environment(\.modelContext) private var context
     @Binding var scope: Scope?
@@ -65,19 +79,31 @@ struct SidebarView: View {
             ToolbarItem(placement: .bottomBar) {
                 Button("New Note", systemImage: "square.and.pencil", action: onNewNote)
             }
-            #else
-            ToolbarItem {
-                Button("New Folder", systemImage: "folder.badge.plus") { startNewFolder(nil) }
-                    .accessibilityIdentifier("sidebar.newFolder")
-            }
-            #endif
             if let backend, backend.client != nil {
                 ToolbarItem(placement: .primaryAction) {
                     Button("Settings", systemImage: "gearshape") { showSettings = true }
                         .accessibilityIdentifier("sidebar.settings")
                 }
             }
+            #endif
         }
+        #if os(macOS)
+        // Like Notes: New Folder lives at the foot of the sidebar.
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            HStack {
+                Button { startNewFolder(nil) } label: {
+                    Label("New Folder", systemImage: "plus.circle")
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("sidebar.newFolder")
+                Spacer()
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .paneNewFolder)) { _ in startNewFolder(nil) }
+        #endif
         .sheet(isPresented: $showSettings) {
             if let backend { SettingsView(backend: backend, sync: sync) }
         }
@@ -105,7 +131,7 @@ struct SidebarView: View {
                     .foregroundStyle(.secondary)
             }
         } icon: {
-            Image(systemName: icon).foregroundStyle(.tint)
+            Image(systemName: icon).foregroundStyle(SidebarStyle.icon)
         }
     }
 
@@ -165,7 +191,7 @@ private struct FolderTree: View {
             }
         } icon: {
             Image(systemName: dropTarget == folder.id ? "folder.fill" : "folder")
-                .foregroundStyle(.tint)
+                .foregroundStyle(SidebarStyle.icon)
                 .contentTransition(.symbolEffect(.replace))
         }
         .tag(Scope.folder(folder.id))

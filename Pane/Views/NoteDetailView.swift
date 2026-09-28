@@ -114,14 +114,13 @@ struct NoteDetailView: View {
         }
         ToolbarItem(placement: .primaryAction) { moreMenu }
         #else
+        // Like Notes: compose first, the writing tools together, then share and more.
         ToolbarItemGroup {
             formatMenu
             Button("Checklist", systemImage: "checklist", action: controller.checklist)
                 .help("Checklist (⇧⌘L)")
             Button("Table", systemImage: "tablecells", action: controller.insertTable)
                 .help("Table (⌥⌘T)")
-            Button("Card", systemImage: "rectangle.stack", action: controller.newCard)
-                .help("Collapsible card (⇧⌘C)")
             Button("Attach", systemImage: "paperclip") { importing = true }
                 .help("Attach a file (⇧⌘A)")
         }
@@ -149,11 +148,15 @@ struct NoteDetailView: View {
             }
             Section {
                 Button("Bulleted List", systemImage: "list.bullet", action: controller.bulletList)
+                Button("Card", systemImage: "rectangle.stack", action: controller.newCard)
                 Button("Link", systemImage: "link", action: controller.insertLink)
             }
         } label: {
             Label("Format", systemImage: "textformat")
         }
+        #if os(macOS)
+        .tint(.primary)
+        #endif
         .accessibilityIdentifier("editor.format")
     }
 
@@ -177,6 +180,9 @@ struct NoteDetailView: View {
         } label: {
             Label("More", systemImage: "ellipsis")
         }
+        #if os(macOS)
+        .tint(.primary)
+        #endif
         .accessibilityIdentifier("editor.more")
     }
 }

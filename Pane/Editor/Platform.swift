@@ -66,7 +66,8 @@ enum EditorMetrics {
     static let title: CGFloat = 28
     static let lineSpacing: CGFloat = 5
     #else
-    static let body: CGFloat = 14
+    // Apple Notes on the Mac: 13 pt body, 24 pt title.
+    static let body: CGFloat = 13
     static let title: CGFloat = 24
     static let lineSpacing: CGFloat = 4
     #endif

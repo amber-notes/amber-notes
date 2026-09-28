@@ -39,6 +39,12 @@ struct PaneApp: App {
         .windowToolbarStyle(.unified)
         .commands { PaneCommands() }
         #endif
+
+        #if os(macOS)
+        Settings {
+            SettingsView(backend: backend, sync: sync)
+        }
+        #endif
     }
 }
 

@@ -12,6 +12,8 @@ struct NoteListView: View {
     @State private var search = ""
     @State private var fileDropTargeted = false
     @State private var collapsed: Set<String> = []
+    @FocusedValue(\.importAction) private var importNotes
+    @FocusedValue(\.importSheetAction) private var importSheet
 
     private var scoped: [Note] {
         notes.filter { n in
@@ -116,20 +118,7 @@ struct NoteListView: View {
         .navigationBarTitleDisplayMode(.large)
         #endif
         #if os(macOS)
-        // The window has no title bar, so the list carries its own title.
-        .safeAreaInset(edge: .top, spacing: 0) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(title).font(.title2.weight(.bold))
-                Text(scoped.count == 1 ? "1 note" : "\(scoped.count) notes")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-                Spacer()
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 6)
-            .padding(.bottom, 8)
-        }
+        .navigationSubtitle("")
         #endif
         .onKeyPress(.delete) {
             guard let id = selection, let n = context.note(id) else { return .ignored }
@@ -152,8 +141,37 @@ struct NoteListView: View {
                     .accessibilityIdentifier("list.newNote")
             }
             #else
-            ToolbarItem {
+            // Like Notes: the folder's name and count, then a "⋯" menu for the list.
+            ToolbarItem(placement: .navigation) {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(title).font(.system(size: 14, weight: .bold)).lineLimit(1)
+                    Text(scoped.count == 1 ? "1 note" : "\(scoped.count) notes")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+                .padding(.horizontal, 6)
+                .fixedSize()
+            }
+            .sharedBackgroundVisibility(.hidden)
+            ToolbarItem(placement: .navigation) {
+                Menu {
+                    Button("New Folder", systemImage: "folder.badge.plus") { NotificationCenter.default.post(name: .paneNewFolder, object: nil) }
+                    Divider()
+                    Button("Import from Apple Notes…", systemImage: "square.and.arrow.down") { importNotes?() }
+                    Button("Import Spreadsheet as Table…", systemImage: "tablecells") { importSheet?() }
+                    Divider()
+                    SettingsLink { Label("Settings…", systemImage: "gearshape") }
+                } label: {
+                    Label("More", systemImage: "ellipsis")
+                }
+                .menuIndicator(.hidden)
+                .tint(.primary)
+                .accessibilityIdentifier("list.more")
+            }
+            ToolbarItem(placement: .primaryAction) {
                 Button("New Note", systemImage: "square.and.pencil", action: onNewNote)
+                    .help("New Note (⌘N)")
                     .accessibilityIdentifier("list.newNote")
             }
             #endif
@@ -222,37 +240,53 @@ struct NoteListView: View {
     }
 }
 
+/// Row type and spacing, matched to Apple Notes on each platform.
+enum RowMetrics {
+    #if os(macOS)
+    static let title = Font.system(size: 13, weight: .bold)
+    static let detail = Font.system(size: 13)
+    static let spacing: CGFloat = 3
+    static let vertical: CGFloat = 5
+    static let leading: CGFloat = 12
+    #else
+    static let title = Font.headline
+    static let detail = Font.subheadline
+    static let spacing: CGFloat = 3
+    static let vertical: CGFloat = 1
+    static let leading: CGFloat = 0
+    #endif
+}
+
 struct NoteRow: View {
     let note: Note
     var query: String = ""
     var showFolder = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: RowMetrics.spacing) {
             Text(note.title)
-                .font(.headline)
+                .font(RowMetrics.title)
                 .lineLimit(1)
-            HStack(spacing: 6) {
+            HStack(spacing: 8) {
                 Text(DateBucket.rowDate(note.updatedAt))
                     .monospacedDigit()
-                    .foregroundStyle(.primary.opacity(0.75))
+                    .foregroundStyle(.primary.opacity(0.85))
                 Text(snippet)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
-            .font(.subheadline)
+            .font(RowMetrics.detail)
             if showFolder, let f = note.folder {
-                HStack(spacing: 4) {
+                HStack(spacing: 5) {
                     Image(systemName: "folder")
-                        .imageScale(.small)
                     Text(f.name)
                 }
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-                .padding(.top, 1)
+                .font(RowMetrics.detail)
+                .foregroundStyle(.secondary)
             }
         }
-        .padding(.vertical, 1)
+        .padding(.vertical, RowMetrics.vertical)
+        .padding(.leading, RowMetrics.leading)
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("note.\(note.title)")
     }
