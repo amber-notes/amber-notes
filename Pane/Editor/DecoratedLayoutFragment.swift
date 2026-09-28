@@ -56,9 +56,10 @@ final class DecoratedLayoutFragment: NSTextLayoutFragment {
         let h = layoutFragmentFrame.height
         switch d.kind {
         case .bullet:
-            let r: CGFloat = EditorMetrics.body * 0.17
+            // Solid dots in the text colour, like Notes.
+            let r: CGFloat = EditorMetrics.body * 0.19
             let c = CGPoint(x: o.x + d.markerX, y: o.y + firstLineMidY)
-            ctx.setFillColor(PColor.paneSecondary.cgColor)
+            ctx.setFillColor(PColor.paneLabel.cgColor)
             ctx.fillEllipse(in: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2))
 
         case .checkbox(let checked):

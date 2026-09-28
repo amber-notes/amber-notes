@@ -84,6 +84,13 @@ import AppKit
         #expect(e.caret == 9)
     }
 
+    @Test func underlineWrapsAndUnwraps() {
+        let t = "make this line"
+        let on = apply(t, ListEditing.underline(in: t, selection: NSRange(location: 5, length: 4)))
+        #expect(on == "make <u>this</u> line")
+        #expect(apply(on, ListEditing.underline(in: on, selection: NSRange(location: 8, length: 4))) == t)
+    }
+
     @Test func headingToggles() {
         let t = "## Title"
         #expect(apply(t, ListEditing.heading(in: t, selection: NSRange(location: 3, length: 0), level: 1)) == "# Title")

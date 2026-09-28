@@ -63,6 +63,7 @@ final class EditorController {
 
     func bold() { perform { ListEditing.wrap(in: $0, selection: $1, with: "**") } }
     func italic() { perform { ListEditing.wrap(in: $0, selection: $1, with: "*") } }
+    func underline() { perform { ListEditing.underline(in: $0, selection: $1) } }
     func strikethrough() { perform { ListEditing.wrap(in: $0, selection: $1, with: "~~") } }
     func code() { perform { ListEditing.wrap(in: $0, selection: $1, with: "`") } }
     func checklist() { perform { ListEditing.toggleChecklist(in: $0, selection: $1) } }

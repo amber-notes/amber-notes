@@ -21,6 +21,7 @@ struct FormatBar: View {
                         Section {
                             Button("Bold", systemImage: "bold", action: controller.bold)
                             Button("Italic", systemImage: "italic", action: controller.italic)
+                            Button("Underline", systemImage: "underline", action: controller.underline)
                             Button("Strikethrough", systemImage: "strikethrough", action: controller.strikethrough)
                             Button("Code", systemImage: "chevron.left.forwardslash.chevron.right", action: controller.code)
                         }

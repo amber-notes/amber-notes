@@ -1,6 +1,74 @@
 import SwiftData
 import SwiftUI
 
+#if os(macOS)
+/// The account at the foot of the sidebar: who's signed in, and a way out.
+private struct AccountButton: View {
+    let email: String
+    let backend: Backend
+    @State private var open = false
+
+    private var initial: String { email.first.map { String($0).uppercased() } ?? "?" }
+
+    var body: some View {
+        Button { open.toggle() } label: {
+            HStack(spacing: 8) {
+                Text(initial)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.black.opacity(0.8))
+                    .frame(width: 22, height: 22)
+                    .background(Color.accentColor, in: .circle)
+                Text(email)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 8)
+            .frame(height: 34)
+            .contentShape(.rect(cornerRadius: 8))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Account, \(email)")
+        .accessibilityIdentifier("sidebar.account")
+        .popover(isPresented: $open, arrowEdge: .top) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 10) {
+                    Text(initial)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(.black.opacity(0.8))
+                        .frame(width: 34, height: 34)
+                        .background(Color.accentColor, in: .circle)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Signed in as").font(.caption).foregroundStyle(.secondary)
+                        Text(email).font(.callout.weight(.medium)).lineLimit(1).truncationMode(.middle)
+                    }
+                }
+                Divider()
+                SettingsLink {
+                    Label("Settings…", systemImage: "gearshape")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.plain)
+                Button(role: .destructive) {
+                    open = false
+                    Task { await backend.signOut() }
+                } label: {
+                    Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.red)
+                .accessibilityIdentifier("account.signOut")
+            }
+            .padding(16)
+            .frame(width: 260)
+        }
+    }
+}
+#endif
+
 enum SidebarStyle {
     /// Notes on the Mac draws folder icons in the text colour; iOS tints them.
     #if os(macOS)
@@ -100,6 +168,13 @@ struct SidebarView: View {
             #endif
         }
         #if os(macOS)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if let backend, case .signedIn(let email) = backend.state {
+                AccountButton(email: email, backend: backend)
+                    .padding(.horizontal, 10)
+                    .padding(.bottom, 10)
+            }
+        }
         .onReceive(NotificationCenter.default.publisher(for: .paneNewFolder)) { _ in startNewFolder(nil) }
         #endif
         .sheet(isPresented: $showSettings) {

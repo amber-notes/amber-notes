@@ -110,8 +110,8 @@ struct MarkdownStyler {
     func headingFont(_ level: Int) -> PFont {
         switch level {
         case 1: .systemFont(ofSize: EditorMetrics.title, weight: .bold)
-        case 2: .systemFont(ofSize: bodySize * 1.35, weight: .bold)
-        case 3: .systemFont(ofSize: bodySize * 1.15, weight: .semibold)
+        case 2: .systemFont(ofSize: bodySize * 1.25, weight: .bold)
+        case 3: .systemFont(ofSize: bodySize * 1.1, weight: .semibold)
         default: .systemFont(ofSize: bodySize, weight: .semibold)
         }
     }
@@ -119,7 +119,8 @@ struct MarkdownStyler {
     func baseParagraph() -> NSMutableParagraphStyle {
         let p = NSMutableParagraphStyle()
         p.lineSpacing = EditorMetrics.lineSpacing
-        p.paragraphSpacing = 2
+        // Like Notes: no extra space between paragraphs; blank lines make the gaps.
+        p.paragraphSpacing = 0
         return p
     }
 
@@ -197,7 +198,7 @@ struct MarkdownStyler {
                 if firstLineIsTitle && plain {
                     storage.addAttribute(.font, value: headingFont(1), range: lineRange)
                     let p = baseParagraph()
-                    p.paragraphSpacing = 6
+                    p.paragraphSpacing = 4
                     storage.addAttribute(.paragraphStyle, value: p, range: enclosing)
                     return
                 }
@@ -233,10 +234,27 @@ struct MarkdownStyler {
             layoutTable(table, storage: storage, isActive: isActive)
         }
 
+        styleUnderlines(storage, isActive: isActive, skip: walker.codeRanges)
         let cards = styleCards(storage, isActive: isActive)
         let tables = styleTypedTables(storage, isActive: isActive, skip: walker.codeRanges)
         let embeds = styleEmbeds(storage, isActive: isActive, skip: walker.codeRanges)
         return StyledBlocks(cards: cards, embeds: embeds, tables: tables)
+    }
+
+    private static let underline = try! NSRegularExpression(pattern: #"<u>(.+?)</u>"#, options: [.caseInsensitive])
+
+    /// Markdown has no underline, so Amber Notes uses <u>…</u> (GitHub shows it too).
+    /// The tags hide like other syntax and the text between them is underlined.
+    private func styleUnderlines(_ storage: NSTextStorage, isActive: (NSRange) -> Bool, skip: [NSRange]) {
+        let full = NSRange(location: 0, length: storage.length)
+        for m in Self.underline.matches(in: storage.string, range: full) {
+            if skip.contains(where: { NSIntersectionRange($0, m.range).length > 0 }) { continue }
+            let inner = m.range(at: 1)
+            storage.addAttribute(.underlineStyle, value: NSUnderlineStyle.single.rawValue, range: inner)
+            let look = hiddenOrDim(active: isActive(m.range))
+            storage.addAttributes(look, range: NSRange(location: m.range.location, length: 3))
+            storage.addAttributes(look, range: NSRange(location: NSMaxRange(inner), length: 4))
+        }
     }
 
     /// Typed tables become a table card; with the caret inside, the markdown shows.
@@ -530,7 +548,6 @@ struct MarkdownStyler {
         let prefix = NSRange(location: lineRange.location, length: min(list.length, lineRange.length))
         let content = NSRange(location: prefix.upperBound, length: lineRange.length - prefix.length)
         let p = baseParagraph()
-        p.paragraphSpacing = 3
 
         if list.ordered {
             // Numbers stay visible: they carry meaning. The indent before them is kerned.
@@ -646,8 +663,8 @@ private struct StyleWalker: MarkupWalker {
         guard let r = map.range(heading.range), safe(r) else { return descendInto(heading) }
         storage.addAttribute(.font, value: styler.headingFont(heading.level), range: r)
         let p = styler.baseParagraph()
-        p.paragraphSpacingBefore = heading.level <= 2 ? 10 : 6
-        p.paragraphSpacing = 4
+        p.paragraphSpacingBefore = heading.level <= 2 ? 4 : 2
+        p.paragraphSpacing = 2
         storage.addAttribute(.paragraphStyle, value: p, range: ns.paragraphRange(for: r))
         let hashes = delimiterLength(r, char: 0x23)
         var marker = hashes

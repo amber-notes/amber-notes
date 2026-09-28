@@ -102,6 +102,21 @@ enum ListEditing {
         return TextEdit(range: NSRange(location: lineRange.location, length: 0), replacement: "- [ ] ", caret: selection.location + 6)
     }
 
+    /// Wraps the selection in <u>…</u>, or unwraps it.
+    static func underline(in text: String, selection: NSRange) -> TextEdit {
+        let ns = text as NSString
+        var sel = selection
+        if sel.length == 0, let w = wordRange(in: ns, at: sel.location) { sel = w }
+        let selected = ns.substring(with: sel)
+        if sel.location >= 3, NSMaxRange(sel) + 4 <= ns.length,
+           ns.substring(with: NSRange(location: sel.location - 3, length: 3)).lowercased() == "<u>",
+           ns.substring(with: NSRange(location: NSMaxRange(sel), length: 4)).lowercased() == "</u>" {
+            return TextEdit(range: NSRange(location: sel.location - 3, length: sel.length + 7), replacement: selected, caret: sel.location - 3 + sel.length)
+        }
+        let wrapped = "<u>" + selected + "</u>"
+        return TextEdit(range: sel, replacement: wrapped, caret: sel.length == 0 ? sel.location + 3 : sel.location + (wrapped as NSString).length)
+    }
+
     /// Wraps the selection in a markdown delimiter, or unwraps it.
     static func wrap(in text: String, selection: NSRange, with token: String) -> TextEdit {
         let ns = text as NSString

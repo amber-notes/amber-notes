@@ -141,6 +141,7 @@ enum RichTextToMarkdown {
                 if traits.contains(.paneBold) { s = "**\(s)**" }
                 if traits.contains(.paneItalic) { s = "*\(s)*" }
                 if let strike = attrs[.strikethroughStyle] as? Int, strike != 0 { s = "~~\(s)~~" }
+                if let under = attrs[.underlineStyle] as? Int, under != 0, attrs[.link] == nil { s = "<u>\(s)</u>" }
             }
             if let link = attrs[.link] {
                 let url = (link as? URL)?.absoluteString ?? (link as? String) ?? ""

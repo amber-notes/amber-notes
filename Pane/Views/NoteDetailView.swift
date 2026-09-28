@@ -116,7 +116,10 @@ struct NoteDetailView: View {
         #else
         // Like Notes: compose first (just right of the divider), the writing tools together, then share and more.
         ToolbarItem {
-            Button("New Note", systemImage: "square.and.pencil", action: onNewNote)
+            Button(action: onNewNote) {
+                // The pencil pokes out top-right; nudge so the symbol reads as centred.
+                Label("New Note", systemImage: "square.and.pencil").offset(x: 0.5, y: 0.5)
+            }
                 .help("New Note (⌘N)")
                 .accessibilityIdentifier("list.newNote")
         }
@@ -149,6 +152,7 @@ struct NoteDetailView: View {
             Section {
                 Button("Bold", systemImage: "bold", action: controller.bold)
                 Button("Italic", systemImage: "italic", action: controller.italic)
+                Button("Underline", systemImage: "underline", action: controller.underline)
                 Button("Strikethrough", systemImage: "strikethrough", action: controller.strikethrough)
                 Button("Code", systemImage: "chevron.left.forwardslash.chevron.right", action: controller.code)
             }

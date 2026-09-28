@@ -32,7 +32,9 @@ struct RootView: View {
                     #if os(macOS)
                     .toolbar {
                         ToolbarItem {
-                            Button("New Note", systemImage: "square.and.pencil", action: newNote)
+                            Button(action: newNote) {
+                                Label("New Note", systemImage: "square.and.pencil").offset(x: 0.5, y: 0.5)
+                            }
                                 .accessibilityIdentifier("list.newNote")
                         }
                         ToolbarSpacer(.flexible)
@@ -95,7 +97,7 @@ struct RootView: View {
         }
         let note = context.createNote(in: target)
         justCreated = note.id
-        withAnimation(.snappy(duration: 0.25)) { selectedNote = note.id }
+        selectedNote = note.id
     }
 
     /// Leaving a blank note deletes it, like Apple Notes.
@@ -110,6 +112,7 @@ struct RootView: View {
         let args = ProcessInfo.processInfo.arguments
         guard args.contains("-uitest"), let i = args.firstIndex(of: "-open"), i + 1 < args.count else { return }
         let title = args[i + 1]
+        if title == "-new" { DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { newNote() }; return }
         let all = (try? context.fetch(FetchDescriptor<Note>())) ?? []
         if let n = all.first(where: { $0.title == title && $0.deletedAt == nil }) { selectedNote = n.id }
     }
@@ -215,6 +218,7 @@ struct PaneCommands: Commands {
             Divider()
             Button("Bold") { editor?.bold() }.keyboardShortcut("b")
             Button("Italic") { editor?.italic() }.keyboardShortcut("i")
+            Button("Underline") { editor?.underline() }.keyboardShortcut("u")
             Button("Strikethrough") { editor?.strikethrough() }.keyboardShortcut("x", modifiers: [.command, .shift])
             Button("Code") { editor?.code() }.keyboardShortcut("k", modifiers: [.command, .shift])
             Divider()

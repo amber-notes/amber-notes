@@ -610,8 +610,8 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
 
     override func setFrameSize(_ newSize: NSSize) {
         super.setFrameSize(newSize)
-        let side = max(28, (newSize.width - readableWidth) / 2)
-        let inset = NSSize(width: side, height: headerLabel.stringValue.isEmpty ? 14 : 44)
+        // Like Notes on the Mac: a slim margin and text that uses the full width.
+        let inset = NSSize(width: 20, height: headerLabel.stringValue.isEmpty ? 14 : 44)
         if textContainerInset != inset { textContainerInset = inset }
         headerLabel.frame = NSRect(x: 0, y: 14, width: newSize.width, height: 16)
         DispatchQueue.main.async { [weak self] in self?.layoutCards() }
