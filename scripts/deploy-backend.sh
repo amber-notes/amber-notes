@@ -3,7 +3,9 @@
 #
 #   scripts/deploy-backend.sh <project-ref>
 #
-# Needs: `supabase login` (or SUPABASE_ACCESS_TOKEN) for the account that owns the project.
+# Needs a personal access token for the account that owns the project, in .env
+# (SUPABASE_ACCESS_TOKEN=sbp_…). Using the token keeps this machine's global
+# `supabase login` (used by other projects) untouched.
 # What it does, in order:
 #   1. links this folder to the project
 #   2. applies the database schema (tables, row-level security, search, revisions, tokens)
@@ -14,6 +16,9 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 REF="${1:?usage: scripts/deploy-backend.sh <project-ref>}"
+if [ -f .env ]; then set -a; . ./.env; set +a; fi
+: "${SUPABASE_ACCESS_TOKEN:?put SUPABASE_ACCESS_TOKEN=sbp_… in .env (supabase.com/dashboard/account/tokens)}"
+export SUPABASE_ACCESS_TOKEN
 
 echo "→ Linking $REF"
 supabase link --project-ref "$REF"
