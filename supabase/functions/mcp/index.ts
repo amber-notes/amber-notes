@@ -1,12 +1,14 @@
 // Pane's MCP server: lets Claude, ChatGPT, Claude Code and Codex read and edit your notes.
 //
-// Transport: MCP Streamable HTTP (JSON responses). Auth: a Pane access token, sent as
-// `Authorization: Bearer pane_…` or as the last path segment (for connectors that only take a URL).
+// Transport: MCP Streamable HTTP (JSON responses). Auth: an OAuth access token from signing in
+// (ChatGPT, Claude; see oauth.ts), or an Amber Notes access token sent as `Authorization: Bearer pane_…`
+// (Claude Code, Codex). Older setups put the token in the URL; that still works but is flagged in the app.
 // Every tool runs inside a transaction as the token's owner with row-level security on,
 // so the server can only ever see that person's notes. Writes are revisioned by the database.
 
 import postgres from "npm:postgres@3.4.5";
 import { tools, runTool, ToolContext, ToolError } from "./tools.ts";
+import { challenge, handleOAuth, isOAuthPath, publicBase, resolveAccessToken, subpath } from "./oauth.ts";
 
 const PROTOCOL_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
 const SERVER_INFO = { name: "amber-notes", title: "Amber Notes", version: "1.0.0" };
@@ -34,21 +36,35 @@ function json(body: unknown, status = 200, headers: Record<string, string> = {})
   return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", ...cors, ...headers } });
 }
 
-function tokenFrom(req: Request): string | null {
+type Presented = { token: string; oauth: boolean; inURL: boolean };
+
+function tokenFrom(req: Request): Presented | null {
   const auth = req.headers.get("authorization") ?? "";
+  const oauth = auth.match(/^Bearer\s+(amb_at_[0-9a-f]{64})$/i);
+  if (oauth) return { token: oauth[1], oauth: true, inURL: false };
   const m = auth.match(/^Bearer\s+(pane_[0-9a-f]{64})$/i);
-  if (m) return m[1];
+  if (m) return { token: m[1], oauth: false, inURL: false };
   const last = new URL(req.url).pathname.split("/").filter(Boolean).pop() ?? "";
-  return /^pane_[0-9a-f]{64}$/.test(last) ? last : null;
+  return /^pane_[0-9a-f]{64}$/.test(last) ? { token: last, oauth: false, inURL: true } : null;
 }
 
-async function authenticate(token: string) {
-  const rows = await sql`select * from public.resolve_mcp_token(${token})`;
-  return rows[0] as { user_id: string; token_id: string; name: string; can_write: boolean } | undefined;
+async function authenticate(p: Presented, base: string) {
+  if (p.oauth) return await resolveAccessToken(sql, p.token, base);
+  const rows = await sql`select * from public.resolve_mcp_token(${p.token})`;
+  const who = rows[0] as { user_id: string; token_id: string; name: string; can_write: boolean } | undefined;
+  // A token in the URL ends up in logs and histories: remember it so the app can say so.
+  if (who && p.inURL) await sql`update public.mcp_tokens set url_used_at = now() where id = ${who.token_id} and url_used_at is null`;
+  return who;
 }
 
 Deno.serve(async (req) => {
+  const path = subpath(req);
+  if (isOAuthPath(path)) return handleOAuth(req, sql, path);
+  const base = publicBase(req);
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
+  const presented = tokenFrom(req);
+  // Clients learn how to sign in from a 401, so anything unauthenticated gets one.
+  if (!presented && (req.method === "GET" || req.method === "POST")) return unauthorized(base);
   if (req.method === "GET") {
     // No server-initiated stream; clients fall back to plain POST.
     return new Response("Amber Notes MCP server. POST JSON-RPC here.", { status: 405, headers: { ...cors, allow: "POST" } });
@@ -56,12 +72,8 @@ Deno.serve(async (req) => {
   if (req.method === "DELETE") return new Response(null, { status: 204, headers: cors });
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405, headers: cors });
 
-  const token = tokenFrom(req);
-  const who = token ? await authenticate(token).catch(() => undefined) : undefined;
-  if (!who) {
-    return json({ jsonrpc: "2.0", id: null, error: { code: -32001, message: "Missing or revoked Amber Notes access token. Create one in Amber Notes → Settings → AI access." } }, 401,
-      { "www-authenticate": 'Bearer realm="pane"' });
-  }
+  const who = presented ? await authenticate(presented, base).catch(() => undefined) : undefined;
+  if (!who) return unauthorized(base, presented ? "invalid_token" : undefined);
 
   // A client that names a protocol version we don't speak gets told so up front.
   const version = req.headers.get("mcp-protocol-version");
@@ -90,6 +102,11 @@ Deno.serve(async (req) => {
   if (!results.length) return new Response(null, { status: 202, headers: cors });
   return json(batch ? results : results[0]);
 });
+
+function unauthorized(base: string, error?: string) {
+  return json({ jsonrpc: "2.0", id: null, error: { code: -32001, message: "Sign in to Amber Notes to use your notes. In Amber Notes: Settings → Connect an AI." } }, 401,
+    { "www-authenticate": challenge(base, error) });
+}
 
 function isRpc(m: unknown): m is Rpc {
   if (typeof m !== "object" || m === null || Array.isArray(m)) return false;
