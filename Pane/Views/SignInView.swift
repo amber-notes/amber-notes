@@ -44,17 +44,19 @@ struct SignInView: View {
                     .scaledToFit()
                     .frame(width: 84, height: 84)
                     .accessibilityHidden(true)
-                Text(mode == .signIn ? "Sign in to Amber Notes" : "Create your account")
-                    .font(.title2.weight(.bold))
-                    .contentTransition(.opacity)
-                Text(mode == .signIn
-                     ? "Your notes sync between your devices and the AI tools you connect."
-                     : "Use at least 12 characters. This server only accepts invited emails.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(3)
-                    .contentTransition(.opacity)
+                swap {
+                    Text(mode == .signIn ? "Sign in to Amber Notes" : "Create your account")
+                        .font(.title2.weight(.bold))
+                }
+                swap {
+                    Text(mode == .signIn
+                         ? "Your notes sync between your devices and the AI tools you connect."
+                         : "Pick a password of at least 12 characters. Only invited emails can join.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2, reservesSpace: true)
+                }
             }
 
             VStack(spacing: 10) {
@@ -94,7 +96,7 @@ struct SignInView: View {
                 Button(action: submit) {
                     HStack(spacing: 8) {
                         if working { ProgressView().controlSize(.small).tint(.black) }
-                        Text(buttonTitle)
+                        swap { Text(buttonTitle) }
                     }
                     .font(.body.weight(.semibold))
                     .foregroundStyle(.black.opacity(0.85))
@@ -109,11 +111,13 @@ struct SignInView: View {
                 .keyboardShortcut(.defaultAction)
                 .accessibilityIdentifier("signin.submit")
 
-                Button(mode == .signIn ? "Create an account" : "I already have an account") {
-                    withAnimation(.snappy(duration: 0.2)) {
+                Button {
+                    withAnimation(.smooth(duration: 0.32)) {
                         mode = mode == .signIn ? .signUp : .signIn
                         error = nil
                     }
+                } label: {
+                    swap { Text(mode == .signIn ? "Create an account" : "I already have an account") }
                 }
                 .buttonStyle(.plain)
                 .font(.callout)
@@ -122,6 +126,18 @@ struct SignInView: View {
             }
         }
         .animation(.snappy(duration: 0.2), value: error)
+    }
+
+    /// Changing text slides up and fades; the old one leaves a little faster.
+    /// Both sit in one place, so nothing around them moves.
+    private func swap(@ViewBuilder _ content: () -> some View) -> some View {
+        ZStack {
+            content()
+                .id(mode)
+                .transition(.asymmetric(
+                    insertion: .opacity.combined(with: .offset(y: 8)).animation(.smooth(duration: 0.32).delay(0.05)),
+                    removal: .opacity.combined(with: .offset(y: -6)).animation(.easeOut(duration: 0.18))))
+        }
     }
 
     /// One input, as a soft glass pill.
