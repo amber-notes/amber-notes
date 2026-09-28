@@ -348,9 +348,9 @@ const handlers: Record<string, (tx: Tx, a: Args, ctx: ToolContext) => Promise<un
     const q = String(a.query ?? "").trim();
     if (!q) throw new ToolError("query is empty.");
     const all = await folders(tx);
-    const rows = await tx<{ id: string; title: string; folder_id: string | null; updated_at: Date; snippet: string; rank: number }[]>`
-      select * from public.search_notes(${q}, ${clampInt(a.limit, 10, 50) || 10})`;
-    return { query: q, results: rows.map((r) => ({ id: r.id, title: r.title, folder: pathOf(r.folder_id, all), updated: iso(r.updated_at), snippet: r.snippet })) };
+    const rows = await tx<{ id: string; title: string; folder_id: string | null; is_pinned: boolean; updated_at: Date; snippet: string; rank: number }[]>`
+      select s.*, n.is_pinned from public.search_notes(${q}, ${clampInt(a.limit, 10, 50) || 10}) s join public.notes n on n.id = s.id order by s.rank desc`;
+    return { query: q, results: rows.map((r) => ({ id: r.id, title: r.title, folder: pathOf(r.folder_id, all), pinned: r.is_pinned, updated: iso(r.updated_at), snippet: r.snippet })) };
   },
 
   async list_notes(tx, a) {
@@ -631,6 +631,6 @@ const handlers: Record<string, (tx: Tx, a: Args, ctx: ToolContext) => Promise<un
   async fetch(tx, a) {
     const n = await findNote(tx, { id: a.id }, true);
     const all = await folders(tx);
-    return { id: n.id, title: n.title, text: n.body, url: `pane://note/${n.id}`, metadata: { folder: pathOf(n.folder_id, all), updated: iso(n.updated_at) } };
+    return { id: n.id, title: n.title, text: n.body, url: `pane://note/${n.id}`, metadata: { folder: pathOf(n.folder_id, all), pinned: n.is_pinned, updated: iso(n.updated_at) } };
   },
 };
