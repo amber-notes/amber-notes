@@ -84,7 +84,7 @@ final class MacDogfoodTests: XCTestCase {
         pause()
         row("App ideas").click()
         pause()
-        app.typeKey(.delete, modifierFlags: .command)
+        app.typeKey(.delete, modifierFlags: [])
         pause()
         sidebar("sidebar.trash").click()
         pause(1)

@@ -203,8 +203,8 @@ struct PaneCommands: Commands {
         }
         CommandGroup(after: .pasteboard) {
             Divider()
+            // No shortcut: ⌘⌫ belongs to the text (delete to the start of the line).
             Button("Delete Note") { deleteNote?() }
-                .keyboardShortcut(.delete, modifiers: .command)
                 .disabled(deleteNote == nil)
         }
         CommandMenu("Format") {
