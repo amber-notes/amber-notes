@@ -23,8 +23,9 @@ const sql = postgres(Deno.env.get("SUPABASE_DB_URL")!, { max: 3, idle_timeout: 2
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, GET, OPTIONS, DELETE",
-  "Access-Control-Allow-Headers": "authorization, content-type, mcp-session-id, mcp-protocol-version",
-  "Access-Control-Expose-Headers": "mcp-session-id",
+  "Access-Control-Allow-Headers": "authorization, content-type, accept, mcp-session-id, mcp-protocol-version, last-event-id",
+  "Access-Control-Expose-Headers": "mcp-session-id, mcp-protocol-version, www-authenticate",
+  "Access-Control-Max-Age": "86400",
 };
 
 type Rpc = { jsonrpc: "2.0"; id?: string | number | null; method: string; params?: Record<string, unknown> };
@@ -62,23 +63,56 @@ Deno.serve(async (req) => {
       { "www-authenticate": 'Bearer realm="pane"' });
   }
 
-  let payload: Rpc | Rpc[];
+  // A client that names a protocol version we don't speak gets told so up front.
+  const version = req.headers.get("mcp-protocol-version");
+  if (version && !PROTOCOL_VERSIONS.includes(version)) {
+    return json({ jsonrpc: "2.0", id: null, error: { code: -32600, message: `Unsupported MCP-Protocol-Version ${version}. Supported: ${PROTOCOL_VERSIONS.join(", ")}.` } }, 400);
+  }
+
+  let payload: unknown;
   try {
     payload = await req.json();
   } catch {
     return json({ jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error" } }, 400);
   }
+  if (Array.isArray(payload) && !payload.length) {
+    return json({ jsonrpc: "2.0", id: null, error: { code: -32600, message: "Invalid Request: empty batch" } }, 400);
+  }
 
   const ctx: ToolContext = { sql, userId: who.user_id, client: who.name, canWrite: who.can_write };
   const batch = Array.isArray(payload);
-  const results = (await Promise.all((batch ? (payload as Rpc[]) : [payload as Rpc]).map((m: Rpc) => handle(m, ctx)))).filter((r: unknown) => r !== null);
+  // Messages in a batch run one after another, so writes land in the order they were sent.
+  const results: unknown[] = [];
+  for (const m of batch ? (payload as unknown[]) : [payload]) {
+    const r = await handle(m, ctx);
+    if (r !== null) results.push(r);
+  }
   if (!results.length) return new Response(null, { status: 202, headers: cors });
   return json(batch ? results : results[0]);
 });
 
-async function handle(msg: Rpc, ctx: ToolContext): Promise<unknown | null> {
+function isRpc(m: unknown): m is Rpc {
+  if (typeof m !== "object" || m === null || Array.isArray(m)) return false;
+  const r = m as Record<string, unknown>;
+  return r.jsonrpc === "2.0" && typeof r.method === "string" &&
+    (r.id === undefined || r.id === null || typeof r.id === "string" || typeof r.id === "number");
+}
+
+async function handle(raw: unknown, ctx: ToolContext): Promise<unknown | null> {
+  if (!isRpc(raw)) {
+    const rawId = (raw as { id?: unknown } | null)?.id;
+    const id = typeof rawId === "string" || typeof rawId === "number" ? rawId : null;
+    return { jsonrpc: "2.0", id, error: { code: -32600, message: "Invalid Request: expected a JSON-RPC 2.0 message with a method." } };
+  }
+  const msg = raw;
   const id = msg.id ?? null;
+  // Notifications (no id) are never answered; results of ones we don't know are dropped.
   const isNotification = msg.id === undefined;
+  const reply = await respond(msg, id, ctx);
+  return isNotification ? null : reply;
+}
+
+async function respond(msg: Rpc, id: string | number | null, ctx: ToolContext): Promise<unknown> {
   try {
     switch (msg.method) {
       case "initialize": {
@@ -96,7 +130,14 @@ async function handle(msg: Rpc, ctx: ToolContext): Promise<unknown | null> {
         return ok(id, { tools: tools.filter((t) => ctx.canWrite || t.annotations.readOnlyHint) });
       case "tools/call": {
         const name = String(msg.params?.name ?? "");
-        const args = (msg.params?.arguments ?? {}) as Record<string, unknown>;
+        if (!tools.some((t) => t.name === name)) {
+          return { jsonrpc: "2.0", id, error: { code: -32602, message: `Unknown tool: ${name || "(none)"}` } };
+        }
+        const given = msg.params?.arguments ?? {};
+        if (typeof given !== "object" || given === null || Array.isArray(given)) {
+          return { jsonrpc: "2.0", id, error: { code: -32602, message: "Invalid params: arguments must be an object." } };
+        }
+        const args = given as Record<string, unknown>;
         try {
           const result = await runTool(name, args, ctx);
           return ok(id, {
@@ -114,11 +155,9 @@ async function handle(msg: Rpc, ctx: ToolContext): Promise<unknown | null> {
       case "prompts/list":
         return ok(id, { prompts: [] });
       default:
-        if (isNotification) return null;
-        return { jsonrpc: "2.0", id, error: { code: -32601, message: `Unknown method ${msg.method}` } };
+        return { jsonrpc: "2.0", id, error: { code: -32601, message: `Method not found: ${msg.method}` } };
     }
   } catch (e) {
-    if (isNotification) return null;
     return { jsonrpc: "2.0", id, error: { code: -32603, message: e instanceof Error ? e.message : String(e) } };
   }
 }

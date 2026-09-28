@@ -47,6 +47,7 @@ export const tools: Tool[] = [
         folder: str("Folder name or path like \"Work/Q4 planning\". Omit for all notes."),
         pinned_only: bool("Only pinned notes."),
         recently_deleted: bool("List notes in Recently Deleted instead."),
+        include_sub_notes: bool("Also list sub-notes (notes that live inside another note). Default false, like the app's list."),
         sort: { type: "string", enum: ["updated", "created", "title"], description: "Default updated." },
         limit: int("Default 30, max 200."),
         offset: int("For paging."),
@@ -100,31 +101,31 @@ export const tools: Tool[] = [
   },
   {
     name: "move_note", title: "Move a note",
-    description: "Moves a note to a folder (created if missing).",
+    description: "Moves a note to another folder, creating the folder if it doesn't exist. Use a path like \"Work/Clients\" to nest.",
     inputSchema: { type: "object", properties: { ...noteRef, folder: str("Folder name or path.") }, required: ["folder"] },
     annotations: { ...write, idempotentHint: true },
   },
   {
     name: "pin_note", title: "Pin or unpin",
-    description: "Pins a note to the top of the list, or unpins it.",
+    description: "Pins a note to the top of the list, or unpins it. Pinned state shows as `pinned` in every note listing.",
     inputSchema: { type: "object", properties: { ...noteRef, pinned: bool("true to pin.") }, required: ["pinned"] },
     annotations: { ...write, idempotentHint: true },
   },
   {
     name: "delete_note", title: "Delete a note",
-    description: "Moves a note to Recently Deleted (kept 30 days, restorable with restore_note).",
+    description: "Moves a note and its sub-notes to Recently Deleted (kept 30 days, restorable with restore_note).",
     inputSchema: { type: "object", properties: { ...noteRef } },
     annotations: { ...write, destructiveHint: true },
   },
   {
     name: "restore_note", title: "Restore a deleted note",
-    description: "Brings a note back from Recently Deleted.",
+    description: "Brings a note (and its sub-notes) back from Recently Deleted.",
     inputSchema: { type: "object", properties: { id: str("Note id.") }, required: ["id"] },
     annotations: { ...write, idempotentHint: true },
   },
   {
     name: "list_folders", title: "List folders",
-    description: "All folders as paths, with note counts.",
+    description: "All folders as paths like \"Work/Q4 planning\", with how many notes each shows in the app.",
     inputSchema: { type: "object", properties: {} }, annotations: read,
   },
   {
@@ -135,13 +136,13 @@ export const tools: Tool[] = [
   },
   {
     name: "rename_folder", title: "Rename a folder",
-    description: "Renames a folder.",
+    description: "Renames a folder in place. Its notes and sub-folders stay inside it.",
     inputSchema: { type: "object", properties: { folder: str("Current name or path."), new_name: str("New name.") }, required: ["folder", "new_name"] },
     annotations: write,
   },
   {
     name: "delete_folder", title: "Delete a folder",
-    description: "Deletes a folder and sub-folders; their notes go to Recently Deleted.",
+    description: "Deletes a folder and its sub-folders; their notes (and those notes' sub-notes) go to Recently Deleted.",
     inputSchema: { type: "object", properties: { folder: str("Name or path.") }, required: ["folder"] },
     annotations: { ...write, destructiveHint: true },
   },
@@ -204,13 +205,13 @@ export const tools: Tool[] = [
   // ChatGPT's connector conventions.
   {
     name: "search", title: "Search",
-    description: "Search the user's notes. Returns ids for fetch.",
+    description: "Search the user's notes by words or phrases. Returns note ids, titles and links; read one with fetch.",
     inputSchema: { type: "object", properties: { query: str("Search query.") }, required: ["query"] },
     annotations: read,
   },
   {
     name: "fetch", title: "Fetch",
-    description: "Fetch a note by id (from search) as full text.",
+    description: "Fetch a note by id (from search) as its full markdown, with folder, pinned state and last edit time.",
     inputSchema: { type: "object", properties: { id: str("Note id.") }, required: ["id"] },
     annotations: read,
   },
@@ -235,6 +236,39 @@ export async function runTool(name: string, args: Args, ctx: ToolContext): Promi
 type NoteRow = { id: string; body: string; title: string; folder_id: string | null; parent_id: string | null; is_pinned: boolean; created_at: Date; updated_at: Date; trashed_at: Date | null; version: string };
 type FolderRow = { id: string; name: string; parent_id: string | null; sort_index: number };
 
+/** Notes the app shows in its list: everything except sub-notes still linked from a live parent. */
+function listed(tx: Tx) {
+  return tx`and not exists (
+    select 1 from public.notes p
+    where p.id = notes.parent_id and p.deleted_at is null and p.trashed_at is null
+      and strpos(p.body, 'pane-note:' || notes.id::text) > 0)`;
+}
+
+/** A note's sub-notes, their sub-notes, and so on. */
+async function descendants(tx: Tx, id: string): Promise<string[]> {
+  const rows = await tx<{ id: string }[]>`
+    with recursive d as (
+      select id from public.notes where parent_id = ${id} and deleted_at is null
+      union
+      select n.id from public.notes n join d on n.parent_id = d.id where n.deleted_at is null
+    ) select id from d`;
+  return rows.map((r) => r.id);
+}
+
+const bytes = (s: string) => new TextEncoder().encode(s).length;
+const MAX_NOTE_BYTES = 5_000_000;
+
+function checkSize(body: string) {
+  if (bytes(body) > MAX_NOTE_BYTES) throw new ToolError(`That note would be ${(bytes(body) / 1e6).toFixed(1)} MB; the limit is 5 MB. Split it into several notes.`);
+}
+
+function checkFolderName(name: string) {
+  if ([...name].length > 200) throw new ToolError("Folder names can be at most 200 characters.");
+}
+
+/** LIKE pattern that treats %, _ and \ in the text literally. */
+const likeText = (s: string) => "%" + s.replace(/[\\%_]/g, (c) => "\\" + c) + "%";
+
 async function folders(tx: Tx): Promise<FolderRow[]> {
   return await tx<FolderRow[]>`select id, name, parent_id, sort_index from public.folders where deleted_at is null order by sort_index, name`;
 }
@@ -251,6 +285,8 @@ function pathOf(id: string | null, all: FolderRow[]): string {
 }
 
 async function findFolder(tx: Tx, ref: string, create: boolean): Promise<FolderRow> {
+  // Two requests creating the same folder at once would otherwise make two of it.
+  if (create) await tx`select pg_advisory_xact_lock(hashtextextended('pane-folders:' || auth.uid()::text, 0))`;
   const all = await folders(tx);
   const byId = all.find((f) => f.id === ref);
   if (byId) return byId;
@@ -271,6 +307,7 @@ async function findFolder(tx: Tx, ref: string, create: boolean): Promise<FolderR
     let next: FolderRow | undefined = all.find((f) => f.parent_id === parentId && f.name.toLowerCase() === part.toLowerCase());
     if (!next) {
       if (!create) throw new ToolError(`No folder "${ref}". Folders: ${all.map((f) => pathOf(f.id, all)).join(", ") || "none"}.`);
+      checkFolderName(part);
       const rows: FolderRow[] = await tx<FolderRow[]>`
         insert into public.folders (id, name, parent_id, sort_index)
         values (${crypto.randomUUID()}, ${part}, ${parentId}, ${Date.now() / 1000})
@@ -287,28 +324,32 @@ async function findNote(tx: Tx, args: Args, includeTrashed = false): Promise<Not
   const id = typeof args.id === "string" ? args.id : undefined;
   const title = typeof args.title === "string" ? args.title.trim() : undefined;
   if (id) {
-    const rows = await tx<NoteRow[]>`select * from public.notes where id = ${id}::uuid and deleted_at is null ${includeTrashed ? tx`` : tx`and trashed_at is null`}`
-      .catch(() => [] as NoteRow[]);
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) throw new ToolError(`"${id}" isn't a note id. Ids look like 3f2b…-…; get one from search_notes or list_notes.`);
+    const rows = await tx<NoteRow[]>`select * from public.notes where id = ${id}::uuid and deleted_at is null`;
     if (!rows.length) throw new ToolError(`No note with id ${id}.`);
+    if (rows[0].trashed_at && !includeTrashed) throw new ToolError(`"${rows[0].title}" is in Recently Deleted. Restore it with restore_note first.`);
     return rows[0];
   }
   if (!title) throw new ToolError("Give the note's id (preferred) or its title.");
   const rows = await tx<NoteRow[]>`select * from public.notes where deleted_at is null and trashed_at is null and lower(title) = lower(${title}) order by updated_at desc limit 5`;
   if (rows.length === 1) return rows[0];
   if (rows.length > 1) throw new ToolError(`${rows.length} notes are titled "${title}": ${rows.map((r) => r.id).join(", ")}. Use an id.`);
-  const near = await tx<{ id: string; title: string }[]>`select id, title from public.notes where deleted_at is null and trashed_at is null and title ilike ${"%" + title + "%"} order by updated_at desc limit 5`;
+  const near = await tx<{ id: string; title: string }[]>`select id, title from public.notes where deleted_at is null and trashed_at is null and title ilike ${likeText(title)} order by updated_at desc limit 5`;
   throw new ToolError(near.length ? `No note titled "${title}". Close matches: ${near.map((n) => `${n.title} (${n.id})`).join("; ")}.` : `No note titled "${title}". Try search_notes.`);
 }
 
 function summary(n: NoteRow, all: FolderRow[]) {
-  return { id: n.id, title: n.title, folder: pathOf(n.folder_id, all), pinned: n.is_pinned, updated: iso(n.updated_at), preview: previewOf(n.body) };
+  return {
+    id: n.id, title: n.title, folder: pathOf(n.folder_id, all), pinned: n.is_pinned, updated: iso(n.updated_at), preview: previewOf(n.body),
+    ...(n.parent_id ? { sub_note_of: n.parent_id } : {}),
+  };
 }
 
 const iso = (d: Date | null) => (d ? new Date(d).toISOString() : null);
 const clampInt = (v: unknown, def: number, max: number) => Math.max(0, Math.min(max, Number.isFinite(Number(v)) ? Math.floor(Number(v)) : def));
 
 async function save(tx: Tx, note: NoteRow, body: string, expected?: unknown) {
-  if (body.length > 5_000_000) throw new ToolError("That note would be over 5 MB.");
+  checkSize(body);
   const rows = await tx<{ version: string; updated_at: Date }[]>`
     update public.notes set body = ${body}, updated_at = now()
     where id = ${note.id}
@@ -331,9 +372,9 @@ const handlers: Record<string, (tx: Tx, a: Args, ctx: ToolContext) => Promise<un
   async get_overview(tx) {
     const all = await folders(tx);
     const counts = await tx<{ folder_id: string | null; n: number }[]>`
-      select folder_id, count(*)::int as n from public.notes where deleted_at is null and trashed_at is null group by folder_id`;
+      select folder_id, count(*)::int as n from public.notes where deleted_at is null and trashed_at is null ${listed(tx)} group by folder_id`;
     const pinned = await tx<NoteRow[]>`select * from public.notes where deleted_at is null and trashed_at is null and is_pinned order by updated_at desc limit 20`;
-    const recent = await tx<NoteRow[]>`select * from public.notes where deleted_at is null and trashed_at is null order by updated_at desc limit 10`;
+    const recent = await tx<NoteRow[]>`select * from public.notes where deleted_at is null and trashed_at is null ${listed(tx)} order by updated_at desc limit 10`;
     const [{ trashed }] = await tx<{ trashed: number }[]>`select count(*)::int as trashed from public.notes where deleted_at is null and trashed_at is not null`;
     return {
       total_notes: counts.reduce((s, c) => s + c.n, 0),
@@ -365,6 +406,7 @@ const handlers: Record<string, (tx: Tx, a: Args, ctx: ToolContext) => Promise<un
         and ${trashed ? tx`trashed_at is not null` : tx`trashed_at is null`}
         ${folder ? tx`and folder_id = ${folder.id}` : tx``}
         ${a.pinned_only === true ? tx`and is_pinned` : tx``}
+        ${a.include_sub_notes === true || trashed ? tx`` : listed(tx)}
       order by ${order} limit ${limit + 1} offset ${offset}`;
     return {
       folder: folder ? pathOf(folder.id, all) : "All Notes",
@@ -395,6 +437,7 @@ const handlers: Record<string, (tx: Tx, a: Args, ctx: ToolContext) => Promise<un
   async create_note(tx, a) {
     const body = String(a.body ?? "");
     if (!body.trim()) throw new ToolError("body is empty.");
+    checkSize(body);
     const folder = await findFolder(tx, typeof a.folder === "string" && a.folder.trim() ? a.folder : "Notes", true);
     const all = await folders(tx);
     const [n] = await tx<NoteRow[]>`
@@ -454,8 +497,11 @@ const handlers: Record<string, (tx: Tx, a: Args, ctx: ToolContext) => Promise<un
 
   async delete_note(tx, a) {
     const n = await findNote(tx, a);
-    await tx`update public.notes set trashed_at = now(), is_pinned = false, updated_at = now() where id = ${n.id}`;
-    return { id: n.id, title: n.title, moved_to: "Recently Deleted", restore_with: "restore_note" };
+    // Like the app: a note takes its sub-notes with it.
+    const subs = await descendants(tx, n.id);
+    await tx`update public.notes set trashed_at = now(), is_pinned = false, updated_at = now()
+      where id = any(${[n.id, ...subs]}::uuid[]) and trashed_at is null`;
+    return { id: n.id, title: n.title, moved_to: "Recently Deleted", sub_notes_moved: subs.length, restore_with: "restore_note" };
   },
 
   async restore_note(tx, a) {
@@ -465,13 +511,16 @@ const handlers: Record<string, (tx: Tx, a: Args, ctx: ToolContext) => Promise<un
     const folderOk = n.folder_id && all.some((f) => f.id === n.folder_id);
     const target = folderOk ? n.folder_id : (await findFolder(tx, "Notes", true)).id;
     await tx`update public.notes set trashed_at = null, folder_id = ${target}, updated_at = now() where id = ${n.id}`;
-    return { id: n.id, title: n.title, restored_to: pathOf(target, await folders(tx)) };
+    const subs = await descendants(tx, n.id);
+    const back = await tx`update public.notes set trashed_at = null, updated_at = now()
+      where id = any(${subs}::uuid[]) and trashed_at is not null returning id`;
+    return { id: n.id, title: n.title, restored_to: pathOf(target, await folders(tx)), sub_notes_restored: back.length };
   },
 
   async list_folders(tx) {
     const all = await folders(tx);
     const counts = await tx<{ folder_id: string; n: number }[]>`
-      select folder_id, count(*)::int as n from public.notes where deleted_at is null and trashed_at is null group by folder_id`;
+      select folder_id, count(*)::int as n from public.notes where deleted_at is null and trashed_at is null ${listed(tx)} group by folder_id`;
     return { folders: all.map((f) => ({ path: pathOf(f.id, all), id: f.id, notes: counts.find((c) => c.folder_id === f.id)?.n ?? 0 })) };
   },
 
@@ -484,6 +533,7 @@ const handlers: Record<string, (tx: Tx, a: Args, ctx: ToolContext) => Promise<un
     const f = await findFolder(tx, String(a.folder ?? ""), false);
     const name = String(a.new_name ?? "").trim();
     if (!name || name.includes("/")) throw new ToolError("new_name must be a plain name without '/'.");
+    checkFolderName(name);
     await tx`update public.folders set name = ${name}, updated_at = now() where id = ${f.id}`;
     return { id: f.id, path: pathOf(f.id, await folders(tx)) };
   },
@@ -493,8 +543,12 @@ const handlers: Record<string, (tx: Tx, a: Args, ctx: ToolContext) => Promise<un
     const all = await folders(tx);
     const ids = [f.id];
     for (let i = 0; i < ids.length; i++) all.filter((c) => c.parent_id === ids[i]).forEach((c) => ids.push(c.id));
+    const inFolders = await tx<{ id: string }[]>`select id from public.notes where folder_id = any(${ids}::uuid[]) and trashed_at is null and deleted_at is null`;
+    // Sub-notes go with their parents even when they sit in another folder.
+    const all_ids = new Set(inFolders.map((r) => r.id));
+    for (const r of inFolders) for (const d of await descendants(tx, r.id)) all_ids.add(d);
     const trashed = await tx`update public.notes set trashed_at = now(), is_pinned = false, updated_at = now()
-      where folder_id = any(${ids}::uuid[]) and trashed_at is null and deleted_at is null returning id`;
+      where id = any(${[...all_ids]}::uuid[]) and trashed_at is null and deleted_at is null returning id`;
     await tx`update public.folders set deleted_at = now(), updated_at = now() where id = any(${ids}::uuid[])`;
     return { deleted_folders: ids.length, notes_moved_to_recently_deleted: trashed.length };
   },
@@ -522,6 +576,7 @@ const handlers: Record<string, (tx: Tx, a: Args, ctx: ToolContext) => Promise<un
     const parent = await findNote(tx, a);
     const body = String(a.body ?? "");
     if (!body.trim()) throw new ToolError("body is empty.");
+    checkSize(body);
     const [child] = await tx<NoteRow[]>`
       insert into public.notes (id, body, folder_id, parent_id)
       values (${crypto.randomUUID()}, ${body}, ${parent.folder_id}, ${parent.id})
@@ -537,7 +592,7 @@ const handlers: Record<string, (tx: Tx, a: Args, ctx: ToolContext) => Promise<un
     const q = typeof a.query === "string" ? a.query.trim() : "";
     const rows = await tx<{ id: string; filename: string; content_type: string; size: string; created_at: Date }[]>`
       select id, filename, content_type, size, created_at from public.attachments
-      where deleted_at is null ${q ? tx`and filename ilike ${"%" + q + "%"}` : tx``}
+      where deleted_at is null ${q ? tx`and filename ilike ${likeText(q)}` : tx``}
       order by created_at desc limit ${clampInt(a.limit, 30, 200) || 30}`;
     const files = [];
     for (const r of rows) {

@@ -16,8 +16,9 @@ async function rpc(method: string, params?: unknown, auth: string | null = token
   return { status: res.status, body: await res.json() };
 }
 
-async function call(name: string, args: Record<string, unknown> = {}) {
-  const { body } = await rpc("tools/call", { name, arguments: args });
+async function call(name: string, args: Record<string, unknown> = {}, auth: string = token!) {
+  const { body } = await rpc("tools/call", { name, arguments: args }, auth);
+  if (body.error) return { error: true, rpcError: body.error, text: body.error.message as string, data: undefined as any };
   const r = body.result;
   return { error: r.isError === true, text: r.content[0].text as string, data: r.structuredContent };
 }
@@ -77,7 +78,8 @@ Deno.test({ name: "a full editing session", ignore: !enabled }, async () => {
   assert(!(await call("set_checklist_item", { id, item: "passport", checked: true })).error);
 
   const after = await call("read_note", { id });
-  assertStringIncludes(after.data.markdown, "- [x] Passport\n- [ ] Charger\n- [ ] Sunscreen\n\n## Plan");
+  // Ticked items sink below the open ones, like in the app.
+  assertStringIncludes(after.data.markdown, "- [ ] Charger\n- [ ] Sunscreen\n- [x] Passport\n\n## Plan");
   assertStringIncludes(after.data.markdown, "Fly out **Saturday** morning.");
 
   const history = await call("note_history", { id });
@@ -194,4 +196,206 @@ Deno.test({ name: "sub-notes: create, link, read both ways", ignore: !enabled },
   assertEquals(c.data.parent.id, parent);
   await call("delete_note", { id: parent });
   await call("delete_note", { id: childId });
+});
+
+// MARK: Protocol
+
+async function post(body: unknown, headers: Record<string, string> = {}) {
+  const res = await fetch(url!, {
+    method: "POST",
+    headers: { "content-type": "application/json", accept: "application/json, text/event-stream", authorization: `Bearer ${token}`, ...headers },
+    body: typeof body === "string" ? body : JSON.stringify(body),
+  });
+  const text = await res.text();
+  return { status: res.status, json: text ? JSON.parse(text) : null };
+}
+
+Deno.test({ name: "protocol: notifications get no reply, bad messages get JSON-RPC errors", ignore: !enabled }, async () => {
+  assertEquals((await post({ jsonrpc: "2.0", method: "notifications/initialized" })).status, 202);
+  assertEquals((await post({ jsonrpc: "2.0", method: "ping" })).status, 202, "a notification is never answered");
+  assertEquals((await post([])).status, 400);
+  assertEquals((await post("{oops")).json.error.code, -32700);
+  assertEquals((await post({ jsonrpc: "2.0", id: 1 })).json.error.code, -32600);
+  assertEquals((await post("42")).json.error.code, -32600);
+  assertEquals((await post({ jsonrpc: "1.0", id: 2, method: "ping" })).json.error.code, -32600);
+  assertEquals((await post({ jsonrpc: "2.0", id: 3, method: "nope" })).json.error.code, -32601);
+  assertEquals((await post({ jsonrpc: "2.0", id: 4, method: "tools/call", params: { name: "nope" } })).json.error.code, -32602);
+  assertEquals((await post({ jsonrpc: "2.0", id: 5, method: "tools/call", params: { name: "read_note", arguments: [1] } })).json.error.code, -32602);
+  const batch = await post([{ jsonrpc: "2.0", id: "a", method: "ping" }, { jsonrpc: "2.0", method: "notifications/initialized" }, { jsonrpc: "2.0", id: "b", method: "ping" }]);
+  assertEquals(batch.json.map((r: { id: string }) => r.id), ["a", "b"]);
+});
+
+Deno.test({ name: "protocol: version negotiation and the version header", ignore: !enabled }, async () => {
+  for (const v of ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"]) {
+    assertEquals((await post({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: v, capabilities: {}, clientInfo: { name: "t", version: "1" } } })).json.result.protocolVersion, v);
+  }
+  const future = await post({ jsonrpc: "2.0", id: 2, method: "initialize", params: { protocolVersion: "2099-01-01" } });
+  assertEquals(future.json.result.protocolVersion, "2025-11-25", "unknown versions get the newest we speak");
+  assertEquals((await post({ jsonrpc: "2.0", id: 3, method: "ping" }, { "mcp-protocol-version": "2025-06-18" })).status, 200);
+  assertEquals((await post({ jsonrpc: "2.0", id: 4, method: "ping" }, { "mcp-protocol-version": "1999-01-01" })).status, 400);
+});
+
+Deno.test({ name: "protocol: every tool is well described", ignore: !enabled }, async () => {
+  const { body } = await rpc("tools/list");
+  for (const t of body.result.tools) {
+    assert(t.title && t.description.length > 20, `${t.name} needs a title and a real description`);
+    assertEquals(t.inputSchema.type, "object", t.name);
+    for (const r of t.inputSchema.required ?? []) assert(r in t.inputSchema.properties, `${t.name}: required ${r} isn't a property`);
+    assert(typeof t.annotations.readOnlyHint === "boolean", t.name);
+  }
+});
+
+// MARK: Notes
+
+Deno.test({ name: "titles match what the app shows", ignore: !enabled }, async () => {
+  const s = crypto.randomUUID().slice(0, 6);
+  for (const [body, title] of [[`- [ ] Buy_milk ${s}\nx`, `Buy_milk ${s}`], [`<u>Plan ${s}</u>\nx`, `Plan ${s}`], [`[Site ${s}](https://x.y)`, `Site ${s}`]]) {
+    const c = await call("create_note", { body, folder: `Titles ${s}` });
+    assertEquals(c.data.created.title, title);
+    assertEquals((await call("read_note", { title })).data.id, c.data.created.id, "found by the title the app shows");
+  }
+  await call("delete_folder", { folder: `Titles ${s}` });
+});
+
+Deno.test({ name: "search and title lookup treat % and _ as text", ignore: !enabled }, async () => {
+  const s = crypto.randomUUID().slice(0, 6);
+  const c = await call("create_note", { body: `Budget 100% ${s}\nnothing else` });
+  const pct = await call("search_notes", { query: `100% ${s}` });
+  assert(pct.data.results.some((r: { id: string }) => r.id === c.data.created.id));
+  const wild = await call("search_notes", { query: "%" });
+  assert(wild.data.results.every((r: { snippet: string; title: string }) => (r.title + r.snippet).includes("%")), "% is not a wildcard");
+  const near = await call("read_note", { title: "_" });
+  assert(near.error);
+  await call("delete_note", { id: c.data.created.id });
+});
+
+Deno.test({ name: "pinned shows in lists, search and fetch", ignore: !enabled }, async () => {
+  const s = crypto.randomUUID().slice(0, 6);
+  const id = (await call("create_note", { body: `Pinned ${s}\nbody`, pinned: true })).data.created.id;
+  assertEquals((await call("search_notes", { query: `Pinned ${s}` })).data.results.find((r: { id: string }) => r.id === id).pinned, true);
+  assertEquals((await call("fetch", { id })).data.metadata.pinned, true);
+  assert((await call("list_notes", { pinned_only: true })).data.notes.some((n: { id: string }) => n.id === id));
+  assert(!(await call("pin_note", { id, pinned: false })).error);
+  assertEquals((await call("fetch", { id })).data.metadata.pinned, false);
+  await call("delete_note", { id });
+});
+
+Deno.test({ name: "sub-notes stay out of lists, and go and come back with their parent", ignore: !enabled }, async () => {
+  const s = crypto.randomUUID().slice(0, 6);
+  const folder = `Subs ${s}`;
+  const parent = (await call("create_note", { body: `Parent ${s}\n\n## Links`, folder })).data.created.id;
+  const child = (await call("create_sub_note", { id: parent, body: `Child ${s}\nx` })).data.created.id;
+  const grandchild = (await call("create_sub_note", { id: child, body: `Grandchild ${s}\ny` })).data.created.id;
+  const listed = await call("list_notes", { folder });
+  assertEquals(listed.data.notes.map((n: { id: string }) => n.id), [parent], "sub-notes live inside their parent, not in the list");
+  const all = await call("list_notes", { folder, include_sub_notes: true });
+  assertEquals(all.data.notes.length, 3);
+  assertEquals(all.data.notes.find((n: { id: string }) => n.id === child).sub_note_of, parent);
+  const folders = await call("list_folders");
+  assertEquals(folders.data.folders.find((f: { path: string }) => f.path === folder).notes, 1);
+
+  const del = await call("delete_note", { id: parent });
+  assertEquals(del.data.sub_notes_moved, 2);
+  const gone = await call("read_note", { id: grandchild });
+  assert(gone.data.in_recently_deleted);
+  const edit = await call("edit_note", { id: child, edits: [{ old_text: "x", new_text: "z" }] });
+  assert(edit.error);
+  assertStringIncludes(edit.text, "Recently Deleted");
+  const back = await call("restore_note", { id: parent });
+  assertEquals(back.data.sub_notes_restored, 2);
+  assertEquals((await call("read_note", { id: grandchild })).data.in_recently_deleted, false);
+
+  // Unlinked sub-notes show up in the list again, like in the app.
+  await call("edit_note", { id: parent, edits: [{ old_text: `[Child ${s}](pane-note:${child})`, new_text: "" }] });
+  assert((await call("list_notes", { folder })).data.notes.some((n: { id: string }) => n.id === child));
+  await call("delete_folder", { folder });
+});
+
+Deno.test({ name: "sizes: limits are in bytes and explained", ignore: !enabled }, async () => {
+  const big = await call("create_note", { body: "Big\n" + "é".repeat(2_600_000) }); // 5.2 MB in UTF-8
+  assert(big.error);
+  assertStringIncludes(big.text, "limit is 5 MB");
+  const long = await call("create_folder", { path: "L".repeat(201) });
+  assert(long.error);
+  assertStringIncludes(long.text, "200 characters");
+  const ok = await call("create_note", { body: "Large\n" + "x".repeat(1_000_000) });
+  assert(!ok.error, ok.text);
+  await call("delete_note", { id: ok.data.created.id });
+});
+
+Deno.test({ name: "creating the same new folder at once makes one folder", ignore: !enabled }, async () => {
+  const folder = `Race ${crypto.randomUUID().slice(0, 6)}`;
+  const made = await Promise.all(Array.from({ length: 6 }, (_, i) => call("create_note", { body: `Race note ${i}`, folder })));
+  assert(made.every((m) => !m.error), made.map((m) => m.text).join("\n"));
+  const folders = (await call("list_folders")).data.folders.filter((f: { path: string }) => f.path === folder);
+  assertEquals(folders.length, 1);
+  assertEquals(folders[0].notes, 6);
+  await call("delete_folder", { folder });
+});
+
+Deno.test({ name: "ids: a malformed id says what an id is", ignore: !enabled }, async () => {
+  const r = await call("read_note", { id: "abc" });
+  assert(r.error);
+  assertStringIncludes(r.text, "isn't a note id");
+});
+
+Deno.test({ name: "typed tables: Yes/No takes booleans, tables without dates append, code-block tables are ignored", ignore: !enabled }, async () => {
+  const body = "Habits\n\n<!-- pane-table: Habit=text; Done=choice Yes|No -->\n| Habit | Done |\n| --- | --- |\n| Run | No |\n\n```\n<!-- pane-table: X=text -->\n| X |\n| --- |\n```\n";
+  const id = (await call("create_note", { body })).data.created.id;
+  const logged = await call("log_table_row", { id, values: { Habit: "Read", Done: true } });
+  assert(!logged.error, logged.text);
+  const t = await call("read_table", { id });
+  assertEquals(t.data.rows, [{ Habit: "Run", Done: "No" }, { Habit: "Read", Done: "Yes" }]);
+  assert((await call("read_table", { id, table: 1 })).data.columns.length === 2, "only one real table; index clamps to it");
+  await call("delete_note", { id });
+});
+
+// MARK: Security
+
+const readonly = Deno.env.get("PANE_READONLY_TOKEN");
+const otherWriter = Deno.env.get("PANE_OTHER_WRITE_TOKEN");
+Deno.test({ name: "isolation: another user's writer token can't touch my notes with any tool", ignore: !enabled || !otherWriter }, async () => {
+  const s = crypto.randomUUID().slice(0, 6);
+  const mine = (await call("create_note", { body: `Secret ${s}\n- [ ] item\n\n<!-- pane-table: A=text -->\n| A |\n| --- |\n| 1 |`, folder: `Mine ${s}` })).data.created.id;
+  const ref = { id: mine };
+  const attempts: [string, Record<string, unknown>][] = [
+    ["read_note", ref], ["fetch", ref], ["edit_note", { ...ref, edits: [{ old_text: "Secret", new_text: "Mine now" }] }],
+    ["append_to_note", { ...ref, text: "x" }], ["replace_note_body", { ...ref, body: "gone" }], ["set_checklist_item", { ...ref, item: "item", checked: true }],
+    ["move_note", { ...ref, folder: "Stolen" }], ["pin_note", { ...ref, pinned: true }], ["delete_note", ref], ["restore_note", ref],
+    ["note_history", ref], ["restore_revision", { ...ref, revision_id: 1 }], ["create_sub_note", { ...ref, body: "x" }],
+    ["read_table", ref], ["log_table_row", { ...ref, values: { A: "2" } }], ["delete_table_row", { ...ref, index: 0 }],
+    ["rename_folder", { folder: `Mine ${s}`, new_name: "x" }], ["delete_folder", { folder: `Mine ${s}` }],
+  ];
+  for (const [name, args] of attempts) {
+    const r = await call(name, args, otherWriter!);
+    assert(r.error, `${name} must fail for another user`);
+  }
+  for (const q of [`Secret ${s}`, s]) {
+    assertEquals((await call("search_notes", { query: q }, otherWriter!)).data.results.length, 0);
+    assertEquals((await call("search", { query: q }, otherWriter!)).data.results.length, 0);
+  }
+  const overview = await call("get_overview", {}, otherWriter!);
+  assert(!overview.data.folders.some((f: { path: string }) => f.path === `Mine ${s}`));
+  const after = await call("read_note", ref);
+  assertEquals(after.data.version, 1, "untouched");
+  assertEquals(after.data.pinned, false);
+  await call("delete_folder", { folder: `Mine ${s}` });
+});
+
+Deno.test({ name: "read-only tokens: write tools are hidden and refused", ignore: !enabled || !readonly }, async () => {
+  const list = await rpc("tools/list", {}, readonly!);
+  const names = list.body.result.tools.map((t: { name: string }) => t.name);
+  assert(names.includes("read_note") && !names.some((n: string) => ["create_note", "edit_note", "delete_note", "log_table_row"].includes(n)));
+  const r = await call("create_note", { body: "nope" }, readonly!);
+  assert(r.error);
+  assertStringIncludes(r.text, "read-only");
+});
+
+Deno.test({ name: "injection: hostile strings are just text", ignore: !enabled }, async () => {
+  const evil = `x'); drop table public.notes; -- ${crypto.randomUUID().slice(0, 4)}`;
+  const c = await call("create_note", { body: `${evil}\n$1 \${x} %s \\`, folder: `${evil.slice(0, 20)}` });
+  assert(!c.error, c.text);
+  assertEquals((await call("read_note", { title: evil })).data.markdown, `${evil}\n$1 \${x} %s \\`);
+  for (const q of [evil, "') or 1=1 --", "\"unclosed", "!!!", "a & b | c"]) assert(!(await call("search_notes", { query: q })).error, q);
+  await call("delete_note", { id: c.data.created.id });
 });

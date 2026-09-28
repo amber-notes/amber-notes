@@ -8,11 +8,14 @@ export function titleOf(body: string): string {
   return "New Note";
 }
 
+/** Same rules as the app's NoteText.stripMarkup and the database's note_title. */
 export function stripMarkup(line: string): string {
-  let s = line.replace(/<\/?[a-zA-Z][^>]*>/g, "").trim();
-  s = s.replace(/^#{1,6}\s+/, "").replace(/^>\s?/, "").replace(/^[-*+]\s+(\[[ xX]\]\s+)?/, "").replace(/^\d+[.)]\s+/, "");
-  if (/^(```|~~~)/.test(s) || /^[-*_|:= ]+$/.test(s)) return "";
+  let s = line.replace(/<\/?[a-zA-Z][^>]*>/g, "").replace(/^[ \t\r]+|[ \t\r]+$/g, "");
+  s = s.replace(/^(#{1,6} |> |- \[[ xX]\] |[-*+] )/, "").replace(/^\d+[.)] /, "");
+  if (s.startsWith("```") || /^[-*_|:= ]*$/.test(s)) return "";
   s = s.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/\*\*|__|~~|`/g, "");
+  s = s.replace(/(?<![\w*])[*_](?=\S)(.+?)(?<=\S)[*_](?![\w*])/g, "$1");
+  if (s.startsWith("|")) s = s.split("|").map((c) => c.trim()).filter(Boolean).join("  ");
   return s.trim();
 }
 
@@ -110,7 +113,29 @@ export function setChecklistItem(body: string, item: string, checked: boolean): 
   }
   const { i, m } = hits[0];
   lines[i] = `${m![1]}${checked ? "x" : " "}${m![3]}${m![4]}`;
-  return { body: lines.join("\n"), matched: m![4] };
+  return { body: sortChecklist(lines, i).join("\n"), matched: m![4] };
+}
+
+/**
+ * Like the app: ticked items sink below the open ones. Reorders the run of same-indent
+ * checklist lines around line `at` (open first, then ticked, each in written order).
+ * A nested list right after the run belongs to its last item, so then nothing moves.
+ */
+export function sortChecklist(lines: string[], at: number): string[] {
+  const item = /^(\s*)[-*+]\s+\[([ xX])\]\s/;
+  const mine = lines[at]?.match(item);
+  if (!mine) return lines;
+  const indent = mine[1];
+  const same = (k: number) => { const m = lines[k]?.match(item); return m && m[1] === indent ? m : null; };
+  let lo = at, hi = at;
+  while (lo > 0 && same(lo - 1)) lo--;
+  while (hi + 1 < lines.length && same(hi + 1)) hi++;
+  const next = lines[hi + 1]?.match(/^(\s*)([-*+]|\d+[.)])\s/);
+  if (next && next[1].length > indent.length) return lines;
+  const run = lines.slice(lo, hi + 1);
+  const open = run.filter((l) => l.match(item)![2] === " ");
+  const done = run.filter((l) => l.match(item)![2] !== " ");
+  return [...lines.slice(0, lo), ...open, ...done, ...lines.slice(hi + 1)];
 }
 
 /** Returns lines [start, end] (1-based, inclusive), optionally numbered. */
@@ -177,8 +202,12 @@ export function tableCells(line: string): string[] {
 export function findTables(body: string): Table[] {
   const lines = body.split("\n");
   const out: Table[] = [];
+  let inCode = false;
   for (let i = 0; i < lines.length; i++) {
     const c = lines[i].trim();
+    // A table shown inside a code block is an example, not a tracker (the app agrees).
+    if (c.startsWith("```") || c.startsWith("~~~")) { inCode = !inCode; continue; }
+    if (inCode) continue;
     if (!(c.startsWith("<!--") && c.endsWith("-->") && c.includes("pane-table:"))) continue;
     const spec = c.slice(c.indexOf("pane-table:") + 11, c.lastIndexOf("-->"));
     const types = new Map<string, ColType>();
@@ -236,6 +265,11 @@ export function coerce(value: unknown, col: { name: string; type: ColType }, tod
       return String(n);
     }
     case "choice": {
+      // Yes/No columns (the app shows them as checkboxes) also take true/false.
+      const yes = t.options.find((o) => o.toLowerCase() === "yes"), no = t.options.find((o) => o.toLowerCase() === "no");
+      if (yes && no && typeof value === "boolean") return value ? yes : no;
+      if (yes && no && /^(true|✓|x|1)$/i.test(s)) return yes;
+      if (yes && no && /^(false|0)$/i.test(s)) return no;
       const hit = t.options.find((o) => o.toLowerCase() === s.toLowerCase());
       if (!hit) throw new Error(`${col.name} must be one of ${t.options.join(", ")} (got "${s}").`);
       return hit;
