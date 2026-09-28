@@ -12,7 +12,8 @@ for title in "$@"; do
   PID=$(pgrep -f "$PWD/$APP/Contents/MacOS/Pane" | head -1)
   for i in {1..40}; do W=$(swift scripts/window-id.swift "$PID" 2>/dev/null); [ -n "$W" ] && break; sleep 0.25; done
   sleep 2.5
-  screencapture -x -o -l "${W%% *}" "$OUT/$(echo "$title" | tr ' /' '--').png"
-  pkill -f "$PWD/$APP/Contents/MacOS/Pane" || true
+  # Always close the copy this run opened, even when the capture fails.
+  screencapture -x -o -l "${W%% *}" "$OUT/$(echo "$title" | tr ' /' '--').png" || echo "capture failed: $title" >&2
+  kill "$PID" 2>/dev/null || true
   sleep 0.5
 done
