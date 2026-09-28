@@ -126,17 +126,34 @@ struct LineEmbed: Equatable {
         let ns = text as NSString
         var out: [LineEmbed] = []
         ns.enumerateSubstrings(in: NSRange(location: 0, length: ns.length), options: [.byParagraphs, .substringNotRequired]) { _, r, _, _ in
+            if let e = match(ns, line: r, index: out.count) { out.append(e) }
+        }
+        return out
+    }
+
+    /// The embed on one line, if it is one. Cheap for ordinary lines: only lines
+    /// starting with `!`, `[`, `<` or `h` are tried against the patterns.
+    static func match(_ ns: NSString, line r: NSRange, index: Int) -> LineEmbed? {
+        var i = r.location
+        while i < NSMaxRange(r), ns.character(at: i) == 0x20 || ns.character(at: i) == 0x09 { i += 1 }
+        guard i < NSMaxRange(r) else { return nil }
+        let first = ns.character(at: i)
+        let text = ns as String
+        if first == 0x21 || first == 0x5B { // ! [
             if let m = fileLine.firstMatch(in: text, range: r), let id = UUID(uuidString: ns.substring(with: m.range(at: 3))) {
                 let name = ns.substring(with: m.range(at: 2))
                 let image = m.range(at: 1).length > 0
-                out.append(LineEmbed(kind: image ? .image(id, name: name) : .file(id, name: name), range: r, index: out.count))
-            } else if let m = noteLine.firstMatch(in: text, range: r), let id = UUID(uuidString: ns.substring(with: m.range(at: 2))) {
-                out.append(LineEmbed(kind: .note(id, name: ns.substring(with: m.range(at: 1))), range: r, index: out.count))
-            } else if let m = linkLine.firstMatch(in: text, range: r), let url = URL(string: ns.substring(with: m.range(at: 1))) {
-                out.append(LineEmbed(kind: .link(url), range: r, index: out.count))
+                return LineEmbed(kind: image ? .image(id, name: name) : .file(id, name: name), range: r, index: index)
+            }
+            if let m = noteLine.firstMatch(in: text, range: r), let id = UUID(uuidString: ns.substring(with: m.range(at: 2))) {
+                return LineEmbed(kind: .note(id, name: ns.substring(with: m.range(at: 1))), range: r, index: index)
+            }
+        } else if first == 0x68 || first == 0x3C { // h <
+            if let m = linkLine.firstMatch(in: text, range: r), let url = URL(string: ns.substring(with: m.range(at: 1))) {
+                return LineEmbed(kind: .link(url), range: r, index: index)
             }
         }
-        return out
+        return nil
     }
 
     var height: CGFloat {

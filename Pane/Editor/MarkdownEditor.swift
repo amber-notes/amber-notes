@@ -101,27 +101,235 @@ final class EditorCore {
         if let selection, ns.length > 0 {
             line = ns.lineRange(for: NSRange(location: min(selection.location, ns.length), length: min(selection.length, ns.length - min(selection.location, ns.length))))
         }
-        if !force, line == lastActiveLine { return }
+        if !force, dirty == nil, !needsFull, line == lastActiveLine { return }
+        let previous = lastActiveLine
         lastActiveLine = line
-        for e in LineEmbed.find(in: storage.string) {
+        let structure = self.structure(of: storage.string)
+        let fences = structure.fences
+        var region = needsFull || alwaysFull || fences != lastFenceCount || structure.hasNestedFence ? nil : self.region(ns, structure: structure, previous: previous ?? line, active: line)
+        lastFenceCount = fences
+        needsFull = false
+        dirty = nil
+        if region == nil, ns.length > Self.progressiveThreshold {
+            // A long note: style the top now and the rest a chunk at a time,
+            // so it opens at once. The active line is styled with the top.
+            region = chunk(ns, structure: structure, from: 0, including: line)
+            unstyledFrom = NSMaxRange(region!)
+            styling = storage
+            scheduleChunk()
+        } else if region == nil {
+            unstyledFrom = Int.max
+        }
+        // Images need their size before their line is laid out.
+        for e in structure.embeds where region.map({ NSLocationInRange(e.range.location, $0) }) ?? true {
             if case .image(let id, _) = e.kind, let a = resolveAttachment(id) { ImageSizes.learn(id, url: FileStore.url(for: a.id, filename: a.filename)) }
         }
-        let blocks = styler.apply(to: storage, active: selection ?? NSRange(location: NSNotFound, length: 0))
-        embeds = blocks.embeds
-        grids = blocks.grids
+        lastRegions.append(region.map { "\($0)" } ?? "full")
+        if lastRegions.count > 6 { lastRegions.removeFirst() }
+        let blocks = styler.apply(to: storage, active: selection ?? NSRange(location: NSNotFound, length: 0), region: region, structure: structure)
+        publish(blocks)
+    }
+
+    /// The last few restyle regions, for tests that check incremental styling.
+    private(set) var lastRegions: [String] = []
+
+    /// Live views only for lines already styled (their space is reserved).
+    private func publish(_ blocks: StyledBlocks) {
+        embeds = blocks.embeds.filter { $0.range.location < unstyledFrom }
+        grids = blocks.grids.filter { $0.range.location < unstyledFrom }
         onCardsChanged()
     }
 
+    // MARK: Progressive styling
+
+    /// Notes longer than this open with their top styled first.
+    static let progressiveThreshold = 24_000
+    private static let chunkSize = 16_000
+    /// Everything from here on hasn't been styled yet (Int.max: all styled).
+    private(set) var unstyledFrom = Int.max
+    private weak var styling: NSTextStorage?
+    private var chunkScheduled = false
+
+    /// Whole lines from `from`, about one chunk long, never cutting a code block
+    /// or table, and reaching at least to the end of `including`.
+    private func chunk(_ ns: NSString, structure: NoteStructure, from: Int, including: NSRange) -> NSRange {
+        var end = min(ns.length, from + Self.chunkSize)
+        if including.location != NSNotFound { end = max(end, min(ns.length, NSMaxRange(including))) }
+        end = end < ns.length ? NSMaxRange(ns.lineRange(for: NSRange(location: end, length: 0))) : ns.length
+        var r = NSRange(location: from, length: end - from)
+        let blocks = structure.code + structure.grids.map { ns.lineRange(for: $0.range) }
+        var grew = true
+        while grew {
+            grew = false
+            for b in blocks where NSIntersectionRange(b, r).length > 0 {
+                let u = NSUnionRange(b, r)
+                if u != r { r = u; grew = true }
+            }
+        }
+        return r
+    }
+
+    private func scheduleChunk() {
+        guard !chunkScheduled else { return }
+        chunkScheduled = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.chunkScheduled = false
+            self.styleNextChunk()
+        }
+    }
+
+    private func styleNextChunk() {
+        guard let storage = styling, unstyledFrom < storage.length else { unstyledFrom = Int.max; return }
+        let ns = storage.string as NSString
+        let structure = self.structure(of: storage.string)
+        let r = chunk(ns, structure: structure, from: unstyledFrom, including: NSRange(location: NSNotFound, length: 0))
+        let active = lastActiveLine.flatMap { $0.location == NSNotFound ? nil : $0 } ?? NSRange(location: NSNotFound, length: 0)
+        let blocks = styler.apply(to: storage, active: active, region: r, structure: structure)
+        unstyledFrom = NSMaxRange(r) >= ns.length ? Int.max : NSMaxRange(r)
+        publish(blocks)
+        if unstyledFrom != Int.max { scheduleChunk() }
+    }
+
+    // MARK: Incremental restyling
+
+    /// Tests: restyle everything every time (to tell incremental bugs from others).
+    var alwaysFull = false
+
+    /// Characters changed since the last restyle, as the text storage reported them.
+    private var dirty: NSRange?
+    /// The next restyle covers the whole note (first show, big replacements).
+    private var needsFull = true
+    private var lastFenceCount = -1
+    private var editObserver: NSObjectProtocol?
+
+    /// Follows edits to the text so a restyle can cover just the lines that changed.
+    func observe(_ storage: NSTextStorage) {
+        if let editObserver { NotificationCenter.default.removeObserver(editObserver) }
+        editObserver = NotificationCenter.default.addObserver(forName: NSTextStorage.didProcessEditingNotification, object: storage, queue: nil) { [weak self, weak storage] _ in
+            guard let storage, storage.editedMask.contains(.editedCharacters) else { return }
+            let edited = storage.editedRange, delta = storage.changeInLength
+            MainActor.assumeIsolated { self?.noteEdit(edited, delta: delta) }
+        }
+    }
+
+    func noteEdit(_ edited: NSRange, delta: Int) {
+        version += 1
+        func shift(_ r: NSRange) -> NSRange {
+            // Ranges after the edit move with it; ranges it overlaps grow to cover it.
+            let oldEnd = edited.location + edited.length - delta
+            if r.location >= oldEnd { return NSRange(location: r.location + delta, length: r.length) }
+            if NSMaxRange(r) <= edited.location { return r }
+            return NSUnionRange(NSRange(location: r.location, length: max(0, r.length + delta)), edited)
+        }
+        dirty = dirty.map { NSUnionRange(shift($0), edited) } ?? edited
+        if let l = lastActiveLine, l.location != NSNotFound { lastActiveLine = shift(l) }
+        if unstyledFrom != Int.max, unstyledFrom > edited.location { unstyledFrom = max(edited.location, unstyledFrom + delta) }
+        if edited.length > 20_000 || abs(delta) > 20_000 { needsFull = true }
+    }
+
+    /// Whole lines to restyle: the edit, the old and new active lines, the title
+    /// if it's involved, grown until no code block or table is cut in two.
+    /// Nil means the whole note.
+    func region(_ ns: NSString, structure: NoteStructure, previous: NSRange, active: NSRange) -> NSRange? {
+        let len = ns.length
+        guard len > 0 else { return nil }
+        func lines(_ r: NSRange) -> NSRange? {
+            guard r.location != NSNotFound else { return nil }
+            let loc = min(r.location, len)
+            return ns.lineRange(for: NSRange(location: loc, length: min(r.length, len - loc)))
+        }
+        var parts = [dirty, previous, active].compactMap { $0 }.compactMap(lines)
+        guard var r = parts.popLast() else { return nil }
+        for p in parts { r = NSUnionRange(r, p) }
+        // Markdown blocks run between blank lines (a paragraph's inline code, an HTML
+        // block, a lazy quote line), and an edit can split or join lines: restyle the
+        // whole run around the change, at most 100 lines each way.
+        r = Self.blankLineRun(ns, around: r, maxLines: 100)
+        // A typed-table comment or fence edited: everything may read differently.
+        let touched = ns.substring(with: r)
+        if touched.contains("<!--") || touched.contains("```") || touched.contains("~~~") { return nil }
+        let title = MarkdownStyler.titleLocation(ns)
+        if r.location <= title + 1 {
+            // Near the title: the title (and the line after, which may become it) too.
+            var end = title < len ? NSMaxRange(ns.lineRange(for: NSRange(location: title, length: 0))) : len
+            if end < len { end = NSMaxRange(ns.lineRange(for: NSRange(location: end, length: 0))) }
+            r = NSUnionRange(r, NSRange(location: 0, length: min(end, len)))
+        }
+        let blocks = structure.code + structure.grids.map { ns.lineRange(for: $0.range) }
+        var grew = true
+        while grew {
+            grew = false
+            for b in blocks where NSIntersectionRange(b, r).length > 0 || NSLocationInRange(r.location, b) {
+                let u = NSUnionRange(b, r)
+                if u != r { r = u; grew = true }
+            }
+        }
+        // Past half the note, one full pass is simpler and no slower.
+        return r.length > len / 2 ? nil : r
+    }
+
+    /// `r` grown to the blank lines (or note ends) around it, one extra line each
+    /// way, at most `maxLines` lines further in either direction.
+    static func blankLineRun(_ ns: NSString, around r: NSRange, maxLines: Int) -> NSRange {
+        let len = ns.length
+        func isBlank(_ line: NSRange) -> Bool {
+            var i = line.location
+            while i < NSMaxRange(line) {
+                let c = ns.character(at: i)
+                if c != 0x20 && c != 0x09 && c != 0x0A && c != 0x0D { return false }
+                i += 1
+            }
+            return true
+        }
+        var start = r.location
+        for n in 0...maxLines {
+            guard start > 0 else { break }
+            let prev = ns.lineRange(for: NSRange(location: start - 1, length: 0))
+            start = prev.location
+            if n > 0 && isBlank(prev) { break }
+        }
+        var end = NSMaxRange(r)
+        for n in 0...maxLines {
+            guard end < len else { break }
+            let next = ns.lineRange(for: NSRange(location: end, length: 0))
+            end = NSMaxRange(next)
+            if n > 0 && isBlank(next) { break }
+        }
+        return NSRange(location: start, length: end - start)
+    }
+
+    /// Fenced-code markers in the note; when their count changes everything restyles.
+    static func fenceCount(_ ns: NSString) -> Int {
+        var n = 0
+        var start = true
+        var i = 0
+        let len = ns.length
+        while i < len {
+            let c = ns.character(at: i)
+            if start, c == 0x60 || c == 0x7E, i + 2 < len, ns.character(at: i + 1) == c, ns.character(at: i + 2) == c { n += 1 }
+            start = c == 0x0A || (start && (c == 0x20 || c == 0x09))
+            i += 1
+        }
+        return n
+    }
+
     private var lastSelection: NSRange?
-    private var blockCache: (text: String, blocks: [EditorBlock])?
+    /// Bumped on every edit, so the structure is scanned once per version of the text.
+    private var version = 0
+    private var structureCache: (version: Int, length: Int, structure: NoteStructure)?
+
+    /// Code blocks, tables and embeds of the current text, scanned once per edit.
+    func structure(of text: String) -> NoteStructure {
+        let length = (text as NSString).length
+        if let c = structureCache, c.version == version, c.length == length { return c.structure }
+        let s = NoteStructure(text)
+        structureCache = (version, length, s)
+        return s
+    }
 
     /// Tables and embeds, each a whole block the caret goes around.
-    func blocks(in text: String) -> [EditorBlock] {
-        if let c = blockCache, c.text == text { return c.blocks }
-        let b = EditorBlock.find(in: text)
-        blockCache = (text, b)
-        return b
-    }
+    func blocks(in text: String) -> [EditorBlock] { structure(of: text).blocks }
 
     /// Where the caret should go instead, if it landed somewhere it can't be:
     /// inside a list marker, or inside a table's or embed's hidden markdown.
@@ -251,6 +459,7 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
         typingAttributes = core.styler.typingAttributes
         self.text = text
         lastReported = text
+        core.observe(textStorage)
         core.restyle(textStorage, selection: nil, force: true)
 
         headerLabel.font = .systemFont(ofSize: 13, weight: .medium)
@@ -626,6 +835,7 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
         typingAttributes = core.styler.typingAttributes
         string = text
         lastReported = text
+        core.observe(textStorage!)
         core.restyle(textStorage!, selection: nil, force: true)
 
         headerLabel.font = .systemFont(ofSize: 11, weight: .medium)

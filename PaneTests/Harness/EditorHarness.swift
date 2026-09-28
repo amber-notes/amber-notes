@@ -21,7 +21,9 @@ final class EditorHarness {
         window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
         window.backgroundColor = .textBackgroundColor
         scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: width, height: height))
-        scroll.drawsBackground = false
+        // The note page's own colour, so snapshots show what you'd see in either mode.
+        scroll.drawsBackground = true
+        scroll.backgroundColor = .textBackgroundColor
         scroll.hasVerticalScroller = true
         view = PaneTextView(frame: NSRect(x: 0, y: 0, width: width, height: height))
         view.configure(text: text, header: "")
@@ -142,8 +144,8 @@ final class EditorHarness {
         let rect = target.bounds
         guard let rep = target.bitmapImageRepForCachingDisplay(in: rect) else { return "" }
         target.cacheDisplay(in: rect, to: rep)
-        let dir = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-            .appending(path: ".shots/qa", directoryHint: .isDirectory)
+        // Never under ~/Documents: an ad-hoc test build touching it can raise a privacy prompt.
+        let dir = EditorHarness.shotsDirectory
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let url = dir.appending(path: "\(name).png")
         try? rep.representation(using: .png, properties: [:])?.write(to: url)
@@ -151,6 +153,12 @@ final class EditorHarness {
     }
 
     func close() { window.orderOut(nil); window.close() }
+
+    /// Where snapshots go: a temporary folder outside any privacy-protected location
+    /// (scripts/qa-shots.sh copies them into .shots/qa).
+    static var shotsDirectory: URL {
+        URL(fileURLWithPath: ProcessInfo.processInfo.environment["AMBER_QA_SHOTS"] ?? NSTemporaryDirectory()).appending(path: "amber-qa", directoryHint: .isDirectory)
+    }
 }
 
 /// Borderless windows can't normally be key; SwiftUI focus inside the grid needs it.

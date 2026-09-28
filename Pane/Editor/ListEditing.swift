@@ -238,19 +238,7 @@ struct EditorBlock: Equatable {
     /// Positions inside the block's hidden markdown, both ends included.
     func contains(_ location: Int) -> Bool { location >= range.location && location <= NSMaxRange(range) }
 
-    static func find(in text: String) -> [EditorBlock] {
-        let ns = text as NSString
-        var out = GridTable.find(in: text).map { g -> EditorBlock in
-            EditorBlock(range: g.range, grid: g.index)
-        }
-        let code = CodeRanges.find(in: text)
-        for e in LineEmbed.find(in: text) where !code.contains(where: { NSLocationInRange(e.range.location, $0) }) {
-            var line = ns.lineRange(for: e.range)
-            if NSMaxRange(line) > line.location, ns.substring(with: NSRange(location: NSMaxRange(line) - 1, length: 1)) == "\n" { line.length -= 1 }
-            out.append(EditorBlock(range: line, grid: nil))
-        }
-        return out.sorted { $0.range.location < $1.range.location }
-    }
+    static func find(in text: String) -> [EditorBlock] { NoteStructure(text).blocks }
 }
 
 /// What to do with a caret that landed where it can't be.

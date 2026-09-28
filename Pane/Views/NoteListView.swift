@@ -260,8 +260,9 @@ struct NoteRow: View {
     var showFolder = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: RowMetrics.spacing) {
-            Text(note.title)
+        let title = note.title
+        return VStack(alignment: .leading, spacing: RowMetrics.spacing) {
+            Text(title)
                 .font(RowMetrics.title)
                 .lineLimit(1)
             HStack(spacing: 8) {
@@ -285,7 +286,7 @@ struct NoteRow: View {
         .padding(.vertical, RowMetrics.vertical)
         .padding(.leading, RowMetrics.leading)
         .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("note.\(note.title)")
+        .accessibilityIdentifier("note.\(title)")
     }
 
     /// With a search, show the matching line instead of the preview.

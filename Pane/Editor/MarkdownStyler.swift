@@ -82,6 +82,8 @@ struct MarkdownStyler {
     var monoFont: PFont { .monospacedSystemFont(ofSize: bodySize * 0.88, weight: .regular) }
 
     private var hiddenFont: PFont { .systemFont(ofSize: 0.01) }
+    /// Height of a line folded away under a table's grid.
+    static let foldedLine: CGFloat = 1
 
     func headingFont(_ level: Int) -> PFont {
         switch level {
@@ -95,6 +97,9 @@ struct MarkdownStyler {
     func baseParagraph() -> NSMutableParagraphStyle {
         let p = NSMutableParagraphStyle()
         p.lineSpacing = EditorMetrics.lineSpacing
+        // Never thinner than a line of text, even when every character on it is hidden
+        // syntax (a bare "## "): TextKit's layout can spin on near-zero lines.
+        p.minimumLineHeight = bodySize
         // Like Notes: no extra space between paragraphs; blank lines make the gaps.
         p.paragraphSpacing = 0
         return p
@@ -104,13 +109,27 @@ struct MarkdownStyler {
         [.font: bodyFont, .foregroundColor: PColor.paneLabel, .paragraphStyle: baseParagraph()]
     }
 
-    /// Restyles the whole storage. `active` is the caret's selection.
-    /// Returns the cards and embeds to show as views (those the caret isn't on).
+    /// Where the note's first non-empty line starts (the title), or the end.
+    static func titleLocation(_ ns: NSString) -> Int {
+        var i = 0
+        while i < ns.length {
+            let c = ns.character(at: i)
+            if c != 0x0A && c != 0x20 && c != 0x09 && c != 0x0D { return ns.lineRange(for: NSRange(location: i, length: 0)).location }
+            i += 1
+        }
+        return ns.length
+    }
+
+    /// Restyles the storage, or just `region` (whole lines, never cutting through a
+    /// code block or table: see `EditorCore.region`). `active` is the caret's selection.
+    /// Returns every table and embed in the note to show as live views.
     @discardableResult
-    func apply(to storage: NSTextStorage, active: NSRange) -> StyledBlocks {
+    func apply(to storage: NSTextStorage, active: NSRange, region: NSRange? = nil, structure: NoteStructure? = nil) -> StyledBlocks {
         let text = storage.string
+        let structure = structure ?? NoteStructure(text)
         let ns = text as NSString
-        let full = NSRange(location: 0, length: ns.length)
+        let whole = NSRange(location: 0, length: ns.length)
+        let full = region.map { NSIntersectionRange($0, whole) } ?? whole
         let editing = active.location != NSNotFound && ns.length > 0
         let activeLines = editing ? ns.lineRange(for: NSRange(location: min(active.location, ns.length), length: min(active.length, ns.length - min(active.location, ns.length)))) : NSRange(location: NSNotFound, length: 0)
         func isActive(_ r: NSRange) -> Bool {
@@ -124,8 +143,9 @@ struct MarkdownStyler {
         storage.setAttributes(typingAttributes, range: full)
         guard ns.length > 0 else { return StyledBlocks() }
 
-        let map = UTF16Map(text)
-        let doc = Document(parsing: text, options: [.disableSmartOpts])
+        let part = full == whole ? text : ns.substring(with: full)
+        let map = UTF16Map(part, base: full.location)
+        let doc = Document(parsing: part, options: [.disableSmartOpts])
         var codeLines = IndexSet()
         var tableLines = IndexSet()
 
@@ -135,7 +155,8 @@ struct MarkdownStyler {
         tableLines = walker.tableLineStarts
 
         // Line pass: title, lists, checkboxes, quotes, rules, code and table decoration.
-        var sawTitle = false
+        // The title is the note's first non-empty line; a region after it has none.
+        var sawTitle = full.location > Self.titleLocation(ns)
         ns.enumerateSubstrings(in: full, options: [.byParagraphs, .substringNotRequired]) { _, lineRange, enclosing, _ in
             let line = ns.substring(with: lineRange)
             let trimmed = line.trimmingCharacters(in: .whitespaces)
@@ -210,36 +231,44 @@ struct MarkdownStyler {
             layoutTable(table, storage: storage, isActive: isActive)
         }
 
-        styleUnderlines(storage, isActive: isActive, skip: walker.codeRanges)
-        let grids = styleGrids(storage, isActive: isActive)
-        let embeds = styleEmbeds(storage, isActive: isActive, skip: walker.codeRanges)
+        styleUnderlines(storage, in: full, isActive: isActive, skip: walker.codeRanges)
+        let grids = styleGrids(storage, in: full, grids: structure.grids)
+        let embeds = styleEmbeds(storage, in: full, embeds: structure.embeds)
         return StyledBlocks(embeds: embeds, grids: grids)
     }
 
     /// Tables become an editable grid (a live view over a reserved line), like Notes.
     /// The caret never enters a table's markdown (see EditorCore.caretFix), so the
     /// grid always shows, even when a selection runs across it.
-    private func styleGrids(_ storage: NSTextStorage, isActive: (NSRange) -> Bool) -> [GridTable] {
+    private func styleGrids(_ storage: NSTextStorage, in scope: NSRange, grids: [GridTable]) -> [GridTable] {
         let ns = storage.string as NSString
         var shown: [GridTable] = []
-        for g in GridTable.find(in: storage.string) {
+        for g in grids {
+            // Outside the restyled region it's already styled: just report it.
+            guard NSIntersectionRange(g.range, scope).length > 0 || NSLocationInRange(g.range.location, scope) else { shown.append(g); continue }
             let lines = ns.lineRange(for: g.range)
             let first = ns.lineRange(for: NSRange(location: g.range.location, length: 0))
             storage.removeAttribute(.paneLine, range: lines)
             storage.addAttributes(hidden, range: g.range)
             storage.removeAttribute(.kern, range: g.range)
+            let rest = NSRange(location: NSMaxRange(first), length: NSMaxRange(lines) - NSMaxRange(first))
+            // The table's other lines fold to a sliver each. Not to nothing: TextKit's
+            // layout can spin forever estimating positions across near-zero lines.
+            var folded = 0
+            if rest.length > 0 {
+                ns.enumerateSubstrings(in: rest, options: [.byParagraphs, .substringNotRequired]) { _, _, _, _ in folded += 1 }
+            }
             let h = GridMetrics.height(g)
             let head = NSMutableParagraphStyle()
-            head.minimumLineHeight = h
-            head.maximumLineHeight = h
+            head.minimumLineHeight = max(h - CGFloat(folded) * Self.foldedLine, 1)
+            head.maximumLineHeight = head.minimumLineHeight
             head.paragraphSpacingBefore = 2
             head.paragraphSpacing = 8
             storage.addAttribute(.paragraphStyle, value: head, range: first)
-            let rest = NSRange(location: NSMaxRange(first), length: NSMaxRange(lines) - NSMaxRange(first))
             if rest.length > 0 {
                 let flat = NSMutableParagraphStyle()
-                flat.minimumLineHeight = 0.01
-                flat.maximumLineHeight = 0.01
+                flat.minimumLineHeight = Self.foldedLine
+                flat.maximumLineHeight = Self.foldedLine
                 flat.lineSpacing = 0
                 flat.paragraphSpacing = 0
                 storage.addAttribute(.paragraphStyle, value: flat, range: rest)
@@ -254,9 +283,8 @@ struct MarkdownStyler {
 
     /// Markdown has no underline, so Amber Notes uses <u>…</u> (GitHub shows it too).
     /// The tags hide like other syntax and the text between them is underlined.
-    private func styleUnderlines(_ storage: NSTextStorage, isActive: (NSRange) -> Bool, skip: [NSRange]) {
-        let full = NSRange(location: 0, length: storage.length)
-        for m in Self.underline.matches(in: storage.string, range: full) {
+    private func styleUnderlines(_ storage: NSTextStorage, in scope: NSRange, isActive: (NSRange) -> Bool, skip: [NSRange]) {
+        for m in Self.underline.matches(in: storage.string, range: scope) {
             if skip.contains(where: { NSIntersectionRange($0, m.range).length > 0 }) { continue }
             let inner = m.range(at: 1)
             storage.addAttribute(.underlineStyle, value: NSUnderlineStyle.single.rawValue, range: inner)
@@ -267,11 +295,16 @@ struct MarkdownStyler {
     }
 
     /// File, image and link lines become one reserved line for a live view.
-    private func styleEmbeds(_ storage: NSTextStorage, isActive: (NSRange) -> Bool, skip: [NSRange]) -> [LineEmbed] {
+    private func styleEmbeds(_ storage: NSTextStorage, in scope: NSRange, embeds: [LineEmbed]) -> [LineEmbed] {
         var shown: [LineEmbed] = []
         let ns = storage.string as NSString
-        for e in LineEmbed.find(in: storage.string) {
-            if skip.contains(where: { NSIntersectionRange($0, e.range).length > 0 }) { continue }
+        for e in embeds {
+            guard NSLocationInRange(e.range.location, scope) else {
+                var e = e
+                e.index = shown.count
+                shown.append(e)
+                continue
+            }
             let line = ns.lineRange(for: e.range)
             storage.removeAttribute(.paneLine, range: line)
             storage.addAttributes(hidden, range: e.range)
@@ -499,8 +532,11 @@ struct StyledBlocks {
 struct UTF16Map {
     private var lineStarts: [Int] = [0] // UTF-8 offset where each line starts
     private var utf8ToUtf16: [Int]
+    /// Where the parsed text starts in the whole note (when only a part is restyled).
+    private var base = 0
 
-    init(_ s: String) {
+    init(_ s: String, base: Int = 0) {
+        self.base = base
         var table = [Int]()
         table.reserveCapacity(s.utf8.count + 1)
         var u16 = 0
@@ -519,7 +555,7 @@ struct UTF16Map {
     func offset(_ loc: SourceLocation) -> Int {
         let line = min(max(loc.line - 1, 0), lineStarts.count - 1)
         let u8 = min(lineStarts[line] + loc.column - 1, utf8ToUtf16.count - 1)
-        return utf8ToUtf16[max(u8, 0)]
+        return base + utf8ToUtf16[max(u8, 0)]
     }
 
     func range(_ r: SourceRange?) -> NSRange? {

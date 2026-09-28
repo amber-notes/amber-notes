@@ -187,6 +187,14 @@ struct TableGridView: View {
     /// Set when the keyboard (not a click) moves between cells: the caret goes to
     /// the end of the cell's text instead of selecting all of it.
     @State private var caretToEnd = false
+    /// The one cell showing a text field; nil when the table isn't being edited.
+    @State private var editing: GridCell?
+    /// Where the caret goes in that cell (nil: after its text).
+    @State private var caretAt: Int?
+    /// A cell whose field is being created and should take focus when it appears.
+    @State private var pendingFocus: GridCell?
+    /// The cell the keyboard is moving to, until it has arrived.
+    @State private var wanted: GridCell?
 
     init(table: GridTable, initialFocus: GridCell?, focusRequest: GridFocusRequest? = nil, selected: Bool = false, exit: @escaping (Bool) -> Void = { _ in }, commit: @escaping (GridTable) -> Void) {
         self.selected = selected
@@ -216,8 +224,19 @@ struct TableGridView: View {
         }
         .onChange(of: focusRequest) { _, r in if let r { DispatchQueue.main.async { go(r.cell) } } }
         .onChange(of: focus) { _, new in
-            guard new != nil, caretToEnd else { return }
+            qaTrace("grid focus -> \(String(describing: new))")
+            if new == nil {
+                // The old cell's field going away can knock focus out before the new
+                // one lands: put it back. (A real departure leaves `wanted` empty.)
+                if let w = wanted { DispatchQueue.main.async { if focus == nil, wanted == w { focus = w } } }
+                // The last cell's field stays: it's plain-styled, so it reads as text.
+                return
+            }
+            if new == wanted { wanted = nil }
+            if let new, new != editing { editing = new }
+            guard caretToEnd else { return }
             caretToEnd = false
+            let caret = caretAt
             #if os(macOS)
             // The field selects everything as it takes focus; put a caret at the end instead.
             // The field selects all once its editor is installed, a turn or two later.
@@ -229,8 +248,9 @@ struct TableGridView: View {
                         return
                     }
                     let end = (editor.string as NSString).length
-                    if editor.selectedRange() != NSRange(location: end, length: 0) {
-                        editor.setSelectedRange(NSRange(location: end, length: 0))
+                    let at = min(caret ?? end, end)
+                    if editor.selectedRange() != NSRange(location: at, length: 0) {
+                        editor.setSelectedRange(NSRange(location: at, length: 0))
                     }
                     if tries > 0 { place(tries - 1) }
                 }
@@ -271,7 +291,7 @@ struct TableGridView: View {
             ForEach(0..<draft.rows.count, id: \.self) { r in
                 HStack(spacing: 0) {
                     ForEach(0..<cols, id: \.self) { c in
-                        cell(r, c, cols: cols)
+                        cell(r, c, cols: cols, width: widths[c])
                             .frame(width: widths[c], height: GridMetrics.row)
                             .overlay(alignment: .trailing) {
                                 if c < cols - 1 { Rectangle().fill(border).frame(width: 1) }
@@ -296,16 +316,18 @@ struct TableGridView: View {
         }
         .onKeyPress(.upArrow) {
             guard let f = focus else { return .ignored }
-            if f.row == 0 { exit(false) } else { go(GridCell(row: f.row - 1, column: f.column)) }
+            if f.row == 0 { wanted = nil; exit(false) } else { go(GridCell(row: f.row - 1, column: f.column)) }
             return .handled
         }
         .onKeyPress(.downArrow) {
+            qaTrace("grid down, focus \(String(describing: focus))")
             guard let f = focus else { return .ignored }
-            if f.row == draft.rows.count - 1 { exit(true) } else { go(GridCell(row: f.row + 1, column: f.column)) }
+            if f.row == draft.rows.count - 1 { wanted = nil; exit(true) } else { go(GridCell(row: f.row + 1, column: f.column)) }
             return .handled
         }
         .onKeyPress(.escape) {
             guard focus != nil else { return .ignored }
+            wanted = nil
             exit(true)
             return .handled
         }
@@ -317,14 +339,14 @@ struct TableGridView: View {
     }
 
     @ViewBuilder
-    private func cell(_ r: Int, _ c: Int, cols: Int) -> some View {
+    private func cell(_ r: Int, _ c: Int, cols: Int, width: CGFloat) -> some View {
         let type = r == 0 ? .text : draft.type(c)
         let trailing = draft.type(c).isNumeric
         if type.isYesNo, case .choice(let options) = type {
             yesNoCell(r, c, options: options)
         } else if case .choice(let options) = type {
             choiceCell(r, c, options: options)
-        } else {
+        } else if editing == GridCell(row: r, column: c) {
             TextField("", text: cellBinding(r, c))
                 .textFieldStyle(.plain)
                 .font(.system(size: EditorMetrics.body))
@@ -334,7 +356,46 @@ struct TableGridView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: trailing ? .trailing : .leading)
                 .focused($focus, equals: GridCell(row: r, column: c))
                 .onSubmit { move(from: GridCell(row: r, column: c), cols: cols) }
+                // Focus once the field really exists (it's created for this edit).
+                .onAppear {
+                    qaTrace("grid field appears \(r),\(c) pending \(String(describing: pendingFocus))")
+                    if pendingFocus == GridCell(row: r, column: c) {
+                        pendingFocus = nil
+                        focus = GridCell(row: r, column: c)
+                    }
+                }
+        } else {
+            // Only the cell being edited is a text field; the rest are plain text,
+            // which keeps big tables quick to open. A click edits, caret where you clicked.
+            let value = r < draft.rows.count && c < draft.rows[r].count ? draft.rows[r][c] : ""
+            Text(value.isEmpty ? " " : value)
+                .font(.system(size: EditorMetrics.body))
+                .monospacedDigit()
+                .lineLimit(1)
+                .padding(.horizontal, 8)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: trailing ? .trailing : .leading)
+                .contentShape(.rect)
+                .onTapGesture { p in
+                    begin(GridCell(row: r, column: c), at: Self.caretIndex(in: value, x: p.x, width: width, trailing: trailing))
+                }
         }
+    }
+
+    /// Which character a click at `x` (in the cell) lands before.
+    static func caretIndex(in value: String, x: CGFloat, width: CGFloat, trailing: Bool) -> Int {
+        let font = PFont.systemFont(ofSize: EditorMetrics.body)
+        let ns = value as NSString
+        let full = ns.size(withAttributes: [.font: font]).width
+        let start: CGFloat = trailing ? width - 8 - full : 8
+        let local = x - start
+        guard local > 0 else { return 0 }
+        var previous: CGFloat = 0
+        for i in 1...max(ns.length, 1) where i <= ns.length {
+            let w = ns.substring(to: i).size(withAttributes: [.font: font]).width
+            if local < (previous + w) / 2 { return i - 1 }
+            previous = w
+        }
+        return ns.length
     }
 
     /// Yes is a ticked circle, like a checklist; a tap flips it.
@@ -394,8 +455,22 @@ struct TableGridView: View {
 
     /// Moves the keyboard to a cell, caret after its text, like Notes.
     private func go(_ cell: GridCell) {
+        begin(cell, at: nil)
+    }
+
+    /// Turns a cell into a text field and gives it the keyboard.
+    private func begin(_ cell: GridCell, at caret: Int?) {
+        qaTrace("grid begin \(cell) editing \(String(describing: editing)) focus \(String(describing: focus))")
+        wanted = cell
+        caretAt = caret
         caretToEnd = true
-        focus = cell
+        if editing == cell {
+            focus = cell
+        } else {
+            // The field is created for this cell; it takes focus as it appears.
+            pendingFocus = cell
+            editing = cell
+        }
     }
 
     private var border: Color { Color.secondary.opacity(0.45) }
@@ -513,4 +588,11 @@ struct TableGridView: View {
         change(&draft)
         commit(draft)
     }
+}
+
+/// Development traces for the QA harness; compiled out of real builds.
+@inline(__always) func qaTrace(_ s: @autoclosure () -> String) {
+    #if QA
+    FileHandle.standardError.write(("TRACE " + s() + "\n").data(using: .utf8)!)
+    #endif
 }

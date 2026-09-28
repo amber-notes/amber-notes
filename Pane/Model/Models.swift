@@ -92,22 +92,28 @@ enum SyncSignal {
 /// Plain-text helpers shared by the list, search and the AI tools.
 enum NoteText {
     static func title(of body: String) -> String {
-        for line in body.split(separator: "\n", omittingEmptySubsequences: true) {
-            let cleaned = stripMarkup(String(line))
-            if !cleaned.isEmpty { return cleaned }
-        }
-        return "New Note"
+        firstLines(of: body, count: 1).first ?? "New Note"
     }
 
     static func preview(of body: String) -> String {
-        var seenTitle = false
-        for line in body.split(separator: "\n", omittingEmptySubsequences: true) {
+        let lines = firstLines(of: body, count: 2)
+        return lines.count > 1 ? lines[1] : "No additional text"
+    }
+
+    /// The first `count` lines that still say something once markup is stripped.
+    /// Reads only as far as it needs: the list asks for every note on every update.
+    static func firstLines(of body: String, count: Int) -> [String] {
+        var out: [String] = []
+        var rest = body[...]
+        while out.count < count, !rest.isEmpty {
+            let end = rest.firstIndex(of: "\n") ?? rest.endIndex
+            let line = rest[..<end]
+            rest = end < rest.endIndex ? rest[rest.index(after: end)...] : rest[rest.endIndex...]
+            guard !line.allSatisfy({ $0 == " " || $0 == "\t" }) else { continue }
             let cleaned = stripMarkup(String(line))
-            if cleaned.isEmpty { continue }
-            if !seenTitle { seenTitle = true; continue }
-            return cleaned
+            if !cleaned.isEmpty { out.append(cleaned) }
         }
-        return "No additional text"
+        return out
     }
 
     /// Removes the markdown syntax that should not show in a one-line summary.

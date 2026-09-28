@@ -48,9 +48,8 @@ extension TableInteractionTests {
         #expect(h.gridCount == 1)
         #expect(h.gridHasFocus, "arrowing down into a table should put the keyboard in its first cell")
         await h.snapshot("table-arrow-in")
-        await h.press(EditorHarness.down)
-        await h.press(EditorHarness.down)
-        await h.press(EditorHarness.down) // past the last row
+        for _ in 0..<3 { await h.press(EditorHarness.down) } // past the last row
+        await h.settle(0.1)
         #expect(!h.gridHasFocus)
         #expect(h.selection.location > NSMaxRange(tableRange), "leaving the table from the bottom lands after it")
     }
