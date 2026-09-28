@@ -1,36 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
-<defs>
- <radialGradient id="gA" cx="0.5" cy="0.2" r="1"><stop offset="0" stop-color="#3b2a18"/><stop offset=".55" stop-color="#1c1819"/><stop offset="1" stop-color="#111013"/></radialGradient>
- <radialGradient id="bodyA" cx="0.42" cy="0.4" r="0.7"><stop offset="0" stop-color="#FFD66B"/><stop offset="0.35" stop-color="#F7A21B"/><stop offset="0.72" stop-color="#D2600A"/><stop offset="1" stop-color="#7E2E04"/></radialGradient>
- <radialGradient id="coreA" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#FFF1B8" stop-opacity=".95"/><stop offset="1" stop-color="#FFC94A" stop-opacity="0"/></radialGradient>
- <linearGradient id="rimA" x1="0" y1="0" x2="1" y2="1"><stop offset="0.55" stop-color="#FFB547" stop-opacity="0"/><stop offset="1" stop-color="#FFD27A" stop-opacity=".9"/></linearGradient>
- <filter id="glowA" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="0" dy="34" stdDeviation="44" flood-color="#F08A18" flood-opacity=".4"/></filter>
- <filter id="b3"><feGaussianBlur stdDeviation="3"/></filter>
- <filter id="b10"><feGaussianBlur stdDeviation="10"/></filter>
- <clipPath id="cA"><path id="nug" d="M300 330 C 360 230, 520 200, 640 236 C 760 272, 836 372, 830 500 C 824 640, 760 760, 610 806 C 470 850, 316 800, 244 700 C 176 604, 214 452, 300 330 Z"/></clipPath>
-</defs>
-
-<g filter="url(#glowA)"><use href="#nug" fill="url(#bodyA)"/></g>
-<g clip-path="url(#cA)">
- <ellipse cx="520" cy="500" rx="230" ry="190" fill="url(#coreA)" filter="url(#b10)"/>
- <!-- flow lines in the resin -->
- <path d="M250 560 C 380 520, 520 610, 700 560 S 860 520, 880 540" fill="none" stroke="#B4500A" stroke-opacity=".35" stroke-width="18" filter="url(#b3)"/>
- <path d="M260 660 C 400 630, 560 700, 760 650" fill="none" stroke="#9E4307" stroke-opacity=".3" stroke-width="14" filter="url(#b3)"/>
- <!-- the trapped leaf -->
- <g transform="translate(520 520) rotate(-28)" opacity=".78" filter="url(#b3)">
-  <path d="M-120 0 C -60 -70, 60 -70, 120 0 C 60 70, -60 70, -120 0 Z" fill="#6B3A06"/>
-  <path d="M-130 0 L 120 0" stroke="#4A2503" stroke-width="7" stroke-linecap="round"/>
-  <path d="M-40 0 L -5 -40 M 20 0 L 55 -38 M -40 0 L -5 40 M 20 0 L 55 38" stroke="#4A2503" stroke-width="5" stroke-linecap="round"/>
+ <path d="M300 330 C 360 230, 520 200, 640 236 C 760 272, 836 372, 830 500 C 824 640, 760 760, 610 806 C 470 850, 316 800, 244 700 C 176 604, 214 452, 300 330 Z" fill="#EE8E14"/>
+ <path d="M300 330 C 360 230, 520 200, 640 236 C 760 272, 836 372, 830 500 C 700 470, 520 420, 250 560 C 222 480, 250 400, 300 330 Z" fill="#F8AA2C"/>
+ <g transform="translate(520 560) rotate(-30)">
+  <path d="M-118 0 C -60 -64, 60 -64, 118 0 C 60 64, -60 64, -118 0 Z" fill="#7A3B06"/>
+  <path d="M-130 0 L 112 0" stroke="#5C2B03" stroke-width="10" stroke-linecap="round"/>
  </g>
- <!-- bubbles -->
- <g fill="none" stroke="#FFF3CC" stroke-opacity=".7" stroke-width="4">
-  <circle cx="660" cy="410" r="14"/><circle cx="690" cy="446" r="7"/><circle cx="380" cy="660" r="10"/><circle cx="610" cy="700" r="6"/>
- </g>
- <!-- darker edge, lit rim -->
- <use href="#nug" fill="none" stroke="#6A2503" stroke-opacity=".55" stroke-width="40" filter="url(#b10)"/>
- <use href="#nug" fill="none" stroke="url(#rimA)" stroke-width="16"/>
-</g>
-<!-- polished highlights -->
-<path d="M330 360 C 380 300, 470 270, 560 276 C 480 300, 410 340, 360 400 Z" fill="#fff" opacity=".82"/>
-<ellipse cx="700" cy="330" rx="26" ry="14" fill="#fff" opacity=".55" transform="rotate(30 700 330)"/>
+ <path d="M350 330 C 400 280, 470 262, 540 262 C 470 290, 410 330, 370 380 Z" fill="#FFE2A0"/>
 </svg>

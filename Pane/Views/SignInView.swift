@@ -100,7 +100,6 @@ struct SignInView: View {
                     .foregroundStyle(.black.opacity(0.85))
                     .frame(maxWidth: .infinity, minHeight: 44)
                     .background(Color.accentColor, in: .capsule)
-                    .shadow(color: Color.accentColor.opacity(canSubmit ? 0.35 : 0), radius: 14, y: 6)
                     .contentShape(.capsule)
                 }
                 .buttonStyle(PressScale())
@@ -167,25 +166,10 @@ struct SignInView: View {
     }
 }
 
-/// A soft, warm field behind glass surfaces.
+/// A plain, warm-dark ground: no glows, no fades.
 struct Backdrop: View {
     var body: some View {
-        GeometryReader { geo in
-            ZStack {
-                Color(white: 0.08)
-                Circle()
-                    .fill(Color(red: 0.96, green: 0.66, blue: 0.22).opacity(0.55))
-                    .frame(width: geo.size.width * 0.9)
-                    .blur(radius: 120)
-                    .offset(x: geo.size.width * 0.3, y: -geo.size.height * 0.3)
-                Circle()
-                    .fill(Color(red: 0.45, green: 0.35, blue: 0.85).opacity(0.35))
-                    .frame(width: geo.size.width * 0.8)
-                    .blur(radius: 140)
-                    .offset(x: -geo.size.width * 0.35, y: geo.size.height * 0.35)
-            }
-        }
-        .ignoresSafeArea()
-        .environment(\.colorScheme, .dark)
+        Color(red: 0.105, green: 0.1, blue: 0.11)
+            .ignoresSafeArea()
     }
 }

@@ -1,0 +1,50 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+html,body{margin:0;background:#8e9aa8}
+.row{display:flex;gap:36px;padding:36px;align-items:flex-start}
+.tile{width:300px;text-align:center;color:#111;font:600 16px -apple-system}
+svg{width:300px;height:300px;display:block;border-radius:68px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.small{display:flex;gap:14px;justify-content:center;margin-top:14px}
+.small svg{width:64px;height:64px;border-radius:15px;box-shadow:0 3px 8px rgba(0,0,0,.25)}
+</style></head><body><div class="row">
+<!-- shared stone: flat facets -->
+<svg style="display:none"><defs>
+ <g id="stone">
+  <path d="M292 356 L402 250 L610 226 L748 318 L790 486 L720 668 L540 776 L352 742 L248 600 Z" fill="#E8850F"/>
+  <path d="M292 356 L402 250 L610 226 L520 360 Z" fill="#FBB53C"/>
+  <path d="M610 226 L748 318 L520 360 Z" fill="#F59E1B"/>
+  <path d="M292 356 L520 360 L248 600 Z" fill="#F29A1A"/>
+  <path d="M748 318 L790 486 L520 360 Z" fill="#DB7A0C"/>
+  <path d="M248 600 L520 360 L352 742 Z" fill="#E08210"/>
+  <path d="M790 486 L720 668 L520 360 Z" fill="#C8680A"/>
+  <path d="M352 742 L520 360 L540 776 Z" fill="#D27109"/>
+  <path d="M540 776 L520 360 L720 668 Z" fill="#B85E08"/>
+  <!-- the leaf, flat -->
+  <g transform="translate(512 520) rotate(-30)">
+   <path d="M-118 0 C -60 -64, 60 -64, 118 0 C 60 64, -60 64, -118 0 Z" fill="#7A3B06"/>
+   <path d="M-130 0 L 112 0" stroke="#5C2B03" stroke-width="10" stroke-linecap="round"/>
+  </g>
+  <path d="M402 250 L610 226 L520 360 L470 330 Z" fill="#FFD27A" opacity=".55"/>
+ </g>
+</defs></svg>
+
+<div class="tile"><svg viewBox="0 0 1024 1024"><rect width="1024" height="1024" fill="#1B1A1D"/><use href="#stone"/></svg>A · Faceted, dark
+ <div class="small"><svg viewBox="0 0 1024 1024"><rect width="1024" height="1024" fill="#1B1A1D"/><use href="#stone"/></svg></div></div>
+
+<div class="tile"><svg viewBox="0 0 1024 1024"><rect width="1024" height="1024" fill="#FBF6EE"/><use href="#stone"/></svg>B · Faceted, light
+ <div class="small"><svg viewBox="0 0 1024 1024"><rect width="1024" height="1024" fill="#FBF6EE"/><use href="#stone"/></svg></div></div>
+
+<div class="tile"><svg viewBox="0 0 1024 1024"><rect width="1024" height="1024" fill="#1B1A1D"/>
+ <path d="M300 330 C 360 230, 520 200, 640 236 C 760 272, 836 372, 830 500 C 824 640, 760 760, 610 806 C 470 850, 316 800, 244 700 C 176 604, 214 452, 300 330 Z" fill="#EE8E14"/>
+ <path d="M300 330 C 360 230, 520 200, 640 236 C 760 272, 836 372, 830 500 C 700 470, 520 420, 250 560 C 222 480, 250 400, 300 330 Z" fill="#F8AA2C"/>
+ <g transform="translate(520 560) rotate(-30)">
+  <path d="M-118 0 C -60 -64, 60 -64, 118 0 C 60 64, -60 64, -118 0 Z" fill="#7A3B06"/>
+  <path d="M-130 0 L 112 0" stroke="#5C2B03" stroke-width="10" stroke-linecap="round"/>
+ </g>
+ <path d="M350 330 C 400 280, 470 262, 540 262 C 470 290, 410 330, 370 380 Z" fill="#FFE2A0"/>
+</svg>C · Two-tone pebble, dark
+ <div class="small"><svg viewBox="0 0 1024 1024"><rect width="1024" height="1024" fill="#1B1A1D"/>
+ <path d="M300 330 C 360 230, 520 200, 640 236 C 760 272, 836 372, 830 500 C 824 640, 760 760, 610 806 C 470 850, 316 800, 244 700 C 176 604, 214 452, 300 330 Z" fill="#EE8E14"/>
+ <path d="M300 330 C 360 230, 520 200, 640 236 C 760 272, 836 372, 830 500 C 700 470, 520 420, 250 560 C 222 480, 250 400, 300 330 Z" fill="#F8AA2C"/>
+ <g transform="translate(520 560) rotate(-30)"><path d="M-118 0 C -60 -64, 60 -64, 118 0 C 60 64, -60 64, -118 0 Z" fill="#7A3B06"/></g>
+ </svg></div></div>
+</div></body></html>
