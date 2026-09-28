@@ -38,24 +38,15 @@ struct SignInView: View {
 
     private var card: some View {
         VStack(spacing: 22) {
-            VStack(spacing: 10) {
+            VStack(spacing: 14) {
                 Image("Mark")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 84, height: 84)
+                    .frame(width: 72, height: 72)
                     .accessibilityHidden(true)
                 swap {
-                    Text(mode == .signIn ? "Sign in to Amber Notes" : "Create your account")
+                    Text(mode == .signIn ? "Sign in" : "Create account")
                         .font(.title2.weight(.bold))
-                }
-                swap {
-                    Text(mode == .signIn
-                         ? "Your notes sync between your devices and the AI tools you connect."
-                         : "Pick a password of at least 12 characters. Only invited emails can join.")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .lineLimit(2, reservesSpace: true)
                 }
             }
 
@@ -74,7 +65,7 @@ struct SignInView: View {
                     .accessibilityIdentifier("signin.email")
                 }
                 field {
-                SecureField("Password", text: $password)
+                SecureField(mode == .signIn ? "Password" : "Password, 12+ characters", text: $password)
                     .textContentType(mode == .signIn ? .password : .newPassword)
                     .focused($focus, equals: .password)
                     .submitLabel(.go)
