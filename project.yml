@@ -50,6 +50,9 @@ targets:
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
         UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
         LSApplicationCategoryType: public.app-category.productivity
+        CFBundleURLTypes:
+          - CFBundleURLName: dev.emilwagman.pane.connect
+            CFBundleURLSchemes: [ambernotes]
         PaneSupabaseURL: $(PANE_SUPABASE_URL)
         PaneSupabaseKey: $(PANE_SUPABASE_KEY)
         NSAppTransportSecurity:
