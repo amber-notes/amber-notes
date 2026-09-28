@@ -127,6 +127,21 @@ struct SidebarView: View {
             }
         }
         .listStyle(.sidebar)
+        #if os(macOS)
+        // The app's name at the top, so it's never mistaken for Notes. (iOS shows it as the large title.)
+        .safeAreaInset(edge: .top, spacing: 0) {
+            HStack(spacing: 7) {
+                Image("Mark").resizable().scaledToFit().frame(width: 18, height: 18).accessibilityHidden(true)
+                Text("Amber Notes").font(.system(size: 15, weight: .semibold))
+                Spacer(minLength: 0)
+            }
+            .padding(.leading, 18)
+            .padding(.top, 2)
+            .padding(.bottom, 6)
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isHeader)
+        }
+        #endif
         .onAppear(perform: settleScope)
         .onChange(of: folders.count) { _, _ in settleScope() }
         // Right-click anywhere in the sidebar; a folder's own menu comes from its row.
