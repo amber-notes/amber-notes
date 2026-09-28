@@ -72,5 +72,7 @@ enum EditorMetrics {
     static let lineSpacing: CGFloat = 1.5
     #endif
     static let gutter: CGFloat = body * 1.6
+    /// Checklist circle, the size Notes uses.
+    static let checkSize: CGFloat = body * 1.35
     static let nestStep: CGFloat = body * 1.4
 }

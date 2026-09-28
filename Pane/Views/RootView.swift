@@ -23,28 +23,11 @@ struct RootView: View {
             NoteListView(scope: scope ?? .all, selection: $selectedNote, onNewNote: newNote)
                 .navigationSplitViewColumnWidth(min: 260, ideal: 310, max: 420)
         } detail: {
-            if let id = selectedNote, let note = context.note(id), note.deletedAt == nil {
-                NoteDetailView(note: note, controller: editor, autofocus: justCreated == id, onNewNote: newNote) { target, edit in
-                    if edit { justCreated = target }
-                    selectedNote = target
-                }
-                    .id(id)
-            } else {
-                EmptyDetailView()
-                    .background(Color.notePage.ignoresSafeArea())
-                    #if os(macOS)
-                    .toolbar {
-                        ToolbarItem {
-                            Button(action: newNote) {
-                                Label("New Note", systemImage: "square.and.pencil").offset(x: 0.5, y: 0.5)
-                            }
-                                .accessibilityIdentifier("list.newNote")
-                        }
-                        ToolbarSpacer(.flexible)
-                    }
-                    #endif
-
-            }
+            detail
+                #if os(macOS)
+                // Room for the note's toolbar; a narrow window drops the sidebar instead, like Notes.
+                .navigationSplitViewColumnWidth(min: 520, ideal: 760)
+                #endif
         }
         .environment(editor)
         .onAppear {
@@ -92,6 +75,32 @@ struct RootView: View {
             if n.trashedAt == nil { context.trash(n) } else { context.purge(n) }
             selectedNote = nil
         }
+    }
+
+    @ViewBuilder
+    private var detail: some View {
+            if let id = selectedNote, let note = context.note(id), note.deletedAt == nil {
+                NoteDetailView(note: note, controller: editor, autofocus: justCreated == id, onNewNote: newNote) { target, edit in
+                    if edit { justCreated = target }
+                    selectedNote = target
+                }
+                    .id(id)
+            } else {
+                EmptyDetailView()
+                    .background(Color.notePage.ignoresSafeArea())
+                    #if os(macOS)
+                    .toolbar {
+                        ToolbarItem {
+                            Button(action: newNote) {
+                                Label("New Note", systemImage: "square.and.pencil").offset(x: 0.5, y: 0.5)
+                            }
+                                .accessibilityIdentifier("list.newNote")
+                        }
+                        ToolbarSpacer(.flexible)
+                    }
+                    #endif
+
+            }
     }
 
     private func newNote() {

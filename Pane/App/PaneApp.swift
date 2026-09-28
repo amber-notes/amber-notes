@@ -31,7 +31,10 @@ struct PaneApp: App {
         .defaultWindowPlacement { _, context in
             // Open at a comfortable size, centred, whatever screen is showing.
             let screen = context.defaultDisplay.visibleRect
-            let size = CGSize(width: min(1180, screen.width - 80), height: min(760, screen.height - 80))
+            // Test runs can ask for a width: `-uitest -width 820`.
+            let args = ProcessInfo.processInfo.arguments
+            let asked = args.contains("-uitest") ? args.firstIndex(of: "-width").flatMap { args.indices.contains($0 + 1) ? Double(args[$0 + 1]) : nil } : nil
+            let size = CGSize(width: min(asked ?? 1180, screen.width - 80), height: min(760, screen.height - 80))
             return WindowPlacement(CGPoint(x: screen.midX - size.width / 2, y: screen.midY - size.height / 2), size: size)
         }
         .windowResizability(.contentMinSize)

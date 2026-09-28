@@ -5,6 +5,29 @@ import UIKit
 import AppKit
 #endif
 
+/// What a paste should become.
+enum PasteKind: Equatable { case image, richText, plain }
+
+extension RichPaste {
+    /// An image wins unless there's real text alongside it: browsers and apps put
+    /// the image's address or an <img> tag next to the picture itself.
+    static func kind(hasImage: Bool, text: String?, htmlIsOnlyImage: Bool) -> PasteKind {
+        guard hasImage else { return .richText }
+        let t = (text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        if t.isEmpty || htmlIsOnlyImage || t.hasPrefix("http") && !t.contains(" ") || t.hasPrefix("file:") { return .image }
+        return .richText
+    }
+
+    /// True when HTML is just an image (and wrappers), with no text of its own.
+    static func htmlIsOnlyImage(_ html: String?) -> Bool {
+        guard let html, html.range(of: "<img", options: .caseInsensitive) != nil else { return false }
+        let text = html.replacingOccurrences(of: #"<[^>]*>"#, with: "", options: .regularExpression)
+            .replacingOccurrences(of: "&nbsp;", with: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return text.isEmpty
+    }
+}
+
 /// Turns rich text on the pasteboard (copied from Apple Notes, a web page…) into markdown.
 @MainActor
 enum RichPaste {

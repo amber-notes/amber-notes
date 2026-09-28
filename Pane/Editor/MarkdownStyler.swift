@@ -509,9 +509,12 @@ struct MarkdownStyler {
             storage.addAttributes(hiddenKerned(to: max(EditorMetrics.gutter - measured, 6), length: spaceRange.length), range: spaceRange)
             p.headIndent = lead + max(EditorMetrics.gutter, measured + 6)
         } else {
-            let width = lead + EditorMetrics.gutter
+            // Checklists get Notes' larger circle and a little air between items.
+            let isCheck = list.checkbox != nil
+            let width = lead + (isCheck ? EditorMetrics.checkSize + 9 : EditorMetrics.gutter)
             storage.addAttributes(hiddenKerned(to: width, length: prefix.length), range: prefix)
-            let markerX = lead + EditorMetrics.gutter * 0.4
+            let markerX = isCheck ? lead + EditorMetrics.checkSize / 2 + 1 : lead + EditorMetrics.gutter * 0.4
+            if isCheck { p.paragraphSpacing = 5 }
             if let checked = list.checkbox {
                 storage.addAttribute(.paneLine, value: LineDecoration(.checkbox(checked: checked), markerX: markerX), range: enclosing)
                 if checked {

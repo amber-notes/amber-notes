@@ -53,7 +53,7 @@ final class DecoratedLayoutFragment: NSTextLayoutFragment {
             ctx.fillEllipse(in: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2))
 
         case .checkbox(let checked):
-            let size = EditorMetrics.body * 1.12
+            let size = EditorMetrics.checkSize
             let rect = CGRect(x: o.x + d.markerX - size / 2, y: o.y + firstLineMidY - size / 2, width: size, height: size)
             if checked {
                 ctx.setFillColor(PColor.paneAccent.cgColor)
@@ -68,9 +68,9 @@ final class DecoratedLayoutFragment: NSTextLayoutFragment {
                 ctx.addLine(to: CGPoint(x: rect.minX + s * 0.73, y: rect.midY - s * 0.16))
                 ctx.strokePath()
             } else {
-                ctx.setStrokeColor(PColor.paneTertiary.cgColor)
-                ctx.setLineWidth(1.4)
-                ctx.strokeEllipse(in: rect.insetBy(dx: 0.7, dy: 0.7))
+                ctx.setStrokeColor(PColor.paneSecondary.withAlphaComponent(0.8).cgColor)
+                ctx.setLineWidth(1.3)
+                ctx.strokeEllipse(in: rect.insetBy(dx: 0.65, dy: 0.65))
             }
 
         case .quote:

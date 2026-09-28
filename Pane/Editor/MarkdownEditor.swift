@@ -31,6 +31,8 @@ final class EditorCore {
     /// A just-inserted table whose first cell should take the keyboard.
     var pendingGridFocus: Int?
     private var expandedTables: Set<Int> = []
+    /// Looks up a file so images can be sized (set by the text view).
+    var resolveAttachment: (UUID) -> Attachment? = { _ in nil }
     /// Called after a restyle, so the view can place live views.
     var onCardsChanged: () -> Void = {}
 
@@ -94,7 +96,7 @@ final class EditorCore {
             out.append(("g\(g.index)", f, AnyView(view)))
         }
         for e in embeds {
-            let maxW: CGFloat = { if case .image = e.kind { return 420 } else { return 460 } }()
+            let maxW: CGFloat = { if case .image = e.kind { return ImageSizes.maxWidth } else { return 460 } }()
             guard let f = frame(at: e.range.location, height: e.height, maxWidth: maxW) else { continue }
             let remove = {
                 let ns = target.currentText as NSString
@@ -118,6 +120,9 @@ final class EditorCore {
         }
         if !force, line == lastActiveLine { return }
         lastActiveLine = line
+        for e in LineEmbed.find(in: storage.string) {
+            if case .image(let id, _) = e.kind, let a = resolveAttachment(id) { ImageSizes.learn(id, url: FileStore.url(for: a.id, filename: a.filename)) }
+        }
         let blocks = styler.apply(to: storage, active: selection ?? NSRange(location: NSNotFound, length: 0))
         embeds = blocks.embeds
         tables = blocks.tables
@@ -157,6 +162,7 @@ private struct PlatformEditor: UIViewRepresentable {
         view.core.onChange = onChange
         controller.target = view
         view.controller = controller
+        view.core.resolveAttachment = { [weak controller] id in controller?.resolveAttachment(id) }
         view.inputAccessoryView = FormatBarHost(controller: controller) { [weak view] in view?.resignFirstResponder() }
         if autofocus { DispatchQueue.main.async { view.becomeFirstResponder() } }
         return view
@@ -274,7 +280,9 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
 
     override func paste(_ sender: Any?) {
         let pb = UIPasteboard.general
-        if !pb.hasStrings, let image = pb.image, let png = image.pngData() {
+        let html = pb.data(forPasteboardType: "public.html").flatMap { String(data: $0, encoding: .utf8) }
+        if pb.hasImages, let image = pb.image, let png = image.pngData(),
+           RichPaste.kind(hasImage: true, text: pb.string, htmlIsOnlyImage: RichPaste.htmlIsOnlyImage(html)) == .image {
             if let a = controller?.addData(png, "Image \(Date.now.formatted(.iso8601.year().month().day().time(includingFractionalSeconds: false))).png".replacingOccurrences(of: ":", with: "."), .png) {
                 controller?.insertFiles([a])
             }
@@ -460,6 +468,7 @@ private struct PlatformEditor: NSViewRepresentable {
         view.setAccessibilityIdentifier(identifier)
         view.core.onChange = onChange
         view.controller = controller
+        view.core.resolveAttachment = { [weak controller] id in controller?.resolveAttachment(id) }
         controller.target = view
         scroll.documentView = view
         if autofocus { DispatchQueue.main.async { view.window?.makeFirstResponder(view) } }
@@ -606,7 +615,10 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
             controller?.insertFiles(controller?.addFiles(urls) ?? [])
             return
         }
-        if pb.string(forType: .string) == nil, let data = pb.data(forType: .png) ?? pb.data(forType: .tiff).flatMap({ NSBitmapImageRep(data: $0)?.representation(using: .png, properties: [:]) }) {
+        let imageData = pb.data(forType: .png) ?? pb.data(forType: NSPasteboard.PasteboardType("public.jpeg"))
+            ?? pb.data(forType: .tiff).flatMap({ NSBitmapImageRep(data: $0)?.representation(using: .png, properties: [:]) })
+        let html = pb.data(forType: .html).flatMap { String(data: $0, encoding: .utf8) }
+        if let data = imageData, RichPaste.kind(hasImage: true, text: pb.string(forType: .string), htmlIsOnlyImage: RichPaste.htmlIsOnlyImage(html)) == .image {
             if let a = controller?.addData(data, "Image \(Date.now.formatted(.iso8601.year().month().day().time(includingFractionalSeconds: false))).png".replacingOccurrences(of: ":", with: "."), .png) {
                 controller?.insertFiles([a])
             }
@@ -711,6 +723,17 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
     }
 
     // MARK: Checkbox clicks
+
+    /// Over a checkbox the pointer is an arrow, not the text I-beam, like Notes.
+    override func mouseMoved(with event: NSEvent) {
+        let p = convert(event.locationInWindow, from: nil)
+        let point = CGPoint(x: p.x - textContainerOrigin.x, y: p.y - textContainerOrigin.y)
+        if core.checkboxLine(at: point, layout: textLayoutManager) != nil {
+            NSCursor.arrow.set()
+            return
+        }
+        super.mouseMoved(with: event)
+    }
 
     override func mouseDown(with event: NSEvent) {
         let p = convert(event.locationInWindow, from: nil)

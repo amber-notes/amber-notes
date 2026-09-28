@@ -49,6 +49,15 @@ import Testing
         #expect(md.contains("```\nlet a = 1\nprint(a)\n```"))
     }
 
+    @Test func pastingImagesWinsOverTheirAddress() {
+        #expect(RichPaste.kind(hasImage: true, text: nil, htmlIsOnlyImage: false) == .image)
+        #expect(RichPaste.kind(hasImage: true, text: "https://example.com/cat.png", htmlIsOnlyImage: false) == .image)
+        #expect(RichPaste.kind(hasImage: true, text: "A cat", htmlIsOnlyImage: true) == .image)
+        #expect(RichPaste.kind(hasImage: true, text: "A paragraph about cats", htmlIsOnlyImage: false) == .richText)
+        #expect(RichPaste.htmlIsOnlyImage("<meta charset=utf-8><img src=\"x.png\">"))
+        #expect(!RichPaste.htmlIsOnlyImage("<p>Hello <img src=\"x.png\"></p>"))
+    }
+
     @Test func plainTextStaysPlain() {
         let md = RichTextToMarkdown.markdown(from: NSAttributedString(string: "Just words\nand more", attributes: [.font: PFont.systemFont(ofSize: 13)]))
         #expect(md == "Just words\nand more")

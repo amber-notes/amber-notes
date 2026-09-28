@@ -1,5 +1,6 @@
 import Foundation
 import SwiftData
+import ImageIO
 import UniformTypeIdentifiers
 
 /// A file kept in Pane (PDF, spreadsheet, image…). Notes embed it with
@@ -85,6 +86,25 @@ enum FileStore {
     }
 }
 
+/// Image heights from their real proportions, for the width images show at.
+enum ImageSizes {
+    nonisolated(unsafe) static var aspect: [UUID: CGFloat] = [:]
+    static let maxWidth: CGFloat = 520
+
+    static func height(for e: LineEmbed) -> CGFloat {
+        guard case .image(let id, _) = e.kind, let a = aspect[id], a > 0 else { return 220 }
+        return min(max(maxWidth / a, 80), 560)
+    }
+
+    /// Reads the image's pixel size once and remembers its aspect ratio.
+    static func learn(_ id: UUID, url: URL) {
+        guard aspect[id] == nil, let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+              let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [CFString: Any],
+              let w = props[kCGImagePropertyPixelWidth] as? CGFloat, let h = props[kCGImagePropertyPixelHeight] as? CGFloat, h > 0 else { return }
+        aspect[id] = w / h
+    }
+}
+
 /// A single-line embed in a note: a file, an image, or a link preview.
 struct LineEmbed: Equatable {
     enum Kind: Equatable {
@@ -122,7 +142,7 @@ struct LineEmbed: Equatable {
     var height: CGFloat {
         switch kind {
         case .file: 60
-        case .image: 220
+        case .image: ImageSizes.height(for: self)
         case .link: 76
         case .note: 58
         }
