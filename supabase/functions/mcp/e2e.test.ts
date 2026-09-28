@@ -519,3 +519,35 @@ Deno.test({ name: "realtime: my changes reach my devices and nobody else's", ign
     await call("delete_note", { id });
   }
 });
+
+// MARK: Sync contract (what the app relies on)
+
+Deno.test({ name: "sync: a push based on an old version changes nothing; pins don't make revisions", ignore: !enabled || !api || !userJwt }, async () => {
+  const app = restAs(userJwt!);
+  const id = (await call("create_note", { body: `Sync ${crypto.randomUUID().slice(0, 6)}\nv1` })).data.created.id;
+  const [row] = (await app.get(`notes?id=eq.${id}&select=version,server_updated_at`)).json;
+  assertEquals(row.version, 1);
+  await call("append_to_note", { id, text: "from the AI" });
+  // The app edited version 1 while the AI made version 2: its guarded push must match nothing.
+  const stale = await app.send("PATCH", `notes?id=eq.${id}&version=eq.1`, { body: "app edit on v1" });
+  assertEquals(stale.json, []);
+  const fresh = await app.send("PATCH", `notes?id=eq.${id}&version=eq.2`, { body: "app edit on v2" });
+  assertEquals(fresh.json[0].version, 3);
+  assert(fresh.json[0].server_updated_at > row.server_updated_at, "the server clock moves on every write");
+  const before = (await call("note_history", { id })).data.revisions.length;
+  await call("pin_note", { id, pinned: true });
+  assertEquals((await call("note_history", { id })).data.revisions.length, before, "pinning isn't a body change");
+  assertEquals((await call("note_history", { id })).data.revisions[0].replaced_by, "app");
+  await call("delete_note", { id });
+});
+
+Deno.test({ name: "sync: deleting forever leaves no text behind", ignore: !enabled || !api || !userJwt }, async () => {
+  const app = restAs(userJwt!);
+  const id = (await call("create_note", { body: "Forget me\nsecret one" })).data.created.id;
+  await call("edit_note", { id, edits: [{ old_text: "secret one", new_text: "secret two" }] });
+  assertEquals((await app.get(`note_revisions?note_id=eq.${id}&select=id`)).json.length, 1);
+  // What the app does for Delete Forever.
+  await app.send("PATCH", `notes?id=eq.${id}`, { body: "", deleted_at: new Date().toISOString() });
+  assertEquals((await app.get(`note_revisions?note_id=eq.${id}&select=id`)).json, []);
+  assert((await call("read_note", { id })).error, "purged notes are gone for AI tools too");
+});
