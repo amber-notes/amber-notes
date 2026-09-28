@@ -55,6 +55,7 @@
 		ED60264B582697DA27C9AFC3 /* CardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24F0468D706470F75BC78618 /* CardView.swift */; };
 		F0908D82E0F6170762606684 /* tracker-prefixed.xlsx in Resources */ = {isa = PBXBuildFile; fileRef = 591D65AE1B7FABAAE04A733D /* tracker-prefixed.xlsx */; };
 		F25FA34F43518D77EB9C9120 /* EditorController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96BF2077E54147D5949A2E4B /* EditorController.swift */; };
+		F5DFE70493F7E13C3AAA35FD /* HomeScreenTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45E841E864DEFA026AC0CF16 /* HomeScreenTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -90,6 +91,7 @@
 		37C6B4F675EF00B712CB8496 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		3891EC4D2DC7BF10221F3CBC /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		41682433DF625FE3A5BBD36E /* PaneUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PaneUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		45E841E864DEFA026AC0CF16 /* HomeScreenTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeScreenTests.swift; sourceTree = "<group>"; };
 		47C2F5BCCDFA4A6D60E39708 /* Platform.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Platform.swift; sourceTree = "<group>"; };
 		483CA88017A03E92EEC52DFD /* AppleNotesImport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleNotesImport.swift; sourceTree = "<group>"; };
 		4FDB2F2130F537884D8B99BB /* TableChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TableChart.swift; sourceTree = "<group>"; };
@@ -288,6 +290,7 @@
 			isa = PBXGroup;
 			children = (
 				D735696D027A23734B8C6C30 /* DogfoodTests.swift */,
+				45E841E864DEFA026AC0CF16 /* HomeScreenTests.swift */,
 				F84812729F33EB0AD525982F /* MacDogfoodTests.swift */,
 				6BBAD3D7E5ED5CA9C34129EE /* MacImportTests.swift */,
 				E5FF211616E406434EE7DC37 /* SyncTests.swift */,
@@ -485,6 +488,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				CD71F1E4803FE64FB4C22727 /* DogfoodTests.swift in Sources */,
+				F5DFE70493F7E13C3AAA35FD /* HomeScreenTests.swift in Sources */,
 				8074971A34AC94F5B9F9E20F /* MacDogfoodTests.swift in Sources */,
 				005CA83D3102FABCDD0EA094 /* MacImportTests.swift in Sources */,
 				4F2E162B27450D4C56EACFF6 /* SyncTests.swift in Sources */,
