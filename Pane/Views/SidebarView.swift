@@ -54,6 +54,12 @@ struct SidebarView: View {
             }
         }
         .listStyle(.sidebar)
+        // Right-click anywhere in the sidebar; a folder's own menu comes from its row.
+        .contextMenu(forSelectionType: Scope.self) { items in
+            if items.isEmpty || items.contains(.all) || items.contains(.trash) {
+                Button("New Folder", systemImage: "folder.badge.plus") { startNewFolder(nil) }
+            }
+        }
         .dropDestination(for: PaneDragItem.self) { items, _ in
             // Dropping a folder on empty sidebar space moves it to the top level.
             var moved = false
