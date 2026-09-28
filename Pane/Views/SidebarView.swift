@@ -39,9 +39,12 @@ struct SidebarView: View {
     var body: some View {
         List(selection: $scope) {
             Section {
-                row("All Notes", icon: "tray.full", count: live.count)
-                    .tag(Scope.all)
-                    .accessibilityIdentifier("sidebar.all")
+                // "All Notes" only earns its row once there's more than one folder.
+                if folders.count > 1 {
+                    row("All Notes", icon: "tray.full", count: live.count)
+                        .tag(Scope.all)
+                        .accessibilityIdentifier("sidebar.all")
+                }
                 ForEach(roots) { folder in
                     FolderTree(folder: folder, dropTarget: $dropTarget, rename: startRename, newSub: startNewFolder, delete: deleteFolder)
                 }
@@ -54,6 +57,8 @@ struct SidebarView: View {
             }
         }
         .listStyle(.sidebar)
+        .onAppear(perform: settleScope)
+        .onChange(of: folders.count) { _, _ in settleScope() }
         // Right-click anywhere in the sidebar; a folder's own menu comes from its row.
         .contextMenu(forSelectionType: Scope.self) { items in
             if items.isEmpty || items.contains(.all) || items.contains(.trash) {
@@ -93,20 +98,6 @@ struct SidebarView: View {
             #endif
         }
         #if os(macOS)
-        // Like Notes: New Folder lives at the foot of the sidebar.
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            HStack {
-                Button { startNewFolder(nil) } label: {
-                    Label("New Folder", systemImage: "plus.circle")
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
-                .accessibilityIdentifier("sidebar.newFolder")
-                Spacer()
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-        }
         .onReceive(NotificationCenter.default.publisher(for: .paneNewFolder)) { _ in startNewFolder(nil) }
         #endif
         .sheet(isPresented: $showSettings) {
@@ -137,6 +128,13 @@ struct SidebarView: View {
             }
         } icon: {
             Image(systemName: icon).foregroundStyle(SidebarStyle.icon)
+        }
+    }
+
+    /// With a single folder there's no "All Notes" row, so show that folder instead.
+    private func settleScope() {
+        if folders.count <= 1, scope == .all || scope == nil, let only = folders.first {
+            scope = .folder(only.id)
         }
     }
 
