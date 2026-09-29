@@ -86,6 +86,7 @@ targets:
     platform: iOS
     sources:
       - PaneShare
+      - Pane/Views/AppMark.swift
       - Pane/Model/Inbox.swift
       - Pane/Model/RichTextToMarkdown.swift
       - Pane/Editor/Platform.swift

@@ -109,7 +109,7 @@ struct ShareSheet: View {
             Spacer()
             VStack(alignment: .leading, spacing: 14) {
                 HStack {
-                    Image("Mark").resizable().scaledToFit().frame(width: 30, height: 30)
+                    AppMark(size: 30)
                     Text("Save to Amber Notes").font(.headline)
                     Spacer()
                     Button("Cancel", action: model.cancel).font(.body)

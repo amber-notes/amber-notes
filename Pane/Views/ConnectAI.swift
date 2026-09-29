@@ -224,7 +224,7 @@ struct ConsentSheet: View {
 
     var body: some View {
         VStack(spacing: 20) {
-            Image("Mark").resizable().scaledToFit().frame(width: 56, height: 56).accessibilityHidden(true)
+            AppMark(size: 56)
             content
         }
         .padding(28)

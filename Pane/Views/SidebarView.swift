@@ -74,7 +74,7 @@ private struct AccountButton: View {
 struct SidebarHeader: View {
     var body: some View {
         HStack(spacing: 8) {
-            Image("MarkTight").resizable().scaledToFit().frame(width: 21, height: 21).accessibilityHidden(true)
+            AppMark(size: 21)
             Text("Amber Notes").font(.system(size: 15, weight: .semibold))
             Spacer(minLength: 0)
         }

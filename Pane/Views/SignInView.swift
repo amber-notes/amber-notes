@@ -39,11 +39,7 @@ struct SignInView: View {
     private var card: some View {
         VStack(spacing: 24) {
             VStack(spacing: 14) {
-                Image("Mark")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 72, height: 72)
-                    .accessibilityHidden(true)
+                AppMark(size: 72)
                 Text("Sign in to Amber Notes")
                     .font(.title2.weight(.bold))
                     .multilineTextAlignment(.center)
