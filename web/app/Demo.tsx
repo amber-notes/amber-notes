@@ -5,9 +5,9 @@ import { AIGlyph } from "@/lib/ai-glyphs";
 import d from "./demo.module.css";
 
 // A mini Mac desktop: the real Amber Notes window (frames captured from the app with demo data, one
-// session) and a ChatGPT window beside it. One story in four parts, narrated above the desk and shown
-// on the story bar: you ask ChatGPT to plan Lisbon; it writes the whole note in Amber Notes (it lands
-// tinted, with the app's receipt); you change your mind; it edits just those two lines. Then it resets
+// session) and a ChatGPT window beside it. One story in two parts, shown on the labelled bar on the
+// desk: you ask ChatGPT to plan Lisbon and it writes the whole note in Amber Notes (it lands tinted,
+// with the app's receipt); you change your mind and it edits just those two lines. Then it resets
 // and loops. One clock drives it; it pauses off-screen, in a hidden tab and under the pointer.
 
 // The frames, named as captured. A recapture with the same names is a change to this constant.
@@ -39,7 +39,11 @@ const ASKS: Ask[] = [
   { ask: "Swap day 3 for a day trip to Sintra, and add a dinner spot", answer: "Changed day 3 to Sintra and added Cervejaria Trindade for dinner. Nothing else moved.",
     land: "edited", plain: "editedPlain", pill: "pill-chatgpt-2-lines.webp", pillAlt: "ChatGPT changed 2 lines. Undo" },
 ];
-export const PARTS = ["You ask ChatGPT", "It writes the whole note in Amber Notes", "You change your mind", "It edits just those lines"];
+// The bar's two parts: a short label under each segment, and what a screen reader hears.
+const PARTS = [
+  { label: "Writes a note", aria: "ChatGPT writes a note" },
+  { label: "Edits it", aria: "ChatGPT edits it" },
+];
 
 // The clock (ms). The app alone, then ChatGPT arrives; each ask is typed, sent, thought about and
 // answered; the edit lands with its tint and the receipt; after a moment the tint fades as in the app.
@@ -55,9 +59,9 @@ const BEATS: Beat[] = (() => {
   });
 })();
 const TOTAL = BEATS[1].faded + END;
-// Where each part of the story starts (for the bar, the captions and jumping).
-// Each caption switches on its visual beat: the ask, the note landing, the second ask, the edit landing.
-const PART_AT = [0, BEATS[0].land, BEATS[1].typeAt, BEATS[1].land, TOTAL];
+// Where each part starts (for the bar and jumping): the first ask through the note landing and its
+// hold; then the second ask through the edit landing and its hold.
+const PART_AT = [0, BEATS[1].typeAt, TOTAL];
 
 type View = {
   chat: boolean; shot: Shot; typed: string; sent: number; thinking: boolean; answered: number; pill: number; pillOut: boolean; edit: boolean; reset: boolean;
@@ -82,7 +86,6 @@ const W = 1280, KEY = 520; // design width; KEY = the top part of the desk that 
 
 export default function Demo() {
   const [view, setView] = useState<View>(at(0));
-  const [part, setPart] = useState(0);
   const [still, setStill] = useState(false);
   const [fitW, setFitW] = useState<number | null>(null);
   const clock = useRef({ t: 0, last: 0, started: false });
@@ -150,14 +153,13 @@ export default function Demo() {
       el.dataset.state = reset ? "next" : k < p ? "done" : k === p ? "now" : "next";
       el.style.setProperty("--p", String(!reset && k === p ? (t - PART_AT[k]) / (PART_AT[k + 1] - PART_AT[k]) : 0));
     });
-    return t >= TOTAL ? -1 : p;
   };
   const jump = (k: number) => { const c = clock.current; c.started = true; c.t = PART_AT[k]; };
 
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       // No motion: the whole conversation and the final note.
-      setStill(true); setPart(3); setView({ ...at(BEATS[1].faded + 500), pill: -1 }); return;
+      setStill(true); setView({ ...at(BEATS[1].faded + 500), pill: -1 }); return;
     }
     const ready = { done: false };
     Promise.all([...SHOTS.map(src), ...ASKS.map((a) => FRAMES.dir + a.pill)].map((u) => { const i = new Image(); i.src = u; return i.decode().catch(() => undefined); }))
@@ -174,8 +176,7 @@ export default function Demo() {
         if (c.t >= TOTAL + RESET) c.t = 0;
         const v = at(c.t);
         setView((o) => (JSON.stringify(o) === JSON.stringify(v) ? o : v));
-        const p = paintBar(c.t);
-        setPart((o) => (o === p ? o : p));
+        paintBar(c.t);
       }
       raf = requestAnimationFrame(tick);
     };
@@ -205,16 +206,9 @@ export default function Demo() {
 
   const hoverPause = (on: boolean) => { if (window.matchMedia("(hover: hover)").matches) pause.current.hover = on; };
   const typing = view.typed.length > 0;
-  const caption = part >= 0 ? PARTS[part] : "";
-  const captions = !still && (
-    <p className={d.caption} aria-live="polite">
-      <span key={caption} className={d.captionText}>{caption}</span>
-    </p>
-  );
 
   return (
     <div className={d.wrap}>
-      {captions}
       <div ref={outer} className={d.fit} style={fitW ? { width: fitW, margin: "0 auto" } : undefined}
         onPointerEnter={() => hoverPause(true)} onPointerLeave={() => hoverPause(false)}>
         <div ref={deskRef} className={d.desk} data-follow={follow || undefined}>
@@ -257,9 +251,11 @@ export default function Demo() {
 
           {!still && (
             <div className={d.story} role="group" aria-label="Demo progress">
-              {PARTS.map((name, k) => (
-                <button key={name} type="button" ref={(el) => { segs.current[k] = el; }} className={d.seg} data-state={k === 0 ? "now" : "next"}
-                  aria-label={`Part ${k + 1} of ${PARTS.length}: ${name}`} onClick={() => jump(k)}><i /></button>
+              {PARTS.map((part, k) => (
+                <button key={part.label} type="button" ref={(el) => { segs.current[k] = el; }} className={d.seg} data-state={k === 0 ? "now" : "next"}
+                  aria-label={`Part ${k + 1} of ${PARTS.length}: ${part.aria}`} onClick={() => jump(k)}>
+                  <i /><span className={d.segLabel} aria-hidden="true">{part.label}</span>
+                </button>
               ))}
             </div>
           )}

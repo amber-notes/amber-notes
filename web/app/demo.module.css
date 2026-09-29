@@ -119,21 +119,21 @@
 @keyframes shimmer { to { background-position: -200% 0; } }
 @keyframes blink { 50% { opacity: 0; } }
 /* The story bar, on the desk below the app window (in the 74 design-px gap), in white over the dunes:
-   finished parts at 90%, the current one filling solid white with a straight edge, the rest at 30%.
-   Each segment is a 24 px tall button around the line; the desk clips what falls past its edge. */
+   two parts, each a line with its label under it. The finished part's line at 90%, the current one
+   filling solid white with a straight edge, the next at 30%; the current label white, the other at 55%.
+   Each part is one button (line and label, 24 px+ tall); the desk clips what falls past its edge. */
 .story { position: absolute; left: 50%; bottom: calc(37 * var(--u)); transform: translate(-50%, 50%); z-index: 4;
-  display: flex; gap: 6px; width: min(300px, 64%); filter: drop-shadow(0 1px 2px rgba(80, 35, 0, 0.35)); }
-.seg { flex: 1; min-height: 24px; padding: 0; border: 0; background: none; cursor: pointer; display: grid; align-items: center; border-radius: 8px; }
+  display: flex; gap: 10px; width: min(280px, 60%); filter: drop-shadow(0 1px 2px rgba(80, 35, 0, 0.35)); }
+.seg { flex: 1; min-height: 24px; padding: 0; border: 0; background: none; cursor: pointer; display: grid; align-content: center; gap: 5px; border-radius: 8px; font: inherit; }
 .seg i { position: relative; display: block; height: 5px; border-radius: 99px; overflow: hidden; background: rgba(255, 255, 255, 0.3); }
 .seg i::after { content: ""; position: absolute; inset: 0; background: #fff; transform-origin: 0 50%; transform: scaleX(var(--p, 0)); }
 .seg[data-state="done"] i { background: rgba(255, 255, 255, 0.9); }
 .seg[data-state="done"] i::after { transform: scaleX(0); }
-.seg:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
-@media (hover: hover) { .seg:hover i { background: rgba(255, 255, 255, 0.5); } .seg[data-state="done"]:hover i { background: #fff; } }
-@media (max-width: 700px) { .story { gap: 4px; } .seg i { height: 4px; } }
-/* The narration above the desk: one short line per part, quiet and readable, in the first view. */
-.caption { margin: 0 0 14px; min-height: 22px; text-align: center; color: var(--ink); font-size: 16px; font-weight: 650; pointer-events: none; }
-.captionText { display: inline-block; }
-@media (prefers-reduced-motion: no-preference) { .captionText { animation: captionIn 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.1) both; } }
-@keyframes captionIn { from { opacity: 0; transform: translateY(4px); filter: blur(3px); } }
+.segLabel { font-size: 12px; font-weight: 600; line-height: 1; color: rgba(255, 255, 255, 0.55); white-space: nowrap; }
+.seg[data-state="now"] .segLabel { color: #fff; }
+@media (prefers-reduced-motion: no-preference) { .segLabel { transition: color 0.3s ease-out; } }
+.seg:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+@media (hover: hover) { .seg:hover i { background: rgba(255, 255, 255, 0.5); } .seg[data-state="done"]:hover i { background: #fff; } .seg:hover .segLabel { color: #fff; } }
+/* Phones: the gap under the window is about 20 px, so the line and label shrink to fit inside it. */
+@media (max-width: 700px) { .story { gap: 8px; } .seg { gap: 3px; } .seg i { height: 3px; } .segLabel { font-size: 10px; } }
 .live { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
