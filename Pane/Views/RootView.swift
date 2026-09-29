@@ -345,6 +345,9 @@ struct PaneCommands: Commands {
             Button("Show Version History…") { showHistory?() }
                 .disabled(showHistory == nil)
         }
+        CommandGroup(after: .help) {
+            Button("Show Setup Guide") { NotificationCenter.default.post(name: .paneShowSetupGuide, object: nil) }
+        }
         CommandGroup(replacing: .importExport) {
             Button("Import from Apple Notes…") { importNotes?() }
                 .disabled(importNotes == nil)

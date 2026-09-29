@@ -276,6 +276,20 @@ struct AppGate: View {
         }
     }
 
+    /// Captures: `-captureSetupFlow` walks the setup card from step 1 to "You're all set", a few
+    /// seconds a step, as if each thing had just happened.
+    private func playSetupFlow() {
+        Task { @MainActor in
+            var p = SetupProgress()
+            setup.apply(p)
+            for change in [{ (q: inout SetupProgress) in q.imported = true }, { $0.connected = true }, { $0.aiEdits = 1 }] {
+                try? await Task.sleep(for: .seconds(2.6))
+                change(&p)
+                setup.apply(p)
+            }
+        }
+    }
+
     private var gate: some View {
         Group {
             switch backend.state {
@@ -302,7 +316,10 @@ struct AppGate: View {
         .background(WindowShaper(compact: backend.state == .signedOut, cardSize: cardSize))
         #endif
         .animation(.easeOut(duration: 0.25), value: backend.state)
-        .onAppear { if let p = CaptureScreen.setupProgress { setup.apply(p) } }
+        .onAppear {
+            if let p = CaptureScreen.setupProgress { setup.apply(p) }
+            if CaptureScreen.setupFlow { playSetupFlow() }
+        }
         .task(id: backend.state) {
             guard case .signedIn = backend.state, let client = backend.client else {
                 setup.attach(account: nil, service: nil)
@@ -324,6 +341,9 @@ struct AppGate: View {
         .onChange(of: sync.status) { _, _ in Task { await setup.refresh() } }
         .onReceive(NotificationCenter.default.publisher(for: .paneNotesBrought)) { _ in
             Task { await setup.mark("imported") }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .paneShowSetupGuide)) { _ in
+            Task { await setup.reset() }
         }
         .onChange(of: phase) { _, p in
             if p == .active {
@@ -412,6 +432,10 @@ struct CaptureScreen: View {
 
     static var requested: String? {
         ProcessInfo.processInfo.arguments.contains("-uitest") ? Capture.argument("-captureScreen") : nil
+    }
+
+    static var setupFlow: Bool {
+        ProcessInfo.processInfo.arguments.contains("-uitest") && ProcessInfo.processInfo.arguments.contains("-captureSetupFlow")
     }
 
     static var setupProgress: SetupProgress? {

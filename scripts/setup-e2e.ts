@@ -79,6 +79,13 @@ try {
   s = await state(a);
   check("celebrated and dismissed stick", s.celebrated && s.dismissed, s);
 
+  // Show Setup Guide: back to step 1; the AI facts stay.
+  await as(a, (tx) => tx`select public.pane_setup_mark('reset')`);
+  s = await state(a);
+  check("reset clears imported, dismissed and celebrated", !s.imported && !s.dismissed && !s.celebrated && s.ai_edits === 2, s);
+  const bAfter = await state(b);
+  check("reset touches only your own card", bAfter.ai_edits === 0, bAfter);
+
   // Devices: two installs of the same account.
   await as(a, (tx) => tx`select public.pane_seen_device(${crypto.randomUUID()}, 'macos')`);
   await as(a, (tx) => tx`select public.pane_seen_device(${crypto.randomUUID()}, 'ios')`);

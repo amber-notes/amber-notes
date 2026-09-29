@@ -304,6 +304,35 @@ import Testing
         }
     }
 
+    /// The Get set up card at the top of the note list at real size, each step and "You're all
+    /// set", light and dark, drawn as a front window. Captured by the shell watcher like `demoFrames`.
+    @Test func setupInContext() async throws {
+        guard let dir = ProcessInfo.processInfo.environment["AMBER_DEMO_FRAMES"].map({ URL(fileURLWithPath: $0) }) else { return }
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let states: [(String, SetupProgress)] = [
+            ("step1", SetupProgress()), ("step2", SetupProgress(imported: true)),
+            ("step3", SetupProgress(imported: true, connected: true)), ("done", SetupProgress(imported: true, connected: true, aiEdits: 1)),
+        ]
+        for dark in [false, true] {
+            for (name, p) in states {
+                let c = try AppSnapshotTests.container()
+                let store = SetupStore(progress: SetupProgress())
+                store.apply(p)
+                try await AppSnapshotTests.withLastNote(c, "Evening tracker") {
+                    let root = RootView().modelContainer(c).environment(store).environment(\.controlActiveState, .key)
+                    let w = Self.window(root, size: CGSize(width: 1180, height: 720), dark: dark)
+                    defer { w.orderOut(nil); w.close() }
+                    try "\(w.windowNumber)".write(to: dir.appending(path: "window-id"), atomically: true, encoding: .utf8)
+                    try? await Task.sleep(for: .seconds(1.6))
+                    let shot = "setup-mac-\(name)-\(dark ? "dark" : "light")"
+                    try "".write(to: dir.appending(path: "ready-\(shot)"), atomically: true, encoding: .utf8)
+                    let done = dir.appending(path: "shot-\(shot)")
+                    for _ in 0..<200 where !FileManager.default.fileExists(atPath: done.path) { try? await Task.sleep(for: .milliseconds(50)) }
+                }
+            }
+        }
+    }
+
     static func textViews(in view: NSView?) -> [PaneTextView] {
         guard let view else { return [] }
         return (view as? PaneTextView).map { [$0] } ?? view.subviews.flatMap { textViews(in: $0) }

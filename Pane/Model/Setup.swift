@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import Observation
 import Supabase
 
@@ -33,8 +34,8 @@ struct SetupProgress: Equatable, Decodable {
     /// The first step not done yet; nil when all three are.
     var current: Step? { Step.allCases.first { !isDone($0) } }
 
-    /// The first AI edit arrived and hasn't been celebrated yet: say "That was your AI." once.
-    var celebrating: Bool { aiEdits > 0 && !celebrated && !dismissed }
+    /// Every step is done and it hasn't been celebrated yet: "You're all set", once.
+    var celebrating: Bool { current == nil && !celebrated && !dismissed }
 
     /// Shown until hidden, or until the celebration has been seen.
     var visible: Bool { !dismissed && !celebrated }
@@ -112,25 +113,48 @@ final class SetupStore {
         case "celebrated": progress?.celebrated = true
         default: return
         }
+        if let p = progress, p.celebrating, !showingCelebration { celebrate() }
         try? await service?.mark(step)
     }
 
-    /// "That was your AI." stays a few seconds, then the card goes and doesn't come back.
+    /// Help › Show Setup Guide: back to step 1, here and on the server. Whether an AI is connected
+    /// and has edited a note are facts, so those steps tick themselves as you go.
+    func reset() async {
+        celebrationTask?.cancel()
+        showingCelebration = false
+        guard var p = progress else { return }
+        p.imported = false
+        p.dismissed = false
+        p.celebrated = false
+        withAnimation(.smooth(duration: 0.35)) { progress = p }
+        try? await service?.mark("reset")
+    }
+
+    /// "You're all set" draws itself, holds a moment, then the card folds away for good and the
+    /// list moves up.
     private func celebrate() {
         showingCelebration = true
         celebrationTask?.cancel()
         celebrationTask = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(6))
+            try? await Task.sleep(for: .seconds(Self.celebration))
             guard !Task.isCancelled, let self else { return }
+            withAnimation(.smooth(duration: 0.45)) {
+                self.progress?.celebrated = true
+                self.showingCelebration = false
+            }
             await self.mark("celebrated")
-            self.showingCelebration = false
         }
     }
+
+    /// The check draws in about 0.8 s, then holds about 2.5 s.
+    nonisolated(unsafe) static var celebration: Double = 3.3
 }
 
 extension Notification.Name {
     /// Notes arrived from outside: an Apple Notes import, or items shared into the app.
     static let paneNotesBrought = Notification.Name("pane.notesBrought")
+    /// Help › Show Setup Guide (Settings on iPhone): the setup card back at step 1.
+    static let paneShowSetupGuide = Notification.Name("pane.showSetupGuide")
 }
 
 /// A random id for this install, used only to count how many devices an account uses.

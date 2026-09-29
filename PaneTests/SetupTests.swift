@@ -69,8 +69,40 @@ private final class FakeSetup: SetupService, @unchecked Sendable {
         #expect(store.visible && !store.showingCelebration)
         fake.answer.aiEdits = 1
         await store.refresh(force: true)
-        #expect(store.showingCelebration, "That was your AI.")
+        #expect(store.showingCelebration, "You're all set")
         #expect(store.visible)
+    }
+
+    @Test func theLastStepCelebratesThenTheCardGoesForGood() async throws {
+        SetupStore.celebration = 0.2
+        defer { SetupStore.celebration = 3.3 }
+        let fake = FakeSetup()
+        let store = SetupStore()
+        store.attach(account: UUID(), service: fake)
+        fake.answer = SetupProgress(imported: true, connected: true, aiEdits: 1)
+        await store.refresh(force: true)
+        #expect(store.showingCelebration, "You're all set")
+        try await Task.sleep(for: .seconds(0.6))
+        #expect(!store.showingCelebration)
+        #expect(!store.visible)
+        #expect(fake.marked == ["celebrated"])
+    }
+
+    @Test func showSetupGuideGoesBackToStepOneHereAndOnTheServer() async {
+        let fake = FakeSetup()
+        let store = SetupStore()
+        store.attach(account: UUID(), service: fake)
+        fake.answer = SetupProgress(imported: true, connected: true, aiEdits: 4, celebrated: true)
+        await store.refresh(force: true)
+        #expect(!store.visible)
+        await store.reset()
+        #expect(store.visible)
+        #expect(store.progress?.current == .bring)
+        #expect(!store.showingCelebration, "it celebrates only once every step is done again")
+        #expect(fake.marked == ["reset"])
+        // Bringing notes finishes it: connecting and the AI edit are already facts.
+        await store.mark("imported")
+        #expect(store.showingCelebration)
     }
 
     @Test func markingUpdatesAtOnceAndTellsTheServer() async {
