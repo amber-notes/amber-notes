@@ -1,6 +1,6 @@
 /* Home page: warm, simple, centred. One promise, the app itself, two plain sections (AI, import),
    a grid of reasons, how it's built, and one closing ask. Colours come from the page theme. */
-.main { width: 100%; max-width: 1240px; margin: 0 auto; padding: 0 20px; box-sizing: border-box; display: grid; gap: 120px; align-content: start; overflow-x: clip; }
+.main { width: 100%; max-width: 1240px; margin: 0 auto; padding: 0 20px; box-sizing: border-box; display: grid; gap: 120px; align-content: start; overflow-x: clip; overflow-clip-margin: 40px; }
 @media (max-width: 700px) { .main { gap: 88px; } }
 
 .hero { display: grid; justify-items: center; text-align: center; gap: 26px; padding-top: 56px; }

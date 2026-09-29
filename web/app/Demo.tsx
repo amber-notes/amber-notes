@@ -10,12 +10,18 @@ import d from "./demo.module.css";
 // on the lines the AI touched. Scripted, no network.
 
 type Shot = "before" | "paella" | "bought";
-type Scene = { ask: string; answer: string; shot: Shot };
+// Where the lines that changed sit in the 1180×720 capture (measured from the captures' own tint).
+type Band = { top: number; height: number };
+type Scene = { ask: string; answer: string; from: Shot; to: Shot; band: Band };
 
+// One story, each step building on the last.
 const SCENES: Scene[] = [
-  { ask: "Add what I need for Sunday's paella", answer: "Added paella rice, saffron, chorizo, chicken thighs and smoked paprika to your Groceries note.", shot: "paella" },
-  { ask: "I got the lemons and coffee, tick them off", answer: "Done. Lemons and coffee beans are ticked off in Groceries.", shot: "bought" },
-  { ask: "What's still left to buy?", answer: "Oat milk, lemons, coffee beans, fresh basil, burrata, cherry tomatoes, olive oil and dark chocolate.", shot: "before" },
+  { ask: "Add what I need for Sunday's paella", answer: "Added paella rice, saffron, chorizo, chicken thighs and smoked paprika to your Groceries note.",
+    from: "before", to: "paella", band: { top: 175, height: 117 } },
+  { ask: "I got the lemons and coffee, tick them off", answer: "Done. Lemons and coffee beans are ticked off in Groceries.",
+    from: "paella", to: "bought", band: { top: 434, height: 47 } },
+  { ask: "What's still left to buy?", answer: "Eleven things: the paella rice, saffron, chorizo, chicken thighs and paprika, plus oat milk, basil, burrata, cherry tomatoes, olive oil and dark chocolate.",
+    from: "bought", to: "bought", band: { top: 175, height: 259 } },
 ];
 
 const ALT: Record<Shot, string> = {
@@ -24,31 +30,29 @@ const ALT: Record<Shot, string> = {
   bought: "The Groceries note with lemons and coffee beans just ticked off, tinted amber",
 };
 
-export default function Demo({ wall = "dune" }: { wall?: "dune" | "ember" }) {
+const SHOTS: Shot[] = ["before", "paella", "bought"];
+
+export default function Demo() {
   const [scene, setScene] = useState<number | null>(null);
   const [typed, setTyped] = useState("");
   const [step, setStep] = useState(0); // 0 idle · 1 typing · 2 sent · 3 thinking · 4 answered · 5 note updated
-  const [wallpaper, setWallpaper] = useState(wall);
+  const [run, setRun] = useState(0); // bumps on every play, so the change marker animates again
   const timers = useRef<number[]>([]);
   const touched = useRef(false);
   const outer = useRef<HTMLDivElement>(null);
 
-  // Preview the other wallpaper with ?wall=ember.
-  useEffect(() => {
-    const w = new URLSearchParams(location.search).get("wall");
-    if (w === "dune" || w === "ember") setWallpaper(w);
-  }, []);
+  const cancel = () => { timers.current.forEach(clearTimeout); timers.current = []; };
 
-  function play(i: number) {
-    timers.current.forEach(clearTimeout);
-    timers.current = [];
+  /// Plays scene i from its starting state. With `chain`, the next scenes follow.
+  function play(i: number, chain = false) {
+    cancel();
     const s = SCENES[i];
-    setScene(i);
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { setTyped(""); setStep(5); return; }
-    setStep(1); setTyped("");
-    let t = 0;
+    setScene(i); setRun((r) => r + 1); setTyped("");
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { setStep(5); return; }
+    setStep(1);
+    let t = 120;
     for (let k = 1; k <= s.ask.length; k++) {
-      t += 32;
+      t += 30;
       timers.current.push(window.setTimeout(() => setTyped(s.ask.slice(0, k)), t));
     }
     const at = (ms: number, f: () => void) => timers.current.push(window.setTimeout(f, t + ms));
@@ -56,44 +60,61 @@ export default function Demo({ wall = "dune" }: { wall?: "dune" | "ember" }) {
     at(650, () => setStep(3));
     at(1500, () => setStep(4));
     at(1850, () => setStep(5));
+    if (chain && i + 1 < SCENES.length) at(4200, () => play(i + 1, true));
   }
 
   useEffect(() => {
     const el = outer.current;
     if (!el) return;
     const io = new IntersectionObserver(([e]) => {
-      if (e.isIntersecting && !touched.current) { play(0); io.disconnect(); }
+      if (e.isIntersecting && !touched.current) { play(0, true); io.disconnect(); }
     }, { threshold: 0.45 });
     io.observe(el);
-    return () => { io.disconnect(); timers.current.forEach(clearTimeout); };
+    return () => { io.disconnect(); cancel(); };
   }, []);
 
   const s = scene === null ? null : SCENES[scene];
-  const shown: Shot = s && step >= 5 ? s.shot : "before";
+  const done = s !== null && step >= 5;
+  const shown: Shot = s ? (done ? s.to : s.from) : "before";
+  const replay = () => {
+    touched.current = true;
+    if (scene === null || (scene === SCENES.length - 1 && done)) play(0, true);
+    else play(scene);
+  };
 
   return (
     <div className={d.wrap}>
       <div ref={outer} className={d.fit}>
-        <div className={d.desk} data-wall={wallpaper}>
-          <Wallpaper kind={wallpaper} />
+        <div className={d.desk}>
+          <Wallpaper />
 
           <div className={d.app}>
-            {(["before", "paella", "bought"] as Shot[]).map((k) => (
+            {SHOTS.map((k) => (
               <img key={k} src={`/demo/app-${k}.webp`} width={1180} height={720} alt={k === shown ? ALT[k] : ""}
                 aria-hidden={k !== shown} className={d.shot} data-on={k === shown || undefined}
-                loading={k === "before" ? "eager" : "lazy"} decoding="async" draggable={false} />
+                loading="eager" decoding="async" draggable={false} />
             ))}
-            {s && step >= 5 && s.shot !== "before" && <div key={`sync${scene}`} className={d.synced}>Updated on your iPhone too</div>}
+            {done && s && (
+              <div key={`band${run}`} className={d.band} aria-hidden="true"
+                style={{ top: `calc(${s.band.top - 3} * var(--u))`, height: `calc(${s.band.height + 6} * var(--u))` }} />
+            )}
+            {done && s && s.from !== s.to && <div key={`sync${run}`} className={d.synced}>Updated on your iPhone too</div>}
           </div>
 
           <div className={d.chat} aria-label="An AI chat">
-            <div className={d.chatBar}><div className={d.lights}><i /><i /><i /></div><span className={d.chatTitle}><AIGlyph name="openai" size={16} />ChatGPT</span></div>
+            <div className={d.chatBar}>
+              <div className={d.lights}><i /><i /><i /></div>
+              <span className={d.chatTitle}><AIGlyph name="openai" size={16} />ChatGPT</span>
+              <button type="button" className={d.replay} onClick={replay} aria-label="Replay the demo">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2.5 8a5.5 5.5 0 1 0 1.7-4" /><path d="M2.5 2.2v2.6h2.6" /></svg>
+              </button>
+            </div>
             <div className={d.msgs}>
               {!s && <p className={d.hint}>What can I help with?</p>}
-              {s && step >= 2 && <div key={`q${scene}`} className={d.me}>{s.ask}</div>}
+              {s && step >= 2 && <div key={`q${run}`} className={d.me}>{s.ask}</div>}
               {s && step === 3 && <div className={d.thinking}><span className={d.tool}>Talking to Amber Notes…</span></div>}
               {s && step >= 4 && (
-                <div key={`a${scene}`} className={d.ai}>
+                <div key={`a${run}`} className={d.ai}>
                   <span className={d.tool}>Used Amber Notes</span>
                   <p>{s.answer}</p>
                 </div>
@@ -115,31 +136,13 @@ export default function Demo({ wall = "dune" }: { wall?: "dune" | "ember" }) {
         ))}
       </div>
       <p className={d.psst}>Psst… it's interactive. Tap one.</p>
-      <p className={d.live} aria-live="polite">{s && step >= 5 ? s.answer : ""}</p>
+      <p className={d.live} aria-live="polite">{done && s ? s.answer : ""}</p>
     </div>
   );
 }
 
-/// Generated, warm, macOS-like wallpapers (no photos, nothing of Apple's).
-function Wallpaper({ kind }: { kind: "dune" | "ember" }) {
-  if (kind === "ember") {
-    return (
-      <svg className={d.wall} viewBox="0 0 1280 840" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-        <defs>
-          <radialGradient id="e0" cx="30%" cy="20%" r="95%"><stop offset="0" stopColor="#ffb25a" /><stop offset=".45" stopColor="#c8561c" /><stop offset="1" stopColor="#3a1408" /></radialGradient>
-          <linearGradient id="e1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#ffd08a" stopOpacity=".9" /><stop offset="1" stopColor="#e0662a" stopOpacity="0" /></linearGradient>
-          <linearGradient id="e2" x1="1" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#7a2410" /><stop offset="1" stopColor="#ff9c45" stopOpacity=".7" /></linearGradient>
-          <filter id="eb"><feGaussianBlur stdDeviation="28" /></filter>
-        </defs>
-        <rect width="1280" height="840" fill="url(#e0)" />
-        <g filter="url(#eb)">
-          <path d="M-100 520C200 360 420 300 700 360s520 40 700-120v600H-100Z" fill="url(#e2)" />
-          <path d="M-80 260C180 120 480 90 760 180s420 60 620-40v220c-240 120-460 120-700 40S140 360-80 460Z" fill="url(#e1)" opacity=".75" />
-          <path d="M-100 760c300-140 600-160 900-80s420 20 580-60v320H-100Z" fill="#4a1a0a" opacity=".7" />
-        </g>
-      </svg>
-    );
-  }
+/// A generated, warm, macOS-like wallpaper (no photo, nothing of Apple's).
+function Wallpaper() {
   return (
     <svg className={d.wall} viewBox="0 0 1280 840" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
       <defs>

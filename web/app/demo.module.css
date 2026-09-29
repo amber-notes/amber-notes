@@ -1,6 +1,9 @@
 /* The home page demo: a small Mac desktop, drawn at a 1280-wide design size in container units. */
 .wrap { display: grid; justify-items: center; gap: 18px; width: 100%; margin-top: -16px; }
-.fit { width: 100%; max-width: 1200px; container-type: inline-size; }
+.fit { width: 100%; max-width: 1280px; container-type: inline-size; }
+/* On wide screens the desktop is exactly 1280 wide, so the app capture shows at its own size
+   (1180 CSS px from a 2x capture) with no resampling. It reaches 40 px past the text column. */
+@media (min-width: 1320px) { .fit { width: 1280px; margin: 0 -40px; } }
 /* Everything inside is laid out in design pixels (1280 wide) turned into container units, so it
    stays crisp at any size (a scaled transform would blur the app capture). */
 .desk {
@@ -28,6 +31,27 @@
   box-shadow: 0 0 0 calc(0.5 * var(--u)) rgba(0, 0, 0, 0.22), 0 calc(30 * var(--u)) calc(60 * var(--u)) calc(-12 * var(--u)) rgba(40, 15, 0, 0.5), 0 calc(10 * var(--u)) calc(20 * var(--u)) calc(-8 * var(--u)) rgba(40, 15, 0, 0.28);
 }
 .chatBar { position: relative; display: flex; align-items: center; justify-content: center; font-size: calc(13 * var(--u)); font-weight: 600; color: #3a3a3c; box-shadow: inset 0 calc(-0.5 * var(--u)) 0 rgba(0, 0, 0, 0.08); }
+.replay {
+  position: absolute; right: calc(8 * var(--u)); top: 50%; transform: translateY(-50%);
+  width: max(24px, calc(28 * var(--u))); height: max(24px, calc(28 * var(--u))); padding: 0; border: 0; border-radius: 50%;
+  display: grid; place-items: center; background: transparent; color: #6e6e73; cursor: pointer;
+}
+.replay svg { width: max(12px, calc(15 * var(--u))); height: max(12px, calc(15 * var(--u))); }
+.replay:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+@media (hover: hover) { .replay:hover { background: #f1f1f1; color: #1d1d1f; } }
+@media (prefers-reduced-motion: no-preference) { .replay { transition: background-color 0.15s ease-out; } .replay:active { transform: translateY(-50%) scale(0.94); } }
+/* The lines that just changed: an amber outline that pulses in, then rests. */
+.band {
+  position: absolute; left: calc(480 * var(--u)); width: calc(690 * var(--u)); border-radius: calc(8 * var(--u));
+  box-shadow: 0 0 0 calc(2 * var(--u)) #f0901a, 0 0 calc(22 * var(--u)) rgba(240, 144, 26, 0.45); pointer-events: none;
+}
+@media (prefers-reduced-motion: no-preference) { .band { animation: band 1.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; } }
+@keyframes band {
+  0% { opacity: 0; transform: scale(1.03); }
+  20% { opacity: 1; transform: none; }
+  40% { box-shadow: 0 0 0 calc(3 * var(--u)) #f0901a, 0 0 calc(36 * var(--u)) rgba(240, 144, 26, 0.7); }
+  100% { opacity: 1; }
+}
 .chatTitle { display: inline-flex; align-items: center; gap: calc(7 * var(--u)); }
 .chatTitle svg { width: calc(16 * var(--u)); height: calc(16 * var(--u)); color: #0d0d0d; }
 .lights { position: absolute; left: calc(14 * var(--u)); top: calc(14 * var(--u)); display: flex; gap: calc(8 * var(--u)); }
