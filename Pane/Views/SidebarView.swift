@@ -115,6 +115,7 @@ struct SidebarView: View {
     @State private var newFolderParent: Folder??
     @State private var nameDraft = ""
     @State private var dropTarget: UUID?
+    @State private var deletingFolder: Folder?
     @State private var showSettings = false
     @FocusedValue(\.importSheetAction) private var importSheet
     @Environment(Backend.self) private var backend: Backend?
@@ -202,6 +203,14 @@ struct SidebarView: View {
         .sheet(isPresented: $showSettings) {
             if let backend { SettingsView(backend: backend, sync: sync) }
         }
+        .confirmationDialog("Delete \u{201C}\(deletingFolder?.name ?? "")\u{201D}?", isPresented: Binding(get: { deletingFolder != nil }, set: { if !$0 { deletingFolder = nil } }), titleVisibility: .visible) {
+            Button("Delete Folder", role: .destructive) {
+                if let f = deletingFolder { performDelete(f) }
+                deletingFolder = nil
+            }
+        } message: {
+            Text("Its notes move to Recently Deleted, where you can recover them for 30 days.")
+        }
         .alert(renaming == nil ? "New Folder" : "Rename Folder", isPresented: Binding(
             get: { renaming != nil || newFolderParent != nil },
             set: { if !$0 { renaming = nil; newFolderParent = nil } }
@@ -212,7 +221,7 @@ struct SidebarView: View {
             Button(renaming == nil ? "Create" : "Save", action: commitName)
                 .keyboardShortcut(.defaultAction)
         } message: {
-            if renaming == nil { Text("Give the folder a name.") }
+            if renaming == nil { Text("Enter a name for this folder.") }
         }
     }
 
@@ -254,7 +263,12 @@ struct SidebarView: View {
         }
     }
 
+    /// Asks first when the folder holds notes, like Notes: they move to Recently Deleted.
     private func deleteFolder(_ f: Folder) {
+        if f.liveNotes.isEmpty && f.liveChildren.isEmpty { performDelete(f) } else { deletingFolder = f }
+    }
+
+    private func performDelete(_ f: Folder) {
         if scope == .folder(f.id) { scope = .all }
         withAnimation(.snappy) { context.delete(f) }
     }
@@ -327,7 +341,7 @@ private struct FolderTree: View {
                 Button("Move to Top Level", systemImage: "arrow.up.to.line") { context.move(folder, into: nil) }
             }
             Divider()
-            Button("Delete Folder", systemImage: "trash", role: .destructive) { delete(folder) }
+            Button("Delete Folder…", systemImage: "trash", role: .destructive) { delete(folder) }
         }
     }
 }

@@ -78,7 +78,13 @@ struct MarkdownStyler {
     /// Style the first plain line as the title (off for card contents).
     var firstLineIsTitle = true
 
-    var bodyFont: PFont { .systemFont(ofSize: bodySize) }
+    var bodyFont: PFont {
+        #if os(iOS)
+        // Settings › Accessibility › Bold Text reaches the note as well as the chrome.
+        if UIAccessibility.isBoldTextEnabled { return .systemFont(ofSize: bodySize, weight: .semibold) }
+        #endif
+        return .systemFont(ofSize: bodySize)
+    }
     var monoFont: PFont { .monospacedSystemFont(ofSize: bodySize * 0.88, weight: .regular) }
 
     private var hiddenFont: PFont { .systemFont(ofSize: 0.01) }

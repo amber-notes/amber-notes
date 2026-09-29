@@ -62,17 +62,27 @@ extension PColor {
 /// Type sizes for the editor. iOS reads at arm's length; the Mac at a desk.
 enum EditorMetrics {
     #if os(iOS)
-    static let body: CGFloat = 17
-    static let title: CGFloat = 28
-    static let lineSpacing: CGFloat = 5
+    // Follows the reader's text size (Dynamic Type), from 17 pt at the default size, like Notes.
+    static var body: CGFloat { UIFontMetrics(forTextStyle: .body).scaledValue(for: 17) }
+    static var title: CGFloat { UIFontMetrics(forTextStyle: .title1).scaledValue(for: 28) }
+    static var lineSpacing: CGFloat { UIFontMetrics(forTextStyle: .body).scaledValue(for: 5) }
     #else
     // Apple Notes on the Mac: 13 pt body, ~20 pt title, tight lines.
     static let body: CGFloat = 13
     static let title: CGFloat = 20
     static let lineSpacing: CGFloat = 1.5
     #endif
-    static let gutter: CGFloat = body * 1.6
+    static var gutter: CGFloat { body * 1.6 }
     /// Checklist circle, the size Notes uses.
-    static let checkSize: CGFloat = body * 1.35
-    static let nestStep: CGFloat = body * 1.4
+    static var checkSize: CGFloat { body * 1.35 }
+    static var nestStep: CGFloat { body * 1.4 }
+
+    /// Increase Contrast is on: outlines drawn by hand use the label colour.
+    nonisolated static var increasedContrast: Bool {
+        #if os(iOS)
+        UIAccessibility.isDarkerSystemColorsEnabled
+        #else
+        NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast
+        #endif
+    }
 }

@@ -169,6 +169,8 @@ private struct ImageEmbed: View {
         }
         .buttonStyle(PressScale())
         .contextMenu { EmbedMenu(open: { controller?.openAttachment(id) }, remove: remove) }
+        .accessibilityLabel("Image, \((name as NSString).deletingPathExtension)")
+        .accessibilityHint("Opens it in Quick Look")
         .accessibilityIdentifier("image.\(name)")
     }
 }

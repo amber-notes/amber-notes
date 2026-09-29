@@ -475,6 +475,8 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
         tap.delegate = self
         addGestureRecognizer(tap)
         accessibilityIdentifier = "editor"
+        NotificationCenter.default.addObserver(self, selector: #selector(textSizeChanged), name: UIContentSizeCategory.didChangeNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(textSizeChanged), name: UIAccessibility.boldTextStatusDidChangeNotification, object: nil)
     }
 
     func setHeader(_ s: String) {
@@ -739,6 +741,13 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
     private func checkboxLine(for p: CGPoint) -> Int? {
         let point = CGPoint(x: p.x - textContainerInset.left, y: p.y - textContainerInset.top)
         return core.checkboxLine(at: point, layout: textLayoutManager)
+    }
+
+    /// The reader changed their text size or Bold Text: restyle to match, like Notes.
+    @objc private func textSizeChanged() {
+        core.styler.bodySize = EditorMetrics.body
+        typingAttributes = core.styler.typingAttributes
+        core.restyle(textStorage, selection: editingSelection, force: true)
     }
 
     @objc private func handleTap(_ g: UITapGestureRecognizer) {

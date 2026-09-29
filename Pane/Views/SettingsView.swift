@@ -6,6 +6,7 @@ struct SettingsView: View {
     let backend: Backend
     let sync: SyncEngine?
     @Environment(\.dismiss) private var dismiss
+    @State private var confirmSignOut = false
 
     var body: some View {
         #if os(macOS)
@@ -29,11 +30,16 @@ struct SettingsView: View {
                 Section("Account") {
                     if case .signedIn(let email) = backend.state {
                         LabeledContent("Signed in as", value: backend.displayEmail ?? email)
-                        LabeledContent("Sync") { SyncStatusLabel(status: sync?.status ?? .idle) }
-                        Button("Sync now") { Task { await sync?.sync() } }
+                        // The status and its action on one row, like iCloud in System Settings.
+                        LabeledContent("Sync") {
+                            HStack(spacing: 10) {
+                                SyncStatusLabel(status: sync?.status ?? .idle)
+                                Button("Sync Now") { Task { await sync?.sync() } }
+                                    .controlSize(.small)
+                                    .accessibilityIdentifier("settings.syncNow")
+                            }
+                        }
                         AppleIDRow(backend: backend)
-                        Button("Sign out", role: .destructive) { Task { await backend.signOut(); dismiss() } }
-                        DeleteAccountButton(backend: backend)
                     } else {
                         Text("Sync is off. This build keeps notes on this device only.")
                             .foregroundStyle(.secondary)
@@ -45,8 +51,21 @@ struct SettingsView: View {
                 #if os(macOS)
                 MenuBarSection()
                 #endif
+                if case .signedIn = backend.state {
+                    // Signing out sits apart, last, as in System Settings.
+                    Section {
+                        Button("Sign Out…", role: .destructive) { confirmSignOut = true }
+                            .accessibilityIdentifier("settings.signOut")
+                        DeleteAccountButton(backend: backend)
+                    }
+                }
             }
             .formStyle(.grouped)
+            .confirmationDialog("Sign out of Amber Notes?", isPresented: $confirmSignOut, titleVisibility: .visible) {
+                Button("Sign Out", role: .destructive) { Task { await backend.signOut(); dismiss() } }
+            } message: {
+                Text("Your notes stay in your account and come back when you sign in again.")
+            }
     }
 }
 
@@ -65,25 +84,22 @@ private struct AppleIDRow: View {
             }
             .accessibilityIdentifier("settings.appleConnected")
         } else {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Connect your Apple ID")
-                Text("Then you sign in with Apple on every device, without a password.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                AppleAuthButton(label: .continue, height: 36) { result in
+            // A settings row: what it is on the left, the standard Apple button on the right.
+            LabeledContent {
+                AppleAuthButton(label: .continue, height: 30) { result in
                     switch result {
                     case .success(let credential): link(credential)
                     case .failure(let failure): error = AppleSignIn.message(for: failure)
                     }
                 }
-                .frame(maxWidth: 260)
+                .frame(width: 190)
                 .disabled(working)
                 .accessibilityIdentifier("settings.connectApple")
-                if let error {
-                    Text(error).font(.footnote).foregroundStyle(.red)
-                }
+            } label: {
+                Text("Sign in with Apple")
+                Text(error ?? "Sign in on every device without a password.")
+                    .foregroundStyle(error == nil ? AnyShapeStyle(.secondary) : AnyShapeStyle(.red))
             }
-            .padding(.vertical, 4)
         }
     }
 

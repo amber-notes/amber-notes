@@ -182,6 +182,7 @@ struct TableGridView: View {
     var exit: (Bool) -> Void = { _ in }
 
     @State private var draft: GridTable
+    @Environment(\.colorSchemeContrast) private var contrast
     @State private var trend: TrendColumn?
     @FocusState private var focus: GridCell?
     /// Set when the keyboard (not a click) moves between cells: the caret goes to
@@ -297,6 +298,8 @@ struct TableGridView: View {
                                 if c < cols - 1 { Rectangle().fill(border).frame(width: 1) }
                             }
                             .accessibilityIdentifier("grid.\(r).\(c)")
+                            // VoiceOver: which column you're in, then where in the table.
+                            .accessibilityLabel(cellLabel(r, c))
                     }
                 }
                 .overlay(alignment: .bottom) {
@@ -338,6 +341,13 @@ struct TableGridView: View {
         }
     }
 
+    private func cellLabel(_ r: Int, _ c: Int) -> String {
+        let header = draft.rows.first.flatMap { c < $0.count ? $0[c] : nil } ?? ""
+        let value = r < draft.rows.count && c < draft.rows[r].count ? draft.rows[r][c] : ""
+        let place = r == 0 ? "Header, column \(c + 1)" : "\(header.isEmpty ? "Column \(c + 1)" : header), row \(r)"
+        return value.isEmpty ? "\(place), empty" : "\(value), \(place)"
+    }
+
     @ViewBuilder
     private func cell(_ r: Int, _ c: Int, cols: Int, width: CGFloat) -> some View {
         let type = r == 0 ? .text : draft.type(c)
@@ -372,6 +382,7 @@ struct TableGridView: View {
                 .font(.system(size: EditorMetrics.body))
                 .monospacedDigit()
                 .lineLimit(1)
+                .accessibilityAddTraits(.isButton)
                 .padding(.horizontal, 8)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: trailing ? .trailing : .leading)
                 .contentShape(.rect)
@@ -473,7 +484,8 @@ struct TableGridView: View {
         }
     }
 
-    private var border: Color { Color.secondary.opacity(0.45) }
+    /// Grid lines get firmer with Increase Contrast.
+    private var border: Color { Color.secondary.opacity(contrast == .increased ? 0.9 : 0.45) }
 
     private func cellBinding(_ r: Int, _ c: Int) -> Binding<String> {
         Binding(

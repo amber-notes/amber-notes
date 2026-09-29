@@ -76,7 +76,7 @@ final class DecoratedLayoutFragment: NSTextLayoutFragment {
                 ctx.addLine(to: CGPoint(x: rect.minX + s * 0.73, y: rect.midY - s * 0.16))
                 ctx.strokePath()
             } else {
-                ctx.setStrokeColor(PColor.paneSecondary.withAlphaComponent(0.8).cgColor)
+                ctx.setStrokeColor((EditorMetrics.increasedContrast ? PColor.paneLabel : PColor.paneSecondary.withAlphaComponent(0.8)).cgColor)
                 ctx.setLineWidth(1.3)
                 ctx.strokeEllipse(in: rect.insetBy(dx: 0.65, dy: 0.65))
             }
