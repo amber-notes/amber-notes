@@ -168,7 +168,9 @@ import Testing
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let c = try AppSnapshotTests.container()
         try await AppSnapshotTests.withLastNote(c, "Groceries") {
-            let w = Self.window(Self.root(c), size: CGSize(width: 1180, height: 720))
+            // The window's height: 720 pt by default, `AMBER_DEMO_HEIGHT` to change it.
+            let height = ProcessInfo.processInfo.environment["AMBER_DEMO_HEIGHT"].flatMap(Double.init) ?? 720
+            let w = Self.window(Self.root(c), size: CGSize(width: 1180, height: height))
             defer { w.orderOut(nil); w.close() }
             try "\(w.windowNumber)".write(to: dir.appending(path: "window-id"), atomically: true, encoding: .utf8)
             // The columns of the website's existing captures: sidebar 208 pt, list to 468 pt.
@@ -183,8 +185,17 @@ import Testing
                 for _ in 0..<60 where !FileManager.default.fileExists(atPath: done.path) { try? await Task.sleep(for: .milliseconds(50)) }
             }
             try? await Task.sleep(for: .seconds(2))
-            try await shoot("scene0-before")
             let note = try #require(((try? c.mainContext.fetch(FetchDescriptor<Note>())) ?? []).first { $0.title == "Groceries" })
+            // The website's intro: the note before you type its last two items, then with one of them.
+            let full = note.body
+            for scene in ["pretype", "pretype1"] {
+                note.body = DemoData.apply(scene, to: full)
+                try? await Task.sleep(for: .seconds(0.8))
+                try await shoot("intro-\(scene)")
+            }
+            note.body = full
+            try? await Task.sleep(for: .seconds(0.8))
+            try await shoot("scene0-before")
 
             // 1: ChatGPT adds what Sunday's paella needs.
             Capture.aiEdit(c.mainContext, title: "Groceries", scene: "paella", by: "ChatGPT")
@@ -216,6 +227,40 @@ import Testing
             try await shoot("scene3-tint")
             try? await Task.sleep(for: .seconds(4.5))
             try await shoot("scene3-faded")
+
+            // The caret after "Cherry tomatoes". An inactive app's window hides it, so the text
+            // view takes focus in this (key, off-screen) window and its insertion indicator is
+            // told to show, without blinking.
+            w.makeKey()
+            w.makeFirstResponder(editor)
+            let at = NSMaxRange((editor.string as NSString).range(of: "Cherry tomatoes"))
+            editor.setSelectedRange(NSRange(location: at, length: 0))
+            try? await Task.sleep(for: .seconds(0.3))
+            // The text view only adds its own indicator in the active app; when it hasn't, one is
+            // placed where the caret goes, the same system class, so it draws exactly the same.
+            var indicators = Self.views(NSTextInsertionIndicator.self, in: w.contentView ?? editor)
+            if indicators.isEmpty {
+                let screen = editor.firstRect(forCharacterRange: NSRange(location: at, length: 0), actualRange: nil)
+                let inWindow = w.convertFromScreen(screen)
+                let r = editor.convert(inWindow, from: nil)
+                let i = NSTextInsertionIndicator(frame: NSRect(x: r.minX - 1, y: r.minY, width: 2, height: r.height))
+                editor.addSubview(i)
+                indicators = [i]
+            }
+            for i in indicators { i.displayMode = .visible }
+            try? await Task.sleep(for: .seconds(0.4))
+            try await shoot("caret-after-cherry-tomatoes")
+            if let i = indicators.first(where: { !$0.isHidden }) ?? indicators.first {
+                let frame = i.convert(i.bounds, to: nil)
+                // No colour of its own means the system's insertion point colour (it follows the accent).
+                let base = i.color ?? NSColor.textInsertionPointColor
+                let rgb = base.usingColorSpace(.sRGB) ?? base
+                let info = String(format: "{\"x_pt\": %.1f, \"y_from_top_pt\": %.1f, \"width_pt\": %.1f, \"height_pt\": %.1f, \"srgb\": [%.3f, %.3f, %.3f, %.3f], \"hex\": \"#%02X%02X%02X\"}",
+                                  frame.minX, height - frame.maxY, frame.width, frame.height,
+                                  rgb.redComponent, rgb.greenComponent, rgb.blueComponent, rgb.alphaComponent,
+                                  Int(rgb.redComponent * 255), Int(rgb.greenComponent * 255), Int(rgb.blueComponent * 255))
+                try info.write(to: dir.appending(path: "caret.json"), atomically: true, encoding: .utf8)
+            }
         }
         // The receipt on its own, on a clear ground with room for its shadow.
         for (name, lines) in [("receipt-scene1", 5), ("receipt-scene2", 2)] {
@@ -240,6 +285,10 @@ import Testing
     static func textViews(in view: NSView?) -> [PaneTextView] {
         guard let view else { return [] }
         return (view as? PaneTextView).map { [$0] } ?? view.subviews.flatMap { textViews(in: $0) }
+    }
+
+    static func views<T: NSView>(_ type: T.Type, in view: NSView) -> [T] {
+        ((view as? T).map { [$0] } ?? []) + view.subviews.flatMap { views(type, in: $0) }
     }
 
     static func splitView(in view: NSView?) -> NSSplitView? {

@@ -77,7 +77,7 @@ enum DemoData {
         return args[i + 1].split(separator: "+").reduce(body) { apply(String($1), to: $0) }
     }
 
-    private static func apply(_ scene: String, to body: String) -> String {
+    static func apply(_ scene: String, to body: String) -> String {
         switch scene {
         case "paella" where body.hasPrefix("Groceries"):
             return body.replacingOccurrences(of: "- [ ] Oat milk", with: "- [ ] Paella rice\n- [ ] Saffron\n- [ ] Chorizo\n- [ ] Chicken thighs\n- [ ] Smoked paprika\n- [ ] Oat milk")
