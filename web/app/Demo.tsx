@@ -278,16 +278,16 @@ export default function Demo() {
               <b className={d.send} aria-hidden="true">↑</b>
             </div>
           </div>
+          {!still && (
+            <div className={d.story} role="group" aria-label="Demo progress">
+              {PARTS.map((name, k) => (
+                <button key={name} type="button" ref={(el) => { segs.current[k] = el; }} className={d.seg} data-state={k === 0 ? "now" : "next"}
+                  aria-label={`Part ${k + 1} of ${PARTS.length}: ${name}`} onClick={() => jump(k)}><i /></button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
-      {!still && (
-        <div className={d.story} role="group" aria-label="Demo progress">
-          {PARTS.map((name, k) => (
-            <button key={name} type="button" ref={(el) => { segs.current[k] = el; }} className={d.seg} data-state={k === 0 ? "now" : "next"}
-              aria-label={`Part ${k + 1} of ${PARTS.length}: ${name}`} onClick={() => jump(k)}><i /></button>
-          ))}
-        </div>
-      )}
       <p className={d.live} aria-live="polite">{landed ? s.answer : ""}</p>
     </div>
   );

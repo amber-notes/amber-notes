@@ -104,14 +104,17 @@
 @keyframes pop { from { opacity: 0; transform: translateY(calc(6 * var(--u))) scale(0.98); } }
 @keyframes shimmer { to { background-position: -200% 0; } }
 @keyframes blink { 50% { opacity: 0; } }
-/* The story bar under the desk: one quiet segment per part. Finished parts in ink, the current one
-   filling in amber, the rest faint. Each segment is a 24 px tall button around a 3 px line. */
-.story { display: flex; gap: 4px; width: min(280px, 70%); margin-top: 18px; }
-.seg { flex: 1; min-height: 24px; padding: 0; border: 0; background: none; cursor: pointer; display: grid; align-items: center; border-radius: 6px; }
-.seg i { position: relative; display: block; height: 3px; border-radius: 99px; overflow: hidden; background: color-mix(in srgb, var(--ink) 12%, transparent); }
-.seg i::after { content: ""; position: absolute; inset: 0; background: var(--amber); transform-origin: 0 50%; transform: scaleX(var(--p, 0)); }
-.seg[data-state="done"] i { background: var(--ink); }
+/* The story bar, on the desk below the app window (in the 74 design-px gap), in white over the dunes:
+   finished parts at 90%, the current one filling solid white with a straight edge, the rest at 30%.
+   Each segment is a 24 px tall button around the line; the desk clips what falls past its edge. */
+.story { position: absolute; left: 50%; bottom: calc(37 * var(--u)); transform: translate(-50%, 50%); z-index: 4;
+  display: flex; gap: 6px; width: min(300px, 64%); filter: drop-shadow(0 1px 2px rgba(80, 35, 0, 0.35)); }
+.seg { flex: 1; min-height: 24px; padding: 0; border: 0; background: none; cursor: pointer; display: grid; align-items: center; border-radius: 8px; }
+.seg i { position: relative; display: block; height: 5px; border-radius: 99px; overflow: hidden; background: rgba(255, 255, 255, 0.3); }
+.seg i::after { content: ""; position: absolute; inset: 0; background: #fff; transform-origin: 0 50%; transform: scaleX(var(--p, 0)); }
+.seg[data-state="done"] i { background: rgba(255, 255, 255, 0.9); }
 .seg[data-state="done"] i::after { transform: scaleX(0); }
-.seg:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
-@media (hover: hover) { .seg:hover i { background: color-mix(in srgb, var(--ink) 30%, transparent); } .seg[data-state="done"]:hover i { background: var(--ink); } }
+.seg:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
+@media (hover: hover) { .seg:hover i { background: rgba(255, 255, 255, 0.5); } .seg[data-state="done"]:hover i { background: #fff; } }
+@media (max-width: 700px) { .story { gap: 4px; } .seg i { height: 4px; } }
 .live { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
