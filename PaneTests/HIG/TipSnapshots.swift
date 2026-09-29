@@ -18,7 +18,7 @@ import TipKit
         let root: AnyView
         let tip: any Tip
         let anchor: Anchor
-        let width: CGFloat = 340
+        let width: CGFloat = 290
 
         var body: some View {
             root.overlay(alignment: .topLeading) {
