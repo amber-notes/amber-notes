@@ -375,7 +375,8 @@ enum Seed {
         context.purgeExpiredTrash()
         guard context.allFolders().isEmpty else { return }
         let notes = context.createFolder(named: "Notes")
-        if welcome || demo { context.createNote(in: .folder(notes.id), body: Self.welcome) }
+        // The imported-library capture shows exactly the imported counts, with no welcome note.
+        if (welcome || demo) && !DemoData.importedLibrary { context.createNote(in: .folder(notes.id), body: Self.welcome) }
         if demo { DemoData.load(into: context, main: notes) }
     }
 

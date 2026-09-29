@@ -7,6 +7,7 @@ import UniformTypeIdentifiers
 @MainActor
 enum DemoData {
     static func load(into context: ModelContext, main: Folder) {
+        if importedLibrary { loadImportedLibrary(into: context, main: main); return }
         let ideas = context.createFolder(named: "Ideas")
         let travel = context.createFolder(named: "Travel")
         let work = context.createFolder(named: "Work")
@@ -64,6 +65,39 @@ enum DemoData {
             n.updatedAt = .now.addingTimeInterval(offset)
             n.createdAt = n.updatedAt
             n.isPinned = pinned
+        }
+        try? context.save()
+    }
+
+    /// App Store captures: `-uitest -demo -importedLibrary` is a library just imported from Apple
+    /// Notes, the one the website's import card shows: Notes 612, Recipes 188, Work 241,
+    /// Travel 97, Home 146 (1,284 in all), 12 of them pinned. Only the folder list shows it, so
+    /// the notes are simple.
+    static var importedLibrary: Bool {
+        let args = ProcessInfo.processInfo.arguments
+        return args.contains("-uitest") && args.contains("-importedLibrary")
+    }
+
+    static func loadImportedLibrary(into context: ModelContext, main: Folder) {
+        let topics: [String: [String]] = [
+            "Notes": ["Ideas", "Call back", "Weekend", "Gift ideas", "Books to read", "Errands", "Thoughts", "Quotes"],
+            "Recipes": ["Pasta night", "Cardamom buns", "Soup", "Salad", "Curry", "Bread", "Pancakes", "Tacos"],
+            "Work": ["Standup", "1:1", "Planning", "Retro", "Roadmap", "Hiring", "Offsite", "Review"],
+            "Travel": ["Porto", "Lisbon", "Packing", "Rome", "Kyoto", "Oslo", "Road trip", "Flights"],
+            "Home": ["Kitchen", "Garden", "Measurements", "Repairs", "Bills", "Cleaning", "Paint", "Plants"],
+        ]
+        let counts: [(String, Int)] = [("Notes", 612), ("Recipes", 188), ("Work", 241), ("Travel", 97), ("Home", 146)]
+        var pinned = 0
+        for (name, n) in counts {
+            let folder = name == "Notes" ? main : context.createFolder(named: name)
+            let words = topics[name] ?? ["Note"]
+            for i in 0..<n {
+                let note = Note(body: "\(words[i % words.count]) \(i / words.count + 1)\n\nImported from Apple Notes.", folder: folder)
+                note.updatedAt = .now.addingTimeInterval(-Double(i) * 3600 * 7)
+                note.createdAt = note.updatedAt
+                if pinned < 12, i < 3 { note.isPinned = true; pinned += 1 }
+                context.insert(note)
+            }
         }
         try? context.save()
     }
