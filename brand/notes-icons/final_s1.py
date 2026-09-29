@@ -18,13 +18,22 @@ RAISE = 0.0
 PAGE_SCALE = 1.0
 
 
-def body(raise_=None, scale=None):
+GROUND_SVG = '<rect width="1024" height="1024" fill="url(#resin)"/>'
+
+
+def page(raise_=None, scale=None, shadow=True):
+    """The turned page with its rules and leaf, on a transparent canvas; `shadow` bakes C2's drop shadow."""
     raise_ = RAISE if raise_ is None else raise_
     scale = PAGE_SCALE if scale is None else scale
     place = f'translate(0 {-raise_ * 1024:g}) translate(512 526) scale({scale:g}) translate(-512 -526) ' if raise_ or scale != 1 else ''
-    return ('<rect width="1024" height="1024" fill="url(#resin)"/>'
-            f'<g transform="{place}rotate(-6 512 530)" filter="url(#sh)"><rect x="232" y="196" width="560" height="660" rx="56" fill="url(#sheet)"/>'
+    drop = ' filter="url(#sh)"' if shadow else ''
+    return (f'<g transform="{place}rotate(-6 512 530)"{drop}><rect x="232" y="196" width="560" height="660" rx="56" fill="url(#sheet)"/>'
             + lines(312, 712, [470, 580, 690], RULE, 16) + leaf(640, 318, 0.95) + '</g>')
+
+
+def body(raise_=None, scale=None):
+    return GROUND_SVG + page(raise_, scale)
+
 
 D = defs() + EXTRA
 # The Mac tile's drop shadow on its transparent margin: (dy, blur σ, opacity) on the 1024 canvas,
