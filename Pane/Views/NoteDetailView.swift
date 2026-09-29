@@ -8,6 +8,7 @@ struct NoteDetailView: View {
     @Environment(SyncEngine.self) private var sync: SyncEngine?
     @State private var importing = false
     @State private var saver = DebouncedSave()
+    @State private var shareLinks = ShareLinkStore()
     @Bindable var note: Note
     let controller: EditorController
     var autofocus = false
@@ -21,6 +22,7 @@ struct NoteDetailView: View {
             .fileImporter(isPresented: $importing, allowedContentTypes: [.item], allowsMultipleSelection: true, onCompletion: attach)
             .onAppear(perform: wireController)
             .onDisappear { saver.flush() }
+            .shareLinkChrome(shareLinks, note: note)
     }
 
     private var editor: some View {
@@ -242,6 +244,7 @@ struct NoteDetailView: View {
             #if os(iOS)
             ShareLink(item: note.body, preview: SharePreview(note.title))
             #endif
+            ShareLinkMenuSection(store: shareLinks, note: note)
             Divider()
             Button("Delete Note", systemImage: "trash", role: .destructive) {
                 withAnimation(.snappy) { context.trash(note) }
