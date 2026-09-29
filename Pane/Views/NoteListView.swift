@@ -98,22 +98,14 @@ struct NoteListView: View {
                     set: { open in withAnimation(.snappy(duration: 0.22)) { if open { collapsed.remove(section.0) } else { collapsed.insert(section.0) } } }
                 )) {
                     ForEach(section.1) { note in
-                        NoteRow(note: note, query: search, showFolder: scope == .all || !search.isEmpty)
+                        // Its own equatable view: when one note changes, the others' rows (and their
+                        // drag and swipe setup) are left alone instead of rebuilt.
+                        ListRow(note: note, query: search, showFolder: scope == .all || !search.isEmpty,
+                                dragWith: dragOthers(for: note), selectedCount: selection.count,
+                                togglePin: { withAnimation(.snappy) { context.togglePin(note) } },
+                                remove: { remove(note) })
+                            .equatable()
                             .tag(note.id)
-                            .draggable(dragItem(for: note)) {
-                                dragPreview(for: note)
-                            }
-                            .swipeActions(edge: .leading) {
-                                if note.trashedAt == nil {
-                                    Button(note.isPinned ? "Unpin" : "Pin", systemImage: note.isPinned ? "pin.slash" : "pin") {
-                                        withAnimation(.snappy) { context.togglePin(note) }
-                                    }
-                                    .tint(.orange)
-                                }
-                            }
-                            .swipeActions(edge: .trailing) {
-                                deleteButton(note)
-                            }
                     }
                 } header: {
                     #if os(iOS)
@@ -392,17 +384,10 @@ struct NoteListView: View {
         }
     }
 
-    /// Dragging a selected note carries the whole selection; any other note goes alone.
-    private func dragItem(for note: Note) -> PaneDragItem {
-        guard selection.count > 1, selection.contains(note.id) else { return PaneDragItem(kind: .note, id: note.id) }
-        return PaneDragItem(kind: .note, id: note.id, others: selection.filter { $0 != note.id }.sorted { $0.uuidString < $1.uuidString })
-    }
-
-    private func dragPreview(for note: Note) -> some View {
-        let many = selection.count > 1 && selection.contains(note.id)
-        return Label(many ? "\(selection.count) Notes" : note.title, systemImage: many ? "doc.on.doc" : "note.text")
-            .padding(.horizontal, 12).padding(.vertical, 8)
-            .glassEffect(.regular, in: .capsule)
+    /// Dragging a selected note carries the whole selection; any other note goes alone (nil).
+    private func dragOthers(for note: Note) -> [UUID]? {
+        guard selection.count > 1, selection.contains(note.id) else { return nil }
+        return selection.filter { $0 != note.id }.sorted { $0.uuidString < $1.uuidString }
     }
 
     private func moveSelection(to folder: Folder) {
@@ -465,6 +450,42 @@ enum RowMetrics {
     static let leading: CGFloat = 0
     static let dotOffset: CGFloat = -12
     #endif
+}
+
+/// A note in the list with its drag and swipe actions. Equal inputs mean an unchanged row:
+/// its note's own changes still reach NoteRow, which observes the note.
+private struct ListRow: View, @MainActor Equatable {
+    let note: Note
+    let query: String
+    let showFolder: Bool
+    /// The rest of the selection, when this row is part of a multi-selection.
+    let dragWith: [UUID]?
+    let selectedCount: Int
+    let togglePin: () -> Void
+    let remove: () -> Void
+
+    static func == (a: ListRow, b: ListRow) -> Bool {
+        a.note.id == b.note.id && a.query == b.query && a.showFolder == b.showFolder
+            && a.dragWith == b.dragWith && (a.dragWith == nil || a.selectedCount == b.selectedCount)
+    }
+
+    var body: some View {
+        NoteRow(note: note, query: query, showFolder: showFolder)
+            .draggable(PaneDragItem(kind: .note, id: note.id, others: dragWith)) {
+                Label(dragWith != nil ? "\(selectedCount) Notes" : note.title, systemImage: dragWith != nil ? "doc.on.doc" : "note.text")
+                    .padding(.horizontal, 12).padding(.vertical, 8)
+                    .glassEffect(.regular, in: .capsule)
+            }
+            .swipeActions(edge: .leading) {
+                if note.trashedAt == nil {
+                    Button(note.isPinned ? "Unpin" : "Pin", systemImage: note.isPinned ? "pin.slash" : "pin", action: togglePin)
+                        .tint(.orange)
+                }
+            }
+            .swipeActions(edge: .trailing) {
+                Button(note.trashedAt == nil ? "Delete" : "Delete Forever…", systemImage: "trash", role: .destructive, action: remove)
+            }
+    }
 }
 
 struct NoteRow: View {
