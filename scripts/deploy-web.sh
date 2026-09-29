@@ -23,6 +23,7 @@ url=$(grep -E '^PANE_SUPABASE_URL' $conf | sed 's/.*= *//; s|:/\$()/|://|')
 key=$(grep -E '^PANE_SUPABASE_KEY' $conf | sed 's/.*= *//')
 [[ $url == https://* && -n $key ]] || { echo "Backend.local.xcconfig has no production Supabase settings." >&2; exit 1; }
 
+cp docs/privacy-policy.md web/content/privacy-policy.md
 cd web
 vercel link --yes --project amber-notes --scope "$team" >/dev/null
 for env in production preview; do
@@ -32,4 +33,6 @@ for env in production preview; do
     printf '%s' "$value" | vercel env add "$name" "$env" --scope "$team" >/dev/null
   done
 done
-vercel deploy --prod --yes --scope "$team" 2>/dev/null | tail -1
+url=$(vercel deploy --prod --yes --scope "$team" 2>/dev/null | tail -1)
+echo "$url"
+mkdir -p ../.secrets && echo "$url/privacy" > ../.secrets/privacy-url.txt

@@ -4,7 +4,8 @@ const config: NextConfig = {
   poweredByHeader: false,
   async headers() {
     return [{
-      source: "/:path*",
+      // Shared notes are never indexed; the privacy policy may be.
+      source: "/((?!privacy).*)",
       headers: [
         // Shared notes are private-by-link: never indexed, never framed, never leak the URL onward.
         { key: "X-Robots-Tag", value: "noindex, nofollow" },
