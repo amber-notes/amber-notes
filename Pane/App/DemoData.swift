@@ -68,12 +68,17 @@ enum DemoData {
         try? context.save()
     }
 
-    /// App Store captures: `-uitest -demo -storeScene paella`, `lisbon`, `tick` or `bought` puts in the lines an AI
+    /// App Store captures: `-uitest -demo -storeScene paella`, `lisbon`, `tick` or `bought` (stacked with `+`) puts in the lines an AI
     /// just added, and `-highlight` (ChangeHighlight) tints them.
     static func storeScene(_ body: String) -> String {
         let args = ProcessInfo.processInfo.arguments
         guard args.contains("-uitest"), let i = args.firstIndex(of: "-storeScene"), i + 1 < args.count else { return body }
-        switch args[i + 1] {
+        // Scenes can be stacked, in order: `-storeScene paella+bought`.
+        return args[i + 1].split(separator: "+").reduce(body) { apply(String($1), to: $0) }
+    }
+
+    private static func apply(_ scene: String, to body: String) -> String {
+        switch scene {
         case "paella" where body.hasPrefix("Groceries"):
             return body.replacingOccurrences(of: "- [ ] Oat milk", with: "- [ ] Paella rice\n- [ ] Saffron\n- [ ] Chorizo\n- [ ] Chicken thighs\n- [ ] Smoked paprika\n- [ ] Oat milk")
         case "tick" where body.hasPrefix("Groceries"):
@@ -83,6 +88,11 @@ enum DemoData {
             // An AI ticked two things off; ticked items sit with the others that are done.
             return body.replacingOccurrences(of: "- [ ] Lemons\n- [ ] Coffee beans\n", with: "")
                 .replacingOccurrences(of: "- [x] Sourdough", with: "- [x] Lemons\n- [x] Coffee beans\n- [x] Sourdough")
+        case "pretype" where body.hasPrefix("Groceries"):
+            // Website intro: the note before you type its last two items.
+            return body.replacingOccurrences(of: "- [ ] Olive oil\n- [ ] Dark chocolate\n", with: "")
+        case "pretype1" where body.hasPrefix("Groceries"):
+            return body.replacingOccurrences(of: "- [ ] Dark chocolate\n", with: "")
         case "lisbon" where body.hasPrefix("Lisbon"):
             return body.replacingOccurrences(of: "- [ ] Day trip to Sintra", with: "- [ ] Day trip to Sintra\n- [ ] Late checkout requested, confirm by 10 May")
         default:
