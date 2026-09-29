@@ -148,7 +148,9 @@ final class ConnectCenter: NSObject {
     }
 
     /// Sends the browser on to the AI with the result, in the browser it came from when known.
+    /// Only ever a web address (the server allows nothing else; this checks again).
     func open(_ url: URL) {
+        guard Self.isReturnAddress(url) else { return }
         #if os(macOS)
         if let browser {
             NSWorkspace.shared.open([url], withApplicationAt: browser, configuration: NSWorkspace.OpenConfiguration())
@@ -158,6 +160,15 @@ final class ConnectCenter: NSObject {
         #else
         UIApplication.shared.open(url)
         #endif
+    }
+
+    /// https anywhere, or http back to this computer (native clients listen there).
+    static func isReturnAddress(_ url: URL) -> Bool {
+        switch url.scheme?.lowercased() {
+        case "https": return true
+        case "http": return ["localhost", "127.0.0.1", "::1", "[::1]"].contains(url.host?.lowercased() ?? "")
+        default: return false
+        }
     }
 
     #if os(macOS)

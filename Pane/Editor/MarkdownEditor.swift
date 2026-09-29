@@ -692,8 +692,18 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
     }
 
     func textView(_ textView: UITextView, primaryActionFor textItem: UITextItem, defaultAction: UIAction) -> UIAction? {
-        if case .link(let url) = textItem.content { return UIAction { _ in UIApplication.shared.open(url) } }
-        return defaultAction
+        guard case .link(let url) = textItem.content else { return defaultAction }
+        switch LinkPolicy.action(for: url) {
+        case .open(let url): return UIAction { _ in UIApplication.shared.open(url) }
+        case .note(let id): return UIAction { [weak self] _ in self?.controller?.openNote(id) }
+        case .nothing: return nil
+        }
+    }
+
+    func textView(_ textView: UITextView, menuConfigurationFor textItem: UITextItem, defaultMenu: UIMenu) -> UITextItem.MenuConfiguration? {
+        // No "Open in…" for links the policy won't open.
+        if case .link(let url) = textItem.content, LinkPolicy.action(for: url) == .nothing { return nil }
+        return UITextItem.MenuConfiguration(menu: defaultMenu)
     }
 
     // MARK: Blocks
@@ -1004,6 +1014,16 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
     }
 
     // MARK: Delegate
+
+    /// Links open only through LinkPolicy: web, mail, phone, or another note.
+    func textView(_ textView: NSTextView, clickedOnLink link: Any, at charIndex: Int) -> Bool {
+        switch LinkPolicy.action(for: link) {
+        case .open(let url): NSWorkspace.shared.open(url)
+        case .note(let id): controller?.openNote(id)
+        case .nothing: NSSound.beep()
+        }
+        return true
+    }
 
     func textView(_ textView: NSTextView, doCommandBy selector: Selector) -> Bool {
         switch selector {
