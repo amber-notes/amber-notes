@@ -1,14 +1,40 @@
-# Amber Notes
+<p align="center">
+  <img src="docs/images/icon.png" width="72" height="72" alt="Amber Notes app icon">
+</p>
 
-Apple Notes clone with MCP support, Markdown support, and more.
+<h1 align="center">Amber Notes</h1>
 
-The notes app your AI can actually use: as simple as Apple Notes, and ChatGPT, Claude, Claude Code and Codex can read and edit it through MCP, with your approval.
+<p align="center">
+  The notes app your AI can actually use. Apple Notes-style notes for iPhone and Mac that ChatGPT, Claude, Claude Code and Codex can read and edit.
+</p>
 
-[Download for Mac](https://amber-notes.vercel.app/download) · App Store (coming soon) · [Website](https://amber-notes.vercel.app)
+<p align="center">
+  <a href="https://ambernotes.app/download"><b>Download for Mac</b></a>
+  &nbsp;·&nbsp; iPhone coming soon
+  &nbsp;·&nbsp; <a href="https://ambernotes.app">ambernotes.app</a>
+</p>
 
-![A grocery checklist in Amber Notes](docs/images/hero-groceries.jpg)
+<p align="center">
+  <img src="docs/images/banner.jpg" width="1280" alt="ChatGPT writes a note called Lisbon, 4 days in May into Amber Notes on the Mac. The new text is tinted, with a pill that says ChatGPT wrote this note and an Undo button.">
+</p>
+
+<table align="center">
+  <tr>
+    <td><img src="docs/images/iphone-hero.webp" width="240" alt="The Lisbon note on iPhone, with the lines ChatGPT wrote tinted and an Undo button"></td>
+    <td><img src="docs/images/iphone-see-changes.webp" width="240" alt="The note list on iPhone, where an amber dot and Edited by ChatGPT or Claude mark each note an AI touched"></td>
+    <td><img src="docs/images/iphone-versions.webp" width="240" alt="Version history on iPhone, listing each version and who made it: you on iPhone, you on Mac, ChatGPT or Claude Code"></td>
+  </tr>
+</table>
 
 ## What it does
+
+- **AI edits you can see and undo.** Whatever an assistant writes is tinted and labeled with its name, and one tap undoes it.
+- **Version history.** Every change keeps the previous version, with who made it: you on iPhone, you on Mac, or which AI.
+- **Apple Notes import** on the Mac brings your notes over.
+- **Sync between iPhone and Mac** in about half a second.
+- **Connect ChatGPT, Claude, Claude Code or Codex.** You approve each connection in the app and choose read-only or read-and-edit.
+
+## Features in detail
 
 - **Apple Notes layout and behaviour.** Folders, a note list grouped by date, pinning, search, multi-select, Recently Deleted. When in doubt, it does what Notes does.
 - **Markdown underneath, formatted on screen.** Headings, bold, italic, underline, strikethrough, code, quotes, links. The markdown syntax stays out of sight.
@@ -82,7 +108,7 @@ In the app, open **Settings → Connect an AI** and follow the steps for your cl
 - Your notes are readable only by your account: row-level security applies to the app, the AI server and direct API calls alike.
 - AI tokens are stored as hashes and can be read-only.
 - Shared pages are public to anyone with the link. The app warns before creating one, and a page stops working the moment you stop sharing.
-- [Privacy policy](https://amber-notes.vercel.app/privacy) · [Security policy](SECURITY.md)
+- [Privacy policy](https://ambernotes.app/privacy) · [Security policy](SECURITY.md)
 
 ## License
 
