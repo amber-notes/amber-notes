@@ -1,4 +1,4 @@
-// Tip events (20260929220000_tip_events.sql): the apps count "tip shown" and "used after the
+// Tip events (20260929230000_tip_events.sql): the apps count "tip shown" and "used after the
 // tip" per account and day, only for known tips, and only the service role reads the report.
 // Runs against the LOCAL stack inside a transaction that is always rolled back:
 //   scripts/mcp-e2e.sh tips.e2e.test.ts
@@ -9,7 +9,7 @@ const dbURL = Deno.env.get("PANE_DB_URL");
 const me = Deno.env.get("PANE_USER_JWT");
 const enabled = Boolean(dbURL && me && /127\.0\.0\.1/.test(dbURL ?? ""));
 const sub = (jwt: string) => JSON.parse(atob(jwt.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))).sub as string;
-const migration = new URL("../../migrations/20260929220000_tip_events.sql", import.meta.url);
+const migration = new URL("../../migrations/20260929230000_tip_events.sql", import.meta.url);
 
 class Rollback extends Error {}
 type Tx = postgres.TransactionSql;

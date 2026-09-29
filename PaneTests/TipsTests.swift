@@ -132,7 +132,7 @@ import TipKit
         let ids = PaneTips.all.map(\.id)
         #expect(Set(ids) == ["versionHistory", "shareLink", "checklistTidy", "tableFromText", "menuBar", "shareExtension"])
         let sql = try! String(contentsOf: URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
-            .appending(path: "supabase/migrations/20260929220000_tip_events.sql"), encoding: .utf8)
+            .appending(path: "supabase/migrations/20260929230000_tip_events.sql"), encoding: .utf8)
         for id in ids { #expect(sql.contains("'\(id)'"), "the server accepts \(id)") }
     }
 
