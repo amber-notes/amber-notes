@@ -5,11 +5,6 @@
 
 .hero { display: grid; justify-items: center; text-align: center; gap: 14px; padding-top: 96px; }
 .hero .ctas { margin-top: 6px; }
-/* Where the notes live, in one quiet line under the buttons. The hero starts higher by the same
-   amount, so the demo below keeps its place in the first view. */
-.sync { margin: 0; color: var(--muted); font-size: 15px; font-weight: 600; line-height: 1.4; text-wrap: balance; }
-.sync svg { margin-right: 8px; vertical-align: -2px; color: var(--amber); } /* inline, so it wraps with the first word */
-@media (min-width: 601px) { .hero { padding-top: 61px; } }
 @media (max-width: 600px) { .hero { padding-top: 44px; gap: 20px; } }
 .h1 { margin: 0; max-width: 21ch; font-size: clamp(40px, 5vw, 74px); line-height: 0.98; font-weight: 800; letter-spacing: -0.045em; text-wrap: balance; }
 /* "your AI" never splits across lines; a tight marker sits behind the words, not an offset bar. */

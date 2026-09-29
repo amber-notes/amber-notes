@@ -42,7 +42,6 @@ export default function Home() {
             <span className={styles.secondary}>iPhone · coming soon</span>
           )}
         </div>
-        <p className={`${styles.sync} rise`} {...rise(2)}><CloudGlyph /> Stored in the cloud, synced between Mac and iPhone as you type.</p>
       </section>
 
       <div className="rise-soft" {...rise(3)}><Demo /></div>
@@ -53,14 +52,6 @@ export default function Home() {
       <SyncSection iphoneLive={APP_STORE_LIVE} />
       <Closing />
     </div>
-  );
-}
-
-function CloudGlyph() {
-  return (
-    <svg width="18" height="13" viewBox="0 0 18 13" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round">
-      <path d="M4.6 12.2h9.1a3.4 3.4 0 0 0 .5-6.8A5 5 0 0 0 4.6 4.5a3.9 3.9 0 0 0 0 7.7Z" />
-    </svg>
   );
 }
 
