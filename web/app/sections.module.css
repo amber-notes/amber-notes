@@ -62,23 +62,23 @@
 .alsoTicks li { display: inline-flex; align-items: center; gap: 8px; }
 .alsoTicks svg { color: var(--amber); }
 
-/* ── Everywhere you are: the import section's grid and panel; the Mac's note pane behind, the iPhone
-   in front, in panel units (1000 across) ── */
+/* ── Everywhere you are: the import section's grid and panel; the whole Mac window behind, running just
+   past the panel's right edge, the iPhone in front of its right side, in panel units (1000 across) ── */
 .syncFine { margin: 0; color: var(--muted); font-size: 15px; font-weight: 600; line-height: 1.45; }
 .syncDesk { --u: calc(100cqw / 1000); container-type: inline-size; display: block; }
-/* The Mac's note pane (708 x 720 pt of the 1180 pt window): the window's 26 pt corner on every side. */
+/* The Mac window (1180 pt) at 960 u, so its 26 pt corner scales to 21. */
 .syncMac {
-  position: absolute; left: calc(80 * var(--u)); top: calc(150 * var(--u)); width: calc(600 * var(--u)); height: auto;
-  border-radius: calc(22 * var(--u)); user-select: none;
+  position: absolute; left: calc(60 * var(--u)); top: calc(160 * var(--u)); width: calc(960 * var(--u)); height: auto;
+  border-radius: calc(21 * var(--u)); user-select: none;
   box-shadow: 0 0 0 calc(0.6 * var(--u)) rgba(60, 20, 0, 0.18), 0 calc(22 * var(--u)) calc(44 * var(--u)) calc(-6 * var(--u)) rgba(60, 20, 0, 0.35), 0 calc(2 * var(--u)) calc(6 * var(--u)) rgba(60, 20, 0, 0.16);
 }
-/* The iPhone: an 8 u bezel, so the body's corner is the screen's plus the bezel (44 + 8 = 52). */
+/* The iPhone: an 8 u bezel, so the body's corner is the screen's plus the bezel (41 + 8 = 49). */
 .syncPhone {
-  position: absolute; left: calc(592 * var(--u)); top: calc(196 * var(--u)); width: calc(300 * var(--u)); padding: calc(8 * var(--u)); box-sizing: border-box;
-  border-radius: calc(52 * var(--u)); background: #1d1d1f;
+  position: absolute; left: calc(690 * var(--u)); top: calc(250 * var(--u)); width: calc(280 * var(--u)); padding: calc(8 * var(--u)); box-sizing: border-box;
+  border-radius: calc(49 * var(--u)); background: #1d1d1f;
   box-shadow: inset 0 0 0 calc(1 * var(--u)) rgba(255, 255, 255, 0.14), 0 calc(26 * var(--u)) calc(50 * var(--u)) calc(-10 * var(--u)) rgba(60, 20, 0, 0.5), 0 calc(3 * var(--u)) calc(8 * var(--u)) rgba(60, 20, 0, 0.25);
 }
-.syncPhone img { display: block; width: 100%; height: auto; border-radius: calc(44 * var(--u)); user-select: none; }
+.syncPhone img { display: block; width: 100%; height: auto; border-radius: calc(41 * var(--u)); user-select: none; }
 
 /* ── The ending: a full-width band in the site's near-black brown ── */
 .band { width: 100vw; margin-left: calc(50% - 50vw); background: #2a1d10; color: #fbeedd; padding: 110px 20px 120px; box-sizing: border-box; margin-bottom: -56px; } /* the footer then sits 64 px below the band */

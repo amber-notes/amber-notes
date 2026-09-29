@@ -145,7 +145,7 @@ export function AlsoLine() {
 /* ───────────── Everywhere you are ───────────── */
 
 /// Sync, said plainly, in the import section's shape: words left, a small scene right. The same Lisbon
-/// note on both devices (real captures): the Mac's note pane behind, the iPhone in front.
+/// note on both devices (real captures): the whole Mac window behind, the iPhone in front of its right side.
 export function SyncSection({ iphoneLive }: { iphoneLive: boolean }) {
   return (
     <section className={`${a.section} ${a.importSplit}`} aria-labelledby="everywhere">
@@ -158,7 +158,7 @@ export function SyncSection({ iphoneLive }: { iphoneLive: boolean }) {
       </div>
       <figure className={`${a.sheetDesk} ${a.syncDesk}`} aria-label="The same note, Lisbon, 4 days in May, open in Amber Notes on a Mac and on an iPhone">
         <Wallpaper />
-        <img className={a.syncMac} src="/sync/mac-lisbon-pane.webp" width={708} height={720} alt="" draggable={false} loading="lazy" decoding="async" />
+        <img className={a.syncMac} src="/demo/lisbon/lisbon-2-faded.webp" width={1180} height={720} alt="" draggable={false} loading="lazy" decoding="async" />
         <div className={a.syncPhone}>
           <img src="/sync/iphone-lisbon.webp" width={603} height={1311} alt="" draggable={false} loading="lazy" decoding="async" />
         </div>
