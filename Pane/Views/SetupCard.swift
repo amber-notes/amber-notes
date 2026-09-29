@@ -1,8 +1,9 @@
 import Supabase
 import SwiftUI
 
-/// "Get set up": three steps at the top of the note list for a new account.
-/// Done steps fold to a tick, the step to do next shows its buttons, later ones wait quietly.
+/// "Get set up" at the top of the note list for a new account: one thing at a time.
+/// A progress bar of three segments on top (steps you've done fill in), then only the step
+/// to do now: a short title, one line, one button. The xmark hides it for good.
 struct SetupCard: View {
     let progress: SetupProgress
     let celebrating: Bool
@@ -15,95 +16,118 @@ struct SetupCard: View {
     let onHide: () -> Void
 
     @State private var copied = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     static let prompt = "Add \"Call mom\" to my to-do list in Amber Notes"
 
+    /// What the card shows: a step, or the moment after your AI's first edit.
+    private enum Page: Hashable { case step(SetupProgress.Step), done }
+    private var page: Page { celebrating ? .done : progress.current.map(Page.step) ?? .done }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("Get set up").font(.headline)
-                if !celebrating {
-                    Text("\(SetupProgress.Step.allCases.filter(progress.isDone).count) of 3")
-                        .font(.subheadline).monospacedDigit().foregroundStyle(.secondary)
-                }
-                Spacer()
-                if !celebrating {
-                    Button("Hide", action: onHide)
-                        .buttonStyle(.borderless)
-                        .font(.subheadline)
-                        .accessibilityHint("Hides these steps for good")
-                        .accessibilityIdentifier("setup.hide")
-                }
+        VStack(alignment: .leading, spacing: Metrics.gap) {
+            HStack(spacing: 12) {
+                bar
+                if !celebrating { closeButton }
             }
-            if celebrating {
-                celebration
-                    .transition(.opacity.combined(with: .scale(scale: 0.97)))
-            } else {
-                VStack(alignment: .leading, spacing: 12) {
-                    ForEach(SetupProgress.Step.allCases, id: \.self) { step in
-                        row(step)
-                    }
-                }
-            }
+            content
+                .id(page)
+                .transition(stepTransition)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(16)
+        .padding(Metrics.padding)
         .modifier(SetupCardSurface())
-        .animation(.smooth(duration: 0.3), value: progress)
-        .animation(.smooth(duration: 0.3), value: celebrating)
+        .clipped()
+        .animation(reduceMotion ? .easeInOut(duration: 0.2) : .smooth(duration: 0.35), value: page)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Get set up")
+        .accessibilityLabel(accessibilityTitle)
         .accessibilityIdentifier("setup.card")
     }
 
-    private var celebration: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "checkmark.seal.fill")
-                .font(.title2)
-                .foregroundStyle(.tint)
-                .symbolEffect(.bounce, value: celebrating)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("That was your AI.").font(.body.weight(.semibold))
-                Text("It just added to your To-do note. Ask it anything about your notes.")
-                    .font(.subheadline).foregroundStyle(.secondary)
-            }
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("setup.celebration")
+    /// The next step slides in from the side as the last one leaves; with Reduce Motion it cross-fades.
+    private var stepTransition: AnyTransition {
+        reduceMotion ? .opacity : .asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity),
+                                              removal: .move(edge: .leading).combined(with: .opacity))
     }
 
-    private func row(_ step: SetupProgress.Step) -> some View {
-        let done = progress.isDone(step)
-        let isCurrent = progress.current == step
-        return HStack(alignment: .top, spacing: 12) {
-            marker(step, done: done, current: isCurrent)
-            VStack(alignment: .leading, spacing: 6) {
-                Text(title(step))
-                    .font(.body.weight(isCurrent ? .semibold : .regular))
-                    .foregroundStyle(done || isCurrent ? .primary : .secondary)
-                if isCurrent { detail(step) }
-            }
-            Spacer(minLength: 0)
-        }
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Step \(step.rawValue) of 3, \(title(step))\(done ? ", done" : "")")
-        .accessibilityIdentifier("setup.step\(step.rawValue)")
+    private var doneCount: Int { SetupProgress.Step.allCases.filter(progress.isDone).count }
+
+    private var accessibilityTitle: String {
+        celebrating ? "Get set up, done" : "Get set up, step \(min(doneCount + 1, 3)) of 3"
     }
 
-    private func marker(_ step: SetupProgress.Step, done: Bool, current: Bool) -> some View {
-        ZStack {
-            Circle()
-                .fill(done ? AnyShapeStyle(.tint) : AnyShapeStyle(.clear))
-            Circle()
-                .strokeBorder(done ? AnyShapeStyle(.clear) : (current ? AnyShapeStyle(.tint) : AnyShapeStyle(.tertiary)), lineWidth: 1.5)
-            if done {
-                Image(systemName: "checkmark").font(.system(size: 11, weight: .bold)).foregroundStyle(.white)
-            } else {
-                Text("\(step.rawValue)").font(.caption.weight(.semibold)).monospacedDigit()
-                    .foregroundStyle(current ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
+    // MARK: Progress
+
+    /// Three segments: done ones filled with the accent, the current one half-strength, later ones empty.
+    private var bar: some View {
+        HStack(spacing: 4) {
+            ForEach(SetupProgress.Step.allCases, id: \.self) { step in
+                Capsule()
+                    .fill(fill(for: step))
+                    .frame(height: 4)
             }
         }
-        .frame(width: 22, height: 22)
-        .accessibilityHidden(true)
+        .frame(maxWidth: .infinity)
+        .accessibilityElement()
+        .accessibilityLabel("\(doneCount) of 3 steps done")
+    }
+
+    private func fill(for step: SetupProgress.Step) -> AnyShapeStyle {
+        if celebrating || progress.isDone(step) { return AnyShapeStyle(.tint) }
+        if progress.current == step { return AnyShapeStyle(.tint.opacity(0.35)) }
+        return AnyShapeStyle(.fill.secondary)
+    }
+
+    private var closeButton: some View {
+        Button(action: onHide) {
+            Image(systemName: "xmark")
+                .font(.system(size: Metrics.closeGlyph, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: Metrics.closeSize, height: Metrics.closeSize)
+                .background(.fill.tertiary, in: .circle)
+                // A bigger target than it looks.
+                .padding(Metrics.closeSlop)
+                .contentShape(.rect)
+                .padding(-Metrics.closeSlop)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Hide")
+        .accessibilityHint("Hides these steps for good")
+        .accessibilityIdentifier("setup.hide")
+        #if os(macOS)
+        .help("Hide")
+        #endif
+    }
+
+    // MARK: The step
+
+    @ViewBuilder
+    private var content: some View {
+        switch page {
+        case .done:
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Image(systemName: "checkmark.seal.fill").foregroundStyle(.tint)
+                    .symbolEffect(.bounce, value: celebrating)
+                text("That was your AI.", "It added \u{201C}Call mom\u{201D} to your To-do note.")
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("setup.celebration")
+        case .step(let step):
+            VStack(alignment: .leading, spacing: Metrics.gap) {
+                text(title(step), line(step))
+                actions(step)
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("setup.step\(step.rawValue)")
+        }
+    }
+
+    private func text(_ title: String, _ line: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title).font(Metrics.title)
+            Text(line).font(Metrics.line).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 
     private func title(_ step: SetupProgress.Step) -> String {
@@ -114,84 +138,56 @@ struct SetupCard: View {
         }
     }
 
-    @ViewBuilder
-    private func detail(_ step: SetupProgress.Step) -> some View {
+    private func line(_ step: SetupProgress.Step) -> String {
         switch step {
         case .bring:
-            if let onImport {
-                Text("Import from Apple Notes, all at once or the ones you choose.")
-                    .font(.subheadline).foregroundStyle(.secondary)
-                // Side by side when the list is wide enough, stacked when it isn't: never cut off.
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 10) { importButton(onImport); freshButton }
-                    VStack(alignment: .leading, spacing: 8) { importButton(onImport); freshButton }
-                }
-            } else {
-                Text("Open Amber Notes on your Mac and import everything from Apple Notes. Your notes appear here a second later.")
-                    .font(.subheadline).foregroundStyle(.secondary)
-                HStack(spacing: 10) {
-                    if let onShareHowTo {
-                        Button("Share Notes One by One", action: onShareHowTo)
-                            .buttonStyle(.bordered)
-                            .accessibilityIdentifier("setup.shareHowTo")
-                    }
-                    Button("Start Fresh", action: onStartFresh)
-                        .buttonStyle(.borderless)
-                        .accessibilityIdentifier("setup.fresh")
-                }
-            }
+            onImport != nil ? "Import from Apple Notes, all or some." : "Import on your Mac, or share one by one."
         case .connect:
             #if os(iOS)
-            Text("Connect on your Mac or on the web: ChatGPT and Claude sign in there, and you approve it here.")
-                .font(.subheadline).foregroundStyle(.secondary)
-            Button("See How", action: onConnect)
-                .buttonStyle(.borderedProminent)
-                .accessibilityIdentifier("setup.connect")
+            "Add it in ChatGPT or Claude, then approve it."
             #else
-            Text("ChatGPT or Claude. It takes a minute, and you approve it here.")
-                .font(.subheadline).foregroundStyle(.secondary)
-            Button("Connect an AI…", action: onConnect)
-                .buttonStyle(.borderedProminent)
-                .accessibilityIdentifier("setup.connect")
+            "ChatGPT or Claude. You approve it here."
             #endif
         case .tryIt:
-            tryIt
+            "Ask your AI to add \u{201C}Call mom\u{201D} to To-do."
         }
     }
 
-    /// The prompt as a message you'd send, like the chat in the website's demo.
     @ViewBuilder
-    private var tryIt: some View {
-        Text("Ask your AI:")
-            .font(.subheadline).foregroundStyle(.secondary)
-        HStack(alignment: .bottom, spacing: 8) {
-            Spacer(minLength: 24)
-            Text(Self.prompt)
-                .font(.callout)
-                .textSelection(.enabled)
-                .padding(.horizontal, 12).padding(.vertical, 8)
-                .background(.fill.tertiary, in: .rect(cornerRadius: 16, style: .continuous))
+    private func actions(_ step: SetupProgress.Step) -> some View {
+        HStack(spacing: 12) {
+            switch step {
+            case .bring:
+                if let onImport {
+                    primary("Import from Apple Notes…", id: "setup.import", action: onImport)
+                } else if let onShareHowTo {
+                    primary("Share from Notes", id: "setup.shareHowTo", action: onShareHowTo)
+                }
+                Button("Start Fresh", action: onStartFresh)
+                    .buttonStyle(.borderless)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("setup.fresh")
+            case .connect:
+                #if os(iOS)
+                primary("Show Me How", id: "setup.connect", action: onConnect)
+                #else
+                primary("Connect an AI…", id: "setup.connect", action: onConnect)
+                #endif
+            case .tryIt:
+                primary(copied ? "Copied" : "Copy Prompt", id: "setup.copy", action: copy)
+            }
         }
-        Button(copied ? "Copied" : "Copy Prompt", systemImage: copied ? "checkmark" : "doc.on.doc") { copy() }
-            .buttonStyle(.bordered)
-            .accessibilityIdentifier("setup.copy")
-        Text("Then watch it appear in your To-do note, tinted amber.")
-            .font(.subheadline).foregroundStyle(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
+        .font(Metrics.button)
     }
 
-    private func importButton(_ action: @escaping () -> Void) -> some View {
-        Button("Import from Apple Notes…", action: action)
+    private func primary(_ title: String, id: String, action: @escaping () -> Void) -> some View {
+        Button(title, action: action)
             .buttonStyle(.borderedProminent)
+            #if os(iOS)
+            .buttonBorderShape(.capsule)
+            #endif
             .fixedSize()
-            .accessibilityIdentifier("setup.import")
-    }
-
-    private var freshButton: some View {
-        Button("Start Fresh", action: onStartFresh)
-            .buttonStyle(.bordered)
-            .fixedSize()
-            .accessibilityIdentifier("setup.fresh")
+            .accessibilityIdentifier(id)
     }
 
     private func copy() {
@@ -207,17 +203,40 @@ struct SetupCard: View {
             withAnimation(.snappy(duration: 0.15)) { copied = false }
         }
     }
+
+    /// Mac: 13 pt like the rows under it. iPhone: the list's own type sizes.
+    private enum Metrics {
+        #if os(macOS)
+        static let title = Font.system(size: 13, weight: .semibold)
+        static let line = Font.system(size: 12)
+        static let button = Font.system(size: 13)
+        static let padding: CGFloat = 12
+        static let gap: CGFloat = 10
+        static let closeSize: CGFloat = 18
+        static let closeGlyph: CGFloat = 8
+        static let closeSlop: CGFloat = 4
+        #else
+        static let title = Font.headline
+        static let line = Font.subheadline
+        static let button = Font.body.weight(.semibold)
+        static let padding: CGFloat = 0
+        static let gap: CGFloat = 12
+        static let closeSize: CGFloat = 24
+        static let closeGlyph: CGFloat = 10
+        static let closeSlop: CGFloat = 10
+        #endif
+    }
 }
 
-/// The card's ground: the page colour on soft layered shadows, like the website's cards.
+/// Mac: a quiet rounded fill inside the list's margins, like a selected row at rest. iPhone:
+/// nothing here; the card sits in its own grouped section, which draws the ground, insets and radius.
 private struct SetupCardSurface: ViewModifier {
     func body(content: Content) -> some View {
-        let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
+        #if os(macOS)
+        content.background(.fill.quinary, in: .rect(cornerRadius: 10, style: .continuous))
+        #else
         content
-            .background(Color.notePage, in: shape)
-            .overlay(shape.strokeBorder(.separator.opacity(0.35), lineWidth: 0.5))
-            .shadow(color: Color(red: 0.24, green: 0.12, blue: 0.02).opacity(0.10), radius: 14, y: 8)
-            .shadow(color: Color(red: 0.24, green: 0.12, blue: 0.02).opacity(0.06), radius: 1.5, y: 1)
+        #endif
     }
 }
 

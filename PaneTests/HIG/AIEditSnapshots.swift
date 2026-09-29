@@ -113,12 +113,40 @@ import Testing
         try await AppSnapshotTests.render(form, name: "04-connect-ai-mac", dark: false, wait: 1.0)
     }
 
-    @Test func setup() async throws {
-        guard Self.dir != nil else { return }
-        for (step, p) in [("step2", SetupProgress(imported: true)), ("step3", SetupProgress(imported: true, connected: true))] {
-            let card = SetupCard(progress: p, celebrating: false, onImport: {}, onStartFresh: {}, onConnect: {}, onHide: {})
-                .frame(width: 330).padding(16).background(Color(nsColor: .windowBackgroundColor))
-            try await AppSnapshotTests.render(card, name: "05-setup-card-mac-\(step)", dark: false)
+    /// The Get set up card at each step and after your AI's first edit, light and dark, at the
+    /// list's width, in a key window so the prominent button shows its colour.
+    @Test(arguments: [false, true])
+    func setup(dark: Bool) async throws {
+        guard let dir = Self.dir else { return }
+        let states: [(String, SetupProgress, Bool)] = [
+            ("step1", SetupProgress(), false),
+            ("step2", SetupProgress(imported: true), false),
+            ("step3", SetupProgress(imported: true, connected: true), false),
+            ("done", SetupProgress(imported: true, connected: true, aiEdits: 1), true),
+        ]
+        for (name, p, celebrating) in states {
+            let card = SetupCard(progress: p, celebrating: celebrating, onImport: {}, onStartFresh: {}, onConnect: {}, onHide: {})
+                .tint(Color(PColor.paneAccent))
+                // The test host never becomes the active app; draw controls as they look in your front window.
+                .environment(\.controlActiveState, .key)
+                .frame(width: 290)
+                .padding(10)
+                .background(Color(nsColor: .textBackgroundColor))
+            let host = NSHostingView(rootView: card)
+            host.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
+            let w = KeyableWindow(contentRect: CGRect(x: -30000, y: -30000, width: 310, height: 300), styleMask: [.borderless], backing: .buffered, defer: false)
+            w.isReleasedWhenClosed = false
+            w.contentView = host
+            host.frame = CGRect(origin: .zero, size: host.fittingSize)
+            w.setContentSize(host.fittingSize)
+            w.orderFrontRegardless()
+            w.makeKey()
+            try? await Task.sleep(for: .seconds(0.6))
+            defer { w.orderOut(nil); w.close() }
+            let rep = try #require(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+            host.cacheDisplay(in: host.bounds, to: rep)
+            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            try #require(rep.representation(using: .png, properties: [:])).write(to: dir.appending(path: "setup-a-mac-\(name)-\(dark ? "dark" : "light").png"))
         }
     }
 

@@ -70,11 +70,20 @@ struct NoteListView: View {
     private func list(_ scopedNotes: [Note], _ visible: [Note], _ folders: [Folder]) -> some View {
         List(selection: $selection) {
             if showsSetup, let setup, let progress = setup.progress {
+                #if os(iOS)
+                // Its own grouped section, so it has the list's insets, radius and ground.
+                Section {
+                    setupCard(setup, progress)
+                        .padding(.vertical, 4)
+                        .selectionDisabled()
+                }
+                #else
                 setupCard(setup, progress)
-                    .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
+                    .listRowInsets(EdgeInsets(top: 6, leading: 10, bottom: 10, trailing: 10))
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
                     .selectionDisabled()
+                #endif
             }
             if scope == .trash && !scopedNotes.isEmpty && search.isEmpty {
                 Text("Notes are deleted forever after 30 days.")

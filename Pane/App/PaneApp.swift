@@ -392,7 +392,7 @@ private struct WindowCloser: NSViewRepresentable {
 
 /// Captures only (`-uitest`): one screen on its own, or the setup card at a given step, so the
 /// iPhone simulator can show them without anyone tapping through.
-///   `-captureScreen connect` or `signin`; `-captureSetup 1…3`.
+///   `-captureScreen connect` or `signin`; `-captureSetup 1…4` (4: the moment after your AI's first edit).
 struct CaptureScreen: View {
     let name: String
     let backend: Backend
@@ -403,7 +403,8 @@ struct CaptureScreen: View {
 
     static var setupProgress: SetupProgress? {
         guard ProcessInfo.processInfo.arguments.contains("-uitest"), let n = Capture.argument("-captureSetup").flatMap(Int.init) else { return nil }
-        return SetupProgress(imported: n > 1, connected: n > 2)
+        // 4: your AI's first edit just landed ("That was your AI.").
+        return SetupProgress(imported: n > 1, connected: n > 2, aiEdits: n > 3 ? 1 : 0)
     }
 
     static let connections: [Connection] = [
