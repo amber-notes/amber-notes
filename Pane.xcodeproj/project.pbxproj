@@ -105,6 +105,7 @@
 		6F0A081CD5824B2A571CBAA7 /* AppleSignIn.swift in Sources */ = {isa = PBXBuildFile; fileRef = F289BCC7CFF17C5E38FD609F /* AppleSignIn.swift */; };
 		6FA4E2DB5FE1AEFC619DB94A /* OfflineHTML.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CA53D7CEAE7816342EA0A55 /* OfflineHTML.swift */; };
 		70FD7776A93DA08BA735BF8F /* VersionHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90CC0B378983D3F5A7E49012 /* VersionHistoryView.swift */; };
+		7206852EDF250F2D4A72E0B9 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 409280D87901FB1375A2EBEC /* AppIcon.icon */; };
 		7310D5C40BFE56AD010ECC6E /* SearchBarUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A3E8C508286ED65BD00189A /* SearchBarUITests.swift */; };
 		77150E16C095CB1A108E5FB2 /* ProfileTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 412407ADE0BC387AF7A6D189 /* ProfileTests.swift */; };
 		7A098FE97DEFF91BC87CF24B /* AppleNotesImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 483CA88017A03E92EEC52DFD /* AppleNotesImport.swift */; };
@@ -160,6 +161,7 @@
 		B8E32610DE26332AB8853B4D /* VersionHistorySnapshots.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64816024A9749AC715351868 /* VersionHistorySnapshots.swift */; };
 		BBF4C5B35A481BA9E9F080C2 /* AppleNotesLiveTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A537C18B9F9C98B1862B423 /* AppleNotesLiveTests.swift */; };
 		BC8F6F8C8E7ED9F06766A538 /* FormatBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66EF04EADC63E3E6A4AD79B4 /* FormatBar.swift */; };
+		BEE93E29CA3F8BE4E6B32A69 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 409280D87901FB1375A2EBEC /* AppIcon.icon */; };
 		BF2B915D732726B9367D9C98 /* ConnectAI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39EF6421870B0C2E8060E578 /* ConnectAI.swift */; };
 		C036D7D76F7E932D5EB797F7 /* ConnectAI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39EF6421870B0C2E8060E578 /* ConnectAI.swift */; };
 		C23E87D238AFF3935F64E24B /* Files.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3E39767B1556B484757CE36 /* Files.swift */; };
@@ -299,6 +301,7 @@
 		3B76452F0DE4A17AB09AB580 /* SetupCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupCard.swift; sourceTree = "<group>"; };
 		3DFAA356C8EA6422D73B1A4F /* LayoutHangTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoutHangTests.swift; sourceTree = "<group>"; };
 		3E7A911BC92B36CB4123A6B0 /* Setup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Setup.swift; sourceTree = "<group>"; };
+		409280D87901FB1375A2EBEC /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = wrapper.icon; path = AppIcon.icon; sourceTree = "<group>"; };
 		412407ADE0BC387AF7A6D189 /* ProfileTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileTests.swift; sourceTree = "<group>"; };
 		41682433DF625FE3A5BBD36E /* PaneUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PaneUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		41F7338865E067B10FB8E849 /* LinkPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkPolicyTests.swift; sourceTree = "<group>"; };
@@ -477,6 +480,7 @@
 		2C75B4BB509EFD9AAFAB5EC8 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				409280D87901FB1375A2EBEC /* AppIcon.icon */,
 				9676DA5BDCEE33EF5357B9BF /* Assets.xcassets */,
 				205EB78628F64ADE88A5BF62 /* Info-Direct.plist */,
 				37C6B4F675EF00B712CB8496 /* Info.plist */,
@@ -900,6 +904,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7206852EDF250F2D4A72E0B9 /* AppIcon.icon in Resources */,
 				329CDFF2E1D412083D1CC558 /* Assets.xcassets in Resources */,
 				992872A37D586E84420A3093 /* Info-Direct.plist in Resources */,
 			);
@@ -909,6 +914,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BEE93E29CA3F8BE4E6B32A69 /* AppIcon.icon in Resources */,
 				B78600EE4717F44851D4F0C0 /* Assets.xcassets in Resources */,
 				09421089BA6B69D611F9DEA3 /* Info.plist in Resources */,
 			);
