@@ -9,3 +9,7 @@ supabase/.branches/
 Config/Backend.local.xcconfig
 supabase/functions/.env.local
 .secrets/
+
+# App Store Connect API key and other private credentials
+.secrets/
+*.p8
