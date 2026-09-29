@@ -4,8 +4,8 @@ const config: NextConfig = {
   poweredByHeader: false,
   async headers() {
     return [{
-      // Shared notes are never indexed; the privacy policy may be.
-      source: "/((?!privacy).*)",
+      // Shared notes are never indexed; the privacy policy, terms and support pages may be.
+      source: "/((?!privacy|terms|support).*)",
       headers: [
         // Shared notes are private-by-link: never indexed, never framed, never leak the URL onward.
         { key: "X-Robots-Tag", value: "noindex, nofollow" },
@@ -28,7 +28,8 @@ const config: NextConfig = {
             "connect-src 'self'",
             "object-src 'none'",
             "base-uri 'none'",
-            "form-action 'none'",
+            // Only the report form posts, and only to this site.
+            "form-action 'self'",
             "frame-ancestors 'none'",
           ].join("; "),
         },

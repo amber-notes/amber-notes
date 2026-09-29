@@ -64,7 +64,9 @@ export function NotePage({ slug, note, files }: { slug: string; note: SharedNote
           </nav>
         )}
       </main>
-      <footer className="foot">Shared from Amber Notes</footer>
+      <footer className="foot">
+        Shared from Amber Notes · <Link href={`/report/${slug}`}>Report this page</Link>
+      </footer>
     </div>
   );
 }

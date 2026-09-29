@@ -1,16 +1,18 @@
 # Amber Notes privacy policy
 
-Last updated: 29 September 2026
+Last updated: 29 September 2026 (profiles, email accounts and reports added)
 
 Amber Notes is a notes app for iPhone, iPad and Mac, made by Emil Wagman. This page says what it stores, where, and what it never does.
 
 ## What Amber Notes stores
 
-- **Your account.** When you sign in with Apple, Apple gives Amber Notes an identifier for your account and, if you allow it, your email address and name. If you choose Hide My Email, we only ever see Apple's relay address.
+- **Your account.** If you sign in with Apple, Apple gives Amber Notes an identifier for your account and, if you allow it, your email address and name. If you choose Hide My Email, we only ever see Apple's relay address. If you create an account with email and password, we store your email address and a secure hash of your password, never the password itself.
+- **Your profile, if you set one.** The name and photo you choose in Settings. Photos are resized and stripped of location and camera data on your device before they're uploaded.
 - **Your notes, folders and files.** Everything you write, and the images and files you add, so they can sync between your devices.
 - **Earlier versions of your notes,** so a change can be undone.
 - **Connections you make.** If you connect an AI assistant (such as ChatGPT, Claude, Claude Code or Codex), we store which connections exist and when each was last used, so you can see and revoke them.
-- **Share links you create.** If you share a note, we store the link so the page can show it, until you stop sharing.
+- **Share links you create.** If you share a note, we store the link so the page can show it, until you stop sharing. A shared page shows your profile name and photo, and your email address unless it's an Apple relay address.
+- **Reports about shared pages.** If someone reports a shared page, we store the page's link, their reason, the contact details they choose to give, and a one-way hash of their network address (to stop one person reporting a page many times). Not the address itself.
 
 ## Where it's stored
 
