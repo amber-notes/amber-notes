@@ -8,6 +8,8 @@ import SwiftUI
 /// count), so the edits here come from `DesignStudy.fakeAIEdit`, not from sync.
 enum DesignStudy {
     nonisolated(unsafe) static var on = ProcessInfo.processInfo.arguments.contains("-designStudy")
+    /// Offscreen Mac recordings stretch time so slow frame grabs still catch every step; the video is sped back up.
+    nonisolated(unsafe) static var slowMotion: Double = 1
 
     static func argument(_ name: String) -> String? {
         let args = ProcessInfo.processInfo.arguments

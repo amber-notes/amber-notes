@@ -55,12 +55,12 @@ struct NoteDetailView: View {
         AIEdits.shared.markSeen(id)
         Task { @MainActor in
             // Let the editor take the new text first.
-            try? await Task.sleep(for: .seconds(0.15))
+            try? await Task.sleep(for: .seconds(0.15 * DesignStudy.slowMotion))
             ChangeHighlight.play(mark.lines)
-            withAnimation(.spring(duration: 0.45, bounce: 0.25)) { receipt = mark }
-            try? await Task.sleep(for: .seconds(5.5))
+            withAnimation(.spring(duration: 0.45 * DesignStudy.slowMotion, bounce: 0.25)) { receipt = mark }
+            try? await Task.sleep(for: .seconds(5.5 * DesignStudy.slowMotion))
             guard receipt == mark, note.id == id else { return }
-            withAnimation(.easeIn(duration: 0.2)) { receipt = nil }
+            withAnimation(.easeIn(duration: 0.2 * DesignStudy.slowMotion)) { receipt = nil }
         }
     }
 

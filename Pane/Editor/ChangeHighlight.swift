@@ -64,7 +64,7 @@ enum ChangeHighlight {
             let fps = 30.0
             func step(to target: CGFloat, over seconds: Double, _ curve: @Sendable (Double) -> Double) async -> Bool {
                 let from = strength
-                let n = max(1, Int(seconds * fps))
+                let n = max(1, Int(seconds * DesignStudy.slowMotion * fps))
                 for i in 1...n {
                     guard mine == run else { return false }
                     strength = from + (target - from) * CGFloat(curve(Double(i) / Double(n)))
@@ -76,7 +76,7 @@ enum ChangeHighlight {
             let easeOut: @Sendable (Double) -> Double = { 1 - pow(1 - $0, 3) }
             let easeInOut: @Sendable (Double) -> Double = { $0 < 0.5 ? 4 * $0 * $0 * $0 : 1 - pow(-2 * $0 + 2, 3) / 2 }
             guard await step(to: 1.5, over: 0.3, easeOut), await step(to: 1, over: 0.5, easeInOut) else { return }
-            try? await Task.sleep(for: .seconds(hold))
+            try? await Task.sleep(for: .seconds(hold * DesignStudy.slowMotion))
             guard mine == run, await step(to: 0, over: 1.6, easeInOut) else { return }
             live = []
             NotificationCenter.default.post(name: Self.changed, object: nil)

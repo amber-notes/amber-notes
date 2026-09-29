@@ -71,9 +71,16 @@ import Testing
             defer { w.orderOut(nil); w.close() }
             try? await Task.sleep(for: .seconds(1.2))
             try Self.snap(w, "01-ai-highlight-mac-\(tag)-start")
+            if study {
+                // A still moment before the edit lands, in the recording too.
+                DesignStudy.slowMotion = 5
+                try await Self.record(w, "ai-edit-mac-lead", seconds: 0.6)
+            }
             DesignStudy.fakeAIEdit(c.mainContext, title: "Groceries", scene: "paella", by: "ChatGPT")
             if study {
-                try await Self.record(w, "ai-edit-mac", seconds: 8.5)
+                DesignStudy.slowMotion = 5
+                defer { DesignStudy.slowMotion = 1 }
+                try await Self.record(w, "ai-edit-mac", seconds: 8.5 * 5)
             } else {
                 try? await Task.sleep(for: .seconds(1.2))
             }
