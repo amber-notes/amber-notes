@@ -89,6 +89,12 @@ extension Capture {
         try? "\(w.windowNumber)".write(to: dir.appending(path: "window-id"), atomically: true, encoding: .utf8)
         await wait(1)
         func shoot(_ name: String) async {
+            // Something else may have come forward meanwhile (an install, a notification): take the front again.
+            if !NSApp.isActive || !w.isKeyWindow {
+                NSApp.activate()
+                w.makeKeyAndOrderFront(nil)
+                await wait(0.5)
+            }
             try? "".write(to: dir.appending(path: "ready-\(name)"), atomically: true, encoding: .utf8)
             let done = dir.appending(path: "shot-\(name)")
             for _ in 0..<60 where !FileManager.default.fileExists(atPath: done.path) { await wait(0.05) }
