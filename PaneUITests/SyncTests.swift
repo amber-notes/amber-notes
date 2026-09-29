@@ -49,7 +49,7 @@ final class SyncTests: XCTestCase {
 
         // Email is folded away behind Sign in with Apple until the Apple ID is linked.
         let useEmail = app.buttons["signin.useEmail"]
-        if useEmail.waitForExistence(timeout: 10) { useEmail.tap() }
+        if useEmail.exists { useEmail.tap() }
         let email = app.textFields["signin.email"]
         XCTAssertTrue(email.waitForExistence(timeout: 10), "sign-in screen")
         shot(app, "sign-in")

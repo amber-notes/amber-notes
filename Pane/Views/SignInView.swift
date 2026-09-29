@@ -8,7 +8,7 @@ struct SignInView: View {
     @State private var error: String?
     /// The old email sign-in, folded away. It stays until your Apple ID is linked on
     /// every device (Settings → Connect Apple ID); then `emailFallback` goes to false.
-    @State private var showEmail = false
+    @State private var showEmail = true
     @State private var email = ""
     @State private var password = ""
     @FocusState private var focus: Field?

@@ -10,7 +10,7 @@ final class ProdSignInTests: XCTestCase {
         app.launch()
         // Email is folded away behind Sign in with Apple until the Apple ID is linked.
         let useEmail = app.buttons["signin.useEmail"]
-        if useEmail.waitForExistence(timeout: 10) { useEmail.tap() }
+        if useEmail.exists { useEmail.tap() }
         let field = app.textFields["signin.email"]
         XCTAssertTrue(field.waitForExistence(timeout: 10))
         field.tap(); field.typeText(email)
