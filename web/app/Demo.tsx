@@ -92,6 +92,8 @@ export default function Demo() {
   const pause = useRef({ offscreen: false, hidden: false, hover: false });
   const outer = useRef<HTMLDivElement>(null);
   const msgsRef = useRef<HTMLDivElement>(null);
+  const fieldRef = useRef<HTMLSpanElement>(null);
+  const [overflow, setOverflow] = useState(false);
   const segs = useRef<(HTMLButtonElement | null)[]>([]);
 
   // Wide screens: size the desk so the chat and the note fit the first view.
@@ -176,6 +178,23 @@ export default function Demo() {
   const hoverPause = (on: boolean) => { if (window.matchMedia("(hover: hover)").matches) pause.current.hover = on; };
   const typing = view.typed.length > 0;
 
+  // The input is one line. Once the typed text (and caret) is wider than the field, it's pinned to its
+  // end and its start fades out; until then it reads from the left as usual.
+  useLayoutEffect(() => {
+    const f = fieldRef.current;
+    if (!f) return;
+    const measure = () => {
+      const text = f.firstElementChild as HTMLElement | null;
+      const caret = text?.nextElementSibling as HTMLElement | null;
+      const need = (text?.offsetWidth ?? 0) + (caret?.offsetWidth ?? 0);
+      setOverflow(view.typed.length > 0 && need > f.clientWidth);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(f);
+    return () => ro.disconnect();
+  }, [view.typed]);
+
   return (
     <div className={d.wrap}>
       <div ref={outer} className={d.fit} style={fitW ? { width: fitW, margin: "0 auto" } : undefined}
@@ -211,7 +230,7 @@ export default function Demo() {
             </div>
             <div className={d.input}>
               <b className={d.plus} aria-hidden="true">+</b>
-              <span className={d.field} data-typing={typing || undefined}>
+              <span ref={fieldRef} className={d.field} data-overflow={overflow || undefined}>
                 <span className={d.typed}>{view.typed}</span>{view.chat && <i className={d.caret} data-idle={!typing || undefined} />}{!typing && <em>Ask anything</em>}
               </span>
               <b className={d.send} aria-hidden="true">↑</b>

@@ -92,10 +92,15 @@
 .tool { justify-self: start; font-size: calc(12 * var(--u)); color: #8e8e93; }
 .thinking .tool { background: linear-gradient(90deg, #8e8e93 30%, #d1d1d6 50%, #8e8e93 70%) 0 0 / 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; }
 .input { margin: 0 calc(12 * var(--u)) calc(12 * var(--u)); min-height: calc(44 * var(--u)); border-radius: calc(22 * var(--u)); box-shadow: 0 0 0 calc(1 * var(--u)) #e5e5ea, 0 calc(2 * var(--u)) calc(8 * var(--u)) calc(-4 * var(--u)) rgba(0, 0, 0, 0.12); display: flex; align-items: center; padding: 0 calc(6 * var(--u)) 0 calc(8 * var(--u)); gap: calc(6 * var(--u)); font-size: calc(17 * var(--u)); }
-/* One line, clipped inside the field. While typing, the line is pinned to its end, so the newest
-   characters and the caret stay in view and the start slides out on the left. */
+/* One line, clipped inside the field. Once the typed line is longer than the field, it's pinned to its
+   end, so the newest characters and the caret stay in view, and its start fades out over 16 design px
+   instead of being sliced. */
 .field { flex: 1; min-width: 0; display: flex; align-items: center; overflow: hidden; white-space: nowrap; }
-.field[data-typing] { justify-content: flex-end; }
+.field[data-overflow] {
+  justify-content: flex-end;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 calc(16 * var(--u)));
+  mask-image: linear-gradient(to right, transparent, #000 calc(16 * var(--u)));
+}
 .typed { flex: none; }
 .field em { font-style: normal; color: #aeaeb2; }
 .plus { width: calc(30 * var(--u)); height: calc(30 * var(--u)); display: grid; place-items: center; font-size: calc(20 * var(--u)); font-weight: 400; color: #636366; }
