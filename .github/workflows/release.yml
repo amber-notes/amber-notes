@@ -1,0 +1,161 @@
+name: release
+
+# Push a tag like v1.0.1 (annotated; its message becomes the release notes), or run it by hand.
+# The iOS build is uploaded to App Store Connect and waits there; submitting it for review is a
+# person's decision. The Mac build becomes the DMG and Sparkle update on amber-notes.vercel.app.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version, e.g. 1.0.1"
+        required: true
+      notes:
+        description: "Release notes, one line per item"
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      notes: ${{ steps.v.outputs.notes }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: v
+        env:
+          EVENT: ${{ github.event_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_NOTES: ${{ inputs.notes }}
+        run: |
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            VERSION="$INPUT_VERSION"
+            NOTES="$INPUT_NOTES"
+          else
+            VERSION="${GITHUB_REF_NAME#v}"
+            NOTES="$(git tag -l --format='%(contents)' "$GITHUB_REF_NAME")"
+          fi
+          echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+(\.[0-9]+)?$' || { echo "Bad version: $VERSION"; exit 1; }
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          { echo "notes<<NOTES_END"; echo "$NOTES"; echo "NOTES_END"; } >> "$GITHUB_OUTPUT"
+
+  ios:
+    name: iOS to App Store Connect
+    needs: prepare
+    runs-on: macos-26
+    environment: release
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select the newest Xcode
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          [ -n "$XCODE" ] && sudo xcode-select -s "$XCODE/Contents/Developer"
+          echo "DEVELOPER_DIR=$(xcode-select -p)" >> "$GITHUB_ENV"
+      - name: Write keys and backend config
+        env:
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SHARE_URL: ${{ vars.SHARE_URL }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/keys"
+          printf '%s' "$ASC_KEY_P8" > "$RUNNER_TEMP/keys/asc.p8"
+          echo "ASC_KEY_PATH=$RUNNER_TEMP/keys/asc.p8" >> "$GITHUB_ENV"
+          # xcconfig reads "//" as a comment, hence the $() in the URLs.
+          {
+            echo "PANE_SUPABASE_URL = ${SUPABASE_URL/:\/\//:/\$()/}"
+            echo "PANE_SUPABASE_KEY = $SUPABASE_ANON_KEY"
+            echo "PANE_SHARE_URL = ${SHARE_URL/:\/\//:/\$()/}"
+          } > Config/Backend.local.xcconfig
+      - run: brew install xcodegen
+      - name: Archive and upload
+        env:
+          IN_PLACE: "1"
+          VERSION: ${{ needs.prepare.outputs.version }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: zsh scripts/testflight.sh ios
+
+  mac:
+    name: Mac DMG and update
+    needs: prepare
+    runs-on: macos-26
+    environment: release
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select the newest Xcode
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          [ -n "$XCODE" ] && sudo xcode-select -s "$XCODE/Contents/Developer"
+          echo "DEVELOPER_DIR=$(xcode-select -p)" >> "$GITHUB_ENV"
+      - name: Write keys and backend config
+        env:
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SHARE_URL: ${{ vars.SHARE_URL }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/keys"
+          printf '%s' "$ASC_KEY_P8" > "$RUNNER_TEMP/keys/asc.p8"
+          echo "ASC_KEY_PATH=$RUNNER_TEMP/keys/asc.p8" >> "$GITHUB_ENV"
+          # xcconfig reads "//" as a comment, hence the $() in the URLs.
+          {
+            echo "PANE_SUPABASE_URL = ${SUPABASE_URL/:\/\//:/\$()/}"
+            echo "PANE_SUPABASE_KEY = $SUPABASE_ANON_KEY"
+            echo "PANE_SHARE_URL = ${SHARE_URL/:\/\//:/\$()/}"
+          } > Config/Backend.local.xcconfig
+      - name: Sparkle key
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          printf '%s' "$SPARKLE_PRIVATE_KEY" > "$RUNNER_TEMP/keys/sparkle.key"
+          echo "SPARKLE_KEY_FILE=$RUNNER_TEMP/keys/sparkle.key" >> "$GITHUB_ENV"
+      - run: brew install xcodegen && python3 -m pip install --break-system-packages dmgbuild
+      - name: Build, notarize, DMG, appcast
+        env:
+          IN_PLACE: "1"
+          SKIP_DEPLOY: "1"
+          SKIP_TAG: "1"
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          NOTES: ${{ needs.prepare.outputs.notes }}
+        run: zsh scripts/release-mac.sh "$VERSION" "$NOTES"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Deploy the site (download page, DMG, appcast)
+        working-directory: web
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          cp ../docs/privacy-policy.md content/privacy-policy.md
+          npx --yes vercel@latest deploy --prod --yes --token "$VERCEL_TOKEN"
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          NOTES: ${{ needs.prepare.outputs.notes }}
+        run: |
+          TAG="v$VERSION"
+          git rev-parse "$TAG" >/dev/null 2>&1 || { git tag "$TAG" && git push origin "$TAG"; }
+          DMG="build/dist/Amber-Notes-$VERSION.dmg"
+          gh release create "$TAG" "$DMG" --title "Amber Notes $VERSION" --notes "${NOTES:-Amber Notes $VERSION}" \
+            || gh release upload "$TAG" "$DMG" --clobber

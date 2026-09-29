@@ -1,0 +1,90 @@
+name: ci
+
+# Runs on every push and pull request, forks included. Needs no secrets.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks
+        run: |
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.28.0/gitleaks_8.28.0_linux_x64.tar.gz | tar -xz gitleaks
+          ./gitleaks git --no-banner --redact -c .gitleaks.toml
+
+  app:
+    name: App tests (macOS)
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select the newest Xcode
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          [ -n "$XCODE" ] && sudo xcode-select -s "$XCODE/Contents/Developer"
+          xcodebuild -version
+      - name: Generate the project
+        run: brew install xcodegen && xcodegen generate
+      - name: Unit and interaction tests
+        run: |
+          set -o pipefail
+          xcodebuild test -project Pane.xcodeproj -scheme Pane -destination 'platform=macOS' \
+            -only-testing:PaneTests -derivedDataPath build/ci \
+            ENABLE_TESTABILITY=YES ENABLE_HARDENED_RUNTIME=NO \
+            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= PROVISIONING_PROFILE_SPECIFIER= \
+            | tee build/ci-test.log | grep -E "✔ Test run|✘|error:|\*\* TEST" || true
+          grep -q "\*\* TEST SUCCEEDED \*\*" build/ci-test.log
+      - name: iOS simulator build
+        run: |
+          set -o pipefail
+          xcodebuild build -project Pane.xcodeproj -scheme Pane -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build/ci-ios CODE_SIGNING_ALLOWED=NO | grep -E "error:|\*\* BUILD" || true
+          test -d build/ci-ios/Build/Products/Debug-iphonesimulator/Pane.app
+
+  server:
+    name: Server (Deno)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Typecheck the Edge Functions
+        run: for f in supabase/functions/*/index.ts; do deno check "$f"; done
+      - name: Unit tests
+        run: deno test --allow-all supabase/functions/mcp/notes.test.ts
+
+  web:
+    name: Share site
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build

@@ -9,18 +9,25 @@
 # command line so git stays clean. Upload auth is the App Store Connect API key in
 # .secrets/ (asc.env with ASC_KEY_ID and ASC_ISSUER_ID, plus AuthKey_<id>.p8).
 # The Mac build is sandboxed (Pane-mac-appstore.entitlements), as TestFlight requires.
+#
+# CI (GitHub Actions) sets IN_PLACE=1 to build the current checkout instead of the clean one,
+# and passes the key as ASC_KEY_PATH / ASC_KEY_ID / ASC_ISSUER_ID and the version as VERSION.
 set -euo pipefail
 MAIN="$(cd "$(dirname "$0")/.." && pwd)"
 CLEAN="$MAIN/../AmberNotes-install"
 OUT="$MAIN/build/testflight"
-export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+IN_PLACE=${IN_PLACE:-0}
+[[ $IN_PLACE == 1 ]] && CLEAN="$MAIN"
+[[ -n ${DEVELOPER_DIR:-} ]] || export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 WHICH=${1:-both}
 UPLOAD=${UPLOAD:-1}
 TEAM=4UM3XVUN9Y
 BUILD=${BUILD:-$(date +%y%m%d%H%M)}
 
 auth=()
-if [[ -f $MAIN/.secrets/asc.env ]]; then
+if [[ -n ${ASC_KEY_PATH:-} ]]; then
+  auth=(-authenticationKeyPath "$ASC_KEY_PATH" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID")
+elif [[ -f $MAIN/.secrets/asc.env ]]; then
   source "$MAIN/.secrets/asc.env"
   KEY="$MAIN/.secrets/AuthKey_${ASC_KEY_ID}.p8"
   [[ -f $KEY ]] || KEY=$(ls "$MAIN"/.secrets/*.p8 | head -1)
@@ -29,9 +36,11 @@ elif [[ $UPLOAD == 1 ]]; then
   echo "No .secrets/asc.env: can't upload. Use UPLOAD=0 to archive only." >&2; exit 1
 fi
 
-[[ -d $CLEAN ]] || git -C "$MAIN" worktree add --detach "$CLEAN" main
-git -C "$CLEAN" checkout -q -f --detach main
-cp "$MAIN/Config/Backend.local.xcconfig" "$CLEAN/Config/"
+if [[ $IN_PLACE != 1 ]]; then
+  [[ -d $CLEAN ]] || git -C "$MAIN" worktree add --detach "$CLEAN" main
+  git -C "$CLEAN" checkout -q -f --detach main
+  cp "$MAIN/Config/Backend.local.xcconfig" "$CLEAN/Config/"
+fi
 (cd "$CLEAN" && xcodegen generate >/dev/null)
 mkdir -p "$OUT"
 
@@ -56,7 +65,7 @@ ship() {
   xcodebuild archive -project "$CLEAN/Pane.xcodeproj" -scheme Pane -configuration Release \
     -destination "$dest" -archivePath "$archive" -allowProvisioningUpdates "${auth[@]}" \
     DEVELOPMENT_TEAM=$TEAM CODE_SIGN_STYLE=Automatic CODE_SIGN_IDENTITY="Apple Development" \
-    PROVISIONING_PROFILE_SPECIFIER= CURRENT_PROJECT_VERSION=$BUILD "$@" \
+    PROVISIONING_PROFILE_SPECIFIER= CURRENT_PROJECT_VERSION=$BUILD ${VERSION:+MARKETING_VERSION=$VERSION} "$@" \
     > "$OUT/$platform-$BUILD-archive.log" 2>&1 || { grep -E " error: " "$OUT/$platform-$BUILD-archive.log" | head -20; return 1; }
   echo "→ $platform build $BUILD: $([[ $UPLOAD == 1 ]] && echo uploading || echo exporting)"
   xcodebuild -exportArchive -archivePath "$archive" -exportOptionsPlist "$exportopts" \
@@ -74,4 +83,4 @@ case $WHICH in
   both) ship ios 'generic/platform=iOS'; ship mac 'generic/platform=macOS' "${macArgs[@]}" ;;
   *) echo "usage: $0 [ios|mac|both]" >&2; exit 2 ;;
 esac
-echo "Version 1.0 ($BUILD)"
+echo "Version ${VERSION:-1.0} ($BUILD)"

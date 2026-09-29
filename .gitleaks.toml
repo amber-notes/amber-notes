@@ -1,0 +1,9 @@
+# Secret scanning (gitleaks). CI runs it on every push; run `gitleaks git` locally before pushing.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Public values that look like secrets"
+# Supabase's standard local-development anon key (issuer "supabase-demo"). Every `supabase start`
+# uses it and it only works against a stack on your own machine.
+regexes = ['''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9\.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0''']

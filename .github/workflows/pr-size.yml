@@ -1,0 +1,32 @@
+name: pr-size
+
+# Labels pull requests XS to XL by lines changed. Runs with the base repo's token and never
+# checks out the pull request's code, so it's safe for forks.
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  pull-requests: write
+  issues: write
+
+jobs:
+  size:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const lines = pr.additions + pr.deletions;
+            const sizes = [["XS", 10], ["S", 50], ["M", 200], ["L", 800], ["XL", Infinity]];
+            const [size] = sizes.find(([, max]) => lines <= max);
+            const label = `size/${size}`;
+            const { owner, repo } = context.repo;
+            const current = (await github.rest.issues.listLabelsOnIssue({ owner, repo, issue_number: pr.number })).data.map(l => l.name);
+            for (const old of current.filter(n => n.startsWith("size/") && n !== label)) {
+              await github.rest.issues.removeLabel({ owner, repo, issue_number: pr.number, name: old });
+            }
+            if (!current.includes(label)) {
+              await github.rest.issues.addLabels({ owner, repo, issue_number: pr.number, labels: [label] });
+            }

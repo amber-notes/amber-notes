@@ -11,12 +11,20 @@
 #
 # Needs: .secrets/AuthKey_*.p8 + .secrets/asc.env (ASC_KEY_ID, ASC_ISSUER_ID) for notarytool,
 # the Sparkle key in the Keychain (account "amber-notes"), and python3 -m dmgbuild.
+#
+# CI (.github/workflows/release.yml) runs the same steps with these set:
+#   IN_PLACE=1                 build the current checkout instead of ../AmberNotes-install
+#   ASC_KEY_PATH, ASC_KEY_ID, ASC_ISSUER_ID   the notarization key
+#   SPARKLE_KEY_FILE           the Sparkle private key as a file (instead of the Keychain)
+#   SKIP_DEPLOY=1, SKIP_TAG=1  the workflow deploys the site and tags the release itself
 set -euo pipefail
 MAIN="$(cd "$(dirname "$0")/.." && pwd)"
 CLEAN="$MAIN/../AmberNotes-install"
 DIST="$MAIN/build/dist"
 DD="$MAIN/build/dddirect"
-export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+[[ -n ${DEVELOPER_DIR:-} ]] || export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+IN_PLACE=${IN_PLACE:-0}
+[[ $IN_PLACE == 1 ]] && CLEAN="$MAIN"
 
 VERSION=${1:?usage: scripts/release-mac.sh <version> [release notes]}
 NOTES=${2:-}
@@ -24,15 +32,25 @@ BUILD=$(date -u +%Y%m%d%H%M)   # CFBundleVersion: always increasing, which is wh
 FILE="Amber-Notes-$VERSION.dmg"
 MIN_OS=26.0
 
-source "$MAIN/.secrets/asc.env"
-KEY="$MAIN/.secrets/AuthKey_${ASC_KEY_ID}.p8"
+if [[ -n ${ASC_KEY_PATH:-} ]]; then
+  KEY="$ASC_KEY_PATH"
+else
+  source "$MAIN/.secrets/asc.env"
+  KEY="$MAIN/.secrets/AuthKey_${ASC_KEY_ID}.p8"
+fi
 [[ -f $KEY ]] || { echo "Missing $KEY (App Store Connect API key)." >&2; exit 1; }
+# With the key in env (CI), Xcode signs through App Store Connect (cloud-managed certificates);
+# locally it uses the Apple ID signed into Xcode.
+auth=()
+[[ -n ${ASC_KEY_PATH:-} ]] && auth=(-authenticationKeyPath "$KEY" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID")
 notarize() { xcrun notarytool submit "$1" --key "$KEY" --key-id "$ASC_KEY_ID" --issuer "$ASC_ISSUER_ID" --wait --timeout 30m; }
 
-echo "→ Clean checkout of main"
-[[ -d $CLEAN ]] || git -C "$MAIN" worktree add --detach "$CLEAN" main
-git -C "$CLEAN" checkout -q --detach main
-cp "$MAIN/Config/Backend.local.xcconfig" "$CLEAN/Config/"
+if [[ $IN_PLACE != 1 ]]; then
+  echo "→ Clean checkout of main"
+  [[ -d $CLEAN ]] || git -C "$MAIN" worktree add --detach "$CLEAN" main
+  git -C "$CLEAN" checkout -q --detach main
+  cp "$MAIN/Config/Backend.local.xcconfig" "$CLEAN/Config/"
+fi
 COMMIT=$(git -C "$CLEAN" rev-parse --short HEAD)
 (cd "$CLEAN" && xcodegen generate >/dev/null)
 
@@ -40,7 +58,7 @@ echo "→ Archive $VERSION ($BUILD) from $COMMIT"
 rm -rf "$DIST" && mkdir -p "$DIST"
 xcodebuild -project "$CLEAN/Pane.xcodeproj" -scheme AmberNotesDirect -configuration Release \
   -destination 'generic/platform=macOS' -derivedDataPath "$DD" -archivePath "$DIST/AmberNotes.xcarchive" \
-  -allowProvisioningUpdates DEVELOPMENT_TEAM=4UM3XVUN9Y CODE_SIGN_STYLE=Automatic CODE_SIGN_IDENTITY="Apple Development" \
+  -allowProvisioningUpdates "${auth[@]}" DEVELOPMENT_TEAM=4UM3XVUN9Y CODE_SIGN_STYLE=Automatic CODE_SIGN_IDENTITY="Apple Development" \
   MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION="$BUILD" archive | grep -E ": error: |\*\* ARCHIVE" || true
 [[ -d $DIST/AmberNotes.xcarchive ]] || { echo "Archive failed." >&2; exit 1; }
 
@@ -56,7 +74,7 @@ cat > "$DIST/ExportDeveloperID.plist" <<EOF
 </dict></plist>
 EOF
 xcodebuild -exportArchive -archivePath "$DIST/AmberNotes.xcarchive" -exportOptionsPlist "$DIST/ExportDeveloperID.plist" \
-  -exportPath "$DIST/export" -allowProvisioningUpdates | grep -E "error|EXPORT" || true
+  -exportPath "$DIST/export" -allowProvisioningUpdates "${auth[@]}" | grep -E "error|EXPORT" || true
 APP="$DIST/export/Amber Notes.app"
 [[ -d $APP ]] || { echo "Export failed." >&2; exit 1; }
 codesign --verify --deep --strict "$APP"
@@ -89,7 +107,11 @@ spctl -a -vv "$APP" 2>&1 | head -2
 
 echo "→ Sparkle signature and appcast"
 SIGN=$(ls "$DD"/SourcePackages/artifacts/sparkle/Sparkle/bin/sign_update)
-ATTRS=$("$SIGN" --account amber-notes "$DIST/$FILE")   # sparkle:edSignature="…" length="…"
+if [[ -n ${SPARKLE_KEY_FILE:-} ]]; then
+  ATTRS=$("$SIGN" --ed-key-file "$SPARKLE_KEY_FILE" "$DIST/$FILE")
+else
+  ATTRS=$("$SIGN" --account amber-notes "$DIST/$FILE")
+fi   # sparkle:edSignature="…" length="…"
 SIZE=$(stat -f %z "$DIST/$FILE")
 DATE=$(date -u "+%a, %d %b %Y %H:%M:%S +0000")
 ISO=$(date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -123,8 +145,10 @@ cat > "$WEB/content/release.json" <<EOF
 { "version": "$VERSION", "build": "$BUILD", "size": $SIZE, "date": "$ISO", "file": "$FILE", "minimumSystemVersion": "$MIN_OS" }
 EOF
 
-echo "→ Deploy the site"
-(cd "$CLEAN" && scripts/deploy-web.sh)
-git -C "$MAIN" tag -f "mac-v$VERSION" "$COMMIT"
+if [[ ${SKIP_DEPLOY:-0} != 1 ]]; then
+  echo "→ Deploy the site"
+  (cd "$CLEAN" && scripts/deploy-web.sh)
+fi
+[[ ${SKIP_TAG:-0} == 1 ]] || git -C "$MAIN" tag -f "mac-v$VERSION" "$COMMIT"
 
 echo "✓ Amber Notes $VERSION ($BUILD) is live: https://amber-notes.vercel.app/download"
