@@ -14,7 +14,7 @@ EXTRA = (f'<defs><linearGradient id="resin" x1="0" y1="0" x2="0" y2="1"><stop of
 
 # The page's placement in the tile: RAISE lifts it by that share of the tile's height, PAGE_SCALE
 # scales it about its own centre (512, 526).
-RAISE = 0.0
+RAISE = 0.015  # Emil's pick from raise_sheet.py
 PAGE_SCALE = 1.0
 
 
