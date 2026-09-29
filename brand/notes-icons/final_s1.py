@@ -20,7 +20,7 @@ def body():
 D = defs() + EXTRA
 # The Mac tile's drop shadow on its transparent margin: (dy, blur σ, opacity) on the 1024 canvas,
 # black, or None for no baked shadow. iOS icons are full-bleed and carry none.
-MAC_SHADOW = (10, 12, 0.28)
+MAC_SHADOW = (10, 5, 0.30)  # Apple's macOS app icon template: y 10, blur 10 (σ 5), black 30%
 
 
 def mac_svg(shadow=MAC_SHADOW):
