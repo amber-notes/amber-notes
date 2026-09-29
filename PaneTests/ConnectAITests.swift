@@ -58,6 +58,80 @@ import Testing
     }
 }
 
+/// Connect ChatGPT or Claude: where the button goes, and knowing when it worked.
+@Suite struct WebConnectTests {
+    private func row(_ name: String, host: String?, kind: String = "oauth", at: Date, revoked: Bool = false) -> Connection {
+        Connection(id: UUID(), name: name, kind: kind, can_write: true, created_at: at, last_used_at: nil,
+                   revoked_at: revoked ? at : nil, redirect_host: host, url_used_at: nil)
+    }
+
+    @Test func eachWebAIHasAPlanThatOpensItsOwnSite() throws {
+        let chatgpt = try #require(WebConnectPlan.forAI("ChatGPT"))
+        let claude = try #require(WebConnectPlan.forAI("Claude"))
+        let server = "https://example.supabase.co/functions/v1/mcp"
+        #expect(chatgpt.setupPage(server: server).absoluteString == "https://chatgpt.com/plugins")
+        #expect(claude.setupPage(server: server).host() == "claude.ai")
+        #expect(WebConnectPlan.forAI("Claude Code") == nil, "Claude Code connects with a command, not the web")
+        for plan in [chatgpt, claude] {
+            #expect(plan.setupPage(server: server).scheme == "https")
+            #expect(ConnectTrust.verifiedAI(host: plan.testPage.host() ?? "", loopback: false) == plan.ai)
+        }
+    }
+
+    @Test func claudesInstallLinkFillsInNameAndAddress() throws {
+        let server = "https://example.supabase.co/functions/v1/mcp"
+        let url = WebConnectPlan.claude.setupPage(server: server)
+        #expect(url.absoluteString == "https://claude.ai/customize/connectors?modal=add-custom-connector&connectorName=Amber%20Notes&connectorUrl=https%3A%2F%2Fexample.supabase.co%2Ffunctions%2Fv1%2Fmcp")
+        let items = try #require(URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems)
+        #expect(items.first { $0.name == "connectorUrl" }?.value == server, "decodes back to the exact address")
+        #expect(WebConnectPlan.claude.prefills && !WebConnectPlan.chatgpt.prefills)
+    }
+
+    @Test func theTestQuestionIsCarriedInTheLink() throws {
+        let url = WebConnectPlan.chatgpt.testPage
+        let q = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "q" }?.value
+        #expect(q == WebConnectPlan.testPrompt)
+    }
+
+    @Test func stepsSentToYourselfCarryTheAddressAndNoSecret() {
+        let text = WebConnectPlan.claude.message(server: "https://example.supabase.co/functions/v1/mcp")
+        #expect(text.contains("connectorUrl=https%3A%2F%2Fexample.supabase.co"), "Claude's link carries the address")
+        #expect(WebConnectPlan.chatgpt.message(server: "https://example.supabase.co/functions/v1/mcp").contains("\nhttps://example.supabase.co/functions/v1/mcp\n"))
+        #expect(!text.contains("pane_"), "a web connection never needs a token")
+    }
+
+    @Test func aNewSignInFromTheRightAIFinishesTheGuide() {
+        let opened = Date.now
+        let rows = [
+            row("ChatGPT", host: "chatgpt.com", at: opened.addingTimeInterval(-3600)),   // an older one
+            row("ChatGPT", host: "chatgpt.com", at: opened.addingTimeInterval(20)),
+        ]
+        #expect(ConnectCompletion.newConnection(rows, ai: "ChatGPT", since: opened)?.created_at == opened.addingTimeInterval(20))
+        #expect(ConnectCompletion.newConnection(rows, ai: "Claude", since: opened) == nil)
+    }
+
+    @Test func oldRevokedTokenOrSpoofedConnectionsDontCount() {
+        let opened = Date.now
+        let later = opened.addingTimeInterval(10)
+        let rows = [
+            row("ChatGPT", host: "chatgpt.com", at: opened.addingTimeInterval(-60)),       // before the guide opened
+            row("ChatGPT", host: "chatgpt.com", at: later, revoked: true),                  // disconnected
+            row("ChatGPT", host: nil, kind: "token", at: later),                            // an access token
+            row("ChatGPT", host: "chatgpt-login.example.com", at: later),                   // only the name says ChatGPT
+        ]
+        #expect(ConnectCompletion.newConnection(rows, ai: "ChatGPT", since: opened) == nil)
+    }
+
+    #if os(macOS)
+    @Test func theFloatingStepsSitTopRightOnScreen() {
+        let screen = CGRect(x: 0, y: 0, width: 1512, height: 944)
+        let p = ConnectPanel.placement(screen: screen, size: CGSize(width: 360, height: 520))
+        #expect(p.x + 360 <= screen.maxX && p.x > screen.midX)
+        #expect(p.y + 520 <= screen.maxY && p.y >= screen.minY)
+    }
+    #endif
+}
+
 #if os(macOS)
 import SwiftUI
 import Supabase
@@ -70,6 +144,25 @@ extension AIEditSnapshots {
             let r = ConnectRequest(id: UUID(), client_name: name, redirect_host: host, loopback: false, wants_write: true)
             try await AppSnapshotTests.render(ConsentSheet(client: client, requestID: r.id, initial: .asking(r), finish: { _ in }), name: file, dark: false)
         }
+    }
+}
+
+extension AIEditSnapshots {
+    /// Connect ChatGPT and Claude: the guide, the floating steps, and "connected".
+    @Test func webConnectGuides() async throws {
+        guard AppSnapshotTests.dir != nil else { return }
+        let client = SupabaseClient(supabaseURL: URL(string: "http://127.0.0.1:9")!, supabaseKey: "test")
+        for plan in [WebConnectPlan.chatgpt, .claude] {
+            let slug = plan.ai.lowercased()
+            try await AppSnapshotTests.render(Form { WebConnectGuide(plan: plan, client: client) }.formStyle(.grouped).frame(width: 520, height: 560),
+                                              name: "connect-\(slug)-guide", dark: false)
+            try await AppSnapshotTests.render(Form { WebConnectGuide(plan: plan, client: client, started: true) }.formStyle(.grouped).frame(width: 360, height: 560),
+                                              name: "connect-\(slug)-panel", dark: false)
+            try await AppSnapshotTests.render(Form { WebConnectGuide(plan: plan, client: client, connected: true) }.formStyle(.grouped).frame(width: 360, height: 460),
+                                              name: "connect-\(slug)-connected", dark: false)
+        }
+        try await AppSnapshotTests.render(Form { WebConnectGuide(plan: .chatgpt, client: client, started: true) }.formStyle(.grouped).frame(width: 360, height: 560),
+                                          name: "connect-chatgpt-panel-dark", dark: true)
     }
 }
 #endif

@@ -65,6 +65,8 @@ targets:
         CFBundleURLTypes:
           - CFBundleURLName: dev.emilwagman.pane.connect
             CFBundleURLSchemes: [ambernotes]
+        # Handoff: Connect ChatGPT or Claude, started on iPhone, continues on the Mac.
+        NSUserActivityTypes: [dev.emilwagman.pane.connect]
         PaneSupabaseURL: $(PANE_SUPABASE_URL)
         PaneSupabaseKey: $(PANE_SUPABASE_KEY)
         PaneShareURL: $(PANE_SHARE_URL)
