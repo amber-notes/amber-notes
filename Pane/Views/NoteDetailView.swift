@@ -32,6 +32,9 @@ struct NoteDetailView: View {
             .sheet(isPresented: $showHistory) {
                 if let history = NoteHistory.shared { VersionHistorySheet(note: note, history: history) }
             }
+            #if os(iOS)
+            .safeAreaInset(edge: .bottom, spacing: 0) { phoneTips }
+            #endif
             .overlay(alignment: .bottom) { aiReceipt }
             .overlay(alignment: .bottom) { undoProblem }
             .onChange(of: note.aiEditedAt) { _, _ in showAIEdit() }
@@ -46,6 +49,23 @@ struct NoteDetailView: View {
             .onReceive(NotificationCenter.default.publisher(for: .paneChecklistTicked)) { _ in PaneTips.ticked() }
             .onChange(of: showHistory) { _, open in if open { TipLog.used(VersionHistoryTip()) } }
     }
+
+    #if os(iOS)
+    /// On iPhone the note's tips sit just above the toolbar: a popover from a toolbar button
+    /// never appears there. TipKit shows at most one of them, and only when it's due.
+    private var phoneTips: some View {
+        VStack(spacing: 8) {
+            TipView(VersionHistoryTip()) { action in if action.id == "open" { showHistory = true } }
+                .logsTip(VersionHistoryTip())
+            TipView(ShareLinkTip()).logsTip(ShareLinkTip())
+            TipView(ChecklistTip()).logsTip(ChecklistTip())
+            TipView(TableTip(), action: tableTipAction).logsTip(TableTip())
+        }
+        .tipImageStyle(Color(PColor.paneAccent))
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8)
+    }
+    #endif
 
     @ViewBuilder
     private var undoProblem: some View {
@@ -249,11 +269,9 @@ struct NoteDetailView: View {
         #if os(iOS)
         ToolbarItem(placement: .bottomBar) {
             Button("Checklist", systemImage: "checklist", action: controller.checklist)
-                .paneTip(ChecklistTip(), arrowEdge: .bottom)
         }
         ToolbarItem(placement: .bottomBar) {
             Button("Table", systemImage: "tablecells", action: controller.insertTable)
-                .paneTip(TableTip(), arrowEdge: .bottom, action: tableTipAction)
         }
         ToolbarItem(placement: .bottomBar) {
             Button("Attach", systemImage: "paperclip") { importing = true }
@@ -384,12 +402,10 @@ struct NoteDetailView: View {
         #if os(macOS)
         .tint(.primary)
         #endif
+        #if os(macOS)
         .paneTip(VersionHistoryTip(), arrowEdge: .top) { action in
             if action.id == "open" { showHistory = true }
         }
-        #if os(iOS)
-        // On iPhone sharing lives in this menu too.
-        .paneTip(ShareLinkTip(), arrowEdge: .top)
         #endif
         .accessibilityIdentifier("editor.more")
     }

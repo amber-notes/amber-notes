@@ -359,8 +359,8 @@ struct ShareExtensionTip: Tip {
     var options: [any TipOption] { [Tips.MaxDisplayCount(2)] }
 }
 
-/// A tip's icon: the SF Symbol drawn in the app's amber as a finished image, so it looks the
-/// same in every tip and every appearance (TipKit draws some template symbols pale on the Mac).
+/// A tip's icon in the app's amber. On the Mac it's a finished image (TipKit draws some template
+/// symbols pale there); on iPhone the tip view tints it (`tipImageStyle`).
 enum TipGlyph {
     static func image(_ name: String) -> Image {
         #if os(macOS)
@@ -369,12 +369,32 @@ enum TipGlyph {
         if let ns = NSImage(systemSymbolName: name, accessibilityDescription: nil)?.withSymbolConfiguration(config) {
             return Image(nsImage: ns).renderingMode(.original)
         }
-        #else
-        if let ui = UIImage(systemName: name)?.withTintColor(PColor.paneAccent, renderingMode: .alwaysOriginal) {
-            return Image(uiImage: ui).renderingMode(.original)
-        }
         #endif
+        // iPhone: a template symbol, tinted by the tip view's image style.
         return Image(systemName: name)
+    }
+}
+
+/// A popover tip that waits until its screen has settled. On iPhone a note slides in when you
+/// open it, and a popover asked for during that slide never appears (TipKit doesn't ask again).
+struct SettledPopoverTip<T: Tip>: ViewModifier {
+    let tip: T
+    let arrowEdge: Edge
+    let action: (Tips.Action) -> Void
+    @State private var settled = false
+
+    func body(content: Content) -> some View {
+        Group {
+            if settled {
+                content.popoverTip(tip, arrowEdge: arrowEdge as Edge?, action: action).logsTip(tip)
+            } else {
+                content
+            }
+        }
+        .task {
+            try? await Task.sleep(for: .seconds(0.8))
+            settled = true
+        }
     }
 }
 
@@ -419,7 +439,7 @@ extension View {
     @ViewBuilder
     func paneTip(_ tip: some Tip, arrowEdge: Edge, action: @escaping (Tips.Action) -> Void = { _ in }) -> some View {
         if PaneTips.popovers {
-            popoverTip(tip, arrowEdge: arrowEdge, action: action).logsTip(tip)
+            modifier(SettledPopoverTip(tip: tip, arrowEdge: arrowEdge, action: action))
         } else {
             self
         }
