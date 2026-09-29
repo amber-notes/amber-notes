@@ -1,18 +1,5 @@
 /* Home page: warm, simple, centred. One promise, one interactive scene, a grid of plain reasons,
    one line about being free. Its own warm palette in light and dark; share pages keep theirs. */
-.page {
-  --bg: #fff4e6; --ink: #2a1d10; --muted: #7a6450; --soft: #f7e5cc; --line: rgba(80, 45, 10, 0.12);
-  --amber: #f0901a; --mark: rgba(240, 144, 26, 0.35); --card: #fffaf3; --wordmark: rgba(120, 70, 20, 0.07);
-  min-height: 100dvh; display: flex; flex-direction: column; background: var(--bg); color: var(--ink);
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", system-ui, sans-serif;
-}
-@media (prefers-color-scheme: dark) {
-  .page {
-    --bg: #1a130c; --ink: #f6ead9; --muted: #b59c80; --soft: #2a1f14; --line: rgba(255, 220, 170, 0.12);
-    --amber: #f5a53a; --mark: rgba(245, 165, 58, 0.32); --card: #231a11; --wordmark: rgba(255, 200, 130, 0.05);
-  }
-}
-
 .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; max-width: 1120px; margin: 0 auto; padding: 16px 20px; }
 .brand { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; color: var(--ink); text-decoration: none; font-weight: 700; font-size: 17px; }
 .brand img { border-radius: 7px; }
@@ -23,7 +10,7 @@
 @media (max-width: 560px) { .nav a:not(.navCta) { display: none; } }
 @media (hover: hover) { .nav a:hover { background: var(--soft); } }
 
-.main { flex: 1; width: 100%; max-width: 1120px; margin: 0 auto; padding: 0 20px; display: grid; gap: 96px; align-content: start; overflow-x: clip; }
+.main { width: 100%; max-width: 1120px; margin: 0 auto; padding: 0 20px; box-sizing: border-box; display: grid; gap: 96px; align-content: start; overflow-x: clip; }
 
 .hero { display: grid; justify-items: center; text-align: center; gap: 26px; padding-top: 56px; }
 @media (max-width: 600px) { .hero { padding-top: 24px; gap: 20px; } }
@@ -78,3 +65,22 @@
 .entryDate { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
 .entryBody h2 { margin: 0 0 10px; font-size: 24px; letter-spacing: -0.02em; }
 .entryBody ul { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; font-size: 17px; line-height: 1.5; }
+
+/* Built in the open */
+.open { display: grid; justify-items: center; gap: 28px; padding: 52px 24px; border-radius: 32px; background: var(--soft); text-align: center; }
+.openHead { display: grid; justify-items: center; gap: 14px; }
+.ways { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; width: 100%; max-width: 900px; text-align: left; }
+@media (max-width: 760px) { .ways { grid-template-columns: 1fr; } }
+.way { display: grid; gap: 6px; padding: 20px; border-radius: 20px; background: var(--card); color: var(--ink); text-decoration: none; box-shadow: 0 0 0 1px var(--line); }
+.way strong { font-size: 17px; }
+.way span { color: var(--muted); font-size: 15px; line-height: 1.45; }
+.way:focus-visible, .recent a:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
+@media (hover: hover) { .way:hover { box-shadow: 0 0 0 1.5px var(--amber); } }
+@media (prefers-reduced-motion: no-preference) { .way { transition: box-shadow 0.15s ease-out, transform 0.12s ease-out; } .way:active { transform: scale(0.98); } }
+.recent { width: 100%; max-width: 900px; text-align: left; }
+.recentLabel { margin: 0 0 6px; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.recent ul { list-style: none; margin: 0; padding: 0; display: grid; }
+.recent li { border-top: 1px solid var(--line); }
+.recent a { display: block; padding: 10px 0; color: var(--ink); text-decoration: none; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (hover: hover) { .recent a:hover { color: var(--link); } }
+.primary { background: var(--cta-bg); color: var(--cta-ink); }

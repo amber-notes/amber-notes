@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
 import styles from "./home.module.css";
 import Demo from "./Demo";
-import { latestVersion } from "@/lib/changelog";
+import { GITHUB_URL, recentCommits } from "@/lib/github";
 
 const APP_STORE_LIVE = false; // Flip when the iPhone app is approved.
 const APP_STORE_URL = "https://apps.apple.com/app/id6817253103";
-const GITHUB_URL = "https://github.com/emilwagman/amber-notes";
 
 export const metadata: Metadata = {
   title: "Amber Notes: the notes app your AI can actually use",
@@ -33,77 +32,84 @@ const FEATURES: { icon: keyof typeof ICONS; title: string }[] = [
   { icon: "shield", title: "No ads, no tracking" },
 ];
 
-export default function Home() {
-  const version = latestVersion();
+export default async function Home() {
+  const commits = await recentCommits(3);
   return (
-    <div className={styles.page}>
-      <header className={styles.top}>
-        <a className={styles.brand} href="/">
-          <img src="/mark.png" alt="" width={30} height={30} />
-          Amber Notes
-          {version && <span className={styles.badge}>v{version}</span>}
-        </a>
-        <nav className={styles.nav}>
-          <a href="/changelog">Changelog</a>
-          <a href="/support">Help</a>
-          <a className={styles.navCta} href="/download"><AppleGlyph /> Download</a>
-        </nav>
-      </header>
-
-      <main className={styles.main}>
-        <section className={styles.hero}>
-          <h1 className={styles.h1}>
-            The notes app <mark className={styles.mark}>your AI</mark> can actually use.
-          </h1>
-          <p className={styles.lede}>
-            As simple as the notes app you know. ChatGPT and Claude can read and update it, only when you say so.
-          </p>
-          <div className={styles.ctas}>
-            <a className={styles.primary} href="/download"><AppleGlyph /> Download for Mac</a>
-            {APP_STORE_LIVE ? (
-              <a className={styles.secondary} href={APP_STORE_URL}>Get it for iPhone</a>
-            ) : (
-              <span className={styles.secondary}>iPhone · coming soon</span>
-            )}
-          </div>
-        </section>
-
-        <Demo />
-
-        <section className={styles.features} aria-label="What you get">
-          {FEATURES.map((f) => (
-            <div key={f.title} className={styles.feature}>
-              <span className={styles.icon} aria-hidden="true">{ICONS[f.icon]}</span>
-              <h2>{f.title}</h2>
-            </div>
-          ))}
-        </section>
-
-        <section className={styles.free}>
-          <h2 className={styles.h2}>Free. And it stays that way.</h2>
-          <p className={styles.lede}>
-            No subscription, no ads, nothing sold. Amber Notes is open source, so anyone can see exactly what it does with your notes.
-          </p>
-          <a className={styles.link} href={GITHUB_URL}>See it on GitHub</a>
-        </section>
-
-        <section className={styles.last}>
+    <div className={styles.main}>
+      <section className={styles.hero}>
+        <h1 className={`${styles.h1} rise`} style={{ "--i": 0 } as React.CSSProperties}>
+          The notes app <mark className={styles.mark}>your AI</mark> can actually use.
+        </h1>
+        <p className={`${styles.lede} rise`} style={{ "--i": 1 } as React.CSSProperties}>
+          As simple as the notes app you know. ChatGPT and Claude can read and update it, only when you say so.
+        </p>
+        <div className={`${styles.ctas} rise`} style={{ "--i": 2 } as React.CSSProperties}>
           <a className={styles.primary} href="/download"><AppleGlyph /> Download for Mac</a>
-        </section>
-      </main>
+          {APP_STORE_LIVE ? (
+            <a className={styles.secondary} href={APP_STORE_URL}>Get it for iPhone</a>
+          ) : (
+            <span className={styles.secondary}>iPhone · coming soon</span>
+          )}
+        </div>
+      </section>
 
-      <footer className={styles.foot}>
-        <nav>
-          <a href="/changelog">Changelog</a>
-          <a href="/privacy">Privacy</a>
-          <a href="/terms">Terms</a>
-          <a href="/support">Help</a>
-          <a href={GITHUB_URL}>GitHub</a>
-        </nav>
-        <p>Works with ChatGPT and Claude. Not affiliated with Apple, OpenAI or Anthropic.</p>
-        <div className={styles.wordmark} aria-hidden="true">Amber Notes</div>
-      </footer>
+      <div className="rise-soft" style={{ "--i": 3 } as React.CSSProperties}><Demo /></div>
+
+      <section className={styles.features} aria-label="What you get">
+        {FEATURES.map((f) => (
+          <div key={f.title} className={styles.feature}>
+            <span className={styles.icon} aria-hidden="true">{ICONS[f.icon]}</span>
+            <h2>{f.title}</h2>
+          </div>
+        ))}
+      </section>
+
+      <section className={styles.open} aria-labelledby="open">
+        <div className={styles.openHead}>
+          <h2 id="open" className={styles.h2}>Built in the open</h2>
+          <p className={styles.lede}>
+            Amber Notes is free and open source (MIT). Read the code, see exactly how your notes are stored, and help make it better.
+          </p>
+        </div>
+        <div className={styles.ways}>
+          <a className={styles.way} href={`${GITHUB_URL}/issues/new/choose`}>
+            <strong>Report a bug</strong>
+            <span>Something broken or odd? Tell us what happened and we'll look into it.</span>
+          </a>
+          <a className={styles.way} href={`${GITHUB_URL}/issues/new/choose`}>
+            <strong>Suggest an idea</strong>
+            <span>What would make your notes better? Ideas are welcome, big or small.</span>
+          </a>
+          <a className={styles.way} href={`${GITHUB_URL}/blob/main/CONTRIBUTING.md`}>
+            <strong>Fix something small</strong>
+            <span>Setup takes about 10 minutes. Small, focused fixes are the most likely to be merged.</span>
+          </a>
+        </div>
+        {commits.length > 0 && (
+          <div className={styles.recent}>
+            <p className={styles.recentLabel}>Recently changed</p>
+            <ul>
+              {commits.map((c) => (
+                <li key={c.url}><a href={c.url}>{c.title}</a></li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <a className={styles.primary} href={GITHUB_URL}><GitHubMark /> View on GitHub</a>
+      </section>
+
+      <section className={styles.last}>
+        <a className={styles.primary} href="/download"><AppleGlyph /> Download for Mac</a>
+      </section>
     </div>
+  );
+}
+
+function GitHubMark() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor">
+      <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
+    </svg>
   );
 }
 

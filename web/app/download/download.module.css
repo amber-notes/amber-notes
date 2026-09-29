@@ -1,14 +1,36 @@
-.wrap { display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 12vh; }
-.icon { border-radius: 22%; box-shadow: 0 0 0 0.5px var(--rule), 0 8px 24px rgba(0, 0, 0, 0.12); margin-bottom: 20px; }
+/* The download page: the site's cream theme, one big button, the install steps drawn simply. */
+.wrap { width: 100%; max-width: 1120px; margin: 0 auto; padding: 24px 20px 0; box-sizing: border-box; display: grid; gap: 72px; }
+.hero { display: grid; justify-items: center; text-align: center; gap: 18px; padding-top: 32px; }
+.icon { border-radius: 22.5%; box-shadow: 0 0 0 0.5px var(--line), 0 24px 48px -16px rgba(150, 70, 0, 0.45); margin-bottom: 8px; }
+.title { margin: 0; max-width: 14ch; font-size: clamp(40px, 6.5vw, 72px); line-height: 1; font-weight: 800; letter-spacing: -0.04em; text-wrap: balance; }
+.meta { margin: 0; color: var(--muted); font-size: 16px; font-variant-numeric: tabular-nums; }
 .button {
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  min-height: 44px; padding: 0 22px; margin-top: 20px; border-radius: 12px;
-  background: var(--text); color: var(--page); font-weight: 600; font-size: 16px; text-decoration: none;
-  transition: transform 0.12s ease-out;
+  display: inline-flex; align-items: center; gap: 10px; min-height: 58px; padding: 0 30px; margin-top: 6px; border-radius: 16px;
+  background: var(--cta-bg); color: var(--cta-ink); font-weight: 700; font-size: 18px; text-decoration: none;
+  box-shadow: 0 14px 30px -10px rgba(60, 30, 5, 0.55);
 }
-.button:active { transform: scale(0.97); }
-.button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-.meta { margin-top: 12px; font-size: 13px; color: var(--secondary); font-variant-numeric: tabular-nums; }
-.steps { margin-top: 40px; max-width: 30em; text-align: left; color: var(--secondary); font-size: 15px; line-height: 1.5; padding-left: 1.2em; }
-.steps li + li { margin-top: 6px; }
-.iphone { margin-top: 32px; font-size: 15px; color: var(--secondary); }
+.button:focus-visible, .more a:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
+@media (prefers-reduced-motion: no-preference) { .button { transition: transform 0.12s ease-out; } .button:active { transform: scale(0.97); } }
+.req { margin: 0; color: var(--muted); font-size: 14px; }
+
+.steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 760px) { .steps { grid-template-columns: 1fr; } }
+.step { display: grid; gap: 6px; justify-items: center; text-align: center; padding: 24px 20px 26px; border-radius: 24px; background: var(--soft); }
+.step strong { font-size: 18px; margin-top: 10px; }
+.step span { color: var(--muted); font-size: 15px; line-height: 1.45; max-width: 26ch; }
+.art { height: 96px; display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--muted); }
+.art img { border-radius: 22%; box-shadow: 0 6px 14px -6px rgba(80, 40, 0, 0.4); }
+.dmg { width: 64px; height: 76px; border-radius: 10px; background: linear-gradient(#fff, #e9e3db); box-shadow: 0 0 0 1px var(--line), 0 8px 18px -8px rgba(80, 40, 0, 0.35); display: grid; place-items: end center; padding-bottom: 10px; }
+.dmg span { font-size: 11px; font-weight: 800; letter-spacing: 0.08em; color: #7a6450; }
+.folder { width: 60px; height: 48px; border-radius: 8px; background: linear-gradient(#7fb8f5, #3d8ce6); display: grid; place-items: center; position: relative; box-shadow: 0 8px 18px -8px rgba(20, 60, 120, 0.5); }
+.folder::before { content: ""; position: absolute; left: 4px; top: -6px; width: 24px; height: 10px; border-radius: 4px 4px 0 0; background: #6aa9f0; }
+.folder span { font-weight: 800; color: #eaf3ff; font-size: 20px; position: relative; }
+.signin { width: 150px; padding: 12px; border-radius: 14px; background: var(--card); box-shadow: 0 0 0 1px var(--line), 0 8px 18px -8px rgba(80, 40, 0, 0.35); display: grid; gap: 8px; }
+.signin i { height: 10px; border-radius: 5px; background: var(--soft); }
+.signin b { display: flex; align-items: center; justify-content: center; gap: 6px; height: 28px; border-radius: 8px; background: #111; color: #fff; font-size: 12px; }
+.arrow { color: var(--amber); }
+
+.more { display: grid; justify-items: center; gap: 10px; text-align: center; color: var(--muted); font-size: 16px; }
+.more p { margin: 0; max-width: 46em; }
+.more strong { color: var(--ink); }
+.more a { color: var(--link); font-weight: 600; }

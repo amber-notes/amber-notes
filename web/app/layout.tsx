@@ -1,5 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import "./site.css";
+import SiteChrome, { themeScript } from "./SiteChrome";
+import { latestVersion } from "@/lib/changelog";
+import { repoStats } from "@/lib/github";
 
 export const metadata: Metadata = {
   title: "Amber Notes",
@@ -16,10 +20,16 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const stats = await repoStats();
   return (
-    <html lang="en">
-      <body>{children}</body>
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
+      <body>
+        <SiteChrome version={latestVersion()} stars={stats?.stars ?? null}>{children}</SiteChrome>
+      </body>
     </html>
   );
 }
