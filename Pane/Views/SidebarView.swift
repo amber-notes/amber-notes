@@ -80,7 +80,7 @@ struct SidebarHeader: View {
         }
         .padding(.leading, 18)
         .padding(.top, 2)
-        .padding(.bottom, 6)
+        .padding(.bottom, 14)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isHeader)
     }
