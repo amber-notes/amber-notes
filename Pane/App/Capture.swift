@@ -50,7 +50,7 @@ enum Capture {
 #if os(macOS)
 /// The website demo, captured from a real front window (so it looks focused):
 ///   `-uitest -demo -open Groceries -captureDemo <dir>`
-/// The app sizes its window to 1180×560 pt with the site's column widths, then plays every
+/// The app sizes its window to 1180×560 pt (`-captureHeight 720` for the tall one) with the site's column widths, then plays every
 /// frame in one run: the intro, before, the three scenes and the caret. For each frame it writes
 /// `ready-<name>` into `dir` and waits for `shot-<name>`, which the shell writes after
 /// `screencapture -l <window-id>`. It quits by itself at the end. No input events.
@@ -78,7 +78,8 @@ extension Capture {
             if window == nil { await wait(0.1) }
         }
         guard let w = window, let note = ((try? context.fetch(FetchDescriptor<Note>())) ?? []).first(where: { $0.title == "Groceries" }) else { return }
-        w.setContentSize(NSSize(width: 1180, height: 560))
+        let height = argument("-captureHeight").flatMap(Double.init) ?? 560
+        w.setContentSize(NSSize(width: 1180, height: height))
         w.center()
         NSApp.activate()
         w.makeKeyAndOrderFront(nil)
@@ -154,7 +155,7 @@ extension Capture {
             let base = i.color ?? NSColor.textInsertionPointColor
             let c = base.usingColorSpace(.sRGB) ?? base
             let info = String(format: "{\"indicators_found\": %d, \"x_pt\": %.1f, \"y_from_top_pt\": %.1f, \"width_pt\": %.1f, \"height_pt\": %.1f, \"srgb\": [%.3f, %.3f, %.3f, %.3f], \"hex\": \"#%02X%02X%02X\"}",
-                              found.count, f.minX, 560 - f.maxY, f.width, f.height, c.redComponent, c.greenComponent, c.blueComponent, c.alphaComponent,
+                              found.count, f.minX, height - f.maxY, f.width, f.height, c.redComponent, c.greenComponent, c.blueComponent, c.alphaComponent,
                               Int(c.redComponent * 255), Int(c.greenComponent * 255), Int(c.blueComponent * 255))
             try? info.write(to: dir.appending(path: "caret.json"), atomically: true, encoding: .utf8)
         }
