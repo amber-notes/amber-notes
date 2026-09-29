@@ -393,11 +393,22 @@ final class EditorCore {
     }
 
     /// Checkbox hit test: `point` is in text-container coordinates.
+    /// The checklist circle on the line starting at `offset`, in text-container coordinates.
+    func checkboxRect(line offset: Int, layout: NSTextLayoutManager?) -> CGRect? {
+        guard let layout, let content = layout.textContentManager,
+              let loc = content.location(content.documentRange.location, offsetBy: offset) else { return nil }
+        layout.ensureLayout(for: NSTextRange(location: loc))
+        guard let fragment = layout.textLayoutFragment(for: loc) as? DecoratedLayoutFragment,
+              let d = fragment.decoration, case .checkbox = d.kind else { return nil }
+        let f = fragment.layoutFragmentFrame
+        return fragment.checkboxRect(d).offsetBy(dx: f.minX, dy: f.minY)
+    }
+
     func checkboxLine(at point: CGPoint, layout: NSTextLayoutManager?) -> Int? {
         guard let layout, let fragment = layout.textLayoutFragment(for: point) as? DecoratedLayoutFragment,
               let d = fragment.decoration, case .checkbox = d.kind else { return nil }
         let x = point.x - fragment.layoutFragmentFrame.minX
-        guard abs(x - d.markerX) < EditorMetrics.body * 1.1 else { return nil }
+        guard abs(x - d.markerX) < EditorMetrics.checkHitRadius else { return nil }
         guard let content = layout.textContentManager else { return nil }
         return content.offset(from: content.documentRange.location, to: fragment.rangeInElement.location)
     }
@@ -767,6 +778,10 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
         apply(edit)
         selectedRange = keep
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        if ListPrefix(line: (text as NSString).substring(with: (text as NSString).lineRange(for: NSRange(location: line, length: 0))))?.checkbox == true,
+           let r = core.checkboxRect(line: line, layout: textLayoutManager) {
+            CheckPop.play(in: layer, rect: r.offsetBy(dx: textContainerInset.left, dy: textContainerInset.top))
+        }
         DispatchQueue.main.asyncAfter(deadline: .now() + ListEditing.sortDelay) { [weak self] in self?.sortChecklist(around: line) }
     }
 
@@ -1175,6 +1190,11 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
             let keep = selectedRange()
             apply(edit)
             setSelectedRange(keep)
+            let ns = string as NSString
+            if ListPrefix(line: ns.substring(with: ns.lineRange(for: NSRange(location: line, length: 0))))?.checkbox == true,
+               let r = core.checkboxRect(line: line, layout: textLayoutManager), let host = layer {
+                CheckPop.play(in: host, rect: r.offsetBy(dx: textContainerOrigin.x, dy: textContainerOrigin.y))
+            }
             DispatchQueue.main.asyncAfter(deadline: .now() + ListEditing.sortDelay) { [weak self] in self?.sortChecklist(around: line) }
             return
         }

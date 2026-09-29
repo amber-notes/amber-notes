@@ -41,6 +41,35 @@ final class DecoratedLayoutFragment: NSTextLayoutFragment {
         return line.typographicBounds.minY + line.glyphOrigin.y - font.capHeight / 2
     }
 
+    /// The checklist circle, in this fragment's coordinates.
+    func checkboxRect(_ d: LineDecoration) -> CGRect {
+        let size = EditorMetrics.checkSize
+        return CGRect(x: d.markerX - size / 2, y: checkMidY - size / 2, width: size, height: size)
+    }
+
+    /// Notes' checklist circle: a light grey hairline ring, or a filled accent disc with a white tick.
+    static func drawCheckbox(checked: Bool, in rect: CGRect, ctx: CGContext) {
+        if checked {
+            ctx.setFillColor(PColor.paneAccent.cgColor)
+            ctx.fillEllipse(in: rect)
+            let s = rect.width
+            // The tick of SF Symbols' checkmark.circle.fill: short arm, long arm, round caps.
+            ctx.setStrokeColor(PColor.white.cgColor)
+            ctx.setLineWidth(s * 0.1)
+            ctx.setLineCap(.round)
+            ctx.setLineJoin(.round)
+            ctx.move(to: CGPoint(x: rect.minX + s * 0.29, y: rect.minY + s * 0.51))
+            ctx.addLine(to: CGPoint(x: rect.minX + s * 0.44, y: rect.minY + s * 0.66))
+            ctx.addLine(to: CGPoint(x: rect.minX + s * 0.715, y: rect.minY + s * 0.355))
+            ctx.strokePath()
+        } else {
+            let w = EditorMetrics.checkStroke
+            ctx.setStrokeColor((EditorMetrics.increasedContrast ? PColor.paneSecondary : PColor.paneCheckRing).cgColor)
+            ctx.setLineWidth(w)
+            ctx.strokeEllipse(in: rect.insetBy(dx: w / 2, dy: w / 2))
+        }
+    }
+
     override func draw(at point: CGPoint, in context: CGContext) {
         if let d = decoration {
             context.saveGState()
@@ -61,25 +90,7 @@ final class DecoratedLayoutFragment: NSTextLayoutFragment {
             ctx.fillEllipse(in: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2))
 
         case .checkbox(let checked):
-            let size = EditorMetrics.checkSize
-            let rect = CGRect(x: o.x + d.markerX - size / 2, y: o.y + checkMidY - size / 2, width: size, height: size)
-            if checked {
-                ctx.setFillColor(PColor.paneAccent.cgColor)
-                ctx.fillEllipse(in: rect)
-                let s = size
-                ctx.setStrokeColor(PColor.white.cgColor)
-                ctx.setLineWidth(s * 0.11)
-                ctx.setLineCap(.round)
-                ctx.setLineJoin(.round)
-                ctx.move(to: CGPoint(x: rect.minX + s * 0.28, y: rect.midY + s * 0.02))
-                ctx.addLine(to: CGPoint(x: rect.minX + s * 0.44, y: rect.midY + s * 0.17))
-                ctx.addLine(to: CGPoint(x: rect.minX + s * 0.73, y: rect.midY - s * 0.16))
-                ctx.strokePath()
-            } else {
-                ctx.setStrokeColor((EditorMetrics.increasedContrast ? PColor.paneLabel : PColor.paneSecondary.withAlphaComponent(0.8)).cgColor)
-                ctx.setLineWidth(1.3)
-                ctx.strokeEllipse(in: rect.insetBy(dx: 0.65, dy: 0.65))
-            }
+            Self.drawCheckbox(checked: checked, in: checkboxRect(d).offsetBy(dx: o.x, dy: o.y), ctx: ctx)
 
         case .quote:
             let bar = CGRect(x: o.x + 2, y: o.y + 1, width: 3, height: h - 2)

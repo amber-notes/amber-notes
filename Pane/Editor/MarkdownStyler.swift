@@ -488,7 +488,6 @@ struct MarkdownStyler {
         let level = CGFloat(list.level)
         let lead = level * EditorMetrics.nestStep
         let prefix = NSRange(location: lineRange.location, length: min(list.length, lineRange.length))
-        let content = NSRange(location: prefix.upperBound, length: lineRange.length - prefix.length)
         let p = baseParagraph()
 
         if list.ordered {
@@ -504,17 +503,19 @@ struct MarkdownStyler {
             storage.addAttributes(hiddenKerned(to: max(EditorMetrics.gutter - measured, 6), length: spaceRange.length), range: spaceRange)
             p.headIndent = lead + max(EditorMetrics.gutter, measured + 6)
         } else {
-            // Checklists get Notes' larger circle and a little air between items.
+            // Checklists follow Notes' geometry: the circle starts at the text margin, the text
+            // sits a fixed gap after it, and items are spaced a little wider than plain lines.
             let isCheck = list.checkbox != nil
-            let width = lead + (isCheck ? EditorMetrics.checkSize + 9 : EditorMetrics.gutter)
+            let width = lead + (isCheck ? EditorMetrics.checkSize + EditorMetrics.checkGap : EditorMetrics.gutter)
             storage.addAttributes(hiddenKerned(to: width, length: prefix.length), range: prefix)
-            let markerX = isCheck ? lead + EditorMetrics.checkSize / 2 + 1 : lead + EditorMetrics.gutter * 0.4
-            if isCheck { p.paragraphSpacing = 5 }
+            let markerX = isCheck ? lead + EditorMetrics.checkSize / 2 : lead + EditorMetrics.gutter * 0.4
+            if isCheck {
+                let line = bodyFont.ascender - bodyFont.descender + bodyFont.leading
+                p.paragraphSpacing = max(0, EditorMetrics.checkPitch - line - p.lineSpacing)
+            }
             if let checked = list.checkbox {
+                // Ticked items keep their text colour, like Notes: the filled circle says it's done.
                 storage.addAttribute(.paneLine, value: LineDecoration(.checkbox(checked: checked), markerX: markerX), range: enclosing)
-                if checked {
-                    storage.addAttribute(.foregroundColor, value: PColor.paneSecondary, range: content)
-                }
             } else {
                 storage.addAttribute(.paneLine, value: LineDecoration(.bullet, markerX: markerX), range: enclosing)
             }

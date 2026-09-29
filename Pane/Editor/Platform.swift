@@ -55,6 +55,15 @@ extension PColor {
 #endif
 
 extension PColor {
+    /// An empty checklist circle: Notes' light grey ring (systemGray3), a touch lighter than secondary text.
+    static var paneCheckRing: PColor {
+        #if os(iOS)
+        .systemGray3
+        #else
+        NSColor(name: nil) { $0.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? NSColor(white: 0.36, alpha: 1) : NSColor(white: 0.77, alpha: 1) }
+        #endif
+    }
+
     /// The warm amber accent: a touch deeper in light mode so it still reads on white.
     static var paneAccent: PColor { PColor(named: "AccentColor") ?? PColor(red: 0.96, green: 0.68, blue: 0.20, alpha: 1) }
 }
@@ -73,8 +82,17 @@ enum EditorMetrics {
     static let lineSpacing: CGFloat = 1.5
     #endif
     static var gutter: CGFloat { body * 1.6 }
-    /// Checklist circle, the size Notes uses.
-    static var checkSize: CGFloat { body * 1.35 }
+    // Checklists, measured from Apple Notes (.shots/checklist/reference.md), as ratios of the body size.
+    /// Circle diameter: 20.3 pt at iOS's 17 pt body.
+    static var checkSize: CGFloat { body * 1.2 }
+    /// From the circle's right edge to the text.
+    static var checkGap: CGFloat { body * 0.64 }
+    /// Distance from one item's baseline to the next.
+    static var checkPitch: CGFloat { body * 1.76 }
+    /// The empty circle's hairline: about 1.1 pt on iPhone, never under 1 pt.
+    static var checkStroke: CGFloat { max(1, body * 0.065) }
+    /// How far from the circle's centre a click still ticks it (a 24 pt target at least).
+    static var checkHitRadius: CGFloat { max(checkSize / 2 + 3, 12) }
     static var nestStep: CGFloat { body * 1.4 }
 
     /// Increase Contrast is on: outlines drawn by hand use the label colour.
