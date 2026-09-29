@@ -108,12 +108,23 @@ struct ShareSheet: View {
         VStack {
             Spacer()
             VStack(alignment: .leading, spacing: 14) {
+                // A share sheet's bar: Cancel leading, the action trailing, the destination between.
                 HStack {
-                    AppMark(size: 30)
-                    Text("Save to Amber Notes").font(.headline)
+                    Button("Cancel", action: model.cancel)
                     Spacer()
-                    Button("Cancel", action: model.cancel).font(.body)
+                    Text("Amber Notes").font(.headline)
+                    Spacer()
+                    Button(action: model.save) {
+                        if model.saved {
+                            Label("Saved", systemImage: "checkmark").labelStyle(.titleAndIcon)
+                        } else {
+                            Text("Save").fontWeight(.semibold)
+                        }
+                    }
+                    .disabled(model.loading || model.saved || (model.markdown.isEmpty && model.files.isEmpty))
+                    .accessibilityIdentifier("share.save")
                 }
+                .frame(minHeight: 44)
                 Group {
                     if model.loading {
                         ProgressView().frame(maxWidth: .infinity, minHeight: 80)
@@ -135,15 +146,6 @@ struct ShareSheet: View {
                     }
                 }
                 if let e = model.error { Text(e).font(.footnote).foregroundStyle(.red) }
-                Button(action: model.save) {
-                    Label(model.saved ? "Saved" : "Save", systemImage: model.saved ? "checkmark" : "tray.and.arrow.down")
-                        .frame(maxWidth: .infinity)
-                        .contentTransition(.symbolEffect(.replace))
-                }
-                .buttonStyle(.glassProminent)
-                .controlSize(.large)
-                .disabled(model.loading || model.saved || (model.markdown.isEmpty && model.files.isEmpty))
-                .accessibilityIdentifier("share.save")
             }
             .padding(20)
             .glassEffect(.regular, in: .rect(cornerRadius: 28))

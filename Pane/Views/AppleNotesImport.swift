@@ -84,6 +84,7 @@ struct AppleNotesImportView: View {
     @State private var failure: String?
     @State private var progress: (done: Int, total: Int)?
     @State private var existingTitles: Set<String> = []
+    @FocusState private var searchFocused: Bool
 
     private var shown: [AppleNote] {
         query.isEmpty ? notes : notes.filter { $0.name.localizedStandardContains(query) || $0.folder.localizedStandardContains(query) }
@@ -105,13 +106,16 @@ struct AppleNotesImportView: View {
                 Text("Import from Apple Notes").font(.system(size: 17, weight: .bold))
                 HStack(spacing: 6) {
                     Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                    TextField("Search notes", text: $query)
+                    TextField("Search Notes", text: $query)
                         .textFieldStyle(.plain)
                         .focusEffectDisabled()
+                        .focused($searchFocused)
                 }
                 .padding(.horizontal, 10)
                 .frame(height: 30)
                 .background(.fill.tertiary, in: .rect(cornerRadius: 8))
+                // The field draws its own focus ring, so keyboard users always see where they are.
+                .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.accentColor.opacity(searchFocused ? 0.8 : 0), lineWidth: 2.5).padding(-1.5))
             }
             .padding(.horizontal, 20)
             .padding(.top, 20)
@@ -135,7 +139,7 @@ struct AppleNotesImportView: View {
             ContentUnavailableView {
                 Label("Can't read Apple Notes", systemImage: "exclamationmark.triangle")
             } description: { Text(failure) } actions: {
-                Button("Try again") { Task { await load() } }
+                Button("Try Again") { Task { await load() } }
             }
         } else if shown.isEmpty {
             ContentUnavailableView.search(text: query)
@@ -149,7 +153,7 @@ struct AppleNotesImportView: View {
                             HStack {
                                 Text(folder.isEmpty ? "Notes" : folder).font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary)
                                 Spacer()
-                                Button(items.allSatisfy { picked.contains($0.id) } ? "Deselect" : "Select all") {
+                                Button(items.allSatisfy { picked.contains($0.id) } ? "Deselect All" : "Select All") {
                                     let ids = items.map(\.id)
                                     if items.allSatisfy({ picked.contains($0.id) }) { picked.subtract(ids) } else { picked.formUnion(ids) }
                                 }
@@ -200,6 +204,9 @@ struct AppleNotesImportView: View {
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(already ? "\(note.name), already imported" : note.name)
+        .accessibilityValue(DateBucket.rowDate(note.modified))
+        .accessibilityAddTraits(on ? .isSelected : [])
         .animation(.easeOut(duration: 0.12), value: on)
     }
 
@@ -218,7 +225,7 @@ struct AppleNotesImportView: View {
             Spacer()
             Button("Cancel") { dismiss() }
                 .keyboardShortcut(.cancelAction)
-            Button(picked.isEmpty ? "Import" : "Import \(picked.count) \(picked.count == 1 ? "note" : "notes")") {
+            Button(picked.isEmpty ? "Import" : "Import \(picked.count) \(picked.count == 1 ? "Note" : "Notes")") {
                 Task { await runImport() }
             }
             .buttonStyle(.borderedProminent)
