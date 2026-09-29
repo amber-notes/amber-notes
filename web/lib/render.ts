@@ -33,6 +33,8 @@ const schema: Schema = {
     // The default schema pins some classes (footnotes, task lists); ours are free-form.
     a: [...(defaultSchema.attributes?.a ?? []).filter((x) => !(Array.isArray(x) && x[0] === "className")), "className", "target", "rel", "download"],
     img: [...(defaultSchema.attributes?.img ?? []), "loading", "decoding"],
+    // List items carry their marker kind (li-dash, li-bullet) as well as GFM's task-list-item.
+    li: [...(defaultSchema.attributes?.li ?? []).filter((x) => !(Array.isArray(x) && x[0] === "className")), ["className", "task-list-item", "li-dash", "li-bullet"]],
     input: [["type", "checkbox"], ["disabled", true], "checked"],
   },
   // Links are http(s) or mailto; our own sub-note pages are relative.
@@ -57,6 +59,30 @@ function textOf(node: Element): string {
   let s = "";
   visit(node, "text", (t: { value: string }) => { s += t.value; });
   return s;
+}
+
+type MdNode = { type: string; ordered?: boolean; checked?: boolean | null; position?: { start: { offset?: number } }; data?: { hProperties?: Record<string, unknown> }; children?: MdNode[] };
+
+/** Markdown forgets which marker a list item used; the app shows "-" as a dash and "*" as a
+ * bullet (Notes' Dashed and Bulleted lists), so read it back from the source. Checklist items
+ * keep GFM's own class and get a circle instead. */
+function remarkListMarkers() {
+  return (tree: MdNode, file: { value: unknown }) => {
+    const source = String(file.value ?? "");
+    const walk = (node: MdNode) => {
+      if (node.type === "list" && !node.ordered) {
+        for (const item of node.children ?? []) {
+          if (item.type !== "listItem" || typeof item.checked === "boolean") continue;
+          let i = item.position?.start.offset ?? -1;
+          while (i >= 0 && (source[i] === " " || source[i] === "\t")) i += 1;
+          const marker = i >= 0 ? source[i] : "*";
+          item.data = { ...item.data, hProperties: { ...item.data?.hProperties, className: [marker === "-" ? "li-dash" : "li-bullet"] } };
+        }
+      }
+      node.children?.forEach(walk);
+    };
+    walk(tree);
+  };
 }
 
 /** Rewrites Amber Notes' own links (pane-file:, pane-note:) into things a browser can open. */
@@ -106,6 +132,7 @@ export function renderNote(markdown: string, opts: RenderOptions): string {
   const file = unified()
     .use(remarkParse)
     .use(remarkGfm)
+    .use(remarkListMarkers)
     .use(remarkRehype, { allowDangerousHtml: true })
     .use(rehypeRaw)
     .use(rehypeAmber, opts)

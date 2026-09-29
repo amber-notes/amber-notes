@@ -44,13 +44,26 @@ a:focus-visible, .file-chip:focus-visible, .subnote-chip:focus-visible { outline
 .shell { min-height: 100dvh; display: flex; flex-direction: column; }
 .bar {
   position: sticky; top: 0; z-index: 1;
-  display: flex; align-items: center; height: 52px; padding: 0 16px;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 52px; padding: 0 16px;
   background: color-mix(in srgb, var(--chrome) 85%, transparent);
   backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
   border-bottom: 1px solid var(--rule);
 }
 .brand { display: inline-flex; align-items: center; gap: 8px; color: var(--text); text-decoration: none; font-weight: 600; font-size: 15px; min-height: 44px; }
 .brand img { border-radius: 5px; }
+.brand { flex: none; }
+
+/* Who shared the note, at the right of the bar. Long names and emails truncate; the photo stays. */
+.sharer { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.avatar { flex: none; width: 28px; height: 28px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 0.5px var(--rule); }
+.avatar-initials { display: inline-flex; align-items: center; justify-content: center; background: var(--accent-soft); color: var(--accent-text); font-size: 12px; font-weight: 600; letter-spacing: 0.02em; }
+.sharer-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; text-align: right; order: -1; }
+.sharer-line, .sharer-email { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sharer-line { font-size: 13px; }
+.sharer-label { color: var(--secondary); }
+.sharer-name { font-weight: 600; }
+.sharer-email { font-size: 12px; color: var(--secondary); }
+@media (max-width: 480px) { .sharer-email { display: none; } }
 
 .page { width: 100%; max-width: 720px; margin: 0 auto; padding: 28px 16px 64px; flex: 1; }
 .parent { display: inline-flex; gap: 4px; align-items: center; min-height: 44px; font-size: 15px; text-decoration: none; }
@@ -68,11 +81,15 @@ a:focus-visible, .file-chip:focus-visible, .subnote-chip:focus-visible { outline
 .note ul, .note ol { margin: 0 0 0.6em; padding-left: 1.5em; }
 .note li { margin: 0.15em 0; }
 .note li::marker { color: var(--text); }
-.note .contains-task-list { list-style: none; padding-left: 0.2em; }
-.note .task-list-item { display: flex; gap: 10px; align-items: baseline; }
-.note .task-list-item input { appearance: none; flex: none; width: 20px; height: 20px; margin: 0; border: 1.5px solid var(--tertiary); border-radius: 50%; transform: translateY(4px); }
+/* Bulleted (*), dashed (-) and checklist items share one text edge, like the app: the marker
+   or circle sits in a 20px column, 10px from the text. Ordered lists keep their numbers. */
+.note ul { list-style: none; padding-left: 0; }
+.note ul > li { position: relative; padding-left: 30px; }
+/* Markers centre on the first line's text (17px type, 1.5 line height: the middle is 0.75em down). */
+.note ul > li.li-bullet::before { content: ""; position: absolute; left: 7px; top: calc(0.75em - 3px); width: 6px; height: 6px; border-radius: 50%; background: var(--text); }
+.note ul > li.li-dash::before { content: "–"; position: absolute; left: 0; width: 20px; text-align: center; color: var(--text); }
+.note .task-list-item input { appearance: none; font: inherit; position: absolute; left: 0; top: calc(0.75em - 10px); width: 20px; height: 20px; margin: 0; border: 1.5px solid var(--tertiary); border-radius: 50%; }
 .note .task-list-item input:checked { background: var(--accent) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'><path d='M5.5 10.5l3 3 6-7' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/></svg>") center/100% no-repeat; border-color: var(--accent); }
-.note .task-list-item:has(input:checked) { color: var(--secondary); }
 .note blockquote { margin: 0 0 0.6em; padding: 0 0 0 14px; border-left: 3px solid var(--accent); color: var(--secondary); }
 .note code { font: 0.88em ui-monospace, "SF Mono", Menlo, monospace; background: var(--code); padding: 0.1em 0.35em; border-radius: 5px; }
 .note pre { background: var(--code); padding: 12px 14px; border-radius: 10px; overflow-x: auto; margin: 0 0 0.8em; }

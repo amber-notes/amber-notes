@@ -1,7 +1,26 @@
 import Link from "next/link";
 import { renderNote, withoutTitle } from "./render";
 import type { SharedFile } from "./render";
-import type { SharedNote } from "./shared";
+import { avatarURL, type SharedNote } from "./shared";
+import { sharerLabel, type Sharer } from "./sharer";
+
+function SharedBy({ by }: { by: Sharer | null | undefined }) {
+  const { name, email, initials } = sharerLabel(by);
+  const photo = avatarURL(by?.avatar);
+  return (
+    <div className="sharer" title={email ? `${name} · ${email}` : name}>
+      {photo ? (
+        <img className="avatar" src={photo} alt="" width={28} height={28} referrerPolicy="no-referrer" />
+      ) : (
+        <span className="avatar avatar-initials" aria-hidden="true">{initials}</span>
+      )}
+      <span className="sharer-text">
+        <span className="sharer-line"><span className="sharer-label">Shared by </span><span className="sharer-name">{name}</span></span>
+        {email && <span className="sharer-email">{email}</span>}
+      </span>
+    </div>
+  );
+}
 
 function edited(iso: string): string {
   const d = new Date(iso);
@@ -22,6 +41,7 @@ export function NotePage({ slug, note, files }: { slug: string; note: SharedNote
           <img src="/mark.png" alt="" width={22} height={22} />
           <span>Amber Notes</span>
         </Link>
+        <SharedBy by={note.shared_by} />
       </header>
       <main className="page">
         {note.is_sub && (

@@ -21,7 +21,8 @@ const config: NextConfig = {
             "default-src 'self'",
             "script-src 'self' 'unsafe-inline'",
             "style-src 'self' 'unsafe-inline'",
-            "img-src 'self' https: data:",
+            // Local development serves storage over http from the local Supabase stack.
+            `img-src 'self' https: data:${process.env.NODE_ENV === "production" ? "" : " http://127.0.0.1:*"}`,
             "media-src 'self' https:",
             "font-src 'self'",
             "connect-src 'self'",

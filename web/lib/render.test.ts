@@ -94,3 +94,34 @@ describe("summary", () => {
     expect(html).not.toMatch(/id="document"/);
   });
 });
+
+describe("lists", () => {
+  const html = (md: string) => renderNote(md, { files: {}, subNoteHref: () => null });
+
+  it("keeps a plain item's marker next to checklist items, aligned with their text", () => {
+    const out = html("- [ ] Lists continue when you press Return\n- [x] Tap a circle to check it off\n- Press Return on an empty item to end a list");
+    expect(out).toMatch(/<li class="task-list-item"><input type="checkbox" disabled> Lists continue/);
+    expect(out).toMatch(/<li class="li-dash">Press Return on an empty item/);
+    expect((out.match(/task-list-item/g) ?? []).length).toBe(2);
+  });
+
+  it("tells dashed (-) and bulleted (*) lists apart", () => {
+    expect(html("- one\n- two")).toMatch(/<li class="li-dash">one<\/li>/);
+    expect(html("* one\n* two")).toMatch(/<li class="li-bullet">one<\/li>/);
+    expect(html("+ one")).toMatch(/<li class="li-bullet">one<\/li>/);
+  });
+
+  it("marks nested lists by their own marker and leaves ordered lists numbered", () => {
+    const out = html("* outer\n  - inner\n    * deeper\n1. first\n2. second");
+    expect(out).toMatch(/<li class="li-bullet">outer/);
+    expect(out).toMatch(/<li class="li-dash">inner/);
+    expect(out).toMatch(/<li class="li-bullet">deeper/);
+    expect(out).toMatch(/<ol>\s*<li>first<\/li>/);
+  });
+
+  it("handles a list that starts plain and then has tasks", () => {
+    const out = html("* plain first\n* [ ] then a task");
+    expect(out).toMatch(/<li class="li-bullet">plain first/);
+    expect(out).toMatch(/<li class="task-list-item"><input type="checkbox" disabled> then a task/);
+  });
+});
