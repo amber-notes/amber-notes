@@ -141,6 +141,8 @@ struct SidebarView: View {
         #endif
         .onAppear(perform: settleScope)
         .onChange(of: folders.count) { _, _ in settleScope() }
+        // Launch restores All Notes after this list first appears.
+        .onChange(of: scope) { _, _ in settleScope() }
         // Right-click anywhere in the sidebar; a folder's own menu comes from its row.
         .contextMenu(forSelectionType: Scope.self) { items in
             if items.isEmpty || items.contains(.all) || items.contains(.trash) {
@@ -239,9 +241,11 @@ struct SidebarView: View {
         }
     }
 
-    /// With a single folder there's no "All Notes" row, so show that folder instead.
+    /// With a single folder there's no "All Notes" row, so show that folder instead. Only
+    /// All Notes is swapped: no scope means the iPhone folder list is showing, and selecting a
+    /// row there without pushing it leaves the row marked and deaf to taps.
     private func settleScope() {
-        if folders.count <= 1, scope == .all || scope == nil, let only = folders.first {
+        if folders.count <= 1, scope == .all, let only = folders.first {
             scope = .folder(only.id)
         }
     }
