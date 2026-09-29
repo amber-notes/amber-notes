@@ -69,6 +69,24 @@ private struct AccountButton: View {
 }
 #endif
 
+#if os(macOS)
+/// The app's name and mark at the top of the sidebar.
+struct SidebarHeader: View {
+    var body: some View {
+        HStack(spacing: 8) {
+            Image("MarkTight").resizable().scaledToFit().frame(width: 21, height: 21).accessibilityHidden(true)
+            Text("Amber Notes").font(.system(size: 15, weight: .semibold))
+            Spacer(minLength: 0)
+        }
+        .padding(.leading, 18)
+        .padding(.top, 2)
+        .padding(.bottom, 6)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
+    }
+}
+#endif
+
 enum SidebarStyle {
     /// Notes on the Mac draws folder icons in the text colour; iOS tints them.
     #if os(macOS)
@@ -129,18 +147,7 @@ struct SidebarView: View {
         .listStyle(.sidebar)
         #if os(macOS)
         // The app's name at the top, so it's never mistaken for Notes. (iOS shows it as the large title.)
-        .safeAreaInset(edge: .top, spacing: 0) {
-            HStack(spacing: 8) {
-                Image("MarkTight").resizable().scaledToFit().frame(width: 21, height: 21).accessibilityHidden(true)
-                Text("Amber Notes").font(.system(size: 15, weight: .semibold))
-                Spacer(minLength: 0)
-            }
-            .padding(.leading, 18)
-            .padding(.top, 2)
-            .padding(.bottom, 6)
-            .accessibilityElement(children: .combine)
-            .accessibilityAddTraits(.isHeader)
-        }
+        .safeAreaInset(edge: .top, spacing: 0) { SidebarHeader() }
         #endif
         .onAppear(perform: settleScope)
         .onChange(of: folders.count) { _, _ in settleScope() }

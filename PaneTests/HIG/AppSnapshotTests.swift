@@ -81,3 +81,22 @@ import Testing
     }
 }
 #endif
+
+#if os(macOS)
+extension AppSnapshotTests {
+    /// The sidebar header alone, magnified, to judge the mark's size and baseline against the name.
+    @Test(arguments: [false, true])
+    func sidebarHeader(dark: Bool) throws {
+        guard let dir = Self.dir else { return }
+        let host = NSHostingView(rootView: SidebarHeader().frame(width: 240).background(Color(nsColor: .windowBackgroundColor)))
+        host.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
+        host.frame = CGRect(origin: .zero, size: host.fittingSize)
+        host.layoutSubtreeIfNeeded()
+        let rep = try #require(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+        rep.size = host.bounds.size
+        host.cacheDisplay(in: host.bounds, to: rep)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try #require(rep.representation(using: .png, properties: [:])).write(to: dir.appending(path: "mac-sidebar-header-\(dark ? "dark" : "light").png"))
+    }
+}
+#endif
