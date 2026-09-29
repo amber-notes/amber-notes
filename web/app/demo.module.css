@@ -29,7 +29,7 @@
 .shot[data-under] { opacity: 1; z-index: 1; }
 .shot[data-on] { opacity: 1; z-index: 2; }
 @media (prefers-reduced-motion: no-preference) { .shot[data-on] { transition: opacity 0.5s ease-out; } }
-/* Pressing Return in the app is instant, so intro frames swap without a fade. */
+/* The app adds a note to its list at once, so that frame swaps without a fade. */
 .app[data-instant] .shot { transition: none !important; }
 /* An edit lands the way the app shows it: the new rows arrive already tinted, in one quick step. */
 @media (prefers-reduced-motion: no-preference) { .app[data-edit] .shot[data-on] { transition: opacity 0.18s ease-out; } }
@@ -41,8 +41,8 @@
 @keyframes appBlink { 50% { opacity: 0; } }
 
 /* The app's receipt pill, laid on top so it can spring in, and leave more quietly. */
-/* Centred on the app's own receipt position; its width follows the captured PNG (any text). */
-.pill { position: absolute; height: calc(78 * var(--u)); width: auto; translate: -50% 0; pointer-events: none; }
+/* An opaque crop of the capture (the receipt on the note's white), placed exactly where it was taken. */
+.pill { position: absolute; pointer-events: none; }
 .pill[data-out] { opacity: 0; transform: translateY(calc(6 * var(--u))); }
 @media (prefers-reduced-motion: no-preference) {
   .pill { animation: pillIn 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.3) both; }
@@ -68,9 +68,22 @@
 }
 /* Review: the chat over the note's empty right side (item names, the amber bar and the pill stay clear). */
 .chat[data-side="right"] { left: calc(860 * var(--u)); width: calc(400 * var(--u)); }
-/* While an edit lands, the chat steps aside (right and down, partly off the desk, a little dimmer) so
-   the whole note shows; it comes back, with a small overshoot, when the next request starts. */
-.chat[data-aside] { transform: translate(calc(240 * var(--u)), calc(150 * var(--u))); }
+/* ?chat=follow: the chat glides down as the page scrolls, --follow going 0 (page top) to 1 (desk
+   centred), by the CSS `translate` property, so the step-aside transform stacks on top. --travel is as
+   low as it goes: its bottom (464 pt in the window) stops 10 pt above the receipt's shadow (652 pt). */
+@property --follow { syntax: "<number>"; inherits: true; initial-value: 0; }
+.desk { --travel: 178; }
+.desk[data-follow] .chat { translate: 0 calc(var(--follow) * var(--travel) * var(--u)); }
+@supports (animation-timeline: scroll()) {
+  :root[data-follow-css] .desk[data-follow] .chat { animation: chatFollow linear both; animation-timeline: scroll(root block); animation-range: 0px var(--follow-end, 400px); }
+}
+@keyframes chatFollow { from { --follow: 0; } to { --follow: 1; } }
+/* While an edit lands, the chat steps aside into the desk's bottom-right corner (mostly off the desk,
+   a little dimmer), clear of the note's tinted rows, its table and the receipt, so the whole change
+   shows; it comes back, with a small overshoot, when the next request starts. Its title bar stays in
+   view. In follow mode it lands in the same corner wherever the scroll has put it. */
+.chat[data-aside] { transform: translate(calc(176 * var(--u)), calc(512 * var(--u))); }
+.desk[data-follow] .chat[data-aside] { transform: translate(calc(176 * var(--u)), calc((512 - var(--follow) * var(--travel)) * var(--u))); }
 .chat[data-aside]::after { opacity: 1; }
 @media (prefers-reduced-motion: no-preference) {
   .chat[data-aside] { transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1); }

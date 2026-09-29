@@ -11,36 +11,40 @@ import d from "./demo.module.css";
 // and loops. One clock drives it; it pauses off-screen, in a hidden tab and under the pointer.
 
 // The frames, named as captured. A recapture with the same names is a change to this constant.
+// The tint frames were captured with the receipt showing; it's patched out of them (from the faded frame,
+// plain white there) and laid back on top as its own crop of that capture, so it can animate.
 const FRAMES = {
   dir: "/demo/lisbon/", h: 720,
-  pillCentreX: 824.5, pillTop: 646, // the receipt's centre and top in the window (pt)
+  pill: { left: 670, top: 645, w: 310, h: 75 }, // the receipt crop's box in the window (pt), measured from the captures
 };
-type Shot = "before" | "written" | "writtenPlain" | "edited" | "editedPlain";
+type Shot = "before" | "listed" | "written" | "writtenPlain" | "edited" | "editedPlain";
 const FILE: Record<Shot, string> = {
-  before: "lisbon-0-before", written: "lisbon-1-tint", writtenPlain: "lisbon-1-faded", edited: "lisbon-2-tint", editedPlain: "lisbon-2-faded",
+  before: "lisbon-0-before", listed: "lisbon-1-listed", written: "lisbon-1-tint", writtenPlain: "lisbon-1-faded", edited: "lisbon-2-tint", editedPlain: "lisbon-2-faded",
 };
 const SHOTS = Object.keys(FILE) as Shot[];
 const src = (k: Shot) => `${FRAMES.dir}${FILE[k]}.webp`;
 const ALT: Record<Shot, string> = {
   before: "Amber Notes on a Mac",
-  written: "A new note, Lisbon in May, that ChatGPT just wrote in Amber Notes, tinted amber",
-  writtenPlain: "The Lisbon in May note in Amber Notes",
-  edited: "The Lisbon note with day 3 swapped for Sintra and a dinner spot added, those two lines tinted amber",
+  listed: "A new note, Lisbon, 4 days in May, arriving in the list marked Written by ChatGPT",
+  written: "The new note, Lisbon, 4 days in May, that ChatGPT just wrote in Amber Notes, tinted amber",
+  writtenPlain: "The Lisbon, 4 days in May note in Amber Notes",
+  edited: "The Lisbon note with day 3 swapped for Sintra and a dinner spot added to the table, both tinted amber",
   editedPlain: "The Lisbon note after the edit",
 };
 
 type Ask = { ask: string; answer: string; land: Shot; plain: Shot; pill: string; pillAlt: string };
 const ASKS: Ask[] = [
-  { ask: "Plan 4 days in Lisbon for us and save it to my notes", answer: "Done. I wrote “Lisbon in May” in Amber Notes: a day-by-day plan, a packing list and where to eat.",
-    land: "written", plain: "writtenPlain", pill: "pill-chatgpt-wrote-note@2x.png", pillAlt: "ChatGPT wrote this note. Undo" },
-  { ask: "Swap day 3 for a day trip to Sintra, and add a dinner spot", answer: "Changed day 3 to Sintra and added Ramiro for dinner. Nothing else moved.",
-    land: "edited", plain: "editedPlain", pill: "pill-chatgpt-2-lines@2x.png", pillAlt: "ChatGPT changed 2 lines. Undo" },
+  { ask: "Plan 4 days in Lisbon for us and save it to my notes", answer: "Done. I wrote “Lisbon, 4 days in May” in Amber Notes: a day-by-day plan, where to eat and what to pack.",
+    land: "written", plain: "writtenPlain", pill: "pill-chatgpt-wrote-note.webp", pillAlt: "ChatGPT wrote this note. Undo" },
+  { ask: "Swap day 3 for a day trip to Sintra, and add a dinner spot", answer: "Changed day 3 to Sintra and added Cervejaria Trindade for dinner. Nothing else moved.",
+    land: "edited", plain: "editedPlain", pill: "pill-chatgpt-2-lines.webp", pillAlt: "ChatGPT changed 2 lines. Undo" },
 ];
 export const PARTS = ["You ask ChatGPT", "It writes the whole note in Amber Notes", "You change your mind", "It edits just those lines"];
 
 // The clock (ms). The app alone, then ChatGPT arrives; each ask is typed, sent, thought about and
 // answered; the edit lands with its tint and the receipt; after a moment the tint fades as in the app.
-const ALONE = 500, ARRIVE = 600, CHAR = 36, SENT = 300, THINK = 700, ANSWER = 1500, LAND = 2000, PILL = 200, HOLD = 3200, BEAT = 900, END = 1800, RESET = 1400;
+// The first ask's note shows up in the list while ChatGPT is still at work (LISTED after it's sent).
+const LISTED = 1100, ALONE = 500, ARRIVE = 600, CHAR = 36, SENT = 300, THINK = 700, ANSWER = 1500, LAND = 2000, PILL = 200, HOLD = 3200, BEAT = 900, END = 1800, RESET = 1400;
 type Beat = { typeAt: number; typed: number; answer: number; land: number; faded: number; next: number };
 const BEATS: Beat[] = (() => {
   let t = ALONE + ARRIVE;
@@ -67,6 +71,7 @@ function at(t: number): View {
     if (t >= b.typed + SENT) v.sent = k + 1;
     if (t >= b.typed + THINK && t < b.answer) v.thinking = true;
     if (t >= b.answer) v.answered = k + 1;
+    if (k === 0 && t >= b.typed + LISTED) v.shot = "listed";
     if (t >= b.land) { v.shot = t >= b.faded ? a.plain : a.land; v.edit = t < b.faded; v.aside = k === ASKS.length - 1 || t < BEATS[k + 1].typeAt; }
     if (t >= b.land + PILL && t < b.faded + 400) { v.pill = k; v.pillOut = t >= b.faded; }
   });
@@ -86,6 +91,41 @@ export default function Demo() {
   const msgsRef = useRef<HTMLDivElement>(null);
   const fieldRef = useRef<HTMLSpanElement>(null);
   const segs = useRef<(HTMLButtonElement | null)[]>([]);
+  const deskRef = useRef<HTMLDivElement>(null);
+  const [follow, setFollow] = useState(false); // review: ?chat=follow
+
+  // ?chat=follow: the chat glides down the desk as you scroll, from its first-view spot (page top) to its
+  // lowest spot (desk centred in the viewport), as --follow goes 0 to 1. It never reaches the pill.
+  useEffect(() => {
+    if (new URLSearchParams(location.search).get("chat") !== "follow") return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    setFollow(true);
+    const desk = deskRef.current;
+    if (!desk) return;
+    const root = document.documentElement;
+    let end = 1;
+    const measure = () => {
+      // Layout offsets, not the bounding box, so the page's entrance transform doesn't skew it.
+      let top = 0;
+      for (let el: HTMLElement | null = desk; el; el = el.offsetParent as HTMLElement | null) top += el.offsetTop;
+      end = Math.max(1, top - (window.innerHeight - desk.offsetHeight) / 2);
+      desk.style.setProperty("--follow-end", `${end}px`);
+    };
+    // The desk is sized after mount (and on resize), so measure whenever it changes size.
+    const ro = new ResizeObserver(measure);
+    ro.observe(desk);
+    window.addEventListener("resize", measure);
+    // Browsers with scroll-driven animations do it in CSS; others follow the scroll with one write per frame.
+    if (CSS.supports("animation-timeline: scroll()")) {
+      root.dataset.followCss = "";
+      return () => { ro.disconnect(); window.removeEventListener("resize", measure); delete root.dataset.followCss; };
+    }
+    let raf = 0;
+    const onScroll = () => { if (raf) return; raf = requestAnimationFrame(() => { raf = 0; desk.style.setProperty("--follow", String(Math.min(1, Math.max(0, window.scrollY / end)))); }); };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => { ro.disconnect(); window.removeEventListener("resize", measure); window.removeEventListener("scroll", onScroll); cancelAnimationFrame(raf); };
+  }, []);
 
   // Wide screens: size the desk so the chat and the note fit the first view.
   useLayoutEffect(() => {
@@ -118,10 +158,10 @@ export default function Demo() {
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       // No motion: the whole conversation and the final note.
-      setStill(true); setPart(3); setView({ ...at(BEATS[1].faded + 500), pill: -1 }); return;
+      setStill(true); setPart(3); setView({ ...at(BEATS[1].faded + 500), pill: -1, aside: false }); return;
     }
     const ready = { done: false };
-    Promise.all(SHOTS.map((k) => { const i = new Image(); i.src = src(k); return i.decode().catch(() => undefined); }))
+    Promise.all([...SHOTS.map(src), ...ASKS.map((a) => FRAMES.dir + a.pill)].map((u) => { const i = new Image(); i.src = u; return i.decode().catch(() => undefined); }))
       .then(() => { ready.done = true; });
     let raf = 0;
     const tick = (now: number) => {
@@ -178,9 +218,10 @@ export default function Demo() {
       {captions}
       <div ref={outer} className={d.fit} style={fitW ? { width: fitW, margin: "0 auto" } : undefined}
         onPointerEnter={() => hoverPause(true)} onPointerLeave={() => hoverPause(false)}>
-        <div className={d.desk}>
+        <div ref={deskRef} className={d.desk} data-follow={follow || undefined}>
           <Wallpaper />
-          <div className={d.app} data-dim={(view.chat && !view.edit && (typing || view.thinking || view.sent > view.answered)) || undefined} data-edit={view.edit || undefined}>
+          <div className={d.app} data-dim={(view.chat && !view.edit && (typing || view.thinking || view.sent > view.answered)) || undefined} data-edit={view.edit || undefined}
+            data-instant={base === "listed" || undefined}>
             {SHOTS.map((k) => (
               <img key={k} src={src(k)} width={1180} height={FRAMES.h} alt={k === base ? ALT[k] : ""}
                 aria-hidden={k !== base} className={d.shot} data-on={k === base || undefined} data-under={(k === under && k !== base) || undefined}
@@ -188,7 +229,7 @@ export default function Demo() {
             ))}
             {view.pill >= 0 && (
               <img key={`pill${view.pill}`} src={`${FRAMES.dir}${ASKS[view.pill].pill}`} alt={ASKS[view.pill].pillAlt} className={d.pill} data-out={view.pillOut || undefined}
-                style={{ left: `calc(${FRAMES.pillCentreX} * var(--u))`, top: `calc(${FRAMES.pillTop} * var(--u))` }} />
+                style={{ left: `calc(${FRAMES.pill.left} * var(--u))`, top: `calc(${FRAMES.pill.top} * var(--u))`, width: `calc(${FRAMES.pill.w} * var(--u))`, height: `calc(${FRAMES.pill.h} * var(--u))` }} />
             )}
           </div>
 
