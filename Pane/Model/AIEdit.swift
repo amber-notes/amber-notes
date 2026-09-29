@@ -38,21 +38,60 @@ enum AIEdit {
         note.aiPrevious = nil
         AIEditStore.shared[note.id].previousVersion = nil
         guard let previous, previous != note.body else { return nil }
-        return Receipt(noteID: note.id, by: by, at: at, previous: previous, previousVersion: version,
+        return Receipt(noteID: note.id, by: by, at: at, previous: previous, after: note.body, previousVersion: version,
                        lines: ChangeTint.changedLines(from: previous, to: note.body).count)
     }
 
     /// Puts the note back the way it was before the AI's edit. With version history, it restores
     /// the version from before the edit, so the AI's text is kept as a version of its own. Without
     /// it (signed out, or an edit this device had no version for), the old text goes up as your edit.
+    /// If you've typed since the edit landed, only the AI's change is taken out and your typing
+    /// stays; when your typing touched the same lines, nothing changes and Undo says why.
     static func undo(_ receipt: Receipt, on note: Note) async throws {
         guard note.id == receipt.noteID else { return }
-        if let version = receipt.previousVersion, version > 0, NoteHistory.shared?.sync != nil {
+        // Typing that isn't in the note yet counts as typed since the edit.
+        DebouncedSave.flushAll()
+        let untouched = receipt.after == nil || note.body == receipt.after
+        if untouched, let version = receipt.previousVersion, version > 0, NoteHistory.shared?.sync != nil {
             try await NoteHistory.restore(noteID: note.id, toVersion: version)
             return
         }
-        note.body = receipt.previous
+        let restored: String
+        if untouched {
+            restored = receipt.previous
+        } else if let after = receipt.after, let undone = revert(receipt.previous, after, in: note.body) {
+            restored = undone
+        } else {
+            throw UndoError.editedSince
+        }
+        guard restored != note.body else { return }
+        note.body = restored
         note.touch()
+    }
+
+    enum UndoError: LocalizedError {
+        case editedSince
+        var errorDescription: String? { "Couldn't undo. You've changed those lines since." }
+    }
+
+    /// Takes the change from `before` to `after` back out of `current`, which is `after` with
+    /// your own edits on top. Nil when your edits overlap the lines that change touched.
+    static func revert(_ before: String, _ after: String, in current: String) -> String? {
+        guard let ai = TextDiff.edit(from: before, to: after) else { return current }
+        guard let yours = TextDiff.edit(from: after, to: current) else { return before }
+        // Where the AI's text sits in `after`, widened to whole lines so a word typed on a line
+        // it rewrote counts as touching it.
+        let a = after as NSString
+        let aiText = NSRange(location: ai.range.location, length: (ai.replacement as NSString).length)
+        let aiLines = a.lineRange(for: aiText)
+        let mine = yours.range
+        guard NSMaxRange(mine) <= aiLines.location || mine.location >= NSMaxRange(aiLines) else { return nil }
+        let delta = (yours.replacement as NSString).length - mine.length
+        let at = mine.location <= aiText.location ? aiText.location + delta : aiText.location
+        let c = current as NSString
+        guard NSMaxRange(NSRange(location: at, length: aiText.length)) <= c.length,
+              c.substring(with: NSRange(location: at, length: aiText.length)) == ai.replacement else { return nil }
+        return c.replacingCharacters(in: NSRange(location: at, length: aiText.length), with: (before as NSString).substring(with: ai.range))
     }
 
     struct Receipt: Equatable {
@@ -61,6 +100,8 @@ enum AIEdit {
         var at: Date
         /// The note before the edit, and its version on the server, for Undo.
         var previous: String
+        /// The note right after the edit, to tell whether you've changed it since.
+        var after: String? = nil
         var previousVersion: Int64? = nil
         /// How many lines it added or changed.
         var lines: Int

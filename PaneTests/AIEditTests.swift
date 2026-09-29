@@ -100,6 +100,42 @@ import Testing
         #expect(!AIEdit.isUnseen(n), "undoing doesn't bring the marker back")
     }
 
+    @Test func undoKeepsWhatYouTypedAfterTheEdit() async throws {
+        let n = Self.note("Groceries\n\n- [ ] Milk\n- [ ] Eggs")
+        Self.arrive(n, body: "Groceries\n\n- [ ] Milk\n- [ ] Saffron\n- [ ] Eggs")
+        let r = try #require(AIEdit.markSeen(n))
+        // The receipt is still up and you add a line of your own at the end.
+        n.body += "\n- [ ] Bread"
+        try await AIEdit.undo(r, on: n)
+        #expect(n.body == "Groceries\n\n- [ ] Milk\n- [ ] Eggs\n- [ ] Bread", "the AI's line goes, yours stays")
+        // Typing before the AI's change shifts it; Undo still finds it.
+        let m = Self.note("Plan\n\nFriday")
+        Self.arrive(m, body: "Plan\n\nSaturday")
+        let r2 = try #require(AIEdit.markSeen(m))
+        m.body = "Weekend plan\n\nSaturday"
+        try await AIEdit.undo(r2, on: m)
+        #expect(m.body == "Weekend plan\n\nFriday")
+    }
+
+    @Test func undoRefusesWhenYouRewroteTheSameLine() async throws {
+        let n = Self.note("Plan\n\nFriday")
+        Self.arrive(n, body: "Plan\n\nSaturday")
+        let r = try #require(AIEdit.markSeen(n))
+        n.body = "Plan\n\nSunday"
+        await #expect(throws: AIEdit.UndoError.self) { try await AIEdit.undo(r, on: n) }
+        #expect(n.body == "Plan\n\nSunday", "your text is never thrown away")
+        // Words added after the AI's own stay, with its change taken out.
+        #expect(AIEdit.revert("Plan\n\nFriday", "Plan\n\nSaturday", in: "Plan\n\nSaturday morning") == "Plan\n\nFriday morning")
+    }
+
+    @Test func revertHandlesEveryShape() {
+        // Deletions, edits at the very start and end, emoji.
+        #expect(AIEdit.revert("A\nB\nC", "A\nC", in: "A\nC\nD") == "A\nB\nC\nD")
+        #expect(AIEdit.revert("x", "👍 x", in: "👍 x\nmine") == "x\nmine")
+        #expect(AIEdit.revert("same", "same", in: "same!") == "same!")
+        #expect(AIEdit.revert("a\nb", "a\nB", in: "a\nB") == "a\nb")
+    }
+
     @Test func seenAndTheTextBeforeSurviveARelaunch() async throws {
         let file = FileManager.default.temporaryDirectory.appending(path: "ai-edits-\(UUID().uuidString).json")
         defer { try? FileManager.default.removeItem(at: file) }
