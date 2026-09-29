@@ -13,7 +13,7 @@ import Testing
     @Test func aShortNoteStillScrollsPastTheDate() {
         // 400 pt of note in an 800 pt view with 100 pt of bars on top and 34 at the bottom.
         let extra = DateFold.bottomInset(viewHeight: 800, contentHeight: 400, top: 100, bottom: 34)
-        #expect(extra == 800 - 100 - 34 + 32 - 400)
+        #expect(abs(extra - 298) < 0.001) // 800 - 100 - 34 + 32 - 400
         // With it, the content reaches the offset that hides the date.
         #expect(400 + extra + 34 >= 800 - 100 + 32)
     }
