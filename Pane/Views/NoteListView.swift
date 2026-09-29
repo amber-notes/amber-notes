@@ -454,7 +454,7 @@ enum RowMetrics {
     static let spacing: CGFloat = 3
     static let vertical: CGFloat = 1
     static let leading: CGFloat = 0
-    static let dotOffset: CGFloat = -15
+    static let dotOffset: CGFloat = -12
     #endif
 }
 
