@@ -485,6 +485,9 @@ final class SyncEngine {
             let rows: [NoteDTO] = try await client.from("notes").select()
                 .gt("server_updated_at", value: stamp)
                 .order("server_updated_at").order("id").range(from: offset, to: offset + 499).execute().value
+            // Typing that isn't in the model yet goes in first, so the note counts as edited
+            // here and what arrives can't replace it (the saver would then drop it).
+            if !rows.isEmpty { DebouncedSave.flushAll() }
             for r in rows {
                 if let s = r.server_updated_at, s > newest { newest = s }
                 if merge(r, folders: &byID) { changed = true }

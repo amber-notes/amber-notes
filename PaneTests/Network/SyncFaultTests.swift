@@ -119,5 +119,20 @@ extension NetworkFaults {
         #expect(copies.count == 1 && copies.first?.body.contains("- mine") == true)
         await finish()
     }
+
+    /// An AI edits the note while you're typing in it: the pull that brings the AI's version
+    /// must not throw away what you typed in the last moment (not yet written to the note).
+    @Test func anAIEditArrivingMidTypingKeepsYourTyping() async throws {
+        let n = try await syncedNote("Groceries\n- milk")
+        StubSupabase.edit(n.id, body: "Groceries\n- milk\n- eggs", aiEditor: "Claude")
+        let saver = DebouncedSave()
+        type("Groceries\n- milk\n- bread", into: n, with: saver)
+        await engine.sync()
+        saver.flush()
+        let all = try context.fetch(FetchDescriptor<Note>()).map(\.body).joined(separator: "\n")
+        #expect(all.contains("bread"), "what you typed survives")
+        #expect(all.contains("eggs") || (serverBody(n) ?? "").contains("eggs"), "and so does the AI's edit")
+        await finish()
+    }
 }
 }
