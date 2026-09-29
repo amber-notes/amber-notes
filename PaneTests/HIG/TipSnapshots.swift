@@ -8,28 +8,68 @@ import TipKit
 
 /// One "Did you know" tip on the Mac, in the real window, offscreen. Nothing touches the screen:
 /// a real popover would open on the screen, so popovers are off here and the tip is drawn in
-/// place under its control instead (TipKit's own view, with its arrow). TipKit is set up once
+/// place under its control instead (TipKit's own view on a drawn popover card). TipKit is set up once
 /// per process, so each tip and appearance is its own run:
 /// `TEST_RUNNER_AMBER_HIG_SHOTS=<dir> TEST_RUNNER_AMBER_TIP=shareLink TEST_RUNNER_AMBER_TIP_DARK=1 scripts/qa-test.sh PaneTests/TipSnapshots`
 @MainActor @Suite(.serialized) struct TipSnapshots {
     @Observable final class Anchor { var point: CGPoint? }
 
+    /// A popover's outline: a rounded card with an arrow on its top edge at `arrowX`, as one path so
+    /// its edge runs round the arrow too.
+    struct PopoverShape: Shape {
+        var arrowX: CGFloat
+        var arrow = CGSize(width: 20, height: 10)
+        var radius: CGFloat = 14
+
+        func path(in r: CGRect) -> Path {
+            let top = r.minY + arrow.height
+            let x = min(max(arrowX, r.minX + radius + arrow.width / 2), r.maxX - radius - arrow.width / 2)
+            var p = Path()
+            p.move(to: CGPoint(x: r.minX + radius, y: top))
+            p.addLine(to: CGPoint(x: x - arrow.width / 2, y: top))
+            p.addQuadCurve(to: CGPoint(x: x, y: r.minY), control: CGPoint(x: x - arrow.width / 4, y: top - arrow.height * 0.1))
+            p.addQuadCurve(to: CGPoint(x: x + arrow.width / 2, y: top), control: CGPoint(x: x + arrow.width / 4, y: top - arrow.height * 0.1))
+            p.addLine(to: CGPoint(x: r.maxX - radius, y: top))
+            p.addArc(tangent1End: CGPoint(x: r.maxX, y: top), tangent2End: CGPoint(x: r.maxX, y: top + radius), radius: radius)
+            p.addLine(to: CGPoint(x: r.maxX, y: r.maxY - radius))
+            p.addArc(tangent1End: CGPoint(x: r.maxX, y: r.maxY), tangent2End: CGPoint(x: r.maxX - radius, y: r.maxY), radius: radius)
+            p.addLine(to: CGPoint(x: r.minX + radius, y: r.maxY))
+            p.addArc(tangent1End: CGPoint(x: r.minX, y: r.maxY), tangent2End: CGPoint(x: r.minX, y: r.maxY - radius), radius: radius)
+            p.addLine(to: CGPoint(x: r.minX, y: top + radius))
+            p.addArc(tangent1End: CGPoint(x: r.minX, y: top), tangent2End: CGPoint(x: r.minX + radius, y: top), radius: radius)
+            p.closeSubpath()
+            return p
+        }
+    }
+
+    /// The tip as the popover shows it: TipKit's own view on a popover card. The card stays inside
+    /// the window; its arrow slides along the top edge to sit under the button's centre. In dark
+    /// mode the card is a step lighter than the window, with a hairline edge.
     struct Shot: View {
         let root: AnyView
         let tip: any Tip
         let anchor: Anchor
-        let width: CGFloat = 290
+        let width: CGFloat = 320
+        @Environment(\.colorScheme) private var scheme
+
+        static func cardX(anchor: CGFloat, width: CGFloat, window: CGFloat, margin: CGFloat = 10) -> CGFloat {
+            min(max(margin, anchor - width / 2), window - width - margin)
+        }
 
         var body: some View {
             root.overlay(alignment: .topLeading) {
                 GeometryReader { g in
                     if let p = anchor.point {
-                        // Opaque, with a popover's shadow: over the note, as the popover would be.
-                        TipView(tip, arrowEdge: .top)
-                            .tipBackground(Color(nsColor: .windowBackgroundColor))
+                        let x = Self.cardX(anchor: p.x, width: width, window: g.size.width)
+                        let shape = PopoverShape(arrowX: p.x - x)
+                        TipView(tip, arrowEdge: nil)
+                            .tipBackground(.clear)
+                            .padding(.top, 10)
                             .frame(width: width)
-                            .shadow(color: .black.opacity(0.18), radius: 12, y: 4)
-                            .offset(x: min(max(8, p.x - width / 2), g.size.width - width - 12), y: p.y + 4)
+                            .background(shape.fill(scheme == .dark ? Color(white: 0.19) : Color(white: 0.985)))
+                            .overlay(shape.stroke(scheme == .dark ? Color.white.opacity(0.12) : Color.black.opacity(0.08), lineWidth: 0.75))
+                            .shadow(color: .black.opacity(scheme == .dark ? 0.45 : 0.16), radius: 14, y: 5)
+                            .offset(x: x, y: p.y + 2)
                     }
                 }
                 .ignoresSafeArea()
@@ -52,11 +92,9 @@ import TipKit
         try Tips.configure([.datastoreLocation(.url(store)), .displayFrequency(.immediate)])
 
         let c = try AppSnapshotTests.container()
-        c.mainContext.createNote(in: .all, body: "Budget\n\nItem\tCost\nRent\t900\nFood\t300\nTravel\t150\n")
-        try c.mainContext.save()
-        let open = ["versionHistory": "Groceries", "shareLink": "Lisbon", "checklistTidy": "Groceries", "tableFromText": "Budget"][id] ?? "Evening tracker"
-        // Where each tip points: the toolbar control's label.
-        let control = ["versionHistory": "More", "shareLink": "Share", "checklistTidy": "Checklist", "tableFromText": "Table", "menuBar": "New Note"][id]
+        let open = ["versionHistory": "Groceries", "shareLink": "Lisbon"][id] ?? "Evening tracker"
+        // Where each tip points: the note's own toolbar control, by its label (the list has a More too).
+        let control = ["versionHistory": "More", "shareLink": "Share", "menuBar": "New Note"][id]
         let setup = SetupStore(progress: SetupProgress(imported: true, connected: true, aiEdits: 3, dismissed: true, celebrated: true))
         let anchor = Anchor()
         let root = AnyView(RootView().modelContainer(c).environment(setup))

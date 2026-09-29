@@ -46,8 +46,7 @@ struct NoteDetailView: View {
                 #endif
                 PaneTips.noteOpened(note.body)
             }
-            .onReceive(NotificationCenter.default.publisher(for: .paneChecklistTicked)) { _ in PaneTips.ticked() }
-            .onChange(of: showHistory) { _, open in if open { TipLog.used(VersionHistoryTip()) } }
+            .onChange(of: showHistory) { _, open in if open { FeatureUse.mark(.versionHistory) } }
     }
 
     #if os(iOS)
@@ -58,8 +57,6 @@ struct NoteDetailView: View {
         VStack(spacing: 8) {
             CompactTip(tip: VersionHistoryTip()) { a in if a.id == "open" { showHistory = true } }
             CompactTip(tip: ShareLinkTip())
-            CompactTip(tip: ChecklistTip())
-            CompactTip(tip: TableTip(), action: tableTipAction)
         }
         .padding(.horizontal, 16)
         .padding(.bottom, 6)
@@ -297,10 +294,8 @@ struct NoteDetailView: View {
         ToolbarItemGroup {
             formatMenu
             Button("Checklist", systemImage: "checklist", action: controller.checklist)
-                .paneTip(ChecklistTip(), arrowEdge: .top)
                 .help("Checklist (⇧⌘L)")
             Button("Table", systemImage: "tablecells", action: controller.insertTable)
-                .paneTip(TableTip(), arrowEdge: .top, action: tableTipAction)
                 .help("Table (⌥⌘T)")
             Button("Attach", systemImage: "paperclip") { importing = true }
                 .help("Attach File (⇧⌘A)")
@@ -356,12 +351,6 @@ struct NoteDetailView: View {
                 Label("Send a Copy…", systemImage: "square.and.arrow.up")
             }
         }
-    }
-
-    /// The table tip's Make Table: the note's table-like lines become a table.
-    private func tableTipAction(_ action: Tips.Action) {
-        guard action.id == "make" else { return }
-        controller.makeTableFromText()
     }
 
     private var shareMenu: some View {

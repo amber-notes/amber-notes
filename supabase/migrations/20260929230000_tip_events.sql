@@ -5,11 +5,16 @@
 -- The apps call pane_tip_event(tip, event) once per tip and event per install:
 --   'shown' when a tip first appears, 'used' when its feature is used after it was shown.
 -- pane_tip_report() sums it up for the service role only.
+--
+-- A tip is never shown for a feature the account has ever used. pane_features_used() answers
+-- that, from the account's own data where it can (any share link ever made; any version restored
+-- from an app) and otherwise from a per-account flag the apps set (pane_feature_used), so it holds
+-- on every device and after a reinstall.
 
 create table public.pane_tip_activity (
   user_id uuid not null references auth.users (id) on delete cascade,
   day date not null,
-  tip text not null check (tip in ('versionHistory', 'shareLink', 'checklistTidy', 'tableFromText', 'menuBar', 'shareExtension')),
+  tip text not null check (tip in ('versionHistory', 'shareLink', 'menuBar', 'shareExtension')),
   event text not null check (event in ('shown', 'used')),
   n integer not null default 0,
   first_at timestamptz not null default now(),
@@ -58,3 +63,52 @@ language sql stable security definer set search_path = '' as $$
 $$;
 revoke all on function public.pane_tip_report(integer) from public, anon, authenticated;
 grant execute on function public.pane_tip_report(integer) to service_role;
+
+-- Features an account has used, where its data can't tell: version history opened, the Mac menu
+-- bar panel opened, a note saved through the share extension. First use only.
+create table public.pane_feature_use (
+  user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  feature text not null check (feature in ('versionHistory', 'shareLink', 'menuBar', 'shareExtension')),
+  first_at timestamptz not null default now(),
+  primary key (user_id, feature)
+);
+alter table public.pane_feature_use enable row level security;
+create policy "own feature use read" on public.pane_feature_use for select to authenticated
+  using (user_id = (select auth.uid()));
+revoke all on public.pane_feature_use from anon, authenticated;
+grant select on public.pane_feature_use to authenticated;
+
+create or replace function public.pane_feature_used(feature text) returns void
+language plpgsql security definer set search_path = '' as $$
+#variable_conflict use_column
+declare
+  uid uuid := auth.uid();
+begin
+  if uid is null then return; end if;
+  insert into public.pane_feature_use (user_id, feature) values (uid, pane_feature_used.feature)
+  on conflict (user_id, feature) do nothing;
+end $$;
+revoke all on function public.pane_feature_used(text) from public, anon;
+grant execute on function public.pane_feature_used(text) to authenticated;
+
+-- Every feature the signed-in account has ever used, as tip ids.
+create or replace function public.pane_features_used() returns text[]
+language sql stable security definer set search_path = '' as $$
+  with me as (select (select auth.uid()) as uid),
+  flags as (select f.feature from public.pane_feature_use f, me where f.user_id = me.uid)
+  select coalesce(array_agg(x order by x), '{}') from (
+    select feature as x from flags
+    union
+    -- Any share link, even one since stopped.
+    select 'shareLink' from public.note_shares s, me where s.user_id = me.uid
+    union
+    -- A version restored from an app (its device is the restorer; an AI's restore names the AI).
+    select 'versionHistory' from public.note_revisions r, me
+    where r.user_id = me.uid and r.source = 'restore' and r.client in ('iPhone', 'iPad', 'Mac')
+    union
+    select 'versionHistory' from public.notes n, me
+    where n.user_id = me.uid and n.body_source = 'restore' and n.body_client in ('iPhone', 'iPad', 'Mac')
+  ) used
+$$;
+revoke all on function public.pane_features_used() from public, anon;
+grant execute on function public.pane_features_used() to authenticated;

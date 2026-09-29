@@ -131,8 +131,6 @@ final class SetupStore {
 extension Notification.Name {
     /// Notes arrived from outside: an Apple Notes import, or items shared into the app.
     static let paneNotesBrought = Notification.Name("pane.notesBrought")
-    /// A checklist item was ticked or unticked with a tap (for the lists tip).
-    static let paneChecklistTicked = Notification.Name("pane.checklistTicked")
 }
 
 /// A random id for this install, used only to count how many devices an account uses.

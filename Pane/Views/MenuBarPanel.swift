@@ -36,7 +36,7 @@ struct MenuBarPanel: View {
         }
         .frame(width: 320)
         // Opening the panel is using the menu bar: its tip is done.
-        .onAppear { TipLog.used(MenuBarTip()) }
+        .onAppear { FeatureUse.mark(.menuBar) }
     }
 
     // MARK: Signed in

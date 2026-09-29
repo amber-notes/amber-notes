@@ -164,7 +164,7 @@ final class ShareLinkStore {
             guard noteID == note else { return }
             copyURL(ShareLinkConfig.url(slug: slug, base: baseURL))
             state.shared(slug: slug, includesSubNotes: state.includesSubNotes, copied: true)
-            TipLog.used(ShareLinkTip())
+            FeatureUse.mark(.shareLink)
         } catch {
             state.failed(Self.message(for: error))
         }

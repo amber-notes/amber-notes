@@ -25,22 +25,6 @@ import TipKit
         #expect(!TipTriggers.isBigDeletion(from: "a", to: long), "adding text isn't deleting")
     }
 
-    @Test func tableLikeLinesAreFoundByTabsOrPipes() {
-        let tabs = "Budget\nItem\tCost\nRent\t900\nFood\t300\nThanks"
-        let r = try! #require(TipTriggers.tableText(in: tabs))
-        #expect((tabs as NSString).substring(with: r) == "Item\tCost\nRent\t900\nFood\t300")
-        let pipes = "Team\nName | Role | City\nSara | Sales | Oslo\n"
-        #expect(TipTriggers.tableText(in: pipes).map { (pipes as NSString).substring(with: $0) } == "Name | Role | City\nSara | Sales | Oslo")
-    }
-
-    @Test func oneLineTablesAndRealTablesDontCount() {
-        #expect(TipTriggers.tableText(in: "Just a | pipe once\nand text") == nil)
-        #expect(TipTriggers.tableText(in: "| A | B |\n| --- | --- |\n| 1 | 2 |") == nil)
-        #expect(TipTriggers.tableText(in: "No tables here.\nNone at all.") == nil)
-        // Different numbers of cells aren't one table.
-        #expect(TipTriggers.tableText(in: "a\tb\nc\td\te") == nil)
-    }
-
     @Test func tableLikeLinesBecomeAMarkdownTable() {
         #expect(TableText.markdown(["Item\tCost", "Rent\t900", "Food\t300"]) == "| Item | Cost |\n| --- | --- |\n| Rent | 900 |\n| Food | 300 |")
         #expect(TableText.markdown(["Name | Role", "Sara | Sales"]) == "| Name | Role |\n| --- | --- |\n| Sara | Sales |")
@@ -95,18 +79,15 @@ import TipKit
     // MARK: Quiet moments
 
     @Test func typingEndsTheQuietMomentAndOpeningANoteStartsOne() {
-        PaneTips.noteOpened("Groceries\n- [ ] Milk\nItem\tCost\nRent\t900")
-        #expect(PaneTips.calm && PaneTips.noteIsLong && PaneTips.noteHasTableText)
-        #expect(!PaneTips.historyMoment && !PaneTips.justTicked)
+        PaneTips.noteOpened("Groceries\n- [ ] Milk")
+        #expect(PaneTips.calm && PaneTips.noteIsLong && !PaneTips.historyMoment)
         PaneTips.typed()
         #expect(!PaneTips.calm)
         // A big deletion while typing makes history due, but not until things are quiet again.
         PaneTips.deletedALot()
         #expect(PaneTips.historyMoment && !PaneTips.calm)
-        PaneTips.ticked()
-        #expect(PaneTips.calm && PaneTips.justTicked)
         PaneTips.listOpened()
-        #expect(PaneTips.calm && !PaneTips.noteIsLong && !PaneTips.historyMoment && !PaneTips.justTicked)
+        #expect(PaneTips.calm && !PaneTips.noteIsLong && !PaneTips.historyMoment)
         PaneTips.aiEditLanded()
         #expect(PaneTips.historyMoment && PaneTips.calm)
     }
@@ -118,22 +99,61 @@ import TipKit
         TipLog.defaults = d
         TipLog.sent = []
         defer { TipLog.defaults = .standard; TipLog.sent = []; PaneTips.turn = "" }
-        TipLog.used(TableTip())
+        TipLog.used(MenuBarTip())
         #expect(TipLog.sent.isEmpty, "used without the tip ever showing isn't counted")
-        TipLog.shown("tableFromText")
-        TipLog.shown("tableFromText")
-        TipLog.used(TableTip())
-        TipLog.used(TableTip())
-        #expect(TipLog.sent.map { "\($0.tip):\($0.event)" } == ["tableFromText:shown", "tableFromText:used"])
-        #expect(PaneTips.turn == "tableFromText", "a tip shown takes the turn")
+        TipLog.shown("menuBar")
+        TipLog.shown("menuBar")
+        TipLog.used(MenuBarTip())
+        TipLog.used(MenuBarTip())
+        #expect(TipLog.sent.map { "\($0.tip):\($0.event)" } == ["menuBar:shown", "menuBar:used"])
+        #expect(PaneTips.turn == "menuBar", "a tip shown takes the turn")
     }
 
-    @Test func theTipsAreSixWithDistinctIdsTheServerKnows() {
+    @Test func theTipsAreFourWithDistinctIdsTheServerKnows() {
         let ids = PaneTips.all.map(\.id)
-        #expect(Set(ids) == ["versionHistory", "shareLink", "checklistTidy", "tableFromText", "menuBar", "shareExtension"])
+        #expect(Set(ids) == ["versionHistory", "shareLink", "menuBar", "shareExtension"])
+        #expect(Set(Feature.allCases.map(\.rawValue)) == Set(ids))
         let sql = try! String(contentsOf: URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
             .appending(path: "supabase/migrations/20260929230000_tip_events.sql"), encoding: .utf8)
         for id in ids { #expect(sql.contains("'\(id)'"), "the server accepts \(id)") }
+        #expect(!sql.contains("checklistTidy") && !sql.contains("tableFromText"), "the removed tips are gone from the server too")
+    }
+
+    // MARK: Features you've ever used
+
+    @Test func aFeatureUsedHereIsRememberedAndItsTipCountedAsUsed() {
+        let d = Self.defaults()
+        FeatureUse.defaults = d
+        TipLog.defaults = d
+        TipLog.sent = []
+        FeatureUse.deviceEvidence = { [] }
+        defer { FeatureUse.defaults = .standard; TipLog.defaults = .standard; TipLog.sent = []; FeatureUse.deviceEvidence = { Inbox.everUsed ? [.shareExtension] : [] } }
+        #expect(FeatureUse.local.isEmpty)
+        FeatureUse.mark(.menuBar)
+        FeatureUse.mark(.menuBar)
+        #expect(FeatureUse.local == [.menuBar])
+        #expect(d.stringArray(forKey: FeatureUse.key) == ["menuBar"])
+        #expect(TipLog.sent.isEmpty, "the tip was never shown, so its use isn't counted as after the tip")
+    }
+
+    @Test func theShareExtensionHavingWrittenHereBeforeCountsAsUse() throws {
+        let dir = FileManager.default.temporaryDirectory.appending(path: "inbox-\(UUID().uuidString)")
+        Inbox.rootOverride = dir
+        defer { Inbox.rootOverride = nil; try? FileManager.default.removeItem(at: dir) }
+        #expect(!Inbox.everUsed)
+        try Inbox.add(markdown: "Saved from Safari", files: [])
+        for (_, item) in Inbox.pending() { Inbox.remove(item) }
+        #expect(Inbox.pending().isEmpty)
+        #expect(Inbox.everUsed, "the folder stays after its items are filed")
+    }
+
+    @Test func withoutAServerWhatThisDeviceKnowsIsEnough() {
+        let client = FeatureUse.client
+        FeatureUse.client = nil
+        defer { FeatureUse.client = client; PaneTips.featureUseKnown = false }
+        PaneTips.featureUseKnown = false
+        FeatureUse.applyLocal()
+        #expect(PaneTips.featureUseKnown)
     }
 
     // MARK: TipKit rules
@@ -169,6 +189,19 @@ import TipKit
         #expect(await shows())
         tip.invalidate(reason: .tipClosed)
         #expect(await !shows(), "closed is gone for good")
+
+        // A real tip: due now, and never again once its feature turns out to have been used.
+        let share = ShareLinkTip()
+        PaneTips.featureUseKnown = false
+        PaneTips.noteOpened((1...12).map { "Line \($0)" }.joined(separator: "\n"))
+        try? await Task.sleep(for: .milliseconds(150))
+        #expect(!share.shouldDisplay, "no tip until what you've used is known")
+        PaneTips.featureUseKnown = true
+        try? await Task.sleep(for: .milliseconds(150))
+        #expect(share.shouldDisplay)
+        FeatureUse.apply([.shareLink])
+        try? await Task.sleep(for: .milliseconds(150))
+        #expect(!share.shouldDisplay, "a feature you've used never gets its tip")
         // Leave TipKit unable to show anything to the rest of the run.
         PaneTips.setupVisible = true
     }

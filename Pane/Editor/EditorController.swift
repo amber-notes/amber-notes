@@ -93,16 +93,6 @@ final class EditorController {
         } else {
             t.insertGrid()
         }
-        TipLog.used(TableTip())
-    }
-
-    /// The table tip's Make Table: the note's first run of table-like lines becomes a table.
-    func makeTableFromText() {
-        guard let t = target, let lines = TipTriggers.tableText(in: t.currentText),
-              let edit = TableText.edit(in: t.currentText, selection: lines) else { return }
-        t.apply(edit)
-        TipLog.used(TableTip())
-        PaneTips.noteHasTableText = false
     }
 
     func insertLink() {

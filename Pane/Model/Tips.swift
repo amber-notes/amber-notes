@@ -15,10 +15,11 @@ import TipKit
 ///   and `turn` holds the one tip whose 3 days these are (see `TipSpacing`);
 /// - only once you've used the app on 3 different days (the `activeDay` event, donated once a day);
 /// - never while the Get set up card shows (`setupVisible`);
-/// - never while you type: `calm` is set when a note or the list opens, or after a tap such as a
-///   tick, and cleared by the first keystroke, so a tip only appears at a quiet moment;
-/// - once you close a tip or use its feature, it's gone for good (invalidated), and each is shown
-///   at most twice.
+/// - never while you type: `calm` is set when a note or the list opens, or after a tap, and
+///   cleared by the first keystroke, so a tip only appears at a quiet moment;
+/// - never for a feature you've ever used, on any device, before or after this version
+///   (`FeatureUse`): no tip shows until that's known, and a used feature's tip is invalidated;
+/// - once you close a tip, it's gone for good, and each is shown at most twice.
 ///
 /// Launch arguments, for captures and testing: `-resetTips` clears everything TipKit remembers,
 /// `-showTips` shows every tip whose anchor is on screen, `-showTip <id>` shows just that one.
@@ -31,12 +32,10 @@ enum PaneTips {
     @Parameter static var setupVisible: Bool = false
     /// The open note is long enough to be worth sending, or it's a checklist.
     @Parameter static var noteIsLong: Bool = false
-    /// The open note has lines with tabs or pipes between words, not yet a table.
-    @Parameter static var noteHasTableText: Bool = false
     /// An AI's edit just landed on the open note, or you just deleted a lot of it.
     @Parameter static var historyMoment: Bool = false
-    /// You just ticked a checklist item.
-    @Parameter static var justTicked: Bool = false
+    /// Which features you've used is known (from the server when signed in); see `FeatureUse`.
+    @Parameter static var featureUseKnown: Bool = false
     /// Tips may open as popovers (off only in offscreen captures).
     nonisolated(unsafe) static var popovers = true
 
@@ -70,7 +69,7 @@ enum PaneTips {
     static let minimumDays = 3
     static let menuBarDays = 5
 
-    static let all: [any Tip] = [VersionHistoryTip(), ShareLinkTip(), ChecklistTip(), TableTip(), MenuBarTip(), ShareExtensionTip()]
+    static let all: [any Tip] = [VersionHistoryTip(), ShareLinkTip(), MenuBarTip(), ShareExtensionTip()]
 
     // MARK: Setup
 
@@ -85,7 +84,10 @@ enum PaneTips {
             Tips.showTipsForTesting([type(of: tip)])
         }
         try? Tips.configure([.displayFrequency(frequency), .datastoreLocation(.applicationDefault)])
-        Task { await appOpened() }
+        Task { @MainActor in
+            FeatureUse.applyLocal()
+            await appOpened()
+        }
     }
 
     /// Daily, with `TipSpacing` making it every 3 days; captures show them at once.
@@ -115,29 +117,20 @@ enum PaneTips {
     /// A note was opened: a quiet moment, and what the note is like decides which tips fit.
     @MainActor static func noteOpened(_ body: String) {
         historyMoment = false
-        justTicked = false
         noteIsLong = TipTriggers.worthSharing(body)
-        noteHasTableText = TipTriggers.tableText(in: body) != nil
         calm = true
     }
 
     /// The list (or no note) is showing.
     @MainActor static func listOpened() {
         noteIsLong = false
-        noteHasTableText = false
         historyMoment = false
-        justTicked = false
         calm = true
     }
 
     /// A keystroke: no tips until the next quiet moment.
     @MainActor static func typed() {
         if calm { calm = false }
-    }
-
-    @MainActor static func ticked() {
-        justTicked = true
-        calm = true
     }
 
     @MainActor static func aiEditLanded() {
@@ -197,39 +190,6 @@ enum TipTriggers {
         let lines = old.components(separatedBy: "\n").count - new.components(separatedBy: "\n").count
         return removed >= 400 || lines >= 5
     }
-
-    /// The first run of 2+ lines that split into the same number (2+) of cells on tabs or pipes,
-    /// and aren't a markdown table already. UTF-16 range, whole lines.
-    static func tableText(in body: String) -> NSRange? {
-        let ns = body as NSString
-        var start: Int?
-        var count = 0
-        var columns = 0
-        var runEnd = 0
-        var location = 0
-        var found: NSRange?
-        func close() {
-            if let s = start, count >= 2 { found = found ?? NSRange(location: s, length: runEnd - s) }
-            start = nil; count = 0; columns = 0
-        }
-        for line in body.components(separatedBy: "\n") {
-            let length = (line as NSString).length
-            let cells = TableText.cells(line)
-            if let cells, cells.count >= 2, start == nil || cells.count == columns {
-                if start == nil { start = location; columns = cells.count }
-                count += 1
-                runEnd = location + length
-            } else {
-                close()
-                if let cells, cells.count >= 2 { start = location; columns = cells.count; count = 1; runEnd = location + length }
-            }
-            if found != nil { break }
-            location += length + 1
-        }
-        close()
-        guard let r = found, NSMaxRange(r) <= ns.length else { return nil }
-        return r
-    }
 }
 
 /// Turning lines with tabs or pipes into a markdown table (what the Table button does to them).
@@ -286,6 +246,7 @@ private var commonRules: [Tips.Rule] {
         #Rule(PaneTips.activeDay) { $0.donations.count >= 3 },
         #Rule(PaneTips.$setupVisible) { $0 == false },
         #Rule(PaneTips.$calm) { $0 == true },
+        #Rule(PaneTips.$featureUseKnown) { $0 == true },
     ]
 }
 
@@ -310,28 +271,7 @@ struct ShareLinkTip: Tip {
     var options: [any TipOption] { [Tips.MaxDisplayCount(2)] }
 }
 
-/// 3. The first time you tick an item.
-struct ChecklistTip: Tip {
-    var id: String { "checklistTidy" }
-    var title: Text { Text("Lists tidy themselves") }
-    var message: Text? { Text("Ticked items move to the bottom.") }
-    var image: Image? { TipGlyph.image("checklist") }
-    var rules: [Rule] { commonRules + [#Rule(PaneTips.$justTicked) { $0 == true }, #Rule(PaneTips.$turn) { $0 == "" || $0 == "checklistTidy" }] }
-    var options: [any TipOption] { [Tips.MaxDisplayCount(1)] }
-}
-
-/// 4. A note with lines that look like a table. Its action turns them into one.
-struct TableTip: Tip {
-    var id: String { "tableFromText" }
-    var title: Text { Text("Turn this into a table") }
-    var message: Text? { Text("Lines with tabs or | between words can become a table.") }
-    var image: Image? { TipGlyph.image("tablecells") }
-    var rules: [Rule] { commonRules + [#Rule(PaneTips.$noteHasTableText) { $0 == true }, #Rule(PaneTips.$turn) { $0 == "" || $0 == "tableFromText" }] }
-    var options: [any TipOption] { [Tips.MaxDisplayCount(2)] }
-    var actions: [Action] { [Action(id: "make", title: "Make Table")] }
-}
-
-/// 5. Mac: after a few days of use, the menu bar's quick capture.
+/// 3. Mac: after a few days of use, the menu bar's quick capture.
 struct MenuBarTip: Tip {
     var id: String { "menuBar" }
     var title: Text { Text("Jot a note from the menu bar") }
@@ -343,13 +283,14 @@ struct MenuBarTip: Tip {
             #Rule(PaneTips.$setupVisible) { $0 == false },
             #Rule(PaneTips.$calm) { $0 == true },
             #Rule(PaneTips.$menuBarShown) { $0 == true },
+            #Rule(PaneTips.$featureUseKnown) { $0 == true },
             #Rule(PaneTips.$turn) { $0 == "" || $0 == "menuBar" },
         ]
     }
     var options: [any TipOption] { [Tips.MaxDisplayCount(2)] }
 }
 
-/// 6. iPhone: after an import, saving from other apps with Share.
+/// 4. iPhone: after an import, saving from other apps with Share.
 struct ShareExtensionTip: Tip {
     var id: String { "shareExtension" }
     var title: Text { Text("Save from any app") }
@@ -407,6 +348,7 @@ struct CompactTip<T: Tip>: View {
     var card = true
     var action: (Tips.Action) -> Void = { _ in }
     @State private var shown = false
+    @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         // A zero-height anchor keeps the view alive (and its task watching) while nothing shows.
@@ -464,13 +406,88 @@ struct CompactTip<T: Tip>: View {
         .padding(.vertical, card ? 8 : 2)
         .background {
             if card {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Color(uiColor: .secondarySystemBackground))
+                // A step lighter than the page, with a hairline edge so it holds in dark mode.
+                let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
+                shape.fill(Color(uiColor: .secondarySystemBackground))
+                    .overlay(shape.strokeBorder(Color.primary.opacity(scheme == .dark ? 0.12 : 0.06), lineWidth: 0.75))
             }
         }
     }
 }
 #endif
+
+// MARK: Features you've used
+
+/// The features the tips are about. The raw value is the tip's id.
+enum Feature: String, CaseIterable, Sendable {
+    case versionHistory, shareLink, menuBar, shareExtension
+
+    var tip: any Tip {
+        switch self {
+        case .versionHistory: VersionHistoryTip()
+        case .shareLink: ShareLinkTip()
+        case .menuBar: MenuBarTip()
+        case .shareExtension: ShareExtensionTip()
+        }
+    }
+}
+
+/// Whether you've ever used a feature, so its tip never shows. Known from the account's data where
+/// it can be (any share link ever made; any version restored in the app), and otherwise from a flag
+/// kept per account on the server (`pane_feature_use`), so it holds on every device and after a
+/// reinstall. This device also remembers its own uses, and knows if the share extension ever
+/// wrote to its inbox, including before this version.
+@MainActor
+enum FeatureUse {
+    static var client: SupabaseClient?
+    static var defaults: UserDefaults = .standard
+    static let key = "featuresUsed"
+    /// Found on this device besides the flags (tests swap it).
+    static var deviceEvidence: () -> Set<Feature> = { Inbox.everUsed ? [.shareExtension] : [] }
+
+    static var local: Set<Feature> {
+        Set((defaults.stringArray(forKey: key) ?? []).compactMap(Feature.init)).union(deviceEvidence())
+    }
+
+    /// You used `feature`: its tip goes for good, here and on your other devices.
+    static func mark(_ feature: Feature) {
+        let before = defaults.stringArray(forKey: key) ?? []
+        if !before.contains(feature.rawValue) { defaults.set(before + [feature.rawValue], forKey: key) }
+        TipLog.used(feature.tip)
+        guard let client else { return }
+        Task { _ = try? await client.rpc("pane_feature_used", params: ["feature": feature.rawValue]).execute() }
+    }
+
+    /// Signed out or without a server: this device's knowledge is all there is.
+    static func applyLocal() {
+        apply(local)
+        if client == nil { PaneTips.featureUseKnown = true }
+    }
+
+    /// Signed in: asks the server what this account has ever used, and tells it what this device
+    /// knows that it doesn't. Tips wait until it has answered.
+    static func refresh() async {
+        guard let client else { applyLocal(); return }
+        do {
+            let names: [String] = try await client.rpc("pane_features_used").execute().value
+            let server = Set(names.compactMap(Feature.init))
+            let here = local
+            for f in here.subtracting(server) {
+                _ = try? await client.rpc("pane_feature_used", params: ["feature": f.rawValue]).execute()
+            }
+            apply(server.union(here))
+            PaneTips.featureUseKnown = true
+        } catch {
+            // Unknown: better no tip than a tip for something you already use.
+            apply(local)
+        }
+    }
+
+    /// Every used feature's tip is invalidated, so it never shows.
+    static func apply(_ used: Set<Feature>) {
+        for f in used { f.tip.invalidate(reason: .actionPerformed) }
+    }
+}
 
 // MARK: Measuring
 
@@ -493,6 +510,7 @@ enum TipLog {
     }
 
     /// You used the feature: its tip is done for good. Counted only if the tip was shown first.
+    /// Call through `FeatureUse.mark`, which also remembers the use for every device.
     static func used(_ tip: some Tip) {
         tip.invalidate(reason: .actionPerformed)
         if wasShown(tip.id) { record(tip.id, "used") }

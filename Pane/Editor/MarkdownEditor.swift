@@ -824,7 +824,6 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
         apply(edit)
         selectedRange = keep
         setContentOffset(offset, animated: false)
-        NotificationCenter.default.post(name: .paneChecklistTicked, object: nil)
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         if ListPrefix(line: (text as NSString).substring(with: (text as NSString).lineRange(for: NSRange(location: line, length: 0))))?.checkbox == true,
            let r = core.checkboxRect(line: line, layout: textLayoutManager) {
@@ -1294,7 +1293,6 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
             let keep = selectedRange()
             apply(edit)
             setSelectedRange(keep)
-            NotificationCenter.default.post(name: .paneChecklistTicked, object: nil)
             let ns = string as NSString
             if ListPrefix(line: ns.substring(with: ns.lineRange(for: NSRange(location: line, length: 0))))?.checkbox == true,
                let r = core.checkboxRect(line: line, layout: textLayoutManager), let host = layer {

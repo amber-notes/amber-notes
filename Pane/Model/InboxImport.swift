@@ -22,7 +22,7 @@ extension ModelContext {
             try? save()
             // Notes shared into the app count as bringing your notes (setup step 1).
             NotificationCenter.default.post(name: .paneNotesBrought, object: nil)
-            TipLog.used(ShareExtensionTip())
+            FeatureUse.mark(.shareExtension)
         }
         return made
     }

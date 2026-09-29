@@ -48,7 +48,7 @@ Deno.test({ name: "tips: shown and used are counted per tip and day, for the sig
 Deno.test({ name: "tips: unknown tips and events are refused, and nobody writes the table directly", ignore: !enabled }, async () => {
   await scratch(async (tx, user) => {
     let message = "";
-    await tx.savepoint((sp) => sp`select public.pane_tip_event('madeUp', 'shown')`).catch((e) => { message = e.message; });
+    await tx.savepoint((sp) => sp`select public.pane_tip_event('checklistTidy', 'shown')`).catch((e) => { message = e.message; });
     assertStringIncludes(message, "pane_tip_activity_tip_check");
     message = "";
     await tx.savepoint((sp) => sp`select public.pane_tip_event('shareLink', 'clicked')`).catch((e) => { message = e.message; });
@@ -62,17 +62,41 @@ Deno.test({ name: "tips: unknown tips and events are refused, and nobody writes 
 
 Deno.test({ name: "tips: the report is for the service role only", ignore: !enabled }, async () => {
   await scratch(async (tx, user) => {
-    await tx`select public.pane_tip_event('tableFromText', 'shown')`;
-    await tx`select public.pane_tip_event('tableFromText', 'used')`;
+    await tx`select public.pane_tip_event('menuBar', 'shown')`;
+    await tx`select public.pane_tip_event('menuBar', 'used')`;
     let message = "";
     await tx.savepoint((sp) => sp`select * from public.pane_tip_report(30)`).catch((e) => { message = e.message; });
     assertStringIncludes(message, "permission denied");
     await tx`reset role`;
     await tx`set local role service_role`;
-    const rows = await tx`select * from public.pane_tip_report(30) where tip = 'tableFromText'`;
-    const mine = await tx`select count(*)::int as n from public.pane_tip_activity where user_id = ${user} and tip = 'tableFromText'`;
+    const rows = await tx`select * from public.pane_tip_report(30) where tip = 'menuBar'`;
+    const mine = await tx`select count(*)::int as n from public.pane_tip_activity where user_id = ${user} and tip = 'menuBar'`;
     assertEquals(mine[0].n, 2);
     assertEquals(Number(rows[0].shown_accounts) >= 1, true);
     assertEquals(Number(rows[0].used_accounts) >= 1, true);
+  });
+});
+
+Deno.test({ name: "features used: a flag, any share link ever, or a version restored from an app", ignore: !enabled }, async () => {
+  await scratch(async (tx, user) => {
+    assertEquals((await tx`select public.pane_features_used() as f`)[0].f, []);
+    await tx`select public.pane_feature_used('menuBar')`;
+    await tx`select public.pane_feature_used('menuBar')`;
+    assertEquals((await tx`select public.pane_features_used() as f`)[0].f, ["menuBar"]);
+    await tx`reset role`;
+    const note = crypto.randomUUID();
+    await tx`insert into public.notes (id, user_id, body) values (${note}, ${user}, 'Shared')`;
+    await tx`insert into public.note_shares (slug, note_id, user_id, revoked_at) values (${"s" + crypto.randomUUID().replaceAll("-", "")}, ${note}, ${user}, now())`;
+    // An AI's restore isn't yours; one from an app is.
+    await tx`insert into public.note_revisions (note_id, user_id, body, version, source, client) values (${note}, ${user}, 'a', 1, 'restore', 'ChatGPT')`;
+    await tx`set local role authenticated`;
+    assertEquals((await tx`select public.pane_features_used() as f`)[0].f, ["menuBar", "shareLink"]);
+    await tx`reset role`;
+    await tx`insert into public.note_revisions (note_id, user_id, body, version, source, client) values (${note}, ${user}, 'b', 2, 'restore', 'iPhone')`;
+    await tx`set local role authenticated`;
+    assertEquals((await tx`select public.pane_features_used() as f`)[0].f, ["menuBar", "shareLink", "versionHistory"]);
+    let message = "";
+    await tx.savepoint((sp) => sp`select public.pane_feature_used('checklistTidy')`).catch((e) => { message = e.message; });
+    assertStringIncludes(message, "pane_feature_use_feature_check");
   });
 });

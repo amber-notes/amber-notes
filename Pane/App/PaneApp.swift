@@ -37,6 +37,7 @@ struct PaneApp: App {
         NoteHistory.shared = NoteHistory(store: historyStore, context: context, sync: backend.client == nil ? nil : sync)
         // "Did you know" tips; their counts go to the server when signed in.
         TipLog.client = backend.client
+        FeatureUse.client = backend.client
         PaneTips.configure()
         Capture.scheduleFromArguments(container.mainContext)
         #if os(macOS)
@@ -316,6 +317,8 @@ struct AppGate: View {
                 sync.schedule()
             }
             await setup.refresh(force: true)
+            // Tips wait for this: never a tip for something this account has used anywhere.
+            await FeatureUse.refresh()
             await InstallID.report(client)
         }
         // Each sync may have brought an AI's edit or a new connection: the card looks again.

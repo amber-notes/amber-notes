@@ -326,6 +326,7 @@ final class NoteHistory {
 
     func restore(noteID: UUID, toVersion version: Int64) async throws {
         guard let note = context.note(noteID) else { throw HistoryError.gone }
+        FeatureUse.mark(.versionHistory)
         // Your latest typing goes up first, so the server keeps it as the version being replaced.
         DebouncedSave.flushAll()
         if let sync, note.dirty {
