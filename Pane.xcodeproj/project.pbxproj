@@ -107,6 +107,7 @@
 		70FD7776A93DA08BA735BF8F /* VersionHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90CC0B378983D3F5A7E49012 /* VersionHistoryView.swift */; };
 		7206852EDF250F2D4A72E0B9 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 409280D87901FB1375A2EBEC /* AppIcon.icon */; };
 		7310D5C40BFE56AD010ECC6E /* SearchBarUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A3E8C508286ED65BD00189A /* SearchBarUITests.swift */; };
+		743A2DC87EC039B90E4FE7A8 /* DateFoldTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AA02ED549CE37D8148F24D5 /* DateFoldTests.swift */; };
 		77150E16C095CB1A108E5FB2 /* ProfileTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 412407ADE0BC387AF7A6D189 /* ProfileTests.swift */; };
 		7A098FE97DEFF91BC87CF24B /* AppleNotesImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 483CA88017A03E92EEC52DFD /* AppleNotesImport.swift */; };
 		7D697289EA910E92468E7993 /* hang-2026.txt in Resources */ = {isa = PBXBuildFile; fileRef = F94EFE0F3B6CF26645227E4B /* hang-2026.txt */; };
@@ -285,6 +286,7 @@
 		25098E4C4EF554486AD7952E /* AIEdit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIEdit.swift; sourceTree = "<group>"; };
 		27341730693C9C5F11516EAE /* PaneShare.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PaneShare.entitlements; sourceTree = "<group>"; };
 		29020B4DA13FDC017652C91F /* EditorPerfTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorPerfTests.swift; sourceTree = "<group>"; };
+		2AA02ED549CE37D8148F24D5 /* DateFoldTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateFoldTests.swift; sourceTree = "<group>"; };
 		2CC822E0A1ABBCCDB65B943A /* ShareExtensionUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareExtensionUITests.swift; sourceTree = "<group>"; };
 		2E2167FA347940753904964C /* PaneTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PaneTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2E9CE1B4EE228D52D58729C2 /* MenuBarModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarModel.swift; sourceTree = "<group>"; };
@@ -591,6 +593,7 @@
 				DFCA13DCB9435718E4F5BF8C /* ChecklistSortTests.swift */,
 				87987EC62A5DA06AB545080F /* ConnectAITests.swift */,
 				8291C51A34B1C3189637F8B4 /* ConnectSnapshotTests.swift */,
+				2AA02ED549CE37D8148F24D5 /* DateFoldTests.swift */,
 				6ACA8D5B7797EDE74894433D /* DeleteAccountTests.swift */,
 				9C135694A380C4DFF429CB79 /* EmailSignInFlowTests.swift */,
 				14CD141158D5B7F6272D4DA9 /* GridTableTests.swift */,
@@ -961,6 +964,7 @@
 				EE41FCC568A1B667F8C3BDEB /* ChecklistSortTests.swift in Sources */,
 				1CDE672D3CF4CC64C0D79511 /* ConnectAITests.swift in Sources */,
 				2A1222002E0A3A15AB75B59B /* ConnectSnapshotTests.swift in Sources */,
+				743A2DC87EC039B90E4FE7A8 /* DateFoldTests.swift in Sources */,
 				E7B0E85521B5A8A07BDFE91A /* DeleteAccountTests.swift in Sources */,
 				4F076F4BD77FEA75A56F4078 /* EditorHarness.swift in Sources */,
 				9F62E76CDE7AE2DD7C74B970 /* EditorPerfTests.swift in Sources */,

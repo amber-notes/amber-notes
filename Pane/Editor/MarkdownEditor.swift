@@ -499,11 +499,32 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
     override func layoutSubviews() {
         super.layoutSubviews()
         let side = max(20, (bounds.width - readableWidth) / 2)
-        let inset = UIEdgeInsets(top: (headerLabel.text ?? "").isEmpty ? 14 : 44, left: side, bottom: 120, right: side)
+        let hasDate = !(headerLabel.text ?? "").isEmpty
+        let inset = UIEdgeInsets(top: hasDate ? 44 : 14, left: side, bottom: 120, right: side)
         if textContainerInset != inset { textContainerInset = inset }
-        headerLabel.frame = CGRect(x: 0, y: 12, width: bounds.width, height: 18)
+        headerLabel.frame = CGRect(x: 0, y: DateFold.labelTop, width: bounds.width, height: DateFold.labelHeight)
+        foldDate(hasDate)
         layoutCards()
     }
+
+    /// Keeps a short note scrollable by the date's height, and opens every note scrolled past it.
+    private func foldDate(_ hasDate: Bool) {
+        guard hasDate, bounds.height > 0 else { return }
+        let fixed = adjustedContentInset.bottom - contentInset.bottom
+        let extra = DateFold.bottomInset(viewHeight: bounds.height, contentHeight: contentSize.height,
+                                         top: adjustedContentInset.top, bottom: fixed)
+        if abs(contentInset.bottom - extra) > 0.5 { contentInset.bottom = extra }
+        guard !DateFold.showOnOpen, !pulledDate, !isTracking, !isDecelerating else { return }
+        // Until you scroll yourself, the date stays folded: on opening, and when the keyboard
+        // comes up and the text view scrolls the caret into view (a new note's caret sits by the date).
+        let target = DateFold.offset(top: adjustedContentInset.top)
+        if contentOffset.y < target - 0.5 { contentOffset = CGPoint(x: contentOffset.x, y: target) }
+    }
+
+    /// You scrolled: from here on the date shows whenever you pull down.
+    private var pulledDate = false
+
+    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) { pulledDate = true }
 
     /// Places live views (cards, files, links) over their reserved lines.
     private func layoutCards() {
