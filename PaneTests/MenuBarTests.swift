@@ -52,6 +52,9 @@ import Testing
     }
 
     @Test func openingANoteRemembersItForAFreshWindow() {
+        // The test host shares the app's settings: put back the note you really had open.
+        let before = UserDefaults.standard.string(forKey: "lastNote")
+        defer { UserDefaults.standard.set(before, forKey: "lastNote") }
         let id = UUID()
         NoteOpener.shared.open(id)
         #expect(NoteOpener.shared.request == id)

@@ -82,7 +82,7 @@ struct PaneApp: App {
         }
 
         // Amber Notes in the menu bar: quick capture, search, pinned and recent notes.
-        MenuBarExtra(isInserted: Binding(get: { showInMenuBar && MenuBarSettings.allowed }, set: { showInMenuBar = $0 })) {
+        MenuBarExtra(isInserted: Binding(get: { showInMenuBar && MenuBarSettings.allowed }, set: { if MenuBarSettings.allowed { showInMenuBar = $0 } })) {
             MenuBarPanel(backend: backend, sync: sync)
                 .modelContainer(container)
                 .tint(Color(PColor.paneAccent))
