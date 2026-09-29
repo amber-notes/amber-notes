@@ -143,8 +143,7 @@ struct NoteListView: View {
         .navigationTitle(title)
         #if os(iOS)
         .navigationBarTitleDisplayMode(.large)
-        // The count sits under the title now that the bottom bar holds search.
-        .navigationSubtitle(scopedNotes.count == 1 ? "1 Note" : "\(scopedNotes.count) Notes")
+        // No count subtitle: on iOS 26 a subtitle makes the large title open collapsed when the list is pushed again.
         #endif
         #if os(macOS)
         .navigationSubtitle("")
