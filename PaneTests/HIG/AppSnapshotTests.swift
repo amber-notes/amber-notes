@@ -102,6 +102,13 @@ import Testing
         try await Self.render(SettingsView(backend: backend, sync: nil), name: "mac-settings-\(mode)", dark: dark)
         backend.showSignedInForPreview(email: "you@example.com")
         try await Self.render(SettingsView(backend: backend, sync: nil), name: "mac-settings-signedin-\(mode)", dark: dark)
+        // With a name and photo: the profile header in Settings and the account row in the sidebar.
+        let face = try ProfileImage.prepare(try #require(NSImage(named: "MarkTight")?.tiffRepresentation))
+        ProfileStore.shared.showForPreview(name: "Emil Wagman", photo: NSImage(data: face))
+        try await Self.render(SettingsView(backend: backend, sync: nil), name: "mac-settings-profile-\(mode)", dark: dark)
+        try await Self.render(AccountButton(email: "you@example.com", backend: backend).frame(width: 240).padding(10), name: "mac-account-row-\(mode)", dark: dark)
+        ProfileStore.shared.showForPreview(name: nil, photo: nil)
+        try await Self.render(AccountButton(email: "you@example.com", backend: backend).frame(width: 240).padding(10), name: "mac-account-row-noname-\(mode)", dark: dark)
     }
 }
 #endif

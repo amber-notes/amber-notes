@@ -15,7 +15,7 @@ struct DeleteAccountButton: View {
     var body: some View {
         Button(role: .destructive) { asking = true } label: {
             HStack(spacing: 8) {
-                Text(working ? "Deleting Account…" : "Delete Account…")
+                Text(working ? "Deleting Account…" : "Delete Account…").foregroundStyle(.red)
                 if working { ProgressView().controlSize(.small) }
             }
         }

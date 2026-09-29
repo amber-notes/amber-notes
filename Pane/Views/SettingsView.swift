@@ -1,5 +1,7 @@
+import PhotosUI
 import Supabase
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Account, sync status, and the AIs connected to your notes.
 struct SettingsView: View {
@@ -27,9 +29,12 @@ struct SettingsView: View {
 
     private var form: some View {
             Form {
+                if case .signedIn(let email) = backend.state {
+                    // You first, like the Apple Account at the top of System Settings.
+                    ProfileSection(backend: backend, email: backend.displayEmail ?? email)
+                }
                 Section("Account") {
-                    if case .signedIn(let email) = backend.state {
-                        LabeledContent("Signed in as", value: backend.displayEmail ?? email)
+                    if case .signedIn = backend.state {
                         // The status and its action on one row, like iCloud in System Settings.
                         LabeledContent("Sync") {
                             HStack(spacing: 10) {
@@ -54,7 +59,7 @@ struct SettingsView: View {
                 if case .signedIn = backend.state {
                     // Signing out sits apart, last, as in System Settings.
                     Section {
-                        Button("Sign Out…", role: .destructive) { confirmSignOut = true }
+                        Button(role: .destructive) { confirmSignOut = true } label: { Text("Sign Out…").foregroundStyle(.red) }
                             .accessibilityIdentifier("settings.signOut")
                         DeleteAccountButton(backend: backend)
                     }
@@ -66,6 +71,95 @@ struct SettingsView: View {
             } message: {
                 Text("Your notes stay in your account and come back when you sign in again.")
             }
+    }
+}
+
+/// Your photo, name and email, and the controls to change the first two.
+private struct ProfileSection: View {
+    let backend: Backend
+    let email: String
+    @State private var profile = ProfileStore.shared
+    @State private var draft = ""
+    @FocusState private var editing: Bool
+    @State private var importing = false
+    #if os(iOS)
+    @State private var picked: PhotosPickerItem?
+    #endif
+
+    var body: some View {
+        Section {
+            HStack(spacing: 16) {
+                AvatarView(photo: profile.photo, name: profile.name ?? email, size: 64)
+                    #if os(macOS)
+                    .dropDestination(for: URL.self) { urls, _ in
+                        guard let url = urls.first, let data = try? Data(contentsOf: url) else { return false }
+                        Task { await profile.setPhoto(data) }
+                        return true
+                    }
+                    #endif
+                VStack(alignment: .leading, spacing: 2) {
+                    TextField("Name", text: $draft, prompt: Text("Your Name"))
+                        .labelsHidden()
+                        .textFieldStyle(.plain)
+                        .multilineTextAlignment(.leading)
+                        .font(.title3.weight(.semibold))
+                        .focused($editing)
+                        .onSubmit(commit)
+                        .accessibilityLabel("Name")
+                        .accessibilityIdentifier("settings.profileName")
+                    Text(email)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .textSelection(.enabled)
+                }
+            }
+            .padding(.vertical, 4)
+            HStack(spacing: 10) {
+                #if os(iOS)
+                PhotosPicker(profile.photo == nil ? "Choose Photo…" : "Change Photo…", selection: $picked, matching: .images)
+                    .accessibilityIdentifier("settings.choosePhoto")
+                #else
+                Button(profile.photo == nil ? "Choose Photo…" : "Change Photo…") { importing = true }
+                    .accessibilityIdentifier("settings.choosePhoto")
+                #endif
+                if profile.photo != nil {
+                    Button("Remove Photo", role: .destructive) { Task { await profile.removePhoto() } }
+                        .accessibilityIdentifier("settings.removePhoto")
+                }
+                if profile.working { ProgressView().controlSize(.small) }
+            }
+            if let problem = profile.problem {
+                Text(problem).font(.footnote).foregroundStyle(.secondary)
+            }
+        } footer: {
+            Text("Shown in the app and on notes you share.")
+        }
+        .onAppear { draft = profile.name ?? "" }
+        .onChange(of: profile.name) { _, new in if !editing { draft = new ?? "" } }
+        .onChange(of: editing) { _, now in if !now { commit() } }
+        .onChange(of: draft) { _, new in if new.count > ProfileName.maxLength { draft = String(new.prefix(ProfileName.maxLength)) } }
+        .task(id: backend.state) { await profile.bind(backend) }
+        .fileImporter(isPresented: $importing, allowedContentTypes: [.jpeg, .png, .heic, .image]) { result in
+            guard case .success(let url) = result else { return }
+            let scoped = url.startAccessingSecurityScopedResource()
+            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+            guard let data = try? Data(contentsOf: url) else { return }
+            Task { await profile.setPhoto(data) }
+        }
+        #if os(iOS)
+        .onChange(of: picked) { _, item in
+            guard let item else { return }
+            Task {
+                if let data = try? await item.loadTransferable(type: Data.self) { await profile.setPhoto(data) }
+                picked = nil
+            }
+        }
+        #endif
+    }
+
+    private func commit() {
+        Task { await profile.setName(draft) }
     }
 }
 

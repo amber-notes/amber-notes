@@ -2,69 +2,41 @@ import SwiftData
 import SwiftUI
 
 #if os(macOS)
-/// The account at the foot of the sidebar: who's signed in, and a way out.
-private struct AccountButton: View {
+/// The account at the foot of the sidebar: your photo and name. Clicking it opens Settings,
+/// which starts with your account. Signing out lives there, last, behind a confirmation, so
+/// a slip of the mouse here can never sign you out.
+struct AccountButton: View {
     let email: String
     let backend: Backend
-    @State private var open = false
+    @State private var profile = ProfileStore.shared
+    @State private var hovering = false
+    @Environment(\.openSettings) private var openSettings
 
-    private var initial: String { email.first.map { String($0).uppercased() } ?? "?" }
+    private var name: String { profile.name ?? email }
 
     var body: some View {
-        Button { open.toggle() } label: {
+        Button { openSettings() } label: {
             HStack(spacing: 8) {
-                Text(initial)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.black.opacity(0.8))
-                    .frame(width: 22, height: 22)
-                    .background(Color.accentColor, in: .circle)
-                Text(email)
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
+                AvatarView(photo: profile.photo, name: name, size: 22)
+                Text(name)
+                    .font(.system(size: 12, weight: profile.name == nil ? .regular : .medium))
+                    .foregroundStyle(profile.name == nil ? .secondary : .primary)
                     .lineLimit(1)
                     .truncationMode(.middle)
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, 8)
             .frame(height: 34)
+            .background(hovering ? AnyShapeStyle(.fill.tertiary) : AnyShapeStyle(.clear), in: .rect(cornerRadius: 8))
             .contentShape(.rect(cornerRadius: 8))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Account, \(email)")
+        .onHover { hovering = $0 }
+        .animation(.easeOut(duration: 0.12), value: hovering)
+        .help("Account Settings")
+        .accessibilityLabel("Account, \(name). Opens Settings")
         .accessibilityIdentifier("sidebar.account")
-        .popover(isPresented: $open, arrowEdge: .top) {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(spacing: 10) {
-                    Text(initial)
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(.black.opacity(0.8))
-                        .frame(width: 34, height: 34)
-                        .background(Color.accentColor, in: .circle)
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("Signed in as").font(.caption).foregroundStyle(.secondary)
-                        Text(email).font(.callout.weight(.medium)).lineLimit(1).truncationMode(.middle)
-                    }
-                }
-                Divider()
-                SettingsLink {
-                    Label("Settings…", systemImage: "gearshape")
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .buttonStyle(.plain)
-                Button(role: .destructive) {
-                    open = false
-                    Task { await backend.signOut() }
-                } label: {
-                    Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(.red)
-                .accessibilityIdentifier("account.signOut")
-            }
-            .padding(16)
-            .frame(width: 260)
-        }
+        .task(id: backend.state) { await profile.bind(backend) }
     }
 }
 #endif
@@ -184,8 +156,19 @@ struct SidebarView: View {
             }
             if let backend, backend.client != nil {
                 ToolbarItem(placement: .primaryAction) {
-                    Button("Settings", systemImage: "gearshape") { showSettings = true }
+                    // Signed in, your photo is the way into Settings (your account comes first there).
+                    if case .signedIn(let email) = backend.state {
+                        let name = ProfileStore.shared.name ?? backend.displayEmail ?? email
+                        Button { showSettings = true } label: {
+                            AvatarView(photo: ProfileStore.shared.photo, name: name, size: 30)
+                        }
+                        .accessibilityLabel("Account, \(name). Opens Settings")
                         .accessibilityIdentifier("sidebar.settings")
+                        .task(id: backend.state) { await ProfileStore.shared.bind(backend) }
+                    } else {
+                        Button("Settings", systemImage: "gearshape") { showSettings = true }
+                            .accessibilityIdentifier("sidebar.settings")
+                    }
                 }
             }
             #endif
