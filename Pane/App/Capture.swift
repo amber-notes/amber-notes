@@ -83,7 +83,13 @@ extension Capture {
         let k = argument("-captureSlow").flatMap(Double.init) ?? 1
         ChangeTint.slowMotion = k
         w.setContentSize(NSSize(width: 1180, height: height))
-        w.center()
+        // On a Retina screen, so the frames come out at 2x.
+        if let screen = NSScreen.screens.max(by: { $0.backingScaleFactor < $1.backingScaleFactor }) {
+            let f = w.frame, v = screen.visibleFrame
+            w.setFrameOrigin(NSPoint(x: v.midX - f.width / 2, y: v.midY - f.height / 2))
+        } else {
+            w.center()
+        }
         NSApp.activate()
         w.makeKeyAndOrderFront(nil)
         await wait(1)
@@ -96,9 +102,12 @@ extension Capture {
             // Something else may have come forward meanwhile (an install, a notification): take the front again.
             if !NSApp.isActive || !w.isKeyWindow {
                 // Cooperative activation is ignored while another app is in front; this one isn't.
-                NSApp.activate(ignoringOtherApps: true)
-                w.orderFrontRegardless()
-                w.makeKey()
+                for _ in 0..<10 where !(NSApp.isActive && w.isKeyWindow) {
+                    NSApp.activate(ignoringOtherApps: true)
+                    w.orderFrontRegardless()
+                    w.makeKey()
+                    await wait(0.3)
+                }
                 await wait(0.5)
             }
             try? "".write(to: dir.appending(path: "ready-\(name)"), atomically: true, encoding: .utf8)
