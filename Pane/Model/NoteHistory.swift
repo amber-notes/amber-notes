@@ -332,6 +332,9 @@ final class NoteHistory {
             for attempt in 0..<8 {
                 await sync.sync(pulling: false)
                 if !note.dirty { break }
+                // The push failed outright: on a hung connection every retry would wait out a
+                // whole request timeout, so say so now instead.
+                if case .offline = sync.status { throw HistoryError.offline }
                 if attempt == 7 { throw HistoryError.offline }
                 try? await Task.sleep(for: .milliseconds(400))
             }

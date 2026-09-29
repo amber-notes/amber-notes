@@ -107,6 +107,28 @@ extension NetworkFaults {
         await finish()
     }
 
+    // MARK: Version history
+
+    /// Restoring on a connection that hangs: each push attempt waits out its timeout, so
+    /// retrying eight times kept the spinner up for minutes (8 × the request timeout). It
+    /// gives up after the first failed attempt and says you're offline.
+    @Test func restoreOnAHungNetworkGivesUpQuickly() async throws {
+        let n = try await syncedNote("Draft")
+        n.body = "Draft, edited"; n.touch()
+        NetFault.config = .init(timeoutAfter: 0.5)
+        NetFault.resetLog()
+        let history = NoteHistory(store: EmptyHistoryStore(), context: context, sync: engine)
+        let t = ContinuousClock.now
+        await #expect(throws: HistoryError.offline) {
+            try await history.restore(noteID: n.id, toVersion: 1)
+        }
+        let took = ContinuousClock.now - t
+        print("PERF restore on a hung network gave up after \(took), \(NetFault.started.count) requests")
+        #expect(took < .seconds(2), "one timed-out attempt, not eight")
+        #expect(n.body == "Draft, edited", "and nothing you wrote changed")
+        await finish()
+    }
+
     // MARK: Conflicts
 
     @Test func theirNewerEditKeepsYoursAsACopy() async throws {
