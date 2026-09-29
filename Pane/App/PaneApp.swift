@@ -258,6 +258,8 @@ struct AppGate: View {
     @State private var cardSize: CGSize = .zero
     /// The first-run "Get set up" card's state, for the signed-in account.
     @State private var setup = SetupStore()
+    /// Captures: `-captureConsent ChatGPT` shows the Allow sheet over the notes.
+    @State private var consent = CaptureScreen.consentRequest
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var phase
 
@@ -268,6 +270,9 @@ struct AppGate: View {
             } else {
                 gate
             }
+        }
+        .sheet(item: $consent) { r in
+            ConsentSheet(client: CaptureScreen.client, requestID: r.id, initial: .asking(r), finish: { _ in })
         }
     }
 
@@ -413,6 +418,14 @@ struct CaptureScreen: View {
         guard ProcessInfo.processInfo.arguments.contains("-uitest"), let n = Capture.argument("-captureSetup").flatMap(Int.init) else { return nil }
         // 4: your AI's first edit just landed ("That was your AI.").
         return SetupProgress(imported: n > 1, connected: n > 2, aiEdits: n > 3 ? 1 : 0)
+    }
+
+    static let client = SupabaseClient(supabaseURL: URL(string: "http://127.0.0.1:9")!, supabaseKey: "capture")
+
+    static var consentRequest: ConnectRequest? {
+        guard ProcessInfo.processInfo.arguments.contains("-uitest"), let name = Capture.argument("-captureConsent") else { return nil }
+        let host = name.lowercased().contains("claude") ? "claude.ai" : "chatgpt.com"
+        return ConnectRequest(id: UUID(), client_name: name, redirect_host: host, loopback: false, wants_write: true)
     }
 
     static let connections: [Connection] = [
