@@ -38,12 +38,8 @@ const ASKS: Ask[] = [
   { ask: "Swap day 3 for a day trip to Sintra, and add a dinner spot", answer: "Changed day 3 to Sintra and added Cervejaria Trindade for dinner. Nothing else moved.",
     land: "edited", plain: "editedPlain", pill: "pill-chatgpt-2-lines.webp", pillAlt: "ChatGPT changed 2 lines. Undo" },
 ];
-// The bar's two parts: what a screen reader hears, and (review option ?bar=caption) the one line
-// shown under the bar.
-const PARTS = [
-  { aria: "ChatGPT writes a note", caption: "ChatGPT writes a new note" },
-  { aria: "ChatGPT edits it", caption: "ChatGPT edits two lines" },
-];
+// The bar's two parts, as a screen reader hears them.
+const PARTS = [{ aria: "ChatGPT writes a note" }, { aria: "ChatGPT edits it" }];
 
 // The clock (ms). The app alone, then ChatGPT arrives; each ask is typed, sent, thought about and
 // answered; the edit lands with its tint and the receipt; after a moment the tint fades as in the app.
@@ -92,12 +88,7 @@ export default function Demo() {
   const pause = useRef({ offscreen: false, hidden: false, hover: false });
   const outer = useRef<HTMLDivElement>(null);
   const msgsRef = useRef<HTMLDivElement>(null);
-  const fieldRef = useRef<HTMLSpanElement>(null);
   const segs = useRef<(HTMLButtonElement | null)[]>([]);
-  const captionRef = useRef<HTMLSpanElement>(null);
-  const [withCaption, setWithCaption] = useState(false); // review: ?bar=caption
-
-  useEffect(() => { setWithCaption(new URLSearchParams(location.search).get("bar") === "caption"); }, []);
 
   // Wide screens: size the desk so the chat and the note fit the first view.
   useLayoutEffect(() => {
@@ -123,9 +114,6 @@ export default function Demo() {
       el.dataset.state = reset ? "next" : k < p ? "done" : k === p ? "now" : "next";
       el.style.setProperty("--p", String(!reset && k === p ? (t - PART_AT[k]) / (PART_AT[k + 1] - PART_AT[k]) : 0));
     });
-    const c = captionRef.current;
-    const text = t >= TOTAL ? "" : PARTS[p].caption;
-    if (c && c.textContent !== text) c.textContent = text;
   };
   const jump = (k: number) => { const c = clock.current; c.started = true; c.t = PART_AT[k]; };
 
@@ -162,7 +150,6 @@ export default function Demo() {
   }, []);
 
   useEffect(() => { const m = msgsRef.current; if (m) m.scrollTo({ top: m.scrollHeight, behavior: still ? "auto" : "smooth" }); }, [view.sent, view.answered, view.thinking, still]);
-  useEffect(() => { const f = fieldRef.current; if (f) f.scrollLeft = f.scrollWidth; }, [view.typed]);
 
   // Frames fade in over the previous one, which stays opaque underneath (never both fading).
   const base = view.shot;
@@ -215,8 +202,8 @@ export default function Demo() {
             </div>
             <div className={d.input}>
               <b className={d.plus} aria-hidden="true">+</b>
-              <span ref={fieldRef} className={d.field}>
-                {view.typed}{view.chat && <i className={d.caret} data-idle={!typing || undefined} />}{!typing && <em>Ask anything</em>}
+              <span className={d.field} data-typing={typing || undefined}>
+                <span className={d.typed}>{view.typed}</span>{view.chat && <i className={d.caret} data-idle={!typing || undefined} />}{!typing && <em>Ask anything</em>}
               </span>
               <b className={d.send} aria-hidden="true">↑</b>
             </div>
@@ -228,7 +215,6 @@ export default function Demo() {
                 <button key={part.aria} type="button" ref={(el) => { segs.current[k] = el; }} className={d.seg} data-state={k === 0 ? "now" : "next"}
                   aria-label={`Part ${k + 1} of ${PARTS.length}: ${part.aria}`} onClick={() => jump(k)}><i /></button>
               ))}
-              {withCaption && <span ref={captionRef} className={d.barCaption} aria-hidden="true">{PARTS[0].caption}</span>}
             </div>
           )}
         </div>
