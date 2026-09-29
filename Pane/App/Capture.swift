@@ -98,9 +98,15 @@ extension Capture {
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         try? "\(w.windowNumber)".write(to: dir.appending(path: "window-id"), atomically: true, encoding: .utf8)
         await wait(1)
+        // Counts every time something else takes the front, so a frame caught mid-way is taken again.
+        final class Resigns: @unchecked Sendable { var count = 0 }
+        let resigns = Resigns()
+        let observer = NotificationCenter.default.addObserver(forName: NSApplication.didResignActiveNotification, object: nil, queue: .main) { _ in resigns.count += 1 }
+        defer { NotificationCenter.default.removeObserver(observer) }
         func shoot(_ name: String) async {
-            // Something else may have come forward meanwhile (an install, a notification): take the front again.
-            if !NSApp.isActive || !w.isKeyWindow {
+            let ready = dir.appending(path: "ready-\(name)"), done = dir.appending(path: "shot-\(name)")
+            for _ in 0..<4 {
+                // Something else may have come forward meanwhile (an install, a notification): take the front again.
                 // Cooperative activation is ignored while another app is in front; this one isn't.
                 for _ in 0..<10 where !(NSApp.isActive && w.isKeyWindow) {
                     NSApp.activate(ignoringOtherApps: true)
@@ -108,11 +114,15 @@ extension Capture {
                     w.makeKey()
                     await wait(0.3)
                 }
-                await wait(0.5)
+                await wait(0.3)
+                let before = resigns.count
+                try? "".write(to: ready, atomically: true, encoding: .utf8)
+                for _ in 0..<400 where !FileManager.default.fileExists(atPath: done.path) { await wait(0.05) }
+                if resigns.count == before && NSApp.isActive { return }
+                // Not in front the whole time: take it again.
+                try? FileManager.default.removeItem(at: ready)
+                try? FileManager.default.removeItem(at: done)
             }
-            try? "".write(to: dir.appending(path: "ready-\(name)"), atomically: true, encoding: .utf8)
-            let done = dir.appending(path: "shot-\(name)")
-            for _ in 0..<400 where !FileManager.default.fileExists(atPath: done.path) { await wait(0.05) }
         }
         // Nothing is focused until the caret frame, like the site's other frames.
         w.makeFirstResponder(nil)
