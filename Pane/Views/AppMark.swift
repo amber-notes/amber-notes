@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// The app's icon, drawn small inside the app. The white page needs an edge on light
-/// backgrounds, so it gets the hairline and soft shadow app icons get in Finder.
+/// The app's icon, drawn small inside the app. The amber tile holds its own on light
+/// backgrounds; a faint hairline keeps its corners crisp on dark ones.
 struct AppMark: View {
     var size: CGFloat
 
@@ -12,8 +12,8 @@ struct AppMark: View {
             .scaledToFit()
             .frame(width: size, height: size)
             .clipShape(shape)
-            .overlay(shape.strokeBorder(Color.primary.opacity(0.16), lineWidth: size < 32 ? 0.5 : 1))
-            .shadow(color: .black.opacity(0.14), radius: size * 0.05, y: size * 0.025)
+            .overlay(shape.strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5))
+            .shadow(color: .black.opacity(0.10), radius: size * 0.04, y: size * 0.02)
             .accessibilityHidden(true)
     }
 }

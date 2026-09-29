@@ -37,19 +37,23 @@ V['S6 Poured header'] = ('<rect width="1024" height="1024" fill="url(#cream)"/>'
     '<path d="M0 0 H1024 V300 C 860 380 700 280 512 330 C 330 380 170 300 0 350 Z" fill="url(#resin)"/>'
     + leaf(512, 170, 1.4) + lines(170, 854, [560, 700, 840], RULE, 14))
 
-items = [('Current', current())] + list(V.items())
-W = len(items) * 250 + 40; H = 560
-out = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" font-family="-apple-system, Helvetica">', defs(), EXTRA, '<defs>', *[clip(i) for i in range(len(items))], '</defs>',
-       f'<rect width="{W}" height="{H}" fill="#F5F5F7"/>', f'<rect y="300" width="{W}" height="110" fill="#1C1C1E"/>',
-       f'<rect y="410" width="{W}" height="110" fill="#8FA7C4"/>']
-for i, (name, body) in enumerate(items):
-    x = 30 + i * 250
-    out.append(f'<g transform="translate({x+15} 30) scale(0.1953)">{icon_svg(body, i)}</g>')
-    out.append(f'<text x="{x+115}" y="270" font-size="17" font-weight="600" text-anchor="middle" fill="#1D1D1F">{name}</text>')
-    for row, y in ((0, 323), (1, 433)):
-        out.append(f'<g transform="translate({x+40} {y}) scale(0.0586)">{icon_svg(body, i)}</g>')
-        out.append(f'<g transform="translate({x+130} {y+14}) scale(0.03125)">{icon_svg(body, i)}</g>')
-    if name != 'Current':
-        open(f"store-{name.split()[0]}.svg", 'w').write(f'<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024">{defs()}{EXTRA}<defs>{clip(i)}</defs>{icon_svg(body, i)}</svg>')
-out.append('</svg>')
-open('store-sheet.svg', 'w').write(''.join(out))
+def _sheet():
+  items = [('Current', current())] + list(V.items())
+  W = len(items) * 250 + 40; H = 560
+  out = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" font-family="-apple-system, Helvetica">', defs(), EXTRA, '<defs>', *[clip(i) for i in range(len(items))], '</defs>',
+         f'<rect width="{W}" height="{H}" fill="#F5F5F7"/>', f'<rect y="300" width="{W}" height="110" fill="#1C1C1E"/>',
+         f'<rect y="410" width="{W}" height="110" fill="#8FA7C4"/>']
+  for i, (name, body) in enumerate(items):
+      x = 30 + i * 250
+      out.append(f'<g transform="translate({x+15} 30) scale(0.1953)">{icon_svg(body, i)}</g>')
+      out.append(f'<text x="{x+115}" y="270" font-size="17" font-weight="600" text-anchor="middle" fill="#1D1D1F">{name}</text>')
+      for row, y in ((0, 323), (1, 433)):
+          out.append(f'<g transform="translate({x+40} {y}) scale(0.0586)">{icon_svg(body, i)}</g>')
+          out.append(f'<g transform="translate({x+130} {y+14}) scale(0.03125)">{icon_svg(body, i)}</g>')
+      if name != 'Current':
+          open(f"store-{name.split()[0]}.svg", 'w').write(f'<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024">{defs()}{EXTRA}<defs>{clip(i)}</defs>{icon_svg(body, i)}</svg>')
+  out.append('</svg>')
+  open('store-sheet.svg', 'w').write(''.join(out))
+
+if __name__ == "__main__":
+    _sheet()
