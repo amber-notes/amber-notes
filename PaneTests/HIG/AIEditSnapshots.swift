@@ -341,11 +341,12 @@ import Testing
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         AppleNotesBridge.forceDemo = true
         AppleNotesBridge.forceLarge = true
-        defer { AppleNotesBridge.forceDemo = false; AppleNotesBridge.forceLarge = false }
+        DateBucket.locale = Locale(identifier: "en_US")
+        defer { AppleNotesBridge.forceDemo = false; AppleNotesBridge.forceLarge = false; DateBucket.locale = .autoupdatingCurrent }
         for dark in [false, true] {
             let c = try AppSnapshotTests.container()
             // Over the app itself, in a window just big enough to frame the sheet.
-            let host = Self.root(c)
+            let host = Self.root(c).environment(\.locale, Locale(identifier: "en_US"))
                 .sheet(isPresented: .constant(true)) {
                     AppleNotesImportView().modelContainer(c).tint(Color(PColor.paneAccent)).environment(\.controlActiveState, .key)
                         .environment(\.locale, Locale(identifier: "en_US"))

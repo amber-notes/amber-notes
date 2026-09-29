@@ -255,7 +255,7 @@ enum DateBucket {
                 let k = (comps.year ?? 0) * 100 + (comps.month ?? 0)
                 if let known = monthKeys[k] { (key, order) = known } else {
                     let month = calendar.date(from: comps) ?? d
-                    let label = comps.year == thisYear ? month.formatted(.dateTime.month(.wide)) : month.formatted(.dateTime.month(.wide).year())
+                    let label = comps.year == thisYear ? month.formatted(.dateTime.month(.wide).locale(locale)) : month.formatted(.dateTime.month(.wide).year().locale(locale))
                     monthKeys[k] = (label, month)
                     (key, order) = (label, month)
                 }
@@ -266,6 +266,11 @@ enum DateBucket {
         if !pinned.isEmpty { result.append(("Pinned", pinned)) }
         result += groups.sorted { $0.order > $1.order }.map { ($0.key, $0.notes) }
         return result
+    }
+
+    /// The locale dates are written in: the person's own. Captures pin it (en_US) so every picture reads the same.
+    nonisolated(unsafe) static var locale: Locale = .autoupdatingCurrent {
+        didSet { rowDates = [:] }
     }
 
     nonisolated(unsafe) private static var rowDates: [Int: String] = [:]
@@ -280,11 +285,11 @@ enum DateBucket {
         let key = isToday ? Int(d.timeIntervalSince1970 / 60) : -Int(calendar.startOfDay(for: d).timeIntervalSince1970 / 86400) - 1
         if let s = rowDates[key] { return s }
         let s: String
-        if calendar.isDateInToday(d) { s = d.formatted(date: .omitted, time: .shortened) }
+        if calendar.isDateInToday(d) { s = d.formatted(Date.FormatStyle(date: .omitted, time: .shortened).locale(locale)) }
         else if calendar.isDateInYesterday(d) { s = "Yesterday" }
         else {
             let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: d), to: today).day ?? 99
-            s = days < 7 ? d.formatted(.dateTime.weekday(.wide)) : d.formatted(date: .numeric, time: .omitted)
+            s = days < 7 ? d.formatted(.dateTime.weekday(.wide).locale(locale)) : d.formatted(Date.FormatStyle(date: .numeric, time: .omitted).locale(locale))
         }
         rowDates[key] = s
         return s
@@ -292,6 +297,6 @@ enum DateBucket {
 
     /// Editor header: "27 September 2026 at 16:02".
     static func header(_ d: Date) -> String {
-        d.formatted(.dateTime.day().month(.wide).year().hour().minute())
+        d.formatted(.dateTime.day().month(.wide).year().hour().minute().locale(locale))
     }
 }
