@@ -15,15 +15,16 @@ DD=build/ddphone
 json=$(mktemp)
 xcrun devicectl list devices --json-output "$json" >/dev/null 2>&1
 read device udid <<<"$(python3 -c '
-import json, sys
+import json, os, sys
+want = os.environ.get("PHONE", "Emil")  # only this phone, never another device this Mac knows
 for d in json.load(open(sys.argv[1]))["result"]["devices"]:
-    hw, cp = d.get("hardwareProperties", {}), d.get("connectionProperties", {})
-    if hw.get("deviceType") == "iPhone" and cp.get("tunnelState") != "unavailable" or (hw.get("deviceType") == "iPhone" and cp.get("transportType") == "wired"):
+    hw, cp, props = d.get("hardwareProperties", {}), d.get("connectionProperties", {}), d.get("deviceProperties", {})
+    if hw.get("deviceType") == "iPhone" and want.lower() in props.get("name", "").lower() and cp.get("tunnelState") == "connected":
         print(d["identifier"], hw.get("udid", "")); break
 ' "$json")"
 rm -f "$json"
 if [[ -z ${device:-} ]]; then
-  echo "No iPhone connected. Plug it in with a cable, unlock it, and tap Trust." >&2
+  echo "Your iPhone (${PHONE:-Emil}) isn't connected. Plug it in or put it on the same Wi-Fi, unlock it, and try again." >&2
   exit 1
 fi
 echo "Installing on $device"
