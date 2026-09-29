@@ -22,8 +22,7 @@ struct SignInView: View {
         #if os(macOS)
         card
             .padding(.horizontal, 36)
-            .padding(.top, 40)
-            .padding(.bottom, 44)
+            .padding(.vertical, 56)
             .frame(width: 380)
         #else
         card
@@ -65,9 +64,9 @@ struct SignInView: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .transition(.opacity)
                 }
-            }
 
-            if Self.emailFallback { emailSection }
+                if Self.emailFallback { emailSection }
+            }
         }
         .animation(.snappy(duration: 0.2), value: error)
         .animation(.smooth(duration: 0.3), value: showEmail)

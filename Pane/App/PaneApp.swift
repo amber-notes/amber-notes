@@ -154,6 +154,9 @@ private struct WindowShaper: NSViewRepresentable {
             // Notes' full-height toolbar with large buttons; compact only for the sign-in card.
             window.toolbarStyle = compact ? .unifiedCompact : .unified
             window.titlebarSeparatorStyle = compact ? .none : .automatic
+            // The card runs under a see-through title bar: one surface, just the window buttons on it.
+            window.titlebarAppearsTransparent = compact
+            if compact { window.styleMask.insert(.fullSizeContentView) }
             // Card mode keeps close and minimise; zoom makes no sense for a fixed-size card.
             window.standardWindowButton(.zoomButton)?.isEnabled = !compact
             window.contentMinSize = compact ? CGSize(width: 300, height: 300) : CGSize(width: 760, height: 520)
