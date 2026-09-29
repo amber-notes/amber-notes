@@ -86,4 +86,11 @@ describe("summary", () => {
     expect(summary(withoutTitle(note))).toMatch(/^Packing: Passport Charger/);
     expect(summary("x".repeat(400)).length).toBe(160);
   });
+
+  it("keeps note ids and names prefixed so they can't clobber the page's globals", () => {
+    const html = renderNote('<a id="__next" name="location">x</a> <img id="document" src="https://example.com/a.png">', { files: {}, subNoteHref: () => null });
+    expect(html).not.toMatch(/id="__next"/);
+    expect(html).not.toMatch(/name="location"/);
+    expect(html).not.toMatch(/id="document"/);
+  });
 });

@@ -37,7 +37,8 @@ const schema: Schema = {
   },
   // Links are http(s) or mailto; our own sub-note pages are relative.
   protocols: { ...defaultSchema.protocols, href: ["http", "https", "mailto"], src: ["http", "https"] },
-  clobberPrefix: "",
+  // Keep the default "user-content-" prefix on id and name: without it a note could name
+  // an element after something the page's own scripts look up (DOM clobbering).
 };
 
 const text = (value: string): ElementContent => ({ type: "text", value });
