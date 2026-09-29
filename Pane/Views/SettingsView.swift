@@ -41,6 +41,9 @@ struct SettingsView: View {
                 if case .signedIn = backend.state, let client = backend.client {
                     ConnectAISection(client: client)
                 }
+                #if os(macOS)
+                MenuBarSection()
+                #endif
             }
             .formStyle(.grouped)
     }
@@ -104,3 +107,22 @@ struct SyncStatusLabel: View {
         }
     }
 }
+
+#if os(macOS)
+/// Amber Notes in the menu bar, on by default.
+private struct MenuBarSection: View {
+    @AppStorage(MenuBarSettings.key) private var show = true
+
+    var body: some View {
+        Section {
+            Toggle("Show in menu bar", isOn: $show)
+                .accessibilityIdentifier("settings.menuBar")
+        } header: {
+            Text("Menu Bar")
+        } footer: {
+            Text("Capture a note or find one from the menu bar, even with the window closed.")
+                .foregroundStyle(.secondary)
+        }
+    }
+}
+#endif

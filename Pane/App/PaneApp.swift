@@ -36,8 +36,15 @@ struct PaneApp: App {
         return args[i + 1] == "light" ? .light : args[i + 1] == "dark" ? .dark : nil
     }
 
+    /// The notes window's scene id (the menu bar panel opens it by this).
+    static let mainWindowID = "main"
+
+    #if os(macOS)
+    @AppStorage(MenuBarSettings.key) private var showInMenuBar = true
+    #endif
+
     var body: some Scene {
-        WindowGroup {
+        WindowGroup(id: Self.mainWindowID) {
             if Self.isUnitTestHost {
                 UnitTestHostView()
             } else {
@@ -73,6 +80,16 @@ struct PaneApp: App {
         Settings {
             SettingsView(backend: backend, sync: sync)
         }
+
+        // Amber Notes in the menu bar: quick capture, search, pinned and recent notes.
+        MenuBarExtra(isInserted: Binding(get: { showInMenuBar && MenuBarSettings.allowed }, set: { showInMenuBar = $0 })) {
+            MenuBarPanel(backend: backend, sync: sync)
+                .modelContainer(container)
+                .tint(Color(PColor.paneAccent))
+        } label: {
+            Image("MenuBarIcon").accessibilityLabel("Amber Notes")
+        }
+        .menuBarExtraStyle(.window)
         #endif
     }
 }

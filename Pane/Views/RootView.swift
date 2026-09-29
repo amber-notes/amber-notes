@@ -78,10 +78,13 @@ struct RootView: View {
                 restoreScope()
                 restoreNote()
                 openFromLaunchArguments()
+                reveal(NoteOpener.shared.request)
                 #endif
             }
             .onChange(of: scope) { _, new in rememberScope(new) }
             .onChange(of: selectedNote) { old, new in noteChanged(from: old, to: new) }
+            // A note opened from the menu bar.
+            .onChange(of: NoteOpener.shared.request) { _, id in reveal(id) }
     }
 
     private func rememberScope(_ new: Scope?) {
@@ -193,6 +196,14 @@ struct RootView: View {
         if title == "-new" { DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { newNote() }; return }
         let all = (try? context.fetch(FetchDescriptor<Note>())) ?? []
         if let n = all.first(where: { $0.title == title && $0.deletedAt == nil }) { selectedNote = n.id }
+    }
+
+    /// Shows a note asked for from outside the window, switching to All Notes if it isn't in view.
+    private func reveal(_ id: UUID?) {
+        guard let id, let note = context.note(id), note.deletedAt == nil else { return }
+        NoteOpener.shared.request = nil
+        if note.trashedAt != nil { scope = .trash } else if case .folder(let f) = scope, note.folder?.id == f {} else { scope = .all }
+        selectedNote = id
     }
 
     /// Reopen the note you were on; otherwise the one you edited last.
