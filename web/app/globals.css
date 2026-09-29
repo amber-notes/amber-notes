@@ -1,0 +1,105 @@
+/* The share page reads like a note in Amber Notes: system type, a quiet page, amber accents. */
+:root {
+  color-scheme: light dark;
+  --page: #ffffff;
+  --chrome: #f6f5f3;
+  --text: #1d1d1f;
+  --secondary: #6e6e73;
+  --tertiary: #aeaeb2;
+  --rule: rgba(0, 0, 0, 0.1);
+  --fill: #f2f1ef;
+  --accent: #e39410;
+  --accent-text: #b86e00;
+  --accent-soft: rgba(233, 146, 16, 0.12);
+  --code: #f5f4f2;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #1e1e1e;
+    --chrome: #262626;
+    --text: #f5f5f7;
+    --secondary: #a1a1a6;
+    --tertiary: #6e6e73;
+    --rule: rgba(255, 255, 255, 0.12);
+    --fill: #2c2c2e;
+    --accent: #f5ad33;
+    --accent-text: #f5ad33;
+    --accent-soft: rgba(245, 173, 51, 0.16);
+    --code: #2a2a2c;
+  }
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--text);
+  font: 17px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--accent-text); }
+a:focus-visible, .file-chip:focus-visible, .subnote-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+
+.shell { min-height: 100dvh; display: flex; flex-direction: column; }
+.bar {
+  position: sticky; top: 0; z-index: 1;
+  display: flex; align-items: center; height: 52px; padding: 0 16px;
+  background: color-mix(in srgb, var(--chrome) 85%, transparent);
+  backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 1px solid var(--rule);
+}
+.brand { display: inline-flex; align-items: center; gap: 8px; color: var(--text); text-decoration: none; font-weight: 600; font-size: 15px; min-height: 44px; }
+.brand img { border-radius: 5px; }
+
+.page { width: 100%; max-width: 720px; margin: 0 auto; padding: 28px 16px 64px; flex: 1; }
+.parent { display: inline-flex; gap: 4px; align-items: center; min-height: 44px; font-size: 15px; text-decoration: none; }
+.date { margin: 0 0 6px; color: var(--secondary); font-size: 13px; text-align: center; font-variant-numeric: tabular-nums; }
+.title { margin: 8px 0 12px; font-size: 28px; line-height: 1.2; font-weight: 700; letter-spacing: -0.01em; overflow-wrap: anywhere; }
+.lede { color: var(--secondary); max-width: 34em; }
+.empty { display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 18vh; }
+.empty img { border-radius: 12px; margin-bottom: 8px; }
+
+.note { overflow-wrap: anywhere; }
+.note > :first-child { margin-top: 0; }
+.note p { margin: 0 0 0.6em; }
+.note h1, .note h2, .note h3, .note h4 { margin: 1.2em 0 0.4em; line-height: 1.25; }
+.note h1 { font-size: 24px; } .note h2 { font-size: 21px; } .note h3 { font-size: 18px; } .note h4 { font-size: 17px; }
+.note ul, .note ol { margin: 0 0 0.6em; padding-left: 1.5em; }
+.note li { margin: 0.15em 0; }
+.note li::marker { color: var(--text); }
+.note .contains-task-list { list-style: none; padding-left: 0.2em; }
+.note .task-list-item { display: flex; gap: 10px; align-items: baseline; }
+.note .task-list-item input { appearance: none; flex: none; width: 20px; height: 20px; margin: 0; border: 1.5px solid var(--tertiary); border-radius: 50%; transform: translateY(4px); }
+.note .task-list-item input:checked { background: var(--accent) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'><path d='M5.5 10.5l3 3 6-7' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/></svg>") center/100% no-repeat; border-color: var(--accent); }
+.note .task-list-item:has(input:checked) { color: var(--secondary); }
+.note blockquote { margin: 0 0 0.6em; padding: 0 0 0 14px; border-left: 3px solid var(--accent); color: var(--secondary); }
+.note code { font: 0.88em ui-monospace, "SF Mono", Menlo, monospace; background: var(--code); padding: 0.1em 0.35em; border-radius: 5px; }
+.note pre { background: var(--code); padding: 12px 14px; border-radius: 10px; overflow-x: auto; margin: 0 0 0.8em; }
+.note pre code { background: none; padding: 0; }
+.note hr { border: 0; border-top: 1px solid var(--rule); margin: 1.2em 0; }
+.note table { border-collapse: collapse; margin: 0.4em 0 1em; display: block; overflow-x: auto; max-width: 100%; font-variant-numeric: tabular-nums; }
+.note th, .note td { border: 1px solid var(--rule); padding: 6px 10px; text-align: left; vertical-align: top; }
+.note th { font-weight: 600; background: var(--fill); }
+.note img.embed-image { display: block; max-width: min(100%, 520px); height: auto; border-radius: 10px; margin: 0.4em 0; }
+.embed-missing { display: inline-block; color: var(--secondary); font-size: 15px; padding: 6px 10px; border-radius: 8px; background: var(--fill); }
+
+.file-chip, .subnote-chip {
+  display: flex; align-items: center; gap: 10px; max-width: 460px; min-height: 52px; margin: 0.4em 0; padding: 8px 12px;
+  border-radius: 12px; background: var(--fill); color: var(--text); text-decoration: none;
+  transition-property: background-color, transform; transition-duration: 120ms;
+}
+@media (hover: hover) { .file-chip:hover, .subnote-chip:hover { background: color-mix(in srgb, var(--fill) 80%, var(--accent) 20%); } }
+.file-chip:active, .subnote-chip:active { transform: scale(0.98); }
+.file-icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 8px; background: var(--accent-soft); color: var(--accent-text); font-size: 10px; font-weight: 700; letter-spacing: 0.02em; }
+.file-text { display: flex; flex-direction: column; min-width: 0; }
+.file-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.file-meta { color: var(--secondary); font-size: 13px; font-variant-numeric: tabular-nums; }
+.subnote-icon { width: 28px; height: 28px; border-radius: 7px; flex: none; background: var(--accent-soft) url("/mark.png") center/18px no-repeat; }
+.subnote-plain { font-weight: 600; }
+.subnotes { margin-top: 32px; }
+.subnotes h2 { font-size: 13px; font-weight: 600; text-transform: none; color: var(--secondary); margin: 0 0 6px; }
+
+.foot { text-align: center; color: var(--tertiary); font-size: 13px; padding: 24px 16px 32px; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
