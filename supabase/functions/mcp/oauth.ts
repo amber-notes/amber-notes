@@ -227,6 +227,12 @@ async function register(req: Request, sql: Sql): Promise<Response> {
   }
   const name = String(body.client_name ?? "").trim().slice(0, 100) || new URL(uris[0]).hostname;
   const id = randomToken("amb_client_").slice(0, 43);
+  // Registration is open by design, so clients that never got an approval are forgotten
+  // after a day, and a flood of fresh ones (many addresses at once) is turned away.
+  await sql`delete from public.oauth_clients c where c.created_at < now() - interval '1 day'
+            and not exists (select 1 from public.mcp_tokens t where t.client_id = c.id)`;
+  const [{ recent }] = await sql<{ recent: number }[]>`select count(*)::int recent from public.oauth_clients where created_at > now() - interval '1 hour'`;
+  if (recent >= 2000) return oauthError("slow_down", "Too many registrations right now. Try again later.", 429);
   await sql`insert into public.oauth_clients (id, client_name, redirect_uris) values (${id}, ${name}, ${uris})`;
   return json({
     client_id: id,
