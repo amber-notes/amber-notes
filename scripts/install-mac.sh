@@ -13,7 +13,8 @@ DD="$MAIN/build/ddinstall"
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 
 [[ -d $CLEAN ]] || git -C "$MAIN" worktree add --detach "$CLEAN" main
-git -C "$CLEAN" checkout -q --detach main
+# The clean checkout only ever holds generated changes (xcodegen): drop them.
+git -C "$CLEAN" checkout -q -f --detach main
 cp "$MAIN/Config/Backend.local.xcconfig" "$CLEAN/Config/"
 (cd "$CLEAN" && xcodegen generate >/dev/null)
 
@@ -22,7 +23,7 @@ rm -rf "$app" # never install a stale build
 xcodebuild -project "$CLEAN/Pane.xcodeproj" -scheme Pane -configuration Release -destination 'platform=macOS' \
   -derivedDataPath "$DD" -allowProvisioningUpdates -allowProvisioningDeviceRegistration \
   DEVELOPMENT_TEAM=4UM3XVUN9Y CODE_SIGN_STYLE=Automatic CODE_SIGN_IDENTITY="Apple Development" \
-  PROVISIONING_PROFILE_SPECIFIER= CODE_SIGN_ENTITLEMENTS=Pane/Resources/Pane-mac-signed.entitlements \
+  PROVISIONING_PROFILE_SPECIFIER= PANE_MAC_ENTITLEMENTS=Pane-mac-signed.entitlements \
   build | grep -E "error:|\*\* BUILD" || true
 [[ -d $app ]] || { echo "Build failed." >&2; exit 1; }
 

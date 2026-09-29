@@ -76,7 +76,10 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         ENABLE_HARDENED_RUNTIME: YES
-        "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": Pane/Resources/Pane-mac.entitlements
+        # Ad-hoc builds use Pane-mac.entitlements; scripts/install-mac.sh passes
+        # PANE_MAC_ENTITLEMENTS=Pane-mac-signed.entitlements for the team-signed app.
+        PANE_MAC_ENTITLEMENTS: Pane-mac.entitlements
+        "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": Pane/Resources/$(PANE_MAC_ENTITLEMENTS)
         "CODE_SIGN_ENTITLEMENTS[sdk=iphone*]": Pane/Resources/Pane-ios.entitlements
   PaneShare:
     type: app-extension
