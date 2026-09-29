@@ -13,3 +13,4 @@ supabase/functions/.env.local
 # App Store Connect API key and other private credentials
 .secrets/
 *.p8
+__pycache__/

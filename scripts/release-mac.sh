@@ -10,7 +10,8 @@
 # download page's release.json, deploy the site, and tag the commit.
 #
 # Needs: .secrets/AuthKey_*.p8 + .secrets/asc.env (ASC_KEY_ID, ASC_ISSUER_ID) for notarytool,
-# the Sparkle key in the Keychain (account "amber-notes"), and python3 -m dmgbuild.
+# and the Sparkle key in the Keychain (account "amber-notes"). scripts/dmg/build-dmg.sh sets up
+# dmgbuild in build/dmg-venv on first use.
 #
 # CI (.github/workflows/release.yml) runs the same steps with these set:
 #   IN_PLACE=1                 build the current checkout instead of ../AmberNotes-install
@@ -85,14 +86,10 @@ notarize "$DIST/app.zip"
 xcrun stapler staple "$APP"
 
 echo "→ DMG"
-# dmgbuild lays out the window in a read-write image; `hdiutil create -srcfolder` compresses it
-# (`hdiutil convert` fails on this Mac with "Resource temporarily unavailable").
-python3 -m dmgbuild -s "$MAIN/brand/dmg/dmg-settings.py" -D app="$APP" "Amber Notes" "$DIST/rw.dmg" >/dev/null
-MNT=$(mktemp -d)
-hdiutil attach "$DIST/rw.dmg" -nobrowse -noverify -noautoopen -mountpoint "$MNT" >/dev/null
-hdiutil create -srcfolder "$MNT" -volname "Amber Notes" -format UDZO -imagekey zlib-level=9 "$DIST/$FILE" >/dev/null
-hdiutil detach "$MNT" -quiet
-rm -f "$DIST/rw.dmg"
+# dmgbuild writes the window (background, icon positions, hidden bars, volume icon) straight into
+# the compressed image. Don't re-pack it with `hdiutil create -srcfolder`: that drops the
+# .DS_Store, and the window falls back to Finder's default.
+"$CLEAN/scripts/dmg/build-dmg.sh" "$APP" "$DIST/$FILE"
 # The Developer ID certificate is cloud-managed (only Xcode's export can use it); sign the DMG
 # too when a local Developer ID identity exists. Notarization doesn't need a signed DMG.
 if security find-identity -v -p codesigning | grep -q "Developer ID Application"; then
