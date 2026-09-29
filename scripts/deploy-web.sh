@@ -15,9 +15,11 @@ url=$(grep -E '^PANE_SUPABASE_URL' $conf | sed 's/.*= *//; s|:/\$()/|://|')
 key=$(grep -E '^PANE_SUPABASE_KEY' $conf | sed 's/.*= *//')
 [[ $url == https://* && -n $key ]] || { echo "Backend.local.xcconfig has no production Supabase settings." >&2; exit 1; }
 
-cp docs/privacy-policy.md web/content/privacy-policy.md
-cp docs/terms-of-use.md web/content/terms-of-use.md
-cp docs/support.md web/content/support.md
+# The legal pages ship as committed, never as someone's unsaved edit (DOCS_FROM_WORKTREE=1 overrides).
+for doc in privacy-policy terms-of-use support; do
+  if [[ ${DOCS_FROM_WORKTREE:-0} == 1 ]]; then cp "docs/$doc.md" "web/content/$doc.md"
+  else git show "HEAD:docs/$doc.md" > "web/content/$doc.md"; fi
+done
 # Salt for hashing who reported a shared page (never stored anywhere else).
 mkdir -p .secrets && [[ -s .secrets/report-salt.txt ]] || openssl rand -hex 32 > .secrets/report-salt.txt
 salt=$(cat .secrets/report-salt.txt)
