@@ -37,7 +37,7 @@ export default function Home() {
         <div className={`${styles.ctas} rise`} {...rise(2)}>
           <DownloadLink className={styles.primary}><AppleGlyph /> Download for Mac</DownloadLink>
           {APP_STORE_LIVE ? (
-            <a className={styles.secondary} href={APP_STORE_URL}>Get it for iPhone</a>
+            <a className={styles.secondary} href={APP_STORE_URL} target="_blank" rel="noopener noreferrer">Get it for iPhone</a>
           ) : (
             <span className={styles.secondary}>iPhone · coming soon</span>
           )}

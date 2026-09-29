@@ -27,11 +27,11 @@ export default function Help() {
         <div {...rise(3)}>
           <h2 className={f.h3}>Still stuck?</h2>
           <div className={f.contact}>
-            <a href="https://x.com/EmilWagman" rel="noopener">
+            <a href="https://x.com/EmilWagman" target="_blank" rel="noopener noreferrer">
               <strong>Message me on X</strong>
               <span>@EmilWagman. I usually answer within a day.</span>
             </a>
-            <a href={`${GITHUB_URL}/issues/new/choose`}>
+            <a href={`${GITHUB_URL}/issues/new/choose`} target="_blank" rel="noopener noreferrer">
               <strong>Report a bug on GitHub</strong>
               <span>Say what happened and what you expected.</span>
             </a>
