@@ -38,6 +38,7 @@ struct PaneApp: App {
         Capture.scheduleFromArguments(container.mainContext)
         #if os(macOS)
         Capture.demoSequenceFromArguments(container.mainContext)
+        Capture.importSequenceFromArguments()
         #endif
     }
 
@@ -69,6 +70,9 @@ struct PaneApp: App {
         .modelContainer(container)
         #if os(macOS)
         .defaultSize(width: 1180, height: 760)
+        // Test and capture runs always start with the notes window, whatever was saved last time.
+        .defaultLaunchBehavior(ProcessInfo.processInfo.arguments.contains("-uitest") ? .presented : .automatic)
+        .restorationBehavior(ProcessInfo.processInfo.arguments.contains("-uitest") ? .disabled : .automatic)
         .defaultWindowPlacement { _, context in
             // Open at a comfortable size, centred, whatever screen is showing.
             let screen = context.defaultDisplay.visibleRect

@@ -63,6 +63,57 @@ enum Capture {
 }
 
 #if os(macOS)
+/// The Apple Notes import sheet, from a real front window, for the website and the App Store:
+///   `-uitest -demo -importLarge -open Groceries -importSheet -captureImport <dir>`
+/// Writes the sheet's window id, then `ready-import-sheet` (everything picked, the button ready)
+/// and `ready-import-progress` (half done), each waiting for `shot-<name>`; then quits.
+extension Capture {
+    static let importHalfway = Notification.Name("pane.captureImportHalfway")
+
+    @MainActor static func importSequenceFromArguments() {
+        guard ProcessInfo.processInfo.arguments.contains("-uitest"), let path = argument("-captureImport") else { return }
+        let dir = URL(fileURLWithPath: path)
+        Task { @MainActor in
+            @MainActor func wait(_ s: Double) async { try? await Task.sleep(for: .seconds(s)) }
+            var sheet: NSWindow?
+            try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            for _ in 0..<600 where sheet == nil {
+                sheet = NSApp.windows.compactMap(\.attachedSheet).first
+                if sheet == nil { await wait(0.1) }
+            }
+            guard let sheet, let parent = sheet.sheetParent else {
+                let seen = NSApp.windows.map { "\($0.windowNumber) \(type(of: $0)) \($0.frame) visible:\($0.isVisible) sheet:\($0.isSheet)" }
+                try? seen.joined(separator: "\n").write(to: dir.appending(path: "no-sheet.txt"), atomically: true, encoding: .utf8)
+                return
+            }
+            if let screen = NSScreen.screens.max(by: { $0.backingScaleFactor < $1.backingScaleFactor }) {
+                let v = screen.visibleFrame
+                parent.setFrameOrigin(NSPoint(x: v.midX - parent.frame.width / 2, y: v.midY - parent.frame.height / 2))
+            }
+            try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            try? "\(sheet.windowNumber)".write(to: dir.appending(path: "window-id"), atomically: true, encoding: .utf8)
+            await wait(2)
+            @MainActor func shoot(_ name: String) async {
+                for _ in 0..<10 where !NSApp.isActive {
+                    NSApp.activate(ignoringOtherApps: true)
+                    parent.orderFrontRegardless()
+                    await wait(0.3)
+                }
+                await wait(0.4)
+                try? "".write(to: dir.appending(path: "ready-\(name)"), atomically: true, encoding: .utf8)
+                let done = dir.appending(path: "shot-\(name)")
+                for _ in 0..<400 where !FileManager.default.fileExists(atPath: done.path) { await wait(0.05) }
+            }
+            await shoot("import-sheet")
+            NotificationCenter.default.post(name: importHalfway, object: nil)
+            await wait(0.8)
+            await shoot("import-progress")
+            try? "".write(to: dir.appending(path: "finished"), atomically: true, encoding: .utf8)
+            NSApp.terminate(nil)
+        }
+    }
+}
+
 /// The website demo, captured from a real front window (so it looks focused):
 ///   `-uitest -demo -open Groceries -captureDemo <dir>`
 /// The app sizes its window to 1180×560 pt (`-captureHeight 720` for the tall one) with the site's column widths, then plays every
