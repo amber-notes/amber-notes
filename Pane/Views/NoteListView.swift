@@ -1,5 +1,6 @@
 import SwiftData
 import SwiftUI
+import TipKit
 import UniformTypeIdentifiers
 
 struct NoteListView: View {
@@ -20,6 +21,15 @@ struct NoteListView: View {
     @State private var pendingForever: Set<UUID>?
     @FocusedValue(\.importAction) private var importNotes
     @FocusedValue(\.importSheetAction) private var importSheet
+    @Environment(SetupStore.self) private var setup: SetupStore?
+    @Environment(Backend.self) private var backend: Backend?
+    @State private var connecting = false
+    @State private var sharingHowTo = false
+    /// The Share tip at the top of the list is due (iPhone).
+    @State private var listTipDue = false
+
+    /// "Get set up" sits on top of the list for a new account, never in Recently Deleted or a search.
+    private var showsSetup: Bool { (setup?.visible ?? false) && scope != .trash && search.isEmpty }
 
     private var scoped: [Note] {
         notes.filter { n in
@@ -58,10 +68,34 @@ struct NoteListView: View {
         let visible = filtered(from: scopedNotes)
         let folders = context.allFolders().sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
         return list(scopedNotes, visible, folders)
+            #if os(iOS)
+            .task { await watchListTip() }
+            #endif
     }
 
     private func list(_ scopedNotes: [Note], _ visible: [Note], _ folders: [Folder]) -> some View {
         List(selection: $selection) {
+            if showsSetup, let setup, let progress = setup.progress {
+                #if os(iOS)
+                // Its own grouped section, so it has the list's insets, radius and ground.
+                Section {
+                    setupCard(setup, progress)
+                        .padding(.vertical, 4)
+                        .selectionDisabled()
+                }
+                #else
+                setupCard(setup, progress)
+                    .listRowInsets(EdgeInsets(top: 6, leading: 10, bottom: 10, trailing: 10))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                    .selectionDisabled()
+                #endif
+            }
+            #if os(iOS)
+            if listTipDue && !showsSetup && scope != .trash && search.isEmpty {
+                listTip
+            }
+            #endif
             if scope == .trash && !scopedNotes.isEmpty && search.isEmpty {
                 Text("Notes are deleted forever after 30 days.")
                     .font(.footnote)
@@ -75,22 +109,14 @@ struct NoteListView: View {
                     set: { open in withAnimation(.snappy(duration: 0.22)) { if open { collapsed.remove(section.0) } else { collapsed.insert(section.0) } } }
                 )) {
                     ForEach(section.1) { note in
-                        NoteRow(note: note, query: search, showFolder: scope == .all || !search.isEmpty)
+                        // Its own equatable view: when one note changes, the others' rows (and their
+                        // drag and swipe setup) are left alone instead of rebuilt.
+                        ListRow(note: note, query: search, showFolder: scope == .all || !search.isEmpty,
+                                dragWith: dragOthers(for: note), selectedCount: selection.count,
+                                togglePin: { withAnimation(.snappy) { context.togglePin(note) } },
+                                remove: { remove(note) })
+                            .equatable()
                             .tag(note.id)
-                            .draggable(dragItem(for: note)) {
-                                dragPreview(for: note)
-                            }
-                            .swipeActions(edge: .leading) {
-                                if note.trashedAt == nil {
-                                    Button(note.isPinned ? "Unpin" : "Pin", systemImage: note.isPinned ? "pin.slash" : "pin") {
-                                        withAnimation(.snappy) { context.togglePin(note) }
-                                    }
-                                    .tint(.orange)
-                                }
-                            }
-                            .swipeActions(edge: .trailing) {
-                                deleteButton(note)
-                            }
                     }
                 } header: {
                     #if os(iOS)
@@ -129,7 +155,17 @@ struct NoteListView: View {
         .environment(\.editMode, $editMode)
         #endif
         .overlay {
-            if visible.isEmpty { emptyState }
+            // The setup card is the empty state for a new account.
+            if visible.isEmpty && !showsSetup { emptyState }
+        }
+        .sheet(isPresented: $connecting, onDismiss: { Task { await setup?.refresh(force: true) } }) {
+            if let client = backend?.client { ConnectAISheet(client: client) }
+        }
+        #if os(iOS)
+        .sheet(isPresented: $sharingHowTo) { ShareHowToSheet() }
+        #endif
+        .onChange(of: setup?.progress?.needsToDoNote ?? false) { _, needs in
+            if needs { ensureToDoNote() }
         }
         .overlay {
             if fileDropTargeted {
@@ -253,6 +289,62 @@ struct NoteListView: View {
         }
     }
 
+    #if os(iOS)
+    /// "Did you know" for what isn't a button here, as a row at the top of the list.
+    private var listTip: some View {
+        // One grouped card, like the Get set up card: the tip is the row, on the row's own surface.
+        Section { CompactTip(tip: ShareExtensionTip(), card: false).selectionDisabled() }
+    }
+    #endif
+
+    #if os(iOS)
+    /// Follows whether the list's tip is due, and records it as shown when it is.
+    private func watchListTip() async {
+        let tip = ShareExtensionTip()
+        for await due in tip.shouldDisplayUpdates {
+            listTipDue = due
+            if due { TipLog.shown(tip.id) }
+        }
+    }
+    #endif
+
+    private func setupCard(_ setup: SetupStore, _ progress: SetupProgress) -> some View {
+        #if os(macOS)
+        let onImport: (() -> Void)? = { importNotes?() }
+        let onShareHowTo: (() -> Void)? = nil
+        #else
+        let onImport: (() -> Void)? = nil
+        let onShareHowTo: (() -> Void)? = { sharingHowTo = true }
+        #endif
+        return SetupCard(
+            progress: progress,
+            celebrating: setup.showingCelebration,
+            onImport: onImport,
+            onStartFresh: { Task { await setup.mark("imported") } },
+            onConnect: { connecting = true },
+            onShareHowTo: onShareHowTo,
+            onHide: { Task { await setup.mark("dismissed") } }
+        )
+        .task(id: progress.current) {
+            // While a step waits on something that happens elsewhere (an AI connecting, an AI
+            // editing), look again every few seconds. Syncs and returning to the app also refresh.
+            while !Task.isCancelled, progress.current == .connect || progress.current == .tryIt {
+                try? await Task.sleep(for: .seconds(8))
+                await setup.refresh()
+            }
+        }
+    }
+
+    /// Step 3's prompt adds to "To-do": make sure there is one.
+    private func ensureToDoNote() {
+        let exists = notes.contains { $0.deletedAt == nil && $0.trashedAt == nil && $0.title.caseInsensitiveCompare("To-do") == .orderedSame }
+        guard !exists else { return }
+        let home = context.allFolders().first { $0.name == "Notes" && $0.parent == nil }
+        _ = context.createNote(in: home.map { .folder($0.id) } ?? .all, body: "To-do\n\n")
+        try? context.save()
+        SyncSignal.changed()
+    }
+
     @ViewBuilder
     private var emptyState: some View {
         if !search.isEmpty {
@@ -322,17 +414,10 @@ struct NoteListView: View {
         }
     }
 
-    /// Dragging a selected note carries the whole selection; any other note goes alone.
-    private func dragItem(for note: Note) -> PaneDragItem {
-        guard selection.count > 1, selection.contains(note.id) else { return PaneDragItem(kind: .note, id: note.id) }
-        return PaneDragItem(kind: .note, id: note.id, others: selection.filter { $0 != note.id }.sorted { $0.uuidString < $1.uuidString })
-    }
-
-    private func dragPreview(for note: Note) -> some View {
-        let many = selection.count > 1 && selection.contains(note.id)
-        return Label(many ? "\(selection.count) Notes" : note.title, systemImage: many ? "doc.on.doc" : "note.text")
-            .padding(.horizontal, 12).padding(.vertical, 8)
-            .glassEffect(.regular, in: .capsule)
+    /// Dragging a selected note carries the whole selection; any other note goes alone (nil).
+    private func dragOthers(for note: Note) -> [UUID]? {
+        guard selection.count > 1, selection.contains(note.id) else { return nil }
+        return selection.filter { $0 != note.id }.sorted { $0.uuidString < $1.uuidString }
     }
 
     private func moveSelection(to folder: Folder) {
@@ -386,13 +471,51 @@ enum RowMetrics {
     static let spacing: CGFloat = 3
     static let vertical: CGFloat = 5
     static let leading: CGFloat = 12
+    static let dotOffset: CGFloat = -12
     #else
     static let title = Font.headline
     static let detail = Font.subheadline
     static let spacing: CGFloat = 3
     static let vertical: CGFloat = 1
     static let leading: CGFloat = 0
+    static let dotOffset: CGFloat = -12
     #endif
+}
+
+/// A note in the list with its drag and swipe actions. Equal inputs mean an unchanged row:
+/// its note's own changes still reach NoteRow, which observes the note.
+private struct ListRow: View, @MainActor Equatable {
+    let note: Note
+    let query: String
+    let showFolder: Bool
+    /// The rest of the selection, when this row is part of a multi-selection.
+    let dragWith: [UUID]?
+    let selectedCount: Int
+    let togglePin: () -> Void
+    let remove: () -> Void
+
+    static func == (a: ListRow, b: ListRow) -> Bool {
+        a.note.id == b.note.id && a.query == b.query && a.showFolder == b.showFolder
+            && a.dragWith == b.dragWith && (a.dragWith == nil || a.selectedCount == b.selectedCount)
+    }
+
+    var body: some View {
+        NoteRow(note: note, query: query, showFolder: showFolder)
+            .draggable(PaneDragItem(kind: .note, id: note.id, others: dragWith)) {
+                Label(dragWith != nil ? "\(selectedCount) Notes" : note.title, systemImage: dragWith != nil ? "doc.on.doc" : "note.text")
+                    .padding(.horizontal, 12).padding(.vertical, 8)
+                    .glassEffect(.regular, in: .capsule)
+            }
+            .swipeActions(edge: .leading) {
+                if note.trashedAt == nil {
+                    Button(note.isPinned ? "Unpin" : "Pin", systemImage: note.isPinned ? "pin.slash" : "pin", action: togglePin)
+                        .tint(.orange)
+                }
+            }
+            .swipeActions(edge: .trailing) {
+                Button(note.trashedAt == nil ? "Delete" : "Delete Forever…", systemImage: "trash", role: .destructive, action: remove)
+            }
+    }
 }
 
 struct NoteRow: View {
@@ -407,17 +530,35 @@ struct NoteRow: View {
         // At the accessibility text sizes the row stacks and wraps instead of truncating.
         let large = typeSize.isAccessibilitySize
         let detail = large ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2)) : AnyLayout(HStackLayout(spacing: 8))
+        let ai = AIEdit.isUnseen(note) ? note.aiEditor : nil
         return VStack(alignment: .leading, spacing: RowMetrics.spacing) {
             Text(title)
                 .font(RowMetrics.title)
                 .lineLimit(large ? 3 : 1)
+                // An AI changed this note and you haven't opened it since, like Mail's unread dot.
+                .overlay(alignment: .leading) {
+                    if ai != nil {
+                        Circle().fill(.tint).frame(width: 8, height: 8)
+                            .offset(x: RowMetrics.dotOffset)
+                            .transition(.scale.combined(with: .opacity))
+                    }
+                }
             detail {
                 Text(DateBucket.rowDate(note.updatedAt))
                     .monospacedDigit()
                     .foregroundStyle(.primary.opacity(0.85))
-                Text(snippet)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(large ? 2 : 1)
+                if let ai {
+                    HStack(spacing: 4) {
+                        AIGlyph(ai: ai, size: 11)
+                        Text(AIEdit.wroteIt(note) ? "Written by \(ai)" : "Edited by \(ai)")
+                    }
+                    .foregroundStyle(Color.amberInk)
+                    .lineLimit(1)
+                } else {
+                    Text(snippet)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(large ? 2 : 1)
+                }
             }
             .font(RowMetrics.detail)
             if showFolder, let f = note.folder {
@@ -432,7 +573,7 @@ struct NoteRow: View {
         .padding(.vertical, RowMetrics.vertical)
         .padding(.leading, RowMetrics.leading)
         .accessibilityElement(children: .combine)
-        .accessibilityValue(note.isPinned ? "Pinned" : "")
+        .accessibilityValue([note.isPinned ? "Pinned" : nil, ai.map { "Edited by \($0)" }].compactMap { $0 }.joined(separator: ", "))
         .accessibilityIdentifier("note.\(title)")
     }
 

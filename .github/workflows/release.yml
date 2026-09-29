@@ -2,7 +2,7 @@ name: release
 
 # Push a tag like v1.0.1 (annotated; its message becomes the release notes), or run it by hand.
 # The iOS build is uploaded to App Store Connect and waits there; submitting it for review is a
-# person's decision. The Mac build becomes the DMG and Sparkle update on amber-notes.vercel.app.
+# person's decision. The Mac build becomes the DMG and Sparkle update on ambernotes.app.
 on:
   push:
     tags: ["v*"]
@@ -123,7 +123,7 @@ jobs:
         run: |
           printf '%s' "$SPARKLE_PRIVATE_KEY" > "$RUNNER_TEMP/keys/sparkle.key"
           echo "SPARKLE_KEY_FILE=$RUNNER_TEMP/keys/sparkle.key" >> "$GITHUB_ENV"
-      - run: brew install xcodegen && python3 -m pip install --break-system-packages dmgbuild
+      - run: brew install xcodegen  # scripts/dmg/build-dmg.sh installs dmgbuild in a venv
       - name: Build, notarize, DMG, appcast
         env:
           IN_PLACE: "1"

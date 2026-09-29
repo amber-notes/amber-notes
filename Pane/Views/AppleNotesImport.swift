@@ -63,6 +63,50 @@ enum AppleNotesBridge {
         return notes.filter { seen.insert($0.id).inserted }.sorted { $0.modified > $1.modified }
     }
 
+    /// `-uitest -demo`: website and store captures show this library instead of the person's own.
+    static var isDemo: Bool {
+        let args = ProcessInfo.processInfo.arguments
+        return forceDemo || (args.contains("-uitest") && args.contains("-demo"))
+    }
+    /// Offscreen captures in the test host, which has no launch arguments of its own.
+    nonisolated(unsafe) static var forceDemo = false
+    nonisolated(unsafe) static var forceLarge = false
+
+    /// `-importLarge`: the 1,284-note library the website and App Store show, all picked, pins on.
+    static var largeDemo: Bool { isDemo && (forceLarge || ProcessInfo.processInfo.arguments.contains("-importLarge")) }
+
+    static var demoNotes: [AppleNote] {
+        let day: TimeInterval = 86_400
+        if largeDemo {
+            // The library the website and App Store show: 1,284 notes in five folders.
+            let counts: [(String, Int)] = [("Notes", 612), ("Recipes", 188), ("Work", 241), ("Travel", 97), ("Home", 146)]
+            let names: [String: [String]] = [
+                "Notes": ["Books to read", "Gift ideas", "Wi-Fi at the cabin", "Call back", "Weekend plans", "Quotes"],
+                "Recipes": ["Pasta night for eight", "Grandma's cardamom buns", "Weeknight curry", "Sunday soup", "Pancakes"],
+                "Work": ["Standup", "1:1 with Sara", "Q4 planning", "Retro", "Hiring loop"],
+                "Travel": ["Porto in October", "Packing list", "Copenhagen tips from Jonas", "Kyoto", "Road trip"],
+                "Home": ["Kitchen measurements", "Paint colours", "Plants and when to water them", "Repairs", "Bills"],
+            ]
+            var out: [AppleNote] = []
+            for (folder, n) in counts {
+                let list = names[folder] ?? ["Note"]
+                for i in 0..<n {
+                    let name = i < list.count ? list[i] : "\(list[i % list.count]) \(i / list.count + 1)"
+                    out.append(AppleNote(id: "demo-\(folder)-\(i)", name: name, folder: folder, modified: Date.now.addingTimeInterval(-(1 + Double(i) * 0.45) * day)))
+                }
+            }
+            return out
+        }
+        let rows: [(String, String, Double)] = [
+            ("Pasta night for eight", "Recipes", 0.1), ("Grandma's cardamom buns", "Recipes", 2), ("Weeknight curry", "Recipes", 5),
+            ("Porto in October", "Travel", 0.3), ("Packing list", "Travel", 9), ("Copenhagen tips from Jonas", "Travel", 21),
+            ("Kitchen measurements", "Home", 1), ("Paint colours", "Home", 12), ("Plants and when to water them", "Home", 30),
+            ("Books to read", "Notes", 3), ("Gift ideas", "Notes", 6), ("Wi-Fi at the cabin", "Notes", 40),
+            ("Old apartment", "Archive", 200),
+        ]
+        return rows.enumerated().map { i, r in AppleNote(id: "demo-\(i)", name: r.0, folder: r.1, modified: Date.now.addingTimeInterval(-r.2 * day)) }
+    }
+
     static func body(of id: String) throws -> String {
         let escaped = id.replacingOccurrences(of: "\"", with: "\\\"")
         return try run("tell application \"Notes\" to get body of note id \"\(escaped)\"").stringValue ?? ""
@@ -71,11 +115,14 @@ enum AppleNotesBridge {
 
 /// Pick Apple Notes to copy in. Nothing in Apple Notes is changed.
 struct AppleNotesImportView: View {
+    /// The sheet's height (captures can ask for a shorter one).
+    nonisolated(unsafe) static var height: CGFloat = 640
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     /// Called with the new notes' ids once the import is done.
     var onImported: ([UUID]) -> Void = { _ in }
 
+    @Environment(\.locale) private var locale
     @State private var notes: [AppleNote] = []
     @State private var picked: Set<String> = []
     @State private var query = ""
@@ -84,6 +131,11 @@ struct AppleNotesImportView: View {
     @State private var failure: String?
     @State private var progress: (done: Int, total: Int)?
     @State private var existingTitles: Set<String> = []
+    /// Opt-in: also bring over which notes are pinned (needs Full Disk Access).
+    @State private var bringPins = false
+    @State private var pinAccess = false
+    /// Said after the import when pins couldn't be read; the sheet waits for Done.
+    @State private var notice: String?
     @FocusState private var searchFocused: Bool
 
     private var shown: [AppleNote] {
@@ -125,10 +177,23 @@ struct AppleNotesImportView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             Divider()
-            footer
+            if let notice {
+                noticeBar(notice)
+            } else {
+                footer
+            }
         }
-        .frame(width: 540, height: 600)
+        .frame(width: 540, height: Self.height)
         .task { await load() }
+        // Coming back from System Settings: look again.
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            if !AppleNotesBridge.isDemo { pinAccess = ApplePins.hasAccess() }
+        }
+        // Captures: the import half done, without reading anything.
+        .onReceive(NotificationCenter.default.publisher(for: Capture.importHalfway)) { _ in
+            guard AppleNotesBridge.isDemo else { return }
+            progress = (picked.count / 2, picked.count)
+        }
     }
 
     @ViewBuilder
@@ -152,6 +217,7 @@ struct AppleNotesImportView: View {
                         } header: {
                             HStack {
                                 Text(folder.isEmpty ? "Notes" : folder).font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary)
+                                Text(items.count.formatted(.number.locale(locale))).font(.system(size: 12)).foregroundStyle(.tertiary).monospacedDigit()
                                 Spacer()
                                 Button(items.allSatisfy { picked.contains($0.id) } ? "Deselect All" : "Select All") {
                                     let ids = items.map(\.id)
@@ -214,23 +280,60 @@ struct AppleNotesImportView: View {
         HStack(spacing: 14) {
             if let progress {
                 ProgressView(value: Double(progress.done), total: Double(max(progress.total, 1)))
-                    .frame(width: 140)
-                Text("Importing \(min(progress.done + 1, progress.total)) of \(progress.total)…")
+                    .frame(width: 120)
+                // One line, however large the numbers.
+                Text("Importing \(min(progress.done + 1, progress.total).formatted(.number.locale(locale))) of \(progress.total.formatted(.number.locale(locale)))…")
                     .font(.callout).foregroundStyle(.secondary).monospacedDigit()
+                    .lineLimit(1).fixedSize()
             } else {
-                Toggle("Keep Apple Notes folders", isOn: $keepFolders)
-                    .toggleStyle(.checkbox)
-                    .font(.callout)
+                VStack(alignment: .leading, spacing: 6) {
+                    Toggle("Keep Apple Notes folders", isOn: $keepFolders)
+                        .toggleStyle(.checkbox)
+                    if ApplePins.isAvailable {
+                        Toggle("Also bring over pinned notes (asks for Full Disk Access)", isOn: $bringPins)
+                            .toggleStyle(.checkbox)
+                            .accessibilityIdentifier("import.pins")
+                        if bringPins && !pinAccess {
+                            HStack(spacing: 8) {
+                                Text("Pins live where only apps with Full Disk Access can read them.")
+                                    .foregroundStyle(.secondary)
+                                Button("Open Settings") { NSWorkspace.shared.open(ApplePins.settingsURL) }
+                                    .buttonStyle(.link)
+                            }
+                            .font(.footnote)
+                            .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+                .font(.callout)
+                .onChange(of: bringPins) { _, on in if on, !AppleNotesBridge.isDemo { pinAccess = ApplePins.hasAccess() } }
             }
             Spacer()
             Button("Cancel") { dismiss() }
                 .keyboardShortcut(.cancelAction)
-            Button(picked.isEmpty ? "Import" : "Import \(picked.count) \(picked.count == 1 ? "Note" : "Notes")") {
-                Task { await runImport() }
+            // While it runs, the progress says it all; the button would only be squeezed.
+            if progress == nil {
+                Button(picked.isEmpty ? "Import" : "Import \(picked.count.formatted(.number.locale(locale))) \(picked.count == 1 ? "Note" : "Notes")") {
+                    Task { await runImport() }
+                }
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
+                .disabled(picked.isEmpty)
+                .fixedSize()
             }
-            .buttonStyle(.borderedProminent)
-            .keyboardShortcut(.defaultAction)
-            .disabled(picked.isEmpty || progress != nil)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 14)
+    }
+
+    private func noticeBar(_ text: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: "pin.slash").foregroundStyle(.secondary)
+            Text(text).font(.callout).fixedSize(horizontal: false, vertical: true)
+            Spacer()
+            Button("Done") { dismiss() }
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 14)
@@ -241,6 +344,15 @@ struct AppleNotesImportView: View {
         failure = nil
         let titles = ((try? context.fetch(FetchDescriptor<Note>())) ?? []).filter { $0.deletedAt == nil && $0.trashedAt == nil }.map { $0.title.lowercased() }
         existingTitles = Set(titles)
+        if AppleNotesBridge.isDemo {
+            // Captures never read the real Apple Notes: a made-up library, most of it picked.
+            notes = AppleNotesBridge.demoNotes
+            picked = Set(notes.filter { $0.folder != "Archive" }.map(\.id))
+            existingTitles = []
+            if AppleNotesBridge.largeDemo { bringPins = true; pinAccess = true }
+            loading = false
+            return
+        }
         do {
             notes = try await Task.detached { try AppleNotesBridge.list() }.value
         } catch {
@@ -250,8 +362,15 @@ struct AppleNotesImportView: View {
     }
 
     private func runImport() async {
+        // The made-up library of captures is never read from Apple Notes.
+        guard !AppleNotesBridge.isDemo else { return }
         let chosen = notes.filter { picked.contains($0.id) }
         progress = (0, chosen.count)
+        // Pins are read once, up front, only when asked for.
+        let pins: Result<Set<Int>, ApplePins.Failure>? = bringPins
+            ? await Task.detached { ApplePins.pinnedKeys() }.value
+            : nil
+        let pinned = (try? pins?.get()) ?? []
         var made: [UUID] = []
         for (i, n) in chosen.enumerated() {
             progress = (i, chosen.count)
@@ -263,11 +382,21 @@ struct AppleNotesImportView: View {
             let note = context.createNote(in: scope, body: md.isEmpty ? n.name : md)
             note.createdAt = n.modified
             note.updatedAt = n.modified
+            if let key = ApplePins.primaryKey(fromNoteID: n.id), pinned.contains(key) { note.isPinned = true }
             made.append(note.id)
         }
         try? context.save()
         SyncSignal.changed()
+        if !made.isEmpty { NotificationCenter.default.post(name: .paneNotesBrought, object: nil) }
         onImported(made)
+        if case .failure(let why) = pins {
+            // Everything else came over; say so plainly, and why pins didn't.
+            progress = nil
+            notice = why == .noAccess
+                ? "Pins couldn't be read without Full Disk Access; everything else imported."
+                : "Pins couldn't be read; everything else imported."
+            return
+        }
         dismiss()
     }
 

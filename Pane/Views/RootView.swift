@@ -94,6 +94,7 @@ struct RootView: View {
     private func noteChanged(from old: UUID?, to new: UUID?) {
         // The note you were typing in is written before anything looks at it.
         DebouncedSave.flushAll()
+        if new == nil { PaneTips.listOpened() }
         discardIfEmpty(old)
         if let new { lastNote = new.uuidString }
     }
@@ -193,6 +194,10 @@ struct RootView: View {
         let args = ProcessInfo.processInfo.arguments
         guard args.contains("-uitest"), let i = args.firstIndex(of: "-open"), i + 1 < args.count else { return }
         let title = args[i + 1]
+        #if os(macOS)
+        // Website and store captures: `-uitest -demo -importSheet` opens the import sheet over made-up Apple Notes.
+        if args.contains("-demo"), args.contains("-importSheet") { DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { showImport = true } }
+        #endif
         if title == "-new" { DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { newNote() }; return }
         let all = (try? context.fetch(FetchDescriptor<Note>())) ?? []
         if let n = all.first(where: { $0.title == title && $0.deletedAt == nil }) { selectedNote = n.id }
@@ -221,6 +226,11 @@ struct RootView: View {
     }
 
     private func restoreScope() {
+        #if os(iOS)
+        // Captures: `-uitest -showFolders` stays on the folder list.
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("-uitest"), args.contains("-showFolders") { return }
+        #endif
         if let s = try? JSONDecoder().decode(Scope.self, from: lastScopeData),
            !({ if case .folder(let id) = s { return context.folder(id) == nil } else { return false } }()) {
             scope = s
@@ -280,6 +290,10 @@ private struct EditorControllerKey: FocusedValueKey {
     typealias Value = EditorController
 }
 
+private struct ShowHistoryActionKey: FocusedValueKey {
+    typealias Value = () -> Void
+}
+
 extension FocusedValues {
     var newNoteAction: (() -> Void)? {
         get { self[NewNoteActionKey.self] }
@@ -301,6 +315,11 @@ extension FocusedValues {
         get { self[EditorControllerKey.self] }
         set { self[EditorControllerKey.self] = newValue }
     }
+    /// File › Show Version History… for the open note.
+    var showHistoryAction: (() -> Void)? {
+        get { self[ShowHistoryActionKey.self] }
+        set { self[ShowHistoryActionKey.self] = newValue }
+    }
 }
 
 #if os(macOS)
@@ -310,6 +329,7 @@ struct PaneCommands: Commands {
     @FocusedValue(\.editorController) private var editor
     @FocusedValue(\.importAction) private var importNotes
     @FocusedValue(\.importSheetAction) private var importSheet
+    @FocusedValue(\.showHistoryAction) private var showHistory
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
@@ -320,6 +340,14 @@ struct PaneCommands: Commands {
             Button("New Folder") { NotificationCenter.default.post(name: .paneNewFolder, object: nil) }
                 .keyboardShortcut("n", modifiers: [.command, .shift])
                 .disabled(newNote == nil)
+        }
+        // Where Pages keeps Browse All Versions: File, after saving.
+        CommandGroup(after: .saveItem) {
+            Button("Show Version History…") { showHistory?() }
+                .disabled(showHistory == nil)
+        }
+        CommandGroup(after: .help) {
+            Button("Show Setup Guide") { NotificationCenter.default.post(name: .paneShowSetupGuide, object: nil) }
         }
         CommandGroup(replacing: .importExport) {
             Button("Import from Apple Notes…") { importNotes?() }

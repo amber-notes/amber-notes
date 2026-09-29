@@ -18,7 +18,12 @@ extension ModelContext {
             made.append(note)
             Inbox.remove(dir)
         }
-        if !made.isEmpty { try? save() }
+        if !made.isEmpty {
+            try? save()
+            // Notes shared into the app count as bringing your notes (setup step 1).
+            NotificationCenter.default.post(name: .paneNotesBrought, object: nil)
+            FeatureUse.mark(.shareExtension)
+        }
         return made
     }
 }

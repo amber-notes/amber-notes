@@ -1,14 +1,20 @@
 import QuickLook
 import SwiftData
 import SwiftUI
+import TipKit
 import UniformTypeIdentifiers
 
 struct NoteDetailView: View {
     @Environment(\.modelContext) private var context
     @Environment(SyncEngine.self) private var sync: SyncEngine?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var importing = false
     @State private var saver = DebouncedSave()
     @State private var shareLinks = ShareLinkStore()
+    @State private var showHistory = HistoryLaunch.open
+    /// "ChatGPT changed 5 lines · Undo", while an AI's edit that just landed is on show.
+    @State private var receipt: AIEdit.Receipt?
+    @State private var undoFailed: String?
     @Bindable var note: Note
     let controller: EditorController
     var autofocus = false
@@ -23,6 +29,112 @@ struct NoteDetailView: View {
             .onAppear(perform: wireController)
             .onDisappear { saver.flush() }
             .shareLinkChrome(shareLinks, note: note)
+            .focusedSceneValue(\.showHistoryAction, { showHistory = true })
+            .sheet(isPresented: $showHistory) {
+                if let history = NoteHistory.shared { VersionHistorySheet(note: note, history: history) }
+            }
+            #if os(iOS)
+            .safeAreaInset(edge: .bottom, spacing: 0) { phoneTips }
+            #endif
+            .overlay(alignment: .bottom) { aiReceipt }
+            .overlay(alignment: .bottom) { undoProblem }
+            .onChange(of: note.aiEditedAt) { _, _ in showAIEdit() }
+            // Captures: the "landed" moment is over.
+            .onReceive(NotificationCenter.default.publisher(for: Capture.clearAIMarks)) { _ in
+                withAnimation(.easeIn(duration: 0.2)) { receipt = nil }
+                controller.clearTint()
+            }
+            .task(id: note.id) {
+                receipt = nil
+                showAIEdit()
+                #if os(macOS)
+                PaneTips.menuBarShown = MenuBarSettings.allowed && UserDefaults.standard.object(forKey: MenuBarSettings.key) as? Bool ?? true
+                #endif
+                PaneTips.noteOpened(note.body)
+            }
+            .onChange(of: showHistory) { _, open in if open { FeatureUse.mark(.versionHistory) } }
+    }
+
+    #if os(iOS)
+    /// On iPhone the note's tips sit just above the toolbar: a popover from a toolbar button
+    /// never appears there. TipKit shows at most one of them, and only when it's due. The note
+    /// keeps room below its last line so it can scroll clear of the tip.
+    private var phoneTips: some View {
+        VStack(spacing: 8) {
+            CompactTip(tip: VersionHistoryTip()) { a in if a.id == "open" { showHistory = true } }
+            CompactTip(tip: ShareLinkTip())
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 6)
+        .onGeometryChange(for: CGFloat.self, of: \.size.height) { controller.bottomReserve = $0 }
+    }
+    #endif
+
+    @ViewBuilder
+    private var undoProblem: some View {
+        if let undoFailed {
+            Text(undoFailed)
+                .font(.system(size: AIReceipt.text, weight: .semibold))
+                .padding(.horizontal, 14)
+                .frame(height: AIReceipt.height)
+                .background(.regularMaterial, in: .capsule)
+                #if os(macOS)
+                .padding(.bottom, 20)
+                #else
+                .padding(.bottom, 64)
+                #endif
+                .transition(.opacity)
+                .accessibilityAddTraits(.isStaticText)
+        }
+    }
+
+    @ViewBuilder
+    private var aiReceipt: some View {
+        if let receipt {
+            AIReceipt(receipt: receipt) { undo(receipt) }
+            #if os(macOS)
+            .padding(.bottom, 20)
+            #else
+            .padding(.bottom, 64)
+            #endif
+            .transition(AIReceipt.transition(reduceMotion: reduceMotion))
+        }
+    }
+
+    /// An AI's edit you haven't seen: tint what it changed and say who did it. Opening the note
+    /// counts as seeing it; the tint and the receipt then go on their own.
+    private func showAIEdit() {
+        guard let r = AIEdit.markSeen(note) else { return }
+        try? context.save()
+        let slow = ChangeTint.slowMotion
+        Task { @MainActor in
+            // Let the editor take the new text first.
+            try? await Task.sleep(for: .seconds(0.15 * slow))
+            guard note.id == r.noteID else { return }
+            controller.tintChanges(from: r.previous)
+            withAnimation(.spring(duration: 0.45 * slow, bounce: 0.25)) { receipt = r }
+            PaneTips.aiEditLanded()
+            try? await Task.sleep(for: .seconds(5.5 * slow))
+            while ChangeTint.holdForCapture, receipt == r { try? await Task.sleep(for: .seconds(0.1)) }
+            guard receipt == r else { return }
+            withAnimation(.easeIn(duration: 0.2 * slow)) { receipt = nil }
+        }
+    }
+
+    private func undo(_ r: AIEdit.Receipt) {
+        withAnimation(.smooth(duration: 0.25)) { receipt = nil }
+        // The editor takes the old text as an outside change, which also clears the tint.
+        let note = self.note
+        Task { @MainActor in
+            do {
+                try await AIEdit.undo(r, on: note)
+            } catch {
+                // Couldn't reach the server: say so where the receipt was.
+                withAnimation(.smooth(duration: 0.25)) { undoFailed = (error as? LocalizedError)?.errorDescription ?? "Couldn't undo. Try again." }
+                try? await Task.sleep(for: .seconds(4))
+                withAnimation(.smooth(duration: 0.25)) { undoFailed = nil }
+            }
+        }
     }
 
     private var editor: some View {
@@ -50,6 +162,7 @@ struct NoteDetailView: View {
 
     /// Every keystroke lands here; the model is written once typing pauses.
     private func save(_ text: String) {
+        PaneTips.typed()
         let note = self.note
         saver.schedule(base: note.body) { [saver] in
             // Something else rewrote the note meanwhile (sync, an AI): the editor
@@ -61,6 +174,7 @@ struct NoteDetailView: View {
 
     private func write(_ text: String, to note: Note) {
         guard text != note.body else { return }
+        if TipTriggers.isBigDeletion(from: note.body, to: text) { PaneTips.deletedALot() }
         let oldTitle = note.title
         note.body = text
         note.touch()
@@ -178,6 +292,8 @@ struct NoteDetailView: View {
                 Label { Text("New Note") } icon: { ToolbarGlyph.image("square.and.pencil", shift: ToolbarGlyph.composeShift) }
             }
                 .help("New Note (⌘N)")
+                // The menu bar's quick capture is the other way to start a note.
+                .paneTip(MenuBarTip(), arrowEdge: .top)
                 .accessibilityIdentifier("list.newNote")
         }
         ToolbarSpacer(.flexible)
@@ -251,6 +367,7 @@ struct NoteDetailView: View {
         .tint(.primary)
         #endif
         .help("Share")
+        .paneTip(ShareLinkTip(), arrowEdge: .top)
         .accessibilityIdentifier("editor.share")
     }
 
@@ -266,6 +383,9 @@ struct NoteDetailView: View {
             }
             #if os(iOS)
             Menu("Share", systemImage: "square.and.arrow.up") { shareItems }
+            Button("Show Version History", systemImage: "clock.arrow.circlepath") { showHistory = true }
+            #else
+            Button("Show Version History…", systemImage: "clock.arrow.circlepath") { showHistory = true }
             #endif
             Divider()
             Button("Delete Note", systemImage: "trash", role: .destructive) {
@@ -276,6 +396,11 @@ struct NoteDetailView: View {
         }
         #if os(macOS)
         .tint(.primary)
+        #endif
+        #if os(macOS)
+        .paneTip(VersionHistoryTip(), arrowEdge: .top) { action in
+            if action.id == "open" { showHistory = true }
+        }
         #endif
         .accessibilityIdentifier("editor.more")
     }

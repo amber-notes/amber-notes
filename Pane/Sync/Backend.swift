@@ -2,6 +2,9 @@ import AuthenticationServices
 import Foundation
 import Observation
 import Supabase
+#if os(iOS)
+import UIKit
+#endif
 
 /// The Supabase project from the build settings, or nil when the app runs local-only.
 enum BackendConfig {
@@ -48,7 +51,11 @@ final class Backend {
             client = SupabaseClient(
                 supabaseURL: url,
                 supabaseKey: key,
-                options: SupabaseClientOptions(auth: .init(storage: SessionStorage(), emitLocalSessionAsInitialSession: true))
+                options: SupabaseClientOptions(
+                    auth: .init(storage: SessionStorage(), emitLocalSessionAsInitialSession: true),
+                    // Which device wrote each version, for version history ("You on iPhone").
+                    global: .init(headers: ["x-pane-device": Self.device], session: AppNetwork.session)
+                )
             )
             state = .signedOut
             let fresh = ProcessInfo.processInfo.arguments.contains("-signout")
@@ -61,7 +68,22 @@ final class Backend {
         }
     }
 
+    /// Tests: a client (on a stubbed network) that counts as signed in.
+    init(testClient: SupabaseClient, email: String) {
+        client = testClient
+        state = .signedIn(email: email)
+    }
+
     var userID: UUID? { client?.auth.currentUser?.id }
+
+    /// This kind of device, as version history names it.
+    static var device: String {
+        #if os(iOS)
+        UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone"
+        #else
+        "Mac"
+        #endif
+    }
 
     /// Runs just before the app shows an account as signed in, so the device's library can be
     /// handed to that account first (AccountLibrary). Nothing is drawn in between.

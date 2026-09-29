@@ -58,6 +58,7 @@ struct SignInView: View {
                 Text("Sign in to Amber Notes")
                     .font(.title2.weight(.bold))
                     .multilineTextAlignment(.center)
+                promise
             }
 
             VStack(spacing: 12) {
@@ -86,9 +87,32 @@ struct SignInView: View {
                         .accessibilityIdentifier("signin.error")
                 }
             }
+
+            ConsentFooter()
         }
         .animation(.snappy(duration: 0.2), value: error)
         .animation(reduceMotion ? nil : .smooth(duration: 0.3), value: flow.step)
+    }
+
+    /// The website's one-line promise, with its amber marker behind "your AI".
+    private var promise: some View {
+        var line = AttributedString("The notes app your AI can use.")
+        if let r = line.range(of: "your AI") {
+            line[r].backgroundColor = Color.accentColor.opacity(0.28)
+            line[r].foregroundColor = Color.primary
+        }
+        return VStack(spacing: 3) {
+            Text(line)
+            // Where the notes live, said once and plainly.
+            Text("Your notes sync between iPhone and Mac.")
+                .font(.footnote)
+                .foregroundStyle(.tertiary)
+                .accessibilityIdentifier("signin.sync")
+        }
+        .font(.subheadline)
+        .foregroundStyle(.secondary)
+        .multilineTextAlignment(.center)
+        .padding(.top, -6)
     }
 
     private var emailSection: some View {

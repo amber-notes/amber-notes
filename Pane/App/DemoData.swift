@@ -7,6 +7,7 @@ import UniformTypeIdentifiers
 @MainActor
 enum DemoData {
     static func load(into context: ModelContext, main: Folder) {
+        if importedLibrary { loadImportedLibrary(into: context, main: main); return }
         let ideas = context.createFolder(named: "Ideas")
         let travel = context.createFolder(named: "Travel")
         let work = context.createFolder(named: "Work")
@@ -52,8 +53,14 @@ enum DemoData {
         t.updatedAt = .now.addingTimeInterval(-300)
         t.isPinned = true
 
+        // Tip captures (`-demoTableText`): a note with lines a table tip can turn into a table.
+        if ProcessInfo.processInfo.arguments.contains("-demoTableText") {
+            let b = context.createNote(in: .folder(main.id), body: "Budget\n\nItem\tCost\nRent\t900\nFood\t300\nTravel\t150\n")
+            b.updatedAt = .now.addingTimeInterval(-60)
+        }
+
         for (folder, body, offset, pinned) in items {
-            let n = context.createNote(in: .folder(folder.id), body: body)
+            let n = context.createNote(in: .folder(folder.id), body: storeScene(body))
             if body.hasPrefix("Lisbon") {
                 // Lisbon keeps its hotel details in a sub-note.
                 let hotel = Note(body: "Hotel booking\n\nMemmo Príncipe Real, 12–15 May\nConfirmation **LX-48213**\n\n- [x] Paid deposit\n- [ ] Ask for a late checkout\n- [ ] Airport transfer\n\n> Check-in from 15:00", folder: folder)
@@ -66,6 +73,74 @@ enum DemoData {
             n.isPinned = pinned
         }
         try? context.save()
+    }
+
+    /// App Store captures: `-uitest -demo -importedLibrary` is a library just imported from Apple
+    /// Notes, the one the website's import card shows: Notes 612, Recipes 188, Work 241,
+    /// Travel 97, Home 146 (1,284 in all), 12 of them pinned. Only the folder list shows it, so
+    /// the notes are simple.
+    static var importedLibrary: Bool {
+        let args = ProcessInfo.processInfo.arguments
+        return args.contains("-uitest") && args.contains("-importedLibrary")
+    }
+
+    static func loadImportedLibrary(into context: ModelContext, main: Folder) {
+        let topics: [String: [String]] = [
+            "Notes": ["Ideas", "Call back", "Weekend", "Gift ideas", "Books to read", "Errands", "Thoughts", "Quotes"],
+            "Recipes": ["Pasta night", "Cardamom buns", "Soup", "Salad", "Curry", "Bread", "Pancakes", "Tacos"],
+            "Work": ["Standup", "1:1", "Planning", "Retro", "Roadmap", "Hiring", "Offsite", "Review"],
+            "Travel": ["Porto", "Lisbon", "Packing", "Rome", "Kyoto", "Oslo", "Road trip", "Flights"],
+            "Home": ["Kitchen", "Garden", "Measurements", "Repairs", "Bills", "Cleaning", "Paint", "Plants"],
+        ]
+        let counts: [(String, Int)] = [("Notes", 612), ("Recipes", 188), ("Work", 241), ("Travel", 97), ("Home", 146)]
+        var pinned = 0
+        for (name, n) in counts {
+            let folder = name == "Notes" ? main : context.createFolder(named: name)
+            let words = topics[name] ?? ["Note"]
+            for i in 0..<n {
+                let note = Note(body: "\(words[i % words.count]) \(i / words.count + 1)\n\nImported from Apple Notes.", folder: folder)
+                note.updatedAt = .now.addingTimeInterval(-Double(i) * 3600 * 7)
+                note.createdAt = note.updatedAt
+                if pinned < 12, i < 3 { note.isPinned = true; pinned += 1 }
+                context.insert(note)
+            }
+        }
+        try? context.save()
+    }
+
+    /// App Store captures: `-uitest -demo -storeScene paella`, `lisbon`, `tick` or `bought` (stacked with `+`) puts in the lines an AI
+    /// just added, and `-highlight` (ChangeHighlight) tints them.
+    static func storeScene(_ body: String) -> String {
+        let args = ProcessInfo.processInfo.arguments
+        guard args.contains("-uitest"), let i = args.firstIndex(of: "-storeScene"), i + 1 < args.count else { return body }
+        // Scenes can be stacked, in order: `-storeScene paella+bought`.
+        return args[i + 1].split(separator: "+").reduce(body) { apply(String($1), to: $0) }
+    }
+
+    static func apply(_ scene: String, to body: String) -> String {
+        switch scene {
+        case "paella" where body.hasPrefix("Groceries"):
+            return body.replacingOccurrences(of: "- [ ] Oat milk", with: "- [ ] Paella rice\n- [ ] Saffron\n- [ ] Chorizo\n- [ ] Chicken thighs\n- [ ] Smoked paprika\n- [ ] Oat milk")
+        case "tick" where body.hasPrefix("Groceries"):
+            // The moment after a tap: ticked, before it slides to the bottom.
+            return body.replacingOccurrences(of: "- [ ] Olive oil", with: "- [x] Olive oil")
+        case "bought" where body.hasPrefix("Groceries"):
+            // An AI ticked two things off; ticked items sit with the others that are done.
+            return body.replacingOccurrences(of: "- [ ] Lemons\n- [ ] Coffee beans\n", with: "")
+                .replacingOccurrences(of: "- [x] Sourdough", with: "- [x] Lemons\n- [x] Coffee beans\n- [x] Sourdough")
+        case "pretype" where body.hasPrefix("Groceries"):
+            // Website intro: the note before you type its last two items.
+            return body.replacingOccurrences(of: "- [ ] Olive oil\n- [ ] Dark chocolate\n", with: "")
+        case "pretype1" where body.hasPrefix("Groceries"):
+            return body.replacingOccurrences(of: "- [ ] Dark chocolate\n", with: "")
+        case "beforeOatEggs" where body.hasPrefix("Groceries"):
+            // App Store: the list before ChatGPT adds oat milk and eggs.
+            return body.replacingOccurrences(of: "- [ ] Oat milk\n", with: "").replacingOccurrences(of: "- [x] Eggs\n", with: "")
+        case "lisbon" where body.hasPrefix("Lisbon"):
+            return body.replacingOccurrences(of: "- [ ] Day trip to Sintra", with: "- [ ] Day trip to Sintra\n- [ ] Late checkout requested, confirm by 10 May")
+        default:
+            return body
+        }
     }
 
     static func samplePDF() -> Data {

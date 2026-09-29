@@ -1,3 +1,4 @@
+import Supabase
 import SwiftData
 import SwiftUI
 
@@ -26,9 +27,23 @@ struct PaneApp: App {
         let context = container.mainContext
         backend.willSignIn = { user in AccountLibrary.adopt(user, context: context) }
         _backend = State(initialValue: backend)
-        _sync = State(initialValue: SyncEngine(backend: backend, context: container.mainContext))
+        let sync = SyncEngine(backend: backend, context: container.mainContext)
+        _sync = State(initialValue: sync)
         // With sync on, the library is seeded after the first pull so devices don't duplicate it.
         if backend.client == nil { Seed.ensureLibrary(container.mainContext, demo: args.contains("-demo")) }
+        // Version history: the server's, or a made-up one for demos (`-demo -demoHistory`).
+        let historyStore: NoteHistoryStore = args.contains("-demoHistory") ? DemoHistoryStore(context: context)
+            : backend.client.map { SupabaseHistoryStore(client: $0) } ?? EmptyHistoryStore()
+        NoteHistory.shared = NoteHistory(store: historyStore, context: context, sync: backend.client == nil ? nil : sync)
+        // "Did you know" tips; their counts go to the server when signed in.
+        TipLog.client = backend.client
+        FeatureUse.client = backend.client
+        PaneTips.configure()
+        Capture.scheduleFromArguments(container.mainContext)
+        #if os(macOS)
+        Capture.demoSequenceFromArguments(container.mainContext)
+        Capture.importSequenceFromArguments()
+        #endif
     }
 
     /// Test runs can pin an appearance: `-uitest -scheme light`. Otherwise the system decides.
@@ -59,6 +74,9 @@ struct PaneApp: App {
         .modelContainer(container)
         #if os(macOS)
         .defaultSize(width: 1180, height: 760)
+        // Test and capture runs always start with the notes window, whatever was saved last time.
+        .defaultLaunchBehavior(ProcessInfo.processInfo.arguments.contains("-uitest") ? .presented : .automatic)
+        .restorationBehavior(ProcessInfo.processInfo.arguments.contains("-uitest") ? .disabled : .automatic)
         .defaultWindowPlacement { _, context in
             // Open at a comfortable size, centred, whatever screen is showing.
             let screen = context.defaultDisplay.visibleRect
@@ -84,6 +102,20 @@ struct PaneApp: App {
         #if os(macOS)
         Settings {
             SettingsView(backend: backend, sync: sync)
+        }
+
+        // Connect ChatGPT or Claude: the steps float over the browser while you follow them.
+        Window("Connect", id: ConnectPanel.windowID) {
+            ConnectPanel(backend: backend)
+                .tint(Color(PColor.paneAccent))
+        }
+        .windowLevel(.floating)
+        .windowResizability(.contentSize)
+        .restorationBehavior(.disabled)
+        .defaultLaunchBehavior(.suppressed)
+        .defaultWindowPlacement { content, context in
+            let size = content.sizeThatFits(.unspecified)
+            return WindowPlacement(ConnectPanel.placement(screen: context.defaultDisplay.visibleRect, size: size), size: size)
         }
 
         // Amber Notes in the menu bar: quick capture, search, pinned and recent notes.
@@ -154,6 +186,9 @@ private struct WindowShaper: NSViewRepresentable {
         var applied: Bool?
         var observers: [NSObjectProtocol] = []
         var remembering = false
+        /// The card size the window was last fitted to. The window is refitted only when the
+        /// card itself changes size (e.g. an error line appears), never on other updates.
+        var fittedCard: CGSize?
         let created = Date()
         deinit { observers.forEach(NotificationCenter.default.removeObserver) }
     }
@@ -170,7 +205,7 @@ private struct WindowShaper: NSViewRepresentable {
             // Shape only when switching between the card and the notes window, never on
             // ordinary updates: resizing it yourself must stick.
             guard coordinator.applied != compact else {
-                if compact { fitCard(window) }
+                if compact { fitCard(window, coordinator) }
                 return
             }
             // At launch (including a signed-in launch that briefly looked signed out) the window
@@ -190,7 +225,8 @@ private struct WindowShaper: NSViewRepresentable {
             window.standardWindowButton(.zoomButton)?.isEnabled = !compact
             window.contentMinSize = compact ? CGSize(width: 300, height: 300) : CGSize(width: 760, height: 520)
             if compact {
-                fitCard(window)
+                coordinator.fittedCard = nil
+                fitCard(window, coordinator, placeOnScreen: true)
             } else if WindowFrameMemory.enabled {
                 let frame = WindowFrameMemory.frame(saved: WindowFrameMemory.saved,
                                                     screens: NSScreen.screens.map(\.visibleFrame),
@@ -201,16 +237,25 @@ private struct WindowShaper: NSViewRepresentable {
         }
     }
 
-    /// The card is the whole window, title-bar area included; it grows and shrinks around its centre.
-    private func fitCard(_ window: NSWindow) {
-        var frame = CGRect(origin: .zero, size: cardSize)
-        guard abs(window.frame.width - frame.width) > 2 || abs(window.frame.height - frame.height) > 2 else { return }
-        frame.origin = CGPoint(x: window.frame.midX - frame.width / 2, y: window.frame.midY - frame.height / 2)
-        if let screen = window.screen?.visibleFrame {
+    /// The card is the whole window, title-bar area included.
+    ///
+    /// It's fitted only when the card's own size changes, and never while you're dragging the
+    /// window: moving it (across screens too) is left entirely to macOS. A size change keeps the
+    /// top edge and centre-x where they are, so the window grows or shrinks downward in place.
+    /// Only the first fit after switching to the card keeps it on screen.
+    private func fitCard(_ window: NSWindow, _ coordinator: Coordinator, placeOnScreen: Bool = false) {
+        guard cardSize.width > 0, cardSize.height > 0 else { return }
+        if let last = coordinator.fittedCard, abs(last.width - cardSize.width) < 1, abs(last.height - cardSize.height) < 1 { return }
+        if NSEvent.pressedMouseButtons != 0 { return } // mid-drag: try again on the next update
+        coordinator.fittedCard = cardSize
+        var frame = CGRect(x: window.frame.midX - cardSize.width / 2, y: window.frame.maxY - cardSize.height,
+                           width: cardSize.width, height: cardSize.height)
+        if placeOnScreen, let screen = window.screen?.visibleFrame {
             frame.origin.x = min(max(frame.origin.x, screen.minX), screen.maxX - frame.width)
             frame.origin.y = min(max(frame.origin.y, screen.minY), screen.maxY - frame.height)
         }
-        window.setFrame(frame, display: true, animate: true)
+        guard abs(window.frame.width - frame.width) > 0.5 || abs(window.frame.height - frame.height) > 0.5 else { return }
+        window.setFrame(frame, display: true, animate: !placeOnScreen)
     }
 
     /// Saves the notes window's frame whenever you move or resize it (never the card's).
@@ -233,10 +278,41 @@ struct AppGate: View {
     let backend: Backend
     let sync: SyncEngine
     @State private var cardSize: CGSize = .zero
+    /// The first-run "Get set up" card's state, for the signed-in account.
+    @State private var setup = SetupStore()
+    /// Captures: `-captureConsent ChatGPT` shows the Allow sheet over the notes.
+    @State private var consent = CaptureScreen.consentRequest
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var phase
 
     var body: some View {
+        Group {
+            if let screen = CaptureScreen.requested {
+                CaptureScreen(name: screen, backend: backend)
+            } else {
+                gate
+            }
+        }
+        .sheet(item: $consent) { r in
+            ConsentSheet(client: CaptureScreen.client, requestID: r.id, initial: .asking(r), finish: { _ in })
+        }
+    }
+
+    /// Captures: `-captureSetupFlow` walks the setup card from step 1 to "You're all set", a few
+    /// seconds a step, as if each thing had just happened.
+    private func playSetupFlow() {
+        Task { @MainActor in
+            var p = SetupProgress()
+            setup.apply(p)
+            for change in [{ (q: inout SetupProgress) in q.imported = true }, { $0.connected = true }, { $0.aiEdits = 1 }] {
+                try? await Task.sleep(for: .seconds(2.6))
+                change(&p)
+                setup.apply(p)
+            }
+        }
+    }
+
+    private var gate: some View {
         Group {
             switch backend.state {
             case .signedOut:
@@ -254,6 +330,7 @@ struct AppGate: View {
                 RootView()
                     .environment(backend)
                     .environment(sync)
+                    .environment(setup)
                     .transition(.opacity)
             }
         }
@@ -261,17 +338,47 @@ struct AppGate: View {
         .background(WindowShaper(compact: backend.state == .signedOut, cardSize: cardSize))
         #endif
         .animation(.easeOut(duration: 0.25), value: backend.state)
+        .onAppear {
+            if let p = CaptureScreen.setupProgress { setup.apply(p) }
+            if CaptureScreen.setupFlow { playSetupFlow() }
+        }
         .task(id: backend.state) {
-            guard case .signedIn = backend.state else { await sync.stop(); return }
+            guard case .signedIn = backend.state, let client = backend.client else {
+                setup.attach(account: nil, service: nil)
+                await sync.stop()
+                return
+            }
+            setup.attach(account: backend.userID, service: SupabaseSetup(client: client))
             await sync.start()
-            // Seed only when the server really has nothing, never after a failed sync.
+            // Seed only when the server really has nothing, never after a failed sync. A real
+            // account starts with an empty Notes folder: the setup card is its welcome.
             if sync.hasSynced {
-                Seed.ensureLibrary(context, demo: false)
+                Seed.ensureLibrary(context, demo: false, welcome: false)
                 sync.schedule()
             }
+            await setup.refresh(force: true)
+            // Tips wait for this: never a tip for something this account has used anywhere.
+            await FeatureUse.refresh()
+            await InstallID.report(client)
+        }
+        // Each sync may have brought an AI's edit or a new connection: the card looks again.
+        .onChange(of: sync.status) { _, _ in Task { await setup.refresh() } }
+        .onReceive(NotificationCenter.default.publisher(for: .paneNotesBrought)) { _ in
+            Task { await setup.mark("imported"); await PaneTips.imported.donate() }
+        }
+        // Tips wait until the Get set up card has gone; an import on any device counts.
+        .onChange(of: setup.visible, initial: true) { _, visible in PaneTips.setupVisible = visible }
+        .onChange(of: setup.progress?.imported == true, initial: true) { _, imported in
+            if imported { Task { await PaneTips.importedOnce() } }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .paneShowSetupGuide)) { _ in
+            Task { await setup.reset() }
         }
         .onChange(of: phase) { _, p in
+            sync.setActive(p == .active)
             if p == .active {
+                Task { await PaneTips.appOpened() }
+                Task { await setup.refresh() }
                 context.drainInbox()
                 sync.schedule()
             } else {
@@ -295,11 +402,12 @@ struct AppGate: View {
 
 @MainActor
 enum Seed {
-    static func ensureLibrary(_ context: ModelContext, demo: Bool) {
+    static func ensureLibrary(_ context: ModelContext, demo: Bool, welcome: Bool = true) {
         context.purgeExpiredTrash()
         guard context.allFolders().isEmpty else { return }
         let notes = context.createFolder(named: "Notes")
-        context.createNote(in: .folder(notes.id), body: welcome)
+        // The imported-library capture shows exactly the imported counts, with no welcome note.
+        if (welcome || demo) && !DemoData.importedLibrary { context.createNote(in: .folder(notes.id), body: Self.welcome) }
         if demo { DemoData.load(into: context, main: notes) }
     }
 
@@ -346,3 +454,70 @@ private struct WindowCloser: NSViewRepresentable {
     func updateNSView(_ nsView: NSView, context: Context) {}
 }
 #endif
+
+/// Captures only (`-uitest`): one screen on its own, or the setup card at a given step, so the
+/// iPhone simulator can show them without anyone tapping through.
+///   `-captureScreen connect`, `connect-chatgpt`, `connect-claude`, `connected-chatgpt` or `signin`; `-captureSetup 1…4` (4: the moment after your AI's first edit).
+struct CaptureScreen: View {
+    let name: String
+    let backend: Backend
+
+    static var requested: String? {
+        ProcessInfo.processInfo.arguments.contains("-uitest") ? Capture.argument("-captureScreen") : nil
+    }
+
+    static var setupFlow: Bool {
+        ProcessInfo.processInfo.arguments.contains("-uitest") && ProcessInfo.processInfo.arguments.contains("-captureSetupFlow")
+    }
+
+    static var setupProgress: SetupProgress? {
+        guard ProcessInfo.processInfo.arguments.contains("-uitest"), let n = Capture.argument("-captureSetup").flatMap(Int.init) else { return nil }
+        // 4: your AI's first edit just landed ("That was your AI.").
+        return SetupProgress(imported: n > 1, connected: n > 2, aiEdits: n > 3 ? 1 : 0)
+    }
+
+    static let client = SupabaseClient(supabaseURL: URL(string: "http://127.0.0.1:9")!, supabaseKey: "capture")
+
+    static var consentRequest: ConnectRequest? {
+        guard ProcessInfo.processInfo.arguments.contains("-uitest"), let name = Capture.argument("-captureConsent") else { return nil }
+        let host = name.lowercased().contains("claude") ? "claude.ai" : "chatgpt.com"
+        return ConnectRequest(id: UUID(), client_name: name, redirect_host: host, loopback: false, wants_write: true)
+    }
+
+    static let connections: [Connection] = [
+        Connection(id: UUID(), name: "ChatGPT", kind: "oauth", can_write: true, created_at: .now.addingTimeInterval(-86400 * 3),
+                   last_used_at: .now.addingTimeInterval(-720), revoked_at: nil, redirect_host: "chatgpt.com", url_used_at: nil),
+        Connection(id: UUID(), name: "Claude Code", kind: "token", can_write: true, created_at: .now.addingTimeInterval(-86400),
+                   last_used_at: .now.addingTimeInterval(-3 * 3600), revoked_at: nil, redirect_host: nil, url_used_at: nil),
+    ]
+
+    var body: some View {
+        switch name {
+        case "connect":
+            NavigationStack {
+                Form {
+                    ConnectAISection(client: SupabaseClient(supabaseURL: URL(string: "http://127.0.0.1:9")!, supabaseKey: "capture"), preview: Self.connections)
+                }
+                .formStyle(.grouped)
+                .navigationTitle("Connect an AI")
+                #if os(iOS)
+                .navigationBarTitleDisplayMode(.inline)
+                #endif
+            }
+        case let guide where guide.hasPrefix("connect-") || guide.hasPrefix("connected-"):
+            // Connect ChatGPT or Claude, as the guide sheet shows it, or just after Allow.
+            if let plan = WebConnectPlan.forAI(guide.hasSuffix("claude") ? "Claude" : "ChatGPT") {
+                NavigationStack {
+                    Form { WebConnectGuide(plan: plan, client: Self.client, connected: guide.hasPrefix("connected-")) }
+                        .formStyle(.grouped)
+                        .navigationTitle("Connect \(plan.ai)")
+                        #if os(iOS)
+                        .navigationBarTitleDisplayMode(.inline)
+                        #endif
+                }
+            }
+        default:
+            SignInView(backend: backend)
+        }
+    }
+}

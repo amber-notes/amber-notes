@@ -18,7 +18,7 @@ What happens:
 | Job | Result |
 |---|---|
 | **iOS** | Archives the app, signs it through App Store Connect, and uploads it. The build appears in App Store Connect within about 15 minutes. **Nothing is submitted for review.** Open the version page, select the build, and press **Add for Review** yourself. |
-| **Mac** | Builds the Developer ID app, notarizes and staples it, makes the DMG, signs it for Sparkle, writes the appcast, and deploys the site. amber-notes.vercel.app/download then serves the new DMG, and installed copies offer the update within a day. A GitHub Release is created with the DMG attached. |
+| **Mac** | Builds the Developer ID app, notarizes and staples it, makes the DMG, signs it for Sparkle, writes the appcast, and deploys the site. ambernotes.app/download then serves the new DMG, and installed copies offer the update within a day. A GitHub Release is created with the DMG attached. |
 
 Version numbers: the tag sets the marketing version (`1.0.1`). Build numbers are UTC timestamps, so they always increase.
 
@@ -38,7 +38,7 @@ The release jobs run in the GitHub environment **release**. Its secrets:
 | `VERCEL_ORG_ID` | The Vercel team id | `web/.vercel/project.json` after `vercel link` |
 | `VERCEL_PROJECT_ID` | The `amber-notes` project id | Same file |
 
-And one variable: `SHARE_URL` (`https://amber-notes.vercel.app`).
+And one variable: `SHARE_URL` (`https://ambernotes.app`).
 
 The API key needs the **Admin** role, so Xcode can create and use the signing certificates in the cloud. No certificate files live in GitHub.
 

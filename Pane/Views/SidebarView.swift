@@ -60,14 +60,41 @@ struct SidebarHeader: View {
 #endif
 
 enum SidebarStyle {
-    /// Notes on the Mac draws folder icons in the text colour; iOS tints them.
     #if os(macOS)
-    static let icon = HierarchicalShapeStyle.primary
     static let iconFont = Font.system(size: 17, weight: .regular)
     #else
     static let icon = TintShapeStyle.tint
     static let iconFont = Font.body
     #endif
+}
+
+/// A folder icon in the sidebar. Notes on the Mac draws them in the text colour, and in a
+/// window that isn't in front they fade with their names; iOS tints them.
+struct SidebarIcon: View {
+    let name: String
+    #if os(macOS)
+    @Environment(\.controlActiveState) private var active
+    #endif
+
+    var body: some View {
+        Image(systemName: name)
+            .font(SidebarStyle.iconFont)
+            #if os(macOS)
+            .foregroundStyle(active == .inactive ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.primary))
+            #else
+            .foregroundStyle(SidebarStyle.icon)
+            #endif
+    }
+}
+
+extension View {
+    /// One element per sidebar row, read as "Travel, 4 notes". Without it VoiceOver reads the
+    /// folder symbol's own name ("Move") before the row's.
+    func rowAccessibility(_ name: String, count: Int) -> some View {
+        accessibilityElement(children: .ignore)
+            .accessibilityLabel(name)
+            .accessibilityValue(count == 1 ? "1 note" : "\(count) notes")
+    }
 }
 
 extension Notification.Name {
@@ -123,7 +150,9 @@ struct SidebarView: View {
         .safeAreaInset(edge: .top, spacing: 0) { SidebarHeader() }
         #endif
         .onAppear(perform: settleScope)
-        .onChange(of: folders.count) { _, _ in settleScope() }
+        .onChange(of: folders.map(\.id)) { _, _ in settleScope() }
+        // Launch restores All Notes after this list first appears.
+        .onChange(of: scope) { _, _ in settleScope() }
         // Right-click anywhere in the sidebar; a folder's own menu comes from its row.
         .contextMenu(forSelectionType: Scope.self) { items in
             if items.isEmpty || items.contains(.all) || items.contains(.trash) {
@@ -218,15 +247,15 @@ struct SidebarView: View {
                     .foregroundStyle(.secondary)
             }
         } icon: {
-            Image(systemName: icon).foregroundStyle(SidebarStyle.icon).font(SidebarStyle.iconFont)
+            SidebarIcon(name: icon)
         }
+        .rowAccessibility(title, count: count)
     }
 
-    /// With a single folder there's no "All Notes" row, so show that folder instead.
+    /// Keeps the selection on something that exists (see `Scope.settled`).
     private func settleScope() {
-        if folders.count <= 1, scope == .all || scope == nil, let only = folders.first {
-            scope = .folder(only.id)
-        }
+        let settled = Scope.settled(scope, liveFolders: folders.map(\.id))
+        if settled != scope { scope = settled }
     }
 
     private func startRename(_ f: Folder) { nameDraft = f.name; renaming = f }
@@ -289,11 +318,10 @@ private struct FolderTree: View {
                     .foregroundStyle(.secondary)
             }
         } icon: {
-            Image(systemName: dropTarget == folder.id ? "folder.fill" : "folder")
-                .foregroundStyle(SidebarStyle.icon)
-                .font(SidebarStyle.iconFont)
+            SidebarIcon(name: dropTarget == folder.id ? "folder.fill" : "folder")
                 .contentTransition(.symbolEffect(.replace))
         }
+        .rowAccessibility(folder.name, count: folder.liveNotes.count)
         .tag(Scope.folder(folder.id))
         .accessibilityIdentifier("folder.\(folder.name)")
         .draggable(PaneDragItem(kind: .folder, id: folder.id)) {

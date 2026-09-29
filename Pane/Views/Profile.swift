@@ -141,7 +141,7 @@ final class ProfileStore {
             let current = defaults.string(forKey: key("avatar"))
             if row?.avatar_path != current {
                 if let path = row?.avatar_path, let url = Self.avatarURL(path) {
-                    let (data, response) = try await URLSession.shared.data(from: url)
+                    let (data, response) = try await AppNetwork.session.data(from: url)
                     guard (response as? HTTPURLResponse)?.statusCode == 200, let image = PImage(data: data), self.user == user else { return }
                     try ensureFolder()
                     try data.write(to: file("photo.jpg"), options: .atomic)

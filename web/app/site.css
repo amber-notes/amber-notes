@@ -1,0 +1,115 @@
+/* The marketing site's shared look: fixed page themes, one header and footer, and the page
+   transitions. Share pages (/n/*) don't set data-theme, so none of this applies to them. */
+
+html[data-theme="cream"] {
+  --bg: #fff4e6; --ink: #2a1d10; --muted: #74604c; --soft: #f7e5cc; --line: rgba(80, 45, 10, 0.12);
+  --amber: #f0901a; --link: #a85700; --mark: rgba(240, 144, 26, 0.35); --card: #fffaf3;
+  --wordmark: rgba(120, 70, 20, 0.07); --cta-bg: #2a1d10; --cta-ink: #fff4e6; color-scheme: light;
+}
+/* Leaf brown: the deep brown of the icon's leaf. Text meets WCAG AA on --bg and --soft. */
+html[data-theme="leaf"] {
+  --bg: #2e180a; --ink: #fbeedd; --muted: #d9bf9f; --soft: #40240f; --line: rgba(255, 220, 170, 0.14);
+  --amber: #f5a53a; --link: #f7b865; --mark: rgba(245, 165, 58, 0.32); --card: #3a2010;
+  --wordmark: rgba(255, 200, 130, 0.06); --cta-bg: #fbeedd; --cta-ink: #2e180a; color-scheme: dark;
+}
+html[data-theme] body {
+  background: var(--bg); color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", system-ui, sans-serif;
+}
+html[data-theme] ::selection { background: var(--mark); }
+@media (prefers-reduced-motion: no-preference) {
+  /* Browsers without view transitions still get a smooth colour change. */
+  html[data-theme] body { transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out; }
+}
+
+.site { min-height: 100dvh; display: flex; flex-direction: column; }
+.site-main { flex: 1; width: 100%; overflow-x: clip; } /* the full-width ending band is 100vw; never a sideways scroll */
+
+/* Header: identical on every page. Only its colours follow the theme. */
+.site-header {
+  view-transition-name: site-header;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  width: 100%; max-width: 1240px; height: 84px; margin: 0 auto; padding: 0 20px; box-sizing: border-box;
+}
+.site-brand { display: inline-flex; align-items: center; gap: 11px; min-height: 44px; color: var(--ink); text-decoration: none; font-weight: 750; font-size: 19px; letter-spacing: -0.01em; white-space: nowrap; }
+.site-brand img { border-radius: 8px; box-shadow: 0 0 0 0.5px var(--line); }
+/* The logo is the way home: it lifts on hover, dims its name, and presses in. */
+.site-brand { cursor: pointer; border-radius: 12px; }
+.site-brand img { box-shadow: 0 0 0 0.5px var(--line), 0 1px 2px rgba(60, 30, 5, 0.12); }
+.site-name, .site-badge { transition: opacity 0.12s ease-in; }
+@media (prefers-reduced-motion: no-preference) {
+  .site-brand { transition: transform 0.12s ease-out; }
+  .site-brand img { transition: transform 0.14s ease-in, box-shadow 0.14s ease-in; }
+  .site-brand:active { transform: scale(0.97); }
+}
+@media (hover: hover) {
+  .site-brand:hover .site-name, .site-brand:hover .site-badge { opacity: 0.75; transition: opacity 0.18s ease-out; }
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .site-brand:hover img { transform: translateY(-1px) scale(1.04); box-shadow: 0 0 0 0.5px var(--line), 0 6px 14px -4px rgba(60, 30, 5, 0.35); transition: transform 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.2), box-shadow 0.22s ease-out; }
+}
+.site-badge { font-size: 11px; font-weight: 600; color: var(--muted); padding: 2px 6px; border-radius: 6px; box-shadow: 0 0 0 1px var(--line); font-variant-numeric: tabular-nums; line-height: 16px; align-self: center; margin-top: 1px; }
+.site-nav { display: flex; align-items: center; gap: 6px; }
+.site-nav a { position: relative; display: inline-flex; align-items: center; gap: 7px; height: 44px; padding: 0 14px; border-radius: 12px; color: var(--ink); text-decoration: none; font-weight: 600; font-size: 16px; white-space: nowrap; }
+.site-nav a.site-cta { margin-left: 6px; padding: 0 18px; background: var(--cta-bg); color: var(--cta-ink); border-radius: 13px; }
+.site-nav a.site-gh { color: var(--muted); gap: 6px; font-variant-numeric: tabular-nums; }
+.site-stars { font-size: 15px; }
+/* The current page: a small amber dot under its link (never moves anything). */
+.site-nav a[aria-current="page"]:not(.site-cta)::after {
+  content: ""; position: absolute; left: 50%; bottom: 3px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: var(--amber);
+}
+.site-nav a.site-cta[aria-current="page"] { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px var(--amber); }
+/* Narrower screens drop the stars, then the text links; the brand and the Download button always stay. */
+@media (max-width: 760px) { .site-stars { display: none; } .site-header { height: 72px; } }
+@media (max-width: 600px) { .site-nav a:not(.site-cta):not(.site-gh) { display: none; } .site-cta .site-cta-long { display: none; } }
+@media (max-width: 430px) { .site-badge { display: none; } }
+@media (min-width: 601px) { .site-cta .site-cta-short { display: none; } }
+@media (max-width: 360px) { .site-brand { font-size: 17px; gap: 9px; } .site-brand img { width: 30px; height: 30px; } .site-nav a.site-cta { padding: 0 14px; } }
+@media (hover: hover) { .site-nav a:not(.site-cta):hover { background: var(--soft); } .site-nav a.site-cta:hover { background: color-mix(in srgb, var(--cta-bg) 86%, var(--amber)); } }
+@media (prefers-reduced-motion: no-preference) { .site-nav a.site-cta { transition: transform 0.12s ease-out, background-color 0.15s ease-out; } .site-nav a.site-cta:active { transform: scale(0.97); } }
+.site-brand:focus-visible, .site-nav a:focus-visible, .site-footer a:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
+
+/* Footer: identical on every page. */
+.site-footer {
+  view-transition-name: site-footer;
+  width: 100%; max-width: 1240px; margin: 120px auto 0; padding: 0 20px; box-sizing: border-box;
+  display: grid; justify-items: center; gap: 12px; text-align: center; overflow: hidden;
+}
+/* One row: the page links, a hairline, then the social icons; the credit line centred under it. */
+.site-footrow { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 20px; }
+.site-footer nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 20px; }
+.site-footsep { width: 1px; height: 16px; background: var(--line); }
+@media (max-width: 480px) { .site-footsep { display: none; } }
+.site-credit { max-width: 60ch; text-align: center; text-wrap: balance; }
+.site-footer a { color: var(--muted); text-decoration: none; font-weight: 600; font-size: 14px; min-height: 36px; display: inline-flex; align-items: center; }
+@media (hover: hover) { .site-footer a:hover { color: var(--ink); } }
+.site-footer p { margin: 0; font-size: 13px; color: var(--muted); }
+.site-social { display: flex; gap: 4px; }
+.site-social a { width: 40px; height: 40px; min-height: 40px; justify-content: center; border-radius: 12px; }
+@media (hover: hover) { .site-social a:hover { background: var(--soft); } }
+.site-footer a.site-maker { display: inline; min-height: 0; color: var(--ink); font-size: inherit; text-decoration: underline; text-decoration-color: var(--amber); text-underline-offset: 3px; }
+/* The big faded name: an SVG so it always fits the footer's width, centred, never cut at the sides. */
+.site-wordmark { display: block; width: 100%; height: auto; margin-top: 24px; margin-bottom: -2.2%; overflow: visible; user-select: none; }
+.site-wordmark text { fill: var(--wordmark); font: 800 176px -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif; letter-spacing: -8px; }
+
+/* Content entrance: blur, lift and fade into focus, in order (style="--i: n"). Runs on load and
+   after every navigation. Exits are handled by the view transition (a quick fade). */
+@media (prefers-reduced-motion: no-preference) {
+  .rise { animation: rise 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both; animation-delay: calc(90ms + var(--i, 0) * 55ms); }
+  .rise-soft { animation: rise-soft 0.7s ease-out both; animation-delay: calc(90ms + var(--i, 0) * 55ms); }
+}
+@keyframes rise { from { opacity: 0; filter: blur(9px); transform: translateY(12px) scale(0.985); } to { opacity: 1; filter: none; transform: none; } }
+@keyframes rise-soft { from { opacity: 0; filter: saturate(0.2) blur(4px); transform: translateY(10px); } to { opacity: 1; filter: none; transform: none; } }
+
+/* View transitions between pages: the page underneath fades out fast, the new one fades in
+   (the background colour cross-fades with it); header and footer hold still and blend colours. */
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root) { animation: vt-out 160ms ease-in both; }
+  ::view-transition-new(root) { animation: vt-in 320ms ease-out both; }
+  ::view-transition-group(site-header), ::view-transition-group(site-footer) { animation-duration: 320ms; animation-timing-function: ease-in-out; }
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+}
+@keyframes vt-out { to { opacity: 0; } }
+@keyframes vt-in { from { opacity: 0; } }

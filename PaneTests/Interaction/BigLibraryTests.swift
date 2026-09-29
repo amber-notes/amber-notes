@@ -66,6 +66,42 @@ import Testing
         #expect(upd < .seconds(1) * PerfBudget.slack)
     }
 
+    /// While you type (or another device or an AI does), the open note is written every 0.35 s.
+    /// Each write used to rebuild every row's drag and swipe setup: 250 ms a write at 1,000
+    /// notes (Release). Only the changed note's row is rebuilt now.
+    @Test(.timeLimit(.minutes(3))) func editsInABigListStayCheap() async throws {
+        let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let ctx = c.mainContext
+        let home = Folder(name: "Notes")
+        ctx.insert(home)
+        ctx.insert(Folder(name: "Work"))
+        var notes: [Note] = []
+        for i in 0..<1000 {
+            let n = Note(body: "Note \(i)\n\nSome text for note \(i)", folder: home)
+            n.updatedAt = Date(timeIntervalSinceNow: -Double(i) * 600)
+            ctx.insert(n)
+            notes.append(n)
+        }
+        try ctx.save()
+        let w = window(c)
+        defer { w.orderOut(nil); w.close() }
+        _ = await firstDisplay(w)
+        var times: [Duration] = []
+        for i in 0..<9 {
+            let t = ContinuousClock.now
+            notes[i * 5].body = "Edited \(i)\n\nas if typed"
+            notes[i * 5].updatedAt = .now
+            try ctx.save()
+            w.contentView?.layoutSubtreeIfNeeded()
+            w.displayIfNeeded()
+            times.append(ContinuousClock.now - t)
+            try? await Task.sleep(for: .milliseconds(30))
+        }
+        let median = times.sorted()[times.count / 2]
+        print("PERF 1,000 notes: one note edited \(median) (median)")
+        #expect(median < .milliseconds(400) * PerfBudget.slack)
+    }
+
     @Test(.timeLimit(.minutes(2))) func tinyAndHugeWindows() async throws {
         let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
         Seed.ensureLibrary(c.mainContext, demo: true)

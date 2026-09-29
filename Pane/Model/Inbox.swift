@@ -15,8 +15,19 @@ enum Inbox {
     }
 
     static var root: URL? {
-        FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroup)?.appending(path: "Inbox", directoryHint: .isDirectory)
+        if let rootOverride { return rootOverride }
+        return FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroup)?.appending(path: "Inbox", directoryHint: .isDirectory)
     }
+
+    /// The share extension has written here at least once, on this device: the folder is made on
+    /// its first use and stays after the items in it are filed.
+    static var everUsed: Bool {
+        guard let root else { return false }
+        return FileManager.default.fileExists(atPath: root.path(percentEncoded: false))
+    }
+
+    /// Tests point the inbox at a temporary folder (unsigned test builds have no app group).
+    nonisolated(unsafe) static var rootOverride: URL?
 
     /// Writes an item (called by the share extension).
     static func add(markdown: String, files: [URL]) throws {

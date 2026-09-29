@@ -42,6 +42,10 @@
 	</dict>
 	<key>NSAppleEventsUsageDescription</key>
 	<string>Amber Notes reads the Apple Notes you choose to import. It never changes them.</string>
+	<key>NSUserActivityTypes</key>
+	<array>
+		<string>dev.emilwagman.pane.connect</string>
+	</array>
 	<key>PaneShareURL</key>
 	<string>$(PANE_SHARE_URL)</string>
 	<key>PaneSupabaseKey</key>
@@ -51,7 +55,7 @@
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
 	<key>SUFeedURL</key>
-	<string>https://amber-notes.vercel.app/updates/appcast.xml</string>
+	<string>https://ambernotes.app/updates/appcast.xml</string>
 	<key>SUPublicEDKey</key>
 	<string>$(SPARKLE_PUBLIC_KEY)</string>
 	<key>SUScheduledCheckInterval</key>

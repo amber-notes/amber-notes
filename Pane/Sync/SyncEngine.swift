@@ -30,7 +30,7 @@ final class SyncEngine {
     /// True once a sync has completed since launch.
     private(set) var hasSynced = false
     /// Bumps when a pull changed a note, so an open editor can refresh.
-    private(set) var remoteChangeTick = 0
+    private(set) var remoteChangeTick = 0 { didSet { lastChange = .now } }
 
     private let backend: Backend
     private let context: ModelContext
@@ -45,6 +45,17 @@ final class SyncEngine {
     private var lastPush = Date.distantPast
     static let pushInterval: TimeInterval = 0.35
     private var channel: RealtimeChannelV2?
+    /// Realtime is joined and delivering. While it isn't, a short poll stands in (`fallback`).
+    private(set) var realtimeUp = false
+    /// The app is in front; nothing polls in the background.
+    private var active = true
+    private var started = false
+    private var fallback: Task<Void, Never>?
+    /// The last change either way, for backing the poll off when nothing is happening.
+    private var lastChange = Date.now
+    /// How often to pull while realtime is down: every `fast`, or every `slow` once nothing has
+    /// changed for `slowAfter`. Tests shorten these.
+    static var fallbackPoll: (fast: Duration, slow: Duration, slowAfter: TimeInterval) = (.seconds(8), .seconds(30), 300)
     private var realtimeTasks: [Task<Void, Never>] = []
     /// Rows the server refused (too big, over a limit), keyed by id with the edit time that
     /// was refused. They're skipped until they change again, so one bad row never blocks
@@ -56,13 +67,16 @@ final class SyncEngine {
 
     private var cursorKey: String { "syncCursor.\(backend.userID?.uuidString ?? "none")" }
     private var cursor: Date {
-        get { UserDefaults.standard.object(forKey: cursorKey) as? Date ?? .distantPast }
-        set { UserDefaults.standard.set(newValue, forKey: cursorKey) }
+        get { defaults.object(forKey: cursorKey) as? Date ?? .distantPast }
+        set { defaults.set(newValue, forKey: cursorKey) }
     }
+    /// Where the pull cursor is kept; tests give each simulated device its own.
+    private let defaults: UserDefaults
 
-    init(backend: Backend, context: ModelContext) {
+    init(backend: Backend, context: ModelContext, defaults: UserDefaults = .standard) {
         self.backend = backend
         self.context = context
+        self.defaults = defaults
         SyncSignal.onChange = { [weak self] in self?.localChanged() }
     }
 
@@ -81,6 +95,7 @@ final class SyncEngine {
     /// Something changed here: push it soon, at most every `pushInterval`, first one at once.
     func localChanged() {
         guard backend.client != nil, case .signedIn = backend.state else { return }
+        lastChange = .now
         pushWanted = true
         guard pushLoop == nil else { return }
         pushLoop = Task { [weak self] in
@@ -130,8 +145,15 @@ final class SyncEngine {
     func start() async {
         guard let client = backend.client, case .signedIn = backend.state else { return }
         adoptLibrary()
+        started = true
+        // Until realtime has joined, a short poll brings other devices' edits.
+        updateFallback()
         await sync()
         guard channel == nil else { return }
+        #if DEBUG || QA
+        // `-netOffline` is offline for realtime too (its socket doesn't pass the fault layer).
+        if NetFault.config.offline { return }
+        #endif
         let ch = client.channel("pane-sync")
         let notes = ch.postgresChange(AnyAction.self, schema: "public", table: "notes")
         let folders = ch.postgresChange(AnyAction.self, schema: "public", table: "folders")
@@ -154,7 +176,8 @@ final class SyncEngine {
         realtimeTasks.append(Task { [weak self] in
             var joined = false
             for await s in joins {
-                guard case .subscribed = s else { continue }
+                guard case .subscribed = s else { self?.realtimeChanged(up: false); continue }
+                self?.realtimeChanged(up: true)
                 if joined { self?.schedule(after: 0) }
                 joined = true
             }
@@ -185,6 +208,11 @@ final class SyncEngine {
             rows = (try? await client.from("notes").select().eq("id", value: uuid).execute().value) ?? []
         }
         guard !rows.isEmpty else { schedule(after: 0.25); return }
+        take(rows)
+    }
+
+    /// Rows another device just wrote, as realtime delivers them: applied straight away.
+    func take(_ rows: [NoteDTO]) {
         // Typing that isn't in the model yet goes in first, so it counts as a local edit.
         DebouncedSave.flushAll()
         var folders = Dictionary(uniqueKeysWithValues: context.allFoldersIncludingDeleted().map { ($0.id, $0) })
@@ -216,7 +244,47 @@ final class SyncEngine {
     /// The account this engine's in-memory state (refusals, problems) belongs to.
     private var adoptedFor: UUID?
 
+    /// Realtime joined or dropped. While it's down, edits from other devices come in by a
+    /// poll every 8 s (30 s once nothing has changed for 5 minutes) instead of only the
+    /// minute pull; joining again stops it.
+    func realtimeChanged(up: Bool) {
+        realtimeUp = up
+        updateFallback()
+    }
+
+    /// The app came to the front or went away: the poll only runs while it's in front.
+    func setActive(_ isActive: Bool) {
+        active = isActive
+        updateFallback()
+    }
+
+    private func updateFallback() {
+        var signedIn: Bool { if case .signedIn = backend.state { true } else { false } }
+        let wanted = started && active && !realtimeUp && backend.client != nil && signedIn
+        if !wanted { fallback?.cancel(); fallback = nil; return }
+        guard fallback == nil else { return }
+        fallback = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let self else { return }
+                let poll = Self.fallbackPoll
+                let quiet = Date.now.timeIntervalSince(self.lastChange) > poll.slowAfter
+                try? await Task.sleep(for: quiet ? poll.slow : poll.fast)
+                guard !Task.isCancelled else { return }
+                await self.sync()
+            }
+        }
+    }
+
     func stop() async {
+        // Signed out: nothing already scheduled may still go up.
+        started = false
+        realtimeUp = false
+        fallback?.cancel()
+        fallback = nil
+        pending?.cancel()
+        pushLoop?.cancel()
+        pushLoop = nil
+        pushWanted = false
         realtimeTasks.forEach { $0.cancel() }
         realtimeTasks = []
         if let channel { await channel.unsubscribe() }
@@ -266,7 +334,7 @@ final class SyncEngine {
                         .eq("id", value: n.id).eq("version", value: Int(n.serverVersion))
                         .select().execute().value
                     if saved.isEmpty {
-                        saved = try await resolveConflict(client, local: n, row: row)
+                        saved = try await resolveConflict(client, local: n)
                     }
                 }
             } catch {
@@ -279,6 +347,7 @@ final class SyncEngine {
                 }
             }
             if let s = saved.first {
+                remember(s)
                 n.serverVersion = s.version ?? n.serverVersion
                 // Stay dirty if you typed more while this was in flight.
                 if n.updatedAt <= sentAt { n.dirty = false }
@@ -384,12 +453,38 @@ final class SyncEngine {
     }
 
     /// The server changed this note since we last saw it, and so did we.
-    private func resolveConflict(_ client: SupabaseClient, local n: Note, row: NoteDTO) async throws -> [NoteDTO] {
+    private func resolveConflict(_ client: SupabaseClient, local n: Note) async throws -> [NoteDTO] {
         let server: [NoteDTO] = try await client.from("notes").select().eq("id", value: n.id).execute().value
+        // Typing that isn't in the note yet goes in first, so nothing below works from stale text.
+        DebouncedSave.flushAll()
         guard let s = server.first else {
-            return try await client.from("notes").upsert(row).select().execute().value
+            return try await client.from("notes").upsert(NoteDTO(n)).select().execute().value
         }
-        if s.body == row.body { return server }
+        if s.body == n.body { return server }
+        // Both typed since the version we last had: where the edits don't touch the same lines,
+        // put them together (like Notes), instead of one side's edit going to version history.
+        if let base = synced[n.id], base.version == n.serverVersion, let sv = s.version,
+           let merged = TextDiff.merge(base: base.body, mine: n.body, theirs: s.body) {
+            let mine = n.body
+            var patch = NoteDTO(n).patch
+            patch.body = merged
+            let saved: [NoteDTO] = try await client.from("notes").update(patch)
+                .eq("id", value: n.id).eq("version", value: Int(sv)).select().execute().value
+            // Moved on again meanwhile: the next push tries again.
+            guard let row = saved.first else { return [] }
+            DebouncedSave.flushAll()
+            if n.body == mine {
+                n.body = merged
+            } else if let again = TextDiff.merge(base: mine, mine: n.body, theirs: merged) {
+                // You typed while that was in flight: that goes up next.
+                n.body = again
+                n.touch()
+            } else {
+                return []
+            }
+            remember(row)
+            return saved
+        }
         if s.updated_at > n.updatedAt {
             // Theirs is newer: keep it, and keep ours as a conflicted copy.
             let copy = Note(body: Self.conflictCopy(of: n.body), folder: n.folder)
@@ -400,7 +495,7 @@ final class SyncEngine {
             return server
         }
         // Ours is newer: overwrite. The server keeps theirs in note_revisions.
-        return try await client.from("notes").update(row.patch).eq("id", value: n.id).select().execute().value
+        return try await client.from("notes").update(NoteDTO(n).patch).eq("id", value: n.id).select().execute().value
     }
 
     static func conflictCopy(of body: String) -> String {
@@ -476,6 +571,9 @@ final class SyncEngine {
             let rows: [NoteDTO] = try await client.from("notes").select()
                 .gt("server_updated_at", value: stamp)
                 .order("server_updated_at").order("id").range(from: offset, to: offset + 499).execute().value
+            // Typing that isn't in the model yet goes in first, so the note counts as edited
+            // here and what arrives can't replace it (the saver would then drop it).
+            if !rows.isEmpty { DebouncedSave.flushAll() }
             for r in rows {
                 if let s = r.server_updated_at, s > newest { newest = s }
                 if merge(r, folders: &byID) { changed = true }
@@ -499,9 +597,22 @@ final class SyncEngine {
         if let local, !Self.takes(r, over: local) { return false }
         let n = local ?? { let n = Note(body: r.body); n.id = r.id; context.insert(n); return n }()
         if n.body != r.body { remoteChangeTick += 1 }
+        let before = (body: local?.body, version: local.map(\.serverVersion), aiAt: local?.aiEditedAt)
         apply(r, to: n)
         n.folder = r.folder_id.flatMap { byID[$0] }
+        // An AI's edit: remember the text from before it, for the tint, the receipt and Undo.
+        // On this account's first sync here, older AI edits are history, not news.
+        AIEdit.arrived(n, previousBody: before.body, previousVersion: before.version, previousEditAt: before.aiAt, quiet: local == nil && cursor == .distantPast)
         return true
+    }
+
+    /// A row the server just wrote for this device (a restored version): it replaces the note
+    /// here whatever its state, because it already includes everything this device pushed.
+    func adopt(_ r: NoteDTO) {
+        guard let n = context.note(r.id) else { return }
+        if n.body != r.body { remoteChangeTick += 1 }
+        apply(r, to: n)
+        try? context.save()
     }
 
     /// Whether a server row should replace what this device has (see `merge`).
@@ -525,7 +636,16 @@ final class SyncEngine {
             && near(r.trashed_at, n.trashedAt) && near(r.deleted_at, n.deletedAt) && r.folder_id == n.folder?.id
     }
 
+    /// The text of each note at the server version this device last had: the common starting
+    /// point when both sides typed at once. Kept for this run of the app only.
+    private var synced: [UUID: (version: Int64, body: String)] = [:]
+
+    private func remember(_ r: NoteDTO) {
+        if let v = r.version { synced[r.id] = (v, r.body) }
+    }
+
     private func apply(_ r: NoteDTO, to n: Note) {
+        remember(r)
         n.body = r.body
         n.parentID = r.parent_id
         n.isPinned = r.is_pinned
@@ -534,6 +654,11 @@ final class SyncEngine {
         n.trashedAt = r.trashed_at
         n.deletedAt = r.deleted_at
         n.serverVersion = r.version ?? n.serverVersion
+        // Older servers don't send these: keep what we had.
+        if r.ai_edited_at != nil {
+            n.aiEditor = r.ai_editor
+            n.aiEditedAt = r.ai_edited_at
+        }
         n.dirty = false
     }
 
@@ -603,6 +728,9 @@ struct NoteDTO: Codable {
     var deleted_at: Date?
     var version: Int64?
     var server_updated_at: Date?
+    /// The AI that last changed the note, and when. Set by the server only; never sent.
+    var ai_editor: String?
+    var ai_edited_at: Date?
 
     init(_ n: Note) {
         id = n.id
@@ -617,7 +745,7 @@ struct NoteDTO: Codable {
         deleted_at = n.deletedAt
     }
 
-    enum CodingKeys: String, CodingKey { case id, body, folder_id, parent_id, is_pinned, created_at, updated_at, trashed_at, deleted_at, version, server_updated_at }
+    enum CodingKeys: String, CodingKey { case id, body, folder_id, parent_id, is_pinned, created_at, updated_at, trashed_at, deleted_at, version, server_updated_at, ai_editor, ai_edited_at }
 
     /// Client-owned columns only; the server sets version and its own clock.
     func encode(to encoder: Encoder) throws {

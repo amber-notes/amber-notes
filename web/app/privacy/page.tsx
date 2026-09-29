@@ -1,16 +1,17 @@
 import type { Metadata } from "next";
-import { DocPage, readDoc } from "@/lib/DocPage";
+import { pageMetadata } from "@/lib/site";
+import { LegalPage, readLegal } from "@/lib/LegalPage";
 
 // Copied from docs/privacy-policy.md at build time (scripts/deploy-web.sh refreshes the copy).
-const doc = readDoc("privacy-policy.md");
+const doc = readLegal("privacy-policy.md");
 
 export const dynamic = "force-static";
-export const metadata: Metadata = {
-  title: `${doc.title} · Amber Notes`,
-  description: "How Amber Notes handles your data.",
-  robots: { index: true, follow: true },
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Privacy Policy · Amber Notes",
+  description: "What Amber Notes stores, why, where, for how long, and your rights. No ads, no third-party tracking.",
+  path: "/privacy",
+});
 
 export default function Privacy() {
-  return <DocPage {...doc} />;
+  return <LegalPage doc={doc} other={{ href: "/terms", label: "Terms of Service" }} />;
 }

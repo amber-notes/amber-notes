@@ -65,6 +65,8 @@ targets:
         CFBundleURLTypes:
           - CFBundleURLName: dev.emilwagman.pane.connect
             CFBundleURLSchemes: [ambernotes]
+        # Handoff: Connect ChatGPT or Claude, started on iPhone, continues on the Mac.
+        NSUserActivityTypes: [dev.emilwagman.pane.connect]
         PaneSupabaseURL: $(PANE_SUPABASE_URL)
         PaneSupabaseKey: $(PANE_SUPABASE_KEY)
         PaneShareURL: $(PANE_SHARE_URL)
@@ -113,7 +115,7 @@ targets:
       path: Pane/Resources/Info-Direct.plist
       properties:
         <<: *appInfo
-        SUFeedURL: https://amber-notes.vercel.app/updates/appcast.xml
+        SUFeedURL: https://ambernotes.app/updates/appcast.xml
         SUPublicEDKey: $(SPARKLE_PUBLIC_KEY)
         SUEnableAutomaticChecks: true
         SUScheduledCheckInterval: 86400
@@ -133,6 +135,7 @@ targets:
       - PaneShare
       - Pane/Views/AppMark.swift
       - Pane/Model/Inbox.swift
+      - Pane/Model/SharedItem.swift
       - Pane/Model/RichTextToMarkdown.swift
       - Pane/Model/OfflineHTML.swift
       - Pane/Editor/Platform.swift

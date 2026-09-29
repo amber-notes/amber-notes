@@ -47,6 +47,14 @@ enum ConnectTrust {
     static func isKnown(host: String, loopback: Bool) -> Bool {
         loopback ? false : knownHosts.keys.contains { host == $0 || host.hasSuffix("." + $0) }
     }
+
+    /// The AI whose mark the consent sheet may show: decided only by where the approval is sent
+    /// (the server reads it from the request's redirect address), never by the name a client
+    /// registered. Anyone can call themselves "ChatGPT"; only ChatGPT receives answers at chatgpt.com.
+    static func verifiedAI(host: String, loopback: Bool) -> String? {
+        guard !loopback else { return nil }
+        return knownHosts.first { host == $0.key || host.hasSuffix("." + $0.key) }?.value
+    }
 }
 
 enum ConnectSnippets {
@@ -56,6 +64,19 @@ enum ConnectSnippets {
 
     static func codex(url: String, token: String) -> String {
         "[mcp_servers.amber_notes]\nurl = \"\(url)\"\nhttp_headers = { \"Authorization\" = \"Bearer \(token)\" }"
+    }
+}
+
+/// Knowing when a guided connection worked, wherever the person approved it.
+enum ConnectCompletion {
+    /// The newest ChatGPT or Claude sign-in made since the guide opened, if any. Named by where
+    /// its answers went, never by the name the client registered, like the consent sheet.
+    static func newConnection(_ rows: [Connection], ai: String, since: Date) -> Connection? {
+        rows.filter { c in
+            c.isOAuth && c.revoked_at == nil && c.created_at >= since
+                && ConnectTrust.verifiedAI(host: c.redirect_host ?? "", loopback: false) == ai
+        }
+        .max { $0.created_at < $1.created_at }
     }
 }
 
@@ -85,7 +106,7 @@ enum ConnectAPI {
             req.setValue("application/json", forHTTPHeaderField: "Content-Type")
             req.httpBody = try JSONSerialization.data(withJSONObject: body)
         }
-        let (data, response) = try await URLSession.shared.data(for: req)
+        let (data, response) = try await AppNetwork.session.data(for: req)
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             let message = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["error"] as? String
             throw Failure(message: message ?? "Couldn't reach Amber Notes. Check your connection.")
@@ -116,6 +137,10 @@ enum ConnectAPI {
 final class ConnectCenter: NSObject {
     static let shared = ConnectCenter()
     var pending: UUID?
+    /// Mac: which AI the floating steps are for.
+    var panelAI: String?
+    /// The last approval made on this device, so an open guide can say it worked right away.
+    var approved: (ai: String?, at: Date)?
     #if os(macOS)
     /// The browser the request came from, so the answer goes back to the same one.
     var browser: URL?
@@ -182,6 +207,9 @@ final class ConnectCenter: NSObject {
 struct ConnectHandler: ViewModifier {
     let backend: Backend
     @State private var center = ConnectCenter.shared
+    #if os(macOS)
+    @Environment(\.openWindow) private var openWindow
+    #endif
 
     func body(content: Content) -> some View {
         content
@@ -190,13 +218,20 @@ struct ConnectHandler: ViewModifier {
             // Links land in the window that's already open instead of a new one.
             .handlesExternalEvents(preferring: [ConnectLink.scheme], allowing: ["*"])
             .onAppear { center.installHandler() }
+            // Handoff from iPhone: carry on connecting ChatGPT or Claude here.
+            .onContinueUserActivity(ConnectHandoff.activityType) { activity in
+                guard let ai = activity.userInfo?[ConnectHandoff.key] as? String, WebConnectPlan.forAI(ai) != nil else { return }
+                center.panelAI = ai
+                openWindow(id: ConnectPanel.windowID)
+            }
             #endif
             .sheet(item: Binding(
                 get: { backend.client != nil && isSignedIn ? center.pending.map(PendingID.init) : nil },
                 set: { if $0 == nil { center.pending = nil } }
             )) { pending in
                 if let client = backend.client {
-                    ConsentSheet(client: client, requestID: pending.id, finish: { center.open($0) })
+                    ConsentSheet(client: client, requestID: pending.id, finish: { center.open($0) },
+                                 allowed: { r in center.approved = (ConnectTrust.verifiedAI(host: r.redirect_host, loopback: r.loopback), .now) })
                 }
             }
     }
@@ -220,22 +255,25 @@ struct ConsentSheet: View {
     let requestID: UUID
     /// Opens the AI's return address in the browser.
     let finish: (URL) -> Void
+    /// Told when the person allowed the request.
+    var allowed: (ConnectRequest) -> Void = { _ in }
     @Environment(\.dismiss) private var dismiss
 
     enum Phase: Equatable { case loading, asking(ConnectRequest), working, done(String), failed(String) }
     @State private var phase: Phase
     @State private var write = true
 
-    init(client: SupabaseClient, requestID: UUID, initial: Phase = .loading, finish: @escaping (URL) -> Void) {
+    init(client: SupabaseClient, requestID: UUID, initial: Phase = .loading, finish: @escaping (URL) -> Void, allowed: @escaping (ConnectRequest) -> Void = { _ in }) {
         self.client = client
         self.requestID = requestID
         self.finish = finish
+        self.allowed = allowed
         _phase = State(initialValue: initial)
     }
 
     var body: some View {
         VStack(spacing: 20) {
-            AppMark(size: 56)
+            header
             content
         }
         .padding(28)
@@ -246,6 +284,35 @@ struct ConsentSheet: View {
         #endif
         .task { if phase == .loading { await load() } }
         .animation(.smooth(duration: 0.25), value: phase)
+    }
+
+    /// Who's asking, and for what: the AI's mark (only when its address proves it), a link, our icon.
+    @ViewBuilder
+    private var header: some View {
+        if case .asking(let r) = phase {
+            let ai = ConnectTrust.verifiedAI(host: r.redirect_host, loopback: r.loopback)
+            HStack(spacing: 14) {
+                if let ai {
+                    AITile(ai: ai, size: 56)
+                } else {
+                    // An app we can't vouch for: a plain glyph, never a borrowed mark.
+                    Image(systemName: r.loopback ? "desktopcomputer" : "globe")
+                        .font(.system(size: 24, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 56, height: 56)
+                        .background(.fill.tertiary, in: .rect(cornerRadius: 56 * 0.3, style: .continuous))
+                }
+                Image(systemName: "link")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(.tertiary)
+                AppMark(size: 56)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(ai.map { "\($0) and Amber Notes" } ?? "An app and Amber Notes")
+            .accessibilityIdentifier(ai == nil ? "connect.header.unknown" : "connect.header.\(ai!)")
+        } else {
+            AppMark(size: 56)
+        }
     }
 
     @ViewBuilder
@@ -342,6 +409,7 @@ struct ConsentSheet: View {
             let url = try await ConnectAPI.decide(client, id: r.id, allow: allow, write: write && r.wants_write)
             finish(url)
             if allow {
+                allowed(r)
                 phase = .done(r.client_name)
                 try? await Task.sleep(for: .seconds(1.6))
             }
@@ -373,6 +441,8 @@ struct Connection: Decodable, Identifiable {
 /// Settings → Connect an AI: guided setup per app, and everything that's connected.
 struct ConnectAISection: View {
     let client: SupabaseClient
+    /// Captures: shows these instead of asking the server.
+    var preview: [Connection]? = nil
     @State private var connections: [Connection] = []
     @State private var guide: Guide?
     @State private var removing: Connection?
@@ -391,33 +461,43 @@ struct ConnectAISection: View {
         }
         var subtitle: String {
             switch self {
-            case .chatgpt: "Sign in from ChatGPT on the web"
-            case .claude: "Sign in from Claude on the web or desktop"
+            case .chatgpt: "Added once in ChatGPT on the web, then works in its apps"
+            case .claude: "Added once in Claude on the web or desktop, then works in its apps"
             case .claudeCode: "Adds Amber Notes to Claude Code on this Mac"
             case .codex: "Adds Amber Notes to Codex"
             }
         }
-        var icon: String {
+        /// Where it's done, in the AI's own words (as on the website).
+        var hint: String {
             switch self {
-            case .chatgpt, .claude: "bubble.left.and.text.bubble.right"
-            case .claudeCode, .codex: "terminal"
+            case .chatgpt: "Plugins → +"
+            case .claude: "Add custom connector"
+            case .claudeCode: "claude mcp add amber-notes"
+            case .codex: "~/.codex/config.toml"
             }
         }
     }
 
     var body: some View {
+        guides
+        connected
+    }
+
+    /// One joined list of AIs, each with its mark, name and how it connects, and the promises under it.
+    private var guides: some View {
         Section {
             ForEach(Guide.allCases) { g in
                 Button { guide = g } label: {
                     HStack(spacing: 12) {
-                        Image(systemName: g.icon).foregroundStyle(.tint).frame(width: 22)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(g.title).foregroundStyle(.primary)
-                            Text(g.subtitle).font(.caption).foregroundStyle(.secondary)
+                        AITile(ai: g.title, size: 32)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(g.title).font(.body.weight(.semibold)).foregroundStyle(.primary)
+                            Text(g.hint).font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary).lineLimit(1)
                         }
                         Spacer()
                         Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
                     }
+                    .padding(.vertical, 2)
                     .contentShape(.rect)
                 }
                 .buttonStyle(.plain)
@@ -428,9 +508,25 @@ struct ConnectAISection: View {
         } header: {
             Text("Connect an AI")
         } footer: {
-            Text("ChatGPT and Claude sign in, and you approve them here. Nothing secret is pasted anywhere. Every change an AI makes keeps the previous version, so it can be undone.")
+            VStack(alignment: .leading, spacing: 6) {
+                promise("You approve every AI.")
+                promise("Disconnect anytime.")
+                promise("Every change an AI makes can be undone.")
+            }
+            .padding(.top, 4)
         }
+    }
 
+    private func promise(_ text: String) -> some View {
+        Label {
+            Text(text).foregroundStyle(.primary)
+        } icon: {
+            Image(systemName: "checkmark").fontWeight(.bold).foregroundStyle(.tint)
+        }
+        .font(.callout.weight(.medium))
+    }
+
+    private var connected: some View {
         Section("Connected") {
             let active = connections.filter { $0.revoked_at == nil }
             if active.isEmpty {
@@ -452,6 +548,7 @@ struct ConnectAISection: View {
 
     private func row(_ c: Connection) -> some View {
         HStack(spacing: 10) {
+            AITile(ai: c.name, size: 26)
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
                     Text(c.name)
@@ -483,6 +580,7 @@ struct ConnectAISection: View {
     }
 
     private func load() async {
+        if let preview { connections = preview; return }
         do {
             connections = try await client.from("mcp_tokens").select().order("created_at", ascending: false).execute().value
             error = nil
@@ -508,6 +606,9 @@ private struct GuideSheet: View {
     let guide: ConnectAISection.Guide
     let client: SupabaseClient
     @Environment(\.dismiss) private var dismiss
+    #if os(macOS)
+    @Environment(\.openWindow) private var openWindow
+    #endif
     @State private var copied: String?
     @State private var token: String?
     @State private var working = false
@@ -535,26 +636,21 @@ private struct GuideSheet: View {
     @ViewBuilder
     private var content: some View {
         switch guide {
-        case .chatgpt:
-            steps([
-                "In ChatGPT on the web, open Apps in the sidebar, then Advanced settings, and turn on Developer mode.",
-                "Back in Apps, choose Create app and name it Amber Notes.",
-                "Paste the address below as the MCP server URL and choose OAuth as the authentication.",
-                "Choose Create. Your browser asks to open Amber Notes: allow it, then choose Allow here.",
-            ])
-            addressSection
-            Section { Text("Needs a ChatGPT Plus, Pro, Business, Enterprise or Edu plan.").font(.footnote).foregroundStyle(.secondary) }
-        case .claude:
-            steps([
-                "In Claude, open Customize, then Connectors.",
-                "Choose + and then Add custom connector. Name it Amber Notes.",
-                "Paste the address below as the URL and choose Add. Leave Advanced settings empty.",
-                "Choose Connect. Your browser asks to open Amber Notes: allow it, then choose Allow here.",
-            ])
-            addressSection
+        case .chatgpt, .claude:
+            if let plan = WebConnectPlan.forAI(guide.title) {
+                #if os(macOS)
+                WebConnectGuide(plan: plan, client: client, popOut: {
+                    ConnectCenter.shared.panelAI = plan.ai
+                    openWindow(id: ConnectPanel.windowID)
+                    dismiss()
+                })
+                #else
+                WebConnectGuide(plan: plan, client: client)
+                #endif
+            }
         case .claudeCode:
             tokenGuide(
-                intro: "Claude Code gets its own access token, sent in a request header. It works in every project.",
+                intro: "Claude Code gets its own access token, sent in a request header. It works in every project. If you connected Claude and use Claude Code with the same account, it already has Amber Notes.",
                 snippet: token.map { ConnectSnippets.claudeCode(url: server, token: $0) },
                 note: "Or run this in a terminal. It's shown once; keep it private.")
         case .codex:
@@ -562,28 +658,6 @@ private struct GuideSheet: View {
                 intro: "Codex gets its own access token, sent in a request header.",
                 snippet: token.map { ConnectSnippets.codex(url: server, token: $0) },
                 note: "Add this to ~/.codex/config.toml. It's shown once; keep it private.")
-        }
-    }
-
-    private func steps(_ lines: [String]) -> some View {
-        Section("Steps") {
-            ForEach(Array(lines.enumerated()), id: \.offset) { i, line in
-                HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    Text("\(i + 1)").font(.callout.weight(.semibold)).monospacedDigit().foregroundStyle(.tint).frame(width: 16)
-                    Text(line)
-                }
-            }
-        }
-    }
-
-    private var addressSection: some View {
-        Section {
-            Text(server).font(.system(.callout, design: .monospaced)).textSelection(.enabled)
-            copyButton("Copy Address", server)
-        } header: {
-            Text("Server address")
-        } footer: {
-            Text("The address holds no password. Access is granted only when you choose Allow in Amber Notes, and you can disconnect it here any time.")
         }
     }
 

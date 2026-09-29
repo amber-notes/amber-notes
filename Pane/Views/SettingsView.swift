@@ -55,6 +55,19 @@ struct SettingsView: View {
                 }
                 #if os(macOS)
                 MenuBarSection()
+                #else
+                if case .signedIn = backend.state {
+                    // On the Mac this is Help › Show Setup Guide.
+                    Section {
+                        Button("Show Setup Guide") {
+                            NotificationCenter.default.post(name: .paneShowSetupGuide, object: nil)
+                            dismiss()
+                        }
+                        .accessibilityIdentifier("settings.setupGuide")
+                    } footer: {
+                        Text("Shows the Get set up steps at the top of your notes again.")
+                    }
+                }
                 #endif
                 if case .signedIn = backend.state {
                     // Signing out sits apart, last, as in System Settings.
@@ -62,6 +75,8 @@ struct SettingsView: View {
                         Button(role: .destructive) { confirmSignOut = true } label: { Text("Sign Out…").foregroundStyle(.red) }
                             .accessibilityIdentifier("settings.signOut")
                         DeleteAccountButton(backend: backend)
+                    } footer: {
+                        LegalLinksRow()
                     }
                 }
             }
@@ -231,9 +246,14 @@ struct SyncStatusLabel: View {
         switch status {
         case .idle: Text("Waiting").foregroundStyle(.secondary)
         case .syncing: HStack(spacing: 6) { ProgressView().controlSize(.mini); Text("Syncing…") }
-        case .synced(let d): Text("Up to date · \(d.formatted(date: .omitted, time: .shortened))").foregroundStyle(.secondary)
+        case .synced(let d): Text("Syncing to your iPhone and Mac · \(Self.when(d))").foregroundStyle(.secondary)
         case .offline(let why): Text(why).foregroundStyle(.orange)
         }
+    }
+
+    /// "just now" for the last minute, then the time.
+    static func when(_ d: Date, now: Date = .now) -> String {
+        now.timeIntervalSince(d) < 60 ? "just now" : "last synced \(d.formatted(date: .omitted, time: .shortened))"
     }
 }
 

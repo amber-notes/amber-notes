@@ -1,5 +1,5 @@
 #!/bin/zsh
-# Releases Amber Notes for Mac: a notarized DMG on amber-notes.vercel.app/download, and a
+# Releases Amber Notes for Mac: a notarized DMG on ambernotes.app/download, and a
 # Sparkle update that every installed copy picks up within a day.
 #
 #   scripts/release-mac.sh 1.0.1 "What changed, one line per item"
@@ -10,7 +10,8 @@
 # download page's release.json, deploy the site, and tag the commit.
 #
 # Needs: .secrets/AuthKey_*.p8 + .secrets/asc.env (ASC_KEY_ID, ASC_ISSUER_ID) for notarytool,
-# the Sparkle key in the Keychain (account "amber-notes"), and python3 -m dmgbuild.
+# and the Sparkle key in the Keychain (account "amber-notes"). scripts/dmg/build-dmg.sh sets up
+# dmgbuild in build/dmg-venv on first use.
 #
 # CI (.github/workflows/release.yml) runs the same steps with these set:
 #   IN_PLACE=1                 build the current checkout instead of ../AmberNotes-install
@@ -29,7 +30,8 @@ IN_PLACE=${IN_PLACE:-0}
 VERSION=${1:?usage: scripts/release-mac.sh <version> [release notes]}
 NOTES=${2:-}
 BUILD=$(date -u +%Y%m%d%H%M)   # CFBundleVersion: always increasing, which is what Sparkle compares
-FILE="Amber-Notes-$VERSION.dmg"
+FILE="Amber-Notes-$VERSION.dmg"   # for Sparkle (the appcast points here)
+STABLE="Amber-Notes.dmg"          # for people (the download buttons point here)
 MIN_OS=26.0
 
 if [[ -n ${ASC_KEY_PATH:-} ]]; then
@@ -85,14 +87,10 @@ notarize "$DIST/app.zip"
 xcrun stapler staple "$APP"
 
 echo "→ DMG"
-# dmgbuild lays out the window in a read-write image; `hdiutil create -srcfolder` compresses it
-# (`hdiutil convert` fails on this Mac with "Resource temporarily unavailable").
-python3 -m dmgbuild -s "$MAIN/brand/dmg/dmg-settings.py" -D app="$APP" "Amber Notes" "$DIST/rw.dmg" >/dev/null
-MNT=$(mktemp -d)
-hdiutil attach "$DIST/rw.dmg" -nobrowse -noverify -noautoopen -mountpoint "$MNT" >/dev/null
-hdiutil create -srcfolder "$MNT" -volname "Amber Notes" -format UDZO -imagekey zlib-level=9 "$DIST/$FILE" >/dev/null
-hdiutil detach "$MNT" -quiet
-rm -f "$DIST/rw.dmg"
+# dmgbuild writes the window (background, icon positions, hidden bars, volume icon) straight into
+# the compressed image. Don't re-pack it with `hdiutil create -srcfolder`: that drops the
+# .DS_Store, and the window falls back to Finder's default.
+"$CLEAN/scripts/dmg/build-dmg.sh" "$APP" "$DIST/$FILE"
 # The Developer ID certificate is cloud-managed (only Xcode's export can use it); sign the DMG
 # too when a local Developer ID identity exists. Notarization doesn't need a signed DMG.
 if security find-identity -v -p codesigning | grep -q "Developer ID Application"; then
@@ -102,8 +100,11 @@ fi
 echo "→ Notarize the DMG"
 notarize "$DIST/$FILE"
 xcrun stapler staple "$DIST/$FILE"
-spctl -a -vv --type install "$DIST/$FILE" 2>&1 | head -2
-spctl -a -vv "$APP" 2>&1 | head -2
+# The app must pass Gatekeeper as notarized Developer ID. The DMG carries a stapled ticket but no
+# signature of its own (cloud-managed certificate), which Gatekeeper accepts for disk images;
+# spctl can't assess an unsigned DMG, so that line is informational only.
+spctl -a -vv "$APP" 2>&1 | grep -q "source=Notarized Developer ID" || { echo "The app didn't pass Gatekeeper." >&2; spctl -a -vv "$APP"; exit 1; }
+xcrun stapler validate "$DIST/$FILE" >/dev/null || { echo "The DMG has no notarization ticket." >&2; exit 1; }
 
 echo "→ Sparkle signature and appcast"
 SIGN=$(ls "$DD"/SourcePackages/artifacts/sparkle/Sparkle/bin/sign_update)
@@ -121,14 +122,17 @@ if [[ -n $NOTES ]]; then
 fi
 WEB="$CLEAN/web"
 mkdir -p "$WEB/public/downloads" "$WEB/public/updates"
-rm -f "$WEB/public/downloads/"*.dmg
+# Two copies of the same DMG: Amber-Notes.dmg is what people download (a stable name), and the
+# versioned one is what Sparkle fetches, so the appcast's signature and length always match it.
+rm -f "$WEB/public/downloads/"Amber-Notes*.dmg(N)   # old versioned and stable copies; (N): none yet is fine
 cp "$DIST/$FILE" "$WEB/public/downloads/$FILE"
+cp "$DIST/$FILE" "$WEB/public/downloads/$STABLE"
 cat > "$WEB/public/updates/appcast.xml" <<EOF
 <?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
   <channel>
     <title>Amber Notes</title>
-    <link>https://amber-notes.vercel.app/updates/appcast.xml</link>
+    <link>https://ambernotes.app/updates/appcast.xml</link>
     <item>
       <title>Version $VERSION</title>
       <pubDate>$DATE</pubDate>
@@ -136,13 +140,13 @@ cat > "$WEB/public/updates/appcast.xml" <<EOF
       <sparkle:shortVersionString>$VERSION</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>$MIN_OS</sparkle:minimumSystemVersion>
       <description><![CDATA[<ul>$ITEMS</ul>]]></description>
-      <enclosure url="https://amber-notes.vercel.app/downloads/$FILE" type="application/octet-stream" $ATTRS />
+      <enclosure url="https://ambernotes.app/downloads/$FILE" type="application/octet-stream" $ATTRS />
     </item>
   </channel>
 </rss>
 EOF
 cat > "$WEB/content/release.json" <<EOF
-{ "version": "$VERSION", "build": "$BUILD", "size": $SIZE, "date": "$ISO", "file": "$FILE", "minimumSystemVersion": "$MIN_OS" }
+{ "version": "$VERSION", "build": "$BUILD", "size": $SIZE, "date": "$ISO", "file": "$STABLE", "sparkleFile": "$FILE", "minimumSystemVersion": "$MIN_OS" }
 EOF
 
 if [[ ${SKIP_DEPLOY:-0} != 1 ]]; then
@@ -151,4 +155,4 @@ if [[ ${SKIP_DEPLOY:-0} != 1 ]]; then
 fi
 [[ ${SKIP_TAG:-0} == 1 ]] || git -C "$MAIN" tag -f "mac-v$VERSION" "$COMMIT"
 
-echo "✓ Amber Notes $VERSION ($BUILD) is live: https://amber-notes.vercel.app/download"
+echo "✓ Amber Notes $VERSION ($BUILD) is live: https://ambernotes.app/download"

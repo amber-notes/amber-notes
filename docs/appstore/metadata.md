@@ -12,7 +12,7 @@ Character counts are checked by `scripts/check-metadata.py`.
 | Primary category | Productivity |
 | Secondary category | Utilities |
 | Content rights | Does not contain, show or access third-party content |
-| Privacy Policy URL | https://amber-notes.vercel.app/privacy |
+| Privacy Policy URL | https://ambernotes.app/privacy |
 
 The name under the icon on the home screen stays "Amber Notes".
 
@@ -38,7 +38,7 @@ WRITE THE WAY YOU THINK
 • Sub-notes: link a note inside another and keep the details one tap away
 
 ALWAYS IN SYNC
-Your notes update across your iPhone, iPad and Mac while you type. Start a list on your phone, finish it on your laptop.
+Your notes live in the cloud and update across your iPhone and Mac while you type. Start a list on your phone, finish it on your Mac.
 
 YOUR AI, YOUR NOTES
 Connect an AI assistant such as ChatGPT or Claude from Settings. You approve each connection in the app, choose read only or read and edit, and can disconnect it at any time. Every change an assistant makes keeps the previous version, so nothing is lost.
@@ -60,9 +60,9 @@ Amber Notes is made by one person who wanted a simpler notes app. Feedback is al
 markdown,checklist,notepad,todo,list,journal,memo,writing,table,sync,ai,notebook,planner,outline
 ```
 
-**Support URL:** https://amber-notes.vercel.app/support
+**Support URL:** https://ambernotes.app/support
 
-**Marketing URL:** https://amber-notes.vercel.app
+**Marketing URL:** https://ambernotes.app
 
 **Copyright:** 2026 Emil Wagman
 
@@ -128,7 +128,7 @@ Sign in with the demo account above: the email and password fields are on the fi
 Things to try:
 • Open "Lisbon in May": a checklist (tick an item and it moves down), a table you can edit cell by cell, and a sub-note ("Hotel booking").
 • Create a note with the compose button, and try the checklist and table buttons above the keyboard.
-• Share a note: open a note, tap ••• → Share → Share Link. The app warns first that the page is public. The page at amber-notes.vercel.app has a "Report this page" link; three reports from different people take a page down automatically, and the developer can take any page down by hand. Terms of use: amber-notes.vercel.app/terms.
+• Share a note: open a note, tap ••• → Share → Share Link. The app warns first that the page is public. The page at ambernotes.app has a "Report this page" link; three reports from different people take a page down automatically, and the developer can take any page down by hand. Terms of use: ambernotes.app/terms.
 • AI connections (optional): Settings → Connect an AI shows how to connect ChatGPT or Claude. Each connection needs approval inside the app. No AI connection is needed to use the app.
 • Delete account: Settings → Account → Delete Account (at the bottom). It deletes the account and all its notes from the server.
 

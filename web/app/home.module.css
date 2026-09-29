@@ -1,0 +1,40 @@
+/* Home page: the promise and the demo; the sections below live in sections.module.css. The
+   changelog and help pages share the centred column at the end. Colours come from the page theme. */
+.main { width: 100%; max-width: 1240px; margin: 0 auto; padding: 0 20px; box-sizing: border-box; display: grid; gap: 160px; align-content: start; }
+@media (max-width: 700px) { .main { gap: 96px; } }
+
+.hero { display: grid; justify-items: center; text-align: center; gap: 14px; padding-top: 96px; }
+.hero .ctas { margin-top: 6px; }
+@media (max-width: 600px) { .hero { padding-top: 44px; gap: 20px; } }
+.h1 { margin: 0; max-width: 21ch; font-size: clamp(40px, 5vw, 74px); line-height: 0.98; font-weight: 800; letter-spacing: -0.045em; text-wrap: balance; }
+/* "your AI" never splits across lines; a tight marker sits behind the words, not an offset bar. */
+.mark {
+  white-space: nowrap; color: inherit; padding: 0 0.08em; border-radius: 0.12em;
+  background: linear-gradient(transparent 58%, var(--mark) 58%, var(--mark) 90%, transparent 90%);
+  -webkit-box-decoration-break: clone; box-decoration-break: clone;
+}
+.hero .lede { text-wrap: balance; max-width: 40em; font-size: clamp(17px, 1.7vw, 19px); }
+.lede { margin: 0; max-width: 32em; font-size: clamp(18px, 2vw, 21px); line-height: 1.45; color: var(--muted); text-wrap: pretty; }
+.ctas { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+.primary, .secondary { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 50px; padding: 0 24px; border-radius: 14px; font-weight: 700; font-size: 16px; text-decoration: none; box-sizing: border-box; }
+.primary { background: var(--cta-bg); color: var(--cta-ink); box-shadow: 0 10px 24px -8px rgba(60, 30, 5, 0.55); }
+.secondary { background: var(--soft); color: var(--muted); }
+.primary:focus-visible, .secondary:focus-visible {
+  outline: 2px solid var(--amber); outline-offset: 3px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .primary { transition: transform 0.12s ease-out, background-color 0.15s ease-out; }
+  .primary:active { transform: scale(0.97); }
+}
+.h2 { margin: 0; font-size: clamp(34px, 4.8vw, 56px); line-height: 1.02; font-weight: 800; letter-spacing: -0.035em; text-wrap: balance; }
+
+/* Changelog and Help: one centred column. */
+.log { width: 100%; max-width: 760px; margin: 0 auto; display: grid; gap: 56px; padding-top: 40px; }
+.logHead { display: grid; gap: 12px; }
+.entry { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 24px; }
+@media (max-width: 600px) { .entry { grid-template-columns: 1fr; gap: 8px; } }
+.entryMeta { display: grid; gap: 4px; align-content: start; }
+.entryVersion { font-weight: 800; font-size: 20px; font-variant-numeric: tabular-nums; }
+.entryDate { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+.entryBody h2 { margin: 0 0 10px; font-size: 24px; letter-spacing: -0.02em; }
+.entryBody ul { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; font-size: 17px; line-height: 1.5; }

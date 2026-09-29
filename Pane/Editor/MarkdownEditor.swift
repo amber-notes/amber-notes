@@ -446,6 +446,9 @@ private struct PlatformEditor: UIViewRepresentable {
         view.setHeader(header)
         view.syncExternal(initialText)
         if controller.target !== view { controller.target = view }
+        // Read here so a change to it lays the text out again.
+        _ = controller.bottomReserve
+        view.setNeedsLayout()
     }
 }
 
@@ -474,6 +477,7 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
         remember(text)
         core.observe(textStorage)
         core.restyle(textStorage, selection: nil, force: true)
+        observeChangeHighlight()
 
         headerLabel.font = .systemFont(ofSize: 13, weight: .medium)
         headerLabel.textColor = .tertiaryLabel
@@ -498,11 +502,44 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
     override func layoutSubviews() {
         super.layoutSubviews()
         let side = max(20, (bounds.width - readableWidth) / 2)
-        let inset = UIEdgeInsets(top: (headerLabel.text ?? "").isEmpty ? 14 : 44, left: side, bottom: 120, right: side)
+        let inset = UIEdgeInsets(top: (headerLabel.text ?? "").isEmpty ? 14 : 44, left: side, bottom: 120 + (controller?.bottomReserve ?? 0), right: side)
         if textContainerInset != inset { textContainerInset = inset }
-        headerLabel.frame = CGRect(x: 0, y: 12, width: bounds.width, height: 18)
+        headerLabel.frame = CGRect(x: 0, y: DateFold.labelTop, width: bounds.width, height: DateFold.labelHeight)
+        foldDate(hasDate)
         layoutCards()
     }
+
+    /// Keeps a short note scrollable by the date's height, and opens every note scrolled past it.
+    private func foldDate(_ hasDate: Bool) {
+        guard hasDate, bounds.height > 0 else { return }
+        let fixed = adjustedContentInset.bottom - contentInset.bottom
+        let extra = DateFold.bottomInset(viewHeight: bounds.height, contentHeight: contentSize.height,
+                                         top: adjustedContentInset.top, bottom: fixed)
+        if abs(contentInset.bottom - extra) > 0.5 { contentInset.bottom = extra }
+        guard !DateFold.showOnOpen, !pulledDate, !isTracking, !isDecelerating else { return }
+        // Until you scroll yourself, the date stays folded: on opening, and when the keyboard
+        // comes up and the text view scrolls the caret into view (a new note's caret sits by the date).
+        var target = DateFold.offset(top: adjustedContentInset.top)
+        // Captures: `-uitest -scrollToText "Where to eat"` opens with that line near the top.
+        if let text = DateFold.scrollToText, let tlm = textLayoutManager, let tcm = tlm.textContentManager {
+            let r = (self.text as NSString).range(of: text)
+            if r.location != NSNotFound, let loc = tcm.location(tcm.documentRange.location, offsetBy: r.location) {
+                tlm.ensureLayout(for: tcm.documentRange)
+                if let frag = tlm.textLayoutFragment(for: loc) {
+                    let y = frag.layoutFragmentFrame.minY + textContainerInset.top - adjustedContentInset.top - 24
+                    target = min(max(target, y), max(target, contentSize.height - bounds.height + adjustedContentInset.bottom))
+                    contentOffset = CGPoint(x: contentOffset.x, y: target)
+                    return
+                }
+            }
+        }
+        if contentOffset.y < target - 0.5 { contentOffset = CGPoint(x: contentOffset.x, y: target) }
+    }
+
+    /// You scrolled: from here on the date shows whenever you pull down.
+    private var pulledDate = false
+
+    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) { pulledDate = true }
 
     /// Places live views (cards, files, links) over their reserved lines.
     private func layoutCards() {
@@ -648,6 +685,8 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
 
     private func textDidChange() {
         guard markedTextRange == nil else { return }
+        takeWhatArrivedWhileComposing()
+        core.layoutDelegate.tint.stop()
         core.restyle(textStorage, selection: editingSelection, force: true)
         typingAttributes = core.styler.typingAttributes
         lastReported = text
@@ -665,14 +704,69 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
         if reported.count > 64 { reported.removeFirst(reported.count - 64) }
     }
 
+    /// Redraws just the lines an AI changed while their tint swells and fades.
+    private func observeChangeHighlight() {
+        core.layoutDelegate.tint.redraw = { [weak self] ranges in
+            MainActor.assumeIsolated {
+                // An attributes-only edit of those lines: TextKit lays them out and draws them
+                // again, the same way styling does (invalidating layout alone leaves the Mac's
+                // on-screen fragments as they were). It isn't a text change, so nothing is saved.
+                guard let self else { return }
+                let storage = self.textStorage
+                let length = storage.length
+                storage.beginEditing()
+                for r in ranges where NSMaxRange(r) <= length { storage.edited(.editedAttributes, range: r, changeInLength: 0) }
+                storage.endEditing()
+                // Tables and cards sit over their lines: put them back where the lines now are.
+                self.settleOverlays(after: ranges.map(NSMaxRange).max() ?? 0)
+            }
+        }
+    }
+
+    /// An AI's edit just landed: tint the lines it changed compared with `previous`.
+    func tintChanges(from previous: String) {
+        core.layoutDelegate.tint.play(from: previous, to: currentText)
+    }
+
+    func clearTint() { core.layoutDelegate.tint.stop() }
+
+    /// Lays the text out from the top to past `offset`, then places tables and cards again.
+    private func settleOverlays(after offset: Int) {
+        guard let tlm = textLayoutManager, let tcm = tlm.textContentManager else { return }
+        let length = tcm.offset(from: tcm.documentRange.location, to: tcm.documentRange.endLocation)
+        guard let end = tcm.location(tcm.documentRange.location, offsetBy: min(length, offset + 2000)),
+              let range = NSTextRange(location: tcm.documentRange.location, end: end) else { return }
+        tlm.ensureLayout(for: range)
+        setNeedsLayout()
+    }
+
     func syncExternal(_ new: String) {
         guard new != lastReported else { return }
         // The note still holds text we typed a moment ago (it's saved once typing
         // pauses): that's not a change from elsewhere.
         if reported.contains(new.hashValue) { return }
+        // Mid-composition (an input method, dictation) the text can't change under it:
+        // the change is taken in when the composition ends (textDidChange).
+        if markedTextRange != nil { arrivedWhileComposing = new; return }
         reported.removeAll()
         lastReported = new
+        replaceText(with: new)
+    }
+
+    /// A change from elsewhere that arrived while you were composing.
+    private var arrivedWhileComposing: String?
+
+    /// The composition ended: put the change that arrived meanwhile under what you typed,
+    /// or, if you both changed the same lines, keep yours (the other is in version history).
+    private func takeWhatArrivedWhileComposing() {
+        guard let arrived = arrivedWhileComposing else { return }
+        arrivedWhileComposing = nil
+        if let merged = TextDiff.merge(base: lastReported, mine: text, theirs: arrived) { replaceText(with: merged) }
+    }
+
+    private func replaceText(with new: String) {
         guard new != text, markedTextRange == nil, let edit = TextDiff.edit(from: text, to: new) else { return }
+        core.layoutDelegate.tint.stop()
         // Only what changed is replaced, so your caret, selection and scroll stay put.
         let keep = selectedRange
         let offset = contentOffset
@@ -681,6 +775,7 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
         undoManager?.removeAllActions()
         selectedRange = TextDiff.map(keep, through: edit)
         core.restyle(textStorage, selection: editingSelection, force: true)
+        settleOverlays(after: NSMaxRange(edit.range) + (edit.replacement as NSString).length)
         setContentOffset(offset, animated: false)
     }
 
@@ -932,6 +1027,7 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
         lastReported = text
         remember(text)
         core.observe(textStorage!)
+        observeChangeHighlight()
         core.restyle(textStorage!, selection: nil, force: true)
 
         headerLabel.font = .systemFont(ofSize: 11, weight: .medium)
@@ -1112,6 +1208,8 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
 
     func textDidChange(_ notification: Notification) {
         guard !hasMarkedText() else { return }
+        takeWhatArrivedWhileComposing()
+        core.layoutDelegate.tint.stop()
         core.restyle(textStorage!, selection: editingSelection, force: true)
         typingAttributes = core.styler.typingAttributes
         lastReported = string
@@ -1129,15 +1227,69 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
         if reported.count > 64 { reported.removeFirst(reported.count - 64) }
     }
 
+    /// Redraws just the lines an AI changed while their tint swells and fades.
+    private func observeChangeHighlight() {
+        core.layoutDelegate.tint.redraw = { [weak self] ranges in
+            MainActor.assumeIsolated {
+                // An attributes-only edit of those lines: TextKit lays them out and draws them
+                // again, the same way styling does (invalidating layout alone leaves the Mac's
+                // on-screen fragments as they were). It isn't a text change, so nothing is saved.
+                guard let self, let storage = self.textStorage else { return }
+                let length = storage.length
+                storage.beginEditing()
+                for r in ranges where NSMaxRange(r) <= length { storage.edited(.editedAttributes, range: r, changeInLength: 0) }
+                storage.endEditing()
+                // Tables and cards sit over their lines: put them back where the lines now are.
+                self.settleOverlays(after: ranges.map(NSMaxRange).max() ?? 0)
+            }
+        }
+    }
+
+    /// An AI's edit just landed: tint the lines it changed compared with `previous`.
+    func tintChanges(from previous: String) {
+        core.layoutDelegate.tint.play(from: previous, to: currentText)
+    }
+
+    func clearTint() { core.layoutDelegate.tint.stop() }
+
+    /// Lays the text out from the top to past `offset`, then places tables and cards again.
+    private func settleOverlays(after offset: Int) {
+        guard let tlm = textLayoutManager, let tcm = tlm.textContentManager else { return }
+        let length = tcm.offset(from: tcm.documentRange.location, to: tcm.documentRange.endLocation)
+        guard let end = tcm.location(tcm.documentRange.location, offsetBy: min(length, offset + 2000)),
+              let range = NSTextRange(location: tcm.documentRange.location, end: end) else { return }
+        tlm.ensureLayout(for: range)
+        layoutCards()
+    }
+
     func syncExternal(_ new: String) {
         guard new != lastReported else { return }
         // The note still holds text we typed a moment ago (it's saved once typing
         // pauses): that's not a change from elsewhere.
         if reported.contains(new.hashValue) { return }
+        // Mid-composition (a dead key, an input method) the text can't change under it:
+        // the change is taken in when the composition ends (textDidChange).
+        if hasMarkedText() { arrivedWhileComposing = new; return }
         reported.removeAll()
         lastReported = new
+        replaceText(with: new)
+    }
+
+    /// A change from elsewhere that arrived while you were composing.
+    private var arrivedWhileComposing: String?
+
+    /// The composition ended: put the change that arrived meanwhile under what you typed,
+    /// or, if you both changed the same lines, keep yours (the other is in version history).
+    private func takeWhatArrivedWhileComposing() {
+        guard let arrived = arrivedWhileComposing else { return }
+        arrivedWhileComposing = nil
+        if let merged = TextDiff.merge(base: lastReported, mine: string, theirs: arrived) { replaceText(with: merged) }
+    }
+
+    private func replaceText(with new: String) {
         guard new != string, !hasMarkedText(), let storage = textStorage,
               let edit = TextDiff.edit(from: string, to: new) else { return }
+        core.layoutDelegate.tint.stop()
         // Only what changed is replaced, so your caret, selection and scroll stay put.
         let keep = selectedRange()
         storage.replaceCharacters(in: edit.range, with: edit.replacement)
@@ -1145,6 +1297,9 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
         undoManager?.removeAllActions()
         setSelectedRange(TextDiff.map(keep, through: edit))
         core.restyle(storage, selection: editingSelection, force: true)
+        // Tables and cards below the change moved: lay the text out down to them before placing them,
+        // or they're placed by estimate (a new table row pushed the grid over its heading).
+        settleOverlays(after: NSMaxRange(edit.range) + (edit.replacement as NSString).length)
     }
 
     func textViewDidChangeSelection(_ notification: Notification) {

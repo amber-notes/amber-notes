@@ -104,3 +104,29 @@ enum EditorMetrics {
         #endif
     }
 }
+
+/// iPhone: a note opens with its date just above the top, like Notes; you pull down to see it.
+enum DateFold {
+    static let labelTop: CGFloat = 12
+    static let labelHeight: CGFloat = 18
+    /// How far the note starts scrolled: the date and a little air under it.
+    static let hide: CGFloat = labelTop + labelHeight + 2
+
+    /// The content offset that puts the date just out of view.
+    static func offset(top: CGFloat) -> CGFloat { -top + hide }
+
+    /// The extra room a short note needs at the bottom so it can still scroll past the date.
+    static func bottomInset(viewHeight: CGFloat, contentHeight: CGFloat, top: CGFloat, bottom: CGFloat) -> CGFloat {
+        max(0, viewHeight - top - bottom + hide - contentHeight)
+    }
+
+    /// Captures: `-uitest -showDate` opens notes with the date in view (as if pulled down).
+    static let showOnOpen = ProcessInfo.processInfo.arguments.contains("-uitest") && ProcessInfo.processInfo.arguments.contains("-showDate")
+
+    /// Captures: a line to open scrolled to.
+    static let scrollToText: String? = {
+        let a = ProcessInfo.processInfo.arguments
+        guard a.contains("-uitest"), let i = a.firstIndex(of: "-scrollToText"), i + 1 < a.count else { return nil }
+        return a[i + 1]
+    }()
+}
