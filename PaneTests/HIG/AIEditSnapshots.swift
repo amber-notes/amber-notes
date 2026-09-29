@@ -407,6 +407,29 @@ import Testing
         }
     }
 
+    /// The receipt pills on their own, transparent, for the website.
+    @Test func receiptPills() async throws {
+        guard let dir = ProcessInfo.processInfo.environment["AMBER_DEMO_FRAMES"].map({ URL(fileURLWithPath: $0) }) else { return }
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        for (name, lines, created) in [("pill-chatgpt-wrote-note", 14, true), ("pill-chatgpt-2-lines", 2, false)] {
+            let r = AIEdit.Receipt(noteID: UUID(), by: "ChatGPT", at: .now, previous: "", lines: lines, created: created)
+            let host = NSHostingView(rootView: AIReceipt(receipt: r, undo: {}).padding(24).fixedSize())
+            host.appearance = NSAppearance(named: .aqua)
+            let win = NSWindow(contentRect: CGRect(x: -30000, y: -30000, width: 500, height: 100), styleMask: [.borderless], backing: .buffered, defer: false)
+            win.isReleasedWhenClosed = false
+            win.isOpaque = false
+            win.backgroundColor = .clear
+            win.contentView = host
+            host.frame = CGRect(origin: .zero, size: host.fittingSize)
+            win.setContentSize(host.fittingSize)
+            try? await Task.sleep(for: .seconds(0.4))
+            defer { win.close() }
+            let rep = try #require(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+            host.cacheDisplay(in: host.bounds, to: rep)
+            try #require(rep.representation(using: .png, properties: [:])).write(to: dir.appending(path: "\(name)@2x.png"))
+        }
+    }
+
     static func textViews(in view: NSView?) -> [PaneTextView] {
         guard let view else { return [] }
         return (view as? PaneTextView).map { [$0] } ?? view.subviews.flatMap { textViews(in: $0) }

@@ -177,7 +177,7 @@ extension Capture {
         NoteOpener.shared.open(lisbon.id)
         await wait(1.6 * k)
         await shoot("lisbon-1-tint-and-pill")
-        await wait(6.5 * k)
+        await release(wait)
         await shoot("lisbon-1-faded")
 
         // 2: one precise edit on the open note.
@@ -189,9 +189,17 @@ extension Capture {
         AIEdit.arrived(lisbon, previousBody: old, previousEditAt: oldAt, quiet: false)
         await wait(1.3 * k)
         await shoot("lisbon-2-tint-and-pill")
-        await wait(6.5 * k)
+        await release(wait)
         await shoot("lisbon-2-faded")
     }
+
+    /// Clears the held tint and receipt (the faded state), and waits for them to leave.
+    @MainActor static func release(_ wait: (Double) async -> Void) async {
+        NotificationCenter.default.post(name: clearAIMarks, object: nil)
+        await wait(1.0)
+    }
+
+    static let clearAIMarks = Notification.Name("pane.captureClearAIMarks")
 }
 
 /// The website demo, captured from a real front window (so it looks focused):
@@ -228,6 +236,8 @@ extension Capture {
         // A busy Mac takes seconds per screencapture: `-captureSlow 4` stretches the tint and receipt to match.
         let k = argument("-captureSlow").flatMap(Double.init) ?? 1
         ChangeTint.slowMotion = k
+        // Each "landed" frame holds still until it's taken, however long a busy Mac takes.
+        ChangeTint.holdForCapture = true
         w.setContentSize(NSSize(width: 1180, height: height))
         // On a Retina screen, so the frames come out at 2x.
         if let screen = NSScreen.screens.max(by: { $0.backingScaleFactor < $1.backingScaleFactor }) {
