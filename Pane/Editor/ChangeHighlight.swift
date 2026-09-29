@@ -37,8 +37,11 @@ final class ChangeTint: @unchecked Sendable {
     /// How strongly to tint the paragraph starting at `offset`: 0 for not at all.
     func strength(at offset: Int) -> CGFloat {
         guard strength > 0 else { return 0 }
-        return ranges.contains { NSLocationInRange(offset, $0) } ? strength : 0
+        return covers(offset) ? strength : 0
     }
+
+    /// Whether the paragraph starting at `offset` is one of the changed lines, tinted or not yet cleared.
+    func covers(_ offset: Int) -> Bool { ranges.contains { NSLocationInRange(offset, $0) } }
 
     /// Tints the paragraphs of `text` that `previous` didn't have, then fades them.
     @MainActor func play(from previous: String, to text: String, hold: Double = 2.6) {
@@ -52,33 +55,34 @@ final class ChangeTint: @unchecked Sendable {
             guard await animate(to: 1.5, over: 0.3, easeOut, run: mine, lit: lit),
                   await animate(to: 1, over: 0.5, easeInOut, run: mine, lit: lit) else { return }
             try? await Task.sleep(for: .seconds(hold * Self.slowMotion))
-            guard await animate(to: 0, over: 1.6, easeInOut, run: mine, lit: lit), mine == run else { return }
+            guard await animate(to: 0, over: 1.6, easeInOut, run: mine, lit: lit) else { return }
             ranges = []
         }
     }
 
-    /// Steps the strength to `target` at 30 frames a second; false once another run took over.
+    /// Moves the strength to `target` over `seconds` of wall-clock time, about 30 redraws a
+    /// second (fewer if the main thread is busy; it never runs long). False once another run took over.
     @MainActor private func animate(to target: CGFloat, over seconds: Double, _ curve: @Sendable (Double) -> Double, run mine: Int, lit: [NSRange]) async -> Bool {
-        let fps = 30.0
-        let n = max(1, Int(seconds * Self.slowMotion * fps))
-        let from = strength
-        for i in 1...n {
+        let duration = seconds * Self.slowMotion
+        let from = strength, start = Date.now
+        while true {
             guard mine == run else { return false }
-            strength = from + (target - from) * CGFloat(curve(Double(i) / Double(n)))
+            let t = min(1, Date.now.timeIntervalSince(start) / duration)
+            strength = from + (target - from) * CGFloat(curve(t))
             redraw(lit)
-            try? await Task.sleep(for: .seconds(1 / fps))
+            if t >= 1 { return true }
+            try? await Task.sleep(for: .seconds(1 / 30.0))
         }
-        return mine == run
     }
 
     /// Clears at once (you started typing, or undid the edit).
     @MainActor func stop() {
         run += 1
         guard strength > 0 || !ranges.isEmpty else { return }
-        let lit = ranges
+        // Redraw while the lines are still known, so their old tint is painted over.
         strength = 0
+        redraw(ranges)
         ranges = []
-        redraw(lit)
     }
 
     /// Line numbers (0-based) of `new` that are added or rewritten compared with `old`. A line

@@ -38,16 +38,29 @@ final class DecoratedLayoutFragment: NSTextLayoutFragment {
         return (mix(0.18 * strength), mix(min(1, strength)))
     }
 
-    /// Changed by an AI connection just now: how strongly to tint it, 0 for not at all.
-    private var highlight: CGFloat {
-        guard let p = textElement as? NSTextParagraph else { return 0 }
-        if !ChangeHighlight.lines.isEmpty { return ChangeHighlight.matches(p.attributedString.string) ? 1 : 0 }
-        guard let tlm = textLayoutManager, let tint = (tlm.delegate as? DecoratingLayoutDelegate)?.tint, tint.strength > 0,
-              let tcm = tlm.textContentManager, let start = p.elementRange?.location else { return 0 }
-        return tint.strength(at: tcm.offset(from: tcm.documentRange.location, to: start))
+    /// Where this paragraph starts in the text, and the editor's tint for AI changes.
+    private var tintAndOffset: (ChangeTint, Int)? {
+        guard let tlm = textLayoutManager, let tint = (tlm.delegate as? DecoratingLayoutDelegate)?.tint, !tint.ranges.isEmpty,
+              let tcm = tlm.textContentManager, let start = textElement?.elementRange?.location else { return nil }
+        return (tint, tcm.offset(from: tcm.documentRange.location, to: start))
     }
 
-    private var highlighted: Bool { highlight > 0 }
+    /// Changed by an AI connection just now: how strongly to tint it, 0 for not at all.
+    private var highlight: CGFloat {
+        if !ChangeHighlight.lines.isEmpty, let p = textElement as? NSTextParagraph {
+            return ChangeHighlight.matches(p.attributedString.string) ? 1 : 0
+        }
+        guard let (tint, offset) = tintAndOffset else { return 0 }
+        return tint.strength(at: offset)
+    }
+
+    /// Room for the tint while the line is one of the changed ones, even at zero, so the last
+    /// frame of the fade paints over the band.
+    private var highlighted: Bool {
+        if !ChangeHighlight.lines.isEmpty { return highlight > 0 }
+        guard let (tint, offset) = tintAndOffset else { return false }
+        return tint.covers(offset)
+    }
 
     override var renderingSurfaceBounds: CGRect {
         let base = super.renderingSurfaceBounds
