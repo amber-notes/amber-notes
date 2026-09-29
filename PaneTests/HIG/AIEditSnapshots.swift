@@ -374,6 +374,39 @@ import Testing
         }
     }
 
+    /// The tint at a few strengths, light and dark, for choosing one.
+    @Test func tintStrengths() async throws {
+        guard Self.dir != nil else { return }
+        defer { DecoratedLayoutFragment.tintAmount = 0.18 }
+        for amount in [0.18, 0.24, 0.28] {
+            DecoratedLayoutFragment.tintAmount = CGFloat(amount)
+            for dark in [false, true] {
+                let c = try AppSnapshotTests.container()
+                try await AppSnapshotTests.withLastNote(c, "Groceries") {
+                    let w = Self.window(Self.root(c), size: CGSize(width: 1180, height: 720), dark: dark)
+                    defer { w.orderOut(nil); w.close() }
+                    try? await Task.sleep(for: .seconds(1.2))
+                    Capture.aiEdit(c.mainContext, title: "Groceries", scene: "paella", by: "ChatGPT")
+                    try? await Task.sleep(for: .seconds(1.6))
+                    try Self.snap(w, "tint-\(Int(amount * 100))-\(dark ? "dark" : "light")")
+                }
+            }
+        }
+    }
+
+    /// The Lisbon story, offscreen, to check the layout before a foreground run.
+    @Test func lisbonPreview() async throws {
+        guard Self.dir != nil else { return }
+        let c = try AppSnapshotTests.container()
+        try await AppSnapshotTests.withLastNote(c, "Groceries") {
+            let w = Self.window(Self.root(c), size: CGSize(width: 1180, height: 720))
+            defer { w.orderOut(nil); w.close() }
+            try? await Task.sleep(for: .seconds(1))
+            if let split = Self.splitView(in: w.contentView) { split.setPosition(208, ofDividerAt: 0); split.setPosition(468, ofDividerAt: 1) }
+            await Capture.lisbonStory(c.mainContext, k: 1) { name in try? Self.snap(w, "preview-\(name)") }
+        }
+    }
+
     static func textViews(in view: NSView?) -> [PaneTextView] {
         guard let view else { return [] }
         return (view as? PaneTextView).map { [$0] } ?? view.subviews.flatMap { textViews(in: $0) }

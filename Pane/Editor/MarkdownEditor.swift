@@ -701,6 +701,8 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
                 storage.beginEditing()
                 for r in ranges where NSMaxRange(r) <= length { storage.edited(.editedAttributes, range: r, changeInLength: 0) }
                 storage.endEditing()
+                // Tables and cards sit over their lines: put them back where the lines now are.
+                self.settleOverlays(after: ranges.map(NSMaxRange).max() ?? 0)
             }
         }
     }
@@ -708,6 +710,16 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
     /// An AI's edit just landed: tint the lines it changed compared with `previous`.
     func tintChanges(from previous: String) {
         core.layoutDelegate.tint.play(from: previous, to: currentText)
+    }
+
+    /// Lays the text out from the top to past `offset`, then places tables and cards again.
+    private func settleOverlays(after offset: Int) {
+        guard let tlm = textLayoutManager, let tcm = tlm.textContentManager else { return }
+        let length = tcm.offset(from: tcm.documentRange.location, to: tcm.documentRange.endLocation)
+        guard let end = tcm.location(tcm.documentRange.location, offsetBy: min(length, offset + 2000)),
+              let range = NSTextRange(location: tcm.documentRange.location, end: end) else { return }
+        tlm.ensureLayout(for: range)
+        setNeedsLayout()
     }
 
     func syncExternal(_ new: String) {
@@ -727,6 +739,7 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
         undoManager?.removeAllActions()
         selectedRange = TextDiff.map(keep, through: edit)
         core.restyle(textStorage, selection: editingSelection, force: true)
+        settleOverlays(after: NSMaxRange(edit.range) + (edit.replacement as NSString).length)
         setContentOffset(offset, animated: false)
     }
 
@@ -1189,6 +1202,8 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
                 storage.beginEditing()
                 for r in ranges where NSMaxRange(r) <= length { storage.edited(.editedAttributes, range: r, changeInLength: 0) }
                 storage.endEditing()
+                // Tables and cards sit over their lines: put them back where the lines now are.
+                self.settleOverlays(after: ranges.map(NSMaxRange).max() ?? 0)
             }
         }
     }
@@ -1196,6 +1211,16 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
     /// An AI's edit just landed: tint the lines it changed compared with `previous`.
     func tintChanges(from previous: String) {
         core.layoutDelegate.tint.play(from: previous, to: currentText)
+    }
+
+    /// Lays the text out from the top to past `offset`, then places tables and cards again.
+    private func settleOverlays(after offset: Int) {
+        guard let tlm = textLayoutManager, let tcm = tlm.textContentManager else { return }
+        let length = tcm.offset(from: tcm.documentRange.location, to: tcm.documentRange.endLocation)
+        guard let end = tcm.location(tcm.documentRange.location, offsetBy: min(length, offset + 2000)),
+              let range = NSTextRange(location: tcm.documentRange.location, end: end) else { return }
+        tlm.ensureLayout(for: range)
+        layoutCards()
     }
 
     func syncExternal(_ new: String) {
@@ -1215,6 +1240,9 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
         undoManager?.removeAllActions()
         setSelectedRange(TextDiff.map(keep, through: edit))
         core.restyle(storage, selection: editingSelection, force: true)
+        // Tables and cards below the change moved: lay the text out down to them before placing them,
+        // or they're placed by estimate (a new table row pushed the grid over its heading).
+        settleOverlays(after: NSMaxRange(edit.range) + (edit.replacement as NSString).length)
     }
 
     func textViewDidChangeSelection(_ notification: Notification) {
