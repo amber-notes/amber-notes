@@ -1,4 +1,10 @@
-"""dmgbuild, with hdiutil made dependable on this Mac.
+"""dmgbuild, with hdiutil made dependable on this Mac and a background that Finder always finds.
+
+The background picture: dmgbuild records it only as a classic alias, which resolves by volume
+name. With another "Amber Notes" volume mounted (an older download, say), it points at that
+volume's picture and Finder shows its default window instead. So the alias is pinned to
+/Volumes/<name> as an ejectable disk, and the .DS_Store also gets a Foundation bookmark (pBBk),
+the record Finder writes itself, which finds the volume by its UUID.
 
 `hdiutil convert` to a compressed UDIF image fails with "Resource temporarily unavailable"
 (EAGAIN while writing the UDIF header) on every try when the image has a GUID partition map,
@@ -13,16 +19,52 @@ convert fails: the same window and contents, just larger. Releases never set it.
 import os
 import plistlib
 import shutil
+import subprocess
 import sys
+import tempfile
 import time
 
 import dmgbuild.core as core
 from dmgbuild.__main__ import main
+from ds_store import DSStore
+from mac_alias import ALIAS_EJECTABLE_DISK, Alias
 
+HERE = os.path.dirname(os.path.abspath(__file__))
 _hdiutil = core.hdiutil
+background = []  # the background picture's path inside the mounted image
+
+
+class PinnedAlias(Alias):
+    @classmethod
+    def for_file(cls, path):
+        a = super().for_file(path)
+        a.volume.posix_path = b"/Volumes/" + a.volume.name
+        a.volume.disk_type = ALIAS_EJECTABLE_DISK
+        background.append(path)
+        return a
+
+
+class RawBookmark:
+    def __init__(self, data):
+        self.data = data
+
+    def to_bytes(self):
+        return self.data
+
+
+def add_bookmark():
+    path = background.pop()
+    with tempfile.TemporaryDirectory() as tmp:
+        out = os.path.join(tmp, "bookmark")
+        subprocess.run(["/usr/bin/xcrun", "swift", os.path.join(HERE, "bookmark.swift"), path, out], check=True)
+        data = open(out, "rb").read()
+    with DSStore.open(os.path.join(os.path.dirname(path), ".DS_Store"), "r+") as d:
+        d["."]["pBBk"] = RawBookmark(data)
 
 
 def hdiutil(cmd, *args, **kwargs):
+    if cmd == "detach" and background:  # the .DS_Store is written; the image is still mounted
+        add_bookmark()
     if cmd == "create":
         args = ("-layout", "NONE") + args
     if cmd != "convert":
@@ -45,4 +87,5 @@ def hdiutil(cmd, *args, **kwargs):
 
 
 core.hdiutil = hdiutil
+core.Alias = PinnedAlias
 sys.exit(main())

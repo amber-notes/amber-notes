@@ -20,6 +20,8 @@ hide_extensions = [name]
 icon = os.path.join(app, "Contents", "Resources", "AppIcon.icns")  # the volume icon is the app's own
 background = os.path.join(repo, "brand", "dmg", direction, "background.tiff")  # 1x and 2x reps
 
+# The bounds include the title bar (about 28 pt), so the content area is 540 x ~352 and the icons
+# and labels are centred in that; the picture is drawn at the full 540 x 380, its bottom unseen.
 width, height = layout["window"]
 window_rect = ((200, 140), (width, height))
 default_view = "icon-view"

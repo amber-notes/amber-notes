@@ -1,7 +1,8 @@
 {
-  "window": [540, 340],
+  "window": [540, 380],
+  "title_bar": 28,
   "icon_size": 128,
   "text_size": 13,
-  "app": [150, 155],
-  "applications": [390, 155]
+  "app": [150, 166],
+  "applications": [390, 166]
 }
