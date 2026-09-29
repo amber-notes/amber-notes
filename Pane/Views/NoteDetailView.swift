@@ -52,18 +52,18 @@ struct NoteDetailView: View {
 
     #if os(iOS)
     /// On iPhone the note's tips sit just above the toolbar: a popover from a toolbar button
-    /// never appears there. TipKit shows at most one of them, and only when it's due.
+    /// never appears there. TipKit shows at most one of them, and only when it's due. The note
+    /// keeps room below its last line so it can scroll clear of the tip.
     private var phoneTips: some View {
         VStack(spacing: 8) {
-            TipView(VersionHistoryTip()) { action in if action.id == "open" { showHistory = true } }
-                .logsTip(VersionHistoryTip())
-            TipView(ShareLinkTip()).logsTip(ShareLinkTip())
-            TipView(ChecklistTip()).logsTip(ChecklistTip())
-            TipView(TableTip(), action: tableTipAction).logsTip(TableTip())
+            CompactTip(tip: VersionHistoryTip()) { a in if a.id == "open" { showHistory = true } }
+            CompactTip(tip: ShareLinkTip())
+            CompactTip(tip: ChecklistTip())
+            CompactTip(tip: TableTip(), action: tableTipAction)
         }
-        .tipImageStyle(Color(PColor.paneAccent))
         .padding(.horizontal, 16)
-        .padding(.bottom, 8)
+        .padding(.bottom, 6)
+        .onGeometryChange(for: CGFloat.self, of: \.size.height) { controller.bottomReserve = $0 }
     }
     #endif
 

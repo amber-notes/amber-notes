@@ -9,6 +9,9 @@ final class EditorController {
     /// Set by the platform text view while it is on screen.
     @ObservationIgnored weak var target: (any EditorTarget)?
     var isEditing = false
+    /// Room kept free under the note's last line for something laid over the bottom (iPhone
+    /// tips), so the text can always scroll clear of it.
+    var bottomReserve: CGFloat = 0
     /// The file being shown in Quick Look.
     var previewURL: URL?
     /// Files being fetched from the server.

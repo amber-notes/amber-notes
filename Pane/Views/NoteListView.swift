@@ -300,7 +300,8 @@ struct NoteListView: View {
     #if os(iOS)
     /// "Did you know" for what isn't a button here, as a row at the top of the list.
     private var listTip: some View {
-        Section { TipView(ShareExtensionTip(), arrowEdge: nil).tipImageStyle(Color(PColor.paneAccent)).selectionDisabled() }
+        // One grouped card, like the Get set up card: the tip is the row, on the row's own surface.
+        Section { CompactTip(tip: ShareExtensionTip(), card: false).selectionDisabled() }
     }
     #endif
 

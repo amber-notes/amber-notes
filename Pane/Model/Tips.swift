@@ -293,18 +293,18 @@ private var commonRules: [Tips.Rule] {
 struct VersionHistoryTip: Tip {
     var id: String { "versionHistory" }
     var title: Text { Text("Changed your mind?") }
-    var message: Text? { Text("Every version of this note is kept. You can look back and restore any of them.") }
+    var message: Text? { Text("Every version of this note is kept.") }
     var image: Image? { TipGlyph.image("clock.arrow.circlepath") }
     var rules: [Rule] { commonRules + [#Rule(PaneTips.$historyMoment) { $0 == true }, #Rule(PaneTips.$turn) { $0 == "" || $0 == "versionHistory" }] }
     var options: [any TipOption] { [Tips.MaxDisplayCount(2)] }
-    var actions: [Action] { [Action(id: "open", title: "Show Version History")] }
+    var actions: [Action] { [Action(id: "open", title: "Show Versions")] }
 }
 
 /// 2. A note long enough to send, or a checklist.
 struct ShareLinkTip: Tip {
     var id: String { "shareLink" }
     var title: Text { Text("Send this note as a link") }
-    var message: Text? { Text("Anyone with the link can read it in a browser, and it updates as you edit.") }
+    var message: Text? { Text("Anyone with the link can read it, and it stays up to date.") }
     var image: Image? { TipGlyph.image("link") }
     var rules: [Rule] { commonRules + [#Rule(PaneTips.$noteIsLong) { $0 == true }, #Rule(PaneTips.$turn) { $0 == "" || $0 == "shareLink" }] }
     var options: [any TipOption] { [Tips.MaxDisplayCount(2)] }
@@ -314,7 +314,7 @@ struct ShareLinkTip: Tip {
 struct ChecklistTip: Tip {
     var id: String { "checklistTidy" }
     var title: Text { Text("Lists tidy themselves") }
-    var message: Text? { Text("Ticked items move to the bottom, so what's left to do stays on top.") }
+    var message: Text? { Text("Ticked items move to the bottom.") }
     var image: Image? { TipGlyph.image("checklist") }
     var rules: [Rule] { commonRules + [#Rule(PaneTips.$justTicked) { $0 == true }, #Rule(PaneTips.$turn) { $0 == "" || $0 == "checklistTidy" }] }
     var options: [any TipOption] { [Tips.MaxDisplayCount(1)] }
@@ -324,7 +324,7 @@ struct ChecklistTip: Tip {
 struct TableTip: Tip {
     var id: String { "tableFromText" }
     var title: Text { Text("Turn this into a table") }
-    var message: Text? { Text("Lines with tabs or | between words can become a table you can sort and chart.") }
+    var message: Text? { Text("Lines with tabs or | between words can become a table.") }
     var image: Image? { TipGlyph.image("tablecells") }
     var rules: [Rule] { commonRules + [#Rule(PaneTips.$noteHasTableText) { $0 == true }, #Rule(PaneTips.$turn) { $0 == "" || $0 == "tableFromText" }] }
     var options: [any TipOption] { [Tips.MaxDisplayCount(2)] }
@@ -353,7 +353,7 @@ struct MenuBarTip: Tip {
 struct ShareExtensionTip: Tip {
     var id: String { "shareExtension" }
     var title: Text { Text("Save from any app") }
-    var message: Text? { Text("In Safari or any app, tap Share, then Amber Notes. It lands here as a note.") }
+    var message: Text? { Text("In Safari or any app, tap Share, then Amber Notes.") }
     var image: Image? { TipGlyph.image("square.and.arrow.up") }
     var rules: [Rule] { commonRules + [#Rule(PaneTips.imported) { $0.donations.count >= 1 }, #Rule(PaneTips.$turn) { $0 == "" || $0 == "shareExtension" }] }
     var options: [any TipOption] { [Tips.MaxDisplayCount(2)] }
@@ -397,6 +397,80 @@ struct SettledPopoverTip<T: Tip>: ViewModifier {
         }
     }
 }
+
+#if os(iOS)
+/// A tip on iPhone: one quiet surface, a line or two, a small text button and a plain close.
+/// TipKit decides when (`shouldDisplayUpdates`) and remembers the close (`invalidate`); this only
+/// draws it. `card` gives it its own rounded surface; in a list row it uses the row's.
+struct CompactTip<T: Tip>: View {
+    let tip: T
+    var card = true
+    var action: (Tips.Action) -> Void = { _ in }
+    @State private var shown = false
+
+    var body: some View {
+        // A zero-height anchor keeps the view alive (and its task watching) while nothing shows.
+        VStack(spacing: 0) {
+            Color.clear.frame(height: 0)
+            if shown { content.transition(.opacity) }
+        }
+        .animation(.easeOut(duration: 0.2), value: shown)
+        .task(id: tip.id) {
+            for await due in tip.shouldDisplayUpdates {
+                shown = due
+                if due { TipLog.shown(tip.id) }
+            }
+        }
+    }
+
+    private var content: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            tip.image?
+                .font(.subheadline)
+                .foregroundStyle(Color(PColor.paneAccent))
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                tip.title
+                    .font(.subheadline.weight(.semibold))
+                if let message = tip.message {
+                    message
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                ForEach(tip.actions, id: \.id) { a in
+                    Button { action(a) } label: { a.label() }
+                        .font(.subheadline.weight(.semibold))
+                        .buttonStyle(.plain)
+                        .foregroundStyle(Color(PColor.paneAccent))
+                        .padding(.top, 2)
+                }
+            }
+            Spacer(minLength: 0)
+            Button {
+                tip.invalidate(reason: .tipClosed)
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 28, height: 28)
+                    .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Close tip")
+        }
+        .padding(.leading, card ? 14 : 0)
+        .padding(.trailing, card ? 6 : 0)
+        .padding(.vertical, card ? 8 : 2)
+        .background {
+            if card {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color(uiColor: .secondarySystemBackground))
+            }
+        }
+    }
+}
+#endif
 
 // MARK: Measuring
 
