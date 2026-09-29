@@ -344,12 +344,13 @@ import Testing
         defer { AppleNotesBridge.forceDemo = false; AppleNotesBridge.forceLarge = false }
         for dark in [false, true] {
             let c = try AppSnapshotTests.container()
-            let host = Color(nsColor: .windowBackgroundColor)
+            // Over the app itself, in a window just big enough to frame the sheet.
+            let host = Self.root(c)
                 .sheet(isPresented: .constant(true)) {
                     AppleNotesImportView().modelContainer(c).tint(Color(PColor.paneAccent)).environment(\.controlActiveState, .key)
                         .environment(\.locale, Locale(identifier: "en_US"))
                 }
-            let w = Self.window(host, size: CGSize(width: 900, height: 820), dark: dark)
+            let w = Self.window(host, size: CGSize(width: 780, height: 740), dark: dark)
             defer { w.orderOut(nil); w.close() }
             var sheet: NSWindow?
             for _ in 0..<60 where sheet == nil { sheet = w.attachedSheet; if sheet == nil { try? await Task.sleep(for: .milliseconds(100)) } }
