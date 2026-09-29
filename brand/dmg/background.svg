@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400">
+  <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFCF6"/><stop offset="1" stop-color="#F4EDE1"/></linearGradient></defs>
+  <rect width="640" height="400" fill="url(#g)"/>
+  <text x="320" y="62" text-anchor="middle" font-family="-apple-system, Helvetica" font-size="22" font-weight="600" fill="#2B2926">Amber Notes</text>
+  <text x="320" y="88" text-anchor="middle" font-family="-apple-system, Helvetica" font-size="13" fill="#8A847B">Drag Amber Notes into Applications</text>
+  <path d="M268 212 H 362" stroke="#E4902A" stroke-width="5" stroke-linecap="round"/>
+  <path d="M350 198 L 368 212 L 350 226" stroke="#E4902A" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>

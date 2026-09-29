@@ -75,6 +75,9 @@ struct PaneApp: App {
             // The standard View › Sidebar and Edit › Find, Spelling and Substitutions items.
             SidebarCommands()
             TextEditingCommands()
+            #if SPARKLE
+            UpdaterCommands()
+            #endif
         }
         #endif
 

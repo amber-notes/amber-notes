@@ -4,3 +4,7 @@ node_modules
 .env*.local
 next-env.d.ts
 *.tsbuildinfo
+# Mac releases: written by scripts/release-mac.sh just before it deploys, never committed.
+public/downloads/
+public/updates/
+content/release.json

@@ -1,0 +1,7 @@
+# What the Vercel CLI uploads. Release files (public/downloads, public/updates,
+# content/release.json) are gitignored but must be uploaded, so they are not listed here.
+node_modules
+.next
+.vercel
+.env*.local
+*.tsbuildinfo

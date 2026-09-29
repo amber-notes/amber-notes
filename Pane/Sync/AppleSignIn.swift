@@ -77,6 +77,9 @@ struct AppleAuthButton: View {
     var height: CGFloat = 44
     /// The Mac draws its own button; its title matches `label`.
     var title = "Sign in with Apple"
+    /// The Mac download (DIRECT) can't carry the Sign in with Apple entitlement, so its button
+    /// runs Apple's web sign-in instead; the call site passes that flow here.
+    var web: (@MainActor () -> Void)? = nil
     let completion: (Result<AppleSignIn.Credential, AppleSignIn.Failure>) -> Void
     @Environment(\.colorScheme) private var scheme
     @State private var nonce = AppleSignIn.makeNonce()
@@ -87,6 +90,9 @@ struct AppleAuthButton: View {
         // draws its own at full height, per Apple's button guidelines: the logo, the standard
         // title, black on light and white on dark, never another colour.
         MacAppleButton(title: title, height: height, scheme: scheme) {
+            #if DIRECT
+            if let web { web(); return }
+            #endif
             let raw = AppleSignIn.makeNonce()
             AppleAuthorizer.shared.run(nonce: raw) { completion(AppleSignIn.credential(from: $0, rawNonce: raw)) }
         }

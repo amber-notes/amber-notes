@@ -1,3 +1,4 @@
+import AuthenticationServices
 import Foundation
 import Observation
 import Supabase
@@ -118,6 +119,34 @@ final class Backend {
         let session = try await client.auth.linkIdentityWithIdToken(credentials: OpenIDConnectCredentials(provider: .apple, idToken: credential.idToken, nonce: credential.rawNonce))
         apple = Self.appleIdentity(of: session.user) ?? AppleIdentity(email: nil)
     }
+
+    #if DIRECT
+    /// Where Apple's web sign-in returns to: the app's own URL scheme, caught by the
+    /// ASWebAuthenticationSession (it never reaches the app's URL handler).
+    static let webCallback = URL(string: "ambernotes://auth-callback")!
+
+    /// Sign in with Apple through the web, for the Mac download: Apple's page in a secure
+    /// browser sheet, then Supabase's PKCE exchange. The same Apple ID lands in the same
+    /// account as the App Store and iPhone apps (Apple's user id is shared across the team).
+    func signInWithAppleOnTheWeb() async throws {
+        guard let client else { return }
+        try await client.auth.signInWithOAuth(provider: .apple, redirectTo: Self.webCallback, scopes: "name email")
+    }
+
+    /// Adds your Apple ID to this account through the web, for the Mac download.
+    func linkAppleOnTheWeb() async throws {
+        guard let client else { return }
+        let link = try await client.auth.getLinkIdentityURL(provider: .apple, scopes: "name email", redirectTo: Self.webCallback)
+        let result = try await WebAuthSession.run(link.url, callbackScheme: "ambernotes")
+        let session = try await client.auth.session(from: result)
+        apple = Self.appleIdentity(of: session.user) ?? AppleIdentity(email: nil)
+    }
+
+    /// Closing Apple's sheet isn't an error worth showing.
+    nonisolated static func isCanceled(_ error: Error) -> Bool {
+        (error as? ASWebAuthenticationSessionError)?.code == .canceledLogin
+    }
+    #endif
 
     /// Words for an Apple sign-in that didn't work.
     nonisolated static func appleMessage(for error: Error, linking: Bool) -> String {

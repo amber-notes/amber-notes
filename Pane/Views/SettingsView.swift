@@ -180,7 +180,7 @@ private struct AppleIDRow: View {
         } else {
             // A settings row: what it is on the left, the standard Apple button on the right.
             LabeledContent {
-                AppleAuthButton(label: .continue, height: 30, title: "Continue with Apple") { result in
+                AppleAuthButton(label: .continue, height: 30, title: "Continue with Apple", web: webLink) { result in
                     switch result {
                     case .success(let credential): link(credential)
                     case .failure(let failure): error = AppleSignIn.message(for: failure)
@@ -195,6 +195,24 @@ private struct AppleIDRow: View {
                     .foregroundStyle(error == nil ? AnyShapeStyle(.secondary) : AnyShapeStyle(.red))
             }
         }
+    }
+
+    /// The Mac download links your Apple ID on the web (see AppleAuthButton.web).
+    private var webLink: (@MainActor () -> Void)? {
+        #if DIRECT
+        return {
+            working = true
+            error = nil
+            Task {
+                do { try await backend.linkAppleOnTheWeb() } catch where !Backend.isCanceled(error) {
+                    self.error = Backend.appleMessage(for: error, linking: true)
+                } catch {}
+                working = false
+            }
+        }
+        #else
+        return nil
+        #endif
     }
 
     private func link(_ credential: AppleSignIn.Credential) {

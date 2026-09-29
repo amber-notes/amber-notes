@@ -47,7 +47,7 @@ struct SignInView: View {
             }
 
             VStack(spacing: 12) {
-                AppleAuthButton(label: .signIn, height: 44) { result in
+                AppleAuthButton(label: .signIn, height: 44, web: webSignIn) { result in
                     switch result {
                     case .success(let credential): signIn(credential)
                     case .failure(let failure): error = AppleSignIn.message(for: failure)
@@ -136,6 +136,24 @@ struct SignInView: View {
             .frame(height: 44)
             .background(.fill.tertiary, in: .capsule)
             .overlay(Capsule().strokeBorder(.primary.opacity(0.08), lineWidth: 1))
+    }
+
+    /// The Mac download signs in with Apple on the web; everywhere else the native sheet does it.
+    private var webSignIn: (@MainActor () -> Void)? {
+        #if DIRECT
+        return {
+            working = true
+            error = nil
+            Task {
+                do { try await backend.signInWithAppleOnTheWeb() } catch where !Backend.isCanceled(error) {
+                    self.error = Backend.appleMessage(for: error, linking: false)
+                } catch {}
+                working = false
+            }
+        }
+        #else
+        return nil
+        #endif
     }
 
     private func signIn(_ credential: AppleSignIn.Credential) {
