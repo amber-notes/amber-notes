@@ -182,6 +182,7 @@ struct TableGridView: View {
     var exit: (Bool) -> Void = { _ in }
 
     @State private var draft: GridTable
+    @Environment(\.colorSchemeContrast) private var contrast
     @State private var trend: TrendColumn?
     @FocusState private var focus: GridCell?
     /// Set when the keyboard (not a click) moves between cells: the caret goes to
@@ -483,7 +484,8 @@ struct TableGridView: View {
         }
     }
 
-    private var border: Color { Color.secondary.opacity(0.45) }
+    /// Grid lines get firmer with Increase Contrast.
+    private var border: Color { Color.secondary.opacity(contrast == .increased ? 0.9 : 0.45) }
 
     private func cellBinding(_ r: Int, _ c: Int) -> Binding<String> {
         Binding(

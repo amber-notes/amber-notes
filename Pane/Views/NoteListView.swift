@@ -400,19 +400,24 @@ struct NoteRow: View {
     var query: String = ""
     var showFolder = false
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
         let title = note.title
+        // At the accessibility text sizes the row stacks and wraps instead of truncating.
+        let large = typeSize.isAccessibilitySize
+        let detail = large ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2)) : AnyLayout(HStackLayout(spacing: 8))
         return VStack(alignment: .leading, spacing: RowMetrics.spacing) {
             Text(title)
                 .font(RowMetrics.title)
-                .lineLimit(1)
-            HStack(spacing: 8) {
+                .lineLimit(large ? 3 : 1)
+            detail {
                 Text(DateBucket.rowDate(note.updatedAt))
                     .monospacedDigit()
                     .foregroundStyle(.primary.opacity(0.85))
                 Text(snippet)
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                    .lineLimit(large ? 2 : 1)
             }
             .font(RowMetrics.detail)
             if showFolder, let f = note.folder {
