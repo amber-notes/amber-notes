@@ -102,8 +102,11 @@ fi
 echo "→ Notarize the DMG"
 notarize "$DIST/$FILE"
 xcrun stapler staple "$DIST/$FILE"
-spctl -a -vv --type install "$DIST/$FILE" 2>&1 | head -2
-spctl -a -vv "$APP" 2>&1 | head -2
+# The app must pass Gatekeeper as notarized Developer ID. The DMG carries a stapled ticket but no
+# signature of its own (cloud-managed certificate), which Gatekeeper accepts for disk images;
+# spctl can't assess an unsigned DMG, so that line is informational only.
+spctl -a -vv "$APP" 2>&1 | grep -q "source=Notarized Developer ID" || { echo "The app didn't pass Gatekeeper." >&2; spctl -a -vv "$APP"; exit 1; }
+xcrun stapler validate "$DIST/$FILE" >/dev/null || { echo "The DMG has no notarization ticket." >&2; exit 1; }
 
 echo "→ Sparkle signature and appcast"
 SIGN=$(ls "$DD"/SourcePackages/artifacts/sparkle/Sparkle/bin/sign_update)
