@@ -33,7 +33,14 @@ final class Backend {
     enum State: Equatable { case disabled, signedOut, signedIn(email: String) }
 
     private(set) var state: State = .disabled
+    /// The Apple ID linked to this account, if any: sign-in is Apple-only once it's there.
+    private(set) var apple: AppleIdentity?
     let client: SupabaseClient?
+
+    struct AppleIdentity: Equatable {
+        /// Apple's email for you: your own, or a private relay address.
+        var email: String?
+    }
 
     init() {
         if BackendConfig.isEnabled, let url = BackendConfig.url, let key = BackendConfig.key {
@@ -61,6 +68,7 @@ final class Backend {
     private func watchAuth() async {
         guard let client else { return }
         for await (_, session) in client.auth.authStateChanges {
+            apple = session.flatMap { Self.appleIdentity(of: $0.user) }
             if let session, !session.isExpired {
                 state = .signedIn(email: session.user.email ?? "")
             } else if let session, session.isExpired {
@@ -76,20 +84,50 @@ final class Backend {
         }
     }
 
+    /// The email to show for you: Apple's, unless Apple hides it behind a relay address.
+    var displayEmail: String? {
+        guard case .signedIn(let account) = state else { return nil }
+        if let a = apple?.email, !a.isEmpty, !a.hasSuffix("privaterelay.appleid.com") { return a }
+        return account
+    }
+
+    static func appleIdentity(of user: User) -> AppleIdentity? {
+        guard let identity = user.identities?.first(where: { $0.provider == "apple" }) else { return nil }
+        return AppleIdentity(email: identity.identityData?["email"]?.stringValue)
+    }
+
+    /// Signs in with an Apple ID. Only an Apple ID already linked to an account gets in:
+    /// the server refuses to create new accounts for anyone not invited.
+    func signInWithApple(_ credential: AppleSignIn.Credential) async throws {
+        guard let client else { return }
+        try await client.auth.signInWithIdToken(credentials: OpenIDConnectCredentials(provider: .apple, idToken: credential.idToken, nonce: credential.rawNonce))
+    }
+
+    /// Adds your Apple ID to the account you're signed in to, so Apple signs you in from now on.
+    func linkApple(_ credential: AppleSignIn.Credential) async throws {
+        guard let client else { return }
+        let session = try await client.auth.linkIdentityWithIdToken(credentials: OpenIDConnectCredentials(provider: .apple, idToken: credential.idToken, nonce: credential.rawNonce))
+        apple = Self.appleIdentity(of: session.user) ?? AppleIdentity(email: nil)
+    }
+
+    /// Words for an Apple sign-in that didn't work.
+    nonisolated static func appleMessage(for error: Error, linking: Bool) -> String {
+        if error is URLError { return "Can't reach the server. Check your connection." }
+        let raw = (error as? AuthError)?.message ?? error.localizedDescription
+        let lower = raw.lowercased()
+        if lower.contains("already") && lower.contains("linked") || lower.contains("identity_already_exists") {
+            return "That Apple ID already belongs to another account."
+        }
+        if !linking, lower.contains("private") || lower.contains("not allowed") || lower.contains("hook") {
+            return "This Apple ID isn't connected to an Amber Notes account yet. Sign in the old way once, then choose Connect Apple ID in Settings."
+        }
+        return raw
+    }
+
+    /// The old email sign-in, kept only until the Apple ID is linked (see SignInView.emailFallback).
     func signIn(email: String, password: String) async throws {
         guard let client else { return }
         try await client.auth.signIn(email: email.trimmingCharacters(in: .whitespaces), password: password)
-    }
-
-    /// Creates an account. With email confirmation off, this signs you straight in.
-    func signUp(email: String, password: String) async throws {
-        guard let client else { return }
-        try await client.auth.signUp(email: email.trimmingCharacters(in: .whitespaces).lowercased(), password: password)
-    }
-
-    func changePassword(to password: String) async throws {
-        guard let client else { return }
-        try await client.auth.update(user: UserAttributes(password: password))
     }
 
     /// Words a person can act on, instead of raw server errors.

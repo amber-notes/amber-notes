@@ -1,27 +1,30 @@
 import SwiftUI
 
-/// Sign in or create an account. On the Mac this is the whole window; on iPhone
-/// it's a glass card over a warm backdrop. Both follow light and dark mode.
+/// Sign in with Apple. On the Mac this is the whole window; on iPhone it's a glass
+/// card over a warm backdrop. Both follow light and dark mode.
 struct SignInView: View {
     let backend: Backend
-    @State private var mode: Mode = .signIn
-    @State private var email = ""
-    @State private var password = ""
     @State private var working = false
     @State private var error: String?
+    /// The old email sign-in, folded away. It stays until your Apple ID is linked on
+    /// every device (Settings → Connect Apple ID); then `emailFallback` goes to false.
+    @State private var showEmail = false
+    @State private var email = ""
+    @State private var password = ""
     @FocusState private var focus: Field?
 
     enum Field { case email, password }
-    enum Mode { case signIn, signUp }
+
+    /// Temporary: lets an account that hasn't linked its Apple ID yet get in once.
+    static let emailFallback = true
 
     var body: some View {
         #if os(macOS)
         card
             .padding(.horizontal, 36)
             .padding(.top, 40)
-            .padding(.bottom, 52) // a chin below the link
+            .padding(.bottom, 44)
             .frame(width: 380)
-            .onAppear { focus = .email }
         #else
         card
             .padding(28)
@@ -30,106 +33,98 @@ struct SignInView: View {
             .padding(20)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background { Backdrop() }
-            .onAppear { focus = .email }
         #endif
     }
 
     private var card: some View {
-        VStack(spacing: 22) {
+        VStack(spacing: 24) {
             VStack(spacing: 14) {
                 Image("Mark")
                     .resizable()
                     .scaledToFit()
                     .frame(width: 72, height: 72)
                     .accessibilityHidden(true)
-                swap {
-                    Text(mode == .signIn ? "Sign in to Amber Notes" : "Create account")
-                        .font(.title2.weight(.bold))
-                }
-            }
-
-            VStack(spacing: 10) {
-                field {
-                TextField("Email", text: $email)
-                    .textContentType(.username)
-                    #if os(iOS)
-                    .keyboardType(.emailAddress)
-                    .textInputAutocapitalization(.never)
-                    #endif
-                    .autocorrectionDisabled()
-                    .focused($focus, equals: .email)
-                    .submitLabel(.next)
-                    .onSubmit { focus = .password }
-                    .accessibilityIdentifier("signin.email")
-                }
-                field {
-                SecureField(mode == .signIn ? "Password" : "Password, 12+ characters", text: $password)
-                    .textContentType(mode == .signIn ? .password : .newPassword)
-                    .focused($focus, equals: .password)
-                    .submitLabel(.go)
-                    .onSubmit(submit)
-                    .accessibilityIdentifier("signin.password")
-                }
-            }
-            .textFieldStyle(.plain)
-
-            if let error {
-                Text(error)
-                    .font(.footnote)
-                    .foregroundStyle(.red)
+                Text("Sign in to Amber Notes")
+                    .font(.title2.weight(.bold))
                     .multilineTextAlignment(.center)
-                    .transition(.opacity)
             }
 
             VStack(spacing: 12) {
-                Button(action: submit) {
-                    HStack(spacing: 8) {
-                        if working { ProgressView().controlSize(.small).tint(.black) }
-                        swap { Text(buttonTitle) }
+                AppleAuthButton(label: .signIn, height: 44) { result in
+                    switch result {
+                    case .success(let credential): signIn(credential)
+                    case .failure(let failure): error = AppleSignIn.message(for: failure)
                     }
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(.black.opacity(0.85))
-                    .frame(maxWidth: .infinity, minHeight: 44)
-                    .background(Color.accentColor, in: .capsule)
-                    .contentShape(.capsule)
                 }
-                .buttonStyle(PressScale())
-                .disabled(!canSubmit)
-                .opacity(canSubmit || working ? 1 : 0.45)
-                .animation(.easeOut(duration: 0.15), value: canSubmit)
-                .keyboardShortcut(.defaultAction)
-                .accessibilityIdentifier("signin.submit")
+                .disabled(working)
+                .opacity(working ? 0.6 : 1)
+                .overlay { if working { ProgressView().controlSize(.small) } }
+                .accessibilityIdentifier("signin.apple")
 
-                Button {
-                    withAnimation(.smooth(duration: 0.32)) {
-                        mode = mode == .signIn ? .signUp : .signIn
-                        error = nil
-                    }
-                } label: {
-                    swap { Text(mode == .signIn ? "Create an account" : "I already have an account") }
+                if let error {
+                    Text(error)
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .transition(.opacity)
                 }
-                .buttonStyle(.plain)
-                .font(.callout)
-                .foregroundStyle(.tint)
-                .accessibilityIdentifier("signin.switch")
             }
+
+            if Self.emailFallback { emailSection }
         }
         .animation(.snappy(duration: 0.2), value: error)
+        .animation(.smooth(duration: 0.3), value: showEmail)
     }
 
-    /// Changing text slides up and fades; the old one leaves a little faster.
-    /// Both sit in one place, so nothing around them moves.
-    private func swap(@ViewBuilder _ content: () -> some View) -> some View {
-        ZStack {
-            content()
-                .id(mode)
-                .transition(.asymmetric(
-                    insertion: .opacity.combined(with: .offset(y: 8)).animation(.smooth(duration: 0.32).delay(0.05)),
-                    removal: .opacity.combined(with: .offset(y: -6)).animation(.easeOut(duration: 0.18))))
+    @ViewBuilder
+    private var emailSection: some View {
+        if showEmail {
+            VStack(spacing: 10) {
+                field {
+                    TextField("Email", text: $email)
+                        .textContentType(.username)
+                        #if os(iOS)
+                        .keyboardType(.emailAddress)
+                        .textInputAutocapitalization(.never)
+                        #endif
+                        .autocorrectionDisabled()
+                        .focused($focus, equals: .email)
+                        .submitLabel(.next)
+                        .onSubmit { focus = .password }
+                        .accessibilityIdentifier("signin.email")
+                }
+                field {
+                    SecureField("Password", text: $password)
+                        .textContentType(.password)
+                        .focused($focus, equals: .password)
+                        .submitLabel(.go)
+                        .onSubmit(signInWithEmail)
+                        .accessibilityIdentifier("signin.password")
+                }
+                Button("Sign In", action: signInWithEmail)
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
+                    .disabled(email.isEmpty || password.isEmpty || working)
+                    .keyboardShortcut(.defaultAction)
+                    .accessibilityIdentifier("signin.submit")
+            }
+            .textFieldStyle(.plain)
+            .transition(.opacity.combined(with: .move(edge: .top)))
+        } else {
+            Button("Use email and password instead") {
+                showEmail = true
+                error = nil
+                focus = .email
+            }
+            .buttonStyle(.plain)
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+            .accessibilityIdentifier("signin.useEmail")
         }
     }
 
-    /// One input, as a soft glass pill.
+    /// One input, as a soft pill.
     private func field(@ViewBuilder _ content: () -> some View) -> some View {
         content()
             .font(.body)
@@ -139,33 +134,21 @@ struct SignInView: View {
             .overlay(Capsule().strokeBorder(.primary.opacity(0.08), lineWidth: 1))
     }
 
-    private var buttonTitle: String {
-        switch (mode, working) {
-        case (.signIn, false): "Sign in"
-        case (.signIn, true): "Signing in…"
-        case (.signUp, false): "Create account"
-        case (.signUp, true): "Creating account…"
-        }
-    }
-
-    private var canSubmit: Bool {
-        !email.isEmpty && !working && (mode == .signIn ? !password.isEmpty : password.count >= 12)
-    }
-
-    private func submit() {
-        guard canSubmit else { return }
+    private func signIn(_ credential: AppleSignIn.Credential) {
         working = true
         error = nil
         Task {
-            do {
-                if mode == .signIn {
-                    try await backend.signIn(email: email, password: password)
-                } else {
-                    try await backend.signUp(email: email, password: password)
-                }
-            } catch {
-                self.error = Backend.message(for: error, signingUp: mode == .signUp)
-            }
+            do { try await backend.signInWithApple(credential) } catch { self.error = Backend.appleMessage(for: error, linking: false) }
+            working = false
+        }
+    }
+
+    private func signInWithEmail() {
+        guard !email.isEmpty, !password.isEmpty, !working else { return }
+        working = true
+        error = nil
+        Task {
+            do { try await backend.signIn(email: email, password: password) } catch { self.error = Backend.message(for: error, signingUp: false) }
             working = false
         }
     }

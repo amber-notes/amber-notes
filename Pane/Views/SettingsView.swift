@@ -28,10 +28,10 @@ struct SettingsView: View {
             Form {
                 Section("Account") {
                     if case .signedIn(let email) = backend.state {
-                        LabeledContent("Signed in as", value: email)
+                        LabeledContent("Signed in as", value: backend.displayEmail ?? email)
                         LabeledContent("Sync") { SyncStatusLabel(status: sync?.status ?? .idle) }
                         Button("Sync now") { Task { await sync?.sync() } }
-                        ChangePasswordRow(backend: backend)
+                        AppleIDRow(backend: backend)
                         Button("Sign out", role: .destructive) { Task { await backend.signOut(); dismiss() } }
                     } else {
                         Text("Sync is off. This build keeps notes on this device only.")
@@ -46,36 +46,49 @@ struct SettingsView: View {
     }
 }
 
-/// Change the account password in place.
-private struct ChangePasswordRow: View {
+/// Sign in with Apple for this account: connect it once, then Apple is how you sign in.
+private struct AppleIDRow: View {
     let backend: Backend
-    @State private var open = false
-    @State private var password = ""
-    @State private var confirm = ""
-    @State private var state: String?
+    @State private var working = false
+    @State private var error: String?
 
     var body: some View {
-        DisclosureGroup("Change password", isExpanded: $open) {
-            SecureField("New password (12+ characters)", text: $password)
-                .textContentType(.newPassword)
-            SecureField("Type it again", text: $confirm)
-                .textContentType(.newPassword)
-            HStack {
-                if let state { Text(state).font(.footnote).foregroundStyle(state == "Password changed" ? Color.green : Color.red) }
-                Spacer()
-                Button("Save password") {
-                    Task {
-                        do {
-                            try await backend.changePassword(to: password)
-                            state = "Password changed"
-                            password = ""; confirm = ""
-                        } catch {
-                            state = Backend.message(for: error, signingUp: true)
-                        }
+        if let apple = backend.apple {
+            LabeledContent("Sign in with Apple") {
+                Label(apple.email ?? "Connected", systemImage: "checkmark.circle.fill")
+                    .labelStyle(.titleAndIcon)
+                    .foregroundStyle(.secondary)
+            }
+            .accessibilityIdentifier("settings.appleConnected")
+        } else {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Connect your Apple ID")
+                Text("Then you sign in with Apple on every device, without a password.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                AppleAuthButton(label: .continue, height: 36) { result in
+                    switch result {
+                    case .success(let credential): link(credential)
+                    case .failure(let failure): error = AppleSignIn.message(for: failure)
                     }
                 }
-                .disabled(password.count < 12 || password != confirm)
+                .frame(maxWidth: 260)
+                .disabled(working)
+                .accessibilityIdentifier("settings.connectApple")
+                if let error {
+                    Text(error).font(.footnote).foregroundStyle(.red)
+                }
             }
+            .padding(.vertical, 4)
+        }
+    }
+
+    private func link(_ credential: AppleSignIn.Credential) {
+        working = true
+        error = nil
+        Task {
+            do { try await backend.linkApple(credential) } catch { self.error = Backend.appleMessage(for: error, linking: true) }
+            working = false
         }
     }
 }

@@ -192,7 +192,7 @@ struct SidebarView: View {
         #if os(macOS)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if let backend, case .signedIn(let email) = backend.state {
-                AccountButton(email: email, backend: backend)
+                AccountButton(email: backend.displayEmail ?? email, backend: backend)
                     .padding(.horizontal, 10)
                     .padding(.bottom, 10)
             }
