@@ -4,7 +4,7 @@
     build/dmg-venv/bin/python brand/dmg/make-background.py [warm|white ...]
 
 Writes brand/dmg/<direction>/background.png (1x), background@2x.png and background.tiff (both
-reps, what dmgbuild copies into the image), and brand/dmg/VolumeIcon.icns from the app icon.
+reps, what dmgbuild copies into the image).
 
 Each direction declares which label colours it must carry, and the script fails unless every
 pixel under both labels holds MIN_CONTRAST against them.
@@ -127,22 +127,6 @@ def render(name):
                     os.path.join(out, "background.tiff")], check=True, capture_output=True)
 
 
-def volume_icon():
-    """brand/dmg/VolumeIcon.icns: the app icon, for the mounted disk in Finder and on the desktop."""
-    import shutil
-    import tempfile
-    src = os.path.join(os.path.dirname(os.path.dirname(HERE)), "Pane/Resources/Assets.xcassets/AppIcon.appiconset")
-    with tempfile.TemporaryDirectory() as tmp:
-        iconset = os.path.join(tmp, "VolumeIcon.iconset")
-        os.mkdir(iconset)
-        for size in (16, 32, 128, 256, 512):
-            for scale, suffix in ((1, ""), (2, "@2x")):
-                shutil.copy(os.path.join(src, f"icon-mac-{size}@{scale}x.png"),
-                            os.path.join(iconset, f"icon_{size}x{size}{suffix}.png"))
-        subprocess.run(["/usr/bin/iconutil", "-c", "icns", iconset, "-o", os.path.join(HERE, "VolumeIcon.icns")], check=True)
-
-
 if __name__ == "__main__":
     for n in sys.argv[1:] or DIRECTIONS:
         render(n)
-    volume_icon()

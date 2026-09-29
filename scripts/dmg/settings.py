@@ -17,7 +17,7 @@ filesystem = "HFS+"
 files = [app]
 symlinks = {"Applications": "/Applications"}
 hide_extensions = [name]
-icon = os.path.join(repo, "brand", "dmg", "VolumeIcon.icns")
+icon = os.path.join(app, "Contents", "Resources", "AppIcon.icns")  # the volume icon is the app's own
 background = os.path.join(repo, "brand", "dmg", direction, "background.tiff")  # 1x and 2x reps
 
 width, height = layout["window"]
