@@ -671,16 +671,15 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
     private func observeChangeHighlight() {
         core.layoutDelegate.tint.redraw = { [weak self] ranges in
             MainActor.assumeIsolated {
-                guard let self, let tlm = self.textLayoutManager, let tcm = tlm.textContentManager else { return }
-                let length = tcm.offset(from: tcm.documentRange.location, to: tcm.documentRange.endLocation)
-                for r in ranges where NSMaxRange(r) <= length {
-                    guard let start = tcm.location(tcm.documentRange.location, offsetBy: r.location),
-                          let end = tcm.location(start, offsetBy: r.length),
-                          let range = NSTextRange(location: start, end: end) else { continue }
-                    tlm.invalidateLayout(for: range)
-                }
-                tlm.textViewportLayoutController.layoutViewport()
-                self.setNeedsDisplay()
+                // An attributes-only edit of those lines: TextKit lays them out and draws them
+                // again, the same way styling does (invalidating layout alone leaves the Mac's
+                // on-screen fragments as they were). It isn't a text change, so nothing is saved.
+                guard let self else { return }
+                let storage = self.textStorage
+                let length = storage.length
+                storage.beginEditing()
+                for r in ranges where NSMaxRange(r) <= length { storage.edited(.editedAttributes, range: r, changeInLength: 0) }
+                storage.endEditing()
             }
         }
     }
@@ -1161,16 +1160,14 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
     private func observeChangeHighlight() {
         core.layoutDelegate.tint.redraw = { [weak self] ranges in
             MainActor.assumeIsolated {
-                guard let self, let tlm = self.textLayoutManager, let tcm = tlm.textContentManager else { return }
-                let length = tcm.offset(from: tcm.documentRange.location, to: tcm.documentRange.endLocation)
-                for r in ranges where NSMaxRange(r) <= length {
-                    guard let start = tcm.location(tcm.documentRange.location, offsetBy: r.location),
-                          let end = tcm.location(start, offsetBy: r.length),
-                          let range = NSTextRange(location: start, end: end) else { continue }
-                    tlm.invalidateLayout(for: range)
-                }
-                tlm.textViewportLayoutController.layoutViewport()
-                self.needsDisplay = true
+                // An attributes-only edit of those lines: TextKit lays them out and draws them
+                // again, the same way styling does (invalidating layout alone leaves the Mac's
+                // on-screen fragments as they were). It isn't a text change, so nothing is saved.
+                guard let self, let storage = self.textStorage else { return }
+                let length = storage.length
+                storage.beginEditing()
+                for r in ranges where NSMaxRange(r) <= length { storage.edited(.editedAttributes, range: r, changeInLength: 0) }
+                storage.endEditing()
             }
         }
     }

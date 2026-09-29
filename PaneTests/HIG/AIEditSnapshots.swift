@@ -155,5 +155,98 @@ import Testing
         try await AppSnapshotTests.shoot(SignInView(backend: Backend()).fixedSize().containerBackground(for: .window) { Backdrop() },
                                          name: "06-sign-in-mac", size: CGSize(width: 380, height: 520), dark: false, toolbar: false)
     }
+
+    // MARK: Website demo frames
+
+    /// The website's demo frames, captured by `screencapture -l` from the shell so the sidebar
+    /// and toolbar glass render (cacheDisplay can't draw them). The window sits far off every
+    /// screen; nothing appears on the display. The test writes `window-id`, then for each frame
+    /// a `ready-<name>` file, and waits for the shell to write `shot-<name>`.
+    /// `TEST_RUNNER_AMBER_DEMO_FRAMES=/path scripts/qa-test.sh 'PaneTests/AIEditSnapshots/demoFrames()'`
+    @Test func demoFrames() async throws {
+        guard let dir = ProcessInfo.processInfo.environment["AMBER_DEMO_FRAMES"].map({ URL(fileURLWithPath: $0) }) else { return }
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let c = try AppSnapshotTests.container()
+        try await AppSnapshotTests.withLastNote(c, "Groceries") {
+            let w = Self.window(Self.root(c), size: CGSize(width: 1180, height: 720))
+            defer { w.orderOut(nil); w.close() }
+            try "\(w.windowNumber)".write(to: dir.appending(path: "window-id"), atomically: true, encoding: .utf8)
+            // The columns of the website's existing captures: sidebar 208 pt, list to 468 pt.
+            try? await Task.sleep(for: .seconds(1))
+            if let split = Self.splitView(in: w.contentView) {
+                split.setPosition(208, ofDividerAt: 0)
+                split.setPosition(468, ofDividerAt: 1)
+            }
+            func shoot(_ name: String) async throws {
+                try "".write(to: dir.appending(path: "ready-\(name)"), atomically: true, encoding: .utf8)
+                let done = dir.appending(path: "shot-\(name)")
+                for _ in 0..<60 where !FileManager.default.fileExists(atPath: done.path) { try? await Task.sleep(for: .milliseconds(50)) }
+            }
+            try? await Task.sleep(for: .seconds(2))
+            try await shoot("scene0-before")
+            let note = try #require(((try? c.mainContext.fetch(FetchDescriptor<Note>())) ?? []).first { $0.title == "Groceries" })
+
+            // 1: ChatGPT adds what Sunday's paella needs.
+            Capture.aiEdit(c.mainContext, title: "Groceries", scene: "paella", by: "ChatGPT")
+            try? await Task.sleep(for: .seconds(1.3))
+            try await shoot("scene1-tint")
+            try? await Task.sleep(for: .seconds(6.5))
+            try await shoot("scene1-faded")
+
+            // 2: it ticks off the lemons and coffee (ticked items sit with the others that are done).
+            let bought = note.body.replacingOccurrences(of: "- [ ] Lemons\n- [ ] Coffee beans\n", with: "")
+                .replacingOccurrences(of: "- [x] Sourdough", with: "- [x] Lemons\n- [x] Coffee beans\n- [x] Sourdough")
+            let old = note.body, oldAt = note.aiEditedAt
+            note.body = bought
+            note.updatedAt = .now
+            note.aiEditor = "ChatGPT"
+            note.aiEditedAt = .now
+            AIEdit.arrived(note, previousBody: old, previousEditAt: oldAt, quiet: false)
+            try? await Task.sleep(for: .seconds(1.3))
+            try await shoot("scene2-tint")
+            try? await Task.sleep(for: .seconds(6.5))
+            try await shoot("scene2-faded")
+
+            // 3: "What's still left to buy?" changes nothing; the lines it read are tinted, with no receipt.
+            let editor = try #require(Self.textViews(in: w.contentView).first { $0.string.contains("Paella rice") })
+            let left = note.body.components(separatedBy: "\n").filter { !$0.hasPrefix("- [ ]") }.joined(separator: "\n")
+            editor.tintChanges(from: left)
+            #expect(!editor.core.layoutDelegate.tint.ranges.isEmpty)
+            try? await Task.sleep(for: .seconds(1.3))
+            try await shoot("scene3-tint")
+            try? await Task.sleep(for: .seconds(4.5))
+            try await shoot("scene3-faded")
+        }
+        // The receipt on its own, on a clear ground with room for its shadow.
+        for (name, lines) in [("receipt-scene1", 5), ("receipt-scene2", 2)] {
+            let r = AIEdit.Receipt(noteID: UUID(), by: "ChatGPT", at: .now, previous: "", lines: lines)
+            let host = NSHostingView(rootView: AIReceipt(receipt: r, undo: {}).padding(24).fixedSize())
+            host.appearance = NSAppearance(named: .aqua)
+            let win = NSWindow(contentRect: CGRect(x: -30000, y: -30000, width: 400, height: 100), styleMask: [.borderless], backing: .buffered, defer: false)
+            win.isReleasedWhenClosed = false
+            win.isOpaque = false
+            win.backgroundColor = .clear
+            win.contentView = host
+            host.frame = CGRect(origin: .zero, size: host.fittingSize)
+            win.setContentSize(host.fittingSize)
+            try? await Task.sleep(for: .seconds(0.4))
+            defer { win.close() }
+            let rep = try #require(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+            host.cacheDisplay(in: host.bounds, to: rep)
+            try #require(rep.representation(using: .png, properties: [:])).write(to: dir.appending(path: "\(name).png"))
+        }
+    }
+
+    static func textViews(in view: NSView?) -> [PaneTextView] {
+        guard let view else { return [] }
+        return (view as? PaneTextView).map { [$0] } ?? view.subviews.flatMap { textViews(in: $0) }
+    }
+
+    static func splitView(in view: NSView?) -> NSSplitView? {
+        guard let view else { return nil }
+        if let s = view as? NSSplitView { return s }
+        for v in view.subviews { if let s = splitView(in: v) { return s } }
+        return nil
+    }
 }
 #endif
