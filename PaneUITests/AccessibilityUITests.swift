@@ -50,6 +50,38 @@ final class AccessibilityUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars.buttons.element(boundBy: 0).isHittable, "back stays reachable")
     }
 
+    /// Every button on the list and note screens has a spoken name, not a symbol name or nothing.
+    /// Two known exceptions are system-built: the sub-folder disclosure chevron, and the button
+    /// SwiftUI makes for the format bar's Menu (its image is named "Text Formatting").
+    func testButtonsAreNamed() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uitest", "-demo", "-showFolders"]
+        app.launch()
+        XCTAssertTrue(app.navigationBars["Amber Notes"].waitForExistence(timeout: 5))
+        var unnamed = Self.unnamedButtons(app, screen: "folders")
+        app.cells.containing(.any, identifier: "folder.Travel").firstMatch.tap()
+        XCTAssertTrue(app.buttons["list.select"].waitForExistence(timeout: 5))
+        unnamed += Self.unnamedButtons(app, screen: "list")
+        app.staticTexts["Lisbon"].firstMatch.tap()
+        XCTAssertTrue(app.textViews["editor"].waitForExistence(timeout: 3))
+        unnamed += Self.unnamedButtons(app, screen: "note")
+        app.textViews["editor"].tap()
+        XCTAssertTrue(app.buttons["editor.format"].waitForExistence(timeout: 3))
+        unnamed += Self.unnamedButtons(app, screen: "editing")
+        XCTAssertEqual(unnamed.count, 2, "only the two known ones: \(unnamed)")
+    }
+
+    static func unnamedButtons(_ app: XCUIApplication, screen: String) -> [String] {
+        // Symbol names VoiceOver would read out as if they were words.
+        let symbolish = try! NSRegularExpression(pattern: "^[a-z]+(\\.[a-z0-9]+)+$")
+        return app.buttons.allElementsBoundByIndex.compactMap { b in
+            guard b.exists, b.frame.width > 0 else { return nil }
+            let label = b.label
+            let bad = label.isEmpty || symbolish.firstMatch(in: label, range: NSRange(label.startIndex..., in: label)) != nil
+            return bad ? "\(screen): \(b.identifier) '\(label)'" : nil
+        }
+    }
+
     private func keep(_ app: XCUIApplication, _ name: String) {
         let a = XCTAttachment(screenshot: app.screenshot())
         a.name = name
