@@ -1,47 +1,52 @@
-/* The home page demo: a small Mac desktop at a fixed design size, scaled down as one picture. */
+/* The home page demo: a small Mac desktop, drawn at a 1280-wide design size in container units. */
 .wrap { display: grid; justify-items: center; gap: 18px; width: 100%; margin-top: -16px; }
-.fit { width: 100%; max-width: 1200px; position: relative; }
+.fit { width: 100%; max-width: 1200px; container-type: inline-size; }
+/* Everything inside is laid out in design pixels (1280 wide) turned into container units, so it
+   stays crisp at any size (a scaled transform would blur the app capture). */
 .desk {
-  position: absolute; top: 0; left: 0; transform-origin: 0 0; overflow: hidden; border-radius: 26px;
+  --u: calc(100cqw / 1280);
+  position: relative; width: 100%; aspect-ratio: 1280 / 840; overflow: hidden; border-radius: calc(26 * var(--u));
   box-shadow: 0 0 0 1px rgba(80, 40, 5, 0.08), 0 40px 80px -40px rgba(80, 40, 5, 0.55);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; color: #1d1d1f;
 }
 .wall { position: absolute; inset: 0; width: 100%; height: 100%; }
 
 /* Window 1: the real app, as captured (its own rounded corners are in the image). */
-.app { position: absolute; left: 50px; top: 46px; width: 1180px; height: 720px; filter: drop-shadow(0 22px 34px rgba(60, 20, 0, 0.32)) drop-shadow(0 2px 6px rgba(60, 20, 0, 0.18)); }
+.app { position: absolute; left: calc(50 * var(--u)); top: calc(46 * var(--u)); width: calc(1180 * var(--u)); height: calc(720 * var(--u)); border-radius: calc(16 * var(--u)); box-shadow: 0 calc(22 * var(--u)) calc(44 * var(--u)) calc(-6 * var(--u)) rgba(60, 20, 0, 0.35), 0 calc(2 * var(--u)) calc(6 * var(--u)) rgba(60, 20, 0, 0.16); }
 .shot { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; user-select: none; }
 .shot[data-on] { opacity: 1; }
 @media (prefers-reduced-motion: no-preference) {
   .shot { transition: opacity 0.45s ease-in; }
   .shot[data-on] { transition: opacity 0.6s ease-out; }
 }
-.synced { position: absolute; left: 498px; bottom: 22px; font-size: 13px; font-weight: 600; color: #a85700; background: #fff1dc; padding: 7px 12px; border-radius: 10px; box-shadow: 0 0 0 0.5px rgba(168, 87, 0, 0.25); }
+.synced { position: absolute; left: calc(498 * var(--u)); bottom: calc(22 * var(--u)); font-size: calc(13 * var(--u)); font-weight: 600; color: #a85700; background: #fff1dc; padding: calc(7 * var(--u)) calc(12 * var(--u)); border-radius: calc(10 * var(--u)); box-shadow: 0 0 0 calc(0.5 * var(--u)) rgba(168, 87, 0, 0.25); }
 
 /* Window 2: the AI chat, over the empty lower part of the note. */
 .chat {
-  position: absolute; left: 846px; top: 420px; width: 396px; height: 384px; border-radius: 16px; overflow: hidden;
-  display: grid; grid-template-rows: 40px minmax(0, 1fr) auto; background: #fff;
-  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.22), 0 30px 60px -12px rgba(40, 15, 0, 0.5), 0 10px 20px -8px rgba(40, 15, 0, 0.28);
+  position: absolute; left: calc(846 * var(--u)); top: calc(420 * var(--u)); width: calc(396 * var(--u)); height: calc(384 * var(--u)); border-radius: calc(16 * var(--u)); overflow: hidden;
+  display: grid; grid-template-rows: calc(40 * var(--u)) minmax(0, 1fr) auto; background: #fff;
+  box-shadow: 0 0 0 calc(0.5 * var(--u)) rgba(0, 0, 0, 0.22), 0 calc(30 * var(--u)) calc(60 * var(--u)) calc(-12 * var(--u)) rgba(40, 15, 0, 0.5), 0 calc(10 * var(--u)) calc(20 * var(--u)) calc(-8 * var(--u)) rgba(40, 15, 0, 0.28);
 }
-.chatBar { position: relative; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; color: #3a3a3c; box-shadow: inset 0 -0.5px 0 rgba(0, 0, 0, 0.08); }
-.lights { position: absolute; left: 14px; top: 14px; display: flex; gap: 8px; }
-.lights i { width: 12px; height: 12px; border-radius: 50%; background: #ff5f57; box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.12); }
+.chatBar { position: relative; display: flex; align-items: center; justify-content: center; font-size: calc(13 * var(--u)); font-weight: 600; color: #3a3a3c; box-shadow: inset 0 calc(-0.5 * var(--u)) 0 rgba(0, 0, 0, 0.08); }
+.chatTitle { display: inline-flex; align-items: center; gap: calc(7 * var(--u)); }
+.chatTitle svg { width: calc(16 * var(--u)); height: calc(16 * var(--u)); color: #0d0d0d; }
+.lights { position: absolute; left: calc(14 * var(--u)); top: calc(14 * var(--u)); display: flex; gap: calc(8 * var(--u)); }
+.lights i { width: calc(12 * var(--u)); height: calc(12 * var(--u)); border-radius: 50%; background: #ff5f57; box-shadow: inset 0 0 0 calc(0.5 * var(--u)) rgba(0, 0, 0, 0.12); }
 .lights i:nth-child(2) { background: #febc2e; }
 .lights i:nth-child(3) { background: #28c840; }
-.msgs { display: flex; flex-direction: column; justify-content: flex-end; gap: 12px; padding: 16px 18px; overflow: hidden; }
-.hint { margin: auto; font-size: 20px; font-weight: 600; color: #1d1d1f; }
-.me { align-self: flex-end; max-width: 82%; padding: 9px 14px; border-radius: 18px; background: #f1f1f1; font-size: 14px; line-height: 1.4; }
-.ai { align-self: flex-start; max-width: 100%; display: grid; gap: 6px; }
-.ai p { margin: 0; font-size: 14px; line-height: 1.5; }
-.tool { justify-self: start; font-size: 12px; color: #8e8e93; }
+.msgs { display: flex; flex-direction: column; justify-content: flex-end; gap: calc(12 * var(--u)); padding: calc(16 * var(--u)) calc(18 * var(--u)); overflow: hidden; }
+.hint { margin: auto; font-size: calc(20 * var(--u)); font-weight: 600; color: #1d1d1f; }
+.me { align-self: flex-end; max-width: 82%; padding: calc(9 * var(--u)) calc(14 * var(--u)); border-radius: calc(18 * var(--u)); background: #f1f1f1; font-size: calc(14 * var(--u)); line-height: 1.4; }
+.ai { align-self: flex-start; max-width: 100%; display: grid; gap: calc(6 * var(--u)); }
+.ai p { margin: 0; font-size: calc(14 * var(--u)); line-height: 1.5; }
+.tool { justify-self: start; font-size: calc(12 * var(--u)); color: #8e8e93; }
 .thinking .tool { background: linear-gradient(90deg, #8e8e93 30%, #d1d1d6 50%, #8e8e93 70%) 0 0 / 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; }
-.input { margin: 0 12px 12px; min-height: 44px; border-radius: 22px; box-shadow: 0 0 0 1px #e5e5ea, 0 2px 8px -4px rgba(0, 0, 0, 0.12); display: flex; align-items: center; padding: 0 6px 0 8px; gap: 6px; font-size: 14px; }
+.input { margin: 0 calc(12 * var(--u)) calc(12 * var(--u)); min-height: calc(44 * var(--u)); border-radius: calc(22 * var(--u)); box-shadow: 0 0 0 calc(1 * var(--u)) #e5e5ea, 0 calc(2 * var(--u)) calc(8 * var(--u)) calc(-4 * var(--u)) rgba(0, 0, 0, 0.12); display: flex; align-items: center; padding: 0 calc(6 * var(--u)) 0 calc(8 * var(--u)); gap: calc(6 * var(--u)); font-size: calc(14 * var(--u)); }
 .input span { flex: 1; white-space: nowrap; overflow: hidden; }
 .input em { font-style: normal; color: #aeaeb2; }
-.plus { width: 30px; height: 30px; display: grid; place-items: center; font-size: 20px; font-weight: 400; color: #636366; }
-.send { width: 32px; height: 32px; border-radius: 50%; background: #1d1d1f; color: #fff; display: grid; place-items: center; font-size: 15px; }
-.caret { width: 1.5px; height: 17px; background: #1d1d1f; margin-right: auto; }
+.plus { width: calc(30 * var(--u)); height: calc(30 * var(--u)); display: grid; place-items: center; font-size: calc(20 * var(--u)); font-weight: 400; color: #636366; }
+.send { width: calc(32 * var(--u)); height: calc(32 * var(--u)); border-radius: 50%; background: #1d1d1f; color: #fff; display: grid; place-items: center; font-size: calc(15 * var(--u)); }
+.caret { width: calc(1.5 * var(--u)); height: calc(17 * var(--u)); background: #1d1d1f; margin-right: auto; }
 
 @media (prefers-reduced-motion: no-preference) {
   .me, .ai { animation: pop 0.32s cubic-bezier(0.2, 0.9, 0.3, 1.1) both; }
@@ -49,7 +54,7 @@
   .thinking .tool { animation: shimmer 1.2s linear infinite; }
   .caret { animation: blink 1s steps(2) infinite; }
 }
-@keyframes pop { from { opacity: 0; transform: translateY(6px) scale(0.98); } }
+@keyframes pop { from { opacity: 0; transform: translateY(calc(6 * var(--u))) scale(0.98); } }
 @keyframes shimmer { to { background-position: -200% 0; } }
 @keyframes blink { 50% { opacity: 0; } }
 

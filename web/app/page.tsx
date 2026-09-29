@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
 import styles from "./home.module.css";
 import Demo from "./Demo";
-import { GITHUB_URL, languages, latestRelease, repoStats } from "@/lib/github";
-import { latestVersion } from "@/lib/changelog";
-import CopyCommand from "./CopyCommand";
+import { AIGlyph } from "@/lib/ai-glyphs";
 
 const APP_STORE_LIVE = false; // Flip when the iPhone app is approved.
 const APP_STORE_URL = "https://apps.apple.com/app/id6817253103";
@@ -34,17 +32,47 @@ const FEATURES: { icon: keyof typeof ICONS; title: string }[] = [
   { icon: "shield", title: "No ads, no tracking" },
 ];
 
-const MCP_URL = "https://rodegaeruhyybqilrnpn.supabase.co/functions/v1/mcp";
-const CLAUDE_CODE = `claude mcp add --scope user --transport http amber-notes ${MCP_URL} --header "Authorization: Bearer <your token>"`;
-const CLIENTS = ["ChatGPT", "Claude", "Claude Code", "Codex", "Any MCP client"];
-const SETUP = ["git clone https://github.com/emilwagman/amber-notes.git", "cd amber-notes", "supabase start", "xcodegen generate", "open Pane.xcodeproj"];
-const LANG_COLORS: Record<string, string> = { Swift: "#f0901a", TypeScript: "#a85700", Other: "#d9c2a3" };
+const AIS: { name: string; glyph?: "openai" | "claude" | "cursor" | "gemini" | "copilot"; color: string }[] = [
+  { name: "ChatGPT", glyph: "openai", color: "#0d0d0d" },
+  { name: "Claude", glyph: "claude", color: "#d97757" },
+  { name: "Claude Code", glyph: "claude", color: "#d97757" },
+  { name: "Codex", glyph: "openai", color: "#0d0d0d" },
+  { name: "Cursor", glyph: "cursor", color: "#0d0d0d" },
+  { name: "Gemini CLI", glyph: "gemini", color: "#8e75b2" },
+  { name: "GitHub Copilot", glyph: "copilot", color: "#0d0d0d" },
+  { name: "Any MCP app", color: "#a85700" },
+];
+
+const IMPORTED = [
+  { t: "Pasta night for eight", f: "Recipes" },
+  { t: "Porto in October", f: "Travel" },
+  { t: "Kitchen measurements", f: "Home" },
+  { t: "Books to read", f: "Notes" },
+  { t: "Gift ideas", f: "Notes" },
+];
+
+/// Notes lifting out of an "Apple Notes" list and landing in Amber Notes. Drawn, not a screenshot.
+function ImportVisual() {
+  return (
+    <figure className={styles.imp} aria-label="Notes from Apple Notes arriving in Amber Notes">
+      <div className={`${styles.impCard} ${styles.impFrom}`}>
+        <p className={styles.impHead}>Apple Notes</p>
+        <ul>{IMPORTED.map((n) => <li key={n.t}><b>{n.t}</b><span>{n.f}</span></li>)}</ul>
+      </div>
+      <div className={styles.impArrow} aria-hidden="true">
+        <svg viewBox="0 0 64 24" width="64" height="24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12h54M48 4l9 8-9 8" /></svg>
+      </div>
+      <div className={`${styles.impCard} ${styles.impTo}`}>
+        <p className={styles.impHead}><img src="/mark.png" alt="" width={22} height={22} /> Amber Notes</p>
+        <ul>{IMPORTED.map((n, i) => <li key={n.t} style={{ "--k": i } as React.CSSProperties}><b>{n.t}</b><span>{n.f}</span><i aria-hidden="true">✓</i></li>)}</ul>
+      </div>
+    </figure>
+  );
+}
 
 const rise = (i: number) => ({ style: { "--i": i } as React.CSSProperties });
 
-export default async function Home() {
-  const [stats, langs, release] = await Promise.all([repoStats(), languages(), latestRelease()]);
-  const tag = release ?? (latestVersion() ? `v${latestVersion()}` : null);
+export default function Home() {
   return (
     <div className={styles.main}>
       <section className={styles.hero}>
@@ -66,20 +94,25 @@ export default async function Home() {
 
       <div className="rise-soft" {...rise(3)}><Demo /></div>
 
-      <section className={styles.split} aria-labelledby="ai">
-        <div className={styles.splitText}>
+      <section className={styles.aiSection} aria-labelledby="ai">
+        <div className={styles.center}>
           <h2 id="ai" className={styles.h2}>Works with the AI you already use</h2>
           <p className={styles.lede}>
-            Amber Notes speaks MCP, the open standard AI apps use to reach your tools. Connect once in Settings, approve it, and your assistant can read and update your notes.
+            Any AI app that supports MCP can read and update your notes, once you approve it. Connecting takes a minute: open Settings → Connect an AI and follow the steps.
           </p>
-          <ul className={styles.clients} aria-label="Works with">
-            {CLIENTS.map((c) => <li key={c}>{c}</li>)}
-          </ul>
         </div>
-        <div className={styles.cmdCard}>
-          <p className={styles.cmdLabel}>Claude Code, in one line</p>
-          <CopyCommand command={CLAUDE_CODE} />
-          <p className={styles.cmdNote}>The app gives you this with your own token filled in. ChatGPT and Claude just need the address, and ask you to approve.</p>
+        <div className={styles.hub}>
+          <ul className={styles.orbit} aria-label="Works with">
+            {AIS.map((a) => (
+              <li key={a.name} className={styles.aiTile}>
+                <span className={styles.aiMark} style={{ color: a.color }}>
+                  {a.glyph ? <AIGlyph name={a.glyph} size={30} /> : <span className={styles.aiAny}>MCP</span>}
+                </span>
+                <span className={styles.aiName}>{a.name}</span>
+              </li>
+            ))}
+          </ul>
+          <div className={styles.hubCore} aria-hidden="true"><img src="/mark.png" alt="" width={88} height={88} /></div>
         </div>
       </section>
 
@@ -90,9 +123,7 @@ export default async function Home() {
             Pick everything, or just the notes you want. Folders, checklists and tables come along. Your Apple Notes stay untouched.
           </p>
         </div>
-        <figure className={styles.shot}>
-          <img src="/demo/import.webp" width={1180} height={720} alt="The Import from Apple Notes window, with twelve notes picked across Recipes, Travel and Home" loading="lazy" />
-        </figure>
+        <ImportVisual />
       </section>
 
       <section className={styles.features} aria-label="What you get">
@@ -102,52 +133,6 @@ export default async function Home() {
             <h2>{f.title}</h2>
           </div>
         ))}
-      </section>
-
-      <section className={styles.open} aria-labelledby="open">
-        <div className={styles.openText}>
-          <h2 id="open" className={styles.h2}>Built in the open</h2>
-          <p className={styles.lede}>Free and open source. Read the code, see how your notes are stored, help make it better.</p>
-          <div className={styles.openCtas}>
-            <a className={styles.primary} href={GITHUB_URL}>
-              <GitHubMark /> View on GitHub{stats && <span className={styles.starCount}>★ {stats.stars.toLocaleString("en")}</span>}
-            </a>
-            <a className={styles.quiet} href={`${GITHUB_URL}/blob/main/CONTRIBUTING.md`}>How to contribute →</a>
-          </div>
-          <nav className={styles.helpRow} aria-label="Contribute">
-            <a href={`${GITHUB_URL}/issues/new?template=bug.md`}><BugIcon /> Report a bug</a>
-            <a href={`${GITHUB_URL}/issues/new?labels=idea`}><IdeaIcon /> Suggest an idea</a>
-            <a href={`${GITHUB_URL}/blob/main/CONTRIBUTING.md`}><WrenchIcon /> Fix something small</a>
-          </nav>
-        </div>
-        <div className={styles.repo}>
-          <div className={styles.repoCard}>
-            <div className={styles.repoName}><RepoIcon /> <span>emilwagman/<b>amber-notes</b></span><span className={styles.pill}>Public</span></div>
-            <p className={styles.repoDesc}>{stats?.description ?? "Apple Notes clone with MCP support, Markdown support, and more"}</p>
-            {langs.length > 0 && (
-              <>
-                <div className={styles.langBar} aria-hidden="true">
-                  {langs.map((l) => <span key={l.name} style={{ width: `${l.percent}%`, background: LANG_COLORS[l.name] ?? "#c9a57a" }} />)}
-                </div>
-                <ul className={styles.langs}>
-                  {langs.map((l) => (
-                    <li key={l.name}><i style={{ background: LANG_COLORS[l.name] ?? "#c9a57a" }} />{l.name} <span>{l.percent.toFixed(1)}%</span></li>
-                  ))}
-                </ul>
-              </>
-            )}
-            <dl className={styles.repoMeta}>
-              {stats && <div><dt>Stars</dt><dd>★ {stats.stars.toLocaleString("en")}</dd></div>}
-              {tag && <div><dt>Latest</dt><dd>{tag}</dd></div>}
-              <div><dt>License</dt><dd>{stats?.license ?? "MIT"}</dd></div>
-              {stats?.pushedAt && <div><dt>Updated</dt><dd>{ago(stats.pushedAt)}</dd></div>}
-            </dl>
-          </div>
-          <pre className={styles.term} aria-label="Run it yourself">
-            <span className={styles.termBar} aria-hidden="true"><i /><i /><i /></span>
-            {SETUP.map((l) => <code key={l}><span aria-hidden="true">$ </span>{l}</code>)}
-          </pre>
-        </div>
       </section>
 
       <section className={styles.closing} aria-labelledby="closing">
@@ -164,29 +149,6 @@ export default async function Home() {
         <p className={styles.fine}>Requires macOS 26. Updates install themselves.</p>
       </section>
     </div>
-  );
-}
-
-/// "3 hours ago", "2 days ago": when the code last changed.
-function ago(iso: string): string {
-  const s = (Date.now() - new Date(iso).getTime()) / 1000;
-  const f = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
-  if (s < 3600) return f.format(-Math.max(1, Math.round(s / 60)), "minute");
-  if (s < 86400) return f.format(-Math.round(s / 3600), "hour");
-  return f.format(-Math.round(s / 86400), "day");
-}
-
-const li = { width: 16, height: 16, viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: 1.5, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true };
-function BugIcon() { return <svg {...li}><rect x="4.5" y="4.5" width="7" height="9" rx="3.5" /><path d="M6 4.5a2 2 0 0 1 4 0M2 8h2.5M11.5 8H14M2.5 12.5l2-1M13.5 12.5l-2-1M2.5 3.5l2 1.5M13.5 3.5l-2 1.5M8 7v6" /></svg>; }
-function IdeaIcon() { return <svg {...li}><path d="M5.5 10.5a4.5 4.5 0 1 1 5 0V12h-5ZM6 14.5h4" /></svg>; }
-function WrenchIcon() { return <svg {...li}><path d="M10 2.5a3.5 3.5 0 0 0-3.2 4.8L2.5 11.6a1.4 1.4 0 0 0 2 2l4.3-4.3A3.5 3.5 0 0 0 13.5 6l-2 .5-1.7-1.8.5-2Z" /></svg>; }
-function RepoIcon() { return <svg {...li}><path d="M3.5 13V3a1 1 0 0 1 1-1h8v10h-8a1 1 0 0 0-1 1 1 1 0 0 0 1 1h8M6 12v3l1-.7 1 .7v-3" /></svg>; }
-
-function GitHubMark() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor">
-      <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
-    </svg>
   );
 }
 

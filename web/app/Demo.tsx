@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { AIGlyph } from "@/lib/ai-glyphs";
 import d from "./demo.module.css";
 
 // A mini Mac desktop: the real Amber Notes window (captured from the app with demo data), and a
@@ -23,8 +24,6 @@ const ALT: Record<Shot, string> = {
   bought: "The Groceries note with lemons and coffee beans just ticked off, tinted amber",
 };
 
-const W = 1280, H = 840; // the desktop's design size; it scales down as one picture
-
 export default function Demo({ wall = "dune" }: { wall?: "dune" | "ember" }) {
   const [scene, setScene] = useState<number | null>(null);
   const [typed, setTyped] = useState("");
@@ -33,17 +32,6 @@ export default function Demo({ wall = "dune" }: { wall?: "dune" | "ember" }) {
   const timers = useRef<number[]>([]);
   const touched = useRef(false);
   const outer = useRef<HTMLDivElement>(null);
-  const [scale, setScale] = useState(1);
-
-  useLayoutEffect(() => {
-    const el = outer.current;
-    if (!el) return;
-    const measure = (w: number) => setScale(Math.min(1, w / W));
-    measure(el.clientWidth);
-    const ro = new ResizeObserver(([e]) => measure(e.contentRect.width));
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
 
   // Preview the other wallpaper with ?wall=ember.
   useEffect(() => {
@@ -85,8 +73,8 @@ export default function Demo({ wall = "dune" }: { wall?: "dune" | "ember" }) {
 
   return (
     <div className={d.wrap}>
-      <div ref={outer} className={d.fit} style={{ height: H * scale }}>
-        <div className={d.desk} data-wall={wallpaper} style={{ width: W, height: H, transform: `scale(${scale})` }}>
+      <div ref={outer} className={d.fit}>
+        <div className={d.desk} data-wall={wallpaper}>
           <Wallpaper kind={wallpaper} />
 
           <div className={d.app}>
@@ -99,7 +87,7 @@ export default function Demo({ wall = "dune" }: { wall?: "dune" | "ember" }) {
           </div>
 
           <div className={d.chat} aria-label="An AI chat">
-            <div className={d.chatBar}><div className={d.lights}><i /><i /><i /></div><span>ChatGPT</span></div>
+            <div className={d.chatBar}><div className={d.lights}><i /><i /><i /></div><span className={d.chatTitle}><AIGlyph name="openai" size={16} />ChatGPT</span></div>
             <div className={d.msgs}>
               {!s && <p className={d.hint}>What can I help with?</p>}
               {s && step >= 2 && <div key={`q${scene}`} className={d.me}>{s.ask}</div>}
