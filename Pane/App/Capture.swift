@@ -79,6 +79,9 @@ extension Capture {
         }
         guard let w = window, let note = ((try? context.fetch(FetchDescriptor<Note>())) ?? []).first(where: { $0.title == "Groceries" }) else { return }
         let height = argument("-captureHeight").flatMap(Double.init) ?? 560
+        // A busy Mac takes seconds per screencapture: `-captureSlow 4` stretches the tint and receipt to match.
+        let k = argument("-captureSlow").flatMap(Double.init) ?? 1
+        ChangeTint.slowMotion = k
         w.setContentSize(NSSize(width: 1180, height: height))
         w.center()
         NSApp.activate()
@@ -92,13 +95,15 @@ extension Capture {
         func shoot(_ name: String) async {
             // Something else may have come forward meanwhile (an install, a notification): take the front again.
             if !NSApp.isActive || !w.isKeyWindow {
-                NSApp.activate()
-                w.makeKeyAndOrderFront(nil)
+                // Cooperative activation is ignored while another app is in front; this one isn't.
+                NSApp.activate(ignoringOtherApps: true)
+                w.orderFrontRegardless()
+                w.makeKey()
                 await wait(0.5)
             }
             try? "".write(to: dir.appending(path: "ready-\(name)"), atomically: true, encoding: .utf8)
             let done = dir.appending(path: "shot-\(name)")
-            for _ in 0..<60 where !FileManager.default.fileExists(atPath: done.path) { await wait(0.05) }
+            for _ in 0..<400 where !FileManager.default.fileExists(atPath: done.path) { await wait(0.05) }
         }
         // Nothing is focused until the caret frame, like the site's other frames.
         w.makeFirstResponder(nil)
@@ -114,9 +119,9 @@ extension Capture {
         await shoot("scene0-before")
 
         aiEdit(context, title: "Groceries", scene: "paella", by: "ChatGPT")
-        await wait(1.3)
+        await wait(1.3 * k)
         await shoot("scene1-tint")
-        await wait(6.5)
+        await wait(6.5 * k)
         await shoot("scene1-faded")
 
         let old = note.body, oldAt = note.aiEditedAt
@@ -125,17 +130,17 @@ extension Capture {
         note.aiEditor = "ChatGPT"
         note.aiEditedAt = .now
         AIEdit.arrived(note, previousBody: old, previousEditAt: oldAt, quiet: false)
-        await wait(1.3)
+        await wait(1.3 * k)
         await shoot("scene2-tint")
-        await wait(6.5)
+        await wait(6.5 * k)
         await shoot("scene2-faded")
 
         // "What's still left to buy?" changes nothing: the lines it read are tinted, no receipt.
         guard let editor = editors(in: w.contentView).first(where: { $0.string.contains("Paella rice") }) else { return }
         editor.tintChanges(from: note.body.components(separatedBy: "\n").filter { !$0.hasPrefix("- [ ]") }.joined(separator: "\n"))
-        await wait(1.3)
+        await wait(1.3 * k)
         await shoot("scene3-tint")
-        await wait(4.5)
+        await wait(4.5 * k)
         await shoot("scene3-faded")
 
         // The caret after "Cherry tomatoes", held on rather than blinking.
