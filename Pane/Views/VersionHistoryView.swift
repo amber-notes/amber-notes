@@ -303,42 +303,56 @@ struct MacVersionHistory: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 0) {
-                sidebar.frame(width: 260)
-                Divider()
-                detail
+            if hasVersions {
+                HStack(spacing: 0) {
+                    sidebar.frame(width: 260)
+                    Hairline(vertical: true)
+                    detail
+                }
+            } else {
+                // Loading, offline or nothing kept yet: one message across the sheet.
+                VStack(alignment: .leading, spacing: 0) {
+                    header.frame(maxWidth: .infinity, alignment: .leading)
+                    HistoryStatus(model: model).frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color(nsColor: .windowBackgroundColor))
             }
-            Divider()
+            Hairline()
             bar
         }
         .frame(minWidth: 820, idealWidth: 900, minHeight: 540, idealHeight: 600)
     }
 
+    private var hasVersions: Bool { model.phase == .loaded && !model.isEmpty }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("Version History").font(.system(size: 13, weight: .semibold))
+            Text(model.note.title).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 16)
+        .padding(.bottom, 8)
+    }
+
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Version History").font(.system(size: 13, weight: .semibold))
-                Text(model.note.title).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 16)
-            .padding(.bottom, 8)
-            if model.phase == .loaded && !model.isEmpty {
-                List(selection: Binding(get: { model.selection }, set: { id in Task { await model.select(id) } })) {
-                    ForEach(model.days) { day in
-                        Section(day.title) {
-                            ForEach(day.entries) { entry in
-                                VersionRow(entry: entry).tag(entry.id)
-                            }
+            header
+            List(selection: Binding(get: { model.selection }, set: { id in Task { await model.select(id) } })) {
+                ForEach(model.days) { day in
+                    Section(day.title) {
+                        ForEach(day.entries) { entry in
+                            VersionRow(entry: entry).tag(entry.id)
+                                .listRowSeparator(.hidden)
                         }
                     }
+                    .listSectionSeparator(.hidden)
                 }
-                .listStyle(.sidebar)
-                .scrollContentBackground(.hidden)
-                .accessibilityIdentifier("history.list")
-            } else {
-                HistoryStatus(model: model)
             }
+            .listStyle(.inset)
+            .scrollContentBackground(.hidden)
+            .accessibilityIdentifier("history.list")
         }
         .background(Color(nsColor: .windowBackgroundColor))
     }
@@ -346,7 +360,7 @@ struct MacVersionHistory: View {
     @ViewBuilder
     private var detail: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if let entry = model.selected, model.phase == .loaded, !model.isEmpty {
+            if let entry = model.selected {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(entry.version.isCurrent ? "Current version" : VersionHistoryModel.heading(entry.version))
                         .font(.system(size: 13, weight: .semibold))
@@ -357,7 +371,7 @@ struct MacVersionHistory: View {
                 .padding(.vertical, 12)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color.notePage)
-                Divider()
+                Hairline()
                 VersionPreview(model: model)
             } else {
                 Color.notePage
@@ -375,18 +389,31 @@ struct MacVersionHistory: View {
             Spacer()
             Button("Done", action: close)
                 .keyboardShortcut(.cancelAction)
-            Button("Restore This Version") {
-                Task { if await model.restore() { close() } }
-            }
-            .keyboardShortcut(.defaultAction)
-            .buttonStyle(.borderedProminent)
-            .disabled(model.selected == nil || model.selected?.version.isCurrent == true || model.previewText == nil || model.restoring)
-            .accessibilityIdentifier("history.restore")
+            if hasVersions { restoreButton }
         }
         .controlSize(.large)
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .background(Color(nsColor: .windowBackgroundColor))
+    }
+
+    private var restoreButton: some View {
+        Button("Restore This Version") {
+            Task { if await model.restore() { close() } }
+        }
+        .keyboardShortcut(.defaultAction)
+        .buttonStyle(.borderedProminent)
+        .disabled(model.selected == nil || model.selected?.version.isCurrent == true || model.previewText == nil || model.restoring)
+        .accessibilityIdentifier("history.restore")
+    }
+}
+
+/// A separator line. Drawn as a plain fill so it reads the same in the sheet and in captures.
+private struct Hairline: View {
+    var vertical = false
+    var body: some View {
+        Rectangle().fill(Color(nsColor: NSColor(name: nil) { $0.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? NSColor(white: 0.27, alpha: 1) : NSColor(white: 0.87, alpha: 1) }))
+            .frame(width: vertical ? 1 : nil, height: vertical ? nil : 1)
     }
 }
 #endif
