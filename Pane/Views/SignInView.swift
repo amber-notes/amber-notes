@@ -1,26 +1,27 @@
 import SwiftUI
 
-/// Sign in with Apple. On the Mac this is the whole window; on iPhone it's a glass
-/// card over a warm backdrop. Both follow light and dark mode.
+/// Sign in: Sign in with Apple, or email first. Type your email, Continue, and the screen asks
+/// for your password or for a new one, depending on whether the email has an account.
+/// On the Mac this is the whole window; on iPhone it's a glass card over a warm backdrop.
 struct SignInView: View {
     let backend: Backend
+    @State private var flow: EmailSignInFlow
     @State private var working = false
     @State private var error: String?
-    /// The old email sign-in, folded away. It stays until your Apple ID is linked on
-    /// every device (Settings → Connect Apple ID); then `emailFallback` goes to false.
-    @State private var showEmail = true
-    /// The email form creates an account instead of signing in.
-    @State private var creating = false
-    @State private var email = ""
-    @State private var password = ""
     @FocusState private var focus: Field?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     enum Field { case email, password }
 
-    /// Temporary: lets an account that hasn't linked its Apple ID yet get in once.
+    init(backend: Backend, flow: EmailSignInFlow = EmailSignInFlow()) {
+        self.backend = backend
+        _flow = State(initialValue: flow)
+    }
+
+    /// Email sign-in sits under Sign in with Apple.
     static let emailFallback = true
 
-    /// One size and shape for every row (Apple button, fields, Sign In), so the card reads as one form.
+    /// One size and shape for every row (Apple button, fields, the main button), so the card reads as one form.
     enum Row {
         #if os(macOS)
         static let height: CGFloat = 36
@@ -50,30 +51,17 @@ struct SignInView: View {
         #endif
     }
 
-    /// Signing in and creating an account are two pages: the whole card changes, not a few words in it.
     private var card: some View {
-        ZStack {
-            page
-                .id(creating)
-                .transition(.asymmetric(
-                    insertion: .opacity.combined(with: .offset(x: creating ? 24 : -24)),
-                    removal: .opacity.combined(with: .offset(x: creating ? -24 : 24))))
-        }
-        .animation(.smooth(duration: 0.3), value: creating)
-    }
-
-    private var page: some View {
         VStack(spacing: 24) {
             VStack(spacing: 14) {
                 AppMark(size: 72)
-                Text(creating ? "Create your account" : "Sign in to Amber Notes")
+                Text("Sign in to Amber Notes")
                     .font(.title2.weight(.bold))
                     .multilineTextAlignment(.center)
             }
 
             VStack(spacing: 12) {
-                AppleAuthButton(label: creating ? .signUp : .signIn, height: Row.height,
-                                title: creating ? "Sign up with Apple" : "Sign in with Apple", web: webSignIn) { result in
+                AppleAuthButton(label: .signIn, height: Row.height, title: "Sign in with Apple", web: webSignIn) { result in
                     switch result {
                     case .success(let credential): signIn(credential)
                     case .failure(let failure): error = AppleSignIn.message(for: failure)
@@ -81,8 +69,12 @@ struct SignInView: View {
                 }
                 .disabled(working)
                 .opacity(working ? 0.6 : 1)
-                .overlay { if working { ProgressView().controlSize(.small) } }
                 .accessibilityIdentifier("signin.apple")
+
+                if Self.emailFallback {
+                    orDivider
+                    emailSection
+                }
 
                 if let error {
                     Text(error)
@@ -91,36 +83,21 @@ struct SignInView: View {
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
                         .transition(.opacity)
-                }
-
-                if Self.emailFallback {
-                    orDivider
-                    emailSection
+                        .accessibilityIdentifier("signin.error")
                 }
             }
-
-            Button {
-                creating.toggle()
-                error = nil
-                password = ""
-            } label: {
-                (Text(creating ? "Already have an account? " : "New to Amber Notes? ").foregroundStyle(.secondary)
-                 + Text(creating ? "Sign In" : "Create an Account").foregroundStyle(.tint))
-                    .font(.footnote)
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("signin.switch")
         }
         .animation(.snappy(duration: 0.2), value: error)
-        .animation(.smooth(duration: 0.3), value: showEmail)
+        .animation(reduceMotion ? nil : .smooth(duration: 0.3), value: flow.step)
     }
 
-    @ViewBuilder
     private var emailSection: some View {
-        if showEmail {
-            VStack(spacing: 10) {
+        VStack(spacing: 10) {
+            if flow.emailLocked {
+                lockedEmail
+            } else {
                 field {
-                    TextField("Email", text: $email)
+                    TextField("Email", text: $flow.email)
                         .textContentType(.username)
                         #if os(iOS)
                         .keyboardType(.emailAddress)
@@ -128,47 +105,108 @@ struct SignInView: View {
                         #endif
                         .autocorrectionDisabled()
                         .focused($focus, equals: .email)
-                        .submitLabel(.next)
-                        .onSubmit { focus = .password }
+                        .submitLabel(.continue)
+                        .onSubmit(primary)
                         .accessibilityIdentifier("signin.email")
                 }
+            }
+
+            if flow.showsPassword {
                 field {
-                    SecureField(creating ? "Password, 12+ characters" : "Password", text: $password)
-                        .textContentType(creating ? .newPassword : .password)
+                    SecureField(flow.step == .create ? "Create a password (12+ characters)" : "Password", text: $flow.password)
+                        .textContentType(flow.step == .create ? .newPassword : .password)
                         .focused($focus, equals: .password)
                         .submitLabel(.go)
-                        .onSubmit(signInWithEmail)
+                        .onSubmit(primary)
                         .accessibilityIdentifier("signin.password")
                 }
-                Button(action: signInWithEmail) {
-                    Text(creating ? "Create Account" : "Sign In")
-                        .font(.system(size: Row.text, weight: .semibold))
-                        .foregroundStyle(.black.opacity(0.85))
-                        .frame(maxWidth: .infinity, minHeight: Row.height, maxHeight: Row.height)
-                        .background(Color.accentColor, in: .rect(cornerRadius: Row.radius, style: .continuous))
-                        .contentShape(.rect(cornerRadius: Row.radius, style: .continuous))
-                }
-                .buttonStyle(PressScale())
-                .disabled(!canSubmitEmail)
-                .opacity(canSubmitEmail ? 1 : 0.45)
-                .animation(.easeOut(duration: 0.15), value: canSubmitEmail)
-                .keyboardShortcut(.defaultAction)
-                .accessibilityIdentifier("signin.submit")
-                .padding(.top, 2)
+                .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .top)))
             }
-            .textFieldStyle(.plain)
-            .transition(.opacity.combined(with: .move(edge: .top)))
-        } else {
-            Button("Use email and password instead") {
-                showEmail = true
+
+            if flow.step == .create {
+                Text("New here? We'll create your account.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .transition(.opacity)
+            }
+
+            if flow.step == .apple {
+                Text("This email signs in with Apple. Use Sign in with Apple above.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .transition(.opacity)
+                    .accessibilityIdentifier("signin.appleOnly")
+            }
+
+            if let title = flow.buttonTitle {
+                mainButton(title)
+            }
+
+            if flow.step == .signIn(fallback: true) {
+                Button("New? Create an account") {
+                    flow.chooseCreate()
+                    error = nil
+                    focus = .password
+                }
+                .buttonStyle(.plain)
+                .font(.footnote)
+                .foregroundStyle(.tint)
+                .accessibilityIdentifier("signin.create")
+            }
+        }
+        .textFieldStyle(.plain)
+    }
+
+    /// The email, fixed once you've continued, with the way back.
+    private var lockedEmail: some View {
+        let shape = RoundedRectangle(cornerRadius: Row.radius, style: .continuous)
+        return HStack(spacing: 8) {
+            Text(flow.email)
+                .font(.system(size: Row.text))
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .accessibilityIdentifier("signin.lockedEmail")
+            Spacer(minLength: 8)
+            Button("Use a different email") {
+                flow.back()
                 error = nil
                 focus = .email
             }
             .buttonStyle(.plain)
             .font(.footnote)
-            .foregroundStyle(.secondary)
-            .accessibilityIdentifier("signin.useEmail")
+            .foregroundStyle(.tint)
+            .accessibilityIdentifier("signin.back")
         }
+        .padding(.horizontal, 12)
+        .frame(height: Row.height)
+        .background(.fill.quaternary, in: shape)
+    }
+
+    private func mainButton(_ title: String) -> some View {
+        let busy = working || flow.step == .checking
+        let enabled = flow.buttonEnabled && !working
+        return Button(action: primary) {
+            ZStack {
+                Text(title).opacity(busy ? 0 : 1)
+                if busy { ProgressView().controlSize(.small).tint(.black) }
+            }
+            .font(.system(size: Row.text, weight: .semibold))
+            .foregroundStyle(.black.opacity(0.85))
+            .frame(maxWidth: .infinity, minHeight: Row.height, maxHeight: Row.height)
+            .background(Color.accentColor, in: .rect(cornerRadius: Row.radius, style: .continuous))
+            .contentShape(.rect(cornerRadius: Row.radius, style: .continuous))
+        }
+        .buttonStyle(PressScale())
+        .disabled(!enabled)
+        .opacity(enabled || busy ? 1 : 0.45)
+        .animation(.easeOut(duration: 0.15), value: enabled)
+        .keyboardShortcut(.defaultAction)
+        .accessibilityLabel(busy ? "\(title), working" : title)
+        .accessibilityIdentifier("signin.submit")
+        .padding(.top, 2)
     }
 
     /// One input, the same height and corners as the buttons.
@@ -220,23 +258,35 @@ struct SignInView: View {
         }
     }
 
-    private var canSubmitEmail: Bool {
-        !email.isEmpty && !working && (creating ? password.count >= 12 : !password.isEmpty)
-    }
-
-    private func signInWithEmail() {
-        guard canSubmitEmail else { return }
-        working = true
+    /// The full-width button, or Return in either field.
+    private func primary() {
+        guard flow.buttonEnabled, !working else { return }
         error = nil
-        let signingUp = creating
-        Task {
-            do {
-                if signingUp { try await backend.signUp(email: email, password: password) }
-                else { try await backend.signIn(email: email, password: password) }
-            } catch {
-                self.error = Backend.message(for: error, signingUp: signingUp)
+        switch flow.action {
+        case .check:
+            guard flow.beginCheck() else { return }
+            let email = flow.email
+            Task {
+                let status = try? await backend.accountStatus(email: email)
+                guard flow.step == .checking, flow.email == email else { return }
+                flow.finishCheck(status)
+                if flow.showsPassword { focus = .password }
             }
-            working = false
+        case .signIn, .create:
+            let creating = flow.action == .create
+            let (email, password) = (flow.email, flow.password)
+            working = true
+            Task {
+                do {
+                    if creating { try await backend.signUp(email: email, password: password) }
+                    else { try await backend.signIn(email: email, password: password) }
+                } catch {
+                    self.error = Backend.message(for: error, signingUp: creating)
+                }
+                working = false
+            }
+        case nil:
+            break
         }
     }
 }

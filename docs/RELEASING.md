@@ -7,7 +7,7 @@ Releases are cut from a version tag. GitHub Actions (`.github/workflows/release.
 ```sh
 git checkout main && git pull
 git tag -a v1.0.1 -m "Checklists sink faster
-Fixed the bullet alignment on iPad"
+Fixed the bullet alignment in long notes"
 git push origin v1.0.1
 ```
 

@@ -168,6 +168,18 @@ final class Backend {
         try await client.auth.signIn(email: email.trimmingCharacters(in: .whitespaces), password: password)
     }
 
+    /// Whether an email already has an account, for the email-first sign-in (the `account-status`
+    /// function). Throws when the server can't answer; the screen then falls back to a password field.
+    func accountStatus(email: String) async throws -> AccountStatus {
+        guard let client else { throw URLError(.notConnectedToInternet) }
+        struct Reply: Decodable { let exists: Bool; let password: Bool }
+        let r: Reply = try await client.functions.invoke(
+            "account-status",
+            options: FunctionInvokeOptions(method: .post, body: ["email": email]))
+        if !r.exists { return .new }
+        return r.password ? .password : .appleOnly
+    }
+
     /// A new account with email and password (at least 12 characters). Email isn't confirmed,
     /// so the new session starts at once.
     func signUp(email: String, password: String) async throws {

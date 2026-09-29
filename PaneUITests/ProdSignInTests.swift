@@ -8,13 +8,13 @@ final class ProdSignInTests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-synctest", "-signout"]
         app.launch()
-        // Email is folded away behind Sign in with Apple until the Apple ID is linked.
-        let useEmail = app.buttons["signin.useEmail"]
-        if useEmail.exists { useEmail.tap() }
+        // Email first: type it, Continue, and the password field appears for an existing account.
         let field = app.textFields["signin.email"]
         XCTAssertTrue(field.waitForExistence(timeout: 10))
         field.tap(); field.typeText(email)
+        app.buttons["signin.submit"].tap() // Continue
         let pw = app.secureTextFields["signin.password"]
+        XCTAssertTrue(pw.waitForExistence(timeout: 10), "an existing account asks for its password")
         pw.tap(); pw.typeText(password)
         app.buttons["signin.submit"].tap()
         let welcome = app.staticTexts["Welcome to Amber Notes"].firstMatch
