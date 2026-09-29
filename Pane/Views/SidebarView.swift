@@ -300,7 +300,10 @@ private struct FolderTree: View {
             for item in items {
                 switch item.kind {
                 case .note:
-                    if let n = context.note(item.id) { context.move(n, to: folder); moved = true }
+                    // A dragged multi-selection moves together.
+                    for id in item.ids {
+                        if let n = context.note(id) { context.move(n, to: folder); moved = true }
+                    }
                 case .folder:
                     if item.id != folder.id, let f = context.folder(item.id) { context.move(f, into: folder); moved = true }
                 }

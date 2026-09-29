@@ -5,8 +5,12 @@ import UniformTypeIdentifiers
 struct NoteListView: View {
     @Environment(\.modelContext) private var context
     let scope: Scope
-    @Binding var selection: UUID?
+    /// Several notes can be selected (⌘-click, ⇧-click, ⌘A on the Mac; Select on iPhone).
+    @Binding var selection: Set<UUID>
     let onNewNote: () -> Void
+    #if os(iOS)
+    @State private var editMode: EditMode = .inactive
+    #endif
 
     @Query(sort: \Note.updatedAt, order: .reverse) private var notes: [Note]
     @State private var search = ""
@@ -71,10 +75,8 @@ struct NoteListView: View {
                     ForEach(section.1) { note in
                         NoteRow(note: note, query: search, showFolder: scope == .all || !search.isEmpty)
                             .tag(note.id)
-                            .draggable(PaneDragItem(kind: .note, id: note.id)) {
-                                Label(note.title, systemImage: "note.text")
-                                    .padding(.horizontal, 12).padding(.vertical, 8)
-                                    .glassEffect(.regular, in: .capsule)
+                            .draggable(dragItem(for: note)) {
+                                dragPreview(for: note)
                             }
                             .swipeActions(edge: .leading) {
                                 if note.trashedAt == nil {
@@ -87,7 +89,6 @@ struct NoteListView: View {
                             .swipeActions(edge: .trailing) {
                                 deleteButton(note)
                             }
-                            .contextMenu { menu(for: note, folders: folders) }
                     }
                 } header: {
                     Text(section.0)
@@ -97,8 +98,13 @@ struct NoteListView: View {
                 }
             }
         }
+        // Right-click acts on the whole selection when the row is part of it, like Notes.
+        .contextMenu(forSelectionType: UUID.self) { ids in
+            menu(for: ids, folders: folders)
+        }
         #if os(iOS)
         .listStyle(.insetGrouped)
+        .environment(\.editMode, $editMode)
         #endif
         .overlay {
             if visible.isEmpty { emptyState }
@@ -114,7 +120,7 @@ struct NoteListView: View {
         }
         .dropDestination(for: URL.self) { urls, _ in
             let made = context.importFiles(urls, into: scope == .trash ? .all : scope)
-            if let first = made.first { selection = first.id }
+            if let first = made.first { selection = [first.id] }
             return !made.isEmpty
         } isTargeted: { t in
             withAnimation(.easeOut(duration: 0.15)) { fileDropTargeted = t }
@@ -132,12 +138,43 @@ struct NoteListView: View {
         #if os(macOS)
         .navigationSubtitle("")
         #endif
-        .onKeyPress(.delete) {
-            guard let id = selection, let n = context.note(id) else { return .ignored }
-            remove(n); return .handled
-        }
+        #if os(macOS)
+        // The Delete key (and Edit › Delete) on the focused list removes every selected note.
+        .onDeleteCommand { if !selection.isEmpty { remove(selection) } }
+        #endif
         .toolbar {
             #if os(iOS)
+            ToolbarItem(placement: .primaryAction) {
+                Button(editMode.isEditing ? "Done" : "Select") {
+                    withAnimation(.snappy(duration: 0.25)) {
+                        editMode = editMode.isEditing ? .inactive : .active
+                        if !editMode.isEditing { selection = [] }
+                    }
+                }
+                .fontWeight(editMode.isEditing ? .semibold : .regular)
+                .disabled(scopedNotes.isEmpty && !editMode.isEditing)
+                .accessibilityIdentifier("list.select")
+            }
+            if editMode.isEditing {
+                ToolbarItem(placement: .bottomBar) {
+                    Menu("Move") {
+                        ForEach(folders) { f in
+                            Button(f.name) { moveSelection(to: f) }
+                        }
+                    }
+                    .disabled(selection.isEmpty || scope == .trash)
+                    .accessibilityIdentifier("list.moveSelected")
+                }
+                ToolbarSpacer(.flexible, placement: .bottomBar)
+                ToolbarItem(placement: .bottomBar) {
+                    Button(selection.isEmpty ? "Delete" : "Delete (\(selection.count))", role: .destructive) {
+                        remove(selection)
+                        withAnimation(.snappy(duration: 0.25)) { editMode = .inactive }
+                    }
+                    .disabled(selection.isEmpty)
+                    .accessibilityIdentifier("list.deleteSelected")
+                }
+            } else {
             ToolbarSpacer(.flexible, placement: .bottomBar)
             ToolbarItem(placement: .bottomBar) {
                 Text(scopedNotes.count == 1 ? "1 Note" : "\(scopedNotes.count) Notes")
@@ -151,6 +188,7 @@ struct NoteListView: View {
             ToolbarItem(placement: .bottomBar) {
                 Button("New Note", systemImage: "square.and.pencil", action: onNewNote)
                     .accessibilityIdentifier("list.newNote")
+            }
             }
             #else
             // Like Notes: the folder's name and count, then a "⋯" menu for the list.
@@ -208,6 +246,29 @@ struct NoteListView: View {
     }
 
     @ViewBuilder
+    private func menu(for ids: Set<UUID>, folders: [Folder]) -> some View {
+        let notes = ids.compactMap { context.note($0) }
+        if notes.count == 1, let note = notes.first {
+            menu(for: note, folders: folders)
+        } else if notes.count > 1 {
+            if notes.allSatisfy({ $0.trashedAt != nil }) {
+                Button("Recover \(notes.count) Notes", systemImage: "arrow.uturn.backward") {
+                    withAnimation(.snappy) { notes.forEach(context.restore) }
+                }
+                Button("Delete \(notes.count) Notes Forever", systemImage: "trash", role: .destructive) { remove(ids) }
+            } else {
+                Menu("Move \(notes.count) Notes to", systemImage: "folder") {
+                    ForEach(folders) { f in
+                        Button(f.name) { withAnimation(.snappy) { context.move(notes, to: f) } }
+                    }
+                }
+                Divider()
+                Button("Delete \(notes.count) Notes", systemImage: "trash", role: .destructive) { remove(ids) }
+            }
+        }
+    }
+
+    @ViewBuilder
     private func menu(for note: Note, folders: [Folder]) -> some View {
         if note.trashedAt != nil {
             Button("Recover", systemImage: "arrow.uturn.backward") { withAnimation(.snappy) { context.restore(note) } }
@@ -225,24 +286,52 @@ struct NoteListView: View {
             ShareLink(item: note.body, preview: SharePreview(note.title))
             Button("Duplicate", systemImage: "plus.square.on.square") {
                 let copy = context.createNote(in: note.folder.map { .folder($0.id) } ?? .all, body: note.body)
-                selection = copy.id
+                selection = [copy.id]
             }
             Divider()
             deleteButton(note)
         }
     }
 
-    private func remove(_ note: Note) {
-        let wasSelected = selection == note.id
+    /// Dragging a selected note carries the whole selection; any other note goes alone.
+    private func dragItem(for note: Note) -> PaneDragItem {
+        guard selection.count > 1, selection.contains(note.id) else { return PaneDragItem(kind: .note, id: note.id) }
+        return PaneDragItem(kind: .note, id: note.id, others: selection.filter { $0 != note.id }.sorted { $0.uuidString < $1.uuidString })
+    }
+
+    private func dragPreview(for note: Note) -> some View {
+        let many = selection.count > 1 && selection.contains(note.id)
+        return Label(many ? "\(selection.count) Notes" : note.title, systemImage: many ? "doc.on.doc" : "note.text")
+            .padding(.horizontal, 12).padding(.vertical, 8)
+            .glassEffect(.regular, in: .capsule)
+    }
+
+    private func moveSelection(to folder: Folder) {
+        let notes = selection.compactMap { context.note($0) }
+        withAnimation(.snappy) { context.move(notes, to: folder) }
+        #if os(iOS)
+        withAnimation(.snappy(duration: 0.25)) { editMode = .inactive }
+        #endif
+        selection = []
+    }
+
+    private func remove(_ note: Note) { remove([note.id]) }
+
+    /// Deletes the notes and, if the open note was among them, selects its neighbour like Notes.
+    private func remove(_ ids: Set<UUID>) {
         let ordered = filtered
+        let notes = ids.compactMap { context.note($0) }
+        let touchedSelection = !selection.isDisjoint(with: ids)
+        let firstIndex = ordered.firstIndex { ids.contains($0.id) }
         withAnimation(.snappy(duration: 0.25)) {
-            if note.trashedAt == nil { context.trash(note) } else { context.purge(note) }
-            if wasSelected {
-                // Select the neighbour, as Apple Notes does.
-                if let i = ordered.firstIndex(where: { $0.id == note.id }) {
-                    let rest = ordered.filter { $0.id != note.id }
-                    selection = rest.isEmpty ? nil : rest[min(i, rest.count - 1)].id
-                } else { selection = nil }
+            context.remove(notes)
+            if touchedSelection {
+                let rest = ordered.filter { !ids.contains($0.id) }
+                if let i = firstIndex, !rest.isEmpty {
+                    selection = [rest[min(i, rest.count - 1)].id]
+                } else {
+                    selection = []
+                }
             }
         }
     }

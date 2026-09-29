@@ -19,6 +19,11 @@ struct PaneDragItem: Codable, Transferable {
     enum Kind: String, Codable { case note, folder }
     var kind: Kind
     var id: UUID
+    /// The rest of a multi-selection dragged together with `id` (notes only).
+    var others: [UUID]? = nil
+
+    /// Every item this drag carries, `id` first.
+    var ids: [UUID] { [id] + (others ?? []) }
 
     static var transferRepresentation: some TransferRepresentation {
         CodableRepresentation(contentType: .paneItem)
@@ -120,6 +125,18 @@ extension ModelContext {
         note.body = ""
         note.touch()
         try? save()
+    }
+
+    /// Deletes several notes the way one is deleted: live notes go to Recently Deleted
+    /// (sub-notes with them), notes already there are deleted for good.
+    func remove(_ notes: [Note]) {
+        for n in notes where n.deletedAt == nil {
+            if n.trashedAt == nil { trash(n) } else { purge(n) }
+        }
+    }
+
+    func move(_ notes: [Note], to folder: Folder) {
+        for n in notes { move(n, to: folder) }
     }
 
     func togglePin(_ note: Note) {

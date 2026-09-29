@@ -6,7 +6,8 @@ import UniformTypeIdentifiers
 struct RootView: View {
     @Environment(\.modelContext) private var context
     @State private var scope: Scope? = .all
-    @State private var selectedNote: UUID?
+    /// The list's selection; one note opens in the editor, several show a summary like Notes.
+    @State private var selection: Set<UUID> = []
     @State private var visibility: NavigationSplitViewVisibility = .all
     @State private var editor = EditorController()
     @State private var justCreated: UUID?
@@ -15,6 +16,12 @@ struct RootView: View {
     @State private var importError: String?
     @AppStorage("lastScope") private var lastScopeData: Data = Data()
     @AppStorage("lastNote") private var lastNote: String = ""
+
+    /// The single open note, when exactly one is selected.
+    private var selectedNote: UUID? {
+        get { selection.count == 1 ? selection.first : nil }
+        nonmutating set { selection = newValue.map { [$0] } ?? [] }
+    }
 
     var body: some View {
         imports(lifecycle(split))
@@ -30,7 +37,7 @@ struct RootView: View {
             SidebarView(scope: $scope, onNewNote: newNote)
                 .navigationSplitViewColumnWidth(min: 200, ideal: 230, max: 320)
         } content: {
-            NoteListView(scope: scope ?? .all, selection: $selectedNote, onNewNote: newNote)
+            NoteListView(scope: scope ?? .all, selection: $selection, onNewNote: newNote)
                 .navigationSplitViewColumnWidth(min: 260, ideal: 310, max: 420)
         } detail: {
             detail
@@ -95,15 +102,16 @@ struct RootView: View {
     }
 
     private var deleteAction: (() -> Void)? {
-        guard selectedNote != nil else { return nil }
+        guard !selection.isEmpty else { return nil }
         return { deleteSelected() }
     }
 
+    /// Edit › Delete: every selected note goes to Recently Deleted (or, there, is deleted for good).
     private func deleteSelected() {
-        guard let id = selectedNote, let n = context.note(id) else { return }
+        let notes = selection.compactMap { context.note($0) }
         withAnimation(.snappy(duration: 0.25)) {
-            if n.trashedAt == nil { context.trash(n) } else { context.purge(n) }
-            selectedNote = nil
+            context.remove(notes)
+            selection = []
         }
     }
 
@@ -116,20 +124,25 @@ struct RootView: View {
                 }
                     .id(id)
             } else {
-                EmptyDetailView()
-                    .background(Color.notePage.ignoresSafeArea())
-                    #if os(macOS)
-                    .toolbar {
-                        ToolbarItem {
-                            Button(action: newNote) {
-                                Label("New Note", systemImage: "square.and.pencil").offset(x: 0.5, y: 0.5)
-                            }
-                                .accessibilityIdentifier("list.newNote")
-                        }
-                        ToolbarSpacer(.flexible)
+                Group {
+                    if selection.count > 1 {
+                        MultipleSelectionView(count: selection.count)
+                    } else {
+                        EmptyDetailView()
                     }
-                    #endif
-
+                }
+                .background(Color.notePage.ignoresSafeArea())
+                #if os(macOS)
+                .toolbar {
+                    ToolbarItem {
+                        Button(action: newNote) {
+                            Label("New Note", systemImage: "square.and.pencil").offset(x: 0.5, y: 0.5)
+                        }
+                            .accessibilityIdentifier("list.newNote")
+                    }
+                    ToolbarSpacer(.flexible)
+                }
+                #endif
             }
     }
 
@@ -182,6 +195,20 @@ struct RootView: View {
             if case .folder(let id) = s, context.folder(id) == nil { return }
             scope = s
         }
+    }
+}
+
+/// What the note pane shows with several notes selected, as in Notes.
+struct MultipleSelectionView: View {
+    let count: Int
+
+    var body: some View {
+        Text("\(count) Notes Selected")
+            .font(.title3)
+            .foregroundStyle(.secondary)
+            .monospacedDigit()
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .accessibilityIdentifier("detail.multiple")
     }
 }
 

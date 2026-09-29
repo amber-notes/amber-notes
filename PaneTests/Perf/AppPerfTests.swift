@@ -41,7 +41,7 @@ import Testing
     @Test func listWithAThousandNotes() async throws {
         let (c, notes) = try library(notes: 1000)
         let clock = ContinuousClock()
-        let (w, host) = window(NoteListView(scope: .all, selection: .constant(nil), onNewNote: {}).modelContainer(c))
+        let (w, host) = window(NoteListView(scope: .all, selection: .constant([]), onNewNote: {}).modelContainer(c))
         defer { w.close() }
         let first = ms(clock.measure { host.layoutSubtreeIfNeeded(); w.displayIfNeeded() })
         print("PERF list 1000 notes: first display \(String(format: "%.1f", first)) ms")
@@ -96,7 +96,7 @@ extension AppPerfTests {
     /// For profiling by hand: keeps the list updating so a sampler can see why.
     @Test(.enabled(if: ProcessInfo.processInfo.environment["AMBER_PROFILE"] != nil)) func listUpdateLoop() async throws {
         let (c, notes) = try library(notes: 1000)
-        let (w, host) = window(NoteListView(scope: .all, selection: .constant(nil), onNewNote: {}).modelContainer(c))
+        let (w, host) = window(NoteListView(scope: .all, selection: .constant([]), onNewNote: {}).modelContainer(c))
         defer { w.close() }
         host.layoutSubtreeIfNeeded(); w.displayIfNeeded()
         for _ in 0..<300 {
