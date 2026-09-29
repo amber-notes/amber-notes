@@ -80,8 +80,17 @@ iPhone 6.5" slot (1284 × 2778), upload in this order from `.shots/appstore/6.5/
 6. `light-4-tracker.png` (optional: the table's last column is cut off at the edge)
 
 The 6.9" set (1320 × 2868) is in `.shots/appstore/6.9/` if App Store Connect asks for it.
-iPad: the app supports iPad (TARGETED_DEVICE_FAMILY 1,2). If App Store Connect requires iPad
-screenshots before submission, they still need to be made (13" iPad, 2064 × 2752).
+iPad 13" slot, from `.shots/appstore/ipad-13/` (2064 × 2752; a 2048 × 2732 copy of each is in
+`ipad-13/2048x2732/` if the slot asks for that size), in this order:
+
+1. `1-lisbon.png`: sidebar, list and note side by side
+2. `2-groceries.png`
+3. `3-files.png`
+4. `5-lisbon-dark.png`
+5. `4-tracker.png` (optional)
+
+App icon: nothing to upload. The 1024 × 1024 App Store icon comes from the build
+(AppIcon, opaque, no alpha channel), and App Store Connect shows it once the build is selected.
 
 ## Age rating (App Store Connect → App Information → Age Rating)
 
