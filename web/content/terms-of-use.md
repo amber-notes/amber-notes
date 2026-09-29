@@ -13,7 +13,7 @@ Last updated: 29 September 2026
 
 ## About these terms
 
-These terms are an agreement between you and Emil Wagman, an individual developer in Sweden ("we"), about your use of the Amber Notes apps for iPhone and Mac, the service that lets AI assistants connect to your notes, and the website at amber-notes.vercel.app, including shared note pages (together, "Amber Notes").
+These terms are an agreement between you and Emil Wagman, an individual developer in Sweden ("we"), about your use of the Amber Notes apps for iPhone and Mac, the service that lets AI assistants connect to your notes, and the website at ambernotes.app, including shared note pages (together, "Amber Notes").
 
 By creating an account or using Amber Notes, you agree to these terms and to our [Privacy Policy](/privacy). If you got the app from the App Store, Apple's [Licensed Application End User License Agreement](https://www.apple.com/legal/internet-services/itunes/dev/stdeula/) also applies.
 

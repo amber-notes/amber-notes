@@ -1,5 +1,5 @@
 #!/bin/zsh
-# Releases Amber Notes for Mac: a notarized DMG on amber-notes.vercel.app/download, and a
+# Releases Amber Notes for Mac: a notarized DMG on ambernotes.app/download, and a
 # Sparkle update that every installed copy picks up within a day.
 #
 #   scripts/release-mac.sh 1.0.1 "What changed, one line per item"
@@ -132,7 +132,7 @@ cat > "$WEB/public/updates/appcast.xml" <<EOF
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
   <channel>
     <title>Amber Notes</title>
-    <link>https://amber-notes.vercel.app/updates/appcast.xml</link>
+    <link>https://ambernotes.app/updates/appcast.xml</link>
     <item>
       <title>Version $VERSION</title>
       <pubDate>$DATE</pubDate>
@@ -140,7 +140,7 @@ cat > "$WEB/public/updates/appcast.xml" <<EOF
       <sparkle:shortVersionString>$VERSION</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>$MIN_OS</sparkle:minimumSystemVersion>
       <description><![CDATA[<ul>$ITEMS</ul>]]></description>
-      <enclosure url="https://amber-notes.vercel.app/downloads/$FILE" type="application/octet-stream" $ATTRS />
+      <enclosure url="https://ambernotes.app/downloads/$FILE" type="application/octet-stream" $ATTRS />
     </item>
   </channel>
 </rss>
@@ -155,4 +155,4 @@ if [[ ${SKIP_DEPLOY:-0} != 1 ]]; then
 fi
 [[ ${SKIP_TAG:-0} == 1 ]] || git -C "$MAIN" tag -f "mac-v$VERSION" "$COMMIT"
 
-echo "✓ Amber Notes $VERSION ($BUILD) is live: https://amber-notes.vercel.app/download"
+echo "✓ Amber Notes $VERSION ($BUILD) is live: https://ambernotes.app/download"

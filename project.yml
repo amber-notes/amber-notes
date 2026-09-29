@@ -115,7 +115,7 @@ targets:
       path: Pane/Resources/Info-Direct.plist
       properties:
         <<: *appInfo
-        SUFeedURL: https://amber-notes.vercel.app/updates/appcast.xml
+        SUFeedURL: https://ambernotes.app/updates/appcast.xml
         SUPublicEDKey: $(SPARKLE_PUBLIC_KEY)
         SUEnableAutomaticChecks: true
         SUScheduledCheckInterval: 86400

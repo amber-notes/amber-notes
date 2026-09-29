@@ -34,4 +34,4 @@ for env in production preview; do
 done
 url=$(vercel deploy --prod --yes --scope "$team" 2>/dev/null | tail -1)
 echo "$url"
-mkdir -p ../.secrets && echo "https://amber-notes.vercel.app/privacy" > ../.secrets/privacy-url.txt  # the stable alias, not this deployment
+mkdir -p ../.secrets && echo "https://ambernotes.app/privacy" > ../.secrets/privacy-url.txt  # the stable alias, not this deployment

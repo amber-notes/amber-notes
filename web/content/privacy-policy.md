@@ -16,7 +16,7 @@ Last updated: 29 September 2026
 
 Amber Notes is made by Emil Wagman, an individual developer in Sweden. He is the controller of the personal data described here. Questions about privacy go to **emil@norditech.se**.
 
-This policy covers the Amber Notes apps for iPhone and Mac, the service that lets AI assistants connect to your notes, and the website at amber-notes.vercel.app, including shared note pages.
+This policy covers the Amber Notes apps for iPhone and Mac, the service that lets AI assistants connect to your notes, and the website at ambernotes.app, including shared note pages.
 
 ## What we collect
 
@@ -85,7 +85,7 @@ Nothing reaches an AI assistant unless you connect one. When you connect ChatGPT
 
 ## Shared notes
 
-- A note you share becomes a web page at amber-notes.vercel.app. Anyone with the link can read it without signing in, and the link may be passed on.
+- A note you share becomes a web page at ambernotes.app. Anyone with the link can read it without signing in, and the link may be passed on.
 - The page shows the note, your profile name and photo, and your email address unless it's an Apple relay address.
 - Shared pages are hidden from search engines.
 - **Stop Sharing** takes the page down within a minute. Images and files on a shared page are served through links that expire after an hour.

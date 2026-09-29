@@ -12,8 +12,8 @@ import Testing
         }
         #expect(links.count == 2)
         #expect(links.first?.0 == "Terms of Service")
-        #expect(links.first?.1.absoluteString == "https://amber-notes.vercel.app/terms")
+        #expect(links.first?.1.absoluteString == "https://ambernotes.app/terms")
         #expect(links.last?.0 == "Privacy Policy")
-        #expect(links.last?.1.absoluteString == "https://amber-notes.vercel.app/privacy")
+        #expect(links.last?.1.absoluteString == "https://ambernotes.app/privacy")
     }
 }

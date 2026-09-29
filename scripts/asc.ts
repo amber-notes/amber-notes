@@ -14,7 +14,7 @@ const API = "https://api.appstoreconnect.apple.com/v1";
 // The privacy policy page (the share site writes its address to .secrets/privacy-url.txt).
 const PRIVACY_URL = Deno.env.get("ASC_PRIVACY_URL") ||
   (await Deno.readTextFile(".secrets/privacy-url.txt").then((t) => t.trim()).catch(() => "")) ||
-  "https://amber-notes.vercel.app/privacy";
+  "https://ambernotes.app/privacy";
 
 const env: Record<string, string> = {};
 for (const line of (await Deno.readTextFile(".secrets/asc.env")).split("\n")) {

@@ -2,7 +2,7 @@
 
 App Store Connect → Amber Notes: Notes & Lists → App Privacy. Click through exactly this:
 
-1. **Privacy Policy URL:** https://amber-notes.vercel.app/privacy
+1. **Privacy Policy URL:** https://ambernotes.app/privacy
 2. **Get Started → "Do you or your third-party partners collect data from this app?"** → **Yes, we collect data from this app**.
 3. Tick these data types, and nothing else:
    - **Contact Info → Email Address** (the account email, from Sign in with Apple or email sign-up)
