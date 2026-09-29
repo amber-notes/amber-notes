@@ -132,6 +132,10 @@ final class SyncEngine {
         adoptLibrary()
         await sync()
         guard channel == nil else { return }
+        #if DEBUG || QA
+        // `-netOffline` is offline for realtime too (its socket doesn't pass the fault layer).
+        if NetFault.config.offline { return }
+        #endif
         let ch = client.channel("pane-sync")
         let notes = ch.postgresChange(AnyAction.self, schema: "public", table: "notes")
         let folders = ch.postgresChange(AnyAction.self, schema: "public", table: "folders")
@@ -217,6 +221,11 @@ final class SyncEngine {
     private var adoptedFor: UUID?
 
     func stop() async {
+        // Signed out: nothing already scheduled may still go up.
+        pending?.cancel()
+        pushLoop?.cancel()
+        pushLoop = nil
+        pushWanted = false
         realtimeTasks.forEach { $0.cancel() }
         realtimeTasks = []
         if let channel { await channel.unsubscribe() }

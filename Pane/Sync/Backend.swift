@@ -54,7 +54,7 @@ final class Backend {
                 options: SupabaseClientOptions(
                     auth: .init(storage: SessionStorage(), emitLocalSessionAsInitialSession: true),
                     // Which device wrote each version, for version history ("You on iPhone").
-                    global: .init(headers: ["x-pane-device": Self.device])
+                    global: .init(headers: ["x-pane-device": Self.device], session: AppNetwork.session)
                 )
             )
             state = .signedOut
@@ -66,6 +66,12 @@ final class Backend {
         } else {
             client = nil
         }
+    }
+
+    /// Tests: a client (on a stubbed network) that counts as signed in.
+    init(testClient: SupabaseClient, email: String) {
+        client = testClient
+        state = .signedIn(email: email)
     }
 
     var userID: UUID? { client?.auth.currentUser?.id }

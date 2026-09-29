@@ -85,7 +85,7 @@ enum ConnectAPI {
             req.setValue("application/json", forHTTPHeaderField: "Content-Type")
             req.httpBody = try JSONSerialization.data(withJSONObject: body)
         }
-        let (data, response) = try await URLSession.shared.data(for: req)
+        let (data, response) = try await AppNetwork.session.data(for: req)
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             let message = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["error"] as? String
             throw Failure(message: message ?? "Couldn't reach Amber Notes. Check your connection.")
