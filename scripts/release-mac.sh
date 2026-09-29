@@ -124,7 +124,7 @@ if [[ -n $NOTES ]]; then
 fi
 WEB="$CLEAN/web"
 mkdir -p "$WEB/public/downloads" "$WEB/public/updates"
-rm -f "$WEB/public/downloads/"*.dmg
+rm -f "$WEB/public/downloads/"*.dmg(N)   # (N): no error when there is no old DMG yet
 cp "$DIST/$FILE" "$WEB/public/downloads/$FILE"
 cat > "$WEB/public/updates/appcast.xml" <<EOF
 <?xml version="1.0" encoding="utf-8"?>
