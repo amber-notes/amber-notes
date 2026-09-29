@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import styles from "./home.module.css";
 import Demo from "./Demo";
 import DownloadLink from "./DownloadLink";
-import { AiSection, AlsoLine, Closing, ImportSection } from "./Sections";
+import { AiSection, AlsoLine, Closing, ImportSection, SyncSection } from "./Sections";
 
 const APP_STORE_LIVE = false; // Flip when the iPhone app is approved.
 const APP_STORE_URL = "https://apps.apple.com/app/id6817253103";
@@ -37,7 +37,7 @@ export default function Home() {
         <div className={`${styles.ctas} rise`} {...rise(2)}>
           <DownloadLink className={styles.primary}><AppleGlyph /> Download for Mac</DownloadLink>
           {APP_STORE_LIVE ? (
-            <a className={styles.secondary} href={APP_STORE_URL}>Get it for iPhone</a>
+            <a className={styles.secondary} href={APP_STORE_URL} target="_blank" rel="noopener noreferrer">Get it for iPhone</a>
           ) : (
             <span className={styles.secondary}>iPhone · coming soon</span>
           )}
@@ -46,8 +46,9 @@ export default function Home() {
 
       <div className="rise-soft" {...rise(3)}><Demo /></div>
 
-      <AiSection />
       <ImportSection />
+      <SyncSection iphoneLive={APP_STORE_LIVE} />
+      <AiSection />
       <AlsoLine />
       <Closing />
     </div>

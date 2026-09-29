@@ -1,7 +1,7 @@
 /* The home page demo: a small Mac desktop, drawn at a 1280-wide design size in container units so
    it stays crisp at any size (a scaled transform would blur the app captures). */
 /* Sits closer to the hero than sections sit to each other. */
-.wrap { display: grid; justify-items: center; width: 100%; margin-top: -112px; } /* 48 px under the hero buttons */
+.wrap { display: grid; justify-items: center; width: 100%; margin-top: -120px; } /* 40 px under the hero buttons */
 @media (max-width: 700px) { .wrap { margin-top: -64px; } } /* 32 px on phones (sections are 96 apart there) */
 .fit { width: 100%; max-width: 1280px; container-type: inline-size; }
 .desk {
@@ -29,7 +29,7 @@
 .shot[data-under] { opacity: 1; z-index: 1; }
 .shot[data-on] { opacity: 1; z-index: 2; }
 @media (prefers-reduced-motion: no-preference) { .shot[data-on] { transition: opacity 0.5s ease-out; } }
-/* Pressing Return in the app is instant, so intro frames swap without a fade. */
+/* The app adds a note to its list at once, so that frame swaps without a fade. */
 .app[data-instant] .shot { transition: none !important; }
 /* An edit lands the way the app shows it: the new rows arrive already tinted, in one quick step. */
 @media (prefers-reduced-motion: no-preference) { .app[data-edit] .shot[data-on] { transition: opacity 0.18s ease-out; } }
@@ -41,7 +41,8 @@
 @keyframes appBlink { 50% { opacity: 0; } }
 
 /* The app's receipt pill, laid on top so it can spring in, and leave more quietly. */
-.pill { position: absolute; left: calc(677 * var(--u)); width: calc(295 * var(--u)); height: calc(78 * var(--u)); pointer-events: none; }
+/* An opaque crop of the capture (the receipt on the note's white), placed exactly where it was taken. */
+.pill { position: absolute; pointer-events: none; }
 .pill[data-out] { opacity: 0; transform: translateY(calc(6 * var(--u))); }
 @media (prefers-reduced-motion: no-preference) {
   .pill { animation: pillIn 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.3) both; }
@@ -58,13 +59,26 @@
 .chat[data-dim] { transform: scale(0.985); }
 @media (prefers-reduced-motion: no-preference) { .chat::after { transition: opacity 0.5s ease-out; } }
 
-/* Window 2: the ChatGPT chat, over the sidebar and note list (never over the changed rows). One
+/* Window 2: the ChatGPT chat, over the right side of the note pane, so the sidebar, the list and the note's text stay in view. One
    conversation in a fixed-size window; it scrolls to the newest exchange. */
 .chat {
-  position: absolute; left: calc(20 * var(--u)); top: calc(150 * var(--u)); width: calc(470 * var(--u)); height: calc(330 * var(--u));
+  position: absolute; left: calc(860 * var(--u)); top: calc(150 * var(--u)); width: calc(400 * var(--u)); height: calc(360 * var(--u));
   border-radius: calc(16 * var(--u)); overflow: hidden; display: grid; grid-template-rows: calc(40 * var(--u)) minmax(0, 1fr) auto; background: #fff;
   box-shadow: 0 0 0 calc(0.5 * var(--u)) rgba(0, 0, 0, 0.22), 0 calc(30 * var(--u)) calc(60 * var(--u)) calc(-12 * var(--u)) rgba(40, 15, 0, 0.5), 0 calc(10 * var(--u)) calc(20 * var(--u)) calc(-8 * var(--u)) rgba(40, 15, 0, 0.28);
 }
+/* Review: the chat over the note's empty right side (item names, the amber bar and the pill stay clear). */
+.chat[data-side="right"] { left: calc(860 * var(--u)); width: calc(400 * var(--u)); }
+/* The chat follows the page: it glides down as you scroll, --follow going 0 (page top) to 1 (desk
+   centred), by the CSS `translate` property, so its arrival `transform` stacks on top. It moves only
+   with the scroll, never with the story. --travel is as low as it goes: its bottom (464 pt in the
+   window) stops 10 pt above the receipt's shadow (652 pt). Reduced motion: it stays put. */
+@property --follow { syntax: "<number>"; inherits: true; initial-value: 0; }
+.desk { --travel: 178; }
+.desk[data-follow] .chat { translate: 0 calc(var(--follow) * var(--travel) * var(--u)); }
+@supports (animation-timeline: scroll()) {
+  :root[data-follow-css] .desk[data-follow] .chat { animation: chatFollow linear both; animation-timeline: scroll(root block); animation-range: 0px var(--follow-end, 400px); }
+}
+@keyframes chatFollow { from { --follow: 0; } to { --follow: 1; } }
 /* ChatGPT arrives with a gentle scale-and-fade, and leaves more quietly. */
 .chat[data-away] { opacity: 0; transform: scale(0.96) translateY(calc(8 * var(--u))); }
 @media (prefers-reduced-motion: no-preference) {
@@ -105,16 +119,21 @@
 @keyframes shimmer { to { background-position: -200% 0; } }
 @keyframes blink { 50% { opacity: 0; } }
 /* The story bar, on the desk below the app window (in the 74 design-px gap), in white over the dunes:
-   finished parts at 90%, the current one filling solid white with a straight edge, the rest at 30%.
-   Each segment is a 24 px tall button around the line; the desk clips what falls past its edge. */
+   two parts, each a line with its label under it. The finished part's line at 90%, the current one
+   filling solid white with a straight edge, the next at 30%; the current label white, the other at 55%.
+   Each part is one button (line and label, 24 px+ tall); the desk clips what falls past its edge. */
 .story { position: absolute; left: 50%; bottom: calc(37 * var(--u)); transform: translate(-50%, 50%); z-index: 4;
-  display: flex; gap: 6px; width: min(300px, 64%); filter: drop-shadow(0 1px 2px rgba(80, 35, 0, 0.35)); }
-.seg { flex: 1; min-height: 24px; padding: 0; border: 0; background: none; cursor: pointer; display: grid; align-items: center; border-radius: 8px; }
+  display: flex; gap: 10px; width: min(280px, 60%); filter: drop-shadow(0 1px 2px rgba(80, 35, 0, 0.35)); }
+.seg { flex: 1; min-height: 24px; padding: 0; border: 0; background: none; cursor: pointer; display: grid; align-content: center; gap: 5px; border-radius: 8px; font: inherit; }
 .seg i { position: relative; display: block; height: 5px; border-radius: 99px; overflow: hidden; background: rgba(255, 255, 255, 0.3); }
 .seg i::after { content: ""; position: absolute; inset: 0; background: #fff; transform-origin: 0 50%; transform: scaleX(var(--p, 0)); }
 .seg[data-state="done"] i { background: rgba(255, 255, 255, 0.9); }
 .seg[data-state="done"] i::after { transform: scaleX(0); }
-.seg:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
-@media (hover: hover) { .seg:hover i { background: rgba(255, 255, 255, 0.5); } .seg[data-state="done"]:hover i { background: #fff; } }
-@media (max-width: 700px) { .story { gap: 4px; } .seg i { height: 4px; } }
+.segLabel { font-size: 12px; font-weight: 600; line-height: 1; color: rgba(255, 255, 255, 0.55); white-space: nowrap; }
+.seg[data-state="now"] .segLabel { color: #fff; }
+@media (prefers-reduced-motion: no-preference) { .segLabel { transition: color 0.3s ease-out; } }
+.seg:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+@media (hover: hover) { .seg:hover i { background: rgba(255, 255, 255, 0.5); } .seg[data-state="done"]:hover i { background: #fff; } .seg:hover .segLabel { color: #fff; } }
+/* Phones: the gap under the window is about 20 px, so the line and label shrink to fit inside it. */
+@media (max-width: 700px) { .story { gap: 8px; } .seg { gap: 3px; } .seg i { height: 3px; } .segLabel { font-size: 10px; } }
 .live { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }

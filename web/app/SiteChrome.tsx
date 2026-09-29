@@ -73,7 +73,7 @@ export default function SiteChrome({ version, stars, children }: { version: stri
         <nav className="site-nav" aria-label="Site">
           <a href="/changelog" aria-current={current("/changelog")}>Changelog</a>
           <a href="/help" aria-current={path === "/help" || path === "/support" ? "page" : undefined}>Help</a>
-          <a className="site-gh" href={GITHUB} aria-label={stars !== null ? `GitHub, ${stars} stars` : "GitHub"}>
+          <a className="site-gh" href={GITHUB} target="_blank" rel="noopener noreferrer" aria-label={stars !== null ? `GitHub, ${stars} stars` : "GitHub"}>
             <GitHubGlyph />{stars !== null && <span className="site-stars">★ {stars.toLocaleString("en")}</span>}
           </a>
           <DownloadLink className="site-cta" aria-current={current("/download")}>
@@ -92,11 +92,11 @@ export default function SiteChrome({ version, stars, children }: { version: stri
           </nav>
           <span className="site-footsep" aria-hidden="true" />
           <div className="site-social">
-            <a href={GITHUB} aria-label="Amber Notes on GitHub"><GitHubGlyph /></a>
-            <a href={X_URL} rel="me noopener" aria-label="Emil Wagman on X"><XGlyph /></a>
+            <a href={GITHUB} target="_blank" rel="noopener noreferrer" aria-label="Amber Notes on GitHub"><GitHubGlyph /></a>
+            <a href={X_URL} target="_blank" rel="me noopener noreferrer" aria-label="Emil Wagman on X"><XGlyph /></a>
           </div>
         </div>
-        <p className="site-credit">Made by <a className="site-maker" href={X_URL} rel="me noopener">Emil Wagman</a>. Works with ChatGPT and Claude; not affiliated with Apple, OpenAI or Anthropic.</p>
+        <p className="site-credit">Made by <a className="site-maker" href={X_URL} target="_blank" rel="me noopener noreferrer">Emil Wagman</a>. Works with ChatGPT and Claude; not affiliated with Apple, OpenAI or Anthropic.</p>
         <svg className="site-wordmark" viewBox="0 0 1000 170" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
           <text x="500" y="160" textAnchor="middle" textLength="980" lengthAdjust="spacingAndGlyphs">Amber Notes</text>
         </svg>

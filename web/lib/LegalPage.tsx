@@ -36,7 +36,7 @@ function toHtml(markdown: string, sections?: Section[]): string {
             sections.push({ id, title: text });
           }
           if (node.tagName === "a" && /^https?:/.test(String(node.properties?.href ?? ""))) {
-            node.properties = { ...node.properties, rel: "noopener" };
+            node.properties = { ...node.properties, target: "_blank", rel: "noopener noreferrer" };
           }
           if (node.tagName === "table") {
             // Wide tables scroll on their own on phones.

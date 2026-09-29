@@ -44,38 +44,41 @@
 }
 .also { margin: -8px 0 0; color: var(--muted); font-size: 15px; font-weight: 600; }
 
-/* ── Bring all your Apple Notes in one click: the import, run once ── */
-.run { display: grid; gap: 18px; padding: 26px 28px; border-radius: 28px; background: var(--card); box-shadow: 0 0 0 1px var(--line), 0 30px 60px -40px rgba(60, 30, 5, 0.5); }
-.runTitle { margin: 0; font-weight: 700; font-size: 16px; }
-.bar { position: relative; height: 4px; border-radius: 99px; background: color-mix(in srgb, var(--amber) 18%, var(--soft)); margin-right: 26px; }
-.bar i { position: absolute; inset: 0; border-radius: 99px; background: var(--amber); transform-origin: 0 50%; }
-.barDone { position: absolute; right: -26px; top: 50%; width: 18px; height: 18px; margin-top: -9px; display: grid; place-items: center; border-radius: 50%; background: var(--amber); color: #fff; opacity: 0; transform: scale(0.6); }
-.barDone svg { width: 12px; height: 12px; }
-.barDone[data-on] { opacity: 1; transform: none; }
-@media (prefers-reduced-motion: no-preference) { .barDone { transition: opacity 0.25s ease-out, transform 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.4); } }
-.folders { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
-@media (max-width: 900px) { .folders { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (max-width: 520px) { .folders { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.folders li { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 12px; border-radius: 14px; background: var(--bg); box-shadow: 0 0 0 1px var(--line); opacity: 0.35; }
-.folders li[data-on] { opacity: 1; }
-.folders svg { flex: none; color: var(--amber); }
-.folders b { font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.folders .num { margin-left: auto; color: var(--muted); font-weight: 600; font-size: 14px; }
-.pinned { background: color-mix(in srgb, var(--amber) 10%, var(--bg)) !important; }
-@media (prefers-reduced-motion: no-preference) { .folders li { transition: opacity 0.3s ease-out; } }
-.runEnd { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 10px 28px; padding-top: 16px; border-top: 1.5px dashed var(--line); opacity: 0; transform: translateY(8px); }
-.runEnd[data-on] { opacity: 1; transform: none; }
-@media (prefers-reduced-motion: no-preference) { .runEnd { transition: opacity 0.4s ease-out, transform 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.2); } }
-.big { margin: 0; font-size: clamp(36px, 5vw, 56px); font-weight: 800; letter-spacing: -0.035em; line-height: 1; }
-.ticks { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 24px; font-weight: 600; font-size: 16px; }
-.ticks li { display: inline-flex; align-items: center; gap: 8px; }
-.ticks svg { color: var(--amber); }
+/* ── Bring all your Apple Notes in one click: the real sheet on the demo's wallpaper ── */
+.importSplit { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); align-items: center; gap: 56px; }
+@media (max-width: 900px) { .importSplit { grid-template-columns: 1fr; gap: 28px; } }
+.sheetDesk { position: relative; margin: 0; aspect-ratio: 1 / 1; border-radius: 26px; overflow: hidden; isolation: isolate; box-shadow: 0 18px 50px -12px rgba(80, 40, 5, 0.3); display: grid; place-items: center; }
+.sheetDesk > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.sheet { position: relative; width: 64%; filter: drop-shadow(0 22px 34px rgba(60, 20, 0, 0.35)) drop-shadow(0 2px 6px rgba(60, 20, 0, 0.16)); }
+/* The capture holds the backdrop in its corners: clip to the sheet's own radius (51 px at 2x, measured). */
+.sheet img { display: block; width: 100%; height: auto; user-select: none; border-radius: 4.72% / 3.98%; }
+.sheetNext { position: absolute; inset: 0; opacity: 0; }
+.sheetNext[data-on] { opacity: 1; }
+@media (prefers-reduced-motion: no-preference) { .sheetNext { transition: opacity 0.35s ease-out; } }
 
-/* ── The rest, in one quiet line under the import ── */
-.alsoTicks { list-style: none; margin: -96px 0 0; padding: 22px 0 0; display: flex; flex-wrap: wrap; gap: 8px 26px; border-top: 1.5px dashed var(--line); color: var(--muted); font-weight: 600; font-size: 15px; }
+/* ── The rest, in one quiet line before the ending ── */
+.alsoTicks { list-style: none; margin: -104px 0 0; padding: 22px 0 0; display: flex; flex-wrap: wrap; gap: 8px 26px; border-top: 1.5px dashed var(--line); color: var(--muted); font-weight: 600; font-size: 15px; }
 @media (max-width: 700px) { .alsoTicks { margin-top: -56px; } }
 .alsoTicks li { display: inline-flex; align-items: center; gap: 8px; }
 .alsoTicks svg { color: var(--amber); }
+
+/* ── Everywhere you are: the import section's grid and panel; the whole Mac window behind, running just
+   past the panel's right edge, the iPhone in front of its right side, in panel units (1000 across) ── */
+.syncFine { margin: 0; color: var(--muted); font-size: 15px; font-weight: 600; line-height: 1.45; }
+.syncDesk { --u: calc(100cqw / 1000); container-type: inline-size; display: block; }
+/* The Mac window (1180 pt) at 960 u, so its 26 pt corner scales to 21. */
+.syncMac {
+  position: absolute; left: calc(60 * var(--u)); top: calc(160 * var(--u)); width: calc(960 * var(--u)); height: auto;
+  border-radius: calc(21 * var(--u)); user-select: none;
+  box-shadow: 0 0 0 calc(0.6 * var(--u)) rgba(60, 20, 0, 0.18), 0 calc(22 * var(--u)) calc(44 * var(--u)) calc(-6 * var(--u)) rgba(60, 20, 0, 0.35), 0 calc(2 * var(--u)) calc(6 * var(--u)) rgba(60, 20, 0, 0.16);
+}
+/* The iPhone: an 8 u bezel, so the body's corner is the screen's plus the bezel (41 + 8 = 49). */
+.syncPhone {
+  position: absolute; left: calc(690 * var(--u)); top: calc(250 * var(--u)); width: calc(280 * var(--u)); padding: calc(8 * var(--u)); box-sizing: border-box;
+  border-radius: calc(49 * var(--u)); background: #1d1d1f;
+  box-shadow: inset 0 0 0 calc(1 * var(--u)) rgba(255, 255, 255, 0.14), 0 calc(26 * var(--u)) calc(50 * var(--u)) calc(-10 * var(--u)) rgba(60, 20, 0, 0.5), 0 calc(3 * var(--u)) calc(8 * var(--u)) rgba(60, 20, 0, 0.25);
+}
+.syncPhone img { display: block; width: 100%; height: auto; border-radius: calc(41 * var(--u)); user-select: none; }
 
 /* ── The ending: a full-width band in the site's near-black brown ── */
 .band { width: 100vw; margin-left: calc(50% - 50vw); background: #2a1d10; color: #fbeedd; padding: 110px 20px 120px; box-sizing: border-box; margin-bottom: -56px; } /* the footer then sits 64 px below the band */

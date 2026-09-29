@@ -75,7 +75,7 @@ export default function Download() {
 
       <section className={`${styles.more} rise`} style={r(8)}>
         <p><strong>Updates install themselves.</strong> Amber Notes checks once a day, or choose Amber Notes › Check for Updates…</p>
-        <p>iPhone app coming soon to the App Store.</p>
+        <p><strong>Syncs with your iPhone.</strong> Your notes live in the cloud and sync with the iPhone app, coming soon to the App Store.</p>
         <p><a href="/changelog">See what's new in each version</a></p>
       </section>
     </div>
