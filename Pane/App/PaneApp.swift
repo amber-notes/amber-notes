@@ -104,6 +104,20 @@ struct PaneApp: App {
             SettingsView(backend: backend, sync: sync)
         }
 
+        // Connect ChatGPT or Claude: the steps float over the browser while you follow them.
+        Window("Connect", id: ConnectPanel.windowID) {
+            ConnectPanel(backend: backend)
+                .tint(Color(PColor.paneAccent))
+        }
+        .windowLevel(.floating)
+        .windowResizability(.contentSize)
+        .restorationBehavior(.disabled)
+        .defaultLaunchBehavior(.suppressed)
+        .defaultWindowPlacement { content, context in
+            let size = content.sizeThatFits(.unspecified)
+            return WindowPlacement(ConnectPanel.placement(screen: context.defaultDisplay.visibleRect, size: size), size: size)
+        }
+
         // Amber Notes in the menu bar: quick capture, search, pinned and recent notes.
         MenuBarExtra(isInserted: Binding(get: { showInMenuBar && MenuBarSettings.allowed }, set: { if MenuBarSettings.allowed { showInMenuBar = $0 } })) {
             MenuBarPanel(backend: backend, sync: sync)
@@ -443,7 +457,7 @@ private struct WindowCloser: NSViewRepresentable {
 
 /// Captures only (`-uitest`): one screen on its own, or the setup card at a given step, so the
 /// iPhone simulator can show them without anyone tapping through.
-///   `-captureScreen connect` or `signin`; `-captureSetup 1…4` (4: the moment after your AI's first edit).
+///   `-captureScreen connect`, `connect-chatgpt`, `connect-claude`, `connected-chatgpt` or `signin`; `-captureSetup 1…4` (4: the moment after your AI's first edit).
 struct CaptureScreen: View {
     let name: String
     let backend: Backend
@@ -489,6 +503,18 @@ struct CaptureScreen: View {
                 #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)
                 #endif
+            }
+        case let guide where guide.hasPrefix("connect-") || guide.hasPrefix("connected-"):
+            // Connect ChatGPT or Claude, as the guide sheet shows it, or just after Allow.
+            if let plan = WebConnectPlan.forAI(guide.hasSuffix("claude") ? "Claude" : "ChatGPT") {
+                NavigationStack {
+                    Form { WebConnectGuide(plan: plan, client: Self.client, connected: guide.hasPrefix("connected-")) }
+                        .formStyle(.grouped)
+                        .navigationTitle("Connect \(plan.ai)")
+                        #if os(iOS)
+                        .navigationBarTitleDisplayMode(.inline)
+                        #endif
+                }
             }
         default:
             SignInView(backend: backend)

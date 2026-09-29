@@ -67,6 +67,19 @@ enum ConnectSnippets {
     }
 }
 
+/// Knowing when a guided connection worked, wherever the person approved it.
+enum ConnectCompletion {
+    /// The newest ChatGPT or Claude sign-in made since the guide opened, if any. Named by where
+    /// its answers went, never by the name the client registered, like the consent sheet.
+    static func newConnection(_ rows: [Connection], ai: String, since: Date) -> Connection? {
+        rows.filter { c in
+            c.isOAuth && c.revoked_at == nil && c.created_at >= since
+                && ConnectTrust.verifiedAI(host: c.redirect_host ?? "", loopback: false) == ai
+        }
+        .max { $0.created_at < $1.created_at }
+    }
+}
+
 // MARK: Server calls
 
 struct ConnectRequest: Decodable, Identifiable, Equatable {
@@ -124,6 +137,10 @@ enum ConnectAPI {
 final class ConnectCenter: NSObject {
     static let shared = ConnectCenter()
     var pending: UUID?
+    /// Mac: which AI the floating steps are for.
+    var panelAI: String?
+    /// The last approval made on this device, so an open guide can say it worked right away.
+    var approved: (ai: String?, at: Date)?
     #if os(macOS)
     /// The browser the request came from, so the answer goes back to the same one.
     var browser: URL?
@@ -190,6 +207,9 @@ final class ConnectCenter: NSObject {
 struct ConnectHandler: ViewModifier {
     let backend: Backend
     @State private var center = ConnectCenter.shared
+    #if os(macOS)
+    @Environment(\.openWindow) private var openWindow
+    #endif
 
     func body(content: Content) -> some View {
         content
@@ -198,13 +218,20 @@ struct ConnectHandler: ViewModifier {
             // Links land in the window that's already open instead of a new one.
             .handlesExternalEvents(preferring: [ConnectLink.scheme], allowing: ["*"])
             .onAppear { center.installHandler() }
+            // Handoff from iPhone: carry on connecting ChatGPT or Claude here.
+            .onContinueUserActivity(ConnectHandoff.activityType) { activity in
+                guard let ai = activity.userInfo?[ConnectHandoff.key] as? String, WebConnectPlan.forAI(ai) != nil else { return }
+                center.panelAI = ai
+                openWindow(id: ConnectPanel.windowID)
+            }
             #endif
             .sheet(item: Binding(
                 get: { backend.client != nil && isSignedIn ? center.pending.map(PendingID.init) : nil },
                 set: { if $0 == nil { center.pending = nil } }
             )) { pending in
                 if let client = backend.client {
-                    ConsentSheet(client: client, requestID: pending.id, finish: { center.open($0) })
+                    ConsentSheet(client: client, requestID: pending.id, finish: { center.open($0) },
+                                 allowed: { r in center.approved = (ConnectTrust.verifiedAI(host: r.redirect_host, loopback: r.loopback), .now) })
                 }
             }
     }
@@ -228,16 +255,19 @@ struct ConsentSheet: View {
     let requestID: UUID
     /// Opens the AI's return address in the browser.
     let finish: (URL) -> Void
+    /// Told when the person allowed the request.
+    var allowed: (ConnectRequest) -> Void = { _ in }
     @Environment(\.dismiss) private var dismiss
 
     enum Phase: Equatable { case loading, asking(ConnectRequest), working, done(String), failed(String) }
     @State private var phase: Phase
     @State private var write = true
 
-    init(client: SupabaseClient, requestID: UUID, initial: Phase = .loading, finish: @escaping (URL) -> Void) {
+    init(client: SupabaseClient, requestID: UUID, initial: Phase = .loading, finish: @escaping (URL) -> Void, allowed: @escaping (ConnectRequest) -> Void = { _ in }) {
         self.client = client
         self.requestID = requestID
         self.finish = finish
+        self.allowed = allowed
         _phase = State(initialValue: initial)
     }
 
@@ -379,6 +409,7 @@ struct ConsentSheet: View {
             let url = try await ConnectAPI.decide(client, id: r.id, allow: allow, write: write && r.wants_write)
             finish(url)
             if allow {
+                allowed(r)
                 phase = .done(r.client_name)
                 try? await Task.sleep(for: .seconds(1.6))
             }
@@ -430,8 +461,8 @@ struct ConnectAISection: View {
         }
         var subtitle: String {
             switch self {
-            case .chatgpt: "Sign in from ChatGPT on the web"
-            case .claude: "Sign in from Claude on the web or desktop"
+            case .chatgpt: "Added once in ChatGPT on the web, then works in its apps"
+            case .claude: "Added once in Claude on the web or desktop, then works in its apps"
             case .claudeCode: "Adds Amber Notes to Claude Code on this Mac"
             case .codex: "Adds Amber Notes to Codex"
             }
@@ -439,8 +470,8 @@ struct ConnectAISection: View {
         /// Where it's done, in the AI's own words (as on the website).
         var hint: String {
             switch self {
-            case .chatgpt: "Apps → Create app"
-            case .claude: "Connectors → Add custom"
+            case .chatgpt: "Plugins → +"
+            case .claude: "Add custom connector"
             case .claudeCode: "claude mcp add amber-notes"
             case .codex: "~/.codex/config.toml"
             }
@@ -575,6 +606,9 @@ private struct GuideSheet: View {
     let guide: ConnectAISection.Guide
     let client: SupabaseClient
     @Environment(\.dismiss) private var dismiss
+    #if os(macOS)
+    @Environment(\.openWindow) private var openWindow
+    #endif
     @State private var copied: String?
     @State private var token: String?
     @State private var working = false
@@ -602,26 +636,21 @@ private struct GuideSheet: View {
     @ViewBuilder
     private var content: some View {
         switch guide {
-        case .chatgpt:
-            steps([
-                "In ChatGPT on the web, open Apps in the sidebar, then Advanced settings, and turn on Developer mode.",
-                "Back in Apps, choose Create app and name it Amber Notes.",
-                "Paste the address below as the MCP server URL and choose OAuth as the authentication.",
-                "Choose Create. Your browser asks to open Amber Notes: allow it, then choose Allow here.",
-            ])
-            addressSection
-            Section { Text("Needs a ChatGPT Plus, Pro, Business, Enterprise or Edu plan.").font(.footnote).foregroundStyle(.secondary) }
-        case .claude:
-            steps([
-                "In Claude, open Customize, then Connectors.",
-                "Choose + and then Add custom connector. Name it Amber Notes.",
-                "Paste the address below as the URL and choose Add. Leave Advanced settings empty.",
-                "Choose Connect. Your browser asks to open Amber Notes: allow it, then choose Allow here.",
-            ])
-            addressSection
+        case .chatgpt, .claude:
+            if let plan = WebConnectPlan.forAI(guide.title) {
+                #if os(macOS)
+                WebConnectGuide(plan: plan, client: client, popOut: {
+                    ConnectCenter.shared.panelAI = plan.ai
+                    openWindow(id: ConnectPanel.windowID)
+                    dismiss()
+                })
+                #else
+                WebConnectGuide(plan: plan, client: client)
+                #endif
+            }
         case .claudeCode:
             tokenGuide(
-                intro: "Claude Code gets its own access token, sent in a request header. It works in every project.",
+                intro: "Claude Code gets its own access token, sent in a request header. It works in every project. If you connected Claude and use Claude Code with the same account, it already has Amber Notes.",
                 snippet: token.map { ConnectSnippets.claudeCode(url: server, token: $0) },
                 note: "Or run this in a terminal. It's shown once; keep it private.")
         case .codex:
@@ -629,28 +658,6 @@ private struct GuideSheet: View {
                 intro: "Codex gets its own access token, sent in a request header.",
                 snippet: token.map { ConnectSnippets.codex(url: server, token: $0) },
                 note: "Add this to ~/.codex/config.toml. It's shown once; keep it private.")
-        }
-    }
-
-    private func steps(_ lines: [String]) -> some View {
-        Section("Steps") {
-            ForEach(Array(lines.enumerated()), id: \.offset) { i, line in
-                HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    Text("\(i + 1)").font(.callout.weight(.semibold)).monospacedDigit().foregroundStyle(.tint).frame(width: 16)
-                    Text(line)
-                }
-            }
-        }
-    }
-
-    private var addressSection: some View {
-        Section {
-            Text(server).font(.system(.callout, design: .monospaced)).textSelection(.enabled)
-            copyButton("Copy Address", server)
-        } header: {
-            Text("Server address")
-        } footer: {
-            Text("The address holds no password. Access is granted only when you choose Allow in Amber Notes, and you can disconnect it here any time.")
         }
     }
 

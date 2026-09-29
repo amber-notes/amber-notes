@@ -42,6 +42,10 @@
 	</dict>
 	<key>NSAppleEventsUsageDescription</key>
 	<string>Amber Notes reads the Apple Notes you choose to import. It never changes them.</string>
+	<key>NSUserActivityTypes</key>
+	<array>
+		<string>dev.emilwagman.pane.connect</string>
+	</array>
 	<key>PaneShareURL</key>
 	<string>$(PANE_SHARE_URL)</string>
 	<key>PaneSupabaseKey</key>

@@ -118,6 +118,7 @@
 		743A2DC87EC039B90E4FE7A8 /* DateFoldTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AA02ED549CE37D8148F24D5 /* DateFoldTests.swift */; };
 		76EEC0F802A3E143BF60CCBE /* Tips.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAEF55394E3ADF3DB9CF451B /* Tips.swift */; };
 		77150E16C095CB1A108E5FB2 /* ProfileTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 412407ADE0BC387AF7A6D189 /* ProfileTests.swift */; };
+		779FB36891A0E3E0D6EC6260 /* ConnectGuide.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68B9BEDD3569D333B65785C6 /* ConnectGuide.swift */; };
 		7A098FE97DEFF91BC87CF24B /* AppleNotesImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 483CA88017A03E92EEC52DFD /* AppleNotesImport.swift */; };
 		7C1B0C3000BFEBF1AB59758A /* TipSnapshots.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EE6602CD2F6FABCF3AC293A /* TipSnapshots.swift */; };
 		7D697289EA910E92468E7993 /* hang-2026.txt in Resources */ = {isa = PBXBuildFile; fileRef = F94EFE0F3B6CF26645227E4B /* hang-2026.txt */; };
@@ -228,6 +229,7 @@
 		EAB87CE00ACD15BD840A9B73 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3891EC4D2DC7BF10221F3CBC /* SettingsView.swift */; };
 		ECC26EE8B9227D9F7F6B5E9C /* DemoData.swift in Sources */ = {isa = PBXBuildFile; fileRef = D058AF887BE21AC49E51A5C7 /* DemoData.swift */; };
 		ED60264B582697DA27C9AFC3 /* CardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24F0468D706470F75BC78618 /* CardView.swift */; };
+		ED86469ADF2830E9489A308E /* ConnectGuide.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68B9BEDD3569D333B65785C6 /* ConnectGuide.swift */; };
 		EE41FCC568A1B667F8C3BDEB /* ChecklistSortTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFCA13DCB9435718E4F5BF8C /* ChecklistSortTests.swift */; };
 		F0908D82E0F6170762606684 /* tracker-prefixed.xlsx in Resources */ = {isa = PBXBuildFile; fileRef = 591D65AE1B7FABAAE04A733D /* tracker-prefixed.xlsx */; };
 		F15F300B7F662D0F7B93BDE4 /* MarkdownStyler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07F39A5C43FC5474BC9B28E4 /* MarkdownStyler.swift */; };
@@ -359,6 +361,7 @@
 		64816024A9749AC715351868 /* VersionHistorySnapshots.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VersionHistorySnapshots.swift; sourceTree = "<group>"; };
 		66EF04EADC63E3E6A4AD79B4 /* FormatBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormatBar.swift; sourceTree = "<group>"; };
 		67FFA212DC37DF44CA3F7B21 /* OfflineHTMLTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineHTMLTests.swift; sourceTree = "<group>"; };
+		68B9BEDD3569D333B65785C6 /* ConnectGuide.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectGuide.swift; sourceTree = "<group>"; };
 		6ACA8D5B7797EDE74894433D /* DeleteAccountTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeleteAccountTests.swift; sourceTree = "<group>"; };
 		6BBAD3D7E5ED5CA9C34129EE /* MacImportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacImportTests.swift; sourceTree = "<group>"; };
 		6F02A8CE43D7031D271CA25B /* RichTextTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextTests.swift; sourceTree = "<group>"; };
@@ -553,6 +556,7 @@
 				483CA88017A03E92EEC52DFD /* AppleNotesImport.swift */,
 				4B255CC05106DC01C927C7CD /* AppMark.swift */,
 				39EF6421870B0C2E8060E578 /* ConnectAI.swift */,
+				68B9BEDD3569D333B65785C6 /* ConnectGuide.swift */,
 				5D94335681A191B7DF159080 /* DeleteAccount.swift */,
 				8960C267A4A73E8377D155D6 /* EmailSignInFlow.swift */,
 				E43C8835EE05529FC6C66B17 /* LegalLinks.swift */,
@@ -1085,6 +1089,7 @@
 				DA72C1EDB78E9365335D08F0 /* ChangeHighlight.swift in Sources */,
 				B2F7CE0BA4833686E5050E97 /* CheckPop.swift in Sources */,
 				BF2B915D732726B9367D9C98 /* ConnectAI.swift in Sources */,
+				779FB36891A0E3E0D6EC6260 /* ConnectGuide.swift in Sources */,
 				E1A83EADA533E099B72CE9F3 /* DebouncedSave.swift in Sources */,
 				5DF4070A3BE600B9F2D1F641 /* DecoratedLayoutFragment.swift in Sources */,
 				DDDA5C7FC39D722B05F47B58 /* DeleteAccount.swift in Sources */,
@@ -1195,6 +1200,7 @@
 				13517336EAED99CD82EEF612 /* ChangeHighlight.swift in Sources */,
 				36E6FA211A8FFB7B9FD39936 /* CheckPop.swift in Sources */,
 				C036D7D76F7E932D5EB797F7 /* ConnectAI.swift in Sources */,
+				ED86469ADF2830E9489A308E /* ConnectGuide.swift in Sources */,
 				CDB3416573535BFCAD1C622E /* DebouncedSave.swift in Sources */,
 				0E5A93367DF00F588EC6C7A3 /* DecoratedLayoutFragment.swift in Sources */,
 				D20513814DBDC876A698E1CD /* DeleteAccount.swift in Sources */,
