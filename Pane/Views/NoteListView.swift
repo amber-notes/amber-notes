@@ -91,11 +91,19 @@ struct NoteListView: View {
                             }
                     }
                 } header: {
+                    #if os(iOS)
+                    // The system's prominent header: large, bold and in the label colour, as in Notes.
+                    Text(section.0)
+                    #else
                     Text(section.0)
                         .font(.title3.weight(.bold))
                         .foregroundStyle(.primary)
                         .textCase(nil)
+                    #endif
                 }
+                #if os(iOS)
+                .headerProminence(.increased)
+                #endif
             }
         }
         // Right-click acts on the whole selection when the row is part of it, like Notes.
@@ -234,7 +242,7 @@ struct NoteListView: View {
             ContentUnavailableView {
                 Label("No Notes", systemImage: "note.text")
             } actions: {
-                Button("Create a note", action: onNewNote)
+                Button("New Note", action: onNewNote)
                     .buttonStyle(.glass)
             }
         }
