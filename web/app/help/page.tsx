@@ -1,23 +1,25 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/site";
 import styles from "../home.module.css";
 import f from "./faq.module.css";
 import Faq from "./Faq";
 import { FAQ } from "./questions";
 import { GITHUB_URL } from "@/lib/github";
+import { JsonLd, faqPage } from "@/lib/structured-data";
 
 export const dynamic = "force-static";
-export const metadata: Metadata = {
-  title: "Help · Amber Notes",
-  description: "Answers to common questions about Amber Notes, and how to reach me.",
-  robots: { index: true, follow: true },
-  alternates: { canonical: "/help" },
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Help and FAQ · Amber Notes",
+  description: "How to import your Apple Notes, connect ChatGPT, Claude, Claude Code or Codex, sync your iPhone and Mac, share a note, and get help.",
+  path: "/help",
+});
 
 const rise = (i: number) => ({ className: "rise", style: { "--i": i } as React.CSSProperties });
 
 export default function Help() {
   return (
     <div className={styles.main}>
+      <JsonLd graph={[faqPage(FAQ, "/help")]} />
       <section className={styles.log}>
         <div className={styles.logHead}>
           <h1 className={`${styles.h2} rise`} style={{ "--i": 0 } as React.CSSProperties}>Help</h1>

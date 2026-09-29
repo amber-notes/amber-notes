@@ -179,7 +179,7 @@ export function Closing() {
   return (
     <section className={a.band} aria-labelledby="closing">
       <div className={a.bandInner}>
-        <img src="/mark.png" alt="" width={96} height={96} className={a.bandIcon} />
+        <img src="/mark-256.png" alt="" width={96} height={96} className={a.bandIcon} />
         <h2 id="closing" className={a.bandTitle}>Your notes deserve better than copy and paste.</h2>
         <p className={a.bandLede}>Free and open source, with no ads and no tracking. Import your Apple Notes, connect your AI, and get back to writing.</p>
         <div className={a.bandCtas}>

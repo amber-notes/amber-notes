@@ -28,7 +28,7 @@ export default async function Report({ params, searchParams }: {
     <div className="shell">
       <header className="bar">
         <Link href={`/n/${slug}`} className="brand" aria-label="Amber Notes">
-          <img src="/mark.png" alt="" width={22} height={22} />
+          <img src="/mark-256.png" alt="" width={22} height={22} />
           <span>Amber Notes</span>
         </Link>
       </header>

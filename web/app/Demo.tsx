@@ -22,6 +22,10 @@ const FILE: Record<Shot, string> = {
 };
 const SHOTS = Object.keys(FILE) as Shot[];
 const src = (k: Shot) => `${FRAMES.dir}${FILE[k]}.webp`;
+// Each frame also comes 1180 and 800 wide (cwebp -q 84 -resize), so a phone doesn't download the 2x
+// capture. The window is 1180/1280 of the demo, which is the page column (at most 1200) wide.
+const srcSet = (k: Shot) => `${FRAMES.dir}${FILE[k]}-800.webp 800w, ${FRAMES.dir}${FILE[k]}-1180.webp 1180w, ${src(k)} 2360w`;
+const SIZES = "(min-width: 1240px) 1106px, 92vw";
 const ALT: Record<Shot, string> = {
   before: "Amber Notes on a Mac",
   listed: "A new note, Lisbon, 4 days in May, arriving in the list marked Written by ChatGPT",
@@ -123,7 +127,12 @@ export default function Demo() {
       setStill(true); setView({ ...at(BEATS[1].faded + 500), pill: -1 }); return;
     }
     const ready = { done: false };
-    Promise.all([...SHOTS.map(src), ...ASKS.map((a) => FRAMES.dir + a.pill)].map((u) => { const i = new Image(); i.src = u; return i.decode().catch(() => undefined); }))
+    Promise.all([...SHOTS.map(src), ...ASKS.map((a) => FRAMES.dir + a.pill)].map((u) => {
+      // The same candidate the page's <img> picks, so nothing downloads twice.
+      const i = new Image(); const k = SHOTS.find((s) => src(s) === u);
+      if (k) { i.sizes = SIZES; i.srcset = srcSet(k); }
+      i.src = u; return i.decode().catch(() => undefined);
+    }))
       .then(() => { ready.done = true; });
     let raf = 0;
     const tick = (now: number) => {
@@ -176,9 +185,9 @@ export default function Demo() {
           <div className={d.app} data-dim={(view.chat && !view.edit && (typing || view.thinking || view.sent > view.answered)) || undefined} data-edit={view.edit || undefined}
             data-instant={base === "listed" || undefined}>
             {SHOTS.map((k) => (
-              <img key={k} src={src(k)} width={1180} height={FRAMES.h} alt={k === base ? ALT[k] : ""}
+              <img key={k} src={src(k)} srcSet={srcSet(k)} sizes={SIZES} width={1180} height={FRAMES.h} alt={k === base ? ALT[k] : ""}
                 aria-hidden={k !== base} className={d.shot} data-on={k === base || undefined} data-under={(k === under && k !== base) || undefined}
-                loading="eager" decoding="async" draggable={false} />
+                loading="eager" fetchPriority={k === "before" ? "high" : "low"} decoding="async" draggable={false} />
             ))}
             {view.pill >= 0 && (
               <img key={`pill${view.pill}`} src={`${FRAMES.dir}${ASKS[view.pill].pill}`} alt={ASKS[view.pill].pillAlt} className={d.pill} data-out={view.pillOut || undefined}
