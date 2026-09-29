@@ -213,6 +213,38 @@ enum ListEditing {
         return NSRange(location: a, length: b - a)
     }
 
+    enum LineStyle { case bulleted, numbered, quote }
+
+    /// Format → Bulleted List / Numbered List / Block Quote, like Notes: the caret's line
+    /// takes that style, switching from another list style; choosing the style it
+    /// already has turns it back into body text.
+    static func toggleLineStyle(in text: String, selection: NSRange, _ style: LineStyle) -> TextEdit {
+        let ns = text as NSString
+        let lineRange = ns.lineRange(for: NSRange(location: selection.location, length: 0))
+        let line = ns.substring(with: lineRange).trimmingCharacters(in: .newlines)
+        var indent = "", current: LineStyle?, prefixLen = 0
+        if let q = line.range(of: #"^[ \t]*>[ \t]?"#, options: .regularExpression) {
+            current = .quote
+            prefixLen = (line[q] as Substring).utf16.count
+        } else if let list = ListPrefix(line: line) {
+            indent = list.indent
+            current = list.ordered ? .numbered : (list.checkbox == nil ? .bulleted : nil)
+            prefixLen = list.length
+        }
+        let new: String
+        if current == style {
+            new = indent
+        } else {
+            switch style {
+            case .bulleted: new = indent + "- "
+            case .numbered: new = indent + "1. "
+            case .quote: new = "> "
+            }
+        }
+        let delta = (new as NSString).length - prefixLen
+        return TextEdit(range: NSRange(location: lineRange.location, length: prefixLen), replacement: new, caret: max(lineRange.location + (new as NSString).length, selection.location + delta))
+    }
+
     /// Sets the caret line's heading level (0 = body text).
     static func heading(in text: String, selection: NSRange, level: Int) -> TextEdit {
         let ns = text as NSString

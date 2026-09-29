@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		005CA83D3102FABCDD0EA094 /* MacImportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BBAD3D7E5ED5CA9C34129EE /* MacImportTests.swift */; };
 		039FA59088DF11BD28A3096C /* AppleNotesImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 483CA88017A03E92EEC52DFD /* AppleNotesImport.swift */; };
+		03F5BCF7991B8B61B6D03286 /* LineStyleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD2215C26D58DF6E72E7C3A9 /* LineStyleTests.swift */; };
 		088BB78B4A790B24F552FB83 /* Backend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00DCB857B69E6D8507AAD6E4 /* Backend.swift */; };
 		105C2E3316639A90FAF84346 /* XLSXImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAD496AC65E3034908CB0DD0 /* XLSXImporter.swift */; };
 		17F5C4C03D14547F0527AF27 /* TableGrid.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1C50C228D538B5E390EF49D /* TableGrid.swift */; };
@@ -53,6 +54,7 @@
 		9C0EAC3CEB28D1B88D6F3E91 /* MarkdownEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 020E4F46F8521511BB37EAAA /* MarkdownEditor.swift */; };
 		9EBF673CD7CED1AC6CCA0108 /* NoteStructure.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0AC25F37C1666CBB35BBB0C /* NoteStructure.swift */; };
 		9F62E76CDE7AE2DD7C74B970 /* EditorPerfTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29020B4DA13FDC017652C91F /* EditorPerfTests.swift */; };
+		A50C0FAD1144F7132ADA1FC1 /* AppSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3595708C4A80422C798DEB09 /* AppSnapshotTests.swift */; };
 		B3F002E30EABB6099A2A950A /* LayoutHangTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DFAA356C8EA6422D73B1A4F /* LayoutHangTests.swift */; };
 		BBF4C5B35A481BA9E9F080C2 /* AppleNotesLiveTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A537C18B9F9C98B1862B423 /* AppleNotesLiveTests.swift */; };
 		BF2B915D732726B9367D9C98 /* ConnectAI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39EF6421870B0C2E8060E578 /* ConnectAI.swift */; };
@@ -141,6 +143,7 @@
 		2FB0FAF5FA660EBD5F3003ED /* TypedTableTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TypedTableTests.swift; sourceTree = "<group>"; };
 		301899D6EDE0A22460BBE357 /* DebouncedSave.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebouncedSave.swift; sourceTree = "<group>"; };
 		331EDF0C10DE153F5969F58D /* SessionStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStorage.swift; sourceTree = "<group>"; };
+		3595708C4A80422C798DEB09 /* AppSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSnapshotTests.swift; sourceTree = "<group>"; };
 		36220A80F6B7DC6FDCB898F0 /* XLSXImporterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XLSXImporterTests.swift; sourceTree = "<group>"; };
 		37C6B4F675EF00B712CB8496 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		3891EC4D2DC7BF10221F3CBC /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -190,6 +193,7 @@
 		D735696D027A23734B8C6C30 /* DogfoodTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DogfoodTests.swift; sourceTree = "<group>"; };
 		D7CEFF21553A58628006C975 /* PaneApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaneApp.swift; sourceTree = "<group>"; };
 		D802554DDA691DB172FD65B2 /* SyncEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncEngine.swift; sourceTree = "<group>"; };
+		DD2215C26D58DF6E72E7C3A9 /* LineStyleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LineStyleTests.swift; sourceTree = "<group>"; };
 		DD3E85445C5520F24FAA2DD1 /* Pane.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Pane.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		DFCA13DCB9435718E4F5BF8C /* ChecklistSortTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChecklistSortTests.swift; sourceTree = "<group>"; };
 		E0C106B1F9776D0E452FE8BA /* HarnessSanityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HarnessSanityTests.swift; sourceTree = "<group>"; };
@@ -336,6 +340,7 @@
 				87987EC62A5DA06AB545080F /* ConnectAITests.swift */,
 				8291C51A34B1C3189637F8B4 /* ConnectSnapshotTests.swift */,
 				14CD141158D5B7F6272D4DA9 /* GridTableTests.swift */,
+				DD2215C26D58DF6E72E7C3A9 /* LineStyleTests.swift */,
 				0C246BB0AA36AD5C69E3BB96 /* ListEditingTests.swift */,
 				6F02A8CE43D7031D271CA25B /* RichTextTests.swift */,
 				2FB0FAF5FA660EBD5F3003ED /* TypedTableTests.swift */,
@@ -343,6 +348,7 @@
 				7BCEA243B12DDEA4E0F383F5 /* XLSXLiveTests.swift */,
 				3CFBA23645A9228E590D1107 /* Fixtures */,
 				2F9055F5A93500F02BA9144B /* Harness */,
+				E13C2899C34E50A7FB76C1CD /* HIG */,
 				615A6B625E7A04B1D9C26297 /* Interaction */,
 				58DBC44BAF5C7D8C0179B398 /* Perf */,
 			);
@@ -410,6 +416,14 @@
 				D7CEFF21553A58628006C975 /* PaneApp.swift */,
 			);
 			path = App;
+			sourceTree = "<group>";
+		};
+		E13C2899C34E50A7FB76C1CD /* HIG */ = {
+			isa = PBXGroup;
+			children = (
+				3595708C4A80422C798DEB09 /* AppSnapshotTests.swift */,
+			);
+			path = HIG;
 			sourceTree = "<group>";
 		};
 		E9DA249F83E6A85377D4815C /* Config */ = {
@@ -605,6 +619,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				DEBBB9FCB6ADA0C29D0CDC2D /* AppPerfTests.swift in Sources */,
+				A50C0FAD1144F7132ADA1FC1 /* AppSnapshotTests.swift in Sources */,
 				BBF4C5B35A481BA9E9F080C2 /* AppleNotesLiveTests.swift in Sources */,
 				6933608C9BB3131FFAE85300 /* CaretFixTests.swift in Sources */,
 				253C140607541209FC05DCDD /* ChecklistInteractionTests.swift in Sources */,
@@ -619,6 +634,7 @@
 				FAEBB7147246189CC7DCE328 /* HarnessSanityTests.swift in Sources */,
 				35206ADBCCAB382C8DFF377E /* IncrementalStyleTests.swift in Sources */,
 				B3F002E30EABB6099A2A950A /* LayoutHangTests.swift in Sources */,
+				03F5BCF7991B8B61B6D03286 /* LineStyleTests.swift in Sources */,
 				582627587918D7195B435F61 /* ListEditingTests.swift in Sources */,
 				7F6BFCC3E30CB53BB780058D /* RichTextTests.swift in Sources */,
 				2E4EF9FAFC33E26233CC539F /* SaveTests.swift in Sources */,

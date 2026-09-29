@@ -55,6 +55,9 @@ final class Backend {
 
     var userID: UUID? { client?.auth.currentUser?.id }
 
+    /// For screenshots and previews only: shows the signed-in screens without a session.
+    func showSignedInForPreview(email: String) { state = .signedIn(email: email) }
+
     private func watchAuth() async {
         guard let client else { return }
         for await (_, session) in client.auth.authStateChanges {

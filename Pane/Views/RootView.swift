@@ -257,12 +257,20 @@ struct PaneCommands: Commands {
             Button("New Note") { newNote?() }
                 .keyboardShortcut("n")
                 .disabled(newNote == nil)
+            // ⇧⌘N is New Folder in Notes and Finder.
+            Button("New Folder") { NotificationCenter.default.post(name: .paneNewFolder, object: nil) }
+                .keyboardShortcut("n", modifiers: [.command, .shift])
+                .disabled(newNote == nil)
         }
         CommandGroup(replacing: .importExport) {
             Button("Import from Apple Notes…") { importNotes?() }
                 .disabled(importNotes == nil)
             Button("Import Spreadsheet as Table…") { importSheet?() }
                 .disabled(importSheet == nil)
+            Divider()
+            Button("Attach File…") { editor?.attach() }
+                .keyboardShortcut("a", modifiers: [.command, .shift])
+                .disabled(editor == nil)
         }
         CommandGroup(after: .pasteboard) {
             Divider()
@@ -270,23 +278,30 @@ struct PaneCommands: Commands {
             Button("Delete Note") { deleteNote?() }
                 .disabled(deleteNote == nil)
         }
+        // Shortcuts follow Apple Notes, so muscle memory carries over.
         CommandMenu("Format") {
-            Button("Title") { editor?.heading(1) }.keyboardShortcut("1", modifiers: [.command, .shift])
-            Button("Heading") { editor?.heading(2) }.keyboardShortcut("2", modifiers: [.command, .shift])
-            Button("Subheading") { editor?.heading(3) }.keyboardShortcut("3", modifiers: [.command, .shift])
-            Button("Body") { editor?.heading(0) }.keyboardShortcut("0", modifiers: [.command, .shift])
-            Divider()
-            Button("Bold") { editor?.bold() }.keyboardShortcut("b")
-            Button("Italic") { editor?.italic() }.keyboardShortcut("i")
-            Button("Underline") { editor?.underline() }.keyboardShortcut("u")
-            Button("Strikethrough") { editor?.strikethrough() }.keyboardShortcut("x", modifiers: [.command, .shift])
-            Button("Code") { editor?.code() }.keyboardShortcut("k", modifiers: [.command, .shift])
-            Divider()
-            Button("Checklist") { editor?.checklist() }.keyboardShortcut("l", modifiers: [.command, .shift])
-            Button("Bulleted List") { editor?.bulletList() }.keyboardShortcut("7", modifiers: [.command, .shift])
-            Button("Table") { editor?.insertTable() }.keyboardShortcut("t", modifiers: [.command, .option])
-            Button("Sub-note") { editor?.newSubNote() }.keyboardShortcut("n", modifiers: [.command, .shift])
-            Button("Link") { editor?.insertLink() }.keyboardShortcut("k")
+            Group {
+                Button("Title") { editor?.heading(1) }.keyboardShortcut("t", modifiers: [.command, .shift])
+                Button("Heading") { editor?.heading(2) }.keyboardShortcut("h", modifiers: [.command, .shift])
+                Button("Subheading") { editor?.heading(3) }.keyboardShortcut("j", modifiers: [.command, .shift])
+                Button("Body") { editor?.heading(0) }.keyboardShortcut("b", modifiers: [.command, .shift])
+                Divider()
+                Button("Bold") { editor?.bold() }.keyboardShortcut("b")
+                Button("Italic") { editor?.italic() }.keyboardShortcut("i")
+                Button("Underline") { editor?.underline() }.keyboardShortcut("u")
+                Button("Strikethrough") { editor?.strikethrough() }.keyboardShortcut("x", modifiers: [.command, .shift])
+                Button("Monostyled") { editor?.code() }.keyboardShortcut("m", modifiers: [.command, .shift])
+                Divider()
+                Button("Checklist") { editor?.checklist() }.keyboardShortcut("l", modifiers: [.command, .shift])
+                Button("Bulleted List") { editor?.bulletList() }.keyboardShortcut("7", modifiers: [.command, .shift])
+                Button("Numbered List") { editor?.numberedList() }.keyboardShortcut("9", modifiers: [.command, .shift])
+                Button("Block Quote") { editor?.blockQuote() }.keyboardShortcut("'", modifiers: .command)
+                Divider()
+                Button("Table") { editor?.insertTable() }.keyboardShortcut("t", modifiers: [.command, .option])
+                Button("Sub-note") { editor?.newSubNote() }.keyboardShortcut("n", modifiers: [.command, .option])
+                Button("Link") { editor?.insertLink() }.keyboardShortcut("k")
+            }
+            .disabled(editor == nil)
         }
     }
 }

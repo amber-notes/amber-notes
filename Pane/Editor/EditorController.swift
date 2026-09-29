@@ -73,17 +73,9 @@ final class EditorController {
     func checklist() { perform { ListEditing.toggleChecklist(in: $0, selection: $1) } }
     func heading(_ level: Int) { perform { ListEditing.heading(in: $0, selection: $1, level: level) } }
 
-    func bulletList() {
-        perform { text, sel in
-            let ns = text as NSString
-            let line = ns.lineRange(for: NSRange(location: sel.location, length: 0))
-            let s = ns.substring(with: line)
-            if let list = ListPrefix(line: s) {
-                return TextEdit(range: NSRange(location: line.location, length: list.length), replacement: list.indent, caret: max(line.location, sel.location - list.length))
-            }
-            return TextEdit(range: NSRange(location: line.location, length: 0), replacement: "- ", caret: sel.location + 2)
-        }
-    }
+    func bulletList() { perform { ListEditing.toggleLineStyle(in: $0, selection: $1, .bulleted) } }
+    func numberedList() { perform { ListEditing.toggleLineStyle(in: $0, selection: $1, .numbered) } }
+    func blockQuote() { perform { ListEditing.toggleLineStyle(in: $0, selection: $1, .quote) } }
 
     /// Inserts an empty 2×2 table and puts the keyboard in its first cell.
     func insertTable() {

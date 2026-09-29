@@ -62,10 +62,11 @@ private struct FileChip: View {
             }
             .padding(.horizontal, 10)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .contentShape(.rect(cornerRadius: 14))
+            .contentShape(.rect(cornerRadius: 12, style: .continuous))
         }
         .buttonStyle(PressScale())
-        .glassEffect(.regular, in: .rect(cornerRadius: 14))
+        // Content, not a control: a solid surface like the sub-note chip (glass is for the navigation layer).
+        .background(Color.paneChip, in: .rect(cornerRadius: 12, style: .continuous))
         .contextMenu { EmbedMenu(open: { controller?.openAttachment(id) }, remove: remove) }
         .accessibilityIdentifier("file.\(name)")
     }
@@ -223,10 +224,11 @@ private struct LinkCard: View {
             }
             .padding(.horizontal, 12)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .contentShape(.rect(cornerRadius: 14))
+            .contentShape(.rect(cornerRadius: 12, style: .continuous))
         }
         .buttonStyle(PressScale())
-        .glassEffect(.regular, in: .rect(cornerRadius: 14))
+        // Content, not a control: a solid surface like the sub-note chip (glass is for the navigation layer).
+        .background(Color.paneChip, in: .rect(cornerRadius: 12, style: .continuous))
         .contextMenu {
             Link(destination: url) { Label("Open Link", systemImage: "safari") }
             Button("Remove Preview", systemImage: "trash", role: .destructive, action: remove)

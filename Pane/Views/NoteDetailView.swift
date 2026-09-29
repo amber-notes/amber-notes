@@ -186,7 +186,7 @@ struct NoteDetailView: View {
             Button("Table", systemImage: "tablecells", action: controller.insertTable)
                 .help("Table (⌥⌘T)")
             Button("Attach", systemImage: "paperclip") { importing = true }
-                .help("Attach a file (⇧⌘A)")
+                .help("Attach File (⇧⌘A)")
         }
         ToolbarSpacer(.fixed)
         ToolbarItemGroup {
@@ -209,10 +209,14 @@ struct NoteDetailView: View {
                 Button("Italic", systemImage: "italic", action: controller.italic)
                 Button("Underline", systemImage: "underline", action: controller.underline)
                 Button("Strikethrough", systemImage: "strikethrough", action: controller.strikethrough)
-                Button("Code", systemImage: "chevron.left.forwardslash.chevron.right", action: controller.code)
+                Button("Monostyled", systemImage: "chevron.left.forwardslash.chevron.right", action: controller.code)
             }
             Section {
                 Button("Bulleted List", systemImage: "list.bullet", action: controller.bulletList)
+                Button("Numbered List", systemImage: "list.number", action: controller.numberedList)
+                Button("Block Quote", systemImage: "text.quote", action: controller.blockQuote)
+            }
+            Section {
                 Button("Sub-note", systemImage: "doc.badge.plus") { controller.newSubNote() }
                 Button("Link", systemImage: "link", action: controller.insertLink)
             }

@@ -79,7 +79,8 @@ final class EditorCore {
             out.append(("g\(g.index)", f, AnyView(view)))
         }
         for e in embeds {
-            let maxW: CGFloat = { if case .image = e.kind { return ImageSizes.maxWidth } else { return 460 } }()
+            // Cards and images share one column width, so their edges line up.
+            let maxW = ImageSizes.maxWidth
             guard let f = frame(at: e.range.location, height: e.height, maxWidth: maxW) else { continue }
             let remove = {
                 let ns = target.currentText as NSString

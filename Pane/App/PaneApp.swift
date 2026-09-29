@@ -61,7 +61,12 @@ struct PaneApp: App {
         }
         .windowResizability(.contentMinSize)
         .windowToolbarStyle(.unified)
-        .commands { PaneCommands() }
+        .commands {
+            PaneCommands()
+            // The standard View › Sidebar and Edit › Find, Spelling and Substitutions items.
+            SidebarCommands()
+            TextEditingCommands()
+        }
         #endif
 
         #if os(macOS)
