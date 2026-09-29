@@ -87,6 +87,16 @@ struct SidebarIcon: View {
     }
 }
 
+extension View {
+    /// One element per sidebar row, read as "Travel, 4 notes". Without it VoiceOver reads the
+    /// folder symbol's own name ("Move") before the row's.
+    func rowAccessibility(_ name: String, count: Int) -> some View {
+        accessibilityElement(children: .ignore)
+            .accessibilityLabel(name)
+            .accessibilityValue(count == 1 ? "1 note" : "\(count) notes")
+    }
+}
+
 extension Notification.Name {
     /// Asks the sidebar to start a new folder (from the list's "⋯" menu).
     static let paneNewFolder = Notification.Name("pane.newFolder")
@@ -239,6 +249,7 @@ struct SidebarView: View {
         } icon: {
             SidebarIcon(name: icon)
         }
+        .rowAccessibility(title, count: count)
     }
 
     /// With a single folder there's no "All Notes" row, so show that folder instead. Only
@@ -313,6 +324,7 @@ private struct FolderTree: View {
             SidebarIcon(name: dropTarget == folder.id ? "folder.fill" : "folder")
                 .contentTransition(.symbolEffect(.replace))
         }
+        .rowAccessibility(folder.name, count: folder.liveNotes.count)
         .tag(Scope.folder(folder.id))
         .accessibilityIdentifier("folder.\(folder.name)")
         .draggable(PaneDragItem(kind: .folder, id: folder.id)) {
