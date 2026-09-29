@@ -5,10 +5,10 @@ import { AIGlyph } from "@/lib/ai-glyphs";
 import d from "./demo.module.css";
 
 // A mini Mac desktop: the real Amber Notes window (frames captured from the app with demo data, one
-// session) and a ChatGPT window beside it. One story in two parts, shown on the labelled bar on the
-// desk: you ask ChatGPT to plan Lisbon and it writes the whole note in Amber Notes (it lands tinted,
+// session) and a ChatGPT window beside it. One story in two parts, shown on the bar on the desk: you ask ChatGPT to plan Lisbon and it writes the whole note in Amber Notes (it lands tinted,
 // with the app's receipt); you change your mind and it edits just those two lines. Then it resets
-// and loops. One clock drives it; it pauses off-screen, in a hidden tab and under the pointer.
+// and loops. One clock drives it. It pauses only where nobody can see it: off-screen and in a hidden
+// tab. The pointer and keyboard focus never stop it.
 
 // The frames, named as captured. A recapture with the same names is a change to this constant.
 // The tint frames were captured with the receipt showing; it's patched out of them (from the faded frame,
@@ -23,6 +23,10 @@ const FILE: Record<Shot, string> = {
 };
 const SHOTS = Object.keys(FILE) as Shot[];
 const src = (k: Shot) => `${FRAMES.dir}${FILE[k]}.webp`;
+// Each frame also comes 1180 and 800 wide (cwebp -q 84 -resize), so a phone doesn't download the 2x
+// capture. The window is 1180/1280 of the demo, which is the page column (at most 1200) wide.
+const srcSet = (k: Shot) => `${FRAMES.dir}${FILE[k]}-800.webp 800w, ${FRAMES.dir}${FILE[k]}-1180.webp 1180w, ${src(k)} 2360w`;
+const SIZES = "(min-width: 1240px) 1106px, 92vw";
 const ALT: Record<Shot, string> = {
   before: "Amber Notes on a Mac",
   listed: "A new note, Lisbon, 4 days in May, arriving in the list marked Written by ChatGPT",
@@ -39,11 +43,8 @@ const ASKS: Ask[] = [
   { ask: "Swap day 3 for a day trip to Sintra, and add a dinner spot", answer: "Changed day 3 to Sintra and added Cervejaria Trindade for dinner. Nothing else moved.",
     land: "edited", plain: "editedPlain", pill: "pill-chatgpt-2-lines.webp", pillAlt: "ChatGPT changed 2 lines. Undo" },
 ];
-// The bar's two parts: a short label under each segment, and what a screen reader hears.
-const PARTS = [
-  { label: "Writes a note", aria: "ChatGPT writes a note" },
-  { label: "Edits it", aria: "ChatGPT edits it" },
-];
+// The bar's two parts, as a screen reader hears them.
+const PARTS = [{ aria: "ChatGPT writes a note" }, { aria: "ChatGPT edits it" }];
 
 // The clock (ms). The app alone, then ChatGPT arrives; each ask is typed, sent, thought about and
 // answered; the edit lands with its tint and the receipt; after a moment the tint fades as in the app.
@@ -89,45 +90,12 @@ export default function Demo() {
   const [still, setStill] = useState(false);
   const [fitW, setFitW] = useState<number | null>(null);
   const clock = useRef({ t: 0, last: 0, started: false });
-  const pause = useRef({ offscreen: false, hidden: false, hover: false });
+  const pause = useRef({ offscreen: false, hidden: false });
   const outer = useRef<HTMLDivElement>(null);
   const msgsRef = useRef<HTMLDivElement>(null);
   const fieldRef = useRef<HTMLSpanElement>(null);
+  const [overflow, setOverflow] = useState(false);
   const segs = useRef<(HTMLButtonElement | null)[]>([]);
-  const deskRef = useRef<HTMLDivElement>(null);
-  const [follow, setFollow] = useState(false);
-
-  // The chat glides down the desk as you scroll, from its first-view spot (page top) to its lowest spot
-  // (desk centred in the viewport), as --follow goes 0 to 1. It never reaches the pill.
-  useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    setFollow(true);
-    const desk = deskRef.current;
-    if (!desk) return;
-    const root = document.documentElement;
-    let end = 1;
-    const measure = () => {
-      // Layout offsets, not the bounding box, so the page's entrance transform doesn't skew it.
-      let top = 0;
-      for (let el: HTMLElement | null = desk; el; el = el.offsetParent as HTMLElement | null) top += el.offsetTop;
-      end = Math.max(1, top - (window.innerHeight - desk.offsetHeight) / 2);
-      desk.style.setProperty("--follow-end", `${end}px`);
-    };
-    // The desk is sized after mount (and on resize), so measure whenever it changes size.
-    const ro = new ResizeObserver(measure);
-    ro.observe(desk);
-    window.addEventListener("resize", measure);
-    // Browsers with scroll-driven animations do it in CSS; others follow the scroll with one write per frame.
-    if (CSS.supports("animation-timeline: scroll()")) {
-      root.dataset.followCss = "";
-      return () => { ro.disconnect(); window.removeEventListener("resize", measure); delete root.dataset.followCss; };
-    }
-    let raf = 0;
-    const onScroll = () => { if (raf) return; raf = requestAnimationFrame(() => { raf = 0; desk.style.setProperty("--follow", String(Math.min(1, Math.max(0, window.scrollY / end)))); }); };
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => { ro.disconnect(); window.removeEventListener("resize", measure); window.removeEventListener("scroll", onScroll); cancelAnimationFrame(raf); };
-  }, []);
 
   // Wide screens: size the desk so the chat and the note fit the first view.
   useLayoutEffect(() => {
@@ -162,13 +130,18 @@ export default function Demo() {
       setStill(true); setView({ ...at(BEATS[1].faded + 500), pill: -1 }); return;
     }
     const ready = { done: false };
-    Promise.all([...SHOTS.map(src), ...ASKS.map((a) => FRAMES.dir + a.pill)].map((u) => { const i = new Image(); i.src = u; return i.decode().catch(() => undefined); }))
+    Promise.all([...SHOTS.map(src), ...ASKS.map((a) => FRAMES.dir + a.pill)].map((u) => {
+      // The same candidate the page's <img> picks, so nothing downloads twice.
+      const i = new Image(); const k = SHOTS.find((s) => src(s) === u);
+      if (k) { i.sizes = SIZES; i.srcset = srcSet(k); }
+      i.src = u; return i.decode().catch(() => undefined);
+    }))
       .then(() => { ready.done = true; });
     let raf = 0;
     const tick = (now: number) => {
       const c = clock.current;
       if (!ready.done) { c.last = now; raf = requestAnimationFrame(tick); return; }
-      const paused = pause.current.offscreen || pause.current.hidden || pause.current.hover;
+      const paused = pause.current.offscreen || pause.current.hidden;
       const dt = c.last ? Math.min(100, now - c.last) : 0;
       c.last = now;
       if (!paused && c.started) {
@@ -189,7 +162,6 @@ export default function Demo() {
   }, []);
 
   useEffect(() => { const m = msgsRef.current; if (m) m.scrollTo({ top: m.scrollHeight, behavior: still ? "auto" : "smooth" }); }, [view.sent, view.answered, view.thinking, still]);
-  useEffect(() => { const f = fieldRef.current; if (f) f.scrollLeft = f.scrollWidth; }, [view.typed]);
 
   // Frames fade in over the previous one, which stays opaque underneath (never both fading).
   const base = view.shot;
@@ -204,21 +176,36 @@ export default function Demo() {
     return () => window.clearTimeout(t);
   }, [base]);
 
-  const hoverPause = (on: boolean) => { if (window.matchMedia("(hover: hover)").matches) pause.current.hover = on; };
   const typing = view.typed.length > 0;
+
+  // The input is one line. Once the typed text (and caret) is wider than the field, it's pinned to its
+  // end and its start fades out; until then it reads from the left as usual.
+  useLayoutEffect(() => {
+    const f = fieldRef.current;
+    if (!f) return;
+    const measure = () => {
+      const text = f.firstElementChild as HTMLElement | null;
+      const caret = text?.nextElementSibling as HTMLElement | null;
+      const need = (text?.offsetWidth ?? 0) + (caret?.offsetWidth ?? 0);
+      setOverflow(view.typed.length > 0 && need > f.clientWidth);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(f);
+    return () => ro.disconnect();
+  }, [view.typed]);
 
   return (
     <div className={d.wrap}>
-      <div ref={outer} className={d.fit} style={fitW ? { width: fitW, margin: "0 auto" } : undefined}
-        onPointerEnter={() => hoverPause(true)} onPointerLeave={() => hoverPause(false)}>
-        <div ref={deskRef} className={d.desk} data-follow={follow || undefined}>
+      <div ref={outer} className={d.fit} style={fitW ? { width: fitW, margin: "0 auto" } : undefined}>
+        <div className={d.desk}>
           <Wallpaper />
           <div className={d.app} data-dim={(view.chat && !view.edit && (typing || view.thinking || view.sent > view.answered)) || undefined} data-edit={view.edit || undefined}
             data-instant={base === "listed" || undefined}>
             {SHOTS.map((k) => (
-              <img key={k} src={src(k)} width={1180} height={FRAMES.h} alt={k === base ? ALT[k] : ""}
+              <img key={k} src={src(k)} srcSet={srcSet(k)} sizes={SIZES} width={1180} height={FRAMES.h} alt={k === base ? ALT[k] : ""}
                 aria-hidden={k !== base} className={d.shot} data-on={k === base || undefined} data-under={(k === under && k !== base) || undefined}
-                loading="eager" decoding="async" draggable={false} />
+                loading="eager" fetchPriority={k === "before" ? "high" : "low"} decoding="async" draggable={false} />
             ))}
             {view.pill >= 0 && (
               <img key={`pill${view.pill}`} src={`${FRAMES.dir}${ASKS[view.pill].pill}`} alt={ASKS[view.pill].pillAlt} className={d.pill} data-out={view.pillOut || undefined}
@@ -242,8 +229,8 @@ export default function Demo() {
             </div>
             <div className={d.input}>
               <b className={d.plus} aria-hidden="true">+</b>
-              <span ref={fieldRef} className={d.field}>
-                {view.typed}{view.chat && <i className={d.caret} data-idle={!typing || undefined} />}{!typing && <em>Ask anything</em>}
+              <span ref={fieldRef} className={d.field} data-overflow={overflow || undefined}>
+                <span className={d.typed}>{view.typed}</span>{view.chat && <i className={d.caret} data-idle={!typing || undefined} />}{!typing && <em>Ask anything</em>}
               </span>
               <b className={d.send} aria-hidden="true">↑</b>
             </div>
@@ -252,10 +239,8 @@ export default function Demo() {
           {!still && (
             <div className={d.story} role="group" aria-label="Demo progress">
               {PARTS.map((part, k) => (
-                <button key={part.label} type="button" ref={(el) => { segs.current[k] = el; }} className={d.seg} data-state={k === 0 ? "now" : "next"}
-                  aria-label={`Part ${k + 1} of ${PARTS.length}: ${part.aria}`} onClick={() => jump(k)}>
-                  <i /><span className={d.segLabel} aria-hidden="true">{part.label}</span>
-                </button>
+                <button key={part.aria} type="button" ref={(el) => { segs.current[k] = el; }} className={d.seg} data-state={k === 0 ? "now" : "next"}
+                  aria-label={`Part ${k + 1} of ${PARTS.length}: ${part.aria}`} onClick={() => jump(k)}><i /></button>
               ))}
             </div>
           )}

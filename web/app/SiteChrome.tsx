@@ -7,12 +7,12 @@ import DownloadLink from "./DownloadLink";
 /// Which site pages are cream and which are leaf brown. Anything else (shared notes) has no theme.
 export function themeFor(path: string): "cream" | "leaf" | null {
   if (/^\/(changelog|support|help)(\/|$)/.test(path)) return "leaf";
-  if (path === "/" || /^\/(download|privacy|terms)(\/|$)/.test(path)) return "cream";
+  if (path === "/" || /^\/(download|privacy|terms|guides)(\/|$)/.test(path)) return "cream";
   return null;
 }
 
 /// Runs in <head> before first paint, so a page never flashes the wrong theme.
-export const themeScript = `(function(){var p=location.pathname,t=/^\\/(changelog|support|help)(\\/|$)/.test(p)?"leaf":(p==="/"||/^\\/(download|privacy|terms)(\\/|$)/.test(p))?"cream":null;if(t)document.documentElement.dataset.theme=t;})();`;
+export const themeScript = `(function(){var p=location.pathname,t=/^\\/(changelog|support|help)(\\/|$)/.test(p)?"leaf":(p==="/"||/^\\/(download|privacy|terms|guides)(\\/|$)/.test(p))?"cream":null;if(t)document.documentElement.dataset.theme=t;})();`;
 
 const GITHUB = "https://github.com/emilwagman/amber-notes";
 const X_URL = "https://x.com/EmilWagman";
@@ -66,7 +66,7 @@ export default function SiteChrome({ version, stars, children }: { version: stri
     <div className="site">
       <header className="site-header">
         <a className="site-brand" href="/" aria-current={current("/")} aria-label="Amber Notes home" onClick={toTop}>
-          <img src="/mark.png" alt="" width={34} height={34} />
+          <img src="/mark-256.png" alt="" width={34} height={34} />
           <span className="site-name">Amber Notes</span>
           {version && <span className="site-badge">v{version}</span>}
         </a>

@@ -112,7 +112,7 @@ a:focus-visible, .file-chip:focus-visible, .subnote-chip:focus-visible { outline
 .file-text { display: flex; flex-direction: column; min-width: 0; }
 .file-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .file-meta { color: var(--secondary); font-size: 13px; font-variant-numeric: tabular-nums; }
-.subnote-icon { width: 28px; height: 28px; border-radius: 7px; flex: none; background: var(--accent-soft) url("/mark.png") center/18px no-repeat; }
+.subnote-icon { width: 28px; height: 28px; border-radius: 7px; flex: none; background: var(--accent-soft) url("/mark-256.png") center/18px no-repeat; }
 .subnote-plain { font-weight: 600; }
 .subnotes { margin-top: 32px; }
 .subnotes h2 { font-size: 13px; font-weight: 600; text-transform: none; color: var(--secondary); margin: 0 0 6px; }
