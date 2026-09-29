@@ -4,7 +4,7 @@
 
 <p align="center">Apple Notes clone with MCP support, Markdown support, and more.</p>
 
-<p align="center">For iPhone, iPad and Mac. Notes are stored as markdown, sync through Supabase, and your AI assistant can read and edit them when you allow it.</p>
+<p align="center">For iPhone and Mac. Notes are stored as markdown, sync through Supabase, and your AI assistant can read and edit them when you allow it.</p>
 
 <p align="center">
   <a href="https://amber-notes.vercel.app/download">Download for Mac</a> ·
@@ -18,7 +18,6 @@
   <img src="docs/images/iphone-checklist.png" width="240" alt="A grocery checklist with ticked items at the bottom">
   <img src="docs/images/iphone-list-dark.png" width="240" alt="The note list in dark mode">
 </p>
-<p align="center"><img src="docs/images/ipad-lisbon.png" width="760" alt="iPad with folders, the note list and a note side by side"></p>
 
 ## What it does
 
