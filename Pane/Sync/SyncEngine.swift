@@ -56,13 +56,16 @@ final class SyncEngine {
 
     private var cursorKey: String { "syncCursor.\(backend.userID?.uuidString ?? "none")" }
     private var cursor: Date {
-        get { UserDefaults.standard.object(forKey: cursorKey) as? Date ?? .distantPast }
-        set { UserDefaults.standard.set(newValue, forKey: cursorKey) }
+        get { defaults.object(forKey: cursorKey) as? Date ?? .distantPast }
+        set { defaults.set(newValue, forKey: cursorKey) }
     }
+    /// Where the pull cursor is kept; tests give each simulated device its own.
+    private let defaults: UserDefaults
 
-    init(backend: Backend, context: ModelContext) {
+    init(backend: Backend, context: ModelContext, defaults: UserDefaults = .standard) {
         self.backend = backend
         self.context = context
+        self.defaults = defaults
         SyncSignal.onChange = { [weak self] in self?.localChanged() }
     }
 
@@ -189,6 +192,11 @@ final class SyncEngine {
             rows = (try? await client.from("notes").select().eq("id", value: uuid).execute().value) ?? []
         }
         guard !rows.isEmpty else { schedule(after: 0.25); return }
+        take(rows)
+    }
+
+    /// Rows another device just wrote, as realtime delivers them: applied straight away.
+    func take(_ rows: [NoteDTO]) {
         // Typing that isn't in the model yet goes in first, so it counts as a local edit.
         DebouncedSave.flushAll()
         var folders = Dictionary(uniqueKeysWithValues: context.allFoldersIncludingDeleted().map { ($0.id, $0) })
@@ -288,6 +296,7 @@ final class SyncEngine {
                 }
             }
             if let s = saved.first {
+                remember(s)
                 n.serverVersion = s.version ?? n.serverVersion
                 // Stay dirty if you typed more while this was in flight.
                 if n.updatedAt <= sentAt { n.dirty = false }
@@ -401,6 +410,30 @@ final class SyncEngine {
             return try await client.from("notes").upsert(NoteDTO(n)).select().execute().value
         }
         if s.body == n.body { return server }
+        // Both typed since the version we last had: where the edits don't touch the same lines,
+        // put them together (like Notes), instead of one side's edit going to version history.
+        if let base = synced[n.id], base.version == n.serverVersion, let sv = s.version,
+           let merged = TextDiff.merge(base: base.body, mine: n.body, theirs: s.body) {
+            let mine = n.body
+            var patch = NoteDTO(n).patch
+            patch.body = merged
+            let saved: [NoteDTO] = try await client.from("notes").update(patch)
+                .eq("id", value: n.id).eq("version", value: Int(sv)).select().execute().value
+            // Moved on again meanwhile: the next push tries again.
+            guard let row = saved.first else { return [] }
+            DebouncedSave.flushAll()
+            if n.body == mine {
+                n.body = merged
+            } else if let again = TextDiff.merge(base: mine, mine: n.body, theirs: merged) {
+                // You typed while that was in flight: that goes up next.
+                n.body = again
+                n.touch()
+            } else {
+                return []
+            }
+            remember(row)
+            return saved
+        }
         if s.updated_at > n.updatedAt {
             // Theirs is newer: keep it, and keep ours as a conflicted copy.
             let copy = Note(body: Self.conflictCopy(of: n.body), folder: n.folder)
@@ -552,7 +585,16 @@ final class SyncEngine {
             && near(r.trashed_at, n.trashedAt) && near(r.deleted_at, n.deletedAt) && r.folder_id == n.folder?.id
     }
 
+    /// The text of each note at the server version this device last had: the common starting
+    /// point when both sides typed at once. Kept for this run of the app only.
+    private var synced: [UUID: (version: Int64, body: String)] = [:]
+
+    private func remember(_ r: NoteDTO) {
+        if let v = r.version { synced[r.id] = (v, r.body) }
+    }
+
     private func apply(_ r: NoteDTO, to n: Note) {
+        remember(r)
         n.body = r.body
         n.parentID = r.parent_id
         n.isPinned = r.is_pinned
