@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Composites what Finder will show for each background: the 2x picture, the real icons at the
-positions and size in layout.json, and 13 pt system-font labels in Finder's light (black) and
-dark (white) label colours, inside approximate window chrome. Finder can't be screenshotted
+positions and size in layout.json, and 13 pt system-font labels, inside approximate window
+chrome: light mode, dark mode with black labels (what Finder does over a background picture),
+and dark mode with white labels (the case to guard against). Finder can't be screenshotted
 without opening a window, so this is how a direction is judged.
 
     build/dmg-venv/bin/python brand/dmg/preview.py <out dir> <Applications icon png> [directions]
@@ -31,8 +32,8 @@ def font(size, weight):
     return f
 
 
-def window(bg_path, apps_icon, dark):
-    label = (255, 255, 255, 217) if dark else (0, 0, 0, 217)  # labelColor is 85% black / white
+def window(bg_path, apps_icon, dark, white_labels):
+    label = (255, 255, 255, 217) if white_labels else (0, 0, 0, 217)  # labelColor is 85% black / white
     bar = (42, 40, 38) if dark else (240, 237, 233)
     title_col = (235, 235, 235) if dark else (40, 40, 40)
     win = Image.new("RGBA", (W * S, H * S), bar + (255,))
@@ -59,33 +60,35 @@ def window(bg_path, apps_icon, dark):
     return win
 
 
-def scene(bg_path, apps_icon, dark):
+def scene(bg_path, apps_icon, dark, white_labels, caption):
     pad = 48 * S
     desk = (30, 30, 32, 255) if dark else (226, 222, 216, 255)
     out = Image.new("RGBA", (W * S + 2 * pad, H * S + 2 * pad), desk)
-    win = window(bg_path, apps_icon, dark)
+    win = window(bg_path, apps_icon, dark, white_labels)
     shadow = Image.new("RGBA", out.size, (0, 0, 0, 0))
     sm = Image.new("L", out.size, 0)
     ImageDraw.Draw(sm).rounded_rectangle([pad, pad + 14 * S, pad + W * S, pad + H * S + 14 * S], RADIUS * S, fill=110)
     shadow.putalpha(sm.filter(ImageFilter.GaussianBlur(24 * S)))
     out.alpha_composite(shadow)
     out.alpha_composite(win, (pad, pad))
-    ImageDraw.Draw(out).text((pad, pad / 2), "Dark mode" if dark else "Light mode", font=font(12, 500),
+    ImageDraw.Draw(out).text((pad, pad / 2), caption, font=font(12, 500),
                              fill=(160, 160, 160, 255) if dark else (110, 110, 110, 255), anchor="lm")
     return out
 
 
 def main():
     out_dir, apps = sys.argv[1], Image.open(sys.argv[2])
-    names = sys.argv[3:] or ["dune", "dusk", "page"]
+    names = sys.argv[3:] or ["warm", "white", "warm-plates", "dune"]
     os.makedirs(out_dir, exist_ok=True)
     rows = []
     for n in names:
         bg = os.path.join(HERE, n, "background@2x.png")
-        light, dark = scene(bg, apps, False), scene(bg, apps, True)
-        row = Image.new("RGBA", (light.width * 2, light.height))
-        row.paste(light, (0, 0))
-        row.paste(dark, (light.width, 0))
+        panels = [scene(bg, apps, False, False, "Light mode"),
+                  scene(bg, apps, True, False, "Dark mode: black labels (Finder with a background picture)"),
+                  scene(bg, apps, True, True, "Dark mode if Finder drew white labels")]
+        row = Image.new("RGBA", (panels[0].width * len(panels), panels[0].height))
+        for i, panel in enumerate(panels):
+            row.paste(panel, (i * panel.width, 0))
         row.convert("RGB").save(os.path.join(out_dir, f"preview-{n}.png"))
         rows.append(row)
     sheet = Image.new("RGB", (rows[0].width, rows[0].height * len(rows)))

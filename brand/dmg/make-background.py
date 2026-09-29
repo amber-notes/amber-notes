@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""Draws the DMG window background: the website's Dune world, sized to brand/dmg/layout.json.
+"""Draws the DMG window backgrounds, sized to brand/dmg/layout.json.
 
-    build/dmg-venv/bin/python brand/dmg/make-background.py [dune|dusk|page ...]
+    build/dmg-venv/bin/python brand/dmg/make-background.py [warm|white|warm-plates|dune ...]
 
 Writes brand/dmg/<direction>/background.png (1x), background@2x.png and background.tiff (both
 reps, what dmgbuild copies into the image), and brand/dmg/VolumeIcon.icns from the app icon.
 
-Finder draws icon labels black in light mode and white in dark mode on top of this picture, so
-the labels sit on a mid-tone band (relative luminance ~0.18), and the script fails unless every
-pixel under both labels holds MIN_CONTRAST against black and against white.
+Each direction declares which label colours it must carry, and the script fails unless every
+pixel under both labels holds MIN_CONTRAST against them. The mid-tone band or plates in dune and
+warm-plates (relative luminance ~0.18) hold both black and white labels.
 
 Needs Pillow and numpy: build/dmg-venv/bin/pip install pillow numpy
 """
@@ -19,7 +19,7 @@ import subprocess
 import sys
 
 import numpy as np
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 LAYOUT = json.load(open(os.path.join(HERE, "layout.json")))
@@ -155,43 +155,90 @@ def dune():
     return img, arrow("#a9491a")
 
 
-def dusk():
-    """Evening: the same dunes with the sun just down behind the far ridge. Kind to dark mode."""
-    img = vgrad([(0, "#4a1d0c"), (120, "#8e3c16"), (200, "#d9772e")])
-    img = over(img, rgb("#ffb35c"), glow(320, 215, 260, 0.55))
-    rng = np.random.default_rng(7)
-    stars = np.zeros((H * SS, W * SS))
-    for x, y in zip(rng.uniform(0, W, 34), rng.uniform(0, 110, 34)):
-        stars[int(y * SS), int(x * SS)] = rng.uniform(0.5, 1.0)
-    stars = soften(stars, 0.35) * 6 * np.clip(1 - YS / 120, 0, 1)
-    img = over(img, rgb("#fff1d6"), np.clip(stars, 0, 0.8))
-    img = over(img, hgrad([(0, "#7b3417"), (W, "#8e3f1a")]), hill(wave(200, (11, 0.8, 1.9), (5, 2.1, 0.3)), 2.5))
-    img = over(img, vgrad([(222, BAND_TOP), (320, BAND_BOTTOM)]), hill(wave(226, (5, 1.0, 0.5), (2.5, 2.7, 2.0)), 1.2))
-    img = over(img, vgrad([(300, "#62270d"), (400, "#3d1706")]), hill(wave(306, (7, 1.3, 2.6), (3, 3.1, 0.7)), 1.5))
-    return img, arrow("#ffe7c2", alpha_from=0.3)
+# The mark and wordmark as in the site header (web/app/site.css .site-brand: SF Pro Display 750,
+# ink #2a1d10, gap 11/34 of the mark), scaled to sit quietly in the corner.
+MARK = os.path.join(os.path.dirname(HERE), "..", "web", "public", "mark.png")
+INK = "#2a1d10"
+AMBER = "#d96a06"
 
 
-def page():
-    """The icon's page: cream paper with faint rules under an amber header. Labels sit on sand plates."""
-    img = vgrad([(0, "#fdf9f1"), (H, "#f3ebdc")])
-    rule = np.zeros((H * SS, W * SS))
-    for y in range(62, H, 30):
-        rule[(YS >= y) & (YS < y + 1)] = 1
-    img = over(img, rgb("#e7d8bf"), soften(rule, 0.2) * 0.7)
-    head = 22
-    img = over(img, vgrad([(0, "#f8962a"), (head, "#e57b12")]), (YS < head).astype(np.float64))
-    dots = Image.new("L", (W * SS, H * SS), 0)
-    dd = ImageDraw.Draw(dots)
-    for x in np.arange(8, W, 16):
-        dd.ellipse([(x - 2.1) * SS, (head - 2.1) * SS, (x + 2.1) * SS, (head + 2.1) * SS], fill=255)
-    img = over(img, rgb("#fdf9f1"), np.asarray(dots, dtype=np.float64) / 255)
-    for key in ("app", "applications"):
-        cx, cy = LAYOUT[key]
-        img = rounded_plate(img, cx, label_centre(cy), 128, 24, "#bc5b23", "#b7571f")
-    return img, arrow("#d96a06")
+def sf(size_pt, weight):
+    f = ImageFont.truetype("/System/Library/Fonts/SFNS.ttf", int(round(size_pt * SS)))
+    f.set_variation_by_axes([100, max(17, size_pt), 400, weight])  # width, optical size, grade, weight
+    return f
 
 
-DIRECTIONS = {"dune": dune, "dusk": dusk, "page": page}
+def brand(layer, x=24, y=22, mark=26, text=15):
+    icon = Image.open(MARK).convert("RGBA").resize((mark * SS, mark * SS), Image.LANCZOS)
+    layer.alpha_composite(icon, (x * SS, y * SS))
+    d = ImageDraw.Draw(layer)
+    f = sf(text, 750)
+    tx = x + mark + mark * 11 / 34
+    # Letter by letter for the site's -0.01em tracking.
+    for ch in "Amber Notes":
+        d.text((tx * SS, (y + mark / 2) * SS), ch, font=f, fill=INK, anchor="lm")
+        tx += d.textlength(ch, font=f) / SS - 0.01 * text
+
+
+def bold_arrow(layer, color=AMBER, stroke=7.0, head=17.0, gap=30):
+    """A short, heavy arrow with round caps and joins, centred between the two icons."""
+    (ax, ay), (bx, _) = LAYOUT["app"], LAYOUT["applications"]
+    half = LAYOUT["icon_size"] / 2
+    x0, x1, y = ax + half + gap, bx - half - gap, ay
+    col = tuple(int(v) for v in rgb(color)) + (255,)
+    d = ImageDraw.Draw(layer)
+    r = stroke / 2
+
+    def seg(p, q):
+        d.line([(p[0] * SS, p[1] * SS), (q[0] * SS, q[1] * SS)], fill=col, width=int(round(stroke * SS)))
+        for c in (p, q):
+            d.ellipse([(c[0] - r) * SS, (c[1] - r) * SS, (c[0] + r) * SS, (c[1] + r) * SS], fill=col)
+
+    tip = (x1, y)
+    seg((x0, y), tip)
+    k = head / math.sqrt(2)
+    seg(tip, (x1 - k, y - k))
+    seg(tip, (x1 - k, y + k))
+
+
+def plain(bg, plates=False):
+    img = np.empty((H * SS, W * SS, 3))
+    img[...] = rgb(bg)
+    if plates:  # only if Finder turns out to draw white labels on this picture in dark mode
+        for key in ("app", "applications"):
+            cx, cy = LAYOUT[key]
+            img = rounded_plate(img, cx, label_centre(cy), 112, 22, "#bc5b23", "#b7571f")
+    layer = Image.new("RGBA", (W * SS, H * SS), (0, 0, 0, 0))
+    brand(layer)
+    bold_arrow(layer)
+    return img, layer
+
+
+def white():
+    """Discord-style: white, the brand in the corner, a bold amber arrow, nothing else."""
+    return plain("#ffffff")
+
+
+def warm():
+    """The same on a barely-there warm white."""
+    return plain("#fffdf9")
+
+
+def warm_plates():
+    """Fallback: warm, with amber name plates that hold white labels too."""
+    return plain("#fffdf9", plates=True)
+
+
+# name: (draw, label colours the picture must carry, sand grain). The plain directions rely on
+# Finder keeping labels black over a background picture in dark mode ("When a background image is
+# specified, Finder does not change the color of the filenames for Dark Mode", DropDMG manual,
+# c-command.com/dropdmg/help/layouts). warm-plates is the fallback if a macOS release changes that.
+DIRECTIONS = {
+    "warm": (warm, ("black",), False),
+    "white": (white, ("black",), False),
+    "warm-plates": (warm_plates, ("black", "white"), False),
+    "dune": (dune, ("black", "white"), True),
+}
 
 
 def label_centre(cy):
@@ -217,7 +264,8 @@ def check(img, scale):
 
 
 def render(name):
-    art, arrow_layer = DIRECTIONS[name]()
+    draw, labels, grain = DIRECTIONS[name]
+    art, arrow_layer = draw()
     base = Image.fromarray(np.clip(art, 0, 255).astype(np.uint8), "RGB").convert("RGBA")
     base.alpha_composite(arrow_layer)
     base = base.convert("RGB")
@@ -228,13 +276,14 @@ def render(name):
     for scale, suffix, sigma in ((2, "@2x", 1.6), (1, "", 1.2)):
         im = base.resize((W * scale, H * scale), Image.LANCZOS)
         a = np.asarray(im, dtype=np.float64)
-        a = a + rng.normal(0, sigma, a.shape[:2])[..., None]  # sand grain, monochrome
+        if grain:
+            a = a + rng.normal(0, sigma, a.shape[:2])[..., None]  # sand grain, monochrome
         im = Image.fromarray(np.clip(a.round(), 0, 255).astype(np.uint8), "RGB")
         p = os.path.join(out, f"background{suffix}.png")
         im.save(p, dpi=(72 * scale, 72 * scale), optimize=True)
         paths.append(p)
         black, white = check(im, scale)
-        ok = black >= MIN_CONTRAST and white >= MIN_CONTRAST
+        ok = all({"black": black, "white": white}[c] >= MIN_CONTRAST for c in labels)
         print(f"{name} {scale}x: label contrast black {black:.2f}:1, white {white:.2f}:1 {'ok' if ok else 'TOO LOW'}")
         if not ok:
             sys.exit(1)

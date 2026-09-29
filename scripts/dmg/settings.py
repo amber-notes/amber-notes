@@ -1,5 +1,5 @@
 # dmgbuild settings for the Amber Notes installer window. Use scripts/dmg/build-dmg.sh, which runs:
-#   dmgbuild -s scripts/dmg/settings.py -D repo=<repo> -D app=<Amber Notes.app> [-D background=dune] \
+#   dmgbuild -s scripts/dmg/settings.py -D repo=<repo> -D app=<Amber Notes.app> [-D background=warm] \
 #     "Amber Notes" <out.dmg>
 # The positions come from brand/dmg/layout.json, the same file the background is drawn to.
 import json
@@ -7,7 +7,7 @@ import os
 
 repo = defines.get("repo", os.getcwd())  # noqa: F821 (dmgbuild provides `defines`)
 app = defines["app"]  # noqa: F821
-direction = defines.get("background", "dune")  # noqa: F821: a folder in brand/dmg
+direction = defines.get("background", "warm")  # noqa: F821: a folder in brand/dmg
 layout = json.load(open(os.path.join(repo, "brand", "dmg", "layout.json")))
 name = os.path.basename(app)
 
