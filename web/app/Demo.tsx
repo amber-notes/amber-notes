@@ -7,7 +7,8 @@ import d from "./demo.module.css";
 // A mini Mac desktop: the real Amber Notes window (frames captured from the app with demo data, one
 // session) and a ChatGPT window beside it. One story in two parts, shown on the bar on the desk: you ask ChatGPT to plan Lisbon and it writes the whole note in Amber Notes (it lands tinted,
 // with the app's receipt); you change your mind and it edits just those two lines. Then it resets
-// and loops. One clock drives it; it pauses off-screen, in a hidden tab and under the pointer.
+// and loops. One clock drives it. It pauses only where nobody can see it: off-screen and in a hidden
+// tab. The pointer and keyboard focus never stop it.
 
 // The frames, named as captured. A recapture with the same names is a change to this constant.
 // The tint frames were captured with the receipt showing; it's patched out of them (from the faded frame,
@@ -89,7 +90,7 @@ export default function Demo() {
   const [still, setStill] = useState(false);
   const [fitW, setFitW] = useState<number | null>(null);
   const clock = useRef({ t: 0, last: 0, started: false });
-  const pause = useRef({ offscreen: false, hidden: false, hover: false });
+  const pause = useRef({ offscreen: false, hidden: false });
   const outer = useRef<HTMLDivElement>(null);
   const msgsRef = useRef<HTMLDivElement>(null);
   const fieldRef = useRef<HTMLSpanElement>(null);
@@ -140,7 +141,7 @@ export default function Demo() {
     const tick = (now: number) => {
       const c = clock.current;
       if (!ready.done) { c.last = now; raf = requestAnimationFrame(tick); return; }
-      const paused = pause.current.offscreen || pause.current.hidden || pause.current.hover;
+      const paused = pause.current.offscreen || pause.current.hidden;
       const dt = c.last ? Math.min(100, now - c.last) : 0;
       c.last = now;
       if (!paused && c.started) {
@@ -175,7 +176,6 @@ export default function Demo() {
     return () => window.clearTimeout(t);
   }, [base]);
 
-  const hoverPause = (on: boolean) => { if (window.matchMedia("(hover: hover)").matches) pause.current.hover = on; };
   const typing = view.typed.length > 0;
 
   // The input is one line. Once the typed text (and caret) is wider than the field, it's pinned to its
@@ -197,8 +197,7 @@ export default function Demo() {
 
   return (
     <div className={d.wrap}>
-      <div ref={outer} className={d.fit} style={fitW ? { width: fitW, margin: "0 auto" } : undefined}
-        onPointerEnter={() => hoverPause(true)} onPointerLeave={() => hoverPause(false)}>
+      <div ref={outer} className={d.fit} style={fitW ? { width: fitW, margin: "0 auto" } : undefined}>
         <div className={d.desk}>
           <Wallpaper />
           <div className={d.app} data-dim={(view.chat && !view.edit && (typing || view.thinking || view.sent > view.answered)) || undefined} data-edit={view.edit || undefined}
