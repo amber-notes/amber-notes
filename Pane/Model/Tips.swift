@@ -1,4 +1,9 @@
 import Foundation
+#if os(macOS)
+import AppKit
+#else
+import UIKit
+#endif
 import Supabase
 import SwiftUI
 import TipKit
@@ -32,6 +37,9 @@ enum PaneTips {
     @Parameter static var historyMoment: Bool = false
     /// You just ticked a checklist item.
     @Parameter static var justTicked: Bool = false
+    /// Tips may open as popovers (off only in offscreen captures).
+    nonisolated(unsafe) static var popovers = true
+
     /// The tip whose turn it is ("" when any may go next); see `TipSpacing`.
     @Parameter static var turn: String = ""
     /// The menu bar icon is on (Mac).
@@ -286,7 +294,7 @@ struct VersionHistoryTip: Tip {
     var id: String { "versionHistory" }
     var title: Text { Text("Changed your mind?") }
     var message: Text? { Text("Every version of this note is kept. You can look back and restore any of them.") }
-    var image: Image? { Image(systemName: "clock.arrow.circlepath") }
+    var image: Image? { TipGlyph.image("clock.arrow.circlepath") }
     var rules: [Rule] { commonRules + [#Rule(PaneTips.$historyMoment) { $0 == true }, #Rule(PaneTips.$turn) { $0 == "" || $0 == "versionHistory" }] }
     var options: [any TipOption] { [Tips.MaxDisplayCount(2)] }
     var actions: [Action] { [Action(id: "open", title: "Show Version History")] }
@@ -297,7 +305,7 @@ struct ShareLinkTip: Tip {
     var id: String { "shareLink" }
     var title: Text { Text("Send this note as a link") }
     var message: Text? { Text("Anyone with the link can read it in a browser, and it updates as you edit.") }
-    var image: Image? { Image(systemName: "link") }
+    var image: Image? { TipGlyph.image("link") }
     var rules: [Rule] { commonRules + [#Rule(PaneTips.$noteIsLong) { $0 == true }, #Rule(PaneTips.$turn) { $0 == "" || $0 == "shareLink" }] }
     var options: [any TipOption] { [Tips.MaxDisplayCount(2)] }
 }
@@ -307,7 +315,7 @@ struct ChecklistTip: Tip {
     var id: String { "checklistTidy" }
     var title: Text { Text("Lists tidy themselves") }
     var message: Text? { Text("Ticked items move to the bottom, so what's left to do stays on top.") }
-    var image: Image? { Image(systemName: "checklist") }
+    var image: Image? { TipGlyph.image("checklist") }
     var rules: [Rule] { commonRules + [#Rule(PaneTips.$justTicked) { $0 == true }, #Rule(PaneTips.$turn) { $0 == "" || $0 == "checklistTidy" }] }
     var options: [any TipOption] { [Tips.MaxDisplayCount(1)] }
 }
@@ -317,7 +325,7 @@ struct TableTip: Tip {
     var id: String { "tableFromText" }
     var title: Text { Text("Turn this into a table") }
     var message: Text? { Text("Lines with tabs or | between words can become a table you can sort and chart.") }
-    var image: Image? { Image(systemName: "tablecells") }
+    var image: Image? { TipGlyph.image("tablecells") }
     var rules: [Rule] { commonRules + [#Rule(PaneTips.$noteHasTableText) { $0 == true }, #Rule(PaneTips.$turn) { $0 == "" || $0 == "tableFromText" }] }
     var options: [any TipOption] { [Tips.MaxDisplayCount(2)] }
     var actions: [Action] { [Action(id: "make", title: "Make Table")] }
@@ -328,7 +336,7 @@ struct MenuBarTip: Tip {
     var id: String { "menuBar" }
     var title: Text { Text("Jot a note from the menu bar") }
     var message: Text? { Text("Click Amber Notes in the menu bar to write or find a note without opening this window.") }
-    var image: Image? { Image(systemName: "menubar.arrow.up.rectangle") }
+    var image: Image? { TipGlyph.image("menubar.arrow.up.rectangle") }
     var rules: [Rule] {
         [
             #Rule(PaneTips.activeDay) { $0.donations.count >= 5 },
@@ -346,9 +354,28 @@ struct ShareExtensionTip: Tip {
     var id: String { "shareExtension" }
     var title: Text { Text("Save from any app") }
     var message: Text? { Text("In Safari or any app, tap Share, then Amber Notes. It lands here as a note.") }
-    var image: Image? { Image(systemName: "square.and.arrow.up") }
+    var image: Image? { TipGlyph.image("square.and.arrow.up") }
     var rules: [Rule] { commonRules + [#Rule(PaneTips.imported) { $0.donations.count >= 1 }, #Rule(PaneTips.$turn) { $0 == "" || $0 == "shareExtension" }] }
     var options: [any TipOption] { [Tips.MaxDisplayCount(2)] }
+}
+
+/// A tip's icon: the SF Symbol drawn in the app's amber as a finished image, so it looks the
+/// same in every tip and every appearance (TipKit draws some template symbols pale on the Mac).
+enum TipGlyph {
+    static func image(_ name: String) -> Image {
+        #if os(macOS)
+        let config = NSImage.SymbolConfiguration(pointSize: 28, weight: .regular)
+            .applying(.init(paletteColors: [PColor.paneAccent]))
+        if let ns = NSImage(systemSymbolName: name, accessibilityDescription: nil)?.withSymbolConfiguration(config) {
+            return Image(nsImage: ns).renderingMode(.original)
+        }
+        #else
+        if let ui = UIImage(systemName: name)?.withTintColor(PColor.paneAccent, renderingMode: .alwaysOriginal) {
+            return Image(uiImage: ui).renderingMode(.original)
+        }
+        #endif
+        return Image(systemName: name)
+    }
 }
 
 // MARK: Measuring
@@ -387,6 +414,17 @@ enum TipLog {
 }
 
 extension View {
+    /// A tip as a popover on this control, recorded when shown. Off in offscreen captures, where a
+    /// popover would open on the real screen (they draw the tip in place instead).
+    @ViewBuilder
+    func paneTip(_ tip: some Tip, arrowEdge: Edge, action: @escaping (Tips.Action) -> Void = { _ in }) -> some View {
+        if PaneTips.popovers {
+            popoverTip(tip, arrowEdge: arrowEdge, action: action).logsTip(tip)
+        } else {
+            self
+        }
+    }
+
     /// Records the tip as shown the first time TipKit says it should display here.
     func logsTip(_ tip: some Tip) -> some View {
         task(id: tip.id) {

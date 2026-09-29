@@ -35,7 +35,14 @@ struct NoteDetailView: View {
             .overlay(alignment: .bottom) { aiReceipt }
             .overlay(alignment: .bottom) { undoProblem }
             .onChange(of: note.aiEditedAt) { _, _ in showAIEdit() }
-            .task(id: note.id) { receipt = nil; showAIEdit(); PaneTips.noteOpened(note.body) }
+            .task(id: note.id) {
+                receipt = nil
+                showAIEdit()
+                #if os(macOS)
+                PaneTips.menuBarShown = MenuBarSettings.allowed && UserDefaults.standard.object(forKey: MenuBarSettings.key) as? Bool ?? true
+                #endif
+                PaneTips.noteOpened(note.body)
+            }
             .onReceive(NotificationCenter.default.publisher(for: .paneChecklistTicked)) { _ in PaneTips.ticked() }
             .onChange(of: showHistory) { _, open in if open { TipLog.used(VersionHistoryTip()) } }
     }
@@ -242,13 +249,11 @@ struct NoteDetailView: View {
         #if os(iOS)
         ToolbarItem(placement: .bottomBar) {
             Button("Checklist", systemImage: "checklist", action: controller.checklist)
-                .popoverTip(ChecklistTip(), arrowEdge: .bottom)
-                .logsTip(ChecklistTip())
+                .paneTip(ChecklistTip(), arrowEdge: .bottom)
         }
         ToolbarItem(placement: .bottomBar) {
             Button("Table", systemImage: "tablecells", action: controller.insertTable)
-                .popoverTip(TableTip(), arrowEdge: .bottom, action: tableTipAction)
-                .logsTip(TableTip())
+                .paneTip(TableTip(), arrowEdge: .bottom, action: tableTipAction)
         }
         ToolbarItem(placement: .bottomBar) {
             Button("Attach", systemImage: "paperclip") { importing = true }
@@ -266,18 +271,18 @@ struct NoteDetailView: View {
                 Label { Text("New Note") } icon: { ToolbarGlyph.image("square.and.pencil", shift: ToolbarGlyph.composeShift) }
             }
                 .help("New Note (⌘N)")
+                // The menu bar's quick capture is the other way to start a note.
+                .paneTip(MenuBarTip(), arrowEdge: .top)
                 .accessibilityIdentifier("list.newNote")
         }
         ToolbarSpacer(.flexible)
         ToolbarItemGroup {
             formatMenu
             Button("Checklist", systemImage: "checklist", action: controller.checklist)
-                .popoverTip(ChecklistTip(), arrowEdge: .top)
-                .logsTip(ChecklistTip())
+                .paneTip(ChecklistTip(), arrowEdge: .top)
                 .help("Checklist (⇧⌘L)")
             Button("Table", systemImage: "tablecells", action: controller.insertTable)
-                .popoverTip(TableTip(), arrowEdge: .top, action: tableTipAction)
-                .logsTip(TableTip())
+                .paneTip(TableTip(), arrowEdge: .top, action: tableTipAction)
                 .help("Table (⌥⌘T)")
             Button("Attach", systemImage: "paperclip") { importing = true }
                 .help("Attach File (⇧⌘A)")
@@ -349,8 +354,7 @@ struct NoteDetailView: View {
         .tint(.primary)
         #endif
         .help("Share")
-        .popoverTip(ShareLinkTip(), arrowEdge: .top)
-        .logsTip(ShareLinkTip())
+        .paneTip(ShareLinkTip(), arrowEdge: .top)
         .accessibilityIdentifier("editor.share")
     }
 
@@ -380,14 +384,12 @@ struct NoteDetailView: View {
         #if os(macOS)
         .tint(.primary)
         #endif
-        .popoverTip(VersionHistoryTip(), arrowEdge: .top) { action in
+        .paneTip(VersionHistoryTip(), arrowEdge: .top) { action in
             if action.id == "open" { showHistory = true }
         }
-        .logsTip(VersionHistoryTip())
         #if os(iOS)
         // On iPhone sharing lives in this menu too.
-        .popoverTip(ShareLinkTip(), arrowEdge: .top)
-        .logsTip(ShareLinkTip())
+        .paneTip(ShareLinkTip(), arrowEdge: .top)
         #endif
         .accessibilityIdentifier("editor.more")
     }
