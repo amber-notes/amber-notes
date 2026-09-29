@@ -35,12 +35,14 @@ const config: NextConfig = {
       {
         // Shared notes (and everything else not listed) are private-by-link: never indexed.
         // The home page, download, privacy policy, terms and support pages may be indexed.
-        source: "/((?!privacy|terms|support|download|changelog).+)",
+        source: "/((?!privacy|terms|support|help|download|changelog).+)",
         headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }, ...security],
       },
       { source: "/", headers: security },
       { source: "/download", headers: security },
       { source: "/changelog", headers: security },
+      { source: "/help", headers: security },
+      { source: "/support", headers: security },
     ];
   },
 };

@@ -1,16 +1,13 @@
 import type { Metadata } from "next";
-import { DocPage, readDoc } from "@/lib/DocPage";
+import Help from "../help/page";
 
-// Copied from docs/support.md at build time (scripts/deploy-web.sh refreshes the copy).
-const doc = readDoc("support.md");
-
+// The App Store's support link points here; it's the same page as /help.
 export const dynamic = "force-static";
 export const metadata: Metadata = {
-  title: `${doc.title} · Amber Notes`,
-  description: "Help with Amber Notes, and how to reach us.",
+  title: "Help · Amber Notes",
+  description: "Answers to common questions about Amber Notes, and how to reach me.",
   robots: { index: true, follow: true },
+  alternates: { canonical: "/help" },
 };
 
-export default function Support() {
-  return <DocPage {...doc} />;
-}
+export default Help;

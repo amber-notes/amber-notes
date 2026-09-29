@@ -1,0 +1,32 @@
+/* Help page questions: a quiet accordion. The row is the button; the answer slides open. */
+.list { display: grid; box-shadow: inset 0 1px 0 var(--line); }
+.item { box-shadow: inset 0 -1px 0 var(--line); scroll-margin-top: 24px; }
+.q { margin: 0; font-size: inherit; }
+.q button {
+  display: flex; align-items: center; justify-content: space-between; gap: 20px; width: 100%; min-height: 64px; padding: 16px 4px;
+  border: 0; background: none; color: var(--ink); font: inherit; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; text-align: left; cursor: pointer;
+}
+.q button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; border-radius: 8px; }
+@media (hover: hover) { .q button:hover { color: var(--link); } }
+.chev { flex: none; width: 28px; height: 28px; padding: 7px; box-sizing: border-box; border-radius: 50%; background: var(--soft); color: var(--muted); }
+.item[data-open] .chev { transform: rotate(180deg); color: var(--ink); }
+.a { display: grid; grid-template-rows: 0fr; }
+.item[data-open] .a { grid-template-rows: 1fr; }
+.a > div { overflow: hidden; }
+.a p { margin: 0 44px 12px 4px; color: var(--muted); font-size: 17px; line-height: 1.55; }
+.a p:last-child { margin-bottom: 22px; }
+@media (prefers-reduced-motion: no-preference) {
+  .a { transition: grid-template-rows 0.28s cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .item:not([data-open]) .a { transition-duration: 0.18s; transition-timing-function: ease-in; }
+  .chev { transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), color 0.15s ease-out; }
+}
+
+.contact { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 600px) { .contact { grid-template-columns: 1fr; } }
+.contact a { display: grid; gap: 4px; padding: 20px 22px; border-radius: 20px; background: var(--soft); color: var(--ink); text-decoration: none; }
+.contact strong { display: inline-flex; align-items: center; gap: 9px; font-size: 17px; }
+.contact span { color: var(--muted); font-size: 15px; line-height: 1.4; }
+.contact a:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
+@media (hover: hover) { .contact a:hover { box-shadow: inset 0 0 0 1.5px var(--amber); } }
+@media (prefers-reduced-motion: no-preference) { .contact a { transition: transform 0.12s ease-out; } .contact a:active { transform: scale(0.98); } }
+.h3 { margin: 0 0 14px; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }

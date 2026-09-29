@@ -29,30 +29,35 @@ html[data-theme] ::selection { background: var(--mark); }
 .site-header {
   view-transition-name: site-header;
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  width: 100%; max-width: 1120px; height: 76px; margin: 0 auto; padding: 0 20px; box-sizing: border-box;
+  width: 100%; max-width: 1240px; height: 84px; margin: 0 auto; padding: 0 20px; box-sizing: border-box;
 }
-.site-brand { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; color: var(--ink); text-decoration: none; font-weight: 700; font-size: 17px; }
-.site-brand img { border-radius: 7px; box-shadow: 0 0 0 0.5px var(--line); }
-.site-badge { font-size: 11px; font-weight: 600; color: var(--muted); padding: 2px 6px; border-radius: 6px; box-shadow: 0 0 0 1px var(--line); font-variant-numeric: tabular-nums; margin-top: -10px; }
-.site-nav { display: flex; align-items: center; gap: 4px; }
-.site-nav a { position: relative; display: inline-flex; align-items: center; gap: 7px; height: 40px; padding: 0 12px; border-radius: 12px; color: var(--ink); text-decoration: none; font-weight: 600; font-size: 15px; }
-.site-nav a.site-cta { margin-left: 6px; background: var(--soft); }
+.site-brand { display: inline-flex; align-items: center; gap: 11px; min-height: 44px; color: var(--ink); text-decoration: none; font-weight: 750; font-size: 19px; letter-spacing: -0.01em; white-space: nowrap; }
+.site-brand img { border-radius: 8px; box-shadow: 0 0 0 0.5px var(--line); }
+.site-badge { font-size: 11px; font-weight: 600; color: var(--muted); padding: 2px 6px; border-radius: 6px; box-shadow: 0 0 0 1px var(--line); font-variant-numeric: tabular-nums; line-height: 16px; align-self: center; margin-top: 1px; }
+.site-nav { display: flex; align-items: center; gap: 6px; }
+.site-nav a { position: relative; display: inline-flex; align-items: center; gap: 7px; height: 44px; padding: 0 14px; border-radius: 12px; color: var(--ink); text-decoration: none; font-weight: 600; font-size: 16px; white-space: nowrap; }
+.site-nav a.site-cta { margin-left: 6px; padding: 0 18px; background: var(--cta-bg); color: var(--cta-ink); border-radius: 13px; }
 .site-nav a.site-gh { color: var(--muted); gap: 6px; font-variant-numeric: tabular-nums; }
-.site-stars { font-size: 14px; }
+.site-stars { font-size: 15px; }
 /* The current page: a small amber dot under its link (never moves anything). */
 .site-nav a[aria-current="page"]:not(.site-cta)::after {
   content: ""; position: absolute; left: 50%; bottom: 3px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: var(--amber);
 }
-.site-nav a.site-cta[aria-current="page"] { box-shadow: inset 0 0 0 1.5px var(--amber); }
-@media (max-width: 560px) { .site-nav a:not(.site-cta):not(.site-gh) { display: none; } .site-stars { display: none; } .site-cta .site-cta-long { display: none; } }
-@media (min-width: 561px) { .site-cta .site-cta-short { display: none; } }
-@media (hover: hover) { .site-nav a:hover { background: var(--soft); } }
+.site-nav a.site-cta[aria-current="page"] { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px var(--amber); }
+/* Narrower screens drop the stars, then the text links; the brand and the Download button always stay. */
+@media (max-width: 760px) { .site-stars { display: none; } .site-header { height: 72px; } }
+@media (max-width: 600px) { .site-nav a:not(.site-cta):not(.site-gh) { display: none; } .site-cta .site-cta-long { display: none; } }
+@media (max-width: 430px) { .site-badge { display: none; } }
+@media (min-width: 601px) { .site-cta .site-cta-short { display: none; } }
+@media (max-width: 360px) { .site-brand { font-size: 17px; gap: 9px; } .site-brand img { width: 30px; height: 30px; } .site-nav a.site-cta { padding: 0 14px; } }
+@media (hover: hover) { .site-nav a:not(.site-cta):hover { background: var(--soft); } .site-nav a.site-cta:hover { background: color-mix(in srgb, var(--cta-bg) 86%, var(--amber)); } }
+@media (prefers-reduced-motion: no-preference) { .site-nav a.site-cta { transition: transform 0.12s ease-out, background-color 0.15s ease-out; } .site-nav a.site-cta:active { transform: scale(0.97); } }
 .site-brand:focus-visible, .site-nav a:focus-visible, .site-footer a:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
 
 /* Footer: identical on every page. */
 .site-footer {
   view-transition-name: site-footer;
-  width: 100%; max-width: 1120px; margin: 88px auto 0; padding: 0 20px; box-sizing: border-box;
+  width: 100%; max-width: 1240px; margin: 120px auto 0; padding: 0 20px; box-sizing: border-box;
   display: grid; justify-items: center; gap: 12px; text-align: center; overflow: hidden;
 }
 .site-footer nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 20px; }
@@ -63,7 +68,9 @@ html[data-theme] ::selection { background: var(--mark); }
 .site-social a { width: 40px; height: 40px; min-height: 40px; justify-content: center; border-radius: 12px; }
 @media (hover: hover) { .site-social a:hover { background: var(--soft); } }
 .site-footer a.site-maker { display: inline; min-height: 0; color: var(--ink); font-size: inherit; text-decoration: underline; text-decoration-color: var(--amber); text-underline-offset: 3px; }
-.site-wordmark { margin-top: 20px; margin-bottom: -0.2em; font-size: clamp(64px, 15vw, 200px); line-height: 0.9; font-weight: 800; letter-spacing: -0.05em; color: var(--wordmark); white-space: nowrap; user-select: none; }
+/* The big faded name: an SVG so it always fits the footer's width, centred, never cut at the sides. */
+.site-wordmark { display: block; width: 100%; height: auto; margin-top: 24px; margin-bottom: -2.2%; overflow: visible; user-select: none; }
+.site-wordmark text { fill: var(--wordmark); font: 800 176px -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif; letter-spacing: -8px; }
 
 /* Content entrance: blur, lift and fade into focus, in order (style="--i: n"). Runs on load and
    after every navigation. Exits are handled by the view transition (a quick fade). */

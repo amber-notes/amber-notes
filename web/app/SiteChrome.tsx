@@ -5,13 +5,13 @@ import { usePathname, useRouter } from "next/navigation";
 
 /// Which site pages are cream and which are leaf brown. Anything else (shared notes) has no theme.
 export function themeFor(path: string): "cream" | "leaf" | null {
-  if (/^\/(changelog|support)(\/|$)/.test(path)) return "leaf";
+  if (/^\/(changelog|support|help)(\/|$)/.test(path)) return "leaf";
   if (path === "/" || /^\/(download|privacy|terms)(\/|$)/.test(path)) return "cream";
   return null;
 }
 
 /// Runs in <head> before first paint, so a page never flashes the wrong theme.
-export const themeScript = `(function(){var p=location.pathname,t=/^\\/(changelog|support)(\\/|$)/.test(p)?"leaf":(p==="/"||/^\\/(download|privacy|terms)(\\/|$)/.test(p))?"cream":null;if(t)document.documentElement.dataset.theme=t;})();`;
+export const themeScript = `(function(){var p=location.pathname,t=/^\\/(changelog|support|help)(\\/|$)/.test(p)?"leaf":(p==="/"||/^\\/(download|privacy|terms)(\\/|$)/.test(p))?"cream":null;if(t)document.documentElement.dataset.theme=t;})();`;
 
 const GITHUB = "https://github.com/emilwagman/amber-notes";
 const X_URL = "https://x.com/EmilWagman";
@@ -59,13 +59,13 @@ export default function SiteChrome({ version, stars, children }: { version: stri
     <div className="site">
       <header className="site-header">
         <a className="site-brand" href="/" aria-current={current("/")}>
-          <img src="/mark.png" alt="" width={30} height={30} />
+          <img src="/mark.png" alt="" width={34} height={34} />
           Amber Notes
           {version && <span className="site-badge">v{version}</span>}
         </a>
         <nav className="site-nav" aria-label="Site">
           <a href="/changelog" aria-current={current("/changelog")}>Changelog</a>
-          <a href="/support" aria-current={current("/support")}>Help</a>
+          <a href="/help" aria-current={path === "/help" || path === "/support" ? "page" : undefined}>Help</a>
           <a className="site-gh" href={GITHUB} aria-label={stars !== null ? `GitHub, ${stars} stars` : "GitHub"}>
             <GitHubGlyph />{stars !== null && <span className="site-stars">★ {stars.toLocaleString("en")}</span>}
           </a>
@@ -80,14 +80,16 @@ export default function SiteChrome({ version, stars, children }: { version: stri
           <a href="/changelog">Changelog</a>
           <a href="/privacy">Privacy</a>
           <a href="/terms">Terms</a>
-          <a href="/support">Help</a>
+          <a href="/help">Help</a>
         </nav>
         <div className="site-social">
           <a href={GITHUB} aria-label="Amber Notes on GitHub"><GitHubGlyph /></a>
           <a href={X_URL} rel="me noopener" aria-label="Emil Wagman on X"><XGlyph /></a>
         </div>
         <p>Made by <a className="site-maker" href={X_URL} rel="me noopener">Emil Wagman</a>. Works with ChatGPT and Claude; not affiliated with Apple, OpenAI or Anthropic.</p>
-        <div className="site-wordmark" aria-hidden="true">Amber Notes</div>
+        <svg className="site-wordmark" viewBox="0 0 1000 170" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
+          <text x="500" y="160" textAnchor="middle" textLength="980" lengthAdjust="spacingAndGlyphs">Amber Notes</text>
+        </svg>
       </footer>
     </div>
   );
