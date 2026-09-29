@@ -47,15 +47,15 @@ final class SyncTests: XCTestCase {
         app.launchArguments = ["-synctest", "-signout"]
         app.launch()
 
-        // Email is folded away behind Sign in with Apple until the Apple ID is linked.
-        let useEmail = app.buttons["signin.useEmail"]
-        if useEmail.exists { useEmail.tap() }
+        // Email first: type it, Continue, and the password field appears for an existing account.
         let email = app.textFields["signin.email"]
         XCTAssertTrue(email.waitForExistence(timeout: 10), "sign-in screen")
         shot(app, "sign-in")
         email.tap()
         email.typeText(env["PANE_EMAIL"]!)
+        app.buttons["signin.submit"].tap() // Continue
         let password = app.secureTextFields["signin.password"]
+        XCTAssertTrue(password.waitForExistence(timeout: 10), "an existing account asks for its password")
         password.tap()
         password.typeText(env["PANE_PASSWORD"]!)
         app.buttons["signin.submit"].tap()
