@@ -61,10 +61,11 @@
 
 /* Window 2: the ChatGPT chat, over the right side of the note pane, so the sidebar, the list and the note's text stay in view. One
    conversation in a fixed-size window; it scrolls to the newest exchange. */
-/* Its right edge sits 24 design px inside the app window's (1230 - 24 = 1206), at every size. */
+/* Its right edge sits 24 design px inside the app window's (1230 - 24 = 1206), at every size. Its one
+   column can't grow past it: a long line in the input is clipped, not allowed to widen the window. */
 .chat {
   position: absolute; left: calc(816 * var(--u)); top: calc(150 * var(--u)); width: calc(390 * var(--u)); height: calc(360 * var(--u));
-  border-radius: calc(16 * var(--u)); overflow: hidden; display: grid; grid-template-rows: calc(40 * var(--u)) minmax(0, 1fr) auto; background: #fff;
+  border-radius: calc(16 * var(--u)); overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: calc(40 * var(--u)) minmax(0, 1fr) auto; background: #fff;
   box-shadow: 0 0 0 calc(0.5 * var(--u)) rgba(0, 0, 0, 0.22), 0 calc(30 * var(--u)) calc(60 * var(--u)) calc(-12 * var(--u)) rgba(40, 15, 0, 0.5), 0 calc(10 * var(--u)) calc(20 * var(--u)) calc(-8 * var(--u)) rgba(40, 15, 0, 0.28);
 }
 /* ChatGPT arrives with a gentle scale-and-fade, and leaves more quietly. */
