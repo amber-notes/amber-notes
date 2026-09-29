@@ -192,7 +192,7 @@ struct NoteDetailView: View {
         }
         ToolbarSpacer(.fixed)
         ToolbarItemGroup {
-            ShareLink(item: note.body, preview: SharePreview(note.title))
+            shareMenu
             moreMenu
         }
         #endif
@@ -231,6 +231,28 @@ struct NoteDetailView: View {
         .accessibilityIdentifier("editor.format")
     }
 
+    /// Everything about sharing in one place, like Notes: the public link, and sending a copy.
+    @ViewBuilder
+    private var shareItems: some View {
+        ShareLinkMenuSection(store: shareLinks, note: note)
+        Section {
+            ShareLink(item: note.body, preview: SharePreview(note.title)) {
+                Label("Send a Copy…", systemImage: "square.and.arrow.up")
+            }
+        }
+    }
+
+    private var shareMenu: some View {
+        Menu { shareItems } label: {
+            Label("Share", systemImage: "square.and.arrow.up")
+        }
+        #if os(macOS)
+        .tint(.primary)
+        #endif
+        .help("Share")
+        .accessibilityIdentifier("editor.share")
+    }
+
     private var moreMenu: some View {
         Menu {
             Button(note.isPinned ? "Unpin Note" : "Pin Note", systemImage: note.isPinned ? "pin.slash" : "pin") {
@@ -242,9 +264,8 @@ struct NoteDetailView: View {
                 }
             }
             #if os(iOS)
-            ShareLink(item: note.body, preview: SharePreview(note.title))
+            Menu("Share", systemImage: "square.and.arrow.up") { shareItems }
             #endif
-            ShareLinkMenuSection(store: shareLinks, note: note)
             Divider()
             Button("Delete Note", systemImage: "trash", role: .destructive) {
                 withAnimation(.snappy) { context.trash(note) }
