@@ -153,5 +153,11 @@ import Testing
         #expect(tint.strength(at: 2) == 0)
         #expect(tint.ranges.isEmpty)
     }
+
+    /// With Reduce Motion the receipt fades in place instead of rising from the bottom.
+    @Test func receiptOnlyFadesWithReduceMotion() {
+        #expect(AIReceipt.slides(reduceMotion: false))
+        #expect(!AIReceipt.slides(reduceMotion: true))
+    }
 }
 #endif

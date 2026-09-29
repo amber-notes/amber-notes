@@ -62,6 +62,15 @@ struct AIReceipt: View {
     let receipt: AIEdit.Receipt
     let undo: () -> Void
 
+    /// Rises in from the bottom edge; with Reduce Motion it only fades.
+    static func slides(reduceMotion: Bool) -> Bool { !reduceMotion }
+
+    static func transition(reduceMotion: Bool) -> AnyTransition {
+        guard slides(reduceMotion: reduceMotion) else { return .opacity }
+        return .asymmetric(insertion: .move(edge: .bottom).combined(with: .opacity).combined(with: .scale(scale: 0.96, anchor: .bottom)),
+                           removal: .opacity.combined(with: .offset(y: 6)))
+    }
+
     var body: some View {
         HStack(spacing: 8) {
             AIGlyph(ai: receipt.by, size: 14)

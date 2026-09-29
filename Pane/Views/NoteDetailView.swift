@@ -6,6 +6,7 @@ import UniformTypeIdentifiers
 struct NoteDetailView: View {
     @Environment(\.modelContext) private var context
     @Environment(SyncEngine.self) private var sync: SyncEngine?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var importing = false
     @State private var saver = DebouncedSave()
     @State private var shareLinks = ShareLinkStore()
@@ -64,8 +65,7 @@ struct NoteDetailView: View {
             #else
             .padding(.bottom, 64)
             #endif
-            .transition(.asymmetric(insertion: .move(edge: .bottom).combined(with: .opacity).combined(with: .scale(scale: 0.96, anchor: .bottom)),
-                                    removal: .opacity.combined(with: .offset(y: 6))))
+            .transition(AIReceipt.transition(reduceMotion: reduceMotion))
         }
     }
 
