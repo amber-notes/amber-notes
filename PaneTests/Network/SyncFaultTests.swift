@@ -130,6 +130,50 @@ extension NetworkFaults {
         await finish()
     }
 
+    // MARK: Realtime down
+
+    /// While realtime isn't joined, a short poll brings other devices' edits (8 s, 30 s once
+    /// quiet for 5 minutes; shortened here), and it stops when realtime joins or the app leaves
+    /// the front.
+    @Test func realtimeDownPollsAndBacksOff() async throws {
+        let saved = SyncEngine.fallbackPoll
+        SyncEngine.fallbackPoll = (.milliseconds(200), .milliseconds(600), 1.0)
+        defer { SyncEngine.fallbackPoll = saved }
+        let n = try await syncedNote("Plan")
+        // The socket can't join (as with -netOffline); the network itself is fine.
+        NetFault.config = .init(offline: true)
+        await engine.start()
+        NetFault.config = .init()
+        #expect(!engine.realtimeUp)
+        StubSupabase.edit(n.id, body: "Plan\n- from the phone", updatedAt: .now.addingTimeInterval(1))
+        await waitUntil(1.5) { n.body == "Plan\n- from the phone" }
+        #expect(n.body == "Plan\n- from the phone", "the poll brought the other device's edit")
+
+        func pulls(over seconds: Double) async -> Int {
+            let before = StubSupabase.requests.filter { $0.hasPrefix("GET") }.count
+            try? await Task.sleep(for: .seconds(seconds))
+            return StubSupabase.requests.filter { $0.hasPrefix("GET") }.count - before
+        }
+        let fast = await pulls(over: 0.8)
+        // Quiet for over `slowAfter`: the poll slows down.
+        try await Task.sleep(for: .seconds(0.6))
+        let slow = await pulls(over: 1.8)
+        print("PERF realtime down: \(fast) GETs in 0.8 s polling fast, \(slow) in 1.8 s once quiet")
+        #expect(fast > 0 && Double(slow) / 1.8 < Double(fast) / 0.8, "polling slows once nothing changes")
+
+        engine.realtimeChanged(up: true)
+        try await Task.sleep(for: .milliseconds(700))
+        #expect(await pulls(over: 1) == 0, "realtime is back: no polling")
+
+        engine.realtimeChanged(up: false)
+        engine.setActive(false)
+        #expect(await pulls(over: 1) == 0, "in the background: no polling")
+        engine.setActive(true)
+        #expect(await pulls(over: 1) > 0, "back in front with realtime down: polling again")
+        await finish()
+        #expect(await pulls(over: 0.6) == 0, "signed out: nothing")
+    }
+
     // MARK: Version history
 
     /// Restoring on a connection that hangs: each push attempt waits out its timeout, so

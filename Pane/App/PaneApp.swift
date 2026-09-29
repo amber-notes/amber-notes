@@ -350,6 +350,7 @@ struct AppGate: View {
             Task { await setup.reset() }
         }
         .onChange(of: phase) { _, p in
+            sync.setActive(p == .active)
             if p == .active {
                 Task { await setup.refresh() }
                 context.drainInbox()

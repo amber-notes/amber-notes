@@ -30,7 +30,7 @@ final class SyncEngine {
     /// True once a sync has completed since launch.
     private(set) var hasSynced = false
     /// Bumps when a pull changed a note, so an open editor can refresh.
-    private(set) var remoteChangeTick = 0
+    private(set) var remoteChangeTick = 0 { didSet { lastChange = .now } }
 
     private let backend: Backend
     private let context: ModelContext
@@ -45,6 +45,17 @@ final class SyncEngine {
     private var lastPush = Date.distantPast
     static let pushInterval: TimeInterval = 0.35
     private var channel: RealtimeChannelV2?
+    /// Realtime is joined and delivering. While it isn't, a short poll stands in (`fallback`).
+    private(set) var realtimeUp = false
+    /// The app is in front; nothing polls in the background.
+    private var active = true
+    private var started = false
+    private var fallback: Task<Void, Never>?
+    /// The last change either way, for backing the poll off when nothing is happening.
+    private var lastChange = Date.now
+    /// How often to pull while realtime is down: every `fast`, or every `slow` once nothing has
+    /// changed for `slowAfter`. Tests shorten these.
+    static var fallbackPoll: (fast: Duration, slow: Duration, slowAfter: TimeInterval) = (.seconds(8), .seconds(30), 300)
     private var realtimeTasks: [Task<Void, Never>] = []
     /// Rows the server refused (too big, over a limit), keyed by id with the edit time that
     /// was refused. They're skipped until they change again, so one bad row never blocks
@@ -84,6 +95,7 @@ final class SyncEngine {
     /// Something changed here: push it soon, at most every `pushInterval`, first one at once.
     func localChanged() {
         guard backend.client != nil, case .signedIn = backend.state else { return }
+        lastChange = .now
         pushWanted = true
         guard pushLoop == nil else { return }
         pushLoop = Task { [weak self] in
@@ -133,6 +145,9 @@ final class SyncEngine {
     func start() async {
         guard let client = backend.client, case .signedIn = backend.state else { return }
         adoptLibrary()
+        started = true
+        // Until realtime has joined, a short poll brings other devices' edits.
+        updateFallback()
         await sync()
         guard channel == nil else { return }
         #if DEBUG || QA
@@ -161,7 +176,8 @@ final class SyncEngine {
         realtimeTasks.append(Task { [weak self] in
             var joined = false
             for await s in joins {
-                guard case .subscribed = s else { continue }
+                guard case .subscribed = s else { self?.realtimeChanged(up: false); continue }
+                self?.realtimeChanged(up: true)
                 if joined { self?.schedule(after: 0) }
                 joined = true
             }
@@ -228,8 +244,43 @@ final class SyncEngine {
     /// The account this engine's in-memory state (refusals, problems) belongs to.
     private var adoptedFor: UUID?
 
+    /// Realtime joined or dropped. While it's down, edits from other devices come in by a
+    /// poll every 8 s (30 s once nothing has changed for 5 minutes) instead of only the
+    /// minute pull; joining again stops it.
+    func realtimeChanged(up: Bool) {
+        realtimeUp = up
+        updateFallback()
+    }
+
+    /// The app came to the front or went away: the poll only runs while it's in front.
+    func setActive(_ isActive: Bool) {
+        active = isActive
+        updateFallback()
+    }
+
+    private func updateFallback() {
+        var signedIn: Bool { if case .signedIn = backend.state { true } else { false } }
+        let wanted = started && active && !realtimeUp && backend.client != nil && signedIn
+        if !wanted { fallback?.cancel(); fallback = nil; return }
+        guard fallback == nil else { return }
+        fallback = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let self else { return }
+                let poll = Self.fallbackPoll
+                let quiet = Date.now.timeIntervalSince(self.lastChange) > poll.slowAfter
+                try? await Task.sleep(for: quiet ? poll.slow : poll.fast)
+                guard !Task.isCancelled else { return }
+                await self.sync()
+            }
+        }
+    }
+
     func stop() async {
         // Signed out: nothing already scheduled may still go up.
+        started = false
+        realtimeUp = false
+        fallback?.cancel()
+        fallback = nil
         pending?.cancel()
         pushLoop?.cancel()
         pushLoop = nil
