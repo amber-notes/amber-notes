@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import styles from "./home.module.css";
 import Demo from "./Demo";
 import InView from "./InView";
+import DownloadLink from "./DownloadLink";
 import { AIGlyph } from "@/lib/ai-glyphs";
 
 const APP_STORE_LIVE = false; // Flip when the iPhone app is approved.
@@ -93,7 +94,7 @@ export default function Home() {
           Import your Apple Notes. Connect ChatGPT, Claude, Claude Code or Codex.
         </p>
         <div className={`${styles.ctas} rise`} {...rise(2)}>
-          <a className={styles.primary} href="/download"><AppleGlyph /> Download for Mac</a>
+          <DownloadLink className={styles.primary}><AppleGlyph /> Download for Mac</DownloadLink>
           {APP_STORE_LIVE ? (
             <a className={styles.secondary} href={APP_STORE_URL}>Get it for iPhone</a>
           ) : (
@@ -152,7 +153,7 @@ export default function Home() {
         <h2 id="closing" className={styles.closingTitle}>Your notes deserve better than copy and paste.</h2>
         <p className={styles.lede}>Amber Notes is free and open source. Import your Apple Notes, connect your AI, and get back to writing.</p>
         <div className={styles.ctas}>
-          <a className={styles.primary} href="/download"><AppleGlyph /> Download for Mac</a>
+          <DownloadLink className={styles.primary}><AppleGlyph /> Download for Mac</DownloadLink>
           {APP_STORE_LIVE ? (
             <a className={styles.outline} href={APP_STORE_URL}>Get it for iPhone</a>
           ) : (
