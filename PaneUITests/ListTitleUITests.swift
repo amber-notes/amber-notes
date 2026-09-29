@@ -21,5 +21,18 @@ final class ListTitleUITests: XCTestCase {
         }
         XCTAssertEqual(atLaunch, tappedIn, accuracy: 2, "the first section sits under the large title both times")
     }
+
+    /// The note count sits quietly at the end of the list, as in Notes.
+    func testCountIsTheListFooter() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uitest", "-demo"]
+        app.launch()
+        XCTAssertTrue(app.buttons["list.select"].waitForExistence(timeout: 5))
+        let list = app.collectionViews.firstMatch
+        for _ in 0..<4 { list.swipeUp(velocity: .fast) }
+        let count = app.staticTexts["list.count"].firstMatch
+        XCTAssertTrue(count.waitForExistence(timeout: 3))
+        XCTAssertTrue(count.label.hasSuffix("Notes"), count.label)
+    }
 }
 #endif

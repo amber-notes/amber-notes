@@ -16,6 +16,8 @@ struct NoteListView: View {
     @State private var search = ""
     @State private var fileDropTargeted = false
     @State private var collapsed: Set<String> = []
+    /// Notes waiting for "Delete Forever" to be confirmed.
+    @State private var pendingForever: Set<UUID>?
     @FocusedValue(\.importAction) private var importNotes
     @FocusedValue(\.importSheetAction) private var importSheet
 
@@ -105,6 +107,18 @@ struct NoteListView: View {
                 .headerProminence(.increased)
                 #endif
             }
+            #if os(iOS)
+            // The count, quietly at the end of the list, as in Notes.
+            if !visible.isEmpty && search.isEmpty {
+                Section {} footer: {
+                    Text(scopedNotes.count == 1 ? "1 Note" : "\(scopedNotes.count) Notes")
+                        .font(.footnote)
+                        .monospacedDigit()
+                        .frame(maxWidth: .infinity)
+                        .accessibilityIdentifier("list.count")
+                }
+            }
+            #endif
         }
         // Right-click acts on the whole selection when the row is part of it, like Notes.
         .contextMenu(forSelectionType: UUID.self) { ids in
@@ -148,6 +162,14 @@ struct NoteListView: View {
         #if os(macOS)
         .navigationSubtitle("")
         #endif
+        .confirmationDialog(foreverTitle, isPresented: Binding(get: { pendingForever != nil }, set: { if !$0 { pendingForever = nil } }), titleVisibility: .visible) {
+            Button("Delete Forever", role: .destructive) {
+                if let ids = pendingForever { performRemove(ids) }
+                pendingForever = nil
+            }
+        } message: {
+            Text("You can't undo this.")
+        }
         #if os(macOS)
         // The Delete key (and Edit › Delete) on the focused list removes every selected note.
         .onDeleteCommand { if !selection.isEmpty { remove(selection) } }
@@ -249,7 +271,7 @@ struct NoteListView: View {
 
     @ViewBuilder
     private func deleteButton(_ note: Note) -> some View {
-        Button(note.trashedAt == nil ? "Delete" : "Delete Forever", systemImage: "trash", role: .destructive) { remove(note) }
+        Button(note.trashedAt == nil ? "Delete" : "Delete Forever…", systemImage: "trash", role: .destructive) { remove(note) }
     }
 
     @ViewBuilder
@@ -262,7 +284,7 @@ struct NoteListView: View {
                 Button("Recover \(notes.count) Notes", systemImage: "arrow.uturn.backward") {
                     withAnimation(.snappy) { notes.forEach(context.restore) }
                 }
-                Button("Delete \(notes.count) Notes Forever", systemImage: "trash", role: .destructive) { remove(ids) }
+                Button("Delete \(notes.count) Notes Forever…", systemImage: "trash", role: .destructive) { remove(ids) }
             } else {
                 Menu("Move \(notes.count) Notes to", systemImage: "folder") {
                     ForEach(folders) { f in
@@ -325,7 +347,19 @@ struct NoteListView: View {
     private func remove(_ note: Note) { remove([note.id]) }
 
     /// Deletes the notes and, if the open note was among them, selects its neighbour like Notes.
+    /// Deleting from Recently Deleted can't be undone, so it asks first; anything else goes
+    /// to Recently Deleted straight away, which is its own undo.
     private func remove(_ ids: Set<UUID>) {
+        let forever = ids.compactMap { context.note($0) }.contains { $0.trashedAt != nil }
+        if forever { pendingForever = ids } else { performRemove(ids) }
+    }
+
+    private var foreverTitle: String {
+        let notes = (pendingForever ?? []).compactMap { context.note($0) }
+        return notes.count == 1 ? "Delete \u{201C}\(notes[0].title)\u{201D} forever?" : "Delete \(notes.count) notes forever?"
+    }
+
+    private func performRemove(_ ids: Set<UUID>) {
         let ordered = filtered
         let notes = ids.compactMap { context.note($0) }
         let touchedSelection = !selection.isDisjoint(with: ids)
