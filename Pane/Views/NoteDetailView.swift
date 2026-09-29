@@ -172,8 +172,8 @@ struct NoteDetailView: View {
         // Like Notes: compose first (just right of the divider), the writing tools together, then share and more.
         ToolbarItem {
             Button(action: onNewNote) {
-                // The pencil pokes out top-right; nudge so the symbol reads as centred.
-                Label("New Note", systemImage: "square.and.pencil").offset(x: 0.5, y: 0.5)
+                // The pencil pokes out top-right; ToolbarGlyph re-centres its ink.
+                Label { Text("New Note") } icon: { ToolbarGlyph.image("square.and.pencil", shift: ToolbarGlyph.composeShift) }
             }
                 .help("New Note (⌘N)")
                 .accessibilityIdentifier("list.newNote")

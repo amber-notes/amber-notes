@@ -155,7 +155,7 @@ struct RootView: View {
                 .toolbar {
                     ToolbarItem {
                         Button(action: newNote) {
-                            Label("New Note", systemImage: "square.and.pencil").offset(x: 0.5, y: 0.5)
+                            Label { Text("New Note") } icon: { ToolbarGlyph.image("square.and.pencil", shift: ToolbarGlyph.composeShift) }
                         }
                             .accessibilityIdentifier("list.newNote")
                     }
