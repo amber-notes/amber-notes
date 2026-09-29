@@ -37,7 +37,12 @@ async function seed(u: { id: string; jwt: string }) {
     method: "POST", headers: { apikey: ANON, authorization: `Bearer ${u.jwt}`, "content-type": "text/plain" }, body: "file body",
   });
   assertEquals(up.status, 200, await up.clone().text());
-  return { note, file };
+  const photo = `${crypto.randomUUID().replaceAll("-", "")}.jpg`;
+  const pic = await fetch(`${API}/storage/v1/object/avatars/${photo}`, {
+    method: "POST", headers: { apikey: ANON, authorization: `Bearer ${u.jwt}`, "content-type": "image/jpeg" }, body: new Uint8Array([255, 216, 255]),
+  });
+  assertEquals(pic.status, 200, await pic.clone().text());
+  return { note, file, photo };
 }
 
 const del = (jwt: string | null) => fetch(`${API}/functions/v1/account`, { method: "DELETE", headers: jwt ? { authorization: `Bearer ${jwt}`, apikey: ANON } : { apikey: ANON } });
@@ -48,7 +53,7 @@ const objects = async (uid: string) => {
 
 Deno.test("deleting an account removes its notes, files and login, and nothing of anyone else's", async () => {
   const a = await newUser(), b = await newUser();
-  await seed(a);
+  const as = await seed(a);
   const bs = await seed(b);
 
   const wrong = await del(null);
@@ -62,17 +67,21 @@ Deno.test("deleting an account removes its notes, files and login, and nothing o
   const body = await r.json();
   assertEquals(r.status, 200, JSON.stringify(body));
   assertEquals(body.deleted, true);
-  assertEquals(body.files, 1);
+  assertEquals(body.files, 2, "the attachment and the profile photo");
 
   // A's login, rows and files are gone.
   assertEquals((await db`select 1 from auth.users where id = ${a.id}`).length, 0);
   const rows = await fetch(`${API}/rest/v1/notes?user_id=eq.${a.id}&select=id`, { headers: { apikey: SERVICE, authorization: `Bearer ${SERVICE}` } });
   assertEquals((await rows.json()).length, 0);
   assertEquals((await objects(a.id)).length, 0);
+  assertEquals((await fetch(`${API}/storage/v1/object/public/avatars/${as.photo}`)).status >= 400, true, "A's photo is gone");
 
   // B is untouched.
   assertEquals((await rest(`notes?id=eq.${bs.note}&select=id`, b.jwt)).body.length, 1);
   assertEquals((await objects(b.id)).length, 1);
+  const bp = await fetch(`${API}/storage/v1/object/public/avatars/${bs.photo}`);
+  assertEquals(bp.status, 200, "B's photo stays");
+  await bp.body?.cancel();
 
   // The old token can't delete anything again.
   const again = await del(a.jwt);

@@ -27,18 +27,24 @@ export async function userFor(token: string): Promise<string | null> {
 }
 
 async function removeFiles(uid: string): Promise<number> {
-  const rows = await sql<{ name: string }[]>`
+  // Attachments sit under the account's folder; profile photos have random names and are
+  // found by their owner.
+  const files = await sql<{ name: string }[]>`
     select name from storage.objects where bucket_id = 'files' and (storage.foldername(name))[1] = ${uid}`;
-  const names = rows.map((r) => r.name);
-  for (let i = 0; i < names.length; i += 100) {
-    const r = await fetch(`${API}/storage/v1/object/files`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${SERVICE}`, apikey: SERVICE, "Content-Type": "application/json" },
-      body: JSON.stringify({ prefixes: names.slice(i, i + 100) }),
-    });
-    if (!r.ok) throw new Error(`storage delete failed: ${r.status}`);
+  const photos = await sql<{ name: string }[]>`
+    select name from storage.objects where bucket_id = 'avatars' and owner_id = ${uid}`;
+  for (const [bucket, rows] of [["files", files], ["avatars", photos]] as const) {
+    const names = rows.map((r) => r.name);
+    for (let i = 0; i < names.length; i += 100) {
+      const r = await fetch(`${API}/storage/v1/object/${bucket}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${SERVICE}`, apikey: SERVICE, "Content-Type": "application/json" },
+        body: JSON.stringify({ prefixes: names.slice(i, i + 100) }),
+      });
+      if (!r.ok) throw new Error(`storage delete failed: ${r.status}`);
+    }
   }
-  return names.length;
+  return files.length + photos.length;
 }
 
 Deno.serve(async (req) => {

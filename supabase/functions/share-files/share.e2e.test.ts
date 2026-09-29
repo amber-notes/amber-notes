@@ -69,7 +69,7 @@ Deno.test("a shared note, its sub-notes and its files", async () => {
   assertEquals(page.title, "Trip plan");
   assert(page.body.includes("Day one."));
   assertEquals(page.subnotes, []);
-  assertEquals(Object.keys(page).sort(), ["body", "include_subnotes", "is_sub", "root_title", "subnotes", "title", "updated_at"]);
+  assertEquals(Object.keys(page).sort(), ["body", "include_subnotes", "is_sub", "root_title", "shared_by", "subnotes", "title", "updated_at"]);
   assertEquals((await rpc("shared_note", { p_slug: slug, p_sub: child }, null)).body, null, "sub-notes need the option");
 
   // Files: only what the note links to.
@@ -111,4 +111,79 @@ Deno.test("a shared note, its sub-notes and its files", async () => {
   // Junk slugs are just not found.
   assertEquals((await rpc("shared_note", { p_slug: "x' or 1=1 --" }, null)).body, null);
   assertEquals((await files("short")).status, 404);
+});
+
+Deno.test("who shared it: name, email and photo, never the account id or a relay address", async () => {
+  const postgres = (await import("npm:postgres@3.4.5")).default;
+  const sql = postgres(Deno.env.get("PANE_DB_URL")!, { max: 1, prepare: false });
+  try {
+    const a = uid(A), b = uid(B);
+    await sql`delete from public.profiles where user_id in (${a}, ${b})`;
+    await sql`delete from public.pane_rate where user_id in (${a}, ${b})`;
+    const hex = () => crypto.randomUUID().replaceAll("-", "");
+    const upload = (jwt: string, name: string, type = "image/jpeg") =>
+      fetch(`${API}/storage/v1/object/avatars/${name}`, {
+        method: "POST", headers: { apikey: ANON, authorization: `Bearer ${jwt}`, "content-type": type }, body: new Uint8Array([255, 216, 255, 224]),
+      });
+
+    // Photos: random names only (no account id in the path), JPEG/PNG only.
+    const photo = `${hex()}.jpg`;
+    const up = await upload(A, photo);
+    assert(up.ok, await up.text());
+    const withId = await upload(A, `${a}/${hex()}.jpg`);
+    assert(!withId.ok, "a path with the account id is refused");
+    await withId.body?.cancel();
+    const html = await upload(A, `${hex()}.jpg`, "text/html");
+    assert(!html.ok, "only images");
+    await html.body?.cancel();
+    // Nobody else can remove it, and nobody can list the bucket.
+    const del = await fetch(`${API}/storage/v1/object/avatars`, {
+      method: "DELETE", headers: { apikey: ANON, authorization: `Bearer ${B}`, "content-type": "application/json" }, body: JSON.stringify({ prefixes: [photo] }),
+    });
+    assertEquals((await del.json()).length ?? 0, 0, "another user deletes nothing");
+    const list = await fetch(`${API}/storage/v1/object/list/avatars`, {
+      method: "POST", headers: { apikey: ANON, authorization: `Bearer ${ANON}`, "content-type": "application/json" }, body: JSON.stringify({ prefix: "" }),
+    });
+    assertEquals((await list.json()).length ?? 0, 0, "strangers can't list photos");
+    // Anyone can load it by its exact name (that's how the share page shows it).
+    const pub = await fetch(`${API}/storage/v1/object/public/avatars/${photo}`);
+    assertEquals(pub.status, 200);
+    await pub.body?.cancel();
+
+    // The profile: only yours, validated.
+    assertEquals((await rest("profiles", A, { method: "POST", body: JSON.stringify({ display_name: "Emil W", avatar_path: photo }) })).status, 201);
+    assertNotEquals((await rest("profiles", B, { method: "POST", body: JSON.stringify({ user_id: a, display_name: "Mallory" }) })).status, 201);
+    assertNotEquals((await rest(`profiles?user_id=eq.${a}`, A, { method: "PATCH", body: JSON.stringify({ display_name: "  padded  " }) })).status, 200);
+    assertNotEquals((await rest(`profiles?user_id=eq.${a}`, A, { method: "PATCH", body: JSON.stringify({ display_name: "x".repeat(61) }) })).status, 200);
+    assertEquals((await rest(`profiles?user_id=eq.${a}`, B)).body.length, 0, "other users can't read it");
+    assertEquals((await rest(`profiles?user_id=eq.${a}`, null)).status >= 400 || (await rest(`profiles?user_id=eq.${a}`, null)).body.length === 0, true);
+
+    const mine = await note(A, "Recipe\n\nFlour.");
+    const slug = (await rpc("share_note", { p_note: mine }, A)).body as string;
+    const page = (await rpc("shared_note", { p_slug: slug }, null)).body;
+    assertEquals(page.shared_by.name, "Emil W");
+    assertEquals(page.shared_by.avatar, photo);
+    assert(typeof page.shared_by.email === "string" && page.shared_by.email.includes("@"));
+    assertEquals(Object.keys(page.shared_by).sort(), ["avatar", "email", "name"]);
+    assert(!JSON.stringify(page).includes(a), "the account id never appears");
+
+    // An Apple private relay address is never shown; with no name, nothing identifies them.
+    const [{ email: before }] = await sql`select email from auth.users where id = ${b}`;
+    await sql`update auth.users set email = 'abc123@privaterelay.appleid.com' where id = ${b}`;
+    try {
+      const theirs = await note(B, "Theirs\n\nHi");
+      const s2 = (await rpc("share_note", { p_note: theirs }, B)).body as string;
+      const p2 = (await rpc("shared_note", { p_slug: s2 }, null)).body;
+      assertEquals(p2.shared_by, { name: null, email: null, avatar: null });
+      await rpc("unshare_note", { p_note: theirs }, B);
+    } finally {
+      await sql`update auth.users set email = ${before} where id = ${b}`;
+    }
+
+    // Stopped links show nothing at all, sharer included.
+    await rpc("unshare_note", { p_note: mine }, A);
+    assertEquals((await rpc("shared_note", { p_slug: slug }, null)).body, null);
+  } finally {
+    await sql.end();
+  }
 });
