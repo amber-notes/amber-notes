@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { AIGlyph } from "@/lib/ai-glyphs";
 import DownloadLink from "./DownloadLink";
 import AiTiles from "./AiTiles";
+import { Wallpaper } from "./Demo";
 import a from "./sections.module.css";
 
 const reduce = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -98,70 +99,37 @@ export function AiSection() {
 
 /* ───────────── Bring all your Apple Notes in one click ───────────── */
 
-const FOLDERS = [{ name: "Notes", n: 612 }, { name: "Recipes", n: 188 }, { name: "Work", n: 241 }, { name: "Travel", n: 97 }, { name: "Home", n: 146 }];
-const TOTAL = FOLDERS.reduce((s, f) => s + f.n, 0); // 1,284
-const PINNED = 12;
-
-/// The import, run once: a thin amber bar fills while folders count up; then the total.
+/// The app's real import sheet (captured with a made-up library): ready, with every note picked; the
+/// first time it's in view, Import is pressed and it fades to the sheet mid-import. The new frame
+/// fades in over the old one, which stays opaque underneath.
 export function ImportSection() {
-  const [ref, seen] = useFirstView<HTMLElement>(0.45);
-  const [p, setP] = useState(1); // complete at rest
+  const [ref, seen] = useFirstView<HTMLElement>(0.55);
+  const [importing, setImporting] = useState(false);
   useEffect(() => {
     if (!seen || reduce()) return;
-    let raf = 0, start = 0;
-    const tick = (now: number) => {
-      if (!start) start = now + 250;
-      const t = Math.max(0, Math.min(1, (now - start) / 3600));
-      setP(1 - Math.pow(1 - t, 3));
-      if (t < 1) raf = requestAnimationFrame(tick);
-    };
-    setP(0);
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    const t = window.setTimeout(() => setImporting(true), 900);
+    return () => window.clearTimeout(t);
   }, [seen]);
-  const full = p >= 1;
-  const count = (n: number, k: number, of: number) => Math.round(Math.max(0, Math.min(1, (p - k / of) * of)) * n);
 
   return (
-    <section ref={ref} className={a.section} aria-labelledby="import">
+    <section ref={ref} className={`${a.section} ${a.importSplit}`} aria-labelledby="import">
       <div className={a.head}>
         <h2 id="import" className={a.h2}>Bring all your Apple Notes in one click</h2>
         <p className={a.lede}>If you know Apple Notes, you already know Amber Notes.</p>
         <p className={a.lede}>
           Pick everything, or just the notes you want. Folders, checklists, tables and pins come along, and your Apple Notes stay untouched.
-          Import on your Mac. Everything's on your iPhone a second later.
         </p>
+        <p className={a.lede}>Import on your Mac. Everything's on your iPhone a second later.</p>
       </div>
-      <div className={a.run} aria-label={`Imported ${TOTAL.toLocaleString("en")} notes from Apple Notes, with ${PINNED} pinned. Pins kept, Apple Notes unchanged.`}>
-        <p className={a.runTitle} aria-hidden="true">{full ? "Imported from Apple Notes" : "Importing from Apple Notes…"}</p>
-        <div className={a.bar} aria-hidden="true">
-          <i style={{ transform: `scaleX(${p})` }} />
-          <span className={a.barDone} data-on={full || undefined}><Tick /></span>
+      <figure className={a.sheetDesk}>
+        <Wallpaper />
+        <div className={a.sheet}>
+          <img src="/import/sheet-ready.webp" width={540} height={640} alt="Amber Notes' Import from Apple Notes sheet, with all 1,284 notes picked and Import 1,284 Notes ready" draggable={false} />
+          <img src="/import/sheet-importing.webp" width={540} height={640} alt="" aria-hidden="true" draggable={false} className={a.sheetNext} data-on={importing || undefined} />
         </div>
-        <ul className={a.folders} aria-hidden="true">
-          {FOLDERS.map((f, k) => (
-            <li key={f.name} data-on={p > k / (FOLDERS.length + 1) || undefined}>
-              <FolderIcon /><b>{f.name}</b><span className={a.num}>{count(f.n, k, FOLDERS.length + 1).toLocaleString("en")}</span>
-            </li>
-          ))}
-          <li data-on={p > FOLDERS.length / (FOLDERS.length + 1) || undefined} className={a.pinned}>
-            <PinIcon /><b>Pinned</b><span className={a.num}>{count(PINNED, FOLDERS.length, FOLDERS.length + 1)}</span>
-          </li>
-        </ul>
-        <div className={a.runEnd} data-on={full || undefined} aria-hidden="true">
-          <p className={a.big}><span className={a.num}>{TOTAL.toLocaleString("en")}</span> notes</p>
-          <ul className={a.ticks}><li><Tick /> Pins kept</li><li><Tick /> Apple Notes unchanged</li></ul>
-        </div>
-      </div>
+      </figure>
     </section>
   );
-}
-
-function FolderIcon() {
-  return <svg width="17" height="14" viewBox="0 0 17 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" aria-hidden="true"><path d="M1.5 3.5a1.5 1.5 0 0 1 1.5-1.5h3.2l1.5 1.6H14a1.5 1.5 0 0 1 1.5 1.5v6.4A1.5 1.5 0 0 1 14 13H3a1.5 1.5 0 0 1-1.5-1.5Z" /></svg>;
-}
-function PinIcon() {
-  return <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M10.2 1.3a1 1 0 0 1 1.4 0l3.1 3.1a1 1 0 0 1 0 1.4l-1 1a1 1 0 0 1-1 .25l-2.1 2.1.3 2.3a1 1 0 0 1-.3.85l-.7.7a.8.8 0 0 1-1.1 0L6.3 10.5 2.6 14.2a.6.6 0 0 1-.85-.85L5.5 9.7 3 7.2a.8.8 0 0 1 0-1.1l.7-.7a1 1 0 0 1 .85-.3l2.3.3 2.1-2.1a1 1 0 0 1 .25-1Z" /></svg>;
 }
 
 /* ───────────── The rest, in one line ───────────── */

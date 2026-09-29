@@ -325,7 +325,7 @@ function IntroTyping({ intro }: { intro: Intro }) {
 }
 
 /// A generated, warm, macOS-like wallpaper (no photo, nothing of Apple's).
-function Wallpaper() {
+export function Wallpaper() {
   return (
     <svg className={d.wall} viewBox="0 0 1280 840" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
       <defs>
