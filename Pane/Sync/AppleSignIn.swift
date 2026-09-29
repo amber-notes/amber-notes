@@ -123,8 +123,9 @@ private struct MacAppleButton: View {
         let dark = scheme == .dark
         Button(action: action) {
             HStack(spacing: 6) {
-                Image(systemName: "applelogo").font(.system(size: height * 0.4, weight: .medium))
-                Text(title).font(.system(size: height * 0.4, weight: .medium))
+                // Title size matches the form's other rows (14 pt at the Mac's 36 pt row).
+                Image(systemName: "applelogo").font(.system(size: height * 0.39, weight: .medium))
+                Text(title).font(.system(size: height * 0.39, weight: .semibold))
             }
             .foregroundStyle(dark ? Color.black : Color.white)
             .frame(maxWidth: .infinity, minHeight: height, maxHeight: height)

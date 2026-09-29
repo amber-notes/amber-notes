@@ -20,6 +20,19 @@ struct SignInView: View {
     /// Temporary: lets an account that hasn't linked its Apple ID yet get in once.
     static let emailFallback = true
 
+    /// One size and shape for every row (Apple button, fields, Sign In), so the card reads as one form.
+    enum Row {
+        #if os(macOS)
+        static let height: CGFloat = 36
+        static let radius: CGFloat = 8
+        static let text: CGFloat = 14
+        #else
+        static let height: CGFloat = 48
+        static let radius: CGFloat = 12
+        static let text: CGFloat = 17
+        #endif
+    }
+
     var body: some View {
         #if os(macOS)
         card
@@ -37,7 +50,19 @@ struct SignInView: View {
         #endif
     }
 
+    /// Signing in and creating an account are two pages: the whole card changes, not a few words in it.
     private var card: some View {
+        ZStack {
+            page
+                .id(creating)
+                .transition(.asymmetric(
+                    insertion: .opacity.combined(with: .offset(x: creating ? 24 : -24)),
+                    removal: .opacity.combined(with: .offset(x: creating ? -24 : 24))))
+        }
+        .animation(.smooth(duration: 0.3), value: creating)
+    }
+
+    private var page: some View {
         VStack(spacing: 24) {
             VStack(spacing: 14) {
                 AppMark(size: 72)
@@ -47,7 +72,8 @@ struct SignInView: View {
             }
 
             VStack(spacing: 12) {
-                AppleAuthButton(label: .signIn, height: 44, web: webSignIn) { result in
+                AppleAuthButton(label: creating ? .signUp : .signIn, height: Row.height,
+                                title: creating ? "Sign up with Apple" : "Sign in with Apple", web: webSignIn) { result in
                     switch result {
                     case .success(let credential): signIn(credential)
                     case .failure(let failure): error = AppleSignIn.message(for: failure)
@@ -67,8 +93,23 @@ struct SignInView: View {
                         .transition(.opacity)
                 }
 
-                if Self.emailFallback { emailSection }
+                if Self.emailFallback {
+                    orDivider
+                    emailSection
+                }
             }
+
+            Button {
+                creating.toggle()
+                error = nil
+                password = ""
+            } label: {
+                (Text(creating ? "Already have an account? " : "New to Amber Notes? ").foregroundStyle(.secondary)
+                 + Text(creating ? "Sign In" : "Create an Account").foregroundStyle(.tint))
+                    .font(.footnote)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("signin.switch")
         }
         .animation(.snappy(duration: 0.2), value: error)
         .animation(.smooth(duration: 0.3), value: showEmail)
@@ -99,19 +140,21 @@ struct SignInView: View {
                         .onSubmit(signInWithEmail)
                         .accessibilityIdentifier("signin.password")
                 }
-                Button(creating ? "Create Account" : "Sign In", action: signInWithEmail)
-                    .buttonStyle(.bordered)
-                    .controlSize(.large)
-                    .disabled(!canSubmitEmail)
-                    .keyboardShortcut(.defaultAction)
-                    .accessibilityIdentifier("signin.submit")
-                Button(creating ? "I already have an account" : "Create an account") {
-                    withAnimation(.smooth(duration: 0.25)) { creating.toggle(); error = nil }
+                Button(action: signInWithEmail) {
+                    Text(creating ? "Create Account" : "Sign In")
+                        .font(.system(size: Row.text, weight: .semibold))
+                        .foregroundStyle(.black.opacity(0.85))
+                        .frame(maxWidth: .infinity, minHeight: Row.height, maxHeight: Row.height)
+                        .background(Color.accentColor, in: .rect(cornerRadius: Row.radius, style: .continuous))
+                        .contentShape(.rect(cornerRadius: Row.radius, style: .continuous))
                 }
-                .buttonStyle(.plain)
-                .font(.footnote)
-                .foregroundStyle(.tint)
-                .accessibilityIdentifier("signin.switch")
+                .buttonStyle(PressScale())
+                .disabled(!canSubmitEmail)
+                .opacity(canSubmitEmail ? 1 : 0.45)
+                .animation(.easeOut(duration: 0.15), value: canSubmitEmail)
+                .keyboardShortcut(.defaultAction)
+                .accessibilityIdentifier("signin.submit")
+                .padding(.top, 2)
             }
             .textFieldStyle(.plain)
             .transition(.opacity.combined(with: .move(edge: .top)))
@@ -128,14 +171,26 @@ struct SignInView: View {
         }
     }
 
-    /// One input, as a soft pill.
+    /// One input, the same height and corners as the buttons.
     private func field(@ViewBuilder _ content: () -> some View) -> some View {
-        content()
-            .font(.body)
-            .padding(.horizontal, 16)
-            .frame(height: 44)
-            .background(.fill.tertiary, in: .capsule)
-            .overlay(Capsule().strokeBorder(.primary.opacity(0.08), lineWidth: 1))
+        let shape = RoundedRectangle(cornerRadius: Row.radius, style: .continuous)
+        return content()
+            .font(.system(size: Row.text))
+            .padding(.horizontal, 12)
+            .frame(height: Row.height)
+            .background(.fill.tertiary, in: shape)
+            .overlay(shape.strokeBorder(.primary.opacity(0.08), lineWidth: 1))
+    }
+
+    /// "or" between the two ways in.
+    private var orDivider: some View {
+        HStack(spacing: 10) {
+            Rectangle().fill(.separator).frame(height: 1)
+            Text("or").font(.footnote).foregroundStyle(.secondary)
+            Rectangle().fill(.separator).frame(height: 1)
+        }
+        .padding(.vertical, 2)
+        .accessibilityHidden(true)
     }
 
     /// The Mac download signs in with Apple on the web; everywhere else the native sheet does it.
