@@ -75,23 +75,9 @@ enum AIEdit {
     }
 
     /// Takes the change from `before` to `after` back out of `current`, which is `after` with
-    /// your own edits on top. Nil when your edits overlap the lines that change touched.
+    /// your own edits on top. Nil when your edits touched the lines that change did.
     static func revert(_ before: String, _ after: String, in current: String) -> String? {
-        guard let ai = TextDiff.edit(from: before, to: after) else { return current }
-        guard let yours = TextDiff.edit(from: after, to: current) else { return before }
-        // Where the AI's text sits in `after`, widened to whole lines so a word typed on a line
-        // it rewrote counts as touching it.
-        let a = after as NSString
-        let aiText = NSRange(location: ai.range.location, length: (ai.replacement as NSString).length)
-        let aiLines = a.lineRange(for: aiText)
-        let mine = yours.range
-        guard NSMaxRange(mine) <= aiLines.location || mine.location >= NSMaxRange(aiLines) else { return nil }
-        let delta = (yours.replacement as NSString).length - mine.length
-        let at = mine.location <= aiText.location ? aiText.location + delta : aiText.location
-        let c = current as NSString
-        guard NSMaxRange(NSRange(location: at, length: aiText.length)) <= c.length,
-              c.substring(with: NSRange(location: at, length: aiText.length)) == ai.replacement else { return nil }
-        return c.replacingCharacters(in: NSRange(location: at, length: aiText.length), with: (before as NSString).substring(with: ai.range))
+        TextDiff.merge(base: after, mine: current, theirs: before)
     }
 
     struct Receipt: Equatable {

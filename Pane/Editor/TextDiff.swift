@@ -26,6 +26,24 @@ enum TextDiff {
         return Edit(range: NSRange(location: start, length: endA - start), replacement: replacement)
     }
 
+    /// Two edits of `base` put together: `mine` with the change from `base` to `theirs` on top.
+    /// Nil when both touched the same lines (a word typed on a line the other side rewrote
+    /// counts), so the caller keeps one side whole instead of guessing.
+    static func merge(base: String, mine: String, theirs: String) -> String? {
+        guard let t = edit(from: base, to: theirs) else { return mine }
+        guard let m = edit(from: base, to: mine) else { return theirs }
+        let b = base as NSString
+        // At the very end of the text, the lines are the last line (lineRange gives nothing there).
+        let end = t.range.location == b.length && b.length > 0 && b.character(at: b.length - 1) != 10
+        let lines = b.lineRange(for: end ? NSRange(location: b.length - 1, length: 1) : t.range)
+        guard NSMaxRange(m.range) <= lines.location || (m.range.location >= NSMaxRange(lines) && !end) else { return nil }
+        let delta = (m.replacement as NSString).length - m.range.length
+        let at = NSRange(location: m.range.location <= t.range.location ? t.range.location + delta : t.range.location, length: t.range.length)
+        let s = mine as NSString
+        guard NSMaxRange(at) <= s.length, s.substring(with: at) == b.substring(with: t.range) else { return nil }
+        return s.replacingCharacters(in: at, with: t.replacement)
+    }
+
     /// Where a selection ends up after `edit`: before the change it stays, after it it
     /// shifts by the change in length, and inside the replaced text it moves to the end
     /// of what arrived.

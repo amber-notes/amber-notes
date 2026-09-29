@@ -43,5 +43,34 @@ import Testing
         h.view.syncExternal("Title\n\nHello from the phone")
         #expect(h.text == "Title\n\nHello from the phone")
     }
+
+    /// A dead key (´ then e, as on a Swedish keyboard) or an input method holds marked text.
+    /// An edit from another device arriving just then used to be skipped and forgotten, and
+    /// the next save wrote the old text back over it.
+    @Test func anEditArrivingMidCompositionIsKeptAndSoIsTheComposition() async {
+        let h = await EditorHarness("Title\n\nCafe\n\nMilk")
+        defer { h.close() }
+        var reported: [String] = []
+        h.view.core.onChange = { reported.append($0) }
+        await h.caret(after: "Caf")
+        h.view.setMarkedText("´", selectedRange: NSRange(location: 1, length: 0), replacementRange: NSRange(location: NSNotFound, length: 0))
+        #expect(h.view.hasMarkedText())
+        h.view.syncExternal("Title\n\nCafe\n\nOat milk")
+        // Updates keep coming while composing; they must not be lost either.
+        h.view.syncExternal("Title\n\nCafe\n\nOat milk")
+        h.view.insertText("é", replacementRange: NSRange(location: NSNotFound, length: 0))
+        await h.settle()
+        #expect(h.text == "Title\n\nCafée\n\nOat milk", "both the composed letter and the other device's edit")
+        #expect(reported.last == h.text, "what's saved includes the other device's edit")
+    }
+
+    @Test func mergeKeepsBothSidesUnlessTheyTouchTheSameLine() {
+        #expect(TextDiff.merge(base: "A\nB\nC", mine: "A!\nB\nC", theirs: "A\nB\nC\nD") == "A!\nB\nC\nD")
+        #expect(TextDiff.merge(base: "A\nB\nC", mine: "A\nB\nC\nD", theirs: "X\nB\nC") == "X\nB\nC\nD")
+        #expect(TextDiff.merge(base: "A\nB", mine: "A\nBee", theirs: "A\nBuzz") == nil, "same line: no guessing")
+        #expect(TextDiff.merge(base: "same", mine: "same", theirs: "new") == "new")
+        #expect(TextDiff.merge(base: "same", mine: "mine", theirs: "same") == "mine")
+        #expect(TextDiff.merge(base: "👍\nx", mine: "👍\nxy", theirs: "👎\nx") == "👎\nxy")
+    }
 }
 #endif

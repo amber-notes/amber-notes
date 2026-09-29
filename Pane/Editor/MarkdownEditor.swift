@@ -670,6 +670,7 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
 
     private func textDidChange() {
         guard markedTextRange == nil else { return }
+        takeWhatArrivedWhileComposing()
         core.layoutDelegate.tint.stop()
         core.restyle(textStorage, selection: editingSelection, force: true)
         typingAttributes = core.styler.typingAttributes
@@ -715,8 +716,26 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
         // The note still holds text we typed a moment ago (it's saved once typing
         // pauses): that's not a change from elsewhere.
         if reported.contains(new.hashValue) { return }
+        // Mid-composition (an input method, dictation) the text can't change under it:
+        // the change is taken in when the composition ends (textDidChange).
+        if markedTextRange != nil { arrivedWhileComposing = new; return }
         reported.removeAll()
         lastReported = new
+        replaceText(with: new)
+    }
+
+    /// A change from elsewhere that arrived while you were composing.
+    private var arrivedWhileComposing: String?
+
+    /// The composition ended: put the change that arrived meanwhile under what you typed,
+    /// or, if you both changed the same lines, keep yours (the other is in version history).
+    private func takeWhatArrivedWhileComposing() {
+        guard let arrived = arrivedWhileComposing else { return }
+        arrivedWhileComposing = nil
+        if let merged = TextDiff.merge(base: lastReported, mine: text, theirs: arrived) { replaceText(with: merged) }
+    }
+
+    private func replaceText(with new: String) {
         guard new != text, markedTextRange == nil, let edit = TextDiff.edit(from: text, to: new) else { return }
         core.layoutDelegate.tint.stop()
         // Only what changed is replaced, so your caret, selection and scroll stay put.
@@ -1159,6 +1178,7 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
 
     func textDidChange(_ notification: Notification) {
         guard !hasMarkedText() else { return }
+        takeWhatArrivedWhileComposing()
         core.layoutDelegate.tint.stop()
         core.restyle(textStorage!, selection: editingSelection, force: true)
         typingAttributes = core.styler.typingAttributes
@@ -1203,8 +1223,26 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
         // The note still holds text we typed a moment ago (it's saved once typing
         // pauses): that's not a change from elsewhere.
         if reported.contains(new.hashValue) { return }
+        // Mid-composition (a dead key, an input method) the text can't change under it:
+        // the change is taken in when the composition ends (textDidChange).
+        if hasMarkedText() { arrivedWhileComposing = new; return }
         reported.removeAll()
         lastReported = new
+        replaceText(with: new)
+    }
+
+    /// A change from elsewhere that arrived while you were composing.
+    private var arrivedWhileComposing: String?
+
+    /// The composition ended: put the change that arrived meanwhile under what you typed,
+    /// or, if you both changed the same lines, keep yours (the other is in version history).
+    private func takeWhatArrivedWhileComposing() {
+        guard let arrived = arrivedWhileComposing else { return }
+        arrivedWhileComposing = nil
+        if let merged = TextDiff.merge(base: lastReported, mine: string, theirs: arrived) { replaceText(with: merged) }
+    }
+
+    private func replaceText(with new: String) {
         guard new != string, !hasMarkedText(), let storage = textStorage,
               let edit = TextDiff.edit(from: string, to: new) else { return }
         core.layoutDelegate.tint.stop()
