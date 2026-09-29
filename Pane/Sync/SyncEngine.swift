@@ -504,6 +504,15 @@ final class SyncEngine {
         return true
     }
 
+    /// A row the server just wrote for this device (a restored version): it replaces the note
+    /// here whatever its state, because it already includes everything this device pushed.
+    func adopt(_ r: NoteDTO) {
+        guard let n = context.note(r.id) else { return }
+        if n.body != r.body { remoteChangeTick += 1 }
+        apply(r, to: n)
+        try? context.save()
+    }
+
     /// Whether a server row should replace what this device has (see `merge`).
     static func takes(_ r: NoteDTO, over local: Note) -> Bool {
         if local.dirty { return false }

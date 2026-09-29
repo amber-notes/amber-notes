@@ -26,9 +26,14 @@ struct PaneApp: App {
         let context = container.mainContext
         backend.willSignIn = { user in AccountLibrary.adopt(user, context: context) }
         _backend = State(initialValue: backend)
-        _sync = State(initialValue: SyncEngine(backend: backend, context: container.mainContext))
+        let sync = SyncEngine(backend: backend, context: container.mainContext)
+        _sync = State(initialValue: sync)
         // With sync on, the library is seeded after the first pull so devices don't duplicate it.
         if backend.client == nil { Seed.ensureLibrary(container.mainContext, demo: args.contains("-demo")) }
+        // Version history: the server's, or a made-up one for demos (`-demo -demoHistory`).
+        let historyStore: NoteHistoryStore = args.contains("-demoHistory") ? DemoHistoryStore(context: context)
+            : backend.client.map { SupabaseHistoryStore(client: $0) } ?? EmptyHistoryStore()
+        NoteHistory.shared = NoteHistory(store: historyStore, context: context, sync: backend.client == nil ? nil : sync)
     }
 
     /// Test runs can pin an appearance: `-uitest -scheme light`. Otherwise the system decides.

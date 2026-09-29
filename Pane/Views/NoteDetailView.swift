@@ -9,6 +9,7 @@ struct NoteDetailView: View {
     @State private var importing = false
     @State private var saver = DebouncedSave()
     @State private var shareLinks = ShareLinkStore()
+    @State private var showHistory = HistoryLaunch.open
     @Bindable var note: Note
     let controller: EditorController
     var autofocus = false
@@ -23,6 +24,10 @@ struct NoteDetailView: View {
             .onAppear(perform: wireController)
             .onDisappear { saver.flush() }
             .shareLinkChrome(shareLinks, note: note)
+            .focusedSceneValue(\.showHistoryAction, { showHistory = true })
+            .sheet(isPresented: $showHistory) {
+                if let history = NoteHistory.shared { VersionHistorySheet(note: note, history: history) }
+            }
     }
 
     private var editor: some View {
@@ -266,6 +271,9 @@ struct NoteDetailView: View {
             }
             #if os(iOS)
             Menu("Share", systemImage: "square.and.arrow.up") { shareItems }
+            Button("Show Version History", systemImage: "clock.arrow.circlepath") { showHistory = true }
+            #else
+            Button("Show Version History…", systemImage: "clock.arrow.circlepath") { showHistory = true }
             #endif
             Divider()
             Button("Delete Note", systemImage: "trash", role: .destructive) {
