@@ -46,10 +46,10 @@ export default function Home() {
 
       <div className="rise-soft" {...rise(3)}><Demo /></div>
 
-      <AiSection />
       <ImportSection />
-      <AlsoLine />
       <SyncSection iphoneLive={APP_STORE_LIVE} />
+      <AiSection />
+      <AlsoLine />
       <Closing />
     </div>
   );

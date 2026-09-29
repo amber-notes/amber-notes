@@ -144,11 +144,11 @@ export function AlsoLine() {
 
 /* ───────────── Everywhere you are ───────────── */
 
-/// Sync, said plainly: the same account on a Mac and an iPhone. Real captures: the Mac window, and the
-/// iPhone's version history, where edits from both devices sit side by side.
+/// Sync, said plainly, in the import section's shape: words left, a small scene right. The same Lisbon
+/// note on both devices (real captures): the Mac's note pane behind, the iPhone in front.
 export function SyncSection({ iphoneLive }: { iphoneLive: boolean }) {
   return (
-    <section className={a.section} aria-labelledby="everywhere">
+    <section className={`${a.section} ${a.importSplit}`} aria-labelledby="everywhere">
       <div className={a.head}>
         <h2 id="everywhere" className={a.h2}>Everywhere you are</h2>
         <p className={a.lede}>Your notes live in the cloud and sync between iPhone and Mac in about a second. Edit on your phone, see it on your Mac.</p>
@@ -156,16 +156,13 @@ export function SyncSection({ iphoneLive }: { iphoneLive: boolean }) {
           Stored in the EU. Works offline, and syncs when you&apos;re back online.{!iphoneLive && " The iPhone app is coming soon to the App Store."}
         </p>
       </div>
-      <div className={a.syncFit}>
-        <figure className={a.syncDesk}
-          aria-label="Amber Notes on a Mac with the Lisbon note open, and on an iPhone showing a note's version history, with edits made on the iPhone and on the Mac">
-          <Wallpaper />
-          <img className={a.syncMac} src="/demo/lisbon/lisbon-2-faded.webp" width={1180} height={720} alt="" draggable={false} loading="lazy" decoding="async" />
-          <div className={a.syncPhone}>
-            <img src="/sync/iphone-history.webp" width={660} height={1434} alt="" draggable={false} loading="lazy" decoding="async" />
-          </div>
-        </figure>
-      </div>
+      <figure className={`${a.sheetDesk} ${a.syncDesk}`} aria-label="The same note, Lisbon, 4 days in May, open in Amber Notes on a Mac and on an iPhone">
+        <Wallpaper />
+        <img className={a.syncMac} src="/sync/mac-lisbon-pane.webp" width={708} height={720} alt="" draggable={false} loading="lazy" decoding="async" />
+        <div className={a.syncPhone}>
+          <img src="/sync/iphone-lisbon.webp" width={603} height={1311} alt="" draggable={false} loading="lazy" decoding="async" />
+        </div>
+      </figure>
     </section>
   );
 }
