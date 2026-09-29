@@ -18,7 +18,8 @@ struct NoteListView: View {
     private var scoped: [Note] {
         notes.filter { n in
             guard n.deletedAt == nil else { return false }
-            // Sub-notes live inside their parent, not in the list.
+            // Sub-notes live inside their parent, not in the list. (Few notes have a
+            // parent, so looking each one up is cheaper than indexing every note.)
             if n.parentID != nil, context.isNested(n) { return false }
             switch scope {
             case .all: return n.trashedAt == nil
@@ -28,7 +29,9 @@ struct NoteListView: View {
         }
     }
 
-    private var filtered: [Note] {
+    private var filtered: [Note] { filtered(from: scoped) }
+
+    private func filtered(from scoped: [Note]) -> [Note] {
         let q = search.trimmingCharacters(in: .whitespaces)
         guard !q.isEmpty else { return scoped }
         let base = scope == .trash ? scoped : notes.filter { $0.deletedAt == nil && $0.trashedAt == nil }
@@ -44,15 +47,23 @@ struct NoteListView: View {
     }
 
     var body: some View {
+        // Worked out once per update and handed down: the list asks many times.
+        let scopedNotes = scoped
+        let visible = filtered(from: scopedNotes)
+        let folders = context.allFolders().sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+        return list(scopedNotes, visible, folders)
+    }
+
+    private func list(_ scopedNotes: [Note], _ visible: [Note], _ folders: [Folder]) -> some View {
         List(selection: $selection) {
-            if scope == .trash && !scoped.isEmpty && search.isEmpty {
+            if scope == .trash && !scopedNotes.isEmpty && search.isEmpty {
                 Text("Notes are deleted forever after 30 days.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .listRowSeparator(.hidden)
                     .selectionDisabled()
             }
-            ForEach(DateBucket.sections(filtered), id: \.0) { section in
+            ForEach(DateBucket.sections(visible), id: \.0) { section in
                 Section(isExpanded: Binding(
                     get: { !collapsed.contains(section.0) },
                     set: { open in withAnimation(.snappy(duration: 0.22)) { if open { collapsed.remove(section.0) } else { collapsed.insert(section.0) } } }
@@ -76,7 +87,7 @@ struct NoteListView: View {
                             .swipeActions(edge: .trailing) {
                                 deleteButton(note)
                             }
-                            .contextMenu { menu(for: note) }
+                            .contextMenu { menu(for: note, folders: folders) }
                     }
                 } header: {
                     Text(section.0)
@@ -90,7 +101,7 @@ struct NoteListView: View {
         .listStyle(.insetGrouped)
         #endif
         .overlay {
-            if filtered.isEmpty { emptyState }
+            if visible.isEmpty { emptyState }
         }
         .overlay {
             if fileDropTargeted {
@@ -129,7 +140,7 @@ struct NoteListView: View {
             #if os(iOS)
             ToolbarSpacer(.flexible, placement: .bottomBar)
             ToolbarItem(placement: .bottomBar) {
-                Text(scoped.count == 1 ? "1 Note" : "\(scoped.count) Notes")
+                Text(scopedNotes.count == 1 ? "1 Note" : "\(scopedNotes.count) Notes")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
@@ -146,7 +157,7 @@ struct NoteListView: View {
             ToolbarItem(placement: .navigation) {
                 VStack(alignment: .leading, spacing: 0) {
                     Text(title).font(.system(size: 14, weight: .bold)).lineLimit(1)
-                    Text(scoped.count == 1 ? "1 note" : "\(scoped.count) notes")
+                    Text(scopedNotes.count == 1 ? "1 note" : "\(scopedNotes.count) notes")
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
@@ -197,7 +208,7 @@ struct NoteListView: View {
     }
 
     @ViewBuilder
-    private func menu(for note: Note) -> some View {
+    private func menu(for note: Note, folders: [Folder]) -> some View {
         if note.trashedAt != nil {
             Button("Recover", systemImage: "arrow.uturn.backward") { withAnimation(.snappy) { context.restore(note) } }
             deleteButton(note)
@@ -206,7 +217,7 @@ struct NoteListView: View {
                 withAnimation(.snappy) { context.togglePin(note) }
             }
             Menu("Move to", systemImage: "folder") {
-                ForEach(context.allFolders().sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }) { f in
+                ForEach(folders) { f in
                     Button(f.name) { withAnimation(.snappy) { context.move(note, to: f) } }
                         .disabled(note.folder?.id == f.id)
                 }

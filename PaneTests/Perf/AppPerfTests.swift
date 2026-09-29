@@ -90,3 +90,22 @@ import Testing
     }
 }
 #endif
+
+#if os(macOS)
+extension AppPerfTests {
+    /// For profiling by hand: keeps the list updating so a sampler can see why.
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["AMBER_PROFILE"] != nil)) func listUpdateLoop() async throws {
+        let (c, notes) = try library(notes: 1000)
+        let (w, host) = window(NoteListView(scope: .all, selection: .constant(nil), onNewNote: {}).modelContainer(c))
+        defer { w.close() }
+        host.layoutSubtreeIfNeeded(); w.displayIfNeeded()
+        for _ in 0..<300 {
+            notes[0].body += "a"
+            notes[0].touch()
+            await Task.yield()
+            host.layoutSubtreeIfNeeded()
+            w.displayIfNeeded()
+        }
+    }
+}
+#endif

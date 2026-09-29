@@ -49,3 +49,21 @@ enum GridTableTestsSource {
     | 1 | 2 |
     """
 }
+
+@MainActor @Suite struct ListPiecesPerfTests {
+    @Test func thousandNotes() {
+        let notes = (0..<1000).map { i -> Note in
+            let n = Note(body: "Note \(i)\n\nSome text for note \(i), with **bold** and a list:\n- one\n- two\n")
+            n.updatedAt = Date().addingTimeInterval(Double(-i * 3600))
+            return n
+        }
+        let clock = ContinuousClock()
+        func t(_ name: String, _ f: () -> Void) {
+            let d = clock.measure(f)
+            print("PERF list piece \(name): \(Double(d.components.attoseconds) / 1e15 + Double(d.components.seconds) * 1000) ms")
+        }
+        t("title+preview x1000") { for n in notes { _ = n.title; _ = n.preview } }
+        t("sections x1000") { _ = DateBucket.sections(notes) }
+        t("rowDate x1000") { for n in notes { _ = DateBucket.rowDate(n.updatedAt) } }
+    }
+}

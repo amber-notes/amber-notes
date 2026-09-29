@@ -78,8 +78,8 @@ final class Note {
         SyncSignal.changed()
     }
 
-    var title: String { NoteText.title(of: body) }
-    var preview: String { NoteText.preview(of: body) }
+    var title: String { NoteText.summary(of: self).title }
+    var preview: String { NoteText.summary(of: self).preview }
 }
 
 /// Lets model changes nudge the sync engine without depending on it.
@@ -91,6 +91,22 @@ enum SyncSignal {
 
 /// Plain-text helpers shared by the list, search and the AI tools.
 enum NoteText {
+    private struct Summary { var stamp: Date; var length: Int; var title: String; var preview: String }
+    nonisolated(unsafe) private static var summaries: [UUID: Summary] = [:]
+
+    /// A note's title and preview, worked out again only when the note changes:
+    /// the list shows them for every note on every update.
+    static func summary(of note: Note) -> (title: String, preview: String) {
+        let body = note.body
+        let length = body.utf16.count
+        if let s = summaries[note.id], s.stamp == note.updatedAt, s.length == length { return (s.title, s.preview) }
+        let lines = firstLines(of: body, count: 2)
+        let title = lines.first ?? "New Note"
+        let preview = lines.count > 1 ? lines[1] : "No additional text"
+        summaries[note.id] = Summary(stamp: note.updatedAt, length: length, title: title, preview: preview)
+        return (title, preview)
+    }
+
     static func title(of body: String) -> String {
         firstLines(of: body, count: 1).first ?? "New Note"
     }

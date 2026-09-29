@@ -214,27 +214,34 @@ enum DateBucket {
     static func sections(_ notes: [Note], now: Date = .now, calendar: Calendar = .current) -> [(String, [Note])] {
         var pinned: [Note] = []
         var groups: [(key: String, order: Date, notes: [Note])] = []
+        var index: [String: Int] = [:]
         let today = calendar.startOfDay(for: now)
-        for n in notes.sorted(by: { $0.updatedAt > $1.updatedAt }) {
+        func daysBack(_ n: Int) -> Date { calendar.date(byAdding: .day, value: -n, to: today) ?? today.addingTimeInterval(Double(-n) * 86400) }
+        // Day boundaries once, then plain date comparisons per note.
+        let yesterday = daysBack(1), week = daysBack(7), month30 = daysBack(30)
+        var monthKeys: [Int: (String, Date)] = [:]
+        let thisYear = calendar.component(.year, from: now)
+        // Each date read once: model properties aren't free, and a sort reads them often.
+        let dated = notes.map { ($0, $0.updatedAt) }.sorted { $0.1 > $1.1 }
+        for (n, d) in dated {
             if n.isPinned && n.trashedAt == nil { pinned.append(n); continue }
-            let day = calendar.startOfDay(for: n.updatedAt)
-            let days = calendar.dateComponents([.day], from: day, to: today).day ?? 0
             let key: String
             let order: Date
-            switch days {
-            case ..<1: key = "Today"; order = today
-            case 1: key = "Yesterday"; order = today.addingTimeInterval(-86400)
-            case 2...7: key = "Previous 7 Days"; order = today.addingTimeInterval(-2 * 86400)
-            case 8...30: key = "Previous 30 Days"; order = today.addingTimeInterval(-8 * 86400)
-            default:
-                let comps = calendar.dateComponents([.year, .month], from: n.updatedAt)
-                let month = calendar.date(from: comps) ?? day
-                key = calendar.isDate(month, equalTo: now, toGranularity: .year)
-                    ? month.formatted(.dateTime.month(.wide))
-                    : month.formatted(.dateTime.month(.wide).year())
-                order = month
+            if d >= today { key = "Today"; order = today }
+            else if d >= yesterday { key = "Yesterday"; order = yesterday }
+            else if d >= week { key = "Previous 7 Days"; order = daysBack(2) }
+            else if d >= month30 { key = "Previous 30 Days"; order = daysBack(8) }
+            else {
+                let comps = calendar.dateComponents([.year, .month], from: d)
+                let k = (comps.year ?? 0) * 100 + (comps.month ?? 0)
+                if let known = monthKeys[k] { (key, order) = known } else {
+                    let month = calendar.date(from: comps) ?? d
+                    let label = comps.year == thisYear ? month.formatted(.dateTime.month(.wide)) : month.formatted(.dateTime.month(.wide).year())
+                    monthKeys[k] = (label, month)
+                    (key, order) = (label, month)
+                }
             }
-            if let i = groups.firstIndex(where: { $0.key == key }) { groups[i].notes.append(n) } else { groups.append((key, order, [n])) }
+            if let i = index[key] { groups[i].notes.append(n) } else { index[key] = groups.count; groups.append((key, order, [n])) }
         }
         var result: [(String, [Note])] = []
         if !pinned.isEmpty { result.append(("Pinned", pinned)) }
@@ -242,13 +249,26 @@ enum DateBucket {
         return result
     }
 
+    nonisolated(unsafe) private static var rowDates: [Int: String] = [:]
+    nonisolated(unsafe) private static var rowDatesDay = Date.distantPast
+
     /// Row date: time today, "Yesterday", weekday this week, else a short date.
+    /// Remembered per minute (today) or per day, since the list asks for every row.
     static func rowDate(_ d: Date, now: Date = .now, calendar: Calendar = .current) -> String {
-        if calendar.isDateInToday(d) { return d.formatted(date: .omitted, time: .shortened) }
-        if calendar.isDateInYesterday(d) { return "Yesterday" }
-        let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: d), to: calendar.startOfDay(for: now)).day ?? 99
-        if days < 7 { return d.formatted(.dateTime.weekday(.wide)) }
-        return d.formatted(date: .numeric, time: .omitted)
+        let today = calendar.startOfDay(for: now)
+        if today != rowDatesDay { rowDates = [:]; rowDatesDay = today }
+        let isToday = d >= today && d < today.addingTimeInterval(86400 + 3600)
+        let key = isToday ? Int(d.timeIntervalSince1970 / 60) : -Int(calendar.startOfDay(for: d).timeIntervalSince1970 / 86400) - 1
+        if let s = rowDates[key] { return s }
+        let s: String
+        if calendar.isDateInToday(d) { s = d.formatted(date: .omitted, time: .shortened) }
+        else if calendar.isDateInYesterday(d) { s = "Yesterday" }
+        else {
+            let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: d), to: today).day ?? 99
+            s = days < 7 ? d.formatted(.dateTime.weekday(.wide)) : d.formatted(date: .numeric, time: .omitted)
+        }
+        rowDates[key] = s
+        return s
     }
 
     /// Editor header: "27 September 2026 at 16:02".

@@ -459,6 +459,7 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
         typingAttributes = core.styler.typingAttributes
         self.text = text
         lastReported = text
+        remember(text)
         core.observe(textStorage)
         core.restyle(textStorage, selection: nil, force: true)
 
@@ -635,14 +636,26 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
         core.restyle(textStorage, selection: editingSelection, force: true)
         typingAttributes = core.styler.typingAttributes
         lastReported = text
+        remember(text)
         core.onChange(text)
     }
 
     /// The last body we reported or received, to tell outside edits from our own.
     var lastReported = ""
+    /// Hashes of recent texts we reported, not yet all written to the note.
+    private var reported: [Int] = []
+
+    private func remember(_ s: String) {
+        reported.append(s.hashValue)
+        if reported.count > 64 { reported.removeFirst(reported.count - 64) }
+    }
 
     func syncExternal(_ new: String) {
         guard new != lastReported else { return }
+        // The note still holds text we typed a moment ago (it's saved once typing
+        // pauses): that's not a change from elsewhere.
+        if reported.contains(new.hashValue) { return }
+        reported.removeAll()
         lastReported = new
         guard new != text, markedTextRange == nil else { return }
         let keep = selectedRange
@@ -835,6 +848,7 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
         typingAttributes = core.styler.typingAttributes
         string = text
         lastReported = text
+        remember(text)
         core.observe(textStorage!)
         core.restyle(textStorage!, selection: nil, force: true)
 
@@ -1009,14 +1023,26 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
         core.restyle(textStorage!, selection: editingSelection, force: true)
         typingAttributes = core.styler.typingAttributes
         lastReported = string
+        remember(string)
         core.onChange(string)
     }
 
     /// The last body we reported or received, to tell outside edits from our own.
     var lastReported = ""
+    /// Hashes of recent texts we reported, not yet all written to the note.
+    private var reported: [Int] = []
+
+    private func remember(_ s: String) {
+        reported.append(s.hashValue)
+        if reported.count > 64 { reported.removeFirst(reported.count - 64) }
+    }
 
     func syncExternal(_ new: String) {
         guard new != lastReported else { return }
+        // The note still holds text we typed a moment ago (it's saved once typing
+        // pauses): that's not a change from elsewhere.
+        if reported.contains(new.hashValue) { return }
+        reported.removeAll()
         lastReported = new
         guard new != string, !hasMarkedText(), let storage = textStorage else { return }
         let keep = selectedRange()

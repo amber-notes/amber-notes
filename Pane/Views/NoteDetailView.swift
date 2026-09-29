@@ -7,6 +7,7 @@ struct NoteDetailView: View {
     @Environment(\.modelContext) private var context
     @Environment(SyncEngine.self) private var sync: SyncEngine?
     @State private var importing = false
+    @State private var saver = DebouncedSave()
     @Bindable var note: Note
     let controller: EditorController
     var autofocus = false
@@ -19,6 +20,7 @@ struct NoteDetailView: View {
             .quickLookPreview(previewBinding)
             .fileImporter(isPresented: $importing, allowedContentTypes: [.item], allowsMultipleSelection: true, onCompletion: attach)
             .onAppear(perform: wireController)
+            .onDisappear { saver.flush() }
     }
 
     private var editor: some View {
@@ -44,7 +46,18 @@ struct NoteDetailView: View {
             .toolbar { toolbar }
     }
 
+    /// Every keystroke lands here; the model is written once typing pauses.
     private func save(_ text: String) {
+        let note = self.note
+        saver.schedule(base: note.body) { [saver] in
+            // Something else rewrote the note meanwhile (sync, an AI): the editor
+            // already shows that version, so this older text must not win.
+            guard note.body == saver.base else { return }
+            write(text, to: note)
+        }
+    }
+
+    private func write(_ text: String, to note: Note) {
         guard text != note.body else { return }
         let oldTitle = note.title
         note.body = text

@@ -157,8 +157,21 @@ struct AppGate: View {
             if p == .active {
                 context.drainInbox()
                 sync.schedule()
+            } else {
+                // Leaving the app: whatever you just typed is written and synced.
+                DebouncedSave.flushAll()
+                sync.schedule()
             }
         }
+        #if os(macOS)
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
+            DebouncedSave.flushAll()
+            try? context.save()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.willResignActiveNotification)) { _ in
+            DebouncedSave.flushAll()
+        }
+        #endif
         .onAppear { context.drainInbox() }
     }
 }
