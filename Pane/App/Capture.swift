@@ -21,6 +21,9 @@ enum Capture {
             return body.replacingOccurrences(of: "- [ ] Oat milk", with: "- [ ] Paella rice\n- [ ] Saffron\n- [ ] Chorizo\n- [ ] Chicken thighs\n- [ ] Smoked paprika\n- [ ] Oat milk")
         case "lisbon":
             return body.replacingOccurrences(of: "- [ ] Day trip to Sintra", with: "- [ ] Day trip to Sintra\n- [ ] Late checkout requested, confirm by 10 May")
+        case "oateggs":
+            // "Add oat milk and eggs to my groceries."
+            return body.replacingOccurrences(of: "- [ ] Lemons", with: "- [ ] Oat milk\n- [ ] Eggs\n- [ ] Lemons")
         case "standup":
             return body + "\n- Today: review the importer PR, then pair on table editing"
         default:

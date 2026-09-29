@@ -115,6 +115,8 @@ enum AppleNotesBridge {
 
 /// Pick Apple Notes to copy in. Nothing in Apple Notes is changed.
 struct AppleNotesImportView: View {
+    /// The sheet's height (captures can ask for a shorter one).
+    nonisolated(unsafe) static var height: CGFloat = 640
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     /// Called with the new notes' ids once the import is done.
@@ -181,7 +183,7 @@ struct AppleNotesImportView: View {
                 footer
             }
         }
-        .frame(width: 540, height: 640)
+        .frame(width: 540, height: Self.height)
         .task { await load() }
         // Coming back from System Settings: look again.
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
