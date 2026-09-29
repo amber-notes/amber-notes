@@ -43,7 +43,7 @@ fi
 # locally it uses the Apple ID signed into Xcode.
 auth=()
 [[ -n ${ASC_KEY_PATH:-} ]] && auth=(-authenticationKeyPath "$KEY" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID")
-notarize() { xcrun notarytool submit "$1" --key "$KEY" --key-id "$ASC_KEY_ID" --issuer "$ASC_ISSUER_ID" --wait --timeout 30m; }
+notarize() { xcrun notarytool submit "$1" --key "$KEY" --key-id "$ASC_KEY_ID" --issuer "$ASC_ISSUER_ID" --wait --timeout 3h; }  # a team's first notarizations can take an hour or more
 
 if [[ $IN_PLACE != 1 ]]; then
   echo "→ Clean checkout of main"
