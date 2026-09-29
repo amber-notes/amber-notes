@@ -446,6 +446,9 @@ private struct PlatformEditor: UIViewRepresentable {
         view.setHeader(header)
         view.syncExternal(initialText)
         if controller.target !== view { controller.target = view }
+        // Read here so a change to it lays the text out again.
+        _ = controller.bottomReserve
+        view.setNeedsLayout()
     }
 }
 
@@ -499,8 +502,7 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
     override func layoutSubviews() {
         super.layoutSubviews()
         let side = max(20, (bounds.width - readableWidth) / 2)
-        let hasDate = !(headerLabel.text ?? "").isEmpty
-        let inset = UIEdgeInsets(top: hasDate ? 44 : 14, left: side, bottom: 120, right: side)
+        let inset = UIEdgeInsets(top: (headerLabel.text ?? "").isEmpty ? 14 : 44, left: side, bottom: 120 + (controller?.bottomReserve ?? 0), right: side)
         if textContainerInset != inset { textContainerInset = inset }
         headerLabel.frame = CGRect(x: 0, y: DateFold.labelTop, width: bounds.width, height: DateFold.labelHeight)
         foldDate(hasDate)

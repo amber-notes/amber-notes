@@ -35,6 +35,8 @@ struct MenuBarPanel: View {
             if signedOut { signIn } else { panel }
         }
         .frame(width: 320)
+        // Opening the panel is using the menu bar: its tip is done.
+        .onAppear { FeatureUse.mark(.menuBar) }
     }
 
     // MARK: Signed in

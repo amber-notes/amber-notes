@@ -9,6 +9,9 @@ final class EditorController {
     /// Set by the platform text view while it is on screen.
     @ObservationIgnored weak var target: (any EditorTarget)?
     var isEditing = false
+    /// Room kept free under the note's last line for something laid over the bottom (iPhone
+    /// tips), so the text can always scroll clear of it.
+    var bottomReserve: CGFloat = 0
     /// The file being shown in Quick Look.
     var previewURL: URL?
     /// Files being fetched from the server.
@@ -82,9 +85,15 @@ final class EditorController {
     func numberedList() { perform { ListEditing.toggleLineStyle(in: $0, selection: $1, .numbered) } }
     func blockQuote() { perform { ListEditing.toggleLineStyle(in: $0, selection: $1, .quote) } }
 
-    /// Inserts an empty 2×2 table and puts the keyboard in its first cell.
+    /// With lines selected that have tabs or pipes between words, turns them into a table;
+    /// otherwise inserts an empty 2×2 table and puts the keyboard in its first cell.
     func insertTable() {
-        target?.insertGrid()
+        guard let t = target else { return }
+        if let edit = TableText.edit(in: t.currentText, selection: t.currentSelection) {
+            t.apply(edit)
+        } else {
+            t.insertGrid()
+        }
     }
 
     func insertLink() {

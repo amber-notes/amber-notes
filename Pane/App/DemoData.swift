@@ -53,6 +53,12 @@ enum DemoData {
         t.updatedAt = .now.addingTimeInterval(-300)
         t.isPinned = true
 
+        // Tip captures (`-demoTableText`): a note with lines a table tip can turn into a table.
+        if ProcessInfo.processInfo.arguments.contains("-demoTableText") {
+            let b = context.createNote(in: .folder(main.id), body: "Budget\n\nItem\tCost\nRent\t900\nFood\t300\nTravel\t150\n")
+            b.updatedAt = .now.addingTimeInterval(-60)
+        }
+
         for (folder, body, offset, pinned) in items {
             let n = context.createNote(in: .folder(folder.id), body: storeScene(body))
             if body.hasPrefix("Lisbon") {

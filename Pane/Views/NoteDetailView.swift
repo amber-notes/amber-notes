@@ -1,6 +1,7 @@
 import QuickLook
 import SwiftData
 import SwiftUI
+import TipKit
 import UniformTypeIdentifiers
 
 struct NoteDetailView: View {
@@ -32,6 +33,9 @@ struct NoteDetailView: View {
             .sheet(isPresented: $showHistory) {
                 if let history = NoteHistory.shared { VersionHistorySheet(note: note, history: history) }
             }
+            #if os(iOS)
+            .safeAreaInset(edge: .bottom, spacing: 0) { phoneTips }
+            #endif
             .overlay(alignment: .bottom) { aiReceipt }
             .overlay(alignment: .bottom) { undoProblem }
             .onChange(of: note.aiEditedAt) { _, _ in showAIEdit() }
@@ -40,8 +44,31 @@ struct NoteDetailView: View {
                 withAnimation(.easeIn(duration: 0.2)) { receipt = nil }
                 controller.clearTint()
             }
-            .task(id: note.id) { receipt = nil; showAIEdit() }
+            .task(id: note.id) {
+                receipt = nil
+                showAIEdit()
+                #if os(macOS)
+                PaneTips.menuBarShown = MenuBarSettings.allowed && UserDefaults.standard.object(forKey: MenuBarSettings.key) as? Bool ?? true
+                #endif
+                PaneTips.noteOpened(note.body)
+            }
+            .onChange(of: showHistory) { _, open in if open { FeatureUse.mark(.versionHistory) } }
     }
+
+    #if os(iOS)
+    /// On iPhone the note's tips sit just above the toolbar: a popover from a toolbar button
+    /// never appears there. TipKit shows at most one of them, and only when it's due. The note
+    /// keeps room below its last line so it can scroll clear of the tip.
+    private var phoneTips: some View {
+        VStack(spacing: 8) {
+            CompactTip(tip: VersionHistoryTip()) { a in if a.id == "open" { showHistory = true } }
+            CompactTip(tip: ShareLinkTip())
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 6)
+        .onGeometryChange(for: CGFloat.self, of: \.size.height) { controller.bottomReserve = $0 }
+    }
+    #endif
 
     @ViewBuilder
     private var undoProblem: some View {
@@ -86,6 +113,7 @@ struct NoteDetailView: View {
             guard note.id == r.noteID else { return }
             controller.tintChanges(from: r.previous)
             withAnimation(.spring(duration: 0.45 * slow, bounce: 0.25)) { receipt = r }
+            PaneTips.aiEditLanded()
             try? await Task.sleep(for: .seconds(5.5 * slow))
             while ChangeTint.holdForCapture, receipt == r { try? await Task.sleep(for: .seconds(0.1)) }
             guard receipt == r else { return }
@@ -134,6 +162,7 @@ struct NoteDetailView: View {
 
     /// Every keystroke lands here; the model is written once typing pauses.
     private func save(_ text: String) {
+        PaneTips.typed()
         let note = self.note
         saver.schedule(base: note.body) { [saver] in
             // Something else rewrote the note meanwhile (sync, an AI): the editor
@@ -145,6 +174,7 @@ struct NoteDetailView: View {
 
     private func write(_ text: String, to note: Note) {
         guard text != note.body else { return }
+        if TipTriggers.isBigDeletion(from: note.body, to: text) { PaneTips.deletedALot() }
         let oldTitle = note.title
         note.body = text
         note.touch()
@@ -262,6 +292,8 @@ struct NoteDetailView: View {
                 Label { Text("New Note") } icon: { ToolbarGlyph.image("square.and.pencil", shift: ToolbarGlyph.composeShift) }
             }
                 .help("New Note (⌘N)")
+                // The menu bar's quick capture is the other way to start a note.
+                .paneTip(MenuBarTip(), arrowEdge: .top)
                 .accessibilityIdentifier("list.newNote")
         }
         ToolbarSpacer(.flexible)
@@ -335,6 +367,7 @@ struct NoteDetailView: View {
         .tint(.primary)
         #endif
         .help("Share")
+        .paneTip(ShareLinkTip(), arrowEdge: .top)
         .accessibilityIdentifier("editor.share")
     }
 
@@ -363,6 +396,11 @@ struct NoteDetailView: View {
         }
         #if os(macOS)
         .tint(.primary)
+        #endif
+        #if os(macOS)
+        .paneTip(VersionHistoryTip(), arrowEdge: .top) { action in
+            if action.id == "open" { showHistory = true }
+        }
         #endif
         .accessibilityIdentifier("editor.more")
     }

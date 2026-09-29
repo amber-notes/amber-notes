@@ -94,6 +94,7 @@ struct RootView: View {
     private func noteChanged(from old: UUID?, to new: UUID?) {
         // The note you were typing in is written before anything looks at it.
         DebouncedSave.flushAll()
+        if new == nil { PaneTips.listOpened() }
         discardIfEmpty(old)
         if let new { lastNote = new.uuidString }
     }

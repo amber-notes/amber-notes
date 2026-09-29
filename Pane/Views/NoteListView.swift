@@ -1,5 +1,6 @@
 import SwiftData
 import SwiftUI
+import TipKit
 import UniformTypeIdentifiers
 
 struct NoteListView: View {
@@ -24,6 +25,8 @@ struct NoteListView: View {
     @Environment(Backend.self) private var backend: Backend?
     @State private var connecting = false
     @State private var sharingHowTo = false
+    /// The Share tip at the top of the list is due (iPhone).
+    @State private var listTipDue = false
 
     /// "Get set up" sits on top of the list for a new account, never in Recently Deleted or a search.
     private var showsSetup: Bool { (setup?.visible ?? false) && scope != .trash && search.isEmpty }
@@ -65,6 +68,9 @@ struct NoteListView: View {
         let visible = filtered(from: scopedNotes)
         let folders = context.allFolders().sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
         return list(scopedNotes, visible, folders)
+            #if os(iOS)
+            .task { await watchListTip() }
+            #endif
     }
 
     private func list(_ scopedNotes: [Note], _ visible: [Note], _ folders: [Folder]) -> some View {
@@ -85,6 +91,11 @@ struct NoteListView: View {
                     .selectionDisabled()
                 #endif
             }
+            #if os(iOS)
+            if listTipDue && !showsSetup && scope != .trash && search.isEmpty {
+                listTip
+            }
+            #endif
             if scope == .trash && !scopedNotes.isEmpty && search.isEmpty {
                 Text("Notes are deleted forever after 30 days.")
                     .font(.footnote)
@@ -277,6 +288,25 @@ struct NoteListView: View {
             #endif
         }
     }
+
+    #if os(iOS)
+    /// "Did you know" for what isn't a button here, as a row at the top of the list.
+    private var listTip: some View {
+        // One grouped card, like the Get set up card: the tip is the row, on the row's own surface.
+        Section { CompactTip(tip: ShareExtensionTip(), card: false).selectionDisabled() }
+    }
+    #endif
+
+    #if os(iOS)
+    /// Follows whether the list's tip is due, and records it as shown when it is.
+    private func watchListTip() async {
+        let tip = ShareExtensionTip()
+        for await due in tip.shouldDisplayUpdates {
+            listTipDue = due
+            if due { TipLog.shown(tip.id) }
+        }
+    }
+    #endif
 
     private func setupCard(_ setup: SetupStore, _ progress: SetupProgress) -> some View {
         #if os(macOS)
