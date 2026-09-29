@@ -20,9 +20,9 @@ REPO = os.path.dirname(os.path.dirname(HERE))
 LAYOUT = json.load(open(os.path.join(HERE, "layout.json")))
 W, H = LAYOUT["window"]
 S = 2
-TITLE = 28  # title bar with the toolbar hidden; Finder's bounds include it, so the picture's bottom 28 pt is cut
+TITLE = LAYOUT["title_bar"]  # Finder's window bounds include the title bar, so the picture's bottom is cut by this much
 RADIUS = 16
-APP_ICON = os.path.join(REPO, "Pane/Resources/Assets.xcassets/AppIcon.appiconset/icon-mac-512@2x.png")
+APP_ICON = os.environ.get("APP_ICON") or os.path.join(REPO, "Pane/Resources/Assets.xcassets/AppIcon.appiconset/icon-mac-512@2x.png")
 
 
 def font(size, weight):
