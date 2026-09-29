@@ -1,13 +1,14 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/site";
 import styles from "./download.module.css";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Download Amber Notes for Mac",
-  description: "The notes app your AI can actually use. Free for Mac; updates install themselves.",
-  robots: { index: true, follow: true },
-};
+  description: "Download Amber Notes, the free notes app for Mac that ChatGPT and Claude can read and edit. Needs macOS 26 or later. Updates install themselves.",
+  path: "/download",
+});
 
 /// Written by scripts/release-mac.sh next to the DMG it uploads (public/downloads/<file>).
 type Release = { version: string; build: string; size: number; date: string; file: string; sparkleFile?: string; minimumSystemVersion: string };
@@ -30,7 +31,7 @@ export default function Download() {
   return (
     <div className={styles.wrap}>
       <section className={styles.hero}>
-        <img className={`${styles.icon} rise`} style={r(0)} src="/mark.png" alt="" width={128} height={128} />
+        <img className={`${styles.icon} rise`} style={r(0)} src="/mark-256.png" alt="" width={128} height={128} />
         <h1 className={`${styles.title} rise`} style={r(1)}>Download Amber Notes for Mac</h1>
         {release ? (
           <>
@@ -57,7 +58,7 @@ export default function Download() {
         </div>
         <div className={`${styles.step} rise`} style={r(6)}>
           <div className={styles.art} aria-hidden="true">
-            <img src="/mark.png" alt="" width={48} height={48} />
+            <img src="/mark-256.png" alt="" width={48} height={48} />
             <svg width="44" height="16" viewBox="0 0 44 16" className={styles.arrow}><path d="M2 8h36m-6-6 6 6-6 6" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
             <div className={styles.folder}><span>A</span></div>
           </div>

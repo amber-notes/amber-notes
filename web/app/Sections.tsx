@@ -124,8 +124,8 @@ export function ImportSection() {
       <figure className={a.sheetDesk}>
         <Wallpaper />
         <div className={a.sheet}>
-          <img src="/import/sheet-ready.webp" width={540} height={640} alt="Amber Notes' Import from Apple Notes sheet, with all 1,284 notes picked and Import 1,284 Notes ready" draggable={false} />
-          <img src="/import/sheet-importing.webp" width={540} height={640} alt="" aria-hidden="true" draggable={false} className={a.sheetNext} data-on={importing || undefined} />
+          <img src="/import/sheet-ready.webp" width={540} height={640} alt="Amber Notes' Import from Apple Notes sheet, with all 1,284 notes picked and Import 1,284 Notes ready" draggable={false} loading="lazy" decoding="async" />
+          <img src="/import/sheet-importing.webp" width={540} height={640} alt="" aria-hidden="true" draggable={false} loading="lazy" decoding="async" className={a.sheetNext} data-on={importing || undefined} />
         </div>
       </figure>
     </section>
@@ -158,7 +158,8 @@ export function SyncSection({ iphoneLive }: { iphoneLive: boolean }) {
       </div>
       <figure className={`${a.sheetDesk} ${a.syncDesk}`} aria-label="The same note, Lisbon, 4 days in May, open in Amber Notes on a Mac and on an iPhone">
         <Wallpaper />
-        <img className={a.syncMac} src="/demo/lisbon/lisbon-2-faded.webp" width={1180} height={720} alt="" draggable={false} loading="lazy" decoding="async" />
+        <img className={a.syncMac} src="/demo/lisbon/lisbon-2-faded.webp" srcSet="/demo/lisbon/lisbon-2-faded-800.webp 800w, /demo/lisbon/lisbon-2-faded-1180.webp 1180w, /demo/lisbon/lisbon-2-faded.webp 2360w"
+          sizes="(min-width: 901px) 640px, 92vw" width={1180} height={720} alt="" draggable={false} loading="lazy" decoding="async" />
         <div className={a.syncPhone}>
           <img src="/sync/iphone-lisbon.webp" width={603} height={1311} alt="" draggable={false} loading="lazy" decoding="async" />
         </div>
@@ -175,7 +176,7 @@ export function Closing() {
   return (
     <section className={a.band} aria-labelledby="closing">
       <div className={a.bandInner}>
-        <img src="/mark.png" alt="" width={96} height={96} className={a.bandIcon} />
+        <img src="/mark-256.png" alt="" width={96} height={96} className={a.bandIcon} />
         <h2 id="closing" className={a.bandTitle}>Your notes deserve better than copy and paste.</h2>
         <p className={a.bandLede}>Free and open source, with no ads and no tracking. Import your Apple Notes, connect your AI, and get back to writing.</p>
         <div className={a.bandCtas}>

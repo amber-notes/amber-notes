@@ -22,7 +22,7 @@ function Icon({ tile, size }: { tile: Tile; size: number }) {
     </span>
   );
 }
-const Amber = ({ size }: { size: number }) => <img className={t.amber} src="/mark.png" alt="Amber Notes" width={size} height={size} style={{ borderRadius: size * 0.225 }} />;
+const Amber = ({ size }: { size: number }) => <img className={t.amber} src="/mark-256.png" alt="Amber Notes" width={size} height={size} style={{ borderRadius: size * 0.225 }} />;
 
 const HEAD = (
   <div className={t.head}>

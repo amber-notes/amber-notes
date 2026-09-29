@@ -3,31 +3,24 @@ import styles from "./home.module.css";
 import Demo from "./Demo";
 import DownloadLink from "./DownloadLink";
 import { AiSection, AlsoLine, Closing, ImportSection, SyncSection } from "./Sections";
+import { latestVersion } from "@/lib/changelog";
+import { APP_STORE_LIVE, APP_STORE_URL, pageMetadata } from "@/lib/site";
+import { JsonLd, app, maker, website } from "@/lib/structured-data";
 
-const APP_STORE_LIVE = false; // Flip when the iPhone app is approved.
-const APP_STORE_URL = "https://apps.apple.com/app/id6817253103";
-
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Amber Notes: the notes app your AI can actually use",
+  shareTitle: "The notes app your AI can actually use",
   description:
-    "As simple as the notes app you know. ChatGPT and Claude can read and update your notes, only when you say so. Free for Mac and iPhone.",
-  robots: { index: true, follow: true },
-  alternates: { canonical: "/" },
-  openGraph: {
-    title: "The notes app your AI can actually use",
-    description: "Simple notes for Mac and iPhone that ChatGPT and Claude can read and update, with your approval. Free.",
-    url: "https://ambernotes.app",
-    siteName: "Amber Notes",
-    type: "website",
-  },
-  twitter: { card: "summary_large_image" },
-};
+    "A simple notes app for iPhone and Mac that ChatGPT, Claude, Claude Code and Codex can read and edit, with your approval. Imports your Apple Notes. Free.",
+  path: "/",
+});
 
 const rise = (i: number) => ({ style: { "--i": i } as React.CSSProperties });
 
 export default function Home() {
   return (
     <div className={styles.main}>
+      <JsonLd graph={[app(latestVersion()), maker, website]} />
       <section className={styles.hero}>
         <h1 className={`${styles.h1} rise`} {...rise(0)}>
           The notes app <mark className={styles.mark}>your AI</mark> can actually use.

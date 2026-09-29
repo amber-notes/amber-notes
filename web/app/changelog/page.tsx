@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/site";
 import styles from "../home.module.css";
 import { changelog } from "@/lib/changelog";
 
 export const dynamic = "force-static";
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Changelog · Amber Notes",
-  description: "What's new in each version of Amber Notes.",
-  robots: { index: true, follow: true },
-};
+  description: "What's new in each version of Amber Notes for Mac and iPhone.",
+  path: "/changelog",
+});
 
 const rise = (i: number) => ({ className: "rise", style: { "--i": i } as React.CSSProperties });
 

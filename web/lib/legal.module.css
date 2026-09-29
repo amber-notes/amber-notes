@@ -45,7 +45,7 @@
 .article h2:first-child { margin-top: 0; }
 .article p { margin: 0 0 14px; }
 .article :global(p.label) { margin: 26px 0 8px; font-size: 18px; }
-.article ul { margin: 0 0 16px; padding-left: 1.2em; display: grid; gap: 6px; }
+.article ul, .article ol { margin: 0 0 16px; padding-left: 1.2em; display: grid; gap: 6px; }
 .article li::marker { color: var(--amber); }
 .article a { color: var(--ink); font-weight: 600; text-decoration: underline; text-decoration-color: var(--amber); text-decoration-thickness: 2px; text-underline-offset: 3px; }
 .article a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; border-radius: 3px; }
