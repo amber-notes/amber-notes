@@ -130,8 +130,8 @@ struct SidebarView: View {
         #if os(macOS)
         // The app's name at the top, so it's never mistaken for Notes. (iOS shows it as the large title.)
         .safeAreaInset(edge: .top, spacing: 0) {
-            HStack(spacing: 7) {
-                Image("Mark").resizable().scaledToFit().frame(width: 18, height: 18).accessibilityHidden(true)
+            HStack(spacing: 8) {
+                Image("MarkTight").resizable().scaledToFit().frame(width: 21, height: 21).accessibilityHidden(true)
                 Text("Amber Notes").font(.system(size: 15, weight: .semibold))
                 Spacer(minLength: 0)
             }
