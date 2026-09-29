@@ -53,7 +53,7 @@ enum DemoData {
         t.isPinned = true
 
         for (folder, body, offset, pinned) in items {
-            let n = context.createNote(in: .folder(folder.id), body: body)
+            let n = context.createNote(in: .folder(folder.id), body: storeScene(body))
             if body.hasPrefix("Lisbon") {
                 // Lisbon keeps its hotel details in a sub-note.
                 let hotel = Note(body: "Hotel booking\n\nMemmo Príncipe Real, 12–15 May\nConfirmation **LX-48213**\n\n- [x] Paid deposit\n- [ ] Ask for a late checkout\n- [ ] Airport transfer\n\n> Check-in from 15:00", folder: folder)
@@ -66,6 +66,24 @@ enum DemoData {
             n.isPinned = pinned
         }
         try? context.save()
+    }
+
+    /// App Store captures: `-uitest -demo -storeScene paella`, `lisbon` or `tick` puts in the lines an AI
+    /// just added, and `-highlight` (ChangeHighlight) tints them.
+    static func storeScene(_ body: String) -> String {
+        let args = ProcessInfo.processInfo.arguments
+        guard args.contains("-uitest"), let i = args.firstIndex(of: "-storeScene"), i + 1 < args.count else { return body }
+        switch args[i + 1] {
+        case "paella" where body.hasPrefix("Groceries"):
+            return body.replacingOccurrences(of: "- [ ] Oat milk", with: "- [ ] Paella rice\n- [ ] Saffron\n- [ ] Chorizo\n- [ ] Chicken thighs\n- [ ] Smoked paprika\n- [ ] Oat milk")
+        case "tick" where body.hasPrefix("Groceries"):
+            // The moment after a tap: ticked, before it slides to the bottom.
+            return body.replacingOccurrences(of: "- [ ] Olive oil", with: "- [x] Olive oil")
+        case "lisbon" where body.hasPrefix("Lisbon"):
+            return body.replacingOccurrences(of: "- [ ] Day trip to Sintra", with: "- [ ] Day trip to Sintra\n- [ ] Late checkout requested, confirm by 10 May")
+        default:
+            return body
+        }
     }
 
     static func samplePDF() -> Data {

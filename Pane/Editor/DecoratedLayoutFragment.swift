@@ -19,9 +19,33 @@ final class DecoratedLayoutFragment: NSTextLayoutFragment {
         return max(w - pad * 2, layoutFragmentFrame.width)
     }
 
+    /// 18% amber over the page, as an opaque colour: neighbouring lines may overlap by a pixel,
+    /// and a translucent fill would show that as a darker seam.
+    private static var changeTint: CGColor {
+        #if os(iOS)
+        let page = UIColor.systemBackground.resolvedColor(with: .current)
+        let accent = PColor.paneAccent.resolvedColor(with: .current)
+        #else
+        let page = NSColor.textBackgroundColor.usingColorSpace(.sRGB) ?? .white
+        let accent = PColor.paneAccent.usingColorSpace(.sRGB) ?? PColor.paneAccent
+        #endif
+        var (pr, pg, pb, pa) = (CGFloat(0), CGFloat(0), CGFloat(0), CGFloat(0))
+        var (ar, ag, ab, aa) = (CGFloat(0), CGFloat(0), CGFloat(0), CGFloat(0))
+        page.getRed(&pr, green: &pg, blue: &pb, alpha: &pa)
+        accent.getRed(&ar, green: &ag, blue: &ab, alpha: &aa)
+        let t: CGFloat = 0.18
+        return PColor(red: pr + (ar - pr) * t, green: pg + (ag - pg) * t, blue: pb + (ab - pb) * t, alpha: 1).cgColor
+    }
+
+    /// Changed by an AI connection just now (see ChangeHighlight).
+    private var highlighted: Bool {
+        guard !ChangeHighlight.lines.isEmpty, let p = textElement as? NSTextParagraph else { return false }
+        return ChangeHighlight.matches(p.attributedString.string)
+    }
+
     override var renderingSurfaceBounds: CGRect {
         let base = super.renderingSurfaceBounds
-        guard decoration != nil else { return base }
+        guard decoration != nil || highlighted else { return base }
         let left = -layoutFragmentFrame.minX
         return base.union(CGRect(x: left - 4, y: -14, width: containerWidth + 8, height: layoutFragmentFrame.height + 28))
     }
@@ -79,6 +103,21 @@ final class DecoratedLayoutFragment: NSTextLayoutFragment {
     }
 
     override func draw(at point: CGPoint, in context: CGContext) {
+        if highlighted {
+            // A soft amber band across the column with an accent bar at its left edge. Changed
+            // lines next to each other join into one block, like a change marker.
+            // Inside the rendering surface (4 pt either side). Edges are drawn without antialiasing so
+            // neighbouring lines snap to the same pixel row and join with no seam.
+            let rect = CGRect(x: point.x - layoutFragmentFrame.minX - 4, y: point.y,
+                              width: containerWidth + 8, height: layoutFragmentFrame.height)
+            context.saveGState()
+            context.setShouldAntialias(false)
+            context.setFillColor(Self.changeTint)
+            context.fill(rect)
+            context.setFillColor(PColor.paneAccent.cgColor)
+            context.fill(CGRect(x: rect.minX, y: rect.minY, width: 3, height: rect.height))
+            context.restoreGState()
+        }
         if let d = decoration {
             context.saveGState()
             drawDecoration(d, at: point, in: context)
