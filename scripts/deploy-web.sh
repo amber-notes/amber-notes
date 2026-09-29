@@ -1,22 +1,14 @@
 #!/bin/zsh
-# Deploys the share site (web/) to Vercel, in Emil's personal team only.
+# Deploys the share site (web/) to Vercel. Emil chose the Incredible team for it (2026-09-29).
 #
-#   scripts/deploy-web.sh            # finds the personal team (not Incredible, not VISSAI)
-#   scripts/deploy-web.sh <team-id>
+#   scripts/deploy-web.sh            # the Incredible team
+#   scripts/deploy-web.sh <team-id>  # another team
 #
 # Sets the Supabase URL and anon key from Config/Backend.local.xcconfig, deploys to production,
 # and prints the URL. Then put PANE_SHARE_URL = <that URL> in Config/Backend.local.xcconfig.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-NEVER=(incredible-team vissai)
-
-team=${1:-}
-if [[ -z $team ]]; then
-  # The CLI prints the table on stderr: "✔ incredible-team  Incredible", "  vissai  VISSAI".
-  team=$(vercel teams ls 2>&1 | sed 's/✔//' | awk 'NF>=2 && $1 !~ /^(id|Fetching|Vercel|>)$/ && $1 !~ /:/ {print $1}' | grep -vxE 'incredible-team|vissai' | head -1 || true)
-fi
-[[ -n $team ]] || { echo "No personal Vercel team yet. Create one at vercel.com/new-team (Hobby)." >&2; exit 2; }
-for n in $NEVER; do [[ $team == $n ]] && { echo "Refusing to deploy Amber Notes to $team." >&2; exit 1; }; done
+team=${1:-incredible-team}
 
 conf=Config/Backend.local.xcconfig
 url=$(grep -E '^PANE_SUPABASE_URL' $conf | sed 's/.*= *//; s|:/\$()/|://|')
