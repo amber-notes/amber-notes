@@ -68,7 +68,7 @@ enum DemoData {
         try? context.save()
     }
 
-    /// App Store captures: `-uitest -demo -storeScene paella`, `lisbon` or `tick` puts in the lines an AI
+    /// App Store captures: `-uitest -demo -storeScene paella`, `lisbon`, `tick` or `bought` puts in the lines an AI
     /// just added, and `-highlight` (ChangeHighlight) tints them.
     static func storeScene(_ body: String) -> String {
         let args = ProcessInfo.processInfo.arguments
@@ -79,6 +79,10 @@ enum DemoData {
         case "tick" where body.hasPrefix("Groceries"):
             // The moment after a tap: ticked, before it slides to the bottom.
             return body.replacingOccurrences(of: "- [ ] Olive oil", with: "- [x] Olive oil")
+        case "bought" where body.hasPrefix("Groceries"):
+            // An AI ticked two things off; ticked items sit with the others that are done.
+            return body.replacingOccurrences(of: "- [ ] Lemons\n- [ ] Coffee beans\n", with: "")
+                .replacingOccurrences(of: "- [x] Sourdough", with: "- [x] Lemons\n- [x] Coffee beans\n- [x] Sourdough")
         case "lisbon" where body.hasPrefix("Lisbon"):
             return body.replacingOccurrences(of: "- [ ] Day trip to Sintra", with: "- [ ] Day trip to Sintra\n- [ ] Late checkout requested, confirm by 10 May")
         default:

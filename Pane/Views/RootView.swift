@@ -193,6 +193,10 @@ struct RootView: View {
         let args = ProcessInfo.processInfo.arguments
         guard args.contains("-uitest"), let i = args.firstIndex(of: "-open"), i + 1 < args.count else { return }
         let title = args[i + 1]
+        #if os(macOS)
+        // Website and store captures: `-uitest -demo -importSheet` opens the import sheet over made-up Apple Notes.
+        if args.contains("-demo"), args.contains("-importSheet") { DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { showImport = true } }
+        #endif
         if title == "-new" { DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { newNote() }; return }
         let all = (try? context.fetch(FetchDescriptor<Note>())) ?? []
         if let n = all.first(where: { $0.title == title && $0.deletedAt == nil }) { selectedNote = n.id }

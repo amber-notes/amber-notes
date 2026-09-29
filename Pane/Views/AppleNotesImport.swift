@@ -63,6 +63,24 @@ enum AppleNotesBridge {
         return notes.filter { seen.insert($0.id).inserted }.sorted { $0.modified > $1.modified }
     }
 
+    /// `-uitest -demo`: website and store captures show this library instead of the person's own.
+    static var isDemo: Bool {
+        let args = ProcessInfo.processInfo.arguments
+        return args.contains("-uitest") && args.contains("-demo")
+    }
+
+    static var demoNotes: [AppleNote] {
+        let day: TimeInterval = 86_400
+        let rows: [(String, String, Double)] = [
+            ("Pasta night for eight", "Recipes", 0.1), ("Grandma's cardamom buns", "Recipes", 2), ("Weeknight curry", "Recipes", 5),
+            ("Porto in October", "Travel", 0.3), ("Packing list", "Travel", 9), ("Copenhagen tips from Jonas", "Travel", 21),
+            ("Kitchen measurements", "Home", 1), ("Paint colours", "Home", 12), ("Plants and when to water them", "Home", 30),
+            ("Books to read", "Notes", 3), ("Gift ideas", "Notes", 6), ("Wi-Fi at the cabin", "Notes", 40),
+            ("Old apartment", "Archive", 200),
+        ]
+        return rows.enumerated().map { i, r in AppleNote(id: "demo-\(i)", name: r.0, folder: r.1, modified: Date.now.addingTimeInterval(-r.2 * day)) }
+    }
+
     static func body(of id: String) throws -> String {
         let escaped = id.replacingOccurrences(of: "\"", with: "\\\"")
         return try run("tell application \"Notes\" to get body of note id \"\(escaped)\"").stringValue ?? ""
@@ -285,6 +303,13 @@ struct AppleNotesImportView: View {
         failure = nil
         let titles = ((try? context.fetch(FetchDescriptor<Note>())) ?? []).filter { $0.deletedAt == nil && $0.trashedAt == nil }.map { $0.title.lowercased() }
         existingTitles = Set(titles)
+        if AppleNotesBridge.isDemo {
+            // Captures never read the real Apple Notes: a made-up library, most of it picked.
+            notes = AppleNotesBridge.demoNotes
+            picked = Set(notes.filter { $0.folder != "Archive" }.map(\.id))
+            loading = false
+            return
+        }
         do {
             notes = try await Task.detached { try AppleNotesBridge.list() }.value
         } catch {
