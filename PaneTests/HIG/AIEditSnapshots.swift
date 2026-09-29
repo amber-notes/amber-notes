@@ -282,6 +282,28 @@ import Testing
         }
     }
 
+    /// The sidebar in a background window and as if it were the front window, for checking that
+    /// folder icons dim with their names. Captured by the same shell watcher as `demoFrames`.
+    /// `TEST_RUNNER_AMBER_DEMO_FRAMES=/path scripts/qa-test.sh 'PaneTests/AIEditSnapshots/sidebarLook()'`
+    @Test func sidebarLook() async throws {
+        guard let dir = ProcessInfo.processInfo.environment["AMBER_DEMO_FRAMES"].map({ URL(fileURLWithPath: $0) }) else { return }
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let tag = ProcessInfo.processInfo.environment["AMBER_SIDEBAR_TAG"] ?? "now"
+        let c = try AppSnapshotTests.container()
+        for (look, state) in [("inactive", ControlActiveState.inactive), ("active", ControlActiveState.key)] {
+            try await AppSnapshotTests.withLastNote(c, "Groceries") {
+                let w = Self.window(Self.root(c).environment(\.controlActiveState, state), size: CGSize(width: 1180, height: 560))
+                defer { w.orderOut(nil); w.close() }
+                try "\(w.windowNumber)".write(to: dir.appending(path: "window-id"), atomically: true, encoding: .utf8)
+                try? await Task.sleep(for: .seconds(1.5))
+                let name = "sidebar-\(tag)-\(look)"
+                try "".write(to: dir.appending(path: "ready-\(name)"), atomically: true, encoding: .utf8)
+                let done = dir.appending(path: "shot-\(name)")
+                for _ in 0..<60 where !FileManager.default.fileExists(atPath: done.path) { try? await Task.sleep(for: .milliseconds(50)) }
+            }
+        }
+    }
+
     static func textViews(in view: NSView?) -> [PaneTextView] {
         guard let view else { return [] }
         return (view as? PaneTextView).map { [$0] } ?? view.subviews.flatMap { textViews(in: $0) }

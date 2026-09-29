@@ -60,14 +60,31 @@ struct SidebarHeader: View {
 #endif
 
 enum SidebarStyle {
-    /// Notes on the Mac draws folder icons in the text colour; iOS tints them.
     #if os(macOS)
-    static let icon = HierarchicalShapeStyle.primary
     static let iconFont = Font.system(size: 17, weight: .regular)
     #else
     static let icon = TintShapeStyle.tint
     static let iconFont = Font.body
     #endif
+}
+
+/// A folder icon in the sidebar. Notes on the Mac draws them in the text colour, and in a
+/// window that isn't in front they fade with their names; iOS tints them.
+struct SidebarIcon: View {
+    let name: String
+    #if os(macOS)
+    @Environment(\.controlActiveState) private var active
+    #endif
+
+    var body: some View {
+        Image(systemName: name)
+            .font(SidebarStyle.iconFont)
+            #if os(macOS)
+            .foregroundStyle(active == .inactive ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.primary))
+            #else
+            .foregroundStyle(SidebarStyle.icon)
+            #endif
+    }
 }
 
 extension Notification.Name {
@@ -218,7 +235,7 @@ struct SidebarView: View {
                     .foregroundStyle(.secondary)
             }
         } icon: {
-            Image(systemName: icon).foregroundStyle(SidebarStyle.icon).font(SidebarStyle.iconFont)
+            SidebarIcon(name: icon)
         }
     }
 
@@ -289,9 +306,7 @@ private struct FolderTree: View {
                     .foregroundStyle(.secondary)
             }
         } icon: {
-            Image(systemName: dropTarget == folder.id ? "folder.fill" : "folder")
-                .foregroundStyle(SidebarStyle.icon)
-                .font(SidebarStyle.iconFont)
+            SidebarIcon(name: dropTarget == folder.id ? "folder.fill" : "folder")
                 .contentTransition(.symbolEffect(.replace))
         }
         .tag(Scope.folder(folder.id))
