@@ -41,7 +41,8 @@ final class SessionStorage: AuthLocalStorage, @unchecked Sendable {
             SecItemDelete(query(key) as CFDictionary)
             var add = query(key)
             add[kSecValueData as String] = value
-            add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
+            // This device only: a session never travels in a backup to another device.
+            add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
             if SecItemAdd(add as CFDictionary, nil) == errSecSuccess {
                 try? FileManager.default.removeItem(at: fileURL(for: key))
                 return
@@ -50,8 +51,17 @@ final class SessionStorage: AuthLocalStorage, @unchecked Sendable {
         #if os(iOS)
         try value.write(to: fileURL(for: key), options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
         #else
-        try value.write(to: fileURL(for: key), options: .atomic)
-        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: fileURL(for: key).path)
+        // Owner-only from the moment the file exists, then swapped into place.
+        let target = fileURL(for: key)
+        let temp = target.deletingLastPathComponent().appending(path: ".\(UUID().uuidString).tmp")
+        guard FileManager.default.createFile(atPath: temp.path, contents: value, attributes: [.posixPermissions: 0o600]) else {
+            throw CocoaError(.fileWriteUnknown)
+        }
+        if FileManager.default.fileExists(atPath: target.path) {
+            _ = try FileManager.default.replaceItemAt(target, withItemAt: temp)
+        } else {
+            try FileManager.default.moveItem(at: temp, to: target)
+        }
         #endif
     }
 
