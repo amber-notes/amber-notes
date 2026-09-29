@@ -1,0 +1,51 @@
+/* Privacy policy and terms: the home page's palette (variables come from home.module.css .page),
+   a readable measure, a summary card, and a contents list that stays in view on wide screens. */
+.main { flex: 1; width: 100%; max-width: 1120px; margin: 0 auto; padding: 32px 20px 0; display: grid; gap: 40px; align-content: start; }
+
+.head { display: grid; gap: 10px; max-width: 760px; }
+.title { margin: 0; font-size: clamp(40px, 6vw, 64px); line-height: 1; font-weight: 800; letter-spacing: -0.04em; text-wrap: balance; }
+.updated { margin: 0; color: var(--muted); font-size: 15px; font-variant-numeric: tabular-nums; }
+
+.summary { max-width: 760px; padding: 26px 28px; border-radius: 24px; background: var(--soft); display: grid; gap: 12px; }
+.summaryTitle { margin: 0; font-size: 20px; font-weight: 750; letter-spacing: -0.01em; }
+.summaryBody ul { margin: 0; padding-left: 1.2em; display: grid; gap: 8px; }
+.summaryBody li { font-size: 17px; line-height: 1.5; }
+.summaryBody li::marker { color: var(--amber); }
+.summaryBody p { margin: 0; }
+
+.layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 56px; align-items: start; }
+@media (max-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr); gap: 28px; } }
+
+.toc { position: sticky; top: 24px; display: grid; gap: 16px; font-size: 14.5px; }
+@media (max-width: 900px) { .toc { position: static; } }
+.tocDetails > summary { list-style: none; cursor: default; }
+.tocDetails > summary::-webkit-details-marker { display: none; }
+@media (max-width: 900px) {
+  .tocDetails { padding: 14px 18px; border-radius: 16px; box-shadow: 0 0 0 1px var(--line); }
+  .tocDetails > summary { cursor: pointer; }
+}
+.tocLabel { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.toc ol a { display: block; padding: 5px 10px; margin: 0 -10px; border-radius: 8px; color: var(--muted); text-decoration: none; line-height: 1.35; }
+@media (hover: hover) { .toc ol a:hover { color: var(--ink); background: var(--soft); } }
+.toc a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.tocOther { margin: 0; }
+.tocOther a { color: var(--ink); font-weight: 600; text-decoration: none; }
+@media (hover: hover) { .tocOther a:hover { text-decoration: underline; text-decoration-color: var(--amber); text-underline-offset: 4px; } }
+
+/* The document itself */
+.article { max-width: 68ch; font-size: 17px; line-height: 1.65; }
+.article > :first-child { margin-top: 0; }
+.article h2 { margin: 52px 0 14px; font-size: 26px; line-height: 1.15; font-weight: 800; letter-spacing: -0.02em; scroll-margin-top: 24px; text-wrap: balance; }
+.article h2:first-child { margin-top: 0; }
+.article p { margin: 0 0 14px; }
+.article :global(p.label) { margin: 26px 0 8px; font-size: 18px; }
+.article ul { margin: 0 0 16px; padding-left: 1.2em; display: grid; gap: 6px; }
+.article li::marker { color: var(--amber); }
+.article a { color: var(--ink); font-weight: 600; text-decoration: underline; text-decoration-color: var(--amber); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+.article a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; border-radius: 3px; }
+.article :global(.tableWrap) { overflow-x: auto; margin: 6px 0 20px; border-radius: 14px; box-shadow: 0 0 0 1px var(--line); }
+.article table { border-collapse: collapse; width: 100%; font-size: 15px; line-height: 1.45; }
+.article th, .article td { text-align: left; vertical-align: top; padding: 11px 14px; border-bottom: 1px solid var(--line); }
+.article th { font-size: 13px; font-weight: 700; color: var(--muted); background: var(--soft); }
+.article tr:last-child td { border-bottom: 0; }
