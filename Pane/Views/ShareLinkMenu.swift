@@ -133,6 +133,10 @@ final class ShareLinkStore {
 
     var isAvailable: Bool { service != nil && baseURL != nil }
 
+    /// What making something public is waiting on: you confirm before anything becomes readable by link.
+    enum PublicStep: Equatable { case createLink, includeSubNotes }
+    var confirming: PublicStep?
+
     /// Called when the note on screen changes.
     func load(note: UUID, service: ShareLinkService?) async {
         // Same note, same account situation: keep what's shown.
@@ -233,7 +237,7 @@ struct ShareLinkMenuSection: View {
         if store.isAvailable {
             Section {
                 if store.state.slug == nil {
-                    Button("Share Link…", systemImage: "link") { Task { await store.shareAndCopy() } }
+                    Button("Share Link…", systemImage: "link") { store.confirming = .createLink }
                         .disabled(store.state.isWorking)
                         .accessibilityIdentifier("share.create")
                 } else {
@@ -243,7 +247,10 @@ struct ShareLinkMenuSection: View {
                         Link(destination: url) { Label("Open Shared Page", systemImage: "safari") }
                     }
                     Toggle(isOn: Binding(get: { store.state.includesSubNotes },
-                                         set: { v in Task { await store.setIncludesSubNotes(v) } })) {
+                                         set: { v in
+                                             // Turning sub-notes on makes more public: ask first. Leaving them out needs no warning.
+                                             if v { store.confirming = .includeSubNotes } else { Task { await store.setIncludesSubNotes(false) } }
+                                         })) {
                         Label("Include Sub-notes", systemImage: "doc.on.doc")
                     }
                     .accessibilityIdentifier("share.subnotes")
@@ -290,9 +297,34 @@ private struct ShareLinkChrome: ViewModifier {
                     .transition(.opacity)
                 }
             }
+            .alert(alertTitle, isPresented: Binding(get: { store.confirming != nil }, set: { if !$0 { store.confirming = nil } }), presenting: store.confirming) { step in
+                switch step {
+                case .createLink:
+                    Button("Create Public Link") { Task { await store.shareAndCopy() } }
+                        .keyboardShortcut(.defaultAction)
+                        .accessibilityIdentifier("share.confirm")
+                case .includeSubNotes:
+                    Button("Include Sub-notes") { Task { await store.setIncludesSubNotes(true) } }
+                        .keyboardShortcut(.defaultAction)
+                        .accessibilityIdentifier("share.confirm")
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: { step in
+                switch step {
+                case .createLink:
+                    Text("Anyone with the link can read this note without signing in, and it may be passed on. Edits show on the page within a minute. You can stop sharing at any time.")
+                case .includeSubNotes:
+                    Text("The sub-notes linked from this note also become readable by anyone with the link.")
+                }
+            }
             .task(id: note.id) {
                 await store.load(note: note.id, service: backend?.client.map { SupabaseShareLinks(client: $0) })
             }
+    }
+
+    private var alertTitle: String {
+        let title = note.title.isEmpty ? "this note" : "“\(note.title)”"
+        return store.confirming == .includeSubNotes ? "Make sub-notes public too?" : "Share \(title) publicly?"
     }
 
     @ViewBuilder
