@@ -161,7 +161,8 @@ enable_refresh_token_rotation = true
 # Allows refresh tokens to be reused after expiry, up to the specified interval in seconds.
 # Requires enable_refresh_token_rotation = true.
 refresh_token_reuse_interval = 10
-# Anyone can create an account, with Sign in with Apple (email sign-ups are off below).
+# Anyone can create an account with Sign in with Apple. Email accounts can sign in but
+# new ones are refused by the before_user_created hook (see 20260929095500).
 enable_signup = true
 # Allow/disallow anonymous sign-ins to your project.
 enable_anonymous_sign_ins = false
@@ -197,9 +198,9 @@ web3 = 30
 # secret = ""
 
 [auth.email]
-# No new accounts by email: new people join with Sign in with Apple. Existing email
-# sign-in keeps working until those accounts have linked their Apple ID.
-enable_signup = false
+# Must stay true: false turns the whole email provider off, sign-in included. New email
+# accounts are refused by the before_user_created hook instead.
+enable_signup = true
 # If enabled, a user will be required to confirm any email change on both the old, and new email
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
@@ -257,9 +258,9 @@ max_frequency = "5s"
 # inactivity_timeout = "8h"
 
 # This hook runs before a new user is created and allows developers to reject the request based on the incoming user object.
-# The sign-up allowlist is off: anyone may join. (public.hook_before_user_created stays in the database, unused.)
+# Lets anyone join with Sign in with Apple and refuses new email accounts.
 [auth.hook.before_user_created]
-enabled = false
+enabled = true
 uri = "pg-functions://postgres/public/hook_before_user_created"
 
 # This hook runs before a token is issued and allows you to add additional claims based on the authentication method used.
