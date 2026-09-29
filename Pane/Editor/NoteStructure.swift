@@ -58,7 +58,8 @@ struct NoteStructure {
                 let above = ns.substring(with: c).trimmingCharacters(in: .whitespaces)
                 g.types = TypedTable.parse(comment: above, table: body.map { $0.trimmingCharacters(in: .whitespaces) })?.columns.map(\.type)
             }
-            grids.append(g)
+            // Too big for a live grid: it stays styled markdown (see GridTable.maxLiveCells).
+            if g.isLive { grids.append(g) }
         }
 
         ns.enumerateSubstrings(in: NSRange(location: 0, length: len), options: [.byParagraphs, .substringNotRequired]) { _, r, _, _ in

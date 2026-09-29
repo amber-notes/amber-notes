@@ -43,11 +43,18 @@ struct GridTable: Equatable {
             let range = NSRange(location: start, length: NSMaxRange(lines[j - 1]) - start)
             var g = from(lines: body, range: range, index: out.count)
             if typed { g.types = TypedTable.parse(comment: above, table: body.map { $0.trimmingCharacters(in: .whitespaces) })?.columns.map(\.type) }
-            out.append(g)
+            if g.isLive { out.append(g) }
             i = j
         }
         return out
     }
+
+    /// The most cells a table can have and still be shown as a live grid. Bigger tables
+    /// (a pasted export, say) stay styled markdown: a grid of 100,000 cells overruns
+    /// SwiftUI and takes the app down. NoteStructure applies the same rule, so both
+    /// number tables the same way.
+    static let maxLiveCells = 5000
+    var isLive: Bool { rows.count * max(columns, 1) <= Self.maxLiveCells }
 
     static func from(lines: [String], range: NSRange, index: Int) -> GridTable {
         let body = lines.filter { !$0.allSatisfy { "|-: \t".contains($0) } }

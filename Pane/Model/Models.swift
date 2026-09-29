@@ -122,12 +122,17 @@ enum NoteText {
         var out: [String] = []
         var rest = body[...]
         while out.count < count, !rest.isEmpty {
-            let end = rest.firstIndex(of: "\n") ?? rest.endIndex
-            let line = rest[..<end]
+            // Found by byte, not by character: walking grapheme clusters (emoji families,
+            // zalgo) across a huge line is slow.
+            let end = rest.utf8.firstIndex(of: UInt8(ascii: "\n")) ?? rest.endIndex
+            // A title is at most 300 characters (as on the server), so a megabyte-long first
+            // line costs no more than a short one.
+            // Capped by scalar, not character: one "character" can carry thousands of combining marks.
+            let line = Substring(rest[..<end].unicodeScalars.prefix(2000))
             rest = end < rest.endIndex ? rest[rest.index(after: end)...] : rest[rest.endIndex...]
             guard !line.allSatisfy({ $0 == " " || $0 == "\t" }) else { continue }
             let cleaned = stripMarkup(String(line))
-            if !cleaned.isEmpty { out.append(cleaned) }
+            if !cleaned.isEmpty { out.append(String(String(cleaned.unicodeScalars.prefix(600)).prefix(300))) }
         }
         return out
     }

@@ -104,19 +104,20 @@ extension ModelContext {
     }
 
     func trash(_ note: Note) {
-        // A parent takes its sub-notes with it.
-        for child in subNotes(of: note) where child.trashedAt == nil { trash(child) }
+        // Marked before its sub-notes, so a loop of sub-notes (A under B under A) ends.
         note.trashedAt = .now
         note.isPinned = false
         note.touch()
+        // A parent takes its sub-notes with it.
+        for child in subNotes(of: note) where child.trashedAt == nil { trash(child) }
         try? save()
     }
 
     func restore(_ note: Note) {
-        for child in subNotes(of: note) where child.trashedAt != nil { restore(child) }
         note.trashedAt = nil
         if note.folder == nil || note.folder?.deletedAt != nil { note.folder = defaultFolder() }
         note.touch()
+        for child in subNotes(of: note) where child.trashedAt != nil { restore(child) }
         try? save()
     }
 
@@ -167,10 +168,11 @@ extension ModelContext {
 
     /// Deleting a folder sends its notes (and sub-folders' notes) to Recently Deleted.
     func delete(_ folder: Folder) {
-        for child in folder.liveChildren { delete(child) }
-        for note in folder.liveNotes { trash(note) }
+        // Marked first, so a loop of folders can't recurse forever.
         folder.deletedAt = .now
         folder.touch()
+        for child in folder.liveChildren { delete(child) }
+        for note in folder.liveNotes { trash(note) }
         try? save()
     }
 
