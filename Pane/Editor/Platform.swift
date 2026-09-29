@@ -122,4 +122,11 @@ enum DateFold {
 
     /// Captures: `-uitest -showDate` opens notes with the date in view (as if pulled down).
     static let showOnOpen = ProcessInfo.processInfo.arguments.contains("-uitest") && ProcessInfo.processInfo.arguments.contains("-showDate")
+
+    /// Captures: a line to open scrolled to.
+    static let scrollToText: String? = {
+        let a = ProcessInfo.processInfo.arguments
+        guard a.contains("-uitest"), let i = a.firstIndex(of: "-scrollToText"), i + 1 < a.count else { return nil }
+        return a[i + 1]
+    }()
 }

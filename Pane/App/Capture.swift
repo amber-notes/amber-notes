@@ -48,6 +48,15 @@ enum Capture {
 
     @MainActor static func scheduleFromArguments(_ context: ModelContext) {
         guard ProcessInfo.processInfo.arguments.contains("-uitest") else { return }
+        // `-seedLisbon edited`: the website's Lisbon note as it ends up (after the Sintra edit),
+        // in place of the demo's own Lisbon trip; open it with `-open "Lisbon, 4 days in May"`.
+        if let state = argument("-seedLisbon") {
+            let notes = (try? context.fetch(FetchDescriptor<Note>())) ?? []
+            for n in notes where n.title == "Lisbon" || n.title == "Hotel booking" || n.title == "Trip documents" { context.purge(n) }
+            let travel = context.allFolders().first { $0.name == "Travel" }
+            _ = context.createNote(in: travel.map { .folder($0.id) } ?? .all, body: state == "edited" ? lisbonEdit(lisbonNote) : lisbonNote)
+            try? context.save()
+        }
         let delay = argument("-aiAfter").flatMap(Double.init) ?? 2.5
         if let title = argument("-aiEdit") {
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
@@ -66,6 +75,41 @@ enum Capture {
             }
         }
     }
+}
+
+/// The website's Lisbon note, on every platform.
+extension Capture {
+    static let lisbonNote = """
+    Lisbon, 4 days in May
+
+    Tiles, trams and pastries, at an easy pace.
+
+    > Pastéis de nata before 10, trams after 10.
+
+    ## Day by day
+    - [ ] Day 1 Alfama and the castle
+    - [ ] Day 2 Belém
+    - [ ] Day 3 LX Factory
+    - [ ] Day 4 Cascais
+
+    ## Where to eat
+    | Place | Dish |
+    | --- | --- |
+    | Ramiro | Seafood |
+    | Manteigaria | Pastel de nata |
+    | Time Out Market | A bit of everything |
+
+    ## Pack
+    - Comfortable shoes
+    - A light jacket for the evenings
+    """
+
+    /// "Swap day 3 for a day trip to Sintra, and add a dinner spot."
+    static func lisbonEdit(_ body: String) -> String {
+        body.replacingOccurrences(of: "- [ ] Day 3 LX Factory", with: "- [ ] Day 3 Sintra, Pena Palace early")
+            .replacingOccurrences(of: "| Time Out Market | A bit of everything |", with: "| Time Out Market | A bit of everything |\n| Cervejaria Trindade | Steak |")
+    }
+
 }
 
 #if os(macOS)
@@ -122,37 +166,6 @@ extension Capture {
 
 /// The website's Lisbon story: ChatGPT writes a whole note, then makes one precise edit.
 extension Capture {
-    static let lisbonNote = """
-    Lisbon, 4 days in May
-
-    Tiles, trams and pastries, at an easy pace.
-
-    > Pastéis de nata before 10, trams after 10.
-
-    ## Day by day
-    - [ ] Day 1 Alfama and the castle
-    - [ ] Day 2 Belém
-    - [ ] Day 3 LX Factory
-    - [ ] Day 4 Cascais
-
-    ## Where to eat
-    | Place | Dish |
-    | --- | --- |
-    | Ramiro | Seafood |
-    | Manteigaria | Pastel de nata |
-    | Time Out Market | A bit of everything |
-
-    ## Pack
-    - Comfortable shoes
-    - A light jacket for the evenings
-    """
-
-    /// "Swap day 3 for a day trip to Sintra, and add a dinner spot."
-    static func lisbonEdit(_ body: String) -> String {
-        body.replacingOccurrences(of: "- [ ] Day 3 LX Factory", with: "- [ ] Day 3 Sintra, Pena Palace early")
-            .replacingOccurrences(of: "| Time Out Market | A bit of everything |", with: "| Time Out Market | A bit of everything |\n| Cervejaria Trindade | Steak |")
-    }
-
     /// A note an AI wrote, arriving the way a synced one does (this device didn't have it).
     @MainActor static func aiCreate(_ context: ModelContext, body: String, in folder: Folder?, by ai: String) -> Note {
         let note = context.createNote(in: folder.map { .folder($0.id) } ?? .all, body: body)

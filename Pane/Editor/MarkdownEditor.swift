@@ -517,7 +517,20 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
         guard !DateFold.showOnOpen, !pulledDate, !isTracking, !isDecelerating else { return }
         // Until you scroll yourself, the date stays folded: on opening, and when the keyboard
         // comes up and the text view scrolls the caret into view (a new note's caret sits by the date).
-        let target = DateFold.offset(top: adjustedContentInset.top)
+        var target = DateFold.offset(top: adjustedContentInset.top)
+        // Captures: `-uitest -scrollToText "Where to eat"` opens with that line near the top.
+        if let text = DateFold.scrollToText, let tlm = textLayoutManager, let tcm = tlm.textContentManager {
+            let r = (self.text as NSString).range(of: text)
+            if r.location != NSNotFound, let loc = tcm.location(tcm.documentRange.location, offsetBy: r.location) {
+                tlm.ensureLayout(for: tcm.documentRange)
+                if let frag = tlm.textLayoutFragment(for: loc) {
+                    let y = frag.layoutFragmentFrame.minY + textContainerInset.top - adjustedContentInset.top - 24
+                    target = min(max(target, y), max(target, contentSize.height - bounds.height + adjustedContentInset.bottom))
+                    contentOffset = CGPoint(x: contentOffset.x, y: target)
+                    return
+                }
+            }
+        }
         if contentOffset.y < target - 0.5 { contentOffset = CGPoint(x: contentOffset.x, y: target) }
     }
 
