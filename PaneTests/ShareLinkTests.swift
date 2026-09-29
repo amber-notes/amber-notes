@@ -48,6 +48,7 @@ private actor FakeShareLinks: ShareLinkService {
         let store = ShareLinkStore()
         var copied: [URL?] = []
         store.copyURL = { copied.append($0) }
+        store.baseURL = URL(string: "https://amber-notes.vercel.app")
         let note = UUID()
         await store.load(note: note, service: fake)
         #expect(store.state.phase == .notShared)
@@ -80,6 +81,14 @@ private actor FakeShareLinks: ShareLinkService {
         await store.setIncludesSubNotes(false)
         #expect(store.state.feedback == .failed("Couldn’t share yet. Try again once the note has synced."))
         #expect(store.state.includesSubNotes, "a failed change keeps the old option")
+    }
+
+    @Test func productionNeverHandsOutALocalLink() {
+        let local = URL(string: "http://localhost:5210")!, site = URL(string: "https://amber-notes.vercel.app")!
+        #expect(ShareLinkConfig.usable(local, backend: URL(string: "http://127.0.0.1:56421")))
+        #expect(!ShareLinkConfig.usable(local, backend: URL(string: "https://x.supabase.co")))
+        #expect(ShareLinkConfig.usable(site, backend: URL(string: "https://x.supabase.co")))
+        #expect(!ShareLinkConfig.usable(URL(string: "$(PANE_SHARE_URL)") ?? local, backend: URL(string: "https://x.supabase.co")))
     }
 
     @Test func withoutAnAccountThereIsNoMenu() async {

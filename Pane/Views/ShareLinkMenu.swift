@@ -10,11 +10,18 @@ import AppKit
 enum ShareLinkConfig {
     static var baseURL: URL? {
         guard let s = Bundle.main.object(forInfoDictionaryKey: "PaneShareURL") as? String,
-              s.hasPrefix("http"), let u = URL(string: s) else { return nil }
-        return u
+              let u = URL(string: s) else { return nil }
+        return usable(u, backend: BackendConfig.url) ? u : nil
     }
 
-    static func url(slug: String) -> URL? { baseURL?.appending(path: "n").appending(path: slug) }
+    /// A link has to open for whoever gets it: a synced account never hands out a localhost link.
+    static func usable(_ share: URL, backend: URL?) -> Bool {
+        guard share.scheme == "https" || share.scheme == "http" else { return false }
+        let local: (URL?) -> Bool = { ["localhost", "127.0.0.1"].contains($0?.host ?? "") }
+        return local(share) ? local(backend) : true
+    }
+
+    static func url(slug: String, base: URL? = baseURL) -> URL? { base?.appending(path: "n").appending(path: slug) }
 }
 
 /// A note's link, as the menu and the indicator see it. Pure, so it's unit-tested.
@@ -115,6 +122,8 @@ final class ShareLinkStore {
     private var feedbackTask: Task<Void, Never>?
     /// Puts the link on the clipboard (tests swap it so they never touch yours).
     @ObservationIgnored var copyURL: @MainActor (URL?) -> Void = { ShareLinkStore.copy($0) }
+    /// The share site; tests set their own.
+    @ObservationIgnored var baseURL: URL? = ShareLinkConfig.baseURL
 
     init(state: ShareLinkState = ShareLinkState(), noteID: UUID? = nil, service: ShareLinkService? = nil) {
         self.state = state
@@ -122,7 +131,7 @@ final class ShareLinkStore {
         self.service = service
     }
 
-    var isAvailable: Bool { service != nil && ShareLinkConfig.baseURL != nil }
+    var isAvailable: Bool { service != nil && baseURL != nil }
 
     /// Called when the note on screen changes.
     func load(note: UUID, service: ShareLinkService?) async {
@@ -149,7 +158,7 @@ final class ShareLinkStore {
         do {
             let slug = try await service.share(note: note, includeSubNotes: state.includesSubNotes)
             guard noteID == note else { return }
-            copyURL(ShareLinkConfig.url(slug: slug))
+            copyURL(ShareLinkConfig.url(slug: slug, base: baseURL))
             state.shared(slug: slug, includesSubNotes: state.includesSubNotes, copied: true)
         } catch {
             state.failed(Self.message(for: error))
@@ -183,7 +192,7 @@ final class ShareLinkStore {
         settleFeedback()
     }
 
-    var url: URL? { state.slug.flatMap(ShareLinkConfig.url(slug:)) }
+    var url: URL? { state.slug.flatMap { ShareLinkConfig.url(slug: $0, base: baseURL) } }
 
     /// "Done" and errors show briefly, then go.
     private func settleFeedback() {
