@@ -80,20 +80,75 @@ struct PaneApp: App {
 #if os(macOS)
 import AppKit
 
-/// Signed out, the window is just the sign-in card: small, glassy, no title bar.
-/// Signed in, it becomes the normal three-column window.
+/// Where the notes window was, so it reopens there like Notes: size, position and screen.
+/// The sign-in card is never remembered.
+enum WindowFrameMemory {
+    static let key = "notesWindowFrame"
+    static let defaultSize = CGSize(width: 1180, height: 760)
+
+    /// The saved frame if enough of it is on a screen you still have; otherwise the default, centred.
+    static func frame(saved: CGRect?, screens: [CGRect], main: CGRect) -> CGRect {
+        if let saved, saved.width >= 300, saved.height >= 200,
+           let screen = screens.max(by: { area($0.intersection(saved)) < area($1.intersection(saved)) }),
+           area(screen.intersection(saved)) >= min(area(saved) * 0.5, 200 * 150),
+           // The title bar has to be reachable, or you couldn't move the window back.
+           screen.intersects(CGRect(x: saved.minX, y: saved.maxY - 28, width: saved.width, height: 28)) {
+            return saved
+        }
+        let size = CGSize(width: min(defaultSize.width, main.width - 80), height: min(defaultSize.height, main.height - 80))
+        return CGRect(x: main.midX - size.width / 2, y: main.midY - size.height / 2, width: size.width, height: size.height)
+    }
+
+    private static func area(_ r: CGRect) -> CGFloat { r.isNull ? 0 : r.width * r.height }
+
+    static var saved: CGRect? {
+        guard let s = UserDefaults.standard.string(forKey: key) else { return nil }
+        let r = NSRectFromString(s)
+        return r.isEmpty ? nil : r
+    }
+
+    static func save(_ frame: CGRect) { UserDefaults.standard.set(NSStringFromRect(frame), forKey: key) }
+
+    /// Test runs place the window themselves (`-uitest -width 820`) and never touch the saved frame.
+    static var enabled: Bool { !ProcessInfo.processInfo.arguments.contains("-uitest") }
+}
+
+/// Signed out, the window is just the sign-in card: small, no title bar.
+/// Signed in, it becomes the normal three-column window, back where you left it.
 private struct WindowShaper: NSViewRepresentable {
     let compact: Bool
     /// The sign-in card's own size; the compact window wraps it exactly.
     var cardSize: CGSize = .zero
 
+    final class Coordinator {
+        /// The shape last applied; the window is only reshaped when this changes.
+        var applied: Bool?
+        var observers: [NSObjectProtocol] = []
+        var remembering = false
+        let created = Date()
+        deinit { observers.forEach(NotificationCenter.default.removeObserver) }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
     func makeNSView(context: Context) -> NSView { NSView() }
 
     func updateNSView(_ view: NSView, context: Context) {
+        let coordinator = context.coordinator
         DispatchQueue.main.async {
             guard let window = view.window else { return }
             guard !compact || cardSize.height > 0 else { return }
-            let target = compact ? cardSize : CGSize(width: 1180, height: 760)
+            remember(window, coordinator)
+            // Shape only when switching between the card and the notes window, never on
+            // ordinary updates: resizing it yourself must stick.
+            guard coordinator.applied != compact else {
+                if compact { fitCard(window) }
+                return
+            }
+            // At launch (including a signed-in launch that briefly looked signed out) the window
+            // just appears in place; only a real sign-in or sign-out animates.
+            let animate = Date().timeIntervalSince(coordinator.created) > 1.5
+            coordinator.applied = compact
+            coordinator.remembering = false
             // No system title bar or toolbar while signed out: just the card and the window buttons.
             window.toolbar?.isVisible = !compact
             // Notes' full-height toolbar with large buttons; compact only for the sign-in card.
@@ -102,16 +157,40 @@ private struct WindowShaper: NSViewRepresentable {
             // Card mode keeps close and minimise; zoom makes no sense for a fixed-size card.
             window.standardWindowButton(.zoomButton)?.isEnabled = !compact
             window.contentMinSize = compact ? CGSize(width: 300, height: 300) : CGSize(width: 760, height: 520)
-            // Compact: the card is the whole window, title-bar area included.
-            var frame = compact ? CGRect(origin: .zero, size: target) : window.frameRect(forContentRect: CGRect(origin: .zero, size: target))
-            guard abs(window.frame.width - frame.width) > 2 || abs(window.frame.height - frame.height) > 2 else { return }
-            // Grow or shrink around the window's centre.
-            frame.origin = CGPoint(x: window.frame.midX - frame.width / 2, y: window.frame.midY - frame.height / 2)
-            if let screen = window.screen?.visibleFrame {
-                frame.origin.x = min(max(frame.origin.x, screen.minX), screen.maxX - frame.width)
-                frame.origin.y = min(max(frame.origin.y, screen.minY), screen.maxY - frame.height)
+            if compact {
+                fitCard(window)
+            } else if WindowFrameMemory.enabled {
+                let frame = WindowFrameMemory.frame(saved: WindowFrameMemory.saved,
+                                                    screens: NSScreen.screens.map(\.visibleFrame),
+                                                    main: (window.screen ?? NSScreen.main)?.visibleFrame ?? window.frame)
+                window.setFrame(frame, display: true, animate: animate)
+                coordinator.remembering = true
             }
-            window.setFrame(frame, display: true, animate: true)
+        }
+    }
+
+    /// The card is the whole window, title-bar area included; it grows and shrinks around its centre.
+    private func fitCard(_ window: NSWindow) {
+        var frame = CGRect(origin: .zero, size: cardSize)
+        guard abs(window.frame.width - frame.width) > 2 || abs(window.frame.height - frame.height) > 2 else { return }
+        frame.origin = CGPoint(x: window.frame.midX - frame.width / 2, y: window.frame.midY - frame.height / 2)
+        if let screen = window.screen?.visibleFrame {
+            frame.origin.x = min(max(frame.origin.x, screen.minX), screen.maxX - frame.width)
+            frame.origin.y = min(max(frame.origin.y, screen.minY), screen.maxY - frame.height)
+        }
+        window.setFrame(frame, display: true, animate: true)
+    }
+
+    /// Saves the notes window's frame whenever you move or resize it (never the card's).
+    private func remember(_ window: NSWindow, _ coordinator: Coordinator) {
+        guard coordinator.observers.isEmpty, WindowFrameMemory.enabled else { return }
+        let save: (Notification) -> Void = { [weak window, weak coordinator] _ in
+            guard let window, let coordinator, coordinator.remembering, coordinator.applied == false else { return }
+            WindowFrameMemory.save(window.frame)
+        }
+        let nc = NotificationCenter.default
+        for name in [NSWindow.didMoveNotification, NSWindow.didEndLiveResizeNotification, NSWindow.didResizeNotification, NSWindow.willCloseNotification] {
+            coordinator.observers.append(nc.addObserver(forName: name, object: window, queue: .main, using: save))
         }
     }
 }
