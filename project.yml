@@ -99,6 +99,7 @@ targets:
       - Pane/Views/AppMark.swift
       - Pane/Model/Inbox.swift
       - Pane/Model/RichTextToMarkdown.swift
+      - Pane/Model/OfflineHTML.swift
       - Pane/Editor/Platform.swift
       - path: Pane/Resources/Assets.xcassets
         buildPhase: resources

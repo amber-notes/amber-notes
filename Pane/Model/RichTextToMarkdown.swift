@@ -11,7 +11,7 @@ import AppKit
 enum RichTextToMarkdown {
     @MainActor
     static func markdown(fromHTML html: String) -> String {
-        guard let data = html.data(using: .utf8),
+        guard let data = OfflineHTML.strip(html).data(using: .utf8),
               let attributed = try? NSAttributedString(
                 data: data,
                 options: [.documentType: NSAttributedString.DocumentType.html, .characterEncoding: String.Encoding.utf8.rawValue],

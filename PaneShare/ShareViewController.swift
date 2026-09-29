@@ -62,7 +62,10 @@ final class ShareModel {
         ]
         for (type, doc) in kinds where p.hasItemConformingToTypeIdentifier(type) {
             let data: Data? = await withCheckedContinuation { c in _ = p.loadDataRepresentation(forTypeIdentifier: type) { d, _ in c.resume(returning: d) } }
-            guard let data, let a = try? NSAttributedString(data: data, options: [.documentType: doc, .characterEncoding: String.Encoding.utf8.rawValue], documentAttributes: nil) else { continue }
+            guard let raw = data else { continue }
+            // HTML is converted offline: nothing it references is fetched.
+            let safe = doc == .html ? OfflineHTML.strip(raw) : raw
+            guard let a = try? NSAttributedString(data: safe, options: [.documentType: doc, .characterEncoding: String.Encoding.utf8.rawValue], documentAttributes: nil) else { continue }
             let md = RichTextToMarkdown.markdown(from: a).replacingOccurrences(of: "\u{FFFC}", with: "")
             if !md.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return md }
         }

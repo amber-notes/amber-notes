@@ -50,7 +50,7 @@ enum RichPaste {
            let a = try? NSAttributedString(data: data, options: [.documentType: NSAttributedString.DocumentType.rtfd], documentAttributes: nil) { return a }
         if let data = pb.data(forPasteboardType: "public.rtf"),
            let a = try? NSAttributedString(data: data, options: [.documentType: NSAttributedString.DocumentType.rtf], documentAttributes: nil) { return a }
-        if let data = pb.data(forPasteboardType: "public.html"),
+        if let data = pb.data(forPasteboardType: "public.html").map(OfflineHTML.strip),
            let a = try? NSAttributedString(data: data, options: [.documentType: NSAttributedString.DocumentType.html, .characterEncoding: String.Encoding.utf8.rawValue], documentAttributes: nil) { return a }
         return nil
         #else
@@ -58,7 +58,7 @@ enum RichPaste {
         if let data = pb.data(forType: .rtfd) ?? pb.data(forType: NSPasteboard.PasteboardType("com.apple.flat-rtfd")),
            let a = NSAttributedString(rtfd: data, documentAttributes: nil) { return a }
         if let data = pb.data(forType: .rtf), let a = NSAttributedString(rtf: data, documentAttributes: nil) { return a }
-        if let data = pb.data(forType: .html), let a = NSAttributedString(html: data, documentAttributes: nil) { return a }
+        if let data = pb.data(forType: .html).map(OfflineHTML.strip), let a = NSAttributedString(html: data, documentAttributes: nil) { return a }
         return nil
         #endif
     }
