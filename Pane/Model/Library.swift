@@ -8,6 +8,18 @@ enum Scope: Hashable, Codable {
     case all
     case folder(UUID)
     case trash
+
+    /// Where the sidebar should point, given the folders that exist. A folder that's gone
+    /// (deleted here, with a parent, or on another device) falls back to All Notes, and with a
+    /// single folder there's no All Notes row, so that folder stands in. No scope (the iPhone
+    /// folder list is showing) stays that way: selecting a row there without pushing it
+    /// leaves the row marked and deaf to taps.
+    static func settled(_ scope: Scope?, liveFolders: [UUID]) -> Scope? {
+        var s = scope
+        if case .folder(let id)? = s, !liveFolders.contains(id) { s = .all }
+        if s == .all, liveFolders.count == 1 { s = .folder(liveFolders[0]) }
+        return s
+    }
 }
 
 extension UTType {
@@ -56,7 +68,7 @@ extension ModelContext {
     @discardableResult
     func createNote(in scope: Scope, body: String = "") -> Note {
         let target: Folder
-        if case .folder(let id) = scope, let f = folder(id) { target = f } else { target = defaultFolder() }
+        if case .folder(let id) = scope, let f = folder(id), f.deletedAt == nil { target = f } else { target = defaultFolder() }
         let n = Note(body: body, folder: target)
         insert(n)
         try? save()

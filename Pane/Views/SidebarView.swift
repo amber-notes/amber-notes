@@ -150,7 +150,7 @@ struct SidebarView: View {
         .safeAreaInset(edge: .top, spacing: 0) { SidebarHeader() }
         #endif
         .onAppear(perform: settleScope)
-        .onChange(of: folders.count) { _, _ in settleScope() }
+        .onChange(of: folders.map(\.id)) { _, _ in settleScope() }
         // Launch restores All Notes after this list first appears.
         .onChange(of: scope) { _, _ in settleScope() }
         // Right-click anywhere in the sidebar; a folder's own menu comes from its row.
@@ -252,13 +252,10 @@ struct SidebarView: View {
         .rowAccessibility(title, count: count)
     }
 
-    /// With a single folder there's no "All Notes" row, so show that folder instead. Only
-    /// All Notes is swapped: no scope means the iPhone folder list is showing, and selecting a
-    /// row there without pushing it leaves the row marked and deaf to taps.
+    /// Keeps the selection on something that exists (see `Scope.settled`).
     private func settleScope() {
-        if folders.count <= 1, scope == .all, let only = folders.first {
-            scope = .folder(only.id)
-        }
+        let settled = Scope.settled(scope, liveFolders: folders.map(\.id))
+        if settled != scope { scope = settled }
     }
 
     private func startRename(_ f: Folder) { nameDraft = f.name; renaming = f }
