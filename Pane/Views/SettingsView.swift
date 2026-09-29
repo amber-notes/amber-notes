@@ -62,6 +62,8 @@ struct SettingsView: View {
                         Button(role: .destructive) { confirmSignOut = true } label: { Text("Sign Out…").foregroundStyle(.red) }
                             .accessibilityIdentifier("settings.signOut")
                         DeleteAccountButton(backend: backend)
+                    } footer: {
+                        LegalLinksRow()
                     }
                 }
             }

@@ -86,6 +86,8 @@ struct SignInView: View {
                         .accessibilityIdentifier("signin.error")
                 }
             }
+
+            ConsentFooter()
         }
         .animation(.snappy(duration: 0.2), value: error)
         .animation(reduceMotion ? nil : .smooth(duration: 0.3), value: flow.step)
