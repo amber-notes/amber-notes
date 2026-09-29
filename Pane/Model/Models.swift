@@ -61,14 +61,6 @@ final class Note {
     var dirty: Bool = true
     /// The server's version when we last synced; 0 = never uploaded.
     var serverVersion: Int64 = 0
-    /// The connected AI that last changed this note, and when (set by the server, never here).
-    var aiEditor: String?
-    var aiEditedAt: Date?
-    /// This device only: the AI edit you've already seen, and the text from before an AI edit
-    /// you haven't seen yet (what the tint compares against, and what Undo puts back).
-    var aiSeenAt: Date?
-    var aiPrevious: String?
-
     init(body: String = "", folder: Folder? = nil) {
         id = UUID()
         self.body = body

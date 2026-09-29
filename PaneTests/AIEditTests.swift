@@ -89,6 +89,19 @@ import Testing
         #expect(!AIEdit.isUnseen(n), "undoing doesn't bring the marker back")
     }
 
+    @Test func seenAndTheTextBeforeSurviveARelaunch() async throws {
+        let file = FileManager.default.temporaryDirectory.appending(path: "ai-edits-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: file) }
+        let id = UUID(), at = Date(timeIntervalSince1970: 1_790_000_000)
+        let store = AIEditStore(file: file)
+        store[id] = .init(editor: "Claude", editedAt: at, seenAt: at, previous: "Before")
+        try await Task.sleep(for: .milliseconds(600))
+        let again = AIEditStore(file: file)
+        #expect(again[id] == .init(editor: "Claude", editedAt: at, seenAt: at, previous: "Before"))
+        again.forgetAll()
+        #expect(AIEditStore(file: file)[id] == .init())
+    }
+
     @Test func theServersColumnsAreReadButNeverSent() throws {
         let json = #"{"id":"6d1f2c9a-1b7e-4c3a-9f0e-2a4b8c1d7e55","body":"x","is_pinned":false,"created_at":"2026-09-29T10:00:00Z","updated_at":"2026-09-29T10:00:00Z","ai_editor":"ChatGPT","ai_edited_at":"2026-09-29T11:48:00Z"}"#
         let d = JSONDecoder()

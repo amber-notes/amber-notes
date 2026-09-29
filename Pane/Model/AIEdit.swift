@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// An AI's edit arriving on a note, and whether you've seen it yet.
 ///
@@ -56,5 +57,91 @@ enum AIEdit {
         var summary: String {
             lines == 0 ? "Updated by \(by)" : "\(by) changed \(lines == 1 ? "1 line" : "\(lines) lines")"
         }
+    }
+}
+
+/// What this device knows about AI edits, per note: the AI and time the server reported, the
+/// edit you've seen, and the text from before one you haven't (for the tint and Undo).
+///
+/// Kept beside the library in its own file, not in the SwiftData model, so builds with and
+/// without it open the same store.
+@MainActor
+@Observable
+final class AIEditStore {
+    struct Entry: Codable, Equatable {
+        var editor: String?
+        var editedAt: Date?
+        var seenAt: Date?
+        var previous: String?
+    }
+
+    static let shared = AIEditStore(file: PaneApp.isUnitTestHost || ProcessInfo.processInfo.arguments.contains("-uitest") ? nil : defaultFile)
+
+    private(set) var entries: [UUID: Entry] = [:]
+    @ObservationIgnored private let file: URL?
+    @ObservationIgnored private var saving: Task<Void, Never>?
+
+    /// `file` nil keeps everything in memory (tests, captures).
+    init(file: URL?) {
+        self.file = file
+        if let file, let data = try? Data(contentsOf: file), let saved = try? JSONDecoder().decode([UUID: Entry].self, from: data) {
+            entries = saved
+        }
+    }
+
+    static var defaultFile: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appending(path: "Pane/ai-edits.json")
+    }
+
+    subscript(id: UUID) -> Entry {
+        get { entries[id] ?? Entry() }
+        set {
+            guard entries[id] != newValue else { return }
+            entries[id] = newValue == Entry() ? nil : newValue
+            save()
+        }
+    }
+
+    /// Another account signed in, or this one was deleted.
+    func forgetAll() {
+        entries = [:]
+        saving?.cancel()
+        if let file { try? FileManager.default.removeItem(at: file) }
+    }
+
+    /// Written a moment after the last change, off the main thread.
+    private func save() {
+        guard let file else { return }
+        saving?.cancel()
+        let snapshot = entries
+        saving = Task.detached(priority: .utility) {
+            try? await Task.sleep(for: .milliseconds(300))
+            guard !Task.isCancelled, let data = try? JSONEncoder().encode(snapshot) else { return }
+            try? FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try? data.write(to: file, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+        }
+    }
+}
+
+extension Note {
+    /// The connected AI that last changed this note, and when (from the server).
+    @MainActor var aiEditor: String? {
+        get { AIEditStore.shared[id].editor }
+        set { AIEditStore.shared[id].editor = newValue }
+    }
+    @MainActor var aiEditedAt: Date? {
+        get { AIEditStore.shared[id].editedAt }
+        set { AIEditStore.shared[id].editedAt = newValue }
+    }
+    /// This device only: the AI edit you've already seen.
+    @MainActor var aiSeenAt: Date? {
+        get { AIEditStore.shared[id].seenAt }
+        set { AIEditStore.shared[id].seenAt = newValue }
+    }
+    /// This device only: the text from before an AI edit you haven't seen yet.
+    @MainActor var aiPrevious: String? {
+        get { AIEditStore.shared[id].previous }
+        set { AIEditStore.shared[id].previous = newValue }
     }
 }

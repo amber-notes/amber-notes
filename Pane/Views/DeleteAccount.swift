@@ -70,5 +70,6 @@ extension ModelContext {
         erase(Folder.self)
         try? save()
         try? FileManager.default.removeItem(at: FileStore.root)
+        AIEditStore.shared.forgetAll()
     }
 }
