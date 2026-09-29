@@ -45,6 +45,7 @@ jobs:
           TEST_RUNNER_PANE_PERF_SLACK: "4"
         run: |
           set -o pipefail
+          mkdir -p build
           xcodebuild test -project Pane.xcodeproj -scheme Pane -destination 'platform=macOS' \
             -only-testing:PaneTests -derivedDataPath build/ci \
             ENABLE_TESTABILITY=YES ENABLE_HARDENED_RUNTIME=NO \
