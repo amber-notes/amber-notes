@@ -9,6 +9,8 @@ struct AppMark: View {
         let shape = RoundedRectangle(cornerRadius: size * 0.2237, style: .continuous)
         Image("MarkTight")
             .resizable()
+            .interpolation(.high)
+            .antialiased(true)
             .scaledToFit()
             .frame(width: size, height: size)
             .clipShape(shape)

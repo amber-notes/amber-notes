@@ -75,31 +75,34 @@ export function LegalPage({ doc, other }: { doc: Legal; other: { href: string; l
   const r = (i: number) => ({ "--i": i }) as React.CSSProperties;
   return (
     <div className={styles.main}>
-      <div className={`${styles.head} rise`} style={r(0)}>
-        <h1 className={styles.title}>{doc.title}</h1>
-        {doc.updated && <p className={styles.updated}>Last updated {doc.updated}</p>}
-      </div>
+      <div className={styles.col}>
+        <div className={`${styles.head} rise`} style={r(0)}>
+          <h1 className={styles.title}>{doc.title}</h1>
+          {doc.updated && <p className={styles.updated}>Last updated {doc.updated}</p>}
+        </div>
 
-      {doc.summary && (
-        <section className={`${styles.summary} rise`} style={r(1)} aria-labelledby="short-version">
-          <h2 id="short-version" className={styles.summaryTitle}>The short version</h2>
-          <div className={styles.summaryBody} dangerouslySetInnerHTML={{ __html: doc.summary }} />
-        </section>
-      )}
+        {doc.summary && (
+          <section className={`${styles.summary} rise`} style={r(1)} aria-labelledby="short-version">
+            <h2 id="short-version" className={styles.summaryTitle}>The short version</h2>
+            <div className={styles.summaryBody} dangerouslySetInnerHTML={{ __html: doc.summary }} />
+          </section>
+        )}
 
-      <div className={`${styles.layout} rise`} style={r(2)}>
-        <nav className={styles.toc} aria-label="On this page">
-          <details open className={styles.tocDetails}>
-            <summary className={styles.tocLabel}>On this page</summary>
-            <ol>
-              {doc.sections.map((s) => (
-                <li key={s.id}><a href={`#${s.id}`}>{s.title}</a></li>
-              ))}
-            </ol>
-          </details>
-          <p className={styles.tocOther}><a href={other.href}>{other.label} →</a></p>
-        </nav>
-        <article className={styles.article} dangerouslySetInnerHTML={{ __html: doc.html }} />
+        <div className={`${styles.layout} rise`} style={r(2)}>
+          {/* Above the text on most screens; in the left margin on very wide ones, the text staying centred. */}
+          <nav className={styles.toc} aria-label="On this page">
+            <div className={styles.tocInner}>
+              <p className={styles.tocLabel}>On this page</p>
+              <ol>
+                {doc.sections.map((s) => (
+                  <li key={s.id}><a href={`#${s.id}`}>{s.title}</a></li>
+                ))}
+              </ol>
+              <p className={styles.tocOther}><a href={other.href}>{other.label} →</a></p>
+            </div>
+          </nav>
+          <article className={styles.article} dangerouslySetInnerHTML={{ __html: doc.html }} />
+        </div>
       </div>
     </div>
   );

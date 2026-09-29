@@ -154,6 +154,9 @@ private struct WindowShaper: NSViewRepresentable {
         var applied: Bool?
         var observers: [NSObjectProtocol] = []
         var remembering = false
+        /// The card size the window was last fitted to. The window is refitted only when the
+        /// card itself changes size (e.g. an error line appears), never on other updates.
+        var fittedCard: CGSize?
         let created = Date()
         deinit { observers.forEach(NotificationCenter.default.removeObserver) }
     }
@@ -170,7 +173,7 @@ private struct WindowShaper: NSViewRepresentable {
             // Shape only when switching between the card and the notes window, never on
             // ordinary updates: resizing it yourself must stick.
             guard coordinator.applied != compact else {
-                if compact { fitCard(window) }
+                if compact { fitCard(window, coordinator) }
                 return
             }
             // At launch (including a signed-in launch that briefly looked signed out) the window
@@ -190,7 +193,8 @@ private struct WindowShaper: NSViewRepresentable {
             window.standardWindowButton(.zoomButton)?.isEnabled = !compact
             window.contentMinSize = compact ? CGSize(width: 300, height: 300) : CGSize(width: 760, height: 520)
             if compact {
-                fitCard(window)
+                coordinator.fittedCard = nil
+                fitCard(window, coordinator, placeOnScreen: true)
             } else if WindowFrameMemory.enabled {
                 let frame = WindowFrameMemory.frame(saved: WindowFrameMemory.saved,
                                                     screens: NSScreen.screens.map(\.visibleFrame),
@@ -201,16 +205,25 @@ private struct WindowShaper: NSViewRepresentable {
         }
     }
 
-    /// The card is the whole window, title-bar area included; it grows and shrinks around its centre.
-    private func fitCard(_ window: NSWindow) {
-        var frame = CGRect(origin: .zero, size: cardSize)
-        guard abs(window.frame.width - frame.width) > 2 || abs(window.frame.height - frame.height) > 2 else { return }
-        frame.origin = CGPoint(x: window.frame.midX - frame.width / 2, y: window.frame.midY - frame.height / 2)
-        if let screen = window.screen?.visibleFrame {
+    /// The card is the whole window, title-bar area included.
+    ///
+    /// It's fitted only when the card's own size changes, and never while you're dragging the
+    /// window: moving it (across screens too) is left entirely to macOS. A size change keeps the
+    /// top edge and centre-x where they are, so the window grows or shrinks downward in place.
+    /// Only the first fit after switching to the card keeps it on screen.
+    private func fitCard(_ window: NSWindow, _ coordinator: Coordinator, placeOnScreen: Bool = false) {
+        guard cardSize.width > 0, cardSize.height > 0 else { return }
+        if let last = coordinator.fittedCard, abs(last.width - cardSize.width) < 1, abs(last.height - cardSize.height) < 1 { return }
+        if NSEvent.pressedMouseButtons != 0 { return } // mid-drag: try again on the next update
+        coordinator.fittedCard = cardSize
+        var frame = CGRect(x: window.frame.midX - cardSize.width / 2, y: window.frame.maxY - cardSize.height,
+                           width: cardSize.width, height: cardSize.height)
+        if placeOnScreen, let screen = window.screen?.visibleFrame {
             frame.origin.x = min(max(frame.origin.x, screen.minX), screen.maxX - frame.width)
             frame.origin.y = min(max(frame.origin.y, screen.minY), screen.maxY - frame.height)
         }
-        window.setFrame(frame, display: true, animate: true)
+        guard abs(window.frame.width - frame.width) > 0.5 || abs(window.frame.height - frame.height) > 0.5 else { return }
+        window.setFrame(frame, display: true, animate: !placeOnScreen)
     }
 
     /// Saves the notes window's frame whenever you move or resize it (never the card's).

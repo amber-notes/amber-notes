@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import styles from "./home.module.css";
 import Demo from "./Demo";
-import { GITHUB_URL, recentCommits } from "@/lib/github";
+import InView from "./InView";
+import { AIGlyph } from "@/lib/ai-glyphs";
 
 const APP_STORE_LIVE = false; // Flip when the iPhone app is approved.
 const APP_STORE_URL = "https://apps.apple.com/app/id6817253103";
@@ -21,29 +22,78 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image" },
 };
 
-const FEATURES: { icon: keyof typeof ICONS; title: string }[] = [
-  { icon: "chat", title: "Works with ChatGPT and Claude" },
-  { icon: "bolt", title: "Updates in a second" },
-  { icon: "check", title: "Lists that tidy themselves" },
-  { icon: "table", title: "Real tables" },
-  { icon: "photo", title: "Photos and files" },
-  { icon: "import", title: "Bring your Apple Notes" },
-  { icon: "key", title: "You approve every AI" },
-  { icon: "shield", title: "No ads, no tracking" },
+const FEATURES: { icon: keyof typeof ICONS; title: string; line: string }[] = [
+  { icon: "check", title: "Lists that tidy themselves", line: "Tick something off and it moves to the bottom." },
+  { icon: "table", title: "Real tables", line: "Rows and columns, right inside a note." },
+  { icon: "photo", title: "Photos and files", line: "Drop in pictures and PDFs. They sync too." },
+  { icon: "shield", title: "No ads, no tracking", line: "Free and open source. Nothing is sold." },
 ];
 
-export default async function Home() {
-  const commits = await recentCommits(3);
+// The hints are what the app's own Settings → Connect an AI steps tell you to do.
+const AIS: { name: string; glyph?: "openai" | "claude"; color: string; hint: string }[] = [
+  { name: "ChatGPT", glyph: "openai", color: "#0d0d0d", hint: "Apps → Create app" },
+  { name: "Claude", glyph: "claude", color: "#d97757", hint: "Connectors → Add custom" },
+  { name: "Claude Code", glyph: "claude", color: "#d97757", hint: "claude mcp add amber-notes" },
+  { name: "Codex", glyph: "openai", color: "#0d0d0d", hint: "~/.codex/config.toml" },
+  { name: "Any MCP app", color: "#a85700", hint: "Streamable HTTP + OAuth" },
+];
+
+function Check() {
+  return <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m3.5 8.5 3 3 6-7" /></svg>;
+}
+
+const PICKED = [
+  { t: "Pasta night for eight", f: "Recipes" },
+  { t: "Grandma's cardamom buns", f: "Recipes" },
+  { t: "Porto in October", f: "Travel" },
+  { t: "Packing list", f: "Travel" },
+  { t: "Kitchen measurements", f: "Home" },
+];
+const FOLDERS = [{ name: "Recipes", n: 3 }, { name: "Travel", n: 3 }, { name: "Home", n: 3 }, { name: "Notes", n: 3 }];
+
+/// The notes you pick in Apple Notes land in Amber Notes, sorted into the same folders. Drawn, not a screenshot.
+function ImportVisual() {
+  return (
+    <InView className={styles.imp} label="Twelve notes picked in Apple Notes arrive in Amber Notes, in their folders">
+      <div className={`${styles.impCard} ${styles.impFrom}`}>
+        <p className={styles.impHead}>Apple Notes</p>
+        <ul>{PICKED.map((n) => <li key={n.t}><i aria-hidden="true">✓</i><b>{n.t}</b></li>)}</ul>
+        <p className={styles.impMore}>and 7 more</p>
+      </div>
+      <div className={styles.impArrow} aria-hidden="true">
+        <span>12 notes</span>
+        <svg viewBox="0 0 64 24" width="64" height="24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12h54M48 4l9 8-9 8" /></svg>
+      </div>
+      <div className={`${styles.impCard} ${styles.impTo}`}>
+        <p className={styles.impHead}><img src="/mark.png" alt="" width={22} height={22} /> Amber Notes</p>
+        <ul>{FOLDERS.map((f, i) => (
+          <li key={f.name} style={{ "--k": i } as React.CSSProperties}>
+            <FolderIcon /><b>{f.name}</b><em>{f.n}</em>
+          </li>
+        ))}</ul>
+        <p className={styles.impDone}>Imported. Apple Notes is unchanged.</p>
+      </div>
+    </InView>
+  );
+}
+
+function FolderIcon() {
+  return <svg width="17" height="14" viewBox="0 0 17 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" aria-hidden="true"><path d="M1.5 3.5a1.5 1.5 0 0 1 1.5-1.5h3.2l1.5 1.6H14a1.5 1.5 0 0 1 1.5 1.5v6.4A1.5 1.5 0 0 1 14 13H3a1.5 1.5 0 0 1-1.5-1.5Z" /></svg>;
+}
+
+const rise = (i: number) => ({ style: { "--i": i } as React.CSSProperties });
+
+export default function Home() {
   return (
     <div className={styles.main}>
       <section className={styles.hero}>
-        <h1 className={`${styles.h1} rise`} style={{ "--i": 0 } as React.CSSProperties}>
+        <h1 className={`${styles.h1} rise`} {...rise(0)}>
           The notes app <mark className={styles.mark}>your AI</mark> can actually use.
         </h1>
-        <p className={`${styles.lede} rise`} style={{ "--i": 1 } as React.CSSProperties}>
-          As simple as the notes app you know. ChatGPT and Claude can read and update it, only when you say so.
+        <p className={`${styles.lede} rise`} {...rise(1)}>
+          Import your Apple Notes. Connect ChatGPT, Claude, Claude Code or Codex.
         </p>
-        <div className={`${styles.ctas} rise`} style={{ "--i": 2 } as React.CSSProperties}>
+        <div className={`${styles.ctas} rise`} {...rise(2)}>
           <a className={styles.primary} href="/download"><AppleGlyph /> Download for Mac</a>
           {APP_STORE_LIVE ? (
             <a className={styles.secondary} href={APP_STORE_URL}>Get it for iPhone</a>
@@ -53,63 +103,67 @@ export default async function Home() {
         </div>
       </section>
 
-      <div className="rise-soft" style={{ "--i": 3 } as React.CSSProperties}><Demo /></div>
+      <div className="rise-soft" {...rise(3)}><Demo /></div>
 
-      <section className={styles.features} aria-label="What you get">
+      <section className={styles.aiSection} aria-labelledby="ai">
+        <div className={styles.aiHead}>
+          <h2 id="ai" className={styles.h2}>Works with the AI you already use</h2>
+          <p className={styles.lede}>
+            Connect ChatGPT, Claude, Claude Code, Codex or any app that supports MCP. You approve each one, and you can disconnect it anytime.
+          </p>
+        </div>
+        <ul className={styles.strip} aria-label="How each app connects">
+          {AIS.map((a) => (
+            <li key={a.name}>
+              <span className={styles.stripMark} style={{ color: a.color }}>
+                {a.glyph ? <AIGlyph name={a.glyph} size={22} /> : <span className={styles.aiAny}>MCP</span>}
+              </span>
+              <strong>{a.name}</strong>
+              <code>{a.hint}</code>
+            </li>
+          ))}
+        </ul>
+        <ul className={styles.promises}>
+          <li><Check /> You approve every AI.</li>
+          <li><Check /> Disconnect anytime.</li>
+          <li><Check /> Changes reach your phone in a second.</li>
+        </ul>
+      </section>
+
+      <section className={`${styles.split} ${styles.flip}`} aria-labelledby="import">
+        <div className={styles.splitText}>
+          <h2 id="import" className={styles.h2}>Bring all your Apple Notes in one click</h2>
+          <p className={styles.lede}>
+            Pick everything, or just the notes you want. Folders, checklists and tables come along. Your Apple Notes stay untouched.
+          </p>
+        </div>
+        <ImportVisual />
+      </section>
+
+      <section className={styles.features} aria-label="What else you get">
         {FEATURES.map((f) => (
           <div key={f.title} className={styles.feature}>
             <span className={styles.icon} aria-hidden="true">{ICONS[f.icon]}</span>
             <h2>{f.title}</h2>
+            <p>{f.line}</p>
           </div>
         ))}
       </section>
 
-      <section className={styles.open} aria-labelledby="open">
-        <div className={styles.openHead}>
-          <h2 id="open" className={styles.h2}>Built in the open</h2>
-          <p className={styles.lede}>
-            Amber Notes is free and open source (MIT). Read the code, see exactly how your notes are stored, and help make it better.
-          </p>
+      <section className={styles.closing} aria-labelledby="closing">
+        <h2 id="closing" className={styles.closingTitle}>Your notes deserve better than copy and paste.</h2>
+        <p className={styles.lede}>Amber Notes is free and open source. Import your Apple Notes, connect your AI, and get back to writing.</p>
+        <div className={styles.ctas}>
+          <a className={styles.primary} href="/download"><AppleGlyph /> Download for Mac</a>
+          {APP_STORE_LIVE ? (
+            <a className={styles.outline} href={APP_STORE_URL}>Get it for iPhone</a>
+          ) : (
+            <span className={styles.outline}>iPhone · coming soon</span>
+          )}
         </div>
-        <div className={styles.ways}>
-          <a className={styles.way} href={`${GITHUB_URL}/issues/new/choose`}>
-            <strong>Report a bug</strong>
-            <span>Something broken or odd? Tell us what happened and we'll look into it.</span>
-          </a>
-          <a className={styles.way} href={`${GITHUB_URL}/issues/new/choose`}>
-            <strong>Suggest an idea</strong>
-            <span>What would make your notes better? Ideas are welcome, big or small.</span>
-          </a>
-          <a className={styles.way} href={`${GITHUB_URL}/blob/main/CONTRIBUTING.md`}>
-            <strong>Fix something small</strong>
-            <span>Setup takes about 10 minutes. Small, focused fixes are the most likely to be merged.</span>
-          </a>
-        </div>
-        {commits.length > 0 && (
-          <div className={styles.recent}>
-            <p className={styles.recentLabel}>Recently changed</p>
-            <ul>
-              {commits.map((c) => (
-                <li key={c.url}><a href={c.url}>{c.title}</a></li>
-              ))}
-            </ul>
-          </div>
-        )}
-        <a className={styles.primary} href={GITHUB_URL}><GitHubMark /> View on GitHub</a>
-      </section>
-
-      <section className={styles.last}>
-        <a className={styles.primary} href="/download"><AppleGlyph /> Download for Mac</a>
+        <p className={styles.fine}>Requires macOS 26. Updates install themselves.</p>
       </section>
     </div>
-  );
-}
-
-function GitHubMark() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor">
-      <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
-    </svg>
   );
 }
 
@@ -123,12 +177,8 @@ function AppleGlyph() {
 
 const s = { fill: "none", stroke: "currentColor", strokeWidth: 2.2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
 const ICONS = {
-  chat: <svg viewBox="0 0 48 48" {...s}><path d="M8 12a4 4 0 0 1 4-4h24a4 4 0 0 1 4 4v16a4 4 0 0 1-4 4H20l-8 7v-7a4 4 0 0 1-4-4Z" /><circle cx="18" cy="20" r="1.6" fill="currentColor" /><circle cx="24" cy="20" r="1.6" fill="currentColor" /><circle cx="30" cy="20" r="1.6" fill="currentColor" /></svg>,
-  bolt: <svg viewBox="0 0 48 48" {...s}><path d="M27 5 11 27h12l-3 16 17-23H25Z" /></svg>,
   check: <svg viewBox="0 0 48 48" {...s}><circle cx="13" cy="14" r="5" /><path d="M22 14h16M22 34h16" /><circle cx="13" cy="34" r="5" /><path d="m10.5 34 2 2 3.5-4" /></svg>,
   table: <svg viewBox="0 0 48 48" {...s}><rect x="7" y="10" width="34" height="28" rx="4" /><path d="M7 19h34M7 28h34M20 10v28" /></svg>,
   photo: <svg viewBox="0 0 48 48" {...s}><rect x="7" y="10" width="34" height="28" rx="4" /><circle cx="17" cy="19" r="3" /><path d="m7 33 10-9 8 7 5-4 11 9" /></svg>,
-  import: <svg viewBox="0 0 48 48" {...s}><path d="M14 8h14l8 8v24a2 2 0 0 1-2 2H14a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2Z" /><path d="M24 20v14M18 28l6 6 6-6" /></svg>,
-  key: <svg viewBox="0 0 48 48" {...s}><circle cx="16" cy="24" r="7" /><path d="M23 24h18M35 24v6M40 24v4" /></svg>,
   shield: <svg viewBox="0 0 48 48" {...s}><path d="M24 6 9 12v11c0 9 6.5 16 15 19 8.5-3 15-10 15-19V12Z" /><path d="m17 24 5 5 9-10" /></svg>,
 };

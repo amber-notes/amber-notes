@@ -1,142 +1,131 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { AIGlyph } from "@/lib/ai-glyphs";
 import d from "./demo.module.css";
 
-// A mini Mac desktop: the Amber Notes window behind, a small AI chat window on top.
-// Scripted, no network. Picking a prompt types it into the chat, the AI answers, and the
-// Groceries note updates with the new items glowing, the way the app shows AI edits.
+// A mini Mac desktop: the real Amber Notes window (captured from the app with demo data), and a
+// small AI chat window on top. Picking a prompt types it into the chat, the AI answers, and the
+// window cross-fades to the capture of the app after that change, with the app's own amber tint
+// on the lines the AI touched. Scripted, no network.
 
-type Item = { text: string; done?: boolean; isNew?: boolean };
-type Scene = { ask: string; answer: string; add: string[] };
+type Shot = "before" | "paella" | "bought" | "left";
+// Where the lines that changed sit in the 1180×720 capture (measured from the captures' own tint).
+type Band = { top: number; height: number };
+type Scene = { ask: string; answer: string; from: Shot; to: Shot; band: Band };
 
-const BASE: Item[] = [
-  { text: "Lemons" }, { text: "Coffee beans" }, { text: "Fresh basil" }, { text: "Burrata" },
-  { text: "Sourdough", done: true }, { text: "Eggs", done: true },
-];
-
+// One story, each step building on the last.
 const SCENES: Scene[] = [
-  { ask: "Add oat milk to my groceries", answer: "Done. Oat milk is on your Groceries list in Amber Notes.", add: ["Oat milk"] },
-  { ask: "Add what I need for Sunday's paella", answer: "Added paella rice, saffron, chorizo and prawns to Groceries.", add: ["Paella rice", "Saffron", "Chorizo", "Prawns"] },
-  { ask: "What's still left to buy?", answer: "Lemons, coffee beans, fresh basil and burrata. Sourdough and eggs are ticked off.", add: [] },
+  { ask: "Add what I need for Sunday's paella", answer: "Added paella rice, saffron, chorizo, chicken thighs and smoked paprika to your Groceries note.",
+    from: "before", to: "paella", band: { top: 175, height: 117 } },
+  { ask: "I got the lemons and coffee, tick them off", answer: "Done. Lemons and coffee beans are ticked off in Groceries.",
+    from: "paella", to: "bought", band: { top: 434, height: 47 } },
+  { ask: "What's still left to buy?", answer: "Eleven things: the paella rice, saffron, chorizo, chicken thighs and paprika, plus oat milk, basil, burrata, cherry tomatoes, olive oil and dark chocolate.",
+    from: "bought", to: "left", band: { top: 175, height: 259 } },
 ];
 
-const W = 1040, H = 640; // the desktop's design size; it scales down as one picture
+const ALT: Record<Shot, string> = {
+  before: "Amber Notes on a Mac, with the Groceries note open",
+  paella: "The Groceries note with paella rice, saffron, chorizo, chicken thighs and smoked paprika just added, tinted amber",
+  bought: "The Groceries note with lemons and coffee beans just ticked off, tinted amber",
+  left: "The Groceries note with the eleven things still to buy tinted amber",
+};
+
+const SHOTS: Shot[] = ["before", "paella", "bought", "left"];
 
 export default function Demo() {
   const [scene, setScene] = useState<number | null>(null);
   const [typed, setTyped] = useState("");
   const [step, setStep] = useState(0); // 0 idle · 1 typing · 2 sent · 3 thinking · 4 answered · 5 note updated
+  const [run, setRun] = useState(0); // bumps on every play, so the change marker animates again
   const timers = useRef<number[]>([]);
   const touched = useRef(false);
   const outer = useRef<HTMLDivElement>(null);
-  const [scale, setScale] = useState(1);
 
-  useLayoutEffect(() => {
-    const el = outer.current;
-    if (!el) return;
-    const measure = (w: number) => setScale(Math.min(1, w / W));
-    measure(el.clientWidth);
-    const ro = new ResizeObserver(([e]) => measure(e.contentRect.width));
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
+  const cancel = () => { timers.current.forEach(clearTimeout); timers.current = []; };
 
-  function play(i: number) {
-    timers.current.forEach(clearTimeout);
-    timers.current = [];
+  /// Plays scene i from its starting state. With `chain`, the next scenes follow.
+  function play(i: number, chain = false) {
+    cancel();
     const s = SCENES[i];
-    setScene(i);
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { setTyped(""); setStep(5); return; }
-    setStep(1); setTyped("");
-    let t = 0;
+    setScene(i); setRun((r) => r + 1); setTyped("");
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { setStep(5); return; }
+    setStep(1);
+    let t = 120;
     for (let k = 1; k <= s.ask.length; k++) {
-      t += 34;
+      t += 30;
       timers.current.push(window.setTimeout(() => setTyped(s.ask.slice(0, k)), t));
     }
     const at = (ms: number, f: () => void) => timers.current.push(window.setTimeout(f, t + ms));
     at(250, () => { setTyped(""); setStep(2); });
     at(650, () => setStep(3));
     at(1500, () => setStep(4));
-    at(1900, () => setStep(5));
+    at(1850, () => setStep(5));
+    if (chain && i + 1 < SCENES.length) at(4200, () => play(i + 1, true));
   }
 
   useEffect(() => {
     const el = outer.current;
     if (!el) return;
     const io = new IntersectionObserver(([e]) => {
-      if (e.isIntersecting && !touched.current) { play(0); io.disconnect(); }
+      if (e.isIntersecting && !touched.current) { play(0, true); io.disconnect(); }
     }, { threshold: 0.45 });
     io.observe(el);
-    return () => { io.disconnect(); timers.current.forEach(clearTimeout); };
+    return () => { io.disconnect(); cancel(); };
   }, []);
 
   const s = scene === null ? null : SCENES[scene];
-  const added = s && step >= 5 ? s.add : [];
-  const items: Item[] = [...added.map((text) => ({ text, isNew: true })), ...BASE];
-  const preview = added.length ? added.join(", ") : "For the weekend, and Sunday dinner with Sara and Jonas.";
+  const done = s !== null && step >= 5;
+  const shown: Shot = s ? (done ? s.to : s.from) : "before";
+  const replay = () => {
+    touched.current = true;
+    if (scene === null || (scene === SCENES.length - 1 && done)) play(0, true);
+    else play(scene);
+  };
 
   return (
     <div className={d.wrap}>
-      <div ref={outer} className={d.fit} style={{ height: H * scale }}>
-        <div className={d.desk} style={{ width: W, height: H, transform: `scale(${scale})` }} role="img" aria-label="A Mac with Amber Notes open and an AI chat window on top">
-          <div className={d.menubar} aria-hidden="true">
-            <AppleMark />
-            <b>Amber Notes</b><span>File</span><span>Edit</span><span>Format</span><span>View</span><span>Window</span>
-            <span className={d.clock}>Tue 29 Sep&nbsp;&nbsp;10:07</span>
-          </div>
+      <div ref={outer} className={d.fit}>
+        <div className={d.desk}>
+          <Wallpaper />
 
           <div className={d.app}>
-            <aside className={d.sidebar}>
-              <div className={d.lights}><i /><i /><i /></div>
-              <div className={d.sbHead}><img src="/mark.png" alt="" width={18} height={18} /> Amber Notes</div>
-              <div className={d.sbLabel}>Folders</div>
-              <ul className={d.folders}>
-                <li className={d.folderOn}><Folder /> Notes <em>6</em></li>
-                <li><Folder /> Ideas <em>2</em></li>
-                <li><Folder /> Travel <em>4</em></li>
-                <li><Folder /> Work <em>3</em></li>
-                <li><Trash /> Recently Deleted <em>0</em></li>
-              </ul>
-            </aside>
-            <section className={d.listCol}>
-              <div className={d.listBar}><div><b>Notes</b><small>6 notes</small></div><span className={d.dots}>•••</span></div>
-              <div className={d.sec}>Pinned</div>
-              <div className={`${d.row} ${d.rowOn}`}>
-                <b>Groceries</b>
-                <p><span>{added.length ? "Now" : "10:02"}</span> {preview}</p>
-              </div>
-              <div className={d.sec}>Today</div>
-              <div className={d.row}><b>Lisbon in May</b><p><span>09:41</span> Four days of tiles, trams and pastries.</p></div>
-              <div className={d.row}><b>Standup notes</b><p><span>08:29</span> Shipped the sync fix. Next up…</p></div>
-              <div className={d.sec}>Yesterday</div>
-              <div className={d.row}><b>Book club</b><p><span>Yesterday</span> The Remains of the Day</p></div>
-            </section>
-            <section className={d.noteCol}>
-              <div className={d.noteBar} aria-hidden="true"><Compose /><span className={d.aa}>Aa</span><Check /><Table /><Clip /><span className={d.grow} /><Share /><span className={d.search}>Search</span></div>
-              <div className={d.noteDate}>29 September 2026 at {added.length ? "10:07" : "10:02"}</div>
-              <h3 className={d.noteTitle}>Groceries</h3>
-              <p className={d.noteText}>For the weekend, and Sunday dinner with Sara and Jonas.</p>
-              <ul className={d.check}>
-                {items.map((it) => (
-                  <li key={it.text} className={`${it.done ? d.done : ""} ${it.isNew ? d.isNew : ""}`}>
-                    <span className={`${d.circle} ${it.done ? d.ticked : ""}`} />{it.text}
-                  </li>
-                ))}
-              </ul>
-              {added.length > 0 && <div className={d.synced}>Updated on your iPhone too</div>}
-            </section>
+            {SHOTS.map((k) => (
+              <img key={k} src={`/demo/app-${k}.webp`} width={1180} height={720} alt={k === shown ? ALT[k] : ""}
+                aria-hidden={k !== shown} className={d.shot} data-on={k === shown || undefined}
+                loading="eager" decoding="async" draggable={false} />
+            ))}
+            {done && s && (
+              <div key={`band${run}`} className={d.band} aria-hidden="true"
+                style={{ top: `calc(${s.band.top - 3} * var(--u))`, height: `calc(${s.band.height + 6} * var(--u))` }} />
+            )}
+            {done && s && s.to !== "left" && <div key={`sync${run}`} className={d.synced}>Updated on your iPhone too</div>}
           </div>
 
-          <div className={d.chat}>
-            <div className={d.chatBar}><div className={d.lights}><i /><i /><i /></div><span>ChatGPT</span></div>
-            <div className={d.msgs}>
-              {!s && <p className={d.hint}>Ask anything about your notes.</p>}
-              {s && step >= 2 && <div key={`q${scene}`} className={d.me}>{s.ask}</div>}
-              {s && step === 3 && <div className={d.dotsTyping}><i /><i /><i /></div>}
-              {s && step >= 4 && <div key={`a${scene}`} className={d.ai}><span className={d.tool}>Used Amber Notes</span>{s.answer}</div>}
+          <div className={d.chat} aria-label="An AI chat">
+            <div className={d.chatBar}>
+              <div className={d.lights}><i /><i /><i /></div>
+              <span className={d.chatTitle}><AIGlyph name="openai" size={16} />ChatGPT</span>
+              <button type="button" className={d.replay} onClick={replay} aria-label="Replay the demo">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2.5 8a5.5 5.5 0 1 0 1.7-4" /><path d="M2.5 2.2v2.6h2.6" /></svg>
+              </button>
             </div>
-            <div className={d.input}><span>{typed || <em>Message</em>}</span>{step === 1 && <i className={d.caret} />}<b aria-hidden="true">↑</b></div>
+            <div className={d.msgs}>
+              {!s && <p className={d.hint}>What can I help with?</p>}
+              {s && step >= 2 && <div key={`q${run}`} className={d.me}>{s.ask}</div>}
+              {s && step === 3 && <div className={d.thinking}><span className={d.tool}>Talking to Amber Notes…</span></div>}
+              {s && step >= 4 && (
+                <div key={`a${run}`} className={d.ai}>
+                  <span className={d.tool}>Used Amber Notes</span>
+                  <p>{s.answer}</p>
+                </div>
+              )}
+            </div>
+            <div className={d.input}>
+              <b className={d.plus} aria-hidden="true">+</b>
+              <span>{typed || <em>Ask anything</em>}</span>{step === 1 && <i className={d.caret} />}
+              <b className={d.send} aria-hidden="true">↑</b>
+            </div>
           </div>
         </div>
       </div>
@@ -148,17 +137,30 @@ export default function Demo() {
         ))}
       </div>
       <p className={d.psst}>Psst… it's interactive. Tap one.</p>
-      <p className={d.live} aria-live="polite">{s && step >= 5 ? s.answer : ""}</p>
+      <p className={d.live} aria-live="polite">{done && s ? s.answer : ""}</p>
     </div>
   );
 }
 
-const ic = { fill: "none", stroke: "currentColor", strokeWidth: 1.5, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
-function Folder() { return <svg width="17" height="14" viewBox="0 0 17 14" {...ic}><path d="M1.5 3.5a1.5 1.5 0 0 1 1.5-1.5h3.2l1.5 1.6H14a1.5 1.5 0 0 1 1.5 1.5v6.4A1.5 1.5 0 0 1 14 13H3a1.5 1.5 0 0 1-1.5-1.5Z" /></svg>; }
-function Trash() { return <svg width="17" height="15" viewBox="0 0 17 15" {...ic}><path d="M3 4h11M6.5 4V2.5h4V4M4.5 4l.7 9.5h6.6l.7-9.5" /></svg>; }
-function Compose() { return <svg width="18" height="18" viewBox="0 0 18 18" {...ic}><path d="M8 3H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-4M13.5 2.5l2 2L9 11l-2.6.6L7 9Z" /></svg>; }
-function Check() { return <svg width="20" height="18" viewBox="0 0 20 18" {...ic}><circle cx="4" cy="5" r="2.2" /><circle cx="4" cy="13" r="2.2" /><path d="M9 5h9M9 13h9" /></svg>; }
-function Table() { return <svg width="19" height="16" viewBox="0 0 19 16" {...ic}><rect x="1.5" y="1.5" width="16" height="13" rx="2" /><path d="M1.5 6h16M1.5 10.5h16M7 1.5v13" /></svg>; }
-function Clip() { return <svg width="16" height="18" viewBox="0 0 16 18" {...ic}><path d="M13 8.5 7.8 13.7a3.2 3.2 0 0 1-4.5-4.5L9 3.5a2.1 2.1 0 0 1 3 3l-5.6 5.6a1 1 0 0 1-1.5-1.5l5-5" /></svg>; }
-function Share() { return <svg width="16" height="18" viewBox="0 0 16 18" {...ic}><path d="M5 6H3.5A1.5 1.5 0 0 0 2 7.5v8A1.5 1.5 0 0 0 3.5 17h9a1.5 1.5 0 0 0 1.5-1.5v-8A1.5 1.5 0 0 0 12.5 6H11M8 1v10M5 4l3-3 3 3" /></svg>; }
-function AppleMark() { return <svg width="12" height="14" viewBox="0 0 15 18" fill="currentColor" aria-hidden="true"><path d="M12.3 9.6c0-2.2 1.8-3.3 1.9-3.4-1-1.5-2.6-1.7-3.2-1.7-1.4-.1-2.7.8-3.4.8-.7 0-1.8-.8-2.9-.8C3.2 4.6 1.8 5.4 1 6.8c-1.6 2.8-.4 6.9 1.1 9.1.8 1.1 1.7 2.3 2.8 2.3 1.1 0 1.6-.7 2.9-.7 1.4 0 1.7.7 2.9.7 1.2 0 2-1.1 2.7-2.2.9-1.3 1.2-2.5 1.2-2.6 0 0-2.3-.9-2.3-3.8zM10.1 3c.6-.7 1-1.7.9-2.7-.9 0-1.9.6-2.5 1.3-.6.6-1.1 1.6-.9 2.6.9.1 1.9-.5 2.5-1.2z" /></svg>; }
+/// A generated, warm, macOS-like wallpaper (no photo, nothing of Apple's).
+function Wallpaper() {
+  return (
+    <svg className={d.wall} viewBox="0 0 1280 840" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <defs>
+        <linearGradient id="d0" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#fde7c4" /><stop offset=".55" stopColor="#f9c98a" /><stop offset="1" stopColor="#e7964a" /></linearGradient>
+        <radialGradient id="d1" cx="78%" cy="18%" r="40%"><stop offset="0" stopColor="#fff6e2" /><stop offset="1" stopColor="#fff6e2" stopOpacity="0" /></radialGradient>
+        <linearGradient id="d2" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stopColor="#f4b36a" /><stop offset="1" stopColor="#e98a3c" /></linearGradient>
+        <linearGradient id="d3" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#e27f35" /><stop offset="1" stopColor="#b9551f" /></linearGradient>
+        <linearGradient id="d4" x1="1" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#c7612a" /><stop offset="1" stopColor="#8a3a14" /></linearGradient>
+        <filter id="db"><feGaussianBlur stdDeviation="6" /></filter>
+      </defs>
+      <rect width="1280" height="840" fill="url(#d0)" />
+      <rect width="1280" height="840" fill="url(#d1)" />
+      <g filter="url(#db)">
+        <path d="M-40 470C160 400 360 380 560 420s420 60 760-40v500H-40Z" fill="url(#d2)" opacity=".85" />
+        <path d="M-40 590c240-110 500-140 760-70s380 50 600-50v420H-40Z" fill="url(#d3)" opacity=".9" />
+        <path d="M-40 730c260-80 520-90 780-30s360 20 580-40v220H-40Z" fill="url(#d4)" />
+      </g>
+    </svg>
+  );
+}

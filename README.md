@@ -1,22 +1,15 @@
-<p align="center"><img src="brand/notes-icons/final-mark.png" width="96" alt=""></p>
+# Amber Notes
 
-<h1 align="center">Amber Notes</h1>
+Apple Notes clone with MCP support, Markdown support, and more.
 
-<p align="center">Apple Notes clone with MCP support, Markdown support, and more.</p>
+The notes app your AI can actually use: as simple as Apple Notes, and ChatGPT, Claude, Claude Code and Codex can read and edit it through MCP, with your approval.
 
-<p align="center">For iPhone and Mac. Notes are stored as markdown, sync through Supabase, and your AI assistant can read and edit them when you allow it.</p>
-
-<p align="center">
-  <a href="https://amber-notes.vercel.app/download">Download for Mac</a> ·
-  App Store (in review) ·
-  <a href="docs/RELEASING.md">Releasing</a> ·
-  <a href="CONTRIBUTING.md">Contributing</a>
-</p>
+[Download for Mac](https://amber-notes.vercel.app/download) · App Store (coming soon) · [Website](https://amber-notes.vercel.app)
 
 <p align="center">
-  <img src="docs/images/iphone-lisbon.png" width="240" alt="A trip note with a checklist, a dashed list, a sub-note and a table">
-  <img src="docs/images/iphone-checklist.png" width="240" alt="A grocery checklist with ticked items at the bottom">
-  <img src="docs/images/iphone-list-dark.png" width="240" alt="The note list in dark mode">
+  <img src="docs/images/light-3-groceries.jpg" width="240" alt="A grocery checklist in Amber Notes">
+  <img src="docs/images/light-2-lisbon.jpg" width="240" alt="A trip plan with a checklist and a table">
+  <img src="docs/images/light-1-list.jpg" width="240" alt="The note list">
 </p>
 
 ## What it does
