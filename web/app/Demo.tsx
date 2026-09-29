@@ -56,9 +56,10 @@ const PART_AT = [0, BEATS[0].answer, BEATS[1].typeAt, BEATS[1].answer, TOTAL];
 
 type View = {
   chat: boolean; shot: Shot; typed: string; sent: number; thinking: boolean; answered: number; pill: number; pillOut: boolean; edit: boolean; reset: boolean;
+  aside: boolean; // the chat steps aside so the whole note shows while an edit lands
 };
 function at(t: number): View {
-  const v: View = { chat: t >= ALONE, shot: "before", typed: "", sent: 0, thinking: false, answered: 0, pill: -1, pillOut: false, edit: false, reset: false };
+  const v: View = { chat: t >= ALONE, shot: "before", typed: "", sent: 0, thinking: false, answered: 0, pill: -1, pillOut: false, edit: false, reset: false, aside: false };
   if (t >= TOTAL) return { ...v, chat: false, reset: true, shot: "before" };
   ASKS.forEach((a, k) => {
     const b = BEATS[k];
@@ -66,7 +67,7 @@ function at(t: number): View {
     if (t >= b.typed + SENT) v.sent = k + 1;
     if (t >= b.typed + THINK && t < b.answer) v.thinking = true;
     if (t >= b.answer) v.answered = k + 1;
-    if (t >= b.land) { v.shot = t >= b.faded ? a.plain : a.land; v.edit = t < b.faded; }
+    if (t >= b.land) { v.shot = t >= b.faded ? a.plain : a.land; v.edit = t < b.faded; v.aside = k === ASKS.length - 1 || t < BEATS[k + 1].typeAt; }
     if (t >= b.land + PILL && t < b.faded + 400) { v.pill = k; v.pillOut = t >= b.faded; }
   });
   return v;
@@ -191,7 +192,7 @@ export default function Demo() {
             )}
           </div>
 
-          <div className={d.chat} data-away={!view.chat || undefined} data-dim={view.edit || undefined} aria-label="An AI chat">
+          <div className={d.chat} data-away={!view.chat || undefined} data-aside={(view.aside && view.chat) || undefined} aria-label="An AI chat">
             <div className={d.chatBar}>
               <div className={d.lights}><i /><i /><i /></div>
               <span className={d.chatTitle}><AIGlyph name="openai" size={16} />ChatGPT</span>
