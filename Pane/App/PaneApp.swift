@@ -36,6 +36,9 @@ struct PaneApp: App {
             : backend.client.map { SupabaseHistoryStore(client: $0) } ?? EmptyHistoryStore()
         NoteHistory.shared = NoteHistory(store: historyStore, context: context, sync: backend.client == nil ? nil : sync)
         Capture.scheduleFromArguments(container.mainContext)
+        #if os(macOS)
+        Capture.demoSequenceFromArguments(container.mainContext)
+        #endif
     }
 
     /// Test runs can pin an appearance: `-uitest -scheme light`. Otherwise the system decides.
