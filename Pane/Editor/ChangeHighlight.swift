@@ -33,6 +33,8 @@ final class ChangeTint: @unchecked Sendable {
 
     /// Offscreen Mac recordings stretch time, so slow frame grabs still catch every step.
     nonisolated(unsafe) static var slowMotion: Double = 1
+    /// Captures: the tint and the receipt stay at rest until `Capture.clearAIMarks` is posted.
+    nonisolated(unsafe) static var holdForCapture = false
 
     /// How strongly to tint the paragraph starting at `offset`: 0 for not at all.
     func strength(at offset: Int) -> CGFloat {
@@ -55,6 +57,7 @@ final class ChangeTint: @unchecked Sendable {
             guard await animate(to: 1.5, over: 0.3, easeOut, run: mine, lit: lit),
                   await animate(to: 1, over: 0.5, easeInOut, run: mine, lit: lit) else { return }
             try? await Task.sleep(for: .seconds(hold * Self.slowMotion))
+            while Self.holdForCapture, mine == run { try? await Task.sleep(for: .seconds(0.1)) }
             guard await animate(to: 0, over: 1.6, easeInOut, run: mine, lit: lit) else { return }
             ranges = []
         }

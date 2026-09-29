@@ -712,6 +712,8 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
         core.layoutDelegate.tint.play(from: previous, to: currentText)
     }
 
+    func clearTint() { core.layoutDelegate.tint.stop() }
+
     /// Lays the text out from the top to past `offset`, then places tables and cards again.
     private func settleOverlays(after offset: Int) {
         guard let tlm = textLayoutManager, let tcm = tlm.textContentManager else { return }
@@ -1212,6 +1214,8 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
     func tintChanges(from previous: String) {
         core.layoutDelegate.tint.play(from: previous, to: currentText)
     }
+
+    func clearTint() { core.layoutDelegate.tint.stop() }
 
     /// Lays the text out from the top to past `offset`, then places tables and cards again.
     private func settleOverlays(after offset: Int) {

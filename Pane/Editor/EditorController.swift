@@ -67,6 +67,7 @@ final class EditorController {
 
     /// An AI's edit landed on the open note: tint what it changed.
     func tintChanges(from previous: String) { target?.tintChanges(from: previous) }
+    func clearTint() { target?.clearTint() }
 
     func bold() { perform { ListEditing.wrap(in: $0, selection: $1, with: "**") } }
     func italic() { perform { ListEditing.wrap(in: $0, selection: $1, with: "*") } }
@@ -115,4 +116,6 @@ protocol EditorTarget: AnyObject {
     func leaveGrid(_ index: Int, below: Bool)
     /// Tints the lines an AI just changed compared with `previous`, then fades them.
     func tintChanges(from previous: String)
+    /// Clears that tint at once.
+    func clearTint()
 }
