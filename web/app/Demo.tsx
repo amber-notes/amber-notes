@@ -10,18 +10,16 @@ import d from "./demo.module.css";
 // on the lines the AI touched. Scripted, no network.
 
 type Shot = "before" | "paella" | "bought" | "left";
-// Where the lines that changed sit in the 1180×720 capture (measured from the captures' own tint).
-type Band = { top: number; height: number };
-type Scene = { ask: string; answer: string; from: Shot; to: Shot; band: Band };
+type Scene = { ask: string; answer: string; from: Shot; to: Shot };
 
 // One story, each step building on the last.
 const SCENES: Scene[] = [
   { ask: "Add what I need for Sunday's paella", answer: "Added paella rice, saffron, chorizo, chicken thighs and smoked paprika to your Groceries note.",
-    from: "before", to: "paella", band: { top: 175, height: 117 } },
+    from: "before", to: "paella" },
   { ask: "I got the lemons and coffee, tick them off", answer: "Done. Lemons and coffee beans are ticked off in Groceries.",
-    from: "paella", to: "bought", band: { top: 434, height: 47 } },
+    from: "paella", to: "bought" },
   { ask: "What's still left to buy?", answer: "Eleven things: the paella rice, saffron, chorizo, chicken thighs and paprika, plus oat milk, basil, burrata, cherry tomatoes, olive oil and dark chocolate.",
-    from: "bought", to: "left", band: { top: 175, height: 259 } },
+    from: "bought", to: "left" },
 ];
 
 const ALT: Record<Shot, string> = {
@@ -37,7 +35,7 @@ export default function Demo() {
   const [scene, setScene] = useState<number | null>(null);
   const [typed, setTyped] = useState("");
   const [step, setStep] = useState(0); // 0 idle · 1 typing · 2 sent · 3 thinking · 4 answered · 5 note updated
-  const [run, setRun] = useState(0); // bumps on every play, so the change marker animates again
+  const [run, setRun] = useState(0); // bumps on every play, so the chat and sync note animate again
   const timers = useRef<number[]>([]);
   const touched = useRef(false);
   const outer = useRef<HTMLDivElement>(null);
@@ -95,10 +93,6 @@ export default function Demo() {
                 aria-hidden={k !== shown} className={d.shot} data-on={k === shown || undefined}
                 loading="eager" decoding="async" draggable={false} />
             ))}
-            {done && s && (
-              <div key={`band${run}`} className={d.band} aria-hidden="true"
-                style={{ top: `calc(${s.band.top - 3} * var(--u))`, height: `calc(${s.band.height + 6} * var(--u))` }} />
-            )}
             {done && s && s.to !== "left" && <div key={`sync${run}`} className={d.synced}>Updated on your iPhone too</div>}
           </div>
 
@@ -106,9 +100,6 @@ export default function Demo() {
             <div className={d.chatBar}>
               <div className={d.lights}><i /><i /><i /></div>
               <span className={d.chatTitle}><AIGlyph name="openai" size={16} />ChatGPT</span>
-              <button type="button" className={d.replay} onClick={replay} aria-label="Replay the demo">
-                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2.5 8a5.5 5.5 0 1 0 1.7-4" /><path d="M2.5 2.2v2.6h2.6" /></svg>
-              </button>
             </div>
             <div className={d.msgs}>
               {!s && <p className={d.hint}>What can I help with?</p>}
@@ -135,8 +126,12 @@ export default function Demo() {
           <button key={sc.ask} type="button" className={d.pick} aria-pressed={scene === i}
             onClick={() => { touched.current = true; play(i); }}>{sc.ask}</button>
         ))}
+        <button type="button" className={`${d.pick} ${d.replayPill}`} onClick={replay} aria-label="Replay the demo">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2.5 8a5.5 5.5 0 1 0 1.7-4" /><path d="M2.5 2.2v2.6h2.6" /></svg>
+          Replay
+        </button>
       </div>
-      <p className={d.psst}>Psst… it's interactive. Tap one.</p>
+      <p className={d.psst}>Psst… it's interactive. Ask it something.</p>
       <p className={d.live} aria-live="polite">{done && s ? s.answer : ""}</p>
     </div>
   );

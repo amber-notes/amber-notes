@@ -29,13 +29,12 @@ const FEATURES: { icon: keyof typeof ICONS; title: string; line: string }[] = [
   { icon: "shield", title: "No ads, no tracking", line: "Free and open source. Nothing is sold." },
 ];
 
-// The hints are what the app's own Settings → Connect an AI steps tell you to do.
-const AIS: { name: string; glyph?: "openai" | "claude"; color: string; hint: string }[] = [
-  { name: "ChatGPT", glyph: "openai", color: "#0d0d0d", hint: "Apps → Create app" },
-  { name: "Claude", glyph: "claude", color: "#d97757", hint: "Connectors → Add custom" },
-  { name: "Claude Code", glyph: "claude", color: "#d97757", hint: "claude mcp add amber-notes" },
-  { name: "Codex", glyph: "openai", color: "#0d0d0d", hint: "~/.codex/config.toml" },
-  { name: "Any MCP app", color: "#a85700", hint: "Streamable HTTP + OAuth" },
+const AIS: { name: string; glyph?: "openai" | "claude"; color: string }[] = [
+  { name: "ChatGPT", glyph: "openai", color: "#0d0d0d" },
+  { name: "Claude", glyph: "claude", color: "#d97757" },
+  { name: "Claude Code", glyph: "claude", color: "#d97757" },
+  { name: "Codex", glyph: "openai", color: "#0d0d0d" },
+  { name: "Any MCP app", color: "#a85700" },
 ];
 
 function Check() {
@@ -112,14 +111,13 @@ export default function Home() {
             Connect ChatGPT, Claude, Claude Code, Codex or any app that supports MCP. You approve each one, and you can disconnect it anytime.
           </p>
         </div>
-        <ul className={styles.strip} aria-label="How each app connects">
+        <ul className={styles.strip} aria-label="Works with">
           {AIS.map((a) => (
             <li key={a.name}>
               <span className={styles.stripMark} style={{ color: a.color }}>
                 {a.glyph ? <AIGlyph name={a.glyph} size={22} /> : <span className={styles.aiAny}>MCP</span>}
               </span>
               <strong>{a.name}</strong>
-              <code>{a.hint}</code>
             </li>
           ))}
         </ul>
