@@ -6,7 +6,11 @@ The notes app your AI can actually use: as simple as Apple Notes, and ChatGPT, C
 
 [Download for Mac](https://amber-notes.vercel.app/download) · App Store (coming soon) · [Website](https://amber-notes.vercel.app)
 
-![A grocery checklist in Amber Notes](docs/images/hero-groceries.jpg)
+<p align="center">
+  <img src="docs/images/light-3-groceries.jpg" width="240" alt="A grocery checklist in Amber Notes">
+  <img src="docs/images/light-2-lisbon.jpg" width="240" alt="A trip plan with a checklist and a table">
+  <img src="docs/images/light-1-list.jpg" width="240" alt="The note list">
+</p>
 
 ## What it does
 
