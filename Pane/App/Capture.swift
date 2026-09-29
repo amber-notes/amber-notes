@@ -5,6 +5,9 @@ import SwiftUI
 /// sync had just brought it.
 ///   `-aiEdit Groceries -aiScene paella -aiBy ChatGPT -aiAfter 2.5`
 enum Capture {
+    /// Captures: the held "landed" moment (tint and receipt) is over.
+    static let clearAIMarks = Notification.Name("pane.captureClearAIMarks")
+
     static func argument(_ name: String) -> String? {
         let args = ProcessInfo.processInfo.arguments
         guard let i = args.firstIndex(of: name), i + 1 < args.count else { return nil }
@@ -199,7 +202,6 @@ extension Capture {
         await wait(1.0)
     }
 
-    static let clearAIMarks = Notification.Name("pane.captureClearAIMarks")
 }
 
 /// The website demo, captured from a real front window (so it looks focused):
