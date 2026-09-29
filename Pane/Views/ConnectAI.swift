@@ -47,6 +47,14 @@ enum ConnectTrust {
     static func isKnown(host: String, loopback: Bool) -> Bool {
         loopback ? false : knownHosts.keys.contains { host == $0 || host.hasSuffix("." + $0) }
     }
+
+    /// The AI whose mark the consent sheet may show: decided only by where the approval is sent
+    /// (the server reads it from the request's redirect address), never by the name a client
+    /// registered. Anyone can call themselves "ChatGPT"; only ChatGPT receives answers at chatgpt.com.
+    static func verifiedAI(host: String, loopback: Bool) -> String? {
+        guard !loopback else { return nil }
+        return knownHosts.first { host == $0.key || host.hasSuffix("." + $0.key) }?.value
+    }
 }
 
 enum ConnectSnippets {
@@ -235,7 +243,7 @@ struct ConsentSheet: View {
 
     var body: some View {
         VStack(spacing: 20) {
-            AppMark(size: 56)
+            header
             content
         }
         .padding(28)
@@ -246,6 +254,35 @@ struct ConsentSheet: View {
         #endif
         .task { if phase == .loading { await load() } }
         .animation(.smooth(duration: 0.25), value: phase)
+    }
+
+    /// Who's asking, and for what: the AI's mark (only when its address proves it), a link, our icon.
+    @ViewBuilder
+    private var header: some View {
+        if case .asking(let r) = phase {
+            let ai = ConnectTrust.verifiedAI(host: r.redirect_host, loopback: r.loopback)
+            HStack(spacing: 14) {
+                if let ai {
+                    AITile(ai: ai, size: 56)
+                } else {
+                    // An app we can't vouch for: a plain glyph, never a borrowed mark.
+                    Image(systemName: r.loopback ? "desktopcomputer" : "globe")
+                        .font(.system(size: 24, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 56, height: 56)
+                        .background(.fill.tertiary, in: .rect(cornerRadius: 56 * 0.3, style: .continuous))
+                }
+                Image(systemName: "link")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(.tertiary)
+                AppMark(size: 56)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(ai.map { "\($0) and Amber Notes" } ?? "An app and Amber Notes")
+            .accessibilityIdentifier(ai == nil ? "connect.header.unknown" : "connect.header.\(ai!)")
+        } else {
+            AppMark(size: 56)
+        }
     }
 
     @ViewBuilder

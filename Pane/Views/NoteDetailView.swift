@@ -35,6 +35,11 @@ struct NoteDetailView: View {
             .overlay(alignment: .bottom) { aiReceipt }
             .overlay(alignment: .bottom) { undoProblem }
             .onChange(of: note.aiEditedAt) { _, _ in showAIEdit() }
+            // Captures: the "landed" moment is over.
+            .onReceive(NotificationCenter.default.publisher(for: Capture.clearAIMarks)) { _ in
+                withAnimation(.easeIn(duration: 0.2)) { receipt = nil }
+                controller.clearTint()
+            }
             .task(id: note.id) { receipt = nil; showAIEdit() }
     }
 
@@ -82,6 +87,7 @@ struct NoteDetailView: View {
             controller.tintChanges(from: r.previous)
             withAnimation(.spring(duration: 0.45 * slow, bounce: 0.25)) { receipt = r }
             try? await Task.sleep(for: .seconds(5.5 * slow))
+            while ChangeTint.holdForCapture, receipt == r { try? await Task.sleep(for: .seconds(0.1)) }
             guard receipt == r else { return }
             withAnimation(.easeIn(duration: 0.2 * slow)) { receipt = nil }
         }

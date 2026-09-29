@@ -342,7 +342,9 @@ import Testing
         AppleNotesBridge.forceDemo = true
         AppleNotesBridge.forceLarge = true
         DateBucket.locale = Locale(identifier: "en_US")
-        defer { AppleNotesBridge.forceDemo = false; AppleNotesBridge.forceLarge = false; DateBucket.locale = .autoupdatingCurrent }
+        // `AMBER_SHEET_HEIGHT`: a shorter sheet, so the Import button sits higher.
+        if let h = ProcessInfo.processInfo.environment["AMBER_SHEET_HEIGHT"].flatMap(Double.init) { AppleNotesImportView.height = h }
+        defer { AppleNotesBridge.forceDemo = false; AppleNotesBridge.forceLarge = false; DateBucket.locale = .autoupdatingCurrent; AppleNotesImportView.height = 640 }
         for dark in [false, true] {
             let c = try AppSnapshotTests.container()
             // Over the app itself, in a window just big enough to frame the sheet.
@@ -371,6 +373,62 @@ import Testing
             NotificationCenter.default.post(name: Capture.importHalfway, object: nil)
             try? await Task.sleep(for: .seconds(0.8))
             try await shoot("import-progress-\(look)")
+        }
+    }
+
+    /// The tint at a few strengths, light and dark, for choosing one.
+    @Test func tintStrengths() async throws {
+        guard Self.dir != nil else { return }
+        defer { DecoratedLayoutFragment.tintAmount = 0.24 }
+        for amount in [0.18, 0.24, 0.28] {
+            DecoratedLayoutFragment.tintAmount = CGFloat(amount)
+            for dark in [false, true] {
+                let c = try AppSnapshotTests.container()
+                try await AppSnapshotTests.withLastNote(c, "Groceries") {
+                    let w = Self.window(Self.root(c), size: CGSize(width: 1180, height: 720), dark: dark)
+                    defer { w.orderOut(nil); w.close() }
+                    try? await Task.sleep(for: .seconds(1.2))
+                    Capture.aiEdit(c.mainContext, title: "Groceries", scene: "paella", by: "ChatGPT")
+                    try? await Task.sleep(for: .seconds(1.6))
+                    try Self.snap(w, "tint-\(Int(amount * 100))-\(dark ? "dark" : "light")")
+                }
+            }
+        }
+    }
+
+    /// The Lisbon story, offscreen, to check the layout before a foreground run.
+    @Test func lisbonPreview() async throws {
+        guard Self.dir != nil else { return }
+        let c = try AppSnapshotTests.container()
+        try await AppSnapshotTests.withLastNote(c, "Groceries") {
+            let w = Self.window(Self.root(c), size: CGSize(width: 1180, height: 720))
+            defer { w.orderOut(nil); w.close() }
+            try? await Task.sleep(for: .seconds(1))
+            if let split = Self.splitView(in: w.contentView) { split.setPosition(208, ofDividerAt: 0); split.setPosition(468, ofDividerAt: 1) }
+            await Capture.lisbonStory(c.mainContext, k: 1) { name in try? Self.snap(w, "preview-\(name)") }
+        }
+    }
+
+    /// The receipt pills on their own, transparent, for the website.
+    @Test func receiptPills() async throws {
+        guard let dir = ProcessInfo.processInfo.environment["AMBER_DEMO_FRAMES"].map({ URL(fileURLWithPath: $0) }) else { return }
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        for (name, lines, created) in [("pill-chatgpt-wrote-note", 14, true), ("pill-chatgpt-2-lines", 2, false)] {
+            let r = AIEdit.Receipt(noteID: UUID(), by: "ChatGPT", at: .now, previous: "", lines: lines, created: created)
+            let host = NSHostingView(rootView: AIReceipt(receipt: r, undo: {}).padding(24).fixedSize())
+            host.appearance = NSAppearance(named: .aqua)
+            let win = NSWindow(contentRect: CGRect(x: -30000, y: -30000, width: 500, height: 100), styleMask: [.borderless], backing: .buffered, defer: false)
+            win.isReleasedWhenClosed = false
+            win.isOpaque = false
+            win.backgroundColor = .clear
+            win.contentView = host
+            host.frame = CGRect(origin: .zero, size: host.fittingSize)
+            win.setContentSize(host.fittingSize)
+            try? await Task.sleep(for: .seconds(0.4))
+            defer { win.close() }
+            let rep = try #require(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+            host.cacheDisplay(in: host.bounds, to: rep)
+            try #require(rep.representation(using: .png, properties: [:])).write(to: dir.appending(path: "\(name)@2x.png"))
         }
     }
 

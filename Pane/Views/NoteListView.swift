@@ -520,7 +520,7 @@ struct NoteRow: View {
                 if let ai {
                     HStack(spacing: 4) {
                         AIGlyph(ai: ai, size: 11)
-                        Text("Edited by \(ai)")
+                        Text(AIEdit.wroteIt(note) ? "Written by \(ai)" : "Edited by \(ai)")
                     }
                     .foregroundStyle(Color.amberInk)
                     .lineLimit(1)

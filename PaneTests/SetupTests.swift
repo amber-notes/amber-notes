@@ -165,3 +165,24 @@ private final class FakeSetup: SetupService, @unchecked Sendable {
     }
 }
 #endif
+
+/// Where the notes live, said in the app.
+@Suite struct SyncWordingTests {
+    @Test func settingsSaysItSyncsAndWhen() {
+        let now = Date(timeIntervalSince1970: 1_790_000_000)
+        #expect(SyncStatusLabel.when(now.addingTimeInterval(-20), now: now) == "just now")
+        #expect(SyncStatusLabel.when(now.addingTimeInterval(-600), now: now).hasPrefix("last synced "))
+    }
+}
+
+#if os(macOS)
+extension AIEditSnapshots {
+    /// The Settings sync line, as it reads once synced.
+    @Test func syncStatusLine() async throws {
+        guard AppSnapshotTests.dir != nil else { return }
+        let form = Form { LabeledContent("Sync") { SyncStatusLabel(status: .synced(.now.addingTimeInterval(-300))) } }
+            .formStyle(.grouped).frame(width: 520)
+        try await AppSnapshotTests.render(form, name: "settings-sync-line", dark: false)
+    }
+}
+#endif

@@ -1,4 +1,5 @@
 import Foundation
+import SwiftData
 import Testing
 @testable import Pane
 
@@ -32,6 +33,13 @@ import Testing
         let ranges = ChangeTint.paragraphRanges(changedFrom: old, to: new)
         #expect(ranges == [NSRange(location: 28, length: 14)])
         #expect((new as NSString).substring(with: ranges[0]) == "- [ ] Oat milk")
+    }
+
+    @Test func aChangedTableRowTintsTheWholeTable() {
+        let old = "Food\n| Place | Dish |\n| --- | --- |\n| Ramiro | Seafood |\nAfter"
+        let new = "Food\n| Place | Dish |\n| --- | --- |\n| Ramiro | Seafood |\n| Trindade | Steak |\nAfter"
+        #expect(ChangeTint.changedLines(from: old, to: new) == [4], "one line changed")
+        #expect(ChangeTint.paragraphRanges(changedFrom: old, to: new).count == 4, "the grid's four lines are tinted")
     }
 
     @Test func paragraphRangesIncludeTheirNewline() {
@@ -76,6 +84,32 @@ import Testing
         let n = Self.note("")
         Self.arrive(n, body: "Made by an AI last week", quiet: true)
         #expect(!AIEdit.isUnseen(n))
+    }
+
+    @Test func aNoteAnAIWroteSaysSoAndTintsEveryLine() throws {
+        let n = Self.note("Lisbon, 4 days in May\n\nTiles, trams and pastries.\n\n- [ ] Day 1 Alfama")
+        n.aiEditor = "ChatGPT"
+        n.aiEditedAt = .now
+        AIEdit.arrived(n, previousBody: nil, previousEditAt: nil, quiet: false)
+        #expect(AIEdit.isUnseen(n))
+        let r = try #require(AIEdit.markSeen(n))
+        #expect(r.created)
+        #expect(r.summary == "ChatGPT wrote this note")
+        #expect(r.lines == 3, "every line but the blank ones")
+        #expect(ChangeTint.paragraphRanges(changedFrom: r.previous, to: n.body).count == 3)
+    }
+
+    @Test func undoingANoteAnAIWroteMovesItToRecentlyDeleted() async throws {
+        let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let n = c.mainContext.createNote(in: .all, body: "Packing\n\n- Passport")
+        n.aiEditor = "Claude"
+        n.aiEditedAt = .now
+        AIEdit.arrived(n, previousBody: nil, previousEditAt: nil, quiet: false)
+        let r = try #require(AIEdit.markSeen(n))
+        try await AIEdit.undo(r, on: n)
+        #expect(n.trashedAt != nil)
+        #expect(n.body == "Packing\n\n- Passport", "the text stays, in Recently Deleted")
+        _ = c
     }
 
     @Test func theReceiptKnowsTheVersionBeforeTheEdit() throws {
@@ -194,6 +228,44 @@ import Testing
     @Test func receiptOnlyFadesWithReduceMotion() {
         #expect(AIReceipt.slides(reduceMotion: false))
         #expect(!AIReceipt.slides(reduceMotion: true))
+    }
+}
+#endif
+
+#if os(macOS)
+/// A table row arriving from elsewhere keeps the grid over its own lines.
+@MainActor @Suite(.serialized) struct IncomingTableEditTests {
+    @Test func aRowAddedFromElsewhereKeepsTheGridUnderItsHeading() async throws {
+        let h = await EditorHarness(Capture.lisbonNote, focus: false)
+        defer { h.close() }
+        await h.settle(0.5)
+        func gridTop() -> CGFloat? { h.overlays.map(\.frame.minY).min() }
+        let heading = (h.text as NSString).range(of: "## Where to eat")
+        let headingRect = h.lineRect(at: heading.location)
+        let before = try #require(gridTop())
+        #expect(before > headingRect.maxY - 1, "the grid starts below its heading")
+        h.view.syncExternal(Capture.lisbonEdit(h.text))
+        await h.settle(0.8)
+        let after = try #require(gridTop())
+        let headingAfter = h.lineRect(at: (h.text as NSString).range(of: "## Where to eat").location)
+        #expect(after > headingAfter.maxY - 1, "still below its heading after the edit (\(after) vs \(headingAfter.maxY))")
+        #expect(abs(after - before) < 1)
+    }
+
+    @Test func tintingTheTableKeepsTheGridInPlace() async throws {
+        let h = await EditorHarness(Capture.lisbonNote, focus: false)
+        defer { h.close() }
+        await h.settle(0.5)
+        let old = h.text
+        h.view.syncExternal(Capture.lisbonEdit(old))
+        await h.settle(0.3)
+        let before = try #require(h.overlays.map(\.frame.minY).min())
+        h.view.tintChanges(from: old)
+        await h.settle(1.2)
+        let during = try #require(h.overlays.map(\.frame.minY).min())
+        let heading = h.lineRect(at: (h.text as NSString).range(of: "## Where to eat").location)
+        #expect(during > heading.maxY - 1, "the grid stays below its heading while tinted (\(during) vs \(heading.maxY))")
+        #expect(abs(during - before) < 1)
     }
 }
 #endif
