@@ -44,6 +44,10 @@ struct RootView: View {
         } content: {
             NoteListView(scope: scope ?? .all, selection: $selection, onNewNote: newNote)
                 .navigationSplitViewColumnWidth(min: 260, ideal: 310, max: 420)
+                #if os(iOS)
+                // Each visit to a folder starts at the top with its large title, as in Notes.
+                .id(scope)
+                #endif
         } detail: {
             detail
                 #if os(macOS)
