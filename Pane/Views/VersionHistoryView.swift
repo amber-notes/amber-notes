@@ -175,6 +175,7 @@ struct VersionAuthorMark: View {
 
     /// The AIs' marks, as on the website and in Connect an AI.
     static func asset(_ name: String) -> String? {
+        guard !AIGlyph.storeSafe else { return nil }
         let n = name.lowercased()
         if n.contains("chatgpt") || n.contains("openai") || n.contains("codex") { return "AIGlyphOpenAI" }
         if n.contains("claude") { return "AIGlyphClaude" }
