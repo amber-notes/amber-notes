@@ -42,6 +42,7 @@ struct PaneApp: App {
                 UnitTestHostView()
             } else {
                 AppGate(backend: backend, sync: sync)
+                    .connectHandler(backend: backend)
                     .tint(Color(PColor.paneAccent))
                     .preferredColorScheme(Self.testScheme)
             }
