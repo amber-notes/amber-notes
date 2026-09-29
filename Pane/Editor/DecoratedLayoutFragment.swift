@@ -19,11 +19,11 @@ final class DecoratedLayoutFragment: NSTextLayoutFragment {
         return max(w - pad * 2, layoutFragmentFrame.width)
     }
 
-    /// 18% amber over the page (scaled by `strength` while a live tint comes and goes), as an
+    /// 24% amber over the page (scaled by `strength` while a live tint comes and goes), as an
     /// opaque colour: neighbouring lines may overlap by a pixel, and a translucent fill would show
     /// that as a darker seam. The accent bar blends from the page to full amber the same way.
     /// How much amber the changed lines take over the page.
-    nonisolated(unsafe) static var tintAmount: CGFloat = 0.18
+    nonisolated(unsafe) static var tintAmount: CGFloat = 0.24
 
     private static func changeColors(_ strength: CGFloat) -> (tint: CGColor, bar: CGColor) {
         #if os(iOS)

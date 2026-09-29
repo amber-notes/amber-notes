@@ -377,7 +377,7 @@ import Testing
     /// The tint at a few strengths, light and dark, for choosing one.
     @Test func tintStrengths() async throws {
         guard Self.dir != nil else { return }
-        defer { DecoratedLayoutFragment.tintAmount = 0.18 }
+        defer { DecoratedLayoutFragment.tintAmount = 0.24 }
         for amount in [0.18, 0.24, 0.28] {
             DecoratedLayoutFragment.tintAmount = CGFloat(amount)
             for dark in [false, true] {
