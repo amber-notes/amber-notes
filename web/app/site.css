@@ -23,7 +23,7 @@ html[data-theme] ::selection { background: var(--mark); }
 }
 
 .site { min-height: 100dvh; display: flex; flex-direction: column; }
-.site-main { flex: 1; width: 100%; }
+.site-main { flex: 1; width: 100%; overflow-x: clip; } /* the full-width ending band is 100vw; never a sideways scroll */
 
 /* Header: identical on every page. Only its colours follow the theme. */
 .site-header {

@@ -1,145 +1,242 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AIGlyph } from "@/lib/ai-glyphs";
 import d from "./demo.module.css";
 
-// A mini Mac desktop: the real Amber Notes window (captured from the app with demo data), and a
-// small AI chat window on top. The three scenes play through on their own and loop: each one types
-// a question, the AI answers, and the window cross-fades to the capture of the app after that
-// change, with the app's own amber tint on the lines the AI touched. The current scene's chip fills
-// as it plays. Everything runs off one clock that pauses off-screen, in a hidden tab, and while the
-// pointer rests on the chips. Scripted, no network.
+// A mini Mac desktop showing the real Amber Notes window (frames captured from the app with demo
+// data, all from one session) and a ChatGPT window. It opens with the app alone while you type the
+// last two items of the Groceries note; then ChatGPT arrives and one conversation plays: each
+// request is answered, and the edit lands in the note already tinted amber, with the app's receipt
+// pill, as the app shows it. Then it resets and loops. One clock drives it; it pauses off-screen, in
+// a hidden tab and while the pointer is over it. Scripted, no network.
 
-type Shot = "before" | "paella" | "bought" | "left";
-type Scene = { ask: string; answer: string; from: Shot; to: Shot };
+// The frames, named as captured. A recapture with the same names is a change to this constant.
+// `h` is the window height in points, `pillTop` where the receipt PNG's top-left sits in the window.
+const FRAMES = { dir: "/demo/720/", h: 720, pillTop: 646 };
 
-// One story, each step building on the last.
+type Shot = "pre" | "pre1" | "before" | "1-tint" | "1-faded" | "2-tint" | "2-faded" | "3-tint";
+const FILE: Record<Shot, string> = {
+  pre: "demo-intro-pretype", pre1: "demo-intro-pretype1", before: "demo-0-before",
+  "1-tint": "demo-1-tint", "1-faded": "demo-1-faded", "2-tint": "demo-2-tint", "2-faded": "demo-2-faded", "3-tint": "demo-3-tint",
+};
+const SHOTS = Object.keys(FILE) as Shot[];
+const src = (k: Shot) => `${FRAMES.dir}${FILE[k]}.webp`;
+const ALT: Record<Shot, string> = {
+  pre: "Amber Notes on a Mac, with the Groceries note open",
+  pre1: "Amber Notes on a Mac, with the Groceries note open",
+  before: "Amber Notes on a Mac, with the Groceries note open",
+  "1-tint": "The Groceries note with paella rice, saffron, chorizo, chicken thighs and smoked paprika just added, tinted amber",
+  "1-faded": "The Groceries note with the paella ingredients added",
+  "2-tint": "The Groceries note with lemons and coffee beans just ticked off, tinted amber",
+  "2-faded": "The Groceries note with lemons and coffee beans ticked off",
+  "3-tint": "The Groceries note with the eleven things still to buy tinted amber",
+};
+
+type Scene = { ask: string; answer: string; from: Shot; plain: Shot; tint: Shot; pill?: 5 | 2 };
 const SCENES: Scene[] = [
-  { ask: "Add what I need for Sunday's paella", answer: "Added paella rice, saffron, chorizo, chicken thighs and smoked paprika to your Groceries note.",
-    from: "before", to: "paella" },
-  { ask: "I got the lemons and coffee, tick them off", answer: "Done. Lemons and coffee beans are ticked off in Groceries.",
-    from: "paella", to: "bought" },
-  { ask: "What's still left to buy?", answer: "Eleven things: the paella rice, saffron, chorizo, chicken thighs and paprika, plus oat milk, basil, burrata, cherry tomatoes, olive oil and dark chocolate.",
-    from: "bought", to: "left" },
+  { ask: "Add what I need for Sunday's paella", answer: "Added paella rice, saffron, chorizo, chicken thighs and smoked paprika to Groceries.",
+    from: "before", plain: "1-faded", tint: "1-tint", pill: 5 },
+  { ask: "I got the lemons and coffee, tick them off", answer: "Done. Lemons and coffee beans are ticked off.",
+    from: "1-faded", plain: "2-faded", tint: "2-tint", pill: 2 },
+  { ask: "What's still left to buy?", answer: "Eleven things. I've marked them in Groceries.",
+    from: "2-faded", plain: "2-faded", tint: "3-tint" },
 ];
 
-const ALT: Record<Shot, string> = {
-  before: "Amber Notes on a Mac, with the Groceries note open",
-  paella: "The Groceries note with paella rice, saffron, chorizo, chicken thighs and smoked paprika just added, tinted amber",
-  bought: "The Groceries note with lemons and coffee beans just ticked off, tinted amber",
-  left: "The Groceries note with the eleven things still to buy tinted amber",
-};
-
-const SHOTS: Shot[] = ["before", "paella", "bought", "left"];
-
-// The clock, per scene (ms): typing starts at TYPE_AT, one character every CHAR; then the message
-// is sent, the AI thinks, answers, and the note updates. The chip is full at the scene's end, then
-// holds for HOLD before the next scene starts.
-const TYPE_AT = 150, CHAR = 30, SENT = 250, THINK = 650, ANSWER = 1500, UPDATE = 1850, SETTLE = 900, HOLD = 1500;
-const timing = (s: Scene) => {
+// Scene clock (ms): typing starts at TYPE_AT, one character every CHAR; then the message is sent, the
+// AI thinks and answers, and at LAND the edit lands (rows and tint together) and the pill follows.
+const TYPE_AT = 400, CHAR = 45, SENT = 350, THINK = 800, ANSWER = 1800, LAND = 2500, PILL_AFTER = 250, PILL_HOLD = 3000, AFTER = 1300;
+const RESET = 1600; // after the last scene: the conversation fades and ChatGPT leaves before the loop
+const timing = (s: Scene, last: boolean) => {
   const typed = TYPE_AT + s.ask.length * CHAR;
-  const end = typed + UPDATE + SETTLE;
-  return { typed, end, total: end + HOLD };
+  const pill = typed + LAND + PILL_AFTER;
+  return { typed, pill, total: pill + PILL_HOLD + AFTER + (last ? 1000 : 0) };
 };
 
-/// Where scene s is at time t: the step (0 idle · 1 typing · 2 sent · 3 thinking · 4 answered · 5 note updated) and the typed text.
-function at(s: Scene, t: number): { step: number; typed: string } {
-  const { typed } = timing(s);
-  if (t < TYPE_AT) return { step: 1, typed: "" };
-  if (t < typed + SENT) return { step: 1, typed: s.ask.slice(0, Math.min(s.ask.length, Math.floor((t - TYPE_AT) / CHAR) + 1)) };
-  if (t < typed + THINK) return { step: 2, typed: "" };
-  if (t < typed + ANSWER) return { step: 3, typed: "" };
-  if (t < typed + UPDATE) return { step: 4, typed: "" };
-  return { step: 5, typed: "" };
+// 1 typing · 2 sent · 3 thinking · 4 answered · 6 landed. pill: the receipt is up; faded: the tint
+// has faded, as it does in the app after a moment.
+type View = { step: number; typed: string; pill: boolean; faded: boolean; intro?: Intro };
+function at(s: Scene, t: number): View {
+  const k = timing(s, false);
+  const v: View = { step: 1, typed: "", pill: false, faded: false };
+  if (t < TYPE_AT) return v;
+  if (t < k.typed + SENT) return { ...v, typed: s.ask.slice(0, Math.min(s.ask.length, Math.floor((t - TYPE_AT) / CHAR) + 1)) };
+  if (t < k.typed + THINK) return { ...v, step: 2 };
+  if (t < k.typed + ANSWER) return { ...v, step: 3 };
+  if (t < k.typed + LAND) return { ...v, step: 4 };
+  return { ...v, step: 6, pill: t >= k.pill && t < k.pill + PILL_HOLD, faded: t >= k.pill + PILL_HOLD };
 }
+
+// The intro: the app alone, then you type the note's last two items at a human pace and press
+// Return as the app does (an instant swap to the next capture). Positions are in capture points,
+// measured from the frames: the text starts at x 513, rows are 23.5 pt apart.
+const TYPE_X = 513;
+const INTRO_ROWS = [
+  { text: "Olive oil", top: 318.1, end: 559 },
+  { text: "Dark chocolate", top: 341.6, end: 603 },
+];
+// The real caret (captured): 2×16 pt, #F4AD33, its top 3.9 pt above the row's text.
+const CARET_START = { x: 614.3, top: 294.6 }; // after "Cherry tomatoes"
+const I_ALONE = 1500, I_BEFORE_RET = 450, I_AFTER_RET = 300, I_SETTLE = 650, I_CHAT = 900;
+const charGaps = (text: string, seed: number) => [...text].map((_, i) => 70 + ((i * 37 + seed * 11) % 21));
+const GAPS = INTRO_ROWS.map((r, k) => charGaps(r.text, k + 1));
+const typedSpan = (k: number) => GAPS[k].reduce((a, b) => a + b, 0);
+const ret1 = I_ALONE + I_BEFORE_RET;
+const introEnd1 = ret1 + I_AFTER_RET + typedSpan(0);
+const introStart2 = introEnd1 + I_BEFORE_RET;
+const introEnd2 = introStart2 + I_AFTER_RET + typedSpan(1);
+const CHAT_IN = introEnd2 + I_SETTLE;
+const INTRO = CHAT_IN + I_CHAT;
+function typedChars(k: number, ms: number) {
+  let t = I_AFTER_RET, n = 0;
+  for (const g of GAPS[k]) { t += g; if (ms >= t) n++; else break; }
+  return n;
+}
+type Intro = { shot: Shot; row: number; n: number; chat: boolean };
+function introAt(t: number): Intro {
+  if (t < ret1) return { shot: "pre", row: -1, n: 0, chat: false };
+  if (t < introStart2) return { shot: "pre1", row: 0, n: typedChars(0, t - ret1), chat: false };
+  if (t < CHAT_IN) return { shot: "before", row: 1, n: typedChars(1, t - introStart2), chat: false };
+  return { shot: "before", row: 2, n: 0, chat: true };
+}
+
+const W = 1280, KEY = 500; // design width; KEY = the top part of the desk that must fit the first view
 
 export default function Demo() {
   const [scene, setScene] = useState(0);
-  const [view, setView] = useState({ step: 0, typed: "" });
-  const [still, setStill] = useState(false); // reduced motion: end states only, no clock
-  const clock = useRef({ scene: 0, t: 0, last: 0, started: false });
-  const pause = useRef({ offscreen: true, hidden: false, hover: false });
+  const [view, setView] = useState<View>({ step: -2, typed: "", pill: false, faded: false, intro: introAt(0) });
+  const [still, setStill] = useState(false);
+  const [fitW, setFitW] = useState<number | null>(null);
+  const clock = useRef({ scene: 0, t: -INTRO, last: 0, started: false });
+  const pause = useRef({ offscreen: false, hidden: false, hover: false });
   const outer = useRef<HTMLDivElement>(null);
-  const chips = useRef<(HTMLButtonElement | null)[]>([]);
+  const msgsRef = useRef<HTMLDivElement>(null);
+  const fieldRef = useRef<HTMLSpanElement>(null);
 
-  // Paints the fill of the current chip, and clears the others.
-  const paint = (i: number, p: number) => chips.current.forEach((c, k) => c?.style.setProperty("--p", k === i ? String(p) : "0"));
-
-  /// Starts scene i from its first moment (its note shows the state before its change).
-  const jump = (i: number) => {
-    clock.current = { ...clock.current, scene: i, t: 0, started: true };
-    setScene(i);
-    if (still) { setView({ step: 5, typed: "" }); return; }
-    setView(at(SCENES[i], 0));
-    paint(i, 0);
-  };
+  // Wide screens: size the desk so the chat and the changed rows fit the first view.
+  useLayoutEffect(() => {
+    const el = outer.current?.parentElement;
+    if (!el || !outer.current) return;
+    const fit = () => {
+      const avail = el.clientWidth;
+      if (window.innerWidth < 700) { setFitW(null); return; }
+      const top = outer.current!.getBoundingClientRect().top + window.scrollY;
+      const byHeight = ((window.innerHeight - top - 16) * W) / KEY;
+      setFitW(Math.max(Math.min(avail, 760), Math.min(avail, W, byHeight)));
+    };
+    fit();
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, []);
 
   useEffect(() => {
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
-    if (reduce.matches) { setStill(true); setView({ step: 5, typed: "" }); return; }
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      // No motion: the whole conversation and the last note state.
+      setStill(true); setScene(SCENES.length - 1); setView({ step: 6, typed: "", pill: false, faded: false }); return;
+    }
+    // Every frame is decoded before anything plays, so a swap never shows an undecoded image.
+    const ready = { done: false };
+    Promise.all(SHOTS.map((k) => { const i = new Image(); i.src = src(k); return i.decode().catch(() => undefined); }))
+      .then(() => { ready.done = true; });
 
     let raf = 0;
     const tick = (now: number) => {
       const c = clock.current;
+      if (!ready.done) { c.last = now; raf = requestAnimationFrame(tick); return; }
       const paused = pause.current.offscreen || pause.current.hidden || pause.current.hover;
       const dt = c.last ? Math.min(100, now - c.last) : 0; // a long gap (tab switch) never skips ahead
       c.last = now;
       if (!paused && c.started) {
         c.t += dt;
-        const s = SCENES[c.scene];
-        if (c.t >= timing(s).total) {
-          const next = (c.scene + 1) % SCENES.length;
-          c.scene = next; c.t = 0;
-          setScene(next);
+        const last = c.scene === SCENES.length - 1;
+        if (c.t >= timing(SCENES[c.scene], last).total) {
+          c.scene = (c.scene + 1) % SCENES.length;
+          c.t = c.scene === 0 ? -RESET - INTRO : 0;
+          setScene(c.scene);
         }
-        const cur = SCENES[c.scene];
-        const v = at(cur, c.t);
-        setView((old) => (old.step === v.step && old.typed === v.typed ? old : v));
-        paint(c.scene, Math.min(1, c.t / timing(cur).end));
+        const v: View = c.t < 0
+          ? (c.t >= -INTRO ? { step: -2, typed: "", pill: false, faded: false, intro: introAt(c.t + INTRO) } : { step: -1, typed: "", pill: false, faded: false })
+          : at(SCENES[c.scene], c.t);
+        setView((o) => (o.step === v.step && o.typed === v.typed && o.pill === v.pill && o.faded === v.faded
+          && o.intro?.shot === v.intro?.shot && o.intro?.n === v.intro?.n && o.intro?.row === v.intro?.row && o.intro?.chat === v.intro?.chat ? o : v));
       }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
-
+    // Plays as soon as any of it is on screen (already true on load for most laptops).
     const io = new IntersectionObserver(([e]) => {
       pause.current.offscreen = !e.isIntersecting;
-      if (e.isIntersecting && !clock.current.started) clock.current.started = true;
-    }, { threshold: 0.35 });
+      if (e.isIntersecting) clock.current.started = true;
+    }, { threshold: 0.05 });
     if (outer.current) io.observe(outer.current);
     const vis = () => { pause.current.hidden = document.hidden; };
     document.addEventListener("visibilitychange", vis);
     return () => { cancelAnimationFrame(raf); io.disconnect(); document.removeEventListener("visibilitychange", vis); };
   }, []);
 
+  // Keep the newest exchange in view, like a real chat.
+  useEffect(() => {
+    const m = msgsRef.current;
+    if (m) m.scrollTo({ top: m.scrollHeight, behavior: still ? "auto" : "smooth" });
+  }, [scene, view.step, still]);
+  // The input scrolls like a real single-line field, so the caret after the text stays in view.
+  useEffect(() => { const f = fieldRef.current; if (f) f.scrollLeft = f.scrollWidth; }, [view.typed]);
+
   const s = SCENES[scene];
-  const { step, typed } = view;
-  const done = step >= 5;
-  const shown: Shot = done ? s.to : s.from;
+  const { step, typed, pill, faded, intro } = view;
+  const landed = step >= 6;
+  const base: Shot = intro ? intro.shot : step === -1 ? "pre" : landed ? (faded ? s.plain : s.tint) : s.from;
+  const chatAway = Boolean(intro && !intro.chat) || step === -1;
+
+  // Frames never cross-fade both ways (that lets the desk show through for a moment): the previous
+  // frame stays fully opaque underneath until the new one has faded in over it.
+  const [under, setUnder] = useState<Shot | null>(null);
+  const shownRef = useRef<Shot | null>(null);
+  useEffect(() => {
+    const prev = shownRef.current;
+    shownRef.current = base;
+    if (!prev || prev === base) return;
+    setUnder(prev);
+    const t = window.setTimeout(() => setUnder((u) => (u === prev ? null : u)), 1000);
+    return () => window.clearTimeout(t);
+  }, [base]);
+
   const hoverPause = (on: boolean) => { if (window.matchMedia("(hover: hover)").matches) pause.current.hover = on; };
 
   return (
     <div className={d.wrap}>
-      <div ref={outer} className={d.fit}>
+      <div ref={outer} className={d.fit} style={fitW ? { width: fitW, margin: "0 auto" } : undefined}
+        onPointerEnter={() => hoverPause(true)} onPointerLeave={() => hoverPause(false)}>
         <div className={d.desk}>
           <Wallpaper />
-
-          <div className={d.app}>
+          <div className={d.app} data-dim={(step >= 1 && step <= 4) || undefined} data-instant={intro ? true : undefined} data-edit={(landed && !faded) || undefined}>
             {SHOTS.map((k) => (
-              <img key={k} src={`/demo/app-${k}.webp`} width={1180} height={720} alt={k === shown ? ALT[k] : ""}
-                aria-hidden={k !== shown} className={d.shot} data-on={k === shown || undefined}
+              <img key={k} src={src(k)} width={1180} height={FRAMES.h} alt={k === base ? ALT[k] : ""}
+                aria-hidden={k !== base} className={d.shot} data-on={k === base || undefined} data-under={(k === under && k !== base) || undefined}
                 loading="eager" decoding="async" draggable={false} />
             ))}
-            {done && s.to !== "left" && <div key={`sync${scene}`} className={d.synced}>Updated on your iPhone too</div>}
+            {intro && <IntroTyping intro={intro} />}
+            {/* The app's receipt pill, as captured, springing in over the note pane. */}
+            {s.pill && landed && (pill || faded) && (
+              <img key={`pill${scene}`} src={`${FRAMES.dir}pill-chatgpt-${s.pill}-lines@2x.png`} width={295} height={78}
+                alt={`ChatGPT changed ${s.pill} lines. Undo`} className={d.pill} data-out={faded || undefined}
+                style={{ top: `calc(${FRAMES.pillTop} * var(--u))` }} />
+            )}
           </div>
 
-          <div className={d.chat} aria-label="An AI chat">
+          <div className={d.chat} data-away={chatAway || undefined} data-dim={landed || undefined} aria-label="An AI chat">
             <div className={d.chatBar}>
               <div className={d.lights}><i /><i /><i /></div>
               <span className={d.chatTitle}><AIGlyph name="openai" size={16} />ChatGPT</span>
             </div>
-            <div className={d.msgs}>
-              {step === 0 && <p className={d.hint}>What can I help with?</p>}
+            <div ref={msgsRef} className={d.msgs} data-reset={step === -1 || undefined}>
+              {/* Earlier exchanges stay in the conversation (all three while it fades out to loop). */}
+              {SCENES.slice(0, step === -1 ? SCENES.length : scene).map((p) => (
+                <div key={p.ask} className={d.pair}>
+                  <div className={d.me}>{p.ask}</div>
+                  <div className={d.ai}><span className={d.tool}>Used Amber Notes</span><p>{p.answer}</p></div>
+                </div>
+              ))}
               {step >= 2 && <div key={`q${scene}`} className={d.me}>{s.ask}</div>}
               {step === 3 && <div className={d.thinking}><span className={d.tool}>Talking to Amber Notes…</span></div>}
               {step >= 4 && (
@@ -151,25 +248,46 @@ export default function Demo() {
             </div>
             <div className={d.input}>
               <b className={d.plus} aria-hidden="true">+</b>
-              <span>{typed || <em>Ask anything</em>}</span>{step === 1 && <i className={d.caret} />}
+              {/* The caret sits right after the typed text (or at the start, before the placeholder); it blinks only while idle. */}
+              <span ref={fieldRef} className={d.field}>
+                {typed}{step === 1 && <i className={d.caret} data-idle={!typed || undefined} />}{!typed && <em>Ask anything</em>}
+              </span>
               <b className={d.send} aria-hidden="true">↑</b>
             </div>
           </div>
         </div>
       </div>
-
-      <div className={d.picks} role="group" aria-label="Scenes" onPointerEnter={() => hoverPause(true)} onPointerLeave={() => hoverPause(false)}>
-        {SCENES.map((sc, i) => (
-          <button key={sc.ask} ref={(el) => { chips.current[i] = el; }} type="button" className={d.pick} aria-pressed={scene === i}
-            onClick={() => jump(i)}>
-            <span className={d.pickLabel}>{sc.ask}</span>
-            <span className={d.pickFill} aria-hidden="true">{sc.ask}</span>
-          </button>
-        ))}
-      </div>
-      <p className={d.psst}>Tap one to jump to it.</p>
-      <p className={d.live} aria-live="polite">{done ? s.answer : ""}</p>
+      <p className={d.live} aria-live="polite">{landed ? s.answer : ""}</p>
     </div>
+  );
+}
+
+/// The last two items being typed. The capture already holds the full text; a note-white cover
+/// hides what hasn't been "typed" yet, ending exactly where the browser's SF metrics put the next
+/// character. The caret is drawn in the app's accent at the app's size.
+function IntroTyping({ intro }: { intro: Intro }) {
+  const [measure, setMeasure] = useState<((text: string, n: number) => number) | null>(null);
+  useEffect(() => {
+    const ctx = document.createElement("canvas").getContext("2d");
+    if (!ctx) return;
+    ctx.font = '13px -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui';
+    setMeasure(() => (text: string, n: number) => ctx.measureText(text.slice(0, n)).width / ctx.measureText(text).width);
+  }, []);
+  const rows = INTRO_ROWS.map((r, k) => {
+    if (k < intro.row || intro.row === 2) return null; // typed already
+    if (k > intro.row) return null; // not in the capture yet
+    const frac = measure ? measure(r.text, intro.n) : intro.n / r.text.length;
+    const x = TYPE_X + frac * (r.end - TYPE_X);
+    return { k, x, top: r.top, end: r.end };
+  }).filter(Boolean) as { k: number; x: number; top: number; end: number }[];
+  const caret = intro.row === -1 ? { x: CARET_START.x, top: CARET_START.top } : rows[0] ? { x: rows[0].x + 0.5, top: rows[0].top } : null;
+  return (
+    <>
+      {rows.map((r) => (
+        <span key={r.k} className={d.cover} style={{ left: `calc(${r.x} * var(--u))`, top: `calc(${r.top} * var(--u))`, width: `calc(${r.end - r.x + 6} * var(--u))` }} />
+      ))}
+      {caret && <i className={d.appCaret} style={{ left: `calc(${caret.x} * var(--u))`, top: `calc(${caret.top} * var(--u))` }} />}
+    </>
   );
 }
 

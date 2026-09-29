@@ -1,102 +1,31 @@
-/* Home page: warm, simple, centred. One promise, the app itself, two plain sections (AI, import),
-   a grid of reasons, how it's built, and one closing ask. Colours come from the page theme. */
+/* Home page: the promise and the demo; the sections below live in sections.module.css. The
+   changelog and help pages share the centred column at the end. Colours come from the page theme. */
 .main { width: 100%; max-width: 1240px; margin: 0 auto; padding: 0 20px; box-sizing: border-box; display: grid; gap: 160px; align-content: start; }
 @media (max-width: 700px) { .main { gap: 96px; } }
 
-.hero { display: grid; justify-items: center; text-align: center; gap: 26px; padding-top: 96px; }
+.hero { display: grid; justify-items: center; text-align: center; gap: 18px; padding-top: 96px; }
 @media (max-width: 600px) { .hero { padding-top: 44px; gap: 20px; } }
-.h1 { margin: 0; max-width: 21ch; font-size: clamp(44px, 7vw, 92px); line-height: 0.98; font-weight: 800; letter-spacing: -0.045em; text-wrap: balance; }
+.h1 { margin: 0; max-width: 21ch; font-size: clamp(40px, 5.4vw, 80px); line-height: 0.98; font-weight: 800; letter-spacing: -0.045em; text-wrap: balance; }
 /* "your AI" never splits across lines; a tight marker sits behind the words, not an offset bar. */
 .mark {
   white-space: nowrap; color: inherit; padding: 0 0.08em; border-radius: 0.12em;
   background: linear-gradient(transparent 58%, var(--mark) 58%, var(--mark) 90%, transparent 90%);
   -webkit-box-decoration-break: clone; box-decoration-break: clone;
 }
-.hero .lede { text-wrap: balance; }
+.hero .lede { text-wrap: balance; max-width: 40em; }
 .lede { margin: 0; max-width: 32em; font-size: clamp(18px, 2vw, 21px); line-height: 1.45; color: var(--muted); text-wrap: pretty; }
 .ctas { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
-.primary, .secondary, .outline { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 50px; padding: 0 24px; border-radius: 14px; font-weight: 700; font-size: 16px; text-decoration: none; box-sizing: border-box; }
+.primary, .secondary { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 50px; padding: 0 24px; border-radius: 14px; font-weight: 700; font-size: 16px; text-decoration: none; box-sizing: border-box; }
 .primary { background: var(--cta-bg); color: var(--cta-ink); box-shadow: 0 10px 24px -8px rgba(60, 30, 5, 0.55); }
 .secondary { background: var(--soft); color: var(--muted); }
-.outline { color: var(--ink); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--ink) 22%, transparent); }
-.primary:focus-visible, .secondary:focus-visible, .outline:focus-visible, .quiet:focus-visible, .helpRow a:focus-visible, .copy:focus-visible {
+.primary:focus-visible, .secondary:focus-visible {
   outline: 2px solid var(--amber); outline-offset: 3px;
 }
 @media (prefers-reduced-motion: no-preference) {
-  .primary, .copy { transition: transform 0.12s ease-out, background-color 0.15s ease-out; }
-  .primary:active, .copy:active { transform: scale(0.97); }
+  .primary { transition: transform 0.12s ease-out, background-color 0.15s ease-out; }
+  .primary:active { transform: scale(0.97); }
 }
 .h2 { margin: 0; font-size: clamp(34px, 4.8vw, 56px); line-height: 1.02; font-weight: 800; letter-spacing: -0.035em; text-wrap: balance; }
-.live { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-
-/* Two-column sections: text on one side, a picture on the other. Stacked on phones. */
-.split { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 56px; align-items: center; }
-.flip { grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); }
-.flip .splitText { order: 2; }
-@media (max-width: 860px) { .split, .flip { grid-template-columns: 1fr; gap: 32px; } .flip .splitText { order: 0; } }
-.splitText { display: grid; gap: 18px; align-content: center; }
-
-/* Works with the AI you already use: a headline, one strip of apps with how each connects, three promises. */
-.aiSection { display: grid; gap: 40px; }
-.aiHead { display: grid; gap: 16px; max-width: 640px; }
-.strip { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-radius: 22px; background: var(--card); box-shadow: 0 0 0 1px var(--line), 0 24px 48px -34px rgba(60, 30, 5, 0.45); overflow: hidden; }
-.strip li { display: grid; align-content: start; gap: 6px; padding: 22px 20px 20px; box-shadow: inset 1px 0 0 var(--line); }
-.strip li:first-child { box-shadow: none; }
-.strip strong { margin-top: 8px; font-size: 16px; }
-@media (max-width: 480px) { .strip li { padding: 18px 14px 16px; } }
-.stripMark { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px; background: #fff; box-shadow: 0 0 0 1px rgba(60, 30, 5, 0.08); }
-.aiAny { font-size: 11px; font-weight: 800; letter-spacing: 0.02em; }
-@media (max-width: 900px) {
-  .strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .strip li { box-shadow: inset 1px 0 0 var(--line), inset 0 1px 0 var(--line); }
-  .strip li:nth-child(odd) { box-shadow: inset 0 1px 0 var(--line); }
-  .strip li:first-child { box-shadow: none; }
-  .strip li:nth-child(2) { box-shadow: inset 1px 0 0 var(--line); }
-  .strip li:last-child:nth-child(odd) { grid-column: 1 / -1; }
-}
-.promises { list-style: none; margin: 0; padding: 22px 0 0; display: flex; flex-wrap: wrap; gap: 10px 32px; border-top: 1.5px dashed var(--line); font-weight: 600; font-size: 16px; }
-.promises li { display: inline-flex; align-items: center; gap: 8px; }
-.promises svg { color: var(--amber); }
-
-/* Apple Notes → Amber Notes, drawn: picked notes on one side, folders filled on the other. */
-.imp { margin: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 12px; }
-@media (max-width: 480px) { .imp { grid-template-columns: 1fr; } .impArrow { flex-direction: row; justify-self: center; gap: 0; padding: 20px 0; } .impArrow svg { transform: rotate(90deg); margin: 0 -14px 0 -10px; } }
-.impCard { border-radius: 22px; padding: 16px 18px 14px; background: var(--card); box-shadow: 0 0 0 1px var(--line), 0 24px 48px -28px rgba(60, 30, 5, 0.5); }
-.impFrom { background: color-mix(in srgb, var(--card) 60%, #efe9dd); }
-.impHead { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font-size: 13px; font-weight: 700; color: var(--muted); }
-.impHead img { border-radius: 6px; }
-.impCard ul { list-style: none; margin: 0; padding: 0; display: grid; }
-.impCard li { display: flex; align-items: center; gap: 10px; min-height: 38px; box-shadow: inset 0 -1px 0 var(--line); }
-.impCard li:last-child { box-shadow: none; }
-.impCard b { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.impFrom i { flex: none; width: 18px; height: 18px; display: grid; place-items: center; border-radius: 50%; background: #6e6e73; color: #fff; font-size: 11px; font-style: normal; font-weight: 800; }
-.impTo li svg { flex: none; color: var(--amber); }
-.impTo em { margin-left: auto; font-style: normal; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.impMore { margin: 6px 0 0; font-size: 12.5px; color: var(--muted); }
-.impDone { margin: 10px 0 0; font-size: 12.5px; font-weight: 600; color: var(--link); }
-.impArrow { display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--amber); font-size: 12px; font-weight: 700; }
-/* Before the figure is seen, the folders wait off to the side; then they land one by one. */
-@media (prefers-reduced-motion: no-preference) {
-  .imp:not([data-in]) .impTo li, .imp:not([data-in]) .impDone { opacity: 0; transform: translateX(-14px); }
-  .imp[data-in] .impTo li { animation: land 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both; animation-delay: calc(0.25s + var(--k) * 0.14s); }
-  .imp[data-in] .impDone { animation: land 0.5s 0.95s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
-}
-@keyframes land { from { opacity: 0; transform: translateX(-14px); } }
-
-/* Reasons */
-.features { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 44px 32px; max-width: 1080px; width: 100%; margin: 0 auto; }
-@media (max-width: 720px) { .features { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 36px 16px; } }
-.feature { display: grid; justify-items: center; text-align: center; gap: 14px; }
-.icon { width: 52px; height: 52px; color: var(--ink); }
-.icon svg { width: 100%; height: 100%; }
-.feature h2 { margin: 0; font-size: clamp(18px, 2vw, 21px); line-height: 1.2; font-weight: 750; letter-spacing: -0.01em; text-wrap: balance; }
-.feature p { margin: -6px 0 0; max-width: 22ch; color: var(--muted); font-size: 15px; line-height: 1.45; text-wrap: balance; }
-
-/* The last ask: big words on the page ground, then the footer. */
-.closing { display: grid; justify-items: center; text-align: center; gap: 22px; padding: 40px 0 8px; }
-.closingTitle { margin: 0; max-width: 24ch; font-size: clamp(40px, 7vw, 84px); line-height: 1; font-weight: 800; letter-spacing: -0.045em; text-wrap: balance; }
-.closing .ctas { margin-top: 8px; }
-.fine { margin: 0; font-size: 14px; color: var(--muted); }
 
 /* Changelog and Help: one centred column. */
 .log { width: 100%; max-width: 760px; margin: 0 auto; display: grid; gap: 56px; padding-top: 40px; }

@@ -1,0 +1,92 @@
+/* Home page sections below the demo. One grid: every section spans the page's 1200 px column,
+   headings left-aligned at its left edge. Colours from the page theme. */
+.section { display: grid; gap: 36px; }
+.head { display: grid; gap: 14px; max-width: 680px; }
+.h2 { margin: 0 0 4px; font-size: clamp(34px, 4.8vw, 56px); line-height: 1.02; font-weight: 800; letter-spacing: -0.035em; text-wrap: balance; }
+.lede { margin: 0; font-size: clamp(18px, 2vw, 21px); line-height: 1.45; color: var(--muted); text-wrap: pretty; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* ── Works with the AI you already use: three small, complete scenes ── */
+.jobs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; align-items: stretch; }
+@media (max-width: 860px) { .jobs { grid-template-columns: 1fr; } }
+.job { margin: 0; display: grid; grid-template-rows: auto 1fr; border-radius: 20px; overflow: hidden; background: #fff; color: #1d1d1f; box-shadow: 0 0 0 1px var(--line), 0 20px 40px -30px rgba(60, 30, 5, 0.5); }
+.phone { border-radius: 30px; }
+.term { background: #22160b; color: #fbeedd; }
+.jobBar { position: relative; display: flex; align-items: center; justify-content: center; height: 36px; font-size: 12.5px; font-weight: 600; color: #3a3a3c; box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.06); }
+.term .jobBar { color: #d9bf9f; box-shadow: inset 0 -1px 0 rgba(255, 240, 220, 0.1); }
+.jobApp { display: inline-flex; align-items: center; gap: 6px; }
+.lights { position: absolute; left: 12px; top: 13px; display: flex; gap: 6px; }
+.lights i { width: 10px; height: 10px; border-radius: 50%; background: #ff5f57; }
+.lights i:nth-child(2) { background: #febc2e; }
+.lights i:nth-child(3) { background: #28c840; }
+.term .lights i { background: rgba(255, 240, 220, 0.22); }
+.jobBody { display: flex; flex-direction: column; gap: 10px; padding: 16px 16px 18px; min-height: 118px; box-sizing: border-box; }
+.bubble { align-self: flex-end; max-width: 90%; margin: 0; padding: 9px 13px; border-radius: 17px; background: #f1f1f1; font-size: 15px; line-height: 1.35; opacity: 0; }
+.bubble[data-on] { opacity: 1; }
+.chip { align-self: flex-start; margin: auto 0 0; display: inline-flex; align-items: center; gap: 7px; padding: 8px 12px; border-radius: 12px; background: #fff1dc; color: #7a4300; font-size: 14px; box-shadow: 0 0 0 1px rgba(240, 144, 26, 0.35); opacity: 0; transform: translateY(6px) scale(0.96); }
+.chip b { color: #2a1d10; }
+.chip svg, .termResult svg { color: #f0901a; }
+.chip[data-on] { opacity: 1; transform: none; }
+.prompt, .call, .termResult { margin: 0; font: 500 13.5px/1.5 ui-monospace, "SF Mono", Menlo, monospace; }
+.promptMark { color: #f5a53a; margin-right: 8px; }
+.call { color: #b89c7c; opacity: 0; }
+.call span { color: #f5a53a; }
+.termResult { display: inline-flex; align-items: center; gap: 6px; color: #fbeedd; opacity: 0; transform: translateY(4px); }
+.call[data-on], .termResult[data-on] { opacity: 1; transform: none; }
+.caret, .caretDark { display: inline-block; width: 2px; height: 15px; margin-left: 1px; vertical-align: -2px; }
+.caret { width: 8px; background: #fbeedd; }
+.caretDark { background: #1d1d1f; }
+@media (prefers-reduced-motion: no-preference) {
+  .bubble { transition: opacity 0.2s ease-out; }
+  .chip { transition: opacity 0.3s ease-out, transform 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.25); }
+  .call { transition: opacity 0.25s ease-out; }
+  .termResult { transition: opacity 0.3s ease-out 0.35s, transform 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.2) 0.35s; }
+}
+.also { margin: -8px 0 0; color: var(--muted); font-size: 15px; font-weight: 600; }
+
+/* ── Bring all your Apple Notes in one click: the import, run once ── */
+.run { display: grid; gap: 18px; padding: 26px 28px; border-radius: 28px; background: var(--card); box-shadow: 0 0 0 1px var(--line), 0 30px 60px -40px rgba(60, 30, 5, 0.5); }
+.runTitle { margin: 0; font-weight: 700; font-size: 16px; }
+.bar { position: relative; height: 4px; border-radius: 99px; background: color-mix(in srgb, var(--amber) 18%, var(--soft)); margin-right: 26px; }
+.bar i { position: absolute; inset: 0; border-radius: 99px; background: var(--amber); transform-origin: 0 50%; }
+.barDone { position: absolute; right: -26px; top: 50%; width: 18px; height: 18px; margin-top: -9px; display: grid; place-items: center; border-radius: 50%; background: var(--amber); color: #fff; opacity: 0; transform: scale(0.6); }
+.barDone svg { width: 12px; height: 12px; }
+.barDone[data-on] { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: no-preference) { .barDone { transition: opacity 0.25s ease-out, transform 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.4); } }
+.folders { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 900px) { .folders { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .folders { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.folders li { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 12px; border-radius: 14px; background: var(--bg); box-shadow: 0 0 0 1px var(--line); opacity: 0.35; }
+.folders li[data-on] { opacity: 1; }
+.folders svg { flex: none; color: var(--amber); }
+.folders b { font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.folders .num { margin-left: auto; color: var(--muted); font-weight: 600; font-size: 14px; }
+.pinned { background: color-mix(in srgb, var(--amber) 10%, var(--bg)) !important; }
+@media (prefers-reduced-motion: no-preference) { .folders li { transition: opacity 0.3s ease-out; } }
+.runEnd { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 10px 28px; padding-top: 16px; border-top: 1.5px dashed var(--line); opacity: 0; transform: translateY(8px); }
+.runEnd[data-on] { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: no-preference) { .runEnd { transition: opacity 0.4s ease-out, transform 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.2); } }
+.big { margin: 0; font-size: clamp(36px, 5vw, 56px); font-weight: 800; letter-spacing: -0.035em; line-height: 1; }
+.ticks { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 24px; font-weight: 600; font-size: 16px; }
+.ticks li { display: inline-flex; align-items: center; gap: 8px; }
+.ticks svg { color: var(--amber); }
+
+/* ── The rest, in one quiet line under the import ── */
+.alsoTicks { list-style: none; margin: -96px 0 0; padding: 22px 0 0; display: flex; flex-wrap: wrap; gap: 8px 26px; border-top: 1.5px dashed var(--line); color: var(--muted); font-weight: 600; font-size: 15px; }
+@media (max-width: 700px) { .alsoTicks { margin-top: -56px; } }
+.alsoTicks li { display: inline-flex; align-items: center; gap: 8px; }
+.alsoTicks svg { color: var(--amber); }
+
+/* ── The ending: a full-width band in the site's near-black brown ── */
+.band { width: 100vw; margin-left: calc(50% - 50vw); background: #2a1d10; color: #fbeedd; padding: 110px 20px 120px; box-sizing: border-box; margin-bottom: -120px; }
+.bandInner { max-width: 1200px; margin: 0 auto; display: grid; justify-items: center; text-align: center; gap: 22px; }
+.bandIcon { border-radius: 22px; box-shadow: 0 20px 50px -16px rgba(0, 0, 0, 0.6); }
+.bandTitle { margin: 8px 0 0; max-width: 22ch; font-size: clamp(40px, 6.4vw, 80px); line-height: 1; font-weight: 800; letter-spacing: -0.045em; text-wrap: balance; }
+.bandLede { margin: 0; max-width: 34em; color: #d9bf9f; font-size: clamp(18px, 2vw, 21px); line-height: 1.45; }
+.bandCtas { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 8px; }
+.bandPrimary, .bandSecondary { display: inline-flex; align-items: center; gap: 9px; min-height: 50px; padding: 0 24px; border-radius: 14px; font-weight: 700; font-size: 16px; text-decoration: none; }
+.bandPrimary { background: #fbeedd; color: #2a1d10; }
+.bandSecondary { color: #fbeedd; box-shadow: inset 0 0 0 1.5px rgba(251, 238, 221, 0.3); }
+.bandPrimary:focus-visible { outline: 2px solid #f5a53a; outline-offset: 3px; }
+@media (prefers-reduced-motion: no-preference) { .bandPrimary { transition: transform 0.12s ease-out; } .bandPrimary:active { transform: scale(0.97); } }
+.bandFine { margin: 0; color: #b89c7c; font-size: 14px; }
