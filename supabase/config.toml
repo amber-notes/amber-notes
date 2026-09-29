@@ -387,3 +387,7 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 
 [functions.mcp]
 verify_jwt = false
+
+# Share pages have no account: the slug is the secret.
+[functions.share-files]
+verify_jwt = false
