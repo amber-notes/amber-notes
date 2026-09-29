@@ -7,7 +7,10 @@ export const FAQ: QA[] = [
     "On iPhone, share a note from Apple Notes to Amber Notes. Or import on your Mac, and everything shows up on your iPhone a second later.",
   ] },
   { id: "connect", q: "How do I connect ChatGPT, Claude, Claude Code or Codex?", a: [
-    "Open Settings → Connect an AI and follow the steps for your assistant. ChatGPT and Claude get an address to paste, then ask you to approve in Amber Notes. Claude Code and Codex get a one-line command with a token of their own.",
+    "In Amber Notes, open Settings → Connect an AI and pick your assistant. You add ChatGPT or Claude once, on a computer. After that, Amber Notes works in the ChatGPT and Claude apps on your phone too.",
+    "Claude: choose Add to Claude. Claude opens its Add custom connector dialog with Amber Notes filled in. Choose Add, then Connect, then Allow in Amber Notes.",
+    "ChatGPT: choose Copy Address and Open ChatGPT. It copies the address and opens ChatGPT's plugins page. The first time, turn on Developer mode in ChatGPT under Settings → Security and login; it needs ChatGPT Plus or higher. Paste the address, then choose Allow in Amber Notes.",
+    "Claude Code and Codex get a one-line command with a token of their own.",
   ] },
   { id: "ai-access", q: "Can my AI see all my notes?", a: [
     "Only once you connect it and approve it. You choose read-only, or read and edit. Every change an AI makes keeps the previous version, and you can disconnect any assistant in Settings at any time.",
