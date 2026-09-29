@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """Composites what Finder will show for each background: the 2x picture, the real icons at the
 positions and size in layout.json, and 13 pt system-font labels, inside approximate window
-chrome: light mode, dark mode with black labels (what Finder does over a background picture),
-and dark mode with white labels (the case to guard against). Finder can't be screenshotted
+chrome, in light and dark mode. Finder keeps the labels black over a light picture in both. Finder can't be screenshotted
 without opening a window, so this is how a direction is judged.
 
     build/dmg-venv/bin/python brand/dmg/preview.py <out dir> <Applications icon png> [directions]
@@ -78,14 +77,13 @@ def scene(bg_path, apps_icon, dark, white_labels, caption):
 
 def main():
     out_dir, apps = sys.argv[1], Image.open(sys.argv[2])
-    names = sys.argv[3:] or ["white", "warm", "white-plate", "warm-band"]
+    names = sys.argv[3:] or ["warm", "white"]
     os.makedirs(out_dir, exist_ok=True)
     rows = []
     for n in names:
         bg = os.path.join(HERE, n, "background@2x.png")
         panels = [scene(bg, apps, False, False, "Light mode"),
-                  scene(bg, apps, True, False, "Dark mode, if Finder keeps black labels"),
-                  scene(bg, apps, True, True, "Dark mode, if Finder draws white labels")]
+                  scene(bg, apps, True, False, "Dark mode (Finder keeps the labels black)")]
         row = Image.new("RGBA", (panels[0].width * len(panels), panels[0].height))
         for i, panel in enumerate(panels):
             row.paste(panel, (i * panel.width, 0))

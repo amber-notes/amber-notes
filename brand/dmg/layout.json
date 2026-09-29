@@ -1,7 +1,7 @@
 {
-  "window": [640, 400],
+  "window": [540, 340],
   "icon_size": 128,
   "text_size": 13,
-  "app": [160, 190],
-  "applications": [480, 190]
+  "app": [150, 155],
+  "applications": [390, 155]
 }

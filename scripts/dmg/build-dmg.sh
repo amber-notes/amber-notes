@@ -2,7 +2,7 @@
 # Builds the Amber Notes DMG with its styled window: dmgbuild writes the window settings
 # (.DS_Store), background and volume icon straight into the image. No Finder, no AppleScript.
 #
-#   scripts/dmg/build-dmg.sh <Amber Notes.app> <out.dmg> [background: warm (default) | white | white-plate | warm-band | dune]
+#   scripts/dmg/build-dmg.sh <Amber Notes.app> <out.dmg> [background: warm (default) | white]
 #
 # dmgbuild lives in a venv at build/dmg-venv, created on first use, and runs through
 # scripts/dmg/run-dmgbuild.py, which works around hdiutil convert failing on this Mac.
