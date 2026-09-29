@@ -102,10 +102,13 @@ import AppKit
 enum WindowFrameMemory {
     static let key = "notesWindowFrame"
     static let defaultSize = CGSize(width: 1180, height: 760)
+    /// The notes window's smallest size (its contentMinSize, plus the title bar).
+    static let minimum = CGSize(width: 760, height: 520)
 
     /// The saved frame if enough of it is on a screen you still have; otherwise the default, centred.
     static func frame(saved: CGRect?, screens: [CGRect], main: CGRect) -> CGRect {
-        if let saved, saved.width >= 300, saved.height >= 200,
+        // Anything smaller than the notes window's minimum is the sign-in card, never a real choice.
+        if let saved, saved.width >= minimum.width, saved.height >= minimum.height,
            let screen = screens.max(by: { area($0.intersection(saved)) < area($1.intersection(saved)) }),
            area(screen.intersection(saved)) >= min(area(saved) * 0.5, 200 * 150),
            // The title bar has to be reachable, or you couldn't move the window back.
@@ -124,7 +127,11 @@ enum WindowFrameMemory {
         return r.isEmpty ? nil : r
     }
 
-    static func save(_ frame: CGRect) { UserDefaults.standard.set(NSStringFromRect(frame), forKey: key) }
+    /// Only real notes-window frames: while signing in or out the window is briefly card-sized.
+    static func save(_ frame: CGRect) {
+        guard frame.width >= minimum.width, frame.height >= minimum.height else { return }
+        UserDefaults.standard.set(NSStringFromRect(frame), forKey: key)
+    }
 
     /// Test runs place the window themselves (`-uitest -width 820`) and never touch the saved frame.
     static var enabled: Bool { !ProcessInfo.processInfo.arguments.contains("-uitest") }

@@ -9,6 +9,8 @@ struct SignInView: View {
     /// The old email sign-in, folded away. It stays until your Apple ID is linked on
     /// every device (Settings → Connect Apple ID); then `emailFallback` goes to false.
     @State private var showEmail = true
+    /// The email form creates an account instead of signing in.
+    @State private var creating = false
     @State private var email = ""
     @State private var password = ""
     @FocusState private var focus: Field?
@@ -39,7 +41,7 @@ struct SignInView: View {
         VStack(spacing: 24) {
             VStack(spacing: 14) {
                 AppMark(size: 72)
-                Text("Sign in to Amber Notes")
+                Text(creating ? "Create your account" : "Sign in to Amber Notes")
                     .font(.title2.weight(.bold))
                     .multilineTextAlignment(.center)
             }
@@ -90,19 +92,26 @@ struct SignInView: View {
                         .accessibilityIdentifier("signin.email")
                 }
                 field {
-                    SecureField("Password", text: $password)
-                        .textContentType(.password)
+                    SecureField(creating ? "Password, 12+ characters" : "Password", text: $password)
+                        .textContentType(creating ? .newPassword : .password)
                         .focused($focus, equals: .password)
                         .submitLabel(.go)
                         .onSubmit(signInWithEmail)
                         .accessibilityIdentifier("signin.password")
                 }
-                Button("Sign In", action: signInWithEmail)
+                Button(creating ? "Create Account" : "Sign In", action: signInWithEmail)
                     .buttonStyle(.bordered)
                     .controlSize(.large)
-                    .disabled(email.isEmpty || password.isEmpty || working)
+                    .disabled(!canSubmitEmail)
                     .keyboardShortcut(.defaultAction)
                     .accessibilityIdentifier("signin.submit")
+                Button(creating ? "I already have an account" : "Create an account") {
+                    withAnimation(.smooth(duration: 0.25)) { creating.toggle(); error = nil }
+                }
+                .buttonStyle(.plain)
+                .font(.footnote)
+                .foregroundStyle(.tint)
+                .accessibilityIdentifier("signin.switch")
             }
             .textFieldStyle(.plain)
             .transition(.opacity.combined(with: .move(edge: .top)))
@@ -138,12 +147,22 @@ struct SignInView: View {
         }
     }
 
+    private var canSubmitEmail: Bool {
+        !email.isEmpty && !working && (creating ? password.count >= 12 : !password.isEmpty)
+    }
+
     private func signInWithEmail() {
-        guard !email.isEmpty, !password.isEmpty, !working else { return }
+        guard canSubmitEmail else { return }
         working = true
         error = nil
+        let signingUp = creating
         Task {
-            do { try await backend.signIn(email: email, password: password) } catch { self.error = Backend.message(for: error, signingUp: false) }
+            do {
+                if signingUp { try await backend.signUp(email: email, password: password) }
+                else { try await backend.signIn(email: email, password: password) }
+            } catch {
+                self.error = Backend.message(for: error, signingUp: signingUp)
+            }
             working = false
         }
     }

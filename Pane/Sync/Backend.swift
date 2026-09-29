@@ -124,10 +124,17 @@ final class Backend {
         return raw
     }
 
-    /// The old email sign-in, kept only until the Apple ID is linked (see SignInView.emailFallback).
+    /// Email and password sign-in, next to Sign in with Apple.
     func signIn(email: String, password: String) async throws {
         guard let client else { return }
         try await client.auth.signIn(email: email.trimmingCharacters(in: .whitespaces), password: password)
+    }
+
+    /// A new account with email and password (at least 12 characters). Email isn't confirmed,
+    /// so the new session starts at once.
+    func signUp(email: String, password: String) async throws {
+        guard let client else { return }
+        try await client.auth.signUp(email: email.trimmingCharacters(in: .whitespaces), password: password)
     }
 
     /// Words a person can act on, instead of raw server errors.
@@ -135,7 +142,6 @@ final class Backend {
         if error is URLError { return "Can't reach the server. Check your connection." }
         let raw = (error as? AuthError)?.message ?? error.localizedDescription
         let lower = raw.lowercased()
-        if lower.contains("private") || lower.contains("not allowed") { return "This server only accepts invited emails. Ask its owner to add yours." }
         if lower.contains("already") { return "That email already has an account. Sign in instead." }
         if lower.contains("invalid login") || lower.contains("invalid credentials") { return "That email and password didn't match." }
         if lower.contains("password") && signingUp { return "Pick a longer password: at least 12 characters." }

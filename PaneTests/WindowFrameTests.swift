@@ -15,6 +15,12 @@ import Testing
         #expect(abs(f.midX - laptop.midX) < 1 && abs(f.midY - laptop.midY) < 1)
     }
 
+    @Test func aCardSizedFrameIsNeverRestored() {
+        // Signing out shrinks the window to the sign-in card; that size must not come back after sign-in.
+        let card = CGRect(x: 500, y: 300, width: 380, height: 340)
+        #expect(WindowFrameMemory.frame(saved: card, screens: [laptop], main: laptop).size == WindowFrameMemory.defaultSize)
+    }
+
     @Test func savedFrameComesBackExactly() {
         let saved = CGRect(x: 1700, y: 200, width: 1400, height: 900)
         #expect(WindowFrameMemory.frame(saved: saved, screens: [laptop, external], main: laptop) == saved)

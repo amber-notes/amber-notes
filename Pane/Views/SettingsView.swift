@@ -86,7 +86,7 @@ private struct AppleIDRow: View {
         } else {
             // A settings row: what it is on the left, the standard Apple button on the right.
             LabeledContent {
-                AppleAuthButton(label: .continue, height: 30) { result in
+                AppleAuthButton(label: .continue, height: 30, title: "Continue with Apple") { result in
                     switch result {
                     case .success(let credential): link(credential)
                     case .failure(let failure): error = AppleSignIn.message(for: failure)
