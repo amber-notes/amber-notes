@@ -9,7 +9,7 @@ import d from "./demo.module.css";
 // window cross-fades to the capture of the app after that change, with the app's own amber tint
 // on the lines the AI touched. Scripted, no network.
 
-type Shot = "before" | "paella" | "bought";
+type Shot = "before" | "paella" | "bought" | "left";
 // Where the lines that changed sit in the 1180×720 capture (measured from the captures' own tint).
 type Band = { top: number; height: number };
 type Scene = { ask: string; answer: string; from: Shot; to: Shot; band: Band };
@@ -21,16 +21,17 @@ const SCENES: Scene[] = [
   { ask: "I got the lemons and coffee, tick them off", answer: "Done. Lemons and coffee beans are ticked off in Groceries.",
     from: "paella", to: "bought", band: { top: 434, height: 47 } },
   { ask: "What's still left to buy?", answer: "Eleven things: the paella rice, saffron, chorizo, chicken thighs and paprika, plus oat milk, basil, burrata, cherry tomatoes, olive oil and dark chocolate.",
-    from: "bought", to: "bought", band: { top: 175, height: 259 } },
+    from: "bought", to: "left", band: { top: 175, height: 259 } },
 ];
 
 const ALT: Record<Shot, string> = {
   before: "Amber Notes on a Mac, with the Groceries note open",
   paella: "The Groceries note with paella rice, saffron, chorizo, chicken thighs and smoked paprika just added, tinted amber",
   bought: "The Groceries note with lemons and coffee beans just ticked off, tinted amber",
+  left: "The Groceries note with the eleven things still to buy tinted amber",
 };
 
-const SHOTS: Shot[] = ["before", "paella", "bought"];
+const SHOTS: Shot[] = ["before", "paella", "bought", "left"];
 
 export default function Demo() {
   const [scene, setScene] = useState<number | null>(null);
@@ -98,7 +99,7 @@ export default function Demo() {
               <div key={`band${run}`} className={d.band} aria-hidden="true"
                 style={{ top: `calc(${s.band.top - 3} * var(--u))`, height: `calc(${s.band.height + 6} * var(--u))` }} />
             )}
-            {done && s && s.from !== s.to && <div key={`sync${run}`} className={d.synced}>Updated on your iPhone too</div>}
+            {done && s && s.to !== "left" && <div key={`sync${run}`} className={d.synced}>Updated on your iPhone too</div>}
           </div>
 
           <div className={d.chat} aria-label="An AI chat">
