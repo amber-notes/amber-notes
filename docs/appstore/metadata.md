@@ -38,7 +38,7 @@ WRITE THE WAY YOU THINK
 • Sub-notes: link a note inside another and keep the details one tap away
 
 ALWAYS IN SYNC
-Your notes update across your iPhone, iPad and Mac while you type. Start a list on your phone, finish it on your laptop.
+Your notes live in the cloud and update across your iPhone and Mac while you type. Start a list on your phone, finish it on your Mac.
 
 YOUR AI, YOUR NOTES
 Connect an AI assistant such as ChatGPT or Claude from Settings. You approve each connection in the app, choose read only or read and edit, and can disconnect it at any time. Every change an assistant makes keeps the previous version, so nothing is lost.
