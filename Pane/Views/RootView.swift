@@ -5,7 +5,12 @@ import UniformTypeIdentifiers
 /// Three columns, like Apple Notes: folders, notes, the note.
 struct RootView: View {
     @Environment(\.modelContext) private var context
+    #if os(iOS)
+    /// On iPhone a folder is pushed once the first layout is done (see `lifecycle`).
+    @State private var scope: Scope?
+    #else
     @State private var scope: Scope? = .all
+    #endif
     /// The list's selection; one note opens in the editor, several show a summary like Notes.
     @State private var selection: Set<UUID> = []
     @State private var visibility: NavigationSplitViewVisibility = .all
@@ -57,9 +62,19 @@ struct RootView: View {
     private func lifecycle(_ content: some View) -> some View {
         content
             .onAppear {
+                #if os(iOS)
+                // On iPhone restoring the folder pushes the note list; doing that after the first
+                // layout lets the list open with its large title showing, as it does when you tap in.
+                DispatchQueue.main.async {
+                    restoreScope()
+                    restoreNote()
+                    openFromLaunchArguments()
+                }
+                #else
                 restoreScope()
                 restoreNote()
                 openFromLaunchArguments()
+                #endif
             }
             .onChange(of: scope) { _, new in rememberScope(new) }
             .onChange(of: selectedNote) { old, new in noteChanged(from: old, to: new) }
@@ -191,9 +206,11 @@ struct RootView: View {
     }
 
     private func restoreScope() {
-        if let s = try? JSONDecoder().decode(Scope.self, from: lastScopeData) {
-            if case .folder(let id) = s, context.folder(id) == nil { return }
+        if let s = try? JSONDecoder().decode(Scope.self, from: lastScopeData),
+           !({ if case .folder(let id) = s { return context.folder(id) == nil } else { return false } }()) {
             scope = s
+        } else if scope == nil {
+            scope = .all
         }
     }
 }
