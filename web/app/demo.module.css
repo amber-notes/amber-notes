@@ -6,7 +6,7 @@
 .fit { width: 100%; max-width: 1280px; container-type: inline-size; }
 .desk {
   --u: calc(100cqw / 1280);
-  position: relative; width: 100%; aspect-ratio: 1280 / 880; /* 114 design px under the window for the caption and the bar */ overflow: hidden; border-radius: calc(26 * var(--u));
+  position: relative; width: 100%; aspect-ratio: 1280 / 840; overflow: hidden; border-radius: calc(26 * var(--u));
   box-shadow: 0 18px 50px -12px rgba(80, 40, 5, 0.3);
   isolation: isolate; /* keeps the rounded clip exact over the wallpaper */
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; color: #1d1d1f;
@@ -110,7 +110,7 @@
 /* The story bar, on the desk below the app window (in the 74 design-px gap), in white over the dunes:
    finished parts at 90%, the current one filling solid white with a straight edge, the rest at 30%.
    Each segment is a 24 px tall button around the line; the desk clips what falls past its edge. */
-.story { position: absolute; left: 50%; bottom: calc(30 * var(--u)); transform: translate(-50%, 50%); z-index: 4;
+.story { position: absolute; left: 50%; bottom: calc(37 * var(--u)); transform: translate(-50%, 50%); z-index: 4;
   display: flex; gap: 6px; width: min(300px, 64%); filter: drop-shadow(0 1px 2px rgba(80, 35, 0, 0.35)); }
 .seg { flex: 1; min-height: 24px; padding: 0; border: 0; background: none; cursor: pointer; display: grid; align-items: center; border-radius: 8px; }
 .seg i { position: relative; display: block; height: 5px; border-radius: 99px; overflow: hidden; background: rgba(255, 255, 255, 0.3); }
@@ -120,11 +120,8 @@
 .seg:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
 @media (hover: hover) { .seg:hover i { background: rgba(255, 255, 255, 0.5); } .seg[data-state="done"]:hover i { background: #fff; } }
 @media (max-width: 700px) { .story { gap: 4px; } .seg i { height: 4px; } }
-/* The narration: one short line per part, quiet and readable. Review placements: on the desk just
-   above the bar (white over the dunes), or above the desk (ink on the page). */
-.caption { margin: 0; text-align: center; pointer-events: none; }
-.caption[data-at="desk"] { position: absolute; left: 0; right: 0; bottom: calc(62 * var(--u)); z-index: 4; color: #fff; font-size: max(12px, calc(17 * var(--u))); font-weight: 650; text-shadow: 0 1px 3px rgba(70, 30, 0, 0.45); }
-.caption[data-at="above"] { margin-bottom: 14px; color: var(--ink); font-size: 16px; font-weight: 650; min-height: 22px; }
+/* The narration above the desk: one short line per part, quiet and readable, in the first view. */
+.caption { margin: 0 0 14px; min-height: 22px; text-align: center; color: var(--ink); font-size: 16px; font-weight: 650; pointer-events: none; }
 .captionText { display: inline-block; }
 @media (prefers-reduced-motion: no-preference) { .captionText { animation: captionIn 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.1) both; } }
 @keyframes captionIn { from { opacity: 0; transform: translateY(4px); filter: blur(3px); } }

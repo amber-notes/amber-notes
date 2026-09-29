@@ -5,7 +5,7 @@ import { AIGlyph } from "@/lib/ai-glyphs";
 import d from "./demo.module.css";
 
 // A mini Mac desktop: the real Amber Notes window (frames captured from the app with demo data, one
-// session) and a ChatGPT window beside it. One story in four parts, narrated under the desk and shown
+// session) and a ChatGPT window beside it. One story in four parts, narrated above the desk and shown
 // on the story bar: you ask ChatGPT to plan Lisbon; it writes the whole note in Amber Notes (it lands
 // tinted, with the app's receipt); you change your mind; it edits just those two lines. Then it resets
 // and loops. One clock drives it; it pauses off-screen, in a hidden tab and under the pointer.
@@ -78,7 +78,6 @@ export default function Demo() {
   const [view, setView] = useState<View>(at(0));
   const [part, setPart] = useState(0);
   const [still, setStill] = useState(false);
-  const [capAt, setCapAt] = useState<"desk" | "above">("desk"); // review: ?cap=desk|above
   const [fitW, setFitW] = useState<number | null>(null);
   const clock = useRef({ t: 0, last: 0, started: false });
   const pause = useRef({ offscreen: false, hidden: false, hover: false });
@@ -86,8 +85,6 @@ export default function Demo() {
   const msgsRef = useRef<HTMLDivElement>(null);
   const fieldRef = useRef<HTMLSpanElement>(null);
   const segs = useRef<(HTMLButtonElement | null)[]>([]);
-
-  useEffect(() => { if (new URLSearchParams(location.search).get("cap") === "above") setCapAt("above"); }, []);
 
   // Wide screens: size the desk so the chat and the note fit the first view.
   useLayoutEffect(() => {
@@ -103,7 +100,7 @@ export default function Demo() {
     fit();
     window.addEventListener("resize", fit);
     return () => window.removeEventListener("resize", fit);
-  }, [capAt]);
+  }, []);
 
   const paintBar = (t: number) => {
     const p = Math.max(0, PART_AT.findIndex((s, k) => t >= s && t < PART_AT[k + 1]));
@@ -170,14 +167,14 @@ export default function Demo() {
   const typing = view.typed.length > 0;
   const caption = part >= 0 ? PARTS[part] : "";
   const captions = !still && (
-    <p className={d.caption} data-at={capAt} aria-live="polite">
+    <p className={d.caption} aria-live="polite">
       <span key={caption} className={d.captionText}>{caption}</span>
     </p>
   );
 
   return (
     <div className={d.wrap}>
-      {capAt === "above" && captions}
+      {captions}
       <div ref={outer} className={d.fit} style={fitW ? { width: fitW, margin: "0 auto" } : undefined}
         onPointerEnter={() => hoverPause(true)} onPointerLeave={() => hoverPause(false)}>
         <div className={d.desk}>
@@ -225,7 +222,6 @@ export default function Demo() {
               ))}
             </div>
           )}
-          {capAt === "desk" && captions}
         </div>
       </div>
     </div>
