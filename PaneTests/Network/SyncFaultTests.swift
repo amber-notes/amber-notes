@@ -107,6 +107,29 @@ extension NetworkFaults {
         await finish()
     }
 
+    // MARK: Not hammering the server
+
+    /// Typing for three seconds with no connection (or every request failing), then stopping:
+    /// pushes stay throttled while you type and stop when you do.
+    @Test(arguments: [NetFault.Config(offline: true), NetFault.Config(failRate: 1)])
+    func typingOnABadNetworkDoesNotHammer(_ fault: NetFault.Config) async throws {
+        let n = try await syncedNote("Draft")
+        NetFault.config = fault
+        NetFault.resetLog()
+        for i in 0..<30 {
+            n.body = "Draft \(i)"; n.touch()
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        let typing = NetFault.started.count
+        try await Task.sleep(for: .seconds(3))
+        let idle = NetFault.started.count - typing
+        print("PERF \(fault.offline ? "offline" : "every request failing"): \(typing) requests in 3 s of typing (\(Double(typing) / 3) a second), \(idle) in 3 s idle")
+        #expect(Double(typing) / 3 <= 4, "at most one push attempt per 0.35 s")
+        #expect(idle <= 1, "nothing retries on its own once you stop")
+        #expect(n.dirty && n.body == "Draft 29")
+        await finish()
+    }
+
     // MARK: Version history
 
     /// Restoring on a connection that hangs: each push attempt waits out its timeout, so
