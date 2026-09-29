@@ -109,6 +109,8 @@ export default function Demo() {
   const [view, setView] = useState<View>({ step: -2, typed: "", pill: false, faded: false, intro: introAt(0) });
   const [still, setStill] = useState(false);
   const [fitW, setFitW] = useState<number | null>(null);
+  const [side, setSide] = useState<"left" | "right">("left"); // review only: ?chat=right
+  useEffect(() => { if (new URLSearchParams(location.search).get("chat") === "right") setSide("right"); }, []);
   const clock = useRef({ scene: 0, t: -INTRO, last: 0, started: false });
   const segs = useRef<(HTMLButtonElement | null)[]>([]);
   // The story bar: part 0 is the intro, parts 1–3 the scenes. Painted straight from the clock.
@@ -247,7 +249,7 @@ export default function Demo() {
             )}
           </div>
 
-          <div className={d.chat} data-away={chatAway || undefined} data-dim={landed || undefined} aria-label="An AI chat">
+          <div className={d.chat} data-side={side} data-away={chatAway || undefined} data-dim={landed || undefined} aria-label="An AI chat">
             <div className={d.chatBar}>
               <div className={d.lights}><i /><i /><i /></div>
               <span className={d.chatTitle}><AIGlyph name="openai" size={16} />ChatGPT</span>

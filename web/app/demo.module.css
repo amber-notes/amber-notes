@@ -65,6 +65,8 @@
   border-radius: calc(16 * var(--u)); overflow: hidden; display: grid; grid-template-rows: calc(40 * var(--u)) minmax(0, 1fr) auto; background: #fff;
   box-shadow: 0 0 0 calc(0.5 * var(--u)) rgba(0, 0, 0, 0.22), 0 calc(30 * var(--u)) calc(60 * var(--u)) calc(-12 * var(--u)) rgba(40, 15, 0, 0.5), 0 calc(10 * var(--u)) calc(20 * var(--u)) calc(-8 * var(--u)) rgba(40, 15, 0, 0.28);
 }
+/* Review: the chat over the note's empty right side (item names, the amber bar and the pill stay clear). */
+.chat[data-side="right"] { left: calc(860 * var(--u)); width: calc(400 * var(--u)); }
 /* ChatGPT arrives with a gentle scale-and-fade, and leaves more quietly. */
 .chat[data-away] { opacity: 0; transform: scale(0.96) translateY(calc(8 * var(--u))); }
 @media (prefers-reduced-motion: no-preference) {
