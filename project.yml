@@ -75,6 +75,11 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.emilwagman.pane
+        # The app's file name. Dev and test builds are Pane.app; scripts/testflight.sh sets
+        # PANE_PRODUCT_NAME="Amber Notes" so the shipped Mac app installs as Amber Notes.app.
+        PANE_PRODUCT_NAME: Pane
+        PRODUCT_NAME: $(PANE_PRODUCT_NAME)
+        PRODUCT_MODULE_NAME: Pane
         GENERATE_INFOPLIST_FILE: NO
         TARGETED_DEVICE_FAMILY: "1,2"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon

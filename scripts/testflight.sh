@@ -35,8 +35,8 @@ cp "$MAIN/Config/Backend.local.xcconfig" "$CLEAN/Config/"
 (cd "$CLEAN" && xcodegen generate >/dev/null)
 mkdir -p "$OUT"
 
-options="$OUT/ExportOptions-$UPLOAD.plist"
-cat > "$options" <<PLIST
+exportopts="$OUT/ExportOptions-$UPLOAD.plist"
+cat > "$exportopts" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
@@ -59,16 +59,19 @@ ship() {
     PROVISIONING_PROFILE_SPECIFIER= CURRENT_PROJECT_VERSION=$BUILD "$@" \
     > "$OUT/$platform-$BUILD-archive.log" 2>&1 || { grep -E " error: " "$OUT/$platform-$BUILD-archive.log" | head -20; return 1; }
   echo "→ $platform build $BUILD: $([[ $UPLOAD == 1 ]] && echo uploading || echo exporting)"
-  xcodebuild -exportArchive -archivePath "$archive" -exportOptionsPlist "$options" \
+  xcodebuild -exportArchive -archivePath "$archive" -exportOptionsPlist "$exportopts" \
     -exportPath "$OUT/$platform-$BUILD-export" -allowProvisioningUpdates "${auth[@]}" \
     > "$OUT/$platform-$BUILD-export.log" 2>&1 || { grep -iE "error|fail" "$OUT/$platform-$BUILD-export.log" | head -20; return 1; }
   echo "✓ $platform build $BUILD $([[ $UPLOAD == 1 ]] && echo "uploaded" || echo "exported to $OUT/$platform-$BUILD-export")"
 }
 
+# The Mac app installs as "Amber Notes.app" (dev builds keep the Pane product name), sandboxed.
+macArgs=(PANE_MAC_ENTITLEMENTS=Pane-mac-appstore.entitlements "PANE_PRODUCT_NAME=Amber Notes")
+
 case $WHICH in
   ios)  ship ios 'generic/platform=iOS' ;;
-  mac)  ship mac 'generic/platform=macOS' PANE_MAC_ENTITLEMENTS=Pane-mac-appstore.entitlements ;;
-  both) ship ios 'generic/platform=iOS'; ship mac 'generic/platform=macOS' PANE_MAC_ENTITLEMENTS=Pane-mac-appstore.entitlements ;;
+  mac)  ship mac 'generic/platform=macOS' "${macArgs[@]}" ;;
+  both) ship ios 'generic/platform=iOS'; ship mac 'generic/platform=macOS' "${macArgs[@]}" ;;
   *) echo "usage: $0 [ios|mac|both]" >&2; exit 2 ;;
 esac
 echo "Version 1.0 ($BUILD)"
