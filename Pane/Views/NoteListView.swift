@@ -470,12 +470,12 @@ struct NoteRow: View {
         // At the accessibility text sizes the row stacks and wraps instead of truncating.
         let large = typeSize.isAccessibilitySize
         let detail = large ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2)) : AnyLayout(HStackLayout(spacing: 8))
-        let ai = DesignStudy.on ? AIEdits.shared.unseen(note.id) : nil
+        let ai = AIEdit.isUnseen(note) ? note.aiEditor : nil
         return VStack(alignment: .leading, spacing: RowMetrics.spacing) {
             Text(title)
                 .font(RowMetrics.title)
                 .lineLimit(large ? 3 : 1)
-                // Design study: an AI changed this note and you haven't opened it since, like Mail's unread dot.
+                // An AI changed this note and you haven't opened it since, like Mail's unread dot.
                 .overlay(alignment: .leading) {
                     if ai != nil {
                         Circle().fill(.tint).frame(width: 8, height: 8)
@@ -489,8 +489,8 @@ struct NoteRow: View {
                     .foregroundStyle(.primary.opacity(0.85))
                 if let ai {
                     HStack(spacing: 4) {
-                        AIGlyph(ai: ai.by, size: 11)
-                        Text("Edited by \(ai.by)")
+                        AIGlyph(ai: ai, size: 11)
+                        Text("Edited by \(ai)")
                     }
                     .foregroundStyle(Color.amberInk)
                     .lineLimit(1)
@@ -513,7 +513,7 @@ struct NoteRow: View {
         .padding(.vertical, RowMetrics.vertical)
         .padding(.leading, RowMetrics.leading)
         .accessibilityElement(children: .combine)
-        .accessibilityValue([note.isPinned ? "Pinned" : nil, ai.map { "Edited by \($0.by)" }].compactMap { $0 }.joined(separator: ", "))
+        .accessibilityValue([note.isPinned ? "Pinned" : nil, ai.map { "Edited by \($0)" }].compactMap { $0 }.joined(separator: ", "))
         .accessibilityIdentifier("note.\(title)")
     }
 

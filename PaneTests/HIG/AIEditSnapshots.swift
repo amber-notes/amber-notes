@@ -6,10 +6,11 @@ import SwiftUI
 import Testing
 @testable import Pane
 
-/// Before and after pictures for the website design study, drawn offscreen with cacheDisplay.
-/// `AMBER_HIG_SHOTS=/path scripts/qa-test.sh PaneTests/DesignStudySnapshots`. Motion is written
-/// as numbered frames under `frames/<name>/` with each frame's time in ms, for ffmpeg.
-@MainActor @Suite(.serialized) struct DesignStudySnapshots {
+/// Pictures of an AI's edit arriving (tint, receipt, list marker) and of the screens that came
+/// from the website, drawn offscreen with cacheDisplay.
+/// `TEST_RUNNER_AMBER_HIG_SHOTS=/path scripts/qa-test.sh PaneTests/AIEditSnapshots`. Motion is
+/// written as numbered frames under `frames/<name>/` with each frame's time in ms, for ffmpeg.
+@MainActor @Suite(.serialized) struct AIEditSnapshots {
     static var dir: URL? { AppSnapshotTests.dir }
 
     static func window(_ view: some View, size: CGSize, dark: Bool = false) -> NSWindow {
@@ -57,34 +58,21 @@ import Testing
 
     static let size = CGSize(width: 1180, height: 760)
 
-    /// 1 and 2: an AI's edit lands on the open note. Before: the text just changes. After: the
-    /// changed lines tint and fade, and a receipt says who did it.
-    @Test(arguments: [false, true])
-    func aiEditOnOpenNote(study: Bool) async throws {
+    /// The tint and receipt arriving on the open note, recorded in slow motion.
+    @Test func aiEditOnOpenNote() async throws {
         guard Self.dir != nil else { return }
-        DesignStudy.on = study
-        defer { DesignStudy.on = false }
         let c = try AppSnapshotTests.container()
-        let tag = study ? "after" : "before"
         try await AppSnapshotTests.withLastNote(c, "Groceries") {
             let w = Self.window(Self.root(c), size: Self.size)
             defer { w.orderOut(nil); w.close() }
             try? await Task.sleep(for: .seconds(1.2))
-            try Self.snap(w, "01-ai-highlight-mac-\(tag)-start")
-            if study {
-                // A still moment before the edit lands, in the recording too.
-                DesignStudy.slowMotion = 5
-                try await Self.record(w, "ai-edit-mac-lead", seconds: 0.6)
-            }
-            DesignStudy.fakeAIEdit(c.mainContext, title: "Groceries", scene: "paella", by: "ChatGPT")
-            if study {
-                DesignStudy.slowMotion = 5
-                defer { DesignStudy.slowMotion = 1 }
-                try await Self.record(w, "ai-edit-mac", seconds: 8.5 * 5)
-            } else {
-                try? await Task.sleep(for: .seconds(1.2))
-            }
-            try Self.snap(w, "01-ai-highlight-mac-\(tag)-end")
+            try Self.snap(w, "01-ai-highlight-mac-start")
+            ChangeTint.slowMotion = 5
+            defer { ChangeTint.slowMotion = 1 }
+            try await Self.record(w, "ai-edit-mac-lead", seconds: 0.6)
+            Capture.aiEdit(c.mainContext, title: "Groceries", scene: "paella", by: "ChatGPT")
+            try await Self.record(w, "ai-edit-mac", seconds: 8.5 * 5)
+            try Self.snap(w, "01-ai-highlight-mac-end")
         }
     }
 
@@ -92,85 +80,52 @@ import Testing
     @Test(arguments: [false, true])
     func aiEditHeld(dark: Bool) async throws {
         guard Self.dir != nil else { return }
-        DesignStudy.on = true
-        defer { DesignStudy.on = false }
         let c = try AppSnapshotTests.container()
         try await AppSnapshotTests.withLastNote(c, "Groceries") {
             let w = Self.window(Self.root(c), size: Self.size, dark: dark)
             defer { w.orderOut(nil); w.close() }
             try? await Task.sleep(for: .seconds(1.2))
-            DesignStudy.fakeAIEdit(c.mainContext, title: "Groceries", scene: "paella", by: "ChatGPT")
+            Capture.aiEdit(c.mainContext, title: "Groceries", scene: "paella", by: "ChatGPT")
             try? await Task.sleep(for: .seconds(1.6))
-            try Self.snap(w, "01-ai-highlight-mac-after\(dark ? "-dark" : "")")
+            try Self.snap(w, "01-ai-highlight-mac\(dark ? "-dark" : "")")
         }
     }
 
-    /// 3: an AI edits a note you don't have open. After: an amber dot and "Edited by Claude" in the list.
-    @Test(arguments: [false, true])
-    func aiEditInList(study: Bool) async throws {
+    /// AI edits to notes that aren't open: an amber dot and "Edited by Claude" in the list.
+    @Test func aiEditInList() async throws {
         guard Self.dir != nil else { return }
-        DesignStudy.on = study
-        defer { DesignStudy.on = false }
         let c = try AppSnapshotTests.container()
         try await AppSnapshotTests.withLastNote(c, "Evening tracker") {
             let w = Self.window(Self.root(c), size: Self.size)
             defer { w.orderOut(nil); w.close() }
             try? await Task.sleep(for: .seconds(1.2))
-            DesignStudy.fakeAIEdit(c.mainContext, title: "Lisbon", scene: "lisbon", by: "Claude")
-            DesignStudy.fakeAIEdit(c.mainContext, title: "Groceries", scene: "paella", by: "ChatGPT")
+            Capture.aiEdit(c.mainContext, title: "Lisbon", scene: "lisbon", by: "Claude")
+            Capture.aiEdit(c.mainContext, title: "Groceries", scene: "paella", by: "ChatGPT")
             try? await Task.sleep(for: .seconds(1.0))
-            try Self.snap(w, "03-list-marker-mac-\(study ? "after" : "before")")
+            try Self.snap(w, "03-list-marker-mac")
         }
     }
 
-    /// 4: Connect an AI in Settings.
-    @Test(arguments: [false, true])
-    func connect(study: Bool) async throws {
+    @Test func connect() async throws {
         guard Self.dir != nil else { return }
-        DesignStudy.on = study
-        defer { DesignStudy.on = false }
-        let client = SupabaseClientStub.make()
-        let form = Form { ConnectAISection(client: client, preview: CaptureScreen.connections) }.formStyle(.grouped).frame(width: 520, height: 620)
-        try await AppSnapshotTests.render(form, name: "04-connect-ai-mac-\(study ? "after" : "before")", dark: false, wait: 1.0)
+        let client = SupabaseClient(supabaseURL: URL(string: "http://127.0.0.1:9")!, supabaseKey: "test")
+        let form = Form { ConnectAISection(client: client, preview: CaptureScreen.connections) }.formStyle(.grouped).frame(width: 520, height: 540)
+        try await AppSnapshotTests.render(form, name: "04-connect-ai-mac", dark: false, wait: 1.0)
     }
 
-    /// 5: the Get set up card, at step 2 and step 3, in the real window.
-    @Test(arguments: [false, true])
-    func setup(study: Bool) async throws {
+    @Test func setup() async throws {
         guard Self.dir != nil else { return }
-        DesignStudy.on = study
-        defer { DesignStudy.on = false }
-        let tag = study ? "after" : "before"
-        let c = try AppSnapshotTests.container()
         for (step, p) in [("step2", SetupProgress(imported: true)), ("step3", SetupProgress(imported: true, connected: true))] {
-            try await AppSnapshotTests.withLastNote(c, "Evening tracker") {
-                let w = Self.window(Self.root(c, setup: p), size: Self.size)
-                defer { w.orderOut(nil); w.close() }
-                try? await Task.sleep(for: .seconds(1.2))
-                try Self.snap(w, "05-setup-card-mac-\(step)-\(tag)")
-                // The list sometimes draws late offscreen: a second look.
-                w.contentView?.needsLayout = true
-                try? await Task.sleep(for: .seconds(2.0))
-                try Self.snap(w, "05-setup-card-mac-\(step)-\(tag)-late")
-            }
             let card = SetupCard(progress: p, celebrating: false, onImport: {}, onStartFresh: {}, onConnect: {}, onHide: {})
                 .frame(width: 330).padding(16).background(Color(nsColor: .windowBackgroundColor))
-            try await AppSnapshotTests.render(card, name: "05-setup-card-mac-\(step)-\(tag)-card", dark: false)
+            try await AppSnapshotTests.render(card, name: "05-setup-card-mac-\(step)", dark: false)
         }
     }
 
-    /// 6: sign in.
-    @Test(arguments: [false, true])
-    func signIn(study: Bool) async throws {
+    @Test func signIn() async throws {
         guard Self.dir != nil else { return }
-        DesignStudy.on = study
-        defer { DesignStudy.on = false }
         try await AppSnapshotTests.shoot(SignInView(backend: Backend()).fixedSize().containerBackground(for: .window) { Backdrop() },
-                                         name: "06-sign-in-mac-\(study ? "after" : "before")", size: CGSize(width: 380, height: 520), dark: false, toolbar: false)
+                                         name: "06-sign-in-mac", size: CGSize(width: 380, height: 520), dark: false, toolbar: false)
     }
-}
-
-enum SupabaseClientStub {
-    static func make() -> SupabaseClient { SupabaseClient(supabaseURL: URL(string: "http://127.0.0.1:9")!, supabaseKey: "test") }
 }
 #endif

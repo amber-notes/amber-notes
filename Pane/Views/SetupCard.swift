@@ -22,7 +22,7 @@ struct SetupCard: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .firstTextBaseline) {
                 Text("Get set up").font(.headline)
-                if DesignStudy.on, !celebrating {
+                if !celebrating {
                     Text("\(SetupProgress.Step.allCases.filter(progress.isDone).count) of 3")
                         .font(.subheadline).monospacedDigit().foregroundStyle(.secondary)
                 }
@@ -154,31 +154,14 @@ struct SetupCard: View {
                 .buttonStyle(.borderedProminent)
                 .accessibilityIdentifier("setup.connect")
             #endif
-        case .tryIt where DesignStudy.on:
-            studyTryIt
         case .tryIt:
-            Text("Paste this into your AI:")
-                .font(.subheadline).foregroundStyle(.secondary)
-            HStack(spacing: 8) {
-                Text(Self.prompt)
-                    .font(.callout)
-                    .textSelection(.enabled)
-                    .padding(.horizontal, 10).padding(.vertical, 7)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(.background, in: .rect(cornerRadius: 8, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(.tint.opacity(0.6), style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
-                Button(copied ? "Copied" : "Copy") { copy() }
-                    .buttonStyle(.bordered)
-                    .accessibilityIdentifier("setup.copy")
-            }
-            Text("Then watch it appear in your To-do note.")
-                .font(.subheadline).foregroundStyle(.secondary)
+            tryIt
         }
     }
 
-    /// Design study: the prompt as a message you'd send, like the chat in the website's demo.
+    /// The prompt as a message you'd send, like the chat in the website's demo.
     @ViewBuilder
-    private var studyTryIt: some View {
+    private var tryIt: some View {
         Text("Ask your AI:")
             .font(.subheadline).foregroundStyle(.secondary)
         HStack(alignment: .bottom, spacing: 8) {
@@ -226,21 +209,15 @@ struct SetupCard: View {
     }
 }
 
-/// The card's ground: a hairline today; with `-designStudy` the page colour on soft layered shadows, like the website's cards.
+/// The card's ground: the page colour on soft layered shadows, like the website's cards.
 private struct SetupCardSurface: ViewModifier {
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
-        if DesignStudy.on {
-            content
-                .background(Color.notePage, in: shape)
-                .overlay(shape.strokeBorder(.separator.opacity(0.35), lineWidth: 0.5))
-                .shadow(color: Color(red: 0.24, green: 0.12, blue: 0.02).opacity(0.10), radius: 14, y: 8)
-                .shadow(color: Color(red: 0.24, green: 0.12, blue: 0.02).opacity(0.06), radius: 1.5, y: 1)
-        } else {
-            content
-                .background(.background.secondary, in: shape)
-                .overlay(shape.strokeBorder(.separator.opacity(0.6), lineWidth: 0.5))
-        }
+        content
+            .background(Color.notePage, in: shape)
+            .overlay(shape.strokeBorder(.separator.opacity(0.35), lineWidth: 0.5))
+            .shadow(color: Color(red: 0.24, green: 0.12, blue: 0.02).opacity(0.10), radius: 14, y: 8)
+            .shadow(color: Color(red: 0.24, green: 0.12, blue: 0.02).opacity(0.06), radius: 1.5, y: 1)
     }
 }
 

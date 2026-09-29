@@ -30,7 +30,7 @@ struct PaneApp: App {
         _sync = State(initialValue: SyncEngine(backend: backend, context: container.mainContext))
         // With sync on, the library is seeded after the first pull so devices don't duplicate it.
         if backend.client == nil { Seed.ensureLibrary(container.mainContext, demo: args.contains("-demo")) }
-        DesignStudy.scheduleFromArguments(container.mainContext)
+        Capture.scheduleFromArguments(container.mainContext)
     }
 
     /// Test runs can pin an appearance: `-uitest -scheme light`. Otherwise the system decides.
@@ -398,11 +398,11 @@ struct CaptureScreen: View {
     let backend: Backend
 
     static var requested: String? {
-        ProcessInfo.processInfo.arguments.contains("-uitest") ? DesignStudy.argument("-captureScreen") : nil
+        ProcessInfo.processInfo.arguments.contains("-uitest") ? Capture.argument("-captureScreen") : nil
     }
 
     static var setupProgress: SetupProgress? {
-        guard ProcessInfo.processInfo.arguments.contains("-uitest"), let n = DesignStudy.argument("-captureSetup").flatMap(Int.init) else { return nil }
+        guard ProcessInfo.processInfo.arguments.contains("-uitest"), let n = Capture.argument("-captureSetup").flatMap(Int.init) else { return nil }
         return SetupProgress(imported: n > 1, connected: n > 2)
     }
 

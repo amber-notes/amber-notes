@@ -1,11 +1,8 @@
 import CoreGraphics
 import Foundation
 
-/// Lines an AI connection just changed, tinted in amber behind the text.
-///
-/// App Store captures name the lines: `-uitest -highlight "Saffron|Chorizo"` (their text,
-/// without the list marker). With `-designStudy`, an AI edit that lands on the open note tints
-/// the lines it changed: the tint swells in, holds while you look, then fades away.
+/// Lines named for App Store captures, tinted as if an AI had just changed them:
+/// `-uitest -highlight "Saffron|Chorizo"` (their text, without the list marker).
 enum ChangeHighlight {
     static let lines: Set<String> = {
         let args = ProcessInfo.processInfo.arguments
@@ -13,73 +10,101 @@ enum ChangeHighlight {
         return Set(args[i + 1].split(separator: "|").map { $0.trimmingCharacters(in: .whitespaces) })
     }()
 
-    /// Design study: the lines tinted right now, and how strongly (0 gone, 1 resting, a little over 1 while arriving).
-    nonisolated(unsafe) static var live: Set<String> = []
-    nonisolated(unsafe) static var strength: CGFloat = 0
-    /// Text views redraw their tint when this is posted.
-    static let changed = Notification.Name("pane.changeHighlight")
-
-    /// A line's text without its list marker, the way lines are matched.
-    static func key(_ paragraph: String) -> String {
+    /// Whether this markdown line (a whole paragraph, marker included) is one of them.
+    static func matches(_ paragraph: String) -> Bool {
+        guard !lines.isEmpty else { return false }
         var text = paragraph.trimmingCharacters(in: .newlines)
         if let prefix = ListPrefix(line: text) { text = (text as NSString).substring(from: prefix.length) }
-        return text.trimmingCharacters(in: .whitespaces)
+        return lines.contains(text.trimmingCharacters(in: .whitespaces))
+    }
+}
+
+/// The lines an AI just changed in the open note, tinted amber behind the text: the tint
+/// swells in, holds while you look, then fades. One per editor; its layout fragments ask it
+/// whether their paragraph is one of the changed ones.
+final class ChangeTint: @unchecked Sendable {
+    /// Whole paragraphs (UTF-16, newline included) of the editor's text, in order.
+    private(set) var ranges: [NSRange] = []
+    /// 0 gone, 1 resting, a little over 1 while it arrives.
+    private(set) var strength: CGFloat = 0
+    /// Redraws these ranges (set by the text view).
+    var redraw: ([NSRange]) -> Void = { _ in }
+    private var run = 0
+
+    /// Offscreen Mac recordings stretch time, so slow frame grabs still catch every step.
+    nonisolated(unsafe) static var slowMotion: Double = 1
+
+    /// How strongly to tint the paragraph starting at `offset`: 0 for not at all.
+    func strength(at offset: Int) -> CGFloat {
+        guard strength > 0 else { return 0 }
+        return ranges.contains { NSLocationInRange(offset, $0) } ? strength : 0
     }
 
-    /// Whether this markdown line (a whole paragraph, marker included) is one of them.
-    static func matches(_ paragraph: String) -> Bool { tint(for: paragraph) > 0 }
-
-    /// How strongly to tint this line: 0 for not at all.
-    static func tint(for paragraph: String) -> CGFloat {
-        guard !lines.isEmpty || (!live.isEmpty && strength > 0) else { return 0 }
-        let k = key(paragraph)
-        if lines.contains(k) { return 1 }
-        return live.contains(k) ? strength : 0
+    /// Tints the paragraphs of `text` that `previous` didn't have, then fades them.
+    @MainActor func play(from previous: String, to text: String, hold: Double = 2.6) {
+        stop()
+        ranges = Self.paragraphRanges(changedFrom: previous, to: text)
+        guard !ranges.isEmpty else { return }
+        let mine = run, lit = ranges
+        let easeOut: @Sendable (Double) -> Double = { 1 - pow(1 - $0, 3) }
+        let easeInOut: @Sendable (Double) -> Double = { $0 < 0.5 ? 4 * $0 * $0 * $0 : 1 - pow(-2 * $0 + 2, 3) / 2 }
+        Task { @MainActor in
+            guard await animate(to: 1.5, over: 0.3, easeOut, run: mine, lit: lit),
+                  await animate(to: 1, over: 0.5, easeInOut, run: mine, lit: lit) else { return }
+            try? await Task.sleep(for: .seconds(hold * Self.slowMotion))
+            guard await animate(to: 0, over: 1.6, easeInOut, run: mine, lit: lit), mine == run else { return }
+            ranges = []
+        }
     }
 
-    /// The lines of `new` that aren't in `old`: added, rewritten or ticked off.
-    static func changedLines(from old: String, to new: String) -> Set<String> {
+    /// Steps the strength to `target` at 30 frames a second; false once another run took over.
+    @MainActor private func animate(to target: CGFloat, over seconds: Double, _ curve: @Sendable (Double) -> Double, run mine: Int, lit: [NSRange]) async -> Bool {
+        let fps = 30.0
+        let n = max(1, Int(seconds * Self.slowMotion * fps))
+        let from = strength
+        for i in 1...n {
+            guard mine == run else { return false }
+            strength = from + (target - from) * CGFloat(curve(Double(i) / Double(n)))
+            redraw(lit)
+            try? await Task.sleep(for: .seconds(1 / fps))
+        }
+        return mine == run
+    }
+
+    /// Clears at once (you started typing, or undid the edit).
+    @MainActor func stop() {
+        run += 1
+        guard strength > 0 || !ranges.isEmpty else { return }
+        let lit = ranges
+        strength = 0
+        ranges = []
+        redraw(lit)
+    }
+
+    /// Line numbers (0-based) of `new` that are added or rewritten compared with `old`. A line
+    /// that only moved isn't one, and neither is a blank line.
+    static func changedLines(from old: String, to new: String) -> [Int] {
         let a = old.components(separatedBy: "\n"), b = new.components(separatedBy: "\n")
-        let before = Set(a)
-        var out: Set<String> = []
-        for change in b.difference(from: a) {
-            // A line that only moved keeps its text, so a reordered list doesn't light up.
-            if case .insert(_, let line, _) = change, !before.contains(line) {
-                let k = key(line)
-                if !k.isEmpty { out.insert(k) }
-            }
+        var out: [Int] = []
+        for change in b.difference(from: a).inferringMoves() {
+            guard case .insert(let offset, let line, let movedFrom) = change, movedFrom == nil else { continue }
+            if !line.trimmingCharacters(in: .whitespaces).isEmpty { out.append(offset) }
+        }
+        return out.sorted()
+    }
+
+    /// The paragraphs of `new` (as ranges in it, newline included) that `changedLines` finds.
+    static func paragraphRanges(changedFrom old: String, to new: String) -> [NSRange] {
+        let changed = Set(changedLines(from: old, to: new))
+        guard !changed.isEmpty else { return [] }
+        let lines = new.components(separatedBy: "\n")
+        var out: [NSRange] = []
+        var at = 0
+        for (i, line) in lines.enumerated() {
+            let length = (line as NSString).length + (i < lines.count - 1 ? 1 : 0)
+            if changed.contains(i) { out.append(NSRange(location: at, length: length)) }
+            at += length
         }
         return out
-    }
-
-    nonisolated(unsafe) private static var run = 0
-
-    /// Swells in (a small pulse past resting), holds for `hold` seconds, then fades out.
-    @MainActor static func play(_ changed: Set<String>, hold: Double = 2.6) {
-        run += 1
-        let mine = run
-        live = changed
-        strength = 0
-        Task { @MainActor in
-            let fps = 30.0
-            func step(to target: CGFloat, over seconds: Double, _ curve: @Sendable (Double) -> Double) async -> Bool {
-                let from = strength
-                let n = max(1, Int(seconds * DesignStudy.slowMotion * fps))
-                for i in 1...n {
-                    guard mine == run else { return false }
-                    strength = from + (target - from) * CGFloat(curve(Double(i) / Double(n)))
-                    NotificationCenter.default.post(name: Self.changed, object: nil)
-                    try? await Task.sleep(for: .seconds(1 / fps))
-                }
-                return true
-            }
-            let easeOut: @Sendable (Double) -> Double = { 1 - pow(1 - $0, 3) }
-            let easeInOut: @Sendable (Double) -> Double = { $0 < 0.5 ? 4 * $0 * $0 * $0 : 1 - pow(-2 * $0 + 2, 3) / 2 }
-            guard await step(to: 1.5, over: 0.3, easeOut), await step(to: 1, over: 0.5, easeInOut) else { return }
-            try? await Task.sleep(for: .seconds(hold * DesignStudy.slowMotion))
-            guard mine == run, await step(to: 0, over: 1.6, easeInOut) else { return }
-            live = []
-            NotificationCenter.default.post(name: Self.changed, object: nil)
-        }
     }
 }

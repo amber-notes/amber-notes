@@ -38,10 +38,13 @@ final class DecoratedLayoutFragment: NSTextLayoutFragment {
         return (mix(0.18 * strength), mix(min(1, strength)))
     }
 
-    /// Changed by an AI connection just now (see ChangeHighlight): how strongly, 0 for not.
+    /// Changed by an AI connection just now: how strongly to tint it, 0 for not at all.
     private var highlight: CGFloat {
         guard let p = textElement as? NSTextParagraph else { return 0 }
-        return ChangeHighlight.tint(for: p.attributedString.string)
+        if !ChangeHighlight.lines.isEmpty { return ChangeHighlight.matches(p.attributedString.string) ? 1 : 0 }
+        guard let tlm = textLayoutManager, let tint = (tlm.delegate as? DecoratingLayoutDelegate)?.tint, tint.strength > 0,
+              let tcm = tlm.textContentManager, let start = p.elementRange?.location else { return 0 }
+        return tint.strength(at: tcm.offset(from: tcm.documentRange.location, to: start))
     }
 
     private var highlighted: Bool { highlight > 0 }
@@ -216,6 +219,9 @@ final class DecoratedLayoutFragment: NSTextLayoutFragment {
 
 /// Hands out decorated fragments to TextKit.
 final class DecoratingLayoutDelegate: NSObject, NSTextLayoutManagerDelegate {
+    /// Lines an AI just changed, for the fragments to tint.
+    let tint = ChangeTint()
+
     func textLayoutManager(_ textLayoutManager: NSTextLayoutManager, textLayoutFragmentFor location: any NSTextLocation, in textElement: NSTextElement) -> NSTextLayoutFragment {
         DecoratedLayoutFragment(textElement: textElement, range: textElement.elementRange)
     }

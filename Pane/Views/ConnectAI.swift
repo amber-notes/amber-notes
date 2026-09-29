@@ -408,21 +408,15 @@ struct ConnectAISection: View {
             case .codex: "~/.codex/config.toml"
             }
         }
-        var icon: String {
-            switch self {
-            case .chatgpt, .claude: "bubble.left.and.text.bubble.right"
-            case .claudeCode, .codex: "terminal"
-            }
-        }
     }
 
     var body: some View {
-        if DesignStudy.on { studyGuides } else { guides }
+        guides
         connected
     }
 
-    /// Design study: one joined list of AIs, each with its mark, name and how it connects, and the promises under it.
-    private var studyGuides: some View {
+    /// One joined list of AIs, each with its mark, name and how it connects, and the promises under it.
+    private var guides: some View {
         Section {
             ForEach(Guide.allCases) { g in
                 Button { guide = g } label: {
@@ -464,33 +458,6 @@ struct ConnectAISection: View {
         .font(.callout.weight(.medium))
     }
 
-    private var guides: some View {
-        Section {
-            ForEach(Guide.allCases) { g in
-                Button { guide = g } label: {
-                    HStack(spacing: 12) {
-                        Image(systemName: g.icon).foregroundStyle(.tint).frame(width: 22)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(g.title).foregroundStyle(.primary)
-                            Text(g.subtitle).font(.caption).foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
-                    }
-                    .contentShape(.rect)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Connect \(g.title)")
-                .accessibilityHint(g.subtitle)
-                .accessibilityIdentifier("connect.guide.\(g.rawValue)")
-            }
-        } header: {
-            Text("Connect an AI")
-        } footer: {
-            Text("ChatGPT and Claude sign in, and you approve them here. Nothing secret is pasted anywhere. Every change an AI makes keeps the previous version, so it can be undone.")
-        }
-    }
-
     private var connected: some View {
         Section("Connected") {
             let active = connections.filter { $0.revoked_at == nil }
@@ -513,7 +480,7 @@ struct ConnectAISection: View {
 
     private func row(_ c: Connection) -> some View {
         HStack(spacing: 10) {
-            if DesignStudy.on { AITile(ai: c.name, size: 26) }
+            AITile(ai: c.name, size: 26)
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
                     Text(c.name)

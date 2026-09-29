@@ -65,6 +65,9 @@ final class EditorController {
         if let edit = make(t.currentText, t.currentSelection) { t.apply(edit) }
     }
 
+    /// An AI's edit landed on the open note: tint what it changed.
+    func tintChanges(from previous: String) { target?.tintChanges(from: previous) }
+
     func bold() { perform { ListEditing.wrap(in: $0, selection: $1, with: "**") } }
     func italic() { perform { ListEditing.wrap(in: $0, selection: $1, with: "*") } }
     func underline() { perform { ListEditing.underline(in: $0, selection: $1) } }
@@ -110,4 +113,6 @@ protocol EditorTarget: AnyObject {
     func insertGrid()
     /// The keyboard leaves a table, to the line above or below it.
     func leaveGrid(_ index: Int, below: Bool)
+    /// Tints the lines an AI just changed compared with `previous`, then fades them.
+    func tintChanges(from previous: String)
 }

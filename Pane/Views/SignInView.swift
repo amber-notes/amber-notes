@@ -58,7 +58,7 @@ struct SignInView: View {
                 Text("Sign in to Amber Notes")
                     .font(.title2.weight(.bold))
                     .multilineTextAlignment(.center)
-                if DesignStudy.on { promise }
+                promise
             }
 
             VStack(spacing: 12) {
@@ -94,7 +94,7 @@ struct SignInView: View {
         .animation(reduceMotion ? nil : .smooth(duration: 0.3), value: flow.step)
     }
 
-    /// Design study: the website's one-line promise, with its amber marker behind "your AI".
+    /// The website's one-line promise, with its amber marker behind "your AI".
     private var promise: some View {
         var line = AttributedString("The notes app your AI can use.")
         if let r = line.range(of: "your AI") {

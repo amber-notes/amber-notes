@@ -9,8 +9,8 @@ struct NoteDetailView: View {
     @State private var importing = false
     @State private var saver = DebouncedSave()
     @State private var shareLinks = ShareLinkStore()
-    /// Design study: the receipt for an AI's edit that just landed on this note.
-    @State private var receipt: AIEdits.Mark?
+    /// "ChatGPT changed 5 lines · Undo", while an AI's edit that just landed is on show.
+    @State private var receipt: AIEdit.Receipt?
     @Bindable var note: Note
     let controller: EditorController
     var autofocus = false
@@ -26,17 +26,14 @@ struct NoteDetailView: View {
             .onDisappear { saver.flush() }
             .shareLinkChrome(shareLinks, note: note)
             .overlay(alignment: .bottom) { aiReceipt }
-            .onChange(of: AIEdits.shared.marks[note.id]?.at) { _, _ in showAIEdit() }
+            .onChange(of: note.aiEditedAt) { _, _ in showAIEdit() }
             .task(id: note.id) { receipt = nil; showAIEdit() }
     }
 
     @ViewBuilder
     private var aiReceipt: some View {
-        if DesignStudy.on, let receipt {
-            AIReceipt(mark: receipt) {
-                withAnimation(.smooth(duration: 0.25)) { self.receipt = nil }
-                AIEdits.shared.undo(note)
-            }
+        if let receipt {
+            AIReceipt(receipt: receipt) { undo(receipt) }
             #if os(macOS)
             .padding(.bottom, 20)
             #else
@@ -47,21 +44,28 @@ struct NoteDetailView: View {
         }
     }
 
-    /// An AI's edit you haven't seen: tint what it changed and show who did it. Both go once
-    /// you've had the note open for a moment.
+    /// An AI's edit you haven't seen: tint what it changed and say who did it. Opening the note
+    /// counts as seeing it; the tint and the receipt then go on their own.
     private func showAIEdit() {
-        guard DesignStudy.on, let mark = AIEdits.shared.unseen(note.id) else { return }
-        let id = note.id
-        AIEdits.shared.markSeen(id)
+        guard let r = AIEdit.markSeen(note) else { return }
+        try? context.save()
+        let slow = ChangeTint.slowMotion
         Task { @MainActor in
             // Let the editor take the new text first.
-            try? await Task.sleep(for: .seconds(0.15 * DesignStudy.slowMotion))
-            ChangeHighlight.play(mark.lines)
-            withAnimation(.spring(duration: 0.45 * DesignStudy.slowMotion, bounce: 0.25)) { receipt = mark }
-            try? await Task.sleep(for: .seconds(5.5 * DesignStudy.slowMotion))
-            guard receipt == mark, note.id == id else { return }
-            withAnimation(.easeIn(duration: 0.2 * DesignStudy.slowMotion)) { receipt = nil }
+            try? await Task.sleep(for: .seconds(0.15 * slow))
+            guard note.id == r.noteID else { return }
+            controller.tintChanges(from: r.previous)
+            withAnimation(.spring(duration: 0.45 * slow, bounce: 0.25)) { receipt = r }
+            try? await Task.sleep(for: .seconds(5.5 * slow))
+            guard receipt == r else { return }
+            withAnimation(.easeIn(duration: 0.2 * slow)) { receipt = nil }
         }
+    }
+
+    private func undo(_ r: AIEdit.Receipt) {
+        withAnimation(.smooth(duration: 0.25)) { receipt = nil }
+        // The editor takes the old text as an outside change, which also clears the tint.
+        AIEdit.undo(r, on: note)
     }
 
     private var editor: some View {

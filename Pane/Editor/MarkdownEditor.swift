@@ -649,6 +649,7 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
 
     private func textDidChange() {
         guard markedTextRange == nil else { return }
+        core.layoutDelegate.tint.stop()
         core.restyle(textStorage, selection: editingSelection, force: true)
         typingAttributes = core.styler.typingAttributes
         lastReported = text
@@ -666,16 +667,27 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
         if reported.count > 64 { reported.removeFirst(reported.count - 64) }
     }
 
-    /// Design study: redraw the amber tint on lines an AI just changed while it swells and fades.
+    /// Redraws just the lines an AI changed while their tint swells and fades.
     private func observeChangeHighlight() {
-        NotificationCenter.default.addObserver(forName: ChangeHighlight.changed, object: nil, queue: .main) { [weak self] _ in
+        core.layoutDelegate.tint.redraw = { [weak self] ranges in
             MainActor.assumeIsolated {
-                guard let self, let tlm = self.textLayoutManager else { return }
-                tlm.invalidateLayout(for: tlm.documentRange)
+                guard let self, let tlm = self.textLayoutManager, let tcm = tlm.textContentManager else { return }
+                let length = tcm.offset(from: tcm.documentRange.location, to: tcm.documentRange.endLocation)
+                for r in ranges where NSMaxRange(r) <= length {
+                    guard let start = tcm.location(tcm.documentRange.location, offsetBy: r.location),
+                          let end = tcm.location(start, offsetBy: r.length),
+                          let range = NSTextRange(location: start, end: end) else { continue }
+                    tlm.invalidateLayout(for: range)
+                }
                 tlm.textViewportLayoutController.layoutViewport()
                 self.setNeedsDisplay()
             }
         }
+    }
+
+    /// An AI's edit just landed: tint the lines it changed compared with `previous`.
+    func tintChanges(from previous: String) {
+        core.layoutDelegate.tint.play(from: previous, to: currentText)
     }
 
     func syncExternal(_ new: String) {
@@ -686,6 +698,7 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
         reported.removeAll()
         lastReported = new
         guard new != text, markedTextRange == nil, let edit = TextDiff.edit(from: text, to: new) else { return }
+        core.layoutDelegate.tint.stop()
         // Only what changed is replaced, so your caret, selection and scroll stay put.
         let keep = selectedRange
         let offset = contentOffset
@@ -1126,6 +1139,7 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
 
     func textDidChange(_ notification: Notification) {
         guard !hasMarkedText() else { return }
+        core.layoutDelegate.tint.stop()
         core.restyle(textStorage!, selection: editingSelection, force: true)
         typingAttributes = core.styler.typingAttributes
         lastReported = string
@@ -1143,16 +1157,27 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
         if reported.count > 64 { reported.removeFirst(reported.count - 64) }
     }
 
-    /// Design study: redraw the amber tint on lines an AI just changed while it swells and fades.
+    /// Redraws just the lines an AI changed while their tint swells and fades.
     private func observeChangeHighlight() {
-        NotificationCenter.default.addObserver(forName: ChangeHighlight.changed, object: nil, queue: .main) { [weak self] _ in
+        core.layoutDelegate.tint.redraw = { [weak self] ranges in
             MainActor.assumeIsolated {
-                guard let self, let tlm = self.textLayoutManager else { return }
-                tlm.invalidateLayout(for: tlm.documentRange)
+                guard let self, let tlm = self.textLayoutManager, let tcm = tlm.textContentManager else { return }
+                let length = tcm.offset(from: tcm.documentRange.location, to: tcm.documentRange.endLocation)
+                for r in ranges where NSMaxRange(r) <= length {
+                    guard let start = tcm.location(tcm.documentRange.location, offsetBy: r.location),
+                          let end = tcm.location(start, offsetBy: r.length),
+                          let range = NSTextRange(location: start, end: end) else { continue }
+                    tlm.invalidateLayout(for: range)
+                }
                 tlm.textViewportLayoutController.layoutViewport()
                 self.needsDisplay = true
             }
         }
+    }
+
+    /// An AI's edit just landed: tint the lines it changed compared with `previous`.
+    func tintChanges(from previous: String) {
+        core.layoutDelegate.tint.play(from: previous, to: currentText)
     }
 
     func syncExternal(_ new: String) {
@@ -1164,6 +1189,7 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
         lastReported = new
         guard new != string, !hasMarkedText(), let storage = textStorage,
               let edit = TextDiff.edit(from: string, to: new) else { return }
+        core.layoutDelegate.tint.stop()
         // Only what changed is replaced, so your caret, selection and scroll stay put.
         let keep = selectedRange()
         storage.replaceCharacters(in: edit.range, with: edit.replacement)
