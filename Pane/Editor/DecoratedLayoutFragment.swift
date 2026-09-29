@@ -19,9 +19,10 @@ final class DecoratedLayoutFragment: NSTextLayoutFragment {
         return max(w - pad * 2, layoutFragmentFrame.width)
     }
 
-    /// 18% amber over the page, as an opaque colour: neighbouring lines may overlap by a pixel,
-    /// and a translucent fill would show that as a darker seam.
-    private static var changeTint: CGColor {
+    /// 18% amber over the page (scaled by `strength` while a live tint comes and goes), as an
+    /// opaque colour: neighbouring lines may overlap by a pixel, and a translucent fill would show
+    /// that as a darker seam. The accent bar blends from the page to full amber the same way.
+    private static func changeColors(_ strength: CGFloat) -> (tint: CGColor, bar: CGColor) {
         #if os(iOS)
         let page = UIColor.systemBackground.resolvedColor(with: .current)
         let accent = PColor.paneAccent.resolvedColor(with: .current)
@@ -33,17 +34,41 @@ final class DecoratedLayoutFragment: NSTextLayoutFragment {
         var (ar, ag, ab, aa) = (CGFloat(0), CGFloat(0), CGFloat(0), CGFloat(0))
         page.getRed(&pr, green: &pg, blue: &pb, alpha: &pa)
         accent.getRed(&ar, green: &ag, blue: &ab, alpha: &aa)
-        let t: CGFloat = 0.18
-        return PColor(red: pr + (ar - pr) * t, green: pg + (ag - pg) * t, blue: pb + (ab - pb) * t, alpha: 1).cgColor
+        func mix(_ t: CGFloat) -> CGColor { PColor(red: pr + (ar - pr) * t, green: pg + (ag - pg) * t, blue: pb + (ab - pb) * t, alpha: 1).cgColor }
+        return (mix(0.18 * strength), mix(min(1, strength)))
     }
 
-    /// Changed by an AI connection just now (see ChangeHighlight), or, in version history,
-    /// different from the note as it is now (`.paneChanged`).
+    /// Where this paragraph starts in the text, and the editor's tint for AI changes.
+    private var tintAndOffset: (ChangeTint, Int)? {
+        guard let tlm = textLayoutManager, let tint = (tlm.delegate as? DecoratingLayoutDelegate)?.tint, !tint.ranges.isEmpty,
+              let tcm = tlm.textContentManager, let start = textElement?.elementRange?.location else { return nil }
+        return (tint, tcm.offset(from: tcm.documentRange.location, to: start))
+    }
+
+    /// In version history, a line that differs from the note as it is now (`.paneChanged`).
+    private var markedChanged: Bool {
+        guard let p = textElement as? NSTextParagraph, p.attributedString.length > 0 else { return false }
+        return p.attributedString.attribute(.paneChanged, at: 0, effectiveRange: nil) != nil
+    }
+
+    /// Changed by an AI connection just now, or different in version history: how strongly
+    /// to tint it, 0 for not at all.
+    private var highlight: CGFloat {
+        if markedChanged { return 1 }
+        if !ChangeHighlight.lines.isEmpty, let p = textElement as? NSTextParagraph {
+            return ChangeHighlight.matches(p.attributedString.string) ? 1 : 0
+        }
+        guard let (tint, offset) = tintAndOffset else { return 0 }
+        return tint.strength(at: offset)
+    }
+
+    /// Room for the tint while the line is one of the changed ones, even at zero, so the last
+    /// frame of the fade paints over the band.
     private var highlighted: Bool {
-        guard let p = textElement as? NSTextParagraph else { return false }
-        if p.attributedString.length > 0, p.attributedString.attribute(.paneChanged, at: 0, effectiveRange: nil) != nil { return true }
-        guard !ChangeHighlight.lines.isEmpty else { return false }
-        return ChangeHighlight.matches(p.attributedString.string)
+        if markedChanged { return true }
+        if !ChangeHighlight.lines.isEmpty { return highlight > 0 }
+        guard let (tint, offset) = tintAndOffset else { return false }
+        return tint.covers(offset)
     }
 
     override var renderingSurfaceBounds: CGRect {
@@ -106,7 +131,8 @@ final class DecoratedLayoutFragment: NSTextLayoutFragment {
     }
 
     override func draw(at point: CGPoint, in context: CGContext) {
-        if highlighted {
+        let strength = highlight
+        if strength > 0 {
             // A soft amber band across the column with an accent bar at its left edge. Changed
             // lines next to each other join into one block, like a change marker.
             // Inside the rendering surface (4 pt either side). Edges are drawn without antialiasing so
@@ -115,9 +141,10 @@ final class DecoratedLayoutFragment: NSTextLayoutFragment {
                               width: containerWidth + 8, height: layoutFragmentFrame.height)
             context.saveGState()
             context.setShouldAntialias(false)
-            context.setFillColor(Self.changeTint)
+            let colors = Self.changeColors(strength)
+            context.setFillColor(colors.tint)
             context.fill(rect)
-            context.setFillColor(PColor.paneAccent.cgColor)
+            context.setFillColor(colors.bar)
             context.fill(CGRect(x: rect.minX, y: rect.minY, width: 3, height: rect.height))
             context.restoreGState()
         }
@@ -214,6 +241,9 @@ final class DecoratedLayoutFragment: NSTextLayoutFragment {
 
 /// Hands out decorated fragments to TextKit.
 final class DecoratingLayoutDelegate: NSObject, NSTextLayoutManagerDelegate {
+    /// Lines an AI just changed, for the fragments to tint.
+    let tint = ChangeTint()
+
     func textLayoutManager(_ textLayoutManager: NSTextLayoutManager, textLayoutFragmentFor location: any NSTextLocation, in textElement: NSTextElement) -> NSTextLayoutFragment {
         DecoratedLayoutFragment(textElement: textElement, range: textElement.elementRange)
     }

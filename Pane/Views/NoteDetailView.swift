@@ -10,6 +10,9 @@ struct NoteDetailView: View {
     @State private var saver = DebouncedSave()
     @State private var shareLinks = ShareLinkStore()
     @State private var showHistory = HistoryLaunch.open
+    /// "ChatGPT changed 5 lines · Undo", while an AI's edit that just landed is on show.
+    @State private var receipt: AIEdit.Receipt?
+    @State private var undoFailed: String?
     @Bindable var note: Note
     let controller: EditorController
     var autofocus = false
@@ -28,6 +31,76 @@ struct NoteDetailView: View {
             .sheet(isPresented: $showHistory) {
                 if let history = NoteHistory.shared { VersionHistorySheet(note: note, history: history) }
             }
+            .overlay(alignment: .bottom) { aiReceipt }
+            .overlay(alignment: .bottom) { undoProblem }
+            .onChange(of: note.aiEditedAt) { _, _ in showAIEdit() }
+            .task(id: note.id) { receipt = nil; showAIEdit() }
+    }
+
+    @ViewBuilder
+    private var undoProblem: some View {
+        if let undoFailed {
+            Text(undoFailed)
+                .font(.system(size: AIReceipt.text, weight: .semibold))
+                .padding(.horizontal, 14)
+                .frame(height: AIReceipt.height)
+                .background(.regularMaterial, in: .capsule)
+                #if os(macOS)
+                .padding(.bottom, 20)
+                #else
+                .padding(.bottom, 64)
+                #endif
+                .transition(.opacity)
+                .accessibilityAddTraits(.isStaticText)
+        }
+    }
+
+    @ViewBuilder
+    private var aiReceipt: some View {
+        if let receipt {
+            AIReceipt(receipt: receipt) { undo(receipt) }
+            #if os(macOS)
+            .padding(.bottom, 20)
+            #else
+            .padding(.bottom, 64)
+            #endif
+            .transition(.asymmetric(insertion: .move(edge: .bottom).combined(with: .opacity).combined(with: .scale(scale: 0.96, anchor: .bottom)),
+                                    removal: .opacity.combined(with: .offset(y: 6))))
+        }
+    }
+
+    /// An AI's edit you haven't seen: tint what it changed and say who did it. Opening the note
+    /// counts as seeing it; the tint and the receipt then go on their own.
+    private func showAIEdit() {
+        guard let r = AIEdit.markSeen(note) else { return }
+        try? context.save()
+        let slow = ChangeTint.slowMotion
+        Task { @MainActor in
+            // Let the editor take the new text first.
+            try? await Task.sleep(for: .seconds(0.15 * slow))
+            guard note.id == r.noteID else { return }
+            controller.tintChanges(from: r.previous)
+            withAnimation(.spring(duration: 0.45 * slow, bounce: 0.25)) { receipt = r }
+            try? await Task.sleep(for: .seconds(5.5 * slow))
+            guard receipt == r else { return }
+            withAnimation(.easeIn(duration: 0.2 * slow)) { receipt = nil }
+        }
+    }
+
+    private func undo(_ r: AIEdit.Receipt) {
+        withAnimation(.smooth(duration: 0.25)) { receipt = nil }
+        // The editor takes the old text as an outside change, which also clears the tint.
+        let note = self.note
+        Task { @MainActor in
+            do {
+                try await AIEdit.undo(r, on: note)
+            } catch {
+                // Couldn't reach the server: say so where the receipt was.
+                withAnimation(.smooth(duration: 0.25)) { undoFailed = (error as? LocalizedError)?.errorDescription ?? "Couldn't undo. Try again." }
+                try? await Task.sleep(for: .seconds(4))
+                withAnimation(.smooth(duration: 0.25)) { undoFailed = nil }
+            }
+        }
     }
 
     private var editor: some View {

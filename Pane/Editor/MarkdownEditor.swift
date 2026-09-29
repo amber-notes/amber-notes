@@ -474,6 +474,7 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
         remember(text)
         core.observe(textStorage)
         core.restyle(textStorage, selection: nil, force: true)
+        observeChangeHighlight()
 
         headerLabel.font = .systemFont(ofSize: 13, weight: .medium)
         headerLabel.textColor = .tertiaryLabel
@@ -648,6 +649,7 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
 
     private func textDidChange() {
         guard markedTextRange == nil else { return }
+        core.layoutDelegate.tint.stop()
         core.restyle(textStorage, selection: editingSelection, force: true)
         typingAttributes = core.styler.typingAttributes
         lastReported = text
@@ -665,6 +667,28 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
         if reported.count > 64 { reported.removeFirst(reported.count - 64) }
     }
 
+    /// Redraws just the lines an AI changed while their tint swells and fades.
+    private func observeChangeHighlight() {
+        core.layoutDelegate.tint.redraw = { [weak self] ranges in
+            MainActor.assumeIsolated {
+                // An attributes-only edit of those lines: TextKit lays them out and draws them
+                // again, the same way styling does (invalidating layout alone leaves the Mac's
+                // on-screen fragments as they were). It isn't a text change, so nothing is saved.
+                guard let self else { return }
+                let storage = self.textStorage
+                let length = storage.length
+                storage.beginEditing()
+                for r in ranges where NSMaxRange(r) <= length { storage.edited(.editedAttributes, range: r, changeInLength: 0) }
+                storage.endEditing()
+            }
+        }
+    }
+
+    /// An AI's edit just landed: tint the lines it changed compared with `previous`.
+    func tintChanges(from previous: String) {
+        core.layoutDelegate.tint.play(from: previous, to: currentText)
+    }
+
     func syncExternal(_ new: String) {
         guard new != lastReported else { return }
         // The note still holds text we typed a moment ago (it's saved once typing
@@ -673,6 +697,7 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
         reported.removeAll()
         lastReported = new
         guard new != text, markedTextRange == nil, let edit = TextDiff.edit(from: text, to: new) else { return }
+        core.layoutDelegate.tint.stop()
         // Only what changed is replaced, so your caret, selection and scroll stay put.
         let keep = selectedRange
         let offset = contentOffset
@@ -932,6 +957,7 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
         lastReported = text
         remember(text)
         core.observe(textStorage!)
+        observeChangeHighlight()
         core.restyle(textStorage!, selection: nil, force: true)
 
         headerLabel.font = .systemFont(ofSize: 11, weight: .medium)
@@ -1112,6 +1138,7 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
 
     func textDidChange(_ notification: Notification) {
         guard !hasMarkedText() else { return }
+        core.layoutDelegate.tint.stop()
         core.restyle(textStorage!, selection: editingSelection, force: true)
         typingAttributes = core.styler.typingAttributes
         lastReported = string
@@ -1129,6 +1156,27 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
         if reported.count > 64 { reported.removeFirst(reported.count - 64) }
     }
 
+    /// Redraws just the lines an AI changed while their tint swells and fades.
+    private func observeChangeHighlight() {
+        core.layoutDelegate.tint.redraw = { [weak self] ranges in
+            MainActor.assumeIsolated {
+                // An attributes-only edit of those lines: TextKit lays them out and draws them
+                // again, the same way styling does (invalidating layout alone leaves the Mac's
+                // on-screen fragments as they were). It isn't a text change, so nothing is saved.
+                guard let self, let storage = self.textStorage else { return }
+                let length = storage.length
+                storage.beginEditing()
+                for r in ranges where NSMaxRange(r) <= length { storage.edited(.editedAttributes, range: r, changeInLength: 0) }
+                storage.endEditing()
+            }
+        }
+    }
+
+    /// An AI's edit just landed: tint the lines it changed compared with `previous`.
+    func tintChanges(from previous: String) {
+        core.layoutDelegate.tint.play(from: previous, to: currentText)
+    }
+
     func syncExternal(_ new: String) {
         guard new != lastReported else { return }
         // The note still holds text we typed a moment ago (it's saved once typing
@@ -1138,6 +1186,7 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
         lastReported = new
         guard new != string, !hasMarkedText(), let storage = textStorage,
               let edit = TextDiff.edit(from: string, to: new) else { return }
+        core.layoutDelegate.tint.stop()
         // Only what changed is replaced, so your caret, selection and scroll stay put.
         let keep = selectedRange()
         storage.replaceCharacters(in: edit.range, with: edit.replacement)

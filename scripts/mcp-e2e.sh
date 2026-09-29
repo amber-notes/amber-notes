@@ -7,4 +7,4 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 eval "$(deno run -A scripts/dev-user.ts)"
 cd supabase/functions/mcp
-deno test -A --quiet notes.test.ts e2e.test.ts limits.e2e.test.ts "$@"
+deno test -A --quiet notes.test.ts e2e.test.ts limits.e2e.test.ts ai_editor.e2e.test.ts "$@"

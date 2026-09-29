@@ -499,8 +499,12 @@ final class SyncEngine {
         if let local, !Self.takes(r, over: local) { return false }
         let n = local ?? { let n = Note(body: r.body); n.id = r.id; context.insert(n); return n }()
         if n.body != r.body { remoteChangeTick += 1 }
+        let before = (body: local?.body, version: local.map(\.serverVersion), aiAt: local?.aiEditedAt)
         apply(r, to: n)
         n.folder = r.folder_id.flatMap { byID[$0] }
+        // An AI's edit: remember the text from before it, for the tint, the receipt and Undo.
+        // On this account's first sync here, older AI edits are history, not news.
+        AIEdit.arrived(n, previousBody: before.body, previousVersion: before.version, previousEditAt: before.aiAt, quiet: local == nil && cursor == .distantPast)
         return true
     }
 
@@ -543,6 +547,11 @@ final class SyncEngine {
         n.trashedAt = r.trashed_at
         n.deletedAt = r.deleted_at
         n.serverVersion = r.version ?? n.serverVersion
+        // Older servers don't send these: keep what we had.
+        if r.ai_edited_at != nil {
+            n.aiEditor = r.ai_editor
+            n.aiEditedAt = r.ai_edited_at
+        }
         n.dirty = false
     }
 
@@ -612,6 +621,9 @@ struct NoteDTO: Codable {
     var deleted_at: Date?
     var version: Int64?
     var server_updated_at: Date?
+    /// The AI that last changed the note, and when. Set by the server only; never sent.
+    var ai_editor: String?
+    var ai_edited_at: Date?
 
     init(_ n: Note) {
         id = n.id
@@ -626,7 +638,7 @@ struct NoteDTO: Codable {
         deleted_at = n.deletedAt
     }
 
-    enum CodingKeys: String, CodingKey { case id, body, folder_id, parent_id, is_pinned, created_at, updated_at, trashed_at, deleted_at, version, server_updated_at }
+    enum CodingKeys: String, CodingKey { case id, body, folder_id, parent_id, is_pinned, created_at, updated_at, trashed_at, deleted_at, version, server_updated_at, ai_editor, ai_edited_at }
 
     /// Client-owned columns only; the server sets version and its own clock.
     func encode(to encoder: Encoder) throws {

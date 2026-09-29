@@ -70,11 +70,20 @@ struct NoteListView: View {
     private func list(_ scopedNotes: [Note], _ visible: [Note], _ folders: [Folder]) -> some View {
         List(selection: $selection) {
             if showsSetup, let setup, let progress = setup.progress {
+                #if os(iOS)
+                // Its own grouped section, so it has the list's insets, radius and ground.
+                Section {
+                    setupCard(setup, progress)
+                        .padding(.vertical, 4)
+                        .selectionDisabled()
+                }
+                #else
                 setupCard(setup, progress)
-                    .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
+                    .listRowInsets(EdgeInsets(top: 6, leading: 10, bottom: 10, trailing: 10))
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
                     .selectionDisabled()
+                #endif
             }
             if scope == .trash && !scopedNotes.isEmpty && search.isEmpty {
                 Text("Notes are deleted forever after 30 days.")
@@ -447,12 +456,14 @@ enum RowMetrics {
     static let spacing: CGFloat = 3
     static let vertical: CGFloat = 5
     static let leading: CGFloat = 12
+    static let dotOffset: CGFloat = -12
     #else
     static let title = Font.headline
     static let detail = Font.subheadline
     static let spacing: CGFloat = 3
     static let vertical: CGFloat = 1
     static let leading: CGFloat = 0
+    static let dotOffset: CGFloat = -12
     #endif
 }
 
@@ -468,17 +479,35 @@ struct NoteRow: View {
         // At the accessibility text sizes the row stacks and wraps instead of truncating.
         let large = typeSize.isAccessibilitySize
         let detail = large ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2)) : AnyLayout(HStackLayout(spacing: 8))
+        let ai = AIEdit.isUnseen(note) ? note.aiEditor : nil
         return VStack(alignment: .leading, spacing: RowMetrics.spacing) {
             Text(title)
                 .font(RowMetrics.title)
                 .lineLimit(large ? 3 : 1)
+                // An AI changed this note and you haven't opened it since, like Mail's unread dot.
+                .overlay(alignment: .leading) {
+                    if ai != nil {
+                        Circle().fill(.tint).frame(width: 8, height: 8)
+                            .offset(x: RowMetrics.dotOffset)
+                            .transition(.scale.combined(with: .opacity))
+                    }
+                }
             detail {
                 Text(DateBucket.rowDate(note.updatedAt))
                     .monospacedDigit()
                     .foregroundStyle(.primary.opacity(0.85))
-                Text(snippet)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(large ? 2 : 1)
+                if let ai {
+                    HStack(spacing: 4) {
+                        AIGlyph(ai: ai, size: 11)
+                        Text("Edited by \(ai)")
+                    }
+                    .foregroundStyle(Color.amberInk)
+                    .lineLimit(1)
+                } else {
+                    Text(snippet)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(large ? 2 : 1)
+                }
             }
             .font(RowMetrics.detail)
             if showFolder, let f = note.folder {
@@ -493,7 +522,7 @@ struct NoteRow: View {
         .padding(.vertical, RowMetrics.vertical)
         .padding(.leading, RowMetrics.leading)
         .accessibilityElement(children: .combine)
-        .accessibilityValue(note.isPinned ? "Pinned" : "")
+        .accessibilityValue([note.isPinned ? "Pinned" : nil, ai.map { "Edited by \($0)" }].compactMap { $0 }.joined(separator: ", "))
         .accessibilityIdentifier("note.\(title)")
     }
 
