@@ -20,6 +20,13 @@ struct NoteListView: View {
     @State private var pendingForever: Set<UUID>?
     @FocusedValue(\.importAction) private var importNotes
     @FocusedValue(\.importSheetAction) private var importSheet
+    @Environment(SetupStore.self) private var setup: SetupStore?
+    @Environment(Backend.self) private var backend: Backend?
+    @State private var connecting = false
+    @State private var sharingHowTo = false
+
+    /// "Get set up" sits on top of the list for a new account, never in Recently Deleted or a search.
+    private var showsSetup: Bool { (setup?.visible ?? false) && scope != .trash && search.isEmpty }
 
     private var scoped: [Note] {
         notes.filter { n in
@@ -62,6 +69,13 @@ struct NoteListView: View {
 
     private func list(_ scopedNotes: [Note], _ visible: [Note], _ folders: [Folder]) -> some View {
         List(selection: $selection) {
+            if showsSetup, let setup, let progress = setup.progress {
+                setupCard(setup, progress)
+                    .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                    .selectionDisabled()
+            }
             if scope == .trash && !scopedNotes.isEmpty && search.isEmpty {
                 Text("Notes are deleted forever after 30 days.")
                     .font(.footnote)
@@ -129,7 +143,17 @@ struct NoteListView: View {
         .environment(\.editMode, $editMode)
         #endif
         .overlay {
-            if visible.isEmpty { emptyState }
+            // The setup card is the empty state for a new account.
+            if visible.isEmpty && !showsSetup { emptyState }
+        }
+        .sheet(isPresented: $connecting, onDismiss: { Task { await setup?.refresh(force: true) } }) {
+            if let client = backend?.client { ConnectAISheet(client: client) }
+        }
+        #if os(iOS)
+        .sheet(isPresented: $sharingHowTo) { ShareHowToSheet() }
+        #endif
+        .onChange(of: setup?.progress?.needsToDoNote ?? false) { _, needs in
+            if needs { ensureToDoNote() }
         }
         .overlay {
             if fileDropTargeted {
@@ -251,6 +275,43 @@ struct NoteListView: View {
             }
             #endif
         }
+    }
+
+    private func setupCard(_ setup: SetupStore, _ progress: SetupProgress) -> some View {
+        #if os(macOS)
+        let onImport: (() -> Void)? = { importNotes?() }
+        let onShareHowTo: (() -> Void)? = nil
+        #else
+        let onImport: (() -> Void)? = nil
+        let onShareHowTo: (() -> Void)? = { sharingHowTo = true }
+        #endif
+        return SetupCard(
+            progress: progress,
+            celebrating: setup.showingCelebration,
+            onImport: onImport,
+            onStartFresh: { Task { await setup.mark("imported") } },
+            onConnect: { connecting = true },
+            onShareHowTo: onShareHowTo,
+            onHide: { Task { await setup.mark("dismissed") } }
+        )
+        .task(id: progress.current) {
+            // While a step waits on something that happens elsewhere (an AI connecting, an AI
+            // editing), look again every few seconds. Syncs and returning to the app also refresh.
+            while !Task.isCancelled, progress.current == .connect || progress.current == .tryIt {
+                try? await Task.sleep(for: .seconds(8))
+                await setup.refresh()
+            }
+        }
+    }
+
+    /// Step 3's prompt adds to "To-do": make sure there is one.
+    private func ensureToDoNote() {
+        let exists = notes.contains { $0.deletedAt == nil && $0.trashedAt == nil && $0.title.caseInsensitiveCompare("To-do") == .orderedSame }
+        guard !exists else { return }
+        let home = context.allFolders().first { $0.name == "Notes" && $0.parent == nil }
+        _ = context.createNote(in: home.map { .folder($0.id) } ?? .all, body: "To-do\n\n")
+        try? context.save()
+        SyncSignal.changed()
     }
 
     @ViewBuilder

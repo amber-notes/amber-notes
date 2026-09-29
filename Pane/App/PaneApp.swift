@@ -233,6 +233,8 @@ struct AppGate: View {
     let backend: Backend
     let sync: SyncEngine
     @State private var cardSize: CGSize = .zero
+    /// The first-run "Get set up" card's state, for the signed-in account.
+    @State private var setup = SetupStore()
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var phase
 
@@ -254,6 +256,7 @@ struct AppGate: View {
                 RootView()
                     .environment(backend)
                     .environment(sync)
+                    .environment(setup)
                     .transition(.opacity)
             }
         }
@@ -262,16 +265,30 @@ struct AppGate: View {
         #endif
         .animation(.easeOut(duration: 0.25), value: backend.state)
         .task(id: backend.state) {
-            guard case .signedIn = backend.state else { await sync.stop(); return }
+            guard case .signedIn = backend.state, let client = backend.client else {
+                setup.attach(account: nil, service: nil)
+                await sync.stop()
+                return
+            }
+            setup.attach(account: backend.userID, service: SupabaseSetup(client: client))
             await sync.start()
-            // Seed only when the server really has nothing, never after a failed sync.
+            // Seed only when the server really has nothing, never after a failed sync. A real
+            // account starts with an empty Notes folder: the setup card is its welcome.
             if sync.hasSynced {
-                Seed.ensureLibrary(context, demo: false)
+                Seed.ensureLibrary(context, demo: false, welcome: false)
                 sync.schedule()
             }
+            await setup.refresh(force: true)
+            await InstallID.report(client)
+        }
+        // Each sync may have brought an AI's edit or a new connection: the card looks again.
+        .onChange(of: sync.status) { _, _ in Task { await setup.refresh() } }
+        .onReceive(NotificationCenter.default.publisher(for: .paneNotesBrought)) { _ in
+            Task { await setup.mark("imported") }
         }
         .onChange(of: phase) { _, p in
             if p == .active {
+                Task { await setup.refresh() }
                 context.drainInbox()
                 sync.schedule()
             } else {
@@ -295,11 +312,11 @@ struct AppGate: View {
 
 @MainActor
 enum Seed {
-    static func ensureLibrary(_ context: ModelContext, demo: Bool) {
+    static func ensureLibrary(_ context: ModelContext, demo: Bool, welcome: Bool = true) {
         context.purgeExpiredTrash()
         guard context.allFolders().isEmpty else { return }
         let notes = context.createFolder(named: "Notes")
-        context.createNote(in: .folder(notes.id), body: welcome)
+        if welcome || demo { context.createNote(in: .folder(notes.id), body: Self.welcome) }
         if demo { DemoData.load(into: context, main: notes) }
     }
 

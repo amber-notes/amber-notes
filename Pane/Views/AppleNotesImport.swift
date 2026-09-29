@@ -84,6 +84,11 @@ struct AppleNotesImportView: View {
     @State private var failure: String?
     @State private var progress: (done: Int, total: Int)?
     @State private var existingTitles: Set<String> = []
+    /// Opt-in: also bring over which notes are pinned (needs Full Disk Access).
+    @State private var bringPins = false
+    @State private var pinAccess = false
+    /// Said after the import when pins couldn't be read; the sheet waits for Done.
+    @State private var notice: String?
     @FocusState private var searchFocused: Bool
 
     private var shown: [AppleNote] {
@@ -125,10 +130,18 @@ struct AppleNotesImportView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             Divider()
-            footer
+            if let notice {
+                noticeBar(notice)
+            } else {
+                footer
+            }
         }
-        .frame(width: 540, height: 600)
+        .frame(width: 540, height: 640)
         .task { await load() }
+        // Coming back from System Settings: look again.
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            pinAccess = ApplePins.hasAccess()
+        }
     }
 
     @ViewBuilder
@@ -218,9 +231,27 @@ struct AppleNotesImportView: View {
                 Text("Importing \(min(progress.done + 1, progress.total)) of \(progress.total)…")
                     .font(.callout).foregroundStyle(.secondary).monospacedDigit()
             } else {
-                Toggle("Keep Apple Notes folders", isOn: $keepFolders)
-                    .toggleStyle(.checkbox)
-                    .font(.callout)
+                VStack(alignment: .leading, spacing: 6) {
+                    Toggle("Keep Apple Notes folders", isOn: $keepFolders)
+                        .toggleStyle(.checkbox)
+                    if ApplePins.isAvailable {
+                        Toggle("Also bring over pinned notes (asks for Full Disk Access)", isOn: $bringPins)
+                            .toggleStyle(.checkbox)
+                            .accessibilityIdentifier("import.pins")
+                        if bringPins && !pinAccess {
+                            HStack(spacing: 8) {
+                                Text("Pins live where only apps with Full Disk Access can read them.")
+                                    .foregroundStyle(.secondary)
+                                Button("Open Settings") { NSWorkspace.shared.open(ApplePins.settingsURL) }
+                                    .buttonStyle(.link)
+                            }
+                            .font(.footnote)
+                            .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+                .font(.callout)
+                .onChange(of: bringPins) { _, on in if on { pinAccess = ApplePins.hasAccess() } }
             }
             Spacer()
             Button("Cancel") { dismiss() }
@@ -231,6 +262,19 @@ struct AppleNotesImportView: View {
             .buttonStyle(.borderedProminent)
             .keyboardShortcut(.defaultAction)
             .disabled(picked.isEmpty || progress != nil)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 14)
+    }
+
+    private func noticeBar(_ text: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: "pin.slash").foregroundStyle(.secondary)
+            Text(text).font(.callout).fixedSize(horizontal: false, vertical: true)
+            Spacer()
+            Button("Done") { dismiss() }
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 14)
@@ -252,6 +296,11 @@ struct AppleNotesImportView: View {
     private func runImport() async {
         let chosen = notes.filter { picked.contains($0.id) }
         progress = (0, chosen.count)
+        // Pins are read once, up front, only when asked for.
+        let pins: Result<Set<Int>, ApplePins.Failure>? = bringPins
+            ? await Task.detached { ApplePins.pinnedKeys() }.value
+            : nil
+        let pinned = (try? pins?.get()) ?? []
         var made: [UUID] = []
         for (i, n) in chosen.enumerated() {
             progress = (i, chosen.count)
@@ -263,11 +312,21 @@ struct AppleNotesImportView: View {
             let note = context.createNote(in: scope, body: md.isEmpty ? n.name : md)
             note.createdAt = n.modified
             note.updatedAt = n.modified
+            if let key = ApplePins.primaryKey(fromNoteID: n.id), pinned.contains(key) { note.isPinned = true }
             made.append(note.id)
         }
         try? context.save()
         SyncSignal.changed()
+        if !made.isEmpty { NotificationCenter.default.post(name: .paneNotesBrought, object: nil) }
         onImported(made)
+        if case .failure(let why) = pins {
+            // Everything else came over; say so plainly, and why pins didn't.
+            progress = nil
+            notice = why == .noAccess
+                ? "Pins couldn't be read without Full Disk Access; everything else imported."
+                : "Pins couldn't be read; everything else imported."
+            return
+        }
         dismiss()
     }
 
