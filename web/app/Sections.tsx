@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AIGlyph } from "@/lib/ai-glyphs";
 import DownloadLink from "./DownloadLink";
+import AiTiles from "./AiTiles";
 import a from "./sections.module.css";
 
 const reduce = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -37,6 +38,8 @@ const JOBS: Job[] = [
 
 /// Three different jobs in three apps, each a request and what landed in Amber Notes.
 export function AiSection() {
+  const [option, setOption] = useState(0); // review only: ?ai=1..3
+  useEffect(() => { const v = Number(new URLSearchParams(location.search).get("ai")); if (v >= 1 && v <= 3) setOption(v); }, []);
   const [ref, seen] = useFirstView<HTMLElement>();
   // Per card: how much of the request is typed, and whether the result is in. At rest: all complete.
   const [typed, setTyped] = useState(JOBS.map((j) => j.ask.length));
@@ -53,6 +56,7 @@ export function AiSection() {
     return () => ts.forEach(clearTimeout);
   }, [seen]);
 
+  if (option) return <AiTiles option={option as 1 | 2 | 3} />;
   return (
     <section ref={ref} className={a.section} aria-labelledby="ai">
       <div className={a.head}>
