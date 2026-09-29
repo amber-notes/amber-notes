@@ -215,6 +215,7 @@ struct NoteDetailView: View {
             }
             Section {
                 Button("Bulleted List", systemImage: "list.bullet", action: controller.bulletList)
+                Button("Dashed List", systemImage: "list.dash", action: controller.dashedList)
                 Button("Numbered List", systemImage: "list.number", action: controller.numberedList)
                 Button("Block Quote", systemImage: "text.quote", action: controller.blockQuote)
             }

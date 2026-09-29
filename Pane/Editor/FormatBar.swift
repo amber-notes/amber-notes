@@ -25,7 +25,11 @@ struct FormatBar: View {
                             Button("Strikethrough", systemImage: "strikethrough", action: controller.strikethrough)
                             Button("Code", systemImage: "chevron.left.forwardslash.chevron.right", action: controller.code)
                         }
-                        Button("Bulleted List", systemImage: "list.bullet", action: controller.bulletList)
+                        Section {
+                            Button("Bulleted List", systemImage: "list.bullet", action: controller.bulletList)
+                            Button("Dashed List", systemImage: "list.dash", action: controller.dashedList)
+                            Button("Numbered List", systemImage: "list.number", action: controller.numberedList)
+                        }
                     } label: {
                         BarIcon(systemName: "textformat")
                     }

@@ -308,7 +308,8 @@ enum Seed {
     ## The basics
     - [ ] Tap a circle to check it off
     - [x] Lists continue when you press Return
-    - Press Return on an empty item to end a list
+    * Press Return on an empty item to end a list
+    - Start a line with * for bullets or - for dashes
 
     > Quotes, `inline code`, ~~strikethrough~~ and [links](https://apple.com) all work.
 

@@ -41,6 +41,14 @@ final class DecoratedLayoutFragment: NSTextLayoutFragment {
         return line.typographicBounds.minY + line.glyphOrigin.y - font.capHeight / 2
     }
 
+    /// Where a bullet or dash centres: halfway up the lowercase letters, measured from the
+    /// text's own baseline (the line box's middle sits above them, by the descender).
+    private var bulletMidY: CGFloat {
+        guard let line = textLineFragments.first else { return firstLineMidY }
+        let font = PFont.systemFont(ofSize: EditorMetrics.body)
+        return line.typographicBounds.minY + line.glyphOrigin.y - font.xHeight / 2
+    }
+
     /// The checklist circle, in this fragment's coordinates.
     func checkboxRect(_ d: LineDecoration) -> CGRect {
         let size = EditorMetrics.checkSize
@@ -85,9 +93,16 @@ final class DecoratedLayoutFragment: NSTextLayoutFragment {
         case .bullet:
             // Solid dots in the text colour, like Notes.
             let r: CGFloat = EditorMetrics.body * 0.19
-            let c = CGPoint(x: o.x + d.markerX, y: o.y + firstLineMidY)
+            let c = CGPoint(x: o.x + d.markerX, y: o.y + bulletMidY)
             ctx.setFillColor(PColor.paneLabel.cgColor)
             ctx.fillEllipse(in: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2))
+
+        case .dash:
+            // Notes' dashed list: an en dash in the text colour, on the lowercase middle.
+            let w = EditorMetrics.body * 0.5, t = max(1, EditorMetrics.body * 0.075)
+            let c = CGPoint(x: o.x + d.markerX, y: o.y + bulletMidY)
+            ctx.setFillColor(PColor.paneLabel.cgColor)
+            ctx.fill(CGRect(x: c.x - w / 2, y: c.y - t / 2, width: w, height: t))
 
         case .checkbox(let checked):
             Self.drawCheckbox(checked: checked, in: checkboxRect(d).offsetBy(dx: o.x, dy: o.y), ctx: ctx)

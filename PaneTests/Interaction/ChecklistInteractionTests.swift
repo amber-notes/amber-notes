@@ -36,6 +36,47 @@ import Testing
         await h.snapshot("checklist-after-tick")
     }
 
+    @Test func tickingDoesNotFocusTheEditorOrMoveTheCaret() async {
+        // Reading, not editing: a tick is a click on a control, like Notes.
+        let h = await EditorHarness(Self.note, focus: false)
+        defer { h.close() }
+        let before = h.selection
+        await h.click(circle(h, "Milk"))
+        #expect(h.text.contains("- [x] Milk"))
+        #expect(h.window.firstResponder !== h.view, "the editor must not take the keyboard")
+        await h.settle(ListEditing.sortDelay + 0.5)
+        #expect(h.text.contains("- [ ] Bread\n- [x] Milk"))
+        #expect(h.window.firstResponder !== h.view)
+        #expect(h.selection == before, "caret untouched, got \(h.selection) from \(before)")
+    }
+
+    @Test func tickingWhileWritingElsewhereLeavesTheCaretWhereItWas() async {
+        let h = await EditorHarness(Self.note)
+        defer { h.close() }
+        await h.caret(after: "After")
+        let at = h.selection
+        await h.click(circle(h, "Milk"))
+        #expect(h.selection == at, "right after the tick")
+        await h.settle(ListEditing.sortDelay + 0.5)
+        #expect(h.text.contains("- [ ] Bread\n- [x] Milk"))
+        #expect(h.selection == at, "and after the item sinks, got \(h.selection) from \(at)")
+        #expect(h.window.firstResponder === h.view, "still writing")
+    }
+
+    @Test func sinkingSlidesTheRowsIntoPlace() async {
+        guard !CheckPop.reduceMotion else { return }
+        let h = await EditorHarness(Self.note, focus: false)
+        defer { h.close() }
+        await h.click(circle(h, "Milk"))
+        await h.settle(ListEditing.sortDelay + 0.1)
+        let sliding = h.view.layer?.sublayers?.filter { $0.animation(forKey: "slide") != nil }.count ?? 0
+        #expect(sliding == 3, "all three rows slide, got \(sliding)")
+        await h.snapshot("checklist-sliding")
+        await h.settle(ReorderSlide.duration + 0.3)
+        let left = h.view.layer?.sublayers?.filter { $0.zPosition >= 20 }.count ?? 0
+        #expect(left == 0, "the slide cleans up after itself")
+    }
+
     @Test func clickingLeftOfTheTextNeverPutsTheCaretInTheMarker() async {
         let h = await EditorHarness(Self.note)
         defer { h.close() }

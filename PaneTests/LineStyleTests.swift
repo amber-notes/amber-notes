@@ -9,24 +9,30 @@ import Testing
     }
 
     @Test func plainLineTakesTheStyle() {
-        #expect(run("Milk", 4, .bulleted) == ("- Milk", 6))
+        #expect(run("Milk", 4, .bulleted) == ("* Milk", 6))
+        #expect(run("Milk", 4, .dashed) == ("- Milk", 6))
         #expect(run("Milk", 4, .numbered) == ("1. Milk", 7))
         #expect(run("Milk", 0, .quote) == ("> Milk", 2))
     }
 
     @Test func sameStyleAgainGoesBackToBody() {
-        #expect(run("- Milk", 6, .bulleted) == ("Milk", 4))
+        #expect(run("* Milk", 6, .bulleted) == ("Milk", 4))
+        #expect(run("- Milk", 6, .dashed) == ("Milk", 4))
         #expect(run("1. Milk", 7, .numbered) == ("Milk", 4))
         #expect(run("> Milk", 6, .quote) == ("Milk", 4))
     }
 
     @Test func switchesBetweenListStylesKeepingIndent() {
         #expect(run("  - Milk", 8, .numbered) == ("  1. Milk", 9))
-        #expect(run("1. Milk", 7, .bulleted) == ("- Milk", 6))
-        #expect(run("> Milk", 6, .bulleted) == ("- Milk", 6))
+        #expect(run("1. Milk", 7, .bulleted) == ("* Milk", 6))
+        #expect(run("> Milk", 6, .dashed) == ("- Milk", 6))
+        // Bullets and dashes are separate styles, like Notes.
+        #expect(run("- Milk", 6, .bulleted) == ("* Milk", 6))
+        #expect(run("* Milk", 6, .dashed) == ("- Milk", 6))
     }
 
     @Test func checklistBecomesBullets() {
-        #expect(run("- [ ] Milk", 10, .bulleted).0 == "- Milk")
+        #expect(run("- [ ] Milk", 10, .bulleted).0 == "* Milk")
+        #expect(run("- [ ] Milk", 10, .dashed).0 == "- Milk")
     }
 }

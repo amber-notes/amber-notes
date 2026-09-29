@@ -213,9 +213,9 @@ enum ListEditing {
         return NSRange(location: a, length: b - a)
     }
 
-    enum LineStyle { case bulleted, numbered, quote }
+    enum LineStyle { case bulleted, dashed, numbered, quote }
 
-    /// Format → Bulleted List / Numbered List / Block Quote, like Notes: the caret's line
+    /// Format → Bulleted List / Dashed List / Numbered List / Block Quote, like Notes: the caret's line
     /// takes that style, switching from another list style; choosing the style it
     /// already has turns it back into body text.
     static func toggleLineStyle(in text: String, selection: NSRange, _ style: LineStyle) -> TextEdit {
@@ -228,7 +228,7 @@ enum ListEditing {
             prefixLen = (line[q] as Substring).utf16.count
         } else if let list = ListPrefix(line: line) {
             indent = list.indent
-            current = list.ordered ? .numbered : (list.checkbox == nil ? .bulleted : nil)
+            current = list.ordered ? .numbered : list.checkbox != nil ? nil : list.marker == "-" ? .dashed : .bulleted
             prefixLen = list.length
         }
         let new: String
@@ -236,7 +236,8 @@ enum ListEditing {
             new = indent
         } else {
             switch style {
-            case .bulleted: new = indent + "- "
+            case .bulleted: new = indent + "* "
+            case .dashed: new = indent + "- "
             case .numbered: new = indent + "1. "
             case .quote: new = "> "
             }

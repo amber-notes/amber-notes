@@ -20,8 +20,8 @@ import Testing
         #expect(md.contains("# Trip plan"))
         #expect(md.contains("## Days"))
         #expect(md.contains("Pack **light** and *early*, see [the map](https://maps.apple.com"))
-        #expect(md.contains("- Monday"))
-        #expect(md.contains("  - Museum"))
+        #expect(md.contains("* Monday"))
+        #expect(md.contains("  * Museum"))
         #expect(md.contains("1. First"))
         #expect(md.contains("2. Second"))
         #expect(md.contains("~~Cancelled~~"))
@@ -33,7 +33,7 @@ import Testing
 
     @Test func boldListItemsKeepTheirBulletOutOfTheBold() {
         let md = RichTextToMarkdown.markdown(fromHTML: "<ul><li><b>Pack early</b></li><li><b>Label:</b> the rest</li></ul>")
-        #expect(md == "- **Pack early**\n- **Label:** the rest")
+        #expect(md == "* **Pack early**\n* **Label:** the rest")
     }
 
     @Test func boldOrderedItemsToo() {
@@ -44,14 +44,21 @@ import Testing
     @Test func aParagraphAfterAListGetsABlankLine() {
         // Without it markdown folds the paragraph into the last item.
         let md = RichTextToMarkdown.markdown(fromHTML: "<ul><li>Apples</li><li>Pears</li></ul><div><b>Next</b></div>")
-        #expect(md == "- Apples\n- Pears\n\n**Next**")
+        #expect(md == "* Apples\n* Pears\n\n**Next**")
     }
 
     @Test func lineBreaksInsideAnItemStayInTheItem() {
         let md = RichTextToMarkdown.markdown(fromHTML: "<ol><li>Taste it.<br><br>Then serve.</li></ol><ul><li><b><br></b>Lead break</li></ul>")
         #expect(md.contains("1. Taste it.\n\n  Then serve."))
-        #expect(md.contains("- Lead break"))
+        #expect(md.contains("* Lead break"))
         #expect(!md.contains("\u{2028}"))
+    }
+
+    @Test func notesDashedAndBulletedListsStaySeparate() {
+        // Notes' Bulleted List is a plain <ul>; its Dashed List carries the Apple-dash-list class.
+        let md = RichTextToMarkdown.markdown(fromHTML: "<ul><li>Dot</li></ul><div>x</div><ul class=\"Apple-dash-list\"><li>Dash</li><li>Dash two</li></ul>")
+        #expect(md.contains("* Dot"))
+        #expect(md.contains("- Dash\n- Dash two"))
     }
 
     @Test func noEmptyEmphasisOrStrayBullets() {

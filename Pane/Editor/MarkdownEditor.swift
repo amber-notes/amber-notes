@@ -485,6 +485,7 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
         let tap = UITapGestureRecognizer(target: self, action: #selector(handleTap(_:)))
         tap.delegate = self
         addGestureRecognizer(tap)
+        checkTap = tap
         accessibilityIdentifier = "editor"
         NotificationCenter.default.addObserver(self, selector: #selector(textSizeChanged), name: UIContentSizeCategory.didChangeNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(textSizeChanged), name: UIAccessibility.boldTextStatusDidChangeNotification, object: nil)
@@ -753,7 +754,19 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
 
     // MARK: Checkbox taps
 
-    func gestureRecognizer(_ g: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool { true }
+    /// The checkbox tap. It only begins over a circle, and when it does it's the only tap:
+    /// the text view's own taps would also move the caret there and raise the keyboard.
+    private weak var checkTap: UITapGestureRecognizer?
+
+    func gestureRecognizer(_ g: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
+        g !== checkTap && other !== checkTap
+    }
+
+    /// Text-interaction taps wait for the checkbox tap to fail, which it does at once
+    /// anywhere but a circle, so ordinary taps aren't delayed.
+    func gestureRecognizer(_ g: UIGestureRecognizer, shouldBeRequiredToFailBy other: UIGestureRecognizer) -> Bool {
+        g === checkTap && other !== checkTap && (other.view.map { $0 === self || $0.isDescendant(of: self) } ?? false)
+    }
 
     override func gestureRecognizerShouldBegin(_ g: UIGestureRecognizer) -> Bool {
         if g is UITapGestureRecognizer, g.view === self, g.delegate === self {
@@ -777,9 +790,12 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
     @objc private func handleTap(_ g: UITapGestureRecognizer) {
         guard let line = checkboxLine(for: g.location(in: self)),
               let edit = ListEditing.toggleCheckbox(in: text, lineStart: line) else { return }
+        // A tick is a tap on a control: the caret, the scroll position and the keyboard stay as they were.
         let keep = selectedRange
+        let offset = contentOffset
         apply(edit)
         selectedRange = keep
+        setContentOffset(offset, animated: false)
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         if ListPrefix(line: (text as NSString).substring(with: (text as NSString).lineRange(for: NSRange(location: line, length: 0))))?.checkbox == true,
            let r = core.checkboxRect(line: line, layout: textLayoutManager) {
@@ -788,12 +804,40 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
         DispatchQueue.main.asyncAfter(deadline: .now() + ListEditing.sortDelay) { [weak self] in self?.sortChecklist(around: line) }
     }
 
-    /// Ticked items sink below the open ones, a moment after the tick.
+    /// Ticked items sink below the open ones, a moment after the tick, sliding into place.
+    /// The caret stays with the text it was in, and nothing scrolls or takes focus.
     private func sortChecklist(around line: Int) {
         let sel = selectedRange
         guard let edit = ListEditing.sortChecklist(in: text, around: min(line, (text as NSString).length), caret: sel.location) else { return }
+        let old = ReorderSlide.lines(of: edit.range, in: text as NSString)
+        let frames = rowFrames(old.map(\.1.location))
+        let pictures = frames.compactMap { resizableSnapshotView(from: $0, afterScreenUpdates: false, withCapInsets: .zero) }
+        let offset = contentOffset
         apply(TextEdit(range: edit.range, replacement: edit.replacement, caret: -1))
         selectedRange = NSRange(location: edit.caret >= 0 ? edit.caret : sel.location, length: edit.caret >= 0 ? 0 : sel.length)
+        setContentOffset(offset, animated: false)
+        guard pictures.count == old.count, let first = frames.first, let last = frames.last else { return }
+        let moves = ReorderSlide.moves(old: old.map(\.0), new: edit.replacement.components(separatedBy: "\n"))
+        let tops = ReorderSlide.targets(heights: frames.map(\.height), moves: moves)
+        ReorderSlide.play(in: self, rows: Array(zip(pictures, frames)).map { ($0, $1) }, newTops: tops,
+                          cover: first.union(last), pageColor: .systemBackground)
+    }
+
+    /// Each row's band across the editor, from its top to the next row's top.
+    private func rowFrames(_ starts: [Int]) -> [CGRect] {
+        guard let tlm = textLayoutManager, let tcm = tlm.textContentManager else { return [] }
+        let tops: [CGFloat] = starts.compactMap { at in
+            guard let loc = tcm.location(tcm.documentRange.location, offsetBy: at) else { return nil }
+            tlm.ensureLayout(for: NSTextRange(location: loc))
+            return tlm.textLayoutFragment(for: loc).map { $0.layoutFragmentFrame.minY + textContainerInset.top }
+        }
+        guard tops.count == starts.count, let lastStart = starts.last,
+              let loc = tcm.location(tcm.documentRange.location, offsetBy: lastStart),
+              let lastFrag = tlm.textLayoutFragment(for: loc) else { return [] }
+        let pitch = tops.count > 1 ? tops[tops.count - 1] - tops[tops.count - 2] : lastFrag.layoutFragmentFrame.height
+        return tops.enumerated().map { i, y in
+            CGRect(x: 0, y: y, width: bounds.width, height: i + 1 < tops.count ? tops[i + 1] - y : max(pitch, lastFrag.layoutFragmentFrame.height))
+        }
     }
 
     // MARK: Hardware keyboard
@@ -1208,12 +1252,38 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
         super.mouseDown(with: event)
     }
 
-    /// Ticked items sink below the open ones, a moment after the tick.
+    /// Ticked items sink below the open ones, a moment after the tick, sliding into place.
+    /// The caret stays with the text it was in, and nothing scrolls or takes focus.
     private func sortChecklist(around line: Int) {
         let sel = selectedRange()
         guard let edit = ListEditing.sortChecklist(in: string, around: min(line, (string as NSString).length), caret: sel.location) else { return }
+        let old = ReorderSlide.lines(of: edit.range, in: string as NSString)
+        let frames = rowFrames(old.map(\.1.location))
+        let pictures = frames.compactMap { ReorderSlide.picture(of: $0, in: self) }
         apply(TextEdit(range: edit.range, replacement: edit.replacement, caret: -1))
         setSelectedRange(NSRange(location: edit.caret >= 0 ? edit.caret : sel.location, length: edit.caret >= 0 ? 0 : sel.length))
+        guard pictures.count == old.count, let first = frames.first, let last = frames.last else { return }
+        let moves = ReorderSlide.moves(old: old.map(\.0), new: edit.replacement.components(separatedBy: "\n"))
+        let tops = ReorderSlide.targets(heights: frames.map(\.height), moves: moves)
+        ReorderSlide.play(in: self, rows: Array(zip(pictures, frames)).map { (image: $0, frame: $1) }, newTops: tops,
+                          cover: first.union(last), pageColor: .textBackgroundColor)
+    }
+
+    /// Each row's band across the editor, from its top to the next row's top.
+    private func rowFrames(_ starts: [Int]) -> [CGRect] {
+        guard let tlm = textLayoutManager, let tcm = tlm.textContentManager else { return [] }
+        let tops: [CGFloat] = starts.compactMap { at in
+            guard let loc = tcm.location(tcm.documentRange.location, offsetBy: at) else { return nil }
+            tlm.ensureLayout(for: NSTextRange(location: loc))
+            return tlm.textLayoutFragment(for: loc).map { $0.layoutFragmentFrame.minY + textContainerOrigin.y }
+        }
+        guard tops.count == starts.count, let lastStart = starts.last,
+              let loc = tcm.location(tcm.documentRange.location, offsetBy: lastStart),
+              let lastFrag = tlm.textLayoutFragment(for: loc) else { return [] }
+        let pitch = tops.count > 1 ? tops[tops.count - 1] - tops[tops.count - 2] : lastFrag.layoutFragmentFrame.height
+        return tops.enumerated().map { i, y in
+            CGRect(x: 0, y: y, width: bounds.width, height: i + 1 < tops.count ? tops[i + 1] - y : max(pitch, lastFrag.layoutFragmentFrame.height))
+        }
     }
 }
 #endif

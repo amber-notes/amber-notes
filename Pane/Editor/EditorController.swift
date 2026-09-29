@@ -74,6 +74,7 @@ final class EditorController {
     func heading(_ level: Int) { perform { ListEditing.heading(in: $0, selection: $1, level: level) } }
 
     func bulletList() { perform { ListEditing.toggleLineStyle(in: $0, selection: $1, .bulleted) } }
+    func dashedList() { perform { ListEditing.toggleLineStyle(in: $0, selection: $1, .dashed) } }
     func numberedList() { perform { ListEditing.toggleLineStyle(in: $0, selection: $1, .numbered) } }
     func blockQuote() { perform { ListEditing.toggleLineStyle(in: $0, selection: $1, .quote) } }
 

@@ -11,13 +11,20 @@ import AppKit
 enum RichTextToMarkdown {
     @MainActor
     static func markdown(fromHTML html: String) -> String {
-        guard let data = OfflineHTML.strip(html).data(using: .utf8),
+        guard let data = markDashLists(OfflineHTML.strip(html)).data(using: .utf8),
               let attributed = try? NSAttributedString(
                 data: data,
                 options: [.documentType: NSAttributedString.DocumentType.html, .characterEncoding: String.Encoding.utf8.rawValue],
                 documentAttributes: nil)
         else { return html }
         return markdown(from: attributed)
+    }
+
+    /// Notes marks its Dashed List as `<ul class="Apple-dash-list">`, a class WebKit drops.
+    /// A square marker survives the trip (Notes never makes square lists) and becomes `-`.
+    static func markDashLists(_ html: String) -> String {
+        html.replacingOccurrences(of: #"<ul([^>]*class="[^"]*Apple-dash-list[^"]*"[^>]*)>"#,
+                                  with: #"<ul$1 style="list-style-type: square">"#, options: [.regularExpression, .caseInsensitive])
     }
 
     static func markdown(from text: NSAttributedString) -> String {
@@ -100,7 +107,9 @@ enum RichTextToMarkdown {
                 } else if let checked = checklistState(item, list: list) {
                     lines.append("\(indent)- [\(checked ? "x" : " ")] \(stripCheckGlyph(inline))")
                 } else {
-                    lines.append("\(indent)- \(inline)")
+                    // Notes' Dashed List is a hyphen list; its Bulleted List uses discs.
+                    let dashed = format.contains("hyphen") || format.contains("dash") || format.contains("square")
+                    lines.append("\(indent)\(dashed ? "-" : "*") \(inline)")
                 }
                 inList = true
                 continue
@@ -120,7 +129,7 @@ enum RichTextToMarkdown {
             }
 
             if let bullet = leadingBullet(raw) {
-                lines.append("- " + String(inline.dropFirst(bullet)).trimmingCharacters(in: .whitespaces))
+                lines.append("* " + String(inline.dropFirst(bullet)).trimmingCharacters(in: .whitespaces))
                 continue
             }
             lines.append(inline)

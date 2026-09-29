@@ -353,6 +353,7 @@ struct PaneCommands: Commands {
                 Divider()
                 Button("Checklist") { editor?.checklist() }.keyboardShortcut("l", modifiers: [.command, .shift])
                 Button("Bulleted List") { editor?.bulletList() }.keyboardShortcut("7", modifiers: [.command, .shift])
+                Button("Dashed List") { editor?.dashedList() }.keyboardShortcut("8", modifiers: [.command, .shift])
                 Button("Numbered List") { editor?.numberedList() }.keyboardShortcut("9", modifiers: [.command, .shift])
                 Button("Block Quote") { editor?.blockQuote() }.keyboardShortcut("'", modifiers: .command)
                 Divider()

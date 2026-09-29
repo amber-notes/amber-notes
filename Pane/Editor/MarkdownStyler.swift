@@ -16,6 +16,8 @@ extension NSAttributedString.Key {
 final class LineDecoration: NSObject {
     enum Kind: Equatable {
         case bullet
+        /// Notes' dashed list: `- item` draws an en dash, `* item` a bullet.
+        case dash
         case checkbox(checked: Bool)
         case quote
         case code(first: Bool, last: Bool)
@@ -517,7 +519,7 @@ struct MarkdownStyler {
                 // Ticked items keep their text colour, like Notes: the filled circle says it's done.
                 storage.addAttribute(.paneLine, value: LineDecoration(.checkbox(checked: checked), markerX: markerX), range: enclosing)
             } else {
-                storage.addAttribute(.paneLine, value: LineDecoration(.bullet, markerX: markerX), range: enclosing)
+                storage.addAttribute(.paneLine, value: LineDecoration(list.marker == "-" ? .dash : .bullet, markerX: markerX), range: enclosing)
             }
             p.headIndent = width
         }
