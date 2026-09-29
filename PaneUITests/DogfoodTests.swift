@@ -81,10 +81,11 @@ final class DogfoodTests: XCTestCase {
         if searchButton.exists { searchButton.tap(); pause(0.5) }
         let search = app.searchFields.firstMatch
         XCTAssertTrue(search.waitForExistence(timeout: 3))
+        search.tap()
         search.typeText("lisbon")
         pause(1.2)
         shot("search")
-        let close = app.buttons["Close"].firstMatch
+        let close = app.buttons["close"].firstMatch.exists ? app.buttons["close"].firstMatch : app.buttons["Close"].firstMatch
         if close.exists { close.tap() } else { app.buttons["Cancel"].firstMatch.tap() }
         pause()
 
@@ -200,10 +201,10 @@ final class DogfoodTests: XCTestCase {
         app.navigationBars.buttons.element(boundBy: 0).tap()
         pause(1.2)
 
-        // A card.
+        // A sub-note.
         openNote("Lisbon")
         pause(1.5)
-        app.buttons["Expand Hotel booking"].firstMatch.tap()
+        app.descendants(matching: .any).matching(identifier: "subnote.Hotel booking").firstMatch.tap()
         pause(2.5)
         app.navigationBars.buttons.element(boundBy: 0).tap()
         pause(1.2)
@@ -238,6 +239,7 @@ final class DogfoodTests: XCTestCase {
         // Search and folders.
         let searchButton = app.buttons["Search"].firstMatch
         if searchButton.exists { searchButton.tap(); pause(0.6) }
+        app.searchFields.firstMatch.tap()
         app.searchFields.firstMatch.typeText("lisbon")
         pause(2)
         closeSearch()
@@ -247,7 +249,7 @@ final class DogfoodTests: XCTestCase {
     }
 
     func closeSearch() {
-        let close = app.buttons["Close"].firstMatch
+        let close = app.buttons["close"].firstMatch.exists ? app.buttons["close"].firstMatch : app.buttons["Close"].firstMatch
         if close.exists { close.tap() } else if app.buttons["Cancel"].firstMatch.exists { app.buttons["Cancel"].firstMatch.tap() }
     }
 }
