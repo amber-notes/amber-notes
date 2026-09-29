@@ -10,8 +10,15 @@ private let log = Logger(subsystem: "dev.emilwagman.pane", category: "sync")
 ///
 /// Local-first: edits land in SwiftData immediately and are marked dirty. The engine
 /// pushes dirty rows (guarded by the server version they were based on), then pulls
-/// everything changed on the server since its cursor. Realtime events trigger a pull,
-/// so edits from another device or an AI client show up within a second.
+/// everything changed on the server since its cursor.
+///
+/// Near-live: while you type, the note reaches the model every 0.35 s (DebouncedSave) and
+/// goes up at most every 0.35 s on its own, without a pull. Another device's realtime
+/// event carries the changed row, which is applied straight away; the cursor pull still
+/// runs on launch, foreground, reconnect and every minute, to catch anything missed.
+///
+/// A note you're editing is never overwritten by what arrives: unwritten typing is written
+/// first, a dirty note is skipped, and the push sorts it out by version.
 /// If both sides changed a note, the newer edit wins and the other is kept as a
 /// "conflicted copy", so nothing is ever lost (the server also keeps every revision).
 @MainActor
@@ -30,6 +37,13 @@ final class SyncEngine {
     private var pending: Task<Void, Never>?
     private var running = false
     private var again = false
+    /// A push-only run was asked for while another run was going.
+    private var pushAgain = false
+    /// Throttled pushes while you type: at most one every `pushInterval`.
+    private var pushLoop: Task<Void, Never>?
+    private var pushWanted = false
+    private var lastPush = Date.distantPast
+    static let pushInterval: TimeInterval = 0.35
     private var channel: RealtimeChannelV2?
     private var realtimeTasks: [Task<Void, Never>] = []
     /// Rows the server refused (too big, over a limit), keyed by id with the edit time that
@@ -49,7 +63,7 @@ final class SyncEngine {
     init(backend: Backend, context: ModelContext) {
         self.backend = backend
         self.context = context
-        SyncSignal.onChange = { [weak self] in self?.schedule(after: 1.2) }
+        SyncSignal.onChange = { [weak self] in self?.localChanged() }
     }
 
     // MARK: Scheduling
@@ -64,16 +78,37 @@ final class SyncEngine {
         }
     }
 
-    func sync() async {
+    /// Something changed here: push it soon, at most every `pushInterval`, first one at once.
+    func localChanged() {
+        guard backend.client != nil, case .signedIn = backend.state else { return }
+        pushWanted = true
+        guard pushLoop == nil else { return }
+        pushLoop = Task { [weak self] in
+            while let self, self.pushWanted {
+                let wait = Self.pushInterval - Date.now.timeIntervalSince(self.lastPush)
+                if wait > 0 { try? await Task.sleep(for: .seconds(wait)) }
+                guard !Task.isCancelled else { break }
+                self.pushWanted = false
+                self.lastPush = .now
+                await self.sync(pulling: false)
+            }
+            self?.pushLoop = nil
+        }
+    }
+
+    /// A full run pushes then pulls; `pulling: false` only pushes (your own typing).
+    func sync(pulling: Bool = true) async {
         guard let client = backend.client, case .signedIn = backend.state else { return }
-        if running { again = true; return }
+        if running {
+            if pulling { again = true } else { pushAgain = true }
+            return
+        }
         running = true
-        status = .syncing
+        if pulling { status = .syncing }
         defer { running = false }
         do {
             let slowedDown = try await push(client)
-            try await pull(client)
-            hasSynced = true
+            if pulling { try await pull(client); hasSynced = true }
             if slowedDown {
                 // The server asked us to slow down: the rest goes up in a little while.
                 status = .offline("Syncing a lot of changes, continuing shortly")
@@ -87,7 +122,8 @@ final class SyncEngine {
             log.error("sync failed: \(String(describing: error), privacy: .public)")
             status = .offline(Self.describe(error))
         }
-        if again { again = false; await sync() }
+        if again { again = false; pushAgain = false; await sync() }
+        else if pushAgain { pushAgain = false; await sync(pulling: false) }
     }
 
     /// Starts realtime and a first sync after sign-in.
@@ -100,13 +136,68 @@ final class SyncEngine {
         let notes = ch.postgresChange(AnyAction.self, schema: "public", table: "notes")
         let folders = ch.postgresChange(AnyAction.self, schema: "public", table: "folders")
         let files = ch.postgresChange(AnyAction.self, schema: "public", table: "attachments")
+        let joins = ch.statusChange
         try? await ch.subscribeWithError()
         channel = ch
-        for stream in [notes, folders, files] {
+        // Realtime takes a moment to start delivering after it joins; a pull covers that gap.
+        schedule(after: 2)
+        realtimeTasks.append(Task { [weak self] in
+            for await action in notes { await self?.received(action) }
+        })
+        for stream in [folders, files] {
             realtimeTasks.append(Task { [weak self] in
                 for await _ in stream { self?.schedule(after: 0.25) }
             })
         }
+        // After sleep or a dropped connection the channel rejoins on its own; whatever
+        // happened meanwhile comes in with a pull.
+        realtimeTasks.append(Task { [weak self] in
+            var joined = false
+            for await s in joins {
+                guard case .subscribed = s else { continue }
+                if joined { self?.schedule(after: 0) }
+                joined = true
+            }
+        })
+        // A safety net for anything realtime missed.
+        realtimeTasks.append(Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(60))
+                self?.schedule(after: 0)
+            }
+        })
+    }
+
+    /// Another device (or an AI) changed a note: apply the row it carries, or fetch it.
+    private func received(_ action: AnyAction) async {
+        guard let client = backend.client, case .signedIn = backend.state else { return }
+        let record: [String: AnyJSON]
+        switch action {
+        case .insert(let a): record = a.record
+        case .update(let a): record = a.record
+        case .delete: schedule(after: 0.25); return
+        }
+        var rows: [NoteDTO] = []
+        if let row = try? record.decode(as: NoteDTO.self, decoder: AnyJSON.decoder) {
+            rows = [row]
+        } else if case .string(let id)? = record["id"], let uuid = UUID(uuidString: id) {
+            // Rows too large for a realtime message arrive without their body.
+            rows = (try? await client.from("notes").select().eq("id", value: uuid).execute().value) ?? []
+        }
+        guard !rows.isEmpty else { schedule(after: 0.25); return }
+        // Typing that isn't in the model yet goes in first, so it counts as a local edit.
+        DebouncedSave.flushAll()
+        var folders = Dictionary(uniqueKeysWithValues: context.allFoldersIncludingDeleted().map { ($0.id, $0) })
+        var changed = false
+        for r in rows {
+            if let fid = r.folder_id, folders[fid] == nil {
+                // A folder this device hasn't seen yet: the full pull brings both.
+                schedule(after: 0)
+                continue
+            }
+            if merge(r, folders: &folders) { changed = true }
+        }
+        if changed { try? context.save() }
     }
 
     /// This device's library was synced for one account. When a different account signs
@@ -386,24 +477,52 @@ final class SyncEngine {
                 .gt("server_updated_at", value: stamp)
                 .order("server_updated_at").order("id").range(from: offset, to: offset + 499).execute().value
             for r in rows {
-                let local = context.note(r.id)
-                if let local, local.dirty, (r.version ?? 0) != local.serverVersion, local.serverVersion != 0 {
-                    // Both changed: the next push resolves it.
-                    continue
-                }
-                if let local, local.dirty, local.serverVersion == 0 { continue }
-                let n = local ?? { let n = Note(body: r.body); n.id = r.id; context.insert(n); return n }()
-                if n.body != r.body { remoteChangeTick += 1 }
-                apply(r, to: n)
-                n.folder = r.folder_id.flatMap { byID[$0] }
                 if let s = r.server_updated_at, s > newest { newest = s }
-                changed = true
+                if merge(r, folders: &byID) { changed = true }
             }
             if rows.count < 500 { break }
             offset += 500
         }
         if changed { try? context.save() }
         cursor = newest
+    }
+
+    /// Takes one server row into the library. Returns true when anything changed.
+    ///
+    /// The rule: a note with local edits not yet pushed is left alone (the push compares
+    /// versions and keeps both if they really diverged); an older version than the one we
+    /// have is an out-of-order event; the same version with the same content is our own
+    /// push coming back, and touching the note would only churn the editor and the list.
+    @discardableResult
+    private func merge(_ r: NoteDTO, folders byID: inout [UUID: Folder]) -> Bool {
+        let local = context.note(r.id)
+        if let local, !Self.takes(r, over: local) { return false }
+        let n = local ?? { let n = Note(body: r.body); n.id = r.id; context.insert(n); return n }()
+        if n.body != r.body { remoteChangeTick += 1 }
+        apply(r, to: n)
+        n.folder = r.folder_id.flatMap { byID[$0] }
+        return true
+    }
+
+    /// Whether a server row should replace what this device has (see `merge`).
+    static func takes(_ r: NoteDTO, over local: Note) -> Bool {
+        if local.dirty { return false }
+        if let v = r.version, v < local.serverVersion { return false }
+        if let v = r.version, v == local.serverVersion, same(r, local) { return false }
+        return true
+    }
+
+    static func same(_ r: NoteDTO, _ n: Note) -> Bool {
+        // The server keeps microseconds; a Date round-trips a hair off.
+        func near(_ a: Date?, _ b: Date?) -> Bool {
+            switch (a, b) {
+            case (nil, nil): true
+            case let (x?, y?): abs(x.timeIntervalSince(y)) < 0.001
+            default: false
+            }
+        }
+        return r.body == n.body && r.parent_id == n.parentID && r.is_pinned == n.isPinned
+            && near(r.trashed_at, n.trashedAt) && near(r.deleted_at, n.deletedAt) && r.folder_id == n.folder?.id
     }
 
     private func apply(_ r: NoteDTO, to n: Note) {

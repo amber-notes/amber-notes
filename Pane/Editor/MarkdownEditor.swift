@@ -671,11 +671,14 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
         if reported.contains(new.hashValue) { return }
         reported.removeAll()
         lastReported = new
-        guard new != text, markedTextRange == nil else { return }
+        guard new != text, markedTextRange == nil, let edit = TextDiff.edit(from: text, to: new) else { return }
+        // Only what changed is replaced, so your caret, selection and scroll stay put.
         let keep = selectedRange
         let offset = contentOffset
-        text = new
-        selectedRange = NSRange(location: min(keep.location, (new as NSString).length), length: 0)
+        textStorage.replaceCharacters(in: edit.range, with: edit.replacement)
+        // Undo steps recorded against the old text would land in the wrong place now.
+        undoManager?.removeAllActions()
+        selectedRange = TextDiff.map(keep, through: edit)
         core.restyle(textStorage, selection: editingSelection, force: true)
         setContentOffset(offset, animated: false)
     }
@@ -1089,10 +1092,14 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
         if reported.contains(new.hashValue) { return }
         reported.removeAll()
         lastReported = new
-        guard new != string, !hasMarkedText(), let storage = textStorage else { return }
+        guard new != string, !hasMarkedText(), let storage = textStorage,
+              let edit = TextDiff.edit(from: string, to: new) else { return }
+        // Only what changed is replaced, so your caret, selection and scroll stay put.
         let keep = selectedRange()
-        storage.replaceCharacters(in: NSRange(location: 0, length: storage.length), with: new)
-        setSelectedRange(NSRange(location: min(keep.location, (new as NSString).length), length: 0))
+        storage.replaceCharacters(in: edit.range, with: edit.replacement)
+        // Undo steps recorded against the old text would land in the wrong place now.
+        undoManager?.removeAllActions()
+        setSelectedRange(TextDiff.map(keep, through: edit))
         core.restyle(storage, selection: editingSelection, force: true)
     }
 
