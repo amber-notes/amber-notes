@@ -101,11 +101,18 @@ struct SignInView: View {
             line[r].backgroundColor = Color.accentColor.opacity(0.28)
             line[r].foregroundColor = Color.primary
         }
-        return Text(line)
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
-            .multilineTextAlignment(.center)
-            .padding(.top, -6)
+        return VStack(spacing: 3) {
+            Text(line)
+            // Where the notes live, said once and plainly.
+            Text("Your notes sync between iPhone and Mac.")
+                .font(.footnote)
+                .foregroundStyle(.tertiary)
+                .accessibilityIdentifier("signin.sync")
+        }
+        .font(.subheadline)
+        .foregroundStyle(.secondary)
+        .multilineTextAlignment(.center)
+        .padding(.top, -6)
     }
 
     private var emailSection: some View {

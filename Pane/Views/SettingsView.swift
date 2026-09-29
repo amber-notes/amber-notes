@@ -246,9 +246,14 @@ struct SyncStatusLabel: View {
         switch status {
         case .idle: Text("Waiting").foregroundStyle(.secondary)
         case .syncing: HStack(spacing: 6) { ProgressView().controlSize(.mini); Text("Syncing…") }
-        case .synced(let d): Text("Up to date · \(d.formatted(date: .omitted, time: .shortened))").foregroundStyle(.secondary)
+        case .synced(let d): Text("Syncing to your iPhone and Mac · \(Self.when(d))").foregroundStyle(.secondary)
         case .offline(let why): Text(why).foregroundStyle(.orange)
         }
+    }
+
+    /// "just now" for the last minute, then the time.
+    static func when(_ d: Date, now: Date = .now) -> String {
+        now.timeIntervalSince(d) < 60 ? "just now" : "last synced \(d.formatted(date: .omitted, time: .shortened))"
     }
 }
 

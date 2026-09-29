@@ -148,7 +148,7 @@ struct SetupCard: View {
             HStack(alignment: .center, spacing: 10) {
                 DrawnCheck(animated: !reduceMotion)
                     .frame(width: Metrics.popSize, height: Metrics.popSize)
-                text("You\u{2019}re all set", Text("Your AI just added \u{201C}Call mom\u{201D} to To-do."))
+                text("You\u{2019}re all set", Text("Your AI just added \u{201C}Call mom\u{201D} to To-do. Your notes are on your iPhone and Mac."))
             }
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("setup.celebration")
