@@ -276,8 +276,8 @@ struct ConsentSheet: View {
             // An app that asked only to read can't be given more.
             let canEdit = Binding(get: { write && r.wants_write }, set: { write = $0 })
             Picker("Access", selection: canEdit) {
-                Text("Read and edit").tag(true)
-                Text("Read only").tag(false)
+                Text("Read and Edit").tag(true)
+                Text("Read Only").tag(false)
             }
             .pickerStyle(.segmented)
             .labelsHidden()
@@ -410,6 +410,8 @@ struct ConnectAISection: View {
                     .contentShape(.rect)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Connect \(g.title)")
+                .accessibilityHint(g.subtitle)
                 .accessibilityIdentifier("connect.guide.\(g.rawValue)")
             }
         } header: {
@@ -453,12 +455,14 @@ struct ConnectAISection: View {
                 }
                 Text(detail(c)).font(.caption).foregroundStyle(.secondary).monospacedDigit()
             }
+            // The name and details read as one; Disconnect stays its own button for VoiceOver.
+            .accessibilityElement(children: .combine)
             Spacer()
-            Button("Disconnect") { removing = c }
+            Button("Disconnect…") { removing = c }
                 .buttonStyle(.borderless)
+                .accessibilityLabel("Disconnect \(c.name)")
                 .accessibilityIdentifier("connect.disconnect")
         }
-        .accessibilityElement(children: .combine)
     }
 
     private func detail(_ c: Connection) -> String {
@@ -564,7 +568,7 @@ private struct GuideSheet: View {
     private var addressSection: some View {
         Section {
             Text(server).font(.system(.callout, design: .monospaced)).textSelection(.enabled)
-            copyButton("Copy address", server)
+            copyButton("Copy Address", server)
         } header: {
             Text("Server address")
         } footer: {
@@ -598,7 +602,7 @@ private struct GuideSheet: View {
                 Text(snippet).font(.system(.footnote, design: .monospaced)).textSelection(.enabled).lineLimit(8)
                 copyButton("Copy", snippet)
             } else {
-                Button("Create access token", systemImage: "key") { Task { await makeToken() } }
+                Button("Create Access Token", systemImage: "key") { Task { await makeToken() } }
                     .disabled(working)
             }
         } footer: {
