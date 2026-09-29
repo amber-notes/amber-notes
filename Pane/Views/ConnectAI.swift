@@ -579,7 +579,8 @@ private struct GuideSheet: View {
             Toggle("Read only", isOn: $readOnly).disabled(token != nil)
         }
         #if os(macOS)
-        if guide == .claudeCode {
+        // The TestFlight / App Store build is sandboxed and can't run your shell: it shows the command to copy instead.
+        if guide == .claudeCode, ClaudeCodeInstaller.isAvailable {
             Section {
                 Button(working ? "Adding…" : "Add to Claude Code", systemImage: "plus.circle") { Task { await addToClaudeCode() } }
                     .disabled(working)
@@ -651,6 +652,9 @@ private struct GuideSheet: View {
 /// Finds the claude command and adds Amber Notes to it. A GUI app doesn't see the
 /// person's shell PATH, so it asks their login shell.
 enum ClaudeCodeInstaller {
+    /// A sandboxed app can't start the person's login shell, so the button only exists outside the sandbox.
+    static var isAvailable: Bool { ProcessInfo.processInfo.environment["APP_SANDBOX_CONTAINER_ID"] == nil }
+
     static func install(url: String, token: String) async -> (ok: Bool, message: String) {
         await Task.detached {
             let script = """

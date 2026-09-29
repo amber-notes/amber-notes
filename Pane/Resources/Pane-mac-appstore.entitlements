@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<!-- The Mac app as shipped through TestFlight / the Mac App Store: sandboxed.
+     Local installs use Pane-mac-signed.entitlements; ad-hoc dev builds Pane-mac.entitlements. -->
+<dict>
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<!-- Sync with Supabase, the AI connection, link previews. -->
+	<key>com.apple.security.network.client</key>
+	<true/>
+	<!-- Files you pick, drop or paste in: attachments, spreadsheets, markdown imports. -->
+	<key>com.apple.security.files.user-selected.read-write</key>
+	<true/>
+	<key>com.apple.developer.applesignin</key>
+	<array><string>Default</string></array>
+	<!-- Apple Notes import asks Notes for the notes you choose (never changes them). -->
+	<key>com.apple.security.automation.apple-events</key>
+	<true/>
+	<key>com.apple.security.temporary-exception.apple-events</key>
+	<array><string>com.apple.Notes</string></array>
+</dict>
+</plist>
