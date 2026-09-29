@@ -12,10 +12,11 @@ export const metadata: Metadata = {
   description:
     "As simple as the notes app you know. ChatGPT and Claude can read and update your notes, only when you say so. Free for Mac and iPhone.",
   robots: { index: true, follow: true },
+  alternates: { canonical: "/" },
   openGraph: {
     title: "The notes app your AI can actually use",
     description: "Simple notes for Mac and iPhone that ChatGPT and Claude can read and update, with your approval. Free.",
-    url: "https://amber-notes.vercel.app",
+    url: "https://ambernotes.app",
     siteName: "Amber Notes",
     type: "website",
   },

@@ -6,6 +6,7 @@ import { latestVersion } from "@/lib/changelog";
 import { repoStats } from "@/lib/github";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://ambernotes.app"),
   title: "Amber Notes",
   robots: { index: false, follow: false, nocache: true, googleBot: { index: false, follow: false } },
   referrer: "no-referrer",

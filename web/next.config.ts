@@ -28,8 +28,25 @@ const security = [
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), interest-cohort=()" },
 ];
 
+// ambernotes.app is the site's address. The old vercel.app address sends the site's own pages there
+// (308, path kept). Everything installed apps and links out in the world reach it for stays put on
+// both hosts: the appcast and downloads (Sparkle), shared notes and their report pages, and the
+// privacy, terms and support pages the apps and the App Store link to. www goes to the apex at the
+// domain level, in the Vercel project.
+const OLD_HOST = "amber-notes.vercel.app";
+const SITE = "https://ambernotes.app";
+const MOVED = ["/", "/help", "/download", "/changelog"];
+
 const config: NextConfig = {
   poweredByHeader: false,
+  async redirects() {
+    return MOVED.map((source) => ({
+      source,
+      has: [{ type: "host" as const, value: OLD_HOST }],
+      destination: `${SITE}${source}`,
+      permanent: true,
+    }));
+  },
   async headers() {
     return [
       {
