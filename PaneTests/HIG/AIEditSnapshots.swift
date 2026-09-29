@@ -350,7 +350,7 @@ import Testing
                     AppleNotesImportView().modelContainer(c).tint(Color(PColor.paneAccent)).environment(\.controlActiveState, .key)
                         .environment(\.locale, Locale(identifier: "en_US"))
                 }
-            let w = Self.window(host, size: CGSize(width: 780, height: 740), dark: dark)
+            let w = Self.window(host, size: CGSize(width: 990, height: 1340), dark: dark)
             defer { w.orderOut(nil); w.close() }
             var sheet: NSWindow?
             for _ in 0..<60 where sheet == nil { sheet = w.attachedSheet; if sheet == nil { try? await Task.sleep(for: .milliseconds(100)) } }
