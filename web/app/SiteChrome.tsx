@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import DownloadLink from "./DownloadLink";
 
 /// Which site pages are cream and which are leaf brown. Anything else (shared notes) has no theme.
 export function themeFor(path: string): "cream" | "leaf" | null {
@@ -55,12 +56,18 @@ export default function SiteChrome({ version, stars, children }: { version: stri
   if (!site) return <>{children}</>;
 
   const current = (href: string) => (path === href ? "page" : undefined);
+  // On the home page the logo takes you back to the top instead of reloading.
+  const toTop = (e: React.MouseEvent) => {
+    if (path !== "/" || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    window.scrollTo({ top: 0, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  };
   return (
     <div className="site">
       <header className="site-header">
-        <a className="site-brand" href="/" aria-current={current("/")}>
+        <a className="site-brand" href="/" aria-current={current("/")} aria-label="Amber Notes home" onClick={toTop}>
           <img src="/mark.png" alt="" width={34} height={34} />
-          Amber Notes
+          <span className="site-name">Amber Notes</span>
           {version && <span className="site-badge">v{version}</span>}
         </a>
         <nav className="site-nav" aria-label="Site">
@@ -69,9 +76,9 @@ export default function SiteChrome({ version, stars, children }: { version: stri
           <a className="site-gh" href={GITHUB} aria-label={stars !== null ? `GitHub, ${stars} stars` : "GitHub"}>
             <GitHubGlyph />{stars !== null && <span className="site-stars">★ {stars.toLocaleString("en")}</span>}
           </a>
-          <a className="site-cta" href="/download" aria-current={current("/download")}>
+          <DownloadLink className="site-cta" aria-current={current("/download")}>
             <AppleGlyph /> <span className="site-cta-long">Download for Mac</span><span className="site-cta-short">Download</span>
-          </a>
+          </DownloadLink>
         </nav>
       </header>
       <main className="site-main">{children}</main>
