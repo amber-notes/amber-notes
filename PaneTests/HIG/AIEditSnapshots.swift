@@ -333,6 +333,45 @@ import Testing
         }
     }
 
+    /// The Apple Notes import sheet with the made-up 1,284-note library, as a real sheet over an
+    /// off-screen window: everything picked, then half imported. Captured by the shell watcher
+    /// (screencapture of the sheet's own window, shadow included), light and dark.
+    @Test func importSheet() async throws {
+        guard let dir = ProcessInfo.processInfo.environment["AMBER_DEMO_FRAMES"].map({ URL(fileURLWithPath: $0) }) else { return }
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        AppleNotesBridge.forceDemo = true
+        AppleNotesBridge.forceLarge = true
+        defer { AppleNotesBridge.forceDemo = false; AppleNotesBridge.forceLarge = false }
+        for dark in [false, true] {
+            let c = try AppSnapshotTests.container()
+            let host = Color(nsColor: .windowBackgroundColor)
+                .sheet(isPresented: .constant(true)) {
+                    AppleNotesImportView().modelContainer(c).tint(Color(PColor.paneAccent)).environment(\.controlActiveState, .key)
+                        .environment(\.locale, Locale(identifier: "en_US"))
+                }
+            let w = Self.window(host, size: CGSize(width: 900, height: 820), dark: dark)
+            defer { w.orderOut(nil); w.close() }
+            var sheet: NSWindow?
+            for _ in 0..<60 where sheet == nil { sheet = w.attachedSheet; if sheet == nil { try? await Task.sleep(for: .milliseconds(100)) } }
+            let s = try #require(sheet)
+            try "\(s.windowNumber)".write(to: dir.appending(path: "window-id"), atomically: true, encoding: .utf8)
+            // Where the sheet sits in the captured window, in points from its top left, for cropping.
+            let f = s.frame, p = w.frame
+            try "\(f.minX - p.minX) \(p.maxY - f.maxY) \(f.width) \(f.height)".write(to: dir.appending(path: "sheet-rect"), atomically: true, encoding: .utf8)
+            try? await Task.sleep(for: .seconds(2))
+            let look = dark ? "dark" : "light"
+            func shoot(_ name: String) async throws {
+                try "".write(to: dir.appending(path: "ready-\(name)"), atomically: true, encoding: .utf8)
+                let done = dir.appending(path: "shot-\(name)")
+                for _ in 0..<400 where !FileManager.default.fileExists(atPath: done.path) { try? await Task.sleep(for: .milliseconds(50)) }
+            }
+            try await shoot("import-sheet-\(look)")
+            NotificationCenter.default.post(name: Capture.importHalfway, object: nil)
+            try? await Task.sleep(for: .seconds(0.8))
+            try await shoot("import-progress-\(look)")
+        }
+    }
+
     static func textViews(in view: NSView?) -> [PaneTextView] {
         guard let view else { return [] }
         return (view as? PaneTextView).map { [$0] } ?? view.subviews.flatMap { textViews(in: $0) }

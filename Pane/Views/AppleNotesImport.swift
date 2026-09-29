@@ -66,11 +66,37 @@ enum AppleNotesBridge {
     /// `-uitest -demo`: website and store captures show this library instead of the person's own.
     static var isDemo: Bool {
         let args = ProcessInfo.processInfo.arguments
-        return args.contains("-uitest") && args.contains("-demo")
+        return forceDemo || (args.contains("-uitest") && args.contains("-demo"))
     }
+    /// Offscreen captures in the test host, which has no launch arguments of its own.
+    nonisolated(unsafe) static var forceDemo = false
+    nonisolated(unsafe) static var forceLarge = false
+
+    /// `-importLarge`: the 1,284-note library the website and App Store show, all picked, pins on.
+    static var largeDemo: Bool { isDemo && (forceLarge || ProcessInfo.processInfo.arguments.contains("-importLarge")) }
 
     static var demoNotes: [AppleNote] {
         let day: TimeInterval = 86_400
+        if largeDemo {
+            // The library the website and App Store show: 1,284 notes in five folders.
+            let counts: [(String, Int)] = [("Notes", 612), ("Recipes", 188), ("Work", 241), ("Travel", 97), ("Home", 146)]
+            let names: [String: [String]] = [
+                "Notes": ["Books to read", "Gift ideas", "Wi-Fi at the cabin", "Call back", "Weekend plans", "Quotes"],
+                "Recipes": ["Pasta night for eight", "Grandma's cardamom buns", "Weeknight curry", "Sunday soup", "Pancakes"],
+                "Work": ["Standup", "1:1 with Sara", "Q4 planning", "Retro", "Hiring loop"],
+                "Travel": ["Porto in October", "Packing list", "Copenhagen tips from Jonas", "Kyoto", "Road trip"],
+                "Home": ["Kitchen measurements", "Paint colours", "Plants and when to water them", "Repairs", "Bills"],
+            ]
+            var out: [AppleNote] = []
+            for (folder, n) in counts {
+                let list = names[folder] ?? ["Note"]
+                for i in 0..<n {
+                    let name = i < list.count ? list[i] : "\(list[i % list.count]) \(i / list.count + 1)"
+                    out.append(AppleNote(id: "demo-\(folder)-\(i)", name: name, folder: folder, modified: Date.now.addingTimeInterval(-(1 + Double(i) * 0.45) * day)))
+                }
+            }
+            return out
+        }
         let rows: [(String, String, Double)] = [
             ("Pasta night for eight", "Recipes", 0.1), ("Grandma's cardamom buns", "Recipes", 2), ("Weeknight curry", "Recipes", 5),
             ("Porto in October", "Travel", 0.3), ("Packing list", "Travel", 9), ("Copenhagen tips from Jonas", "Travel", 21),
@@ -94,6 +120,7 @@ struct AppleNotesImportView: View {
     /// Called with the new notes' ids once the import is done.
     var onImported: ([UUID]) -> Void = { _ in }
 
+    @Environment(\.locale) private var locale
     @State private var notes: [AppleNote] = []
     @State private var picked: Set<String> = []
     @State private var query = ""
@@ -158,7 +185,12 @@ struct AppleNotesImportView: View {
         .task { await load() }
         // Coming back from System Settings: look again.
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-            pinAccess = ApplePins.hasAccess()
+            if !AppleNotesBridge.isDemo { pinAccess = ApplePins.hasAccess() }
+        }
+        // Captures: the import half done, without reading anything.
+        .onReceive(NotificationCenter.default.publisher(for: Capture.importHalfway)) { _ in
+            guard AppleNotesBridge.isDemo else { return }
+            progress = (picked.count / 2, picked.count)
         }
     }
 
@@ -183,6 +215,7 @@ struct AppleNotesImportView: View {
                         } header: {
                             HStack {
                                 Text(folder.isEmpty ? "Notes" : folder).font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary)
+                                Text(items.count.formatted(.number.locale(locale))).font(.system(size: 12)).foregroundStyle(.tertiary).monospacedDigit()
                                 Spacer()
                                 Button(items.allSatisfy { picked.contains($0.id) } ? "Deselect All" : "Select All") {
                                     let ids = items.map(\.id)
@@ -245,9 +278,11 @@ struct AppleNotesImportView: View {
         HStack(spacing: 14) {
             if let progress {
                 ProgressView(value: Double(progress.done), total: Double(max(progress.total, 1)))
-                    .frame(width: 140)
-                Text("Importing \(min(progress.done + 1, progress.total)) of \(progress.total)…")
+                    .frame(width: 120)
+                // One line, however large the numbers.
+                Text("Importing \(min(progress.done + 1, progress.total).formatted(.number.locale(locale))) of \(progress.total.formatted(.number.locale(locale)))…")
                     .font(.callout).foregroundStyle(.secondary).monospacedDigit()
+                    .lineLimit(1).fixedSize()
             } else {
                 VStack(alignment: .leading, spacing: 6) {
                     Toggle("Keep Apple Notes folders", isOn: $keepFolders)
@@ -269,17 +304,21 @@ struct AppleNotesImportView: View {
                     }
                 }
                 .font(.callout)
-                .onChange(of: bringPins) { _, on in if on { pinAccess = ApplePins.hasAccess() } }
+                .onChange(of: bringPins) { _, on in if on, !AppleNotesBridge.isDemo { pinAccess = ApplePins.hasAccess() } }
             }
             Spacer()
             Button("Cancel") { dismiss() }
                 .keyboardShortcut(.cancelAction)
-            Button(picked.isEmpty ? "Import" : "Import \(picked.count) \(picked.count == 1 ? "Note" : "Notes")") {
-                Task { await runImport() }
+            // While it runs, the progress says it all; the button would only be squeezed.
+            if progress == nil {
+                Button(picked.isEmpty ? "Import" : "Import \(picked.count.formatted(.number.locale(locale))) \(picked.count == 1 ? "Note" : "Notes")") {
+                    Task { await runImport() }
+                }
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
+                .disabled(picked.isEmpty)
+                .fixedSize()
             }
-            .buttonStyle(.borderedProminent)
-            .keyboardShortcut(.defaultAction)
-            .disabled(picked.isEmpty || progress != nil)
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 14)
@@ -307,6 +346,8 @@ struct AppleNotesImportView: View {
             // Captures never read the real Apple Notes: a made-up library, most of it picked.
             notes = AppleNotesBridge.demoNotes
             picked = Set(notes.filter { $0.folder != "Archive" }.map(\.id))
+            existingTitles = []
+            if AppleNotesBridge.largeDemo { bringPins = true; pinAccess = true }
             loading = false
             return
         }
@@ -319,6 +360,8 @@ struct AppleNotesImportView: View {
     }
 
     private func runImport() async {
+        // The made-up library of captures is never read from Apple Notes.
+        guard !AppleNotesBridge.isDemo else { return }
         let chosen = notes.filter { picked.contains($0.id) }
         progress = (0, chosen.count)
         // Pins are read once, up front, only when asked for.
