@@ -9,6 +9,8 @@ struct NoteDetailView: View {
     @State private var importing = false
     @State private var saver = DebouncedSave()
     @State private var shareLinks = ShareLinkStore()
+    /// Design study: the receipt for an AI's edit that just landed on this note.
+    @State private var receipt: AIEdits.Mark?
     @Bindable var note: Note
     let controller: EditorController
     var autofocus = false
@@ -23,6 +25,43 @@ struct NoteDetailView: View {
             .onAppear(perform: wireController)
             .onDisappear { saver.flush() }
             .shareLinkChrome(shareLinks, note: note)
+            .overlay(alignment: .bottom) { aiReceipt }
+            .onChange(of: AIEdits.shared.marks[note.id]?.at) { _, _ in showAIEdit() }
+            .task(id: note.id) { receipt = nil; showAIEdit() }
+    }
+
+    @ViewBuilder
+    private var aiReceipt: some View {
+        if DesignStudy.on, let receipt {
+            AIReceipt(mark: receipt) {
+                withAnimation(.smooth(duration: 0.25)) { self.receipt = nil }
+                AIEdits.shared.undo(note)
+            }
+            #if os(macOS)
+            .padding(.bottom, 20)
+            #else
+            .padding(.bottom, 64)
+            #endif
+            .transition(.asymmetric(insertion: .move(edge: .bottom).combined(with: .opacity).combined(with: .scale(scale: 0.96, anchor: .bottom)),
+                                    removal: .opacity.combined(with: .offset(y: 6))))
+        }
+    }
+
+    /// An AI's edit you haven't seen: tint what it changed and show who did it. Both go once
+    /// you've had the note open for a moment.
+    private func showAIEdit() {
+        guard DesignStudy.on, let mark = AIEdits.shared.unseen(note.id) else { return }
+        let id = note.id
+        AIEdits.shared.markSeen(id)
+        Task { @MainActor in
+            // Let the editor take the new text first.
+            try? await Task.sleep(for: .seconds(0.15))
+            ChangeHighlight.play(mark.lines)
+            withAnimation(.spring(duration: 0.45, bounce: 0.25)) { receipt = mark }
+            try? await Task.sleep(for: .seconds(5.5))
+            guard receipt == mark, note.id == id else { return }
+            withAnimation(.easeIn(duration: 0.2)) { receipt = nil }
+        }
     }
 
     private var editor: some View {

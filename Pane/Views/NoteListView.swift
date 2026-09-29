@@ -447,12 +447,14 @@ enum RowMetrics {
     static let spacing: CGFloat = 3
     static let vertical: CGFloat = 5
     static let leading: CGFloat = 12
+    static let dotOffset: CGFloat = -12
     #else
     static let title = Font.headline
     static let detail = Font.subheadline
     static let spacing: CGFloat = 3
     static let vertical: CGFloat = 1
     static let leading: CGFloat = 0
+    static let dotOffset: CGFloat = -15
     #endif
 }
 
@@ -468,17 +470,35 @@ struct NoteRow: View {
         // At the accessibility text sizes the row stacks and wraps instead of truncating.
         let large = typeSize.isAccessibilitySize
         let detail = large ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2)) : AnyLayout(HStackLayout(spacing: 8))
+        let ai = DesignStudy.on ? AIEdits.shared.unseen(note.id) : nil
         return VStack(alignment: .leading, spacing: RowMetrics.spacing) {
             Text(title)
                 .font(RowMetrics.title)
                 .lineLimit(large ? 3 : 1)
+                // Design study: an AI changed this note and you haven't opened it since, like Mail's unread dot.
+                .overlay(alignment: .leading) {
+                    if ai != nil {
+                        Circle().fill(.tint).frame(width: 8, height: 8)
+                            .offset(x: RowMetrics.dotOffset)
+                            .transition(.scale.combined(with: .opacity))
+                    }
+                }
             detail {
                 Text(DateBucket.rowDate(note.updatedAt))
                     .monospacedDigit()
                     .foregroundStyle(.primary.opacity(0.85))
-                Text(snippet)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(large ? 2 : 1)
+                if let ai {
+                    HStack(spacing: 4) {
+                        AIGlyph(ai: ai.by, size: 11)
+                        Text("Edited by \(ai.by)")
+                    }
+                    .foregroundStyle(Color.amberInk)
+                    .lineLimit(1)
+                } else {
+                    Text(snippet)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(large ? 2 : 1)
+                }
             }
             .font(RowMetrics.detail)
             if showFolder, let f = note.folder {
@@ -493,7 +513,7 @@ struct NoteRow: View {
         .padding(.vertical, RowMetrics.vertical)
         .padding(.leading, RowMetrics.leading)
         .accessibilityElement(children: .combine)
-        .accessibilityValue(note.isPinned ? "Pinned" : "")
+        .accessibilityValue([note.isPinned ? "Pinned" : nil, ai.map { "Edited by \($0.by)" }].compactMap { $0 }.joined(separator: ", "))
         .accessibilityIdentifier("note.\(title)")
     }
 

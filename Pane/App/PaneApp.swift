@@ -1,3 +1,4 @@
+import Supabase
 import SwiftData
 import SwiftUI
 
@@ -29,6 +30,7 @@ struct PaneApp: App {
         _sync = State(initialValue: SyncEngine(backend: backend, context: container.mainContext))
         // With sync on, the library is seeded after the first pull so devices don't duplicate it.
         if backend.client == nil { Seed.ensureLibrary(container.mainContext, demo: args.contains("-demo")) }
+        DesignStudy.scheduleFromArguments(container.mainContext)
     }
 
     /// Test runs can pin an appearance: `-uitest -scheme light`. Otherwise the system decides.
@@ -253,6 +255,16 @@ struct AppGate: View {
 
     var body: some View {
         Group {
+            if let screen = CaptureScreen.requested {
+                CaptureScreen(name: screen, backend: backend)
+            } else {
+                gate
+            }
+        }
+    }
+
+    private var gate: some View {
+        Group {
             switch backend.state {
             case .signedOut:
                 SignInView(backend: backend)
@@ -277,6 +289,7 @@ struct AppGate: View {
         .background(WindowShaper(compact: backend.state == .signedOut, cardSize: cardSize))
         #endif
         .animation(.easeOut(duration: 0.25), value: backend.state)
+        .onAppear { if let p = CaptureScreen.setupProgress { setup.apply(p) } }
         .task(id: backend.state) {
             guard case .signedIn = backend.state, let client = backend.client else {
                 setup.attach(account: nil, service: nil)
@@ -376,3 +389,45 @@ private struct WindowCloser: NSViewRepresentable {
     func updateNSView(_ nsView: NSView, context: Context) {}
 }
 #endif
+
+/// Captures only (`-uitest`): one screen on its own, or the setup card at a given step, so the
+/// iPhone simulator can show them without anyone tapping through.
+///   `-captureScreen connect` or `signin`; `-captureSetup 1…3`.
+struct CaptureScreen: View {
+    let name: String
+    let backend: Backend
+
+    static var requested: String? {
+        ProcessInfo.processInfo.arguments.contains("-uitest") ? DesignStudy.argument("-captureScreen") : nil
+    }
+
+    static var setupProgress: SetupProgress? {
+        guard ProcessInfo.processInfo.arguments.contains("-uitest"), let n = DesignStudy.argument("-captureSetup").flatMap(Int.init) else { return nil }
+        return SetupProgress(imported: n > 1, connected: n > 2)
+    }
+
+    static let connections: [Connection] = [
+        Connection(id: UUID(), name: "ChatGPT", kind: "oauth", can_write: true, created_at: .now.addingTimeInterval(-86400 * 3),
+                   last_used_at: .now.addingTimeInterval(-720), revoked_at: nil, redirect_host: "chatgpt.com", url_used_at: nil),
+        Connection(id: UUID(), name: "Claude Code", kind: "token", can_write: true, created_at: .now.addingTimeInterval(-86400),
+                   last_used_at: .now.addingTimeInterval(-3 * 3600), revoked_at: nil, redirect_host: nil, url_used_at: nil),
+    ]
+
+    var body: some View {
+        switch name {
+        case "connect":
+            NavigationStack {
+                Form {
+                    ConnectAISection(client: SupabaseClient(supabaseURL: URL(string: "http://127.0.0.1:9")!, supabaseKey: "capture"), preview: Self.connections)
+                }
+                .formStyle(.grouped)
+                .navigationTitle("Connect an AI")
+                #if os(iOS)
+                .navigationBarTitleDisplayMode(.inline)
+                #endif
+            }
+        default:
+            SignInView(backend: backend)
+        }
+    }
+}

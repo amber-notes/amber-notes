@@ -474,6 +474,7 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
         remember(text)
         core.observe(textStorage)
         core.restyle(textStorage, selection: nil, force: true)
+        observeChangeHighlight()
 
         headerLabel.font = .systemFont(ofSize: 13, weight: .medium)
         headerLabel.textColor = .tertiaryLabel
@@ -663,6 +664,18 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
     private func remember(_ s: String) {
         reported.append(s.hashValue)
         if reported.count > 64 { reported.removeFirst(reported.count - 64) }
+    }
+
+    /// Design study: redraw the amber tint on lines an AI just changed while it swells and fades.
+    private func observeChangeHighlight() {
+        NotificationCenter.default.addObserver(forName: ChangeHighlight.changed, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self, let tlm = self.textLayoutManager else { return }
+                tlm.invalidateLayout(for: tlm.documentRange)
+                tlm.textViewportLayoutController.layoutViewport()
+                self.setNeedsDisplay()
+            }
+        }
     }
 
     func syncExternal(_ new: String) {
@@ -932,6 +945,7 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
         lastReported = text
         remember(text)
         core.observe(textStorage!)
+        observeChangeHighlight()
         core.restyle(textStorage!, selection: nil, force: true)
 
         headerLabel.font = .systemFont(ofSize: 11, weight: .medium)
@@ -1127,6 +1141,18 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
     private func remember(_ s: String) {
         reported.append(s.hashValue)
         if reported.count > 64 { reported.removeFirst(reported.count - 64) }
+    }
+
+    /// Design study: redraw the amber tint on lines an AI just changed while it swells and fades.
+    private func observeChangeHighlight() {
+        NotificationCenter.default.addObserver(forName: ChangeHighlight.changed, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self, let tlm = self.textLayoutManager else { return }
+                tlm.invalidateLayout(for: tlm.documentRange)
+                tlm.textViewportLayoutController.layoutViewport()
+                self.needsDisplay = true
+            }
+        }
     }
 
     func syncExternal(_ new: String) {

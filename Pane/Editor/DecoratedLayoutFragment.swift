@@ -19,9 +19,10 @@ final class DecoratedLayoutFragment: NSTextLayoutFragment {
         return max(w - pad * 2, layoutFragmentFrame.width)
     }
 
-    /// 18% amber over the page, as an opaque colour: neighbouring lines may overlap by a pixel,
-    /// and a translucent fill would show that as a darker seam.
-    private static var changeTint: CGColor {
+    /// 18% amber over the page (scaled by `strength` while a live tint comes and goes), as an
+    /// opaque colour: neighbouring lines may overlap by a pixel, and a translucent fill would show
+    /// that as a darker seam. The accent bar blends from the page to full amber the same way.
+    private static func changeColors(_ strength: CGFloat) -> (tint: CGColor, bar: CGColor) {
         #if os(iOS)
         let page = UIColor.systemBackground.resolvedColor(with: .current)
         let accent = PColor.paneAccent.resolvedColor(with: .current)
@@ -33,15 +34,17 @@ final class DecoratedLayoutFragment: NSTextLayoutFragment {
         var (ar, ag, ab, aa) = (CGFloat(0), CGFloat(0), CGFloat(0), CGFloat(0))
         page.getRed(&pr, green: &pg, blue: &pb, alpha: &pa)
         accent.getRed(&ar, green: &ag, blue: &ab, alpha: &aa)
-        let t: CGFloat = 0.18
-        return PColor(red: pr + (ar - pr) * t, green: pg + (ag - pg) * t, blue: pb + (ab - pb) * t, alpha: 1).cgColor
+        func mix(_ t: CGFloat) -> CGColor { PColor(red: pr + (ar - pr) * t, green: pg + (ag - pg) * t, blue: pb + (ab - pb) * t, alpha: 1).cgColor }
+        return (mix(0.18 * strength), mix(min(1, strength)))
     }
 
-    /// Changed by an AI connection just now (see ChangeHighlight).
-    private var highlighted: Bool {
-        guard !ChangeHighlight.lines.isEmpty, let p = textElement as? NSTextParagraph else { return false }
-        return ChangeHighlight.matches(p.attributedString.string)
+    /// Changed by an AI connection just now (see ChangeHighlight): how strongly, 0 for not.
+    private var highlight: CGFloat {
+        guard let p = textElement as? NSTextParagraph else { return 0 }
+        return ChangeHighlight.tint(for: p.attributedString.string)
     }
+
+    private var highlighted: Bool { highlight > 0 }
 
     override var renderingSurfaceBounds: CGRect {
         let base = super.renderingSurfaceBounds
@@ -103,7 +106,8 @@ final class DecoratedLayoutFragment: NSTextLayoutFragment {
     }
 
     override func draw(at point: CGPoint, in context: CGContext) {
-        if highlighted {
+        let strength = highlight
+        if strength > 0 {
             // A soft amber band across the column with an accent bar at its left edge. Changed
             // lines next to each other join into one block, like a change marker.
             // Inside the rendering surface (4 pt either side). Edges are drawn without antialiasing so
@@ -112,9 +116,10 @@ final class DecoratedLayoutFragment: NSTextLayoutFragment {
                               width: containerWidth + 8, height: layoutFragmentFrame.height)
             context.saveGState()
             context.setShouldAntialias(false)
-            context.setFillColor(Self.changeTint)
+            let colors = Self.changeColors(strength)
+            context.setFillColor(colors.tint)
             context.fill(rect)
-            context.setFillColor(PColor.paneAccent.cgColor)
+            context.setFillColor(colors.bar)
             context.fill(CGRect(x: rect.minX, y: rect.minY, width: 3, height: rect.height))
             context.restoreGState()
         }

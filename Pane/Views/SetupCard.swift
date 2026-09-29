@@ -22,6 +22,10 @@ struct SetupCard: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .firstTextBaseline) {
                 Text("Get set up").font(.headline)
+                if DesignStudy.on, !celebrating {
+                    Text("\(SetupProgress.Step.allCases.filter(progress.isDone).count) of 3")
+                        .font(.subheadline).monospacedDigit().foregroundStyle(.secondary)
+                }
                 Spacer()
                 if !celebrating {
                     Button("Hide", action: onHide)
@@ -43,8 +47,7 @@ struct SetupCard: View {
             }
         }
         .padding(16)
-        .background(.background.secondary, in: .rect(cornerRadius: 14, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(.separator.opacity(0.6), lineWidth: 0.5))
+        .modifier(SetupCardSurface())
         .animation(.smooth(duration: 0.3), value: progress)
         .animation(.smooth(duration: 0.3), value: celebrating)
         .accessibilityElement(children: .contain)
@@ -151,6 +154,8 @@ struct SetupCard: View {
                 .buttonStyle(.borderedProminent)
                 .accessibilityIdentifier("setup.connect")
             #endif
+        case .tryIt where DesignStudy.on:
+            studyTryIt
         case .tryIt:
             Text("Paste this into your AI:")
                 .font(.subheadline).foregroundStyle(.secondary)
@@ -169,6 +174,27 @@ struct SetupCard: View {
             Text("Then watch it appear in your To-do note.")
                 .font(.subheadline).foregroundStyle(.secondary)
         }
+    }
+
+    /// Design study: the prompt as a message you'd send, like the chat in the website's demo.
+    @ViewBuilder
+    private var studyTryIt: some View {
+        Text("Ask your AI:")
+            .font(.subheadline).foregroundStyle(.secondary)
+        HStack(alignment: .bottom, spacing: 8) {
+            Spacer(minLength: 24)
+            Text(Self.prompt)
+                .font(.callout)
+                .textSelection(.enabled)
+                .padding(.horizontal, 12).padding(.vertical, 8)
+                .background(.fill.tertiary, in: .rect(cornerRadius: 16, style: .continuous))
+        }
+        Button(copied ? "Copied" : "Copy Prompt", systemImage: copied ? "checkmark" : "doc.on.doc") { copy() }
+            .buttonStyle(.bordered)
+            .accessibilityIdentifier("setup.copy")
+        Text("Then watch it appear in your To-do note, tinted amber.")
+            .font(.subheadline).foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     private func importButton(_ action: @escaping () -> Void) -> some View {
@@ -196,6 +222,24 @@ struct SetupCard: View {
         Task {
             try? await Task.sleep(for: .seconds(2))
             withAnimation(.snappy(duration: 0.15)) { copied = false }
+        }
+    }
+}
+
+/// The card's ground: a hairline today; with `-designStudy` the page colour on soft layered shadows, like the website's cards.
+private struct SetupCardSurface: ViewModifier {
+    func body(content: Content) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
+        if DesignStudy.on {
+            content
+                .background(Color.notePage, in: shape)
+                .overlay(shape.strokeBorder(.separator.opacity(0.35), lineWidth: 0.5))
+                .shadow(color: Color(red: 0.24, green: 0.12, blue: 0.02).opacity(0.10), radius: 14, y: 8)
+                .shadow(color: Color(red: 0.24, green: 0.12, blue: 0.02).opacity(0.06), radius: 1.5, y: 1)
+        } else {
+            content
+                .background(.background.secondary, in: shape)
+                .overlay(shape.strokeBorder(.separator.opacity(0.6), lineWidth: 0.5))
         }
     }
 }

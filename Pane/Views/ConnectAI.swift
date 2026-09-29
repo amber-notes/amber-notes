@@ -373,6 +373,8 @@ struct Connection: Decodable, Identifiable {
 /// Settings → Connect an AI: guided setup per app, and everything that's connected.
 struct ConnectAISection: View {
     let client: SupabaseClient
+    /// Captures: shows these instead of asking the server.
+    var preview: [Connection]? = nil
     @State private var connections: [Connection] = []
     @State private var guide: Guide?
     @State private var removing: Connection?
@@ -397,6 +399,15 @@ struct ConnectAISection: View {
             case .codex: "Adds Amber Notes to Codex"
             }
         }
+        /// Where it's done, in the AI's own words (as on the website).
+        var hint: String {
+            switch self {
+            case .chatgpt: "Apps → Create app"
+            case .claude: "Connectors → Add custom"
+            case .claudeCode: "claude mcp add amber-notes"
+            case .codex: "~/.codex/config.toml"
+            }
+        }
         var icon: String {
             switch self {
             case .chatgpt, .claude: "bubble.left.and.text.bubble.right"
@@ -406,6 +417,54 @@ struct ConnectAISection: View {
     }
 
     var body: some View {
+        if DesignStudy.on { studyGuides } else { guides }
+        connected
+    }
+
+    /// Design study: one joined list of AIs, each with its mark, name and how it connects, and the promises under it.
+    private var studyGuides: some View {
+        Section {
+            ForEach(Guide.allCases) { g in
+                Button { guide = g } label: {
+                    HStack(spacing: 12) {
+                        AITile(ai: g.title, size: 32)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(g.title).font(.body.weight(.semibold)).foregroundStyle(.primary)
+                            Text(g.hint).font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary).lineLimit(1)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
+                    }
+                    .padding(.vertical, 2)
+                    .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Connect \(g.title)")
+                .accessibilityHint(g.subtitle)
+                .accessibilityIdentifier("connect.guide.\(g.rawValue)")
+            }
+        } header: {
+            Text("Connect an AI")
+        } footer: {
+            VStack(alignment: .leading, spacing: 6) {
+                promise("You approve every AI.")
+                promise("Disconnect anytime.")
+                promise("Every change an AI makes can be undone.")
+            }
+            .padding(.top, 4)
+        }
+    }
+
+    private func promise(_ text: String) -> some View {
+        Label {
+            Text(text).foregroundStyle(.primary)
+        } icon: {
+            Image(systemName: "checkmark").fontWeight(.bold).foregroundStyle(.tint)
+        }
+        .font(.callout.weight(.medium))
+    }
+
+    private var guides: some View {
         Section {
             ForEach(Guide.allCases) { g in
                 Button { guide = g } label: {
@@ -430,7 +489,9 @@ struct ConnectAISection: View {
         } footer: {
             Text("ChatGPT and Claude sign in, and you approve them here. Nothing secret is pasted anywhere. Every change an AI makes keeps the previous version, so it can be undone.")
         }
+    }
 
+    private var connected: some View {
         Section("Connected") {
             let active = connections.filter { $0.revoked_at == nil }
             if active.isEmpty {
@@ -452,6 +513,7 @@ struct ConnectAISection: View {
 
     private func row(_ c: Connection) -> some View {
         HStack(spacing: 10) {
+            if DesignStudy.on { AITile(ai: c.name, size: 26) }
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
                     Text(c.name)
@@ -483,6 +545,7 @@ struct ConnectAISection: View {
     }
 
     private func load() async {
+        if let preview { connections = preview; return }
         do {
             connections = try await client.from("mcp_tokens").select().order("created_at", ascending: false).execute().value
             error = nil
