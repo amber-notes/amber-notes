@@ -35,6 +35,9 @@ struct PaneApp: App {
         let historyStore: NoteHistoryStore = args.contains("-demoHistory") ? DemoHistoryStore(context: context)
             : backend.client.map { SupabaseHistoryStore(client: $0) } ?? EmptyHistoryStore()
         NoteHistory.shared = NoteHistory(store: historyStore, context: context, sync: backend.client == nil ? nil : sync)
+        // "Did you know" tips; their counts go to the server when signed in.
+        TipLog.client = backend.client
+        PaneTips.configure()
         Capture.scheduleFromArguments(container.mainContext)
         #if os(macOS)
         Capture.demoSequenceFromArguments(container.mainContext)
@@ -318,10 +321,16 @@ struct AppGate: View {
         // Each sync may have brought an AI's edit or a new connection: the card looks again.
         .onChange(of: sync.status) { _, _ in Task { await setup.refresh() } }
         .onReceive(NotificationCenter.default.publisher(for: .paneNotesBrought)) { _ in
-            Task { await setup.mark("imported") }
+            Task { await setup.mark("imported"); await PaneTips.imported.donate() }
+        }
+        // Tips wait until the Get set up card has gone; an import on any device counts.
+        .onChange(of: setup.visible, initial: true) { _, visible in PaneTips.setupVisible = visible }
+        .onChange(of: setup.progress?.imported == true, initial: true) { _, imported in
+            if imported { Task { await PaneTips.importedOnce() } }
         }
         .onChange(of: phase) { _, p in
             if p == .active {
+                Task { await PaneTips.appOpened() }
                 Task { await setup.refresh() }
                 context.drainInbox()
                 sync.schedule()

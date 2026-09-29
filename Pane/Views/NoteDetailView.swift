@@ -1,6 +1,7 @@
 import QuickLook
 import SwiftData
 import SwiftUI
+import TipKit
 import UniformTypeIdentifiers
 
 struct NoteDetailView: View {
@@ -34,7 +35,9 @@ struct NoteDetailView: View {
             .overlay(alignment: .bottom) { aiReceipt }
             .overlay(alignment: .bottom) { undoProblem }
             .onChange(of: note.aiEditedAt) { _, _ in showAIEdit() }
-            .task(id: note.id) { receipt = nil; showAIEdit() }
+            .task(id: note.id) { receipt = nil; showAIEdit(); PaneTips.noteOpened(note.body) }
+            .onReceive(NotificationCenter.default.publisher(for: .paneChecklistTicked)) { _ in PaneTips.ticked() }
+            .onChange(of: showHistory) { _, open in if open { TipLog.used(VersionHistoryTip()) } }
     }
 
     @ViewBuilder
@@ -81,6 +84,7 @@ struct NoteDetailView: View {
             guard note.id == r.noteID else { return }
             controller.tintChanges(from: r.previous)
             withAnimation(.spring(duration: 0.45 * slow, bounce: 0.25)) { receipt = r }
+            PaneTips.aiEditLanded()
             try? await Task.sleep(for: .seconds(5.5 * slow))
             guard receipt == r else { return }
             withAnimation(.easeIn(duration: 0.2 * slow)) { receipt = nil }
@@ -128,6 +132,7 @@ struct NoteDetailView: View {
 
     /// Every keystroke lands here; the model is written once typing pauses.
     private func save(_ text: String) {
+        PaneTips.typed()
         let note = self.note
         saver.schedule(base: note.body) { [saver] in
             // Something else rewrote the note meanwhile (sync, an AI): the editor
@@ -139,6 +144,7 @@ struct NoteDetailView: View {
 
     private func write(_ text: String, to note: Note) {
         guard text != note.body else { return }
+        if TipTriggers.isBigDeletion(from: note.body, to: text) { PaneTips.deletedALot() }
         let oldTitle = note.title
         note.body = text
         note.touch()
@@ -236,9 +242,13 @@ struct NoteDetailView: View {
         #if os(iOS)
         ToolbarItem(placement: .bottomBar) {
             Button("Checklist", systemImage: "checklist", action: controller.checklist)
+                .popoverTip(ChecklistTip(), arrowEdge: .bottom)
+                .logsTip(ChecklistTip())
         }
         ToolbarItem(placement: .bottomBar) {
             Button("Table", systemImage: "tablecells", action: controller.insertTable)
+                .popoverTip(TableTip(), arrowEdge: .bottom, action: tableTipAction)
+                .logsTip(TableTip())
         }
         ToolbarItem(placement: .bottomBar) {
             Button("Attach", systemImage: "paperclip") { importing = true }
@@ -262,8 +272,12 @@ struct NoteDetailView: View {
         ToolbarItemGroup {
             formatMenu
             Button("Checklist", systemImage: "checklist", action: controller.checklist)
+                .popoverTip(ChecklistTip(), arrowEdge: .top)
+                .logsTip(ChecklistTip())
                 .help("Checklist (⇧⌘L)")
             Button("Table", systemImage: "tablecells", action: controller.insertTable)
+                .popoverTip(TableTip(), arrowEdge: .top, action: tableTipAction)
+                .logsTip(TableTip())
                 .help("Table (⌥⌘T)")
             Button("Attach", systemImage: "paperclip") { importing = true }
                 .help("Attach File (⇧⌘A)")
@@ -321,6 +335,12 @@ struct NoteDetailView: View {
         }
     }
 
+    /// The table tip's Make Table: the note's table-like lines become a table.
+    private func tableTipAction(_ action: Tips.Action) {
+        guard action.id == "make" else { return }
+        controller.makeTableFromText()
+    }
+
     private var shareMenu: some View {
         Menu { shareItems } label: {
             Label("Share", systemImage: "square.and.arrow.up")
@@ -329,6 +349,8 @@ struct NoteDetailView: View {
         .tint(.primary)
         #endif
         .help("Share")
+        .popoverTip(ShareLinkTip(), arrowEdge: .top)
+        .logsTip(ShareLinkTip())
         .accessibilityIdentifier("editor.share")
     }
 
@@ -357,6 +379,15 @@ struct NoteDetailView: View {
         }
         #if os(macOS)
         .tint(.primary)
+        #endif
+        .popoverTip(VersionHistoryTip(), arrowEdge: .top) { action in
+            if action.id == "open" { showHistory = true }
+        }
+        .logsTip(VersionHistoryTip())
+        #if os(iOS)
+        // On iPhone sharing lives in this menu too.
+        .popoverTip(ShareLinkTip(), arrowEdge: .top)
+        .logsTip(ShareLinkTip())
         #endif
         .accessibilityIdentifier("editor.more")
     }

@@ -81,9 +81,25 @@ final class EditorController {
     func numberedList() { perform { ListEditing.toggleLineStyle(in: $0, selection: $1, .numbered) } }
     func blockQuote() { perform { ListEditing.toggleLineStyle(in: $0, selection: $1, .quote) } }
 
-    /// Inserts an empty 2×2 table and puts the keyboard in its first cell.
+    /// With lines selected that have tabs or pipes between words, turns them into a table;
+    /// otherwise inserts an empty 2×2 table and puts the keyboard in its first cell.
     func insertTable() {
-        target?.insertGrid()
+        guard let t = target else { return }
+        if let edit = TableText.edit(in: t.currentText, selection: t.currentSelection) {
+            t.apply(edit)
+        } else {
+            t.insertGrid()
+        }
+        TipLog.used(TableTip())
+    }
+
+    /// The table tip's Make Table: the note's first run of table-like lines becomes a table.
+    func makeTableFromText() {
+        guard let t = target, let lines = TipTriggers.tableText(in: t.currentText),
+              let edit = TableText.edit(in: t.currentText, selection: lines) else { return }
+        t.apply(edit)
+        TipLog.used(TableTip())
+        PaneTips.noteHasTableText = false
     }
 
     func insertLink() {
