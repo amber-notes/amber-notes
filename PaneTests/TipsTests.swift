@@ -139,15 +139,20 @@ import TipKit
     // MARK: TipKit rules
 
     /// The shared rules, evaluated by TipKit itself: nothing before 3 days of use, nothing with
-    /// the setup card, nothing while typing, and only the tip whose turn it is.
+    /// the setup card, only the tip whose turn it is, and gone once closed. (The note moments and
+    /// "not while typing" are parameters other suites' views set as they open notes, so they're
+    /// checked above without TipKit; here a tip uses only the rules nothing else touches.)
+    ///
+    /// Runs on its own (`TEST_RUNNER_AMBER_TIPKIT=1 scripts/qa-test.sh PaneTests/TipsTests`):
+    /// setting up TipKit in a full run would let tips appear in other suites' windows.
     @Test func tipKitShowsATipOnlyWhenEveryRuleHolds() async throws {
+        guard ProcessInfo.processInfo.environment["AMBER_TIPKIT"] == "1" else { return }
         let dir = FileManager.default.temporaryDirectory.appending(path: "tips-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         try? Tips.configure([.datastoreLocation(.url(dir)), .displayFrequency(.immediate)])
-        let tip = ShareLinkTip()
+        let tip = RulesProbeTip()
         PaneTips.setupVisible = false
         PaneTips.turn = ""
-        PaneTips.noteOpened((1...12).map { "Line \($0)" }.joined(separator: "\n"))
         func shows() async -> Bool {
             try? await Task.sleep(for: .milliseconds(150))
             return tip.shouldDisplay
@@ -158,16 +163,25 @@ import TipKit
         PaneTips.setupVisible = true
         #expect(await !shows(), "never with the setup card")
         PaneTips.setupVisible = false
-        PaneTips.typed()
-        #expect(await !shows(), "never while typing")
-        PaneTips.noteOpened((1...12).map { "Line \($0)" }.joined(separator: "\n"))
         PaneTips.turn = "versionHistory"
         #expect(await !shows(), "another tip has these 3 days")
         PaneTips.turn = ""
         #expect(await shows())
         tip.invalidate(reason: .tipClosed)
         #expect(await !shows(), "closed is gone for good")
-        PaneTips.listOpened()
-        PaneTips.calm = false
+        // Leave TipKit unable to show anything to the rest of the run.
+        PaneTips.setupVisible = true
+    }
+}
+
+/// The app's shared rules without the moment ones, for the TipKit test above.
+private struct RulesProbeTip: Tip {
+    var title: Text { Text("Probe") }
+    var rules: [Rule] {
+        [
+            #Rule(PaneTips.activeDay) { $0.donations.count >= 3 },
+            #Rule(PaneTips.$setupVisible) { $0 == false },
+            #Rule(PaneTips.$turn) { $0 == "" || $0 == "probe" },
+        ]
     }
 }
