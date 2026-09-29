@@ -14,10 +14,10 @@ enum DemoData {
 
         let day: TimeInterval = 86400
         let items: [(Folder, String, TimeInterval, Bool)] = [
-            (main, "Groceries\n\n- [ ] Oat milk\n- [x] Sourdough\n- [ ] Lemons\n- [ ] Coffee beans", -600, true),
+            (main, "Groceries\n\nFor the weekend, and Sunday dinner with Sara and Jonas.\n\n- [ ] Oat milk\n- [ ] Lemons\n- [ ] Coffee beans\n- [ ] Fresh basil\n- [ ] Burrata\n- [ ] Cherry tomatoes\n- [ ] Olive oil\n- [ ] Dark chocolate\n- [x] Sourdough\n- [x] Eggs\n- [x] Spinach", -600, true),
             (work, "Standup notes\n\nShipped the sync fix. **Blocked** on the review for the importer.\n\n- Next: table editing\n- Ask about the CI flake", -3 * 3600, false),
             (ideas, "App ideas\n\n1. A calmer inbox\n2. Voice notes that file themselves\n3. A reading list that forgets", -day, false),
-            (travel, "Lisbon\n\n## Places\n- Time Out Market\n- Miradouro da Senhora do Monte\n\n[Hotel booking](pane-note:6d1f2c9a-1b7e-4c3a-9f0e-2a4b8c1d7e55)\n\n## Food\n| Place | Dish |\n| --- | --- |\n| Manteigaria | Pastel de nata |\n| Ramiro | Seafood |", -3 * day, false),
+            (travel, "Lisbon\n\nFour days of tiles, trams and pastries in May.\n\n## Plan\n- [ ] Tram 28 early, before the crowds\n- [ ] Day trip to Sintra\n- [x] Book flights\n- [x] Hotel in Príncipe Real\n\n## Places\n- Time Out Market\n- Miradouro da Senhora do Monte\n- LX Factory on Sunday\n\n[Hotel booking](pane-note:6d1f2c9a-1b7e-4c3a-9f0e-2a4b8c1d7e55)\n\n## Food\n| Place | Dish |\n| --- | --- |\n| Manteigaria | Pastel de nata |\n| Ramiro | Seafood |\n| Time Out Market | A bit of everything |\n\n> Pack comfortable shoes. The hills are real.", -3 * day, false),
             (q4, "Q4 goals\n\n> Ship less, finish more.\n\n- [ ] Launch the new onboarding\n- [ ] Hire a designer\n- [x] Close the books for Q3", -5 * day, false),
             (ideas, "Reading list\n\n- *The Design of Everyday Things*\n- *Shape Up*\n- [Interfaces](https://interfaces.dev)", -12 * day, false),
             (main, "Snippets\n\n```swift\nlet greeting = \"Hello\"\nprint(greeting)\n```", -45 * day, false),
