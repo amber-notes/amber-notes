@@ -18,6 +18,8 @@ enum Capture {
             return body.replacingOccurrences(of: "- [ ] Oat milk", with: "- [ ] Paella rice\n- [ ] Saffron\n- [ ] Chorizo\n- [ ] Chicken thighs\n- [ ] Smoked paprika\n- [ ] Oat milk")
         case "lisbon":
             return body.replacingOccurrences(of: "- [ ] Day trip to Sintra", with: "- [ ] Day trip to Sintra\n- [ ] Late checkout requested, confirm by 10 May")
+        case "standup":
+            return body + "\n- Today: review the importer PR, then pair on table editing"
         default:
             return body
         }
@@ -39,10 +41,23 @@ enum Capture {
     }
 
     @MainActor static func scheduleFromArguments(_ context: ModelContext) {
-        guard ProcessInfo.processInfo.arguments.contains("-uitest"), let title = argument("-aiEdit") else { return }
+        guard ProcessInfo.processInfo.arguments.contains("-uitest") else { return }
         let delay = argument("-aiAfter").flatMap(Double.init) ?? 2.5
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-            aiEdit(context, title: title, scene: argument("-aiScene") ?? "paella", by: argument("-aiBy") ?? "ChatGPT")
+        if let title = argument("-aiEdit") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                aiEdit(context, title: title, scene: argument("-aiScene") ?? "paella", by: argument("-aiBy") ?? "ChatGPT")
+            }
+        }
+        // Several AIs at once: `-aiEdits "Groceries:paella:ChatGPT|Lisbon:lisbon:Claude|Standup notes:standup:Claude Code"`,
+        // applied in order, a few seconds apart in their times, so the last one listed is the newest.
+        if let list = argument("-aiEdits") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                for edit in list.split(separator: "|") {
+                    let parts = edit.split(separator: ":", omittingEmptySubsequences: false).map(String.init)
+                    guard parts.count == 3 else { continue }
+                    aiEdit(context, title: parts[0], scene: parts[1], by: parts[2])
+                }
+            }
         }
     }
 }
