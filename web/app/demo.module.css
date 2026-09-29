@@ -1,8 +1,8 @@
 /* The home page demo: a small Mac desktop, drawn at a 1280-wide design size in container units so
    it stays crisp at any size (a scaled transform would blur the app captures). */
 /* Sits closer to the hero than sections sit to each other. */
-.wrap { display: grid; justify-items: center; width: 100%; margin-top: -136px; }
-@media (max-width: 700px) { .wrap { margin-top: -44px; } }
+.wrap { display: grid; justify-items: center; width: 100%; margin-top: -112px; } /* 48 px under the hero buttons */
+@media (max-width: 700px) { .wrap { margin-top: -64px; } } /* 32 px on phones (sections are 96 apart there) */
 .fit { width: 100%; max-width: 1280px; container-type: inline-size; }
 .desk {
   --u: calc(100cqw / 1280);
@@ -104,4 +104,14 @@
 @keyframes pop { from { opacity: 0; transform: translateY(calc(6 * var(--u))) scale(0.98); } }
 @keyframes shimmer { to { background-position: -200% 0; } }
 @keyframes blink { 50% { opacity: 0; } }
+/* The story bar under the desk: one quiet segment per part. Finished parts in ink, the current one
+   filling in amber, the rest faint. Each segment is a 24 px tall button around a 3 px line. */
+.story { display: flex; gap: 4px; width: min(280px, 70%); margin-top: 18px; }
+.seg { flex: 1; min-height: 24px; padding: 0; border: 0; background: none; cursor: pointer; display: grid; align-items: center; border-radius: 6px; }
+.seg i { position: relative; display: block; height: 3px; border-radius: 99px; overflow: hidden; background: color-mix(in srgb, var(--ink) 12%, transparent); }
+.seg i::after { content: ""; position: absolute; inset: 0; background: var(--amber); transform-origin: 0 50%; transform: scaleX(var(--p, 0)); }
+.seg[data-state="done"] i { background: var(--ink); }
+.seg[data-state="done"] i::after { transform: scaleX(0); }
+.seg:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+@media (hover: hover) { .seg:hover i { background: color-mix(in srgb, var(--ink) 30%, transparent); } .seg[data-state="done"]:hover i { background: var(--ink); } }
 .live { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }

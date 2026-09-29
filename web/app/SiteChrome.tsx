@@ -83,17 +83,20 @@ export default function SiteChrome({ version, stars, children }: { version: stri
       </header>
       <main className="site-main">{children}</main>
       <footer className="site-footer">
-        <nav aria-label="More">
-          <a href="/changelog">Changelog</a>
-          <a href="/privacy">Privacy</a>
-          <a href="/terms">Terms</a>
-          <a href="/help">Help</a>
-        </nav>
-        <div className="site-social">
-          <a href={GITHUB} aria-label="Amber Notes on GitHub"><GitHubGlyph /></a>
-          <a href={X_URL} rel="me noopener" aria-label="Emil Wagman on X"><XGlyph /></a>
+        <div className="site-footrow">
+          <nav aria-label="More">
+            <a href="/changelog">Changelog</a>
+            <a href="/privacy">Privacy</a>
+            <a href="/terms">Terms</a>
+            <a href="/help">Help</a>
+          </nav>
+          <span className="site-footsep" aria-hidden="true" />
+          <div className="site-social">
+            <a href={GITHUB} aria-label="Amber Notes on GitHub"><GitHubGlyph /></a>
+            <a href={X_URL} rel="me noopener" aria-label="Emil Wagman on X"><XGlyph /></a>
+          </div>
         </div>
-        <p>Made by <a className="site-maker" href={X_URL} rel="me noopener">Emil Wagman</a>. Works with ChatGPT and Claude; not affiliated with Apple, OpenAI or Anthropic.</p>
+        <p className="site-credit">Made by <a className="site-maker" href={X_URL} rel="me noopener">Emil Wagman</a>. Works with ChatGPT and Claude; not affiliated with Apple, OpenAI or Anthropic.</p>
         <svg className="site-wordmark" viewBox="0 0 1000 170" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
           <text x="500" y="160" textAnchor="middle" textLength="980" lengthAdjust="spacingAndGlyphs">Amber Notes</text>
         </svg>

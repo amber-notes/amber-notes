@@ -77,8 +77,8 @@ const INTRO_ROWS = [
 ];
 // The real caret (captured): 2×16 pt, #F4AD33, its top 3.9 pt above the row's text.
 const CARET_START = { x: 614.3, top: 294.6 }; // after "Cherry tomatoes"
-const I_ALONE = 1500, I_BEFORE_RET = 450, I_AFTER_RET = 300, I_SETTLE = 650, I_CHAT = 900;
-const charGaps = (text: string, seed: number) => [...text].map((_, i) => 70 + ((i * 37 + seed * 11) % 21));
+const I_ALONE = 600, I_BEFORE_RET = 250, I_AFTER_RET = 200, I_SETTLE = 300, I_CHAT = 900;
+const charGaps = (text: string, seed: number) => [...text].map((_, i) => 45 + ((i * 37 + seed * 11) % 11));
 const GAPS = INTRO_ROWS.map((r, k) => charGaps(r.text, k + 1));
 const typedSpan = (k: number) => GAPS[k].reduce((a, b) => a + b, 0);
 const ret1 = I_ALONE + I_BEFORE_RET;
@@ -100,6 +100,8 @@ function introAt(t: number): Intro {
   return { shot: "before", row: 2, n: 0, chat: true };
 }
 
+const PARTS = ["You write a note", "Add what you need for paella", "Tick off lemons and coffee", "What's still left to buy"];
+
 const W = 1280, KEY = 500; // design width; KEY = the top part of the desk that must fit the first view
 
 export default function Demo() {
@@ -108,6 +110,26 @@ export default function Demo() {
   const [still, setStill] = useState(false);
   const [fitW, setFitW] = useState<number | null>(null);
   const clock = useRef({ scene: 0, t: -INTRO, last: 0, started: false });
+  const segs = useRef<(HTMLButtonElement | null)[]>([]);
+  // The story bar: part 0 is the intro, parts 1–3 the scenes. Painted straight from the clock.
+  const paintBar = (scene: number, t: number) => {
+    const part = t < 0 ? 0 : scene + 1;
+    const p = t < 0 ? Math.max(0, Math.min(1, (t + INTRO) / INTRO)) : Math.min(1, t / timing(SCENES[scene], scene === SCENES.length - 1).total);
+    const resetting = t < -INTRO;
+    segs.current.forEach((el, k) => {
+      if (!el) return;
+      el.dataset.state = resetting ? "next" : k < part ? "done" : k === part ? "now" : "next";
+      el.style.setProperty("--p", String(k === part && !resetting ? p : 0));
+    });
+  };
+  /// Jumps to a part of the story from its start: 0 the intro, 1–3 the scenes.
+  const jump = (part: number) => {
+    const c = clock.current;
+    c.started = true;
+    c.scene = part === 0 ? 0 : part - 1;
+    c.t = part === 0 ? -INTRO : 0;
+    setScene(c.scene);
+  };
   const pause = useRef({ offscreen: false, hidden: false, hover: false });
   const outer = useRef<HTMLDivElement>(null);
   const msgsRef = useRef<HTMLDivElement>(null);
@@ -157,6 +179,7 @@ export default function Demo() {
         const v: View = c.t < 0
           ? (c.t >= -INTRO ? { step: -2, typed: "", pill: false, faded: false, intro: introAt(c.t + INTRO) } : { step: -1, typed: "", pill: false, faded: false })
           : at(SCENES[c.scene], c.t);
+        paintBar(c.scene, c.t);
         setView((o) => (o.step === v.step && o.typed === v.typed && o.pill === v.pill && o.faded === v.faded
           && o.intro?.shot === v.intro?.shot && o.intro?.n === v.intro?.n && o.intro?.row === v.intro?.row && o.intro?.chat === v.intro?.chat ? o : v));
       }
@@ -257,6 +280,14 @@ export default function Demo() {
           </div>
         </div>
       </div>
+      {!still && (
+        <div className={d.story} role="group" aria-label="Demo progress">
+          {PARTS.map((name, k) => (
+            <button key={name} type="button" ref={(el) => { segs.current[k] = el; }} className={d.seg} data-state={k === 0 ? "now" : "next"}
+              aria-label={`Part ${k + 1} of ${PARTS.length}: ${name}`} onClick={() => jump(k)}><i /></button>
+          ))}
+        </div>
+      )}
       <p className={d.live} aria-live="polite">{landed ? s.answer : ""}</p>
     </div>
   );
