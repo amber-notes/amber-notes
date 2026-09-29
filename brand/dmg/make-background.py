@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """Draws the DMG window backgrounds, sized to brand/dmg/layout.json.
 
-    build/dmg-venv/bin/python brand/dmg/make-background.py [warm|white|warm-plates|dune ...]
+    build/dmg-venv/bin/python brand/dmg/make-background.py [white|warm|white-plate|warm-band|probe-dark|dune ...]
 
 Writes brand/dmg/<direction>/background.png (1x), background@2x.png and background.tiff (both
 reps, what dmgbuild copies into the image), and brand/dmg/VolumeIcon.icns from the app icon.
 
 Each direction declares which label colours it must carry, and the script fails unless every
-pixel under both labels holds MIN_CONTRAST against them. The mid-tone band or plates in dune and
-warm-plates (relative luminance ~0.18) hold both black and white labels.
+pixel under both labels holds MIN_CONTRAST against them. The mid-tone plates, band and dunes
+(relative luminance ~0.18) hold both black and white labels.
 
 Needs Pillow and numpy: build/dmg-venv/bin/pip install pillow numpy
 """
@@ -119,28 +119,6 @@ def arrow(color, alpha_from=0.35):
     return layer
 
 
-def rounded_plate(img, cx, cy, w, h, top, bottom):
-    """A soft sand-coloured plate under a label, with a faint lip of light and a contact shadow."""
-    r = h / 2
-    shadow = Image.new("L", (W * SS, H * SS), 0)
-    ImageDraw.Draw(shadow).rounded_rectangle(
-        [(cx - w / 2) * SS, (cy - h / 2 + 1.2) * SS, (cx + w / 2) * SS, (cy + h / 2 + 1.2) * SS], r * SS, fill=255)
-    sa = np.asarray(shadow.filter(ImageFilter.GaussianBlur(2.2 * SS)), dtype=np.float64) / 255 * 0.28
-    img = over(img, rgb("#7a3a0c"), sa)
-    body = Image.new("L", (W * SS, H * SS), 0)
-    ImageDraw.Draw(body).rounded_rectangle(
-        [(cx - w / 2) * SS, (cy - h / 2) * SS, (cx + w / 2) * SS, (cy + h / 2) * SS], r * SS, fill=255)
-    ba = np.asarray(body, dtype=np.float64) / 255
-    fill = vgrad([(cy - h / 2, top), (cy + h / 2, bottom)])
-    img = over(img, fill, ba)
-    lip = Image.new("L", (W * SS, H * SS), 0)
-    ImageDraw.Draw(lip).rounded_rectangle(
-        [(cx - w / 2) * SS, (cy - h / 2) * SS, (cx + w / 2) * SS, (cy + h / 2) * SS], r * SS,
-        outline=255, width=int(0.75 * SS))
-    la = np.asarray(lip, dtype=np.float64) / 255 * (YS < cy) * 0.22
-    return over(img, rgb("#fff3dc"), la)
-
-
 # The label band colour: relative luminance ~0.18, where black and white text both clear ~4.5:1.
 BAND_TOP, BAND_BOTTOM = "#c26228", "#b4541f"
 
@@ -201,17 +179,43 @@ def bold_arrow(layer, color=AMBER, stroke=7.0, head=17.0, gap=30):
     seg(tip, (x1 - k, y + k))
 
 
-def plain(bg, plates=False):
+def plain(bg, under_labels=None):
     img = np.empty((H * SS, W * SS, 3))
     img[...] = rgb(bg)
-    if plates:  # only if Finder turns out to draw white labels on this picture in dark mode
-        for key in ("app", "applications"):
-            cx, cy = LAYOUT[key]
-            img = rounded_plate(img, cx, label_centre(cy), 112, 22, "#bc5b23", "#b7571f")
+    if under_labels:
+        img = under_labels(img)
     layer = Image.new("RGBA", (W * SS, H * SS), (0, 0, 0, 0))
     brand(layer)
     bold_arrow(layer)
     return img, layer
+
+
+# Caramel at relative luminance ~0.19: black labels read at ~4.8:1 and white ones at ~4.3:1.
+CARAMEL = "#a86a3e"
+
+
+def soft_plates(img):
+    """A quiet caramel plate behind each label, feathered at the edge."""
+    m = Image.new("L", (W * SS, H * SS), 0)
+    d = ImageDraw.Draw(m)
+    for key in ("app", "applications"):
+        cx, cy = LAYOUT[key]
+        yc, w, h = label_centre(cy), 112, 22
+        d.rounded_rectangle([(cx - w / 2) * SS, (yc - h / 2) * SS, (cx + w / 2) * SS, (yc + h / 2) * SS], h / 2 * SS, fill=255)
+    return over(img, rgb(CARAMEL), soften(np.asarray(m, dtype=np.float64) / 255, 0.5))
+
+
+def soft_band(img):
+    """The page shades into a warm band across the label row only, and back out below it."""
+    yc = label_centre(LAYOUT["app"][1])
+    top, bottom, fade = yc - 10, yc + 10, 34
+
+    def smooth(t):
+        t = np.clip(t, 0, 1)
+        return t * t * (3 - 2 * t)
+
+    a = smooth((YS - (top - fade)) / fade) * smooth(((bottom + fade) - YS) / fade)
+    return over(img, rgb(CARAMEL), a)
 
 
 def white():
@@ -221,22 +225,34 @@ def white():
 
 def warm():
     """The same on a barely-there warm white."""
-    return plain("#fffdf9")
+    return plain("#fffcf7")
 
 
-def warm_plates():
-    """Fallback: warm, with amber name plates that hold white labels too."""
-    return plain("#fffdf9", plates=True)
+def white_plate():
+    """White, with a soft plate behind each label that holds black and white labels."""
+    return plain("#ffffff", soft_plates)
 
 
-# name: (draw, label colours the picture must carry, sand grain). The plain directions rely on
-# Finder keeping labels black over a background picture in dark mode ("When a background image is
-# specified, Finder does not change the color of the filenames for Dark Mode", DropDMG manual,
-# c-command.com/dropdmg/help/layouts). warm-plates is the fallback if a macOS release changes that.
+def warm_band():
+    """Warm white, shading into a band across the label row that holds black and white labels."""
+    return plain("#fffcf7", soft_band)
+
+
+def probe_dark():
+    """Not a design: a dark picture that shows whether Finder picks the label colour from the
+    picture (white labels in light mode too) or from the appearance."""
+    return plain("#1d1d1f")
+
+
+# name: (draw, label colours the picture must carry, sand grain).
+# white and warm rely on Finder drawing black labels over a light picture in dark mode too, as
+# Discord's DMG does (pure white under 16 pt labels). white-plate and warm-band hold either colour.
 DIRECTIONS = {
-    "warm": (warm, ("black",), False),
     "white": (white, ("black",), False),
-    "warm-plates": (warm_plates, ("black", "white"), False),
+    "warm": (warm, ("black",), False),
+    "white-plate": (white_plate, ("black", "white"), False),
+    "warm-band": (warm_band, ("black", "white"), False),
+    "probe-dark": (probe_dark, ("white",), False),
     "dune": (dune, ("black", "white"), True),
 }
 

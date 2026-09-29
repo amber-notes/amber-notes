@@ -78,14 +78,14 @@ def scene(bg_path, apps_icon, dark, white_labels, caption):
 
 def main():
     out_dir, apps = sys.argv[1], Image.open(sys.argv[2])
-    names = sys.argv[3:] or ["warm", "white", "warm-plates", "dune"]
+    names = sys.argv[3:] or ["white", "warm", "white-plate", "warm-band"]
     os.makedirs(out_dir, exist_ok=True)
     rows = []
     for n in names:
         bg = os.path.join(HERE, n, "background@2x.png")
         panels = [scene(bg, apps, False, False, "Light mode"),
-                  scene(bg, apps, True, False, "Dark mode: black labels (Finder with a background picture)"),
-                  scene(bg, apps, True, True, "Dark mode if Finder drew white labels")]
+                  scene(bg, apps, True, False, "Dark mode, if Finder keeps black labels"),
+                  scene(bg, apps, True, True, "Dark mode, if Finder draws white labels")]
         row = Image.new("RGBA", (panels[0].width * len(panels), panels[0].height))
         for i, panel in enumerate(panels):
             row.paste(panel, (i * panel.width, 0))
