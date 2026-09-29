@@ -23,6 +23,11 @@ settings:
     DEVELOPMENT_TEAM: ""
     CODE_SIGN_STYLE: Manual
     CODE_SIGN_IDENTITY: "-"
+    # iPhone builds sign with Emil's paid team (a year per install, app groups, TestFlight).
+    # The Mac app stays ad-hoc for now.
+    "DEVELOPMENT_TEAM[sdk=iphoneos*]": 4UM3XVUN9Y
+    "CODE_SIGN_STYLE[sdk=iphoneos*]": Automatic
+    "CODE_SIGN_IDENTITY[sdk=iphoneos*]": Apple Development
     ENABLE_USER_SCRIPT_SANDBOXING: YES
     SWIFT_STRICT_CONCURRENCY: complete
 targets:
