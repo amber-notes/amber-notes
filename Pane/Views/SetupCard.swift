@@ -211,11 +211,7 @@ struct SetupCard: View {
                     VStack(alignment: .leading, spacing: 6) { bringButtons }
                 }
             case .connect:
-                #if os(iOS)
-                primary("Show Me How", id: "setup.connect", action: onConnect)
-                #else
-                primary("Connect an AI…", id: "setup.connect", action: onConnect)
-                #endif
+                primary("Connect ChatGPT or Claude", id: "setup.connect", action: onConnect)
             case .tryIt:
                 primary(copied ? "Copied" : "Copy Prompt", id: "setup.copy", action: copy)
             }
