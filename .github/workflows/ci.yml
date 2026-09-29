@@ -40,6 +40,9 @@ jobs:
       - name: Generate the project
         run: brew install xcodegen && xcodegen generate
       - name: Unit and interaction tests
+        env:
+          # Runners are several times slower than a developer's Mac; see PaneTests/Perf/PerfBudget.swift.
+          TEST_RUNNER_PANE_PERF_SLACK: "4"
         run: |
           set -o pipefail
           xcodebuild test -project Pane.xcodeproj -scheme Pane -destination 'platform=macOS' \

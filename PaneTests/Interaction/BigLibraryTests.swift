@@ -63,7 +63,7 @@ import Testing
         w.displayIfNeeded()
         let upd = ContinuousClock.now - t
         print("PERF 5,000 notes: one note arrives \(upd)")
-        #expect(upd < .seconds(1))
+        #expect(upd < .seconds(1) * PerfBudget.slack)
     }
 
     @Test(.timeLimit(.minutes(2))) func tinyAndHugeWindows() async throws {

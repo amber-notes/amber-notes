@@ -42,7 +42,7 @@ import Testing
         print("PERF 2 MB note (66k lines): open \(Int(open)) ms, keystroke median \(String(format: "%.1f", median(keys))) ms")
         #expect(h.text.hasSuffix("abcde"))
         // Measured ~100 ms on an M-series Mac (2 MB is the server's cap); this guards against regressions, it isn't a target.
-        #expect(median(keys) < 150, "typing in the largest note the server takes doesn't regress")
+        #expect(median(keys) < 150 * PerfBudget.slack, "typing in the largest note the server takes doesn't regress")
     }
 
     @Test(.timeLimit(.minutes(2))) func oneMegabyteLineWithoutSpaces() async {
@@ -57,7 +57,7 @@ import Testing
         // Known limit: TextKit lays out a whole paragraph again on each edit, so a 1 MB
         // line with no breaks (minified JSON, say) costs ~0.5 s a keystroke. This guards
         // against it getting worse; it isn't a target.
-        #expect(median(keys) < 1000)
+        #expect(median(keys) < 1000 * PerfBudget.slack)
     }
 
     @Test(.timeLimit(.minutes(2))) func hundredColumnsByThousandRows() async {
@@ -72,7 +72,7 @@ import Testing
         let key = await keystroke(h, "!")
         print("PERF 100×1000 table: open \(Int(open)) ms, keystroke after it \(Int(key)) ms")
         #expect(h.text.hasSuffix("After the table!"))
-        #expect(key < 250)
+        #expect(key < 250 * PerfBudget.slack)
     }
 
     @Test(.timeLimit(.minutes(2))) func fiveThousandChecklistItems() async {
@@ -85,12 +85,12 @@ import Testing
         let sort = await ms { sorted = ListEditing.sortChecklist(in: toggled, around: first, caret: 0) }
         print("PERF 5,000 checklist items: tick \(String(format: "%.1f", tick)) ms, sort \(Int(sort)) ms")
         #expect(sorted != nil)
-        #expect(sort < 500)
+        #expect(sort < 500 * PerfBudget.slack)
         let h = await EditorHarness(text)
         defer { h.close() }
         await h.select((h.text as NSString).length)
         let key = await keystroke(h, "x")
-        #expect(key < 150)
+        #expect(key < 150 * PerfBudget.slack)
     }
 
     @Test func hostileTitlesStayShortAndCheap() {
@@ -101,7 +101,7 @@ import Testing
             let t = ContinuousClock.now
             let title = n.title
             _ = n.preview
-            #expect(ContinuousClock.now - t < .milliseconds(200), "title of \(body.prefix(8))… is cheap")
+            #expect(ContinuousClock.now - t < .milliseconds(200) * PerfBudget.slack, "title of \(body.prefix(8))… is cheap")
             #expect(title.count <= 400, "a title never carries a whole megabyte")
         }
     }

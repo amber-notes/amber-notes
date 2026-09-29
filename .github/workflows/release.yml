@@ -92,7 +92,8 @@ jobs:
     needs: prepare
     runs-on: macos-26
     environment: release
-    timeout-minutes: 90
+    # The first notarizations for a team can take hours; release-mac.sh waits up to 3.
+    timeout-minutes: 240
     steps:
       - uses: actions/checkout@v4
       - name: Select the newest Xcode

@@ -31,8 +31,8 @@ import Testing
             let sel = h.view.selectedRange().location
             h.view.setSelectedRange(NSRange(location: sel > 200 ? sel - 200 : sel + 200, length: 0))
         }
-        #expect(key < 16, "a keystroke should restyle within a frame")
-        #expect(move < 16)
+        #expect(key < 16 * PerfBudget.slack, "a keystroke should restyle within a frame")
+        #expect(move < 16 * PerfBudget.slack)
     }
 
     @Test func typingInANormalNote() async {
@@ -41,7 +41,7 @@ import Testing
         defer { h.close() }
         await h.select((text as NSString).length / 2)
         let key = measure("keystroke, 80-line note") { h.view.insertText("a", replacementRange: h.view.selectedRange()) }
-        #expect(key < 4)
+        #expect(key < 4 * PerfBudget.slack)
     }
 
     @Test func blocksNote() async {
@@ -54,8 +54,8 @@ import Testing
         await h.select(3)
         let key = measure("keystroke, blocks note") { h.view.insertText("a", replacementRange: h.view.selectedRange()) }
         let layout = measure("overlay layout, blocks note") { h.view.layoutCards() }
-        #expect(key < 16)
-        #expect(layout < 16)
+        #expect(key < 16 * PerfBudget.slack)
+        #expect(layout < 16 * PerfBudget.slack)
     }
 }
 #endif

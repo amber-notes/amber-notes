@@ -2,7 +2,9 @@
 
 <h1 align="center">Amber Notes</h1>
 
-<p align="center">A notes app for iPhone, iPad and Mac that works like Apple Notes, stores everything as markdown, syncs through Supabase, and lets your AI assistant read and edit your notes when you allow it.</p>
+<p align="center">Apple Notes clone with MCP support, Markdown support, and more.</p>
+
+<p align="center">For iPhone, iPad and Mac. Notes are stored as markdown, sync through Supabase, and your AI assistant can read and edit them when you allow it.</p>
 
 <p align="center">
   <a href="https://amber-notes.vercel.app/download">Download for Mac</a> ·
