@@ -37,9 +37,12 @@ final class DecoratedLayoutFragment: NSTextLayoutFragment {
         return PColor(red: pr + (ar - pr) * t, green: pg + (ag - pg) * t, blue: pb + (ab - pb) * t, alpha: 1).cgColor
     }
 
-    /// Changed by an AI connection just now (see ChangeHighlight).
+    /// Changed by an AI connection just now (see ChangeHighlight), or, in version history,
+    /// different from the note as it is now (`.paneChanged`).
     private var highlighted: Bool {
-        guard !ChangeHighlight.lines.isEmpty, let p = textElement as? NSTextParagraph else { return false }
+        guard let p = textElement as? NSTextParagraph else { return false }
+        if p.attributedString.length > 0, p.attributedString.attribute(.paneChanged, at: 0, effectiveRange: nil) != nil { return true }
+        guard !ChangeHighlight.lines.isEmpty else { return false }
         return ChangeHighlight.matches(p.attributedString.string)
     }
 

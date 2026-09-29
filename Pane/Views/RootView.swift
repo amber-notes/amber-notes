@@ -284,6 +284,10 @@ private struct EditorControllerKey: FocusedValueKey {
     typealias Value = EditorController
 }
 
+private struct ShowHistoryActionKey: FocusedValueKey {
+    typealias Value = () -> Void
+}
+
 extension FocusedValues {
     var newNoteAction: (() -> Void)? {
         get { self[NewNoteActionKey.self] }
@@ -305,6 +309,11 @@ extension FocusedValues {
         get { self[EditorControllerKey.self] }
         set { self[EditorControllerKey.self] = newValue }
     }
+    /// File › Show Version History… for the open note.
+    var showHistoryAction: (() -> Void)? {
+        get { self[ShowHistoryActionKey.self] }
+        set { self[ShowHistoryActionKey.self] = newValue }
+    }
 }
 
 #if os(macOS)
@@ -314,6 +323,7 @@ struct PaneCommands: Commands {
     @FocusedValue(\.editorController) private var editor
     @FocusedValue(\.importAction) private var importNotes
     @FocusedValue(\.importSheetAction) private var importSheet
+    @FocusedValue(\.showHistoryAction) private var showHistory
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
@@ -324,6 +334,11 @@ struct PaneCommands: Commands {
             Button("New Folder") { NotificationCenter.default.post(name: .paneNewFolder, object: nil) }
                 .keyboardShortcut("n", modifiers: [.command, .shift])
                 .disabled(newNote == nil)
+        }
+        // Where Pages keeps Browse All Versions: File, after saving.
+        CommandGroup(after: .saveItem) {
+            Button("Show Version History…") { showHistory?() }
+                .disabled(showHistory == nil)
         }
         CommandGroup(replacing: .importExport) {
             Button("Import from Apple Notes…") { importNotes?() }
