@@ -37,3 +37,39 @@ import Testing
         #expect(codex.contains("Bearer \(token)"))
     }
 }
+
+
+/// The consent sheet shows an AI's mark only when the approval really goes to that AI.
+@Suite struct ConsentMarkTests {
+    @Test func theMarkComesFromTheAddressNotTheName() {
+        #expect(ConnectTrust.verifiedAI(host: "chatgpt.com", loopback: false) == "ChatGPT")
+        #expect(ConnectTrust.verifiedAI(host: "chat.openai.com", loopback: false) == "ChatGPT")
+        #expect(ConnectTrust.verifiedAI(host: "claude.ai", loopback: false) == "Claude")
+        #expect(ConnectTrust.verifiedAI(host: "claude.com", loopback: false) == "Claude")
+    }
+
+    @Test func aClientThatOnlyCallsItselfChatGPTGetsNoMark() {
+        // Registered as "ChatGPT", but the approval would go to its own site.
+        let spoof = ConnectRequest(id: UUID(), client_name: "ChatGPT", redirect_host: "chatgpt-login.example.com", loopback: false, wants_write: true)
+        #expect(ConnectTrust.verifiedAI(host: spoof.redirect_host, loopback: spoof.loopback) == nil)
+        #expect(ConnectTrust.verifiedAI(host: "evilchatgpt.com", loopback: false) == nil, "a look-alike domain isn't chatgpt.com")
+        #expect(ConnectTrust.verifiedAI(host: "chatgpt.com.example.net", loopback: false) == nil)
+        #expect(ConnectTrust.verifiedAI(host: "localhost", loopback: true) == nil)
+    }
+}
+
+#if os(macOS)
+import SwiftUI
+import Supabase
+extension AIEditSnapshots {
+    /// The consent sheet for ChatGPT, Claude, and a client that only calls itself ChatGPT.
+    @Test func consentHeaders() async throws {
+        guard AppSnapshotTests.dir != nil else { return }
+        let client = SupabaseClient(supabaseURL: URL(string: "http://127.0.0.1:9")!, supabaseKey: "test")
+        for (name, host, file) in [("ChatGPT", "chatgpt.com", "consent-chatgpt"), ("Claude", "claude.ai", "consent-claude"), ("ChatGPT", "chatgpt-login.example.com", "consent-spoofed-name")] {
+            let r = ConnectRequest(id: UUID(), client_name: name, redirect_host: host, loopback: false, wants_write: true)
+            try await AppSnapshotTests.render(ConsentSheet(client: client, requestID: r.id, initial: .asking(r), finish: { _ in }), name: file, dark: false)
+        }
+    }
+}
+#endif
