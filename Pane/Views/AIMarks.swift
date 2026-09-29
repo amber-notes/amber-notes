@@ -5,8 +5,16 @@ struct AIGlyph: View {
     let ai: String
     var size: CGFloat = 16
 
+    /// App Store captures (`-uitest -storeSafe`) show no other company's marks, only a neutral sparkle.
+    static let storeSafe = ProcessInfo.processInfo.arguments.contains("-uitest") && ProcessInfo.processInfo.arguments.contains("-storeSafe")
+
     var body: some View {
-        if let asset = Self.asset(ai) {
+        if Self.storeSafe {
+            Image(systemName: "sparkle").resizable().scaledToFit().frame(width: size * 0.85, height: size * 0.85)
+                .frame(width: size, height: size)
+                .foregroundStyle(.tint)
+                .accessibilityHidden(true)
+        } else if let asset = Self.asset(ai) {
             Image(asset).resizable().scaledToFit().frame(width: size, height: size)
                 .foregroundStyle(Self.color(ai))
                 .accessibilityHidden(true)

@@ -225,6 +225,11 @@ struct RootView: View {
     }
 
     private func restoreScope() {
+        #if os(iOS)
+        // Captures: `-uitest -showFolders` stays on the folder list.
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("-uitest"), args.contains("-showFolders") { return }
+        #endif
         if let s = try? JSONDecoder().decode(Scope.self, from: lastScopeData),
            !({ if case .folder(let id) = s { return context.folder(id) == nil } else { return false } }()) {
             scope = s
