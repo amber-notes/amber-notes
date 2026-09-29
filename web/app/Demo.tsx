@@ -5,8 +5,7 @@ import { AIGlyph } from "@/lib/ai-glyphs";
 import d from "./demo.module.css";
 
 // A mini Mac desktop: the real Amber Notes window (frames captured from the app with demo data, one
-// session) and a ChatGPT window beside it. One story in two parts, shown on the labelled bar on the
-// desk: you ask ChatGPT to plan Lisbon and it writes the whole note in Amber Notes (it lands tinted,
+// session) and a ChatGPT window beside it. One story in two parts, shown on the bar on the desk: you ask ChatGPT to plan Lisbon and it writes the whole note in Amber Notes (it lands tinted,
 // with the app's receipt); you change your mind and it edits just those two lines. Then it resets
 // and loops. One clock drives it; it pauses off-screen, in a hidden tab and under the pointer.
 
@@ -39,10 +38,11 @@ const ASKS: Ask[] = [
   { ask: "Swap day 3 for a day trip to Sintra, and add a dinner spot", answer: "Changed day 3 to Sintra and added Cervejaria Trindade for dinner. Nothing else moved.",
     land: "edited", plain: "editedPlain", pill: "pill-chatgpt-2-lines.webp", pillAlt: "ChatGPT changed 2 lines. Undo" },
 ];
-// The bar's two parts: a short label under each segment, and what a screen reader hears.
+// The bar's two parts: what a screen reader hears, and (review option ?bar=caption) the one line
+// shown under the bar.
 const PARTS = [
-  { label: "Writes a note", aria: "ChatGPT writes a note" },
-  { label: "Edits it", aria: "ChatGPT edits it" },
+  { aria: "ChatGPT writes a note", caption: "ChatGPT writes a new note" },
+  { aria: "ChatGPT edits it", caption: "ChatGPT edits two lines" },
 ];
 
 // The clock (ms). The app alone, then ChatGPT arrives; each ask is typed, sent, thought about and
@@ -94,40 +94,10 @@ export default function Demo() {
   const msgsRef = useRef<HTMLDivElement>(null);
   const fieldRef = useRef<HTMLSpanElement>(null);
   const segs = useRef<(HTMLButtonElement | null)[]>([]);
-  const deskRef = useRef<HTMLDivElement>(null);
-  const [follow, setFollow] = useState(false);
+  const captionRef = useRef<HTMLSpanElement>(null);
+  const [withCaption, setWithCaption] = useState(false); // review: ?bar=caption
 
-  // The chat glides down the desk as you scroll, from its first-view spot (page top) to its lowest spot
-  // (desk centred in the viewport), as --follow goes 0 to 1. It never reaches the pill.
-  useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    setFollow(true);
-    const desk = deskRef.current;
-    if (!desk) return;
-    const root = document.documentElement;
-    let end = 1;
-    const measure = () => {
-      // Layout offsets, not the bounding box, so the page's entrance transform doesn't skew it.
-      let top = 0;
-      for (let el: HTMLElement | null = desk; el; el = el.offsetParent as HTMLElement | null) top += el.offsetTop;
-      end = Math.max(1, top - (window.innerHeight - desk.offsetHeight) / 2);
-      desk.style.setProperty("--follow-end", `${end}px`);
-    };
-    // The desk is sized after mount (and on resize), so measure whenever it changes size.
-    const ro = new ResizeObserver(measure);
-    ro.observe(desk);
-    window.addEventListener("resize", measure);
-    // Browsers with scroll-driven animations do it in CSS; others follow the scroll with one write per frame.
-    if (CSS.supports("animation-timeline: scroll()")) {
-      root.dataset.followCss = "";
-      return () => { ro.disconnect(); window.removeEventListener("resize", measure); delete root.dataset.followCss; };
-    }
-    let raf = 0;
-    const onScroll = () => { if (raf) return; raf = requestAnimationFrame(() => { raf = 0; desk.style.setProperty("--follow", String(Math.min(1, Math.max(0, window.scrollY / end)))); }); };
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => { ro.disconnect(); window.removeEventListener("resize", measure); window.removeEventListener("scroll", onScroll); cancelAnimationFrame(raf); };
-  }, []);
+  useEffect(() => { setWithCaption(new URLSearchParams(location.search).get("bar") === "caption"); }, []);
 
   // Wide screens: size the desk so the chat and the note fit the first view.
   useLayoutEffect(() => {
@@ -153,6 +123,9 @@ export default function Demo() {
       el.dataset.state = reset ? "next" : k < p ? "done" : k === p ? "now" : "next";
       el.style.setProperty("--p", String(!reset && k === p ? (t - PART_AT[k]) / (PART_AT[k + 1] - PART_AT[k]) : 0));
     });
+    const c = captionRef.current;
+    const text = t >= TOTAL ? "" : PARTS[p].caption;
+    if (c && c.textContent !== text) c.textContent = text;
   };
   const jump = (k: number) => { const c = clock.current; c.started = true; c.t = PART_AT[k]; };
 
@@ -211,7 +184,7 @@ export default function Demo() {
     <div className={d.wrap}>
       <div ref={outer} className={d.fit} style={fitW ? { width: fitW, margin: "0 auto" } : undefined}
         onPointerEnter={() => hoverPause(true)} onPointerLeave={() => hoverPause(false)}>
-        <div ref={deskRef} className={d.desk} data-follow={follow || undefined}>
+        <div className={d.desk}>
           <Wallpaper />
           <div className={d.app} data-dim={(view.chat && !view.edit && (typing || view.thinking || view.sent > view.answered)) || undefined} data-edit={view.edit || undefined}
             data-instant={base === "listed" || undefined}>
@@ -252,11 +225,10 @@ export default function Demo() {
           {!still && (
             <div className={d.story} role="group" aria-label="Demo progress">
               {PARTS.map((part, k) => (
-                <button key={part.label} type="button" ref={(el) => { segs.current[k] = el; }} className={d.seg} data-state={k === 0 ? "now" : "next"}
-                  aria-label={`Part ${k + 1} of ${PARTS.length}: ${part.aria}`} onClick={() => jump(k)}>
-                  <i /><span className={d.segLabel} aria-hidden="true">{part.label}</span>
-                </button>
+                <button key={part.aria} type="button" ref={(el) => { segs.current[k] = el; }} className={d.seg} data-state={k === 0 ? "now" : "next"}
+                  aria-label={`Part ${k + 1} of ${PARTS.length}: ${part.aria}`} onClick={() => jump(k)}><i /></button>
               ))}
+              {withCaption && <span ref={captionRef} className={d.barCaption} aria-hidden="true">{PARTS[0].caption}</span>}
             </div>
           )}
         </div>

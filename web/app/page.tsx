@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import styles from "./home.module.css";
 import Demo from "./Demo";
 import DownloadLink from "./DownloadLink";
-import { AiSection, AlsoLine, Closing, ImportSection, SyncSection } from "./Sections";
+import { AiSection, AlsoLine, Closing, ImportSection } from "./Sections";
 
 const APP_STORE_LIVE = false; // Flip when the iPhone app is approved.
 const APP_STORE_URL = "https://apps.apple.com/app/id6817253103";
@@ -47,9 +47,8 @@ export default function Home() {
 
       <div className="rise-soft" {...rise(3)}><Demo /></div>
 
-      <ImportSection />
-      <SyncSection iphoneLive={APP_STORE_LIVE} />
       <AiSection />
+      <ImportSection />
       <AlsoLine />
       <Closing />
     </div>
