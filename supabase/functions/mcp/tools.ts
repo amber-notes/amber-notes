@@ -222,6 +222,12 @@ const writeTools = new Set(tools.filter((t) => !t.annotations.readOnlyHint).map(
 export async function runTool(name: string, args: Args, ctx: ToolContext): Promise<unknown> {
   if (!tools.some((t) => t.name === name)) throw new ToolError(`Unknown tool ${name}.`);
   if (writeTools.has(name) && !ctx.canWrite) throw new ToolError("This access token is read-only.");
+  // Every call costs one from the account's MCP bucket (600, then 5 a second). Taken in its
+  // own transaction so a call that fails still counts: failures are no free way to hammer.
+  await ctx.sql.begin(async (tx) => {
+    await tx`select set_config('request.jwt.claims', ${JSON.stringify({ sub: ctx.userId, role: "authenticated" })}, true)`;
+    await tx`select public.pane_take('mcp')`;
+  }).catch((e) => { throw new ToolError((e as Error).message); });
   return await ctx.sql.begin(async (tx) => {
     await tx`select set_config('role', 'authenticated', true),
                     set_config('request.jwt.claims', ${JSON.stringify({ sub: ctx.userId, role: "authenticated" })}, true),

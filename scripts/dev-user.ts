@@ -44,6 +44,11 @@ async function token(jwt: string, name: string, write: boolean) {
 try {
   const a = await user(Deno.env.get("PANE_EMAIL") ?? "dev@pane.local");
   const b = await user("other@pane.local");
+  // Each run makes fresh tokens; retire the last run's so the 50-connection limit and
+  // the token rate limit never trip on test users.
+  await sql`update public.mcp_tokens set revoked_at = now() where revoked_at is null
+            and user_id in (select id from auth.users where email in ('dev@pane.local', 'other@pane.local', ${Deno.env.get("PANE_EMAIL") ?? "dev@pane.local"}))`;
+  await sql`delete from public.pane_rate where user_id in (select id from auth.users where email in ('dev@pane.local', 'other@pane.local'))`;
   const out = {
     PANE_API: api,
     PANE_ANON: anon,

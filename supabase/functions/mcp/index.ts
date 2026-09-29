@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
   if (req.method === "DELETE") return new Response(null, { status: 204, headers: cors });
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405, headers: cors });
 
-  const who = presented ? await authenticate(presented, base).catch(() => undefined) : undefined;
+  const who = presented ? await authenticate(presented, base).catch((e) => { console.error("token lookup failed:", (e as Error).message); return undefined; }) : undefined;
   if (!who) return unauthorized(base, presented ? "invalid_token" : undefined);
 
   // A client that names a protocol version we don't speak gets told so up front.

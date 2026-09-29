@@ -450,7 +450,7 @@ Deno.test({ name: "tokens: revoking cuts access at once; a revoked token can't b
   const t = await me.send("POST", "rpc/create_mcp_token", { token_name: "Revoke me", write_access: false });
   const fresh = t.json as string;
   assertEquals((await rpc("tools/list", {}, fresh)).status, 200);
-  const row = (await me.get("mcp_tokens?name=eq.Revoke%20me&revoked_at=is.null&select=id")).json[0];
+  const row = (await me.get("mcp_tokens?name=eq.Revoke%20me&revoked_at=is.null&select=id&order=created_at.desc&limit=1")).json[0];
   assertEquals((await me.send("PATCH", `mcp_tokens?id=eq.${row.id}`, { revoked_at: new Date().toISOString() })).status, 200);
   assertEquals((await rpc("tools/list", {}, fresh)).status, 401);
   assertEquals((await restAs(otherJwt!).send("PATCH", `mcp_tokens?id=eq.${row.id}`, { revoked_at: null })).json, []);
