@@ -120,6 +120,22 @@ extension NetworkFaults {
         await finish()
     }
 
+    /// The push meets a newer version on the server (the conflict path) while typing is still
+    /// waiting to be written: that typing goes into your conflicted copy, not nowhere.
+    @Test func aConflictMidTypingKeepsYourTyping() async throws {
+        let n = try await syncedNote("Plan")
+        StubSupabase.edit(n.id, body: "Plan\n- theirs", updatedAt: .now.addingTimeInterval(5))
+        let saver = DebouncedSave()
+        n.body = "Plan\n- mine"; n.touch()
+        type("Plan\n- mine, and more", into: n, with: saver)
+        await engine.sync()
+        await waitUntil { !saver.isPending }
+        let all = try context.fetch(FetchDescriptor<Note>()).map(\.body).joined(separator: "\n")
+        #expect(all.contains("mine, and more"), "typing waiting to be written is kept")
+        #expect(n.body == "Plan\n- theirs")
+        await finish()
+    }
+
     /// An AI edits the note while you're typing in it: the pull that brings the AI's version
     /// must not throw away what you typed in the last moment (not yet written to the note).
     @Test func anAIEditArrivingMidTypingKeepsYourTyping() async throws {

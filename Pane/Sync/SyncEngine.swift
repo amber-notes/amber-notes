@@ -275,7 +275,7 @@ final class SyncEngine {
                         .eq("id", value: n.id).eq("version", value: Int(n.serverVersion))
                         .select().execute().value
                     if saved.isEmpty {
-                        saved = try await resolveConflict(client, local: n, row: row)
+                        saved = try await resolveConflict(client, local: n)
                     }
                 }
             } catch {
@@ -393,12 +393,14 @@ final class SyncEngine {
     }
 
     /// The server changed this note since we last saw it, and so did we.
-    private func resolveConflict(_ client: SupabaseClient, local n: Note, row: NoteDTO) async throws -> [NoteDTO] {
+    private func resolveConflict(_ client: SupabaseClient, local n: Note) async throws -> [NoteDTO] {
         let server: [NoteDTO] = try await client.from("notes").select().eq("id", value: n.id).execute().value
+        // Typing that isn't in the note yet goes in first, so nothing below works from stale text.
+        DebouncedSave.flushAll()
         guard let s = server.first else {
-            return try await client.from("notes").upsert(row).select().execute().value
+            return try await client.from("notes").upsert(NoteDTO(n)).select().execute().value
         }
-        if s.body == row.body { return server }
+        if s.body == n.body { return server }
         if s.updated_at > n.updatedAt {
             // Theirs is newer: keep it, and keep ours as a conflicted copy.
             let copy = Note(body: Self.conflictCopy(of: n.body), folder: n.folder)
@@ -409,7 +411,7 @@ final class SyncEngine {
             return server
         }
         // Ours is newer: overwrite. The server keeps theirs in note_revisions.
-        return try await client.from("notes").update(row.patch).eq("id", value: n.id).select().execute().value
+        return try await client.from("notes").update(NoteDTO(n).patch).eq("id", value: n.id).select().execute().value
     }
 
     static func conflictCopy(of body: String) -> String {
