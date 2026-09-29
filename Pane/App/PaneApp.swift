@@ -23,6 +23,8 @@ struct PaneApp: App {
         let config = ModelConfiguration("Pane", isStoredInMemoryOnly: inMemory)
         container = try! ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: config)
         let backend = Backend()
+        let context = container.mainContext
+        backend.willSignIn = { user in AccountLibrary.adopt(user, context: context) }
         _backend = State(initialValue: backend)
         _sync = State(initialValue: SyncEngine(backend: backend, context: container.mainContext))
         // With sync on, the library is seeded after the first pull so devices don't duplicate it.

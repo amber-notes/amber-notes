@@ -62,6 +62,15 @@ final class Backend {
 
     var userID: UUID? { client?.auth.currentUser?.id }
 
+    /// Runs just before the app shows an account as signed in, so the device's library can be
+    /// handed to that account first (AccountLibrary). Nothing is drawn in between.
+    @ObservationIgnored var willSignIn: (UUID) -> Void = { _ in }
+
+    private func signedIn(_ session: Session) {
+        willSignIn(session.user.id)
+        state = .signedIn(email: session.user.email ?? "")
+    }
+
     /// For screenshots and previews only: shows the signed-in screens without a session.
     func showSignedInForPreview(email: String) { state = .signedIn(email: email) }
 
@@ -70,11 +79,11 @@ final class Backend {
         for await (_, session) in client.auth.authStateChanges {
             apple = session.flatMap { Self.appleIdentity(of: $0.user) }
             if let session, !session.isExpired {
-                state = .signedIn(email: session.user.email ?? "")
+                signedIn(session)
             } else if let session, session.isExpired {
                 // Let the SDK refresh; stay signed in if it can.
                 if (try? await client.auth.refreshSession()) != nil {
-                    state = .signedIn(email: session.user.email ?? "")
+                    signedIn(session)
                 } else {
                     state = .signedOut
                 }

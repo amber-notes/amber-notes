@@ -39,7 +39,6 @@ final class SyncEngine {
     /// The last refusal's message, shown as the sync status.
     private(set) var problem: String?
     /// The account the local library belongs to.
-    private var ownerKey: String { "syncOwner" }
 
     private var cursorKey: String { "syncCursor.\(backend.userID?.uuidString ?? "none")" }
     private var cursor: Date {
@@ -114,20 +113,17 @@ final class SyncEngine {
     /// in, that library (and its unsynced edits) must never be pushed into the new one, so
     /// it's cleared and the new account's notes are pulled fresh.
     private func adoptLibrary() {
-        guard let uid = backend.userID?.uuidString.lowercased() else { return }
-        let previous = UserDefaults.standard.string(forKey: ownerKey)
-        defer { UserDefaults.standard.set(uid, forKey: ownerKey) }
-        guard let previous, previous != uid else { return }
-        log.notice("a different account signed in: clearing this device's library")
-        for n in (try? context.fetch(FetchDescriptor<Note>())) ?? [] { context.delete(n) }
-        for f in (try? context.fetch(FetchDescriptor<Folder>())) ?? [] { context.delete(f) }
-        for a in (try? context.fetch(FetchDescriptor<Attachment>())) ?? [] { context.delete(a) }
-        try? context.save()
-        try? FileManager.default.removeItem(at: FileStore.root)
-        UserDefaults.standard.removeObject(forKey: "syncCursor.\(previous)")
-        refused = [:]
-        problem = nil
+        guard let uid = backend.userID else { return }
+        // Backend normally adopts before it reports sign-in (AccountLibrary); this catches the rest.
+        if AccountLibrary.adopt(uid, context: context) { log.notice("a different account signed in: cleared this device's library") }
+        if adoptedFor != uid {
+            adoptedFor = uid
+            refused = [:]
+            problem = nil
+        }
     }
+    /// The account this engine's in-memory state (refusals, problems) belongs to.
+    private var adoptedFor: UUID?
 
     func stop() async {
         realtimeTasks.forEach { $0.cancel() }
