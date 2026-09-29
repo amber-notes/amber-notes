@@ -142,6 +142,34 @@ export function AlsoLine() {
   );
 }
 
+/* ───────────── Everywhere you are ───────────── */
+
+/// Sync, said plainly: the same account on a Mac and an iPhone. Real captures: the Mac window, and the
+/// iPhone's version history, where edits from both devices sit side by side.
+export function SyncSection({ iphoneLive }: { iphoneLive: boolean }) {
+  return (
+    <section className={a.section} aria-labelledby="everywhere">
+      <div className={a.head}>
+        <h2 id="everywhere" className={a.h2}>Everywhere you are</h2>
+        <p className={a.lede}>Your notes live in the cloud and sync between iPhone and Mac in about a second. Edit on your phone, see it on your Mac.</p>
+        <p className={a.syncFine}>
+          Stored in the EU. Works offline, and syncs when you&apos;re back online.{!iphoneLive && " The iPhone app is coming soon to the App Store."}
+        </p>
+      </div>
+      <div className={a.syncFit}>
+        <figure className={a.syncDesk}
+          aria-label="Amber Notes on a Mac with the Lisbon note open, and on an iPhone showing a note's version history, with edits made on the iPhone and on the Mac">
+          <Wallpaper />
+          <img className={a.syncMac} src="/demo/lisbon/lisbon-2-faded.webp" width={1180} height={720} alt="" draggable={false} loading="lazy" decoding="async" />
+          <div className={a.syncPhone}>
+            <img src="/sync/iphone-history.webp" width={660} height={1434} alt="" draggable={false} loading="lazy" decoding="async" />
+          </div>
+        </figure>
+      </div>
+    </section>
+  );
+}
+
 /* ───────────── The ending ───────────── */
 
 const Apple = () => <svg width="14" height="17" viewBox="0 0 15 18" aria-hidden="true" fill="currentColor"><path d="M12.3 9.6c0-2.2 1.8-3.3 1.9-3.4-1-1.5-2.6-1.7-3.2-1.7-1.4-.1-2.7.8-3.4.8-.7 0-1.8-.8-2.9-.8C3.2 4.6 1.8 5.4 1 6.8c-1.6 2.8-.4 6.9 1.1 9.1.8 1.1 1.7 2.3 2.8 2.3 1.1 0 1.6-.7 2.9-.7 1.4 0 1.7.7 2.9.7 1.2 0 2-1.1 2.7-2.2.9-1.3 1.2-2.5 1.2-2.6 0 0-2.3-.9-2.3-3.8zM10.1 3c.6-.7 1-1.7.9-2.7-.9 0-1.9.6-2.5 1.3-.6.6-1.1 1.6-.9 2.6.9.1 1.9-.5 2.5-1.2z" /></svg>;

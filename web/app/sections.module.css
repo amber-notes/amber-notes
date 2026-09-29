@@ -62,6 +62,29 @@
 .alsoTicks li { display: inline-flex; align-items: center; gap: 8px; }
 .alsoTicks svg { color: var(--amber); }
 
+/* ── Everywhere you are: a Mac and an iPhone on one desk, drawn at a 1280-wide design size ── */
+.syncFine { margin: 0; color: var(--muted); font-size: 15px; font-weight: 600; line-height: 1.45; }
+.syncFit { container-type: inline-size; }
+.syncDesk {
+  --u: calc(100cqw / 1280);
+  position: relative; margin: 0; aspect-ratio: 1280 / 720; border-radius: calc(26 * var(--u)); overflow: hidden; isolation: isolate;
+  box-shadow: 0 18px 50px -12px rgba(80, 40, 5, 0.3);
+}
+.syncDesk > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+/* The Mac window at 940 of 1180 pt, so its 26 pt corner scales to 20.7. */
+.syncMac {
+  position: absolute; left: calc(70 * var(--u)); top: calc(64 * var(--u)); width: calc(940 * var(--u)); height: auto;
+  border-radius: calc(20.7 * var(--u)); user-select: none;
+  box-shadow: 0 0 0 calc(0.5 * var(--u)) rgba(60, 20, 0, 0.18), 0 calc(22 * var(--u)) calc(44 * var(--u)) calc(-6 * var(--u)) rgba(60, 20, 0, 0.35), 0 calc(2 * var(--u)) calc(6 * var(--u)) rgba(60, 20, 0, 0.16);
+}
+/* The iPhone: a 7 u bezel, so the screen's corner is the body's minus the bezel (41 - 7 = 34). */
+.syncPhone {
+  position: absolute; left: calc(930 * var(--u)); top: calc(92 * var(--u)); width: calc(270 * var(--u)); padding: calc(7 * var(--u));
+  border-radius: calc(41 * var(--u)); background: #1d1d1f;
+  box-shadow: inset 0 0 0 calc(1 * var(--u)) rgba(255, 255, 255, 0.14), 0 calc(26 * var(--u)) calc(50 * var(--u)) calc(-10 * var(--u)) rgba(60, 20, 0, 0.5), 0 calc(3 * var(--u)) calc(8 * var(--u)) rgba(60, 20, 0, 0.25);
+}
+.syncPhone img { display: block; width: 100%; height: auto; border-radius: calc(34 * var(--u)); user-select: none; }
+
 /* ── The ending: a full-width band in the site's near-black brown ── */
 .band { width: 100vw; margin-left: calc(50% - 50vw); background: #2a1d10; color: #fbeedd; padding: 110px 20px 120px; box-sizing: border-box; margin-bottom: -56px; } /* the footer then sits 64 px below the band */
 .bandInner { max-width: 1200px; margin: 0 auto; display: grid; justify-items: center; text-align: center; gap: 22px; }

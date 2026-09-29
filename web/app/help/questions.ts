@@ -18,8 +18,14 @@ export const FAQ: QA[] = [
   { id: "devices", q: "Which devices does it work on?", a: [
     "Mac (macOS 26 or later) and iPhone. The iPhone app is coming to the App Store soon.",
   ] },
-  { id: "sync", q: "How does sync work? Can I write offline?", a: [
-    "Sign in with the same account on your Mac and iPhone, and changes show up on the other in about a second. Your notes live on your device too, so you can write without a connection; they sync when you're back online.",
+  { id: "sync", q: "Does it sync between iPhone and Mac?", a: [
+    "Yes. Your notes live in the cloud. Sign in with the same account on your Mac and iPhone, and a change on one shows up on the other in about a second, even while you're typing.",
+  ] },
+  { id: "storage", q: "Where are my notes stored?", a: [
+    "In the cloud, on Supabase's servers in Frankfurt, Germany, in the EU, and on each device you're signed in on. We store your notes so they sync between your devices, and for nothing else. The privacy policy has the details.",
+  ] },
+  { id: "offline", q: "Does it work offline?", a: [
+    "Yes. Your notes are on your device too, so you can read and write without a connection. Your edits stay on the device and sync when you're back online. If the same note changed somewhere else in the meantime, the newer edit wins and the other is kept as a copy, so nothing is lost.",
   ] },
   { id: "share", q: "How do I share a note as a web page, and stop sharing?", a: [
     "Open the note and choose Share → Share Link…, then confirm. The link is copied, and anyone with it can read the note. To stop, choose Share → Stop Sharing, and the page is gone.",
