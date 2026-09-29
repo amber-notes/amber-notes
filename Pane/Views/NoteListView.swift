@@ -134,14 +134,17 @@ struct NoteListView: View {
             withAnimation(.easeOut(duration: 0.15)) { fileDropTargeted = t }
         }
         #if os(iOS)
-        .searchable(text: $search, placement: .toolbar, prompt: "Search")
-        .searchToolbarBehavior(.minimize)
+        // iOS 26 Notes and Mail: a full search field in the bottom bar, beside compose.
+        .searchable(text: $search, prompt: "Search")
+        .searchToolbarBehavior(.automatic)
         #else
         .searchable(text: $search, placement: .toolbar, prompt: "Search")
         #endif
         .navigationTitle(title)
         #if os(iOS)
         .navigationBarTitleDisplayMode(.large)
+        // The count sits under the title now that the bottom bar holds search.
+        .navigationSubtitle(scopedNotes.count == 1 ? "1 Note" : "\(scopedNotes.count) Notes")
         #endif
         #if os(macOS)
         .navigationSubtitle("")
@@ -183,20 +186,17 @@ struct NoteListView: View {
                     .accessibilityIdentifier("list.deleteSelected")
                 }
             } else {
-            ToolbarSpacer(.flexible, placement: .bottomBar)
-            ToolbarItem(placement: .bottomBar) {
-                Text(scopedNotes.count == 1 ? "1 Note" : "\(scopedNotes.count) Notes")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-                    .fixedSize()
-            }
-            .sharedBackgroundVisibility(.hidden)
-            ToolbarSpacer(.flexible, placement: .bottomBar)
-            ToolbarItem(placement: .bottomBar) {
-                Button("New Note", systemImage: "square.and.pencil", action: onNewNote)
-                    .accessibilityIdentifier("list.newNote")
-            }
+                DefaultToolbarItem(kind: .search, placement: .bottomBar)
+                // iPad moves search to the top of the column; compose then belongs at the trailing edge.
+                if UIDevice.current.userInterfaceIdiom == .pad {
+                    ToolbarSpacer(.flexible, placement: .bottomBar)
+                } else {
+                    ToolbarSpacer(.fixed, placement: .bottomBar)
+                }
+                ToolbarItem(placement: .bottomBar) {
+                    Button("New Note", systemImage: "square.and.pencil", action: onNewNote)
+                        .accessibilityIdentifier("list.newNote")
+                }
             }
             #else
             // Like Notes: the folder's name and count, then a "⋯" menu for the list.

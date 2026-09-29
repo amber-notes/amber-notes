@@ -41,6 +41,25 @@ import Testing
         try #require(rep.representation(using: .png, properties: [:])).write(to: dir.appending(path: "\(name).png"))
     }
 
+    /// Draws a view in a bare hosting view at its fitting size (forms and sheets).
+    static func render(_ view: some View, name: String, dark: Bool, wait: Double = 0.5) async throws {
+        guard let dir else { return }
+        let host = NSHostingView(rootView: view.background(Color(nsColor: .windowBackgroundColor)))
+        host.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
+        let window = NSWindow(contentRect: CGRect(x: -30000, y: -30000, width: 600, height: 900), styleMask: [.borderless], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = host
+        host.frame = CGRect(origin: .zero, size: host.fittingSize)
+        window.setContentSize(host.fittingSize)
+        try? await Task.sleep(for: .seconds(wait))
+        defer { window.close() }
+        host.layoutSubtreeIfNeeded()
+        let rep = try #require(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+        host.cacheDisplay(in: host.bounds, to: rep)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try #require(rep.representation(using: .png, properties: [:])).write(to: dir.appending(path: "\(name).png"))
+    }
+
     /// Opens `title` (via the remembered-note key), restoring the user's own value afterwards.
     static func withLastNote<T>(_ c: ModelContainer, _ title: String, _ body: () async throws -> T) async rethrows -> T {
         let d = UserDefaults.standard
@@ -75,9 +94,9 @@ import Testing
         let mode = dark ? "dark" : "light"
         let backend = Backend()
         try await Self.shoot(SignInView(backend: backend).fixedSize().containerBackground(for: .window) { Backdrop() }, name: "mac-signin-\(mode)", size: CGSize(width: 380, height: 470), dark: dark, toolbar: false)
-        try await Self.shoot(SettingsView(backend: backend, sync: nil), name: "mac-settings-\(mode)", size: CGSize(width: 520, height: 640), dark: dark, toolbar: false)
+        try await Self.render(SettingsView(backend: backend, sync: nil), name: "mac-settings-\(mode)", dark: dark)
         backend.showSignedInForPreview(email: "you@example.com")
-        try await Self.shoot(SettingsView(backend: backend, sync: nil), name: "mac-settings-signedin-\(mode)", size: CGSize(width: 520, height: 760), dark: dark, toolbar: false)
+        try await Self.render(SettingsView(backend: backend, sync: nil), name: "mac-settings-signedin-\(mode)", dark: dark)
     }
 }
 #endif

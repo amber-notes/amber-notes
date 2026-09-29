@@ -16,6 +16,9 @@ final class ListTitleUITests: XCTestCase {
         app.staticTexts["All Notes"].firstMatch.tap()
         Thread.sleep(forTimeInterval: 1)
         let tappedIn = app.staticTexts["Pinned"].firstMatch.frame.minY
+        if let dir = ProcessInfo.processInfo.environment["PANE_SHOTS"] {
+            try? XCUIScreen.main.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: "\(dir)/title-reentered.png"))
+        }
         XCTAssertEqual(atLaunch, tappedIn, accuracy: 2, "the first section sits under the large title both times")
     }
 }
