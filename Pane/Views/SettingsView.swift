@@ -33,6 +33,7 @@ struct SettingsView: View {
                         Button("Sync now") { Task { await sync?.sync() } }
                         AppleIDRow(backend: backend)
                         Button("Sign out", role: .destructive) { Task { await backend.signOut(); dismiss() } }
+                        DeleteAccountButton(backend: backend)
                     } else {
                         Text("Sync is off. This build keeps notes on this device only.")
                             .foregroundStyle(.secondary)
