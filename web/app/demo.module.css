@@ -1,5 +1,7 @@
 /* The home page demo: a small Mac desktop, drawn at a 1280-wide design size in container units. */
-.wrap { display: grid; justify-items: center; gap: 18px; width: 100%; margin-top: -16px; }
+/* Sits closer to the hero than sections sit to each other. */
+.wrap { display: grid; justify-items: center; gap: 18px; width: 100%; margin-top: -88px; }
+@media (max-width: 700px) { .wrap { margin-top: -44px; } }
 .fit { width: 100%; max-width: 1280px; container-type: inline-size; }
 /* On wide screens the desktop is exactly 1280 wide, so the app capture shows at its own size
    (1180 CSS px from a 2x capture) with no resampling. It reaches 40 px past the text column. */
@@ -9,13 +11,13 @@
 .desk {
   --u: calc(100cqw / 1280);
   position: relative; width: 100%; aspect-ratio: 1280 / 840; overflow: hidden; border-radius: calc(26 * var(--u));
-  box-shadow: 0 0 0 1px rgba(80, 40, 5, 0.08), 0 40px 80px -40px rgba(80, 40, 5, 0.55);
+  box-shadow: 0 0 0 1px rgba(80, 40, 5, 0.08), 0 18px 50px -12px rgba(80, 40, 5, 0.3);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; color: #1d1d1f;
 }
 .wall { position: absolute; inset: 0; width: 100%; height: 100%; }
 
-/* Window 1: the real app, as captured (its own rounded corners are in the image). */
-.app { position: absolute; left: calc(50 * var(--u)); top: calc(46 * var(--u)); width: calc(1180 * var(--u)); height: calc(720 * var(--u)); border-radius: calc(16 * var(--u)); box-shadow: 0 calc(22 * var(--u)) calc(44 * var(--u)) calc(-6 * var(--u)) rgba(60, 20, 0, 0.35), 0 calc(2 * var(--u)) calc(6 * var(--u)) rgba(60, 20, 0, 0.16); }
+/* Window 1: the real app, as captured. Clipped to the window's own corner (26 pt, measured from the capture), so the image, its edge and its shadow share one outline. */
+.app { position: absolute; left: calc(50 * var(--u)); top: calc(46 * var(--u)); width: calc(1180 * var(--u)); height: calc(720 * var(--u)); border-radius: calc(26 * var(--u)); overflow: hidden; box-shadow: 0 0 0 calc(0.5 * var(--u)) rgba(60, 20, 0, 0.18), 0 calc(22 * var(--u)) calc(44 * var(--u)) calc(-6 * var(--u)) rgba(60, 20, 0, 0.35), 0 calc(2 * var(--u)) calc(6 * var(--u)) rgba(60, 20, 0, 0.16); }
 .shot { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; user-select: none; }
 .shot[data-on] { opacity: 1; }
 @media (prefers-reduced-motion: no-preference) {
@@ -26,32 +28,11 @@
 
 /* Window 2: the AI chat, over the empty lower part of the note. */
 .chat {
-  position: absolute; left: calc(846 * var(--u)); top: calc(420 * var(--u)); width: calc(396 * var(--u)); height: calc(384 * var(--u)); border-radius: calc(16 * var(--u)); overflow: hidden;
+  position: absolute; left: calc(787 * var(--u)); top: calc(420 * var(--u)); width: calc(455 * var(--u)); height: calc(384 * var(--u)); border-radius: calc(16 * var(--u)); overflow: hidden;
   display: grid; grid-template-rows: calc(40 * var(--u)) minmax(0, 1fr) auto; background: #fff;
   box-shadow: 0 0 0 calc(0.5 * var(--u)) rgba(0, 0, 0, 0.22), 0 calc(30 * var(--u)) calc(60 * var(--u)) calc(-12 * var(--u)) rgba(40, 15, 0, 0.5), 0 calc(10 * var(--u)) calc(20 * var(--u)) calc(-8 * var(--u)) rgba(40, 15, 0, 0.28);
 }
 .chatBar { position: relative; display: flex; align-items: center; justify-content: center; font-size: calc(13 * var(--u)); font-weight: 600; color: #3a3a3c; box-shadow: inset 0 calc(-0.5 * var(--u)) 0 rgba(0, 0, 0, 0.08); }
-.replay {
-  position: absolute; right: calc(8 * var(--u)); top: 50%; transform: translateY(-50%);
-  width: max(24px, calc(28 * var(--u))); height: max(24px, calc(28 * var(--u))); padding: 0; border: 0; border-radius: 50%;
-  display: grid; place-items: center; background: transparent; color: #6e6e73; cursor: pointer;
-}
-.replay svg { width: max(12px, calc(15 * var(--u))); height: max(12px, calc(15 * var(--u))); }
-.replay:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
-@media (hover: hover) { .replay:hover { background: #f1f1f1; color: #1d1d1f; } }
-@media (prefers-reduced-motion: no-preference) { .replay { transition: background-color 0.15s ease-out; } .replay:active { transform: translateY(-50%) scale(0.94); } }
-/* The lines that just changed: an amber outline that pulses in, then rests. */
-.band {
-  position: absolute; left: calc(480 * var(--u)); width: calc(690 * var(--u)); border-radius: calc(8 * var(--u));
-  box-shadow: 0 0 0 calc(2 * var(--u)) #f0901a, 0 0 calc(22 * var(--u)) rgba(240, 144, 26, 0.45); pointer-events: none;
-}
-@media (prefers-reduced-motion: no-preference) { .band { animation: band 1.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; } }
-@keyframes band {
-  0% { opacity: 0; transform: scale(1.03); }
-  20% { opacity: 1; transform: none; }
-  40% { box-shadow: 0 0 0 calc(3 * var(--u)) #f0901a, 0 0 calc(36 * var(--u)) rgba(240, 144, 26, 0.7); }
-  100% { opacity: 1; }
-}
 .chatTitle { display: inline-flex; align-items: center; gap: calc(7 * var(--u)); }
 .chatTitle svg { width: calc(16 * var(--u)); height: calc(16 * var(--u)); color: #0d0d0d; }
 .lights { position: absolute; left: calc(14 * var(--u)); top: calc(14 * var(--u)); display: flex; gap: calc(8 * var(--u)); }
@@ -88,5 +69,7 @@
 .pick:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
 @media (hover: hover) { .pick:hover { box-shadow: 0 0 0 1.5px var(--amber), 0 4px 12px -6px rgba(80, 40, 0, 0.25); } }
 @media (prefers-reduced-motion: no-preference) { .pick { transition: transform 0.12s ease-out; } .pick:active { transform: scale(0.97); } }
+.replayPill { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); background: transparent; box-shadow: inset 0 0 0 1.5px var(--line); }
+.replayPill svg { width: 15px; height: 15px; }
 .psst { margin: 0; font-size: 14px; color: var(--muted); }
 .live { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }

@@ -1,10 +1,10 @@
 /* Home page: warm, simple, centred. One promise, the app itself, two plain sections (AI, import),
    a grid of reasons, how it's built, and one closing ask. Colours come from the page theme. */
-.main { width: 100%; max-width: 1240px; margin: 0 auto; padding: 0 20px; box-sizing: border-box; display: grid; gap: 160px; align-content: start; overflow-x: clip; overflow-clip-margin: 40px; }
+.main { width: 100%; max-width: 1240px; margin: 0 auto; padding: 0 20px; box-sizing: border-box; display: grid; gap: 160px; align-content: start; }
 @media (max-width: 700px) { .main { gap: 96px; } }
 
-.hero { display: grid; justify-items: center; text-align: center; gap: 26px; padding-top: 56px; }
-@media (max-width: 600px) { .hero { padding-top: 24px; gap: 20px; } }
+.hero { display: grid; justify-items: center; text-align: center; gap: 26px; padding-top: 96px; }
+@media (max-width: 600px) { .hero { padding-top: 44px; gap: 20px; } }
 .h1 { margin: 0; max-width: 21ch; font-size: clamp(44px, 7vw, 92px); line-height: 0.98; font-weight: 800; letter-spacing: -0.045em; text-wrap: balance; }
 /* "your AI" never splits across lines; a tight marker sits behind the words, not an offset bar. */
 .mark {
@@ -43,8 +43,7 @@
 .strip li { display: grid; align-content: start; gap: 6px; padding: 22px 20px 20px; box-shadow: inset 1px 0 0 var(--line); }
 .strip li:first-child { box-shadow: none; }
 .strip strong { margin-top: 8px; font-size: 16px; }
-.strip code { font: 500 12.5px/1.4 ui-monospace, "SF Mono", Menlo, monospace; color: var(--muted); overflow-wrap: break-word; }
-@media (max-width: 480px) { .strip li { padding: 18px 14px 16px; } .strip code { font-size: 11px; } }
+@media (max-width: 480px) { .strip li { padding: 18px 14px 16px; } }
 .stripMark { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px; background: #fff; box-shadow: 0 0 0 1px rgba(60, 30, 5, 0.08); }
 .aiAny { font-size: 11px; font-weight: 800; letter-spacing: 0.02em; }
 @media (max-width: 900px) {
