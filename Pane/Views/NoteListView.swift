@@ -427,6 +427,7 @@ struct NoteRow: View {
         .padding(.vertical, RowMetrics.vertical)
         .padding(.leading, RowMetrics.leading)
         .accessibilityElement(children: .combine)
+        .accessibilityValue(note.isPinned ? "Pinned" : "")
         .accessibilityIdentifier("note.\(title)")
     }
 
