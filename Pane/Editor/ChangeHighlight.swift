@@ -98,10 +98,18 @@ final class ChangeTint: @unchecked Sendable {
     }
 
     /// The paragraphs of `new` (as ranges in it, newline included) that `changedLines` finds.
+    /// A table is drawn as one grid over its lines, so a change in any row tints the whole table.
     static func paragraphRanges(changedFrom old: String, to new: String) -> [NSRange] {
-        let changed = Set(changedLines(from: old, to: new))
+        var changed = Set(changedLines(from: old, to: new))
         guard !changed.isEmpty else { return [] }
         let lines = new.components(separatedBy: "\n")
+        let isRow = { (i: Int) in lines.indices.contains(i) && lines[i].trimmingCharacters(in: .whitespaces).hasPrefix("|") }
+        for i in changed where isRow(i) {
+            var a = i, b = i
+            while isRow(a - 1) { a -= 1 }
+            while isRow(b + 1) { b += 1 }
+            changed.formUnion(a...b)
+        }
         var out: [NSRange] = []
         var at = 0
         for (i, line) in lines.enumerated() {

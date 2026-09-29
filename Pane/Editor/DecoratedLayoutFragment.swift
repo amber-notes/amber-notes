@@ -22,6 +22,9 @@ final class DecoratedLayoutFragment: NSTextLayoutFragment {
     /// 18% amber over the page (scaled by `strength` while a live tint comes and goes), as an
     /// opaque colour: neighbouring lines may overlap by a pixel, and a translucent fill would show
     /// that as a darker seam. The accent bar blends from the page to full amber the same way.
+    /// How much amber the changed lines take over the page.
+    nonisolated(unsafe) static var tintAmount: CGFloat = 0.18
+
     private static func changeColors(_ strength: CGFloat) -> (tint: CGColor, bar: CGColor) {
         #if os(iOS)
         let page = UIColor.systemBackground.resolvedColor(with: .current)
@@ -35,7 +38,7 @@ final class DecoratedLayoutFragment: NSTextLayoutFragment {
         page.getRed(&pr, green: &pg, blue: &pb, alpha: &pa)
         accent.getRed(&ar, green: &ag, blue: &ab, alpha: &aa)
         func mix(_ t: CGFloat) -> CGColor { PColor(red: pr + (ar - pr) * t, green: pg + (ag - pg) * t, blue: pb + (ab - pb) * t, alpha: 1).cgColor }
-        return (mix(0.18 * strength), mix(min(1, strength)))
+        return (mix(Self.tintAmount * strength), mix(min(1, strength)))
     }
 
     /// Where this paragraph starts in the text, and the editor's tint for AI changes.

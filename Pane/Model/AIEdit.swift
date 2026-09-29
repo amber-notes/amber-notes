@@ -21,6 +21,8 @@ enum AIEdit {
         if note.aiPrevious == nil {
             note.aiPrevious = previousBody ?? ""
             AIEditStore.shared[note.id].previousVersion = previousVersion
+            // A note this device didn't have: the AI wrote it.
+            AIEditStore.shared[note.id].created = previousBody == nil
         }
     }
 
@@ -30,16 +32,21 @@ enum AIEdit {
         return note.aiSeenAt.map { $0 < at } ?? true
     }
 
+    /// The unseen AI change is a whole note it wrote.
+    static func wroteIt(_ note: Note) -> Bool { AIEditStore.shared[note.id].created ?? false }
+
     /// You've opened it: the list marker goes. Returns what the receipt and tint need, once.
     static func markSeen(_ note: Note) -> Receipt? {
         guard isUnseen(note), let by = note.aiEditor, let at = note.aiEditedAt else { return nil }
         let previous = note.aiPrevious, version = AIEditStore.shared[note.id].previousVersion
+        let created = AIEditStore.shared[note.id].created ?? false
         note.aiSeenAt = at
         note.aiPrevious = nil
         AIEditStore.shared[note.id].previousVersion = nil
+        AIEditStore.shared[note.id].created = nil
         guard let previous, previous != note.body else { return nil }
         return Receipt(noteID: note.id, by: by, at: at, previous: previous, previousVersion: version,
-                       lines: ChangeTint.changedLines(from: previous, to: note.body).count)
+                       lines: ChangeTint.changedLines(from: previous, to: note.body).count, created: created)
     }
 
     /// Puts the note back the way it was before the AI's edit. With version history, it restores
@@ -47,6 +54,11 @@ enum AIEdit {
     /// it (signed out, or an edit this device had no version for), the old text goes up as your edit.
     static func undo(_ receipt: Receipt, on note: Note) async throws {
         guard note.id == receipt.noteID else { return }
+        // A note the AI wrote goes to Recently Deleted, where you can still get it back.
+        if receipt.created {
+            note.modelContext?.trash(note)
+            return
+        }
         if let version = receipt.previousVersion, version > 0, NoteHistory.shared?.sync != nil {
             try await NoteHistory.restore(noteID: note.id, toVersion: version)
             return
@@ -64,9 +76,12 @@ enum AIEdit {
         var previousVersion: Int64? = nil
         /// How many lines it added or changed.
         var lines: Int
+        /// The AI wrote the whole note.
+        var created = false
 
         var summary: String {
-            lines == 0 ? "Updated by \(by)" : "\(by) changed \(lines == 1 ? "1 line" : "\(lines) lines")"
+            if created { return "\(by) wrote this note" }
+            return lines == 0 ? "Updated by \(by)" : "\(by) changed \(lines == 1 ? "1 line" : "\(lines) lines")"
         }
     }
 }
@@ -85,6 +100,7 @@ final class AIEditStore {
         var seenAt: Date?
         var previous: String?
         var previousVersion: Int64?
+        var created: Bool?
     }
 
     static let shared = AIEditStore(file: PaneApp.isUnitTestHost || ProcessInfo.processInfo.arguments.contains("-uitest") ? nil : defaultFile)

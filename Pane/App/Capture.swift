@@ -114,6 +114,86 @@ extension Capture {
     }
 }
 
+/// The website's Lisbon story: ChatGPT writes a whole note, then makes one precise edit.
+extension Capture {
+    static let lisbonNote = """
+    Lisbon, 4 days in May
+
+    Tiles, trams and pastries, at an easy pace.
+
+    > Pastéis de nata before 10, trams after 10.
+
+    ## Day by day
+    - [ ] Day 1 Alfama and the castle
+    - [ ] Day 2 Belém
+    - [ ] Day 3 LX Factory
+    - [ ] Day 4 Cascais
+
+    ## Where to eat
+    | Place | Dish |
+    | --- | --- |
+    | Ramiro | Seafood |
+    | Manteigaria | Pastel de nata |
+    | Time Out Market | A bit of everything |
+
+    ## Pack
+    - Comfortable shoes
+    - A light jacket for the evenings
+    """
+
+    /// "Swap day 3 for a day trip to Sintra, and add a dinner spot."
+    static func lisbonEdit(_ body: String) -> String {
+        body.replacingOccurrences(of: "- [ ] Day 3 LX Factory", with: "- [ ] Day 3 Sintra, Pena Palace early")
+            .replacingOccurrences(of: "| Time Out Market | A bit of everything |", with: "| Time Out Market | A bit of everything |\n| Cervejaria Trindade | Steak |")
+    }
+
+    /// A note an AI wrote, arriving the way a synced one does (this device didn't have it).
+    @MainActor static func aiCreate(_ context: ModelContext, body: String, in folder: Folder?, by ai: String) -> Note {
+        let note = context.createNote(in: folder.map { .folder($0.id) } ?? .all, body: body)
+        note.aiEditor = ai
+        note.aiEditedAt = .now
+        AIEdit.arrived(note, previousBody: nil, previousEditAt: nil, quiet: false)
+        try? context.save()
+        return note
+    }
+
+    @MainActor static func lisbonStory(_ context: ModelContext, k: Double, shoot: (String) async -> Void) async {
+        func wait(_ s: Double) async { try? await Task.sleep(for: .seconds(s)) }
+        let notes = (try? context.fetch(FetchDescriptor<Note>())) ?? []
+        // The demo library's own Lisbon trip would read as a second one: this story starts without it.
+        for n in notes where n.title == "Lisbon" || n.title == "Hotel booking" || n.title == "Trip documents" { context.purge(n) }
+        // Nothing pinned, so the new note lands at the very top of the list.
+        for n in notes where n.isPinned { n.isPinned = false }
+        try? context.save()
+        await wait(1.2)
+        await shoot("lisbon-0-before")
+
+        // 1: ChatGPT writes the note. It appears at the top of the list with its dot…
+        let travel = context.allFolders().first { $0.name == "Travel" }
+        let lisbon = aiCreate(context, body: lisbonNote, in: travel, by: "ChatGPT")
+        await wait(1.2)
+        await shoot("lisbon-1-listed")
+        // …and opening it shows everything it wrote, tinted, with the receipt.
+        NoteOpener.shared.open(lisbon.id)
+        await wait(1.6 * k)
+        await shoot("lisbon-1-tint-and-pill")
+        await wait(6.5 * k)
+        await shoot("lisbon-1-faded")
+
+        // 2: one precise edit on the open note.
+        let old = lisbon.body, oldAt = lisbon.aiEditedAt
+        lisbon.body = lisbonEdit(old)
+        lisbon.updatedAt = .now
+        lisbon.aiEditor = "ChatGPT"
+        lisbon.aiEditedAt = .now
+        AIEdit.arrived(lisbon, previousBody: old, previousEditAt: oldAt, quiet: false)
+        await wait(1.3 * k)
+        await shoot("lisbon-2-tint-and-pill")
+        await wait(6.5 * k)
+        await shoot("lisbon-2-faded")
+    }
+}
+
 /// The website demo, captured from a real front window (so it looks focused):
 ///   `-uitest -demo -open Groceries -captureDemo <dir>`
 /// The app sizes its window to 1180×560 pt (`-captureHeight 720` for the tall one) with the site's column widths, then plays every
@@ -192,6 +272,13 @@ extension Capture {
         }
         // Nothing is focused until the caret frame, like the site's other frames.
         w.makeFirstResponder(nil)
+
+        if argument("-demoStory") == "lisbon" {
+            await lisbonStory(context, k: k, shoot: shoot)
+            try? "".write(to: dir.appending(path: "finished"), atomically: true, encoding: .utf8)
+            NSApp.terminate(nil)
+            return
+        }
 
         let full = note.body
         for scene in ["pretype", "pretype1"] {
