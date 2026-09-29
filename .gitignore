@@ -8,3 +8,4 @@ supabase/.branches/
 .shots/
 Config/Backend.local.xcconfig
 supabase/functions/.env.local
+.secrets/
