@@ -41,6 +41,8 @@ struct SetupCard: View {
                 if showing != .done { closeButton }
             }
             content(showing)
+                // The finished step steps back while its check pops.
+                .opacity(popping ? 0.12 : 1)
                 .id(showing)
                 .transition(stepTransition)
                 .frame(maxWidth: .infinity, alignment: .leading)
