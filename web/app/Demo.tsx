@@ -5,9 +5,11 @@ import { AIGlyph } from "@/lib/ai-glyphs";
 import d from "./demo.module.css";
 
 // A mini Mac desktop: the real Amber Notes window (captured from the app with demo data), and a
-// small AI chat window on top. Picking a prompt types it into the chat, the AI answers, and the
-// window cross-fades to the capture of the app after that change, with the app's own amber tint
-// on the lines the AI touched. Scripted, no network.
+// small AI chat window on top. The three scenes play through on their own and loop: each one types
+// a question, the AI answers, and the window cross-fades to the capture of the app after that
+// change, with the app's own amber tint on the lines the AI touched. The current scene's chip fills
+// as it plays. Everything runs off one clock that pauses off-screen, in a hidden tab, and while the
+// pointer rests on the chips. Scripted, no network.
 
 type Shot = "before" | "paella" | "bought" | "left";
 type Scene = { ask: string; answer: string; from: Shot; to: Shot };
@@ -31,55 +33,90 @@ const ALT: Record<Shot, string> = {
 
 const SHOTS: Shot[] = ["before", "paella", "bought", "left"];
 
+// The clock, per scene (ms): typing starts at TYPE_AT, one character every CHAR; then the message
+// is sent, the AI thinks, answers, and the note updates. The chip is full at the scene's end, then
+// holds for HOLD before the next scene starts.
+const TYPE_AT = 150, CHAR = 30, SENT = 250, THINK = 650, ANSWER = 1500, UPDATE = 1850, SETTLE = 900, HOLD = 1500;
+const timing = (s: Scene) => {
+  const typed = TYPE_AT + s.ask.length * CHAR;
+  const end = typed + UPDATE + SETTLE;
+  return { typed, end, total: end + HOLD };
+};
+
+/// Where scene s is at time t: the step (0 idle · 1 typing · 2 sent · 3 thinking · 4 answered · 5 note updated) and the typed text.
+function at(s: Scene, t: number): { step: number; typed: string } {
+  const { typed } = timing(s);
+  if (t < TYPE_AT) return { step: 1, typed: "" };
+  if (t < typed + SENT) return { step: 1, typed: s.ask.slice(0, Math.min(s.ask.length, Math.floor((t - TYPE_AT) / CHAR) + 1)) };
+  if (t < typed + THINK) return { step: 2, typed: "" };
+  if (t < typed + ANSWER) return { step: 3, typed: "" };
+  if (t < typed + UPDATE) return { step: 4, typed: "" };
+  return { step: 5, typed: "" };
+}
+
 export default function Demo() {
-  const [scene, setScene] = useState<number | null>(null);
-  const [typed, setTyped] = useState("");
-  const [step, setStep] = useState(0); // 0 idle · 1 typing · 2 sent · 3 thinking · 4 answered · 5 note updated
-  const [run, setRun] = useState(0); // bumps on every play, so the chat and sync note animate again
-  const timers = useRef<number[]>([]);
-  const touched = useRef(false);
+  const [scene, setScene] = useState(0);
+  const [view, setView] = useState({ step: 0, typed: "" });
+  const [still, setStill] = useState(false); // reduced motion: end states only, no clock
+  const clock = useRef({ scene: 0, t: 0, last: 0, started: false });
+  const pause = useRef({ offscreen: true, hidden: false, hover: false });
   const outer = useRef<HTMLDivElement>(null);
+  const chips = useRef<(HTMLButtonElement | null)[]>([]);
 
-  const cancel = () => { timers.current.forEach(clearTimeout); timers.current = []; };
+  // Paints the fill of the current chip, and clears the others.
+  const paint = (i: number, p: number) => chips.current.forEach((c, k) => c?.style.setProperty("--p", k === i ? String(p) : "0"));
 
-  /// Plays scene i from its starting state. With `chain`, the next scenes follow.
-  function play(i: number, chain = false) {
-    cancel();
-    const s = SCENES[i];
-    setScene(i); setRun((r) => r + 1); setTyped("");
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { setStep(5); return; }
-    setStep(1);
-    let t = 120;
-    for (let k = 1; k <= s.ask.length; k++) {
-      t += 30;
-      timers.current.push(window.setTimeout(() => setTyped(s.ask.slice(0, k)), t));
-    }
-    const at = (ms: number, f: () => void) => timers.current.push(window.setTimeout(f, t + ms));
-    at(250, () => { setTyped(""); setStep(2); });
-    at(650, () => setStep(3));
-    at(1500, () => setStep(4));
-    at(1850, () => setStep(5));
-    if (chain && i + 1 < SCENES.length) at(4200, () => play(i + 1, true));
-  }
+  /// Starts scene i from its first moment (its note shows the state before its change).
+  const jump = (i: number) => {
+    clock.current = { ...clock.current, scene: i, t: 0, started: true };
+    setScene(i);
+    if (still) { setView({ step: 5, typed: "" }); return; }
+    setView(at(SCENES[i], 0));
+    paint(i, 0);
+  };
 
   useEffect(() => {
-    const el = outer.current;
-    if (!el) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (reduce.matches) { setStill(true); setView({ step: 5, typed: "" }); return; }
+
+    let raf = 0;
+    const tick = (now: number) => {
+      const c = clock.current;
+      const paused = pause.current.offscreen || pause.current.hidden || pause.current.hover;
+      const dt = c.last ? Math.min(100, now - c.last) : 0; // a long gap (tab switch) never skips ahead
+      c.last = now;
+      if (!paused && c.started) {
+        c.t += dt;
+        const s = SCENES[c.scene];
+        if (c.t >= timing(s).total) {
+          const next = (c.scene + 1) % SCENES.length;
+          c.scene = next; c.t = 0;
+          setScene(next);
+        }
+        const cur = SCENES[c.scene];
+        const v = at(cur, c.t);
+        setView((old) => (old.step === v.step && old.typed === v.typed ? old : v));
+        paint(c.scene, Math.min(1, c.t / timing(cur).end));
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+
     const io = new IntersectionObserver(([e]) => {
-      if (e.isIntersecting && !touched.current) { play(0, true); io.disconnect(); }
-    }, { threshold: 0.45 });
-    io.observe(el);
-    return () => { io.disconnect(); cancel(); };
+      pause.current.offscreen = !e.isIntersecting;
+      if (e.isIntersecting && !clock.current.started) clock.current.started = true;
+    }, { threshold: 0.35 });
+    if (outer.current) io.observe(outer.current);
+    const vis = () => { pause.current.hidden = document.hidden; };
+    document.addEventListener("visibilitychange", vis);
+    return () => { cancelAnimationFrame(raf); io.disconnect(); document.removeEventListener("visibilitychange", vis); };
   }, []);
 
-  const s = scene === null ? null : SCENES[scene];
-  const done = s !== null && step >= 5;
-  const shown: Shot = s ? (done ? s.to : s.from) : "before";
-  const replay = () => {
-    touched.current = true;
-    if (scene === null || (scene === SCENES.length - 1 && done)) play(0, true);
-    else play(scene);
-  };
+  const s = SCENES[scene];
+  const { step, typed } = view;
+  const done = step >= 5;
+  const shown: Shot = done ? s.to : s.from;
+  const hoverPause = (on: boolean) => { if (window.matchMedia("(hover: hover)").matches) pause.current.hover = on; };
 
   return (
     <div className={d.wrap}>
@@ -93,7 +130,7 @@ export default function Demo() {
                 aria-hidden={k !== shown} className={d.shot} data-on={k === shown || undefined}
                 loading="eager" decoding="async" draggable={false} />
             ))}
-            {done && s && s.to !== "left" && <div key={`sync${run}`} className={d.synced}>Updated on your iPhone too</div>}
+            {done && s.to !== "left" && <div key={`sync${scene}`} className={d.synced}>Updated on your iPhone too</div>}
           </div>
 
           <div className={d.chat} aria-label="An AI chat">
@@ -102,11 +139,11 @@ export default function Demo() {
               <span className={d.chatTitle}><AIGlyph name="openai" size={16} />ChatGPT</span>
             </div>
             <div className={d.msgs}>
-              {!s && <p className={d.hint}>What can I help with?</p>}
-              {s && step >= 2 && <div key={`q${run}`} className={d.me}>{s.ask}</div>}
-              {s && step === 3 && <div className={d.thinking}><span className={d.tool}>Talking to Amber Notes…</span></div>}
-              {s && step >= 4 && (
-                <div key={`a${run}`} className={d.ai}>
+              {step === 0 && <p className={d.hint}>What can I help with?</p>}
+              {step >= 2 && <div key={`q${scene}`} className={d.me}>{s.ask}</div>}
+              {step === 3 && <div className={d.thinking}><span className={d.tool}>Talking to Amber Notes…</span></div>}
+              {step >= 4 && (
+                <div key={`a${scene}`} className={d.ai}>
                   <span className={d.tool}>Used Amber Notes</span>
                   <p>{s.answer}</p>
                 </div>
@@ -121,18 +158,17 @@ export default function Demo() {
         </div>
       </div>
 
-      <div className={d.picks} role="group" aria-label="Try asking">
+      <div className={d.picks} role="group" aria-label="Scenes" onPointerEnter={() => hoverPause(true)} onPointerLeave={() => hoverPause(false)}>
         {SCENES.map((sc, i) => (
-          <button key={sc.ask} type="button" className={d.pick} aria-pressed={scene === i}
-            onClick={() => { touched.current = true; play(i); }}>{sc.ask}</button>
+          <button key={sc.ask} ref={(el) => { chips.current[i] = el; }} type="button" className={d.pick} aria-pressed={scene === i}
+            onClick={() => jump(i)}>
+            <span className={d.pickLabel}>{sc.ask}</span>
+            <span className={d.pickFill} aria-hidden="true">{sc.ask}</span>
+          </button>
         ))}
-        <button type="button" className={`${d.pick} ${d.replayPill}`} onClick={replay} aria-label="Replay the demo">
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2.5 8a5.5 5.5 0 1 0 1.7-4" /><path d="M2.5 2.2v2.6h2.6" /></svg>
-          Replay
-        </button>
       </div>
-      <p className={d.psst}>Psst… it's interactive. Ask it something.</p>
-      <p className={d.live} aria-live="polite">{done && s ? s.answer : ""}</p>
+      <p className={d.psst}>Tap one to jump to it.</p>
+      <p className={d.live} aria-live="polite">{done ? s.answer : ""}</p>
     </div>
   );
 }

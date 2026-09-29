@@ -11,7 +11,8 @@
 .desk {
   --u: calc(100cqw / 1280);
   position: relative; width: 100%; aspect-ratio: 1280 / 840; overflow: hidden; border-radius: calc(26 * var(--u));
-  box-shadow: 0 0 0 1px rgba(80, 40, 5, 0.08), 0 18px 50px -12px rgba(80, 40, 5, 0.3);
+  box-shadow: 0 18px 50px -12px rgba(80, 40, 5, 0.3);
+  isolation: isolate; /* keeps the rounded clip exact over the wallpaper */
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; color: #1d1d1f;
 }
 .wall { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -64,12 +65,22 @@
 @keyframes blink { 50% { opacity: 0; } }
 
 .picks { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; max-width: 960px; }
-.pick { min-height: 44px; padding: 0 18px; border: 0; border-radius: 999px; background: var(--card); color: var(--ink); font-family: inherit; font-weight: 600; font-size: 15px; cursor: pointer; box-shadow: 0 0 0 1px var(--line), 0 4px 12px -6px rgba(80, 40, 0, 0.25); }
-.pick[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+/* A chip: light by default. The current one fills with dark from left to right as its scene plays
+   (--p, 0 to 1, set by the clock); the fill is a dark copy of the chip, clipped. */
+.pick {
+  --p: 0; position: relative; min-height: 44px; padding: 0 18px; border: 0; border-radius: 999px; overflow: hidden;
+  background: var(--card); color: var(--ink); font-family: inherit; font-weight: 600; font-size: 15px; cursor: pointer;
+  box-shadow: 0 0 0 1px var(--line), 0 4px 12px -6px rgba(80, 40, 0, 0.25); isolation: isolate;
+}
+.pickLabel { display: block; }
+.pickFill {
+  position: absolute; inset: 0; display: grid; place-items: center; padding: 0 18px; white-space: nowrap;
+  background: var(--cta-bg); color: var(--cta-ink); clip-path: inset(0 calc((1 - var(--p)) * 100%) 0 0 round 999px);
+}
 .pick:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
-@media (hover: hover) { .pick:hover { box-shadow: 0 0 0 1.5px var(--amber), 0 4px 12px -6px rgba(80, 40, 0, 0.25); } }
-@media (prefers-reduced-motion: no-preference) { .pick { transition: transform 0.12s ease-out; } .pick:active { transform: scale(0.97); } }
-.replayPill { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); background: transparent; box-shadow: inset 0 0 0 1.5px var(--line); }
-.replayPill svg { width: 15px; height: 15px; }
+@media (hover: hover) { .pick:hover { box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 30%, transparent), 0 4px 12px -6px rgba(80, 40, 0, 0.25); } }
+@media (prefers-reduced-motion: no-preference) { .pick { transition: transform 0.12s ease-out, box-shadow 0.15s ease-out; } .pick:active { transform: scale(0.97); } }
+/* Reduced motion: no fill, the current chip is simply dark. */
+@media (prefers-reduced-motion: reduce) { .pick[aria-pressed="true"] .pickFill { clip-path: none; } }
 .psst { margin: 0; font-size: 14px; color: var(--muted); }
 .live { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }

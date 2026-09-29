@@ -29,7 +29,8 @@ IN_PLACE=${IN_PLACE:-0}
 VERSION=${1:?usage: scripts/release-mac.sh <version> [release notes]}
 NOTES=${2:-}
 BUILD=$(date -u +%Y%m%d%H%M)   # CFBundleVersion: always increasing, which is what Sparkle compares
-FILE="Amber-Notes-$VERSION.dmg"
+FILE="Amber-Notes-$VERSION.dmg"   # for Sparkle (the appcast points here)
+STABLE="Amber-Notes.dmg"          # for people (the download buttons point here)
 MIN_OS=26.0
 
 if [[ -n ${ASC_KEY_PATH:-} ]]; then
@@ -124,8 +125,11 @@ if [[ -n $NOTES ]]; then
 fi
 WEB="$CLEAN/web"
 mkdir -p "$WEB/public/downloads" "$WEB/public/updates"
-rm -f "$WEB/public/downloads/"*.dmg(N)   # (N): no error when there is no old DMG yet
+# Two copies of the same DMG: Amber-Notes.dmg is what people download (a stable name), and the
+# versioned one is what Sparkle fetches, so the appcast's signature and length always match it.
+rm -f "$WEB/public/downloads/"Amber-Notes*.dmg(N)   # old versioned and stable copies; (N): none yet is fine
 cp "$DIST/$FILE" "$WEB/public/downloads/$FILE"
+cp "$DIST/$FILE" "$WEB/public/downloads/$STABLE"
 cat > "$WEB/public/updates/appcast.xml" <<EOF
 <?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
@@ -145,7 +149,7 @@ cat > "$WEB/public/updates/appcast.xml" <<EOF
 </rss>
 EOF
 cat > "$WEB/content/release.json" <<EOF
-{ "version": "$VERSION", "build": "$BUILD", "size": $SIZE, "date": "$ISO", "file": "$FILE", "minimumSystemVersion": "$MIN_OS" }
+{ "version": "$VERSION", "build": "$BUILD", "size": $SIZE, "date": "$ISO", "file": "$STABLE", "sparkleFile": "$FILE", "minimumSystemVersion": "$MIN_OS" }
 EOF
 
 if [[ ${SKIP_DEPLOY:-0} != 1 ]]; then
