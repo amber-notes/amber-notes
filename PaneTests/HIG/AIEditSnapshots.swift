@@ -342,7 +342,9 @@ import Testing
         AppleNotesBridge.forceDemo = true
         AppleNotesBridge.forceLarge = true
         DateBucket.locale = Locale(identifier: "en_US")
-        defer { AppleNotesBridge.forceDemo = false; AppleNotesBridge.forceLarge = false; DateBucket.locale = .autoupdatingCurrent }
+        // `AMBER_SHEET_HEIGHT`: a shorter sheet, so the Import button sits higher.
+        if let h = ProcessInfo.processInfo.environment["AMBER_SHEET_HEIGHT"].flatMap(Double.init) { AppleNotesImportView.height = h }
+        defer { AppleNotesBridge.forceDemo = false; AppleNotesBridge.forceLarge = false; DateBucket.locale = .autoupdatingCurrent; AppleNotesImportView.height = 640 }
         for dark in [false, true] {
             let c = try AppSnapshotTests.container()
             // Over the app itself, in a window just big enough to frame the sheet.

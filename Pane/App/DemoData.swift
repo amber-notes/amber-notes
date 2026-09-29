@@ -127,6 +127,9 @@ enum DemoData {
             return body.replacingOccurrences(of: "- [ ] Olive oil\n- [ ] Dark chocolate\n", with: "")
         case "pretype1" where body.hasPrefix("Groceries"):
             return body.replacingOccurrences(of: "- [ ] Dark chocolate\n", with: "")
+        case "beforeOatEggs" where body.hasPrefix("Groceries"):
+            // App Store: the list before ChatGPT adds oat milk and eggs.
+            return body.replacingOccurrences(of: "- [ ] Oat milk\n", with: "").replacingOccurrences(of: "- [x] Eggs\n", with: "")
         case "lisbon" where body.hasPrefix("Lisbon"):
             return body.replacingOccurrences(of: "- [ ] Day trip to Sintra", with: "- [ ] Day trip to Sintra\n- [ ] Late checkout requested, confirm by 10 May")
         default:
