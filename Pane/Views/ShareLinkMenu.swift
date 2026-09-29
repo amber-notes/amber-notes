@@ -267,6 +267,25 @@ private struct ShareLinkChrome: ViewModifier {
     let store: ShareLinkStore
     let note: Note
     @Environment(Backend.self) private var backend: Backend?
+    @Environment(SyncEngine.self) private var sync: SyncEngine?
+    @State private var profile = ProfileStore.shared
+    #if os(macOS)
+    @Environment(\.openSettings) private var openSettings
+    #else
+    @State private var showProfile = false
+    #endif
+
+    /// A shared page says who it's from. Without a name or photo it falls back to your email
+    /// (or "Amber Notes user"), so sharing is the moment to suggest filling them in.
+    private var profileIncomplete: Bool { profile.name == nil || profile.photo == nil }
+
+    private func editProfile() {
+        #if os(macOS)
+        openSettings()
+        #else
+        showProfile = true
+        #endif
+    }
 
     func body(content: Content) -> some View {
         content
@@ -303,6 +322,10 @@ private struct ShareLinkChrome: ViewModifier {
                     Button("Create Public Link") { Task { await store.shareAndCopy() } }
                         .keyboardShortcut(.defaultAction)
                         .accessibilityIdentifier("share.confirm")
+                    if profileIncomplete {
+                        Button("Add Name and Photo First", action: editProfile)
+                            .accessibilityIdentifier("share.profile")
+                    }
                 case .includeSubNotes:
                     Button("Include Sub-notes") { Task { await store.setIncludesSubNotes(true) } }
                         .keyboardShortcut(.defaultAction)
@@ -312,11 +335,17 @@ private struct ShareLinkChrome: ViewModifier {
             } message: { step in
                 switch step {
                 case .createLink:
-                    Text("Anyone with the link can read this note without signing in, and it may be passed on. The page shows your name and photo, and your email unless Apple hides it. Edits show within a minute. You can stop sharing at any time.")
+                    Text("Anyone with the link can read this note without signing in, and it may be passed on. The page shows your name and photo, and your email unless Apple hides it. Edits show within a minute. You can stop sharing at any time."
+                         + (profileIncomplete ? "\n\nAdd your name and photo so people know the page is from you." : ""))
                 case .includeSubNotes:
                     Text("The sub-notes linked from this note also become readable by anyone with the link.")
                 }
             }
+            #if os(iOS)
+            .sheet(isPresented: $showProfile) {
+                if let backend, let sync { SettingsView(backend: backend, sync: sync) }
+            }
+            #endif
             .task(id: note.id) {
                 await store.load(note: note.id, service: backend?.client.map { SupabaseShareLinks(client: $0) })
             }
