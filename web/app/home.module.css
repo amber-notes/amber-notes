@@ -28,7 +28,12 @@
 .hero { display: grid; justify-items: center; text-align: center; gap: 26px; padding-top: 56px; }
 @media (max-width: 600px) { .hero { padding-top: 24px; gap: 20px; } }
 .h1 { margin: 0; max-width: 13ch; font-size: clamp(46px, 8.4vw, 92px); line-height: 0.98; font-weight: 800; letter-spacing: -0.045em; text-wrap: balance; }
-.mark { background: linear-gradient(transparent 55%, var(--mark) 55%, var(--mark) 92%, transparent 92%); color: inherit; padding: 0 0.06em; }
+/* "your AI" never splits across lines; a tight marker sits behind the words, not an offset bar. */
+.mark {
+  white-space: nowrap; color: inherit; padding: 0 0.08em; border-radius: 0.12em;
+  background: linear-gradient(transparent 58%, var(--mark) 58%, var(--mark) 90%, transparent 90%);
+  -webkit-box-decoration-break: clone; box-decoration-break: clone;
+}
 .lede { margin: 0; max-width: 32em; font-size: clamp(18px, 2vw, 21px); line-height: 1.45; color: var(--muted); }
 .ctas { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
 .primary, .secondary { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 50px; padding: 0 24px; border-radius: 14px; font-weight: 700; font-size: 16px; text-decoration: none; }
@@ -41,52 +46,6 @@
   .primary, .pick { transition: transform 0.12s ease-out, background-color 0.15s ease-out; }
   .primary:active, .pick:active { transform: scale(0.97); }
 }
-
-/* The interactive scene: a warm "desktop" with the chat and the note side by side. */
-.demoWrap { display: grid; justify-items: center; gap: 18px; margin-top: -24px; }
-.stage {
-  width: 100%; max-width: 980px; padding: clamp(18px, 4vw, 44px); border-radius: 32px;
-  background: radial-gradient(120% 140% at 20% 0%, #ffc063 0%, #f0901a 45%, #c9650a 100%);
-  box-shadow: 0 40px 80px -30px rgba(150, 70, 0, 0.55);
-}
-.window { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); min-height: 380px; border-radius: 20px; overflow: hidden; background: var(--card); box-shadow: 0 20px 50px -20px rgba(60, 25, 0, 0.5); }
-@media (max-width: 720px) { .window { grid-template-columns: 1fr; } }
-.chat { padding: 24px; display: flex; flex-direction: column; gap: 12px; background: var(--soft); }
-.chatLabel, .noteApp { margin: 0 0 4px; font-size: 13px; font-weight: 600; color: var(--muted); display: flex; align-items: center; gap: 7px; }
-.noteApp img { border-radius: 4px; }
-.chatEmpty { margin: 0; color: var(--muted); }
-.bubbleMe { align-self: flex-end; max-width: 88%; padding: 11px 15px; border-radius: 18px 18px 5px 18px; background: var(--ink); color: var(--bg); font-size: 16px; line-height: 1.35; }
-.bubbleAi { align-self: flex-start; max-width: 92%; padding: 11px 15px; border-radius: 18px 18px 18px 5px; background: var(--card); font-size: 16px; line-height: 1.4; box-shadow: 0 0 0 1px var(--line); }
-.typing { align-self: flex-start; display: flex; gap: 5px; padding: 14px 16px; border-radius: 18px; background: var(--card); box-shadow: 0 0 0 1px var(--line); }
-.typing i { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); opacity: 0.5; }
-.note { padding: 24px 28px; }
-.noteTitle { margin: 4px 0 12px; font-size: 28px; font-weight: 800; letter-spacing: -0.02em; }
-.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
-.list li { display: flex; align-items: center; gap: 11px; min-height: 34px; padding: 0 10px; margin: 0 -10px; border-radius: 10px; font-size: 17px; }
-.box { flex: none; width: 20px; height: 20px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--muted); opacity: 0.8; }
-.ticked { background: var(--amber); box-shadow: none; opacity: 1; position: relative; }
-.ticked::after { content: ""; position: absolute; left: 7px; top: 4px; width: 5px; height: 10px; border: solid #fff; border-width: 0 2.2px 2.2px 0; transform: rotate(45deg); }
-.done { color: var(--muted); }
-.added { background: var(--mark); }
-.synced { margin: 14px 0 0; font-size: 13px; font-weight: 600; color: var(--amber); }
-
-@media (prefers-reduced-motion: no-preference) {
-  .bubbleMe, .bubbleAi { animation: pop 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
-  .typing i { animation: dot 1s ease-in-out infinite; }
-  .typing i:nth-child(2) { animation-delay: 0.15s; } .typing i:nth-child(3) { animation-delay: 0.3s; }
-  .added { animation: slideIn 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.1) both, fadeMark 3.2s ease-out 1.4s forwards; }
-  .synced { animation: pop 0.35s ease-out 0.3s both; }
-}
-@keyframes pop { from { opacity: 0; transform: translateY(8px) scale(0.97); } to { opacity: 1; transform: none; } }
-@keyframes dot { 0%, 100% { opacity: 0.3; transform: none; } 50% { opacity: 0.9; transform: translateY(-3px); } }
-@keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
-@keyframes fadeMark { to { background: transparent; } }
-
-.picks { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; max-width: 900px; }
-.pick { min-height: 44px; padding: 0 18px; border: 0; border-radius: 999px; background: var(--card); color: var(--ink); font-family: inherit; font-weight: 600; font-size: 15px; cursor: pointer; box-shadow: 0 0 0 1px var(--line), 0 4px 12px -6px rgba(80, 40, 0, 0.25); }
-.pick[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
-@media (hover: hover) { .pick:hover { box-shadow: 0 0 0 1.5px var(--amber), 0 4px 12px -6px rgba(80, 40, 0, 0.25); } }
-.psst { margin: 0; font-size: 14px; color: var(--muted); }
 
 /* Reasons */
 .features { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 44px 24px; max-width: 900px; width: 100%; margin: 0 auto; }

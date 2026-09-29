@@ -1,0 +1,110 @@
+/* The mini Mac desktop. Designed at 1040×640 and scaled as one picture. The Amber Notes window
+   follows the real Mac app's light-mode layout and metrics (13 pt body, 20 pt title, 1.2× circles). */
+.wrap { display: grid; justify-items: center; gap: 18px; width: 100%; margin-top: -16px; }
+.fit { width: 100%; max-width: 1040px; position: relative; }
+.desk {
+  position: absolute; top: 0; left: 0; transform-origin: 0 0; overflow: hidden; border-radius: 22px;
+  background:
+    radial-gradient(70% 90% at 12% 18%, #ffd48a 0%, transparent 60%),
+    radial-gradient(80% 80% at 90% 90%, #b8520a 0%, transparent 60%),
+    linear-gradient(135deg, #f7b24c 0%, #ee8a1e 45%, #d06a0e 100%);
+  box-shadow: 0 50px 90px -30px rgba(140, 60, 0, 0.55), 0 0 0 1px rgba(90, 40, 0, 0.15);
+  font: 13px/1.35 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; color: #1d1d1f;
+  -webkit-font-smoothing: antialiased; text-align: left;
+}
+.menubar {
+  height: 26px; display: flex; align-items: center; gap: 18px; padding: 0 16px; font-size: 13px; color: #1d1d1f;
+  background: rgba(255, 245, 232, 0.55); backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%);
+}
+.menubar b { font-weight: 700; }
+.clock { margin-left: auto; font-variant-numeric: tabular-nums; }
+
+.lights { display: flex; gap: 8px; }
+.lights i { width: 12px; height: 12px; border-radius: 50%; background: #ff5f57; box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.12); }
+.lights i:nth-child(2) { background: #febc2e; } .lights i:nth-child(3) { background: #28c840; }
+
+/* Window 1 */
+.app {
+  position: absolute; left: 150px; top: 52px; width: 850px; height: 560px; border-radius: 12px; overflow: hidden;
+  display: grid; grid-template-columns: 190px 250px minmax(0, 1fr); background: #fff;
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.25), 0 30px 60px -12px rgba(60, 20, 0, 0.5), 0 12px 24px -8px rgba(60, 20, 0, 0.3);
+}
+.sidebar { background: #efeae4; padding: 14px 10px; display: grid; align-content: start; gap: 6px; border-right: 0.5px solid rgba(0, 0, 0, 0.1); }
+.sbHead { display: flex; align-items: center; gap: 7px; font-weight: 700; font-size: 14px; margin: 18px 6px 8px; }
+.sbHead img { border-radius: 4px; }
+.sbLabel { font-size: 11px; font-weight: 600; color: #8a847d; margin: 4px 6px 2px; }
+.folders { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; }
+.folders li { display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 8px; border-radius: 7px; color: #1d1d1f; }
+.folders li svg { color: #e0870c; flex: none; }
+.folders em { margin-left: auto; font-style: normal; color: #8a847d; font-variant-numeric: tabular-nums; }
+.folderOn { background: rgba(0, 0, 0, 0.08); }
+
+.listCol { border-right: 0.5px solid rgba(0, 0, 0, 0.1); padding: 0 12px; overflow: hidden; background: #fbfaf9; }
+.listBar { display: flex; justify-content: space-between; align-items: center; height: 52px; padding: 0 4px; }
+.listBar b { display: block; font-size: 14px; } .listBar small { color: #8a847d; font-size: 11px; }
+.dots { color: #8a847d; letter-spacing: 1px; }
+.sec { font-weight: 700; font-size: 13px; margin: 12px 4px 4px; }
+.row { padding: 8px 12px; border-radius: 8px; margin-bottom: 2px; }
+.row b { display: block; font-size: 13px; }
+.row p { margin: 2px 0 0; color: #6e6e73; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
+.row p span { color: #1d1d1f; margin-right: 4px; }
+.rowOn { background: #e7e1d9; }
+
+.noteCol { padding: 0 26px; overflow: hidden; position: relative; }
+.noteBar { display: flex; align-items: center; gap: 18px; height: 52px; color: #8a847d; }
+.aa { font-size: 15px; } .grow { flex: 1; }
+.search { font-size: 13px; color: #6e6e73; }
+.noteDate { text-align: center; font-size: 11px; color: #a1a1a6; margin: 6px 0 12px; }
+.noteTitle { margin: 0 0 12px; font-size: 20px; font-weight: 700; }
+.noteText { margin: 0 0 12px; }
+.check { list-style: none; margin: 0; padding: 0; }
+.check li { display: flex; align-items: center; gap: 8px; height: 23px; margin: 0 -6px; padding: 0 6px; border-radius: 6px; }
+.circle { flex: none; width: 15.6px; height: 15.6px; border-radius: 50%; box-shadow: inset 0 0 0 1px #c7c7cc; }
+.ticked { background: #f0901a; box-shadow: none; position: relative; }
+.ticked::after { content: ""; position: absolute; left: 5.2px; top: 2.6px; width: 3.6px; height: 7.6px; border: solid #fff; border-width: 0 1.6px 1.6px 0; transform: rotate(45deg); }
+.isNew { background: rgba(240, 144, 26, 0.18); }
+.synced { position: absolute; left: 26px; bottom: 20px; font-size: 12px; font-weight: 600; color: #c96e00; background: #fff4e3; padding: 6px 10px; border-radius: 8px; }
+
+/* Window 2: the AI chat */
+.chat {
+  position: absolute; left: 34px; top: 300px; width: 360px; height: 300px; border-radius: 12px; overflow: hidden;
+  display: grid; grid-template-rows: 38px minmax(0, 1fr) auto; background: #fff;
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.25), 0 30px 60px -10px rgba(40, 15, 0, 0.55), 0 10px 20px -6px rgba(40, 15, 0, 0.3);
+}
+.chatBar { display: flex; align-items: center; gap: 12px; padding: 0 12px; background: #f6f6f6; border-bottom: 0.5px solid rgba(0, 0, 0, 0.1); }
+.chatBar span { flex: 1; text-align: center; margin-right: 52px; font-weight: 600; font-size: 13px; color: #3a3a3c; }
+.msgs { padding: 14px; display: flex; flex-direction: column; gap: 10px; overflow: hidden; justify-content: flex-end; }
+.hint { margin: auto 0; text-align: center; color: #8e8e93; }
+.me { align-self: flex-end; max-width: 80%; padding: 8px 12px; border-radius: 16px; background: #f0f0f0; font-size: 13px; }
+.ai { align-self: flex-start; max-width: 92%; font-size: 13px; line-height: 1.45; display: grid; gap: 6px; }
+.tool { justify-self: start; font-size: 11px; color: #8e8e93; padding: 2px 8px; border-radius: 6px; background: #f5f5f5; }
+.dotsTyping { display: flex; gap: 4px; padding: 6px 0; }
+.dotsTyping i { width: 6px; height: 6px; border-radius: 50%; background: #aeaeb2; }
+.input { margin: 0 12px 12px; min-height: 36px; border-radius: 18px; box-shadow: inset 0 0 0 1px #e0e0e0; display: flex; align-items: center; padding: 0 6px 0 14px; gap: 2px; }
+.input span { flex: 1; white-space: nowrap; overflow: hidden; }
+.input em { font-style: normal; color: #aeaeb2; }
+.input b { width: 26px; height: 26px; border-radius: 50%; background: #1d1d1f; color: #fff; display: grid; place-items: center; font-size: 13px; }
+.caret { width: 1.5px; height: 16px; background: #1d1d1f; margin-right: auto; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .me, .ai { animation: pop 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.15) both; }
+  .dotsTyping i { animation: bob 0.9s ease-in-out infinite; }
+  .dotsTyping i:nth-child(2) { animation-delay: 0.12s; } .dotsTyping i:nth-child(3) { animation-delay: 0.24s; }
+  .isNew { animation: rowIn 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.1) both, glowOut 3s ease-out 2s forwards; }
+  .synced { animation: pop 0.35s ease-out 0.35s both; }
+  .caret { animation: blink 1s steps(1) infinite; }
+}
+@keyframes pop { from { opacity: 0; transform: translateY(6px) scale(0.97); } to { opacity: 1; transform: none; } }
+@keyframes bob { 0%, 100% { opacity: 0.35; transform: none; } 50% { opacity: 1; transform: translateY(-2px); } }
+@keyframes rowIn { from { opacity: 0; height: 0; transform: translateX(-8px); } to { opacity: 1; height: 23px; transform: none; } }
+@keyframes glowOut { to { background: transparent; } }
+@keyframes blink { 50% { opacity: 0; } }
+
+.picks { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; max-width: 900px; }
+.pick { min-height: 44px; padding: 0 18px; border: 0; border-radius: 999px; background: var(--card); color: var(--ink); font-family: inherit; font-weight: 600; font-size: 15px; cursor: pointer; box-shadow: 0 0 0 1px var(--line), 0 4px 12px -6px rgba(80, 40, 0, 0.25); }
+.pick[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.pick:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
+@media (hover: hover) { .pick:hover { box-shadow: 0 0 0 1.5px var(--amber), 0 4px 12px -6px rgba(80, 40, 0, 0.25); } }
+@media (prefers-reduced-motion: no-preference) { .pick { transition: transform 0.12s ease-out; } .pick:active { transform: scale(0.97); } }
+.psst { margin: 0; font-size: 14px; color: var(--muted); }
+.live { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
