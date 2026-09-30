@@ -1,7 +1,7 @@
 // The note tools. Each runs in a transaction as the token's owner (RLS applies).
 
 import type { Sql, TransactionSql } from "npm:postgres@3.4.5";
-import { appendText, applyEdits, coerce, findTables, outline, previewOf, replaceTable, setChecklistItem, sliceLines, titleOf, typeSpec, type Edit, type Table } from "./notes.ts";
+import { appendText, applyEdits, coerce, findTables, fitLines, outline, previewOf, replaceTable, setChecklistItem, sliceLines, titleOf, typeSpec, type Edit, type Table } from "./notes.ts";
 
 export type ToolContext = { sql: Sql; userId: string; client: string; canWrite: boolean };
 export class ToolError extends Error {}
@@ -13,7 +13,9 @@ type Tool = {
   title: string;
   description: string;
   inputSchema: Record<string, unknown>;
-  annotations: { readOnlyHint: boolean; destructiveHint?: boolean; idempotentHint?: boolean; openWorldHint: false };
+  annotations: { readOnlyHint: boolean; destructiveHint: boolean; idempotentHint?: boolean; openWorldHint: false };
+  // ChatGPT reads this per tool: which OAuth scope the call needs.
+  securitySchemes?: { type: "oauth2"; scopes: string[] }[];
 };
 
 const str = (d: string) => ({ type: "string", description: d });
@@ -23,10 +25,13 @@ const noteRef = {
   id: str("Note id (preferred)."),
   title: str("Note title, if you don't have the id. Must match one note."),
 };
-const read = { readOnlyHint: true, openWorldHint: false } as const;
+// The directories check these (Claude's and ChatGPT's): every hint is stated. A tool that can
+// overwrite or remove what's there is destructive, even though history can undo it.
+const read = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } as const;
 const write = { readOnlyHint: false, destructiveHint: false, openWorldHint: false } as const;
+const overwrite = { ...write, destructiveHint: true } as const;
 
-export const tools: Tool[] = [
+export const tools: Tool[] = ([
   {
     name: "get_overview", title: "Overview of the notes",
     description: "Start here. Folders with counts, pinned notes and the most recently edited notes.",
@@ -79,7 +84,7 @@ export const tools: Tool[] = [
       },
       required: ["edits"],
     },
-    annotations: write,
+    annotations: overwrite,
   },
   {
     name: "append_to_note", title: "Add to a note",
@@ -156,7 +161,7 @@ export const tools: Tool[] = [
     name: "restore_revision", title: "Restore an earlier version",
     description: "Puts an earlier version (from note_history) back as the note's body. The current body is kept in history too.",
     inputSchema: { type: "object", properties: { ...noteRef, revision_id: int("Revision id from note_history.") }, required: ["revision_id"] },
-    annotations: write,
+    annotations: overwrite,
   },
   {
     name: "create_sub_note", title: "Create a sub-note",
@@ -194,7 +199,7 @@ export const tools: Tool[] = [
       },
       required: ["values"],
     },
-    annotations: write,
+    annotations: overwrite,
   },
   {
     name: "delete_table_row", title: "Delete a row",
@@ -215,7 +220,7 @@ export const tools: Tool[] = [
     inputSchema: { type: "object", properties: { id: str("Note id.") }, required: ["id"] },
     annotations: read,
   },
-];
+] satisfies Tool[]).map((t) => ({ ...t, securitySchemes: [{ type: "oauth2" as const, scopes: [t.annotations.readOnlyHint ? "notes:read" : "notes:write"] }] }));
 
 const writeTools = new Set(tools.filter((t) => !t.annotations.readOnlyHint).map((t) => t.name));
 
@@ -272,6 +277,8 @@ function wholeNumber(v: unknown, name: string): number {
 const quote = (s: string) => JSON.stringify(s.length > 80 ? s.slice(0, 79) + "…" : s);
 
 const bytes = (s: string) => new TextEncoder().encode(s).length;
+// About 15k tokens: well inside what Claude and ChatGPT take from one tool call. Longer notes are read in parts.
+export const MAX_READ_CHARS = 60_000;
 const MAX_NOTE_BYTES = 5_000_000;
 
 function checkSize(body: string) {
@@ -445,6 +452,8 @@ const handlers: Record<string, (tx: Tx, a: Args, ctx: ToolContext) => Promise<un
     if (start !== undefined && end !== undefined && end < start) throw new ToolError("end_line must be at or after start_line.");
     const subs = await tx<{ id: string; title: string }[]>`select id, title from public.notes where parent_id = ${n.id} and deleted_at is null and trashed_at is null`;
     const parentRow = n.parent_id ? (await tx<{ id: string; title: string }[]>`select id, title from public.notes where id = ${n.parent_id}`)[0] : undefined;
+    const first = Math.max(1, start ?? 1);
+    const shown = fitLines(sliceLines(n.body, start, end, a.line_numbers === true), MAX_READ_CHARS);
     return {
       id: n.id, title: n.title, folder: pathOf(n.folder_id, all), pinned: n.is_pinned,
       created: iso(n.created_at), updated: iso(n.updated_at), version: Number(n.version),
@@ -452,8 +461,10 @@ const handlers: Record<string, (tx: Tx, a: Args, ctx: ToolContext) => Promise<un
       parent: parentRow ?? null,
       sub_notes: subs,
       outline: o,
-      ...(ranged ? { lines: `${Math.max(1, start ?? 1)}-${Math.min(o.lines, end ?? o.lines)}` } : {}),
-      markdown: sliceLines(n.body, start, end, a.line_numbers === true),
+      ...(shown.truncated
+        ? { lines: `${first}-${first + shown.lines - 1}`, truncated: true, next_start_line: first + shown.lines }
+        : ranged ? { lines: `${first}-${Math.min(o.lines, end ?? o.lines)}` } : {}),
+      markdown: shown.text,
     };
   },
 
@@ -709,6 +720,13 @@ const handlers: Record<string, (tx: Tx, a: Args, ctx: ToolContext) => Promise<un
   async fetch(tx, a) {
     const n = await findNote(tx, { id: a.id }, true);
     const all = await folders(tx);
-    return { id: n.id, title: n.title, text: n.body, url: `pane://note/${n.id}`, metadata: { folder: pathOf(n.folder_id, all), pinned: n.is_pinned, updated: iso(n.updated_at) } };
+    const shown = fitLines(n.body, MAX_READ_CHARS);
+    return {
+      id: n.id, title: n.title, text: shown.text, url: `pane://note/${n.id}`,
+      metadata: {
+        folder: pathOf(n.folder_id, all), pinned: n.is_pinned, updated: iso(n.updated_at),
+        ...(shown.truncated ? { truncated: true, next_start_line: shown.lines + 1, rest: "read_note with start_line" } : {}),
+      },
+    };
   },
 };
