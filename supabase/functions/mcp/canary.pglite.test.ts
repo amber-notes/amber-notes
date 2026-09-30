@@ -4,17 +4,23 @@
 // through the real OAuth flow and runs every tool through the real request handler; then every row
 // of every table and everything written to the console is searched for the canary. The only place
 // it may appear is the public copy of a note shared on purpose, which proves the search works.
+// The AI connects three ways: approved in the app, approved on a device for a browser elsewhere
+// (the page asks, the device seals the code and redirect to it, the page picks it up with its
+// pickup secret), and approved in the browser with the recovery key; tokens are refreshed too.
+// The search looks for the canary as text, as hex, and as base64 (standard and URL-safe) at each
+// of the three byte alignments it can have inside a longer encoded value.
 // Needs no Docker or local stack:
 //   cd supabase/functions/mcp && deno test -A canary.pglite.test.ts
 import { assert, assertEquals, assertStringIncludes } from "jsr:@std/assert@1";
-import { hex as toHex, tokenKey, wrap } from "../_shared/e2ee.ts";
+import { fromBase64, handoffPayload, hex as toHex, newHandoffKeys, openHandoff, readHandoffPayload, sealHandoff, toBase64, tokenKey, wrap } from "../_shared/e2ee.ts";
 import { schemaDB, sqlFor } from "./pglite.ts";
-import { account, app, edit, file, lockedNote, note, notesPassword, folder, stubStorage } from "./sealed.ts";
+import { account, app, edit, file, lockedNote, note, notesPassword, folder, share, stubStorage } from "./sealed.ts";
 import { tools } from "./tools.ts";
 
 const SUPA = "https://proj.supabase.co";
 const FUNCTION = `${SUPA}/functions/v1/mcp`;
 const CHATGPT = "https://chatgpt.com/connector_platform_oauth_redirect";
+const SITE = "https://ambernotes.app";
 Deno.env.set("SUPABASE_URL", SUPA);
 Deno.env.set("SUPABASE_ANON_KEY", "anon");
 Deno.env.set("SUPABASE_SERVICE_ROLE_KEY", "service-role-key");
@@ -28,6 +34,22 @@ const { sha256Hex } = await import("./oauth.ts");
 const CANARY = `canary-${crypto.randomUUID()}`;
 const enc = new TextEncoder();
 const randomHex = (n: number) => toHex(crypto.getRandomValues(new Uint8Array(n)));
+
+/** The canary as it would read inside base64 (standard and URL-safe) of a longer value: encoded
+ *  after 0, 1 and 2 bytes of something else, without the characters that also hold those bytes or
+ *  what follows it. */
+function base64Forms(text: string): string[] {
+  const bytes = enc.encode(text);
+  const forms: string[] = [];
+  for (let k = 0; k < 3; k++) {
+    const padded = new Uint8Array(k + bytes.length);
+    padded.set(bytes, k);
+    const b64 = toBase64(padded).replace(/=+$/, "");
+    const inner = b64.slice(Math.ceil((8 * k) / 6), Math.floor((8 * (k + bytes.length)) / 6));
+    forms.push(inner, inner.replace(/\+/g, "-").replace(/\//g, "_"));
+  }
+  return [...new Set(forms)];
+}
 
 Deno.test("no text of an encrypted account is stored or logged readably, whatever the AI does", async () => {
   // Everything written to the console from here on.
@@ -59,9 +81,8 @@ Deno.test("no text of an encrypted account is stored or logged readably, whateve
     const locked = await lockedNote(pg, a, lockKey, `Locked ${CANARY}`);
     const sharedBody = `Shared ${CANARY}\n\nPublic ${CANARY}`;
     const shared = await note(pg, a, sharedBody);
-    const [{ r: share }] = await app(pg, a.id, `select public.share_note($1, false, $2) as r`,
-      [shared, JSON.stringify({ title: `Shared ${CANARY}`, body: sharedBody, pages: [], files: [] })]);
-    assert(share.slug);
+    const shareLink = await share(pg, a, shared, { title: `Shared ${CANARY}`, body: sharedBody });
+    assert(shareLink.slug);
 
     // MARK: Supabase Auth and Storage, faked
 
@@ -81,10 +102,17 @@ Deno.test("no text of an encrypted account is stored or logged readably, whateve
     const serve = (path: string, init: RequestInit = {}) =>
       handleRequest(new Request(`${FUNCTION}${path}`, { ...init, headers: { "cf-connecting-ip": "203.0.113.1", ...(init.headers ?? {}) } }), sql);
     const reg = await (await serve("/register", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ client_name: "ChatGPT", redirect_uris: [CHATGPT] }) })).json();
-    const verifier = randomHex(48);
-    const challenge = btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.digest("SHA-256", enc.encode(verifier))))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-    const auth = await serve(`/authorize?${new URLSearchParams({ response_type: "code", client_id: reg.client_id, redirect_uri: CHATGPT, code_challenge: challenge, code_challenge_method: "S256", state: "s", scope: "notes:read notes:write" })}`);
-    const requestId = new URL(auth.headers.get("location")!).searchParams.get("request")!;
+    const start = async (state: string) => {
+      const verifier = randomHex(48);
+      const challenge = btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.digest("SHA-256", enc.encode(verifier))))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+      const auth = await serve(`/authorize?${new URLSearchParams({ response_type: "code", client_id: reg.client_id, redirect_uri: CHATGPT, code_challenge: challenge, code_challenge_method: "S256", state, scope: "notes:read notes:write" })}`);
+      return { verifier, requestId: new URL(auth.headers.get("location")!).searchParams.get("request")! };
+    };
+    const exchange = async (code: string, verifier: string) => await (await serve("/token", {
+      method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ grant_type: "authorization_code", client_id: reg.client_id, code, code_verifier: verifier, redirect_uri: CHATGPT }),
+    })).json();
+    const { verifier, requestId } = await start("s");
     const session = { authorization: `Bearer jwt-${a.id}` };
     const described = await (await serve(`/connect/request?id=${requestId}`, { headers: session })).json();
     const code = "amb_code_" + randomHex(32);
@@ -94,10 +122,7 @@ Deno.test("no text of an encrypted account is stored or logged readably, whateve
         code_wrap: await wrap(a.dk, await tokenKey(code, "code"), "code", a.id) }),
     })).json();
     assertEquals(new URL(decided.redirect).searchParams.get("code"), null);
-    const tokens = await (await serve("/token", {
-      method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ grant_type: "authorization_code", client_id: reg.client_id, code, code_verifier: verifier, redirect_uri: CHATGPT }),
-    })).json();
+    const tokens = await exchange(code, verifier);
     assert(tokens.access_token, JSON.stringify(tokens));
 
     // MARK: Every tool, through the request handler
@@ -105,8 +130,8 @@ Deno.test("no text of an encrypted account is stored or logged readably, whateve
     let id = 0;
     const used = new Set<string>();
     // deno-lint-ignore no-explicit-any
-    const rpc = async (method: string, params: Record<string, unknown> = {}): Promise<any> => {
-      const res = await serve("", { method: "POST", headers: { authorization: `Bearer ${tokens.access_token}`, "content-type": "application/json" },
+    const rpc = async (method: string, params: Record<string, unknown> = {}, token = tokens.access_token): Promise<any> => {
+      const res = await serve("", { method: "POST", headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
         body: JSON.stringify({ jsonrpc: "2.0", id: ++id, method, params }) });
       assertEquals(res.status, 200);
       return (await res.json()).result;
@@ -168,6 +193,79 @@ Deno.test("no text of an encrypted account is stored or logged readably, whateve
     await tool("restore_note", { id: created.id });
     await tool("delete_folder", { folder: `Created ${CANARY}` });
     assertEquals([...used].sort(), tools.map((t) => t.name).sort(), "every tool ran");
+
+    // MARK: Connecting from a browser elsewhere, approved on a device
+
+    const json = { "content-type": "application/json" };
+    /** The page: a key pair for the handoff and a pickup secret, then the ask. */
+    const pageAsks = async (id: string) => {
+      const keys = await newHandoffKeys();
+      const secret = crypto.getRandomValues(new Uint8Array(32));
+      const res = await serve("/connect/ask", {
+        method: "POST", headers: { ...session, origin: SITE, ...json },
+        body: JSON.stringify({ id, browser_key: toBase64(keys.publicRaw), from: "Chrome on a Mac",
+          pickup_hash: toHex(new Uint8Array(await crypto.subtle.digest("SHA-256", secret))) }),
+      });
+      assertEquals(res.status, 200);
+      await res.body?.cancel();
+      return { keys, pickup: toHex(secret) };
+    };
+    const pickUp = async (id: string, pickup: string) =>
+      await (await serve("/connect/status", { method: "POST", headers: json, body: JSON.stringify({ id, pickup }) })).json();
+
+    const b = await start("b");
+    const bPage = await pageAsks(b.requestId);
+    // The device: sees the ask, reads the request, builds the redirect, seals it with the code.
+    const [seen] = await app(pg, a.id, `select browser_key from public.connect_asks where request_id = $1`, [b.requestId]);
+    const shown = await (await serve(`/connect/request?id=${b.requestId}`, { headers: session })).json();
+    const back = new URL(shown.redirect_uri);
+    if (shown.state) back.searchParams.set("state", shown.state);
+    back.searchParams.set("iss", shown.iss);
+    const bCode = "amb_code_" + randomHex(32);
+    const bDecided = await (await serve("/connect/decide", {
+      method: "POST", headers: { ...session, ...json },
+      body: JSON.stringify({ id: b.requestId, allow: true, write: false, redirect_uri: shown.redirect_uri, code_hash: await sha256Hex(bCode),
+        code_wrap: await wrap(a.dk, await tokenKey(bCode, "code"), "code", a.id),
+        handoff: await sealHandoff(handoffPayload({ code: bCode, redirect: back.toString() }), fromBase64(seen.browser_key), b.requestId) }),
+    })).json();
+    assertEquals([bDecided.handoff, bDecided.redirect], [true, back.toString()]);
+    // The page picks up once, opens the code and goes on to the AI.
+    const picked = await pickUp(b.requestId, bPage.pickup);
+    assertEquals(picked.state, "approved");
+    const payload = readHandoffPayload(await openHandoff(picked.handoff, bPage.keys.privateKey, b.requestId));
+    assertEquals(payload, { code: bCode, redirect: back.toString() });
+    assertEquals((await pickUp(b.requestId, bPage.pickup)).state, "delivered");
+    const bTokens = await exchange(payload.code, b.verifier);
+    assert(bTokens.access_token, JSON.stringify(bTokens));
+    assertStringIncludes((await rpc("tools/call", { name: "read_note", arguments: { id: trip } }, bTokens.access_token)).structuredContent.markdown, CANARY);
+
+    // MARK: Approved in the browser with the recovery key (the page opens the key itself)
+
+    const c = await start("c");
+    const cPage = await pageAsks(c.requestId);
+    const cCode = "amb_code_" + randomHex(32);
+    const cDecided = await serve("/connect/decide", {
+      method: "POST", headers: { ...session, origin: SITE, ...json },
+      body: JSON.stringify({ id: c.requestId, allow: true, write: true, redirect_uri: CHATGPT, code_hash: await sha256Hex(cCode),
+        code_wrap: await wrap(a.dk, await tokenKey(cCode, "code"), "code", a.id) }),
+    });
+    assertEquals(cDecided.status, 200);
+    await cDecided.body?.cancel();
+    assertEquals(await pickUp(c.requestId, cPage.pickup), { state: "delivered" });
+    const cTokens = await exchange(cCode, c.verifier);
+    assert(cTokens.access_token, JSON.stringify(cTokens));
+
+    // MARK: Refreshing: the key moves to the new tokens, and the AI goes on
+
+    for (const t of [tokens, bTokens, cTokens]) {
+      const next = await (await serve("/token", {
+        method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ grant_type: "refresh_token", refresh_token: t.refresh_token }),
+      })).json();
+      assert(next.access_token && next.refresh_token !== t.refresh_token, JSON.stringify(next));
+      const read = await rpc("tools/call", { name: "search_notes", arguments: { query: CANARY } }, next.access_token);
+      assert(read.structuredContent.results.length > 0);
+    }
     // An old setup with the token in the address: refused, and logged without it.
     const inPath = await serve(`/pane_${randomHex(32)}`, { method: "POST", body: "{}" });
     assertEquals(inPath.status, 401);
@@ -182,6 +280,16 @@ Deno.test("no text of an encrypted account is stored or logged readably, whateve
     assert(tables.length > 20);
     const copies = new Set(["note_share_pages", "note_share_files"]);
     const canaryHex = toHex(enc.encode(CANARY));
+    const encoded = base64Forms(CANARY);
+    // Three alignments; the URL-safe form differs only when the base64 holds + or /.
+    assert(encoded.length >= 3 && encoded.every((f) => f.length >= 40), JSON.stringify(encoded));
+    // The forms are what base64 of a longer value holds: found inside one at every alignment.
+    for (const k of [0, 1, 2]) {
+      const b64 = toBase64(new Uint8Array([...crypto.getRandomValues(new Uint8Array(k)), ...enc.encode(CANARY), 7, 7]));
+      assert(encoded.some((f) => b64.includes(f)), `offset ${k}`);
+    }
+    const holds = (text: string) =>
+      text.includes(CANARY) || text.toLowerCase().includes(canaryHex) || encoded.some((f) => text.includes(f));
     let rows = 0;
     for (const { s, t } of tables) {
       if (s === "public" && copies.has(t)) continue;
@@ -191,13 +299,13 @@ Deno.test("no text of an encrypted account is stored or logged readably, whateve
         : `select x::text as row from "${s}"."${t}" x`;
       for (const { row } of (await pg.query<{ row: string }>(text)).rows) {
         rows++;
-        assert(!row.includes(CANARY) && !row.toLowerCase().includes(canaryHex), `${s}.${t} holds the canary: ${row.slice(0, 300)}`);
+        assert(!holds(row), `${s}.${t} holds the canary: ${row.slice(0, 300)}`);
       }
     }
     assert(rows > 30, `only ${rows} rows`);
     // The search finds it where it is readable: the copy of the note shared on purpose, rewritten
     // after the AI's edit.
-    const [copy] = (await pg.query<{ title: string; body: string }>(`select title, body from public.note_shares where slug = $1`, [share.slug])).rows;
+    const [copy] = (await pg.query<{ title: string; body: string }>(`select title, body from public.note_shares where slug = $1`, [shareLink.slug])).rows;
     assertEquals(copy.title, `Shared ${CANARY}`);
     assertStringIncludes(copy.body, `Edited by an AI ${CANARY}`);
 
@@ -212,8 +320,9 @@ Deno.test("no text of an encrypted account is stored or logged readably, whateve
   // MARK: Everything logged
 
   assert(logged.length > 0, "the refused address is logged, so the capture works");
+  const encoded = base64Forms(CANARY);
   for (const line of logged) {
-    assert(!line.includes(CANARY), `logged: ${line}`);
+    assert(!line.includes(CANARY) && !encoded.some((f) => line.includes(f)), `logged: ${line}`);
     assert(!/pane_|amb_/.test(line), `a token was logged: ${line}`);
     const fields = JSON.parse(line);
     assert(Object.keys(fields).every((k) => ["event", "tool", "status", "ms", "code", "kind", "count", "path_kind", "method"].includes(k)), line);
