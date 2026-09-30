@@ -55,7 +55,8 @@ export default function Page() {
       <h2>When a different notes app makes sense</h2>
       <p>
         Claude has the same limits; <a href="/blog/claude-and-apple-notes">can Claude read your Apple Notes?</a> goes through them, and{" "}
-        <a href="/blog/notes-apps-with-mcp">notes apps with an MCP server, compared</a> lists the apps AI can reach.
+        <a href="/blog/notes-apps-with-mcp">notes apps with an MCP server, compared</a> lists the apps AI can reach. The <a href="/blog/apple-notes-mcp">Apple Notes MCP servers</a> only work with apps on
+        your Mac, so ChatGPT can&apos;t use them.
       </p>
       <p>
         If you want to ask ChatGPT &ldquo;what did I write about the kitchen measurements?&rdquo; or &ldquo;add oat milk to my groceries

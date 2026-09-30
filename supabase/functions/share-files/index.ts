@@ -15,6 +15,7 @@
 // the link is live. Logs carry an event name and a status, never a slug or a file name.
 
 import postgres from "npm:postgres@3.4.5";
+import { dailyHash, hashSecret } from "../_shared/hash.ts";
 import { log } from "../_shared/log.ts";
 import { contentDisposition, filePath, RateLimiter, referencedFiles, servedType, SLUG, UUID } from "./logic.ts";
 
@@ -28,7 +29,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: { ...headers, "access-control-allow-methods": "GET, OPTIONS" } });
   if (req.method !== "GET") return reply({ error: "method not allowed" }, 405);
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown";
-  if (!perIP.allow(ip)) return reply({ error: "slow down" }, 429);
+  if (!perIP.allow(await dailyHash(hashSecret(), ip))) return reply({ error: "slow down" }, 429);
 
   const url = new URL(req.url);
   const slug = url.searchParams.get("slug") ?? "";

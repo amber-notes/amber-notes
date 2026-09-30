@@ -26,6 +26,8 @@ function summary(): string[] {
     "- ChatGPT: add it as your own app in Developer mode (Plus, Pro, Business, Enterprise or Edu, on the web), choose OAuth, then Allow in Amber Notes.",
     "- Claude: add it as a custom connector (every plan; the free plan includes one), then Allow in Amber Notes.",
     "- Claude Code and Codex: an access token from Amber Notes, Settings, Connect an AI, sent as an Authorization header.",
+    "- Claude Code plugin: `claude plugin marketplace add emilwagman/amber-notes`, then `claude plugin install amber-notes`, then sign in from /mcp.",
+    `- Codex, Gemini CLI and VS Code: one command each at ${SITE_URL}/blog/mcp-server#install; each signs in with OAuth in the browser.`,
     `- Incredible (${INCREDIBLE_URL}), and any other app that supports MCP: add the server address and sign in, then Allow in Amber Notes.`,
     `- Full details: ${SITE_URL}/blog/mcp-server`,
     "",
@@ -38,6 +40,7 @@ function summary(): string[] {
     `- [Download for Mac](${SITE_URL}/download): free, macOS 26 or later.`,
     `- [Help and FAQ](${SITE_URL}/help)`,
     `- [Changelog](${SITE_URL}/changelog)`,
+    `- [Privacy & Security](${SITE_URL}/privacy-security): what's stored, what's encrypted, every log and how long it's kept.`,
     `- [Privacy policy](${SITE_URL}/privacy)`,
     `- [Source code on GitHub](${GITHUB_URL}) (MIT license)`,
   ];

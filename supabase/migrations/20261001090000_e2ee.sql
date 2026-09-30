@@ -452,6 +452,40 @@ end $$;
 revoke all on function public.change_notes_password(jsonb, text, jsonb) from public, anon;
 grant execute on function public.change_notes_password(jsonb, text, jsonb) to authenticated;
 
+-- As in 20260930171500: Recently Deleted after 30 days, now clearing the sealed text.
+create or replace function public.pane_forget_daily() returns void
+language plpgsql security definer set search_path = '' as $$
+declare
+  purged uuid[];
+begin
+  with gone as (
+    update public.notes set deleted_at = now(), body_ct = null, head_ct = null, locked_body = null
+    where trashed_at < now() - interval '30 days' and deleted_at is null
+    returning id)
+  select coalesce(array_agg(id), '{}') into purged from gone;
+  update public.note_shares set revoked_at = now() where note_id = any(purged) and revoked_at is null;
+
+  update public.share_reports set reporter = repeat('0', 64)
+    where created_at < now() - interval '30 days' and reporter <> repeat('0', 64);
+  delete from public.share_reports where created_at < now() - interval '12 months' and status <> 'open';
+
+  delete from public.pane_activity where day < (now() at time zone 'utc')::date - 365;
+  delete from public.pane_tip_activity where day < (now() at time zone 'utc')::date - 365;
+  delete from public.pane_active_days where day < (now() at time zone 'utc')::date - 365;
+  delete from public.pane_devices where last_seen < now() - interval '12 months';
+
+  if to_regclass('auth.audit_log_entries') is not null then
+    begin
+      execute 'delete from auth.audit_log_entries where created_at < now() - interval ''30 days''';
+    exception when insufficient_privilege then
+      raise warning 'pane_forget_daily: no permission to trim auth.audit_log_entries';
+    end;
+  end if;
+
+  perform public.pane_thin_all_revisions();
+end $$;
+revoke all on function public.pane_forget_daily() from public, anon, authenticated;
+
 -- MARK: AI connections hold a wrapped key
 
 alter table public.oauth_requests add column code_wrap text check (code_wrap is null or char_length(code_wrap) <= 300);

@@ -49,6 +49,12 @@ export default function Page() {
   ${MCP_URL} \\
   --header "Authorization: Bearer pane_…"`}</code></pre>
       <p>
+        Rather sign in than paste a token? Install the Amber Notes plugin, then run <code>/mcp</code> in Claude Code, pick{" "}
+        <code>amber-notes</code> and sign in. The plugin also teaches Claude how your notes are laid out.
+      </p>
+      <pre><code>{`claude plugin marketplace add emilwagman/amber-notes
+claude plugin install amber-notes`}</code></pre>
+      <p>
         Already connected Claude on claude.ai with the same Claude account? Then Claude Code may already have Amber Notes as a connector,
         and you can skip this. <a href="/blog/connect-chatgpt-to-your-notes">Connecting ChatGPT and Claude</a> covers that side.
       </p>

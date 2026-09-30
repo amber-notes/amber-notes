@@ -35,9 +35,12 @@ function proxy(req: NextRequest) {
     console.error("mcp.ambernotes.app: SUPABASE_URL or MCP_PROXY_SECRET is not set; not proxying");
     return new NextResponse("The Amber Notes MCP server isn't available here right now.", { status: 503 });
   }
-  const rawPath = new URL(req.url).pathname;
-  if (!allowedPath(rawPath)) return NextResponse.json({ error: "not_found" }, { status: 404 });
-  const to = upstream(supabase, rawPath, req.nextUrl.search);
+  // req.url as the client sent it, never req.nextUrl: Next.js rewrites the first 127.x.x.x or [::1]
+  // anywhere in nextUrl, the query included, to "localhost", which breaks a loopback redirect_uri
+  // (Codex, VS Code). skipMiddlewareUrlNormalize in next.config.ts keeps req.url raw.
+  const raw = new URL(req.url);
+  if (!allowedPath(raw.pathname)) return NextResponse.json({ error: "not_found" }, { status: 404 });
+  const to = upstream(supabase, raw.pathname, raw.search);
   return NextResponse.rewrite(to, { request: { headers: upstreamHeaders(req.headers, secret) } });
 }
 

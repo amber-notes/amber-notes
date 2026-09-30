@@ -15,6 +15,7 @@
 
 import postgres from "npm:postgres@3.4.5";
 import { atLeast, hashKey, normalizeEmail, RateLimiter, statusFrom } from "./logic.ts";
+import { logError } from "../_shared/log.ts";
 
 const sql = postgres(Deno.env.get("SUPABASE_DB_URL")!, { max: 2, idle_timeout: 20, prepare: false });
 const SALT = Deno.env.get("ACCOUNT_STATUS_SALT") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -47,7 +48,7 @@ Deno.serve((req) => atLeast(FLOOR_MS, async () => {
       limit 1`;
     return reply(statusFrom(row));
   } catch (e) {
-    console.error("account-status", (e as Error).message);
+    logError("account-status", e);
     return reply({ error: "unavailable" }, 500);
   }
 }));

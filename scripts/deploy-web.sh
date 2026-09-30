@@ -37,7 +37,9 @@ for env in production preview; do
   for pair in "${pairs[@]}"; do
     name=${pair%%=*}; value=${pair#*=}
     vercel env rm "$name" "$env" --yes --scope "$team" >/dev/null 2>&1 || true
-    printf '%s' "$value" | vercel env add "$name" "$env" --scope "$team" >/dev/null
+    # Secrets are stored as Sensitive, so nobody can read them back from the Vercel dashboard.
+    flags=(); [[ $name == REPORT_SALT || $name == MCP_PROXY_SECRET ]] && flags=(--sensitive)
+    printf '%s' "$value" | vercel env add "$name" "$env" "${flags[@]}" --scope "$team" >/dev/null
   done
 done
 vercel env rm MCP_PROXY_SECRET preview --yes --scope "$team" >/dev/null 2>&1 || true

@@ -81,7 +81,8 @@ export default function SiteChrome({ version, stars, children }: { version: stri
           <nav aria-label="More">
             <a href="/blog">Blog</a>
             <a href="/changelog">Changelog</a>
-            <a href="/privacy">Privacy</a>
+            <a href="/privacy-security">Privacy & Security</a>
+            <a href="/privacy">Privacy Policy</a>
             <a href="/terms">Terms</a>
             <a href="/help">Help</a>
           </nav>

@@ -29,6 +29,7 @@
 
 import type { Sql } from "npm:postgres@3.4.5";
 import { tokenKey, unwrap, wrap } from "../_shared/e2ee.ts";
+import { dailyHash, hashSecret } from "../_shared/hash.ts";
 import { errorKind, log } from "../_shared/log.ts";
 
 export const SCOPES = ["notes:read", "notes:write"];
@@ -187,12 +188,12 @@ function timingSafeEqual(a: string, b: string) {
 /// True when this IP has made too many requests to `bucket` recently. Records this one.
 async function limited(sql: Sql, req: Request, bucket: string): Promise<boolean> {
   const [max, window] = LIMITS[bucket];
-  const ip = await sha256Hex(clientIP(req));
+  const ip = await dailyHash(hashSecret(), clientIP(req));
   const [{ n }] = await sql`
     with recent as (select count(*)::int n from public.oauth_rate where bucket = ${bucket} and ip_hash = ${ip} and at > now() - make_interval(secs => ${window}))
     insert into public.oauth_rate (bucket, ip_hash) select ${bucket}, ${ip} returning (select n from recent)`;
   if (Math.random() < 0.02) {
-    await sql`delete from public.oauth_rate where at < now() - interval '1 day'`;
+    await sql`delete from public.oauth_rate where at < now() - interval '2 hours'`;
     await sql`delete from public.oauth_requests where expires_at < now() - interval '1 day' and (code_expires_at is null or code_expires_at < now() - interval '1 day')`;
     await sql`delete from public.oauth_tokens where expires_at < now() - interval '1 day'`;
     // An expired token or code can't be used, so its wrap of the data key goes now, not in a day.

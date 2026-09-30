@@ -5,13 +5,14 @@ Last updated: 30 September 2026
 ## The short version
 
 - Your notes are yours. We store them so they sync between your iPhone and Mac, and for nothing else.
-- No ads, no tracking and no analytics, in the apps or on the website, and we never sell or share your data.
+- No ads, no tracking and no third-party analytics, in the apps or on the website, and we never sell or share your data.
 - We count how features are used on our own server to improve the app. We never share or sell it.
 - An AI assistant can only read your notes if you connect it and approve it in Amber Notes or on ambernotes.app. You can disconnect it at any time.
 - A note you lock is encrypted on your device before it's uploaded. Nobody but you can read it: not us, and not an AI.
 - A note you share can be read by anyone with its link, until you stop sharing.
 - Your data is stored in the European Union (Frankfurt, Germany).
-- **Settings → Delete Account** deletes your account and everything in it.
+- **Settings → Privacy & Security** lets you export all your data or delete your account and everything in it.
+- We keep as few logs as we can, for as short a time as we can. The section on logs lists every one.
 
 ## Who we are
 
@@ -25,7 +26,7 @@ This policy covers the Amber Notes apps for iPhone and Mac, the service that let
 
 - **Sign in with Apple:** Apple gives us an identifier for your account and an email address. If you choose Hide My Email, we only ever see Apple's relay address. We never see your Apple ID password.
 - **Email and password:** your email address and a one-way hash of your password. We never store the password itself.
-- **Sign-in records:** when you sign in, our hosting provider records the time and the IP address and device information of the request, to keep your account secure.
+- **Sign-in records:** when you sign in, the sign-in service records the time, your email address and the IP address of the request, to keep your account secure. We delete these records after 30 days. While you're signed in on a device, that sign-in also keeps the IP address and device type from its last refresh, until you sign out or delete your account.
 
 **Your profile, if you set one**
 
@@ -40,7 +41,7 @@ This policy covers the Amber Notes apps for iPhone and Mac, the service that let
 
 - A locked note's text is encrypted on your device with a key made from your notes password (AES-256-GCM, with the key derived by PBKDF2) before it's uploaded. We store that encrypted text and the note's title, which stays readable so your list can show it. Files and sub-notes can't be put in a locked note.
 - To let your devices check the password, we store a random value (a salt), a small encrypted test value, and the password hint you write. We never receive or store the password or the key. On your device, the key can be kept in the Keychain so Face ID or Touch ID can unlock your notes; it never leaves the device.
-- Locking a note deletes its earlier versions from our servers. While it's locked, earlier versions are kept only in encrypted form, and changing your notes password removes the versions encrypted with the old one. Text from before a note was locked can remain in our hosting provider's encrypted backups for a limited time, until they're replaced.
+- Locking a note deletes its earlier versions from our servers. While it's locked, earlier versions are kept only in encrypted form, and changing your notes password removes the versions encrypted with the old one.
 - If you forget your notes password, we can't recover your locked notes.
 - Once you have a notes password, older versions of the app can't sync until they're updated, so they can never upload a readable copy of a locked note.
 
@@ -55,7 +56,7 @@ This policy covers the Amber Notes apps for iPhone and Mac, the service that let
 
 **Reports about shared pages**
 
-- If someone reports a shared page: the page's link, the reason they give, any contact details they choose to add, and a salted one-way hash of their network address, so one person can't report a page many times. We don't store the address itself.
+- If someone reports a shared page: the page's link, the reason they give, any contact details they choose to add, and a one-way hash of their network address made with a secret key that changes every month, so one person can't report a page many times. We don't store the address itself, and we blank the hash after 30 days.
 
 **How the app is used**
 
@@ -77,7 +78,7 @@ We process personal data under the EU General Data Protection Regulation (GDPR) 
 | What | Why | Legal basis |
 |---|---|---|
 | Account, profile, notes, files, versions, AI connections, share links | To provide the service: store, sync and show your notes | Performance of a contract |
-| Sign-in records, rate limits, hashed network addresses on reports | To keep the service secure and stop abuse | Legitimate interests |
+| Sign-in records, rate limits, hashed network addresses, request logs | To keep the service secure and stop abuse | Legitimate interests |
 | Reports about shared pages | To review and remove content that breaks our Terms | Legitimate interests, and legal obligations where they apply |
 | Feature usage counts | To learn whether the app works for people and improve it | Legitimate interests |
 
@@ -104,24 +105,43 @@ Nothing reaches an AI assistant unless you connect one. When you connect ChatGPT
 
 ## Where your data is stored
 
-| Service | What it does for us | Where |
+| Service | What it does for us | Where | Transfers outside the EU |
+|---|---|---|---|
+| Supabase (Supabase Pte. Ltd.) | Database, file storage, sign-in and server functions | Frankfurt, Germany (EU) | Standard Contractual Clauses, in its [data processing agreement](https://supabase.com/legal/dpa) ([sub-processors](https://supabase.com/legal/customer-resources/subprocessor-list)) |
+| Vercel, Inc. | The website, shared note pages, the address AI apps connect to (mcp.ambernotes.app), Mac app downloads, update checks | Pages are built in Frankfurt, Germany (EU) and delivered through Vercel's global network | EU-U.S. Data Privacy Framework ([privacy policy](https://vercel.com/legal/privacy-policy), [sub-processors](https://vercel.com/legal/sub-processors)) |
+| Apple | Sign in with Apple and the App Store, if you use them | Under Apple's own privacy policy | Apple's own terms |
+
+Your notes and files are stored only at Supabase, in Frankfurt. Supabase processes them only on our instructions. Vercel handles requests to the website on their way through: it sees a shared note while it shows the page, and the requests AI apps send to mcp.ambernotes.app, but it doesn't store your notes. Either company's support staff could access data from outside the EU; those transfers are covered as the table says.
+
+All data travels encrypted (HTTPS), and Supabase encrypts what it stores (AES-256). Each account can only read its own notes: the database enforces this on every request.
+
+## Logs
+
+We don't write the text of your notes, email addresses, access tokens or network addresses into any log of our own. When something fails on our server, the log says where and what kind of error, with names, addresses and ids blanked out.
+
+Our hosting providers keep logs of the requests that reach them. We can't turn these off, but they're kept briefly:
+
+| Log | What's in it | Kept for |
 |---|---|---|
-| Supabase, Inc. | Database, file storage, sign-in and server functions | Frankfurt, Germany (EU) |
-| Vercel, Inc. | The website, shared note pages, Mac app downloads, update checks | Pages are built in Frankfurt, Germany (EU) and delivered through Vercel's global network |
-| Apple | Sign in with Apple and the App Store, if you use them | Under Apple's own privacy policy |
+| Supabase request logs | For each request to our server: the time, the address it asked for, the IP address and device type it came from, and the approximate location the provider works out from the IP address | 1 day |
+| Supabase sign-in logs | Each sign-in and sign-out: the time, the email address and the IP address | 1 day |
+| Supabase server function and database logs | When each function ran and what it was asked for, and the errors described above | 1 day |
+| Vercel request logs | For each request to the website: the time, the page, the IP address and device type, and whether it worked | 1 hour |
+| Vercel performance charts | Counts and timings, without who asked | 12 hours |
 
-Supabase and Vercel process data only on our instructions. Both are US companies. Where data could be accessed from outside the EU, for example by their support staff, the transfer is covered by the European Commission's Standard Contractual Clauses or the EU-U.S. Data Privacy Framework.
-
-All data travels encrypted (HTTPS). Each account can only read its own notes: the database enforces this on every request.
+Rate limits on sign-in and connection requests count a one-way hash of the IP address, made with a key that changes every day, and delete it after 2 hours.
 
 ## How long we keep it
 
-- **Notes you delete** stay in Recently Deleted for 30 days, then they're deleted for good, together with their earlier versions.
-- **Your account** is kept until you delete it. **Settings → Delete Account** removes your account, notes, files, profile photo, versions, AI connections, share links and usage counts straight away.
-- **Expired AI access tokens** are removed a day after they expire.
-- **Reports** are kept while they're reviewed, and as long as needed to deal with repeated abuse.
-- **Backups:** our hosting provider keeps encrypted backups for disaster recovery for a limited period. Deleted data disappears from them as they're replaced.
-- **Website request logs** at Vercel are kept for a short period for security and operations.
+- **Notes you delete** stay in Recently Deleted for 30 days, then they're deleted for good, together with their earlier versions and share links. This happens on our server even if you never open the app again.
+- **Earlier versions** of a note: up to 100 per note, thinned out as they get older (all from the last day, one an hour for a week, one a day for 90 days, and every AI change for 90 days).
+- **Files** you add stay until you delete them or your account.
+- **Your account** is kept until you delete it. **Settings → Delete Account** removes your account, notes, files, profile photo, versions, AI connections, share links, notes password settings, usage counts, sign-in records and reports about your shared pages straight away.
+- **Usage counts** (AI changes per day, days of use, tips, app installations): 12 months.
+- **Sign-in records:** 30 days. **Rate-limit hashes:** 2 hours. **Unfinished AI sign-ins and expired access tokens:** a day after they expire.
+- **Reports:** the reporter's hash is blanked after 30 days; a report is deleted 12 months after it was made, once it's been reviewed.
+- **Logs** at our hosting providers: 1 hour to 1 day, as listed under Logs.
+- **Backups:** our current hosting plan keeps no backups of the database, so what's deleted is gone.
 
 ## Your rights
 
@@ -130,10 +150,19 @@ Under the GDPR you can:
 - **access** your data and get a copy of it;
 - **correct** it (most of it you can edit directly in the app);
 - **delete** it, in the app with **Delete Account** or by asking us;
-- **take it with you:** your notes are plain text (Markdown), and on request we'll send you everything in a machine-readable format;
+- **take it with you:** **Settings → Privacy & Security → Export My Data** gives you a zip with every note as Markdown and everything else we keep about you as JSON. You can also ask us for it;
 - **object** to processing based on legitimate interests, including the feature usage counts, or ask us to **restrict** it.
 
 Write to **emil@norditech.se**. We answer within one month. If you think we've handled your data wrongly, you can complain to the Swedish Authority for Privacy Protection (Integritetsskyddsmyndigheten, IMY) at imy.se, or to the data protection authority where you live.
+
+## Cookies and storage on the website
+
+The website sets no cookies and uses no analytics or tracking scripts. Only the page where you approve an AI connection (ambernotes.app/connect) stores anything in your browser, and only what that page needs to work:
+
+- **sessionStorage, `amber.connect.pkce`:** a one-time code for Sign in with Apple, kept while you go to Apple and back, and deleted as soon as you return.
+- **localStorage, `amber.connect.app`:** set only if you choose to answer in the Amber Notes app from now on, so the page opens the app straight away next time. Clearing your browser's site data removes it.
+
+Your sign-in on that page stays in the page's memory and is gone when you close it. Because these are strictly necessary for something you asked for, there's no cookie banner.
 
 ## Children
 

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import styles from "./home.module.css";
 import Demo from "./Demo";
 import DownloadLink from "./DownloadLink";
-import { AiSection, AlsoLine, Closing, ImportSection } from "./Sections";
+import { AiSection, AlsoLine, Closing, ImportSection, PrivacySection } from "./Sections";
 import { latestVersion } from "@/lib/changelog";
 import { APP_STORE_LIVE, APP_STORE_URL, pageMetadata } from "@/lib/site";
 import { JsonLd, app, incredible, maker, organization, website } from "@/lib/structured-data";
@@ -43,6 +43,7 @@ export default function Home() {
       <AiSection />
       <ImportSection />
       <AlsoLine />
+      <PrivacySection />
       <Closing />
     </div>
   );

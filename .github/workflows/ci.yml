@@ -78,6 +78,7 @@ jobs:
           supabase/functions/mcp/canary.pglite.test.ts supabase/functions/mcp/sealed_tools.pglite.test.ts
           supabase/functions/mcp/tips.pglite.test.ts supabase/functions/mcp/share_ask.pglite.test.ts
           supabase/functions/share-files/logic.test.ts scripts/e2ee-tool.test.ts
+          supabase/functions/account/account.pglite.test.ts supabase/functions/_shared/hash.test.ts
 
   web:
     name: Share site
