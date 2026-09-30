@@ -314,3 +314,205 @@ export function coerce(value: unknown, col: { name: string; type: ColType }, tod
       return s;
   }
 }
+
+// MARK: Search, in memory
+// Notes are sealed, so the database can't search them: the server opens them for one request and
+// matches here. The syntax is websearch_to_tsquery's (what search_notes took before): words must
+// all match, "quoted phrases" match in order, OR between words means either, -word excludes.
+// Words match whole and case-insensitively; a query that appears as-is anywhere in the text (a part
+// of a word, or punctuation such as % and _, taken literally) matches too.
+
+type Term = string[]; // lowercase words; more than one is a phrase
+export type ParsedQuery = { groups: Term[][]; none: Term[]; raw: string };
+export type SearchDoc = { title: string; body: string; updated_at: Date | string };
+export type SearchHit<T extends SearchDoc> = { doc: T; rank: number; snippet: string };
+
+const WORD = /[\p{L}\p{N}]+/gu;
+const wordsOf = (s: string) => s.toLowerCase().match(WORD) ?? [];
+
+export function parseQuery(q: string): ParsedQuery {
+  const groups: Term[][] = [];
+  const none: Term[] = [];
+  let or = false;
+  for (const m of q.matchAll(/(-?)"([^"]*)"?|(\S+)/g)) {
+    let text = m[3] ?? m[2];
+    let exclude = m[1] === "-";
+    if (m[3] !== undefined) {
+      if (/^or$/i.test(m[3])) { or = groups.length > 0; continue; }
+      if (m[3].startsWith("-") && m[3].length > 1) { exclude = true; text = m[3].slice(1); }
+    }
+    const term = wordsOf(text);
+    if (!term.length) continue;
+    if (exclude) none.push(term);
+    else if (or) groups[groups.length - 1].push(term);
+    else groups.push([term]);
+    or = false;
+  }
+  return { groups, none, raw: q.trim() };
+}
+
+type Prepared = { words: string[]; counts: Map<string, number>; titleWords: string[]; titleCounts: Map<string, number>; lower: string; lowerTitle: string };
+const prepared = new WeakMap<SearchDoc, Prepared>();
+
+function prepare(d: SearchDoc): Prepared {
+  let p = prepared.get(d);
+  if (!p) {
+    const words = wordsOf(d.title + "\n" + d.body);
+    const titleWords = wordsOf(d.title);
+    p = { words, counts: tally(words), titleWords, titleCounts: tally(titleWords), lower: (d.title + "\n" + d.body).toLowerCase(), lowerTitle: d.title.toLowerCase() };
+    prepared.set(d, p);
+  }
+  return p;
+}
+
+function tally(words: string[]) {
+  const m = new Map<string, number>();
+  for (const w of words) m.set(w, (m.get(w) ?? 0) + 1);
+  return m;
+}
+
+function count(t: Term, words: string[], counts: Map<string, number>): number {
+  if (t.length === 1) return counts.get(t[0]) ?? 0;
+  if (!t.every((w) => counts.has(w))) return 0;
+  let n = 0;
+  for (let i = 0; i + t.length <= words.length; i++) if (t.every((w, k) => words[i + k] === w)) n++;
+  return n;
+}
+
+/** How well `d` matches, or null when it doesn't. */
+function score(q: ParsedQuery, d: SearchDoc): number | null {
+  const p = prepare(d);
+  if (q.none.some((t) => count(t, p.words, p.counts) > 0)) return null;
+  const literal = q.raw !== "" && p.lower.includes(q.raw.toLowerCase());
+  let body = 0, inTitle = 0;
+  for (const g of q.groups) {
+    const best = Math.max(...g.map((t) => count(t, p.words, p.counts)));
+    if (best === 0 && !literal) return null;
+    body += Math.min(best, 10) / 10;
+    if (g.some((t) => count(t, p.titleWords, p.titleCounts) > 0)) inTitle++;
+  }
+  if (!q.groups.length && !literal && !q.none.length) return null;
+  const groups = Math.max(q.groups.length, 1);
+  return body / groups + (2 * inTitle) / groups + (q.raw && p.lowerTitle.includes(q.raw.toLowerCase()) ? 1 : 0) + (literal ? 0.5 : 0);
+}
+
+/** Whether a note could be in the results of `query` or of its broadened form (for keeping only
+ *  those while scanning). */
+export function searchFilter(query: string): (d: SearchDoc) => boolean {
+  const strict = parseQuery(query);
+  const broad = broadenQuery(query);
+  const wide = broad ? parseQuery(broad) : null;
+  return (d) => score(strict, d) !== null || (wide !== null && score(wide, d) !== null);
+}
+
+/** Ranked matches with highlighted snippets, best first, newest first on ties. When nothing has
+ *  every word, the broadened query's matches, with `broad` saying what was searched. */
+export function searchInMemory<T extends SearchDoc>(query: string, docs: T[], limit = 10): { results: SearchHit<T>[]; broad: string | null } {
+  const run = (q: string) => {
+    const pq = parseQuery(q);
+    const hits: { doc: T; rank: number }[] = [];
+    for (const doc of docs) {
+      const rank = score(pq, doc);
+      if (rank !== null) hits.push({ doc, rank });
+    }
+    hits.sort((a, b) => b.rank - a.rank || time(b.doc.updated_at) - time(a.doc.updated_at));
+    return hits.slice(0, Math.max(1, limit)).map((h) => ({ ...h, snippet: snippet(pq, h.doc.body) }));
+  };
+  const strict = run(query);
+  if (strict.length) return { results: strict, broad: null };
+  const broad = broadenQuery(query);
+  return broad ? { results: run(broad), broad } : { results: [], broad: null };
+}
+
+const time = (d: Date | string) => new Date(d).getTime();
+
+const MAX_WORDS = 24, FRAGMENTS = 2, LEAD = 4;
+
+/** Like ts_headline(MaxWords=24, MaxFragments=2, StartSel=«, StopSel=»): up to two stretches of the
+ *  text around matches, the matches marked, joined with " ... ". */
+export function snippet(q: ParsedQuery, body: string): string {
+  const tokens = [...body.matchAll(WORD)].map((m) => ({ w: m[0].toLowerCase(), s: m.index!, e: m.index! + m[0].length }));
+  if (!tokens.length) return body.trim().slice(0, 200);
+  const marks: [number, number][] = [];
+  for (const t of q.groups.flat()) {
+    for (let i = 0; i + t.length <= tokens.length; i++) {
+      if (t.every((w, k) => tokens[i + k].w === w)) marks.push([tokens[i].s, tokens[i + t.length - 1].e]);
+    }
+  }
+  // The query as typed, where it appears as-is (inside a word, or with its punctuation).
+  if (q.raw) {
+    const lower = body.toLowerCase(), raw = q.raw.toLowerCase();
+    for (let at = lower.indexOf(raw), n = 0; at >= 0 && n < 50; at = lower.indexOf(raw, at + raw.length), n++) marks.push([at, at + raw.length]);
+  }
+  marks.sort((a, b) => a[0] - b[0]);
+  const merged: [number, number][] = [];
+  for (const m of marks) {
+    const last = merged[merged.length - 1];
+    if (last && m[0] <= last[1]) last[1] = Math.max(last[1], m[1]); else merged.push([...m]);
+  }
+  const windows: [number, number][] = []; // token index ranges [from, to)
+  for (const [s] of merged) {
+    if (windows.length >= FRAGMENTS) break;
+    let at = tokens.findIndex((t) => t.e > s);
+    if (at < 0) at = tokens.length - 1;
+    if (windows.some(([a, b]) => at >= a && at < b)) continue;
+    const from = Math.max(0, at - LEAD, windows.length ? windows[windows.length - 1][1] : 0);
+    windows.push([from, Math.min(tokens.length, from + MAX_WORDS)]);
+  }
+  if (!windows.length) windows.push([0, Math.min(tokens.length, MAX_WORDS)]);
+  return windows.map(([a, b]) => {
+    const start = Math.min(tokens[a].s, ...merged.filter(([s, e]) => s < tokens[a].s && e > tokens[a].s).map(([s]) => s));
+    let end = tokens[b - 1].e;
+    for (const [s, e] of merged) if (s < end && e > end) end = e;
+    let out = "", pos = start;
+    for (const [s, e] of merged) {
+      if (e <= start || s >= end) continue;
+      out += body.slice(pos, s) + "«" + body.slice(s, e) + "»";
+      pos = e;
+    }
+    return (out + body.slice(pos, end)).replace(/\s+/g, " ").trim();
+  }).join(" ... ");
+}
+
+// MARK: File types
+
+const UTI: Record<string, string> = {
+  "public.plain-text": "text/plain", "public.utf8-plain-text": "text/plain", "public.text": "text/plain",
+  "public.comma-separated-values-text": "text/csv", "public.tab-separated-values-text": "text/tab-separated-values",
+  "public.json": "application/json", "public.xml": "application/xml", "public.html": "text/html",
+  "net.daringfireball.markdown": "text/markdown", "public.rtf": "application/rtf",
+  "public.png": "image/png", "public.jpeg": "image/jpeg", "com.compuserve.gif": "image/gif", "org.webmproject.webp": "image/webp",
+  "public.heic": "image/heic", "public.heif": "image/heif", "public.tiff": "image/tiff", "public.svg-image": "image/svg+xml",
+  "com.adobe.pdf": "application/pdf", "public.zip-archive": "application/zip",
+  "org.openxmlformats.spreadsheetml.sheet": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "org.openxmlformats.wordprocessingml.document": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "org.openxmlformats.presentationml.presentation": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "com.microsoft.excel.xls": "application/vnd.ms-excel", "com.microsoft.word.doc": "application/msword",
+  "com.apple.quicktime-movie": "video/quicktime", "public.mpeg-4": "video/mp4", "public.mp3": "audio/mpeg", "public.mpeg-4-audio": "audio/mp4",
+};
+
+const EXTENSIONS: Record<string, string> = {
+  txt: "text/plain", text: "text/plain", log: "text/plain", csv: "text/csv", tsv: "text/tab-separated-values", json: "application/json",
+  xml: "application/xml", html: "text/html", htm: "text/html", md: "text/markdown", markdown: "text/markdown", rtf: "application/rtf",
+  png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp", heic: "image/heic", heif: "image/heif",
+  tif: "image/tiff", tiff: "image/tiff", svg: "image/svg+xml", pdf: "application/pdf", zip: "application/zip",
+  xlsx: UTI["org.openxmlformats.spreadsheetml.sheet"], docx: UTI["org.openxmlformats.wordprocessingml.document"],
+  pptx: UTI["org.openxmlformats.presentationml.presentation"], xls: "application/vnd.ms-excel", doc: "application/msword",
+  mov: "video/quicktime", mp4: "video/mp4", mp3: "audio/mpeg", m4a: "audio/mp4",
+};
+
+/** A MIME type for a file's stored type (a UTType identifier from the apps, or already a MIME
+ *  type), falling back on its name's extension. */
+export function mimeOf(type: string, name: string): string {
+  const t = type.trim().toLowerCase();
+  if (/^[a-z]+\/[a-z0-9.+-]+$/.test(t)) return t;
+  if (UTI[t]) return UTI[t];
+  const ext = name.toLowerCase().match(/\.([a-z0-9]+)$/)?.[1];
+  return (ext && EXTENSIONS[ext]) || "application/octet-stream";
+}
+
+/** Types whose bytes are text a model reads as it is. */
+export function isTextType(mime: string): boolean {
+  return mime.startsWith("text/") || ["application/json", "application/xml", "application/csv"].includes(mime) ||
+    mime.endsWith("+json") || mime.endsWith("+xml");
+}

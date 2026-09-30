@@ -1,6 +1,6 @@
 // Unit tests for the pure markdown helpers: deno test notes.test.ts
-import { assertEquals, assertThrows } from "jsr:@std/assert@1";
-import { appendText, applyEdits, broadenQuery, coerce, findTables, fitLines, outline, replaceTable, setChecklistItem, sliceLines, sortChecklist, tableMarkdown, titleOf } from "./notes.ts";
+import { assert, assertEquals, assertThrows } from "jsr:@std/assert@1";
+import { appendText, applyEdits, broadenQuery, coerce, findTables, fitLines, isTextType, mimeOf, outline, parseQuery, replaceTable, searchFilter, searchInMemory, setChecklistItem, sliceLines, snippet, sortChecklist, tableMarkdown, titleOf } from "./notes.ts";
 
 Deno.test("titles follow the app's rules", () => {
   const cases: [string, string][] = [
@@ -123,4 +123,73 @@ Deno.test("broadenQuery widens a plain search to any word, and leaves search syn
   assertEquals(broadenQuery("tapas -Madrid"), null);
   assertEquals(broadenQuery("Porto or Lisbon"), null);
   assertEquals(broadenQuery("Café Ämne"), "café or ämne");
+});
+
+// MARK: Search in memory
+
+const doc = (title: string, body: string, day = 1) => ({ id: title, title, body: `${title}\n${body}`, updated_at: new Date(Date.UTC(2026, 8, day)) });
+const ids = (r: { results: { doc: { id: string } }[] }) => r.results.map((h) => h.doc.id);
+
+Deno.test("search: every word, whole words, case-insensitive", () => {
+  const docs = [doc("Lisbon trip", "Tram 28 and pastéis"), doc("Porto", "A trip by train"), doc("Groceries", "Oat milk, saffron")];
+  assertEquals(ids(searchInMemory("lisbon TRIP", docs)), ["Lisbon trip"]);
+  assertEquals(ids(searchInMemory("trip", docs)).sort(), ["Lisbon trip", "Porto"]);
+  // A word inside another word doesn't count as that word...
+  assertEquals(ids(searchInMemory("tri", docs, 10)).length, 2, "...but the query as it is, inside the text, does");
+  assertEquals(ids(searchInMemory("PASTÉIS", docs)), ["Lisbon trip"]);
+});
+
+Deno.test("search: phrases, OR and exclusions, like websearch_to_tsquery", () => {
+  assertEquals(parseQuery(`"oat milk" or soy -almond`), { groups: [[["oat", "milk"], ["soy"]]], none: [["almond"]], raw: `"oat milk" or soy -almond` });
+  const docs = [doc("A", "oat milk"), doc("B", "milk and oat"), doc("C", "soy milk"), doc("D", "soy and almond milk")];
+  assertEquals(ids(searchInMemory(`"oat milk"`, docs)), ["A"]);
+  assertEquals(ids(searchInMemory(`"oat milk" OR soy -almond`, docs)).sort(), ["A", "C"]);
+  assertEquals(ids(searchInMemory("-almond", docs)).sort(), ["A", "B", "C"]);
+});
+
+Deno.test("search: % and _ are literal", () => {
+  const docs = [doc("Rates", "Up 5% this year"), doc("Code", "snake_case names"), doc("Other", "five percent")];
+  assertEquals(ids(searchInMemory("5%", docs)), ["Rates"]);
+  assertEquals(ids(searchInMemory("e_c", docs)), ["Code"]);
+  assertEquals(ids(searchInMemory("%", docs)), ["Rates"]);
+});
+
+Deno.test("search: a title match ranks first; ties go to the newest", () => {
+  const docs = [doc("Notes", "saffron risotto", 1), doc("Saffron", "a spice", 2), doc("More notes", "saffron", 3)];
+  assertEquals(ids(searchInMemory("saffron", docs)), ["Saffron", "More notes", "Notes"]);
+  assertEquals(ids(searchInMemory("saffron", docs, 1)), ["Saffron"]);
+});
+
+Deno.test("search: nothing has every word, so any of them, and it says so", () => {
+  const docs = [doc("Lisbon", "tram"), doc("Porto", "wine")];
+  const r = searchInMemory("my lisbon porto note", docs);
+  assertEquals(r.broad, "lisbon or porto");
+  assertEquals(ids(r).sort(), ["Lisbon", "Porto"]);
+  assertEquals(searchInMemory("zzz", docs), { results: [], broad: null });
+  const keep = searchFilter("my lisbon porto note");
+  assertEquals(docs.filter(keep).length, 2);
+  assertEquals(docs.filter(searchFilter("zzz")).length, 0);
+});
+
+Deno.test("search: snippets mark matches, in at most two stretches of about 24 words", () => {
+  const filler = (n: number) => Array.from({ length: n }, (_, i) => `w${i}`).join(" ");
+  const body = `Start ${filler(40)} saffron here ${filler(40)} and Saffron again ${filler(10)}`;
+  const s = snippet(parseQuery("saffron"), body);
+  assertEquals(s.split(" ... ").length, 2);
+  assertEquals(s.match(/«[Ss]affron»/g)?.length, 2);
+  for (const part of s.split(" ... ")) assert(part.split(" ").length <= 26, part);
+  assertEquals(snippet(parseQuery(`"oat milk"`), "Buy oat\nmilk today"), "Buy «oat milk» today");
+  assertEquals(snippet(parseQuery("5%"), "Up 5% this year"), "Up «5%» this year");
+  // No match in the body (the title matched): its beginning.
+  assertEquals(snippet(parseQuery("zzz"), "One two three"), "One two three");
+});
+
+Deno.test("file types: UTTypes, MIME types and extensions", () => {
+  assertEquals(mimeOf("com.adobe.pdf", "x"), "application/pdf");
+  assertEquals(mimeOf("image/PNG", "x"), "image/png");
+  assertEquals(mimeOf("public.data", "Budget.xlsx"), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  assertEquals(mimeOf("public.data", "blob"), "application/octet-stream");
+  assertEquals(mimeOf("public.comma-separated-values-text", "a.csv"), "text/csv");
+  assert(isTextType("text/csv") && isTextType("application/json") && isTextType("application/ld+json"));
+  assert(!isTextType("application/pdf") && !isTextType("image/png"));
 });
