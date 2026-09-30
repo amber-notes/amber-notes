@@ -68,7 +68,8 @@ export default function Page() {
         Developers have built MCP servers that drive the Notes app with AppleScript. The most actively maintained one in September
         2026 is <a href="https://github.com/sweetrb/apple-notes-mcp" rel="noopener">sweetrb/apple-notes-mcp</a>, which can search,
         create and update notes. Follow its README to add it to Claude Desktop or Claude Code. Expect a macOS prompt asking whether
-        Claude may control Notes.
+        Claude may control Notes. <a href="/blog/apple-notes-mcp">Apple Notes MCP servers compared</a> sets it next to the other
+        servers, with the setup for Claude Desktop and Claude Code.
       </p>
       <p>Things to know:</p>
       <ul>

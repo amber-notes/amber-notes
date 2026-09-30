@@ -53,7 +53,8 @@ export default function Page() {
       <p>
         Most &ldquo;Apple Notes API&rdquo; projects on GitHub are MCP servers that drive the Notes app with AppleScript, so Claude Desktop or
         Claude Code can search and edit notes on that Mac. <a href="/blog/claude-and-apple-notes">Can Claude read your Apple Notes?</a> goes
-        through those options and their limits. Exporters that turn every note into markdown files are the other common kind.
+        through those options and their limits, and <a href="/blog/apple-notes-mcp">Apple Notes MCP servers compared</a> sets the
+        main servers side by side. Exporters that turn every note into markdown files are the other common kind.
       </p>
       <p>
         Amber Notes uses the same two doors when it imports: AppleScript to read your notes, and, if you ask it to keep your pins, the notes
