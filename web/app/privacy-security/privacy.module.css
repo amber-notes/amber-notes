@@ -6,8 +6,8 @@
 .fact h2 svg { flex: none; margin-top: 2px; color: var(--amber); }
 .fact p { margin: 0; color: var(--muted); font-size: 16px; line-height: 1.5; }
 
-.coming { margin: 0; padding: 16px 20px; border-radius: 16px; background: var(--soft); font-size: 16px; line-height: 1.5; }
-.coming a { color: var(--ink); font-weight: 600; text-decoration: underline; text-decoration-color: var(--amber); text-decoration-thickness: 2px; text-underline-offset: 3px; border-radius: 3px; }
-.coming a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.caveat { margin: 0; padding: 16px 20px; border-radius: 16px; background: var(--soft); font-size: 16px; line-height: 1.5; }
+.caveat a { color: var(--ink); font-weight: 600; text-decoration: underline; text-decoration-color: var(--amber); text-decoration-thickness: 2px; text-underline-offset: 3px; border-radius: 3px; }
+.caveat a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 
 .kept { white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 600; }
