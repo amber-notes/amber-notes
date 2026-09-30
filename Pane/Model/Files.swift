@@ -4,7 +4,8 @@ import ImageIO
 import UniformTypeIdentifiers
 
 /// A file kept in Pane (PDF, spreadsheet, image…). Notes embed it with
-/// `[name](pane-file:<id>)`; the bytes live in the app's container and in Storage.
+/// `[name](pane-file:<id>)`; the bytes live in the app's container and, sealed with the
+/// account's key, in Storage at `<user id>/<id>`.
 @Model
 final class Attachment {
     @Attribute(.unique) var id: UUID

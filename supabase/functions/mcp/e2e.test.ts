@@ -28,10 +28,10 @@ Deno.test({ name: "rejects missing and bad tokens", ignore: !enabled }, async ()
   assertEquals((await rpc("tools/list", {}, "pane_" + "0".repeat(64))).status, 401);
 });
 
-Deno.test({ name: "accepts the token as the last path segment", ignore: !enabled }, async () => {
+Deno.test({ name: "refuses the token in the address: it belongs in the Authorization header", ignore: !enabled }, async () => {
   const { status, body } = await rpc("tools/list", {}, null, "/" + token);
-  assertEquals(status, 200);
-  assert(body.result.tools.length > 10);
+  assertEquals(status, 401);
+  assertStringIncludes(body.error.message, "Tokens in the address aren't accepted");
 });
 
 Deno.test({ name: "initialize and list tools", ignore: !enabled }, async () => {

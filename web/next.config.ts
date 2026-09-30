@@ -36,7 +36,7 @@ const OLD_HOST = "amber-notes.vercel.app";
 const SITE = "https://ambernotes.app";
 const MOVED = ["/", "/help", "/download", "/changelog", "/connect"];
 
-// The consent page (/connect) gets its CSP, with a nonce, from middleware.ts.
+// The connect pages (/connect, /open/connect) get their CSP, with a nonce, from middleware.ts.
 const connectSecurity = security.filter((h) => h.key !== "Content-Security-Policy");
 
 const config: NextConfig = {
@@ -67,10 +67,17 @@ const config: NextConfig = {
         // The home page, download, privacy policy, terms and support pages may be indexed, and
         // robots.txt, the sitemap and llms.txt are for crawlers. Blog posts carry their own robots meta
         // (drafts say noindex). A new page for search is added here too.
-        source: "/((?!privacy|terms|support|help|download|changelog|blog|connect$|robots\\.txt$|sitemap\\.xml$|llms\\.txt$|llms-full\\.txt$).+)",
+        source: "/((?!privacy|terms|support|help|download|changelog|blog|connect$|open/connect$|\\.well-known/apple-app-site-association$|robots\\.txt$|sitemap\\.xml$|llms\\.txt$|llms-full\\.txt$).+)",
         headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }, ...security],
       },
       { source: "/connect", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }, { key: "Cache-Control", value: "no-store" }, ...connectSecurity] },
+      { source: "/open/connect", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }, { key: "Cache-Control", value: "no-store" }, ...connectSecurity] },
+      // Apple's servers fetch this for the app's universal links (https://ambernotes.app/open/…):
+      // JSON, straight from ambernotes.app, no redirect. The file is public/.well-known/.
+      {
+        source: "/.well-known/apple-app-site-association",
+        headers: [{ key: "Content-Type", value: "application/json" }, { key: "Cache-Control", value: "public, max-age=3600" }, { key: "X-Content-Type-Options", value: "nosniff" }],
+      },
       { source: "/", headers: security },
       { source: "/download", headers: security },
       { source: "/changelog", headers: security },

@@ -13,10 +13,11 @@ const stubs = `
   create table auth.users (id uuid primary key);
   create function auth.uid() returns uuid language sql stable as
     $$ select (nullif(current_setting('request.jwt.claims', true), '')::json->>'sub')::uuid $$;
-  create table public.notes (id uuid primary key, user_id uuid not null references auth.users (id), body text not null default '',
+  -- As 20261001090000_e2ee.sql leaves them: text is sealed (body_ct, head_ct), never readable.
+  create table public.notes (id uuid primary key, user_id uuid not null references auth.users (id), body_ct text, head_ct text not null default 'amb2.0000000000000000.AAAA',
     body_source text, body_client text);
   create table public.note_revisions (id bigint generated always as identity primary key, note_id uuid not null references public.notes (id),
-    user_id uuid not null, body text not null, version bigint not null, source text not null default 'app', client text);
+    user_id uuid not null, body_ct text, head_ct text, version bigint not null, source text not null default 'app', client text);
   create table public.note_shares (slug text primary key, note_id uuid not null references public.notes (id), user_id uuid not null,
     revoked_at timestamptz);
   create function public.pane_take(p_bucket text, p_cost double precision default 1) returns void language sql as $$ select $$;

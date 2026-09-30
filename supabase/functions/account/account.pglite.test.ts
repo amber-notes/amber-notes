@@ -6,7 +6,8 @@ import { assert, assertEquals, assertStringIncludes } from "jsr:@std/assert@1";
 import type { PGlite } from "npm:@electric-sql/pglite@0.2.17";
 import { strFromU8, unzipSync } from "npm:fflate@0.8.2";
 import { asUser, newUser, schemaDB, sqlFor } from "../mcp/pglite.ts";
-import { collect, safeName, zip } from "./export.ts";
+import { collect, zip } from "./export.ts";
+import * as sealed from "../mcp/sealed.ts";
 import { forget } from "./forget.ts";
 
 // What the auth server keeps in the database, beyond the stub pglite.ts makes.
@@ -24,38 +25,42 @@ const NOT_PER_ACCOUNT: Record<string, string> = {
   oauth_clients: "registered by AI apps, not people",
   oauth_rate: "hashed addresses, no account",
   oauth_tokens: "cascades from mcp_tokens",
+  note_share_pages: "a shared page's copy; cascades from note_shares and notes",
+  note_share_files: "a shared page's file copy; cascades from note_shares",
 };
-
-const b64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
-async function saltAndKey() {
-  const bytes = crypto.getRandomValues(new Uint8Array(16));
-  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
-  return { salt: b64(bytes), key: [...digest.slice(0, 8)].map((b) => b.toString(16).padStart(2, "0")).join("") };
-}
-const app = (pg: PGlite, me: string, sql: string, params: unknown[] = []) =>
-  asUser(pg, me, sql, params, { "request.headers": JSON.stringify({ "x-pane-device": "Mac", "x-amber-client": "lock-aware/1" }) });
 
 /** An account with a row in every table an account can have rows in. */
 async function seed(pg: PGlite, me: string) {
-  const folder = crypto.randomUUID(), sub = crypto.randomUUID(), note = crypto.randomUUID(), trashed = crypto.randomUUID(), locked = crypto.randomUUID();
-  const { salt, key } = await saltAndKey();
-  await app(pg, me, `insert into public.note_locks (salt, iterations, key_id, verifier, hint) values ($1, 600000, $2, 'v', 'Blue')`, [salt, key]);
-  await app(pg, me, `insert into public.folders (id, name) values ($1, 'Work')`, [folder]);
-  await app(pg, me, `insert into public.folders (id, name, parent_id) values ($1, 'Clients/2026', $2)`, [sub, folder]);
-  await app(pg, me, `insert into public.notes (id, body, folder_id) values ($1, 'Acme kickoff\n\nAgenda', $2)`, [note, sub]);
-  await asUser(pg, me, `update public.notes set body = 'Acme kickoff\n\nAgenda\n- budget' where id = $1`, [note], { "pane.source": "mcp", "pane.client": "Claude" });
-  await app(pg, me, `insert into public.notes (id, body, trashed_at) values ($1, 'Old list', now())`, [trashed]);
-  await app(pg, me, `insert into public.notes (id, body, locked_body) values ($1, 'Bank', $2)`, [locked, `amb2.${key}.${b64(new Uint8Array(48))}`]);
-  await app(pg, me, `insert into public.attachments (id, user_id, filename, content_type, size, storage_path) values (gen_random_uuid(), $1, 'plan.pdf', 'application/pdf', 1200, $2)`,
-    [me, `${me}/${crypto.randomUUID()}/plan.pdf`]);
-  await app(pg, me, `insert into public.profiles (user_id, display_name) values ($1, 'Sara Lind')`, [me]);
+  const a = await sealed.account(pg, me);
+  const app = sealed.app;
+  const lockKey = await sealed.notesPassword(pg, a);
+  await pg.query(`update public.note_locks set hint = 'Blue' where user_id = $1`, [me]);
+  const folder = await sealed.folder(pg, a, "Work");
+  const sub = await sealed.folder(pg, a, "Clients/2026", folder);
+  const note = await sealed.note(pg, a, "Acme kickoff\n\nAgenda", { folder: sub });
+  await sealed.edit(pg, a, note, "Acme kickoff\n\nAgenda\n- budget", { "pane.source": "mcp", "pane.client": "Claude" });
+  const trashed = await sealed.note(pg, a, "Old list");
+  await app(pg, me, `update public.notes set trashed_at = now() where id = $1`, [trashed]);
+  const locked = await sealed.lockedNote(pg, a, lockKey, "Bank");
+  await sealed.file(pg, a, "plan.pdf", "com.adobe.pdf", new TextEncoder().encode("%PDF"));
+  await sealed.app(pg, me, `insert into public.profiles (user_id, display_name) values ($1, 'Sara Lind')`, [me]);
   const tokenHash = [...crypto.getRandomValues(new Uint8Array(32))].map((b) => b.toString(16).padStart(2, "0")).join("");
   await pg.query(`insert into public.mcp_tokens (user_id, name, token_hash, can_write) values ($1, 'Claude', $2, true)`, [me, tokenHash]);
   const [{ id: grant }] = (await pg.query<{ id: string }>(`select id from public.mcp_tokens where user_id = $1`, [me])).rows;
   await pg.query(`insert into public.oauth_tokens (token_hash, grant_id, kind, resource, expires_at) values ($1, $2, 'access', 'r', now() + interval '1 hour')`, [crypto.randomUUID(), grant]);
-  const slug = crypto.randomUUID().replaceAll("-", "");
-  await pg.query(`insert into public.note_shares (slug, note_id, user_id) values ($1, $2, $3)`, [slug, note, me]);
+  const [{ share_note: shared }] = await sealed.app(pg, me, `select public.share_note($1, public.share_slug($1), false, repeat('ab', 32), $2)`,
+    [note, JSON.stringify({ title: "Acme kickoff", body: "Acme kickoff\n\nAgenda\n- budget", pages: [], files: [] })]);
+  const slug = shared.slug as string;
   await pg.query(`insert into public.share_reports (slug, reason, reporter) values ($1, 'spam', $2)`, [slug, "a".repeat(64)]);
+  const client = `amb_client_${crypto.randomUUID()}`;
+  await pg.query(`insert into public.oauth_clients (id, client_name, redirect_uris) values ($1, 'ChatGPT', '{https://chatgpt.com/cb}')`, [client]);
+  const [{ id: asked }] = (await pg.query<{ id: string }>(`insert into public.oauth_requests (client_id, redirect_uri, code_challenge, resource, claimed_by)
+    values ($1, 'https://chatgpt.com/cb', 'x', 'r', $2) returning id`, [client, me])).rows;
+  await pg.query(`insert into public.connect_asks (request_id, user_id, browser_key, started_from, expires_at, pickup_hash, match_commit) values ($1, $2, $3, 'Chrome on a Mac', now() + interval '10 minutes', repeat('0', 64), repeat('0', 64))`,
+    [asked, me, "B" + "A".repeat(86) + "="]);
+  await pg.query(`insert into public.account_notices (user_id, kind, what) values ($1, 'started_fresh', 'x')`, [me]);
+  await pg.query(`insert into public.account_key_resets (user_id, generation) values ($1, 1)`, [me]);
+  await pg.query(`insert into public.connect_blocks (user_id, blocked_until) values ($1, now() - interval '1 day')`, [me]);
   await pg.query(`insert into public.pane_setup (user_id, imported_at) values ($1, now())`, [me]);
   await pg.query(`insert into public.pane_activity (user_id, day, kind, n) values ($1, current_date, 'ai_edit', 3) on conflict do nothing`, [me]);
   await pg.query(`insert into public.pane_tip_activity (user_id, day, tip, event, n) values ($1, current_date, 'shareLink', 'shown', 1)`, [me]);
@@ -67,7 +72,7 @@ async function seed(pg: PGlite, me: string) {
   await pg.query(`insert into public.signup_allowlist (email) select lower(email) from auth.users where id = $1`, [me]);
   await pg.query(`insert into auth.sessions (user_id, user_agent, ip) values ($1, 'Amber Notes/1.0 iPhone', '203.0.113.9')`, [me]);
   await pg.query(`insert into auth.audit_log_entries (payload, ip_address) values (json_build_object('actor_id', $1::text, 'actor_username', 'sara@example.com'), '203.0.113.9')`, [me]);
-  return { folder, note, trashed, locked, slug, tokenHash };
+  return { folder, note, trashed, locked, slug, tokenHash, acct: a };
 }
 
 async function setUp() {
@@ -121,21 +126,14 @@ Deno.test("deleting an account leaves no row of it anywhere, and nothing of anyo
   assertEquals(await q(`select count(*)::int as n from public.share_reports`, []), 1, "B's report stays");
 });
 
-Deno.test("the export has every note as Markdown in its folder, and data.json has the rest, but no one else's and no secrets", async () => {
+Deno.test("the export has everything the server can read, no note text or names, no one else's and no secrets", async () => {
   const { pg, a, as } = await setUp();
   const e = await collect(sqlFor(pg), a, new Date("2026-09-30T12:00:00Z"));
   assertEquals(e.name, "amber-notes-export-2026-09-30.zip");
 
   const files = Object.fromEntries(Object.entries(unzipSync(zip(e))).map(([p, b]) => [p, strFromU8(b)]));
-  assertEquals(Object.keys(files).sort(), [
-    "README.txt",
-    "data.json",
-    "notes/Bank.md",
-    "notes/Recently Deleted/Old list.md",
-    "notes/Work/Clients 2026/Acme kickoff.md",
-  ]);
-  assertEquals(files["notes/Work/Clients 2026/Acme kickoff.md"], "Acme kickoff\n\nAgenda\n- budget");
-  assertStringIncludes(files["notes/Bank.md"], "This note is locked.");
+  assertEquals(Object.keys(files).sort(), ["README.txt", "data.json"]);
+  assertStringIncludes(files["README.txt"], "Export Your Notes");
 
   const data = JSON.parse(files["data.json"]);
   assertEquals(data.account.id, a);
@@ -143,34 +141,27 @@ Deno.test("the export has every note as Markdown in its folder, and data.json ha
   assertEquals(data.folders.length, 2);
   assertEquals(data.notes.length, 3);
   assertEquals(data.versions.length, 1, "the version the AI edit kept");
-  assertEquals(data.versions[0].body, "Acme kickoff\n\nAgenda");
-  assertEquals(data.files.map((f: { filename: string }) => f.filename), ["plan.pdf"]);
+  assertEquals(data.files.length, 1);
   assertEquals(data.ai_connections[0].name, "Claude");
   assertEquals(data.share_links[0].slug, as.slug);
+  assertEquals(data.share_links[0].title, "Acme kickoff", "a shared page's published copy is readable, so it's included");
   assertEquals(data.locked_notes.hint, "Blue");
   assertEquals(data.usage.ai_edits_per_day.length, 1);
   assertEquals(data.usage.devices.length, 1);
   assertEquals(data.sign_ins[0].ip, "203.0.113.9");
-  assert(data.notes.find((n: { id: string }) => n.id === as.locked).locked_body.startsWith("amb2."), "locked notes stay encrypted");
+  assert(data.notes.find((n: { id: string }) => n.id === as.locked).locked, "locked notes are marked");
 
   const all = JSON.stringify(files);
+  for (const secret of ["Clients/2026", "plan.pdf", "Old list", "Bank", "amb2."]) assertEquals(all.includes(secret), false, `no ${secret}`);
   assertEquals(all.includes(as.tokenHash), false, "no token hash");
   assertEquals(all.includes("storage_path"), false, "no internal storage paths");
   assertEquals(all.includes("spam"), false, "no reports by other people");
 });
 
-Deno.test("file names are safe on every system", () => {
-  assertEquals(safeName("a/b\\c:d*e?f\"g<h>i|j"), "a b c d e f g h i j");
-  assertEquals(safeName("..hidden"), "hidden");
-  assertEquals(safeName("   "), "Untitled");
-  assertEquals(safeName("x".repeat(200)).length, 80);
-});
-
 Deno.test("retention: Recently Deleted after 30 days, hashes, counts and logs after their time, fresh ones stay", async () => {
   const { pg, a, as } = await setUp();
-  const old = crypto.randomUUID();
-  await app(pg, a, `insert into public.notes (id, body) values ($1, 'Receipts\n\nv1')`, [old]);
-  await asUser(pg, a, `update public.notes set body = 'Receipts\n\nv2' where id = $1`, [old], { "pane.source": "mcp", "pane.client": "Claude" });
+  const old = await sealed.note(pg, as.acct, "Receipts\n\nv1");
+  await sealed.edit(pg, as.acct, old, "Receipts\n\nv2", { "pane.source": "mcp", "pane.client": "Claude" });
   await pg.query(`update public.notes set trashed_at = now() - interval '31 days' where id = $1`, [old]);
   await pg.query(`insert into public.note_shares (slug, note_id, user_id) values ($1, $2, $3)`, ["s".repeat(24), old, a]);
   await pg.query(`update public.share_reports set created_at = now() - interval '31 days'`);
@@ -182,14 +173,14 @@ Deno.test("retention: Recently Deleted after 30 days, hashes, counts and logs af
   await pg.query(`select public.pane_forget_hourly()`);
   await pg.query(`select public.pane_forget_daily()`);
 
-  const [gone] = (await pg.query<{ body: string; deleted_at: string | null }>(`select body, deleted_at from public.notes where id = $1`, [old])).rows;
-  assertEquals(gone.body, "");
+  const [gone] = (await pg.query<{ body_ct: string | null; head_ct: string | null; deleted_at: string | null }>(`select body_ct, head_ct, deleted_at from public.notes where id = $1`, [old])).rows;
+  assertEquals([gone.body_ct, gone.head_ct], [null, null]);
   assert(gone.deleted_at, "deleted for good");
   const n = async (sql: string, p: unknown[] = []) => (await pg.query<{ n: number }>(sql, p)).rows[0].n;
   assertEquals(await n(`select count(*)::int as n from public.note_revisions where note_id = $1`, [old]), 0);
   assertEquals(await n(`select count(*)::int as n from public.note_shares where note_id = $1 and revoked_at is null`, [old]), 0);
-  const [trashedYesterday] = (await pg.query<{ body: string }>(`select body from public.notes where id = $1`, [as.trashed])).rows;
-  assertEquals(trashedYesterday.body, "Old list", "a note deleted today is still recoverable");
+  const [trashedYesterday] = (await pg.query<{ body_ct: string | null }>(`select body_ct from public.notes where id = $1`, [as.trashed])).rows;
+  assert(trashedYesterday.body_ct, "a note deleted today is still recoverable");
 
   assertEquals(await n(`select count(*)::int as n from public.share_reports where reporter <> repeat('0', 64)`), 0, "reporter hashes blanked");
   assertEquals(await n(`select count(*)::int as n from public.share_reports`), 2, "open reports stay; the closed 13-month-old one goes");

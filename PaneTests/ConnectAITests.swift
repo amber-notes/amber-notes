@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import Testing
 @testable import Pane
@@ -10,9 +11,16 @@ import Testing
     }
 
     @Test func ignoresOtherLinks() {
+        let id = UUID()
         #expect(ConnectLink.requestID(from: URL(string: "ambernotes://connect?request=nope")!) == nil)
         #expect(ConnectLink.requestID(from: URL(string: "ambernotes://open?request=\(UUID().uuidString)")!) == nil)
         #expect(ConnectLink.requestID(from: URL(string: "https://connect?request=\(UUID().uuidString)")!) == nil)
+        // The site's universal link opens the same request.
+        #expect(ConnectLink.requestID(from: URL(string: "https://ambernotes.app/open/connect?request=\(id.uuidString.lowercased())")!) == id)
+        #expect(ConnectLink.requestID(from: URL(string: "https://www.ambernotes.app/open/connect?request=\(id.uuidString)")!) == id)
+        #expect(ConnectLink.requestID(from: URL(string: "https://ambernotes.app/connect?request=\(id.uuidString)")!) == nil, "the web page itself isn't the app's link")
+        #expect(ConnectLink.requestID(from: URL(string: "https://evil.example/open/connect?request=\(id.uuidString)")!) == nil)
+        #expect(ConnectLink.requestID(from: URL(string: "http://ambernotes.app/open/connect?request=\(id.uuidString)")!) == nil)
     }
 
     @Test func knowsTheBigAIsAndWarnsAboutTheRest() {
@@ -88,6 +96,255 @@ import Testing
         #expect(ConnectTrust.verifiedAI(host: "evilchatgpt.com", loopback: false) == nil, "a look-alike domain isn't chatgpt.com")
         #expect(ConnectTrust.verifiedAI(host: "chatgpt.com.example.net", loopback: false) == nil)
         #expect(ConnectTrust.verifiedAI(host: "localhost", loopback: true) == nil)
+    }
+}
+
+/// A request asked from a browser elsewhere: no mark or name, number matching, and the address the
+/// code goes to built here exactly as the server builds it.
+@Suite struct AskedRequestTests {
+    private func asked(_ uri: String, claimed: String? = "Claude") -> ConnectRequest {
+        ConnectRequest(id: UUID(), client_name: URL(string: uri)!.host()!, redirect_host: URL(string: uri)!.host()!, redirect_uri: uri,
+                       claimed_name: claimed, loopback: false, wants_write: true, asked: true, started_from: "Chrome on a Mac",
+                       state: "s1", iss: "https://mcp.ambernotes.app")
+    }
+
+    @Test func anAskedRequestNeverShowsAnAIsMarkOrName() {
+        let r = asked("https://claude.ai/api/mcp/auth_callback")
+        #expect(r.verifiedAI == nil, "even Claude's own callback: whoever asked is the page that waits")
+        #expect(r.who == "claude.ai")
+        #expect(r.claimedName == "Claude", "shown only as what it calls itself")
+        var here = r
+        here.asked = false
+        #expect(here.verifiedAI == "Claude", "the same request by link on this device keeps its mark")
+    }
+
+    @Test func theRedirectIsBuiltAsTheServerBuildsIt() {
+        #expect(asked("https://claude.ai/api/mcp/auth_callback").handoffRedirect == "https://claude.ai/api/mcp/auth_callback?state=s1&iss=https%3A%2F%2Fmcp.ambernotes.app")
+        // URLSearchParams: existing parameters are rewritten form-encoded, `set` replaces.
+        #expect(ConnectAPI.clientRedirect("https://a.example/cb?x=1&state=old&y=a+b%21&state=again", state: "n w", iss: "https://i.example/")
+                == "https://a.example/cb?x=1&state=n+w&y=a+b%21&iss=https%3A%2F%2Fi.example%2F")
+        #expect(ConnectAPI.clientRedirect("http://127.0.0.1:4000/cb", state: nil, iss: "https://mcp.ambernotes.app")
+                == "http://127.0.0.1:4000/cb?iss=https%3A%2F%2Fmcp.ambernotes.app", "no state: none added")
+        #expect(ConnectAPI.clientRedirect("https://a.example/cb#frag", state: "é~*", iss: "x") == "https://a.example/cb?state=%C3%A9%7E*&iss=x#frag")
+        var old = asked("https://claude.ai/api/mcp/auth_callback")
+        old.iss = nil
+        #expect(old.handoffRedirect == nil, "a server that doesn't say: nothing to seal")
+    }
+
+    @Test func theTitleNeverSaysWhoItIs() {
+        #expect(ConsentSheet.title(asked("https://claude.ai/api/mcp/auth_callback")) == "An app that says it's Claude wants to use your notes")
+        #expect(ConsentSheet.title(asked("https://claude.ai/api/mcp/auth_callback", claimed: nil)) == "An app wants to use your notes")
+        var here = asked("https://claude.ai/api/mcp/auth_callback")
+        here.asked = false
+        #expect(ConsentSheet.title(here) == "Allow Claude to use your notes?")
+    }
+
+    @Test func theKeypadTakesTwoDigits() {
+        var typed = ""
+        for key in ["4", "x", "12", "2", "9"] { typed = ConnectMatch.typing(typed, key) }
+        #expect(typed == "42", "a third digit, and anything but a digit, is ignored")
+        typed = ConnectMatch.typing(typed, "delete")
+        #expect(typed == "4")
+        #expect(ConnectMatch.typing(ConnectMatch.typing("", "delete"), "0") == "0")
+    }
+
+    @MainActor @Test func aDeviceWritesOneNoncePerRequestAndCommit() {
+        let a = UUID(), b = UUID()
+        let c1 = String(repeating: "1", count: 64), c2 = String(repeating: "2", count: 64)
+        let first = ConnectMatch.deviceNonce(for: a, commit: c1)
+        #expect(first.count == 16 && ConnectMatch.deviceNonce(for: a, commit: c1) == first)
+        #expect(ConnectMatch.deviceNonce(for: b, commit: c1) != first)
+        #expect(ConnectMatch.deviceNonce(for: a, commit: c2) != first, "a new commit on the same request never reuses the nonce")
+    }
+}
+
+/// Number matching against a database writer: the key and commit this device read first are the
+/// only ones it ever shows a number for or seals the code to. Anything that changes them after
+/// that declines the request.
+@MainActor @Suite struct ConnectMatchSnapshotTests {
+    let id = UUID()
+    let redirect = "https://chatgpt.com/connector_platform_oauth_redirect"
+
+    /// A page: its key and nonce, and the commit it made.
+    struct Page {
+        let secret = P256.KeyAgreement.PrivateKey()
+        let nonce = E2EE.randomBytes(16)
+        var key: Data { secret.publicKey.x963Representation }
+        var commit: String { E2EE.matchCommit(browserKey: key, pageNonce: nonce) }
+        func asked() -> ConnectAskMatch { ConnectAskMatch(browser_key: key.base64EncodedString(), match_commit: commit) }
+        func revealed(_ nd: Data) -> ConnectAskMatch {
+            ConnectAskMatch(browser_key: key.base64EncodedString(), match_commit: commit, device_nonce: E2EE.hex(nd), page_nonce: E2EE.hex(nonce))
+        }
+    }
+
+    /// What the ask says on each read, in order; the last one again after that. Records the
+    /// nonce this device writes, and every body sent to /connect/decide.
+    final class Ask: @unchecked Sendable {
+        var reads: [ConnectAskMatch?]
+        var written: Data?
+        var sent: [[String: Any]] = []
+        var codesMade = 0
+        init(_ reads: [ConnectAskMatch?]) { self.reads = reads }
+        func read() -> ConnectAskMatch? { reads.count > 1 ? reads.removeFirst() : reads.first ?? nil }
+        var send: ConnectAPI.Send {
+            { _, _, body in
+                self.sent.append(body ?? [:])
+                return try JSONSerialization.data(withJSONObject: ["handoff": true])
+            }
+        }
+    }
+
+    func request() -> ConnectRequest {
+        ConnectRequest(id: id, client_name: "chatgpt.com", redirect_host: "chatgpt.com", redirect_uri: redirect, loopback: false,
+                       wants_write: true, asked: true, state: "s1", iss: "https://mcp.ambernotes.app")
+    }
+
+    func follow(_ ask: Ask) async throws -> ConnectMatch.Outcome {
+        try await ConnectMatch.follow(requestID: id, read: { ask.read() }, write: { ask.written = $0 }, poll: .milliseconds(1))
+    }
+
+    func answer(_ ask: Ask, allow: Bool, wrongNumber: Bool = false, match: ConnectMatch.Match?) async throws -> ConnectAPI.Answered {
+        let secret = "amb_code_" + E2EE.randomHex()
+        return try await ConnectAPI.answer(request(), allow: allow, write: true, wrongNumber: wrongNumber, match: match, read: { ask.read() },
+                                           code: { ask.codesMade += 1; return (secret, E2EE.sha256Hex(secret), "amb2.0123456789abcdef.AAAA") },
+                                           send: ask.send)
+    }
+
+    /// The ask on its first read, with this device's nonce then written on it.
+    func shown(_ page: Page) async throws -> (ask: Ask, match: ConnectMatch.Match) {
+        let nd = ConnectMatch.deviceNonce(for: id, commit: page.commit)
+        let ask = Ask([page.asked(), page.asked(), page.revealed(nd)])
+        guard case .number(let m) = try await follow(ask) else { throw ConnectAPI.Failure(message: "no number") }
+        return (ask, m)
+    }
+
+    @Test func anUnchangedAskShowsThePagesNumberAndSealsToItsKey() async throws {
+        let page = Page()
+        let (ask, m) = try await shown(page)
+        let nd = try #require(ask.written)
+        #expect(m.number == E2EE.matchNumber(browserKey: page.key, pageNonce: page.nonce, deviceNonce: nd, requestID: id))
+        #expect(m.key == page.key)
+        #expect(try await answer(ask, allow: true, match: m) == .answered(.handedOff))
+        let sealed = try #require(ask.sent.first?["handoff"] as? String)
+        #expect(try E2EE.openHandoff(sealed, browserPrivate: page.secret, requestID: id).contains("\"code\""), "the page opens it")
+    }
+
+    @Test func keyCommitAndRevealSwappedTogetherAfterTheNonceIsDeclinedWithNoNumber() async throws {
+        let page = Page(), writer = Page()
+        let nd = ConnectMatch.deviceNonce(for: id, commit: page.commit)
+        // Once this device's nonce is known, a writer swaps in its own key, a commit to it and a
+        // nonce ground against Nd: on its own that row opens and gives a number.
+        let swapped = writer.revealed(nd)
+        guard case .number = ConnectMatch.check(swapped, deviceNonce: nd, requestID: id) else {
+            Issue.record("the swapped row is self-consistent"); return
+        }
+        let ask = Ask([page.asked(), swapped])
+        #expect(try await follow(ask) == .changed, "never a number for a row other than the first read")
+        #expect(ask.written == nd, "the nonce went on against the first read's commit")
+        // The sheet then declines: not as a wrong number, and nothing made or sealed.
+        #expect(try await answer(ask, allow: false, match: nil) == .answered(.handedOff))
+        let body = try #require(ask.sent.first)
+        #expect(body["allow"] as? Bool == false && body["wrong_number"] == nil && body["handoff"] == nil && body["code_hash"] == nil)
+        #expect(ask.codesMade == 0)
+    }
+
+    @Test func theKeyAloneChangedIsDeclined() async throws {
+        let page = Page(), writer = Page()
+        let nd = ConnectMatch.deviceNonce(for: id, commit: page.commit)
+        var swapped = page.revealed(nd)
+        swapped = ConnectAskMatch(browser_key: writer.key.base64EncodedString(), match_commit: swapped.match_commit,
+                                  device_nonce: swapped.device_nonce, page_nonce: swapped.page_nonce)
+        #expect(try await follow(Ask([page.asked(), swapped])) == .changed)
+        // Also before this device's nonce is on it.
+        let early = ConnectAskMatch(browser_key: writer.key.base64EncodedString(), match_commit: page.commit)
+        #expect(try await follow(Ask([page.asked(), early])) == .changed)
+    }
+
+    @Test func anAskChangedWhileItsNumberShowsIsDeclinedAndNothingIsSealed() async throws {
+        let page = Page(), writer = Page()
+        let (ask, m) = try await shown(page)
+        let nd = try #require(ask.written)
+        // Allowing with the page's number: the ask now carries another key, commit and reveal.
+        ask.reads = [writer.revealed(nd)]
+        #expect(try await answer(ask, allow: true, match: m) == .declinedChanged)
+        #expect(ask.sent.count == 1 && ask.codesMade == 0, "no code is made")
+        let body = try #require(ask.sent.first)
+        #expect(body["allow"] as? Bool == false && body["handoff"] == nil && body["code_hash"] == nil && body["wrong_number"] == nil)
+
+        // A wrong number typed meanwhile: declined as changed, not as a wrong number.
+        ask.sent = []
+        #expect(try await answer(ask, allow: false, wrongNumber: true, match: m) == .declinedChanged)
+        #expect(ask.sent.first?["wrong_number"] == nil && ask.sent.first?["allow"] as? Bool == false)
+
+        // The key alone changed: the same.
+        ask.sent = []
+        let rekeyed = ConnectAskMatch(browser_key: writer.key.base64EncodedString(), match_commit: m.row.match_commit,
+                                      device_nonce: m.row.device_nonce, page_nonce: m.row.page_nonce)
+        ask.reads = [rekeyed]
+        #expect(ConnectMatch.recheck(m, now: rekeyed) == .changed)
+        #expect(try await answer(ask, allow: true, match: m) == .declinedChanged)
+        #expect(ask.sent.first?["handoff"] == nil)
+
+        // Watching the number: returns as soon as the ask changes.
+        ask.reads = [m.row, m.row, rekeyed]
+        #expect(try await ConnectMatch.watch(m, read: { ask.read() }, poll: .milliseconds(1)) == .changed)
+        ask.reads = [m.row, nil]
+        #expect(try await ConnectMatch.watch(m, read: { ask.read() }, poll: .milliseconds(1)) == .expired)
+    }
+
+    @Test func aWrongNumberOnAnUnchangedAskIsAWrongNumber() async throws {
+        let (ask, m) = try await shown(Page())
+        #expect(try await answer(ask, allow: false, wrongNumber: true, match: m) == .answered(.handedOff))
+        #expect(ask.sent.first?["wrong_number"] as? Bool == true && ask.codesMade == 0)
+    }
+}
+
+/// One sheet at a time: what arrives while it's showing waits its turn.
+@MainActor @Suite struct ConnectQueueTests {
+    private func ask(_ id: UUID = UUID()) -> ConnectAsk {
+        ConnectAsk(request_id: id, browser_key: "", started_from: "Chrome on a Mac", created_at: .now, expires_at: .now.addingTimeInterval(600))
+    }
+
+    private func link(_ id: UUID) -> URL { URL(string: "ambernotes://connect?request=\(id.uuidString.lowercased())")! }
+
+    private func quietCenter() -> ConnectCenter {
+        let c = ConnectCenter()
+        #if os(macOS)
+        c.activate = {}
+        #endif
+        return c
+    }
+
+    @Test func aLinkArrivingWhileASheetShowsWaitsItsTurn() {
+        let center = quietCenter()
+        let first = UUID(), second = UUID()
+        center.receive(link(first))
+        #expect(center.pending == first)
+        center.receive(link(second))
+        #expect(center.pending == first, "the sheet showing isn't replaced")
+        #expect(center.queue == [second])
+        center.receive(link(first))
+        #expect(center.pending == first && center.queue == [second], "the same link again changes nothing")
+        center.sheetClosed()
+        center.showNext()
+        #expect(center.pending == second && center.queue.isEmpty)
+    }
+
+    @Test func aLinkDoesntReplaceAnAskAndAnAskDoesntReplaceALink() {
+        let center = quietCenter()
+        let a = ask(), l = UUID(), b = ask()
+        center.offer(a)
+        #expect(center.pending == a.id)
+        center.receive(link(l))
+        #expect(center.pending == a.id && center.queue == [l])
+        center.offer(b)
+        #expect(center.pending == a.id && center.queue == [l, b.id])
+        center.sheetClosed()
+        center.showNext()
+        #expect(center.pending == l)
+        center.sheetClosed()
+        center.showNext()
+        #expect(center.pending == b.id)
     }
 }
 

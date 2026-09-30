@@ -61,3 +61,36 @@ describe("the MCP proxy", () => {
     expect(await proxied("/connect%2f..%2fadmin")).toBeNull();
   });
 });
+
+describe("the connect pages' CSP", () => {
+  const csp = async (path: string) =>
+    (await middleware(new NextRequest(`https://ambernotes.app${path}`, { headers: { host: "ambernotes.app" } }))).headers.get("content-security-policy") ?? "";
+
+  it("lets /connect call the Supabase project", async () => {
+    expect(await csp(`/connect?request=5a0f6c1e-2b1d-4c36-9e0a-6b6f0c1a2b3c`)).toContain(`connect-src 'self' ${SUPABASE};`);
+  });
+
+  it("keeps /open/connect to this site", async () => {
+    const policy = await csp(`/open/connect?request=5a0f6c1e-2b1d-4c36-9e0a-6b6f0c1a2b3c`);
+    expect(policy).toContain("connect-src 'self';");
+    expect(policy).not.toContain(SUPABASE);
+  });
+});
+
+describe("the connect pages' referrer", () => {
+  const page = (path: string) => middleware(new NextRequest(`https://ambernotes.app${path}`, { headers: { host: "ambernotes.app" } }));
+
+  it("sends no referrer from /connect or /open/connect", async () => {
+    for (const path of ["/connect?request=5a0f6c1e-2b1d-4c36-9e0a-6b6f0c1a2b3c", "/open/connect?request=5a0f6c1e-2b1d-4c36-9e0a-6b6f0c1a2b3c"]) {
+      expect((await page(path)).headers.get("referrer-policy"), path).toBe("no-referrer");
+    }
+  });
+
+  it("says so in next.config.ts too, for responses middleware doesn't touch", async () => {
+    const rules = await nextConfig.headers!();
+    for (const source of ["/connect", "/open/connect"]) {
+      const rule = rules.find((r) => r.source === source);
+      expect(rule?.headers.find((h) => h.key === "Referrer-Policy")?.value, source).toBe("no-referrer");
+    }
+  });
+});

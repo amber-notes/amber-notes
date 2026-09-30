@@ -29,6 +29,8 @@ struct PaneApp: App {
         let context = container.mainContext
         backend.willSignIn = { user in AccountLibrary.adopt(user, context: context) }
         _backend = State(initialValue: backend)
+        // Before sync: it hooks start fresh into this instance.
+        AccountCrypto.shared = AccountCrypto(store: inMemory ? MemoryAccountKeyStore() : KeychainAccountKeyStore())
         let sync = SyncEngine(backend: backend, context: container.mainContext)
         _sync = State(initialValue: sync)
         // With sync on, the library is seeded after the first pull so devices don't duplicate it.
@@ -300,10 +302,17 @@ struct AppGate: View {
     @State private var setup = SetupStore()
     /// "Enjoying Amber Notes?", once, after a week of use.
     @State private var shareAsk = ShareAskStore()
+    /// Asks to approve an AI connection from a browser, while signed in with the key here.
+    @State private var connectAsks: ConnectAsks?
+    /// "Connected ChatGPT", "Your notes were deleted…": said once on each device.
+    @State private var notices: AccountNotices?
+    @State private var noticeProblem: String?
     /// Captures: `-captureConsent ChatGPT` shows the Allow sheet over the notes.
     @State private var consent = CaptureScreen.consentRequest
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var phase
+    /// The account's key: the gate before the notes, while this device doesn't have it.
+    private var crypto: AccountCrypto { AccountCrypto.shared }
 
     var body: some View {
         Group {
@@ -346,6 +355,14 @@ struct AppGate: View {
                     .toolbar(removing: .title)
                     #endif
                     .transition(.opacity)
+            case .signedIn where (crypto.phase != .ready && crypto.phase != .off) || crypto.needsWelcome:
+                // The notes stay closed until this device has the account's key; the first time
+                // it does, one screen says what that means.
+                KeyGateView(crypto: crypto, backend: backend)
+                    #if os(macOS)
+                    .toolbar(removing: .title)
+                    #endif
+                    .transition(.opacity)
             case .disabled, .signedIn:
                 RootView()
                     .environment(backend)
@@ -356,6 +373,7 @@ struct AppGate: View {
                         try? await Task.sleep(for: .seconds(1.2))
                         shareAsk.showIfForced()
                     }
+                    .modifier(NoticeAlerts(notices: notices, crypto: crypto, problem: $noticeProblem))
                     .transition(.opacity)
             }
         }
@@ -372,28 +390,30 @@ struct AppGate: View {
                 setup.attach(account: nil, service: nil)
                 shareAsk.attach(account: nil, service: nil)
                 if backend.state == .disabled { NoteVault.shared.attach(account: nil, remote: nil) } else { NoteVault.shared.lockNow() }
+                AccountCrypto.shared.signedOut()
                 await sync.stop()
+                await connectAsks?.stop()
+                connectAsks = nil
+                await notices?.stop()
+                notices = nil
                 return
             }
             setup.attach(account: backend.userID, service: SupabaseSetup(client: client))
             shareAsk.attach(account: backend.userID, service: SupabaseShareAsk(client: client))
             NoteVault.shared.attach(account: backend.userID, remote: SupabaseLockRemote(client: client))
             await NoteVault.shared.refresh()
-            await sync.start()
-            // Seed only when the server really has nothing, never after a failed sync. A real
-            // account starts with an empty Notes folder: the setup card is its welcome.
-            if sync.hasSynced {
-                Seed.ensureLibrary(context, demo: false, welcome: false)
-                sync.schedule()
-            }
-            await setup.refresh(force: true)
-            // Tips wait for this: never a tip for something this account has used anywhere.
-            await FeatureUse.refresh()
-            await shareAsk.refresh()
-            await InstallID.report(client)
+            await AccountCrypto.shared.attach(account: backend.userID, server: SupabaseAccountKeys(client: client))
+            // Without the key the gate asks for it; the library starts when it's open (below).
+            guard AccountCrypto.shared.allowsSync else { return }
+            await openLibrary(client)
+        }
+        .onChange(of: crypto.phase) { old, new in
+            guard new == .ready, old != .ready, case .signedIn = backend.state, let client = backend.client else { return }
+            Task { await openLibrary(client) }
         }
         // Each sync may have brought an AI's edit or a new connection: the card looks again.
         .onChange(of: sync.status) { _, _ in Task { await setup.refresh() } }
+
         .onReceive(NotificationCenter.default.publisher(for: .paneNotesBrought)) { _ in
             Task { await setup.mark("imported"); await PaneTips.imported.donate() }
         }
@@ -431,6 +451,12 @@ struct AppGate: View {
                 if shareAsk.decided != true { Task { await shareAsk.refresh() } }
                 askToShareSoon()
                 Task { await NoteVault.shared.refresh() }
+                // No push: a browser's ask that came while the app was away is picked up here.
+                if let connectAsks { Task { await connectAsks.refresh() } }
+                if let notices { Task { await notices.refresh() } }
+                // The account's key never changes; if another device started fresh, this one
+                // finds out here and gets the new key.
+                Task { await AccountCrypto.shared.recheck() }
                 context.drainInbox()
                 sync.schedule()
             } else {
@@ -450,6 +476,33 @@ struct AppGate: View {
         #endif
         .onReceive(NotificationCenter.default.publisher(for: .paneNoteClosed)) { _ in askToShareSoon() }
         .onAppear { context.drainInbox() }
+    }
+
+    /// The account's key is open here (or it isn't encrypted): sync, then everything that reads the library.
+    private func openLibrary(_ client: SupabaseClient) async {
+        // A browser can ask this device to approve an AI connection once it has the key.
+        if connectAsks == nil, let user = backend.userID {
+            let asks = ConnectAsks(client: client, user: user)
+            connectAsks = asks
+            Task { await asks.start() }
+        }
+        if notices == nil, let user = backend.userID {
+            let n = AccountNotices(client: client, user: user)
+            notices = n
+            Task { await n.start() }
+        }
+        await sync.start()
+        // Seed only when the server really has nothing, never after a failed sync. A real
+        // account starts with an empty Notes folder: the setup card is its welcome.
+        if sync.hasSynced {
+            Seed.ensureLibrary(context, demo: false, welcome: false)
+            sync.schedule()
+        }
+        await setup.refresh(force: true)
+        // Tips wait for this: never a tip for something this account has used anywhere.
+        await FeatureUse.refresh()
+        await shareAsk.refresh()
+        await InstallID.report(client)
     }
 
     /// A quiet moment: once things have settled, the share ask may come (see `ShareAsk`).
@@ -591,5 +644,43 @@ struct CaptureScreen: View {
         default:
             SignInView(backend: backend)
         }
+    }
+}
+
+/// The account's notices and "your recovery key changed", each a plain alert, one at a time.
+private struct NoticeAlerts: ViewModifier {
+    let notices: AccountNotices?
+    let crypto: AccountCrypto
+    @Binding var problem: String?
+
+    func body(content: Content) -> some View {
+        let notice = notices?.current
+        content
+            .alert(notice?.text().title ?? "", isPresented: Binding(get: { notice != nil }, set: { if !$0, notices?.current == notice { notices?.dismiss() } }),
+                   presenting: notice) { n in
+                if n.kind == .aiConnected, n.grant_id != nil {
+                    Button("Disconnect", role: .destructive) {
+                        Task {
+                            do { try await notices?.disconnect(n) } catch { problem = "Couldn't disconnect it. Try again in Settings \u{203A} Connect an AI." }
+                        }
+                    }
+                    .accessibilityIdentifier("notice.disconnect")
+                }
+                Button("OK", role: .cancel) { notices?.dismiss() }
+                    .accessibilityIdentifier("notice.ok")
+            } message: { n in
+                Text(n.text().message)
+            }
+            .alert(PrivacyCopy.recoveryChangedTitle, isPresented: Binding(get: { notice == nil && crypto.recoveryKeyChangeNeedsSaying },
+                                                                         set: { if !$0 { crypto.recoveryKeyChangeShown() } })) {
+                Button("OK", role: .cancel) { crypto.recoveryKeyChangeShown() }
+            } message: {
+                Text(PrivacyCopy.recoveryChangedAlert)
+            }
+            .alert("Couldn't disconnect", isPresented: Binding(get: { problem != nil && notice == nil }, set: { if !$0 { problem = nil } })) {
+                Button("OK", role: .cancel) { problem = nil }
+            } message: {
+                Text(problem ?? "")
+            }
     }
 }

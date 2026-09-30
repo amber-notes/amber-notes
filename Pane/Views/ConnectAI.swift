@@ -1,3 +1,4 @@
+import LocalAuthentication
 import Observation
 import Supabase
 import SwiftUI
@@ -10,21 +11,30 @@ import UIKit
 // Connecting an AI to Amber Notes.
 //
 // ChatGPT and Claude sign in with OAuth: they send the person's browser to the MCP server's
-// /authorize, which opens ambernotes.app/connect?request=<id>. That page hands over to
-// ambernotes://connect?request=<id> (or lets the person answer on the web). The app (already
-// signed in) shows who's asking, the person allows read-only or read and edit, and the app sends
-// the browser on to the AI with the result. Claude Code and Codex use an access token in a
-// request header instead, created here and never shown in a link.
+// /authorize, which opens ambernotes.app/connect?request=<id>. That page hands over to the app,
+// by https://ambernotes.app/open/connect?request=<id> or ambernotes://connect?request=<id>. The
+// app (already signed in) shows who's asking, the person allows read-only or read and edit with
+// Face ID or Touch ID, and the app sends the browser on to the AI with the result.
+//
+// The notes are end-to-end encrypted, so approving hands the AI a copy of the account's key: the
+// app makes the authorization code itself and sends the server only its hash and the key wrapped
+// under it. The server's answer is the AI's return address without a code; the app adds it.
+// Claude Code and Codex get a pane_ token made here the same way, used only in a request header.
 
 // MARK: Pure pieces (tested)
 
 enum ConnectLink {
     static let scheme = "ambernotes"
+    /// The site's universal link for the same thing: https://ambernotes.app/open/connect?request=<uuid>.
+    static let webHosts: Set<String> = ["ambernotes.app", "www.ambernotes.app"]
+    static let webPath = "/open/connect"
 
-    /// The request id in ambernotes://connect?request=<uuid>, if this is such a link.
+    /// The request id in ambernotes://connect?request=<uuid> or its universal link, if this is one.
     static func requestID(from url: URL) -> UUID? {
-        guard url.scheme?.lowercased() == scheme, url.host?.lowercased() == "connect",
-              let comps = URLComponents(url: url, resolvingAgainstBaseURL: false),
+        let scheme = url.scheme?.lowercased(), host = url.host?.lowercased() ?? ""
+        let custom = scheme == Self.scheme && host == "connect"
+        let web = scheme == "https" && webHosts.contains(host) && url.path == webPath
+        guard custom || web, let comps = URLComponents(url: url, resolvingAgainstBaseURL: false),
               let raw = comps.queryItems?.first(where: { $0.name == "request" })?.value else { return nil }
         return UUID(uuidString: raw)
     }
@@ -99,20 +109,219 @@ struct ConnectRequest: Decodable, Identifiable, Equatable {
     let id: UUID
     let client_name: String
     let redirect_host: String
-    /// The exact return address (servers from 2026-09-30 on); decides whether an AI's mark shows.
+    /// The exact return address. It decides whether an AI's mark shows, and goes back to the
+    /// server unchanged with the answer, so what you approved is where the code goes.
     var redirect_uri: String? = nil
     /// What an unverified app calls itself, made plain ASCII by the server; never a title.
     var claimed_name: String? = nil
     let loopback: Bool
     let wants_write: Bool
+    /// Asked from a browser (anywhere) that waits for this account's devices to approve: the code
+    /// goes to that page, sealed to its key, and this device opens nothing.
+    var asked: Bool? = nil
+    var started_at: Date? = nil
+    /// What the page says it is, e.g. "Chrome on a Mac".
+    var started_from: String? = nil
+    /// The client's `state` and the issuer (`iss`) the server adds to the return address: a device
+    /// that hands the code to a browser builds that address itself and seals it with the code.
+    var state: String? = nil
+    var iss: String? = nil
 
-    /// The AI this request provably comes from, if any.
-    var verifiedAI: String? { ConnectTrust.verifiedAI(redirectURI: redirect_uri) }
+    var isAsked: Bool { asked == true }
+
+    /// "Requested 2 minutes ago from Chrome on a Mac", for a request asked from a browser.
+    func requestedLine(now: Date = .now) -> String? {
+        guard isAsked else { return nil }
+        let from = started_from.flatMap { $0.isEmpty ? nil : $0 } ?? "a web browser"
+        guard let started_at else { return "Requested from \(from)" }
+        let when = now.timeIntervalSince(started_at) < 60 ? "just now"
+            : started_at.formatted(.relative(presentation: .numeric, unitsStyle: .wide))
+        return "Requested \(when) from \(from)"
+    }
+
+    /// The AI this request provably comes from, if any. Never for a request asked from a
+    /// browser: anyone can start one with ChatGPT's return address, and the page that waits for
+    /// the answer is whoever asked, so only the number the page shows ties it to the person.
+    var verifiedAI: String? { isAsked ? nil : ConnectTrust.verifiedAI(redirectURI: redirect_uri) }
     /// Who's asking, as the sheet names it: the verified AI, or else where access goes.
     var who: String { verifiedAI ?? ConnectTrust.destination(host: redirect_host, loopback: loopback) }
     /// The name an unverified app gave itself, shown only as a secondary claim, and only as the
     /// server's plain-ASCII version of it.
     var claimedName: String? { verifiedAI == nil ? claimed_name.flatMap { $0.isEmpty ? nil : $0 } : nil }
+
+    /// Where the browser that asked goes with the code: the return address with `state` and
+    /// `iss`, exactly as the server builds it. Nil when the server didn't say (too old).
+    var handoffRedirect: String? {
+        guard let redirect_uri, let iss else { return nil }
+        return ConnectAPI.clientRedirect(redirect_uri, state: state, iss: iss)
+    }
+}
+
+/// Number matching for a request asked from a browser, commit then reveal (`E2EE.matchCommit`,
+/// `E2EE.matchNumber`). The page committed to its key and a nonce when it asked; this device writes
+/// its own nonce (once), the page then reveals its nonce, and this device checks the reveal opens
+/// the commit before it shows anything. The page shows two digits made from its key, both nonces
+/// and the request; the person types what the page shows. A key swapped on the way (by anyone who
+/// can write the ask) was committed before this device's nonce existed, so it can't be ground to
+/// give the same digits.
+///
+/// The key and commit are the ones this device read first (`Snapshot`): its nonce is written
+/// against them, and every later read, the answer and the sealed code must carry the same pair.
+/// Whoever can write the ask could otherwise swap key, commit and revealed nonce together once
+/// this device's nonce is known (grinding a nonce until the digits match), and the ask changing
+/// under this device is declined, never shown.
+enum ConnectMatch {
+    enum Check: Equatable {
+        /// This device's nonce isn't on the ask yet, or the page hasn't revealed its nonce.
+        case waiting
+        /// The ask carries another device's nonce: that device answers it.
+        case otherDevice
+        /// The page's reveal doesn't open its commit, or the ask is malformed. Never shows a number.
+        case broken
+        /// The ask's key or commit isn't what this device read first. Never shows a number.
+        case changed
+        /// The two digits the page shows, if it's the page that committed.
+        case number(String)
+    }
+
+    /// The page's key and commit as this device first read them.
+    struct Snapshot: Equatable, Sendable {
+        let key: Data
+        let commit: String
+
+        /// Nil when the ask is malformed.
+        init?(_ row: ConnectAskMatch) {
+            guard let key = row.browserKey, key.count == 65, row.match_commit.count == 64 else { return nil }
+            self.key = key
+            commit = row.match_commit
+        }
+
+        /// The ask still carries this key and this commit.
+        func holds(_ row: ConnectAskMatch) -> Bool { row.browserKey == key && row.match_commit == commit }
+    }
+
+    /// A number shown: what it was made from. The number and the sealed code use only the
+    /// snapshot's key.
+    struct Match: Equatable, Sendable {
+        let snapshot: Snapshot
+        /// The ask as it was when the number was made; the answer requires it unchanged.
+        let row: ConnectAskMatch
+        let number: String
+        var key: Data { snapshot.key }
+    }
+
+    /// How following an ask ended.
+    enum Outcome: Equatable {
+        case number(Match)
+        case otherDevice
+        case broken
+        case changed
+        /// The ask is gone (answered or expired).
+        case expired
+    }
+
+    /// What the ask says now, checked against the nonce this device wrote.
+    static func check(_ row: ConnectAskMatch, deviceNonce: Data, requestID: UUID) -> Check {
+        guard let snapshot = Snapshot(row) else { return .broken }
+        return check(row, against: snapshot, deviceNonce: deviceNonce, requestID: requestID)
+    }
+
+    /// What the ask says now, against the key and commit this device read first.
+    static func check(_ row: ConnectAskMatch, against snapshot: Snapshot, deviceNonce: Data, requestID: UUID) -> Check {
+        guard snapshot.holds(row) else { return .changed }
+        guard let written = row.device_nonce else { return .waiting }
+        guard written == E2EE.hex(deviceNonce) else { return .otherDevice }
+        guard let revealed = row.page_nonce else { return .waiting }
+        guard let pageNonce = E2EE.fromHex(revealed), pageNonce.count == 16,
+              E2EE.commitOpens(snapshot.commit, browserKey: snapshot.key, pageNonce: pageNonce) else { return .broken }
+        return .number(E2EE.matchNumber(browserKey: snapshot.key, pageNonce: pageNonce, deviceNonce: deviceNonce, requestID: requestID))
+    }
+
+    /// Reads the ask, writes this device's nonce on it (against the key and commit of that first
+    /// read), then reads it about every `poll` until the page reveals its nonce. Ends with the
+    /// number only when the reveal opens the first read's commit and key and commit never changed.
+    @MainActor
+    static func follow(requestID: UUID, read: () async throws -> ConnectAskMatch?, write: (Data) async throws -> Void,
+                       poll: Duration) async throws -> Outcome {
+        guard var row = try await read() else { return .expired }
+        guard let snapshot = Snapshot(row) else { return .broken }
+        let nonce = deviceNonce(for: requestID, commit: snapshot.commit)
+        if row.device_nonce == nil {
+            do { try await write(nonce) } catch {
+                // Another device may have written first; the ask says.
+                guard let again = try await read() else { return .expired }
+                if again.device_nonce == nil, snapshot.holds(again) { throw error }
+                row = again
+            }
+        }
+        while true {
+            try Task.checkCancellation()
+            switch check(row, against: snapshot, deviceNonce: nonce, requestID: requestID) {
+            case .number(let n): return .number(Match(snapshot: snapshot, row: row, number: n))
+            case .otherDevice: return .otherDevice
+            case .broken: return .broken
+            case .changed: return .changed
+            case .waiting: break
+            }
+            try await Task.sleep(for: poll)
+            guard let next = try await read() else { return .expired }
+            row = next
+        }
+    }
+
+    enum Recheck: Equatable { case same, changed, expired }
+
+    /// The ask read again after its number was shown: it must be exactly what the number was made from.
+    static func recheck(_ match: Match, now: ConnectAskMatch?) -> Recheck {
+        guard let now else { return .expired }
+        return now == match.row && match.snapshot.holds(now) ? .same : .changed
+    }
+
+    /// Reads the ask about every `poll` while its number shows; returns once it changed or is gone.
+    @MainActor
+    static func watch(_ match: Match, read: () async throws -> ConnectAskMatch?, poll: Duration) async throws -> Recheck {
+        while true {
+            try await Task.sleep(for: poll)
+            let r = recheck(match, now: try await read())
+            if r != .same { return r }
+        }
+    }
+
+    /// The nonce this device writes for a request with a given commit: made once, and the same
+    /// when the sheet shows it again (the server takes the first one written). Another commit on
+    /// the same request never gets the same nonce.
+    @MainActor static func deviceNonce(for request: UUID, commit: String) -> Data {
+        let key = NonceKey(request: request, commit: commit)
+        if let n = nonces[key] { return n }
+        let n = E2EE.randomBytes(16)
+        nonces[key] = n
+        return n
+    }
+
+    private struct NonceKey: Hashable { let request: UUID; let commit: String }
+    @MainActor private static var nonces: [NonceKey: Data] = [:]
+
+    /// Two digits typed on the keypad: a digit adds (up to two), delete takes the last one off.
+    static func typing(_ typed: String, _ key: String) -> String {
+        if key == "delete" { return String(typed.dropLast()) }
+        guard key.count == 1, key.allSatisfy(\.isASCIIDigit), typed.count < 2 else { return typed }
+        return typed + key
+    }
+}
+
+/// What the sheet says about number matching.
+enum ConnectMatchCopy {
+    static let wrongNumber = "That isn't the number your browser shows, so the request was declined. "
+        + "If you didn't start it, someone who knows your password tried to connect an AI. Change your password."
+    static let broken = "Your browser's request changed after it was made, so it was declined. Start connecting again in your browser."
+    static let otherDevice = "Another of your devices is answering this request. Finish it there."
+    static let expired = "This request expired. Start connecting again in your browser."
+    static let changed = "The page in your browser changed. Start connecting again in your browser."
+    static let changedWhileAnswering = "This request changed while you were answering it, so it was declined. Start connecting again."
+}
+
+private extension Character {
+    var isASCIIDigit: Bool { ("0" ... "9").contains(self) }
 }
 
 enum ConnectAPI {
@@ -121,54 +330,268 @@ enum ConnectAPI {
         var errorDescription: String? { message }
     }
 
-    private static func send(_ client: SupabaseClient, path: String, method: String = "GET", body: [String: Any]? = nil) async throws -> Data {
-        guard let base = BackendConfig.mcpURL else { throw Failure(message: "Sync is off in this build.") }
-        let jwt = try await client.auth.session.accessToken
-        var req = URLRequest(url: URL(string: base.absoluteString + path)!)
-        req.httpMethod = method
-        req.setValue("Bearer \(jwt)", forHTTPHeaderField: "Authorization")
-        if let body {
-            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            req.httpBody = try JSONSerialization.data(withJSONObject: body)
+    /// One call to the MCP server's /connect endpoints: path, method, JSON body → response body.
+    typealias Send = @Sendable (_ path: String, _ method: String, _ body: [String: Any]?) async throws -> Data
+
+    /// The app's session goes in a header, never in the address.
+    static func sender(_ client: SupabaseClient) -> Send {
+        { path, method, body in
+            guard let base = BackendConfig.mcpURL else { throw Failure(message: "Sync is off in this build.") }
+            let jwt = try await client.auth.session.accessToken
+            var req = URLRequest(url: URL(string: base.absoluteString + path)!)
+            req.httpMethod = method
+            req.setValue("Bearer \(jwt)", forHTTPHeaderField: "Authorization")
+            if let body {
+                req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                req.httpBody = try JSONSerialization.data(withJSONObject: body)
+            }
+            let (data, response) = try await AppNetwork.session.data(for: req)
+            guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+                let message = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["error"] as? String
+                throw Failure(message: message ?? "Couldn't reach Amber Notes. Check your connection.")
+            }
+            return data
         }
-        let (data, response) = try await AppNetwork.session.data(for: req)
-        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-            let message = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["error"] as? String
-            throw Failure(message: message ?? "Couldn't reach Amber Notes. Check your connection.")
-        }
-        return data
     }
 
     static func request(_ client: SupabaseClient, id: UUID) async throws -> ConnectRequest {
-        let data = try await send(client, path: "/connect/request?id=\(id.uuidString.lowercased())")
-        return try JSONDecoder().decode(ConnectRequest.self, from: data)
+        try await request(id: id, send: sender(client))
     }
 
-    /// Allow or deny; returns where to send the browser next.
-    static func decide(_ client: SupabaseClient, id: UUID, allow: Bool, write: Bool) async throws -> URL {
-        let data = try await send(client, path: "/connect/decide", method: "POST", body: ["id": id.uuidString.lowercased(), "allow": allow, "write": write])
-        guard let s = (try JSONSerialization.jsonObject(with: data) as? [String: Any])?["redirect"] as? String, let url = URL(string: s) else {
+    static func request(id: UUID, send: Send) async throws -> ConnectRequest {
+        let data = try await send("/connect/request?id=\(id.uuidString.lowercased())", "GET", nil)
+        return try AnyJSON.decoder.decode(ConnectRequest.self, from: data)
+    }
+
+    /// What happens after an answer.
+    enum Answer: Equatable {
+        /// Send the browser here (the request came by link on this device).
+        case open(URL)
+        /// A browser elsewhere asked: it picks the answer up itself, and this device opens nothing.
+        case handedOff
+
+        var url: URL? { if case .open(let url) = self { url } else { nil } }
+    }
+
+    /// The client's return address with `state` (when there is one) and `iss` set, as the server
+    /// writes it (`new URL(redirect_uri)`, then `searchParams.set`): the query is read as form
+    /// data and written back form-encoded, every existing parameter included.
+    static func clientRedirect(_ redirectURI: String, state: String?, iss: String) -> String {
+        var base = redirectURI, fragment = ""
+        if let hash = base.firstIndex(of: "#") {
+            fragment = String(base[hash...])
+            base = String(base[..<hash])
+        }
+        var query = ""
+        if let q = base.firstIndex(of: "?") {
+            query = String(base[base.index(after: q)...])
+            base = String(base[..<q])
+        }
+        var params: [(String, String)] = query.split(separator: "&", omittingEmptySubsequences: true).map { pair in
+            let parts = pair.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
+            return (formDecode(String(parts[0])), parts.count > 1 ? formDecode(String(parts[1])) : "")
+        }
+        func set(_ name: String, _ value: String) {
+            if let i = params.firstIndex(where: { $0.0 == name }) {
+                params[i].1 = value
+                var j = params.count - 1
+                while j > i { if params[j].0 == name { params.remove(at: j) }; j -= 1 }
+            } else {
+                params.append((name, value))
+            }
+        }
+        if let state { set("state", state) }
+        set("iss", iss)
+        return base + "?" + params.map { formEncode($0.0) + "=" + formEncode($0.1) }.joined(separator: "&") + fragment
+    }
+
+    /// application/x-www-form-urlencoded, as URLSearchParams writes it.
+    static func formEncode(_ s: String) -> String {
+        var out = ""
+        for b in s.utf8 {
+            switch b {
+            case UInt8(ascii: "a") ... UInt8(ascii: "z"), UInt8(ascii: "A") ... UInt8(ascii: "Z"), UInt8(ascii: "0") ... UInt8(ascii: "9"),
+                 UInt8(ascii: "*"), UInt8(ascii: "-"), UInt8(ascii: "."), UInt8(ascii: "_"):
+                out.unicodeScalars.append(Unicode.Scalar(b))
+            case UInt8(ascii: " "):
+                out += "+"
+            default:
+                out += String(format: "%%%02X", b)
+            }
+        }
+        return out
+    }
+
+    static func formDecode(_ s: String) -> String {
+        var bytes: [UInt8] = []
+        var u = Array(s.utf8)[...]
+        while let b = u.popFirst() {
+            if b == UInt8(ascii: "+") { bytes.append(UInt8(ascii: " ")); continue }
+            if b == UInt8(ascii: "%"), u.count >= 2, let v = UInt8(String(decoding: u.prefix(2), as: UTF8.self), radix: 16) {
+                bytes.append(v)
+                u = u.dropFirst(2)
+                continue
+            }
+            bytes.append(b)
+        }
+        return String(decoding: bytes, as: UTF8.self)
+    }
+
+    /// Allow or deny. `redirect_uri` goes back exactly as /connect/request gave it. Allowing sends
+    /// a code made here (`code`): only its hash and the account's key wrapped under it reach the
+    /// server. A request asked from a browser (`browserKey`, the page's public key) also gets the
+    /// code sealed to that page together with the address it goes to (`handoffRedirect`), so
+    /// nobody on the way can send the page elsewhere; otherwise the code is added to the return
+    /// address here.
+    ///
+    /// `wrongNumber`: declined because the person typed a number the page didn't show. The server
+    /// then takes no asks for this account for an hour and tells every device.
+    static func decide(id: UUID, redirectURI: String?, allow: Bool, write: Bool,
+                       code: (code: String, hash: String, wrap: String)?, browserKey: Data? = nil, handoffRedirect: String? = nil,
+                       wrongNumber: Bool = false, send: Send) async throws -> Answer {
+        guard let redirectURI else { throw Failure(message: "Update Amber Notes to connect an AI.") }
+        guard !allow || code != nil else { throw Failure(message: "Open Amber Notes and finish setting up encryption first.") }
+        var body: [String: Any] = ["id": id.uuidString.lowercased(), "allow": allow, "write": write, "redirect_uri": redirectURI]
+        if !allow, wrongNumber { body["wrong_number"] = true }
+        if allow, let code {
+            body["code_hash"] = code.hash
+            body["code_wrap"] = code.wrap
+            if let browserKey {
+                guard let handoffRedirect, ConnectCenter.isReturnAddress(URL(string: handoffRedirect) ?? URL(fileURLWithPath: "/")),
+                      let sealed = try? E2EE.sealHandoff(code: E2EE.handoffPayload(code: code.code, redirect: handoffRedirect),
+                                                         browserKey: browserKey, requestID: id) else {
+                    throw Failure(message: "Start connecting again in your browser.")
+                }
+                body["handoff"] = sealed
+            }
+        }
+        let data = try await send("/connect/decide", "POST", body)
+        let answer = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        // The browser that asked goes on by itself, allowed or not.
+        if answer?["handoff"] as? Bool == true { return .handedOff }
+        guard let s = answer?["redirect"] as? String, let url = URL(string: s) else {
             throw Failure(message: "Amber Notes gave an unexpected answer. Try connecting again.")
         }
-        return url
+        guard allow, let code else { return .open(url) }
+        return .open(withCode(url, code.code))
+    }
+
+    enum Answered: Equatable {
+        case answered(Answer)
+        /// The ask changed after its number showed: declined, and nothing sealed.
+        case declinedChanged
+    }
+
+    /// The person's answer to a request. A request asked from a browser with its number showing
+    /// (`match`) is read again first (`read`): unless it's exactly what the number was made from,
+    /// the request is declined (never as a wrong number) and no code is made or sealed. Allowing
+    /// seals the code only to the key the number was made from.
+    @MainActor static func answer(_ r: ConnectRequest, allow: Bool, write: Bool, wrongNumber: Bool = false, match: ConnectMatch.Match?,
+                       read: () async throws -> ConnectAskMatch?, code: () throws -> (code: String, hash: String, wrap: String),
+                       send: Send) async throws -> Answered {
+        var key: Data?
+        if r.isAsked, let match {
+            switch ConnectMatch.recheck(match, now: try await read()) {
+            case .expired:
+                throw Failure(message: ConnectMatchCopy.expired)
+            case .changed:
+                _ = try await decide(id: r.id, redirectURI: r.redirect_uri, allow: false, write: false, code: nil, send: send)
+                return .declinedChanged
+            case .same:
+                if allow { key = match.key }
+            }
+        } else if allow, r.isAsked {
+            throw Failure(message: ConnectMatchCopy.changed)
+        }
+        let made = allow ? try code() : nil
+        return .answered(try await decide(id: r.id, redirectURI: r.redirect_uri, allow: allow, write: write, code: made, browserKey: key,
+                                          handoffRedirect: r.handoffRedirect, wrongNumber: wrongNumber, send: send))
+    }
+
+    /// This device's nonce for an asked request (16 random bytes, lowercase hex), written once
+    /// before the page reveals its own.
+    static func writeNonce(id: UUID, nonce: Data, send: Send) async throws {
+        _ = try await send("/connect/nonce", "POST", ["id": id.uuidString.lowercased(), "nonce": E2EE.hex(nonce)])
+    }
+
+    /// The AI's return address with the code this device made, next to what the server put there.
+    static func withCode(_ url: URL, _ code: String) -> URL {
+        guard var parts = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return url }
+        parts.queryItems = (parts.queryItems ?? []).filter { $0.name != "code" } + [URLQueryItem(name: "code", value: code)]
+        return parts.url ?? url
+    }
+}
+
+/// Disconnecting an AI: its grant is revoked, and it loses access at once.
+enum ConnectRevoke {
+    static func revoke(_ client: SupabaseClient, id: UUID) async throws {
+        try await client.from("mcp_tokens").update(["revoked_at": AnyJSON.string(Date.now.ISO8601Format())]).eq("id", value: id).execute()
+    }
+}
+
+/// Access tokens for Claude Code and Codex, made on this device.
+@MainActor
+enum ConnectTokens {
+    /// A new pane_ token: made here with the account's key wrapped under it, registered by its hash
+    /// only. The token itself never leaves the device except in the AI's Authorization header.
+    static func create(_ client: SupabaseClient, name: String, write: Bool,
+                       make: () throws -> (token: String, hash: String, wrap: String)) async throws -> String {
+        let made = try make()
+        struct Params: Encodable { var token_name: String; var write_access: Bool; var token_hash: String; var dk_wrap: String }
+        try await client.rpc("create_mcp_token", params: Params(token_name: name, write_access: write, token_hash: made.hash, dk_wrap: made.wrap)).execute()
+        return made.token
+    }
+}
+
+/// Face ID or Touch ID (or the device password) before an AI gets your notes.
+enum ConnectApproval {
+    /// Whether this device can ask for Face ID, Touch ID or its passcode. Without one, nobody is
+    /// asked, so an AI can't be allowed from it.
+    static var canConfirm: Bool {
+        var error: NSError?
+        return LAContext().canEvaluatePolicy(.deviceOwnerAuthentication, error: &error)
+    }
+
+    static func confirm(_ who: String) async -> Bool {
+        let context = LAContext()
+        return (try? await context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: "allow \(who) to read your notes")) ?? false
     }
 }
 
 // MARK: Receiving the link
 
-/// Holds a connect request that arrived by link until the consent sheet takes it.
+/// Holds a connect request that arrived by link, or was asked from a browser, until the consent
+/// sheet takes it. One sheet at a time; asks that arrive meanwhile wait their turn.
 @MainActor
 @Observable
 final class ConnectCenter: NSObject {
     static let shared = ConnectCenter()
     var pending: UUID?
+    /// Asks from a browser this device knows are waiting, by request id.
+    private(set) var asks: [UUID: ConnectAsk] = [:]
+    /// Asks and links waiting for the sheet, in the order they'll show. Nothing that arrives
+    /// replaces the sheet that's showing: the person answers what they're looking at.
+    private(set) var queue: [UUID] = []
+    /// Requests in the queue that came by link on this device (not asks).
+    private var links: Set<UUID> = []
+    /// Asks that have been offered here: each opens the sheet by itself once.
+    private var offered: Set<UUID> = []
+    /// Answered on this device: the update saying so doesn't cut the sheet's "Allowed" short.
+    private var answeredHere: Set<UUID> = []
+    private var expiry: Task<Void, Never>?
+    /// Between one sheet closing and the next opening.
+    var nextDelay: Duration = .milliseconds(450)
     /// Mac: which AI the floating steps are for.
     var panelAI: String?
     /// The last approval made on this device, so an open guide can say it worked right away.
     var approved: (ai: String?, at: Date)?
     #if os(macOS)
-    /// The browser the request came from, so the answer goes back to the same one.
+    /// The browser the request showing came from, so the answer goes back to the same one.
     var browser: URL?
+    /// The browser each queued link came from.
+    private var browsers: [UUID: URL] = [:]
+    /// Brings the app to the front for a link; tests keep it where it is.
+    @ObservationIgnored var activate: () -> Void = { NSApp.activate() }
     private var installed = false
 
     /// Takes URL events ourselves so we can tell which app sent them (SwiftUI's
@@ -188,13 +611,111 @@ final class ConnectCenter: NSObject {
     }
     #endif
 
+    var askIDs: [UUID] { Array(asks.keys) }
+
+    /// A browser asked this account's devices. Opens the sheet, or queues it behind the one showing.
+    /// True when it's new here (the caller may notify); an expired or answered ask is ignored.
+    @discardableResult
+    func offer(_ ask: ConnectAsk, now: Date = .now) -> Bool {
+        guard ask.isOpen(now: now) else { withdraw(ask.id); return false }
+        asks[ask.id] = ask
+        guard !offered.contains(ask.id) else { return false }
+        offered.insert(ask.id)
+        if pending == ask.id { return false }
+        if pending == nil { show(ask.id) } else { queue.append(ask.id) }
+        return true
+    }
+
+    /// An ask was answered on another device, or expired: its sheet closes.
+    func withdraw(_ id: UUID) {
+        asks[id] = nil
+        queue.removeAll { $0 == id }
+        guard pending == id, !answeredHere.contains(id) else { return }
+        pending = nil
+        showNextSoon()
+    }
+
+    /// The notification for an ask was tapped: it's next, or showing already.
+    func showAsk(_ id: UUID) {
+        guard pending != id else { return }
+        if pending == nil { show(id); return }
+        queue.removeAll { $0 == id }
+        queue.insert(id, at: 0)
+    }
+
+    /// The sheet is answering this request; it closes itself.
+    func answering(_ id: UUID) { answeredHere.insert(id) }
+
+    /// The sheet closed, answered or not: the next ask shows.
+    func sheetClosed() {
+        if let id = pending { answeredHere.remove(id) }
+        pending = nil
+        expiry?.cancel()
+        showNextSoon()
+    }
+
+    /// Signed out.
+    func clearAsks() {
+        if let id = pending, asks[id] != nil { pending = nil }
+        asks = [:]
+        queue = []
+        links = []
+        offered = []
+        answeredHere = []
+        expiry?.cancel()
+    }
+
+    private func show(_ id: UUID) {
+        pending = id
+        #if os(macOS)
+        browser = browsers.removeValue(forKey: id)
+        #endif
+        expiry?.cancel()
+        // An ask left unanswered closes when it expires.
+        guard let ends = asks[id]?.expires_at else { return }
+        expiry = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(max(0, ends.timeIntervalSinceNow)))
+            guard !Task.isCancelled else { return }
+            self?.withdraw(id)
+        }
+    }
+
+    private func showNextSoon() {
+        let delay = nextDelay
+        Task { [weak self] in
+            try? await Task.sleep(for: delay)
+            self?.showNext()
+        }
+    }
+
+    /// The next ask still waiting, if nothing is showing.
+    func showNext(now: Date = .now) {
+        guard pending == nil else { return }
+        while let id = queue.first {
+            queue.removeFirst()
+            if links.remove(id) != nil { show(id); return }
+            if asks[id]?.isOpen(now: now) == true { show(id); return }
+            asks[id] = nil
+        }
+    }
+
+    /// A request by link on this device. It shows now, or next when a sheet is showing: it never
+    /// replaces what the person is looking at.
     func receive(_ url: URL, from sender: URL? = nil) {
         guard let id = ConnectLink.requestID(from: url) else { return }
         #if os(macOS)
-        browser = sender.flatMap { Self.isBrowser($0) ? $0 : nil }
-        NSApp.activate()
+        let from = sender.flatMap { Self.isBrowser($0) ? $0 : nil }
+        if let from { browsers[id] = from } else { browsers[id] = nil }
+        activate()
         #endif
-        pending = id
+        guard pending != id else { return }
+        guard pending == nil else {
+            // Queued asks keep their place behind the person's own link.
+            if !queue.contains(id) { queue.insert(id, at: 0) }
+            links.insert(id)
+            return
+        }
+        show(id)
     }
 
     /// Sends the browser on to the AI with the result, in the browser it came from when known.
@@ -213,7 +734,7 @@ final class ConnectCenter: NSObject {
     }
 
     /// https anywhere, or http back to this computer (native clients listen there).
-    static func isReturnAddress(_ url: URL) -> Bool {
+    nonisolated static func isReturnAddress(_ url: URL) -> Bool {
         switch url.scheme?.lowercased() {
         case "https": return true
         case "http": return ["localhost", "127.0.0.1", "::1", "[::1]"].contains(url.host?.lowercased() ?? "")
@@ -239,6 +760,10 @@ struct ConnectHandler: ViewModifier {
     func body(content: Content) -> some View {
         content
             .onOpenURL { center.receive($0) }
+            // The site's universal link, https://ambernotes.app/open/connect?request=<id>.
+            .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+                if let url = activity.webpageURL { center.receive(url) }
+            }
             #if os(macOS)
             // Links land in the window that's already open instead of a new one.
             .handlesExternalEvents(preferring: [ConnectLink.scheme], allowing: ["*"])
@@ -250,13 +775,15 @@ struct ConnectHandler: ViewModifier {
                 openWindow(id: ConnectPanel.windowID)
             }
             #endif
+            .onAppear { center.installNotifications() }
             .sheet(item: Binding(
                 get: { backend.client != nil && isSignedIn ? center.pending.map(PendingID.init) : nil },
-                set: { if $0 == nil { center.pending = nil } }
+                set: { if $0 == nil { center.sheetClosed() } }
             )) { pending in
                 if let client = backend.client {
                     ConsentSheet(client: client, requestID: pending.id, finish: { center.open($0) },
-                                 allowed: { r in center.approved = (r.verifiedAI, .now) })
+                                 allowed: { r in center.approved = (r.verifiedAI, .now) },
+                                 answering: { center.answering($0) })
                 }
             }
     }
@@ -282,19 +809,47 @@ struct ConsentSheet: View {
     let finish: (URL) -> Void
     /// Told when the person allowed the request.
     var allowed: (ConnectRequest) -> Void = { _ in }
+    /// Told just before the answer is sent.
+    var answering: (UUID) -> Void = { _ in }
     @Environment(\.dismiss) private var dismiss
 
-    enum Phase: Equatable { case loading, asking(ConnectRequest), working, done(String), failed(String) }
+    enum Phase: Equatable { case loading, asking(ConnectRequest), working, done(String), handedOff(String), failed(String) }
     @State private var phase: Phase
     @State private var write = true
+    /// Asked from a browser: what the number was made from (the page's key and commit as first
+    /// read, and the revealed nonce), and the number the page shows. Nil until the page has
+    /// revealed its nonce and it opened the commit.
+    typealias Match = ConnectMatch.Match
+    @State private var match: Match?
+    /// The two digits typed so far.
+    @State private var typed = ""
+    /// Allow and the keypad wait a moment after what the sheet shows changes, so a tap meant
+    /// for what was there before doesn't land on what's there now.
+    @State private var armed = false
+    static let armDelay: Duration = .seconds(1)
+    /// Face ID or Touch ID before allowing; tests and captures answer for it.
+    var confirm: (String) async -> Bool = ConnectApproval.confirm
+    var canConfirm: () -> Bool = { ConnectApproval.canConfirm }
+    /// The ask's number-matching columns as they are now (nil once it's answered or expired).
+    var askMatch: (SupabaseClient, UUID) async throws -> ConnectAskMatch? = { try await ConnectAsks.match($0, id: $1) }
+    /// Writes this device's nonce on the ask.
+    var writeNonce: (SupabaseClient, UUID, Data) async throws -> Void = { client, id, nonce in
+        try await ConnectAPI.writeNonce(id: id, nonce: nonce, send: ConnectAPI.sender(client))
+    }
+    /// How often the ask is read again while the page hasn't revealed its nonce.
+    var pollInterval: Duration = .seconds(1)
 
-    init(client: SupabaseClient, requestID: UUID, initial: Phase = .loading, finish: @escaping (URL) -> Void, allowed: @escaping (ConnectRequest) -> Void = { _ in }) {
+    init(client: SupabaseClient, requestID: UUID, initial: Phase = .loading, finish: @escaping (URL) -> Void,
+         allowed: @escaping (ConnectRequest) -> Void = { _ in }, answering: @escaping (UUID) -> Void = { _ in }) {
         self.client = client
         self.requestID = requestID
         self.finish = finish
         self.allowed = allowed
+        self.answering = answering
         _phase = State(initialValue: initial)
     }
+
+    private struct Shown: Equatable { var phase: Phase; var match: Match? }
 
     var body: some View {
         VStack(spacing: 20) {
@@ -307,7 +862,15 @@ struct ConsentSheet: View {
         #else
         .presentationDetents([.medium, .large])
         #endif
-        .task { if phase == .loading { await load() } }
+        .task {
+            if phase == .loading { await load() }
+            else if case .asking(let r) = phase, r.isAsked, match == nil { await loadMatch(r) }
+        }
+        .task(id: Shown(phase: phase, match: match)) {
+            armed = false
+            try? await Task.sleep(for: Self.armDelay)
+            if !Task.isCancelled { armed = true }
+        }
         .animation(.smooth(duration: 0.25), value: phase)
     }
 
@@ -355,31 +918,60 @@ struct ConsentSheet: View {
                 Text("Go back to \(name) to finish.").foregroundStyle(.secondary)
             }
             .accessibilityElement(children: .combine)
+        case .handedOff:
+            VStack(spacing: 8) {
+                Label("Allowed", systemImage: "checkmark.circle.fill")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(.green)
+                Text("It finishes connecting in your browser.")
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.secondary)
+            }
+            .accessibilityElement(children: .combine)
         case .failed(let message):
             VStack(spacing: 14) {
                 Text("Couldn't connect").font(.title3.weight(.semibold))
                 Text(message).multilineTextAlignment(.center).foregroundStyle(.secondary)
+                    .accessibilityIdentifier("connect.failure")
                 Button("Close") { dismiss() }.keyboardShortcut(.cancelAction)
             }
         }
+    }
+
+    /// The title. Asked from a browser, nothing about who's asking is confirmed: what it calls
+    /// itself is only a claim.
+    nonisolated static func title(_ r: ConnectRequest) -> String {
+        guard r.isAsked else { return "Allow \(r.who) to use your notes?" }
+        return r.claimedName.map { "An app that says it's \($0) wants to use your notes" } ?? "An app wants to use your notes"
     }
 
     private func asking(_ r: ConnectRequest) -> some View {
         let known = r.verifiedAI != nil
         return VStack(spacing: 18) {
             VStack(spacing: 6) {
-                Text("Allow \(r.who) to use your notes?")
+                Text(Self.title(r))
                     .font(.title3.weight(.semibold))
                     .multilineTextAlignment(.center)
                 Group {
-                    if let claimed = r.claimedName {
-                        Text("Access goes to \(Text(r.who).bold()). It calls itself \u{201C}\(claimed)\u{201D}.")
+                    if r.isAsked {
+                        Text("It asks for access to go to \(Text(r.redirect_host).bold()). We can't confirm where access goes.")
+                    } else if let claimed = r.claimedName {
+                        Text("Access goes to \(Text(r.redirect_host).bold()). It calls itself \u{201C}\(claimed)\u{201D}.")
                     } else {
                         Text("Access goes to \(Text(r.redirect_host).bold()).")
                     }
                 }
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
+                .accessibilityIdentifier("connect.destination")
+                // Asked from a browser: when, and in what, so a request you didn't start stands out.
+                if let line = r.requestedLine() {
+                    Text(line)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .accessibilityIdentifier("connect.requested")
+                }
             }
 
             // An app that asked only to read can't be given more.
@@ -393,19 +985,61 @@ struct ConsentSheet: View {
             .disabled(!r.wants_write)
             .accessibilityIdentifier("connect.access")
 
-            Text(canEdit.wrappedValue ? "It can search, read, create and change notes. Every change keeps the previous version." : "It can search and read notes, but not change them.")
+            Text((canEdit.wrappedValue ? "It can read, create and change your notes. Every change keeps the previous version." : "It can read your notes, but not change them.")
+                 + " While it's connected, it can read everything you keep here except locked notes.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .frame(minHeight: 40, alignment: .top)
 
-            Label(known ? "Only allow this if you just started connecting \(r.who)." :
-                    "Amber Notes doesn't recognize this app. Only allow it if you just started connecting it yourself.",
-                  systemImage: known ? "info.circle" : "exclamationmark.triangle.fill")
-                .font(.footnote)
-                .foregroundStyle(known ? AnyShapeStyle(.secondary) : AnyShapeStyle(.orange))
-                .multilineTextAlignment(.leading)
+            if r.isAsked {
+                numbers(r)
+            } else {
+                Label(known ? "Only allow this if you just started connecting \(r.who)." :
+                        "Amber Notes doesn't recognize this app. Only allow it if you just started connecting it yourself.",
+                      systemImage: known ? "info.circle" : "exclamationmark.triangle.fill")
+                    .font(.footnote)
+                    .foregroundStyle(known ? AnyShapeStyle(.secondary) : AnyShapeStyle(.orange))
+                    .multilineTextAlignment(.leading)
 
+                HStack(spacing: 12) {
+                    Button { Task { await decide(r, allow: false) } } label: {
+                        Text("Don't Allow").frame(maxWidth: .infinity)
+                    }
+                    .keyboardShortcut(.cancelAction)
+                    .controlSize(.large)
+                    .accessibilityIdentifier("connect.deny")
+                    Button { Task { await decide(r, allow: true) } } label: {
+                        Text("Allow").frame(maxWidth: .infinity)
+                    }
+                    .keyboardShortcut(.defaultAction)
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .disabled(!armed)
+                    .accessibilityIdentifier("connect.allow")
+                }
+            }
+        }
+    }
+
+    /// Asked from a browser: type the two digits the page shows. The right ones allow (after
+    /// Face ID or Touch ID); any others decline.
+    @ViewBuilder
+    private func numbers(_ r: ConnectRequest) -> some View {
+        VStack(spacing: 12) {
+            Label(match == nil ? "Waiting for your browser to show a number\u{2026}" :
+                    "Only continue if you just started connecting an AI in your browser. Type the number it shows.",
+                  systemImage: "exclamationmark.triangle.fill")
+                .font(.footnote)
+                .foregroundStyle(.orange)
+                .multilineTextAlignment(.leading)
+                .accessibilityIdentifier("connect.matchHint")
+            if match != nil {
+                typedDigits
+                keypad
+            } else {
+                ProgressView().frame(height: 44)
+            }
             HStack(spacing: 12) {
                 Button { Task { await decide(r, allow: false) } } label: {
                     Text("Don't Allow").frame(maxWidth: .infinity)
@@ -413,13 +1047,60 @@ struct ConsentSheet: View {
                 .keyboardShortcut(.cancelAction)
                 .controlSize(.large)
                 .accessibilityIdentifier("connect.deny")
-                Button { Task { await decide(r, allow: true) } } label: {
+                Button { Task { await entered(r) } } label: {
                     Text("Allow").frame(maxWidth: .infinity)
                 }
                 .keyboardShortcut(.defaultAction)
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
+                .disabled(!armed || match == nil || typed.count < 2)
                 .accessibilityIdentifier("connect.allow")
+            }
+        }
+    }
+
+    /// The two boxes the digits go in.
+    private var typedDigits: some View {
+        HStack(spacing: 10) {
+            ForEach(0 ..< 2, id: \.self) { i in
+                let digit = i < typed.count ? String(Array(typed)[i]) : ""
+                Text(digit.isEmpty ? " " : digit)
+                    .font(.system(size: 28, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                    .frame(width: 48, height: 56)
+                    .background(.fill.tertiary, in: .rect(cornerRadius: 12, style: .continuous))
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(typed.isEmpty ? "No digits typed" : "Typed \(typed.map(String.init).joined(separator: " "))")
+        .accessibilityIdentifier("connect.typed")
+    }
+
+    /// A numeric keypad. On a Mac the number keys and Delete type too.
+    private var keypad: some View {
+        let keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "delete"]
+        return LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
+            ForEach(keys, id: \.self) { key in
+                if key.isEmpty {
+                    Color.clear.frame(height: 44)
+                } else {
+                    Button { typed = ConnectMatch.typing(typed, key) } label: {
+                        Group {
+                            if key == "delete" {
+                                Image(systemName: "delete.left").font(.title3)
+                            } else {
+                                Text(key).font(.title2.weight(.medium)).monospacedDigit()
+                            }
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .contentShape(.rect)
+                    }
+                    .buttonStyle(.bordered)
+                    .keyboardShortcut(key == "delete" ? KeyEquivalent.delete : KeyEquivalent(Character(key)), modifiers: [])
+                    .disabled(!armed)
+                    .accessibilityLabel(key == "delete" ? "Delete" : key)
+                    .accessibilityIdentifier("connect.key.\(key)")
+                }
             }
         }
     }
@@ -430,20 +1111,102 @@ struct ConsentSheet: View {
             // An app Amber Notes can't vouch for starts at Read Only; the person can still pick more.
             write = r.wants_write && r.verifiedAI != nil
             phase = .asking(r)
+            if r.isAsked { await loadMatch(r) }
         } catch {
             phase = .failed(error.localizedDescription)
         }
     }
 
-    private func decide(_ r: ConnectRequest, allow: Bool) async {
+    /// Writes this device's nonce on the ask, then reads the ask about every second until the page
+    /// reveals its nonce, and shows the number only if the reveal opens the page's commit and the
+    /// ask still carries the key and commit it had when first read. While the number shows, the
+    /// ask keeps being read: if it changes, the number goes and the request is declined.
+    private func loadMatch(_ r: ConnectRequest) async {
+        let read = { try await askMatch(client, r.id) }
+        do {
+            let outcome = try await ConnectMatch.follow(requestID: r.id, read: read, write: { try await writeNonce(client, r.id, $0) },
+                                                        poll: pollInterval)
+            switch outcome {
+            case .number(let m):
+                match = m
+            case .otherDevice:
+                phase = .failed(ConnectMatchCopy.otherDevice)
+                return
+            case .broken:
+                // Whoever wrote this ask isn't the page that committed: no number, and no.
+                await decide(r, allow: false, declined: ConnectMatchCopy.broken)
+                return
+            case .changed:
+                await decide(r, allow: false, declined: ConnectMatchCopy.changedWhileAnswering)
+                return
+            case .expired:
+                phase = .failed(ConnectMatchCopy.expired)
+                return
+            }
+            guard let m = match else { return }
+            let seen = try await ConnectMatch.watch(m, read: read, poll: pollInterval)
+            // Answering already reads the ask again itself.
+            guard case .asking = phase, match == m else { return }
+            match = nil
+            typed = ""
+            if seen == .changed {
+                await decide(r, allow: false, declined: ConnectMatchCopy.changedWhileAnswering)
+            } else {
+                phase = .failed(ConnectMatchCopy.expired)
+            }
+        } catch is CancellationError {
+            return
+        } catch {
+            guard case .asking = phase else { return }
+            phase = .failed(error.localizedDescription)
+        }
+    }
+
+    /// Allow, with two digits typed: the page's number allows; any other declines, and the server
+    /// is told it was a wrong number (unless the ask changed meanwhile: then it's declined as that).
+    private func entered(_ r: ConnectRequest) async {
+        guard armed, let match, typed.count == 2 else { return }
+        guard typed == match.number else {
+            typed = ""
+            await decide(r, allow: false, declined: ConnectMatchCopy.wrongNumber, wrongNumber: true)
+            return
+        }
+        await decide(r, allow: true)
+    }
+
+    private func decide(_ r: ConnectRequest, allow: Bool, declined: String? = nil, wrongNumber: Bool = false) async {
+        // Handing over the key to your notes takes you, not just a click.
+        if allow {
+            guard armed else { return }
+            guard canConfirm() else {
+                phase = .failed("Turn on a passcode, Face ID or Touch ID on this device to connect an AI.")
+                return
+            }
+            if !(await confirm(r.who)) { return }
+        }
         phase = .working
         do {
-            let url = try await ConnectAPI.decide(client, id: r.id, allow: allow, write: write && r.wants_write)
-            finish(url)
+            answering(r.id)
+            // The connection gets its own copy of the account's key, wrapped under a code made here.
+            // Asked from a browser: the code goes to that page, sealed to the key the number was
+            // made from, with the address it goes to; the ask must still be what the number was made from.
+            let answered = try await ConnectAPI.answer(r, allow: allow, write: write && r.wants_write, wrongNumber: wrongNumber,
+                                                       match: r.isAsked ? match : nil, read: { try await askMatch(client, r.id) },
+                                                       code: { try AccountCrypto.shared.connectionCode() }, send: ConnectAPI.sender(client))
+            guard case .answered(let answer) = answered else {
+                match = nil
+                phase = .failed(ConnectMatchCopy.changedWhileAnswering)
+                return
+            }
+            // Only a request that came by link here is sent on from here.
+            if let url = answer.url { finish(url) }
             if allow {
                 allowed(r)
-                phase = .done(r.who)
-                try? await Task.sleep(for: .seconds(1.6))
+                phase = answer == .handedOff ? .handedOff(r.redirect_host) : .done(r.who)
+                try? await Task.sleep(for: .seconds(answer == .handedOff ? 2.4 : 1.6))
+            } else if let declined {
+                phase = .failed(declined)
+                return
             }
             dismiss()
         } catch {
@@ -451,6 +1214,7 @@ struct ConsentSheet: View {
         }
     }
 }
+
 
 // MARK: Settings
 
@@ -463,18 +1227,19 @@ struct Connection: Decodable, Identifiable {
     let last_used_at: Date?
     let revoked_at: Date?
     let redirect_host: String?
-    let url_used_at: Date?
+    /// From servers that took tokens in links; nothing sets it now.
+    var url_used_at: Date? = nil
 
     var isOAuth: Bool { kind == "oauth" }
     /// What the list calls it. A sign-in the app can't vouch for is named by where access went,
     /// never by the name the app gave itself (grants from before 2026-09-30 still carry that name).
-    var title: String {
-        guard isOAuth, let host = redirect_host, !host.isEmpty,
+    var title: String { Self.title(name: name, kind: kind, host: redirect_host) }
+
+    static func title(name: String, kind: String?, host: String?) -> String {
+        guard kind == "oauth", let host, !host.isEmpty,
               ConnectTrust.verifiedAI(host: host, loopback: false) == nil else { return name }
         return ["localhost", "127.0.0.1", "[::1]", "::1"].contains(host) ? "An app on this computer" : host
     }
-    /// A token that was sent inside a link: it may sit in logs or histories.
-    var lessSecure: Bool { !isOAuth && url_used_at != nil }
 }
 
 /// Settings → Connect an AI: guided setup per app, and everything that's connected.
@@ -593,17 +1358,7 @@ struct ConnectAISection: View {
             // The mark comes from where the approval went, never from the name.
             AITile(ai: ConnectTrust.verifiedAI(host: c.redirect_host ?? "", loopback: false) ?? "", size: 26)
             VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
-                    Text(c.title)
-                    if c.lessSecure {
-                        Text("Less secure")
-                            .font(.caption2.weight(.semibold))
-                            .padding(.horizontal, 6).padding(.vertical, 2)
-                            .background(.orange.opacity(0.18), in: .capsule)
-                            .foregroundStyle(.orange)
-                            .help("This token was sent inside a link, where it can end up in logs and browser history. Disconnect it and connect again.")
-                    }
-                }
+                Text(c.title)
                 Text(detail(c)).font(.caption).foregroundStyle(.secondary).monospacedDigit()
             }
             // The name and details read as one; Disconnect stays its own button for VoiceOver.
@@ -636,7 +1391,7 @@ struct ConnectAISection: View {
 
     private func revoke(_ c: Connection) async {
         do {
-            try await client.from("mcp_tokens").update(["revoked_at": AnyJSON.string(Date.now.ISO8601Format())]).eq("id", value: c.id).execute()
+            try await ConnectRevoke.revoke(client, id: c.id)
             removing = nil
             await load()
         } catch {
@@ -760,7 +1515,7 @@ private struct GuideSheet: View {
         working = true
         defer { working = false }
         do {
-            let t: String = try await client.rpc("create_mcp_token", params: ["token_name": AnyJSON.string(guide.title), "write_access": AnyJSON.bool(!readOnly)]).execute().value
+            let t = try await ConnectTokens.create(client, name: guide.title, write: !readOnly) { try AccountCrypto.shared.accessToken() }
             token = t
             return t
         } catch {

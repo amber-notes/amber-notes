@@ -1,57 +1,88 @@
-// The web consent page (/connect): approving an AI connection without the app.
+// The connect page (/connect): where an AI's sign-in lands, and where you approve it.
 //
-// The MCP server's /authorize sends the browser here with ?request=<id>. The page offers to open
-// Amber Notes (the app shows the same consent) or to sign in right here. Signing in goes from the
-// browser straight to Supabase Auth; the session stays in the page's memory and travels only in
-// an Authorization header, to the MCP function's /connect/request and /connect/decide (the calls
-// the app makes). No cookie is set, so another site can't act with it. The function answers with
-// the AI's redirect address (with the one-time code), and the page sends the browser there.
+// The MCP server's /authorize sends the browser here with ?request=<id>. The server that renders
+// the page says what the app calls itself and where access goes (the MCP function's public
+// /connect/label); neither is verified, so neither is shown as a title. Your notes' key is on
+// your devices (and in the AI connections you approved), so approving happens on a device:
 //
-// Sign in with Apple goes through Supabase's OAuth with PKCE: Apple's page, then back to
-// /connect?request=<id>&code=<one-time code>, which the page exchanges with its verifier (kept in
-// sessionStorage for that one round trip) and removes from the address. Supabase must list
-// https://ambernotes.app/connect** among its redirect URLs.
+// 1. You sign in on the page, only so it knows which account to ask. It makes a P-256 key pair,
+//    a pickup secret and a 16-byte nonce Np (all stay in the page's memory), sends the public half,
+//    the secret's hash and match_commit (matchCommit of the public key and Np) to /connect/ask with
+//    this browser's name ("Chrome on a Mac"), and signs out straight away.
+//    When the device opens the request it sends its own nonce Nd, which /connect/status passes on
+//    as device_nonce. Only then does the page reveal Np (/connect/reveal, once) and show two digits,
+//    matchNumber(public key, Np, Nd, request). You type them on the device, which checks the commit
+//    and gets the same number only for the page's own key, so a key swapped on the way shows.
+// 2. Your iPhone or Mac asks you. Allow there seals the authorization code and the AI's redirect,
+//    together, to the page's key. The page polls /connect/status with the pickup secret, opens the
+//    handoff and goes only to the redirect sealed inside it, with the code added.
+//    "Open Amber Notes" is a shortcut to the same question in the app on this computer, with the
+//    universal link https://ambernotes.app/open/connect?request=<id> (when that stays in the
+//    browser, /open/connect tries the app's own scheme, ambernotes://connect?request=<id>).
+// 3. No device nearby: the recovery key. The page signs in again, reads the account's key row
+//    (the recovery wrap and verifier), opens the notes' key with the typed recovery key in the
+//    browser, makes the code, wraps the notes' key under it and sends /connect/decide the code's
+//    hash and wrap. The recovery key and the notes' key never leave the page (lib/connect-flow.ts).
+//
+// The session lives only in the page's memory and travels only in an Authorization header, to
+// Supabase Auth, the account_keys row and the MCP function. No cookie, nothing in storage, except
+// the PKCE verifier for one Sign in with Apple round trip (sessionStorage, removed on return).
+// Sign in with Apple comes back to /connect?request=<id>[&recover=1]&code=<one-time code>, so
+// Supabase must list https://ambernotes.app/connect** among its redirect URLs.
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const validRequest = (id: string | undefined): id is string => !!id && UUID.test(id);
 
-/// Opens the app's consent sheet for the same request.
+/// The universal link: opens the app's consent sheet for the request where the app is installed.
+export const universalLink = (id: string) => `https://ambernotes.app/open/connect?request=${id.toLowerCase()}`;
+
+/// The app's own scheme, for when the universal link stays in the browser.
 export const appLink = (id: string) => `ambernotes://connect?request=${id.toLowerCase()}`;
 
-/// What /connect/request answers.
-export type ConnectRequest = {
-  id: string;
-  client_name: string;
-  redirect_host: string;
-  redirect_uri?: string;
-  verified_ai?: "ChatGPT" | "Claude" | null;
-  /// What an unverified app calls itself, made plain ASCII by the server; never a title.
-  claimed_name?: string | null;
-  loopback: boolean;
-  wants_write: boolean;
-};
+/// What the page shows about who is asking, from /connect/label. Nothing here is verified: the
+/// name is what the app calls itself, and the host is where access would go.
+export type ConnectLabel = { claimed_name: string | null; redirect_host: string | null; loopback: boolean };
 
-/// The exact addresses where ChatGPT and Claude receive their sign-in, as on the server
-/// (oauth.ts KNOWN_CALLBACKS) and in the app (ConnectTrust). Only a request that returns to one of
-/// these shows that AI's name and mark: anyone can call themselves "ChatGPT", and a look-alike
-/// path on the same site isn't the sign-in callback.
-export const KNOWN_CALLBACKS: Record<string, "ChatGPT" | "Claude"> = {
-  "https://chatgpt.com/connector_platform_oauth_redirect": "ChatGPT",
-  "https://platform.openai.com/apps-manage/oauth": "ChatGPT",
-  "https://claude.ai/api/mcp/auth_callback": "Claude",
-  "https://claude.com/api/mcp/auth_callback": "Claude",
-};
+/// The page's heading. Never an app's name: a name is only ever what the app calls itself.
+export const ALLOW_HEADING = "Allow this app to use your notes?";
 
-export function verifiedAI(r: Pick<ConnectRequest, "redirect_uri">): "ChatGPT" | "Claude" | null {
-  return (r.redirect_uri && KNOWN_CALLBACKS[r.redirect_uri]) || null;
+/// A name from the server, shown only when short and plain.
+function plainName(name: unknown): string | null {
+  const s = (typeof name === "string" ? name : "").trim();
+  return s && s.length <= 60 && /^[\p{L}\p{N} .,'&()+:_/-]+$/u.test(s) ? s : null;
 }
 
-/// How the consent screen names who's asking: the AI when its pinned callback proves it, otherwise
-/// where access goes. An unverified app's own name is only ever a claim, in the server's plain form.
-export function consentHeading(r: ConnectRequest): { ai: "ChatGPT" | "Claude" | null; who: string; claimed: string | null } {
-  const ai = verifiedAI(r);
-  const who = ai ?? destination(r.redirect_host, r.loopback);
-  return { ai, who, claimed: !ai && r.claimed_name ? r.claimed_name : null };
+const LOOPBACK = new Set(["127.0.0.1", "localhost", "[::1]", "::1"]);
+
+/// A host name or address as the server sends it, or null.
+function plainHost(host: unknown): string | null {
+  const s = (typeof host === "string" ? host : "").trim().toLowerCase();
+  return s.length <= 253 && (/^[a-z0-9-]+(\.[a-z0-9-]+)*$/.test(s) || /^\[[0-9a-f:.]+\]$/.test(s)) ? s : null;
+}
+
+/// Reads a /connect/label body into what the page may show.
+export function parseLabel(body: unknown): ConnectLabel | null {
+  // Only claimed_name: client_name is the server's name for the address, not what the app says.
+  const b = (body ?? {}) as { claimed_name?: unknown; redirect_host?: unknown };
+  const claimed = plainName(b.claimed_name);
+  const host = plainHost(b.redirect_host);
+  if (!claimed && !host) return null;
+  return { claimed_name: claimed, redirect_host: host, loopback: host !== null && LOOPBACK.has(host) };
+}
+
+/// Reads /connect/label from the MCP function. `headers` are what the function should see: the
+/// proxy's, with the visitor's address, so its rate limit counts the visitor and not the site.
+export async function fetchLabel(functionBase: string, id: string, headers: Headers, timeoutMs = 2500): Promise<ConnectLabel | null> {
+  if (!validRequest(id)) return null;
+  try {
+    const res = await fetch(`${functionBase}/connect/label?id=${id.toLowerCase()}`, {
+      headers, cache: "no-store", signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!res.ok) return null;
+    return parseLabel(await res.json());
+  } catch {
+    return null;
+  }
 }
 
 /// Why /authorize sent someone here without a request (?problem=), in plain words. Unknown codes
@@ -67,21 +98,40 @@ export function problemText(code: string | undefined): string {
   }
 }
 
+export const functionURL = (supabaseURL: string) => `${supabaseURL.replace(/\/+$/, "")}/functions/v1/mcp`;
+
+/// What /connect/request answers (it also claims the request for the signed-in account).
+export type ConnectRequest = {
+  id: string;
+  client_name: string;
+  /// What an unverified app calls itself, made plain by the server; never a title.
+  claimed_name?: string | null;
+  redirect_host: string;
+  /// The exact return address; /connect/decide takes it back unchanged.
+  redirect_uri: string;
+  /// The server's view that this is a known AI's pinned callback. Only picks the default access;
+  /// the page never shows it as a name or a mark.
+  verified_ai?: "ChatGPT" | "Claude" | null;
+  loopback: boolean;
+  wants_write: boolean;
+  expires_at: string;
+};
+
 /// Who will receive access, in words.
 export const destination = (host: string, loopback: boolean) => (loopback ? "an app on this computer" : host);
 
-export const functionURL = (supabaseURL: string) => `${supabaseURL.replace(/\/+$/, "")}/functions/v1/mcp`;
-
 /// A sign-in failure from Supabase Auth, in plain words.
-export function signInError(status: number, body: { error_code?: string; msg?: string; error_description?: string } | null): string {
+export function signInError(status: number, body: { error_code?: string } | null): string {
   if (status === 429) return "Too many attempts. Wait a few minutes and try again.";
-  if (body?.error_code === "invalid_credentials" || status === 400) return "The email or password isn't right.";
   if (body?.error_code === "email_not_confirmed") return "Confirm your email first, then sign in.";
+  if (body?.error_code === "invalid_credentials" || status === 400) return "The email or password isn't right.";
   return "Couldn't sign in. Check your connection and try again.";
 }
 
-/// Where Supabase sends the browser back after Sign in with Apple.
-export const returnURL = (origin: string, id: string) => `${origin}/connect?request=${id.toLowerCase()}`;
+/// Where Supabase sends the browser back after Sign in with Apple. `recover` brings the page back
+/// to the recovery key.
+export const returnURL = (origin: string, id: string, recover = false) =>
+  `${origin}/connect?request=${id.toLowerCase()}${recover ? "&recover=1" : ""}`;
 
 /// Supabase's OAuth start for Apple, with a PKCE challenge.
 export function appleSignInURL(supabaseURL: string, returnTo: string, challenge: string): string {

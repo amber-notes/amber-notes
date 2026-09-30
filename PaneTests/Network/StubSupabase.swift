@@ -1,17 +1,45 @@
+import CryptoKit
 import Foundation
 import Supabase
+import Testing
 @testable import Pane
 
+/// A test's own account key, for the sync engine and whatever it starts (see `Wire.testSealer`).
+/// Task-local, so suites running side by side never share one.
+struct SealedAccount: SuiteTrait, TestTrait, TestScoping {
+    static let user = UUID(uuidString: "5E1F0000-0000-4000-8000-00000000A11C")!
+    var isRecursive: Bool { true }
+
+    func provideScope(for test: Test, testCase: Test.Case?, performing function: @Sendable () async throws -> Void) async throws {
+        // The suite's scope is entered too; the key is made per test (or test case).
+        guard testCase != nil || !test.isSuite else { try await function(); return }
+        try await Wire.$testSealer.withValue(Sealer(key: SymmetricKey(size: .bits256), user: Self.user)) {
+            // And its own memory of stopped links.
+            try await RevokedShares.$testStore.withValue(MemoryStoppedShares()) { try await function() }
+        }
+    }
+}
+
+extension Trait where Self == SealedAccount {
+    /// Sync with an account key of its own: everything on the wire is sealed with it.
+    static var sealedAccount: Self { .init() }
+}
+
 /// A tiny in-memory stand-in for the Supabase REST API the sync engine uses (notes, folders,
-/// attachments, and RPCs that just answer), so sync can be tested on a faulty network without
+/// attachments, RPCs and the files bucket), so sync can be tested on a faulty network without
 /// the local stack. Rows are JSON dictionaries; the "server" sets `version` and
-/// `server_updated_at` the way the real triggers do.
+/// `server_updated_at` the way the real triggers do. Text columns hold sealed boxes, as on the
+/// real server.
 final class StubSupabase: URLProtocol, @unchecked Sendable {
     static let url = URL(string: "https://stub.supabase.test")!
     private static let lock = NSLock()
     nonisolated(unsafe) private static var tables: [String: [[String: Any]]] = [:]
     nonisolated(unsafe) private static var clock = Date.now
     nonisolated(unsafe) private static var _requests: [String] = []
+    nonisolated(unsafe) private static var _bodies: [String] = []
+    nonisolated(unsafe) private static var _objects: [String: Data] = [:]
+    nonisolated(unsafe) private static var _rpcCalls: [(name: String, params: [String: Any])] = []
+    nonisolated(unsafe) private static var _rpcAnswers: [String: @Sendable ([String: Any]) -> Any] = [:]
 
     nonisolated(unsafe) private static var _tooFast = false
     /// Writes are refused with PostgREST's "too many requests".
@@ -21,24 +49,47 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
     }
 
     static func reset() {
-        lock.withLock { tables = [:]; _requests = []; _tooFast = false }
+        lock.withLock { tables = [:]; _requests = []; _bodies = []; _objects = [:]; _rpcCalls = []; _rpcAnswers = [:]; _tooFast = false }
     }
 
     /// "METHOD /path?query" of every request that reached the server.
     static var requests: [String] { lock.withLock { _requests } }
+    /// Every request body that reached the server, as text (bytes that aren't text come out as
+    /// replacement characters).
+    static var bodies: [String] { lock.withLock { _bodies } }
+    /// The files bucket: path → bytes, as uploaded.
+    static var objects: [String: Data] { lock.withLock { _objects } }
+    /// RPCs called, with their parameters.
+    static var rpcCalls: [(name: String, params: [String: Any])] { lock.withLock { _rpcCalls } }
+
+    /// What an RPC answers (JSON-serializable); unset ones answer null.
+    static func answer(_ rpc: String, with body: @escaping @Sendable ([String: Any]) -> Any) {
+        lock.withLock { _rpcAnswers[rpc] = body }
+    }
 
     static func rows(_ table: String) -> [[String: Any]] { lock.withLock { tables[table] ?? [] } }
+
+    /// Puts a row in a table as the server would have it (for tables the app only reads).
+    static func insert(_ table: String, _ row: [String: Any]) { lock.withLock { tables[table, default: []].append(row) } }
 
     static func note(_ id: UUID) -> [String: Any]? {
         rows("notes").first { ($0["id"] as? String)?.lowercased() == id.uuidString.lowercased() }
     }
 
-    /// Another device (or an AI) changes a note on the server.
+    /// A note's text on the server, opened with the test's key.
+    static func body(_ id: UUID) -> String? {
+        (note(id)?["body_ct"] as? String).flatMap { Wire.sealer?.open($0, context: E2EE.body(id)) }
+    }
+
+    /// Another device (or an AI) changes a note on the server, sealing it with the test's key.
     static func edit(_ id: UUID, body: String, updatedAt: Date = .now, aiEditor: String? = nil) {
+        let box = Wire.sealer?.seal(body, context: E2EE.body(id))
+        let head = Wire.sealer?.sealHead(.of(body), note: id)
         lock.withLock {
             guard var list = tables["notes"], let i = list.firstIndex(where: { ($0["id"] as? String)?.lowercased() == id.uuidString.lowercased() }) else { return }
             var r = list[i]
-            r["body"] = body
+            r["body_ct"] = box
+            r["head_ct"] = head
             r["updated_at"] = stamp(updatedAt)
             if let aiEditor { r["ai_editor"] = aiEditor; r["ai_edited_at"] = stamp(.now) }
             bump(&r)
@@ -79,14 +130,28 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
     private static func handle(_ request: URLRequest) -> (Int, Data) {
         let comps = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)!
         let method = request.httpMethod ?? "GET"
-        lock.withLock { _requests.append("\(method) \(comps.path)?\(comps.query ?? "")") }
-        let path = comps.path
-        guard path.hasPrefix("/rest/v1/") else { return (404, Data("{}".utf8)) }
-        let name = String(path.dropFirst("/rest/v1/".count))
-        if name.hasPrefix("rpc/") { return (200, Data("null".utf8)) }
-        let query = comps.queryItems ?? []
         var body = request.httpBody
         if body == nil, let s = request.httpBodyStream { body = NetFault.read(s) }
+        lock.withLock {
+            _requests.append("\(method) \(comps.path)?\(comps.query ?? "")")
+            if let body { _bodies.append(String(decoding: body, as: UTF8.self)) }
+        }
+        let path = comps.path
+        if path.hasPrefix("/storage/v1/object/") { return storage(method, String(path.dropFirst("/storage/v1/object/".count)), request, body) }
+        guard path.hasPrefix("/rest/v1/") else { return (404, Data("{}".utf8)) }
+        let name = String(path.dropFirst("/rest/v1/".count))
+        if name.hasPrefix("rpc/") {
+            let rpc = String(name.dropFirst(4))
+            let params = (body.flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [String: Any]) ?? [:]
+            let answer = lock.withLock { () -> (@Sendable ([String: Any]) -> Any)? in
+                _rpcCalls.append((rpc, params))
+                return _rpcAnswers[rpc]
+            }
+            guard let answer else { return (200, Data("null".utf8)) }
+            let value = answer(params)
+            return (200, (try? JSONSerialization.data(withJSONObject: value, options: .fragmentsAllowed)) ?? Data("null".utf8))
+        }
+        let query = comps.queryItems ?? []
         if method != "GET", tooFast {
             return (429, Data(#"{"code":"PT429","message":"Too many changes too quickly."}"#.utf8))
         }
@@ -139,6 +204,45 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
         }
     }
 
+    /// The files bucket: uploads (multipart) and downloads by path.
+    private static func storage(_ method: String, _ rest: String, _ request: URLRequest, _ body: Data?) -> (Int, Data) {
+        guard rest.hasPrefix("files/") else { return (404, Data("{}".utf8)) }
+        let key = String(rest.dropFirst("files/".count))
+        switch method {
+        case "POST", "PUT":
+            guard let bytes = fileBytes(request, body) else { return (400, Data(#"{"statusCode":"400","message":"no file"}"#.utf8)) }
+            lock.withLock { _objects[key] = bytes }
+            return (200, Data(#"{"Key":"files/\#(key)","Id":"\#(UUID().uuidString)"}"#.utf8))
+        case "GET":
+            guard let bytes = lock.withLock({ _objects[key] }) else { return (400, Data(#"{"statusCode":"404","message":"Object not found"}"#.utf8)) }
+            return (200, bytes)
+        default:
+            return (405, Data("{}".utf8))
+        }
+    }
+
+    /// The file part of a multipart upload.
+    private static func fileBytes(_ request: URLRequest, _ body: Data?) -> Data? {
+        guard let body, let type = request.value(forHTTPHeaderField: "Content-Type"),
+              let b = type.components(separatedBy: "boundary=").last?.trimmingCharacters(in: CharacterSet(charactersIn: "\"")) else { return nil }
+        let boundary = Data("--\(b)".utf8), gap = Data("\r\n\r\n".utf8)
+        var parts: [Data] = []
+        var start = body.startIndex
+        while let r = body.range(of: boundary, in: start ..< body.endIndex) {
+            if r.lowerBound > start { parts.append(body.subdata(in: start ..< r.lowerBound)) }
+            start = r.upperBound
+        }
+        for part in parts {
+            guard let g = part.range(of: gap) else { continue }
+            let head = String(decoding: part.subdata(in: part.startIndex ..< g.lowerBound), as: UTF8.self)
+            guard head.contains("filename=") else { continue }
+            var content = part.subdata(in: g.upperBound ..< part.endIndex)
+            if content.suffix(2) == Data("\r\n".utf8) { content.removeLast(2) }
+            return content
+        }
+        return nil
+    }
+
     private static func bump(_ r: inout [String: Any]) {
         r["version"] = ((r["version"] as? Int) ?? 0) + 1
         clock = max(clock.addingTimeInterval(0.001), .now)
@@ -159,6 +263,9 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
                     guard let x = r[key] else { return false }
                     return "\(x)".lowercased() == want
                 }
+            }
+            if v.lowercased() == "is.null" {
+                return { r in r[key] == nil || r[key] is NSNull }
             }
             if v.hasPrefix("gt.") {
                 let raw = String(v.dropFirst(3))

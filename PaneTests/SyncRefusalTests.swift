@@ -19,22 +19,13 @@ import Testing
         #expect(SyncEngine.refusal(StorageError(statusCode: "503", message: "unavailable")) == nil)
     }
 
-    @Test func ordinaryFileNamesKeepTheirStorageKey() {
-        for name in ["Flight itinerary.pdf", "Sunset.png", "räksmörgås 2026.xlsx", "photo (1).jpeg", "日本語.txt"] {
-            #expect(SyncEngine.storageName(name) == name)
-        }
+    /// A file's place in Storage names only whose it is and which file: never its name.
+    @Test func aStoragePathSaysNothingAboutTheFile() {
+        let user = UUID(), id = UUID()
+        #expect(SyncEngine.storagePath(user: user, id: id) == "\(user.uuidString.lowercased())/\(id.uuidString.lowercased())")
     }
 
-    @Test func hostileFileNamesBecomeOneSafeSegment() {
-        #expect(!SyncEngine.storageName("../../etc/passwd").contains("/"))
-        #expect(!SyncEngine.storageName("a\\b").contains("\\"))
-        #expect(SyncEngine.storageName("line\nbreak.txt") == "line_break.txt")
-        #expect(SyncEngine.storageName("..") == "file")
-        #expect(SyncEngine.storageName("   ") == "file")
-        #expect(SyncEngine.storageName("rtl\u{202E}gnp.exe").contains("\u{202E}") == false)
-        let long = String(repeating: "å", count: 400) + ".pdf"
-        let short = SyncEngine.storageName(long)
-        #expect(short.utf8.count <= 200)
-        #expect(short.hasSuffix(".pdf"))
+    @Test func aRowThatCantBeSealedIsSetAsideNotRetried() {
+        #expect(SyncEngine.refusal(Wire.Unsealable()) == .refused("it couldn't be encrypted"))
     }
 }

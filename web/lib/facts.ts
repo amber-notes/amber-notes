@@ -17,8 +17,8 @@ export const FACTS: string[] = [
   "It works like Apple Notes: folders, pinned notes, checklists, tables and a note list sorted by date.",
   "On the Mac, it imports your Apple Notes with their folders, and leaves Apple Notes unchanged.",
   "It has a built-in MCP server, so AI apps connect to it directly, without a plugin or a server of your own.",
-  "Incredible, the AI assistant from incredible.one, lists Amber Notes in its Apps: search for it, choose Connect, then sign in and choose Allow.",
-  "You approve each AI app, in Amber Notes or by signing in on ambernotes.app, and choose read only, or read and edit. You can disconnect any of them at any time.",
+  "Incredible, the AI assistant from incredible.one, lists Amber Notes in its Apps: search for it, choose Connect, then sign in and approve it on your iPhone or Mac.",
+  "You approve each AI app on your iPhone or Mac (or with your recovery key on ambernotes.app), and choose read only, or read and edit. You can disconnect any of them at any time.",
   "When an AI changes a note, Amber Notes shows what changed, with Undo, and keeps the previous version in the note's history.",
   "Notes sync between iPhone and Mac through the cloud, and are stored as markdown.",
   APP_STORE_LIVE

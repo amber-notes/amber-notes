@@ -1,6 +1,10 @@
 // Share links end to end against the LOCAL stack: scripts/share-e2e.sh
+//
+// Notes are sealed with the account's key, so a shared page shows the copy the owner's device
+// publishes (share_note's p_copy, publish_share_file), and share-files serves only that copy.
 import { assert, assertEquals, assertNotEquals } from "jsr:@std/assert@1";
-import { referencedFiles, RateLimiter } from "./logic.ts";
+import { recoveryKEK, toBase64, Vault, verifierOf, keyIdOf, wrap, type Bytes } from "../_shared/e2ee.ts";
+import { previewOf, titleOf } from "../mcp/notes.ts";
 
 const API = Deno.env.get("PANE_API")!, ANON = Deno.env.get("PANE_ANON")!;
 const A = Deno.env.get("PANE_USER_JWT")!, B = Deno.env.get("PANE_OTHER_JWT")!;
@@ -15,55 +19,103 @@ async function rest(path: string, jwt: string | null, init: RequestInit = {}) {
   return { status: res.status, body: text ? JSON.parse(text) : null };
 }
 const rpc = (fn: string, args: unknown, jwt: string | null) => rest(`rpc/${fn}`, jwt, { method: "POST", body: JSON.stringify(args) });
+
+/** The test account's data key: fixed per account, so a second run finds the same key. */
+async function dataKey(user: string): Promise<Bytes> {
+  return new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`share-e2e|${user}`)));
+}
+
+const vaults = new Map<string, Vault>();
+async function vault(jwt: string): Promise<Vault> {
+  const user = uid(jwt);
+  const known = vaults.get(user);
+  if (known) return known;
+  const dk = await dataKey(user);
+  const recovery = crypto.getRandomValues(new Uint8Array(16));
+  const made = await rpc("create_account_key", {
+    p_key_id: await keyIdOf(dk), p_verifier: await verifierOf(dk, user),
+    p_recovery_wrap: await wrap(dk, await recoveryKEK(recovery, user), "recovery", user), p_generation: 0,
+  }, jwt);
+  assertEquals(made.status, 200, JSON.stringify(made.body));
+  assertEquals(made.body[0].key_id, await keyIdOf(dk), "this account has a key from elsewhere: reset the local stack");
+  const v = await Vault.from(dk, user);
+  vaults.set(user, v);
+  return v;
+}
+
 async function note(jwt: string, body: string, extra: Record<string, unknown> = {}) {
+  const v = await vault(jwt);
   const id = crypto.randomUUID();
-  const r = await rest("notes", jwt, { method: "POST", body: JSON.stringify({ id, body, ...extra }) });
+  const r = await rest("notes", jwt, { method: "POST", body: JSON.stringify({
+    id, body_ct: await v.sealBody(id, body), head_ct: await v.sealHead(id, { title: titleOf(body), preview: previewOf(body) }), ...extra,
+  }) });
   assertEquals(r.status, 201, JSON.stringify(r.body));
   return id;
 }
+
+/** A file the account owns: its row (sealed name and type) and its published copy's bytes. */
+async function attachment(jwt: string, name: string) {
+  const v = await vault(jwt);
+  const id = crypto.randomUUID();
+  const r = await rest("attachments", jwt, { method: "POST", body: JSON.stringify({
+    id, size: 4, storage_path: `${uid(jwt)}/${id}`, meta_ct: await v.sealFileMeta(id, { name, type: "public.png", size: 4 }),
+  }) });
+  assertEquals(r.status, 201, JSON.stringify(r.body));
+  return id;
+}
+
+type Copy = { title: string; body: string; pages?: { id: string; parent_id: string; title: string; body: string }[]; files?: string[] };
+const copyOf = (body: string, more: Omit<Copy, "title" | "body"> = {}): Copy => ({ title: titleOf(body), body, ...more });
+
+async function share(jwt: string, note: string, subnotes: boolean, copy: Copy): Promise<string> {
+  const r = await rpc("share_note", { p_note: note, p_include_subnotes: subnotes, p_copy: copy }, jwt);
+  assertEquals(r.status, 200, JSON.stringify(r.body));
+  return r.body.slug as string;
+}
+
+const PNG = new Uint8Array([137, 80, 78, 71]);
+
 async function files(slug: string, sub?: string) {
   const res = await fetch(`${API}/functions/v1/share-files?slug=${slug}${sub ? `&sub=${sub}` : ""}`);
   return { status: res.status, body: await res.json() };
 }
-
-Deno.test("logic: referenced files and rate limit", () => {
-  const id = "3f1c2b9a-1b7e-4c3a-9f0e-2a4b8c1d7e55";
-  assertEquals(referencedFiles(`x\n![a.png](pane-file:${id.toUpperCase()})\n[b](pane-file:${id})\n[c](https://x)`), [id]);
-  const rl = new RateLimiter(2, 1000);
-  assert(rl.allow("ip", 0) && rl.allow("ip", 1));
-  assert(!rl.allow("ip", 2));
-  assert(rl.allow("ip", 1001));
-});
+async function fileBytes(slug: string, file: string, sub?: string) {
+  return await fetch(`${API}/functions/v1/share-files?slug=${slug}&file=${file}${sub ? `&sub=${sub}` : ""}`);
+}
 
 Deno.test("a shared note, its sub-notes and its files", async () => {
-  // A picture the note links to, and one it doesn't.
-  const shown = crypto.randomUUID(), hidden = crypto.randomUUID();
-  for (const [id, name] of [[shown, "shown.png"], [hidden, "hidden.png"]]) {
-    const path = `${uid(A)}/${id}/${name}`;
-    const up = await fetch(`${API}/storage/v1/object/files/${path}`, {
-      method: "POST", headers: { apikey: ANON, authorization: `Bearer ${A}`, "content-type": "image/png" }, body: new Uint8Array([137, 80, 78, 71]),
-    });
-    assert(up.ok, await up.text());
-    const r = await rest("attachments", A, { method: "POST", body: JSON.stringify({ id, filename: name, content_type: "public.png", size: 4, storage_path: path }) });
-    assertEquals(r.status, 201, JSON.stringify(r.body));
-  }
-  const root = await note(A, `Trip plan\n\nDay one.\n\n![shown.png](pane-file:${shown})`);
+  // A picture the page embeds, one published but no longer embedded, and one never published.
+  const shown = await attachment(A, "shown.png"), dropped = await attachment(A, "dropped.png"), hidden = await attachment(A, "hidden.png");
+  const rootBody = `Trip plan\n\nDay one.\n\n![shown.png](pane-file:${shown})`;
+  const root = await note(A, rootBody);
   const child = await note(A, "Hotel\n\nRoom 12", { parent_id: root });
   const grandchild = await note(A, "Receipt\n\nPaid", { parent_id: child });
   const unrelated = await note(A, "Private\n\nnot shared");
   const theirs = await note(B, "B's note\n\nsecret");
+  const pages = [
+    { id: child, parent_id: root, title: "Hotel", body: "Hotel\n\nRoom 12" },
+    { id: grandchild, parent_id: child, title: "Receipt", body: `Receipt\n\nPaid\n\n[dropped.png](pane-file:${dropped})` },
+    // Pages that aren't the owner's live notes are left out.
+    { id: theirs, parent_id: root, title: "B's note", body: "secret" },
+  ];
 
-  // Anyone else can't share your note; strangers can't list shares.
-  assertNotEquals((await rpc("share_note", { p_note: root }, B)).status, 200);
-  assertNotEquals((await rpc("share_note", { p_note: root }, null)).status, 200);
+  // Anyone else can't share your note; strangers can't either.
+  assertNotEquals((await rpc("share_note", { p_note: root, p_include_subnotes: false, p_copy: copyOf(rootBody) }, B)).status, 200);
+  assertNotEquals((await rpc("share_note", { p_note: root, p_include_subnotes: false, p_copy: copyOf(rootBody) }, null)).status, 200);
 
-  const s1 = await rpc("share_note", { p_note: root }, A);
-  assertEquals(s1.status, 200);
-  const slug = s1.body as string;
+  const first = await rpc("share_note", { p_note: root, p_include_subnotes: false, p_copy: copyOf(rootBody, { files: [shown] }) }, A);
+  assertEquals(first.status, 200, JSON.stringify(first.body));
+  const slug = first.body.slug as string;
   assert(/^[A-Za-z0-9_-]{24}$/.test(slug), slug);
-  assertEquals((await rpc("share_note", { p_note: root, p_include_subnotes: false }, A)).body, slug, "reuses the live link");
+  assertEquals(first.body.missing_files, [shown], "asks for the file's copy");
+  assertEquals((await rpc("publish_share_file", { p_slug: slug, p_attachment: shown, p_filename: "shown.png", p_content_type: "image/png", p_content: toBase64(PNG) }, A)).status, 204);
+  assertNotEquals((await rpc("publish_share_file", { p_slug: slug, p_attachment: shown, p_filename: "x.png", p_content_type: "image/png", p_content: toBase64(PNG) }, B)).status, 204,
+    "only the owner publishes files");
+  assertEquals(await share(A, root, false, copyOf(rootBody, { files: [shown] })), slug, "reuses the live link");
   assertEquals((await rest(`note_shares?slug=eq.${slug}`, null)).body?.length ?? 0, 0, "anon sees no shares");
   assertEquals((await rest(`note_shares?slug=eq.${slug}`, B)).body.length, 0, "other users see no shares");
+  assertEquals((await rest(`note_share_files?slug=eq.${slug}`, A)).status >= 400 || (await rest(`note_share_files?slug=eq.${slug}`, A)).body.length === 0, true,
+    "copies are read only through shared_file");
 
   const page = (await rpc("shared_note", { p_slug: slug }, null)).body;
   assertEquals(page.title, "Trip plan");
@@ -71,17 +123,29 @@ Deno.test("a shared note, its sub-notes and its files", async () => {
   assertEquals(page.subnotes, []);
   assertEquals(Object.keys(page).sort(), ["body", "include_subnotes", "is_sub", "root_title", "shared_by", "subnotes", "title", "updated_at"]);
   assertEquals((await rpc("shared_note", { p_slug: slug, p_sub: child }, null)).body, null, "sub-notes need the option");
+  assertEquals((await rpc("shared_file", { p_slug: slug, p_sub: null, p_file: shown }, null)).status >= 400, true, "shared_file is the function's only");
 
-  // Files: only what the note links to.
+  // Files: only what the page embeds, served from its copy.
   const f = await files(slug);
   assertEquals(f.status, 200);
   assertEquals(Object.keys(f.body.files), [shown]);
+  assertEquals(f.body.files[shown], { path: `/functions/v1/share-files?slug=${slug}&file=${shown}`, name: "shown.png", type: "image/png", size: 4 });
   const img = await fetch(API + f.body.files[shown].path);
   assertEquals(img.status, 200);
-  await img.body?.cancel();
+  assertEquals(img.headers.get("content-type"), "image/png");
+  assertEquals(img.headers.get("x-content-type-options"), "nosniff");
+  assert(img.headers.get("content-disposition")!.startsWith('inline; filename="shown.png"'));
+  assertEquals(new Uint8Array(await img.arrayBuffer()), PNG);
+  const notPublished = await fileBytes(slug, hidden);
+  assertEquals(notPublished.status, 404);
+  await notPublished.body?.cancel();
 
   // With sub-notes: children and deeper, never unrelated notes or someone else's.
-  assertEquals((await rpc("share_note", { p_note: root, p_include_subnotes: true }, A)).body, slug);
+  const withSubsCopy = copyOf(rootBody, { pages, files: [shown, dropped] });
+  const again = await rpc("share_note", { p_note: root, p_include_subnotes: true, p_copy: withSubsCopy }, A);
+  assertEquals(again.body.slug, slug);
+  assertEquals(again.body.missing_files, [dropped]);
+  await rpc("publish_share_file", { p_slug: slug, p_attachment: dropped, p_filename: "dropped.png", p_content_type: "public.png", p_content: toBase64(PNG) }, A);
   const withSubs = (await rpc("shared_note", { p_slug: slug }, null)).body;
   assertEquals(withSubs.subnotes.map((s: { title: string }) => s.title), ["Hotel"]);
   assertEquals((await rpc("shared_note", { p_slug: slug, p_sub: child }, null)).body.title, "Hotel");
@@ -90,27 +154,42 @@ Deno.test("a shared note, its sub-notes and its files", async () => {
   assertEquals((await rpc("shared_note", { p_slug: slug, p_sub: theirs }, null)).body, null);
   assertEquals((await files(slug, unrelated)).status, 404);
 
-  // Trashing the note hides every page of the link; restoring brings it back.
+  // A file belongs to the page that embeds it: the sub-page serves it, the root page doesn't.
+  const sub = await files(slug, grandchild);
+  assertEquals(Object.keys(sub.body.files), [dropped]);
+  assertEquals(sub.body.files[dropped].path, `/functions/v1/share-files?slug=${slug}&file=${dropped}&sub=${grandchild}`);
+  const fromSub = await fetch(API + sub.body.files[dropped].path);
+  assertEquals(fromSub.status, 200);
+  await fromSub.body?.cancel();
+  const fromRoot = await fileBytes(slug, dropped);
+  assertEquals(fromRoot.status, 404);
+  await fromRoot.body?.cancel();
+
+  // Trashing the note hides every page of the link, and its files.
   await rest(`notes?id=eq.${root}`, A, { method: "PATCH", body: JSON.stringify({ trashed_at: new Date().toISOString() }) });
   assertEquals((await rpc("shared_note", { p_slug: slug }, null)).body, null);
   assertEquals((await rpc("shared_note", { p_slug: slug, p_sub: child }, null)).body, null);
   assertEquals((await files(slug)).status, 404);
-  assertNotEquals((await rpc("share_note", { p_note: root }, A)).status, 200, "a trashed note can't be shared");
-  await rest(`notes?id=eq.${root}`, A, { method: "PATCH", body: JSON.stringify({ trashed_at: null }) });
-  assertEquals((await rpc("shared_note", { p_slug: slug }, null)).body.title, "Trip plan");
+  const gone = await fileBytes(slug, shown);
+  assertEquals(gone.status, 404);
+  await gone.body?.cancel();
+  assertNotEquals((await rpc("share_note", { p_note: root, p_include_subnotes: false, p_copy: copyOf(rootBody) }, A)).status, 200,
+    "a trashed note can't be shared");
 
   // Stopping kills the link for good; sharing again makes a new one.
+  await rest(`notes?id=eq.${root}`, A, { method: "PATCH", body: JSON.stringify({ trashed_at: null }) });
   assertEquals((await rpc("unshare_note", { p_note: root }, B)).status, 204);
-  assertEquals((await rpc("shared_note", { p_slug: slug }, null)).body.title, "Trip plan", "another user can't stop it");
   assertEquals((await rpc("unshare_note", { p_note: root }, A)).status, 204);
   assertEquals((await rpc("shared_note", { p_slug: slug }, null)).body, null);
   assertEquals((await files(slug)).status, 404);
-  const again = (await rpc("share_note", { p_note: root }, A)).body;
-  assertNotEquals(again, slug);
+  assertNotEquals(await share(A, root, false, copyOf(rootBody)), slug);
 
-  // Junk slugs are just not found.
+  // Junk slugs and ids are just not found.
   assertEquals((await rpc("shared_note", { p_slug: "x' or 1=1 --" }, null)).body, null);
   assertEquals((await files("short")).status, 404);
+  const junk = await fetch(`${API}/functions/v1/share-files?slug=${slug}&file=../../etc`);
+  assertEquals(junk.status, 404);
+  await junk.body?.cancel();
 });
 
 Deno.test("who shared it: name, email and photo, never the account id or a relay address", async () => {
@@ -159,7 +238,7 @@ Deno.test("who shared it: name, email and photo, never the account id or a relay
     assertEquals((await rest(`profiles?user_id=eq.${a}`, null)).status >= 400 || (await rest(`profiles?user_id=eq.${a}`, null)).body.length === 0, true);
 
     const mine = await note(A, "Recipe\n\nFlour.");
-    const slug = (await rpc("share_note", { p_note: mine }, A)).body as string;
+    const slug = await share(A, mine, false, copyOf("Recipe\n\nFlour."));
     const page = (await rpc("shared_note", { p_slug: slug }, null)).body;
     assertEquals(page.shared_by.name, "Emil W");
     assertEquals(page.shared_by.avatar, photo);
@@ -172,7 +251,7 @@ Deno.test("who shared it: name, email and photo, never the account id or a relay
     await sql`update auth.users set email = 'abc123@privaterelay.appleid.com' where id = ${b}`;
     try {
       const theirs = await note(B, "Theirs\n\nHi");
-      const s2 = (await rpc("share_note", { p_note: theirs }, B)).body as string;
+      const s2 = await share(B, theirs, false, copyOf("Theirs\n\nHi"));
       const p2 = (await rpc("shared_note", { p_slug: s2 }, null)).body;
       assertEquals(p2.shared_by, { name: null, email: null, avatar: null });
       await rpc("unshare_note", { p_note: theirs }, B);

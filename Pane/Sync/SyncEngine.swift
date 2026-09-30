@@ -21,6 +21,10 @@ private let log = Logger(subsystem: "dev.emilwagman.pane", category: "sync")
 /// first, a dirty note is skipped, and the push sorts it out by version.
 /// If both sides changed a note, the newer edit wins and the other is kept as a
 /// "conflicted copy", so nothing is ever lost (the server also keeps every revision).
+///
+/// End-to-end encrypted: everything goes up sealed with the account's data key (`E2EE.sealer`)
+/// and comes down sealed. Without the key nothing moves at all, and a row that doesn't open here
+/// is never applied.
 @MainActor
 @Observable
 final class SyncEngine {
@@ -76,18 +80,26 @@ final class SyncEngine {
     /// Seals conflicted copies of locked notes; the app's vault unless a test gives its own.
     private let lockVault: NoteVault?
 
-    init(backend: Backend, context: ModelContext, defaults: UserDefaults = .standard, vault: NoteVault? = nil) {
+    init(backend: Backend, context: ModelContext, defaults: UserDefaults = .standard, vault: NoteVault? = nil, crypto: AccountCrypto? = nil) {
         self.backend = backend
         self.context = context
         self.defaults = defaults
         self.lockVault = vault
         SyncSignal.onChange = { [weak self] in self?.localChanged() }
+        // Start fresh removes the account's files from Storage through here. It happens when this
+        // device doesn't have the key, long before sync starts, so it's set up front.
+        (crypto ?? AccountCrypto.shared).removeAccountFiles = { [weak self] user in
+            guard let client = self?.backend.client else { return }
+            do { try await Self.removeStoredFiles(client: client, user: user) } catch {
+                log.error("removing files after start fresh failed: \(String(describing: error), privacy: .public)")
+            }
+        }
     }
 
     // MARK: Scheduling
 
     func schedule(after delay: TimeInterval = 0) {
-        guard backend.client != nil, case .signedIn = backend.state else { return }
+        guard backend.client != nil, case .signedIn = backend.state, Wire.sealer != nil else { return }
         pending?.cancel()
         pending = Task { [weak self] in
             if delay > 0 { try? await Task.sleep(for: .seconds(delay)) }
@@ -98,7 +110,7 @@ final class SyncEngine {
 
     /// Something changed here: push it soon, at most every `pushInterval`, first one at once.
     func localChanged() {
-        guard backend.client != nil, case .signedIn = backend.state else { return }
+        guard backend.client != nil, case .signedIn = backend.state, Wire.sealer != nil else { return }
         lastChange = .now
         pushWanted = true
         guard pushLoop == nil else { return }
@@ -119,7 +131,8 @@ final class SyncEngine {
     /// Asked for while a run is going, it runs again straight after that one, and returns
     /// once that follow-up is done: when it returns, what you asked for has happened.
     func sync(pulling: Bool = true) async {
-        guard let client = backend.client, case .signedIn = backend.state else { return }
+        // Nothing moves until the account's key is open here.
+        guard let client = backend.client, case .signedIn = backend.state, Wire.sealer != nil else { return }
         if running {
             if pulling { again = true } else { pushAgain = true }
             await withCheckedContinuation { waiting.append($0) }
@@ -145,9 +158,13 @@ final class SyncEngine {
     private var waiting: [CheckedContinuation<Void, Never>] = []
 
     private func run(_ client: SupabaseClient, pulling: Bool) async {
+        // The key can go (signed out, Start fresh) between runs.
+        guard let sealer = Wire.sealer else { return }
+        resetOldLibraryIfNeeded()
+        adoptKeyIfChanged(sealer.keyID)
         if pulling { status = .syncing }
         do {
-            let slowedDown = try await push(client)
+            let slowedDown = try await push(client, sealer: sealer)
             if pulling { try await pull(client); hasSynced = true }
             if slowedDown {
                 // The server asked us to slow down: the rest goes up in a little while.
@@ -166,8 +183,9 @@ final class SyncEngine {
 
     /// Starts realtime and a first sync after sign-in.
     func start() async {
-        guard let client = backend.client, case .signedIn = backend.state else { return }
+        guard let client = backend.client, case .signedIn = backend.state, Wire.sealer != nil else { return }
         adoptLibrary()
+        resetOldLibraryIfNeeded()
         started = true
         // Until realtime has joined, a short poll brings other devices' edits.
         updateFallback()
@@ -239,16 +257,19 @@ final class SyncEngine {
         // Typing that isn't in the model yet goes in first, so it counts as a local edit.
         DebouncedSave.flushAll()
         var folders = Dictionary(uniqueKeysWithValues: context.allFoldersIncludingDeleted().map { ($0.id, $0) })
-        var changed = false
+        var changed: [UUID] = []
         for r in rows {
             if let fid = r.folder_id, folders[fid] == nil {
                 // A folder this device hasn't seen yet: the full pull brings both.
                 schedule(after: 0)
                 continue
             }
-            if merge(r, folders: &folders) { changed = true }
+            if merge(r, folders: &folders) { changed.append(r.id) }
         }
-        if changed { try? context.save() }
+        guard !changed.isEmpty else { return }
+        try? context.save()
+        // Only devices publish shared pages: an AI's edit of a shared note reaches its page from here.
+        republishShares(for: changed)
     }
 
     /// This device's library was synced for one account. When a different account signs
@@ -266,6 +287,133 @@ final class SyncEngine {
     }
     /// The account this engine's in-memory state (refusals, problems) belongs to.
     private var adoptedFor: UUID?
+
+    // MARK: A new key for the account
+
+    nonisolated static func keyIDKey(_ user: UUID) -> String { "e2ee.keyID.\(user.uuidString.lowercased())" }
+
+    /// The account's key changed since this device last synced: someone chose Start fresh, and the
+    /// server's notes went with the old key. What this device still has goes up again, sealed with
+    /// the new key, so nothing it holds is lost.
+    private func adoptKeyIfChanged(_ keyID: String) {
+        guard let uid = backend.userID else { return }
+        let known = defaults.string(forKey: Self.keyIDKey(uid))
+        defaults.set(keyID, forKey: Self.keyIDKey(uid))
+        guard let known, known != keyID else { return }
+        DebouncedSave.flushAll()
+        let n = Self.markAllForUpload(context)
+        defaults.removeObject(forKey: cursorKey)
+        synced = [:]
+        refused = [:]
+        problem = nil
+        try? context.save()
+        log.notice("the account has a new key: \(n) notes go up again")
+    }
+
+    /// Everything in the library, marked to go up as new. Returns how many notes.
+    @discardableResult
+    static func markAllForUpload(_ context: ModelContext) -> Int {
+        let notes = ((try? context.fetch(FetchDescriptor<Note>())) ?? []).filter { $0.deletedAt == nil }
+        for n in notes { n.serverVersion = 0; n.dirty = true }
+        for f in context.allFoldersIncludingDeleted() where f.deletedAt == nil { f.serverVersion = 0; f.dirty = true }
+        for a in (try? context.fetch(FetchDescriptor<Attachment>())) ?? [] where a.deletedAt == nil && FileStore.exists(a) {
+            a.uploaded = false
+            a.dirty = true
+        }
+        return notes.count
+    }
+
+    // MARK: The one-time reset
+
+    nonisolated static func resetKey(_ user: UUID) -> String { "e2ee.v1.localReset.\(user.uuidString.lowercased())" }
+
+    /// The first run of an encrypted build for an account: what this device synced before was
+    /// readable, and the server has since wiped it. It goes here too, with the cursor, so none of
+    /// it is ever pushed into the sealed account. Notes written while signed out never synced;
+    /// they stay and go up sealed.
+    private func resetOldLibraryIfNeeded() {
+        guard let uid = backend.userID, !defaults.bool(forKey: Self.resetKey(uid)) else { return }
+        DebouncedSave.flushAll()
+        let (removed, kept) = Self.resetOldLibrary(context)
+        defaults.removeObject(forKey: cursorKey)
+        synced = [:]
+        refused = [:]
+        defaults.set(true, forKey: Self.resetKey(uid))
+        if removed > 0 { remoteChangeTick += 1 }
+        log.notice("local reset for encryption: removed \(removed), kept \(kept) never synced")
+    }
+
+    /// Removes everything that was synced; keeps what never was (and the folders and files it
+    /// needs), marked to go up as new. Returns how many rows went and how many notes stayed.
+    static func resetOldLibrary(_ context: ModelContext) -> (removed: Int, kept: Int) {
+        let notes = (try? context.fetch(FetchDescriptor<Note>())) ?? []
+        let folders = context.allFoldersIncludingDeleted()
+        let files = (try? context.fetch(FetchDescriptor<Attachment>())) ?? []
+        let keptNotes = notes.filter { $0.serverVersion == 0 && $0.deletedAt == nil }
+        let keptNoteIDs = Set(keptNotes.map(\.id))
+        // New folders, the folders kept notes are in, and every parent of those.
+        var keptFolders = Set<UUID>()
+        func keep(_ folder: Folder?) {
+            var f = folder, hops = 0
+            while let x = f, hops < 64 { keptFolders.insert(x.id); f = x.parent; hops += 1 }
+        }
+        for f in folders where f.serverVersion == 0 && f.deletedAt == nil { keep(f) }
+        for n in keptNotes { keep(n.folder) }
+        var embedded = Set<UUID>()
+        for n in keptNotes {
+            for m in n.body.matches(of: /pane-file:([0-9a-fA-F-]{36})/) { if let id = UUID(uuidString: String(m.1)) { embedded.insert(id) } }
+        }
+        func erase<T: PersistentModel>(_ m: T) { context.delete(m) }
+        var removed = 0
+        for f in files {
+            if f.deletedAt == nil, !f.uploaded || embedded.contains(f.id), FileStore.exists(f) {
+                f.uploaded = false
+                f.dirty = true
+            } else {
+                try? FileManager.default.removeItem(at: FileStore.url(for: f.id, filename: f.filename).deletingLastPathComponent())
+                context.delete(f)
+                removed += 1
+            }
+        }
+        for n in notes where !keptNoteIDs.contains(n.id) { context.delete(n); removed += 1 }
+        for n in keptNotes {
+            // A sub-note whose parent went is a note of its own now.
+            if let p = n.parentID, !keptNoteIDs.contains(p) { n.parentID = nil }
+            n.dirty = true
+        }
+        for f in folders {
+            if keptFolders.contains(f.id) {
+                f.serverVersion = 0
+                f.dirty = true
+            } else if !f.isDeleted {
+                // A kept folder keeps its parents, so whatever goes here holds nothing kept. Gone
+                // for good: Library's delete(folder) would move it to Recently Deleted instead.
+                erase(f)
+                removed += 1
+            }
+        }
+        do { try context.save() } catch { log.error("local reset: save failed: \(String(describing: error), privacy: .public)") }
+        return (removed, keptNotes.count)
+    }
+
+    // MARK: Start fresh
+
+    /// "Start fresh" ended the account's key: the files it sealed can't be opened by anyone, so
+    /// everything under `<user id>/` in Storage goes (the database rows went with `start_fresh`).
+    nonisolated static func removeStoredFiles(client: SupabaseClient, user: UUID) async throws {
+        let folder = user.uuidString.lowercased()
+        let bucket = client.storage.from("files")
+        // A page at a time: what's removed drops out of the next listing.
+        while true {
+            let listed = try await bucket.list(path: folder, options: SearchOptions(limit: 1000))
+            let paths = listed.filter { !$0.name.isEmpty }.map { "\(folder)/\($0.name)" }
+            var gone = 0
+            for i in stride(from: 0, to: paths.count, by: 100) {
+                gone += try await bucket.remove(paths: Array(paths[i ..< min(i + 100, paths.count)])).count
+            }
+            if listed.count < 1000 || gone == 0 { return }
+        }
+    }
 
     /// Realtime joined or dropped. While it's down, edits from other devices come in by a
     /// poll every 8 s (30 s once nothing has changed for 5 minutes) instead of only the
@@ -318,11 +466,11 @@ final class SyncEngine {
 
     /// Pushes dirty rows. Returns true when the server said "too fast" and the rest should
     /// wait; rows it refuses outright are set aside instead of failing the whole sync.
-    private func push(_ client: SupabaseClient) async throws -> Bool {
+    private func push(_ client: SupabaseClient, sealer: Sealer) async throws -> Bool {
         problem = nil
-        if try await pushFiles(client) { return true }
+        if try await pushFiles(client, sealer: sealer) { return true }
         let folders = ((try? context.fetch(FetchDescriptor<Folder>(predicate: #Predicate { $0.dirty }))) ?? [])
-            .sorted { depth($0) < depth($1) } // parents first, for the foreign key
+            .sorted { Self.depth($0) < Self.depth($1) } // parents first, for the foreign key
         for f in folders where !isRefused(f.id, f.updatedAt) {
             let row = FolderDTO(f)
             do {
@@ -341,6 +489,7 @@ final class SyncEngine {
         }
 
         let notes = (try? context.fetch(FetchDescriptor<Note>(predicate: #Predicate { $0.dirty }))) ?? []
+        var pushedNotes: [UUID] = []
         for n in notes where !isRefused(n.id, n.updatedAt) {
             let sentAt = n.updatedAt
             let row = NoteDTO(n)
@@ -374,13 +523,87 @@ final class SyncEngine {
                 n.serverVersion = s.version ?? n.serverVersion
                 // Stay dirty if you typed more while this was in flight.
                 if n.updatedAt <= sentAt { n.dirty = false }
+                pushedNotes.append(n.id)
             }
         }
         try? context.save()
+        republishShares(for: pushedNotes)
         return false
     }
 
+    // MARK: Shared pages
+
+    /// Live links this account made (their tags verify): note → whether its link includes
+    /// sub-notes. A shared page shows a readable copy this device publishes (the server can't read
+    /// the note), so an edit that went up, or one pulled from elsewhere (another device, an AI), is
+    /// published to every page it's on. A share row that
+    /// doesn't verify isn't here: it's never published to, and the note doesn't show as shared.
+    private(set) var liveShares: [UUID: Bool] = [:]
+    private var publishQueue: Set<UUID> = []
+    private var publishTask: Task<Void, Never>?
+    /// How long after the last pushed change a page is written again. Tests shorten it.
+    static var publishDelay: Duration = .seconds(2)
+
+    private func refreshShares(_ client: SupabaseClient) async {
+        struct Row: Decodable { var note_id: UUID; var slug: String; var include_subnotes: Bool; var share_tag: String?; var revoked_at: Date? }
+        guard let user = backend.userID,
+              let rows: [Row] = try? await client.from("note_shares").select("note_id,slug,include_subnotes,share_tag,revoked_at").execute().value else { return }
+        // A link seen stopped stays stopped for this device (RevokedShares).
+        RevokedShares.remember(rows.filter { $0.revoked_at != nil }.map(\.slug), account: user)
+        let sealer = Wire.sealer
+        let verified = rows.filter {
+            $0.revoked_at == nil && SharePublisher.verifies(.init(slug: $0.slug, include_subnotes: $0.include_subnotes, share_tag: $0.share_tag),
+                                                            note: $0.note_id, sealer: sealer, account: user)
+        }
+        let next = Dictionary(verified.map { ($0.note_id, $0.include_subnotes) }, uniquingKeysWith: { a, _ in a })
+        if next != liveShares { liveShares = next }
+    }
+
+    /// Sharing changed on this device (Share Link, sub-notes, Stop Sharing).
+    func shareChanged(_ note: UUID, includesSubNotes: Bool?) {
+        liveShares[note] = includesSubNotes
+    }
+
+    /// The shared notes whose pages show this one: itself, and each shared note whose link
+    /// includes sub-notes and whose text links to it (at any depth). Never by `parent_id`.
+    func sharedRoots(of id: UUID) -> [UUID] {
+        var roots: [UUID] = liveShares[id] != nil ? [id] : []
+        for (root, include) in liveShares where include && root != id {
+            guard let r = context.note(root) else { continue }
+            if SharePublisher.subNotes(of: r, in: context).contains(where: { $0.note.id == id }) { roots.append(root) }
+        }
+        return roots
+    }
+
+    /// Typing pushes every 0.35 s; the pages are written 2 s after the last push that touched them.
+    private func republishShares(for ids: [UUID]) {
+        guard !liveShares.isEmpty else { return }
+        let roots = Set(ids.flatMap { sharedRoots(of: $0) })
+        guard !roots.isEmpty else { return }
+        publishQueue.formUnion(roots)
+        publishTask?.cancel()
+        publishTask = Task { [weak self] in
+            try? await Task.sleep(for: Self.publishDelay)
+            guard !Task.isCancelled, let self, let client = self.backend.client, let user = self.backend.userID else { return }
+            let roots = self.publishQueue
+            self.publishQueue = []
+            self.publishTask = nil
+            for r in roots {
+                // Checks the live share's tag again, and uses what it says about sub-notes.
+                await SharePublisher.republish(root: r, client: client, context: self.context, user: user)
+            }
+        }
+    }
+
     private func isRefused(_ id: UUID, _ edited: Date) -> Bool { refused[id] == edited }
+
+    /// A row this device can't open (sealed with another key, or damaged): left alone, and said
+    /// so. Always false, so it reads as a filter.
+    private func skipUnreadable(_ id: UUID, _ what: String) -> Bool {
+        log.error("can't open \(id, privacy: .public): not sealed with this device's key")
+        problem = "\(what) couldn't be opened on this device, so it was left as it is."
+        return false
+    }
 
     private func refuse(_ id: UUID, _ edited: Date, _ message: String) {
         log.error("server refused \(id, privacy: .public): \(message, privacy: .public)")
@@ -393,9 +616,18 @@ final class SyncEngine {
     /// Sorts a failed write: "too fast" (try again later), "refused" (this row as it stands
     /// can never go up: too big, over a limit, bad data), or nil (network and the like).
     nonisolated static func refusal(_ error: Error) -> Refusal? {
+        if error is Wire.Unsealable { return .refused("it couldn't be encrypted") }
+        if let e = error as? EncodingError, case .invalidValue(_, let c) = e, c.underlyingError is Wire.Unsealable {
+            return .refused("it couldn't be encrypted")
+        }
         if let p = error as? PostgrestError {
             switch p.code {
             case "PT429": return .tooFast
+            case "42501" where p.hint == "wrong_key" || p.hint == "no_key":
+                // The account's key changed on another device (Start fresh): this device gets the
+                // new one, and what it has goes up again (adoptKeyIfChanged).
+                Task { @MainActor in await AccountCrypto.shared.recheck() }
+                return .refused(p.message)
             case "PT413", "PT403", "23514", "23503", "23505", "22001", "22P02", "22P05", "22021", "54000", "42501":
                 return .refused(p.message)
             default: return nil
@@ -411,25 +643,27 @@ final class SyncEngine {
         return nil
     }
 
-    private func storagePath(_ a: Attachment) -> String? {
-        guard let uid = backend.userID else { return nil }
-        return "\(uid.uuidString.lowercased())/\(a.id.uuidString.lowercased())/\(Self.storageName(a.filename))"
+    /// Where a file's sealed bytes are in Storage: whose it is and which file, nothing else.
+    nonisolated static func storagePath(user: UUID, id: UUID) -> String {
+        "\(user.uuidString.lowercased())/\(id.uuidString.lowercased())"
     }
 
-    /// Uploads new files, then their metadata. Returns true when the server said "too fast".
-    private func pushFiles(_ client: SupabaseClient) async throws -> Bool {
+    /// Uploads new files sealed, then their sealed metadata. Returns true when the server said "too fast".
+    private func pushFiles(_ client: SupabaseClient, sealer: Sealer) async throws -> Bool {
+        guard let uid = backend.userID else { return false }
         let files = (try? context.fetch(FetchDescriptor<Attachment>(predicate: #Predicate { $0.dirty || !$0.uploaded }))) ?? []
         for a in files where !isRefused(a.id, a.createdAt) {
-            guard let path = storagePath(a) else { continue }
+            let path = Self.storagePath(user: uid, id: a.id)
             do {
                 if !a.uploaded, a.deletedAt == nil {
                     guard FileStore.exists(a) else { continue }
                     let data = try Data(contentsOf: FileStore.url(for: a.id, filename: a.filename))
-                    try await client.storage.from("files").upload(path, data: data, options: FileOptions(contentType: a.type.preferredMIMEType ?? "application/octet-stream", upsert: true))
+                    try await client.storage.from("files").upload(path, data: try sealer.sealFile(data, id: a.id),
+                                                                  options: FileOptions(contentType: "application/octet-stream", upsert: true))
+                    a.size = Int64(data.count)
                     a.uploaded = true
                 }
-                let row = AttachmentDTO(id: a.id, filename: String(a.filename.prefix(255)), content_type: a.contentType, size: a.size, storage_path: path, created_at: a.createdAt, updated_at: .now, deleted_at: a.deletedAt)
-                try await client.from("attachments").upsert(row).execute()
+                try await client.from("attachments").upsert(AttachmentDTO(a, path: path)).execute()
                 a.dirty = false
             } catch {
                 switch Self.refusal(error) {
@@ -442,29 +676,17 @@ final class SyncEngine {
         return false
     }
 
-    /// A file name as one safe storage key segment. Ordinary names pass through unchanged
-    /// (so files already uploaded keep their paths); separators, control characters and
-    /// dot-only names are replaced, and very long names are shortened.
-    nonisolated static func storageName(_ filename: String) -> String {
-        var name = String(filename.unicodeScalars.map { c -> Character in
-            if c == "/" || c == "\\" || c.properties.generalCategory == .control || c.properties.generalCategory == .format { return "_" }
-            return Character(c)
-        })
-        if name.trimmingCharacters(in: CharacterSet(charactersIn: ". ")).isEmpty { name = "file" }
-        if name.utf8.count > 200 {
-            let ext = (name as NSString).pathExtension
-            var stem = (name as NSString).deletingPathExtension
-            while (stem + "." + ext).utf8.count > 200, !stem.isEmpty { stem.removeLast() }
-            name = ext.isEmpty ? stem : stem + "." + ext
-        }
-        return name
+    /// A file's bytes from Storage, opened with the account's key.
+    nonisolated static func fetchFile(client: SupabaseClient, user: UUID, id: UUID, sealer: Sealer) async throws -> Data {
+        let data = try await client.storage.from("files").download(path: storagePath(user: user, id: id))
+        return try sealer.openFile(data, id: id)
     }
 
     /// Fetches a file's bytes from Storage to this device.
     func download(_ a: Attachment) async -> Bool {
-        guard let client = backend.client, let path = storagePath(a) else { return false }
+        guard let client = backend.client, let uid = backend.userID, let sealer = Wire.sealer else { return false }
         do {
-            let data = try await client.storage.from("files").download(path: path)
+            let data = try await Self.fetchFile(client: client, user: uid, id: a.id, sealer: sealer)
             let url = FileStore.url(for: a.id, filename: a.filename)
             try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
             try data.write(to: url, options: .atomic)
@@ -483,6 +705,8 @@ final class SyncEngine {
         guard let s = server.first else {
             return try await client.from("notes").upsert(NoteDTO(n)).select().execute().value
         }
+        // Theirs can't be opened here: nothing is merged with it or written over it.
+        if s.unreadable { _ = skipUnreadable(s.id, "A note"); return [] }
         if s.body == n.body && s.locked_body == n.lockedBody { return server }
         // A locked note's text is sealed: there's nothing to merge line by line.
         let sealed = s.locked_body != nil || n.lockedBody != nil
@@ -520,7 +744,12 @@ final class SyncEngine {
             apply(s, to: n)
             return server
         }
-        // Ours is newer: overwrite. The server keeps theirs in note_revisions.
+        // Ours is newer: it goes up, and theirs is kept here as a conflicted copy (the server
+        // keeps it in note_revisions too), so neither edit is lost.
+        let copy = Note(body: Self.conflictCopy(of: s.body), folder: n.folder)
+        copy.createdAt = s.updated_at
+        copy.updatedAt = s.updated_at
+        context.insert(copy)
         return try await client.from("notes").update(NoteDTO(n).patch).eq("id", value: n.id).select().execute().value
     }
 
@@ -575,7 +804,7 @@ final class SyncEngine {
             if page.count < 1000 { break }
         }
         var byID = Dictionary(uniqueKeysWithValues: context.allFoldersIncludingDeleted().map { ($0.id, $0) })
-        for r in folderRows {
+        for r in folderRows where !r.unreadable || skipUnreadable(r.id, "A folder") {
             let f = byID[r.id] ?? { let f = Folder(name: r.name); f.id = r.id; context.insert(f); byID[r.id] = f; return f }()
             if f.dirty && f.serverVersion > 0 { continue }
             f.name = r.name
@@ -598,7 +827,7 @@ final class SyncEngine {
             fileRows += page
             if page.count < 1000 { break }
         }
-        for r in fileRows {
+        for r in fileRows where !r.unreadable || skipUnreadable(r.id, "A file") {
             let a = context.attachment(r.id) ?? {
                 let a = Attachment(id: r.id, filename: r.filename, contentType: r.content_type, size: r.size)
                 context.insert(a)
@@ -617,6 +846,7 @@ final class SyncEngine {
         }
 
         var offset = 0
+        var pulledNotes: [UUID] = []
         while true {
             let rows: [NoteDTO] = try await client.from("notes").select()
                 .gt("server_updated_at", value: stamp)
@@ -626,13 +856,18 @@ final class SyncEngine {
             if !rows.isEmpty { DebouncedSave.flushAll() }
             for r in rows {
                 if let s = r.server_updated_at, s > newest { newest = s }
-                if merge(r, folders: &byID) { changed = true }
+                if merge(r, folders: &byID) { changed = true; pulledNotes.append(r.id) }
             }
             if rows.count < 500 { break }
             offset += 500
         }
         if changed { try? context.save() }
         cursor = newest
+        await refreshShares(client)
+        // Only devices publish shared pages (the server can't read them): a note that changed
+        // elsewhere, an AI's edit included, is published to every live page it's on, as a local
+        // edit would be. After the refresh, so a share seen for the first time counts.
+        republishShares(for: pulledNotes)
     }
 
     /// Takes one server row into the library. Returns true when anything changed.
@@ -643,6 +878,7 @@ final class SyncEngine {
     /// push coming back, and touching the note would only churn the editor and the list.
     @discardableResult
     private func merge(_ r: NoteDTO, folders byID: inout [UUID: Folder]) -> Bool {
+        if r.unreadable { _ = skipUnreadable(r.id, "A note"); return false }
         let local = context.note(r.id)
         if let local, !Self.takes(r, over: local) { return false }
         let n = local ?? { let n = Note(body: r.body); n.id = r.id; context.insert(n); return n }()
@@ -663,6 +899,8 @@ final class SyncEngine {
         if n.body != r.body { remoteChangeTick += 1 }
         apply(r, to: n)
         try? context.save()
+        // The server wrote it, so no push follows: a shared page is published from here.
+        republishShares(for: [r.id])
     }
 
     /// Whether a server row should replace what this device has (see `merge`).
@@ -713,7 +951,7 @@ final class SyncEngine {
         n.dirty = false
     }
 
-    private func depth(_ f: Folder) -> Int {
+    private static func depth(_ f: Folder) -> Int {
         var d = 0, c = f.parent
         while let p = c, d < 32 { d += 1; c = p.parent }
         return d
@@ -733,6 +971,33 @@ final class SyncEngine {
 
 // MARK: Wire formats
 
+/// Sealing for the wire (see E2EE): text columns go up only sealed with the account's data key,
+/// and rows that come down are opened here. A row that doesn't open is marked `unreadable` and
+/// never applied. Without the key nothing can be encoded at all.
+enum Wire {
+    struct Unsealable: Error {}
+
+    /// The account's sealer (`E2EE.sealer`), or a test's own. Task-local, so tests running side by
+    /// side each have theirs; tasks sync starts inherit it.
+    @TaskLocal static var testSealer: Sealer?
+    static var sealer: Sealer? { testSealer ?? E2EE.sealer }
+
+    static func seal(_ plain: String, _ context: String) throws -> String {
+        guard let box = Wire.sealer?.seal(plain, context: context) else { throw Unsealable() }
+        return box
+    }
+
+    static func seal(head: NoteHead, _ id: UUID) throws -> String {
+        guard let box = Wire.sealer?.sealHead(head, note: id) else { throw Unsealable() }
+        return box
+    }
+
+    /// A note's head: its title and preview, or a locked note's title alone (its `body` is the title).
+    static func head(body: String, locked: Bool) -> NoteHead {
+        locked ? NoteHead(title: body.isEmpty ? "New Note" : body, preview: nil) : .of(body)
+    }
+}
+
 struct FolderDTO: Codable {
     var id: UUID
     var name: String
@@ -742,10 +1007,12 @@ struct FolderDTO: Codable {
     var updated_at: Date
     var deleted_at: Date?
     var server_updated_at: Date?
+    /// Doesn't open with this device's key: never applied.
+    var unreadable = false
 
     init(_ f: Folder) {
         id = f.id
-        name = String(f.name.replacingOccurrences(of: "\u{0}", with: "").prefix(200))
+        name = String(f.name.prefix(200))
         parent_id = f.parent?.id
         sort_index = f.sortIndex
         created_at = f.createdAt
@@ -753,12 +1020,29 @@ struct FolderDTO: Codable {
         deleted_at = f.deletedAt
     }
 
-    enum CodingKeys: String, CodingKey { case id, name, parent_id, sort_index, created_at, updated_at, deleted_at, server_updated_at }
+    enum CodingKeys: String, CodingKey { case id, name_ct, parent_id, sort_index, created_at, updated_at, deleted_at, server_updated_at }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        parent_id = try c.decodeIfPresent(UUID.self, forKey: .parent_id)
+        sort_index = try c.decodeIfPresent(Double.self, forKey: .sort_index) ?? 0
+        created_at = try c.decode(Date.self, forKey: .created_at)
+        updated_at = try c.decode(Date.self, forKey: .updated_at)
+        deleted_at = try c.decodeIfPresent(Date.self, forKey: .deleted_at)
+        server_updated_at = try c.decodeIfPresent(Date.self, forKey: .server_updated_at)
+        if let box = try c.decodeIfPresent(String.self, forKey: .name_ct), let n = Wire.sealer?.open(box, context: E2EE.folder(id)) {
+            name = n
+        } else {
+            name = ""
+            unreadable = true
+        }
+    }
 
     func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(id, forKey: .id)
-        try c.encode(name, forKey: .name)
+        try c.encode(Wire.seal(name, E2EE.folder(id)), forKey: .name_ct)
         try c.encode(parent_id, forKey: .parent_id)
         try c.encode(sort_index, forKey: .sort_index)
         try c.encode(created_at, forKey: .created_at)
@@ -769,9 +1053,9 @@ struct FolderDTO: Codable {
 
 struct NoteDTO: Codable {
     var id: UUID
+    /// The note's text, opened. For a locked note, its title (from the sealed head).
     var body: String
-    /// A locked note's sealed text; `body` is then its title. Sent only by an account that has a
-    /// notes password (so a server without the column never sees it).
+    /// A locked note's text, sealed with the notes password's key; `body` is then its title.
     var locked_body: String?
     var folder_id: UUID?
     var parent_id: UUID?
@@ -785,11 +1069,12 @@ struct NoteDTO: Codable {
     /// The AI that last changed the note, and when. Set by the server only; never sent.
     var ai_editor: String?
     var ai_edited_at: Date?
+    /// Doesn't open with this device's key (or is damaged): never applied.
+    var unreadable = false
 
     init(_ n: Note) {
         id = n.id
-        // Postgres text can't hold NUL; a pasted one would otherwise refuse the whole note.
-        body = n.body.contains("\u{0}") ? n.body.replacingOccurrences(of: "\u{0}", with: "") : n.body
+        body = n.body
         locked_body = n.lockedBody
         folder_id = n.folder?.id
         parent_id = n.parentID
@@ -800,17 +1085,64 @@ struct NoteDTO: Codable {
         deleted_at = n.deletedAt
     }
 
-    enum CodingKeys: String, CodingKey { case id, body, locked_body, folder_id, parent_id, is_pinned, created_at, updated_at, trashed_at, deleted_at, version, server_updated_at, ai_editor, ai_edited_at }
+    enum CodingKeys: String, CodingKey { case id, body_ct, head_ct, locked_body, folder_id, parent_id, is_pinned, created_at, updated_at, trashed_at, deleted_at, version, server_updated_at, ai_editor, ai_edited_at }
 
-    /// True once this account has a notes password (NoteVault sets it).
-    nonisolated(unsafe) static var sendsLock = false
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        locked_body = try c.decodeIfPresent(String.self, forKey: .locked_body)
+        folder_id = try c.decodeIfPresent(UUID.self, forKey: .folder_id)
+        parent_id = try c.decodeIfPresent(UUID.self, forKey: .parent_id)
+        is_pinned = try c.decodeIfPresent(Bool.self, forKey: .is_pinned) ?? false
+        created_at = try c.decode(Date.self, forKey: .created_at)
+        updated_at = try c.decode(Date.self, forKey: .updated_at)
+        trashed_at = try c.decodeIfPresent(Date.self, forKey: .trashed_at)
+        deleted_at = try c.decodeIfPresent(Date.self, forKey: .deleted_at)
+        version = try c.decodeIfPresent(Int64.self, forKey: .version)
+        server_updated_at = try c.decodeIfPresent(Date.self, forKey: .server_updated_at)
+        ai_editor = try c.decodeIfPresent(String.self, forKey: .ai_editor)
+        ai_edited_at = try c.decodeIfPresent(Date.self, forKey: .ai_edited_at)
+        // A row without its text (realtime leaves big values out) isn't a note to apply.
+        guard c.contains(.head_ct), locked_body != nil || c.contains(.body_ct) else {
+            throw DecodingError.keyNotFound(CodingKeys.body_ct, .init(codingPath: c.codingPath, debugDescription: "no text in this row"))
+        }
+        let head = try c.decodeIfPresent(String.self, forKey: .head_ct)
+        if deleted_at != nil, head == nil {
+            // Deleted for good: a tombstone keeps no text at all.
+            body = ""
+        } else if locked_body != nil {
+            if let head, let h = Wire.sealer?.openHead(head, note: id) { body = h.title } else { body = ""; unreadable = true }
+        } else if let box = try c.decodeIfPresent(String.self, forKey: .body_ct), let text = Wire.sealer?.open(box, context: E2EE.body(id)) {
+            body = text
+            // Opening the head too means an unchanged note seals to the same head next time.
+            if let head { _ = Wire.sealer?.openHead(head, note: id) }
+        } else {
+            body = ""
+            unreadable = true
+        }
+    }
+
+    /// The text columns, sealed: the body (none for a locked note) and the head. A note deleted
+    /// for good sends none: its tombstone keeps no text.
+    static func encodeText(_ c: inout KeyedEncodingContainer<CodingKeys>, id: UUID, body: String, locked: String?, deleted: Bool) throws {
+        if deleted {
+            try c.encodeNil(forKey: .body_ct)
+            try c.encodeNil(forKey: .head_ct)
+            try c.encodeNil(forKey: .locked_body)
+            return
+        }
+        // Postgres text can't hold NUL; a pasted one would otherwise refuse the whole note.
+        let body = body.contains("\u{0}") ? body.replacingOccurrences(of: "\u{0}", with: "") : body
+        if locked == nil { try c.encode(Wire.seal(body, E2EE.body(id)), forKey: .body_ct) } else { try c.encodeNil(forKey: .body_ct) }
+        try c.encode(Wire.seal(head: Wire.head(body: body, locked: locked != nil), id), forKey: .head_ct)
+        try c.encode(locked, forKey: .locked_body)
+    }
 
     /// Client-owned columns only; the server sets version and its own clock.
     func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(id, forKey: .id)
-        try c.encode(body, forKey: .body)
-        if Self.sendsLock || locked_body != nil { try c.encode(locked_body, forKey: .locked_body) }
+        try Self.encodeText(&c, id: id, body: body, locked: locked_body, deleted: deleted_at != nil)
         try c.encode(folder_id, forKey: .folder_id)
         try c.encode(parent_id, forKey: .parent_id)
         try c.encode(is_pinned, forKey: .is_pinned)
@@ -821,6 +1153,7 @@ struct NoteDTO: Codable {
     }
 
     struct Patch: Encodable {
+        var id: UUID
         var body: String
         var locked_body: String?
         var folder_id: UUID?
@@ -831,9 +1164,8 @@ struct NoteDTO: Codable {
         var deleted_at: Date?
 
         func encode(to encoder: Encoder) throws {
-            var c = encoder.container(keyedBy: CodingKeys.self)
-            try c.encode(body, forKey: .body)
-            if NoteDTO.sendsLock || locked_body != nil { try c.encode(locked_body, forKey: .locked_body) }
+            var c = encoder.container(keyedBy: NoteDTO.CodingKeys.self)
+            try NoteDTO.encodeText(&c, id: id, body: body, locked: locked_body, deleted: deleted_at != nil)
             try c.encode(folder_id, forKey: .folder_id)
             try c.encode(parent_id, forKey: .parent_id)
             try c.encode(is_pinned, forKey: .is_pinned)
@@ -841,36 +1173,75 @@ struct NoteDTO: Codable {
             try c.encode(trashed_at, forKey: .trashed_at)
             try c.encode(deleted_at, forKey: .deleted_at)
         }
-        enum CodingKeys: String, CodingKey { case body, locked_body, folder_id, parent_id, is_pinned, updated_at, trashed_at, deleted_at }
     }
 
-    var patch: Patch { Patch(body: body, locked_body: locked_body, folder_id: folder_id, parent_id: parent_id, is_pinned: is_pinned, updated_at: updated_at, trashed_at: trashed_at, deleted_at: deleted_at) }
+    var patch: Patch { Patch(id: id, body: body, locked_body: locked_body, folder_id: folder_id, parent_id: parent_id, is_pinned: is_pinned, updated_at: updated_at, trashed_at: trashed_at, deleted_at: deleted_at) }
+}
+
+/// A file's name, type (a UTType identifier) and size, sealed together as its `meta_ct`.
+struct FileMeta: Codable, Equatable {
+    var name: String
+    var type: String
+    var size: Int64?
 }
 
 struct AttachmentDTO: Codable {
     var id: UUID
     var filename: String
     var content_type: String
+    /// The file's own size; the row stores the sealed size.
     var size: Int64
     var storage_path: String
     var created_at: Date
     var updated_at: Date
     var deleted_at: Date?
     var server_updated_at: Date?
+    /// Doesn't open with this device's key: never applied.
+    var unreadable = false
 
-    enum CodingKeys: String, CodingKey { case id, filename, content_type, size, storage_path, created_at, updated_at, deleted_at, server_updated_at }
+    enum CodingKeys: String, CodingKey { case id, meta_ct, size, storage_path, created_at, updated_at, deleted_at, server_updated_at }
+
+    /// Sealing adds the header, the nonce and the tag to the file's bytes.
+    static let sealOverhead: Int64 = 5 + 16 + 12 + 16
 
     init(id: UUID, filename: String, content_type: String, size: Int64, storage_path: String, created_at: Date, updated_at: Date, deleted_at: Date?) {
         self.id = id; self.filename = filename; self.content_type = content_type; self.size = size
         self.storage_path = storage_path; self.created_at = created_at; self.updated_at = updated_at; self.deleted_at = deleted_at
     }
 
+    init(_ a: Attachment, path: String) {
+        self.init(id: a.id, filename: String(a.filename.prefix(255)), content_type: a.contentType, size: a.size,
+                  storage_path: path, created_at: a.createdAt, updated_at: .now, deleted_at: a.deletedAt)
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        let stored = try c.decodeIfPresent(Int64.self, forKey: .size) ?? 0
+        storage_path = try c.decode(String.self, forKey: .storage_path)
+        created_at = try c.decode(Date.self, forKey: .created_at)
+        updated_at = try c.decode(Date.self, forKey: .updated_at)
+        deleted_at = try c.decodeIfPresent(Date.self, forKey: .deleted_at)
+        server_updated_at = try c.decodeIfPresent(Date.self, forKey: .server_updated_at)
+        if let box = try c.decodeIfPresent(String.self, forKey: .meta_ct), let json = Wire.sealer?.open(box, context: E2EE.fileMeta(id)),
+           let m = try? JSONDecoder().decode(FileMeta.self, from: Data(json.utf8)) {
+            filename = m.name
+            content_type = m.type
+            size = m.size ?? max(stored - Self.sealOverhead, 0)
+        } else {
+            filename = "file"
+            content_type = "public.data"
+            size = 0
+            unreadable = true
+        }
+    }
+
     func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(id, forKey: .id)
-        try c.encode(filename, forKey: .filename)
-        try c.encode(content_type, forKey: .content_type)
-        try c.encode(size, forKey: .size)
+        let json = String(decoding: try JSONEncoder.sorted.encode(FileMeta(name: filename, type: content_type, size: size)), as: UTF8.self)
+        try c.encode(Wire.seal(json, E2EE.fileMeta(id)), forKey: .meta_ct)
+        try c.encode(size + Self.sealOverhead, forKey: .size)
         try c.encode(storage_path, forKey: .storage_path)
         try c.encode(created_at, forKey: .created_at)
         try c.encode(updated_at, forKey: .updated_at)

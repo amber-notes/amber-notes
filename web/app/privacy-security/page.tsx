@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import legal from "@/lib/legal.module.css";
 import { pageMetadata } from "@/lib/site";
-import { COMING, COUNTS, ENCRYPTION, FACTS, LOGS, PRIVACY_PATH, WHO_CAN_SEE } from "@/lib/privacy";
+import { AI_ACCESS, CAVEAT, COUNTS, ENCRYPTION, FACTS, LIMITS, LOGS, PRIVACY_PATH, READABLE, WHO_CAN_SEE } from "@/lib/privacy";
 import s from "./privacy.module.css";
 
 // Privacy & Security for people, not lawyers: what we store, who can see it, which logs exist.
@@ -10,7 +10,7 @@ import s from "./privacy.module.css";
 export const dynamic = "force-static";
 export const metadata: Metadata = pageMetadata({
   title: "Privacy & Security · Amber Notes",
-  description: "What Amber Notes stores and where, what's encrypted, who can see your notes, every log we keep and for how long. No ads, no tracking.",
+  description: "What Amber Notes stores and where, what's encrypted and what stays readable, what happens when you connect an AI, every log we keep and for how long.",
   path: PRIVACY_PATH,
   index: true,
 });
@@ -42,20 +42,20 @@ export default function PrivacySecurity() {
           ))}
         </ul>
 
-        <p className={`${s.coming} rise`} style={r(2)}>
-          {COMING.text} <a href={COMING.href} target="_blank" rel="noopener noreferrer">Read the design</a>
+        <p className={`${s.caveat} rise`} style={r(2)}>
+          {CAVEAT.text} <a href={CAVEAT.href}>{CAVEAT.link}</a>
         </p>
 
         <article className={`${legal.article} rise`} style={r(3)}>
           <h2 id="what-we-store">What we store, and where</h2>
           <p>
             Your account (your email address, or Apple&apos;s relay address if you use Hide My Email), your notes, folders, files and
-            earlier versions of each note, your profile name and photo if you set them, and the AI apps you&apos;ve connected.
-            It&apos;s all stored at Supabase, our host, in Frankfurt, Germany.
+            earlier versions of each note as encrypted copies, your profile name and photo if you set them, your devices, and the AI apps
+            you&apos;ve connected. It&apos;s all stored at Supabase, our host, in Frankfurt, Germany.
           </p>
           <p>
-            The website and shared note pages run on Vercel, and are built in Frankfurt too. Vercel passes requests on to our server
-            and sees a shared note while it shows the page, but it doesn&apos;t store your notes.
+            The website and shared note pages run on Vercel, and are built in Frankfurt too. Vercel passes requests on to our server,
+            including the requests AI apps make, and sees a shared note while it shows the page, but it doesn&apos;t store your notes.
           </p>
 
           <h2 id="encryption">What&apos;s encrypted</h2>
@@ -63,6 +63,26 @@ export default function PrivacySecurity() {
             {ENCRYPTION.items.map((i) => <li key={i.label}><strong>{i.label}</strong> {i.text}</li>)}
           </ul>
           <p>{ENCRYPTION.note}</p>
+
+          <h2 id="readable">What stays readable to us</h2>
+          <p>To sync your notes and run your account, some details aren&apos;t encrypted:</p>
+          <ul>
+            {READABLE.map((t) => <li key={t}>{t.charAt(0).toUpperCase() + t.slice(1)}.</li>)}
+          </ul>
+
+          <h2 id="ai">When you connect an AI</h2>
+          <ul>
+            {AI_ACCESS.map((i) => <li key={i.label}><strong>{i.label}</strong> {i.text}</li>)}
+            <li>You choose <strong>Read Only</strong> or <strong>Read and Edit</strong> for each one.</li>
+            <li>Every change an AI makes keeps the previous version, so you can see what changed and restore it.</li>
+            <li>Disconnect any AI app in <strong>Settings → Connect an AI</strong>. It loses access at once.</li>
+            <li>What an AI app reads becomes part of your conversation with it, and the company behind it handles that under its own privacy policy.</li>
+          </ul>
+
+          <h2 id="limits">Limits</h2>
+          <ul>
+            {LIMITS.map((i) => <li key={i.label}><strong>{i.label}</strong> {i.text}</li>)}
+          </ul>
 
           <h2 id="who-can-see">Who can see what</h2>
           <ul>
@@ -92,20 +112,14 @@ export default function PrivacySecurity() {
               ))}
             </tbody>
           </table>
-          <p>Our hosting plan keeps no backups of the database, so what you delete is gone.</p>
-
-          <h2 id="ai">AI connections</h2>
-          <ul>
-            <li>Nothing reaches an AI app unless you connect one and approve it, in Amber Notes or on this website.</li>
-            <li>You choose <strong>Read Only</strong> or <strong>Read and Edit</strong> for each one.</li>
-            <li>Every change an AI makes keeps the previous version, so you can see what changed and restore it.</li>
-            <li>Disconnect any AI app in <strong>Settings → Connect an AI</strong>. It loses access at once.</li>
-            <li>What an AI app reads becomes part of your conversation with it, and the company behind it handles that under its own privacy policy.</li>
-          </ul>
+          <p>
+            Our hosting plan keeps no backups of the database, so what you delete is gone. If that changes, a backup would hold only the
+            encrypted copies and the locked copies of your key, for as long as this page and the privacy policy say.
+          </p>
 
           <h2 id="your-data">Your data, your choice</h2>
           <ul>
-            <li><strong>Export:</strong> Settings → Privacy &amp; Security → Export My Data gives you a zip with every note as Markdown and everything else we keep about you as JSON.</li>
+            <li><strong>Export:</strong> Settings → Privacy &amp; Security → Export Your Notes makes a zip on your device with every note as Markdown in its folder, with its files. We can&apos;t read your notes, so the export can only be made there. For everything else we keep about you, write to us.</li>
             <li><strong>Delete:</strong> Settings → Delete Account deletes your account and everything in it from our server at once: notes, files, versions, AI connections, share links and usage counts.</li>
             <li><strong>Deleted notes</strong> stay in Recently Deleted for 30 days, then they&apos;re gone for good.</li>
             <li>

@@ -74,7 +74,7 @@ targets:
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
         NSAppleEventsUsageDescription: Amber Notes reads the Apple Notes you choose to import. It never changes them.
-        NSFaceIDUsageDescription: Amber Notes uses Face ID to open your locked notes.
+        NSFaceIDUsageDescription: Amber Notes uses Face ID to open your locked notes, show your recovery key and approve AI connections.
         UTExportedTypeDeclarations:
           - UTTypeIdentifier: dev.emilwagman.pane.item
             UTTypeDescription: Pane item
@@ -175,6 +175,12 @@ targets:
       - path: PaneTests
         excludes: [Fixtures]
       - path: PaneTests/Fixtures
+        buildPhase: resources
+      # Server files the tests check against, copied into the bundle when it's built (the test
+      # host can't read the checkout under ~/Documents without a privacy prompt).
+      - path: supabase/functions/_shared/e2ee-vectors.json
+        buildPhase: resources
+      - path: supabase/migrations/20260929230000_tip_events.sql
         buildPhase: resources
     dependencies:
       - target: Pane
