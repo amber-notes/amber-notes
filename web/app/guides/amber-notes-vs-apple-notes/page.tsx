@@ -2,13 +2,11 @@ import type { Metadata } from "next";
 import { GuidePage } from "@/lib/GuidePage";
 import { pageMetadata } from "@/lib/site";
 
-// Draft for Emil's approval: noindex, and not in the navigation or the sitemap until it's approved.
 export const dynamic = "force-static";
 export const metadata: Metadata = pageMetadata({
   title: "Amber Notes vs Apple Notes: an honest comparison",
   description: "What Amber Notes adds to the Apple Notes way of writing, what Apple Notes still does better, and who each one is for.",
   path: "/guides/amber-notes-vs-apple-notes",
-  index: false,
 });
 
 const ROWS: [string, string, string][] = [

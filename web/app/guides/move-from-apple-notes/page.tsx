@@ -2,13 +2,11 @@ import type { Metadata } from "next";
 import { GuidePage } from "@/lib/GuidePage";
 import { pageMetadata } from "@/lib/site";
 
-// Draft for Emil's approval: noindex, and not in the navigation or the sitemap until it's approved.
 export const dynamic = "force-static";
 export const metadata: Metadata = pageMetadata({
   title: "How to move from Apple Notes to Amber Notes",
   description: "Import all your Apple Notes into Amber Notes on your Mac, with folders, checklists and tables. Apple Notes stays untouched.",
   path: "/guides/move-from-apple-notes",
-  index: false,
 });
 
 export default function Page() {
