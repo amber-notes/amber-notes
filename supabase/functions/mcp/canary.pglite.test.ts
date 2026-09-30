@@ -5,14 +5,15 @@
 // of every table and everything written to the console is searched for the canary. The only place
 // it may appear is the public copy of a note shared on purpose, which proves the search works.
 // The AI connects three ways: approved in the app, approved on a device for a browser elsewhere
-// (the page asks, the device seals the code and redirect to it, the page picks it up with its
-// pickup secret), and approved in the browser with the recovery key; tokens are refreshed too.
+// (the page asks with a commit to its key and nonce, the device writes its nonce, the page
+// reveals its own, both show the number, the device seals the code and redirect to the page, the
+// page picks it up with its pickup secret), and approved in the browser with the recovery key; tokens are refreshed too.
 // The search looks for the canary as text, as hex, and as base64 (standard and URL-safe) at each
 // of the three byte alignments it can have inside a longer encoded value.
 // Needs no Docker or local stack:
 //   cd supabase/functions/mcp && deno test -A canary.pglite.test.ts
 import { assert, assertEquals, assertStringIncludes } from "jsr:@std/assert@1";
-import { fromBase64, handoffPayload, hex as toHex, newHandoffKeys, openHandoff, readHandoffPayload, sealHandoff, toBase64, tokenKey, wrap } from "../_shared/e2ee.ts";
+import { fromBase64, handoffPayload, hex as toHex, matchCommit, matchNumber, newHandoffKeys, openHandoff, readHandoffPayload, sealHandoff, toBase64, tokenKey, wrap } from "../_shared/e2ee.ts";
 import { schemaDB, sqlFor } from "./pglite.ts";
 import { account, app, edit, file, lockedNote, note, notesPassword, folder, share, stubStorage } from "./sealed.ts";
 import { tools } from "./tools.ts";
@@ -30,6 +31,7 @@ Deno.env.delete("CONNECT_PAGE_URL");
 
 const { handleRequest } = await import("./server.ts");
 const { sha256Hex } = await import("./oauth.ts");
+const fromHex = (h: string) => new Uint8Array(h.match(/../g)!.map((b) => parseInt(b, 16)));
 
 const CANARY = `canary-${crypto.randomUUID()}`;
 const enc = new TextEncoder();
@@ -197,26 +199,43 @@ Deno.test("no text of an encrypted account is stored or logged readably, whateve
     // MARK: Connecting from a browser elsewhere, approved on a device
 
     const json = { "content-type": "application/json" };
-    /** The page: a key pair for the handoff and a pickup secret, then the ask. */
+    /** The page: a key pair for the handoff, a pickup secret and a nonce, then the ask with the
+     *  commit to its key and nonce. */
     const pageAsks = async (id: string) => {
       const keys = await newHandoffKeys();
       const secret = crypto.getRandomValues(new Uint8Array(32));
+      const nonce = crypto.getRandomValues(new Uint8Array(16));
       const res = await serve("/connect/ask", {
         method: "POST", headers: { ...session, origin: SITE, ...json },
         body: JSON.stringify({ id, browser_key: toBase64(keys.publicRaw), from: "Chrome on a Mac",
-          pickup_hash: toHex(new Uint8Array(await crypto.subtle.digest("SHA-256", secret))) }),
+          pickup_hash: toHex(new Uint8Array(await crypto.subtle.digest("SHA-256", secret))),
+          match_commit: await matchCommit(keys.publicRaw, nonce) }),
       });
       assertEquals(res.status, 200);
       await res.body?.cancel();
-      return { keys, pickup: toHex(secret) };
+      return { keys, pickup: toHex(secret), nonce };
     };
     const pickUp = async (id: string, pickup: string) =>
       await (await serve("/connect/status", { method: "POST", headers: json, body: JSON.stringify({ id, pickup }) })).json();
 
     const b = await start("b");
     const bPage = await pageAsks(b.requestId);
-    // The device: sees the ask, reads the request, builds the redirect, seals it with the code.
-    const [seen] = await app(pg, a.id, `select browser_key from public.connect_asks where request_id = $1`, [b.requestId]);
+    // The device writes its nonce; the page sees it with its pickup and reveals its own.
+    const deviceNonce = crypto.getRandomValues(new Uint8Array(16));
+    const wrote = await serve("/connect/nonce", { method: "POST", headers: { ...session, ...json }, body: JSON.stringify({ id: b.requestId, nonce: toHex(deviceNonce) }) });
+    assertEquals(wrote.status, 200);
+    await wrote.body?.cancel();
+    const asked = await pickUp(b.requestId, bPage.pickup);
+    assertEquals([asked.state, asked.device_nonce], ["asked", toHex(deviceNonce)]);
+    const revealed = await serve("/connect/reveal", { method: "POST", headers: json, body: JSON.stringify({ id: b.requestId, pickup: bPage.pickup, nonce: toHex(bPage.nonce) }) });
+    assertEquals(revealed.status, 200);
+    await revealed.body?.cancel();
+    // The device: sees the ask, checks the commit, shows the same number as the page, reads the
+    // request, builds the redirect, seals it with the code.
+    const [seen] = await app(pg, a.id, `select browser_key, match_commit, page_nonce from public.connect_asks where request_id = $1`, [b.requestId]);
+    assertEquals(await matchCommit(fromBase64(seen.browser_key), fromHex(seen.page_nonce)), seen.match_commit);
+    assertEquals(await matchNumber(fromBase64(seen.browser_key), fromHex(seen.page_nonce), deviceNonce, b.requestId),
+      await matchNumber(bPage.keys.publicRaw, bPage.nonce, fromHex(asked.device_nonce), b.requestId));
     const shown = await (await serve(`/connect/request?id=${b.requestId}`, { headers: session })).json();
     const back = new URL(shown.redirect_uri);
     if (shown.state) back.searchParams.set("state", shown.state);

@@ -91,7 +91,7 @@ export function subpath(req: Request): string {
 }
 
 export function isOAuthPath(p: string) {
-  return p.startsWith("/.well-known/") || ["/register", "/authorize", "/token", "/revoke", "/connect/request", "/connect/label", "/connect/ask", "/connect/status", "/connect/decide", "/connect/release"].includes(p);
+  return p.startsWith("/.well-known/") || ["/register", "/authorize", "/token", "/revoke", "/connect/request", "/connect/label", "/connect/ask", "/connect/status", "/connect/nonce", "/connect/reveal", "/connect/decide", "/connect/release"].includes(p);
 }
 
 const json = (body: unknown, status = 200, headers: Record<string, string> = {}) =>
@@ -337,6 +337,8 @@ export async function handleOAuth(req: Request, sql: Sql, path: string): Promise
       case "/connect/label": return req.method === "GET" ? await label(req, sql) : json({ error: "method_not_allowed" }, 405);
       case "/connect/ask": return req.method === "POST" ? await ask(req, sql) : json({ error: "method_not_allowed" }, 405);
       case "/connect/status": return req.method === "POST" ? await status(req, sql) : json({ error: "method_not_allowed" }, 405);
+      case "/connect/nonce": return req.method === "POST" ? await deviceNonce(req, sql) : json({ error: "method_not_allowed" }, 405);
+      case "/connect/reveal": return req.method === "POST" ? await reveal(req, sql) : json({ error: "method_not_allowed" }, 405);
       case "/connect/decide": return req.method === "POST" ? await decide(req, sql) : json({ error: "method_not_allowed" }, 405);
       case "/connect/release": return req.method === "POST" ? await release(req, sql) : json({ error: "method_not_allowed" }, 405);
     }
@@ -523,25 +525,34 @@ async function ask(req: Request, sql: Sql): Promise<Response> {
   const user = await sessionUser(req);
   if (!user) return json({ error: "Sign in to Amber Notes first." }, 401);
   if (await limited(sql, req, "request")) return json({ error: "Too many attempts. Wait a few minutes and try again." }, 429);
-  const body = await req.json().catch(() => ({})) as { id?: string; browser_key?: unknown; from?: unknown; pickup_hash?: unknown };
+  const body = await req.json().catch(() => ({})) as { id?: string; browser_key?: unknown; from?: unknown; pickup_hash?: unknown; match_commit?: unknown };
   const key = typeof body.browser_key === "string" ? body.browser_key : "";
   if (!RAW_P256.test(key) || atob(key).charCodeAt(0) !== 4) return json({ error: "Reload this page and try again." }, 400);
   // SHA-256 of the page's pickup secret: /connect/status hands the answer only to the secret.
   const pickupHash = typeof body.pickup_hash === "string" ? body.pickup_hash : "";
   if (!HEX64.test(pickupHash)) return json({ error: "Reload this page and try again." }, 400);
+  // Number matching, commit then reveal: the page's SHA-256(browser key raw ‖ its nonce), sent
+  // before any device writes its own nonce. The page reveals its nonce only after (/connect/reveal).
+  const commit = typeof body.match_commit === "string" ? body.match_commit : "";
+  if (!HEX64.test(commit)) return json({ error: "Reload this page and try again." }, 400);
   const from = cleanName(typeof body.from === "string" ? body.from : "").slice(0, 60) || "a web browser";
+  // A wrong number typed on a device holds the account's asks for an hour.
+  const [blocked] = await sql`select 1 from public.connect_blocks where user_id = ${user} and blocked_until > now()`;
+  if (blocked) return json({ error: BLOCKED }, 429);
   const [{ n }] = await sql<{ n: number }[]>`
     select count(*)::int n from public.connect_asks where user_id = ${user} and created_at > now() - interval '10 minutes'`;
   if (n >= ASKS_PER_10_MINUTES) return json({ error: "Too many requests to connect. Wait a few minutes and try again." }, 429);
   const r = await pending(sql, String(body.id ?? ""));
   if (!r) return json({ error: EXPIRED }, 404);
   if (!(await claim(sql, r, user))) return json({ error: NOT_YOURS }, 403);
-  // A reloaded page makes a new key: the unanswered ask takes it.
+  // A reloaded page makes a new key and a new commit: the unanswered ask takes them, and both
+  // nonces start over, so a device's nonce always comes after the commit it's matched against.
   const [row] = await sql<{ expires_at: Date }[]>`
-    insert into public.connect_asks (request_id, user_id, browser_key, started_from, expires_at, pickup_hash)
-    values (${r.id}, ${user}, ${key}, ${from}, ${r.expires_at}, ${pickupHash})
+    insert into public.connect_asks (request_id, user_id, browser_key, started_from, expires_at, pickup_hash, match_commit)
+    values (${r.id}, ${user}, ${key}, ${from}, ${r.expires_at}, ${pickupHash}, ${commit})
     on conflict (request_id) do update set browser_key = excluded.browser_key, started_from = excluded.started_from,
-      pickup_hash = excluded.pickup_hash, created_at = now()
+      pickup_hash = excluded.pickup_hash, match_commit = excluded.match_commit, device_nonce = null, page_nonce = null,
+      created_at = now()
       where connect_asks.answered_at is null and connect_asks.user_id = ${user}
     returning expires_at`;
   if (!row) return json({ error: EXPIRED }, 404);
@@ -549,26 +560,61 @@ async function ask(req: Request, sql: Sql): Promise<Response> {
   return json({ asked: true, expires_at: row.expires_at });
 }
 
+const BLOCKED = "Connecting AIs is paused for an hour on this account because a wrong number was typed. If that wasn't you, change your password.";
+const NONCE = /^[0-9a-f]{32}$/;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /// Tells the account's devices about a new ask. Today they learn of it through realtime while the
 /// app runs, and when it's next opened; push (APNs) slots in here once there's a key for it.
 export async function notifyDevices(_sql: Sql, _user: string, _requestId: string): Promise<void> {}
 
+/// The device's half of number matching: POST {id, nonce} with the person's session, from the app.
+/// Written once, only after the page's commit (the ask) and while the ask is open; the same nonce
+/// again is fine, a different one is refused. A device makes a fresh nonce whenever the ask's
+/// device_nonce is empty (a reloaded page starts both nonces over).
+async function deviceNonce(req: Request, sql: Sql): Promise<Response> {
+  if (!allowedOrigin(req)) return json({ error: "Not allowed from this site." }, 403);
+  const user = await sessionUser(req);
+  if (!user) return json({ error: "Sign in to Amber Notes first." }, 401);
+  if (await limited(sql, req, "request")) return json({ error: "Too many attempts. Wait a few minutes and try again." }, 429);
+  const body = await req.json().catch(() => ({})) as { id?: unknown; nonce?: unknown };
+  const id = typeof body.id === "string" && UUID.test(body.id) ? body.id : "";
+  const nonce = typeof body.nonce === "string" ? body.nonce : "";
+  if (!NONCE.test(nonce)) return json({ error: "Update Amber Notes to connect an AI." }, 400);
+  if (!id) return json({ error: EXPIRED }, 404);
+  const [set] = await sql<{ device_nonce: string }[]>`
+    update public.connect_asks a set device_nonce = ${nonce}
+    from public.oauth_requests r
+    where a.request_id = ${id} and r.id = a.request_id and a.user_id = ${user}
+      and a.answered_at is null and a.expires_at > now() and r.decided_at is null and r.expires_at > now()
+      and (a.device_nonce is null or a.device_nonce = ${nonce})
+    returning a.device_nonce`;
+  if (set) return json({ nonce_set: true });
+  const [other] = await sql`select 1 from public.connect_asks a join public.oauth_requests r on r.id = a.request_id
+    where a.request_id = ${id} and a.user_id = ${user} and a.answered_at is null and a.expires_at > now()
+      and r.decided_at is null and r.expires_at > now() and a.device_nonce is not null`;
+  if (other) return json({ error: "Another device is answering this request." }, 409);
+  return json({ error: EXPIRED }, 404);
+}
+
 /// Where the page's request stands: POST {id, pickup}. No session: the request id is the page's,
 /// and the answer (the sealed code, or the declined redirect) goes only to the pickup secret whose
 /// SHA-256 the ask stored, and only once. Without it, only the state. The code itself is sealed to
-/// a key only the page holds.
+/// a key only the page holds. While the ask is open, the pickup also gets the device's nonce once a
+/// device has written it (null before): the page then reveals its own (/connect/reveal).
 async function status(req: Request, sql: Sql): Promise<Response> {
   if (await limited(sql, req, "status")) return json({ error: "Too many attempts. Wait a few minutes and try again." }, 429);
   const body = await req.json().catch(() => ({})) as { id?: unknown; pickup?: unknown };
   const id = typeof body.id === "string" ? body.id : "";
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return json({ state: "expired" });
+  if (!UUID.test(id)) return json({ state: "expired" });
   const pickup = typeof body.pickup === "string" && HEX64.test(body.pickup) ? body.pickup : null;
-  const [a] = await sql<{ answered_at: Date | null; denied: boolean; delivered: boolean; expired: boolean; pickup_hash: string }[]>`
-    select answered_at, denied, delivered_at is not null as delivered, expires_at < now() as expired, pickup_hash
+  const [a] = await sql<{ answered_at: Date | null; denied: boolean; delivered: boolean; expired: boolean; pickup_hash: string; device_nonce: string | null }[]>`
+    select answered_at, denied, delivered_at is not null as delivered, expires_at < now() as expired, pickup_hash, device_nonce
     from public.connect_asks where request_id = ${id}`;
+  const hash = pickup ? await sha256OfHex(pickup) : null;
+  const picksUp = Boolean(a && hash && timingSafeEqual(hash, a.pickup_hash));
   if (a?.answered_at) {
-    const hash = pickup ? await sha256OfHex(pickup) : null;
-    if (!hash || !timingSafeEqual(hash, a.pickup_hash)) return json({ state: a.delivered ? "delivered" : a.denied ? "denied" : "approved" });
+    if (!picksUp) return json({ state: a.delivered ? "delivered" : a.denied ? "denied" : "approved" });
     // Exactly one pickup gets the answer, even when two arrive at once.
     const [handed] = await sql<{ answer: string | null; redirect: string | null; denied: boolean }[]>`
       with old as (select request_id, answer, redirect, denied from public.connect_asks
@@ -576,7 +622,9 @@ async function status(req: Request, sql: Sql): Promise<Response> {
       update public.connect_asks c set answer = null, delivered_at = now() from old where c.request_id = old.request_id
       returning old.answer, old.redirect, old.denied`;
     if (!handed) return json({ state: "delivered" });
-    if (handed.denied) return json({ state: "denied", redirect: handed.redirect });
+    // The page sends the browser to a declined redirect by itself, so only to a web address or an
+    // app on this computer, never a javascript: or other scheme a database row could hold.
+    if (handed.denied) return json(handed.redirect && validRedirect(handed.redirect) ? { state: "denied", redirect: handed.redirect } : { state: "denied" });
     return handed.answer ? json({ state: "approved", redirect: handed.redirect, handoff: handed.answer }) : json({ state: "delivered" });
   }
   const [r] = await sql<{ decided: boolean; expired: boolean }[]>`
@@ -584,7 +632,36 @@ async function status(req: Request, sql: Sql): Promise<Response> {
   if (!r || r.expired || a?.expired) return json({ state: "expired" });
   // Answered in the app on this computer (the Open Amber Notes shortcut): the app went on from there.
   if (r.decided) return json({ state: "answered_in_app" });
-  return json({ state: a ? "asked" : "pending" });
+  if (!a) return json({ state: "pending" });
+  return json(picksUp ? { state: "asked", device_nonce: a.device_nonce } : { state: "asked" });
+}
+
+/// The page's half of number matching: POST {id, pickup, nonce}, no session. Only with the pickup
+/// secret, only after a device wrote its nonce, and once: the same nonce again is fine, another is
+/// refused. The nonce must open the page's commit (the device checks that before showing a number).
+async function reveal(req: Request, sql: Sql): Promise<Response> {
+  if (await limited(sql, req, "status")) return json({ error: "Too many attempts. Wait a few minutes and try again." }, 429);
+  const body = await req.json().catch(() => ({})) as { id?: unknown; pickup?: unknown; nonce?: unknown };
+  const id = typeof body.id === "string" && UUID.test(body.id) ? body.id : "";
+  const pickup = typeof body.pickup === "string" && HEX64.test(body.pickup) ? body.pickup : null;
+  const nonce = typeof body.nonce === "string" ? body.nonce : "";
+  if (!NONCE.test(nonce)) return json({ error: "Reload this page and try again." }, 400);
+  if (!id) return json({ error: EXPIRED }, 404);
+  const [a] = await sql<{ pickup_hash: string; open: boolean; device_nonce: string | null; page_nonce: string | null }[]>`
+    select a.pickup_hash, a.device_nonce, a.page_nonce,
+      (a.answered_at is null and a.expires_at > now() and r.decided_at is null and r.expires_at > now()) as open
+    from public.connect_asks a join public.oauth_requests r on r.id = a.request_id where a.request_id = ${id}`;
+  const hash = pickup ? await sha256OfHex(pickup) : null;
+  if (!a || !hash || !timingSafeEqual(hash, a.pickup_hash)) return json({ error: "Reload this page and try again." }, 403);
+  if (!a.open) return json({ error: EXPIRED }, 404);
+  if (!a.device_nonce) return json({ error: "Wait for your device to show the request." }, 409);
+  const [set] = await sql`
+    update public.connect_asks set page_nonce = ${nonce}
+    where request_id = ${id} and pickup_hash = ${hash} and answered_at is null and expires_at > now()
+      and device_nonce is not null and (page_nonce is null or page_nonce = ${nonce})
+    returning 1`;
+  if (!set) return json({ error: "This request changed. Reload this page and try again." }, 409);
+  return json({ revealed: true });
 }
 
 const HEX64 = /^[0-9a-f]{64}$/;
@@ -617,12 +694,17 @@ const CHANGED = "This request changed. Start connecting again from the other app
 /// sends it back, so what the person approved is where the code goes. Allow creates the grant and
 /// stores the hash of the one-minute, single-use code the app made, with the data key wrapped
 /// under it; the answer is the client's redirect without the code, which the app adds.
+///
+/// Asked from a browser, a device allows only once the page has revealed its nonce (the device
+/// has shown the number and checked the page's commit by then). A device declines with
+/// `wrong_number: true` when the person typed a number that didn't match: the account then takes no
+/// new asks for an hour, and every device hears of it (a 'wrong_number' notice).
 async function decide(req: Request, sql: Sql): Promise<Response> {
   if (!allowedOrigin(req)) return json({ error: "Not allowed from this site." }, 403);
   const user = await sessionUser(req);
   if (!user) return json({ error: "Sign in to Amber Notes first." }, 401);
   if (await limited(sql, req, "decide")) return json({ error: "Too many attempts." }, 429);
-  const body = await req.json().catch(() => ({})) as { id?: string; allow?: boolean; write?: boolean; redirect_uri?: unknown; code_hash?: unknown; code_wrap?: unknown; handoff?: unknown };
+  const body = await req.json().catch(() => ({})) as { id?: string; allow?: boolean; write?: boolean; redirect_uri?: unknown; code_hash?: unknown; code_wrap?: unknown; handoff?: unknown; wrong_number?: unknown };
   const r = await pending(sql, String(body.id ?? ""));
   if (!r) return json({ error: EXPIRED }, 404);
   if (!(await claim(sql, r, user))) return json({ error: NOT_YOURS }, 403);
@@ -655,11 +737,25 @@ async function decide(req: Request, sql: Sql): Promise<Response> {
   const name = displayName(r.client_name, r.redirect_uri);
   const scopes = (r.scope ?? "").split(/\s+/).filter(Boolean);
   const write = body.write === true && (scopes.length === 0 || scopes.includes("notes:write"));
+  const wrongNumber = Boolean(asked) && !allow && body.wrong_number === true;
   // One answer per request, even when two arrive at once.
-  const answered = await sql.begin(async (tx) => {
+  const answered = await sql.begin(async (tx): Promise<boolean | "reveal"> => {
+    if (asked && allow && !fromPage) {
+      // Read under the row's lock, so a page that asks again (both nonces start over) can't slip
+      // in between the check and the answer.
+      const [a] = await tx<{ page_nonce: string | null }[]>`
+        select page_nonce from public.connect_asks where request_id = ${r.id} for update`;
+      if (!a?.page_nonce) return "reveal";
+    }
     const [open] = await tx`update public.oauth_requests set decided_at = now()
       where id = ${r.id} and decided_at is null and claimed_by = ${user} returning 1`;
     if (!open) return false;
+    if (wrongNumber) {
+      await tx`insert into public.connect_blocks (user_id, blocked_until) values (${user}, now() + interval '1 hour')
+        on conflict (user_id) do update set blocked_until = excluded.blocked_until`;
+      // The app builds the words from the kind.
+      await tx`insert into public.account_notices (user_id, kind, grant_id, what) values (${user}, 'wrong_number', null, 'wrong_number')`;
+    }
     if (!allow) return true;
     const [g] = await tx<{ id: string }[]>`
       insert into public.mcp_tokens (user_id, name, token_hash, can_write, kind, client_id, redirect_host)
@@ -673,6 +769,7 @@ async function decide(req: Request, sql: Sql): Promise<Response> {
     await tx`insert into public.account_notices (user_id, kind, grant_id, what) values (${user}, 'ai_connected', ${g.id}, ${what})`;
     return true;
   });
+  if (answered === "reveal") return json({ error: "Finish on the page in your browser first." }, 409);
   if (!answered) return json({ error: EXPIRED }, 404);
   if (!allow) {
     u.searchParams.set("error", "access_denied");

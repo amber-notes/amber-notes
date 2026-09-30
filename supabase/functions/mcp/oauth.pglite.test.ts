@@ -8,7 +8,7 @@
 import { assert, assertEquals, assertMatch, assertStringIncludes } from "jsr:@std/assert@1";
 import type { PGlite } from "npm:@electric-sql/pglite@0.2.17";
 import type { Sql } from "npm:postgres@3.4.5";
-import { type Bytes, fromBase64, handoffPayload, hex as toHex, keyIdOf, newHandoffKeys, openHandoff, parseRecoveryKey, readHandoffPayload, recoveryKEK, recoveryKeyText, sealHandoff, tokenKey, toBase64, unwrap, verifierOf, wrap } from "../_shared/e2ee.ts";
+import { type Bytes, fromBase64, handoffPayload, hex as toHex, keyIdOf, matchCommit, matchNumber, newHandoffKeys, openHandoff, parseRecoveryKey, readHandoffPayload, recoveryKEK, recoveryKeyText, sealHandoff, tokenKey, toBase64, unwrap, verifierOf, wrap } from "../_shared/e2ee.ts";
 import { newUser as plainUser, schemaDB, sqlFor } from "./pglite.ts";
 import { account, app } from "./sealed.ts";
 
@@ -811,14 +811,47 @@ async function newPickup() {
   return { pickup: toHex(bytes), pickup_hash: toHex(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))) };
 }
 
-async function askAs(sql: Sql, user: User, id: string, browserKey: string, from = "Chrome on a Mac", pickup?: { pickup: string; pickup_hash: string } | null) {
+/** The page asks: its key, its pickup hash, and its commit to the key and a nonce it keeps
+ *  (matchCommit), as web/lib/connect-flow.ts sends them. `commit: null` leaves the commit out. */
+async function askAs(sql: Sql, user: User, id: string, browserKey: string, from = "Chrome on a Mac", pickup?: { pickup: string; pickup_hash: string } | null, commit?: string | null) {
   const p = pickup === undefined ? await newPickup() : pickup;
+  const nonce = crypto.getRandomValues(new Uint8Array(16));
+  let raw: Uint8Array = new Uint8Array(0);
+  try { raw = fromBase64(browserKey); } catch { /* not a key: refused before the commit matters */ }
+  const c = commit === undefined ? await matchCommit(raw, nonce) : commit;
   const res = await call(sql, request("function", "/connect/ask", {
     method: "POST", headers: { authorization: `Bearer ${user.jwt}`, origin: SITE, "content-type": "application/json" },
-    body: JSON.stringify({ id, browser_key: browserKey, from, ...(p ? { pickup_hash: p.pickup_hash } : {}) }),
+    body: JSON.stringify({ id, browser_key: browserKey, from, ...(p ? { pickup_hash: p.pickup_hash } : {}), ...(c ? { match_commit: c } : {}) }),
   }));
-  return { status: res.status, body: await res.json(), pickup: p?.pickup ?? "" };
+  return { status: res.status, body: await res.json(), pickup: p?.pickup ?? "", nonce };
 }
+
+/** The device writes its nonce (POST /connect/nonce, with the session, from the app). */
+async function deviceNonce(sql: Sql, user: User, id: string, nonce: string) {
+  const res = await call(sql, request("function", "/connect/nonce", {
+    method: "POST", headers: { authorization: `Bearer ${user.jwt}`, "content-type": "application/json" }, body: JSON.stringify({ id, nonce }),
+  }));
+  return { status: res.status, body: await res.json() };
+}
+
+/** The page reveals its nonce (POST /connect/reveal, no session, with the pickup). */
+async function reveal(sql: Sql, id: string, pickup: string, nonce: string) {
+  const res = await call(sql, request("proxy", "/connect/reveal", {
+    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id, pickup, nonce }),
+  }));
+  return { status: res.status, body: await res.json() };
+}
+
+/** Number matching the way it goes when nothing is wrong: the device writes its nonce, the page
+ *  sees it and reveals its own. Returns the device's nonce. */
+async function matchUp(sql: Sql, user: User, id: string, pickup: string, pageNonce: Uint8Array) {
+  const d = crypto.getRandomValues(new Uint8Array(16));
+  assertEquals((await deviceNonce(sql, user, id, toHex(d))).status, 200);
+  assertEquals((await reveal(sql, id, pickup, toHex(pageNonce))).status, 200);
+  return d;
+}
+
+const fromHex = (h: string) => new Uint8Array(h.match(/../g)!.map((b) => parseInt(b, 16)));
 
 /** /connect/status as the page calls it: a POST with the pickup secret (or without one). */
 async function statusOf(sql: Sql, id: string, pickup?: string) {
@@ -837,14 +870,26 @@ Deno.test("a browser asks the account's devices; the device seals the code to th
   // The page's pickup hash is required: lowercase hex SHA-256.
   assertEquals((await askAs(sql, me, requestId, toBase64(page.publicRaw), "Chrome on a Mac", null)).status, 400);
   assertEquals((await askAs(sql, me, requestId, toBase64(page.publicRaw), "Chrome on a Mac", { pickup: "", pickup_hash: "A".repeat(64) })).status, 400);
+  // So is the commit to the page's key and nonce: lowercase hex SHA-256.
+  assertEquals((await askAs(sql, me, requestId, toBase64(page.publicRaw), "Chrome on a Mac", undefined, null)).status, 400);
+  assertEquals((await askAs(sql, me, requestId, toBase64(page.publicRaw), "Chrome on a Mac", undefined, "A".repeat(64))).status, 400);
   const askedNow = await askAs(sql, me, requestId, toBase64(page.publicRaw));
   assertEquals(askedNow.status, 200);
   const pickup = askedNow.pickup;
   assertEquals((await statusOf(sql, requestId)).state, "asked");
+  // The pickup sees whether a device has written its nonce yet; nobody else does.
+  assertEquals(await statusOf(sql, requestId, pickup), { state: "asked", device_nonce: null });
+  const dNonce = await matchUp(sql, me, requestId, pickup, askedNow.nonce);
+  assertEquals(await statusOf(sql, requestId), { state: "asked" });
+  assertEquals(await statusOf(sql, requestId, pickup), { state: "asked", device_nonce: toHex(dNonce) });
 
   // Every device of the account sees the ask (realtime reads it under RLS); nobody else does.
-  const [seen] = await app(pg, me.id, `select request_id, browser_key, started_from from public.connect_asks`);
+  const [seen] = await app(pg, me.id, `select request_id, browser_key, started_from, match_commit, page_nonce from public.connect_asks`);
   assertEquals([seen.request_id, seen.started_from], [requestId, "Chrome on a Mac"]);
+  // The device checks the page's commit, then shows the number the page shows.
+  assertEquals(await matchCommit(fromBase64(seen.browser_key), fromHex(seen.page_nonce)), seen.match_commit);
+  assertEquals(await matchNumber(fromBase64(seen.browser_key), fromHex(seen.page_nonce), dNonce, requestId),
+    await matchNumber(page.publicRaw, askedNow.nonce, dNonce, requestId));
   const other = await newUser(pg);
   assertEquals((await app(pg, other.id, `select 1 from public.connect_asks`)).length, 0);
   const asked = await (await call(sql, request("function", `/connect/request?id=${requestId}`, { headers: { authorization: `Bearer ${me.jwt}` } }))).json();
@@ -964,7 +1009,8 @@ Deno.test("Allow tells every device: a notice names the connection and where it 
   const { requestId } = await pendingRequest(sql);
   const me = await newUser(pg);
   const page = await newHandoffKeys();
-  await askAs(sql, me, requestId, toBase64(page.publicRaw), "Firefox on Windows");
+  const firefox = await askAs(sql, me, requestId, toBase64(page.publicRaw), "Firefox on Windows");
+  await matchUp(sql, me, requestId, firefox.pickup, firefox.nonce);
   const { code, body } = await appDecision(me, requestId, CHATGPT);
   const r = await decideAs(sql, me, { ...JSON.parse(body), handoff: await sealHandoff(handoffPayload({ code, redirect: CHATGPT }), page.publicRaw, requestId) });
   assertEquals(r.status, 200);
@@ -983,4 +1029,157 @@ Deno.test("Allow tells every device: a notice names the connection and where it 
   const stale = JSON.parse((await appDecision(me, refused.requestId, CHATGPT)).body);
   await decideAs(sql, me, { ...stale, code_wrap: stale.code_wrap.replace(/^amb2\.[0-9a-f]{16}\./, `amb2.${hex(8)}.`) });
   assertEquals((await app(pg, me.id, `select 1 from public.account_notices`)).length, 2);
+});
+
+// MARK: Number matching, commit then reveal
+
+Deno.test("number matching goes in order: commit, the device's nonce, the reveal, then Allow", async () => {
+  const { sql, pg } = await db();
+  const { clientId, verifier, requestId } = await pendingRequest(sql);
+  const me = await newUser(pg);
+  const page = await newHandoffKeys();
+  const asked = await askAs(sql, me, requestId, toBase64(page.publicRaw));
+  const pNonce = toHex(asked.nonce);
+
+  // The page can't reveal before a device has written its nonce, nor without its pickup.
+  assertEquals((await reveal(sql, requestId, asked.pickup, pNonce)).status, 409);
+  const d1 = hex(16);
+  // Only the account's own app writes the device's nonce, and only a well-formed one.
+  const other = await newUser(pg);
+  assertEquals((await deviceNonce(sql, other, requestId, d1)).status, 404);
+  assertEquals((await deviceNonce(sql, me, requestId, "A".repeat(32))).status, 400);
+  const fromElsewhere = await call(sql, request("function", "/connect/nonce", {
+    method: "POST", headers: { authorization: `Bearer ${me.jwt}`, origin: "https://evil.example", "content-type": "application/json" }, body: JSON.stringify({ id: requestId, nonce: d1 }),
+  }));
+  assertEquals(fromElsewhere.status, 403);
+  await fromElsewhere.body?.cancel();
+  const signedOut = await call(sql, request("function", "/connect/nonce", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: requestId, nonce: d1 }) }));
+  assertEquals(signedOut.status, 401);
+  await signedOut.body?.cancel();
+  // Written once: the same nonce again is fine, another is refused.
+  assertEquals((await deviceNonce(sql, me, requestId, d1)).status, 200);
+  assertEquals((await deviceNonce(sql, me, requestId, d1)).status, 200);
+  assertEquals((await deviceNonce(sql, me, requestId, hex(16))).status, 409);
+  assertEquals(await statusOf(sql, requestId, asked.pickup), { state: "asked", device_nonce: d1 });
+
+  // Allow before the page has revealed: refused, and the request stays open.
+  const { code, body } = await appDecision(me, requestId, CHATGPT);
+  const [seen] = await app(pg, me.id, `select browser_key from public.connect_asks`);
+  const handoff = await sealHandoff(handoffPayload({ code, redirect: CHATGPT }), fromBase64(seen.browser_key), requestId);
+  const early = await decideAs(sql, me, { ...JSON.parse(body), handoff });
+  assertEquals([early.status, early.body.error], [409, "Finish on the page in your browser first."]);
+  assertEquals((await statusOf(sql, requestId)).state, "asked");
+
+  // The reveal: only with the pickup, once; the same nonce again is fine, another is refused.
+  assertEquals((await reveal(sql, requestId, (await newPickup()).pickup, pNonce)).status, 403);
+  assertEquals((await reveal(sql, requestId, asked.pickup, "A".repeat(32))).status, 400);
+  assertEquals((await reveal(sql, requestId, asked.pickup, pNonce)).status, 200);
+  assertEquals((await reveal(sql, requestId, asked.pickup, pNonce)).status, 200);
+  assertEquals((await reveal(sql, requestId, asked.pickup, hex(16))).status, 409);
+  // The device's nonce can't change after the reveal either.
+  assertEquals((await deviceNonce(sql, me, requestId, hex(16))).status, 409);
+
+  // Both screens show the same two digits, and now Allow goes through.
+  const [row] = await app(pg, me.id, `select browser_key, match_commit, page_nonce from public.connect_asks`);
+  assertEquals(await matchCommit(fromBase64(row.browser_key), fromHex(row.page_nonce)), row.match_commit);
+  assertEquals(await matchNumber(fromBase64(row.browser_key), fromHex(row.page_nonce), fromHex(d1), requestId),
+    await matchNumber(page.publicRaw, asked.nonce, fromHex(d1), requestId));
+  assertEquals((await decideAs(sql, me, { ...JSON.parse(body), handoff })).status, 200);
+  const done = await statusOf(sql, requestId, asked.pickup);
+  assertEquals(readHandoffPayload(await openHandoff(done.handoff, page.privateKey, requestId)).code, code);
+  assertEquals((await exchange(sql, "proxy", clientId, code, verifier)).status, 200);
+  // Answered: no more nonces or reveals.
+  assertEquals((await deviceNonce(sql, me, requestId, d1)).status, 404);
+  assertEquals((await reveal(sql, requestId, asked.pickup, pNonce)).status, 404);
+});
+
+Deno.test("a page that asks again starts both nonces over", async () => {
+  const { sql, pg } = await db();
+  const { requestId } = await pendingRequest(sql);
+  const me = await newUser(pg);
+  const first = await askAs(sql, me, requestId, toBase64((await newHandoffKeys()).publicRaw));
+  await matchUp(sql, me, requestId, first.pickup, first.nonce);
+  const again = await askAs(sql, me, requestId, toBase64((await newHandoffKeys()).publicRaw));
+  assertEquals(again.status, 200);
+  const [row] = await app(pg, me.id, `select device_nonce, page_nonce from public.connect_asks`);
+  assertEquals(row, { device_nonce: null, page_nonce: null });
+  assertEquals(await statusOf(sql, requestId, again.pickup), { state: "asked", device_nonce: null });
+  // The reloaded page reveals only after a device's new nonce.
+  assertEquals((await reveal(sql, requestId, again.pickup, toHex(again.nonce))).status, 409);
+  await matchUp(sql, me, requestId, again.pickup, again.nonce);
+});
+
+Deno.test("a key swapped in the database after the commit fails the device's check", async () => {
+  const { sql, pg } = await db();
+  const { requestId } = await pendingRequest(sql);
+  const me = await newUser(pg);
+  const page = await newHandoffKeys();
+  const asked = await askAs(sql, me, requestId, toBase64(page.publicRaw));
+  const d = await matchUp(sql, me, requestId, asked.pickup, asked.nonce);
+  // Someone who can write the database puts their own key in the page's place.
+  const attacker = await newHandoffKeys();
+  await pg.query(`update public.connect_asks set browser_key = $1 where request_id = $2`, [toBase64(attacker.publicRaw), requestId]);
+  // The device, before showing a number: the revealed nonce doesn't open the commit for this key,
+  // so it shows no number and seals nothing.
+  const [row] = await app(pg, me.id, `select browser_key, match_commit, page_nonce from public.connect_asks`);
+  assertEquals(row.browser_key, toBase64(attacker.publicRaw));
+  assert((await matchCommit(fromBase64(row.browser_key), fromHex(row.page_nonce))) !== row.match_commit);
+  // With the page's own key it does open: the check is what catches the swap.
+  assertEquals(await matchCommit(page.publicRaw, fromHex(row.page_nonce)), row.match_commit);
+  // To pass the check the writer must commit afresh, but the page's nonce is already revealed and
+  // the device's already written: a new commit needs a new page nonce, which the server refuses.
+  assertEquals((await reveal(sql, requestId, asked.pickup, hex(16))).status, 409);
+  assertEquals((await deviceNonce(sql, me, requestId, toHex(d))).status, 200);
+});
+
+Deno.test("a wrong number pauses the account's asks for an hour and tells every device", async () => {
+  const { sql, pg } = await db();
+  const { requestId } = await pendingRequest(sql);
+  const me = await newUser(pg);
+  const asked = await askAs(sql, me, requestId, toBase64((await newHandoffKeys()).publicRaw));
+  await matchUp(sql, me, requestId, asked.pickup, asked.nonce);
+  const r = await decideAs(sql, me, { id: requestId, allow: false, redirect_uri: CHATGPT, wrong_number: true });
+  assertEquals(r.status, 200);
+  // Declined as usual: the page gets the declined redirect.
+  const s = await statusOf(sql, requestId, asked.pickup);
+  assertEquals([s.state, new URL(s.redirect).searchParams.get("error")], ["denied", "access_denied"]);
+  assertEquals(await app(pg, me.id, `select kind, grant_id, what from public.account_notices`), [{ kind: "wrong_number", grant_id: null, what: "wrong_number" }]);
+  const [block] = await app(pg, me.id, `select blocked_until > now() + interval '59 minutes' and blocked_until <= now() + interval '1 hour' as ok from public.connect_blocks`);
+  assertEquals(block.ok, true);
+  // No new asks for an hour.
+  const next = await pendingRequest(sql);
+  const refused = await askAs(sql, me, next.requestId, toBase64((await newHandoffKeys()).publicRaw));
+  assertEquals([refused.status, refused.body.error], [429, "Connecting AIs is paused for an hour on this account because a wrong number was typed. If that wasn't you, change your password."]);
+  // Other accounts ask as usual.
+  const other = await newUser(pg);
+  const theirs = await pendingRequest(sql);
+  assertEquals((await askAs(sql, other, theirs.requestId, toBase64((await newHandoffKeys()).publicRaw))).status, 200);
+  // After the hour, asks go through again.
+  await pg.query(`update public.connect_blocks set blocked_until = now() - interval '1 second'`);
+  assertEquals((await askAs(sql, me, next.requestId, toBase64((await newHandoffKeys()).publicRaw))).status, 200);
+  // A plain decline blocks nothing.
+  await pg.query(`delete from public.connect_blocks`);
+  const plain = await pendingRequest(sql);
+  const p = await askAs(sql, other, plain.requestId, toBase64((await newHandoffKeys()).publicRaw));
+  await matchUp(sql, other, plain.requestId, p.pickup, p.nonce);
+  assertEquals((await decideAs(sql, other, { id: plain.requestId, allow: false, redirect_uri: CHATGPT })).status, 200);
+  assertEquals((await pg.query(`select 1 from public.connect_blocks`)).rows.length, 0);
+});
+
+Deno.test("a declined redirect goes to the page only when it's https, or http on this computer", async () => {
+  const { sql, pg } = await db();
+  const declined = async (uris: string[], planted?: string) => {
+    const { requestId: id, me } = await ask(sql, pg, "Some app", uris);
+    const a = await askAs(sql, me, id, toBase64((await newHandoffKeys()).publicRaw));
+    assertEquals((await decideAs(sql, me, { id, allow: false, redirect_uri: uris[0] })).status, 200);
+    if (planted) await pg.query(`update public.connect_asks set redirect = $1 where request_id = $2`, [planted, id]);
+    return await statusOf(sql, id, a.pickup);
+  };
+  const loopback = await declined(["http://127.0.0.1:8765/cb"]);
+  assertEquals([loopback.state, new URL(loopback.redirect).origin], ["denied", "http://127.0.0.1:8765"]);
+  assertEquals((await declined(["https://app.example/cb"])).redirect.startsWith("https://app.example/cb?"), true);
+  // A redirect a database writer put in the row: withheld unless it's one the page may follow.
+  for (const bad of ["http://evil.example/cb?error=access_denied", "javascript:alert(1)", "data:text/html,hi"]) {
+    assertEquals(await declined(["https://app.example/cb"], bad), { state: "denied" }, bad);
+  }
 });
