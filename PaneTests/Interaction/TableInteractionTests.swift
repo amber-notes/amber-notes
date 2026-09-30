@@ -135,3 +135,29 @@ extension TableInteractionTests {
     }
 }
 #endif
+
+#if os(macOS)
+extension TableInteractionTests {
+    /// On a busy main thread, the ask for the keyboard can come before the next cell's field is
+    /// in the window and be turned down. The grid keeps asking, so the keyboard still arrives
+    /// and the next arrow key moves on (in CI the table had lost the keyboard for good).
+    @Test func focusTurnedDownForAMomentStillLands() async throws {
+        let h = await EditorHarness(Self.note)
+        defer { h.close() }
+        let window = try #require(h.window as? KeyableWindow)
+        await h.caret(after: "is here.")
+        await h.press(EditorHarness.down)
+        await h.press(EditorHarness.down)
+        #expect(await h.until { h.gridHasFocus })
+        let from = h.focusedGridField
+        window.refusesFirstResponder = true
+        await h.press(EditorHarness.down)
+        await h.settle(0.3)
+        window.refusesFirstResponder = false
+        #expect(await h.until { h.focusedGridField.map { $0 !== from } ?? false }, "the keyboard reaches row 1 once the window takes it again")
+        let row1 = h.focusedGridField
+        await h.press(EditorHarness.down)
+        #expect(await h.until { h.focusedGridField.map { $0 !== row1 } ?? false }, "and the next arrow moves on to row 2")
+    }
+}
+#endif
