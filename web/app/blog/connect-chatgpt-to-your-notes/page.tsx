@@ -76,11 +76,27 @@ export default function Page() {
         <a href="/blog/notes-in-claude-code-and-codex">Using your notes from Claude Code and Codex</a> has the details.
       </p>
 
-      <h2>Incredible and other MCP apps</h2>
+      <h2 id="incredible">Incredible</h2>
       <p>
-        <a href="https://incredible.one" rel="noopener">Incredible</a>, the AI assistant my company makes, connects the same way as
-        any other app that supports MCP: add the Amber Notes server address, <code>{MCP_URL}</code>, and sign in when it asks, then choose Allow.
-        The <a href="/blog/mcp-server">Amber Notes MCP server page</a> has the address, the sign-in and every tool.
+        <a href="https://incredible.one" rel="noopener">Incredible</a>, the AI assistant my company makes, is a desktop app for Mac and
+        Windows. Under Connect an AI, choose Incredible: on a Mac, Copy Address and Open Incredible does the first part. Then, in Incredible:
+      </p>
+      <ol>
+        <li>Open Apps and choose Add it here, next to Have your own MCP server. If you added one before, choose Add another MCP server.</li>
+        <li>Paste the address, <code>{MCP_URL}</code>, then choose Continue.</li>
+        <li>Choose Sign in. Your browser opens Amber Notes.</li>
+        <li>
+          Amber Notes asks to allow an app on this computer that calls itself &ldquo;incredible&rdquo;. A sign-in that returns to your own
+          computer can&apos;t prove which app is asking, so it starts at Read Only. Pick Read and Edit if Incredible should change notes,
+          then choose Allow. On a Windows PC, you sign in and choose Allow on the page that opens.
+        </li>
+        <li>Back in Incredible, choose Add server.</li>
+      </ol>
+
+      <h2>Other MCP apps</h2>
+      <p>
+        Any other app that supports MCP connects the same way: add the Amber Notes server address, <code>{MCP_URL}</code>, and sign in
+        when it asks, then choose Allow. The <a href="/blog/mcp-server">Amber Notes MCP server page</a> has the address, the sign-in and every tool.
       </p>
 
       <h2>You stay in control</h2>

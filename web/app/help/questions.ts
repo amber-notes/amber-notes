@@ -13,7 +13,7 @@ export const FAQ: QA[] = [
   { id: "connect", q: "How do I connect ChatGPT, Claude, Claude Code, Codex or Incredible?", a: [
     "In Amber Notes, open Settings → Connect an AI, pick ChatGPT or Claude and follow the steps. You add it once, on a computer. After that, it works in their phone apps too.",
     "Adding it yourself? The address is https://mcp.ambernotes.app. When ChatGPT or Claude asks for permission, answer in Amber Notes, or sign in on the page that opens and choose Allow there.",
-    "Claude Code gets a one-line command with a token of its own, and Codex a few lines for its config file. Incredible, and any other app that supports MCP, connects with the Amber Notes server address and a sign-in.",
+    "Claude Code gets a one-line command with a token of its own, and Codex a few lines for its config file. In Incredible, open Apps, add an MCP server with the Amber Notes address, choose Sign in, then Allow. Settings → Connect an AI → Incredible has the steps. Any other app that supports MCP connects with the address and a sign-in too.",
   ], more: { href: "/blog/connect-chatgpt-to-your-notes", text: "How to connect ChatGPT to your notes" } },
   { id: "ai-tools", q: "Can I use Amber Notes in Gemini CLI or VS Code?", a: [
     "Yes. One command adds the address https://mcp.ambernotes.app, then you sign in to Amber Notes in your browser the first time. Claude Code also has a plugin, and Codex takes one command too.",

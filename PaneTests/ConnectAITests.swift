@@ -176,6 +176,58 @@ import Testing
     #endif
 }
 
+/// Connect Incredible: a local app, so the guide never vouches for the name.
+@Suite struct IncredibleConnectTests {
+    private func row(host: String?, kind: String = "oauth", at: Date, revoked: Bool = false) -> Connection {
+        Connection(id: UUID(), name: "An app on this computer", kind: kind, can_write: false, created_at: at, last_used_at: nil,
+                   revoked_at: revoked ? at : nil, redirect_host: host, url_used_at: nil)
+    }
+
+    @Test func isInTheListAfterTheOthers() {
+        #expect(ConnectAISection.Guide.allCases.map(\.title) == ["ChatGPT", "Claude", "Claude Code", "Codex", "Incredible"])
+        #expect(AIGlyph.asset("Incredible") == "AIGlyphIncredible")
+        #expect(WebConnectPlan.forAI("Incredible") == nil, "Incredible is added in Incredible, not on a website")
+    }
+
+    @Test func aNewSignInToThisComputerFinishesTheGuide() {
+        let opened = Date.now
+        let rows = [
+            row(host: "127.0.0.1", at: opened.addingTimeInterval(-3600)),   // an older one
+            row(host: "127.0.0.1", at: opened.addingTimeInterval(20)),
+        ]
+        #expect(IncredibleConnect.newConnection(rows, since: opened)?.created_at == opened.addingTimeInterval(20))
+        #expect(IncredibleConnect.newConnection([row(host: "localhost", at: opened.addingTimeInterval(5))], since: opened) != nil)
+    }
+
+    @Test func webAppsTokensAndOldOrRevokedSignInsDontCount() {
+        let opened = Date.now
+        let later = opened.addingTimeInterval(10)
+        let rows = [
+            row(host: "127.0.0.1", at: opened.addingTimeInterval(-60)),     // before the guide opened
+            row(host: "127.0.0.1", at: later, revoked: true),                // disconnected
+            row(host: nil, kind: "token", at: later),                        // an access token
+            row(host: "incredible.one", at: later),                          // a website, whatever it's called
+            row(host: "claude.ai", at: later),
+        ]
+        #expect(IncredibleConnect.newConnection(rows, since: opened) == nil)
+    }
+
+    @Test func stepsSentToYourselfCarryTheAddressAndNoSecret() {
+        let server = "https://mcp.ambernotes.app"
+        let text = IncredibleConnect.message(server: server)
+        #expect(text.contains("\n\(server)\n"))
+        #expect(text.contains("Add another MCP server") && text.contains("Add server"))
+        #expect(!text.contains("pane_"), "Incredible signs in; it never needs a token")
+    }
+
+    @Test func copyFollowsTheWritingRules() {
+        for line in IncredibleConnect.steps + [IncredibleConnect.consentNote, IncredibleConnect.message(server: "https://mcp.ambernotes.app")] {
+            #expect(!line.contains("\u{2014}"), "no em dashes: \(line)")
+            #expect(!line.localizedCaseInsensitiveContains("ipad"))
+        }
+    }
+}
+
 #if os(macOS)
 import SwiftUI
 import Supabase
@@ -209,6 +261,28 @@ extension AIEditSnapshots {
         }
         try await AppSnapshotTests.render(Form { WebConnectGuide(plan: .chatgpt, client: client, started: true) }.formStyle(.grouped).frame(width: 360, height: 560),
                                           name: "connect-chatgpt-panel-dark", dark: true)
+    }
+}
+extension AIEditSnapshots {
+    /// Connect Incredible: the guide with and without the app on this Mac, "connected", and the
+    /// consent sheet it gets (a local app, named by where access goes).
+    @Test func incredibleGuide() async throws {
+        guard AppSnapshotTests.dir != nil else { return }
+        let client = SupabaseClient(supabaseURL: URL(string: "http://127.0.0.1:9")!, supabaseKey: "test")
+        try await AppSnapshotTests.render(Form { IncredibleGuide(client: client, installed: true) }.formStyle(.grouped).frame(width: 560, height: 760),
+                                          name: "connect-incredible-guide", dark: false)
+        try await AppSnapshotTests.render(Form { IncredibleGuide(client: client, installed: false) }.formStyle(.grouped).frame(width: 560, height: 760),
+                                          name: "connect-incredible-not-installed", dark: false)
+        try await AppSnapshotTests.render(Form { IncredibleGuide(client: client, installed: true) }.formStyle(.grouped).frame(width: 560, height: 760),
+                                          name: "connect-incredible-guide-dark", dark: true)
+        try await AppSnapshotTests.render(Form { IncredibleGuide(client: client, connected: true, installed: true) }.formStyle(.grouped).frame(width: 560, height: 520),
+                                          name: "connect-incredible-connected", dark: false)
+        try await AppSnapshotTests.render(Form { ConnectAISection(client: client, preview: []) }.formStyle(.grouped).frame(width: 560, height: 560),
+                                          name: "connect-list", dark: false)
+        let local = ConnectRequest(id: UUID(), client_name: "An app on this computer", redirect_host: "127.0.0.1",
+                                   redirect_uri: "http://127.0.0.1:53682/callback", claimed_name: "incredible", loopback: true, wants_write: true)
+        try await AppSnapshotTests.render(ConsentSheet(client: client, requestID: local.id, initial: .asking(local), finish: { _ in }),
+                                          name: "consent-incredible", dark: false)
     }
 }
 #endif
