@@ -129,6 +129,7 @@
 		7F6BFCC3E30CB53BB780058D /* RichTextTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F02A8CE43D7031D271CA25B /* RichTextTests.swift */; };
 		7F9DED7F4A6D72014F374AF0 /* ShareExtensionUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CC822E0A1ABBCCDB65B943A /* ShareExtensionUITests.swift */; };
 		8074971A34AC94F5B9F9E20F /* MacDogfoodTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F84812729F33EB0AD525982F /* MacDogfoodTests.swift */; };
+		810C645C26D79F76CCEE9B91 /* ShareAskSnapshots.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4588A553F34CCA6E69BAE2FB /* ShareAskSnapshots.swift */; };
 		815A3505A0A85B6330FB1B7E /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 508D7FDAAB7702C132913D85 /* SignInView.swift */; };
 		815B2825F87ACCB4644BFDEB /* RichTextToMarkdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99375A4ACF211AEE18EC4EC3 /* RichTextToMarkdown.swift */; };
 		82A643926C79354BE36ABA85 /* ApplePinsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAE155CC8D3D50CB90D4C532 /* ApplePinsTests.swift */; };
@@ -341,6 +342,7 @@
 		41F7338865E067B10FB8E849 /* LinkPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkPolicyTests.swift; sourceTree = "<group>"; };
 		42D03E7A49F61302F141D7D8 /* ShareAskView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareAskView.swift; sourceTree = "<group>"; };
 		44D4445CBE0C9888D0A78476 /* MenuBarTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarTests.swift; sourceTree = "<group>"; };
+		4588A553F34CCA6E69BAE2FB /* ShareAskSnapshots.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareAskSnapshots.swift; sourceTree = "<group>"; };
 		45E841E864DEFA026AC0CF16 /* HomeScreenTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeScreenTests.swift; sourceTree = "<group>"; };
 		46BDB7DF9A108C6F27FC4853 /* ShareLinkTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareLinkTests.swift; sourceTree = "<group>"; };
 		47C2F5BCCDFA4A6D60E39708 /* Platform.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Platform.swift; sourceTree = "<group>"; };
@@ -770,6 +772,7 @@
 			children = (
 				B3C667730E3C8E3C905E7874 /* AIEditSnapshots.swift */,
 				3595708C4A80422C798DEB09 /* AppSnapshotTests.swift */,
+				4588A553F34CCA6E69BAE2FB /* ShareAskSnapshots.swift */,
 				0EE6602CD2F6FABCF3AC293A /* TipSnapshots.swift */,
 				64816024A9749AC715351868 /* VersionHistorySnapshots.swift */,
 			);
@@ -1065,6 +1068,7 @@
 				8C0B6E76641724BE0382A626 /* ScopeTests.swift in Sources */,
 				B88F52D6647598EBCF2A195B /* SessionStorageTests.swift in Sources */,
 				8DECEC26D23538850E24676A /* SetupTests.swift in Sources */,
+				810C645C26D79F76CCEE9B91 /* ShareAskSnapshots.swift in Sources */,
 				BE3EF29AF816EFA4BA6371DD /* ShareAskTests.swift in Sources */,
 				7DF4FFFA243AA929AED30850 /* ShareLinkTests.swift in Sources */,
 				96B237B90524B4A6B154FB93 /* SharedItemTests.swift in Sources */,

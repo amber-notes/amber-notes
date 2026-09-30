@@ -8,6 +8,8 @@ struct ShareAskView: View {
     @Environment(\.openURL) private var openURL
     @Environment(\.scenePhase) private var phase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// You left for the post after choosing to share.
+    @State private var returning = false
 
     var body: some View {
         Group {
@@ -21,8 +23,10 @@ struct ShareAskView: View {
         #if os(macOS)
         .frame(width: 360)
         #endif
-        .task(id: store.thanked && phase == .active) {
-            guard store.thanked, phase == .active else { return }
+        // Back from the post: the thank-you holds a moment, then goes.
+        .onChange(of: phase) { _, p in if store.thanked && p != .active { returning = true } }
+        .task(id: returning && phase == .active) {
+            guard returning, phase == .active else { return }
             try? await Task.sleep(for: .seconds(3.5))
             if !Task.isCancelled { store.visible = false }
         }
@@ -133,8 +137,13 @@ extension View {
     }
 }
 
-private struct ShareAskSheet: ViewModifier {
+struct ShareAskSheet: ViewModifier {
     @Bindable var store: ShareAskStore
+    #if os(macOS)
+    /// Offscreen captures: draw controls as they look in your front window (the test host is
+    /// never the active app, and a sheet doesn't take its window's environment).
+    nonisolated(unsafe) static var drawsAsKey = false
+    #endif
     @State private var height: CGFloat = 380
 
     func body(content: Content) -> some View {
@@ -147,6 +156,18 @@ private struct ShareAskSheet: ViewModifier {
                 .presentationDragIndicator(.hidden)
                 #endif
                 .tint(Color(PColor.paneAccent))
+                #if os(macOS)
+                .modifier(DrawAsKey(on: Self.drawsAsKey))
+                #endif
         }
     }
 }
+
+#if os(macOS)
+private struct DrawAsKey: ViewModifier {
+    let on: Bool
+    func body(content: Content) -> some View {
+        if on { content.environment(\.controlActiveState, .key) } else { content }
+    }
+}
+#endif
