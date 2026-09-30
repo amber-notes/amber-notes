@@ -25,7 +25,7 @@ struct DeleteAccountButton: View {
             Button("Delete Account and All Notes", role: .destructive) { Task { await delete() } }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Every note, folder, file, earlier version, AI connection and share link is deleted from the cloud and from this device. This can't be undone.")
+            Text("Every note, folder, file, earlier version, AI connection and share link is deleted from the cloud and from this device, with the key that opens them. This can't be undone. To keep a copy, export your notes first.")
         }
         if let error {
             Label(error, systemImage: "exclamationmark.triangle.fill")
@@ -39,7 +39,11 @@ struct DeleteAccountButton: View {
         error = nil
         defer { working = false }
         do {
+            let account = backend.userID
             try await backend.deleteAccount()
+            // The key to notes that no longer exist: gone from this device and iCloud Keychain.
+            // Signing out keeps it; deleting the account doesn't.
+            if let account { AccountCrypto.shared.forgetKey(account: account) }
             context.wipeLocalLibrary()
             await backend.signOut()
             dismiss()
@@ -71,5 +75,61 @@ extension ModelContext {
         try? save()
         try? FileManager.default.removeItem(at: FileStore.root)
         AIEditStore.shared.forgetAll()
+    }
+}
+
+/// Export Your Notes…: every note as a markdown file in your folders, with its files, in one zip
+/// you save or share. Made here from this device's library; the server can't read your notes.
+struct ExportNotesButton: View {
+    @Environment(\.modelContext) private var context
+    @Environment(SyncEngine.self) private var sync: SyncEngine?
+    @State private var working = false
+    @State private var made: NoteExport.Result?
+    @State private var saving = false
+    @State private var message: String?
+
+    var body: some View {
+        Button {
+            Task { await export() }
+        } label: {
+            HStack(spacing: 8) {
+                Text(working ? "Exporting Your Notes…" : "Export Your Notes…")
+                if working { ProgressView().controlSize(.small) }
+            }
+        }
+        .disabled(working)
+        .accessibilityIdentifier("settings.exportNotes")
+        .fileMover(isPresented: $saving, file: made?.zip) { result in
+            switch result {
+            case .success: message = summary
+            case .failure(let e as CocoaError) where e.code == .userCancelled: message = nil
+            case .failure: message = "Couldn't save the export. Try again."
+            }
+            made = nil
+        }
+        if let message {
+            Text(message).font(.callout).foregroundStyle(.secondary)
+        }
+    }
+
+    private var summary: String? {
+        guard let made else { return nil }
+        var parts = ["Exported \(made.notes) \(made.notes == 1 ? "note" : "notes") and \(made.files) \(made.files == 1 ? "file" : "files")."]
+        if made.skippedLocked > 0 { parts.append("Unlock your locked notes to include them.") }
+        if made.missingFiles > 0 { parts.append("\(made.missingFiles) \(made.missingFiles == 1 ? "file wasn't" : "files weren't") on this device.") }
+        return parts.joined(separator: " ")
+    }
+
+    private func export() async {
+        working = true
+        message = nil
+        defer { working = false }
+        DebouncedSave.flushAll()
+        do {
+            made = try await NoteExport.make(context, fetch: { a in await sync?.download(a) ?? false })
+            saving = true
+        } catch {
+            message = "Couldn't export your notes: \(error.localizedDescription)"
+        }
     }
 }
