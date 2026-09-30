@@ -83,6 +83,7 @@ struct NoteListView: View {
                         .padding(.vertical, 4)
                         .selectionDisabled()
                 }
+                .listRowBackground(Color(Palette.row))
                 #else
                 setupCard(setup, progress)
                     .listRowInsets(EdgeInsets(top: 6, leading: 10, bottom: 10, trailing: 10))
@@ -117,6 +118,9 @@ struct NoteListView: View {
                                 remove: { remove(note) })
                             .equatable()
                             .tag(note.id)
+                            #if os(iOS)
+                            .listRowBackground(Color(Palette.row))
+                            #endif
                     }
                 } header: {
                     #if os(iOS)
@@ -154,6 +158,9 @@ struct NoteListView: View {
         .listStyle(.insetGrouped)
         .environment(\.editMode, $editMode)
         #endif
+        // Less warmth than the sidebar, more than the note.
+        .scrollContentBackground(.hidden)
+        .background(Color(Palette.listGround).ignoresSafeArea())
         .overlay {
             // The setup card is the empty state for a new account.
             if visible.isEmpty && !showsSetup { emptyState }
@@ -294,6 +301,7 @@ struct NoteListView: View {
     private var listTip: some View {
         // One grouped card, like the Get set up card: the tip is the row, on the row's own surface.
         Section { CompactTip(tip: ShareExtensionTip(), card: false).selectionDisabled() }
+            .listRowBackground(Color(Palette.row))
     }
     #endif
 
@@ -353,7 +361,7 @@ struct NoteListView: View {
             ContentUnavailableView("No Deleted Notes", systemImage: "trash", description: Text("Notes you delete stay here for 30 days."))
         } else {
             ContentUnavailableView {
-                Label("No Notes", systemImage: "note.text")
+                Label { Text("No Notes") } icon: { AppMark(size: 56) }
             } actions: {
                 Button("New Note", action: onNewNote)
                     .buttonStyle(.glass)

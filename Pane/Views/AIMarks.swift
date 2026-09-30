@@ -102,17 +102,3 @@ struct AIReceipt: View {
     static let height: CGFloat = 40
     #endif
 }
-
-extension Color {
-    /// The website's amber ink and soft amber fill, for things an AI did.
-    static let amberInk = Color(light: Color(red: 0.66, green: 0.34, blue: 0), dark: Color(red: 0.96, green: 0.68, blue: 0.2))
-    static let amberSoft = Color(light: Color(red: 1, green: 0.945, blue: 0.863), dark: Color(red: 0.26, green: 0.19, blue: 0.08))
-
-    init(light: Color, dark: Color) {
-        #if os(macOS)
-        self.init(nsColor: NSColor(name: nil) { $0.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? NSColor(dark) : NSColor(light) })
-        #else
-        self.init(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(dark) : UIColor(light) })
-        #endif
-    }
-}

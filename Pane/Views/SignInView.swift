@@ -10,6 +10,10 @@ struct SignInView: View {
     @State private var error: String?
     @FocusState private var focus: Field?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.displayScale) private var displayScale
+    /// The marker under "your AI": how tall, and how far above the baseline's foot it sits.
+    @ScaledMetric(relativeTo: .subheadline) private var markHeight: CGFloat = 6
+    @ScaledMetric(relativeTo: .subheadline) private var markLift: CGFloat = 2
 
     enum Field { case email, password }
 
@@ -55,8 +59,10 @@ struct SignInView: View {
         VStack(spacing: 24) {
             VStack(spacing: 14) {
                 AppMark(size: 72)
+                // The website's display type: heavy and tight.
                 Text("Sign in to Amber Notes")
-                    .font(.title2.weight(.bold))
+                    .font(.title2.weight(.heavy))
+                    .tracking(-0.6)
                     .multilineTextAlignment(.center)
                 promise
             }
@@ -90,23 +96,31 @@ struct SignInView: View {
 
             ConsentFooter()
         }
+        .foregroundStyle(Color.ink, Color.muted)
         .animation(.snappy(duration: 0.2), value: error)
         .animation(reduceMotion ? nil : .smooth(duration: 0.3), value: flow.step)
     }
 
-    /// The website's one-line promise, with its amber marker behind "your AI".
+    /// The website's one-line promise, with its low amber marker under "your AI".
     private var promise: some View {
-        var line = AttributedString("The notes app your AI can use.")
-        if let r = line.range(of: "your AI") {
-            line[r].backgroundColor = Color.accentColor.opacity(0.28)
-            line[r].foregroundColor = Color.primary
-        }
-        return VStack(spacing: 3) {
-            Text(line)
+        VStack(spacing: 3) {
+            HStack(spacing: 0) {
+                Text("The notes app ")
+                Text("your AI")
+                    .foregroundStyle(.primary)
+                    .background(alignment: .bottom) {
+                        Rectangle().fill(Color(Palette.underline))
+                            .frame(height: markHeight)
+                            .padding(.horizontal, -1)
+                            .padding(.bottom, markLift)
+                    }
+                Text(" can use.")
+            }
+            .accessibilityElement(children: .combine)
             // Where the notes live, said once and plainly.
             Text("Your notes sync between iPhone and Mac.")
                 .font(.footnote)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(.secondary)
                 .accessibilityIdentifier("signin.sync")
         }
         .font(.subheadline)
@@ -206,7 +220,8 @@ struct SignInView: View {
         }
         .padding(.horizontal, 12)
         .frame(height: Row.height)
-        .background(.fill.quaternary, in: shape)
+        .background(Color(Palette.field), in: shape)
+        .overlay(shape.strokeBorder(Color(Palette.fieldHairline), lineWidth: 1 / displayScale))
     }
 
     private func mainButton(_ title: String) -> some View {
@@ -215,17 +230,17 @@ struct SignInView: View {
         return Button(action: primary) {
             ZStack {
                 Text(title).opacity(busy ? 0 : 1)
-                if busy { ProgressView().controlSize(.small).tint(.black) }
+                if busy { ProgressView().controlSize(.small).tint(Color(Palette.onAmber)) }
             }
             .font(.system(size: Row.text, weight: .semibold))
-            .foregroundStyle(.black.opacity(0.85))
+            // Deep amber with dark ink when it can be pressed; quiet, near the field, when not.
+            .foregroundStyle(enabled || busy ? Color(Palette.onAmber) : Color.muted)
             .frame(maxWidth: .infinity, minHeight: Row.height, maxHeight: Row.height)
-            .background(Color.accentColor, in: .rect(cornerRadius: Row.radius, style: .continuous))
+            .background(enabled || busy ? Color.accentColor : Color(Palette.quietButton), in: .rect(cornerRadius: Row.radius, style: .continuous))
             .contentShape(.rect(cornerRadius: Row.radius, style: .continuous))
         }
         .buttonStyle(PressScale())
         .disabled(!enabled)
-        .opacity(enabled || busy ? 1 : 0.45)
         .animation(.easeOut(duration: 0.15), value: enabled)
         .keyboardShortcut(.defaultAction)
         .accessibilityLabel(busy ? "\(title), working" : title)
@@ -240,8 +255,8 @@ struct SignInView: View {
             .font(.system(size: Row.text))
             .padding(.horizontal, 12)
             .frame(height: Row.height)
-            .background(.fill.tertiary, in: shape)
-            .overlay(shape.strokeBorder(.primary.opacity(0.08), lineWidth: 1))
+            .background(Color(Palette.field), in: shape)
+            .overlay(shape.strokeBorder(Color(Palette.fieldHairline), lineWidth: 1 / displayScale))
     }
 
     /// "or" between the two ways in.

@@ -139,6 +139,7 @@ targets:
       - Pane/Model/RichTextToMarkdown.swift
       - Pane/Model/OfflineHTML.swift
       - Pane/Editor/Platform.swift
+      - Pane/Editor/Palette.swift
       - path: Pane/Resources/Assets.xcassets
         buildPhase: resources
     info:

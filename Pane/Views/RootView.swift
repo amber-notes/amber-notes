@@ -56,6 +56,8 @@ struct RootView: View {
                 #endif
         }
         .environment(editor)
+        // Warm brown ink and muted text, for everything that doesn't pick its own.
+        .foregroundStyle(Color.ink, Color.muted)
         #if os(macOS)
         // The list column shows its own title; no window title in the bar.
         .toolbar(removing: .title)
@@ -257,9 +259,7 @@ struct MultipleSelectionView: View {
 struct EmptyDetailView: View {
     var body: some View {
         VStack(spacing: 10) {
-            Image(systemName: "note.text")
-                .font(.system(size: 34, weight: .light))
-                .foregroundStyle(.tertiary)
+            AppMark(size: 44)
             Text("No note selected")
                 .font(.callout)
                 .foregroundStyle(.secondary)

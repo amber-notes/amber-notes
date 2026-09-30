@@ -47,7 +47,8 @@ struct SidebarHeader: View {
     var body: some View {
         HStack(spacing: 8) {
             AppMark(size: 21)
-            Text("Amber Notes").font(.system(size: 15, weight: .semibold))
+            // The website's display type: heavy and tight.
+            Text("Amber Notes").font(.display(15)).tracking(Palette.tracking(15))
             Spacer(minLength: 0)
         }
         .padding(.leading, 18)
@@ -143,8 +144,18 @@ struct SidebarView: View {
             } header: {
                 Text("Folders")
             }
+            #if os(iOS)
+            .listRowBackground(Color(Palette.row))
+            #endif
         }
         .listStyle(.sidebar)
+        #if os(iOS)
+        .scrollContentBackground(.hidden)
+        .background(Color(Palette.foldersGround).ignoresSafeArea())
+        #else
+        // A little of the icon's brown inside the sidebar's glass, which stays vibrant.
+        .background(Color(Palette.sidebarWarmth).ignoresSafeArea())
+        #endif
         #if os(macOS)
         // The app's name at the top, so it's never mistaken for Notes. (iOS shows it as the large title.)
         .safeAreaInset(edge: .top, spacing: 0) { SidebarHeader() }

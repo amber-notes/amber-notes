@@ -49,8 +49,8 @@ struct SetupCard: View {
                 .overlay(alignment: .leading) { if popping { pop } }
         }
         .padding(Metrics.padding)
-        .modifier(SetupCardSurface())
         .clipped()
+        .modifier(SetupCardSurface())
         .onAppear { filled = done; shown = page }
         .onChange(of: page) { _, new in advance(to: new) }
         .accessibilityElement(children: .contain)
@@ -233,8 +233,11 @@ struct SetupCard: View {
             .accessibilityIdentifier("setup.fresh")
     }
 
+    /// Dark ink on amber: readable on the deeper light-mode amber and the brighter dark one.
     private func primary(_ title: String, id: String, action: @escaping () -> Void) -> some View {
-        Button(title, action: action)
+        Button(action: action) {
+            Text(title).foregroundStyle(Color(Palette.onAmber))
+        }
             .buttonStyle(.borderedProminent)
             #if os(iOS)
             .buttonBorderShape(.capsule)
@@ -320,12 +323,18 @@ struct DrawnCheck: View {
     }
 }
 
-/// Mac: a quiet rounded fill inside the list's margins, like a selected row at rest. iPhone:
-/// nothing here; the card sits in its own grouped section, which draws the ground, insets and radius.
+/// Mac: the native control surface inside the list's margins, lifted by a soft layered shadow
+/// (a tight contact shadow under a wide, faint one). iPhone: nothing here; the card sits in its
+/// own grouped section, which draws the surface, insets and radius.
 private struct SetupCardSurface: ViewModifier {
     func body(content: Content) -> some View {
         #if os(macOS)
-        content.background(.fill.quinary, in: .rect(cornerRadius: 10, style: .continuous))
+        content.background {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(Color(nsColor: .controlBackgroundColor))
+                .shadow(color: .black.opacity(0.06), radius: 0.5, y: 0.5)
+                .shadow(color: Color(Palette.rgb(Palette.brown)).opacity(0.10), radius: 10, y: 4)
+        }
         #else
         content
         #endif
