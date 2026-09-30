@@ -2,7 +2,7 @@
 /// sitemap, /llms.txt, "More posts" and "All posts" all read it. `draft` posts are noindex and
 /// stay out of every list until they're approved.
 
-export type Category = "Guides" | "Comparisons" | "Building Amber Notes";
+export type Category = "Guides" | "Apple Notes" | "Comparisons" | "Building Amber Notes";
 
 /// A real capture of the app, in public/blog. `window` says whether the capture already has the
 /// Mac window around it (true), or is a sheet or form that the page frames in a window (false).
@@ -29,7 +29,7 @@ export type Post = {
 
 /// The ground a cover (and the post's first picture) sits on: the site's palette, the help page's
 /// leaf brown, the app's dark look, or the home page's dunes.
-export type Ground = "paper" | "soft" | "tint" | "amber" | "leaf" | "dark" | "dunes" | "ink" | "peach" | "cream" | "sand" | "clay" | "mist" | "honey" | "sage" | "heather";
+export type Ground = "paper" | "soft" | "tint" | "amber" | "leaf" | "dark" | "dunes" | "ink" | "peach" | "cream" | "sand" | "clay" | "mist" | "honey" | "sage" | "heather" | "blush";
 
 /// A card's picture: one real capture of the element the post is about, on the post's ground. The
 /// capture is cropped at 2x (3x from iPhone) to about the card's width, so it shows at full size.
@@ -59,6 +59,18 @@ export const SHOTS = {
 
 export const posts: Post[] = [
   {
+    slug: "export-apple-notes-to-markdown",
+    title: "How to export Apple Notes to Markdown",
+    description: "Export a note from Apple Notes as a Markdown file on Mac and iPhone, what to check in the file, and how to export every note at once.",
+    excerpt: "Apple Notes exports Markdown on its own now, one note at a time. The steps on Mac and iPhone, what to check, and what to use for all of them.",
+    category: "Apple Notes",
+    date: "2026-09-30",
+    updated: "2026-09-30",
+    image: SHOTS.welcome,
+    thumb: thumb("blush", "thumb-markdown-title", 1210, 280),
+    draft: false,
+  },
+  {
     slug: "connect-chatgpt-to-your-notes",
     title: "How to connect ChatGPT to your notes",
     description: "Let ChatGPT or Claude read and update your notes on iPhone and Mac. What you need, the steps, and how you stay in control.",
@@ -75,7 +87,7 @@ export const posts: Post[] = [
     title: "Can Claude read your Apple Notes?",
     description: "What works today on a Mac, what doesn't work on iPhone or the web, and the options side by side.",
     excerpt: "On a Mac, yes. On iPhone and in the browser, no. Why it depends on where you use Claude, and what each option can and can't do.",
-    category: "Guides",
+    category: "Apple Notes",
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.connectClaude,
@@ -123,7 +135,7 @@ export const posts: Post[] = [
     title: "How to move from Apple Notes to Amber Notes",
     description: "Import all your Apple Notes on your Mac, with folders, checklists and tables. Apple Notes stays untouched.",
     excerpt: "Bring every note over in one go on your Mac, folders and pins included. Nothing in Apple Notes changes, so you can take your time.",
-    category: "Guides",
+    category: "Apple Notes",
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.importSheet,
@@ -171,7 +183,7 @@ export const posts: Post[] = [
     title: "Apple Notes API: what exists and what to use instead",
     description: "Apple Notes has no public API. What you can use on a Mac and iPhone (AppleScript, Shortcuts, export), what each can do, and when to use a notes app with an API.",
     excerpt: "Apple Notes has no public API. What you can do with AppleScript and Shortcuts, what you can't, and what to use when you need more.",
-    category: "Guides",
+    category: "Apple Notes",
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.welcome,
@@ -274,7 +286,7 @@ export const published = () => posts.filter((p) => !p.draft);
 
 /// Categories that have at least one published post, in a fixed order.
 export const categories = (): Category[] =>
-  (["Guides", "Comparisons", "Building Amber Notes"] as Category[]).filter((c) => published().some((p) => p.category === c));
+  (["Guides", "Apple Notes", "Comparisons", "Building Amber Notes"] as Category[]).filter((c) => published().some((p) => p.category === c));
 
 export const categoryAnchor = (c: Category) => c.toLowerCase().replace(/\s+/g, "-");
 
