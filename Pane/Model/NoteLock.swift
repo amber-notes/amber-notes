@@ -147,7 +147,7 @@ protocol LockKeyStore: Sendable {
 @Observable
 final class NoteVault {
     /// The app's vault. Tests make their own.
-    static var shared = NoteVault(keyStore: MemoryKeyStore())
+    static var shared = NoteVault(keyStore: MemoryKeyStore(), defaults: MemoryDefaults())
 
     private(set) var settings: LockSettings?
     /// Keys this device knows this session, by key id: the current one once unlocked, and older
@@ -425,6 +425,19 @@ final class NoteVault {
     static func lockedNotes(in context: ModelContext) -> [Note] {
         ((try? context.fetch(FetchDescriptor<Note>())) ?? []).filter { $0.lockedBody != nil && $0.deletedAt == nil }
     }
+}
+
+/// Settings that live only in memory: tests and captures start with no notes password and leave
+/// nothing on disk (a UserDefaults suite leaves its file behind even when emptied).
+final class MemoryDefaults: UserDefaults, @unchecked Sendable {
+    private var values: [String: Any] = [:]
+    private let lock = NSLock()
+
+    init() { super.init(suiteName: nil)! }
+
+    override func object(forKey key: String) -> Any? { lock.withLock { values[key] } }
+    override func set(_ value: Any?, forKey key: String) { lock.withLock { values[key] = value } }
+    override func removeObject(forKey key: String) { lock.withLock { _ = values.removeValue(forKey: key) } }
 }
 
 // MARK: Key storage

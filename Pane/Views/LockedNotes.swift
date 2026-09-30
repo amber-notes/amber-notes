@@ -18,14 +18,22 @@ struct LockedNoteView: View {
         VStack(spacing: 12) {
             Image(systemName: "lock.fill")
                 .font(.system(size: 44, weight: .regular))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.muted)
                 .padding(.bottom, 4)
+            // The title stays in the clear, in the note's own display type.
+            Text(note.title)
+                .font(.display(28))
+                .tracking(Palette.tracking(28))
+                .foregroundStyle(Color.ink)
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
             Text("This note is locked.")
-                .font(.title3.weight(.semibold))
+                .font(.headline)
+                .foregroundStyle(Color.ink)
             Text(earlier ? "It was locked with an earlier notes password. Enter that password to view it."
                          : "Enter the notes password to view this note.")
                 .font(.callout)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.muted)
                 .multilineTextAlignment(.center)
             SecureField("Password", text: $password)
                 .textContentType(.password)
@@ -44,7 +52,7 @@ struct LockedNoteView: View {
             if wrongTries > 0, !earlier, let hint = vault.settings?.hint {
                 Text("Hint: \(hint)")
                     .font(.callout)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.muted)
                     .accessibilityIdentifier("lock.hint")
             }
             Button(action: submit) {
@@ -129,6 +137,7 @@ struct NotesPasswordSetupSheet: View {
                             .fontWeight(.semibold)
                         Text("Locking a note also removes its earlier versions from version history.")
                     }
+                    .foregroundStyle(Color.muted)
                 }
                 if let name = NoteVault.shared.keyStore.biometryName {
                     Section { Toggle("Use \(name)", isOn: $useBiometrics) }
@@ -199,6 +208,7 @@ struct NotesPasswordPrompt: View {
                         Text(message)
                         if wrongTries > 0, let hint = vault.settings?.hint { Text("Hint: \(hint)") }
                     }
+                    .foregroundStyle(Color.muted)
                 }
                 if let problem { Section { Text(problem).foregroundStyle(.red) } }
             }
@@ -268,7 +278,7 @@ struct ChangeNotesPasswordSheet: View {
                 Section {
                     SecureField("Old Password", text: $old).textContentType(.password)
                 } footer: {
-                    if let hint = vault.settings?.hint { Text("Hint: \(hint)") }
+                    if let hint = vault.settings?.hint { Text("Hint: \(hint)").foregroundStyle(Color.muted) }
                 }
                 Section {
                     SecureField("New Password", text: $new).textContentType(.newPassword)
@@ -276,6 +286,7 @@ struct ChangeNotesPasswordSheet: View {
                     TextField("Hint (recommended)", text: $hint)
                 } footer: {
                     Text("Your locked notes are encrypted again with the new password, on all your devices. If you forget it, they can't be recovered, not even by us.")
+                        .foregroundStyle(Color.muted)
                 }
                 if new != verify, !verify.isEmpty {
                     Section { Text("The new passwords don't match.").foregroundStyle(.red) }
@@ -337,6 +348,7 @@ struct LockedNotesSection: View {
                 Text("Locked Notes")
             } footer: {
                 Text("Locked notes open with your notes password until the app goes to the background or a few minutes pass. If you forget the password, locked notes can't be recovered.")
+                    .foregroundStyle(Color.muted)
             }
             .sheet(isPresented: $changing) { ChangeNotesPasswordSheet() }
         }
