@@ -24,6 +24,8 @@ type View =
 /// The PKCE verifier for one Sign in with Apple round trip: the only thing the page ever stores.
 const APPLE_PKCE = "amber.connect.pkce";
 const POLL_MS = 2000;
+/// After this long without an answer the page says where the request shows, and points to the recovery key.
+export const NUDGE_MS = 20_000;
 const OFFLINE = "Couldn't reach Amber Notes. Check your connection and try again.";
 const EXPIRED: View = { kind: "ended", title: "This request has expired", text: "Start connecting again from ChatGPT, Claude or the other app you were using." };
 
@@ -72,6 +74,14 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
     return () => window.removeEventListener("pagehide", closing);
     // Runs once, for the address the page was opened with.
   }, []);
+
+  // No answer for a while: say where the request shows up (a closed iPhone app doesn't get it).
+  const [nudge, setNudge] = useState(false);
+  useEffect(() => {
+    if (!polling) { setNudge(false); return; }
+    const t = setTimeout(() => setNudge(true), NUDGE_MS);
+    return () => clearTimeout(t);
+  }, [polling]);
 
   // Waiting for a device: /connect/status every two seconds until there's an answer or it expires.
   useEffect(() => {
@@ -413,6 +423,11 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
           <h1 className={styles.title}>Check your iPhone or Mac to approve</h1>
           <p className={styles.lede}>Choose Allow in Amber Notes there, and this page takes you back to finish connecting.</p>
           <p className={styles.status} role="status"><Spinner /> Waiting for you to allow it on your iPhone or Mac…</p>
+          {nudge && (
+            <p className={styles.small} role="status">
+              Open Amber Notes on your iPhone or Mac to see the request. No device nearby? Use your recovery key below.
+            </p>
+          )}
           <a className={styles.secondary} href={universalLink(requestId)}>Open Amber Notes</a>
           <p className={styles.small}>Answer in the app if it's on this computer.</p>
           <button type="button" className={styles.link} onClick={showRecovery}>No device nearby? Use your recovery key</button>

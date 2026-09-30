@@ -514,8 +514,13 @@ async function ask(req: Request, sql: Sql): Promise<Response> {
       where connect_asks.answered_at is null and connect_asks.user_id = ${user}
     returning expires_at`;
   if (!row) return json({ error: EXPIRED }, 404);
+  await notifyDevices(sql, user, r.id);
   return json({ asked: true, expires_at: row.expires_at });
 }
+
+/// Tells the account's devices about a new ask. Today they learn of it through realtime while the
+/// app runs, and when it's next opened; push (APNs) slots in here once there's a key for it.
+export async function notifyDevices(_sql: Sql, _user: string, _requestId: string): Promise<void> {}
 
 /// Where the page's request stands. No session: the request id is the page's, and the only
 /// secret here, the code, is sealed to a key only the page holds. Handed over once.
