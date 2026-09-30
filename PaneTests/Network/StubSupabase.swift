@@ -15,7 +15,7 @@ struct SealedAccount: SuiteTrait, TestTrait, TestScoping {
         guard testCase != nil || !test.isSuite else { try await function(); return }
         try await Wire.$testSealer.withValue(Sealer(key: SymmetricKey(size: .bits256), user: Self.user)) {
             // And its own memory of stopped links.
-            try await RevokedShares.$testStore.withValue(.init(MemoryDefaults())) { try await function() }
+            try await RevokedShares.$testStore.withValue(MemoryStoppedShares()) { try await function() }
         }
     }
 }

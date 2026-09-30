@@ -414,6 +414,134 @@ extension NetworkFaults {
         await a.engine.stop()
     }
 
+    @Test func stoppedLinksFromTwoDevicesMergeAndKeepTheNewest() {
+        let item = MemoryStoppedShares.Item()
+        let phone = MemoryStoppedShares(item: item), mac = MemoryStoppedShares(item: item)
+        RevokedShares.$testStore.withValue(phone) { RevokedShares.remember(["a"], account: user) }
+        RevokedShares.$testStore.withValue(mac) {
+            RevokedShares.remember(["b", "a"], account: user)
+            #expect(RevokedShares.slugs(account: user) == ["a", "b"], "the phone's entry is kept")
+            #expect(!RevokedShares.contains("a", account: UUID()), "per account")
+        }
+        RevokedShares.$testStore.withValue(phone) {
+            #expect(RevokedShares.contains("b", account: user))
+            RevokedShares.remember((0 ..< RevokedShares.remembered + 10).map { "s\($0)" }, account: user)
+            let list = phone.load(account: user)
+            #expect(list.count == RevokedShares.remembered && list.last == "s\(RevokedShares.remembered + 9)" && !list.contains("a"))
+        }
+        #expect(RevokedShares.merge(["x", "y"], ["y", "z"]) == ["x", "y", "z"])
+    }
+
+    @Test func aLinkStoppedOnAnotherDeviceIsNeverPublishedOrTaggedHere() async throws {
+        let saved = SyncEngine.publishDelay
+        SyncEngine.publishDelay = .milliseconds(50)
+        defer { SyncEngine.publishDelay = saved }
+        let item = MemoryStoppedShares.Item()
+        let slug = "abcdefghijklmnopqrstuvwx"
+        // The phone stopped the link; the synced item brings that here.
+        RevokedShares.$testStore.withValue(MemoryStoppedShares(item: item)) { RevokedShares.remember([slug], account: user) }
+        try await RevokedShares.$testStore.withValue(MemoryStoppedShares(item: item)) {
+            let a = try device()
+            let n = a.context.createNote(in: .all, body: "Trip")
+            n.dirty = true
+            await a.engine.sync()
+            // The table brings the stopped row back live, tag and all.
+            plantShare(n.id, slug: slug, include: false, tag: myTag(n.id, slug, false))
+            StubSupabase.answer("publish_share") { _ in ["slug": slug, "missing_files": [String]()] }
+            await a.engine.sync()
+            #expect(a.engine.liveShares[n.id] == nil)
+            StubSupabase.edit(n.id, body: "Trip, from the AI", updatedAt: .now.addingTimeInterval(2), aiEditor: "ChatGPT")
+            await a.engine.sync()
+            try await waitForPublishes()
+            #expect(!StubSupabase.rpcCalls.contains { $0.name == "publish_share" }, "never published")
+            StubSupabase.answer("share_slug") { _ in slug }
+            await #expect(throws: SharePublisher.Failure.self) {
+                _ = try await SharePublisher.share(note: n.id, includeSubNotes: false, client: StubSupabase.client(), container: a.context.container, user: user)
+            }
+            #expect(!StubSupabase.rpcCalls.contains { $0.name == "share_note" }, "never tagged again")
+            await a.engine.stop()
+        }
+    }
+
+    // MARK: Edits from elsewhere reach the page
+
+    private func publishes() -> [[String: Any]] {
+        StubSupabase.rpcCalls.filter { $0.name == "publish_share" }.map { $0.params }
+    }
+
+    private func waitForPublish(after count: Int) async throws -> [String: Any]? {
+        let end = Date.now.addingTimeInterval(3)
+        while publishes().count <= count, Date.now < end { try await Task.sleep(for: .milliseconds(20)) }
+        return publishes().count > count ? publishes().last : nil
+    }
+
+    @Test func anAIEditPulledIntoASharedNoteIsPublishedToItsPage() async throws {
+        let saved = SyncEngine.publishDelay
+        SyncEngine.publishDelay = .milliseconds(50)
+        defer { SyncEngine.publishDelay = saved }
+        let a = try device()
+        let root = a.context.createNote(in: .all, body: "Shared trip")
+        let page = a.context.createNote(in: .all, body: "Day one")
+        page.parentID = root.id
+        root.body += "\n" + link(page)
+        for n in [root, page] { n.dirty = true }
+        await a.engine.sync()
+        let slug = "abcdefghijklmnopqrstuvwx"
+        plantShare(root.id, slug: slug, include: true, tag: myTag(root.id, slug, true))
+        StubSupabase.answer("publish_share") { _ in ["slug": slug, "missing_files": [String]()] }
+        await a.engine.sync()
+        #expect(a.engine.liveShares[root.id] == true)
+        try await waitForPublishes()
+        var before = publishes().count
+
+        // The AI edits the shared note on the server; this device pulls it and publishes the page.
+        let rootText = root.body + "\nAdded by the AI"
+        StubSupabase.edit(root.id, body: rootText, updatedAt: .now.addingTimeInterval(2), aiEditor: "ChatGPT")
+        await a.engine.sync()
+        let published = try #require(try await waitForPublish(after: before))
+        #expect(published["p_slug"] as? String == slug)
+        #expect((published["p_copy"] as? [String: Any])?["body"] as? String == rootText)
+
+        // A page of it, by realtime: published under the root.
+        before = publishes().count
+        StubSupabase.edit(page.id, body: "Day one, by the AI", updatedAt: .now.addingTimeInterval(3), aiEditor: "Claude")
+        let rows: [NoteDTO] = try await StubSupabase.client().from("notes").select().eq("id", value: page.id.uuidString.lowercased()).execute().value
+        a.engine.take(rows)
+        let again = try #require(try await waitForPublish(after: before))
+        let pages = (again["p_copy"] as? [String: Any])?["pages"] as? [[String: Any]] ?? []
+        #expect(pages.first?["body"] as? String == "Day one, by the AI")
+        await a.engine.stop()
+    }
+
+    @Test func anAIEditPulledIntoAnUnsharedOrUnverifiedNotePublishesNothing() async throws {
+        let saved = SyncEngine.publishDelay
+        SyncEngine.publishDelay = .milliseconds(50)
+        defer { SyncEngine.publishDelay = saved }
+        let a = try device()
+        let plain = a.context.createNote(in: .all, body: "Not shared")
+        let planted = a.context.createNote(in: .all, body: "Planted")
+        let root = a.context.createNote(in: .all, body: "Shared trip")
+        let stray = a.context.createNote(in: .all, body: "Diary")
+        stray.parentID = root.id // under the root by parent_id only, not linked from its text
+        for n in [plain, planted, root, stray] { n.dirty = true }
+        await a.engine.sync()
+        plantShare(planted.id, slug: "PLANTEDplantedPLANTEDpla", include: false, tag: nil)
+        let slug = "abcdefghijklmnopqrstuvwx"
+        plantShare(root.id, slug: slug, include: true, tag: myTag(root.id, slug, true))
+        StubSupabase.answer("publish_share") { _ in ["slug": slug, "missing_files": [String]()] }
+        await a.engine.sync()
+        try await waitForPublishes()
+        let before = publishes().count
+        StubSupabase.edit(plain.id, body: "Not shared, AI", updatedAt: .now.addingTimeInterval(2), aiEditor: "ChatGPT")
+        StubSupabase.edit(planted.id, body: "Planted, AI", updatedAt: .now.addingTimeInterval(2), aiEditor: "ChatGPT")
+        StubSupabase.edit(stray.id, body: "Diary, AI", updatedAt: .now.addingTimeInterval(2), aiEditor: "ChatGPT")
+        await a.engine.sync()
+        #expect(a.context.note(plain.id)?.body == "Not shared, AI" && a.context.note(stray.id)?.body == "Diary, AI", "the edits arrived")
+        try await waitForPublishes()
+        #expect(publishes().count == before, "nothing is published")
+        await a.engine.stop()
+    }
+
     @Test func aNoteReparentedByParentIDAloneIsNeverPublished() async throws {
         let saved = SyncEngine.publishDelay
         SyncEngine.publishDelay = .milliseconds(50)

@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import Security
 import Supabase
 #if os(iOS)
 import UIKit
@@ -283,35 +284,123 @@ enum SharePublisher {
     }
 }
 
-/// Links this account stopped, remembered on this device per account: from Stop Sharing here and
-/// from share rows seen stopped. Nothing is published to one again and none is tagged again,
-/// whatever the table says later: a stopped row brought back by whoever can write the table (with
-/// a tag they kept from before) would otherwise verify and go live again.
+/// Links this account stopped, remembered per account in a synced iCloud Keychain item (every
+/// device of the account knows them, the server can't touch them): from Stop Sharing and from
+/// share rows seen stopped. Nothing is published to one again and none is tagged again, whatever
+/// the table says later: a stopped row brought back by whoever can write the table (with a tag
+/// they kept from before) would otherwise verify and go live again.
+///
+/// Each write merges into what the item holds (another device's entries included), so two
+/// devices don't lose each other's. Lists from before this was synced (UserDefaults) are read too,
+/// and folded into the item on the next write.
 enum RevokedShares {
-    final class Store: @unchecked Sendable {
-        let defaults: UserDefaults
-        init(_ defaults: UserDefaults) { self.defaults = defaults }
-    }
-
     /// Tests keep theirs apart; tasks they start inherit it.
-    @TaskLocal static var testStore: Store?
-    private static var defaults: UserDefaults { testStore?.defaults ?? .standard }
-    static let remembered = 5000
+    @TaskLocal static var testStore: (any StoppedShareStore)?
+    static let keychain: any StoppedShareStore = KeychainStoppedShares()
+    private static var store: any StoppedShareStore { testStore ?? keychain }
+    /// The newest this many are kept.
+    static let remembered = 3000
+    private static let lock = NSLock()
 
-    private static func key(_ account: UUID) -> String { "share.revoked.\(account.uuidString.lowercased())" }
-
-    static func slugs(account: UUID) -> Set<String> { Set(defaults.stringArray(forKey: key(account)) ?? []) }
-
-    static func contains(_ slug: String, account: UUID) -> Bool {
-        (defaults.stringArray(forKey: key(account)) ?? []).contains(slug)
+    private static func legacyKey(_ account: UUID) -> String { "share.revoked.\(account.uuidString.lowercased())" }
+    /// This device's list from before the synced item (never in tests).
+    private static func legacy(_ account: UUID) -> [String] {
+        testStore == nil ? UserDefaults.standard.stringArray(forKey: legacyKey(account)) ?? [] : []
     }
+
+    static func slugs(account: UUID) -> Set<String> {
+        lock.withLock { Set(store.load(account: account)).union(legacy(account)) }
+    }
+
+    static func contains(_ slug: String, account: UUID) -> Bool { slugs(account: account).contains(slug) }
 
     static func remember(_ slugs: some Sequence<String>, account: UUID) {
-        var list = defaults.stringArray(forKey: key(account)) ?? []
-        let before = list.count
-        for s in slugs where !list.contains(s) { list.append(s) }
-        guard list.count != before else { return }
-        defaults.set(Array(list.suffix(remembered)), forKey: key(account))
+        let adding = Array(slugs)
+        lock.withLock {
+            let stored = store.load(account: account), old = legacy(account)
+            let merged = merge(stored, old + adding)
+            guard merged != stored else { return }
+            if store.save(merged, account: account), !old.isEmpty {
+                UserDefaults.standard.removeObject(forKey: legacyKey(account))
+            }
+        }
+    }
+
+    /// `adding` after what's there, each slug once, the newest `remembered` kept.
+    static func merge(_ existing: [String], _ adding: [String]) -> [String] {
+        var seen = Set<String>(), out: [String] = []
+        for s in existing + adding where seen.insert(s).inserted { out.append(s) }
+        return Array(out.suffix(remembered))
+    }
+}
+
+/// Where the stopped links are kept: one list of slugs per account.
+protocol StoppedShareStore: Sendable {
+    func load(account: UUID) -> [String]
+    @discardableResult func save(_ slugs: [String], account: UUID) -> Bool
+}
+
+/// In-memory runs (tests). Stores made with the same `Item` are one account's devices sharing
+/// the synced item.
+final class MemoryStoppedShares: StoppedShareStore, @unchecked Sendable {
+    final class Item: @unchecked Sendable {
+        fileprivate var lists: [UUID: [String]] = [:]
+        fileprivate let lock = NSLock()
+        init() {}
+    }
+
+    let item: Item
+    init(item: Item = Item()) { self.item = item }
+    func load(account: UUID) -> [String] { item.lock.withLock { item.lists[account] ?? [] } }
+    func save(_ slugs: [String], account: UUID) -> Bool { item.lock.withLock { item.lists[account] = slugs }; return true }
+}
+
+/// The stopped links in the Keychain: a synchronizable item (iCloud Keychain, end-to-end
+/// encrypted by Apple), readable after the first unlock so sync works in the background, in the
+/// default access group like the data key (`KeychainAccountKeyStore`). Its value is a JSON list of
+/// slugs. Builds without the data protection keychain keep it on this device only, as they keep
+/// the data key.
+struct KeychainStoppedShares: StoppedShareStore {
+    static let service = "dev.emilwagman.pane.stopped-shares"
+
+    private static func query(_ account: UUID) -> [String: Any] {
+        [kSecClass as String: kSecClassGenericPassword,
+         kSecAttrService as String: service,
+         kSecAttrAccount as String: account.uuidString.lowercased(),
+         kSecUseDataProtectionKeychain as String: true,
+         kSecAttrSynchronizable as String: kSecAttrSynchronizableAny]
+    }
+
+    private static let fallback = SessionStorage()
+    private static func fallbackName(_ account: UUID) -> String { "stopped-shares-\(account.uuidString.lowercased())" }
+
+    func load(account: UUID) -> [String] {
+        let data: Data?
+        if KeychainAccountKeyStore.dataProtectionAvailable {
+            var q = Self.query(account)
+            q[kSecReturnData as String] = true
+            q[kSecMatchLimit as String] = kSecMatchLimitOne
+            var out: CFTypeRef?
+            data = SecItemCopyMatching(q as CFDictionary, &out) == errSecSuccess ? out as? Data : nil
+        } else {
+            data = try? Self.fallback.retrieve(key: Self.fallbackName(account))
+        }
+        return data.flatMap { try? JSONDecoder().decode([String].self, from: $0) } ?? []
+    }
+
+    func save(_ slugs: [String], account: UUID) -> Bool {
+        guard let data = try? JSONEncoder().encode(slugs) else { return false }
+        guard KeychainAccountKeyStore.dataProtectionAvailable else {
+            return (try? Self.fallback.store(key: Self.fallbackName(account), value: data)) != nil
+        }
+        let updated = SecItemUpdate(Self.query(account) as CFDictionary, [kSecValueData as String: data] as CFDictionary)
+        guard updated == errSecItemNotFound else { return updated == errSecSuccess }
+        var q = Self.query(account)
+        q[kSecAttrSynchronizable as String] = true
+        q[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
+        q[kSecAttrLabel as String] = "Amber Notes stopped share links"
+        q[kSecValueData as String] = data
+        return SecItemAdd(q as CFDictionary, nil) == errSecSuccess
     }
 }
 

@@ -257,16 +257,19 @@ final class SyncEngine {
         // Typing that isn't in the model yet goes in first, so it counts as a local edit.
         DebouncedSave.flushAll()
         var folders = Dictionary(uniqueKeysWithValues: context.allFoldersIncludingDeleted().map { ($0.id, $0) })
-        var changed = false
+        var changed: [UUID] = []
         for r in rows {
             if let fid = r.folder_id, folders[fid] == nil {
                 // A folder this device hasn't seen yet: the full pull brings both.
                 schedule(after: 0)
                 continue
             }
-            if merge(r, folders: &folders) { changed = true }
+            if merge(r, folders: &folders) { changed.append(r.id) }
         }
-        if changed { try? context.save() }
+        guard !changed.isEmpty else { return }
+        try? context.save()
+        // Only devices publish shared pages: an AI's edit of a shared note reaches its page from here.
+        republishShares(for: changed)
     }
 
     /// This device's library was synced for one account. When a different account signs
@@ -532,7 +535,8 @@ final class SyncEngine {
 
     /// Live links this account made (their tags verify): note → whether its link includes
     /// sub-notes. A shared page shows a readable copy this device publishes (the server can't read
-    /// the note), so an edit that went up is published to every page it's on. A share row that
+    /// the note), so an edit that went up, or one pulled from elsewhere (another device, an AI), is
+    /// published to every page it's on. A share row that
     /// doesn't verify isn't here: it's never published to, and the note doesn't show as shared.
     private(set) var liveShares: [UUID: Bool] = [:]
     private var publishQueue: Set<UUID> = []
@@ -842,6 +846,7 @@ final class SyncEngine {
         }
 
         var offset = 0
+        var pulledNotes: [UUID] = []
         while true {
             let rows: [NoteDTO] = try await client.from("notes").select()
                 .gt("server_updated_at", value: stamp)
@@ -851,7 +856,7 @@ final class SyncEngine {
             if !rows.isEmpty { DebouncedSave.flushAll() }
             for r in rows {
                 if let s = r.server_updated_at, s > newest { newest = s }
-                if merge(r, folders: &byID) { changed = true }
+                if merge(r, folders: &byID) { changed = true; pulledNotes.append(r.id) }
             }
             if rows.count < 500 { break }
             offset += 500
@@ -859,6 +864,10 @@ final class SyncEngine {
         if changed { try? context.save() }
         cursor = newest
         await refreshShares(client)
+        // Only devices publish shared pages (the server can't read them): a note that changed
+        // elsewhere, an AI's edit included, is published to every live page it's on, as a local
+        // edit would be. After the refresh, so a share seen for the first time counts.
+        republishShares(for: pulledNotes)
     }
 
     /// Takes one server row into the library. Returns true when anything changed.
