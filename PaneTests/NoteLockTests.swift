@@ -34,6 +34,22 @@ private func serverAccepts(_ sealed: String) -> Bool {
     sealed.range(of: #"^amb1\.[0-9a-f]{16}\.[A-Za-z0-9+/]+={0,2}$"#, options: .regularExpression) != nil && sealed.utf8.count <= 3_000_000
 }
 
+/// UserDefaults suites for pretend devices, removed from disk when the test is done.
+final class ScratchDefaults: @unchecked Sendable {
+    private var names: [String] = []
+    private let lock = NSLock()
+
+    func make() -> UserDefaults {
+        let name = "NoteLockTests.\(UUID().uuidString)"
+        lock.withLock { names.append(name) }
+        return UserDefaults(suiteName: name)!
+    }
+
+    deinit {
+        for name in names { UserDefaults.standard.removePersistentDomain(forName: name) }
+    }
+}
+
 /// Low iteration counts keep the tests quick; `realIterations` checks the real one once.
 private let fast = 1_000
 
@@ -106,6 +122,7 @@ private let fast = 1_000
 @MainActor @Suite struct NoteVaultTests {
     let context: ModelContext
     let remote = FakeLockRemote()
+    let scratch = ScratchDefaults()
 
     init() throws {
         let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
@@ -114,7 +131,7 @@ private let fast = 1_000
 
     /// One device: its own defaults and key store, the shared server.
     func device(_ remote: NoteLockRemote? = nil, biometry: String? = nil) throws -> NoteVault {
-        let defaults = try #require(UserDefaults(suiteName: "NoteVaultTests.\(UUID().uuidString)"))
+        let defaults = scratch.make()
         let v = NoteVault(keyStore: MemoryKeyStore(biometryName: biometry), remote: remote ?? self.remote, defaults: defaults, iterations: fast)
         v.attach(account: UUID(uuidString: "00000000-0000-0000-0000-00000000000a"), remote: remote ?? self.remote)
         return v
@@ -371,6 +388,8 @@ private let fast = 1_000
 extension NetworkFaults {
 /// A note locked on one device, through sync (against StubSupabase) to another.
 @MainActor @Suite struct LockedNoteSyncTests {
+    let scratch = ScratchDefaults()
+
     @Test func lockedOnTheMacOpenedOnTheIPhone() async throws {
         StubSupabase.reset()
         NetFault.config = .init()
@@ -380,7 +399,7 @@ extension NetworkFaults {
         func device() throws -> (ModelContext, SyncEngine, NoteVault) {
             let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
             let context = ModelContext(c)
-            let defaults = try #require(UserDefaults(suiteName: "LockedNoteSyncTests.\(UUID().uuidString)"))
+            let defaults = scratch.make()
             let engine = SyncEngine(backend: Backend(testClient: StubSupabase.client(), email: "qa@example.com"), context: context, defaults: defaults)
             let vault = NoteVault(keyStore: MemoryKeyStore(), remote: remote, defaults: defaults, iterations: fast)
             return (context, engine, vault)
@@ -433,7 +452,7 @@ extension NetworkFaults {
         defer { NoteDTO.sendsLock = was }
         let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
         let context = ModelContext(c)
-        let defaults = try #require(UserDefaults(suiteName: "LockedNoteSyncTests.\(UUID().uuidString)"))
+        let defaults = scratch.make()
         let engine = SyncEngine(backend: Backend(testClient: StubSupabase.client(), email: "qa@example.com"), context: context, defaults: defaults)
         let vault = NoteVault(keyStore: MemoryKeyStore(), remote: FakeLockRemote(), defaults: defaults, iterations: fast)
         let n = context.createNote(in: .all, body: "Plan\n\nours")

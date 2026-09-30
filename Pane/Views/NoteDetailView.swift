@@ -58,6 +58,14 @@ struct NoteDetailView: View {
             .overlay(alignment: .bottom) { aiReceipt }
             .overlay(alignment: .bottom) { undoProblem }
             .onChange(of: note.aiEditedAt) { _, _ in showAIEdit() }
+            // Captures: `-lockCapture setup` or `confirm` (see Capture).
+            .onReceive(NotificationCenter.default.publisher(for: Capture.lockCapture)) { n in
+                switch n.object as? String {
+                case "setup": lockSheet = .setUp
+                case "confirm": confirmLock = true
+                default: break
+                }
+            }
             // Captures: the "landed" moment is over.
             .onReceive(NotificationCenter.default.publisher(for: Capture.clearAIMarks)) { _ in
                 withAnimation(.easeIn(duration: 0.2)) { receipt = nil }
