@@ -60,6 +60,7 @@ async function seed(pg: PGlite, me: string) {
     [asked, me, "B" + "A".repeat(86) + "="]);
   await pg.query(`insert into public.account_notices (user_id, kind, what) values ($1, 'started_fresh', 'x')`, [me]);
   await pg.query(`insert into public.account_key_resets (user_id, generation) values ($1, 1)`, [me]);
+  await pg.query(`insert into public.device_tokens (user_id, device_id, platform, token, environment) values ($1, gen_random_uuid(), 'ios', $2, 'sandbox')`, [me, crypto.randomUUID().replaceAll('-', '').repeat(2)]);
   await pg.query(`insert into public.connect_blocks (user_id, blocked_until) values ($1, now() - interval '1 day')`, [me]);
   await pg.query(`insert into public.pane_setup (user_id, imported_at) values ($1, now())`, [me]);
   await pg.query(`insert into public.pane_activity (user_id, day, kind, n) values ($1, current_date, 'ai_edit', 3) on conflict do nothing`, [me]);
