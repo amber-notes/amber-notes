@@ -1,14 +1,14 @@
 #!/bin/zsh
-# Deploys the share site (web/) to Vercel. Emil chose the Incredible team for it (2026-09-29).
+# Deploys the share site (web/) to Vercel. It lives in Emil's Personal team (moved from Incredible 2026-09-30).
 #
-#   scripts/deploy-web.sh            # the Incredible team
+#   scripts/deploy-web.sh            # the Personal team
 #   scripts/deploy-web.sh <team-id>  # another team
 #
 # Sets the Supabase URL and anon key from Config/Backend.local.xcconfig, deploys to production,
 # and prints the URL. Then put PANE_SHARE_URL = <that URL> in Config/Backend.local.xcconfig.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-team=${1:-incredible-team}
+team=${1:-emil-wagman-personal}
 
 conf=Config/Backend.local.xcconfig
 url=$(grep -E '^PANE_SUPABASE_URL' $conf | sed 's/.*= *//; s|:/\$()/|://|')
