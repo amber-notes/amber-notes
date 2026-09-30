@@ -53,6 +53,7 @@ struct SettingsView: View {
                 if case .signedIn = backend.state, let client = backend.client {
                     ConnectAISection(client: client)
                 }
+                LockedNotesSection(sync: sync)
                 #if os(macOS)
                 MenuBarSection()
                 #else

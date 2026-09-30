@@ -38,7 +38,7 @@ export const tools: Tool[] = ([
   },
   {
     name: "search_notes", title: "Search notes",
-    description: "Full-text search across titles and bodies. Returns ranked notes with a highlighted snippet («match»).",
+    description: "Full-text search across titles and bodies. Returns ranked notes with a highlighted snippet («match»). Locked notes are left out.",
     inputSchema: { type: "object", properties: { query: str("Words or a phrase. Supports \"quoted phrases\", OR and -exclusions."), limit: int("Max results, default 10.") }, required: ["query"] },
     annotations: read,
   },
@@ -209,7 +209,7 @@ export const tools: Tool[] = ([
   // ChatGPT's connector conventions.
   {
     name: "search", title: "Search",
-    description: "Search the person's Amber Notes by words or phrases. Returns note ids and titles; read one with fetch.",
+    description: "Search the person's Amber Notes by words or phrases. Returns note ids and titles; read one with fetch. Locked notes are left out.",
     inputSchema: { type: "object", properties: { query: str("Search query.") }, required: ["query"] },
     annotations: read,
   },
@@ -236,6 +236,7 @@ export async function runTool(name: string, args: Args, ctx: ToolContext): Promi
     await tx`select set_config('role', 'authenticated', true),
                     set_config('request.jwt.claims', ${JSON.stringify({ sub: ctx.userId, role: "authenticated" })}, true),
                     set_config('pane.source', 'mcp', true),
+                    set_config('pane.agent', 'mcp', true),
                     set_config('pane.client', ${ctx.client}, true)`;
     return await handlers[name](tx, args, ctx);
   });
@@ -243,7 +244,7 @@ export async function runTool(name: string, args: Args, ctx: ToolContext): Promi
 
 // MARK: Helpers
 
-type NoteRow = { id: string; body: string; title: string; folder_id: string | null; parent_id: string | null; is_pinned: boolean; created_at: Date; updated_at: Date; trashed_at: Date | null; version: string };
+type NoteRow = { id: string; body: string; locked_body: string | null; title: string; folder_id: string | null; parent_id: string | null; is_pinned: boolean; created_at: Date; updated_at: Date; trashed_at: Date | null; version: string };
 type FolderRow = { id: string; name: string; parent_id: string | null; sort_index: number };
 
 /** Notes the app shows in its list: everything except sub-notes still linked from a live parent. */
@@ -263,6 +264,13 @@ async function descendants(tx: Tx, id: string): Promise<string[]> {
       select n.id from public.notes n join d on n.parent_id = d.id where n.deleted_at is null
     ) select id from d`;
   return rows.map((r) => r.id);
+}
+
+/** A locked note's text is sealed on the user's devices; the server only has its title. */
+export const LOCKED = "This note is locked. Its text is encrypted on the user's devices: it can't be read, searched or changed here. The user can open it in Amber Notes.";
+
+function refuseLocked(n: NoteRow) {
+  if (n.locked_body !== null && n.locked_body !== undefined) throw new ToolError(`"${n.title}": ${LOCKED}`);
 }
 
 /** A whole number the model sent, or a clear error naming the argument. */
@@ -347,14 +355,16 @@ async function findNote(tx: Tx, args: Args, includeTrashed = false): Promise<Not
   const title = typeof args.title === "string" ? args.title.trim() : undefined;
   if (id) {
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) throw new ToolError(`${quote(id)} isn't a note id. Ids look like 3f2b…-…; get one from search_notes or list_notes.`);
-    const rows = await tx<NoteRow[]>`select * from public.notes where id = ${id}::uuid and deleted_at is null`;
+    // Locked for this call: nobody can lock (or change) it between this check and the write.
+    const rows = await tx<NoteRow[]>`select * from public.notes where id = ${id}::uuid and deleted_at is null for update`;
     if (!rows.length) throw new ToolError(`No note with id ${id}.`);
     if (rows[0].trashed_at && !includeTrashed) throw new ToolError(`"${rows[0].title}" is in Recently Deleted. Restore it with restore_note first.`);
+    refuseLocked(rows[0]);
     return rows[0];
   }
   if (!title) throw new ToolError("Give the note's id (preferred) or its title.");
-  const rows = await tx<NoteRow[]>`select * from public.notes where deleted_at is null and trashed_at is null and lower(title) = lower(${title}) order by updated_at desc limit 5`;
-  if (rows.length === 1) return rows[0];
+  const rows = await tx<NoteRow[]>`select * from public.notes where deleted_at is null and trashed_at is null and lower(title) = lower(${title}) order by updated_at desc limit 5 for update`;
+  if (rows.length === 1) { refuseLocked(rows[0]); return rows[0]; }
   if (rows.length > 1) throw new ToolError(`${rows.length} notes are titled ${quote(title)}: ${rows.map((r) => r.id).join(", ")}. Use an id.`);
   const near = await tx<{ id: string; title: string }[]>`select id, title from public.notes where deleted_at is null and trashed_at is null and title ilike ${likeText(title)} order by updated_at desc limit 5`;
   throw new ToolError(near.length ? `No note titled ${quote(title)}. Close matches: ${near.map((n) => `${n.title} (${n.id})`).join("; ")}.` : `No note titled ${quote(title)}. Try search_notes.`);
@@ -362,7 +372,8 @@ async function findNote(tx: Tx, args: Args, includeTrashed = false): Promise<Not
 
 function summary(n: NoteRow, all: FolderRow[]) {
   return {
-    id: n.id, title: n.title, folder: pathOf(n.folder_id, all), pinned: n.is_pinned, updated: iso(n.updated_at), preview: previewOf(n.body),
+    id: n.id, title: n.title, folder: pathOf(n.folder_id, all), pinned: n.is_pinned, updated: iso(n.updated_at),
+    ...(n.locked_body ? { locked: true } : { preview: previewOf(n.body) }),
     ...(n.parent_id ? { sub_note_of: n.parent_id } : {}),
   };
 }
@@ -595,19 +606,21 @@ const handlers: Record<string, (tx: Tx, a: Args, ctx: ToolContext) => Promise<un
 
   async note_history(tx, a) {
     const n = await findNote(tx, a, true);
-    const rows = await tx<{ id: string; version: string; source: string; client: string | null; created_at: Date; body: string }[]>`
-      select id, version, source, client, created_at, body from public.note_revisions where note_id = ${n.id}
+    const rows = await tx<{ id: string; version: string; source: string; client: string | null; created_at: Date; body: string; locked_body: string | null }[]>`
+      select id, version, source, client, created_at, body, locked_body from public.note_revisions where note_id = ${n.id}
       order by id desc limit ${clampInt(a.limit, 10, 50) || 10}`;
     return {
       id: n.id, title: n.title, current_version: Number(n.version),
-      revisions: rows.map((r) => ({ revision_id: Number(r.id), version: Number(r.version), replaced_at: iso(r.created_at), replaced_by: r.client ?? r.source, title: titleOf(r.body), preview: previewOf(r.body, 100), characters: r.body.length })),
+      revisions: rows.map((r) => ({ revision_id: Number(r.id), version: Number(r.version), replaced_at: iso(r.created_at), replaced_by: r.client ?? r.source, title: titleOf(r.body),
+        ...(r.locked_body !== null ? { locked: true } : { preview: previewOf(r.body, 100), characters: r.body.length }) })),
     };
   },
 
   async restore_revision(tx, a) {
     const n = await findNote(tx, a, true);
-    const rows = await tx<{ body: string }[]>`select body from public.note_revisions where id = ${wholeNumber(a.revision_id, "revision_id")} and note_id = ${n.id}`;
+    const rows = await tx<{ body: string; locked_body: string | null }[]>`select body, locked_body from public.note_revisions where id = ${wholeNumber(a.revision_id, "revision_id")} and note_id = ${n.id}`;
     if (!rows.length) throw new ToolError("No such revision for this note. Use note_history.");
+    if (rows[0].locked_body !== null) throw new ToolError("That version was saved while the note was locked, so its text is encrypted. The user can restore it in Amber Notes.");
     await tx`select set_config('pane.source', 'restore', true)`;
     return { restored: await save(tx, n, rows[0].body) };
   },

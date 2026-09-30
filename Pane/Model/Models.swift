@@ -61,6 +61,8 @@ final class Note {
     var dirty: Bool = true
     /// The server's version when we last synced; 0 = never uploaded.
     var serverVersion: Int64 = 0
+    /// Set for a locked note: its text, sealed (see NoteVault). `body` is then its title only.
+    var lockedBody: String?
 
     init(body: String = "", folder: Folder? = nil) {
         id = UUID()
@@ -77,6 +79,8 @@ final class Note {
         dirty = true
         SyncSignal.changed()
     }
+
+    var isLocked: Bool { lockedBody != nil }
 
     var title: String { NoteText.summary(of: self).title }
     var preview: String { NoteText.summary(of: self).preview }

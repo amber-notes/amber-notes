@@ -155,6 +155,11 @@ final class ShareLinkStore {
         }
     }
 
+    /// The note was locked: the server stops its link when that syncs.
+    func forgetLink() {
+        if state.slug != nil { state.phase = .notShared }
+    }
+
     /// Creates the link (or reuses the live one) and copies it.
     func shareAndCopy() async {
         guard let service, let note = noteID else { return }
@@ -213,6 +218,7 @@ final class ShareLinkStore {
     static func message(for error: Error) -> String {
         let text = String(describing: error).lowercased()
         if text.contains("no such note") { return "Couldn’t share yet. Try again once the note has synced." }
+        if text.contains("note_locked") || text.contains("locked note") { return "Locked notes can’t be shared." }
         if text.contains("not signed in") || text.contains("jwt") { return "Sign in to share notes." }
         return "Couldn’t reach Amber Notes. Check your connection."
     }
@@ -298,7 +304,7 @@ private struct ShareLinkChrome: ViewModifier {
                 .animation(.snappy(duration: 0.22), value: store.state.feedback)
             }
             .overlay(alignment: .topTrailing) {
-                if store.state.slug != nil, store.state.feedback == nil {
+                if store.state.slug != nil, store.state.feedback == nil, !note.isLocked {
                     Button { Task { await store.shareAndCopy() } } label: {
                         Label("Shared", systemImage: "link")
                             .font(.caption.weight(.medium))
@@ -336,7 +342,7 @@ private struct ShareLinkChrome: ViewModifier {
             } message: { step in
                 switch step {
                 case .createLink:
-                    Text("Anyone with the link can read this note without signing in, and it may be passed on. The page shows your name and photo, and your email unless Apple hides it. Edits show within a minute. You can stop sharing at any time."
+                    Text("Anyone with the link can read this note without signing in, and it may be passed on. The page shows your name and photo, and your email unless Apple hides it. Edits show as soon as they sync. You can stop sharing at any time."
                          + (profileIncomplete ? "\n\nAdd your name and photo so people know the page is from you." : ""))
                 case .includeSubNotes:
                     Text("The sub-notes linked from this note also become readable by anyone with the link.")

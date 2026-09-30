@@ -19,7 +19,9 @@ Prefer edit_note (exact find/replace) and append_to_note over replace_note_body,
 Tables are markdown tables; trackers are tables with typed columns. Use read_table, then log_table_row (it validates values and, in trackers, upserts by date).
 Checklists are "- [ ] item" lines; use set_checklist_item to tick them. A line like [Title](pane-note:<id>) links a sub-note: a whole note that lives inside
 its parent. Use create_sub_note to make one; read it with read_note(id). Deleted notes go to Recently Deleted
-and can be restored; every edit keeps the previous version (note_history / restore_revision).`;
+and can be restored; every edit keeps the previous version (note_history / restore_revision).
+A note marked locked: true is locked by the user: its text is encrypted on their devices, so only its title is visible here.
+It can't be read, searched or changed here; only the user can open it, in Amber Notes.`;
 
 const sql = postgres(Deno.env.get("SUPABASE_DB_URL")!, { max: 3, idle_timeout: 20, prepare: false });
 

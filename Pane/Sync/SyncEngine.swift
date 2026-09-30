@@ -73,10 +73,14 @@ final class SyncEngine {
     /// Where the pull cursor is kept; tests give each simulated device its own.
     private let defaults: UserDefaults
 
-    init(backend: Backend, context: ModelContext, defaults: UserDefaults = .standard) {
+    /// Seals conflicted copies of locked notes; the app's vault unless a test gives its own.
+    private let lockVault: NoteVault?
+
+    init(backend: Backend, context: ModelContext, defaults: UserDefaults = .standard, vault: NoteVault? = nil) {
         self.backend = backend
         self.context = context
         self.defaults = defaults
+        self.lockVault = vault
         SyncSignal.onChange = { [weak self] in self?.localChanged() }
     }
 
@@ -479,10 +483,12 @@ final class SyncEngine {
         guard let s = server.first else {
             return try await client.from("notes").upsert(NoteDTO(n)).select().execute().value
         }
-        if s.body == n.body { return server }
+        if s.body == n.body && s.locked_body == n.lockedBody { return server }
+        // A locked note's text is sealed: there's nothing to merge line by line.
+        let sealed = s.locked_body != nil || n.lockedBody != nil
         // Both typed since the version we last had: where the edits don't touch the same lines,
         // put them together (like Notes), instead of one side's edit going to version history.
-        if let base = synced[n.id], base.version == n.serverVersion, let sv = s.version,
+        if !sealed, let base = synced[n.id], base.version == n.serverVersion, let sv = s.version,
            let merged = TextDiff.merge(base: base.body, mine: n.body, theirs: s.body) {
             let mine = n.body
             var patch = NoteDTO(n).patch
@@ -504,6 +510,7 @@ final class SyncEngine {
             remember(row)
             return saved
         }
+        if sealed { return try await resolveSealedConflict(client, local: n, server: s) }
         if s.updated_at > n.updatedAt {
             // Theirs is newer: keep it, and keep ours as a conflicted copy.
             let copy = Note(body: Self.conflictCopy(of: n.body), folder: n.folder)
@@ -514,6 +521,30 @@ final class SyncEngine {
             return server
         }
         // Ours is newer: overwrite. The server keeps theirs in note_revisions.
+        return try await client.from("notes").update(NoteDTO(n).patch).eq("id", value: n.id).select().execute().value
+    }
+
+    /// A conflict where either side is locked. The loser is kept as a conflicted copy, and that
+    /// copy is always sealed: a copy of a locked note is never readable, here or on the server.
+    /// Locked on one side only, the lock wins whichever is newer, so an edit made elsewhere never
+    /// quietly unlocks a note (or disappears with the history that locking deletes).
+    ///
+    /// Sealing needs the key. While notes are locked the note waits here, unpushed and as it was,
+    /// and goes up once the notes password is entered (NoteVault signals a push).
+    private func resolveSealedConflict(_ client: SupabaseClient, local n: Note, server s: NoteDTO) async throws -> [NoteDTO] {
+        let vault = lockVault ?? NoteVault.shared
+        let theirsWins = (s.locked_body == nil) != (n.lockedBody == nil) ? s.locked_body != nil : s.updated_at > n.updatedAt
+        let loser: String? = theirsWins ? vault.text(of: n) : s.locked_body.map { vault.text(sealed: $0, note: s.id) } ?? s.body
+        guard vault.isUnlocked, let loser else {
+            problem = "“\(n.title)” was changed on another device while it was locked here. Enter your notes password to sync it."
+            return []
+        }
+        let copy = try vault.sealedCopy(of: Self.conflictCopy(of: loser), in: n.folder, at: theirsWins ? n.updatedAt : s.updated_at)
+        context.insert(copy)
+        if theirsWins {
+            apply(s, to: n)
+            return [s]
+        }
         return try await client.from("notes").update(NoteDTO(n).patch).eq("id", value: n.id).select().execute().value
     }
 
@@ -651,7 +682,7 @@ final class SyncEngine {
             default: false
             }
         }
-        return r.body == n.body && r.parent_id == n.parentID && r.is_pinned == n.isPinned
+        return r.body == n.body && r.locked_body == n.lockedBody && r.parent_id == n.parentID && r.is_pinned == n.isPinned
             && near(r.trashed_at, n.trashedAt) && near(r.deleted_at, n.deletedAt) && r.folder_id == n.folder?.id
     }
 
@@ -666,6 +697,7 @@ final class SyncEngine {
     private func apply(_ r: NoteDTO, to n: Note) {
         remember(r)
         n.body = r.body
+        n.lockedBody = r.locked_body
         n.parentID = r.parent_id
         n.isPinned = r.is_pinned
         n.createdAt = r.created_at
@@ -738,6 +770,9 @@ struct FolderDTO: Codable {
 struct NoteDTO: Codable {
     var id: UUID
     var body: String
+    /// A locked note's sealed text; `body` is then its title. Sent only by an account that has a
+    /// notes password (so a server without the column never sees it).
+    var locked_body: String?
     var folder_id: UUID?
     var parent_id: UUID?
     var is_pinned: Bool
@@ -755,6 +790,7 @@ struct NoteDTO: Codable {
         id = n.id
         // Postgres text can't hold NUL; a pasted one would otherwise refuse the whole note.
         body = n.body.contains("\u{0}") ? n.body.replacingOccurrences(of: "\u{0}", with: "") : n.body
+        locked_body = n.lockedBody
         folder_id = n.folder?.id
         parent_id = n.parentID
         is_pinned = n.isPinned
@@ -764,13 +800,17 @@ struct NoteDTO: Codable {
         deleted_at = n.deletedAt
     }
 
-    enum CodingKeys: String, CodingKey { case id, body, folder_id, parent_id, is_pinned, created_at, updated_at, trashed_at, deleted_at, version, server_updated_at, ai_editor, ai_edited_at }
+    enum CodingKeys: String, CodingKey { case id, body, locked_body, folder_id, parent_id, is_pinned, created_at, updated_at, trashed_at, deleted_at, version, server_updated_at, ai_editor, ai_edited_at }
+
+    /// True once this account has a notes password (NoteVault sets it).
+    nonisolated(unsafe) static var sendsLock = false
 
     /// Client-owned columns only; the server sets version and its own clock.
     func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(id, forKey: .id)
         try c.encode(body, forKey: .body)
+        if Self.sendsLock || locked_body != nil { try c.encode(locked_body, forKey: .locked_body) }
         try c.encode(folder_id, forKey: .folder_id)
         try c.encode(parent_id, forKey: .parent_id)
         try c.encode(is_pinned, forKey: .is_pinned)
@@ -782,6 +822,7 @@ struct NoteDTO: Codable {
 
     struct Patch: Encodable {
         var body: String
+        var locked_body: String?
         var folder_id: UUID?
         var parent_id: UUID?
         var is_pinned: Bool
@@ -792,6 +833,7 @@ struct NoteDTO: Codable {
         func encode(to encoder: Encoder) throws {
             var c = encoder.container(keyedBy: CodingKeys.self)
             try c.encode(body, forKey: .body)
+            if NoteDTO.sendsLock || locked_body != nil { try c.encode(locked_body, forKey: .locked_body) }
             try c.encode(folder_id, forKey: .folder_id)
             try c.encode(parent_id, forKey: .parent_id)
             try c.encode(is_pinned, forKey: .is_pinned)
@@ -799,10 +841,10 @@ struct NoteDTO: Codable {
             try c.encode(trashed_at, forKey: .trashed_at)
             try c.encode(deleted_at, forKey: .deleted_at)
         }
-        enum CodingKeys: String, CodingKey { case body, folder_id, parent_id, is_pinned, updated_at, trashed_at, deleted_at }
+        enum CodingKeys: String, CodingKey { case body, locked_body, folder_id, parent_id, is_pinned, updated_at, trashed_at, deleted_at }
     }
 
-    var patch: Patch { Patch(body: body, folder_id: folder_id, parent_id: parent_id, is_pinned: is_pinned, updated_at: updated_at, trashed_at: trashed_at, deleted_at: deleted_at) }
+    var patch: Patch { Patch(body: body, locked_body: locked_body, folder_id: folder_id, parent_id: parent_id, is_pinned: is_pinned, updated_at: updated_at, trashed_at: trashed_at, deleted_at: deleted_at) }
 }
 
 struct AttachmentDTO: Codable {

@@ -136,6 +136,7 @@ extension ModelContext {
     func purge(_ note: Note) {
         note.deletedAt = .now
         note.body = ""
+        note.lockedBody = nil
         note.touch()
         try? save()
     }

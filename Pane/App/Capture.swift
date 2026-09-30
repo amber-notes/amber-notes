@@ -77,6 +77,35 @@ enum Capture {
     }
 }
 
+/// Locked notes, for screenshots (`-uitest`): a bank note, and the notes password "demo".
+///   `-lockCapture setup`    the note open, with the Set Password sheet
+///   `-lockCapture confirm`  the note open, asking to lock it
+///   `-lockCapture locked`   the note locked (open it with `-open "Bank details"` for the lock screen)
+///   `-lockCapture open`     the note locked and unlocked, showing its text
+extension Capture {
+    static let lockCapture = Notification.Name("pane.captureLock")
+    static let bankNote = "Bank details\n\nIBAN SE45 5000 0000 0583 9825 7466\nCard PIN 4821\n\n- [ ] Order the new card\n- [x] Tell the bank about the move"
+
+    @MainActor static func lockedNotesFromArguments(_ context: ModelContext) {
+        guard ProcessInfo.processInfo.arguments.contains("-uitest"), let state = argument("-lockCapture") else { return }
+        let note = context.createNote(in: .all, body: bankNote)
+        note.isPinned = true
+        try? context.save()
+        Task { @MainActor in
+            if state != "setup" {
+                let vault = NoteVault.shared
+                try? await vault.setUp(password: "demo", hint: "The usual one")
+                if state != "confirm" { try? vault.lock(note) }
+                if state == "locked" { vault.lockNow() }
+                try? context.save()
+            }
+            // The note on screen shows the sheet or the question once it's up.
+            try? await Task.sleep(for: .seconds(1.5))
+            NotificationCenter.default.post(name: lockCapture, object: state)
+        }
+    }
+}
+
 /// The website's Lisbon note, on every platform.
 extension Capture {
     static let lisbonNote = """

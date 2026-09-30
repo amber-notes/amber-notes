@@ -15,6 +15,10 @@ struct NoteDetailView: View {
     /// "ChatGPT changed 5 lines · Undo", while an AI's edit that just landed is on show.
     @State private var receipt: AIEdit.Receipt?
     @State private var undoFailed: String?
+    /// Lock Note: setting the password up, asking for it, or confirming.
+    @State private var lockSheet: LockSheet?
+    @State private var confirmLock = false
+    @State private var lockProblem: String?
     @Bindable var note: Note
     let controller: EditorController
     var autofocus = false
@@ -29,7 +33,22 @@ struct NoteDetailView: View {
             .onAppear(perform: wireController)
             .onDisappear { saver.flush() }
             .shareLinkChrome(shareLinks, note: note)
-            .focusedSceneValue(\.showHistoryAction, { showHistory = true })
+            .focusedSceneValue(\.showHistoryAction, { if !note.isLocked { showHistory = true } })
+            .sheet(item: $lockSheet) { step in
+                switch step {
+                case .setUp: NotesPasswordSetupSheet { lockNote() }
+                case .password: NotesPasswordPrompt(message: "Enter your notes password to lock this note.") { confirmLock = true }
+                }
+            }
+            .confirmationDialog(lockTitle, isPresented: $confirmLock, titleVisibility: .visible) {
+                Button("Lock Note") { lockNote() }
+                    .accessibilityIdentifier("lock.confirm")
+            } message: {
+                Text("Its earlier versions are removed from version history, so no readable copy is kept, and if it has a share link, the link stops working.")
+            }
+            .alert("Can't lock this note", isPresented: Binding(get: { lockProblem != nil }, set: { if !$0 { lockProblem = nil } })) {
+                Button("OK") {}
+            } message: { Text(lockProblem ?? "") }
             .sheet(isPresented: $showHistory) {
                 if let history = NoteHistory.shared { VersionHistorySheet(note: note, history: history) }
             }
@@ -39,6 +58,14 @@ struct NoteDetailView: View {
             .overlay(alignment: .bottom) { aiReceipt }
             .overlay(alignment: .bottom) { undoProblem }
             .onChange(of: note.aiEditedAt) { _, _ in showAIEdit() }
+            // Captures: `-lockCapture setup` or `confirm` (see Capture).
+            .onReceive(NotificationCenter.default.publisher(for: Capture.lockCapture)) { n in
+                switch n.object as? String {
+                case "setup": lockSheet = .setUp
+                case "confirm": confirmLock = true
+                default: break
+                }
+            }
             // Captures: the "landed" moment is over.
             .onReceive(NotificationCenter.default.publisher(for: Capture.clearAIMarks)) { _ in
                 withAnimation(.easeIn(duration: 0.2)) { receipt = nil }
@@ -138,8 +165,56 @@ struct NoteDetailView: View {
         }
     }
 
+    private var vault: NoteVault { .shared }
+
+    /// The editor, or for a locked note that isn't open, the lock.
+    @ViewBuilder
     private var editor: some View {
-        MarkdownEditor(initialText: note.body, header: DateBucket.header(note.updatedAt), controller: controller, autofocus: autofocus, onChange: save)
+        if let text = vault.text(of: note) {
+            MarkdownEditor(initialText: text, header: DateBucket.header(note.updatedAt), controller: controller, autofocus: autofocus, onChange: save)
+                .onAppear { if note.isLocked { vault.touch() } }
+        } else {
+            LockedNoteView(note: note)
+        }
+    }
+
+    /// A locked note that isn't open: nothing on screen to edit.
+    private var hidden: Bool { vault.text(of: note) == nil }
+
+    enum LockSheet: String, Identifiable {
+        case setUp, password
+        var id: String { rawValue }
+    }
+
+    private var lockTitle: String {
+        note.title.isEmpty ? "Lock this note?" : "Lock \u{201C}\(note.title)\u{201D}?"
+    }
+
+    /// Lock Note: sets the notes password up the first time, asks for it while notes are locked.
+    private func startLock() {
+        if let why = NoteVault.blocker(for: note) { lockProblem = why.errorDescription; return }
+        Task { @MainActor in
+            if !vault.isSetUp { await vault.refresh() }
+            if !vault.isSetUp { lockSheet = .setUp } else if !vault.isUnlocked { lockSheet = .password } else { confirmLock = true }
+        }
+    }
+
+    private func lockNote() {
+        // Typing not yet in the note goes in first, then it's sealed.
+        saver.flush()
+        do {
+            try vault.lock(note)
+            try? context.save()
+            shareLinks.forgetLink()
+        } catch {
+            lockProblem = (error as? LocalizedError)?.errorDescription ?? "Try again."
+        }
+    }
+
+    private func removeLock() {
+        saver.flush()
+        try? vault.removeLock(note)
+        try? context.save()
     }
 
     private func chrome(_ content: some View) -> some View {
@@ -166,15 +241,24 @@ struct NoteDetailView: View {
         PaneTips.typed()
         ShareAsk.noteUsed(typing: true)
         let note = self.note
-        saver.schedule(base: note.body) { [saver] in
+        let vault = self.vault
+        saver.schedule(base: vault.text(of: note) ?? note.body) { [saver] in
             // Something else rewrote the note meanwhile (sync, an AI): the editor
             // already shows that version, so this older text must not win.
-            guard note.body == saver.base else { return }
+            guard (vault.text(of: note) ?? note.body) == saver.base else { return }
             write(text, to: note)
         }
     }
 
     private func write(_ text: String, to note: Note) {
+        if note.isLocked {
+            // Sealed again as you type; the title in the list follows.
+            guard text != vault.text(of: note) else { return }
+            let oldTitle = note.title
+            try? vault.write(text, to: note)
+            if note.title != oldTitle { relabelLinkInParent() }
+            return
+        }
         guard text != note.body else { return }
         if TipTriggers.isBigDeletion(from: note.body, to: text) { PaneTips.deletedALot() }
         let oldTitle = note.title
@@ -241,12 +325,13 @@ struct NoteDetailView: View {
         controller.resolveAttachment = { id in context.attachment(id) }
         controller.resolveNote = { id in context.note(id).map { ($0.title, $0.preview) } }
         controller.openNote = { id in onOpenNote(id, false) }
-        controller.newSubNote = { createSubNote() }
+        // A locked note's files and sub-notes would stay readable: it can't take them.
+        controller.newSubNote = { if !note.isLocked { createSubNote() } }
         controller.download = { a in await sync?.download(a) ?? false }
         controller.attach = { importing = true }
-        controller.addFiles = { urls in context.addAttachments(urls) }
+        controller.addFiles = { urls in note.isLocked ? [] : context.addAttachments(urls) }
         controller.addData = { data, name, type in
-            guard let a = try? FileStore.importData(data, filename: name, type: type) else { return nil }
+            guard !note.isLocked, let a = try? FileStore.importData(data, filename: name, type: type) else { return nil }
             context.insert(a)
             try? context.save()
             SyncSignal.changed()
@@ -273,13 +358,13 @@ struct NoteDetailView: View {
     private var toolbar: some ToolbarContent {
         #if os(iOS)
         ToolbarItem(placement: .bottomBar) {
-            Button("Checklist", systemImage: "checklist", action: controller.checklist)
+            Button("Checklist", systemImage: "checklist", action: controller.checklist).disabled(hidden)
         }
         ToolbarItem(placement: .bottomBar) {
-            Button("Table", systemImage: "tablecells", action: controller.insertTable)
+            Button("Table", systemImage: "tablecells", action: controller.insertTable).disabled(hidden)
         }
         ToolbarItem(placement: .bottomBar) {
-            Button("Attach", systemImage: "paperclip") { importing = true }
+            Button("Attach", systemImage: "paperclip") { importing = true }.disabled(note.isLocked)
         }
         ToolbarSpacer(.flexible, placement: .bottomBar)
         ToolbarItem(placement: .bottomBar) {
@@ -300,13 +385,16 @@ struct NoteDetailView: View {
         }
         ToolbarSpacer(.flexible)
         ToolbarItemGroup {
-            formatMenu
+            formatMenu.disabled(hidden)
             Button("Checklist", systemImage: "checklist", action: controller.checklist)
                 .help("Checklist (⇧⌘L)")
+                .disabled(hidden)
             Button("Table", systemImage: "tablecells", action: controller.insertTable)
                 .help("Table (⌥⌘T)")
+                .disabled(hidden)
             Button("Attach", systemImage: "paperclip") { importing = true }
                 .help("Attach File (⇧⌘A)")
+                .disabled(note.isLocked)
         }
         ToolbarSpacer(.fixed)
         ToolbarItemGroup {
@@ -338,7 +426,7 @@ struct NoteDetailView: View {
                 Button("Block Quote", systemImage: "text.quote", action: controller.blockQuote)
             }
             Section {
-                Button("Sub-note", systemImage: "doc.badge.plus") { controller.newSubNote() }
+                Button("Sub-note", systemImage: "doc.badge.plus") { controller.newSubNote() }.disabled(note.isLocked)
                 Button("Link", systemImage: "link", action: controller.insertLink)
             }
         } label: {
@@ -365,6 +453,8 @@ struct NoteDetailView: View {
         Menu { shareItems } label: {
             Label("Share", systemImage: "square.and.arrow.up")
         }
+        // A locked note can't be shared, and its text isn't here to send.
+        .disabled(note.isLocked)
         #if os(macOS)
         .tint(.primary)
         #endif
@@ -383,12 +473,26 @@ struct NoteDetailView: View {
                     Button(f.name) { context.move(note, to: f) }.disabled(note.folder?.id == f.id)
                 }
             }
-            #if os(iOS)
-            Menu("Share", systemImage: "square.and.arrow.up") { shareItems }
-            Button("Show Version History", systemImage: "clock.arrow.circlepath") { showHistory = true }
-            #else
-            Button("Show Version History…", systemImage: "clock.arrow.circlepath") { showHistory = true }
-            #endif
+            if !note.isLocked {
+                #if os(iOS)
+                Menu("Share", systemImage: "square.and.arrow.up") { shareItems }
+                Button("Show Version History", systemImage: "clock.arrow.circlepath") { showHistory = true }
+                #else
+                Button("Show Version History…", systemImage: "clock.arrow.circlepath") { showHistory = true }
+                #endif
+            }
+            Divider()
+            if note.isLocked {
+                if vault.isUnlocked {
+                    Button("Lock Now", systemImage: "lock") { vault.lockNow() }
+                        .accessibilityIdentifier("editor.lockNow")
+                    Button("Remove Lock", systemImage: "lock.open", action: removeLock)
+                        .accessibilityIdentifier("editor.removeLock")
+                }
+            } else if note.trashedAt == nil {
+                Button("Lock Note", systemImage: "lock", action: startLock)
+                    .accessibilityIdentifier("editor.lock")
+            }
             Divider()
             Button("Delete Note", systemImage: "trash", role: .destructive) {
                 withAnimation(.snappy) { context.trash(note) }

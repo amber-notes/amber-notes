@@ -65,8 +65,10 @@ final class Backend {
                 supabaseKey: key,
                 options: SupabaseClientOptions(
                     auth: .init(storage: SessionStorage(), emitLocalSessionAsInitialSession: true),
-                    // Which device wrote each version, for version history ("You on iPhone").
-                    global: .init(headers: ["x-pane-device": Self.device], session: AppNetwork.session)
+                    // Which device wrote each version, for version history ("You on iPhone"); and that
+                    // this app keeps locked notes sealed (an account with a notes password refuses
+                    // writes from builds that don't say so).
+                    global: .init(headers: ["x-pane-device": Self.device, "x-amber-client": "lock-aware/1"], session: AppNetwork.session)
                 )
             )
             state = .signedOut
