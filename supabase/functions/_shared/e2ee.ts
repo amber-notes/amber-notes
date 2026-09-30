@@ -124,6 +124,36 @@ export async function verifierOf(raw: Bytes, userId: string): Promise<string> {
   return hex(new Uint8Array(await crypto.subtle.sign("HMAC", mac, enc.encode(`amber-notes verifier|${userId.toLowerCase()}`))));
 }
 
+// MARK: Share tags: which notes the account's devices chose to share
+//
+// A shared page is readable, so a device (or the AI server) publishes a note only for a share the
+// account made itself. The share's tag, written when it's made, is an HMAC under a subkey of DK; a
+// share row planted or changed by anyone without the key doesn't verify, and nothing is published.
+
+/** hex(HMAC-SHA256(HKDF(DK, info "share"), "share|<note id>|<slug>|<1 or 0>")). */
+export async function shareTag(raw: Bytes, noteId: string, slug: string, includeSubnotes: boolean): Promise<string> {
+  const ikm = await crypto.subtle.importKey("raw", raw, "HKDF", false, ["deriveKey"]);
+  const mac = await crypto.subtle.deriveKey(
+    { name: "HKDF", hash: "SHA-256", salt: SALT, info: enc.encode("share") },
+    ikm, { name: "HMAC", hash: "SHA-256", length: 256 }, false, ["sign"]);
+  const msg = `share|${noteId.toLowerCase()}|${slug}|${includeSubnotes ? 1 : 0}`;
+  return hex(new Uint8Array(await crypto.subtle.sign("HMAC", mac, enc.encode(msg))));
+}
+
+// MARK: Number matching: the page and the device show the same two digits
+
+/** The page's key and the request, as two digits: SHA-256(browser key raw ‖ request id), first four
+ *  bytes as a big-endian number, mod 100. A key swapped on the way gives another number. */
+export async function matchNumber(browserPublicRaw: Uint8Array, requestId: string): Promise<string> {
+  const id = enc.encode(requestId.toLowerCase());
+  const data = new Uint8Array(browserPublicRaw.length + id.length);
+  data.set(browserPublicRaw);
+  data.set(id, browserPublicRaw.length);
+  const d = new Uint8Array(await crypto.subtle.digest("SHA-256", data));
+  const n = ((d[0] << 24) >>> 0) + (d[1] << 16) + (d[2] << 8) + d[3];
+  return String(n % 100).padStart(2, "0");
+}
+
 // MARK: Wrapping the data key
 
 /** The key a token or code opens its wrap with: HKDF-SHA256 of the token itself. */
@@ -219,7 +249,17 @@ export async function newHandoffKeys(): Promise<{ privateKey: CryptoKey; publicR
   return { privateKey: pair.privateKey, publicRaw: new Uint8Array(await crypto.subtle.exportKey("raw", pair.publicKey)) };
 }
 
-/** Seals `code` to the page's public key. `ephemeral` and `nonce` are for test vectors only. */
+/** What a device hands the page: the code and the redirect it goes to, sealed together so nobody
+ *  on the way can send the page elsewhere. */
+export type HandoffPayload = { code: string; redirect: string };
+export const handoffPayload = (p: HandoffPayload) => JSON.stringify({ code: p.code, redirect: p.redirect });
+export function readHandoffPayload(text: string): HandoffPayload {
+  const p = JSON.parse(text);
+  if (typeof p?.code !== "string" || typeof p?.redirect !== "string") throw new OpenError("not a handoff payload");
+  return { code: p.code, redirect: p.redirect };
+}
+
+/** Seals `code` (a handoffPayload) to the page's public key. `ephemeral` and `nonce` are for test vectors only. */
 export async function sealHandoff(code: string, browserPublicRaw: Bytes, requestId: string, ephemeral?: CryptoKeyPair, nonce?: Bytes): Promise<string> {
   const pub = await crypto.subtle.importKey("raw", browserPublicRaw, { name: "ECDH", namedCurve: "P-256" }, false, []);
   const eph = ephemeral ?? await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"]);
@@ -284,13 +324,27 @@ export async function openFile(bytes: Bytes, key: CryptoKey, id: string): Promis
 
 /** An opened data key for one request. Nothing keeps it past the request. */
 export class Vault {
-  private constructor(readonly keyId: string, private readonly key: CryptoKey, readonly userId: string) {}
+  private constructor(readonly keyId: string, private readonly key: CryptoKey, readonly userId: string, private readonly shareKey: CryptoKey) {}
 
   /** Imports the key and wipes the raw bytes it was given. */
   static async from(raw: Bytes, userId: string): Promise<Vault> {
-    const v = new Vault(await keyIdOf(raw), await aesKey(raw), userId);
+    const ikm = await crypto.subtle.importKey("raw", raw, "HKDF", false, ["deriveKey"]);
+    const shareKey = await crypto.subtle.deriveKey(
+      { name: "HKDF", hash: "SHA-256", salt: SALT, info: enc.encode("share") },
+      ikm, { name: "HMAC", hash: "SHA-256", length: 256 }, false, ["sign"]);
+    const v = new Vault(await keyIdOf(raw), await aesKey(raw), userId, shareKey);
     raw.fill(0);
     return v;
+  }
+
+  /** Whether a share's tag is the one this account's key makes (see shareTag). */
+  async shareTagMatches(noteId: string, slug: string, includeSubnotes: boolean, tag: string | null): Promise<boolean> {
+    if (!tag || !/^[0-9a-f]{64}$/.test(tag)) return false;
+    const msg = `share|${noteId.toLowerCase()}|${slug}|${includeSubnotes ? 1 : 0}`;
+    const mine = hex(new Uint8Array(await crypto.subtle.sign("HMAC", this.shareKey, enc.encode(msg))));
+    let diff = 0;
+    for (let i = 0; i < 64; i++) diff |= mine.charCodeAt(i) ^ tag.charCodeAt(i);
+    return diff === 0;
   }
 
   sealBody(id: string, body: string) { return seal(body, this.key, this.keyId, bodyContext(id)); }

@@ -4,7 +4,7 @@
 import { assert, assertEquals, assertRejects } from "jsr:@std/assert@1";
 import {
   aesKey, bodyContext, canonicalRecoveryKey, fileMetaContext, folderContext, fromBase64, headContext, keyIdOf, open, OpenError,
-  openFile, openHandoff, parseRecoveryKey, sealHandoff, recoveryKEK, recoveryKeyText, seal, sealFile, tokenKey, toBase64, unwrap, Vault, verifierOf, wrap,
+  handoffPayload, matchNumber, openFile, openHandoff, parseRecoveryKey, readHandoffPayload, sealHandoff, shareTag, recoveryKEK, recoveryKeyText, seal, sealFile, tokenKey, toBase64, unwrap, Vault, verifierOf, wrap,
   type WrapPurpose,
 } from "./e2ee.ts";
 
@@ -54,16 +54,24 @@ async function build() {
       bytes: toBase64(recovery), text: recoveryText,
       // Typed back sloppily: lower case, spaces for dashes, O for 0, l and I for 1.
       typed: recoveryText.toLowerCase().replace(/-/g, " ").replace(/0/g, "O").replace(/1/g, "l"),
+      // Pasted from a document: no-break spaces and en dashes between the groups.
+      typed_nbsp: recoveryText.replace(/-/g, "\u00a0"),
+      typed_en_dash: recoveryText.replace(/-/g, "\u2013"),
       canonical: recoveryText.replace(/-/g, ""),
       wrap: await wrap(dataKey, await recoveryKEK(recovery, userId), "recovery", userId, nonce),
     },
     tokens: { ...Object.fromEntries(secrets), wraps },
+    share_tag: {
+      note_id: noteId, slug: "AbCdEfGhIjKlMnOpQrStUvWx", include_subnotes: true,
+      tag: await shareTag(dataKey, noteId, "AbCdEfGhIjKlMnOpQrStUvWx", true),
+      tag_without_subnotes: await shareTag(dataKey, noteId, "AbCdEfGhIjKlMnOpQrStUvWx", false),
+    },
     handoff: await (async () => {
       const browser = await ecdh(BROWSER), device = await ecdh(DEVICE);
       const request = "22222222-3333-4444-8555-666666666666";
-      const code = "amb_code_" + "cd".repeat(32);
+      const code = handoffPayload({ code: "amb_code_" + "cd".repeat(32), redirect: "https://claude.ai/api/mcp/auth_callback?state=s1&iss=https%3A%2F%2Fmcp.ambernotes.app" });
       return {
-        request_id: request, code,
+        request_id: request, code, match_number: await matchNumber(browser.publicRaw, request),
         browser_private: toBase64(browser.d), browser_public: toBase64(browser.publicRaw),
         device_ephemeral_private: toBase64(device.d),
         sealed: await sealHandoff(code, browser.publicRaw, request, device, nonce),
@@ -151,4 +159,38 @@ Deno.test("a code sealed to the page's key opens only there, for that request", 
   // Random ephemeral keys: every sealing differs, and still opens.
   const again = await sealHandoff("amb_code_x", browser.publicRaw, v.handoff.request_id);
   assertEquals(await openHandoff(again, browser.privateKey, v.handoff.request_id), "amb_code_x");
+});
+
+Deno.test("pasted recovery keys with no-break spaces or en dashes read the same", async () => {
+  const v = JSON.parse(await Deno.readTextFile(path));
+  assertEquals(canonicalRecoveryKey(v.recovery.typed_nbsp), v.recovery.canonical);
+  assertEquals(canonicalRecoveryKey(v.recovery.typed_en_dash), v.recovery.canonical);
+});
+
+Deno.test("a share tag names the key, the note, the link and whether sub-notes go with it", async () => {
+  const v = JSON.parse(await Deno.readTextFile(path));
+  const dk = fromBase64(v.data_key);
+  const t = v.share_tag;
+  assertEquals(await shareTag(dk, t.note_id.toUpperCase(), t.slug, true), t.tag);
+  assert(t.tag !== t.tag_without_subnotes);
+  assert(await shareTag(dk, crypto.randomUUID(), t.slug, true) !== t.tag);
+  assert(await shareTag(new Uint8Array(32), t.note_id, t.slug, true) !== t.tag);
+});
+
+Deno.test("the match number is two digits from the page's key and the request", async () => {
+  const v = JSON.parse(await Deno.readTextFile(path));
+  const browser = await ecdh(BROWSER);
+  assertEquals(await matchNumber(browser.publicRaw, v.handoff.request_id.toUpperCase()), v.handoff.match_number);
+  assertEquals(v.handoff.match_number.length, 2);
+  assertEquals(readHandoffPayload(await openHandoff(v.handoff.sealed, browser.privateKey, v.handoff.request_id)).redirect.startsWith("https://claude.ai/"), true);
+});
+
+Deno.test("the vault checks share tags without keeping the raw key", async () => {
+  const v = JSON.parse(await Deno.readTextFile(path));
+  const t = v.share_tag;
+  const vault = await Vault.from(fromBase64(v.data_key), v.user_id);
+  assert(await vault.shareTagMatches(t.note_id, t.slug, true, t.tag));
+  assertEquals(await vault.shareTagMatches(t.note_id, t.slug, false, t.tag), false);
+  assertEquals(await vault.shareTagMatches(t.note_id, t.slug, true, null), false);
+  assertEquals(await vault.shareTagMatches(t.note_id, t.slug, true, "0".repeat(64)), false);
 });

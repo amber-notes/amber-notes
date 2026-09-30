@@ -90,13 +90,55 @@ grant execute on function public.mark_recovery_key_saved() to authenticated;
 -- The last resort ("I don't have my key"): the notes can't be opened by anyone, so they go, with
 -- every AI connection (their wraps hold the old key) and the key itself. The device then makes a
 -- new key. `p_key_id` is the key the device gave up on; if another device already started fresh,
--- nothing is deleted twice. Files in Storage are removed by the app (the owner may delete them).
+-- nothing is deleted twice. It needs a sign-in in the last 10 minutes (a stolen, long-lived session
+-- can't wipe an account), and it counts a reset generation: only after one may a device that
+-- still holds a key make a new one (see create_account_key). Every device is told.
+-- Files in Storage are removed by the app (the owner may delete them).
+create table public.account_key_resets (
+  user_id    uuid primary key references auth.users (id) on delete cascade,
+  generation integer not null default 0 check (generation >= 0),
+  reset_at   timestamptz not null default now()
+);
+alter table public.account_key_resets enable row level security;
+create policy "own key resets read" on public.account_key_resets for select to authenticated
+  using (user_id = (select auth.uid()));
+revoke all on public.account_key_resets from anon;
+revoke insert, update, delete, truncate on public.account_key_resets from authenticated;
+
+-- When the session's user last signed in (not refreshed): the newest `amr` timestamp in its token.
+create or replace function public.pane_signed_in_at() returns timestamptz
+language sql stable set search_path = '' as $$
+  select to_timestamp(max((a ->> 'timestamp')::double precision))
+  from jsonb_array_elements(coalesce(auth.jwt() -> 'amr', '[]'::jsonb)) a
+$$;
+
+-- Things every device of the account should say: a new AI connection, starting fresh.
+create table public.account_notices (
+  id          bigint generated always as identity primary key,
+  user_id     uuid not null references auth.users (id) on delete cascade,
+  kind        text not null check (kind in ('ai_connected', 'started_fresh')),
+  -- For ai_connected: the connection, so the notice can offer Disconnect.
+  grant_id    uuid references public.mcp_tokens (id) on delete cascade,
+  what        text not null check (char_length(what) <= 200),
+  created_at  timestamptz not null default now()
+);
+create index account_notices_user on public.account_notices (user_id, created_at desc);
+alter table public.account_notices enable row level security;
+create policy "own notices read" on public.account_notices for select to authenticated
+  using (user_id = (select auth.uid()));
+revoke all on public.account_notices from anon;
+revoke insert, update, delete, truncate on public.account_notices from authenticated;
+alter publication supabase_realtime add table public.account_notices;
+
 create or replace function public.start_fresh(p_key_id text) returns boolean
 language plpgsql security definer set search_path = '' as $$
 declare
   uid uuid := auth.uid();
 begin
   if uid is null then raise exception 'not signed in' using errcode = '42501'; end if;
+  if coalesce(public.pane_signed_in_at(), '-infinity') < now() - interval '10 minutes' then
+    raise exception 'Sign in again to start fresh.' using errcode = '42501', hint = 'reauth';
+  end if;
   perform 1 from public.account_keys where user_id = uid and key_id = p_key_id for update;
   if not found then return false; end if;
   delete from public.note_shares where user_id = uid;
@@ -105,6 +147,10 @@ begin
   delete from public.attachments where user_id = uid;
   delete from public.mcp_tokens where user_id = uid;
   delete from public.account_keys where user_id = uid;
+  insert into public.account_key_resets as r (user_id, generation) values (uid, 1)
+    on conflict (user_id) do update set generation = r.generation + 1, reset_at = now();
+  insert into public.account_notices (user_id, kind, what)
+    values (uid, 'started_fresh', 'Your notes were deleted and a new key and recovery key were made');
   update public.pane_usage set notes = 0, notes_bytes = 0, folders = 0 where user_id = uid;
   return true;
 end $$;
@@ -573,7 +619,9 @@ create table public.connect_asks (
   -- The client's redirect without the code (the page adds it), and the code sealed to the page.
   redirect     text check (char_length(redirect) <= 4000),
   answer       text check (answer is null or (answer ~ '^amb2h\.[A-Za-z0-9+/]+={0,2}$' and char_length(answer) <= 600)),
-  delivered_at timestamptz
+  delivered_at timestamptz,
+  -- SHA-256 of a secret only the page has: /connect/status hands the code over only with it.
+  pickup_hash  text not null check (pickup_hash ~ '^[0-9a-f]{64}$')
 );
 create index connect_asks_user on public.connect_asks (user_id, created_at);
 alter table public.connect_asks enable row level security;
@@ -737,9 +785,24 @@ begin
 end $$;
 revoke all on function public.pane_write_share_copy(text, jsonb) from public, anon, authenticated;
 
--- Creates the note's link (or keeps the live one) and publishes its copy. Returns {slug, missing_files}.
+-- Creates the note's link (or keeps the live one) and publishes its copy. Returns {slug,
+-- missing_files}. The device sends the share's tag (shareTag in e2ee.ts: an HMAC under a subkey of
+-- DK over the note, the slug and include_subnotes), and devices and the AI server publish only for
+-- a share whose tag verifies: a share planted without the key publishes nothing. The slug is
+-- chosen first (share_slug) so the tag can name it.
+create or replace function public.share_slug(p_note uuid) returns text
+language sql security definer set search_path = '' as $$
+  select coalesce(
+    (select slug from public.note_shares where note_id = p_note and user_id = auth.uid() and revoked_at is null),
+    translate(encode(extensions.gen_random_bytes(18), 'base64'), '+/', '-_'))
+$$;
+revoke all on function public.share_slug(uuid) from public, anon;
+grant execute on function public.share_slug(uuid) to authenticated;
+
+alter table public.note_shares add column share_tag text check (share_tag is null or share_tag ~ '^[0-9a-f]{64}$');
+
 drop function public.share_note(uuid, boolean);
-create function public.share_note(p_note uuid, p_include_subnotes boolean, p_copy jsonb)
+create function public.share_note(p_note uuid, p_slug text, p_include_subnotes boolean, p_tag text, p_copy jsonb)
 returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare
@@ -747,6 +810,9 @@ declare
   v_slug text;
 begin
   if v_user is null then raise exception 'not signed in' using errcode = '42501'; end if;
+  if p_tag is null or p_tag !~ '^[0-9a-f]{64}$' or p_slug is null or p_slug !~ '^[A-Za-z0-9_-]{24,64}$' then
+    raise exception 'Update Amber Notes to share this note.' using errcode = '22023', hint = 'update_app';
+  end if;
   if not exists (select 1 from public.notes n
                  where n.id = p_note and n.user_id = v_user and n.deleted_at is null and n.trashed_at is null) then
     raise exception 'no such note' using errcode = 'P0002';
@@ -754,65 +820,88 @@ begin
   if exists (select 1 from public.notes n where n.id = p_note and n.locked_body is not null) then
     raise exception 'A locked note can''t be shared. Remove its lock first.' using errcode = '42501', hint = 'note_locked';
   end if;
-  update public.note_shares set include_subnotes = coalesce(p_include_subnotes, false)
-    where note_id = p_note and revoked_at is null
+  update public.note_shares set include_subnotes = coalesce(p_include_subnotes, false), share_tag = p_tag
+    where note_id = p_note and revoked_at is null and slug = p_slug
     returning slug into v_slug;
   if v_slug is null then
-    v_slug := translate(encode(extensions.gen_random_bytes(18), 'base64'), '+/', '-_');
-    insert into public.note_shares (slug, note_id, user_id, include_subnotes)
-      values (v_slug, p_note, v_user, coalesce(p_include_subnotes, false));
+    if exists (select 1 from public.note_shares where note_id = p_note and revoked_at is null) then
+      raise exception 'This note was shared again on another device. Try again.' using errcode = '40001', hint = 'share_changed';
+    end if;
+    insert into public.note_shares (slug, note_id, user_id, include_subnotes, share_tag)
+      values (p_slug, p_note, v_user, coalesce(p_include_subnotes, false), p_tag);
+    v_slug := p_slug;
   end if;
   return jsonb_build_object('slug', v_slug, 'missing_files', public.pane_write_share_copy(v_slug, p_copy));
 end $$;
-revoke all on function public.share_note(uuid, boolean, jsonb) from public, anon;
-grant execute on function public.share_note(uuid, boolean, jsonb) to authenticated;
+revoke all on function public.share_note(uuid, text, boolean, text, jsonb) from public, anon;
+grant execute on function public.share_note(uuid, text, boolean, text, jsonb) to authenticated;
 
--- The note changed: its live link's copy is written again. Returns {slug, missing_files}, or null
--- when the note isn't shared.
-create or replace function public.publish_share(p_note uuid, p_copy jsonb)
+-- The note changed: the link the device verified (by its tag) gets its copy again. Returns
+-- {slug, missing_files}, or null when that link isn't live.
+create or replace function public.publish_share(p_note uuid, p_slug text, p_copy jsonb)
 returns jsonb
 language plpgsql security definer set search_path = '' as $$
-declare
-  v_slug text;
 begin
   if auth.uid() is null then raise exception 'not signed in' using errcode = '42501'; end if;
-  select slug into v_slug from public.note_shares
-    where note_id = p_note and user_id = auth.uid() and revoked_at is null;
-  if v_slug is null then return null; end if;
+  if not exists (select 1 from public.note_shares
+                 where slug = p_slug and note_id = p_note and user_id = auth.uid() and revoked_at is null) then
+    return null;
+  end if;
   if exists (select 1 from public.notes n where n.id = p_note and (n.locked_body is not null or n.trashed_at is not null or n.deleted_at is not null)) then
     return null;
   end if;
   perform public.pane_take('write');
-  return jsonb_build_object('slug', v_slug, 'missing_files', public.pane_write_share_copy(v_slug, p_copy));
+  return jsonb_build_object('slug', p_slug, 'missing_files', public.pane_write_share_copy(p_slug, p_copy));
 end $$;
-revoke all on function public.publish_share(uuid, jsonb) from public, anon;
-grant execute on function public.publish_share(uuid, jsonb) to authenticated;
+revoke all on function public.publish_share(uuid, text, jsonb) from public, anon;
+grant execute on function public.publish_share(uuid, text, jsonb) to authenticated;
 
 -- An AI edited a shared note: the AI server has its text for that request, so the note's page is
--- rewritten under every live link it's on (as a link's root or as an included sub-note). Links and
--- page trees don't change here; the owner's device publishes those.
-create or replace function public.republish_note_text(p_note uuid, p_title text, p_body text) returns integer
+-- rewritten under the links it verified (their tags open with DK, and the note is reached from the
+-- link's root through the sealed pane-note links). Links and page trees don't change here.
+create or replace function public.republish_note_text(p_note uuid, p_title text, p_body text, p_slugs text[]) returns integer
 language plpgsql security definer set search_path = '' as $$
 declare
   n integer := 0;
   m integer := 0;
 begin
   if auth.uid() is null then raise exception 'not signed in' using errcode = '42501'; end if;
+  if octet_length(p_body) > 2097152 or coalesce(cardinality(p_slugs), 0) = 0 then return 0; end if;
   if not exists (select 1 from public.notes where id = p_note and user_id = auth.uid() and deleted_at is null
                  and trashed_at is null and locked_body is null) then
     return 0;
   end if;
   update public.note_shares set title = left(coalesce(p_title, 'New Note'), 300), body = p_body, published_at = now()
-    where note_id = p_note and user_id = auth.uid() and revoked_at is null and published_at is not null;
+    where note_id = p_note and user_id = auth.uid() and revoked_at is null and published_at is not null and slug = any(p_slugs);
   get diagnostics n = row_count;
   update public.note_share_pages p set title = left(coalesce(p_title, 'New Note'), 300), body = p_body
     from public.note_shares s
-    where p.note_id = p_note and s.slug = p.slug and s.user_id = auth.uid() and s.revoked_at is null;
+    where p.note_id = p_note and s.slug = p.slug and s.user_id = auth.uid() and s.revoked_at is null and p.slug = any(p_slugs);
   get diagnostics m = row_count;
   return n + m;
 end $$;
-revoke all on function public.republish_note_text(uuid, text, text) from public, anon;
-grant execute on function public.republish_note_text(uuid, text, text) to authenticated;
+revoke all on function public.republish_note_text(uuid, text, text, text[]) from public, anon;
+grant execute on function public.republish_note_text(uuid, text, text, text[]) to authenticated;
+
+-- A file deleted from the account leaves every shared copy of it.
+create or replace function public.pane_attachment_forget_copies() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  if new.deleted_at is not null and old.deleted_at is null then
+    delete from public.note_share_files where attachment_id = new.id;
+  end if;
+  return null;
+end $$;
+create trigger attachments_forget_share_copies after update of deleted_at on public.attachments
+  for each row execute function public.pane_attachment_forget_copies();
+create or replace function public.pane_attachment_gone() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  delete from public.note_share_files where attachment_id = old.id;
+  return null;
+end $$;
+create trigger attachments_gone_share_copies after delete on public.attachments
+  for each row execute function public.pane_attachment_gone();
 
 -- A readable copy of one file a shared page embeds (base64, at most 10 MB).
 create or replace function public.publish_share_file(p_slug text, p_attachment uuid, p_filename text, p_content_type text, p_content text)

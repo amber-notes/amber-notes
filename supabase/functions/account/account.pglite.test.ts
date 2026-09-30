@@ -48,7 +48,7 @@ async function seed(pg: PGlite, me: string) {
   await pg.query(`insert into public.mcp_tokens (user_id, name, token_hash, can_write) values ($1, 'Claude', $2, true)`, [me, tokenHash]);
   const [{ id: grant }] = (await pg.query<{ id: string }>(`select id from public.mcp_tokens where user_id = $1`, [me])).rows;
   await pg.query(`insert into public.oauth_tokens (token_hash, grant_id, kind, resource, expires_at) values ($1, $2, 'access', 'r', now() + interval '1 hour')`, [crypto.randomUUID(), grant]);
-  const [{ share_note: shared }] = await sealed.app(pg, me, `select public.share_note($1, false, $2)`,
+  const [{ share_note: shared }] = await sealed.app(pg, me, `select public.share_note($1, public.share_slug($1), false, repeat('ab', 32), $2)`,
     [note, JSON.stringify({ title: "Acme kickoff", body: "Acme kickoff\n\nAgenda\n- budget", pages: [], files: [] })]);
   const slug = shared.slug as string;
   await pg.query(`insert into public.share_reports (slug, reason, reporter) values ($1, 'spam', $2)`, [slug, "a".repeat(64)]);
@@ -56,8 +56,10 @@ async function seed(pg: PGlite, me: string) {
   await pg.query(`insert into public.oauth_clients (id, client_name, redirect_uris) values ($1, 'ChatGPT', '{https://chatgpt.com/cb}')`, [client]);
   const [{ id: asked }] = (await pg.query<{ id: string }>(`insert into public.oauth_requests (client_id, redirect_uri, code_challenge, resource, claimed_by)
     values ($1, 'https://chatgpt.com/cb', 'x', 'r', $2) returning id`, [client, me])).rows;
-  await pg.query(`insert into public.connect_asks (request_id, user_id, browser_key, started_from, expires_at) values ($1, $2, $3, 'Chrome on a Mac', now() + interval '10 minutes')`,
+  await pg.query(`insert into public.connect_asks (request_id, user_id, browser_key, started_from, expires_at, pickup_hash) values ($1, $2, $3, 'Chrome on a Mac', now() + interval '10 minutes', repeat('0', 64))`,
     [asked, me, "B" + "A".repeat(86) + "="]);
+  await pg.query(`insert into public.account_notices (user_id, kind, what) values ($1, 'started_fresh', 'x')`, [me]);
+  await pg.query(`insert into public.account_key_resets (user_id, generation) values ($1, 1)`, [me]);
   await pg.query(`insert into public.pane_setup (user_id, imported_at) values ($1, now())`, [me]);
   await pg.query(`insert into public.pane_activity (user_id, day, kind, n) values ($1, current_date, 'ai_edit', 3) on conflict do nothing`, [me]);
   await pg.query(`insert into public.pane_tip_activity (user_id, day, tip, event, n) values ($1, current_date, 'shareLink', 'shown', 1)`, [me]);

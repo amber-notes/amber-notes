@@ -118,9 +118,17 @@ Deno.test("start fresh deletes the notes, connections and key; a second device's
   const { key } = await withKey(pg, me);
   await note(pg, me, key);
   await app(pg, me, `select public.create_mcp_token('Codex', false, $1, $2)`, [hex(32), box(key)]);
-  assertEquals((await app(pg, me, `select public.start_fresh($1) as done`, [hex(8)]))[0].done, false);
+  // Only right after signing in: a refreshed old session can't wipe the account.
+  const signedIn = (secondsAgo: number) => ({ "request.jwt.claims": JSON.stringify({ sub: me, role: "authenticated", amr: [{ method: "password", timestamp: Math.floor(Date.now() / 1000) - secondsAgo }] }) });
+  const startFresh = (keyId: string, secondsAgo = 30) => asUser<any>(pg, me, `select public.start_fresh($1) as done`, [keyId], signedIn(secondsAgo));
+  await refused(app(pg, me, `select public.start_fresh($1) as done`, [key]), "Sign in again");
+  await refused(startFresh(key, 3600), "Sign in again");
+  assertEquals((await startFresh(hex(8)))[0].done, false);
   assertEquals((await app(pg, me, `select count(*)::int n from public.notes`))[0].n, 1);
-  assertEquals((await app(pg, me, `select public.start_fresh($1) as done`, [key]))[0].done, true);
+  assertEquals((await startFresh(key))[0].done, true);
+  // Every device is told, and the reset is counted: only now may a device holding a key make a new one.
+  assertEquals((await app(pg, me, `select kind from public.account_notices`))[0].kind, "started_fresh");
+  assertEquals((await app(pg, me, `select generation from public.account_key_resets`))[0].generation, 1);
   assertEquals((await app(pg, me, `select count(*)::int n from public.notes`))[0].n, 0);
   assertEquals((await app(pg, me, `select count(*)::int n from public.mcp_tokens`))[0].n, 0);
   assertEquals((await app(pg, me, `select count(*)::int n from public.account_keys`))[0].n, 0);
@@ -144,7 +152,7 @@ async function shared(pg: PGlite, me: string, key: string) {
     ],
     files: [file],
   };
-  const [{ share_note: r }] = await app(pg, me, `select public.share_note($1, true, $2)`, [root, JSON.stringify(copy)]);
+  const [{ share_note: r }] = await app(pg, me, `select public.share_note($1, public.share_slug($1), true, repeat('ab', 32), $2)`, [root, JSON.stringify(copy)]);
   assertEquals(r.missing_files, [file]);
   await app(pg, me, `select public.publish_share_file($1, $2, 'ticket.pdf', 'application/pdf', $3)`, [r.slug, file, btoa("%PDF-1.4 ticket")]);
   return { root, sub, subsub, file, slug: r.slug as string };
@@ -166,7 +174,7 @@ Deno.test("a shared page shows its published copy, and only files the page embed
   assertEquals((await file(s.sub)).rows[0].filename, "ticket.pdf");
   assertEquals((await file(null)).rows.length, 0);
   // Republishing without the file drops its copy.
-  await app(pg, me, `select public.publish_share($1, $2)`, [s.root, JSON.stringify({ title: "Lisbon", body: "# Lisbon", pages: [], files: [] })]);
+  await app(pg, me, `select public.publish_share($1, (select slug from public.note_shares where note_id = $1 and revoked_at is null), $2)`, [s.root, JSON.stringify({ title: "Lisbon", body: "# Lisbon", pages: [], files: [] })]);
   assertEquals((await pg.query(`select 1 from public.note_share_files`)).rows.length, 0);
 });
 
@@ -185,7 +193,7 @@ for (const [what, change] of [
     await app(pg, me, `insert into public.note_locks (salt, iterations, key_id, verifier) values ($1, 600000, $2, 'v')`, [b64(salt), lockKey]);
     const a = await shared(pg, me, key);
     // The same sub-note is also shared on its own: a second link.
-    const [{ share_note: b }] = await app(pg, me, `select public.share_note($1, false, $2)`, [a.sub, JSON.stringify({ title: "Day 1", body: "# Day 1", pages: [], files: [] })]);
+    const [{ share_note: b }] = await app(pg, me, `select public.share_note($1, public.share_slug($1), false, repeat('ab', 32), $2)`, [a.sub, JSON.stringify({ title: "Day 1", body: "# Day 1", pages: [], files: [] })]);
     await app(pg, me, change, what === "locked" ? [a.sub, box(lockKey)] : [a.sub]);
     const pages = await pg.query<any>(`select slug, note_id from public.note_share_pages`);
     assertEquals(pages.rows, []);
@@ -223,4 +231,26 @@ Deno.test("the AI scan budget refills and goes below zero only by what was spent
   assert((await left(25000)) < 0);
   assert((await left(0)) < 0);
   assert((await left(100000)) >= -20000);
+});
+
+Deno.test("a file deleted from the account leaves every shared copy of it", async () => {
+  const pg = await schemaDB();
+  const me = await newUser(pg);
+  const { key } = await withKey(pg, me);
+  const s = await shared(pg, me, key);
+  assertEquals((await pg.query(`select 1 from public.note_share_files`)).rows.length, 1);
+  await app(pg, me, `update public.attachments set deleted_at = now() where id = $1`, [s.file]);
+  assertEquals((await pg.query(`select 1 from public.note_share_files`)).rows.length, 0);
+});
+
+Deno.test("publishing names the link, and a link the device didn't verify isn't touched", async () => {
+  const pg = await schemaDB();
+  const me = await newUser(pg);
+  const { key } = await withKey(pg, me);
+  const s = await shared(pg, me, key);
+  const copy = JSON.stringify({ title: "New", body: "# New", pages: [], files: [] });
+  assertEquals((await app(pg, me, `select public.publish_share($1, $2, $3) as r`, [s.root, "x".repeat(24), copy]))[0].r, null);
+  const r = (await app(pg, me, `select public.republish_note_text($1, 'T', 'B', $2) as n`, [s.root, []]))[0].n;
+  assertEquals(r, 0, "no verified link, nothing rewritten");
+  assertEquals((await app(pg, me, `select public.republish_note_text($1, 'T', $3, $2) as n`, [s.root, [s.slug], "x".repeat(2097153)]))[0].n, 0, "too big");
 });
