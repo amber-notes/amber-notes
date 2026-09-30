@@ -4,9 +4,9 @@ import { NotePage } from "@/lib/NotePage";
 import { summary, withoutTitle } from "@/lib/render";
 import { sharedFiles, sharedNote } from "@/lib/shared";
 
-export const revalidate = 60;
-// No pages at build time; each link is rendered on first visit and cached (ISR).
-export async function generateStaticParams() { return []; }
+// Rendered on every visit, never cached: Stop Sharing and locking the note take the page
+// down at once, and nothing of a note that was locked is served afterwards.
+export const dynamic = "force-dynamic";
 
 type Props = { params: Promise<{ slug: string; sub: string }> };
 

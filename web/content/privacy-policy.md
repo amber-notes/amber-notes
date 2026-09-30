@@ -40,8 +40,9 @@ This policy covers the Amber Notes apps for iPhone and Mac, the service that let
 
 - A locked note's text is encrypted on your device with a key made from your notes password (AES-256-GCM, with the key derived by PBKDF2) before it's uploaded. We store that encrypted text and the note's title, which stays readable so your list can show it. Files and sub-notes can't be put in a locked note.
 - To let your devices check the password, we store a random value (a salt), a small encrypted test value, and the password hint you write. We never receive or store the password or the key. On your device, the key can be kept in the Keychain so Face ID or Touch ID can unlock your notes; it never leaves the device.
-- Locking a note deletes its earlier versions from our servers. While it's locked, earlier versions are kept only in encrypted form.
+- Locking a note deletes its earlier versions from our servers. While it's locked, earlier versions are kept only in encrypted form, and changing your notes password removes the versions encrypted with the old one. Text from before a note was locked can remain in our hosting provider's encrypted backups for a limited time, until they're replaced.
 - If you forget your notes password, we can't recover your locked notes.
+- Once you have a notes password, older versions of the app can't sync until they're updated, so they can never upload a readable copy of a locked note.
 
 **AI connections, if you make any**
 
@@ -97,7 +98,7 @@ Nothing reaches an AI assistant unless you connect one. When you connect ChatGPT
 - A note you share becomes a web page at ambernotes.app. Anyone with the link can read it without signing in, and the link may be passed on.
 - The page shows the note, your profile name and photo, and your email address unless it's an Apple relay address.
 - Shared pages are hidden from search engines.
-- **Stop Sharing** takes the page down within a minute. Images and files on a shared page are served through links that expire after an hour.
+- **Stop Sharing** takes the page down at once. Images and files on a shared page are served through links that expire after an hour.
 - Anyone can report a shared page. Reports are reviewed, and pages that break our Terms are removed.
 - A locked note can't be shared. Locking a shared note stops its link.
 

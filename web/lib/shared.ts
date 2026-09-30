@@ -15,8 +15,6 @@ export type SharedNote = {
 
 const URL_ = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const KEY = process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
-/** Edits show on the page within a minute. */
-export const REVALIDATE = 60;
 
 const SLUG = /^[A-Za-z0-9_-]{24,64}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -35,7 +33,7 @@ export async function sharedNote(slug: string, sub?: string): Promise<SharedNote
     method: "POST",
     headers: { apikey: KEY, authorization: `Bearer ${KEY}`, "content-type": "application/json" },
     body: JSON.stringify({ p_slug: slug, p_sub: sub ?? null }),
-    next: { revalidate: REVALIDATE, tags: [`share:${slug}`] },
+    cache: "no-store",
   });
   if (!res.ok) return null;
   return (await res.json()) as SharedNote | null;
@@ -46,7 +44,7 @@ export async function sharedFiles(slug: string, sub?: string): Promise<Record<st
   const q = new URLSearchParams({ slug, ...(sub ? { sub } : {}) });
   const res = await fetch(`${URL_}/functions/v1/share-files?${q}`, {
     headers: { apikey: KEY, authorization: `Bearer ${KEY}` },
-    next: { revalidate: REVALIDATE, tags: [`share:${slug}`] },
+    cache: "no-store",
   });
   if (!res.ok) return {};
   const { files } = (await res.json()) as { files: Record<string, { path: string; name: string; type: string; size: number }> };
