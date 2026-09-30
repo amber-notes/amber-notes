@@ -5,6 +5,23 @@ assistants. Newest first. Research behind it: [seo-aeo-research-2026-09-30.md](s
 
 `docs/` had no README naming a folder for evidence, so this and the research live in `docs/Evidence/`.
 
+## 1 October 2026: round 13, "Forgot your Apple Notes password?"
+
+### Query
+
+- "forgot apple notes password", "lock notes password reset", "apple notes password reset" (autocomplete). The top results are Apple Community threads and unlock-tool vendors (Wondershare, Tenorshare, vocal.media); a factual page is the opening.
+
+### Changed (branch `site/forgot-notes-password`)
+
+- New post `/blog/forgot-apple-notes-password`, in Apple Notes:
+  - why nobody can open a locked note (Apple's security guide: the key is derived from the passphrase; Apple's support article: Apple has no access)
+  - what to try first: Face ID or Touch ID, the hint, the device passcode or Mac login password, older passwords, a password manager; and why not to reset first
+  - resetting on iPhone and Mac, step by step from Apple's iPhone article (published 11 December 2025) and the Mac guide, and Change Password when you still know it
+  - unlock apps can only guess passwords; prevention; and that imports, Amber Notes' included, leave locked notes behind, with Amber Notes' own locked notes described from `web/lib/privacy.ts`
+  - five FAQ answers
+- A new capture: Amber Notes' "Create a password for your locked notes" sheet, rendered offscreen by a new `BlogSnapshots.notesPasswordSheet` test; the card is cropped from it on a new ground, pearl.
+- The move-from-Apple-Notes post links the new one where it says locked notes stay behind, and the new post links the encrypted-notes post (round 12).
+
 ## 30 September 2026: round 12, "An encrypted notes app that ChatGPT and Claude can use"
 
 ### Why
