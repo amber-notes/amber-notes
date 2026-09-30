@@ -1,17 +1,19 @@
-import { GuidePage, guideMetadata } from "@/lib/GuidePage";
+import { Figure } from "@/lib/blog";
+import { PostPage, postMetadata } from "@/lib/PostPage";
+import { SHOTS } from "@/lib/posts";
 import { MCP_URL } from "@/lib/facts";
 import { MCP_TOOLS, type McpTool } from "@/lib/mcp-tools";
 
 export const dynamic = "force-static";
-export const metadata = guideMetadata("mcp-server", { title: "Amber Notes MCP server: address, sign-in and tools" });
+export const metadata = postMetadata("mcp-server", { title: "Amber Notes MCP server: address, sign-in and tools" });
 
 const KIND: Record<McpTool["kind"], string> = { read: "reads", write: "changes", destructive: "changes; can remove or replace" };
 
 export default function Page() {
   return (
-    <GuidePage
+    <PostPage
       slug="mcp-server"
-      lede="Amber Notes, the notes app for iPhone and Mac, has a remote MCP server built in. Here's the address, how an AI app gets access, and every tool it can call."
+      intro={<>Amber Notes, the notes app for iPhone and Mac, has a remote MCP server built in. This page is for developers and anyone curious how it works: the address, how an AI app signs in and gets approved, and every tool it can call.</>}
     >
       <h2>The address</h2>
       <pre><code>{MCP_URL}</code></pre>
@@ -33,9 +35,10 @@ export default function Page() {
       <p className="label"><strong>Access token (Claude Code, Codex and scripts)</strong></p>
       <p>
         In Amber Notes, Settings, Connect an AI, Claude Code or Codex creates a token starting with <code>pane_</code>, read only or read
-        and edit. Send it as <code>Authorization: Bearer pane_…</code>. The <a href="/guides/notes-in-claude-code-and-codex">Claude Code
+        and edit. Send it as <code>Authorization: Bearer pane_…</code>. The <a href="/blog/notes-in-claude-code-and-codex">Claude Code
         and Codex guide</a> has the exact setup.
       </p>
+      <Figure shot={SHOTS.connectList} caption="Settings, Connect an AI: guided setup for each app, and everything that's connected." />
       <p>
         Every connection shows up in Amber Notes under Connected, and the person can disconnect it at any time. Each tool call runs as
         that person, with row-level security, so a token can only ever reach its owner&apos;s notes. Calls are rate limited per account.
@@ -66,13 +69,13 @@ export default function Page() {
 
       <h2>Connect it</h2>
       <ul>
-        <li><a href="/guides/connect-chatgpt-to-your-notes">ChatGPT and Claude</a>: add the address as a custom app or connector.</li>
-        <li><a href="/guides/notes-in-claude-code-and-codex">Claude Code and Codex</a>: one command, or a few lines of config.</li>
-        <li>Anything else that speaks MCP: add the address and sign in when it asks.</li>
+        <li><a href="/blog/connect-chatgpt-to-your-notes">Connect ChatGPT or Claude to your notes</a>: add the address as a custom app or connector.</li>
+        <li><a href="/blog/notes-in-claude-code-and-codex">Use your notes from Claude Code and Codex</a>: one command, or a few lines of config.</li>
+        <li><a href="https://incredible.one" rel="noopener">Incredible</a>, and anything else that speaks MCP: add the address and sign in when it asks.</li>
       </ul>
       <p>
         The server is open source. Read it in <a href="https://github.com/emilwagman/amber-notes/tree/main/supabase/functions/mcp" rel="noopener">supabase/functions/mcp</a> on GitHub.
       </p>
-    </GuidePage>
+    </PostPage>
   );
 }

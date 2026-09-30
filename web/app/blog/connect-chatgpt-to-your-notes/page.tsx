@@ -1,7 +1,9 @@
-import { GuidePage, guideMetadata } from "@/lib/GuidePage";
+import { Figure } from "@/lib/blog";
+import { PostPage, postMetadata } from "@/lib/PostPage";
+import { SHOTS } from "@/lib/posts";
 
 export const dynamic = "force-static";
-export const metadata = guideMetadata("connect-chatgpt-to-your-notes");
+export const metadata = postMetadata("connect-chatgpt-to-your-notes");
 
 const FAQ = [
   { q: "Which ChatGPT plans can add Amber Notes?", a: [
@@ -17,9 +19,9 @@ const FAQ = [
 
 export default function Page() {
   return (
-    <GuidePage
+    <PostPage
       slug="connect-chatgpt-to-your-notes"
-      lede="Ask ChatGPT to add to a list, plan a trip or tidy a note, and the change lands in your notes. Here's how to set it up, and how you stay in control."
+      intro={<>I wanted to ask ChatGPT to add to a list, plan a trip or tidy a note, and have the change land in my notes instead of in a chat I&apos;d have to copy from. That&apos;s what Amber Notes does. Here&apos;s how to set it up in a few minutes, and how you stay in control.</>}
       faq={FAQ}
     >
       <h2>How it works</h2>
@@ -30,7 +32,8 @@ export default function Page() {
       </p>
       <p>
         Apple Notes doesn&apos;t have one. On a Mac, ChatGPT can look at a note you have open, but it can&apos;t search your notes or
-        save changes to them. <a href="/guides/chatgpt-and-apple-notes">More on ChatGPT and Apple Notes</a>.
+        save changes to them. If you&apos;re wondering why, <a href="/blog/claude-and-apple-notes">why AI apps can&apos;t reach Apple Notes</a>{" "}
+        explains it, and <a href="/blog/notes-apps-with-mcp">notes apps with an MCP server, compared</a> covers the alternatives.
       </p>
 
       <h2>What you need</h2>
@@ -42,21 +45,22 @@ export default function Page() {
 
       <h2>Connect ChatGPT</h2>
       <ol>
-        <li>In Amber Notes, open Settings (Amber Notes, then Settings, or ⌘,). If your notes are in Apple Notes, <a href="/guides/move-from-apple-notes">import them first</a>.</li>
-        <li>Under Connect an AI, choose ChatGPT. Amber Notes copies its address and opens ChatGPT&apos;s Plugins page. The steps stay on screen while you work.</li>
+        <li>In Amber Notes, open Settings (Amber Notes, then Settings, or ⌘,). If your notes are in Apple Notes, <a href="/blog/move-from-apple-notes">import them first</a>.</li>
+        <li>Under Connect an AI, choose ChatGPT, then Copy Address and Open ChatGPT. Amber Notes copies its address and opens ChatGPT&apos;s Plugins page. The steps stay on screen while you work.</li>
         <li>In ChatGPT, turn on Developer mode in Settings, Security and login. You only do this once.</li>
         <li>In Plugins, choose + and name it Amber Notes.</li>
         <li>Paste the address, choose OAuth, then Create.</li>
         <li>ChatGPT asks Amber Notes for permission. Amber Notes opens and asks &ldquo;Allow ChatGPT to use your notes?&rdquo; Pick Read and Edit, or Read Only, and choose Allow.</li>
         <li>Try it. Ask ChatGPT: &ldquo;Search my Amber Notes and tell me what I wrote most recently.&rdquo;</li>
       </ol>
+      <Figure shot={SHOTS.consent} caption="Nothing is shared until you choose Allow, and you pick Read and Edit or Read Only." />
       <p>
         OpenAI renamed some of these pages in 2026. If you see Connectors or Apps instead of Plugins, it&apos;s the same place.
       </p>
 
       <h2>Claude</h2>
       <p>
-        Under Connect an AI, choose Claude. Claude opens its Add custom connector dialog with Amber Notes already filled in. Choose Add,
+        Under Connect an AI, choose Claude, then Add to Claude. Claude opens its Add custom connector dialog with Amber Notes already filled in. Choose Add,
         then Connect, then Allow in Amber Notes. It works on every Claude plan. The free plan includes one custom connector, and on Team
         and Enterprise an Owner adds it for the organization.
       </p>
@@ -65,11 +69,18 @@ export default function Page() {
       <p>
         These use an access token instead of a sign-in. On a Mac, choose Claude Code under Connect an AI and then Add to Claude Code,
         or copy the command it shows. For Codex, Amber Notes gives you a few lines to paste into <code>~/.codex/config.toml</code>.
-        The <a href="/guides/notes-in-claude-code-and-codex">Claude Code and Codex guide</a> has the details. Any other app that
-        supports MCP can connect too; the <a href="/guides/mcp-server">MCP server page</a> has the address and the tools.
+        <a href="/blog/notes-in-claude-code-and-codex">Using your notes from Claude Code and Codex</a> has the details.
+      </p>
+
+      <h2>Incredible and other MCP apps</h2>
+      <p>
+        <a href="https://incredible.one" rel="noopener">Incredible</a>, the AI assistant my company makes, connects the same way as
+        any other app that supports MCP: add the Amber Notes server address and sign in when it asks, then choose Allow in Amber Notes.
+        The <a href="/blog/mcp-server">Amber Notes MCP server page</a> has the address, the sign-in and every tool.
       </p>
 
       <h2>You stay in control</h2>
+      <Figure shot={SHOTS.aiEdit} caption="When ChatGPT changes a note, the new lines are tinted and you can undo the change." />
       <ul>
         <li>Nothing is shared until you choose Allow in Amber Notes.</li>
         <li>You choose Read Only, or Read and Edit, for each assistant.</li>
@@ -87,6 +98,6 @@ export default function Page() {
       <p>
         Stuck? The <a href="/help#connect">help page</a> has the short version, and you can message me on X.
       </p>
-    </GuidePage>
+    </PostPage>
   );
 }

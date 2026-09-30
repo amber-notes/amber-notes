@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { MCP_TOOLS } from "./mcp-tools";
 
-// The /guides/mcp-server page lists the server's tools; this keeps it from drifting from the server.
+// The /blog/mcp-server post lists the server's tools; this keeps it from drifting from the server.
 const source = readFileSync(new URL("../../supabase/functions/mcp/tools.ts", import.meta.url), "utf8");
 const defined = [...source.slice(source.indexOf("export const tools"), source.indexOf("const writeTools"))
   .matchAll(/name: "(\w+)", title: "([^"]+)",\s*description: "((?:[^"\\]|\\.)*)"[\s\S]*?annotations: (\w+|\{[^}]*\})/g)]

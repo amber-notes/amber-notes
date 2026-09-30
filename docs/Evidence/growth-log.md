@@ -5,6 +5,16 @@ assistants. Newest first. Research behind it: [seo-aeo-research-2026-09-30.md](s
 
 `docs/` had no README naming a folder for evidence, so this and the research live in `docs/Evidence/`.
 
+## 30 September 2026: the guides became a blog
+
+- Posts live at `/blog/<slug>`; `/guides` and `/guides/<slug>` answer 308 to them. The sitemap, /llms.txt and the footer ("Blog") use /blog.
+- `web/lib/posts.ts` is the one list (was `lib/guides.ts`), now with a date, a category, an excerpt and a picture per post.
+- Index: title, intro and category filters on the left; a two-column grid of cards (one on phones).
+- Each post opens with the date and category, the title, Emil's byline and reading time, an intro, and a real capture of the app on the home page's desk. It has a share rail (X, LinkedIn, email; plain share links), a breadcrumb with BreadcrumbList JSON-LD, "More posts", and an "All posts" list. Every published post links two to six others in its text, and never a draft; a test checks it.
+- Captures come from the app's own offscreen snapshot tests (`PaneTests/HIG`, plus a new `BlogSnapshots` for the Connect ChatGPT and Connect Claude guides), cropped so no local server address shows, in `web/public/blog/`. Emil's avatar is `web/public/emil-wagman.jpg`, from GitHub.
+- Incredible (incredible.one) is named wherever the site lists the assistants, as connecting like any MCP client, and the maker `worksFor` Incredible in the JSON-LD.
+- Help answers link the post that covers them.
+
 ## 30 September 2026: baseline and round 1
 
 ### Baseline

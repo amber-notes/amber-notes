@@ -1,8 +1,8 @@
 import { FACTS, MCP_URL, WHAT_IT_IS } from "./facts";
 import { GITHUB_URL } from "./github";
-import { published } from "./guides";
+import { published } from "./posts";
 import { MCP_TOOLS } from "./mcp-tools";
-import { SITE_URL } from "./site";
+import { INCREDIBLE_URL, SITE_URL } from "./site";
 import { FAQ } from "../app/help/questions";
 
 /// /llms.txt (llmstxt.org): a plain summary for AI assistants and agents, with links to the pages
@@ -14,7 +14,7 @@ function summary(): string[] {
     "",
     `> ${WHAT_IT_IS}`,
     "",
-    "Not to be confused with other products called AmberNotes or Amber Notes (meeting transcription and AI note-taking services). This one is the notes app at ambernotes.app, made by Emil Wagman.",
+    `Not to be confused with other products called AmberNotes or Amber Notes (meeting transcription and AI note-taking services). This one is the notes app at ambernotes.app, made by Emil Wagman at Incredible (${INCREDIBLE_URL}).`,
     "",
     "## Facts",
     "",
@@ -26,11 +26,12 @@ function summary(): string[] {
     "- ChatGPT: add it as your own app in Developer mode (Plus, Pro, Business, Enterprise or Edu, on the web), choose OAuth, then Allow in Amber Notes.",
     "- Claude: add it as a custom connector (every plan; the free plan includes one), then Allow in Amber Notes.",
     "- Claude Code and Codex: an access token from Amber Notes, Settings, Connect an AI, sent as an Authorization header.",
-    `- Full details: ${SITE_URL}/guides/mcp-server`,
+    `- Incredible (${INCREDIBLE_URL}), and any other app that supports MCP: add the server address and sign in, then Allow in Amber Notes.`,
+    `- Full details: ${SITE_URL}/blog/mcp-server`,
     "",
-    "## Guides",
+    "## Blog posts",
     "",
-    ...published().map((g) => `- [${g.title}](${SITE_URL}/guides/${g.slug}): ${g.description}`),
+    ...published().map((p) => `- [${p.title}](${SITE_URL}/blog/${p.slug}): ${p.description}`),
     "",
     "## More",
     "",

@@ -88,7 +88,7 @@ export function AiSection() {
           );
         })}
       </div>
-      <p className={a.also}>Also Codex, and any app that supports MCP.</p>
+      <p className={a.also}>Also Codex, <a href="https://incredible.one" rel="noopener">Incredible</a>, and any app that supports MCP. <a href="/blog/connect-chatgpt-to-your-notes">How to connect</a></p>
     </section>
   );
 }
@@ -180,7 +180,7 @@ export function InShort() {
     <section className={a.facts} aria-labelledby="in-short">
       <h2 id="in-short" className={a.factsTitle}>Amber Notes in short</h2>
       <ul>{FACTS.map((f) => <li key={f}>{f}</li>)}</ul>
-      <p><a href="/guides">Read the guides</a> for setup steps and comparisons.</p>
+      <p>More on the blog: <a href="/blog/connect-chatgpt-to-your-notes">connect ChatGPT to your notes</a>, <a href="/blog/move-from-apple-notes">move from Apple Notes</a>, and <a href="/blog/notes-apps-with-mcp">notes apps with an MCP server, compared</a>.</p>
     </section>
   );
 }
