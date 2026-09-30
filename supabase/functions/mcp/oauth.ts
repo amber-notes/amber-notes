@@ -10,11 +10,17 @@
 // https://mcp.ambernotes.app the server is the host's root, so those are the standard RFC 8414 and
 // RFC 9728 locations as well.
 //
-// Consent: /authorize sends the browser to the site's /connect page (ambernotes.app/connect?request=<id>).
-// There the person opens Amber Notes (ambernotes://connect?request=<id>), or signs in on the web.
-// Either way the signed-in app or page asks /connect/request who is asking, the person picks
-// read-only or read & edit, and it posts the decision to /connect/decide with their session
-// in an Authorization header; the answer is the client's redirect URL.
+// Consent: /authorize sends the browser to the site's /connect page (ambernotes.app/connect?request=<id>),
+// which names the AI (/connect/label) and opens Amber Notes (ambernotes://connect?request=<id>).
+// Approval happens only in the app, the one place that has the account's data key: it asks
+// /connect/request who is asking, the person picks read-only or read & edit, and it posts the
+// decision to /connect/decide with their session in an Authorization header.
+//
+// End-to-end encryption: the app makes the authorization code itself and sends only its hash and
+// the data key wrapped under it (code_wrap). The server answers with the client's redirect URL
+// without a code; the app adds it. At /token the code opens the wrap, and the key is wrapped
+// again under the new access and refresh tokens (oauth_tokens.dk_wrap). The server keeps only
+// hashes of codes and tokens, so a wrap opens only while a request carries its token.
 //
 // Addresses: the function answers at its Supabase address and at every alias in MCP_ALIAS_URLS
 // (https://mcp.ambernotes.app by default, a proxy on the site's Vercel project). The proxy names
@@ -22,14 +28,16 @@
 // are one server: a token issued through one works through the others.
 
 import type { Sql } from "npm:postgres@3.4.5";
+import { tokenKey, unwrap, wrap } from "../_shared/e2ee.ts";
+import { errorKind, log } from "../_shared/log.ts";
 
 export const SCOPES = ["notes:read", "notes:write"];
 const ACCESS_TTL = 60 * 60; // seconds
 const REFRESH_TTL_DAYS = 90;
 const CODE_TTL = 60; // seconds
-const LIMITS: Record<string, [number, number]> = { register: [30, 3600], authorize: [60, 600], token: [120, 600], request: [120, 600], decide: [60, 600] };
+const LIMITS: Record<string, [number, number]> = { register: [30, 3600], authorize: [60, 600], token: [120, 600], request: [120, 600], label: [120, 600], decide: [60, 600] };
 
-export type Grant = { user_id: string; token_id: string; name: string; can_write: boolean; resource?: string };
+export type Grant = { user_id: string; token_id: string; name: string; can_write: boolean; resource?: string; dk_wrap: string | null };
 
 /// Other public addresses of this server, e.g. https://mcp.ambernotes.app (comma-separated).
 export function aliasBases(): string[] {
@@ -81,7 +89,7 @@ export function subpath(req: Request): string {
 }
 
 export function isOAuthPath(p: string) {
-  return p.startsWith("/.well-known/") || ["/register", "/authorize", "/token", "/revoke", "/connect/request", "/connect/decide", "/connect/release"].includes(p);
+  return p.startsWith("/.well-known/") || ["/register", "/authorize", "/token", "/revoke", "/connect/request", "/connect/label", "/connect/decide", "/connect/release"].includes(p);
 }
 
 const json = (body: unknown, status = 200, headers: Record<string, string> = {}) =>
@@ -163,9 +171,9 @@ export function fromProxy(req: Request): boolean {
   const claims = req.headers.has("x-mcp-client-ip") || req.headers.has("x-mcp-public-url") || req.headers.has("x-mcp-proxy-secret");
   if (!claims) return false;
   if (secret && timingSafeEqual(req.headers.get("x-mcp-proxy-secret") ?? "", secret)) return true;
-  console.error(secret
-    ? "PROXY HEADERS WITHOUT A VALID SECRET: ignored (check MCP_PROXY_SECRET on Vercel and here)"
-    : "PROXY HEADERS BUT MCP_PROXY_SECRET IS NOT SET: ignored; rate limits count Vercel's address and metadata names the Supabase address");
+  // bad_secret: check MCP_PROXY_SECRET on Vercel and here. no_secret: rate limits count Vercel's
+  // address and metadata names the Supabase address until it's set.
+  log("proxy_headers_ignored", { kind: secret ? "bad_secret" : "no_secret" });
   return false;
 }
 
@@ -187,6 +195,9 @@ async function limited(sql: Sql, req: Request, bucket: string): Promise<boolean>
     await sql`delete from public.oauth_rate where at < now() - interval '1 day'`;
     await sql`delete from public.oauth_requests where expires_at < now() - interval '1 day' and (code_expires_at is null or code_expires_at < now() - interval '1 day')`;
     await sql`delete from public.oauth_tokens where expires_at < now() - interval '1 day'`;
+    // An expired token or code can't be used, so its wrap of the data key goes now, not in a day.
+    await sql`update public.oauth_tokens set dk_wrap = null where expires_at < now() and dk_wrap is not null`;
+    await sql`update public.oauth_requests set code_wrap = null where code_expires_at < now() and code_wrap is not null`;
   }
   return n >= max;
 }
@@ -304,11 +315,12 @@ export async function handleOAuth(req: Request, sql: Sql, path: string): Promise
       case "/token": return req.method === "POST" ? await token(req, sql, base) : json({ error: "method_not_allowed" }, 405);
       case "/revoke": return req.method === "POST" ? await revoke(req, sql) : json({ error: "method_not_allowed" }, 405);
       case "/connect/request": return await describeRequest(req, sql);
+      case "/connect/label": return req.method === "GET" ? await label(req, sql) : json({ error: "method_not_allowed" }, 405);
       case "/connect/decide": return req.method === "POST" ? await decide(req, sql) : json({ error: "method_not_allowed" }, 405);
       case "/connect/release": return req.method === "POST" ? await release(req, sql) : json({ error: "method_not_allowed" }, 405);
     }
   } catch (e) {
-    console.error("oauth", path, e);
+    log("oauth_error", { path_kind: path, ...errorKind(e) });
     return oauthError("server_error", "Something went wrong. Try again.", 500);
   }
   return json({ error: "not_found" }, 404);
@@ -459,16 +471,44 @@ async function describeRequest(req: Request, sql: Sql): Promise<Response> {
   });
 }
 
-/// Allow or deny. Allow creates the grant and a one-minute, single-use code.
+/// Who is asking, for the web page that sends the person to the app: no session, nothing else.
+async function label(req: Request, sql: Sql): Promise<Response> {
+  if (await limited(sql, req, "label")) return json({ error: "Too many attempts. Wait a few minutes and try again." }, 429);
+  const r = await pending(sql, new URL(req.url).searchParams.get("id") ?? "");
+  if (!r) return json({ error: EXPIRED }, 404);
+  return json({ client_name: displayName(r.client_name, r.redirect_uri), verified_ai: verifiedAI(r.redirect_uri) });
+}
+
+const CHANGED = "This request changed. Start connecting again from the other app.";
+
+/// Allow or deny, from the app. The app shows the exact return address from /connect/request and
+/// sends it back, so what the person approved is where the code goes. Allow creates the grant and
+/// stores the hash of the one-minute, single-use code the app made, with the data key wrapped
+/// under it; the answer is the client's redirect without the code, which the app adds.
 async function decide(req: Request, sql: Sql): Promise<Response> {
   if (!allowedOrigin(req)) return json({ error: "Not allowed from this site." }, 403);
   const user = await sessionUser(req);
   if (!user) return json({ error: "Sign in to Amber Notes first." }, 401);
   if (await limited(sql, req, "decide")) return json({ error: "Too many attempts." }, 429);
-  const body = await req.json().catch(() => ({})) as { id?: string; allow?: boolean; write?: boolean };
+  const body = await req.json().catch(() => ({})) as { id?: string; allow?: boolean; write?: boolean; redirect_uri?: unknown; code_hash?: unknown; code_wrap?: unknown };
   const r = await pending(sql, String(body.id ?? ""));
   if (!r) return json({ error: EXPIRED }, 404);
   if (!(await claim(sql, r, user))) return json({ error: NOT_YOURS }, 403);
+  if (body.redirect_uri !== r.redirect_uri) return json({ error: CHANGED }, 409);
+
+  const allow = body.allow === true;
+  const codeHash = typeof body.code_hash === "string" ? body.code_hash : "";
+  const codeWrap = typeof body.code_wrap === "string" ? body.code_wrap : "";
+  if (allow) {
+    const [key] = await sql<{ key_id: string }[]>`select key_id from public.account_keys where user_id = ${user}`;
+    if (!key) return json({ error: "Set up Amber Notes on this device first." }, 409);
+    if (!/^[0-9a-f]{64}$/.test(codeHash) || codeWrap.length > 300 || !/^amb2\.[0-9a-f]{16}\.[A-Za-z0-9+/]+={0,2}$/.test(codeWrap)) {
+      return json({ error: "Update Amber Notes to connect an AI." }, 400);
+    }
+    if (codeWrap.split(".")[1] !== key.key_id) {
+      return json({ error: "This device has an old key for your notes. Open Amber Notes again to get the current one." }, 409);
+    }
+  }
 
   const u = new URL(r.redirect_uri);
   if (r.state) u.searchParams.set("state", r.state);
@@ -476,28 +516,26 @@ async function decide(req: Request, sql: Sql): Promise<Response> {
   u.searchParams.set("iss", r.resource);
   const scopes = (r.scope ?? "").split(/\s+/).filter(Boolean);
   const write = body.write === true && (scopes.length === 0 || scopes.includes("notes:write"));
-  const code = randomToken("amb_code_");
   // One answer per request, even when two arrive at once.
   const answered = await sql.begin(async (tx) => {
     const [open] = await tx`update public.oauth_requests set decided_at = now()
       where id = ${r.id} and decided_at is null and claimed_by = ${user} returning 1`;
     if (!open) return false;
-    if (body.allow !== true) return true;
+    if (!allow) return true;
     const [g] = await tx<{ id: string }[]>`
       insert into public.mcp_tokens (user_id, name, token_hash, can_write, kind, client_id, redirect_host)
       values (${user}, ${displayName(r.client_name, r.redirect_uri)}, ${"oauth:" + crypto.randomUUID()}, ${write}, 'oauth', ${r.client_id}, ${u.hostname})
       returning id`;
-    await tx`update public.oauth_requests set grant_id = ${g.id}, code_hash = ${await sha256Hex(code)},
+    await tx`update public.oauth_requests set grant_id = ${g.id}, code_hash = ${codeHash}, code_wrap = ${codeWrap},
       code_expires_at = now() + make_interval(secs => ${CODE_TTL}) where id = ${r.id}`;
     return true;
   });
   if (!answered) return json({ error: EXPIRED }, 404);
-  if (body.allow !== true) {
+  if (!allow) {
     u.searchParams.set("error", "access_denied");
     u.searchParams.set("error_description", "The person declined in Amber Notes.");
     return json({ redirect: u.toString() });
   }
-  u.searchParams.set("code", code);
   return json({ redirect: u.toString(), client_name: displayName(r.client_name, r.redirect_uri), can_write: write });
 }
 
@@ -516,12 +554,15 @@ async function release(req: Request, sql: Sql): Promise<Response> {
 
 // MARK: Tokens
 
-async function issue(sql: Sql, grantId: string, resource: string, canWrite: boolean) {
+/// A new access and refresh token for a grant, each holding the data key wrapped under itself.
+async function issue(sql: Sql, grantId: string, resource: string, canWrite: boolean, dataKey: Uint8Array<ArrayBuffer>, userId: string) {
   const access = randomToken("amb_at_");
   const refresh = randomToken("amb_rt_");
-  await sql`insert into public.oauth_tokens (token_hash, grant_id, kind, resource, expires_at) values
-    (${await sha256Hex(access)}, ${grantId}, 'access', ${resource}, now() + make_interval(secs => ${ACCESS_TTL})),
-    (${await sha256Hex(refresh)}, ${grantId}, 'refresh', ${resource}, now() + make_interval(days => ${REFRESH_TTL_DAYS}))`;
+  const accessWrap = await wrap(dataKey, await tokenKey(access, "access"), "access", userId);
+  const refreshWrap = await wrap(dataKey, await tokenKey(refresh, "refresh"), "refresh", userId);
+  await sql`insert into public.oauth_tokens (token_hash, grant_id, kind, resource, expires_at, dk_wrap) values
+    (${await sha256Hex(access)}, ${grantId}, 'access', ${resource}, now() + make_interval(secs => ${ACCESS_TTL}), ${accessWrap}),
+    (${await sha256Hex(refresh)}, ${grantId}, 'refresh', ${resource}, now() + make_interval(days => ${REFRESH_TTL_DAYS}), ${refreshWrap})`;
   return {
     access_token: access,
     token_type: "Bearer",
@@ -529,6 +570,16 @@ async function issue(sql: Sql, grantId: string, resource: string, canWrite: bool
     refresh_token: refresh,
     scope: canWrite ? SCOPES.join(" ") : "notes:read",
   };
+}
+
+/// The data key from a wrap, or null when there's none or it doesn't open with this secret.
+async function openWrap(wrapped: string | null, secret: string, purpose: "code" | "refresh", userId: string) {
+  if (!wrapped) return null;
+  try {
+    return await unwrap(wrapped, await tokenKey(secret, purpose), purpose, userId);
+  } catch {
+    return null;
+  }
 }
 
 async function revokeGrant(sql: Sql, grantId: string) {
@@ -544,9 +595,9 @@ async function token(req: Request, sql: Sql, base: string): Promise<Response> {
   if (p.grant_type === "authorization_code") {
     if (!p.code || !p.code_verifier || !p.client_id) return oauthError("invalid_request", "code, code_verifier and client_id are required.");
     const hash = await sha256Hex(p.code);
-    const [r] = await sql<{ id: string; client_id: string; redirect_uri: string; code_challenge: string; grant_id: string; expired: boolean; resource: string; can_write: boolean; revoked: boolean }[]>`
+    const [r] = await sql<{ id: string; client_id: string; redirect_uri: string; code_challenge: string; grant_id: string; expired: boolean; resource: string; can_write: boolean; revoked: boolean; user_id: string }[]>`
       select r.id, r.client_id, r.redirect_uri, r.code_challenge, r.grant_id, r.code_expires_at < now() as expired, r.resource,
-             g.can_write, g.revoked_at is not null as revoked
+             g.can_write, g.revoked_at is not null as revoked, g.user_id
       from public.oauth_requests r join public.mcp_tokens g on g.id = r.grant_id
       where r.code_hash = ${hash}`;
     if (!r) return oauthError("invalid_grant", "Unknown code.");
@@ -555,22 +606,31 @@ async function token(req: Request, sql: Sql, base: string): Promise<Response> {
     if (r.client_id !== p.client_id) return oauthError("invalid_grant", "The code was issued to another app.");
     if (p.redirect_uri && p.redirect_uri !== r.redirect_uri) return oauthError("invalid_grant", "redirect_uri doesn't match the authorization request.");
     if ((await s256(p.code_verifier)) !== r.code_challenge) return oauthError("invalid_grant", "PKCE verification failed.");
-    // Exactly one exchange wins, even when two arrive at once.
-    const [claimed] = await sql`update public.oauth_requests set code_used_at = now() where id = ${r.id} and code_used_at is null returning 1`;
+    // Exactly one exchange wins, even when two arrive at once, and it takes the wrap with it.
+    const [claimed] = await sql<{ code_wrap: string | null }[]>`
+      with old as (select id, code_wrap from public.oauth_requests where id = ${r.id} and code_used_at is null for update)
+      update public.oauth_requests q set code_used_at = now(), code_wrap = null from old where q.id = old.id
+      returning old.code_wrap`;
     if (!claimed) {
       // A code presented twice may have been stolen: cut off everything it produced.
       await revokeGrant(sql, r.grant_id);
       return oauthError("invalid_grant", "This code was already used.");
     }
     if (r.expired || r.revoked) return oauthError("invalid_grant", "The code has expired. Connect again.");
-    return json(await issue(sql, r.grant_id, r.resource, r.can_write));
+    const dataKey = await openWrap(claimed.code_wrap, p.code, "code", r.user_id);
+    if (!dataKey) return oauthError("invalid_grant", "Connect again.");
+    try {
+      return json(await issue(sql, r.grant_id, r.resource, r.can_write, dataKey, r.user_id));
+    } finally {
+      dataKey.fill(0);
+    }
   }
 
   if (p.grant_type === "refresh_token") {
     if (!p.refresh_token) return oauthError("invalid_request", "refresh_token is required.");
     const hash = await sha256Hex(p.refresh_token);
-    const [t] = await sql<{ grant_id: string; used_at: Date | null; expired: boolean; resource: string; client_id: string; can_write: boolean; revoked: boolean }[]>`
-      select t.grant_id, t.used_at, t.expires_at < now() as expired, t.resource, g.client_id, g.can_write, g.revoked_at is not null as revoked
+    const [t] = await sql<{ grant_id: string; used_at: Date | null; expired: boolean; resource: string; client_id: string; can_write: boolean; revoked: boolean; user_id: string }[]>`
+      select t.grant_id, t.used_at, t.expires_at < now() as expired, t.resource, g.client_id, g.can_write, g.revoked_at is not null as revoked, g.user_id
       from public.oauth_tokens t join public.mcp_tokens g on g.id = t.grant_id
       where t.token_hash = ${hash} and t.kind = 'refresh'`;
     if (!t || t.revoked) return oauthError("invalid_grant", "This connection was removed. Connect again.");
@@ -581,9 +641,19 @@ async function token(req: Request, sql: Sql, base: string): Promise<Response> {
       return oauthError("invalid_grant", "This refresh token was already used. Connect again.");
     }
     if (t.expired) return oauthError("invalid_grant", "The connection expired. Connect again.");
-    const [claimed] = await sql`update public.oauth_tokens set used_at = now() where token_hash = ${hash} and used_at is null returning 1`;
+    // Used once: the old token's wrap goes in the same statement that spends it.
+    const [claimed] = await sql<{ dk_wrap: string | null }[]>`
+      with old as (select token_hash, dk_wrap from public.oauth_tokens where token_hash = ${hash} and used_at is null for update)
+      update public.oauth_tokens t set used_at = now(), dk_wrap = null from old where t.token_hash = old.token_hash
+      returning old.dk_wrap`;
     if (!claimed) return oauthError("invalid_grant", "This refresh token was already used.");
-    return json(await issue(sql, t.grant_id, t.resource, t.can_write));
+    const dataKey = await openWrap(claimed.dk_wrap, p.refresh_token, "refresh", t.user_id);
+    if (!dataKey) return oauthError("invalid_grant", "Connect again.");
+    try {
+      return json(await issue(sql, t.grant_id, t.resource, t.can_write, dataKey, t.user_id));
+    } finally {
+      dataKey.fill(0);
+    }
   }
 
   return oauthError("unsupported_grant_type", "Use authorization_code or refresh_token.");

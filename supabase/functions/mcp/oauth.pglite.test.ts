@@ -1,11 +1,16 @@
 // OAuth for AI connectors (oauth.ts) on an in-process Postgres (PGlite), with Supabase Auth faked.
 // Needs no Docker or local stack:
 //   cd supabase/functions/mcp && deno test -A oauth.pglite.test.ts
-// Covers the custom address (mcp.ambernotes.app through the site's proxy), the web consent page's
-// calls, and who may answer a request. oauth.e2e.test.ts runs the app's flow against the real stack.
-import { assert, assertEquals, assertMatch } from "jsr:@std/assert@1";
-import { PGlite } from "npm:@electric-sql/pglite@0.2.17";
+// Covers the custom address (mcp.ambernotes.app through the site's proxy), the app's consent calls,
+// who may answer a request, and the data key's wraps: the app makes the code and wraps the key
+// under it, /token moves the key to the tokens, and the MCP endpoint opens it per request.
+// oauth.e2e.test.ts runs the app's flow against the real stack.
+import { assert, assertEquals, assertMatch, assertStringIncludes } from "jsr:@std/assert@1";
+import type { PGlite } from "npm:@electric-sql/pglite@0.2.17";
 import type { Sql } from "npm:postgres@3.4.5";
+import { type Bytes, tokenKey, unwrap, wrap } from "../_shared/e2ee.ts";
+import { newUser as plainUser, schemaDB, sqlFor } from "./pglite.ts";
+import { account, app } from "./sealed.ts";
 
 const SUPA = "https://proj.supabase.co";
 const FUNCTION = `${SUPA}/functions/v1/mcp`;
@@ -20,46 +25,14 @@ Deno.env.delete("MCP_ALIAS_URLS");
 Deno.env.delete("CONNECT_PAGE_URL");
 Deno.env.set("MCP_PROXY_SECRET", "proxy-secret");
 
-const { handleOAuth, publicBase, resolveAccessToken, subpath, clientIP, cleanName, claimsATrustedName, displayName, claimedName } = await import("./oauth.ts");
+const { handleOAuth, publicBase, resolveAccessToken, subpath, clientIP, cleanName, claimsATrustedName, displayName, claimedName, sha256Hex } = await import("./oauth.ts");
+const { handleRequest } = await import("./server.ts");
 
-// MARK: Database
-
-const migrations = [
-  "20260927190000_mcp_tokens.sql",
-  "20260928220500_mcp_token_columns.sql",
-  "20260928222800_oauth_connectors.sql",
-  "20260930140000_oauth_request_claims.sql",
-].map((f) => new URL(`../../migrations/${f}`, import.meta.url));
-
-const stubs = `
-  create role anon; create role authenticated; create role service_role;
-  create schema auth; create schema extensions;
-  create table auth.users (id uuid primary key);
-  create function auth.uid() returns uuid language sql stable as
-    $$ select (nullif(current_setting('request.jwt.claims', true), '')::json->>'sub')::uuid $$;
-  create function extensions.digest(t text, alg text) returns bytea language sql immutable as $$ select sha256(convert_to(t, 'UTF8')) $$;
-  create function extensions.gen_random_bytes(n int) returns bytea language sql as $$ select decode(md5(random()::text), 'hex') $$;
-`;
-
-/// The subset of postgres.js oauth.ts uses (tagged queries and begin), backed by PGlite.
-function adapter(pg: PGlite): Sql {
-  type Q = { query: PGlite["query"] };
-  const run = (db: Q) => async (strings: TemplateStringsArray, ...values: unknown[]) => {
-    let text = strings[0];
-    values.forEach((_, i) => (text += `$${i + 1}` + strings[i + 1]));
-    return (await db.query(text, values)).rows;
-  };
-  const sql = Object.assign(run(pg), {
-    begin: (fn: (tx: unknown) => unknown) => pg.transaction((tx) => fn(run(tx)) as Promise<unknown>),
-  });
-  return sql as unknown as Sql;
-}
+// MARK: Database: every migration, on PGlite
 
 async function db() {
-  const pg = new PGlite();
-  await pg.exec(stubs);
-  for (const m of migrations) await pg.exec(await Deno.readTextFile(m));
-  return { pg, sql: adapter(pg) };
+  const pg = await schemaDB();
+  return { pg, sql: sqlFor(pg) };
 }
 
 // MARK: Fake Supabase Auth: a session is "Bearer jwt-<user id>".
@@ -106,10 +79,34 @@ async function pkce() {
   return { verifier, challenge };
 }
 
-async function newUser(pg: PGlite) {
-  const id = crypto.randomUUID();
-  await pg.query(`insert into auth.users (id) values ($1)`, [id]);
-  return { id, jwt: `jwt-${id}` };
+type User = { id: string; jwt: string; dk: Bytes | null };
+
+/** A user whose app has set up the account's key (null: signed in, but no key yet). */
+async function newUser(pg: PGlite, withKey = true): Promise<User> {
+  if (!withKey) {
+    const id = await plainUser(pg);
+    return { id, jwt: `jwt-${id}`, dk: null };
+  }
+  const a = await account(pg);
+  return { id: a.id, jwt: `jwt-${a.id}`, dk: a.dk };
+}
+
+const hex = (n: number) => [...crypto.getRandomValues(new Uint8Array(n))].map((b) => b.toString(16).padStart(2, "0")).join("");
+
+/** What the app sends for Allow: it makes the code, and wraps the data key under it. */
+async function appDecision(user: User, id: string, redirect_uri: string, allow = true, write = true) {
+  const code = "amb_code_" + hex(32);
+  const extra = allow && user.dk
+    ? { code_hash: await sha256Hex(code), code_wrap: await wrap(user.dk, await tokenKey(code, "code"), "code", user.id) }
+    : {};
+  return { code, body: JSON.stringify({ id, allow, write, redirect_uri, ...extra }) };
+}
+
+/** The app opens the client's redirect with the code it made. */
+function withCode(redirect: string, code: string) {
+  const u = new URL(redirect);
+  if (!u.searchParams.has("error")) u.searchParams.set("code", code);
+  return u;
 }
 
 async function register(sql: Sql, via: Via, name = "ChatGPT", uris = [CHATGPT]) {
@@ -130,17 +127,20 @@ async function authorize(sql: Sql, via: Via, clientId: string, challenge: string
   return await call(sql, request(via, `/authorize?${q}`));
 }
 
-/// What the web page does: ask who's asking, then answer, from the site's origin.
-async function consent(sql: Sql, requestId: string, jwt: string, allow = true, origin: string | null = SITE) {
-  const headers: Record<string, string> = { authorization: `Bearer ${jwt}` };
+/// What the app does: ask who's asking, then answer with the exact return address it showed.
+/// (A browser on the site's origin is let through too; any other origin isn't.)
+async function consent(sql: Sql, requestId: string, user: User, allow = true, origin: string | null = SITE) {
+  const headers: Record<string, string> = { authorization: `Bearer ${user.jwt}` };
   if (origin) headers.origin = origin;
   const described = await call(sql, request("function", `/connect/request?id=${requestId}`, { headers }));
+  const shown = described.ok ? (await described.clone().json()).redirect_uri : CHATGPT;
+  const { code, body } = await appDecision(user, requestId, shown, allow);
   const decided = await call(sql, request("function", "/connect/decide", {
     method: "POST",
     headers: { ...headers, "content-type": "application/json" },
-    body: JSON.stringify({ id: requestId, allow, write: true }),
+    body,
   }));
-  return { described, decided };
+  return { described, decided, code };
 }
 
 async function exchange(sql: Sql, via: Via, clientId: string, code: string, verifier: string, resource?: string) {
@@ -160,11 +160,14 @@ async function connect(sql: Sql, pg: PGlite, via: Via) {
   assertEquals(res.status, 302);
   const requestId = new URL(res.headers.get("location")!).searchParams.get("request")!;
   const me = await newUser(pg);
-  const { described, decided } = await consent(sql, requestId, me.jwt);
+  const { described, decided, code } = await consent(sql, requestId, me);
   assertEquals(described.status, 200);
   assertEquals(decided.status, 200);
-  const back = new URL((await decided.json()).redirect);
-  return { clientId, verifier, back, me };
+  const answer = await decided.json();
+  // The server never makes or sees the code: the app adds it.
+  assertEquals(new URL(answer.redirect).searchParams.get("code"), null);
+  const back = withCode(answer.redirect, code);
+  return { clientId, verifier, back, me, requestId };
 }
 
 // MARK: Tests
@@ -266,13 +269,13 @@ Deno.test("a request belongs to the first account that opens it", async () => {
   const opened = await call(sql, request("function", `/connect/request?id=${requestId}`, { headers: { authorization: `Bearer ${owner.jwt}`, origin: SITE } }));
   assertEquals(opened.status, 200);
   assertEquals((await opened.json()).redirect_host, "chatgpt.com");
-  const theirs = await consent(sql, requestId, other.jwt);
+  const theirs = await consent(sql, requestId, other);
   assertEquals(theirs.described.status, 403);
   assertEquals(theirs.decided.status, 403);
-  const mine = await consent(sql, requestId, owner.jwt);
+  const mine = await consent(sql, requestId, owner);
   assertEquals(mine.decided.status, 200);
   // Answered once; a second answer finds nothing to answer.
-  const again = await consent(sql, requestId, owner.jwt);
+  const again = await consent(sql, requestId, owner);
   assertEquals(again.decided.status, 404);
   const [{ n }] = await sql`select count(*)::int n from public.mcp_tokens where kind = 'oauth'` as { n: number }[];
   assertEquals(n, 1);
@@ -286,11 +289,11 @@ Deno.test("signed out, or from another site, the consent calls refuse", async ()
   const anonymous = await call(sql, request("function", `/connect/request?id=${requestId}`, { headers: { origin: SITE } }));
   assertEquals(anonymous.status, 401);
   const me = await newUser(pg);
-  const elsewhere = await consent(sql, requestId, me.jwt, true, "https://evil.example");
+  const elsewhere = await consent(sql, requestId, me, true, "https://evil.example");
   assertEquals(elsewhere.described.status, 403);
   assertEquals(elsewhere.decided.status, 403);
   // The apps send no Origin at all.
-  const app = await consent(sql, requestId, me.jwt, true, null);
+  const app = await consent(sql, requestId, me, true, null);
   assertEquals(app.decided.status, 200);
 });
 
@@ -300,7 +303,7 @@ Deno.test("Don't Allow sends access_denied back, with the alias as issuer", asyn
   const res = await authorize(sql, "proxy", clientId, (await pkce()).challenge);
   const requestId = new URL(res.headers.get("location")!).searchParams.get("request")!;
   const me = await newUser(pg);
-  const { decided } = await consent(sql, requestId, me.jwt, false);
+  const { decided } = await consent(sql, requestId, me, false);
   const back = new URL((await decided.json()).redirect);
   assertEquals(back.searchParams.get("error"), "access_denied");
   assertEquals(back.searchParams.get("iss"), ALIAS);
@@ -367,7 +370,7 @@ Deno.test("a client calling itself Claude without Claude's callback is shown by 
   // And the connection it would get is listed under that address too.
   const decided = await call(sql, request("function", "/connect/decide", {
     method: "POST", headers: { authorization: `Bearer ${mixed.me.jwt}`, origin: SITE, "content-type": "application/json" },
-    body: JSON.stringify({ id: mixed.requestId, allow: true, write: false }),
+    body: (await appDecision(mixed.me, mixed.requestId, "https://evil.example/cb", true, false)).body,
   }));
   assertEquals((await decided.json()).client_name, "evil.example");
   const [{ name }] = await sql`select name from public.mcp_tokens where user_id = ${mixed.me.id}` as { name: string }[];
@@ -389,8 +392,9 @@ async function code(sql: Sql, pg: PGlite) {
   const res = await authorize(sql, "proxy", clientId, challenge);
   const requestId = new URL(res.headers.get("location")!).searchParams.get("request")!;
   const me = await newUser(pg);
-  const { decided } = await consent(sql, requestId, me.jwt);
-  return { clientId, verifier, code: new URL((await decided.json()).redirect).searchParams.get("code")!, me };
+  const { decided, code } = await consent(sql, requestId, me);
+  assertEquals(decided.status, 200);
+  return { clientId, verifier, code, me, requestId };
 }
 
 Deno.test("a stolen code without its verifier or client can't be spent, and doesn't cut off the real client", async () => {
@@ -428,7 +432,7 @@ Deno.test("Use another account: the first account lets go, and the second can an
   assertEquals((await call(sql, request("function", `/connect/request?id=${requestId}`, { headers: headers(second.jwt) }))).status, 403);
   const released = await call(sql, request("function", "/connect/release", { method: "POST", headers: headers(first.jwt), body: JSON.stringify({ id: requestId }) }));
   assertEquals(released.status, 200);
-  const { decided } = await consent(sql, requestId, second.jwt);
+  const { decided } = await consent(sql, requestId, second);
   assertEquals(decided.status, 200);
   // Released from another site: refused.
   const elsewhere = await call(sql, request("function", "/connect/release", { method: "POST", headers: { ...headers(first.jwt), origin: "https://evil.example" }, body: JSON.stringify({ id: requestId }) }));
@@ -517,7 +521,7 @@ Deno.test("look-alike names are never a title: the address is, and the claim is 
     assert(details.claimed_name === null || /^[a-z0-9 .,:;'&()+_!?-]+$/.test(details.claimed_name), `${name}: ${details.claimed_name}`);
     const decided = await call(sql, request("function", "/connect/decide", {
       method: "POST", headers: { authorization: `Bearer ${me.jwt}`, origin: SITE, "content-type": "application/json" },
-      body: JSON.stringify({ id: requestId, allow: true, write: false }),
+      body: (await appDecision(me, requestId, details.redirect_uri, true, false)).body,
     }));
     assertEquals((await decided.json()).client_name, "attacker.example", name);
     const [{ title }] = await sql`select name as title from public.mcp_tokens where user_id = ${me.id}` as { title: string }[];
@@ -544,8 +548,255 @@ Deno.test("a name registered before cleaning never shows bidi or control charact
   const q = new URLSearchParams({ response_type: "code", client_id: clientId, redirect_uri: "https://claude.ai/api/mcp/auth_callback", code_challenge: (await pkce()).challenge, code_challenge_method: "S256" });
   const id = new URL((await call(sql, request("proxy", `/authorize?${q}`))).headers.get("location")!).searchParams.get("request")!;
   const me = await newUser(pg);
-  const { described, decided } = await consent(sql, id, me.jwt);
+  const { described, decided } = await consent(sql, id, me);
   assertEquals((await described.json()).client_name, "Claude web");
   assertEquals((await decided.json()).client_name, "Claude web");
   assertEquals(displayName("\u202E\u200B", "https://chatgpt.com/connector_platform_oauth_redirect"), "ChatGPT");
+});
+
+// MARK: End-to-end encryption: the data key's wraps
+
+async function pendingRequest(sql: Sql, via: Via = "proxy") {
+  const clientId = await register(sql, via);
+  const { verifier, challenge } = await pkce();
+  const res = await authorize(sql, via, clientId, challenge);
+  return { clientId, verifier, requestId: new URL(res.headers.get("location")!).searchParams.get("request")! };
+}
+
+async function decideAs(sql: Sql, user: User, body: Record<string, unknown>) {
+  const res = await call(sql, request("function", "/connect/decide", {
+    method: "POST", headers: { authorization: `Bearer ${user.jwt}`, "content-type": "application/json" }, body: JSON.stringify(body),
+  }));
+  return { status: res.status, body: await res.json() };
+}
+
+const opens = async (wrapped: string | null, secret: string, purpose: "code" | "access" | "refresh", user: User) =>
+  wrapped !== null && (await unwrap(wrapped, await tokenKey(secret, purpose), purpose, user.id).then((k) => k.join() === user.dk!.join(), () => false));
+
+async function refresh(sql: Sql, token: string) {
+  const res = await call(sql, request("proxy", "/token", {
+    method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ grant_type: "refresh_token", refresh_token: token }),
+  }));
+  return { status: res.status, body: await res.json() };
+}
+
+const tokenRow = async (sql: Sql, token: string) =>
+  (await sql`select used_at, dk_wrap from public.oauth_tokens where token_hash = ${await sha256Hex(token)}` as { used_at: Date | null; dk_wrap: string | null }[])[0];
+
+Deno.test("decide takes the exact return address the app showed, or nothing happens", async () => {
+  const { sql, pg } = await db();
+  const { requestId } = await pendingRequest(sql);
+  const me = await newUser(pg);
+  const changed = "This request changed. Start connecting again from the other app.";
+  for (const redirect_uri of [undefined, `${CHATGPT}/`, "https://chatgpt.com/connector_platform_oauth_redirect?x=1", CHATGPT.toUpperCase()]) {
+    const { body } = await appDecision(me, requestId, CHATGPT);
+    const r = await decideAs(sql, me, { ...JSON.parse(body), redirect_uri });
+    assertEquals(r.status, 409, String(redirect_uri));
+    assertEquals(r.body.error, changed);
+  }
+  const [row] = await sql`select decided_at, grant_id from public.oauth_requests where id = ${requestId}` as { decided_at: Date | null; grant_id: string | null }[];
+  assertEquals([row.decided_at, row.grant_id], [null, null]);
+  const ok = await decideAs(sql, me, JSON.parse((await appDecision(me, requestId, CHATGPT)).body));
+  assertEquals(ok.status, 200);
+});
+
+Deno.test("decide stores the code's hash and wrap, and answers without a code", async () => {
+  const { sql, pg } = await db();
+  const { requestId } = await pendingRequest(sql);
+  const me = await newUser(pg);
+  const { code, body } = await appDecision(me, requestId, CHATGPT);
+  const sent = JSON.parse(body);
+  // A hash that isn't one, or a wrap under another key, is refused before anything is decided.
+  assertEquals((await decideAs(sql, me, { ...sent, code_hash: "nope" })).status, 400);
+  assertEquals((await decideAs(sql, me, { ...sent, code_wrap: undefined })).body.error, "Update Amber Notes to connect an AI.");
+  const stale = sent.code_wrap.replace(/^amb2\.[0-9a-f]{16}\./, `amb2.${hex(8)}.`);
+  assertEquals((await decideAs(sql, me, { ...sent, code_wrap: stale })).status, 409);
+  const r = await decideAs(sql, me, sent);
+  assertEquals(r.status, 200);
+  assertEquals(r.body.client_name, "ChatGPT");
+  assertEquals(r.body.can_write, true);
+  const back = new URL(r.body.redirect);
+  assertEquals(`${back.origin}${back.pathname}`, CHATGPT);
+  assertEquals([...back.searchParams.keys()].sort(), ["iss", "state"]);
+  const [row] = await sql`select code_hash, code_wrap, code_expires_at > now() + interval '50 seconds' as fresh
+    from public.oauth_requests where id = ${requestId}` as { code_hash: string; code_wrap: string; fresh: boolean }[];
+  assertEquals(row.code_hash, await sha256Hex(code));
+  assertEquals(row.code_wrap, sent.code_wrap);
+  assert(row.fresh);
+  assert(await opens(row.code_wrap, code, "code", me));
+});
+
+Deno.test("an account without a key can't approve: the app sets it up first", async () => {
+  const { sql, pg } = await db();
+  const { requestId } = await pendingRequest(sql);
+  const me = await newUser(pg, false);
+  const r = await decideAs(sql, me, { id: requestId, allow: true, write: true, redirect_uri: CHATGPT, code_hash: hex(32), code_wrap: `amb2.${hex(8)}.AAAA` });
+  assertEquals([r.status, r.body.error], [409, "Set up Amber Notes on this device first."]);
+  // Declining needs no key.
+  const denied = await decideAs(sql, me, { id: requestId, allow: false, redirect_uri: CHATGPT });
+  assertEquals(new URL(denied.body.redirect).searchParams.get("error"), "access_denied");
+});
+
+Deno.test("the code opens its wrap once; the key moves to the access and refresh tokens", async () => {
+  const { sql, pg } = await db();
+  const { clientId, verifier, back, me, requestId } = await connect(sql, pg, "proxy");
+  const t = await exchange(sql, "proxy", clientId, back.searchParams.get("code")!, verifier);
+  assertEquals(t.status, 200, JSON.stringify(t.body));
+  const [req] = await sql`select code_wrap, code_used_at from public.oauth_requests where id = ${requestId}` as { code_wrap: string | null; code_used_at: Date | null }[];
+  assertEquals(req.code_wrap, null);
+  assert(req.code_used_at);
+  assert(await opens((await tokenRow(sql, t.body.access_token)).dk_wrap, t.body.access_token, "access", me));
+  assert(await opens((await tokenRow(sql, t.body.refresh_token)).dk_wrap, t.body.refresh_token, "refresh", me));
+  // Neither opens with the other token, or under the other purpose.
+  assert(!(await opens((await tokenRow(sql, t.body.access_token)).dk_wrap, t.body.refresh_token, "access", me)));
+  assert(!(await opens((await tokenRow(sql, t.body.access_token)).dk_wrap, t.body.access_token, "refresh", me)));
+  const g = await resolveAccessToken(sql, t.body.access_token, request("proxy", ""));
+  assert(await opens(g!.dk_wrap, t.body.access_token, "access", me));
+});
+
+Deno.test("a code whose wrap doesn't open gets invalid_grant, and no tokens", async () => {
+  const { sql, pg } = await db();
+  const { clientId, verifier, back, me, requestId } = await connect(sql, pg, "proxy");
+  // A wrap under some other code, as a buggy or old app might send.
+  const other = await wrap(me.dk!, await tokenKey("amb_code_" + hex(32), "code"), "code", me.id);
+  await sql`update public.oauth_requests set code_wrap = ${other} where id = ${requestId}`;
+  const t = await exchange(sql, "proxy", clientId, back.searchParams.get("code")!, verifier);
+  assertEquals([t.status, t.body.error, t.body.error_description], [400, "invalid_grant", "Connect again."]);
+  assertEquals((await sql`select 1 from public.oauth_tokens`).length, 0);
+});
+
+Deno.test("refresh rotation moves the wrap to the new pair and removes the old one's", async () => {
+  const { sql, pg } = await db();
+  const { clientId, verifier, back, me } = await connect(sql, pg, "proxy");
+  const first = (await exchange(sql, "proxy", clientId, back.searchParams.get("code")!, verifier)).body;
+  const second = await refresh(sql, first.refresh_token);
+  assertEquals(second.status, 200, JSON.stringify(second.body));
+  const old = await tokenRow(sql, first.refresh_token);
+  assert(old.used_at);
+  assertEquals(old.dk_wrap, null);
+  assert(await opens((await tokenRow(sql, second.body.access_token)).dk_wrap, second.body.access_token, "access", me));
+  assert(await opens((await tokenRow(sql, second.body.refresh_token)).dk_wrap, second.body.refresh_token, "refresh", me));
+  // A refresh token without its wrap can't make a connection that opens nothing.
+  await sql`update public.oauth_tokens set dk_wrap = null where token_hash = ${await sha256Hex(second.body.refresh_token)}`;
+  const third = await refresh(sql, second.body.refresh_token);
+  assertEquals([third.status, third.body.error], [400, "invalid_grant"]);
+});
+
+Deno.test("reusing a code or a refresh token revokes the connection, and its wraps go", async () => {
+  const { sql, pg } = await db();
+  const a = await connect(sql, pg, "proxy");
+  const code = a.back.searchParams.get("code")!;
+  const t = (await exchange(sql, "proxy", a.clientId, code, a.verifier)).body;
+  assertEquals((await exchange(sql, "proxy", a.clientId, code, a.verifier)).body.error, "invalid_grant");
+  const wraps = async (userId: string) => {
+    const [r] = await sql`select
+        (select count(*)::int from public.oauth_tokens t join public.mcp_tokens g on g.id = t.grant_id where g.user_id = ${userId}) as tokens,
+        (select count(*)::int from public.oauth_requests q join public.mcp_tokens g on g.id = q.grant_id where g.user_id = ${userId} and q.code_wrap is not null) as codes,
+        (select count(*)::int from public.mcp_tokens where user_id = ${userId} and (dk_wrap is not null or revoked_at is null)) as live` as { tokens: number; codes: number; live: number }[];
+    return r;
+  };
+  assertEquals(await wraps(a.me.id), { tokens: 0, codes: 0, live: 0 });
+  assertEquals(await resolveAccessToken(sql, t.access_token, request("proxy", "")), undefined);
+
+  const b = await connect(sql, pg, "proxy");
+  const tb = (await exchange(sql, "proxy", b.clientId, b.back.searchParams.get("code")!, b.verifier)).body;
+  assertEquals((await refresh(sql, tb.refresh_token)).status, 200);
+  assertEquals((await refresh(sql, tb.refresh_token)).body.error, "invalid_grant");
+  assertEquals(await wraps(b.me.id), { tokens: 0, codes: 0, live: 0 });
+});
+
+Deno.test("revoking a connection deletes its wraps", async () => {
+  const { sql, pg } = await db();
+  const c = await connect(sql, pg, "proxy");
+  const t = (await exchange(sql, "proxy", c.clientId, c.back.searchParams.get("code")!, c.verifier)).body;
+  const res = await call(sql, request("proxy", "/revoke", {
+    method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ token: t.refresh_token }),
+  }));
+  assertEquals(res.status, 200);
+  assertEquals((await sql`select 1 from public.oauth_tokens`).length, 0);
+  // From the app: Disconnect sets revoked_at, and the trigger takes every wrap.
+  const d = await connect(sql, pg, "proxy");
+  await exchange(sql, "proxy", d.clientId, d.back.searchParams.get("code")!, d.verifier);
+  await app(pg, d.me.id, `update public.mcp_tokens set revoked_at = now() where kind = 'oauth'`);
+  assertEquals((await sql`select 1 from public.oauth_tokens`).length, 0);
+});
+
+Deno.test("/connect/label names the AI for the web page, without a session", async () => {
+  const { sql, pg } = await db();
+  const { requestId } = await pendingRequest(sql);
+  const res = await call(sql, request("proxy", `/connect/label?id=${requestId}`, { headers: { origin: SITE } }));
+  assertEquals(res.status, 200);
+  assertEquals(await res.json(), { client_name: "ChatGPT", verified_ai: "ChatGPT" });
+  const fake = await ask(sql, pg, "Claude", ["https://evil.example/cb"]);
+  assertEquals(await (await call(sql, request("proxy", `/connect/label?id=${fake.requestId}`))).json(), { client_name: "evil.example", verified_ai: null });
+  assertEquals((await call(sql, request("proxy", `/connect/label?id=${crypto.randomUUID()}`))).status, 404);
+  assertEquals((await call(sql, request("proxy", `/connect/label?id=nope`))).status, 404);
+  assertEquals((await call(sql, request("proxy", `/connect/label?id=${requestId}`, { method: "POST" }))).status, 405);
+  // Once answered, there's nothing to name.
+  const me = await newUser(pg);
+  await consent(sql, requestId, me);
+  assertEquals((await call(sql, request("proxy", `/connect/label?id=${requestId}`))).status, 404);
+});
+
+// MARK: The MCP endpoint
+
+const rpc = (sql: Sql, auth: string | null, path = "", body: unknown = { jsonrpc: "2.0", id: 1, method: "tools/list" }) =>
+  handleRequest(new Request(`${FUNCTION}${path}`, {
+    method: "POST",
+    headers: { "content-type": "application/json", "cf-connecting-ip": "203.0.113.1", ...(auth ? { authorization: auth } : {}) },
+    body: JSON.stringify(body),
+  }), sql);
+
+Deno.test("the MCP endpoint opens the key per request; a connection without a wrap that opens must connect again", async () => {
+  const { sql, pg } = await db();
+  const c = await connect(sql, pg, "function");
+  const t = (await exchange(sql, "function", c.clientId, c.back.searchParams.get("code")!, c.verifier)).body;
+  const ok = await rpc(sql, `Bearer ${t.access_token}`);
+  assertEquals(ok.status, 200);
+  assert((await ok.json()).result.tools.length > 10);
+  // The refresh token's wrap in the access token's place: it doesn't open with the access token.
+  const hash = await sha256Hex(t.access_token);
+  const refreshWrap = (await tokenRow(sql, t.refresh_token)).dk_wrap;
+  await sql`update public.oauth_tokens set dk_wrap = ${refreshWrap} where token_hash = ${hash}`;
+  for (const wrapNow of [refreshWrap, null]) {
+    await sql`update public.oauth_tokens set dk_wrap = ${wrapNow} where token_hash = ${hash}`;
+    const res = await rpc(sql, `Bearer ${t.access_token}`);
+    assertEquals(res.status, 401);
+    assertStringIncludes(res.headers.get("www-authenticate")!, `error="invalid_token"`);
+    await res.body?.cancel();
+  }
+});
+
+Deno.test("a pane_ token works only in the Authorization header, never in the address", async () => {
+  const { sql, pg } = await db();
+  const a = await account(pg);
+  const token = "pane_" + hex(32);
+  const wrapped = await wrap(a.dk, await tokenKey(token, "pane"), "pane", a.id);
+  await app(pg, a.id, `select public.create_mcp_token('Claude Code', true, $1, $2)`, [await sha256Hex(token), wrapped]);
+  const ok = await rpc(sql, `Bearer ${token}`);
+  assertEquals(ok.status, 200);
+  await ok.body?.cancel();
+  const logged: string[] = [];
+  const real = console.log;
+  console.log = (...args: unknown[]) => { logged.push(args.map(String).join(" ")); };
+  try {
+    for (const [path, auth] of [[`/${token}`, null], [`/${token}`, `Bearer ${token}`], [`/anything/else`, `Bearer ${token}`], [`?token=${token}`, null], [`?access_token=amb_at_${hex(32)}`, `Bearer ${token}`]] as const) {
+      const res = await rpc(sql, auth, path);
+      assertEquals(res.status, 401, path);
+      const body = await res.json();
+      assertStringIncludes(body.error.message, "Tokens in the address aren't accepted");
+      assertStringIncludes(body.error.message, "Authorization header");
+    }
+  } finally {
+    console.log = real;
+  }
+  // Refused without the path or the token ever reaching a log.
+  assert(logged.length > 0);
+  assert(logged.every((l) => !l.includes(token) && !l.includes("pane_") && !l.includes("amb_at_")), logged.join("\n"));
+  // A pane_ token whose connection lost its wrap has to be made again.
+  await sql`update public.mcp_tokens set dk_wrap = null where user_id = ${a.id}`;
+  const gone = await rpc(sql, `Bearer ${token}`);
+  assertEquals(gone.status, 401);
+  assertStringIncludes(gone.headers.get("www-authenticate")!, `error="invalid_token"`);
 });

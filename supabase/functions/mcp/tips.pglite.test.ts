@@ -13,10 +13,11 @@ const stubs = `
   create table auth.users (id uuid primary key);
   create function auth.uid() returns uuid language sql stable as
     $$ select (nullif(current_setting('request.jwt.claims', true), '')::json->>'sub')::uuid $$;
-  create table public.notes (id uuid primary key, user_id uuid not null references auth.users (id), body text not null default '',
+  -- As 20261001090000_e2ee.sql leaves them: text is sealed (body_ct, head_ct), never readable.
+  create table public.notes (id uuid primary key, user_id uuid not null references auth.users (id), body_ct text, head_ct text not null default 'amb2.0000000000000000.AAAA',
     body_source text, body_client text);
   create table public.note_revisions (id bigint generated always as identity primary key, note_id uuid not null references public.notes (id),
-    user_id uuid not null, body text not null, version bigint not null, source text not null default 'app', client text);
+    user_id uuid not null, body_ct text, head_ct text, version bigint not null, source text not null default 'app', client text);
   create table public.note_shares (slug text primary key, note_id uuid not null references public.notes (id), user_id uuid not null,
     revoked_at timestamptz);
   create function public.pane_take(p_bucket text, p_cost double precision default 1) returns void language sql as $$ select $$;
@@ -56,7 +57,7 @@ Deno.test("features used: nothing yet, then a flag, counted once", async () => {
 Deno.test("features used: any share link ever (even stopped) means the share link tip never shows", async () => {
   const { pg, me } = await db();
   const note = crypto.randomUUID();
-  await pg.query(`insert into public.notes (id, user_id, body) values ($1, $2, 'Shared')`, [note, me]);
+  await pg.query(`insert into public.notes (id, user_id, body_ct) values ($1, $2, 'amb2.0000000000000000.U2hhcmVk')`, [note, me]);
   await pg.query(`insert into public.note_shares (slug, note_id, user_id, revoked_at) values ('abc', $1, $2, now())`, [note, me]);
   assertEquals(await used(pg, me), ["shareLink"]);
 });
@@ -64,15 +65,15 @@ Deno.test("features used: any share link ever (even stopped) means the share lin
 Deno.test("features used: a version restored from an app counts; an AI's restore doesn't", async () => {
   const { pg, me } = await db();
   const note = crypto.randomUUID();
-  await pg.query(`insert into public.notes (id, user_id, body) values ($1, $2, 'x')`, [note, me]);
-  await pg.query(`insert into public.note_revisions (note_id, user_id, body, version, source, client) values ($1, $2, 'a', 1, 'restore', 'ChatGPT')`, [note, me]);
+  await pg.query(`insert into public.notes (id, user_id, body_ct) values ($1, $2, 'amb2.0000000000000000.eA==')`, [note, me]);
+  await pg.query(`insert into public.note_revisions (note_id, user_id, body_ct, version, source, client) values ($1, $2, 'amb2.0000000000000000.YQ==', 1, 'restore', 'ChatGPT')`, [note, me]);
   assertEquals(await used(pg, me), []);
-  await pg.query(`insert into public.note_revisions (note_id, user_id, body, version, source, client) values ($1, $2, 'b', 2, 'restore', 'iPhone')`, [note, me]);
+  await pg.query(`insert into public.note_revisions (note_id, user_id, body_ct, version, source, client) values ($1, $2, 'amb2.0000000000000000.Yg==', 2, 'restore', 'iPhone')`, [note, me]);
   assertEquals(await used(pg, me), ["versionHistory"]);
   // Or the current text itself was written by a restore on a device.
   const other = await db();
   const n2 = crypto.randomUUID();
-  await other.pg.query(`insert into public.notes (id, user_id, body, body_source, body_client) values ($1, $2, 'y', 'restore', 'Mac')`, [n2, other.me]);
+  await other.pg.query(`insert into public.notes (id, user_id, body_ct, body_source, body_client) values ($1, $2, 'amb2.0000000000000000.eQ==', 'restore', 'Mac')`, [n2, other.me]);
   assertEquals(await used(other.pg, other.me), ["versionHistory"]);
 });
 

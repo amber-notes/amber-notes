@@ -7,6 +7,7 @@
 //   deno test -A supabase/functions/mcp/oauth.e2e.test.ts
 import { assert, assertEquals, assertMatch, assertStringIncludes } from "jsr:@std/assert@1";
 import postgres from "npm:postgres@3.4.5";
+import { type Bytes, hex, keyIdOf, newDataKey, recoveryKEK, tokenKey, verifierOf, wrap } from "../_shared/e2ee.ts";
 
 // Or point PANE_ENV_FILE at the output of `supabase status -o env`.
 const file: Record<string, string> = {};
@@ -29,9 +30,12 @@ const CHATGPT = "https://chatgpt.com/connector_platform_oauth_redirect";
 
 // MARK: Helpers
 
-let session: { jwt: string; userId: string } | undefined;
+let session: { jwt: string; userId: string; dk: Bytes } | undefined;
 
-/// A signed-in Amber Notes user, created once for the run (allowlisted first).
+const sha256Hex = async (s: string) => hex(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s))));
+
+/// A signed-in Amber Notes user, created once for the run (allowlisted first), whose app has made
+/// the account's data key.
 async function user() {
   if (session) return session;
   const sql = postgres(dbURL, { max: 1 });
@@ -52,7 +56,14 @@ async function user() {
   });
   const s = await signIn.json();
   assert(s.access_token, JSON.stringify(s));
-  session = { jwt: s.access_token, userId: s.user.id };
+  const dk = newDataKey();
+  const key = await fetch(`${supa}/rest/v1/rpc/create_account_key`, {
+    method: "POST", headers: { apikey: anon, authorization: `Bearer ${s.access_token}`, "content-type": "application/json" },
+    body: JSON.stringify({ p_key_id: await keyIdOf(dk), p_verifier: await verifierOf(dk, s.user.id),
+      p_recovery_wrap: await wrap(dk, await recoveryKEK(crypto.getRandomValues(new Uint8Array(16)), s.user.id), "recovery", s.user.id) }),
+  });
+  assert(key.ok, `create key: ${key.status} ${await key.text()}`);
+  session = { jwt: s.access_token, userId: s.user.id, dk };
   return session;
 }
 
@@ -91,15 +102,22 @@ async function startAuthorize(clientId: string, challenge: string, extra: Record
   return res;
 }
 
-async function decide(requestId: string, allow: boolean, write = true) {
-  const { jwt } = await user();
+/// What the app does on Allow: it makes the code, wraps the data key under it, sends the hash and
+/// the wrap with the exact return address it showed, and adds the code to the answer itself.
+async function decide(requestId: string, allow: boolean, write = true, redirect_uri = CHATGPT) {
+  const { jwt, userId, dk } = await user();
+  const code = "amb_code_" + hex(crypto.getRandomValues(new Uint8Array(32)));
+  const sealed = allow ? { code_hash: await sha256Hex(code), code_wrap: await wrap(dk, await tokenKey(code, "code"), "code", userId) } : {};
   const res = await fetch(`${base}/connect/decide`, {
     method: "POST",
     headers: { authorization: `Bearer ${jwt}`, "content-type": "application/json" },
-    body: JSON.stringify({ id: requestId, allow, write }),
+    body: JSON.stringify({ id: requestId, allow, write, redirect_uri, ...sealed }),
   });
   assertEquals(res.status, 200);
-  return new URL((await res.json()).redirect);
+  const back = new URL((await res.json()).redirect);
+  assertEquals(back.searchParams.get("code"), null, "the server never makes the code");
+  if (allow) back.searchParams.set("code", code);
+  return back;
 }
 
 async function tokenRequest(params: Record<string, string>) {
@@ -204,7 +222,7 @@ Deno.test({ name: "the full flow: consent in the app, tokens, tools, refresh wit
   const code = back.searchParams.get("code")!;
 
   // The wrong verifier fails; so does a second decision on the same request.
-  const again = await fetch(`${base}/connect/decide`, { method: "POST", headers: { authorization: `Bearer ${jwt}`, "content-type": "application/json" }, body: JSON.stringify({ id: requestId, allow: true }) });
+  const again = await fetch(`${base}/connect/decide`, { method: "POST", headers: { authorization: `Bearer ${jwt}`, "content-type": "application/json" }, body: JSON.stringify({ id: requestId, allow: false, redirect_uri: CHATGPT }) });
   assertEquals(again.status, 404);
   await again.body?.cancel();
 
@@ -352,25 +370,20 @@ Deno.test({ name: "oauth tables are invisible to signed-in users", ...opts }, as
   }
 });
 
-// MARK: Older tokens
+// MARK: Access tokens
 
-Deno.test({ name: "an older token in the URL still works but is flagged; in a header it isn't", ...opts }, async () => {
-  const { jwt } = await user();
-  const make = async (name: string) => {
-    const res = await fetch(`${supa}/rest/v1/rpc/create_mcp_token`, {
-      method: "POST", headers: { apikey: anon, authorization: `Bearer ${jwt}`, "content-type": "application/json" },
-      body: JSON.stringify({ token_name: name, write_access: false }),
-    });
-    return await res.json() as string;
-  };
-  const inURL = await make("URL token");
-  const inHeader = await make("Header token");
-  const viaURL = await fetch(`${base}/${inURL}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }) });
-  assertEquals(viaURL.status, 200);
-  await viaURL.body?.cancel();
-  assertEquals((await rpc(inHeader, "tools/list")).status, 200);
-  const rows = await (await fetch(`${supa}/rest/v1/mcp_tokens?select=name,url_used_at&kind=eq.token`, { headers: { apikey: anon, authorization: `Bearer ${jwt}` } })).json();
-  const byName = Object.fromEntries(rows.map((r: { name: string; url_used_at: string | null }) => [r.name, r.url_used_at]));
-  assert(byName["URL token"], "URL use is recorded");
-  assertEquals(byName["Header token"], null);
+Deno.test({ name: "a pane_ token works in the Authorization header and is refused in the address", ...opts }, async () => {
+  const { jwt, userId, dk } = await user();
+  // The device makes the token and wraps the data key under it; the server gets the hash and the wrap.
+  const token = "pane_" + hex(crypto.getRandomValues(new Uint8Array(32)));
+  const res = await fetch(`${supa}/rest/v1/rpc/create_mcp_token`, {
+    method: "POST", headers: { apikey: anon, authorization: `Bearer ${jwt}`, "content-type": "application/json" },
+    body: JSON.stringify({ token_name: "Header token", write_access: false, token_hash: await sha256Hex(token),
+      dk_wrap: await wrap(dk, await tokenKey(token, "pane"), "pane", userId) }),
+  });
+  assert(res.ok, `create token: ${res.status} ${await res.text()}`);
+  const viaURL = await fetch(`${base}/${token}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }) });
+  assertEquals(viaURL.status, 401);
+  assertStringIncludes((await viaURL.json()).error.message, "Tokens in the address aren't accepted");
+  assertEquals((await rpc(token, "tools/list")).status, 200);
 });
