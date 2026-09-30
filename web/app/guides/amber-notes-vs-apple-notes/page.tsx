@@ -1,33 +1,27 @@
-import type { Metadata } from "next";
-import { GuidePage } from "@/lib/GuidePage";
-import { pageMetadata } from "@/lib/site";
+import { GuidePage, guideMetadata } from "@/lib/GuidePage";
 
 export const dynamic = "force-static";
-export const metadata: Metadata = pageMetadata({
-  title: "Amber Notes vs Apple Notes: an honest comparison",
-  description: "What Amber Notes adds to the Apple Notes way of writing, what Apple Notes still does better, and who each one is for.",
-  path: "/guides/amber-notes-vs-apple-notes",
-});
+export const metadata = guideMetadata("amber-notes-vs-apple-notes", { title: "Amber Notes vs Apple Notes: an honest comparison" });
 
 const ROWS: [string, string, string][] = [
   ["Price", "Free", "Free"],
   ["Devices", "Mac now; iPhone coming soon to the App Store", "Every Apple device, and iCloud.com in a browser"],
   ["Folders, pins, checklists, tables", "Yes", "Yes"],
-  ["ChatGPT and Claude can find, read and edit notes", "Yes, with your approval (MCP)", "No"],
-  ["Claude Code and Codex", "Yes", "No"],
+  ["ChatGPT and Claude can find, read and edit notes", "Yes, with your approval (MCP), from any device", "Not built in; community tools work on a Mac only"],
+  ["Claude Code and Codex", "Yes", "Through community tools, on a Mac"],
   ["Version history", "Yes, including every change an AI makes", "No"],
   ["Stored as markdown", "Yes, formatted on screen", "No, but a note can be exported as markdown"],
   ["Share a note", "As a read-only web page, with a link you can stop", "Invite people to edit with you"],
   ["Lock a note with a password", "No", "Yes"],
   ["Drawing, handwriting, scanning documents", "No", "Yes"],
-  ["Sync", "Amber Notes' own sync, stored in the EU", "iCloud"],
+  ["Sync", "Amber Notes' own sync, on servers in Frankfurt, Germany (EU)", "iCloud"],
   ["Open source", "Yes (MIT)", "No"],
 ];
 
 export default function Page() {
   return (
     <GuidePage
-      title="Amber Notes vs Apple Notes"
+      slug="amber-notes-vs-apple-notes"
       lede="Amber Notes is built to feel like Apple Notes, with a few things it always missed. Here's where they differ, including what Apple Notes still does better."
     >
       <h2>At a glance</h2>
@@ -51,7 +45,8 @@ export default function Page() {
         changed, with Undo, and the previous version stays in the note&apos;s history.
       </p>
       <p>
-        With Apple Notes, ChatGPT can help with a note you have open, but it can&apos;t look through your notes or save changes on its own.
+        With Apple Notes, ChatGPT on a Mac can help with a note you have open, but it can&apos;t look through your notes or save changes on
+        its own. <a href="/guides/claude-and-apple-notes">Claude and Apple Notes</a> covers the do-it-yourself options.
       </p>
 
       <h2>What Apple Notes does better</h2>

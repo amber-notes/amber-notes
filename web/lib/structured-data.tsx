@@ -8,6 +8,10 @@ type Thing = Record<string, unknown>;
 
 const PERSON_ID = `${SITE_URL}/#maker`;
 const APP_ID = `${SITE_URL}/#app`;
+const ORG_ID = `${SITE_URL}/#organization`;
+
+/// Where else Amber Notes is, so search engines don't mix it up with other apps of a similar name.
+const SAME_AS = [GITHUB_URL, ...(APP_STORE_LIVE ? [APP_STORE_URL] : [])];
 
 export const maker: Thing = {
   "@type": "Person",
@@ -17,13 +21,25 @@ export const maker: Thing = {
   sameAs: [X_URL, MAKER_GITHUB],
 };
 
+/// Amber Notes as the publisher of the site and the app, founded by its maker.
+export const organization: Thing = {
+  "@type": "Organization",
+  "@id": ORG_ID,
+  name: SITE_NAME,
+  url: SITE_URL,
+  logo: `${SITE_URL}/mark.png`,
+  description: "Makers of Amber Notes, the free, open-source notes app for iPhone and Mac that ChatGPT and Claude can use.",
+  founder: { "@id": PERSON_ID },
+  sameAs: SAME_AS,
+};
+
 export const website: Thing = {
   "@type": "WebSite",
   "@id": `${SITE_URL}/#website`,
   name: SITE_NAME,
   url: SITE_URL,
   inLanguage: "en",
-  publisher: { "@id": PERSON_ID },
+  publisher: { "@id": ORG_ID },
 };
 
 export function app(version: string | null): Thing {
@@ -55,9 +71,9 @@ export function app(version: string | null): Thing {
       "Share a note as a web page",
     ],
     license: `${GITHUB_URL}/blob/main/LICENSE`,
-    sameAs: [GITHUB_URL],
+    sameAs: SAME_AS,
     author: { "@id": PERSON_ID },
-    publisher: { "@id": PERSON_ID },
+    publisher: { "@id": ORG_ID },
   };
 }
 
@@ -71,6 +87,25 @@ export function faqPage(items: { q: string; a: string[] }[], path: string): Thin
       name: it.q,
       acceptedAnswer: { "@type": "Answer", text: it.a.join("\n\n") },
     })),
+  };
+}
+
+/// A guide as an Article, written by the maker and published by Amber Notes.
+export function article({ title, description, path, updated }: { title: string; description: string; path: string; updated: string }): Thing {
+  return {
+    "@type": "Article",
+    "@id": `${SITE_URL}${path}#article`,
+    headline: title,
+    description,
+    url: `${SITE_URL}${path}`,
+    mainEntityOfPage: `${SITE_URL}${path}`,
+    inLanguage: "en",
+    datePublished: updated,
+    dateModified: updated,
+    image: `${SITE_URL}/mark.png`,
+    author: { "@id": PERSON_ID },
+    publisher: { "@id": ORG_ID },
+    about: { "@id": APP_ID },
   };
 }
 
