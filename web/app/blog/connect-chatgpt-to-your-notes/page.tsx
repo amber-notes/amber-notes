@@ -8,10 +8,13 @@ export const metadata = postMetadata("connect-chatgpt-to-your-notes");
 
 const FAQ = [
   { q: "Which ChatGPT plans can add Amber Notes?", a: [
-    "Adding your own app in ChatGPT needs Developer mode, which OpenAI offers on Plus, Pro, Business, Enterprise and Edu, on the web. The free plan can't add one.",
+    "Adding your own app in ChatGPT needs Developer mode, which OpenAI's developer docs list for Plus, Pro, Business, Enterprise and Edu, on the web. The free plan can't add one. OpenAI also says Developer mode can depend on account and workspace policy, so in a Business or Enterprise workspace an admin may have to allow it.",
   ] },
   { q: "Does it work in the ChatGPT app on my phone?", a: [
-    "Yes. You add Amber Notes once in ChatGPT on the web. After that, it's available in the ChatGPT apps too.",
+    "You add Amber Notes once, in ChatGPT on the web. OpenAI's developer docs only describe the web, and I haven't been able to recheck the phone apps in a Plus account since the September changes, so treat phone access as unverified for now.",
+  ] },
+  { q: "Why don't I see Create MCP App in ChatGPT?", a: [
+    "Developer mode is probably off. Turn it on in Settings, Security and login (chatgpt.com/settings/security), then go back to Plugins and choose + again. Without it, the menu only offers Create plugin and Upload plugin. That fix comes from a ChatGPT Pro user on OpenAI's community forum on 28 September 2026, not from OpenAI's docs.",
   ] },
   { q: "Can ChatGPT delete my notes?", a: [
     "Only if you chose read and edit. A deleted note goes to Recently Deleted for 30 days, and every change keeps the previous version in the note's history, so you can undo it.",
@@ -49,17 +52,46 @@ export default function Page() {
         <li>In Amber Notes, open Settings (Amber Notes, then Settings, or ⌘,). If your notes are in Apple Notes, <a href="/blog/move-from-apple-notes">import them first</a>.</li>
         <li>Under Connect an AI, choose ChatGPT, then Copy Address and Open ChatGPT. Amber Notes copies its address and opens ChatGPT&apos;s Plugins page. The steps stay on screen while you work.</li>
         <li>In ChatGPT, turn on Developer mode in Settings, Security and login. You only do this once.</li>
-        <li>In Plugins, choose + and name it Amber Notes.</li>
-        <li>Paste the address, choose OAuth, then Create.</li>
+        <li>In Plugins, choose +. On accounts that show a menu, choose Create MCP App. Name it Amber Notes.</li>
+        <li>Paste the address as the connection, choose OAuth, then Create.</li>
         <li>
           ChatGPT asks Amber Notes for permission. A page on ambernotes.app opens: choose Open in Amber Notes, or sign in right there.
           Either way you see &ldquo;Allow ChatGPT to use your notes?&rdquo; Pick Read and Edit, or Read Only, and choose Allow.
         </li>
-        <li>Try it. Ask ChatGPT: &ldquo;Search my Amber Notes and tell me what I wrote most recently.&rdquo;</li>
+        <li>Start a new chat, add Amber Notes from the tools menu, and try it: &ldquo;Search my Amber Notes and tell me what I wrote most recently.&rdquo;</li>
       </ol>
       <Figure shot={SHOTS.consent} caption="Nothing is shared until you choose Allow, and you pick Read and Edit or Read Only." />
       <p>
         OpenAI renamed some of these pages in 2026. If you see Connectors or Apps instead of Plugins, it&apos;s the same place.
+      </p>
+
+      <h3 id="create-mcp-app-missing">If Create MCP App isn&apos;t there</h3>
+      <p>
+        If choosing + in Plugins only offers Create plugin and Upload plugin, Developer mode is off. Open
+        chatgpt.com/settings/security, turn on Developer mode, go back to Plugins and choose + again. Create MCP App should then be in the
+        menu. This comes from a <a href="https://community.openai.com/t/create-mcp-app-missing-from-plugins-menu-on-personal-chatgpt-accounts/1401436" rel="noopener">thread
+        on OpenAI&apos;s community forum</a> on 28 September 2026, where a Pro user confirmed it for a teammate&apos;s account; OpenAI&apos;s
+        docs only say to choose the plus button. In a Business or Enterprise workspace, Developer mode can also be switched off by
+        the workspace&apos;s policy, so ask your admin if the toggle isn&apos;t there.
+      </p>
+      <p>
+        Menu labels differ between accounts while OpenAI rolls changes out. I couldn&apos;t check these steps in a Plus account after the
+        September changes; they follow OpenAI&apos;s <a href="https://developers.openai.com/api/docs/guides/developer-mode" rel="noopener">Developer
+        mode guide</a> and <a href="https://developers.openai.com/plugins/deploy/connect-chatgpt" rel="noopener">Connect and test your
+        plugin</a>. If yours look different, the help page below is the quickest way to tell me.
+      </p>
+
+      <h3 id="devday-2026">What changed at DevDay 2026</h3>
+      <p>
+        At DevDay on 29 September, OpenAI <a href="https://techcrunch.com/2026/09/29/openai-expands-chatgpts-plugins-with-app-like-interfaces-and-automations/" rel="noopener">announced</a> bigger
+        plugins: a home in the sidebar, panels next to the chat, file viewers, a Plugin Creator tool, a new way to submit to the plugin
+        directory, per-plugin permission approval, and support for MCP Events, a proposed addition to MCP that lets a plugin start an
+        automation when something happens in the connected app. OpenAI gave no dates for when these reach each plan.
+      </p>
+      <p>
+        None of this changes the steps above. Amber Notes connects as an MCP app you add yourself, and it doesn&apos;t use the new panels or
+        MCP Events yet. OpenAI&apos;s developer docs call Developer mode elevated risk: the model can make mistakes on write actions, and a
+        malicious server could try to take your data. That&apos;s why Amber Notes asks you to allow each app, lets you pick Read Only, and keeps every earlier version.
       </p>
 
       <h2>Claude</h2>
