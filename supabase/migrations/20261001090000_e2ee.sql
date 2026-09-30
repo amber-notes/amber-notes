@@ -116,14 +116,15 @@ grant execute on function public.start_fresh(text) to authenticated;
 drop function if exists public.search_notes(text, int);
 alter table public.notes drop column search, drop column title, drop column body;
 drop function if exists public.note_title(text);
+-- A live note always has a head, and its text unless it's locked. A note deleted for good (purged
+-- from Recently Deleted) keeps neither.
 alter table public.notes
   add column body_ct text,
-  add column head_ct text not null,
+  add column head_ct text,
   add constraint notes_sealed check (
-    head_ct ~ '^amb2\.[0-9a-f]{16}\.[A-Za-z0-9+/]+={0,2}$' and octet_length(head_ct) <= 8000
-    and case when locked_body is null
-      then body_ct is not null and body_ct ~ '^amb2\.[0-9a-f]{16}\.[A-Za-z0-9+/]+={0,2}$' and octet_length(body_ct) <= 7000000
-      else body_ct is null end);
+    (head_ct is null or (head_ct ~ '^amb2\.[0-9a-f]{16}\.[A-Za-z0-9+/]+={0,2}$' and octet_length(head_ct) <= 8000))
+    and (body_ct is null or (body_ct ~ '^amb2\.[0-9a-f]{16}\.[A-Za-z0-9+/]+={0,2}$' and octet_length(body_ct) <= 7000000))
+    and (deleted_at is not null or (head_ct is not null and (locked_body is null) = (body_ct is not null))));
 
 alter table public.note_revisions drop column body;
 alter table public.note_revisions add column body_ct text, add column head_ct text;
