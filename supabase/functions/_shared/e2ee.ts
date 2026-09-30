@@ -1,27 +1,33 @@
-// End-to-end encryption: the formats every side shares (the apps in Pane/Model/E2EE.swift, the web
-// approval page in web/lib/e2ee.ts, and the MCP server here). See docs/Technical/e2ee-design.md.
+// End-to-end encryption: the formats every side shares (the apps in Pane/Model/E2EE.swift and the
+// MCP server here). See docs/Technical/e2ee-design.md. e2ee-vectors.json pins every format; the
+// Swift and Deno tests both check against it.
 //
-// One data key per account (256 random bits), made on the user's first device. Everything the
-// account writes is sealed with it in the notes-password box format:
+// One data key (DK) per account, 256 random bits, made on the account's first device and kept in
+// iCloud Keychain. Everything the account syncs is sealed with it in the locked-note box format:
 //
 //   amb2.<key id>.<base64 nonce(12) ‖ ciphertext ‖ tag(16)>      AES-256-GCM
 //   AAD = "amb2.<key id>|<context>"
 //
-// The key id is the first 16 hex digits of SHA-256(data key). The context binds a box to what it
-// is: "body:<note id>", "head:<note id>", "folder:<id>", "file-meta:<id>", and for the key itself
-// "wrap:<purpose>:<user id>". A file's bytes are one box: "AMB2F" ‖ key id ‖ nonce ‖ ciphertext ‖ tag,
-// with the context "file:<attachment id>".
+// The key id is the first 16 hex digits of SHA-256(DK). The context binds a box to what it is:
+// "body:<note id>", "head:<note id>", "folder:<id>", "file-meta:<id>", and for a wrap of DK itself
+// "wrap:<purpose>:<user id>". A file's bytes are one box: "AMB2F" ‖ key id ‖ nonce ‖ ciphertext ‖
+// tag, with the context "file:<attachment id>".
 //
-// The data key is kept by the server only wrapped (sealed): under the encryption password (PBKDF2),
-// under the recovery key, and under each AI connection's tokens (HKDF of the token). Only a hash of
-// a token is stored, so the server can open a wrap only while a request carries the token itself.
+// The server holds no key material, only:
+//   account_keys.verifier        HMAC-SHA256 under HKDF(DK, "verifier") of "amber-notes verifier|<user>"
+//   account_keys.recovery_wrap   DK sealed under HKDF(recovery key)
+//   oauth_requests.code_wrap     DK sealed under HKDF(authorization code), for 60 seconds
+//   oauth_tokens.dk_wrap         DK sealed under HKDF(access or refresh token)
+//   mcp_tokens.dk_wrap           DK sealed under HKDF(pane_ token)
+// and only hashes of those codes and tokens, so a wrap opens only while a request carries one.
 
 export const PREFIX = "amb2";
 const enc = new TextEncoder();
 export type Bytes = Uint8Array<ArrayBuffer>;
 const dec = new TextDecoder("utf-8", { fatal: true });
+const SALT = enc.encode("amber-notes/e2ee");
 
-export type WrapPurpose = "password" | "recovery" | "code" | "access" | "refresh" | "pane" | "file";
+export type WrapPurpose = "recovery" | "code" | "access" | "refresh" | "pane";
 
 export const bodyContext = (id: string) => `body:${id.toLowerCase()}`;
 export const headContext = (id: string) => `head:${id.toLowerCase()}`;
@@ -30,12 +36,14 @@ export const fileMetaContext = (id: string) => `file-meta:${id.toLowerCase()}`;
 export const fileContext = (id: string) => `file:${id.toLowerCase()}`;
 export const wrapContext = (purpose: WrapPurpose, userId: string) => `wrap:${purpose}:${userId.toLowerCase()}`;
 
-/** What a note shows in lists, sealed next to its body. */
-export type Head = { title: string; preview: string };
+/** What a note shows in lists, sealed next to its body. A locked note's head is its title only. */
+export type Head = { title: string; preview?: string };
+/** A file's name, type and size, sealed together. */
+export type FileMeta = { name: string; type: string; size?: number };
 
 export const BOX = /^amb2\.([0-9a-f]{16})\.([A-Za-z0-9+/]+={0,2})$/;
 
-export function toBase64(bytes: Bytes): string {
+export function toBase64(bytes: Uint8Array): string {
   let s = "";
   for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
   return btoa(s);
@@ -48,7 +56,7 @@ export function fromBase64(s: string): Bytes {
   return out;
 }
 
-export const hex = (bytes: Bytes) => Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+export const hex = (bytes: Uint8Array) => Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 
 export class OpenError extends Error {}
 
@@ -105,31 +113,24 @@ export async function open(sealed: string, key: CryptoKey, context: string): Pro
   }
 }
 
+// MARK: The verifier: shows a key is this account's without the server holding it
+
+/** hex(HMAC-SHA256(HKDF(DK, info "verifier"), "amber-notes verifier|<user id>")). */
+export async function verifierOf(raw: Bytes, userId: string): Promise<string> {
+  const ikm = await crypto.subtle.importKey("raw", raw, "HKDF", false, ["deriveKey"]);
+  const mac = await crypto.subtle.deriveKey(
+    { name: "HKDF", hash: "SHA-256", salt: SALT, info: enc.encode("verifier") },
+    ikm, { name: "HMAC", hash: "SHA-256", length: 256 }, false, ["sign"]);
+  return hex(new Uint8Array(await crypto.subtle.sign("HMAC", mac, enc.encode(`amber-notes verifier|${userId.toLowerCase()}`))));
+}
+
 // MARK: Wrapping the data key
 
-/** The key a token (or code, or file link) opens its wrap with: HKDF-SHA256 of the token itself. */
+/** The key a token or code opens its wrap with: HKDF-SHA256 of the token itself. */
 export async function tokenKey(secret: string, purpose: WrapPurpose): Promise<CryptoKey> {
   const ikm = await crypto.subtle.importKey("raw", enc.encode(secret), "HKDF", false, ["deriveKey"]);
   return await crypto.subtle.deriveKey(
-    { name: "HKDF", hash: "SHA-256", salt: enc.encode("amber-notes/e2ee"), info: enc.encode(`wrap ${purpose}`) },
-    ikm, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
-}
-
-/** The key the encryption password gives: PBKDF2-HMAC-SHA256, as for the notes password. */
-export async function passwordKey(password: string, saltB64: string, iterations: number): Promise<CryptoKey> {
-  const base = await crypto.subtle.importKey("raw", enc.encode(password.normalize("NFC")), "PBKDF2", false, ["deriveKey"]);
-  return await crypto.subtle.deriveKey(
-    { name: "PBKDF2", hash: "SHA-256", salt: fromBase64(saltB64), iterations },
-    base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
-}
-
-/** The recovery key as typed: letters and digits only, upper case. */
-export const normalizeRecoveryKey = (typed: string) => typed.toUpperCase().replace(/[^0-9A-Z]/g, "");
-
-export async function recoveryKey(typed: string, userId: string): Promise<CryptoKey> {
-  const ikm = await crypto.subtle.importKey("raw", enc.encode(normalizeRecoveryKey(typed)), "HKDF", false, ["deriveKey"]);
-  return await crypto.subtle.deriveKey(
-    { name: "HKDF", hash: "SHA-256", salt: enc.encode("amber-notes/e2ee"), info: enc.encode(`recovery ${userId.toLowerCase()}`) },
+    { name: "HKDF", hash: "SHA-256", salt: SALT, info: enc.encode(`wrap ${purpose}`) },
     ikm, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
 }
 
@@ -142,6 +143,54 @@ export async function unwrap(wrapped: string, kek: CryptoKey, purpose: WrapPurpo
   const raw = fromBase64(await open(wrapped, kek, wrapContext(purpose, userId)));
   if (raw.length !== 32 || (await keyIdOf(raw)) !== boxKeyId(wrapped)) throw new OpenError("not a data key");
   return raw;
+}
+
+// MARK: The recovery key
+//
+// 128 random bits, written as 28 characters of Crockford base32 (0-9 and A-Z without I, L, O, U)
+// in seven groups of four: the 128 bits, then the first 12 bits of SHA-256 of them as a check, so
+// a typo is caught before the server is asked anything. Reading it back is forgiving: case,
+// spaces and dashes don't matter, and O reads as 0, I and L as 1.
+
+const CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+
+export async function recoveryKeyText(bytes: Uint8Array): Promise<string> {
+  if (bytes.length !== 16) throw new Error("a recovery key is 16 bytes");
+  const check = new Uint8Array(await crypto.subtle.digest("SHA-256", new Uint8Array(bytes)));
+  let bits = 0n;
+  for (const b of bytes) bits = (bits << 8n) | BigInt(b);
+  bits = (bits << 12n) | (BigInt(check[0]) << 4n) | BigInt(check[1] >> 4);
+  let out = "";
+  for (let i = 27; i >= 0; i--) out += CROCKFORD[Number((bits >> BigInt(i * 5)) & 31n)];
+  return out.match(/.{4}/g)!.join("-");
+}
+
+/** The canonical form of a typed recovery key: its 28 characters, or null when it can't be one. */
+export function canonicalRecoveryKey(typed: string): string | null {
+  const s = typed.toUpperCase().replace(/[\s\-‐-―_.]/g, "").replace(/O/g, "0").replace(/[IL]/g, "1");
+  return /^[0-9A-HJKMNP-TV-Z]{28}$/.test(s) ? s : null;
+}
+
+/** The 16 key bytes a typed recovery key stands for, or null (wrong length, letter or check). */
+export async function parseRecoveryKey(typed: string): Promise<Bytes | null> {
+  const s = canonicalRecoveryKey(typed);
+  if (!s) return null;
+  let bits = 0n;
+  for (const c of s) bits = (bits << 5n) | BigInt(CROCKFORD.indexOf(c));
+  const check = Number(bits & 0xfffn);
+  bits >>= 12n;
+  const out = new Uint8Array(16);
+  for (let i = 15; i >= 0; i--) { out[i] = Number(bits & 0xffn); bits >>= 8n; }
+  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", out));
+  return ((digest[0] << 4) | (digest[1] >> 4)) === check ? out : null;
+}
+
+/** The key the recovery wrap is sealed with: HKDF-SHA256 of the 16 recovery key bytes. */
+export async function recoveryKEK(bytes: Bytes, userId: string): Promise<CryptoKey> {
+  const ikm = await crypto.subtle.importKey("raw", bytes, "HKDF", false, ["deriveKey"]);
+  return await crypto.subtle.deriveKey(
+    { name: "HKDF", hash: "SHA-256", salt: SALT, info: enc.encode(`recovery ${userId.toLowerCase()}`) },
+    ikm, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
 }
 
 // MARK: Files
@@ -160,7 +209,7 @@ export async function sealFile(bytes: Bytes, key: CryptoKey, keyId: string, id: 
   return out;
 }
 
-export function isSealedFile(bytes: Bytes): boolean {
+export function isSealedFile(bytes: Uint8Array): boolean {
   return bytes.length >= 49 && FILE_MAGIC.every((b, i) => bytes[i] === b);
 }
 
@@ -181,26 +230,30 @@ export async function openFile(bytes: Bytes, key: CryptoKey, id: string): Promis
 export class Vault {
   private constructor(readonly keyId: string, private readonly key: CryptoKey, readonly userId: string) {}
 
+  /** Imports the key and wipes the raw bytes it was given. */
   static async from(raw: Bytes, userId: string): Promise<Vault> {
     const v = new Vault(await keyIdOf(raw), await aesKey(raw), userId);
+    raw.fill(0);
     return v;
   }
 
-  sealText(text: string, context: string) { return seal(text, this.key, this.keyId, context); }
-  openText(sealed: string, context: string) { return open(sealed, this.key, context); }
-
   sealBody(id: string, body: string) { return seal(body, this.key, this.keyId, bodyContext(id)); }
   openBody(id: string, sealed: string) { return open(sealed, this.key, bodyContext(id)); }
-  sealHead(id: string, head: Head) { return seal(JSON.stringify(head), this.key, this.keyId, headContext(id)); }
+  sealHead(id: string, head: Head) {
+    const h = head.preview === undefined ? { title: head.title } : { title: head.title, preview: head.preview };
+    return seal(JSON.stringify(h), this.key, this.keyId, headContext(id));
+  }
   async openHead(id: string, sealed: string): Promise<Head> {
     const h = JSON.parse(await open(sealed, this.key, headContext(id)));
-    return { title: String(h?.title ?? "New Note"), preview: String(h?.preview ?? "") };
+    const title = String(h?.title ?? "New Note");
+    return typeof h?.preview === "string" ? { title, preview: h.preview } : { title };
   }
   sealFolder(id: string, name: string) { return seal(name, this.key, this.keyId, folderContext(id)); }
   openFolder(id: string, sealed: string) { return open(sealed, this.key, folderContext(id)); }
-  async openFileMeta(id: string, sealed: string): Promise<{ name: string; type: string }> {
+  sealFileMeta(id: string, meta: FileMeta) { return seal(JSON.stringify(meta), this.key, this.keyId, fileMetaContext(id)); }
+  async openFileMeta(id: string, sealed: string): Promise<FileMeta> {
     const m = JSON.parse(await open(sealed, this.key, fileMetaContext(id)));
-    return { name: String(m?.name ?? "file"), type: String(m?.type ?? "public.data") };
+    return { name: String(m?.name ?? "file"), type: String(m?.type ?? "public.data"), ...(typeof m?.size === "number" ? { size: m.size } : {}) };
   }
   openFile(id: string, bytes: Bytes) { return openFile(bytes, this.key, id); }
 }

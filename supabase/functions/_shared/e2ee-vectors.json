@@ -2,6 +2,7 @@
   "about": "Fixed inputs and the exact boxes they seal to. Every implementation must produce these with the given nonce, and open them.",
   "data_key": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA=",
   "key_id": "ae216c2ef5247a37",
+  "verifier": "3da82bcd7d876d683a8ab8df352b2aad23d5e0e6601e661211537c8607c8be7e",
   "nonce": "oKGio6Slpqeoqaqr",
   "user_id": "7c0f1d2e-3a4b-4c5d-8e6f-0a1b2c3d4e5f",
   "note_id": "11111111-2222-4333-8444-555555555555",
@@ -15,38 +16,41 @@
     "context": "head:11111111-2222-4333-8444-555555555555",
     "sealed": "amb2.ae216c2ef5247a37.oKGio6SlpqeoqaqrwvNJD4nZPyZFLO4CgudP6nX7kmkqDRbtQiz3x3AeuUZFEjChnPLRQA1P4Hs6pWxabJ4oWLb16lS/X2G4hAH0PA=="
   },
+  "locked_head": {
+    "json": "{\"title\":\"Passwords\"}",
+    "context": "head:11111111-2222-4333-8444-555555555555",
+    "sealed": "amb2.ae216c2ef5247a37.oKGio6SlpqeoqaqrwvNJD4nZPyZFLPIKgvZX6yWzwzsl1Ubx1sC2SEKzGGyCYPCA8w=="
+  },
   "folder": {
     "name": "Travel",
     "context": "folder:11111111-2222-4333-8444-555555555555",
     "sealed": "amb2.ae216c2ef5247a37.oKGio6Slpqeoqaqr7aNcEJjZlaH3oVkx2y0g8UGdTb0QnQ=="
   },
   "file_meta": {
-    "json": "{\"name\":\"ticket.pdf\",\"type\":\"com.adobe.pdf\"}",
+    "json": "{\"name\":\"ticket.pdf\",\"type\":\"com.adobe.pdf\",\"size\":300}",
     "context": "file-meta:11111111-2222-4333-8444-555555555555",
-    "sealed": "amb2.ae216c2ef5247a37.oKGio6SlpqeoqaqrwvNTB5DQeD5dessImuBUqiez1jt0ShT9Vz73x3Att1gfsP2njbeeREkQ4uTPRJ8w1Yt6DrCzgEf4fJ0L"
+    "sealed": "amb2.ae216c2ef5247a37.oKGio6SlpqeoqaqrwvNTB5DQeD5dessImuBUqiez1jt0ShT9Vz73x3Att1gfsP2njbeeREkQ4rWERSddfJRK9/yrg/pit/OkXE1uojtS4qGLKF0="
   },
   "file": {
     "plain": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+P0BBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWltcXV5fYGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6e3x9fn+AgYKDhIWGh4iJiouMjY6PkJGSk5SVlpeYmZqbnJ2en6ChoqOkpaanqKmqq6ytrq+wsbKztLW2t7i5uru8vb6/wMHCw8TFxsfIycrLzM3Oz9DR0tPU1dbX2Nna29zd3t/g4eLj5OXm5+jp6uvs7e7v8PHy8/T19vf4+fr7/P3+/wABAgMEBQYHCAkKCwwNDg8QERITFBUWFxgZGhscHR4fICEiIyQlJicoKSor",
     "attachment_id": "11111111-2222-4333-8444-555555555555",
     "sealed": "QU1CMkZhZTIxNmMyZWY1MjQ3YTM3oKGio6SlpqeoqaqrudA/ZfmwXAN3B6hg/Ygui0fGogpMfXaTP0LP5k5TxioR8Lvry/eWEwVf6rKKG2AIKYdC9/iuyOJw3bnL/gs5V+wD4afqbgq2ktkMv06XtZCdzkQYLKMEIZGrnGG7mgv+ZL9gPiWEPs7M4CQdHwuSqZGjKwSlpaqmvJgyzZY6TKp6DMR8tUBtdMn8fcyer2EpdeIf4URXxfP4l16VoOvFyoNwOHj/PIW87UGXtsjRIuvQKrUmp7Zo1IM48ZvKTRPowds9aCQUIQjsP+wtFy673+O89t3SIh2iBc1JrLJZRLIDc6AF8T5901SToAJNJCfSNfhgIpJGWexzVVv7XM/kYFnPOHCJ+8EXUMg3SBQq70sgiu8v62BMlU0h9WdWm0U+LU/MBYgRA5T7gEB5I8Y14kwqFLluAa1PgU8ucg=="
   },
-  "password": {
-    "password": "Blåbär sylt 2026",
-    "salt": "QEFCQ0RFRkdISUpLTE1OTw==",
-    "iterations": 1000,
-    "wrap": "amb2.ae216c2ef5247a37.oKGio6SlpqeoqaqrC73eXql8yPWbfDkXQSzBm4OJsDn8+hfMJFjoJWLQJOeEHRyA9+WoJU65U5pG5ek4AiMQXKYibhaXQSfN"
-  },
   "recovery": {
-    "typed": "7K4P-Q2WM-9XRD-HT3C-LN8F-B6YJ-M2VA",
-    "normalized": "7K4PQ2WM9XRDHT3CLN8FB6YJM2VA",
-    "wrap": "amb2.ae216c2ef5247a37.oKGio6Slpqeoqaqrnfx+xsrm7pJmO9DNNRGTgHrysh1iRSKLB7Eash5cnpsz8PoswmDiCwYMqG35wpfoVGWtOz1soiz8erKe"
+    "bytes": "MDEyMzQ1Njc4OTo7PD0+Pw==",
+    "text": "60RK-4CSM-6MV3-EE1S-78XK-RF9Y-7Y0P",
+    "typed": "6Ork 4csm 6mv3 eels 78xk rf9y 7yOp",
+    "canonical": "60RK4CSM6MV3EE1S78XKRF9Y7Y0P",
+    "wrap": "amb2.ae216c2ef5247a37.oKGio6Slpqeoqaqr0mRMYM8wIV9TSTzyVnVizibWyU+oakrx1fBighn0kqHkfxG2JKH6Ykmqq+UW+W1Jwy+wgi95lKcOfMAw"
   },
   "tokens": {
     "access": "amb_at_abababababababababababababababababababababababababababababababab",
+    "refresh": "amb_rt_1212121212121212121212121212121212121212121212121212121212121212",
     "code": "amb_code_cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
     "pane": "pane_efefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef",
     "wraps": {
       "access": "amb2.ae216c2ef5247a37.oKGio6SlpqeoqaqrUpE+pyoHdnbgoCt1wCMfRAl4a0OXNIHvzyQKy4YHJua0vNloE5Rg+dmW2doacOScTgMFMsjvzfzIxBui",
+      "refresh": "amb2.ae216c2ef5247a37.oKGio6SlpqeoqaqrthdvP97sRaGXhz5cdcQKipowNh/MsH94wQY64m/IJzwHhYFds/fgquN41AKMLb2rLA/RlfU1W0SgR/TQ",
       "code": "amb2.ae216c2ef5247a37.oKGio6SlpqeoqaqruHd25cJjS5eC20rZkyx+Ah+VddEuQgIeD0ozySMvZh0KctIyi7s7IHtJHUB3D4ClOr6fBJPtdZX664CV",
       "pane": "amb2.ae216c2ef5247a37.oKGio6SlpqeoqaqrXDewuPjLVp3oFLyrnQeTVZO9WRizXFz/zMjs+opRNqgfiD+wVQViJE2iGgdLk2glpIBEdv4J/gstbSAW"
     }
