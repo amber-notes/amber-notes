@@ -147,6 +147,15 @@ export function sliceLines(body: string, start?: number, end?: number, numbered 
   return lines.slice(a - 1, b).map((l, k) => (numbered ? `${String(a + k).padStart(width)}│ ${l}` : l)).join("\n");
 }
 
+/** The leading whole lines of `text` that fit in `max` characters, so one tool result stays a
+ *  readable size. A single line longer than `max` is cut. */
+export function fitLines(text: string, max: number): { text: string; lines: number; truncated: boolean } {
+  if (text.length <= max) return { text, lines: text.split("\n").length, truncated: false };
+  const cut = text.lastIndexOf("\n", max);
+  const kept = cut > 0 ? text.slice(0, cut) : text.slice(0, max);
+  return { text: kept, lines: kept.split("\n").length, truncated: true };
+}
+
 /** Headings, checklist progress and size: a quick map of a long note. */
 export function outline(body: string) {
   const lines = body.split("\n");

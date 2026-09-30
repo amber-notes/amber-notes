@@ -70,7 +70,7 @@ jobs:
       - name: Typecheck the Edge Functions
         run: for f in supabase/functions/*/index.ts; do deno check "$f"; done
       - name: Unit tests
-        run: deno test --allow-all supabase/functions/mcp/notes.test.ts
+        run: deno test --allow-all supabase/functions/mcp/notes.test.ts supabase/functions/mcp/annotations.test.ts supabase/functions/mcp/verification.test.ts
 
   web:
     name: Share site
