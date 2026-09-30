@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
-  browserFrom, newCode, newPickup, pageNumber, parseKeyRow, recoveryApproval, RecoveryError, sealedDestination, sha256Hex, statusRequest, statusStep, withCode,
+  browserFrom, newCode, newPageNonce, newPickup, pageCommit, pageNumber, parseKeyRow, recoveryApproval, RecoveryError, revealRequest, safeDeniedRedirect,
+  sealedDestination, sha256Hex, statusRequest, statusStep, withCode,
 } from "./connect-flow";
 import { fromBase64, openHandoff, toBase64, tokenKey, unwrap } from "./e2ee";
 
@@ -71,10 +72,34 @@ describe("the pickup secret", () => {
   });
 });
 
-describe("the number to tap", () => {
-  it("is the vector's two digits for its page key and request", async () => {
-    expect(await pageNumber(fromBase64(v.handoff.browser_public), v.handoff.request_id)).toBe(v.handoff.match_number);
-    expect(await pageNumber(fromBase64(v.handoff.browser_public), v.handoff.request_id.toUpperCase())).toBe(v.handoff.match_number);
+const hexBytes = (s: string) => Uint8Array.from(Buffer.from(s, "hex"));
+
+describe("the commit and the number to type", () => {
+  const pub = fromBase64(v.handoff.browser_public);
+  const np = hexBytes(v.handoff.page_nonce);
+
+  it("commits to the page key and its nonce as the vector does", async () => {
+    expect(await pageCommit(pub, np)).toBe(v.handoff.commit);
+    expect(v.handoff.commit).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("is the vector's two digits from the page key, both nonces and the request", async () => {
+    expect(await pageNumber(pub, np, v.handoff.device_nonce, v.handoff.request_id)).toBe(v.handoff.match_number);
+    expect(await pageNumber(pub, np, v.handoff.device_nonce, v.handoff.request_id.toUpperCase())).toBe(v.handoff.match_number);
+  });
+
+  it("the page nonce is 16 random bytes", () => {
+    const [a, b] = [newPageNonce(), newPageNonce()];
+    expect(a.length).toBe(16);
+    expect(Buffer.from(a).equals(Buffer.from(b))).toBe(false);
+    expect(() => newPageNonce(new Uint8Array(15))).toThrow();
+  });
+
+  it("reveals the page nonce as hex with the pickup secret, in a POST body", () => {
+    const [url, init] = revealRequest("https://ref.supabase.co/functions/v1/mcp", v.handoff.request_id, "ab".repeat(32), np);
+    expect(url).toBe("https://ref.supabase.co/functions/v1/mcp/connect/reveal");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(String(init.body))).toEqual({ id: v.handoff.request_id, pickup: "ab".repeat(32), nonce: v.handoff.page_nonce });
   });
 });
 
@@ -86,9 +111,32 @@ describe("reading /connect/status", () => {
     expect(statusStep({ state: "approved", redirect, handoff: "not a box" }, 0, null)).toEqual({ kind: "wait" });
   });
 
-  it("follows a denial back to the app, but never to a script address", () => {
+  it("follows a denial back only to https or to http on this computer", () => {
     expect(statusStep({ state: "denied", redirect }, 0, null)).toEqual({ kind: "denied", redirect });
-    expect(statusStep({ state: "denied", redirect: "javascript:alert(1)" }, 0, null)).toEqual({ kind: "wait" });
+    for (const ok of ["http://127.0.0.1:53682/callback?error=access_denied", "http://localhost:3000/cb", "http://[::1]:8080/cb"]) {
+      expect(statusStep({ state: "denied", redirect: ok }, 0, null), ok).toEqual({ kind: "denied", redirect: ok });
+    }
+    for (const bad of ["javascript:alert(1)", "data:text/html,x", "http://evil.example/cb", "http://127.0.0.1.evil.example/cb", "http://localhost.evil.example/",
+      "ambernotes://connect", "ftp://example.com/", "https://user:pw@example.com/", "not a url", 42, null]) {
+      expect(safeDeniedRedirect(bad), String(bad)).toBeNull();
+      expect(statusStep({ state: "denied", redirect: bad }, 0, null), String(bad)).toEqual({ kind: "denied", redirect: null });
+    }
+  });
+
+  it("says declined when a denial comes without a redirect", () => {
+    expect(statusStep({ state: "denied" }, 0, null)).toEqual({ kind: "denied", redirect: null });
+  });
+
+  it("reveals only once the device's nonce is in", () => {
+    expect(statusStep({ state: "asked", device_nonce: null }, 0, null)).toEqual({ kind: "wait" });
+    expect(statusStep({ state: "asked" }, 0, null)).toEqual({ kind: "wait" });
+    for (const odd of ["", "abc", "zz".repeat(16), "60".repeat(17), 7]) {
+      expect(statusStep({ state: "asked", device_nonce: odd }, 0, null), String(odd)).toEqual({ kind: "wait" });
+    }
+    expect(statusStep({ state: "asked", device_nonce: v.handoff.device_nonce }, 0, null)).toEqual({ kind: "deviceReady", deviceNonce: v.handoff.device_nonce });
+    expect(statusStep({ state: "asked", device_nonce: v.handoff.device_nonce.toUpperCase() }, 0, null)).toEqual({ kind: "deviceReady", deviceNonce: v.handoff.device_nonce });
+    expect(statusStep({ state: "pending", device_nonce: v.handoff.device_nonce }, 0, null)).toEqual({ kind: "wait" });
+    expect(statusStep({ state: "asked", device_nonce: v.handoff.device_nonce }, 2000, 2000)).toEqual({ kind: "expired" });
   });
 
   it("ends on the other answers", () => {

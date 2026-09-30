@@ -6,7 +6,8 @@ import {
   type ConnectLabel, type ConnectRequest,
 } from "@/lib/connect";
 import {
-  browserFrom, newPickup, pageNumber, parseKeyRow, recoveryApproval, RecoveryError, sealedDestination, statusRequest, statusStep, withCode,
+  browserFrom, newPageNonce, newPickup, pageCommit, pageNumber, parseKeyRow, recoveryApproval, RecoveryError, revealRequest, sealedDestination,
+  statusRequest, statusStep, withCode,
   type AccountKey,
 } from "@/lib/connect-flow";
 import { newHandoffKeys, openHandoff, parseRecoveryKey, toBase64 } from "@/lib/e2ee";
@@ -60,7 +61,11 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
   const handoffKey = useRef<CryptoKey | null>(null);
   /// The pickup secret: /connect/status hands the answer only to it.
   const pickup = useRef<string | null>(null);
-  /// The two digits to tap on the device, once the ask is in.
+  /// The page's nonce Np, public key and whether Np has gone to /connect/reveal (only once).
+  const pageNonce = useRef<Uint8Array<ArrayBuffer> | null>(null);
+  const publicRaw = useRef<Uint8Array | null>(null);
+  const revealed = useRef(false);
+  /// The two digits to type on the device, once the device's nonce is in and Np is revealed.
   const [number, setNumber] = useState<string | null>(null);
   const expiresAt = useRef<number | null>(null);
   const finished = useRef(false);
@@ -110,6 +115,27 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
         case "wait":
           timer = setTimeout(tick, POLL_MS);
           return;
+        case "deviceReady": {
+          // The device opened the request and committed to its nonce: reveal ours, once, then show the number.
+          if (!revealed.current) {
+            const np = pageNonce.current, pub = publicRaw.current, secret = pickup.current;
+            if (!np || !pub || !secret) return end({ kind: "ended", title: "Couldn't finish here", text: "Start connecting again from the other app." });
+            let res: Response | null = null;
+            try { res = await fetch(...revealRequest(mcp, requestId, secret, np)); } catch {}
+            if (stopped || finished.current) return;
+            if (res && !res.ok) {
+              const b = await res.json().catch(() => null) as { error?: string } | null;
+              if (res.status === 404) return end(EXPIRED);
+              return end({ kind: "ended", title: "Couldn't connect", text: b?.error ?? OFFLINE, retry: true });
+            }
+            if (res) {
+              revealed.current = true;
+              setNumber(await pageNumber(pub, np, step.deviceNonce, requestId));
+            }
+          }
+          timer = setTimeout(tick, POLL_MS);
+          return;
+        }
         case "approved": {
           const key = handoffKey.current;
           if (!key) return end({ kind: "ended", title: "Couldn't finish here", text: "Start connecting again from the other app." });
@@ -120,7 +146,9 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
             return end({ kind: "ended", title: "Couldn't finish here", text: "Start connecting again from the other app." });
           }
         }
-        case "denied": return leave(step.redirect, false);
+        case "denied":
+          if (step.redirect) return leave(step.redirect, false);
+          return end({ kind: "ended", title: "Not connected", text: "The request was declined. You can close this page." });
         case "answeredInApp": return end({ kind: "ended", title: "Finished in Amber Notes", text: "You can close this page." });
         case "delivered": return end({ kind: "ended", title: "Answered in another window", text: "If connecting didn't finish, start again from the other app." });
         case "expired": return end(EXPIRED);
@@ -134,6 +162,10 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
     finished.current = true;
     handoffKey.current = null;
     pickup.current = null;
+    pageNonce.current?.fill(0);
+    pageNonce.current = null;
+    publicRaw.current = null;
+    revealed.current = false;
     setNumber(null);
     setPolling(false);
     setView(v);
@@ -241,22 +273,29 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
     try {
       const keys = await newHandoffKeys();
       const secret = await newPickup();
+      const np = newPageNonce();
       const res = await fetch(`${mcp}/connect/ask`, {
         method: "POST",
         headers: { authorization: `Bearer ${s.token}`, "content-type": "application/json" },
         body: JSON.stringify({
           id: requestId, browser_key: toBase64(keys.publicRaw), pickup_hash: secret.pickup_hash, from: browserFrom(navigator.userAgent),
+          match_commit: await pageCommit(keys.publicRaw, np),
         }),
       });
       const body = await res.json().catch(() => null) as { expires_at?: string; error?: string } | null;
       await signOut(s.token);
       if (!res.ok) {
+        np.fill(0);
         if (res.status === 404) return end(EXPIRED);
-        return end({ kind: "ended", title: "Couldn't connect", text: body?.error ?? OFFLINE, retry: true });
+        // A 429 can mean the account's connecting is paused for a while: the server's message says how long.
+        return end({ kind: "ended", title: "Couldn't connect", text: body?.error ?? OFFLINE, retry: res.status !== 429 });
       }
       handoffKey.current = keys.privateKey;
       pickup.current = secret.pickup;
-      setNumber(await pageNumber(keys.publicRaw, requestId));
+      pageNonce.current = np;
+      publicRaw.current = keys.publicRaw;
+      revealed.current = false;
+      setNumber(null);
       const t = Date.parse(body?.expires_at ?? "");
       expiresAt.current = Number.isNaN(t) ? null : t;
       finished.current = false;
@@ -437,10 +476,20 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
 
       {view.kind === "waiting" && (
         <>
-          <h1 className={styles.title}>Check your iPhone or Mac to approve</h1>
-          {number && <MatchNumber number={number} />}
-          <p className={styles.lede}>Amber Notes there shows three numbers. Tap the one that matches, then Allow, and this page takes you back to finish connecting. If none of them matches, choose Don't allow.</p>
-          <p className={styles.status} role="status"><Spinner /> Waiting for you to allow it on your iPhone or Mac…</p>
+          {number ? (
+            <>
+              <h1 className={styles.title}>Approve on your iPhone or Mac</h1>
+              <MatchNumber number={number} />
+              <p className={styles.lede}>Type this number in Amber Notes there, then Allow, and this page takes you back to finish connecting. If Amber Notes doesn't ask for it, choose Don't allow.</p>
+              <p className={styles.status} role="status"><Spinner /> Waiting for you to allow it on your iPhone or Mac…</p>
+            </>
+          ) : (
+            <>
+              <h1 className={styles.title}>Open Amber Notes on your iPhone or Mac</h1>
+              <p className={styles.lede}>Amber Notes there asks you about this request. When it opens it, a number shows here for you to type there.</p>
+              <p className={styles.status} role="status"><Spinner /> Waiting for your iPhone or Mac…</p>
+            </>
+          )}
           {nudge && (
             <p className={styles.small} role="status">
               Open Amber Notes on your iPhone or Mac to see the request. No device nearby? Use your recovery key below.
@@ -516,12 +565,12 @@ function sessionFrom(body: { access_token?: unknown; user?: { id?: unknown; emai
   return { token: body.access_token, userId: body.user.id, email: typeof body.user.email === "string" ? body.user.email : fallbackEmail };
 }
 
-/// The two digits the device asks you to pick out of three (matchNumber of this page's key and the request).
+/// The two digits you type on the device (matchNumber of this page's key, both nonces and the request).
 export function MatchNumber({ number }: { number: string }) {
   return (
     <div className={styles.match}>
       <span className={styles.matchNumber} aria-hidden="true">{number}</span>
-      <p className={styles.matchText}>Tap {number} on your iPhone or Mac</p>
+      <p className={styles.matchText}>Type {number} on your iPhone or Mac</p>
     </div>
   );
 }

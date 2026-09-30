@@ -2,7 +2,7 @@
 // pickup secret, reading /connect/status, going on to the AI with the sealed code and redirect, and
 // approving with the recovery key.
 // The page (app/connect/ConnectFlow.tsx) does the fetching and the showing. See lib/connect.ts.
-import { HANDOFF, hex, matchNumber, parseRecoveryKey, readHandoffPayload, recoveryKEK, tokenKey, unwrap, verifierOf, wrap } from "./e2ee";
+import { HANDOFF, hex, matchCommit, matchNumber, parseRecoveryKey, readHandoffPayload, recoveryKEK, tokenKey, unwrap, verifierOf, wrap } from "./e2ee";
 
 /// This browser in plain words for the devices' prompt ("Chrome on a Mac"). Only the browser's
 /// and the system's names, nothing else from the user agent.
@@ -45,8 +45,23 @@ export async function newPickup(bytes: Uint8Array<ArrayBuffer> = crypto.getRando
   return { pickup: hex(bytes), pickup_hash: hex(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))) };
 }
 
-/// The two digits the page shows after the ask; the device shows three and you tap this one.
-export const pageNumber = (browserPublicRaw: Uint8Array, requestId: string) => matchNumber(browserPublicRaw, requestId);
+/// The page's nonce Np: 16 random bytes kept only in this page's memory. /connect/ask gets only the
+/// commit to it (matchCommit of the page's public key and Np); the page reveals Np to /connect/reveal
+/// after the device has sent its own nonce, so nobody can pick a key and a nonce that give a chosen number.
+export function newPageNonce(bytes: Uint8Array<ArrayBuffer> = crypto.getRandomValues(new Uint8Array(16))): Uint8Array<ArrayBuffer> {
+  if (bytes.length !== 16) throw new Error("a page nonce is 16 bytes");
+  return bytes;
+}
+
+/// What /connect/ask takes as match_commit.
+export const pageCommit = (browserPublicRaw: Uint8Array, pageNonce: Uint8Array) => matchCommit(browserPublicRaw, pageNonce);
+
+/// The two digits the page shows once the device's nonce is in; you type them on the device.
+export const pageNumber = (browserPublicRaw: Uint8Array, pageNonce: Uint8Array, deviceNonceHex: string, requestId: string) =>
+  matchNumber(browserPublicRaw, pageNonce, fromHex(deviceNonceHex), requestId);
+
+const NONCE_HEX = /^[0-9a-f]{32}$/i;
+const fromHex = (s: string) => Uint8Array.from(s.match(/../g) ?? [], (b) => parseInt(b, 16));
 
 /// The /connect/status call: a POST with the pickup secret, never the secret in the address.
 export function statusRequest(functionBase: string, id: string, pickup: string): [string, RequestInit] {
@@ -57,11 +72,24 @@ export function statusRequest(functionBase: string, id: string, pickup: string):
   }];
 }
 
+/// The /connect/reveal call, made once the device's nonce is in: the page's nonce as lowercase hex,
+/// with the pickup secret, in a POST body.
+export function revealRequest(functionBase: string, id: string, pickup: string, pageNonce: Uint8Array): [string, RequestInit] {
+  return [`${functionBase}/connect/reveal`, {
+    method: "POST", cache: "no-store",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ id, pickup, nonce: hex(pageNonce) }),
+  }];
+}
+
 /// What the page does after a /connect/status answer.
 export type Step =
   | { kind: "wait" }
+  /// The device has opened the request and sent its nonce: reveal the page's nonce and show the number.
+  | { kind: "deviceReady"; deviceNonce: string }
   | { kind: "approved"; handoff: string }
-  | { kind: "denied"; redirect: string }
+  /// Declined. The redirect back to the app, when there is one the page may follow.
+  | { kind: "denied"; redirect: string | null }
   | { kind: "answeredInApp" }
   | { kind: "delivered" }
   | { kind: "expired" };
@@ -74,23 +102,40 @@ const isWebURL = (s: unknown): s is string => {
   try { return !NEVER.has(new URL(s).protocol); } catch { return false; }
 };
 
+const LOOPBACK = new Set(["127.0.0.1", "localhost", "[::1]"]);
+
+/// Where a denial may send the page back to: https, or http on this computer. Nothing else, since
+/// the denial's redirect isn't sealed by the device.
+export function safeDeniedRedirect(s: unknown): string | null {
+  if (typeof s !== "string") return null;
+  try {
+    const u = new URL(s);
+    if (u.username || u.password) return null;
+    if (u.protocol === "https:" && u.hostname) return u.toString();
+    if (u.protocol === "http:" && LOOPBACK.has(u.hostname)) return u.toString();
+  } catch {}
+  return null;
+}
+
 /// Reads a /connect/status body. Past `expiresAt` (ms), waiting ends. Anything odd means wait.
 /// An approval carries only the sealed handoff: where it goes comes from inside it (sealedDestination),
 /// never from the answer's own `redirect`, which anyone on the way could change.
 export function statusStep(body: unknown, now: number, expiresAt: number | null): Step {
-  const b = (body ?? {}) as { state?: unknown; redirect?: unknown; handoff?: unknown };
+  const b = (body ?? {}) as { state?: unknown; redirect?: unknown; handoff?: unknown; device_nonce?: unknown };
   switch (b.state) {
     case "approved":
       if (typeof b.handoff === "string" && HANDOFF.test(b.handoff)) return { kind: "approved", handoff: b.handoff };
       break;
-    case "denied":
-      if (isWebURL(b.redirect)) return { kind: "denied", redirect: b.redirect };
-      break;
+    case "denied": return { kind: "denied", redirect: safeDeniedRedirect(b.redirect) };
     case "answered_in_app": return { kind: "answeredInApp" };
     case "delivered": return { kind: "delivered" };
     case "expired": return { kind: "expired" };
   }
-  return expiresAt !== null && now >= expiresAt ? { kind: "expired" } : { kind: "wait" };
+  if (expiresAt !== null && now >= expiresAt) return { kind: "expired" };
+  if (b.state === "asked" && typeof b.device_nonce === "string" && NONCE_HEX.test(b.device_nonce)) {
+    return { kind: "deviceReady", deviceNonce: b.device_nonce.toLowerCase() };
+  }
+  return { kind: "wait" };
 }
 
 /// Where an approval goes: the redirect sealed with the code by the device that approved, with the

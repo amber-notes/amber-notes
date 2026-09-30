@@ -2,14 +2,17 @@
 //
 // The MCP server's /authorize sends the browser here with ?request=<id>. The server that renders
 // the page says what the app calls itself and where access goes (the MCP function's public
-// /connect/label); neither is verified, so neither is shown as a title. Your notes' key lives
-// only on your devices, so approving happens there:
+// /connect/label); neither is verified, so neither is shown as a title. Your notes' key is on
+// your devices (and in the AI connections you approved), so approving happens on a device:
 //
-// 1. You sign in on the page, only so it knows which account to ask. It makes a P-256 key pair
-//    and a pickup secret (both stay in the page's memory), sends the public half and the secret's
-//    hash to /connect/ask with this browser's name ("Chrome on a Mac"), and signs out straight away.
-//    It then shows two digits (matchNumber of its public key and the request): the device shows
-//    three numbers and you tap the same one, so a key swapped on the way shows.
+// 1. You sign in on the page, only so it knows which account to ask. It makes a P-256 key pair,
+//    a pickup secret and a 16-byte nonce Np (all stay in the page's memory), sends the public half,
+//    the secret's hash and match_commit (matchCommit of the public key and Np) to /connect/ask with
+//    this browser's name ("Chrome on a Mac"), and signs out straight away.
+//    When the device opens the request it sends its own nonce Nd, which /connect/status passes on
+//    as device_nonce. Only then does the page reveal Np (/connect/reveal, once) and show two digits,
+//    matchNumber(public key, Np, Nd, request). You type them on the device, which checks the commit
+//    and gets the same number only for the page's own key, so a key swapped on the way shows.
 // 2. Your iPhone or Mac asks you. Allow there seals the authorization code and the AI's redirect,
 //    together, to the page's key. The page polls /connect/status with the pickup secret, opens the
 //    handoff and goes only to the redirect sealed inside it, with the code added.
