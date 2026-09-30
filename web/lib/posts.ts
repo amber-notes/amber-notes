@@ -29,7 +29,7 @@ export type Post = {
 
 /// The ground a cover (and the post's first picture) sits on: the site's palette, the help page's
 /// leaf brown, the app's dark look, or the home page's dunes.
-export type Ground = "paper" | "soft" | "tint" | "amber" | "leaf" | "dark" | "dunes" | "ink" | "peach" | "cream" | "sand" | "clay" | "mist" | "honey" | "sage" | "heather" | "blush" | "wheat" | "fog" | "dusk" | "pearl" | "linen";
+export type Ground = "paper" | "soft" | "tint" | "amber" | "leaf" | "dark" | "dunes" | "ink" | "peach" | "cream" | "sand" | "clay" | "mist" | "honey" | "sage" | "heather" | "blush" | "wheat" | "fog" | "dusk" | "pearl" | "linen" | "night";
 
 /// A card's picture: one real capture of the element the post is about, on the post's ground. The
 /// capture is cropped at 2x (3x from iPhone) to about the card's width, so it shows at full size.
@@ -60,6 +60,18 @@ export const SHOTS = {
 } satisfies Record<string, Shot>;
 
 export const posts: Post[] = [
+  {
+    slug: "recover-deleted-apple-notes",
+    title: "How to recover deleted Apple Notes, including after 30 days",
+    description: "Get back deleted Apple Notes from Recently Deleted on iPhone, Mac and iCloud.com, what works after 30 days, and why Gmail notes and locked notes are different.",
+    excerpt: "Within 30 days it's almost always in Recently Deleted. After that, what still works, what doesn't, and what recovery apps won't tell you.",
+    category: "Apple Notes",
+    date: "2026-10-01",
+    updated: "2026-10-01",
+    image: SHOTS.history,
+    thumb: thumb("night", "thumb-restore-dark", 1240, 560),
+    draft: false,
+  },
   {
     slug: "connect-notes-to-gemini",
     title: "Connect your notes to Gemini with MCP",

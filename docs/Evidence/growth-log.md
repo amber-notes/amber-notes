@@ -5,6 +5,25 @@ assistants. Newest first. Research behind it: [seo-aeo-research-2026-09-30.md](s
 
 `docs/` had no README naming a folder for evidence, so this and the research live in `docs/Evidence/`.
 
+## 1 October 2026: round 15, "How to recover deleted Apple Notes"
+
+### Query
+
+- "recover deleted apple notes", "recently deleted notes iphone", "no recently deleted folder", "recover deleted notes after 30 days". Apple Support ranks, then recovery-software vendors (iMyFone, Syncios) and old pages; an honest "after 30 days" answer is the gap.
+
+### Changed (branch `site/recover-deleted-notes`)
+
+- New post `/blog/recover-deleted-apple-notes`, in Apple Notes:
+  - checks first, from Apple's [missing notes article](https://support.apple.com/en-us/102476) (published 12 May 2026): search all accounts, account settings, other folders
+  - Recently Deleted on iPhone, Mac and iCloud.com, from Apple's guides for each, and why the folder may not show
+  - Gmail and Yahoo notes go to that account's Trash in Mail
+  - after 30 days: Apple says permanently removed notes can't be recovered, and [iCloud Backup doesn't include notes already in iCloud](https://support.apple.com/en-us/108770); On My iPhone notes are in iPhone backups (restoring replaces the phone's data), On My Mac notes in Time Machine; shared notes you don't own reopen from the link
+  - recovery apps: no claims about specific products, a warning about any that ask for the Apple Account password
+  - Amber Notes' Recently Deleted (30 days, purged on the server too) and up to 100 earlier versions per note, from `docs/privacy-policy.md`
+  - four FAQ answers
+- A new capture: the version history sheet in dark mode, rendered offscreen by the existing `VersionHistorySnapshots` test; the card shows "Restore This Version" on a new ground, night.
+- The forgot-password post links the new one.
+
 ## 1 October 2026: round 14, "Connect your notes to Gemini with MCP"
 
 ### Query
