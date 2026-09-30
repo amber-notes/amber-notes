@@ -1,12 +1,12 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { COMING, COUNTS, FACTS, LOGS, PRIVACY_PATH } from "./privacy";
+import { COMING, COUNTS, ENCRYPTION, FACTS, LOGS, PRIVACY_PATH, WHO_CAN_SEE } from "./privacy";
 import { themeFor } from "./theme";
 
 const page = readFileSync(join(__dirname, "../app/privacy-security/page.tsx"), "utf8");
 const policy = readFileSync(join(__dirname, "../content/privacy-policy.md"), "utf8");
-const copy = [...FACTS.flatMap((f) => [f.title, f.text]), COMING.text, ...LOGS.flatMap((l) => [l.name, l.what, l.kept]), ...COUNTS, page];
+const copy = [...FACTS.flatMap((f) => [f.title, f.text]), COMING.text, ...LOGS.flatMap((l) => [l.name, l.what, l.kept]), ...COUNTS, ...[...ENCRYPTION.items, ...WHO_CAN_SEE].flatMap((i) => [i.label, i.text]), ENCRYPTION.note, page];
 
 describe("privacy copy", () => {
   it("has no em dashes and never mentions iPad", () => {
@@ -24,6 +24,10 @@ describe("privacy copy", () => {
     // End-to-end encryption is claimed for locked notes only; for all notes it's "Coming".
     expect(COMING.text.startsWith("Coming:")).toBe(true);
     expect(FACTS.filter((f) => /end.to.end/i.test(f.title + f.text)).map((f) => f.title)).toEqual(["Locked notes are end-to-end encrypted"]);
+  });
+
+  it("keeps every encryption claim in lib/privacy.ts, not in the page", () => {
+    expect(page).not.toMatch(/end.to.end|AES|HTTPS|encrypted (on|with|at)/i);
   });
 
   it("lists the same log retention as the privacy policy", () => {

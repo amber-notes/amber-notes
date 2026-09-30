@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import legal from "@/lib/legal.module.css";
 import { pageMetadata } from "@/lib/site";
-import { COMING, COUNTS, FACTS, LOGS, PRIVACY_PATH } from "@/lib/privacy";
+import { COMING, COUNTS, ENCRYPTION, FACTS, LOGS, PRIVACY_PATH, WHO_CAN_SEE } from "@/lib/privacy";
 import s from "./privacy.module.css";
 
 // Privacy & Security for people, not lawyers: what we store, who can see it, which logs exist.
@@ -60,29 +60,13 @@ export default function PrivacySecurity() {
 
           <h2 id="encryption">What&apos;s encrypted</h2>
           <ul>
-            <li><strong>On the way:</strong> everything between the apps, the website and our server travels over HTTPS.</li>
-            <li><strong>Where it&apos;s stored:</strong> Supabase encrypts the database and files on its disks (AES-256).</li>
-            <li>
-              <strong>Locked notes, end to end:</strong> a locked note&apos;s text is encrypted on your device with a key made from your notes
-              password, before it&apos;s uploaded. We never get the password or the key. Its title stays readable so your list can show it.
-              If you forget the password, nobody can recover the note.
-            </li>
-            <li><strong>Passwords and access tokens</strong> are stored only as one-way hashes.</li>
+            {ENCRYPTION.items.map((i) => <li key={i.label}><strong>{i.label}</strong> {i.text}</li>)}
           </ul>
-          <p>
-            Notes that aren&apos;t locked are not end-to-end encrypted yet. Our server has to read them to sync them, search them and hand
-            them to the AI apps you approve.
-          </p>
+          <p>{ENCRYPTION.note}</p>
 
           <h2 id="who-can-see">Who can see what</h2>
           <ul>
-            <li><strong>You,</strong> on every device you sign in on.</li>
-            <li>
-              <strong>Us.</strong> As the people running the database (that&apos;s Emil, who makes Amber Notes), we could technically read
-              notes that aren&apos;t locked. We use them only to store, sync and show them to you. Supabase could too, under its contract with us.
-            </li>
-            <li><strong>AI apps you approve,</strong> for the notes they ask for. They never see the text of locked notes, only their titles.</li>
-            <li><strong>Anyone with the link to a note you share,</strong> until you stop sharing it. Shared pages are hidden from search engines.</li>
+            {WHO_CAN_SEE.map((i) => <li key={i.label}><strong>{i.label}</strong> {i.text}</li>)}
           </ul>
 
           <h2 id="no-tracking">No ads, no tracking</h2>

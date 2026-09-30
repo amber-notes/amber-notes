@@ -1,6 +1,7 @@
 /// The privacy and security facts, written once for the Privacy & Security page and the home page.
 /// Every sentence must be true today; docs/privacy-policy.md is the long form. When end-to-end
-/// encryption for all notes ships, change FACTS and the page's encryption section, and drop COMING.
+/// encryption for all notes ships, change FACTS, ENCRYPTION and WHO_CAN_SEE, and drop COMING: every
+/// claim about encryption on the site is in this file.
 
 export const PRIVACY_PATH = "/privacy-security";
 
@@ -39,4 +40,25 @@ export const COUNTS: string[] = [
   "which tips were shown and whether the feature was then used",
   "which first-run setup steps you've done",
   "a random id for each installation and whether it's an iPhone or a Mac, to count devices",
+];
+
+export type Item = { label: string; text: string };
+
+/// "What's encrypted" on the Privacy & Security page.
+export const ENCRYPTION: { items: Item[]; note: string } = {
+  items: [
+    { label: "On the way:", text: "everything between the apps, the website and our server travels over HTTPS." },
+    { label: "Where it's stored:", text: "Supabase encrypts the database and files on its disks (AES-256)." },
+    { label: "Locked notes, end to end:", text: "a locked note's text is encrypted on your device with a key made from your notes password, before it's uploaded. We never get the password or the key. Its title stays readable so your list can show it. If you forget the password, nobody can recover the note." },
+    { label: "Passwords and access tokens", text: "are stored only as one-way hashes." },
+  ],
+  note: "Notes that aren't locked are not end-to-end encrypted yet. Our server has to read them to sync them, search them and hand them to the AI apps you approve.",
+};
+
+/// "Who can see what" on the Privacy & Security page.
+export const WHO_CAN_SEE: Item[] = [
+  { label: "You,", text: "on every device you sign in on." },
+  { label: "Us.", text: "As the people running the database (that's Emil, who makes Amber Notes), we could technically read notes that aren't locked. We use them only to store, sync and show them to you. Supabase could too, under its contract with us." },
+  { label: "AI apps you approve,", text: "for the notes they ask for. They never see the text of locked notes, only their titles." },
+  { label: "Anyone with the link to a note you share,", text: "until you stop sharing it. Shared pages are hidden from search engines." },
 ];
