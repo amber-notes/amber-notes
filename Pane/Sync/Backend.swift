@@ -66,9 +66,9 @@ final class Backend {
                 options: SupabaseClientOptions(
                     auth: .init(storage: SessionStorage(), emitLocalSessionAsInitialSession: true),
                     // Which device wrote each version, for version history ("You on iPhone"); and that
-                    // this app keeps locked notes sealed (an account with a notes password refuses
-                    // writes from builds that don't say so).
-                    global: .init(headers: ["x-pane-device": Self.device, "x-amber-client": "lock-aware/1"], session: AppNetwork.session)
+                    // this app keeps locked notes sealed and reads end-to-end encrypted accounts (the
+                    // server refuses builds that don't say so, for accounts that need it).
+                    global: .init(headers: ["x-pane-device": Self.device, "x-amber-client": Self.clientTag], session: AppNetwork.session)
                 )
             )
             state = .signedOut
@@ -89,6 +89,9 @@ final class Backend {
     }
 
     var userID: UUID? { client?.auth.currentUser?.id }
+
+    /// What this build can do, for the server: seal locked notes, and read and write encrypted accounts.
+    static let clientTag = "lock-aware/1 e2ee/1"
 
     /// This kind of device, as version history names it.
     static var device: String {

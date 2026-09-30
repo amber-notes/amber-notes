@@ -262,10 +262,18 @@ final class SupabaseHistoryStore: NoteHistoryStore {
 
     func body(of note: UUID, version: Int64) async throws -> String {
         if let b = bodies[version] { return b }
-        struct Row: Decodable { var body: String }
-        let rows: [Row] = try await client.from("note_revisions").select("body")
+        struct Row: Decodable { var body: String?; var body_ct: String? }
+        let rows: [Row] = try await client.from("note_revisions").select(E2EE.sealer == nil ? "body" : "body,body_ct")
             .eq("note_id", value: note).eq("version", value: Int(version)).limit(1).execute().value
-        guard let b = rows.first?.body else { throw HistoryError.gone }
+        guard let row = rows.first else { throw HistoryError.gone }
+        // A sealed version opens with the account's data key, here and nowhere else.
+        let b: String
+        if let box = row.body_ct {
+            guard let text = E2EE.sealer?.open(box, context: E2EE.body(note)) else { throw HistoryError.gone }
+            b = text
+        } else {
+            b = row.body ?? ""
+        }
         bodies[version] = b
         return b
     }

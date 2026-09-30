@@ -98,7 +98,7 @@ final class SyncEngine {
 
     /// Something changed here: push it soon, at most every `pushInterval`, first one at once.
     func localChanged() {
-        guard backend.client != nil, case .signedIn = backend.state else { return }
+        guard backend.client != nil, case .signedIn = backend.state, AccountCrypto.shared.allowsSync else { return }
         lastChange = .now
         pushWanted = true
         guard pushLoop == nil else { return }
@@ -119,7 +119,8 @@ final class SyncEngine {
     /// Asked for while a run is going, it runs again straight after that one, and returns
     /// once that follow-up is done: when it returns, what you asked for has happened.
     func sync(pulling: Bool = true) async {
-        guard let client = backend.client, case .signedIn = backend.state else { return }
+        // Nothing moves until the account's key is open here (or the account isn't encrypted).
+        guard let client = backend.client, case .signedIn = backend.state, AccountCrypto.shared.allowsSync else { return }
         if running {
             if pulling { again = true } else { pushAgain = true }
             await withCheckedContinuation { waiting.append($0) }
@@ -166,7 +167,7 @@ final class SyncEngine {
 
     /// Starts realtime and a first sync after sign-in.
     func start() async {
-        guard let client = backend.client, case .signedIn = backend.state else { return }
+        guard let client = backend.client, case .signedIn = backend.state, AccountCrypto.shared.allowsSync else { return }
         adoptLibrary()
         started = true
         // Until realtime has joined, a short poll brings other devices' edits.
@@ -341,6 +342,7 @@ final class SyncEngine {
         }
 
         let notes = (try? context.fetch(FetchDescriptor<Note>(predicate: #Predicate { $0.dirty }))) ?? []
+        var pushedNotes: [UUID] = []
         for n in notes where !isRefused(n.id, n.updatedAt) {
             let sentAt = n.updatedAt
             let row = NoteDTO(n)
@@ -374,13 +376,67 @@ final class SyncEngine {
                 n.serverVersion = s.version ?? n.serverVersion
                 // Stay dirty if you typed more while this was in flight.
                 if n.updatedAt <= sentAt { n.dirty = false }
+                pushedNotes.append(n.id)
             }
         }
         try? context.save()
+        republishShares(for: pushedNotes)
         return false
     }
 
+    // MARK: Shared pages of an encrypted account
+
+    /// Live links (note → includes sub-notes). In an encrypted account a page shows a readable copy
+    /// this device publishes, so an edit that went up is published to its page too.
+    private var liveShares: [UUID: Bool] = [:]
+    private var publishQueue: Set<UUID> = []
+    private var publishTask: Task<Void, Never>?
+
+    private func refreshShares(_ client: SupabaseClient) async {
+        guard E2EE.sealer != nil else { liveShares = [:]; return }
+        struct Row: Decodable { var note_id: UUID; var include_subnotes: Bool }
+        if let rows: [Row] = try? await client.from("note_shares").select("note_id,include_subnotes").is("revoked_at", value: nil).execute().value {
+            liveShares = Dictionary(rows.map { ($0.note_id, $0.include_subnotes) }, uniquingKeysWith: { a, _ in a })
+        }
+    }
+
+    /// The shared note whose page shows this one: itself, or an ancestor whose link includes sub-notes.
+    func sharedRoot(of id: UUID) -> UUID? {
+        if liveShares[id] != nil { return id }
+        var next = context.note(id)?.parentID
+        for _ in 0 ..< 60 {
+            guard let p = next else { return nil }
+            if liveShares[p] == true { return p }
+            next = context.note(p)?.parentID
+        }
+        return nil
+    }
+
+    private func republishShares(for ids: [UUID]) {
+        guard E2EE.sealer != nil, !liveShares.isEmpty else { return }
+        for id in ids { if let root = sharedRoot(of: id) { publishQueue.insert(root) } }
+        guard !publishQueue.isEmpty, publishTask == nil else { return }
+        // Typing pushes every 0.35 s; the page is written at most every 2 s.
+        publishTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(2))
+            guard let self else { return }
+            let roots = self.publishQueue
+            self.publishQueue = []
+            self.publishTask = nil
+            guard let client = self.backend.client else { return }
+            for r in roots { await SharePublisher.republish(root: r, includeSubNotes: self.liveShares[r] ?? false, client: client, context: self.context) }
+        }
+    }
+
     private func isRefused(_ id: UUID, _ edited: Date) -> Bool { refused[id] == edited }
+
+    /// A row sealed with a key this device doesn't have: left alone, and said so. Always false,
+    /// so it reads as a filter.
+    private func skipUnreadable(_ id: UUID, _ what: String) -> Bool {
+        log.error("can't open \(id, privacy: .public): sealed with another key")
+        problem = "\(what) couldn't be opened on this device. Check that you entered the right encryption password."
+        return false
+    }
 
     private func refuse(_ id: UUID, _ edited: Date, _ message: String) {
         log.error("server refused \(id, privacy: .public): \(message, privacy: .public)")
@@ -411,23 +467,40 @@ final class SyncEngine {
         return nil
     }
 
-    private func storagePath(_ a: Attachment) -> String? {
+    private func storagePath(_ a: Attachment, sealed: Bool? = nil) -> String? {
         guard let uid = backend.userID else { return nil }
-        return "\(uid.uuidString.lowercased())/\(a.id.uuidString.lowercased())/\(Self.storageName(a.filename))"
+        return Self.storagePath(user: uid, id: a.id, filename: a.filename, sealed: sealed ?? a.sealed)
+    }
+
+    /// Where a file's bytes are: readable ones under their name, sealed ones under a name that says nothing.
+    nonisolated static func storagePath(user: UUID, id: UUID, filename: String, sealed: Bool) -> String {
+        "\(user.uuidString.lowercased())/\(id.uuidString.lowercased())/" + (sealed ? "sealed" : storageName(filename))
     }
 
     /// Uploads new files, then their metadata. Returns true when the server said "too fast".
     private func pushFiles(_ client: SupabaseClient) async throws -> Bool {
         let files = (try? context.fetch(FetchDescriptor<Attachment>(predicate: #Predicate { $0.dirty || !$0.uploaded }))) ?? []
+        let sealer = E2EE.sealer
         for a in files where !isRefused(a.id, a.createdAt) {
-            guard let path = storagePath(a) else { continue }
+            // With the data key open, bytes go up sealed (and the row says so).
+            guard let path = storagePath(a, sealed: sealer != nil ? true : a.sealed) else { continue }
             do {
                 if !a.uploaded, a.deletedAt == nil {
                     guard FileStore.exists(a) else { continue }
                     let data = try Data(contentsOf: FileStore.url(for: a.id, filename: a.filename))
-                    try await client.storage.from("files").upload(path, data: data, options: FileOptions(contentType: a.type.preferredMIMEType ?? "application/octet-stream", upsert: true))
+                    if let sealer {
+                        try await client.storage.from("files").upload(path, data: try sealer.sealFile(data, id: a.id), options: FileOptions(contentType: "application/octet-stream", upsert: true))
+                    } else {
+                        try await client.storage.from("files").upload(path, data: data, options: FileOptions(contentType: a.type.preferredMIMEType ?? "application/octet-stream", upsert: true))
+                    }
                     a.uploaded = true
+                    if sealer != nil, !a.sealed {
+                        // The readable copy from before goes once the sealed one is up.
+                        if let old = storagePath(a, sealed: false) { E2EEMigration.forget(old, defaults: defaults) }
+                        a.sealed = true
+                    }
                 }
+                if sealer != nil, !a.sealed { a.uploaded = false; continue }
                 let row = AttachmentDTO(id: a.id, filename: String(a.filename.prefix(255)), content_type: a.contentType, size: a.size, storage_path: path, created_at: a.createdAt, updated_at: .now, deleted_at: a.deletedAt)
                 try await client.from("attachments").upsert(row).execute()
                 a.dirty = false
@@ -464,7 +537,11 @@ final class SyncEngine {
     func download(_ a: Attachment) async -> Bool {
         guard let client = backend.client, let path = storagePath(a) else { return false }
         do {
-            let data = try await client.storage.from("files").download(path: path)
+            var data = try await client.storage.from("files").download(path: path)
+            if E2EE.isSealedFile(data) {
+                guard let sealer = E2EE.sealer else { return false }
+                data = try sealer.openFile(data, id: a.id)
+            }
             let url = FileStore.url(for: a.id, filename: a.filename)
             try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
             try data.write(to: url, options: .atomic)
@@ -483,6 +560,8 @@ final class SyncEngine {
         guard let s = server.first else {
             return try await client.from("notes").upsert(NoteDTO(n)).select().execute().value
         }
+        // Theirs can't be opened here: nothing is merged with it or written over it.
+        if s.unreadable { _ = skipUnreadable(s.id, "A note"); return [] }
         if s.body == n.body && s.locked_body == n.lockedBody { return server }
         // A locked note's text is sealed: there's nothing to merge line by line.
         let sealed = s.locked_body != nil || n.lockedBody != nil
@@ -575,7 +654,7 @@ final class SyncEngine {
             if page.count < 1000 { break }
         }
         var byID = Dictionary(uniqueKeysWithValues: context.allFoldersIncludingDeleted().map { ($0.id, $0) })
-        for r in folderRows {
+        for r in folderRows where !r.unreadable || skipUnreadable(r.id, "A folder") {
             let f = byID[r.id] ?? { let f = Folder(name: r.name); f.id = r.id; context.insert(f); byID[r.id] = f; return f }()
             if f.dirty && f.serverVersion > 0 { continue }
             f.name = r.name
@@ -598,7 +677,7 @@ final class SyncEngine {
             fileRows += page
             if page.count < 1000 { break }
         }
-        for r in fileRows {
+        for r in fileRows where !r.unreadable || skipUnreadable(r.id, "A file") {
             let a = context.attachment(r.id) ?? {
                 let a = Attachment(id: r.id, filename: r.filename, contentType: r.content_type, size: r.size)
                 context.insert(a)
@@ -610,6 +689,7 @@ final class SyncEngine {
             a.size = r.size
             a.createdAt = r.created_at
             a.deletedAt = r.deleted_at
+            a.sealed = r.sealed
             a.uploaded = true
             a.dirty = false
             if let s = r.server_updated_at, s > newest { newest = s }
@@ -633,6 +713,7 @@ final class SyncEngine {
         }
         if changed { try? context.save() }
         cursor = newest
+        await refreshShares(client)
     }
 
     /// Takes one server row into the library. Returns true when anything changed.
@@ -643,6 +724,7 @@ final class SyncEngine {
     /// push coming back, and touching the note would only churn the editor and the list.
     @discardableResult
     private func merge(_ r: NoteDTO, folders byID: inout [UUID: Folder]) -> Bool {
+        if r.unreadable { _ = skipUnreadable(r.id, "A note"); return false }
         let local = context.note(r.id)
         if let local, !Self.takes(r, over: local) { return false }
         let n = local ?? { let n = Note(body: r.body); n.id = r.id; context.insert(n); return n }()
@@ -733,6 +815,28 @@ final class SyncEngine {
 
 // MARK: Wire formats
 
+/// Sealing for the wire (see E2EE): with the account's data key open, readable columns go up
+/// empty and their sealed twins carry the text; rows that come down sealed are opened here. A row
+/// that can't be opened is marked `unreadable` and never applied.
+enum Wire {
+    struct Unsealable: Error {}
+
+    static func seal(_ plain: String, _ context: String) throws -> String {
+        guard let box = E2EE.sealer?.seal(plain, context: context) else { throw Unsealable() }
+        return box
+    }
+
+    static func head(_ head: NoteHead, _ id: UUID) throws -> String {
+        guard let box = E2EE.sealer?.sealHead(head, note: id) else { throw Unsealable() }
+        return box
+    }
+
+    /// A note's head: its title and preview, or a locked note's title alone.
+    static func head(body: String, locked: Bool) -> NoteHead {
+        locked ? NoteHead(title: body, preview: "") : .of(body)
+    }
+}
+
 struct FolderDTO: Codable {
     var id: UUID
     var name: String
@@ -742,6 +846,8 @@ struct FolderDTO: Codable {
     var updated_at: Date
     var deleted_at: Date?
     var server_updated_at: Date?
+    /// Sealed with a key this device doesn't have: never applied.
+    var unreadable = false
 
     init(_ f: Folder) {
         id = f.id
@@ -753,12 +859,33 @@ struct FolderDTO: Codable {
         deleted_at = f.deletedAt
     }
 
-    enum CodingKeys: String, CodingKey { case id, name, parent_id, sort_index, created_at, updated_at, deleted_at, server_updated_at }
+    enum CodingKeys: String, CodingKey { case id, name, name_ct, parent_id, sort_index, created_at, updated_at, deleted_at, server_updated_at }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        parent_id = try c.decodeIfPresent(UUID.self, forKey: .parent_id)
+        sort_index = try c.decodeIfPresent(Double.self, forKey: .sort_index) ?? 0
+        created_at = try c.decode(Date.self, forKey: .created_at)
+        updated_at = try c.decode(Date.self, forKey: .updated_at)
+        deleted_at = try c.decodeIfPresent(Date.self, forKey: .deleted_at)
+        server_updated_at = try c.decodeIfPresent(Date.self, forKey: .server_updated_at)
+        if let box = try c.decodeIfPresent(String.self, forKey: .name_ct) {
+            if let n = E2EE.sealer?.open(box, context: E2EE.folder(id)) { name = n } else { name = ""; unreadable = true }
+        } else {
+            name = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
+        }
+    }
 
     func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(id, forKey: .id)
-        try c.encode(name, forKey: .name)
+        if E2EE.sealer != nil {
+            try c.encodeNil(forKey: .name)
+            try c.encode(Wire.seal(name, E2EE.folder(id)), forKey: .name_ct)
+        } else {
+            try c.encode(name, forKey: .name)
+        }
         try c.encode(parent_id, forKey: .parent_id)
         try c.encode(sort_index, forKey: .sort_index)
         try c.encode(created_at, forKey: .created_at)
@@ -785,6 +912,8 @@ struct NoteDTO: Codable {
     /// The AI that last changed the note, and when. Set by the server only; never sent.
     var ai_editor: String?
     var ai_edited_at: Date?
+    /// Sealed with a key this device doesn't have (or damaged): never applied.
+    var unreadable = false
 
     init(_ n: Note) {
         id = n.id
@@ -800,17 +929,65 @@ struct NoteDTO: Codable {
         deleted_at = n.deletedAt
     }
 
-    enum CodingKeys: String, CodingKey { case id, body, locked_body, folder_id, parent_id, is_pinned, created_at, updated_at, trashed_at, deleted_at, version, server_updated_at, ai_editor, ai_edited_at }
+    enum CodingKeys: String, CodingKey { case id, body, body_ct, head_ct, locked_body, folder_id, parent_id, is_pinned, created_at, updated_at, trashed_at, deleted_at, version, server_updated_at, ai_editor, ai_edited_at }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        locked_body = try c.decodeIfPresent(String.self, forKey: .locked_body)
+        folder_id = try c.decodeIfPresent(UUID.self, forKey: .folder_id)
+        parent_id = try c.decodeIfPresent(UUID.self, forKey: .parent_id)
+        is_pinned = try c.decodeIfPresent(Bool.self, forKey: .is_pinned) ?? false
+        created_at = try c.decode(Date.self, forKey: .created_at)
+        updated_at = try c.decode(Date.self, forKey: .updated_at)
+        trashed_at = try c.decodeIfPresent(Date.self, forKey: .trashed_at)
+        deleted_at = try c.decodeIfPresent(Date.self, forKey: .deleted_at)
+        version = try c.decodeIfPresent(Int64.self, forKey: .version)
+        server_updated_at = try c.decodeIfPresent(Date.self, forKey: .server_updated_at)
+        ai_editor = try c.decodeIfPresent(String.self, forKey: .ai_editor)
+        ai_edited_at = try c.decodeIfPresent(Date.self, forKey: .ai_edited_at)
+        // A row without its text at all (realtime leaves big ones out) isn't a note to apply.
+        guard c.contains(.body) || c.contains(.body_ct) else {
+            throw DecodingError.keyNotFound(CodingKeys.body, .init(codingPath: c.codingPath, debugDescription: "no text in this row"))
+        }
+        let box = try c.decodeIfPresent(String.self, forKey: .body_ct)
+        let head = try c.decodeIfPresent(String.self, forKey: .head_ct)
+        if let box {
+            if let text = E2EE.sealer?.open(box, context: E2EE.body(id)) { body = text } else { body = ""; unreadable = true }
+            // Opening the head too means an unchanged note seals to the same head next time.
+            if let head, !unreadable { _ = E2EE.sealer?.openHead(head, note: id) }
+        } else if locked_body != nil, let head {
+            if let h = E2EE.sealer?.openHead(head, note: id) { body = h.title } else { body = ""; unreadable = true }
+        } else if let plain = try c.decodeIfPresent(String.self, forKey: .body) {
+            body = plain
+        } else if head != nil || locked_body != nil {
+            body = ""
+            unreadable = true
+        } else {
+            body = ""
+        }
+    }
 
     /// True once this account has a notes password (NoteVault sets it).
     nonisolated(unsafe) static var sendsLock = false
+
+    /// The text columns, readable or sealed.
+    static func encodeText(_ c: inout KeyedEncodingContainer<CodingKeys>, id: UUID, body: String, locked: String?) throws {
+        if E2EE.sealer != nil {
+            try c.encodeNil(forKey: .body)
+            if locked == nil { try c.encode(Wire.seal(body, E2EE.body(id)), forKey: .body_ct) } else { try c.encodeNil(forKey: .body_ct) }
+            try c.encode(Wire.head(Wire.head(body: body, locked: locked != nil), id), forKey: .head_ct)
+        } else {
+            try c.encode(body, forKey: .body)
+        }
+        if sendsLock || locked != nil || E2EE.sealer != nil { try c.encode(locked, forKey: .locked_body) }
+    }
 
     /// Client-owned columns only; the server sets version and its own clock.
     func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(id, forKey: .id)
-        try c.encode(body, forKey: .body)
-        if Self.sendsLock || locked_body != nil { try c.encode(locked_body, forKey: .locked_body) }
+        try Self.encodeText(&c, id: id, body: body, locked: locked_body)
         try c.encode(folder_id, forKey: .folder_id)
         try c.encode(parent_id, forKey: .parent_id)
         try c.encode(is_pinned, forKey: .is_pinned)
@@ -821,6 +998,7 @@ struct NoteDTO: Codable {
     }
 
     struct Patch: Encodable {
+        var id: UUID
         var body: String
         var locked_body: String?
         var folder_id: UUID?
@@ -831,9 +1009,8 @@ struct NoteDTO: Codable {
         var deleted_at: Date?
 
         func encode(to encoder: Encoder) throws {
-            var c = encoder.container(keyedBy: CodingKeys.self)
-            try c.encode(body, forKey: .body)
-            if NoteDTO.sendsLock || locked_body != nil { try c.encode(locked_body, forKey: .locked_body) }
+            var c = encoder.container(keyedBy: NoteDTO.CodingKeys.self)
+            try NoteDTO.encodeText(&c, id: id, body: body, locked: locked_body)
             try c.encode(folder_id, forKey: .folder_id)
             try c.encode(parent_id, forKey: .parent_id)
             try c.encode(is_pinned, forKey: .is_pinned)
@@ -841,10 +1018,16 @@ struct NoteDTO: Codable {
             try c.encode(trashed_at, forKey: .trashed_at)
             try c.encode(deleted_at, forKey: .deleted_at)
         }
-        enum CodingKeys: String, CodingKey { case body, locked_body, folder_id, parent_id, is_pinned, updated_at, trashed_at, deleted_at }
     }
 
-    var patch: Patch { Patch(body: body, locked_body: locked_body, folder_id: folder_id, parent_id: parent_id, is_pinned: is_pinned, updated_at: updated_at, trashed_at: trashed_at, deleted_at: deleted_at) }
+    var patch: Patch { Patch(id: id, body: body, locked_body: locked_body, folder_id: folder_id, parent_id: parent_id, is_pinned: is_pinned, updated_at: updated_at, trashed_at: trashed_at, deleted_at: deleted_at) }
+}
+
+/// A file's name, type and size, sealed together.
+struct FileMeta: Codable, Equatable {
+    var name: String
+    var type: String
+    var size: Int64?
 }
 
 struct AttachmentDTO: Codable {
@@ -857,20 +1040,60 @@ struct AttachmentDTO: Codable {
     var updated_at: Date
     var deleted_at: Date?
     var server_updated_at: Date?
+    /// The bytes in Storage are sealed (the row's name is too).
+    var sealed = false
+    var unreadable = false
 
-    enum CodingKeys: String, CodingKey { case id, filename, content_type, size, storage_path, created_at, updated_at, deleted_at, server_updated_at }
+    enum CodingKeys: String, CodingKey { case id, filename, content_type, meta_ct, size, storage_path, created_at, updated_at, deleted_at, server_updated_at }
+
+    /// Sealing adds the header, the nonce and the tag to the file's bytes.
+    static let sealOverhead: Int64 = 5 + 16 + 12 + 16
 
     init(id: UUID, filename: String, content_type: String, size: Int64, storage_path: String, created_at: Date, updated_at: Date, deleted_at: Date?) {
         self.id = id; self.filename = filename; self.content_type = content_type; self.size = size
         self.storage_path = storage_path; self.created_at = created_at; self.updated_at = updated_at; self.deleted_at = deleted_at
     }
 
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        size = try c.decodeIfPresent(Int64.self, forKey: .size) ?? 0
+        storage_path = try c.decode(String.self, forKey: .storage_path)
+        created_at = try c.decode(Date.self, forKey: .created_at)
+        updated_at = try c.decode(Date.self, forKey: .updated_at)
+        deleted_at = try c.decodeIfPresent(Date.self, forKey: .deleted_at)
+        server_updated_at = try c.decodeIfPresent(Date.self, forKey: .server_updated_at)
+        if let box = try c.decodeIfPresent(String.self, forKey: .meta_ct) {
+            sealed = true
+            if let json = E2EE.sealer?.open(box, context: E2EE.fileMeta(id)), let m = try? JSONDecoder().decode(FileMeta.self, from: Data(json.utf8)) {
+                filename = m.name
+                content_type = m.type
+                if let s = m.size { size = s }
+            } else {
+                filename = "file"
+                content_type = "public.data"
+                unreadable = true
+            }
+        } else {
+            filename = try c.decodeIfPresent(String.self, forKey: .filename) ?? "file"
+            content_type = try c.decodeIfPresent(String.self, forKey: .content_type) ?? "public.data"
+        }
+    }
+
     func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(id, forKey: .id)
-        try c.encode(filename, forKey: .filename)
-        try c.encode(content_type, forKey: .content_type)
-        try c.encode(size, forKey: .size)
+        if E2EE.sealer != nil {
+            try c.encodeNil(forKey: .filename)
+            try c.encode("public.data", forKey: .content_type)
+            let json = String(decoding: try JSONEncoder.sorted.encode(FileMeta(name: filename, type: content_type, size: size)), as: UTF8.self)
+            try c.encode(Wire.seal(json, E2EE.fileMeta(id)), forKey: .meta_ct)
+            try c.encode(size + Self.sealOverhead, forKey: .size)
+        } else {
+            try c.encode(filename, forKey: .filename)
+            try c.encode(content_type, forKey: .content_type)
+            try c.encode(size, forKey: .size)
+        }
         try c.encode(storage_path, forKey: .storage_path)
         try c.encode(created_at, forKey: .created_at)
         try c.encode(updated_at, forKey: .updated_at)

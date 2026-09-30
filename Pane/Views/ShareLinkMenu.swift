@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 import Supabase
 #if os(iOS)
 import UIKit
@@ -86,6 +87,8 @@ protocol ShareLinkService: Sendable {
 
 struct SupabaseShareLinks: ShareLinkService {
     let client: SupabaseClient
+    /// The library, for the readable copy an encrypted account publishes (see SharePublisher).
+    var container: ModelContainer?
 
     private struct Row: Decodable {
         var slug: String
@@ -103,12 +106,94 @@ struct SupabaseShareLinks: ShareLinkService {
     }
 
     func share(note: UUID, includeSubNotes: Bool) async throws -> String {
-        try await client.rpc("share_note", params: ["p_note": AnyJSON.string(note.uuidString.lowercased()),
-                                                     "p_include_subnotes": AnyJSON.bool(includeSubNotes)]).execute().value
+        // An encrypted account's note can't be read by the server: the page shows a copy made here.
+        if E2EE.sealer != nil, let container {
+            let made = await MainActor.run { SharePublisher.copy(of: note, includeSubNotes: includeSubNotes, in: container.mainContext) }
+            guard let made else { throw SharePublisher.Failure() }
+            struct Params: Encodable { var p_note: String; var p_include_subnotes: Bool; var p_copy: SharePublisher.Copy }
+            let slug: String = try await client.rpc("share_note", params: Params(p_note: note.uuidString.lowercased(), p_include_subnotes: includeSubNotes, p_copy: made.copy)).execute().value
+            await SharePublisher.upload(made.files, slug: slug, client: client)
+            return slug
+        }
+        return try await client.rpc("share_note", params: ["p_note": AnyJSON.string(note.uuidString.lowercased()),
+                                                            "p_include_subnotes": AnyJSON.bool(includeSubNotes)]).execute().value
     }
 
     func unshare(note: UUID) async throws {
+        let slug = try? await current(note: note)?.slug
         try await client.rpc("unshare_note", params: ["p_note": note.uuidString.lowercased()]).execute()
+        // The readable file copies go with the link.
+        if let slug { await SharePublisher.removeFiles(slug: slug, client: client) }
+    }
+}
+
+/// The readable copy of a shared note that an encrypted account publishes: the note, the sub-notes
+/// the link includes (any depth, never locked or deleted ones), and the files they link to.
+@MainActor
+enum SharePublisher {
+    struct Failure: LocalizedError { var errorDescription: String? { "This note couldn't be published. Try again." } }
+
+    struct Page: Encodable, Sendable { var id: String; var parent_id: String; var title: String; var body: String }
+    struct File: Encodable, Sendable { var id: String; var filename: String; var content_type: String; var size: Int64 }
+    struct Copy: Encodable, Sendable { var title: String; var body: String; var pages: [Page]; var files: [File] }
+    /// A file's readable bytes on this device, to go up next to the page.
+    struct Upload: Sendable { var id: UUID; var url: URL; var mime: String }
+
+    static func copy(of id: UUID, includeSubNotes: Bool, in context: ModelContext) -> (copy: Copy, files: [Upload])? {
+        guard let root = context.note(id), root.lockedBody == nil, root.deletedAt == nil else { return nil }
+        var pages: [Page] = []
+        var bodies = [root.body]
+        if includeSubNotes {
+            let all = ((try? context.fetch(FetchDescriptor<Note>())) ?? []).filter { $0.deletedAt == nil && $0.trashedAt == nil && $0.lockedBody == nil }
+            var queue = [root.id]
+            var seen: Set<UUID> = [root.id]
+            while let parent = queue.first, pages.count < 500 {
+                queue.removeFirst()
+                for child in all where child.parentID == parent && !seen.contains(child.id) {
+                    seen.insert(child.id)
+                    queue.append(child.id)
+                    bodies.append(child.body)
+                    pages.append(Page(id: child.id.uuidString.lowercased(), parent_id: parent.uuidString.lowercased(), title: child.title, body: child.body))
+                }
+            }
+        }
+        var files: [Attachment] = []
+        for body in bodies {
+            for m in body.matches(of: /pane-file:([0-9a-fA-F-]{36})/) {
+                if let fid = UUID(uuidString: String(m.1)), let a = context.attachment(fid), a.deletedAt == nil, !files.contains(where: { $0.id == fid }) {
+                    files.append(a)
+                }
+            }
+        }
+        let copy = Copy(title: root.title, body: root.body, pages: pages,
+                        files: files.map { File(id: $0.id.uuidString.lowercased(), filename: $0.filename, content_type: $0.contentType, size: $0.size) })
+        let uploads = files.filter { FileStore.exists($0) }.map {
+            Upload(id: $0.id, url: FileStore.url(for: $0.id, filename: $0.filename), mime: $0.type.preferredMIMEType ?? "application/octet-stream")
+        }
+        return (copy, uploads)
+    }
+
+    /// The files' readable copies, next to the page: shared/<slug>/<attachment id>.
+    nonisolated static func upload(_ files: [Upload], slug: String, client: SupabaseClient) async {
+        for f in files {
+            guard let data = try? Data(contentsOf: f.url) else { continue }
+            _ = try? await client.storage.from("shared").upload("\(slug)/\(f.id.uuidString.lowercased())", data: data,
+                                                               options: FileOptions(contentType: f.mime, upsert: true))
+        }
+    }
+
+    nonisolated static func removeFiles(slug: String, client: SupabaseClient) async {
+        guard let listed = try? await client.storage.from("shared").list(path: slug), !listed.isEmpty else { return }
+        _ = try? await client.storage.from("shared").remove(paths: listed.map { "\(slug)/\($0.name)" })
+    }
+
+    /// A shared note (or an included sub-note) changed: its page's copy is written again.
+    static func republish(root: UUID, includeSubNotes: Bool, client: SupabaseClient, context: ModelContext) async {
+        guard let made = copy(of: root, includeSubNotes: includeSubNotes, in: context) else { return }
+        struct Params: Encodable { var p_note: String; var p_copy: Copy }
+        guard let slug: String? = try? await client.rpc("publish_share", params: Params(p_note: root.uuidString.lowercased(), p_copy: made.copy)).execute().value,
+              let slug else { return }
+        await upload(made.files, slug: slug, client: client)
     }
 }
 
@@ -274,6 +359,7 @@ private struct ShareLinkChrome: ViewModifier {
     let store: ShareLinkStore
     let note: Note
     @Environment(Backend.self) private var backend: Backend?
+    @Environment(\.modelContext) private var context
     @Environment(SyncEngine.self) private var sync: SyncEngine?
     @State private var profile = ProfileStore.shared
     #if os(macOS)
@@ -342,10 +428,10 @@ private struct ShareLinkChrome: ViewModifier {
             } message: { step in
                 switch step {
                 case .createLink:
-                    Text("Anyone with the link can read this note without signing in, and it may be passed on. The page shows your name and photo, and your email unless Apple hides it. Edits show as soon as they sync. You can stop sharing at any time."
+                    Text("Anyone with the link can read this note without signing in, and it may be passed on. Sharing publishes a readable copy of it, and of the files in it, outside your encryption. The page shows your name and photo, and your email unless Apple hides it. Edits show as soon as they sync. Stop Sharing deletes the copy."
                          + (profileIncomplete ? "\n\nAdd your name and photo so people know the page is from you." : ""))
                 case .includeSubNotes:
-                    Text("The sub-notes linked from this note also become readable by anyone with the link.")
+                    Text("The sub-notes linked from this note are published as readable copies too, for anyone with the link.")
                 }
             }
             #if os(iOS)
@@ -354,7 +440,7 @@ private struct ShareLinkChrome: ViewModifier {
             }
             #endif
             .task(id: note.id) {
-                await store.load(note: note.id, service: backend?.client.map { SupabaseShareLinks(client: $0) })
+                await store.load(note: note.id, service: backend?.client.map { SupabaseShareLinks(client: $0, container: context.container) })
             }
     }
 

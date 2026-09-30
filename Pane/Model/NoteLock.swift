@@ -50,12 +50,13 @@ enum NoteCrypto {
     /// What a note's box is bound to.
     static func context(of note: UUID) -> String { "note:" + note.uuidString.lowercased() }
 
-    private static func aad(_ keyID: Substring, _ context: String) -> Data {
+    static func aad(_ keyID: Substring, _ context: String) -> Data {
         Data("\(prefix).\(keyID)|\(context)".utf8)
     }
 
-    static func seal(_ text: String, key: SymmetricKey, keyID: String, context: String) throws -> String {
-        let box = try AES.GCM.seal(Data(text.utf8), using: key, authenticating: aad(Substring(keyID), context))
+    /// `nonce` is for test vectors only; every real box gets a fresh random one.
+    static func seal(_ text: String, key: SymmetricKey, keyID: String, context: String, nonce: AES.GCM.Nonce? = nil) throws -> String {
+        let box = try AES.GCM.seal(Data(text.utf8), using: key, nonce: nonce ?? AES.GCM.Nonce(), authenticating: aad(Substring(keyID), context))
         guard let combined = box.combined else { throw Failure.malformed }
         return "\(prefix).\(keyID)." + combined.base64EncodedString()
     }
@@ -151,6 +152,23 @@ struct ResealedNote: Encodable, Sendable {
     var version: Int64
     var body: String
     var locked_body: String
+
+    enum CodingKeys: String, CodingKey { case id, version, body, head_ct, locked_body }
+
+    /// In an encrypted account the title goes sealed, as the note's head.
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(version, forKey: .version)
+        if let sealer = E2EE.sealer {
+            guard let head = sealer.sealHead(NoteHead(title: body, preview: ""), note: id) else { throw Wire.Unsealable() }
+            try c.encodeNil(forKey: .body)
+            try c.encode(head, forKey: .head_ct)
+        } else {
+            try c.encode(body, forKey: .body)
+        }
+        try c.encode(locked_body, forKey: .locked_body)
+    }
 }
 
 /// Where the account's password setup lives: the server, or nowhere (local-only builds).

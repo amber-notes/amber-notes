@@ -53,6 +53,9 @@ struct SettingsView: View {
                 if case .signedIn = backend.state, let client = backend.client {
                     ConnectAISection(client: client)
                 }
+                if case .signedIn = backend.state, AccountCrypto.shared.isReady {
+                    EncryptionSection(crypto: AccountCrypto.shared)
+                }
                 LockedNotesSection(sync: sync)
                 #if os(macOS)
                 MenuBarSection()

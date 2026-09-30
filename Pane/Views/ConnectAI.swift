@@ -145,12 +145,29 @@ enum ConnectAPI {
     }
 
     /// Allow or deny; returns where to send the browser next.
-    static func decide(_ client: SupabaseClient, id: UUID, allow: Bool, write: Bool) async throws -> URL {
-        let data = try await send(client, path: "/connect/decide", method: "POST", body: ["id": id.uuidString.lowercased(), "allow": allow, "write": write])
+    /// Allow or deny. In an encrypted account, allowing sends a code made here with the data key
+    /// wrapped under it (`code`); the server never sees the code until the AI trades it for tokens,
+    /// and the answer's address gets it added here.
+    static func decide(_ client: SupabaseClient, id: UUID, allow: Bool, write: Bool,
+                       code: (code: String, hash: String, wrap: String)? = nil) async throws -> URL {
+        var body: [String: Any] = ["id": id.uuidString.lowercased(), "allow": allow, "write": write]
+        if allow, let code {
+            body["code_hash"] = code.hash
+            body["code_wrap"] = code.wrap
+        }
+        let data = try await send(client, path: "/connect/decide", method: "POST", body: body)
         guard let s = (try JSONSerialization.jsonObject(with: data) as? [String: Any])?["redirect"] as? String, let url = URL(string: s) else {
             throw Failure(message: "Amber Notes gave an unexpected answer. Try connecting again.")
         }
-        return url
+        guard allow, let code else { return url }
+        return withCode(url, code.code)
+    }
+
+    /// The AI's return address with the code this device made.
+    static func withCode(_ url: URL, _ code: String) -> URL {
+        guard var parts = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return url }
+        parts.queryItems = (parts.queryItems ?? []).filter { $0.name != "code" } + [URLQueryItem(name: "code", value: code)]
+        return parts.url ?? url
     }
 }
 
@@ -438,7 +455,9 @@ struct ConsentSheet: View {
     private func decide(_ r: ConnectRequest, allow: Bool) async {
         phase = .working
         do {
-            let url = try await ConnectAPI.decide(client, id: r.id, allow: allow, write: write && r.wants_write)
+            // An encrypted account's connection gets its own copy of the data key.
+            let code = allow && AccountCrypto.shared.isReady ? try AccountCrypto.shared.connectionCode() : nil
+            let url = try await ConnectAPI.decide(client, id: r.id, allow: allow, write: write && r.wants_write, code: code)
             finish(url)
             if allow {
                 allowed(r)
@@ -755,6 +774,14 @@ private struct GuideSheet: View {
         working = true
         defer { working = false }
         do {
+            if AccountCrypto.shared.isReady {
+                // Made here, so the server only ever has its hash and the data key wrapped under it.
+                let made = try AccountCrypto.shared.accessToken()
+                struct Params: Encodable { var token_name: String; var write_access: Bool; var token_hash: String; var dk_wrap: String }
+                _ = try await client.rpc("create_mcp_token_sealed", params: Params(token_name: guide.title, write_access: !readOnly, token_hash: made.hash, dk_wrap: made.wrap)).execute()
+                token = made.token
+                return made.token
+            }
             let t: String = try await client.rpc("create_mcp_token", params: ["token_name": AnyJSON.string(guide.title), "write_access": AnyJSON.bool(!readOnly)]).execute().value
             token = t
             return t

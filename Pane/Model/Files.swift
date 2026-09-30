@@ -18,6 +18,8 @@ final class Attachment {
     var uploaded: Bool = false
     /// Metadata changed here and not yet pushed.
     var dirty: Bool = true
+    /// The bytes in Storage are sealed with the account's data key, at `<user>/<id>/sealed`.
+    var sealed: Bool = false
 
     init(id: UUID = UUID(), filename: String, contentType: String, size: Int64) {
         self.id = id
