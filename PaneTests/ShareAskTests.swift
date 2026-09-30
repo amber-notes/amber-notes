@@ -22,21 +22,43 @@ import Testing
     }
 
     /// The server: one account's answer and its days of use from every device.
+    /// Its methods run off the main actor (like a real network call), so its state is locked.
     final class FakeService: ShareAskService, @unchecked Sendable {
-        var answered: ShareAsk.Choice?
-        var days: Set<String> = []
+        private let lock = NSLock()
+        private var _answered: ShareAsk.Choice?
+        private var _days: Set<String> = []
+        private var _counted: [String] = []
+        private var _sent: [[String]] = []
+        private var inFlight = 0
+        private var _maxInFlight = 0
         var fails = false
-        var counted: [String] = []
-        func state() async throws -> ShareAskState {
+        /// How long each call takes, so overlapping calls would show.
+        var delay: Duration = .zero
+
+        var answered: ShareAsk.Choice? { get { lock.withLock { _answered } } set { lock.withLock { _answered = newValue } } }
+        var days: Set<String> { get { lock.withLock { _days } } set { lock.withLock { _days = newValue } } }
+        var counted: [String] { lock.withLock { _counted } }
+        /// Every addDays call's days, in order.
+        var sent: [[String]] { lock.withLock { _sent } }
+        /// The most calls that were ever running at once.
+        var maxInFlight: Int { lock.withLock { _maxInFlight } }
+
+        private func call<T>(_ body: () throws -> T) async throws -> T {
+            lock.withLock { inFlight += 1; _maxInFlight = max(_maxInFlight, inFlight) }
+            if delay > .zero { try? await Task.sleep(for: delay) }
+            defer { lock.withLock { inFlight -= 1 } }
             if fails { throw URLError(.notConnectedToInternet) }
-            return ShareAskState(decided: answered != nil, days: days.count)
+            return try lock.withLock { try body() }
+        }
+
+        func state() async throws -> ShareAskState {
+            try await call { ShareAskState(decided: _answered != nil, days: _days.count) }
         }
         func addDays(_ new: [String]) async throws {
-            if fails { throw URLError(.notConnectedToInternet) }
-            days.formUnion(new)
+            try await call { _sent.append(new); _days.formUnion(new) }
         }
-        func decide(_ choice: ShareAsk.Choice) async throws { if answered == nil { answered = choice } }
-        func count(_ event: String) async { counted.append(event) }
+        func decide(_ choice: ShareAsk.Choice) async throws { lock.withLock { if _answered == nil { _answered = choice } } }
+        func count(_ event: String) async { lock.withLock { _counted.append(event) } }
     }
 
     /// A store for an account, with the server answering from `service`.
@@ -108,6 +130,38 @@ import Testing
         await s.refresh()
         #expect(s.activeDays == 7)
         #expect(s.isDue(now: Self.later))
+    }
+
+    @Test func aNewDayWhileRefreshingSendsItOnceAndCountsRight() async {
+        // Noting a new day starts a refresh (onNewDay) while one may be running: the store runs them
+        // one after the other, so the server never gets the same day twice or an old answer last.
+        // Before, the two ran at once and the (then unlocked) fake could count 8 days of 7.
+        let d = Self.defaults()
+        Self.usedOn(6, d)
+        let service = FakeService()
+        service.delay = .milliseconds(20)
+        let s = Self.store(d, service: service)
+        await s.refresh()
+        ShareAsk.noteUsed(now: Self.t0.addingTimeInterval(13 * Self.day), defaults: d, calendar: Self.cal)
+        async let a: Void = s.refresh()
+        async let b: Void = s.refresh()
+        _ = await (a, b)
+        #expect(service.maxInFlight == 1, "never two calls at once")
+        #expect(s.activeDays == 7)
+        #expect(service.sent.flatMap { $0 }.count == 7, "each day sent once")
+    }
+
+    @Test func aDayEndsAtMidnightInTheDevicesTimeZone() {
+        // Pinned at the boundary: one second either side of midnight UTC are two days, and the
+        // first and last second of a day are one.
+        let midnight = Self.cal.date(from: DateComponents(year: 2026, month: 10, day: 1))!
+        let d = Self.defaults()
+        ShareAsk.noteUsed(now: midnight.addingTimeInterval(-1), defaults: d, calendar: Self.cal)
+        ShareAsk.noteUsed(now: midnight, defaults: d, calendar: Self.cal)
+        ShareAsk.noteUsed(now: midnight.addingTimeInterval(Self.day - 1), defaults: d, calendar: Self.cal)
+        #expect(ShareAsk.localDays(defaults: d) == ["2026-09-30", "2026-10-01"])
+        ShareAsk.noteUsed(now: midnight.addingTimeInterval(Self.day), defaults: d, calendar: Self.cal)
+        #expect(ShareAsk.localDays(defaults: d) == ["2026-09-30", "2026-10-01", "2026-10-02"])
     }
 
     @Test func daysOnEveryDeviceAddUp() async {
