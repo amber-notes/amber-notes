@@ -91,13 +91,14 @@ private let fast = 1_000
         #expect(throws: NoteCrypto.Failure.wrongPassword) { try NoteCrypto.open(sealed, key: key, context: NoteCrypto.context(of: b)) }
     }
 
-    /// A box from before amb2 (header only authenticated) still opens, for any note.
-    @Test func anAmb1BoxStillOpens() throws {
+    /// Only amb2 opens: a box in the old header-only format (never used in production) doesn't.
+    @Test func onlyAmb2Opens() throws {
         let key = NoteCrypto.deriveKey(password: "pw", salt: salt, iterations: fast)
         let header = "amb1.0123456789abcdef"
         let box = try AES.GCM.seal(Data("Old note".utf8), using: key, authenticating: Data(header.utf8))
-        let sealed = header + "." + box.combined!.base64EncodedString()
-        #expect(try NoteCrypto.open(sealed, key: key, context: NoteCrypto.context(of: UUID())) == "Old note")
+        #expect(throws: NoteCrypto.Failure.malformed) {
+            try NoteCrypto.open(header + "." + box.combined!.base64EncodedString(), key: key, context: NoteCrypto.context(of: UUID()))
+        }
     }
 
     @Test func aProofCarriesTheOldKeyToWhoeverHasTheNewOne() throws {
@@ -387,20 +388,6 @@ private let fast = 1_000
         #expect(throws: NoteLockError.notUnlocked) { try phone.lock(context.createNote(in: .all, body: "New")) }
     }
 
-    @Test func anAmb1NoteIsSealedAgainAsAmb2OnTheNextSave() async throws {
-        let vault = try device()
-        try await vault.setUp(password: "pw", hint: nil)
-        let s = try #require(vault.settings)
-        let key = NoteCrypto.deriveKey(password: "pw", salt: s.saltData, iterations: s.iterations)
-        let header = "amb1.\(s.key_id)"
-        let box = try AES.GCM.seal(Data("Old\n\nfrom last week".utf8), using: key, authenticating: Data(header.utf8))
-        let n = context.createNote(in: .all, body: "Old")
-        n.lockedBody = header + "." + box.combined!.base64EncodedString()
-        #expect(vault.text(of: n) == "Old\n\nfrom last week")
-        try vault.write("Old\n\nfrom last week, edited", to: n)
-        #expect(NoteCrypto.format(of: n.lockedBody ?? "") == "amb2")
-    }
-
     @Test func faceIDUnlocksWithTheKeyKeptOnThisDevice() async throws {
         let vault = try device(biometry: "Face ID")
         try await vault.setUp(password: "pw", hint: nil)
@@ -431,15 +418,15 @@ extension NetworkFaults {
     @Test func theSealedTextGoesUpAndComesBack() throws {
         let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
         let n = ModelContext(c).createNote(in: .all, body: "Bank")
-        n.lockedBody = "amb1.0123456789abcdef.AAAA"
+        n.lockedBody = "amb2.0123456789abcdef.AAAA"
         let sent = try JSONSerialization.jsonObject(with: JSONEncoder().encode(NoteDTO(n))) as? [String: Any]
         #expect(sent?["body"] as? String == "Bank")
-        #expect(sent?["locked_body"] as? String == "amb1.0123456789abcdef.AAAA")
+        #expect(sent?["locked_body"] as? String == "amb2.0123456789abcdef.AAAA")
         let patch = try JSONSerialization.jsonObject(with: JSONEncoder().encode(NoteDTO(n).patch)) as? [String: Any]
-        #expect(patch?["locked_body"] as? String == "amb1.0123456789abcdef.AAAA")
+        #expect(patch?["locked_body"] as? String == "amb2.0123456789abcdef.AAAA")
         var row = NoteDTO(n)
         #expect(SyncEngine.same(row, n))
-        row.locked_body = "amb1.0123456789abcdef.BBBB"
+        row.locked_body = "amb2.0123456789abcdef.BBBB"
         #expect(!SyncEngine.same(row, n), "a new sealed text is a change")
     }
 
@@ -616,6 +603,34 @@ extension NetworkFaults {
             #expect(!everything.contains("PUK") && !everything.contains("1234"), "plaintext of a locked note reached the server")
             await mac.engine.stop()
             await phone.engine.stop()
+        }
+    }
+
+    /// sec-review's probe: an offline edit made after the Mac's lock (a later edit time) goes
+    /// through the conflict, not the pull: nothing readable goes up, before or after unlocking.
+    @Test func editAfterTheLockLeavesNoPlaintext() async throws {
+        try await locking {
+            let mac = try device(), phone = try device()
+            let n = mac.context.createNote(in: .all, body: "Bank\n\nPIN 1234")
+            await mac.engine.sync()
+            await phone.engine.sync()
+            let p = try #require(phone.context.note(n.id))
+            try await mac.vault.setUp(password: "pw", hint: nil)
+            try mac.vault.lock(n)
+            await mac.engine.sync()
+            try await Task.sleep(for: .milliseconds(20))
+            p.body = "Bank\n\nPIN 1234\nPUK 5678"
+            p.updatedAt = .now
+            p.dirty = true
+            await phone.engine.sync(); await phone.engine.sync()
+            #expect(try !serverText().contains("PUK") && !serverText().contains("1234"))
+            await phone.vault.refresh()
+            try await phone.vault.unlock(password: "pw")
+            await phone.engine.sync(); await phone.engine.sync()
+            #expect(try !serverText().contains("PUK") && !serverText().contains("1234"))
+            let copy = try #require(try copies(phone).first)
+            #expect(copy.isLocked && phone.vault.text(of: copy)?.contains("PUK 5678") == true)
+            await mac.engine.stop(); await phone.engine.stop()
         }
     }
 

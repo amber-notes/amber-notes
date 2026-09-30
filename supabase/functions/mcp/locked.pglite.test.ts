@@ -171,11 +171,58 @@ Deno.test("a note that links a file or a sub-note can't be locked", async () => 
   }
 });
 
-Deno.test("both box formats are accepted: amb2 (bound to the note) and amb1 (before it)", async () => {
+Deno.test("only amb2 boxes (bound to their note) are accepted", async () => {
   const { pg, me } = await setUp();
   await note(pg, me, "New", sealed(KEY, "amb2"));
-  await note(pg, me, "Old", sealed(KEY, "amb1"));
-  await refused(note(pg, me, "Other", sealed(KEY, "amb3")), "check");
+  for (const format of ["amb1", "amb3"]) await refused(note(pg, me, "Other", sealed(KEY, format)), "check");
+});
+
+Deno.test("a locked note's sealed text counts toward the storage quota", async () => {
+  const { pg, me } = await setUp();
+  const used = async () => Number((await pg.query<{ b: number }>(`select notes_bytes as b from public.pane_usage where user_id = $1`, [me])).rows[0].b);
+  const id = await note(pg, me, "Diary\n\n" + "x".repeat(1000));
+  const plain = await used();
+  const box = sealed(KEY) + "A".repeat(4000);
+  await app(pg, me, `update public.notes set body = 'Diary', locked_body = $2 where id = $1`, [id, box]);
+  assertEquals(await used(), plain - ("Diary\n\n" + "x".repeat(1000)).length + "Diary".length + box.length);
+  // Unlocking gives the sealed bytes back.
+  await app(pg, me, `update public.notes set body = 'Diary', locked_body = null where id = $1`, [id]);
+  assertEquals(await used(), plain - ("Diary\n\n" + "x".repeat(1000)).length + "Diary".length);
+  // Over the account's quota, a big sealed text is refused like a big body.
+  await pg.query(`update public.pane_usage set notes_bytes = 100 * 1024 * 1024 - 100 where user_id = $1`, [me]);
+  await refused(app(pg, me, `update public.notes set locked_body = $2 where id = $1`, [id, box]), "");
+});
+
+Deno.test("the AI guard also holds for an MCP server that only sets pane.source", async () => {
+  const { pg, me } = await setUp();
+  const id = await note(pg, me, "Bank", sealed());
+  const old = { "pane.source": "mcp", "pane.client": "Claude" };
+  await refused(asUser(pg, me, `update public.notes set body = 'PIN 4821' where id = $1`, [id], old), "This note is locked");
+  const open = await note(pg, me, "Open");
+  await refused(asUser(pg, me, `update public.notes set body = 'Open', locked_body = $2 where id = $1`, [open, sealed()], old), "This note is locked");
+});
+
+Deno.test("a password change naming another account's note changes nothing at all", async () => {
+  const { pg, me } = await setUp();
+  const mine = await note(pg, me, "Mine", sealed());
+  const other = await newUser(pg);
+  await asUser(pg, other, `insert into public.note_locks (salt, iterations, key_id, verifier) values ($1, 600000, $2, 'v')`, [FIRST.salt, KEY]);
+  const theirs = await note(pg, other, "Theirs", sealed());
+  const version = async (id: string) => Number((await pg.query<{ version: number }>(`select version from public.notes where id = $1`, [id])).rows[0].version);
+  const notes = [
+    { id: mine, version: await version(mine), body: "Mine", locked_body: sealed(SECOND.key) },
+    { id: theirs, version: await version(theirs), body: "Hijacked", locked_body: sealed(SECOND.key) },
+  ];
+  await refused(app(pg, me, `select public.change_notes_password($1, $2, $3)`, [JSON.stringify(changeTo(SECOND)), KEY, JSON.stringify(notes)]), "changed on another device");
+  const rows = await pg.query<{ id: string; body: string; key: string }>(`select id, body, split_part(locked_body, '.', 2) as key from public.notes where id in ($1, $2)`, [mine, theirs]);
+  assert(rows.rows.every((r) => r.key === KEY), "neither note changed");
+  assertEquals((await pg.query<{ key_id: string }>(`select key_id from public.note_locks where user_id = $1`, [me])).rows[0].key_id, KEY);
+});
+
+Deno.test("request headers that aren't valid JSON count as an old build", async () => {
+  const { pg, me } = await setUp();
+  const id = await note(pg, me, "Plan");
+  await refused(asUser(pg, me, `update public.notes set body = 'Plan, edited' where id = $1`, [id], { "request.headers": "{not json" }), "Update Amber Notes");
 });
 
 Deno.test("locking a shared note stops its link, and a locked note can't be shared", async () => {

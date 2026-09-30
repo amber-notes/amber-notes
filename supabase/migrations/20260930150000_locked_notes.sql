@@ -6,7 +6,7 @@
 --                      title column keep working. Never more: a check below makes sure.
 --   notes.locked_body  "amb2.<key id>.<base64 AES-GCM box>": the whole markdown, sealed, with the
 --                      header and the note's id authenticated, so a box can't be moved to another
---                      note. ("amb1" boxes, without the id, are still read; the app re-seals them.)
+--                      note.
 --   note_locks         one row per account: the random salt and iteration count the key is
 --                      derived with (PBKDF2-SHA256), a sealed known text to check a password
 --                      against, the hint, the key id, and every earlier password's salt, count,
@@ -30,7 +30,8 @@
 --
 -- Locking a shared note stops its link, and a locked note can't be shared. A note that links a
 -- file or a sub-note can't be locked. AI tools (pane.agent 'mcp', set once per call by the MCP
--- server) can't change a locked note's text or lock one; the MCP server also skips locked notes
+-- server; or pane.source 'mcp', which the MCP server deployed before this sets) can't change a
+-- locked note's text or lock one; the MCP server also skips locked notes
 -- in search and says "This note is locked" when asked to read one.
 --
 -- Additive: a note without locked_body behaves as before.
@@ -110,7 +111,7 @@ create trigger note_locks_guard before insert or update on public.note_locks
 alter table public.notes
   add column locked_body text check (locked_body is null or (
     octet_length(locked_body) <= 3000000
-    and locked_body ~ '^amb[12]\.[0-9a-f]{16}\.[A-Za-z0-9+/]+={0,2}$')),
+    and locked_body ~ '^amb2\.[0-9a-f]{16}\.[A-Za-z0-9+/]+={0,2}$')),
   -- A locked note's body is its title and nothing else.
   add constraint notes_locked_title_only check (locked_body is null or (strpos(body, E'\n') = 0 and char_length(body) <= 300));
 
@@ -140,8 +141,9 @@ begin
       using errcode = '42501', hint = 'update_app';
   end if;
   -- pane.agent is set once per MCP call by the server, and no tool changes it (a restore sets
-  -- pane.source, not this).
-  if current_setting('pane.agent', true) = 'mcp' and (
+  -- pane.source, not this). pane.source = 'mcp' covers the MCP server from before pane.agent,
+  -- between applying this migration and deploying the new function.
+  if (current_setting('pane.agent', true) = 'mcp' or current_setting('pane.source', true) = 'mcp') and (
        (tg_op = 'INSERT' and new.locked_body is not null)
        or (tg_op = 'UPDATE' and (new.locked_body is distinct from old.locked_body
                                  or (old.locked_body is not null and new.body is distinct from old.body)))) then
@@ -396,3 +398,102 @@ begin
 end $$;
 revoke all on function public.change_notes_password(jsonb, text, jsonb) from public, anon;
 grant execute on function public.change_notes_password(jsonb, text, jsonb) to authenticated;
+
+-- Storage: a locked note's sealed text counts toward the account's quota (pane_usage.notes_bytes)
+-- and toward its history's 10 MB like any text; otherwise locking would be a way around both.
+-- No note has locked_body before this migration, so there is nothing to recount.
+create or replace function public.pane_note_size(body text, locked_body text) returns bigint
+language sql immutable parallel safe set search_path = '' as $$
+  select octet_length(body)::bigint + coalesce(octet_length(locked_body), 0)
+$$;
+
+-- As in 20260929120100, counting a note's size with pane_note_size.
+create or replace function public.pane_account_note() returns trigger
+language plpgsql security definer set search_path = '' as $$
+declare
+  owner uuid := coalesce(new.user_id, old.user_id);
+  d_notes int := 0;
+  d_bytes bigint := 0;
+  u public.pane_usage;
+  p uuid;
+  depth int := 0;
+begin
+  -- The account itself is being deleted: nothing left to count (and no row to recreate).
+  if not exists (select 1 from auth.users where id = owner) then return coalesce(new, old); end if;
+  if tg_op = 'DELETE' then
+    update public.pane_usage x
+      set notes = greatest(x.notes - case when old.deleted_at is null then 1 else 0 end, 0),
+          notes_bytes = greatest(x.notes_bytes - public.pane_note_size(old.body, old.locked_body), 0)
+      where x.user_id = old.user_id;
+    return old;
+  else
+    perform public.pane_take('write');
+    if octet_length(new.body) > public.pane_limit('note_bytes')
+       and (tg_op = 'INSERT' or octet_length(new.body) > octet_length(old.body)) then
+      perform public.pane_over('note_bytes');
+    end if;
+    if new.folder_id is not null and (tg_op = 'INSERT' or new.folder_id is distinct from old.folder_id)
+       and not exists (select 1 from public.folders f where f.id = new.folder_id and f.user_id = new.user_id) then
+      perform public.pane_over('not_yours');
+    end if;
+    if new.parent_id is not null and (tg_op = 'INSERT' or new.parent_id is distinct from old.parent_id) then
+      p := new.parent_id;
+      while p is not null loop
+        if p = new.id then perform public.pane_over('subnote_loop'); end if;
+        depth := depth + 1;
+        if depth > public.pane_limit('subnote_depth') then perform public.pane_over('subnote_depth'); end if;
+        select n.parent_id into p from public.notes n where n.id = p and n.user_id = new.user_id;
+        if not found then
+          if depth = 1 then perform public.pane_over('not_yours'); end if;
+          exit;
+        end if;
+      end loop;
+    end if;
+    if tg_op = 'INSERT' then
+      d_notes := case when new.deleted_at is null then 1 else 0 end;
+      d_bytes := public.pane_note_size(new.body, new.locked_body);
+    else
+      d_notes := (case when new.deleted_at is null then 1 else 0 end) - (case when old.deleted_at is null then 1 else 0 end);
+      d_bytes := public.pane_note_size(new.body, new.locked_body) - public.pane_note_size(old.body, old.locked_body);
+    end if;
+  end if;
+  if d_notes = 0 and d_bytes = 0 then return coalesce(new, old); end if;
+  insert into public.pane_usage as x (user_id, notes, notes_bytes) values (owner, greatest(d_notes, 0), greatest(d_bytes, 0))
+  on conflict (user_id) do update set notes = greatest(x.notes + d_notes, 0), notes_bytes = greatest(x.notes_bytes + d_bytes, 0)
+  returning * into u;
+  if d_notes > 0 and u.notes > public.pane_limit('notes') then perform public.pane_over('notes'); end if;
+  if d_bytes > 0 and u.notes_bytes > public.pane_limit('notes_bytes') then perform public.pane_over('notes_bytes'); end if;
+  return coalesce(new, old);
+end $$;
+
+
+-- As in 20260929200000, counting a version's size with its sealed text.
+create or replace function public.pane_thin_revisions(p_note uuid, p_now timestamptz default clock_timestamp())
+returns integer language plpgsql security definer set search_path = '' as $$
+declare
+  gone integer;
+begin
+  with r as (
+    select id, created_at, octet_length(body) + coalesce(octet_length(locked_body), 0) as bytes, p_now - created_at as age,
+           'mcp' in (source, coalesce(body_source, '')) as ai,
+           row_number() over (partition by date_trunc('hour', created_at at time zone 'utc') order by created_at desc, id desc) as in_hour,
+           row_number() over (partition by date_trunc('day', created_at at time zone 'utc') order by created_at desc, id desc) as in_day
+    from public.note_revisions where note_id = p_note
+  ), kept as (
+    select id, bytes, created_at from r
+    where age < interval '24 hours'
+       or (age < interval '7 days' and in_hour = 1)
+       or (age < interval '90 days' and (in_day = 1 or ai))
+  ), capped as (
+    select id, row_number() over w as n, sum(bytes) over w as total
+    from kept window w as (order by created_at desc, id desc)
+  )
+  delete from public.note_revisions d
+  where d.note_id = p_note
+    and not exists (select 1 from capped c
+                    where c.id = d.id and c.n <= public.pane_limit('revisions')
+                      and (c.n = 1 or c.total <= public.pane_limit('revision_bytes')));
+  get diagnostics gone = row_count;
+  return gone;
+end $$;
+revoke all on function public.pane_thin_revisions(uuid, timestamptz) from public, anon, authenticated;

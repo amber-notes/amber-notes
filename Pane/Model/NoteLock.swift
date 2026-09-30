@@ -13,8 +13,7 @@ import SwiftData
 /// random per-account salt (kept on the server with the iteration count), 256 bits. Each note
 /// is one AES-GCM box: `amb2.<key id>.<base64 nonce‖ciphertext‖tag>`, where the key id is the
 /// first 8 bytes of SHA-256(salt) in hex. The header and the note's id are authenticated, so a
-/// box can't be passed off as another note's. `amb1` boxes (header only) still open, and are
-/// sealed again as `amb2` on the next save. The title stays plain text so the list can show it.
+/// box can't be passed off as another note's. The title stays plain text so the list can show it.
 enum NoteCrypto {
     static let prefix = "amb2"
     /// OWASP's figure for PBKDF2-HMAC-SHA256; about half a second on a recent iPhone.
@@ -51,33 +50,29 @@ enum NoteCrypto {
     /// What a note's box is bound to.
     static func context(of note: UUID) -> String { "note:" + note.uuidString.lowercased() }
 
-    private static func aad(_ format: Substring, _ keyID: Substring, _ context: String) -> Data {
-        // amb1 authenticated its header alone.
-        Data((format == "amb1" ? "\(format).\(keyID)" : "\(format).\(keyID)|\(context)").utf8)
+    private static func aad(_ keyID: Substring, _ context: String) -> Data {
+        Data("\(prefix).\(keyID)|\(context)".utf8)
     }
 
     static func seal(_ text: String, key: SymmetricKey, keyID: String, context: String) throws -> String {
-        let box = try AES.GCM.seal(Data(text.utf8), using: key, authenticating: aad(Substring(prefix), Substring(keyID), context))
+        let box = try AES.GCM.seal(Data(text.utf8), using: key, authenticating: aad(Substring(keyID), context))
         guard let combined = box.combined else { throw Failure.malformed }
         return "\(prefix).\(keyID)." + combined.base64EncodedString()
     }
 
     private static func parts(_ sealed: String) -> [Substring]? {
         let parts = sealed.split(separator: ".", maxSplits: 2)
-        guard parts.count == 3, parts[0] == "amb1" || parts[0] == "amb2" else { return nil }
+        guard parts.count == 3, parts[0] == prefix else { return nil }
         return parts
     }
 
     /// The key id a sealed text names, or nil when it isn't one.
     static func keyID(of sealed: String) -> String? { parts(sealed).map { String($0[1]) } }
 
-    /// "amb1" or "amb2".
-    static func format(of sealed: String) -> String? { parts(sealed).map { String($0[0]) } }
-
     static func open(_ sealed: String, key: SymmetricKey, context: String) throws -> String {
         guard let p = parts(sealed), let data = Data(base64Encoded: String(p[2])),
               let box = try? AES.GCM.SealedBox(combined: data) else { throw Failure.malformed }
-        guard let plain = try? AES.GCM.open(box, using: key, authenticating: aad(p[0], p[1], context)),
+        guard let plain = try? AES.GCM.open(box, using: key, authenticating: aad(p[1], context)),
               let text = String(data: plain, encoding: .utf8) else { throw Failure.wrongPassword }
         return text
     }
