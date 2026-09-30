@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import b from "./blog.module.css";
-import { AUTHOR, categoryAnchor, type Post, type Shot } from "./posts";
+import { AUTHOR, categoryAnchor, type CoverArt, type Ground, type Post, type Shot } from "./posts";
 
 /// The blog's shared pieces: a capture in a Mac window, the desk it sits on, the byline and the card.
 
@@ -37,30 +37,34 @@ export function Window({ shot, priority = false }: { shot: Shot; priority?: bool
   );
 }
 
-/// A capture on the home page's desk: the post's picture at the top, and inline figures.
-export function Figure({ shot, caption, priority }: { shot: Shot; caption?: string; priority?: boolean }) {
+/// A capture on a ground: the post's own at the top, a soft one further down.
+export function Figure({ shot, caption, priority, ground = "soft" }: { shot: Shot; caption?: string; priority?: boolean; ground?: Ground }) {
   return (
     <figure className={b.figure}>
-      <div className={b.desk}><Window shot={shot} priority={priority} /></div>
+      <div className={`${b.stage} ${b.ground}`} data-ground={ground}><Window shot={shot} priority={priority} /></div>
       {caption && <figcaption className={b.caption}>{caption}</figcaption>}
     </figure>
   );
 }
 
-/// The card's cover: the same desk, cropped to a fixed shape, with the window rising from the bottom.
-export function Cover({ shot }: { shot: Shot }) {
+/// A card's picture: real captures placed on the post's ground. Each post composes its own (see
+/// lib/posts.ts), with the same corners and the same light, so they read as one family.
+export function Cover({ art }: { art: CoverArt }) {
   return (
-    <div className={b.cover} aria-hidden="true">
-      <div className={b.coverWindow}>
-        {shot.window ? (
-          <img src={shot.src} alt="" width={shot.width / 2} height={shot.height / 2} loading="lazy" decoding="async" />
-        ) : (
-          <div className={b.window}>
-            <div className={b.bar}><span className={b.lights}><i /><i /><i /></span>{shot.title && <span className={b.barTitle}>{shot.title}</span>}</div>
-            <img src={shot.src} alt="" width={shot.width / 2} height={shot.height / 2} loading="lazy" decoding="async" />
-          </div>
-        )}
-      </div>
+    <div className={`${b.cover} ${b.ground}`} data-ground={art.ground} aria-hidden="true">
+      {art.layers.map((l, i) => {
+        const place = { left: `${l.left}%`, top: `${l.top}%`, width: `${l.size}%` } as React.CSSProperties;
+        const img = <img src={l.src} alt="" width={l.width / 2} height={l.height / 2} loading="lazy" decoding="async" />;
+        if (l.frame === "window") {
+          return (
+            <div key={i} className={`${b.layer} ${b.window}`} data-dark={l.dark || undefined} style={place}>
+              <div className={b.bar}><span className={b.lights}><i /><i /><i /></span>{l.title && <span className={b.barTitle}>{l.title}</span>}</div>
+              {img}
+            </div>
+          );
+        }
+        return <div key={i} className={`${b.layer} ${l.frame === "card" ? b.card2 : l.frame === "art" ? b.art : b.bare}`} style={place}>{img}</div>;
+      })}
     </div>
   );
 }
@@ -74,13 +78,13 @@ export function PostCard({ post, heading = "h2" }: { post: Post; heading?: "h2" 
   const H = heading;
   return (
     <a className={b.card} href={`/blog/${post.slug}`} data-category={categoryAnchor(post.category)}>
-      <Cover shot={post.image} />
+      <Cover art={post.cover} />
       <span className={b.cardText}>
         <span className={b.label}>{post.category}</span>
         <H className={b.cardTitle}>{post.title}</H>
         <span className={b.excerpt}>{post.excerpt}</span>
         <span className={b.byline}>
-          <Avatar size={22} />
+          <Avatar size={20} />
           <span>{AUTHOR.name}</span>
           <span aria-hidden="true">·</span>
           <time dateTime={post.date}>{longDate(post.date)}</time>

@@ -59,6 +59,13 @@ describe("the blog", () => {
     }
   });
 
+  it("gives every published post its own cover: a different ground and a different lead picture, from files that exist", () => {
+    const pub = published();
+    expect(new Set(pub.map((p) => p.cover.ground)).size).toBe(pub.length);
+    expect(new Set(pub.map((p) => p.cover.layers[0].src)).size).toBe(pub.length);
+    for (const p of posts) for (const l of p.cover.layers) expect(existsSync(new URL(`../public${l.src}`, import.meta.url)), l.src).toBe(true);
+  });
+
   it("links every published post to two to six other posts in its text, and never to a draft", () => {
     const drafts = posts.filter((p) => p.draft).map((p) => p.slug);
     for (const p of published()) {

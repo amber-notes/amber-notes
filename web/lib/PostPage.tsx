@@ -115,7 +115,7 @@ export function PostPage({ slug, intro, faq, children }: { slug: string; intro: 
           </p>
           <h1 className={p.title}>{x.title}</h1>
           <div className={p.byline}>
-            <Avatar size={36} />
+            <Avatar size={28} />
             <span>By <strong>{AUTHOR.name}</strong></span>
             <span aria-hidden="true">·</span>
             <span>{minutes} min read</span>
@@ -125,7 +125,7 @@ export function PostPage({ slug, intro, faq, children }: { slug: string; intro: 
 
         <div className={`${legal.article} ${p.body} rise`} style={{ "--i": 1 } as React.CSSProperties}>
           <p className={p.intro}>{intro}</p>
-          <Figure shot={x.image} priority />
+          <Figure shot={x.image} ground={x.cover.ground} priority />
           {children}
           {faq?.length ? (
             <>

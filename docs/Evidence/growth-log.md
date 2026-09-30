@@ -5,6 +5,12 @@ assistants. Newest first. Research behind it: [seo-aeo-research-2026-09-30.md](s
 
 `docs/` had no README naming a folder for evidence, so this and the research live in `docs/Evidence/`.
 
+## 30 September 2026: blog polish
+
+- The index and posts now use the changelog and help pages' system: the same 760 px column, title scale, lede and spacing, and the help page's soft cards (20 px corners around an 8 px inset). Card text is smaller (19 px titles, 15 px excerpts, 13 px bylines).
+- Every post has its own cover: a different ground (paper, soft, a warm tint, amber, leaf brown, the app's dark look, the home page's dunes) and a different composition of real captures (a detail with the "ChatGPT changed 5 lines · Undo" pill, iPhone App Store art, two overlapping windows, the import sheet with its progress bar, the dark Settings window, just the consent sheet). A test keeps grounds and lead pictures unique. The picture after each post's intro sits on that post's ground.
+- Header: "Blog" next to Changelog and Help. Home: Apple Notes' icon on the import card.
+
 ## 30 September 2026: the guides became a blog
 
 - Posts live at `/blog/<slug>`; `/guides` and `/guides/<slug>` answer 308 to them. The sitemap, /llms.txt and the footer ("Blog") use /blog.
