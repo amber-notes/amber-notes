@@ -1,17 +1,29 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import { approveHeading, fetchLabel, functionURL, problemText, universalLink, validRequest } from "@/lib/connect";
+import { fetchLabel, functionURL, problemText, validRequest } from "@/lib/connect";
 import { upstreamHeaders } from "@/lib/mcp-proxy";
 import ConnectCard from "./ConnectCard";
+import ConnectFlow from "./ConnectFlow";
 import styles from "./connect.module.css";
 
-// Where an AI's sign-in lands (the MCP server's /authorize sends it here). It names who is asking
-// and sends the person to Amber Notes, where they approve it. See lib/connect.ts.
+// Where an AI's sign-in lands (the MCP server's /authorize sends it here). It names who is asking;
+// you approve on your iPhone or Mac, or here with your recovery key. See lib/connect.ts.
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Connect to Amber Notes", robots: { index: false, follow: false } };
 
-export default async function Connect({ searchParams }: { searchParams: Promise<{ request?: string; problem?: string }> }) {
-  const { request, problem } = await searchParams;
+export default async function Connect({ searchParams }: { searchParams: Promise<{ request?: string; problem?: string; recover?: string; code?: string; error?: string }> }) {
+  const { request, problem, recover, code, error } = await searchParams;
+  const supabaseURL = process.env.SUPABASE_URL ?? "";
+  const anonKey = process.env.SUPABASE_ANON_KEY ?? "";
+  if (validRequest(request) && (!supabaseURL || !anonKey)) {
+    console.error("/connect: SUPABASE_URL or SUPABASE_ANON_KEY is not set");
+    return (
+      <ConnectCard>
+        <h1 className={styles.title}>Couldn't connect</h1>
+        <p className={styles.lede}>Connecting isn't available right now. Try again in a few minutes.</p>
+      </ConnectCard>
+    );
+  }
   if (!validRequest(request)) {
     return (
       <ConnectCard>
@@ -23,12 +35,10 @@ export default async function Connect({ searchParams }: { searchParams: Promise<
   const label = await labelFor(request);
   return (
     <ConnectCard ai={label?.verified_ai}>
-      <h1 className={styles.title}>{approveHeading(label)}</h1>
-      <p className={styles.lede}>The app asks you to allow it, then takes you back to finish connecting.</p>
-      <a className={styles.primary} href={universalLink(request)}>Open Amber Notes</a>
-      <p className={styles.small}>
-        Don't have Amber Notes? <a href="/download">Download it</a>, sign in, then start connecting again.
-      </p>
+      <ConnectFlow
+        requestId={request.toLowerCase()} supabaseURL={supabaseURL} anonKey={anonKey} label={label}
+        recover={recover === "1"} authCode={typeof code === "string" ? code : undefined} authError={typeof error === "string" ? error : undefined}
+      />
     </ConnectCard>
   );
 }

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { connectCSP, newNonce } from "./connect-csp";
+import { connectCSP, newNonce, supabaseOrigin } from "./connect-csp";
 import { themeScript } from "./theme";
 
 describe("the connect pages' CSP", () => {
@@ -14,11 +14,29 @@ describe("the connect pages' CSP", () => {
     expect(csp).toContain("frame-ancestors 'none'");
   });
 
-  it("lets the page call nothing but this site, and post nowhere", async () => {
+  it("lets /open/connect call nothing but this site, and post nowhere", async () => {
     const csp = await connectCSP(newNonce());
     expect(csp).toContain("connect-src 'self';");
     expect(csp).not.toMatch(/supabase|https?:/);
     expect(csp).toContain("form-action 'none'");
+  });
+
+  it("lets /connect call this site and the Supabase project only, and still post nowhere", async () => {
+    const csp = await connectCSP(newNonce(), "https://ref.supabase.co/");
+    expect(csp).toContain("connect-src 'self' https://ref.supabase.co;");
+    // Only there: scripts, images, frames and forms stay on this site.
+    expect(csp.match(/https:\/\/ref\.supabase\.co/g)).toHaveLength(1);
+    expect(csp).toContain("form-action 'none'");
+    expect(csp).toContain("default-src 'self';");
+  });
+
+  it("takes only an origin from the Supabase address, and nothing that isn't one", () => {
+    expect(supabaseOrigin("https://ref.supabase.co/functions/v1/mcp?x=1")).toBe("https://ref.supabase.co");
+    expect(supabaseOrigin("http://127.0.0.1:54321")).toBe("http://127.0.0.1:54321");
+    expect(supabaseOrigin("http://evil.example")).toBe(null);
+    expect(supabaseOrigin("https://a.supabase.co; script-src *")).toBe(null);
+    expect(supabaseOrigin("")).toBe(null);
+    expect(supabaseOrigin(undefined)).toBe(null);
   });
 
   it("makes a fresh nonce each time", () => {

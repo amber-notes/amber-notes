@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { approveHeading, appLink, fetchLabel, functionURL, problemText, universalLink, validRequest } from "./connect";
+import { allowHeading, appleSignInURL, appLink, destination, fetchLabel, functionURL, pkcePair, problemText, returnURL, signInError, universalLink, validRequest } from "./connect";
 import { allowedPath, upstream, upstreamHeaders } from "./mcp-proxy";
 
 const ID = "5a0f6c1e-2b1d-4c36-9e0a-6b6f0c1a2b3c";
@@ -20,13 +20,40 @@ describe("the connect page", () => {
     expect(appLink(ID.toUpperCase())).toBe(`ambernotes://connect?request=${ID}`);
   });
 
-  it("names who to approve, or says it in general words", () => {
-    expect(approveHeading({ client_name: "Claude", verified_ai: "Claude" })).toBe("Approve Claude in Amber Notes on your iPhone or Mac");
-    expect(approveHeading({ client_name: "attacker.example", verified_ai: null })).toBe("Approve attacker.example in Amber Notes on your iPhone or Mac");
-    expect(approveHeading(null)).toBe("Approve this connection in Amber Notes on your iPhone or Mac");
+  it("names who is asking, or says it in general words", () => {
+    expect(allowHeading({ client_name: "Claude", verified_ai: "Claude" })).toBe("Allow Claude to use your notes?");
+    expect(allowHeading({ client_name: "attacker.example", verified_ai: null })).toBe("Allow attacker.example to use your notes?");
+    expect(allowHeading(null)).toBe("Allow this app to use your notes?");
     // Anything odd from the server falls back to the general words.
-    expect(approveHeading({ client_name: "<script>", verified_ai: null })).toBe("Approve this connection in Amber Notes on your iPhone or Mac");
-    expect(approveHeading({ client_name: "x".repeat(80), verified_ai: null })).toMatch(/^Approve this connection/);
+    expect(allowHeading({ client_name: "<script>", verified_ai: null })).toBe("Allow this app to use your notes?");
+    expect(allowHeading({ client_name: "x".repeat(80), verified_ai: null })).toBe("Allow this app to use your notes?");
+  });
+
+  it("comes back from Sign in with Apple to the same request, and to the recovery key when asked", () => {
+    expect(returnURL("https://ambernotes.app", ID.toUpperCase())).toBe(`https://ambernotes.app/connect?request=${ID}`);
+    expect(returnURL("https://ambernotes.app", ID, true)).toBe(`https://ambernotes.app/connect?request=${ID}&recover=1`);
+    const u = new URL(appleSignInURL("https://ref.supabase.co/", returnURL("https://ambernotes.app", ID, true), "chal"));
+    expect(u.origin + u.pathname).toBe("https://ref.supabase.co/auth/v1/authorize");
+    expect(u.searchParams.get("provider")).toBe("apple");
+    expect(u.searchParams.get("redirect_to")).toBe(`https://ambernotes.app/connect?request=${ID}&recover=1`);
+    expect(u.searchParams.get("code_challenge")).toBe("chal");
+    expect(u.searchParams.get("code_challenge_method")).toBe("s256");
+  });
+
+  it("makes a PKCE pair whose challenge is the verifier's S256", async () => {
+    const { verifier, challenge } = await pkcePair();
+    expect(verifier).toMatch(/^[A-Za-z0-9_-]{64}$/);
+    const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier)));
+    expect(challenge).toBe(Buffer.from(digest).toString("base64url"));
+  });
+
+  it("says why sign-in failed in plain words", () => {
+    expect(signInError(400, { error_code: "invalid_credentials" })).toBe("The email or password isn't right.");
+    expect(signInError(400, { error_code: "email_not_confirmed" })).toBe("Confirm your email first, then sign in.");
+    expect(signInError(429, null)).toMatch(/Too many attempts/);
+    expect(signInError(500, null)).toMatch(/Check your connection/);
+    expect(destination("x.example", false)).toBe("x.example");
+    expect(destination("127.0.0.1", true)).toBe("an app on this computer");
   });
 
   it("asks the function's /connect/label, and gives up quietly", async () => {
@@ -101,10 +128,10 @@ describe("the mcp.ambernotes.app proxy", () => {
   });
 
   it("serves only the server's own paths, nothing encoded", () => {
-    for (const ok of ["/", "/register", "/authorize", "/token", "/revoke", "/connect/request", "/connect/label", "/connect/decide", "/connect/release",
+    for (const ok of ["/", "/register", "/authorize", "/token", "/revoke", "/connect/request", "/connect/label", "/connect/ask", "/connect/status", "/connect/decide", "/connect/release",
       "/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/mcp", "/.well-known/oauth-authorization-server",
       "/.well-known/openid-configuration", "/.well-known/openai-apps-challenge", "/.well-known/mcp/server-card.json"]) expect(allowedPath(ok), ok).toBe(true);
     for (const bad of ["/account", "/..%2faccount", "/authorize%2f..%2f..%2faccount", "/%5c..%5caccount", "/authorize\\..\\account",
-      "/../share-files", "/.well-known/../../account", "/connect/decide/x", "/connect/label/x", "/connect/labels", "/register/", "/%2e%2e/account", "/.env"]) expect(allowedPath(bad), bad).toBe(false);
+      "/../share-files", "/.well-known/../../account", "/connect/decide/x", "/connect/label/x", "/connect/status/x", "/connect/asks", "/connect%2fask", "/connect/labels", "/register/", "/%2e%2e/account", "/.env"]) expect(allowedPath(bad), bad).toBe(false);
   });
 });

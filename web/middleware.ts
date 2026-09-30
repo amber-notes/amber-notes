@@ -11,7 +11,7 @@ import { allowedPath, MCP_HOST, upstream, upstreamHeaders } from "@/lib/mcp-prox
 //    says so with a shared secret (MCP_PROXY_SECRET). Without the secret the proxy doesn't run.
 //
 // 2. The connect pages (/connect, and /open/connect where the universal link lands in a browser) get
-//    a per-response nonce and a strict CSP.
+//    a per-response nonce and a strict CSP. /connect may also call the Supabase project.
 
 export const config = {
   matcher: [
@@ -46,7 +46,7 @@ function proxy(req: NextRequest) {
 
 async function connectPage(req: NextRequest) {
   const nonce = newNonce();
-  const csp = await connectCSP(nonce);
+  const csp = await connectCSP(nonce, req.nextUrl.pathname === "/connect" ? process.env.SUPABASE_URL : undefined);
   // Next.js reads the nonce from the request's CSP and puts it on the scripts it renders.
   const headers = new Headers(req.headers);
   headers.set("content-security-policy", csp);
