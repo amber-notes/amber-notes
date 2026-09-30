@@ -130,15 +130,28 @@ import Testing
         #expect(old.handoffRedirect == nil, "a server that doesn't say: nothing to seal")
     }
 
-    @Test func threeDistinctNumbersOneOfThemRight() {
-        var rng = SystemRandomNumberGenerator()
-        for correct in ["00", "07", "21", "99"] {
-            for _ in 0 ..< 50 {
-                let c = ConnectMatch.choices(correct: correct, using: &rng)
-                #expect(c.count == 3 && Set(c).count == 3 && c.contains(correct))
-                #expect(c.allSatisfy { $0.count == 2 && $0.allSatisfy(\.isNumber) })
-            }
-        }
+    @Test func theTitleNeverSaysWhoItIs() {
+        #expect(ConsentSheet.title(asked("https://claude.ai/api/mcp/auth_callback")) == "An app that says it's Claude wants to use your notes")
+        #expect(ConsentSheet.title(asked("https://claude.ai/api/mcp/auth_callback", claimed: nil)) == "An app wants to use your notes")
+        var here = asked("https://claude.ai/api/mcp/auth_callback")
+        here.asked = false
+        #expect(ConsentSheet.title(here) == "Allow Claude to use your notes?")
+    }
+
+    @Test func theKeypadTakesTwoDigits() {
+        var typed = ""
+        for key in ["4", "x", "12", "2", "9"] { typed = ConnectMatch.typing(typed, key) }
+        #expect(typed == "42", "a third digit, and anything but a digit, is ignored")
+        typed = ConnectMatch.typing(typed, "delete")
+        #expect(typed == "4")
+        #expect(ConnectMatch.typing(ConnectMatch.typing("", "delete"), "0") == "0")
+    }
+
+    @MainActor @Test func aDeviceWritesOneNoncePerRequest() {
+        let a = UUID(), b = UUID()
+        let first = ConnectMatch.deviceNonce(for: a)
+        #expect(first.count == 16 && ConnectMatch.deviceNonce(for: a) == first)
+        #expect(ConnectMatch.deviceNonce(for: b) != first)
     }
 }
 

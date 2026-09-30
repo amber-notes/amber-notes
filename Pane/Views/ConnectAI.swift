@@ -157,25 +157,67 @@ struct ConnectRequest: Decodable, Identifiable, Equatable {
     }
 }
 
-/// Number matching, like Microsoft Authenticator: the page that asked shows two digits made from
-/// its key and the request (`E2EE.matchNumber`), and the device shows three numbers. Only the
-/// person looking at that page knows which one to tap; a key swapped on the way gives another
-/// number, and a wrong tap declines.
+/// Number matching for a request asked from a browser, commit then reveal (`E2EE.matchCommit`,
+/// `E2EE.matchNumber`). The page committed to its key and a nonce when it asked; this device writes
+/// its own nonce (once), the page then reveals its nonce, and this device checks the reveal opens
+/// the commit before it shows anything. The page shows two digits made from its key, both nonces
+/// and the request; the person types what the page shows. A key swapped on the way (by anyone who
+/// can write the ask) was committed before this device's nonce existed, so it can't be ground to
+/// give the same digits.
 enum ConnectMatch {
-    /// The right number and two other distinct ones, shuffled.
-    static func choices(correct: String, using rng: inout some RandomNumberGenerator) -> [String] {
-        var out = [correct]
-        while out.count < 3 {
-            let n = String(format: "%02d", Int.random(in: 0 ..< 100, using: &rng))
-            if !out.contains(n) { out.append(n) }
-        }
-        return out.shuffled(using: &rng)
+    enum Check: Equatable {
+        /// This device's nonce isn't on the ask yet, or the page hasn't revealed its nonce.
+        case waiting
+        /// The ask carries another device's nonce: that device answers it.
+        case otherDevice
+        /// The page's reveal doesn't open its commit, or the ask is malformed. Never shows a number.
+        case broken
+        /// The two digits the page shows, if it's the page that committed.
+        case number(String)
     }
 
-    static func choices(correct: String) -> [String] {
-        var rng = SystemRandomNumberGenerator()
-        return choices(correct: correct, using: &rng)
+    /// What the ask says now, checked against the nonce this device wrote.
+    static func check(_ row: ConnectAskMatch, deviceNonce: Data, requestID: UUID) -> Check {
+        guard let key = row.browserKey, key.count == 65, row.match_commit.count == 64 else { return .broken }
+        guard let written = row.device_nonce else { return .waiting }
+        guard written == E2EE.hex(deviceNonce) else { return .otherDevice }
+        guard let revealed = row.page_nonce else { return .waiting }
+        guard let pageNonce = E2EE.fromHex(revealed), pageNonce.count == 16,
+              E2EE.commitOpens(row.match_commit, browserKey: key, pageNonce: pageNonce) else { return .broken }
+        return .number(E2EE.matchNumber(browserKey: key, pageNonce: pageNonce, deviceNonce: deviceNonce, requestID: requestID))
     }
+
+    /// The nonce this device writes for a request: made once, and the same when the sheet shows it
+    /// again (the server takes the first one written).
+    @MainActor static func deviceNonce(for request: UUID) -> Data {
+        if let n = nonces[request] { return n }
+        let n = E2EE.randomBytes(16)
+        nonces[request] = n
+        return n
+    }
+
+    @MainActor private static var nonces: [UUID: Data] = [:]
+
+    /// Two digits typed on the keypad: a digit adds (up to two), delete takes the last one off.
+    static func typing(_ typed: String, _ key: String) -> String {
+        if key == "delete" { return String(typed.dropLast()) }
+        guard key.count == 1, key.allSatisfy(\.isASCIIDigit), typed.count < 2 else { return typed }
+        return typed + key
+    }
+}
+
+/// What the sheet says about number matching.
+enum ConnectMatchCopy {
+    static let wrongNumber = "That isn't the number your browser shows, so the request was declined. "
+        + "If you didn't start it, someone who knows your password tried to connect an AI. Change your password."
+    static let broken = "Your browser's request changed after it was made, so it was declined. Start connecting again in your browser."
+    static let otherDevice = "Another of your devices is answering this request. Finish it there."
+    static let expired = "This request expired. Start connecting again in your browser."
+    static let changed = "The page in your browser changed. Start connecting again in your browser."
+}
+
+private extension Character {
+    var isASCIIDigit: Bool { ("0" ... "9").contains(self) }
 }
 
 enum ConnectAPI {
@@ -297,12 +339,16 @@ enum ConnectAPI {
     /// code sealed to that page together with the address it goes to (`handoffRedirect`), so
     /// nobody on the way can send the page elsewhere; otherwise the code is added to the return
     /// address here.
+    ///
+    /// `wrongNumber`: declined because the person typed a number the page didn't show. The server
+    /// then takes no asks for this account for an hour and tells every device.
     static func decide(id: UUID, redirectURI: String?, allow: Bool, write: Bool,
                        code: (code: String, hash: String, wrap: String)?, browserKey: Data? = nil, handoffRedirect: String? = nil,
-                       send: Send) async throws -> Answer {
+                       wrongNumber: Bool = false, send: Send) async throws -> Answer {
         guard let redirectURI else { throw Failure(message: "Update Amber Notes to connect an AI.") }
         guard !allow || code != nil else { throw Failure(message: "Open Amber Notes and finish setting up encryption first.") }
         var body: [String: Any] = ["id": id.uuidString.lowercased(), "allow": allow, "write": write, "redirect_uri": redirectURI]
+        if !allow, wrongNumber { body["wrong_number"] = true }
         if allow, let code {
             body["code_hash"] = code.hash
             body["code_wrap"] = code.wrap
@@ -324,6 +370,12 @@ enum ConnectAPI {
         }
         guard allow, let code else { return .open(url) }
         return .open(withCode(url, code.code))
+    }
+
+    /// This device's nonce for an asked request (16 random bytes, lowercase hex), written once
+    /// before the page reveals its own.
+    static func writeNonce(id: UUID, nonce: Data, send: Send) async throws {
+        _ = try await send("/connect/nonce", "POST", ["id": id.uuidString.lowercased(), "nonce": E2EE.hex(nonce)])
     }
 
     /// The AI's return address with the code this device made, next to what the server put there.
@@ -628,21 +680,28 @@ struct ConsentSheet: View {
     enum Phase: Equatable { case loading, asking(ConnectRequest), working, done(String), handedOff(String), failed(String) }
     @State private var phase: Phase
     @State private var write = true
-    /// Asked from a browser: the page's key as it was when the numbers were made, the number the
-    /// page shows, and the three to pick from.
-    struct Match: Equatable { var key: Data; var number: String; var choices: [String] }
+    /// Asked from a browser: what the number was made from (the page's key, its commit and
+    /// revealed nonce), and the number the page shows. Nil until the page has revealed its nonce
+    /// and it opened the commit.
+    struct Match: Equatable { var row: ConnectAskMatch; var key: Data; var number: String }
     @State private var match: Match?
-    /// The page reloaded (a new key) while the numbers showed: they were made again.
-    @State private var changed = false
-    /// Allow and the numbers wait a moment after what the sheet shows changes, so a tap meant
+    /// The two digits typed so far.
+    @State private var typed = ""
+    /// Allow and the keypad wait a moment after what the sheet shows changes, so a tap meant
     /// for what was there before doesn't land on what's there now.
     @State private var armed = false
     static let armDelay: Duration = .seconds(1)
     /// Face ID or Touch ID before allowing; tests and captures answer for it.
     var confirm: (String) async -> Bool = ConnectApproval.confirm
     var canConfirm: () -> Bool = { ConnectApproval.canConfirm }
-    /// The public key of the page that asked, as it is now.
-    var browserKey: (SupabaseClient, UUID) async throws -> Data? = { try await ConnectAsks.browserKey($0, id: $1) }
+    /// The ask's number-matching columns as they are now (nil once it's answered or expired).
+    var askMatch: (SupabaseClient, UUID) async throws -> ConnectAskMatch? = { try await ConnectAsks.match($0, id: $1) }
+    /// Writes this device's nonce on the ask.
+    var writeNonce: (SupabaseClient, UUID, Data) async throws -> Void = { client, id, nonce in
+        try await ConnectAPI.writeNonce(id: id, nonce: nonce, send: ConnectAPI.sender(client))
+    }
+    /// How often the ask is read again while the page hasn't revealed its nonce.
+    var pollInterval: Duration = .seconds(1)
 
     init(client: SupabaseClient, requestID: UUID, initial: Phase = .loading, finish: @escaping (URL) -> Void,
          allowed: @escaping (ConnectRequest) -> Void = { _ in }, answering: @escaping (UUID) -> Void = { _ in }) {
@@ -723,12 +782,12 @@ struct ConsentSheet: View {
                 Text("Go back to \(name) to finish.").foregroundStyle(.secondary)
             }
             .accessibilityElement(children: .combine)
-        case .handedOff(let name):
+        case .handedOff:
             VStack(spacing: 8) {
                 Label("Allowed", systemImage: "checkmark.circle.fill")
                     .font(.title3.weight(.semibold))
                     .foregroundStyle(.green)
-                Text("\(name) finishes connecting in your browser.")
+                Text("It finishes connecting in your browser.")
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.secondary)
             }
@@ -737,21 +796,30 @@ struct ConsentSheet: View {
             VStack(spacing: 14) {
                 Text("Couldn't connect").font(.title3.weight(.semibold))
                 Text(message).multilineTextAlignment(.center).foregroundStyle(.secondary)
+                    .accessibilityIdentifier("connect.failure")
                 Button("Close") { dismiss() }.keyboardShortcut(.cancelAction)
             }
         }
+    }
+
+    /// The title. Asked from a browser, nothing about who's asking is confirmed: what it calls
+    /// itself is only a claim.
+    nonisolated static func title(_ r: ConnectRequest) -> String {
+        guard r.isAsked else { return "Allow \(r.who) to use your notes?" }
+        return r.claimedName.map { "An app that says it's \($0) wants to use your notes" } ?? "An app wants to use your notes"
     }
 
     private func asking(_ r: ConnectRequest) -> some View {
         let known = r.verifiedAI != nil
         return VStack(spacing: 18) {
             VStack(spacing: 6) {
-                // Asked from a browser: no name in the title, whatever the app calls itself.
-                Text(r.isAsked ? "Allow access to your notes?" : "Allow \(r.who) to use your notes?")
+                Text(Self.title(r))
                     .font(.title3.weight(.semibold))
                     .multilineTextAlignment(.center)
                 Group {
-                    if let claimed = r.claimedName {
+                    if r.isAsked {
+                        Text("It asks for access to go to \(Text(r.redirect_host).bold()). We can't confirm where access goes.")
+                    } else if let claimed = r.claimedName {
                         Text("Access goes to \(Text(r.redirect_host).bold()). It calls itself \u{201C}\(claimed)\u{201D}.")
                     } else {
                         Text("Access goes to \(Text(r.redirect_host).bold()).")
@@ -818,43 +886,86 @@ struct ConsentSheet: View {
         }
     }
 
-    /// Asked from a browser: tap the number the page shows. The right one allows (after Face ID
-    /// or Touch ID); any other declines.
+    /// Asked from a browser: type the two digits the page shows. The right ones allow (after
+    /// Face ID or Touch ID); any others decline.
     @ViewBuilder
     private func numbers(_ r: ConnectRequest) -> some View {
         VStack(spacing: 12) {
-            Label(changed ? "The page in your browser changed. Check its number again." :
-                    "Only allow this if you just started connecting an AI in your browser. Tap the number it shows.",
+            Label(match == nil ? "Waiting for your browser to show a number\u{2026}" :
+                    "Only continue if you just started connecting an AI in your browser. Type the number it shows.",
                   systemImage: "exclamationmark.triangle.fill")
                 .font(.footnote)
                 .foregroundStyle(.orange)
                 .multilineTextAlignment(.leading)
                 .accessibilityIdentifier("connect.matchHint")
-            if let match {
-                HStack(spacing: 12) {
-                    ForEach(match.choices, id: \.self) { n in
-                        Button { Task { await picked(n, r) } } label: {
-                            Text(n)
-                                .font(.title2.weight(.semibold))
-                                .monospacedDigit()
-                                .frame(maxWidth: .infinity, minHeight: 44)
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.large)
-                        .disabled(!armed)
-                        .accessibilityLabel("Number \(n)")
-                        .accessibilityIdentifier("connect.number.\(n)")
-                    }
-                }
+            if match != nil {
+                typedDigits
+                keypad
             } else {
                 ProgressView().frame(height: 44)
             }
-            Button { Task { await decide(r, allow: false) } } label: {
-                Text("Don't Allow").frame(maxWidth: .infinity)
+            HStack(spacing: 12) {
+                Button { Task { await decide(r, allow: false) } } label: {
+                    Text("Don't Allow").frame(maxWidth: .infinity)
+                }
+                .keyboardShortcut(.cancelAction)
+                .controlSize(.large)
+                .accessibilityIdentifier("connect.deny")
+                Button { Task { await entered(r) } } label: {
+                    Text("Allow").frame(maxWidth: .infinity)
+                }
+                .keyboardShortcut(.defaultAction)
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .disabled(!armed || match == nil || typed.count < 2)
+                .accessibilityIdentifier("connect.allow")
             }
-            .keyboardShortcut(.cancelAction)
-            .controlSize(.large)
-            .accessibilityIdentifier("connect.deny")
+        }
+    }
+
+    /// The two boxes the digits go in.
+    private var typedDigits: some View {
+        HStack(spacing: 10) {
+            ForEach(0 ..< 2, id: \.self) { i in
+                let digit = i < typed.count ? String(Array(typed)[i]) : ""
+                Text(digit.isEmpty ? " " : digit)
+                    .font(.system(size: 28, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                    .frame(width: 48, height: 56)
+                    .background(.fill.tertiary, in: .rect(cornerRadius: 12, style: .continuous))
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(typed.isEmpty ? "No digits typed" : "Typed \(typed.map(String.init).joined(separator: " "))")
+        .accessibilityIdentifier("connect.typed")
+    }
+
+    /// A numeric keypad. On a Mac the number keys and Delete type too.
+    private var keypad: some View {
+        let keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "delete"]
+        return LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
+            ForEach(keys, id: \.self) { key in
+                if key.isEmpty {
+                    Color.clear.frame(height: 44)
+                } else {
+                    Button { typed = ConnectMatch.typing(typed, key) } label: {
+                        Group {
+                            if key == "delete" {
+                                Image(systemName: "delete.left").font(.title3)
+                            } else {
+                                Text(key).font(.title2.weight(.medium)).monospacedDigit()
+                            }
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .contentShape(.rect)
+                    }
+                    .buttonStyle(.bordered)
+                    .keyboardShortcut(key == "delete" ? KeyEquivalent.delete : KeyEquivalent(Character(key)), modifiers: [])
+                    .disabled(!armed)
+                    .accessibilityLabel(key == "delete" ? "Delete" : key)
+                    .accessibilityIdentifier("connect.key.\(key)")
+                }
+            }
         }
     }
 
@@ -863,39 +974,67 @@ struct ConsentSheet: View {
             let r = try await ConnectAPI.request(client, id: requestID)
             // An app Amber Notes can't vouch for starts at Read Only; the person can still pick more.
             write = r.wants_write && r.verifiedAI != nil
-            if r.isAsked { await loadMatch(r) }
-            if case .failed = phase { return }
             phase = .asking(r)
+            if r.isAsked { await loadMatch(r) }
         } catch {
             phase = .failed(error.localizedDescription)
         }
     }
 
-    /// The numbers for the page's key as it is now.
+    /// Writes this device's nonce on the ask, then reads the ask about every second until the page
+    /// reveals its nonce, and shows the number only if the reveal opens the page's commit.
     private func loadMatch(_ r: ConnectRequest) async {
+        let nonce = ConnectMatch.deviceNonce(for: r.id)
         do {
-            guard let key = try await browserKey(client, r.id) else {
-                phase = .failed("This request expired. Start connecting again in your browser.")
-                return
+            guard var row = try await askMatch(client, r.id) else { phase = .failed(ConnectMatchCopy.expired); return }
+            if row.device_nonce == nil {
+                do { try await writeNonce(client, r.id, nonce) } catch {
+                    // Another device may have written first; the ask says.
+                    guard let again = try await askMatch(client, r.id) else { phase = .failed(ConnectMatchCopy.expired); return }
+                    if again.device_nonce == nil { throw error }
+                    row = again
+                }
             }
-            let number = E2EE.matchNumber(browserKey: key, requestID: r.id)
-            match = Match(key: key, number: number, choices: ConnectMatch.choices(correct: number))
+            while !Task.isCancelled {
+                switch ConnectMatch.check(row, deviceNonce: nonce, requestID: r.id) {
+                case .number(let n):
+                    guard let key = row.browserKey else { return }
+                    match = Match(row: row, key: key, number: n)
+                    return
+                case .otherDevice:
+                    phase = .failed(ConnectMatchCopy.otherDevice)
+                    return
+                case .broken:
+                    // Whoever wrote this ask isn't the page that committed: no number, and no.
+                    await decide(r, allow: false, declined: ConnectMatchCopy.broken)
+                    return
+                case .waiting:
+                    break
+                }
+                try await Task.sleep(for: pollInterval)
+                guard let next = try await askMatch(client, r.id) else { phase = .failed(ConnectMatchCopy.expired); return }
+                row = next
+            }
+        } catch is CancellationError {
+            return
         } catch {
             phase = .failed(error.localizedDescription)
         }
     }
 
-    private func picked(_ n: String, _ r: ConnectRequest) async {
-        guard armed, let match else { return }
-        guard n == match.number else {
-            // A wrong number: whoever asked isn't the page in front of the person.
-            await decide(r, allow: false, declined: "That wasn't the number your browser showed, so the request was declined. If you started it, start connecting again.")
+    /// Allow, with two digits typed: the page's number allows; any other declines, and the server
+    /// is told it was a wrong number.
+    private func entered(_ r: ConnectRequest) async {
+        guard armed, let match, typed.count == 2 else { return }
+        guard typed == match.number else {
+            typed = ""
+            await decide(r, allow: false, declined: ConnectMatchCopy.wrongNumber, wrongNumber: true)
             return
         }
         await decide(r, allow: true)
     }
 
-    private func decide(_ r: ConnectRequest, allow: Bool, declined: String? = nil) async {
+    private func decide(_ r: ConnectRequest, allow: Bool, declined: String? = nil, wrongNumber: Bool = false) async {
         // Handing over the key to your notes takes you, not just a click.
         if allow {
             guard armed else { return }
@@ -910,23 +1049,18 @@ struct ConsentSheet: View {
             // The connection gets its own copy of the account's key, wrapped under a code made here.
             let code = allow ? try AccountCrypto.shared.connectionCode() : nil
             // Asked from a browser: the code goes to that page, sealed to its key, with the
-            // address it goes to. The key must still be the one the numbers were made from.
+            // address it goes to. The ask must still be what the number was made from.
             var key: Data?
             if allow, r.isAsked {
-                key = try await browserKey(client, r.id)
-                guard let key else { throw ConnectAPI.Failure(message: "This request expired. Start connecting again in your browser.") }
-                guard key == match?.key else {
-                    let number = E2EE.matchNumber(browserKey: key, requestID: r.id)
-                    match = Match(key: key, number: number, choices: ConnectMatch.choices(correct: number))
-                    changed = true
-                    phase = .asking(r)
-                    return
-                }
+                guard let match else { throw ConnectAPI.Failure(message: ConnectMatchCopy.changed) }
+                guard let now = try await askMatch(client, r.id) else { throw ConnectAPI.Failure(message: ConnectMatchCopy.expired) }
+                guard now == match.row else { throw ConnectAPI.Failure(message: ConnectMatchCopy.changed) }
+                key = match.key
             }
             answering(r.id)
             let answer = try await ConnectAPI.decide(id: r.id, redirectURI: r.redirect_uri, allow: allow, write: write && r.wants_write,
                                                      code: code, browserKey: key, handoffRedirect: r.handoffRedirect,
-                                                     send: ConnectAPI.sender(client))
+                                                     wrongNumber: wrongNumber, send: ConnectAPI.sender(client))
             // Only a request that came by link here is sent on from here.
             if let url = answer.url { finish(url) }
             if allow {
@@ -943,6 +1077,7 @@ struct ConsentSheet: View {
         }
     }
 }
+
 
 // MARK: Settings
 
@@ -961,8 +1096,10 @@ struct Connection: Decodable, Identifiable {
     var isOAuth: Bool { kind == "oauth" }
     /// What the list calls it. A sign-in the app can't vouch for is named by where access went,
     /// never by the name the app gave itself (grants from before 2026-09-30 still carry that name).
-    var title: String {
-        guard isOAuth, let host = redirect_host, !host.isEmpty,
+    var title: String { Self.title(name: name, kind: kind, host: redirect_host) }
+
+    static func title(name: String, kind: String?, host: String?) -> String {
+        guard kind == "oauth", let host, !host.isEmpty,
               ConnectTrust.verifiedAI(host: host, loopback: false) == nil else { return name }
         return ["localhost", "127.0.0.1", "[::1]", "::1"].contains(host) ? "An app on this computer" : host
     }

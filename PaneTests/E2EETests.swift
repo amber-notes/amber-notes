@@ -32,6 +32,7 @@ import Testing
         struct Handoff: Decodable {
             var request_id: String; var code: String; var match_number: String; var browser_private: String; var browser_public: String
             var device_ephemeral_private: String; var sealed: String
+            var page_nonce: String; var device_nonce: String; var commit: String
         }
         var handoff: Handoff
         var share_tag: ShareTag
@@ -176,18 +177,60 @@ import Testing
         #expect(throws: E2EE.Failure.malformed) { try E2EE.sealHandoff(code: h.code, browserKey: pagePublic.prefix(33), requestID: request) }
     }
 
-    @Test func theMatchNumberIsThePages() throws {
+    @Test func theCommitAndTheMatchNumberAreThePages() throws {
         let h = v.handoff
         let request = try #require(UUID(uuidString: h.request_id))
-        let pagePublic = Data(base64Encoded: h.browser_public)!
-        #expect(E2EE.matchNumber(browserKey: pagePublic, requestID: request) == h.match_number)
-        #expect(E2EE.matchNumber(browserKey: pagePublic, requestID: UUID(uuidString: h.request_id.uppercased())!) == h.match_number)
-        #expect(E2EE.matchNumber(browserKey: P256.KeyAgreement.PrivateKey().publicKey.x963Representation, requestID: request).count == 2)
+        let pagePublic = try #require(Data(base64Encoded: h.browser_public))
+        let np = try #require(E2EE.fromHex(h.page_nonce)), nd = try #require(E2EE.fromHex(h.device_nonce))
+        #expect(np.count == 16 && nd.count == 16)
+        #expect(E2EE.matchCommit(browserKey: pagePublic, pageNonce: np) == h.commit)
+        #expect(E2EE.commitOpens(h.commit, browserKey: pagePublic, pageNonce: np))
+        #expect(E2EE.matchNumber(browserKey: pagePublic, pageNonce: np, deviceNonce: nd, requestID: request) == h.match_number)
+        #expect(E2EE.matchNumber(browserKey: pagePublic, pageNonce: np, deviceNonce: nd,
+                                 requestID: UUID(uuidString: h.request_id.uppercased())!) == h.match_number, "the id goes in lowercase")
         // Always two digits, 00 to 99.
         for _ in 0 ..< 200 {
-            let n = E2EE.matchNumber(browserKey: P256.KeyAgreement.PrivateKey().publicKey.x963Representation, requestID: UUID())
+            let n = E2EE.matchNumber(browserKey: P256.KeyAgreement.PrivateKey().publicKey.x963Representation, pageNonce: E2EE.randomBytes(16),
+                                     deviceNonce: E2EE.randomBytes(16), requestID: UUID())
             #expect(n.count == 2 && n.allSatisfy(\.isNumber))
         }
+    }
+
+    /// Whoever can write the ask swaps in their own key but keeps the page's commit, and replays
+    /// the page's revealed nonce: the commit doesn't open, so no number shows.
+    @Test func aSwappedKeyWithThePagesNonceFailsTheCommit() throws {
+        let h = v.handoff
+        let request = try #require(UUID(uuidString: h.request_id))
+        let np = try #require(E2EE.fromHex(h.page_nonce)), nd = try #require(E2EE.fromHex(h.device_nonce))
+        let swapped = P256.KeyAgreement.PrivateKey().publicKey.x963Representation
+        #expect(!E2EE.commitOpens(h.commit, browserKey: swapped, pageNonce: np))
+        let row = ConnectAskMatch(browser_key: swapped.base64EncodedString(), match_commit: h.commit, device_nonce: h.device_nonce, page_nonce: h.page_nonce)
+        #expect(ConnectMatch.check(row, deviceNonce: nd, requestID: request) == .broken)
+        // The page's own ask shows the page's number.
+        let page = ConnectAskMatch(browser_key: h.browser_public, match_commit: h.commit, device_nonce: h.device_nonce, page_nonce: h.page_nonce)
+        #expect(ConnectMatch.check(page, deviceNonce: nd, requestID: request) == .number(h.match_number))
+        // A reveal of another nonce doesn't open it either, nor does a malformed one.
+        var other = page
+        other.page_nonce = E2EE.hex(E2EE.randomBytes(16))
+        #expect(ConnectMatch.check(other, deviceNonce: nd, requestID: request) == .broken)
+        other.page_nonce = "XYZ"
+        #expect(ConnectMatch.check(other, deviceNonce: nd, requestID: request) == .broken)
+    }
+
+    @Test func theNumberWaitsForBothNoncesAndOnlyForThisDevices() throws {
+        let h = v.handoff
+        let request = try #require(UUID(uuidString: h.request_id))
+        let nd = try #require(E2EE.fromHex(h.device_nonce))
+        var row = ConnectAskMatch(browser_key: h.browser_public, match_commit: h.commit)
+        #expect(ConnectMatch.check(row, deviceNonce: nd, requestID: request) == .waiting, "this device's nonce isn't on it yet")
+        row.device_nonce = h.device_nonce
+        #expect(ConnectMatch.check(row, deviceNonce: nd, requestID: request) == .waiting, "the page hasn't revealed")
+        row.page_nonce = h.page_nonce
+        #expect(ConnectMatch.check(row, deviceNonce: nd, requestID: request) == .number(h.match_number))
+        #expect(ConnectMatch.check(row, deviceNonce: E2EE.randomBytes(16), requestID: request) == .otherDevice,
+                "another device's nonce: never a number made from a nonce this device didn't pick")
+        let bad = ConnectAskMatch(browser_key: "AAAA", match_commit: h.commit, device_nonce: h.device_nonce, page_nonce: h.page_nonce)
+        #expect(ConnectMatch.check(bad, deviceNonce: nd, requestID: request) == .broken)
     }
 
     @Test func theHandoffPayloadIsTheServersJSON() throws {

@@ -38,6 +38,23 @@ struct ConnectAsk: Decodable, Equatable, Identifiable, Sendable {
     static let columns = "request_id,browser_key,started_from,created_at,expires_at,answered_at"
 }
 
+/// An ask's number-matching columns, as the consent sheet reads them (about every second while it
+/// waits for the page to reveal its nonce). See `ConnectMatch`.
+struct ConnectAskMatch: Decodable, Equatable, Sendable {
+    /// The page's P-256 public key, raw uncompressed, base64.
+    let browser_key: String
+    /// hex SHA-256(browser key ‖ the page's nonce), written when the page asked.
+    let match_commit: String
+    /// The nonce the first device to write one wrote (hex, 16 bytes).
+    var device_nonce: String? = nil
+    /// The page's nonce, revealed only after a device's is on the ask (hex, 16 bytes).
+    var page_nonce: String? = nil
+
+    var browserKey: Data? { Data(base64Encoded: browser_key) }
+
+    static let columns = "browser_key,match_commit,device_nonce,page_nonce"
+}
+
 /// Watches for asks while the app runs; started with sync, stopped at sign-out.
 @MainActor
 final class ConnectAsks {
@@ -148,12 +165,14 @@ final class ConnectAsks {
         notifier.withdraw(id)
     }
 
-    /// The page's public key for a request, as it is now (a reloaded page makes a new one).
-    nonisolated static func browserKey(_ client: SupabaseClient, id: UUID) async throws -> Data? {
-        struct Row: Decodable { let browser_key: String }
-        let rows: [Row] = try await client.from("connect_asks").select("browser_key")
-            .eq("request_id", value: id.uuidString.lowercased()).limit(1).execute().value
-        return rows.first.flatMap { Data(base64Encoded: $0.browser_key) }
+    /// A request's number-matching columns as they are now; nil once it's answered, expired or gone.
+    nonisolated static func match(_ client: SupabaseClient, id: UUID) async throws -> ConnectAskMatch? {
+        let rows: [ConnectAskMatch] = try await client.from("connect_asks").select(ConnectAskMatch.columns)
+            .eq("request_id", value: id.uuidString.lowercased())
+            .is("answered_at", value: nil)
+            .gt("expires_at", value: Date.now.formatted(Date.ISO8601FormatStyle(includingFractionalSeconds: true)))
+            .limit(1).execute().value
+        return rows.first
     }
 }
 

@@ -98,13 +98,53 @@ enum E2EE {
 
     // MARK: Number matching: the page and the device show the same two digits
 
-    /// The page's key and the request, as two digits: SHA-256(browser key raw ‖ request id,
-    /// lowercase), the first four bytes as a big-endian number, mod 100. A key swapped on the way
-    /// gives another number.
-    static func matchNumber(browserKey: Data, requestID: UUID) -> String {
-        let d = Array(SHA256.hash(data: browserKey + Data(requestID.uuidString.lowercased().utf8)))
+    // Commit, then reveal (matchCommit/matchNumber in supabase/functions/_shared/e2ee.ts). The page
+    // commits to its key and a nonce Np (16 bytes) when it asks; the device then writes its own
+    // nonce Nd; only after that does the page reveal Np. Whoever swaps the page's key on the way
+    // had to commit to Np before seeing Nd, so they can't grind a key or nonce that lands on the
+    // same two digits: they get one guess in a hundred.
+
+    /// hex SHA-256(browser key raw ‖ Np).
+    static func matchCommit(browserKey: Data, pageNonce: Data) -> String {
+        hex(SHA256.hash(data: browserKey + pageNonce))
+    }
+
+    /// Whether the page's revealed nonce opens its commit for this key. Constant time.
+    static func commitOpens(_ commit: String, browserKey: Data, pageNonce: Data) -> Bool {
+        let mine = Array(matchCommit(browserKey: browserKey, pageNonce: pageNonce).utf8), theirs = Array(commit.lowercased().utf8)
+        guard mine.count == theirs.count else { return false }
+        var diff: UInt8 = 0
+        for (a, b) in zip(mine, theirs) { diff |= a ^ b }
+        return diff == 0
+    }
+
+    /// The two digits both screens show: SHA-256(browser key raw ‖ Np ‖ Nd ‖ request id,
+    /// lowercase), the first four bytes as a big-endian number, mod 100.
+    static func matchNumber(browserKey: Data, pageNonce: Data, deviceNonce: Data, requestID: UUID) -> String {
+        let d = Array(SHA256.hash(data: browserKey + pageNonce + deviceNonce + Data(requestID.uuidString.lowercased().utf8)))
         let n = UInt32(d[0]) << 24 | UInt32(d[1]) << 16 | UInt32(d[2]) << 8 | UInt32(d[3])
         return String(format: "%02d", n % 100)
+    }
+
+    /// Lowercase hex to bytes; nil for anything else.
+    static func fromHex(_ s: String) -> Data? {
+        let chars = Array(s.utf8)
+        guard chars.count % 2 == 0 else { return nil }
+        var out = Data(capacity: chars.count / 2)
+        func nibble(_ c: UInt8) -> UInt8? {
+            switch c {
+            case UInt8(ascii: "0") ... UInt8(ascii: "9"): c - UInt8(ascii: "0")
+            case UInt8(ascii: "a") ... UInt8(ascii: "f"): c - UInt8(ascii: "a") + 10
+            default: nil
+            }
+        }
+        var i = 0
+        while i < chars.count {
+            guard let hi = nibble(chars[i]), let lo = nibble(chars[i + 1]) else { return nil }
+            out.append(hi << 4 | lo)
+            i += 2
+        }
+        return out
     }
 
     /// What a device hands the page: the code and the redirect it goes to, sealed together so

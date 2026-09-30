@@ -458,6 +458,12 @@ extension NetworkFaults {
                                                  browserKey: page.publicKey.x963Representation, send: send)
         #expect(denied == .handedOff)
         #expect(box.bodies.last?["handoff"] == nil && box.bodies.last?["code_hash"] == nil)
+        #expect(box.bodies.allSatisfy { $0["wrong_number"] == nil }, "only a wrong number says so")
+
+        // A wrong number typed: declined, and the server is told why.
+        _ = try await ConnectAPI.decide(id: id, redirectURI: redirect, allow: false, write: false, code: nil, wrongNumber: true, send: send)
+        let wrong = try #require(box.bodies.last)
+        #expect(wrong["wrong_number"] as? Bool == true && wrong["allow"] as? Bool == false && wrong["code_hash"] == nil)
 
         // A page key that isn't one: nothing is sent.
         await #expect(throws: ConnectAPI.Failure.self) {
@@ -466,6 +472,22 @@ extension NetworkFaults {
                 Issue.record("sent"); return Data()
             }
         }
+    }
+
+    @Test func theDevicesNonceIsWrittenAsLowercaseHex() async throws {
+        let id = UUID()
+        let nonce = Data((0 ..< 16).map { UInt8($0 * 17) })
+        final class Sent: @unchecked Sendable { var path = ""; var body: [String: Any] = [:] }
+        let box = Sent()
+        try await ConnectAPI.writeNonce(id: id, nonce: nonce) { path, method, body in
+            #expect(method == "POST")
+            box.path = path
+            box.body = body ?? [:]
+            return Data("{}".utf8)
+        }
+        #expect(box.path == "/connect/nonce")
+        #expect(box.body["id"] as? String == id.uuidString.lowercased())
+        #expect(box.body["nonce"] as? String == "00112233445566778899aabbccddeeff")
     }
 
     @Test func aRequestFromALinkHereStillOpensTheReturnAddressWithTheCode() async throws {
