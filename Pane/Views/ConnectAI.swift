@@ -164,6 +164,12 @@ struct ConnectRequest: Decodable, Identifiable, Equatable {
 /// and the request; the person types what the page shows. A key swapped on the way (by anyone who
 /// can write the ask) was committed before this device's nonce existed, so it can't be ground to
 /// give the same digits.
+///
+/// The key and commit are the ones this device read first (`Snapshot`): its nonce is written
+/// against them, and every later read, the answer and the sealed code must carry the same pair.
+/// Whoever can write the ask could otherwise swap key, commit and revealed nonce together once
+/// this device's nonce is known (grinding a nonce until the digits match), and the ask changing
+/// under this device is declined, never shown.
 enum ConnectMatch {
     enum Check: Equatable {
         /// This device's nonce isn't on the ask yet, or the page hasn't revealed its nonce.
@@ -172,31 +178,128 @@ enum ConnectMatch {
         case otherDevice
         /// The page's reveal doesn't open its commit, or the ask is malformed. Never shows a number.
         case broken
+        /// The ask's key or commit isn't what this device read first. Never shows a number.
+        case changed
         /// The two digits the page shows, if it's the page that committed.
         case number(String)
     }
 
+    /// The page's key and commit as this device first read them.
+    struct Snapshot: Equatable, Sendable {
+        let key: Data
+        let commit: String
+
+        /// Nil when the ask is malformed.
+        init?(_ row: ConnectAskMatch) {
+            guard let key = row.browserKey, key.count == 65, row.match_commit.count == 64 else { return nil }
+            self.key = key
+            commit = row.match_commit
+        }
+
+        /// The ask still carries this key and this commit.
+        func holds(_ row: ConnectAskMatch) -> Bool { row.browserKey == key && row.match_commit == commit }
+    }
+
+    /// A number shown: what it was made from. The number and the sealed code use only the
+    /// snapshot's key.
+    struct Match: Equatable, Sendable {
+        let snapshot: Snapshot
+        /// The ask as it was when the number was made; the answer requires it unchanged.
+        let row: ConnectAskMatch
+        let number: String
+        var key: Data { snapshot.key }
+    }
+
+    /// How following an ask ended.
+    enum Outcome: Equatable {
+        case number(Match)
+        case otherDevice
+        case broken
+        case changed
+        /// The ask is gone (answered or expired).
+        case expired
+    }
+
     /// What the ask says now, checked against the nonce this device wrote.
     static func check(_ row: ConnectAskMatch, deviceNonce: Data, requestID: UUID) -> Check {
-        guard let key = row.browserKey, key.count == 65, row.match_commit.count == 64 else { return .broken }
+        guard let snapshot = Snapshot(row) else { return .broken }
+        return check(row, against: snapshot, deviceNonce: deviceNonce, requestID: requestID)
+    }
+
+    /// What the ask says now, against the key and commit this device read first.
+    static func check(_ row: ConnectAskMatch, against snapshot: Snapshot, deviceNonce: Data, requestID: UUID) -> Check {
+        guard snapshot.holds(row) else { return .changed }
         guard let written = row.device_nonce else { return .waiting }
         guard written == E2EE.hex(deviceNonce) else { return .otherDevice }
         guard let revealed = row.page_nonce else { return .waiting }
         guard let pageNonce = E2EE.fromHex(revealed), pageNonce.count == 16,
-              E2EE.commitOpens(row.match_commit, browserKey: key, pageNonce: pageNonce) else { return .broken }
-        return .number(E2EE.matchNumber(browserKey: key, pageNonce: pageNonce, deviceNonce: deviceNonce, requestID: requestID))
+              E2EE.commitOpens(snapshot.commit, browserKey: snapshot.key, pageNonce: pageNonce) else { return .broken }
+        return .number(E2EE.matchNumber(browserKey: snapshot.key, pageNonce: pageNonce, deviceNonce: deviceNonce, requestID: requestID))
     }
 
-    /// The nonce this device writes for a request: made once, and the same when the sheet shows it
-    /// again (the server takes the first one written).
-    @MainActor static func deviceNonce(for request: UUID) -> Data {
-        if let n = nonces[request] { return n }
+    /// Reads the ask, writes this device's nonce on it (against the key and commit of that first
+    /// read), then reads it about every `poll` until the page reveals its nonce. Ends with the
+    /// number only when the reveal opens the first read's commit and key and commit never changed.
+    @MainActor
+    static func follow(requestID: UUID, read: () async throws -> ConnectAskMatch?, write: (Data) async throws -> Void,
+                       poll: Duration) async throws -> Outcome {
+        guard var row = try await read() else { return .expired }
+        guard let snapshot = Snapshot(row) else { return .broken }
+        let nonce = deviceNonce(for: requestID, commit: snapshot.commit)
+        if row.device_nonce == nil {
+            do { try await write(nonce) } catch {
+                // Another device may have written first; the ask says.
+                guard let again = try await read() else { return .expired }
+                if again.device_nonce == nil, snapshot.holds(again) { throw error }
+                row = again
+            }
+        }
+        while true {
+            try Task.checkCancellation()
+            switch check(row, against: snapshot, deviceNonce: nonce, requestID: requestID) {
+            case .number(let n): return .number(Match(snapshot: snapshot, row: row, number: n))
+            case .otherDevice: return .otherDevice
+            case .broken: return .broken
+            case .changed: return .changed
+            case .waiting: break
+            }
+            try await Task.sleep(for: poll)
+            guard let next = try await read() else { return .expired }
+            row = next
+        }
+    }
+
+    enum Recheck: Equatable { case same, changed, expired }
+
+    /// The ask read again after its number was shown: it must be exactly what the number was made from.
+    static func recheck(_ match: Match, now: ConnectAskMatch?) -> Recheck {
+        guard let now else { return .expired }
+        return now == match.row && match.snapshot.holds(now) ? .same : .changed
+    }
+
+    /// Reads the ask about every `poll` while its number shows; returns once it changed or is gone.
+    @MainActor
+    static func watch(_ match: Match, read: () async throws -> ConnectAskMatch?, poll: Duration) async throws -> Recheck {
+        while true {
+            try await Task.sleep(for: poll)
+            let r = recheck(match, now: try await read())
+            if r != .same { return r }
+        }
+    }
+
+    /// The nonce this device writes for a request with a given commit: made once, and the same
+    /// when the sheet shows it again (the server takes the first one written). Another commit on
+    /// the same request never gets the same nonce.
+    @MainActor static func deviceNonce(for request: UUID, commit: String) -> Data {
+        let key = NonceKey(request: request, commit: commit)
+        if let n = nonces[key] { return n }
         let n = E2EE.randomBytes(16)
-        nonces[request] = n
+        nonces[key] = n
         return n
     }
 
-    @MainActor private static var nonces: [UUID: Data] = [:]
+    private struct NonceKey: Hashable { let request: UUID; let commit: String }
+    @MainActor private static var nonces: [NonceKey: Data] = [:]
 
     /// Two digits typed on the keypad: a digit adds (up to two), delete takes the last one off.
     static func typing(_ typed: String, _ key: String) -> String {
@@ -214,6 +317,7 @@ enum ConnectMatchCopy {
     static let otherDevice = "Another of your devices is answering this request. Finish it there."
     static let expired = "This request expired. Start connecting again in your browser."
     static let changed = "The page in your browser changed. Start connecting again in your browser."
+    static let changedWhileAnswering = "This request changed while you were answering it, so it was declined. Start connecting again."
 }
 
 private extension Character {
@@ -370,6 +474,38 @@ enum ConnectAPI {
         }
         guard allow, let code else { return .open(url) }
         return .open(withCode(url, code.code))
+    }
+
+    enum Answered: Equatable {
+        case answered(Answer)
+        /// The ask changed after its number showed: declined, and nothing sealed.
+        case declinedChanged
+    }
+
+    /// The person's answer to a request. A request asked from a browser with its number showing
+    /// (`match`) is read again first (`read`): unless it's exactly what the number was made from,
+    /// the request is declined (never as a wrong number) and no code is made or sealed. Allowing
+    /// seals the code only to the key the number was made from.
+    @MainActor static func answer(_ r: ConnectRequest, allow: Bool, write: Bool, wrongNumber: Bool = false, match: ConnectMatch.Match?,
+                       read: () async throws -> ConnectAskMatch?, code: () throws -> (code: String, hash: String, wrap: String),
+                       send: Send) async throws -> Answered {
+        var key: Data?
+        if r.isAsked, let match {
+            switch ConnectMatch.recheck(match, now: try await read()) {
+            case .expired:
+                throw Failure(message: ConnectMatchCopy.expired)
+            case .changed:
+                _ = try await decide(id: r.id, redirectURI: r.redirect_uri, allow: false, write: false, code: nil, send: send)
+                return .declinedChanged
+            case .same:
+                if allow { key = match.key }
+            }
+        } else if allow, r.isAsked {
+            throw Failure(message: ConnectMatchCopy.changed)
+        }
+        let made = allow ? try code() : nil
+        return .answered(try await decide(id: r.id, redirectURI: r.redirect_uri, allow: allow, write: write, code: made, browserKey: key,
+                                          handoffRedirect: r.handoffRedirect, wrongNumber: wrongNumber, send: send))
     }
 
     /// This device's nonce for an asked request (16 random bytes, lowercase hex), written once
@@ -680,10 +816,10 @@ struct ConsentSheet: View {
     enum Phase: Equatable { case loading, asking(ConnectRequest), working, done(String), handedOff(String), failed(String) }
     @State private var phase: Phase
     @State private var write = true
-    /// Asked from a browser: what the number was made from (the page's key, its commit and
-    /// revealed nonce), and the number the page shows. Nil until the page has revealed its nonce
-    /// and it opened the commit.
-    struct Match: Equatable { var row: ConnectAskMatch; var key: Data; var number: String }
+    /// Asked from a browser: what the number was made from (the page's key and commit as first
+    /// read, and the revealed nonce), and the number the page shows. Nil until the page has
+    /// revealed its nonce and it opened the commit.
+    typealias Match = ConnectMatch.Match
     @State private var match: Match?
     /// The two digits typed so far.
     @State private var typed = ""
@@ -982,48 +1118,52 @@ struct ConsentSheet: View {
     }
 
     /// Writes this device's nonce on the ask, then reads the ask about every second until the page
-    /// reveals its nonce, and shows the number only if the reveal opens the page's commit.
+    /// reveals its nonce, and shows the number only if the reveal opens the page's commit and the
+    /// ask still carries the key and commit it had when first read. While the number shows, the
+    /// ask keeps being read: if it changes, the number goes and the request is declined.
     private func loadMatch(_ r: ConnectRequest) async {
-        let nonce = ConnectMatch.deviceNonce(for: r.id)
+        let read = { try await askMatch(client, r.id) }
         do {
-            guard var row = try await askMatch(client, r.id) else { phase = .failed(ConnectMatchCopy.expired); return }
-            if row.device_nonce == nil {
-                do { try await writeNonce(client, r.id, nonce) } catch {
-                    // Another device may have written first; the ask says.
-                    guard let again = try await askMatch(client, r.id) else { phase = .failed(ConnectMatchCopy.expired); return }
-                    if again.device_nonce == nil { throw error }
-                    row = again
-                }
+            let outcome = try await ConnectMatch.follow(requestID: r.id, read: read, write: { try await writeNonce(client, r.id, $0) },
+                                                        poll: pollInterval)
+            switch outcome {
+            case .number(let m):
+                match = m
+            case .otherDevice:
+                phase = .failed(ConnectMatchCopy.otherDevice)
+                return
+            case .broken:
+                // Whoever wrote this ask isn't the page that committed: no number, and no.
+                await decide(r, allow: false, declined: ConnectMatchCopy.broken)
+                return
+            case .changed:
+                await decide(r, allow: false, declined: ConnectMatchCopy.changedWhileAnswering)
+                return
+            case .expired:
+                phase = .failed(ConnectMatchCopy.expired)
+                return
             }
-            while !Task.isCancelled {
-                switch ConnectMatch.check(row, deviceNonce: nonce, requestID: r.id) {
-                case .number(let n):
-                    guard let key = row.browserKey else { return }
-                    match = Match(row: row, key: key, number: n)
-                    return
-                case .otherDevice:
-                    phase = .failed(ConnectMatchCopy.otherDevice)
-                    return
-                case .broken:
-                    // Whoever wrote this ask isn't the page that committed: no number, and no.
-                    await decide(r, allow: false, declined: ConnectMatchCopy.broken)
-                    return
-                case .waiting:
-                    break
-                }
-                try await Task.sleep(for: pollInterval)
-                guard let next = try await askMatch(client, r.id) else { phase = .failed(ConnectMatchCopy.expired); return }
-                row = next
+            guard let m = match else { return }
+            let seen = try await ConnectMatch.watch(m, read: read, poll: pollInterval)
+            // Answering already reads the ask again itself.
+            guard case .asking = phase, match == m else { return }
+            match = nil
+            typed = ""
+            if seen == .changed {
+                await decide(r, allow: false, declined: ConnectMatchCopy.changedWhileAnswering)
+            } else {
+                phase = .failed(ConnectMatchCopy.expired)
             }
         } catch is CancellationError {
             return
         } catch {
+            guard case .asking = phase else { return }
             phase = .failed(error.localizedDescription)
         }
     }
 
     /// Allow, with two digits typed: the page's number allows; any other declines, and the server
-    /// is told it was a wrong number.
+    /// is told it was a wrong number (unless the ask changed meanwhile: then it's declined as that).
     private func entered(_ r: ConnectRequest) async {
         guard armed, let match, typed.count == 2 else { return }
         guard typed == match.number else {
@@ -1046,21 +1186,18 @@ struct ConsentSheet: View {
         }
         phase = .working
         do {
-            // The connection gets its own copy of the account's key, wrapped under a code made here.
-            let code = allow ? try AccountCrypto.shared.connectionCode() : nil
-            // Asked from a browser: the code goes to that page, sealed to its key, with the
-            // address it goes to. The ask must still be what the number was made from.
-            var key: Data?
-            if allow, r.isAsked {
-                guard let match else { throw ConnectAPI.Failure(message: ConnectMatchCopy.changed) }
-                guard let now = try await askMatch(client, r.id) else { throw ConnectAPI.Failure(message: ConnectMatchCopy.expired) }
-                guard now == match.row else { throw ConnectAPI.Failure(message: ConnectMatchCopy.changed) }
-                key = match.key
-            }
             answering(r.id)
-            let answer = try await ConnectAPI.decide(id: r.id, redirectURI: r.redirect_uri, allow: allow, write: write && r.wants_write,
-                                                     code: code, browserKey: key, handoffRedirect: r.handoffRedirect,
-                                                     wrongNumber: wrongNumber, send: ConnectAPI.sender(client))
+            // The connection gets its own copy of the account's key, wrapped under a code made here.
+            // Asked from a browser: the code goes to that page, sealed to the key the number was
+            // made from, with the address it goes to; the ask must still be what the number was made from.
+            let answered = try await ConnectAPI.answer(r, allow: allow, write: write && r.wants_write, wrongNumber: wrongNumber,
+                                                       match: r.isAsked ? match : nil, read: { try await askMatch(client, r.id) },
+                                                       code: { try AccountCrypto.shared.connectionCode() }, send: ConnectAPI.sender(client))
+            guard case .answered(let answer) = answered else {
+                match = nil
+                phase = .failed(ConnectMatchCopy.changedWhileAnswering)
+                return
+            }
             // Only a request that came by link here is sent on from here.
             if let url = answer.url { finish(url) }
             if allow {
