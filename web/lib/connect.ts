@@ -23,23 +23,38 @@ export type ConnectRequest = {
   id: string;
   client_name: string;
   redirect_host: string;
+  redirect_uri?: string;
+  verified_ai?: "ChatGPT" | "Claude" | null;
   loopback: boolean;
   wants_write: boolean;
 };
 
-/// Where known AI apps receive their sign-in, as in the app (ConnectTrust). Anything else gets a
-/// stronger warning, and only an address proves who it is: anyone can call themselves "ChatGPT".
-const KNOWN: Record<string, "ChatGPT" | "Claude"> = {
-  "chatgpt.com": "ChatGPT",
-  "chat.openai.com": "ChatGPT",
-  "claude.ai": "Claude",
-  "claude.com": "Claude",
+/// The exact addresses where ChatGPT and Claude receive their sign-in, as on the server
+/// (oauth.ts KNOWN_CALLBACKS) and in the app (ConnectTrust). Only a request that returns to one of
+/// these shows that AI's name and mark: anyone can call themselves "ChatGPT", and a look-alike
+/// path on the same site isn't the sign-in callback.
+export const KNOWN_CALLBACKS: Record<string, "ChatGPT" | "Claude"> = {
+  "https://chatgpt.com/connector_platform_oauth_redirect": "ChatGPT",
+  "https://platform.openai.com/apps-manage/oauth": "ChatGPT",
+  "https://claude.ai/api/mcp/auth_callback": "Claude",
+  "https://claude.com/api/mcp/auth_callback": "Claude",
 };
 
-export function verifiedAI(host: string, loopback: boolean): "ChatGPT" | "Claude" | null {
-  if (loopback) return null;
-  const match = Object.keys(KNOWN).find((k) => host === k || host.endsWith("." + k));
-  return match ? KNOWN[match] : null;
+export function verifiedAI(r: Pick<ConnectRequest, "redirect_uri">): "ChatGPT" | "Claude" | null {
+  return (r.redirect_uri && KNOWN_CALLBACKS[r.redirect_uri]) || null;
+}
+
+/// Why /authorize sent someone here without a request (?problem=), in plain words. Unknown codes
+/// get the general message; nothing from the address is ever shown.
+export function problemText(code: string | undefined): string {
+  switch (code) {
+    case "unknown_app": return "Amber Notes doesn't know this app. Remove the connector and add it again.";
+    case "wrong_return": return "The app's return address doesn't match what it registered. Remove the connector and add it again.";
+    case "too_many": return "Too many attempts. Wait a few minutes, then start connecting again.";
+    case "pkce": case "unsupported": case "wrong_server":
+      return "The app asked to connect in a way Amber Notes doesn't support. Check that it uses the address https://mcp.ambernotes.app.";
+    default: return "Start connecting again from ChatGPT, Claude or the other app you were using.";
+  }
 }
 
 /// Who will receive access, in words.

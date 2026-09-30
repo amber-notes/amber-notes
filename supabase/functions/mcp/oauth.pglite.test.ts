@@ -20,7 +20,7 @@ Deno.env.delete("MCP_ALIAS_URLS");
 Deno.env.delete("CONNECT_PAGE_URL");
 Deno.env.set("MCP_PROXY_SECRET", "proxy-secret");
 
-const { handleOAuth, publicBase, resolveAccessToken, subpath, clientIP } = await import("./oauth.ts");
+const { handleOAuth, publicBase, resolveAccessToken, subpath, clientIP, cleanName, claimsATrustedName, displayName } = await import("./oauth.ts");
 
 // MARK: Database
 
@@ -112,11 +112,11 @@ async function newUser(pg: PGlite) {
   return { id, jwt: `jwt-${id}` };
 }
 
-async function register(sql: Sql, via: Via) {
+async function register(sql: Sql, via: Via, name = "ChatGPT", uris = [CHATGPT]) {
   const res = await call(sql, request(via, "/register", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ client_name: "ChatGPT", redirect_uris: [CHATGPT] }),
+    body: JSON.stringify({ client_name: name, redirect_uris: uris }),
   }));
   assertEquals(res.status, 201);
   return (await res.json()).client_id as string;
@@ -191,7 +191,10 @@ Deno.test("metadata at the Supabase address is unchanged, and a spoofed alias is
   assertEquals(plain.authorization_endpoint, `${FUNCTION}/authorize`);
   const spoofed = new Request(`${FUNCTION}/.well-known/oauth-protected-resource`, { headers: { "x-mcp-public-url": "https://evil.example" } });
   assertEquals((await (await call(sql, spoofed)).json()).resource, FUNCTION);
-  assertEquals(publicBase(new Request(FUNCTION, { headers: { "x-mcp-public-url": `${ALIAS}/` } })), ALIAS);
+  // The alias counts only from the proxy, with its secret.
+  assertEquals(publicBase(new Request(FUNCTION, { headers: { "x-mcp-public-url": ALIAS } })), FUNCTION);
+  assertEquals(publicBase(new Request(FUNCTION, { headers: { "x-mcp-public-url": ALIAS, "x-mcp-proxy-secret": "guess" } })), FUNCTION);
+  assertEquals(publicBase(new Request(FUNCTION, { headers: { "x-mcp-public-url": `${ALIAS}/`, "x-mcp-proxy-secret": "proxy-secret" } })), ALIAS);
 });
 
 Deno.test("/authorize sends the browser to the web consent page", async () => {
@@ -206,12 +209,24 @@ Deno.test("/authorize sends the browser to the web consent page", async () => {
   assertEquals([...to.searchParams.keys()], ["request"]);
 });
 
-Deno.test("a resource that isn't this server is refused", async () => {
+Deno.test("a bad /authorize ends on our own page, never at the client's address", async () => {
   const { sql } = await db();
   const clientId = await register(sql, "proxy");
-  const res = await authorize(sql, "proxy", clientId, (await pkce()).challenge, "https://evil.example/mcp");
-  const back = new URL(res.headers.get("location")!);
-  assertEquals(back.searchParams.get("error"), "invalid_target");
+  const challenge = (await pkce()).challenge;
+  const onOurPage = (res: Response) => {
+    assertEquals(res.status, 302);
+    const to = new URL(res.headers.get("location")!);
+    assertEquals(`${to.origin}${to.pathname}`, `${SITE}/connect`);
+    assertEquals([...to.searchParams.keys()], ["problem"]);
+    return to.searchParams.get("problem");
+  };
+  assertEquals(onOurPage(await authorize(sql, "proxy", clientId, challenge, "https://evil.example/mcp")), "wrong_server");
+  const q = (p: Record<string, string>) => call(sql, request("proxy", `/authorize?${new URLSearchParams({
+    response_type: "code", client_id: clientId, redirect_uri: CHATGPT, code_challenge: challenge, code_challenge_method: "S256", state: "s", ...p })}`));
+  assertEquals(onOurPage(await q({ response_type: "token" })), "unsupported");
+  assertEquals(onOurPage(await q({ code_challenge_method: "plain" })), "pkce");
+  assertEquals(onOurPage(await q({ redirect_uri: "https://evil.example/cb" })), "wrong_return");
+  assertEquals(onOurPage(await q({ client_id: "amb_client_nope" })), "unknown_app");
 });
 
 Deno.test("full flow through mcp.ambernotes.app: iss, code, token, and the token works at both addresses", async () => {
@@ -303,6 +318,118 @@ Deno.test("rate limits count the caller behind the proxy, and only with the prox
   // One person behind the proxy runs out; someone else behind the same proxy doesn't.
   for (let i = 0; i < 60; i++) await (await authorize(sql, "proxy", clientId, challenge)).body?.cancel();
   const q = new URLSearchParams({ response_type: "code", client_id: clientId, redirect_uri: CHATGPT, code_challenge: challenge, code_challenge_method: "S256" });
-  assertEquals((await call(sql, request("proxy", `/authorize?${q}`))).status, 429);
-  assertEquals((await call(sql, request("proxy", `/authorize?${q}`, { ip: "198.51.100.8" }))).status, 302);
+  const limitedRes = await call(sql, request("proxy", `/authorize?${q}`));
+  assertEquals(new URL(limitedRes.headers.get("location")!).searchParams.get("problem"), "too_many");
+  const someoneElse = await call(sql, request("proxy", `/authorize?${q}`, { ip: "198.51.100.8" }));
+  assert(new URL(someoneElse.headers.get("location")!).searchParams.get("request"));
+});
+
+// MARK: Who is asking
+
+Deno.test("a name is cleaned: no control, format or direction characters, one line, short", () => {
+  assertEquals(cleanName("Claude\u202Eevil\u200B\u0000\nApp"), "Claudeevil App");
+  assertEquals(cleanName("  lots   of   space  "), "lots of space");
+  assertEquals(cleanName("x".repeat(200)).length, 80);
+});
+
+Deno.test("trusted names are recognized through spacing, case, digits and look-alike letters", () => {
+  for (const n of ["ChatGPT", "chat gpt", "Open AI", "CLAUDE", "Cl4ude", "Сlaude", "Anthropic Connector", "Amber Notes", "amber-notes sync", "ChаtGPT"]) {
+    assert(claimsATrustedName(n), n);
+  }
+  for (const n of ["Notion", "Incredible", "My Script", "Cursor"]) assert(!claimsATrustedName(n), n);
+  assertEquals(displayName("Claude", "https://claude.ai/api/mcp/auth_callback"), "Claude");
+  assertEquals(displayName("Claude", "https://claude.ai/other"), "claude.ai");
+  assertEquals(displayName("Claude Code", "http://127.0.0.1:4000/cb"), "An app on this computer");
+  assertEquals(displayName("Incredible", "https://incredible.one/cb"), "Incredible");
+});
+
+async function ask(sql: Sql, pg: PGlite, name: string, uris: string[], redirect = uris[0]) {
+  const clientId = await register(sql, "proxy", name, uris);
+  const q = new URLSearchParams({ response_type: "code", client_id: clientId, redirect_uri: redirect, code_challenge: (await pkce()).challenge, code_challenge_method: "S256" });
+  const res = await call(sql, request("proxy", `/authorize?${q}`));
+  const requestId = new URL(res.headers.get("location")!).searchParams.get("request")!;
+  const me = await newUser(pg);
+  const described = await call(sql, request("function", `/connect/request?id=${requestId}`, { headers: { authorization: `Bearer ${me.jwt}`, origin: SITE } }));
+  return { requestId, me, details: await described.json() };
+}
+
+Deno.test("a client calling itself Claude without Claude's callback is shown by its address", async () => {
+  const { sql, pg } = await db();
+  const fake = await ask(sql, pg, "Claude", ["https://evil.example/cb"]);
+  assertEquals(fake.details.client_name, "evil.example");
+  assertEquals(fake.details.verified_ai, null);
+  assertEquals(fake.details.redirect_uri, "https://evil.example/cb");
+  // Registering Claude's real callback too doesn't lend the name to a request going elsewhere.
+  const mixed = await ask(sql, pg, "Claude", ["https://claude.ai/api/mcp/auth_callback", "https://evil.example/cb"], "https://evil.example/cb");
+  assertEquals(mixed.details.client_name, "evil.example");
+  assertEquals(mixed.details.verified_ai, null);
+  // And the connection it would get is listed under that address too.
+  const decided = await call(sql, request("function", "/connect/decide", {
+    method: "POST", headers: { authorization: `Bearer ${mixed.me.jwt}`, origin: SITE, "content-type": "application/json" },
+    body: JSON.stringify({ id: mixed.requestId, allow: true, write: false }),
+  }));
+  assertEquals((await decided.json()).client_name, "evil.example");
+  const [{ name }] = await sql`select name from public.mcp_tokens where user_id = ${mixed.me.id}` as { name: string }[];
+  assertEquals(name, "evil.example");
+  // The real one keeps its name and mark.
+  const real = await ask(sql, pg, "Claude", ["https://claude.ai/api/mcp/auth_callback"]);
+  assertEquals(real.details.client_name, "Claude");
+  assertEquals(real.details.verified_ai, "Claude");
+  // A trusted name hidden with direction characters is caught too.
+  const hidden = await ask(sql, pg, "Chat\u200BGPT\u202E", ["https://evil.example/cb"]);
+  assertEquals(hidden.details.client_name, "evil.example");
+});
+
+// MARK: Code exchange
+
+async function code(sql: Sql, pg: PGlite) {
+  const clientId = await register(sql, "proxy");
+  const { verifier, challenge } = await pkce();
+  const res = await authorize(sql, "proxy", clientId, challenge);
+  const requestId = new URL(res.headers.get("location")!).searchParams.get("request")!;
+  const me = await newUser(pg);
+  const { decided } = await consent(sql, requestId, me.jwt);
+  return { clientId, verifier, code: new URL((await decided.json()).redirect).searchParams.get("code")!, me };
+}
+
+Deno.test("a stolen code without its verifier or client can't be spent, and doesn't cut off the real client", async () => {
+  const { sql, pg } = await db();
+  const c = await code(sql, pg);
+  const other = await register(sql, "proxy");
+  assertEquals((await exchange(sql, "proxy", c.clientId, c.code, "x".repeat(60))).body.error, "invalid_grant");
+  assertEquals((await exchange(sql, "proxy", other, c.code, c.verifier)).body.error, "invalid_grant");
+  const real = await exchange(sql, "proxy", c.clientId, c.code, c.verifier);
+  assertEquals(real.status, 200);
+  assertEquals((await resolveAccessToken(sql, real.body.access_token, request("proxy", "")))?.user_id, c.me.id);
+});
+
+Deno.test("two exchanges of one code at once: exactly one wins, and the connection is revoked", async () => {
+  const { sql, pg } = await db();
+  const c = await code(sql, pg);
+  const both = await Promise.all([1, 2].map(() => exchange(sql, "proxy", c.clientId, c.code, c.verifier)));
+  assertEquals(both.filter((r) => r.status === 200).length, 1);
+  const won = both.find((r) => r.status === 200)!;
+  assertEquals(await resolveAccessToken(sql, won.body.access_token, request("proxy", "")), undefined);
+});
+
+// MARK: Another account
+
+Deno.test("Use another account: the first account lets go, and the second can answer", async () => {
+  const { sql, pg } = await db();
+  const clientId = await register(sql, "proxy");
+  const res = await authorize(sql, "proxy", clientId, (await pkce()).challenge);
+  const requestId = new URL(res.headers.get("location")!).searchParams.get("request")!;
+  const first = await newUser(pg), second = await newUser(pg);
+  const headers = (jwt: string) => ({ authorization: `Bearer ${jwt}`, origin: SITE, "content-type": "application/json" });
+  assertEquals((await call(sql, request("function", `/connect/request?id=${requestId}`, { headers: headers(first.jwt) }))).status, 200);
+  // Nobody else can let go of it for the first account.
+  await call(sql, request("function", "/connect/release", { method: "POST", headers: headers(second.jwt), body: JSON.stringify({ id: requestId }) }));
+  assertEquals((await call(sql, request("function", `/connect/request?id=${requestId}`, { headers: headers(second.jwt) }))).status, 403);
+  const released = await call(sql, request("function", "/connect/release", { method: "POST", headers: headers(first.jwt), body: JSON.stringify({ id: requestId }) }));
+  assertEquals(released.status, 200);
+  const { decided } = await consent(sql, requestId, second.jwt);
+  assertEquals(decided.status, 200);
+  // Released from another site: refused.
+  const elsewhere = await call(sql, request("function", "/connect/release", { method: "POST", headers: { ...headers(first.jwt), origin: "https://evil.example" }, body: JSON.stringify({ id: requestId }) }));
+  assertEquals(elsewhere.status, 403);
 });

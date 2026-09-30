@@ -31,12 +31,16 @@ proxy_secret=$(cat .secrets/mcp-proxy-secret.txt)
 cd web
 vercel link --yes --project amber-notes --scope "$team" >/dev/null
 for env in production preview; do
-  for pair in "SUPABASE_URL=$url" "SUPABASE_ANON_KEY=$key" "REPORT_SALT=$salt" "MCP_PROXY_SECRET=$proxy_secret"; do
+  pairs=("SUPABASE_URL=$url" "SUPABASE_ANON_KEY=$key" "REPORT_SALT=$salt")
+  # Only production proxies mcp.ambernotes.app; a preview never holds the secret.
+  [[ $env == production ]] && pairs+=("MCP_PROXY_SECRET=$proxy_secret")
+  for pair in "${pairs[@]}"; do
     name=${pair%%=*}; value=${pair#*=}
     vercel env rm "$name" "$env" --yes --scope "$team" >/dev/null 2>&1 || true
     printf '%s' "$value" | vercel env add "$name" "$env" --scope "$team" >/dev/null
   done
 done
+vercel env rm MCP_PROXY_SECRET preview --yes --scope "$team" >/dev/null 2>&1 || true
 url=$(vercel deploy --prod --yes --scope "$team" 2>/dev/null | tail -1)
 echo "$url"
 mkdir -p ../.secrets && echo "https://ambernotes.app/privacy" > ../.secrets/privacy-url.txt  # the stable alias, not this deployment

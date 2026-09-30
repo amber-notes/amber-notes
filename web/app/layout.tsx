@@ -1,7 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import "./site.css";
-import SiteChrome, { themeScript } from "./SiteChrome";
+import SiteChrome from "./SiteChrome";
+import { themeScript } from "@/lib/theme";
 import { latestVersion } from "@/lib/changelog";
 import { repoStats } from "@/lib/github";
 import { APP_STORE_ID, APP_STORE_LIVE, SITE_NAME, SITE_URL } from "@/lib/site";

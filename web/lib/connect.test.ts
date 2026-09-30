@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { appLink, appleSignInURL, destination, functionURL, pkcePair, returnURL, signInError, validRequest, verifiedAI } from "./connect";
-import { upstream, upstreamHeaders } from "./mcp-proxy";
+import { appLink, appleSignInURL, destination, functionURL, pkcePair, problemText, returnURL, signInError, validRequest, verifiedAI } from "./connect";
+import { allowedPath, upstream, upstreamHeaders } from "./mcp-proxy";
 
 describe("the consent page", () => {
   it("accepts only a request id", () => {
@@ -15,11 +15,15 @@ describe("the consent page", () => {
   });
 
   it("shows an AI's mark only when its address proves it", () => {
-    expect(verifiedAI("claude.ai", false)).toBe("Claude");
-    expect(verifiedAI("chatgpt.com", false)).toBe("ChatGPT");
-    expect(verifiedAI("evil-claude.ai", false)).toBe(null);
-    expect(verifiedAI("claude.ai.evil.example", false)).toBe(null);
-    expect(verifiedAI("localhost", true)).toBe(null);
+    expect(verifiedAI({ redirect_uri: "https://claude.ai/api/mcp/auth_callback" })).toBe("Claude");
+    expect(verifiedAI({ redirect_uri: "https://chatgpt.com/connector_platform_oauth_redirect" })).toBe("ChatGPT");
+    // The same site isn't enough: only the pinned callback, exactly.
+    expect(verifiedAI({ redirect_uri: "https://claude.ai/some/other/page" })).toBe(null);
+    expect(verifiedAI({ redirect_uri: "https://claude.ai/api/mcp/auth_callback?x=1" })).toBe(null);
+    expect(verifiedAI({ redirect_uri: "https://evil-claude.ai/api/mcp/auth_callback" })).toBe(null);
+    expect(verifiedAI({ redirect_uri: "http://localhost:3000/callback" })).toBe(null);
+    // An older server sends no redirect_uri: never verified.
+    expect(verifiedAI({})).toBe(null);
     expect(destination("127.0.0.1", true)).toBe("an app on this computer");
   });
 
@@ -43,6 +47,12 @@ describe("the consent page", () => {
     expect(u.searchParams.get("code_challenge_method")).toBe("s256");
   });
 
+  it("explains an /authorize problem without echoing anything from the address", () => {
+    expect(problemText("unknown_app")).toMatch(/doesn't know this app/);
+    expect(problemText("<script>alert(1)</script>")).toMatch(/Start connecting again/);
+    expect(problemText(undefined)).toMatch(/Start connecting again/);
+  });
+
   it("finds the function from the Supabase address", () => {
     expect(functionURL("https://ref.supabase.co/")).toBe("https://ref.supabase.co/functions/v1/mcp");
   });
@@ -62,6 +72,8 @@ describe("the mcp.ambernotes.app proxy", () => {
       host: "mcp.ambernotes.app",
       authorization: "Bearer amb_at_x",
       "mcp-session-id": "s1",
+      cookie: "sb-access-token=secret",
+      "x-forwarded-host": "evil.example",
       "x-real-ip": "198.51.100.7",
       // A caller can't pretend to be the proxy.
       "x-mcp-client-ip": "1.2.3.4",
@@ -71,14 +83,25 @@ describe("the mcp.ambernotes.app proxy", () => {
     expect(h.get("authorization")).toBe("Bearer amb_at_x");
     expect(h.get("mcp-session-id")).toBe("s1");
     expect(h.get("host")).toBe(null);
+    expect(h.get("mcp-protocol-version")).toBe(null);
     expect(h.get("x-mcp-public-url")).toBe("https://mcp.ambernotes.app");
     expect(h.get("x-mcp-client-ip")).toBe("198.51.100.7");
     expect(h.get("x-mcp-proxy-secret")).toBe("secret");
   });
 
-  it("without the secret, vouches for nothing", () => {
-    const h = upstreamHeaders(new Headers({ "x-real-ip": "198.51.100.7", "x-mcp-client-ip": "1.2.3.4", "x-mcp-proxy-secret": "guess" }), undefined);
-    expect(h.get("x-mcp-client-ip")).toBe(null);
-    expect(h.get("x-mcp-proxy-secret")).toBe(null);
+  it("passes only the headers MCP needs", () => {
+    const h = upstreamHeaders(new Headers({ cookie: "a=b", "x-forwarded-host": "evil.example", "mcp-protocol-version": "2025-06-18", origin: "https://ambernotes.app" }), "secret");
+    expect(h.get("cookie")).toBe(null);
+    expect(h.get("x-forwarded-host")).toBe(null);
+    expect(h.get("mcp-protocol-version")).toBe("2025-06-18");
+    expect(h.get("origin")).toBe("https://ambernotes.app");
+  });
+
+  it("serves only the server's own paths, nothing encoded", () => {
+    for (const ok of ["/", "/register", "/authorize", "/token", "/revoke", "/connect/request", "/connect/decide", "/connect/release",
+      "/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/mcp", "/.well-known/oauth-authorization-server",
+      "/.well-known/openid-configuration", "/.well-known/openai-apps-challenge"]) expect(allowedPath(ok), ok).toBe(true);
+    for (const bad of ["/account", "/..%2faccount", "/authorize%2f..%2f..%2faccount", "/%5c..%5caccount", "/authorize\\..\\account",
+      "/../share-files", "/.well-known/../../account", "/connect/decide/x", "/register/", "/%2e%2e/account", "/.env"]) expect(allowedPath(bad), bad).toBe(false);
   });
 });

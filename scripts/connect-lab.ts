@@ -8,7 +8,7 @@
 //
 // Then GET http://127.0.0.1:54999/lab/start: it registers a client, starts /authorize the way
 // ChatGPT would, and redirects to the consent page. Sign in as lab@example.com / "correct horse
-// battery staple", or with Apple (the lab skips Apple's page). After Allow, the browser lands on /lab/callback, which exchanges the code and
+// battery staple" (or lab2@example.com, same password), or with Apple (the lab skips Apple's page). After Allow, the browser lands on /lab/callback, which exchanges the code and
 // shows the result. curl -H "Host: mcp.ambernotes.app" http://localhost:5299/.well-known/oauth-authorization-server
 // shows the proxy's metadata.
 import { PGlite } from "npm:@electric-sql/pglite@0.2.17";
@@ -20,6 +20,8 @@ const HERE = `http://127.0.0.1:${PORT}`;
 const EMAIL = "lab@example.com";
 const PASSWORD = "correct horse battery staple";
 const USER = "7f1d9c1e-7c2a-4c8e-9a53-3f0b8d2c9e11";
+// A second account, for "Use another account".
+const OTHER = { email: "lab2@example.com", id: "2b6a0c55-4f3e-4d8a-9c1b-0e7f5a3d2c10" };
 
 Deno.env.set("SUPABASE_URL", HERE);
 Deno.env.set("SUPABASE_ANON_KEY", "lab");
@@ -39,7 +41,7 @@ await pg.exec(`
 for (const f of ["20260927190000_mcp_tokens.sql", "20260928220500_mcp_token_columns.sql", "20260928222800_oauth_connectors.sql", "20260930140000_oauth_request_claims.sql"]) {
   await pg.exec(await Deno.readTextFile(new URL(`../supabase/migrations/${f}`, import.meta.url)));
 }
-await pg.query(`insert into auth.users (id) values ($1)`, [USER]);
+await pg.query(`insert into auth.users (id) values ($1), ($2)`, [USER, OTHER.id]);
 
 type Q = { query: PGlite["query"] };
 const run = (db: Q) => async (strings: TemplateStringsArray, ...values: unknown[]) => {
@@ -88,12 +90,13 @@ Deno.serve({ port: PORT, hostname: "127.0.0.1" }, async (req) => {
   }
   if (url.pathname === "/auth/v1/token") {
     const b = await req.json().catch(() => ({}));
+    if (b.email === OTHER.email && b.password === PASSWORD) return json({ access_token: `jwt-${OTHER.id}`, token_type: "bearer", user: { id: OTHER.id, email: OTHER.email } });
     if (b.email !== EMAIL || b.password !== PASSWORD) return json({ error_code: "invalid_credentials", msg: "Invalid login credentials" }, 400);
     return json({ access_token: `jwt-${USER}`, token_type: "bearer", user: { id: USER, email: EMAIL } });
   }
   if (url.pathname === "/auth/v1/user") {
     const m = (req.headers.get("authorization") ?? "").match(/^Bearer jwt-([0-9a-f-]{36})$/);
-    return m ? json({ id: m[1], email: EMAIL }) : json({ msg: "invalid JWT" }, 401);
+    return m ? json({ id: m[1] }) : json({ msg: "invalid JWT" }, 401);
   }
   if (url.pathname === "/auth/v1/logout") return new Response(null, { status: 204, headers: cors });
 

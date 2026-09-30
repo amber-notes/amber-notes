@@ -41,7 +41,7 @@ export function aliasBases(): string[] {
 /// function's own address, e.g. https://<ref>.supabase.co/functions/v1/mcp. An alias header naming
 /// anything else is ignored.
 export function publicBase(req: Request): string {
-  const asked = req.headers.get("x-mcp-public-url");
+  const asked = fromProxy(req) ? req.headers.get("x-mcp-public-url") : null;
   const alias = asked ? aliasBases().find((a) => sameResource(a, asked)) : undefined;
   return alias ?? functionBase(req);
 }
@@ -81,7 +81,7 @@ export function subpath(req: Request): string {
 }
 
 export function isOAuthPath(p: string) {
-  return p.startsWith("/.well-known/") || ["/register", "/authorize", "/token", "/revoke", "/connect/request", "/connect/decide"].includes(p);
+  return p.startsWith("/.well-known/") || ["/register", "/authorize", "/token", "/revoke", "/connect/request", "/connect/decide", "/connect/release"].includes(p);
 }
 
 const json = (body: unknown, status = 200, headers: Record<string, string> = {}) =>
@@ -151,10 +151,22 @@ export function redirectMatches(registered: string[], asked: string): boolean {
 /// The caller's address. Behind the site's proxy every request comes from Vercel, so the proxy
 /// passes the real one along, and it counts only with the shared secret.
 export function clientIP(req: Request) {
-  const secret = Deno.env.get("MCP_PROXY_SECRET");
   const forwarded = req.headers.get("x-mcp-client-ip");
-  if (secret && forwarded && timingSafeEqual(req.headers.get("x-mcp-proxy-secret") ?? "", secret)) return forwarded;
+  if (forwarded && fromProxy(req)) return forwarded;
   return req.headers.get("cf-connecting-ip") ?? req.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown";
+}
+
+/// Whether the site's proxy sent this request: it carries the shared secret. Proxy headers without
+/// it are ignored, and logged, since they mean a missing secret or someone trying them.
+export function fromProxy(req: Request): boolean {
+  const secret = Deno.env.get("MCP_PROXY_SECRET");
+  const claims = req.headers.has("x-mcp-client-ip") || req.headers.has("x-mcp-public-url") || req.headers.has("x-mcp-proxy-secret");
+  if (!claims) return false;
+  if (secret && timingSafeEqual(req.headers.get("x-mcp-proxy-secret") ?? "", secret)) return true;
+  console.error(secret
+    ? "PROXY HEADERS WITHOUT A VALID SECRET: ignored (check MCP_PROXY_SECRET on Vercel and here)"
+    : "PROXY HEADERS BUT MCP_PROXY_SECRET IS NOT SET: ignored; rate limits count Vercel's address and metadata names the Supabase address");
+  return false;
 }
 
 function timingSafeEqual(a: string, b: string) {
@@ -186,6 +198,46 @@ async function formOrJson(req: Request): Promise<Record<string, string>> {
     return Object.fromEntries(Object.entries(body ?? {}).map(([k, v]) => [k, String(v)]));
   }
   return Object.fromEntries(new URLSearchParams(await req.text()));
+}
+
+// MARK: Who is asking
+
+/// The exact addresses where ChatGPT and Claude receive their sign-in. Only a request that returns
+/// to one of these may show that AI's name and mark; anyone can call themselves "Claude".
+export const KNOWN_CALLBACKS: Record<string, "ChatGPT" | "Claude"> = {
+  "https://chatgpt.com/connector_platform_oauth_redirect": "ChatGPT",
+  "https://platform.openai.com/apps-manage/oauth": "ChatGPT",
+  "https://claude.ai/api/mcp/auth_callback": "Claude",
+  "https://claude.com/api/mcp/auth_callback": "Claude",
+};
+
+export const verifiedAI = (redirectURI: string): "ChatGPT" | "Claude" | null => KNOWN_CALLBACKS[redirectURI] ?? null;
+
+// Latin look-alikes from other scripts, so "Сlaude" (Cyrillic С) still reads as Claude.
+const LOOKALIKES: Record<string, string> = {
+  "а": "a", "с": "c", "е": "e", "о": "o", "р": "p", "х": "x", "у": "y", "і": "i", "ӏ": "l", "ԁ": "d", "ɡ": "g", "һ": "h",
+  "α": "a", "ο": "o", "ρ": "p", "τ": "t", "ν": "v", "ι": "i", "κ": "k", "μ": "m",
+};
+
+/// Names only ChatGPT, Claude or Amber Notes itself may use.
+export function claimsATrustedName(name: string): boolean {
+  const flat = [...name.normalize("NFKC").toLowerCase()].map((c) => LOOKALIKES[c] ?? c).join("")
+    .replace(/[^a-z0-9]/g, "").replace(/0/g, "o").replace(/1/g, "l").replace(/4/g, "a");
+  return ["chatgpt", "openai", "claude", "anthropic", "amber"].some((w) => flat.includes(w));
+}
+
+/// A registered name made safe to show: no control, format or direction characters, one line, short.
+export function cleanName(raw: string): string {
+  return raw.normalize("NFKC").replace(/[\t\n\r\p{Zl}\p{Zp}]/gu, " ").replace(/[\p{Cc}\p{Cf}]/gu, "")
+    .replace(/\s+/g, " ").trim().slice(0, 80);
+}
+
+/// What the consent screen calls the client for this request: its own name, unless that borrows a
+/// trusted name without returning to that AI's pinned address. Then it's the address it returns to.
+export function displayName(name: string, redirectURI: string): string {
+  if (verifiedAI(redirectURI) || !claimsATrustedName(name)) return name;
+  const host = new URL(redirectURI).hostname;
+  return LOOPBACK.has(host) ? "An app on this computer" : host;
 }
 
 // MARK: Metadata
@@ -243,6 +295,7 @@ export async function handleOAuth(req: Request, sql: Sql, path: string): Promise
       case "/revoke": return req.method === "POST" ? await revoke(req, sql) : json({ error: "method_not_allowed" }, 405);
       case "/connect/request": return await describeRequest(req, sql);
       case "/connect/decide": return req.method === "POST" ? await decide(req, sql) : json({ error: "method_not_allowed" }, 405);
+      case "/connect/release": return req.method === "POST" ? await release(req, sql) : json({ error: "method_not_allowed" }, 405);
     }
   } catch (e) {
     console.error("oauth", path, e);
@@ -265,7 +318,10 @@ async function register(req: Request, sql: Sql): Promise<Response> {
   if (grants.some((g) => !["authorization_code", "refresh_token"].includes(g))) {
     return oauthError("invalid_client_metadata", "Only authorization_code and refresh_token grants are supported.");
   }
-  const name = String(body.client_name ?? "").trim().slice(0, 100) || new URL(uris[0]).hostname;
+  // Grants carry the name too (at most 80 characters there). A trusted name without that AI's
+  // pinned callback is replaced by the address it returns to.
+  const cleaned = cleanName(String(body.client_name ?? ""));
+  const name = cleaned && (!claimsATrustedName(cleaned) || uris.some((u) => verifiedAI(u))) ? cleaned : displayName(cleaned || "app", uris[0]);
   const id = randomToken("amb_client_").slice(0, 43);
   // Registration is open by design, so clients that never got an approval are forgotten
   // after a day, and a flood of fresh ones (many addresses at once) is turned away.
@@ -291,25 +347,16 @@ async function register(req: Request, sql: Sql): Promise<Response> {
 
 async function authorize(req: Request, sql: Sql, base: string): Promise<Response> {
   const q = req.method === "POST" ? await formOrJson(req) : Object.fromEntries(new URL(req.url).searchParams);
-  if (await limited(sql, req, "authorize")) return text("Too many attempts. Wait a few minutes and try again.", 429);
+  if (await limited(sql, req, "authorize")) return problem("too_many");
   const [client] = await sql<{ id: string; redirect_uris: string[] }[]>`select id, redirect_uris from public.oauth_clients where id = ${q.client_id ?? ""}`;
-  // Until the redirect URI is known to be the client's own, errors must not redirect anywhere.
-  if (!client) return text("Amber Notes doesn't know this app. Remove the connector and add it again.", 400);
+  if (!client) return problem("unknown_app");
   const redirect = q.redirect_uri ?? (client.redirect_uris.length === 1 ? client.redirect_uris[0] : "");
-  if (!redirect || !redirectMatches(client.redirect_uris, redirect)) return text("The app's return address doesn't match what it registered.", 400);
-
-  const back = (params: Record<string, string>) => {
-    const u = new URL(redirect);
-    for (const [k, v] of Object.entries(params)) u.searchParams.set(k, v);
-    if (q.state) u.searchParams.set("state", q.state);
-    u.searchParams.set("iss", base);
-    return Response.redirect(u.toString(), 302);
-  };
-  if (q.response_type !== "code") return back({ error: "unsupported_response_type", error_description: "Use response_type=code." });
-  if (!q.code_challenge || q.code_challenge_method !== "S256" || !/^[A-Za-z0-9_-]{43,128}$/.test(q.code_challenge)) {
-    return back({ error: "invalid_request", error_description: "PKCE with S256 is required." });
-  }
-  if (q.resource && !isThisServer(q.resource, req)) return back({ error: "invalid_target", error_description: `This server is ${base}.` });
+  if (!redirect || !redirectMatches(client.redirect_uris, redirect)) return problem("wrong_return");
+  // Nothing is sent back to a client nobody has approved yet: a bad request ends on our own page,
+  // so /authorize can't be used to bounce people to any address that registered itself.
+  if (q.response_type !== "code") return problem("unsupported");
+  if (!q.code_challenge || q.code_challenge_method !== "S256" || !/^[A-Za-z0-9_-]{43,128}$/.test(q.code_challenge)) return problem("pkce");
+  if (q.resource && !isThisServer(q.resource, req)) return problem("wrong_server");
 
   const [row] = await sql<{ id: string }[]>`
     insert into public.oauth_requests (client_id, redirect_uri, state, code_challenge, scope, resource)
@@ -318,6 +365,13 @@ async function authorize(req: Request, sql: Sql, base: string): Promise<Response
   // Hand over to the site's consent page, which opens the app or lets the person sign in there.
   const page = new URL(connectPage());
   page.searchParams.set("request", row.id);
+  return new Response(null, { status: 302, headers: { location: page.toString(), "cache-control": "no-store" } });
+}
+
+/// The consent page, saying why this sign-in can't go ahead (it has the words for each code).
+function problem(code: string): Response {
+  const page = new URL(connectPage());
+  page.searchParams.set("problem", code);
   return new Response(null, { status: 302, headers: { location: page.toString(), "cache-control": "no-store" } });
 }
 
@@ -333,8 +387,6 @@ function allowedOrigin(req: Request): boolean {
   const origin = req.headers.get("origin");
   return origin === null || origin === new URL(connectPage()).origin;
 }
-
-const text = (s: string, status: number) => new Response(s, { status, headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" } });
 
 /// The signed-in person, from their Supabase session (the app or the web page sends it).
 async function sessionUser(req: Request): Promise<string | null> {
@@ -383,8 +435,11 @@ async function describeRequest(req: Request, sql: Sql): Promise<Response> {
   const scopes = (r.scope ?? "").split(/\s+/).filter(Boolean);
   return json({
     id: r.id,
-    client_name: r.client_name,
+    client_name: displayName(r.client_name, r.redirect_uri),
     redirect_host: host,
+    // The exact return address: an AI's mark is shown only for its pinned callback.
+    redirect_uri: r.redirect_uri,
+    verified_ai: verifiedAI(r.redirect_uri),
     loopback: LOOPBACK.has(host),
     // No scope means "whatever you allow"; asking only for read keeps it read-only.
     wants_write: scopes.length === 0 || scopes.includes("notes:write"),
@@ -418,7 +473,7 @@ async function decide(req: Request, sql: Sql): Promise<Response> {
     if (body.allow !== true) return true;
     const [g] = await tx<{ id: string }[]>`
       insert into public.mcp_tokens (user_id, name, token_hash, can_write, kind, client_id, redirect_host)
-      values (${user}, ${r.client_name}, ${"oauth:" + crypto.randomUUID()}, ${write}, 'oauth', ${r.client_id}, ${u.hostname})
+      values (${user}, ${displayName(r.client_name, r.redirect_uri)}, ${"oauth:" + crypto.randomUUID()}, ${write}, 'oauth', ${r.client_id}, ${u.hostname})
       returning id`;
     await tx`update public.oauth_requests set grant_id = ${g.id}, code_hash = ${await sha256Hex(code)},
       code_expires_at = now() + make_interval(secs => ${CODE_TTL}) where id = ${r.id}`;
@@ -431,7 +486,20 @@ async function decide(req: Request, sql: Sql): Promise<Response> {
     return json({ redirect: u.toString() });
   }
   u.searchParams.set("code", code);
-  return json({ redirect: u.toString(), client_name: r.client_name, can_write: write });
+  return json({ redirect: u.toString(), client_name: displayName(r.client_name, r.redirect_uri), can_write: write });
+}
+
+/// "Use another account": the account that opened the request lets go of it, unanswered.
+async function release(req: Request, sql: Sql): Promise<Response> {
+  if (!allowedOrigin(req)) return json({ error: "Not allowed from this site." }, 403);
+  const user = await sessionUser(req);
+  if (!user) return json({ error: "Sign in to Amber Notes first." }, 401);
+  if (await limited(sql, req, "request")) return json({ error: "Too many attempts. Wait a few minutes and try again." }, 429);
+  const body = await req.json().catch(() => ({})) as { id?: string };
+  const id = String(body.id ?? "");
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return json({ error: EXPIRED }, 404);
+  await sql`update public.oauth_requests set claimed_by = null where id = ${id} and claimed_by = ${user} and decided_at is null`;
+  return json({ released: true });
 }
 
 // MARK: Tokens
@@ -464,22 +532,25 @@ async function token(req: Request, sql: Sql, base: string): Promise<Response> {
   if (p.grant_type === "authorization_code") {
     if (!p.code || !p.code_verifier || !p.client_id) return oauthError("invalid_request", "code, code_verifier and client_id are required.");
     const hash = await sha256Hex(p.code);
-    const [r] = await sql<{ id: string; client_id: string; redirect_uri: string; code_challenge: string; grant_id: string; code_used_at: Date | null; expired: boolean; resource: string; can_write: boolean; revoked: boolean }[]>`
-      select r.id, r.client_id, r.redirect_uri, r.code_challenge, r.grant_id, r.code_used_at, r.code_expires_at < now() as expired, r.resource,
+    const [r] = await sql<{ id: string; client_id: string; redirect_uri: string; code_challenge: string; grant_id: string; expired: boolean; resource: string; can_write: boolean; revoked: boolean }[]>`
+      select r.id, r.client_id, r.redirect_uri, r.code_challenge, r.grant_id, r.code_expires_at < now() as expired, r.resource,
              g.can_write, g.revoked_at is not null as revoked
       from public.oauth_requests r join public.mcp_tokens g on g.id = r.grant_id
       where r.code_hash = ${hash}`;
     if (!r) return oauthError("invalid_grant", "Unknown code.");
-    if (r.code_used_at) {
+    // Checked before the code counts as used, so someone holding a stolen code without its
+    // verifier can neither spend it nor get the real client's connection revoked.
+    if (r.client_id !== p.client_id) return oauthError("invalid_grant", "The code was issued to another app.");
+    if (p.redirect_uri && p.redirect_uri !== r.redirect_uri) return oauthError("invalid_grant", "redirect_uri doesn't match the authorization request.");
+    if ((await s256(p.code_verifier)) !== r.code_challenge) return oauthError("invalid_grant", "PKCE verification failed.");
+    // Exactly one exchange wins, even when two arrive at once.
+    const [claimed] = await sql`update public.oauth_requests set code_used_at = now() where id = ${r.id} and code_used_at is null returning 1`;
+    if (!claimed) {
       // A code presented twice may have been stolen: cut off everything it produced.
       await revokeGrant(sql, r.grant_id);
       return oauthError("invalid_grant", "This code was already used.");
     }
-    await sql`update public.oauth_requests set code_used_at = now() where id = ${r.id}`;
     if (r.expired || r.revoked) return oauthError("invalid_grant", "The code has expired. Connect again.");
-    if (r.client_id !== p.client_id) return oauthError("invalid_grant", "The code was issued to another app.");
-    if (p.redirect_uri && p.redirect_uri !== r.redirect_uri) return oauthError("invalid_grant", "redirect_uri doesn't match the authorization request.");
-    if ((await s256(p.code_verifier)) !== r.code_challenge) return oauthError("invalid_grant", "PKCE verification failed.");
     return json(await issue(sql, r.grant_id, r.resource, r.can_write));
   }
 

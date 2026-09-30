@@ -42,11 +42,13 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, authCode,
   const [password, setPassword] = useState("");
   const [signInFailure, setSignInFailure] = useState<string | null>(null);
   const [signingIn, setSigningIn] = useState(false);
-  const [write, setWrite] = useState(true);
+  const [write, setWrite] = useState(false);
+  const [ready, setReady] = useState(false);
   const [deciding, setDeciding] = useState<"allow" | "deny" | null>(null);
   const mcp = functionURL(supabaseURL);
 
   useEffect(() => {
+    setReady(true);
     if (authCode) {
       void finishAppleSignIn(authCode);
       return;
@@ -149,7 +151,8 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, authCode,
         setPhase({ kind: "failed", message: body?.error ?? "Couldn't reach Amber Notes. Try again." });
         return;
       }
-      setWrite(Boolean(body.wants_write));
+      // An app Amber Notes can't vouch for starts at Read Only; the person can still pick more.
+      setWrite(Boolean(body.wants_write) && verifiedAI(body) !== null);
       setPhase({ kind: "asking", request: body as ConnectRequest });
     } catch {
       setPhase({ kind: "failed", message: "Couldn't reach Amber Notes. Check your connection and try again." });
@@ -189,14 +192,26 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, authCode,
     await Promise.race([ended, new Promise((r) => setTimeout(r, 1500))]);
   }
 
-  const switchAccount = () => {
-    if (session) void signOut(session.token);
+  // The request belongs to the account that opened it, so it's let go before another signs in.
+  const switchAccount = async () => {
+    if (session) {
+      await fetch(`${mcp}/connect/release`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${session.token}`, "content-type": "application/json" },
+        body: JSON.stringify({ id: requestId }),
+      }).catch(() => undefined);
+      await signOut(session.token);
+    }
     setSession(null);
     setPhase({ kind: "start" });
   };
 
   const asking = phase.kind === "asking" ? phase.request : null;
-  const ai = asking ? verifiedAI(asking.redirect_host, asking.loopback) : null;
+  const ai = asking ? verifiedAI(asking) : null;
+  // Who's asking: the AI, when its pinned callback proves it; otherwise where access goes, with the
+  // name the app gave itself only as a claim.
+  const who = asking ? (ai ?? destination(asking.redirect_host, asking.loopback)) : "";
+  const claimed = asking && !ai && asking.client_name !== who ? asking.client_name : null;
 
   return (
     <main className={styles.page}>
@@ -222,17 +237,19 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, authCode,
             <button type="button" className={styles.apple} onClick={signInWithApple} disabled={signingIn}>
               <AppleGlyph /> Sign in with Apple
             </button>
-            <form className={styles.form} onSubmit={signIn}>
+            {/* No name attributes and a POST: before the page's script runs, the form can't put the
+                password in an address. The button waits for the script anyway. */}
+            <form className={styles.form} method="post" onSubmit={signIn}>
               <label className={styles.field}>
                 <span>Email</span>
-                <input type="email" name="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                <input type="email" id="connect-email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} />
               </label>
               <label className={styles.field}>
                 <span>Password</span>
-                <input type="password" name="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+                <input type="password" id="connect-password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
               </label>
               {signInFailure && <p className={styles.error} role="alert">{signInFailure}</p>}
-              <button type="submit" className={styles.secondary} disabled={signingIn} aria-busy={signingIn}>
+              <button type="submit" className={styles.secondary} disabled={!ready || signingIn} aria-busy={signingIn}>
                 {signingIn ? <><Spinner /> Signing in…</> : "Sign in"}
               </button>
             </form>
@@ -259,8 +276,10 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, authCode,
 
         {asking && (
           <>
-            <h1 className={styles.title}>Allow {asking.client_name} to use your notes?</h1>
-            <p className={styles.lede}>Access goes to <b>{destination(asking.redirect_host, asking.loopback)}</b>.</p>
+            <h1 className={styles.title}>Allow {who} to use your notes?</h1>
+            {ai
+              ? <p className={styles.lede}>Access goes to <b>{asking.redirect_host}</b>.</p>
+              : <p className={styles.lede}>Access goes to <b>{who}</b>.{claimed && <> It calls itself &ldquo;{claimed}&rdquo;.</>}</p>}
             <div className={styles.segmented} role="radiogroup" aria-label="Access">
               <button type="button" role="radio" aria-checked={write && asking.wants_write} disabled={!asking.wants_write} onClick={() => setWrite(true)}>Read and Edit</button>
               <button type="button" role="radio" aria-checked={!(write && asking.wants_write)} onClick={() => setWrite(false)}>Read Only</button>
@@ -272,7 +291,7 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, authCode,
             </p>
             <p className={ai ? styles.note : styles.warn}>
               {ai
-                ? `Only allow this if you just started connecting ${asking.client_name}.`
+                ? `Only allow this if you just started connecting ${ai}.`
                 : "Amber Notes doesn't recognize this app. Only allow it if you just started connecting it yourself."}
             </p>
             <div className={styles.actions}>

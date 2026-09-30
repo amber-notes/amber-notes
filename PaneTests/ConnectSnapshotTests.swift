@@ -12,7 +12,7 @@ import Testing
         guard let dir = ProcessInfo.processInfo.environment["PANE_SNAPSHOT_DIR"] else { return }
         let client = SupabaseClient(supabaseURL: URL(string: "http://localhost")!, supabaseKey: "test")
         let cases: [(String, ConnectRequest)] = [
-            ("known", ConnectRequest(id: UUID(), client_name: "ChatGPT", redirect_host: "chatgpt.com", loopback: false, wants_write: true)),
+            ("known", ConnectRequest(id: UUID(), client_name: "ChatGPT", redirect_host: "chatgpt.com", redirect_uri: "https://chatgpt.com/connector_platform_oauth_redirect", loopback: false, wants_write: true)),
             ("unknown", ConnectRequest(id: UUID(), client_name: "Notes Helper", redirect_host: "helper.example.com", loopback: false, wants_write: false)),
         ]
         for (name, r) in cases {

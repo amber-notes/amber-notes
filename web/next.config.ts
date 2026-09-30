@@ -34,15 +34,10 @@ const security = [
 // domain level, in the Vercel project.
 const OLD_HOST = "amber-notes.vercel.app";
 const SITE = "https://ambernotes.app";
-const MOVED = ["/", "/help", "/download", "/changelog"];
+const MOVED = ["/", "/help", "/download", "/changelog", "/connect"];
 
-// The consent page (/connect) signs in with Supabase Auth and talks to the MCP function straight
-// from the browser, so it may also connect to the Supabase project, and nothing else.
-const supabaseOrigin = (() => {
-  try { return new URL(process.env.SUPABASE_URL ?? "").origin; } catch { return ""; }
-})();
-const connectSecurity = security.map((h) =>
-  h.key === "Content-Security-Policy" ? { ...h, value: csp(`'self'${supabaseOrigin ? ` ${supabaseOrigin}` : ""}`) } : h);
+// The consent page (/connect) gets its CSP, with a nonce, from middleware.ts.
+const connectSecurity = security.filter((h) => h.key !== "Content-Security-Policy");
 
 const config: NextConfig = {
   // The blog reads each post's source for its reading time (lib/blog.tsx). A server render (crawlers
