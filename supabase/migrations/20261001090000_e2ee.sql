@@ -555,6 +555,34 @@ end $$;
 revoke all on function public.create_mcp_token(text, boolean, text, text) from public, anon;
 grant execute on function public.create_mcp_token(text, boolean, text, text) to authenticated;
 
+-- An AI connection asked for from a browser: the page, signed in only to say whose request it
+-- is, asks the account's devices. They see it through realtime; the one that approves seals the
+-- authorization code to the page's public key (amb2h), and the page picks it up once from
+-- /connect/status. Only the MCP function writes here.
+create table public.connect_asks (
+  request_id   uuid primary key references public.oauth_requests (id) on delete cascade,
+  user_id      uuid not null references auth.users (id) on delete cascade,
+  -- The page's P-256 public key, raw and uncompressed, base64.
+  browser_key  text not null check (char_length(browser_key) = 88),
+  -- What the page says it is, e.g. "Chrome on a Mac".
+  started_from text not null check (char_length(started_from) <= 60),
+  created_at   timestamptz not null default now(),
+  expires_at   timestamptz not null,
+  answered_at  timestamptz,
+  denied       boolean not null default false,
+  -- The client's redirect without the code (the page adds it), and the code sealed to the page.
+  redirect     text check (char_length(redirect) <= 4000),
+  answer       text check (answer is null or (answer ~ '^amb2h\.[A-Za-z0-9+/]+={0,2}$' and char_length(answer) <= 600)),
+  delivered_at timestamptz
+);
+create index connect_asks_user on public.connect_asks (user_id, created_at);
+alter table public.connect_asks enable row level security;
+create policy "own connect asks read" on public.connect_asks for select to authenticated
+  using (user_id = (select auth.uid()));
+revoke all on public.connect_asks from anon;
+revoke insert, update, delete, truncate on public.connect_asks from authenticated;
+alter publication supabase_realtime add table public.connect_asks;
+
 -- Full scans by the AI server (search, sort by title, which notes embed a file) decrypt the whole
 -- library in memory. Each account has a budget of scan time: 20 seconds, refilling at 20 ms a
 -- second. Charges what was spent and returns what's left (below zero means wait).

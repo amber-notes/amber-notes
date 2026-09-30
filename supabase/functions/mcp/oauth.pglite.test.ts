@@ -8,7 +8,7 @@
 import { assert, assertEquals, assertMatch, assertStringIncludes } from "jsr:@std/assert@1";
 import type { PGlite } from "npm:@electric-sql/pglite@0.2.17";
 import type { Sql } from "npm:postgres@3.4.5";
-import { type Bytes, tokenKey, unwrap, wrap } from "../_shared/e2ee.ts";
+import { type Bytes, fromBase64, keyIdOf, newHandoffKeys, openHandoff, parseRecoveryKey, recoveryKEK, recoveryKeyText, sealHandoff, tokenKey, toBase64, unwrap, verifierOf, wrap } from "../_shared/e2ee.ts";
 import { newUser as plainUser, schemaDB, sqlFor } from "./pglite.ts";
 import { account, app } from "./sealed.ts";
 
@@ -799,4 +799,119 @@ Deno.test("a pane_ token works only in the Authorization header, never in the ad
   const gone = await rpc(sql, `Bearer ${token}`);
   assertEquals(gone.status, 401);
   assertStringIncludes(gone.headers.get("www-authenticate")!, `error="invalid_token"`);
+});
+
+// MARK: Approving from your devices, for a browser anywhere; or with the recovery key in the browser
+
+async function askAs(sql: Sql, user: User, id: string, browserKey: string, from = "Chrome on a Mac") {
+  const res = await call(sql, request("function", "/connect/ask", {
+    method: "POST", headers: { authorization: `Bearer ${user.jwt}`, origin: SITE, "content-type": "application/json" },
+    body: JSON.stringify({ id, browser_key: browserKey, from }),
+  }));
+  return { status: res.status, body: await res.json() };
+}
+
+async function statusOf(sql: Sql, id: string) {
+  return await (await call(sql, request("proxy", `/connect/status?id=${id}`))).json();
+}
+
+Deno.test("a browser asks the account's devices; the device seals the code to the page, which picks it up once", async () => {
+  const { sql, pg } = await db();
+  const { clientId, verifier, requestId } = await pendingRequest(sql);
+  const me = await newUser(pg);
+  assertEquals((await statusOf(sql, requestId)).state, "pending");
+  const page = await newHandoffKeys();
+  assertEquals((await askAs(sql, me, requestId, "not a key")).status, 400);
+  assertEquals((await askAs(sql, me, requestId, toBase64(page.publicRaw))).status, 200);
+  assertEquals((await statusOf(sql, requestId)).state, "asked");
+
+  // Every device of the account sees the ask (realtime reads it under RLS); nobody else does.
+  const [seen] = await app(pg, me.id, `select request_id, browser_key, started_from from public.connect_asks`);
+  assertEquals([seen.request_id, seen.started_from], [requestId, "Chrome on a Mac"]);
+  const other = await newUser(pg);
+  assertEquals((await app(pg, other.id, `select 1 from public.connect_asks`)).length, 0);
+  const asked = await (await call(sql, request("function", `/connect/request?id=${requestId}`, { headers: { authorization: `Bearer ${me.jwt}` } }))).json();
+  assertEquals([asked.asked, asked.started_from], [true, "Chrome on a Mac"]);
+
+  // The device must seal the code to the page.
+  const { code, body } = await appDecision(me, requestId, CHATGPT);
+  assertEquals((await decideAs(sql, me, JSON.parse(body))).status, 400);
+  const handoff = await sealHandoff(code, fromBase64(seen.browser_key), requestId);
+  const r = await decideAs(sql, me, { ...JSON.parse(body), handoff });
+  assertEquals([r.status, r.body.handoff], [200, true]);
+
+  // Nothing the server keeps holds the code.
+  const kept = JSON.stringify(await sql`select * from public.connect_asks` ) + JSON.stringify(await sql`select * from public.oauth_requests`);
+  assertEquals(kept.includes(code), false);
+
+  const done = await statusOf(sql, requestId);
+  assertEquals(done.state, "approved");
+  const opened = await openHandoff(done.handoff, page.privateKey, requestId);
+  assertEquals(opened, code);
+  assertEquals(new URL(done.redirect).searchParams.has("code"), false);
+  // Handed over once.
+  assertEquals((await statusOf(sql, requestId)).state, "delivered");
+  const tokens = await exchange(sql, "proxy", clientId, opened, verifier);
+  assertEquals(tokens.status, 200);
+});
+
+Deno.test("declined on a device, the page gets the declined redirect", async () => {
+  const { sql, pg } = await db();
+  const { requestId } = await pendingRequest(sql);
+  const me = await newUser(pg);
+  const page = await newHandoffKeys();
+  await askAs(sql, me, requestId, toBase64(page.publicRaw));
+  const r = await decideAs(sql, me, { id: requestId, allow: false, redirect_uri: CHATGPT });
+  assertEquals(r.status, 200);
+  const s = await statusOf(sql, requestId);
+  assertEquals(s.state, "denied");
+  assertEquals(new URL(s.redirect).searchParams.get("error"), "access_denied");
+  // One answer per request.
+  const again = await decideAs(sql, me, JSON.parse((await appDecision(me, requestId, CHATGPT)).body));
+  assertEquals(again.status, 404);
+});
+
+Deno.test("asks are limited per account, and expire with their request", async () => {
+  const { sql, pg } = await db();
+  const me = await newUser(pg);
+  const page = toBase64((await newHandoffKeys()).publicRaw);
+  for (let i = 0; i < 10; i++) {
+    const { requestId } = await pendingRequest(sql, "function");
+    assertEquals((await askAs(sql, me, requestId, page)).status, 200);
+  }
+  const { requestId } = await pendingRequest(sql, "function");
+  assertEquals((await askAs(sql, me, requestId, page)).status, 429);
+  await sql`update public.oauth_requests set expires_at = now() - interval '1 second' where id = ${requestId}`;
+  assertEquals((await statusOf(sql, requestId)).state, "expired");
+});
+
+Deno.test("with the recovery key the page opens the key itself and decides the same way", async () => {
+  const { sql, pg } = await db();
+  const { clientId, verifier, requestId } = await pendingRequest(sql);
+  // An account whose recovery key this test knows.
+  const id = await plainUser(pg);
+  const dk = crypto.getRandomValues(new Uint8Array(32));
+  const recovery = crypto.getRandomValues(new Uint8Array(16));
+  await app(pg, id, `select * from public.create_account_key($1, $2, $3)`,
+    [await keyIdOf(dk), await verifierOf(dk, id), await wrap(dk, await recoveryKEK(recovery, id), "recovery", id)]);
+  const me: User = { id, jwt: `jwt-${id}`, dk };
+  const page = await newHandoffKeys();
+  await askAs(sql, me, requestId, toBase64(page.publicRaw));
+
+  // In the browser: the typed key, the server's wrap, the verifier check, a code made there.
+  const typed = (await recoveryKeyText(recovery)).toLowerCase().replace(/-/g, " ");
+  const [row] = await app(pg, id, `select key_id, verifier, recovery_wrap from public.account_keys`);
+  const opened = await unwrap(row.recovery_wrap, await recoveryKEK((await parseRecoveryKey(typed))!, id), "recovery", id);
+  assertEquals(await verifierOf(opened, id), row.verifier);
+  const code = "amb_code_" + hex(32);
+  const res = await call(sql, request("function", "/connect/decide", {
+    method: "POST", headers: { authorization: `Bearer ${me.jwt}`, origin: SITE, "content-type": "application/json" },
+    body: JSON.stringify({ id: requestId, allow: true, write: false, redirect_uri: CHATGPT,
+      code_hash: await sha256Hex(code), code_wrap: await wrap(opened, await tokenKey(code, "code"), "code", id) }),
+  }));
+  const r = await res.json();
+  assertEquals([res.status, r.handoff], [200, undefined]);
+  // The page redirects itself; devices see it answered, and nothing waits to be picked up.
+  assertEquals((await statusOf(sql, requestId)).state, "delivered");
+  assertEquals((await exchange(sql, "proxy", clientId, code, verifier)).status, 200);
 });

@@ -4,11 +4,21 @@
 import { assert, assertEquals, assertRejects } from "jsr:@std/assert@1";
 import {
   aesKey, bodyContext, canonicalRecoveryKey, fileMetaContext, folderContext, fromBase64, headContext, keyIdOf, open, OpenError,
-  openFile, parseRecoveryKey, recoveryKEK, recoveryKeyText, seal, sealFile, tokenKey, toBase64, unwrap, Vault, verifierOf, wrap,
+  openFile, openHandoff, parseRecoveryKey, sealHandoff, recoveryKEK, recoveryKeyText, seal, sealFile, tokenKey, toBase64, unwrap, Vault, verifierOf, wrap,
   type WrapPurpose,
 } from "./e2ee.ts";
 
 const path = new URL("./e2ee-vectors.json", import.meta.url);
+// Two fixed P-256 keys (generated once) for the handoff vector: the page's, and the device's ephemeral one.
+const BROWSER = { d: "QXyZcLcMdeE-bd6yWeP-ekEpAq02Lun8zke9B0gTuOg", x: "r1RUkUU5QhVOxJSlg1XdTGcckNx0PGEGS7ixtNOt5Pc", y: "DLEyPUco0UiCeYKZb-qWErEcuYT_3HcRWxnYsMFGx8M" };
+const DEVICE = { d: "mv4ekNAtMnOAUgdYkMSMSEL9u2KWSfl9fk1ANRmDQkk", x: "mBtuZHu_W62QhOGJyGPBs1wu2RKw7oijhvIm9JYyeK8", y: "OrGvp16poywexhsGTfDyqW3oBISg1Wal8OYiNL6cUV8" };
+const b64url = (s: string) => fromBase64(s.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - s.length % 4) % 4));
+async function ecdh(k: { d: string; x: string; y: string }) {
+  const jwk = { kty: "EC", crv: "P-256", ...k, ext: true };
+  const privateKey = await crypto.subtle.importKey("jwk", jwk, { name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"]);
+  const publicKey = await crypto.subtle.importKey("jwk", { kty: "EC", crv: "P-256", x: k.x, y: k.y, ext: true }, { name: "ECDH", namedCurve: "P-256" }, true, []);
+  return { privateKey, publicKey, publicRaw: new Uint8Array(await crypto.subtle.exportKey("raw", publicKey)), d: b64url(k.d) };
+}
 const bytes = (start: number, n: number) => Uint8Array.from({ length: n }, (_, i) => (start + i) & 0xff);
 
 async function build() {
@@ -48,6 +58,17 @@ async function build() {
       wrap: await wrap(dataKey, await recoveryKEK(recovery, userId), "recovery", userId, nonce),
     },
     tokens: { ...Object.fromEntries(secrets), wraps },
+    handoff: await (async () => {
+      const browser = await ecdh(BROWSER), device = await ecdh(DEVICE);
+      const request = "22222222-3333-4444-8555-666666666666";
+      const code = "amb_code_" + "cd".repeat(32);
+      return {
+        request_id: request, code,
+        browser_private: toBase64(browser.d), browser_public: toBase64(browser.publicRaw),
+        device_ephemeral_private: toBase64(device.d),
+        sealed: await sealHandoff(code, browser.publicRaw, request, device, nonce),
+      };
+    })(),
   };
 }
 
@@ -119,4 +140,15 @@ Deno.test("the vault seals notes that only open as themselves", async () => {
   assertEquals(await vault.openHead(a, await vault.sealHead(a, { title: "T" })), { title: "T" });
   // Random nonces: the same text never seals the same way twice.
   assert(sealed !== await vault.sealBody(a, "secret"));
+});
+
+Deno.test("a code sealed to the page's key opens only there, for that request", async () => {
+  const v = JSON.parse(await Deno.readTextFile(path));
+  const browser = await ecdh(BROWSER);
+  assertEquals(await openHandoff(v.handoff.sealed, browser.privateKey, v.handoff.request_id), v.handoff.code);
+  await assertRejects(() => openHandoff(v.handoff.sealed, browser.privateKey, crypto.randomUUID()), OpenError);
+  await assertRejects(async () => openHandoff(v.handoff.sealed, (await ecdh(DEVICE)).privateKey, v.handoff.request_id), OpenError);
+  // Random ephemeral keys: every sealing differs, and still opens.
+  const again = await sealHandoff("amb_code_x", browser.publicRaw, v.handoff.request_id);
+  assertEquals(await openHandoff(again, browser.privateKey, v.handoff.request_id), "amb_code_x");
 });

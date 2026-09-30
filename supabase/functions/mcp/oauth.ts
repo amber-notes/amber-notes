@@ -28,7 +28,7 @@
 // are one server: a token issued through one works through the others.
 
 import type { Sql } from "npm:postgres@3.4.5";
-import { tokenKey, unwrap, wrap } from "../_shared/e2ee.ts";
+import { HANDOFF, tokenKey, unwrap, wrap } from "../_shared/e2ee.ts";
 import { dailyHash, hashSecret } from "../_shared/hash.ts";
 import { errorKind, log } from "../_shared/log.ts";
 
@@ -36,7 +36,7 @@ export const SCOPES = ["notes:read", "notes:write"];
 const ACCESS_TTL = 60 * 60; // seconds
 const REFRESH_TTL_DAYS = 90;
 const CODE_TTL = 60; // seconds
-const LIMITS: Record<string, [number, number]> = { register: [30, 3600], authorize: [60, 600], token: [120, 600], request: [120, 600], label: [120, 600], decide: [60, 600] };
+const LIMITS: Record<string, [number, number]> = { register: [30, 3600], authorize: [60, 600], token: [120, 600], request: [120, 600], label: [120, 600], decide: [60, 600], status: [400, 600] };
 
 export type Grant = { user_id: string; token_id: string; name: string; can_write: boolean; resource?: string; dk_wrap: string | null };
 
@@ -90,7 +90,7 @@ export function subpath(req: Request): string {
 }
 
 export function isOAuthPath(p: string) {
-  return p.startsWith("/.well-known/") || ["/register", "/authorize", "/token", "/revoke", "/connect/request", "/connect/label", "/connect/decide", "/connect/release"].includes(p);
+  return p.startsWith("/.well-known/") || ["/register", "/authorize", "/token", "/revoke", "/connect/request", "/connect/label", "/connect/ask", "/connect/status", "/connect/decide", "/connect/release"].includes(p);
 }
 
 const json = (body: unknown, status = 200, headers: Record<string, string> = {}) =>
@@ -317,6 +317,8 @@ export async function handleOAuth(req: Request, sql: Sql, path: string): Promise
       case "/revoke": return req.method === "POST" ? await revoke(req, sql) : json({ error: "method_not_allowed" }, 405);
       case "/connect/request": return await describeRequest(req, sql);
       case "/connect/label": return req.method === "GET" ? await label(req, sql) : json({ error: "method_not_allowed" }, 405);
+      case "/connect/ask": return req.method === "POST" ? await ask(req, sql) : json({ error: "method_not_allowed" }, 405);
+      case "/connect/status": return req.method === "GET" ? await status(req, sql) : json({ error: "method_not_allowed" }, 405);
       case "/connect/decide": return req.method === "POST" ? await decide(req, sql) : json({ error: "method_not_allowed" }, 405);
       case "/connect/release": return req.method === "POST" ? await release(req, sql) : json({ error: "method_not_allowed" }, 405);
     }
@@ -469,7 +471,76 @@ async function describeRequest(req: Request, sql: Sql): Promise<Response> {
     // No scope means "whatever you allow"; asking only for read keeps it read-only.
     wants_write: scopes.length === 0 || scopes.includes("notes:write"),
     expires_at: r.expires_at,
+    // Asked from a browser elsewhere: when, and in what (the page says, e.g. "Chrome on a Mac").
+    ...(await askedFrom(sql, r.id)),
   });
+}
+
+async function askedFrom(sql: Sql, id: string): Promise<{ asked: boolean; started_at?: Date; started_from?: string }> {
+  const [a] = await sql<{ created_at: Date; started_from: string }[]>`
+    select created_at, started_from from public.connect_asks where request_id = ${id}`;
+  return a ? { asked: true, started_at: a.created_at, started_from: a.started_from } : { asked: false };
+}
+
+// MARK: Approving from your devices, for a browser anywhere
+
+const ASKS_PER_10_MINUTES = 10;
+const RAW_P256 = /^[A-Za-z0-9+/]{86}[AEIMQUYcgkosw048]=$/;
+
+/// The web page, signed in only to say whose request this is, asks the account's devices to
+/// approve it. It sends the public half of a key pair it keeps in memory; the approving device
+/// seals the authorization code to it, so only that page can open it. The page signs out straight
+/// after and waits on /connect/status.
+async function ask(req: Request, sql: Sql): Promise<Response> {
+  if (!allowedOrigin(req)) return json({ error: "Not allowed from this site." }, 403);
+  const user = await sessionUser(req);
+  if (!user) return json({ error: "Sign in to Amber Notes first." }, 401);
+  if (await limited(sql, req, "request")) return json({ error: "Too many attempts. Wait a few minutes and try again." }, 429);
+  const body = await req.json().catch(() => ({})) as { id?: string; browser_key?: unknown; from?: unknown };
+  const key = typeof body.browser_key === "string" ? body.browser_key : "";
+  if (!RAW_P256.test(key) || atob(key).charCodeAt(0) !== 4) return json({ error: "Reload this page and try again." }, 400);
+  const from = cleanName(typeof body.from === "string" ? body.from : "").slice(0, 60) || "a web browser";
+  const [{ n }] = await sql<{ n: number }[]>`
+    select count(*)::int n from public.connect_asks where user_id = ${user} and created_at > now() - interval '10 minutes'`;
+  if (n >= ASKS_PER_10_MINUTES) return json({ error: "Too many requests to connect. Wait a few minutes and try again." }, 429);
+  const r = await pending(sql, String(body.id ?? ""));
+  if (!r) return json({ error: EXPIRED }, 404);
+  if (!(await claim(sql, r, user))) return json({ error: NOT_YOURS }, 403);
+  // A reloaded page makes a new key: the unanswered ask takes it.
+  const [row] = await sql<{ expires_at: Date }[]>`
+    insert into public.connect_asks (request_id, user_id, browser_key, started_from, expires_at)
+    values (${r.id}, ${user}, ${key}, ${from}, ${r.expires_at})
+    on conflict (request_id) do update set browser_key = excluded.browser_key, started_from = excluded.started_from, created_at = now()
+      where connect_asks.answered_at is null and connect_asks.user_id = ${user}
+    returning expires_at`;
+  if (!row) return json({ error: EXPIRED }, 404);
+  return json({ asked: true, expires_at: row.expires_at });
+}
+
+/// Where the page's request stands. No session: the request id is the page's, and the only
+/// secret here, the code, is sealed to a key only the page holds. Handed over once.
+async function status(req: Request, sql: Sql): Promise<Response> {
+  if (await limited(sql, req, "status")) return json({ error: "Too many attempts. Wait a few minutes and try again." }, 429);
+  const id = new URL(req.url).searchParams.get("id") ?? "";
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return json({ state: "expired" });
+  const [a] = await sql<{ answer: string | null; redirect: string | null; denied: boolean; answered_at: Date | null; expired: boolean }[]>`
+    with handed as (
+      update public.connect_asks set answer = null, delivered_at = now()
+      where request_id = ${id} and answer is not null
+      returning request_id, answer as handed_answer)
+    select coalesce(h.handed_answer, a.answer) as answer, a.redirect, a.denied, a.answered_at, a.expires_at < now() as expired
+    from public.connect_asks a left join handed h on h.request_id = a.request_id
+    where a.request_id = ${id}`;
+  if (a?.answered_at) {
+    if (a.denied) return json({ state: "denied", redirect: a.redirect });
+    return a.answer ? json({ state: "approved", redirect: a.redirect, handoff: a.answer }) : json({ state: "delivered" });
+  }
+  const [r] = await sql<{ decided: boolean; expired: boolean }[]>`
+    select decided_at is not null as decided, expires_at < now() as expired from public.oauth_requests where id = ${id}`;
+  if (!r || r.expired || a?.expired) return json({ state: "expired" });
+  // Answered in the app on this computer (the Open Amber Notes shortcut): the app went on from there.
+  if (r.decided) return json({ state: "answered_in_app" });
+  return json({ state: a ? "asked" : "pending" });
 }
 
 /// Who is asking, for the web page that sends the person to the app: no session, nothing else.
@@ -491,7 +562,7 @@ async function decide(req: Request, sql: Sql): Promise<Response> {
   const user = await sessionUser(req);
   if (!user) return json({ error: "Sign in to Amber Notes first." }, 401);
   if (await limited(sql, req, "decide")) return json({ error: "Too many attempts." }, 429);
-  const body = await req.json().catch(() => ({})) as { id?: string; allow?: boolean; write?: boolean; redirect_uri?: unknown; code_hash?: unknown; code_wrap?: unknown };
+  const body = await req.json().catch(() => ({})) as { id?: string; allow?: boolean; write?: boolean; redirect_uri?: unknown; code_hash?: unknown; code_wrap?: unknown; handoff?: unknown };
   const r = await pending(sql, String(body.id ?? ""));
   if (!r) return json({ error: EXPIRED }, 404);
   if (!(await claim(sql, r, user))) return json({ error: NOT_YOURS }, 403);
@@ -510,6 +581,12 @@ async function decide(req: Request, sql: Sql): Promise<Response> {
       return json({ error: "This device has an old key for your notes. Open Amber Notes again to get the current one." }, 409);
     }
   }
+  // Asked from a browser: a device's code goes to that page, sealed to its key, and the device
+  // opens nothing. The page itself (approving with the recovery key) keeps its own code.
+  const [asked] = await sql<{ request_id: string }[]>`select request_id from public.connect_asks where request_id = ${r.id}`;
+  const fromPage = req.headers.get("origin") === new URL(connectPage()).origin;
+  const handoff = typeof body.handoff === "string" && !fromPage ? body.handoff : "";
+  if (asked && allow && !fromPage && (!HANDOFF.test(handoff) || handoff.length > 600)) return json({ error: "Update Amber Notes to connect an AI." }, 400);
 
   const u = new URL(r.redirect_uri);
   if (r.state) u.searchParams.set("state", r.state);
@@ -535,9 +612,14 @@ async function decide(req: Request, sql: Sql): Promise<Response> {
   if (!allow) {
     u.searchParams.set("error", "access_denied");
     u.searchParams.set("error_description", "The person declined in Amber Notes.");
-    return json({ redirect: u.toString() });
   }
-  return json({ redirect: u.toString(), client_name: displayName(r.client_name, r.redirect_uri), can_write: write });
+  if (asked) {
+    await sql`update public.connect_asks set answered_at = now(), denied = ${!allow}, redirect = ${u.toString()},
+      answer = ${allow && handoff ? handoff : null}, delivered_at = ${fromPage ? new Date() : null} where request_id = ${r.id}`;
+  }
+  const handedOff = asked && !fromPage ? { handoff: true } : {};
+  if (!allow) return json({ redirect: u.toString(), ...handedOff });
+  return json({ redirect: u.toString(), client_name: displayName(r.client_name, r.redirect_uri), can_write: write, ...handedOff });
 }
 
 /// "Use another account": the account that opened the request lets go of it, unanswered.

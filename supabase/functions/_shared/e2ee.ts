@@ -193,6 +193,62 @@ export async function recoveryKEK(bytes: Bytes, userId: string): Promise<CryptoK
     ikm, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
 }
 
+// MARK: Handing an authorization code to the browser that asked
+//
+// Approving an AI on a device for a browser elsewhere: the page makes a P-256 key pair and sends
+// the public half with its ask; the device makes the code, seals it to that key and stores only
+// the sealed code. The server never holds the code and its wrap together.
+//
+//   amb2h.<base64 device ephemeral public key (65, uncompressed) ‖ nonce (12) ‖ ciphertext ‖ tag>
+//   key = HKDF-SHA256(ECDH shared secret, salt "amber-notes/e2ee", info "handoff <request id>")
+//   AAD = "amb2h|<request id>"
+
+export const HANDOFF = /^amb2h\.([A-Za-z0-9+/]+={0,2})$/;
+
+async function handoffKey(priv: CryptoKey, pub: CryptoKey, requestId: string): Promise<CryptoKey> {
+  const shared = new Uint8Array(await crypto.subtle.deriveBits({ name: "ECDH", public: pub }, priv, 256));
+  const ikm = await crypto.subtle.importKey("raw", shared, "HKDF", false, ["deriveKey"]);
+  return await crypto.subtle.deriveKey(
+    { name: "HKDF", hash: "SHA-256", salt: SALT, info: enc.encode(`handoff ${requestId.toLowerCase()}`) },
+    ikm, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+}
+
+/** A key pair for the page's ask. Its public half goes to the server as raw uncompressed bytes. */
+export async function newHandoffKeys(): Promise<{ privateKey: CryptoKey; publicRaw: Bytes }> {
+  const pair = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, false, ["deriveBits"]);
+  return { privateKey: pair.privateKey, publicRaw: new Uint8Array(await crypto.subtle.exportKey("raw", pair.publicKey)) };
+}
+
+/** Seals `code` to the page's public key. `ephemeral` and `nonce` are for test vectors only. */
+export async function sealHandoff(code: string, browserPublicRaw: Bytes, requestId: string, ephemeral?: CryptoKeyPair, nonce?: Bytes): Promise<string> {
+  const pub = await crypto.subtle.importKey("raw", browserPublicRaw, { name: "ECDH", namedCurve: "P-256" }, false, []);
+  const eph = ephemeral ?? await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"]);
+  const key = await handoffKey(eph.privateKey, pub, requestId);
+  const iv = nonce ?? crypto.getRandomValues(new Uint8Array(12));
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv, additionalData: enc.encode(`amb2h|${requestId.toLowerCase()}`) }, key, enc.encode(code)));
+  const ephRaw = new Uint8Array(await crypto.subtle.exportKey("raw", eph.publicKey));
+  const out = new Uint8Array(65 + 12 + ct.length);
+  out.set(ephRaw);
+  out.set(iv, 65);
+  out.set(ct, 77);
+  return `amb2h.${toBase64(out)}`;
+}
+
+export async function openHandoff(sealed: string, browserPrivate: CryptoKey, requestId: string): Promise<string> {
+  const m = HANDOFF.exec(sealed);
+  if (!m) throw new OpenError("not a handoff");
+  const b = fromBase64(m[1]);
+  if (b.length < 65 + 12 + 16) throw new OpenError("handoff too short");
+  try {
+    const pub = await crypto.subtle.importKey("raw", b.subarray(0, 65), { name: "ECDH", namedCurve: "P-256" }, false, []);
+    const key = await handoffKey(browserPrivate, pub, requestId);
+    return dec.decode(await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: b.subarray(65, 77), additionalData: enc.encode(`amb2h|${requestId.toLowerCase()}`) }, key, b.subarray(77)));
+  } catch {
+    throw new OpenError("wrong key or request");
+  }
+}
+
 // MARK: Files
 
 const FILE_MAGIC = enc.encode("AMB2F");

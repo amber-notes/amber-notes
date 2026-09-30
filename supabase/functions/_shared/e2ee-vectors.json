@@ -54,5 +54,13 @@
       "code": "amb2.ae216c2ef5247a37.oKGio6SlpqeoqaqruHd25cJjS5eC20rZkyx+Ah+VddEuQgIeD0ozySMvZh0KctIyi7s7IHtJHUB3D4ClOr6fBJPtdZX664CV",
       "pane": "amb2.ae216c2ef5247a37.oKGio6SlpqeoqaqrXDewuPjLVp3oFLyrnQeTVZO9WRizXFz/zMjs+opRNqgfiD+wVQViJE2iGgdLk2glpIBEdv4J/gstbSAW"
     }
+  },
+  "handoff": {
+    "request_id": "22222222-3333-4444-8555-666666666666",
+    "code": "amb_code_cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+    "browser_private": "QXyZcLcMdeE+bd6yWeP+ekEpAq02Lun8zke9B0gTuOg=",
+    "browser_public": "BK9UVJFFOUIVTsSUpYNV3UxnHJDcdDxhBku4sbTTreT3DLEyPUco0UiCeYKZb+qWErEcuYT/3HcRWxnYsMFGx8M=",
+    "device_ephemeral_private": "mv4ekNAtMnOAUgdYkMSMSEL9u2KWSfl9fk1ANRmDQkk=",
+    "sealed": "amb2h.BJgbbmR7v1utkIThichjwbNcLtkSsO6Io4byJvSWMnivOrGvp16poywexhsGTfDyqW3oBISg1Wal8OYiNL6cUV+goaKjpKWmp6ipqquMo6DcULqRf/Yedw4/x2S1D4v/ThFM9QTAUHGjw4ks5DrVk7PbljB47uPW7koTH+8GhVNusr/KbDc0wLUFwFI4r2BT8TZUz3dYG+t3x8yzWYWoKZeTlIG44g=="
   }
 }
