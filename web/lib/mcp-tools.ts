@@ -4,7 +4,7 @@ export type McpTool = { name: string; title: string; description: string; kind: 
 
 export const MCP_TOOLS: McpTool[] = [
   { name: "get_overview", title: "Overview of the notes", kind: "read", description: "An overview of the person's Amber Notes: folders with counts, pinned notes and the most recently edited notes." },
-  { name: "search_notes", title: "Search notes", kind: "read", description: "Full-text search across titles and bodies. Returns ranked notes with a highlighted snippet («match»)." },
+  { name: "search_notes", title: "Search notes", kind: "read", description: "Full-text search across titles and bodies. Returns ranked notes with a highlighted snippet («match»). Locked notes are left out." },
   { name: "list_notes", title: "List notes", kind: "read", description: "List notes, newest first, optionally in one folder. Use for browsing; use search_notes to find something." },
   { name: "read_note", title: "Read a note", kind: "read", description: "Returns a note's markdown with its folder, dates, version and outline. For long notes, read a line range; set line_numbers to see where headings are." },
   { name: "create_note", title: "Create a note", kind: "write", description: "Creates a note from markdown. The first line becomes the title (write it as plain text or '# Title')." },
@@ -28,6 +28,6 @@ export const MCP_TOOLS: McpTool[] = [
   { name: "read_table", title: "Read a table", kind: "read", description: "Reads a table in a note: its columns (with types and allowed values for trackers) and its rows as objects. Use before logging so you use the right column names and values." },
   { name: "log_table_row", title: "Log a row", kind: "destructive", description: "Adds a row to a table. In a tracker with a date column it updates that date's row if there is one (the date defaults to today). Values are checked against each column's type: scales must be in range, choices one of the options, Yes/No also takes true/false." },
   { name: "delete_table_row", title: "Delete a row", kind: "destructive", description: "Removes the row for a date (trackers) or at a 0-based row index from a table." },
-  { name: "search", title: "Search", kind: "read", description: "Search the person's Amber Notes by words or phrases. Returns note ids and titles; read one with fetch." },
+  { name: "search", title: "Search", kind: "read", description: "Search the person's Amber Notes by words or phrases. Returns note ids and titles; read one with fetch. Locked notes are left out." },
   { name: "fetch", title: "Fetch", kind: "read", description: "Fetch an Amber Notes note by id (from search) as its full markdown, with folder, pinned state and last edit time." },
 ];
