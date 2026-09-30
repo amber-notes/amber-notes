@@ -37,6 +37,10 @@ export default function Page() {
         internet, and Apple Notes doesn&apos;t have one.
       </p>
 
+      <p>
+        <a href="/blog/apple-notes-api">Apple Notes API: what exists and what to use instead</a> goes into the scripting side.
+      </p>
+
       <h2>Your options</h2>
       <div className="tableWrap">
         <table>

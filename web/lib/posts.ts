@@ -28,7 +28,7 @@ export type Post = {
 
 /// The ground a cover (and the post's first picture) sits on: the site's palette, the help page's
 /// leaf brown, the app's dark look, or the home page's dunes.
-export type Ground = "paper" | "soft" | "tint" | "amber" | "leaf" | "dark" | "dunes";
+export type Ground = "paper" | "soft" | "tint" | "amber" | "leaf" | "dark" | "dunes" | "ink" | "peach" | "cream";
 
 /// One capture placed on a cover, in percent of the cover's width and height (it may run off an
 /// edge). `frame`: a Mac title bar, a plain rounded card, nothing (a capture with its own shape),
@@ -49,6 +49,9 @@ export const SHOTS = {
   importSheet: { src: "/blog/import-sheet.webp", alt: "The Import from Apple Notes sheet in Amber Notes on a Mac: notes picked, Keep Apple Notes folders and Also bring over pinned notes ticked, and an Import 1,284 Notes button.", width: 1980, height: 1800, window: true },
   aiEdit: { src: "/blog/ai-edit.webp", alt: "A Groceries note in Amber Notes on a Mac. The five lines ChatGPT just added are tinted, and a bar at the bottom says ChatGPT changed 5 lines, with Undo.", width: 1260, height: 1520, window: false, title: "Groceries" },
   history: { src: "/blog/history.webp", alt: "Version history for a Groceries note in Amber Notes on a Mac: versions by you on iPhone and Mac, ChatGPT and Claude Code, with the lines that differ tinted and a Restore This Version button.", width: 1800, height: 1200, window: false, title: "Groceries" },
+  welcome: { src: "/blog/p3-welcome-pane.webp", alt: "The Welcome to Amber Notes note on a Mac: markdown that styles itself as you type, a checklist, bullets, inline code and a table.", width: 1250, height: 950, window: false, title: "Welcome to Amber Notes" },
+  phoneChanges: { src: "/blog/p3-phone-changes.webp", alt: "Amber Notes on iPhone: the note list with Groceries marked Edited by ChatGPT, Lisbon Edited by Claude and Standup notes Edited by Claude Code.", width: 440, height: 793, window: true },
+  historyBurst: { src: "/blog/p3-history-burst.webp", alt: "Version history for a Groceries note on a Mac: versions by you on iPhone and Mac, ChatGPT and Claude Code, with the lines that differ tinted and a Restore This Version button.", width: 1800, height: 1200, window: false, title: "Groceries" },
 } satisfies Record<string, Shot>;
 
 export const posts: Post[] = [
@@ -134,6 +137,42 @@ export const posts: Post[] = [
     updated: "2026-09-30",
     image: SHOTS.consent,
     cover: { ground: "amber", layers: [layer("cover-consent-choice.webp", 840, 490, 13, 16, 74, "card")] },
+    draft: false,
+  },
+  {
+    slug: "apple-notes-api",
+    title: "Apple Notes API: what exists and what to use instead",
+    description: "Apple Notes has no public API. What you can use on a Mac and iPhone (AppleScript, Shortcuts, export), what each can do, and when to use a notes app with an API.",
+    excerpt: "Apple Notes has no public API. What you can do with AppleScript and Shortcuts, what you can't, and what to use when you need more.",
+    category: "Guides",
+    date: "2026-09-30",
+    updated: "2026-09-30",
+    image: SHOTS.welcome,
+    cover: { ground: "ink", layers: [layer("p3-welcome-detail.webp", 1000, 330, 8, 24, 84, "card")] },
+    draft: false,
+  },
+  {
+    slug: "notes-apps-that-work-with-chatgpt",
+    title: "Notes apps that work with ChatGPT",
+    description: "Which notes apps ChatGPT can search and write to in 2026, compared fairly: Notion, OneNote, Evernote, Apple Notes, Google Keep, Amber Notes and more.",
+    excerpt: "\u201cWorks with ChatGPT\u201d can mean reading the note you have open, or searching and editing all of them. The main notes apps, compared.",
+    category: "Comparisons",
+    date: "2026-09-30",
+    updated: "2026-09-30",
+    image: SHOTS.phoneChanges,
+    cover: { ground: "peach", layers: [layer("p3-phone-chatgpt-card.webp", 480, 330, 10, 12, 80, "card")] },
+    draft: false,
+  },
+  {
+    slug: "best-notes-app-for-ai-agents",
+    title: "The best notes app for AI agents",
+    description: "What an AI agent needs from a notes app: remote MCP, precise writes, undo and history, approval, and apps you read on. How the options compare.",
+    excerpt: "Remote MCP, precise writes, undo, approval and a phone app to read the results: the criteria that matter, and how the options compare.",
+    category: "Comparisons",
+    date: "2026-09-30",
+    updated: "2026-09-30",
+    image: SHOTS.historyBurst,
+    cover: { ground: "cream", layers: [layer("p3-tracker-table.webp", 1250, 690, 9, 14, 96, "card")] },
     draft: false,
   },
   {

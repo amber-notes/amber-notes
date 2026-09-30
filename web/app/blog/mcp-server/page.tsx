@@ -74,6 +74,10 @@ export default function Page() {
         <li><a href="https://incredible.one" rel="noopener">Incredible</a>, and anything else that speaks MCP: add the address and sign in when it asks.</li>
       </ul>
       <p>
+        Choosing a notes app for an agent? <a href="/blog/best-notes-app-for-ai-agents">The best notes app for AI agents</a> sets out the
+        criteria.
+      </p>
+      <p>
         The server is open source. Read it in <a href="https://github.com/emilwagman/amber-notes/tree/main/supabase/functions/mcp" rel="noopener">supabase/functions/mcp</a> on GitHub.
       </p>
     </PostPage>

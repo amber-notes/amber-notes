@@ -27,6 +27,9 @@
 /* The help page's leaf brown, a shade lighter to match the App Store art that sits on it. */
 .ground[data-ground="leaf"] { background: #3e200b; }
 .ground[data-ground="dark"] { background: linear-gradient(180deg, #3a3a3c, #1c1c1e); }
+.ground[data-ground="ink"] { background: linear-gradient(180deg, #3a2716, #241709); }
+.ground[data-ground="peach"] { background: linear-gradient(160deg, #fde5cf, #f6c49b); }
+.ground[data-ground="cream"] { background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); }
 .ground[data-ground="dunes"] { background: #f9c98a url(/blog/desk.svg) center / cover no-repeat; }
 
 /* ── A figure in a post: the capture centred on its ground ── */
