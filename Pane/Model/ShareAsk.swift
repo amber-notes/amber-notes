@@ -7,8 +7,10 @@ import TipKit
 /// "Enjoying Amber Notes?": after a week of use, one ask to share the app on X or LinkedIn.
 ///
 /// The rules:
-/// - at least 7 days since the account was made (or, with no account, since this device first
-///   ran this version), and notes opened or edited on at least 3 different days (this device);
+/// - notes opened or edited on at least 7 different days, not necessarily in a row, on any of the
+///   account's devices: each device tells the server its days (`pane_active_days`), and the
+///   ask goes by the server's count, or this device's own when that's more (or the server can't
+///   be reached). How long ago the account was made doesn't matter;
 /// - once per account: the first answer, on any device, is kept on the server
 ///   (`pane_share_ask`) and no device asks again. Until the server has answered, it doesn't ask;
 /// - only at a quiet moment: the app coming back to the front, or a note closing, and never in
@@ -20,8 +22,8 @@ import TipKit
 /// Dev: `-forceShareAsk` shows it a second after launch, whatever the rules say, and sends
 /// nothing to the server; `-forceShareAsk thanks` opens straight on the thank-you.
 enum ShareAsk {
-    static let days = 7
-    static let activeDays = 3
+    /// Different days with notes opened or edited.
+    static let activeDays = 7
     /// No ask this soon after launch.
     static let launchQuiet: TimeInterval = 60
     /// No ask this soon after a keystroke.
@@ -54,54 +56,67 @@ enum ShareAsk {
     }
 
     /// Whether it's time to ask. `decided` is nil until the server has said (never asked then).
-    static func isDue(firstUse: Date?, activeDays: Int, decided: Bool?, now: Date = .now) -> Bool {
-        guard decided == false, let firstUse else { return false }
-        return now.timeIntervalSince(firstUse) >= Double(days) * 86400 && activeDays >= self.activeDays
+    static func isDue(activeDays: Int, decided: Bool?) -> Bool {
+        decided == false && activeDays >= self.activeDays
     }
 
-    // MARK: Days of use (this device)
+    // MARK: Days of use
 
-    static let daysKey = "shareAskDays", firstUseKey = "shareAskFirstUse"
+    static let daysKey = "shareAskDays", sentKey = "shareAskDaysSent"
     @MainActor private static var lastStamp: String?
     @MainActor static var lastKeystroke: Date = .distantPast
+    /// A new day of use was noted on this device (the store sends it to the server).
+    @MainActor static var onNewDay: () -> Void = {}
 
     /// A note was opened or edited: today counts as a day of use. Cheap enough for every keystroke.
     @MainActor static func noteUsed(typing: Bool = false, now: Date = .now, defaults: UserDefaults = .standard) {
         if typing { lastKeystroke = now }
-        let stamp = "\(ObjectIdentifier(defaults)) \(PaneTips.dayStamp(now))"
+        let today = day(now)
+        let stamp = "\(ObjectIdentifier(defaults)) \(today)"
         guard lastStamp != stamp else { return }
         lastStamp = stamp
-        let today = PaneTips.dayStamp(now)
         var days = defaults.stringArray(forKey: daysKey) ?? []
         guard !days.contains(today) else { return }
         days.append(today)
-        // Only whether there are 3 matters; a few more keep it honest across clock changes.
-        defaults.set(Array(days.suffix(10)), forKey: daysKey)
+        // Only whether there are 7 matters; a few more keep it honest across clock changes.
+        defaults.set(Array(days.suffix(30)), forKey: daysKey)
+        onNewDay()
     }
 
-    static func activeDayCount(defaults: UserDefaults = .standard) -> Int {
-        (defaults.stringArray(forKey: daysKey) ?? []).count
+    /// This device's days of use, as the server takes them: "2026-09-30", in your own time zone.
+    static func localDays(defaults: UserDefaults = .standard) -> [String] {
+        defaults.stringArray(forKey: daysKey) ?? []
     }
 
-    /// When this device first ran with the ask in it: the start of the week without an account.
-    static func localFirstUse(now: Date = .now, defaults: UserDefaults = .standard) -> Date {
-        if let d = defaults.object(forKey: firstUseKey) as? Date { return d }
-        defaults.set(now, forKey: firstUseKey)
-        return now
+    static func day(_ d: Date, calendar: Calendar = .current) -> String {
+        let c = calendar.dateComponents([.year, .month, .day], from: d)
+        return String(format: "%04d-%02d-%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0)
     }
+}
+
+/// What the server knows about the ask for this account.
+struct ShareAskState: Equatable, Decodable, Sendable {
+    var decided: Bool
+    /// Different days notes were used, on all the account's devices.
+    var days: Int
 }
 
 /// Where the account's answer is kept, and where the ask is counted (the server; tests swap it).
 protocol ShareAskService: Sendable {
-    func decided() async throws -> Bool
+    func state() async throws -> ShareAskState
+    /// Days of use from this device ("yyyy-MM-dd"); days already known change nothing.
+    func addDays(_ days: [String]) async throws
     func decide(_ choice: ShareAsk.Choice) async throws
     func count(_ event: String) async
 }
 
 struct SupabaseShareAsk: ShareAskService {
     let client: SupabaseClient
-    func decided() async throws -> Bool {
-        try await client.rpc("pane_share_ask_decided").execute().value
+    func state() async throws -> ShareAskState {
+        try await client.rpc("pane_share_ask_state").execute().value
+    }
+    func addDays(_ days: [String]) async throws {
+        try await client.rpc("pane_active_days_add", params: ["days": days]).execute()
     }
     func decide(_ choice: ShareAsk.Choice) async throws {
         try await client.rpc("pane_share_ask_decide", params: ["choice": choice.rawValue]).execute()
@@ -121,9 +136,10 @@ final class ShareAskStore {
 
     @ObservationIgnored private var service: ShareAskService?
     @ObservationIgnored private var account: UUID?
-    @ObservationIgnored private var accountCreated: Date?
     /// nil until known: the server hasn't answered yet.
     @ObservationIgnored private(set) var decided: Bool?
+    /// The account's days of use on all its devices, once the server has said.
+    @ObservationIgnored private(set) var serverDays: Int?
     @ObservationIgnored let defaults: UserDefaults
     @ObservationIgnored let launched: Date
     @ObservationIgnored let forced: Bool
@@ -135,37 +151,47 @@ final class ShareAskStore {
         if forced, let i = arguments.firstIndex(of: "-forceShareAsk"), arguments.indices.contains(i + 1), arguments[i + 1] == "thanks" {
             thanked = true
         }
-        attach(account: nil, created: nil, service: nil)
+        attach(account: nil, service: nil)
     }
 
     private var decidedKey: String { "shareAskDecided.\(account?.uuidString.lowercased() ?? "device")" }
 
     /// The account (or none) the ask is for. With a server, it waits for `refresh` to know.
-    func attach(account: UUID?, created: Date?, service: ShareAskService?) {
+    func attach(account: UUID?, service: ShareAskService?) {
         self.account = account
-        self.accountCreated = created
         self.service = service
+        serverDays = nil
         let here = defaults.string(forKey: decidedKey) != nil
         decided = here ? true : (service == nil ? false : nil)
+        if service != nil { ShareAsk.onNewDay = { [weak self] in Task { await self?.refresh() } } }
     }
 
-    /// Asks the server whether this account has answered, and tells it an answer this device
-    /// gave while it couldn't reach it.
+    /// Tells the server this device's days of use it hasn't had yet, and an answer this device
+    /// gave while it couldn't reach it; then asks what the account adds up to.
     func refresh() async {
         guard let service else { return }
+        let sent = Set(defaults.stringArray(forKey: ShareAsk.sentKey) ?? [])
+        let local = ShareAsk.localDays(defaults: defaults)
+        let unsent = local.filter { !sent.contains($0) }
+        if !unsent.isEmpty, (try? await service.addDays(unsent)) != nil {
+            defaults.set(Array((sent.union(unsent)).sorted().suffix(30)), forKey: ShareAsk.sentKey)
+        }
         let here = defaults.string(forKey: decidedKey).flatMap(ShareAsk.Choice.init)
-        guard let there = try? await service.decided() else { return }
-        if let here, !there { try? await service.decide(here) }
-        decided = there || here != nil
+        guard let there = try? await service.state() else { return }
+        if let here, !there.decided { try? await service.decide(here) }
+        decided = there.decided || here != nil
+        serverDays = there.days
     }
 
-    var firstUse: Date? { accountCreated ?? ShareAsk.localFirstUse(defaults: defaults) }
+    /// Days of use that count: the account's on every device, or this device's own if that's
+    /// more (days it hasn't managed to send yet), or all there is without a server.
+    var activeDays: Int { max(serverDays ?? 0, ShareAsk.localDays(defaults: defaults).count) }
 
     /// Whether the rules allow asking now, leaving out what's on screen.
     func isDue(now: Date = .now) -> Bool {
         guard now.timeIntervalSince(launched) >= ShareAsk.launchQuiet,
               now.timeIntervalSince(ShareAsk.lastKeystroke) >= ShareAsk.typingQuiet else { return false }
-        return ShareAsk.isDue(firstUse: firstUse, activeDays: ShareAsk.activeDayCount(defaults: defaults), decided: decided, now: now)
+        return ShareAsk.isDue(activeDays: activeDays, decided: decided)
     }
 
     /// A quiet moment: asks, if it's time and nothing else is showing.

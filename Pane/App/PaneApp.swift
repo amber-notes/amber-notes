@@ -352,12 +352,12 @@ struct AppGate: View {
         .task(id: backend.state) {
             guard case .signedIn = backend.state, let client = backend.client else {
                 setup.attach(account: nil, service: nil)
-                shareAsk.attach(account: nil, created: nil, service: nil)
+                shareAsk.attach(account: nil, service: nil)
                 await sync.stop()
                 return
             }
             setup.attach(account: backend.userID, service: SupabaseSetup(client: client))
-            shareAsk.attach(account: backend.userID, created: client.auth.currentUser?.createdAt, service: SupabaseShareAsk(client: client))
+            shareAsk.attach(account: backend.userID, service: SupabaseShareAsk(client: client))
             await sync.start()
             // Seed only when the server really has nothing, never after a failed sync. A real
             // account starts with an empty Notes folder: the setup card is its welcome.
@@ -389,6 +389,7 @@ struct AppGate: View {
             if p == .active {
                 Task { await PaneTips.appOpened() }
                 Task { await setup.refresh() }
+                if shareAsk.decided != true { Task { await shareAsk.refresh() } }
                 askToShareSoon()
                 context.drainInbox()
                 sync.schedule()

@@ -41,8 +41,28 @@ async function asUser(pg: PGlite, me: string, sql: string, params: unknown[] = [
   });
 }
 
-const decided = async (pg: PGlite, me: string) =>
-  (await asUser(pg, me, `select public.pane_share_ask_decided() as d`)).rows[0].d;
+const state = async (pg: PGlite, me: string) =>
+  (await asUser(pg, me, `select public.pane_share_ask_state() as s`)).rows[0].s as { decided: boolean; days: number };
+const decided = async (pg: PGlite, me: string) => (await state(pg, me)).decided;
+const daysAgo = (n: number) => new Date(Date.now() - n * 86400_000).toISOString().slice(0, 10);
+
+Deno.test("active days: each day once, from any device; far-off days are refused", async () => {
+  const { pg, me } = await db();
+  assertEquals(await state(pg, me), { decided: false, days: 0 });
+  // The Mac sends three days, the iPhone two of the same and one more.
+  await asUser(pg, me, `select public.pane_active_days_add($1::date[])`, [[daysAgo(9), daysAgo(4), daysAgo(0)]]);
+  await asUser(pg, me, `select public.pane_active_days_add($1::date[])`, [[daysAgo(4), daysAgo(0), daysAgo(1), daysAgo(1)]]);
+  assertEquals((await state(pg, me)).days, 4);
+  // A day from long ago or far ahead doesn't count.
+  await asUser(pg, me, `select public.pane_active_days_add($1::date[])`, [[daysAgo(400), daysAgo(-5)]]);
+  assertEquals((await state(pg, me)).days, 4);
+  // Someone else's days aren't yours.
+  const them = crypto.randomUUID();
+  await pg.query(`insert into auth.users (id) values ($1)`, [them]);
+  await asUser(pg, them, `select public.pane_active_days_add($1::date[])`, [[daysAgo(2), daysAgo(3)]]);
+  assertEquals((await state(pg, me)).days, 4);
+  assertEquals((await state(pg, them)).days, 2);
+});
 
 Deno.test("share ask: undecided, then decided for good; the first answer stands", async () => {
   const { pg, me } = await db();

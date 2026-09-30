@@ -14,68 +14,122 @@ import Testing
         return d
     }
 
-    /// Notes used on `n` different days, the last one a week after t0.
+    /// Notes used on `n` different days, every other day from t0.
     static func usedOn(_ n: Int, _ d: UserDefaults) {
         for i in 0..<n { ShareAsk.noteUsed(now: t0.addingTimeInterval(Double(i) * 2 * day), defaults: d) }
     }
 
+    /// The server: one account's answer and its days of use from every device.
     final class FakeService: ShareAskService, @unchecked Sendable {
         var answered: ShareAsk.Choice?
+        var days: Set<String> = []
         var fails = false
         var counted: [String] = []
-        func decided() async throws -> Bool {
+        func state() async throws -> ShareAskState {
             if fails { throw URLError(.notConnectedToInternet) }
-            return answered != nil
+            return ShareAskState(decided: answered != nil, days: days.count)
+        }
+        func addDays(_ new: [String]) async throws {
+            if fails { throw URLError(.notConnectedToInternet) }
+            days.formUnion(new)
         }
         func decide(_ choice: ShareAsk.Choice) async throws { if answered == nil { answered = choice } }
         func count(_ event: String) async { counted.append(event) }
     }
 
-    /// A store for an account made at t0, with the server answering from `service`.
-    static func store(_ d: UserDefaults, service: FakeService? = FakeService()) -> ShareAskStore {
+    /// A store for an account, with the server answering from `service`.
+    static func store(_ d: UserDefaults, service: FakeService? = FakeService(), account: UUID = UUID()) -> ShareAskStore {
         let s = ShareAskStore(defaults: d, launched: t0, arguments: [])
-        s.attach(account: UUID(), created: t0, service: service)
+        s.attach(account: account, service: service)
         return s
     }
 
-    init() { ShareAsk.lastKeystroke = .distantPast }
+    /// Well after launch, with nothing typed.
+    static let later = t0.addingTimeInterval(30 * day)
+
+    init() {
+        ShareAsk.lastKeystroke = .distantPast
+        ShareAsk.onNewDay = {}
+    }
 
     // MARK: The rule
 
-    @Test func dueAfterSevenDaysAndThreeDaysOfUse() {
-        let week = Self.t0.addingTimeInterval(7 * Self.day)
-        #expect(ShareAsk.isDue(firstUse: Self.t0, activeDays: 3, decided: false, now: week))
-        #expect(!ShareAsk.isDue(firstUse: Self.t0, activeDays: 3, decided: false, now: week.addingTimeInterval(-60)), "six days and change isn't a week")
-        #expect(!ShareAsk.isDue(firstUse: Self.t0, activeDays: 2, decided: false, now: week.addingTimeInterval(30 * Self.day)), "a month in, but used on only 2 days")
-        #expect(!ShareAsk.isDue(firstUse: Self.t0, activeDays: 5, decided: true, now: week), "answered already")
-        #expect(!ShareAsk.isDue(firstUse: Self.t0, activeDays: 5, decided: nil, now: week), "the server hasn't said yet")
-        #expect(!ShareAsk.isDue(firstUse: nil, activeDays: 5, decided: false, now: week))
+    @Test func dueAfterSevenDaysOfUse() {
+        #expect(ShareAsk.isDue(activeDays: 7, decided: false))
+        #expect(!ShareAsk.isDue(activeDays: 6, decided: false), "six days of use isn't a week")
+        #expect(!ShareAsk.isDue(activeDays: 30, decided: true), "answered already")
+        #expect(!ShareAsk.isDue(activeDays: 30, decided: nil), "the server hasn't said yet")
     }
 
     @Test func daysOfUseAreDifferentCalendarDays() {
         let d = Self.defaults()
         for minute in 0..<5 { ShareAsk.noteUsed(typing: true, now: Self.t0.addingTimeInterval(Double(minute) * 60), defaults: d) }
-        #expect(ShareAsk.activeDayCount(defaults: d) == 1, "typing all afternoon is one day")
+        #expect(ShareAsk.localDays(defaults: d).count == 1, "typing all afternoon is one day")
         ShareAsk.noteUsed(now: Self.t0.addingTimeInterval(Self.day), defaults: d)
         ShareAsk.noteUsed(now: Self.t0, defaults: d)
-        #expect(ShareAsk.activeDayCount(defaults: d) == 2, "going back to a day already counted adds nothing")
+        #expect(ShareAsk.localDays(defaults: d).count == 2, "going back to a day already counted adds nothing")
+        #expect(ShareAsk.localDays(defaults: d).allSatisfy { $0.count == 10 && $0.hasPrefix("2026-") }, "sent as yyyy-MM-dd")
     }
 
-    @Test func withoutAnAccountTheWeekStartsOnThisDevice() {
+    @Test func sevenDaysNeedNotBeInARowNorAWeekSinceSignUp() async {
+        // Seven days of use spread over two weeks count; so do seven in a row the week you signed up.
         let d = Self.defaults()
-        d.set(Self.t0, forKey: ShareAsk.firstUseKey)
-        Self.usedOn(3, d)
+        Self.usedOn(6, d)
+        let s = Self.store(d)
+        await s.refresh()
+        #expect(!s.isDue(now: Self.later))
+        ShareAsk.noteUsed(now: Self.t0.addingTimeInterval(13 * Self.day), defaults: d)
+        await s.refresh()
+        #expect(s.activeDays == 7)
+        #expect(s.isDue(now: Self.later))
+    }
+
+    @Test func daysOnEveryDeviceAddUp() async {
+        // Four days on the Mac, three other days (and one shared) on the iPhone: seven in all.
+        let server = FakeService()
+        let mac = Self.defaults(), phone = Self.defaults()
+        let account = UUID()
+        for i in 0..<4 { ShareAsk.noteUsed(now: Self.t0.addingTimeInterval(Double(i) * Self.day), defaults: mac) }
+        for i in 3..<7 { ShareAsk.noteUsed(now: Self.t0.addingTimeInterval(Double(i) * Self.day), defaults: phone) }
+        let onMac = Self.store(mac, service: server, account: account)
+        await onMac.refresh()
+        #expect(!onMac.isDue(now: Self.later), "the Mac alone has 4")
+        let onPhone = Self.store(phone, service: server, account: account)
+        await onPhone.refresh()
+        #expect(onPhone.activeDays == 7)
+        #expect(onPhone.isDue(now: Self.later))
+        await onMac.refresh()
+        #expect(onMac.isDue(now: Self.later), "the Mac hears about the iPhone's days too")
+    }
+
+    @Test func daysAreSentOnceAndOfflineDaysLater() async {
+        let d = Self.defaults()
+        let server = FakeService()
+        server.fails = true
+        Self.usedOn(7, d)
+        let s = Self.store(d, service: server)
+        await s.refresh()
+        #expect(server.days.isEmpty)
+        #expect(s.activeDays == 7, "this device's own days count while the server can't be reached")
+        server.fails = false
+        await s.refresh()
+        #expect(server.days.count == 7)
+        #expect(Set(d.stringArray(forKey: ShareAsk.sentKey) ?? []) == server.days)
+    }
+
+    @Test func withoutAnAccountThisDevicesDaysAreAllThereIs() {
+        let d = Self.defaults()
+        Self.usedOn(7, d)
         let s = ShareAskStore(defaults: d, launched: Self.t0, arguments: [])
         #expect(s.decided == false, "no server: this device's answer is all there is")
-        #expect(s.isDue(now: Self.t0.addingTimeInterval(8 * Self.day)))
-        #expect(!s.isDue(now: Self.t0.addingTimeInterval(5 * Self.day)))
+        #expect(s.isDue(now: Self.later))
     }
 
     // MARK: Quiet moments
 
     @Test func asksAtAQuietMomentOnly() async {
         let d = Self.defaults()
-        Self.usedOn(3, d)
+        Self.usedOn(7, d)
         let service = FakeService()
         let s = Self.store(d, service: service)
         await s.refresh()
@@ -98,10 +152,10 @@ import Testing
 
     @Test func neverRightAtLaunch() async {
         let d = Self.defaults()
-        Self.usedOn(3, d)
+        Self.usedOn(7, d)
         let launch = Self.t0.addingTimeInterval(8 * Self.day)
         let s = ShareAskStore(defaults: d, launched: launch, arguments: [])
-        s.attach(account: UUID(), created: Self.t0, service: FakeService())
+        s.attach(account: UUID(), service: FakeService())
         await s.refresh()
         s.moment(setupVisible: false, tipShowing: false, now: launch.addingTimeInterval(5))
         #expect(!s.visible)
@@ -114,7 +168,7 @@ import Testing
     @Test func anyAnswerEndsItForGood() async {
         for choice in [ShareAsk.Choice.sharedX, .sharedLinkedIn, .dismissed] {
             let d = Self.defaults()
-            Self.usedOn(3, d)
+            Self.usedOn(7, d)
             let service = FakeService()
             let s = Self.store(d, service: service)
             await s.refresh()
@@ -136,7 +190,7 @@ import Testing
 
     @Test func swipingItAwayCountsAsNotNow() async {
         let d = Self.defaults()
-        Self.usedOn(3, d)
+        Self.usedOn(7, d)
         let service = FakeService()
         let s = Self.store(d, service: service)
         await s.refresh()
@@ -148,7 +202,7 @@ import Testing
 
     @Test func answeredOnAnotherDeviceMeansNeverHere() async {
         let d = Self.defaults()
-        Self.usedOn(5, d)
+        Self.usedOn(9, d)
         let service = FakeService()
         service.answered = .sharedLinkedIn
         let s = Self.store(d, service: service)
@@ -163,7 +217,7 @@ import Testing
 
     @Test func unreachableServerMeansNoAsk() async {
         let d = Self.defaults()
-        Self.usedOn(3, d)
+        Self.usedOn(7, d)
         let service = FakeService()
         service.fails = true
         let s = Self.store(d, service: service)
@@ -178,12 +232,12 @@ import Testing
         let offline = FakeService()
         offline.fails = true
         let s = ShareAskStore(defaults: d, launched: Self.t0, arguments: [])
-        s.attach(account: account, created: Self.t0, service: offline)
+        s.attach(account: account, service: offline)
         s.choose(.sharedX)
         // Next launch, online.
         let online = FakeService()
         let next = ShareAskStore(defaults: d, launched: Self.t0, arguments: [])
-        next.attach(account: account, created: Self.t0, service: online)
+        next.attach(account: account, service: online)
         #expect(next.decided == true, "this device remembers its own answer")
         await next.refresh()
         #expect(online.answered == .sharedX)
@@ -194,7 +248,7 @@ import Testing
         let s = Self.store(d)
         s.choose(.dismissed)
         let other = ShareAskStore(defaults: d, launched: Self.t0, arguments: [])
-        other.attach(account: UUID(), created: Self.t0, service: FakeService())
+        other.attach(account: UUID(), service: FakeService())
         #expect(other.decided == nil, "waits for the server, not the other account's answer")
     }
 
@@ -203,7 +257,7 @@ import Testing
     @Test func devForceShowsItAndSendsNothing() {
         let d = Self.defaults()
         let s = ShareAskStore(defaults: d, launched: .now, arguments: ["-forceShareAsk"])
-        s.attach(account: UUID(), created: .now, service: FakeService())
+        s.attach(account: UUID(), service: FakeService())
         s.moment(setupVisible: false, tipShowing: false)
         #expect(!s.visible, "only the Dev trigger shows it")
         s.showIfForced()
