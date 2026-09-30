@@ -10,9 +10,9 @@ import postgres from "npm:postgres@3.4.5";
 import { tools, runTool, ToolContext, ToolError } from "./tools.ts";
 import { challenge, handleOAuth, isOAuthPath, publicBase, resolveAccessToken, subpath } from "./oauth.ts";
 import { OPENAI_CHALLENGE_PATH, openaiChallenge } from "./verification.ts";
+import { SERVER_CARD_PATH, SERVER_INFO, serverCardResponse } from "./card.ts";
 
 const PROTOCOL_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
-const SERVER_INFO = { name: "amber-notes", title: "Amber Notes", version: "1.0.0" };
 const INSTRUCTIONS = `Amber Notes is the user's personal notes app. Notes are markdown; the first line is the title.
 Start with get_overview or search_notes to find things. Read a note before editing it.
 Prefer edit_note (exact find/replace) and append_to_note over replace_note_body, so nothing else changes.
@@ -63,6 +63,7 @@ async function authenticate(p: Presented, req: Request) {
 Deno.serve(async (req) => {
   const path = subpath(req);
   if (path === OPENAI_CHALLENGE_PATH) return openaiChallenge(Deno.env.get("OPENAI_APPS_CHALLENGE"));
+  if (path === SERVER_CARD_PATH && (req.method === "GET" || req.method === "HEAD")) return serverCardResponse();
   if (isOAuthPath(path)) return handleOAuth(req, sql, path);
   const base = publicBase(req);
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
