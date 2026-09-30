@@ -8,6 +8,7 @@ Last updated: 30 September 2026
 - No ads, no third-party tracking or analytics, and we never sell or share your data.
 - We count how features are used on our own server to improve the app. We never share or sell it.
 - An AI assistant can only read your notes if you connect it and approve it in Amber Notes or on ambernotes.app. You can disconnect it at any time.
+- A note you lock is encrypted on your device before it's uploaded. Nobody but you can read it: not us, and not an AI.
 - A note you share can be read by anyone with its link, until you stop sharing.
 - Your data is stored in the European Union (Frankfurt, Germany).
 - **Settings → Delete Account** deletes your account and everything in it.
@@ -34,6 +35,13 @@ This policy covers the Amber Notes apps for iPhone and Mac, the service that let
 
 - Your notes, folders, checklists, tables, and the images and files you add.
 - Earlier versions of each note, so a change can be undone: up to 100 per note. Each version records whether it came from the app, an AI connection, an import or a restore.
+
+**Locked notes, if you lock any**
+
+- A locked note's text is encrypted on your device with a key made from your notes password (AES-256-GCM, with the key derived by PBKDF2) before it's uploaded. We store that encrypted text and the note's title, which stays readable so your list can show it. Files and sub-notes can't be put in a locked note.
+- To let your devices check the password, we store a random value (a salt), a small encrypted test value, and the password hint you write. We never receive or store the password or the key. On your device, the key can be kept in the Keychain so Face ID or Touch ID can unlock your notes; it never leaves the device.
+- Locking a note deletes its earlier versions from our servers. While it's locked, earlier versions are kept only in encrypted form.
+- If you forget your notes password, we can't recover your locked notes.
 
 **AI connections, if you make any**
 
@@ -82,6 +90,7 @@ Nothing reaches an AI assistant unless you connect one. When you connect ChatGPT
 - The assistant can then read the notes it asks for and, if you allowed editing, change them. Every change it makes keeps the previous version, so you can undo it.
 - What you and the assistant exchange is handled by the company behind that assistant, under its own privacy policy. Notes it reads become part of your conversation with it.
 - You can disconnect any assistant at any time in **Settings → Connect an AI**. It loses access immediately.
+- Locked notes are encrypted, so an assistant sees only their titles. It can't read, search or change them.
 
 ## Shared notes
 
@@ -90,6 +99,7 @@ Nothing reaches an AI assistant unless you connect one. When you connect ChatGPT
 - Shared pages are hidden from search engines.
 - **Stop Sharing** takes the page down within a minute. Images and files on a shared page are served through links that expire after an hour.
 - Anyone can report a shared page. Reports are reviewed, and pages that break our Terms are removed.
+- A locked note can't be shared. Locking a shared note stops its link.
 
 ## Where your data is stored
 

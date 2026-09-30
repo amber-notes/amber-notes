@@ -14,7 +14,7 @@ const ROWS: [string, string, string][] = [
   ["Version history", "Yes, including every change an AI makes", "No"],
   ["Stored as markdown", "Yes, formatted on screen", "No, but a note can be exported as markdown"],
   ["Share a note", "As a read-only web page, with a link you can stop", "Invite people to edit with you"],
-  ["Lock a note with a password", "No", "Yes"],
+  ["Lock a note with a password", "Yes", "Yes"],
   ["Drawing, handwriting, scanning documents", "No", "Yes"],
   ["Sync", "Amber Notes' own sync, on servers in Frankfurt, Germany (EU)", "iCloud"],
   ["Open source", "Yes (MIT)", "No"],
@@ -57,7 +57,6 @@ export default function Page() {
       <h2>What Apple Notes does better</h2>
       <ul>
         <li>Drawing, handwriting and scanning documents.</li>
-        <li>Locked notes with a password.</li>
         <li>Collaborating: invite people to edit a note or folder with you.</li>
         <li>It&apos;s already on every Apple device, and on the web at iCloud.com.</li>
       </ul>
