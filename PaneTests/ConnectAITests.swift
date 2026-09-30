@@ -10,9 +10,16 @@ import Testing
     }
 
     @Test func ignoresOtherLinks() {
+        let id = UUID()
         #expect(ConnectLink.requestID(from: URL(string: "ambernotes://connect?request=nope")!) == nil)
         #expect(ConnectLink.requestID(from: URL(string: "ambernotes://open?request=\(UUID().uuidString)")!) == nil)
         #expect(ConnectLink.requestID(from: URL(string: "https://connect?request=\(UUID().uuidString)")!) == nil)
+        // The site's universal link opens the same request.
+        #expect(ConnectLink.requestID(from: URL(string: "https://ambernotes.app/open/connect?request=\(id.uuidString.lowercased())")!) == id)
+        #expect(ConnectLink.requestID(from: URL(string: "https://www.ambernotes.app/open/connect?request=\(id.uuidString)")!) == id)
+        #expect(ConnectLink.requestID(from: URL(string: "https://ambernotes.app/connect?request=\(id.uuidString)")!) == nil, "the web page itself isn't the app's link")
+        #expect(ConnectLink.requestID(from: URL(string: "https://evil.example/open/connect?request=\(id.uuidString)")!) == nil)
+        #expect(ConnectLink.requestID(from: URL(string: "http://ambernotes.app/open/connect?request=\(id.uuidString)")!) == nil)
     }
 
     @Test func knowsTheBigAIsAndWarnsAboutTheRest() {

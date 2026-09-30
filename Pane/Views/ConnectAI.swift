@@ -1,3 +1,4 @@
+import LocalAuthentication
 import Observation
 import Supabase
 import SwiftUI
@@ -10,21 +11,30 @@ import UIKit
 // Connecting an AI to Amber Notes.
 //
 // ChatGPT and Claude sign in with OAuth: they send the person's browser to the MCP server's
-// /authorize, which opens ambernotes.app/connect?request=<id>. That page hands over to
-// ambernotes://connect?request=<id> (or lets the person answer on the web). The app (already
-// signed in) shows who's asking, the person allows read-only or read and edit, and the app sends
-// the browser on to the AI with the result. Claude Code and Codex use an access token in a
-// request header instead, created here and never shown in a link.
+// /authorize, which opens ambernotes.app/connect?request=<id>. That page hands over to the app,
+// by https://ambernotes.app/open/connect?request=<id> or ambernotes://connect?request=<id>. The
+// app (already signed in) shows who's asking, the person allows read-only or read and edit with
+// Face ID or Touch ID, and the app sends the browser on to the AI with the result.
+//
+// The notes are end-to-end encrypted, so approving hands the AI a copy of the account's key: the
+// app makes the authorization code itself and sends the server only its hash and the key wrapped
+// under it. The server's answer is the AI's return address without a code; the app adds it.
+// Claude Code and Codex get a pane_ token made here the same way, used only in a request header.
 
 // MARK: Pure pieces (tested)
 
 enum ConnectLink {
     static let scheme = "ambernotes"
+    /// The site's universal link for the same thing: https://ambernotes.app/open/connect?request=<uuid>.
+    static let webHosts: Set<String> = ["ambernotes.app", "www.ambernotes.app"]
+    static let webPath = "/open/connect"
 
-    /// The request id in ambernotes://connect?request=<uuid>, if this is such a link.
+    /// The request id in ambernotes://connect?request=<uuid> or its universal link, if this is one.
     static func requestID(from url: URL) -> UUID? {
-        guard url.scheme?.lowercased() == scheme, url.host?.lowercased() == "connect",
-              let comps = URLComponents(url: url, resolvingAgainstBaseURL: false),
+        let scheme = url.scheme?.lowercased(), host = url.host?.lowercased() ?? ""
+        let custom = scheme == Self.scheme && host == "connect"
+        let web = scheme == "https" && webHosts.contains(host) && url.path == webPath
+        guard custom || web, let comps = URLComponents(url: url, resolvingAgainstBaseURL: false),
               let raw = comps.queryItems?.first(where: { $0.name == "request" })?.value else { return nil }
         return UUID(uuidString: raw)
     }
@@ -99,7 +109,8 @@ struct ConnectRequest: Decodable, Identifiable, Equatable {
     let id: UUID
     let client_name: String
     let redirect_host: String
-    /// The exact return address (servers from 2026-09-30 on); decides whether an AI's mark shows.
+    /// The exact return address. It decides whether an AI's mark shows, and goes back to the
+    /// server unchanged with the answer, so what you approved is where the code goes.
     var redirect_uri: String? = nil
     /// What an unverified app calls itself, made plain ASCII by the server; never a title.
     var claimed_name: String? = nil
@@ -121,41 +132,52 @@ enum ConnectAPI {
         var errorDescription: String? { message }
     }
 
-    private static func send(_ client: SupabaseClient, path: String, method: String = "GET", body: [String: Any]? = nil) async throws -> Data {
-        guard let base = BackendConfig.mcpURL else { throw Failure(message: "Sync is off in this build.") }
-        let jwt = try await client.auth.session.accessToken
-        var req = URLRequest(url: URL(string: base.absoluteString + path)!)
-        req.httpMethod = method
-        req.setValue("Bearer \(jwt)", forHTTPHeaderField: "Authorization")
-        if let body {
-            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            req.httpBody = try JSONSerialization.data(withJSONObject: body)
+    /// One call to the MCP server's /connect endpoints: path, method, JSON body → response body.
+    typealias Send = @Sendable (_ path: String, _ method: String, _ body: [String: Any]?) async throws -> Data
+
+    /// The app's session goes in a header, never in the address.
+    static func sender(_ client: SupabaseClient) -> Send {
+        { path, method, body in
+            guard let base = BackendConfig.mcpURL else { throw Failure(message: "Sync is off in this build.") }
+            let jwt = try await client.auth.session.accessToken
+            var req = URLRequest(url: URL(string: base.absoluteString + path)!)
+            req.httpMethod = method
+            req.setValue("Bearer \(jwt)", forHTTPHeaderField: "Authorization")
+            if let body {
+                req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                req.httpBody = try JSONSerialization.data(withJSONObject: body)
+            }
+            let (data, response) = try await AppNetwork.session.data(for: req)
+            guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+                let message = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["error"] as? String
+                throw Failure(message: message ?? "Couldn't reach Amber Notes. Check your connection.")
+            }
+            return data
         }
-        let (data, response) = try await AppNetwork.session.data(for: req)
-        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-            let message = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["error"] as? String
-            throw Failure(message: message ?? "Couldn't reach Amber Notes. Check your connection.")
-        }
-        return data
     }
 
     static func request(_ client: SupabaseClient, id: UUID) async throws -> ConnectRequest {
-        let data = try await send(client, path: "/connect/request?id=\(id.uuidString.lowercased())")
+        try await request(id: id, send: sender(client))
+    }
+
+    static func request(id: UUID, send: Send) async throws -> ConnectRequest {
+        let data = try await send("/connect/request?id=\(id.uuidString.lowercased())", "GET", nil)
         return try JSONDecoder().decode(ConnectRequest.self, from: data)
     }
 
-    /// Allow or deny; returns where to send the browser next.
-    /// Allow or deny. In an encrypted account, allowing sends a code made here with the data key
-    /// wrapped under it (`code`); the server never sees the code until the AI trades it for tokens,
-    /// and the answer's address gets it added here.
-    static func decide(_ client: SupabaseClient, id: UUID, allow: Bool, write: Bool,
-                       code: (code: String, hash: String, wrap: String)? = nil) async throws -> URL {
-        var body: [String: Any] = ["id": id.uuidString.lowercased(), "allow": allow, "write": write]
+    /// Allow or deny; returns where to send the browser next. `redirect_uri` goes back exactly as
+    /// /connect/request gave it. Allowing sends a code made here (`code`): only its hash and the
+    /// account's key wrapped under it reach the server, and the code is added to the answer here.
+    static func decide(id: UUID, redirectURI: String?, allow: Bool, write: Bool,
+                       code: (code: String, hash: String, wrap: String)?, send: Send) async throws -> URL {
+        guard let redirectURI else { throw Failure(message: "Update Amber Notes to connect an AI.") }
+        guard !allow || code != nil else { throw Failure(message: "Open Amber Notes and finish setting up encryption first.") }
+        var body: [String: Any] = ["id": id.uuidString.lowercased(), "allow": allow, "write": write, "redirect_uri": redirectURI]
         if allow, let code {
             body["code_hash"] = code.hash
             body["code_wrap"] = code.wrap
         }
-        let data = try await send(client, path: "/connect/decide", method: "POST", body: body)
+        let data = try await send("/connect/decide", "POST", body)
         guard let s = (try JSONSerialization.jsonObject(with: data) as? [String: Any])?["redirect"] as? String, let url = URL(string: s) else {
             throw Failure(message: "Amber Notes gave an unexpected answer. Try connecting again.")
         }
@@ -163,11 +185,36 @@ enum ConnectAPI {
         return withCode(url, code.code)
     }
 
-    /// The AI's return address with the code this device made.
+    /// The AI's return address with the code this device made, next to what the server put there.
     static func withCode(_ url: URL, _ code: String) -> URL {
         guard var parts = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return url }
         parts.queryItems = (parts.queryItems ?? []).filter { $0.name != "code" } + [URLQueryItem(name: "code", value: code)]
         return parts.url ?? url
+    }
+}
+
+/// Access tokens for Claude Code and Codex, made on this device.
+@MainActor
+enum ConnectTokens {
+    /// A new pane_ token: made here with the account's key wrapped under it, registered by its hash
+    /// only. The token itself never leaves the device except in the AI's Authorization header.
+    static func create(_ client: SupabaseClient, name: String, write: Bool,
+                       make: () throws -> (token: String, hash: String, wrap: String)) async throws -> String {
+        let made = try make()
+        struct Params: Encodable { var token_name: String; var write_access: Bool; var token_hash: String; var dk_wrap: String }
+        try await client.rpc("create_mcp_token", params: Params(token_name: name, write_access: write, token_hash: made.hash, dk_wrap: made.wrap)).execute()
+        return made.token
+    }
+}
+
+/// Face ID or Touch ID (or the device password) before an AI gets your notes.
+enum ConnectApproval {
+    static func confirm(_ who: String) async -> Bool {
+        let context = LAContext()
+        var error: NSError?
+        // A device with no passcode at all can't ask; allowing still takes the button press.
+        guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else { return true }
+        return (try? await context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: "allow \(who) to read your notes")) ?? false
     }
 }
 
@@ -256,6 +303,10 @@ struct ConnectHandler: ViewModifier {
     func body(content: Content) -> some View {
         content
             .onOpenURL { center.receive($0) }
+            // The site's universal link, https://ambernotes.app/open/connect?request=<id>.
+            .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+                if let url = activity.webpageURL { center.receive(url) }
+            }
             #if os(macOS)
             // Links land in the window that's already open instead of a new one.
             .handlesExternalEvents(preferring: [ConnectLink.scheme], allowing: ["*"])
@@ -304,6 +355,8 @@ struct ConsentSheet: View {
     enum Phase: Equatable { case loading, asking(ConnectRequest), working, done(String), failed(String) }
     @State private var phase: Phase
     @State private var write = true
+    /// Face ID or Touch ID before allowing; tests and captures answer for it.
+    var confirm: (String) async -> Bool = ConnectApproval.confirm
 
     init(client: SupabaseClient, requestID: UUID, initial: Phase = .loading, finish: @escaping (URL) -> Void, allowed: @escaping (ConnectRequest) -> Void = { _ in }) {
         self.client = client
@@ -410,7 +463,8 @@ struct ConsentSheet: View {
             .disabled(!r.wants_write)
             .accessibilityIdentifier("connect.access")
 
-            Text(canEdit.wrappedValue ? "It can search, read, create and change notes. Every change keeps the previous version." : "It can search and read notes, but not change them.")
+            Text((canEdit.wrappedValue ? "It can read, create and change your notes. Every change keeps the previous version." : "It can read your notes, but not change them.")
+                 + " While it's connected, it can read everything you keep here except locked notes.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -453,11 +507,14 @@ struct ConsentSheet: View {
     }
 
     private func decide(_ r: ConnectRequest, allow: Bool) async {
+        // Handing over the key to your notes takes you, not just a click.
+        if allow, !(await confirm(r.who)) { return }
         phase = .working
         do {
-            // An encrypted account's connection gets its own copy of the data key.
-            let code = allow && AccountCrypto.shared.isReady ? try AccountCrypto.shared.connectionCode() : nil
-            let url = try await ConnectAPI.decide(client, id: r.id, allow: allow, write: write && r.wants_write, code: code)
+            // The connection gets its own copy of the account's key, wrapped under a code made here.
+            let code = allow ? try AccountCrypto.shared.connectionCode() : nil
+            let url = try await ConnectAPI.decide(id: r.id, redirectURI: r.redirect_uri, allow: allow, write: write && r.wants_write,
+                                                  code: code, send: ConnectAPI.sender(client))
             finish(url)
             if allow {
                 allowed(r)
@@ -482,7 +539,8 @@ struct Connection: Decodable, Identifiable {
     let last_used_at: Date?
     let revoked_at: Date?
     let redirect_host: String?
-    let url_used_at: Date?
+    /// From servers that took tokens in links; nothing sets it now.
+    var url_used_at: Date? = nil
 
     var isOAuth: Bool { kind == "oauth" }
     /// What the list calls it. A sign-in the app can't vouch for is named by where access went,
@@ -492,8 +550,6 @@ struct Connection: Decodable, Identifiable {
               ConnectTrust.verifiedAI(host: host, loopback: false) == nil else { return name }
         return ["localhost", "127.0.0.1", "[::1]", "::1"].contains(host) ? "An app on this computer" : host
     }
-    /// A token that was sent inside a link: it may sit in logs or histories.
-    var lessSecure: Bool { !isOAuth && url_used_at != nil }
 }
 
 /// Settings → Connect an AI: guided setup per app, and everything that's connected.
@@ -609,17 +665,7 @@ struct ConnectAISection: View {
             // The mark comes from where the approval went, never from the name.
             AITile(ai: ConnectTrust.verifiedAI(host: c.redirect_host ?? "", loopback: false) ?? "", size: 26)
             VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
-                    Text(c.title)
-                    if c.lessSecure {
-                        Text("Less secure")
-                            .font(.caption2.weight(.semibold))
-                            .padding(.horizontal, 6).padding(.vertical, 2)
-                            .background(.orange.opacity(0.18), in: .capsule)
-                            .foregroundStyle(.orange)
-                            .help("This token was sent inside a link, where it can end up in logs and browser history. Disconnect it and connect again.")
-                    }
-                }
+                Text(c.title)
                 Text(detail(c)).font(.caption).foregroundStyle(.secondary).monospacedDigit()
             }
             // The name and details read as one; Disconnect stays its own button for VoiceOver.
@@ -774,15 +820,7 @@ private struct GuideSheet: View {
         working = true
         defer { working = false }
         do {
-            if AccountCrypto.shared.isReady {
-                // Made here, so the server only ever has its hash and the data key wrapped under it.
-                let made = try AccountCrypto.shared.accessToken()
-                struct Params: Encodable { var token_name: String; var write_access: Bool; var token_hash: String; var dk_wrap: String }
-                _ = try await client.rpc("create_mcp_token_sealed", params: Params(token_name: guide.title, write_access: !readOnly, token_hash: made.hash, dk_wrap: made.wrap)).execute()
-                token = made.token
-                return made.token
-            }
-            let t: String = try await client.rpc("create_mcp_token", params: ["token_name": AnyJSON.string(guide.title), "write_access": AnyJSON.bool(!readOnly)]).execute().value
+            let t = try await ConnectTokens.create(client, name: guide.title, write: !readOnly) { try AccountCrypto.shared.accessToken() }
             token = t
             return t
         } catch {
