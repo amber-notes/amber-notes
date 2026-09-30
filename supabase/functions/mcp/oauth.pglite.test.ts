@@ -433,3 +433,73 @@ Deno.test("Use another account: the first account lets go, and the second can an
   const elsewhere = await call(sql, request("function", "/connect/release", { method: "POST", headers: { ...headers(first.jwt), origin: "https://evil.example" }, body: JSON.stringify({ id: requestId }) }));
   assertEquals(elsewhere.status, 403);
 });
+
+// MARK: Security review probes (F1–F5). Each failed on the branch before the fixes.
+
+const EVIL = "https://attacker.example/cb";
+async function registerAs(sql: Sql, name: string, uris: string[]) {
+  const res = await call(sql, request("proxy", "/register", { method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ client_name: name, redirect_uris: uris }) }));
+  return { status: res.status, body: await res.json() };
+}
+
+Deno.test("F1: DCR refuses a known AI's name for a client whose redirect isn't that AI's", async () => {
+  const { sql } = await db();
+  const r = await registerAs(sql, "ChatGPT", [EVIL]);
+  assert(r.status === 400 || r.body.client_name !== "ChatGPT", `registered as ${JSON.stringify(r.body.client_name)}`);
+});
+
+Deno.test("F1b: client_name has no bidi or control characters", async () => {
+  const { sql } = await db();
+  const r = await registerAs(sql, "Claude‮​moc.elpmaxe", [EVIL]);
+  assert(!/[\u0000-\u001f​-‏‪-‮⁦-⁩]/.test(String(r.body.client_name ?? "")), JSON.stringify(r.body));
+  const plain = await registerAs(sql, "Notes‮​ Helper\u0007", [EVIL]);
+  assertEquals(plain.body.client_name, "Notes Helper");
+});
+
+Deno.test("F2: /authorize is not an open redirector for a fresh client", async () => {
+  const { sql } = await db();
+  const { body } = await registerAs(sql, "x", [EVIL]);
+  const q = new URLSearchParams({ response_type: "token", client_id: body.client_id, redirect_uri: EVIL });
+  const loc = (await call(sql, request("proxy", `/authorize?${q}`))).headers.get("location") ?? "";
+  assert(!loc.startsWith(EVIL), `302 -> ${loc}`);
+});
+
+Deno.test("F3: concurrent exchanges of one code yield one token set", async () => {
+  const { sql, pg } = await db();
+  const { clientId, verifier, back } = await connect(sql, pg, "proxy");
+  const code = back.searchParams.get("code")!;
+  const [a, b] = await Promise.all([exchange(sql, "proxy", clientId, code, verifier), exchange(sql, "proxy", clientId, code, verifier)]);
+  assert(!(a.status === 200 && b.status === 200), "both concurrent exchanges returned tokens");
+});
+
+Deno.test("F3b: a wrong verifier doesn't burn the code or revoke the grant", async () => {
+  const { sql, pg } = await db();
+  const { clientId, verifier, back, me } = await connect(sql, pg, "proxy");
+  const code = back.searchParams.get("code")!;
+  assertEquals((await exchange(sql, "proxy", clientId, code, (await pkce()).verifier)).status, 400);
+  const good = await exchange(sql, "proxy", clientId, code, verifier);
+  assertEquals(good.status, 200);
+  assertEquals((await resolveAccessToken(sql, good.body.access_token, request("proxy", "")))?.user_id, me.id);
+});
+
+Deno.test("F4: an attacker client named Claude is shown by its address, unverified", async () => {
+  const { sql, pg } = await db();
+  const { body } = await registerAs(sql, "Claude", [EVIL]);
+  assert(body.client_name !== "Claude", `registered as ${body.client_name}`);
+  const { challenge } = await pkce();
+  const q = new URLSearchParams({ response_type: "code", client_id: body.client_id, redirect_uri: EVIL, code_challenge: challenge, code_challenge_method: "S256" });
+  const id = new URL((await call(sql, request("proxy", `/authorize?${q}`))).headers.get("location")!).searchParams.get("request")!;
+  const me = await newUser(pg);
+  const described = await (await call(sql, request("function", `/connect/request?id=${id}`, { headers: { authorization: `Bearer ${me.jwt}`, origin: SITE } }))).json();
+  // What the consent screen gets: the attacker's own address, and no AI to vouch for it (the page
+  // and the app then lead with the host and start at Read Only).
+  assertEquals(described.client_name, "attacker.example");
+  assertEquals(described.redirect_host, "attacker.example");
+  assertEquals(described.verified_ai, null);
+});
+
+Deno.test("F5: x-mcp-public-url without the proxy secret is ignored", () => {
+  assertEquals(publicBase(new Request(FUNCTION, { headers: { "x-mcp-public-url": ALIAS } })), FUNCTION);
+  assertEquals(publicBase(new Request(FUNCTION, { headers: { "x-mcp-public-url": ALIAS, "x-mcp-proxy-secret": "proxy-secret" } })), ALIAS);
+});

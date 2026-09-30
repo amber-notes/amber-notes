@@ -605,6 +605,8 @@ struct ConnectAISection: View {
 
     private func detail(_ c: Connection) -> String {
         var parts = [c.isOAuth ? "Signed in" : "Access token", c.can_write ? "Read and edit" : "Read only"]
+        // Where access went: the proof of who this is, whatever it calls itself.
+        if c.isOAuth, let host = c.redirect_host, !host.isEmpty { parts.insert(host, at: 0) }
         parts.append(c.last_used_at.map { "Used \($0.formatted(.relative(presentation: .named)))" } ?? "Not used yet")
         return parts.joined(separator: " · ")
     }
