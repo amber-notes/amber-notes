@@ -13,7 +13,7 @@ export const metadata: Metadata = pageMetadata({
 
 const ROWS: [string, string, string][] = [
   ["Price", "Free", "Free"],
-  ["Devices", "Mac now; iPhone and iPad coming soon to the App Store", "iPhone, iPad, Mac, and iCloud.com in a browser"],
+  ["Devices", "Mac now; iPhone coming soon to the App Store", "Every Apple device, and iCloud.com in a browser"],
   ["Folders, pins, checklists, tables", "Yes", "Yes"],
   ["ChatGPT and Claude can find, read and edit notes", "Yes, with your approval (MCP)", "No"],
   ["Claude Code and Codex", "Yes", "No"],
