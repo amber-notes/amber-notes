@@ -4,13 +4,11 @@ import { pageMetadata } from "@/lib/site";
 import legal from "@/lib/legal.module.css";
 import styles from "./guides.module.css";
 
-// Not linked from the navigation yet: noindex while the guides are drafts.
 export const dynamic = "force-static";
 export const metadata: Metadata = pageMetadata({
   title: "Guides",
   description: "How to connect ChatGPT and Claude to your notes, move from Apple Notes, and more.",
   path: "/guides",
-  index: false,
 });
 
 export default function Page() {

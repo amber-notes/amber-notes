@@ -112,4 +112,4 @@ In the app, open **Settings → Connect an AI** and follow the steps for your cl
 
 ## License
 
-[MIT](LICENSE). Made by Emil Wagman.
+[MIT](LICENSE). Made by Emil Wagman at [Incredible](https://incredible.one).
