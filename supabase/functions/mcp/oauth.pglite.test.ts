@@ -25,7 +25,7 @@ Deno.env.delete("MCP_ALIAS_URLS");
 Deno.env.delete("CONNECT_PAGE_URL");
 Deno.env.set("MCP_PROXY_SECRET", "proxy-secret");
 
-const { handleOAuth, publicBase, resolveAccessToken, subpath, clientIP, cleanName, claimsATrustedName, displayName, claimedName, sha256Hex } = await import("./oauth.ts");
+const { handleOAuth, setPushSender, publicBase, resolveAccessToken, subpath, clientIP, cleanName, claimsATrustedName, displayName, claimedName, sha256Hex } = await import("./oauth.ts");
 const { handleRequest } = await import("./server.ts");
 
 // MARK: Database: every migration, on PGlite
@@ -1197,4 +1197,50 @@ Deno.test("a declined redirect goes to the page only when it's https, or http on
   for (const bad of ["http://evil.example/cb?error=access_denied", "javascript:alert(1)", "data:text/html,hi"]) {
     assertEquals(await declined(["https://app.example/cb"], bad), { state: "denied" }, bad);
   }
+});
+
+// MARK: Push: a new ask wakes the account's devices (APNs), with nothing of the notes in it
+
+Deno.test("an ask pushes to every device of that account, generic words and the request id only; gone tokens go", async () => {
+  const { sql, pg } = await db();
+  const me = await newUser(pg);
+  const other = await newUser(pg);
+  const token = (n: number) => n.toString(16).padStart(2, "0").repeat(32);
+  const register = (u: User, device: string, t: string, environment = "sandbox", platform = "ios") =>
+    app(pg, u.id, `select public.register_device_token($1, $2, $3, $4)`, [device, platform, t, environment]);
+  const [phone, mac] = [crypto.randomUUID(), crypto.randomUUID()];
+  await register(me, phone, token(1));
+  await register(me, mac, token(2), "production", "macos");
+  await register(other, crypto.randomUUID(), token(3));
+  // A device registering again replaces its token; another account can't see or remove mine.
+  await register(me, phone, token(4));
+  assertEquals((await app(pg, other.id, `select token from public.device_tokens`)).map((r: any) => r.token), [token(3)]);
+  await app(pg, other.id, `delete from public.device_tokens where token = $1`, [token(4)]);
+  assertEquals((await app(pg, me.id, `select 1 from public.device_tokens`)).length, 2);
+
+  const sent: { token: string; environment: string; payload: any }[] = [];
+  setPushSender((p) => { sent.push(p); return Promise.resolve(p.token === token(2) ? "gone" : "sent"); });
+  try {
+    const { requestId } = await pendingRequest(sql);
+    assertEquals((await askAs(sql, me, requestId, toBase64((await newHandoffKeys()).publicRaw))).status, 200);
+    assertEquals(sent.map((p) => [p.token, p.environment]).sort(), [[token(2), "production"], [token(4), "sandbox"]]);
+    const payload = sent[0].payload;
+    assertEquals(payload.ask, requestId);
+    assertEquals(payload.aps.alert.body, "Open Amber Notes to see the request.");
+    assertStringIncludes(payload.aps.alert.title, "to use your notes?");
+    assertEquals(Object.keys(payload).sort(), ["aps", "ask"]);
+    // Apple said token 2 is gone: it's deleted.
+    assertEquals((await app(pg, me.id, `select token from public.device_tokens`)).map((r: any) => r.token), [token(4)]);
+  } finally {
+    setPushSender(null);
+  }
+});
+
+Deno.test("a token another account registers on this device leaves the old account", async () => {
+  const { pg } = await db();
+  const a = await newUser(pg), b = await newUser(pg);
+  const t = "cd".repeat(32);
+  await app(pg, a.id, `select public.register_device_token($1, 'ios', $2, 'sandbox')`, [crypto.randomUUID(), t]);
+  await app(pg, b.id, `select public.register_device_token($1, 'ios', $2, 'sandbox')`, [crypto.randomUUID(), t.toUpperCase()]);
+  assertEquals((await pg.query(`select user_id from public.device_tokens`)).rows, [{ user_id: b.id }]);
 });
