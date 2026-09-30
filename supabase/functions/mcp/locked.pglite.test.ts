@@ -286,3 +286,36 @@ Deno.test("MCP: history of a note that was locked shows those versions as locked
   const e = await assertRejects(() => tool(pg, me, "restore_revision", { id, revision_id: h.revisions[0].revision_id }), ToolError);
   assertStringIncludes(e.message, "saved while the note was locked");
 });
+
+// sec-review's probes (P2-P4), as regression tests.
+
+Deno.test("P2: a password change drops versions sealed with the old key", async () => {
+  const { pg, me } = await setUp();
+  const id = await note(pg, me, "Diary", sealed());
+  await app(pg, me, `update public.notes set locked_body = $2 where id = $1`, [id, sealed()]); // a version under KEY
+  const [{ version }] = await asUser<{ version: number }>(pg, me, `select version from public.notes where id = $1`, [id]);
+  await app(pg, me, `select public.change_notes_password($1, $2, $3)`,
+    [JSON.stringify(changeTo(SECOND)), KEY, JSON.stringify([{ id, version, body: "Diary", locked_body: sealed(SECOND.key) }])]);
+  const old = await pg.query(`select 1 from public.note_revisions where note_id = $1 and split_part(locked_body, '.', 2) = $2`, [id, KEY]);
+  assertEquals(old.rows.length, 0);
+});
+
+Deno.test("P3: note_locks can't drop the salt that sealed existing notes", async () => {
+  const { pg, me } = await setUp();
+  await note(pg, me, "Diary", sealed());
+  const planted = await newSalt();
+  await refused(asUser(pg, me, `update public.note_locks set salt = $1, key_id = $2, verifier = 'x', previous = '[]'`, [planted.salt, planted.key]), "");
+  await refused(asUser(pg, me, `update public.note_locks set salt = $1`, [planted.salt]), "");
+  // Not through the password change either: the old setup must be carried forward.
+  await refused(app(pg, me, `select public.change_notes_password($1, $2)`, [JSON.stringify({ ...changeTo(planted), previous: [] }), KEY]), "proof");
+  const [{ key_id }] = await asUser<{ key_id: string }>(pg, me, `select key_id from public.note_locks`);
+  assertEquals(key_id, KEY);
+});
+
+Deno.test("P4: the MCP can't lift the lock guard by switching pane.source", async () => {
+  const { pg, me } = await setUp();
+  const id = await note(pg, me, "Bank", sealed());
+  await refused(asUser(pg, me,
+    `with s as materialized (select set_config('pane.source', 'restore', true) v) update public.notes set body = 'PIN 4821' where id = $1 and exists (select 1 from s)`,
+    [id], { "pane.source": "mcp", "pane.agent": "mcp" }), "locked");
+});

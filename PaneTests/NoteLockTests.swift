@@ -593,10 +593,36 @@ extension NetworkFaults {
         }
     }
 
+    /// sec-review's probe: the phone, offline, edits a note the Mac has since locked. With notes
+    /// locked on the phone, nothing of the edit may reach the server.
+    @Test func offlineEditElsewhereLeavesNoPlaintext() async throws {
+        try await locking {
+            let mac = try device(), phone = try device()
+            let n = mac.context.createNote(in: .all, body: "Bank\n\nPIN 1234")
+            await mac.engine.sync()
+            await phone.engine.sync()
+            let p = try #require(phone.context.note(n.id))
+            // The Mac locks it while the phone is offline.
+            try await mac.vault.setUp(password: "pw", hint: nil)
+            try mac.vault.lock(n)
+            await mac.engine.sync()
+            // Still offline, the phone edits the note it has.
+            try await Task.sleep(for: .milliseconds(20))
+            p.body = "Bank\n\nPIN 1234\nPUK 5678"
+            p.touch()
+            await phone.engine.sync()
+            await phone.engine.sync()
+            let everything = try serverText()
+            #expect(!everything.contains("PUK") && !everything.contains("1234"), "plaintext of a locked note reached the server")
+            await mac.engine.stop()
+            await phone.engine.stop()
+        }
+    }
+
     /// An edit made offline on the phone before the Mac locked the note: when the phone comes
     /// back, the lock wins and the phone's edit survives as a sealed copy. No plaintext of it
     /// reaches the server, and the phone keeps no readable copy.
-    @Test func offlineEditElsewhereLeavesNoPlaintext() async throws {
+    @Test func anOfflineEditFromBeforeTheLockSurvivesSealed() async throws {
         try await locking {
             let mac = try device(), phone = try device()
             let n = mac.context.createNote(in: .all, body: "Plan\n\nshared")
