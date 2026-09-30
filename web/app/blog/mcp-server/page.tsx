@@ -82,7 +82,8 @@ export default function Page() {
       {AGENT_INSTALLS.map((x) => (
         <section key={x.tool} aria-label={x.tool}>
           <p className="label"><strong>{x.tool}</strong></p>
-          <pre><code>{x.code}</code></pre>
+          {x.code && <pre><code>{x.code}</code></pre>}
+          {x.steps && <ol>{x.steps.map((s) => <li key={s}>{s}</li>)}</ol>}
           <p>{x.signIn}</p>
           {x.alt && <><p>{x.alt.text}</p><pre><code>{x.alt.code}</code></pre></>}
         </section>
@@ -98,13 +99,14 @@ export default function Page() {
       <ul>
         <li><a href="/blog/connect-chatgpt-to-your-notes">Connect ChatGPT or Claude to your notes</a>: add the address as a custom app or connector.</li>
         <li><a href="/blog/notes-in-claude-code-and-codex">Use your notes from Claude Code and Codex</a>: one command, or a few lines of config.</li>
-        <li><a href="#install">Gemini CLI and VS Code</a>: the command for each is above.</li>
-        <li><a href="https://incredible.one" rel="noopener">Incredible</a>, and anything else that speaks MCP: add the address and sign in when it asks.</li>
+        <li><a href="#install">Gemini CLI, VS Code and Incredible</a>: the steps for each are above.</li>
+        <li>Anything else that speaks MCP: add the address and sign in when it asks.</li>
       </ul>
       <p>
         Choosing a notes app for an agent? <a href="/blog/best-notes-app-for-ai-agents">The best notes app for AI agents</a> sets out the
         criteria. Coming from Apple Notes? <a href="/blog/apple-notes-mcp">Apple Notes MCP servers compared</a> covers the local servers
-        for Notes on a Mac, and how they differ from this one.
+        for Notes on a Mac, and how they differ from this one. <a href="/blog/obsidian-mcp">Obsidian MCP servers compared</a> does the
+        same for Obsidian vaults.
       </p>
       <p>
         The server is open source. Read it in <a href="https://github.com/emilwagman/amber-notes/tree/main/supabase/functions/mcp" rel="noopener">supabase/functions/mcp</a> on GitHub.
