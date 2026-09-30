@@ -5,6 +5,38 @@ assistants. Newest first. Research behind it: [seo-aeo-research-2026-09-30.md](s
 
 `docs/` had no README naming a folder for evidence, so this and the research live in `docs/Evidence/`.
 
+## 30 September 2026 (evening): round 3, and the first measurement
+
+### Measured
+
+Web search (the backend Claude's answers use; US English), about 12 hours after the blog went live and Search Console was verified.
+
+| Query | ambernotes.app in the results? | Who ranks |
+|---|---|---|
+| `site:ambernotes.app` | No site pages | GitHub pull requests of the repo, then the name collisions (Google Play AmberNotes, ambernotes.ai, app.ambernotes.eu, ambernotes.com) |
+| apple notes claude connector | No | Medium, upGrowth, Geeky Gadgets, GitHub plugins, mcpmarket, usecarly, aiagentskit |
+| can claude read my apple notes | No | Medium (Mac O'Clock, twice), sirmews repo, Claude help, byburk, mcpmarket, usecarly, Glama |
+| notes app with mcp server | No | MCPNotes, sweetrb, mcpservers.org, Glama category, Inkdrop docs, devas.life, aibase |
+| codex notes mcp | No | UpNote fork, Amplenote help, Composio, OpenAI Codex docs |
+| notes app that works with chatgpt | No | SourceForge, fritz.ai, App Store junk apps, Zoho |
+| apple notes mcp server | No | GitHub repos, PyPI, mcpservers.org, Augment, PulseMCP, mcpmarket, Glama |
+| apple notes api | No | Wikipedia, OpenAI forum, Elephas, Medium, HN, Apple developer forums, Glama |
+| claude code notes app | No | ALucek plugin, Medium, inc.com, makeuseof, devas.life, tomkrush |
+| claude connector notes | No | Fellow, XDA, Substack, tactiq, Claude help, meetingnotes.com, Evernote |
+| best notes app for AI agents | No | Lindy, Tana, Zapier, Metaview, Digital PM, Laxis, Toolradar |
+| "Amber Notes" notes app iPhone Mac ChatGPT Claude | Only through GitHub | The repo and its pull requests; the repo's own description ("Apple notes clone with MCP support, Markdown support, and more") is what gets quoted |
+
+Reading: nothing from the site is in this index yet, which is expected on day one. The GitHub repository is already the page that answers for the brand, so its description and README carry weight until the site is crawled.
+
+### Changed (branch `site/growth-3`)
+
+- Three new posts:
+  - `/blog/apple-notes-api`, Apple Notes API: what exists and what to use instead
+  - `/blog/notes-apps-that-work-with-chatgpt`, a comparison table
+  - `/blog/best-notes-app-for-ai-agents`, with criteria and a table
+- Each post has its own cover and lead image, from real captures: the Welcome note's markdown on ink, the iPhone "Edited by ChatGPT" art on peach, and the Evening tracker table on cream.
+- Contextual links were added in and out of the new posts. The "All posts" list is now grouped by category, since the blog has more than six posts.
+
 ## 30 September 2026: blog polish
 
 - The index and posts now use the changelog and help pages' system: the same 760 px column, title scale, lede and spacing, and the help page's soft cards (20 px corners around an 8 px inset). Card text is smaller (19 px titles, 15 px excerpts, 13 px bylines).

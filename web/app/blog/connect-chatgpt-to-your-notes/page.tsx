@@ -33,7 +33,7 @@ export default function Page() {
       <p>
         Apple Notes doesn&apos;t have one. On a Mac, ChatGPT can look at a note you have open, but it can&apos;t search your notes or
         save changes to them. If you&apos;re wondering why, <a href="/blog/claude-and-apple-notes">why AI apps can&apos;t reach Apple Notes</a>{" "}
-        explains it, and <a href="/blog/notes-apps-with-mcp">notes apps with an MCP server, compared</a> covers the alternatives.
+        explains it, and <a href="/blog/notes-apps-that-work-with-chatgpt">notes apps that work with ChatGPT</a> compares the alternatives.
       </p>
 
       <h2>What you need</h2>

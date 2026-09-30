@@ -54,6 +54,12 @@ export default function Page() {
         </table>
       </div>
 
+      <p>
+        If ChatGPT is the one you care about, <a href="/blog/notes-apps-that-work-with-chatgpt">notes apps that work with ChatGPT</a> compares
+        the apps it can reach, including ones without MCP. For agents that write, see{" "}
+        <a href="/blog/best-notes-app-for-ai-agents">the best notes app for AI agents</a>.
+      </p>
+
       <h2>What to check before you pick one</h2>
       <ul>
         <li><strong>Hosted or on your Mac.</strong> If you want to use your notes from ChatGPT, claude.ai or your phone, you need a hosted server. A local one is fine if you only use Claude Desktop or Claude Code on one Mac.</li>
