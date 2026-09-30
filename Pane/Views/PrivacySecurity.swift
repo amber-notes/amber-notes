@@ -18,6 +18,7 @@ enum PrivacyCopy {
     static let showReason = "Show your recovery key"
     static let saveReason = "Save your recovery key"
     static let fileName = "Amber Notes Recovery Key"
+    static let exportFooter = "Every note as a Markdown file in its folder, with its files. Your notes are encrypted, so the export is made on this device."
 }
 
 #if os(iOS)
@@ -77,6 +78,11 @@ struct PrivacySecuritySection: View {
             }
         } footer: {
             Text(PrivacyCopy.recoveryFooter)
+        }
+        Section {
+            ExportNotesButton()
+        } footer: {
+            Text(PrivacyCopy.exportFooter)
         }
         .sheet(item: Binding(get: { saving.map(RecoveryKeyItem.init) }, set: { saving = $0?.key })) { item in
             SaveRecoveryKeySheet(key: item.key) { await markSaved() }

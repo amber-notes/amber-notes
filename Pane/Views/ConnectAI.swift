@@ -209,11 +209,15 @@ enum ConnectTokens {
 
 /// Face ID or Touch ID (or the device password) before an AI gets your notes.
 enum ConnectApproval {
+    /// Whether this device can ask for Face ID, Touch ID or its passcode. Without one, nobody is
+    /// asked, so an AI can't be allowed from it.
+    static var canConfirm: Bool {
+        var error: NSError?
+        return LAContext().canEvaluatePolicy(.deviceOwnerAuthentication, error: &error)
+    }
+
     static func confirm(_ who: String) async -> Bool {
         let context = LAContext()
-        var error: NSError?
-        // A device with no passcode at all can't ask; allowing still takes the button press.
-        guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else { return true }
         return (try? await context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: "allow \(who) to read your notes")) ?? false
     }
 }
@@ -357,6 +361,7 @@ struct ConsentSheet: View {
     @State private var write = true
     /// Face ID or Touch ID before allowing; tests and captures answer for it.
     var confirm: (String) async -> Bool = ConnectApproval.confirm
+    var canConfirm: () -> Bool = { ConnectApproval.canConfirm }
 
     init(client: SupabaseClient, requestID: UUID, initial: Phase = .loading, finish: @escaping (URL) -> Void, allowed: @escaping (ConnectRequest) -> Void = { _ in }) {
         self.client = client
@@ -508,7 +513,13 @@ struct ConsentSheet: View {
 
     private func decide(_ r: ConnectRequest, allow: Bool) async {
         // Handing over the key to your notes takes you, not just a click.
-        if allow, !(await confirm(r.who)) { return }
+        if allow {
+            guard canConfirm() else {
+                phase = .failed("Turn on a passcode, Face ID or Touch ID on this device to connect an AI.")
+                return
+            }
+            if !(await confirm(r.who)) { return }
+        }
         phase = .working
         do {
             // The connection gets its own copy of the account's key, wrapped under a code made here.

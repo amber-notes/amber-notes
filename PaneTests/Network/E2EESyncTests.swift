@@ -161,6 +161,23 @@ extension NetworkFaults {
         await a.engine.stop()
     }
 
+    @Test func aNewAccountKeySendsEverythingUpAgain() async throws {
+        let a = try device()
+        let n = a.context.createNote(in: .all, body: "Kept on this device")
+        n.dirty = true
+        await a.engine.sync()
+        #expect(!n.dirty && n.serverVersion > 0)
+        // Start fresh on another device: the server's notes went with the old key.
+        StubSupabase.reset()
+        let fresh = Sealer(key: SymmetricKey(size: .bits256), user: user)
+        await Wire.$testSealer.withValue(fresh) { await a.engine.sync() }
+        let box = StubSupabase.rows("notes").first?["body_ct"] as? String
+        #expect(StubSupabase.rows("notes").count == 1, "this device's notes go up again")
+        #expect(box.flatMap { fresh.open($0, context: E2EE.body(n.id)) } == "Kept on this device", "sealed with the new key")
+        #expect(a.defaults.string(forKey: SyncEngine.keyIDKey(user)) == fresh.keyID)
+        await a.engine.stop()
+    }
+
     @Test func aNoteDeletedForGoodKeepsNoBoxes() async throws {
         let a = try device()
         let n = a.context.createNote(in: .all, body: "Short-lived")

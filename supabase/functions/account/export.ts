@@ -21,7 +21,7 @@ current sign-ins.
 
 Your notes, folder names, file names and files are end-to-end encrypted with a key only your
 devices have, so we can't read them and can't export them. To take your notes with you, open
-Amber Notes and choose Settings > Privacy & Security > Export your notes.
+Amber Notes and choose Settings > Privacy & Security > Export Your Notes.
 
 Access tokens and passwords are never stored in readable form, so they aren't included.
 

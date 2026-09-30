@@ -153,6 +153,7 @@ final class SyncEngine {
         // The key can go (signed out, Start fresh) between runs.
         guard let sealer = Wire.sealer else { return }
         resetOldLibraryIfNeeded()
+        adoptKeyIfChanged(sealer.keyID)
         if pulling { status = .syncing }
         do {
             let slowedDown = try await push(client, sealer: sealer)
@@ -282,6 +283,41 @@ final class SyncEngine {
     }
     /// The account this engine's in-memory state (refusals, problems) belongs to.
     private var adoptedFor: UUID?
+
+    // MARK: A new key for the account
+
+    nonisolated static func keyIDKey(_ user: UUID) -> String { "e2ee.keyID.\(user.uuidString.lowercased())" }
+
+    /// The account's key changed since this device last synced: someone chose Start fresh, and the
+    /// server's notes went with the old key. What this device still has goes up again, sealed with
+    /// the new key, so nothing it holds is lost.
+    private func adoptKeyIfChanged(_ keyID: String) {
+        guard let uid = backend.userID else { return }
+        let known = defaults.string(forKey: Self.keyIDKey(uid))
+        defaults.set(keyID, forKey: Self.keyIDKey(uid))
+        guard let known, known != keyID else { return }
+        DebouncedSave.flushAll()
+        let n = Self.markAllForUpload(context)
+        defaults.removeObject(forKey: cursorKey)
+        synced = [:]
+        refused = [:]
+        problem = nil
+        try? context.save()
+        log.notice("the account has a new key: \(n) notes go up again")
+    }
+
+    /// Everything in the library, marked to go up as new. Returns how many notes.
+    @discardableResult
+    static func markAllForUpload(_ context: ModelContext) -> Int {
+        let notes = ((try? context.fetch(FetchDescriptor<Note>())) ?? []).filter { $0.deletedAt == nil }
+        for n in notes { n.serverVersion = 0; n.dirty = true }
+        for f in context.allFoldersIncludingDeleted() where f.deletedAt == nil { f.serverVersion = 0; f.dirty = true }
+        for a in (try? context.fetch(FetchDescriptor<Attachment>())) ?? [] where a.deletedAt == nil && FileStore.exists(a) {
+            a.uploaded = false
+            a.dirty = true
+        }
+        return notes.count
+    }
 
     // MARK: The one-time reset
 
@@ -573,6 +609,11 @@ final class SyncEngine {
         if let p = error as? PostgrestError {
             switch p.code {
             case "PT429": return .tooFast
+            case "42501" where p.hint == "wrong_key" || p.hint == "no_key":
+                // The account's key changed on another device (Start fresh): this device gets the
+                // new one, and what it has goes up again (adoptKeyIfChanged).
+                Task { @MainActor in await AccountCrypto.shared.recheck() }
+                return .refused(p.message)
             case "PT413", "PT403", "23514", "23503", "23505", "22001", "22P02", "22P05", "22021", "54000", "42501":
                 return .refused(p.message)
             default: return nil
