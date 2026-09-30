@@ -12,6 +12,9 @@ struct KeyGateView: View {
     @State private var confirmation = ""
     @State private var working = false
     @State private var error: String?
+    /// Starting fresh was refused: it needs a sign-in from the last few minutes.
+    @State private var needsSignIn = false
+    @State private var password = ""
     @FocusState private var focused: Bool
     @Environment(\.displayScale) private var displayScale
 
@@ -180,22 +183,108 @@ struct KeyGateView: View {
                 }
             }
             VStack(spacing: 10) {
-                field {
-                    TextField("Type \u{201C}\(AccountCrypto.startFreshPhrase)\u{201D} to confirm", text: $confirmation)
-                        .autocorrectionDisabled()
-                        #if os(iOS)
-                        .textInputAutocapitalization(.never)
-                        #endif
+                if needsSignIn {
+                    signInAgain
+                } else {
+                    field {
+                        TextField("Type \u{201C}\(AccountCrypto.startFreshPhrase)\u{201D} to confirm", text: $confirmation)
+                            .autocorrectionDisabled()
+                            #if os(iOS)
+                            .textInputAutocapitalization(.never)
+                            #endif
+                    }
+                    .accessibilityIdentifier("e2ee.confirmStartFresh")
+                    mainButton("Start fresh", id: "e2ee.startFresh", enabled: confirmed, destructive: true) {
+                        try await startFreshNow()
+                    }
                 }
-                .accessibilityIdentifier("e2ee.confirmStartFresh")
-                mainButton("Start fresh", id: "e2ee.startFresh", enabled: confirmed, destructive: true) {
-                    try await crypto.startFresh(confirmation: confirmation)
-                    confirmation = ""
-                    screen = .auto
-                }
-                quietButton("Back", id: "e2ee.back") { screen = .recovery; confirmation = "" }
+                quietButton("Back", id: "e2ee.back") { screen = .recovery; confirmation = ""; needsSignIn = false; password = "" }
             }
         }
+    }
+
+    /// Starts fresh, or (when the server wants a recent sign-in) asks for one first.
+    private func startFreshNow() async throws {
+        do {
+            try await crypto.startFresh(confirmation: confirmation)
+        } catch KeyError.reauth {
+            needsSignIn = true
+            return
+        }
+        confirmation = ""
+        needsSignIn = false
+        screen = .auto
+    }
+
+    /// Deleting everything takes a fresh sign-in, the way this account signs in: Apple once an
+    /// Apple ID is linked, otherwise its email and password. Then it starts fresh.
+    @ViewBuilder private var signInAgain: some View {
+        Text(Copy.signInAgain)
+            .font(.subheadline)
+            .foregroundStyle(Color.muted)
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityIdentifier("e2ee.signInAgain")
+        if backend.apple != nil {
+            AppleAuthButton(label: .signIn, height: Row.height, title: "Sign in with Apple", web: webSignIn) { result in
+                switch result {
+                case .success(let credential):
+                    run {
+                        try await backend.signInWithApple(credential)
+                        try await startFreshNow()
+                    }
+                case .failure(.canceled): break
+                case .failure(let failure): error = AppleSignIn.message(for: failure)
+                }
+            }
+            .disabled(working)
+            .opacity(working ? 0.6 : 1)
+            .accessibilityIdentifier("e2ee.signInApple")
+        } else {
+            field {
+                SecureField("Password for \(email)", text: $password)
+                    .textContentType(.password)
+                    .onSubmit { if !password.isEmpty { signInWithPassword() } }
+            }
+            .accessibilityIdentifier("e2ee.password")
+            mainButton("Sign in and start fresh", id: "e2ee.signInStartFresh", enabled: !password.isEmpty, destructive: true) {
+                try await signInAndStartFresh()
+            }
+        }
+    }
+
+    private var email: String {
+        if case .signedIn(let email) = backend.state { return email }
+        return ""
+    }
+
+    private func signInWithPassword() { run { try await signInAndStartFresh() } }
+
+    private func signInAndStartFresh() async throws {
+        do { try await backend.signIn(email: email, password: password) } catch {
+            throw KeyGateFailure(message: Backend.message(for: error, signingUp: false))
+        }
+        password = ""
+        try await startFreshNow()
+    }
+
+    private struct KeyGateFailure: LocalizedError {
+        let message: String
+        var errorDescription: String? { message }
+    }
+
+    /// The Mac download signs in with Apple on the web, as on the sign-in screen.
+    private var webSignIn: (@MainActor () -> Void)? {
+        #if DIRECT
+        return {
+            run {
+                do { try await backend.signInWithAppleOnTheWeb() } catch where Backend.isCanceled(error) { return }
+                try await startFreshNow()
+            }
+        }
+        #else
+        return nil
+        #endif
     }
 
     private var confirmed: Bool {
@@ -271,7 +360,7 @@ struct KeyGateView: View {
 /// The key screens' words, in one place.
 enum KeyCopy {
     static let welcomeTitle = "Your notes are encrypted."
-    static let welcomeMessage = "Only your devices hold the key, not us."
+    static let welcomeMessage = "Only your devices, and AI connections you approve, can unlock your notes."
     static let waitingTitle = "Getting your key from iCloud Keychain…"
     #if os(macOS)
     static let keychainHelp = "Check that iCloud Keychain is on here and on your other device: System Settings › [your name] › iCloud › Passwords and Keychain."
@@ -282,7 +371,9 @@ enum KeyCopy {
     static let mismatch = "The key on this device isn't your account's current key."
     static let unreachable = "Connect to the internet. This device checks your key with Amber Notes before opening your notes."
     static let startFreshMessage = [
-        "Without your recovery key or another device that has your key, the notes stored with Amber Notes can't be opened by anyone, including us.",
-        "Starting fresh deletes them from our server. This device gets a new key and a new recovery key, and your account starts empty.",
+        "Without your recovery key or another device that has your key, the notes stored with Amber Notes can't be opened here, or by us. AI connections you approved can still open them until they're disconnected.",
+        "Starting fresh deletes them from our server and disconnects every AI. This device gets a new key and a new recovery key, and your account starts empty.",
     ]
+    static let signInAgain = "To delete your notes, sign in again first."
+
 }

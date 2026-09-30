@@ -71,6 +71,50 @@ enum E2EE {
         return hex(HMAC<SHA256>.authenticationCode(for: Data("amber-notes verifier|\(user.uuidString.lowercased())".utf8), using: mac))
     }
 
+    // MARK: Share tags: which notes the account's devices chose to share
+    //
+    // A shared page is readable, so a device publishes a note only for a share the account made
+    // itself. The share's tag, written when it's made, is an HMAC under a subkey of DK: a share row
+    // planted or changed by anyone without the key doesn't verify, and nothing is published.
+
+    private static func shareKey(_ key: SymmetricKey) -> SymmetricKey {
+        HKDF<SHA256>.deriveKey(inputKeyMaterial: key, salt: hkdfSalt, info: Data("share".utf8), outputByteCount: 32)
+    }
+
+    /// hex(HMAC-SHA256(HKDF(DK, info "share"), "share|<note id>|<slug>|<1 or 0>")).
+    static func shareTag(_ key: SymmetricKey, note: UUID, slug: String, includeSubNotes: Bool) -> String {
+        let msg = "share|\(note.uuidString.lowercased())|\(slug)|\(includeSubNotes ? 1 : 0)"
+        return hex(HMAC<SHA256>.authenticationCode(for: Data(msg.utf8), using: shareKey(key)))
+    }
+
+    /// Whether `tag` is the one this key makes for the share. Compared in constant time.
+    static func shareTagMatches(_ key: SymmetricKey, note: UUID, slug: String, includeSubNotes: Bool, tag: String?) -> Bool {
+        guard let tag, tag.utf8.count == 64 else { return false }
+        let mine = Array(shareTag(key, note: note, slug: slug, includeSubNotes: includeSubNotes).utf8)
+        var diff: UInt8 = 0
+        for (a, b) in zip(mine, Array(tag.utf8)) { diff |= a ^ b }
+        return diff == 0
+    }
+
+    // MARK: Number matching: the page and the device show the same two digits
+
+    /// The page's key and the request, as two digits: SHA-256(browser key raw ‖ request id,
+    /// lowercase), the first four bytes as a big-endian number, mod 100. A key swapped on the way
+    /// gives another number.
+    static func matchNumber(browserKey: Data, requestID: UUID) -> String {
+        let d = Array(SHA256.hash(data: browserKey + Data(requestID.uuidString.lowercased().utf8)))
+        let n = UInt32(d[0]) << 24 | UInt32(d[1]) << 16 | UInt32(d[2]) << 8 | UInt32(d[3])
+        return String(format: "%02d", n % 100)
+    }
+
+    /// What a device hands the page: the code and the redirect it goes to, sealed together so
+    /// nobody on the way can send the page elsewhere. `{"code":…,"redirect":…}`, as the server's
+    /// `handoffPayload` writes it.
+    static func handoffPayload(code: String, redirect: String) -> String {
+        struct Payload: Encodable { var code: String; var redirect: String }
+        return String(decoding: (try? JSONEncoder.sorted.encode(Payload(code: code, redirect: redirect))) ?? Data(), as: UTF8.self)
+    }
+
     // MARK: Wrapping the data key
 
     /// The key a token or code opens its wrap with: HKDF-SHA256 of the token itself.
@@ -257,6 +301,14 @@ final class Sealer: @unchecked Sendable {
         open(box, context: E2EE.head(note)).flatMap { try? JSONDecoder().decode(NoteHead.self, from: Data($0.utf8)) }
     }
 
+    func shareTag(note: UUID, slug: String, includeSubNotes: Bool) -> String {
+        E2EE.shareTag(key, note: note, slug: slug, includeSubNotes: includeSubNotes)
+    }
+
+    func shareTagMatches(note: UUID, slug: String, includeSubNotes: Bool, tag: String?) -> Bool {
+        E2EE.shareTagMatches(key, note: note, slug: slug, includeSubNotes: includeSubNotes, tag: tag)
+    }
+
     func sealFile(_ data: Data, id: UUID) throws -> Data { try E2EE.sealFile(data, key: key, keyID: keyID, id: id) }
     func openFile(_ data: Data, id: UUID) throws -> Data { try E2EE.openFile(data, key: key, id: id) }
 }
@@ -272,29 +324,37 @@ extension JSONEncoder {
 // MARK: The key, as the Keychain and the server hold it
 
 /// What the Keychain holds for an account: the data key and the recovery key together, so any
-/// device with the one can show the other. Stored as version (1) ‖ DK (32) ‖ recovery key (16).
+/// device with the one can show the other, and the account's reset generation the key was made in
+/// (`account_key_resets`): a key from an older generation belongs to notes someone chose to delete.
+/// Stored as version (2) ‖ DK (32) ‖ recovery key (16) ‖ generation (4, big-endian).
 struct StoredKey: Equatable, Sendable {
-    static let version: UInt8 = 1
+    static let version: UInt8 = 2
     let dataKey: Data
     let recovery: Data
+    let generation: Int
 
-    init?(dataKey: Data, recovery: Data) {
-        guard dataKey.count == 32, recovery.count == 16 else { return nil }
+    init?(dataKey: Data, recovery: Data, generation: Int = 0) {
+        guard dataKey.count == 32, recovery.count == 16, generation >= 0, generation <= Int(UInt32.max) else { return nil }
         self.dataKey = dataKey
         self.recovery = recovery
+        self.generation = generation
     }
 
     init?(encoded: Data) {
         let b = Array(encoded)
-        guard b.count == 49, b[0] == Self.version else { return nil }
-        self.init(dataKey: Data(b[1 ..< 33]), recovery: Data(b[33 ..< 49]))
+        guard b.count == 53, b[0] == Self.version else { return nil }
+        let generation = Int(UInt32(b[49]) << 24 | UInt32(b[50]) << 16 | UInt32(b[51]) << 8 | UInt32(b[52]))
+        self.init(dataKey: Data(b[1 ..< 33]), recovery: Data(b[33 ..< 49]), generation: generation)
     }
 
-    static func generate() -> StoredKey {
-        StoredKey(dataKey: E2EE.bytes(E2EE.newDataKey()), recovery: E2EE.randomBytes(16))!
+    static func generate(generation: Int = 0) -> StoredKey {
+        StoredKey(dataKey: E2EE.bytes(E2EE.newDataKey()), recovery: E2EE.randomBytes(16), generation: generation)!
     }
 
-    var encoded: Data { Data([Self.version]) + dataKey + recovery }
+    var encoded: Data {
+        let g = UInt32(generation)
+        return Data([Self.version]) + dataKey + recovery + Data([UInt8(g >> 24), UInt8(g >> 16 & 0xff), UInt8(g >> 8 & 0xff), UInt8(g & 0xff)])
+    }
     var key: SymmetricKey { SymmetricKey(data: dataKey) }
     var keyID: String { E2EE.keyID(of: dataKey) }
     var recoveryText: String { E2EE.recoveryKeyText(recovery) }
@@ -320,15 +380,23 @@ struct ServerKey: Codable, Equatable, Sendable {
     var recovery_saved_at: Date?
 }
 
+/// The account's key row (nil when it has none) and its reset generation (`account_key_resets`,
+/// 0 when it never started fresh).
+struct ServerKeyState: Equatable, Sendable {
+    var key: ServerKey?
+    var generation: Int = 0
+}
+
 /// The account's key on the server. Every call throws when the server can't be reached.
 protocol AccountKeyServer: Sendable {
-    /// The account's key, or nil when it has none yet.
-    func fetch() async throws -> ServerKey?
+    /// The account's key (nil when it has none) and its reset generation.
+    func fetch() async throws -> ServerKeyState
     /// `create_account_key`: insert-if-absent. The account's key, whoever made it, and whether
     /// this call did.
     func create(_ key: ServerKey) async throws -> (key: ServerKey, created: Bool)
     func markRecoveryKeySaved() async throws -> Date?
-    /// `start_fresh`: deletes the account's notes and key, if `keyID` is still its key.
+    /// `start_fresh`: deletes the account's notes and key, if `keyID` is still its key. Throws
+    /// `KeyError.reauth` when the server wants a recent sign-in first.
     func startFresh(keyID: String) async throws -> Bool
 }
 
@@ -337,6 +405,9 @@ enum KeySlot: String, Sendable, CaseIterable {
     case synced
     /// A key being made, on this device only until the server has taken it (see `AccountCrypto`).
     case pending
+    /// The key from before the account started fresh, kept on this device only: never used for
+    /// sync, never deleted by the app except with the account.
+    case previous
 }
 
 protocol AccountKeyStore: Sendable {
@@ -361,7 +432,8 @@ final class MemoryAccountKeyStore: AccountKeyStore, @unchecked Sendable {
 
 /// The key in the Keychain. The account's key is a synchronizable item (iCloud Keychain, end-to-end
 /// encrypted by Apple), readable after the first unlock so sync works in the background. A key being
-/// made stays on this device (ThisDeviceOnly) until the server has taken it.
+/// made stays on this device (ThisDeviceOnly) until the server has taken it, and so does the key
+/// from before starting fresh.
 ///
 /// No `kSecAttrAccessGroup` in any query, on purpose: items go to the default group, the first of
 /// the app's `keychain-access-groups` (`$(AppIdentifierPrefix)dev.emilwagman.pane`, the same on the
@@ -383,7 +455,7 @@ struct KeychainAccountKeyStore: AccountKeyStore {
 
     private static func query(_ account: UUID, slot: KeySlot) -> [String: Any] {
         [kSecClass as String: kSecClassGenericPassword,
-         kSecAttrService as String: slot == .synced ? service : service + ".pending",
+         kSecAttrService as String: slot == .synced ? service : service + "." + slot.rawValue,
          kSecAttrAccount as String: account.uuidString.lowercased(),
          kSecUseDataProtectionKeychain as String: true,
          kSecAttrSynchronizable as String: kSecAttrSynchronizableAny]
@@ -413,7 +485,7 @@ struct KeychainAccountKeyStore: AccountKeyStore {
         var q = Self.query(account, slot: slot)
         q[kSecAttrSynchronizable as String] = slot == .synced
         q[kSecAttrAccessible as String] = slot == .synced ? kSecAttrAccessibleAfterFirstUnlock : kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-        q[kSecAttrLabel as String] = "Amber Notes encryption key"
+        q[kSecAttrLabel as String] = slot == .previous ? "Amber Notes encryption key (before starting fresh)" : "Amber Notes encryption key"
         q[kSecValueData as String] = key.encoded
         return SecItemAdd(q as CFDictionary, nil) == errSecSuccess
     }
@@ -432,14 +504,25 @@ struct KeychainAccountKeyStore: AccountKeyStore {
 /// The decision at startup, from what the Keychain and the server hold. Pure; `AccountCrypto`
 /// carries it out.
 enum KeyStartup {
-    enum Server: Equatable, Sendable { case unreachable, none, key(ServerKey) }
+    enum Server: Equatable, Sendable {
+        case unreachable
+        /// The account has no key row. `generation`: how many times it started fresh.
+        case none(generation: Int)
+        case key(ServerKey)
+    }
 
     enum Decision: Equatable {
         /// Use this key. `verified`: the server confirmed it (not when offline). `promote`: it's the
         /// pending key the server took, so it becomes the synced one.
         case ready(StoredKey, verified: Bool, promote: Bool)
-        /// The account has no key: make one. The only way a key is ever made.
-        case create
+        /// The account has never had a key here: make one, in this generation.
+        case create(generation: Int)
+        /// The server has no key, but no reset happened since this key was made: the server lost
+        /// or dropped the row. Register the same key again; never make a new one.
+        case reregister(StoredKey)
+        /// The account started fresh since this key was made: keep it aside on this device, make
+        /// the new one, and say the recovery key changed.
+        case replace(previous: StoredKey, generation: Int)
         /// The server has a key this device doesn't: wait for iCloud Keychain, or the recovery key.
         case wait
         /// The Keychain has a key that isn't the account's: never use it.
@@ -454,8 +537,11 @@ enum KeyStartup {
             // Offline with the key here: carry on (sync waits for the network anyway); the key
             // is checked once the server answers.
             return synced.map { .ready($0, verified: false, promote: false) } ?? .unreachable
-        case .none:
-            return .create
+        case .none(let generation):
+            // A synced key is replaced only after a reset the server counted (start_fresh): a
+            // server that merely forgets the row gets the same key back.
+            guard let synced else { return .create(generation: generation) }
+            return synced.generation >= generation ? .reregister(synced) : .replace(previous: synced, generation: generation)
         case .key(let s):
             if let synced, synced.matches(s, user: user) { return .ready(synced, verified: true, promote: false) }
             // A key this device made without hearing back that the server took it.
@@ -467,9 +553,12 @@ enum KeyStartup {
 
 enum KeyError: LocalizedError, Equatable {
     case typo, wrongKey, offline, notReady, confirmation
+    /// Starting fresh needs a sign-in in the last few minutes.
+    case reauth
 
     var errorDescription: String? {
         switch self {
+        case .reauth: "Sign in again to start fresh."
         case .typo: "That recovery key has a typo. Check it and try again."
         case .wrongKey: "That recovery key isn't the one for this account. Check it and try again."
         case .offline: "You're offline. Connect to the internet and try again."
@@ -513,6 +602,13 @@ final class AccountCrypto {
     private(set) var polls = 0
     /// "Your notes are encrypted": once per account on each device, when the key is first here.
     private(set) var needsWelcome = false
+    /// The account started fresh since this device's key was made, so the recovery key it had is
+    /// void: said once (`recoveryKeyChangeShown`), and in Privacy & Security until the new one is saved.
+    private(set) var recoveryKeyChanged = false
+    private(set) var recoveryKeyChangeNeedsSaying = false
+    /// The account's reset generation, as last seen.
+    private var serverGeneration = 0
+    private var startingFresh = false
     private var key: StoredKey?
     private var server: AccountKeyServer?
     let store: AccountKeyStore
@@ -569,11 +665,19 @@ final class AccountCrypto {
         await run()
     }
 
+    private static func remote(_ state: ServerKeyState) -> KeyStartup.Server {
+        state.key.map { .key($0) } ?? .none(generation: state.generation)
+    }
+
     private func run() async {
         guard let account, let server else { phase = .off; return }
         let gen = generation
         let remote: KeyStartup.Server
-        do { remote = try await server.fetch().map { .key($0) } ?? .none } catch { remote = .unreachable }
+        do {
+            let state = try await server.fetch()
+            remote = Self.remote(state)
+            serverGeneration = state.generation
+        } catch { remote = .unreachable }
         guard gen == generation else { return }
         if case .key(let s) = remote { serverKey = s }
         await carryOut(KeyStartup.decide(user: account, synced: store.load(account: account, slot: .synced),
@@ -587,8 +691,18 @@ final class AccountCrypto {
             if promote { store.save(k, account: account, slot: .synced) }
             if verified { store.remove(account: account, slot: .pending) }
             open(k, verified: verified)
-        case .create:
-            await create()
+        case .create(let g):
+            await create(generation: g)
+        case .reregister(let k):
+            await reregister(k)
+        case .replace(let previous, let g):
+            // Kept on this device, never synced and never used: notes someone chose to delete
+            // may still be in a backup somewhere, and this is the only key to them.
+            store.save(previous, account: account, slot: .previous)
+            // Whichever device makes the new key, the recovery key this person saved is void.
+            // (Not news on the device where they just chose to start fresh.)
+            if !startingFresh { defaults.set(true, forKey: Self.recoveryChangedKey(account)) }
+            await create(generation: g)
         case .wait:
             phase = .waiting
             startPolling()
@@ -604,10 +718,10 @@ final class AccountCrypto {
     /// The account's first launch. The new key stays on this device only until the server has
     /// taken it: a device that loses the race never overwrites the synced key, and one that goes
     /// offline or quits mid-way still has the key if the server took it after all.
-    private func create() async {
+    private func create(generation g: Int) async {
         guard let account, let server else { return }
         let gen = generation
-        let k = StoredKey.generate()
+        let k = StoredKey.generate(generation: g)
         guard let row = try? k.serverRow(user: account) else { phase = .unreachable; return }
         store.save(k, account: account, slot: .pending)
         do {
@@ -624,6 +738,26 @@ final class AccountCrypto {
                 await carryOut(KeyStartup.decide(user: account, synced: store.load(account: account, slot: .synced),
                                                  pending: nil, server: .key(winner)))
             }
+        } catch {
+            guard gen == generation else { return }
+            phase = .unreachable
+            startRetrying()
+        }
+    }
+
+    /// The server has no key row, yet the account never started fresh since this key was made:
+    /// the same key goes back (its verifier and recovery wrap), so nothing the server does short
+    /// of a counted reset gets a device to make a new key. Two devices doing this at once both
+    /// end with it.
+    private func reregister(_ k: StoredKey) async {
+        guard let account, let server else { return }
+        let gen = generation
+        guard let row = try? k.serverRow(user: account) else { phase = .unreachable; return }
+        do {
+            let (winner, _) = try await server.create(row)
+            guard gen == generation else { return }
+            serverKey = winner
+            await carryOut(KeyStartup.decide(user: account, synced: k, pending: nil, server: .key(winner)))
         } catch {
             guard gen == generation else { return }
             phase = .unreachable
@@ -652,10 +786,11 @@ final class AccountCrypto {
     func recheck() async {
         guard let account, let server, phase == .ready, let key else { return }
         let gen = generation
-        let fetched: ServerKey?
-        do { fetched = try await server.fetch() } catch { return }
+        let state: ServerKeyState
+        do { state = try await server.fetch() } catch { return }
         guard gen == generation, phase == .ready else { return }
-        if let fetched, key.matches(fetched, user: account) {
+        serverGeneration = state.generation
+        if let fetched = state.key, key.matches(fetched, user: account) {
             serverKey = fetched
             if unverified {
                 unverified = false
@@ -674,12 +809,17 @@ final class AccountCrypto {
         guard let bytes = E2EE.parseRecoveryKey(typed) else { throw KeyError.typo }
         let gen = generation
         var current = serverKey
-        if let fetched = try? await server.fetch() { current = fetched }
+        if let fetched = try? await server.fetch() {
+            current = fetched.key
+            serverGeneration = fetched.generation
+        }
         guard gen == generation else { throw KeyError.notReady }
         guard let current else { throw KeyError.offline }
         serverKey = current
+        // The account's key was made after its last reset, so it's of the current generation.
         guard let dk = try? E2EE.unwrap(current.recovery_wrap, with: E2EE.recoveryKEK(bytes, user: account), purpose: "recovery", user: account),
-              let k = StoredKey(dataKey: E2EE.bytes(dk), recovery: bytes), k.matches(current, user: account) else { throw KeyError.wrongKey }
+              let k = StoredKey(dataKey: E2EE.bytes(dk), recovery: bytes, generation: serverGeneration),
+              k.matches(current, user: account) else { throw KeyError.wrongKey }
         store.save(k, account: account, slot: .synced)
         store.remove(account: account, slot: .pending)
         open(k, verified: true)
@@ -691,13 +831,19 @@ final class AccountCrypto {
         guard confirmation.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == Self.startFreshPhrase else { throw KeyError.confirmation }
         guard let account, let server else { throw KeyError.notReady }
         let current: ServerKey?
-        do { current = try await server.fetch() } catch { throw KeyError.offline }
+        do { current = try await server.fetch().key } catch { throw KeyError.offline }
         if let current {
             let deleted: Bool
-            do { deleted = try await server.startFresh(keyID: current.key_id) } catch { throw KeyError.offline }
-            if deleted { await removeAccountFiles?(account) }
+            do { deleted = try await server.startFresh(keyID: current.key_id) } catch KeyError.reauth { throw KeyError.reauth } catch { throw KeyError.offline }
+            if deleted {
+                // Every device hears of it (account_notices); this one did it, so it doesn't say so.
+                defaults.set(true, forKey: Self.startedFreshHereKey(account))
+                await removeAccountFiles?(account)
+            }
         }
         serverKey = nil
+        startingFresh = true
+        defer { startingFresh = false }
         await restart()
     }
 
@@ -706,7 +852,24 @@ final class AccountCrypto {
         let at: Date?
         do { at = try await server.markRecoveryKeySaved() } catch { throw KeyError.offline }
         serverKey?.recovery_saved_at = at ?? .now
+        if let account {
+            defaults.removeObject(forKey: Self.recoveryChangedKey(account))
+            defaults.removeObject(forKey: Self.recoveryChangeSaidKey(account))
+        }
+        recoveryKeyChanged = false
+        recoveryKeyChangeNeedsSaying = false
     }
+
+    /// "Your recovery key changed" was shown.
+    func recoveryKeyChangeShown() {
+        if let account { defaults.set(true, forKey: Self.recoveryChangeSaidKey(account)) }
+        recoveryKeyChangeNeedsSaying = false
+    }
+
+    nonisolated static func recoveryChangedKey(_ account: UUID) -> String { "e2ee.recoveryChanged.\(account.uuidString.lowercased())" }
+    nonisolated static func recoveryChangeSaidKey(_ account: UUID) -> String { "e2ee.recoveryChangeSaid.\(account.uuidString.lowercased())" }
+    /// This device started fresh: the notice every device gets about it isn't news here.
+    nonisolated static func startedFreshHereKey(_ account: UUID) -> String { "e2ee.startedFreshHere.\(account.uuidString.lowercased())" }
 
     // MARK: First launch
 
@@ -732,7 +895,9 @@ final class AccountCrypto {
     /// The account is deleted: its key goes from the Keychain, and so from iCloud Keychain.
     func forgetKey(account: UUID) {
         for slot in KeySlot.allCases { store.remove(account: account, slot: slot) }
-        defaults.removeObject(forKey: welcomedKey(account))
+        for key in [welcomedKey(account), Self.recoveryChangedKey(account), Self.recoveryChangeSaidKey(account), Self.startedFreshHereKey(account)] {
+            defaults.removeObject(forKey: key)
+        }
         if account == self.account { signedOut() }
     }
 
@@ -769,6 +934,8 @@ final class AccountCrypto {
         showsKeychainHelp = false
         E2EE.sealer = Sealer(key: k.key, user: account)
         needsWelcome = !defaults.bool(forKey: welcomedKey(account))
+        recoveryKeyChanged = defaults.bool(forKey: Self.recoveryChangedKey(account))
+        recoveryKeyChangeNeedsSaying = recoveryKeyChanged && !defaults.bool(forKey: Self.recoveryChangeSaidKey(account))
         phase = .ready
         if !verified { startRetrying() }
     }
@@ -780,6 +947,8 @@ final class AccountCrypto {
         polls = 0
         showsKeychainHelp = false
         needsWelcome = false
+        recoveryKeyChanged = false
+        recoveryKeyChangeNeedsSaying = false
         E2EE.sealer = nil
     }
 

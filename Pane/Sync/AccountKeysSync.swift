@@ -3,7 +3,8 @@ import Supabase
 
 /// The account's key on the server (`account_keys`, one row, readable only by you): its id, its
 /// verifier and the data key wrapped under the recovery key. Only the functions below write it:
-/// `create_account_key` (insert-if-absent), `mark_recovery_key_saved` and `start_fresh`.
+/// `create_account_key` (insert-if-absent), `mark_recovery_key_saved` and `start_fresh`, which
+/// also counts the account's reset generation (`account_key_resets`).
 struct SupabaseAccountKeys: AccountKeyServer {
     let client: SupabaseClient
 
@@ -11,9 +12,14 @@ struct SupabaseAccountKeys: AccountKeyServer {
 
     struct NoRow: Error {}
 
-    func fetch() async throws -> ServerKey? {
-        let rows: [ServerKey] = try await client.from("account_keys").select(Self.columns).limit(1).execute().value
-        return rows.first
+    /// The key row and the reset generation, read together so a device never sees a missing key
+    /// without knowing whether the account started fresh.
+    func fetch() async throws -> ServerKeyState {
+        struct Reset: Decodable { var generation: Int }
+        async let keys: [ServerKey] = client.from("account_keys").select(Self.columns).limit(1).execute().value
+        async let resets: [Reset] = client.from("account_key_resets").select("generation").limit(1).execute().value
+        let (k, r) = try await (keys, resets)
+        return ServerKeyState(key: k.first, generation: r.first?.generation ?? 0)
     }
 
     func create(_ key: ServerKey) async throws -> (key: ServerKey, created: Bool) {
@@ -35,7 +41,12 @@ struct SupabaseAccountKeys: AccountKeyServer {
         try await client.rpc("mark_recovery_key_saved").execute().value
     }
 
+    /// Refused with hint `reauth` unless the session's sign-in is from the last 10 minutes.
     func startFresh(keyID: String) async throws -> Bool {
-        try await client.rpc("start_fresh", params: ["p_key_id": keyID]).execute().value
+        do {
+            return try await client.rpc("start_fresh", params: ["p_key_id": keyID]).execute().value
+        } catch let e as PostgrestError where e.hint == "reauth" {
+            throw KeyError.reauth
+        }
     }
 }

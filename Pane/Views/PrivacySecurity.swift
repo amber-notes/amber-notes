@@ -18,6 +18,9 @@ enum PrivacyCopy {
     static let showReason = "Show your recovery key"
     static let saveReason = "Save your recovery key"
     static let fileName = "Amber Notes Recovery Key"
+    static let recoveryChangedTitle = "Your recovery key changed"
+    static let recoveryChanged = "Your account started fresh on another device, so your old recovery key no longer opens your notes. Save the new one."
+    static let recoveryChangedAlert = "Your account started fresh on another device, so it has a new recovery key. Save it in Settings › Privacy & Security."
     static let exportFooter = "Every note as a Markdown file in its folder, with its files. Your notes are encrypted, so the export is made on this device."
 }
 
@@ -59,6 +62,13 @@ struct PrivacySecuritySection: View {
                 Text(crypto.recoverySavedAt == nil ? "Not saved" : "Saved")
                     .foregroundStyle(.secondary)
                     .accessibilityIdentifier("privacy.recoveryStatus")
+            }
+            if crypto.recoveryKeyChanged {
+                Label(PrivacyCopy.recoveryChanged, systemImage: "exclamationmark.triangle.fill")
+                    .font(.callout)
+                    .foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("privacy.recoveryChanged")
             }
             if let shown {
                 Text(shown)
