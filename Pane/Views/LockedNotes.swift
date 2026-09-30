@@ -132,7 +132,7 @@ struct NotesPasswordSetupSheet: View {
                     Text("Create a password for your locked notes")
                 } footer: {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("One password locks all your notes, on all your devices. A locked note is encrypted on your device before it syncs, so nobody else can read it: not us, and not an AI you've connected.")
+                        Text("One password locks all your notes, on all your devices. A locked note is encrypted on your device before it syncs, so nobody else can read it: not us, and not an AI you've connected. Its title stays visible so you can find it.")
                         Text("If you forget this password, your locked notes can't be recovered, not even by us.")
                             .fontWeight(.semibold)
                         Text("Locking a note also removes its earlier versions from version history.")
@@ -262,6 +262,7 @@ struct NotesPasswordPrompt: View {
 struct ChangeNotesPasswordSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
+    let sync: SyncEngine?
     @State private var old = ""
     @State private var new = ""
     @State private var verify = ""
@@ -285,7 +286,7 @@ struct ChangeNotesPasswordSheet: View {
                     SecureField("Verify", text: $verify).textContentType(.newPassword)
                     TextField("Hint (recommended)", text: $hint)
                 } footer: {
-                    Text("Your locked notes are encrypted again with the new password, on all your devices. If you forget it, they can't be recovered, not even by us.")
+                    Text("Your locked notes are encrypted again with the new password, on all your devices, and their earlier versions are removed from version history. If you forget it, they can't be recovered, not even by us.")
                         .foregroundStyle(Color.muted)
                 }
                 if new != verify, !verify.isEmpty {
@@ -319,6 +320,8 @@ struct ChangeNotesPasswordSheet: View {
         Task { @MainActor in
             defer { working = false }
             do {
+                // The latest of every note first: the change fails if one moved on meanwhile.
+                await sync?.sync()
                 try await vault.changePassword(old: old, new: new, hint: hint, in: context)
                 dismiss()
             } catch {
@@ -330,6 +333,7 @@ struct ChangeNotesPasswordSheet: View {
 
 /// Settings: the notes password, once there is one.
 struct LockedNotesSection: View {
+    let sync: SyncEngine?
     @State private var changing = false
     private var vault: NoteVault { .shared }
 
@@ -350,7 +354,7 @@ struct LockedNotesSection: View {
                 Text("Locked notes open with your notes password until the app goes to the background or a few minutes pass. If you forget the password, locked notes can't be recovered.")
                     .foregroundStyle(Color.muted)
             }
-            .sheet(isPresented: $changing) { ChangeNotesPasswordSheet() }
+            .sheet(isPresented: $changing) { ChangeNotesPasswordSheet(sync: sync) }
         }
     }
 }

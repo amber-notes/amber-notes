@@ -342,7 +342,7 @@ private struct ShareLinkChrome: ViewModifier {
             } message: { step in
                 switch step {
                 case .createLink:
-                    Text("Anyone with the link can read this note without signing in, and it may be passed on. The page shows your name and photo, and your email unless Apple hides it. Edits show within a minute. You can stop sharing at any time."
+                    Text("Anyone with the link can read this note without signing in, and it may be passed on. The page shows your name and photo, and your email unless Apple hides it. Edits show as soon as they sync. You can stop sharing at any time."
                          + (profileIncomplete ? "\n\nAdd your name and photo so people know the page is from you." : ""))
                 case .includeSubNotes:
                     Text("The sub-notes linked from this note also become readable by anyone with the link.")

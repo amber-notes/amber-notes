@@ -11,11 +11,12 @@ import SwiftData
 ///
 /// One notes password for the account. The key is PBKDF2-HMAC-SHA256 of the password with a
 /// random per-account salt (kept on the server with the iteration count), 256 bits. Each note
-/// is one AES-GCM box: `amb1.<key id>.<base64 nonce‖ciphertext‖tag>`, where the key id is the
-/// first 8 bytes of SHA-256(salt) in hex and the header is authenticated too. The title stays
-/// plain text so the list can show it.
+/// is one AES-GCM box: `amb2.<key id>.<base64 nonce‖ciphertext‖tag>`, where the key id is the
+/// first 8 bytes of SHA-256(salt) in hex. The header and the note's id are authenticated, so a
+/// box can't be passed off as another note's. `amb1` boxes (header only) still open, and are
+/// sealed again as `amb2` on the next save. The title stays plain text so the list can show it.
 enum NoteCrypto {
-    static let prefix = "amb1"
+    static let prefix = "amb2"
     /// OWASP's figure for PBKDF2-HMAC-SHA256; about half a second on a recent iPhone.
     static let iterations = 600_000
     /// A text sealed with the key, so a password can be checked without any note.
@@ -47,35 +48,58 @@ enum NoteCrypto {
         return SymmetricKey(data: out)
     }
 
-    static func seal(_ text: String, key: SymmetricKey, keyID: String) throws -> String {
-        let header = "\(prefix).\(keyID)"
-        let box = try AES.GCM.seal(Data(text.utf8), using: key, authenticating: Data(header.utf8))
+    /// What a note's box is bound to.
+    static func context(of note: UUID) -> String { "note:" + note.uuidString.lowercased() }
+
+    private static func aad(_ format: Substring, _ keyID: Substring, _ context: String) -> Data {
+        // amb1 authenticated its header alone.
+        Data((format == "amb1" ? "\(format).\(keyID)" : "\(format).\(keyID)|\(context)").utf8)
+    }
+
+    static func seal(_ text: String, key: SymmetricKey, keyID: String, context: String) throws -> String {
+        let box = try AES.GCM.seal(Data(text.utf8), using: key, authenticating: aad(Substring(prefix), Substring(keyID), context))
         guard let combined = box.combined else { throw Failure.malformed }
-        return header + "." + combined.base64EncodedString()
+        return "\(prefix).\(keyID)." + combined.base64EncodedString()
+    }
+
+    private static func parts(_ sealed: String) -> [Substring]? {
+        let parts = sealed.split(separator: ".", maxSplits: 2)
+        guard parts.count == 3, parts[0] == "amb1" || parts[0] == "amb2" else { return nil }
+        return parts
     }
 
     /// The key id a sealed text names, or nil when it isn't one.
-    static func keyID(of sealed: String) -> String? {
-        let parts = sealed.split(separator: ".", maxSplits: 2)
-        guard parts.count == 3, parts[0] == prefix else { return nil }
-        return String(parts[1])
-    }
+    static func keyID(of sealed: String) -> String? { parts(sealed).map { String($0[1]) } }
 
-    static func open(_ sealed: String, key: SymmetricKey) throws -> String {
-        let parts = sealed.split(separator: ".", maxSplits: 2)
-        guard parts.count == 3, parts[0] == prefix, let data = Data(base64Encoded: String(parts[2])),
+    /// "amb1" or "amb2".
+    static func format(of sealed: String) -> String? { parts(sealed).map { String($0[0]) } }
+
+    static func open(_ sealed: String, key: SymmetricKey, context: String) throws -> String {
+        guard let p = parts(sealed), let data = Data(base64Encoded: String(p[2])),
               let box = try? AES.GCM.SealedBox(combined: data) else { throw Failure.malformed }
-        guard let plain = try? AES.GCM.open(box, using: key, authenticating: Data("\(parts[0]).\(parts[1])".utf8)),
+        guard let plain = try? AES.GCM.open(box, using: key, authenticating: aad(p[0], p[1], context)),
               let text = String(data: plain, encoding: .utf8) else { throw Failure.wrongPassword }
         return text
     }
 
     static func verifier(key: SymmetricKey, keyID: String) throws -> String {
-        try seal(verifierText, key: key, keyID: keyID)
+        try seal(verifierText, key: key, keyID: keyID, context: "verifier")
     }
 
     static func check(_ key: SymmetricKey, against verifier: String) -> Bool {
-        (try? open(verifier, key: key)) == verifierText
+        (try? open(verifier, key: key, context: "verifier")) == verifierText
+    }
+
+    /// Proof that whoever set the new password knew the old key: the old key, sealed with the new.
+    static func proof(of oldKey: SymmetricKey, oldKeyID: String, sealedWith newKey: SymmetricKey, newKeyID: String) throws -> String {
+        try seal(oldKey.withUnsafeBytes { Data($0) }.base64EncodedString(), key: newKey, keyID: newKeyID, context: "key:" + oldKeyID)
+    }
+
+    /// The old key a proof carries, if `newKey` opens it.
+    static func openProof(_ proof: String, with newKey: SymmetricKey, oldKeyID: String) -> SymmetricKey? {
+        guard let text = try? open(proof, key: newKey, context: "key:" + oldKeyID), let data = Data(base64Encoded: text),
+              data.count == 32 else { return nil }
+        return SymmetricKey(data: data)
     }
 }
 
@@ -85,6 +109,8 @@ struct LockSettings: Codable, Equatable, Sendable {
         var salt: String
         var iterations: Int
         var key_id: String
+        /// This password's key, sealed with the next one's (see NoteCrypto.proof).
+        var proof: String?
     }
 
     var salt: String
@@ -102,6 +128,8 @@ enum NoteLockError: LocalizedError, Equatable {
     case notUnlocked
     case alreadySetUp
     case changedElsewhere
+    case notesChanged
+    case unverified
     case hasFilesOrSubNotes
     case offline
     case other(String)
@@ -112,6 +140,8 @@ enum NoteLockError: LocalizedError, Equatable {
         case .notUnlocked: "Enter your notes password first."
         case .alreadySetUp: "You already have a notes password, set on another device. Enter it to lock this note."
         case .changedElsewhere: "Your notes password was changed on another device. Enter the new one."
+        case .notesChanged: "Your notes changed on another device. Try again in a moment."
+        case .unverified: "The notes password on the server couldn't be checked against the one this device knows, so it wasn't used. Contact support."
         case .hasFilesOrSubNotes: "Notes with files or sub-notes can't be locked."
         case .offline: "You're offline. Connect to the internet to set or change your notes password."
         case .other(let s): s
@@ -119,13 +149,23 @@ enum NoteLockError: LocalizedError, Equatable {
     }
 }
 
+/// A locked note sealed again for a password change, as the server takes it.
+struct ResealedNote: Encodable, Sendable {
+    var id: UUID
+    /// The server version the note was at; the change fails if it moved on.
+    var version: Int64
+    var body: String
+    var locked_body: String
+}
+
 /// Where the account's password setup lives: the server, or nowhere (local-only builds).
 protocol NoteLockRemote: Sendable {
     func fetch() async throws -> LockSettings?
     /// Fails with `.alreadySetUp` when another device got there first.
     func create(_ settings: LockSettings) async throws
-    /// Replaces the setup only if it still has `keyID`; otherwise `.changedElsewhere`.
-    func replace(_ settings: LockSettings, expecting keyID: String) async throws
+    /// Swaps the setup (only if it still has `keyID`) and writes the re-sealed notes, all at once.
+    /// Returns each note's new server version. `.changedElsewhere` or `.notesChanged` otherwise.
+    func changePassword(_ settings: LockSettings, expecting keyID: String, notes: [ResealedNote]) async throws -> [UUID: Int64]
 }
 
 /// Keeps the derived key on this device, behind Face ID or Touch ID.
@@ -139,10 +179,15 @@ protocol LockKeyStore: Sendable {
 /// The unlocked state and everything that reads or writes a locked note's text.
 ///
 /// Unlocking (with the password, or Face ID / Touch ID) opens every locked note until you lock
-/// them again ("Lock Now"), the app goes to the background, or nothing has happened in a locked
-/// note for `relockAfter`. The key lives in memory while unlocked, and in the Keychain behind
-/// biometrics (`.biometryCurrentSet`) for the next Face ID unlock. Opened text is never saved:
-/// a locked note's `body` is its title and `lockedBody` the sealed text, here and on the server.
+/// them again ("Lock Now"), the app goes to the background, the Mac locks or sleeps, or nothing
+/// has happened in a locked note for `relockAfter`. The key lives in memory while unlocked, and in
+/// the Keychain behind biometrics (`.biometryCurrentSet`) for the next Face ID unlock. Opened text
+/// is never saved: a locked note's `body` is its title and `lockedBody` the sealed text, here and
+/// on the server.
+///
+/// A setup changed on another device isn't taken on the server's word: it's kept aside
+/// (`pending`) until the new password opens it and its proof chain leads back to a key this
+/// device already trusts.
 @MainActor
 @Observable
 final class NoteVault {
@@ -150,8 +195,13 @@ final class NoteVault {
     static var shared = NoteVault(keyStore: MemoryKeyStore(), defaults: MemoryDefaults())
 
     private(set) var settings: LockSettings?
-    /// Keys this device knows this session, by key id: the current one once unlocked, and older
-    /// ones kept after the password changed elsewhere, so notes sealed with them can move over.
+    /// A different setup the server has, not yet proven (see the type's comment).
+    private(set) var pending: LockSettings?
+    /// Every setup this device has trusted, by key id, oldest first: the salts it has seen, with
+    /// the verifiers that prove a key.
+    private var trusted: [LockSettings] = []
+    /// Keys this device knows this session, by key id: the current one once unlocked, and
+    /// earlier ones (from the proof chain), so notes sealed with them still open.
     private var keys: [String: SymmetricKey] = [:]
     /// Opened texts, by note, while unlocked; dropped when locking.
     @ObservationIgnored private var opened: [UUID: (sealed: String, text: String)] = [:]
@@ -184,8 +234,7 @@ final class NoteVault {
         self.defaults = defaults
         self.iterations = iterations
         usesBiometrics = defaults.object(forKey: "noteLock.biometrics") as? Bool ?? true
-        settings = Self.stored(in: defaults, account: account)
-        publish()
+        load()
     }
 
     var isSetUp: Bool { settings != nil }
@@ -201,26 +250,31 @@ final class NoteVault {
         guard name != self.account else { return }
         lockNow()
         keys = [:]
+        pending = nil
         self.account = name
-        settings = Self.stored(in: defaults, account: name)
-        publish()
+        load()
     }
 
-    /// Picks up a setup made (or a password changed) on another device.
+    /// Picks up a setup made on another device, or notices a password changed there.
     func refresh() async {
         guard let remote, let fresh = try? await remote.fetch() else { return }
-        adopt(fresh)
+        take(fresh)
     }
 
-    private func adopt(_ fresh: LockSettings) {
-        guard fresh != settings else { return }
-        let changed = settings.map { $0.key_id != fresh.key_id } ?? false
-        settings = fresh
-        store()
-        if changed {
-            // The old key stays in memory for notes this device sealed with it; the Keychain's goes.
-            keyStore.remove()
-            opened = [:]
+    private func take(_ fresh: LockSettings) {
+        guard let s = settings else {
+            // The first setup this device sees: nothing to check it against.
+            settings = fresh
+            trusted = [fresh]
+            store()
+            return
+        }
+        if fresh.key_id == s.key_id {
+            // The same password; only the hint can change (the server refuses anything else).
+            pending = nil
+            if fresh.hint != s.hint { settings?.hint = fresh.hint; store() }
+        } else if fresh != pending {
+            pending = fresh
         }
     }
 
@@ -228,12 +282,16 @@ final class NoteVault {
         if drivesSync { NoteDTO.sendsLock = settings != nil }
     }
 
-    private static func stored(in defaults: UserDefaults, account: String) -> LockSettings? {
-        defaults.data(forKey: "noteLock.settings.\(account)").flatMap { try? JSONDecoder().decode(LockSettings.self, from: $0) }
+    private func load() {
+        let key = "noteLock.trusted.\(account)"
+        trusted = defaults.data(forKey: key).flatMap { try? JSONDecoder().decode([LockSettings].self, from: $0) } ?? []
+        settings = trusted.last
+        publish()
     }
 
     private func store() {
-        defaults.set(try? JSONEncoder().encode(settings), forKey: "noteLock.settings.\(account)")
+        if let s = settings, trusted.last?.key_id != s.key_id { trusted.append(s) } else if let s = settings { trusted[trusted.count - 1] = s }
+        defaults.set(try? JSONEncoder().encode(trusted), forKey: "noteLock.trusted.\(account)")
         publish()
     }
 
@@ -241,7 +299,7 @@ final class NoteVault {
 
     /// The first time: one password for every locked note, with a hint. Unlocks.
     func setUp(password: String, hint: String?) async throws {
-        if let remote, let existing = try? await remote.fetch() { adopt(existing) }
+        if let remote, let existing = try? await remote.fetch() { take(existing) }
         guard settings == nil else { throw NoteLockError.alreadySetUp }
         let fresh = try await Self.makeSettings(password: password, hint: hint, iterations: iterations)
         if let remote {
@@ -250,6 +308,11 @@ final class NoteVault {
         settings = fresh.settings
         store()
         unlocked(with: fresh.key)
+    }
+
+    private static func derive(_ password: String, _ s: LockSettings) async -> SymmetricKey {
+        let salt = s.saltData, iterations = s.iterations
+        return await Task.detached { NoteCrypto.deriveKey(password: password, salt: salt, iterations: iterations) }.value
     }
 
     private static func makeSettings(password: String, hint: String?, iterations: Int, previous: [LockSettings.Earlier] = []) async throws -> (settings: LockSettings, key: SymmetricKey) {
@@ -263,25 +326,51 @@ final class NoteVault {
         return (settings, key)
     }
 
-    /// Opens every locked note. Throws `.wrongPassword`.
-    func unlock(password: String) async throws {
-        guard let s = settings else { throw NoteLockError.notUnlocked }
-        let salt = s.saltData, iterations = s.iterations
-        let key = await Task.detached { NoteCrypto.deriveKey(password: password, salt: salt, iterations: iterations) }.value
-        guard NoteCrypto.check(key, against: s.verifier) else {
-            // Maybe it changed on another device since this one last looked.
-            if let remote, let fresh = try? await remote.fetch(), fresh.key_id != s.key_id {
-                adopt(fresh)
-                return try await unlock(password: password)
-            }
-            throw NoteLockError.wrongPassword
+    /// Every earlier key a setup's proofs lead to from `key` (its own key), newest first.
+    private static func chain(_ s: LockSettings, from key: SymmetricKey) -> [String: SymmetricKey] {
+        var found = [s.key_id: key]
+        var next = key
+        for e in s.previous.reversed() {
+            guard let proof = e.proof, let k = NoteCrypto.openProof(proof, with: next, oldKeyID: e.key_id) else { break }
+            found[e.key_id] = k
+            next = k
         }
+        return found
+    }
+
+    /// Opens every locked note. Throws `.wrongPassword`, or `.changedElsewhere` for the old
+    /// password after a change on another device.
+    func unlock(password: String) async throws {
+        if pending == nil, let remote, let fresh = try? await remote.fetch() { take(fresh) }
+        if let p = pending {
+            let key = await Self.derive(password, p)
+            if NoteCrypto.check(key, against: p.verifier) {
+                // The new password: take the new setup only if its proofs reach a key we trust.
+                let found = Self.chain(p, from: key)
+                guard trusted.contains(where: { t in found[t.key_id].map { NoteCrypto.check($0, against: t.verifier) } ?? false }) else {
+                    throw NoteLockError.unverified
+                }
+                settings = p
+                pending = nil
+                store()
+                keyStore.remove()
+                opened = [:]
+                keys.merge(found) { new, _ in new }
+                unlocked(with: key)
+                return
+            }
+        }
+        guard let s = settings else { throw NoteLockError.notUnlocked }
+        let key = await Self.derive(password, s)
+        guard NoteCrypto.check(key, against: s.verifier) else { throw NoteLockError.wrongPassword }
+        // The right password until it was changed elsewhere: the new one is needed now.
+        if pending != nil { throw NoteLockError.changedElsewhere }
         unlocked(with: key)
     }
 
     /// Face ID or Touch ID. False when it's off, unavailable, cancelled or out of date.
     func unlockWithBiometrics(reason: String = "Unlock your locked notes") async -> Bool {
-        guard let s = settings, biometryName != nil, let key = await keyStore.load(keyID: s.key_id, reason: reason),
+        guard pending == nil, let s = settings, biometryName != nil, let key = await keyStore.load(keyID: s.key_id, reason: reason),
               NoteCrypto.check(key, against: s.verifier) else { return false }
         unlocked(with: key)
         return true
@@ -289,53 +378,69 @@ final class NoteVault {
 
     private func unlocked(with key: SymmetricKey) {
         guard let s = settings else { return }
-        keys[s.key_id] = key
+        // Earlier keys too, so notes sealed before a password change still open.
+        keys.merge(Self.chain(s, from: key)) { new, _ in new }
         if usesBiometrics { _ = keyStore.save(key, keyID: s.key_id) }
         touch()
         watchIdle()
+        // A note waiting for the key to sync (see SyncEngine.resolveConflict) can go now.
+        if drivesSync { SyncSignal.changed() }
     }
 
-    /// New password: every locked note on this device is sealed again with the new key.
-    /// Nothing changes unless the server took the new setup first.
+    /// New password: every locked note is sealed again with the new key, and versions sealed with
+    /// earlier keys are removed from history. Nothing changes unless the server took it all.
     func changePassword(old: String, new: String, hint: String?, in context: ModelContext) async throws {
+        if let remote, let fresh = try? await remote.fetch() { take(fresh) }
+        guard pending == nil else { throw NoteLockError.changedElsewhere }
         guard let s = settings else { throw NoteLockError.notUnlocked }
-        let salt = s.saltData, iterations = s.iterations
-        let oldKey = await Task.detached { NoteCrypto.deriveKey(password: old, salt: salt, iterations: iterations) }.value
+        let oldKey = await Self.derive(old, s)
         guard NoteCrypto.check(oldKey, against: s.verifier) else { throw NoteLockError.wrongPassword }
-        keys[s.key_id] = oldKey
+        keys.merge(Self.chain(s, from: oldKey)) { new, _ in new }
         DebouncedSave.flushAll()
-        let earlier = (s.previous + [.init(salt: s.salt, iterations: s.iterations, key_id: s.key_id)]).suffix(50)
-        let fresh = try await Self.makeSettings(password: new, hint: hint, iterations: self.iterations, previous: Array(earlier))
-        // Sealed again in memory first: the server gets the new setup before any note changes.
-        var resealed: [(Note, String)] = []
+        // The new salt first, then the proof that ties the old key to it.
+        var fresh = try await Self.makeSettings(password: new, hint: hint, iterations: iterations)
+        let proof = try NoteCrypto.proof(of: oldKey, oldKeyID: s.key_id, sealedWith: fresh.key, newKeyID: fresh.settings.key_id)
+        fresh.settings.previous = Array((s.previous + [.init(salt: s.salt, iterations: s.iterations, key_id: s.key_id, proof: proof)]).suffix(50))
+        // Sealed again in memory first: the server gets the setup and the notes together.
+        var resealed: [(Note, String, String)] = []
         for n in Self.lockedNotes(in: context) {
-            guard let sealed = n.lockedBody, let id = NoteCrypto.keyID(of: sealed), let key = keys[id],
-                  let text = try? NoteCrypto.open(sealed, key: key) else { continue }
-            resealed.append((n, try NoteCrypto.seal(text, key: fresh.key, keyID: fresh.settings.key_id)))
+            guard let text = open(n) else { continue }
+            let sealed = try NoteCrypto.seal(text, key: fresh.key, keyID: fresh.settings.key_id, context: NoteCrypto.context(of: n.id))
+            resealed.append((n, sealed, Self.titleLine(of: text)))
         }
+        var versions: [UUID: Int64] = [:]
         if let remote {
-            do { try await remote.replace(fresh.settings, expecting: s.key_id) } catch let e as NoteLockError { throw e } catch { throw NoteLockError.offline }
+            let onServer = resealed.filter { $0.0.serverVersion > 0 }
+                .map { ResealedNote(id: $0.0.id, version: $0.0.serverVersion, body: $0.2, locked_body: $0.1) }
+            do { versions = try await remote.changePassword(fresh.settings, expecting: s.key_id, notes: onServer) }
+            catch let e as NoteLockError { throw e } catch { throw NoteLockError.offline }
         }
         settings = fresh.settings
         store()
         keyStore.remove()
         opened = [:]
-        for (n, sealed) in resealed {
+        for (n, sealed, title) in resealed {
             n.lockedBody = sealed
-            n.touch()
+            n.body = title
+            if let v = versions[n.id] {
+                // Already on the server as it is here; anything else unpushed still goes up.
+                n.serverVersion = v
+            } else {
+                n.touch()
+            }
         }
         try? context.save()
         unlocked(with: fresh.key)
     }
 
-    /// Opens a note sealed with an earlier password (set before a change on another device), and
-    /// seals it again with the current one. Needs the current password unlocked first.
+    /// Opens a note sealed with an earlier password this device has no key for (its proof chain
+    /// was cut short), and seals it again with the current one. Needs the vault unlocked.
     func openEarlier(_ note: Note, password: String) async throws {
         guard let s = settings, isUnlocked, let sealed = note.lockedBody, let id = NoteCrypto.keyID(of: sealed) else { throw NoteLockError.notUnlocked }
-        guard let earlier = s.previous.last(where: { $0.key_id == id }) else { throw NoteLockError.wrongPassword }
-        let salt = Data(base64Encoded: earlier.salt) ?? Data(), iterations = earlier.iterations
-        let key = await Task.detached { NoteCrypto.deriveKey(password: password, salt: salt, iterations: iterations) }.value
-        guard let text = try? NoteCrypto.open(sealed, key: key) else { throw NoteLockError.wrongPassword }
+        guard let earlier = (s.previous.map { LockSettings(salt: $0.salt, iterations: $0.iterations, key_id: $0.key_id, verifier: "") } + trusted)
+            .last(where: { $0.key_id == id }) else { throw NoteLockError.wrongPassword }
+        let key = await Self.derive(password, earlier)
+        guard let text = try? NoteCrypto.open(sealed, key: key, context: NoteCrypto.context(of: note.id)) else { throw NoteLockError.wrongPassword }
         keys[id] = key
         try write(text, to: note)
     }
@@ -380,16 +485,9 @@ final class NoteVault {
 
     /// Seals the note's text. Its earlier versions are deleted on the server when this syncs.
     func lock(_ note: Note) throws {
-        guard let s = settings, let key = keys[s.key_id] else { throw NoteLockError.notUnlocked }
         guard note.lockedBody == nil else { return }
         if let why = Self.blocker(for: note) { throw why }
-        let text = note.body
-        let sealed = try NoteCrypto.seal(text, key: key, keyID: s.key_id)
-        note.lockedBody = sealed
-        note.body = Self.titleLine(of: text)
-        opened[note.id] = (sealed, text)
-        note.touch()
-        touch()
+        try write(note.body, to: note)
     }
 
     /// Back to a normal note.
@@ -402,15 +500,25 @@ final class NoteVault {
         note.touch()
     }
 
+    /// A sealed text with whichever key this device has for it, bound to `note`.
+    private func open(_ sealed: String, note: UUID) -> String? {
+        guard let id = NoteCrypto.keyID(of: sealed), let key = keys[id] else { return nil }
+        return try? NoteCrypto.open(sealed, key: key, context: NoteCrypto.context(of: note))
+    }
+
+    private func open(_ note: Note) -> String? { note.lockedBody.flatMap { open($0, note: note.id) } }
+
     /// A locked note's text, or nil while it's locked (or sealed with a key this device lacks).
     func text(of note: Note) -> String? {
         guard let sealed = note.lockedBody else { return note.body }
         if let o = opened[note.id], o.sealed == sealed { return o.text }
-        guard let id = NoteCrypto.keyID(of: sealed), let key = keys[id], settings.map({ keys[$0.key_id] != nil }) == true,
-              let text = try? NoteCrypto.open(sealed, key: key) else { return nil }
+        guard isUnlocked, let text = open(sealed, note: note.id) else { return nil }
         opened[note.id] = (sealed, text)
         return text
     }
+
+    /// Another device's sealed text of a note (a server row), while unlocked.
+    func text(sealed: String, note: UUID) -> String? { isUnlocked ? open(sealed, note: note) : nil }
 
     /// True when the note is sealed with an earlier password this device can't open yet.
     func needsEarlierPassword(_ note: Note) -> Bool {
@@ -418,15 +526,25 @@ final class NoteVault {
         return id != settings?.key_id && keys[id] == nil
     }
 
-    /// Typing in an open locked note: sealed again with the current key; the title follows.
+    /// Typing in an open locked note (or locking one): sealed with the current key and bound to
+    /// the note; the title follows.
     func write(_ text: String, to note: Note) throws {
         guard let s = settings, let key = keys[s.key_id] else { throw NoteLockError.notUnlocked }
-        let sealed = try NoteCrypto.seal(text, key: key, keyID: s.key_id)
+        let sealed = try NoteCrypto.seal(text, key: key, keyID: s.key_id, context: NoteCrypto.context(of: note.id))
         note.lockedBody = sealed
         note.body = Self.titleLine(of: text)
         opened[note.id] = (sealed, text)
         note.touch()
         touch()
+    }
+
+    /// A new locked note holding `text`, sealed for its own id: a conflicted copy of a locked note.
+    func sealedCopy(of text: String, in folder: Folder?, at date: Date) throws -> Note {
+        let copy = Note(body: "", folder: folder)
+        try write(text, to: copy)
+        copy.createdAt = date
+        copy.updatedAt = date
+        return copy
     }
 
     /// What a locked note keeps in the clear: its title, on one line.

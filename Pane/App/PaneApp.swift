@@ -118,6 +118,8 @@ struct PaneApp: App {
         #if os(macOS)
         Settings {
             SettingsView(backend: backend, sync: sync)
+                // Change Password seals the library's locked notes again.
+                .modelContainer(container)
         }
 
         // Connect ChatGPT or Claude: the steps float over the browser while you follow them.
@@ -404,8 +406,18 @@ struct AppGate: View {
             Task { await setup.reset() }
         }
         #if os(macOS)
-        // The Mac going to sleep locks them too.
+        // The Mac sleeping, its screen locking, the screen saver starting or a switch to another
+        // user locks them too.
         .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.willSleepNotification)) { _ in
+            NoteVault.shared.lockNow()
+        }
+        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.sessionDidResignActiveNotification)) { _ in
+            NoteVault.shared.lockNow()
+        }
+        .onReceive(DistributedNotificationCenter.default().publisher(for: .init("com.apple.screenIsLocked"))) { _ in
+            NoteVault.shared.lockNow()
+        }
+        .onReceive(DistributedNotificationCenter.default().publisher(for: .init("com.apple.screensaver.didstart"))) { _ in
             NoteVault.shared.lockNow()
         }
         #endif

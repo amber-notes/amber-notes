@@ -73,10 +73,14 @@ final class SyncEngine {
     /// Where the pull cursor is kept; tests give each simulated device its own.
     private let defaults: UserDefaults
 
-    init(backend: Backend, context: ModelContext, defaults: UserDefaults = .standard) {
+    /// Seals conflicted copies of locked notes; the app's vault unless a test gives its own.
+    private let lockVault: NoteVault?
+
+    init(backend: Backend, context: ModelContext, defaults: UserDefaults = .standard, vault: NoteVault? = nil) {
         self.backend = backend
         self.context = context
         self.defaults = defaults
+        self.lockVault = vault
         SyncSignal.onChange = { [weak self] in self?.localChanged() }
     }
 
@@ -506,27 +510,41 @@ final class SyncEngine {
             remember(row)
             return saved
         }
-        // Locked on one side only: the lock wins whichever is newer, so an edit made elsewhere never
-        // quietly unlocks a note (and the other side's text is kept as a copy, not in history).
-        let lockOnOneSide = (s.locked_body == nil) != (n.lockedBody == nil)
-        if lockOnOneSide ? s.locked_body != nil : s.updated_at > n.updatedAt {
+        if sealed { return try await resolveSealedConflict(client, local: n, server: s) }
+        if s.updated_at > n.updatedAt {
             // Theirs is newer: keep it, and keep ours as a conflicted copy.
             let copy = Note(body: Self.conflictCopy(of: n.body), folder: n.folder)
-            copy.lockedBody = n.lockedBody
             copy.createdAt = n.updatedAt
             copy.updatedAt = n.updatedAt
             context.insert(copy)
             apply(s, to: n)
             return server
         }
-        if lockOnOneSide {
-            // Ours locks it, which clears the server's history: their text stays as a copy.
-            let copy = Note(body: Self.conflictCopy(of: s.body), folder: n.folder)
-            copy.createdAt = s.updated_at
-            copy.updatedAt = s.updated_at
-            context.insert(copy)
-        }
         // Ours is newer: overwrite. The server keeps theirs in note_revisions.
+        return try await client.from("notes").update(NoteDTO(n).patch).eq("id", value: n.id).select().execute().value
+    }
+
+    /// A conflict where either side is locked. The loser is kept as a conflicted copy, and that
+    /// copy is always sealed: a copy of a locked note is never readable, here or on the server.
+    /// Locked on one side only, the lock wins whichever is newer, so an edit made elsewhere never
+    /// quietly unlocks a note (or disappears with the history that locking deletes).
+    ///
+    /// Sealing needs the key. While notes are locked the note waits here, unpushed and as it was,
+    /// and goes up once the notes password is entered (NoteVault signals a push).
+    private func resolveSealedConflict(_ client: SupabaseClient, local n: Note, server s: NoteDTO) async throws -> [NoteDTO] {
+        let vault = lockVault ?? NoteVault.shared
+        let theirsWins = (s.locked_body == nil) != (n.lockedBody == nil) ? s.locked_body != nil : s.updated_at > n.updatedAt
+        let loser: String? = theirsWins ? vault.text(of: n) : s.locked_body.map { vault.text(sealed: $0, note: s.id) } ?? s.body
+        guard vault.isUnlocked, let loser else {
+            problem = "“\(n.title)” was changed on another device while it was locked here. Enter your notes password to sync it."
+            return []
+        }
+        let copy = try vault.sealedCopy(of: Self.conflictCopy(of: loser), in: n.folder, at: theirsWins ? n.updatedAt : s.updated_at)
+        context.insert(copy)
+        if theirsWins {
+            apply(s, to: n)
+            return [s]
+        }
         return try await client.from("notes").update(NoteDTO(n).patch).eq("id", value: n.id).select().execute().value
     }
 
