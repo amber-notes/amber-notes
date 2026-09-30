@@ -7,6 +7,12 @@ struct PaneApp: App {
     let container: ModelContainer
     @State private var backend: Backend
     @State private var sync: SyncEngine
+    /// Push tokens and the notification delegate at launch (Push.swift).
+    #if os(iOS)
+    @UIApplicationDelegateAdaptor(PaneAppDelegate.self) private var appDelegate
+    #else
+    @NSApplicationDelegateAdaptor(PaneAppDelegate.self) private var appDelegate
+    #endif
 
     /// Unit tests run inside the app. There it stays out of the way: no window,
     /// no Dock icon, never takes focus from whatever you're doing.
@@ -391,6 +397,7 @@ struct AppGate: View {
                 shareAsk.attach(account: nil, service: nil)
                 if backend.state == .disabled { NoteVault.shared.attach(account: nil, remote: nil) } else { NoteVault.shared.lockNow() }
                 AccountCrypto.shared.signedOut()
+                PushRegistration.shared.detach()
                 await sync.stop()
                 await connectAsks?.stop()
                 connectAsks = nil
@@ -451,7 +458,7 @@ struct AppGate: View {
                 if shareAsk.decided != true { Task { await shareAsk.refresh() } }
                 askToShareSoon()
                 Task { await NoteVault.shared.refresh() }
-                // No push: a browser's ask that came while the app was away is picked up here.
+                // A browser's ask that came while the app was away (pushed or not) is picked up here.
                 if let connectAsks { Task { await connectAsks.refresh() } }
                 if let notices { Task { await notices.refresh() } }
                 // The account's key never changes; if another device started fresh, this one
@@ -485,6 +492,8 @@ struct AppGate: View {
             let asks = ConnectAsks(client: client, user: user)
             connectAsks = asks
             Task { await asks.start() }
+            // Pushes for asks, while the app isn't running.
+            Task { await PushRegistration.shared.attach(account: user, service: SupabasePushTokens(client: client)) }
         }
         if notices == nil, let user = backend.userID {
             let n = AccountNotices(client: client, user: user)
