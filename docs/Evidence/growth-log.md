@@ -5,6 +5,23 @@ assistants. Newest first. Research behind it: [seo-aeo-research-2026-09-30.md](s
 
 `docs/` had no README naming a folder for evidence, so this and the research live in `docs/Evidence/`.
 
+## 30 September 2026: round 9, ChatGPT after DevDay
+
+### Query
+
+- "chatgpt create mcp app missing", "chatgpt developer mode mcp", "chatgpt plugins mcp 2026". OpenAI's DevDay was on 29 September; a forum thread from 28 September asks why Create MCP App is missing.
+
+### Changed (branch `site/chatgpt-devday`)
+
+- `/blog/connect-chatgpt-to-your-notes`:
+  - the steps now name Create MCP App, the connection field, and adding Amber Notes from the tools menu in a new chat, as OpenAI's Developer mode guide and Connect and test your plugin describe
+  - "If Create MCP App isn't there": turn on Developer mode at chatgpt.com/settings/security. This fix is labelled as coming from a Pro user on OpenAI's forum (28 September), not from OpenAI; workspace policy can also turn Developer mode off
+  - "What changed at DevDay 2026", from TechCrunch (29 September): plugin sidebar homes, panels, file viewers, Plugin Creator, directory submissions, per-plugin permissions, proposed MCP Events; no dates given, and none of it changes the setup
+  - OpenAI's "elevated risk" warning, and how approval, Read Only and version history answer it
+  - FAQ: a new "Why don't I see Create MCP App?" answer; the plans answer adds the workspace-policy caveat; the phone-app answer is now labelled unverified, since OpenAI's docs describe the web only
+- The approval steps now match the connect flow that shipped with end-to-end encryption (#52), read from `web/app/connect/ConnectFlow.tsx` and `Pane/Views/ConnectAI.swift`: sign in on ambernotes.app, the page says Approve on your iPhone or Mac and shows a two-digit number, you type it in Amber Notes and choose Allow; "No device nearby? Use your recovery key" is the fallback. The Incredible-on-Windows line and "You stay in control" say the same.
+- Not checked: nothing here was tried in a ChatGPT Plus account, and the post says so.
+
 ## 30 September 2026: round 8, "Apple Notes in iOS 27"
 
 ### Query
