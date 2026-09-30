@@ -11,7 +11,8 @@
 // RFC 9728 locations as well.
 //
 // Consent: /authorize sends the browser to the site's /connect page (ambernotes.app/connect?request=<id>),
-// which names the AI (/connect/label) and opens Amber Notes (ambernotes://connect?request=<id>).
+// which names the address the AI returns to (/connect/label; no AI's mark before sign-in) and
+// opens Amber Notes (ambernotes://connect?request=<id>).
 // Approval happens only in the app, the one place that has the account's data key: it asks
 // /connect/request who is asking, the person picks read-only or read & edit, and it posts the
 // decision to /connect/decide with their session in an Authorization header.
@@ -250,8 +251,25 @@ export function cleanName(raw: string): string {
 export function displayName(name: string, redirectURI: string): string {
   // Cleaned here too: clients registered before names were cleaned keep what they sent.
   if (verifiedAI(redirectURI)) return cleanName(name) || verifiedAI(redirectURI)!;
+  return addressName(redirectURI);
+}
+
+/// The address access goes to, as a title: its host, or "An app on this computer" for loopback.
+export function addressName(redirectURI: string): string {
   const host = new URL(redirectURI).hostname;
   return LOOPBACK.has(host) ? "An app on this computer" : host;
+}
+
+/// Where the code goes: the client's redirect_uri as registered, with `state` (when the client
+/// sent one) and `iss` (the address its /authorize went through, RFC 9207) set, in that order,
+/// through URL.searchParams. /connect/decide answers with exactly this, and a device sealing the
+/// redirect for a browser elsewhere builds the same from /connect/request's redirect_uri, state and
+/// iss. The app or the page adds `code` (or the server `error` for a denial).
+export function clientRedirect(redirectURI: string, state: string | null, iss: string): URL {
+  const u = new URL(redirectURI);
+  if (state) u.searchParams.set("state", state);
+  u.searchParams.set("iss", iss);
+  return u;
 }
 
 /// The name an unverified app gives itself, only for a secondary "It calls itself …" line: NFKD,
@@ -318,7 +336,7 @@ export async function handleOAuth(req: Request, sql: Sql, path: string): Promise
       case "/connect/request": return await describeRequest(req, sql);
       case "/connect/label": return req.method === "GET" ? await label(req, sql) : json({ error: "method_not_allowed" }, 405);
       case "/connect/ask": return req.method === "POST" ? await ask(req, sql) : json({ error: "method_not_allowed" }, 405);
-      case "/connect/status": return req.method === "GET" ? await status(req, sql) : json({ error: "method_not_allowed" }, 405);
+      case "/connect/status": return req.method === "POST" ? await status(req, sql) : json({ error: "method_not_allowed" }, 405);
       case "/connect/decide": return req.method === "POST" ? await decide(req, sql) : json({ error: "method_not_allowed" }, 405);
       case "/connect/release": return req.method === "POST" ? await release(req, sql) : json({ error: "method_not_allowed" }, 405);
     }
@@ -458,21 +476,30 @@ async function describeRequest(req: Request, sql: Sql): Promise<Response> {
   if (!(await claim(sql, r, user))) return json({ error: NOT_YOURS }, 403);
   const host = new URL(r.redirect_uri).hostname;
   const scopes = (r.scope ?? "").split(/\s+/).filter(Boolean);
+  // Asked from a browser elsewhere: when, and in what (the page says, e.g. "Chrome on a Mac").
+  const asked = await askedFrom(sql, r.id);
+  // A device answering a browser it can't see has no way to tell whose ChatGPT or Claude this is
+  // (anyone can start a real ChatGPT sign-in and ask your devices), so no AI's mark or name is a
+  // title then: the address is, and the name the client gives itself is only a claim.
+  const verified = asked.asked ? null : verifiedAI(r.redirect_uri);
   return json({
     id: r.id,
-    client_name: displayName(r.client_name, r.redirect_uri),
+    client_name: asked.asked ? host : displayName(r.client_name, r.redirect_uri),
     // Unverified apps: what they call themselves, made plain, for a secondary line only.
-    claimed_name: verifiedAI(r.redirect_uri) ? null : claimedName(r.client_name) || null,
+    claimed_name: verified ? null : claimedName(r.client_name) || null,
     redirect_host: host,
     // The exact return address: an AI's mark is shown only for its pinned callback.
     redirect_uri: r.redirect_uri,
-    verified_ai: verifiedAI(r.redirect_uri),
+    // With redirect_uri, what the redirect is built from (see clientRedirect): the device that
+    // approves for a browser seals exactly that redirect with the code.
+    state: r.state,
+    iss: r.resource,
+    verified_ai: verified,
     loopback: LOOPBACK.has(host),
     // No scope means "whatever you allow"; asking only for read keeps it read-only.
     wants_write: scopes.length === 0 || scopes.includes("notes:write"),
     expires_at: r.expires_at,
-    // Asked from a browser elsewhere: when, and in what (the page says, e.g. "Chrome on a Mac").
-    ...(await askedFrom(sql, r.id)),
+    ...asked,
   });
 }
 
@@ -496,9 +523,12 @@ async function ask(req: Request, sql: Sql): Promise<Response> {
   const user = await sessionUser(req);
   if (!user) return json({ error: "Sign in to Amber Notes first." }, 401);
   if (await limited(sql, req, "request")) return json({ error: "Too many attempts. Wait a few minutes and try again." }, 429);
-  const body = await req.json().catch(() => ({})) as { id?: string; browser_key?: unknown; from?: unknown };
+  const body = await req.json().catch(() => ({})) as { id?: string; browser_key?: unknown; from?: unknown; pickup_hash?: unknown };
   const key = typeof body.browser_key === "string" ? body.browser_key : "";
   if (!RAW_P256.test(key) || atob(key).charCodeAt(0) !== 4) return json({ error: "Reload this page and try again." }, 400);
+  // SHA-256 of the page's pickup secret: /connect/status hands the answer only to the secret.
+  const pickupHash = typeof body.pickup_hash === "string" ? body.pickup_hash : "";
+  if (!HEX64.test(pickupHash)) return json({ error: "Reload this page and try again." }, 400);
   const from = cleanName(typeof body.from === "string" ? body.from : "").slice(0, 60) || "a web browser";
   const [{ n }] = await sql<{ n: number }[]>`
     select count(*)::int n from public.connect_asks where user_id = ${user} and created_at > now() - interval '10 minutes'`;
@@ -508,9 +538,10 @@ async function ask(req: Request, sql: Sql): Promise<Response> {
   if (!(await claim(sql, r, user))) return json({ error: NOT_YOURS }, 403);
   // A reloaded page makes a new key: the unanswered ask takes it.
   const [row] = await sql<{ expires_at: Date }[]>`
-    insert into public.connect_asks (request_id, user_id, browser_key, started_from, expires_at)
-    values (${r.id}, ${user}, ${key}, ${from}, ${r.expires_at})
-    on conflict (request_id) do update set browser_key = excluded.browser_key, started_from = excluded.started_from, created_at = now()
+    insert into public.connect_asks (request_id, user_id, browser_key, started_from, expires_at, pickup_hash)
+    values (${r.id}, ${user}, ${key}, ${from}, ${r.expires_at}, ${pickupHash})
+    on conflict (request_id) do update set browser_key = excluded.browser_key, started_from = excluded.started_from,
+      pickup_hash = excluded.pickup_hash, created_at = now()
       where connect_asks.answered_at is null and connect_asks.user_id = ${user}
     returning expires_at`;
   if (!row) return json({ error: EXPIRED }, 404);
@@ -522,23 +553,31 @@ async function ask(req: Request, sql: Sql): Promise<Response> {
 /// app runs, and when it's next opened; push (APNs) slots in here once there's a key for it.
 export async function notifyDevices(_sql: Sql, _user: string, _requestId: string): Promise<void> {}
 
-/// Where the page's request stands. No session: the request id is the page's, and the only
-/// secret here, the code, is sealed to a key only the page holds. Handed over once.
+/// Where the page's request stands: POST {id, pickup}. No session: the request id is the page's,
+/// and the answer (the sealed code, or the declined redirect) goes only to the pickup secret whose
+/// SHA-256 the ask stored, and only once. Without it, only the state. The code itself is sealed to
+/// a key only the page holds.
 async function status(req: Request, sql: Sql): Promise<Response> {
   if (await limited(sql, req, "status")) return json({ error: "Too many attempts. Wait a few minutes and try again." }, 429);
-  const id = new URL(req.url).searchParams.get("id") ?? "";
+  const body = await req.json().catch(() => ({})) as { id?: unknown; pickup?: unknown };
+  const id = typeof body.id === "string" ? body.id : "";
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return json({ state: "expired" });
-  const [a] = await sql<{ answer: string | null; redirect: string | null; denied: boolean; answered_at: Date | null; expired: boolean }[]>`
-    with handed as (
-      update public.connect_asks set answer = null, delivered_at = now()
-      where request_id = ${id} and answer is not null
-      returning request_id, answer as handed_answer)
-    select coalesce(h.handed_answer, a.answer) as answer, a.redirect, a.denied, a.answered_at, a.expires_at < now() as expired
-    from public.connect_asks a left join handed h on h.request_id = a.request_id
-    where a.request_id = ${id}`;
+  const pickup = typeof body.pickup === "string" && HEX64.test(body.pickup) ? body.pickup : null;
+  const [a] = await sql<{ answered_at: Date | null; denied: boolean; delivered: boolean; expired: boolean; pickup_hash: string }[]>`
+    select answered_at, denied, delivered_at is not null as delivered, expires_at < now() as expired, pickup_hash
+    from public.connect_asks where request_id = ${id}`;
   if (a?.answered_at) {
-    if (a.denied) return json({ state: "denied", redirect: a.redirect });
-    return a.answer ? json({ state: "approved", redirect: a.redirect, handoff: a.answer }) : json({ state: "delivered" });
+    const hash = pickup ? await sha256OfHex(pickup) : null;
+    if (!hash || !timingSafeEqual(hash, a.pickup_hash)) return json({ state: a.delivered ? "delivered" : a.denied ? "denied" : "approved" });
+    // Exactly one pickup gets the answer, even when two arrive at once.
+    const [handed] = await sql<{ answer: string | null; redirect: string | null; denied: boolean }[]>`
+      with old as (select request_id, answer, redirect, denied from public.connect_asks
+                   where request_id = ${id} and delivered_at is null and pickup_hash = ${hash} for update)
+      update public.connect_asks c set answer = null, delivered_at = now() from old where c.request_id = old.request_id
+      returning old.answer, old.redirect, old.denied`;
+    if (!handed) return json({ state: "delivered" });
+    if (handed.denied) return json({ state: "denied", redirect: handed.redirect });
+    return handed.answer ? json({ state: "approved", redirect: handed.redirect, handoff: handed.answer }) : json({ state: "delivered" });
   }
   const [r] = await sql<{ decided: boolean; expired: boolean }[]>`
     select decided_at is not null as decided, expires_at < now() as expired from public.oauth_requests where id = ${id}`;
@@ -548,12 +587,28 @@ async function status(req: Request, sql: Sql): Promise<Response> {
   return json({ state: a ? "asked" : "pending" });
 }
 
+const HEX64 = /^[0-9a-f]{64}$/;
+
+/// Lowercase hex SHA-256 of the bytes a hex string stands for (the pickup secret's hash).
+async function sha256OfHex(h: string): Promise<string> {
+  const bytes = new Uint8Array(h.length / 2);
+  for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(h.slice(i * 2, i * 2 + 2), 16);
+  return hex(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)));
+}
+
 /// Who is asking, for the web page that sends the person to the app: no session, nothing else.
 async function label(req: Request, sql: Sql): Promise<Response> {
   if (await limited(sql, req, "label")) return json({ error: "Too many attempts. Wait a few minutes and try again." }, 429);
   const r = await pending(sql, new URL(req.url).searchParams.get("id") ?? "");
   if (!r) return json({ error: EXPIRED }, 404);
-  return json({ client_name: displayName(r.client_name, r.redirect_uri), verified_ai: verifiedAI(r.redirect_uri) });
+  // Before anyone signs in, the page can't know whose sign-in this is, so no AI's mark either: the
+  // address, and what the client calls itself only as a claim.
+  return json({
+    client_name: addressName(r.redirect_uri),
+    claimed_name: claimedName(r.client_name) || null,
+    redirect_host: new URL(r.redirect_uri).hostname,
+    verified_ai: null,
+  });
 }
 
 const CHANGED = "This request changed. Start connecting again from the other app.";
@@ -588,15 +643,16 @@ async function decide(req: Request, sql: Sql): Promise<Response> {
   }
   // Asked from a browser: a device's code goes to that page, sealed to its key, and the device
   // opens nothing. The page itself (approving with the recovery key) keeps its own code.
-  const [asked] = await sql<{ request_id: string }[]>`select request_id from public.connect_asks where request_id = ${r.id}`;
+  const [asked] = await sql<{ request_id: string; started_from: string }[]>`
+    select request_id, started_from from public.connect_asks where request_id = ${r.id}`;
   const fromPage = req.headers.get("origin") === new URL(connectPage()).origin;
   const handoff = typeof body.handoff === "string" && !fromPage ? body.handoff : "";
   if (asked && allow && !fromPage && (!HANDOFF.test(handoff) || handoff.length > 600)) return json({ error: "Update Amber Notes to connect an AI." }, 400);
 
-  const u = new URL(r.redirect_uri);
-  if (r.state) u.searchParams.set("state", r.state);
-  // The issuer the client started with: the address its /authorize went through.
-  u.searchParams.set("iss", r.resource);
+  // The issuer the client started with: the address its /authorize went through. Built as
+  // clientRedirect documents, the same way the device builds what it seals.
+  const u = clientRedirect(r.redirect_uri, r.state, r.resource);
+  const name = displayName(r.client_name, r.redirect_uri);
   const scopes = (r.scope ?? "").split(/\s+/).filter(Boolean);
   const write = body.write === true && (scopes.length === 0 || scopes.includes("notes:write"));
   // One answer per request, even when two arrive at once.
@@ -607,10 +663,14 @@ async function decide(req: Request, sql: Sql): Promise<Response> {
     if (!allow) return true;
     const [g] = await tx<{ id: string }[]>`
       insert into public.mcp_tokens (user_id, name, token_hash, can_write, kind, client_id, redirect_host)
-      values (${user}, ${displayName(r.client_name, r.redirect_uri)}, ${"oauth:" + crypto.randomUUID()}, ${write}, 'oauth', ${r.client_id}, ${u.hostname})
+      values (${user}, ${name}, ${"oauth:" + crypto.randomUUID()}, ${write}, 'oauth', ${r.client_id}, ${u.hostname})
       returning id`;
     await tx`update public.oauth_requests set grant_id = ${g.id}, code_hash = ${codeHash}, code_wrap = ${codeWrap},
       code_expires_at = now() + make_interval(secs => ${CODE_TTL}) where id = ${r.id}`;
+    // Every device of the account says so, with Disconnect at hand: a connection nobody meant to
+    // make shows on the devices that didn't approve it too.
+    const what = `Connected ${name} from ${asked?.started_from ?? "this device"}`.slice(0, 200);
+    await tx`insert into public.account_notices (user_id, kind, grant_id, what) values (${user}, 'ai_connected', ${g.id}, ${what})`;
     return true;
   });
   if (!answered) return json({ error: EXPIRED }, 404);
@@ -624,7 +684,7 @@ async function decide(req: Request, sql: Sql): Promise<Response> {
   }
   const handedOff = asked && !fromPage ? { handoff: true } : {};
   if (!allow) return json({ redirect: u.toString(), ...handedOff });
-  return json({ redirect: u.toString(), client_name: displayName(r.client_name, r.redirect_uri), can_write: write, ...handedOff });
+  return json({ redirect: u.toString(), client_name: name, can_write: write, ...handedOff });
 }
 
 /// "Use another account": the account that opened the request lets go of it, unanswered.
