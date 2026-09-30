@@ -1,14 +1,20 @@
-// Deletes the signed-in person's account and everything in it, as the App Store requires.
+// The signed-in person's account: delete it (as the App Store requires) or export it (GDPR).
 //
-//   DELETE /functions/v1/account     Authorization: Bearer <the user's access token>
+//   DELETE /functions/v1/account         Authorization: Bearer <the user's access token>
 //   → 200 { deleted: true, files: <n> }
+//   GET    /functions/v1/account/export  Authorization: Bearer <the user's access token>
+//   → 200 application/zip, "amber-notes-export-YYYY-MM-DD.zip" (see export.ts)
 //
-// Files in the `files` bucket are removed first (storage objects don't cascade), then the auth
-// user; every public table (notes, folders, revisions, attachments, tokens, OAuth grants, share
-// links, limits) cascades from auth.users. The caller is whoever the access token says: there is
-// no way to name another account.
+// Deleting: files in the `files` and `avatars` buckets are removed first (storage objects don't
+// cascade), then what forget.ts lists, then the auth user; every public table (notes, folders,
+// revisions, attachments, tokens, OAuth grants, share links, locks, usage counts, limits) cascades
+// from auth.users. The caller is whoever the access token says: there is no way to name another
+// account.
 
 import postgres from "npm:postgres@3.4.5";
+import { logError } from "../_shared/log.ts";
+import { collect, zip } from "./export.ts";
+import { forget } from "./forget.ts";
 
 const sql = postgres(Deno.env.get("SUPABASE_DB_URL")!, { max: 1, idle_timeout: 20, prepare: false });
 const API = Deno.env.get("SUPABASE_URL")!;
@@ -47,19 +53,36 @@ async function removeFiles(uid: string): Promise<number> {
   return files.length + photos.length;
 }
 
+// One export a minute per account (per isolate): it reads everything, so it isn't free.
+const lastExport = new Map<string, number>();
+
 Deno.serve(async (req) => {
-  if (req.method !== "DELETE") return json({ error: "Use DELETE." }, 405);
+  const exporting = req.method === "GET" && new URL(req.url).pathname.endsWith("/export");
+  if (req.method !== "DELETE" && !exporting) return json({ error: "Use DELETE, or GET /account/export." }, 405);
   const token = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
   const uid = token ? await userFor(token) : null;
-  if (!uid) return json({ error: "Sign in again, then try deleting your account." }, 401);
+  if (!uid) return json({ error: exporting ? "Sign in again, then try exporting your data." : "Sign in again, then try deleting your account." }, 401);
+  if (exporting) {
+    const now = Date.now();
+    if (now - (lastExport.get(uid) ?? 0) < 60_000) return json({ error: "You exported your data a moment ago. Try again in a minute." }, 429);
+    lastExport.set(uid, now);
+    try {
+      const e = await collect(sql, uid);
+      return new Response(zip(e), {
+        headers: { "Content-Type": "application/zip", "Content-Disposition": `attachment; filename="${e.name}"`, "Cache-Control": "no-store" },
+      });
+    } catch (e) {
+      lastExport.delete(uid);
+      logError("account export", e);
+      return json({ error: "Couldn't prepare your export. Try again." }, 500);
+    }
+  }
   try {
     const files = await removeFiles(uid);
-    // Straight in the database: it doesn't depend on which key format the auth admin API accepts.
-    // Identities, sessions and every public table cascade from auth.users.
-    await sql`delete from auth.users where id = ${uid}`;
+    await forget(sql, uid);
     return json({ deleted: true, files });
   } catch (e) {
-    console.error("account delete", uid, (e as Error).message);
+    logError("account delete", e);
     return json({ error: "Couldn't delete the account. Nothing more was removed; try again." }, 500);
   }
 });

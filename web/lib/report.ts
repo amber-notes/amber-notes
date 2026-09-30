@@ -1,9 +1,10 @@
 "use server";
 // Reports about shared pages go to the report_share RPC. Who reported is a salted hash of
-// their network address, so one person can't take a page down alone and no address is stored.
-import { createHmac } from "node:crypto";
+// their network address (reporter.ts), so one person can't take a page down alone and no address
+// is stored.
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { reporterHash } from "./reporter";
 import { validSlug } from "./shared";
 
 const URL_ = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
@@ -11,10 +12,6 @@ const KEY = process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_AN
 const SALT = process.env.REPORT_SALT ?? "";
 
 export type ReportOutcome = "received" | "taken_down" | "not_found" | "too_many" | "missing_reason" | "error";
-
-export async function reporterHash(address: string, salt: string): Promise<string> {
-  return createHmac("sha256", salt || "amber-notes").update(address || "unknown").digest("hex");
-}
 
 export async function sendReport(form: FormData): Promise<void> {
   const slug = String(form.get("slug") ?? "");
@@ -33,7 +30,7 @@ export async function sendReport(form: FormData): Promise<void> {
       const res = await fetch(`${URL_}/rest/v1/rpc/report_share`, {
         method: "POST",
         headers: { apikey: KEY, authorization: `Bearer ${KEY}`, "content-type": "application/json" },
-        body: JSON.stringify({ p_slug: slug, p_reason: reason, p_reporter: await reporterHash(address, SALT), p_contact: contact || null }),
+        body: JSON.stringify({ p_slug: slug, p_reason: reason, p_reporter: reporterHash(address, SALT), p_contact: contact || null }),
         cache: "no-store",
       });
       if (res.ok) {

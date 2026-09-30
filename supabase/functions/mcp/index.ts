@@ -11,6 +11,7 @@ import { tools, runTool, ToolContext, ToolError } from "./tools.ts";
 import { challenge, handleOAuth, isOAuthPath, publicBase, resolveAccessToken, subpath } from "./oauth.ts";
 import { OPENAI_CHALLENGE_PATH, openaiChallenge } from "./verification.ts";
 import { SERVER_CARD_PATH, SERVER_INFO, serverCardResponse } from "./card.ts";
+import { logError } from "../_shared/log.ts";
 
 const PROTOCOL_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
 const INSTRUCTIONS = `Amber Notes is the user's personal notes app. Notes are markdown; the first line is the title.
@@ -77,7 +78,7 @@ Deno.serve(async (req) => {
   if (req.method === "DELETE") return new Response(null, { status: 204, headers: cors });
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405, headers: cors });
 
-  const who = presented ? await authenticate(presented, req).catch((e) => { console.error("token lookup failed:", (e as Error).message); return undefined; }) : undefined;
+  const who = presented ? await authenticate(presented, req).catch((e) => { logError("token lookup failed", e); return undefined; }) : undefined;
   if (!who) return unauthorized(base, presented ? "invalid_token" : undefined);
 
   // A client that names a protocol version we don't speak gets told so up front.

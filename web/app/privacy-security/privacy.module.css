@@ -1,0 +1,13 @@
+/* Privacy & Security: the four facts as cards, then the long form in the legal pages' column. */
+.facts { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 640px) { .facts { grid-template-columns: 1fr; gap: 12px; } }
+.fact { display: grid; gap: 8px; align-content: start; padding: 22px 24px; border-radius: 22px; background: var(--card); box-shadow: 0 0 0 1px var(--line), 0 20px 40px -32px rgba(60, 30, 5, 0.45); }
+.fact h2 { display: flex; align-items: flex-start; gap: 10px; margin: 0; font-size: 18px; line-height: 1.25; font-weight: 750; letter-spacing: -0.01em; }
+.fact h2 svg { flex: none; margin-top: 2px; color: var(--amber); }
+.fact p { margin: 0; color: var(--muted); font-size: 16px; line-height: 1.5; }
+
+.coming { margin: 0; padding: 16px 20px; border-radius: 16px; background: var(--soft); font-size: 16px; line-height: 1.5; }
+.coming a { color: var(--ink); font-weight: 600; text-decoration: underline; text-decoration-color: var(--amber); text-decoration-thickness: 2px; text-underline-offset: 3px; border-radius: 3px; }
+.coming a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+.kept { white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 600; }
