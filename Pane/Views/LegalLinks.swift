@@ -20,7 +20,7 @@ struct ConsentFooter: View {
     var body: some View {
         Text(Legal.consentSentence)
             .font(.footnote)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Color.muted)
             .tint(Color(PColor.paneAccent))
             .multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)

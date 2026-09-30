@@ -123,13 +123,15 @@ struct NoteListView: View {
                             #endif
                     }
                 } header: {
+                    // One step lighter than the display type: bold, in the warm ink.
                     #if os(iOS)
-                    // The system's prominent header: large, bold and in the label colour, as in Notes.
+                    // The system's prominent header: large and bold, as in Notes.
                     Text(section.0)
+                        .foregroundStyle(Color.ink)
                     #else
                     Text(section.0)
                         .font(.title3.weight(.bold))
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(Color.ink)
                         .textCase(nil)
                     #endif
                 }
@@ -266,10 +268,10 @@ struct NoteListView: View {
             // Like Notes: the folder's name and count, then a "⋯" menu for the list.
             ToolbarItem(placement: .navigation) {
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(title).font(.system(size: 14, weight: .bold)).lineLimit(1)
+                    Text(title).font(.system(size: 14, weight: .bold)).foregroundStyle(Color.ink).lineLimit(1)
                     Text(scopedNotes.count == 1 ? "1 note" : "\(scopedNotes.count) notes")
                         .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color.muted)
                         .monospacedDigit()
                 }
                 .padding(.horizontal, 6)
@@ -542,6 +544,7 @@ struct NoteRow: View {
         return VStack(alignment: .leading, spacing: RowMetrics.spacing) {
             Text(title)
                 .font(RowMetrics.title)
+                .foregroundStyle(Color.ink)
                 .lineLimit(large ? 3 : 1)
                 // An AI changed this note and you haven't opened it since, like Mail's unread dot.
                 .overlay(alignment: .leading) {
@@ -554,7 +557,7 @@ struct NoteRow: View {
             detail {
                 Text(DateBucket.rowDate(note.updatedAt))
                     .monospacedDigit()
-                    .foregroundStyle(.primary.opacity(0.85))
+                    .foregroundStyle(Color.ink.opacity(0.85))
                 if let ai {
                     HStack(spacing: 4) {
                         AIGlyph(ai: ai, size: 11)
@@ -564,7 +567,7 @@ struct NoteRow: View {
                     .lineLimit(1)
                 } else {
                     Text(snippet)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color.muted)
                         .lineLimit(large ? 2 : 1)
                 }
             }
@@ -575,7 +578,7 @@ struct NoteRow: View {
                     Text(f.name)
                 }
                 .font(RowMetrics.detail)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.muted)
             }
         }
         .padding(.vertical, RowMetrics.vertical)

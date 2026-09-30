@@ -11,9 +11,6 @@ struct SignInView: View {
     @FocusState private var focus: Field?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.displayScale) private var displayScale
-    /// The marker under "your AI": how tall, and how far above the baseline's foot it sits.
-    @ScaledMetric(relativeTo: .subheadline) private var markHeight: CGFloat = 6
-    @ScaledMetric(relativeTo: .subheadline) private var markLift: CGFloat = 2
 
     enum Field { case email, password }
 
@@ -63,6 +60,7 @@ struct SignInView: View {
                 Text("Sign in to Amber Notes")
                     .font(.title2.weight(.heavy))
                     .tracking(-0.6)
+                    .foregroundStyle(Color.ink)
                     .multilineTextAlignment(.center)
                 promise
             }
@@ -96,7 +94,6 @@ struct SignInView: View {
 
             ConsentFooter()
         }
-        .foregroundStyle(Color.ink, Color.muted)
         .animation(.snappy(duration: 0.2), value: error)
         .animation(reduceMotion ? nil : .smooth(duration: 0.3), value: flow.step)
     }
@@ -104,27 +101,16 @@ struct SignInView: View {
     /// The website's one-line promise, with its low amber marker under "your AI".
     private var promise: some View {
         VStack(spacing: 3) {
-            HStack(spacing: 0) {
-                Text("The notes app ")
-                Text("your AI")
-                    .foregroundStyle(.primary)
-                    .background(alignment: .bottom) {
-                        Rectangle().fill(Color(Palette.underline))
-                            .frame(height: markHeight)
-                            .padding(.horizontal, -1)
-                            .padding(.bottom, markLift)
-                    }
-                Text(" can use.")
-            }
-            .accessibilityElement(children: .combine)
+            Text("The notes app \(Text("your AI").foregroundStyle(Color.ink).customAttribute(Marker())) can use.")
+                .textRenderer(Marker.Renderer(color: Color(Palette.underline)))
             // Where the notes live, said once and plainly.
             Text("Your notes sync between iPhone and Mac.")
                 .font(.footnote)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.muted.opacity(0.85))
                 .accessibilityIdentifier("signin.sync")
         }
         .font(.subheadline)
-        .foregroundStyle(.secondary)
+        .foregroundStyle(Color.muted)
         .multilineTextAlignment(.center)
         .padding(.top, -6)
     }
@@ -326,6 +312,27 @@ struct SignInView: View {
             }
         case nil:
             break
+        }
+    }
+}
+
+/// The website's low marker: a band behind the lower part of the words, from the middle of the
+/// lowercase letters to just under the baseline, so it reads as a highlighter stroke, not a box.
+struct Marker: TextAttribute {
+    struct Renderer: TextRenderer {
+        let color: Color
+
+        func draw(layout: Text.Layout, in context: inout GraphicsContext) {
+            for line in layout {
+                for run in line {
+                    if run[Marker.self] != nil {
+                        let r = run.typographicBounds.rect
+                        let band = CGRect(x: r.minX - 1, y: r.minY + r.height * 0.52, width: r.width + 2, height: r.height * 0.32)
+                        context.fill(Path(band), with: .color(color))
+                    }
+                    context.draw(run)
+                }
+            }
         }
     }
 }

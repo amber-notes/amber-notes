@@ -39,7 +39,7 @@ enum Palette {
     static let row = pair(0xFDFCFB, 0x1F1C1A)
     #else
     /// Laid inside the sidebar's glass, so it keeps its vibrancy: about 5.5% toward the brown.
-    static let sidebarWarmth = pair(brown, 0.055, brown, 0.10)
+    static let sidebarWarmth = pair(brown, 0.055, brown, 0.08)
     /// The notes list: a little warmth, less than the sidebar.
     static let listGround = pair(0xFCFAF8, 0x252322)
     #endif

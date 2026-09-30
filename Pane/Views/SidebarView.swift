@@ -48,7 +48,7 @@ struct SidebarHeader: View {
         HStack(spacing: 8) {
             AppMark(size: 21)
             // The website's display type: heavy and tight.
-            Text("Amber Notes").font(.display(15)).tracking(Palette.tracking(15))
+            Text("Amber Notes").font(.display(15)).tracking(Palette.tracking(15)).foregroundStyle(Color.ink)
             Spacer(minLength: 0)
         }
         .padding(.leading, 18)

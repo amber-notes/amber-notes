@@ -164,7 +164,7 @@ struct SetupCard: View {
 
     private func text(_ title: String, _ line: Text, marks: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(title).font(Metrics.title)
+            Text(title).font(Metrics.title).foregroundStyle(Color.ink)
             HStack(alignment: .firstTextBaseline, spacing: 5) {
                 if marks {
                     // ChatGPT and Claude, small, before the line (App Store captures show neither).
@@ -174,7 +174,7 @@ struct SetupCard: View {
                     }
                     .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 2 }
                 }
-                line.font(Metrics.line).foregroundStyle(.secondary)
+                line.font(Metrics.line).foregroundStyle(Color.muted)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
