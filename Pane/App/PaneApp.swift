@@ -41,7 +41,7 @@ struct PaneApp: App {
         // also start with no notes password.
         NoteVault.shared = inMemory ? NoteVault(keyStore: MemoryKeyStore(), defaults: MemoryDefaults(), drivesSync: true)
             : NoteVault(keyStore: KeychainKeyStore(), drivesSync: true)
-        AccountCrypto.shared = AccountCrypto(store: inMemory ? MemoryDataKeyStore() : KeychainDataKeyStore())
+        AccountCrypto.shared = AccountCrypto(store: inMemory ? MemoryAccountKeyStore() : KeychainAccountKeyStore())
         Capture.lockedNotesFromArguments(container.mainContext)
         // "Did you know" tips; their counts go to the server when signed in.
         TipLog.client = backend.client
@@ -305,10 +305,8 @@ struct AppGate: View {
     @State private var consent = CaptureScreen.consentRequest
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var phase
-    /// The account's encryption: the gate before the notes, while this device lacks the key.
+    /// The account's key: the gate before the notes, while this device doesn't have it.
     private var crypto: AccountCrypto { AccountCrypto.shared }
-    /// Once, after the notes were first encrypted: AI connections need approving again.
-    @State private var reconnect = false
 
     var body: some View {
         Group {
@@ -351,9 +349,10 @@ struct AppGate: View {
                     .toolbar(removing: .title)
                     #endif
                     .transition(.opacity)
-            case .signedIn where crypto.phase != .ready && crypto.phase != .off:
-                // The notes stay closed until this device has the account's key.
-                EncryptionGateView(crypto: crypto, backend: backend)
+            case .signedIn where (crypto.phase != .ready && crypto.phase != .off) || crypto.needsWelcome:
+                // The notes stay closed until this device has the account's key; the first time
+                // it does, one screen says what that means.
+                KeyGateView(crypto: crypto, backend: backend)
                     #if os(macOS)
                     .toolbar(removing: .title)
                     #endif
@@ -364,12 +363,6 @@ struct AppGate: View {
                     .environment(sync)
                     .environment(setup)
                     .shareAskSheet(shareAsk)
-                    .modifier(EncryptionProgressBanner(migration: E2EEMigration.shared))
-                    .alert("Reconnect your AIs", isPresented: $reconnect) {
-                        Button("OK") {}
-                    } message: {
-                        Text("Your notes are now end-to-end encrypted, so ChatGPT, Claude and your other AI connections need to be approved once more. Connect them again from Settings › Connect an AI.")
-                    }
                     .task {
                         try? await Task.sleep(for: .seconds(1.2))
                         shareAsk.showIfForced()
@@ -398,7 +391,7 @@ struct AppGate: View {
             shareAsk.attach(account: backend.userID, service: SupabaseShareAsk(client: client))
             NoteVault.shared.attach(account: backend.userID, remote: SupabaseLockRemote(client: client))
             await NoteVault.shared.refresh()
-            await AccountCrypto.shared.attach(account: backend.userID, remote: SupabaseAccountKeys(client: client))
+            await AccountCrypto.shared.attach(account: backend.userID, server: SupabaseAccountKeys(client: client))
             // Without the key the gate asks for it; the library starts when it's open (below).
             guard AccountCrypto.shared.allowsSync else { return }
             await openLibrary(client)
@@ -447,6 +440,9 @@ struct AppGate: View {
                 if shareAsk.decided != true { Task { await shareAsk.refresh() } }
                 askToShareSoon()
                 Task { await NoteVault.shared.refresh() }
+                // The account's key never changes; if another device started fresh, this one
+                // finds out here and gets the new key.
+                Task { await AccountCrypto.shared.recheck() }
                 context.drainInbox()
                 sync.schedule()
             } else {
@@ -482,18 +478,6 @@ struct AppGate: View {
         await FeatureUse.refresh()
         await shareAsk.refresh()
         await InstallID.report(client)
-        // The first time with the key: everything readable on the server is sealed.
-        if let user = backend.userID, AccountCrypto.shared.isReady {
-            await E2EEMigration.shared.run(sync: sync, client: client, context: context, user: user)
-            if UserDefaults.standard.bool(forKey: E2EEMigration.reconnectKey(user)) {
-                UserDefaults.standard.removeObject(forKey: E2EEMigration.reconnectKey(user))
-                // Connections from before hold no copy of the key and can't read anything now:
-                // they're ended, and the AI asks to connect again.
-                let ended: [Connection] = (try? await client.from("mcp_tokens").update(["revoked_at": AnyJSON.string(Date.now.ISO8601Format())])
-                    .is("revoked_at", value: nil).is("dk_wrap", value: nil).select().execute().value) ?? []
-                reconnect = !ended.isEmpty
-            }
-        }
     }
 
     /// A quiet moment: once things have settled, the share ask may come (see `ShareAsk`).

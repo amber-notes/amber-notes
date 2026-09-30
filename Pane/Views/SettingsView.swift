@@ -54,7 +54,18 @@ struct SettingsView: View {
                     ConnectAISection(client: client)
                 }
                 if case .signedIn = backend.state, AccountCrypto.shared.isReady {
-                    EncryptionSection(crypto: AccountCrypto.shared)
+                    #if os(macOS)
+                    PrivacySecuritySection(crypto: AccountCrypto.shared)
+                    #else
+                    Section {
+                        NavigationLink {
+                            PrivacySecurityView(crypto: AccountCrypto.shared)
+                        } label: {
+                            Label(PrivacyCopy.title, systemImage: "lock.shield")
+                        }
+                        .accessibilityIdentifier("settings.privacy")
+                    }
+                    #endif
                 }
                 LockedNotesSection(sync: sync)
                 #if os(macOS)
