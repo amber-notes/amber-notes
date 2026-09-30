@@ -236,16 +236,17 @@ export function cleanName(raw: string): string {
 /// returns to its pinned callback, and otherwise always the address access goes to. A name an app
 /// gives itself is never a title, however it's spelled; look-alike letters can't all be caught.
 export function displayName(name: string, redirectURI: string): string {
-  if (verifiedAI(redirectURI)) return name;
+  // Cleaned here too: clients registered before names were cleaned keep what they sent.
+  if (verifiedAI(redirectURI)) return cleanName(name) || verifiedAI(redirectURI)!;
   const host = new URL(redirectURI).hostname;
   return LOOPBACK.has(host) ? "An app on this computer" : host;
 }
 
-/// The name an unverified app gives itself, only for a secondary "It calls itself …" line: NFKC,
-/// lowercase, combining marks removed, and nothing but ASCII letters, digits, spaces and basic
+/// The name an unverified app gives itself, only for a secondary "It calls itself …" line: NFKD,
+/// every mark removed, lowercase, and nothing but ASCII letters, digits, spaces and basic
 /// punctuation (anything else becomes "?").
 export function claimedName(name: string): string {
-  return name.normalize("NFKC").toLowerCase().replace(/[\p{Mn}\p{Me}]/gu, "")
+  return cleanName(name).normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase()
     .replace(/[^a-z0-9 .,:;'&()+_!-]/g, "?").replace(/\s+/g, " ").trim().slice(0, 60);
 }
 

@@ -507,8 +507,8 @@ Deno.test("F5: x-mcp-public-url without the proxy secret is ignored", () => {
 
 Deno.test("look-alike names are never a title: the address is, and the claim is plain ASCII", async () => {
   const { sql, pg } = await db();
-  // "OpenAl" (lower-case L), "CIaude" (capital i), Cyrillic Т, a combining mark, small-capital ʟ, Cherokee Ꮯ.
-  const names = ["OpenAl", "CIaude", "ChatGP\u0422", "C\u0301laude", "C\u029Faude", "\u13DFlaude"];
+  // "OpenAl" (lower-case L), "CIaude" (capital i), Cyrillic Т, ė (a mark), small-capital ʟ, Cherokee Ꮯ.
+  const names = ["OpenAl", "CIaude", "ChatGP\u0422", "Claud\u0117", "C\u0301laude", "C\u029Faude", "\u13DFlaude"];
   for (const name of names) {
     const { requestId, me, details } = await ask(sql, pg, name, ["https://attacker.example/cb"]);
     assertEquals(details.client_name, "attacker.example", name);
@@ -523,11 +523,29 @@ Deno.test("look-alike names are never a title: the address is, and the claim is 
     const [{ title }] = await sql`select name as title from public.mcp_tokens where user_id = ${me.id}` as { title: string }[];
     assertEquals(title, "attacker.example", name);
   }
-  // NFKC composes C + a combining accent into one non-ASCII letter, which shows as "?".
-  assertEquals(claimedName("C\u0301laude"), "?laude");
+  // Marks go, so these read as what they imitate, but only ever as a claim under the address.
+  assertEquals(claimedName("C\u0301laude"), "claude");
+  assertEquals(claimedName("Claud\u0117"), "claude");
   assertEquals(claimedName("Cla\u20DDude"), "claude");
+  assertEquals(claimedName("OpenAl"), "openal");
+  assertEquals(claimedName("CIaude\u202E\u200B"), "ciaude");
   assertEquals(claimedName("\u13DFlaude"), "?laude");
   assertEquals(claimedName("C\u029Faude"), "c?aude");
   assertEquals(claimedName("ChatGP\u0422"), "chatgp?");
   assertEquals(claimedName("Notes Helper 2"), "notes helper 2");
+});
+
+Deno.test("a name registered before cleaning never shows bidi or control characters", async () => {
+  const { sql, pg } = await db();
+  // As an older server stored it: raw.
+  const clientId = "amb_client_" + "a".repeat(32);
+  await sql`insert into public.oauth_clients (id, client_name, redirect_uris) values
+    (${clientId}, ${"Claude\u202E\u200B\u0007 web"}, ${["https://claude.ai/api/mcp/auth_callback"]})`;
+  const q = new URLSearchParams({ response_type: "code", client_id: clientId, redirect_uri: "https://claude.ai/api/mcp/auth_callback", code_challenge: (await pkce()).challenge, code_challenge_method: "S256" });
+  const id = new URL((await call(sql, request("proxy", `/authorize?${q}`))).headers.get("location")!).searchParams.get("request")!;
+  const me = await newUser(pg);
+  const { described, decided } = await consent(sql, id, me.jwt);
+  assertEquals((await described.json()).client_name, "Claude web");
+  assertEquals((await decided.json()).client_name, "Claude web");
+  assertEquals(displayName("\u202E\u200B", "https://chatgpt.com/connector_platform_oauth_redirect"), "ChatGPT");
 });
