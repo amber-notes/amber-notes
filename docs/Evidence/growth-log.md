@@ -5,6 +5,22 @@ assistants. Newest first. Research behind it: [seo-aeo-research-2026-09-30.md](s
 
 `docs/` had no README naming a folder for evidence, so this and the research live in `docs/Evidence/`.
 
+## 30 September 2026: round 8, "Apple Notes in iOS 27"
+
+### Query
+
+- "apple notes ios 27", "apple notes new features", "apple notes section links", "apple notes divider line". iOS 27 and macOS 27 shipped on 14 September; the results are publisher roundups (9to5Mac 28 September, MacRumors, Geeky Gadgets). None of them says what ChatGPT and Claude can and can't do with Apple Notes now, which is the angle.
+
+### Changed (branch `site/ios27-notes`)
+
+- New post `/blog/apple-notes-ios-27`, "Apple Notes in iOS 27 and macOS 27: what's new, and what AI still can't do", in Apple Notes:
+  - a table of the new features on iPhone and Mac, then divider lines, section links, Markdown paste and Copy as Markdown, the renamed File, Export To menu, and Siri AI searching notes
+  - every step from Apple's own guides for iOS 27 and macOS 27 (Create and format notes, Add links in Notes, Format notes on Mac, Use Notes on your iPhone, Use Siri to get answers from ChatGPT), including Siri AI's limits: beta, English first, iPhone 15 Pro and later, not in the EU at first, daily limits
+  - what AI still can't do: the ChatGPT extension (Settings, Siri) passes a request with content you choose; Claude isn't offered as an extension (MacRumors, 14 September); Apple MCP support hasn't shipped; Claude on iPhone and the web can't reach Apple Notes
+  - four FAQ answers with FAQPage JSON-LD
+- A new ground, wheat, and a card cropped from the Lisbon capture's Food heading and table.
+- The Markdown export post links the new one.
+
 ## 30 September 2026: round 7, SEO plan and "Export Apple Notes to Markdown"
 
 ### Research
