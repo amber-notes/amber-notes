@@ -9,7 +9,7 @@ export type Fact = { title: string; text: string };
 
 /// The short list: the home page shows these, and the page opens with them.
 export const FACTS: Fact[] = [
-  { title: "End-to-end encrypted", text: "Your notes, titles, folder names, files and earlier versions are encrypted on your iPhone or Mac with a key only your devices hold. We can't read them." },
+  { title: "End-to-end encrypted", text: "Your notes, titles, folder names, files and earlier versions are encrypted on your iPhone or Mac with a key that only your devices, and AI connections you approve, can unlock. We can't read them." },
   { title: "AI only with your approval", text: "An AI app can read your notes only after you approve it on your iPhone or Mac. While it works, our server opens the notes it asks for in memory. Disconnect it at any time." },
   { title: "No ads, no tracking", text: "No ads, no tracking scripts and no third-party analytics, in the apps or on this website. The apps count a few things on our own server. We never sell or share your data." },
   { title: "Stored in the EU", text: "Your encrypted notes and files are kept in Frankfurt, Germany." },
@@ -27,7 +27,7 @@ export type Item = { label: string; text: string };
 /// "What's encrypted" on the Privacy & Security page.
 export const ENCRYPTION: { items: Item[]; note: string } = {
   items: [
-    { label: "End to end:", text: "your notes, their titles, folder names, file names and files, and every earlier version are encrypted on your device before they're uploaded. The key is made on your first device and only your devices hold it. We store only the encrypted copies, and we can't read them." },
+    { label: "End to end:", text: "your notes, their titles, folder names, file names and files, and every earlier version are encrypted on your device before they're uploaded. The key is made on your first device, and only your devices, and AI connections you approve, can unlock it. We store only the encrypted copies, and we can't read them." },
     { label: "Your key:", text: "iCloud Keychain carries it between your iPhone and Mac. Apple encrypts iCloud Keychain end to end, so Apple can't read it either." },
     { label: "Your recovery key:", text: "a key you save yourself, shown in Settings, Privacy & Security on your devices. It's the fallback when a device can't get your key from iCloud Keychain. We keep your notes' key only locked with it, and we never get the recovery key." },
     { label: "Locked notes:", text: "encrypted a second time, with a key made from your notes password. That key never leaves your devices, so not even an AI you connect can read a locked note's text. If you forget the password, nobody can recover it." },
@@ -54,7 +54,7 @@ export const READABLE: string[] = [
 
 /// "When you connect an AI" on the Privacy & Security page.
 export const AI_ACCESS: Item[] = [
-  { label: "You approve it on your device.", text: "Your iPhone or Mac asks you, and you tap the number the page you started on shows. With no device nearby, you can approve in the browser with your recovery key." },
+  { label: "You approve it on your device.", text: "Your iPhone or Mac asks you, and you type the number the page you started on shows there. With no device nearby, you can approve in the browser with your recovery key." },
   { label: "Our server opens your notes for it.", text: "Approving gives that AI connection a copy of your notes' key, locked with a secret only the AI holds. During each of its requests our server unlocks your whole notes' key in memory, reads the notes the AI asks for, and forgets the key when the request ends." },
   { label: "Our hosts carry that text.", text: "For AI requests, the text of the notes the AI reads or writes, and its access tokens, pass through Vercel and Supabase in readable form on their way. Neither stores your notes." },
   { label: "Locked notes stay locked.", text: "An AI sees only their titles, never their text." },

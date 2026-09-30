@@ -47,6 +47,12 @@ describe("privacy copy", () => {
     expect(ENCRYPTION.items.map((i) => i.text).join(" ")).toMatch(/iCloud Keychain/);
   });
 
+  it("never says only your devices can open your notes: approved AI connections can too", () => {
+    const facts = [...FACTS.map((f) => f.text), ...ENCRYPTION.items.map((i) => i.text), page].join(" ").toLowerCase();
+    expect(facts).not.toMatch(/only your devices (hold|have|can)/);
+    expect(FACTS[0].text).toMatch(/only your devices, and AI connections you approve, can unlock/);
+  });
+
   it("has no Coming note: end to end is what's built", () => {
     expect(all).not.toMatch(/Coming:|not end-to-end encrypted yet/);
     expect(FACTS[0].title).toBe("End-to-end encrypted");
