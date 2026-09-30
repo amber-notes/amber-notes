@@ -18,8 +18,8 @@ extension PFont {
 }
 
 extension PColor {
-    static var paneLabel: PColor { .label }
-    static var paneSecondary: PColor { .secondaryLabel }
+    static var paneLabel: PColor { Palette.ink }
+    static var paneSecondary: PColor { Palette.muted }
     static var paneTertiary: PColor { .tertiaryLabel }
     static var paneFill: PColor { .secondarySystemBackground }
     static var panePanel: PColor { UIColor { $0.userInterfaceStyle == .dark ? UIColor(white: 0.13, alpha: 1) : UIColor(white: 0.975, alpha: 1) } }
@@ -45,8 +45,8 @@ extension PFont {
 }
 
 extension PColor {
-    static var paneLabel: PColor { .labelColor }
-    static var paneSecondary: PColor { .secondaryLabelColor }
+    static var paneLabel: PColor { Palette.ink }
+    static var paneSecondary: PColor { Palette.muted }
     static var paneTertiary: PColor { .tertiaryLabelColor }
     static var paneFill: PColor { NSColor(name: nil) { $0.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? NSColor(white: 0.19, alpha: 1) : NSColor(white: 0.94, alpha: 1) } }
     static var panePanel: PColor { NSColor(name: nil) { $0.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? NSColor(white: 0.15, alpha: 1) : NSColor(white: 0.975, alpha: 1) } }
@@ -64,8 +64,10 @@ extension PColor {
         #endif
     }
 
-    /// The warm amber accent: a touch deeper in light mode so it still reads on white.
-    static var paneAccent: PColor { PColor(named: "AccentColor") ?? PColor(red: 0.96, green: 0.68, blue: 0.20, alpha: 1) }
+    /// The warm amber accent: deeper in light mode so it still reads on white.
+    static var paneAccent: PColor { PColor(named: "AccentColor") ?? Palette.amber }
+    /// The note's page, for colours mixed over it by hand.
+    static var panePage: PColor { Palette.page }
 }
 
 /// Type sizes for the editor. iOS reads at arm's length; the Mac at a desk.

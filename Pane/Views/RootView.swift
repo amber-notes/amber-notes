@@ -257,12 +257,10 @@ struct MultipleSelectionView: View {
 struct EmptyDetailView: View {
     var body: some View {
         VStack(spacing: 10) {
-            Image(systemName: "note.text")
-                .font(.system(size: 34, weight: .light))
-                .foregroundStyle(.tertiary)
+            AppMark(size: 44)
             Text("No note selected")
                 .font(.callout)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.muted)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

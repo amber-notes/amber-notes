@@ -17,6 +17,8 @@ struct PaneApp: App {
     init() {
         #if os(macOS)
         if Self.isUnitTestHost { NSApplication.shared.setActivationPolicy(.accessory) }
+        #else
+        Self.styleLargeTitles()
         #endif
         let args = ProcessInfo.processInfo.arguments
         let inMemory = args.contains("-uitest") || args.contains("-synctest") || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
@@ -45,6 +47,15 @@ struct PaneApp: App {
         Capture.importSequenceFromArguments()
         #endif
     }
+
+    #if os(iOS)
+    /// Large titles in the website's display type: heavy and tight, in the warm ink.
+    private static func styleLargeTitles() {
+        let size: CGFloat = 34
+        let font = UIFontMetrics(forTextStyle: .largeTitle).scaledFont(for: .systemFont(ofSize: size, weight: .heavy))
+        UINavigationBar.appearance().largeTitleTextAttributes = [.font: font, .kern: Palette.tracking(size), .foregroundColor: Palette.ink]
+    }
+    #endif
 
     /// Test runs can pin an appearance: `-uitest -scheme light`. Otherwise the system decides.
     private static var testScheme: ColorScheme? {

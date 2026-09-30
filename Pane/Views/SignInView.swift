@@ -10,6 +10,7 @@ struct SignInView: View {
     @State private var error: String?
     @FocusState private var focus: Field?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.displayScale) private var displayScale
 
     enum Field { case email, password }
 
@@ -55,8 +56,11 @@ struct SignInView: View {
         VStack(spacing: 24) {
             VStack(spacing: 14) {
                 AppMark(size: 72)
+                // The website's display type: heavy and tight.
                 Text("Sign in to Amber Notes")
-                    .font(.title2.weight(.bold))
+                    .font(.title2.weight(.heavy))
+                    .tracking(-0.6)
+                    .foregroundStyle(Color.ink)
                     .multilineTextAlignment(.center)
                 promise
             }
@@ -94,23 +98,19 @@ struct SignInView: View {
         .animation(reduceMotion ? nil : .smooth(duration: 0.3), value: flow.step)
     }
 
-    /// The website's one-line promise, with its amber marker behind "your AI".
+    /// The website's one-line promise, with its low amber marker under "your AI".
     private var promise: some View {
-        var line = AttributedString("The notes app your AI can use.")
-        if let r = line.range(of: "your AI") {
-            line[r].backgroundColor = Color.accentColor.opacity(0.28)
-            line[r].foregroundColor = Color.primary
-        }
-        return VStack(spacing: 3) {
-            Text(line)
+        VStack(spacing: 3) {
+            Text("The notes app \(Text("your AI").foregroundStyle(Color.ink).customAttribute(Marker())) can use.")
+                .textRenderer(Marker.Renderer(color: Color(Palette.underline)))
             // Where the notes live, said once and plainly.
             Text("Your notes sync between iPhone and Mac.")
                 .font(.footnote)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Color.muted.opacity(0.85))
                 .accessibilityIdentifier("signin.sync")
         }
         .font(.subheadline)
-        .foregroundStyle(.secondary)
+        .foregroundStyle(Color.muted)
         .multilineTextAlignment(.center)
         .padding(.top, -6)
     }
@@ -206,7 +206,8 @@ struct SignInView: View {
         }
         .padding(.horizontal, 12)
         .frame(height: Row.height)
-        .background(.fill.quaternary, in: shape)
+        .background(Color(Palette.field), in: shape)
+        .overlay(shape.strokeBorder(Color(Palette.fieldHairline), lineWidth: 1 / displayScale))
     }
 
     private func mainButton(_ title: String) -> some View {
@@ -215,17 +216,17 @@ struct SignInView: View {
         return Button(action: primary) {
             ZStack {
                 Text(title).opacity(busy ? 0 : 1)
-                if busy { ProgressView().controlSize(.small).tint(.black) }
+                if busy { ProgressView().controlSize(.small).tint(Color(Palette.onAmber)) }
             }
             .font(.system(size: Row.text, weight: .semibold))
-            .foregroundStyle(.black.opacity(0.85))
+            // Deep amber with dark ink when it can be pressed; quiet, near the field, when not.
+            .foregroundStyle(enabled || busy ? Color(Palette.onAmber) : Color.muted)
             .frame(maxWidth: .infinity, minHeight: Row.height, maxHeight: Row.height)
-            .background(Color.accentColor, in: .rect(cornerRadius: Row.radius, style: .continuous))
+            .background(enabled || busy ? Color.accentColor : Color(Palette.quietButton), in: .rect(cornerRadius: Row.radius, style: .continuous))
             .contentShape(.rect(cornerRadius: Row.radius, style: .continuous))
         }
         .buttonStyle(PressScale())
         .disabled(!enabled)
-        .opacity(enabled || busy ? 1 : 0.45)
         .animation(.easeOut(duration: 0.15), value: enabled)
         .keyboardShortcut(.defaultAction)
         .accessibilityLabel(busy ? "\(title), working" : title)
@@ -240,8 +241,8 @@ struct SignInView: View {
             .font(.system(size: Row.text))
             .padding(.horizontal, 12)
             .frame(height: Row.height)
-            .background(.fill.tertiary, in: shape)
-            .overlay(shape.strokeBorder(.primary.opacity(0.08), lineWidth: 1))
+            .background(Color(Palette.field), in: shape)
+            .overlay(shape.strokeBorder(Color(Palette.fieldHairline), lineWidth: 1 / displayScale))
     }
 
     /// "or" between the two ways in.
@@ -311,6 +312,27 @@ struct SignInView: View {
             }
         case nil:
             break
+        }
+    }
+}
+
+/// The website's low marker: a band behind the lower part of the words, from the middle of the
+/// lowercase letters to just under the baseline, so it reads as a highlighter stroke, not a box.
+struct Marker: TextAttribute {
+    struct Renderer: TextRenderer {
+        let color: Color
+
+        func draw(layout: Text.Layout, in context: inout GraphicsContext) {
+            for line in layout {
+                for run in line {
+                    if run[Marker.self] != nil {
+                        let r = run.typographicBounds.rect
+                        let band = CGRect(x: r.minX - 1, y: r.minY + r.height * 0.52, width: r.width + 2, height: r.height * 0.32)
+                        context.fill(Path(band), with: .color(color))
+                    }
+                    context.draw(run)
+                }
+            }
         }
     }
 }

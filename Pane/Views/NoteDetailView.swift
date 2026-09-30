@@ -405,14 +405,3 @@ struct NoteDetailView: View {
         .accessibilityIdentifier("editor.more")
     }
 }
-
-extension Color {
-    /// The note itself sits on a darker page than the list and sidebar, like Apple Notes.
-    static var notePage: Color {
-        #if os(macOS)
-        Color(nsColor: .textBackgroundColor)
-        #else
-        Color(uiColor: .systemBackground)
-        #endif
-    }
-}
