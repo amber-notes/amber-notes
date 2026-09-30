@@ -4,7 +4,7 @@ Where Amber Notes (ambernotes.app) is linked from, where it should be, and what 
 
 Two facts shape every submission:
 - **Say "Amber Notes" and "ambernotes.app" together.** Other products share the name: Amberscript's transcription app at notes.amberscript.com, app.ambernotes.eu, ambernotes.ai, ambernotes.com and an Android app. A directory entry that only says "Amber Notes" can be matched to the wrong one.
-- **Only the Mac app is out.** The iPhone app is in App Store review. Every text below says "iPhone coming soon", and nothing says it's on the App Store. Product Hunt and BetaList are timed for the iPhone release (see section 3).
+- **Only the Mac app is out.** The iPhone app is in App Store review. Every text below says "iPhone coming soon", and nothing says it's on the App Store. BetaList and the Mac-news tip lines are timed for the iPhone release.
 
 ## 1. Log
 
@@ -31,50 +31,47 @@ Status on 2026-09-30. "Open" means the pull request is waiting for the list's ma
 
 Ranked by value times chance of success. "Value" means one or more of: people who'd use it visit the page, the link is followed by search engines, or AI assistants cite the page when asked about notes apps and MCP. Minutes are Emil's time.
 
+Emil's rules apply to all of it: no ads, no paid or "featured" placements, and nothing posted on his social accounts. Every entry below is a directory or registry submission, a GitHub pull request, an email, or one of Emil's own sites. Posts on Hacker News, Reddit, Product Hunt, X or LinkedIn are not on this list; section 4 keeps drafts in case he ever wants them.
+
 | # | Where | Why | What to do | Who | Min |
 |---|---|---|---|---|---|
 | 1 | Claude connector directory (claude.ai/directory) | Shown inside Claude to every user looking for connectors. Highest-intent audience there is. | Submit per [directory-submissions.md](directory-submissions.md). | Emil (paid Claude plan) | 30 |
 | 2 | ChatGPT plugin directory | Same, inside ChatGPT. | Same doc. Needs OpenAI identity verification and a demo video. | Emil | 60 |
-| 3 | Show HN (news.ycombinator.com) | Largest single spike of technical users; ranks in search for months; feeds Hacker Newsletter. | Post the draft in section 4. Show HN wants something people can try without a signup; see the note under the draft. Tue to Thu, morning Pacific. Stay for the comments. | Emil | 20 + 2 h replying |
-| 4 | r/macapps | The subreddit Mac users search for app picks; threads rank in Google and get cited by AI. | Post the draft in section 4. Developer disclosure and the right flair are required; at most one promo post a month. Read the sidebar first. | Emil | 15 |
-| 5 | AlternativeTo, Apple Notes alternatives page | Ranks for "Apple Notes alternative"; 175 alternatives listed; heavily cited by AI assistants. | Suggest a new app, then mark it an alternative to Apple Notes, Bear and Notion. Account must be 7 days old with a verified email, so create it today. | Emil | 10 now + 10 in a week |
-| 6 | mcpservers.org | The site behind wong2/awesome-mcp-servers; ranks for "notes app with MCP server". | Free form at mcpservers.org/submit, no login. Tick "supports remote", Registry name `app.ambernotes/amber-notes`. Free is reviewed within 2 weeks; $39 gets a dofollow link. | Emil | 5 |
-| 7 | openalternative.co, Apple Notes alternatives page | Updated 2026-09-29; lists many small open-source notes apps; open source only, which we are. | Submit at openalternative.co/submit (needs sign-in). Free queue; $137 buys a dofollow link and 48-hour publishing. | Emil | 10 |
-| 8 | r/ClaudeAI | Largest Claude community; the MCP angle fits. | Post the draft in section 4 with the "Built with Claude" or showcase flair, whichever the sidebar lists now. | Emil | 15 |
-| 9 | Product Hunt | Strong dofollow link and a day of traffic. One launch per domain per 6 months. | Launch on the day the iPhone app is on the App Store, not before. Draft in section 4. Personal account, 12:01 AM Pacific. | Emil | 60 prep + launch day |
-| 10 | mcp.directory | Imports from the Registry automatically. | Wait a few days for the import; then claim the listing by email for the verified badge. The free form at mcp.directory/submit works too. | Emil | 5 |
-| 11 | MCP Market (mcpmarket.com) | Ranks for "Apple Notes MCP" and "Claude Apple Notes". | Form at mcpmarket.com/submit, "Remote MCP". Free queue is 4 to 6 weeks; $29 is 24 hours. | Emil | 5 |
-| 12 | Cline MCP marketplace | Shown inside Cline to developers. Selective. | GitHub issue with the `mcp-server-submission.yml` template: repo URL, 400x400 PNG logo (`brand/directory/icon-512.png` resized), reason. Test adding the server in Cline first; the form asks you to confirm it installs from the README. | Emil or an agent after testing | 20 |
-| 13 | Smithery (smithery.ai) | Big MCP registry, used by clients to install servers. | Sign in, then smithery.ai/new with `https://mcp.ambernotes.app`. Its scan can't sign in, so it will fall back to `/.well-known/mcp/server-card.json`; add that file to the site first. | Emil, plus a small site change | 15 |
-| 14 | LobeHub MCP | ~100K servers; LobeChat users install from it. | lobehub.com/mcp, "Submit MCP" (needs account), or `npx @lobehub/market-cli`. | Emil | 10 |
-| 15 | Docker MCP catalog | Shown in Docker Desktop's MCP Toolkit. | Pull request to github.com/docker/mcp-registry: `task remote-wizard` writes a `server.yaml` with `type: remote` and an `oauth` block. | An agent (GitHub PR) | 30 |
-| 16 | incredible.one | Emil's company site; a dofollow link from an established domain, and it explains who's behind Amber. | A line in the footer or on an "about" page: "Amber Notes, an open-source notes app by our CTO Emil Wagman, is built on the same belief: your AI should work with your things." Link to ambernotes.app. | Emil (it's the company site) | 15 |
-| 17 | GitHub profile (github.com/emilwagman) | Profile README and the website field are crawled and linked from every PR above. | Set Website to ambernotes.app or emilwagman.com. Create repo `emilwagman/emilwagman` with the README text in section 3. | Emil | 5 |
-| 18 | X and LinkedIn bios | People check the maker after a Show HN or Reddit post. | Add "Making Amber Notes, open-source notes your AI can use: ambernotes.app". Pin the Show HN or launch post on X. | Emil | 5 |
-| 19 | MCP Newsletter (mcpnewsletter.com) | Explicitly takes new servers; exact audience. | mcpnewsletter.com/submit or contact@mcpnewsletter.com with the 50-word text. | Emil | 5 |
-| 20 | usecarly.com, "Claude Apple Notes integration" post | Ranks for Claude plus Apple Notes, and says local Apple Notes servers can't reach the phone: the gap Amber fills. | Pitch in section 3. Contact via carlyassistant.com. | Emil | 10 |
-| 21 | Tool Finder, Apple Notes alternatives and open-source note-taking lists | Ranking listicles by Francesco D'Alessio. | toolfinder.com/submit, then the pitch in section 3. | Emil | 10 |
-| 22 | Timing blog, "best note-taking apps for Mac" | Updated 2026-09-28, 19 apps including solo-developer ones. | Pitch in section 3 to the Timing team (no author contact found; use their contact form). | Emil | 10 |
-| 23 | Indie Dev Monday | Newsletter that spotlights new indie apps. | indiedevmonday.com/look-at-me. | Emil | 10 |
-| 24 | Console.dev | Weekly newsletter for developer tools; takes maker submissions. | hello@console.dev, pitched on Claude Code and Codex reading and editing your notes. | Emil | 10 |
-| 25 | MacUpdate | Long-lived Mac download site with followed links. | Form at macupdate.com/content/submit: the .dmg link, descriptions, "Requires macOS 26". | Emil | 15 |
+| 3 | AlternativeTo, Apple Notes alternatives page | Ranks for "Apple Notes alternative"; 175 alternatives listed; heavily cited by AI assistants. | Suggest a new app, then mark it an alternative to Apple Notes, Bear and Notion. The account must be 7 days old with a verified email, so create it today. | Emil | 10 now + 10 in a week |
+| 4 | mcpservers.org | The site behind wong2/awesome-mcp-servers; ranks for "notes app with MCP server". | Free form at mcpservers.org/submit, no login. Tick "supports remote", Registry name `app.ambernotes/amber-notes`. Reviewed within 2 weeks. | Emil or the lead | 5 |
+| 5 | openalternative.co, Apple Notes alternatives page | Updated 2026-09-29; lists many small open-source notes apps; open source only, which we are. | Free submission at openalternative.co/submit (needs sign-in). | Emil | 10 |
+| 6 | mcp.directory | Imports from the Registry automatically. | Wait a few days for the import, then claim the listing by email. The free form at mcp.directory/submit works too. | Emil | 5 |
+| 7 | Smithery (smithery.ai) | Big MCP registry that clients install from. | Listing draft is with directory-prep; the lead submits with Emil's login. Its scan can't sign in, so it falls back to `/.well-known/mcp/server-card.json`; the site should serve that file first. | Lead | 0 |
+| 8 | mcp.so | Large MCP directory. | Free submission; listing draft is with directory-prep. | Lead | 0 |
+| 9 | MCP Market (mcpmarket.com) | Ranks for "Apple Notes MCP" and "Claude Apple Notes". | Free form at mcpmarket.com/submit, "Remote MCP". The free queue takes 4 to 6 weeks. | Emil or the lead | 5 |
+| 10 | Cline MCP marketplace | Shown inside Cline to developers. Selective. | GitHub issue with the `mcp-server-submission.yml` template: repo URL, 400x400 PNG logo (`brand/directory/icon-512.png` resized), reason. Test adding the server in Cline first; the form asks you to confirm it installs from the README. | An agent, after testing in Cline | 20 |
+| 11 | LobeHub MCP | ~100K servers; LobeChat users install from it. | lobehub.com/mcp, "Submit MCP" (needs account), or `npx @lobehub/market-cli`. | Emil | 10 |
+| 12 | Docker MCP catalog | Shown in Docker Desktop's MCP Toolkit. | Pull request to github.com/docker/mcp-registry: `task remote-wizard` writes a `server.yaml` with `type: remote` and an `oauth` block. | An agent (GitHub PR) | 0 |
+| 13 | incredible.one | Emil's company site; a followed link from an established domain, and it says who's behind Amber. | A line in the footer or on an "about" page (text in section 3), linking to ambernotes.app. | Emil (company site) | 15 |
+| 14 | GitHub profile (github.com/emilwagman) | The profile is linked from every PR above. | Set Website to ambernotes.app or emilwagman.com. Create repo `emilwagman/emilwagman` with the README text in section 3. | Emil | 5 |
+| 15 | MCP Newsletter (mcpnewsletter.com) | Takes new servers; exact audience. | mcpnewsletter.com/submit or contact@mcpnewsletter.com with the 50-word text. | Emil | 5 |
+| 16 | usecarly.com, "Claude Apple Notes integration" post | Ranks for Claude plus Apple Notes, and says local Apple Notes servers can't reach the phone: the gap Amber fills. | Email pitch in section 3. Contact via carlyassistant.com. | Emil | 10 |
+| 17 | Tool Finder, Apple Notes alternatives and open-source note-taking lists | Ranking listicles by Francesco D'Alessio. | Free form at toolfinder.com/submit, then the pitch in section 3. | Emil | 10 |
+| 18 | Timing blog, "best note-taking apps for Mac" | Updated 2026-09-28, 19 apps including solo-developer ones. | Email pitch in section 3 through their contact form. | Emil | 10 |
+| 19 | Indie Dev Monday | Newsletter that spotlights new indie apps. | Free form at indiedevmonday.com/look-at-me. | Emil | 10 |
+| 20 | Console.dev | Weekly newsletter for developer tools; takes maker submissions. | Email hello@console.dev, pitched on Claude Code and Codex reading and editing your notes. | Emil | 10 |
+| 21 | MacUpdate | Long-lived Mac download site. | Form at macupdate.com/content/submit: the .dmg link, descriptions, "Requires macOS 26". | Emil | 15 |
+| 22 | SaaSHub | Alternatives pages that rank for "X alternative". | Free submission; needs an account. | Emil | 10 |
+| 23 | DevHunt | Directory for developer tools, with an MCP category. | Free queue; needs an account. | Emil | 10 |
+| 24 | opensourcealternative.to | Wants open-source, self-hostable projects; the README's "Run your own backend" section qualifies. | Free form, no login. The free queue is long (6 months or more). | Emil or the lead | 5 |
+| 25 | Uneed (uneed.best) | Directory with a launch queue; the link becomes followed once the listing gets enough upvotes. | Free waiting line only. | Emil | 10 |
 
-Worth doing once the list above is done:
-- **Uneed** (uneed.best): free queue or $14.99 fast track; dofollow once a launch gets 20 upvotes.
-- **Peerlist Launchpad**: Monday launches; complete profile required.
-- **SaaSHub** and **DevHunt** (MCP category): free, need accounts.
-- **BetaList**: only for unreleased or just-launched products, so submit the iPhone launch.
-- **opensourcealternative.to**: wants self-hostable projects. The README's "Run your own backend" section qualifies. $29 or a long free queue.
+Later:
+- **BetaList**: only takes unreleased or just-launched products, so submit on the day the iPhone app is released.
+- **9to5Mac and MacRumors tip lines** (tips@9to5mac.com, tips@macrumors.com): email on iPhone launch day, with the Apple Notes import angle.
+- **iOS Dev Weekly** (suggest.iosdevweekly.com): after the iPhone launch, ideally with a technical write-up of the TextKit 2 editor.
 - **Changelog News** (changelog.com/news/submit): account needed; own work is welcome.
-- **dev.to**: a how-to article ("Give Claude your notes over MCP"), not an announcement. Their rules forbid posts written mainly for backlinks and require disclosing AI help.
-- **r/SideProject**: self-promotion welcome. r/opensource removes promo posts. r/apple allows developer self-promotion only on Sundays and only with prior activity there.
-- **9to5Mac and MacRumors tip lines** (tips@9to5mac.com, tips@macrumors.com): on iPhone launch day, with the Apple Notes import angle.
-- **iOS Dev Weekly** (suggest.iosdevweekly.com): after the iPhone launch, ideally with a technical post about the TextKit 2 editor.
-- **Lobsters**: invite-only, and new users can't use the "show" tag. Only if someone who knows Emil invites him.
-- **TLDR AI, Ben's Bites, The Rundown**: no free route that reliably gets into the newsletter. The Rundown has a free tool form (therundown.ai/submit) and Ben's Bites a tools catalog; low odds.
-- **Paid directories** (There's An AI For That, Futurepedia, Toolify, Microlaunch, Fazier): skip. Fazier's free tier requires a badge on our homepage.
+- **The Rundown** tool form (therundown.ai/submit) and **Ben's Bites** tools catalog: free forms, low odds.
 
-Checked and not useful now: PulseMCP (submissions paused, imports from the Registry), OpenTools, HiMCP, MCP Server Finder and Portkey (no submit route), mcp.run and mcp-get (gone), Composio (not a public directory).
+Skipped:
+- Paid-only or pay-for-placement directories: There's An AI For That, Futurepedia, Toolify, Microlaunch, and the paid tiers of every directory above. Fazier's free tier requires a Fazier badge on our homepage, which is advertising for them.
+- TLDR AI: no free route found.
+- PulseMCP (submissions paused, imports from the Registry), OpenTools, HiMCP, MCP Server Finder and Portkey (no submit route), mcp.run and mcp-get (gone), Composio (not a public directory).
 
 ## 3. Ready-to-paste text
 
@@ -133,9 +130,11 @@ Send each from Emil's own email, one at a time, and only to articles that are st
 
 > Amber Notes, an open-source notes app by our CTO Emil Wagman, lets ChatGPT and Claude read and edit your notes, and shows you every change they make. [ambernotes.app](https://ambernotes.app)
 
-## 4. Drafts for Emil
+## 4. Optional drafts, not planned
 
-These are written in Emil's voice and need his read before posting. Anything marked [check] is a guess about his reasons or plans.
+Emil doesn't post about Amber Notes on his social accounts, and no agent posts anywhere under his name. These drafts exist only in case he ever decides to post one himself. Nothing in sections 2 or 5 depends on them. Anything marked [check] is a guess about his reasons or plans.
+
+The same goes for his X and LinkedIn bios: a line like "Making Amber Notes, open-source notes your AI can use: ambernotes.app" is there if he wants it.
 
 ### Show HN
 
@@ -194,7 +193,7 @@ Body:
 >
 > It's MIT-licensed: https://github.com/emilwagman/amber-notes. Download: https://ambernotes.app. I'd like feedback on which tools Claude uses well and which it fumbles.
 
-### Product Hunt (on iPhone launch day)
+### Product Hunt
 
 - Name: Amber Notes
 - Tagline (60 characters max): Notes your AI can read and edit, with every change shown
@@ -206,17 +205,17 @@ Body:
 
 ## 5. What Emil should do next
 
-In order. Time is Emil's own.
+In order. Time is Emil's own. No ads, no paid placements, no social posts.
 
 1. Create an AlternativeTo account today, so it's 7 days old next week (2 min now, 10 min later).
 2. Submit to Claude's connector directory, per directory-submissions.md (30 min).
-3. Post Show HN, Tuesday to Thursday morning Pacific, and stay for replies (20 min, then about 2 hours).
-4. Post on r/macapps a day or two later (15 min).
-5. Fill in the free forms: mcpservers.org, mcp.directory, MCP Market (15 min total).
-6. Set the GitHub profile website and create the profile README; update X and LinkedIn bios (10 min).
-7. Add the line to incredible.one (15 min).
-8. Sign up and submit to openalternative.co and Smithery (20 min).
-9. Post on r/ClaudeAI (15 min).
-10. Send the four author pitches and the MCP Newsletter note (40 min).
+3. Fill in the free forms: mcpservers.org, MCP Market, opensourcealternative.to (15 min total; the lead can do these too).
+4. Add the line to incredible.one (15 min).
+5. Set the GitHub profile website and create the profile README (5 min).
+6. Submit to openalternative.co, free tier (10 min).
+7. Send the three author pitches (usecarly, Tool Finder, Timing) (30 min).
+8. Send the MCP Newsletter, Indie Dev Monday and Console.dev submissions (20 min).
+9. Submit to LobeHub, SaaSHub and DevHunt (30 min).
+10. Submit to the ChatGPT plugin directory once identity verification and the demo video are done (60 min).
 
-Then, on iPhone launch day: Product Hunt, BetaList, 9to5Mac and MacRumors tips, iOS Dev Weekly.
+On the day the iPhone app is released: BetaList, the 9to5Mac and MacRumors tip lines, iOS Dev Weekly.
