@@ -1,6 +1,6 @@
 # Terms of Service
 
-Last updated: 29 September 2026
+Last updated: 30 September 2026
 
 ## The short version
 
@@ -51,7 +51,7 @@ You also may not try to reach other people's notes, overload or disrupt the serv
 
 ## AI connections
 
-- Connecting an AI assistant is your choice. You approve each connection in the app and choose whether it may only read or also edit your notes.
+- Connecting an AI assistant is your choice. You approve each connection in Amber Notes or on ambernotes.app and choose whether it may only read or also edit your notes.
 - An assistant you connect acts for you. Its maker's own terms and privacy policy cover what happens in that assistant. We're not responsible for what an assistant does with your notes, or for the changes it makes, though every change keeps the previous version so you can undo it.
 - You can disconnect any assistant at any time in **Settings → Connect an AI**.
 
