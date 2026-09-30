@@ -5,6 +5,30 @@ assistants. Newest first. Research behind it: [seo-aeo-research-2026-09-30.md](s
 
 `docs/` had no README naming a folder for evidence, so this and the research live in `docs/Evidence/`.
 
+## 30 September 2026: round 5, "Apple Notes MCP"
+
+### Query
+
+- "Apple Notes MCP" and "Apple Notes MCP server". Google shows only GitHub repositories and MCP directory listings; no guide compares them.
+
+### Changed (branch `site/growth-5`)
+
+- New post `/blog/apple-notes-mcp`, "Apple Notes MCP servers compared (2026)", in Comparisons:
+  - a table of four servers (sweetrb/apple-notes-mcp, RafalWilinski/mcp-apple-notes, sirmews/apple-notes-mcp, supermemoryai/apple-mcp), each checked against its README and GitHub page on 30 September: how it reaches Notes, what the AI can do, setup, AI apps, and whether it's maintained or archived
+  - setup for sweetrb's server in Claude Code and Claude Desktop
+  - the limits they share, and where Amber Notes fits (remote server, approval, Undo and history, one-time import)
+  - an FAQ with FAQPage JSON-LD
+- Fact corrections made while writing: attachments are not unavailable everywhere (sweetrb's server lists, saves and adds them; the other three don't), and AppleScript can't tick a checklist item. sirmews (Python) and sweetrb (Node.js) both publish as `apple-notes-mcp`, which the post points out.
+- Card picture: the Version History list from the Mac history capture, on a new "sage" ground.
+- Links in from claude-and-apple-notes, apple-notes-api, mcp-server and notes-apps-with-mcp (which swapped its Claude and Apple Notes link for this one, to stay at six), and from the chatgpt-and-apple-notes draft. The new post can't link that draft until it's published.
+- Sitemap, /llms.txt and "All posts" pick it up from `web/lib/posts.ts`.
+
+### To measure
+
+- Search Console: impressions and position for "apple notes mcp", "apple notes mcp server" and "apple notes mcp claude", weekly from when the page is indexed.
+- Whether the page is indexed within a week of deploy (`site:ambernotes.app/blog/apple-notes-mcp`).
+- Ask ChatGPT, Claude and Perplexity "what's the best Apple Notes MCP server?" once a month and note whether the post is cited.
+
 ## 30 September 2026 (late): round 4
 
 ### Measured

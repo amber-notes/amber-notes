@@ -80,7 +80,8 @@ export default function Page() {
       </ul>
       <p>
         Choosing a notes app for an agent? <a href="/blog/best-notes-app-for-ai-agents">The best notes app for AI agents</a> sets out the
-        criteria.
+        criteria. Coming from Apple Notes? <a href="/blog/apple-notes-mcp">Apple Notes MCP servers compared</a> covers the local servers
+        for Notes on a Mac, and how they differ from this one.
       </p>
       <p>
         The server is open source. Read it in <a href="https://github.com/emilwagman/amber-notes/tree/main/supabase/functions/mcp" rel="noopener">supabase/functions/mcp</a> on GitHub.

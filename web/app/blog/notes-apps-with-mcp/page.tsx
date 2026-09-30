@@ -107,7 +107,7 @@ export default function Page() {
       <p className="label"><strong>Apple Notes</strong></p>
       <p>
         Apple doesn&apos;t offer an API or an MCP server. The Claude desktop app can read Apple Notes on a Mac, and community servers let
-        Claude write to them through AppleScript, on that Mac only. <a href="/blog/claude-and-apple-notes">More on Claude and Apple Notes</a>.
+        Claude write to them through AppleScript, on that Mac only. <a href="/blog/apple-notes-mcp">Apple Notes MCP servers, compared</a>.
       </p>
     </PostPage>
   );
