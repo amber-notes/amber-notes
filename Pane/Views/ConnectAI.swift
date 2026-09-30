@@ -122,6 +122,10 @@ struct ConnectRequest: Decodable, Identifiable, Equatable {
     var started_at: Date? = nil
     /// What the page says it is, e.g. "Chrome on a Mac".
     var started_from: String? = nil
+    /// The client's `state` and the issuer (`iss`) the server adds to the return address: a device
+    /// that hands the code to a browser builds that address itself and seals it with the code.
+    var state: String? = nil
+    var iss: String? = nil
 
     var isAsked: Bool { asked == true }
 
@@ -135,13 +139,43 @@ struct ConnectRequest: Decodable, Identifiable, Equatable {
         return "Requested \(when) from \(from)"
     }
 
-    /// The AI this request provably comes from, if any.
-    var verifiedAI: String? { ConnectTrust.verifiedAI(redirectURI: redirect_uri) }
+    /// The AI this request provably comes from, if any. Never for a request asked from a
+    /// browser: anyone can start one with ChatGPT's return address, and the page that waits for
+    /// the answer is whoever asked, so only the number the page shows ties it to the person.
+    var verifiedAI: String? { isAsked ? nil : ConnectTrust.verifiedAI(redirectURI: redirect_uri) }
     /// Who's asking, as the sheet names it: the verified AI, or else where access goes.
     var who: String { verifiedAI ?? ConnectTrust.destination(host: redirect_host, loopback: loopback) }
     /// The name an unverified app gave itself, shown only as a secondary claim, and only as the
     /// server's plain-ASCII version of it.
     var claimedName: String? { verifiedAI == nil ? claimed_name.flatMap { $0.isEmpty ? nil : $0 } : nil }
+
+    /// Where the browser that asked goes with the code: the return address with `state` and
+    /// `iss`, exactly as the server builds it. Nil when the server didn't say (too old).
+    var handoffRedirect: String? {
+        guard let redirect_uri, let iss else { return nil }
+        return ConnectAPI.clientRedirect(redirect_uri, state: state, iss: iss)
+    }
+}
+
+/// Number matching, like Microsoft Authenticator: the page that asked shows two digits made from
+/// its key and the request (`E2EE.matchNumber`), and the device shows three numbers. Only the
+/// person looking at that page knows which one to tap; a key swapped on the way gives another
+/// number, and a wrong tap declines.
+enum ConnectMatch {
+    /// The right number and two other distinct ones, shuffled.
+    static func choices(correct: String, using rng: inout some RandomNumberGenerator) -> [String] {
+        var out = [correct]
+        while out.count < 3 {
+            let n = String(format: "%02d", Int.random(in: 0 ..< 100, using: &rng))
+            if !out.contains(n) { out.append(n) }
+        }
+        return out.shuffled(using: &rng)
+    }
+
+    static func choices(correct: String) -> [String] {
+        var rng = SystemRandomNumberGenerator()
+        return choices(correct: correct, using: &rng)
+    }
 }
 
 enum ConnectAPI {
@@ -193,12 +227,79 @@ enum ConnectAPI {
         var url: URL? { if case .open(let url) = self { url } else { nil } }
     }
 
+    /// The client's return address with `state` (when there is one) and `iss` set, as the server
+    /// writes it (`new URL(redirect_uri)`, then `searchParams.set`): the query is read as form
+    /// data and written back form-encoded, every existing parameter included.
+    static func clientRedirect(_ redirectURI: String, state: String?, iss: String) -> String {
+        var base = redirectURI, fragment = ""
+        if let hash = base.firstIndex(of: "#") {
+            fragment = String(base[hash...])
+            base = String(base[..<hash])
+        }
+        var query = ""
+        if let q = base.firstIndex(of: "?") {
+            query = String(base[base.index(after: q)...])
+            base = String(base[..<q])
+        }
+        var params: [(String, String)] = query.split(separator: "&", omittingEmptySubsequences: true).map { pair in
+            let parts = pair.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
+            return (formDecode(String(parts[0])), parts.count > 1 ? formDecode(String(parts[1])) : "")
+        }
+        func set(_ name: String, _ value: String) {
+            if let i = params.firstIndex(where: { $0.0 == name }) {
+                params[i].1 = value
+                var j = params.count - 1
+                while j > i { if params[j].0 == name { params.remove(at: j) }; j -= 1 }
+            } else {
+                params.append((name, value))
+            }
+        }
+        if let state { set("state", state) }
+        set("iss", iss)
+        return base + "?" + params.map { formEncode($0.0) + "=" + formEncode($0.1) }.joined(separator: "&") + fragment
+    }
+
+    /// application/x-www-form-urlencoded, as URLSearchParams writes it.
+    static func formEncode(_ s: String) -> String {
+        var out = ""
+        for b in s.utf8 {
+            switch b {
+            case UInt8(ascii: "a") ... UInt8(ascii: "z"), UInt8(ascii: "A") ... UInt8(ascii: "Z"), UInt8(ascii: "0") ... UInt8(ascii: "9"),
+                 UInt8(ascii: "*"), UInt8(ascii: "-"), UInt8(ascii: "."), UInt8(ascii: "_"):
+                out.unicodeScalars.append(Unicode.Scalar(b))
+            case UInt8(ascii: " "):
+                out += "+"
+            default:
+                out += String(format: "%%%02X", b)
+            }
+        }
+        return out
+    }
+
+    static func formDecode(_ s: String) -> String {
+        var bytes: [UInt8] = []
+        var u = Array(s.utf8)[...]
+        while let b = u.popFirst() {
+            if b == UInt8(ascii: "+") { bytes.append(UInt8(ascii: " ")); continue }
+            if b == UInt8(ascii: "%"), u.count >= 2, let v = UInt8(String(decoding: u.prefix(2), as: UTF8.self), radix: 16) {
+                bytes.append(v)
+                u = u.dropFirst(2)
+                continue
+            }
+            bytes.append(b)
+        }
+        return String(decoding: bytes, as: UTF8.self)
+    }
+
     /// Allow or deny. `redirect_uri` goes back exactly as /connect/request gave it. Allowing sends
     /// a code made here (`code`): only its hash and the account's key wrapped under it reach the
     /// server. A request asked from a browser (`browserKey`, the page's public key) also gets the
-    /// code sealed to that page; otherwise the code is added to the return address here.
+    /// code sealed to that page together with the address it goes to (`handoffRedirect`), so
+    /// nobody on the way can send the page elsewhere; otherwise the code is added to the return
+    /// address here.
     static func decide(id: UUID, redirectURI: String?, allow: Bool, write: Bool,
-                       code: (code: String, hash: String, wrap: String)?, browserKey: Data? = nil, send: Send) async throws -> Answer {
+                       code: (code: String, hash: String, wrap: String)?, browserKey: Data? = nil, handoffRedirect: String? = nil,
+                       send: Send) async throws -> Answer {
         guard let redirectURI else { throw Failure(message: "Update Amber Notes to connect an AI.") }
         guard !allow || code != nil else { throw Failure(message: "Open Amber Notes and finish setting up encryption first.") }
         var body: [String: Any] = ["id": id.uuidString.lowercased(), "allow": allow, "write": write, "redirect_uri": redirectURI]
@@ -206,7 +307,9 @@ enum ConnectAPI {
             body["code_hash"] = code.hash
             body["code_wrap"] = code.wrap
             if let browserKey {
-                guard let sealed = try? E2EE.sealHandoff(code: code.code, browserKey: browserKey, requestID: id) else {
+                guard let handoffRedirect, ConnectCenter.isReturnAddress(URL(string: handoffRedirect) ?? URL(fileURLWithPath: "/")),
+                      let sealed = try? E2EE.sealHandoff(code: E2EE.handoffPayload(code: code.code, redirect: handoffRedirect),
+                                                         browserKey: browserKey, requestID: id) else {
                     throw Failure(message: "Start connecting again in your browser.")
                 }
                 body["handoff"] = sealed
@@ -228,6 +331,13 @@ enum ConnectAPI {
         guard var parts = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return url }
         parts.queryItems = (parts.queryItems ?? []).filter { $0.name != "code" } + [URLQueryItem(name: "code", value: code)]
         return parts.url ?? url
+    }
+}
+
+/// Disconnecting an AI: its grant is revoked, and it loses access at once.
+enum ConnectRevoke {
+    static func revoke(_ client: SupabaseClient, id: UUID) async throws {
+        try await client.from("mcp_tokens").update(["revoked_at": AnyJSON.string(Date.now.ISO8601Format())]).eq("id", value: id).execute()
     }
 }
 
@@ -271,8 +381,11 @@ final class ConnectCenter: NSObject {
     var pending: UUID?
     /// Asks from a browser this device knows are waiting, by request id.
     private(set) var asks: [UUID: ConnectAsk] = [:]
-    /// Asks waiting for the sheet, in the order they'll show.
+    /// Asks and links waiting for the sheet, in the order they'll show. Nothing that arrives
+    /// replaces the sheet that's showing: the person answers what they're looking at.
     private(set) var queue: [UUID] = []
+    /// Requests in the queue that came by link on this device (not asks).
+    private var links: Set<UUID> = []
     /// Asks that have been offered here: each opens the sheet by itself once.
     private var offered: Set<UUID> = []
     /// Answered on this device: the update saying so doesn't cut the sheet's "Allowed" short.
@@ -285,8 +398,12 @@ final class ConnectCenter: NSObject {
     /// The last approval made on this device, so an open guide can say it worked right away.
     var approved: (ai: String?, at: Date)?
     #if os(macOS)
-    /// The browser the request came from, so the answer goes back to the same one.
+    /// The browser the request showing came from, so the answer goes back to the same one.
     var browser: URL?
+    /// The browser each queued link came from.
+    private var browsers: [UUID: URL] = [:]
+    /// Brings the app to the front for a link; tests keep it where it is.
+    @ObservationIgnored var activate: () -> Void = { NSApp.activate() }
     private var installed = false
 
     /// Takes URL events ourselves so we can tell which app sent them (SwiftUI's
@@ -354,6 +471,7 @@ final class ConnectCenter: NSObject {
         if let id = pending, asks[id] != nil { pending = nil }
         asks = [:]
         queue = []
+        links = []
         offered = []
         answeredHere = []
         expiry?.cancel()
@@ -361,6 +479,9 @@ final class ConnectCenter: NSObject {
 
     private func show(_ id: UUID) {
         pending = id
+        #if os(macOS)
+        browser = browsers.removeValue(forKey: id)
+        #endif
         expiry?.cancel()
         // An ask left unanswered closes when it expires.
         guard let ends = asks[id]?.expires_at else { return }
@@ -384,20 +505,29 @@ final class ConnectCenter: NSObject {
         guard pending == nil else { return }
         while let id = queue.first {
             queue.removeFirst()
+            if links.remove(id) != nil { show(id); return }
             if asks[id]?.isOpen(now: now) == true { show(id); return }
             asks[id] = nil
         }
     }
 
+    /// A request by link on this device. It shows now, or next when a sheet is showing: it never
+    /// replaces what the person is looking at.
     func receive(_ url: URL, from sender: URL? = nil) {
         guard let id = ConnectLink.requestID(from: url) else { return }
         #if os(macOS)
-        browser = sender.flatMap { Self.isBrowser($0) ? $0 : nil }
-        NSApp.activate()
+        let from = sender.flatMap { Self.isBrowser($0) ? $0 : nil }
+        if let from { browsers[id] = from } else { browsers[id] = nil }
+        activate()
         #endif
-        // An ask that was showing waits its turn behind the link.
-        if let showing = pending, showing != id, asks[showing] != nil { queue.insert(showing, at: 0) }
-        pending = id
+        guard pending != id else { return }
+        guard pending == nil else {
+            // Queued asks keep their place behind the person's own link.
+            if !queue.contains(id) { queue.insert(id, at: 0) }
+            links.insert(id)
+            return
+        }
+        show(id)
     }
 
     /// Sends the browser on to the AI with the result, in the browser it came from when known.
@@ -416,7 +546,7 @@ final class ConnectCenter: NSObject {
     }
 
     /// https anywhere, or http back to this computer (native clients listen there).
-    static func isReturnAddress(_ url: URL) -> Bool {
+    nonisolated static func isReturnAddress(_ url: URL) -> Bool {
         switch url.scheme?.lowercased() {
         case "https": return true
         case "http": return ["localhost", "127.0.0.1", "::1", "[::1]"].contains(url.host?.lowercased() ?? "")
@@ -498,6 +628,16 @@ struct ConsentSheet: View {
     enum Phase: Equatable { case loading, asking(ConnectRequest), working, done(String), handedOff(String), failed(String) }
     @State private var phase: Phase
     @State private var write = true
+    /// Asked from a browser: the page's key as it was when the numbers were made, the number the
+    /// page shows, and the three to pick from.
+    struct Match: Equatable { var key: Data; var number: String; var choices: [String] }
+    @State private var match: Match?
+    /// The page reloaded (a new key) while the numbers showed: they were made again.
+    @State private var changed = false
+    /// Allow and the numbers wait a moment after what the sheet shows changes, so a tap meant
+    /// for what was there before doesn't land on what's there now.
+    @State private var armed = false
+    static let armDelay: Duration = .seconds(1)
     /// Face ID or Touch ID before allowing; tests and captures answer for it.
     var confirm: (String) async -> Bool = ConnectApproval.confirm
     var canConfirm: () -> Bool = { ConnectApproval.canConfirm }
@@ -514,6 +654,8 @@ struct ConsentSheet: View {
         _phase = State(initialValue: initial)
     }
 
+    private struct Shown: Equatable { var phase: Phase; var match: Match? }
+
     var body: some View {
         VStack(spacing: 20) {
             header
@@ -525,7 +667,15 @@ struct ConsentSheet: View {
         #else
         .presentationDetents([.medium, .large])
         #endif
-        .task { if phase == .loading { await load() } }
+        .task {
+            if phase == .loading { await load() }
+            else if case .asking(let r) = phase, r.isAsked, match == nil { await loadMatch(r) }
+        }
+        .task(id: Shown(phase: phase, match: match)) {
+            armed = false
+            try? await Task.sleep(for: Self.armDelay)
+            if !Task.isCancelled { armed = true }
+        }
         .animation(.smooth(duration: 0.25), value: phase)
     }
 
@@ -596,18 +746,20 @@ struct ConsentSheet: View {
         let known = r.verifiedAI != nil
         return VStack(spacing: 18) {
             VStack(spacing: 6) {
-                Text("Allow \(r.who) to use your notes?")
+                // Asked from a browser: no name in the title, whatever the app calls itself.
+                Text(r.isAsked ? "Allow access to your notes?" : "Allow \(r.who) to use your notes?")
                     .font(.title3.weight(.semibold))
                     .multilineTextAlignment(.center)
                 Group {
                     if let claimed = r.claimedName {
-                        Text("Access goes to \(Text(r.who).bold()). It calls itself \u{201C}\(claimed)\u{201D}.")
+                        Text("Access goes to \(Text(r.redirect_host).bold()). It calls itself \u{201C}\(claimed)\u{201D}.")
                     } else {
                         Text("Access goes to \(Text(r.redirect_host).bold()).")
                     }
                 }
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
+                .accessibilityIdentifier("connect.destination")
                 // Asked from a browser: when, and in what, so a request you didn't start stands out.
                 if let line = r.requestedLine() {
                     Text(line)
@@ -636,28 +788,73 @@ struct ConsentSheet: View {
                 .multilineTextAlignment(.center)
                 .frame(minHeight: 40, alignment: .top)
 
-            Label(known ? "Only allow this if you just started connecting \(r.who)." :
-                    "Amber Notes doesn't recognize this app. Only allow it if you just started connecting it yourself.",
-                  systemImage: known ? "info.circle" : "exclamationmark.triangle.fill")
-                .font(.footnote)
-                .foregroundStyle(known ? AnyShapeStyle(.secondary) : AnyShapeStyle(.orange))
-                .multilineTextAlignment(.leading)
+            if r.isAsked {
+                numbers(r)
+            } else {
+                Label(known ? "Only allow this if you just started connecting \(r.who)." :
+                        "Amber Notes doesn't recognize this app. Only allow it if you just started connecting it yourself.",
+                      systemImage: known ? "info.circle" : "exclamationmark.triangle.fill")
+                    .font(.footnote)
+                    .foregroundStyle(known ? AnyShapeStyle(.secondary) : AnyShapeStyle(.orange))
+                    .multilineTextAlignment(.leading)
 
-            HStack(spacing: 12) {
-                Button { Task { await decide(r, allow: false) } } label: {
-                    Text("Don't Allow").frame(maxWidth: .infinity)
+                HStack(spacing: 12) {
+                    Button { Task { await decide(r, allow: false) } } label: {
+                        Text("Don't Allow").frame(maxWidth: .infinity)
+                    }
+                    .keyboardShortcut(.cancelAction)
+                    .controlSize(.large)
+                    .accessibilityIdentifier("connect.deny")
+                    Button { Task { await decide(r, allow: true) } } label: {
+                        Text("Allow").frame(maxWidth: .infinity)
+                    }
+                    .keyboardShortcut(.defaultAction)
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .disabled(!armed)
+                    .accessibilityIdentifier("connect.allow")
                 }
-                .keyboardShortcut(.cancelAction)
-                .controlSize(.large)
-                .accessibilityIdentifier("connect.deny")
-                Button { Task { await decide(r, allow: true) } } label: {
-                    Text("Allow").frame(maxWidth: .infinity)
-                }
-                .keyboardShortcut(.defaultAction)
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .accessibilityIdentifier("connect.allow")
             }
+        }
+    }
+
+    /// Asked from a browser: tap the number the page shows. The right one allows (after Face ID
+    /// or Touch ID); any other declines.
+    @ViewBuilder
+    private func numbers(_ r: ConnectRequest) -> some View {
+        VStack(spacing: 12) {
+            Label(changed ? "The page in your browser changed. Check its number again." :
+                    "Only allow this if you just started connecting an AI in your browser. Tap the number it shows.",
+                  systemImage: "exclamationmark.triangle.fill")
+                .font(.footnote)
+                .foregroundStyle(.orange)
+                .multilineTextAlignment(.leading)
+                .accessibilityIdentifier("connect.matchHint")
+            if let match {
+                HStack(spacing: 12) {
+                    ForEach(match.choices, id: \.self) { n in
+                        Button { Task { await picked(n, r) } } label: {
+                            Text(n)
+                                .font(.title2.weight(.semibold))
+                                .monospacedDigit()
+                                .frame(maxWidth: .infinity, minHeight: 44)
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.large)
+                        .disabled(!armed)
+                        .accessibilityLabel("Number \(n)")
+                        .accessibilityIdentifier("connect.number.\(n)")
+                    }
+                }
+            } else {
+                ProgressView().frame(height: 44)
+            }
+            Button { Task { await decide(r, allow: false) } } label: {
+                Text("Don't Allow").frame(maxWidth: .infinity)
+            }
+            .keyboardShortcut(.cancelAction)
+            .controlSize(.large)
+            .accessibilityIdentifier("connect.deny")
         }
     }
 
@@ -666,15 +863,42 @@ struct ConsentSheet: View {
             let r = try await ConnectAPI.request(client, id: requestID)
             // An app Amber Notes can't vouch for starts at Read Only; the person can still pick more.
             write = r.wants_write && r.verifiedAI != nil
+            if r.isAsked { await loadMatch(r) }
+            if case .failed = phase { return }
             phase = .asking(r)
         } catch {
             phase = .failed(error.localizedDescription)
         }
     }
 
-    private func decide(_ r: ConnectRequest, allow: Bool) async {
+    /// The numbers for the page's key as it is now.
+    private func loadMatch(_ r: ConnectRequest) async {
+        do {
+            guard let key = try await browserKey(client, r.id) else {
+                phase = .failed("This request expired. Start connecting again in your browser.")
+                return
+            }
+            let number = E2EE.matchNumber(browserKey: key, requestID: r.id)
+            match = Match(key: key, number: number, choices: ConnectMatch.choices(correct: number))
+        } catch {
+            phase = .failed(error.localizedDescription)
+        }
+    }
+
+    private func picked(_ n: String, _ r: ConnectRequest) async {
+        guard armed, let match else { return }
+        guard n == match.number else {
+            // A wrong number: whoever asked isn't the page in front of the person.
+            await decide(r, allow: false, declined: "That wasn't the number your browser showed, so the request was declined. If you started it, start connecting again.")
+            return
+        }
+        await decide(r, allow: true)
+    }
+
+    private func decide(_ r: ConnectRequest, allow: Bool, declined: String? = nil) async {
         // Handing over the key to your notes takes you, not just a click.
         if allow {
+            guard armed else { return }
             guard canConfirm() else {
                 phase = .failed("Turn on a passcode, Face ID or Touch ID on this device to connect an AI.")
                 return
@@ -685,21 +909,33 @@ struct ConsentSheet: View {
         do {
             // The connection gets its own copy of the account's key, wrapped under a code made here.
             let code = allow ? try AccountCrypto.shared.connectionCode() : nil
-            // Asked from a browser: the code goes to that page, sealed to its key.
+            // Asked from a browser: the code goes to that page, sealed to its key, with the
+            // address it goes to. The key must still be the one the numbers were made from.
             var key: Data?
             if allow, r.isAsked {
                 key = try await browserKey(client, r.id)
-                guard key != nil else { throw ConnectAPI.Failure(message: "This request expired. Start connecting again in your browser.") }
+                guard let key else { throw ConnectAPI.Failure(message: "This request expired. Start connecting again in your browser.") }
+                guard key == match?.key else {
+                    let number = E2EE.matchNumber(browserKey: key, requestID: r.id)
+                    match = Match(key: key, number: number, choices: ConnectMatch.choices(correct: number))
+                    changed = true
+                    phase = .asking(r)
+                    return
+                }
             }
             answering(r.id)
             let answer = try await ConnectAPI.decide(id: r.id, redirectURI: r.redirect_uri, allow: allow, write: write && r.wants_write,
-                                                     code: code, browserKey: key, send: ConnectAPI.sender(client))
+                                                     code: code, browserKey: key, handoffRedirect: r.handoffRedirect,
+                                                     send: ConnectAPI.sender(client))
             // Only a request that came by link here is sent on from here.
             if let url = answer.url { finish(url) }
             if allow {
                 allowed(r)
-                phase = answer == .handedOff ? .handedOff(r.who) : .done(r.who)
+                phase = answer == .handedOff ? .handedOff(r.redirect_host) : .done(r.who)
                 try? await Task.sleep(for: .seconds(answer == .handedOff ? 2.4 : 1.6))
+            } else if let declined {
+                phase = .failed(declined)
+                return
             }
             dismiss()
         } catch {
@@ -878,7 +1114,7 @@ struct ConnectAISection: View {
 
     private func revoke(_ c: Connection) async {
         do {
-            try await client.from("mcp_tokens").update(["revoked_at": AnyJSON.string(Date.now.ISO8601Format())]).eq("id", value: c.id).execute()
+            try await ConnectRevoke.revoke(client, id: c.id)
             removing = nil
             await load()
         } catch {

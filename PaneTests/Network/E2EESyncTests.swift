@@ -210,7 +210,9 @@ extension NetworkFaults {
 
     // MARK: Sharing
 
-    @Test func theShareCopyHasOnlyLiveUnlockedSubNotesAndEmbeddedFiles() throws {
+    private func link(_ n: Note) -> String { "[\(n.title)](pane-note:\(n.id.uuidString.lowercased()))" }
+
+    @Test func theShareCopyHasOnlyLinkedLiveUnlockedSubNotesAndEmbeddedFiles() throws {
         let a = try device()
         let root = a.context.createNote(in: .all, body: "Trip\nSee below")
         let kept = a.context.createNote(in: .all, body: "Day one")
@@ -225,23 +227,45 @@ extension NetworkFaults {
         let trashed = a.context.createNote(in: .all, body: "Old idea")
         trashed.parentID = root.id
         trashed.trashedAt = .now
+        // Its parent_id says it's under the root, but no text links to it.
+        let reparented = a.context.createNote(in: .all, body: "Diary")
+        reparented.parentID = root.id
         let embedded = Pane.Attachment(filename: "map.pdf", contentType: "com.adobe.pdf", size: 10)
         let elsewhere = Pane.Attachment(filename: "other.pdf", contentType: "com.adobe.pdf", size: 10)
         a.context.insert(embedded); a.context.insert(elsewhere)
         grandchild.body += "\n" + embedded.markdown
         underLocked.body += "\n" + elsewhere.markdown
+        root.body += "\n" + [kept, locked, trashed].map(link).joined(separator: "\n")
+        kept.body += "\n" + link(grandchild) + "\n" + link(root)
+        locked.body += "\n" + link(underLocked)
 
         let copy = try #require(SharePublisher.copy(of: root.id, includeSubNotes: true, in: a.context))
         #expect(copy.title == "Trip" && copy.body == root.body)
         #expect(Set(copy.pages.map(\.id)) == Set([kept.id, grandchild.id].map { $0.uuidString.lowercased() }))
         #expect(copy.pages.first { $0.id == grandchild.id.uuidString.lowercased() }?.parent_id == kept.id.uuidString.lowercased())
+        #expect(!copy.pages.contains { $0.id == reparented.id.uuidString.lowercased() }, "parent_id alone never puts a note on a page")
         #expect(copy.files == [embedded.id.uuidString.lowercased()])
         let alone = try #require(SharePublisher.copy(of: root.id, includeSubNotes: false, in: a.context))
         #expect(alone.pages.isEmpty && alone.files.isEmpty)
         #expect(SharePublisher.copy(of: locked.id, includeSubNotes: true, in: a.context) == nil, "a locked note is never published")
     }
 
-    @Test func sharingPublishesTheCopyAndItsMissingFilesAndEditsRepublish() async throws {
+    /// A live share on the server, as the stub keeps it. `tag`: nil for none.
+    private func plantShare(_ note: UUID, slug: String, include: Bool, tag: String?) {
+        StubSupabase.insert("note_shares", ["slug": slug, "note_id": note.uuidString.lowercased(), "user_id": user.uuidString.lowercased(),
+                                            "include_subnotes": include, "share_tag": tag ?? NSNull(), "revoked_at": NSNull()])
+    }
+
+    private func myTag(_ note: UUID, _ slug: String, _ include: Bool) -> String {
+        Wire.sealer!.shareTag(note: note, slug: slug, includeSubNotes: include)
+    }
+
+    private func waitForPublishes(_ seconds: TimeInterval = 0.6) async throws {
+        let end = Date.now.addingTimeInterval(seconds)
+        while Date.now < end { try await Task.sleep(for: .milliseconds(20)) }
+    }
+
+    @Test func sharingTagsTheShareAndPublishesTheCopyAndItsMissingFilesAndEditsRepublish() async throws {
         let saved = SyncEngine.publishDelay
         SyncEngine.publishDelay = .milliseconds(100)
         defer { SyncEngine.publishDelay = saved }
@@ -252,19 +276,23 @@ extension NetworkFaults {
         n.dirty = true
         await a.engine.sync()
         let fileID = file.id.uuidString.lowercased()
-        StubSupabase.answer("share_note") { _ in ["slug": "abcdefghijklmnopqrstuvwx", "missing_files": [fileID]] }
-        StubSupabase.answer("publish_share") { _ in ["slug": "abcdefghijklmnopqrstuvwx", "missing_files": [String]()] }
+        let slug = "abcdefghijklmnopqrstuvwx"
+        StubSupabase.answer("share_slug") { _ in slug }
+        StubSupabase.answer("share_note") { _ in ["slug": slug, "missing_files": [fileID]] }
+        StubSupabase.answer("publish_share") { _ in ["slug": slug, "missing_files": [String]()] }
 
-        let slug = try await SharePublisher.share(note: n.id, includeSubNotes: false, client: StubSupabase.client(), container: a.context.container, user: user)
-        #expect(slug == "abcdefghijklmnopqrstuvwx")
+        #expect(try await SharePublisher.share(note: n.id, includeSubNotes: false, client: StubSupabase.client(), container: a.context.container, user: user) == slug)
         let share = try #require(StubSupabase.rpcCalls.first { $0.name == "share_note" })
+        #expect(share.params["p_slug"] as? String == slug && share.params["p_include_subnotes"] as? Bool == false)
+        #expect(share.params["p_tag"] as? String == myTag(n.id, slug, false), "the tag names the note, the slug and sub-notes")
         let sent = try #require(share.params["p_copy"] as? [String: Any])
         #expect(sent["body"] as? String == n.body && sent["files"] as? [String] == [fileID])
         let upload = try #require(StubSupabase.rpcCalls.first { $0.name == "publish_share_file" })
         #expect(upload.params["p_filename"] as? String == "map.txt" && upload.params["p_content_type"] as? String == "text/plain")
         #expect((upload.params["p_content"] as? String).flatMap { Data(base64Encoded: $0) } == Data("the map".utf8), "the file's readable bytes")
 
-        // An edit that went up is published to the page a moment later.
+        // The server now has the share with its tag: an edit that went up is published a moment later.
+        plantShare(n.id, slug: slug, include: false, tag: myTag(n.id, slug, false))
         a.engine.shareChanged(n.id, includesSubNotes: false)
         n.body = "Trip, day two\n\(file.markdown)"
         n.touch()
@@ -272,7 +300,92 @@ extension NetworkFaults {
         let end = Date.now.addingTimeInterval(3)
         while !StubSupabase.rpcCalls.contains(where: { $0.name == "publish_share" }), Date.now < end { try await Task.sleep(for: .milliseconds(20)) }
         let again = try #require(StubSupabase.rpcCalls.last { $0.name == "publish_share" })
+        #expect(again.params["p_slug"] as? String == slug)
         #expect((again.params["p_copy"] as? [String: Any])?["title"] as? String == "Trip, day two")
+        await a.engine.stop()
+    }
+
+    @Test(arguments: [nil, "bad", String(repeating: "0", count: 64)])
+    func aPlantedShareIsNeverPublishedTo(_ tag: String?) async throws {
+        let saved = SyncEngine.publishDelay
+        SyncEngine.publishDelay = .milliseconds(50)
+        defer { SyncEngine.publishDelay = saved }
+        let a = try device()
+        let n = a.context.createNote(in: .all, body: "Private plans")
+        n.dirty = true
+        await a.engine.sync()
+        let slug = "PLANTEDplantedPLANTEDpla"
+        plantShare(n.id, slug: slug, include: true, tag: tag)
+        StubSupabase.answer("publish_share") { _ in ["slug": slug, "missing_files": [String]()] }
+        await a.engine.sync()
+        #expect(a.engine.liveShares[n.id] == nil, "it doesn't show as shared")
+        n.body = "Private plans, more"
+        n.touch()
+        await a.engine.sync(pulling: false)
+        try await waitForPublishes()
+        #expect(await SharePublisher.republish(root: n.id, client: StubSupabase.client(), context: a.context, user: user) == nil)
+        #expect(!StubSupabase.rpcCalls.contains { ["publish_share", "share_note", "publish_share_file"].contains($0.name) }, "nothing is published")
+        let links = SupabaseShareLinks(client: StubSupabase.client())
+        #expect(try await links.current(note: n.id) == nil, "the menu doesn't offer it as shared")
+
+        // A share tagged for other sub-notes than the row says doesn't verify either.
+        StubSupabase.reset()
+        plantShare(n.id, slug: slug, include: true, tag: myTag(n.id, slug, false))
+        #expect(await SharePublisher.republish(root: n.id, client: StubSupabase.client(), context: a.context, user: user) == nil)
+        #expect(!StubSupabase.rpcCalls.contains { $0.name == "publish_share" })
+        await a.engine.stop()
+    }
+
+    @Test func sharingANoteWithAPlantedShareStopsItAndMakesANewLink() async throws {
+        let a = try device()
+        let n = a.context.createNote(in: .all, body: "Trip")
+        n.dirty = true
+        await a.engine.sync()
+        plantShare(n.id, slug: "PLANTEDplantedPLANTEDpla", include: true, tag: nil)
+        let fresh = "freshFRESHfreshFRESHfres"
+        StubSupabase.answer("share_slug") { _ in fresh }
+        StubSupabase.answer("share_note") { _ in ["slug": fresh, "missing_files": [String]()] }
+        #expect(try await SharePublisher.share(note: n.id, includeSubNotes: false, client: StubSupabase.client(), container: a.context.container, user: user) == fresh)
+        let names = StubSupabase.rpcCalls.map(\.name)
+        #expect(names.firstIndex(of: "unshare_note") ?? 99 < names.firstIndex(of: "share_slug") ?? -1, "the planted link stops first")
+        #expect(StubSupabase.rpcCalls.first { $0.name == "share_note" }?.params["p_tag"] as? String == myTag(n.id, fresh, false))
+        await a.engine.stop()
+    }
+
+    @Test func aNoteReparentedByParentIDAloneIsNeverPublished() async throws {
+        let saved = SyncEngine.publishDelay
+        SyncEngine.publishDelay = .milliseconds(50)
+        defer { SyncEngine.publishDelay = saved }
+        let a = try device()
+        let root = a.context.createNote(in: .all, body: "Shared trip")
+        let linked = a.context.createNote(in: .all, body: "Day one")
+        root.body += "\n" + link(linked)
+        let diary = a.context.createNote(in: .all, body: "Diary")
+        for n in [root, linked, diary] { n.dirty = true }
+        await a.engine.sync()
+        let slug = "abcdefghijklmnopqrstuvwx"
+        plantShare(root.id, slug: slug, include: true, tag: myTag(root.id, slug, true))
+        StubSupabase.answer("publish_share") { _ in ["slug": slug, "missing_files": [String]()] }
+        await a.engine.sync()
+        #expect(a.engine.liveShares[root.id] == true)
+        // The server (or anyone) moves the diary under the shared note by parent_id.
+        diary.parentID = root.id
+        #expect(a.engine.sharedRoots(of: diary.id).isEmpty && a.engine.sharedRoots(of: linked.id) == [root.id])
+        diary.body = "Diary, today"
+        diary.touch()
+        await a.engine.sync(pulling: false)
+        try await waitForPublishes()
+        #expect(!StubSupabase.rpcCalls.contains { $0.name == "publish_share" }, "an edit to it publishes nothing")
+        // An edit to the shared note publishes its page, without the diary.
+        linked.body = "Day one, morning"
+        linked.touch()
+        await a.engine.sync(pulling: false)
+        let end = Date.now.addingTimeInterval(3)
+        while !StubSupabase.rpcCalls.contains(where: { $0.name == "publish_share" }), Date.now < end { try await Task.sleep(for: .milliseconds(20)) }
+        let published = try #require(StubSupabase.rpcCalls.last { $0.name == "publish_share" })
+        let pages = (published.params["p_copy"] as? [String: Any])?["pages"] as? [[String: Any]] ?? []
+        #expect(pages.map { $0["id"] as? String } == [linked.id.uuidString.lowercased()])
+        #expect(!String(describing: published.params).contains("Diary"))
         await a.engine.stop()
     }
 
@@ -321,13 +434,22 @@ extension NetworkFaults {
         let answer = try JSONSerialization.data(withJSONObject: ["redirect": redirect + "?state=xyz", "client_name": "ChatGPT", "can_write": true, "handoff": true])
         let send: ConnectAPI.Send = { _, _, body in box.bodies.append(body ?? [:]); return answer }
 
+        let back = ConnectAPI.clientRedirect(redirect, state: "xyz", iss: "https://mcp.ambernotes.app")
         let decided = try await ConnectAPI.decide(id: id, redirectURI: redirect, allow: true, write: true, code: code,
-                                                  browserKey: page.publicKey.x963Representation, send: send)
+                                                  browserKey: page.publicKey.x963Representation, handoffRedirect: back, send: send)
         #expect(decided == .handedOff && decided.url == nil, "the page picks the code up; nothing opens here")
         let sent = try #require(box.bodies.first)
         #expect(sent["redirect_uri"] as? String == redirect && sent["code_hash"] as? String == code.hash)
         let handoff = try #require(sent["handoff"] as? String)
-        #expect(try E2EE.openHandoff(handoff, browserPrivate: page, requestID: id) == secret, "only the page's key opens it")
+        let opened = try E2EE.openHandoff(handoff, browserPrivate: page, requestID: id)
+        #expect(opened == E2EE.handoffPayload(code: secret, redirect: back), "only the page's key opens it: the code and where it goes, together")
+        let payload = try #require(try JSONSerialization.jsonObject(with: Data(opened.utf8)) as? [String: String])
+        #expect(payload["code"] == secret && payload["redirect"] == back)
+        // Without the address to seal with it, nothing is sent.
+        await #expect(throws: ConnectAPI.Failure.self) {
+            _ = try await ConnectAPI.decide(id: id, redirectURI: redirect, allow: true, write: true, code: code,
+                                            browserKey: page.publicKey.x963Representation, handoffRedirect: nil) { _, _, _ in Issue.record("sent"); return Data() }
+        }
         #expect(throws: E2EE.Failure.wrongKey) { try E2EE.openHandoff(handoff, browserPrivate: .init(), requestID: id) }
         #expect(!String(decoding: try JSONSerialization.data(withJSONObject: sent), as: UTF8.self).contains(secret), "the server never sees the code")
 
@@ -339,7 +461,8 @@ extension NetworkFaults {
 
         // A page key that isn't one: nothing is sent.
         await #expect(throws: ConnectAPI.Failure.self) {
-            _ = try await ConnectAPI.decide(id: id, redirectURI: redirect, allow: true, write: true, code: code, browserKey: Data(repeating: 4, count: 65)) { _, _, _ in
+            _ = try await ConnectAPI.decide(id: id, redirectURI: redirect, allow: true, write: true, code: code, browserKey: Data(repeating: 4, count: 65),
+                                            handoffRedirect: back) { _, _, _ in
                 Issue.record("sent"); return Data()
             }
         }
@@ -426,6 +549,61 @@ extension NetworkFaults {
         await remove(user)
         #expect(StubSupabase.requests.contains { $0.contains("/storage/v1/object/list/files") })
         _ = engine
+    }
+
+    // MARK: Notices
+
+    private func notice(_ id: Int64, _ kind: String, what: String, at: Date, grant: UUID? = nil) -> [String: Any] {
+        ["id": id, "user_id": user.uuidString.lowercased(), "kind": kind, "grant_id": grant.map { $0.uuidString.lowercased() } ?? NSNull(),
+         "what": what, "created_at": StubSupabase.stamp(at)]
+    }
+
+    @Test func noticesShowOnceEachAndDisconnectRevokesTheGrant() async throws {
+        let defaults = MemoryDefaults()
+        let grant = UUID()
+        let now = Date.now
+        StubSupabase.insert("account_notices", notice(1, "ai_connected", what: "claude.ai", at: now.addingTimeInterval(-60), grant: grant))
+        StubSupabase.insert("account_notices", notice(2, "started_fresh", what: "Your notes were deleted", at: now.addingTimeInterval(-30)))
+        StubSupabase.insert("account_notices", notice(3, "ai_connected", what: "old.example", at: now.addingTimeInterval(-40 * 24 * 3600)))
+        let notices = AccountNotices(client: StubSupabase.client(), user: user, defaults: defaults, approvedHere: { nil })
+        await notices.refresh()
+        let first = try #require(notices.current)
+        #expect(first.id == 1 && first.text(now: now).title.hasPrefix("Connected claude.ai \u{00B7} "))
+        try await notices.disconnect(first)
+        let revoked = try #require(StubSupabase.requests.first { $0.hasPrefix("PATCH /rest/v1/mcp_tokens") })
+        #expect(revoked.contains("id=eq.\(grant.uuidString)") || revoked.lowercased().contains("id=eq.\(grant.uuidString.lowercased())"))
+        #expect(StubSupabase.bodies.contains { $0.contains("revoked_at") })
+        let second = try #require(notices.current)
+        #expect(second.id == 2 && second.text().title == "Your notes were deleted and a new key was made on another device")
+        notices.dismiss()
+        #expect(notices.current == nil, "a notice from weeks ago isn't news")
+
+        // Fetched again (or on the next launch): nothing shows twice.
+        await notices.refresh()
+        #expect(notices.current == nil)
+        let later = AccountNotices(client: StubSupabase.client(), user: user, defaults: defaults, approvedHere: { nil })
+        await later.refresh()
+        #expect(later.current == nil)
+        // Another account on this device has its own.
+        let other = AccountNotices(client: StubSupabase.client(), user: UUID(), defaults: defaults, approvedHere: { nil })
+        other.take([AccountNotice(id: 1, kind: .aiConnected, grant_id: nil, what: "x", created_at: now)])
+        #expect(other.current?.id == 1)
+        await notices.stop(); await later.stop(); await other.stop()
+    }
+
+    @Test func thisDevicesOwnNewsIsntSaid() {
+        let defaults = MemoryDefaults()
+        let now = Date.now
+        let approved = now.addingTimeInterval(-5)
+        let ledger = NoticeLedger(account: user, defaults: defaults)
+        defaults.set(true, forKey: AccountCrypto.startedFreshHereKey(user))
+        let rows = [AccountNotice(id: 7, kind: .startedFresh, what: "deleted", created_at: now),
+                    AccountNotice(id: 8, kind: .aiConnected, grant_id: UUID(), what: "chatgpt.com", created_at: now),
+                    AccountNotice(id: 9, kind: .aiConnected, grant_id: UUID(), what: "evil.example", created_at: now.addingTimeInterval(600))]
+        #expect(ledger.unseen(rows, now: now, approvedHere: approved).map(\.id) == [9], "started fresh here, and approved here a moment ago")
+        #expect(ledger.seen == [7, 8] && !defaults.bool(forKey: AccountCrypto.startedFreshHereKey(user)))
+        // The next start fresh (from another device) is news again.
+        #expect(ledger.unseen([AccountNotice(id: 10, kind: .startedFresh, what: "deleted", created_at: now)], now: now).map(\.id) == [10])
     }
 
     @Test func aPaneTokenNeverAppearsInAnyAddress() async throws {

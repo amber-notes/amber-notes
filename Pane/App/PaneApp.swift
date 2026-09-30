@@ -304,6 +304,9 @@ struct AppGate: View {
     @State private var shareAsk = ShareAskStore()
     /// Asks to approve an AI connection from a browser, while signed in with the key here.
     @State private var connectAsks: ConnectAsks?
+    /// "Connected ChatGPT", "Your notes were deleted…": said once on each device.
+    @State private var notices: AccountNotices?
+    @State private var noticeProblem: String?
     /// Captures: `-captureConsent ChatGPT` shows the Allow sheet over the notes.
     @State private var consent = CaptureScreen.consentRequest
     @Environment(\.modelContext) private var context
@@ -370,6 +373,7 @@ struct AppGate: View {
                         try? await Task.sleep(for: .seconds(1.2))
                         shareAsk.showIfForced()
                     }
+                    .modifier(NoticeAlerts(notices: notices, crypto: crypto, problem: $noticeProblem))
                     .transition(.opacity)
             }
         }
@@ -390,6 +394,8 @@ struct AppGate: View {
                 await sync.stop()
                 await connectAsks?.stop()
                 connectAsks = nil
+                await notices?.stop()
+                notices = nil
                 return
             }
             setup.attach(account: backend.userID, service: SupabaseSetup(client: client))
@@ -447,6 +453,7 @@ struct AppGate: View {
                 Task { await NoteVault.shared.refresh() }
                 // No push: a browser's ask that came while the app was away is picked up here.
                 if let connectAsks { Task { await connectAsks.refresh() } }
+                if let notices { Task { await notices.refresh() } }
                 // The account's key never changes; if another device started fresh, this one
                 // finds out here and gets the new key.
                 Task { await AccountCrypto.shared.recheck() }
@@ -478,6 +485,11 @@ struct AppGate: View {
             let asks = ConnectAsks(client: client, user: user)
             connectAsks = asks
             Task { await asks.start() }
+        }
+        if notices == nil, let user = backend.userID {
+            let n = AccountNotices(client: client, user: user)
+            notices = n
+            Task { await n.start() }
         }
         await sync.start()
         // Seed only when the server really has nothing, never after a failed sync. A real
@@ -623,5 +635,43 @@ struct CaptureScreen: View {
         default:
             SignInView(backend: backend)
         }
+    }
+}
+
+/// The account's notices and "your recovery key changed", each a plain alert, one at a time.
+private struct NoticeAlerts: ViewModifier {
+    let notices: AccountNotices?
+    let crypto: AccountCrypto
+    @Binding var problem: String?
+
+    func body(content: Content) -> some View {
+        let notice = notices?.current
+        content
+            .alert(notice?.text().title ?? "", isPresented: Binding(get: { notice != nil }, set: { if !$0, notices?.current == notice { notices?.dismiss() } }),
+                   presenting: notice) { n in
+                if n.kind == .aiConnected, n.grant_id != nil {
+                    Button("Disconnect", role: .destructive) {
+                        Task {
+                            do { try await notices?.disconnect(n) } catch { problem = "Couldn't disconnect it. Try again in Settings \u{203A} Connect an AI." }
+                        }
+                    }
+                    .accessibilityIdentifier("notice.disconnect")
+                }
+                Button("OK", role: .cancel) { notices?.dismiss() }
+                    .accessibilityIdentifier("notice.ok")
+            } message: { n in
+                Text(n.text().message)
+            }
+            .alert(PrivacyCopy.recoveryChangedTitle, isPresented: Binding(get: { notice == nil && crypto.recoveryKeyChangeNeedsSaying },
+                                                                         set: { if !$0 { crypto.recoveryKeyChangeShown() } })) {
+                Button("OK", role: .cancel) { crypto.recoveryKeyChangeShown() }
+            } message: {
+                Text(PrivacyCopy.recoveryChangedAlert)
+            }
+            .alert("Couldn't disconnect", isPresented: Binding(get: { problem != nil && notice == nil }, set: { if !$0 { problem = nil } })) {
+                Button("OK", role: .cancel) { problem = nil }
+            } message: {
+                Text(problem ?? "")
+            }
     }
 }

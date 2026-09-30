@@ -98,6 +98,99 @@ import Testing
     }
 }
 
+/// A request asked from a browser elsewhere: no mark or name, number matching, and the address the
+/// code goes to built here exactly as the server builds it.
+@Suite struct AskedRequestTests {
+    private func asked(_ uri: String, claimed: String? = "Claude") -> ConnectRequest {
+        ConnectRequest(id: UUID(), client_name: URL(string: uri)!.host()!, redirect_host: URL(string: uri)!.host()!, redirect_uri: uri,
+                       claimed_name: claimed, loopback: false, wants_write: true, asked: true, started_from: "Chrome on a Mac",
+                       state: "s1", iss: "https://mcp.ambernotes.app")
+    }
+
+    @Test func anAskedRequestNeverShowsAnAIsMarkOrName() {
+        let r = asked("https://claude.ai/api/mcp/auth_callback")
+        #expect(r.verifiedAI == nil, "even Claude's own callback: whoever asked is the page that waits")
+        #expect(r.who == "claude.ai")
+        #expect(r.claimedName == "Claude", "shown only as what it calls itself")
+        var here = r
+        here.asked = false
+        #expect(here.verifiedAI == "Claude", "the same request by link on this device keeps its mark")
+    }
+
+    @Test func theRedirectIsBuiltAsTheServerBuildsIt() {
+        #expect(asked("https://claude.ai/api/mcp/auth_callback").handoffRedirect == "https://claude.ai/api/mcp/auth_callback?state=s1&iss=https%3A%2F%2Fmcp.ambernotes.app")
+        // URLSearchParams: existing parameters are rewritten form-encoded, `set` replaces.
+        #expect(ConnectAPI.clientRedirect("https://a.example/cb?x=1&state=old&y=a+b%21&state=again", state: "n w", iss: "https://i.example/")
+                == "https://a.example/cb?x=1&state=n+w&y=a+b%21&iss=https%3A%2F%2Fi.example%2F")
+        #expect(ConnectAPI.clientRedirect("http://127.0.0.1:4000/cb", state: nil, iss: "https://mcp.ambernotes.app")
+                == "http://127.0.0.1:4000/cb?iss=https%3A%2F%2Fmcp.ambernotes.app", "no state: none added")
+        #expect(ConnectAPI.clientRedirect("https://a.example/cb#frag", state: "é~*", iss: "x") == "https://a.example/cb?state=%C3%A9%7E*&iss=x#frag")
+        var old = asked("https://claude.ai/api/mcp/auth_callback")
+        old.iss = nil
+        #expect(old.handoffRedirect == nil, "a server that doesn't say: nothing to seal")
+    }
+
+    @Test func threeDistinctNumbersOneOfThemRight() {
+        var rng = SystemRandomNumberGenerator()
+        for correct in ["00", "07", "21", "99"] {
+            for _ in 0 ..< 50 {
+                let c = ConnectMatch.choices(correct: correct, using: &rng)
+                #expect(c.count == 3 && Set(c).count == 3 && c.contains(correct))
+                #expect(c.allSatisfy { $0.count == 2 && $0.allSatisfy(\.isNumber) })
+            }
+        }
+    }
+}
+
+/// One sheet at a time: what arrives while it's showing waits its turn.
+@MainActor @Suite struct ConnectQueueTests {
+    private func ask(_ id: UUID = UUID()) -> ConnectAsk {
+        ConnectAsk(request_id: id, browser_key: "", started_from: "Chrome on a Mac", created_at: .now, expires_at: .now.addingTimeInterval(600))
+    }
+
+    private func link(_ id: UUID) -> URL { URL(string: "ambernotes://connect?request=\(id.uuidString.lowercased())")! }
+
+    private func quietCenter() -> ConnectCenter {
+        let c = ConnectCenter()
+        #if os(macOS)
+        c.activate = {}
+        #endif
+        return c
+    }
+
+    @Test func aLinkArrivingWhileASheetShowsWaitsItsTurn() {
+        let center = quietCenter()
+        let first = UUID(), second = UUID()
+        center.receive(link(first))
+        #expect(center.pending == first)
+        center.receive(link(second))
+        #expect(center.pending == first, "the sheet showing isn't replaced")
+        #expect(center.queue == [second])
+        center.receive(link(first))
+        #expect(center.pending == first && center.queue == [second], "the same link again changes nothing")
+        center.sheetClosed()
+        center.showNext()
+        #expect(center.pending == second && center.queue.isEmpty)
+    }
+
+    @Test func aLinkDoesntReplaceAnAskAndAnAskDoesntReplaceALink() {
+        let center = quietCenter()
+        let a = ask(), l = UUID(), b = ask()
+        center.offer(a)
+        #expect(center.pending == a.id)
+        center.receive(link(l))
+        #expect(center.pending == a.id && center.queue == [l])
+        center.offer(b)
+        #expect(center.pending == a.id && center.queue == [l, b.id])
+        center.sheetClosed()
+        center.showNext()
+        #expect(center.pending == l)
+        center.sheetClosed()
+        center.showNext()
+        #expect(center.pending == b.id)
+    }
+}
+
 /// Connect ChatGPT or Claude: where the button goes, and knowing when it worked.
 @Suite struct WebConnectTests {
     private func row(_ name: String, host: String?, kind: String = "oauth", at: Date, revoked: Bool = false) -> Connection {

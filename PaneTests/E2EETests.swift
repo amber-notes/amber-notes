@@ -9,7 +9,11 @@ import Testing
     struct Vectors: Decodable {
         struct Text: Decodable { var text: String?; var json: String?; var name: String?; var context: String; var sealed: String }
         struct File: Decodable { var plain: String; var attachment_id: String; var sealed: String }
-        struct Recovery: Decodable { var bytes: String; var text: String; var typed: String; var canonical: String; var wrap: String }
+        struct Recovery: Decodable {
+            var bytes: String; var text: String; var typed: String; var canonical: String; var wrap: String
+            var typed_nbsp: String; var typed_en_dash: String
+        }
+        struct ShareTag: Decodable { var note_id: String; var slug: String; var include_subnotes: Bool; var tag: String; var tag_without_subnotes: String }
         struct Tokens: Decodable { var access: String; var refresh: String; var code: String; var pane: String; var wraps: [String: String] }
         var data_key: String
         var key_id: String
@@ -26,10 +30,11 @@ import Testing
         var recovery: Recovery
         var tokens: Tokens
         struct Handoff: Decodable {
-            var request_id: String; var code: String; var browser_private: String; var browser_public: String
+            var request_id: String; var code: String; var match_number: String; var browser_private: String; var browser_public: String
             var device_ephemeral_private: String; var sealed: String
         }
         var handoff: Handoff
+        var share_tag: ShareTag
     }
 
     /// supabase/functions/_shared/e2ee-vectors.json, the one file the server tests too, copied into
@@ -105,6 +110,13 @@ import Testing
         #expect(E2EE.parseRecoveryKey(v.recovery.text) == bytes)
         #expect(E2EE.parseRecoveryKey(v.recovery.canonical.lowercased()) == bytes)
         #expect(E2EE.parseRecoveryKey("60RK\u{2013}4CSM 6MV3 EE1S_78XK.RF9Y 7Y0P") == bytes, "any dash, space or dot")
+        // Pasted from a page or a PDF: no-break spaces, en dashes.
+        #expect(v.recovery.typed_nbsp.contains("\u{00A0}") && v.recovery.typed_en_dash.contains("\u{2013}"))
+        #expect(E2EE.canonicalRecoveryKey(v.recovery.typed_nbsp) == v.recovery.canonical)
+        #expect(E2EE.canonicalRecoveryKey(v.recovery.typed_en_dash) == v.recovery.canonical)
+        #expect(E2EE.parseRecoveryKey(v.recovery.typed_nbsp) == bytes && E2EE.parseRecoveryKey(v.recovery.typed_en_dash) == bytes)
+        #expect(E2EE.parseRecoveryKey(v.recovery.text.replacingOccurrences(of: "-", with: "\u{2010}")) == bytes, "a hyphen character")
+        #expect(E2EE.parseRecoveryKey(v.recovery.text.replacingOccurrences(of: "-", with: "\u{2015}")) == bytes, "a horizontal bar")
         #expect(E2EE.parseRecoveryKey(String(v.recovery.canonical.dropLast())) == nil, "too short")
         #expect(E2EE.parseRecoveryKey(v.recovery.canonical.replacingOccurrences(of: "K", with: "U")) == nil, "U isn't in the alphabet")
         // A typo in any one place is caught by the check.
@@ -163,13 +175,59 @@ import Testing
         #expect(throws: E2EE.Failure.wrongKey) { try E2EE.openHandoff(sealed, browserPrivate: page, requestID: UUID()) }
         #expect(throws: E2EE.Failure.malformed) { try E2EE.sealHandoff(code: h.code, browserKey: pagePublic.prefix(33), requestID: request) }
     }
+
+    @Test func theMatchNumberIsThePages() throws {
+        let h = v.handoff
+        let request = try #require(UUID(uuidString: h.request_id))
+        let pagePublic = Data(base64Encoded: h.browser_public)!
+        #expect(E2EE.matchNumber(browserKey: pagePublic, requestID: request) == h.match_number)
+        #expect(E2EE.matchNumber(browserKey: pagePublic, requestID: UUID(uuidString: h.request_id.uppercased())!) == h.match_number)
+        #expect(E2EE.matchNumber(browserKey: P256.KeyAgreement.PrivateKey().publicKey.x963Representation, requestID: request).count == 2)
+        // Always two digits, 00 to 99.
+        for _ in 0 ..< 200 {
+            let n = E2EE.matchNumber(browserKey: P256.KeyAgreement.PrivateKey().publicKey.x963Representation, requestID: UUID())
+            #expect(n.count == 2 && n.allSatisfy(\.isNumber))
+        }
+    }
+
+    @Test func theHandoffPayloadIsTheServersJSON() throws {
+        let h = v.handoff
+        let payload = try #require(try JSONSerialization.jsonObject(with: Data(h.code.utf8)) as? [String: String])
+        let code = try #require(payload["code"]), redirect = try #require(payload["redirect"])
+        #expect(E2EE.handoffPayload(code: code, redirect: redirect) == h.code)
+        // The redirect in it is the one the server builds from the client's address, state and issuer.
+        #expect(ConnectAPI.clientRedirect("https://claude.ai/api/mcp/auth_callback", state: "s1", iss: "https://mcp.ambernotes.app") == redirect)
+        let request = try #require(UUID(uuidString: h.request_id))
+        let page = try P256.KeyAgreement.PrivateKey(rawRepresentation: Data(base64Encoded: h.browser_private)!)
+        #expect(try E2EE.openHandoff(h.sealed, browserPrivate: page, requestID: request) == E2EE.handoffPayload(code: code, redirect: redirect))
+    }
+
+    @Test func shareTagsMatch() throws {
+        let t = v.share_tag
+        let note = try #require(UUID(uuidString: t.note_id))
+        #expect(E2EE.shareTag(key, note: note, slug: t.slug, includeSubNotes: true) == t.tag)
+        #expect(E2EE.shareTag(key, note: note, slug: t.slug, includeSubNotes: false) == t.tag_without_subnotes)
+        #expect(E2EE.shareTag(key, note: UUID(uuidString: t.note_id.uppercased())!, slug: t.slug, includeSubNotes: true) == t.tag)
+        let sealer = Sealer(key: key, user: user)
+        #expect(sealer.shareTagMatches(note: note, slug: t.slug, includeSubNotes: t.include_subnotes, tag: t.tag))
+        #expect(!sealer.shareTagMatches(note: note, slug: t.slug, includeSubNotes: false, tag: t.tag), "sub-notes are part of it")
+        #expect(!sealer.shareTagMatches(note: note, slug: t.slug + "x", includeSubNotes: true, tag: t.tag), "so is the slug")
+        #expect(!sealer.shareTagMatches(note: UUID(), slug: t.slug, includeSubNotes: true, tag: t.tag), "and the note")
+        #expect(!sealer.shareTagMatches(note: note, slug: t.slug, includeSubNotes: true, tag: nil))
+        #expect(!sealer.shareTagMatches(note: note, slug: t.slug, includeSubNotes: true, tag: String(t.tag.dropLast())))
+        #expect(!Sealer(key: SymmetricKey(size: .bits256), user: user).shareTagMatches(note: note, slug: t.slug, includeSubNotes: true, tag: t.tag),
+                "another key's tag doesn't verify")
+    }
 }
 
 @Suite struct StoredKeyTests {
     @Test func encodesDataKeyAndRecoveryKeyTogether() throws {
         let k = StoredKey.generate()
-        #expect(k.encoded.count == 49)
+        #expect(k.encoded.count == 53 && k.encoded.first == 2)
         #expect(StoredKey(encoded: k.encoded) == k)
+        let later = StoredKey.generate(generation: 70_000)
+        #expect(StoredKey(encoded: later.encoded) == later && StoredKey(encoded: later.encoded)?.generation == 70_000, "the reset generation it was made in")
+        #expect(StoredKey(encoded: Data([1]) + k.dataKey + k.recovery) == nil, "the old format isn't read")
         #expect(StoredKey(encoded: k.dataKey) == nil, "a bare key isn't a stored key")
         let user = UUID()
         let row = try k.serverRow(user: user)
