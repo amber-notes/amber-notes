@@ -41,6 +41,7 @@
 		21B3A13060F5A1F99F01DAEF /* ApplePins.swift in Sources */ = {isa = PBXBuildFile; fileRef = 187BCDDD3155D5979CC60AC7 /* ApplePins.swift */; };
 		235AD4EADE1953AA846A9024 /* Tips.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAEF55394E3ADF3DB9CF451B /* Tips.swift */; };
 		23C51C81E1F1A07BDF892635 /* EmailSignInFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C135694A380C4DFF429CB79 /* EmailSignInFlowTests.swift */; };
+		23C6E6E629898D6FD305E47E /* TestDefaults.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54785B843656F68AE620E39F /* TestDefaults.swift */; };
 		23E4BF6DBF351399CB7A81A8 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = F8F5BB5A6342B75E408A4A39 /* Supabase */; };
 		253C140607541209FC05DCDD /* ChecklistInteractionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BDEFF02B8B16DE3DF974509 /* ChecklistInteractionTests.swift */; };
 		25FE04040BD074DCC1D2D6A3 /* TextDiff.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7329AFAFDF70725C833E38C /* TextDiff.swift */; };
@@ -363,6 +364,7 @@
 		529388344853209DFB22B984 /* PaneDirect.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PaneDirect.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		52A05065D6AC46E02DC096AF /* StubSupabase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StubSupabase.swift; sourceTree = "<group>"; };
 		52D997E7DDEDD95A01EC24BA /* Backend.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Backend.xcconfig; sourceTree = "<group>"; };
+		54785B843656F68AE620E39F /* TestDefaults.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestDefaults.swift; sourceTree = "<group>"; };
 		550BEF23962BF4E461634AD1 /* SessionStorageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStorageTests.swift; sourceTree = "<group>"; };
 		550E4D52A7E05ECB1417CCD0 /* RichPaste.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichPaste.swift; sourceTree = "<group>"; };
 		591D65AE1B7FABAAE04A733D /* tracker-prefixed.xlsx */ = {isa = PBXFileReference; path = "tracker-prefixed.xlsx"; sourceTree = "<group>"; };
@@ -554,6 +556,7 @@
 			isa = PBXGroup;
 			children = (
 				8F75721B99AD389AEFA24318 /* EditorHarness.swift */,
+				54785B843656F68AE620E39F /* TestDefaults.swift */,
 			);
 			path = Harness;
 			sourceTree = "<group>";
@@ -1089,6 +1092,7 @@
 				1BB0A248D658A1C8DADC7424 /* SyncFaultTests.swift in Sources */,
 				DB7D3D645DA4467B46FCDC65 /* SyncRefusalTests.swift in Sources */,
 				D48F87E78AFE583C4562AA6C /* TableInteractionTests.swift in Sources */,
+				23C6E6E629898D6FD305E47E /* TestDefaults.swift in Sources */,
 				7C1B0C3000BFEBF1AB59758A /* TipSnapshots.swift in Sources */,
 				D74868EC5AD24025CC15A002 /* TipsTests.swift in Sources */,
 				F9056BC1B1B9B2AE0C137E25 /* TwoDeviceLiveSyncTests.swift in Sources */,

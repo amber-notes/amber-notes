@@ -14,12 +14,7 @@ import Testing
     /// 21 Sep 2026, 14:13 UTC: mid-afternoon, far from midnight.
     static let t0 = Date(timeIntervalSince1970: 1_790_000_000)
 
-    static func defaults() -> UserDefaults {
-        let name = "ShareAskTests.\(UUID().uuidString)"
-        let d = UserDefaults(suiteName: name)!
-        d.removePersistentDomain(forName: name)
-        return d
-    }
+    static func defaults() -> UserDefaults { TestDefaults() }
 
     /// Notes used on `n` different days, every other day from t0.
     static func usedOn(_ n: Int, _ d: UserDefaults) {

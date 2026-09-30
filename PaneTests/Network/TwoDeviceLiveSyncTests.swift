@@ -23,9 +23,8 @@ extension NetworkFaults {
         NetFault.resetLog()
         func device(_ name: String) throws -> Device {
             let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
-            let defaults = try #require(UserDefaults(suiteName: "TwoDevice.\(name).\(UUID().uuidString)"))
             let ctx = ModelContext(c)
-            return Device(context: ctx, engine: SyncEngine(backend: Backend(testClient: StubSupabase.client(), email: "qa@example.com"), context: ctx, defaults: defaults))
+            return Device(context: ctx, engine: SyncEngine(backend: Backend(testClient: StubSupabase.client(), email: "qa@example.com"), context: ctx, defaults: TestDefaults()))
         }
         phone = try device("phone")
         mac = try device("mac")

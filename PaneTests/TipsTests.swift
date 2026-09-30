@@ -47,12 +47,7 @@ import TipKit
 
     // MARK: Spacing and days
 
-    static func defaults() -> UserDefaults {
-        let name = "TipsTests.\(UUID().uuidString)"
-        let d = UserDefaults(suiteName: name)!
-        d.removePersistentDomain(forName: name)
-        return d
-    }
+    static func defaults() -> UserDefaults { TestDefaults() }
 
     @Test func oneTipHasThreeDaysThenTheNextMayGo() {
         let d = Self.defaults()
