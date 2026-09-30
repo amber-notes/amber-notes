@@ -78,7 +78,8 @@ http_headers = { "Authorization" = "Bearer pane_…" }`}</code></pre>
         <li>Edits keep the previous version, so File, then Show Version History, can put a note back.</li>
       </ul>
       <p>
-        The <a href="/blog/mcp-server">MCP server page</a> lists every tool the agent can call.
+        The <a href="/blog/mcp-server">MCP server page</a> lists every tool the agent can call, and{" "}
+        <a href="/blog/work-log-with-claude-code">keep a work log with Claude Code</a> puts it to daily use.
       </p>
     </PostPage>
   );

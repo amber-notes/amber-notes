@@ -5,6 +5,30 @@ assistants. Newest first. Research behind it: [seo-aeo-research-2026-09-30.md](s
 
 `docs/` had no README naming a folder for evidence, so this and the research live in `docs/Evidence/`.
 
+## 30 September 2026 (late): round 4
+
+### Measured
+
+- `site:ambernotes.app`: still no pages from the site itself. The results are the repo's GitHub pull requests (#8, #20, #23, #25), then the name collisions (Google Play AmberNotes, app.ambernotes.eu, ambernotes.ai). The search summary now quotes the new repo description ("a free, open-source notes app for iPhone and Mac that ChatGPT and Claude can use (MCP)") and the blog's posts, through GitHub.
+- `ambernotes.app blog`: again only GitHub pull requests plus the collisions.
+- Reading: the site isn't crawled into this index yet, about 12 hours after Search Console verification. GitHub is carrying the brand in the meantime, and the new repo description is working.
+
+### Changed (branch `site/growth-4`)
+
+- Four posts:
+  - `/blog/apple-notes-vs-notion`: a table, plus where each wins and where AI fits
+  - `/blog/apple-notes-vs-obsidian`: fair about local files, plugins and every platform
+  - `/blog/chatgpt-to-do-list-on-iphone`: a checklist note, prompts, the tools behind them, and sharing
+  - `/blog/work-log-with-claude-code`: a CLAUDE.md block, the standup, a daily log and the tracker
+- Each post has an FAQ with FAQPage JSON-LD.
+- New real captures:
+  - a Mac "Standup notes" note just after a Claude Code edit, from a new offscreen snapshot test
+  - the Mac Lisbon note
+  - an iPhone "Trip documents" note in dark mode, and the iPhone Groceries checklist after a ChatGPT edit, from a temporary simulator that was deleted afterwards
+- Card pictures: the bottom fade is now sized to the picture, so a short capture shows whole instead of fading its last line.
+- Index: 14 posts, filtered as Guides (8) and Comparisons (6). "All posts" at the bottom of each post stays grouped by category.
+- `updated` dates: unchanged on older posts, except those that gained a link to a new post; every post's date is still today.
+
 ## 30 September 2026 (night): card pictures redone
 
 - Every card now shows one focal capture of what the post is about: the connect steps, a tinted AI edit, the import list, a consent sheet, a tracker table and so on. Each capture is cropped from a full-resolution source at about the card's width, so it shows near full size and is sharp on 2x screens. The picture runs edge to edge under the card's corners, on a quiet tint, and fades out at the bottom.

@@ -37,5 +37,20 @@ import Testing
         let list = Form { ConnectAISection(client: client) }.formStyle(.grouped).frame(width: size.width, height: size.height)
         try await VersionHistorySnapshots.shoot(list, to: dir.appending(path: "card-connect-list.png"), size: size, dark: false)
     }
+
+    /// Standup notes just after Claude Code added today's standup: the lines it wrote tinted, and
+    /// "Claude Code changed … lines · Undo" at the bottom. For the work-log post.
+    @Test func standupByClaudeCode() async throws {
+        guard let dir = AppSnapshotTests.dir else { return }
+        let c = try AppSnapshotTests.container()
+        try await AppSnapshotTests.withLastNote(c, "Standup notes") {
+            let w = AIEditSnapshots.window(AIEditSnapshots.root(c), size: CGSize(width: 1180, height: 760))
+            defer { w.orderOut(nil); w.close() }
+            try? await Task.sleep(for: .seconds(1.2))
+            Capture.aiEdit(c.mainContext, title: "Standup notes", scene: "standup", by: "Claude Code")
+            try? await Task.sleep(for: .seconds(1.6))
+            try AIEditSnapshots.snap(w, to: dir.appending(path: "mac-standup-claude-code.png"))
+        }
+    }
 }
 #endif

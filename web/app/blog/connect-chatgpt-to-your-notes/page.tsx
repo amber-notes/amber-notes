@@ -93,6 +93,7 @@ export default function Page() {
       </ul>
 
       <h2>Things to ask</h2>
+      <p>For a to-do list you tick on your phone, see <a href="/blog/chatgpt-to-do-list-on-iphone">how to use ChatGPT as a to-do list</a>. A few more:</p>
       <ul>
         <li>&ldquo;Plan 4 days in Lisbon for us and save it to my notes.&rdquo;</li>
         <li>&ldquo;What did I write about the kitchen measurements?&rdquo;</li>
