@@ -25,6 +25,11 @@ import Testing
         var file: File
         var recovery: Recovery
         var tokens: Tokens
+        struct Handoff: Decodable {
+            var request_id: String; var code: String; var browser_private: String; var browser_public: String
+            var device_ephemeral_private: String; var sealed: String
+        }
+        var handoff: Handoff
     }
 
     /// Read from the repository (not the bundle), so the app and the server test the one file.
@@ -138,6 +143,25 @@ import Testing
         #expect(try E2EE.wrap(key, with: kek, purpose: purpose, user: user, nonce: nonce) == v.tokens.wraps[purpose])
         #expect(E2EE.bytes(try E2EE.unwrap(v.tokens.wraps[purpose]!, with: kek, purpose: purpose, user: user)) == E2EE.bytes(key))
         #expect(throws: E2EE.Failure.wrongKey) { try E2EE.unwrap(v.tokens.wraps[purpose]!, with: kek, purpose: purpose, user: UUID()) }
+    }
+
+    @Test func handoffSealsExactlyAndOpensOnlyForThePage() throws {
+        let h = v.handoff
+        let request = try #require(UUID(uuidString: h.request_id))
+        let page = try P256.KeyAgreement.PrivateKey(rawRepresentation: Data(base64Encoded: h.browser_private)!)
+        let pagePublic = Data(base64Encoded: h.browser_public)!
+        #expect(page.publicKey.x963Representation == pagePublic)
+        let ephemeral = try P256.KeyAgreement.PrivateKey(rawRepresentation: Data(base64Encoded: h.device_ephemeral_private)!)
+        #expect(try E2EE.sealHandoff(code: h.code, browserKey: pagePublic, requestID: request, ephemeral: ephemeral, nonce: nonce) == h.sealed)
+        #expect(try E2EE.openHandoff(h.sealed, browserPrivate: page, requestID: request) == h.code)
+
+        // Sealed here at random: the page opens it; another page or another request can't.
+        let sealed = try E2EE.sealHandoff(code: h.code, browserKey: pagePublic, requestID: request)
+        #expect(sealed != h.sealed && sealed.hasPrefix("amb2h."))
+        #expect(try E2EE.openHandoff(sealed, browserPrivate: page, requestID: request) == h.code)
+        #expect(throws: E2EE.Failure.wrongKey) { try E2EE.openHandoff(sealed, browserPrivate: .init(), requestID: request) }
+        #expect(throws: E2EE.Failure.wrongKey) { try E2EE.openHandoff(sealed, browserPrivate: page, requestID: UUID()) }
+        #expect(throws: E2EE.Failure.malformed) { try E2EE.sealHandoff(code: h.code, browserKey: pagePublic.prefix(33), requestID: request) }
     }
 }
 

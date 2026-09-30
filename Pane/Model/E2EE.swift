@@ -147,6 +147,46 @@ enum E2EE {
                                info: Data("recovery \(user.uuidString.lowercased())".utf8), outputByteCount: 32)
     }
 
+    // MARK: Handing a code to a browser
+    //
+    // A browser elsewhere asked this account's devices to approve an AI connection. The device that
+    // approves seals the authorization code to the page's P-256 key, so only that page can open it:
+    // "amb2h." + base64(device ephemeral public key, raw uncompressed 65 bytes ‖ nonce 12 ‖
+    // AES-GCM ciphertext ‖ tag 16). Key: HKDF-SHA256 of the ECDH secret, salt "amber-notes/e2ee",
+    // info "handoff <request id>"; AAD "amb2h|<request id>" (supabase/functions/_shared/e2ee.ts).
+
+    static let handoffPrefix = "amb2h."
+
+    private static func handoffKey(_ secret: SharedSecret, request: UUID) -> SymmetricKey {
+        secret.hkdfDerivedSymmetricKey(using: SHA256.self, salt: hkdfSalt,
+                                       sharedInfo: Data("handoff \(request.uuidString.lowercased())".utf8), outputByteCount: 32)
+    }
+
+    private static func handoffAAD(_ request: UUID) -> Data { Data("amb2h|\(request.uuidString.lowercased())".utf8) }
+
+    /// `code` sealed to the page's public key (raw uncompressed, 65 bytes). `ephemeral` and `nonce`
+    /// are for the test vector only.
+    static func sealHandoff(code: String, browserKey: Data, requestID: UUID,
+                            ephemeral: P256.KeyAgreement.PrivateKey = .init(), nonce: AES.GCM.Nonce = .init()) throws -> String {
+        guard browserKey.count == 65, browserKey.first == 4,
+              let page = try? P256.KeyAgreement.PublicKey(x963Representation: browserKey) else { throw Failure.malformed }
+        let key = handoffKey(try ephemeral.sharedSecretFromKeyAgreement(with: page), request: requestID)
+        let box = try AES.GCM.seal(Data(code.utf8), using: key, nonce: nonce, authenticating: handoffAAD(requestID))
+        guard let combined = box.combined else { throw Failure.malformed }
+        return handoffPrefix + (ephemeral.publicKey.x963Representation + combined).base64EncodedString()
+    }
+
+    /// What the page does with a handoff; here for tests.
+    static func openHandoff(_ sealed: String, browserPrivate: P256.KeyAgreement.PrivateKey, requestID: UUID) throws -> String {
+        guard sealed.hasPrefix(handoffPrefix), let bytes = Data(base64Encoded: String(sealed.dropFirst(handoffPrefix.count))),
+              bytes.count >= 65 + 12 + 16,
+              let device = try? P256.KeyAgreement.PublicKey(x963Representation: bytes.prefix(65)),
+              let box = try? AES.GCM.SealedBox(combined: bytes.dropFirst(65)) else { throw Failure.malformed }
+        let key = handoffKey(try browserPrivate.sharedSecretFromKeyAgreement(with: device), request: requestID)
+        guard let plain = try? AES.GCM.open(box, using: key, authenticating: handoffAAD(requestID)) else { throw Failure.wrongKey }
+        return String(decoding: plain, as: UTF8.self)
+    }
+
     /// The sealer sync uses while the account's data key is open. Nil: signed out, local only, or
     /// this device doesn't have the key yet. Set only by `AccountCrypto`.
     nonisolated(unsafe) static var sealer: Sealer?
