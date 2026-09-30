@@ -38,6 +38,9 @@ const SITE = "https://ambernotes.app";
 const MOVED = ["/", "/help", "/download", "/changelog"];
 
 const config: NextConfig = {
+  // The blog reads each post's source for its reading time (lib/blog.tsx). A server render (crawlers
+  // get one) must find those files in the function bundle, or the post fails with ENOENT.
+  outputFileTracingIncludes: { "/blog/*": ["./app/blog/**/page.tsx"] },
   poweredByHeader: false,
   async redirects() {
     return [
