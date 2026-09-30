@@ -17,8 +17,8 @@ const FAQ = [
   { q: "Why is the Apple Notes connector not working in Claude?", a: [
     "Most often because it's being used outside the Claude desktop app on a Mac: it doesn't work on claude.ai or in Claude on iPhone. On the Mac, check that Claude may control Notes in System Settings, Privacy & Security, Automation, then quit and reopen Claude. It also can't read locked notes, and it only sees notes while that Mac is awake.",
   ] },
-  { q: "Is there an official Apple Notes MCP server?", a: [
-    "Apple doesn't make one. The Apple Notes MCP servers you'll find on GitHub are community projects that drive the Notes app on your Mac through AppleScript.",
+  { q: "Does Apple make a way for Claude to use Apple Notes?", a: [
+    "No. Apple offers no API or MCP server for Notes. Anthropic's Read and Write Apple Notes extension and the community MCP servers on GitHub all drive the Notes app on your Mac through AppleScript.",
   ] },
 ];
 

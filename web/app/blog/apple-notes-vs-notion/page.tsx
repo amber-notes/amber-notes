@@ -1,9 +1,7 @@
 import { PostPage, postMetadata } from "@/lib/PostPage";
 
 export const dynamic = "force-static";
-export const metadata = postMetadata("apple-notes-vs-notion", {
-  title: "Apple Notes vs Notion for everyday notes (and where AI fits) · Amber Notes",
-});
+export const metadata = postMetadata("apple-notes-vs-notion", { title: "Apple Notes vs Notion for everyday notes (and AI)" });
 
 type Row = [string, string, string, string];
 

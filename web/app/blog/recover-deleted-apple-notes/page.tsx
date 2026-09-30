@@ -1,7 +1,7 @@
 import { PostPage, postMetadata } from "@/lib/PostPage";
 
 export const dynamic = "force-static";
-export const metadata = postMetadata("recover-deleted-apple-notes");
+export const metadata = postMetadata("recover-deleted-apple-notes", { title: "How to recover deleted Apple Notes · Amber Notes" });
 
 const FAQ = [
   { q: "How long does Apple Notes keep deleted notes?", a: [

@@ -3,7 +3,7 @@ import { APP_STORE_LIVE } from "@/lib/site";
 import { PRIVACY_PATH, READABLE } from "@/lib/privacy";
 
 export const dynamic = "force-static";
-export const metadata = postMetadata("encrypted-notes-app-for-ai");
+export const metadata = postMetadata("encrypted-notes-app-for-ai", { title: "An encrypted notes app ChatGPT and Claude can use" });
 
 const FAQ = [
   { q: "Is Amber Notes end-to-end encrypted?", a: [

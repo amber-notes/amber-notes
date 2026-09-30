@@ -5,6 +5,24 @@ assistants. Newest first. Research behind it: [seo-aeo-research-2026-09-30.md](s
 
 `docs/` had no README naming a folder for evidence, so this and the research live in `docs/Evidence/`.
 
+## 1 October 2026: blog quality pass
+
+Audited the built pages (`next build`, then every `/blog/*.html`, `/help`, `/llms.txt` and `/llms-full.txt`).
+
+### Found and fixed (branch `site/blog-quality`)
+
+- **Search titles over 60 characters** on seven posts (66 to 88 with " · Amber Notes"). Each now has a shorter search title; the page headline stays as it was: Apple Notes API, Apple Notes in iOS 27, Apple Notes vs Notion, ChatGPT as a to-do list, the encrypted notes post, the forgotten password post and the recover post.
+- **Meta descriptions over 160 characters** on two posts (iOS 27 and encrypted notes), shortened.
+- **The same FAQ question on two posts**, which confuses FAQ rich results: "Is there an official Apple Notes MCP server?" (Apple Notes MCP and Claude and Apple Notes; the Claude post now asks "Does Apple make a way for Claude to use Apple Notes?", and its answer names Anthropic's extension) and "Which notes app works best with ChatGPT?" (the MCP comparison now asks "Which of these notes apps can ChatGPT reach?").
+- **Dates**: the encrypted notes post went live on 1 October, so it's dated that day; Amber Notes vs Apple Notes and the MCP server page were updated for encryption and the new approval flow on 1 October, so their "updated" (and the sitemap's lastmod) say so. Posts that only gained a link keep their date.
+- **Tests** in `lib/seo.test.ts` keep it that way: search titles at most 60 characters and unique, descriptions 70 to 160 and unique, "updated" never before "published", and no FAQ question repeated across posts or the help page.
+
+### Checked, nothing to fix
+
+- Internal links: every `/blog/<slug>` link points at a published post, and every `#anchor` link exists on its target page.
+- FAQ JSON-LD: every post's FAQPage parses, each item is a Question with an accepted answer; Article has headline, dates and author; 86 distinct questions in all.
+- /llms.txt and /llms-full.txt list all 23 published posts, each with its one-line description, and leave out the draft.
+
 ## 1 October 2026: round 15, "How to recover deleted Apple Notes"
 
 ### Query

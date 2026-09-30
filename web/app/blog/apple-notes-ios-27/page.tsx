@@ -1,7 +1,7 @@
 import { PostPage, postMetadata } from "@/lib/PostPage";
 
 export const dynamic = "force-static";
-export const metadata = postMetadata("apple-notes-ios-27");
+export const metadata = postMetadata("apple-notes-ios-27", { title: "Apple Notes in iOS 27: what's new, and what AI can't do" });
 
 const FAQ = [
   { q: "What's new in Apple Notes in iOS 27?", a: [
