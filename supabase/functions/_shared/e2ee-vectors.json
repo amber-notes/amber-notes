@@ -57,6 +57,10 @@
       "pane": "amb2.ae216c2ef5247a37.oKGio6SlpqeoqaqrXDewuPjLVp3oFLyrnQeTVZO9WRizXFz/zMjs+opRNqgfiD+wVQViJE2iGgdLk2glpIBEdv4J/gstbSAW"
     }
   },
+  "pickup": {
+    "secret": "707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f",
+    "hash": "ee070b29400115ee2b23ede5e46a7da719eae1d85af97bd76d55c0c3042b108a"
+  },
   "share_tag": {
     "note_id": "11111111-2222-4333-8444-555555555555",
     "slug": "AbCdEfGhIjKlMnOpQrStUvWx",

@@ -50,6 +50,12 @@ describe("the pickup secret", () => {
     expect(p.pickup_hash).toMatch(/^[0-9a-f]{64}$/);
   });
 
+  it("matches the shared vector the server is checked against", async () => {
+    const raw = Uint8Array.from(Buffer.from(v.pickup.secret, "hex"));
+    const p = await newPickup(raw);
+    expect([p.pickup, p.pickup_hash]).toEqual([v.pickup.secret, v.pickup.hash]);
+  });
+
   it("is new each time", async () => {
     const [a, b] = [await newPickup(), await newPickup()];
     expect(a.pickup).toMatch(/^[0-9a-f]{64}$/);

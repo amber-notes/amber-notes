@@ -3,7 +3,7 @@
 // purpose: deno run -A supabase/functions/_shared/e2ee.test.ts --write
 import { assert, assertEquals, assertRejects } from "jsr:@std/assert@1";
 import {
-  aesKey, bodyContext, canonicalRecoveryKey, fileMetaContext, folderContext, fromBase64, headContext, keyIdOf, open, OpenError,
+  aesKey, bodyContext, hex, canonicalRecoveryKey, fileMetaContext, folderContext, fromBase64, headContext, keyIdOf, open, OpenError,
   handoffPayload, matchNumber, openFile, openHandoff, parseRecoveryKey, readHandoffPayload, sealHandoff, shareTag, recoveryKEK, recoveryKeyText, seal, sealFile, tokenKey, toBase64, unwrap, Vault, verifierOf, wrap,
   type WrapPurpose,
 } from "./e2ee.ts";
@@ -61,6 +61,12 @@ async function build() {
       wrap: await wrap(dataKey, await recoveryKEK(recovery, userId), "recovery", userId, nonce),
     },
     tokens: { ...Object.fromEntries(secrets), wraps },
+    // The /connect/status pickup: 32 random bytes sent as lowercase hex; the ask carries the
+    // lowercase hex SHA-256 of the raw bytes (not of the hex text).
+    pickup: {
+      secret: hex(bytes(0x70, 32)),
+      hash: hex(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes(0x70, 32)))),
+    },
     share_tag: {
       note_id: noteId, slug: "AbCdEfGhIjKlMnOpQrStUvWx", include_subnotes: true,
       tag: await shareTag(dataKey, noteId, "AbCdEfGhIjKlMnOpQrStUvWx", true),
@@ -193,4 +199,11 @@ Deno.test("the vault checks share tags without keeping the raw key", async () =>
   assertEquals(await vault.shareTagMatches(t.note_id, t.slug, false, t.tag), false);
   assertEquals(await vault.shareTagMatches(t.note_id, t.slug, true, null), false);
   assertEquals(await vault.shareTagMatches(t.note_id, t.slug, true, "0".repeat(64)), false);
+});
+
+Deno.test("the pickup hash is SHA-256 of the secret's raw bytes", async () => {
+  const v = JSON.parse(await Deno.readTextFile(path));
+  const raw = Uint8Array.from(v.pickup.secret.match(/../g).map((h: string) => parseInt(h, 16)));
+  assertEquals(hex(new Uint8Array(await crypto.subtle.digest("SHA-256", raw))), v.pickup.hash);
+  assert(hex(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(v.pickup.secret)))) !== v.pickup.hash);
 });
