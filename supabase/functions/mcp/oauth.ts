@@ -232,12 +232,21 @@ export function cleanName(raw: string): string {
     .replace(/\s+/g, " ").trim().slice(0, 80);
 }
 
-/// What the consent screen calls the client for this request: its own name, unless that borrows a
-/// trusted name without returning to that AI's pinned address. Then it's the address it returns to.
+/// What the consent screen and the connection are called: the AI's own name when the request
+/// returns to its pinned callback, and otherwise always the address access goes to. A name an app
+/// gives itself is never a title, however it's spelled; look-alike letters can't all be caught.
 export function displayName(name: string, redirectURI: string): string {
-  if (verifiedAI(redirectURI) || !claimsATrustedName(name)) return name;
+  if (verifiedAI(redirectURI)) return name;
   const host = new URL(redirectURI).hostname;
   return LOOPBACK.has(host) ? "An app on this computer" : host;
+}
+
+/// The name an unverified app gives itself, only for a secondary "It calls itself …" line: NFKC,
+/// lowercase, combining marks removed, and nothing but ASCII letters, digits, spaces and basic
+/// punctuation (anything else becomes "?").
+export function claimedName(name: string): string {
+  return name.normalize("NFKC").toLowerCase().replace(/[\p{Mn}\p{Me}]/gu, "")
+    .replace(/[^a-z0-9 .,:;'&()+_!-]/g, "?").replace(/\s+/g, " ").trim().slice(0, 60);
 }
 
 // MARK: Metadata
@@ -436,6 +445,8 @@ async function describeRequest(req: Request, sql: Sql): Promise<Response> {
   return json({
     id: r.id,
     client_name: displayName(r.client_name, r.redirect_uri),
+    // Unverified apps: what they call themselves, made plain, for a secondary line only.
+    claimed_name: verifiedAI(r.redirect_uri) ? null : claimedName(r.client_name) || null,
     redirect_host: host,
     // The exact return address: an AI's mark is shown only for its pinned callback.
     redirect_uri: r.redirect_uri,

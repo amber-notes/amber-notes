@@ -71,11 +71,14 @@ import Testing
         let otherPath = req("Claude", "https://claude.ai/somewhere/else")
         #expect(otherPath.verifiedAI == nil)
         #expect(otherPath.who == "claude.ai")
-        #expect(otherPath.claimedName == "Claude")
+        #expect(otherPath.claimedName == nil, "no plain claim from the server: none shown")
         #expect(req("ChatGPT", nil).verifiedAI == nil)
-        let local = ConnectRequest(id: UUID(), client_name: "Claude Code", redirect_host: "127.0.0.1", redirect_uri: "http://127.0.0.1:4000/cb", loopback: true, wants_write: true)
+        let local = ConnectRequest(id: UUID(), client_name: "An app on this computer", redirect_host: "127.0.0.1", redirect_uri: "http://127.0.0.1:4000/cb", claimed_name: "claude code", loopback: true, wants_write: true)
         #expect(local.who == "an app on this computer")
-        #expect(local.claimedName == "Claude Code")
+        #expect(local.claimedName == "claude code")
+        // The claim is only ever the server's plain version, never the raw name.
+        #expect(req("CIaude", "https://attacker.example/cb").claimedName == nil)
+        #expect(ConnectRequest(id: UUID(), client_name: "Claude", redirect_host: "claude.ai", redirect_uri: "https://claude.ai/api/mcp/auth_callback", claimed_name: "claude", loopback: false, wants_write: true).claimedName == nil)
     }
 
     @Test func aClientThatOnlyCallsItselfChatGPTGetsNoMark() {
@@ -93,6 +96,17 @@ import Testing
     private func row(_ name: String, host: String?, kind: String = "oauth", at: Date, revoked: Bool = false) -> Connection {
         Connection(id: UUID(), name: name, kind: kind, can_write: true, created_at: at, last_used_at: nil,
                    revoked_at: revoked ? at : nil, redirect_host: host, url_used_at: nil)
+    }
+
+    @Test func anUnverifiedConnectionIsTitledByWhereAccessWent() {
+        let now = Date.now
+        #expect(row("Claude", host: "claude.ai", at: now).title == "Claude")
+        // Old grants still carry the name the app gave itself; the list doesn't use it.
+        #expect(row("CIaude", host: "attacker.example", at: now).title == "attacker.example")
+        #expect(row("\u{13DF}laude", host: "claude.ai.attacker.example", at: now).title == "claude.ai.attacker.example")
+        #expect(row("Claude Code", host: "127.0.0.1", at: now).title == "An app on this computer")
+        // Access tokens are named by the person, in the app.
+        #expect(row("My laptop", host: nil, kind: "token", at: now).title == "My laptop")
     }
 
     @Test func eachWebAIHasAPlanThatOpensItsOwnSite() throws {

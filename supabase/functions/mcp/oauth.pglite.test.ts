@@ -20,7 +20,7 @@ Deno.env.delete("MCP_ALIAS_URLS");
 Deno.env.delete("CONNECT_PAGE_URL");
 Deno.env.set("MCP_PROXY_SECRET", "proxy-secret");
 
-const { handleOAuth, publicBase, resolveAccessToken, subpath, clientIP, cleanName, claimsATrustedName, displayName } = await import("./oauth.ts");
+const { handleOAuth, publicBase, resolveAccessToken, subpath, clientIP, cleanName, claimsATrustedName, displayName, claimedName } = await import("./oauth.ts");
 
 // MARK: Database
 
@@ -340,7 +340,8 @@ Deno.test("trusted names are recognized through spacing, case, digits and look-a
   assertEquals(displayName("Claude", "https://claude.ai/api/mcp/auth_callback"), "Claude");
   assertEquals(displayName("Claude", "https://claude.ai/other"), "claude.ai");
   assertEquals(displayName("Claude Code", "http://127.0.0.1:4000/cb"), "An app on this computer");
-  assertEquals(displayName("Incredible", "https://incredible.one/cb"), "Incredible");
+  // Any unverified app is titled by its address, whatever it's called.
+  assertEquals(displayName("Incredible", "https://incredible.one/cb"), "incredible.one");
 });
 
 async function ask(sql: Sql, pg: PGlite, name: string, uris: string[], redirect = uris[0]) {
@@ -502,4 +503,31 @@ Deno.test("F4: an attacker client named Claude is shown by its address, unverifi
 Deno.test("F5: x-mcp-public-url without the proxy secret is ignored", () => {
   assertEquals(publicBase(new Request(FUNCTION, { headers: { "x-mcp-public-url": ALIAS } })), FUNCTION);
   assertEquals(publicBase(new Request(FUNCTION, { headers: { "x-mcp-public-url": ALIAS, "x-mcp-proxy-secret": "proxy-secret" } })), ALIAS);
+});
+
+Deno.test("look-alike names are never a title: the address is, and the claim is plain ASCII", async () => {
+  const { sql, pg } = await db();
+  // "OpenAl" (lower-case L), "CIaude" (capital i), Cyrillic Т, a combining mark, small-capital ʟ, Cherokee Ꮯ.
+  const names = ["OpenAl", "CIaude", "ChatGP\u0422", "C\u0301laude", "C\u029Faude", "\u13DFlaude"];
+  for (const name of names) {
+    const { requestId, me, details } = await ask(sql, pg, name, ["https://attacker.example/cb"]);
+    assertEquals(details.client_name, "attacker.example", name);
+    assertEquals(details.verified_ai, null, name);
+    // Some are renamed at registration already (defence in depth); either way the claim is plain.
+    assert(details.claimed_name === null || /^[a-z0-9 .,:;'&()+_!?-]+$/.test(details.claimed_name), `${name}: ${details.claimed_name}`);
+    const decided = await call(sql, request("function", "/connect/decide", {
+      method: "POST", headers: { authorization: `Bearer ${me.jwt}`, origin: SITE, "content-type": "application/json" },
+      body: JSON.stringify({ id: requestId, allow: true, write: false }),
+    }));
+    assertEquals((await decided.json()).client_name, "attacker.example", name);
+    const [{ title }] = await sql`select name as title from public.mcp_tokens where user_id = ${me.id}` as { title: string }[];
+    assertEquals(title, "attacker.example", name);
+  }
+  // NFKC composes C + a combining accent into one non-ASCII letter, which shows as "?".
+  assertEquals(claimedName("C\u0301laude"), "?laude");
+  assertEquals(claimedName("Cla\u20DDude"), "claude");
+  assertEquals(claimedName("\u13DFlaude"), "?laude");
+  assertEquals(claimedName("C\u029Faude"), "c?aude");
+  assertEquals(claimedName("ChatGP\u0422"), "chatgp?");
+  assertEquals(claimedName("Notes Helper 2"), "notes helper 2");
 });

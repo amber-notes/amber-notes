@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { appLink, appleSignInURL, destination, functionURL, pkcePair, problemText, returnURL, signInError, validRequest, verifiedAI } from "./connect";
+import { appLink, appleSignInURL, consentHeading, destination, functionURL, pkcePair, problemText, returnURL, signInError, validRequest, verifiedAI } from "./connect";
 import { allowedPath, upstream, upstreamHeaders } from "./mcp-proxy";
 
 describe("the consent page", () => {
@@ -25,6 +25,16 @@ describe("the consent page", () => {
     // An older server sends no redirect_uri: never verified.
     expect(verifiedAI({})).toBe(null);
     expect(destination("127.0.0.1", true)).toBe("an app on this computer");
+  });
+
+  it("titles an unverified app by its address, its own name only as a plain claim", () => {
+    const base = { id: "x", redirect_host: "attacker.example", loopback: false, wants_write: true };
+    expect(consentHeading({ ...base, client_name: "attacker.example", redirect_uri: "https://attacker.example/cb", claimed_name: "ciaude" }))
+      .toEqual({ ai: null, who: "attacker.example", claimed: "ciaude" });
+    // An older server with the raw name and no plain claim: the raw name is never shown.
+    expect(consentHeading({ ...base, client_name: "Claude" }).claimed).toBe(null);
+    expect(consentHeading({ ...base, client_name: "Claude", redirect_host: "claude.ai", redirect_uri: "https://claude.ai/api/mcp/auth_callback", claimed_name: "claude" }))
+      .toEqual({ ai: "Claude", who: "Claude", claimed: null });
   });
 
   it("says why sign-in failed", () => {

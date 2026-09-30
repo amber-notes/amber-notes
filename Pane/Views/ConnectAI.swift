@@ -101,6 +101,8 @@ struct ConnectRequest: Decodable, Identifiable, Equatable {
     let redirect_host: String
     /// The exact return address (servers from 2026-09-30 on); decides whether an AI's mark shows.
     var redirect_uri: String? = nil
+    /// What an unverified app calls itself, made plain ASCII by the server; never a title.
+    var claimed_name: String? = nil
     let loopback: Bool
     let wants_write: Bool
 
@@ -108,8 +110,9 @@ struct ConnectRequest: Decodable, Identifiable, Equatable {
     var verifiedAI: String? { ConnectTrust.verifiedAI(redirectURI: redirect_uri) }
     /// Who's asking, as the sheet names it: the verified AI, or else where access goes.
     var who: String { verifiedAI ?? ConnectTrust.destination(host: redirect_host, loopback: loopback) }
-    /// The name an unverified app gave itself, shown only as its claim.
-    var claimedName: String? { verifiedAI == nil && client_name != who ? client_name : nil }
+    /// The name an unverified app gave itself, shown only as a secondary claim, and only as the
+    /// server's plain-ASCII version of it.
+    var claimedName: String? { verifiedAI == nil ? claimed_name.flatMap { $0.isEmpty ? nil : $0 } : nil }
 }
 
 enum ConnectAPI {
@@ -463,6 +466,13 @@ struct Connection: Decodable, Identifiable {
     let url_used_at: Date?
 
     var isOAuth: Bool { kind == "oauth" }
+    /// What the list calls it. A sign-in the app can't vouch for is named by where access went,
+    /// never by the name the app gave itself (grants from before 2026-09-30 still carry that name).
+    var title: String {
+        guard isOAuth, let host = redirect_host, !host.isEmpty,
+              ConnectTrust.verifiedAI(host: host, loopback: false) == nil else { return name }
+        return ["localhost", "127.0.0.1", "[::1]", "::1"].contains(host) ? "An app on this computer" : host
+    }
     /// A token that was sent inside a link: it may sit in logs or histories.
     var lessSecure: Bool { !isOAuth && url_used_at != nil }
 }
@@ -568,7 +578,7 @@ struct ConnectAISection: View {
         .sheet(item: $guide, onDismiss: { Task { await load() } }) { g in
             GuideSheet(guide: g, client: client)
         }
-        .confirmationDialog("Disconnect \(removing?.name ?? "")?", isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }), titleVisibility: .visible) {
+        .confirmationDialog("Disconnect \(removing?.title ?? "")?", isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }), titleVisibility: .visible) {
             Button("Disconnect", role: .destructive) { if let r = removing { Task { await revoke(r) } } }
         } message: {
             Text("It loses access to your notes right away.")
@@ -581,7 +591,7 @@ struct ConnectAISection: View {
             AITile(ai: ConnectTrust.verifiedAI(host: c.redirect_host ?? "", loopback: false) ?? "", size: 26)
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
-                    Text(c.name)
+                    Text(c.title)
                     if c.lessSecure {
                         Text("Less secure")
                             .font(.caption2.weight(.semibold))
@@ -598,7 +608,7 @@ struct ConnectAISection: View {
             Spacer()
             Button("Disconnect…") { removing = c }
                 .buttonStyle(.borderless)
-                .accessibilityLabel("Disconnect \(c.name)")
+                .accessibilityLabel("Disconnect \(c.title)")
                 .accessibilityIdentifier("connect.disconnect")
         }
     }
@@ -606,7 +616,7 @@ struct ConnectAISection: View {
     private func detail(_ c: Connection) -> String {
         var parts = [c.isOAuth ? "Signed in" : "Access token", c.can_write ? "Read and edit" : "Read only"]
         // Where access went: the proof of who this is, whatever it calls itself.
-        if c.isOAuth, let host = c.redirect_host, !host.isEmpty { parts.insert(host, at: 0) }
+        if c.isOAuth, let host = c.redirect_host, !host.isEmpty, host != c.title { parts.insert(host, at: 0) }
         parts.append(c.last_used_at.map { "Used \($0.formatted(.relative(presentation: .named)))" } ?? "Not used yet")
         return parts.joined(separator: " · ")
     }

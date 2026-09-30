@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { AIGlyph } from "@/lib/ai-glyphs";
 import {
-  appLink, appleSignInURL, destination, functionURL, pkcePair, returnURL, signInError, verifiedAI, type ConnectRequest,
+  appLink, appleSignInURL, consentHeading, destination, functionURL, pkcePair, returnURL, signInError, verifiedAI, type ConnectRequest,
 } from "@/lib/connect";
 import styles from "./connect.module.css";
 
@@ -207,11 +207,7 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, authCode,
   };
 
   const asking = phase.kind === "asking" ? phase.request : null;
-  const ai = asking ? verifiedAI(asking) : null;
-  // Who's asking: the AI, when its pinned callback proves it; otherwise where access goes, with the
-  // name the app gave itself only as a claim.
-  const who = asking ? (ai ?? destination(asking.redirect_host, asking.loopback)) : "";
-  const claimed = asking && !ai && asking.client_name !== who ? asking.client_name : null;
+  const { ai, who, claimed } = asking ? consentHeading(asking) : { ai: null, who: "", claimed: null };
 
   return (
     <main className={styles.page}>

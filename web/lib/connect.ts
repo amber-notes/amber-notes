@@ -25,6 +25,8 @@ export type ConnectRequest = {
   redirect_host: string;
   redirect_uri?: string;
   verified_ai?: "ChatGPT" | "Claude" | null;
+  /// What an unverified app calls itself, made plain ASCII by the server; never a title.
+  claimed_name?: string | null;
   loopback: boolean;
   wants_write: boolean;
 };
@@ -42,6 +44,14 @@ export const KNOWN_CALLBACKS: Record<string, "ChatGPT" | "Claude"> = {
 
 export function verifiedAI(r: Pick<ConnectRequest, "redirect_uri">): "ChatGPT" | "Claude" | null {
   return (r.redirect_uri && KNOWN_CALLBACKS[r.redirect_uri]) || null;
+}
+
+/// How the consent screen names who's asking: the AI when its pinned callback proves it, otherwise
+/// where access goes. An unverified app's own name is only ever a claim, in the server's plain form.
+export function consentHeading(r: ConnectRequest): { ai: "ChatGPT" | "Claude" | null; who: string; claimed: string | null } {
+  const ai = verifiedAI(r);
+  const who = ai ?? destination(r.redirect_host, r.loopback);
+  return { ai, who, claimed: !ai && r.claimed_name ? r.claimed_name : null };
 }
 
 /// Why /authorize sent someone here without a request (?problem=), in plain words. Unknown codes
