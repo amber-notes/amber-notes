@@ -71,6 +71,7 @@ export default function SiteChrome({ version, stars, children }: { version: stri
           {version && <span className="site-badge">v{version}</span>}
         </a>
         <nav className="site-nav" aria-label="Site">
+          <a href="/blog" aria-current={path === "/blog" || path.startsWith("/blog/") ? "page" : undefined}>Blog</a>
           <a href="/changelog" aria-current={current("/changelog")}>Changelog</a>
           <a href="/help" aria-current={path === "/help" || path === "/support" ? "page" : undefined}>Help</a>
           <a className="site-gh" href={GITHUB} target="_blank" rel="noopener noreferrer" aria-label={stars !== null ? `GitHub, ${stars} stars` : "GitHub"}>
