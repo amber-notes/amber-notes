@@ -73,7 +73,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.connectClaude,
-    cover: { ground: "leaf", layers: [layer("cover-phone-changes.webp", 440, 793, 29, 8, 42, "art")] },
+    cover: { ground: "leaf", layers: [layer("cover-phone-claude.webp", 440, 453, 13, 10, 74, "art")] },
     draft: false,
   },
   {
