@@ -6,5 +6,12 @@
 	<array><string>Default</string></array>
 	<key>com.apple.security.application-groups</key>
 	<array><string>group.dev.emilwagman.pane</string></array>
+	<!-- The account's encryption key in iCloud Keychain, shared by the iPhone and Mac apps
+	     (KeychainAccountKeyStore uses this group, the first, by default). -->
+	<key>keychain-access-groups</key>
+	<array><string>$(AppIdentifierPrefix)dev.emilwagman.pane</string></array>
+	<!-- https://ambernotes.app/open/connect opens the app (approving an AI connection). -->
+	<key>com.apple.developer.associated-domains</key>
+	<array><string>applinks:ambernotes.app</string></array>
 </dict>
 </plist>

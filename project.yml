@@ -74,7 +74,7 @@ targets:
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
         NSAppleEventsUsageDescription: Amber Notes reads the Apple Notes you choose to import. It never changes them.
-        NSFaceIDUsageDescription: Amber Notes uses Face ID to open your locked notes.
+        NSFaceIDUsageDescription: Amber Notes uses Face ID to open your locked notes, show your recovery key and approve AI connections.
         UTExportedTypeDeclarations:
           - UTTypeIdentifier: dev.emilwagman.pane.item
             UTTypeDescription: Pane item
