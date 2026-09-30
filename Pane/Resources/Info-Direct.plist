@@ -42,6 +42,8 @@
 	</dict>
 	<key>NSAppleEventsUsageDescription</key>
 	<string>Amber Notes reads the Apple Notes you choose to import. It never changes them.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Amber Notes uses Face ID to open your locked notes.</string>
 	<key>NSUserActivityTypes</key>
 	<array>
 		<string>dev.emilwagman.pane.connect</string>

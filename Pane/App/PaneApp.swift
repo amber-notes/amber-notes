@@ -37,6 +37,8 @@ struct PaneApp: App {
         let historyStore: NoteHistoryStore = args.contains("-demoHistory") ? DemoHistoryStore(context: context)
             : backend.client.map { SupabaseHistoryStore(client: $0) } ?? EmptyHistoryStore()
         NoteHistory.shared = NoteHistory(store: historyStore, context: context, sync: backend.client == nil ? nil : sync)
+        // Locked notes: the key behind Face ID / Touch ID, except in tests and captures.
+        NoteVault.shared = NoteVault(keyStore: inMemory ? MemoryKeyStore() : KeychainKeyStore())
         // "Did you know" tips; their counts go to the server when signed in.
         TipLog.client = backend.client
         FeatureUse.client = backend.client
@@ -364,11 +366,14 @@ struct AppGate: View {
             guard case .signedIn = backend.state, let client = backend.client else {
                 setup.attach(account: nil, service: nil)
                 shareAsk.attach(account: nil, service: nil)
+                if backend.state == .disabled { NoteVault.shared.attach(account: nil, remote: nil) } else { NoteVault.shared.lockNow() }
                 await sync.stop()
                 return
             }
             setup.attach(account: backend.userID, service: SupabaseSetup(client: client))
             shareAsk.attach(account: backend.userID, service: SupabaseShareAsk(client: client))
+            NoteVault.shared.attach(account: backend.userID, remote: SupabaseLockRemote(client: client))
+            await NoteVault.shared.refresh()
             await sync.start()
             // Seed only when the server really has nothing, never after a failed sync. A real
             // account starts with an empty Notes folder: the setup card is its welcome.
@@ -395,13 +400,22 @@ struct AppGate: View {
         .onReceive(NotificationCenter.default.publisher(for: .paneShowSetupGuide)) { _ in
             Task { await setup.reset() }
         }
+        #if os(macOS)
+        // The Mac going to sleep locks them too.
+        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.willSleepNotification)) { _ in
+            NoteVault.shared.lockNow()
+        }
+        #endif
         .onChange(of: phase) { _, p in
             sync.setActive(p == .active)
+            // Locked notes lock again when the app goes to the background.
+            if p == .background { NoteVault.shared.lockNow() }
             if p == .active {
                 Task { await PaneTips.appOpened() }
                 Task { await setup.refresh() }
                 if shareAsk.decided != true { Task { await shareAsk.refresh() } }
                 askToShareSoon()
+                Task { await NoteVault.shared.refresh() }
                 context.drainInbox()
                 sync.schedule()
             } else {

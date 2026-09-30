@@ -7,7 +7,8 @@
 --   notes.locked_body  "amb1.<key id>.<base64 AES-GCM box>": the whole markdown, sealed.
 --   note_locks         one row per account: the random salt and iteration count the key is
 --                      derived with (PBKDF2-SHA256), a sealed known text to check a password
---                      against, the hint, and the key id. Never the password or the key.
+--                      against, the hint, the key id, and the same for earlier passwords.
+--                      Never the password or the key.
 --
 -- The key id is the first 16 hex digits of SHA-256(salt). Changing the password makes a new
 -- salt (so a new key id) and the app re-encrypts every locked note. A device that still has the
@@ -30,6 +31,9 @@ create table public.note_locks (
   key_id text not null check (key_id ~ '^[0-9a-f]{16}$'),
   verifier text not null check (char_length(verifier) <= 300),
   hint text check (hint is null or char_length(hint) <= 200),
+  -- Earlier passwords' salts, iteration counts and key ids ({salt, iterations, key_id}, newest
+  -- last), so a note a device sealed before the change can still be opened with the old password.
+  previous jsonb not null default '[]'::jsonb check (jsonb_typeof(previous) = 'array' and jsonb_array_length(previous) <= 50),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

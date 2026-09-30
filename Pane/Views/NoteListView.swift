@@ -414,10 +414,13 @@ struct NoteListView: View {
                         .disabled(note.folder?.id == f.id)
                 }
             }
-            ShareLink(item: note.body, preview: SharePreview(note.title))
-            Button("Duplicate", systemImage: "plus.square.on.square") {
-                let copy = context.createNote(in: note.folder.map { .folder($0.id) } ?? .all, body: note.body)
-                selection = [copy.id]
+            // A locked note's text isn't here to send or copy.
+            if !note.isLocked {
+                ShareLink(item: note.body, preview: SharePreview(note.title))
+                Button("Duplicate", systemImage: "plus.square.on.square") {
+                    let copy = context.createNote(in: note.folder.map { .folder($0.id) } ?? .all, body: note.body)
+                    selection = [copy.id]
+                }
             }
             Divider()
             deleteButton(note)
@@ -558,7 +561,13 @@ struct NoteRow: View {
                 Text(DateBucket.rowDate(note.updatedAt))
                     .monospacedDigit()
                     .foregroundStyle(Color.ink.opacity(0.85))
-                if let ai {
+                if note.isLocked {
+                    // Like Notes: the title and a lock, nothing of the text.
+                    Label("Locked", systemImage: "lock.fill")
+                        .labelStyle(LockedRowLabel())
+                        .foregroundStyle(Color.muted)
+                        .lineLimit(1)
+                } else if let ai {
                     HStack(spacing: 4) {
                         AIGlyph(ai: ai, size: 11)
                         Text(AIEdit.wroteIt(note) ? "Written by \(ai)" : "Edited by \(ai)")
@@ -584,8 +593,18 @@ struct NoteRow: View {
         .padding(.vertical, RowMetrics.vertical)
         .padding(.leading, RowMetrics.leading)
         .accessibilityElement(children: .combine)
-        .accessibilityValue([note.isPinned ? "Pinned" : nil, ai.map { "Edited by \($0)" }].compactMap { $0 }.joined(separator: ", "))
+        .accessibilityValue([note.isPinned ? "Pinned" : nil, note.isLocked ? "Locked" : nil, ai.map { "Edited by \($0)" }].compactMap { $0 }.joined(separator: ", "))
         .accessibilityIdentifier("note.\(title)")
+    }
+
+    /// The lock sits close to its word, like the list's other small glyphs.
+    private struct LockedRowLabel: LabelStyle {
+        func makeBody(configuration: Configuration) -> some View {
+            HStack(spacing: 4) {
+                configuration.icon.imageScale(.small)
+                configuration.title
+            }
+        }
     }
 
     /// With a search, show the matching line instead of the preview.
