@@ -5,6 +5,12 @@ assistants. Newest first. Research behind it: [seo-aeo-research-2026-09-30.md](s
 
 `docs/` had no README naming a folder for evidence, so this and the research live in `docs/Evidence/`.
 
+## 30 September 2026 (night): card pictures redone
+
+- Every card now shows one focal capture of what the post is about: the connect steps, a tinted AI edit, the import list, a consent sheet, a tracker table and so on. Each capture is cropped from a full-resolution source at about the card's width, so it shows near full size and is sharp on 2x screens. The picture runs edge to edge under the card's corners, on a quiet tint, and fades out at the bottom.
+- The iPhone pictures are new simulator captures at 3x (the note list with "Edited by ChatGPT / Claude / Claude Code", and version history). The 480 px App Store art, and the phones cut through their frames, are gone.
+- Tests: every published card has its own ground and capture, at least 640 px wide.
+
 ## 30 September 2026 (evening): round 3, and the first measurement
 
 ### Measured

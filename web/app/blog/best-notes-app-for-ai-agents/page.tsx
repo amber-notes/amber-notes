@@ -69,7 +69,7 @@ export default function Page() {
         its column. Every change keeps the previous version, which the agent can list with <code>note_history</code> and you can restore in
         the app.
       </p>
-      <Figure shot={SHOTS.aiEdit} caption="What an agent changed is tinted, with Undo." />
+      <Figure shot={SHOTS.historyBurst} caption="Every version, with who made it: you, ChatGPT or Claude Code." />
       <p>
         Where it falls short today: the iPhone app is still on its way to the App Store, and there&apos;s no web app. If your team already
         lives in Notion, Notion&apos;s server is the better fit.

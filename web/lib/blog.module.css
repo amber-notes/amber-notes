@@ -37,38 +37,51 @@
 .stage { display: grid; place-items: center; padding: clamp(20px, 5vw, 44px); border-radius: 20px; overflow: hidden; }
 .caption { margin-top: 10px; color: var(--muted); font-size: 14px; line-height: 1.45; text-align: center; text-wrap: balance; }
 
-/* ── A card's cover: captures placed on the ground, cropped by the frame ── */
-.cover { position: relative; aspect-ratio: 16 / 10; border-radius: 12px; overflow: hidden; isolation: isolate; }
-.layer { position: absolute; }
-.layer img { display: block; width: 100%; height: auto; }
-/* Same corners and the same light for every layer, so the covers read as one family. */
-.cover .window { width: auto; border-radius: 8px; }
-.cover .bar { height: 18px; }
-.cover .lights { left: 7px; top: 6px; gap: 4px; }
-.cover .lights i { width: 6px; height: 6px; }
-.cover .barTitle { font-size: 9px; }
-.card2 { overflow: hidden; border-radius: 8px; background: #fff; box-shadow: 0 0 0 0.5px rgba(60, 20, 0, 0.2), 0 14px 28px -10px rgba(40, 15, 0, 0.35), 0 2px 5px rgba(40, 15, 0, 0.12); }
-/* Store art: its flat background fades out at the sides, so only the phone stands on the ground. */
-.art img { -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 6%, #000 94%, transparent 100%); mask-image: linear-gradient(90deg, transparent 0%, #000 6%, #000 94%, transparent 100%); }
-.bare img { filter: drop-shadow(0 14px 22px rgba(40, 15, 0, 0.35)) drop-shadow(0 2px 4px rgba(40, 15, 0, 0.15)); }
+/* ── A card's picture: one capture on the post's ground, edge to edge under the card's corners ── */
+.thumb { position: relative; aspect-ratio: 16 / 10; overflow: hidden; }
+.thumb img {
+  position: absolute; left: 6%; top: 20px; width: 88%; height: auto; border-radius: 10px; background: #fff;
+  box-shadow: 0 0 0 0.5px rgba(60, 20, 0, 0.16), 0 12px 28px -12px rgba(60, 20, 0, 0.3), 0 1px 3px rgba(60, 20, 0, 0.1);
+  /* Cropped only at the bottom, where it fades into the ground. */
+  -webkit-mask-image: linear-gradient(to bottom, #000 60%, transparent 86%); mask-image: linear-gradient(to bottom, #000 60%, transparent 86%);
+}
+/* In cards the grounds are quiet tints of the palette; the post's own picture keeps its fuller one. */
+.thumb[data-ground] { background: #fbeedd; box-shadow: none; }
+.thumb[data-ground="paper"] { background: #fbf6ef; }
+.thumb[data-ground="soft"] { background: #f5e3c9; }
+.thumb[data-ground="tint"] { background: #f9e4c4; }
+.thumb[data-ground="amber"] { background: #f7d6a6; }
+.thumb[data-ground="leaf"] { background: #ecdcc8; }
+.thumb[data-ground="dark"] { background: #e7e1da; }
+.thumb[data-ground="dunes"] { background: #f6d2a4; }
+.thumb[data-ground="ink"] { background: #e9ddce; }
+.thumb[data-ground="peach"] { background: #fbdcc4; }
+.thumb[data-ground="cream"] { background: #fff4e6; }
+
+/* An iPhone screen on its own, with the screen's corners. */
+.phone { width: min(100%, var(--w, 100%)); margin: 0 auto; }
+.phone img {
+  display: block; width: 100%; height: auto; border-radius: 12% / 5.5%;
+  box-shadow: 0 0 0 0.5px rgba(60, 20, 0, 0.2), 0 18px 36px -12px rgba(60, 20, 0, 0.32), 0 2px 6px rgba(60, 20, 0, 0.12);
+}
 
 /* ── Byline ── */
 .avatar { display: block; flex: none; border-radius: 50%; box-shadow: 0 0 0 1px var(--line); }
 .byline { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 7px; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 .byline > span:first-of-type { color: var(--ink); font-weight: 600; }
 
-/* ── A card, like the help page's: soft, 20 px corners around a 8 px inset, so the cover's are 12 ── */
+/* ── A card, like the help page's: soft, 20 px corners; the picture runs to its edges, so the corners clip it ── */
 .card {
-  display: grid; align-content: start; gap: 14px; padding: 8px 8px 18px; border-radius: 20px;
+  display: grid; align-content: start; gap: 14px; padding: 0 0 18px; border-radius: 20px; overflow: hidden;
   color: var(--ink); text-decoration: none; background: var(--soft);
 }
 @media (prefers-reduced-motion: no-preference) {
   .card { transition: box-shadow 0.15s ease-out, transform 0.12s ease-out; }
   .card:active { transform: scale(0.98); }
 }
-@media (hover: hover) { .card:hover { box-shadow: inset 0 0 0 1.5px var(--amber); } }
+@media (hover: hover) { .card:hover { box-shadow: 0 0 0 1.5px var(--amber); } }
 .card:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
-.cardText { display: grid; gap: 6px; padding: 0 12px; }
+.cardText { display: grid; gap: 6px; padding: 0 20px; }
 .label { font-size: 12px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--link); }
 .cardTitle { margin: 0; font-size: 19px; line-height: 1.2; font-weight: 750; letter-spacing: -0.015em; text-wrap: balance; }
 .excerpt {

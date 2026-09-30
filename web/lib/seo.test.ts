@@ -60,11 +60,15 @@ describe("the blog", () => {
     }
   });
 
-  it("gives every published post its own cover: a different ground and a different lead picture, from files that exist", () => {
+  it("gives every published post its own card picture: a different ground and capture, from files that exist", () => {
     const pub = published();
-    expect(new Set(pub.map((p) => p.cover.ground)).size).toBe(pub.length);
-    expect(new Set(pub.map((p) => p.cover.layers[0].src)).size).toBe(pub.length);
-    for (const p of posts) for (const l of p.cover.layers) expect(existsSync(new URL(`../public${l.src}`, import.meta.url)), l.src).toBe(true);
+    expect(new Set(pub.map((p) => p.thumb.ground)).size).toBe(pub.length);
+    expect(new Set(pub.map((p) => p.thumb.src)).size).toBe(pub.length);
+    for (const p of posts) expect(existsSync(new URL(`../public${p.thumb.src}`, import.meta.url)), p.thumb.src).toBe(true);
+  });
+
+  it("crops card pictures sharp enough for 2x screens (at least 640 px wide for a card about 330 px wide)", () => {
+    for (const p of published()) expect(p.thumb.width, p.slug).toBeGreaterThanOrEqual(640);
   });
 
   it("links every published post to two to six other posts in its text, and never to a draft", () => {

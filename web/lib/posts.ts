@@ -6,7 +6,8 @@ export type Category = "Guides" | "Comparisons" | "Building Amber Notes";
 
 /// A real capture of the app, in public/blog. `window` says whether the capture already has the
 /// Mac window around it (true), or is a sheet or form that the page frames in a window (false).
-export type Shot = { src: string; alt: string; width: number; height: number; window: boolean; title?: string };
+/// `phone`: an iPhone screen, shown as the screen alone with its own rounded corners.
+export type Shot = { src: string; alt: string; width: number; height: number; window: boolean; title?: string; phone?: boolean };
 
 export type Post = {
   slug: string;
@@ -21,8 +22,8 @@ export type Post = {
   updated: string;
   /// The capture right after the intro, on the post's ground.
   image: Shot;
-  /// The card's picture: its own ground and composition, so no two posts look alike.
-  cover: CoverArt;
+  /// The card's picture: its own ground and one focal capture, so no two posts look alike.
+  thumb: Thumb;
   draft: boolean;
 };
 
@@ -30,14 +31,11 @@ export type Post = {
 /// leaf brown, the app's dark look, or the home page's dunes.
 export type Ground = "paper" | "soft" | "tint" | "amber" | "leaf" | "dark" | "dunes" | "ink" | "peach" | "cream";
 
-/// One capture placed on a cover, in percent of the cover's width and height (it may run off an
-/// edge). `frame`: a Mac title bar, a plain rounded card, nothing (a capture with its own shape),
-/// or "art": App Store art of an iPhone, whose own background fades into the ground at its edges.
-export type Layer = { src: string; width: number; height: number; left: number; top: number; size: number; frame: "window" | "card" | "none" | "art"; title?: string; dark?: boolean };
-export type CoverArt = { ground: Ground; layers: Layer[] };
+/// A card's picture: one real capture of the element the post is about, on the post's ground. The
+/// capture is cropped at 2x (3x from iPhone) to about the card's width, so it shows at full size.
+export type Thumb = { ground: Ground; src: string; width: number; height: number };
 
-const layer = (src: string, width: number, height: number, left: number, top: number, size: number, frame: Layer["frame"], more: Partial<Layer> = {}): Layer =>
-  ({ src: `/blog/${src}`, width, height, left, top, size, frame, ...more });
+const thumb = (ground: Ground, name: string, width: number, height: number): Thumb => ({ ground, src: `/blog/${name}.webp`, width, height });
 
 export const AUTHOR = { name: "Emil Wagman", avatar: "/emil-wagman.jpg" };
 
@@ -50,8 +48,9 @@ export const SHOTS = {
   aiEdit: { src: "/blog/ai-edit.webp", alt: "A Groceries note in Amber Notes on a Mac. The five lines ChatGPT just added are tinted, and a bar at the bottom says ChatGPT changed 5 lines, with Undo.", width: 1260, height: 1520, window: false, title: "Groceries" },
   history: { src: "/blog/history.webp", alt: "Version history for a Groceries note in Amber Notes on a Mac: versions by you on iPhone and Mac, ChatGPT and Claude Code, with the lines that differ tinted and a Restore This Version button.", width: 1800, height: 1200, window: false, title: "Groceries" },
   welcome: { src: "/blog/p3-welcome-pane.webp", alt: "The Welcome to Amber Notes note on a Mac: markdown that styles itself as you type, a checklist, bullets, inline code and a table.", width: 1250, height: 950, window: false, title: "Welcome to Amber Notes" },
-  phoneChanges: { src: "/blog/p3-phone-changes.webp", alt: "Amber Notes on iPhone: the note list with Groceries marked Edited by ChatGPT, Lisbon Edited by Claude and Standup notes Edited by Claude Code.", width: 440, height: 793, window: true },
   historyBurst: { src: "/blog/p3-history-burst.webp", alt: "Version history for a Groceries note on a Mac: versions by you on iPhone and Mac, ChatGPT and Claude Code, with the lines that differ tinted and a Restore This Version button.", width: 1800, height: 1200, window: false, title: "Groceries" },
+  iphoneList: { src: "/blog/iphone-list.webp", alt: "Amber Notes on iPhone: the note list, with Groceries marked Edited by ChatGPT, Standup notes Edited by Claude Code and Lisbon Edited by Claude.", width: 1206, height: 2622, window: false, phone: true },
+  tracker: { src: "/blog/tracker-pane.webp", alt: "An Evening tracker note in Amber Notes on a Mac: a table with a row per day and typed columns for work hours, energy, mood and yes-or-no habits.", width: 1250, height: 900, window: false, title: "Evening tracker" },
 } satisfies Record<string, Shot>;
 
 export const posts: Post[] = [
@@ -64,7 +63,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.connectChatGPT,
-    cover: { ground: "paper", layers: [layer("cover-ai-rows.webp", 920, 765, 9, 12, 64, "card"), layer("cover-ai-pill.webp", 590, 156, 40, 64, 54, "none")] },
+    thumb: thumb("paper", "thumb-connect-chatgpt", 640, 500),
     draft: false,
   },
   {
@@ -76,7 +75,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.connectClaude,
-    cover: { ground: "leaf", layers: [layer("cover-phone-claude.webp", 440, 453, 13, 10, 74, "art")] },
+    thumb: thumb("leaf", "thumb-connect-claude", 640, 410),
     draft: false,
   },
   {
@@ -88,7 +87,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.aiEdit,
-    cover: { ground: "dunes", layers: [layer("history.webp", 1800, 1200, 6, 12, 66, "window", { title: "Groceries" }), layer("cover-consent-choice.webp", 840, 490, 48, 40, 46, "card")] },
+    thumb: thumb("dunes", "thumb-ai-rows", 640, 500),
     draft: false,
   },
   {
@@ -100,7 +99,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.importSheet,
-    cover: { ground: "soft", layers: [layer("cover-import-head.webp", 1065, 560, 8, 9, 84, "card"), layer("cover-import-progress.webp", 1065, 110, 22, 77, 70, "card")] },
+    thumb: thumb("soft", "thumb-import", 640, 500),
     draft: false,
   },
   {
@@ -112,7 +111,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.connectList,
-    cover: { ground: "dark", layers: [layer("cover-connect-ai-dark.webp", 1040, 720, 14, 12, 72, "window", { title: "Settings", dark: true })] },
+    thumb: thumb("dark", "thumb-connect-list", 640, 500),
     draft: false,
   },
   {
@@ -124,7 +123,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.history,
-    cover: { ground: "tint", layers: [layer("cover-phone-versions.webp", 400, 793, 33, 9, 36, "art")] },
+    thumb: thumb("tint", "thumb-iphone-history", 1146, 900),
     draft: false,
   },
   {
@@ -136,7 +135,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.consent,
-    cover: { ground: "amber", layers: [layer("cover-consent-choice.webp", 840, 490, 13, 16, 74, "card")] },
+    thumb: thumb("amber", "thumb-consent", 720, 500),
     draft: false,
   },
   {
@@ -148,7 +147,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.welcome,
-    cover: { ground: "ink", layers: [layer("p3-welcome-detail.webp", 1000, 330, 8, 24, 84, "card")] },
+    thumb: thumb("ink", "thumb-markdown", 720, 335),
     draft: false,
   },
   {
@@ -159,8 +158,8 @@ export const posts: Post[] = [
     category: "Comparisons",
     date: "2026-09-30",
     updated: "2026-09-30",
-    image: SHOTS.phoneChanges,
-    cover: { ground: "peach", layers: [layer("p3-phone-chatgpt-card.webp", 480, 330, 10, 12, 80, "card")] },
+    image: SHOTS.iphoneList,
+    thumb: thumb("peach", "thumb-iphone-chatgpt", 1146, 900),
     draft: false,
   },
   {
@@ -171,8 +170,8 @@ export const posts: Post[] = [
     category: "Comparisons",
     date: "2026-09-30",
     updated: "2026-09-30",
-    image: SHOTS.historyBurst,
-    cover: { ground: "cream", layers: [layer("p3-tracker-table.webp", 1250, 690, 9, 14, 96, "card")] },
+    image: SHOTS.tracker,
+    thumb: thumb("cream", "thumb-tracker", 720, 500),
     draft: false,
   },
   {
@@ -184,7 +183,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.aiEdit,
-    cover: { ground: "paper", layers: [layer("ai-edit.webp", 1260, 1520, 20, 10, 60, "window", { title: "Groceries" })] },
+    thumb: thumb("paper", "thumb-ai-rows", 640, 500),
     draft: true,
   },
 ];
