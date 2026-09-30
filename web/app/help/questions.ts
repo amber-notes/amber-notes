@@ -12,8 +12,8 @@ export const FAQ: QA[] = [
   ], more: { href: "/blog/move-from-apple-notes", text: "How to move from Apple Notes, step by step" } },
   { id: "connect", q: "How do I connect ChatGPT, Claude, Claude Code, Codex or Incredible?", a: [
     "In Amber Notes, open Settings → Connect an AI, pick ChatGPT or Claude and follow the steps. You add it once, on a computer. After that, it works in their phone apps too.",
-    "Adding it yourself? The address is https://mcp.ambernotes.app. When ChatGPT or Claude asks for permission, answer in Amber Notes, or sign in on the page that opens and choose Allow there.",
-    "Claude Code gets a one-line command with a token of its own, and Codex a few lines for its config file. In Incredible, open Apps, search for Amber Notes, choose Connect, then Allow. On an older version of Incredible, add the address as an MCP server instead. Settings → Connect an AI → Incredible has the steps. Any other app that supports MCP connects with the address and a sign-in too.",
+    "Adding it yourself? The address is https://mcp.ambernotes.app. When ChatGPT or Claude asks for permission, sign in on the page that opens, then approve on your iPhone or Mac: type the number the page shows and choose Allow. No device nearby? Use your recovery key on that page.",
+    "Claude Code gets a one-line command with a token of its own, and Codex a few lines for its config file. In Incredible, open Apps, search for Amber Notes, choose Connect, then approve it on your iPhone or Mac. On an older version of Incredible, add the address as an MCP server instead. Settings → Connect an AI → Incredible has the steps. Any other app that supports MCP connects with the address and a sign-in too.",
   ], more: { href: "/blog/connect-chatgpt-to-your-notes", text: "How to connect ChatGPT to your notes" } },
   { id: "ai-tools", q: "Can I use Amber Notes in Gemini CLI or VS Code?", a: [
     "Yes. One command adds the address https://mcp.ambernotes.app, then you sign in to Amber Notes in your browser the first time. Claude Code also has a plugin, and Codex takes one command too.",
@@ -22,7 +22,7 @@ export const FAQ: QA[] = [
     "Only in a limited way, and only on a Mac: Apple Notes has no public API, so AI apps can't reach your notes in iCloud. Amber Notes has an MCP server built in, so once you import your notes, ChatGPT and Claude can use them from any device.",
   ], more: { href: "/blog/claude-and-apple-notes", text: "Can Claude read your Apple Notes?" } },
   { id: "ai-access", q: "Can my AI see all my notes?", a: [
-    "Only once you connect it and approve it. You choose read-only, or read and edit. Every change an AI makes keeps the previous version, and you can disconnect any assistant in Settings at any time.",
+    "Only once you connect it and approve it on your iPhone or Mac. You choose read-only, or read and edit. While it's connected, it can read every note except locked ones: our server opens the notes it asks for in memory, during its requests. Every change an AI makes keeps the previous version, and you can disconnect any assistant in Settings at any time.",
   ], more: { href: "/blog/mcp-server", text: "How the Amber Notes MCP server works" } },
   { id: "free", q: "Is it free?", a: [
     "Yes. Amber Notes is free, with no ads and no tracking. It's also open source, so anyone can read the code.",
@@ -34,8 +34,8 @@ export const FAQ: QA[] = [
     "Yes. Your notes live in the cloud. Sign in with the same account on your Mac and iPhone, and a change on one shows up on the other in about a second, even while you're typing.",
   ] },
   { id: "storage", q: "Where are my notes stored?", a: [
-    "In the cloud, on Supabase's servers in Frankfurt, Germany, in the EU, and on each device you're signed in on. We store your notes so they sync between your devices, and for nothing else. The privacy policy has the details.",
-  ] },
+    "On each device you're signed in on, and, end-to-end encrypted, on Supabase's servers in Frankfurt, Germany, in the EU. Your notes are encrypted on your iPhone or Mac before they're uploaded, with a key iCloud Keychain carries between your devices, so we can't read them. Some details, such as dates, sizes and folder structure, stay readable. The Privacy & Security page lists all of it.",
+  ], more: { href: "/blog/encrypted-notes-app-for-ai", text: "How encryption works with ChatGPT and Claude" } },
   { id: "offline", q: "Does it work offline?", a: [
     "Yes. Your notes are on your device too, so you can read and write without a connection. Your edits stay on the device and sync when you're back online. If the same note changed somewhere else in the meantime, the newer edit wins and the other is kept as a copy, so nothing is lost.",
   ] },

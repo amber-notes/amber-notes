@@ -32,9 +32,10 @@ export default function Page() {
         <li>The client registers itself (dynamic client registration) and starts OAuth 2.1 with PKCE (S256). Scopes are <code>notes:read</code> and <code>notes:write</code>.</li>
         <li>The authorization server metadata is at the address above plus <code>/.well-known/oauth-authorization-server</code>.</li>
         <li>
-          The authorization step opens <code>ambernotes.app/connect</code>. The person opens Amber Notes from there, or signs in on the
-          page (email and password, or Sign in with Apple). Either way they see &ldquo;Allow [app] to use your notes?&rdquo; and where
-          access goes, choose Read and Edit, or Read Only, then Allow.
+          The authorization step opens <code>ambernotes.app/connect</code>. The person signs in there (email and password, or Sign in
+          with Apple), and the page shows a two-digit number. Amber Notes on their iPhone or Mac asks &ldquo;Allow [app] to use your
+          notes?&rdquo; and where access goes; they type the number, choose Read and Edit or Read Only, then Allow. With no device
+          nearby, they can approve on the page with their recovery key.
         </li>
         <li>The client gets an access token (valid for an hour) and a refresh token. The tokens only open this server.</li>
       </ol>
@@ -48,6 +49,13 @@ export default function Page() {
       <p>
         Every connection shows up in Amber Notes under Connected, and the person can disconnect it at any time. Each tool call runs as
         that person, with row-level security, so a token can only ever reach its owner&apos;s notes. Calls are rate limited per account.
+      </p>
+      <p>
+        Notes are end-to-end encrypted, so the server can&apos;t read them at rest. Approving a connection gives it a copy of the
+        notes&apos; key, locked with a secret derived from its own token. During each request the server unlocks the key in memory,
+        decrypts what the call needs, and drops it when the request ends; disconnecting deletes that copy. Locked notes stay out of
+        reach, since their key comes from the notes password. <a href="/blog/encrypted-notes-app-for-ai">An encrypted notes app that
+        ChatGPT and Claude can use</a> explains the trade-off.
       </p>
 
       <h2>What happens to changes</h2>
@@ -75,8 +83,8 @@ export default function Page() {
 
       <h2 id="install">Install in your AI tool</h2>
       <p>
-        Each of these adds the address above. The first time the tool connects, your browser opens ambernotes.app/connect: open
-        Amber Notes from there or sign in on the page, choose Read and Edit or Read Only, then Allow. You need the free app and an
+        Each of these adds the address above. The first time the tool connects, your browser opens ambernotes.app/connect: sign in
+        there, then approve on your iPhone or Mac by typing the number the page shows, and choose Read and Edit or Read Only. You need the free app and an
         account.
       </p>
       {AGENT_INSTALLS.map((x) => (

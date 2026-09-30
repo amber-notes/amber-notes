@@ -17,6 +17,7 @@ const ROWS: [string, string, string][] = [
   ["Lock a note with a password", "Yes", "Yes"],
   ["Drawing, handwriting, scanning documents", "No", "Yes"],
   ["Sync", "Amber Notes' own sync, on servers in Frankfurt, Germany (EU)", "iCloud"],
+  ["End-to-end encryption", "Every note, with the key in iCloud Keychain; while an AI you approved works, our server opens the notes it asks for", "With Advanced Data Protection turned on; locked notes always"],
   ["Open source", "Yes (MIT)", "No"],
 ];
 
