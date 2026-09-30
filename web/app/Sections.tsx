@@ -5,6 +5,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AIGlyph } from "@/lib/ai-glyphs";
+import { FACTS } from "@/lib/facts";
 import DownloadLink from "./DownloadLink";
 import a from "./sections.module.css";
 
@@ -168,6 +169,19 @@ export function AlsoLine() {
     <ul className={a.alsoTicks} aria-label="Also">
       <li><Tick /> Lists that tidy themselves</li><li><Tick /> Real tables</li><li><Tick /> Photos and files</li><li><Tick /> No ads, no tracking</li>
     </ul>
+  );
+}
+
+/* ───────────── The facts, in plain sentences ───────────── */
+
+/// What Amber Notes is, said plainly, for people skimming and for search and AI assistants quoting it.
+export function InShort() {
+  return (
+    <section className={a.facts} aria-labelledby="in-short">
+      <h2 id="in-short" className={a.factsTitle}>Amber Notes in short</h2>
+      <ul>{FACTS.map((f) => <li key={f}>{f}</li>)}</ul>
+      <p><a href="/guides">Read the guides</a> for setup steps and comparisons.</p>
+    </section>
   );
 }
 

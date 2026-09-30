@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import styles from "./home.module.css";
 import Demo from "./Demo";
 import DownloadLink from "./DownloadLink";
-import { AiSection, AlsoLine, Closing, ImportSection } from "./Sections";
+import { AiSection, AlsoLine, Closing, ImportSection, InShort } from "./Sections";
 import { latestVersion } from "@/lib/changelog";
 import { APP_STORE_LIVE, APP_STORE_URL, pageMetadata } from "@/lib/site";
-import { JsonLd, app, maker, website } from "@/lib/structured-data";
+import { JsonLd, app, maker, organization, website } from "@/lib/structured-data";
 
 export const metadata: Metadata = pageMetadata({
   title: "Amber Notes: the notes app your AI can actually use",
@@ -20,7 +20,7 @@ const rise = (i: number) => ({ style: { "--i": i } as React.CSSProperties });
 export default function Home() {
   return (
     <div className={styles.main}>
-      <JsonLd graph={[app(latestVersion()), maker, website]} />
+      <JsonLd graph={[app(latestVersion()), organization, maker, website]} />
       <section className={styles.hero}>
         <h1 className={`${styles.h1} rise`} {...rise(0)}>
           The notes app <mark className={styles.mark}>your AI</mark> can actually use.
@@ -43,6 +43,7 @@ export default function Home() {
       <AiSection />
       <ImportSection />
       <AlsoLine />
+      <InShort />
       <Closing />
     </div>
   );

@@ -52,8 +52,9 @@ const config: NextConfig = {
       {
         // Shared notes (and everything else not listed) are private-by-link: never indexed.
         // The home page, download, privacy policy, terms and support pages may be indexed, and
-        // robots.txt and the sitemap are for crawlers. A new page for search is added here too.
-        source: "/((?!privacy|terms|support|help|download|changelog|robots\\.txt$|sitemap\\.xml$).+)",
+        // robots.txt, the sitemap and llms.txt are for crawlers. Guides carry their own robots meta
+        // (drafts say noindex). A new page for search is added here too.
+        source: "/((?!privacy|terms|support|help|download|changelog|guides|robots\\.txt$|sitemap\\.xml$|llms\\.txt$|llms-full\\.txt$).+)",
         headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }, ...security],
       },
       { source: "/", headers: security },
@@ -61,6 +62,8 @@ const config: NextConfig = {
       { source: "/changelog", headers: security },
       { source: "/help", headers: security },
       { source: "/support", headers: security },
+      { source: "/guides", headers: security },
+      { source: "/guides/:slug", headers: security },
     ];
   },
 };

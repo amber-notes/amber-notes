@@ -85,10 +85,10 @@ export default function SiteChrome({ version, stars, children }: { version: stri
       <footer className="site-footer">
         <div className="site-footrow">
           <nav aria-label="More">
+            <a href="/guides">Guides</a>
             <a href="/changelog">Changelog</a>
             <a href="/privacy">Privacy</a>
             <a href="/terms">Terms</a>
-            <a href="/guides">Guides</a>
             <a href="/help">Help</a>
           </nav>
           <span className="site-footsep" aria-hidden="true" />
