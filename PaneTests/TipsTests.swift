@@ -108,8 +108,8 @@ import TipKit
         let ids = PaneTips.all.map(\.id)
         #expect(Set(ids) == ["versionHistory", "shareLink", "menuBar", "shareExtension"])
         #expect(Set(Feature.allCases.map(\.rawValue)) == Set(ids))
-        let sql = try! String(contentsOf: URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
-            .appending(path: "supabase/migrations/20260929230000_tip_events.sql"), encoding: .utf8)
+        // supabase/migrations/20260929230000_tip_events.sql, copied into the test bundle (project.yml).
+        let sql = try! String(contentsOf: Bundle(for: TipsSQLToken.self).url(forResource: "20260929230000_tip_events", withExtension: "sql")!, encoding: .utf8)
         for id in ids { #expect(sql.contains("'\(id)'"), "the server accepts \(id)") }
         #expect(!sql.contains("checklistTidy") && !sql.contains("tableFromText"), "the removed tips are gone from the server too")
     }
@@ -213,3 +213,5 @@ private struct RulesProbeTip: Tip {
         ]
     }
 }
+
+private final class TipsSQLToken {}

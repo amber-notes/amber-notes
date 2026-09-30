@@ -32,10 +32,10 @@ import Testing
         var handoff: Handoff
     }
 
-    /// Read from the repository (not the bundle), so the app and the server test the one file.
+    /// supabase/functions/_shared/e2ee-vectors.json, the one file the server tests too, copied into
+    /// the test bundle at build time (project.yml).
     static func load() throws -> Vectors {
-        let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
-            .appending(path: "supabase/functions/_shared/e2ee-vectors.json")
+        let url = try #require(Bundle(for: VectorsToken.self).url(forResource: "e2ee-vectors", withExtension: "json"))
         return try JSONDecoder().decode(Vectors.self, from: Data(contentsOf: url))
     }
 
@@ -207,3 +207,5 @@ import Testing
         #expect(E2EE.bytes(try E2EE.unwrap(token.wrap, with: E2EE.tokenKey(token.token, purpose: "pane"), purpose: "pane", user: user)) == k.dataKey)
     }
 }
+
+private final class VectorsToken {}

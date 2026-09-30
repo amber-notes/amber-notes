@@ -176,6 +176,12 @@ targets:
         excludes: [Fixtures]
       - path: PaneTests/Fixtures
         buildPhase: resources
+      # Server files the tests check against, copied into the bundle when it's built (the test
+      # host can't read the checkout under ~/Documents without a privacy prompt).
+      - path: supabase/functions/_shared/e2ee-vectors.json
+        buildPhase: resources
+      - path: supabase/migrations/20260929230000_tip_events.sql
+        buildPhase: resources
     dependencies:
       - target: Pane
     settings:
