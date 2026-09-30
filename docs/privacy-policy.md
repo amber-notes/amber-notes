@@ -5,7 +5,7 @@ Last updated: 30 September 2026
 ## The short version
 
 - Your notes are yours. We store them so they sync between your iPhone and Mac, and for nothing else.
-- No ads, no third-party tracking or analytics, and we never sell or share your data.
+- No ads, no tracking and no third-party analytics in the apps, and we never sell or share your data. The website counts visits anonymously, without cookies.
 - We count how features are used on our own server to improve the app. We never share or sell it.
 - An AI assistant can only read your notes if you connect it and approve it in Amber Notes or on ambernotes.app. You can disconnect it at any time.
 - A note you lock is encrypted on your device before it's uploaded. Nobody but you can read it: not us, and not an AI.
@@ -53,6 +53,10 @@ This policy covers the Amber Notes apps for iPhone and Mac, the service that let
 
 - The link, which note it shows, and whether sub-notes are included, until you stop sharing.
 
+**Visits to the website**
+
+- The website counts visits with Vercel Web Analytics: which page was viewed, the referring site, and the country, browser and device type. It uses no cookies and stores nothing on your device, and it doesn't identify you or follow you across sites. Visits are counted in aggregate; your network address is used only to tell visits apart for a day and isn't stored.
+
 **Reports about shared pages**
 
 - If someone reports a shared page: the page's link, the reason they give, any contact details they choose to add, and a salted one-way hash of their network address, so one person can't report a page many times. We don't store the address itself.
@@ -80,6 +84,7 @@ We process personal data under the EU General Data Protection Regulation (GDPR) 
 | Sign-in records, rate limits, hashed network addresses on reports | To keep the service secure and stop abuse | Legitimate interests |
 | Reports about shared pages | To review and remove content that breaks our Terms | Legitimate interests, and legal obligations where they apply |
 | Feature usage counts | To learn whether the app works for people and improve it | Legitimate interests |
+| Anonymous website visit counts | To learn which pages people find and use | Legitimate interests |
 
 We don't use your data for advertising, and we don't make automated decisions about you with legal or similarly significant effects.
 
@@ -107,7 +112,7 @@ Nothing reaches an AI assistant unless you connect one. When you connect ChatGPT
 | Service | What it does for us | Where |
 |---|---|---|
 | Supabase, Inc. | Database, file storage, sign-in and server functions | Frankfurt, Germany (EU) |
-| Vercel, Inc. | The website, shared note pages, Mac app downloads and update checks | Pages are built in Frankfurt, Germany (EU) and delivered through Vercel's global network |
+| Vercel, Inc. | The website, shared note pages, Mac app downloads, update checks and anonymous website visit counts | Pages are built in Frankfurt, Germany (EU) and delivered through Vercel's global network |
 | Apple | Sign in with Apple and the App Store, if you use them | Under Apple's own privacy policy |
 
 Supabase and Vercel process data only on our instructions. Both are US companies. Where data could be accessed from outside the EU, for example by their support staff, the transfer is covered by the European Commission's Standard Contractual Clauses or the EU-U.S. Data Privacy Framework.

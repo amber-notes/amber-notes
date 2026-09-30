@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import "./site.css";
 import SiteChrome from "./SiteChrome";
+import SiteAnalytics from "./SiteAnalytics";
 import { themeScript } from "@/lib/theme";
 import { latestVersion } from "@/lib/changelog";
 import { repoStats } from "@/lib/github";
@@ -44,6 +45,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body>
         <SiteChrome version={latestVersion()} stars={stats?.stars ?? null}>{children}</SiteChrome>
+        <SiteAnalytics />
       </body>
     </html>
   );
