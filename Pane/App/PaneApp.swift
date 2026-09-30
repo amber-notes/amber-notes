@@ -39,7 +39,8 @@ struct PaneApp: App {
         NoteHistory.shared = NoteHistory(store: historyStore, context: context, sync: backend.client == nil ? nil : sync)
         // Locked notes: the key behind Face ID / Touch ID, except in tests and captures, which
         // also start with no notes password.
-        NoteVault.shared = inMemory ? NoteVault(keyStore: MemoryKeyStore(), defaults: MemoryDefaults()) : NoteVault(keyStore: KeychainKeyStore())
+        NoteVault.shared = inMemory ? NoteVault(keyStore: MemoryKeyStore(), defaults: MemoryDefaults(), drivesSync: true)
+            : NoteVault(keyStore: KeychainKeyStore(), drivesSync: true)
         Capture.lockedNotesFromArguments(container.mainContext)
         // "Did you know" tips; their counts go to the server when signed in.
         TipLog.client = backend.client

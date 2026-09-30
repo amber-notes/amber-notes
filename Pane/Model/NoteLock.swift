@@ -172,14 +172,20 @@ final class NoteVault {
     private let iterations: Int
     @ObservationIgnored private var idleWatch: Task<Void, Never>?
 
-    init(keyStore: LockKeyStore, remote: NoteLockRemote? = nil, defaults: UserDefaults = .standard, iterations: Int = NoteCrypto.iterations) {
+    /// The app's vault tells sync whether this account locks notes (`NoteDTO.sendsLock`); vaults
+    /// made in tests leave that alone.
+    private let drivesSync: Bool
+
+    init(keyStore: LockKeyStore, remote: NoteLockRemote? = nil, defaults: UserDefaults = .standard,
+         iterations: Int = NoteCrypto.iterations, drivesSync: Bool = false) {
         self.keyStore = keyStore
+        self.drivesSync = drivesSync
         self.remote = remote
         self.defaults = defaults
         self.iterations = iterations
         usesBiometrics = defaults.object(forKey: "noteLock.biometrics") as? Bool ?? true
         settings = Self.stored(in: defaults, account: account)
-        NoteDTO.sendsLock = settings != nil
+        publish()
     }
 
     var isSetUp: Bool { settings != nil }
@@ -197,7 +203,7 @@ final class NoteVault {
         keys = [:]
         self.account = name
         settings = Self.stored(in: defaults, account: name)
-        NoteDTO.sendsLock = settings != nil
+        publish()
     }
 
     /// Picks up a setup made (or a password changed) on another device.
@@ -218,13 +224,17 @@ final class NoteVault {
         }
     }
 
+    private func publish() {
+        if drivesSync { NoteDTO.sendsLock = settings != nil }
+    }
+
     private static func stored(in defaults: UserDefaults, account: String) -> LockSettings? {
         defaults.data(forKey: "noteLock.settings.\(account)").flatMap { try? JSONDecoder().decode(LockSettings.self, from: $0) }
     }
 
     private func store() {
         defaults.set(try? JSONEncoder().encode(settings), forKey: "noteLock.settings.\(account)")
-        NoteDTO.sendsLock = settings != nil
+        publish()
     }
 
     // MARK: Password
@@ -355,7 +365,9 @@ final class NoteVault {
         idleWatch = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(10))
-                self?.expireIfIdle()
+                // Gone with its vault, not left waking forever.
+                guard let self else { return }
+                self.expireIfIdle()
             }
         }
     }

@@ -336,7 +336,9 @@ private let fast = 1_000
     }
 }
 
-/// What goes over the wire for a locked note.
+extension NetworkFaults {
+/// What goes over the wire for a locked note. With the sync tests: it sets the global
+/// `NoteDTO.sendsLock` they rely on.
 @MainActor @Suite struct LockedNoteWireTests {
     @Test func theSealedTextGoesUpAndComesBack() throws {
         let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
@@ -366,6 +368,7 @@ private let fast = 1_000
         #expect(new?.keys.contains("locked_body") == true && new?["locked_body"] is NSNull)
     }
 }
+}
 
 extension NetworkFaults {
 /// A note locked on one device, through sync (against StubSupabase) to another.
@@ -375,6 +378,8 @@ extension NetworkFaults {
         NetFault.config = .init()
         let was = NoteDTO.sendsLock
         defer { NoteDTO.sendsLock = was }
+        // This account locks notes: sync sends the column (the app's vault sets this).
+        NoteDTO.sendsLock = true
         let remote = FakeLockRemote()
         func device() throws -> (ModelContext, SyncEngine, NoteVault) {
             let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
@@ -430,6 +435,7 @@ extension NetworkFaults {
         NetFault.config = .init()
         let was = NoteDTO.sendsLock
         defer { NoteDTO.sendsLock = was }
+        NoteDTO.sendsLock = true
         let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
         let context = ModelContext(c)
         let defaults = MemoryDefaults()
