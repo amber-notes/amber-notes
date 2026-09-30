@@ -36,7 +36,7 @@ await pg.exec(`
   create function extensions.digest(t text, alg text) returns bytea language sql immutable as $$ select sha256(convert_to(t, 'UTF8')) $$;
   create function extensions.gen_random_bytes(n int) returns bytea language sql as $$ select decode(md5(random()::text), 'hex') $$;
 `);
-for (const f of ["20260927190000_mcp_tokens.sql", "20260928220500_mcp_token_columns.sql", "20260928222800_oauth_connectors.sql", "20260930120000_oauth_request_claims.sql"]) {
+for (const f of ["20260927190000_mcp_tokens.sql", "20260928220500_mcp_token_columns.sql", "20260928222800_oauth_connectors.sql", "20260930140000_oauth_request_claims.sql"]) {
   await pg.exec(await Deno.readTextFile(new URL(`../supabase/migrations/${f}`, import.meta.url)));
 }
 await pg.query(`insert into auth.users (id) values ($1)`, [USER]);

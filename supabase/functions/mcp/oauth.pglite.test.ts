@@ -28,7 +28,7 @@ const migrations = [
   "20260927190000_mcp_tokens.sql",
   "20260928220500_mcp_token_columns.sql",
   "20260928222800_oauth_connectors.sql",
-  "20260930120000_oauth_request_claims.sql",
+  "20260930140000_oauth_request_claims.sql",
 ].map((f) => new URL(`../../migrations/${f}`, import.meta.url));
 
 const stubs = `
