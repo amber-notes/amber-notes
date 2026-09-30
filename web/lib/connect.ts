@@ -1,14 +1,18 @@
 // The connect page (/connect): where an AI's sign-in lands, and where you approve it.
 //
 // The MCP server's /authorize sends the browser here with ?request=<id>. The server that renders
-// the page names who is asking (the MCP function's public /connect/label). Your notes' key lives
+// the page says what the app calls itself and where access goes (the MCP function's public
+// /connect/label); neither is verified, so neither is shown as a title. Your notes' key lives
 // only on your devices, so approving happens there:
 //
 // 1. You sign in on the page, only so it knows which account to ask. It makes a P-256 key pair
-//    (the private half stays in the page's memory), sends the public half to /connect/ask with
-//    this browser's name ("Chrome on a Mac"), and signs out straight away.
-// 2. Your iPhone or Mac asks you. Allow there seals the authorization code to the page's key. The
-//    page polls /connect/status, opens the code, adds it to the AI's redirect and goes there.
+//    and a pickup secret (both stay in the page's memory), sends the public half and the secret's
+//    hash to /connect/ask with this browser's name ("Chrome on a Mac"), and signs out straight away.
+//    It then shows two digits (matchNumber of its public key and the request): the device shows
+//    three numbers and you tap the same one, so a key swapped on the way shows.
+// 2. Your iPhone or Mac asks you. Allow there seals the authorization code and the AI's redirect,
+//    together, to the page's key. The page polls /connect/status with the pickup secret, opens the
+//    handoff and goes only to the redirect sealed inside it, with the code added.
 //    "Open Amber Notes" is a shortcut to the same question in the app on this computer, with the
 //    universal link https://ambernotes.app/open/connect?request=<id> (when that stays in the
 //    browser, /open/connect tries the app's own scheme, ambernotes://connect?request=<id>).
@@ -32,19 +36,34 @@ export const universalLink = (id: string) => `https://ambernotes.app/open/connec
 /// The app's own scheme, for when the universal link stays in the browser.
 export const appLink = (id: string) => `ambernotes://connect?request=${id.toLowerCase()}`;
 
-/// What /connect/label answers for a pending request.
-export type ConnectLabel = { client_name: string; verified_ai: "ChatGPT" | "Claude" | null };
+/// What the page shows about who is asking, from /connect/label. Nothing here is verified: the
+/// name is what the app calls itself, and the host is where access would go.
+export type ConnectLabel = { claimed_name: string | null; redirect_host: string | null; loopback: boolean };
 
-/// The page's heading: who is asking, when the server could say.
-export function allowHeading(label: ConnectLabel | null): string {
-  const who = label?.verified_ai ?? plainName(label?.client_name);
-  return who ? `Allow ${who} to use your notes?` : "Allow this app to use your notes?";
+/// The page's heading. Never an app's name: a name is only ever what the app calls itself.
+export const ALLOW_HEADING = "Allow this app to use your notes?";
+
+/// A name from the server, shown only when short and plain.
+function plainName(name: unknown): string | null {
+  const s = (typeof name === "string" ? name : "").trim();
+  return s && s.length <= 60 && /^[\p{L}\p{N} .,'&()+:_/-]+$/u.test(s) ? s : null;
 }
 
-/// The server's display name (the AI's name, or where access goes), shown only when short and plain.
-function plainName(name: string | undefined): string | null {
-  const s = (name ?? "").trim();
-  return s && s.length <= 60 && /^[\p{L}\p{N} .,'&()+:_/-]+$/u.test(s) ? s : null;
+const LOOPBACK = new Set(["127.0.0.1", "localhost", "[::1]", "::1"]);
+
+/// A host name or address as the server sends it, or null.
+function plainHost(host: unknown): string | null {
+  const s = (typeof host === "string" ? host : "").trim().toLowerCase();
+  return s.length <= 253 && (/^[a-z0-9-]+(\.[a-z0-9-]+)*$/.test(s) || /^\[[0-9a-f:.]+\]$/.test(s)) ? s : null;
+}
+
+/// Reads a /connect/label body into what the page may show.
+export function parseLabel(body: unknown): ConnectLabel | null {
+  const b = (body ?? {}) as { client_name?: unknown; claimed_name?: unknown; redirect_host?: unknown };
+  const claimed = plainName(b.claimed_name) ?? plainName(b.client_name);
+  const host = plainHost(b.redirect_host);
+  if (!claimed && !host) return null;
+  return { claimed_name: claimed, redirect_host: host, loopback: host !== null && LOOPBACK.has(host) };
 }
 
 /// Reads /connect/label from the MCP function. `headers` are what the function should see: the
@@ -56,10 +75,7 @@ export async function fetchLabel(functionBase: string, id: string, headers: Head
       headers, cache: "no-store", signal: AbortSignal.timeout(timeoutMs),
     });
     if (!res.ok) return null;
-    const body = await res.json() as Partial<ConnectLabel> | null;
-    if (typeof body?.client_name !== "string") return null;
-    const ai = body.verified_ai === "ChatGPT" || body.verified_ai === "Claude" ? body.verified_ai : null;
-    return { client_name: body.client_name, verified_ai: ai };
+    return parseLabel(await res.json());
   } catch {
     return null;
   }
@@ -89,7 +105,9 @@ export type ConnectRequest = {
   redirect_host: string;
   /// The exact return address; /connect/decide takes it back unchanged.
   redirect_uri: string;
-  verified_ai: "ChatGPT" | "Claude" | null;
+  /// The server's view that this is a known AI's pinned callback. Only picks the default access;
+  /// the page never shows it as a name or a mark.
+  verified_ai?: "ChatGPT" | "Claude" | null;
   loopback: boolean;
   wants_write: boolean;
   expires_at: string;

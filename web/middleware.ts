@@ -11,7 +11,7 @@ import { allowedPath, MCP_HOST, upstream, upstreamHeaders } from "@/lib/mcp-prox
 //    says so with a shared secret (MCP_PROXY_SECRET). Without the secret the proxy doesn't run.
 //
 // 2. The connect pages (/connect, and /open/connect where the universal link lands in a browser) get
-//    a per-response nonce and a strict CSP. /connect may also call the Supabase project.
+//    a per-response nonce, a strict CSP and no referrer. /connect may also call the Supabase project.
 
 export const config = {
   matcher: [
@@ -52,5 +52,8 @@ async function connectPage(req: NextRequest) {
   headers.set("content-security-policy", csp);
   const res = NextResponse.next({ request: { headers } });
   res.headers.set("Content-Security-Policy", csp);
+  // The page's address carries the request id (and, back from Sign in with Apple, a one-time code
+  // for a moment): no link or request from here says where it came from.
+  res.headers.set("Referrer-Policy", "no-referrer");
   return res;
 }

@@ -1,7 +1,8 @@
-// The connect page's steps that don't touch the screen: naming this browser for the ask, reading
-// /connect/status, putting the code on the AI's redirect, and approving with the recovery key.
+// The connect page's steps that don't touch the screen: naming this browser for the ask, the
+// pickup secret, reading /connect/status, going on to the AI with the sealed code and redirect, and
+// approving with the recovery key.
 // The page (app/connect/ConnectFlow.tsx) does the fetching and the showing. See lib/connect.ts.
-import { HANDOFF, hex, parseRecoveryKey, recoveryKEK, tokenKey, unwrap, verifierOf, wrap } from "./e2ee";
+import { HANDOFF, hex, matchNumber, parseRecoveryKey, readHandoffPayload, recoveryKEK, tokenKey, unwrap, verifierOf, wrap } from "./e2ee";
 
 /// This browser in plain words for the devices' prompt ("Chrome on a Mac"). Only the browser's
 /// and the system's names, nothing else from the user agent.
@@ -35,35 +36,69 @@ export function withCode(redirect: string, code: string): string {
   return u.toString();
 }
 
+/// The pickup secret: 32 random bytes only this page holds. /connect/ask gets its hash (lowercase hex
+/// SHA-256 of the raw bytes), and /connect/status hands the answer over only to the secret itself
+/// (the 32 bytes as lowercase hex). Someone who learns the request id can't collect the answer.
+export async function newPickup(bytes: Uint8Array<ArrayBuffer> = crypto.getRandomValues(new Uint8Array(32))):
+  Promise<{ pickup: string; pickup_hash: string }> {
+  if (bytes.length !== 32) throw new Error("a pickup secret is 32 bytes");
+  return { pickup: hex(bytes), pickup_hash: hex(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))) };
+}
+
+/// The two digits the page shows after the ask; the device shows three and you tap this one.
+export const pageNumber = (browserPublicRaw: Uint8Array, requestId: string) => matchNumber(browserPublicRaw, requestId);
+
+/// The /connect/status call: a POST with the pickup secret, never the secret in the address.
+export function statusRequest(functionBase: string, id: string, pickup: string): [string, RequestInit] {
+  return [`${functionBase}/connect/status`, {
+    method: "POST", cache: "no-store",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ id, pickup }),
+  }];
+}
+
 /// What the page does after a /connect/status answer.
 export type Step =
   | { kind: "wait" }
-  | { kind: "approved"; redirect: string; handoff: string }
+  | { kind: "approved"; handoff: string }
   | { kind: "denied"; redirect: string }
   | { kind: "answeredInApp" }
   | { kind: "delivered" }
   | { kind: "expired" };
 
-const isURL = (s: unknown): s is string => {
+/// A redirect the page may go to: any address an OAuth client can register (https, loopback http,
+/// an app's own scheme), never one that runs or shows content in this page.
+const NEVER = new Set(["javascript:", "data:", "blob:", "file:", "vbscript:", "about:"]);
+const isWebURL = (s: unknown): s is string => {
   if (typeof s !== "string") return false;
-  try { new URL(s); return true; } catch { return false; }
+  try { return !NEVER.has(new URL(s).protocol); } catch { return false; }
 };
 
 /// Reads a /connect/status body. Past `expiresAt` (ms), waiting ends. Anything odd means wait.
+/// An approval carries only the sealed handoff: where it goes comes from inside it (sealedDestination),
+/// never from the answer's own `redirect`, which anyone on the way could change.
 export function statusStep(body: unknown, now: number, expiresAt: number | null): Step {
   const b = (body ?? {}) as { state?: unknown; redirect?: unknown; handoff?: unknown };
   switch (b.state) {
     case "approved":
-      if (isURL(b.redirect) && typeof b.handoff === "string" && HANDOFF.test(b.handoff)) return { kind: "approved", redirect: b.redirect, handoff: b.handoff };
+      if (typeof b.handoff === "string" && HANDOFF.test(b.handoff)) return { kind: "approved", handoff: b.handoff };
       break;
     case "denied":
-      if (isURL(b.redirect)) return { kind: "denied", redirect: b.redirect };
+      if (isWebURL(b.redirect)) return { kind: "denied", redirect: b.redirect };
       break;
     case "answered_in_app": return { kind: "answeredInApp" };
     case "delivered": return { kind: "delivered" };
     case "expired": return { kind: "expired" };
   }
   return expiresAt !== null && now >= expiresAt ? { kind: "expired" } : { kind: "wait" };
+}
+
+/// Where an approval goes: the redirect sealed with the code by the device that approved, with the
+/// code added. Throws when the opened handoff isn't a payload with a web address.
+export function sealedDestination(opened: string): string {
+  const p = readHandoffPayload(opened);
+  if (!isWebURL(p.redirect)) throw new Error("not a redirect");
+  return withCode(p.redirect, p.code);
 }
 
 /// A one-minute, single-use authorization code, as the app makes it.

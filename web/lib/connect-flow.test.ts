@@ -1,7 +1,9 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { browserFrom, newCode, parseKeyRow, recoveryApproval, RecoveryError, sha256Hex, statusStep, withCode } from "./connect-flow";
-import { fromBase64, toBase64, tokenKey, unwrap } from "./e2ee";
+import {
+  browserFrom, newCode, newPickup, pageNumber, parseKeyRow, recoveryApproval, RecoveryError, sealedDestination, sha256Hex, statusRequest, statusStep, withCode,
+} from "./connect-flow";
+import { fromBase64, openHandoff, toBase64, tokenKey, unwrap } from "./e2ee";
 
 const v = JSON.parse(readFileSync(new URL("../../supabase/functions/_shared/e2ee-vectors.json", import.meta.url), "utf8"));
 const row = { key_id: v.key_id, verifier: v.verifier, recovery_wrap: v.recovery.wrap };
@@ -38,16 +40,49 @@ describe("the AI's redirect with the code", () => {
   });
 });
 
-describe("reading /connect/status", () => {
-  const redirect = "https://claude.ai/api/mcp/auth_callback?state=s";
-  it("goes on with an approval only when it carries a redirect and a handoff", () => {
-    expect(statusStep({ state: "approved", redirect, handoff: v.handoff.sealed }, 0, null)).toEqual({ kind: "approved", redirect, handoff: v.handoff.sealed });
-    expect(statusStep({ state: "approved", redirect, handoff: "not a box" }, 0, null)).toEqual({ kind: "wait" });
-    expect(statusStep({ state: "approved", redirect: "nope", handoff: v.handoff.sealed }, 0, null)).toEqual({ kind: "wait" });
+describe("the pickup secret", () => {
+  it("is 32 random bytes as lowercase hex, and its hash is SHA-256 of those bytes", async () => {
+    const bytes = new Uint8Array(32).map((_, i) => i);
+    const p = await newPickup(bytes);
+    expect(p.pickup).toBe(Buffer.from(bytes).toString("hex"));
+    const { createHash } = await import("node:crypto");
+    expect(p.pickup_hash).toBe(createHash("sha256").update(bytes).digest("hex"));
+    expect(p.pickup_hash).toMatch(/^[0-9a-f]{64}$/);
   });
 
-  it("follows a denial back to the app", () => {
+  it("is new each time", async () => {
+    const [a, b] = [await newPickup(), await newPickup()];
+    expect(a.pickup).toMatch(/^[0-9a-f]{64}$/);
+    expect(a.pickup).not.toBe(b.pickup);
+    expect(a.pickup_hash).not.toBe(b.pickup_hash);
+  });
+
+  it("goes to /connect/status in a POST body, never the address", () => {
+    const [url, init] = statusRequest("https://ref.supabase.co/functions/v1/mcp", v.handoff.request_id, "ab".repeat(32));
+    expect(url).toBe("https://ref.supabase.co/functions/v1/mcp/connect/status");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(String(init.body))).toEqual({ id: v.handoff.request_id, pickup: "ab".repeat(32) });
+  });
+});
+
+describe("the number to tap", () => {
+  it("is the vector's two digits for its page key and request", async () => {
+    expect(await pageNumber(fromBase64(v.handoff.browser_public), v.handoff.request_id)).toBe(v.handoff.match_number);
+    expect(await pageNumber(fromBase64(v.handoff.browser_public), v.handoff.request_id.toUpperCase())).toBe(v.handoff.match_number);
+  });
+});
+
+describe("reading /connect/status", () => {
+  const redirect = "https://claude.ai/api/mcp/auth_callback?state=s";
+  it("goes on with an approval only when it carries a handoff, whatever its redirect says", () => {
+    expect(statusStep({ state: "approved", handoff: v.handoff.sealed }, 0, null)).toEqual({ kind: "approved", handoff: v.handoff.sealed });
+    expect(statusStep({ state: "approved", redirect: "https://evil.example/", handoff: v.handoff.sealed }, 0, null)).toEqual({ kind: "approved", handoff: v.handoff.sealed });
+    expect(statusStep({ state: "approved", redirect, handoff: "not a box" }, 0, null)).toEqual({ kind: "wait" });
+  });
+
+  it("follows a denial back to the app, but never to a script address", () => {
     expect(statusStep({ state: "denied", redirect }, 0, null)).toEqual({ kind: "denied", redirect });
+    expect(statusStep({ state: "denied", redirect: "javascript:alert(1)" }, 0, null)).toEqual({ kind: "wait" });
   });
 
   it("ends on the other answers", () => {
@@ -62,6 +97,45 @@ describe("reading /connect/status", () => {
     expect(statusStep(null, 1000, 2000)).toEqual({ kind: "wait" });
     expect(statusStep({ state: "asked" }, 2000, 2000)).toEqual({ kind: "expired" });
     expect(statusStep(null, 3000, 2000)).toEqual({ kind: "expired" });
+  });
+});
+
+describe("going on after an approval", () => {
+  async function opened(): Promise<string> {
+    // The vector's page key, as the page holds it.
+    const pub = fromBase64(v.handoff.browser_public);
+    const jwk = {
+      kty: "EC", crv: "P-256", ext: true,
+      d: Buffer.from(fromBase64(v.handoff.browser_private)).toString("base64url"),
+      x: Buffer.from(pub.subarray(1, 33)).toString("base64url"),
+      y: Buffer.from(pub.subarray(33, 65)).toString("base64url"),
+    };
+    const key = await crypto.subtle.importKey("jwk", jwk, { name: "ECDH", namedCurve: "P-256" }, false, ["deriveBits"]);
+    return openHandoff(v.handoff.sealed, key, v.handoff.request_id);
+  }
+
+  it("goes to the redirect sealed with the code, with the code added", async () => {
+    const sealed = JSON.parse(v.handoff.code) as { code: string; redirect: string };
+    const to = new URL(sealedDestination(await opened()));
+    const want = new URL(sealed.redirect);
+    expect(to.origin + to.pathname).toBe(want.origin + want.pathname);
+    expect(to.searchParams.get("state")).toBe("s1");
+    expect(to.searchParams.get("iss")).toBe("https://mcp.ambernotes.app");
+    expect(to.searchParams.get("code")).toBe(sealed.code);
+  });
+
+  it("never takes the unsealed redirect from /connect/status", async () => {
+    const step = statusStep({ state: "approved", redirect: "https://evil.example/cb", handoff: v.handoff.sealed }, 0, null);
+    expect(step.kind).toBe("approved");
+    expect(Object.keys(step)).not.toContain("redirect");
+    expect(new URL(sealedDestination(await opened())).hostname).toBe("claude.ai");
+  });
+
+  it("refuses a handoff that isn't a payload, or seals a script address", () => {
+    expect(() => sealedDestination("amb_code_" + "cd".repeat(32))).toThrow();
+    expect(() => sealedDestination(JSON.stringify({ code: "c" }))).toThrow();
+    expect(() => sealedDestination(JSON.stringify({ code: "c", redirect: "javascript:alert(1)" }))).toThrow();
+    expect(sealedDestination(JSON.stringify({ code: "c", redirect: "http://127.0.0.1:53682/callback" }))).toBe("http://127.0.0.1:53682/callback?code=c");
   });
 });
 

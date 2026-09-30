@@ -2,10 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  allowHeading, appleSignInURL, destination, functionURL, pkcePair, returnURL, signInError, universalLink,
+  ALLOW_HEADING, appleSignInURL, destination, functionURL, pkcePair, returnURL, signInError, universalLink,
   type ConnectLabel, type ConnectRequest,
 } from "@/lib/connect";
-import { browserFrom, parseKeyRow, recoveryApproval, RecoveryError, statusStep, withCode, type AccountKey } from "@/lib/connect-flow";
+import {
+  browserFrom, newPickup, pageNumber, parseKeyRow, recoveryApproval, RecoveryError, sealedDestination, statusRequest, statusStep, withCode,
+  type AccountKey,
+} from "@/lib/connect-flow";
 import { newHandoffKeys, openHandoff, parseRecoveryKey, toBase64 } from "@/lib/e2ee";
 import styles from "./connect.module.css";
 
@@ -45,7 +48,7 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [recoveryKey, setRecoveryKey] = useState("");
-  const [write, setWrite] = useState(label?.verified_ai != null);
+  const [write, setWrite] = useState(false);
   const [request, setRequest] = useState<ConnectRequest | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -55,11 +58,14 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
   const session = useRef<Session | null>(null);
   const [signedIn, setSignedIn] = useState<string | null>(null);
   const handoffKey = useRef<CryptoKey | null>(null);
+  /// The pickup secret: /connect/status hands the answer only to it.
+  const pickup = useRef<string | null>(null);
+  /// The two digits to tap on the device, once the ask is in.
+  const [number, setNumber] = useState<string | null>(null);
   const expiresAt = useRef<number | null>(null);
   const finished = useRef(false);
   const mcp = functionURL(supabaseURL);
   const base = supabaseURL.replace(/\/+$/, "");
-  const who = label?.verified_ai ?? null;
 
   useEffect(() => {
     setReady(true);
@@ -92,8 +98,11 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
       if (stopped || finished.current) return;
       let body: unknown = null;
       try {
-        const res = await fetch(`${mcp}/connect/status?id=${requestId}`, { cache: "no-store" });
-        if (res.ok) body = await res.json();
+        const secret = pickup.current;
+        if (secret) {
+          const res = await fetch(...statusRequest(mcp, requestId, secret));
+          if (res.ok) body = await res.json();
+        }
       } catch {}
       if (stopped || finished.current) return;
       const step = statusStep(body, Date.now(), expiresAt.current);
@@ -105,8 +114,8 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
           const key = handoffKey.current;
           if (!key) return end({ kind: "ended", title: "Couldn't finish here", text: "Start connecting again from the other app." });
           try {
-            const code = await openHandoff(step.handoff, key, requestId);
-            return leave(withCode(step.redirect, code), true);
+            // Only where the approving device sealed it, never the answer's unsealed redirect.
+            return leave(sealedDestination(await openHandoff(step.handoff, key, requestId)), true);
           } catch {
             return end({ kind: "ended", title: "Couldn't finish here", text: "Start connecting again from the other app." });
           }
@@ -124,6 +133,8 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
   function end(v: View) {
     finished.current = true;
     handoffKey.current = null;
+    pickup.current = null;
+    setNumber(null);
     setPolling(false);
     setView(v);
   }
@@ -229,10 +240,13 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
     setView({ kind: "working", text: "Asking your iPhone or Mac…" });
     try {
       const keys = await newHandoffKeys();
+      const secret = await newPickup();
       const res = await fetch(`${mcp}/connect/ask`, {
         method: "POST",
         headers: { authorization: `Bearer ${s.token}`, "content-type": "application/json" },
-        body: JSON.stringify({ id: requestId, browser_key: toBase64(keys.publicRaw), from: browserFrom(navigator.userAgent) }),
+        body: JSON.stringify({
+          id: requestId, browser_key: toBase64(keys.publicRaw), pickup_hash: secret.pickup_hash, from: browserFrom(navigator.userAgent),
+        }),
       });
       const body = await res.json().catch(() => null) as { expires_at?: string; error?: string } | null;
       await signOut(s.token);
@@ -241,6 +255,8 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
         return end({ kind: "ended", title: "Couldn't connect", text: body?.error ?? OFFLINE, retry: true });
       }
       handoffKey.current = keys.privateKey;
+      pickup.current = secret.pickup;
+      setNumber(await pageNumber(keys.publicRaw, requestId));
       const t = Date.parse(body?.expires_at ?? "");
       expiresAt.current = Number.isNaN(t) ? null : t;
       finished.current = false;
@@ -389,7 +405,7 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
 
   // MARK: The page
 
-  const heading = allowHeading(label);
+  const heading = ALLOW_HEADING;
   const recovering = mode === "recover" && (view.kind === "signIn" || view.kind === "recover");
   const canWrite = request ? request.wants_write : true;
 
@@ -398,6 +414,7 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
       {view.kind === "signIn" && !recovering && (
         <>
           <h1 className={styles.title}>{heading}</h1>
+          <Asking label={label} />
           <p className={styles.lede}>Sign in, and Amber Notes asks you on your iPhone or Mac.</p>
           <SignInButtons onApple={signInWithApple} busy={busy} />
           <form className={styles.form} method="post" onSubmit={submitSignIn}>
@@ -421,7 +438,8 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
       {view.kind === "waiting" && (
         <>
           <h1 className={styles.title}>Check your iPhone or Mac to approve</h1>
-          <p className={styles.lede}>Choose Allow in Amber Notes there, and this page takes you back to finish connecting.</p>
+          {number && <MatchNumber number={number} />}
+          <p className={styles.lede}>Amber Notes there shows three numbers. Tap the one that matches, then Allow, and this page takes you back to finish connecting. If none of them matches, choose Don't allow.</p>
           <p className={styles.status} role="status"><Spinner /> Waiting for you to allow it on your iPhone or Mac…</p>
           {nudge && (
             <p className={styles.small} role="status">
@@ -437,13 +455,13 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
       {recovering && (
         <>
           <h1 className={styles.title}>{heading}</h1>
-          {request && (request.verified_ai
-            ? <p className={styles.lede}>Access goes to <b>{request.redirect_host}</b>.</p>
-            : <p className={styles.lede}>Access goes to <b>{destination(request.redirect_host, request.loopback)}</b>.
-                {request.claimed_name && <> It calls itself &ldquo;{request.claimed_name}&rdquo;.</>}</p>)}
+          {request
+            ? <p className={styles.lede}>Access goes to <b>{destination(request.redirect_host, request.loopback)}</b>.
+                {request.claimed_name && <> It calls itself &ldquo;{request.claimed_name}&rdquo;.</>}</p>
+            : <Asking label={label} />}
           <p className={styles.note}>
-            This runs our code in your browser. Your recovery key and your notes' key stay on this page and are never sent to us.
-            When you can, approving on your iPhone or Mac is better.
+            This runs our code in your browser. Your recovery key and your notes' key are used on this page only, and are never stored or sent to us.
+            If this page were changed, it could read them. When you can, approve from your iPhone or Mac instead.
           </p>
           {!signedIn && <SignInButtons onApple={signInWithApple} busy={busy} />}
           <form className={styles.form} method="post" onSubmit={submitRecovery}>
@@ -463,9 +481,7 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
             <p className={styles.explain}>{write && canWrite
               ? "It can search, read, create and change notes. Every change keeps the previous version."
               : "It can search and read notes, but not change them."}</p>
-            {!(request?.verified_ai ?? who) && (
-              <p className={styles.warn}>Amber Notes doesn't recognize this app. Only allow it if you just started connecting it yourself.</p>
-            )}
+            <p className={styles.warn}>Only allow it if you just started connecting it yourself.</p>
             {failure && <p className={styles.error} role="alert">{failure}</p>}
             <button type="submit" className={styles.primary} disabled={!ready || busy} aria-busy={busy}>
               {busy ? <><Spinner /> Allowing…</> : "Allow"}
@@ -498,6 +514,28 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
 function sessionFrom(body: { access_token?: unknown; user?: { id?: unknown; email?: unknown } } | null, fallbackEmail: string): Session | null {
   if (typeof body?.access_token !== "string" || typeof body.user?.id !== "string") return null;
   return { token: body.access_token, userId: body.user.id, email: typeof body.user.email === "string" ? body.user.email : fallbackEmail };
+}
+
+/// The two digits the device asks you to pick out of three (matchNumber of this page's key and the request).
+export function MatchNumber({ number }: { number: string }) {
+  return (
+    <div className={styles.match}>
+      <span className={styles.matchNumber} aria-hidden="true">{number}</span>
+      <p className={styles.matchText}>Tap {number} on your iPhone or Mac</p>
+    </div>
+  );
+}
+
+/// What the app calls itself and where access goes, never as a title: nothing here is verified.
+function Asking({ label }: { label: ConnectLabel | null }) {
+  if (!label) return null;
+  const to = label.redirect_host ? destination(label.redirect_host, label.loopback) : null;
+  return (
+    <p className={styles.lede}>
+      {label.claimed_name && <>It calls itself &ldquo;{label.claimed_name}&rdquo;. </>}
+      {to && <>Access goes to <b>{to}</b>.</>}
+    </p>
+  );
 }
 
 function hostOf(url: string): string {

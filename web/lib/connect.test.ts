@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { allowHeading, appleSignInURL, appLink, destination, fetchLabel, functionURL, pkcePair, problemText, returnURL, signInError, universalLink, validRequest } from "./connect";
+import { ALLOW_HEADING, appleSignInURL, appLink, destination, fetchLabel, functionURL, parseLabel, pkcePair, problemText, returnURL, signInError, universalLink, validRequest } from "./connect";
 import { allowedPath, upstream, upstreamHeaders } from "./mcp-proxy";
 
 const ID = "5a0f6c1e-2b1d-4c36-9e0a-6b6f0c1a2b3c";
@@ -20,13 +20,20 @@ describe("the connect page", () => {
     expect(appLink(ID.toUpperCase())).toBe(`ambernotes://connect?request=${ID}`);
   });
 
-  it("names who is asking, or says it in general words", () => {
-    expect(allowHeading({ client_name: "Claude", verified_ai: "Claude" })).toBe("Allow Claude to use your notes?");
-    expect(allowHeading({ client_name: "attacker.example", verified_ai: null })).toBe("Allow attacker.example to use your notes?");
-    expect(allowHeading(null)).toBe("Allow this app to use your notes?");
-    // Anything odd from the server falls back to the general words.
-    expect(allowHeading({ client_name: "<script>", verified_ai: null })).toBe("Allow this app to use your notes?");
-    expect(allowHeading({ client_name: "x".repeat(80), verified_ai: null })).toBe("Allow this app to use your notes?");
+  it("never makes an app's name the title", () => {
+    expect(ALLOW_HEADING).toBe("Allow this app to use your notes?");
+  });
+
+  it("reads what the app calls itself and where access goes, and nothing odd", () => {
+    expect(parseLabel({ claimed_name: "Claude", redirect_host: "claude.ai", verified_ai: null }))
+      .toEqual({ claimed_name: "Claude", redirect_host: "claude.ai", loopback: false });
+    expect(parseLabel({ client_name: "My tool", claimed_name: null, redirect_host: "127.0.0.1", verified_ai: null }))
+      .toEqual({ claimed_name: "My tool", redirect_host: "127.0.0.1", loopback: true });
+    expect(parseLabel({ claimed_name: "<script>", redirect_host: "x.example" })).toEqual({ claimed_name: null, redirect_host: "x.example", loopback: false });
+    expect(parseLabel({ claimed_name: "x".repeat(80), redirect_host: "evil.example/<b>" })).toBe(null);
+    expect(parseLabel(null)).toBe(null);
+    // A mark from the server is never taken.
+    expect(parseLabel({ claimed_name: "ChatGPT", redirect_host: "chatgpt.com", verified_ai: "ChatGPT" })).not.toHaveProperty("verified_ai");
   });
 
   it("comes back from Sign in with Apple to the same request, and to the recovery key when asked", () => {
@@ -57,10 +64,10 @@ describe("the connect page", () => {
   });
 
   it("asks the function's /connect/label, and gives up quietly", async () => {
-    const fetch = vi.fn(async () => new Response(JSON.stringify({ client_name: "ChatGPT", verified_ai: "ChatGPT", extra: 1 }), { status: 200 }));
+    const fetch = vi.fn(async () => new Response(JSON.stringify({ claimed_name: "ChatGPT", redirect_host: "chatgpt.com", verified_ai: null, extra: 1 }), { status: 200 }));
     vi.stubGlobal("fetch", fetch);
     const headers = new Headers({ "x-mcp-client-ip": "198.51.100.7" });
-    expect(await fetchLabel("https://ref.supabase.co/functions/v1/mcp", ID.toUpperCase(), headers)).toEqual({ client_name: "ChatGPT", verified_ai: "ChatGPT" });
+    expect(await fetchLabel("https://ref.supabase.co/functions/v1/mcp", ID.toUpperCase(), headers)).toEqual({ claimed_name: "ChatGPT", redirect_host: "chatgpt.com", loopback: false });
     const [url, init] = fetch.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe(`https://ref.supabase.co/functions/v1/mcp/connect/label?id=${ID}`);
     expect(init.headers).toBe(headers);
@@ -69,8 +76,8 @@ describe("the connect page", () => {
     expect(await fetchLabel("https://x", ID, new Headers())).toBe(null);
     vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("offline"); }));
     expect(await fetchLabel("https://x", ID, new Headers())).toBe(null);
-    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ client_name: "Evil", verified_ai: "Evil AI" }))));
-    expect(await fetchLabel("https://x", ID, new Headers())).toEqual({ client_name: "Evil", verified_ai: null });
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ claimed_name: "Evil", redirect_host: "evil.example", verified_ai: "Claude" }))));
+    expect(await fetchLabel("https://x", ID, new Headers())).toEqual({ claimed_name: "Evil", redirect_host: "evil.example", loopback: false });
     const never = vi.fn();
     vi.stubGlobal("fetch", never);
     expect(await fetchLabel("https://x", "../token", new Headers())).toBe(null);
