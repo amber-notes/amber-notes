@@ -46,7 +46,8 @@ export default function Page() {
         <li>Pins, if you turned that option on.</li>
       </ul>
       <p>
-        Images and attachments stay in Apple Notes, and so do locked notes, which the import can&apos;t read. Your notes in Apple Notes
+        Images and attachments stay in Apple Notes, and so do locked notes, which the import can&apos;t read (unlock them first; if
+        you&apos;ve lost the password, see <a href="/blog/forgot-apple-notes-password">forgot your Apple Notes password</a>). Your notes in Apple Notes
         stay exactly as they were.
       </p>
 

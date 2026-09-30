@@ -38,6 +38,15 @@ import Testing
         try await VersionHistorySnapshots.shoot(list, to: dir.appending(path: "card-connect-list.png"), size: size, dark: false)
     }
 
+    /// The sheet that sets the notes password for locked notes, with its warning that a forgotten
+    /// password can't be recovered. For the post about a forgotten Apple Notes password.
+    @Test func notesPasswordSheet() async throws {
+        guard let dir = AppSnapshotTests.dir else { return }
+        let size = CGSize(width: 520, height: 520)
+        let view = NotesPasswordSetupSheet(onDone: {}).frame(width: size.width, height: size.height)
+        try await VersionHistorySnapshots.shoot(view, to: dir.appending(path: "mac-notes-password-light.png"), size: size, dark: false)
+    }
+
     /// Standup notes just after Claude Code added today's standup: the lines it wrote tinted, and
     /// "Claude Code changed … lines · Undo" at the bottom. For the work-log post.
     @Test func standupByClaudeCode() async throws {
