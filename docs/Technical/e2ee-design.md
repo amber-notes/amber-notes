@@ -30,6 +30,7 @@ One module per side, pinned to each other by `supabase/functions/_shared/e2ee-ve
 | Recovery key | 16 random bytes. Text: 28 Crockford base32 characters in seven groups of four, the 128 bits then a 12-bit check (first bits of SHA-256 of the key). Read back uppercase, separators stripped, O as 0, I and L as 1; a typo fails the check before the server is asked |
 | Recovery wrap | DK sealed under HKDF-SHA256(recovery key bytes, salt `amber-notes/e2ee`, info `recovery <user id>`), context `wrap:recovery:<user id>` |
 | Token wraps | DK sealed under HKDF-SHA256(the code or token as UTF-8, salt `amber-notes/e2ee`, info `wrap <purpose>`), purposes `code`, `access`, `refresh`, `pane` |
+| Code handoff | `amb2h.<base64 device ephemeral P-256 public key (65) ‖ nonce ‖ ciphertext ‖ tag>`, key HKDF-SHA256(ECDH secret, salt `amber-notes/e2ee`, info `handoff <request id>`), AAD `amb2h\|<request id>` |
 
 Unchanged text keeps its box: the apps cache the last box per context by a hash of the plaintext, and the MCP server doesn't write text it didn't change. The database treats a new box as a change (a new version, an AI edit count), so this matters.
 
@@ -43,6 +44,7 @@ Unchanged text keeps its box: the apps cache the last box per context by a hash 
 | `attachments` | size of the sealed object, dates; path `<user id>/<attachment id>` | `meta_ct`; the object in Storage |
 | `account_keys` | `key_id`, `verifier`, `recovery_saved_at` | `recovery_wrap` |
 | `mcp_tokens`, `oauth_tokens`, `oauth_requests` | token hashes, names, scopes | `dk_wrap`, `code_wrap` |
+| `connect_asks` | which account asked, when, the browser's description and public key | the code sealed to the browser, until it's picked up |
 | `note_shares`, `note_share_pages`, `note_share_files` | the published copy of a shared note, its included sub-notes and embedded files, while shared | |
 
 Still readable and not covered by this work: the profile name and photo (shown on shared pages), and the notes-password hint.
@@ -68,13 +70,17 @@ Keychain: service `dev.emilwagman.pane.data-key`, account = user id, value = ver
 
 ## AI connections
 
-Approval happens only in the app.
+Approval happens on one of the person's devices, or in the browser with the recovery key.
 
-1. An AI starts OAuth. `/authorize` sends the browser to `ambernotes.app/connect?request=<id>`, which says "Approve <client> in Amber Notes on your iPhone or Mac" (the name comes from the public `/connect/label`) and has Open Amber Notes: the universal link `https://ambernotes.app/open/connect?request=<id>`. Where that link stays in the browser (Chrome on a Mac, or Safari when the tap is on the same domain), `/open/connect` tries `ambernotes://connect?request=<id>`.
-2. The app shows who is asking and says the AI can read everything while connected (locked notes excepted). Allow needs Face ID or Touch ID.
-3. The app makes the authorization code itself and sends `/connect/decide {id, allow, write, redirect_uri, code_hash, code_wrap}`. `redirect_uri` is exactly the one the app displayed, and the server requires a match. The server stores the hash and the wrap and answers with the redirect without a code; the app appends the code and opens it.
-4. `/token` unwraps DK with the code and wraps it under the new access and refresh tokens; refresh rotation moves the wrap and deletes the old one. Revoking a connection deletes its wraps (trigger on `mcp_tokens`).
-5. Each MCP request unwraps DK once with the presented token into a `Vault` that lives for that request. A connection without a wrap that opens gets `401 invalid_token`, which makes the AI ask to connect again.
+1. An AI starts OAuth from any browser. `/authorize` sends it to `ambernotes.app/connect?request=<id>`. The page names the client (`/connect/label`) and says "Check your iPhone or Mac to approve", with Open Amber Notes (the universal link `https://ambernotes.app/open/connect?request=<id>`) as a shortcut when the app is on this computer.
+2. The page signs in (Sign in with Apple or email) only to say whose request it is. It makes a P-256 key pair in memory, sends the public half with `/connect/ask` (at most 10 asks per account per 10 minutes), and ends the session.
+3. `connect_asks` reaches every signed-in device of the account through realtime while the app runs, and again when the app becomes active. A local notification shows when the app isn't in front. There's no push: an iPhone whose app isn't running sees the ask when it's opened.
+4. The device shows "Allow <client> to use your notes?" with the scope and when and where it started. It says the AI can read everything while connected, except locked notes. Allow needs Face ID, Touch ID or the passcode; a device without one can't allow.
+5. The device makes the authorization code and sends `/connect/decide {id, allow, write, redirect_uri, code_hash, code_wrap, handoff}`. `redirect_uri` is exactly the one it displayed, and the server requires a match. `handoff` is the code sealed to the page's key: `amb2h`, ECDH P-256 plus HKDF plus AES-GCM, pinned by the vectors. The server stores only the hash, the wrap and the sealed code, never the code itself. One answer per request; requests expire after 10 minutes.
+6. The page polls `/connect/status`, opens the code with its private key (handed over once), adds it to the redirect and goes on.
+7. "No device nearby? Use your recovery key": the page signs in, reads `account_keys`, and in the browser parses the recovery key, unwraps DK, checks the verifier, makes the code and its wrap, and sends the same `/connect/decide`. The recovery key and DK never leave the page and aren't stored anywhere; their bytes are zeroed after use. The page says it runs our code in your browser and that approving from a device is better. App reviewers approve this way with the demo account's recovery key.
+8. `/token` unwraps DK with the code and wraps it under the new access and refresh tokens; refresh rotation moves the wrap and deletes the old one. Revoking a connection deletes its wraps (trigger on `mcp_tokens`).
+9. Each MCP request unwraps DK once with the presented token into a `Vault` that lives for that request. A connection without a wrap that opens gets `401 invalid_token`, which makes the AI ask to connect again.
 
 Claude Code and Codex use `pane_` tokens, now made on the device (`create_mcp_token(name, write, hash, wrap)`) and only ever sent in an Authorization header. A token in the address is refused.
 

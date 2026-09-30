@@ -33,11 +33,13 @@ Write down the times and what you saw in the table at the end.
 
 ## 5. An AI connection
 
-1. In ChatGPT or Claude on the web, add the Amber Notes connector (https://mcp.ambernotes.app). The browser lands on ambernotes.app/connect: "Approve <ChatGPT or Claude> in Amber Notes on your iPhone or Mac". Tap Open Amber Notes.
-2. On the iPhone this should open the app (from Safari on the same domain it may land on the "Opening Amber Notes" page first; that page opens the app). On the Mac in Chrome, the page opens the app through its own link.
-3. The approval sheet says the AI can read everything while connected. Allow asks for Face ID or Touch ID. The browser returns to the AI.
+1. On the Mac, in Chrome, add the Amber Notes connector to ChatGPT or Claude (https://mcp.ambernotes.app). ambernotes.app/connect names the AI and says "Check your iPhone or Mac to approve". Sign in there.
+2. With Amber Notes open on the iPhone: time how long the approval sheet takes to appear. It should say "Allow <AI> to use your notes?", the access, and "Requested … from Chrome on a Mac". With the app in the background on the Mac, a notification should appear; tap it.
+3. Allow asks for Face ID or Touch ID. The Chrome page goes on to the AI by itself. Check the other device's sheet closes.
 4. Ask the AI "What's in my Lisbon note?" and "Add 'Tram 28' to Lisbon". The edit shows in the app, marked as the AI's.
-5. Disconnect it in Settings › Connect an AI. The AI's next request asks you to connect again.
+5. Connect again, and this time choose "No device nearby? Use your recovery key" on the page. Sign in, type the recovery key from step 3.1 in lowercase with spaces, and allow. The page goes on to the AI.
+6. Try Open Amber Notes on the page on a Mac with the app: the app opens the same request.
+7. Disconnect the AI in Settings › Connect an AI. The AI's next request asks you to connect again.
 
 ## 6. Start fresh (last resort)
 
@@ -57,7 +59,10 @@ Only on a test account.
 | 3.2 Saved on both devices | both | | |
 | 4.3 help shown at once, Keychain off | Mac | | |
 | 4.4 typo caught, key accepted | Mac | | |
-| 5.2 Open Amber Notes opened the app | iPhone / Mac | | |
-| 5.3 Face ID or Touch ID before Allow | | | |
-| 5.5 disconnected AI asked to reconnect | | | |
+| 5.2 sheet appeared on the other device | iPhone | | s |
+| 5.2 notification with the app in the background | Mac | | |
+| 5.3 Face ID or Touch ID, page went on by itself | | | |
+| 5.5 recovery key approval in the browser | Chrome | | |
+| 5.6 Open Amber Notes opened the app | Mac | | |
+| 5.7 disconnected AI asked to reconnect | | | |
 | 6.3 start fresh | Mac / iPhone | | |
