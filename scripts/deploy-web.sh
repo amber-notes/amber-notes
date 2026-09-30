@@ -45,4 +45,6 @@ done
 vercel env rm MCP_PROXY_SECRET preview --yes --scope "$team" >/dev/null 2>&1 || true
 url=$(vercel deploy --prod --yes --scope "$team" 2>/dev/null | tail -1)
 echo "$url"
+# Tell Bing and the other IndexNow engines about the pages (never fails the deploy).
+../scripts/indexnow.sh || true
 mkdir -p ../.secrets && echo "https://ambernotes.app/privacy" > ../.secrets/privacy-url.txt  # the stable alias, not this deployment
