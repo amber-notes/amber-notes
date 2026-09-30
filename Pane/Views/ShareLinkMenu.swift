@@ -92,19 +92,12 @@ struct SupabaseShareLinks: ShareLinkService {
     /// Told when sharing changes, so edits are published to the page from then on.
     var sync: SyncEngine?
 
-    private struct Row: Decodable {
-        var slug: String
-        var include_subnotes: Bool
-    }
-
+    /// The note's live link, only when this account's key made it (its tag verifies): a share row
+    /// planted or changed without the key reads as not shared.
     func current(note: UUID) async throws -> (slug: String, includesSubNotes: Bool)? {
-        let rows: [Row] = try await client.from("note_shares")
-            .select("slug, include_subnotes")
-            .eq("note_id", value: note.uuidString.lowercased())
-            .is("revoked_at", value: nil)
-            .limit(1)
-            .execute().value
-        return rows.first.map { ($0.slug, $0.include_subnotes) }
+        guard let live = try await SharePublisher.liveShare(note: note, client: client),
+              SharePublisher.verifies(live, note: note, sealer: Wire.sealer) else { return nil }
+        return (live.slug, live.include_subnotes)
     }
 
     func share(note: UUID, includeSubNotes: Bool) async throws -> String {
@@ -125,6 +118,13 @@ struct SupabaseShareLinks: ShareLinkService {
 /// publishes one: the note, the sub-notes the link includes (any depth, only live, unlocked ones),
 /// and the files they embed. It's written again as the notes change (SyncEngine) and deleted with
 /// the link.
+///
+/// Only for a share this account made: every share carries a tag (`E2EE.shareTag`, an HMAC under
+/// a subkey of the data key over the note, the slug and whether sub-notes are included), and
+/// before anything is published the live share is read and its tag checked. A share row planted
+/// or changed by anyone without the key publishes nothing. The sub-notes a page includes come from
+/// the `pane-note:` links in the notes' own (sealed) text, never from `parent_id`, which the
+/// server could change.
 @MainActor
 enum SharePublisher {
     struct Failure: LocalizedError { var errorDescription: String? { "This note couldn't be published. Try again." } }
@@ -133,27 +133,69 @@ enum SharePublisher {
     /// `files`: the ids of the files the note and its pages embed.
     struct Copy: Encodable, Sendable, Equatable { var title: String; var body: String; var pages: [Page]; var files: [String] }
     struct Published: Decodable { var slug: String; var missing_files: [UUID]? }
+    /// A live row of note_shares, as the server has it.
+    struct LiveShare: Decodable, Equatable, Sendable { var slug: String; var include_subnotes: Bool; var share_tag: String? }
 
     /// Files over this aren't published (the server's limit); the page shows them as unavailable.
     static let maxFileBytes = 10 * 1024 * 1024
+    /// At most this many sub-notes on one page.
+    static let maxPages = 500
+
+    nonisolated static func slugIsValid(_ slug: String) -> Bool { slug.wholeMatch(of: /[A-Za-z0-9_-]{24,64}/) != nil }
+
+    /// The note's live share, whoever made it.
+    nonisolated static func liveShare(note: UUID, client: SupabaseClient) async throws -> LiveShare? {
+        let rows: [LiveShare] = try await client.from("note_shares")
+            .select("slug,include_subnotes,share_tag")
+            .eq("note_id", value: note.uuidString.lowercased())
+            .is("revoked_at", value: nil)
+            .limit(1)
+            .execute().value
+        return rows.first
+    }
+
+    /// Whether a share was made by this account (its tag is the one the account's key makes).
+    nonisolated static func verifies(_ share: LiveShare, note: UUID, sealer: Sealer?) -> Bool {
+        guard let sealer, slugIsValid(share.slug) else { return false }
+        return sealer.shareTagMatches(note: note, slug: share.slug, includeSubNotes: share.include_subnotes, tag: share.share_tag)
+    }
+
+    /// The notes a body links to (`pane-note:<id>`), in order, each once.
+    nonisolated static func linkedNotes(in body: String) -> [UUID] {
+        var out: [UUID] = []
+        for m in body.matches(of: /pane-note:([0-9a-fA-F-]{36})/) {
+            if let id = UUID(uuidString: String(m.1)), !out.contains(id) { out.append(id) }
+        }
+        return out
+    }
+
+    /// The sub-notes a page of `root` includes, with the note that links each: breadth first
+    /// through the links in the (local, readable) text. A locked, trashed or deleted note, and
+    /// one this device doesn't have, is left out with everything only it links to.
+    static func subNotes(of root: Note, in context: ModelContext) -> [(note: Note, parent: UUID)] {
+        var out: [(Note, UUID)] = []
+        var queue = [root]
+        var seen: Set<UUID> = [root.id]
+        while !queue.isEmpty, out.count < maxPages {
+            let parent = queue.removeFirst()
+            for id in linkedNotes(in: parent.body) where seen.insert(id).inserted {
+                guard let child = context.note(id), child.deletedAt == nil, child.trashedAt == nil, child.lockedBody == nil else { continue }
+                queue.append(child)
+                out.append((child, parent.id))
+                if out.count >= maxPages { break }
+            }
+        }
+        return out
+    }
 
     static func copy(of id: UUID, includeSubNotes: Bool, in context: ModelContext) -> Copy? {
         guard let root = context.note(id), root.lockedBody == nil, root.deletedAt == nil, root.trashedAt == nil else { return nil }
         var pages: [Page] = []
         var bodies = [root.body]
         if includeSubNotes {
-            let live = ((try? context.fetch(FetchDescriptor<Note>())) ?? []).filter { $0.deletedAt == nil && $0.trashedAt == nil && $0.lockedBody == nil }
-            let children = Dictionary(grouping: live.filter { $0.parentID != nil }, by: { $0.parentID! })
-            // Breadth first: a locked or deleted sub-note leaves out everything below it too.
-            var queue = [root.id]
-            var seen: Set<UUID> = [root.id]
-            while !queue.isEmpty, pages.count < 500 {
-                let parent = queue.removeFirst()
-                for child in (children[parent] ?? []).sorted(by: { $0.createdAt < $1.createdAt }) where seen.insert(child.id).inserted {
-                    queue.append(child.id)
-                    bodies.append(child.body)
-                    pages.append(Page(id: child.id.uuidString.lowercased(), parent_id: parent.uuidString.lowercased(), title: child.title, body: child.body))
-                }
+            for (child, parent) in subNotes(of: root, in: context) {
+                bodies.append(child.body)
+                pages.append(Page(id: child.id.uuidString.lowercased(), parent_id: parent.uuidString.lowercased(), title: child.title, body: child.body))
             }
         }
         var files: [String] = []
@@ -167,24 +209,40 @@ enum SharePublisher {
         return Copy(title: root.title, body: root.body, pages: pages, files: files)
     }
 
-    /// Creates the note's link (or keeps the live one) with its copy, then the files it still needs.
+    /// Creates the note's link (or keeps the live one this account made) with its copy and tag,
+    /// then the files it still needs. A live share that doesn't verify was never this account's:
+    /// it's stopped first, and a new link is made.
     static func share(note: UUID, includeSubNotes: Bool, client: SupabaseClient, container: ModelContainer, user: UUID) async throws -> String {
         let context = container.mainContext
-        guard let copy = copy(of: note, includeSubNotes: includeSubNotes, in: context) else { throw Failure() }
-        struct Params: Encodable { var p_note: String; var p_include_subnotes: Bool; var p_copy: Copy }
-        let published: Published = try await client.rpc("share_note", params: Params(p_note: note.uuidString.lowercased(), p_include_subnotes: includeSubNotes, p_copy: copy)).execute().value
-        await upload(published.missing_files ?? [], slug: published.slug, client: client, context: context, user: user)
-        return published.slug
+        guard let sealer = Wire.sealer, let copy = copy(of: note, includeSubNotes: includeSubNotes, in: context) else { throw Failure() }
+        let id = note.uuidString.lowercased()
+        if let live = try await liveShare(note: note, client: client), !verifies(live, note: note, sealer: sealer) {
+            try await client.rpc("unshare_note", params: ["p_note": id]).execute()
+        }
+        let slug: String = try await client.rpc("share_slug", params: ["p_note": id]).execute().value
+        guard slugIsValid(slug) else { throw Failure() }
+        let tag = sealer.shareTag(note: note, slug: slug, includeSubNotes: includeSubNotes)
+        struct Params: Encodable { var p_note: String; var p_slug: String; var p_include_subnotes: Bool; var p_tag: String; var p_copy: Copy }
+        let published: Published = try await client.rpc("share_note", params: Params(p_note: id, p_slug: slug, p_include_subnotes: includeSubNotes,
+                                                                                    p_tag: tag, p_copy: copy)).execute().value
+        guard published.slug == slug else { throw Failure() }
+        await upload(published.missing_files ?? [], slug: slug, client: client, context: context, user: user)
+        return slug
     }
 
-    /// A shared note (or a note in its page tree) changed: its page's copy is written again.
-    static func republish(root: UUID, includeSubNotes: Bool, client: SupabaseClient, context: ModelContext, user: UUID) async {
-        guard let copy = copy(of: root, includeSubNotes: includeSubNotes, in: context) else { return }
-        struct Params: Encodable { var p_note: String; var p_copy: Copy }
-        // Null when the note isn't shared any more.
-        guard let published: Published? = try? await client.rpc("publish_share", params: Params(p_note: root.uuidString.lowercased(), p_copy: copy)).execute().value,
-              let published else { return }
-        await upload(published.missing_files ?? [], slug: published.slug, client: client, context: context, user: user)
+    /// A shared note (or a note in its page tree) changed: its page's copy is written again, under
+    /// the live link only if that link verifies, and with the sub-notes it says. Returns the slug
+    /// published to, or nil when nothing was.
+    @discardableResult
+    static func republish(root: UUID, client: SupabaseClient, context: ModelContext, user: UUID) async -> String? {
+        guard let live = try? await liveShare(note: root, client: client), verifies(live, note: root, sealer: Wire.sealer),
+              let copy = copy(of: root, includeSubNotes: live.include_subnotes, in: context) else { return nil }
+        struct Params: Encodable { var p_note: String; var p_slug: String; var p_copy: Copy }
+        // Null when the link isn't live any more.
+        guard let published: Published? = try? await client.rpc("publish_share", params: Params(p_note: root.uuidString.lowercased(), p_slug: live.slug, p_copy: copy)).execute().value,
+              let published, published.slug == live.slug else { return nil }
+        await upload(published.missing_files ?? [], slug: live.slug, client: client, context: context, user: user)
+        return live.slug
     }
 
     /// Readable copies of the files the page embeds and the server doesn't have yet.

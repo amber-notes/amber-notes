@@ -530,9 +530,10 @@ final class SyncEngine {
 
     // MARK: Shared pages
 
-    /// Live links: note → whether its link includes sub-notes. A shared page shows a readable copy
-    /// this device publishes (the server can't read the note), so an edit that went up is
-    /// published to every page it's on.
+    /// Live links this account made (their tags verify): note → whether its link includes
+    /// sub-notes. A shared page shows a readable copy this device publishes (the server can't read
+    /// the note), so an edit that went up is published to every page it's on. A share row that
+    /// doesn't verify isn't here: it's never published to, and the note doesn't show as shared.
     private(set) var liveShares: [UUID: Bool] = [:]
     private var publishQueue: Set<UUID> = []
     private var publishTask: Task<Void, Never>?
@@ -540,10 +541,14 @@ final class SyncEngine {
     static var publishDelay: Duration = .seconds(2)
 
     private func refreshShares(_ client: SupabaseClient) async {
-        struct Row: Decodable { var note_id: UUID; var include_subnotes: Bool }
-        if let rows: [Row] = try? await client.from("note_shares").select("note_id,include_subnotes").is("revoked_at", value: nil).execute().value {
-            liveShares = Dictionary(rows.map { ($0.note_id, $0.include_subnotes) }, uniquingKeysWith: { a, _ in a })
+        struct Row: Decodable { var note_id: UUID; var slug: String; var include_subnotes: Bool; var share_tag: String? }
+        guard let rows: [Row] = try? await client.from("note_shares").select("note_id,slug,include_subnotes,share_tag").is("revoked_at", value: nil).execute().value else { return }
+        let sealer = Wire.sealer
+        let verified = rows.filter {
+            SharePublisher.verifies(.init(slug: $0.slug, include_subnotes: $0.include_subnotes, share_tag: $0.share_tag), note: $0.note_id, sealer: sealer)
         }
+        let next = Dictionary(verified.map { ($0.note_id, $0.include_subnotes) }, uniquingKeysWith: { a, _ in a })
+        if next != liveShares { liveShares = next }
     }
 
     /// Sharing changed on this device (Share Link, sub-notes, Stop Sharing).
@@ -551,14 +556,13 @@ final class SyncEngine {
         liveShares[note] = includesSubNotes
     }
 
-    /// The shared notes whose pages show this one: itself, and each ancestor whose link includes sub-notes.
+    /// The shared notes whose pages show this one: itself, and each shared note whose link
+    /// includes sub-notes and whose text links to it (at any depth). Never by `parent_id`.
     func sharedRoots(of id: UUID) -> [UUID] {
         var roots: [UUID] = liveShares[id] != nil ? [id] : []
-        var seen: Set<UUID> = [id]
-        var next = context.note(id)?.parentID
-        while let p = next, seen.insert(p).inserted, seen.count < 64 {
-            if liveShares[p] == true { roots.append(p) }
-            next = context.note(p)?.parentID
+        for (root, include) in liveShares where include && root != id {
+            guard let r = context.note(root) else { continue }
+            if SharePublisher.subNotes(of: r, in: context).contains(where: { $0.note.id == id }) { roots.append(root) }
         }
         return roots
     }
@@ -566,7 +570,7 @@ final class SyncEngine {
     /// Typing pushes every 0.35 s; the pages are written 2 s after the last push that touched them.
     private func republishShares(for ids: [UUID]) {
         guard !liveShares.isEmpty else { return }
-        let roots = ids.flatMap { sharedRoots(of: $0) }
+        let roots = Set(ids.flatMap { sharedRoots(of: $0) })
         guard !roots.isEmpty else { return }
         publishQueue.formUnion(roots)
         publishTask?.cancel()
@@ -577,7 +581,8 @@ final class SyncEngine {
             self.publishQueue = []
             self.publishTask = nil
             for r in roots {
-                await SharePublisher.republish(root: r, includeSubNotes: self.liveShares[r] ?? false, client: client, context: self.context, user: user)
+                // Checks the live share's tag again, and uses what it says about sub-notes.
+                await SharePublisher.republish(root: r, client: client, context: self.context, user: user)
             }
         }
     }

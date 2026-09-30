@@ -537,9 +537,12 @@ struct NoteRow: View {
     var showFolder = false
 
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(SyncEngine.self) private var sync: SyncEngine?
 
     var body: some View {
         let title = note.title
+        // Shared by link, by this account (the share's tag verified): a small link, like Notes.
+        let shared = sync?.liveShares[note.id] != nil && !note.isLocked && note.trashedAt == nil
         // At the accessibility text sizes the row stacks and wraps instead of truncating.
         let large = typeSize.isAccessibilitySize
         let detail = large ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2)) : AnyLayout(HStackLayout(spacing: 8))
@@ -558,9 +561,18 @@ struct NoteRow: View {
                     }
                 }
             detail {
-                Text(DateBucket.rowDate(note.updatedAt))
-                    .monospacedDigit()
-                    .foregroundStyle(Color.ink.opacity(0.85))
+                HStack(spacing: 4) {
+                    if shared {
+                        Image(systemName: "link")
+                            .imageScale(.small)
+                            .foregroundStyle(Color.muted)
+                            .accessibilityHidden(true)
+                            .accessibilityIdentifier("note.shared")
+                    }
+                    Text(DateBucket.rowDate(note.updatedAt))
+                        .monospacedDigit()
+                        .foregroundStyle(Color.ink.opacity(0.85))
+                }
                 if note.isLocked {
                     // Like Notes: the title and a lock, nothing of the text.
                     Label("Locked", systemImage: "lock.fill")
@@ -593,7 +605,7 @@ struct NoteRow: View {
         .padding(.vertical, RowMetrics.vertical)
         .padding(.leading, RowMetrics.leading)
         .accessibilityElement(children: .combine)
-        .accessibilityValue([note.isPinned ? "Pinned" : nil, note.isLocked ? "Locked" : nil, ai.map { "Edited by \($0)" }].compactMap { $0 }.joined(separator: ", "))
+        .accessibilityValue([note.isPinned ? "Pinned" : nil, shared ? "Shared" : nil, note.isLocked ? "Locked" : nil, ai.map { "Edited by \($0)" }].compactMap { $0 }.joined(separator: ", "))
         .accessibilityIdentifier("note.\(title)")
     }
 
