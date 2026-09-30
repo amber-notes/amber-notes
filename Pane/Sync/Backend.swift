@@ -27,7 +27,19 @@ enum BackendConfig {
         return url != nil && key != nil
     }
 
+    /// The MCP function itself. The app calls it here for connection requests.
     static var mcpURL: URL? { url?.appending(path: "functions/v1/mcp") }
+
+    /// The MCP server's address as people see it and paste it (https://mcp.ambernotes.app in
+    /// release builds, from PANE_MCP_URL). Builds without one show the function's own address.
+    static var mcpPublicURL: URL? {
+        publicMCPURL(configured: Bundle.main.object(forInfoDictionaryKey: "PaneMCPURL") as? String, function: mcpURL)
+    }
+
+    static func publicMCPURL(configured: String?, function: URL?) -> URL? {
+        if let s = configured, s.hasPrefix("https://"), let u = URL(string: s) { return u }
+        return function
+    }
 }
 
 /// Owns the Supabase client and the signed-in session.

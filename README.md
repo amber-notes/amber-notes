@@ -55,7 +55,7 @@
 | App | `Pane/` | SwiftUI for iOS 26 and macOS 26. The editor is TextKit 2 with its own layout fragments for checkboxes, bullets, tables and embeds. SwiftData holds a local copy of everything. |
 | Sync | `Pane/Sync/` | Pushes and pulls through Supabase with version checks, and listens on Supabase Realtime for changes from other devices. |
 | Backend | `supabase/` | Postgres with row-level security on every table, per-account limits and rate limits in the database, Storage for files, and Edge Functions. |
-| AI server | `supabase/functions/mcp/` | An MCP server (Streamable HTTP) with 27 tools. Web clients connect with OAuth 2.1 (PKCE, dynamic client registration) and approve inside the app. Claude Code and Codex use a revocable header token. Every call runs as the note owner with row-level security. |
+| AI server | `supabase/functions/mcp/` | An MCP server (Streamable HTTP) with 27 tools. Public address `https://mcp.ambernotes.app` (proxied by the site, `web/middleware.ts`). Web clients connect with OAuth 2.1 (PKCE, dynamic client registration) and approve in the app or on the web at `ambernotes.app/connect`. Claude Code and Codex use a revocable header token. Every call runs as the note owner with row-level security. |
 | Share site | `web/` | Next.js. Renders shared notes safely (sanitized markdown, strict CSP), with a report link and a privacy page. |
 | Share extension | `PaneShare/` | Share sheet target on iOS. |
 
@@ -101,7 +101,7 @@ Everything the app needs runs on one Supabase project:
 
 ## Connect an AI
 
-In the app, open **Settings → Connect an AI** and follow the steps for your client. ChatGPT and Claude get a plain server address and ask Amber Notes for permission through OAuth. Claude Code and Codex get a command with a revocable token. Connections are listed in Settings, where you can disconnect each one.
+In the app, open **Settings → Connect an AI** and follow the steps for your client. ChatGPT and Claude get a plain server address, `https://mcp.ambernotes.app`, and ask Amber Notes for permission through OAuth: a page on ambernotes.app opens, where you answer in the app or sign in and answer on the web. Claude Code and Codex get a command with a revocable token. Connections are listed in Settings, where you can disconnect each one.
 
 ## Privacy and security
 

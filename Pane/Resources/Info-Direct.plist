@@ -46,6 +46,8 @@
 	<array>
 		<string>dev.emilwagman.pane.connect</string>
 	</array>
+	<key>PaneMCPURL</key>
+	<string>$(PANE_MCP_URL)</string>
 	<key>PaneShareURL</key>
 	<string>$(PANE_SHARE_URL)</string>
 	<key>PaneSupabaseKey</key>

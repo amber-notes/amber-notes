@@ -6,4 +6,7 @@ PANE_SUPABASE_URL = http:/$()/127.0.0.1:56421
 PANE_SUPABASE_KEY = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
 // Where shared notes open: the web/ site (`cd web && pnpm dev` serves it on 5210 locally).
 PANE_SHARE_URL = http:/$()/localhost:5210
+// The MCP server's public address, shown in Connect an AI (https://mcp.ambernotes.app for release
+// builds). Empty: the app shows the Supabase function's own address.
+PANE_MCP_URL =
 #include? "Backend.local.xcconfig"

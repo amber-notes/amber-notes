@@ -49,8 +49,8 @@ function tokenFrom(req: Request): Presented | null {
   return /^pane_[0-9a-f]{64}$/.test(last) ? { token: last, oauth: false, inURL: true } : null;
 }
 
-async function authenticate(p: Presented, base: string) {
-  if (p.oauth) return await resolveAccessToken(sql, p.token, base);
+async function authenticate(p: Presented, req: Request) {
+  if (p.oauth) return await resolveAccessToken(sql, p.token, req);
   const rows = await sql`select * from public.resolve_mcp_token(${p.token})`;
   const who = rows[0] as { user_id: string; token_id: string; name: string; can_write: boolean } | undefined;
   // A token in the URL ends up in logs and histories: remember it so the app can say so.
@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
   if (req.method === "DELETE") return new Response(null, { status: 204, headers: cors });
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405, headers: cors });
 
-  const who = presented ? await authenticate(presented, base).catch((e) => { console.error("token lookup failed:", (e as Error).message); return undefined; }) : undefined;
+  const who = presented ? await authenticate(presented, req).catch((e) => { console.error("token lookup failed:", (e as Error).message); return undefined; }) : undefined;
   if (!who) return unauthorized(base, presented ? "invalid_token" : undefined);
 
   // A client that names a protocol version we don't speak gets told so up front.

@@ -182,8 +182,9 @@ Deno.test({ name: "the full flow: consent in the app, tokens, tools, refresh wit
   const { verifier, challenge } = await pkce();
   const res = await startAuthorize(clientId, challenge);
   assertEquals(res.status, 302);
+  // The browser goes to the site's consent page, which offers the app or signing in there.
   const loc = new URL(res.headers.get("location")!);
-  assertEquals(loc.protocol, "ambernotes:");
+  assertEquals(loc.pathname, "/connect");
   const requestId = loc.searchParams.get("request")!;
 
   // The app reads the request (only with a session) to show the consent sheet.
@@ -286,7 +287,7 @@ Deno.test({ name: "loopback redirects match on any port", ...opts }, async () =>
   const { challenge } = await pkce();
   const res = await startAuthorize(clientId, challenge, { redirect_uri: "http://127.0.0.1:43117/callback" });
   assertEquals(res.status, 302);
-  assertEquals(new URL(res.headers.get("location")!).protocol, "ambernotes:");
+  assertEquals(new URL(res.headers.get("location")!).pathname, "/connect");
   const { jwt } = await user();
   const details = await (await fetch(`${base}/connect/request?id=${new URL(res.headers.get("location")!).searchParams.get("request")}`, { headers: { authorization: `Bearer ${jwt}` } })).json();
   assertEquals(details.loopback, true);

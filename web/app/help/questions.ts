@@ -12,6 +12,7 @@ export const FAQ: QA[] = [
   ], more: { href: "/blog/move-from-apple-notes", text: "How to move from Apple Notes, step by step" } },
   { id: "connect", q: "How do I connect ChatGPT, Claude, Claude Code, Codex or Incredible?", a: [
     "In Amber Notes, open Settings → Connect an AI, pick ChatGPT or Claude and follow the steps. You add it once, on a computer. After that, it works in their phone apps too.",
+    "Adding it yourself? The address is https://mcp.ambernotes.app. When ChatGPT or Claude asks for permission, answer in Amber Notes, or sign in on the page that opens and choose Allow there.",
     "Claude Code gets a one-line command with a token of its own, and Codex a few lines for its config file. Incredible, and any other app that supports MCP, connects with the Amber Notes server address and a sign-in.",
   ], more: { href: "/blog/connect-chatgpt-to-your-notes", text: "How to connect ChatGPT to your notes" } },
   { id: "apple-notes-ai", q: "Can ChatGPT or Claude use my notes in Apple Notes?", a: [

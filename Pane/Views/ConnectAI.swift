@@ -10,9 +10,10 @@ import UIKit
 // Connecting an AI to Amber Notes.
 //
 // ChatGPT and Claude sign in with OAuth: they send the person's browser to the MCP server's
-// /authorize, which hands over to ambernotes://connect?request=<id>. The app (already signed in)
-// shows who's asking, the person allows read-only or read and edit, and the app sends the
-// browser on to the AI with the result. Claude Code and Codex use an access token in a
+// /authorize, which opens ambernotes.app/connect?request=<id>. That page hands over to
+// ambernotes://connect?request=<id> (or lets the person answer on the web). The app (already
+// signed in) shows who's asking, the person allows read-only or read and edit, and the app sends
+// the browser on to the AI with the result. Claude Code and Codex use an access token in a
 // request header instead, created here and never shown in a link.
 
 // MARK: Pure pieces (tested)
@@ -616,7 +617,7 @@ private struct GuideSheet: View {
     @State private var failed = false
     @State private var readOnly = false
 
-    private var server: String { BackendConfig.mcpURL?.absoluteString ?? "" }
+    private var server: String { BackendConfig.mcpPublicURL?.absoluteString ?? "" }
 
     var body: some View {
         NavigationStack {

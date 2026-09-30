@@ -7,12 +7,12 @@ import DownloadLink from "./DownloadLink";
 /// Which site pages are cream and which are leaf brown. Anything else (shared notes) has no theme.
 export function themeFor(path: string): "cream" | "leaf" | null {
   if (/^\/(changelog|support|help)(\/|$)/.test(path)) return "leaf";
-  if (path === "/" || /^\/(download|privacy|terms|blog)(\/|$)/.test(path)) return "cream";
+  if (path === "/" || /^\/(download|privacy|terms|blog|connect)(\/|$)/.test(path)) return "cream";
   return null;
 }
 
 /// Runs in <head> before first paint, so a page never flashes the wrong theme.
-export const themeScript = `(function(){var p=location.pathname,t=/^\\/(changelog|support|help)(\\/|$)/.test(p)?"leaf":(p==="/"||/^\\/(download|privacy|terms|blog)(\\/|$)/.test(p))?"cream":null;if(t)document.documentElement.dataset.theme=t;})();`;
+export const themeScript = `(function(){var p=location.pathname,t=/^\\/(changelog|support|help)(\\/|$)/.test(p)?"leaf":(p==="/"||/^\\/(download|privacy|terms|blog|connect)(\\/|$)/.test(p))?"cream":null;if(t)document.documentElement.dataset.theme=t;})();`;
 
 const GITHUB = "https://github.com/emilwagman/amber-notes";
 const X_URL = "https://x.com/EmilWagman";
@@ -53,7 +53,8 @@ export default function SiteChrome({ version, stars, children }: { version: stri
     return () => document.removeEventListener("click", onClick);
   }, [router]);
 
-  if (!site) return <>{children}</>;
+  // The consent page is one card: the site's colours without its header and footer.
+  if (!site || path === "/connect") return <>{children}</>;
 
   const current = (href: string) => (path === href ? "page" : undefined);
   // On the home page the logo takes you back to the top instead of reloading.

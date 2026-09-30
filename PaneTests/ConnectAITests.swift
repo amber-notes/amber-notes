@@ -36,6 +36,15 @@ import Testing
         #expect(codex.contains("url = \"\(url)\""))
         #expect(codex.contains("Bearer \(token)"))
     }
+
+    @Test func showsTheServersPublicAddressWhenTheBuildHasOne() {
+        let function = URL(string: "https://ref.supabase.co/functions/v1/mcp")!
+        #expect(BackendConfig.publicMCPURL(configured: "https://mcp.ambernotes.app", function: function)?.absoluteString == "https://mcp.ambernotes.app")
+        // Unset ($(PANE_MCP_URL) expands to nothing) or not https: the function's own address.
+        #expect(BackendConfig.publicMCPURL(configured: "", function: function) == function)
+        #expect(BackendConfig.publicMCPURL(configured: nil, function: function) == function)
+        #expect(BackendConfig.publicMCPURL(configured: "http://mcp.example", function: function) == function)
+    }
 }
 
 

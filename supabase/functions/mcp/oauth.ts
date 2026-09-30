@@ -6,11 +6,20 @@
 //
 // Discovery: Supabase can't serve anything at the host's /.well-known/, so the 401 carries
 // `resource_metadata` pointing inside this function, and the authorization server metadata is
-// served at the issuer + /.well-known/… (the path-appended form MCP clients try).
+// served at the issuer + /.well-known/… (the path-appended form MCP clients try). At
+// https://mcp.ambernotes.app the server is the host's root, so those are the standard RFC 8414 and
+// RFC 9728 locations as well.
 //
-// Consent without a web page: /authorize redirects to ambernotes://connect?request=<id>.
-// The signed-in app shows who is asking, the person picks read-only or read & edit, and the
-// app posts the decision here with their session; the answer is the client's redirect URL.
+// Consent: /authorize sends the browser to the site's /connect page (ambernotes.app/connect?request=<id>).
+// There the person opens Amber Notes (ambernotes://connect?request=<id>), or signs in on the web.
+// Either way the signed-in app or page asks /connect/request who is asking, the person picks
+// read-only or read & edit, and it posts the decision to /connect/decide with their session
+// in an Authorization header; the answer is the client's redirect URL.
+//
+// Addresses: the function answers at its Supabase address and at every alias in MCP_ALIAS_URLS
+// (https://mcp.ambernotes.app by default, a proxy on the site's Vercel project). The proxy names
+// the alias it serves in X-MCP-Public-URL; metadata then advertises that address. All addresses
+// are one server: a token issued through one works through the others.
 
 import type { Sql } from "npm:postgres@3.4.5";
 
@@ -18,12 +27,31 @@ export const SCOPES = ["notes:read", "notes:write"];
 const ACCESS_TTL = 60 * 60; // seconds
 const REFRESH_TTL_DAYS = 90;
 const CODE_TTL = 60; // seconds
-const LIMITS: Record<string, [number, number]> = { register: [30, 3600], authorize: [60, 600], token: [120, 600], decide: [60, 600] };
+const LIMITS: Record<string, [number, number]> = { register: [30, 3600], authorize: [60, 600], token: [120, 600], request: [120, 600], decide: [60, 600] };
 
 export type Grant = { user_id: string; token_id: string; name: string; can_write: boolean; resource?: string };
 
-/// Where the function is reachable from outside, e.g. https://<ref>.supabase.co/functions/v1/mcp.
+/// Other public addresses of this server, e.g. https://mcp.ambernotes.app (comma-separated).
+export function aliasBases(): string[] {
+  const raw = Deno.env.get("MCP_ALIAS_URLS") ?? "https://mcp.ambernotes.app";
+  return raw.split(",").map((s) => s.trim().replace(/\/+$/, "")).filter(Boolean);
+}
+
+/// Where the function is reachable from outside: the alias a trusted proxy says it serves, or the
+/// function's own address, e.g. https://<ref>.supabase.co/functions/v1/mcp. An alias header naming
+/// anything else is ignored.
 export function publicBase(req: Request): string {
+  const asked = req.headers.get("x-mcp-public-url");
+  const alias = asked ? aliasBases().find((a) => sameResource(a, asked)) : undefined;
+  return alias ?? functionBase(req);
+}
+
+/// Whether a resource indicator names this server, at any of its addresses.
+export function isThisServer(resource: string, req: Request): boolean {
+  return [functionBase(req), ...aliasBases()].some((b) => sameResource(resource, b));
+}
+
+function functionBase(req: Request): string {
   const configured = Deno.env.get("MCP_PUBLIC_URL");
   if (configured) return configured.replace(/\/+$/, "");
   const supa = Deno.env.get("SUPABASE_URL") ?? "";
@@ -120,8 +148,20 @@ export function redirectMatches(registered: string[], asked: string): boolean {
   }
 }
 
-function clientIP(req: Request) {
+/// The caller's address. Behind the site's proxy every request comes from Vercel, so the proxy
+/// passes the real one along, and it counts only with the shared secret.
+export function clientIP(req: Request) {
+  const secret = Deno.env.get("MCP_PROXY_SECRET");
+  const forwarded = req.headers.get("x-mcp-client-ip");
+  if (secret && forwarded && timingSafeEqual(req.headers.get("x-mcp-proxy-secret") ?? "", secret)) return forwarded;
   return req.headers.get("cf-connecting-ip") ?? req.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown";
+}
+
+function timingSafeEqual(a: string, b: string) {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
 }
 
 /// True when this IP has made too many requests to `bucket` recently. Records this one.
@@ -202,7 +242,7 @@ export async function handleOAuth(req: Request, sql: Sql, path: string): Promise
       case "/token": return req.method === "POST" ? await token(req, sql, base) : json({ error: "method_not_allowed" }, 405);
       case "/revoke": return req.method === "POST" ? await revoke(req, sql) : json({ error: "method_not_allowed" }, 405);
       case "/connect/request": return await describeRequest(req, sql);
-      case "/connect/decide": return req.method === "POST" ? await decide(req, sql, base) : json({ error: "method_not_allowed" }, 405);
+      case "/connect/decide": return req.method === "POST" ? await decide(req, sql) : json({ error: "method_not_allowed" }, 405);
     }
   } catch (e) {
     console.error("oauth", path, e);
@@ -269,19 +309,34 @@ async function authorize(req: Request, sql: Sql, base: string): Promise<Response
   if (!q.code_challenge || q.code_challenge_method !== "S256" || !/^[A-Za-z0-9_-]{43,128}$/.test(q.code_challenge)) {
     return back({ error: "invalid_request", error_description: "PKCE with S256 is required." });
   }
-  if (q.resource && !sameResource(q.resource, base)) return back({ error: "invalid_target", error_description: `This server is ${base}.` });
+  if (q.resource && !isThisServer(q.resource, req)) return back({ error: "invalid_target", error_description: `This server is ${base}.` });
 
   const [row] = await sql<{ id: string }[]>`
     insert into public.oauth_requests (client_id, redirect_uri, state, code_challenge, scope, resource)
     values (${client.id}, ${redirect}, ${q.state ?? null}, ${q.code_challenge}, ${q.scope ?? null}, ${base})
     returning id`;
-  // Hand over to the app, which is signed in and shows the consent sheet.
-  return new Response(null, { status: 302, headers: { location: `ambernotes://connect?request=${row.id}`, "cache-control": "no-store" } });
+  // Hand over to the site's consent page, which opens the app or lets the person sign in there.
+  const page = new URL(connectPage());
+  page.searchParams.set("request", row.id);
+  return new Response(null, { status: 302, headers: { location: page.toString(), "cache-control": "no-store" } });
+}
+
+/// The web page that asks for consent (the site's /connect).
+export function connectPage(): string {
+  return Deno.env.get("CONNECT_PAGE_URL") ?? "https://ambernotes.app/connect";
+}
+
+/// /connect/request and /connect/decide take the person's session in a header, never a cookie, so a
+/// page elsewhere can't ride on it. On top of that, browsers may only call them from the site:
+/// the apps send no Origin, and any other origin is refused.
+function allowedOrigin(req: Request): boolean {
+  const origin = req.headers.get("origin");
+  return origin === null || origin === new URL(connectPage()).origin;
 }
 
 const text = (s: string, status: number) => new Response(s, { status, headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" } });
 
-/// The signed-in person, from their Supabase session (the app sends it).
+/// The signed-in person, from their Supabase session (the app or the web page sends it).
 async function sessionUser(req: Request): Promise<string | null> {
   const auth = req.headers.get("authorization");
   if (!auth?.startsWith("Bearer ")) return null;
@@ -293,22 +348,37 @@ async function sessionUser(req: Request): Promise<string | null> {
   return typeof user?.id === "string" ? user.id : null;
 }
 
-type RequestRow = { id: string; client_id: string; client_name: string; redirect_uri: string; state: string | null; scope: string | null; expires_at: Date; decided_at: Date | null };
+type RequestRow = { id: string; client_id: string; client_name: string; redirect_uri: string; state: string | null; scope: string | null; resource: string; expires_at: Date; claimed_by: string | null };
 
 async function pending(sql: Sql, id: string): Promise<RequestRow | undefined> {
   if (!/^[0-9a-f-]{36}$/i.test(id)) return undefined;
   const [r] = await sql<RequestRow[]>`
-    select r.id, r.client_id, c.client_name, r.redirect_uri, r.state, r.scope, r.expires_at, r.decided_at
+    select r.id, r.client_id, c.client_name, r.redirect_uri, r.state, r.scope, r.resource, r.expires_at, r.claimed_by
     from public.oauth_requests r join public.oauth_clients c on c.id = r.client_id
     where r.id = ${id} and r.decided_at is null and r.expires_at > now()`;
   return r;
 }
 
-/// What the app shows on the consent sheet.
+/// A request belongs to the first account that opens it; nobody else can see or answer it.
+async function claim(sql: Sql, r: RequestRow, user: string): Promise<boolean> {
+  if (r.claimed_by) return r.claimed_by === user;
+  const [row] = await sql`update public.oauth_requests set claimed_by = ${user}
+    where id = ${r.id} and (claimed_by is null or claimed_by = ${user}) returning 1`;
+  return Boolean(row);
+}
+
+const EXPIRED = "This request has expired. Start connecting again from the other app.";
+const NOT_YOURS = "Another Amber Notes account is answering this request. Start connecting again from the other app.";
+
+/// What the app and the web page show on the consent screen.
 async function describeRequest(req: Request, sql: Sql): Promise<Response> {
-  if (!(await sessionUser(req))) return json({ error: "Sign in to Amber Notes first." }, 401);
+  if (!allowedOrigin(req)) return json({ error: "Not allowed from this site." }, 403);
+  const user = await sessionUser(req);
+  if (!user) return json({ error: "Sign in to Amber Notes first." }, 401);
+  if (await limited(sql, req, "request")) return json({ error: "Too many attempts. Wait a few minutes and try again." }, 429);
   const r = await pending(sql, new URL(req.url).searchParams.get("id") ?? "");
-  if (!r) return json({ error: "This request has expired. Start connecting again from the other app." }, 404);
+  if (!r) return json({ error: EXPIRED }, 404);
+  if (!(await claim(sql, r, user))) return json({ error: NOT_YOURS }, 403);
   const host = new URL(r.redirect_uri).hostname;
   const scopes = (r.scope ?? "").split(/\s+/).filter(Boolean);
   return json({
@@ -323,34 +393,43 @@ async function describeRequest(req: Request, sql: Sql): Promise<Response> {
 }
 
 /// Allow or deny. Allow creates the grant and a one-minute, single-use code.
-async function decide(req: Request, sql: Sql, base: string): Promise<Response> {
+async function decide(req: Request, sql: Sql): Promise<Response> {
+  if (!allowedOrigin(req)) return json({ error: "Not allowed from this site." }, 403);
   const user = await sessionUser(req);
   if (!user) return json({ error: "Sign in to Amber Notes first." }, 401);
   if (await limited(sql, req, "decide")) return json({ error: "Too many attempts." }, 429);
   const body = await req.json().catch(() => ({})) as { id?: string; allow?: boolean; write?: boolean };
   const r = await pending(sql, String(body.id ?? ""));
-  if (!r) return json({ error: "This request has expired. Start connecting again from the other app." }, 404);
+  if (!r) return json({ error: EXPIRED }, 404);
+  if (!(await claim(sql, r, user))) return json({ error: NOT_YOURS }, 403);
 
   const u = new URL(r.redirect_uri);
   if (r.state) u.searchParams.set("state", r.state);
-  u.searchParams.set("iss", base);
-  if (body.allow !== true) {
-    await sql`update public.oauth_requests set decided_at = now() where id = ${r.id}`;
-    u.searchParams.set("error", "access_denied");
-    u.searchParams.set("error_description", "The person declined in Amber Notes.");
-    return json({ redirect: u.toString() });
-  }
+  // The issuer the client started with: the address its /authorize went through.
+  u.searchParams.set("iss", r.resource);
   const scopes = (r.scope ?? "").split(/\s+/).filter(Boolean);
   const write = body.write === true && (scopes.length === 0 || scopes.includes("notes:write"));
   const code = randomToken("amb_code_");
-  await sql.begin(async (tx) => {
+  // One answer per request, even when two arrive at once.
+  const answered = await sql.begin(async (tx) => {
+    const [open] = await tx`update public.oauth_requests set decided_at = now()
+      where id = ${r.id} and decided_at is null and claimed_by = ${user} returning 1`;
+    if (!open) return false;
+    if (body.allow !== true) return true;
     const [g] = await tx<{ id: string }[]>`
       insert into public.mcp_tokens (user_id, name, token_hash, can_write, kind, client_id, redirect_host)
       values (${user}, ${r.client_name}, ${"oauth:" + crypto.randomUUID()}, ${write}, 'oauth', ${r.client_id}, ${u.hostname})
       returning id`;
-    await tx`update public.oauth_requests set decided_at = now(), grant_id = ${g.id}, code_hash = ${await sha256Hex(code)},
+    await tx`update public.oauth_requests set grant_id = ${g.id}, code_hash = ${await sha256Hex(code)},
       code_expires_at = now() + make_interval(secs => ${CODE_TTL}) where id = ${r.id}`;
+    return true;
   });
+  if (!answered) return json({ error: EXPIRED }, 404);
+  if (body.allow !== true) {
+    u.searchParams.set("error", "access_denied");
+    u.searchParams.set("error_description", "The person declined in Amber Notes.");
+    return json({ redirect: u.toString() });
+  }
   u.searchParams.set("code", code);
   return json({ redirect: u.toString(), client_name: r.client_name, can_write: write });
 }
@@ -380,7 +459,7 @@ async function revokeGrant(sql: Sql, grantId: string) {
 async function token(req: Request, sql: Sql, base: string): Promise<Response> {
   if (await limited(sql, req, "token")) return oauthError("slow_down", "Too many requests. Try again shortly.", 429);
   const p = await formOrJson(req);
-  if (p.resource && !sameResource(p.resource, base)) return oauthError("invalid_target", `This server is ${base}.`);
+  if (p.resource && !isThisServer(p.resource, req)) return oauthError("invalid_target", `This server is ${base}.`);
 
   if (p.grant_type === "authorization_code") {
     if (!p.code || !p.code_verifier || !p.client_id) return oauthError("invalid_request", "code, code_verifier and client_id are required.");
@@ -438,8 +517,9 @@ async function revoke(req: Request, sql: Sql): Promise<Response> {
 }
 
 /// Resolves an OAuth access token presented to the MCP endpoint.
-export async function resolveAccessToken(sql: Sql, token: string, base: string): Promise<Grant | undefined> {
+/// A token issued through any of the server's addresses works at all of them.
+export async function resolveAccessToken(sql: Sql, token: string, req: Request): Promise<Grant | undefined> {
   const [g] = await sql<Grant[]>`select * from public.resolve_oauth_token(${token})`;
-  if (!g || !g.resource || !sameResource(g.resource, base)) return undefined;
+  if (!g || !g.resource || !isThisServer(g.resource, req)) return undefined;
   return g;
 }
