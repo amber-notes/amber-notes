@@ -1166,6 +1166,21 @@ Deno.test("a wrong number pauses the account's asks for an hour and tells every 
   assertEquals((await pg.query(`select 1 from public.connect_blocks`)).rows.length, 0);
 });
 
+Deno.test("the right number typed on a device ends a pause from an earlier wrong one", async () => {
+  const { sql, pg } = await db();
+  const { requestId } = await pendingRequest(sql);
+  const me = await newUser(pg);
+  const page = await newHandoffKeys();
+  const asked = await askAs(sql, me, requestId, toBase64(page.publicRaw));
+  await matchUp(sql, me, requestId, asked.pickup, asked.nonce);
+  // A wrong number on another request paused the account meanwhile.
+  await pg.query(`insert into public.connect_blocks (user_id, blocked_until) values ($1, now() + interval '1 hour')`, [me.id]);
+  const { code, body } = await appDecision(me, requestId, CHATGPT);
+  const r = await decideAs(sql, me, { ...JSON.parse(body), handoff: await sealHandoff(handoffPayload({ code, redirect: CHATGPT }), page.publicRaw, requestId) });
+  assertEquals(r.status, 200);
+  assertEquals((await pg.query(`select 1 from public.connect_blocks`)).rows.length, 0);
+});
+
 Deno.test("a declined redirect goes to the page only when it's https, or http on this computer", async () => {
   const { sql, pg } = await db();
   const declined = async (uris: string[], planted?: string) => {

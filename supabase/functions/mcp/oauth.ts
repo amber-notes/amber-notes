@@ -767,6 +767,9 @@ async function decide(req: Request, sql: Sql): Promise<Response> {
     // make shows on the devices that didn't approve it too.
     const what = `Connected ${name} from ${asked?.started_from ?? "this device"}`.slice(0, 200);
     await tx`insert into public.account_notices (user_id, kind, grant_id, what) values (${user}, 'ai_connected', ${g.id}, ${what})`;
+    // The right number typed on a device: whoever is at the keyboard is the account's owner, so a
+    // pause from an earlier wrong number ends.
+    if (asked) await tx`delete from public.connect_blocks where user_id = ${user}`;
     return true;
   });
   if (answered === "reveal") return json({ error: "Finish on the page in your browser first." }, 409);

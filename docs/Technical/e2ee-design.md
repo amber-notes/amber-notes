@@ -103,7 +103,7 @@ The server can't index ciphertext. Search, lookups by title, sorting by title, "
 
 ## Sharing
 
-The device publishes `{title, body, pages, files}` with `share_note` or `publish_share` (2 seconds after a pushed change to a shared note or anything in its page tree), and uploads each embedded file up to 10 MB with `publish_share_file`. An AI edit of a shared note rewrites its copies in the same transaction (`republish_note_text`). `shared_note()` serves only copies; `share-files` streams file copies from `shared_file()`. Stop sharing, locking, trashing, deleting, moving a sub-note to another parent, three reports and a takedown all delete the affected copies.
+The device publishes `{title, body, pages, files}` with `share_note` or `publish_share` (2 seconds after a pushed change to a shared note or anything in its page tree), and uploads each embedded file up to 10 MB with `publish_share_file`. Only devices publish: a share counts only when its tag (an HMAC under a subkey of DK) verifies, the page tree comes from sealed links that match parent_id, and stopped links are remembered in a synced Keychain item. The AI server never writes a copy; an AI edit of a shared note reaches the page on the owner's device's next sync. `shared_note()` serves only copies; `share-files` streams file copies from `shared_file()`. Stop sharing, locking, trashing, deleting, moving a sub-note to another parent, three reports and a takedown all delete the affected copies.
 
 ## Data export
 

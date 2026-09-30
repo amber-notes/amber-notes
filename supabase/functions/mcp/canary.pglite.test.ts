@@ -322,11 +322,11 @@ Deno.test("no text of an encrypted account is stored or logged readably, whateve
       }
     }
     assert(rows > 30, `only ${rows} rows`);
-    // The search finds it where it is readable: the copy of the note shared on purpose, rewritten
-    // after the AI's edit.
+    // The search finds it where it is readable: the copy of the note shared on purpose.
     const [copy] = (await pg.query<{ title: string; body: string }>(`select title, body from public.note_shares where slug = $1`, [shareLink.slug])).rows;
     assertEquals(copy.title, `Shared ${CANARY}`);
-    assertStringIncludes(copy.body, `Edited by an AI ${CANARY}`);
+    // The AI's edit isn't published by the server: the owner's device does that on its next sync.
+    assertEquals(copy.body, sharedBody);
 
     // A locked note's head is its title and nothing else.
     const [{ head_ct }] = (await pg.query<{ head_ct: string }>(`select head_ct from public.notes where id = $1`, [locked])).rows;

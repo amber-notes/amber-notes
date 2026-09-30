@@ -137,7 +137,7 @@ Nothing reaches an AI assistant unless you connect one. When you connect ChatGPT
 
 ## Shared notes
 
-- A note you share becomes a web page at ambernotes.app. Your device publishes a readable copy of it for the page, so the shared note isn't end-to-end encrypted while it's shared. Anyone with the link can read it without signing in, and the link may be passed on.
+- A note you share becomes a web page at ambernotes.app. Your device publishes a readable copy of it for the page, so the shared note isn't end-to-end encrypted while it's shared. Changes, including an AI's, show on the page after your device's next sync. Anyone with the link can read it without signing in, and the link may be passed on.
 - The page shows the note, your profile name and photo, and your email address unless it's an Apple relay address.
 - Shared pages are hidden from search engines.
 - **Stop Sharing** takes the page down at once and deletes the readable copy. Images and files on a shared page are served through links that expire after an hour.

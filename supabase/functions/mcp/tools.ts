@@ -606,107 +606,9 @@ async function save(tx: Tx, c: Call, note: Note, before: string, body: string, e
       ${want !== undefined ? tx`and version = ${want}` : tx``}
     returning version, updated_at`;
   if (!rows.length) throw new ToolError(`The note changed since version ${expected}. Read it again and retry.`);
-  await republish(tx, c, note.id, head.title, body);
   return { id: note.id, title: head.title, version: Number(rows[0].version), updated: iso(rows[0].updated_at) };
 }
 
-// A shared copy is at most 2 MB (note_shares.body, note_share_pages.body).
-const MAX_SHARED_BYTES = 2_097_152;
-// How far a link's pages are followed from its root, and how many notes are opened on the way.
-const MAX_SHARE_DEPTH = 50;
-const MAX_SHARE_NOTES = 5_000;
-
-/**
- * An AI edited a note: its public copy is rewritten under the links this connection's key vouches
- * for, and nowhere else. The server can't tell which notes the person shared (a row in note_shares
- * or note_share_pages can be planted by anyone who can write the database), so a link counts only
- * when its tag is the one the account's key makes (shareTag), and for a page of the link, when the
- * link includes sub-notes and the note is in the link's tree: every step from the root down is a
- * parent whose sealed body links pane-note:<child> AND a child whose parent_id is that parent.
- * The link alone could point at any note (a pasted link to a private one); parent_id alone isn't
- * sealed. The decrypting this takes is charged to the account's scan budget like any other scan.
- */
-async function republish(tx: Tx, c: Call, noteId: string, title: string, body: string) {
-  if (bytes(body) > MAX_SHARED_BYTES) return;
-  const slugs = await verifiedShares(tx, c, noteId);
-  if (slugs.length) await tx`select public.republish_note_text(${noteId}::uuid, ${title}, ${body}, ${slugs}::text[])`;
-}
-
-/** The slugs of the caller's live, published links that show `noteId` and that verify. */
-async function verifiedShares(tx: Tx, c: Call, noteId: string): Promise<string[]> {
-  // Which links show the note as a page is in note_share_pages, which the signed-in role can't
-  // read (only the database's own functions write it). This one read runs as the server, limited
-  // to the caller's links; the role goes back before anything else runs.
-  await tx`set local role none`;
-  const rows = await tx<{ slug: string; root: string; include_subnotes: boolean; share_tag: string | null }[]>`
-    select s.slug, s.note_id as root, s.include_subnotes, s.share_tag from public.note_shares s
-    where s.user_id = auth.uid() and s.revoked_at is null and s.published_at is not null
-      and (s.note_id = ${noteId}::uuid
-           or exists (select 1 from public.note_share_pages p where p.slug = s.slug and p.note_id = ${noteId}::uuid))`;
-  await tx`select set_config('role', 'authenticated', true)`;
-  const slugs: string[] = [];
-  const reached = new Map<string, boolean>();
-  let scan: Scan | undefined;
-  for (const r of rows) {
-    const t = performance.now();
-    const tagged = await c.v.shareTagMatches(r.root, r.slug, r.include_subnotes, r.share_tag);
-    c.scanMs += performance.now() - t;
-    if (!tagged) continue;
-    if (r.root === noteId) { slugs.push(r.slug); continue; }
-    if (!r.include_subnotes) continue;
-    if (!reached.has(r.root)) {
-      // Opening the tree is a scan: one per account at a time, within its budget.
-      scan ??= await Scan.start(tx, c);
-      reached.set(r.root, await inTree(tx, c.v, scan, r.root, noteId));
-    }
-    if (reached.get(r.root)) slugs.push(r.slug);
-  }
-  return slugs;
-}
-
-/** Whether `target` is in `root`'s tree of sub-notes among the caller's live, unlocked notes: each
- *  step a pane-note link in the parent's opened body to a note whose parent_id is that parent, at
- *  most 50 deep. A scan that runs out of time hasn't shown it is, so the answer is no. */
-async function inTree(tx: Tx, v: Vault, scan: Scan, root: string, target: string): Promise<boolean> {
-  const seen = new Set([root]);
-  let frontier = [root];
-  for (let depth = 0; depth < MAX_SHARE_DEPTH && frontier.length; depth++) {
-    const rows = await tx<{ id: string; body_ct: string | null }[]>`
-      select id, body_ct from public.notes where id = any(${frontier}::uuid[])
-        and deleted_at is null and trashed_at is null and locked_body is null`;
-    // Every link found, as (parent, child); a child counts only through its own parent.
-    const links = new Map<string, Set<string>>();
-    for (const r of rows) {
-      if (scan.over) return false;
-      if (!r.body_ct) continue;
-      const body = await scan.timed(() => v.openBody(r.id, r.body_ct!).catch(() => null));
-      if (body === null) continue;
-      for (const m of body.matchAll(/pane-note:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/gi)) {
-        const child = m[1].toLowerCase();
-        if (seen.has(child)) continue;
-        if (!links.has(child)) {
-          if (links.size >= MAX_SHARE_NOTES) break;
-          links.set(child, new Set());
-        }
-        links.get(child)!.add(r.id.toLowerCase());
-      }
-    }
-    if (!links.size) break;
-    const kids = await tx<{ id: string; parent_id: string | null }[]>`
-      select id, parent_id from public.notes where id = any(${[...links.keys()]}::uuid[]) and deleted_at is null`;
-    const next: string[] = [];
-    for (const k of kids) {
-      const child = k.id.toLowerCase();
-      if (!k.parent_id || !links.get(child)?.has(k.parent_id.toLowerCase())) continue;
-      if (child === target.toLowerCase()) return true;
-      if (seen.size >= MAX_SHARE_NOTES) continue;
-      seen.add(child);
-      next.push(child);
-    }
-    frontier = next;
-  }
-  return false;
-}
 
 // A sealed file's bytes beyond its content: "AMB2F", the key id, the nonce and the tag.
 const SEALED_FILE_OVERHEAD = 5 + 16 + 12 + 16;
@@ -1032,14 +934,13 @@ const handlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<unknown>> =
     if (!rows.length) throw new ToolError("No such revision for this note. Use note_history.");
     const r = rows[0];
     if (r.locked_body !== null || !r.body_ct || !r.head_ct) throw new ToolError("That version was saved while the note was locked, so its text is encrypted. The user can restore it in Amber Notes.");
-    // Opened to check it opens and for the shared copy; the version's boxes go back as they are.
-    const body = await bodyOf(c.v, { id: n.id, body_ct: r.body_ct });
+    // Opened to check it opens; the version's boxes go back as they are.
+    await bodyOf(c.v, { id: n.id, body_ct: r.body_ct });
     const { title } = await withHead(c.v, { ...n, head_ct: r.head_ct });
     await tx`select set_config('pane.source', 'restore', true)`;
     const [done] = await tx<{ version: string; updated_at: Date }[]>`
       update public.notes set body_ct = ${r.body_ct}, head_ct = ${r.head_ct}, updated_at = now() where id = ${n.id}
       returning version, updated_at`;
-    await republish(tx, c, n.id, title, body);
     return { restored: { id: n.id, title, version: Number(done.version), updated: iso(done.updated_at) } };
   },
 

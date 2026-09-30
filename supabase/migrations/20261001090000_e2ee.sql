@@ -902,32 +902,6 @@ end $$;
 revoke all on function public.publish_share(uuid, text, jsonb) from public, anon;
 grant execute on function public.publish_share(uuid, text, jsonb) to authenticated;
 
--- An AI edited a shared note: the AI server has its text for that request, so the note's page is
--- rewritten under the links it verified (their tags open with DK, and the note is reached from the
--- link's root through the sealed pane-note links). Links and page trees don't change here.
-create or replace function public.republish_note_text(p_note uuid, p_title text, p_body text, p_slugs text[]) returns integer
-language plpgsql security definer set search_path = '' as $$
-declare
-  n integer := 0;
-  m integer := 0;
-begin
-  if auth.uid() is null then raise exception 'not signed in' using errcode = '42501'; end if;
-  if octet_length(p_body) > 2097152 or coalesce(cardinality(p_slugs), 0) = 0 then return 0; end if;
-  if not exists (select 1 from public.notes where id = p_note and user_id = auth.uid() and deleted_at is null
-                 and trashed_at is null and locked_body is null) then
-    return 0;
-  end if;
-  update public.note_shares set title = left(coalesce(p_title, 'New Note'), 300), body = p_body, published_at = now()
-    where note_id = p_note and user_id = auth.uid() and revoked_at is null and published_at is not null and slug = any(p_slugs);
-  get diagnostics n = row_count;
-  update public.note_share_pages p set title = left(coalesce(p_title, 'New Note'), 300), body = p_body
-    from public.note_shares s
-    where p.note_id = p_note and s.slug = p.slug and s.user_id = auth.uid() and s.revoked_at is null and p.slug = any(p_slugs);
-  get diagnostics m = row_count;
-  return n + m;
-end $$;
-revoke all on function public.republish_note_text(uuid, text, text, text[]) from public, anon;
-grant execute on function public.republish_note_text(uuid, text, text, text[]) to authenticated;
 
 -- A file deleted from the account leaves every shared copy of it.
 create or replace function public.pane_attachment_forget_copies() returns trigger

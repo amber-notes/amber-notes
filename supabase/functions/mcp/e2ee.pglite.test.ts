@@ -259,7 +259,6 @@ Deno.test("publishing names the link, and a link the device didn't verify isn't 
   const s = await shared(pg, me, key);
   const copy = JSON.stringify({ title: "New", body: "# New", pages: [], files: [] });
   assertEquals((await app(pg, me, `select public.publish_share($1, $2, $3) as r`, [s.root, "x".repeat(24), copy]))[0].r, null);
-  const r = (await app(pg, me, `select public.republish_note_text($1, 'T', 'B', $2) as n`, [s.root, []]))[0].n;
-  assertEquals(r, 0, "no verified link, nothing rewritten");
-  assertEquals((await app(pg, me, `select public.republish_note_text($1, 'T', $3, $2) as n`, [s.root, [s.slug], "x".repeat(2097153)]))[0].n, 0, "too big");
+  // The AI server can't write shared copies at all: only devices publish.
+  await refused(app(pg, me, `select public.republish_note_text($1, 'T', 'B', $2)`, [s.root, [s.slug]]), "does not exist");
 });
