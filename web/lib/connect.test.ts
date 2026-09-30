@@ -110,7 +110,7 @@ describe("the mcp.ambernotes.app proxy", () => {
   it("serves only the server's own paths, nothing encoded", () => {
     for (const ok of ["/", "/register", "/authorize", "/token", "/revoke", "/connect/request", "/connect/decide", "/connect/release",
       "/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/mcp", "/.well-known/oauth-authorization-server",
-      "/.well-known/openid-configuration", "/.well-known/openai-apps-challenge"]) expect(allowedPath(ok), ok).toBe(true);
+      "/.well-known/openid-configuration", "/.well-known/openai-apps-challenge", "/.well-known/mcp/server-card.json"]) expect(allowedPath(ok), ok).toBe(true);
     for (const bad of ["/account", "/..%2faccount", "/authorize%2f..%2f..%2faccount", "/%5c..%5caccount", "/authorize\\..\\account",
       "/../share-files", "/.well-known/../../account", "/connect/decide/x", "/register/", "/%2e%2e/account", "/.env"]) expect(allowedPath(bad), bad).toBe(false);
   });
