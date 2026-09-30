@@ -5,6 +5,30 @@ assistants. Newest first. Research behind it: [seo-aeo-research-2026-09-30.md](s
 
 `docs/` had no README naming a folder for evidence, so this and the research live in `docs/Evidence/`.
 
+## 30 September 2026: round 7, SEO plan and "Export Apple Notes to Markdown"
+
+### Research
+
+- [seo-plan.md](seo-plan.md): trend sources and how to check each, what's trending in late September (iOS 27 and macOS 27 shipped on 14 September with Markdown paste and Copy as Markdown in Notes; OpenAI DevDay on 29 September; the Claude Marketplace on 23 September; Gemini custom MCP apps), a 50-query keyword map in three clusters, gaps in every existing post, and a publishing order for 1 to 14 October.
+- Google Trends answered 429 again, openai.com 403, and Reddit search was blocked; autocomplete stood in as the demand signal.
+
+### Query
+
+- "export apple notes to markdown" and "export all apple notes". Apple's own guides rank first but cover one note at a time and predate macOS 27's renamed menu; the bulk-export results are old or tool-led.
+
+### Changed (branch `site/seo-plan`)
+
+- New post `/blog/export-apple-notes-to-markdown`, "How to export Apple Notes to Markdown":
+  - the steps on Mac (File, Export as, Markdown on macOS 26; File, Export To on macOS 27) and iPhone (Share, Export as Markdown, or View More first), from Apple's guides for both versions; Copy as Markdown and Markdown paste in iOS 27 and macOS 27
+  - a table of what to check in the file, since Apple doesn't say what survives (checklists, tables, pictures, drawings, locked notes)
+  - bulk export: Apple documents none, so two open-source exporters, checked against their READMEs (kzaremski/apple-notes-exporter, GPL; storizzi/notes-exporter, MIT)
+  - Amber Notes' import as it really works: the notes you pick, in their folders, with checklists and tables; images, attachments and locked notes stay in Apple Notes
+  - five FAQ answers with FAQPage JSON-LD
+- Fact checks: menu names in the Notes app on this Mac (macOS 26.5.1: File, Export as, Markdown / PDF; Import Markdown), and its Shortcuts actions Create Note from Markdown and Append Markdown to Note, read from the app's own strings; Apple's Mac guide for macOS 26 and 27, and its iPhone guide.
+- A new **Apple Notes** category in the blog filters, holding the Markdown export post, Can Claude read your Apple Notes, How to move from Apple Notes and Apple Notes API. A real hub page is proposed in the plan for when there are six such guides, since the blog's categories aren't pages.
+- A new ground, blush, for the post's cover and first picture (every other ground was taken). The card shows the Welcome note's title and its "Write in markdown" line, cropped at 2x.
+- Links in: Apple Notes API and How to move from Apple Notes now link the new post.
+
 ## 30 September 2026: round 6, "Obsidian MCP"
 
 ### Query

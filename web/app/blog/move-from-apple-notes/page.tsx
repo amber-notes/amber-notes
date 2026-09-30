@@ -69,6 +69,7 @@ export default function Page() {
         <li>Your notes are stored as markdown underneath, formatted on screen.</li>
         <li>Want ChatGPT or Claude to use them? <a href="/blog/connect-chatgpt-to-your-notes">Connect ChatGPT or Claude to your notes</a>. For a coding agent, see <a href="/blog/notes-in-claude-code-and-codex">using your notes from Claude Code and Codex</a>.</li>
         <li>Still deciding? <a href="/blog/amber-notes-vs-apple-notes">Amber Notes vs Apple Notes</a> covers what each one does better.</li>
+        <li>Want a copy of your Apple Notes as files too? <a href="/blog/export-apple-notes-to-markdown">Export Apple Notes to Markdown</a> covers the built-in export and tools for every note at once.</li>
       </ul>
     </PostPage>
   );
