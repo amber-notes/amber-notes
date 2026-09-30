@@ -15,8 +15,8 @@ export const FAQ: QA[] = [
     "Adding it yourself? The address is https://mcp.ambernotes.app. When ChatGPT or Claude asks for permission, answer in Amber Notes, or sign in on the page that opens and choose Allow there.",
     "Claude Code gets a one-line command with a token of its own, and Codex a few lines for its config file. Incredible, and any other app that supports MCP, connects with the Amber Notes server address and a sign-in.",
   ], more: { href: "/blog/connect-chatgpt-to-your-notes", text: "How to connect ChatGPT to your notes" } },
-  { id: "ai-tools", q: "Can I use Amber Notes in Cursor, VS Code, Gemini CLI or Goose?", a: [
-    "Yes. Each one adds the address https://mcp.ambernotes.app with a link or one command, then asks you to sign in to Amber Notes in your browser the first time. Claude Code also has a plugin, and Zed and Windsurf take a few lines of settings.",
+  { id: "ai-tools", q: "Can I use Amber Notes in Gemini CLI or VS Code?", a: [
+    "Yes. One command adds the address https://mcp.ambernotes.app, then you sign in to Amber Notes in your browser the first time. Claude Code also has a plugin, and Codex takes one command too.",
   ], more: { href: "/blog/mcp-server#install", text: "Install Amber Notes in your AI tool" } },
   { id: "apple-notes-ai", q: "Can ChatGPT or Claude use my notes in Apple Notes?", a: [
     "Only in a limited way, and only on a Mac: Apple Notes has no public API, so AI apps can't reach your notes in iCloud. Amber Notes has an MCP server built in, so once you import your notes, ChatGPT and Claude can use them from any device.",

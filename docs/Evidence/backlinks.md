@@ -26,6 +26,9 @@ Status on 2026-09-30. "Open" means the pull request is waiting for the list's ma
 | wong2/awesome-mcp-servers | Skipped | | Takes no PRs; submissions go through [mcpservers.org/submit](https://mcpservers.org/submit) (section 2, no. 6). |
 | iCHAIT/awesome-macOS | Skipped | | Its rules exclude "software whose main purpose is interfacing with generative tools like LLMs". Amber Notes is a notes app first, but it's pitched on AI access, so a PR would likely be closed. |
 | dkhamsing/open-source-ios-apps | Later | | After the iPhone app is on the App Store. |
+| Gemini CLI extension gallery (geminicli.com/extensions) | After merge | | Needs `gemini-extension.json` at the repo root on `main` (the reach/agents PR), then the `gemini-cli-extension` topic on the repo. Its crawler indexes tagged repos daily; no form ([releasing docs](https://geminicli.com/docs/extensions/releasing/)). |
+| Claude Code plugin marketplace | After merge | | Needs `.claude-plugin/marketplace.json` on `main`. Then `claude plugin marketplace add emilwagman/amber-notes` works for anyone; no listing step. |
+| Cursor | Blocked | | Cursor registers `cursor://anysphere.cursor-mcp/oauth/callback`, and the server accepts only https or loopback redirects, so sign-in fails at `/register`. |
 
 ## 2. The 25 best places, ranked
 

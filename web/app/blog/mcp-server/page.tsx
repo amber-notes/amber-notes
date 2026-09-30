@@ -81,11 +81,7 @@ export default function Page() {
       </p>
       {AGENT_INSTALLS.map((x) => (
         <section key={x.tool} aria-label={x.tool}>
-          <p className="label">
-            <strong>{x.tool}</strong>
-            {x.link && <> · <a href={x.link.href}>{x.link.text}</a></>}
-          </p>
-          {x.file && <p>Add this to <code>{x.file}</code>:</p>}
+          <p className="label"><strong>{x.tool}</strong></p>
           <pre><code>{x.code}</code></pre>
           <p>{x.signIn}</p>
           {x.alt && <><p>{x.alt.text}</p><pre><code>{x.alt.code}</code></pre></>}
@@ -102,7 +98,7 @@ export default function Page() {
       <ul>
         <li><a href="/blog/connect-chatgpt-to-your-notes">Connect ChatGPT or Claude to your notes</a>: add the address as a custom app or connector.</li>
         <li><a href="/blog/notes-in-claude-code-and-codex">Use your notes from Claude Code and Codex</a>: one command, or a few lines of config.</li>
-        <li><a href="#install">Cursor, VS Code, Gemini CLI, Goose, Zed and Windsurf</a>: the install for each is above.</li>
+        <li><a href="#install">Gemini CLI and VS Code</a>: the command for each is above.</li>
         <li><a href="https://incredible.one" rel="noopener">Incredible</a>, and anything else that speaks MCP: add the address and sign in when it asks.</li>
       </ul>
       <p>
