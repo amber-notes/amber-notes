@@ -48,7 +48,9 @@
 
 /* ── Bring all your Apple Notes in one click: the import, run once ── */
 .run { display: grid; gap: 18px; padding: 26px 28px; border-radius: 28px; background: var(--card); box-shadow: 0 0 0 1px var(--line), 0 30px 60px -40px rgba(60, 30, 5, 0.5); }
-.runTitle { margin: 0; font-weight: 700; font-size: 16px; }
+.runTitle { margin: 0; display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 16px; }
+/* Where the notes come from: Apple Notes' own icon (the .icns has its own margin, so it sits a touch outside the text). */
+.runTitle img { flex: none; margin: -4px 0 -4px -4px; }
 .bar { position: relative; height: 4px; border-radius: 99px; background: color-mix(in srgb, var(--amber) 18%, var(--soft)); margin-right: 26px; }
 .bar i { position: absolute; inset: 0; border-radius: 99px; background: var(--amber); transform-origin: 0 50%; }
 .barDone { position: absolute; right: -26px; top: 50%; width: 18px; height: 18px; margin-top: -9px; display: grid; place-items: center; border-radius: 50%; background: var(--amber); color: #fff; opacity: 0; transform: scale(0.6); }
