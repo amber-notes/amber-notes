@@ -19,10 +19,25 @@ export type Post = {
   /// When it was published, and the day it was last checked against the app (ISO dates).
   date: string;
   updated: string;
-  /// The capture at the top of the post and on its card.
+  /// The capture right after the intro, on the post's ground.
   image: Shot;
+  /// The card's picture: its own ground and composition, so no two posts look alike.
+  cover: CoverArt;
   draft: boolean;
 };
+
+/// The ground a cover (and the post's first picture) sits on: the site's palette, the help page's
+/// leaf brown, the app's dark look, or the home page's dunes.
+export type Ground = "paper" | "soft" | "tint" | "amber" | "leaf" | "dark" | "dunes";
+
+/// One capture placed on a cover, in percent of the cover's width and height (it may run off an
+/// edge). `frame`: a Mac title bar, a plain rounded card, nothing (a capture with its own shape),
+/// or "art": App Store art of an iPhone, whose own background fades into the ground at its edges.
+export type Layer = { src: string; width: number; height: number; left: number; top: number; size: number; frame: "window" | "card" | "none" | "art"; title?: string; dark?: boolean };
+export type CoverArt = { ground: Ground; layers: Layer[] };
+
+const layer = (src: string, width: number, height: number, left: number, top: number, size: number, frame: Layer["frame"], more: Partial<Layer> = {}): Layer =>
+  ({ src: `/blog/${src}`, width, height, left, top, size, frame, ...more });
 
 export const AUTHOR = { name: "Emil Wagman", avatar: "/emil-wagman.jpg" };
 
@@ -46,6 +61,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.connectChatGPT,
+    cover: { ground: "paper", layers: [layer("cover-ai-rows.webp", 920, 765, 9, 12, 64, "card"), layer("cover-ai-pill.webp", 590, 156, 40, 64, 54, "none")] },
     draft: false,
   },
   {
@@ -57,6 +73,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.connectClaude,
+    cover: { ground: "leaf", layers: [layer("cover-phone-claude.webp", 440, 453, 13, 10, 74, "art")] },
     draft: false,
   },
   {
@@ -68,6 +85,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.aiEdit,
+    cover: { ground: "dunes", layers: [layer("history.webp", 1800, 1200, 6, 12, 66, "window", { title: "Groceries" }), layer("cover-consent-choice.webp", 840, 490, 48, 40, 46, "card")] },
     draft: false,
   },
   {
@@ -79,6 +97,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.importSheet,
+    cover: { ground: "soft", layers: [layer("cover-import-head.webp", 1065, 560, 8, 9, 84, "card"), layer("cover-import-progress.webp", 1065, 110, 22, 77, 70, "card")] },
     draft: false,
   },
   {
@@ -90,6 +109,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.connectList,
+    cover: { ground: "dark", layers: [layer("cover-connect-ai-dark.webp", 1040, 720, 14, 12, 72, "window", { title: "Settings", dark: true })] },
     draft: false,
   },
   {
@@ -101,6 +121,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.history,
+    cover: { ground: "tint", layers: [layer("cover-phone-versions.webp", 400, 793, 33, 9, 36, "art")] },
     draft: false,
   },
   {
@@ -112,6 +133,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.consent,
+    cover: { ground: "amber", layers: [layer("cover-consent-choice.webp", 840, 490, 13, 16, 74, "card")] },
     draft: false,
   },
   {
@@ -123,6 +145,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.aiEdit,
+    cover: { ground: "paper", layers: [layer("ai-edit.webp", 1260, 1520, 20, 10, 60, "window", { title: "Groceries" })] },
     draft: true,
   },
 ];
