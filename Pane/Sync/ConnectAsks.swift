@@ -16,7 +16,8 @@ import UIKit
 // the app runs and by looking again when it comes to the front, and opens the consent sheet. The
 // device that allows it seals the code to the page's key; the page picks it up and goes on.
 //
-// There's no push: an iPhone that isn't running hears nothing until it's opened.
+// A push (Push.swift) tells devices that aren't running. It only says "look now": tapping it
+// opens the ask by id, and the app fetches the ask itself and checks it like any other.
 
 /// A browser waiting for this account's devices to approve a connection (public.connect_asks).
 struct ConnectAsk: Decodable, Equatable, Identifiable, Sendable {
@@ -81,6 +82,8 @@ final class ConnectAsks {
 
     /// Looks for asks already waiting, then listens for new ones and for answers from elsewhere.
     func start() async {
+        // A tapped push, or one that arrives while the app is in front, looks again at once.
+        center.lookAgain = { [weak self] in await self?.refresh() }
         await refresh()
         guard channel == nil, !stopped else { return }
         #if DEBUG || QA
@@ -114,6 +117,7 @@ final class ConnectAsks {
         tasks = []
         if let channel { await channel.unsubscribe() }
         channel = nil
+        center.lookAgain = nil
         center.clearAsks()
     }
 
@@ -190,6 +194,16 @@ struct ConnectNotifier {
     var withdraw: (UUID) -> Void
 
     nonisolated static let userInfoKey = "connect_request"
+    /// The push's request id (supabase/functions/mcp/oauth.ts notifyDevices).
+    nonisolated static let pushKey = "ask"
+
+    /// The ask a notification is about: ours (local) or a push. Nil when it carries no id or one
+    /// that isn't a UUID.
+    nonisolated static func ask(in userInfo: [AnyHashable: Any]) -> (id: UUID, push: Bool)? {
+        if let s = userInfo[pushKey] as? String, let id = UUID(uuidString: s) { return (id, true) }
+        if let s = userInfo[userInfoKey] as? String, let id = UUID(uuidString: s) { return (id, false) }
+        return nil
+    }
     static func identifier(_ id: UUID) -> String { "connect-" + id.uuidString.lowercased() }
 
     /// "Allow ChatGPT to use your notes?" / "Requested from Chrome on a Mac. Open Amber Notes to allow it."
@@ -228,19 +242,44 @@ struct ConnectNotifier {
 }
 
 extension ConnectCenter: UNUserNotificationCenterDelegate {
-    /// Tapping a notification opens its ask. Installed with the first window.
+    /// Tapping a notification opens its ask. Installed at launch (the app delegate), so a launch
+    /// from a tapped push reaches it, and again with the first window.
     func installNotifications() {
         UNUserNotificationCenter.current().delegate = self
     }
 
-    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
-        guard let s = response.notification.request.content.userInfo[ConnectNotifier.userInfoKey] as? String,
-              let id = UUID(uuidString: s) else { return }
-        await MainActor.run { self.showAsk(id) }
+    /// A notification for an ask was tapped: it opens (the sheet fetches the request and checks
+    /// it), and the asks are looked at again. The notification is trusted for nothing else.
+    func openedNotification(for id: UUID) {
+        showAsk(id)
+        if let lookAgain { Task { await lookAgain() } }
     }
 
-    /// In front, the sheet is already showing: no banner.
+    /// A notification's userInfo, as tapping it handles it. False when it names no ask.
+    @discardableResult
+    func handleNotification(_ userInfo: [AnyHashable: Any]) -> Bool {
+        guard let ask = ConnectNotifier.ask(in: userInfo) else { return false }
+        openedNotification(for: ask.id)
+        return true
+    }
+
+    /// A notification arriving while the app is in front. Ours are only posted when it isn't.
+    /// A push leaves it to realtime and the fetch: no second banner when this device already has
+    /// the ask (its sheet showing or queued); otherwise a banner.
+    func presentation(for id: UUID, push: Bool) -> UNNotificationPresentationOptions {
+        guard push else { return [] }
+        if let lookAgain { Task { await lookAgain() } }
+        if pending == id || askIDs.contains(id) { return [] }
+        return [.banner, .list, .sound]
+    }
+
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
+        guard let ask = ConnectNotifier.ask(in: response.notification.request.content.userInfo) else { return }
+        await MainActor.run { self.openedNotification(for: ask.id) }
+    }
+
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
-        []
+        guard let ask = ConnectNotifier.ask(in: notification.request.content.userInfo) else { return [] }
+        return await MainActor.run { self.presentation(for: ask.id, push: ask.push) }
     }
 }

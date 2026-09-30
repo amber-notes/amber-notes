@@ -45,6 +45,8 @@ struct DeleteAccountButton: View {
             // Signing out keeps it; deleting the account doesn't.
             if let account { AccountCrypto.shared.forgetKey(account: account) }
             context.wipeLocalLibrary()
+            // The server removed this device's push token with the account; stop registering here.
+            PushRegistration.shared.accountDeleted()
             await backend.signOut()
             dismiss()
         } catch {

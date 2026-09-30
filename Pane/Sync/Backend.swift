@@ -273,6 +273,9 @@ final class Backend {
     }
 
     func signOut() async {
+        // No more pushes for this account here: this device's token row goes while the session
+        // can still delete it, then the device stops registering.
+        await PushRegistration.shared.signingOut()
         try? await client?.auth.signOut()
     }
 }

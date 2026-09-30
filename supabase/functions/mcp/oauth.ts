@@ -29,6 +29,7 @@
 // are one server: a token issued through one works through the others.
 
 import type { Sql } from "npm:postgres@3.4.5";
+import { apnsSender, type Environment, type Sender } from "../_shared/apns.ts";
 import { HANDOFF, tokenKey, unwrap, wrap } from "../_shared/e2ee.ts";
 import { dailyHash, hashSecret } from "../_shared/hash.ts";
 import { errorKind, log } from "../_shared/log.ts";
@@ -556,7 +557,10 @@ async function ask(req: Request, sql: Sql): Promise<Response> {
       where connect_asks.answered_at is null and connect_asks.user_id = ${user}
     returning expires_at`;
   if (!row) return json({ error: EXPIRED }, 404);
-  await notifyDevices(sql, user, r.id);
+  // The push only wakes the account's devices; it doesn't hold up the page.
+  const notified = notifyDevices(sql, user, r.id);
+  const edge = (globalThis as { EdgeRuntime?: { waitUntil(p: Promise<unknown>): void } }).EdgeRuntime;
+  if (edge) edge.waitUntil(notified); else await notified;
   return json({ asked: true, expires_at: row.expires_at });
 }
 
@@ -564,9 +568,34 @@ const BLOCKED = "Connecting AIs is paused for an hour on this account because a 
 const NONCE = /^[0-9a-f]{32}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/// Tells the account's devices about a new ask. Today they learn of it through realtime while the
-/// app runs, and when it's next opened; push (APNs) slots in here once there's a key for it.
-export async function notifyDevices(_sql: Sql, _user: string, _requestId: string): Promise<void> {}
+let pushSender: Sender | null | undefined;
+/** Tests: a fake APNs. */
+export function setPushSender(s: Sender | null | undefined) { pushSender = s; }
+
+/// Tells the account's devices about a new ask with a push (APNs), besides realtime while the app
+/// runs. The push says only that there's a request, in fixed words, and the request's id:
+/// the device fetches the ask and checks it itself (number matching) before anything can be
+/// allowed. Tokens Apple says are gone are deleted. Without an APNs key, nothing is sent.
+export async function notifyDevices(sql: Sql, user: string, requestId: string): Promise<void> {
+  const send = pushSender === undefined ? (pushSender = apnsSender()) : pushSender;
+  if (!send) return;
+  try {
+    const tokens = await sql<{ token: string; environment: Environment }[]>`
+      select token, environment from public.device_tokens
+      where user_id = ${user} and updated_at > now() - interval '90 days'`;
+    // Fixed words: not even the name the app gives itself, which anyone can choose.
+    const payload = {
+      aps: { alert: { title: "An AI connection request", body: "Open Amber Notes to see it." }, sound: "default", "thread-id": "connect" },
+      ask: requestId,
+    };
+    const outcomes = await Promise.all(tokens.map(async (t) => ({ t, outcome: await send({ token: t.token, environment: t.environment, payload, collapseId: requestId }) })));
+    const gone = outcomes.filter((o) => o.outcome === "gone").map((o) => o.t.token);
+    if (gone.length) await sql`delete from public.device_tokens where user_id = ${user} and token = any(${gone})`;
+    log("push", { count: tokens.length, status: outcomes.filter((o) => o.outcome === "sent").length });
+  } catch (e) {
+    log("push_failed", errorKind(e));
+  }
+}
 
 /// The device's half of number matching: POST {id, nonce} with the person's session, from the app.
 /// Written once, only after the page's commit (the ask) and while the ask is open; the same nonce

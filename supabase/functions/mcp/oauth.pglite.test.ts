@@ -25,7 +25,7 @@ Deno.env.delete("MCP_ALIAS_URLS");
 Deno.env.delete("CONNECT_PAGE_URL");
 Deno.env.set("MCP_PROXY_SECRET", "proxy-secret");
 
-const { handleOAuth, publicBase, resolveAccessToken, subpath, clientIP, cleanName, claimsATrustedName, displayName, claimedName, sha256Hex } = await import("./oauth.ts");
+const { handleOAuth, setPushSender, publicBase, resolveAccessToken, subpath, clientIP, cleanName, claimsATrustedName, displayName, claimedName, sha256Hex } = await import("./oauth.ts");
 const { handleRequest } = await import("./server.ts");
 
 // MARK: Database: every migration, on PGlite
@@ -1197,4 +1197,114 @@ Deno.test("a declined redirect goes to the page only when it's https, or http on
   for (const bad of ["http://evil.example/cb?error=access_denied", "javascript:alert(1)", "data:text/html,hi"]) {
     assertEquals(await declined(["https://app.example/cb"], bad), { state: "denied" }, bad);
   }
+});
+
+// MARK: Push: a new ask wakes the account's devices (APNs), with nothing of the notes in it
+
+Deno.test("an ask pushes to every device of that account, generic words and the request id only; gone tokens go", async () => {
+  const { sql, pg } = await db();
+  const me = await newUser(pg);
+  const other = await newUser(pg);
+  const token = (n: number) => n.toString(16).padStart(2, "0").repeat(32);
+  const register = (u: User, device: string, t: string, environment = "sandbox", platform = "ios") =>
+    app(pg, u.id, `select public.register_device_token($1, $2, $3, $4)`, [device, platform, t, environment]);
+  const [phone, mac] = [crypto.randomUUID(), crypto.randomUUID()];
+  await register(me, phone, token(1));
+  await register(me, mac, token(2), "production", "macos");
+  await register(other, crypto.randomUUID(), token(3));
+  // A device registering again replaces its token; another account can't see or remove mine.
+  await register(me, phone, token(4));
+  assertEquals((await app(pg, other.id, `select token from public.device_tokens`)).map((r: any) => r.token), [token(3)]);
+  await app(pg, other.id, `delete from public.device_tokens where token = $1`, [token(4)]);
+  assertEquals((await app(pg, me.id, `select 1 from public.device_tokens`)).length, 2);
+
+  const sent: { token: string; environment: string; payload: any }[] = [];
+  setPushSender((p) => { sent.push(p); return Promise.resolve(p.token === token(2) ? "gone" : "sent"); });
+  try {
+    const { requestId } = await pendingRequest(sql);
+    assertEquals((await askAs(sql, me, requestId, toBase64((await newHandoffKeys()).publicRaw))).status, 200);
+    assertEquals(sent.map((p) => [p.token, p.environment]).sort(), [[token(2), "production"], [token(4), "sandbox"]]);
+    const payload = sent[0].payload;
+    assertEquals(payload.ask, requestId);
+    // Fixed words: not the name the app gives itself.
+    assertEquals(payload.aps.alert, { title: "An AI connection request", body: "Open Amber Notes to see it." });
+    assertEquals(Object.keys(payload).sort(), ["aps", "ask"]);
+    // Apple said token 2 is gone: it's deleted.
+    assertEquals((await app(pg, me.id, `select token from public.device_tokens`)).map((r: any) => r.token), [token(4)]);
+  } finally {
+    setPushSender(null);
+  }
+});
+
+Deno.test("a token another account registers on this device leaves the old account", async () => {
+  const { pg } = await db();
+  const a = await newUser(pg), b = await newUser(pg);
+  const t = "cd".repeat(32);
+  await app(pg, a.id, `select public.register_device_token($1, 'ios', $2, 'sandbox')`, [crypto.randomUUID(), t]);
+  await app(pg, b.id, `select public.register_device_token($1, 'ios', $2, 'sandbox')`, [crypto.randomUUID(), t.toUpperCase()]);
+  assertEquals((await pg.query(`select user_id from public.device_tokens`)).rows, [{ user_id: b.id }]);
+});
+
+Deno.test("device tokens: written only through the function, 10 per account, and old ones get no push", async () => {
+  const { sql, pg } = await db();
+  const me = await newUser(pg);
+  const token = (n: number) => n.toString(16).padStart(2, "0").repeat(32);
+  // Not directly: only register_device_token writes (the limits are there).
+  let refusedInsert = false;
+  try {
+    await app(pg, me.id, `insert into public.device_tokens (user_id, device_id, platform, token, environment) values ($1, $2, 'ios', $3, 'sandbox')`,
+      [me.id, crypto.randomUUID(), token(1)]);
+  } catch { refusedInsert = true; }
+  assert(refusedInsert, "a direct insert is refused");
+  const devices = Array.from({ length: 12 }, () => crypto.randomUUID());
+  for (let i = 0; i < 12; i++) {
+    await app(pg, me.id, `select public.register_device_token($1, 'ios', $2, 'sandbox')`, [devices[i], token(i + 1)]);
+    await pg.query(`update public.device_tokens set updated_at = now() - make_interval(mins => $1) where token = $2`, [12 - i, token(i + 1)]);
+  }
+  const kept = (await app(pg, me.id, `select token from public.device_tokens order by updated_at`)).map((r: any) => r.token);
+  assertEquals(kept.length, 10);
+  assertEquals(kept.includes(token(1)) || kept.includes(token(2)), false, "the two longest unseen went");
+  let refusedUpdate = false;
+  try { await app(pg, me.id, `update public.device_tokens set environment = 'production'`); } catch { refusedUpdate = true; }
+  assert(refusedUpdate, "a direct update is refused");
+  // The owner can still remove a row (sign-out).
+  await app(pg, me.id, `delete from public.device_tokens where device_id = $1`, [devices[11]]);
+  assertEquals((await app(pg, me.id, `select 1 from public.device_tokens`)).length, 9);
+  // A token not seen for 90 days gets no push.
+  await pg.query(`update public.device_tokens set updated_at = now() - interval '91 days' where token <> $1`, [token(11)]);
+  const sent: string[] = [];
+  setPushSender((p) => { sent.push(p.token); return Promise.resolve("sent"); });
+  try {
+    const { requestId } = await pendingRequest(sql);
+    assertEquals((await askAs(sql, me, requestId, toBase64((await newHandoffKeys()).publicRaw))).status, 200);
+    assertEquals(sent, [token(11)]);
+  } finally {
+    setPushSender(null);
+  }
+});
+
+Deno.test("registering tokens is rate-limited", async () => {
+  const { pg } = await db();
+  const me = await newUser(pg);
+  let limited = false;
+  for (let i = 0; i < 40 && !limited; i++) {
+    try {
+      await app(pg, me.id, `select public.register_device_token($1, 'ios', $2, 'sandbox')`, [crypto.randomUUID(), (i + 16).toString(16).repeat(32).slice(0, 64)]);
+    } catch (e) {
+      limited = String((e as Error).message).includes("Too many");
+    }
+  }
+  assert(limited, "30 quick registrations, then it slows down");
+});
+
+Deno.test("a device that signed out offline forgets its token later, without a session", async () => {
+  const { pg } = await db();
+  const me = await newUser(pg);
+  const t = "ef".repeat(32);
+  await app(pg, me.id, `select public.register_device_token($1, 'ios', $2, 'sandbox')`, [crypto.randomUUID(), t]);
+  const anon = (sql: string, params: unknown[]) =>
+    pg.transaction(async (tx) => { await tx.exec(`set local role anon`); return (await tx.query<any>(sql, params)).rows; });
+  assertEquals((await anon(`select public.forget_device_token($1) as n`, ["00".repeat(32)]))[0].n, 0);
+  assertEquals((await anon(`select public.forget_device_token($1) as n`, [t.toUpperCase()]))[0].n, 1);
+  assertEquals((await pg.query(`select 1 from public.device_tokens`)).rows.length, 0);
 });
