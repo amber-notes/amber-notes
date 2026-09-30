@@ -1,38 +1,41 @@
 import Foundation
 import Supabase
 
-/// The account's encryption setup on the server (`account_keys`, one row, readable only by you):
-/// the password salt and count, and the data key wrapped under the password and the recovery key.
-struct SupabaseAccountKeys: AccountKeysRemote {
+/// The account's key on the server (`account_keys`, one row, readable only by you): its id, its
+/// verifier and the data key wrapped under the recovery key. Only the functions below write it:
+/// `create_account_key` (insert-if-absent), `mark_recovery_key_saved` and `start_fresh`.
+struct SupabaseAccountKeys: AccountKeyServer {
     let client: SupabaseClient
 
-    /// A server from before encryption: the account stays as it was.
-    struct Unsupported: Error {}
+    private static let columns = "key_id,verifier,recovery_wrap,recovery_saved_at"
 
-    private static let columns = "key_id,salt,iterations,password_wrap,recovery_wrap"
+    struct NoRow: Error {}
 
-    func fetch() async throws -> AccountKeys? {
-        do {
-            let rows: [AccountKeys] = try await client.from("account_keys").select(Self.columns).execute().value
-            return rows.first
-        } catch let e as PostgrestError where e.code == "42P01" || e.code == "PGRST205" {
-            throw Unsupported()
-        }
+    func fetch() async throws -> ServerKey? {
+        let rows: [ServerKey] = try await client.from("account_keys").select(Self.columns).limit(1).execute().value
+        return rows.first
     }
 
-    func create(_ keys: AccountKeys) async throws {
-        do {
-            try await client.from("account_keys").insert(keys).execute()
-        } catch let e as PostgrestError where e.code == "23505" {
-            throw AccountCryptoError.alreadySetUp
+    func create(_ key: ServerKey) async throws -> (key: ServerKey, created: Bool) {
+        struct Params: Encodable { var p_key_id: String; var p_verifier: String; var p_recovery_wrap: String }
+        struct Row: Decodable {
+            var key_id: String
+            var verifier: String
+            var recovery_wrap: String
+            var recovery_saved_at: Date?
+            var created: Bool
         }
+        let rows: [Row] = try await client.rpc("create_account_key", params: Params(p_key_id: key.key_id, p_verifier: key.verifier,
+                                                                                     p_recovery_wrap: key.recovery_wrap)).execute().value
+        guard let r = rows.first else { throw NoRow() }
+        return (ServerKey(key_id: r.key_id, verifier: r.verifier, recovery_wrap: r.recovery_wrap, recovery_saved_at: r.recovery_saved_at), r.created)
     }
 
-    struct Change: Encodable { var salt: String; var iterations: Int; var password_wrap: String; var recovery_wrap: String? }
+    func markRecoveryKeySaved() async throws -> Date? {
+        try await client.rpc("mark_recovery_key_saved").execute().value
+    }
 
-    func update(_ keys: AccountKeys) async throws {
-        try await client.from("account_keys")
-            .update(Change(salt: keys.salt, iterations: keys.iterations, password_wrap: keys.password_wrap, recovery_wrap: keys.recovery_wrap))
-            .eq("key_id", value: keys.key_id).execute()
+    func startFresh(keyID: String) async throws -> Bool {
+        try await client.rpc("start_fresh", params: ["p_key_id": keyID]).execute().value
     }
 }
