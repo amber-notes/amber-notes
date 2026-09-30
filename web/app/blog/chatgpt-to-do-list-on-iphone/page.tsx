@@ -3,7 +3,7 @@ import { PostPage, postMetadata } from "@/lib/PostPage";
 import { SHOTS } from "@/lib/posts";
 
 export const dynamic = "force-static";
-export const metadata = postMetadata("chatgpt-to-do-list-on-iphone");
+export const metadata = postMetadata("chatgpt-to-do-list-on-iphone", { title: "ChatGPT as a to-do list that syncs to your iPhone" });
 
 const FAQ = [
   { q: "Can ChatGPT keep a to-do list?", a: [

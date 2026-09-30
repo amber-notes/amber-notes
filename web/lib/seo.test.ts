@@ -89,6 +89,32 @@ describe("the blog", () => {
     }
   });
 
+  it("gives every published post a unique search title of at most 60 characters and a unique description of 70 to 160", () => {
+    const pub = published();
+    const searchTitle = (slug: string, title: string) => postSource(slug).match(/postMetadata\("[^"]+", \{\s*title: "([^"]+)"/)?.[1] ?? `${title} · Amber Notes`;
+    const titles = pub.map((p) => searchTitle(p.slug, p.title));
+    for (const [i, t] of titles.entries()) expect(t.length, pub[i].slug).toBeLessThanOrEqual(60);
+    for (const p of pub) {
+      expect(p.description.length, p.slug).toBeLessThanOrEqual(160);
+      expect(p.description.length, p.slug).toBeGreaterThanOrEqual(70);
+      expect(p.updated >= p.date, p.slug).toBe(true);
+    }
+    expect(new Set(titles).size).toBe(pub.length);
+    expect(new Set(pub.map((p) => p.description)).size).toBe(pub.length);
+  });
+
+  it("never asks the same FAQ question on two posts or on the help page", () => {
+    const seen = new Map<string, string>();
+    const sources = [...published().map((p) => [p.slug, postSource(p.slug)] as const), ["help", readFileSync(new URL("../app/help/questions.ts", import.meta.url), "utf8")] as const];
+    for (const [where, src] of sources) {
+      for (const m of src.matchAll(/\bq: "([^"]+)"/g)) {
+        const q = m[1].toLowerCase().replace(/[?.]$/, "");
+        expect(seen.get(q), `"${m[1]}" on ${where}`).toBeUndefined();
+        seen.set(q, where);
+      }
+    }
+  });
+
   it("only offers categories that have posts", () => {
     for (const c of categories()) expect(published().some((p) => p.category === c)).toBe(true);
   });

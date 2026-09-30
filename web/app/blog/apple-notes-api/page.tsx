@@ -1,7 +1,7 @@
 import { PostPage, postMetadata } from "@/lib/PostPage";
 
 export const dynamic = "force-static";
-export const metadata = postMetadata("apple-notes-api");
+export const metadata = postMetadata("apple-notes-api", { title: "Apple Notes API: what exists and what to use instead" });
 
 const FAQ = [
   { q: "Does Apple Notes have an API?", a: [

@@ -27,7 +27,7 @@ const FAQ = [
   { q: "Why does hosted or local matter?", a: [
     "ChatGPT, claude.ai and the Claude and ChatGPT phone apps run in the cloud, so they can only reach a server on the internet. A server that runs on your Mac works with Claude Desktop or Claude Code on that Mac, and only while it's awake.",
   ] },
-  { q: "Which notes app works best with ChatGPT?", a: [
+  { q: "Which of these notes apps can ChatGPT reach?", a: [
     "ChatGPT needs a hosted server. Of the apps here, that's Amber Notes, Notion, Evernote and Hjarni. Adding one yourself needs Developer mode in ChatGPT, on a paid plan.",
   ] },
 ];
