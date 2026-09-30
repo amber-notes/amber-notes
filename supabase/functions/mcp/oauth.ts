@@ -22,6 +22,8 @@
 // are one server: a token issued through one works through the others.
 
 import type { Sql } from "npm:postgres@3.4.5";
+import { logError } from "../_shared/log.ts";
+import { dailyHash, hashSecret } from "../_shared/hash.ts";
 
 export const SCOPES = ["notes:read", "notes:write"];
 const ACCESS_TTL = 60 * 60; // seconds
@@ -179,12 +181,12 @@ function timingSafeEqual(a: string, b: string) {
 /// True when this IP has made too many requests to `bucket` recently. Records this one.
 async function limited(sql: Sql, req: Request, bucket: string): Promise<boolean> {
   const [max, window] = LIMITS[bucket];
-  const ip = await sha256Hex(clientIP(req));
+  const ip = await dailyHash(hashSecret(), clientIP(req));
   const [{ n }] = await sql`
     with recent as (select count(*)::int n from public.oauth_rate where bucket = ${bucket} and ip_hash = ${ip} and at > now() - make_interval(secs => ${window}))
     insert into public.oauth_rate (bucket, ip_hash) select ${bucket}, ${ip} returning (select n from recent)`;
   if (Math.random() < 0.02) {
-    await sql`delete from public.oauth_rate where at < now() - interval '1 day'`;
+    await sql`delete from public.oauth_rate where at < now() - interval '2 hours'`;
     await sql`delete from public.oauth_requests where expires_at < now() - interval '1 day' and (code_expires_at is null or code_expires_at < now() - interval '1 day')`;
     await sql`delete from public.oauth_tokens where expires_at < now() - interval '1 day'`;
   }
@@ -308,7 +310,7 @@ export async function handleOAuth(req: Request, sql: Sql, path: string): Promise
       case "/connect/release": return req.method === "POST" ? await release(req, sql) : json({ error: "method_not_allowed" }, 405);
     }
   } catch (e) {
-    console.error("oauth", path, e);
+    logError(`oauth ${path}`, e);
     return oauthError("server_error", "Something went wrong. Try again.", 500);
   }
   return json({ error: "not_found" }, 404);

@@ -1,7 +1,8 @@
-// Account deletion end to end against the LOCAL stack: scripts/account-e2e.sh
-// Makes two throwaway users; deletes one; the other is untouched.
+// Export My Data and account deletion end to end against the LOCAL stack: scripts/account-e2e.sh
+// Makes two throwaway users; exports one, then deletes it; the other is untouched.
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import postgres from "npm:postgres@3.4.5";
+import { strFromU8, unzipSync } from "npm:fflate@0.8.2";
 
 const API = Deno.env.get("PANE_API")!, ANON = Deno.env.get("PANE_ANON")!, SERVICE = Deno.env.get("PANE_SERVICE")!;
 
@@ -63,6 +64,20 @@ Deno.test("deleting an account removes its notes, files and login, and nothing o
   assertEquals(get.status, 405);
   await get.body?.cancel();
 
+  // Export My Data: a zip of A's own data, never B's.
+  const ex = await fetch(`${API}/functions/v1/account/export`, { headers: { authorization: `Bearer ${a.jwt}`, apikey: ANON } });
+  assertEquals(ex.status, 200);
+  assertEquals(ex.headers.get("content-type"), "application/zip");
+  assert(/filename="amber-notes-export-\d{4}-\d{2}-\d{2}\.zip"/.test(ex.headers.get("content-disposition") ?? ""));
+  const files = unzipSync(new Uint8Array(await ex.arrayBuffer()));
+  const data = JSON.parse(strFromU8(files["data.json"]));
+  assertEquals(data.account.id, a.id);
+  assertEquals(data.notes.map((n: { id: string }) => n.id), [as.note]);
+  assertEquals(data.files.length, 1);
+  const again = await fetch(`${API}/functions/v1/account/export`, { headers: { authorization: `Bearer ${a.jwt}`, apikey: ANON } });
+  assertEquals(again.status, 429, "one export a minute");
+  await again.body?.cancel();
+
   const r = await del(a.jwt);
   const body = await r.json();
   assertEquals(r.status, 200, JSON.stringify(body));
@@ -84,9 +99,9 @@ Deno.test("deleting an account removes its notes, files and login, and nothing o
   await bp.body?.cancel();
 
   // The old token can't delete anything again.
-  const again = await del(a.jwt);
-  assert(again.status === 401, `deleted user's token → ${again.status}`);
-  await again.body?.cancel();
+  const retry = await del(a.jwt);
+  assert(retry.status === 401, `deleted user's token → ${retry.status}`);
+  await retry.body?.cancel();
 
   await del(b.jwt).then((x) => x.body?.cancel());
   await db.end();

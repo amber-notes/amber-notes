@@ -20,6 +20,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     page("/blog", 0.7, published().map((p) => p.updated).sort().at(-1)),
     ...published().map((p) => page(`/blog/${p.slug}`, 0.8, p.updated)),
     page("/changelog", 0.5, released),
+    page("/privacy-security", 0.5),
     page("/privacy", 0.2),
     page("/terms", 0.2),
   ];

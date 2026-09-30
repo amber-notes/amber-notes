@@ -38,6 +38,7 @@ function summary(): string[] {
     `- [Download for Mac](${SITE_URL}/download): free, macOS 26 or later.`,
     `- [Help and FAQ](${SITE_URL}/help)`,
     `- [Changelog](${SITE_URL}/changelog)`,
+    `- [Privacy & Security](${SITE_URL}/privacy-security): what's stored, what's encrypted, every log and how long it's kept.`,
     `- [Privacy policy](${SITE_URL}/privacy)`,
     `- [Source code on GitHub](${GITHUB_URL}) (MIT license)`,
   ];

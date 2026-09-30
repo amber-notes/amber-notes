@@ -5,6 +5,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AIGlyph } from "@/lib/ai-glyphs";
+import { FACTS, PRIVACY_PATH } from "@/lib/privacy";
 import DownloadLink from "./DownloadLink";
 import a from "./sections.module.css";
 
@@ -171,6 +172,25 @@ export function AlsoLine() {
     <ul className={a.alsoTicks} aria-label="Also">
       <li><Tick /> Lists that tidy themselves</li><li><Tick /> Real tables</li><li><Tick /> Photos and files</li><li><Tick /> No ads, no tracking</li>
     </ul>
+  );
+}
+
+/* ───────────── Privacy & Security, in four facts ───────────── */
+
+export function PrivacySection() {
+  return (
+    <section className={a.section} aria-labelledby="privacy">
+      <div className={a.head}>
+        <h2 id="privacy" className={a.h2}>Private by design</h2>
+        <p className={a.lede}>What that means today, in plain words.</p>
+      </div>
+      <ul className={a.privacy}>
+        {FACTS.map((f) => (
+          <li key={f.title}><b><Tick />{f.title}</b><span>{f.text}</span></li>
+        ))}
+      </ul>
+      <p className={a.also}><a href={PRIVACY_PATH}>Privacy &amp; Security: what we store, and every log we keep</a></p>
+    </section>
   );
 }
 
