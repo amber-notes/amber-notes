@@ -39,6 +39,7 @@
 .ground[data-ground="blush"] { background: linear-gradient(160deg, #f9e4df, #efc6bc); }
 .ground[data-ground="wheat"] { background: linear-gradient(160deg, #f8eed6, #ead6a9); }
 .ground[data-ground="fog"] { background: linear-gradient(160deg, #eef0ef, #d6dcd9); }
+.ground[data-ground="dusk"] { background: linear-gradient(160deg, #e9e3ee, #cfc3dc); }
 .ground[data-ground="dunes"] { background: #f9c98a url(/blog/desk.svg) center / cover no-repeat; }
 
 /* ── A figure in a post: the capture centred on its ground ── */
@@ -78,6 +79,7 @@
 .thumb[data-ground="blush"] { background: #f7e1dc; }
 .thumb[data-ground="wheat"] { background: #f5ebd3; }
 .thumb[data-ground="fog"] { background: #e9ecea; }
+.thumb[data-ground="dusk"] { background: #ebe6f0; }
 
 /* An iPhone screen on its own, with the screen's corners. */
 .phone { width: min(100%, var(--w, 100%)); margin: 0 auto; }

@@ -5,6 +5,28 @@ assistants. Newest first. Research behind it: [seo-aeo-research-2026-09-30.md](s
 
 `docs/` had no README naming a folder for evidence, so this and the research live in `docs/Evidence/`.
 
+## 30 September 2026: round 12, "An encrypted notes app that ChatGPT and Claude can use"
+
+### Why
+
+- End-to-end encryption for every note shipped in #52 (in production 30 September). That changes what the site can honestly claim, and "encrypted notes app" plus "ChatGPT" or "Claude" is a combination no other notes app can answer the same way.
+
+### Changed (branch `site/encrypted-notes-ai`)
+
+- New post `/blog/encrypted-notes-app-for-ai`, the first in Building Amber Notes. Every claim about Amber Notes comes from `web/lib/privacy.ts`, `docs/privacy-policy.md` and `docs/Technical/e2ee-design.md`:
+  - what's encrypted, the key in iCloud Keychain, the recovery key, locked notes, signing in
+  - how an AI reads encrypted notes: the approval on your device with the two-digit number and Face ID, Touch ID or passcode; the connection's wrapped copy of the key; unlocked in memory per request; deleted on disconnect
+  - the limits from privacy.ts: AI requests (and Vercel and Supabase carrying the text), the recovery key in the browser, no key rotation, the database, shared notes; and what stays readable (from `READABLE`, so it can't drift)
+  - a comparison: Apple Notes (Advanced Data Protection; locked notes always), Standard Notes (a community MCP server that decrypts locally), Notesnook (no official MCP server), Obsidian (local files, Obsidian Sync end to end), Notion (not end to end, official hosted MCP), each with its source
+  - the iPhone app is in App Store review (from `APP_STORE_LIVE`)
+- A new capture: the consent sheet as it ships now ("While it's connected, it can read everything you keep here except locked notes"), rendered offscreen by `ConnectSnapshotTests`; the card is cropped from it on a new ground, dusk.
+- Sweep of outdated privacy and approval lines:
+  - Help: connecting (approve on your iPhone or Mac by typing the number, or the recovery key), Incredible, "Can my AI see all my notes?" (the server opens what it asks for, in memory; not locked notes), and "Where are my notes stored?" (end-to-end encrypted, what stays readable), which now links the new post
+  - `/blog/mcp-server`: the OAuth approval step and the install paragraph follow the new flow, and a paragraph explains the per-connection key and in-memory decryption
+  - `/blog/amber-notes-vs-apple-notes`: an end-to-end encryption row
+  - `web/lib/facts.ts`: one quotable encryption fact, which /llms.txt and /llms-full.txt pick up
+  - no post said only locked notes were end-to-end encrypted; the older consent capture (`consent.webp`) still appears in three posts, and its captions stay true
+
 ## 30 September 2026: round 11, "ChatGPT memory vs notes"
 
 ### Query
