@@ -84,6 +84,9 @@ protocol PushTokenService: AnyObject {
     func register(_ params: PushTokenParams) async throws
     /// Deletes this device's row (the account's own, by RLS).
     func remove(device: UUID) async throws
+    /// Deletes any row with this token, without a session (forget_device_token): the sign-out
+    /// that couldn't reach the server, done on the next launch.
+    func forget(token: String) async throws
 }
 
 @MainActor
@@ -97,6 +100,11 @@ final class SupabasePushTokens: PushTokenService {
 
     func remove(device: UUID) async throws {
         try await client.from("device_tokens").delete().eq("device_id", value: device.uuidString.lowercased()).execute()
+    }
+
+    func forget(token: String) async throws {
+        struct Params: Encodable { var p_token: String }
+        try await client.rpc("forget_device_token", params: Params(p_token: token)).execute()
     }
 }
 
@@ -145,12 +153,28 @@ final class PushRegistration {
     private(set) var registered = false
 
     /// The device id is the one the app uses for pane_devices (InstallID).
+    private let defaults: UserDefaults
+    /// A token whose row a sign-out couldn't delete (offline): forgotten on the next launch.
+    static let pendingForgetKey = "push.pendingForgetToken"
+
     init(device: @escaping () -> UUID = { InstallID.value },
          environment: @escaping () -> APNsEnvironment = { APNsEnvironment.current },
-         system: System = .live) {
+         system: System = .live, defaults: UserDefaults = .standard) {
         self.device = device
         self.environment = environment
         self.system = system
+        self.defaults = defaults
+    }
+
+    /// At launch, signed in or not: a sign-out that couldn't remove this device's row tries again.
+    func retryPendingForget(service: PushTokenService) async {
+        guard let pending = defaults.string(forKey: Self.pendingForgetKey) else { return }
+        do {
+            try await service.forget(token: pending)
+            defaults.removeObject(forKey: Self.pendingForgetKey)
+        } catch {
+            pushLog.error("forgetting the device token failed again: \(String(describing: error), privacy: .public)")
+        }
     }
 
     /// Signed in (with the key open): register, and send the token for this account. Another
@@ -187,6 +211,8 @@ final class PushRegistration {
         if let service {
             do { try await service.remove(device: device()) } catch {
                 pushLog.error("removing the device token failed: \(String(describing: error), privacy: .public)")
+                // Offline: the session goes with the sign-out, so the next launch forgets the token instead.
+                if let token { defaults.set(token, forKey: Self.pendingForgetKey) }
             }
         }
         detach()

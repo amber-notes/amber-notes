@@ -558,7 +558,7 @@ async function ask(req: Request, sql: Sql): Promise<Response> {
     returning expires_at`;
   if (!row) return json({ error: EXPIRED }, 404);
   // The push only wakes the account's devices; it doesn't hold up the page.
-  const notified = notifyDevices(sql, user, r.id, claimedName(r.client_name) || new URL(r.redirect_uri).hostname);
+  const notified = notifyDevices(sql, user, r.id);
   const edge = (globalThis as { EdgeRuntime?: { waitUntil(p: Promise<unknown>): void } }).EdgeRuntime;
   if (edge) edge.waitUntil(notified); else await notified;
   return json({ asked: true, expires_at: row.expires_at });
@@ -573,17 +573,19 @@ let pushSender: Sender | null | undefined;
 export function setPushSender(s: Sender | null | undefined) { pushSender = s; }
 
 /// Tells the account's devices about a new ask with a push (APNs), besides realtime while the app
-/// runs. The push says only that an app asks, by the name it gives itself, and the request's id:
+/// runs. The push says only that there's a request, in fixed words, and the request's id:
 /// the device fetches the ask and checks it itself (number matching) before anything can be
 /// allowed. Tokens Apple says are gone are deleted. Without an APNs key, nothing is sent.
-export async function notifyDevices(sql: Sql, user: string, requestId: string, claimed: string): Promise<void> {
+export async function notifyDevices(sql: Sql, user: string, requestId: string): Promise<void> {
   const send = pushSender === undefined ? (pushSender = apnsSender()) : pushSender;
   if (!send) return;
   try {
     const tokens = await sql<{ token: string; environment: Environment }[]>`
-      select token, environment from public.device_tokens where user_id = ${user}`;
+      select token, environment from public.device_tokens
+      where user_id = ${user} and updated_at > now() - interval '90 days'`;
+    // Fixed words: not even the name the app gives itself, which anyone can choose.
     const payload = {
-      aps: { alert: { title: `Allow \u201C${claimed.slice(0, 60)}\u201D to use your notes?`, body: "Open Amber Notes to see the request." }, sound: "default", "thread-id": "connect" },
+      aps: { alert: { title: "An AI connection request", body: "Open Amber Notes to see it." }, sound: "default", "thread-id": "connect" },
       ask: requestId,
     };
     const outcomes = await Promise.all(tokens.map(async (t) => ({ t, outcome: await send({ token: t.token, environment: t.environment, payload, collapseId: requestId }) })));

@@ -392,6 +392,8 @@ struct AppGate: View {
             if CaptureScreen.setupFlow { playSetupFlow() }
         }
         .task(id: backend.state) {
+            // A sign-out that was offline removes this device's push token now.
+            if let client = backend.client { await PushRegistration.shared.retryPendingForget(service: SupabasePushTokens(client: client)) }
             guard case .signedIn = backend.state, let client = backend.client else {
                 setup.attach(account: nil, service: nil)
                 shareAsk.attach(account: nil, service: nil)

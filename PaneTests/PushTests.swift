@@ -66,7 +66,18 @@ private final class FakeTokens: PushTokenService {
         registered.append(params)
     }
 
-    func remove(device: UUID) async throws { removed.append(device) }
+    var forgotten: [String] = []
+    var removeFails = false
+
+    func remove(device: UUID) async throws {
+        if removeFails { throw URLError(.notConnectedToInternet) }
+        removed.append(device)
+    }
+
+    func forget(token: String) async throws {
+        if fails { throw URLError(.notConnectedToInternet) }
+        forgotten.append(token)
+    }
 }
 
 @MainActor @Suite struct PushRegistrationTests {
@@ -76,9 +87,30 @@ private final class FakeTokens: PushTokenService {
 
     private final class Calls { var register = 0, unregister = 0 }
 
-    private func registration(_ calls: Calls, environment: APNsEnvironment = .sandbox) -> PushRegistration {
+    private func registration(_ calls: Calls, environment: APNsEnvironment = .sandbox, defaults: UserDefaults = MemoryDefaults()) -> PushRegistration {
         PushRegistration(device: { device }, environment: { environment },
-                         system: .init(register: { calls.register += 1 }, unregister: { calls.unregister += 1 }))
+                         system: .init(register: { calls.register += 1 }, unregister: { calls.unregister += 1 }), defaults: defaults)
+    }
+
+    @Test func aSignOutThatWasOfflineForgetsTheTokenOnTheNextLaunch() async {
+        let calls = Calls(), service = FakeTokens(), defaults = MemoryDefaults()
+        let push = registration(calls, defaults: defaults)
+        await push.attach(account: UUID(), service: service)
+        await push.received(token: token)
+        service.removeFails = true
+        await push.signingOut()
+        #expect(service.removed.isEmpty && calls.unregister == 1)
+        // Next launch, still offline: kept for later.
+        let next = registration(Calls(), defaults: defaults)
+        service.fails = true
+        await next.retryPendingForget(service: service)
+        #expect(service.forgotten.isEmpty && defaults.string(forKey: PushRegistration.pendingForgetKey) == tokenHex)
+        // Online: forgotten, once.
+        service.fails = false
+        await next.retryPendingForget(service: service)
+        await next.retryPendingForget(service: service)
+        #expect(service.forgotten == [tokenHex])
+        #expect(defaults.string(forKey: PushRegistration.pendingForgetKey) == nil)
     }
 
     @Test func tokensAreLowercaseHex() {
