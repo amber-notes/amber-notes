@@ -725,6 +725,32 @@ end $$;
 revoke all on function public.publish_share(uuid, jsonb) from public, anon;
 grant execute on function public.publish_share(uuid, jsonb) to authenticated;
 
+-- An AI edited a shared note: the AI server has its text for that request, so the note's page is
+-- rewritten under every live link it's on (as a link's root or as an included sub-note). Links and
+-- page trees don't change here; the owner's device publishes those.
+create or replace function public.republish_note_text(p_note uuid, p_title text, p_body text) returns integer
+language plpgsql security definer set search_path = '' as $$
+declare
+  n integer := 0;
+  m integer := 0;
+begin
+  if auth.uid() is null then raise exception 'not signed in' using errcode = '42501'; end if;
+  if not exists (select 1 from public.notes where id = p_note and user_id = auth.uid() and deleted_at is null
+                 and trashed_at is null and locked_body is null) then
+    return 0;
+  end if;
+  update public.note_shares set title = left(coalesce(p_title, 'New Note'), 300), body = p_body, published_at = now()
+    where note_id = p_note and user_id = auth.uid() and revoked_at is null and published_at is not null;
+  get diagnostics n = row_count;
+  update public.note_share_pages p set title = left(coalesce(p_title, 'New Note'), 300), body = p_body
+    from public.note_shares s
+    where p.note_id = p_note and s.slug = p.slug and s.user_id = auth.uid() and s.revoked_at is null;
+  get diagnostics m = row_count;
+  return n + m;
+end $$;
+revoke all on function public.republish_note_text(uuid, text, text) from public, anon;
+grant execute on function public.republish_note_text(uuid, text, text) to authenticated;
+
 -- A readable copy of one file a shared page embeds (base64, at most 10 MB).
 create or replace function public.publish_share_file(p_slug text, p_attachment uuid, p_filename text, p_content_type text, p_content text)
 returns void
