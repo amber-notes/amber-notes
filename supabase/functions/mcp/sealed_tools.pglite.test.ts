@@ -135,6 +135,51 @@ Deno.test("an AI edit republishes only links the account's key verifies, and pag
   assertEquals(day1Copy, "Day 1\n\nMuseum");
 });
 
+// A page is in a shared tree only when both hold at every step from the root: the parent's sealed
+// text links it, and its parent_id is that parent. A link alone can point anywhere (a pasted link
+// to a private note); parent_id alone isn't sealed.
+Deno.test("an AI edit republishes a page only when the parent's text links it and its parent_id is that parent", async () => {
+  const pg = await schemaDB();
+  const a = await account(pg);
+  const plantedPage = (slug: string, noteId: string, parent: string) =>
+    pg.query(`insert into public.note_share_pages (slug, note_id, parent_id, title, body) values ($1, $2, $3, 'Old', 'Old')`, [slug, noteId, parent]);
+  const pageBody = async (slug: string, id: string) =>
+    (await pg.query<{ body: string }>(`select body from public.note_share_pages where slug = $1 and note_id = $2`, [slug, id])).rows[0]?.body;
+
+  const trip = await note(pg, a, "Trip\n\nLisbon");
+  const day1 = await note(pg, a, "Day 1\n\nMuseum", { parent: trip });
+  // Linked from the trip's text, but its parent_id isn't the trip: a private note linked by hand.
+  const pasted = await note(pg, a, "Pasted\n\nprivate");
+  // Under the trip by parent_id, but nothing links it.
+  const orphan = await note(pg, a, "Orphan\n\nprivate", { parent: trip });
+  // Linked from Day 1, but its parent_id is the trip, not Day 1.
+  const sideways = await note(pg, a, "Sideways\n\nprivate", { parent: trip });
+  const tripText = `Trip\n\nLisbon\n[Day 1](pane-note:${day1})\n[Pasted](pane-note:${pasted})`;
+  await edit(pg, a, trip, tripText);
+  await edit(pg, a, day1, `Day 1\n\nMuseum\n[Sideways](pane-note:${sideways})`);
+  const s = await share(pg, a, trip, { title: "Trip", body: tripText, pages: [{ id: day1, parent_id: trip, title: "Day 1", body: "Day 1\n\nMuseum" }] }, true);
+  await plantedPage(s.slug, pasted, trip);
+  await plantedPage(s.slug, orphan, trip);
+  await plantedPage(s.slug, sideways, day1);
+
+  for (const id of [pasted, orphan, sideways]) {
+    await tool(pg, a, "replace_note_body", { id, body: "Changed\n\nstill private" });
+    assertEquals(await pageBody(s.slug, id), "Old", id);
+  }
+  // Both at once: republished.
+  await tool(pg, a, "replace_note_body", { id: day1, body: `Day 1\n\nMuseum, closed\n[Sideways](pane-note:${sideways})` });
+  assertEquals(await pageBody(s.slug, day1), `Day 1\n\nMuseum, closed\n[Sideways](pane-note:${sideways})`);
+
+  // Opening the tree is a scan: with the budget spent, an edit of a page waits like a search does,
+  // and nothing is saved. A shared root needs no tree and still saves.
+  await app(pg, a.id, `select public.pane_scan_budget(40000)`);
+  const e = await assertRejects(() => tool(pg, a, "replace_note_body", { id: day1, body: "Day 1\n\nLater" }), ToolError);
+  assertEquals(e.message, "Your AI has searched a lot in the last minute. Try again shortly.");
+  assertEquals((await opened(pg, a, day1)).body, `Day 1\n\nMuseum, closed\n[Sideways](pane-note:${sideways})`);
+  await tool(pg, a, "append_to_note", { id: trip, text: "Rain" });
+  assertStringIncludes((await copyOf(pg, s.slug)).body, "Rain");
+});
+
 Deno.test("lists hide sub-notes a live parent links, by opening the parents", async () => {
   const pg = await schemaDB();
   const a = await account(pg);
