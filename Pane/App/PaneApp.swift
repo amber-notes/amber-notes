@@ -520,7 +520,7 @@ private struct WindowCloser: NSViewRepresentable {
 
 /// Captures only (`-uitest`): one screen on its own, or the setup card at a given step, so the
 /// iPhone simulator can show them without anyone tapping through.
-///   `-captureScreen connect`, `connect-chatgpt`, `connect-claude`, `connected-chatgpt` or `signin`; `-captureSetup 1…4` (4: the moment after your AI's first edit).
+///   `-captureScreen connect`, `connect-chatgpt`, `connect-claude`, `connected-chatgpt`, `connect-incredible` or `signin`; `-captureSetup 1…4` (4: the moment after your AI's first edit).
 struct CaptureScreen: View {
     let name: String
     let backend: Backend
@@ -566,6 +566,15 @@ struct CaptureScreen: View {
                 #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)
                 #endif
+            }
+        case "connect-incredible", "connected-incredible":
+            NavigationStack {
+                Form { IncredibleGuide(client: Self.client, connected: name.hasPrefix("connected-")) }
+                    .formStyle(.grouped)
+                    .navigationTitle("Connect Incredible")
+                    #if os(iOS)
+                    .navigationBarTitleDisplayMode(.inline)
+                    #endif
             }
         case let guide where guide.hasPrefix("connect-") || guide.hasPrefix("connected-"):
             // Connect ChatGPT or Claude, as the guide sheet shows it, or just after Allow.

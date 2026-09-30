@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// The app marks of the AIs people connect (from Simple Icons, as on the website).
+/// The app marks of the AIs people connect (from Simple Icons, as on the website; Incredible's
+/// from its own brand files).
 struct AIGlyph: View {
     let ai: String
     var size: CGFloat = 16
@@ -29,6 +30,7 @@ struct AIGlyph: View {
         switch ai {
         case "ChatGPT", "Codex": "AIGlyphOpenAI"
         case "Claude", "Claude Code": "AIGlyphClaude"
+        case "Incredible": "AIGlyphIncredible"
         default: nil
         }
     }
@@ -36,6 +38,7 @@ struct AIGlyph: View {
     static func color(_ ai: String) -> Color {
         switch ai {
         case "Claude", "Claude Code": Color(red: 0.851, green: 0.467, blue: 0.341)
+        case "Incredible": Color(red: 1, green: 0.435, blue: 0.129) // #FF6F21, Incredible's mark
         default: .primary
         }
     }

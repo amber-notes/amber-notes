@@ -488,7 +488,7 @@ struct ConnectAISection: View {
     @State private var error: String?
 
     enum Guide: String, Identifiable, CaseIterable {
-        case chatgpt, claude, claudeCode, codex
+        case chatgpt, claude, claudeCode, codex, incredible
         var id: String { rawValue }
         var title: String {
             switch self {
@@ -496,6 +496,7 @@ struct ConnectAISection: View {
             case .claude: "Claude"
             case .claudeCode: "Claude Code"
             case .codex: "Codex"
+            case .incredible: "Incredible"
             }
         }
         var subtitle: String {
@@ -504,6 +505,7 @@ struct ConnectAISection: View {
             case .claude: "Added once in Claude on the web or desktop, then works in its apps"
             case .claudeCode: "Adds Amber Notes to Claude Code on this Mac"
             case .codex: "Adds Amber Notes to Codex"
+            case .incredible: "Connected once in Incredible on your computer"
             }
         }
         /// Where it's done, in the AI's own words (as on the website).
@@ -513,6 +515,7 @@ struct ConnectAISection: View {
             case .claude: "Add custom connector"
             case .claudeCode: "claude mcp add amber-notes"
             case .codex: "~/.codex/config.toml"
+            case .incredible: "Apps → Amber Notes → Connect"
             }
         }
     }
@@ -700,6 +703,8 @@ private struct GuideSheet: View {
                 intro: "Codex gets its own access token, sent in a request header.",
                 snippet: token.map { ConnectSnippets.codex(url: server, token: $0) },
                 note: "Add this to ~/.codex/config.toml. It's shown once; keep it private.")
+        case .incredible:
+            IncredibleGuide(client: client)
         }
     }
 
