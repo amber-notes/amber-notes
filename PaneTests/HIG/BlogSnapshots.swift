@@ -23,5 +23,19 @@ import Testing
                                                     size: CGSize(width: 560, height: 560), dark: false)
         }
     }
+
+    /// The same guides, and the Connect an AI list, laid out narrow (about a blog card's width), so
+    /// a card's picture shows whole lines at full size instead of a shrunken window.
+    @Test func narrowForCards() async throws {
+        guard let dir = AppSnapshotTests.dir else { return }
+        let client = SupabaseClient(supabaseURL: URL(string: "http://127.0.0.1:9")!, supabaseKey: "test")
+        let size = CGSize(width: 340, height: 560)
+        for plan in [WebConnectPlan.chatgpt, .claude] {
+            let view = Form { WebConnectGuide(plan: plan, client: client) }.formStyle(.grouped).frame(width: size.width, height: size.height)
+            try await VersionHistorySnapshots.shoot(view, to: dir.appending(path: "card-connect-\(plan.ai.lowercased()).png"), size: size, dark: false)
+        }
+        let list = Form { ConnectAISection(client: client) }.formStyle(.grouped).frame(width: size.width, height: size.height)
+        try await VersionHistorySnapshots.shoot(list, to: dir.appending(path: "card-connect-list.png"), size: size, dark: false)
+    }
 }
 #endif

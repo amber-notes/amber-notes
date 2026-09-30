@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import b from "./blog.module.css";
-import { AUTHOR, categoryAnchor, type CoverArt, type Ground, type Post, type Shot } from "./posts";
+import { AUTHOR, categoryAnchor, type Ground, type Post, type Shot, type Thumb } from "./posts";
 
 /// The blog's shared pieces: a capture in a Mac window, the desk it sits on, the byline and the card.
 
@@ -26,6 +26,7 @@ export function Window({ shot, priority = false }: { shot: Shot; priority?: bool
       loading={priority ? "eager" : "lazy"} decoding="async" fetchPriority={priority ? "high" : undefined} />
   );
   if (shot.window) return <div className={b.captured} style={style}>{img}</div>;
+  if (shot.phone) return <div className={b.phone} style={{ "--w": `${Math.round((560 * shot.width) / shot.height)}px` } as React.CSSProperties}>{img}</div>;
   return (
     <div className={b.window} style={style}>
       <div className={b.bar} aria-hidden="true">
@@ -47,24 +48,12 @@ export function Figure({ shot, caption, priority, ground = "soft" }: { shot: Sho
   );
 }
 
-/// A card's picture: real captures placed on the post's ground. Each post composes its own (see
-/// lib/posts.ts), with the same corners and the same light, so they read as one family.
-export function Cover({ art }: { art: CoverArt }) {
+/// A card's picture: the post's one focal capture on its ground, filling the top of the card edge to
+/// edge (the card's corners clip it) and running off the bottom. Shown at about full size.
+export function ThumbArt({ thumb }: { thumb: Thumb }) {
   return (
-    <div className={`${b.cover} ${b.ground}`} data-ground={art.ground} aria-hidden="true">
-      {art.layers.map((l, i) => {
-        const place = { left: `${l.left}%`, top: `${l.top}%`, width: `${l.size}%` } as React.CSSProperties;
-        const img = <img src={l.src} alt="" width={l.width / 2} height={l.height / 2} loading="lazy" decoding="async" />;
-        if (l.frame === "window") {
-          return (
-            <div key={i} className={`${b.layer} ${b.window}`} data-dark={l.dark || undefined} style={place}>
-              <div className={b.bar}><span className={b.lights}><i /><i /><i /></span>{l.title && <span className={b.barTitle}>{l.title}</span>}</div>
-              {img}
-            </div>
-          );
-        }
-        return <div key={i} className={`${b.layer} ${l.frame === "card" ? b.card2 : l.frame === "art" ? b.art : b.bare}`} style={place}>{img}</div>;
-      })}
+    <div className={`${b.thumb} ${b.ground}`} data-ground={thumb.ground} aria-hidden="true">
+      <img src={thumb.src} alt="" width={thumb.width / 2} height={thumb.height / 2} loading="lazy" decoding="async" />
     </div>
   );
 }
@@ -78,7 +67,7 @@ export function PostCard({ post, heading = "h2" }: { post: Post; heading?: "h2" 
   const H = heading;
   return (
     <a className={b.card} href={`/blog/${post.slug}`} data-category={categoryAnchor(post.category)}>
-      <Cover art={post.cover} />
+      <ThumbArt thumb={post.thumb} />
       <span className={b.cardText}>
         <span className={b.label}>{post.category}</span>
         <H className={b.cardTitle}>{post.title}</H>

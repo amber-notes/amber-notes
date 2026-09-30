@@ -125,7 +125,7 @@ export function PostPage({ slug, intro, faq, children }: { slug: string; intro: 
 
         <div className={`${legal.article} ${p.body} rise`} style={{ "--i": 1 } as React.CSSProperties}>
           <p className={p.intro}>{intro}</p>
-          <Figure shot={x.image} ground={x.cover.ground} priority />
+          <Figure shot={x.image} ground={x.thumb.ground} priority />
           {children}
           {faq?.length ? (
             <>
