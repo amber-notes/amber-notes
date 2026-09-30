@@ -61,7 +61,9 @@ html[data-theme] ::selection { background: var(--mark); }
 .site-nav a.site-cta[aria-current="page"] { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px var(--amber); }
 /* Narrower screens drop the stars, then the text links; the brand and the Download button always stay. */
 @media (max-width: 760px) { .site-stars { display: none; } .site-header { height: 72px; } }
-@media (max-width: 600px) { .site-nav a:not(.site-cta):not(.site-gh) { display: none; } .site-cta .site-cta-long { display: none; } }
+/* The text links go before the header runs out of room (Blog, Changelog and Help need about 780 px). */
+@media (max-width: 800px) { .site-nav a:not(.site-cta):not(.site-gh) { display: none; } }
+@media (max-width: 600px) { .site-cta .site-cta-long { display: none; } }
 @media (max-width: 430px) { .site-badge { display: none; } }
 @media (min-width: 601px) { .site-cta .site-cta-short { display: none; } }
 @media (max-width: 360px) { .site-brand { font-size: 17px; gap: 9px; } .site-brand img { width: 30px; height: 30px; } .site-nav a.site-cta { padding: 0 14px; } }
