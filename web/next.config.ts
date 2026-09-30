@@ -44,6 +44,9 @@ const config: NextConfig = {
   // get one) must find those files in the function bundle, or the post fails with ENOENT.
   outputFileTracingIncludes: { "/blog/*": ["./app/blog/**/page.tsx"] },
   poweredByHeader: false,
+  // The MCP proxy (middleware.ts) forwards the query exactly as sent. Without this, req.url in
+  // middleware has 127.0.0.1 and [::1] turned into "localhost", query included.
+  skipMiddlewareUrlNormalize: true,
   async redirects() {
     return [
       ...MOVED.map((source) => ({
