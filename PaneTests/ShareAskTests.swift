@@ -206,7 +206,8 @@ import Testing
             #expect(s.visible == (choice != .dismissed), "Not now closes it at once")
             s.closed()
             #expect(s.sent == ["shown", choice.rawValue])
-            try? await Task.sleep(for: .milliseconds(50))
+            // The answer goes to the server in the background: wait for it (slow CI runners need more than a moment).
+            for _ in 0 ..< 200 where service.answered != choice { try? await Task.sleep(for: .milliseconds(10)) }
             #expect(service.answered == choice, "the server keeps the answer for every device")
             // Weeks later, on this device: never again.
             s.moment(setupVisible: false, tipShowing: false, now: later.addingTimeInterval(30 * Self.day))
