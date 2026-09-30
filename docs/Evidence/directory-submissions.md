@@ -34,7 +34,7 @@ Status meanings:
 | Remote server over Streamable HTTP | [build](https://claude.com/docs/connectors/building/index) | done (`index.ts`, JSON responses) |
 | Every tool has a `title`, plus `readOnlyHint: true` if it only reads and `destructiveHint: true` if it modifies or deletes data | [review criteria](https://claude.com/docs/connectors/building/review-criteria), [policy 5.E](https://support.claude.com/en/articles/13145358-anthropic-software-directory-policy) | done (this branch: explicit hints on every tool, and edit_note, restore_revision and log_table_row are now destructive) |
 | Tool names are 64 characters or fewer | [policy 5.C](https://support.claude.com/en/articles/13145358-anthropic-software-directory-policy) | done (checked in `annotations.test.ts`) |
-| Descriptions say what the tool does, not how Claude should behave | [review criteria](https://claude.com/docs/connectors/building/review-criteria) | mcp-web: `tools.ts:37` says "Start here.", and mcp-web's draft says "Call this first." mcp-web was asked to drop both. |
+| Descriptions say what the tool does, not how Claude should behave | [review criteria](https://claude.com/docs/connectors/building/review-criteria) | mcp-web: fixed in PR 20, which replaces "Start here." (`tools.ts:36`) with a plain description. |
 | Reads and writes are separate tools, with no catch-all request tool | [review criteria](https://claude.com/docs/connectors/building/review-criteria) | done |
 | Errors are actionable, not a bare "Bad Request" | [review criteria](https://claude.com/docs/connectors/building/review-criteria) | done (every ToolError names the fix, e.g. "No note titled … Close matches: …") |
 | Responses are "frugal with tokens". Results can be up to about 150k characters on claude.ai and 25k tokens in Claude Code. | [policy 5.B](https://support.claude.com/en/articles/13145358-anthropic-software-directory-policy), [build](https://claude.com/docs/connectors/building/index) | done (this branch: read_note and fetch cap at 60k characters and return `truncated` with `next_start_line`) |
@@ -93,9 +93,9 @@ The server is `supabase/functions/mcp/`. Line numbers are for this branch.
 | Gap | Where | Fix |
 |---|---|---|
 | Read tools had no `destructiveHint`, which OpenAI requires explicitly | `tools.ts:30` | `read` now states `destructiveHint: false, idempotentHint: true` |
-| edit_note, restore_revision and log_table_row were marked non-destructive, although all three overwrite existing text or a table row | `tools.ts:87`, `:164`, `:202` | `overwrite` annotations (`destructiveHint: true`) |
-| No per-tool `securitySchemes` | `tools.ts:18`, `:223` | oauth2 with `notes:read` for readers and `notes:write` for writers |
-| read_note and fetch returned the whole note, up to 5 MB | `tools.ts:456`, `:723` | Capped at 60k characters on whole lines, returning `truncated`, `lines` and `next_start_line` (`fitLines` in `notes.ts`) |
+| edit_note, restore_revision and log_table_row were marked non-destructive, although all three overwrite existing text or a table row | `tools.ts:86`, `:163`, `:201` | `destructiveHint: true`, and the matching `kind: "destructive"` in `web/lib/mcp-tools.ts` (the site's tool list, checked against tools.ts by `mcp-tools.test.ts`) |
+| No per-tool `securitySchemes` | `tools.ts:18`, `:222` | oauth2 with `notes:read` for readers and `notes:write` for writers |
+| read_note and fetch returned the whole note, up to 5 MB | `tools.ts:455`, `:722` | Capped at 60k characters on whole lines, returning `truncated`, `lines` and `next_start_line` (`fitLines` in `notes.ts`) |
 | Nothing served OpenAI's domain challenge | `index.ts:63`, `verification.ts` | `/.well-known/openai-apps-challenge` answers with the `OPENAI_APPS_CHALLENGE` secret as plain text, or 404 when it isn't set |
 
 Tests, none of which need Docker:
@@ -110,7 +110,7 @@ CI now runs all three.
 | Gap | Where | Owner |
 |---|---|---|
 | Consent goes only to the app | `oauth.ts:279` | mcp-web |
-| "Start here." tells the model how to behave | `tools.ts:37` | mcp-web (asked to use "An overview of the person's Amber Notes: …" with no "Call this first") |
+| "Start here." tells the model how to behave | `tools.ts:36` | mcp-web: fixed in PR 20 (commit 47b80fc) |
 | The MCP address is on supabase.co | `web/lib/facts.ts:7`, app Settings | mcp-web |
 | The privacy policy says approval happens only in the app | `docs/privacy-policy.md:81` | mcp-web, once web consent ships |
 
@@ -118,7 +118,7 @@ CI now runs all three.
 
 | Gap | Where | Why it matters |
 |---|---|---|
-| `search` and `fetch` return `url: pane://note/<id>`, a scheme nothing handles (the app registers only `ambernotes://`, `project.yml:67`) | `tools.ts:717`, `:725` | ChatGPT shows this as the source link, and a reviewer who clicks it gets nothing. There are two fixes: handle `ambernotes://note/<id>` in the app and return that, or drop `url`. I'd make the app handle `ambernotes://note/<id>`, since opening the note from a ChatGPT answer is useful on its own. |
+| `search` and `fetch` return `url: pane://note/<id>`, a scheme nothing handles (the app registers only `ambernotes://`, `project.yml:67`) | `tools.ts:716`, `:724` | ChatGPT shows this as the source link, and a reviewer who clicks it gets nothing. There are two fixes: handle `ambernotes://note/<id>` in the app and return that, or drop `url`. I'd make the app handle `ambernotes://note/<id>`, since opening the note from a ChatGPT answer is useful on its own. |
 | The file header still says "Pane's MCP server" | `index.ts:1` | Cosmetic, and reviewers don't see it. |
 
 **Checked and fine**

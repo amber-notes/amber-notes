@@ -29,7 +29,6 @@ const noteRef = {
 // overwrite or remove what's there is destructive, even though history can undo it.
 const read = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } as const;
 const write = { readOnlyHint: false, destructiveHint: false, openWorldHint: false } as const;
-const overwrite = { ...write, destructiveHint: true } as const;
 
 export const tools: Tool[] = ([
   {
@@ -84,7 +83,7 @@ export const tools: Tool[] = ([
       },
       required: ["edits"],
     },
-    annotations: overwrite,
+    annotations: { ...write, destructiveHint: true },
   },
   {
     name: "append_to_note", title: "Add to a note",
@@ -161,7 +160,7 @@ export const tools: Tool[] = ([
     name: "restore_revision", title: "Restore an earlier version",
     description: "Puts an earlier version (from note_history) back as the note's body. The current body is kept in history too.",
     inputSchema: { type: "object", properties: { ...noteRef, revision_id: int("Revision id from note_history.") }, required: ["revision_id"] },
-    annotations: overwrite,
+    annotations: { ...write, destructiveHint: true },
   },
   {
     name: "create_sub_note", title: "Create a sub-note",
@@ -199,7 +198,7 @@ export const tools: Tool[] = ([
       },
       required: ["values"],
     },
-    annotations: overwrite,
+    annotations: { ...write, destructiveHint: true },
   },
   {
     name: "delete_table_row", title: "Delete a row",
