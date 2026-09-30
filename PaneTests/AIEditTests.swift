@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import SwiftData
 import Testing
@@ -183,16 +184,21 @@ import Testing
         #expect(AIEditStore(file: file)[id] == .init())
     }
 
-    @Test func theServersColumnsAreReadButNeverSent() throws {
-        let json = #"{"id":"6d1f2c9a-1b7e-4c3a-9f0e-2a4b8c1d7e55","body":"x","is_pinned":false,"created_at":"2026-09-29T10:00:00Z","updated_at":"2026-09-29T10:00:00Z","ai_editor":"ChatGPT","ai_edited_at":"2026-09-29T11:48:00Z"}"#
-        let d = JSONDecoder()
-        d.dateDecodingStrategy = .iso8601
-        let row = try d.decode(NoteDTO.self, from: Data(json.utf8))
-        #expect(row.ai_editor == "ChatGPT" && row.ai_edited_at != nil)
-        let e = JSONEncoder()
-        e.dateEncodingStrategy = .iso8601
-        let sent = String(decoding: try e.encode(row), as: UTF8.self)
-        #expect(!sent.contains("ai_editor") && !sent.contains("ai_edited_at"))
+    @Test func theServersColumnsAreReadButNeverSent() async throws {
+        try await Wire.$testSealer.withValue(Sealer(key: .init(size: .bits256), user: UUID())) {
+            let id = UUID(uuidString: "6d1f2c9a-1b7e-4c3a-9f0e-2a4b8c1d7e55")!
+            let body = try #require(Wire.sealer?.seal("x", context: E2EE.body(id)))
+            let head = try #require(Wire.sealer?.sealHead(.of("x"), note: id))
+            let json = #"{"id":"6d1f2c9a-1b7e-4c3a-9f0e-2a4b8c1d7e55","body_ct":"\#(body)","head_ct":"\#(head)","is_pinned":false,"created_at":"2026-09-29T10:00:00Z","updated_at":"2026-09-29T10:00:00Z","ai_editor":"ChatGPT","ai_edited_at":"2026-09-29T11:48:00Z"}"#
+            let d = JSONDecoder()
+            d.dateDecodingStrategy = .iso8601
+            let row = try d.decode(NoteDTO.self, from: Data(json.utf8))
+            #expect(row.ai_editor == "ChatGPT" && row.ai_edited_at != nil && row.body == "x")
+            let e = JSONEncoder()
+            e.dateEncodingStrategy = .iso8601
+            let sent = String(decoding: try e.encode(row), as: UTF8.self)
+            #expect(!sent.contains("ai_editor") && !sent.contains("ai_edited_at"))
+        }
     }
 }
 

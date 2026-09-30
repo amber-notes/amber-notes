@@ -311,7 +311,7 @@ private let fast = 1_000
         #expect(NoteCrypto.keyID(of: a.lockedBody ?? "") == newKeyID && NoteCrypto.keyID(of: b.lockedBody ?? "") == newKeyID)
         // `a` went to the server with the new setup, in the same call; `b` goes up with the next push.
         let sent = await remote.resealed
-        #expect(sent.map(\.id) == [a.id] && sent.first?.version == 3 && sent.first?.locked_body == a.lockedBody && sent.first?.body == "One")
+        #expect(sent.map(\.id) == [a.id] && sent.first?.version == 3 && sent.first?.locked_body == a.lockedBody && sent.first?.title == "One")
         #expect(a.serverVersion == 4 && !a.dirty)
         #expect(b.dirty && !open.dirty)
         #expect(await remote.settings?.previous.last?.proof != nil, "the new setup carries a proof of the old key")
@@ -412,42 +412,48 @@ private let fast = 1_000
 }
 
 extension NetworkFaults {
-/// What goes over the wire for a locked note. With the sync tests: it sets the global
-/// `NoteDTO.sendsLock` they rely on.
-@MainActor @Suite struct LockedNoteWireTests {
+/// What goes over the wire for a locked note: its sealed text as always, no body, and its title
+/// sealed with the account's key as the head.
+@MainActor @Suite(.sealedAccount) struct LockedNoteWireTests {
     @Test func theSealedTextGoesUpAndComesBack() throws {
         let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
         let n = ModelContext(c).createNote(in: .all, body: "Bank")
         n.lockedBody = "amb2.0123456789abcdef.AAAA"
-        let sent = try JSONSerialization.jsonObject(with: JSONEncoder().encode(NoteDTO(n))) as? [String: Any]
-        #expect(sent?["body"] as? String == "Bank")
-        #expect(sent?["locked_body"] as? String == "amb2.0123456789abcdef.AAAA")
+        let sent = try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(NoteDTO(n))) as? [String: Any])
+        #expect(sent["body"] == nil && sent["body_ct"] is NSNull)
+        #expect(sent["locked_body"] as? String == "amb2.0123456789abcdef.AAAA")
+        let head = try #require(sent["head_ct"] as? String)
+        #expect(Wire.sealer?.openHead(head, note: n.id) == NoteHead(title: "Bank"), "a locked note's head is its title only")
         let patch = try JSONSerialization.jsonObject(with: JSONEncoder().encode(NoteDTO(n).patch)) as? [String: Any]
         #expect(patch?["locked_body"] as? String == "amb2.0123456789abcdef.AAAA")
+        let back = try JSONDecoder().decode(NoteDTO.self, from: JSONSerialization.data(withJSONObject: sent))
+        #expect(back.body == "Bank" && !back.unreadable)
         var row = NoteDTO(n)
         #expect(SyncEngine.same(row, n))
         row.locked_body = "amb2.0123456789abcdef.BBBB"
         #expect(!SyncEngine.same(row, n), "a new sealed text is a change")
     }
 
-    @Test func removingALockSendsTheEmptyColumnOnlyForAnAccountThatLocks() throws {
+    @Test func removingALockSendsTheEmptyColumn() throws {
         let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
         let n = ModelContext(c).createNote(in: .all, body: "Plain")
-        let was = NoteDTO.sendsLock
-        defer { NoteDTO.sendsLock = was }
-        NoteDTO.sendsLock = false
-        let old = try JSONSerialization.jsonObject(with: JSONEncoder().encode(NoteDTO(n).patch)) as? [String: Any]
-        #expect(old?.keys.contains("locked_body") == false, "a server without the column never sees it")
-        NoteDTO.sendsLock = true
         let new = try JSONSerialization.jsonObject(with: JSONEncoder().encode(NoteDTO(n).patch)) as? [String: Any]
         #expect(new?.keys.contains("locked_body") == true && new?["locked_body"] is NSNull)
+    }
+
+    /// A password change sends each locked note's title as a sealed head, never readable.
+    @Test func aPasswordChangeSendsTheTitleSealed() throws {
+        let id = UUID()
+        let sent = try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(ResealedNote(id: id, version: 3, title: "Bank PINs", locked_body: "amb2.0123456789abcdef.AAAA"))) as? [String: Any])
+        #expect(Set(sent.keys) == ["id", "version", "head_ct", "locked_body"])
+        #expect(Wire.sealer?.openHead(try #require(sent["head_ct"] as? String), note: id)?.title == "Bank PINs")
     }
 }
 }
 
 extension NetworkFaults {
 /// A note locked on one device, through sync (against StubSupabase) to another.
-@MainActor @Suite struct LockedNoteSyncTests {
+@MainActor @Suite(.sealedAccount) struct LockedNoteSyncTests {
     struct Device {
         let context: ModelContext
         let engine: SyncEngine
@@ -470,20 +476,24 @@ extension NetworkFaults {
         return Device(context: context, engine: engine, vault: vault)
     }
 
-    /// Everything on the server, as one string, to look for text that must not be there.
+    /// Everything on the server that the account's key opens (what an AI connection could read),
+    /// with the rows themselves, as one string, to look for text that must not be there.
     func serverText() throws -> String {
-        String(decoding: try JSONSerialization.data(withJSONObject: StubSupabase.rows("notes")), as: UTF8.self)
+        let rows = StubSupabase.rows("notes")
+        let opened = rows.compactMap { r -> String? in
+            guard let id = (r["id"] as? String).flatMap(UUID.init(uuidString:)) else { return nil }
+            let body = (r["body_ct"] as? String).flatMap { Wire.sealer?.open($0, context: E2EE.body(id)) } ?? ""
+            let head = (r["head_ct"] as? String).flatMap { Wire.sealer?.openHead($0, note: id) }
+            return [body, head?.title ?? "", head?.preview ?? ""].joined(separator: "\n")
+        }
+        return String(decoding: try JSONSerialization.data(withJSONObject: rows), as: UTF8.self) + opened.joined(separator: "\n")
     }
 
     func copies(_ d: Device) throws -> [Note] {
         try d.context.fetch(FetchDescriptor<Note>()).filter { $0.title.contains("(conflicted copy)") }
     }
 
-    /// Runs `body` with the account sending locked_body (the app's vault sets this for real).
     func locking(_ body: () async throws -> Void) async rethrows {
-        let was = NoteDTO.sendsLock
-        NoteDTO.sendsLock = true
-        defer { NoteDTO.sendsLock = was }
         try await body()
     }
 
@@ -498,7 +508,8 @@ extension NetworkFaults {
             #expect(!n.dirty)
 
             let row = try #require(StubSupabase.note(n.id))
-            #expect(row["body"] as? String == "Bank")
+            #expect(Wire.sealer?.openHead(try #require(row["head_ct"] as? String), note: n.id)?.title == "Bank")
+            #expect(row["body_ct"] is NSNull)
             let sealed = try #require(row["locked_body"] as? String)
             #expect(serverAccepts(sealed) && sealed.hasPrefix("amb2."))
             #expect(try !serverText().contains("PIN") && !serverText().contains("1234"), "the server has no plaintext")
@@ -566,7 +577,7 @@ extension NetworkFaults {
             StubSupabase.edit(n.id, body: "Plan\n\ntheirs", updatedAt: .now.addingTimeInterval(30))
             await mac.engine.sync()
             #expect(n.dirty && n.isLocked)
-            #expect(StubSupabase.note(n.id)?["body"] as? String == "Plan\n\ntheirs", "nothing went up")
+            #expect(StubSupabase.body(n.id) == "Plan\n\ntheirs", "nothing went up")
             #expect(try copies(mac).isEmpty)
             if case .offline(let why) = mac.engine.status { #expect(why.contains("notes password")) } else { Issue.record("says why it's waiting") }
 

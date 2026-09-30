@@ -8,7 +8,7 @@ extension NetworkFaults {
 /// Near-live sync between two devices on one account, in one process: each has its own library
 /// and sync engine, both talk to the stub server through the fault layer, and "realtime" hands
 /// each server write to the other device a moment later (the real socket needs the local stack).
-@MainActor @Suite struct TwoDeviceLiveSyncTests {
+@MainActor @Suite(.sealedAccount) struct TwoDeviceLiveSyncTests {
     struct Device {
         let context: ModelContext
         let engine: SyncEngine
@@ -112,7 +112,7 @@ extension NetworkFaults {
         // Let the tail arrive (a failed push is retried by the next change or the minute pull).
         let end = Date.now.addingTimeInterval(8)
         while m.body != n.body, Date.now < end {
-            if StubSupabase.note(n.id)?["body"] as? String != n.body { await phone.engine.sync(pulling: false) }
+            if StubSupabase.body(n.id) != n.body { await phone.engine.sync(pulling: false) }
             try? await Task.sleep(for: .milliseconds(50))
         }
         running = false

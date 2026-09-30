@@ -82,13 +82,15 @@ final class Backend {
         }
     }
 
-    /// Tests: a client (on a stubbed network) that counts as signed in.
-    init(testClient: SupabaseClient, email: String) {
+    /// Tests: a client (on a stubbed network) that counts as signed in, as `userID` when given.
+    init(testClient: SupabaseClient, email: String, userID: UUID? = nil) {
         client = testClient
         state = .signedIn(email: email)
+        testUserID = userID
     }
 
-    var userID: UUID? { client?.auth.currentUser?.id }
+    private var testUserID: UUID?
+    var userID: UUID? { testUserID ?? client?.auth.currentUser?.id }
 
     /// What this build can do, for the server: seal locked notes, and read and write encrypted accounts.
     static let clientTag = "lock-aware/1 e2ee/1"

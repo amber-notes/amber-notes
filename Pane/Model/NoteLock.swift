@@ -150,23 +150,17 @@ struct ResealedNote: Encodable, Sendable {
     var id: UUID
     /// The server version the note was at; the change fails if it moved on.
     var version: Int64
-    var body: String
+    /// Its title, which goes sealed with the account's key as the note's head.
+    var title: String
     var locked_body: String
 
-    enum CodingKeys: String, CodingKey { case id, version, body, head_ct, locked_body }
+    enum CodingKeys: String, CodingKey { case id, version, head_ct, locked_body }
 
-    /// In an encrypted account the title goes sealed, as the note's head.
     func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(id, forKey: .id)
         try c.encode(version, forKey: .version)
-        if let sealer = E2EE.sealer {
-            guard let head = sealer.sealHead(NoteHead(title: body, preview: ""), note: id) else { throw Wire.Unsealable() }
-            try c.encodeNil(forKey: .body)
-            try c.encode(head, forKey: .head_ct)
-        } else {
-            try c.encode(body, forKey: .body)
-        }
+        try c.encode(Wire.seal(head: Wire.head(body: title, locked: true), id), forKey: .head_ct)
         try c.encode(locked_body, forKey: .locked_body)
     }
 }
@@ -235,8 +229,7 @@ final class NoteVault {
     private let iterations: Int
     @ObservationIgnored private var idleWatch: Task<Void, Never>?
 
-    /// The app's vault tells sync whether this account locks notes (`NoteDTO.sendsLock`); vaults
-    /// made in tests leave that alone.
+    /// The app's vault nudges sync when the key arrives; vaults made in tests leave that alone.
     private let drivesSync: Bool
 
     init(keyStore: LockKeyStore, remote: NoteLockRemote? = nil, defaults: UserDefaults = .standard,
@@ -291,21 +284,15 @@ final class NoteVault {
         }
     }
 
-    private func publish() {
-        if drivesSync { NoteDTO.sendsLock = settings != nil }
-    }
-
     private func load() {
         let key = "noteLock.trusted.\(account)"
         trusted = defaults.data(forKey: key).flatMap { try? JSONDecoder().decode([LockSettings].self, from: $0) } ?? []
         settings = trusted.last
-        publish()
     }
 
     private func store() {
         if let s = settings, trusted.last?.key_id != s.key_id { trusted.append(s) } else if let s = settings { trusted[trusted.count - 1] = s }
         defaults.set(try? JSONEncoder().encode(trusted), forKey: "noteLock.trusted.\(account)")
-        publish()
     }
 
     // MARK: Password
@@ -424,7 +411,7 @@ final class NoteVault {
         var versions: [UUID: Int64] = [:]
         if let remote {
             let onServer = resealed.filter { $0.0.serverVersion > 0 }
-                .map { ResealedNote(id: $0.0.id, version: $0.0.serverVersion, body: $0.2, locked_body: $0.1) }
+                .map { ResealedNote(id: $0.0.id, version: $0.0.serverVersion, title: $0.2, locked_body: $0.1) }
             do { versions = try await remote.changePassword(fresh.settings, expecting: s.key_id, notes: onServer) }
             catch let e as NoteLockError { throw e } catch { throw NoteLockError.offline }
         }
@@ -492,8 +479,14 @@ final class NoteVault {
 
     /// Why a note can't be locked, or nil. Files and sub-notes live outside the note's text, so
     /// they'd stay readable: like Apple Notes with some attachments, those notes can't be locked.
+    /// The server can't read a note to check this, so the apps are the only guard.
     static func blocker(for note: Note) -> NoteLockError? {
-        note.body.contains("pane-file:") || note.body.contains("pane-note:") ? .hasFilesOrSubNotes : nil
+        if note.body.contains("pane-file:") || note.body.contains("pane-note:") { return .hasFilesOrSubNotes }
+        // A sub-note whose link was cut from the text is still this note's sub-note.
+        let id = note.id
+        let children = FetchDescriptor<Note>(predicate: #Predicate { $0.parentID == id && $0.deletedAt == nil })
+        if let context = note.modelContext, ((try? context.fetchCount(children)) ?? 0) > 0 { return .hasFilesOrSubNotes }
+        return nil
     }
 
     /// Seals the note's text. Its earlier versions are deleted on the server when this syncs.

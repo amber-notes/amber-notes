@@ -5,7 +5,8 @@ import SwiftData
 /// One version of a note: the text it had at some point, who wrote it and when.
 ///
 /// The server keeps a note's earlier texts in `note_revisions` (thinned as they age, see
-/// 20260929200000_version_history.sql). The current text is a version too, shown first.
+/// 20260929200000_version_history.sql), sealed like the note; they're opened on the device.
+/// The current text is a version too, shown first.
 struct NoteVersion: Identifiable, Hashable, Sendable {
     /// The note's version number when it had this text.
     var version: Int64
@@ -262,20 +263,26 @@ final class SupabaseHistoryStore: NoteHistoryStore {
 
     func body(of note: UUID, version: Int64) async throws -> String {
         if let b = bodies[version] { return b }
-        struct Row: Decodable { var body: String?; var body_ct: String? }
-        let rows: [Row] = try await client.from("note_revisions").select(E2EE.sealer == nil ? "body" : "body,body_ct")
+        struct Row: Decodable { var body_ct: String?; var head_ct: String?; var locked_body: String? }
+        let rows: [Row] = try await client.from("note_revisions").select("body_ct,head_ct,locked_body")
             .eq("note_id", value: note).eq("version", value: Int(version)).limit(1).execute().value
         guard let row = rows.first else { throw HistoryError.gone }
-        // A sealed version opens with the account's data key, here and nowhere else.
-        let b: String
-        if let box = row.body_ct {
-            guard let text = E2EE.sealer?.open(box, context: E2EE.body(note)) else { throw HistoryError.gone }
-            b = text
-        } else {
-            b = row.body ?? ""
-        }
+        let b = try Self.open(row.body_ct, head: row.head_ct, locked: row.locked_body != nil, note: note)
         bodies[version] = b
         return b
+    }
+
+    /// A version's text, opened here with the account's key (the server only has it sealed). A
+    /// locked version shows its title, as a locked note does in the list.
+    nonisolated static func open(_ body: String?, head: String?, locked: Bool, note: UUID) throws -> String {
+        let unreadable = HistoryError.other("This version couldn't be opened on this device.")
+        if locked {
+            guard let head, let h = Wire.sealer?.openHead(head, note: note) else { throw unreadable }
+            return h.title
+        }
+        guard let body else { throw HistoryError.gone }
+        guard let text = Wire.sealer?.open(body, context: E2EE.body(note)) else { throw unreadable }
+        return text
     }
 
     func restore(note: UUID, version: Int64) async throws -> NoteDTO? {

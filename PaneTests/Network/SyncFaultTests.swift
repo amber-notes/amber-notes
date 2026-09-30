@@ -6,7 +6,7 @@ import Testing
 extension NetworkFaults {
 /// Sync on a slow, flaky or missing network, against a stub server (StubSupabase): nothing
 /// typed is lost, offline edits go up later, and nothing hammers the server.
-@MainActor @Suite struct SyncFaultTests {
+@MainActor @Suite(.sealedAccount) struct SyncFaultTests {
     let context: ModelContext
     let engine: SyncEngine
 
@@ -29,7 +29,7 @@ extension NetworkFaults {
         return n
     }
 
-    private func serverBody(_ n: Note) -> String? { StubSupabase.note(n.id)?["body"] as? String }
+    private func serverBody(_ n: Note) -> String? { StubSupabase.body(n.id) }
 
     private func waitUntil(_ seconds: Double = 5, _ done: () -> Bool) async {
         let end = Date.now.addingTimeInterval(seconds)

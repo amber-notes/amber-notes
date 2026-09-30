@@ -4,7 +4,8 @@ import ImageIO
 import UniformTypeIdentifiers
 
 /// A file kept in Pane (PDF, spreadsheet, image…). Notes embed it with
-/// `[name](pane-file:<id>)`; the bytes live in the app's container and in Storage.
+/// `[name](pane-file:<id>)`; the bytes live in the app's container and, sealed with the
+/// account's key, in Storage at `<user id>/<id>`.
 @Model
 final class Attachment {
     @Attribute(.unique) var id: UUID
@@ -18,8 +19,6 @@ final class Attachment {
     var uploaded: Bool = false
     /// Metadata changed here and not yet pushed.
     var dirty: Bool = true
-    /// The bytes in Storage are sealed with the account's data key, at `<user>/<id>/sealed`.
-    var sealed: Bool = false
 
     init(id: UUID = UUID(), filename: String, contentType: String, size: Int64) {
         self.id = id

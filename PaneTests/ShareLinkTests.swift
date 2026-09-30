@@ -83,6 +83,33 @@ private actor FakeShareLinks: ShareLinkService {
         #expect(store.state.includesSubNotes, "a failed change keeps the old option")
     }
 
+    /// Sharing publishes a readable copy: you're told once per note, before its first link.
+    @Test func asksOncePerNoteBeforeSharing() async {
+        let fake = FakeShareLinks()
+        let store = ShareLinkStore()
+        store.copyURL = { _ in }
+        store.defaults = MemoryDefaults()
+        store.baseURL = URL(string: "https://ambernotes.app")
+        let note = UUID()
+        await store.load(note: note, service: fake)
+        store.requestShare()
+        #expect(store.confirming == .createLink)
+        #expect(await fake.calls == ["current"], "nothing is shared before you answer")
+        store.confirming = nil
+        await store.confirmedShare()
+        #expect(store.state.slug != nil)
+        await store.stopSharing()
+        store.requestShare()
+        #expect(store.confirming == nil, "the same note isn't asked about again")
+        let end = Date.now.addingTimeInterval(2)
+        while store.state.slug == nil, Date.now < end { try? await Task.sleep(for: .milliseconds(20)) }
+        #expect(store.state.slug != nil)
+
+        await store.load(note: UUID(), service: FakeShareLinks())
+        store.requestShare()
+        #expect(store.confirming == .createLink, "another note is")
+    }
+
     @Test func productionNeverHandsOutALocalLink() {
         let local = URL(string: "http://localhost:5210")!, site = URL(string: "https://ambernotes.app")!
         #expect(ShareLinkConfig.usable(local, backend: URL(string: "http://127.0.0.1:56421")))
