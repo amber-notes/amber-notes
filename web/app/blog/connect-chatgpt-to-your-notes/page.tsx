@@ -79,19 +79,23 @@ export default function Page() {
       <h2 id="incredible">Incredible</h2>
       <p>
         <a href="https://incredible.one" rel="noopener">Incredible</a>, the AI assistant my company makes, is a desktop app for Mac and
-        Windows. Under Connect an AI, choose Incredible: on a Mac, Copy Address and Open Incredible does the first part. Then, in Incredible:
+        Windows, and Amber Notes is one of its apps. In Incredible:
       </p>
       <ol>
-        <li>Open Apps and choose Add it here, next to Have your own MCP server. If you added one before, choose Add another MCP server.</li>
-        <li>Paste the address, <code>{MCP_URL}</code>, then choose Continue.</li>
-        <li>Choose Sign in. Your browser opens Amber Notes.</li>
+        <li>Open Apps and search for Amber Notes.</li>
+        <li>Choose Connect. Your browser opens Amber Notes.</li>
         <li>
           Amber Notes asks to allow an app on this computer that calls itself &ldquo;incredible&rdquo;. A sign-in that returns to your own
           computer can&apos;t prove which app is asking, so it starts at Read Only. Pick Read and Edit if Incredible should change notes,
           then choose Allow. On a Windows PC, you sign in and choose Allow on the page that opens.
         </li>
-        <li>Back in Incredible, choose Add server.</li>
+        <li>Back in Incredible, choose Let&apos;s go.</li>
       </ol>
+      <p>
+        On an older version of Incredible, where Amber Notes isn&apos;t in Apps, add it as your own MCP server: choose Add it here at the
+        bottom of Apps (or Add another MCP server), paste <code>{MCP_URL}</code>, choose Continue, then Sign in. After you choose Allow,
+        choose Add server. In Amber Notes, Settings, Connect an AI, Incredible has the same steps.
+      </p>
 
       <h2>Other MCP apps</h2>
       <p>

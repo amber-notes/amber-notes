@@ -82,7 +82,8 @@ export default function Page() {
       {AGENT_INSTALLS.map((x) => (
         <section key={x.tool} aria-label={x.tool}>
           <p className="label"><strong>{x.tool}</strong></p>
-          <pre><code>{x.code}</code></pre>
+          {x.code && <pre><code>{x.code}</code></pre>}
+          {x.steps && <ol>{x.steps.map((s) => <li key={s}>{s}</li>)}</ol>}
           <p>{x.signIn}</p>
           {x.alt && <><p>{x.alt.text}</p><pre><code>{x.alt.code}</code></pre></>}
         </section>

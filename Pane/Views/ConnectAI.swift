@@ -505,7 +505,7 @@ struct ConnectAISection: View {
             case .claude: "Added once in Claude on the web or desktop, then works in its apps"
             case .claudeCode: "Adds Amber Notes to Claude Code on this Mac"
             case .codex: "Adds Amber Notes to Codex"
-            case .incredible: "Added once in Incredible on your computer"
+            case .incredible: "Connected once in Incredible on your computer"
             }
         }
         /// Where it's done, in the AI's own words (as on the website).
@@ -515,7 +515,7 @@ struct ConnectAISection: View {
             case .claude: "Add custom connector"
             case .claudeCode: "claude mcp add amber-notes"
             case .codex: "~/.codex/config.toml"
-            case .incredible: "Apps → Add an MCP server"
+            case .incredible: "Apps → Amber Notes → Connect"
             }
         }
     }

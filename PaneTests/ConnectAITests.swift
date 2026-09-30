@@ -215,13 +215,14 @@ import Testing
     @Test func stepsSentToYourselfCarryTheAddressAndNoSecret() {
         let server = "https://mcp.ambernotes.app"
         let text = IncredibleConnect.message(server: server)
-        #expect(text.contains("\n\(server)\n"))
-        #expect(text.contains("Add another MCP server") && text.contains("Add server"))
+        #expect(text.hasSuffix("\n\(server)"))
+        #expect(text.contains("search for Amber Notes") && text.contains("Let's go"), "the built-in app comes first")
+        #expect(text.contains("Add another MCP server") && text.contains("Add server"), "older versions add the address")
         #expect(!text.contains("pane_"), "Incredible signs in; it never needs a token")
     }
 
     @Test func copyFollowsTheWritingRules() {
-        for line in IncredibleConnect.steps + [IncredibleConnect.consentNote, IncredibleConnect.message(server: "https://mcp.ambernotes.app")] {
+        for line in IncredibleConnect.steps + [IncredibleConnect.olderVersion, IncredibleConnect.consentNote, IncredibleConnect.message(server: "https://mcp.ambernotes.app")] {
             #expect(!line.contains("\u{2014}"), "no em dashes: \(line)")
             #expect(!line.localizedCaseInsensitiveContains("ipad"))
         }

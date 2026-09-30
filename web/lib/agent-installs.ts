@@ -1,6 +1,6 @@
 import { MCP_URL } from "./facts";
 
-/// How to add Amber Notes to each AI coding tool, for the "Install in your AI tool" section of
+/// How to add Amber Notes to each AI tool, for the "Install in your AI tool" section of
 /// /blog/mcp-server. Only tools whose install was run and whose sign-in reaches the consent page are
 /// listed (checked 2026-09-30). Codex and VS Code sign in on 127.0.0.1, which reaches the server as
 /// sent only with the proxy fix in middleware.ts (PR 47). Cursor isn't listed: it registers a
@@ -12,7 +12,9 @@ export const SERVER_NAME = "amber-notes";
 export type AgentInstall = {
   tool: string;
   /// A command to run.
-  code: string;
+  code?: string;
+  /// Or steps to follow, for an app without a command line.
+  steps?: string[];
   /// How the person signs in after adding it.
   signIn: string;
   /// A second way to add it.
@@ -41,5 +43,11 @@ claude plugin install amber-notes`,
     tool: "VS Code",
     code: `code --add-mcp '${JSON.stringify({ name: SERVER_NAME, type: "http", url: MCP_URL })}'`,
     signIn: "The first time VS Code starts the server, it asks you to sign in.",
+  },
+  {
+    // Amber Notes is one of Incredible's apps from the release that ships it (slug amber_notes).
+    tool: "Incredible",
+    steps: ["Open Apps and search for Amber Notes.", "Choose Connect, then Allow in Amber Notes.", "Back in Incredible, choose Let's go."],
+    signIn: `Amber Notes shows it as an app on this computer that calls itself "incredible", starting at Read Only. On an older version of Incredible, choose Add it here at the bottom of Apps (or Add another MCP server), paste ${MCP_URL}, then Continue and Sign in, and Add server after you allow it.`,
   },
 ];

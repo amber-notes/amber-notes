@@ -373,11 +373,12 @@ struct ConnectPanel: View {
 
 // MARK: Incredible
 
-// Incredible (incredible.one) is a desktop app for Mac and Windows. It adds Amber Notes like any
-// MCP server: Apps, Add an MCP server, paste the address, Sign in. Its sign-in comes back to
-// 127.0.0.1 on the person's own computer, which can't prove which app is listening, so the
-// consent sheet shows it as an app on this computer, like any other local app. The guide says so
-// up front, and knows it worked when a new sign-in to this computer appears.
+// Incredible (incredible.one) is a desktop app for Mac and Windows. From the release that lists
+// Amber Notes as one of its apps, it's in Apps: search, Connect, sign in. Older versions add it
+// as an MCP server of your own: Add an MCP server, paste the address, Sign in. Either way the
+// sign-in comes back to 127.0.0.1 on the person's own computer, which can't prove which app is
+// listening, so the consent sheet shows it as an app on this computer, like any other local app.
+// The guide says so up front, and knows it worked when a new sign-in to this computer appears.
 
 /// What connecting Incredible takes (tested).
 enum IncredibleConnect {
@@ -387,13 +388,16 @@ enum IncredibleConnect {
     static let bundleID = "one.incredible.new"
     static let site = URL(string: "https://incredible.one")!
 
+    /// Amber Notes as one of Incredible's apps (Incredible's built-in, found by search).
     static let steps = [
-        "Open Apps. Choose Add it here, next to Have your own MCP server. If you added one before, choose Add another MCP server.",
-        "Paste the address, then choose Continue.",
-        "Choose Sign in. Your browser opens Amber Notes.",
+        "Open Apps and search for Amber Notes.",
+        "Choose Connect. Your browser opens Amber Notes.",
         "Allow Amber Notes to open, then choose Allow.",
-        "Back in Incredible, choose Add server.",
+        "Back in Incredible, choose Let's go.",
     ]
+
+    /// Versions of Incredible from before Amber Notes was one of its apps.
+    static let olderVersion = "If Amber Notes isn't in Apps, add it as your own MCP server: choose Add it here at the bottom of Apps (or Add another MCP server), paste the address, choose Continue, then Sign in. After you choose Allow, choose Add server."
 
     /// What Amber Notes shows when Incredible asks, since it can't name Incredible for sure.
     static let consentNote = "Amber Notes asks to allow an app on this computer that calls itself \u{201C}incredible\u{201D}. It can't prove which app that is, so it starts at Read Only. Pick Read and Edit if Incredible should change notes, then choose Allow."
@@ -412,8 +416,8 @@ enum IncredibleConnect {
     static func message(server: String) -> String {
         var lines = ["Connect Incredible to Amber Notes (in Incredible on your computer, once):", ""]
         for (i, s) in steps.enumerated() { lines.append("\(i + 1). \(s)") }
-        lines += ["", "Address:", server, "",
-                  "On a Windows PC, sign in on the Amber Notes page that opens and choose Allow there."]
+        lines += ["", "On a Windows PC, sign in on the Amber Notes page that opens and choose Allow there.",
+                  "", olderVersion, "", "Address:", server]
         return lines.joined(separator: "\n")
     }
 
@@ -428,7 +432,8 @@ enum IncredibleConnect {
     #endif
 }
 
-/// Connect Incredible: the address, the steps in Incredible, what Amber Notes will ask, then "connected".
+/// Connect Incredible: the steps in Incredible, what Amber Notes will ask, the address for older
+/// versions, then "connected".
 struct IncredibleGuide: View {
     let client: SupabaseClient
     @State private var watch: ConnectWatch
@@ -466,7 +471,7 @@ struct IncredibleGuide: View {
                 start
                 #endif
                 stepsSection
-                addressSection
+                olderVersionSection
             }
         }
         .task { await watch.run(client: client) }
@@ -479,7 +484,7 @@ struct IncredibleGuide: View {
             Label {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Takes a minute on your computer, once.").font(.body.weight(.semibold))
-                    Text("Incredible is a desktop app for Mac and Windows. You add Amber Notes in Incredible there.").foregroundStyle(.secondary)
+                    Text("Incredible is a desktop app for Mac and Windows. You connect Amber Notes in Incredible there.").foregroundStyle(.secondary)
                 }
             } icon: {
                 Image(systemName: "laptopcomputer").foregroundStyle(.tint)
@@ -496,30 +501,33 @@ struct IncredibleGuide: View {
     #endif
 
     #if os(macOS)
-    /// The one button: copy the address and open Incredible, when it's on this Mac.
+    /// The one button: open Incredible when it's on this Mac, or get it.
     private var start: some View {
         Section {
-            Button {
-                copy()
-                IncredibleConnect.open()
-                started = true
-            } label: {
-                Label(!installed ? (copied ? "Copied" : "Copy Address") : started ? "Open Incredible Again" : "Copy Address and Open Incredible",
-                      systemImage: installed ? "arrow.up.forward.app" : copied ? "checkmark" : "doc.on.doc")
-                    .frame(maxWidth: .infinity)
+            if installed {
+                Button {
+                    IncredibleConnect.open()
+                    started = true
+                } label: {
+                    Label(started ? "Open Incredible Again" : "Open Incredible", systemImage: "arrow.up.forward.app")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .accessibilityIdentifier("connect.open")
+            } else {
+                Link(destination: IncredibleConnect.site) {
+                    Label("Get Incredible", systemImage: "arrow.up.forward.app")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .accessibilityIdentifier("connect.get")
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .accessibilityIdentifier("connect.open")
             if started {
                 Label("Waiting for you to choose Allow…", systemImage: "hourglass")
                     .foregroundStyle(.secondary)
                     .accessibilityIdentifier("connect.waiting")
-            }
-            if !installed {
-                Link(destination: IncredibleConnect.site) {
-                    Label("Get Incredible", systemImage: "arrow.up.forward.app")
-                }
             }
         } footer: {
             Text(installed ? "On a Windows PC, follow the same steps in Incredible there." : "Incredible isn't on this Mac. It's a desktop app for Mac and Windows from incredible.one.")
@@ -539,13 +547,15 @@ struct IncredibleGuide: View {
         }
     }
 
-    private var addressSection: some View {
+    /// Before Amber Notes was one of Incredible's apps: the address, pasted as an MCP server.
+    private var olderVersionSection: some View {
         Section {
+            Text(IncredibleConnect.olderVersion).font(.callout).foregroundStyle(.secondary)
             Text(server).font(.system(.callout, design: .monospaced)).textSelection(.enabled)
             Button(copied ? "Copied" : "Copy Address", systemImage: copied ? "checkmark" : "doc.on.doc") { copy() }
                 .accessibilityIdentifier("connect.copyAddress")
         } header: {
-            Text("Server address")
+            Text("On an older version of Incredible")
         } footer: {
             Text("The address holds no password. Access is granted only when you choose Allow in Amber Notes.")
         }
@@ -570,7 +580,7 @@ struct IncredibleGuide: View {
                 .font(.title3.weight(.semibold))
                 .frame(maxWidth: .infinity)
                 .accessibilityIdentifier("connect.connected")
-            Text("Back in Incredible, choose Add server to finish. In Settings, it's listed as An app on this computer.")
+            Text("Back in Incredible, choose Let's go (Add server on an older version). In Settings, it's listed as An app on this computer.")
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity)
