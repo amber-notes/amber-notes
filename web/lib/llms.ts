@@ -26,6 +26,8 @@ function summary(): string[] {
     "- ChatGPT: add it as your own app in Developer mode (Plus, Pro, Business, Enterprise or Edu, on the web), choose OAuth, then Allow in Amber Notes.",
     "- Claude: add it as a custom connector (every plan; the free plan includes one), then Allow in Amber Notes.",
     "- Claude Code and Codex: an access token from Amber Notes, Settings, Connect an AI, sent as an Authorization header.",
+    "- Claude Code plugin: `claude plugin marketplace add emilwagman/amber-notes`, then `claude plugin install amber-notes`, then sign in from /mcp.",
+    `- Codex, Gemini CLI and VS Code: one command each at ${SITE_URL}/blog/mcp-server#install; each signs in with OAuth in the browser.`,
     `- Incredible (${INCREDIBLE_URL}), and any other app that supports MCP: add the server address and sign in, then Allow in Amber Notes.`,
     `- Full details: ${SITE_URL}/blog/mcp-server`,
     "",

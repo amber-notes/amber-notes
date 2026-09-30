@@ -1,0 +1,16 @@
+{
+  "name": "amber-notes",
+  "description": "Amber Notes (ambernotes.app): your notes app, in Claude Code.",
+  "owner": {
+    "name": "Emil Wagman",
+    "url": "https://ambernotes.app"
+  },
+  "plugins": [
+    {
+      "name": "amber-notes",
+      "source": "./plugins/amber-notes",
+      "description": "Search, read and edit your Amber Notes from Claude Code. Sign in once with /mcp.",
+      "category": "productivity"
+    }
+  ]
+}
