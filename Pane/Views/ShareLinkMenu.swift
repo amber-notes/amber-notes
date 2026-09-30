@@ -91,25 +91,33 @@ struct SupabaseShareLinks: ShareLinkService {
     var container: ModelContainer?
     /// Told when sharing changes, so edits are published to the page from then on.
     var sync: SyncEngine?
+    /// The signed-in account (the session's, when not given).
+    var account: UUID?
+
+    private var user: UUID? { account ?? client.auth.currentUser?.id }
 
     /// The note's live link, only when this account's key made it (its tag verifies): a share row
     /// planted or changed without the key reads as not shared.
     func current(note: UUID) async throws -> (slug: String, includesSubNotes: Bool)? {
-        guard let live = try await SharePublisher.liveShare(note: note, client: client),
-              SharePublisher.verifies(live, note: note, sealer: Wire.sealer) else { return nil }
+        guard let user,
+              let live = try await SharePublisher.liveShare(note: note, client: client),
+              SharePublisher.verifies(live, note: note, sealer: Wire.sealer, account: user) else { return nil }
         return (live.slug, live.include_subnotes)
     }
 
     func share(note: UUID, includeSubNotes: Bool) async throws -> String {
-        guard let container, let user = client.auth.currentUser?.id else { throw SharePublisher.Failure() }
+        guard let container, let user else { throw SharePublisher.Failure() }
         let slug = try await SharePublisher.share(note: note, includeSubNotes: includeSubNotes, client: client, container: container, user: user)
         await MainActor.run { sync?.shareChanged(note, includesSubNotes: includeSubNotes) }
         return slug
     }
 
     func unshare(note: UUID) async throws {
+        let live = try? await SharePublisher.liveShare(note: note, client: client)
         // The server deletes the page's copy and its files with the link.
         try await client.rpc("unshare_note", params: ["p_note": note.uuidString.lowercased()]).execute()
+        // Stopped for good: this device never publishes to it again, whatever the table says later.
+        if let live, let user { RevokedShares.remember([live.slug], account: user) }
         await MainActor.run { sync?.shareChanged(note, includesSubNotes: nil) }
     }
 }
@@ -122,9 +130,10 @@ struct SupabaseShareLinks: ShareLinkService {
 /// Only for a share this account made: every share carries a tag (`E2EE.shareTag`, an HMAC under
 /// a subkey of the data key over the note, the slug and whether sub-notes are included), and
 /// before anything is published the live share is read and its tag checked. A share row planted
-/// or changed by anyone without the key publishes nothing. The sub-notes a page includes come from
-/// the `pane-note:` links in the notes' own (sealed) text, never from `parent_id`, which the
-/// server could change.
+/// or changed by anyone without the key publishes nothing, and neither does a link this account
+/// stopped (`RevokedShares`). The sub-notes a page includes are the notes linked from their
+/// parent's own (sealed) text whose `parent_id` is that parent: the server can't add a note by
+/// changing `parent_id`, and a link alone doesn't pull in a note that lives elsewhere.
 @MainActor
 enum SharePublisher {
     struct Failure: LocalizedError { var errorDescription: String? { "This note couldn't be published. Try again." } }
@@ -154,9 +163,10 @@ enum SharePublisher {
         return rows.first
     }
 
-    /// Whether a share was made by this account (its tag is the one the account's key makes).
-    nonisolated static func verifies(_ share: LiveShare, note: UUID, sealer: Sealer?) -> Bool {
-        guard let sealer, slugIsValid(share.slug) else { return false }
+    /// Whether a share was made by this account (its tag is the one the account's key makes) and
+    /// isn't a link this account stopped (`RevokedShares`).
+    nonisolated static func verifies(_ share: LiveShare, note: UUID, sealer: Sealer?, account: UUID) -> Bool {
+        guard let sealer, slugIsValid(share.slug), !RevokedShares.contains(share.slug, account: account) else { return false }
         return sealer.shareTagMatches(note: note, slug: share.slug, includeSubNotes: share.include_subnotes, tag: share.share_tag)
     }
 
@@ -179,7 +189,11 @@ enum SharePublisher {
         while !queue.isEmpty, out.count < maxPages {
             let parent = queue.removeFirst()
             for id in linkedNotes(in: parent.body) where seen.insert(id).inserted {
-                guard let child = context.note(id), child.deletedAt == nil, child.trashedAt == nil, child.lockedBody == nil else { continue }
+                // Both halves: the parent's own (sealed) text links it, and the child says it's
+                // under that parent. A link to a note that lives elsewhere, or a parent_id alone,
+                // puts nothing on the page.
+                guard let child = context.note(id), child.parentID == parent.id,
+                      child.deletedAt == nil, child.trashedAt == nil, child.lockedBody == nil else { continue }
                 queue.append(child)
                 out.append((child, parent.id))
                 if out.count >= maxPages { break }
@@ -216,10 +230,17 @@ enum SharePublisher {
         let context = container.mainContext
         guard let sealer = Wire.sealer, let copy = copy(of: note, includeSubNotes: includeSubNotes, in: context) else { throw Failure() }
         let id = note.uuidString.lowercased()
-        if let live = try await liveShare(note: note, client: client), !verifies(live, note: note, sealer: sealer) {
+        if let live = try await liveShare(note: note, client: client), !verifies(live, note: note, sealer: sealer, account: user) {
             try await client.rpc("unshare_note", params: ["p_note": id]).execute()
+            RevokedShares.remember([live.slug], account: user)
         }
-        let slug: String = try await client.rpc("share_slug", params: ["p_note": id]).execute().value
+        // A link this account stopped is never tagged again: a slug handed out that's one of
+        // them is refused, and asked for once more.
+        var slug: String = try await client.rpc("share_slug", params: ["p_note": id]).execute().value
+        if RevokedShares.contains(slug, account: user) {
+            slug = try await client.rpc("share_slug", params: ["p_note": id]).execute().value
+            guard !RevokedShares.contains(slug, account: user) else { throw Failure() }
+        }
         guard slugIsValid(slug) else { throw Failure() }
         let tag = sealer.shareTag(note: note, slug: slug, includeSubNotes: includeSubNotes)
         struct Params: Encodable { var p_note: String; var p_slug: String; var p_include_subnotes: Bool; var p_tag: String; var p_copy: Copy }
@@ -235,7 +256,7 @@ enum SharePublisher {
     /// published to, or nil when nothing was.
     @discardableResult
     static func republish(root: UUID, client: SupabaseClient, context: ModelContext, user: UUID) async -> String? {
-        guard let live = try? await liveShare(note: root, client: client), verifies(live, note: root, sealer: Wire.sealer),
+        guard let live = try? await liveShare(note: root, client: client), verifies(live, note: root, sealer: Wire.sealer, account: user),
               let copy = copy(of: root, includeSubNotes: live.include_subnotes, in: context) else { return nil }
         struct Params: Encodable { var p_note: String; var p_slug: String; var p_copy: Copy }
         // Null when the link isn't live any more.
@@ -259,6 +280,38 @@ enum SharePublisher {
             _ = try? await client.rpc("publish_share_file", params: Params(p_slug: slug, p_attachment: id.uuidString.lowercased(), p_filename: name,
                                                                           p_content_type: mime, p_content: data.base64EncodedString())).execute()
         }
+    }
+}
+
+/// Links this account stopped, remembered on this device per account: from Stop Sharing here and
+/// from share rows seen stopped. Nothing is published to one again and none is tagged again,
+/// whatever the table says later: a stopped row brought back by whoever can write the table (with
+/// a tag they kept from before) would otherwise verify and go live again.
+enum RevokedShares {
+    final class Store: @unchecked Sendable {
+        let defaults: UserDefaults
+        init(_ defaults: UserDefaults) { self.defaults = defaults }
+    }
+
+    /// Tests keep theirs apart; tasks they start inherit it.
+    @TaskLocal static var testStore: Store?
+    private static var defaults: UserDefaults { testStore?.defaults ?? .standard }
+    static let remembered = 5000
+
+    private static func key(_ account: UUID) -> String { "share.revoked.\(account.uuidString.lowercased())" }
+
+    static func slugs(account: UUID) -> Set<String> { Set(defaults.stringArray(forKey: key(account)) ?? []) }
+
+    static func contains(_ slug: String, account: UUID) -> Bool {
+        (defaults.stringArray(forKey: key(account)) ?? []).contains(slug)
+    }
+
+    static func remember(_ slugs: some Sequence<String>, account: UUID) {
+        var list = defaults.stringArray(forKey: key(account)) ?? []
+        let before = list.count
+        for s in slugs where !list.contains(s) { list.append(s) }
+        guard list.count != before else { return }
+        defaults.set(Array(list.suffix(remembered)), forKey: key(account))
     }
 }
 

@@ -42,6 +42,38 @@ enum BackendConfig {
     }
 }
 
+/// When the session last really signed in, read from its access token's `amr` claim (the JWT
+/// payload): the newest timestamp of any method except `token_refresh`, the same rule the server
+/// uses for a recent sign-in (`pane_signed_in_at`). Start fresh needs one from the last 10 minutes.
+///
+/// Sign in with Apple (the id token on the iPhone and Mac App Store, OAuth on the web) should add
+/// an `id_token` or `oauth` entry; that needs checking on a real device with a real Apple ID.
+enum SignInRecency {
+    static let window: TimeInterval = 10 * 60
+
+    /// The newest sign-in in the token, or nil when it has none (or isn't a JWT).
+    static func signedInAt(accessToken: String) -> Date? {
+        let parts = accessToken.split(separator: ".", omittingEmptySubsequences: false)
+        guard parts.count == 3 else { return nil }
+        var b64 = parts[1].replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
+        while b64.count % 4 != 0 { b64 += "=" }
+        guard let data = Data(base64Encoded: b64),
+              let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let amr = payload["amr"] as? [[String: Any]] else { return nil }
+        let times = amr.compactMap { entry -> Double? in
+            guard entry["method"] as? String != "token_refresh" else { return nil }
+            return (entry["timestamp"] as? NSNumber)?.doubleValue
+        }
+        return times.max().map { Date(timeIntervalSince1970: $0) }
+    }
+
+    /// Whether the token shows a sign-in in the last 10 minutes.
+    static func isRecent(accessToken: String, now: Date = .now) -> Bool {
+        guard let at = signedInAt(accessToken: accessToken) else { return false }
+        return now.timeIntervalSince(at) <= window
+    }
+}
+
 /// Owns the Supabase client and the signed-in session.
 @MainActor
 @Observable

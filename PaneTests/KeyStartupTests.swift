@@ -75,8 +75,14 @@ import Testing
             return ServerKeyState(key: row, generation: generation)
         }
 
-        func create(_ key: ServerKey) async throws -> (key: ServerKey, created: Bool) {
+        /// The generation each create said it read.
+        private(set) var createGenerations: [Int] = []
+
+        func create(_ key: ServerKey, generation: Int) async throws -> (key: ServerKey, created: Bool) {
             if offline { throw URLError(.notConnectedToInternet) }
+            createGenerations.append(generation)
+            // create_account_key: a key for a generation the account has moved past is refused.
+            if generation < self.generation { throw KeyError.staleGeneration }
             creates += 1
             let made = row == nil
             if made { row = key }
@@ -354,9 +360,9 @@ import Testing
             self.between = between
         }
         func fetch() async throws -> ServerKeyState { try await inner.fetch() }
-        func create(_ key: ServerKey) async throws -> (key: ServerKey, created: Bool) {
+        func create(_ key: ServerKey, generation: Int) async throws -> (key: ServerKey, created: Bool) {
             if let between { self.between = nil; await between() }
-            return try await inner.create(key)
+            return try await inner.create(key, generation: generation)
         }
         func markRecoveryKeySaved() async throws -> Date? { try await inner.markRecoveryKeySaved() }
         func startFresh(keyID: String) async throws -> Bool { try await inner.startFresh(keyID: keyID) }
@@ -572,6 +578,57 @@ import Testing
         b.signedOut()
     }
 
+    // MARK: A key made for a generation the account has moved past
+
+    /// Another device starts fresh after this one read "no key, generation 0" and before its key
+    /// lands: the server refuses it, and startup reads again and ends on the current generation.
+    @Test func aCreateRefusedForAStaleGenerationReadsAgainAndEndsRight() async throws {
+        let (crypto, keychain) = device()
+        let server = server
+        await crypto.attach(account: user, server: SlowFirstServer(inner: server) { server.generation = 1 })
+        #expect(server.createGenerations == [0, 1], "refused for 0, then made for the generation read again")
+        let k = try #require(keychain.synced[user])
+        #expect(crypto.phase == .ready && k.generation == 1 && E2EE.sealer?.keyID == k.keyID)
+        #expect(k.matches(try #require(server.row), user: user) && server.creates == 1)
+        #expect(keychain.pending[user] == nil, "the refused key is gone")
+        crypto.signedOut()
+    }
+
+    /// The same, for a device registering its synced key again: the reset wins, the old key is
+    /// kept aside and a new one is made.
+    @Test func aKeyRegisteredAgainAfterAResetItDidntSeeIsReplaced() async throws {
+        let old = StoredKey.generate(generation: 0)
+        let (crypto, keychain) = device(FakeKeychain(cloud: cloud, autoReceive: false))
+        keychain.synced[user] = old
+        let server = server
+        await crypto.attach(account: user, server: SlowFirstServer(inner: server) { server.generation = 1 })
+        let new = try #require(keychain.synced[user])
+        #expect(crypto.phase == .ready && new != old && new.generation == 1)
+        #expect(new.matches(try #require(server.row), user: user))
+        #expect(keychain.previous[user] == old && crypto.recoveryKeyChanged)
+        crypto.signedOut()
+    }
+
+    /// A server that refuses every generation is never looped on: it's retried as unreachable.
+    @Test func aServerThatKeepsRefusingIsntLoopedOn() async throws {
+        final class Refusing: AccountKeyServer, @unchecked Sendable {
+            var creates = 0
+            func fetch() async throws -> ServerKeyState { ServerKeyState(key: nil, generation: 0) }
+            func create(_ key: ServerKey, generation: Int) async throws -> (key: ServerKey, created: Bool) {
+                creates += 1
+                throw KeyError.staleGeneration
+            }
+            func markRecoveryKeySaved() async throws -> Date? { nil }
+            func startFresh(keyID: String) async throws -> Bool { false }
+        }
+        let refusing = Refusing()
+        let (crypto, keychain) = device()
+        await crypto.attach(account: user, server: refusing)
+        #expect(crypto.phase == .unreachable && refusing.creates == 3)
+        #expect(keychain.synced[user] == nil && keychain.pending[user] == nil)
+        crypto.signedOut()
+    }
+
     @Test func startFreshNeedsARecentSignIn() async throws {
         let old = try existingKey()
         let (crypto, _) = device(FakeKeychain(cloud: cloud, autoReceive: false))
@@ -613,5 +670,42 @@ import Testing
         crypto.forgetKey(account: user)
         #expect(keychain.synced[user] == nil && cloud.keys[user] == nil && keychain.pending[user] == nil)
         #expect(crypto.phase == .off && E2EE.sealer == nil)
+    }
+}
+
+/// The session's last real sign-in, read from its access token's `amr` claim, as the server reads it.
+@Suite struct SignInRecencyTests {
+    private func token(_ payload: [String: Any]) throws -> String {
+        let json = try JSONSerialization.data(withJSONObject: payload)
+        let b64url = json.base64EncodedString().replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
+        return "eyJhbGciOiJIUzI1NiJ9.\(b64url).c2lnbmF0dXJl"
+    }
+
+    @Test func theNewestSignInThatIsntARefresh() throws {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let t = try token(["sub": "x", "amr": [["method": "password", "timestamp": 1_800_000_000 - 3600],
+                                              ["method": "id_token", "timestamp": 1_800_000_000 - 120],
+                                              ["method": "token_refresh", "timestamp": 1_800_000_000 - 5]]])
+        #expect(SignInRecency.signedInAt(accessToken: t) == now.addingTimeInterval(-120))
+        #expect(SignInRecency.isRecent(accessToken: t, now: now))
+        #expect(!SignInRecency.isRecent(accessToken: t, now: now.addingTimeInterval(9 * 60)), "eleven minutes on")
+    }
+
+    @Test func onlyARefreshIsNoSignIn() throws {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let refreshed = try token(["amr": [["method": "token_refresh", "timestamp": 1_800_000_000 - 5],
+                                           ["method": "password", "timestamp": 1_800_000_000 - 7200]]])
+        #expect(SignInRecency.signedInAt(accessToken: refreshed) == now.addingTimeInterval(-7200))
+        #expect(!SignInRecency.isRecent(accessToken: refreshed, now: now), "a fresh refresh of an old sign-in")
+        let onlyRefresh = try token(["amr": [["method": "token_refresh", "timestamp": 1_800_000_000]]])
+        #expect(SignInRecency.signedInAt(accessToken: onlyRefresh) == nil && !SignInRecency.isRecent(accessToken: onlyRefresh, now: now))
+        #expect(SignInRecency.signedInAt(accessToken: try token(["sub": "x"])) == nil, "no amr")
+        #expect(SignInRecency.signedInAt(accessToken: "not a jwt") == nil)
+        #expect(SignInRecency.signedInAt(accessToken: "a.%%%.c") == nil)
+        // Apple and links count like a password (and so does a method the app doesn't know).
+        for method in ["oauth", "otp", "magiclink", "anything"] {
+            #expect(SignInRecency.isRecent(accessToken: try token(["amr": [["method": method, "timestamp": 1_800_000_000 - 60]]]), now: now))
+        }
     }
 }

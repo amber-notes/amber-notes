@@ -432,8 +432,10 @@ protocol AccountKeyServer: Sendable {
     /// The account's key (nil when it has none) and its reset generation.
     func fetch() async throws -> ServerKeyState
     /// `create_account_key`: insert-if-absent. The account's key, whoever made it, and whether
-    /// this call did.
-    func create(_ key: ServerKey) async throws -> (key: ServerKey, created: Bool)
+    /// this call did. `generation` is the reset generation read with the missing key (`fetch`):
+    /// the server refuses one older than its own (another device started fresh since) with
+    /// `KeyError.staleGeneration`.
+    func create(_ key: ServerKey, generation: Int) async throws -> (key: ServerKey, created: Bool)
     func markRecoveryKeySaved() async throws -> Date?
     /// `start_fresh`: deletes the account's notes and key, if `keyID` is still its key. Throws
     /// `KeyError.reauth` when the server wants a recent sign-in first.
@@ -595,10 +597,16 @@ enum KeyError: LocalizedError, Equatable {
     case typo, wrongKey, offline, notReady, confirmation
     /// Starting fresh needs a sign-in in the last few minutes.
     case reauth
+    /// A key made for a reset generation the account has moved past: startup runs again.
+    case staleGeneration
+    /// Signed in again for Start fresh, yet the session doesn't show a recent sign-in.
+    case reauthUnconfirmed
 
     var errorDescription: String? {
         switch self {
         case .reauth: "Sign in again to start fresh."
+        case .staleGeneration: "Your notes were reset on another device."
+        case .reauthUnconfirmed: "Couldn't confirm your sign-in. Sign out and in again, then try Start fresh."
         case .typo: "That recovery key has a typo. Check it and try again."
         case .wrongKey: "That recovery key isn't the one for this account. Check it and try again."
         case .offline: "You're offline. Connect to the internet and try again."
@@ -765,7 +773,7 @@ final class AccountCrypto {
         guard let row = try? k.serverRow(user: account) else { phase = .unreachable; return }
         store.save(k, account: account, slot: .pending)
         do {
-            let (winner, created) = try await server.create(row)
+            let (winner, created) = try await server.create(row, generation: g)
             guard gen == generation else { return }
             serverKey = winner
             if created, k.matches(winner, user: account) {
@@ -778,11 +786,32 @@ final class AccountCrypto {
                 await carryOut(KeyStartup.decide(user: account, synced: store.load(account: account, slot: .synced),
                                                  pending: nil, server: .key(winner)))
             }
+        } catch KeyError.staleGeneration {
+            guard gen == generation else { return }
+            // Another device started fresh after this one read the account: this key is for
+            // notes that are gone. It never reached the server, so it goes.
+            store.remove(account: account, slot: .pending)
+            await staleRestart()
         } catch {
             guard gen == generation else { return }
             phase = .unreachable
             startRetrying()
         }
+    }
+
+    /// Consecutive startups refused for a stale generation. One more read normally settles it; a
+    /// server that keeps refusing is treated as unreachable (retried), never looped on.
+    private var staleRestarts = 0
+
+    private func staleRestart() async {
+        staleRestarts += 1
+        guard staleRestarts <= 2 else {
+            staleRestarts = 0
+            phase = .unreachable
+            startRetrying()
+            return
+        }
+        await restart()
     }
 
     /// The server has no key row, yet the account never started fresh since this key was made:
@@ -794,10 +823,15 @@ final class AccountCrypto {
         let gen = generation
         guard let row = try? k.serverRow(user: account) else { phase = .unreachable; return }
         do {
-            let (winner, _) = try await server.create(row)
+            let (winner, _) = try await server.create(row, generation: serverGeneration)
             guard gen == generation else { return }
             serverKey = winner
             await carryOut(KeyStartup.decide(user: account, synced: k, pending: nil, server: .key(winner)))
+        } catch KeyError.staleGeneration {
+            guard gen == generation else { return }
+            // The account started fresh since it was read: startup decides again (this key is
+            // then kept aside and a new one made).
+            await staleRestart()
         } catch {
             guard gen == generation else { return }
             phase = .unreachable
@@ -969,6 +1003,7 @@ final class AccountCrypto {
     private func open(_ k: StoredKey, verified: Bool) {
         guard let account else { return }
         stop()
+        staleRestarts = 0
         key = k
         unverified = !verified
         showsKeychainHelp = false

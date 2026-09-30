@@ -231,7 +231,7 @@ struct KeyGateView: View {
                 case .success(let credential):
                     run {
                         try await backend.signInWithApple(credential)
-                        try await startFreshNow()
+                        try await startFreshAfterSignIn()
                     }
                 case .failure(.canceled): break
                 case .failure(let failure): error = AppleSignIn.message(for: failure)
@@ -265,7 +265,23 @@ struct KeyGateView: View {
             throw KeyGateFailure(message: Backend.message(for: error, signingUp: false))
         }
         password = ""
-        try await startFreshNow()
+        try await startFreshAfterSignIn()
+    }
+
+    /// Just signed in again for Start fresh. If the new session still doesn't show a recent
+    /// sign-in (`SignInRecency`), asking for another sign-in would only go round in a circle:
+    /// say so instead.
+    private func startFreshAfterSignIn() async throws {
+        let token = try? await backend.client?.auth.session.accessToken
+        guard let token, SignInRecency.isRecent(accessToken: token) else { throw KeyError.reauthUnconfirmed }
+        do {
+            try await crypto.startFresh(confirmation: confirmation)
+        } catch KeyError.reauth {
+            throw KeyError.reauthUnconfirmed
+        }
+        confirmation = ""
+        needsSignIn = false
+        screen = .auto
     }
 
     private struct KeyGateFailure: LocalizedError {
@@ -279,7 +295,7 @@ struct KeyGateView: View {
         return {
             run {
                 do { try await backend.signInWithAppleOnTheWeb() } catch where Backend.isCanceled(error) { return }
-                try await startFreshNow()
+                try await startFreshAfterSignIn()
             }
         }
         #else

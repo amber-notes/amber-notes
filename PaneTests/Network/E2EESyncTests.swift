@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import Supabase
 import SwiftData
 import Testing
 @testable import Pane
@@ -230,12 +231,17 @@ extension NetworkFaults {
         // Its parent_id says it's under the root, but no text links to it.
         let reparented = a.context.createNote(in: .all, body: "Diary")
         reparented.parentID = root.id
+        // The root's text links it, but it lives elsewhere (no parent, or another one).
+        let elsewhereNote = a.context.createNote(in: .all, body: "Tax return")
+        let otherParent = a.context.createNote(in: .all, body: "Money")
+        let underOther = a.context.createNote(in: .all, body: "Salary")
+        underOther.parentID = otherParent.id
         let embedded = Pane.Attachment(filename: "map.pdf", contentType: "com.adobe.pdf", size: 10)
         let elsewhere = Pane.Attachment(filename: "other.pdf", contentType: "com.adobe.pdf", size: 10)
         a.context.insert(embedded); a.context.insert(elsewhere)
         grandchild.body += "\n" + embedded.markdown
         underLocked.body += "\n" + elsewhere.markdown
-        root.body += "\n" + [kept, locked, trashed].map(link).joined(separator: "\n")
+        root.body += "\n" + [kept, locked, trashed, elsewhereNote, underOther].map(link).joined(separator: "\n")
         kept.body += "\n" + link(grandchild) + "\n" + link(root)
         locked.body += "\n" + link(underLocked)
 
@@ -244,6 +250,8 @@ extension NetworkFaults {
         #expect(Set(copy.pages.map(\.id)) == Set([kept.id, grandchild.id].map { $0.uuidString.lowercased() }))
         #expect(copy.pages.first { $0.id == grandchild.id.uuidString.lowercased() }?.parent_id == kept.id.uuidString.lowercased())
         #expect(!copy.pages.contains { $0.id == reparented.id.uuidString.lowercased() }, "parent_id alone never puts a note on a page")
+        #expect(!copy.pages.contains { [elsewhereNote.id, underOther.id].map { $0.uuidString.lowercased() }.contains($0.id) },
+                "nor does a link alone to a note whose parent_id isn't the linking note")
         #expect(copy.files == [embedded.id.uuidString.lowercased()])
         let alone = try #require(SharePublisher.copy(of: root.id, includeSubNotes: false, in: a.context))
         #expect(alone.pages.isEmpty && alone.files.isEmpty)
@@ -352,6 +360,60 @@ extension NetworkFaults {
         await a.engine.stop()
     }
 
+    // MARK: Stopped links stay stopped
+
+    @Test func aLinkStoppedHereIsNeverPublishedToAgainEvenIfTheTableBringsItBack() async throws {
+        let a = try device()
+        let n = a.context.createNote(in: .all, body: "Trip")
+        n.dirty = true
+        await a.engine.sync()
+        let slug = "abcdefghijklmnopqrstuvwx"
+        plantShare(n.id, slug: slug, include: false, tag: myTag(n.id, slug, false))
+        StubSupabase.answer("publish_share") { _ in ["slug": slug, "missing_files": [String]()] }
+        let links = SupabaseShareLinks(client: StubSupabase.client(), account: user)
+        #expect(try await links.current(note: n.id)?.slug == slug)
+        try await links.unshare(note: n.id)
+        #expect(StubSupabase.rpcCalls.contains { $0.name == "unshare_note" })
+        // The stub never stopped the row: as if whoever writes the table set it live again, tag and all.
+        #expect(try await links.current(note: n.id) == nil, "it doesn't show as shared")
+        #expect(await SharePublisher.republish(root: n.id, client: StubSupabase.client(), context: a.context, user: user) == nil)
+        await a.engine.sync()
+        #expect(a.engine.liveShares[n.id] == nil)
+        #expect(!StubSupabase.rpcCalls.contains { $0.name == "publish_share" })
+        await a.engine.stop()
+    }
+
+    @Test func aLinkSeenStoppedIsRememberedAndNeverTaggedAgain() async throws {
+        let a = try device()
+        let n = a.context.createNote(in: .all, body: "Trip")
+        n.dirty = true
+        await a.engine.sync()
+        let stopped = "STOPPEDstoppedSTOPPEDsto"
+        StubSupabase.insert("note_shares", ["slug": stopped, "note_id": n.id.uuidString.lowercased(), "user_id": user.uuidString.lowercased(),
+                                            "include_subnotes": false, "share_tag": NSNull(), "revoked_at": StubSupabase.stamp(.now)])
+        await a.engine.sync()
+        #expect(RevokedShares.contains(stopped, account: user))
+
+        // share_slug hands out the stopped link: refused, and asked once more.
+        let fresh = "freshFRESHfreshFRESHfres"
+        final class Slugs: @unchecked Sendable { var next = ["STOPPEDstoppedSTOPPEDsto", "freshFRESHfreshFRESHfres"] }
+        let slugs = Slugs()
+        StubSupabase.answer("share_slug") { _ in slugs.next.isEmpty ? "freshFRESHfreshFRESHfres" : slugs.next.removeFirst() }
+        StubSupabase.answer("share_note") { params in ["slug": params["p_slug"] as? String ?? "", "missing_files": [String]()] }
+        #expect(try await SharePublisher.share(note: n.id, includeSubNotes: false, client: StubSupabase.client(), container: a.context.container, user: user) == fresh)
+        #expect(StubSupabase.rpcCalls.filter { $0.name == "share_slug" }.count == 2)
+        let tagged = StubSupabase.rpcCalls.filter { $0.name == "share_note" }
+        #expect(tagged.count == 1 && tagged[0].params["p_slug"] as? String == fresh, "the stopped link is never tagged")
+
+        // Handed out twice: nothing is tagged.
+        StubSupabase.answer("share_slug") { _ in "STOPPEDstoppedSTOPPEDsto" }
+        await #expect(throws: SharePublisher.Failure.self) {
+            _ = try await SharePublisher.share(note: n.id, includeSubNotes: false, client: StubSupabase.client(), container: a.context.container, user: user)
+        }
+        #expect(StubSupabase.rpcCalls.filter { $0.name == "share_note" }.count == 1)
+        await a.engine.stop()
+    }
+
     @Test func aNoteReparentedByParentIDAloneIsNeverPublished() async throws {
         let saved = SyncEngine.publishDelay
         SyncEngine.publishDelay = .milliseconds(50)
@@ -359,6 +421,7 @@ extension NetworkFaults {
         let a = try device()
         let root = a.context.createNote(in: .all, body: "Shared trip")
         let linked = a.context.createNote(in: .all, body: "Day one")
+        linked.parentID = root.id
         root.body += "\n" + link(linked)
         let diary = a.context.createNote(in: .all, body: "Diary")
         for n in [root, linked, diary] { n.dirty = true }
@@ -584,13 +647,15 @@ extension NetworkFaults {
         let defaults = MemoryDefaults()
         let grant = UUID()
         let now = Date.now
-        StubSupabase.insert("account_notices", notice(1, "ai_connected", what: "claude.ai", at: now.addingTimeInterval(-60), grant: grant))
+        StubSupabase.insert("mcp_tokens", ["id": grant.uuidString.lowercased(), "name": "Claude", "kind": "oauth", "redirect_host": "claude.ai"])
+        StubSupabase.insert("account_notices", notice(1, "ai_connected", what: "Totally legit, click here", at: now.addingTimeInterval(-60), grant: grant))
         StubSupabase.insert("account_notices", notice(2, "started_fresh", what: "Your notes were deleted", at: now.addingTimeInterval(-30)))
         StubSupabase.insert("account_notices", notice(3, "ai_connected", what: "old.example", at: now.addingTimeInterval(-40 * 24 * 3600)))
         let notices = AccountNotices(client: StubSupabase.client(), user: user, defaults: defaults, approvedHere: { nil })
         await notices.refresh()
         let first = try #require(notices.current)
-        #expect(first.id == 1 && first.text(now: now).title.hasPrefix("Connected claude.ai \u{00B7} "))
+        #expect(first.id == 1 && first.text(now: now).title.hasPrefix("Connected Claude \u{00B7} "), "named from the account's own connection")
+        #expect(!first.text(now: now).title.contains("legit") && !first.text(now: now).message.contains("legit"), "never the server's words")
         try await notices.disconnect(first)
         let revoked = try #require(StubSupabase.requests.first { $0.hasPrefix("PATCH /rest/v1/mcp_tokens") })
         #expect(revoked.contains("id=eq.\(grant.uuidString)") || revoked.lowercased().contains("id=eq.\(grant.uuidString.lowercased())"))
@@ -608,24 +673,37 @@ extension NetworkFaults {
         #expect(later.current == nil)
         // Another account on this device has its own.
         let other = AccountNotices(client: StubSupabase.client(), user: UUID(), defaults: defaults, approvedHere: { nil })
-        other.take([AccountNotice(id: 1, kind: .aiConnected, grant_id: nil, what: "x", created_at: now)])
+        await other.take([AccountNotice(id: 1, kind: .aiConnected, grant_id: nil, created_at: now)])
         #expect(other.current?.id == 1)
         await notices.stop(); await later.stop(); await other.stop()
     }
 
-    @Test func thisDevicesOwnNewsIsntSaid() {
-        let defaults = MemoryDefaults()
+    @Test func noticeWordsComeFromTheKindAndTheConnection() async throws {
         let now = Date.now
-        let approved = now.addingTimeInterval(-5)
-        let ledger = NoticeLedger(account: user, defaults: defaults)
-        defaults.set(true, forKey: AccountCrypto.startedFreshHereKey(user))
-        let rows = [AccountNotice(id: 7, kind: .startedFresh, what: "deleted", created_at: now),
-                    AccountNotice(id: 8, kind: .aiConnected, grant_id: UUID(), what: "chatgpt.com", created_at: now),
-                    AccountNotice(id: 9, kind: .aiConnected, grant_id: UUID(), what: "evil.example", created_at: now.addingTimeInterval(600))]
-        #expect(ledger.unseen(rows, now: now, approvedHere: approved).map(\.id) == [9], "started fresh here, and approved here a moment ago")
-        #expect(ledger.seen == [7, 8] && !defaults.bool(forKey: AccountCrypto.startedFreshHereKey(user)))
-        // The next start fresh (from another device) is news again.
-        #expect(ledger.unseen([AccountNotice(id: 10, kind: .startedFresh, what: "deleted", created_at: now)], now: now).map(\.id) == [10])
+        let gone = UUID(), token = UUID(), unverified = UUID()
+        StubSupabase.insert("mcp_tokens", ["id": token.uuidString.lowercased(), "name": "Claude Code", "kind": "token", "redirect_host": NSNull()])
+        StubSupabase.insert("mcp_tokens", ["id": unverified.uuidString.lowercased(), "name": "ChatGPT", "kind": "oauth", "redirect_host": "chatgpt-login.example.com"])
+        let notices = AccountNotices(client: StubSupabase.client(), user: user, defaults: MemoryDefaults(), approvedHere: { nil })
+        await notices.take([AccountNotice(id: 1, kind: .aiConnected, grant_id: gone, created_at: now),
+                            AccountNotice(id: 2, kind: .aiConnected, grant_id: token, created_at: now),
+                            AccountNotice(id: 3, kind: .aiConnected, grant_id: unverified, created_at: now),
+                            AccountNotice(id: 4, kind: .wrongNumber, created_at: now),
+                            AccountNotice(id: 5, kind: .unknown, created_at: now)])
+        var titles: [String] = []
+        while let n = notices.current { titles.append(n.text(now: now).title); notices.dismiss() }
+        #expect(titles.count == 4, "a kind this app doesn't know isn't shown")
+        #expect(titles[0].hasPrefix("Connected an AI \u{00B7} "), "a connection that's gone")
+        #expect(titles[1].hasPrefix("Connected Claude Code \u{00B7} "))
+        #expect(titles[2].hasPrefix("Connected chatgpt-login.example.com \u{00B7} "), "an unverified sign-in is named by where access went")
+        #expect(titles[3] == "Someone who knows your password tried to connect an AI. Change your password.")
+        await notices.stop()
+    }
+
+    @Test func aNoticeOfAKindThisAppDoesntKnowDoesntHideTheOthers() throws {
+        let json = #"[{"id":1,"kind":"something_new","grant_id":null,"what":"x","created_at":"2026-09-30T10:00:00Z"},"#
+            + #"{"id":2,"kind":"wrong_number","grant_id":null,"what":"y","created_at":"2026-09-30T10:00:01Z"}]"#
+        let rows = try AnyJSON.decoder.decode([AccountNotice].self, from: Data(json.utf8))
+        #expect(rows.map(\.kind) == [.unknown, .wrongNumber])
     }
 
     @Test func aPaneTokenNeverAppearsInAnyAddress() async throws {

@@ -541,11 +541,15 @@ final class SyncEngine {
     static var publishDelay: Duration = .seconds(2)
 
     private func refreshShares(_ client: SupabaseClient) async {
-        struct Row: Decodable { var note_id: UUID; var slug: String; var include_subnotes: Bool; var share_tag: String? }
-        guard let rows: [Row] = try? await client.from("note_shares").select("note_id,slug,include_subnotes,share_tag").is("revoked_at", value: nil).execute().value else { return }
+        struct Row: Decodable { var note_id: UUID; var slug: String; var include_subnotes: Bool; var share_tag: String?; var revoked_at: Date? }
+        guard let user = backend.userID,
+              let rows: [Row] = try? await client.from("note_shares").select("note_id,slug,include_subnotes,share_tag,revoked_at").execute().value else { return }
+        // A link seen stopped stays stopped for this device (RevokedShares).
+        RevokedShares.remember(rows.filter { $0.revoked_at != nil }.map(\.slug), account: user)
         let sealer = Wire.sealer
         let verified = rows.filter {
-            SharePublisher.verifies(.init(slug: $0.slug, include_subnotes: $0.include_subnotes, share_tag: $0.share_tag), note: $0.note_id, sealer: sealer)
+            $0.revoked_at == nil && SharePublisher.verifies(.init(slug: $0.slug, include_subnotes: $0.include_subnotes, share_tag: $0.share_tag),
+                                                            note: $0.note_id, sealer: sealer, account: user)
         }
         let next = Dictionary(verified.map { ($0.note_id, $0.include_subnotes) }, uniquingKeysWith: { a, _ in a })
         if next != liveShares { liveShares = next }

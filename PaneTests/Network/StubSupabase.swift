@@ -13,7 +13,10 @@ struct SealedAccount: SuiteTrait, TestTrait, TestScoping {
     func provideScope(for test: Test, testCase: Test.Case?, performing function: @Sendable () async throws -> Void) async throws {
         // The suite's scope is entered too; the key is made per test (or test case).
         guard testCase != nil || !test.isSuite else { try await function(); return }
-        try await Wire.$testSealer.withValue(Sealer(key: SymmetricKey(size: .bits256), user: Self.user)) { try await function() }
+        try await Wire.$testSealer.withValue(Sealer(key: SymmetricKey(size: .bits256), user: Self.user)) {
+            // And its own memory of stopped links.
+            try await RevokedShares.$testStore.withValue(.init(MemoryDefaults())) { try await function() }
+        }
     }
 }
 
