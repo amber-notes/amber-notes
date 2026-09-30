@@ -1,6 +1,6 @@
 // Unit tests for the pure markdown helpers: deno test notes.test.ts
 import { assertEquals, assertThrows } from "jsr:@std/assert@1";
-import { appendText, applyEdits, coerce, findTables, fitLines, outline, replaceTable, setChecklistItem, sliceLines, sortChecklist, tableMarkdown, titleOf } from "./notes.ts";
+import { appendText, applyEdits, broadenQuery, coerce, findTables, fitLines, outline, replaceTable, setChecklistItem, sliceLines, sortChecklist, tableMarkdown, titleOf } from "./notes.ts";
 
 Deno.test("titles follow the app's rules", () => {
   const cases: [string, string][] = [
@@ -111,4 +111,16 @@ Deno.test("fitLines keeps whole lines within the limit", () => {
   assertEquals(fitLines("aaaa\nbbbb\ncccc", 10), { text: "aaaa\nbbbb", lines: 2, truncated: true });
   // One line longer than the limit is cut rather than returned whole.
   assertEquals(fitLines("x".repeat(20) + "\nshort", 8), { text: "x".repeat(8), lines: 1, truncated: true });
+});
+
+Deno.test("broadenQuery widens a plain search to any word, and leaves search syntax alone", () => {
+  assertEquals(broadenQuery("Lisbon trip"), "lisbon or trip");
+  assertEquals(broadenQuery("my Lisbon trip note"), "lisbon or trip");
+  assertEquals(broadenQuery("notes about the hotel"), "hotel");
+  assertEquals(broadenQuery("hotel"), null);
+  assertEquals(broadenQuery("my notes"), null);
+  assertEquals(broadenQuery('"exact phrase" here'), null);
+  assertEquals(broadenQuery("tapas -Madrid"), null);
+  assertEquals(broadenQuery("Porto or Lisbon"), null);
+  assertEquals(broadenQuery("Café Ämne"), "café or ämne");
 });

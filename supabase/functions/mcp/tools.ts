@@ -1,7 +1,7 @@
 // The note tools. Each runs in a transaction as the token's owner (RLS applies).
 
 import type { Sql, TransactionSql } from "npm:postgres@3.4.5";
-import { appendText, applyEdits, coerce, findTables, fitLines, outline, previewOf, replaceTable, setChecklistItem, sliceLines, titleOf, typeSpec, type Edit, type Table } from "./notes.ts";
+import { appendText, applyEdits, broadenQuery, coerce, findTables, fitLines, outline, previewOf, replaceTable, setChecklistItem, sliceLines, titleOf, typeSpec, type Edit, type Table } from "./notes.ts";
 
 export type ToolContext = { sql: Sql; userId: string; client: string; canWrite: boolean };
 export class ToolError extends Error {}
@@ -29,7 +29,6 @@ const noteRef = {
 // overwrite or remove what's there is destructive, even though history can undo it.
 const read = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } as const;
 const write = { readOnlyHint: false, destructiveHint: false, openWorldHint: false } as const;
-const overwrite = { ...write, destructiveHint: true } as const;
 
 export const tools: Tool[] = ([
   {
@@ -84,7 +83,7 @@ export const tools: Tool[] = ([
       },
       required: ["edits"],
     },
-    annotations: overwrite,
+    annotations: { ...write, destructiveHint: true },
   },
   {
     name: "append_to_note", title: "Add to a note",
@@ -161,7 +160,7 @@ export const tools: Tool[] = ([
     name: "restore_revision", title: "Restore an earlier version",
     description: "Puts an earlier version (from note_history) back as the note's body. The current body is kept in history too.",
     inputSchema: { type: "object", properties: { ...noteRef, revision_id: int("Revision id from note_history.") }, required: ["revision_id"] },
-    annotations: overwrite,
+    annotations: { ...write, destructiveHint: true },
   },
   {
     name: "create_sub_note", title: "Create a sub-note",
@@ -199,7 +198,7 @@ export const tools: Tool[] = ([
       },
       required: ["values"],
     },
-    annotations: overwrite,
+    annotations: { ...write, destructiveHint: true },
   },
   {
     name: "delete_table_row", title: "Delete a row",
@@ -210,7 +209,7 @@ export const tools: Tool[] = ([
   // ChatGPT's connector conventions.
   {
     name: "search", title: "Search",
-    description: "Search the person's Amber Notes by words or phrases. Returns note ids, titles and links; read one with fetch.",
+    description: "Search the person's Amber Notes by words or phrases. Returns note ids and titles; read one with fetch.",
     inputSchema: { type: "object", properties: { query: str("Search query.") }, required: ["query"] },
     annotations: read,
   },
@@ -415,9 +414,16 @@ const handlers: Record<string, (tx: Tx, a: Args, ctx: ToolContext) => Promise<un
     const q = String(a.query ?? "").trim();
     if (!q) throw new ToolError("query is empty.");
     const all = await folders(tx);
-    const rows = await tx<{ id: string; title: string; folder_id: string | null; is_pinned: boolean; updated_at: Date; snippet: string; rank: number }[]>`
-      select s.*, n.is_pinned from public.search_notes(${q}, ${clampInt(a.limit, 10, 50) || 10}) s join public.notes n on n.id = s.id order by s.rank desc`;
-    return { query: q, results: rows.map((r) => ({ id: r.id, title: r.title, folder: pathOf(r.folder_id, all), pinned: r.is_pinned, updated: iso(r.updated_at), snippet: r.snippet })) };
+    const run = (query: string) => tx<{ id: string; title: string; folder_id: string | null; is_pinned: boolean; updated_at: Date; snippet: string; rank: number }[]>`
+      select s.*, n.is_pinned from public.search_notes(${query}, ${clampInt(a.limit, 10, 50) || 10}) s join public.notes n on n.id = s.id order by s.rank desc`;
+    let rows = await run(q);
+    // Nothing has every word: say so, and show notes with any of them.
+    const broad = rows.length ? null : broadenQuery(q);
+    if (broad) rows = await run(broad);
+    return {
+      query: q, ...(broad ? { no_note_has_every_word: true, searched_for_any_of: broad } : {}),
+      results: rows.map((r) => ({ id: r.id, title: r.title, folder: pathOf(r.folder_id, all), pinned: r.is_pinned, updated: iso(r.updated_at), snippet: r.snippet })),
+    };
   },
 
   async list_notes(tx, a) {
@@ -713,8 +719,11 @@ const handlers: Record<string, (tx: Tx, a: Args, ctx: ToolContext) => Promise<un
   },
 
   async search(tx, a) {
-    const rows = await tx<{ id: string; title: string }[]>`select id, title from public.search_notes(${String(a.query ?? "")}, 10)`;
-    return { results: rows.map((r) => ({ id: r.id, title: r.title, url: `pane://note/${r.id}` })) };
+    const q = String(a.query ?? "");
+    let rows = await tx<{ id: string; title: string }[]>`select id, title from public.search_notes(${q}, 10)`;
+    const broad = rows.length ? null : broadenQuery(q);
+    if (broad) rows = await tx<{ id: string; title: string }[]>`select id, title from public.search_notes(${broad}, 10)`;
+    return { results: rows.map((r) => ({ id: r.id, title: r.title })) };
   },
 
   async fetch(tx, a) {
@@ -722,7 +731,7 @@ const handlers: Record<string, (tx: Tx, a: Args, ctx: ToolContext) => Promise<un
     const all = await folders(tx);
     const shown = fitLines(n.body, MAX_READ_CHARS);
     return {
-      id: n.id, title: n.title, text: shown.text, url: `pane://note/${n.id}`,
+      id: n.id, title: n.title, text: shown.text,
       metadata: {
         folder: pathOf(n.folder_id, all), pinned: n.is_pinned, updated: iso(n.updated_at),
         ...(shown.truncated ? { truncated: true, next_start_line: shown.lines + 1, rest: "read_note with start_line" } : {}),

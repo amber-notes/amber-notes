@@ -156,6 +156,19 @@ export function fitLines(text: string, max: number): { text: string; lines: numb
   return { text: kept, lines: kept.split("\n").length, truncated: true };
 }
 
+// Words that describe the request rather than what's in the note ("my Lisbon trip note").
+const FILLER = new Set(["a", "an", "the", "my", "our", "note", "notes", "about", "in", "on", "of", "for", "to", "and", "with", "from"]);
+
+/** A search where every word must match found nothing: the same search with any one word enough
+ *  ("lisbon or trip"), without filler words. Null when the query already uses search syntax or
+ *  there is nothing to widen. */
+export function broadenQuery(q: string): string | null {
+  if (/"|(^|\s)-|\bor\b/i.test(q)) return null;
+  const words = [...new Set(q.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter((w) => w && !FILLER.has(w)))];
+  const broad = words.join(" or ");
+  return broad && broad !== q.trim().toLowerCase() ? broad : null;
+}
+
 /** Headings, checklist progress and size: a quick map of a long note. */
 export function outline(body: string) {
   const lines = body.split("\n");

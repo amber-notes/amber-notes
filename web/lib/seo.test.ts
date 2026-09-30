@@ -37,7 +37,7 @@ describe("search and AI crawlers", () => {
     expect(txt).toContain("Incredible");
     expect(txt).toContain("https://emilwagman.com");
     for (const p of posts) expect(txt.includes(`/blog/${p.slug})`)).toBe(!p.draft);
-    expect(llmsFullTxt()).toContain("`edit_note` (write)");
+    expect(llmsFullTxt()).toContain("`edit_note` (destructive)");
   });
 });
 
