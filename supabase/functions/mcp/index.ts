@@ -21,7 +21,7 @@ Checklists are "- [ ] item" lines; use set_checklist_item to tick them. A line l
 its parent. Use create_sub_note to make one; read it with read_note(id). Deleted notes go to Recently Deleted
 and can be restored; every edit keeps the previous version (note_history / restore_revision).
 A note marked locked: true is locked by the user: its text is encrypted on their devices, so only its title is visible here.
-It can't be read, searched or changed; tell the user to open it in Amber Notes.`;
+It can't be read, searched or changed here; only the user can open it, in Amber Notes.`;
 
 const sql = postgres(Deno.env.get("SUPABASE_DB_URL")!, { max: 3, idle_timeout: 20, prepare: false });
 

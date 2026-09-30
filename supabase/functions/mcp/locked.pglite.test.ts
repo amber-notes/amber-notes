@@ -1,4 +1,4 @@
-// Locked notes (20260930100000_locked_notes.sql) on the whole schema in an in-process Postgres
+// Locked notes (20260930150000_locked_notes.sql) on the whole schema in an in-process Postgres
 // (PGlite), with the MCP tools running against it unchanged. Needs no Docker or local stack:
 //   cd supabase/functions/mcp && deno test -A locked.pglite.test.ts
 // locked.e2e.test.ts runs the MCP checks against the real local stack.

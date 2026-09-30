@@ -29,7 +29,7 @@ actor FakeLockRemote: NoteLockRemote {
     func goOffline(_ value: Bool) { offline = value }
 }
 
-/// What the server accepts as a locked note's text (20260930100000_locked_notes.sql).
+/// What the server accepts as a locked note's text (20260930150000_locked_notes.sql).
 private func serverAccepts(_ sealed: String) -> Bool {
     sealed.range(of: #"^amb1\.[0-9a-f]{16}\.[A-Za-z0-9+/]+={0,2}$"#, options: .regularExpression) != nil && sealed.utf8.count <= 3_000_000
 }
