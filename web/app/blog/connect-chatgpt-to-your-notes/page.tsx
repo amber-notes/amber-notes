@@ -55,12 +55,22 @@ export default function Page() {
         <li>In Plugins, choose +. On accounts that show a menu, choose Create MCP App. Name it Amber Notes.</li>
         <li>Paste the address as the connection, choose OAuth, then Create.</li>
         <li>
-          ChatGPT asks Amber Notes for permission. A page on ambernotes.app opens: choose Open in Amber Notes, or sign in right there.
-          Either way you see &ldquo;Allow ChatGPT to use your notes?&rdquo; Pick Read and Edit, or Read Only, and choose Allow.
+          ChatGPT asks Amber Notes for permission, and a page on ambernotes.app opens. Sign in there (or choose Open Amber Notes if it&apos;s
+          on this computer). The page then says Approve on your iPhone or Mac and shows a two-digit number.
+        </li>
+        <li>
+          Amber Notes on your iPhone or Mac asks &ldquo;Allow ChatGPT to use your notes?&rdquo; Type the number from the page, pick Read and
+          Edit or Read Only, and choose Allow. The page takes you back to ChatGPT to finish. If the app asks without a number showing in your
+          browser, or you didn&apos;t start this, choose Don&apos;t Allow.
         </li>
         <li>Start a new chat, add Amber Notes from the tools menu, and try it: &ldquo;Search my Amber Notes and tell me what I wrote most recently.&rdquo;</li>
       </ol>
       <Figure shot={SHOTS.consent} caption="Nothing is shared until you choose Allow, and you pick Read and Edit or Read Only." />
+      <p>
+        No iPhone or Mac nearby? On the page, choose No device nearby? Use your recovery key. Enter your recovery key (Amber Notes shows it in Settings, Privacy &amp; Security),
+        pick Read and edit or Read only, and choose Allow. The key is used on that page only and never sent to us, but approving on your
+        device is safer, so use it when you can.
+      </p>
       <p>
         OpenAI renamed some of these pages in 2026. If you see Connectors or Apps instead of Plugins, it&apos;s the same place.
       </p>
@@ -119,7 +129,7 @@ export default function Page() {
         <li>
           Amber Notes asks to allow an app on this computer that calls itself &ldquo;incredible&rdquo;. A sign-in that returns to your own
           computer can&apos;t prove which app is asking, so it starts at Read Only. Pick Read and Edit if Incredible should change notes,
-          then choose Allow. On a Windows PC, you sign in and choose Allow on the page that opens.
+          then choose Allow. On a Windows PC, you sign in on the page that opens and approve on your iPhone or Mac, or use your recovery key.
         </li>
         <li>Back in Incredible, choose Let&apos;s go.</li>
       </ol>
@@ -138,7 +148,7 @@ export default function Page() {
       <h2>You stay in control</h2>
       <Figure shot={SHOTS.aiEdit} caption="When ChatGPT changes a note, the new lines are tinted and you can undo the change." />
       <ul>
-        <li>Nothing is shared until you choose Allow, in Amber Notes or signed in to your account on ambernotes.app.</li>
+        <li>Nothing is shared until you choose Allow: in Amber Notes on your iPhone or Mac, after typing the number your browser shows, or on ambernotes.app with your recovery key.</li>
         <li>You choose Read Only, or Read and Edit, for each assistant.</li>
         <li>When an assistant changes a note, Amber Notes shows what changed, with Undo. The previous version is kept in the note&apos;s version history (File, then Show Version History).</li>
         <li>Settings lists everything that&apos;s connected. Choose Disconnect, and it loses access right away.</li>

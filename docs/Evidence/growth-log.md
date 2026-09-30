@@ -19,7 +19,9 @@ assistants. Newest first. Research behind it: [seo-aeo-research-2026-09-30.md](s
   - "What changed at DevDay 2026", from TechCrunch (29 September): plugin sidebar homes, panels, file viewers, Plugin Creator, directory submissions, per-plugin permissions, proposed MCP Events; no dates given, and none of it changes the setup
   - OpenAI's "elevated risk" warning, and how approval, Read Only and version history answer it
   - FAQ: a new "Why don't I see Create MCP App?" answer; the plans answer adds the workspace-policy caveat; the phone-app answer is now labelled unverified, since OpenAI's docs describe the web only
+- The approval steps now match the connect flow that shipped with end-to-end encryption (#52), read from `web/app/connect/ConnectFlow.tsx` and `Pane/Views/ConnectAI.swift`: sign in on ambernotes.app, the page says Approve on your iPhone or Mac and shows a two-digit number, you type it in Amber Notes and choose Allow; "No device nearby? Use your recovery key" is the fallback. The Incredible-on-Windows line and "You stay in control" say the same.
 - Not checked: nothing here was tried in a ChatGPT Plus account, and the post says so.
+
 ## 30 September 2026: round 8, "Apple Notes in iOS 27"
 
 ### Query
