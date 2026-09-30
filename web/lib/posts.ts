@@ -29,7 +29,7 @@ export type Post = {
 
 /// The ground a cover (and the post's first picture) sits on: the site's palette, the help page's
 /// leaf brown, the app's dark look, or the home page's dunes.
-export type Ground = "paper" | "soft" | "tint" | "amber" | "leaf" | "dark" | "dunes" | "ink" | "peach" | "cream" | "sand" | "clay" | "mist" | "honey" | "sage" | "heather" | "blush";
+export type Ground = "paper" | "soft" | "tint" | "amber" | "leaf" | "dark" | "dunes" | "ink" | "peach" | "cream" | "sand" | "clay" | "mist" | "honey" | "sage" | "heather" | "blush" | "wheat";
 
 /// A card's picture: one real capture of the element the post is about, on the post's ground. The
 /// capture is cropped at 2x (3x from iPhone) to about the card's width, so it shows at full size.
@@ -58,6 +58,18 @@ export const SHOTS = {
 } satisfies Record<string, Shot>;
 
 export const posts: Post[] = [
+  {
+    slug: "apple-notes-ios-27",
+    title: "Apple Notes in iOS 27 and macOS 27: what's new, and what AI still can't do",
+    description: "What's new in Apple Notes in iOS 27 and macOS 27: divider lines, section links, Markdown copy and paste, Siri AI search. And what ChatGPT and Claude still can't do.",
+    excerpt: "Divider lines, section links, Markdown in and out, and a Siri that can find your notes. What changed, how to use it, and where AI still stops.",
+    category: "Apple Notes",
+    date: "2026-09-30",
+    updated: "2026-09-30",
+    image: SHOTS.lisbon,
+    thumb: thumb("wheat", "thumb-lisbon-food", 1230, 470),
+    draft: false,
+  },
   {
     slug: "export-apple-notes-to-markdown",
     title: "How to export Apple Notes to Markdown",
