@@ -80,12 +80,20 @@ final class SyncEngine {
     /// Seals conflicted copies of locked notes; the app's vault unless a test gives its own.
     private let lockVault: NoteVault?
 
-    init(backend: Backend, context: ModelContext, defaults: UserDefaults = .standard, vault: NoteVault? = nil) {
+    init(backend: Backend, context: ModelContext, defaults: UserDefaults = .standard, vault: NoteVault? = nil, crypto: AccountCrypto? = nil) {
         self.backend = backend
         self.context = context
         self.defaults = defaults
         self.lockVault = vault
         SyncSignal.onChange = { [weak self] in self?.localChanged() }
+        // Start fresh removes the account's files from Storage through here. It happens when this
+        // device doesn't have the key, long before sync starts, so it's set up front.
+        (crypto ?? AccountCrypto.shared).removeAccountFiles = { [weak self] user in
+            guard let client = self?.backend.client else { return }
+            do { try await Self.removeStoredFiles(client: client, user: user) } catch {
+                log.error("removing files after start fresh failed: \(String(describing: error), privacy: .public)")
+            }
+        }
     }
 
     // MARK: Scheduling
@@ -178,13 +186,6 @@ final class SyncEngine {
         guard let client = backend.client, case .signedIn = backend.state, Wire.sealer != nil else { return }
         adoptLibrary()
         resetOldLibraryIfNeeded()
-        // Start fresh removes the account's files from Storage through here.
-        AccountCrypto.shared.removeAccountFiles = { [weak self] user in
-            guard let client = self?.backend.client else { return }
-            do { try await Self.removeStoredFiles(client: client, user: user) } catch {
-                log.error("removing files after start fresh failed: \(String(describing: error), privacy: .public)")
-            }
-        }
         started = true
         // Until realtime has joined, a short poll brings other devices' edits.
         updateFallback()

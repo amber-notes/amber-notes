@@ -29,6 +29,8 @@ struct PaneApp: App {
         let context = container.mainContext
         backend.willSignIn = { user in AccountLibrary.adopt(user, context: context) }
         _backend = State(initialValue: backend)
+        // Before sync: it hooks start fresh into this instance.
+        AccountCrypto.shared = AccountCrypto(store: inMemory ? MemoryAccountKeyStore() : KeychainAccountKeyStore())
         let sync = SyncEngine(backend: backend, context: container.mainContext)
         _sync = State(initialValue: sync)
         // With sync on, the library is seeded after the first pull so devices don't duplicate it.
@@ -41,7 +43,6 @@ struct PaneApp: App {
         // also start with no notes password.
         NoteVault.shared = inMemory ? NoteVault(keyStore: MemoryKeyStore(), defaults: MemoryDefaults(), drivesSync: true)
             : NoteVault(keyStore: KeychainKeyStore(), drivesSync: true)
-        AccountCrypto.shared = AccountCrypto(store: inMemory ? MemoryAccountKeyStore() : KeychainAccountKeyStore())
         Capture.lockedNotesFromArguments(container.mainContext)
         // "Did you know" tips; their counts go to the server when signed in.
         TipLog.client = backend.client
@@ -301,6 +302,8 @@ struct AppGate: View {
     @State private var setup = SetupStore()
     /// "Enjoying Amber Notes?", once, after a week of use.
     @State private var shareAsk = ShareAskStore()
+    /// Asks to approve an AI connection from a browser, while signed in with the key here.
+    @State private var connectAsks: ConnectAsks?
     /// Captures: `-captureConsent ChatGPT` shows the Allow sheet over the notes.
     @State private var consent = CaptureScreen.consentRequest
     @Environment(\.modelContext) private var context
@@ -385,6 +388,8 @@ struct AppGate: View {
                 if backend.state == .disabled { NoteVault.shared.attach(account: nil, remote: nil) } else { NoteVault.shared.lockNow() }
                 AccountCrypto.shared.signedOut()
                 await sync.stop()
+                await connectAsks?.stop()
+                connectAsks = nil
                 return
             }
             setup.attach(account: backend.userID, service: SupabaseSetup(client: client))
@@ -440,6 +445,8 @@ struct AppGate: View {
                 if shareAsk.decided != true { Task { await shareAsk.refresh() } }
                 askToShareSoon()
                 Task { await NoteVault.shared.refresh() }
+                // No push: a browser's ask that came while the app was away is picked up here.
+                if let connectAsks { Task { await connectAsks.refresh() } }
                 // The account's key never changes; if another device started fresh, this one
                 // finds out here and gets the new key.
                 Task { await AccountCrypto.shared.recheck() }
@@ -466,6 +473,12 @@ struct AppGate: View {
 
     /// The account's key is open here (or it isn't encrypted): sync, then everything that reads the library.
     private func openLibrary(_ client: SupabaseClient) async {
+        // A browser can ask this device to approve an AI connection once it has the key.
+        if connectAsks == nil, let user = backend.userID {
+            let asks = ConnectAsks(client: client, user: user)
+            connectAsks = asks
+            Task { await asks.start() }
+        }
         await sync.start()
         // Seed only when the server really has nothing, never after a failed sync. A real
         // account starts with an empty Notes folder: the setup card is its welcome.

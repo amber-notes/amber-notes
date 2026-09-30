@@ -66,6 +66,9 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
 
     static func rows(_ table: String) -> [[String: Any]] { lock.withLock { tables[table] ?? [] } }
 
+    /// Puts a row in a table as the server would have it (for tables the app only reads).
+    static func insert(_ table: String, _ row: [String: Any]) { lock.withLock { tables[table, default: []].append(row) } }
+
     static func note(_ id: UUID) -> [String: Any]? {
         rows("notes").first { ($0["id"] as? String)?.lowercased() == id.uuidString.lowercased() }
     }
@@ -257,6 +260,9 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
                     guard let x = r[key] else { return false }
                     return "\(x)".lowercased() == want
                 }
+            }
+            if v.lowercased() == "is.null" {
+                return { r in r[key] == nil || r[key] is NSNull }
             }
             if v.hasPrefix("gt.") {
                 let raw = String(v.dropFirst(3))

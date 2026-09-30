@@ -285,12 +285,15 @@ extension NetworkFaults {
         final class Sent: @unchecked Sendable { var body: [String: Any] = [:] }
         let box = Sent()
         let answer = try JSONSerialization.data(withJSONObject: ["redirect": redirect + "?state=xyz&iss=https%3A%2F%2Fmcp.ambernotes.app"])
-        let url = try await ConnectAPI.decide(id: UUID(), redirectURI: redirect, allow: true, write: true, code: code) { path, method, body in
+        let decided = try await ConnectAPI.decide(id: UUID(), redirectURI: redirect, allow: true, write: true, code: code) { path, method, body in
             #expect(path == "/connect/decide" && method == "POST")
             box.body = body ?? [:]
             return answer
         }
+        // Opened by the link on this device: the browser goes on from here, with the code.
+        let url = try #require(decided.url)
         let sent = box.body
+        #expect(sent["handoff"] == nil)
         #expect(sent["redirect_uri"] as? String == redirect, "what the person approved is where the code goes")
         #expect(sent["code_hash"] as? String == code.hash && sent["code_wrap"] as? String == code.wrap)
         #expect(!String(decoding: try JSONSerialization.data(withJSONObject: sent), as: UTF8.self).contains(secret), "the server never sees the code")
@@ -305,6 +308,124 @@ extension NetworkFaults {
         await #expect(throws: ConnectAPI.Failure.self) {
             _ = try await ConnectAPI.decide(id: UUID(), redirectURI: nil, allow: false, write: false, code: nil) { _, _, _ in Issue.record("sent"); return Data() }
         }
+    }
+
+    @Test func anAskedRequestSealsTheCodeToThePageAndOpensNothingHere() async throws {
+        let redirect = "https://chatgpt.com/connector_platform_oauth_redirect"
+        let id = UUID()
+        let page = P256.KeyAgreement.PrivateKey()
+        let secret = "amb_code_" + E2EE.randomHex()
+        let code = (code: secret, hash: E2EE.sha256Hex(secret), wrap: "amb2.0123456789abcdef.AAAA")
+        final class Sent: @unchecked Sendable { var bodies: [[String: Any]] = [] }
+        let box = Sent()
+        let answer = try JSONSerialization.data(withJSONObject: ["redirect": redirect + "?state=xyz", "client_name": "ChatGPT", "can_write": true, "handoff": true])
+        let send: ConnectAPI.Send = { _, _, body in box.bodies.append(body ?? [:]); return answer }
+
+        let decided = try await ConnectAPI.decide(id: id, redirectURI: redirect, allow: true, write: true, code: code,
+                                                  browserKey: page.publicKey.x963Representation, send: send)
+        #expect(decided == .handedOff && decided.url == nil, "the page picks the code up; nothing opens here")
+        let sent = try #require(box.bodies.first)
+        #expect(sent["redirect_uri"] as? String == redirect && sent["code_hash"] as? String == code.hash)
+        let handoff = try #require(sent["handoff"] as? String)
+        #expect(try E2EE.openHandoff(handoff, browserPrivate: page, requestID: id) == secret, "only the page's key opens it")
+        #expect(throws: E2EE.Failure.wrongKey) { try E2EE.openHandoff(handoff, browserPrivate: .init(), requestID: id) }
+        #expect(!String(decoding: try JSONSerialization.data(withJSONObject: sent), as: UTF8.self).contains(secret), "the server never sees the code")
+
+        // Don't Allow: no code, no handoff, and the page goes on by itself too.
+        let denied = try await ConnectAPI.decide(id: id, redirectURI: redirect, allow: false, write: false, code: nil,
+                                                 browserKey: page.publicKey.x963Representation, send: send)
+        #expect(denied == .handedOff)
+        #expect(box.bodies.last?["handoff"] == nil && box.bodies.last?["code_hash"] == nil)
+
+        // A page key that isn't one: nothing is sent.
+        await #expect(throws: ConnectAPI.Failure.self) {
+            _ = try await ConnectAPI.decide(id: id, redirectURI: redirect, allow: true, write: true, code: code, browserKey: Data(repeating: 4, count: 65)) { _, _, _ in
+                Issue.record("sent"); return Data()
+            }
+        }
+    }
+
+    @Test func aRequestFromALinkHereStillOpensTheReturnAddressWithTheCode() async throws {
+        let redirect = "https://claude.ai/api/mcp/auth_callback"
+        let secret = "amb_code_" + E2EE.randomHex()
+        let code = (code: secret, hash: E2EE.sha256Hex(secret), wrap: "amb2.0123456789abcdef.AAAA")
+        let answer = try JSONSerialization.data(withJSONObject: ["redirect": redirect + "?state=abc"])
+        let decided = try await ConnectAPI.decide(id: UUID(), redirectURI: redirect, allow: true, write: false, code: code) { _, _, body in
+            #expect(body?["handoff"] == nil)
+            return answer
+        }
+        let url = try #require(decided.url)
+        #expect(url.absoluteString.hasPrefix(redirect) && URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "code" }?.value == secret)
+    }
+
+    @Test func waitingAsksAreFetchedAndAnExpiredOrAnsweredOneIsIgnored() async throws {
+        let now = Date.now
+        func row(_ id: UUID, from: String, created: TimeInterval, expires: TimeInterval, answered: Bool = false) -> [String: Any] {
+            ["request_id": id.uuidString.lowercased(), "user_id": user.uuidString.lowercased(),
+             "browser_key": P256.KeyAgreement.PrivateKey().publicKey.x963Representation.base64EncodedString(),
+             "started_from": from, "created_at": StubSupabase.stamp(now.addingTimeInterval(created)),
+             "expires_at": StubSupabase.stamp(now.addingTimeInterval(expires)),
+             "answered_at": answered ? StubSupabase.stamp(now) : NSNull()]
+        }
+        let open = UUID(), older = UUID(), expired = UUID(), answered = UUID()
+        StubSupabase.insert("connect_asks", row(expired, from: "Safari on an iPhone", created: -700, expires: -100))
+        StubSupabase.insert("connect_asks", row(answered, from: "Firefox on a PC", created: -60, expires: 540, answered: true))
+        StubSupabase.insert("connect_asks", row(older, from: "Edge on a PC", created: -240, expires: 360))
+        StubSupabase.insert("connect_asks", row(open, from: "Chrome on a Mac", created: -30, expires: 570))
+
+        final class Posted: @unchecked Sendable { var asks: [(UUID, String?)] = []; var asked = 0; var withdrawn: [UUID] = [] }
+        let posted = Posted()
+        var frontmost = true
+        let notifier = ConnectNotifier(isFrontmost: { frontmost }, askPermission: { posted.asked += 1 },
+                                       post: { ask, who in posted.asks.append((ask.id, who)) }, withdraw: { posted.withdrawn.append($0) })
+        let center = ConnectCenter()
+        let asks = ConnectAsks(client: StubSupabase.client(), user: user, center: center, notifier: notifier, describe: { _ in "ChatGPT" })
+        await asks.refresh()
+
+        #expect(StubSupabase.requests.contains { $0.contains("/rest/v1/connect_asks") && $0.lowercased().contains("answered_at=is.null") && $0.contains("expires_at=gt.") })
+        #expect(center.pending == open, "the newest opens")
+        #expect(center.queue == [older], "the other waits its turn")
+        #expect(Set(center.askIDs) == [open, older], "an expired or answered ask is ignored")
+        #expect(posted.asked == 2 && posted.asks.isEmpty, "in front: the sheet shows, no notification")
+
+        // Looking again finds nothing new; nothing opens twice.
+        await asks.refresh()
+        #expect(center.pending == open && center.queue == [older] && posted.asked == 2)
+
+        // Answered on another device: its sheet closes and the next one shows.
+        center.nextDelay = .zero
+        center.withdraw(open)
+        #expect(center.pending == nil)
+        center.showNext()
+        #expect(center.pending == older && center.queue.isEmpty)
+
+        // One that arrives while the app is in the background also says so.
+        frontmost = false
+        let late = UUID()
+        let ask = ConnectAsk(request_id: late, browser_key: "", started_from: "Chrome on a Mac", created_at: now, expires_at: now.addingTimeInterval(600))
+        await asks.take(ask)
+        #expect(posted.asks.count == 1 && posted.asks.first?.0 == late && posted.asks.first?.1 == "ChatGPT")
+        #expect(center.queue == [late])
+        let text = ConnectNotifier.content(ask, who: "ChatGPT")
+        #expect(text.title == "Allow ChatGPT to use your notes?")
+        #expect(text.body == "Requested from Chrome on a Mac. Open Amber Notes to allow it.")
+        // An expired one never opens or notifies.
+        let stale = ConnectAsk(request_id: UUID(), browser_key: "", started_from: "Chrome on a Mac", created_at: now.addingTimeInterval(-700), expires_at: now.addingTimeInterval(-1))
+        await asks.take(stale)
+        #expect(posted.asks.count == 1 && !center.askIDs.contains(stale.id))
+    }
+
+    @Test func startFreshCanRemoveTheFilesBeforeSyncEverStarts() async throws {
+        let crypto = AccountCrypto(store: MemoryAccountKeyStore(), defaults: MemoryDefaults())
+        #expect(crypto.removeAccountFiles == nil)
+        let context = ModelContext(try ModelContainer(for: Folder.self, Note.self, Pane.Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true)))
+        let engine = SyncEngine(backend: Backend(testClient: StubSupabase.client(), email: "qa@example.com", userID: user), context: context,
+                                defaults: MemoryDefaults(), crypto: crypto)
+        // Never started (this device has no key): the hook is already there, and reaches Storage.
+        let remove = try #require(crypto.removeAccountFiles)
+        await remove(user)
+        #expect(StubSupabase.requests.contains { $0.contains("/storage/v1/object/list/files") })
+        _ = engine
     }
 
     @Test func aPaneTokenNeverAppearsInAnyAddress() async throws {

@@ -116,6 +116,24 @@ struct ConnectRequest: Decodable, Identifiable, Equatable {
     var claimed_name: String? = nil
     let loopback: Bool
     let wants_write: Bool
+    /// Asked from a browser (anywhere) that waits for this account's devices to approve: the code
+    /// goes to that page, sealed to its key, and this device opens nothing.
+    var asked: Bool? = nil
+    var started_at: Date? = nil
+    /// What the page says it is, e.g. "Chrome on a Mac".
+    var started_from: String? = nil
+
+    var isAsked: Bool { asked == true }
+
+    /// "Requested 2 minutes ago from Chrome on a Mac", for a request asked from a browser.
+    func requestedLine(now: Date = .now) -> String? {
+        guard isAsked else { return nil }
+        let from = started_from.flatMap { $0.isEmpty ? nil : $0 } ?? "a web browser"
+        guard let started_at else { return "Requested from \(from)" }
+        let when = now.timeIntervalSince(started_at) < 60 ? "just now"
+            : started_at.formatted(.relative(presentation: .numeric, unitsStyle: .wide))
+        return "Requested \(when) from \(from)"
+    }
 
     /// The AI this request provably comes from, if any.
     var verifiedAI: String? { ConnectTrust.verifiedAI(redirectURI: redirect_uri) }
@@ -162,27 +180,47 @@ enum ConnectAPI {
 
     static func request(id: UUID, send: Send) async throws -> ConnectRequest {
         let data = try await send("/connect/request?id=\(id.uuidString.lowercased())", "GET", nil)
-        return try JSONDecoder().decode(ConnectRequest.self, from: data)
+        return try AnyJSON.decoder.decode(ConnectRequest.self, from: data)
     }
 
-    /// Allow or deny; returns where to send the browser next. `redirect_uri` goes back exactly as
-    /// /connect/request gave it. Allowing sends a code made here (`code`): only its hash and the
-    /// account's key wrapped under it reach the server, and the code is added to the answer here.
+    /// What happens after an answer.
+    enum Answer: Equatable {
+        /// Send the browser here (the request came by link on this device).
+        case open(URL)
+        /// A browser elsewhere asked: it picks the answer up itself, and this device opens nothing.
+        case handedOff
+
+        var url: URL? { if case .open(let url) = self { url } else { nil } }
+    }
+
+    /// Allow or deny. `redirect_uri` goes back exactly as /connect/request gave it. Allowing sends
+    /// a code made here (`code`): only its hash and the account's key wrapped under it reach the
+    /// server. A request asked from a browser (`browserKey`, the page's public key) also gets the
+    /// code sealed to that page; otherwise the code is added to the return address here.
     static func decide(id: UUID, redirectURI: String?, allow: Bool, write: Bool,
-                       code: (code: String, hash: String, wrap: String)?, send: Send) async throws -> URL {
+                       code: (code: String, hash: String, wrap: String)?, browserKey: Data? = nil, send: Send) async throws -> Answer {
         guard let redirectURI else { throw Failure(message: "Update Amber Notes to connect an AI.") }
         guard !allow || code != nil else { throw Failure(message: "Open Amber Notes and finish setting up encryption first.") }
         var body: [String: Any] = ["id": id.uuidString.lowercased(), "allow": allow, "write": write, "redirect_uri": redirectURI]
         if allow, let code {
             body["code_hash"] = code.hash
             body["code_wrap"] = code.wrap
+            if let browserKey {
+                guard let sealed = try? E2EE.sealHandoff(code: code.code, browserKey: browserKey, requestID: id) else {
+                    throw Failure(message: "Start connecting again in your browser.")
+                }
+                body["handoff"] = sealed
+            }
         }
         let data = try await send("/connect/decide", "POST", body)
-        guard let s = (try JSONSerialization.jsonObject(with: data) as? [String: Any])?["redirect"] as? String, let url = URL(string: s) else {
+        let answer = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        // The browser that asked goes on by itself, allowed or not.
+        if answer?["handoff"] as? Bool == true { return .handedOff }
+        guard let s = answer?["redirect"] as? String, let url = URL(string: s) else {
             throw Failure(message: "Amber Notes gave an unexpected answer. Try connecting again.")
         }
-        guard allow, let code else { return url }
-        return withCode(url, code.code)
+        guard allow, let code else { return .open(url) }
+        return .open(withCode(url, code.code))
     }
 
     /// The AI's return address with the code this device made, next to what the server put there.
@@ -224,12 +262,24 @@ enum ConnectApproval {
 
 // MARK: Receiving the link
 
-/// Holds a connect request that arrived by link until the consent sheet takes it.
+/// Holds a connect request that arrived by link, or was asked from a browser, until the consent
+/// sheet takes it. One sheet at a time; asks that arrive meanwhile wait their turn.
 @MainActor
 @Observable
 final class ConnectCenter: NSObject {
     static let shared = ConnectCenter()
     var pending: UUID?
+    /// Asks from a browser this device knows are waiting, by request id.
+    private(set) var asks: [UUID: ConnectAsk] = [:]
+    /// Asks waiting for the sheet, in the order they'll show.
+    private(set) var queue: [UUID] = []
+    /// Asks that have been offered here: each opens the sheet by itself once.
+    private var offered: Set<UUID> = []
+    /// Answered on this device: the update saying so doesn't cut the sheet's "Allowed" short.
+    private var answeredHere: Set<UUID> = []
+    private var expiry: Task<Void, Never>?
+    /// Between one sheet closing and the next opening.
+    var nextDelay: Duration = .milliseconds(450)
     /// Mac: which AI the floating steps are for.
     var panelAI: String?
     /// The last approval made on this device, so an open guide can say it worked right away.
@@ -256,12 +306,97 @@ final class ConnectCenter: NSObject {
     }
     #endif
 
+    var askIDs: [UUID] { Array(asks.keys) }
+
+    /// A browser asked this account's devices. Opens the sheet, or queues it behind the one showing.
+    /// True when it's new here (the caller may notify); an expired or answered ask is ignored.
+    @discardableResult
+    func offer(_ ask: ConnectAsk, now: Date = .now) -> Bool {
+        guard ask.isOpen(now: now) else { withdraw(ask.id); return false }
+        asks[ask.id] = ask
+        guard !offered.contains(ask.id) else { return false }
+        offered.insert(ask.id)
+        if pending == ask.id { return false }
+        if pending == nil { show(ask.id) } else { queue.append(ask.id) }
+        return true
+    }
+
+    /// An ask was answered on another device, or expired: its sheet closes.
+    func withdraw(_ id: UUID) {
+        asks[id] = nil
+        queue.removeAll { $0 == id }
+        guard pending == id, !answeredHere.contains(id) else { return }
+        pending = nil
+        showNextSoon()
+    }
+
+    /// The notification for an ask was tapped: it's next, or showing already.
+    func showAsk(_ id: UUID) {
+        guard pending != id else { return }
+        if pending == nil { show(id); return }
+        queue.removeAll { $0 == id }
+        queue.insert(id, at: 0)
+    }
+
+    /// The sheet is answering this request; it closes itself.
+    func answering(_ id: UUID) { answeredHere.insert(id) }
+
+    /// The sheet closed, answered or not: the next ask shows.
+    func sheetClosed() {
+        if let id = pending { answeredHere.remove(id) }
+        pending = nil
+        expiry?.cancel()
+        showNextSoon()
+    }
+
+    /// Signed out.
+    func clearAsks() {
+        if let id = pending, asks[id] != nil { pending = nil }
+        asks = [:]
+        queue = []
+        offered = []
+        answeredHere = []
+        expiry?.cancel()
+    }
+
+    private func show(_ id: UUID) {
+        pending = id
+        expiry?.cancel()
+        // An ask left unanswered closes when it expires.
+        guard let ends = asks[id]?.expires_at else { return }
+        expiry = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(max(0, ends.timeIntervalSinceNow)))
+            guard !Task.isCancelled else { return }
+            self?.withdraw(id)
+        }
+    }
+
+    private func showNextSoon() {
+        let delay = nextDelay
+        Task { [weak self] in
+            try? await Task.sleep(for: delay)
+            self?.showNext()
+        }
+    }
+
+    /// The next ask still waiting, if nothing is showing.
+    func showNext(now: Date = .now) {
+        guard pending == nil else { return }
+        while let id = queue.first {
+            queue.removeFirst()
+            if asks[id]?.isOpen(now: now) == true { show(id); return }
+            asks[id] = nil
+        }
+    }
+
     func receive(_ url: URL, from sender: URL? = nil) {
         guard let id = ConnectLink.requestID(from: url) else { return }
         #if os(macOS)
         browser = sender.flatMap { Self.isBrowser($0) ? $0 : nil }
         NSApp.activate()
         #endif
+        // An ask that was showing waits its turn behind the link.
+        if let showing = pending, showing != id, asks[showing] != nil { queue.insert(showing, at: 0) }
         pending = id
     }
 
@@ -322,13 +457,15 @@ struct ConnectHandler: ViewModifier {
                 openWindow(id: ConnectPanel.windowID)
             }
             #endif
+            .onAppear { center.installNotifications() }
             .sheet(item: Binding(
                 get: { backend.client != nil && isSignedIn ? center.pending.map(PendingID.init) : nil },
-                set: { if $0 == nil { center.pending = nil } }
+                set: { if $0 == nil { center.sheetClosed() } }
             )) { pending in
                 if let client = backend.client {
                     ConsentSheet(client: client, requestID: pending.id, finish: { center.open($0) },
-                                 allowed: { r in center.approved = (r.verifiedAI, .now) })
+                                 allowed: { r in center.approved = (r.verifiedAI, .now) },
+                                 answering: { center.answering($0) })
                 }
             }
     }
@@ -354,20 +491,26 @@ struct ConsentSheet: View {
     let finish: (URL) -> Void
     /// Told when the person allowed the request.
     var allowed: (ConnectRequest) -> Void = { _ in }
+    /// Told just before the answer is sent.
+    var answering: (UUID) -> Void = { _ in }
     @Environment(\.dismiss) private var dismiss
 
-    enum Phase: Equatable { case loading, asking(ConnectRequest), working, done(String), failed(String) }
+    enum Phase: Equatable { case loading, asking(ConnectRequest), working, done(String), handedOff(String), failed(String) }
     @State private var phase: Phase
     @State private var write = true
     /// Face ID or Touch ID before allowing; tests and captures answer for it.
     var confirm: (String) async -> Bool = ConnectApproval.confirm
     var canConfirm: () -> Bool = { ConnectApproval.canConfirm }
+    /// The public key of the page that asked, as it is now.
+    var browserKey: (SupabaseClient, UUID) async throws -> Data? = { try await ConnectAsks.browserKey($0, id: $1) }
 
-    init(client: SupabaseClient, requestID: UUID, initial: Phase = .loading, finish: @escaping (URL) -> Void, allowed: @escaping (ConnectRequest) -> Void = { _ in }) {
+    init(client: SupabaseClient, requestID: UUID, initial: Phase = .loading, finish: @escaping (URL) -> Void,
+         allowed: @escaping (ConnectRequest) -> Void = { _ in }, answering: @escaping (UUID) -> Void = { _ in }) {
         self.client = client
         self.requestID = requestID
         self.finish = finish
         self.allowed = allowed
+        self.answering = answering
         _phase = State(initialValue: initial)
     }
 
@@ -430,6 +573,16 @@ struct ConsentSheet: View {
                 Text("Go back to \(name) to finish.").foregroundStyle(.secondary)
             }
             .accessibilityElement(children: .combine)
+        case .handedOff(let name):
+            VStack(spacing: 8) {
+                Label("Allowed", systemImage: "checkmark.circle.fill")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(.green)
+                Text("\(name) finishes connecting in your browser.")
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.secondary)
+            }
+            .accessibilityElement(children: .combine)
         case .failed(let message):
             VStack(spacing: 14) {
                 Text("Couldn't connect").font(.title3.weight(.semibold))
@@ -455,6 +608,14 @@ struct ConsentSheet: View {
                 }
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
+                // Asked from a browser: when, and in what, so a request you didn't start stands out.
+                if let line = r.requestedLine() {
+                    Text(line)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .accessibilityIdentifier("connect.requested")
+                }
             }
 
             // An app that asked only to read can't be given more.
@@ -524,13 +685,21 @@ struct ConsentSheet: View {
         do {
             // The connection gets its own copy of the account's key, wrapped under a code made here.
             let code = allow ? try AccountCrypto.shared.connectionCode() : nil
-            let url = try await ConnectAPI.decide(id: r.id, redirectURI: r.redirect_uri, allow: allow, write: write && r.wants_write,
-                                                  code: code, send: ConnectAPI.sender(client))
-            finish(url)
+            // Asked from a browser: the code goes to that page, sealed to its key.
+            var key: Data?
+            if allow, r.isAsked {
+                key = try await browserKey(client, r.id)
+                guard key != nil else { throw ConnectAPI.Failure(message: "This request expired. Start connecting again in your browser.") }
+            }
+            answering(r.id)
+            let answer = try await ConnectAPI.decide(id: r.id, redirectURI: r.redirect_uri, allow: allow, write: write && r.wants_write,
+                                                     code: code, browserKey: key, send: ConnectAPI.sender(client))
+            // Only a request that came by link here is sent on from here.
+            if let url = answer.url { finish(url) }
             if allow {
                 allowed(r)
-                phase = .done(r.who)
-                try? await Task.sleep(for: .seconds(1.6))
+                phase = answer == .handedOff ? .handedOff(r.who) : .done(r.who)
+                try? await Task.sleep(for: .seconds(answer == .handedOff ? 2.4 : 1.6))
             }
             dismiss()
         } catch {
