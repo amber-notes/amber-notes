@@ -69,7 +69,8 @@ export default function Page() {
         Neither ships an MCP server of its own. With Obsidian, community plugins give Claude Desktop or Claude Code access to a vault on the
         same computer, and because the notes are files, a file-system server works too. With Apple Notes, community servers drive the Notes app
         on a Mac. Either way it stays on that computer: ChatGPT on the web and the phone apps can&apos;t reach it.{" "}
-        <a href="/blog/notes-apps-with-mcp">Notes apps with an MCP server, compared</a> covers the options in detail.
+        <a href="/blog/obsidian-mcp">Obsidian MCP servers, compared</a> goes through the Obsidian ones and how to set them up, and{" "}
+        <a href="/blog/notes-apps-with-mcp">notes apps with an MCP server, compared</a> covers the other apps.
       </p>
       <p>
         Amber Notes is my middle ground: it feels like Apple Notes, keeps every note as markdown underneath, and has an MCP server in the cloud,

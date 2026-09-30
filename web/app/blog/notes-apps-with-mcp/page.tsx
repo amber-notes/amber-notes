@@ -77,7 +77,7 @@ export default function Page() {
         Notes and choose Read Only, or Read and Edit. When an AI changes a note, you see what changed, with Undo, and every earlier
         version is kept. It <a href="/blog/move-from-apple-notes">imports Apple Notes on the Mac</a>. The Mac app is out now; the iPhone app is coming soon to the App Store. The{" "}
         <a href="/blog/mcp-server">MCP server page</a> lists its tools, and{" "}
-        <a href="/blog/connect-chatgpt-to-your-notes">connecting ChatGPT</a> takes a few minutes.
+        connecting ChatGPT takes a few minutes.
       </p>
       <p className="label"><strong>Notion</strong></p>
       <p>
@@ -102,7 +102,8 @@ export default function Page() {
       <p className="label"><strong>Obsidian</strong></p>
       <p>
         Obsidian doesn&apos;t ship an MCP server of its own. Community plugins and servers give AI apps access to a vault on the same
-        computer. Because a vault is a folder of markdown files, a plain file-system MCP server works too.
+        computer. Because a vault is a folder of markdown files, a plain file-system MCP server works too.{" "}
+        <a href="/blog/obsidian-mcp">Obsidian MCP servers, compared</a>.
       </p>
       <p className="label"><strong>Apple Notes</strong></p>
       <p>
