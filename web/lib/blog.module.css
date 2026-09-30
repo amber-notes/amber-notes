@@ -30,6 +30,10 @@
 .ground[data-ground="ink"] { background: linear-gradient(180deg, #3a2716, #241709); }
 .ground[data-ground="peach"] { background: linear-gradient(160deg, #fde5cf, #f6c49b); }
 .ground[data-ground="cream"] { background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); }
+.ground[data-ground="sand"] { background: linear-gradient(180deg, #f6ead8, #eed9ba); }
+.ground[data-ground="clay"] { background: linear-gradient(160deg, #f6dcc8, #eab896); }
+.ground[data-ground="mist"] { background: linear-gradient(180deg, #ece7e1, #d9d1c8); }
+.ground[data-ground="honey"] { background: linear-gradient(160deg, #fcebc4, #f5cf82); }
 .ground[data-ground="dunes"] { background: #f9c98a url(/blog/desk.svg) center / cover no-repeat; }
 
 /* ── A figure in a post: the capture centred on its ground ── */
@@ -38,12 +42,15 @@
 .caption { margin-top: 10px; color: var(--muted); font-size: 14px; line-height: 1.45; text-align: center; text-wrap: balance; }
 
 /* ── A card's picture: one capture on the post's ground, edge to edge under the card's corners ── */
-.thumb { position: relative; aspect-ratio: 16 / 10; overflow: hidden; }
+.thumb { position: relative; aspect-ratio: 16 / 10; overflow: hidden; container-type: inline-size; }
 .thumb img {
   position: absolute; left: 6%; top: 20px; width: 88%; height: auto; border-radius: 10px; background: #fff;
   box-shadow: 0 0 0 0.5px rgba(60, 20, 0, 0.16), 0 12px 28px -12px rgba(60, 20, 0, 0.3), 0 1px 3px rgba(60, 20, 0, 0.1);
-  /* Cropped only at the bottom, where it fades into the ground. */
-  -webkit-mask-image: linear-gradient(to bottom, #000 60%, transparent 86%); mask-image: linear-gradient(to bottom, #000 60%, transparent 86%);
+  /* Cropped only at the bottom of the card's picture, where it fades into the ground. The fade is
+     sized to the picture (62.5% of its width, less the top gap), so a short capture never fades. */
+  -webkit-mask-image: linear-gradient(to bottom, #000 72%, transparent 96%); mask-image: linear-gradient(to bottom, #000 72%, transparent 96%);
+  -webkit-mask-size: 100% calc(62.5cqw - 20px); mask-size: 100% calc(62.5cqw - 20px);
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
 }
 /* In cards the grounds are quiet tints of the palette; the post's own picture keeps its fuller one. */
 .thumb[data-ground] { background: #fbeedd; box-shadow: none; }
@@ -57,6 +64,10 @@
 .thumb[data-ground="ink"] { background: #e9ddce; }
 .thumb[data-ground="peach"] { background: #fbdcc4; }
 .thumb[data-ground="cream"] { background: #fff4e6; }
+.thumb[data-ground="sand"] { background: #f3e6d2; }
+.thumb[data-ground="clay"] { background: #f4d9c6; }
+.thumb[data-ground="mist"] { background: #e9e4de; }
+.thumb[data-ground="honey"] { background: #fae3b0; }
 
 /* An iPhone screen on its own, with the screen's corners. */
 .phone { width: min(100%, var(--w, 100%)); margin: 0 auto; }
