@@ -5,7 +5,8 @@
 import { tools } from "./tools.ts";
 
 export const SERVER_INFO = { name: "amber-notes", title: "Amber Notes", version: "1.0.0" };
-export const SERVER_CARD_PATH = "/.well-known/mcp/server-card.json";
+// Joined at runtime: the Supabase CLI mistakes a literal "/….json" path for a static file to bundle.
+export const SERVER_CARD_PATH = ["", ".well-known", "mcp", "server-card.json"].join("/");
 
 export function serverCard() {
   return {
