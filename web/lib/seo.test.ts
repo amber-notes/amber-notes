@@ -35,6 +35,7 @@ describe("search and AI crawlers", () => {
     expect(txt.startsWith("# Amber Notes\n\n> Amber Notes is a free, open-source notes app for iPhone and Mac")).toBe(true);
     expect(txt).toContain(MCP_URL);
     expect(txt).toContain("Incredible");
+    expect(txt).toContain("https://emilwagman.com");
     for (const p of posts) expect(txt.includes(`/blog/${p.slug})`)).toBe(!p.draft);
     expect(llmsFullTxt()).toContain("`edit_note` (write)");
   });

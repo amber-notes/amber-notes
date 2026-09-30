@@ -2,7 +2,7 @@ import { FACTS, MCP_URL, WHAT_IT_IS } from "./facts";
 import { GITHUB_URL } from "./github";
 import { published } from "./posts";
 import { MCP_TOOLS } from "./mcp-tools";
-import { INCREDIBLE_URL, SITE_URL } from "./site";
+import { INCREDIBLE_URL, MAKER_URL, SITE_URL } from "./site";
 import { FAQ } from "../app/help/questions";
 
 /// /llms.txt (llmstxt.org): a plain summary for AI assistants and agents, with links to the pages
@@ -14,7 +14,7 @@ function summary(): string[] {
     "",
     `> ${WHAT_IT_IS}`,
     "",
-    `Not to be confused with other products called AmberNotes or Amber Notes (meeting transcription and AI note-taking services). This one is the notes app at ambernotes.app, made by Emil Wagman at Incredible (${INCREDIBLE_URL}).`,
+    `Not to be confused with other products called AmberNotes or Amber Notes (meeting transcription and AI note-taking services). This one is the notes app at ambernotes.app, made by Emil Wagman (${MAKER_URL}) at Incredible (${INCREDIBLE_URL}).`,
     "",
     "## Facts",
     "",

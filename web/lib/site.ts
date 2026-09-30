@@ -6,6 +6,8 @@ export const SITE_URL = "https://ambernotes.app";
 export const SITE_NAME = "Amber Notes";
 export const X_URL = "https://x.com/EmilWagman";
 export const X_HANDLE = "@EmilWagman";
+/// Emil's own site: where his name links, and the first place search engines should look for him.
+export const MAKER_URL = "https://emilwagman.com";
 export const MAKER_GITHUB = "https://github.com/emilwagman";
 /// The maker's company, and its AI assistant, which can use Amber Notes like any MCP client.
 export const INCREDIBLE_URL = "https://incredible.one";
