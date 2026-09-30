@@ -14,7 +14,7 @@ import TipKit
 /// - at most one tip every 3 days: TipKit's displayFrequency is daily (it has no 3-day setting),
 ///   and `turn` holds the one tip whose 3 days these are (see `TipSpacing`);
 /// - only once you've used the app on 3 different days (the `activeDay` event, donated once a day);
-/// - never while the Get set up card shows (`setupVisible`);
+/// - never while the Get set up card shows (`setupVisible`), or the share ask (`shareAskVisible`);
 /// - never while you type: `calm` is set when a note or the list opens, or after a tap, and
 ///   cleared by the first keystroke, so a tip only appears at a quiet moment;
 /// - never for a feature you've ever used, on any device, before or after this version
@@ -43,6 +43,8 @@ enum PaneTips {
     @Parameter static var turn: String = ""
     /// The menu bar icon is on (Mac).
     @Parameter static var menuBarShown: Bool = true
+    /// "Enjoying Amber Notes?" is on screen (`ShareAskStore`): no tip beside it.
+    @Parameter static var shareAskVisible: Bool = false
 
     /// Once per calendar day the app is used.
     static let activeDay = Tips.Event(id: "activeDay")
@@ -245,6 +247,7 @@ private var commonRules: [Tips.Rule] {
     [
         #Rule(PaneTips.activeDay) { $0.donations.count >= 3 },
         #Rule(PaneTips.$setupVisible) { $0 == false },
+        #Rule(PaneTips.$shareAskVisible) { $0 == false },
         #Rule(PaneTips.$calm) { $0 == true },
         #Rule(PaneTips.$featureUseKnown) { $0 == true },
     ]
@@ -281,6 +284,7 @@ struct MenuBarTip: Tip {
         [
             #Rule(PaneTips.activeDay) { $0.donations.count >= 5 },
             #Rule(PaneTips.$setupVisible) { $0 == false },
+            #Rule(PaneTips.$shareAskVisible) { $0 == false },
             #Rule(PaneTips.$calm) { $0 == true },
             #Rule(PaneTips.$menuBarShown) { $0 == true },
             #Rule(PaneTips.$featureUseKnown) { $0 == true },

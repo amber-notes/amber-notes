@@ -51,6 +51,7 @@ struct NoteDetailView: View {
                 PaneTips.menuBarShown = MenuBarSettings.allowed && UserDefaults.standard.object(forKey: MenuBarSettings.key) as? Bool ?? true
                 #endif
                 PaneTips.noteOpened(note.body)
+                ShareAsk.noteUsed()
             }
             .onChange(of: showHistory) { _, open in if open { FeatureUse.mark(.versionHistory) } }
     }
@@ -163,6 +164,7 @@ struct NoteDetailView: View {
     /// Every keystroke lands here; the model is written once typing pauses.
     private func save(_ text: String) {
         PaneTips.typed()
+        ShareAsk.noteUsed(typing: true)
         let note = self.note
         saver.schedule(base: note.body) { [saver] in
             // Something else rewrote the note meanwhile (sync, an AI): the editor
