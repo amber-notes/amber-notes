@@ -34,7 +34,7 @@ Write down the times and what you saw in the table at the end.
 ## 5. An AI connection
 
 1. On the Mac, in Chrome, add the Amber Notes connector to ChatGPT or Claude (https://mcp.ambernotes.app). ambernotes.app/connect names the AI and says "Check your iPhone or Mac to approve". Sign in there.
-2. With Amber Notes open on the iPhone: time how long the approval sheet takes to appear. It should say "Allow <AI> to use your notes?", the access, and "Requested … from Chrome on a Mac". With the app in the background on the Mac, a notification should appear; tap it.
+2. First with Amber Notes closed on the iPhone (swipe it away): a push should arrive; tap it and the approval sheet opens. Then with the app open: time how long the sheet takes to appear. It should say "Allow <AI> to use your notes?", the access, and "Requested … from Chrome on a Mac". With the app in the background on the Mac, a notification should appear; tap it.
 3. Allow asks for Face ID or Touch ID. The Chrome page goes on to the AI by itself. Check the other device's sheet closes.
 4. Ask the AI "What's in my Lisbon note?" and "Add 'Tram 28' to Lisbon". The edit shows in the app, marked as the AI's.
 5. Connect again, and this time choose "No device nearby? Use your recovery key" on the page. Sign in, type the recovery key from step 3.1 in lowercase with spaces, and allow. The page goes on to the AI.
