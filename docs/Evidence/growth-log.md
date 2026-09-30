@@ -5,6 +5,31 @@ assistants. Newest first. Research behind it: [seo-aeo-research-2026-09-30.md](s
 
 `docs/` had no README naming a folder for evidence, so this and the research live in `docs/Evidence/`.
 
+## 30 September 2026: round 6, "Obsidian MCP"
+
+### Query
+
+- "Obsidian MCP", "Obsidian MCP server" and "connect Obsidian to ChatGPT / Claude". Results are GitHub repositories, directory listings and older guides built on servers that the Local REST API plugin has since made unnecessary.
+
+### Changed (branch `site/growth-6`)
+
+- New post `/blog/obsidian-mcp`, "Obsidian MCP servers compared (2026)", in Comparisons:
+  - how Obsidian works with AI (a vault is local Markdown; plugin-based vs file-based servers); no official MCP server, only Obsidian CLI (1.12)
+  - a table of seven, each checked against its README, releases and GitHub page on 30 September: Local REST API with MCP (built-in server since 4.0, May 2026; 5.3.1), MarkusPfundstein/mcp-obsidian, cyanheads/obsidian-mcp-server, bitbonsai/mcpvault, StevenStavrakis/obsidian-mcp, Semantic Notes Vault MCP (aaronsb), and jacksteamdev/obsidian-mcp-tools (archived)
+  - setup for the Local REST API plugin in Claude Code and Claude Desktop (through mcp-remote), with the certificate fallbacks from its README
+  - the limits they share, and where Amber Notes fits: a different app, not a plugin, iPhone and Mac only, no Obsidian import
+  - an FAQ with FAQPage JSON-LD
+- Fact found while writing: the Local REST API plugin now ships its own MCP server and its README says third-party servers are no longer necessary, so it, not mcp-obsidian, is the recommendation.
+- Card picture: the Places list and Hotel booking sub-note link from the Lisbon capture, on a new "heather" ground.
+- Links in from apple-notes-vs-obsidian, mcp-server, notes-apps-with-mcp (dropped its connect-chatgpt-to-your-notes link to stay at six) and apple-notes-mcp (dropped notes-in-claude-code-and-codex to stay at six). The new post links those four.
+- Sitemap, /llms.txt and "All posts" pick it up from `web/lib/posts.ts`.
+
+### To measure
+
+- Search Console: impressions and position for "obsidian mcp", "obsidian mcp server" and "obsidian claude mcp", weekly from when the page is indexed.
+- Whether the page is indexed within a week of deploy (`site:ambernotes.app/blog/obsidian-mcp`).
+- Ask ChatGPT, Claude and Perplexity "what's the best Obsidian MCP server?" once a month and note whether the post is cited.
+
 ## 30 September 2026: round 5, "Apple Notes MCP"
 
 ### Query
