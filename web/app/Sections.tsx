@@ -131,7 +131,10 @@ export function ImportSection() {
         <p className={a.lede}>Your notes live in the cloud and sync between iPhone and Mac.</p>
       </div>
       <div className={a.run} aria-label={`Imported ${TOTAL.toLocaleString("en")} notes from Apple Notes, with ${PINNED} pinned. Pins kept, Apple Notes unchanged.`}>
-        <p className={a.runTitle} aria-hidden="true">{full ? "Imported from Apple Notes" : "Importing from Apple Notes…"}</p>
+        <p className={a.runTitle} aria-hidden="true">
+          <img src="/apple-notes.webp" alt="" width={30} height={30} />
+          {full ? "Imported from Apple Notes" : "Importing from Apple Notes…"}
+        </p>
         <div className={a.bar} aria-hidden="true">
           <i style={{ transform: `scaleX(${p})` }} />
           <span className={a.barDone} data-on={full || undefined}><Tick /></span>
