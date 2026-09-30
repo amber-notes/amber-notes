@@ -3,6 +3,7 @@ import { PostPage, postMetadata } from "@/lib/PostPage";
 import { SHOTS } from "@/lib/posts";
 import { MCP_URL } from "@/lib/facts";
 import { MCP_TOOLS, type McpTool } from "@/lib/mcp-tools";
+import { AGENT_INSTALLS } from "@/lib/agent-installs";
 
 export const dynamic = "force-static";
 export const metadata = postMetadata("mcp-server", { title: "Amber Notes MCP server: address, sign-in and tools" });
@@ -72,10 +73,36 @@ export default function Page() {
         annotations (<code>readOnlyHint</code>, and <code>destructiveHint</code> where it applies), so clients can ask before a change.
       </p>
 
+      <h2 id="install">Install in your AI tool</h2>
+      <p>
+        Each of these adds the address above. The first time the tool connects, your browser opens ambernotes.app/connect: open
+        Amber Notes from there or sign in on the page, choose Read and Edit or Read Only, then Allow. You need the free app and an
+        account.
+      </p>
+      {AGENT_INSTALLS.map((x) => (
+        <section key={x.tool} aria-label={x.tool}>
+          <p className="label">
+            <strong>{x.tool}</strong>
+            {x.link && <> · <a href={x.link.href}>{x.link.text}</a></>}
+          </p>
+          {x.file && <p>Add this to <code>{x.file}</code>:</p>}
+          <pre><code>{x.code}</code></pre>
+          <p>{x.signIn}</p>
+          {x.alt && <><p>{x.alt.text}</p><pre><code>{x.alt.code}</code></pre></>}
+        </section>
+      ))}
+      <p className="label"><strong>With a token instead of signing in</strong></p>
+      <p>
+        Any of these tools can use an access token instead. In Amber Notes, open Settings, Connect an AI, Codex, and choose Create
+        Access Token. The token works in any MCP client; send it as an <code>Authorization: Bearer pane_…</code> header, the way the{" "}
+        <a href="/blog/notes-in-claude-code-and-codex">Claude Code and Codex guide</a> shows. It&apos;s shown once, so keep it private.
+      </p>
+
       <h2>Connect it</h2>
       <ul>
         <li><a href="/blog/connect-chatgpt-to-your-notes">Connect ChatGPT or Claude to your notes</a>: add the address as a custom app or connector.</li>
         <li><a href="/blog/notes-in-claude-code-and-codex">Use your notes from Claude Code and Codex</a>: one command, or a few lines of config.</li>
+        <li><a href="#install">Cursor, VS Code, Gemini CLI, Goose, Zed and Windsurf</a>: the install for each is above.</li>
         <li><a href="https://incredible.one" rel="noopener">Incredible</a>, and anything else that speaks MCP: add the address and sign in when it asks.</li>
       </ul>
       <p>

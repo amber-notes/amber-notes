@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "amber-notes": {
+      "type": "http",
+      "url": "https://mcp.ambernotes.app"
+    }
+  }
+}
