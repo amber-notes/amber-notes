@@ -5,6 +5,22 @@ assistants. Newest first. Research behind it: [seo-aeo-research-2026-09-30.md](s
 
 `docs/` had no README naming a folder for evidence, so this and the research live in `docs/Evidence/`.
 
+## 30 September 2026: round 10, Claude and Apple Notes after iOS 27
+
+### Query
+
+- "claude apple notes connector", "claude apple notes connector not working" (both in autocomplete), "can claude read apple notes on iphone". Results: GitHub repos, Medium, usecarly (July), Geeky Gadgets.
+
+### Changed (branch `site/claude-apple-notes-ios27`)
+
+- `/blog/claude-and-apple-notes`:
+  - the desktop extension is named as what it is, Anthropic's Read and Write Apple Notes, with its read, add and update tools (the post said read only), and its checklist limit: checkboxes become plain bullets on update ([anthropics/claude-ai-mcp#29](https://github.com/anthropics/claude-ai-mcp/issues/29), January 2026, closed as not planned)
+  - "If the Apple Notes connector isn't working": desktop app on a Mac only, the Automation permission, quit and reopen, synced and unlocked notes
+  - "What changed in iOS 27": Siri AI searches notes itself; Claude isn't a Siri extension (MacRumors, 14 September); no MCP in iOS 27; Claude on iPhone reaches only internet servers
+  - FAQ: a "connector not working" answer; the iPhone answer covers iOS 27
+  - the Amber Notes bullets follow the new approval flow (type the number on your device) and say checklists stay checklists
+  - link budget: the Apple Notes API link made way for the iOS 27 post (six links, the cap)
+
 ## 30 September 2026: round 9, ChatGPT after DevDay
 
 ### Query
