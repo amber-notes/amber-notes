@@ -7,6 +7,8 @@ export const SITE_NAME = "Amber Notes";
 export const X_URL = "https://x.com/EmilWagman";
 export const X_HANDLE = "@EmilWagman";
 export const MAKER_GITHUB = "https://github.com/emilwagman";
+/// The maker's company, and its AI assistant, which can use Amber Notes like any MCP client.
+export const INCREDIBLE_URL = "https://incredible.one";
 
 // The iPhone app. Flipping this shows the App Store button and turns on Safari's Smart App Banner.
 export const APP_STORE_LIVE = false;
@@ -24,17 +26,22 @@ type Page = {
   shareTitle?: string;
   /// Only pages that are ready for search say true; the root layout's default is noindex.
   index?: boolean;
+  /// Articles say so to Open Graph, with when they were published and changed.
+  article?: { published: string; modified: string; author: string };
 };
 
 /// Title, description, canonical, robots, Open Graph and Twitter for one page. Next.js replaces
 /// (doesn't merge) openGraph and twitter between layouts and pages, so each page gets all of it.
-export function pageMetadata({ title, description, path, shareTitle, index = true }: Page): Metadata {
+export function pageMetadata({ title, description, path, shareTitle, index = true, article }: Page): Metadata {
+  const og = { title: shareTitle ?? title, description, url: path, siteName: SITE_NAME, locale: "en_US" };
   return {
     title,
     description,
     alternates: { canonical: path },
     robots: index ? { index: true, follow: true } : { index: false, follow: true },
-    openGraph: { title: shareTitle ?? title, description, url: path, siteName: SITE_NAME, type: "website", locale: "en_US" },
+    openGraph: article
+      ? { ...og, type: "article", publishedTime: article.published, modifiedTime: article.modified, authors: [article.author] }
+      : { ...og, type: "website" },
     twitter: { card: "summary_large_image", title: shareTitle ?? title, description, creator: X_HANDLE },
   };
 }

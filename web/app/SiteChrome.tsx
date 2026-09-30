@@ -7,12 +7,12 @@ import DownloadLink from "./DownloadLink";
 /// Which site pages are cream and which are leaf brown. Anything else (shared notes) has no theme.
 export function themeFor(path: string): "cream" | "leaf" | null {
   if (/^\/(changelog|support|help)(\/|$)/.test(path)) return "leaf";
-  if (path === "/" || /^\/(download|privacy|terms|guides)(\/|$)/.test(path)) return "cream";
+  if (path === "/" || /^\/(download|privacy|terms|blog)(\/|$)/.test(path)) return "cream";
   return null;
 }
 
 /// Runs in <head> before first paint, so a page never flashes the wrong theme.
-export const themeScript = `(function(){var p=location.pathname,t=/^\\/(changelog|support|help)(\\/|$)/.test(p)?"leaf":(p==="/"||/^\\/(download|privacy|terms|guides)(\\/|$)/.test(p))?"cream":null;if(t)document.documentElement.dataset.theme=t;})();`;
+export const themeScript = `(function(){var p=location.pathname,t=/^\\/(changelog|support|help)(\\/|$)/.test(p)?"leaf":(p==="/"||/^\\/(download|privacy|terms|blog)(\\/|$)/.test(p))?"cream":null;if(t)document.documentElement.dataset.theme=t;})();`;
 
 const GITHUB = "https://github.com/emilwagman/amber-notes";
 const X_URL = "https://x.com/EmilWagman";
@@ -85,10 +85,10 @@ export default function SiteChrome({ version, stars, children }: { version: stri
       <footer className="site-footer">
         <div className="site-footrow">
           <nav aria-label="More">
+            <a href="/blog">Blog</a>
             <a href="/changelog">Changelog</a>
             <a href="/privacy">Privacy</a>
             <a href="/terms">Terms</a>
-            <a href="/guides">Guides</a>
             <a href="/help">Help</a>
           </nav>
           <span className="site-footsep" aria-hidden="true" />

@@ -30,3 +30,6 @@
 @media (hover: hover) { .contact a:hover { box-shadow: inset 0 0 0 1.5px var(--amber); } }
 @media (prefers-reduced-motion: no-preference) { .contact a { transition: transform 0.12s ease-out; } .contact a:active { transform: scale(0.98); } }
 .h3 { margin: 0 0 14px; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+/* The blog post that covers a question in full. */
+.a p.more a { color: var(--ink); font-weight: 600; text-decoration: underline; text-decoration-color: var(--amber); text-decoration-thickness: 2px; text-underline-offset: 3px; border-radius: 3px; }
+.a p.more a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }

@@ -1,18 +1,25 @@
-/// The Help page's questions. Short answers, accurate to the app as it ships.
-export type QA = { id: string; q: string; a: string[] };
+/// The Help page's questions. Short answers, accurate to the app as it ships. `more` links the
+/// blog post that covers the question in full.
+export type QA = { id: string; q: string; a: string[]; more?: { href: string; text: string } };
 
 export const FAQ: QA[] = [
+  { id: "what", q: "What is Amber Notes?", a: [
+    "Amber Notes is a free, open-source notes app for iPhone and Mac that ChatGPT, Claude, Claude Code, Codex and Incredible can search, read and edit, with your approval. It works like Apple Notes, imports your Apple Notes on the Mac, and syncs between iPhone and Mac.",
+  ], more: { href: "/blog/amber-notes-vs-apple-notes", text: "Amber Notes vs Apple Notes" } },
   { id: "import", q: "How do I import my Apple Notes?", a: [
     "On your Mac, choose File → Import from Apple Notes. Import everything, or pick the notes you want. Folders, checklists and tables come along, and nothing in Apple Notes is changed.",
     "On iPhone, share a note from Apple Notes to Amber Notes. Or import on your Mac, and everything shows up on your iPhone a second later.",
-  ] },
-  { id: "connect", q: "How do I connect ChatGPT, Claude, Claude Code or Codex?", a: [
+  ], more: { href: "/blog/move-from-apple-notes", text: "How to move from Apple Notes, step by step" } },
+  { id: "connect", q: "How do I connect ChatGPT, Claude, Claude Code, Codex or Incredible?", a: [
     "In Amber Notes, open Settings → Connect an AI, pick ChatGPT or Claude and follow the steps. You add it once, on a computer. After that, it works in their phone apps too.",
-    "Claude Code and Codex get a one-line command with a token of their own.",
-  ] },
+    "Claude Code gets a one-line command with a token of its own, and Codex a few lines for its config file. Incredible, and any other app that supports MCP, connects with the Amber Notes server address and a sign-in.",
+  ], more: { href: "/blog/connect-chatgpt-to-your-notes", text: "How to connect ChatGPT to your notes" } },
+  { id: "apple-notes-ai", q: "Can ChatGPT or Claude use my notes in Apple Notes?", a: [
+    "Only in a limited way, and only on a Mac: Apple Notes has no public API, so AI apps can't reach your notes in iCloud. Amber Notes has an MCP server built in, so once you import your notes, ChatGPT and Claude can use them from any device.",
+  ], more: { href: "/blog/claude-and-apple-notes", text: "Can Claude read your Apple Notes?" } },
   { id: "ai-access", q: "Can my AI see all my notes?", a: [
     "Only once you connect it and approve it. You choose read-only, or read and edit. Every change an AI makes keeps the previous version, and you can disconnect any assistant in Settings at any time.",
-  ] },
+  ], more: { href: "/blog/mcp-server", text: "How the Amber Notes MCP server works" } },
   { id: "free", q: "Is it free?", a: [
     "Yes. Amber Notes is free, with no ads and no tracking. It's also open source, so anyone can read the code.",
   ] },

@@ -5,6 +5,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AIGlyph } from "@/lib/ai-glyphs";
+import { FACTS } from "@/lib/facts";
 import DownloadLink from "./DownloadLink";
 import a from "./sections.module.css";
 
@@ -87,7 +88,7 @@ export function AiSection() {
           );
         })}
       </div>
-      <p className={a.also}>Also Codex, and any app that supports MCP.</p>
+      <p className={a.also}>Also Codex, <a href="https://incredible.one" rel="noopener">Incredible</a>, and any app that supports MCP. <a href="/blog/connect-chatgpt-to-your-notes">How to connect</a></p>
     </section>
   );
 }
@@ -168,6 +169,19 @@ export function AlsoLine() {
     <ul className={a.alsoTicks} aria-label="Also">
       <li><Tick /> Lists that tidy themselves</li><li><Tick /> Real tables</li><li><Tick /> Photos and files</li><li><Tick /> No ads, no tracking</li>
     </ul>
+  );
+}
+
+/* ───────────── The facts, in plain sentences ───────────── */
+
+/// What Amber Notes is, said plainly, for people skimming and for search and AI assistants quoting it.
+export function InShort() {
+  return (
+    <section className={a.facts} aria-labelledby="in-short">
+      <h2 id="in-short" className={a.factsTitle}>Amber Notes in short</h2>
+      <ul>{FACTS.map((f) => <li key={f}>{f}</li>)}</ul>
+      <p>More on the blog: <a href="/blog/connect-chatgpt-to-your-notes">connect ChatGPT to your notes</a>, <a href="/blog/move-from-apple-notes">move from Apple Notes</a>, and <a href="/blog/notes-apps-with-mcp">notes apps with an MCP server, compared</a>.</p>
+    </section>
   );
 }
 

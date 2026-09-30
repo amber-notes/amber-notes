@@ -40,20 +40,26 @@ const MOVED = ["/", "/help", "/download", "/changelog"];
 const config: NextConfig = {
   poweredByHeader: false,
   async redirects() {
-    return MOVED.map((source) => ({
-      source,
-      has: [{ type: "host" as const, value: OLD_HOST }],
-      destination: `${SITE}${source}`,
-      permanent: true,
-    }));
+    return [
+      ...MOVED.map((source) => ({
+        source,
+        has: [{ type: "host" as const, value: OLD_HOST }],
+        destination: `${SITE}${source}`,
+        permanent: true,
+      })),
+      // The guides became the blog on 30 September 2026.
+      { source: "/guides", destination: "/blog", permanent: true },
+      { source: "/guides/:slug", destination: "/blog/:slug", permanent: true },
+    ];
   },
   async headers() {
     return [
       {
         // Shared notes (and everything else not listed) are private-by-link: never indexed.
         // The home page, download, privacy policy, terms and support pages may be indexed, and
-        // robots.txt and the sitemap are for crawlers. A new page for search is added here too.
-        source: "/((?!privacy|terms|support|help|download|changelog|robots\\.txt$|sitemap\\.xml$).+)",
+        // robots.txt, the sitemap and llms.txt are for crawlers. Blog posts carry their own robots meta
+        // (drafts say noindex). A new page for search is added here too.
+        source: "/((?!privacy|terms|support|help|download|changelog|blog|robots\\.txt$|sitemap\\.xml$|llms\\.txt$|llms-full\\.txt$).+)",
         headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }, ...security],
       },
       { source: "/", headers: security },
@@ -61,6 +67,8 @@ const config: NextConfig = {
       { source: "/changelog", headers: security },
       { source: "/help", headers: security },
       { source: "/support", headers: security },
+      { source: "/blog", headers: security },
+      { source: "/blog/:slug", headers: security },
     ];
   },
 };

@@ -43,6 +43,8 @@
   .termResult { transition: opacity 0.3s ease-out 0.35s, transform 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.2) 0.35s; }
 }
 .also { margin: -8px 0 0; color: var(--muted); font-size: 15px; font-weight: 600; }
+.also a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--amber); text-decoration-thickness: 2px; text-underline-offset: 3px; border-radius: 3px; }
+.also a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 
 /* ── Bring all your Apple Notes in one click: the import, run once ── */
 .run { display: grid; gap: 18px; padding: 26px 28px; border-radius: 28px; background: var(--card); box-shadow: 0 0 0 1px var(--line), 0 30px 60px -40px rgba(60, 30, 5, 0.5); }
@@ -76,6 +78,15 @@
 @media (max-width: 700px) { .alsoTicks { margin-top: -56px; } }
 .alsoTicks li { display: inline-flex; align-items: center; gap: 8px; }
 .alsoTicks svg { color: var(--amber); }
+
+/* ── In short: the plain facts, quiet, in one readable column ── */
+.facts { display: grid; gap: 14px; max-width: 680px; color: var(--muted); font-size: 16px; line-height: 1.55; }
+.factsTitle { margin: 0; font-size: 21px; line-height: 1.2; font-weight: 800; letter-spacing: -0.02em; color: var(--ink); }
+.facts ul { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+.facts li::marker { color: var(--amber); }
+.facts p { margin: 0; }
+.facts a { color: var(--ink); font-weight: 600; text-decoration: underline; text-decoration-color: var(--amber); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+.facts a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; border-radius: 3px; }
 
 /* ── The ending: a full-width band in the site's near-black brown ── */
 .band { width: 100vw; margin-left: calc(50% - 50vw); background: #2a1d10; color: #fbeedd; padding: 110px 20px 120px; box-sizing: border-box; margin-bottom: -56px; } /* the footer then sits 64 px below the band */

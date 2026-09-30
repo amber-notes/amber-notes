@@ -1,0 +1,72 @@
+/* A blog post: a share rail on the left on wide screens, the readable 760 px column, then more posts. */
+.main {
+  width: 100%; max-width: 1240px; margin: 0 auto; padding: 40px 20px 0; box-sizing: border-box;
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 760px) minmax(0, 1fr); column-gap: 40px; align-items: start;
+}
+@media (max-width: 1100px) { .main { grid-template-columns: minmax(0, 1fr); padding-top: 24px; } }
+
+/* ── The rail: back to all posts, and share ── */
+.rail { grid-column: 1; grid-row: 1; justify-self: end; width: 180px; height: 100%; }
+.railInner { position: sticky; top: 24px; display: grid; gap: 40px; padding-top: 6px; }
+@media (max-width: 1100px) { .rail { display: none; } }
+.back { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; color: var(--muted); font-weight: 600; font-size: 15px; text-decoration: none; border-radius: 8px; }
+@media (hover: hover) { .back:hover { color: var(--ink); } }
+.back:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+.share { display: grid; gap: 10px; }
+.shareLabel { margin: 0; font-size: 12.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+.share ul, .shareRow ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.share a, .shareRow a {
+  display: inline-flex; align-items: center; gap: 10px; min-height: 36px; padding: 0 10px; margin: 0 -10px; border-radius: 10px;
+  color: var(--ink); font-weight: 600; font-size: 15px; text-decoration: none;
+}
+.share svg, .shareRow svg { color: var(--muted); flex: none; }
+@media (hover: hover) { .share a:hover, .shareRow a:hover { background: var(--soft); } }
+.share a:focus-visible, .shareRow a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+@media (prefers-reduced-motion: no-preference) { .share a, .shareRow a { transition: background-color 0.15s ease-out; } }
+
+/* Phones and narrow windows: the share links sit under the title as a row. */
+.shareRow { display: none; }
+@media (max-width: 1100px) {
+  .shareRow { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
+  .shareRow ul { display: flex; flex-wrap: wrap; gap: 6px; }
+  .shareRow a { margin: 0; box-shadow: 0 0 0 1px var(--line); }
+}
+
+/* ── The column ── */
+.col { grid-column: 2; grid-row: 1; display: grid; gap: 28px; min-width: 0; }
+@media (max-width: 1100px) { .col { grid-column: 1; width: 100%; max-width: 760px; justify-self: center; } }
+.col > *, .end > * { min-width: 0; }
+.head { display: grid; gap: 16px; }
+.crumbs ol { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; font-size: 14px; color: var(--muted); }
+.crumbs li + li::before { content: "›"; margin-right: 8px; }
+.crumbs a { color: var(--muted); text-decoration: none; font-weight: 600; border-radius: 6px; }
+@media (hover: hover) { .crumbs a:hover { color: var(--ink); } }
+.crumbs a:focus-visible, .meta a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.meta { margin: 8px 0 0; color: var(--muted); font-size: 15px; font-variant-numeric: tabular-nums; }
+.meta a { color: var(--link); font-weight: 600; text-decoration: none; border-radius: 4px; }
+@media (hover: hover) { .meta a:hover { text-decoration: underline; text-underline-offset: 3px; } }
+.title { margin: 0; font-size: clamp(38px, 5.2vw, 64px); line-height: 1; font-weight: 800; letter-spacing: -0.04em; text-wrap: balance; }
+.byline { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; color: var(--muted); font-size: 16px; }
+.byline strong { color: var(--ink); font-weight: 650; }
+
+.body > .intro { margin: 0 0 24px; font-size: clamp(19px, 1.9vw, 21px); line-height: 1.5; color: var(--ink); text-wrap: pretty; }
+.checked { margin-top: 40px; color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+
+/* ── After the post: more posts, then every post ── */
+.end { grid-column: 2; display: grid; gap: 56px; margin-top: 72px; min-width: 0; }
+@media (max-width: 1100px) { .end { grid-column: 1; width: 100%; max-width: 760px; justify-self: center; } }
+.sectionTitle { margin: 0 0 20px; font-size: 26px; line-height: 1.15; font-weight: 800; letter-spacing: -0.02em; }
+.more { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+@media (max-width: 640px) { .more { grid-template-columns: minmax(0, 1fr); } }
+.more > li { display: grid; }
+
+.all { padding-top: 32px; border-top: 1.5px dashed var(--line); }
+.all ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.all ul a { display: inline-block; padding: 4px 0; color: var(--ink); font-weight: 600; font-size: 16px; line-height: 1.35; text-decoration: none; border-radius: 4px; }
+@media (hover: hover) { .all ul a:hover { text-decoration: underline; text-decoration-color: var(--amber); text-decoration-thickness: 2px; text-underline-offset: 4px; } }
+.all a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.allGroups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 40px; }
+@media (max-width: 640px) { .allGroups { grid-template-columns: minmax(0, 1fr); } }
+.allGroups h3 { margin: 0 0 8px; font-size: 12.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+.allGroups h3 a { color: var(--link); text-decoration: none; }
