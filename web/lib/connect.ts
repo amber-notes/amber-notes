@@ -59,8 +59,9 @@ function plainHost(host: unknown): string | null {
 
 /// Reads a /connect/label body into what the page may show.
 export function parseLabel(body: unknown): ConnectLabel | null {
-  const b = (body ?? {}) as { client_name?: unknown; claimed_name?: unknown; redirect_host?: unknown };
-  const claimed = plainName(b.claimed_name) ?? plainName(b.client_name);
+  // Only claimed_name: client_name is the server's name for the address, not what the app says.
+  const b = (body ?? {}) as { claimed_name?: unknown; redirect_host?: unknown };
+  const claimed = plainName(b.claimed_name);
   const host = plainHost(b.redirect_host);
   if (!claimed && !host) return null;
   return { claimed_name: claimed, redirect_host: host, loopback: host !== null && LOOPBACK.has(host) };

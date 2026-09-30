@@ -27,8 +27,8 @@ describe("the connect page", () => {
   it("reads what the app calls itself and where access goes, and nothing odd", () => {
     expect(parseLabel({ claimed_name: "Claude", redirect_host: "claude.ai", verified_ai: null }))
       .toEqual({ claimed_name: "Claude", redirect_host: "claude.ai", loopback: false });
-    expect(parseLabel({ client_name: "My tool", claimed_name: null, redirect_host: "127.0.0.1", verified_ai: null }))
-      .toEqual({ claimed_name: "My tool", redirect_host: "127.0.0.1", loopback: true });
+    expect(parseLabel({ client_name: "an app on this computer", claimed_name: null, redirect_host: "127.0.0.1", verified_ai: null }))
+      .toEqual({ claimed_name: null, redirect_host: "127.0.0.1", loopback: true });
     expect(parseLabel({ claimed_name: "<script>", redirect_host: "x.example" })).toEqual({ claimed_name: null, redirect_host: "x.example", loopback: false });
     expect(parseLabel({ claimed_name: "x".repeat(80), redirect_host: "evil.example/<b>" })).toBe(null);
     expect(parseLabel(null)).toBe(null);
