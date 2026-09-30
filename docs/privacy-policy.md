@@ -1,13 +1,13 @@
 # Privacy Policy
 
-Last updated: 29 September 2026
+Last updated: 30 September 2026
 
 ## The short version
 
 - Your notes are yours. We store them so they sync between your iPhone and Mac, and for nothing else.
 - No ads, no third-party tracking or analytics, and we never sell or share your data.
 - We count how features are used on our own server to improve the app. We never share or sell it.
-- An AI assistant can only read your notes if you connect it and approve it in the app. You can disconnect it at any time.
+- An AI assistant can only read your notes if you connect it and approve it in Amber Notes or on ambernotes.app. You can disconnect it at any time.
 - A note you share can be read by anyone with its link, until you stop sharing.
 - Your data is stored in the European Union (Frankfurt, Germany).
 - **Settings → Delete Account** deletes your account and everything in it.
@@ -78,7 +78,7 @@ We don't use your data for advertising, and we don't make automated decisions ab
 
 Nothing reaches an AI assistant unless you connect one. When you connect ChatGPT, Claude, Claude Code, Codex or another assistant:
 
-- You approve the connection inside Amber Notes and choose **read only** or **read and edit**.
+- You approve the connection in Amber Notes or on ambernotes.app and choose **read only** or **read and edit**.
 - The assistant can then read the notes it asks for and, if you allowed editing, change them. Every change it makes keeps the previous version, so you can undo it.
 - What you and the assistant exchange is handled by the company behind that assistant, under its own privacy policy. Notes it reads become part of your conversation with it.
 - You can disconnect any assistant at any time in **Settings → Connect an AI**. It loses access immediately.
