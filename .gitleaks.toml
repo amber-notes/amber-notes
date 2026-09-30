@@ -17,4 +17,7 @@ paths = [
   # Cross-platform encryption test vectors: fixed, published inputs (the data key is the bytes 1 to 32
   # in order). Every implementation must reproduce them, so they are public by design.
   '''supabase/functions/_shared/e2ee-vectors\.json''',
+  # The APNs sender's test makes a throwaway P-256 key at runtime and wraps it in PEM; the file
+  # holds no key, only the PEM label.
+  '''supabase/functions/_shared/apns\.test\.ts''',
 ]
