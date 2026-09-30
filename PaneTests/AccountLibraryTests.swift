@@ -11,7 +11,7 @@ import Testing
     func setup() throws -> (ModelContext, UserDefaults, URL) {
         let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
         let suite = "AccountLibraryTests.\(UUID().uuidString)"
-        let defaults = try #require(UserDefaults(suiteName: suite))
+        let defaults = TestDefaults()
         let files = FileManager.default.temporaryDirectory.appending(path: suite, directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: files, withIntermediateDirectories: true)
         try Data("x".utf8).write(to: files.appending(path: "cached.png"))
