@@ -29,7 +29,7 @@ export type Post = {
 
 /// The ground a cover (and the post's first picture) sits on: the site's palette, the help page's
 /// leaf brown, the app's dark look, or the home page's dunes.
-export type Ground = "paper" | "soft" | "tint" | "amber" | "leaf" | "dark" | "dunes" | "ink" | "peach" | "cream" | "sand" | "clay" | "mist" | "honey" | "sage";
+export type Ground = "paper" | "soft" | "tint" | "amber" | "leaf" | "dark" | "dunes" | "ink" | "peach" | "cream" | "sand" | "clay" | "mist" | "honey" | "sage" | "heather";
 
 /// A card's picture: one real capture of the element the post is about, on the post's ground. The
 /// capture is cropped at 2x (3x from iPhone) to about the card's width, so it shows at full size.
@@ -104,6 +104,18 @@ export const posts: Post[] = [
     updated: "2026-09-30",
     image: SHOTS.history,
     thumb: thumb("sage", "thumb-history-list", 640, 973),
+    draft: false,
+  },
+  {
+    slug: "obsidian-mcp",
+    title: "Obsidian MCP servers compared (2026)",
+    description: "There's no official Obsidian MCP server. The community plugins and servers compared, how to set one up in Claude, and the limits they share.",
+    excerpt: "Plugins that serve your vault from inside Obsidian, and servers that work on the files. Seven compared, the setup in Claude, and what none of them can do.",
+    category: "Comparisons",
+    date: "2026-09-30",
+    updated: "2026-09-30",
+    image: SHOTS.lisbon,
+    thumb: thumb("heather", "thumb-lisbon-link", 1090, 340),
     draft: false,
   },
   {

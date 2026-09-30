@@ -197,9 +197,9 @@ export default function Page() {
       </p>
       <p>
         <a href="/blog/move-from-apple-notes">How to move from Apple Notes</a> walks through the import. The{" "}
-        <a href="/blog/mcp-server">MCP server page</a> lists every tool, and{" "}
-        <a href="/blog/notes-in-claude-code-and-codex">using your notes from Claude Code and Codex</a> covers the coding agents. For the
-        other notes apps with a server of their own, see <a href="/blog/notes-apps-with-mcp">notes apps with an MCP server, compared</a>.
+        <a href="/blog/mcp-server">MCP server page</a> lists every tool. For the
+        other notes apps with a server of their own, see <a href="/blog/notes-apps-with-mcp">notes apps with an MCP server, compared</a>,
+        and if your notes are in Obsidian, <a href="/blog/obsidian-mcp">Obsidian MCP servers compared</a>.
       </p>
     </PostPage>
   );
