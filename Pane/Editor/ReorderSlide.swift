@@ -81,7 +81,7 @@ enum ReorderSlide {
 
     /// A picture of `rect` of `view` as it's drawn now.
     /// Drawn over the page colour, so the text is smoothed against the page as it is on screen.
-    static func picture(of rect: CGRect, in view: NSView, page: NSColor = .textBackgroundColor) -> CGImage? {
+    static func picture(of rect: CGRect, in view: NSView, page: NSColor = .panePage) -> CGImage? {
         guard rect.width > 0, rect.height > 0, let rep = view.bitmapImageRepForCachingDisplay(in: rect),
               let ctx = NSGraphicsContext(bitmapImageRep: rep) else { return nil }
         NSGraphicsContext.saveGraphicsState()

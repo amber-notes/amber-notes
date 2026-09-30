@@ -93,6 +93,9 @@ struct MarkdownStyler {
     /// Height of a line folded away under a table's grid.
     static let foldedLine: CGFloat = 1
 
+    /// A note's title (its first plain line).
+    static var titleFont: PFont { .systemFont(ofSize: EditorMetrics.title, weight: .heavy) }
+
     func headingFont(_ level: Int) -> PFont {
         switch level {
         case 1: .systemFont(ofSize: EditorMetrics.title, weight: .bold)
@@ -201,7 +204,8 @@ struct MarkdownStyler {
                 // The first plain line is the title, as in Apple Notes.
                 let plain = !trimmed.hasPrefix("#") && !trimmed.hasPrefix(">") && !trimmed.hasPrefix("<") && ListPrefix(line: line) == nil
                 if firstLineIsTitle && plain {
-                    storage.addAttribute(.font, value: headingFont(1), range: lineRange)
+                    // The website's display type: heavy and tight.
+                    storage.addAttributes([.font: Self.titleFont, .kern: Palette.tracking(EditorMetrics.title)], range: lineRange)
                     let p = baseParagraph()
                     p.paragraphSpacing = 4
                     storage.addAttribute(.paragraphStyle, value: p, range: enclosing)

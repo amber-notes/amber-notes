@@ -27,10 +27,10 @@ final class DecoratedLayoutFragment: NSTextLayoutFragment {
 
     private static func changeColors(_ strength: CGFloat) -> (tint: CGColor, bar: CGColor) {
         #if os(iOS)
-        let page = UIColor.systemBackground.resolvedColor(with: .current)
+        let page = PColor.panePage.resolvedColor(with: .current)
         let accent = PColor.paneAccent.resolvedColor(with: .current)
         #else
-        let page = NSColor.textBackgroundColor.usingColorSpace(.sRGB) ?? .white
+        let page = PColor.panePage.usingColorSpace(.sRGB) ?? .white
         let accent = PColor.paneAccent.usingColorSpace(.sRGB) ?? PColor.paneAccent
         #endif
         var (pr, pg, pb, pa) = (CGFloat(0), CGFloat(0), CGFloat(0), CGFloat(0))

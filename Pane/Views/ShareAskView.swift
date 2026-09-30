@@ -38,14 +38,16 @@ struct ShareAskView: View {
             VStack(spacing: 6) {
                 Text("Enjoying Amber Notes?")
                     .font(Metrics.title)
+                    .foregroundStyle(Color.ink)
                     .accessibilityAddTraits(.isHeader)
                 Text("I\u{2019}m building it on my own, and word of mouth is how people find it. If it\u{2019}s been useful, a post would mean a lot.")
                     .font(Metrics.line)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.muted)
                     .fixedSize(horizontal: false, vertical: true)
             }
             VStack(spacing: Metrics.buttonGap) {
-                share("Share on X", .sharedX, id: "shareAsk.x")
+                // Dark ink on amber: readable on the deeper light-mode amber and the brighter dark one.
+                share("Share on X", .sharedX, id: "shareAsk.x", ink: Color(Palette.onAmber))
                     .buttonStyle(.borderedProminent)
                 share("Share on LinkedIn", .sharedLinkedIn, id: "shareAsk.linkedin")
                     .buttonStyle(.bordered)
@@ -53,7 +55,7 @@ struct ShareAskView: View {
                     Text("Not now").frame(maxWidth: .infinity).frame(minHeight: Metrics.quietHeight)
                 }
                 .buttonStyle(.borderless)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.muted)
                 .accessibilityIdentifier("shareAsk.notNow")
             }
             .padding(.top, Metrics.buttonsTop)
@@ -62,11 +64,11 @@ struct ShareAskView: View {
         .accessibilityIdentifier("shareAsk")
     }
 
-    private func share(_ title: String, _ choice: ShareAsk.Choice, id: String) -> some View {
+    private func share(_ title: String, _ choice: ShareAsk.Choice, id: String, ink: Color? = nil) -> some View {
         Button {
             if let url = store.choose(choice) { openURL(url) }
         } label: {
-            Text(title).frame(maxWidth: .infinity)
+            Text(title).foregroundStyle(ink.map(AnyShapeStyle.init) ?? AnyShapeStyle(.tint)).frame(maxWidth: .infinity)
         }
         .controlSize(.large)
         #if os(iOS)
@@ -82,10 +84,11 @@ struct ShareAskView: View {
             VStack(spacing: 6) {
                 Text("Thank you")
                     .font(Metrics.title)
+                    .foregroundStyle(Color.ink)
                     .accessibilityAddTraits(.isHeader)
                 Text("Every post helps someone find it.")
                     .font(Metrics.line)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.muted)
             }
             Button { store.visible = false } label: {
                 Text("Done").frame(maxWidth: .infinity)

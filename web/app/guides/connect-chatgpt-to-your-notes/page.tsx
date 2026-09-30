@@ -2,14 +2,12 @@ import type { Metadata } from "next";
 import { GuidePage } from "@/lib/GuidePage";
 import { pageMetadata } from "@/lib/site";
 
-// Draft for Emil's approval: noindex, and not in the navigation or the sitemap until it's approved.
 export const dynamic = "force-static";
 export const metadata: Metadata = pageMetadata({
   title: "How to connect ChatGPT to your notes · Amber Notes",
   shareTitle: "How to connect ChatGPT to your notes",
   description: "Let ChatGPT or Claude read and update your notes on iPhone and Mac. What you need, the steps, and how you stay in control.",
   path: "/guides/connect-chatgpt-to-your-notes",
-  index: false,
 });
 
 export default function Page() {

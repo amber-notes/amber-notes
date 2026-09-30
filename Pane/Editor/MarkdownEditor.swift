@@ -916,7 +916,7 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
         let moves = ReorderSlide.moves(old: old.map(\.0), new: edit.replacement.components(separatedBy: "\n"))
         let tops = ReorderSlide.targets(heights: frames.map(\.height), moves: moves)
         ReorderSlide.play(in: self, rows: Array(zip(pictures, frames)).map { ($0, $1) }, newTops: tops,
-                          cover: first.union(last), pageColor: .systemBackground)
+                          cover: first.union(last), pageColor: .panePage)
     }
 
     /// Each row's band across the editor, from its top to the next row's top.
@@ -1422,7 +1422,7 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
         let moves = ReorderSlide.moves(old: old.map(\.0), new: edit.replacement.components(separatedBy: "\n"))
         let tops = ReorderSlide.targets(heights: frames.map(\.height), moves: moves)
         ReorderSlide.play(in: self, rows: Array(zip(pictures, frames)).map { (image: $0, frame: $1) }, newTops: tops,
-                          cover: first.union(last), pageColor: .textBackgroundColor)
+                          cover: first.union(last), pageColor: .panePage)
     }
 
     /// Each row's band across the editor, from its top to the next row's top.

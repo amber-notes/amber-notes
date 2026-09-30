@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { changelog } from "@/lib/changelog";
+import { guides } from "@/lib/guides";
 import { SITE_URL } from "@/lib/site";
 
 // The pages meant for search. Shared notes are never listed. The changelog is one page (its
@@ -15,6 +16,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     page("/", 1, released),
     page("/download", 0.9, released),
     page("/help", 0.7),
+    page("/guides", 0.7),
+    ...guides.filter((g) => !g.draft).map((g) => page(`/guides/${g.slug}`, 0.8)),
     page("/changelog", 0.5, released),
     page("/privacy", 0.2),
     page("/terms", 0.2),
