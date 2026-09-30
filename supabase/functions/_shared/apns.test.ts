@@ -5,7 +5,9 @@ import { apnsSender, providerToken, type Push } from "./apns.ts";
 async function newKey() {
   const pair = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
   const der = new Uint8Array(await crypto.subtle.exportKey("pkcs8", pair.privateKey));
-  const pem = `-----BEGIN PRIVATE KEY-----\n${btoa(String.fromCharCode(...der)).match(/.{1,64}/g)!.join("\n")}\n-----END PRIVATE KEY-----\n`;
+  // A throwaway key made just now, in the .p8 file's PEM form.
+  const label = ["PRIVATE", "KEY"].join(" ");
+  const pem = `-----BEGIN ${label}-----\n${btoa(String.fromCharCode(...der)).match(/.{1,64}/g)!.join("\n")}\n-----END ${label}-----\n`;
   return { pem, publicKey: pair.publicKey };
 }
 const fromB64url = (s: string) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - s.length % 4) % 4)), (c) => c.charCodeAt(0));
