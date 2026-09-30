@@ -1,6 +1,7 @@
-// The consent page's Content-Security-Policy: scripts only from this site, with this response's
-// nonce (Next.js puts it on its own inline scripts), or the theme script by its hash. No
-// 'unsafe-inline' anywhere, and the page may connect only to this site and the Supabase project.
+// The connect pages' Content-Security-Policy (/connect and /open/connect): scripts only from this
+// site, with this response's nonce (Next.js puts it on its own inline scripts), or the theme script
+// by its hash. No 'unsafe-inline' anywhere. The pages call nothing themselves (the server reads who
+// is asking), so they may connect only to this site.
 import { themeScript } from "./theme";
 
 let themeHash: Promise<string> | undefined;
@@ -14,20 +15,18 @@ export function newNonce(): string {
   return btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16))));
 }
 
-export async function connectCSP(nonce: string, supabaseURL: string | undefined, production: boolean): Promise<string> {
+export async function connectCSP(nonce: string): Promise<string> {
   themeHash ??= sha256Base64(themeScript);
-  let supabase = "";
-  try { supabase = supabaseURL ? ` ${new URL(supabaseURL).origin}` : ""; } catch {}
   return [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'sha256-${await themeHash}'`,
     `style-src 'self' 'nonce-${nonce}'`,
-    `img-src 'self' data:${production ? "" : " http://127.0.0.1:*"}`,
+    "img-src 'self' data:",
     "font-src 'self'",
-    `connect-src 'self'${supabase}`,
+    "connect-src 'self'",
     "object-src 'none'",
     "base-uri 'none'",
-    "form-action 'self'",
+    "form-action 'none'",
     "frame-ancestors 'none'",
   ].join("; ");
 }

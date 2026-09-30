@@ -10,19 +10,21 @@ import { allowedPath, MCP_HOST, upstream, upstreamHeaders } from "@/lib/mcp-prox
 //    host in its OAuth metadata and counts the caller's address for rate limits because the proxy
 //    says so with a shared secret (MCP_PROXY_SECRET). Without the secret the proxy doesn't run.
 //
-// 2. The consent page (/connect) gets a per-response nonce and a strict CSP.
+// 2. The connect pages (/connect, and /open/connect where the universal link lands in a browser) get
+//    a per-response nonce and a strict CSP.
 
 export const config = {
   matcher: [
     { source: "/:path*", has: [{ type: "host", value: "mcp\\.ambernotes\\.app" }] },
     "/connect",
+    "/open/connect",
   ],
 };
 
 export async function middleware(req: NextRequest) {
   const host = (req.headers.get("host") ?? "").toLowerCase();
   if (host === MCP_HOST) return proxy(req);
-  if (req.nextUrl.pathname === "/connect") return consentPage(req);
+  if (req.nextUrl.pathname === "/connect" || req.nextUrl.pathname === "/open/connect") return connectPage(req);
   return NextResponse.next();
 }
 
@@ -39,9 +41,9 @@ function proxy(req: NextRequest) {
   return NextResponse.rewrite(to, { request: { headers: upstreamHeaders(req.headers, secret) } });
 }
 
-async function consentPage(req: NextRequest) {
+async function connectPage(req: NextRequest) {
   const nonce = newNonce();
-  const csp = await connectCSP(nonce, process.env.SUPABASE_URL, process.env.NODE_ENV === "production");
+  const csp = await connectCSP(nonce);
   // Next.js reads the nonce from the request's CSP and puts it on the scripts it renders.
   const headers = new Headers(req.headers);
   headers.set("content-security-policy", csp);

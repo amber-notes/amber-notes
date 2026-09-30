@@ -45,8 +45,8 @@ export default function SiteChrome({ version, stars, children }: { version: stri
     return () => document.removeEventListener("click", onClick);
   }, [router]);
 
-  // The consent page is one card: the site's colours without its header and footer.
-  if (!site || path === "/connect") return <>{children}</>;
+  // The connect pages are one card: the site's colours without its header and footer.
+  if (!site || path === "/connect" || path === "/open/connect") return <>{children}</>;
 
   const current = (href: string) => (path === href ? "page" : undefined);
   // On the home page the logo takes you back to the top instead of reloading.

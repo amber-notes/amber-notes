@@ -1,60 +1,53 @@
-import { describe, expect, it } from "vitest";
-import { appLink, appleSignInURL, consentHeading, destination, functionURL, pkcePair, problemText, returnURL, signInError, validRequest, verifiedAI } from "./connect";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { approveHeading, appLink, fetchLabel, functionURL, problemText, universalLink, validRequest } from "./connect";
 import { allowedPath, upstream, upstreamHeaders } from "./mcp-proxy";
 
-describe("the consent page", () => {
+const ID = "5a0f6c1e-2b1d-4c36-9e0a-6b6f0c1a2b3c";
+
+describe("the connect page", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
   it("accepts only a request id", () => {
-    expect(validRequest("5a0f6c1e-2b1d-4c36-9e0a-6b6f0c1a2b3c")).toBe(true);
+    expect(validRequest(ID)).toBe(true);
     expect(validRequest(undefined)).toBe(false);
     expect(validRequest("5a0f6c1e")).toBe(false);
     expect(validRequest("javascript:alert(1)")).toBe(false);
+    expect(validRequest(`${ID}&x=1`)).toBe(false);
   });
 
-  it("opens the app's consent sheet for the same request", () => {
-    expect(appLink("5A0F6C1E-2B1D-4C36-9E0A-6B6F0C1A2B3C")).toBe("ambernotes://connect?request=5a0f6c1e-2b1d-4c36-9e0a-6b6f0c1a2b3c");
+  it("opens the app with the universal link, and the app's own scheme as the fallback", () => {
+    expect(universalLink(ID.toUpperCase())).toBe(`https://ambernotes.app/open/connect?request=${ID}`);
+    expect(appLink(ID.toUpperCase())).toBe(`ambernotes://connect?request=${ID}`);
   });
 
-  it("shows an AI's mark only when its address proves it", () => {
-    expect(verifiedAI({ redirect_uri: "https://claude.ai/api/mcp/auth_callback" })).toBe("Claude");
-    expect(verifiedAI({ redirect_uri: "https://chatgpt.com/connector_platform_oauth_redirect" })).toBe("ChatGPT");
-    // The same site isn't enough: only the pinned callback, exactly.
-    expect(verifiedAI({ redirect_uri: "https://claude.ai/some/other/page" })).toBe(null);
-    expect(verifiedAI({ redirect_uri: "https://claude.ai/api/mcp/auth_callback?x=1" })).toBe(null);
-    expect(verifiedAI({ redirect_uri: "https://evil-claude.ai/api/mcp/auth_callback" })).toBe(null);
-    expect(verifiedAI({ redirect_uri: "http://localhost:3000/callback" })).toBe(null);
-    // An older server sends no redirect_uri: never verified.
-    expect(verifiedAI({})).toBe(null);
-    expect(destination("127.0.0.1", true)).toBe("an app on this computer");
+  it("names who to approve, or says it in general words", () => {
+    expect(approveHeading({ client_name: "Claude", verified_ai: "Claude" })).toBe("Approve Claude in Amber Notes on your iPhone or Mac");
+    expect(approveHeading({ client_name: "attacker.example", verified_ai: null })).toBe("Approve attacker.example in Amber Notes on your iPhone or Mac");
+    expect(approveHeading(null)).toBe("Approve this connection in Amber Notes on your iPhone or Mac");
+    // Anything odd from the server falls back to the general words.
+    expect(approveHeading({ client_name: "<script>", verified_ai: null })).toBe("Approve this connection in Amber Notes on your iPhone or Mac");
+    expect(approveHeading({ client_name: "x".repeat(80), verified_ai: null })).toMatch(/^Approve this connection/);
   });
 
-  it("titles an unverified app by its address, its own name only as a plain claim", () => {
-    const base = { id: "x", redirect_host: "attacker.example", loopback: false, wants_write: true };
-    expect(consentHeading({ ...base, client_name: "attacker.example", redirect_uri: "https://attacker.example/cb", claimed_name: "ciaude" }))
-      .toEqual({ ai: null, who: "attacker.example", claimed: "ciaude" });
-    // An older server with the raw name and no plain claim: the raw name is never shown.
-    expect(consentHeading({ ...base, client_name: "Claude" }).claimed).toBe(null);
-    expect(consentHeading({ ...base, client_name: "Claude", redirect_host: "claude.ai", redirect_uri: "https://claude.ai/api/mcp/auth_callback", claimed_name: "claude" }))
-      .toEqual({ ai: "Claude", who: "Claude", claimed: null });
-  });
+  it("asks the function's /connect/label, and gives up quietly", async () => {
+    const fetch = vi.fn(async () => new Response(JSON.stringify({ client_name: "ChatGPT", verified_ai: "ChatGPT", extra: 1 }), { status: 200 }));
+    vi.stubGlobal("fetch", fetch);
+    const headers = new Headers({ "x-mcp-client-ip": "198.51.100.7" });
+    expect(await fetchLabel("https://ref.supabase.co/functions/v1/mcp", ID.toUpperCase(), headers)).toEqual({ client_name: "ChatGPT", verified_ai: "ChatGPT" });
+    const [url, init] = fetch.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe(`https://ref.supabase.co/functions/v1/mcp/connect/label?id=${ID}`);
+    expect(init.headers).toBe(headers);
 
-  it("says why sign-in failed", () => {
-    expect(signInError(400, { error_code: "invalid_credentials" })).toBe("The email or password isn't right.");
-    expect(signInError(429, null)).toMatch(/Too many attempts/);
-    expect(signInError(500, null)).toMatch(/Couldn't sign in/);
-  });
-
-  it("starts Sign in with Apple with PKCE, coming back to the same request", async () => {
-    const { verifier, challenge } = await pkcePair();
-    expect(verifier).toMatch(/^[A-Za-z0-9_-]{64}$/);
-    expect(challenge).toMatch(/^[A-Za-z0-9_-]{43}$/);
-    const back = returnURL("https://ambernotes.app", "5A0F6C1E-2B1D-4C36-9E0A-6B6F0C1A2B3C");
-    expect(back).toBe("https://ambernotes.app/connect?request=5a0f6c1e-2b1d-4c36-9e0a-6b6f0c1a2b3c");
-    const u = new URL(appleSignInURL("https://ref.supabase.co", back, challenge));
-    expect(u.origin + u.pathname).toBe("https://ref.supabase.co/auth/v1/authorize");
-    expect(u.searchParams.get("provider")).toBe("apple");
-    expect(u.searchParams.get("redirect_to")).toBe(back);
-    expect(u.searchParams.get("code_challenge")).toBe(challenge);
-    expect(u.searchParams.get("code_challenge_method")).toBe("s256");
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ error: "expired" }), { status: 404 })));
+    expect(await fetchLabel("https://x", ID, new Headers())).toBe(null);
+    vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("offline"); }));
+    expect(await fetchLabel("https://x", ID, new Headers())).toBe(null);
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ client_name: "Evil", verified_ai: "Evil AI" }))));
+    expect(await fetchLabel("https://x", ID, new Headers())).toEqual({ client_name: "Evil", verified_ai: null });
+    const never = vi.fn();
+    vi.stubGlobal("fetch", never);
+    expect(await fetchLabel("https://x", "../token", new Headers())).toBe(null);
+    expect(never).not.toHaveBeenCalled();
   });
 
   it("explains an /authorize problem without echoing anything from the address", () => {
@@ -108,10 +101,10 @@ describe("the mcp.ambernotes.app proxy", () => {
   });
 
   it("serves only the server's own paths, nothing encoded", () => {
-    for (const ok of ["/", "/register", "/authorize", "/token", "/revoke", "/connect/request", "/connect/decide", "/connect/release",
+    for (const ok of ["/", "/register", "/authorize", "/token", "/revoke", "/connect/request", "/connect/label", "/connect/decide", "/connect/release",
       "/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/mcp", "/.well-known/oauth-authorization-server",
       "/.well-known/openid-configuration", "/.well-known/openai-apps-challenge", "/.well-known/mcp/server-card.json"]) expect(allowedPath(ok), ok).toBe(true);
     for (const bad of ["/account", "/..%2faccount", "/authorize%2f..%2f..%2faccount", "/%5c..%5caccount", "/authorize\\..\\account",
-      "/../share-files", "/.well-known/../../account", "/connect/decide/x", "/register/", "/%2e%2e/account", "/.env"]) expect(allowedPath(bad), bad).toBe(false);
+      "/../share-files", "/.well-known/../../account", "/connect/decide/x", "/connect/label/x", "/connect/labels", "/register/", "/%2e%2e/account", "/.env"]) expect(allowedPath(bad), bad).toBe(false);
   });
 });

@@ -5,7 +5,7 @@ export const MCP_HOST = new URL(MCP_URL).host;
 
 /// The only paths the server has. Anything else, and anything encoded that could walk out of the
 /// function's path (%2f, %5c, backslashes, dots), never reaches Supabase.
-const PATHS = /^\/(?:|register|authorize|token|revoke|connect\/(?:request|decide|release)|\.well-known\/(?:oauth-protected-resource|oauth-authorization-server|openid-configuration)(?:\/[A-Za-z0-9_-]+)?|\.well-known\/openai-apps-challenge|\.well-known\/mcp\/server-card\.json)$/;
+const PATHS = /^\/(?:|register|authorize|token|revoke|connect\/(?:request|label|decide|release)|\.well-known\/(?:oauth-protected-resource|oauth-authorization-server|openid-configuration)(?:\/[A-Za-z0-9_-]+)?|\.well-known\/openai-apps-challenge|\.well-known\/mcp\/server-card\.json)$/;
 
 export function allowedPath(rawPath: string): boolean {
   return !/[%\\]|\.\./.test(rawPath) && PATHS.test(rawPath);

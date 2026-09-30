@@ -1,0 +1,13 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appIDs": ["4UM3XVUN9Y.dev.emilwagman.pane"],
+        "components": [{ "/": "/open/*", "comment": "Opens Amber Notes, e.g. /open/connect?request=<id> for approving an AI connection" }],
+        "appID": "4UM3XVUN9Y.dev.emilwagman.pane",
+        "paths": ["/open/*"]
+      }
+    ]
+  }
+}
