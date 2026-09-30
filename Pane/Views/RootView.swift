@@ -95,6 +95,7 @@ struct RootView: View {
         // The note you were typing in is written before anything looks at it.
         DebouncedSave.flushAll()
         if new == nil { PaneTips.listOpened() }
+        if old != nil { NotificationCenter.default.post(name: .paneNoteClosed, object: nil) }
         discardIfEmpty(old)
         if let new { lastNote = new.uuidString }
     }

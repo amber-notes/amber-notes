@@ -280,6 +280,8 @@ struct AppGate: View {
     @State private var cardSize: CGSize = .zero
     /// The first-run "Get set up" card's state, for the signed-in account.
     @State private var setup = SetupStore()
+    /// "Enjoying Amber Notes?", once, after a week of use.
+    @State private var shareAsk = ShareAskStore()
     /// Captures: `-captureConsent ChatGPT` shows the Allow sheet over the notes.
     @State private var consent = CaptureScreen.consentRequest
     @Environment(\.modelContext) private var context
@@ -331,6 +333,11 @@ struct AppGate: View {
                     .environment(backend)
                     .environment(sync)
                     .environment(setup)
+                    .shareAskSheet(shareAsk)
+                    .task {
+                        try? await Task.sleep(for: .seconds(1.2))
+                        shareAsk.showIfForced()
+                    }
                     .transition(.opacity)
             }
         }
@@ -345,10 +352,12 @@ struct AppGate: View {
         .task(id: backend.state) {
             guard case .signedIn = backend.state, let client = backend.client else {
                 setup.attach(account: nil, service: nil)
+                shareAsk.attach(account: nil, created: nil, service: nil)
                 await sync.stop()
                 return
             }
             setup.attach(account: backend.userID, service: SupabaseSetup(client: client))
+            shareAsk.attach(account: backend.userID, created: client.auth.currentUser?.createdAt, service: SupabaseShareAsk(client: client))
             await sync.start()
             // Seed only when the server really has nothing, never after a failed sync. A real
             // account starts with an empty Notes folder: the setup card is its welcome.
@@ -359,6 +368,7 @@ struct AppGate: View {
             await setup.refresh(force: true)
             // Tips wait for this: never a tip for something this account has used anywhere.
             await FeatureUse.refresh()
+            await shareAsk.refresh()
             await InstallID.report(client)
         }
         // Each sync may have brought an AI's edit or a new connection: the card looks again.
@@ -379,6 +389,7 @@ struct AppGate: View {
             if p == .active {
                 Task { await PaneTips.appOpened() }
                 Task { await setup.refresh() }
+                askToShareSoon()
                 context.drainInbox()
                 sync.schedule()
             } else {
@@ -396,7 +407,18 @@ struct AppGate: View {
             DebouncedSave.flushAll()
         }
         #endif
+        .onReceive(NotificationCenter.default.publisher(for: .paneNoteClosed)) { _ in askToShareSoon() }
         .onAppear { context.drainInbox() }
+    }
+
+    /// A quiet moment: once things have settled, the share ask may come (see `ShareAsk`).
+    private func askToShareSoon() {
+        guard backend.state != .signedOut else { return }
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(1.5))
+            guard backend.state != .signedOut, phase == .active else { return }
+            shareAsk.moment(setupVisible: setup.visible, tipShowing: PaneTips.all.contains { $0.shouldDisplay })
+        }
     }
 }
 
