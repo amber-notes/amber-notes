@@ -4,8 +4,8 @@
 import { assert, assertEquals, assertRejects, assertStringIncludes } from "jsr:@std/assert@1";
 import type { PGlite } from "npm:@electric-sql/pglite@0.2.17";
 import { schemaDB } from "./pglite.ts";
-import { type Account, account, app, edit, folder, note, opened, toolContext } from "./sealed.ts";
-import { runTool, scanLimits, ToolError } from "./tools.ts";
+import { type Account, account, app, edit, file, folder, note, opened, share, stubStorage, toolContext } from "./sealed.ts";
+import { MAX_FILE_BYTES, readCapped, runTool, scanLimits, ToolError } from "./tools.ts";
 
 // deno-lint-ignore no-explicit-any
 const tool = async (pg: PGlite, a: Account, name: string, args: Record<string, unknown> = {}) => await runTool(name, args, await toolContext(pg, a)) as any;
@@ -64,14 +64,75 @@ Deno.test("restoring a version copies its boxes back as they are", async () => {
   assertEquals(body_source, "restore");
 });
 
+const copyOf = async (pg: PGlite, slug: string, sub?: string) =>
+  (await pg.query<{ p: { title: string; body: string } }>(`select public.shared_note($1, $2) as p`, [slug, sub ?? null])).rows[0].p;
+
 Deno.test("an AI edit of a shared note rewrites its public copy in the same transaction", async () => {
   const pg = await schemaDB();
   const a = await account(pg);
   const id = await note(pg, a, "Menu\n\nSoup");
-  const [{ r }] = await app(pg, a.id, `select public.share_note($1, false, $2) as r`, [id, JSON.stringify({ title: "Menu", body: "Menu\n\nSoup", pages: [], files: [] })]);
+  const r = await share(pg, a, id, { title: "Menu", body: "Menu\n\nSoup" });
   await tool(pg, a, "edit_note", { id, edits: [{ old_text: "Soup", new_text: "Salad" }] });
-  const page = (await pg.query<{ p: { title: string; body: string } }>(`select public.shared_note($1) as p`, [r.slug])).rows[0].p;
+  const page = await copyOf(pg, r.slug);
   assertEquals([page.title, page.body], ["Menu", "Menu\n\nSalad"]);
+});
+
+// A row in note_shares or note_share_pages is only a claim: anyone who can write the database can
+// plant one. The AI server republishes only under links the account's key tagged, and a page only
+// when the link's root reaches it through its sealed text.
+Deno.test("an AI edit republishes only links the account's key verifies, and pages the root's text reaches", async () => {
+  const pg = await schemaDB();
+  const a = await account(pg);
+  const planted = (slug: string, noteId: string, tag: string | null, subnotes = false) =>
+    pg.query(`insert into public.note_shares (slug, note_id, user_id, include_subnotes, share_tag, title, body, published_at)
+              values ($1, $2, $3, $4, $5, 'Old', 'Old', now())`, [slug, noteId, a.id, subnotes, tag]);
+  const plantedPage = (slug: string, noteId: string, parent: string) =>
+    pg.query(`insert into public.note_share_pages (slug, note_id, parent_id, title, body) values ($1, $2, $3, 'Old', 'Old')`, [slug, noteId, parent]);
+
+  // A private note with a planted link: a tag of zeros, then no tag.
+  const diary = await note(pg, a, "Diary\n\nprivate");
+  await planted("z".repeat(24), diary, "0".repeat(64));
+  await tool(pg, a, "append_to_note", { id: diary, text: "more private" });
+  assertEquals((await copyOf(pg, "z".repeat(24))).body, "Old");
+  await pg.query(`update public.note_shares set share_tag = null where slug = $1`, ["z".repeat(24)]);
+  await tool(pg, a, "append_to_note", { id: diary, text: "even more" });
+  assertEquals((await copyOf(pg, "z".repeat(24))).body, "Old");
+
+  // A trip shared with its sub-notes: Day 1 is linked from the trip, Day 2 from Day 1.
+  const trip = await note(pg, a, "Trip\n\nLisbon");
+  const day1 = await note(pg, a, "Day 1\n\nMuseum", { parent: trip });
+  const day2 = await note(pg, a, "Day 2\n\nBeach", { parent: day1 });
+  await edit(pg, a, trip, `Trip\n\nLisbon\n[Day 1](pane-note:${day1})`);
+  await edit(pg, a, day1, `Day 1\n\nMuseum\n[Day 2](pane-note:${day2})`);
+  // A private note moved under the trip by parent_id alone: no link to it in the trip's text.
+  const secret = await note(pg, a, "Secret\n\nnot shared", { parent: trip });
+  // And one more private note, not under the trip at all.
+  const other = await note(pg, a, "Other\n\nnot shared");
+  const s = await share(pg, a, trip, {
+    title: "Trip", body: `Trip\n\nLisbon\n[Day 1](pane-note:${day1})`,
+    pages: [
+      { id: day1, parent_id: trip, title: "Day 1", body: "Day 1\n\nMuseum" },
+      { id: day2, parent_id: day1, title: "Day 2", body: "Day 2\n\nBeach" },
+    ],
+  }, true);
+  await plantedPage(s.slug, secret, trip);
+  await plantedPage(s.slug, other, trip);
+
+  await tool(pg, a, "replace_note_body", { id: day2, body: "Day 2\n\nBeach, then dinner" });
+  assertEquals((await copyOf(pg, s.slug, day2)).body, "Day 2\n\nBeach, then dinner");
+  await tool(pg, a, "replace_note_body", { id: secret, body: "Secret\n\nstill not shared" });
+  await tool(pg, a, "replace_note_body", { id: other, body: "Other\n\nstill not shared" });
+  const pages = (await pg.query<{ note_id: string; body: string }>(`select note_id, body from public.note_share_pages where slug = $1`, [s.slug])).rows;
+  assertEquals(pages.find((p) => p.note_id === secret)?.body, "Old");
+  assertEquals(pages.find((p) => p.note_id === other)?.body, "Old");
+
+  // The same link planted without sub-notes (its tag no longer verifies) publishes no pages at all,
+  // and neither does a tag made for include_subnotes = false on a link that claims true.
+  await pg.query(`update public.note_shares set include_subnotes = false where slug = $1`, [s.slug]);
+  await tool(pg, a, "replace_note_body", { id: day1, body: `Day 1\n\nMuseum, closed\n[Day 2](pane-note:${day2})` });
+  assertEquals((await copyOf(pg, s.slug)).body, `Trip\n\nLisbon\n[Day 1](pane-note:${day1})`);
+  const [{ body: day1Copy }] = (await pg.query<{ body: string }>(`select body from public.note_share_pages where slug = $1 and note_id = $2`, [s.slug, day1])).rows;
+  assertEquals(day1Copy, "Day 1\n\nMuseum");
 });
 
 Deno.test("lists hide sub-notes a live parent links, by opening the parents", async () => {
@@ -131,4 +192,53 @@ Deno.test("a search that runs out of time says how far it got; a spent budget re
   }
   // Work that needs no scan still runs.
   assertEquals((await tool(pg, a, "list_notes")).notes.length, 3);
+});
+
+Deno.test("get_file refuses a file over the cap by its stored size, and never reads more than the cap", async () => {
+  const base = "https://proj.supabase.co";
+  Deno.env.set("SUPABASE_URL", base);
+  Deno.env.set("SUPABASE_SERVICE_ROLE_KEY", "service-role-key");
+  const pg = await schemaDB();
+  const a = await account(pg);
+  const small = await file(pg, a, "notes.txt", "public.plain-text", new TextEncoder().encode("hello"));
+  const objects = new Map([[small.path, small.sealed]]);
+  let downloads = 0;
+  const unstub = stubStorage(base, objects, () => { throw new Error("unexpected fetch"); });
+  const counting = globalThis.fetch;
+  globalThis.fetch = (input, init) => { downloads++; return counting(input, init); };
+  try {
+    const ok = await tool(pg, a, "get_file", { id: small.id });
+    assertEquals(ok.content[1], { type: "text", text: "hello" });
+    assertEquals(downloads, 1);
+    // Stored as bigger than the cap: refused before anything is downloaded.
+    await pg.query(`update public.attachments set size = $2 where id = $1`, [small.id, MAX_FILE_BYTES + 1]);
+    assertStringIncludes((await assertRejects(() => tool(pg, a, "get_file", { id: small.id }), ToolError)).message, "Files over 8 MB");
+    assertEquals(downloads, 1);
+    // A stored size that says small, and an object that isn't: reading stops at the cap.
+    await pg.query(`update public.attachments set size = 5 where id = $1`, [small.id]);
+    objects.set(small.path, new Uint8Array(MAX_FILE_BYTES + 1024));
+    assertStringIncludes((await assertRejects(() => tool(pg, a, "get_file", { id: small.id }), ToolError)).message, "Files over 8 MB");
+  } finally {
+    unstub();
+  }
+});
+
+Deno.test("readCapped trusts neither a missing nor a wrong Content-Length", async () => {
+  const stream = (chunks: number, size: number) => {
+    let sent = 0;
+    return new ReadableStream<Uint8Array>({ pull(c) { if (sent++ < chunks) c.enqueue(new Uint8Array(size)); else c.close(); } });
+  };
+  assertEquals((await readCapped(new Response(stream(4, 10)), 40)).length, 40);
+  // No length: counted while read, and stopped once past the cap.
+  let pulled = 0;
+  const endless = new ReadableStream<Uint8Array>({ pull(c) { pulled++; c.enqueue(new Uint8Array(10)); } });
+  await assertRejects(() => readCapped(new Response(endless), 45), RangeError);
+  assert(pulled <= 7, `pulled ${pulled}`);
+  // A declared length over the cap: refused without reading.
+  let read = false;
+  const declared = new Response(new ReadableStream<Uint8Array>({ pull(c) { read = true; c.close(); } }), { headers: { "content-length": "1000" } });
+  await assertRejects(() => readCapped(declared, 100), RangeError);
+  assertEquals(read, false);
+  // A declared length under the cap that the body exceeds: still stopped.
+  await assertRejects(() => readCapped(new Response(stream(5, 10), { headers: { "content-length": "10" } }), 20), RangeError);
 });

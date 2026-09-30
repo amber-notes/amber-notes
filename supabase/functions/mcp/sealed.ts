@@ -2,7 +2,7 @@
 // and its account_keys row), and notes, folders and files sealed with it as the app writes them,
 // on the PGlite database from pglite.ts.
 import type { PGlite } from "npm:@electric-sql/pglite@0.2.17";
-import { aesKey, type Bytes, keyIdOf, newDataKey, recoveryKEK, sealFile, toBase64, Vault, verifierOf, wrap } from "../_shared/e2ee.ts";
+import { aesKey, type Bytes, keyIdOf, newDataKey, recoveryKEK, sealFile, shareTag, toBase64, Vault, verifierOf, wrap } from "../_shared/e2ee.ts";
 import { previewOf, titleOf } from "./notes.ts";
 import { asUser, newUser, sqlFor } from "./pglite.ts";
 import type { ToolContext } from "./tools.ts";
@@ -53,6 +53,19 @@ export async function edit(pg: PGlite, a: Account, id: string, body: string, set
 export async function opened(pg: PGlite, a: Account, id: string) {
   const [n] = (await pg.query<{ head_ct: string; body_ct: string | null }>(`select head_ct, body_ct from public.notes where id = $1`, [id])).rows;
   return { head: await a.vault.openHead(id, n.head_ct), body: n.body_ct ? await a.vault.openBody(id, n.body_ct) : null };
+}
+
+/** What a device publishes for a shared page: {title, body, pages: [{id, parent_id, title, body}], files}. */
+export type ShareCopy = { title: string; body: string; pages?: { id: string; parent_id: string | null; title: string; body: string }[]; files?: string[] };
+
+/** Shares a note as the app does: picks the slug, tags the share with the account's key, publishes
+ *  the copy. Returns {slug, missing_files}. */
+export async function share(pg: PGlite, a: Account, noteId: string, copy: ShareCopy, includeSubnotes = false): Promise<{ slug: string; missing_files: string[] }> {
+  const [{ slug }] = await app(pg, a.id, `select public.share_slug($1) as slug`, [noteId]);
+  const tag = await shareTag(a.dk.slice(), noteId, slug, includeSubnotes);
+  const [{ r }] = await app(pg, a.id, `select public.share_note($1, $2, $3, $4, $5) as r`,
+    [noteId, slug, includeSubnotes, tag, JSON.stringify({ pages: [], files: [], ...copy })]);
+  return r;
 }
 
 /** A notes password, as the app sets it up; returns its key id (locked notes' boxes name it). */

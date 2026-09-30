@@ -9,7 +9,7 @@ import type { PGlite } from "npm:@electric-sql/pglite@0.2.17";
 import { toBase64 } from "../_shared/e2ee.ts";
 import { previewOf, titleOf } from "./notes.ts";
 import { asUser, schemaDB } from "./pglite.ts";
-import { type Account, account, app, edit, note, opened, toolContext } from "./sealed.ts";
+import { type Account, account, app, edit, note, opened, share, toolContext } from "./sealed.ts";
 import { runTool, ToolError } from "./tools.ts";
 
 /** A salt and its key id, as the app makes them (16 random bytes; SHA-256 of them, 16 hex digits). */
@@ -227,17 +227,15 @@ Deno.test("request headers that aren't valid JSON count as an old build", async 
   await refused(edit(pg, a, id, "Plan, edited", { "request.headers": "{not json" }), "Update Amber Notes");
 });
 
-const copy = (title: string, body: string, pages: unknown[] = []) => JSON.stringify({ title, body, pages, files: [] });
-
 Deno.test("locking a shared note stops its link, and a locked note can't be shared", async () => {
   const { pg, a, me } = await setUp();
   const id = await note(pg, a, "Plans\n\nSecret");
-  const [{ r }] = await app(pg, me, `select public.share_note($1, false, $2) as r`, [id, copy("Plans", "Plans\n\nSecret")]);
+  const r = await share(pg, a, id, { title: "Plans", body: "Plans\n\nSecret" });
   assert((await pg.query<{ p: unknown }>(`select public.shared_note($1) as p`, [r.slug])).rows[0].p);
   await lock(pg, a, id, "Plans");
   assertEquals((await pg.query<{ p: unknown }>(`select public.shared_note($1) as p`, [r.slug])).rows[0].p, null);
   assertEquals((await pg.query(`select 1 from public.note_shares where note_id = $1 and revoked_at is null`, [id])).rows.length, 0);
-  await refused(app(pg, me, `select public.share_note($1, false, $2)`, [id, copy("Plans", "Plans")]), "can't be shared");
+  await refused(share(pg, a, id, { title: "Plans", body: "Plans" }), "can't be shared");
 });
 
 Deno.test("a locked sub-note doesn't show through its parent's link", async () => {
@@ -246,8 +244,7 @@ Deno.test("a locked sub-note doesn't show through its parent's link", async () =
   const child = await locked(pg, a, "Passport numbers", sealed(), { parent });
   await edit(pg, a, parent, `Trip\n\n[Passport numbers](pane-note:${child})`);
   // Even a device that publishes the locked note as a page gets it left out.
-  const [{ r }] = await app(pg, me, `select public.share_note($1, true, $2) as r`,
-    [parent, copy("Trip", "Trip", [{ id: child, parent_id: parent, title: "Passport numbers", body: "P123" }])]);
+  const r = await share(pg, a, parent, { title: "Trip", body: "Trip", pages: [{ id: child, parent_id: parent, title: "Passport numbers", body: "P123" }] }, true);
   const page = (await pg.query<{ p: { subnotes: unknown[] } }>(`select public.shared_note($1) as p`, [r.slug])).rows[0].p;
   assertEquals(page.subnotes, []);
   assertEquals((await pg.query<{ p: unknown }>(`select public.shared_note($1, $2) as p`, [r.slug, child])).rows[0].p, null);

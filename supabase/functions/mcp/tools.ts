@@ -606,8 +606,110 @@ async function save(tx: Tx, c: Call, note: Note, before: string, body: string, e
       ${want !== undefined ? tx`and version = ${want}` : tx``}
     returning version, updated_at`;
   if (!rows.length) throw new ToolError(`The note changed since version ${expected}. Read it again and retry.`);
-  await tx`select public.republish_note_text(${note.id}::uuid, ${head.title}, ${body})`;
+  await republish(tx, c.v, note.id, head.title, body);
   return { id: note.id, title: head.title, version: Number(rows[0].version), updated: iso(rows[0].updated_at) };
+}
+
+// A shared copy is at most 2 MB (note_shares.body, note_share_pages.body).
+const MAX_SHARED_BYTES = 2_097_152;
+// How far a link's pages are followed from its root, and how many notes are opened on the way.
+const MAX_SHARE_DEPTH = 50;
+const MAX_SHARE_NOTES = 5_000;
+
+/**
+ * An AI edited a note: its public copy is rewritten under the links this connection's key vouches
+ * for, and nowhere else. The server can't tell which notes the person shared (a row in note_shares
+ * or note_share_pages can be planted by anyone who can write the database), so a link counts only
+ * when its tag is the one the account's key makes (shareTag), and for a page of the link, when the
+ * link includes sub-notes and the note is reached from the link's root through pane-note links in
+ * the sealed bodies (never parent_id, which isn't sealed).
+ */
+async function republish(tx: Tx, v: Vault, noteId: string, title: string, body: string) {
+  if (bytes(body) > MAX_SHARED_BYTES) return;
+  const slugs = await verifiedShares(tx, v, noteId);
+  if (slugs.length) await tx`select public.republish_note_text(${noteId}::uuid, ${title}, ${body}, ${slugs}::text[])`;
+}
+
+/** The slugs of the caller's live, published links that show `noteId` and that verify. */
+async function verifiedShares(tx: Tx, v: Vault, noteId: string): Promise<string[]> {
+  // Which links show the note as a page is in note_share_pages, which the signed-in role can't
+  // read (only the database's own functions write it). This one read runs as the server, limited
+  // to the caller's links; the role goes back before anything else runs.
+  await tx`set local role none`;
+  const rows = await tx<{ slug: string; root: string; include_subnotes: boolean; share_tag: string | null }[]>`
+    select s.slug, s.note_id as root, s.include_subnotes, s.share_tag from public.note_shares s
+    where s.user_id = auth.uid() and s.revoked_at is null and s.published_at is not null
+      and (s.note_id = ${noteId}::uuid
+           or exists (select 1 from public.note_share_pages p where p.slug = s.slug and p.note_id = ${noteId}::uuid))`;
+  await tx`select set_config('role', 'authenticated', true)`;
+  const slugs: string[] = [];
+  const reached = new Map<string, Promise<boolean>>();
+  for (const r of rows) {
+    if (!(await v.shareTagMatches(r.root, r.slug, r.include_subnotes, r.share_tag))) continue;
+    if (r.root === noteId) { slugs.push(r.slug); continue; }
+    if (!r.include_subnotes) continue;
+    if (!reached.has(r.root)) reached.set(r.root, reaches(tx, v, r.root, noteId));
+    if (await reached.get(r.root)) slugs.push(r.slug);
+  }
+  return slugs;
+}
+
+/** Whether `target` is reached from `root` through pane-note links in the opened bodies of the
+ *  caller's live, unlocked notes: the root's, then each linked note's, at most 50 links deep. */
+async function reaches(tx: Tx, v: Vault, root: string, target: string): Promise<boolean> {
+  const seen = new Set([root]);
+  let frontier = [root];
+  for (let depth = 0; depth < MAX_SHARE_DEPTH && frontier.length; depth++) {
+    const rows = await tx<{ id: string; body_ct: string | null }[]>`
+      select id, body_ct from public.notes where id = any(${frontier}::uuid[])
+        and deleted_at is null and trashed_at is null and locked_body is null`;
+    const next: string[] = [];
+    for (const r of rows) {
+      if (!r.body_ct) continue;
+      const body = await v.openBody(r.id, r.body_ct).catch(() => null);
+      if (body === null) continue;
+      for (const m of body.matchAll(/pane-note:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/gi)) {
+        const id = m[1].toLowerCase();
+        if (id === target) return true;
+        if (!seen.has(id) && seen.size < MAX_SHARE_NOTES) {
+          seen.add(id);
+          next.push(id);
+        }
+      }
+    }
+    frontier = next;
+  }
+  return false;
+}
+
+// A sealed file's bytes beyond its content: "AMB2F", the key id, the nonce and the tag.
+const SEALED_FILE_OVERHEAD = 5 + 16 + 12 + 16;
+
+/** A response's body, refused (and the rest cancelled) as soon as it's longer than `cap`. */
+export async function readCapped(res: Response, cap: number): Promise<Uint8Array<ArrayBuffer>> {
+  const declared = Number(res.headers.get("content-length") ?? NaN);
+  if (Number.isFinite(declared) && declared > cap) {
+    await res.body?.cancel();
+    throw new RangeError("too big");
+  }
+  if (!res.body) return new Uint8Array(0);
+  const reader = res.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.length;
+    if (total > cap) {
+      await reader.cancel();
+      throw new RangeError("too big");
+    }
+    chunks.push(value);
+  }
+  const out = new Uint8Array(total);
+  let at = 0;
+  for (const c of chunks) { out.set(c, at); at += c.length; }
+  return out;
 }
 
 /** `which` counts every table in the note from 0, like the app; by default the first tracker (typed table), else the first table. */
@@ -911,7 +1013,7 @@ const handlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<unknown>> =
     const [done] = await tx<{ version: string; updated_at: Date }[]>`
       update public.notes set body_ct = ${r.body_ct}, head_ct = ${r.head_ct}, updated_at = now() where id = ${n.id}
       returning version, updated_at`;
-    await tx`select public.republish_note_text(${n.id}::uuid, ${title}, ${body})`;
+    await republish(tx, c.v, n.id, title, body);
     return { restored: { id: n.id, title, version: Number(done.version), updated: iso(done.updated_at) } };
   },
 
@@ -983,8 +1085,9 @@ const handlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<unknown>> =
       await res.body?.cancel();
       throw new ToolError("The file isn't uploaded yet. Open Amber Notes on the device that added it so it can sync.");
     }
-    const sealed = new Uint8Array(await res.arrayBuffer());
-    if (sealed.length > MAX_FILE_BYTES + 64) throw tooBig();
+    // The stored size was checked above; the object itself is held to the same cap (plus the box's
+    // header and tag), by its length and by counting what's read, so a bigger one is never read whole.
+    const sealed = await readCapped(res, MAX_FILE_BYTES + SEALED_FILE_OVERHEAD).catch(() => { throw tooBig(); });
     let plain: Uint8Array<ArrayBuffer>;
     try { plain = await c.v.openFile(f.id, sealed); } catch { throw new ToolError("This file can't be opened here. The user can open it in Amber Notes."); }
     const type = mimeOf(meta.type, meta.name);
