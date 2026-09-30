@@ -102,6 +102,7 @@ export default function Page() {
         <li>Or keep your notes password in a password manager.</li>
         <li>Turn on Face ID or Touch ID for Notes, so you rarely have to type it.</li>
         <li>Unlock and <a href="/blog/export-apple-notes-to-markdown">export</a> anything you can&apos;t afford to lose, and keep a copy somewhere safe.</li>
+        <li>If a note is missing rather than locked, see <a href="/blog/recover-deleted-apple-notes">how to recover deleted Apple Notes</a>.</li>
       </ul>
 
       <h2>If you&apos;re moving to another app</h2>
