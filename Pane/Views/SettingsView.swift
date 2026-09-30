@@ -45,6 +45,7 @@ struct SettingsView: View {
                             }
                         }
                         AppleIDRow(backend: backend)
+                        ExportDataButton(backend: backend, sync: sync)
                     } else {
                         Text("Sync is off. This build keeps notes on this device only.")
                             .foregroundStyle(.secondary)
@@ -70,6 +71,7 @@ struct SettingsView: View {
                     }
                 }
                 #endif
+                PrivacySecurityLink(backend: backend, sync: sync)
                 if case .signedIn = backend.state {
                     // Signing out sits apart, last, as in System Settings.
                     Section {

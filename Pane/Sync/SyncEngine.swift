@@ -159,7 +159,7 @@ final class SyncEngine {
                 status = .synced(.now)
             }
         } catch {
-            log.error("sync failed: \(String(describing: error), privacy: .public)")
+            log.error("sync failed: \(String(describing: error), privacy: .private)")
             status = .offline(Self.describe(error))
         }
     }
@@ -383,7 +383,7 @@ final class SyncEngine {
     private func isRefused(_ id: UUID, _ edited: Date) -> Bool { refused[id] == edited }
 
     private func refuse(_ id: UUID, _ edited: Date, _ message: String) {
-        log.error("server refused \(id, privacy: .public): \(message, privacy: .public)")
+        log.error("server refused \(id, privacy: .private): \(message, privacy: .private)")
         refused[id] = edited
         problem = message
     }
@@ -470,7 +470,7 @@ final class SyncEngine {
             try data.write(to: url, options: .atomic)
             return true
         } catch {
-            log.error("download failed: \(String(describing: error), privacy: .public)")
+            log.error("download failed: \(String(describing: error), privacy: .private)")
             return false
         }
     }
