@@ -1,23 +1,24 @@
-// Files for a shared note's page: short-lived signed URLs for the images and files the
-// shared note (or one of its included sub-notes) links to, and nothing else.
+// Files for a shared page: the readable copies the owner's device published with the page
+// (note_share_files), and only those the page's copy embeds. Notes and the files bucket are sealed
+// with the account's key, so this function never reads them.
 //
 //   GET /functions/v1/share-files?slug=<slug>[&sub=<sub-note id>]
 //   → { files: { "<attachment id>": { path, name, type, size } } }
+//   GET /functions/v1/share-files?slug=<slug>&file=<attachment id>[&sub=<sub-note id>]
+//   → the file's bytes
 //
-// `path` is signed and relative to the Supabase URL (/storage/v1/object/sign/…?token=…): the
-// caller prefixes its own public Supabase URL, so this works behind any internal hostname.
+// `path` is relative to the Supabase URL (/functions/v1/share-files?slug=…&file=…): the caller
+// prefixes its own public Supabase URL, so this works behind any internal hostname.
 //
-// Public on purpose (the share page has no account); the slug is the secret. The bucket stays
-// private: each URL is signed for one object and expires, and an id the note doesn't link to
-// gets no URL.
+// Public on purpose (the share page has no account); the slug is the secret. The bytes come from
+// shared_file(), which answers only for a file the (sub)page's published copy embeds and only while
+// the link is live. Logs carry an event name and a status, never a slug or a file name.
 
 import postgres from "npm:postgres@3.4.5";
-import { referencedFiles, RateLimiter } from "./logic.ts";
+import { log } from "../_shared/log.ts";
+import { contentDisposition, filePath, RateLimiter, referencedFiles, servedType, SLUG, UUID } from "./logic.ts";
 
 const sql = postgres(Deno.env.get("SUPABASE_DB_URL")!, { max: 2, idle_timeout: 20, prepare: false });
-const API = Deno.env.get("SUPABASE_URL")!;
-const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const TTL = 60 * 60; // the page caches for a minute; an hour leaves plenty of room
 const perIP = new RateLimiter(120, 60_000);
 
 const headers = { "content-type": "application/json", "cache-control": "no-store", "access-control-allow-origin": "*" };
@@ -32,32 +33,50 @@ Deno.serve(async (req) => {
   const url = new URL(req.url);
   const slug = url.searchParams.get("slug") ?? "";
   const sub = url.searchParams.get("sub");
-  if (!/^[A-Za-z0-9_-]{24,64}$/.test(slug) || (sub !== null && !/^[0-9a-f-]{36}$/i.test(sub))) return reply({ error: "not found" }, 404);
+  const file = url.searchParams.get("file");
+  if (!SLUG.test(slug) || (sub !== null && !UUID.test(sub)) || (file !== null && !UUID.test(file))) return reply({ error: "not found" }, 404);
 
   try {
-    const [row] = await sql<{ page: { body: string } | null; owner: string | null }[]>`
-      select public.shared_note(${slug}, ${sub}::uuid) as page,
-             (select user_id from public.note_shares where slug = ${slug} and revoked_at is null) as owner`;
-    if (!row?.page || !row.owner) return reply({ error: "not found" }, 404);
-    const ids = referencedFiles(row.page.body);
-    if (ids.length === 0) return reply({ files: {} });
-    const rows = await sql<{ id: string; filename: string; content_type: string; size: string; storage_path: string }[]>`
-      select id, filename, content_type, size, storage_path from public.attachments
-      where id = any(${ids}::uuid[]) and user_id = ${row.owner} and deleted_at is null`;
-    const files: Record<string, { path: string; name: string; type: string; size: number }> = {};
-    await Promise.all(rows.map(async (a) => {
-      const res = await fetch(`${API}/storage/v1/object/sign/files/${a.storage_path.split("/").map(encodeURIComponent).join("/")}`, {
-        method: "POST",
-        headers: { authorization: `Bearer ${SERVICE}`, apikey: SERVICE, "content-type": "application/json" },
-        body: JSON.stringify({ expiresIn: TTL }),
-      });
-      if (!res.ok) { await res.body?.cancel(); return; }
-      const { signedURL } = await res.json() as { signedURL: string };
-      files[a.id] = { path: `/storage/v1${signedURL}`, name: a.filename, type: a.content_type, size: Number(a.size) };
-    }));
-    return reply({ files });
-  } catch (e) {
-    console.error("share-files", (e as Error).message);
+    return file === null ? await list(slug, sub) : await bytes(slug, sub, file);
+  } catch {
+    log(file === null ? "share_files_list" : "share_files_get", { status: 500 });
     return reply({ error: "unavailable" }, 500);
   }
 });
+
+/** The files the page embeds, with the address each one is served at. */
+async function list(slug: string, sub: string | null): Promise<Response> {
+  const [row] = await sql<{ page: { body: string } | null }[]>`select public.shared_note(${slug}, ${sub}::uuid) as page`;
+  if (!row?.page) return reply({ error: "not found" }, 404);
+  const ids = referencedFiles(row.page.body);
+  if (ids.length === 0) return reply({ files: {} });
+  const rows = await sql<{ attachment_id: string; filename: string; content_type: string; size: string }[]>`
+    select attachment_id, filename, content_type, size from public.note_share_files
+    where slug = ${slug} and attachment_id = any(${ids}::uuid[])`;
+  const files: Record<string, { path: string; name: string; type: string; size: number }> = {};
+  for (const f of rows) {
+    files[f.attachment_id] = { path: filePath(slug, f.attachment_id, sub), name: f.filename, type: f.content_type, size: Number(f.size) };
+  }
+  return reply({ files });
+}
+
+/** One file's bytes, when the page embeds it. */
+async function bytes(slug: string, sub: string | null, file: string): Promise<Response> {
+  const [f] = await sql<{ filename: string; content_type: string; content: Uint8Array }[]>`
+    select filename, content_type, content from public.shared_file(${slug}, ${sub}::uuid, ${file.toLowerCase()}::uuid)`;
+  if (!f) return reply({ error: "not found" }, 404);
+  const { type, inline } = servedType(f.content_type, f.filename);
+  const body = new Uint8Array(f.content);
+  return new Response(body, {
+    headers: {
+      "content-type": type,
+      "content-length": String(body.byteLength),
+      "content-disposition": contentDisposition(f.filename, inline),
+      "x-content-type-options": "nosniff",
+      // Short: Stop Sharing takes the file down within a minute.
+      "cache-control": "private, max-age=60",
+      "access-control-allow-origin": "*",
+      "cross-origin-resource-policy": "cross-origin",
+    },
+  });
+}
