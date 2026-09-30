@@ -95,6 +95,26 @@ final class EditorHarness {
         return r !== view && r.isDescendant(of: view)
     }
 
+    /// The grid cell's text field that has the keyboard, if one has: a different one each
+    /// time the keyboard moves to another cell.
+    var focusedGridField: NSView? {
+        guard gridHasFocus, let r = window.firstResponder as? NSView else { return nil }
+        if let editor = r as? NSTextView, editor.isFieldEditor, let field = editor.delegate as? NSView { return field }
+        return r
+    }
+
+    /// Waits until `done` holds, for work that lands a few run-loop turns later (focus moving
+    /// between grid cells), however busy the main thread is. False if it never did.
+    @discardableResult
+    func until(_ seconds: Double = 5, _ done: () -> Bool) async -> Bool {
+        let end = Date.now.addingTimeInterval(seconds)
+        while !done() {
+            if Date.now >= end { return false }
+            await settle(0.01)
+        }
+        return true
+    }
+
     /// A click at a point in the text view's own (flipped) coordinates.
     func click(_ p: CGPoint, count: Int = 1) async {
         let inWindow = view.convert(p, to: nil)

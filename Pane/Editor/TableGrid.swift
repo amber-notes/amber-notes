@@ -203,6 +203,10 @@ struct TableGridView: View {
     @State private var pendingFocus: GridCell?
     /// The cell the keyboard is moving to, until it has arrived.
     @State private var wanted: GridCell?
+    /// The cell keys act on: the one the keyboard is moving to, while it's on its way. Mid-move
+    /// `focus` still names the old cell or is briefly nil (the old field going away), and a key
+    /// pressed then would repeat the last move or be dropped.
+    private var current: GridCell? { wanted ?? focus }
 
     init(table: GridTable, initialFocus: GridCell?, focusRequest: GridFocusRequest? = nil, selected: Bool = false, exit: @escaping (Bool) -> Void = { _ in }, commit: @escaping (GridTable) -> Void) {
         self.selected = selected
@@ -325,24 +329,24 @@ struct TableGridView: View {
             }
         }
         .onKeyPress(.upArrow) {
-            guard let f = focus else { return .ignored }
+            guard let f = current else { return .ignored }
             if f.row == 0 { wanted = nil; exit(false) } else { go(GridCell(row: f.row - 1, column: f.column)) }
             return .handled
         }
         .onKeyPress(.downArrow) {
-            qaTrace("grid down, focus \(String(describing: focus))")
-            guard let f = focus else { return .ignored }
+            qaTrace("grid down, focus \(String(describing: focus)) wanted \(String(describing: wanted))")
+            guard let f = current else { return .ignored }
             if f.row == draft.rows.count - 1 { wanted = nil; exit(true) } else { go(GridCell(row: f.row + 1, column: f.column)) }
             return .handled
         }
         .onKeyPress(.escape) {
-            guard focus != nil else { return .ignored }
+            guard current != nil else { return .ignored }
             wanted = nil
             exit(true)
             return .handled
         }
         .onKeyPress(.tab, phases: .down) { press in
-            guard let f = focus else { return .ignored }
+            guard let f = current else { return .ignored }
             step(from: f, by: press.modifiers.contains(.shift) ? -1 : 1, cols: cols)
             return .handled
         }
