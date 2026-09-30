@@ -5,6 +5,21 @@ assistants. Newest first. Research behind it: [seo-aeo-research-2026-09-30.md](s
 
 `docs/` had no README naming a folder for evidence, so this and the research live in `docs/Evidence/`.
 
+## 30 September 2026: round 11, "ChatGPT memory vs notes"
+
+### Query
+
+- "chatgpt memory vs notes" and "chatgpt memory vs notes app". Results: MindStudio, Hjarni (a notes app with an MCP server), Simon Willison, ContextBolt, OpenAI. A fair explainer from a notes app that ChatGPT can reach fits it exactly.
+
+### Changed (branch `site/chatgpt-memory-vs-notes`)
+
+- New post `/blog/chatgpt-memory-vs-notes`, "ChatGPT memory vs a notes app ChatGPT can read", in Comparisons:
+  - what memory is (saved memories and chat history, Settings, Personalization, the 30-day deletion when chat history is turned off, a lighter version on Free), from OpenAI's Memory in ChatGPT help page and "Memory and new controls" as quoted in search results; help.openai.com answers 403 to fetches, and the Chrome extension wasn't connected, so the page itself wasn't read
+  - a side-by-side table, when memory is enough, when you want notes, and using both (memory keeps the instruction, notes keep the text)
+  - no claims about unannounced memory changes: third-party posts describe a June 2026 "Dreaming" update that couldn't be checked against OpenAI, so the post only says memory changes often and links OpenAI's page
+  - four FAQ answers with FAQPage JSON-LD
+- A new ground, fog, and a card cropped from the Groceries version-history capture.
+
 ## 30 September 2026: round 10, Claude and Apple Notes after iOS 27
 
 ### Query

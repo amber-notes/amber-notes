@@ -29,7 +29,7 @@ export type Post = {
 
 /// The ground a cover (and the post's first picture) sits on: the site's palette, the help page's
 /// leaf brown, the app's dark look, or the home page's dunes.
-export type Ground = "paper" | "soft" | "tint" | "amber" | "leaf" | "dark" | "dunes" | "ink" | "peach" | "cream" | "sand" | "clay" | "mist" | "honey" | "sage" | "heather" | "blush" | "wheat";
+export type Ground = "paper" | "soft" | "tint" | "amber" | "leaf" | "dark" | "dunes" | "ink" | "peach" | "cream" | "sand" | "clay" | "mist" | "honey" | "sage" | "heather" | "blush" | "wheat" | "fog";
 
 /// A card's picture: one real capture of the element the post is about, on the post's ground. The
 /// capture is cropped at 2x (3x from iPhone) to about the card's width, so it shows at full size.
@@ -58,6 +58,18 @@ export const SHOTS = {
 } satisfies Record<string, Shot>;
 
 export const posts: Post[] = [
+  {
+    slug: "chatgpt-memory-vs-notes",
+    title: "ChatGPT memory vs a notes app ChatGPT can read",
+    description: "What ChatGPT memory keeps, what it doesn't, and when you want notes ChatGPT can read and write instead: exact text, on your phone, with history.",
+    excerpt: "Memory is ChatGPT's own summary of you. Notes are your words, where you can read them. What each is good for, and how to use both.",
+    category: "Comparisons",
+    date: "2026-09-30",
+    updated: "2026-09-30",
+    image: SHOTS.historyBurst,
+    thumb: thumb("fog", "thumb-groceries-version", 1270, 700),
+    draft: false,
+  },
   {
     slug: "apple-notes-ios-27",
     title: "Apple Notes in iOS 27 and macOS 27: what's new, and what AI still can't do",

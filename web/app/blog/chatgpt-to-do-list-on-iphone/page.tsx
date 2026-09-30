@@ -64,6 +64,10 @@ export default function Page() {
         <a href="/blog/work-log-with-claude-code">keep a work log with Claude Code</a> shows how. If you&apos;re coming from Apple Notes,{" "}
         <a href="/blog/move-from-apple-notes">import your notes first</a>; ChatGPT can&apos;t reach lists that stay in Apple Notes.
       </p>
+      <p>
+        Wondering why not just let ChatGPT remember your to-dos? <a href="/blog/chatgpt-memory-vs-notes">ChatGPT memory vs a notes app</a> explains
+        what memory keeps and what it doesn&apos;t.
+      </p>
     </PostPage>
   );
 }
