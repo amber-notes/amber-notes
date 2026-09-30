@@ -1,0 +1,71 @@
+/* The blog: captures in Mac windows on the home page's desk, cards, the byline. Colours from the
+   cream theme's tokens; the desk is the home page's wallpaper. */
+
+/* ── A capture in a window ── */
+.window, .captured { width: min(100%, var(--w, 100%)); margin: 0 auto; }
+.window {
+  display: grid; overflow: hidden; border-radius: 12px; background: #fff;
+  box-shadow: 0 0 0 0.5px rgba(60, 20, 0, 0.22), 0 18px 36px -10px rgba(60, 20, 0, 0.35), 0 2px 6px rgba(60, 20, 0, 0.14);
+}
+.bar { position: relative; display: flex; align-items: center; justify-content: center; height: 30px; background: #f6f3ef; box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.07); }
+.barTitle { font-size: 12.5px; font-weight: 600; color: #4a4a4c; }
+.lights { position: absolute; left: 12px; top: 10px; display: flex; gap: 7px; }
+.lights i { width: 11px; height: 11px; border-radius: 50%; background: #ff5f57; box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.12); }
+.lights i:nth-child(2) { background: #febc2e; }
+.lights i:nth-child(3) { background: #28c840; }
+.window img, .captured img { display: block; width: 100%; height: auto; }
+/* Whole-window captures carry their own corners; the shadow follows them. */
+.captured img { filter: drop-shadow(0 16px 26px rgba(60, 20, 0, 0.3)) drop-shadow(0 1px 3px rgba(60, 20, 0, 0.18)); }
+
+/* ── On the desk ── */
+.figure { margin: 8px 0 28px; }
+.desk {
+  display: grid; place-items: center; padding: clamp(20px, 5vw, 48px); border-radius: 24px; overflow: hidden;
+  background: #f9c98a url(/blog/desk.svg) center / cover no-repeat;
+  box-shadow: 0 0 0 1px var(--line);
+}
+.caption { margin-top: 10px; color: var(--muted); font-size: 14.5px; line-height: 1.45; text-align: center; text-wrap: balance; }
+
+/* ── The card's cover: the desk at a fixed shape, the window rising from the bottom edge ── */
+.cover {
+  position: relative; aspect-ratio: 16 / 10; border-radius: 14px; overflow: hidden;
+  background: #f9c98a url(/blog/desk.svg) center / cover no-repeat;
+}
+.coverWindow { position: absolute; left: 11%; right: 11%; top: 12%; }
+.coverWindow > img { display: block; width: 100%; height: auto; filter: drop-shadow(0 12px 22px rgba(60, 20, 0, 0.32)); }
+.coverWindow .window { width: 100%; }
+.coverWindow .bar { height: 22px; }
+.coverWindow .lights { left: 9px; top: 7px; gap: 5px; }
+.coverWindow .lights i { width: 8px; height: 8px; }
+.coverWindow .barTitle { font-size: 10px; }
+
+/* ── Byline ── */
+.avatar { display: block; flex: none; border-radius: 50%; box-shadow: 0 0 0 1px var(--line); }
+.byline { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+.byline > span:first-of-type { color: var(--ink); font-weight: 600; }
+
+/* ── A card: 24 px corners around a 10 px inset, so the cover's are 14 ── */
+.card {
+  display: grid; align-content: start; gap: 16px; padding: 10px 10px 20px; border-radius: 24px;
+  color: var(--ink); text-decoration: none; background: var(--card);
+  box-shadow: 0 0 0 1px var(--line), 0 1px 2px rgba(60, 30, 5, 0.06);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .card { transition: transform 0.16s ease-out, box-shadow 0.16s ease-out; }
+  .card:active { transform: scale(0.985); }
+}
+@media (hover: hover) {
+  .card:hover { box-shadow: 0 0 0 1px var(--line), 0 14px 30px -14px rgba(60, 30, 5, 0.35); }
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .card:hover { transform: translateY(-2px); }
+}
+.card:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
+.cardText { display: grid; gap: 8px; padding: 0 10px; }
+.label { font-size: 12.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--link); }
+.cardTitle { margin: 0; font-size: clamp(22px, 2.2vw, 27px); line-height: 1.08; font-weight: 800; letter-spacing: -0.025em; text-wrap: balance; }
+.excerpt {
+  color: var(--muted); font-size: 16px; line-height: 1.5;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden;
+}
+.card .byline { margin-top: 6px; }

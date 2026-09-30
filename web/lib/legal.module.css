@@ -4,6 +4,9 @@
 /* The same centred column as the changelog and help pages. */
 .col { width: 100%; max-width: 760px; margin: 0 auto; padding-top: 40px; display: grid; gap: 40px; align-content: start; }
 
+/* Grid items may shrink below their content, so a long code line scrolls in its box instead of widening the page. */
+.col > * { min-width: 0; }
+
 .head { display: grid; gap: 12px; }
 .title { margin: 0; font-size: clamp(34px, 4.8vw, 56px); line-height: 1.02; font-weight: 800; letter-spacing: -0.035em; text-wrap: balance; }
 .updated { margin: 0; color: var(--muted); font-size: clamp(17px, 1.8vw, 19px); font-variant-numeric: tabular-nums; }
@@ -54,3 +57,10 @@
 .article th, .article td { text-align: left; vertical-align: top; padding: 11px 14px; border-bottom: 1px solid var(--line); }
 .article th { font-size: 13px; font-weight: 700; color: var(--muted); background: var(--soft); }
 .article tr:last-child td { border-bottom: 0; }
+
+/* Guides: when the page was last checked, and the way back to the index. */
+.checked { margin: 0; color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+.article p.more { margin-top: 48px; font-size: 16px; }
+.article code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.88em; padding: 1px 5px; border-radius: 6px; background: var(--soft); overflow-wrap: anywhere; }
+.article pre { margin: 0 0 16px; padding: 14px 16px; border-radius: 14px; background: var(--soft); overflow-x: auto; font-size: 14px; line-height: 1.5; }
+.article pre code { padding: 0; background: none; overflow-wrap: normal; }

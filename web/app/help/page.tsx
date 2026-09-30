@@ -6,11 +6,12 @@ import Faq from "./Faq";
 import { FAQ } from "./questions";
 import { GITHUB_URL } from "@/lib/github";
 import { JsonLd, faqPage } from "@/lib/structured-data";
+import { WHAT_IT_IS } from "@/lib/facts";
 
 export const dynamic = "force-static";
 export const metadata: Metadata = pageMetadata({
   title: "Help and FAQ · Amber Notes",
-  description: "How to import your Apple Notes, connect ChatGPT, Claude, Claude Code or Codex, sync your iPhone and Mac, share a note, and get help.",
+  description: "How to import your Apple Notes, connect ChatGPT, Claude, Claude Code, Codex or Incredible, sync your iPhone and Mac, share a note, and get help.",
   path: "/help",
 });
 
@@ -23,7 +24,7 @@ export default function Help() {
       <section className={styles.log}>
         <div className={styles.logHead}>
           <h1 className={`${styles.h2} rise`} style={{ "--i": 0 } as React.CSSProperties}>Help</h1>
-          <p className={`${styles.lede} rise`} style={{ "--i": 1 } as React.CSSProperties}>Answers to common questions, and how to reach me.</p>
+          <p className={`${styles.lede} rise`} style={{ "--i": 1 } as React.CSSProperties}>{WHAT_IT_IS} Here are answers to common questions, and how to reach me.</p>
         </div>
         <div {...rise(2)}><Faq items={FAQ} /></div>
         <div {...rise(3)}>
