@@ -63,7 +63,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.connectChatGPT,
-    thumb: thumb("paper", "thumb-connect-chatgpt", 640, 500),
+    thumb: thumb("paper", "thumb-connect-chatgpt", 704, 572),
     draft: false,
   },
   {
@@ -75,7 +75,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.connectClaude,
-    thumb: thumb("leaf", "thumb-connect-claude", 640, 410),
+    thumb: thumb("leaf", "thumb-connect-claude", 704, 451),
     draft: false,
   },
   {
@@ -87,7 +87,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.aiEdit,
-    thumb: thumb("dunes", "thumb-ai-rows", 640, 500),
+    thumb: thumb("dunes", "thumb-ai-rows", 733, 533),
     draft: false,
   },
   {
@@ -99,7 +99,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.importSheet,
-    thumb: thumb("soft", "thumb-import", 640, 500),
+    thumb: thumb("soft", "thumb-import", 750, 523),
     draft: false,
   },
   {
@@ -111,7 +111,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.connectList,
-    thumb: thumb("dark", "thumb-connect-list", 640, 500),
+    thumb: thumb("dark", "thumb-connect-list", 704, 566),
     draft: false,
   },
   {
@@ -123,7 +123,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.history,
-    thumb: thumb("tint", "thumb-iphone-history", 1146, 900),
+    thumb: thumb("tint", "thumb-iphone-history", 1313, 956),
     draft: false,
   },
   {
@@ -135,7 +135,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.consent,
-    thumb: thumb("amber", "thumb-consent", 720, 500),
+    thumb: thumb("amber", "thumb-consent", 854, 528),
     draft: false,
   },
   {
@@ -147,7 +147,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.welcome,
-    thumb: thumb("ink", "thumb-markdown", 720, 335),
+    thumb: thumb("ink", "thumb-markdown", 804, 359),
     draft: false,
   },
   {
@@ -159,7 +159,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.iphoneList,
-    thumb: thumb("peach", "thumb-iphone-chatgpt", 1146, 900),
+    thumb: thumb("peach", "thumb-iphone-chatgpt", 1278, 908),
     draft: false,
   },
   {
@@ -171,7 +171,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.tracker,
-    thumb: thumb("cream", "thumb-tracker", 720, 500),
+    thumb: thumb("cream", "thumb-tracker", 708, 749),
     draft: false,
   },
   {
@@ -183,7 +183,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.aiEdit,
-    thumb: thumb("paper", "thumb-ai-rows", 640, 500),
+    thumb: thumb("paper", "thumb-ai-rows", 733, 533),
     draft: true,
   },
 ];
