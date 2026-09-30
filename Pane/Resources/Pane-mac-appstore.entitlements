@@ -29,5 +29,9 @@
 	<!-- Printing the recovery key (Settings › Privacy & Security). -->
 	<key>com.apple.security.print</key>
 	<true/>
+	<!-- Push for AI connection asks. Development here; exporting for TestFlight / the App Store
+	     sets production. -->
+	<key>com.apple.developer.aps-environment</key>
+	<string>development</string>
 </dict>
 </plist>

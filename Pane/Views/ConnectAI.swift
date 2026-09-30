@@ -585,6 +585,9 @@ final class ConnectCenter: NSObject {
     var panelAI: String?
     /// The last approval made on this device, so an open guide can say it worked right away.
     var approved: (ai: String?, at: Date)?
+    /// Looks at the server for asks now (set while signed in, by ConnectAsks): a push was tapped
+    /// or arrived.
+    @ObservationIgnored var lookAgain: (@MainActor () async -> Void)?
     #if os(macOS)
     /// The browser the request showing came from, so the answer goes back to the same one.
     var browser: URL?
@@ -782,7 +785,12 @@ struct ConnectHandler: ViewModifier {
             )) { pending in
                 if let client = backend.client {
                     ConsentSheet(client: client, requestID: pending.id, finish: { center.open($0) },
-                                 allowed: { r in center.approved = (r.verifiedAI, .now) },
+                                 allowed: { r in
+                                     center.approved = (r.verifiedAI, .now)
+                                     // Connected an AI: the moment to ask to notify (the next
+                                     // ask can then reach this device when the app isn't open).
+                                     Task { await ConnectNotifier.system.askPermission() }
+                                 },
                                  answering: { center.answering($0) })
                 }
             }
