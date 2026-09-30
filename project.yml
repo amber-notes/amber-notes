@@ -70,6 +70,7 @@ targets:
         PaneSupabaseURL: $(PANE_SUPABASE_URL)
         PaneSupabaseKey: $(PANE_SUPABASE_KEY)
         PaneShareURL: $(PANE_SHARE_URL)
+        PaneMCPURL: $(PANE_MCP_URL)
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
         NSAppleEventsUsageDescription: Amber Notes reads the Apple Notes you choose to import. It never changes them.

@@ -163,7 +163,7 @@ struct WebConnectGuide: View {
         _watch = State(initialValue: w)
     }
 
-    private var server: String { BackendConfig.mcpURL?.absoluteString ?? "" }
+    private var server: String { BackendConfig.mcpPublicURL?.absoluteString ?? "" }
 
     var body: some View {
         Group {

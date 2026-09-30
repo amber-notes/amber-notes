@@ -1,6 +1,7 @@
 import { Figure } from "@/lib/blog";
 import { PostPage, postMetadata } from "@/lib/PostPage";
 import { SHOTS } from "@/lib/posts";
+import { MCP_URL } from "@/lib/facts";
 
 export const dynamic = "force-static";
 export const metadata = postMetadata("connect-chatgpt-to-your-notes");
@@ -50,7 +51,10 @@ export default function Page() {
         <li>In ChatGPT, turn on Developer mode in Settings, Security and login. You only do this once.</li>
         <li>In Plugins, choose + and name it Amber Notes.</li>
         <li>Paste the address, choose OAuth, then Create.</li>
-        <li>ChatGPT asks Amber Notes for permission. Amber Notes opens and asks &ldquo;Allow ChatGPT to use your notes?&rdquo; Pick Read and Edit, or Read Only, and choose Allow.</li>
+        <li>
+          ChatGPT asks Amber Notes for permission. A page on ambernotes.app opens: choose Open in Amber Notes, or sign in right there.
+          Either way you see &ldquo;Allow ChatGPT to use your notes?&rdquo; Pick Read and Edit, or Read Only, and choose Allow.
+        </li>
         <li>Try it. Ask ChatGPT: &ldquo;Search my Amber Notes and tell me what I wrote most recently.&rdquo;</li>
       </ol>
       <Figure shot={SHOTS.consent} caption="Nothing is shared until you choose Allow, and you pick Read and Edit or Read Only." />
@@ -61,7 +65,7 @@ export default function Page() {
       <h2>Claude</h2>
       <p>
         Under Connect an AI, choose Claude, then Add to Claude. Claude opens its Add custom connector dialog with Amber Notes already filled in. Choose Add,
-        then Connect, then Allow in Amber Notes. It works on every Claude plan. The free plan includes one custom connector, and on Team
+        then Connect, then Allow. It works on every Claude plan. The free plan includes one custom connector, and on Team
         and Enterprise an Owner adds it for the organization.
       </p>
 
@@ -75,14 +79,14 @@ export default function Page() {
       <h2>Incredible and other MCP apps</h2>
       <p>
         <a href="https://incredible.one" rel="noopener">Incredible</a>, the AI assistant my company makes, connects the same way as
-        any other app that supports MCP: add the Amber Notes server address and sign in when it asks, then choose Allow in Amber Notes.
+        any other app that supports MCP: add the Amber Notes server address, <code>{MCP_URL}</code>, and sign in when it asks, then choose Allow.
         The <a href="/blog/mcp-server">Amber Notes MCP server page</a> has the address, the sign-in and every tool.
       </p>
 
       <h2>You stay in control</h2>
       <Figure shot={SHOTS.aiEdit} caption="When ChatGPT changes a note, the new lines are tinted and you can undo the change." />
       <ul>
-        <li>Nothing is shared until you choose Allow in Amber Notes.</li>
+        <li>Nothing is shared until you choose Allow, in Amber Notes or signed in to your account on ambernotes.app.</li>
         <li>You choose Read Only, or Read and Edit, for each assistant.</li>
         <li>When an assistant changes a note, Amber Notes shows what changed, with Undo. The previous version is kept in the note&apos;s version history (File, then Show Version History).</li>
         <li>Settings lists everything that&apos;s connected. Choose Disconnect, and it loses access right away.</li>

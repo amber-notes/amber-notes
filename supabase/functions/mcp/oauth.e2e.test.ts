@@ -182,8 +182,9 @@ Deno.test({ name: "the full flow: consent in the app, tokens, tools, refresh wit
   const { verifier, challenge } = await pkce();
   const res = await startAuthorize(clientId, challenge);
   assertEquals(res.status, 302);
+  // The browser goes to the site's consent page, which offers the app or signing in there.
   const loc = new URL(res.headers.get("location")!);
-  assertEquals(loc.protocol, "ambernotes:");
+  assertEquals(loc.pathname, "/connect");
   const requestId = loc.searchParams.get("request")!;
 
   // The app reads the request (only with a session) to show the consent sheet.
@@ -270,15 +271,17 @@ Deno.test({ name: "PKCE, client and redirect are all checked at the token endpoi
 Deno.test({ name: "authorize refuses bad requests without redirecting to unknown places", ...opts }, async () => {
   const clientId = await register();
   const { challenge } = await pkce();
-  const unknown = await startAuthorize("amb_client_nope", challenge);
-  assertEquals(unknown.status, 400);
-  const elsewhere = await startAuthorize(clientId, challenge, { redirect_uri: "https://evil.example.com/cb" });
-  assertEquals(elsewhere.status, 400);
-  const noPkce = await startAuthorize(clientId, challenge, { code_challenge_method: "plain" });
-  assertEquals(noPkce.status, 302);
-  assertEquals(new URL(noPkce.headers.get("location")!).searchParams.get("error"), "invalid_request");
-  const otherResource = await startAuthorize(clientId, challenge, { resource: "https://example.com/mcp" });
-  assertEquals(new URL(otherResource.headers.get("location")!).searchParams.get("error"), "invalid_target");
+  // Every refusal ends on Amber Notes' own consent page, never at the client's address.
+  const problem = (res: Response) => {
+    assertEquals(res.status, 302);
+    const to = new URL(res.headers.get("location")!);
+    assertEquals(to.pathname, "/connect");
+    return to.searchParams.get("problem");
+  };
+  assertEquals(problem(await startAuthorize("amb_client_nope", challenge)), "unknown_app");
+  assertEquals(problem(await startAuthorize(clientId, challenge, { redirect_uri: "https://evil.example.com/cb" })), "wrong_return");
+  assertEquals(problem(await startAuthorize(clientId, challenge, { code_challenge_method: "plain" })), "pkce");
+  assertEquals(problem(await startAuthorize(clientId, challenge, { resource: "https://example.com/mcp" })), "wrong_server");
 });
 
 Deno.test({ name: "loopback redirects match on any port", ...opts }, async () => {
@@ -286,7 +289,7 @@ Deno.test({ name: "loopback redirects match on any port", ...opts }, async () =>
   const { challenge } = await pkce();
   const res = await startAuthorize(clientId, challenge, { redirect_uri: "http://127.0.0.1:43117/callback" });
   assertEquals(res.status, 302);
-  assertEquals(new URL(res.headers.get("location")!).protocol, "ambernotes:");
+  assertEquals(new URL(res.headers.get("location")!).pathname, "/connect");
   const { jwt } = await user();
   const details = await (await fetch(`${base}/connect/request?id=${new URL(res.headers.get("location")!).searchParams.get("request")}`, { headers: { authorization: `Bearer ${jwt}` } })).json();
   assertEquals(details.loopback, true);

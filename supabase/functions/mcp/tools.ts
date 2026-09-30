@@ -34,7 +34,7 @@ const overwrite = { ...write, destructiveHint: true } as const;
 export const tools: Tool[] = ([
   {
     name: "get_overview", title: "Overview of the notes",
-    description: "Start here. Folders with counts, pinned notes and the most recently edited notes.",
+    description: "An overview of the person's Amber Notes: folders with counts, pinned notes and the most recently edited notes.",
     inputSchema: { type: "object", properties: {} }, annotations: read,
   },
   {
@@ -94,7 +94,7 @@ export const tools: Tool[] = ([
   },
   {
     name: "replace_note_body", title: "Rewrite a note",
-    description: "Replaces the whole note with new markdown. Use only for full rewrites; prefer edit_note. The old version stays in history.",
+    description: "Replaces the whole note with new markdown. Use only for full rewrites; prefer edit_note. The person sees the change in Amber Notes with Undo, and the old version stays in history.",
     inputSchema: { type: "object", properties: { ...noteRef, body: str("The complete new markdown."), expected_version: int("Version from read_note, to avoid overwriting newer changes.") }, required: ["body"] },
     annotations: { ...write, destructiveHint: true },
   },
@@ -118,7 +118,7 @@ export const tools: Tool[] = ([
   },
   {
     name: "delete_note", title: "Delete a note",
-    description: "Moves a note and its sub-notes to Recently Deleted (kept 30 days, restorable with restore_note).",
+    description: "Moves a note and its sub-notes to Recently Deleted. This can be undone: restore_note brings it back within 30 days.",
     inputSchema: { type: "object", properties: { ...noteRef } },
     annotations: { ...write, destructiveHint: true },
   },
@@ -147,7 +147,7 @@ export const tools: Tool[] = ([
   },
   {
     name: "delete_folder", title: "Delete a folder",
-    description: "Deletes a folder and its sub-folders; their notes (and those notes' sub-notes) go to Recently Deleted.",
+    description: "Deletes a folder and its sub-folders. Their notes (and those notes' sub-notes) go to Recently Deleted, and each can be brought back with restore_note within 30 days; the folders themselves are not restored.",
     inputSchema: { type: "object", properties: { folder: str("Name or path.") }, required: ["folder"] },
     annotations: { ...write, destructiveHint: true },
   },
@@ -210,13 +210,13 @@ export const tools: Tool[] = ([
   // ChatGPT's connector conventions.
   {
     name: "search", title: "Search",
-    description: "Search the user's notes by words or phrases. Returns note ids, titles and links; read one with fetch.",
+    description: "Search the person's Amber Notes by words or phrases. Returns note ids, titles and links; read one with fetch.",
     inputSchema: { type: "object", properties: { query: str("Search query.") }, required: ["query"] },
     annotations: read,
   },
   {
     name: "fetch", title: "Fetch",
-    description: "Fetch a note by id (from search) as its full markdown, with folder, pinned state and last edit time.",
+    description: "Fetch an Amber Notes note by id (from search) as its full markdown, with folder, pinned state and last edit time.",
     inputSchema: { type: "object", properties: { id: str("Note id.") }, required: ["id"] },
     annotations: read,
   },

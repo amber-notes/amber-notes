@@ -16,11 +16,12 @@ import Testing
     }
 
     @Test func knowsTheBigAIsAndWarnsAboutTheRest() {
-        #expect(ConnectTrust.isKnown(host: "chatgpt.com", loopback: false))
-        #expect(ConnectTrust.isKnown(host: "claude.ai", loopback: false))
-        #expect(!ConnectTrust.isKnown(host: "chatgpt.com.evil.example", loopback: false))
-        #expect(!ConnectTrust.isKnown(host: "notclaude.ai", loopback: false))
-        #expect(!ConnectTrust.isKnown(host: "127.0.0.1", loopback: true))
+        #expect(ConnectTrust.verifiedAI(host: "chatgpt.com", loopback: false) == "ChatGPT")
+        #expect(ConnectTrust.verifiedAI(host: "claude.ai", loopback: false) == "Claude")
+        #expect(ConnectTrust.verifiedAI(host: "chatgpt.com.evil.example", loopback: false) == nil)
+        #expect(ConnectTrust.verifiedAI(host: "notclaude.ai", loopback: false) == nil)
+        #expect(ConnectTrust.verifiedAI(host: "evil.claude.ai", loopback: false) == nil, "a subdomain isn't claude.ai")
+        #expect(ConnectTrust.verifiedAI(host: "127.0.0.1", loopback: true) == nil)
         #expect(ConnectTrust.destination(host: "127.0.0.1", loopback: true) == "an app on this computer")
         #expect(ConnectTrust.destination(host: "chatgpt.com", loopback: false) == "chatgpt.com")
     }
@@ -36,6 +37,15 @@ import Testing
         #expect(codex.contains("url = \"\(url)\""))
         #expect(codex.contains("Bearer \(token)"))
     }
+
+    @Test func showsTheServersPublicAddressWhenTheBuildHasOne() {
+        let function = URL(string: "https://ref.supabase.co/functions/v1/mcp")!
+        #expect(BackendConfig.publicMCPURL(configured: "https://mcp.ambernotes.app", function: function)?.absoluteString == "https://mcp.ambernotes.app")
+        // Unset ($(PANE_MCP_URL) expands to nothing) or not https: the function's own address.
+        #expect(BackendConfig.publicMCPURL(configured: "", function: function) == function)
+        #expect(BackendConfig.publicMCPURL(configured: nil, function: function) == function)
+        #expect(BackendConfig.publicMCPURL(configured: "http://mcp.example", function: function) == function)
+    }
 }
 
 
@@ -46,6 +56,29 @@ import Testing
         #expect(ConnectTrust.verifiedAI(host: "chat.openai.com", loopback: false) == "ChatGPT")
         #expect(ConnectTrust.verifiedAI(host: "claude.ai", loopback: false) == "Claude")
         #expect(ConnectTrust.verifiedAI(host: "claude.com", loopback: false) == "Claude")
+    }
+
+    @Test func onTheConsentSheetOnlyThePinnedCallbackCounts() {
+        func req(_ name: String, _ uri: String?) -> ConnectRequest {
+            ConnectRequest(id: UUID(), client_name: name, redirect_host: uri.flatMap { URL(string: $0)?.host() } ?? "chatgpt.com", redirect_uri: uri, loopback: false, wants_write: true)
+        }
+        let real = req("ChatGPT", "https://chatgpt.com/connector_platform_oauth_redirect")
+        #expect(real.verifiedAI == "ChatGPT")
+        #expect(real.who == "ChatGPT")
+        #expect(real.claimedName == nil)
+        #expect(req("Claude", "https://claude.ai/api/mcp/auth_callback").verifiedAI == "Claude")
+        // Same site, other path; or a server too old to say: no mark, and the host is the headline.
+        let otherPath = req("Claude", "https://claude.ai/somewhere/else")
+        #expect(otherPath.verifiedAI == nil)
+        #expect(otherPath.who == "claude.ai")
+        #expect(otherPath.claimedName == nil, "no plain claim from the server: none shown")
+        #expect(req("ChatGPT", nil).verifiedAI == nil)
+        let local = ConnectRequest(id: UUID(), client_name: "An app on this computer", redirect_host: "127.0.0.1", redirect_uri: "http://127.0.0.1:4000/cb", claimed_name: "claude code", loopback: true, wants_write: true)
+        #expect(local.who == "an app on this computer")
+        #expect(local.claimedName == "claude code")
+        // The claim is only ever the server's plain version, never the raw name.
+        #expect(req("CIaude", "https://attacker.example/cb").claimedName == nil)
+        #expect(ConnectRequest(id: UUID(), client_name: "Claude", redirect_host: "claude.ai", redirect_uri: "https://claude.ai/api/mcp/auth_callback", claimed_name: "claude", loopback: false, wants_write: true).claimedName == nil)
     }
 
     @Test func aClientThatOnlyCallsItselfChatGPTGetsNoMark() {
@@ -63,6 +96,17 @@ import Testing
     private func row(_ name: String, host: String?, kind: String = "oauth", at: Date, revoked: Bool = false) -> Connection {
         Connection(id: UUID(), name: name, kind: kind, can_write: true, created_at: at, last_used_at: nil,
                    revoked_at: revoked ? at : nil, redirect_host: host, url_used_at: nil)
+    }
+
+    @Test func anUnverifiedConnectionIsTitledByWhereAccessWent() {
+        let now = Date.now
+        #expect(row("Claude", host: "claude.ai", at: now).title == "Claude")
+        // Old grants still carry the name the app gave itself; the list doesn't use it.
+        #expect(row("CIaude", host: "attacker.example", at: now).title == "attacker.example")
+        #expect(row("\u{13DF}laude", host: "claude.ai.attacker.example", at: now).title == "claude.ai.attacker.example")
+        #expect(row("Claude Code", host: "127.0.0.1", at: now).title == "An app on this computer")
+        // Access tokens are named by the person, in the app.
+        #expect(row("My laptop", host: nil, kind: "token", at: now).title == "My laptop")
     }
 
     @Test func eachWebAIHasAPlanThatOpensItsOwnSite() throws {
@@ -140,8 +184,10 @@ extension AIEditSnapshots {
     @Test func consentHeaders() async throws {
         guard AppSnapshotTests.dir != nil else { return }
         let client = SupabaseClient(supabaseURL: URL(string: "http://127.0.0.1:9")!, supabaseKey: "test")
-        for (name, host, file) in [("ChatGPT", "chatgpt.com", "consent-chatgpt"), ("Claude", "claude.ai", "consent-claude"), ("ChatGPT", "chatgpt-login.example.com", "consent-spoofed-name")] {
-            let r = ConnectRequest(id: UUID(), client_name: name, redirect_host: host, loopback: false, wants_write: true)
+        for (name, uri, file) in [("ChatGPT", "https://chatgpt.com/connector_platform_oauth_redirect", "consent-chatgpt"),
+                                  ("Claude", "https://claude.ai/api/mcp/auth_callback", "consent-claude"),
+                                  ("ChatGPT", "https://chatgpt-login.example.com/cb", "consent-spoofed-name")] {
+            let r = ConnectRequest(id: UUID(), client_name: name, redirect_host: URL(string: uri)!.host()!, redirect_uri: uri, loopback: false, wants_write: true)
             try await AppSnapshotTests.render(ConsentSheet(client: client, requestID: r.id, initial: .asking(r), finish: { _ in }), name: file, dark: false)
         }
     }

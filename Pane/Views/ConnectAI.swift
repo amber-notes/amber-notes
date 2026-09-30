@@ -10,9 +10,10 @@ import UIKit
 // Connecting an AI to Amber Notes.
 //
 // ChatGPT and Claude sign in with OAuth: they send the person's browser to the MCP server's
-// /authorize, which hands over to ambernotes://connect?request=<id>. The app (already signed in)
-// shows who's asking, the person allows read-only or read and edit, and the app sends the
-// browser on to the AI with the result. Claude Code and Codex use an access token in a
+// /authorize, which opens ambernotes.app/connect?request=<id>. That page hands over to
+// ambernotes://connect?request=<id> (or lets the person answer on the web). The app (already
+// signed in) shows who's asking, the person allows read-only or read and edit, and the app sends
+// the browser on to the AI with the result. Claude Code and Codex use an access token in a
 // request header instead, created here and never shown in a link.
 
 // MARK: Pure pieces (tested)
@@ -30,12 +31,23 @@ enum ConnectLink {
 }
 
 enum ConnectTrust {
-    /// Where known AI apps receive their sign-in. Anything else gets a stronger warning.
+    /// Where known AI apps receive their sign-in, host only: enough for a connection that already
+    /// exists (the server kept where it was sent), never for a mark on the consent sheet.
     static let knownHosts: [String: String] = [
         "chatgpt.com": "ChatGPT",
         "chat.openai.com": "ChatGPT",
         "claude.ai": "Claude",
         "claude.com": "Claude",
+    ]
+
+    /// The exact addresses where ChatGPT and Claude receive their sign-in, as on the server
+    /// (oauth.ts KNOWN_CALLBACKS) and the web consent page. Only a request that returns to one of
+    /// these may show that AI's name and mark.
+    static let knownCallbacks: [String: String] = [
+        "https://chatgpt.com/connector_platform_oauth_redirect": "ChatGPT",
+        "https://platform.openai.com/apps-manage/oauth": "ChatGPT",
+        "https://claude.ai/api/mcp/auth_callback": "Claude",
+        "https://claude.com/api/mcp/auth_callback": "Claude",
     ]
 
     /// Who will receive access, in words for the consent sheet.
@@ -44,16 +56,17 @@ enum ConnectTrust {
         return host
     }
 
-    static func isKnown(host: String, loopback: Bool) -> Bool {
-        loopback ? false : knownHosts.keys.contains { host == $0 || host.hasSuffix("." + $0) }
+    /// The AI whose name and mark the consent sheet may show: decided only by the exact address the
+    /// approval is sent to, never by the name a client registered. Anyone can call themselves
+    /// "ChatGPT"; only ChatGPT receives answers at its callback. A server too old to send the
+    /// address verifies nothing.
+    static func verifiedAI(redirectURI: String?) -> String? {
+        redirectURI.flatMap { knownCallbacks[$0] }
     }
 
-    /// The AI whose mark the consent sheet may show: decided only by where the approval is sent
-    /// (the server reads it from the request's redirect address), never by the name a client
-    /// registered. Anyone can call themselves "ChatGPT"; only ChatGPT receives answers at chatgpt.com.
+    /// The AI behind an existing connection, by the exact host its approval went to.
     static func verifiedAI(host: String, loopback: Bool) -> String? {
-        guard !loopback else { return nil }
-        return knownHosts.first { host == $0.key || host.hasSuffix("." + $0.key) }?.value
+        loopback ? nil : knownHosts[host.lowercased()]
     }
 }
 
@@ -86,8 +99,20 @@ struct ConnectRequest: Decodable, Identifiable, Equatable {
     let id: UUID
     let client_name: String
     let redirect_host: String
+    /// The exact return address (servers from 2026-09-30 on); decides whether an AI's mark shows.
+    var redirect_uri: String? = nil
+    /// What an unverified app calls itself, made plain ASCII by the server; never a title.
+    var claimed_name: String? = nil
     let loopback: Bool
     let wants_write: Bool
+
+    /// The AI this request provably comes from, if any.
+    var verifiedAI: String? { ConnectTrust.verifiedAI(redirectURI: redirect_uri) }
+    /// Who's asking, as the sheet names it: the verified AI, or else where access goes.
+    var who: String { verifiedAI ?? ConnectTrust.destination(host: redirect_host, loopback: loopback) }
+    /// The name an unverified app gave itself, shown only as a secondary claim, and only as the
+    /// server's plain-ASCII version of it.
+    var claimedName: String? { verifiedAI == nil ? claimed_name.flatMap { $0.isEmpty ? nil : $0 } : nil }
 }
 
 enum ConnectAPI {
@@ -231,7 +256,7 @@ struct ConnectHandler: ViewModifier {
             )) { pending in
                 if let client = backend.client {
                     ConsentSheet(client: client, requestID: pending.id, finish: { center.open($0) },
-                                 allowed: { r in center.approved = (ConnectTrust.verifiedAI(host: r.redirect_host, loopback: r.loopback), .now) })
+                                 allowed: { r in center.approved = (r.verifiedAI, .now) })
                 }
             }
     }
@@ -290,7 +315,7 @@ struct ConsentSheet: View {
     @ViewBuilder
     private var header: some View {
         if case .asking(let r) = phase {
-            let ai = ConnectTrust.verifiedAI(host: r.redirect_host, loopback: r.loopback)
+            let ai = r.verifiedAI
             HStack(spacing: 14) {
                 if let ai {
                     AITile(ai: ai, size: 56)
@@ -340,15 +365,21 @@ struct ConsentSheet: View {
     }
 
     private func asking(_ r: ConnectRequest) -> some View {
-        let known = ConnectTrust.isKnown(host: r.redirect_host, loopback: r.loopback)
+        let known = r.verifiedAI != nil
         return VStack(spacing: 18) {
             VStack(spacing: 6) {
-                Text("Allow \(r.client_name) to use your notes?")
+                Text("Allow \(r.who) to use your notes?")
                     .font(.title3.weight(.semibold))
                     .multilineTextAlignment(.center)
-                Text("Access goes to \(Text(ConnectTrust.destination(host: r.redirect_host, loopback: r.loopback)).bold()).")
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
+                Group {
+                    if let claimed = r.claimedName {
+                        Text("Access goes to \(Text(r.who).bold()). It calls itself \u{201C}\(claimed)\u{201D}.")
+                    } else {
+                        Text("Access goes to \(Text(r.redirect_host).bold()).")
+                    }
+                }
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
             }
 
             // An app that asked only to read can't be given more.
@@ -368,7 +399,7 @@ struct ConsentSheet: View {
                 .multilineTextAlignment(.center)
                 .frame(minHeight: 40, alignment: .top)
 
-            Label(known ? "Only allow this if you just started connecting \(r.client_name)." :
+            Label(known ? "Only allow this if you just started connecting \(r.who)." :
                     "Amber Notes doesn't recognize this app. Only allow it if you just started connecting it yourself.",
                   systemImage: known ? "info.circle" : "exclamationmark.triangle.fill")
                 .font(.footnote)
@@ -396,7 +427,8 @@ struct ConsentSheet: View {
     private func load() async {
         do {
             let r = try await ConnectAPI.request(client, id: requestID)
-            write = r.wants_write
+            // An app Amber Notes can't vouch for starts at Read Only; the person can still pick more.
+            write = r.wants_write && r.verifiedAI != nil
             phase = .asking(r)
         } catch {
             phase = .failed(error.localizedDescription)
@@ -410,7 +442,7 @@ struct ConsentSheet: View {
             finish(url)
             if allow {
                 allowed(r)
-                phase = .done(r.client_name)
+                phase = .done(r.who)
                 try? await Task.sleep(for: .seconds(1.6))
             }
             dismiss()
@@ -434,6 +466,13 @@ struct Connection: Decodable, Identifiable {
     let url_used_at: Date?
 
     var isOAuth: Bool { kind == "oauth" }
+    /// What the list calls it. A sign-in the app can't vouch for is named by where access went,
+    /// never by the name the app gave itself (grants from before 2026-09-30 still carry that name).
+    var title: String {
+        guard isOAuth, let host = redirect_host, !host.isEmpty,
+              ConnectTrust.verifiedAI(host: host, loopback: false) == nil else { return name }
+        return ["localhost", "127.0.0.1", "[::1]", "::1"].contains(host) ? "An app on this computer" : host
+    }
     /// A token that was sent inside a link: it may sit in logs or histories.
     var lessSecure: Bool { !isOAuth && url_used_at != nil }
 }
@@ -539,7 +578,7 @@ struct ConnectAISection: View {
         .sheet(item: $guide, onDismiss: { Task { await load() } }) { g in
             GuideSheet(guide: g, client: client)
         }
-        .confirmationDialog("Disconnect \(removing?.name ?? "")?", isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }), titleVisibility: .visible) {
+        .confirmationDialog("Disconnect \(removing?.title ?? "")?", isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }), titleVisibility: .visible) {
             Button("Disconnect", role: .destructive) { if let r = removing { Task { await revoke(r) } } }
         } message: {
             Text("It loses access to your notes right away.")
@@ -548,10 +587,11 @@ struct ConnectAISection: View {
 
     private func row(_ c: Connection) -> some View {
         HStack(spacing: 10) {
-            AITile(ai: c.name, size: 26)
+            // The mark comes from where the approval went, never from the name.
+            AITile(ai: ConnectTrust.verifiedAI(host: c.redirect_host ?? "", loopback: false) ?? "", size: 26)
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
-                    Text(c.name)
+                    Text(c.title)
                     if c.lessSecure {
                         Text("Less secure")
                             .font(.caption2.weight(.semibold))
@@ -568,13 +608,15 @@ struct ConnectAISection: View {
             Spacer()
             Button("Disconnect…") { removing = c }
                 .buttonStyle(.borderless)
-                .accessibilityLabel("Disconnect \(c.name)")
+                .accessibilityLabel("Disconnect \(c.title)")
                 .accessibilityIdentifier("connect.disconnect")
         }
     }
 
     private func detail(_ c: Connection) -> String {
         var parts = [c.isOAuth ? "Signed in" : "Access token", c.can_write ? "Read and edit" : "Read only"]
+        // Where access went: the proof of who this is, whatever it calls itself.
+        if c.isOAuth, let host = c.redirect_host, !host.isEmpty, host != c.title { parts.insert(host, at: 0) }
         parts.append(c.last_used_at.map { "Used \($0.formatted(.relative(presentation: .named)))" } ?? "Not used yet")
         return parts.joined(separator: " · ")
     }
@@ -616,7 +658,7 @@ private struct GuideSheet: View {
     @State private var failed = false
     @State private var readOnly = false
 
-    private var server: String { BackendConfig.mcpURL?.absoluteString ?? "" }
+    private var server: String { BackendConfig.mcpPublicURL?.absoluteString ?? "" }
 
     var body: some View {
         NavigationStack {

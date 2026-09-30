@@ -24,12 +24,17 @@ export default function Page() {
       </ul>
 
       <h2>How access works</h2>
-      <p>There are two ways in. Both need an Amber Notes account, and both are approved by the person in the app.</p>
+      <p>There are two ways in. Both need an Amber Notes account, and both are approved by the person.</p>
       <p className="label"><strong>Sign in with OAuth (ChatGPT, Claude and other apps)</strong></p>
       <ol>
         <li>An unauthenticated request gets a 401 with a <code>WWW-Authenticate</code> header pointing to the protected resource metadata, at the address above plus <code>/.well-known/oauth-protected-resource</code>.</li>
         <li>The client registers itself (dynamic client registration) and starts OAuth 2.1 with PKCE (S256). Scopes are <code>notes:read</code> and <code>notes:write</code>.</li>
-        <li>The authorization step opens Amber Notes, which asks the person &ldquo;Allow [app] to use your notes?&rdquo; and shows where access goes. They choose Read and Edit, or Read Only, then Allow.</li>
+        <li>The authorization server metadata is at the address above plus <code>/.well-known/oauth-authorization-server</code>.</li>
+        <li>
+          The authorization step opens <code>ambernotes.app/connect</code>. The person opens Amber Notes from there, or signs in on the
+          page (email and password, or Sign in with Apple). Either way they see &ldquo;Allow [app] to use your notes?&rdquo; and where
+          access goes, choose Read and Edit, or Read Only, then Allow.
+        </li>
         <li>The client gets an access token (valid for an hour) and a refresh token. The tokens only open this server.</li>
       </ol>
       <p className="label"><strong>Access token (Claude Code, Codex and scripts)</strong></p>
