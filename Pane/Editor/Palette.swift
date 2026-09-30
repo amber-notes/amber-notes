@@ -8,14 +8,16 @@ import AppKit
 /// Amber Notes' warm grey: a hint of the icon's brown (#8A4A1C) in the greys themselves, never a
 /// layer over them. The sidebar takes the most, the list less, and the note page almost none.
 /// On iPhone in dark mode the grounds stay pure black beside the Dynamic Island; only rows warm.
+/// Always grey with a hint of warmth, never brown: dark surfaces lean 2–3% at most.
 /// Compiled into the share extension too (with Platform.swift), so nothing here reaches app code.
 enum Palette {
     /// The brown the greys lean toward.
     static let brown: UInt32 = 0x8A4A1C
 
-    // Ink and muted text: the website's warm brown, one step off pure black and white.
-    static let ink = pair(0x2A1D10, 0xFBEEDD)
-    static let muted = pair(0x74604C, 0xCDB598)
+    // Ink and muted text: the website's warm brown in the light; in the dark, warm greys (the
+    // website's cream and tan read brown on the app's grey window).
+    static let ink = pair(0x2A1D10, 0xF6EFE7)
+    static let muted = pair(0x74604C, 0xBCB0A3)
 
     /// The deeper amber: accent, links and an AI's tint (AccentColor.colorset holds the same).
     static let amber = pair(0xD96A06, 0xF4AD33)
@@ -36,20 +38,22 @@ enum Palette {
     static let foldersGround = pair(0xEFEBE9, 0x000000)
     static let listGround = pair(0xF2F0EE, 0x000000)
     /// A grouped row on either ground; in the dark the rows are where the warmth shows.
-    static let row = pair(0xFDFCFB, 0x1F1C1A)
+    static let row = pair(0xFDFCFB, 0x1F1E1D)
     #else
-    /// Laid inside the sidebar's glass, so it keeps its vibrancy: about 5.5% toward the brown.
-    static let sidebarWarmth = pair(brown, 0.055, brown, 0.08)
+    /// Laid inside the sidebar's glass, so it keeps its vibrancy: about 5.5% toward the brown
+    /// (5% in the dark, where more reads as brown).
+    static let sidebarWarmth = pair(brown, 0.055, brown, 0.05)
     /// The notes list: a little warmth, less than the sidebar.
-    static let listGround = pair(0xFCFAF8, 0x252322)
+    static let listGround = pair(0xFCFAF8, 0x252423)
     #endif
 
     // Sign-in.
-    /// The email field: a warm off-white with a hairline.
-    static let field = pair(0xFBF6EE, 0x2A241E)
-    static let fieldHairline = pair(brown, 0.16, 0xFFDCAA, 0.14)
-    /// Continue while it can't be pressed: near the field's tone.
-    static let quietButton = pair(0xF2EAE0, 0x332B24)
+    /// The email field: an off-white with a hairline; in the dark, the native translucent field
+    /// with the barest warmth, so it sits on the window's own grey.
+    static let field = pair(0xF7F5F3, 1, 0xFFFAF5, 0.085)
+    static let fieldHairline = pair(brown, 0.12, 0xFFFFFF, 0.08)
+    /// Continue while it can't be pressed: a quiet grey, like a disabled system button.
+    static let quietButton = pair(0xEFEDEB, 1, 0xFFFAF5, 0.07)
     /// The website's low marker under "your AI".
     static let underline = pair(0xF0901A, 0.42, 0xF5A53A, 0.50)
     /// Dark ink on amber, readable in either appearance.
