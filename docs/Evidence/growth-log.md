@@ -5,6 +5,22 @@ assistants. Newest first. Research behind it: [seo-aeo-research-2026-09-30.md](s
 
 `docs/` had no README naming a folder for evidence, so this and the research live in `docs/Evidence/`.
 
+## 1 October 2026: round 14, "Connect your notes to Gemini with MCP"
+
+### Query
+
+- "gemini mcp", "gemini mcp support", "gemini mcp connection", "gemini cli mcp server" (autocomplete). Official docs and GitHub rank; no notes app has a Gemini guide.
+
+### Changed (branch `site/gemini-mcp`)
+
+- New post `/blog/connect-notes-to-gemini`, in Guides:
+  - the main how-to is Gemini CLI: `gemini extensions install https://github.com/emilwagman/amber-notes`, then `/mcp auth amber-notes`, the approval with the two-digit number, and `/mcp`; or `gemini mcp add --scope user --transport http amber-notes https://mcp.ambernotes.app`. Checked against Google's [MCP servers with Gemini CLI](https://geminicli.com/docs/tools/mcp-server/) and [extensions](https://geminicli.com/docs/extensions/) docs, and the install path in `web/lib/agent-installs.ts`, which was run end to end on 30 September
+  - the Gemini app's custom apps, in a section labelled "not yet tested", from Google's [Connect & manage custom apps](https://support.google.com/gemini/answer/17209137): personal account, 18 or over, US, Keep Activity on, English, set up on gemini.google.com; the plan requirement (Google AI Pro or Ultra) is only in third-party guides, and the post says so
+  - what Gemini can do with the tools, and that locked notes stay out of reach
+  - three FAQ answers
+- A new ground, linen, and a card cropped from the Connect an AI capture's promises ("You approve every AI.").
+- The Claude Code and Codex post links the new one.
+
 ## 1 October 2026: round 13, "Forgot your Apple Notes password?"
 
 ### Query

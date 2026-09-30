@@ -29,7 +29,7 @@ export type Post = {
 
 /// The ground a cover (and the post's first picture) sits on: the site's palette, the help page's
 /// leaf brown, the app's dark look, or the home page's dunes.
-export type Ground = "paper" | "soft" | "tint" | "amber" | "leaf" | "dark" | "dunes" | "ink" | "peach" | "cream" | "sand" | "clay" | "mist" | "honey" | "sage" | "heather" | "blush" | "wheat" | "fog" | "dusk" | "pearl";
+export type Ground = "paper" | "soft" | "tint" | "amber" | "leaf" | "dark" | "dunes" | "ink" | "peach" | "cream" | "sand" | "clay" | "mist" | "honey" | "sage" | "heather" | "blush" | "wheat" | "fog" | "dusk" | "pearl" | "linen";
 
 /// A card's picture: one real capture of the element the post is about, on the post's ground. The
 /// capture is cropped at 2x (3x from iPhone) to about the card's width, so it shows at full size.
@@ -60,6 +60,18 @@ export const SHOTS = {
 } satisfies Record<string, Shot>;
 
 export const posts: Post[] = [
+  {
+    slug: "connect-notes-to-gemini",
+    title: "Connect your notes to Gemini with MCP",
+    description: "Use your notes in Gemini CLI with one command and an approval on your iPhone or Mac, and what Google says about adding MCP servers to the Gemini app.",
+    excerpt: "Gemini CLI takes one command. The Gemini app can add MCP servers too, with conditions. Both, and what I could and couldn't check.",
+    category: "Guides",
+    date: "2026-10-01",
+    updated: "2026-10-01",
+    image: SHOTS.connectList,
+    thumb: thumb("linen", "thumb-connect-promises", 990, 270),
+    draft: false,
+  },
   {
     slug: "forgot-apple-notes-password",
     title: "Forgot your Apple Notes password? What works, and what doesn't",
