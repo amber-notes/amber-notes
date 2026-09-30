@@ -112,15 +112,36 @@ final class SyncEngine {
     }
 
     /// A full run pushes then pulls; `pulling: false` only pushes (your own typing).
+    /// Asked for while a run is going, it runs again straight after that one, and returns
+    /// once that follow-up is done: when it returns, what you asked for has happened.
     func sync(pulling: Bool = true) async {
         guard let client = backend.client, case .signedIn = backend.state else { return }
         if running {
             if pulling { again = true } else { pushAgain = true }
+            await withCheckedContinuation { waiting.append($0) }
             return
         }
         running = true
+        var pulling = pulling
+        while true {
+            await run(client, pulling: pulling)
+            if again { again = false; pushAgain = false; pulling = true }
+            else if pushAgain { pushAgain = false; pulling = false }
+            else { break }
+            // Signed out meanwhile: nothing more goes up.
+            guard case .signedIn = backend.state else { again = false; pushAgain = false; break }
+        }
+        running = false
+        let done = waiting
+        waiting = []
+        done.forEach { $0.resume() }
+    }
+
+    /// Callers of `sync` that arrived while a run was going, until their follow-up is done.
+    private var waiting: [CheckedContinuation<Void, Never>] = []
+
+    private func run(_ client: SupabaseClient, pulling: Bool) async {
         if pulling { status = .syncing }
-        defer { running = false }
         do {
             let slowedDown = try await push(client)
             if pulling { try await pull(client); hasSynced = true }
@@ -137,8 +158,6 @@ final class SyncEngine {
             log.error("sync failed: \(String(describing: error), privacy: .public)")
             status = .offline(Self.describe(error))
         }
-        if again { again = false; pushAgain = false; await sync() }
-        else if pushAgain { pushAgain = false; await sync(pulling: false) }
     }
 
     /// Starts realtime and a first sync after sign-in.

@@ -46,11 +46,17 @@ extension TableInteractionTests {
         await h.press(EditorHarness.down) // blank line
         await h.press(EditorHarness.down) // into the table
         #expect(h.gridCount == 1)
-        #expect(h.gridHasFocus, "arrowing down into a table should put the keyboard in its first cell")
+        // The keyboard moves between cells a few run-loop turns after the key: each press waits
+        // for it to land, or on a busy runner the next press arrives mid-move and is lost.
+        #expect(await h.until { h.gridHasFocus }, "arrowing down into a table should put the keyboard in its first cell")
         await h.snapshot("table-arrow-in")
-        for _ in 0..<3 { await h.press(EditorHarness.down) } // past the last row
-        await h.settle(0.1)
-        #expect(!h.gridHasFocus)
+        for row in 1...2 {
+            let from = h.focusedGridField
+            await h.press(EditorHarness.down)
+            #expect(await h.until { h.focusedGridField.map { $0 !== from } ?? false }, "down moves the keyboard to row \(row)")
+        }
+        await h.press(EditorHarness.down) // past the last row
+        #expect(await h.until { !h.gridHasFocus })
         #expect(h.selection.location > NSMaxRange(tableRange), "leaving the table from the bottom lands after it")
     }
 

@@ -86,6 +86,25 @@ extension NetworkFaults {
         await finish()
     }
 
+    /// A sync asked for while another is running isn't dropped: it runs straight after, and
+    /// awaiting it waits for that run (Sync Now mid-push, a restore's push, the last push).
+    @Test func aSyncAskedForMidRunRunsAfterIt() async throws {
+        let n = try await syncedNote("Draft")
+        let other = context.createNote(in: .all, body: "Elsewhere")
+        other.dirty = true
+        NetFault.config = .init(delay: 0.3)
+        NetFault.resetLog()
+        let first = Task { await engine.sync(pulling: false) }
+        await waitUntil { NetFault.started.contains { $0.1.hasSuffix("/notes") } }
+        // The first run is in the air with the old text; this change needs a run of its own.
+        n.body = "Draft two"; n.dirty = true
+        await engine.sync()
+        #expect(serverBody(n) == "Draft two", "the second sync ran after the first")
+        #expect(!n.dirty)
+        await first.value
+        await finish()
+    }
+
     @Test func flakyNetworkConvergesWithoutLosingAnything() async throws {
         var notes: [Note] = []
         for i in 0..<12 {
