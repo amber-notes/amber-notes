@@ -60,7 +60,7 @@ async function user() {
   const key = await fetch(`${supa}/rest/v1/rpc/create_account_key`, {
     method: "POST", headers: { apikey: anon, authorization: `Bearer ${s.access_token}`, "content-type": "application/json" },
     body: JSON.stringify({ p_key_id: await keyIdOf(dk), p_verifier: await verifierOf(dk, s.user.id),
-      p_recovery_wrap: await wrap(dk, await recoveryKEK(crypto.getRandomValues(new Uint8Array(16)), s.user.id), "recovery", s.user.id) }),
+      p_recovery_wrap: await wrap(dk, await recoveryKEK(crypto.getRandomValues(new Uint8Array(16)), s.user.id), "recovery", s.user.id), p_generation: 0 }),
   });
   assert(key.ok, `create key: ${key.status} ${await key.text()}`);
   session = { jwt: s.access_token, userId: s.user.id, dk };

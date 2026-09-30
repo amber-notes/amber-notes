@@ -60,15 +60,23 @@ create trigger account_keys_guard before update on public.account_keys
   for each row execute function public.pane_account_keys_guard();
 
 -- The only place a key is made: insert-if-absent, so two devices racing can't both make one.
--- Returns the account's key, whoever made it, and whether this call did.
-create or replace function public.create_account_key(p_key_id text, p_verifier text, p_recovery_wrap text)
+-- Returns the account's key, whoever made it, and whether this call did. `p_generation` is the
+-- reset generation the device read with the (missing) key, in the same call (account_key_state):
+-- a key made before a Start fresh the device hasn't seen yet is refused, so an old key can't come
+-- back after a reset.
+create or replace function public.create_account_key(p_key_id text, p_verifier text, p_recovery_wrap text, p_generation integer)
 returns table (key_id text, verifier text, recovery_wrap text, recovery_saved_at timestamptz, created boolean)
 language plpgsql security definer set search_path = '' as $$
 declare
   uid uuid := auth.uid();
   made boolean;
+  current_generation integer;
 begin
   if uid is null then raise exception 'not signed in' using errcode = '42501'; end if;
+  select coalesce((select r.generation from public.account_key_resets r where r.user_id = uid), 0) into current_generation;
+  if coalesce(p_generation, -1) < current_generation then
+    raise exception 'Your notes were reset on another device. Open Amber Notes again.' using errcode = '40001', hint = 'stale_generation';
+  end if;
   insert into public.account_keys as k (user_id, key_id, verifier, recovery_wrap)
   values (uid, p_key_id, p_verifier, p_recovery_wrap)
   on conflict (user_id) do nothing;
@@ -76,8 +84,8 @@ begin
   return query select k.key_id, k.verifier, k.recovery_wrap, k.recovery_saved_at, made
     from public.account_keys k where k.user_id = uid;
 end $$;
-revoke all on function public.create_account_key(text, text, text) from public, anon;
-grant execute on function public.create_account_key(text, text, text) to authenticated;
+revoke all on function public.create_account_key(text, text, text, integer) from public, anon;
+grant execute on function public.create_account_key(text, text, text, integer) to authenticated;
 
 -- "Save a recovery key" finished on some device: every device shows Saved.
 create or replace function public.mark_recovery_key_saved() returns timestamptz
@@ -106,17 +114,20 @@ revoke all on public.account_key_resets from anon;
 revoke insert, update, delete, truncate on public.account_key_resets from authenticated;
 
 -- When the session's user last signed in (not refreshed): the newest `amr` timestamp in its token.
+-- Every way of signing in counts (password, Sign in with Apple's id_token or oauth, a link); a
+-- token refresh never does.
 create or replace function public.pane_signed_in_at() returns timestamptz
 language sql stable set search_path = '' as $$
   select to_timestamp(max((a ->> 'timestamp')::double precision))
   from jsonb_array_elements(coalesce(auth.jwt() -> 'amr', '[]'::jsonb)) a
+  where coalesce(a ->> 'method', '') <> 'token_refresh'
 $$;
 
 -- Things every device of the account should say: a new AI connection, starting fresh.
 create table public.account_notices (
   id          bigint generated always as identity primary key,
   user_id     uuid not null references auth.users (id) on delete cascade,
-  kind        text not null check (kind in ('ai_connected', 'started_fresh')),
+  kind        text not null check (kind in ('ai_connected', 'started_fresh', 'wrong_number')),
   -- For ai_connected: the connection, so the notice can offer Disconnect.
   grant_id    uuid references public.mcp_tokens (id) on delete cascade,
   what        text not null check (char_length(what) <= 200),
@@ -156,6 +167,20 @@ begin
 end $$;
 revoke all on function public.start_fresh(text) from public, anon;
 grant execute on function public.start_fresh(text) to authenticated;
+
+-- The account's key and its reset generation, read together, so a device never pairs a key row
+-- with a generation from another moment. {key: {key_id, verifier, recovery_wrap, recovery_saved_at}
+-- or null, generation}.
+create or replace function public.account_key_state() returns jsonb
+language sql stable security definer set search_path = '' as $$
+  select jsonb_build_object(
+    'key', (select jsonb_build_object('key_id', k.key_id, 'verifier', k.verifier, 'recovery_wrap', k.recovery_wrap,
+                                      'recovery_saved_at', k.recovery_saved_at)
+            from public.account_keys k where k.user_id = auth.uid()),
+    'generation', coalesce((select r.generation from public.account_key_resets r where r.user_id = auth.uid()), 0))
+$$;
+revoke all on function public.account_key_state() from public, anon;
+grant execute on function public.account_key_state() to authenticated;
 
 -- MARK: Sealed columns replace readable ones
 
@@ -621,8 +646,27 @@ create table public.connect_asks (
   answer       text check (answer is null or (answer ~ '^amb2h\.[A-Za-z0-9+/]+={0,2}$' and char_length(answer) <= 600)),
   delivered_at timestamptz,
   -- SHA-256 of a secret only the page has: /connect/status hands the code over only with it.
-  pickup_hash  text not null check (pickup_hash ~ '^[0-9a-f]{64}$')
+  pickup_hash  text not null check (pickup_hash ~ '^[0-9a-f]{64}$'),
+  -- Number matching, commit then reveal (matchCommit/matchNumber in e2ee.ts): the page's commit to
+  -- its key and nonce, the device's nonce (written once), then the page's nonce (revealed once,
+  -- only after the device's).
+  match_commit text not null check (match_commit ~ '^[0-9a-f]{64}$'),
+  device_nonce text check (device_nonce ~ '^[0-9a-f]{32}$'),
+  page_nonce   text check (page_nonce ~ '^[0-9a-f]{32}$'),
+  constraint connect_asks_reveal_after check (page_nonce is null or device_nonce is not null)
 );
+
+-- A wrong number typed on a device: someone who knows the password is trying to connect an AI.
+-- The account takes no new asks for an hour.
+create table public.connect_blocks (
+  user_id       uuid primary key references auth.users (id) on delete cascade,
+  blocked_until timestamptz not null
+);
+alter table public.connect_blocks enable row level security;
+create policy "own connect block read" on public.connect_blocks for select to authenticated
+  using (user_id = (select auth.uid()));
+revoke all on public.connect_blocks from anon;
+revoke insert, update, delete, truncate on public.connect_blocks from authenticated;
 create index connect_asks_user on public.connect_asks (user_id, created_at);
 alter table public.connect_asks enable row level security;
 create policy "own connect asks read" on public.connect_asks for select to authenticated
@@ -709,6 +753,8 @@ begin
     new.title := null;
     new.body := null;
     new.published_at := null;
+    -- A stopped link's tag goes too, so the link can't be replayed as a verified share.
+    new.share_tag := null;
     delete from public.note_share_pages where slug = new.slug;
     delete from public.note_share_files where slug = new.slug;
   end if;

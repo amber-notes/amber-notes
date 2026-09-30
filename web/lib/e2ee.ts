@@ -143,16 +143,32 @@ export async function shareTag(raw: Bytes, noteId: string, slug: string, include
   return hex(new Uint8Array(await crypto.subtle.sign("HMAC", mac, enc.encode(msg))));
 }
 
-// MARK: Number matching: the page and the device show the same two digits
+// MARK: Number matching: commit, then reveal, then the same two digits on both screens
+//
+// Like Bluetooth numeric comparison. The page commits to its key and a secret nonce Np before it
+// sees anything from the device: commit = SHA-256(browser key raw ‖ Np). The device then writes its
+// own random nonce Nd. Only after that does the page reveal Np, and the device checks the commit.
+// Both show SHA-256(browser key raw ‖ Np ‖ Nd ‖ request id), first four bytes as a big-endian
+// number, mod 100. Someone swapping the page's key had to commit before Nd existed, so they can't
+// grind a key that gives the same number: they match one time in a hundred, and the person types
+// the number, so a wrong guess is caught.
 
-/** The page's key and the request, as two digits: SHA-256(browser key raw ‖ request id), first four
- *  bytes as a big-endian number, mod 100. A key swapped on the way gives another number. */
-export async function matchNumber(browserPublicRaw: Uint8Array, requestId: string): Promise<string> {
-  const id = enc.encode(requestId.toLowerCase());
-  const data = new Uint8Array(browserPublicRaw.length + id.length);
-  data.set(browserPublicRaw);
-  data.set(id, browserPublicRaw.length);
-  const d = new Uint8Array(await crypto.subtle.digest("SHA-256", data));
+const concat = (...parts: Uint8Array[]) => {
+  const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+  let at = 0;
+  for (const p of parts) { out.set(p, at); at += p.length; }
+  return out;
+};
+
+/** hex SHA-256(browser key raw ‖ Np). Np is 16 random bytes only the page holds until it reveals them. */
+export async function matchCommit(browserPublicRaw: Uint8Array, pageNonce: Uint8Array): Promise<string> {
+  return hex(new Uint8Array(await crypto.subtle.digest("SHA-256", concat(browserPublicRaw, pageNonce))));
+}
+
+/** The two digits both screens show, from the page's key, both nonces and the request. */
+export async function matchNumber(browserPublicRaw: Uint8Array, pageNonce: Uint8Array, deviceNonce: Uint8Array, requestId: string): Promise<string> {
+  const d = new Uint8Array(await crypto.subtle.digest("SHA-256",
+    concat(browserPublicRaw, pageNonce, deviceNonce, enc.encode(requestId.toLowerCase()))));
   const n = ((d[0] << 24) >>> 0) + (d[1] << 16) + (d[2] << 8) + d[3];
   return String(n % 100).padStart(2, "0");
 }

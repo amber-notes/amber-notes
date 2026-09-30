@@ -3,8 +3,8 @@
 // purpose: deno run -A supabase/functions/_shared/e2ee.test.ts --write
 import { assert, assertEquals, assertRejects } from "jsr:@std/assert@1";
 import {
-  aesKey, bodyContext, hex, canonicalRecoveryKey, fileMetaContext, folderContext, fromBase64, headContext, keyIdOf, open, OpenError,
-  handoffPayload, matchNumber, openFile, openHandoff, parseRecoveryKey, readHandoffPayload, sealHandoff, shareTag, recoveryKEK, recoveryKeyText, seal, sealFile, tokenKey, toBase64, unwrap, Vault, verifierOf, wrap,
+  aesKey, bodyContext, hex, newHandoffKeys, canonicalRecoveryKey, fileMetaContext, folderContext, fromBase64, headContext, keyIdOf, open, OpenError,
+  handoffPayload, matchCommit, matchNumber, openFile, openHandoff, parseRecoveryKey, readHandoffPayload, sealHandoff, shareTag, recoveryKEK, recoveryKeyText, seal, sealFile, tokenKey, toBase64, unwrap, Vault, verifierOf, wrap,
   type WrapPurpose,
 } from "./e2ee.ts";
 
@@ -77,7 +77,10 @@ async function build() {
       const request = "22222222-3333-4444-8555-666666666666";
       const code = handoffPayload({ code: "amb_code_" + "cd".repeat(32), redirect: "https://claude.ai/api/mcp/auth_callback?state=s1&iss=https%3A%2F%2Fmcp.ambernotes.app" });
       return {
-        request_id: request, code, match_number: await matchNumber(browser.publicRaw, request),
+        request_id: request, code,
+        page_nonce: hex(bytes(0x50, 16)), device_nonce: hex(bytes(0x60, 16)),
+        commit: await matchCommit(browser.publicRaw, bytes(0x50, 16)),
+        match_number: await matchNumber(browser.publicRaw, bytes(0x50, 16), bytes(0x60, 16), request),
         browser_private: toBase64(browser.d), browser_public: toBase64(browser.publicRaw),
         device_ephemeral_private: toBase64(device.d),
         sealed: await sealHandoff(code, browser.publicRaw, request, device, nonce),
@@ -183,12 +186,31 @@ Deno.test("a share tag names the key, the note, the link and whether sub-notes g
   assert(await shareTag(new Uint8Array(32), t.note_id, t.slug, true) !== t.tag);
 });
 
-Deno.test("the match number is two digits from the page's key and the request", async () => {
+Deno.test("the page commits, the device adds its nonce, and a swapped key is caught", async () => {
   const v = JSON.parse(await Deno.readTextFile(path));
+  const h = v.handoff;
   const browser = await ecdh(BROWSER);
-  assertEquals(await matchNumber(browser.publicRaw, v.handoff.request_id.toUpperCase()), v.handoff.match_number);
-  assertEquals(v.handoff.match_number.length, 2);
-  assertEquals(readHandoffPayload(await openHandoff(v.handoff.sealed, browser.privateKey, v.handoff.request_id)).redirect.startsWith("https://claude.ai/"), true);
+  const np = Uint8Array.from(h.page_nonce.match(/../g).map((x: string) => parseInt(x, 16)));
+  const nd = Uint8Array.from(h.device_nonce.match(/../g).map((x: string) => parseInt(x, 16)));
+  assertEquals(await matchCommit(browser.publicRaw, np), h.commit);
+  assertEquals(await matchNumber(browser.publicRaw, np, nd, h.request_id.toUpperCase()), h.match_number);
+  assertEquals(h.match_number.length, 2);
+  // A database writer swaps in their own key: they must commit before the device's nonce exists,
+  // so the commit they wrote doesn't cover the page's key, and a key of theirs that fits their
+  // commit gives its own number.
+  const theirs = await newHandoffKeys();
+  const theirNp = crypto.getRandomValues(new Uint8Array(16));
+  const theirCommit = await matchCommit(theirs.publicRaw, theirNp);
+  assert(theirCommit !== h.commit);
+  assert((await matchCommit(theirs.publicRaw, np)) !== h.commit, "the page's reveal doesn't open their commit");
+  let same = 0;
+  for (let i = 0; i < 200; i++) {
+    const k = await newHandoffKeys();
+    const n2 = crypto.getRandomValues(new Uint8Array(16));
+    if ((await matchNumber(k.publicRaw, n2, nd, h.request_id)) === h.match_number) same++;
+  }
+  assert(same < 12, `a random key matched ${same} times in 200`);
+  assertEquals(readHandoffPayload(await openHandoff(h.sealed, browser.privateKey, h.request_id)).redirect.startsWith("https://claude.ai/"), true);
 });
 
 Deno.test("the vault checks share tags without keeping the raw key", async () => {

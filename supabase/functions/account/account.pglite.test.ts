@@ -56,10 +56,11 @@ async function seed(pg: PGlite, me: string) {
   await pg.query(`insert into public.oauth_clients (id, client_name, redirect_uris) values ($1, 'ChatGPT', '{https://chatgpt.com/cb}')`, [client]);
   const [{ id: asked }] = (await pg.query<{ id: string }>(`insert into public.oauth_requests (client_id, redirect_uri, code_challenge, resource, claimed_by)
     values ($1, 'https://chatgpt.com/cb', 'x', 'r', $2) returning id`, [client, me])).rows;
-  await pg.query(`insert into public.connect_asks (request_id, user_id, browser_key, started_from, expires_at, pickup_hash) values ($1, $2, $3, 'Chrome on a Mac', now() + interval '10 minutes', repeat('0', 64))`,
+  await pg.query(`insert into public.connect_asks (request_id, user_id, browser_key, started_from, expires_at, pickup_hash, match_commit) values ($1, $2, $3, 'Chrome on a Mac', now() + interval '10 minutes', repeat('0', 64), repeat('0', 64))`,
     [asked, me, "B" + "A".repeat(86) + "="]);
   await pg.query(`insert into public.account_notices (user_id, kind, what) values ($1, 'started_fresh', 'x')`, [me]);
   await pg.query(`insert into public.account_key_resets (user_id, generation) values ($1, 1)`, [me]);
+  await pg.query(`insert into public.connect_blocks (user_id, blocked_until) values ($1, now() - interval '1 day')`, [me]);
   await pg.query(`insert into public.pane_setup (user_id, imported_at) values ($1, now())`, [me]);
   await pg.query(`insert into public.pane_activity (user_id, day, kind, n) values ($1, current_date, 'ai_edit', 3) on conflict do nothing`, [me]);
   await pg.query(`insert into public.pane_tip_activity (user_id, day, tip, event, n) values ($1, current_date, 'shareLink', 'shown', 1)`, [me]);

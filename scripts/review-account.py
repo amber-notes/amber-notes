@@ -108,14 +108,17 @@ class Account:
 
     def open_key(self):
         """The account's data key: made here the first time, then opened from the saved recovery key."""
-        rows = self.rest("GET", "account_keys?select=key_id,verifier,recovery_wrap")
+        # The key and the reset generation in one read, as the app does.
+        state = self.rest("POST", "rpc/account_key_state", {})
+        self.generation = state.get("generation", 0)
+        rows = [state["key"]] if state.get("key") else []
         text = open(SECRETS).read()
         if not rows:
             k = tool("new-key", user=self.user)
             # Saved before the server has the key, so a key the server keeps is never one we lost.
             with open(SECRETS, "w") as f:
                 f.write(with_recovery_key(text, k["recovery_key_text"]))
-            made = self.rest("POST", "rpc/create_account_key", {"p_key_id": k["key_id"], "p_verifier": k["verifier"], "p_recovery_wrap": k["recovery_wrap"]})
+            made = self.rest("POST", "rpc/create_account_key", {"p_key_id": k["key_id"], "p_verifier": k["verifier"], "p_recovery_wrap": k["recovery_wrap"], "p_generation": self.generation})
             if not made or not made[0].get("created"):
                 with open(SECRETS, "w") as f:
                     f.write(text)

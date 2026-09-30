@@ -71,7 +71,10 @@
   "handoff": {
     "request_id": "22222222-3333-4444-8555-666666666666",
     "code": "{\"code\":\"amb_code_cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd\",\"redirect\":\"https://claude.ai/api/mcp/auth_callback?state=s1&iss=https%3A%2F%2Fmcp.ambernotes.app\"}",
-    "match_number": "21",
+    "page_nonce": "505152535455565758595a5b5c5d5e5f",
+    "device_nonce": "606162636465666768696a6b6c6d6e6f",
+    "commit": "0eb902a69f85234a7f6ef22506c18e123a30703d68fba5d52c1aabde729f2dcf",
+    "match_number": "08",
     "browser_private": "QXyZcLcMdeE+bd6yWeP+ekEpAq02Lun8zke9B0gTuOg=",
     "browser_public": "BK9UVJFFOUIVTsSUpYNV3UxnHJDcdDxhBku4sbTTreT3DLEyPUco0UiCeYKZb+qWErEcuYT/3HcRWxnYsMFGx8M=",
     "device_ephemeral_private": "mv4ekNAtMnOAUgdYkMSMSEL9u2KWSfl9fk1ANRmDQkk=",

@@ -34,7 +34,7 @@ async function vault(jwt: string): Promise<Vault> {
   const recovery = crypto.getRandomValues(new Uint8Array(16));
   const made = await rpc("create_account_key", {
     p_key_id: await keyIdOf(dk), p_verifier: await verifierOf(dk, user),
-    p_recovery_wrap: await wrap(dk, await recoveryKEK(recovery, user), "recovery", user),
+    p_recovery_wrap: await wrap(dk, await recoveryKEK(recovery, user), "recovery", user), p_generation: 0,
   }, jwt);
   assertEquals(made.status, 200, JSON.stringify(made.body));
   assertEquals(made.body[0].key_id, await keyIdOf(dk), "this account has a key from elsewhere: reset the local stack");

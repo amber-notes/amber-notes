@@ -24,7 +24,7 @@ export async function account(pg: PGlite, id?: string): Promise<Account> {
   const dk = newDataKey();
   const keyId = await keyIdOf(dk);
   const recovery = await wrap(dk, await recoveryKEK(crypto.getRandomValues(new Uint8Array(16)), me), "recovery", me);
-  await app(pg, me, `select * from public.create_account_key($1, $2, $3)`, [keyId, await verifierOf(dk, me), recovery]);
+  await app(pg, me, `select * from public.create_account_key($1, $2, $3, 0)`, [keyId, await verifierOf(dk, me), recovery]);
   return { id: me, dk, keyId, vault: await vaultOf(dk, me) };
 }
 

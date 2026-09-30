@@ -19,8 +19,8 @@ async function refused(p: Promise<unknown>, text: string) {
 const app = (pg: PGlite, me: string, sql: string, params: unknown[] = []) =>
   asUser<any>(pg, me, sql, params, { "request.headers": JSON.stringify({ "x-pane-device": "Mac", "x-amber-client": "lock-aware/1 e2ee/1" }) });
 
-async function withKey(pg: PGlite, me: string, key = hex(8)) {
-  const [row] = await app(pg, me, `select * from public.create_account_key($1, $2, $3)`, [key, hex(32), box(key)]);
+async function withKey(pg: PGlite, me: string, key = hex(8), generation = 0) {
+  const [row] = await app(pg, me, `select * from public.create_account_key($1, $2, $3, $4)`, [key, hex(32), box(key), generation]);
   return { key, row };
 }
 
@@ -46,7 +46,7 @@ Deno.test("a key is made once: the second device racing gets the first one's", a
   await refused(pg.query(`update public.account_keys set key_id = $1`, [hex(8)]), "can't be replaced");
   // The recovery wrap must hold this key.
   const other = await newUser(pg);
-  await refused(app(pg, other, `select * from public.create_account_key($1, $2, $3)`, [a.key, hex(32), box(hex(8))]), "account_keys_wrap_names_key");
+  await refused(app(pg, other, `select * from public.create_account_key($1, $2, $3, 0)`, [a.key, hex(32), box(hex(8))]), "account_keys_wrap_names_key");
   // Another account can't read it.
   assertEquals((await app(pg, other, `select * from public.account_keys`)).length, 0);
   assertEquals((await app(pg, me, `select recovery_saved_at from public.account_keys`))[0].recovery_saved_at, null);
@@ -133,7 +133,12 @@ Deno.test("start fresh deletes the notes, connections and key; a second device's
   assertEquals((await app(pg, me, `select count(*)::int n from public.mcp_tokens`))[0].n, 0);
   assertEquals((await app(pg, me, `select count(*)::int n from public.account_keys`))[0].n, 0);
   // A new key can then be made, and the old one's boxes are refused.
-  const fresh = await withKey(pg, me);
+  // A key made before the reset (generation 0) can't come back; the device reads the generation
+  // with the key, in one call, and makes its key for it.
+  await refused(withKey(pg, me), "reset on another device");
+  const [state] = await app(pg, me, `select public.account_key_state() as s`);
+  assertEquals([state.s.key, state.s.generation], [null, 1]);
+  const fresh = await withKey(pg, me, hex(8), 1);
   assertEquals(fresh.row.created, true);
   await refused(note(pg, me, key), "old key");
 });
@@ -218,6 +223,10 @@ Deno.test("stop sharing, and trashing the root, take the whole copy down", async
   assertEquals((await pg.query<any>(`select body from public.note_shares`)).rows[0].body, null);
   const b = await shared(pg, me, key);
   await app(pg, me, `select public.unshare_note($1)`, [b.root]);
+  // The stopped link's tag goes: it can't be replayed as a verified share, and it can't be tagged again.
+  assertEquals((await pg.query<any>(`select share_tag from public.note_shares where slug = $1`, [b.slug])).rows[0].share_tag, null);
+  await refused(app(pg, me, `select public.share_note($1, $2, false, repeat('cd', 32), $3)`,
+    [b.root, b.slug, JSON.stringify({ title: "x", body: "x", pages: [], files: [] })]), "note_shares_pkey");
   assertEquals((await pg.query(`select 1 from public.note_share_pages`)).rows.length, 0);
   assertEquals((await pg.query(`select 1 from public.note_share_files`)).rows.length, 0);
   assertEquals(await page(pg, b.slug), null);

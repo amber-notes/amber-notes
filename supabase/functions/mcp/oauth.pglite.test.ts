@@ -932,7 +932,7 @@ Deno.test("with the recovery key the page opens the key itself and decides the s
   const id = await plainUser(pg);
   const dk = crypto.getRandomValues(new Uint8Array(32));
   const recovery = crypto.getRandomValues(new Uint8Array(16));
-  await app(pg, id, `select * from public.create_account_key($1, $2, $3)`,
+  await app(pg, id, `select * from public.create_account_key($1, $2, $3, 0)`,
     [await keyIdOf(dk), await verifierOf(dk, id), await wrap(dk, await recoveryKEK(recovery, id), "recovery", id)]);
   const me: User = { id, jwt: `jwt-${id}`, dk };
   const page = await newHandoffKeys();
