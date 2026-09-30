@@ -239,7 +239,8 @@ struct TableGridView: View {
             qaTrace("grid focus -> \(String(describing: new))")
             if new == nil {
                 // The old cell's field going away can knock focus out before the new
-                // one lands: put it back. (A real departure leaves `wanted` empty.)
+                // one lands: put it back (`land` keeps asking if this is turned down too).
+                // A real departure leaves `wanted` empty.
                 if let w = wanted { DispatchQueue.main.async { if focus == nil, wanted == w { focus = w } } }
                 // The last cell's field stays: it's plain-styled, so it reads as text.
                 return
@@ -492,6 +493,20 @@ struct TableGridView: View {
             // The field is created for this cell; it takes focus as it appears.
             pendingFocus = cell
             editing = cell
+        }
+        land(cell)
+    }
+
+    /// Keeps asking for the keyboard for `cell` until it has arrived, for up to about two
+    /// seconds. One ask isn't enough: on a busy main thread it can come before the new field
+    /// is in the window, AppKit turns it down, focus stays nil and nothing asks again, so the
+    /// table silently loses the keyboard and the next arrow key goes nowhere.
+    private func land(_ cell: GridCell, tries: Int = 100) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
+            guard wanted == cell, focus != cell else { return }
+            qaTrace("grid land \(cell), focus \(String(describing: focus)), \(tries) tries left")
+            focus = cell
+            if tries > 0 { land(cell, tries: tries - 1) }
         }
     }
 

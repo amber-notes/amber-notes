@@ -104,9 +104,10 @@ final class EditorHarness {
     }
 
     /// Waits until `done` holds, for work that lands a few run-loop turns later (focus moving
-    /// between grid cells), however busy the main thread is. False if it never did.
+    /// between grid cells), however busy the main thread is. False if it never did. The limit
+    /// is generous for slow CI runners; a pass returns as soon as the condition holds.
     @discardableResult
-    func until(_ seconds: Double = 5, _ done: () -> Bool) async -> Bool {
+    func until(_ seconds: Double = 10, _ done: () -> Bool) async -> Bool {
         let end = Date.now.addingTimeInterval(seconds)
         while !done() {
             if Date.now >= end { return false }
@@ -185,5 +186,12 @@ final class EditorHarness {
 final class KeyableWindow: NSWindow {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
+
+    /// While set, the window turns away any view asking for the keyboard, the way a field
+    /// that isn't in the window yet can't take it on a busy main thread.
+    var refusesFirstResponder = false
+    override func makeFirstResponder(_ responder: NSResponder?) -> Bool {
+        refusesFirstResponder ? false : super.makeFirstResponder(responder)
+    }
 }
 #endif
