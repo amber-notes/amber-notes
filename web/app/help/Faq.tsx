@@ -42,7 +42,10 @@ export default function Faq({ items }: { items: QA[] }) {
               </button>
             </h2>
             <div id={`${it.id}-a`} role="region" aria-labelledby={it.id} className={f.a} inert={!on || undefined}>
-              <div>{it.a.map((p) => <p key={p}>{p}</p>)}</div>
+              <div>
+                {it.a.map((p) => <p key={p}>{p}</p>)}
+                {it.more && <p className={f.more}><a href={it.more.href}>{it.more.text}</a></p>}
+              </div>
             </div>
           </div>
         );

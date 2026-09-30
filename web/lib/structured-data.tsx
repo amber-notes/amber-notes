@@ -1,5 +1,5 @@
 import { GITHUB_URL } from "./github";
-import { APP_STORE_LIVE, APP_STORE_URL, MAKER_GITHUB, SITE_NAME, SITE_URL, X_URL } from "./site";
+import { APP_STORE_LIVE, APP_STORE_URL, INCREDIBLE_URL, MAKER_GITHUB, SITE_NAME, SITE_URL, X_URL } from "./site";
 
 /// schema.org JSON-LD for search engines. Only facts the site states elsewhere: the app is free,
 /// runs on macOS 26 and iOS, and is made by one person. No ratings or reviews, because there are none yet.
@@ -13,12 +13,22 @@ const ORG_ID = `${SITE_URL}/#organization`;
 /// Where else Amber Notes is, so search engines don't mix it up with other apps of a similar name.
 const SAME_AS = [GITHUB_URL, ...(APP_STORE_LIVE ? [APP_STORE_URL] : [])];
 
+/// The company the maker works at, which also makes the Incredible AI assistant.
+export const incredible: Thing = {
+  "@type": "Organization",
+  "@id": `${INCREDIBLE_URL}/#organization`,
+  name: "Incredible",
+  url: INCREDIBLE_URL,
+};
+
 export const maker: Thing = {
   "@type": "Person",
   "@id": PERSON_ID,
   name: "Emil Wagman",
   url: X_URL,
+  image: `${SITE_URL}/emil-wagman.jpg`,
   sameAs: [X_URL, MAKER_GITHUB],
+  worksFor: { "@id": incredible["@id"] },
 };
 
 /// Amber Notes as the publisher of the site and the app, founded by its maker.
@@ -49,7 +59,7 @@ export function app(version: string | null): Thing {
     name: SITE_NAME,
     url: SITE_URL,
     description:
-      "A simple notes app for iPhone and Mac that ChatGPT, Claude, Claude Code and Codex can read and edit, with your approval. Imports your Apple Notes, syncs in about a second, keeps every version an AI changes, and stores notes as markdown.",
+      "A simple notes app for iPhone and Mac that ChatGPT, Claude, Claude Code, Codex and Incredible can read and edit, with your approval. Imports your Apple Notes, syncs in about a second, keeps every version an AI changes, and stores notes as markdown.",
     applicationCategory: "ProductivityApplication",
     operatingSystem: "iOS, macOS",
     softwareRequirements: "macOS 26 or later; iOS 26 or later",
@@ -61,7 +71,7 @@ export function app(version: string | null): Thing {
     image: `${SITE_URL}/mark.png`,
     screenshot: `${SITE_URL}/demo/lisbon/lisbon-1-faded.webp`,
     featureList: [
-      "Connect ChatGPT, Claude, Claude Code or Codex over MCP",
+      "Connect ChatGPT, Claude, Claude Code, Codex or Incredible over MCP",
       "Approve each AI connection, read-only or read and edit",
       "Version history for every change an AI makes",
       "Import from Apple Notes",
@@ -90,8 +100,8 @@ export function faqPage(items: { q: string; a: string[] }[], path: string): Thin
   };
 }
 
-/// A guide as an Article, written by the maker and published by Amber Notes.
-export function article({ title, description, path, updated }: { title: string; description: string; path: string; updated: string }): Thing {
+/// A blog post as an Article, written by the maker and published by Amber Notes.
+export function article({ title, description, path, date, updated, image }: { title: string; description: string; path: string; date: string; updated: string; image?: string }): Thing {
   return {
     "@type": "Article",
     "@id": `${SITE_URL}${path}#article`,
@@ -100,12 +110,20 @@ export function article({ title, description, path, updated }: { title: string; 
     url: `${SITE_URL}${path}`,
     mainEntityOfPage: `${SITE_URL}${path}`,
     inLanguage: "en",
-    datePublished: updated,
+    datePublished: date,
     dateModified: updated,
-    image: `${SITE_URL}/mark.png`,
+    image: `${SITE_URL}${image ?? "/mark.png"}`,
     author: { "@id": PERSON_ID },
     publisher: { "@id": ORG_ID },
     about: { "@id": APP_ID },
+  };
+}
+
+/// Where a page sits: each step a name and a path, the last one the page itself.
+export function breadcrumbs(steps: { name: string; path: string }[]): Thing {
+  return {
+    "@type": "BreadcrumbList",
+    itemListElement: steps.map((s, i) => ({ "@type": "ListItem", position: i + 1, name: s.name, item: `${SITE_URL}${s.path}` })),
   };
 }
 

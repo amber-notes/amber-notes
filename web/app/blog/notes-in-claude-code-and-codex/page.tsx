@@ -1,8 +1,10 @@
-import { GuidePage, guideMetadata } from "@/lib/GuidePage";
+import { Figure } from "@/lib/blog";
+import { PostPage, postMetadata } from "@/lib/PostPage";
+import { SHOTS } from "@/lib/posts";
 import { MCP_URL } from "@/lib/facts";
 
 export const dynamic = "force-static";
-export const metadata = guideMetadata("notes-in-claude-code-and-codex");
+export const metadata = postMetadata("notes-in-claude-code-and-codex");
 
 const FAQ = [
   { q: "Can Claude Code read and write my notes?", a: [
@@ -18,9 +20,9 @@ const FAQ = [
 
 export default function Page() {
   return (
-    <GuidePage
+    <PostPage
       slug="notes-in-claude-code-and-codex"
-      lede="Let your coding agent write the standup, keep a work log, or look up what you decided last week, in the same notes you read on your phone."
+      intro={<>I use Claude Code every day, and I wanted it to write the standup, keep a work log and look up what I decided last week, in the same notes I read on my phone. With Amber Notes it takes one command for Claude Code, or a few lines for Codex.</>}
       faq={FAQ}
     >
       <h2>What it&apos;s good for</h2>
@@ -32,7 +34,8 @@ export default function Page() {
       </ul>
       <p>
         Amber Notes is a free notes app for iPhone and Mac with an MCP server built in, so your agent writes into the same notes you read
-        everywhere else. You see what it changed, with Undo, and every earlier version is kept.
+        everywhere else. You see what it changed, with Undo, and every earlier version is kept. If your notes are still in Apple Notes,{" "}
+        <a href="/blog/move-from-apple-notes">move them over first</a>.
       </p>
 
       <h2>Claude Code</h2>
@@ -47,7 +50,7 @@ export default function Page() {
   --header "Authorization: Bearer pane_…"`}</code></pre>
       <p>
         Already connected Claude on claude.ai with the same Claude account? Then Claude Code may already have Amber Notes as a connector,
-        and you can skip this.
+        and you can skip this. <a href="/blog/connect-chatgpt-to-your-notes">Connecting ChatGPT and Claude</a> covers that side.
       </p>
 
       <h2>Codex</h2>
@@ -68,14 +71,15 @@ http_headers = { "Authorization" = "Bearer pane_…" }`}</code></pre>
       </p>
 
       <h2>Stay in control</h2>
+      <Figure shot={SHOTS.history} caption="Every change Claude Code makes is in the note's version history, next to your own." />
       <ul>
         <li>Each token shows up in Settings under Connected, with when it was last used. Disconnect it there, and it stops working right away.</li>
         <li>A read-only token can&apos;t change anything.</li>
         <li>Edits keep the previous version, so File, then Show Version History, can put a note back.</li>
       </ul>
       <p>
-        The <a href="/guides/mcp-server">MCP server page</a> lists every tool the agent can call.
+        The <a href="/blog/mcp-server">MCP server page</a> lists every tool the agent can call.
       </p>
-    </GuidePage>
+    </PostPage>
   );
 }

@@ -5,13 +5,13 @@ import DownloadLink from "./DownloadLink";
 import { AiSection, AlsoLine, Closing, ImportSection, InShort } from "./Sections";
 import { latestVersion } from "@/lib/changelog";
 import { APP_STORE_LIVE, APP_STORE_URL, pageMetadata } from "@/lib/site";
-import { JsonLd, app, maker, organization, website } from "@/lib/structured-data";
+import { JsonLd, app, incredible, maker, organization, website } from "@/lib/structured-data";
 
 export const metadata: Metadata = pageMetadata({
   title: "Amber Notes: the notes app your AI can actually use",
   shareTitle: "The notes app your AI can actually use",
   description:
-    "A simple notes app for iPhone and Mac that ChatGPT, Claude, Claude Code and Codex can read and edit, with your approval. Imports your Apple Notes. Free.",
+    "A simple notes app for iPhone and Mac that ChatGPT, Claude, Claude Code, Codex and Incredible can read and edit, with your approval. Imports your Apple Notes. Free.",
   path: "/",
 });
 
@@ -20,13 +20,13 @@ const rise = (i: number) => ({ style: { "--i": i } as React.CSSProperties });
 export default function Home() {
   return (
     <div className={styles.main}>
-      <JsonLd graph={[app(latestVersion()), organization, maker, website]} />
+      <JsonLd graph={[app(latestVersion()), organization, maker, incredible, website]} />
       <section className={styles.hero}>
         <h1 className={`${styles.h1} rise`} {...rise(0)}>
           The notes app <mark className={styles.mark}>your AI</mark> can actually use.
         </h1>
         <p className={`${styles.lede} rise`} {...rise(1)}>
-          Import your Apple Notes. Connect ChatGPT, Claude, Claude Code or Codex.
+          Import your Apple Notes. Connect ChatGPT, Claude, Claude Code, Codex or Incredible.
         </p>
         <div className={`${styles.ctas} rise`} {...rise(2)}>
           <DownloadLink className={styles.primary}><AppleGlyph /> Download for Mac</DownloadLink>

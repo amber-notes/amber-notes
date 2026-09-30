@@ -1,7 +1,7 @@
-import { GuidePage, guideMetadata } from "@/lib/GuidePage";
+import { PostPage, postMetadata } from "@/lib/PostPage";
 
 export const dynamic = "force-static";
-export const metadata = guideMetadata("chatgpt-and-apple-notes");
+export const metadata = postMetadata("chatgpt-and-apple-notes");
 
 const FAQ = [
   { q: "Can ChatGPT search all my Apple Notes?", a: [
@@ -14,9 +14,9 @@ const FAQ = [
 
 export default function Page() {
   return (
-    <GuidePage
+    <PostPage
       slug="chatgpt-and-apple-notes"
-      lede="ChatGPT can help with the note in front of you, but it can't search your notes or save to them. Here are the three ways it works today."
+      intro={<>ChatGPT can help with the note in front of you, but it can't search your notes or save to them. Here are the three ways it works with Apple Notes today, and when a different notes app makes more sense.</>}
       faq={FAQ}
     >
       <h2>Why ChatGPT can&apos;t search Apple Notes</h2>
@@ -54,6 +54,10 @@ export default function Page() {
 
       <h2>When a different notes app makes sense</h2>
       <p>
+        Claude has the same limits; <a href="/blog/claude-and-apple-notes">can Claude read your Apple Notes?</a> goes through them, and{" "}
+        <a href="/blog/notes-apps-with-mcp">notes apps with an MCP server, compared</a> lists the apps AI can reach.
+      </p>
+      <p>
         If you want to ask ChatGPT &ldquo;what did I write about the kitchen measurements?&rdquo; or &ldquo;add oat milk to my groceries
         note&rdquo; and have it just happen, the notes need to be in an app with an MCP server that ChatGPT can connect to.
       </p>
@@ -63,10 +67,10 @@ export default function Page() {
         web and in its phone app. You approve it in Amber Notes, and every change it makes can be undone.
       </p>
       <p>
-        <a href="/guides/move-from-apple-notes">How to move from Apple Notes</a> and{" "}
-        <a href="/guides/connect-chatgpt-to-your-notes">how to connect ChatGPT</a>. Adding your own app in ChatGPT needs a paid plan
+        <a href="/blog/move-from-apple-notes">How to move from Apple Notes</a> and{" "}
+        <a href="/blog/connect-chatgpt-to-your-notes">how to connect ChatGPT</a>. Adding your own app in ChatGPT needs a paid plan
         (Plus or higher).
       </p>
-    </GuidePage>
+    </PostPage>
   );
 }

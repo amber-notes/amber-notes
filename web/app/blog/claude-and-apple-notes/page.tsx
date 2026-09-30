@@ -1,7 +1,9 @@
-import { GuidePage, guideMetadata } from "@/lib/GuidePage";
+import { Figure } from "@/lib/blog";
+import { PostPage, postMetadata } from "@/lib/PostPage";
+import { SHOTS } from "@/lib/posts";
 
 export const dynamic = "force-static";
-export const metadata = guideMetadata("claude-and-apple-notes", {
+export const metadata = postMetadata("claude-and-apple-notes", {
   title: "Can Claude read your Apple Notes? What works in 2026",
 });
 
@@ -19,9 +21,9 @@ const FAQ = [
 
 export default function Page() {
   return (
-    <GuidePage
+    <PostPage
       slug="claude-and-apple-notes"
-      lede="Short answer: on a Mac, yes. On iPhone and in the browser, no. Here's what each option can do, and what it can't."
+      intro={<>Short answer: on a Mac, yes. On iPhone and in the browser, no. I get asked this a lot, so here&apos;s why it depends on where you use Claude, and what each option can and can&apos;t do.</>}
       faq={FAQ}
     >
       <h2>Why it depends on where you use Claude</h2>
@@ -78,6 +80,7 @@ export default function Page() {
         import your Apple Notes once, on your Mac, and add Amber Notes to Claude as a custom connector. After that Claude can search,
         read and edit your notes from claude.ai, the desktop app, the iPhone app and Claude Code.
       </p>
+      <Figure shot={SHOTS.consent} caption="Whichever AI asks, Amber Notes shows this sheet. Here it names ChatGPT; for Claude it names Claude." />
       <ul>
         <li>You approve Claude in Amber Notes and choose Read Only, or Read and Edit.</li>
         <li>When Claude changes a note, Amber Notes shows what changed, with Undo, and keeps the previous version.</li>
@@ -85,16 +88,17 @@ export default function Page() {
       </ul>
       <p>
         The catch: your notes move to Amber Notes, so you&apos;d write there instead of in Apple Notes. The import leaves Apple Notes
-        untouched, so you can try it and go back. <a href="/guides/move-from-apple-notes">How to move from Apple Notes</a>, then{" "}
-        <a href="/guides/connect-chatgpt-to-your-notes">connect Claude</a>.
+        untouched, so you can try it and go back. <a href="/blog/move-from-apple-notes">How to move from Apple Notes</a>, then{" "}
+        <a href="/blog/connect-chatgpt-to-your-notes">connect Claude</a>. For Claude Code, see{" "}
+        <a href="/blog/notes-in-claude-code-and-codex">using your notes from Claude Code and Codex</a>.
       </p>
 
       <h2>Which one to pick</h2>
       <ul>
         <li>You use Claude only on your Mac and want it to read notes: the desktop extension.</li>
         <li>You&apos;re comfortable with a config file and want Claude to write to Apple Notes on your Mac: a community MCP server.</li>
-        <li>You want Claude to use your notes from your phone or the web, with a way to undo its changes: a notes app with its own MCP server.</li>
+        <li>You want Claude to use your notes from your phone or the web, with a way to undo its changes: a notes app with its own MCP server. <a href="/blog/notes-apps-with-mcp">Notes apps with an MCP server, compared</a> lists them.</li>
       </ul>
-    </GuidePage>
+    </PostPage>
   );
 }

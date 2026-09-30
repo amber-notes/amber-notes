@@ -1,7 +1,9 @@
-import { GuidePage, guideMetadata } from "@/lib/GuidePage";
+import { Figure } from "@/lib/blog";
+import { PostPage, postMetadata } from "@/lib/PostPage";
+import { SHOTS } from "@/lib/posts";
 
 export const dynamic = "force-static";
-export const metadata = guideMetadata("notes-apps-with-mcp", {
+export const metadata = postMetadata("notes-apps-with-mcp", {
   title: "Notes apps with an MCP server, compared (2026) · Amber Notes",
 });
 
@@ -9,7 +11,7 @@ type Row = { app: string; server: string; reach: string; edit: string; open: str
 
 // Checked against each app's own announcement or documentation on 30 September 2026.
 const ROWS: Row[] = [
-  { app: "Amber Notes", server: "Built in, hosted", reach: "ChatGPT, Claude, Claude Code, Codex and other MCP apps, from any device", edit: "Yes, with approval per app, Undo and version history", open: "Yes (MIT)" },
+  { app: "Amber Notes", server: "Built in, hosted", reach: "ChatGPT, Claude, Claude Code, Codex, Incredible and other MCP apps, from any device", edit: "Yes, with approval per app, Undo and version history", open: "Yes (MIT)" },
   { app: "Notion", server: "Official, hosted", reach: "Any app that supports remote MCP, from any device", edit: "Yes", open: "No" },
   { app: "Evernote", server: "Official, hosted (beta)", reach: "Any app that supports remote MCP, from any device", edit: "Read, search and create", open: "No" },
   { app: "Hjarni", server: "Built in, hosted", reach: "ChatGPT, Claude and other MCP apps, from any device", edit: "Yes", open: "No" },
@@ -32,15 +34,11 @@ const FAQ = [
 
 export default function Page() {
   return (
-    <GuidePage
+    <PostPage
       slug="notes-apps-with-mcp"
-      lede="More notes apps now let ChatGPT and Claude use your notes. They differ in two ways that matter: whether it works away from your Mac, and what happens when the AI gets an edit wrong."
+      intro={<>More notes apps now let ChatGPT and Claude use your notes. They differ in two ways that matter: whether it works away from your Mac, and what happens when the AI gets an edit wrong. I make Amber Notes, so weigh this with that in mind; I&apos;ve described every app the way its maker does, and linked their own pages.</>}
       faq={FAQ}
     >
-      <p>
-        I make Amber Notes, so weigh this with that in mind. I&apos;ve tried to describe every app the way its maker does, and linked
-        their own pages below.
-      </p>
 
       <h2>At a glance</h2>
       <div className="tableWrap">
@@ -64,13 +62,16 @@ export default function Page() {
         <li><strong>Whether you like writing in it.</strong> You&apos;ll spend more time writing notes than asking about them.</li>
       </ul>
 
+      <Figure shot={SHOTS.history} caption="Version history in Amber Notes: every change, with who made it, including ChatGPT and Claude Code." />
+
       <h2>The apps</h2>
       <p className="label"><strong>Amber Notes</strong></p>
       <p>
         A free notes app for iPhone and Mac that works like Apple Notes, with an MCP server built in. You approve each AI app in Amber
         Notes and choose Read Only, or Read and Edit. When an AI changes a note, you see what changed, with Undo, and every earlier
-        version is kept. It imports Apple Notes on the Mac. The Mac app is out now; the iPhone app is coming soon to the App Store. The{" "}
-        <a href="/guides/mcp-server">MCP server page</a> lists its tools.
+        version is kept. It <a href="/blog/move-from-apple-notes">imports Apple Notes on the Mac</a>. The Mac app is out now; the iPhone app is coming soon to the App Store. The{" "}
+        <a href="/blog/mcp-server">MCP server page</a> lists its tools, and{" "}
+        <a href="/blog/connect-chatgpt-to-your-notes">connecting ChatGPT</a> takes a few minutes.
       </p>
       <p className="label"><strong>Notion</strong></p>
       <p>
@@ -100,8 +101,8 @@ export default function Page() {
       <p className="label"><strong>Apple Notes</strong></p>
       <p>
         Apple doesn&apos;t offer an API or an MCP server. The Claude desktop app can read Apple Notes on a Mac, and community servers let
-        Claude write to them through AppleScript, on that Mac only. <a href="/guides/claude-and-apple-notes">More on Claude and Apple Notes</a>.
+        Claude write to them through AppleScript, on that Mac only. <a href="/blog/claude-and-apple-notes">More on Claude and Apple Notes</a>.
       </p>
-    </GuidePage>
+    </PostPage>
   );
 }

@@ -1,8 +1,8 @@
-import { GuidePage, guideMetadata } from "@/lib/GuidePage";
+import { PostPage, postMetadata } from "@/lib/PostPage";
 import { APP_STORE_LIVE } from "@/lib/site";
 
 export const dynamic = "force-static";
-export const metadata = guideMetadata("move-from-apple-notes");
+export const metadata = postMetadata("move-from-apple-notes");
 
 const FAQ = [
   { q: "Does importing change or delete anything in Apple Notes?", a: [
@@ -18,9 +18,9 @@ const FAQ = [
 
 export default function Page() {
   return (
-    <GuidePage
+    <PostPage
       slug="move-from-apple-notes"
-      lede="Bring all your notes over in one go on your Mac. Nothing in Apple Notes changes, so you can take your time."
+      intro={<>I built Amber Notes to feel like Apple Notes, so moving should be easy too. On your Mac, you bring every note over in one go, folders and pins included. Nothing in Apple Notes changes, so you can take your time.</>}
       faq={FAQ}
     >
       <h2>Before you start</h2>
@@ -67,8 +67,9 @@ export default function Page() {
       <ul>
         <li>If you know Apple Notes, you already know Amber Notes: folders, a note list by date, pins, search and Recently Deleted work the same way.</li>
         <li>Your notes are stored as markdown underneath, formatted on screen.</li>
-        <li>Want ChatGPT or Claude to use them? <a href="/guides/connect-chatgpt-to-your-notes">Connect your AI</a>.</li>
+        <li>Want ChatGPT or Claude to use them? <a href="/blog/connect-chatgpt-to-your-notes">Connect ChatGPT or Claude to your notes</a>. For a coding agent, see <a href="/blog/notes-in-claude-code-and-codex">using your notes from Claude Code and Codex</a>.</li>
+        <li>Still deciding? <a href="/blog/amber-notes-vs-apple-notes">Amber Notes vs Apple Notes</a> covers what each one does better.</li>
       </ul>
-    </GuidePage>
+    </PostPage>
   );
 }
