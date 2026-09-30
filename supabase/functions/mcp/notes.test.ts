@@ -1,6 +1,6 @@
 // Unit tests for the pure markdown helpers: deno test notes.test.ts
 import { assertEquals, assertThrows } from "jsr:@std/assert@1";
-import { appendText, applyEdits, coerce, findTables, outline, replaceTable, setChecklistItem, sliceLines, sortChecklist, tableMarkdown, titleOf } from "./notes.ts";
+import { appendText, applyEdits, coerce, findTables, fitLines, outline, replaceTable, setChecklistItem, sliceLines, sortChecklist, tableMarkdown, titleOf } from "./notes.ts";
 
 Deno.test("titles follow the app's rules", () => {
   const cases: [string, string][] = [
@@ -104,4 +104,11 @@ Deno.test("plain tables are tables too, and stay plain when written back", () =>
   assertEquals(findTables(out)[1].rows, [["2026-09-28", "1"]], "the tracker after it is untouched");
   // A header without a delimiter row isn't a table (same as the app).
   assertEquals(findTables("| a | b |\ntext").length, 0);
+});
+
+Deno.test("fitLines keeps whole lines within the limit", () => {
+  assertEquals(fitLines("a\nb\nc", 100), { text: "a\nb\nc", lines: 3, truncated: false });
+  assertEquals(fitLines("aaaa\nbbbb\ncccc", 10), { text: "aaaa\nbbbb", lines: 2, truncated: true });
+  // One line longer than the limit is cut rather than returned whole.
+  assertEquals(fitLines("x".repeat(20) + "\nshort", 8), { text: "x".repeat(8), lines: 1, truncated: true });
 });

@@ -9,6 +9,7 @@
 import postgres from "npm:postgres@3.4.5";
 import { tools, runTool, ToolContext, ToolError } from "./tools.ts";
 import { challenge, handleOAuth, isOAuthPath, publicBase, resolveAccessToken, subpath } from "./oauth.ts";
+import { OPENAI_CHALLENGE_PATH, openaiChallenge } from "./verification.ts";
 
 const PROTOCOL_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
 const SERVER_INFO = { name: "amber-notes", title: "Amber Notes", version: "1.0.0" };
@@ -59,6 +60,7 @@ async function authenticate(p: Presented, base: string) {
 
 Deno.serve(async (req) => {
   const path = subpath(req);
+  if (path === OPENAI_CHALLENGE_PATH) return openaiChallenge(Deno.env.get("OPENAI_APPS_CHALLENGE"));
   if (isOAuthPath(path)) return handleOAuth(req, sql, path);
   const base = publicBase(req);
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
