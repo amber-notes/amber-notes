@@ -61,6 +61,11 @@ export default function Page() {
         <li>It&apos;s already on every Apple device, and on the web at iCloud.com.</li>
       </ul>
 
+      <p>
+        Weighing other apps too? See <a href="/blog/apple-notes-vs-notion">Apple Notes vs Notion</a> and{" "}
+        <a href="/blog/apple-notes-vs-obsidian">Apple Notes vs Obsidian</a>.
+      </p>
+
       <h2>Who each one is for</h2>
       <p>
         If you want your notes to stay exactly where they are and never talk to an AI, Apple Notes is great. If you already ask ChatGPT or

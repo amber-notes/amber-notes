@@ -29,7 +29,7 @@ export type Post = {
 
 /// The ground a cover (and the post's first picture) sits on: the site's palette, the help page's
 /// leaf brown, the app's dark look, or the home page's dunes.
-export type Ground = "paper" | "soft" | "tint" | "amber" | "leaf" | "dark" | "dunes" | "ink" | "peach" | "cream";
+export type Ground = "paper" | "soft" | "tint" | "amber" | "leaf" | "dark" | "dunes" | "ink" | "peach" | "cream" | "sand" | "clay" | "mist" | "honey";
 
 /// A card's picture: one real capture of the element the post is about, on the post's ground. The
 /// capture is cropped at 2x (3x from iPhone) to about the card's width, so it shows at full size.
@@ -51,6 +51,10 @@ export const SHOTS = {
   historyBurst: { src: "/blog/p3-history-burst.webp", alt: "Version history for a Groceries note on a Mac: versions by you on iPhone and Mac, ChatGPT and Claude Code, with the lines that differ tinted and a Restore This Version button.", width: 1800, height: 1200, window: false, title: "Groceries" },
   iphoneList: { src: "/blog/iphone-list.webp", alt: "Amber Notes on iPhone: the note list, with Groceries marked Edited by ChatGPT, Standup notes Edited by Claude Code and Lisbon Edited by Claude.", width: 1206, height: 2622, window: false, phone: true },
   tracker: { src: "/blog/tracker-pane.webp", alt: "An Evening tracker note in Amber Notes on a Mac: a table with a row per day and typed columns for work hours, energy, mood and yes-or-no habits.", width: 1250, height: 900, window: false, title: "Evening tracker" },
+  lisbon: { src: "/blog/lisbon-pane.webp", alt: "A Lisbon trip note in Amber Notes on a Mac: a plan checklist, a list of places, a linked Hotel booking sub-note, and a table of where to eat.", width: 1250, height: 1420, window: false, title: "Lisbon" },
+  iphoneFiles: { src: "/blog/iphone-files-dark.webp", alt: "Amber Notes on iPhone in dark mode: a Trip documents note holding a PDF, a CSV file, a photo and a link.", width: 1206, height: 2622, window: false, phone: true },
+  iphoneGroceries: { src: "/blog/iphone-groceries.webp", alt: "A Groceries checklist in Amber Notes on iPhone. The five items ChatGPT just added are tinted, and a bar says ChatGPT changed 5 lines, with Undo.", width: 1206, height: 2622, window: false, phone: true },
+  standup: { src: "/blog/standup-pane.webp", alt: "Standup notes in Amber Notes on a Mac. The line Claude Code just added is tinted, and a bar at the bottom says Claude Code changed 1 line, with Undo.", width: 1250, height: 1420, window: false, title: "Standup notes" },
 } satisfies Record<string, Shot>;
 
 export const posts: Post[] = [
@@ -172,6 +176,54 @@ export const posts: Post[] = [
     updated: "2026-09-30",
     image: SHOTS.tracker,
     thumb: thumb("cream", "thumb-tracker", 708, 749),
+    draft: false,
+  },
+  {
+    slug: "apple-notes-vs-notion",
+    title: "Apple Notes vs Notion for everyday notes (and where AI fits)",
+    description: "Apple Notes and Notion compared for everyday notes: speed, devices, offline, price, built-in AI, and whether ChatGPT and Claude can use them.",
+    excerpt: "One is where a thought goes in two seconds, the other is where a project lives. How they compare, and what changes once you want your AI to use them.",
+    category: "Comparisons",
+    date: "2026-09-30",
+    updated: "2026-09-30",
+    image: SHOTS.lisbon,
+    thumb: thumb("sand", "thumb-lisbon", 643, 520),
+    draft: false,
+  },
+  {
+    slug: "apple-notes-vs-obsidian",
+    title: "Apple Notes vs Obsidian",
+    description: "Apple Notes and Obsidian compared fairly: local markdown files and plugins, iCloud and speed, sync, price, and AI access.",
+    excerpt: "Obsidian gives you markdown files and plugins; Apple Notes gives you speed and iCloud. Where each one wins, and where AI fits.",
+    category: "Comparisons",
+    date: "2026-09-30",
+    updated: "2026-09-30",
+    image: SHOTS.iphoneFiles,
+    thumb: thumb("mist", "thumb-iphone-files", 1238, 831),
+    draft: false,
+  },
+  {
+    slug: "chatgpt-to-do-list-on-iphone",
+    title: "How to use ChatGPT as a to-do list that syncs to your iPhone",
+    description: "Ask ChatGPT to add, tick and tidy your to-dos, and see the checklist on your iPhone and Mac. The setup, the prompts, and how to share a list.",
+    excerpt: "Tell ChatGPT what needs doing and it lands in a checklist you can tick on your phone. The setup, prompts that work, and sharing a list.",
+    category: "Guides",
+    date: "2026-09-30",
+    updated: "2026-09-30",
+    image: SHOTS.iphoneGroceries,
+    thumb: thumb("honey", "thumb-iphone-groceries", 1278, 970),
+    draft: false,
+  },
+  {
+    slug: "work-log-with-claude-code",
+    title: "Keep a work log with Claude Code",
+    description: "Let Claude Code write your standup, keep a daily log and fill in a tracker in your notes, with one instruction and the Amber Notes MCP server.",
+    excerpt: "Your standup, a daily log and a tracker, written by Claude Code as you work, in notes you can read on your phone.",
+    category: "Guides",
+    date: "2026-09-30",
+    updated: "2026-09-30",
+    image: SHOTS.standup,
+    thumb: thumb("clay", "thumb-standup", 902, 376),
     draft: false,
   },
   {
