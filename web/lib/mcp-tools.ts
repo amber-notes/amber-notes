@@ -3,7 +3,7 @@
 export type McpTool = { name: string; title: string; description: string; kind: "read" | "write" | "destructive" };
 
 export const MCP_TOOLS: McpTool[] = [
-  { name: "get_overview", title: "Overview of the notes", kind: "read", description: "Call this first. An overview of the person's Amber Notes: folders with counts, pinned notes and the most recently edited notes." },
+  { name: "get_overview", title: "Overview of the notes", kind: "read", description: "An overview of the person's Amber Notes: folders with counts, pinned notes and the most recently edited notes." },
   { name: "search_notes", title: "Search notes", kind: "read", description: "Full-text search across titles and bodies. Returns ranked notes with a highlighted snippet («match»)." },
   { name: "list_notes", title: "List notes", kind: "read", description: "List notes, newest first, optionally in one folder. Use for browsing; use search_notes to find something." },
   { name: "read_note", title: "Read a note", kind: "read", description: "Returns a note's markdown with its folder, dates, version and outline. For long notes, read a line range; set line_numbers to see where headings are." },

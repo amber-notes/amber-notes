@@ -34,7 +34,7 @@ const overwrite = { ...write, destructiveHint: true } as const;
 export const tools: Tool[] = ([
   {
     name: "get_overview", title: "Overview of the notes",
-    description: "Call this first. An overview of the person's Amber Notes: folders with counts, pinned notes and the most recently edited notes.",
+    description: "An overview of the person's Amber Notes: folders with counts, pinned notes and the most recently edited notes.",
     inputSchema: { type: "object", properties: {} }, annotations: read,
   },
   {
