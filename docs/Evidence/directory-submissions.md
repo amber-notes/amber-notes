@@ -4,26 +4,33 @@ Everything needed to list Amber Notes in Claude's connector directory and ChatGP
 
 Nothing here has been submitted.
 
-## 1. Blockers, in order
+## 1. Status and what's left
 
-1. **Sign-in has to work in a browser without the app.** Today `/authorize` sends the browser to `ambernotes://connect` (`supabase/functions/mcp/oauth.ts:279`). A reviewer at claude.ai or chatgpt.com who doesn't have the Mac or iPhone app signed in gets stuck at that step. The mcp-web branch (`feature/mcp-web`) replaces it with `ambernotes.app/connect`, which has email-and-password sign-in. That page has to be live before either submission.
-2. **The server address has to be final: `https://mcp.ambernotes.app`.**
-   - OpenAI: "Changing the MCP origin (scheme, host or port) needs a new plugin" ([submission](https://developers.openai.com/plugins/deploy/submission)).
-   - Anthropic: "The MCP server domain should match your service" ([review criteria](https://claude.com/docs/connectors/building/review-criteria)).
-   - Both listings use the root address exactly, with no `/mcp` on the end. Anthropic says the `resource` in the metadata "must equal the URL as the user enters it in Claude, including any path component" ([authentication](https://claude.com/docs/connectors/building/authentication)).
-   - The mcp-web branch is building the alias. `web/lib/facts.ts:7` (`MCP_URL`) still names the supabase.co address, and so do the blog and the app.
-3. **The demo account needs cleaning and more content** (section 7).
-   - Both directories want "a fully populated account".
-   - Right now it has five notes. One of them is a stray empty table titled "— —", and two notes end in a stray empty table.
-4. **OpenAI identity verification.** Emil has to finish individual verification in the OpenAI Platform before submitting under his name ([app review](https://developers.openai.com/plugins/deploy/app-review)).
-5. **The demo video**, which OpenAI requires for MCP review (section 6).
-6. **Merge and deploy this branch.** It carries the annotation fixes and the domain-verification endpoint. OpenAI's automated scan reads the annotations, and Anthropic's portal flags tools that are missing them.
+State on 2026-09-30:
+- **Server:** live at `https://mcp.ambernotes.app` with web approval at ambernotes.app/connect (PR 20).
+- **Demo account:** cleaned and filled (section 7).
+- **Live check:** every test prompt's tool calls were run against production as the demo user, through the same sign-in a directory client uses (section 7.3).
+
+Left before submitting, in order:
+1. **Deploy the branch `prep/directories-2`**, which does four things:
+   - When a multi-word search finds nothing, it retries with any of the words. Today `search` for "Lisbon trip" returns nothing, because every word must match, and "trip" isn't in the note.
+   - It drops the dead `pane://` links from `search` and `fetch`.
+   - It restores the site's tool list, which PR 18 merged without.
+   - It adds `server.json` and `glama.json`.
+2. **Emil: OpenAI individual identity verification** ([app review](https://developers.openai.com/plugins/deploy/app-review)).
+3. **Emil: the demo video**, required for OpenAI's MCP review (section 6).
+4. **Emil: run the prompts once in Claude and ChatGPT.** Both portals ask the submitter to confirm this.
+5. **Emil: submit** (section 8).
+
+Both listings use the root address, exactly `https://mcp.ambernotes.app`, with no `/mcp` on the end:
+- OpenAI: "Changing the MCP origin … needs a new plugin" ([submission](https://developers.openai.com/plugins/deploy/submission)).
+- Anthropic: `resource` "must equal the URL as the user enters it" ([authentication](https://claude.com/docs/connectors/building/authentication)).
 
 ## 2. Requirement checklists
 
 Status meanings:
 - **done**: true on this branch or already true in production.
-- **mcp-web**: the web sign-in and domain work on `feature/mcp-web` covers it.
+- **mcp-web**: done in PR 20 (web sign-in, mcp.ambernotes.app), live since 2026-09-30.
 - **Emil**: needs Emil's accounts, identity or screen.
 
 ### Claude (Anthropic connectors directory)
@@ -34,7 +41,7 @@ Status meanings:
 | Remote server over Streamable HTTP | [build](https://claude.com/docs/connectors/building/index) | done (`index.ts`, JSON responses) |
 | Every tool has a `title`, plus `readOnlyHint: true` if it only reads and `destructiveHint: true` if it modifies or deletes data | [review criteria](https://claude.com/docs/connectors/building/review-criteria), [policy 5.E](https://support.claude.com/en/articles/13145358-anthropic-software-directory-policy) | done (this branch: explicit hints on every tool, and edit_note, restore_revision and log_table_row are now destructive) |
 | Tool names are 64 characters or fewer | [policy 5.C](https://support.claude.com/en/articles/13145358-anthropic-software-directory-policy) | done (checked in `annotations.test.ts`) |
-| Descriptions say what the tool does, not how Claude should behave | [review criteria](https://claude.com/docs/connectors/building/review-criteria) | mcp-web: `tools.ts:37` says "Start here.", and mcp-web's draft says "Call this first." mcp-web was asked to drop both. |
+| Descriptions say what the tool does, not how Claude should behave | [review criteria](https://claude.com/docs/connectors/building/review-criteria) | done (PR 20: "An overview of the person's Amber Notes: …") |
 | Reads and writes are separate tools, with no catch-all request tool | [review criteria](https://claude.com/docs/connectors/building/review-criteria) | done |
 | Errors are actionable, not a bare "Bad Request" | [review criteria](https://claude.com/docs/connectors/building/review-criteria) | done (every ToolError names the fix, e.g. "No note titled … Close matches: …") |
 | Responses are "frugal with tokens". Results can be up to about 150k characters on claude.ai and 25k tokens in Claude Code. | [policy 5.B](https://support.claude.com/en/articles/13145358-anthropic-software-directory-policy), [build](https://claude.com/docs/connectors/building/index) | done (this branch: read_note and fetch cap at 60k characters and return `truncated` with `next_start_line`) |
@@ -43,7 +50,7 @@ Status meanings:
 | An unauthenticated request gets a 401 with `WWW-Authenticate`, and Claude uses only the first `authorization_servers` entry | [authentication](https://claude.com/docs/connectors/building/authentication) | done (`index.ts` `unauthorized`, `oauth.ts:155`) |
 | Refresh tokens rotate, and a dead one returns `invalid_grant` | [authentication](https://claude.com/docs/connectors/building/authentication) | done |
 | Reachable from `160.79.104.0/21` over IPv4 | [IP addresses](https://platform.claude.com/docs/en/api/ip-addresses), [troubleshooting](https://claude.com/docs/connectors/building/troubleshooting) | mcp-web (Vercel and Supabase both have A records; check once the alias is live) |
-| Consent works in a browser | implied by the reviewer test | mcp-web |
+| Consent works in a browser | implied by the reviewer test | done (PR 20, ambernotes.app/connect, with email-and-password or Apple sign-in; checked live) |
 | Test account "with sample data", "fully populated", with step-by-step access | [policy 3.D](https://support.claude.com/en/articles/13145358-anthropic-software-directory-policy), [testing](https://claude.com/docs/connectors/building/testing) | Emil (section 7) |
 | At least three working example prompts | [policy 3.E](https://support.claude.com/en/articles/13145358-anthropic-software-directory-policy) | done (section 4.3) |
 | Public documentation by the publish date | [review criteria](https://claude.com/docs/connectors/building/review-criteria) | done: [/blog/connect-chatgpt-to-your-notes](https://ambernotes.app/blog/connect-chatgpt-to-your-notes) has a Claude section, and [/blog/mcp-server](https://ambernotes.app/blog/mcp-server) lists every tool. Its steps say "Allow in Amber Notes", so they need updating once web consent ships (mcp-web). |
@@ -109,16 +116,15 @@ CI now runs all three.
 
 | Gap | Where | Owner |
 |---|---|---|
-| Consent goes only to the app | `oauth.ts:279` | mcp-web |
-| "Start here." tells the model how to behave | `tools.ts:37` | mcp-web (asked to use "An overview of the person's Amber Notes: …" with no "Call this first") |
-| The MCP address is on supabase.co | `web/lib/facts.ts:7`, app Settings | mcp-web |
-| The privacy policy says approval happens only in the app | `docs/privacy-policy.md:81` | mcp-web, once web consent ships |
+| The privacy policy and terms say approval happens only in the app | `docs/privacy-policy.md:10`, `:81`, `docs/terms-of-use.md:54` | PR 27 (wording only), waiting to merge |
+| llms.txt and the guides say "then Allow in Amber Notes" | `web/lib/facts.ts`, `web/app/blog/connect-chatgpt-to-your-notes` | Site copy: add "or on ambernotes.app" |
 
 **Open, for Emil to decide**
 
 | Gap | Where | Why it matters |
 |---|---|---|
-| `search` and `fetch` return `url: pane://note/<id>`, a scheme nothing handles (the app registers only `ambernotes://`, `project.yml:67`) | `tools.ts:717`, `:725` | ChatGPT shows this as the source link, and a reviewer who clicks it gets nothing. There are two fixes: handle `ambernotes://note/<id>` in the app and return that, or drop `url`. I'd make the app handle `ambernotes://note/<id>`, since opening the note from a ChatGPT answer is useful on its own. |
+| `search` and `fetch` returned `url: pane://note/<id>`, a scheme nothing handles | `tools.ts` | Fixed on `prep/directories-2`: the `url` is gone, and the search description no longer promises links |
+| `search` and `search_notes` found nothing when one word of the query wasn't in the note ("Lisbon trip") | `tools.ts` search handlers | Fixed on `prep/directories-2`: a retry with any of the words (`broadenQuery` in `notes.ts`). The result says so with `no_note_has_every_word`. |
 | The file header still says "Pane's MCP server" | `index.ts:1` | Cosmetic, and reviewers don't see it. |
 
 **Checked and fine**
@@ -177,7 +183,7 @@ Paste these into claude.ai/directory/manage → Submit new → MCP connector.
   2. Answer questions from notes.
   3. Keep lists and trackers up to date from a conversation.
   4. Write new notes from what you discuss.
-- **What users need first:** an Amber Notes account, made in the iPhone or Mac app or on ambernotes.app.
+- **What users need first:** an Amber Notes account, made in the iPhone or Mac app.
 - **Reads or writes:** both.
 
 Example prompts (policy 3.E asks for at least three). The expected results are for the demo account after section 7.
@@ -225,7 +231,7 @@ Tick "I ran every tool" only after doing it (section 8, step 6).
 All seven acknowledgments apply without exceptions:
 - no financial transactions;
 - no AI media generation;
-- no prompt injection in descriptions (once mcp-web's wording lands);
+- no prompt injection in descriptions;
 - no conversation data collected;
 - public docs exist.
 
@@ -287,48 +293,56 @@ Notes:
 
 ## 7. Demo account
 
-**What's there (checked 2026-09-30, read only)**
-- Folders: Personal, Work and Travel.
-- Five notes:
-  - "Lisbon in May": a checklist, a table, and the sub-note "Hotel booking";
-  - "Hotel booking";
-  - "Meeting with design";
-  - "Book notes: The Creative Act";
-  - a stray note that is only an empty table, titled "— —".
-- "Lisbon in May" and "Book notes" also end in a stray empty two-column table. That may be an app bug worth a look: an empty table left behind by the editor.
-- No files and no trackers.
+This is the App Review account, used for the directory review as well. `scripts/review-account.py` keeps it in shape:
+- `seed` adds any missing notes;
+- `reset` puts back what reviewers changed;
+- `check` runs the tool calls in 7.3.
 
-**What to do (Emil, in the app)**
+The script works as that user through the public API, and it reads the password from `.secrets/appreview.txt` without printing it.
 
-1. Delete the "— —" note, and remove the stray empty tables at the end of "Lisbon in May" and "Book notes".
-2. Add these notes. Paste each body into a new note in the named folder.
-   - Personal, "Running log", a tracker. Make it in the app as a table with typed columns Date (date), Distance km (number), Minutes (number), Feel (scale 1–5), and add three rows from last week.
-   - Personal, "Groceries":
-     ```
-     Groceries
-     - [ ] Oat milk
-     - [ ] Eggs
-     - [x] Coffee beans
-     - [ ] Tomatoes
-     ```
-   - Work, "Q4 planning":
-     ```
-     Q4 planning
-     ## Goals
-     - Ship the iPhone app
-     - 1,000 weekly users
-     ## Risks
-     - App Review delays
-     - Sync edge cases on slow networks
-     ## Decisions
-     - Weekly release on Thursdays
-     ```
-   - Work, "Hiring: designer", with a few interview notes in a table (Name, Date, Verdict).
-   - Travel, "Packing list", a checklist of 8 to 10 items.
-   - Attach one small PDF, for example a sample itinerary, to "Lisbon in May", so list_files and get_file have something to return.
-   - Pin "Groceries".
-3. Keep it this way. Reviewers will make changes, and OpenAI keeps using the account for later reviews, so check it before each resubmission.
-4. The same account is in Apple's review right now (iOS 1.0). Edits by directory reviewers can show up there. To keep them apart, make a second account (for example directory-review@norditech.se) with the same content and give that one to Anthropic and OpenAI. The instructions above then use that email.
+### 7.1 What changed on 2026-09-30
+
+- Removed the stray note that was only an empty table ("— —").
+- Removed the empty tables at the end of "Lisbon in May" and "Book notes". "Book flights" is now a ticked checklist item.
+- Added "Running log" (a tracker), "Groceries" (pinned), "Q4 planning", "Hiring: product designer" (a tracker) and "Packing list".
+- Two notes that were already in Recently Deleted, "Q4 kickoff" and an older "Groceries", are still there.
+
+### 7.2 What's in it now
+
+| Folder | Note | What it exercises |
+|---|---|---|
+| Travel | Lisbon in May | headings, a checklist (2 open, 2 done), the Where to eat table (Place, Dish, Area), the sub-note link |
+| Travel | Hotel booking (sub-note of Lisbon in May) | the facts for prompt P2: Memmo Príncipe Real, 12–15 May, LX-48213 |
+| Travel | Packing list | a checklist of 8 items |
+| Work | Meeting with design | three bullet points for P5 |
+| Work | Q4 planning | goals, risks and decisions under headings |
+| Work | Hiring: product designer | a tracker with Name, Date, and a Verdict of Hire, Maybe or No |
+| Personal | Running log | a tracker with Date, Distance km, Minutes and Feel (1–5), three runs from last week |
+| Personal | Groceries (pinned) | a checklist |
+| Personal | Book notes: The Creative Act | a quote and a list |
+
+There are no files. `list_files` returns an empty list, and no test prompt uses files. To show files, attach a small PDF to "Lisbon in May" in the app.
+
+### 7.3 Live check (2026-09-30, production, `scripts/review-account.py check`)
+
+The check signs in the way Claude and ChatGPT do:
+1. It registers a client and starts `/authorize` with PKCE.
+2. It gets sent to ambernotes.app/connect, and allows with the demo user's session.
+3. It exchanges the code for tokens (`iss` matches `https://mcp.ambernotes.app`).
+4. It runs each test prompt's tool calls.
+5. It then disconnects and resets the notes.
+
+Result: 21 of 22 passed.
+- **Passed:**
+  - an unauthenticated call gets a 401 with `resource_metadata`;
+  - 27 tools, all annotated;
+  - P1 through P5;
+  - the extra Claude prompts: log a run, log again on the same day (updates the row), add under Plan, history, restore;
+  - get_overview, and no results for "weather forecast";
+  - a bad tracker value explains the fix ("Feel must be a whole number from 1 to 5").
+- **Failed:** `search` for "Lisbon trip" returns nothing, because every word has to match. The fix is on `prep/directories-2` (section 3) and needs a deploy. Run `check` again after deploying.
+
+The negative prompts can't be checked this way. They test the assistant not calling Amber Notes, so they have to be run in ChatGPT itself (section 8, step 6).
 
 ## 8. What only Emil can do
 
@@ -343,11 +357,10 @@ Notes:
    - Finish individual identity verification (government ID).
    - Accept the plugin terms.
 3. **OpenAI domain verification:** copy the token, then run the `supabase secrets set` command in section 5. The function reads it at request time, so no redeploy is needed.
-4. **Demo account:** do the cleanup and additions in section 7, in the app. Optionally create the separate review account.
+4. **Demo account:** done (section 7). Before each submission or resubmission, run `scripts/review-account.py reset`, then `check`.
 5. **Record the demo video** (section 6, shots 2 to 6) and upload it unlisted.
 6. **Run everything before submitting:** connect Claude and ChatGPT to `https://mcp.ambernotes.app` with the demo account, and run every prompt in sections 4.3 and 5 once. Both portals ask you to confirm this.
 7. **Upload the ZIP** at platform.openai.com → Plugins. Fill in Review details with the test account instructions and type the password yourself. Paste the video link, then submit.
-8. **Decide on `pane://` links** (section 3).
 
 ## 9. Assets
 
@@ -361,3 +374,70 @@ All made from `brand/` sources with `sips`:
 | `brand/directory/mark-128.png` | 128², transparent | ChatGPT `composerIcon` and `composerIconDark` |
 
 Screenshots are not needed. Claude asks for them only for MCP Apps with UI, and OpenAI rejects them without UI.
+
+## 10. MCP Registry and other directories
+
+### 10.1 Official MCP Registry (registry.modelcontextprotocol.io)
+
+`server.json` at the repo root is valid (`mcp-publisher validate`):
+- name `app.ambernotes/amber-notes`;
+- one remote, `streamable-http` at `https://mcp.ambernotes.app`;
+- the repository, and the icon `https://ambernotes.app/mark-256.png`.
+
+It publishes under DNS authentication for ambernotes.app ([authentication](https://github.com/modelcontextprotocol/registry/blob/main/docs/modelcontextprotocol-io/authentication.mdx)). That grants the namespace `app.ambernotes/*`.
+
+1. **The key** is `.secrets/mcp-registry-key.pem` in the main checkout (Ed25519, 0600, gitignored).
+2. **The TXT record** goes on the apex. At GoDaddy, add a TXT record with host `@` and TTL 1 hour, and keep the existing google-site-verification record:
+
+   ```
+   v=MCPv1; k=ed25519; p=83sv2tQ57ePV8lfoNuavy9f4EWnip4oODqTR6obHO7g=
+   ```
+
+3. **Once `dig +short TXT ambernotes.app` shows it**, publish:
+
+   ```sh
+   cd <checkout with server.json>
+   mcp-publisher login dns --domain ambernotes.app \
+     --private-key "$(openssl pkey -in ~/Documents/Development/AmberNotes/.secrets/mcp-registry-key.pem -noout -text | grep -A3 'priv:' | tail -n +2 | tr -d ' :\n')"
+   mcp-publisher publish
+   ```
+
+4. **Updates:** bump `version` in `server.json` and publish again. If the key is ever rotated, remove the old TXT record first. The registry tries a stale record first, and the login fails.
+
+### 10.2 Smithery (smithery.ai/new)
+
+Smithery takes a hosted server by URL and scans it after signing in ([external servers](https://smithery.ai/docs/build/external)). It says it "handles client registration automatically via Client ID Metadata Documents". Amber Notes offers dynamic client registration, not CIMD, so the scan's sign-in may fail. If it does, there are two options:
+- serve a static server card at `/.well-known/mcp/server-card.json`, with `serverInfo`, `authentication` and `tools`;
+- add CIMD to `oauth.ts`. OpenAI prefers CIMD too, so this is worth doing anyway.
+
+Fields to enter:
+- **URL:** `https://mcp.ambernotes.app`
+- **Display name:** Amber Notes
+- **Description:** Search, read and edit your notes in Amber Notes, the notes app for iPhone and Mac. Folders, checklists, tables and trackers. You choose read only or read and edit, and every change keeps the previous version.
+- **Homepage:** https://ambernotes.app/blog/mcp-server
+- **Repository:** https://github.com/emilwagman/amber-notes
+- **Icon:** https://ambernotes.app/mark-256.png
+- **Tags:** notes, productivity, checklists, apple, markdown
+
+### 10.3 Glama (glama.ai/mcp/servers, "Add server")
+
+Glama indexes GitHub repositories. `glama.json` at the repo root names `emilwagman` as the maintainer, which lets Emil claim the listing and edit its name and description.
+
+Fields to enter:
+- **Repository:** https://github.com/emilwagman/amber-notes
+- **Name:** Amber Notes
+- **Description:** same as Smithery.
+- **Hosted connector URL:** `https://mcp.ambernotes.app` (Streamable HTTP, OAuth).
+
+### 10.4 mcp.so (mcp.so/submit)
+
+Choose the **Remote Server** type.
+
+Fields to enter:
+- **Repository URL:** https://github.com/emilwagman/amber-notes
+- **Name:** Amber Notes
+- **Server URL:** `https://mcp.ambernotes.app`
+- **Description:** same as Smithery.
+
+The free listing is reviewed. The $39 option skips review and adds a verified badge. It isn't needed.
+
