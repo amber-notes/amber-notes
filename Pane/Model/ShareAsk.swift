@@ -63,18 +63,22 @@ enum ShareAsk {
     // MARK: Days of use
 
     static let daysKey = "shareAskDays", sentKey = "shareAskDaysSent"
+    /// The day last noted, and where: a fast path for every keystroke. Held weakly, so a new
+    /// UserDefaults at a freed one's address (tests) is never mistaken for it.
     @MainActor private static var lastStamp: String?
+    @MainActor private static weak var lastDefaults: UserDefaults?
     @MainActor static var lastKeystroke: Date = .distantPast
     /// A new day of use was noted on this device (the store sends it to the server).
     @MainActor static var onNewDay: () -> Void = {}
 
     /// A note was opened or edited: today counts as a day of use. Cheap enough for every keystroke.
-    @MainActor static func noteUsed(typing: Bool = false, now: Date = .now, defaults: UserDefaults = .standard) {
+    @MainActor static func noteUsed(typing: Bool = false, now: Date = .now, defaults: UserDefaults = .standard,
+                                    calendar: Calendar = .current) {
         if typing { lastKeystroke = now }
-        let today = day(now)
-        let stamp = "\(ObjectIdentifier(defaults)) \(today)"
-        guard lastStamp != stamp else { return }
-        lastStamp = stamp
+        let today = day(now, calendar: calendar)
+        guard lastStamp != today || lastDefaults !== defaults else { return }
+        lastStamp = today
+        lastDefaults = defaults
         var days = defaults.stringArray(forKey: daysKey) ?? []
         guard !days.contains(today) else { return }
         days.append(today)

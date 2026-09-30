@@ -5,6 +5,13 @@ import Testing
 /// "Enjoying Amber Notes?": when it's due, that it's asked once, and what it opens.
 @MainActor @Suite(.serialized) struct ShareAskTests {
     static let day: TimeInterval = 86400
+    /// Days are counted in the device's calendar; tests pin one so they read the same in any zone.
+    static let cal: Calendar = {
+        var c = Calendar(identifier: .gregorian)
+        c.timeZone = TimeZone(identifier: "UTC")!
+        return c
+    }()
+    /// 21 Sep 2026, 14:13 UTC: mid-afternoon, far from midnight.
     static let t0 = Date(timeIntervalSince1970: 1_790_000_000)
 
     static func defaults() -> UserDefaults {
@@ -16,7 +23,7 @@ import Testing
 
     /// Notes used on `n` different days, every other day from t0.
     static func usedOn(_ n: Int, _ d: UserDefaults) {
-        for i in 0..<n { ShareAsk.noteUsed(now: t0.addingTimeInterval(Double(i) * 2 * day), defaults: d) }
+        for i in 0..<n { ShareAsk.noteUsed(now: t0.addingTimeInterval(Double(i) * 2 * day), defaults: d, calendar: Self.cal) }
     }
 
     /// The server: one account's answer and its days of use from every device.
@@ -63,12 +70,36 @@ import Testing
 
     @Test func daysOfUseAreDifferentCalendarDays() {
         let d = Self.defaults()
-        for minute in 0..<5 { ShareAsk.noteUsed(typing: true, now: Self.t0.addingTimeInterval(Double(minute) * 60), defaults: d) }
+        for minute in 0..<5 { ShareAsk.noteUsed(typing: true, now: Self.t0.addingTimeInterval(Double(minute) * 60), defaults: d, calendar: Self.cal) }
         #expect(ShareAsk.localDays(defaults: d).count == 1, "typing all afternoon is one day")
-        ShareAsk.noteUsed(now: Self.t0.addingTimeInterval(Self.day), defaults: d)
-        ShareAsk.noteUsed(now: Self.t0, defaults: d)
+        ShareAsk.noteUsed(now: Self.t0.addingTimeInterval(Self.day), defaults: d, calendar: Self.cal)
+        ShareAsk.noteUsed(now: Self.t0, defaults: d, calendar: Self.cal)
         #expect(ShareAsk.localDays(defaults: d).count == 2, "going back to a day already counted adds nothing")
-        #expect(ShareAsk.localDays(defaults: d).allSatisfy { $0.count == 10 && $0.hasPrefix("2026-") }, "sent as yyyy-MM-dd")
+        #expect(ShareAsk.localDays(defaults: d) == ["2026-09-21", "2026-09-22"], "sent as yyyy-MM-dd")
+    }
+
+    @Test func aDayIsTheDevicesOwnCalendarDay() {
+        // 23:30 and 00:30 the next day in Stockholm are two days there, one day in UTC.
+        var stockholm = Calendar(identifier: .gregorian)
+        stockholm.timeZone = TimeZone(identifier: "Europe/Stockholm")!
+        let late = stockholm.date(from: DateComponents(year: 2026, month: 9, day: 29, hour: 23, minute: 30))!
+        let early = late.addingTimeInterval(3600)
+        #expect(ShareAsk.day(late, calendar: stockholm) == "2026-09-29")
+        #expect(ShareAsk.day(early, calendar: stockholm) == "2026-09-30")
+        #expect(ShareAsk.day(late, calendar: Self.cal) == ShareAsk.day(early, calendar: Self.cal))
+        let d = Self.defaults()
+        ShareAsk.noteUsed(now: late, defaults: d, calendar: stockholm)
+        ShareAsk.noteUsed(now: early, defaults: d, calendar: stockholm)
+        #expect(ShareAsk.localDays(defaults: d) == ["2026-09-29", "2026-09-30"])
+    }
+
+    @Test func aFreshDeviceIsNeverMistakenForTheLastOne() {
+        // The first day on a new store counts, even on the same day as the last one noted elsewhere.
+        for _ in 0..<20 {
+            let d = Self.defaults()
+            ShareAsk.noteUsed(now: Self.t0, defaults: d, calendar: Self.cal)
+            #expect(ShareAsk.localDays(defaults: d) == ["2026-09-21"])
+        }
     }
 
     @Test func sevenDaysNeedNotBeInARowNorAWeekSinceSignUp() async {
@@ -78,7 +109,7 @@ import Testing
         let s = Self.store(d)
         await s.refresh()
         #expect(!s.isDue(now: Self.later))
-        ShareAsk.noteUsed(now: Self.t0.addingTimeInterval(13 * Self.day), defaults: d)
+        ShareAsk.noteUsed(now: Self.t0.addingTimeInterval(13 * Self.day), defaults: d, calendar: Self.cal)
         await s.refresh()
         #expect(s.activeDays == 7)
         #expect(s.isDue(now: Self.later))
@@ -89,8 +120,8 @@ import Testing
         let server = FakeService()
         let mac = Self.defaults(), phone = Self.defaults()
         let account = UUID()
-        for i in 0..<4 { ShareAsk.noteUsed(now: Self.t0.addingTimeInterval(Double(i) * Self.day), defaults: mac) }
-        for i in 3..<7 { ShareAsk.noteUsed(now: Self.t0.addingTimeInterval(Double(i) * Self.day), defaults: phone) }
+        for i in 0..<4 { ShareAsk.noteUsed(now: Self.t0.addingTimeInterval(Double(i) * Self.day), defaults: mac, calendar: Self.cal) }
+        for i in 3..<7 { ShareAsk.noteUsed(now: Self.t0.addingTimeInterval(Double(i) * Self.day), defaults: phone, calendar: Self.cal) }
         let onMac = Self.store(mac, service: server, account: account)
         await onMac.refresh()
         #expect(!onMac.isDue(now: Self.later), "the Mac alone has 4")
