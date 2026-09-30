@@ -3,7 +3,7 @@ import legal from "./legal.module.css";
 import p from "./post.module.css";
 import { Avatar, Figure, PostCard, longDate, readingMinutes } from "./blog";
 import { AUTHOR, categories, categoryAnchor, morePosts, post, published, type Post } from "./posts";
-import { SITE_URL, pageMetadata } from "./site";
+import { MAKER_URL, SITE_URL, pageMetadata } from "./site";
 import { JsonLd, article, breadcrumbs, faqPage, incredible, maker, organization } from "./structured-data";
 
 type QA = { q: string; a: string[] };
@@ -116,7 +116,7 @@ export function PostPage({ slug, intro, faq, children }: { slug: string; intro: 
           <h1 className={p.title}>{x.title}</h1>
           <div className={p.byline}>
             <Avatar size={28} />
-            <span>By <strong>{AUTHOR.name}</strong></span>
+            <span>By <a className={p.author} href={MAKER_URL} rel="author">{AUTHOR.name}</a></span>
             <span aria-hidden="true">·</span>
             <span>{minutes} min read</span>
           </div>

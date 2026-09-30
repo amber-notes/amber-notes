@@ -1,5 +1,5 @@
 import { GITHUB_URL } from "./github";
-import { APP_STORE_LIVE, APP_STORE_URL, INCREDIBLE_URL, MAKER_GITHUB, SITE_NAME, SITE_URL, X_URL } from "./site";
+import { APP_STORE_LIVE, APP_STORE_URL, INCREDIBLE_URL, MAKER_GITHUB, MAKER_URL, SITE_NAME, SITE_URL, X_URL } from "./site";
 
 /// schema.org JSON-LD for search engines. Only facts the site states elsewhere: the app is free,
 /// runs on macOS 26 and iOS, and is made by one person. No ratings or reviews, because there are none yet.
@@ -25,9 +25,9 @@ export const maker: Thing = {
   "@type": "Person",
   "@id": PERSON_ID,
   name: "Emil Wagman",
-  url: X_URL,
+  url: MAKER_URL,
   image: `${SITE_URL}/emil-wagman.jpg`,
-  sameAs: [X_URL, MAKER_GITHUB],
+  sameAs: [MAKER_URL, X_URL, MAKER_GITHUB],
   worksFor: { "@id": incredible["@id"] },
 };
 
