@@ -7,19 +7,32 @@ import type { PGlite } from "npm:@electric-sql/pglite@0.2.17";
 import { asUser, newUser, schemaDB, sqlFor } from "./pglite.ts";
 import { runTool, ToolError } from "./tools.ts";
 
-/** A key id as the app makes one (8 random bytes in hex), made fresh each run. */
-const keyId = () => [...crypto.getRandomValues(new Uint8Array(8))].map((b) => b.toString(16).padStart(2, "0")).join("");
-const KEY = keyId();
-const OLD_KEY = keyId();
+const b64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
+/** A salt and its key id, as the app makes them (16 random bytes; SHA-256 of them, 16 hex digits). */
+async function newSalt() {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
+  return { salt: b64(bytes), key: [...digest.slice(0, 8)].map((b) => b.toString(16).padStart(2, "0")).join("") };
+}
+const FIRST = await newSalt();
+const SECOND = await newSalt();
+const KEY = FIRST.key;
+const OLD_KEY = SECOND.key;
 /** What the app stores: its key id and an AES-GCM box. The server never opens it, so any bytes do. */
-const sealed = (key = KEY) => `amb1.${key}.${btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(48))))}`;
+const sealed = (key = KEY, format = "amb2") => `${format}.${key}.${b64(crypto.getRandomValues(new Uint8Array(48)))}`;
 
 async function setUp() {
   const pg = await schemaDB();
   const me = await newUser(pg);
   await asUser(pg, me, `insert into public.note_locks (salt, iterations, key_id, verifier, hint) values ($1, 600000, $2, 'v', 'Blue')`,
-    [btoa("sixteen byte salt!"), KEY]);
+    [FIRST.salt, KEY]);
   return { pg, me };
+}
+
+/** The settings a password change sends: the new salt, and the old setup carried forward with a proof. */
+function changeTo(next: { salt: string; key: string }, from = FIRST, earlier: unknown[] = []) {
+  return { salt: next.salt, iterations: 600000, key_id: next.key, verifier: "v2", hint: "Green",
+    previous: [...earlier, { salt: from.salt, iterations: 600000, key_id: from.key, proof: sealed(next.key) }] };
 }
 
 async function note(pg: PGlite, me: string, body: string, locked?: string) {
@@ -28,9 +41,12 @@ async function note(pg: PGlite, me: string, body: string, locked?: string) {
   return id;
 }
 
-/** The app writes as 'app' with its device in the header. */
+/** The app writes through the API with its device and that it knows about locked notes. */
 const app = (pg: PGlite, me: string, sql: string, params: unknown[] = []) =>
-  asUser(pg, me, sql, params, { "request.headers": JSON.stringify({ "x-pane-device": "Mac" }) });
+  asUser(pg, me, sql, params, { "request.headers": JSON.stringify({ "x-pane-device": "Mac", "x-amber-client": "lock-aware/1" }) });
+/** A build from before locked notes: through the API, without the header. */
+const oldApp = (pg: PGlite, me: string, sql: string, params: unknown[] = []) =>
+  asUser(pg, me, sql, params, { "request.headers": JSON.stringify({ "x-pane-device": "iPhone" }) });
 
 const tool = (pg: PGlite, me: string, name: string, args: Record<string, unknown> = {}) =>
   runTool(name, args, { sql: sqlFor(pg), userId: me, client: "Claude", canWrite: true }) as Promise<any>;
@@ -57,7 +73,7 @@ Deno.test("locking deletes every earlier version, and later versions keep only c
   const kept = await pg.query<{ body: string; locked_body: string }>(`select body, locked_body from public.note_revisions where note_id = $1`, [id]);
   assertEquals(kept.rows.length, 1);
   assertEquals(kept.rows[0].body, "Bank");
-  assert(kept.rows[0].locked_body.startsWith(`amb1.${KEY}.`));
+  assert(kept.rows[0].locked_body.startsWith(`amb2.${KEY}.`));
   const dump = JSON.stringify((await pg.query(`select * from public.note_revisions where note_id = $1`, [id])).rows);
   assert(!dump.includes("PIN"), "no revision has the text");
 });
@@ -70,17 +86,96 @@ Deno.test("a locked note's body is its title only", async () => {
   assertEquals(row.title, "Bank");
 });
 
-Deno.test("a note sealed with an old password's key is refused; changing the password lets the new key in", async () => {
+Deno.test("a note sealed with another password's key is refused; after a change only the new key goes in", async () => {
   const { pg, me } = await setUp();
-  await refused(note(pg, me, "Old", sealed(OLD_KEY)), "different notes password");
+  await refused(note(pg, me, "Other", sealed(SECOND.key)), "different notes password");
   const id = await note(pg, me, "Diary", sealed());
-  // A pin on a note still sealed with the current key is fine; so is one after the password changed.
-  await asUser(pg, me, `update public.note_locks set key_id = $1, salt = $2`, [OLD_KEY, btoa("another salt here!")]);
+  await app(pg, me, `select public.change_notes_password($1, $2)`, [JSON.stringify(changeTo(SECOND)), KEY]);
+  // A pin on a note still sealed with the old key is fine; sealing with it again isn't.
   await app(pg, me, `update public.notes set is_pinned = true where id = $1`, [id]);
-  await refused(app(pg, me, `update public.notes set locked_body = $2 where id = $1`, [id, sealed()]), "different notes password");
-  await app(pg, me, `update public.notes set locked_body = $2 where id = $1`, [id, sealed(OLD_KEY)]);
-  // The password setup can't be deleted.
+  await refused(app(pg, me, `update public.notes set locked_body = $2 where id = $1`, [id, sealed(KEY)]), "different notes password");
+  await app(pg, me, `update public.notes set locked_body = $2 where id = $1`, [id, sealed(SECOND.key)]);
+  // The setup can't be deleted, or changed except through change_notes_password.
   await refused(asUser(pg, me, `delete from public.note_locks`), "permission denied");
+  await refused(asUser(pg, me, `update public.note_locks set hint = 'x'`), "permission denied");
+});
+
+Deno.test("an old build can't write the notes of an account that locks notes", async () => {
+  const { pg, me } = await setUp();
+  const id = await note(pg, me, "Plan");
+  await refused(oldApp(pg, me, `update public.notes set body = 'Plan\n\nleaked' where id = $1`, [id]), "Update Amber Notes");
+  await refused(oldApp(pg, me, `insert into public.notes (id, body) values ($1, 'Copy of a locked note')`, [crypto.randomUUID()]), "Update Amber Notes");
+  await app(pg, me, `update public.notes set body = 'Plan\n\nfine' where id = $1`, [id]);
+  // An account without a notes password is left alone; so is the MCP server (no request headers).
+  const other = await newUser(pg);
+  await oldApp(pg, other, `insert into public.notes (id, body) values ($1, 'Old build, no locks')`, [crypto.randomUUID()]);
+  await tool(pg, me, "append_to_note", { id, text: "- from an AI" });
+});
+
+Deno.test("a new setup must carry the old one forward with a proof", async () => {
+  const { pg, me } = await setUp();
+  const lock = async () => (await pg.query<{ key_id: string; previous: unknown[] }>(`select key_id, previous from public.note_locks where user_id = $1`, [me])).rows[0];
+  const bad = [
+    [{ ...changeTo(SECOND), key_id: "0000000000000000" }, "SHA-256(salt)"],
+    [{ ...changeTo(SECOND), previous: [] }, "proof"],
+    [{ ...changeTo(SECOND), previous: [{ salt: FIRST.salt, iterations: 600000, key_id: KEY }] }, "proof"],
+    [{ ...changeTo(SECOND), previous: [{ salt: SECOND.salt, iterations: 600000, key_id: SECOND.key, proof: "x" }] }, "keep every earlier one"],
+  ] as const;
+  for (const [settings, why] of bad) {
+    await refused(app(pg, me, `select public.change_notes_password($1, $2)`, [JSON.stringify(settings), KEY]), why);
+    assertEquals((await lock()).key_id, KEY);
+  }
+  // Someone else changed it first.
+  await refused(app(pg, me, `select public.change_notes_password($1, $2)`, [JSON.stringify(changeTo(SECOND)), SECOND.key]), "changed on another device");
+  await app(pg, me, `select public.change_notes_password($1, $2)`, [JSON.stringify(changeTo(SECOND)), KEY]);
+  const after = await lock();
+  assertEquals(after.key_id, SECOND.key);
+  assertEquals((after.previous as { key_id: string }[]).map((p) => p.key_id), [KEY]);
+  // A first setup has no history to smuggle in.
+  const other = await newUser(pg);
+  await refused(asUser(pg, other, `insert into public.note_locks (salt, iterations, key_id, verifier, previous) values ($1, 600000, $2, 'v', $3)`,
+    [FIRST.salt, KEY, JSON.stringify([{ salt: SECOND.salt, iterations: 600000, key_id: SECOND.key, proof: "p" }])]), "no earlier ones");
+});
+
+Deno.test("changing the password seals every note again at once and drops versions sealed with the old key", async () => {
+  const { pg, me } = await setUp();
+  const a = await note(pg, me, "One", sealed());
+  const b = await note(pg, me, "Two", sealed());
+  const missed = await note(pg, me, "Three", sealed());
+  await asUser(pg, me, `update public.notes set locked_body = $2 where id = $1`, [a, sealed()], { "pane.source": "restore" });
+  const version = async (id: string) => Number((await pg.query<{ version: number }>(`select version from public.notes where id = $1`, [id])).rows[0].version);
+  const lockKey = async () => (await pg.query<{ key_id: string }>(`select key_id from public.note_locks where user_id = $1`, [me])).rows[0].key_id;
+
+  // One note moved on since the app looked: nothing changes at all.
+  const stale = [{ id: a, version: (await version(a)) - 1, body: "One", locked_body: sealed(SECOND.key) }];
+  await refused(app(pg, me, `select public.change_notes_password($1, $2, $3)`, [JSON.stringify(changeTo(SECOND)), KEY, JSON.stringify(stale)]), "changed on another device");
+  assertEquals(await lockKey(), KEY);
+
+  const notes = [a, b].map(async (id, i) => ({ id, version: await version(id), body: ["One", "Two"][i], locked_body: sealed(SECOND.key) }));
+  const [{ r }] = await app(pg, me, `select public.change_notes_password($1, $2, $3) as r`,
+    [JSON.stringify(changeTo(SECOND)), KEY, JSON.stringify(await Promise.all(notes))]) as { r: { notes: { id: string }[]; stale: string[]; versions_removed: number } }[];
+  assertEquals(await lockKey(), SECOND.key);
+  assertEquals(r.notes.map((n) => n.id).sort(), [a, b].sort());
+  assertEquals(r.stale, [missed]);
+  assert(r.versions_removed >= 1);
+  const left = await pg.query<{ locked_body: string }>(`select locked_body from public.note_revisions where user_id = $1 and locked_body is not null`, [me]);
+  assert(left.rows.every((v) => v.locked_body.split(".")[1] === SECOND.key), "no version sealed with the old key is kept");
+});
+
+Deno.test("a note that links a file or a sub-note can't be locked", async () => {
+  const { pg, me } = await setUp();
+  const file = await note(pg, me, "Scan\n\n![x](pane-file:3f2b2a1c-0000-4000-8000-000000000000)");
+  const parent = await note(pg, me, "Trip\n\n[Hotel](pane-note:3f2b2a1c-0000-4000-8000-000000000001)");
+  for (const id of [file, parent]) {
+    await refused(app(pg, me, `update public.notes set body = 'X', locked_body = $2 where id = $1`, [id, sealed()]), "files or sub-notes");
+  }
+});
+
+Deno.test("both box formats are accepted: amb2 (bound to the note) and amb1 (before it)", async () => {
+  const { pg, me } = await setUp();
+  await note(pg, me, "New", sealed(KEY, "amb2"));
+  await note(pg, me, "Old", sealed(KEY, "amb1"));
+  await refused(note(pg, me, "Other", sealed(KEY, "amb3")), "check");
 });
 
 Deno.test("locking a shared note stops its link, and a locked note can't be shared", async () => {
@@ -171,8 +266,10 @@ Deno.test("MCP: even a raw write as an AI can't change or lock a note", async ()
   const { pg, me } = await setUp();
   const id = await note(pg, me, "Passwords", sealed());
   const open = await note(pg, me, "Open note");
-  const mcp = { "pane.source": "mcp", "pane.client": "Claude" };
+  const mcp = { "pane.source": "mcp", "pane.agent": "mcp", "pane.client": "Claude" };
   await refused(asUser(pg, me, `update public.notes set body = 'Changed' where id = $1`, [id], mcp), "This note is locked");
+  // A tool that sets pane.source (a restore does) is still the AI.
+  await refused(asUser(pg, me, `update public.notes set body = 'Changed' where id = $1`, [id], { ...mcp, "pane.source": "restore" }), "This note is locked");
   await refused(asUser(pg, me, `update public.notes set locked_body = null where id = $1`, [id], mcp), "This note is locked");
   await refused(asUser(pg, me, `update public.notes set body = 'Open note', locked_body = $2 where id = $1`, [open, sealed()], mcp), "This note is locked");
 });

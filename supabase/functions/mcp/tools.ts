@@ -236,6 +236,7 @@ export async function runTool(name: string, args: Args, ctx: ToolContext): Promi
     await tx`select set_config('role', 'authenticated', true),
                     set_config('request.jwt.claims', ${JSON.stringify({ sub: ctx.userId, role: "authenticated" })}, true),
                     set_config('pane.source', 'mcp', true),
+                    set_config('pane.agent', 'mcp', true),
                     set_config('pane.client', ${ctx.client}, true)`;
     return await handlers[name](tx, args, ctx);
   });
@@ -354,14 +355,15 @@ async function findNote(tx: Tx, args: Args, includeTrashed = false): Promise<Not
   const title = typeof args.title === "string" ? args.title.trim() : undefined;
   if (id) {
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) throw new ToolError(`${quote(id)} isn't a note id. Ids look like 3f2b…-…; get one from search_notes or list_notes.`);
-    const rows = await tx<NoteRow[]>`select * from public.notes where id = ${id}::uuid and deleted_at is null`;
+    // Locked for this call: nobody can lock (or change) it between this check and the write.
+    const rows = await tx<NoteRow[]>`select * from public.notes where id = ${id}::uuid and deleted_at is null for update`;
     if (!rows.length) throw new ToolError(`No note with id ${id}.`);
     if (rows[0].trashed_at && !includeTrashed) throw new ToolError(`"${rows[0].title}" is in Recently Deleted. Restore it with restore_note first.`);
     refuseLocked(rows[0]);
     return rows[0];
   }
   if (!title) throw new ToolError("Give the note's id (preferred) or its title.");
-  const rows = await tx<NoteRow[]>`select * from public.notes where deleted_at is null and trashed_at is null and lower(title) = lower(${title}) order by updated_at desc limit 5`;
+  const rows = await tx<NoteRow[]>`select * from public.notes where deleted_at is null and trashed_at is null and lower(title) = lower(${title}) order by updated_at desc limit 5 for update`;
   if (rows.length === 1) { refuseLocked(rows[0]); return rows[0]; }
   if (rows.length > 1) throw new ToolError(`${rows.length} notes are titled ${quote(title)}: ${rows.map((r) => r.id).join(", ")}. Use an id.`);
   const near = await tx<{ id: string; title: string }[]>`select id, title from public.notes where deleted_at is null and trashed_at is null and title ilike ${likeText(title)} order by updated_at desc limit 5`;

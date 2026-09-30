@@ -4,25 +4,36 @@
 -- What the server holds for a locked note:
 --   notes.body         its title only (one line, plain text), so the list, the AI tools and the
 --                      title column keep working. Never more: a check below makes sure.
---   notes.locked_body  "amb1.<key id>.<base64 AES-GCM box>": the whole markdown, sealed.
+--   notes.locked_body  "amb2.<key id>.<base64 AES-GCM box>": the whole markdown, sealed, with the
+--                      header and the note's id authenticated, so a box can't be moved to another
+--                      note. ("amb1" boxes, without the id, are still read; the app re-seals them.)
 --   note_locks         one row per account: the random salt and iteration count the key is
 --                      derived with (PBKDF2-SHA256), a sealed known text to check a password
---                      against, the hint, the key id, and the same for earlier passwords.
---                      Never the password or the key.
+--                      against, the hint, the key id, and every earlier password's salt, count,
+--                      key id and proof (its key sealed with the next key). Never a password or
+--                      a key in the clear.
 --
--- The key id is the first 16 hex digits of SHA-256(salt). Changing the password makes a new
--- salt (so a new key id) and the app re-encrypts every locked note. A device that still has the
--- old key can't write a note sealed with it: the write is refused until it has the new password.
+-- The key id is the first 16 hex digits of SHA-256(salt); the database checks it. Changing the
+-- password goes through change_notes_password(), which swaps the setup, writes every note the
+-- app sealed again, and deletes the versions sealed with other keys, in one transaction. A new
+-- setup must carry the old one forward in `previous`, with a proof the changer knew the old key;
+-- the apps check that proof before they trust a new setup. A note sealed with another key can't
+-- be written.
+--
+-- Old builds: once an account has a notes password, every write to its notes through the API
+-- must come from an app that knows about locked notes (header x-amber-client: lock-aware/…).
+-- Anything older is refused, so it can't upload a readable copy of a locked note.
 --
 -- Version history never keeps readable text of a locked note. Locking a note deletes every
 -- earlier version (the app says so when you lock); while it's locked, versions keep the
 -- ciphertext (note_revisions.locked_body) and the title only.
 --
--- Locking a shared note stops its link, and a locked note can't be shared. AI tools (pane.source
--- 'mcp') can't change a locked note's text or lock one; the MCP server also skips locked notes
+-- Locking a shared note stops its link, and a locked note can't be shared. A note that links a
+-- file or a sub-note can't be locked. AI tools (pane.agent 'mcp', set once per call by the MCP
+-- server) can't change a locked note's text or lock one; the MCP server also skips locked notes
 -- in search and says "This note is locked" when asked to read one.
 --
--- Additive: older apps never send locked_body, and a note without it behaves as before.
+-- Additive: a note without locked_body behaves as before.
 
 create table public.note_locks (
   user_id uuid primary key default auth.uid() references auth.users (id) on delete cascade,
@@ -31,8 +42,9 @@ create table public.note_locks (
   key_id text not null check (key_id ~ '^[0-9a-f]{16}$'),
   verifier text not null check (char_length(verifier) <= 300),
   hint text check (hint is null or char_length(hint) <= 200),
-  -- Earlier passwords' salts, iteration counts and key ids ({salt, iterations, key_id}, newest
-  -- last), so a note a device sealed before the change can still be opened with the old password.
+  -- Earlier passwords, oldest first: {salt, iterations, key_id, proof}. `proof` is that password's
+  -- key sealed with the next one's, so a device that knew any earlier password can check a new
+  -- setup, and open notes sealed before the change.
   previous jsonb not null default '[]'::jsonb check (jsonb_typeof(previous) = 'array' and jsonb_array_length(previous) <= 50),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -42,25 +54,94 @@ alter table public.note_locks enable row level security;
 create policy "own note lock" on public.note_locks for all to authenticated
   using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
 revoke all on public.note_locks from anon;
--- Forgetting the password can't be undone by deleting the row: the notes stay sealed with it.
-revoke delete on public.note_locks from authenticated;
+-- Set up once from the app; changed only through change_notes_password(). Forgetting the password
+-- can't be undone by deleting the row: the notes stay sealed with it.
+revoke update, delete on public.note_locks from authenticated;
+
+-- The rules for a setup and any change to it, whoever writes it.
+create or replace function public.pane_note_locks_guard() returns trigger
+language plpgsql set search_path = '' as $$
+declare
+  expected jsonb;
+  last jsonb;
+  n integer;
+begin
+  if new.key_id <> left(encode(sha256(decode(new.salt, 'base64')), 'hex'), 16) then
+    raise exception 'key_id must be the first 16 hex digits of SHA-256(salt)' using errcode = '23514';
+  end if;
+  if tg_op = 'INSERT' and new.previous <> '[]'::jsonb then
+    raise exception 'A first notes password has no earlier ones' using errcode = '23514';
+  end if;
+  if tg_op = 'UPDATE' then
+    if new.user_id <> old.user_id then
+      raise exception 'note_locks.user_id can''t change' using errcode = '23514';
+    end if;
+    if new.key_id = old.key_id then
+      -- The same password: only the hint may change.
+      if new.salt <> old.salt or new.iterations <> old.iterations or new.verifier <> old.verifier
+         or new.previous <> old.previous then
+        raise exception 'Only the hint can change without a new password' using errcode = '23514';
+      end if;
+    else
+      -- A new password carries the old one forward, with its proof.
+      last := new.previous -> -1;
+      if last is null or coalesce(char_length(last ->> 'proof'), 0) not between 1 and 300 then
+        raise exception 'A new notes password needs a proof of the old one' using errcode = '23514';
+      end if;
+      expected := old.previous || jsonb_build_array(jsonb_build_object(
+        'salt', old.salt, 'iterations', old.iterations, 'key_id', old.key_id, 'proof', last ->> 'proof'));
+      n := jsonb_array_length(expected);
+      if n > 50 then
+        select jsonb_agg(e order by i) into expected
+        from jsonb_array_elements(expected) with ordinality as t(e, i) where i > n - 50;
+      end if;
+      if new.previous <> expected then
+        raise exception 'A new notes password must keep every earlier one, the last being the old one' using errcode = '23514';
+      end if;
+    end if;
+    new.updated_at := now();
+  end if;
+  return new;
+end $$;
+
+create trigger note_locks_guard before insert or update on public.note_locks
+  for each row execute function public.pane_note_locks_guard();
 
 alter table public.notes
   add column locked_body text check (locked_body is null or (
     octet_length(locked_body) <= 3000000
-    and locked_body ~ '^amb1\.[0-9a-f]{16}\.[A-Za-z0-9+/]+={0,2}$')),
+    and locked_body ~ '^amb[12]\.[0-9a-f]{16}\.[A-Za-z0-9+/]+={0,2}$')),
   -- A locked note's body is its title and nothing else.
   add constraint notes_locked_title_only check (locked_body is null or (strpos(body, E'\n') = 0 and char_length(body) <= 300));
 
 alter table public.note_revisions add column locked_body text;
 
+-- True when this write came through the API (PostgREST) from an app that doesn't know about
+-- locked notes. Writes from the database itself and the MCP server carry no request headers.
+create or replace function public.pane_old_client() returns boolean
+language plpgsql stable set search_path = '' as $$
+declare
+  headers text := nullif(current_setting('request.headers', true), '');
+begin
+  if headers is null then return false; end if;
+  begin
+    return coalesce(headers::json ->> 'x-amber-client', '') !~ '^lock-aware/';
+  exception when others then
+    return true;
+  end;
+end $$;
+
 -- Guards on locked notes, before notes_touch (triggers of a kind fire in name order).
 create or replace function public.pane_note_lock() returns trigger
 language plpgsql security definer set search_path = '' as $$
-declare
-  src text := coalesce(nullif(current_setting('pane.source', true), ''), 'app');
 begin
-  if src = 'mcp' and (
+  if public.pane_old_client() and exists (select 1 from public.note_locks l where l.user_id = new.user_id) then
+    raise exception 'Update Amber Notes to keep syncing. This account has locked notes, and this version of the app can''t keep them safe.'
+      using errcode = '42501', hint = 'update_app';
+  end if;
+  -- pane.agent is set once per MCP call by the server, and no tool changes it (a restore sets
+  -- pane.source, not this).
+  if current_setting('pane.agent', true) = 'mcp' and (
        (tg_op = 'INSERT' and new.locked_body is not null)
        or (tg_op = 'UPDATE' and (new.locked_body is distinct from old.locked_body
                                  or (old.locked_body is not null and new.body is distinct from old.body)))) then
@@ -73,6 +154,10 @@ begin
       using errcode = '23514', hint = 'stale_lock_key';
   end if;
   if tg_op = 'UPDATE' and old.locked_body is null and new.locked_body is not null then
+    -- Files and sub-notes live outside the note's text, so they'd stay readable.
+    if strpos(old.body, 'pane-file:') > 0 or strpos(old.body, 'pane-note:') > 0 then
+      raise exception 'Notes with files or sub-notes can''t be locked.' using errcode = '23514', hint = 'lock_files';
+    end if;
     -- Locking a shared note stops its link.
     update public.note_shares set revoked_at = now() where note_id = old.id and revoked_at is null;
   end if;
@@ -260,3 +345,54 @@ language sql stable security invoker set search_path = '' as $$
   from hits h, p
   order by h.rank desc, h.updated_at desc
 $$;
+
+-- Change Password: the new setup, every locked note the app sealed again, and no versions left
+-- sealed with another key, all at once or not at all. `p_notes` is [{id, version, body,
+-- locked_body}]: each must still be at `version` (else nothing changes and the app syncs and
+-- tries again). Returns the notes' new versions, the locked notes still sealed with an earlier
+-- key (the app opens them with the proof chain later), and how many versions went.
+create or replace function public.change_notes_password(p_settings jsonb, p_expected_key_id text, p_notes jsonb default '[]'::jsonb)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare
+  uid uuid := auth.uid();
+  new_key text := p_settings ->> 'key_id';
+  n jsonb;
+  v bigint;
+  versions jsonb := '[]'::jsonb;
+  gone integer;
+begin
+  if uid is null then raise exception 'not signed in' using errcode = '42501'; end if;
+  update public.note_locks set
+      salt = p_settings ->> 'salt',
+      iterations = (p_settings ->> 'iterations')::integer,
+      key_id = new_key,
+      verifier = p_settings ->> 'verifier',
+      hint = nullif(p_settings ->> 'hint', ''),
+      previous = coalesce(p_settings -> 'previous', '[]'::jsonb)
+    where user_id = uid and key_id = p_expected_key_id;
+  if not found then
+    raise exception 'Your notes password was changed on another device.' using errcode = 'PT409', hint = 'changed_elsewhere';
+  end if;
+  for n in select * from jsonb_array_elements(coalesce(p_notes, '[]'::jsonb)) loop
+    update public.notes set body = n ->> 'body', locked_body = n ->> 'locked_body', updated_at = now()
+      where id = (n ->> 'id')::uuid and user_id = uid and version = (n ->> 'version')::bigint
+        and locked_body is not null and deleted_at is null
+      returning version into v;
+    if not found then
+      raise exception 'Your notes changed on another device. Try again in a moment.' using errcode = '40001', hint = 'notes_changed';
+    end if;
+    versions := versions || jsonb_build_array(jsonb_build_object('id', n ->> 'id', 'version', v));
+  end loop;
+  -- No version stays sealed with a password that's no longer yours.
+  delete from public.note_revisions
+    where user_id = uid and locked_body is not null and split_part(locked_body, '.', 2) <> new_key;
+  get diagnostics gone = row_count;
+  return jsonb_build_object(
+    'notes', versions,
+    'stale', coalesce((select jsonb_agg(id) from public.notes
+                       where user_id = uid and deleted_at is null and locked_body is not null
+                         and split_part(locked_body, '.', 2) <> new_key), '[]'::jsonb),
+    'versions_removed', gone);
+end $$;
+revoke all on function public.change_notes_password(jsonb, text, jsonb) from public, anon;
+grant execute on function public.change_notes_password(jsonb, text, jsonb) to authenticated;

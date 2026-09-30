@@ -14,7 +14,8 @@ const enabled = Boolean(api && anon && me && mcp && token && /127\.0\.0\.1/.test
 async function rest(method: string, path: string, body?: unknown) {
   const res = await fetch(`${api}/rest/v1/${path}`, {
     method,
-    headers: { authorization: `Bearer ${me}`, apikey: anon!, "content-type": "application/json", prefer: "return=representation" },
+    // As the app: an account that locks notes only takes writes from lock-aware builds.
+    headers: { authorization: `Bearer ${me}`, apikey: anon!, "content-type": "application/json", prefer: "return=representation", "x-amber-client": "lock-aware/1" },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   return { status: res.status, json: await res.json().catch(() => null) as any };
@@ -30,16 +31,19 @@ async function call(name: string, args: Record<string, unknown>) {
   return { error: r.isError === true, text: r.content[0].text as string, data: r.structuredContent };
 }
 
-/** The test account's notes password setup (made once; it can't be deleted), and its key id. */
+/** The test account's notes password setup, and its key id. Removed again at the end (see below). */
 async function keyID(): Promise<string> {
   const got = await rest("GET", "note_locks?select=key_id");
   if (got.json?.length) return got.json[0].key_id;
-  const made = await rest("POST", "note_locks", { salt: btoa("sixteen byte salt!"), iterations: 600000, key_id: "0123456789abcdef", verifier: "v", hint: "e2e" });
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", salt));
+  const key_id = [...digest.slice(0, 8)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  const made = await rest("POST", "note_locks", { salt: btoa(String.fromCharCode(...salt)), iterations: 600000, key_id, verifier: "v", hint: "e2e" });
   assertEquals(made.status, 201, JSON.stringify(made.json));
   return made.json[0].key_id;
 }
 
-const sealed = (key: string) => `amb1.${key}.${btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(48))))}`;
+const sealed = (key: string) => `amb2.${key}.${btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(48))))}`;
 
 Deno.test({ name: "locked: search leaves the note out, reading says it's locked, edits are refused", ignore: !enabled }, async () => {
   const key = await keyID();
@@ -89,4 +93,17 @@ Deno.test({ name: "locked: locking a shared note stops its link", ignore: !enabl
   const history = await rest("GET", `note_revisions?note_id=eq.${id}&select=body`);
   assertEquals(history.json, [], "locking leaves no readable version");
   await rest("PATCH", `notes?id=eq.${id}`, { trashed_at: new Date().toISOString() });
+});
+
+// The other MCP tests share this account and write like an older app would: leave it without a
+// notes password. (Only the database owner can delete a setup.)
+Deno.test({ name: "locked: remove the test account's notes password", ignore: !enabled || !Deno.env.get("PANE_DB_URL") }, async () => {
+  const { default: postgres } = await import("npm:postgres@3.4.5");
+  const sql = postgres(Deno.env.get("PANE_DB_URL")!, { max: 1, prepare: false });
+  const sub = JSON.parse(atob(me!.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))).sub as string;
+  try {
+    await sql`delete from public.note_locks where user_id = ${sub}`;
+  } finally {
+    await sql.end();
+  }
 });
