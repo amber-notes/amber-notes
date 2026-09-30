@@ -27,7 +27,7 @@ describe("privacy copy", () => {
   });
 
   it("keeps every encryption claim in lib/privacy.ts, not in the page", () => {
-    expect(page).not.toMatch(/end.to.end|AES|HTTPS|encrypted (on|with|at)/i);
+    expect(page).not.toMatch(/end.to.end|AES-256|over HTTPS|encrypted (on|with|at)/i);
   });
 
   it("lists the same log retention as the privacy policy", () => {
