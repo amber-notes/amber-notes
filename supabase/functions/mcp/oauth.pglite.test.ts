@@ -1236,6 +1236,24 @@ Deno.test("an ask pushes to every device of that account, generic words and the 
   }
 });
 
+Deno.test("without an APNs key an ask still goes through, and the log says push is off", async () => {
+  const { sql, pg } = await db();
+  const me = await newUser(pg);
+  await app(pg, me.id, `select public.register_device_token($1, 'ios', $2, 'production')`, [crypto.randomUUID(), "ef".repeat(32)]);
+  const lines: string[] = [];
+  const original = console.log;
+  console.log = (s: string) => lines.push(s);
+  setPushSender(null);
+  try {
+    const { requestId } = await pendingRequest(sql);
+    assertEquals((await askAs(sql, me, requestId, toBase64((await newHandoffKeys()).publicRaw))).status, 200);
+  } finally {
+    console.log = original;
+  }
+  assert(lines.some((l) => JSON.parse(l).event === "push_off"));
+  assert(!lines.join("").includes("ef".repeat(32)), "never the token");
+});
+
 Deno.test("a token another account registers on this device leaves the old account", async () => {
   const { pg } = await db();
   const a = await newUser(pg), b = await newUser(pg);

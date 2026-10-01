@@ -25,7 +25,13 @@ struct SettingsView: View {
                     ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
                 }
         }
+        .consentHost(client: backend.client, active: isSignedIn)
         #endif
+    }
+
+    private var isSignedIn: Bool {
+        if case .signedIn = backend.state { return true }
+        return false
     }
 
     /// Opened at a section (What's new's "Reconnect your AI"): scrolls there once it's drawn.
@@ -114,6 +120,7 @@ struct SettingsView: View {
                 }
             }
             .formStyle(.grouped)
+            .connectGuides(client: backend.client)
             .confirmationDialog("Sign out of Amber Notes?", isPresented: $confirmSignOut, titleVisibility: .visible) {
                 Button("Sign Out", role: .destructive) { Task { await backend.signOut(); dismiss() } }
             } message: {

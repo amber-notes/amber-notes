@@ -588,6 +588,31 @@ final class ConnectCenter: NSObject {
     /// Looks at the server for asks now (set while signed in, by ConnectAsks): a push was tapped
     /// or arrived.
     @ObservationIgnored var lookAgain: (@MainActor () async -> Void)?
+    /// Where the consent sheet can show, bottom to top: the window's root, then each sheet on
+    /// screen over it (Settings, then Connect Claude over that). Only the top one presents it: a
+    /// view that's already presenting a sheet can't present another, so a sheet asked for on the
+    /// root while Settings is up never appears.
+    private(set) var hosts: [UUID] = []
+    /// Connect guides on screen: an ask is expected any moment, so the app looks more often.
+    private(set) var expecting = 0
+
+    func hostAppeared(_ id: UUID) {
+        hosts.removeAll { $0 == id }
+        hosts.append(id)
+    }
+
+    func hostGone(_ id: UUID) { hosts.removeAll { $0 == id } }
+
+    /// Whether this host is the one that presents the consent sheet now.
+    func presents(host id: UUID) -> Bool { hosts.last == id }
+
+    /// A connect guide appeared: looks for asks now, and often until it goes.
+    func expectAsks() {
+        expecting += 1
+        if expecting == 1, let lookAgain { Task { await lookAgain() } }
+    }
+
+    func stopExpectingAsks() { expecting = max(0, expecting - 1) }
     #if os(macOS)
     /// The browser the request showing came from, so the answer goes back to the same one.
     var browser: URL?
@@ -786,11 +811,33 @@ struct ConnectHandler: ViewModifier {
             }
             #endif
             .onAppear { center.installNotifications() }
+            .modifier(ConsentHost(client: backend.client, active: isSignedIn))
+    }
+
+    private var isSignedIn: Bool {
+        if case .signedIn = backend.state { return true }
+        return false
+    }
+}
+
+/// Presents the consent sheet when it's the top host on screen (`ConnectCenter.hosts`): the
+/// window's root, or on iPhone and iPad a sheet over it. An ask that arrives while Settings and
+/// Connect Claude are open shows over them instead of waiting, unseen, behind them.
+struct ConsentHost: ViewModifier {
+    let client: SupabaseClient?
+    var active = true
+    @State private var center = ConnectCenter.shared
+    @State private var id = UUID()
+
+    func body(content: Content) -> some View {
+        content
+            .onAppear { center.hostAppeared(id) }
+            .onDisappear { center.hostGone(id) }
             .sheet(item: Binding(
-                get: { backend.client != nil && isSignedIn ? center.pending.map(PendingID.init) : nil },
+                get: { client != nil && active && center.presents(host: id) ? center.pending.map(PendingID.init) : nil },
                 set: { if $0 == nil { center.sheetClosed() } }
             )) { pending in
-                if let client = backend.client {
+                if let client {
                     ConsentSheet(client: client, requestID: pending.id, finish: { center.open($0) },
                                  allowed: { r in
                                      center.approved = (r.verifiedAI, .now)
@@ -803,16 +850,22 @@ struct ConnectHandler: ViewModifier {
             }
     }
 
-    private var isSignedIn: Bool {
-        if case .signedIn = backend.state { return true }
-        return false
-    }
-
     private struct PendingID: Identifiable { let id: UUID }
 }
 
 extension View {
     func connectHandler(backend: Backend) -> some View { modifier(ConnectHandler(backend: backend)) }
+
+    /// A sheet's content: the consent sheet can show over it. On the Mac each window presents its
+    /// own sheets, so only the window's root hosts it.
+    @ViewBuilder
+    func consentHost(client: SupabaseClient?, active: Bool = true) -> some View {
+        #if os(iOS)
+        modifier(ConsentHost(client: client, active: active))
+        #else
+        self
+        #endif
+    }
 }
 
 // MARK: Consent
@@ -1261,7 +1314,8 @@ struct ConnectAISection: View {
     /// Captures: shows these instead of asking the server.
     var preview: [Connection]? = nil
     @State private var connections: [Connection] = []
-    @State private var guide: Guide?
+    /// Which guide is open, held by the form around this section (`connectGuides`).
+    @Environment(ConnectGuideRoute.self) private var route: ConnectGuideRoute?
     @State private var removing: Connection?
     @State private var error: String?
 
@@ -1307,7 +1361,7 @@ struct ConnectAISection: View {
     private var guides: some View {
         Section {
             ForEach(Guide.allCases) { g in
-                Button { guide = g } label: {
+                Button { route?.guide = g } label: {
                     HStack(spacing: 12) {
                         AITile(ai: g.title, size: 32)
                         VStack(alignment: .leading, spacing: 3) {
@@ -1355,10 +1409,8 @@ struct ConnectAISection: View {
             ForEach(active) { c in row(c) }
             if let error { Text(error).font(.footnote).foregroundStyle(.red) }
         }
-        .task { await load() }
-        .sheet(item: $guide, onDismiss: { Task { await load() } }) { g in
-            GuideSheet(guide: g, client: client)
-        }
+        // Loads again when a guide closes: it may have connected something.
+        .task(id: route?.closed ?? 0) { await load() }
         .confirmationDialog("Disconnect \(removing?.title ?? "")?", isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }), titleVisibility: .visible) {
             Button("Disconnect", role: .destructive) { if let r = removing { Task { await revoke(r) } } }
         } message: {
@@ -1413,6 +1465,39 @@ struct ConnectAISection: View {
     }
 }
 
+/// Which connect guide is open. The form around Connect an AI holds it and presents the guide, not
+/// the section's rows: a form's rows come and go as it redraws and scrolls, and a sheet presented
+/// from one closes with it (the Connect Claude sheet that opened and closed itself on the first tap).
+@MainActor
+@Observable
+final class ConnectGuideRoute {
+    var guide: ConnectAISection.Guide?
+    /// Bumped each time a guide closes, so the Connected list loads again.
+    private(set) var closed = 0
+
+    func guideClosed() { closed += 1 }
+}
+
+/// Presents the connect guides for the Connect an AI section inside this view.
+struct ConnectGuides: ViewModifier {
+    let client: SupabaseClient?
+    @State private var route = ConnectGuideRoute()
+
+    func body(content: Content) -> some View {
+        content
+            .environment(route)
+            .sheet(item: Binding(get: { client == nil ? nil : route.guide }, set: { route.guide = $0 }),
+                   onDismiss: { route.guideClosed() }) { g in
+                if let client { GuideSheet(guide: g, client: client) }
+            }
+    }
+}
+
+extension View {
+    /// Put on the form that contains `ConnectAISection`.
+    func connectGuides(client: SupabaseClient?) -> some View { modifier(ConnectGuides(client: client)) }
+}
+
 /// Step by step for one app. ChatGPT and Claude need only the address; Claude Code and
 /// Codex get a fresh token that's used once here and never shown in a link.
 private struct GuideSheet: View {
@@ -1441,6 +1526,7 @@ private struct GuideSheet: View {
                 #endif
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
+        .consentHost(client: client)
         #if os(macOS)
         .frame(width: 560, height: 560)
         #endif

@@ -190,6 +190,13 @@ struct WebConnectGuide: View {
             }
         }
         .task { await watch.run(client: client) }
+        // The approval comes to this device: it looks for it every couple of seconds while the
+        // guide is open, and may notify (asked now, so the push shows if the app goes away).
+        .onAppear {
+            ConnectCenter.shared.expectAsks()
+            if !PaneApp.isUnitTestHost { Task { await ConnectNotifier.system.askPermission() } }
+        }
+        .onDisappear { ConnectCenter.shared.stopExpectingAsks() }
         #if os(iOS)
         // Handoff: the same guide is waiting on the Mac.
         .userActivity(ConnectHandoff.activityType, isActive: !watch.isConnected) { a in

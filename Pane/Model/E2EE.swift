@@ -664,6 +664,8 @@ final class AccountCrypto {
     private let pollInterval: Duration
     private let retryInterval: Duration
     private let helpAfterPolls: Int
+    /// How long startup waits for the server before saying it can't reach it (with Try again).
+    private let fetchTimeout: Duration
     private let sleep: @Sendable (Duration) async throws -> Void
     /// Bumped whenever what's being worked out changes, so an older answer is ignored.
     private var generation = 0
@@ -674,12 +676,13 @@ final class AccountCrypto {
     var removeAccountFiles: (@MainActor (UUID) async -> Void)?
 
     init(store: AccountKeyStore, defaults: UserDefaults = .standard, pollInterval: Duration = .seconds(2),
-         helpAfter: Duration = .seconds(20), retryInterval: Duration = .seconds(10),
+         helpAfter: Duration = .seconds(20), retryInterval: Duration = .seconds(10), fetchTimeout: Duration = .seconds(12),
          sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }) {
         self.store = store
         self.defaults = defaults
         self.pollInterval = pollInterval
         self.retryInterval = retryInterval
+        self.fetchTimeout = fetchTimeout
         helpAfterPolls = max(1, Int((helpAfter / pollInterval).rounded()))
         self.sleep = sleep
     }
@@ -692,6 +695,11 @@ final class AccountCrypto {
     /// The recovery key, for Settings › Privacy & Security (behind Face ID or Touch ID there).
     var recoveryKeyText: String? { isReady ? key?.recoveryText : nil }
     var recoverySavedAt: Date? { serverKey?.recovery_saved_at }
+    /// The recovery key is saved somewhere: printed, exported or copied on some device, or typed
+    /// here to unlock (which proves it), even while that couldn't reach the server yet.
+    var recoveryKeySaved: Bool {
+        recoverySavedAt != nil || (account.map { defaults.bool(forKey: Self.recoveryProvenKey($0)) } ?? false)
+    }
 
     // MARK: Startup
 
@@ -722,7 +730,7 @@ final class AccountCrypto {
         let gen = generation
         let remote: KeyStartup.Server
         do {
-            let state = try await server.fetch()
+            let state = try await Self.within(fetchTimeout, sleep: sleep) { try await server.fetch() }
             remote = Self.remote(state)
             serverGeneration = state.generation
         } catch { remote = .unreachable }
@@ -866,6 +874,10 @@ final class AccountCrypto {
         serverGeneration = state.generation
         if let fetched = state.key, key.matches(fetched, user: account) {
             serverKey = fetched
+            // Unlocked with the recovery key while the server couldn't be told: tell it now.
+            if fetched.recovery_saved_at == nil, defaults.bool(forKey: Self.recoveryProvenKey(account)) {
+                try? await markRecoveryKeySaved()
+            }
             if unverified {
                 unverified = false
                 store.remove(account: account, slot: .pending)
@@ -897,6 +909,12 @@ final class AccountCrypto {
         store.save(k, account: account, slot: .synced)
         store.remove(account: account, slot: .pending)
         open(k, verified: true)
+        // Typing the recovery key proves it's saved somewhere: Privacy & Security says so, here
+        // and on the account's other devices. Offline, this device remembers and tells the server later.
+        if current.recovery_saved_at == nil || recoveryKeyChanged {
+            defaults.set(true, forKey: Self.recoveryProvenKey(account))
+            try? await markRecoveryKeySaved()
+        }
     }
 
     /// The last resort: the notes on the server can't be opened by anyone, so they're deleted,
@@ -929,6 +947,7 @@ final class AccountCrypto {
         if let account {
             defaults.removeObject(forKey: Self.recoveryChangedKey(account))
             defaults.removeObject(forKey: Self.recoveryChangeSaidKey(account))
+            defaults.removeObject(forKey: Self.recoveryProvenKey(account))
         }
         recoveryKeyChanged = false
         recoveryKeyChangeNeedsSaying = false
@@ -942,6 +961,8 @@ final class AccountCrypto {
 
     nonisolated static func recoveryChangedKey(_ account: UUID) -> String { "e2ee.recoveryChanged.\(account.uuidString.lowercased())" }
     nonisolated static func recoveryChangeSaidKey(_ account: UUID) -> String { "e2ee.recoveryChangeSaid.\(account.uuidString.lowercased())" }
+    /// The recovery key was typed here to unlock, and the server hasn't been told yet.
+    nonisolated static func recoveryProvenKey(_ account: UUID) -> String { "e2ee.recoveryProven.\(account.uuidString.lowercased())" }
     /// This device started fresh: the notice every device gets about it isn't news here.
     nonisolated static func startedFreshHereKey(_ account: UUID) -> String { "e2ee.startedFreshHere.\(account.uuidString.lowercased())" }
 
@@ -969,7 +990,8 @@ final class AccountCrypto {
     /// The account is deleted: its key goes from the Keychain, and so from iCloud Keychain.
     func forgetKey(account: UUID) {
         for slot in KeySlot.allCases { store.remove(account: account, slot: slot) }
-        for key in [welcomedKey(account), Self.recoveryChangedKey(account), Self.recoveryChangeSaidKey(account), Self.startedFreshHereKey(account)] {
+        for key in [welcomedKey(account), Self.recoveryChangedKey(account), Self.recoveryChangeSaidKey(account), Self.startedFreshHereKey(account),
+                    Self.recoveryProvenKey(account)] {
             defaults.removeObject(forKey: key)
         }
         if account == self.account { signedOut() }
@@ -1030,6 +1052,23 @@ final class AccountCrypto {
     private func stop() {
         background?.cancel()
         background = nil
+    }
+
+    struct TimedOut: Error {}
+
+    /// `work`, or `TimedOut` after `limit`. A `sleep` that throws (tests) sets no limit.
+    static func within<T: Sendable>(_ limit: Duration, sleep: @escaping @Sendable (Duration) async throws -> Void,
+                                    _ work: @escaping @Sendable () async throws -> T) async throws -> T {
+        try await withThrowingTaskGroup(of: T?.self) { group in
+            group.addTask { try await work() }
+            group.addTask {
+                do { try await sleep(limit) } catch { try await Task.sleep(for: .seconds(3600 * 24)) }
+                return nil
+            }
+            defer { group.cancelAll() }
+            guard let first = try await group.next(), let value = first else { throw TimedOut() }
+            return value
+        }
     }
 
     /// Tests: waits for the polling or retrying in the background to end.
