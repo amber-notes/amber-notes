@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { AI_ACCESS, CAVEAT, COUNTS, ENCRYPTION, FACTS, HOME_ALTS, LIMITS, LOGS, PRIVACY_PATH, READABLE, WHO_CAN_SEE } from "./privacy";
+import { AI_ACCESS, CAVEAT, COUNTS, ENCRYPTION, FACTS, HOME_PRIVACY, LIMITS, LOGS, PRIVACY_PATH, READABLE, WHO_CAN_SEE } from "./privacy";
 import { themeFor } from "./theme";
 
 const page = readFileSync(join(__dirname, "../app/privacy-security/page.tsx"), "utf8");
@@ -11,7 +11,7 @@ const items = [...ENCRYPTION.items, ...WHO_CAN_SEE, ...AI_ACCESS, ...LIMITS];
 const copy = [
   ...FACTS.flatMap((f) => [f.title, f.text]), CAVEAT.text, CAVEAT.link, ...LOGS.flatMap((l) => [l.name, l.what, l.kept]), ...COUNTS, ...READABLE,
   ...items.flatMap((i) => [i.label, i.text]), ENCRYPTION.note, page, policy,
-  JSON.stringify(HOME_ALTS),
+  ...Object.values(HOME_PRIVACY),
 ];
 const all = copy.join("\n");
 
@@ -52,6 +52,10 @@ describe("privacy copy", () => {
     const facts = [...FACTS.map((f) => f.text), ...ENCRYPTION.items.map((i) => i.text), page].join(" ").toLowerCase();
     expect(facts).not.toMatch(/only your devices (hold|have|can)/);
     expect(FACTS[0].text).toMatch(/only your devices, and AI connections you approve, can unlock/);
+  });
+
+  it("says the AI exception on the home page, next to \"We can't read your notes\"", () => {
+    expect(HOME_PRIVACY.text).toMatch(/When an AI you approve asks for notes, our server reads them in memory/);
   });
 
   it("has no Coming note: end to end is what's built", () => {
