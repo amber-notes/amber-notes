@@ -24,6 +24,9 @@ enum Palette {
     /// The fill of amber primary buttons, in light and dark alike: the deeper amber, so their
     /// white label stays readable (the dark-mode amber is too light under white).
     static let amberButton = pair(0xD96A06, 0xD96A06)
+    /// The fill of destructive primary buttons (Start fresh), in light and dark alike: a red deep
+    /// enough for the same white label.
+    static let destructiveButton = pair(0xC62828, 0xC62828)
     /// Amber as text beside an AI's mark: dark enough to read on white.
     static let amberInk = pair(0xA85700, 0xF4AD33)
     /// The soft amber fill behind an AI's receipt.
@@ -55,12 +58,8 @@ enum Palette {
     /// with the barest warmth, so it sits on the window's own grey.
     static let field = pair(0xF7F5F3, 1, 0xFFFAF5, 0.085)
     static let fieldHairline = pair(brown, 0.12, 0xFFFFFF, 0.08)
-    /// Continue while it can't be pressed: a quiet grey, like a disabled system button.
-    static let quietButton = pair(0xEFEDEB, 1, 0xFFFAF5, 0.07)
     /// The website's low marker under "your AI".
     static let underline = pair(0xF0901A, 0.42, 0xF5A53A, 0.50)
-    /// Dark ink on amber, readable in either appearance.
-    static let onAmber = pair(0x2A1D10, 0x2A1D10)
 
     /// Tracking for display type (heavy and tight, as on the website) at `size`: about -0.03 em.
     static func tracking(_ size: CGFloat) -> CGFloat { -size * 0.03 }

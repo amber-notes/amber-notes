@@ -20,6 +20,12 @@ struct KeyGateView: View {
 
     enum Screen { case auto, recovery, startFresh }
 
+    init(crypto: AccountCrypto, backend: Backend, screen: Screen = .auto) {
+        self.crypto = crypto
+        self.backend = backend
+        _screen = State(initialValue: screen)
+    }
+
     private typealias Row = SignInView.Row
     private typealias Copy = KeyCopy
 
@@ -353,22 +359,11 @@ struct KeyGateView: View {
     private func mainButton(_ title: String, id: String, enabled: Bool, destructive: Bool = false,
                             action: @escaping () async throws -> Void) -> some View {
         let on = enabled && !working
-        let fill = destructive ? Color.red : Color.accentColor
-        return Button { run(action) } label: {
-            ZStack {
-                Text(title).opacity(working ? 0 : 1)
-                if working { ProgressView().controlSize(.small).tint(destructive ? .white : Color(Palette.onAmber)) }
-            }
-            .font(.system(size: Row.text, weight: .semibold))
-            .foregroundStyle(on || working ? (destructive ? Color.white : Color(Palette.onAmber)) : Color.muted)
-            .frame(maxWidth: .infinity, minHeight: Row.height, maxHeight: Row.height)
-            .background(on || working ? fill : Color(Palette.quietButton), in: .rect(cornerRadius: Row.radius, style: .continuous))
-            .contentShape(.rect(cornerRadius: Row.radius, style: .continuous))
-        }
-        .buttonStyle(PressScale())
+        return Button(title, role: destructive ? .destructive : nil) { run(action) }
+        .buttonStyle(.amberProminent(height: Row.height, cornerRadius: Row.radius))
+        .amberBusy(working)
         .disabled(!on)
         .keyboardShortcut(destructive ? nil : .defaultAction)
-        .accessibilityLabel(working ? "\(title), working" : title)
         .accessibilityIdentifier(id)
     }
 }

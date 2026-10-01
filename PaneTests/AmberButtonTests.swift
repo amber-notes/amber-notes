@@ -1,5 +1,6 @@
 #if os(macOS)
 import AppKit
+import SwiftUI
 import Testing
 @testable import Pane
 
@@ -50,10 +51,35 @@ import Testing
             if src.contains(".borderedProminent") { prominent.append(f.lastPathComponent) }
         }
         #expect(prominent.isEmpty, "use .amberProminent in \(prominent)")
-        for name in ["SetupCard.swift", "ShareAskView.swift", "ImportSheet.swift", "AppleNotesImport.swift", "NoteSourceSheet.swift"] {
+        for name in ["SetupCard.swift", "ShareAskView.swift", "ImportSheet.swift", "AppleNotesImport.swift", "NoteSourceSheet.swift", "SignInView.swift", "Encryption.swift"] {
             let src = try String(contentsOf: views.appendingPathComponent(name), encoding: .utf8)
             #expect(src.contains(".amberProminent"), "\(name)")
+            // No hand-built amber buttons: no dark ink on amber.
+            #expect(!src.contains("onAmber"), "\(name)")
         }
+    }
+
+    /// Busy swaps the label for a spinner without moving anything: the same size busy or not, as
+    /// a capsule and as a form row (sign-in, the key screens).
+    @Test func busyKeepsTheButtonsSize() {
+        func size(_ v: some View) -> CGSize { NSHostingView(rootView: v).fittingSize }
+        let capsule = { (busy: Bool) in Button("Add to my notes") {}.buttonStyle(.amberProminent).amberBusy(busy) }
+        #expect(size(capsule(false)) == size(capsule(true)))
+        let row = { (busy: Bool) in
+            Button("Continue") {}.buttonStyle(.amberProminent(height: SignInView.Row.height, cornerRadius: SignInView.Row.radius))
+                .amberBusy(busy).disabled(busy).frame(width: 300)
+        }
+        #expect(size(row(false)) == size(row(true)))
+        #expect(size(row(true)).height == SignInView.Row.height)
+    }
+
+    /// The destructive primary (Start fresh) carries the same white label.
+    @Test(arguments: [NSAppearance.Name.aqua, .darkAqua])
+    func destructiveLabelReads(_ appearance: NSAppearance.Name) {
+        let fill = Self.resolved(AmberProminentButtonStyle.destructiveFill, appearance)
+        let ratio = Self.contrast(fill, Self.resolved(AmberProminentButtonStyle.label, appearance))
+        #expect(ratio >= 4.5, "\(appearance.rawValue): \(ratio)")
+        print("CONTRAST destructive button \(appearance.rawValue): \(String(format: "%.2f", ratio)):1")
     }
 
     @Test func fillIsTheSameInBothAppearances() {
