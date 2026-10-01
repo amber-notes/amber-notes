@@ -170,9 +170,35 @@ final class ShareAskStore {
         if service != nil { ShareAsk.onNewDay = { [weak self] in Task { await self?.refresh() } } }
     }
 
+    @ObservationIgnored private var refreshing: Task<Void, Never>?
+    @ObservationIgnored private var refreshAgain = false
+
     /// Tells the server this device's days of use it hasn't had yet, and an answer this device
-    /// gave while it couldn't reach it; then asks what the account adds up to.
+    /// gave while it couldn't reach it; then asks what the account adds up to. One at a time: a
+    /// new day of use starts one (onNewDay) while the app may be refreshing already, and two at
+    /// once would send the same days twice and could let an older answer overwrite a newer one.
+    /// A refresh asked for meanwhile runs once more after the current one, and the caller waits
+    /// for that.
     func refresh() async {
+        guard service != nil else { return }
+        if let running = refreshing {
+            refreshAgain = true
+            await running.value
+            return
+        }
+        let run = Task { [weak self] in
+            guard let self else { return }
+            repeat {
+                self.refreshAgain = false
+                await self.refreshOnce()
+            } while self.refreshAgain
+        }
+        refreshing = run
+        await run.value
+        refreshing = nil
+    }
+
+    private func refreshOnce() async {
         guard let service else { return }
         let sent = Set(defaults.stringArray(forKey: ShareAsk.sentKey) ?? [])
         let local = ShareAsk.localDays(defaults: defaults)

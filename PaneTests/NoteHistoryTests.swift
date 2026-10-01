@@ -204,9 +204,24 @@ import Testing
         #expect(local.phase == .loaded && local.isEmpty)
     }
 
+    @Test func aVersionFromJustBeforeMidnightIsYesterdayJustAfter() {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "UTC")!
+        let midnight = cal.date(from: DateComponents(year: 2026, month: 10, day: 1))!
+        let late = cal.startOfDay(for: midnight.addingTimeInterval(-60))
+        #expect(HistoryGrouping.title(for: late, now: midnight.addingTimeInterval(53), calendar: cal) == "Yesterday")
+        #expect(HistoryGrouping.title(for: cal.startOfDay(for: midnight), now: midnight.addingTimeInterval(53), calendar: cal) == "Today")
+        #expect(HistoryGrouping.title(for: late, now: midnight.addingTimeInterval(-1), calendar: cal) == "Today")
+    }
+
     @Test func theListOpensOnTheNewestEarlierVersionWithItsChangesTinted() async throws {
         let (c, note) = try Self.demo()
-        let model = VersionHistoryModel(note: note, history: NoteHistory(store: DemoHistoryStore(context: c.mainContext), context: c.mainContext, sync: nil))
+        // Pinned to midday: the demo's versions are minutes to hours before the note's last edit,
+        // and run just after midnight they'd fall on yesterday (which CI once did, at 00:00:53).
+        let noon = Calendar.current.date(bySettingHour: 12, minute: 0, second: 0, of: Date(timeIntervalSince1970: 1_790_000_000))!
+        note.updatedAt = noon
+        let model = VersionHistoryModel(note: note, history: NoteHistory(store: DemoHistoryStore(context: c.mainContext, now: noon), context: c.mainContext, sync: nil),
+                                        now: { noon })
         await model.load()
         #expect(model.days.first?.title == "Today")
         #expect(model.selected?.version.author == .ai("ChatGPT"))
