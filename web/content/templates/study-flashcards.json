@@ -7,6 +7,7 @@
   ],
   "audience": "For students who want an AI study partner that remembers what they keep getting wrong.",
   "description": "Study notes plus flashcards your AI quizzes you on. Cards you miss go back to box 1, so you see them again first.",
+  "tagline": "Notes per topic, and flashcards that quiz you.",
   "seoTitle": "Study notes and flashcards template for AI",
   "folder": "Study",
   "note": "Study notes and flashcards\n\nNotes for each topic, and flashcards your AI quizzes you on. Cards you miss go back to box 1; cards you know move up to box 5.\n\n## Notes\n\n## Flashcards\n<!-- pane-table: Question=text; Answer=text; Topic=text; Box=scale 1-5 -->\n| Question | Answer | Topic | Box |\n| --- | --- | --- | --- |\n",

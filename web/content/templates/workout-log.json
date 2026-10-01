@@ -7,6 +7,7 @@
   ],
   "audience": "For anyone training a few times a week who wants to see progress.",
   "description": "A workout log your AI keeps for you. Describe the session after the gym and ChatGPT or Claude logs it in Amber Notes.",
+  "tagline": "One row per session, and your personal bests.",
   "folder": "Health",
   "note": "Workout log\n\nOne row per session. After training, tell your AI what you did in one message.\n\n<!-- pane-table: Date=date; Workout=choice Push|Pull|Legs|Run|Other; Main lift=text; Top set=text; Minutes=number; Effort=scale 1-10 -->\n| Date | Workout | Main lift | Top set | Minutes | Effort |\n| --- | --- | --- | --- | --- | --- |\n\n## Program\n- Monday: legs (squat, lunges, calves)\n- Wednesday: push (bench, overhead press, dips)\n- Friday: pull (deadlift, rows, pull-ups)\n- Weekend: an easy run\n\n## Personal bests\n",
   "prompt": {

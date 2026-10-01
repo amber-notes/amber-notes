@@ -8,11 +8,14 @@ import { GET } from "../app/api/templates/[slug]/route";
 import { llmsTxt } from "./llms";
 import { renderNote } from "./render";
 import { NotePage } from "./NotePage";
-import { APP_TEMPLATES } from "./site";
+import { APP_TEMPLATES, SITE_URL } from "./site";
 import Gallery from "../app/templates/page";
 import TemplatePage from "../app/templates/[slug]/page";
 import { copyableMarkdown } from "./shared";
 import { themeFor, themeScript } from "./theme";
+import { existsSync } from "node:fs";
+import path from "node:path";
+import { COVERS, coverPath } from "./template-covers";
 import { instructions, templates } from "./templates";
 
 const params = (slug: string) => ({ params: Promise.resolve({ slug }) });
@@ -72,9 +75,23 @@ describe("the gallery", () => {
 
   it("makes every card one link that says what it opens", () => {
     const html = gallery();
-    const cards = html.match(/<a class="[^"]*card[^"]*" href="\/templates\/[^"]+">/g) ?? [];
+    const cards = html.match(/<a class="[^"]*card[^"]*" href="\/templates\/[^"]+"[^>]*>/g) ?? [];
     expect(cards).toHaveLength(templates().length);
     expect(html.match(/>Use template</g)).toHaveLength(templates().length);
+  });
+
+  it("gives every card its own cover, with alt text, and lists them in the image sitemap", () => {
+    const html = gallery();
+    const listed = sitemap().find((e) => e.url.endsWith("/templates"))?.images ?? [];
+    for (const t of templates()) {
+      const cover = COVERS[t.slug];
+      expect(cover, t.slug).toBeDefined();
+      expect(cover.alt.length, t.slug).toBeGreaterThan(20);
+      expect(existsSync(path.join(process.cwd(), "public", coverPath(t.slug))), t.slug).toBe(true);
+      expect(html).toContain(`src="${coverPath(t.slug)}" alt="${cover.alt}"`);
+      expect(listed).toContain(`${SITE_URL}${coverPath(t.slug)}`);
+    }
+    expect(new Set(templates().map((t) => COVERS[t.slug].ground)).size).toBe(templates().length);
   });
 });
 

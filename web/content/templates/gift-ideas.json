@@ -8,6 +8,7 @@
   ],
   "audience": "For anyone who hears the perfect gift idea in March and forgets it by December.",
   "description": "A gift idea list your AI fills as you go: ideas by person, sizes and likes, and suggestions before the next birthday.",
+  "tagline": "Ideas for everyone, saved when you hear them.",
   "folder": "Personal",
   "note": "Gift ideas\n\nSave ideas the moment you hear them, so the next birthday is easy.\n\n<!-- pane-table: Person=text; Occasion=text; Idea=text; Budget=number; Status=choice Idea|Bought|Given -->\n| Person | Occasion | Idea | Budget | Status |\n| --- | --- | --- | --- | --- |\n\n## Sizes and likes\n",
   "prompt": {

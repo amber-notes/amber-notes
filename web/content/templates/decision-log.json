@@ -8,6 +8,7 @@
   ],
   "audience": "For teams and founders who keep re-arguing settled questions.",
   "description": "A decision log your AI keeps: what you chose, what you didn't, and why. Ask it later why you decided something.",
+  "tagline": "What you chose, what you didn't, and why.",
   "folder": "Work",
   "note": "Decision log\n\nEvery decision worth remembering: what you chose, what you didn't, and why. Future you will ask.\n\n## Open questions\n\n## Decisions\n",
   "prompt": {

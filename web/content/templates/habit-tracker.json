@@ -7,6 +7,7 @@
   ],
   "audience": "For anyone building a few small daily habits.",
   "description": "A daily habit tracker your AI fills in. Tell ChatGPT or Claude what you did today and it logs the row in Amber Notes.",
+  "tagline": "Tick off a few small habits every day.",
   "folder": "Habits",
   "note": "Habit tracker\n\nOne row a day. Tick it off yourself, or tell your AI what you did and it logs the row.\n\n<!-- pane-table: Date=date; Walk=choice Yes|No; Read=choice Yes|No; No phone in bed=choice Yes|No; Water (glasses)=number; Note=text -->\n| Date | Walk | Read | No phone in bed | Water (glasses) | Note |\n| --- | --- | --- | --- | --- | --- |\n\n## Habits\n- Walk: 30 minutes outside\n- Read: 20 pages\n- No phone in bed: it charges in the kitchen\n- Water: 8 glasses\n\n## Weekly check-in\n",
   "prompt": {

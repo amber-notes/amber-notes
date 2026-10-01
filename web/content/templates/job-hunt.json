@@ -8,6 +8,7 @@
   ],
   "audience": "For anyone applying to more than a handful of jobs at once.",
   "description": "A job search pipeline your AI keeps current: every application, its stage and the next step, plus interview prep.",
+  "tagline": "Every application, its stage and what's next.",
   "seoTitle": "Job hunt pipeline template for ChatGPT and Claude",
   "folder": "Personal",
   "note": "Job hunt\n\nEvery application, where it stands, and what happens next. Paste a job ad and your AI files it.\n\n<!-- pane-table: Company=text; Role=text; Stage=choice Saved|Applied|Interview|Offer|Rejected|Withdrawn; Next step=text; Link=text -->\n| Company | Role | Stage | Next step | Link |\n| --- | --- | --- | --- | --- |\n\n## This week\n\n## Interview prep\n\n## People I've talked to\n",

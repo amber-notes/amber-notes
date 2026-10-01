@@ -5,7 +5,7 @@ import remarkParse from "remark-parse";
 import { unified } from "unified";
 import { describe, expect, it } from "vitest";
 import { MCP_TOOLS } from "./mcp-tools";
-import { AUDIENCES, CATEGORIES, ORDER, SLUG, changedLines, createStep, instructions, markdownIn, publicTemplate, renderTemplate, searchTitle, shape, templateFiles, templates, validTemplateSlug, type DemoCall, type Template } from "./templates";
+import { AUDIENCES, CATEGORIES, ORDER, SLUG, changedLines, createStep, instructions, markdownIn, publicTemplate, renderTemplate, searchTitle, slice, templateFiles, templates, validTemplateSlug, type DemoCall, type Template } from "./templates";
 
 // The server's own note functions (supabase/functions/mcp/notes.ts, plain TypeScript with no
 // imports), loaded by path so the site's build never depends on the server folder.
@@ -97,7 +97,7 @@ describe("the template library", () => {
   });
 
   it("follows the schema", () => {
-    const keys = ["slug", "title", "category", "audiences", "audience", "description", "seoTitle", "folder", "note", "prompt", "asks", "demo", "example", "related", "updated"];
+    const keys = ["slug", "title", "category", "audiences", "audience", "description", "tagline", "seoTitle", "folder", "note", "prompt", "asks", "demo", "example", "related", "updated"];
     for (const t of all) {
       for (const k of Object.keys(t)) expect(keys, `${t.slug}: ${k}`).toContain(k);
       expect(CATEGORIES).toContain(t.category);
@@ -106,6 +106,8 @@ describe("the template library", () => {
       expect(t.audience.length, t.slug).toBeLessThanOrEqual(110);
       expect(t.description.length, t.slug).toBeGreaterThanOrEqual(70);
       expect(t.description.length, t.slug).toBeLessThanOrEqual(160);
+      expect(t.tagline.length, t.slug).toBeGreaterThan(0);
+      expect(t.tagline.length, t.slug).toBeLessThanOrEqual(50);
       expect(t.folder.trim().length).toBeGreaterThan(0);
       expect(typeof t.prompt.default).toBe("string");
       for (const k of Object.keys(t.prompt)) expect(["default", "chatgpt", "claude", "claudeCode"]).toContain(k);
@@ -255,8 +257,13 @@ describe("the example", () => {
     }
   });
 
-  it("shows a real structure on the card", () => {
-    for (const t of all) expect(shape(t.example).length, t.slug).toBeGreaterThanOrEqual(3);
+  it("shows a filled-in slice of the real note on the card", () => {
+    for (const t of all) {
+      const rows = slice(t);
+      const table = rows[0]?.kind === "table" ? rows[0] : undefined;
+      if (table) expect(table.rows.length, t.slug).toBeGreaterThanOrEqual(2);
+      else expect(rows.length, t.slug).toBeGreaterThanOrEqual(3);
+    }
   });
 });
 

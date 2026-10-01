@@ -8,6 +8,7 @@
   ],
   "audience": "For readers whose to-read pile lives in screenshots and browser tabs.",
   "description": "A reading list with ratings and notes. Tell your AI about a book and it files it; ask it what to read next.",
+  "tagline": "Books to read, reading and finished, rated.",
   "seoTitle": "Reading list template with notes for ChatGPT and Claude",
   "folder": "Reading",
   "note": "Reading list\n\nEvery book you want to read, are reading or have finished, with a line on why it's here.\n\n<!-- pane-table: Title=text; Author=text; Status=choice To read|Reading|Finished|Dropped; Rating=scale 1-5; Why=text -->\n| Title | Author | Status | Rating | Why |\n| --- | --- | --- | --- | --- |\n\n## Notes\n",

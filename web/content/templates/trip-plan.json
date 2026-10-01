@@ -8,6 +8,7 @@
   ],
   "audience": "For anyone planning a trip who wants the plan, bookings and packing in one place.",
   "description": "A trip plan your AI drafts and keeps current: a realistic day-by-day plan, your bookings and a packing checklist.",
+  "tagline": "Days, bookings and the packing list in one place.",
   "folder": "Travel",
   "note": "Trip plan\n\nEverything for one trip: the plan for each day, the bookings, and what to pack.\n\n## Bookings\n<!-- pane-table: What=text; When=text; Confirmation=text; Paid=choice Yes|No -->\n| What | When | Confirmation | Paid |\n| --- | --- | --- | --- |\n\n## Days\n\n## Packing\n- [ ] Passport\n- [ ] Chargers\n- [ ] Travel insurance details\n- [ ] Comfortable shoes\n\n## Ideas\n",
   "prompt": {
