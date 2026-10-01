@@ -148,7 +148,7 @@ struct KeyGateView: View {
             heading("Enter your recovery key", crypto.phase == .mismatch ? Copy.mismatch : Copy.notHereYet)
             VStack(spacing: 10) {
                 field {
-                    TextField("XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX", text: $recovery)
+                    TextField("Recovery key", text: $recovery)
                         .font(.system(size: Row.text, design: .monospaced))
                         .autocorrectionDisabled()
                         #if os(iOS)
@@ -158,7 +158,7 @@ struct KeyGateView: View {
                         .onSubmit { if canSubmitRecovery { submitRecovery() } }
                 }
                 .accessibilityIdentifier("e2ee.recovery")
-                Text(Copy.recoveryHint)
+                Text(Copy.recoveryFormat + " " + Copy.recoveryHint)
                     .font(.footnote)
                     .foregroundStyle(Color.muted)
                     .multilineTextAlignment(.center)
@@ -387,6 +387,7 @@ enum KeyCopy {
     #else
     static let keychainHelp = "Check that iCloud Keychain is on here and on your other device: Settings › [your name] › iCloud › Passwords and Keychain."
     #endif
+    static let recoveryFormat = "28 letters and numbers, in groups of four."
     static let recoveryHint = "Find it on your other device in Amber Notes › Settings › Privacy & Security."
     static let mismatch = "The key on this device isn't your account's current key."
     static let unreachable = "Connect to the internet. This device checks your key with Amber Notes before opening your notes."
