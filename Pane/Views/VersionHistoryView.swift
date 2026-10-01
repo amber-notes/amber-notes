@@ -21,9 +21,13 @@ final class VersionHistoryModel {
     let note: Note
     let history: NoteHistory
 
-    init(note: Note, history: NoteHistory) {
+    /// What "Today" and "Yesterday" are measured from; tests pin it.
+    private let now: () -> Date
+
+    init(note: Note, history: NoteHistory, now: @escaping () -> Date = { .now }) {
         self.note = note
         self.history = history
+        self.now = now
     }
 
     var entries: [HistoryEntry] { days.flatMap(\.entries) }
@@ -35,7 +39,7 @@ final class VersionHistoryModel {
         phase = .loading
         do {
             let versions = try await history.versions(of: note.id)
-            days = HistoryGrouping.days(HistoryGrouping.entries(versions))
+            days = HistoryGrouping.days(HistoryGrouping.entries(versions), now: now())
             phase = .loaded
             // The newest earlier version is what you most likely came for.
             let pick = HistoryLaunch.pick.flatMap { entries.indices.contains($0) ? entries[$0] : nil }
