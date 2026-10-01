@@ -1314,6 +1314,8 @@ struct ConnectAISection: View {
     /// Captures: shows these instead of asking the server.
     var preview: [Connection]? = nil
     @State private var connections: [Connection] = []
+    /// The first load has answered: until then an empty list means "not known yet", not "none".
+    @State private var loaded = false
     /// Which guide is open, held by the form around this section (`connectGuides`).
     @Environment(ConnectGuideRoute.self) private var route: ConnectGuideRoute?
     @State private var removing: Connection?
@@ -1403,7 +1405,9 @@ struct ConnectAISection: View {
     private var connected: some View {
         Section("Connected") {
             let active = connections.filter { $0.revoked_at == nil }
-            if active.isEmpty {
+            if !loaded {
+                ProgressView().frame(maxWidth: .infinity, alignment: .leading)
+            } else if active.isEmpty && error == nil {
                 Text("Nothing is connected yet.").foregroundStyle(.secondary)
             }
             ForEach(active) { c in row(c) }
@@ -1445,7 +1449,8 @@ struct ConnectAISection: View {
     }
 
     private func load() async {
-        if let preview { connections = preview; return }
+        if let preview { connections = preview; loaded = true; return }
+        defer { loaded = true }
         do {
             connections = try await client.from("mcp_tokens").select().order("created_at", ascending: false).execute().value
             error = nil

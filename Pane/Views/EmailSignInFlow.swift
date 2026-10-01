@@ -46,6 +46,10 @@ struct EmailSignInFlow: Equatable {
     /// Once past the first step, the email is fixed until "Use a different email".
     var emailLocked: Bool { step != .email }
 
+    /// The email stays a field while it's checked, so the keyboard stays up and the card doesn't
+    /// jump; it can't be changed meanwhile (`emailLocked`). After that it's text.
+    var showsEmailField: Bool { step == .email || step == .checking }
+
     var showsPassword: Bool {
         switch step {
         case .signIn, .create: true

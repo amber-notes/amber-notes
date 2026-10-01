@@ -16,6 +16,12 @@ struct RootView: View {
     @State private var visibility: NavigationSplitViewVisibility = .all
     @State private var editor = EditorController()
     @State private var justCreated: UUID?
+    #if os(iOS)
+    /// UI tests: `-uitest -launchAlert` raises an alert as the notes first show, like the
+    /// account's connection notices after unlocking.
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    @State private var launchAlert = ProcessInfo.processInfo.arguments.contains("-uitest") && ProcessInfo.processInfo.arguments.contains("-launchAlert")
+    #endif
     @State private var showImport = false
     @State private var importingSheet = false
     @State private var importError: String?
@@ -42,6 +48,9 @@ struct RootView: View {
             .focusedSceneValue(\.deleteNoteAction, deleteAction)
             // A template or shared note to add, from a link.
             .noteSourceHandler()
+            #if os(iOS)
+            .alert("Launch alert", isPresented: $launchAlert) { Button("OK", role: .cancel) {} }
+            #endif
     }
 
     private var split: some View {
@@ -77,6 +86,12 @@ struct RootView: View {
                 // On iPhone restoring the folder pushes the note list; doing that after the first
                 // layout lets the list open with its large title showing, as it does when you tap in.
                 DispatchQueue.main.async {
+                    // A push made while an alert or sheet is up (the connection notices right
+                    // after unlocking) is dropped by UIKit, yet the folder and note stay selected:
+                    // the folder list then wears the list's and the note's toolbars, compose
+                    // makes a note nobody sees and search focuses a field that isn't on screen.
+                    // With something presented, the iPhone folder list stays, as it's what you see.
+                    guard sizeClass != .compact || !Presentation.isActive else { return }
                     restoreScope()
                     restoreNote()
                     openFromLaunchArguments()
@@ -88,7 +103,14 @@ struct RootView: View {
                 reveal(NoteOpener.shared.request)
                 #endif
             }
-            .onChange(of: scope) { _, new in rememberScope(new) }
+            .onChange(of: scope) { _, new in
+                rememberScope(new)
+                #if os(iOS)
+                // Back on the iPhone folder list nothing is open: a note left selected would keep
+                // its toolbar on this screen. Leaving an empty new note this way discards it.
+                if new == nil, !selection.isEmpty { selection = [] }
+                #endif
+            }
             .onChange(of: selectedNote) { old, new in noteChanged(from: old, to: new) }
             // A note opened from the menu bar.
             .onChange(of: NoteOpener.shared.request) { _, id in reveal(id) }
@@ -201,11 +223,16 @@ struct RootView: View {
         let target: Scope = scope == .trash ? .all : (scope ?? .all)
         if scope == .trash { scope = .all }
         // Reuse an untouched empty note instead of stacking blanks.
-        if let id = selectedNote, let n = context.note(id), n.body.isEmpty, n.trashedAt == nil {
+        if scope != nil, let id = selectedNote, let n = context.note(id), n.body.isEmpty, n.trashedAt == nil {
             editor.focus()
             return
         }
         let note = context.createNote(in: target)
+        #if os(iOS)
+        // From the iPhone folder list: open the note's folder under it, as Notes does, so the
+        // editor is pushed and back leads to the folder the note is in.
+        if scope == nil { scope = Scope.opening(note) }
+        #endif
         justCreated = note.id
         selectedNote = note.id
     }
@@ -242,15 +269,7 @@ struct RootView: View {
     /// Reopen the note you were on; otherwise the one you edited last.
     private func restoreNote() {
         guard selectedNote == nil, !ProcessInfo.processInfo.arguments.contains("-uitest") else { return }
-        if let id = UUID(uuidString: lastNote), let n = context.note(id), n.deletedAt == nil, n.trashedAt == nil {
-            selectedNote = id
-            return
-        }
-        var newest = FetchDescriptor<Note>(sortBy: [SortDescriptor(\.updatedAt, order: .reverse)])
-        newest.fetchLimit = 20
-        if let n = ((try? context.fetch(newest)) ?? []).first(where: { $0.deletedAt == nil && $0.trashedAt == nil && !context.isNested($0) }) {
-            selectedNote = n.id
-        }
+        if let n = context.noteToReopen(last: UUID(uuidString: lastNote)) { selectedNote = n.id }
     }
 
     private func restoreScope() {
@@ -431,6 +450,18 @@ struct PaneCommands: Commands {
             }
             .disabled(editor == nil)
         }
+    }
+}
+#endif
+
+#if os(iOS)
+/// Whether an alert or sheet is up in any of the app's windows.
+@MainActor
+enum Presentation {
+    static var isActive: Bool {
+        UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+            .contains { $0.rootViewController?.presentedViewController != nil }
     }
 }
 #endif

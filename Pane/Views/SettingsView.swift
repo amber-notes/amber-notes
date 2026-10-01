@@ -21,6 +21,8 @@ struct SettingsView: View {
         NavigationStack {
             form
                 .navigationTitle("Settings")
+                // Scrolled, the rows pass under a solid edge instead of showing through the title.
+                .scrollEdgeEffectStyle(.hard, for: .top)
                 .toolbar {
                     ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
                 }
@@ -67,7 +69,9 @@ struct SettingsView: View {
                             }
                         }
                         AppleIDRow(backend: backend)
-                    } else {
+                    } else if backend.state == .disabled {
+                        // Only a build without a backend; signing out (signedOut) shows nothing
+                        // here for the moment before the sheet goes.
                         Text("Sync is off. This build keeps notes on this device only.")
                             .foregroundStyle(.secondary)
                     }

@@ -10,7 +10,7 @@ export function titleOf(body: string): string {
 
 /** Same rules as the app's NoteText.stripMarkup and the database's note_title. */
 export function stripMarkup(line: string): string {
-  let s = line.replace(/<\/?[a-zA-Z][^>]*>/g, "").replace(/^[ \t\r]+|[ \t\r]+$/g, "");
+  let s = line.replace(/<!--.*?(-->|$)/g, "").replace(/<\/?[a-zA-Z][^>]*>/g, "").replace(/^[ \t\r]+|[ \t\r]+$/g, "");
   s = s.replace(/^(#{1,6} |> |- \[[ xX]\] |[-*+] )/, "").replace(/^\d+[.)] /, "");
   if (s.startsWith("```") || /^[-*_|:= ]*$/.test(s)) return "";
   s = s.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/\*\*|__|~~|`/g, "");
