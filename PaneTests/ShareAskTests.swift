@@ -32,6 +32,8 @@ import Testing
         private var inFlight = 0
         private var _maxInFlight = 0
         var fails = false
+        /// The account ever connected a developer tool.
+        var developer = false
         /// How long each call takes, so overlapping calls would show.
         var delay: Duration = .zero
 
@@ -52,7 +54,7 @@ import Testing
         }
 
         func state() async throws -> ShareAskState {
-            try await call { ShareAskState(decided: _answered != nil, days: _days.count) }
+            try await call { ShareAskState(decided: _answered != nil, days: _days.count, developer: developer) }
         }
         func addDays(_ new: [String]) async throws {
             try await call { _sent.append(new); _days.formUnion(new) }
@@ -246,10 +248,11 @@ import Testing
     // MARK: Once
 
     @Test func anyAnswerEndsItForGood() async {
-        for choice in [ShareAsk.Choice.sharedX, .sharedLinkedIn, .dismissed] {
+        for choice in [ShareAsk.Choice.sharedX, .sharedLinkedIn, .starredGitHub, .dismissed] {
             let d = Self.defaults()
             Self.usedOn(7, d)
             let service = FakeService()
+            service.developer = choice == .starredGitHub
             let s = Self.store(d, service: service)
             await s.refresh()
             let later = Self.t0.addingTimeInterval(8 * Self.day)
@@ -333,6 +336,66 @@ import Testing
         #expect(other.decided == nil, "waits for the server, not the other account's answer")
     }
 
+    // MARK: Who it's for
+
+    @Test func developersHearItsOpenSource() async {
+        let d = Self.defaults()
+        Self.usedOn(7, d)
+        let service = FakeService()
+        service.developer = true
+        let s = Self.store(d, service: service)
+        #expect(!s.developer, "the everyone ask until the server says")
+        await s.refresh()
+        #expect(s.developer)
+        let content = ShareAsk.content(developer: s.developer)
+        #expect(content.title == "Enjoying Amber Notes?")
+        #expect(content.line == "It\u{2019}s open source.")
+        #expect(content.choices == [.starredGitHub, .sharedX])
+        #expect(content.choices.map(ShareAsk.buttonTitle) == ["Star on GitHub", "Share on X"])
+        #expect(ShareAsk.buttonTitle(.dismissed) == "Not now")
+        // Same trigger as everyone's: seven days, then once.
+        s.moment(setupVisible: false, tipShowing: false, now: Self.later)
+        #expect(s.visible)
+        #expect(s.choose(.starredGitHub) == URL(string: "https://github.com/emilwagman/amber-notes")!)
+        #expect(s.thanked, "the thank-you shows as for a post")
+        #expect(ShareAsk.thanks(for: s.thankedFor) == "Every star helps someone find it.")
+        s.closed()
+        #expect(s.sent == ["shown", "starred_github"])
+    }
+
+    @Test func everyoneElseGetsTodaysAsk() async {
+        let d = Self.defaults()
+        Self.usedOn(7, d)
+        let s = Self.store(d)
+        await s.refresh()
+        #expect(!s.developer)
+        let content = ShareAsk.content(developer: false)
+        #expect(content.title == "Enjoying Amber Notes?")
+        #expect(content.line == "I\u{2019}m building it on my own, and word of mouth is how people find it. If it\u{2019}s been useful, a post would mean a lot.")
+        #expect(content.choices.map(ShareAsk.buttonTitle) == ["Share on X", "Share on LinkedIn"])
+        _ = s.choose(.sharedX)
+        #expect(ShareAsk.thanks(for: s.thankedFor) == "Every post helps someone find it.")
+    }
+
+    @Test func aServerThatDoesntSayIsEveryone() throws {
+        let old = try JSONDecoder().decode(ShareAskState.self, from: Data(#"{"decided":false,"days":3}"#.utf8))
+        #expect(old == ShareAskState(decided: false, days: 3, developer: false))
+        let new = try JSONDecoder().decode(ShareAskState.self, from: Data(#"{"decided":true,"days":9,"developer":true}"#.utf8))
+        #expect(new == ShareAskState(decided: true, days: 9, developer: true))
+    }
+
+    @Test func aDeveloperWhoAnsweredIsNeverAskedAgain() async {
+        let d = Self.defaults()
+        Self.usedOn(7, d)
+        let service = FakeService()
+        service.developer = true
+        service.answered = .sharedLinkedIn
+        let s = Self.store(d, service: service)
+        await s.refresh()
+        s.moment(setupVisible: false, tipShowing: false, now: Self.later)
+        #expect(!s.visible, "an answer from before (here, a post) ends it for the open source ask too")
+    }
+
     // MARK: Dev and links
 
     @Test func devForceShowsItAndSendsNothing() {
@@ -357,5 +420,16 @@ import Testing
         #expect(text == ShareAsk.postText)
         #expect(text.hasSuffix("ChatGPT and Claude can actually read and edit. Free."))
         #expect(ShareAsk.linkedInURL.absoluteString == "https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fambernotes.app")
+    }
+
+    @Test func theOpenSourceLinksGoToGitHub() {
+        #expect(ShareAsk.url(for: .starredGitHub)?.absoluteString == "https://github.com/emilwagman/amber-notes")
+        #expect(ShareAsk.url(for: .dismissed) == nil)
+        #expect(AboutSection.links.map(\.title) == ["Star on GitHub", "Report an issue", "Contribute"])
+        #expect(AboutSection.links.map(\.url.absoluteString) == [
+            "https://github.com/emilwagman/amber-notes",
+            "https://github.com/emilwagman/amber-notes/issues/new/choose",
+            "https://github.com/emilwagman/amber-notes/blob/main/CONTRIBUTING.md",
+        ])
     }
 }

@@ -32,7 +32,43 @@ enum ShareAsk {
     static let site = "https://ambernotes.app"
     static let postText = "I\u{2019}ve been using Amber Notes: a simple notes app for iPhone and Mac that ChatGPT and Claude can actually read and edit. Free."
 
-    enum Choice: String, Sendable { case sharedX = "shared_x", sharedLinkedIn = "shared_linkedin", dismissed }
+    enum Choice: String, Sendable { case sharedX = "shared_x", sharedLinkedIn = "shared_linkedin", starredGitHub = "starred_github", dismissed }
+
+    /// Amber Notes on GitHub: the repository, a new issue, and how to contribute.
+    static let repository = URL(string: "https://github.com/emilwagman/amber-notes")!
+    static let newIssue = URL(string: "https://github.com/emilwagman/amber-notes/issues/new/choose")!
+    static let contributing = URL(string: "https://github.com/emilwagman/amber-notes/blob/main/CONTRIBUTING.md")!
+
+    /// What the ask says, and its sharing buttons in order (Not now always follows). Developers
+    /// (accounts that ever connected a tool on their computer or with a token: Claude Code,
+    /// Codex, Gemini CLI, Incredible) hear that it's open source; everyone else, as before.
+    struct Content: Equatable {
+        var title: String
+        var line: String
+        var choices: [Choice]
+    }
+
+    static func content(developer: Bool) -> Content {
+        developer
+            ? Content(title: "Enjoying Amber Notes?", line: "It\u{2019}s open source.", choices: [.starredGitHub, .sharedX])
+            : Content(title: "Enjoying Amber Notes?",
+                      line: "I\u{2019}m building it on my own, and word of mouth is how people find it. If it\u{2019}s been useful, a post would mean a lot.",
+                      choices: [.sharedX, .sharedLinkedIn])
+    }
+
+    static func buttonTitle(_ choice: Choice) -> String {
+        switch choice {
+        case .sharedX: "Share on X"
+        case .sharedLinkedIn: "Share on LinkedIn"
+        case .starredGitHub: "Star on GitHub"
+        case .dismissed: "Not now"
+        }
+    }
+
+    /// The thank-you's second line, for what you did.
+    static func thanks(for choice: Choice?) -> String {
+        choice == .starredGitHub ? "Every star helps someone find it." : "Every post helps someone find it."
+    }
 
     static var xURL: URL {
         URL(string: "https://x.com/intent/post?text=\(encode(postText))&url=\(encode(site))")!
@@ -46,6 +82,7 @@ enum ShareAsk {
         switch choice {
         case .sharedX: xURL
         case .sharedLinkedIn: linkedInURL
+        case .starredGitHub: repository
         case .dismissed: nil
         }
     }
@@ -103,6 +140,24 @@ struct ShareAskState: Equatable, Decodable, Sendable {
     var decided: Bool
     /// Different days notes were used, on all the account's devices.
     var days: Int
+    /// The account ever connected a developer tool (20261001120000_open_source_ask.sql). Servers
+    /// from before it don't say: then it's the ask everyone gets.
+    var developer: Bool = false
+
+    init(decided: Bool, days: Int, developer: Bool = false) {
+        self.decided = decided
+        self.days = days
+        self.developer = developer
+    }
+
+    private enum CodingKeys: String, CodingKey { case decided, days, developer }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        decided = try c.decode(Bool.self, forKey: .decided)
+        days = try c.decode(Int.self, forKey: .days)
+        developer = try c.decodeIfPresent(Bool.self, forKey: .developer) ?? false
+    }
 }
 
 /// Where the account's answer is kept, and where the ask is counted (the server; tests swap it).
@@ -135,8 +190,12 @@ struct SupabaseShareAsk: ShareAskService {
 final class ShareAskStore {
     /// The ask is on screen (the thank-you included).
     var visible = false
-    /// You chose to share: the thank-you shows.
+    /// You chose to share (or star): the thank-you shows.
     private(set) var thanked = false
+    /// What you chose, for the thank-you's words.
+    private(set) var thankedFor: ShareAsk.Choice?
+    /// The developers' ask (see `ShareAsk.content`), once the server has said.
+    private(set) var developer = false
 
     @ObservationIgnored private var service: ShareAskService?
     @ObservationIgnored private var account: UUID?
@@ -154,6 +213,11 @@ final class ShareAskStore {
         forced = arguments.contains("-forceShareAsk")
         if forced, let i = arguments.firstIndex(of: "-forceShareAsk"), arguments.indices.contains(i + 1), arguments[i + 1] == "thanks" {
             thanked = true
+        }
+        // Captures of the developers' ask.
+        if forced, arguments.contains("-shareAskDeveloper") {
+            developer = true
+            if thanked { thankedFor = .starredGitHub }
         }
         attach(account: nil, service: nil)
     }
@@ -211,6 +275,7 @@ final class ShareAskStore {
         if let here, !there.decided { try? await service.decide(here) }
         decided = there.decided || here != nil
         serverDays = there.days
+        developer = there.developer
     }
 
     /// Days of use that count: the account's on every device, or this device's own if that's
@@ -254,6 +319,7 @@ final class ShareAskStore {
             close()
             return nil
         }
+        thankedFor = choice
         withAnimation(.smooth(duration: 0.35)) { thanked = true }
         return url
     }

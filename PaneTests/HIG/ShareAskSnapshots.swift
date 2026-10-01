@@ -19,9 +19,9 @@ import Testing
         ShareAskSheet.drawsAsKey = true
         defer { ShareAskSheet.drawsAsKey = false }
         for dark in [false, true] {
-            for thanks in [false, true] {
-                let name = "mac-\(thanks ? "thanks" : "ask")-\(dark ? "dark" : "light")"
-                let store = ShareAskStore(arguments: ["-forceShareAsk"] + (thanks ? ["thanks"] : []))
+            for (thanks, developer) in [(false, false), (true, false), (false, true), (true, true)] {
+                let name = "mac-\(developer ? "dev-" : "")\(thanks ? "thanks" : "ask")-\(dark ? "dark" : "light")"
+                let store = ShareAskStore(arguments: ["-forceShareAsk"] + (thanks ? ["thanks"] : []) + (developer ? ["-shareAskDeveloper"] : []))
                 let root = RootView().modelContainer(c).environment(SetupStore())
                     .shareAskSheet(store)
                     .tint(Color(PColor.paneAccent))
