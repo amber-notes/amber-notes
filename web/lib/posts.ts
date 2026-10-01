@@ -69,7 +69,7 @@ export const posts: Post[] = [
     date: "2026-10-01",
     updated: "2026-10-01",
     image: SHOTS.history,
-    thumb: thumb("night", "thumb-restore-dark", 1240, 560),
+    thumb: thumb("night", "thumb-restore-dark", 846, 558),
     draft: false,
   },
   {
@@ -81,7 +81,7 @@ export const posts: Post[] = [
     date: "2026-10-01",
     updated: "2026-10-01",
     image: SHOTS.connectList,
-    thumb: thumb("linen", "thumb-connect-promises", 990, 270),
+    thumb: thumb("linen", "thumb-consent-local", 826, 545),
     draft: false,
   },
   {
@@ -93,7 +93,7 @@ export const posts: Post[] = [
     date: "2026-10-01",
     updated: "2026-10-01",
     image: SHOTS.notesPassword,
-    thumb: thumb("pearl", "thumb-notes-password", 820, 500),
+    thumb: thumb("pearl", "thumb-notes-password", 896, 591),
     draft: false,
   },
   {
@@ -105,7 +105,7 @@ export const posts: Post[] = [
     date: "2026-10-01",
     updated: "2026-10-01",
     image: SHOTS.consentE2ee,
-    thumb: thumb("dusk", "thumb-consent-e2ee", 790, 310),
+    thumb: thumb("dusk", "thumb-consent-e2ee", 826, 545),
     draft: false,
   },
   {
@@ -117,7 +117,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.historyBurst,
-    thumb: thumb("fog", "thumb-groceries-version", 1270, 700),
+    thumb: thumb("fog", "thumb-lisbon-chatgpt", 731, 482),
     draft: false,
   },
   {
@@ -129,7 +129,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.lisbon,
-    thumb: thumb("wheat", "thumb-lisbon-food", 1230, 470),
+    thumb: thumb("wheat", "thumb-lisbon-food", 744, 491),
     draft: false,
   },
   {
@@ -141,7 +141,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.welcome,
-    thumb: thumb("blush", "thumb-markdown-title", 1210, 280),
+    thumb: thumb("blush", "thumb-markdown-title", 714, 471),
     draft: false,
   },
   {
@@ -201,7 +201,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.lisbon,
-    thumb: thumb("heather", "thumb-lisbon-link", 1090, 340),
+    thumb: thumb("heather", "thumb-lisbon-link", 744, 491),
     draft: false,
   },
   {
@@ -261,7 +261,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.welcome,
-    thumb: thumb("ink", "thumb-markdown", 804, 359),
+    thumb: thumb("ink", "thumb-markdown", 804, 531),
     draft: false,
   },
   {
@@ -333,7 +333,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.standup,
-    thumb: thumb("clay", "thumb-standup", 902, 376),
+    thumb: thumb("clay", "thumb-standup", 902, 595),
     draft: false,
   },
   {
