@@ -70,7 +70,7 @@ Status meanings:
 | Submit a ZIP at platform.openai.com → Plugins → Upload. The submitter is an org owner or has Apps Management write. | [submission](https://developers.openai.com/plugins/deploy/submission) | Emil (the ZIP is `brand/directory/chatgpt-plugin/`) |
 | Verified individual or business identity, matching `developerName` | [app review](https://developers.openai.com/plugins/deploy/app-review), [guidelines](https://developers.openai.com/plugins/plugin-guidelines) | Emil (individual: "Emil Wagman", as in the privacy policy) |
 | A project with global data residency, not EU | [app review](https://developers.openai.com/plugins/deploy/app-review) | Emil |
-| Domain verification: the bare token at `https://<MCP host>/.well-known/openai-apps-challenge` | [submission](https://developers.openai.com/plugins/deploy/submission) | done in code (this branch, `verification.ts`, from the `OPENAI_APPS_CHALLENGE` secret). Emil sets the secret. It needs the mcp-web alias to forward `/.well-known/*`. |
+| Domain verification: the bare token at `https://<MCP host>/.well-known/openai-apps-challenge` | [submission](https://developers.openai.com/plugins/deploy/submission) | done: the site serves the token itself (`web/app/.well-known/openai-apps-challenge/route.ts`), on mcp.ambernotes.app as well. |
 | Streamable HTTP on public HTTPS. No UI is required. | [MCP server](https://developers.openai.com/plugins/build/mcp-server) | done |
 | `readOnlyHint`, `destructiveHint` and `openWorldHint` are explicit booleans on every tool, and they match what the tool does. Undo doesn't justify `destructiveHint: false`. | [guidelines](https://developers.openai.com/plugins/plugin-guidelines), [reference](https://developers.openai.com/plugins/reference) | done (this branch. Before it, read tools had no `destructiveHint`.) |
 | Per-tool `securitySchemes` | [auth](https://developers.openai.com/plugins/build/auth) | done (this branch: oauth2 with `notes:read` or `notes:write`) |
@@ -103,11 +103,11 @@ The server is `supabase/functions/mcp/`. Line numbers are for this branch.
 | edit_note, restore_revision and log_table_row were marked non-destructive, although all three overwrite existing text or a table row | `tools.ts:87`, `:164`, `:202` | `overwrite` annotations (`destructiveHint: true`) |
 | No per-tool `securitySchemes` | `tools.ts:18`, `:223` | oauth2 with `notes:read` for readers and `notes:write` for writers |
 | read_note and fetch returned the whole note, up to 5 MB | `tools.ts:456`, `:723` | Capped at 60k characters on whole lines, returning `truncated`, `lines` and `next_start_line` (`fitLines` in `notes.ts`) |
-| Nothing served OpenAI's domain challenge | `index.ts:63`, `verification.ts` | `/.well-known/openai-apps-challenge` answers with the `OPENAI_APPS_CHALLENGE` secret as plain text, or 404 when it isn't set |
+| Nothing served OpenAI's domain challenge | `web/app/.well-known/openai-apps-challenge/route.ts` | The site serves the token as plain text on both hosts; middleware lets the path through on mcp.ambernotes.app. (It was first the function's `OPENAI_APPS_CHALLENGE` secret, which was never set.) |
 
 Tests, none of which need Docker:
 - `annotations.test.ts`: titles, all three hints, the destructive set, name rules and scopes.
-- `verification.test.ts`
+- `web/app/.well-known/openai-apps-challenge/route.test.ts`
 - `notes.test.ts`: the new `fitLines` case.
 
 CI now runs all three.
@@ -145,7 +145,8 @@ OpenAI's error reference still lists `justification_required`, though its guidel
 | get_file | true / false / false | Returns file details and a 10-minute download link to the person's own file in Amber Notes storage. Changes nothing. |
 | create_note, create_sub_note, create_folder | false / false / false | Only adds a new note or folder. Nothing existing is changed. |
 | append_to_note | false / false / false | Only adds text to a note. Existing text stays as it is. |
-| set_checklist_item, pin_note, move_note, rename_folder, restore_note | false / false / false | Changes a checkbox, the pin, the folder, a folder's name, or brings a note back. No note text is removed. |
+| restore_note | false / false / false | Brings a note back from Recently Deleted. Nothing existing is changed. |
+| set_checklist_item, pin_note, move_note, rename_folder | false / true / false | Overwrites a checkbox, the pin, a note's folder or a folder's name. Being able to change it back doesn't make it additive. |
 | edit_note, replace_note_body, restore_revision, log_table_row | false / true / false | Overwrites existing note text or a table row. The earlier version stays in the note's history. |
 | delete_note, delete_folder, delete_table_row | false / true / false | Removes notes, folders or a table row. Notes go to Recently Deleted for 30 days. |
 
@@ -258,7 +259,7 @@ It leaves out:
 - **MCP server URL:** `https://mcp.ambernotes.app`
 - **Domain verification:**
   1. Copy the token from the portal.
-  2. `supabase secrets set OPENAI_APPS_CHALLENGE=<token> --project-ref rodegaeruhyybqilrnpn`
+  2. Put it in `web/app/.well-known/openai-apps-challenge/route.ts`; the site deploys on merge.
   3. Check with `curl https://mcp.ambernotes.app/.well-known/openai-apps-challenge`, which should print only the token.
   4. Click Verify.
 - **OAuth:** ChatGPT registers itself through DCR. If the page shows a redirect URI, it will be `https://chatgpt.com/connector_platform_oauth_redirect`, which is already accepted.

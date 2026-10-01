@@ -12,11 +12,17 @@ Deno.test("every tool has a title and all three hints as explicit booleans", () 
   }
 });
 
-Deno.test("tools that overwrite or remove content are destructive", () => {
+Deno.test("tools that change or remove anything already there are destructive", () => {
   const destructive = tools.filter((t) => t.annotations.destructiveHint).map((t) => t.name).sort();
   assertEquals(destructive, [
-    "delete_folder", "delete_note", "delete_table_row", "edit_note", "log_table_row", "replace_note_body", "restore_revision",
+    "delete_folder", "delete_note", "delete_table_row", "edit_note", "log_table_row", "move_note", "pin_note", "rename_folder",
+    "replace_note_body", "restore_revision", "set_checklist_item",
   ]);
+});
+
+Deno.test("only tools that just add are non-destructive writes", () => {
+  const additive = tools.filter((t) => !t.annotations.readOnlyHint && !t.annotations.destructiveHint).map((t) => t.name).sort();
+  assertEquals(additive, ["append_to_note", "create_folder", "create_note", "create_sub_note", "restore_note"]);
 });
 
 Deno.test("names are unique, short and snake_case", () => {

@@ -17,7 +17,6 @@ import { tokenKey, unwrap, Vault } from "../_shared/e2ee.ts";
 import { errorKind, log } from "../_shared/log.ts";
 import { Content, runTool, ToolContext, ToolError, tools } from "./tools.ts";
 import { challenge, handleOAuth, isOAuthPath, publicBase, resolveAccessToken, subpath } from "./oauth.ts";
-import { OPENAI_CHALLENGE_PATH, openaiChallenge } from "./verification.ts";
 import { SERVER_CARD_PATH, SERVER_INFO, serverCardResponse } from "./card.ts";
 
 const PROTOCOL_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
@@ -81,7 +80,6 @@ const TOKEN_IN_ADDRESS = "Tokens in the address aren't accepted. Put your token 
 
 export async function handleRequest(req: Request, sql: Sql): Promise<Response> {
   const path = subpath(req);
-  if (path === OPENAI_CHALLENGE_PATH) return openaiChallenge(Deno.env.get("OPENAI_APPS_CHALLENGE"));
   if (path === SERVER_CARD_PATH && (req.method === "GET" || req.method === "HEAD")) return serverCardResponse();
   if (isOAuthPath(path)) return handleOAuth(req, sql, path);
   const base = publicBase(req);

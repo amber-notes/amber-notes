@@ -38,8 +38,10 @@ const noteRef = {
   id: str("Note id (preferred)."),
   title: str("Note title, if you don't have the id. Must match one note."),
 };
-// The directories check these (Claude's and ChatGPT's): every hint is stated. A tool that can
-// overwrite or remove what's there is destructive, even though history can undo it.
+// The directories check these (Claude's and ChatGPT's): every hint is stated. As the MCP spec
+// defines it, only a tool that just adds (a note, a folder, text, a link) is non-destructive. One
+// that changes or removes anything already there, even a checkbox, a pin or a folder's name or
+// place, is destructive, though history or Recently Deleted can undo it.
 const read = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } as const;
 const write = { readOnlyHint: false, destructiveHint: false, openWorldHint: false } as const;
 
@@ -114,19 +116,19 @@ export const tools: Tool[] = ([
     name: "set_checklist_item", title: "Tick a checklist item",
     description: "Checks or unchecks a '- [ ] item' line, matched by its text.",
     inputSchema: { type: "object", properties: { ...noteRef, item: str("The item's text (or a unique part of it)."), checked: bool("true to check, false to uncheck.") }, required: ["item", "checked"] },
-    annotations: { ...write, idempotentHint: true },
+    annotations: { ...write, destructiveHint: true, idempotentHint: true },
   },
   {
     name: "move_note", title: "Move a note",
     description: "Moves a note to another folder, creating the folder if it doesn't exist. Use a path like \"Work/Clients\" to nest.",
     inputSchema: { type: "object", properties: { ...noteRef, folder: str("Folder name or path.") }, required: ["folder"] },
-    annotations: { ...write, idempotentHint: true },
+    annotations: { ...write, destructiveHint: true, idempotentHint: true },
   },
   {
     name: "pin_note", title: "Pin or unpin",
     description: "Pins a note to the top of the list, or unpins it. Pinned state shows as `pinned` in every note listing.",
     inputSchema: { type: "object", properties: { ...noteRef, pinned: bool("true to pin.") }, required: ["pinned"] },
-    annotations: { ...write, idempotentHint: true },
+    annotations: { ...write, destructiveHint: true, idempotentHint: true },
   },
   {
     name: "delete_note", title: "Delete a note",
@@ -155,7 +157,7 @@ export const tools: Tool[] = ([
     name: "rename_folder", title: "Rename a folder",
     description: "Renames a folder in place. Its notes and sub-folders stay inside it.",
     inputSchema: { type: "object", properties: { folder: str("Current name or path."), new_name: str("New name.") }, required: ["folder", "new_name"] },
-    annotations: write,
+    annotations: { ...write, destructiveHint: true, idempotentHint: true },
   },
   {
     name: "delete_folder", title: "Delete a folder",

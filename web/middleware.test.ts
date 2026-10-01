@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { NextRequest } from "next/server";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { middleware } from "./middleware";
@@ -54,6 +55,21 @@ describe("the MCP proxy", () => {
 
   it("maps the root to the function itself", async () => {
     expect(await proxied("/")).toBe(FN);
+  });
+
+  it("leaves the favicon and OpenAI's domain challenge to the site", async () => {
+    for (const path of ["/favicon.ico", "/.well-known/openai-apps-challenge"]) {
+      const res = await middleware(new NextRequest(`https://mcp.ambernotes.app${path}`, { headers: { host: "mcp.ambernotes.app" } }));
+      expect(res.headers.get("x-middleware-rewrite"), path).toBeNull();
+      expect(res.headers.get("x-middleware-next"), path).toBe("1");
+    }
+  });
+
+  it("serves the site's own favicon there, the Amber mark", () => {
+    const ico = readFileSync(new URL("./app/favicon.ico", import.meta.url));
+    // An ICO header: reserved 0, type 1 (icon), at least one image.
+    expect([ico.readUInt16LE(0), ico.readUInt16LE(2)]).toEqual([0, 1]);
+    expect(ico.readUInt16LE(4)).toBeGreaterThan(0);
   });
 
   it("never forwards paths the server doesn't have", async () => {
