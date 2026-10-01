@@ -21,6 +21,9 @@ enum Palette {
 
     /// The deeper amber: accent, links and an AI's tint (AccentColor.colorset holds the same).
     static let amber = pair(0xD96A06, 0xF4AD33)
+    /// The fill of amber primary buttons, in light and dark alike: the deeper amber, so their
+    /// white label stays readable (the dark-mode amber is too light under white).
+    static let amberButton = pair(0xD96A06, 0xD96A06)
     /// Amber as text beside an AI's mark: dark enough to read on white.
     static let amberInk = pair(0xA85700, 0xF4AD33)
     /// The soft amber fill behind an AI's receipt.

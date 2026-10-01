@@ -106,11 +106,8 @@ struct NoteSourceSheet: View {
             Button { model.add(context: context) } label: {
                 Text("Add to my notes").frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.amberProminent)
             .controlSize(.large)
-            #if os(iOS)
-            .buttonBorderShape(.capsule)
-            #endif
             .keyboardShortcut(.defaultAction)
             .accessibilityIdentifier("noteSource.add")
         }
@@ -154,11 +151,8 @@ struct NoteSourceSheet: View {
                 } label: {
                     Text("Open note").frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.amberProminent)
                 .controlSize(.large)
-                #if os(iOS)
-                .buttonBorderShape(.capsule)
-                #endif
                 .accessibilityIdentifier("noteSource.open")
             }
             .padding(20)

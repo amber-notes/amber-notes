@@ -1028,7 +1028,7 @@ struct ConsentSheet: View {
                         Text("Allow").frame(maxWidth: .infinity)
                     }
                     .keyboardShortcut(.defaultAction)
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.amberProminent)
                     .controlSize(.large)
                     .disabled(!armed)
                     .accessibilityIdentifier("connect.allow")
@@ -1066,7 +1066,7 @@ struct ConsentSheet: View {
                     Text("Allow").frame(maxWidth: .infinity)
                 }
                 .keyboardShortcut(.defaultAction)
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.amberProminent)
                 .controlSize(.large)
                 .disabled(!armed || match == nil || typed.count < 2)
                 .accessibilityIdentifier("connect.allow")

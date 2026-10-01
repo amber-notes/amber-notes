@@ -131,7 +131,7 @@ struct EvernoteImportView: View {
             case .finished:
                 Spacer()
                 Button("Done") { dismiss() }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.amberProminent)
                     .keyboardShortcut(.defaultAction)
                     .accessibilityIdentifier("evernote.done")
             case .choosing:
@@ -140,7 +140,7 @@ struct EvernoteImportView: View {
                     .keyboardShortcut(.cancelAction)
                     .fixedSize()
                 importButton
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.amberProminent)
                     .keyboardShortcut(.defaultAction)
                     .fixedSize()
             }

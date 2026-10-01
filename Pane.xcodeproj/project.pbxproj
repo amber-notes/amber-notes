@@ -40,6 +40,7 @@
 		14E3C2B4C906F7EB17833216 /* ConnectAsks.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2FFA510B01DACFC168BE214 /* ConnectAsks.swift */; };
 		15DFFDBFF48AEC62306795ED /* Encryption.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9675E1E6CE2A9DBBE319BDF4 /* Encryption.swift */; };
 		17F5C4C03D14547F0527AF27 /* TableGrid.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1C50C228D538B5E390EF49D /* TableGrid.swift */; };
+		18C02D793F48E2FF3C7F447F /* AmberButtonTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B19F579047FE527B735EFCE /* AmberButtonTests.swift */; };
 		1BB0A248D658A1C8DADC7424 /* SyncFaultTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DE5145EFFCEE51D61F16FCD /* SyncFaultTests.swift */; };
 		1CDE672D3CF4CC64C0D79511 /* ConnectAITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87987EC62A5DA06AB545080F /* ConnectAITests.swift */; };
 		1D4FF721F8652972368E5901 /* RichTextToMarkdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99375A4ACF211AEE18EC4EC3 /* RichTextToMarkdown.swift */; };
@@ -127,6 +128,7 @@
 		64991D36601107180C3C7B49 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F9EEA5AC460DA18550E8304 /* Models.swift */; };
 		64ADBFB8920863460F71AE13 /* EmailSignInFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8960C267A4A73E8377D155D6 /* EmailSignInFlow.swift */; };
 		6537166801A124B6D541DB3A /* Markdown in Frameworks */ = {isa = PBXBuildFile; productRef = 068B8617CDC6EF1378CC4272 /* Markdown */; };
+		65847CECE21D436E12E5A5A4 /* AmberButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3D58E8E551A1584CC8A7AC7 /* AmberButton.swift */; };
 		659C0A1B0B3D3988A8A1F210 /* PushTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65052FE76C0F2BF131DDA2C7 /* PushTests.swift */; };
 		660314E20E64BF769F21DF9B /* Palette.swift in Sources */ = {isa = PBXBuildFile; fileRef = E64B3C5141EE3AF3984622FC /* Palette.swift */; };
 		66B9BFF87AB99D9A3D8FA693 /* RichTextToMarkdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99375A4ACF211AEE18EC4EC3 /* RichTextToMarkdown.swift */; };
@@ -195,6 +197,7 @@
 		9A931A983A0828FAF1A3E667 /* TableGrid.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1C50C228D538B5E390EF49D /* TableGrid.swift */; };
 		9B7A13572B7D217C65DB502C /* E2EE.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE72D528EBDE663B26CDC39D /* E2EE.swift */; };
 		9C0EAC3CEB28D1B88D6F3E91 /* MarkdownEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 020E4F46F8521511BB37EAAA /* MarkdownEditor.swift */; };
+		9DBD5454DD9B221E059F12C7 /* AmberButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3D58E8E551A1584CC8A7AC7 /* AmberButton.swift */; };
 		9EBF673CD7CED1AC6CCA0108 /* NoteStructure.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0AC25F37C1666CBB35BBB0C /* NoteStructure.swift */; };
 		9F62E76CDE7AE2DD7C74B970 /* EditorPerfTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29020B4DA13FDC017652C91F /* EditorPerfTests.swift */; };
 		A440C5DAC4FC62A0328ACBCC /* AccountKeysSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 569EB1430761546DBD046F80 /* AccountKeysSync.swift */; };
@@ -457,6 +460,7 @@
 		89A5B5992BCBFBD45F14C80D /* AccountLibraryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountLibraryTests.swift; sourceTree = "<group>"; };
 		8A537C18B9F9C98B1862B423 /* AppleNotesLiveTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleNotesLiveTests.swift; sourceTree = "<group>"; };
 		8AFF5865DFB1F37542A9EF3A /* NoteListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteListView.swift; sourceTree = "<group>"; };
+		8B19F579047FE527B735EFCE /* AmberButtonTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AmberButtonTests.swift; sourceTree = "<group>"; };
 		8B20F92D2A50287948FFA111 /* Push.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Push.swift; sourceTree = "<group>"; };
 		8BDEFF02B8B16DE3DF974509 /* ChecklistInteractionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChecklistInteractionTests.swift; sourceTree = "<group>"; };
 		8CA850D9ED3A3D8966BC9FF7 /* ScopeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScopeTests.swift; sourceTree = "<group>"; };
@@ -539,6 +543,7 @@
 		F0FD3EFDF28989E46C2DEBCE /* EvernoteImportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvernoteImportTests.swift; sourceTree = "<group>"; };
 		F197879E6AA9D80E74248F7D /* Pane-mac-appstore.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Pane-mac-appstore.entitlements"; sourceTree = "<group>"; };
 		F289BCC7CFF17C5E38FD609F /* AppleSignIn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignIn.swift; sourceTree = "<group>"; };
+		F3D58E8E551A1584CC8A7AC7 /* AmberButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AmberButton.swift; sourceTree = "<group>"; };
 		F640AF3B161AEAD5FD260995 /* NoteLock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteLock.swift; sourceTree = "<group>"; };
 		F7306680E0E335C07172C36F /* ChecklistLookTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChecklistLookTests.swift; sourceTree = "<group>"; };
 		F743BED91F9AD58A3BFA6CCB /* LinkPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkPolicy.swift; sourceTree = "<group>"; };
@@ -673,6 +678,7 @@
 			isa = PBXGroup;
 			children = (
 				907ECF183AD0A69658A04C3A /* AIMarks.swift */,
+				F3D58E8E551A1584CC8A7AC7 /* AmberButton.swift */,
 				483CA88017A03E92EEC52DFD /* AppleNotesImport.swift */,
 				4B255CC05106DC01C927C7CD /* AppMark.swift */,
 				39EF6421870B0C2E8060E578 /* ConnectAI.swift */,
@@ -761,6 +767,7 @@
 			children = (
 				89A5B5992BCBFBD45F14C80D /* AccountLibraryTests.swift */,
 				212906CC78A0D33147DA9115 /* AIEditTests.swift */,
+				8B19F579047FE527B735EFCE /* AmberButtonTests.swift */,
 				8A537C18B9F9C98B1862B423 /* AppleNotesLiveTests.swift */,
 				BAE155CC8D3D50CB90D4C532 /* ApplePinsTests.swift */,
 				C561D2BC7327C8F950CD3504 /* AppleSignInTests.swift */,
@@ -1187,6 +1194,7 @@
 				5EFE2991114664DF1D981C66 /* AIEditSnapshots.swift in Sources */,
 				DE5EE93B05370A763A90D28F /* AIEditTests.swift in Sources */,
 				13CDDDB6F9095142D93803C3 /* AccountLibraryTests.swift in Sources */,
+				18C02D793F48E2FF3C7F447F /* AmberButtonTests.swift in Sources */,
 				DEBBB9FCB6ADA0C29D0CDC2D /* AppPerfTests.swift in Sources */,
 				A50C0FAD1144F7132ADA1FC1 /* AppSnapshotTests.swift in Sources */,
 				BBF4C5B35A481BA9E9F080C2 /* AppleNotesLiveTests.swift in Sources */,
@@ -1274,6 +1282,7 @@
 				A440C5DAC4FC62A0328ACBCC /* AccountKeysSync.swift in Sources */,
 				D857EDE45C0F2D11BF50A311 /* AccountLibrary.swift in Sources */,
 				74DF77630513432E838767C8 /* AccountNotices.swift in Sources */,
+				65847CECE21D436E12E5A5A4 /* AmberButton.swift in Sources */,
 				5E153129A4B637873EE0F5A4 /* AppMark.swift in Sources */,
 				039FA59088DF11BD28A3096C /* AppleNotesImport.swift in Sources */,
 				E4F9E318E888DD290EB5E583 /* ApplePins.swift in Sources */,
@@ -1406,6 +1415,7 @@
 				E0C66389A3A5888FAFDD0160 /* AccountKeysSync.swift in Sources */,
 				A9B486B03ADF66D0605E46FE /* AccountLibrary.swift in Sources */,
 				1083082C020B49A0A7213EB6 /* AccountNotices.swift in Sources */,
+				9DBD5454DD9B221E059F12C7 /* AmberButton.swift in Sources */,
 				53FAB7BE6A0B731C0DCE88CD /* AppMark.swift in Sources */,
 				7A098FE97DEFF91BC87CF24B /* AppleNotesImport.swift in Sources */,
 				21B3A13060F5A1F99F01DAEF /* ApplePins.swift in Sources */,
