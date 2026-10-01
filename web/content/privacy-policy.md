@@ -1,12 +1,13 @@
 # Privacy Policy
 
-Last updated: 30 September 2026
+Last updated: 1 October 2026
 
 ## The short version
 
 - Your notes are yours. Your notes, their titles, folder names, file names and files, and earlier versions are encrypted on your iPhone or Mac with a key only your devices hold, before they're uploaded. We store the encrypted copies so they sync, and we can't read them.
 - Some details stay readable to us, such as your email address, dates and sizes, and how your notes are organized. The section on end-to-end encryption lists all of them, and its limits.
-- No ads, no tracking and no third-party analytics, in the apps or on the website, and we never sell or share your data.
+- No ads, no tracking and no third-party analytics in the apps, and we never sell or share your data.
+- The website counts page views and where visitors came from with Vercel Web Analytics, which uses no cookies and doesn't identify you, and counts Mac downloads as daily totals. None of this touches your notes or your computer.
 - We count how features are used on our own server to improve the app. We never share or sell it.
 - An AI assistant can only read your notes if you connect it and approve it on your iPhone or Mac, or with your recovery key on ambernotes.app. While it works, our server opens the notes it asks for in memory. You can disconnect it at any time.
 - A note you lock is encrypted a second time with your notes password. Not us and not an AI can read its text.
@@ -79,6 +80,12 @@ We count how features are used on our own server to improve the app. We never sh
 - which steps of the first-run setup you've completed;
 - a random identifier for each installation of the app and its platform (iPhone or Mac), to count how many devices an account uses. It isn't linked to your device's hardware or advertising identifiers.
 
+**Visits to the website**
+
+- **Page views,** with Vercel Web Analytics: which page was viewed, the site you came from, and your country, browser and type of device. It uses no cookies and stores nothing on your device, and it doesn't identify you or follow you to other sites. Vercel tells visits apart for a day with a hash it doesn't store. Shared notes, the connect pages and report pages are never counted, and page addresses are counted without anything after them, such as a code in a link.
+- **Mac downloads,** as one total per day: the date and a number. Nothing about who downloaded, not even a network address. Updates the Mac app installs itself aren't counted.
+- None of this touches your notes or your computer, and none of it is linked to your account.
+
 **What we don't collect**
 
 - No advertising identifiers, no location, no contacts, and no third-party analytics or crash-reporting tools.
@@ -95,6 +102,7 @@ We process personal data under the EU General Data Protection Regulation (GDPR) 
 | Sign-in records, rate limits, hashed network addresses, request logs | To keep the service secure and stop abuse | Legitimate interests |
 | Reports about shared pages | To review and remove content that breaks our Terms | Legitimate interests, and legal obligations where they apply |
 | Feature usage counts | To learn whether the app works for people and improve it | Legitimate interests |
+| Website page views and daily download totals | To learn how people find the website and how many download the app | Legitimate interests |
 
 We don't use your data for advertising, and we don't make automated decisions about you with legal or similarly significant effects.
 
@@ -149,7 +157,7 @@ Nothing reaches an AI assistant unless you connect one. When you connect ChatGPT
 | Service | What it does for us | Where | Transfers outside the EU |
 |---|---|---|---|
 | Supabase (Supabase Pte. Ltd.) | Database, file storage, sign-in and server functions | Frankfurt, Germany (EU) | Standard Contractual Clauses, in its [data processing agreement](https://supabase.com/legal/dpa) ([sub-processors](https://supabase.com/legal/customer-resources/subprocessor-list)) |
-| Vercel, Inc. | The website, shared note pages, the address AI apps connect to (mcp.ambernotes.app), Mac app downloads, update checks | Pages are built in Frankfurt, Germany (EU) and delivered through Vercel's global network | EU-U.S. Data Privacy Framework ([privacy policy](https://vercel.com/legal/privacy-policy), [sub-processors](https://vercel.com/legal/sub-processors)) |
+| Vercel, Inc. | The website, shared note pages, the address AI apps connect to (mcp.ambernotes.app), Mac app downloads, update checks, website page view counts | Pages are built in Frankfurt, Germany (EU) and delivered through Vercel's global network | EU-U.S. Data Privacy Framework ([privacy policy](https://vercel.com/legal/privacy-policy), [sub-processors](https://vercel.com/legal/sub-processors)) |
 | Apple | Sign in with Apple and the App Store, if you use them | Under Apple's own privacy policy | Apple's own terms |
 
 Your encrypted notes and files are stored only at Supabase, in Frankfurt. Supabase processes them only on our instructions. Vercel handles requests to the website on their way through: it sees a shared note while it shows the page, and the requests AI apps send to mcp.ambernotes.app, including the text of the notes they read or write, but it doesn't store your notes. Either company's support staff could access data from outside the EU; those transfers are covered as the table says.
@@ -182,6 +190,7 @@ Rate limits on sign-in and connection requests count a one-way hash of the IP ad
 - **Sign-in records:** 30 days. **Rate-limit hashes:** 2 hours. **Unfinished AI sign-ins and expired access tokens:** a day after they expire.
 - **Reports:** the reporter's hash is blanked after 30 days; a report is deleted 12 months after it was made, once it's been reviewed.
 - **Logs** at our hosting providers: 1 hour to 1 day, as listed under Logs.
+- **Website counts:** page view counts stay at Vercel for as long as its plan keeps them (at least a month). Daily download totals hold nothing about a person and are kept.
 - **Your notes' key, locked:** the copy locked with your recovery key is kept until you delete your account or start fresh; each AI connection's copy is deleted when you disconnect it.
 - **Browser approvals:** the approval sealed to a browser is kept until the browser picks it up, and the request expires after 10 minutes.
 - **Backups:** our current hosting plan keeps no backups of the database, so what's deleted is gone. If that changes, a backup would hold only the encrypted copies and the locked copies of your key, for the period this policy states.
@@ -200,7 +209,7 @@ Write to **emil@norditech.se**. We answer within one month. If you think we've h
 
 ## Cookies and storage on the website
 
-The website sets no cookies and uses no analytics or tracking scripts. Only the page where you connect an AI (ambernotes.app/connect) stores anything in your browser, and only what that page needs to work:
+The website sets no cookies. Its page view counts (Vercel Web Analytics) store nothing in your browser. Only the page where you connect an AI (ambernotes.app/connect) stores anything in your browser, and only what that page needs to work:
 
 - **sessionStorage, `amber.connect.pkce`:** a one-time code for Sign in with Apple, kept while you go to Apple and back, and deleted as soon as you return.
 
