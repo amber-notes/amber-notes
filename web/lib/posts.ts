@@ -29,7 +29,7 @@ export type Post = {
 
 /// The ground a cover (and the post's first picture) sits on: the site's palette, the help page's
 /// leaf brown, the app's dark look, or the home page's dunes.
-export type Ground = "paper" | "soft" | "tint" | "amber" | "leaf" | "dark" | "dunes" | "ink" | "peach" | "cream" | "sand" | "clay" | "mist" | "honey" | "sage" | "heather" | "blush" | "wheat" | "fog" | "dusk" | "pearl" | "linen" | "night";
+export type Ground = "paper" | "soft" | "tint" | "amber" | "leaf" | "dark" | "dunes" | "ink" | "peach" | "cream" | "sand" | "clay" | "mist" | "honey" | "sage" | "heather" | "blush" | "wheat" | "fog" | "dusk" | "pearl" | "linen" | "night" | "rose";
 
 /// A card's picture: one real capture of the element the post is about, on the post's ground. The
 /// capture is cropped at 2x (3x from iPhone) to about the card's width, so it shows at full size.
@@ -46,6 +46,7 @@ export const SHOTS = {
   connectList: { src: "/blog/connect-ai.webp", alt: "Settings in Amber Notes on a Mac: Connect an AI lists ChatGPT, Claude, Claude Code and Codex, with what's connected below.", width: 1040, height: 720, window: false, title: "Settings" },
   consentE2ee: { src: "/blog/consent-e2ee.webp", alt: "Amber Notes on a Mac asking \"Allow ChatGPT to use your notes?\": access goes to chatgpt.com, a choice of Read and Edit or Read Only, and a line saying that while it's connected it can read everything except locked notes.", width: 840, height: 712, window: false, title: "Amber Notes" },
   notesPassword: { src: "/blog/notes-password.webp", alt: "Amber Notes on a Mac: Create a password for your locked notes, with Password, Verify and Hint fields, and the warning that if you forget this password, your locked notes can't be recovered, not even by us.", width: 880, height: 600, window: false, title: "Locked Notes" },
+  coworkOptions: { src: "/blog/cowork-apple-notes.webp", alt: "Claude Cowork and Apple Notes: Claude Desktop on your Mac works with Anthropic's Apple Notes extension; Cowork on the web or your phone only through Claude Desktop while it's open; any device with the Mac asleep has no way into Apple Notes.", width: 736, height: 392, window: true },
   importSheet: { src: "/blog/import-sheet.webp", alt: "The Import from Apple Notes sheet in Amber Notes on a Mac: notes picked, Keep Apple Notes folders and Also bring over pinned notes ticked, and an Import 1,284 Notes button.", width: 1980, height: 1800, window: true },
   aiEdit: { src: "/blog/ai-edit.webp", alt: "A Groceries note in Amber Notes on a Mac. The five lines ChatGPT just added are tinted, and a bar at the bottom says ChatGPT changed 5 lines, with Undo.", width: 1260, height: 1520, window: false, title: "Groceries" },
   history: { src: "/blog/history.webp", alt: "Version history for a Groceries note in Amber Notes on a Mac: versions by you on iPhone and Mac, ChatGPT and Claude Code, with the lines that differ tinted and a Restore This Version button.", width: 1800, height: 1200, window: false, title: "Groceries" },
@@ -60,6 +61,18 @@ export const SHOTS = {
 } satisfies Record<string, Shot>;
 
 export const posts: Post[] = [
+  {
+    slug: "claude-cowork-apple-notes",
+    title: "How to use Claude Cowork with Apple Notes",
+    description: "How Claude Cowork reaches Apple Notes today: Anthropic's Mac extension, what it can't do from your phone, and a connector that works on every device.",
+    excerpt: "Cowork can use Apple Notes on a Mac, through Anthropic's extension. From your phone it's harder. The options, and when the extension is enough.",
+    category: "Apple Notes",
+    date: "2026-10-01",
+    updated: "2026-10-01",
+    image: SHOTS.coworkOptions,
+    thumb: thumb("rose", "thumb-cowork-apple-notes", 784, 517),
+    draft: false,
+  },
   {
     slug: "recover-deleted-apple-notes",
     title: "How to recover deleted Apple Notes, including after 30 days",

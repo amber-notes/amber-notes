@@ -5,6 +5,31 @@ assistants. Newest first. Research behind it: [seo-aeo-research-2026-09-30.md](s
 
 `docs/` had no README naming a folder for evidence, so this and the research live in `docs/Evidence/`.
 
+## 1 October 2026: "How to use Claude Cowork with Apple Notes"
+
+### Why
+
+- People ask this in r/AppleNotesGang ("AppleNotes & Claude Cowork?", 34 comments) and r/ClaudeAI ("Is Claude allergic to Apple ecosystem?"). Answers there split between "use the Mac connector" and "impossible". Emil approved the post on 1 October.
+
+### Changed (branch `site/claude-cowork-apple-notes`)
+
+- New post `/blog/claude-cowork-apple-notes`, in Apple Notes, with an exact-match title. Every claim comes from Anthropic's own pages, read on 1 October:
+  - Cowork on web, desktop and mobile (support article 15520349): where it runs, the cloud change on 6 October, and that local connectors need Claude Desktop open.
+  - Desktop vs web connectors (11725091): desktop extensions aren't on web or mobile.
+  - Custom connectors (11175166): available in Cowork, Free gets one, they run from Anthropic's cloud.
+  - The Read and Write Apple Notes listing (claude.com/connectors): four tools, macOS automation.
+  - The checklist limitation (anthropics/claude-ai-mcp#29).
+- Not tested hands-on in Cowork, and the post says so.
+- Structure follows the audit's template:
+  - a short answer first, then where Cowork runs
+  - option 1, the extension, with steps and limits
+  - when the extension is enough
+  - option 2, a connector (Amber Notes): steps, Undo and version history, what moving means
+  - troubleshooting, then the FAQ
+- It links the Apple Notes import guide and /templates. The move guide links back.
+- The cover is a diagram rather than an Amber capture: Mac ✓ / Cowork on web or phone, only through the open Mac / Mac asleep ✕. It's drawn at card width, padded to the same shape as the approved covers, on a new ground, rose. It has its own share card at /og/blog/claude-cowork-apple-notes.
+- The Reddit reply drafts for both threads are in the private strategy folder (`strategy/reddit-drafts.md`, never pushed), for Emil to post.
+
 ## 1 October 2026: accuracy and sharing fixes from the blog audit
 
 ### Changed (branch `site/accuracy-sharing`)
