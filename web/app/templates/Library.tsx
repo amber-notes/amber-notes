@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import s from "./templates.module.css";
 
 type Item = { slug: string; category: string };
-type Filter = { name: string; anchor: string; count: number; fill?: string; ink?: "dark" | "light"; swatch?: string[] };
+type Filter = { name: string; anchor: string; count: number; swatch?: string[] };
 
 /// The gallery's one filter: a category at a time, kept in the address (?category=work) so a
 /// filtered view can be linked. Without JavaScript every template simply shows.
@@ -32,7 +32,7 @@ export default function Library({ items, cards, categories }: { items: Item[]; c
           <button type="button" className={s.chip} aria-pressed={category === null} onClick={() => update(null)}>All</button>
           {categories.map((c) => (
             <button key={c.anchor} type="button" className={s.chip} aria-pressed={category === c.anchor} onClick={() => update(category === c.anchor ? null : c.anchor)}
-              data-ink={c.ink} style={{ "--fill": c.fill } as React.CSSProperties}>
+>
               {c.swatch && <span className={s.swatch} aria-hidden="true">{c.swatch.map((g) => <i key={g} style={{ background: g }} />)}</span>}
               {c.name}<span className={s.count}>{c.count}</span>
             </button>

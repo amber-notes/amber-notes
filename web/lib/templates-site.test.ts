@@ -69,10 +69,11 @@ describe("the gallery", () => {
     expect(html).not.toContain(">Everyone<");
   });
 
-  it("gives each category chip its colour, and no trial switches", () => {
+  it("shows each category chip with its templates' colours, and no trial switches", () => {
     const html = gallery();
     const chips = html.slice(html.indexOf('aria-label="Category"'), html.indexOf("templates</p>"));
-    expect(chips.match(/<button[^>]*data-ink="(dark|light)"[^>]*--fill:#[0-9a-f]{6}/g)).toHaveLength(4);
+    // Three dots per category chip, in its templates' cover colours; none on "All".
+    expect(chips.match(/<i style="background:#[0-9a-f]{6}"/g)).toHaveLength(12);
     expect(html).not.toContain("data-top");
   });
 

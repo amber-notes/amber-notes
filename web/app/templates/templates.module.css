@@ -302,16 +302,15 @@
 .loopNote { margin: 0; font-weight: 700; font-size: 18px; }
 .loopLine { margin: 0; color: #6e6e73; }
 
-/* The chips carry their templates' colours as dots; the picked chip fills with its category's colour,
-   with ink or cream text, whichever reads (4.5:1 or better on every fill). */
+/* The chips carry their templates' colours as dots. The picked chip fills with the dark ink, the same
+   for every category, with cream text; a thin cream ring keeps its dots clear on the dark. The focus
+   ring is the amber outline above, separate from this. */
 .swatch { display: inline-flex; margin-right: 2px; }
 .swatch i { width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 0 2px var(--bg); }
 .swatch i + i { margin-left: -4px; }
-.chip[aria-pressed="true"][data-ink] { background: var(--fill); }
-.chip[aria-pressed="true"][data-ink="dark"], .chip[aria-pressed="true"][data-ink="dark"] .count { color: #2a1d10; }
-.chip[aria-pressed="true"][data-ink="light"], .chip[aria-pressed="true"][data-ink="light"] .count { color: #fff4e6; }
-.chip[aria-pressed="true"]:not([data-ink]) { background: var(--cta-bg); color: var(--cta-ink); }
-.chip[aria-pressed="true"] .swatch i { box-shadow: 0 0 0 2px var(--fill, var(--cta-bg)); }
+.chip[aria-pressed="true"] { background: var(--cta-bg); color: var(--cta-ink); }
+.chip[aria-pressed="true"] .count { color: var(--cta-ink); opacity: 0.75; }
+.chip[aria-pressed="true"] .swatch i { box-shadow: 0 0 0 1.5px var(--cta-ink); }
 
 /* Four covers fanned beside the title at desktop widths; on narrower screens the top stays short. */
 .hero { position: relative; }

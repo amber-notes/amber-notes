@@ -4,7 +4,7 @@ import { JsonLd, breadcrumbs, incredible, maker, organization, templateLibrary }
 import { CATEGORIES, anchor, inCategory, templates } from "@/lib/templates";
 import Card from "./Card";
 import Library from "./Library";
-import { COVERS, coverPath, inkOn } from "@/lib/template-covers";
+import { COVERS, coverPath } from "@/lib/template-covers";
 import s from "./templates.module.css";
 
 export const dynamic = "force-static";
@@ -18,10 +18,8 @@ export const metadata: Metadata = pageMetadata({
 
 const at = (i: number) => ({ "--i": i }) as React.CSSProperties;
 
-/// The covers fanned beside the title, and each category's colour: the ground of one of its covers,
-/// which fills its chip when it's picked.
+/// The covers fanned beside the title.
 const FAN = ["habit-tracker", "meeting-notes", "reading-list", "meal-plan"];
-const FILL: Record<string, string> = { "Habits and health": "#92a36f", Work: "#ec7751", Learning: "#3f5c86", "Home and life": "#fbb433" };
 
 export default function Page() {
   const all = templates();
@@ -46,7 +44,7 @@ export default function Page() {
             cards={all.map((t) => <Card key={t.slug} t={t} />)}
             categories={CATEGORIES.map((c) => {
               const ts = inCategory(c);
-              return { name: c, anchor: anchor(c), count: ts.length, fill: FILL[c], ink: inkOn(FILL[c]), swatch: ts.slice(0, 3).map((t) => COVERS[t.slug].ground) };
+              return { name: c, anchor: anchor(c), count: ts.length, swatch: ts.slice(0, 3).map((t) => COVERS[t.slug].ground) };
             })}
           />
         </div>
