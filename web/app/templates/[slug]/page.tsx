@@ -7,6 +7,7 @@ import { anchor, changedCount, instructions, noteTitle, searchTitle, template, t
 import Card from "../Card";
 import CopyButton from "../CopyButton";
 import Instructions from "../Instructions";
+import PromptCopy from "../PromptCopy";
 import NoteWindow from "../NoteWindow";
 import s from "../templates.module.css";
 
@@ -40,6 +41,16 @@ const steps = (t: Template) => APP_TEMPLATES.live
 
 const at = (i: number) => ({ "--i": i }) as React.CSSProperties;
 
+/// The prompts worth telling apart: AIs that get the same words share one entry ("ChatGPT or Claude").
+function variants(t: Template) {
+  const byPrompt = new Map<string, string[]>();
+  for (const i of instructions(t)) byPrompt.set(i.prompt, [...(byPrompt.get(i.prompt) ?? []), i.name]);
+  return [...byPrompt].map(([prompt, names]) => ({ name: names.join(" or ").replace(/ or (?=.* or )/g, ", "), prompt }));
+}
+
+/// The note's own first line under its title: what the note is for, in its own words.
+const intro = (t: Template) => t.note.split("\n").slice(1).find((l) => l.trim() && !l.startsWith("#") && !l.startsWith("<!--"))?.trim() ?? "";
+
 export default async function Page({ params }: Props) {
   const t = template((await params).slug);
   if (!t) notFound();
@@ -47,6 +58,7 @@ export default async function Page({ params }: Props) {
   const changed = changedCount(t);
   // The example bar names the AI the template is mostly used with.
   const by = t.prompt.claudeCode && t.audiences.includes("Developers") ? "Claude Code" : "ChatGPT";
+  const vs = variants(t);
   return (
     <div className={s.main}>
       <JsonLd graph={[
@@ -64,37 +76,38 @@ export default async function Page({ params }: Props) {
             <p className={`${s.lede} rise`} style={at(1)}>{t.description}</p>
             <p className={`${s.for} rise`} style={at(1)}>{t.audience}</p>
             <div className={`${s.ctas} rise`} style={at(2)}>
-              {APP_TEMPLATES.live
-                ? <a className={s.primary} href={useLink(t.slug)}><PlusGlyph /> Use this template</a>
-                : <CopyButton text={instructions(t)[0].prompt} label="Copy the prompt" className={s.primary} />}
-              <CopyButton text={t.note} label="Copy the markdown" className={s.secondary} />
+              {APP_TEMPLATES.live && <a className={s.primary} href={useLink(t.slug)}><PlusGlyph /> Use this template</a>}
+              <PromptCopy variants={vs} className={APP_TEMPLATES.live ? s.quiet : s.primary}>
+                <CopyButton text={t.note} label="Copy the markdown" className={s.quiet} />
+              </PromptCopy>
             </div>
-            <p className={`${s.fine} rise`} style={at(3)}>
-              {APP_TEMPLATES.live
-                ? <>Free. Opens Amber Notes and adds the note.</>
-                : <>Free. Paste the prompt into ChatGPT or Claude with Amber Notes connected: it creates the note, then fills it in. For Claude Code, use its tab below.</>}{" "}
-              No Amber Notes yet? <a href="/download">Download it for Mac</a>.
-            </p>
+            <p className={`${s.fine} rise`} style={at(3)}>Free. No Amber Notes yet? <a href="/download">Download it for Mac</a>.</p>
           </header>
-          <div className="rise-soft" style={at(2)}>
-            <NoteWindow markdown={t.note} folder={t.folder} date="Today" label={`The ${t.title.toLowerCase()} template as a note in Amber Notes`} />
+          <div className={`${s.heroExample} rise-soft`} style={at(2)}>
+            <p className={s.changes} aria-hidden="true">{by} changed <span>{changed} {changed === 1 ? "line" : "lines"}</span><i>Undo</i></p>
+            <div className={s.heroWindow}>
+              <NoteWindow markdown={t.example} before={t.note} folder={t.folder} date="30 September 2026" label={`The ${t.title.toLowerCase()} template filled in by an AI`} />
+            </div>
+            <p className={s.caption}>
+              The note after a few days of talking to your AI. Tinted lines are what it added, the way Amber Notes shows an AI&apos;s changes, with
+              Undo and the earlier version kept in the note&apos;s history.
+            </p>
           </div>
         </div>
       </div>
 
-      <Instructions items={instructions(t)} asks={t.asks} />
+      <Instructions title={noteTitle(t)} folder={t.folder} intro={intro(t)} variants={vs} asks={t.asks} />
 
       <section className={s.section} aria-labelledby="result">
         <div className={s.sectionHead}>
-          <h2 id="result" className={s.h2}>What you&apos;ll get</h2>
+          <h2 id="result" className={s.h2}>The note you start with</h2>
           <p className={s.sectionLede}>
-            The same note after a few days of talking to your AI. Tinted lines are what it added, the way Amber Notes shows an AI&apos;s
-            changes, with Undo and the earlier version kept in the note&apos;s history.
+            This is what the prompt creates in Amber Notes: an ordinary note with the headings{t.note.includes("|") ? " and the table" : ""} ready.
+            Your AI fills it in from there, and you can still edit every line yourself.
           </p>
         </div>
         <div className={s.result}>
-          <p className={s.changes} aria-hidden="true">{by} changed <span>{changed} {changed === 1 ? "line" : "lines"}</span><i>Undo</i></p>
-          <NoteWindow markdown={t.example} before={t.note} folder={t.folder} date="30 September 2026" label={`The ${t.title.toLowerCase()} template filled in by an AI`} />
+          <NoteWindow markdown={t.note} folder={t.folder} date="Today" label={`The ${t.title.toLowerCase()} template as a note in Amber Notes`} />
         </div>
       </section>
 
