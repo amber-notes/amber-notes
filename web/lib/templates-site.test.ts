@@ -71,7 +71,8 @@ describe("the gallery", () => {
 
   it("gives each category chip its colour, and no trial switches", () => {
     const html = gallery();
-    expect(html.match(/data-ink="(dark|light)"/g)).toHaveLength(4);
+    const chips = html.slice(html.indexOf('aria-label="Category"'), html.indexOf("templates</p>"));
+    expect(chips.match(/<button[^>]*data-ink="(dark|light)"[^>]*--fill:#[0-9a-f]{6}/g)).toHaveLength(4);
     expect(html).not.toContain("data-top");
   });
 
