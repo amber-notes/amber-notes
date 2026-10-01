@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { AIGlyph } from "@/lib/ai-glyphs";
-import { pageMetadata } from "@/lib/site";
+import { APP_TEMPLATES, pageMetadata } from "@/lib/site";
 import { JsonLd, breadcrumbs, maker, organization, templateHowTo, templateWork } from "@/lib/structured-data";
-import { anchor, changedCount, instructions, searchTitle, template, templates, useLink, type Template } from "@/lib/templates";
+import { anchor, changedCount, instructions, noteTitle, searchTitle, template, templates, useLink, type Template } from "@/lib/templates";
 import Card from "../Card";
 import CopyButton from "../CopyButton";
 import Instructions from "../Instructions";
@@ -25,12 +25,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return pageMetadata({ title: searchTitle(t), shareTitle: `${t.title}: a template your AI fills in`, description: t.description, path: `/templates/${t.slug}` });
 }
 
-/// The steps, for the page and its HowTo data.
-const steps = (t: Template) => [
-  { name: "Add the template to Amber Notes", text: `Choose Use this template. Amber Notes opens and adds the "${t.note.split("\n")[0]}" note to the folder you pick.` },
-  { name: "Connect your AI", text: "Connect ChatGPT, Claude or Claude Code to Amber Notes once, and choose Read and Edit so it can fill in the note." },
-  { name: "Give your AI the prompt", text: "Copy the prompt for your AI and paste it into a chat. Then tell it what happened, in your own words." },
-];
+/// The steps, for the page and its HowTo data. Until the app opens template links, the AI makes the note.
+const steps = (t: Template) => APP_TEMPLATES.live
+  ? [
+      { name: "Add the template to Amber Notes", text: `Choose Use this template. Amber Notes opens and adds the "${noteTitle(t)}" note to the folder you pick.` },
+      { name: "Connect your AI", text: "Connect ChatGPT, Claude or Claude Code to Amber Notes once, and choose Read and Edit so it can fill in the note." },
+      { name: "Give your AI the prompt", text: "Copy the prompt for your AI and paste it into a chat. Then tell it what happened, in your own words." },
+    ]
+  : [
+      { name: "Connect your AI", text: "Connect ChatGPT, Claude or Claude Code to Amber Notes once, and choose Read and Edit so it can write the note." },
+      { name: "Paste the prompt", text: `Copy the prompt for your AI and paste it into a chat. It creates the "${noteTitle(t)}" note in your ${t.folder} folder, if you don't have it yet.` },
+      { name: "Talk to your AI", text: "Tell it what happened, in your own words. It fills in the note, and you see every change in Amber Notes." },
+    ];
 
 const at = (i: number) => ({ "--i": i }) as React.CSSProperties;
 
@@ -58,11 +64,16 @@ export default async function Page({ params }: Props) {
             <p className={`${s.lede} rise`} style={at(1)}>{t.description}</p>
             <p className={`${s.for} rise`} style={at(1)}>{t.audience}</p>
             <div className={`${s.ctas} rise`} style={at(2)}>
-              <a className={s.primary} href={useLink(t.slug)}><PlusGlyph /> Use this template</a>
+              {APP_TEMPLATES.live
+                ? <a className={s.primary} href={useLink(t.slug)}><PlusGlyph /> Use this template</a>
+                : <CopyButton text={instructions(t)[0].prompt} label="Copy the prompt" className={s.primary} />}
               <CopyButton text={t.note} label="Copy the markdown" className={s.secondary} />
             </div>
             <p className={`${s.fine} rise`} style={at(3)}>
-              Free. Opens Amber Notes and adds the note. No Amber Notes yet? <a href="/download">Download it for Mac</a>.
+              {APP_TEMPLATES.live
+                ? <>Free. Opens Amber Notes and adds the note.</>
+                : <>Free. Paste the prompt into ChatGPT or Claude with Amber Notes connected: it creates the note, then fills it in. For Claude Code, use its tab below.</>}{" "}
+              No Amber Notes yet? <a href="/download">Download it for Mac</a>.
             </p>
           </header>
           <div className="rise-soft" style={at(2)}>

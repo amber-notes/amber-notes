@@ -35,7 +35,8 @@ export default function Instructions({ items, asks }: { items: Item[]; asks: str
         </div>
       </div>
       <div className={s.promptBox} role="tabpanel" id="prompt-panel" aria-labelledby={`tab-${current.client}`}>
-        <p className={s.promptText}>{highlight(current.prompt)}</p>
+        <p className={s.promptText}>{highlight(current.prompt.slice(0, current.prompt.indexOf("```")).trimEnd())}</p>
+        <pre className={s.promptMd} aria-label="The note's markdown, part of the prompt">{current.prompt.slice(current.prompt.indexOf("```"))}</pre>
         <div className={s.promptFoot}>
           <p className={s.promptWhere}>{WHERE[current.client]}{differs && current.client === "claude-code" ? " This one is written for working in a code repository." : ""}</p>
           <CopyButton text={current.prompt} label="Copy prompt" className={s.copy} />

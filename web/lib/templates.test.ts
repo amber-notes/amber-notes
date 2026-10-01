@@ -5,7 +5,7 @@ import remarkParse from "remark-parse";
 import { unified } from "unified";
 import { describe, expect, it } from "vitest";
 import { MCP_TOOLS } from "./mcp-tools";
-import { AUDIENCES, CATEGORIES, ORDER, SLUG, changedLines, instructions, publicTemplate, renderTemplate, searchTitle, shape, templateFiles, templates, validTemplateSlug, type DemoCall, type Template } from "./templates";
+import { AUDIENCES, CATEGORIES, ORDER, SLUG, changedLines, createStep, instructions, markdownIn, publicTemplate, renderTemplate, searchTitle, shape, templateFiles, templates, validTemplateSlug, type DemoCall, type Template } from "./templates";
 
 // The server's own note functions (supabase/functions/mcp/notes.ts, plain TypeScript with no
 // imports), loaded by path so the site's build never depends on the server folder.
@@ -190,6 +190,20 @@ describe("the instructions", () => {
     }
   });
 
+  it("start by creating the note, and the create step produces exactly the template's markdown", () => {
+    for (const t of all) {
+      for (const i of instructions(t)) {
+        expect(i.prompt.startsWith(createStep(t)), `${t.slug} (${i.name})`).toBe(true);
+        expect(i.prompt).toContain(`create_note in the folder "${t.folder}"`);
+        // create_note stores the body as it's given; the title is its first line.
+        const body = markdownIn(i.prompt);
+        expect(body, `${t.slug} (${i.name})`).toBe(t.note);
+        expect(notes.titleOf(body!)).toBe(t.title);
+        expect(notes.findTables(body!).map((x) => x.columns), t.slug).toEqual(notes.findTables(t.note).map((x) => x.columns));
+      }
+    }
+  });
+
   it("only use tools the Amber Notes MCP server has, and use at least one that writes", () => {
     const writes = new Set(MCP_TOOLS.filter((x) => x.kind !== "read").map((x) => x.name));
     for (const t of all) {
@@ -207,17 +221,18 @@ describe("the instructions", () => {
   it("only name headings the note has", () => {
     for (const t of all) {
       const headings = new Set([...t.note.matchAll(/^#{1,6}\s+(.*)$/gm)].map((m) => m[1].trim()));
-      for (const i of instructions(t)) {
-        for (const m of i.prompt.matchAll(/under "([^"]+)"|of "([^"]+)"|start of "([^"]+)"|from "([^"]+)"|to the "([^"]+)"/g)) {
+      for (const prompt of Object.values(t.prompt)) {
+        for (const m of prompt.matchAll(/under "([^"]+)"|of "([^"]+)"|start of "([^"]+)"|from "([^"]+)"|to the "([^"]+)"/g)) {
           const name = m.slice(1).find(Boolean)!;
-          expect(headings.has(name), `${t.slug} (${i.name}) names "${name}"`).toBe(true);
+          expect(headings.has(name), `${t.slug} names "${name}"`).toBe(true);
         }
       }
     }
   });
 
   it("stay short enough to copy and paste", () => {
-    for (const t of all) for (const i of instructions(t)) expect(i.prompt.length, t.slug).toBeLessThanOrEqual(720);
+    // The instruction itself; the create step and the note's markdown come with it.
+    for (const t of all) for (const p of Object.values(t.prompt)) expect(p.length, t.slug).toBeLessThanOrEqual(720);
   });
 
   it("never promise the AI acts on its own on a schedule", () => {

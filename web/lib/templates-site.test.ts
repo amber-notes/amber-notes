@@ -8,6 +8,9 @@ import { GET } from "../app/api/templates/[slug]/route";
 import { llmsTxt } from "./llms";
 import { renderNote } from "./render";
 import { NotePage } from "./NotePage";
+import { APP_TEMPLATES } from "./site";
+import Gallery from "../app/templates/page";
+import TemplatePage from "../app/templates/[slug]/page";
 import { copyableMarkdown } from "./shared";
 import { themeFor, themeScript } from "./theme";
 import { templates } from "./templates";
@@ -46,7 +49,24 @@ describe("a shared page", () => {
   it("has a Use this note button to the copy link, on sub-notes too", () => {
     const note = { title: "Packing", body: "Packing\n\nHi", updated_at: "2026-09-30T10:00:00Z", include_subnotes: true, is_sub: true, root_title: "Trip", subnotes: [] };
     const html = renderToStaticMarkup(NotePage({ slug: "abcdefghijklmnopqrstuvwx", note, files: {} }));
-    expect(html).toContain('<a class="use-note" href="/open/copy/abcdefghijklmnopqrstuvwx">Use this note</a>');
+    // Only once the app release that handles the link is out (APP_TEMPLATES).
+    if (APP_TEMPLATES.live) expect(html).toContain('<a class="use-note" href="/open/copy/abcdefghijklmnopqrstuvwx">Use this note</a>');
+    else expect(html).not.toContain("/open/copy/");
+  });
+});
+
+describe("before the app opens template links (APP_TEMPLATES)", () => {
+  it("names the release that adds them", () => expect(APP_TEMPLATES.version).toMatch(/^\d+\.\d+/));
+
+  it.runIf(!APP_TEMPLATES.live)("offers the prompt and the markdown, never a link the installed app can't open", async () => {
+    const page = renderToStaticMarkup(await TemplatePage(params("habit-tracker")));
+    expect(page).toContain("Copy the prompt");
+    expect(page).toContain("Copy the markdown");
+    expect(page).not.toContain("/open/template/");
+    expect(page).not.toContain("Use this template");
+    const gallery = renderToStaticMarkup(Gallery());
+    expect(gallery).not.toContain("Every shared note is a template too");
+    expect(gallery).not.toContain("/open/");
   });
 });
 

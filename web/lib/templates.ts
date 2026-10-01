@@ -89,9 +89,27 @@ export const templatePath = (slug: string) => `/templates/${slug}`;
 export const useLink = (slug: string) => `${SITE_URL}/open/template/${slug}`;
 export const appLink = (slug: string) => `ambernotes://template/${slug}`;
 
-/// What to tell each AI, resolved: every client gets its own text or the shared one.
+export const noteTitle = (t: Template) => t.note.split("\n")[0];
+
+/// The prompt's first step: the AI makes the note itself (create_note, which every installed app's
+/// MCP server has), so a template works without the app opening any link.
+export function createStep(t: Template): string {
+  return `First, look for a note called "${noteTitle(t)}" in my Amber Notes with search_notes. If there isn't one, create it with create_note in the folder "${t.folder}", using exactly the markdown at the end of this message, the <!-- pane-table --> line included (it gives the table's columns their types).`;
+}
+
+/// The template's markdown, fenced, for the end of the prompt.
+export const fencedNote = (t: Template) => "```markdown\n" + t.note.replace(/\n$/, "") + "\n```";
+
+/// What to tell each AI, resolved: the create step, the client's own text (or the shared one), then
+/// the note's markdown.
 export function instructions(t: Template): { client: ClientId; name: string; prompt: string }[] {
-  return CLIENTS.map((c) => ({ client: c.id, name: c.name, prompt: t.prompt[c.key] ?? t.prompt.default }));
+  return CLIENTS.map((c) => ({ client: c.id, name: c.name, prompt: `${createStep(t)}\n\nThen: ${t.prompt[c.key] ?? t.prompt.default}\n\n${fencedNote(t)}` }));
+}
+
+/// The markdown inside a prompt's fence, as create_note would get it.
+export function markdownIn(prompt: string): string | null {
+  const m = prompt.match(/```markdown\n([\s\S]*?)\n```\s*$/);
+  return m ? m[1] + "\n" : null;
 }
 
 /// The public, read-only data the app fetches from /templates/<slug>.json.

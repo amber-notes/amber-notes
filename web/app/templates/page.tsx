@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { pageMetadata } from "@/lib/site";
+import { APP_TEMPLATES, pageMetadata } from "@/lib/site";
 import { JsonLd, breadcrumbs, incredible, maker, organization, templateLibrary } from "@/lib/structured-data";
 import { AUDIENCES, CATEGORIES, anchor, forAudience, inCategory, templates } from "@/lib/templates";
 import Card from "./Card";
@@ -28,8 +28,17 @@ export default function Page() {
           happened, and the row, the checklist or the summary lands in the right note.
         </p>
         <ol className={`${s.steps} rise`} style={at(2)}>
-          <li><b>Add the template</b><span>It becomes an ordinary note in Amber Notes, in the folder you pick.</span></li>
-          <li><b>Copy the prompt</b><span>Each template comes with instructions for your AI.</span></li>
+          {APP_TEMPLATES.live ? (
+            <>
+              <li><b>Add the template</b><span>It becomes an ordinary note in Amber Notes, in the folder you pick.</span></li>
+              <li><b>Copy the prompt</b><span>Each template comes with instructions for your AI.</span></li>
+            </>
+          ) : (
+            <>
+              <li><b>Pick a template</b><span>A note, the prompt that runs it, and an example of the result.</span></li>
+              <li><b>Paste the prompt</b><span>Your AI creates the note in Amber Notes and learns how to fill it in.</span></li>
+            </>
+          )}
           <li><b>Talk to your AI</b><span>&ldquo;Log today&rdquo;, &ldquo;plan dinners&rdquo;, &ldquo;quiz me&rdquo;. It updates the note.</span></li>
         </ol>
       </section>
@@ -43,7 +52,7 @@ export default function Page() {
         />
       </div>
 
-      <section className={s.loop} aria-labelledby="loop">
+      {APP_TEMPLATES.live && <section className={s.loop} aria-labelledby="loop">
         <div className={s.sectionHead}>
           <h2 id="loop" className={s.h2}>Every shared note is a template too</h2>
           <p className={s.sectionLede}>
@@ -60,7 +69,7 @@ export default function Page() {
           <p className={s.loopNote}>Packing for Lisbon</p>
           <p className={s.loopLine}>Shared by Maja</p>
         </div>
-      </section>
+      </section>}
     </div>
   );
 }
