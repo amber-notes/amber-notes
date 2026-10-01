@@ -9,6 +9,7 @@ struct SettingsView: View {
     let sync: SyncEngine?
     @Environment(\.dismiss) private var dismiss
     @State private var confirmSignOut = false
+    @State private var route = SettingsRoute.shared
 
     var body: some View {
         #if os(macOS)
@@ -27,7 +28,22 @@ struct SettingsView: View {
         #endif
     }
 
+    /// Opened at a section (What's new's "Reconnect your AI"): scrolls there once it's drawn.
     private var form: some View {
+        ScrollViewReader { proxy in
+            sections
+                .onChange(of: route.target, initial: true) { _, target in
+                    guard let target else { return }
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .seconds(0.3))
+                        withAnimation(.snappy(duration: 0.3)) { proxy.scrollTo(target, anchor: .top) }
+                        route.target = nil
+                    }
+                }
+        }
+    }
+
+    private var sections: some View {
             Form {
                 if case .signedIn(let email) = backend.state {
                     // You first, like the Apple Account at the top of System Settings.
@@ -52,6 +68,7 @@ struct SettingsView: View {
                 }
                 if case .signedIn = backend.state, let client = backend.client {
                     ConnectAISection(client: client)
+                        .id(SettingsRoute.connectAI)
                 }
                 if case .signedIn = backend.state, AccountCrypto.shared.isReady {
                     #if os(macOS)

@@ -38,7 +38,11 @@ targets:
   Pane:
     type: application
     supportedDestinations: [iOS, macOS]
-    sources: [Pane]
+    sources: &appSources
+      - Pane
+      # The website's changelog, for the What's new card (offline, no network).
+      - path: web/content/changelog.json
+        buildPhase: resources
     configFiles:
       Debug: Config/Backend.xcconfig
       Release: Config/Backend.xcconfig
@@ -120,7 +124,7 @@ targets:
   PaneDirect:
     type: application
     platform: macOS
-    sources: [Pane]
+    sources: *appSources
     configFiles:
       Debug: Config/Backend.xcconfig
       Release: Config/Backend.xcconfig

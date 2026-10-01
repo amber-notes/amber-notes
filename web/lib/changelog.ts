@@ -2,7 +2,16 @@ import fs from "node:fs";
 import path from "node:path";
 
 /// One release, newest first in content/changelog.json. scripts/release-mac.sh adds an entry on every release.
-export type Release = { version: string; date: string; title: string; items: string[] };
+/// The apps bundle the same file: a release marked `major` shows a "What's new" card with its
+/// `highlights` (3 or 4 short lines) once after updating.
+export type Release = {
+  version: string;
+  date: string;
+  title: string;
+  items: string[];
+  major?: boolean;
+  highlights?: string[];
+};
 
 export function changelog(): Release[] {
   try {
