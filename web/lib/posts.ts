@@ -33,31 +33,31 @@ export type Ground = "paper" | "soft" | "tint" | "amber" | "leaf" | "dark" | "du
 
 /// A card's picture: one real capture of the element the post is about, on the post's ground. The
 /// capture is cropped at 2x (3x from iPhone) to about the card's width, so it shows at full size.
-export type Thumb = { ground: Ground; src: string; width: number; height: number };
+export type Thumb = { ground: Ground; src: string; width: number; height: number; alt: string };
 
-const thumb = (ground: Ground, name: string, width: number, height: number): Thumb => ({ ground, src: `/blog/${name}.webp`, width, height });
+const thumb = (ground: Ground, name: string, width: number, height: number, alt: string): Thumb => ({ ground, src: `/blog/${name}.webp`, width, height, alt });
 
 export const AUTHOR = { name: "Emil Wagman", avatar: "/emil-wagman.jpg" };
 
 export const SHOTS = {
-  connectChatGPT: { src: "/blog/connect-chatgpt.webp", alt: "Connect ChatGPT in Amber Notes on a Mac: a Copy Address and Open ChatGPT button, then four steps: turn on Developer mode, add Amber Notes in Plugins, paste the address and choose OAuth, then Allow.", width: 1120, height: 610, window: false, title: "Connect ChatGPT" },
-  connectClaude: { src: "/blog/connect-claude.webp", alt: "Connect Claude in Amber Notes on a Mac: an Add to Claude button, a note that it works on every Claude plan, then the steps: choose Add, then Connect, then Allow.", width: 1120, height: 590, window: false, title: "Connect Claude" },
-  consent: { src: "/blog/consent.webp", alt: "Amber Notes asking \"Allow ChatGPT to use your notes?\" with a choice of Read and Edit or Read Only, and Allow and Don't Allow buttons.", width: 840, height: 700, window: false, title: "Amber Notes" },
-  connectList: { src: "/blog/connect-ai.webp", alt: "Settings in Amber Notes on a Mac: Connect an AI lists ChatGPT, Claude, Claude Code and Codex, with what's connected below.", width: 1040, height: 720, window: false, title: "Settings" },
-  consentE2ee: { src: "/blog/consent-e2ee.webp", alt: "Amber Notes on a Mac asking \"Allow ChatGPT to use your notes?\": access goes to chatgpt.com, a choice of Read and Edit or Read Only, and a line saying that while it's connected it can read everything except locked notes.", width: 840, height: 712, window: false, title: "Amber Notes" },
-  notesPassword: { src: "/blog/notes-password.webp", alt: "Amber Notes on a Mac: Create a password for your locked notes, with Password, Verify and Hint fields, and the warning that if you forget this password, your locked notes can't be recovered, not even by us.", width: 880, height: 600, window: false, title: "Locked Notes" },
-  coworkAllow: { src: "/blog/cowork-allow-notes.webp", alt: "The macOS prompt that appears when Claude first uses the Apple Notes extension: \u201cClaude\u201d wants access to control \u201cNotes\u201d. Allowing control will provide access to documents and data in \u201cNotes\u201d, and to perform actions within that app. Buttons: Don\u2019t Allow and Allow.", width: 520, height: 532, window: true },
-  importSheet: { src: "/blog/import-sheet.webp", alt: "The Import from Apple Notes sheet in Amber Notes on a Mac: notes picked, Keep Apple Notes folders and Also bring over pinned notes ticked, and an Import 1,284 Notes button.", width: 1980, height: 1800, window: true },
-  aiEdit: { src: "/blog/ai-edit.webp", alt: "A Groceries note in Amber Notes on a Mac. The five lines ChatGPT just added are tinted, and a bar at the bottom says ChatGPT changed 5 lines, with Undo.", width: 1260, height: 1520, window: false, title: "Groceries" },
-  history: { src: "/blog/history.webp", alt: "Version history for a Groceries note in Amber Notes on a Mac: versions by you on iPhone and Mac, ChatGPT and Claude Code, with the lines that differ tinted and a Restore This Version button.", width: 1800, height: 1200, window: false, title: "Groceries" },
-  welcome: { src: "/blog/p3-welcome-pane.webp", alt: "The Welcome to Amber Notes note on a Mac: markdown that styles itself as you type, a checklist, bullets, inline code and a table.", width: 1250, height: 950, window: false, title: "Welcome to Amber Notes" },
-  historyBurst: { src: "/blog/p3-history-burst.webp", alt: "Version history for a Groceries note on a Mac: versions by you on iPhone and Mac, ChatGPT and Claude Code, with the lines that differ tinted and a Restore This Version button.", width: 1800, height: 1200, window: false, title: "Groceries" },
-  iphoneList: { src: "/blog/iphone-list.webp", alt: "Amber Notes on iPhone: the note list, with Groceries marked Edited by ChatGPT, Standup notes Edited by Claude Code and Lisbon Edited by Claude.", width: 1206, height: 2622, window: false, phone: true },
-  tracker: { src: "/blog/tracker-pane.webp", alt: "An Evening tracker note in Amber Notes on a Mac: a table with a row per day and typed columns for work hours, energy, mood and yes-or-no habits.", width: 1250, height: 900, window: false, title: "Evening tracker" },
-  lisbon: { src: "/blog/lisbon-pane.webp", alt: "A Lisbon trip note in Amber Notes on a Mac: a plan checklist, a list of places, a linked Hotel booking sub-note, and a table of where to eat.", width: 1250, height: 1420, window: false, title: "Lisbon" },
-  iphoneFiles: { src: "/blog/iphone-files-dark.webp", alt: "Amber Notes on iPhone in dark mode: a Trip documents note holding a PDF, a CSV file, a photo and a link.", width: 1206, height: 2622, window: false, phone: true },
-  iphoneGroceries: { src: "/blog/iphone-groceries.webp", alt: "A Groceries checklist in Amber Notes on iPhone. The five items ChatGPT just added are tinted, and a bar says ChatGPT changed 5 lines, with Undo.", width: 1206, height: 2622, window: false, phone: true },
-  standup: { src: "/blog/standup-pane.webp", alt: "Standup notes in Amber Notes on a Mac. The line Claude Code just added is tinted, and a bar at the bottom says Claude Code changed 1 line, with Undo.", width: 1250, height: 1420, window: false, title: "Standup notes" },
+  connectChatGPT: { src: "/blog/amber-notes-connect-chatgpt-steps.webp", alt: "Connect ChatGPT in Amber Notes on a Mac: a Copy Address and Open ChatGPT button, then four steps: turn on Developer mode, add Amber Notes in Plugins, paste the address and choose OAuth, then Allow.", width: 1120, height: 610, window: false, title: "Connect ChatGPT" },
+  connectClaude: { src: "/blog/amber-notes-connect-claude-steps.webp", alt: "Connect Claude in Amber Notes on a Mac: an Add to Claude button, a note that it works on every Claude plan, then the steps: choose Add, then Connect, then Allow.", width: 1120, height: 590, window: false, title: "Connect Claude" },
+  consent: { src: "/blog/amber-notes-allow-chatgpt-access.webp", alt: "Amber Notes asking \"Allow ChatGPT to use your notes?\" with a choice of Read and Edit or Read Only, and Allow and Don't Allow buttons.", width: 840, height: 700, window: false, title: "Amber Notes" },
+  connectList: { src: "/blog/amber-notes-connect-an-ai.webp", alt: "Settings in Amber Notes on a Mac: Connect an AI lists ChatGPT, Claude, Claude Code and Codex, with what's connected below.", width: 1040, height: 720, window: false, title: "Settings" },
+  consentE2ee: { src: "/blog/amber-notes-allow-chatgpt-encrypted-notes.webp", alt: "Amber Notes on a Mac asking \"Allow ChatGPT to use your notes?\": access goes to chatgpt.com, a choice of Read and Edit or Read Only, and a line saying that while it's connected it can read everything except locked notes.", width: 840, height: 712, window: false, title: "Amber Notes" },
+  notesPassword: { src: "/blog/amber-notes-locked-notes-password.webp", alt: "Amber Notes on a Mac: Create a password for your locked notes, with Password, Verify and Hint fields, and the warning that if you forget this password, your locked notes can't be recovered, not even by us.", width: 880, height: 600, window: false, title: "Locked Notes" },
+  coworkAllow: { src: "/blog/claude-wants-access-to-control-notes-macos.webp", alt: "The macOS prompt that appears when Claude first uses the Apple Notes extension: \u201cClaude\u201d wants access to control \u201cNotes\u201d. Allowing control will provide access to documents and data in \u201cNotes\u201d, and to perform actions within that app. Buttons: Don\u2019t Allow and Allow.", width: 520, height: 532, window: true },
+  importSheet: { src: "/blog/amber-notes-import-from-apple-notes.webp", alt: "The Import from Apple Notes sheet in Amber Notes on a Mac: notes picked, Keep Apple Notes folders and Also bring over pinned notes ticked, and an Import 1,284 Notes button.", width: 1980, height: 1800, window: true },
+  aiEdit: { src: "/blog/amber-notes-chatgpt-edit-undo.webp", alt: "A Groceries note in Amber Notes on a Mac. The five lines ChatGPT just added are tinted, and a bar at the bottom says ChatGPT changed 5 lines, with Undo.", width: 1260, height: 1520, window: false, title: "Groceries" },
+  history: { src: "/blog/amber-notes-version-history-chatgpt.webp", alt: "Version history for a Groceries note in Amber Notes on a Mac: versions by you on iPhone and Mac, ChatGPT and Claude Code, with the lines that differ tinted and a Restore This Version button.", width: 1800, height: 1200, window: false, title: "Groceries" },
+  welcome: { src: "/blog/amber-notes-markdown-welcome-note.webp", alt: "The Welcome to Amber Notes note on a Mac: markdown that styles itself as you type, a checklist, bullets, inline code and a table.", width: 1250, height: 950, window: false, title: "Welcome to Amber Notes" },
+  historyBurst: { src: "/blog/amber-notes-version-history-restore.webp", alt: "Version history for a Groceries note on a Mac: versions by you on iPhone and Mac, ChatGPT and Claude Code, with the lines that differ tinted and a Restore This Version button.", width: 1800, height: 1200, window: false, title: "Groceries" },
+  iphoneList: { src: "/blog/amber-notes-iphone-notes-edited-by-ai.webp", alt: "Amber Notes on iPhone: the note list, with Groceries marked Edited by ChatGPT, Standup notes Edited by Claude Code and Lisbon Edited by Claude.", width: 1206, height: 2622, window: false, phone: true },
+  tracker: { src: "/blog/amber-notes-evening-tracker-table.webp", alt: "An Evening tracker note in Amber Notes on a Mac: a table with a row per day and typed columns for work hours, energy, mood and yes-or-no habits.", width: 1250, height: 900, window: false, title: "Evening tracker" },
+  lisbon: { src: "/blog/amber-notes-lisbon-trip-note.webp", alt: "A Lisbon trip note in Amber Notes on a Mac: a plan checklist, a list of places, a linked Hotel booking sub-note, and a table of where to eat.", width: 1250, height: 1420, window: false, title: "Lisbon" },
+  iphoneFiles: { src: "/blog/amber-notes-iphone-files-in-a-note.webp", alt: "Amber Notes on iPhone in dark mode: a Trip documents note holding a PDF, a CSV file, a photo and a link.", width: 1206, height: 2622, window: false, phone: true },
+  iphoneGroceries: { src: "/blog/amber-notes-iphone-chatgpt-edited-checklist.webp", alt: "A Groceries checklist in Amber Notes on iPhone. The five items ChatGPT just added are tinted, and a bar says ChatGPT changed 5 lines, with Undo.", width: 1206, height: 2622, window: false, phone: true },
+  standup: { src: "/blog/amber-notes-claude-code-standup-note.webp", alt: "Standup notes in Amber Notes on a Mac. The line Claude Code just added is tinted, and a bar at the bottom says Claude Code changed 1 line, with Undo.", width: 1250, height: 1420, window: false, title: "Standup notes" },
 } satisfies Record<string, Shot>;
 
 export const posts: Post[] = [
@@ -70,7 +70,7 @@ export const posts: Post[] = [
     date: "2026-10-01",
     updated: "2026-10-01",
     image: SHOTS.coworkAllow,
-    thumb: thumb("rose", "thumb-cowork-apple-notes", 800, 528),
+    thumb: thumb("rose", "thumb-cowork-apple-notes", 800, 528, "The macOS prompt asking to let Claude control Notes"),
     draft: false,
   },
   {
@@ -82,7 +82,7 @@ export const posts: Post[] = [
     date: "2026-10-01",
     updated: "2026-10-01",
     image: SHOTS.history,
-    thumb: thumb("night", "thumb-restore-dark", 846, 558),
+    thumb: thumb("night", "thumb-restore-dark", 846, 558, "An earlier version of a Groceries note in Amber Notes, in dark mode"),
     draft: false,
   },
   {
@@ -94,7 +94,7 @@ export const posts: Post[] = [
     date: "2026-10-01",
     updated: "2026-10-01",
     image: SHOTS.connectList,
-    thumb: thumb("linen", "thumb-consent-local", 826, 545),
+    thumb: thumb("linen", "thumb-consent-local", 826, 545, "Amber Notes asking to let an app on this computer use your notes"),
     draft: false,
   },
   {
@@ -106,7 +106,7 @@ export const posts: Post[] = [
     date: "2026-10-01",
     updated: "2026-10-01",
     image: SHOTS.notesPassword,
-    thumb: thumb("pearl", "thumb-notes-password", 896, 591),
+    thumb: thumb("pearl", "thumb-notes-password", 896, 591, "Amber Notes asking you to create a password for locked notes"),
     draft: false,
   },
   {
@@ -118,7 +118,7 @@ export const posts: Post[] = [
     date: "2026-10-01",
     updated: "2026-10-01",
     image: SHOTS.consentE2ee,
-    thumb: thumb("dusk", "thumb-consent-e2ee", 826, 545),
+    thumb: thumb("dusk", "thumb-consent-e2ee", 826, 545, "Amber Notes asking to let ChatGPT use your notes"),
     draft: false,
   },
   {
@@ -130,7 +130,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-10-01",
     image: SHOTS.historyBurst,
-    thumb: thumb("fog", "thumb-lisbon-chatgpt", 731, 482),
+    thumb: thumb("fog", "thumb-lisbon-chatgpt", 731, 482, "A Lisbon plan checklist with the line ChatGPT added tinted"),
     draft: false,
   },
   {
@@ -142,7 +142,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-10-01",
     image: SHOTS.lisbon,
-    thumb: thumb("wheat", "thumb-lisbon-food", 744, 491),
+    thumb: thumb("wheat", "thumb-lisbon-food", 744, 491, "A table of places to eat in Lisbon, in a note"),
     draft: false,
   },
   {
@@ -154,7 +154,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.welcome,
-    thumb: thumb("blush", "thumb-markdown-title", 714, 471),
+    thumb: thumb("blush", "thumb-markdown-title", 714, 471, "The Welcome to Amber Notes note, written in Markdown"),
     draft: false,
   },
   {
@@ -166,7 +166,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-10-01",
     image: SHOTS.connectChatGPT,
-    thumb: thumb("paper", "thumb-connect-chatgpt", 704, 572),
+    thumb: thumb("paper", "thumb-connect-chatgpt", 704, 572, "The steps to connect ChatGPT in Amber Notes"),
     draft: false,
   },
   {
@@ -178,7 +178,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-10-01",
     image: SHOTS.connectClaude,
-    thumb: thumb("leaf", "thumb-connect-claude", 704, 451),
+    thumb: thumb("leaf", "thumb-connect-claude", 704, 451, "The steps to connect Claude in Amber Notes"),
     draft: false,
   },
   {
@@ -190,7 +190,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-10-01",
     image: SHOTS.aiEdit,
-    thumb: thumb("dunes", "thumb-ai-rows", 733, 533),
+    thumb: thumb("dunes", "thumb-ai-rows", 733, 533, "A grocery checklist with the five lines an AI added tinted"),
     draft: false,
   },
   {
@@ -202,7 +202,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.history,
-    thumb: thumb("sage", "thumb-history-list", 640, 973),
+    thumb: thumb("sage", "thumb-history-list", 640, 973, "Version history for a note, listing who made each version"),
     draft: false,
   },
   {
@@ -214,7 +214,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.lisbon,
-    thumb: thumb("heather", "thumb-lisbon-link", 744, 491),
+    thumb: thumb("heather", "thumb-lisbon-link", 744, 491, "A Lisbon note linking to a Hotel booking sub-note"),
     draft: false,
   },
   {
@@ -226,7 +226,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.importSheet,
-    thumb: thumb("soft", "thumb-import", 750, 523),
+    thumb: thumb("soft", "thumb-import", 750, 523, "Notes picked for import from Apple Notes into Amber Notes"),
     draft: false,
   },
   {
@@ -238,7 +238,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-10-01",
     image: SHOTS.connectList,
-    thumb: thumb("dark", "thumb-connect-list", 704, 566),
+    thumb: thumb("dark", "thumb-connect-list", 704, 566, "Connect an AI in Amber Notes: ChatGPT, Claude, Claude Code and Codex"),
     draft: false,
   },
   {
@@ -250,7 +250,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-10-01",
     image: SHOTS.history,
-    thumb: thumb("tint", "thumb-iphone-history", 1313, 956),
+    thumb: thumb("tint", "thumb-iphone-history", 1313, 956, "Version history on iPhone, with a version by ChatGPT"),
     draft: false,
   },
   {
@@ -262,7 +262,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-10-01",
     image: SHOTS.consent,
-    thumb: thumb("amber", "thumb-consent", 854, 528),
+    thumb: thumb("amber", "thumb-consent", 854, 528, "Amber Notes asking to let ChatGPT use your notes, with Allow and Don't Allow"),
     draft: false,
   },
   {
@@ -274,7 +274,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-10-01",
     image: SHOTS.welcome,
-    thumb: thumb("ink", "thumb-markdown", 804, 531),
+    thumb: thumb("ink", "thumb-markdown", 804, 531, "Markdown checklists, bullets and inline code in a note"),
     draft: false,
   },
   {
@@ -286,7 +286,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-10-01",
     image: SHOTS.iphoneList,
-    thumb: thumb("peach", "thumb-iphone-chatgpt", 1278, 908),
+    thumb: thumb("peach", "thumb-iphone-chatgpt", 1278, 908, "The note list on iPhone, with Groceries edited by ChatGPT"),
     draft: false,
   },
   {
@@ -298,7 +298,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-10-01",
     image: SHOTS.tracker,
-    thumb: thumb("cream", "thumb-tracker", 708, 749),
+    thumb: thumb("cream", "thumb-tracker", 708, 749, "An evening tracker table with a row per day"),
     draft: false,
   },
   {
@@ -310,7 +310,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-10-01",
     image: SHOTS.lisbon,
-    thumb: thumb("sand", "thumb-lisbon", 643, 520),
+    thumb: thumb("sand", "thumb-lisbon", 643, 520, "A Lisbon trip note with a plan checklist"),
     draft: false,
   },
   {
@@ -322,7 +322,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-10-01",
     image: SHOTS.iphoneFiles,
-    thumb: thumb("mist", "thumb-iphone-files", 1238, 831),
+    thumb: thumb("mist", "thumb-iphone-files", 1238, 831, "A note on iPhone holding a PDF and a CSV file, in dark mode"),
     draft: false,
   },
   {
@@ -334,7 +334,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-10-01",
     image: SHOTS.iphoneGroceries,
-    thumb: thumb("honey", "thumb-iphone-groceries", 1278, 970),
+    thumb: thumb("honey", "thumb-iphone-groceries", 1278, 970, "A Groceries checklist on iPhone with the lines ChatGPT added tinted"),
     draft: false,
   },
   {
@@ -346,7 +346,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.standup,
-    thumb: thumb("clay", "thumb-standup", 902, 595),
+    thumb: thumb("clay", "thumb-standup", 902, 595, "Standup notes with the line Claude Code added tinted"),
     draft: false,
   },
   {
@@ -358,7 +358,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-10-01",
     image: SHOTS.aiEdit,
-    thumb: thumb("paper", "thumb-ai-rows", 733, 533),
+    thumb: thumb("paper", "thumb-ai-rows", 733, 533, "A grocery checklist with the five lines an AI added tinted"),
     draft: true,
   },
 ];

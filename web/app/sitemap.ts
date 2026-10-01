@@ -1,12 +1,13 @@
 import type { MetadataRoute } from "next";
 import { changelog } from "@/lib/changelog";
+import { postShots } from "@/lib/post-images";
 import { categories, categoryPath, newestFirst, pageCount, pageOf, pagePath, published } from "@/lib/posts";
 import { SITE_URL } from "@/lib/site";
 import { templates } from "@/lib/templates";
 
 // The pages meant for search. Shared notes are never listed. The changelog is one page (its
 // releases have no pages of their own), last changed with the newest release. Blog posts are listed
-// once they're published, with the day they were last checked.
+// once they're published, with the day they were last checked and every capture the post shows.
 export default function sitemap(): MetadataRoute.Sitemap {
   const released = changelog()[0]?.date;
   const page = (path: string, priority: number, lastModified?: string): MetadataRoute.Sitemap[number] => ({
@@ -25,7 +26,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
         const shown = pageOf(posts, i + 1);
         return page(pagePath(base, i + 1), base === "/blog" && i === 0 ? 0.7 : 0.5, shown.map((p) => p.updated).sort().at(-1));
       })),
-    ...published().map((p) => page(`/blog/${p.slug}`, 0.8, p.updated)),
+    ...published().map((p) => ({ ...page(`/blog/${p.slug}`, 0.8, p.updated), images: postShots(p.slug).map((s) => `${SITE_URL}${s.src}`) })),
     page("/templates", 0.8, templates().map((t) => t.updated).sort().at(-1)),
     ...templates().map((t) => page(`/templates/${t.slug}`, 0.7, t.updated)),
     page("/changelog", 0.5, released),
