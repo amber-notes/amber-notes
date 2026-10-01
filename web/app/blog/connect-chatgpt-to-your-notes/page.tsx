@@ -8,7 +8,7 @@ export const metadata = postMetadata("connect-chatgpt-to-your-notes");
 
 const FAQ = [
   { q: "Which ChatGPT plans can add Amber Notes?", a: [
-    "Adding your own app in ChatGPT needs Developer mode, which OpenAI's developer docs list for Plus, Pro, Business, Enterprise and Edu, on the web. The free plan can't add one. OpenAI also says Developer mode can depend on account and workspace policy, so in a Business or Enterprise workspace an admin may have to allow it.",
+    "Adding your own app in ChatGPT needs Developer mode, which OpenAI's developer docs list for Plus, Pro, Business, Enterprise and Edu, on the web. The free plan can't add one. Check what your plan allows before you rely on edits: OpenAI's pages differ on whether such apps can write on every plan. OpenAI also says Developer mode can depend on account and workspace policy, so in a Business or Enterprise workspace an admin may have to allow it.",
   ] },
   { q: "Does it work in the ChatGPT app on my phone?", a: [
     "You add Amber Notes once, in ChatGPT on the web. OpenAI's developer docs only describe the web, and I haven't been able to recheck the phone apps in a Plus account since the September changes, so treat phone access as unverified for now.",
@@ -44,7 +44,7 @@ export default function Page() {
       <ul>
         <li>Amber Notes on your Mac, signed in. It&apos;s free. <a href="/download">Download it here</a>.</li>
         <li>ChatGPT Plus, Pro, Business, Enterprise or Edu. Adding your own app needs Developer mode, which the free plan doesn&apos;t have.</li>
-        <li>ChatGPT on the web, for the first step. After that, it works in the ChatGPT apps too.</li>
+        <li>ChatGPT on the web, at chatgpt.com. That&apos;s where OpenAI documents custom apps; I haven&apos;t confirmed them in the phone apps.</li>
       </ul>
 
       <h2>Connect ChatGPT</h2>

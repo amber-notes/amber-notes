@@ -5,6 +5,24 @@ assistants. Newest first. Research behind it: [seo-aeo-research-2026-09-30.md](s
 
 `docs/` had no README naming a folder for evidence, so this and the research live in `docs/Evidence/`.
 
+## 1 October 2026: accuracy and sharing fixes from the blog audit
+
+### Changed (branch `site/accuracy-sharing`)
+
+- **Share images.** Every post now has its own 1200 × 630 card at /og/blog/<slug>: the title beside the post's cover, in the site's card look. It's rendered by `renderCard` at build time, one per published post. `pageMetadata` now always sets og:image and twitter:image. Posts use their own card. Help and download keep theirs. Every other page uses the site's card. Before this, no blog page had a share image, because the page metadata replaced the root Open Graph object.
+  - The renderer can't read WebP, so the covers have small JPEG copies in `web/lib/og/covers`. A test checks that each published post has one.
+- **Claude and Apple Notes.** Anthropic's Read and Write Apple Notes extension reads and writes notes on a Mac. The rows and paragraphs that called this read-only or "community tools" are corrected in notes-apps-with-mcp, amber-notes-vs-apple-notes, best-notes-app-for-ai-agents, apple-notes-vs-notion and apple-notes-vs-obsidian. claude-and-apple-notes now says a Mac-hosted server exposed through a tunnel can reach Claude on iPhone, with the caveats.
+- **ChatGPT, web only.** OpenAI documents custom apps on the web, so every claim that they work in the ChatGPT phone app now says to use chatgpt.com. This covers the to-do FAQ, connect-chatgpt's "What you need", notes-apps-that-work-with-chatgpt, help and the draft. The plan lines now say "check what your plan allows; OpenAI's pages differ" on editing.
+- **iOS 27.** Siri AI can add to and reformat notes (9to5Mac, 28 September). The post's title is now "What's new in Apple Notes in iOS 27, and how to use it". Its angle and the Siri section were rewritten, and its AI table's Claude row is corrected.
+- **Availability.** The hard-coded "iPhone coming soon" lines in amber-notes-vs-apple-notes, apple-notes-vs-obsidian, apple-notes-vs-notion, best-notes-app-for-ai-agents, notes-apps-with-mcp, the to-do post and help now follow `APP_STORE_LIVE`. There's a new `DEVICES` helper.
+- **Codex.** The guide leads with `codex mcp add amber_notes --url https://mcp.ambernotes.app` and its sign-in. The token setup comes second, with a line on what `pane_` means.
+- **Nits:**
+  - Apple Notes API: the Shortcuts names are corrected against the Notes app's own actions on macOS 26.5. "Append Checklist Item" does exist; "Pin Notes" is really "Pin or Unpin Notes".
+  - ChatGPT memory: "Free gets a lighter version" became "what memory does can differ by plan".
+  - Encrypted notes: "a secret only the AI holds" became the exact mechanism. The key is derived from the connection's token, we keep only the token's hash, and the token arrives with each request.
+  - The move cover's "612" is not a mismatch. It's the Notes folder within the 1,284-note library on the same sheet, so the cover is unchanged.
+- **Dates.** The updated date on every post changed here is now 1 October.
+
 ## 1 October 2026: blog pagination and category pages
 
 ### Changed (branch `site/blog-pagination`)

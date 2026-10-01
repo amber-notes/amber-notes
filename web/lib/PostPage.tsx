@@ -18,6 +18,8 @@ export function postMetadata(slug: string, { title }: { title?: string } = {}): 
     path: `/blog/${x.slug}`,
     index: !x.draft,
     article: { published: x.date, modified: x.updated, author: AUTHOR.name },
+    // Drafts have no card of their own (only published posts get one) and use the site's.
+    ...(x.draft ? {} : { image: { url: `/og/blog/${x.slug}`, alt: `${x.title}, on the Amber Notes blog` } }),
   });
 }
 

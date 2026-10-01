@@ -12,6 +12,7 @@ export const metadata: Metadata = pageMetadata({
   shareTitle: "Templates your AI fills in",
   description: "Free note templates that ChatGPT, Claude and Claude Code fill in for you: habit trackers, meeting notes, standups, meal plans and more.",
   path: "/templates",
+  image: { url: "/templates/opengraph-image", alt: "Amber Notes templates: note templates that ChatGPT, Claude and Claude Code fill in for you." },
 });
 
 const at = (i: number) => ({ "--i": i }) as React.CSSProperties;

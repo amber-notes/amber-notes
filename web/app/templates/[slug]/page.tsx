@@ -22,7 +22,7 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const t = template((await params).slug);
   if (!t) return {};
-  return pageMetadata({ title: searchTitle(t), shareTitle: `${t.title}: a template your AI fills in`, description: t.description, path: `/templates/${t.slug}` });
+  return pageMetadata({ title: searchTitle(t), shareTitle: `${t.title}: a template your AI fills in`, description: t.description, path: `/templates/${t.slug}`, image: { url: `/templates/${t.slug}/opengraph-image`, alt: `The ${t.title.toLowerCase()} template for Amber Notes` } });
 }
 
 /// The steps, for the page and its HowTo data. Until the app opens template links, the AI makes the note.

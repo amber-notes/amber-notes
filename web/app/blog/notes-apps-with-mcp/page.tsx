@@ -1,4 +1,5 @@
 import { Figure } from "@/lib/blog";
+import { APP_STORE_LIVE } from "@/lib/site";
 import { PostPage, postMetadata } from "@/lib/PostPage";
 import { SHOTS } from "@/lib/posts";
 
@@ -17,7 +18,7 @@ const ROWS: Row[] = [
   { app: "Hjarni", server: "Built in, hosted", reach: "ChatGPT, Claude and other MCP apps, from any device", edit: "Yes", open: "No" },
   { app: "Bear", server: "Official, runs on your Mac (Bear 2.8)", reach: "Claude Desktop, Claude Code and other apps on the same Mac", edit: "Yes", open: "No" },
   { app: "Obsidian", server: "Community plugins", reach: "Apps on the same computer as your vault", edit: "Yes, depending on the plugin", open: "No (plugins often are)" },
-  { app: "Apple Notes", server: "Community servers, and a Claude desktop extension", reach: "Claude Desktop and Claude Code on your Mac", edit: "Depends on the server", open: "No" },
+  { app: "Apple Notes", server: "Anthropic's Read and Write Apple Notes extension for Claude Desktop, and community servers", reach: "Claude Desktop and Claude Code on your Mac", edit: "Yes, on that Mac: read, add and update (checklists become plain bullets)", open: "No" },
 ];
 
 const FAQ = [
@@ -75,7 +76,7 @@ export default function Page() {
       <p>
         A free notes app for iPhone and Mac that works like Apple Notes, with an MCP server built in. You approve each AI app in Amber
         Notes and choose Read Only, or Read and Edit. When an AI changes a note, you see what changed, with Undo, and every earlier
-        version is kept. It <a href="/blog/move-from-apple-notes">imports Apple Notes on the Mac</a>. The Mac app is out now; the iPhone app is coming soon to the App Store. The{" "}
+        version is kept. It <a href="/blog/move-from-apple-notes">imports Apple Notes on the Mac</a>. {APP_STORE_LIVE ? "It's on the Mac and the App Store." : "The Mac app is out now; the iPhone app is coming soon to the App Store."} The{" "}
         <a href="/blog/mcp-server">MCP server page</a> lists its tools, and{" "}
         connecting ChatGPT takes a few minutes.
       </p>
@@ -107,8 +108,8 @@ export default function Page() {
       </p>
       <p className="label"><strong>Apple Notes</strong></p>
       <p>
-        Apple doesn&apos;t offer an API or an MCP server. The Claude desktop app can read Apple Notes on a Mac, and community servers let
-        Claude write to them through AppleScript, on that Mac only. <a href="/blog/apple-notes-mcp">Apple Notes MCP servers, compared</a>.
+        Apple doesn&apos;t offer an API or an MCP server. On a Mac, Anthropic&apos;s Read and Write Apple Notes extension lets the Claude
+        desktop app read, add and update notes, and community servers do the same through AppleScript, on that Mac only. <a href="/blog/apple-notes-mcp">Apple Notes MCP servers, compared</a>.
       </p>
     </PostPage>
   );
