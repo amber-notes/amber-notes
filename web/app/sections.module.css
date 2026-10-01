@@ -46,7 +46,7 @@
 .also a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--amber); text-decoration-thickness: 2px; text-underline-offset: 3px; border-radius: 3px; }
 .also a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 
-/* ── Bring all your Apple Notes in one click: the import, run once ── */
+/* ── Bring all your Apple Notes over in one go: the import, run once ── */
 .run { display: grid; gap: 18px; padding: 26px 28px; border-radius: 28px; background: var(--card); box-shadow: 0 0 0 1px var(--line), 0 30px 60px -40px rgba(60, 30, 5, 0.5); }
 .runTitle { margin: 0; display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 16px; }
 /* Where the notes come from: Apple Notes' own icon (the .icns has its own margin, so it sits a touch outside the text). */

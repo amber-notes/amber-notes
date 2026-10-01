@@ -119,7 +119,7 @@ function AiJobs() {
   );
 }
 
-/* ───────────── Bring all your Apple Notes in one click ───────────── */
+/* ───────────── Bring all your Apple Notes over in one go ───────────── */
 
 const FOLDERS = [{ name: "Notes", n: 612 }, { name: "Recipes", n: 188 }, { name: "Work", n: 241 }, { name: "Travel", n: 97 }, { name: "Home", n: 146 }];
 const TOTAL = FOLDERS.reduce((s, f) => s + f.n, 0); // 1,284
@@ -148,15 +148,15 @@ function ImportRun() {
   return (
     <section ref={ref} className={a.section} aria-labelledby="import">
       <div className={a.head}>
-        <h2 id="import" className={a.h2}>Bring all your Apple Notes in one click</h2>
+        <h2 id="import" className={a.h2}>Bring all your Apple Notes over in one go</h2>
         <p className={a.lede}>If you know Apple Notes, you already know Amber Notes.</p>
         <p className={a.lede}>
-          Pick everything, or just the notes you want. Folders, checklists, tables and pins come along, and your Apple Notes stay untouched.
+          Pick everything, or just the notes you want. Folders, checklists and tables come along, pins too if you allow Full Disk Access, and your Apple Notes stay untouched.
           Import on your Mac. Everything's on your iPhone a second later.
         </p>
         <p className={a.lede}>Your notes live in the cloud and sync between iPhone and Mac.</p>
       </div>
-      <div className={a.run} aria-label={`Imported ${TOTAL.toLocaleString("en")} notes from Apple Notes, with ${PINNED} pinned. Pins kept, Apple Notes unchanged.`}>
+      <div className={a.run} aria-label={`Imported ${TOTAL.toLocaleString("en")} notes from Apple Notes, with ${PINNED} pinned. Folders kept, Apple Notes unchanged.`}>
         <p className={a.runTitle} aria-hidden="true">
           <img src="/apple-notes.webp" alt="" width={30} height={30} />
           {full ? "Imported from Apple Notes" : "Importing from Apple Notes…"}
@@ -177,7 +177,7 @@ function ImportRun() {
         </ul>
         <div className={a.runEnd} data-on={full || undefined} aria-hidden="true">
           <p className={a.big}><span className={a.num}>{TOTAL.toLocaleString("en")}</span> notes</p>
-          <ul className={a.ticks}><li><Tick /> Pins kept</li><li><Tick /> Apple Notes unchanged</li></ul>
+          <ul className={a.ticks}><li><Tick /> Folders kept</li><li><Tick /> Apple Notes unchanged</li></ul>
         </div>
       </div>
     </section>
