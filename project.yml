@@ -80,6 +80,22 @@ targets:
             UTTypeDescription: Pane item
             UTTypeConformsTo: [public.data]
             UTTypeTagSpecification: {}
+        # Evernote exports (.enex), which Evernote doesn't declare. Opening one (Files, Finder,
+        # the share sheet) starts the Evernote import.
+        UTImportedTypeDeclarations:
+          - UTTypeIdentifier: com.evernote.enex
+            UTTypeDescription: Evernote export
+            UTTypeConformsTo: [public.xml, public.data]
+            UTTypeTagSpecification:
+              public.filename-extension: [enex]
+              public.mime-type: [application/enex+xml]
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Evernote export
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Alternate
+            LSItemContentTypes: [com.evernote.enex]
+        # Opened in place: the import copies the file before reading it.
+        LSSupportsOpeningDocumentsInPlace: true
     settings:
       base: &appSettings
         PRODUCT_BUNDLE_IDENTIFIER: dev.emilwagman.pane

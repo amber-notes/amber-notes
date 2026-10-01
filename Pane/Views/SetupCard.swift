@@ -10,6 +10,8 @@ struct SetupCard: View {
     let celebrating: Bool
     /// Mac: opens the Apple Notes picker. nil on iPhone, which can't read Apple Notes.
     var onImport: (() -> Void)?
+    /// Opens the Evernote import (.enex files), on the Mac and iPhone.
+    var onImportEvernote: (() -> Void)?
     let onStartFresh: () -> Void
     let onConnect: () -> Void
     /// iPhone: how to share notes one by one from Notes.
@@ -192,7 +194,7 @@ struct SetupCard: View {
     private func line(_ step: SetupProgress.Step) -> Text {
         switch step {
         case .bring:
-            Text("Bring in your Apple Notes, all or just some.")
+            Text("Bring in your Apple Notes or Evernote, all or just some.")
         case .connect:
             Text("Then ask it to add something to a note.")
         case .tryIt:
@@ -225,6 +227,12 @@ struct SetupCard: View {
             primary("Import from Apple Notes…", id: "setup.import", action: onImport)
         } else if let onShareHowTo {
             primary("Share from Notes", id: "setup.shareHowTo", action: onShareHowTo)
+        }
+        if let onImportEvernote {
+            Button("Import from Evernote…", action: onImportEvernote)
+                .buttonStyle(.borderless)
+                .fixedSize()
+                .accessibilityIdentifier("setup.evernote")
         }
         Button("Start Fresh", action: onStartFresh)
             .buttonStyle(.borderless)
