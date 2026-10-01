@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import legal from "./legal.module.css";
 import p from "./post.module.css";
 import { Avatar, Figure, PostCard, longDate, readingMinutes } from "./blog";
-import { AUTHOR, categories, categoryAnchor, morePosts, post, published, type Post } from "./posts";
+import { AUTHOR, categories, categoryPath, morePosts, post, published, type Post } from "./posts";
 import { MAKER_URL, SITE_URL, pageMetadata } from "./site";
 import { JsonLd, article, breadcrumbs, faqPage, incredible, maker, organization } from "./structured-data";
 
@@ -64,7 +64,7 @@ function AllPosts({ slug }: { slug: string }) {
             const items = others.filter((x) => x.category === c);
             return items.length ? (
               <div key={c}>
-                <h3><a href={`/blog#${categoryAnchor(c)}`}>{c}</a></h3>
+                <h3><a href={categoryPath(c)}>{c}</a></h3>
                 {list(items)}
               </div>
             ) : null;
@@ -85,7 +85,7 @@ export function PostPage({ slug, intro, faq, children }: { slug: string; intro: 
   const minutes = readingMinutes(slug);
   const graph = [
     article({ title: x.title, description: x.description, path, date: x.date, updated: x.updated, image: x.image.src }),
-    breadcrumbs([{ name: "Blog", path: "/blog" }, { name: x.category, path: `/blog#${categoryAnchor(x.category)}` }, { name: x.title, path }]),
+    breadcrumbs([{ name: "Blog", path: "/blog" }, { name: x.category, path: categoryPath(x.category) }, { name: x.title, path }]),
     organization, maker, incredible,
   ];
   if (faq?.length) graph.push(faqPage(faq, path));
@@ -106,12 +106,12 @@ export function PostPage({ slug, intro, faq, children }: { slug: string; intro: 
           <nav className={p.crumbs} aria-label="Breadcrumb">
             <ol>
               <li><a href="/blog">Blog</a></li>
-              <li><a href={`/blog#${categoryAnchor(x.category)}`}>{x.category}</a></li>
+              <li><a href={categoryPath(x.category)}>{x.category}</a></li>
             </ol>
           </nav>
           <p className={p.meta}>
             Published <time dateTime={x.date}>{longDate(x.date)}</time> in{" "}
-            <a href={`/blog#${categoryAnchor(x.category)}`}>{x.category}</a>
+            <a href={categoryPath(x.category)}>{x.category}</a>
           </p>
           <h1 className={p.title}>{x.title}</h1>
           <div className={p.byline}>

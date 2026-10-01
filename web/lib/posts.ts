@@ -364,6 +364,27 @@ export const categories = (): Category[] =>
 
 export const categoryAnchor = (c: Category) => c.toLowerCase().replace(/\s+/g, "-");
 
+/// The category's own page, which lists its posts (paged like the index).
+export const categoryPath = (c: Category) => `/blog/category/${categoryAnchor(c)}`;
+
+export const categoryFromAnchor = (anchor: string): Category | undefined => categories().find((c) => categoryAnchor(c) === anchor);
+
+/// Posts per page on the index and on each category page.
+export const PER_PAGE = 12;
+
+/// Published posts, newest first (by date; the list order breaks ties).
+export function newestFirst(list: Post[] = published()): Post[] {
+  return list.map((p, i) => [p, i] as const).sort((a, b) => b[0].date.localeCompare(a[0].date) || a[1] - b[1]).map(([p]) => p);
+}
+
+export const pageCount = (list: Post[]) => Math.max(1, Math.ceil(list.length / PER_PAGE));
+
+/// Page `n` (from 1) of a list.
+export const pageOf = (list: Post[], n: number) => list.slice((n - 1) * PER_PAGE, n * PER_PAGE);
+
+/// Where page `n` of a list lives: the list's own address for page 1, then <base>/page/<n>.
+export const pagePath = (base: string, n: number) => (n === 1 ? base : `${base}/page/${n}`);
+
 /// Two other published posts to read next: the same category first, then the rest, in list order.
 export function morePosts(slug: string, n = 2): Post[] {
   const me = post(slug);
