@@ -23,6 +23,19 @@
       "tool": "log_table_row",
       "args": {
         "values": {
+          "Date": "2026-09-26",
+          "Workout": "Pull",
+          "Main lift": "Deadlift",
+          "Top set": "120 kg x 3",
+          "Minutes": "60",
+          "Effort": "9"
+        }
+      }
+    },
+    {
+      "tool": "log_table_row",
+      "args": {
+        "values": {
           "Date": "2026-09-28",
           "Workout": "Legs",
           "Main lift": "Squat",
@@ -53,7 +66,7 @@
       }
     }
   ],
-  "example": "Workout log\n\nOne row per session. After training, tell your AI what you did in one message.\n\n<!-- pane-table: Date=date; Workout=choice Push|Pull|Legs|Run|Other; Main lift=text; Top set=text; Minutes=number; Effort=scale 1-10 -->\n| Date | Workout | Main lift | Top set | Minutes | Effort |\n| --- | --- | --- | --- | --- | --- |\n| 2026-09-28 | Legs | Squat | 100 kg x 5 | 55 | 8 |\n| 2026-09-30 | Push | Bench press | 70 kg x 6 | 50 | 7 |\n\n## Program\n- Monday: legs (squat, lunges, calves)\n- Wednesday: push (bench, overhead press, dips)\n- Friday: pull (deadlift, rows, pull-ups)\n- Weekend: an easy run\n\n## Personal bests\n- Squat: 100 kg x 5 (2026-09-28)\n- Bench press: 70 kg x 6 (2026-09-30)\n",
+  "example": "Workout log\n\nOne row per session. After training, tell your AI what you did in one message.\n\n<!-- pane-table: Date=date; Workout=choice Push|Pull|Legs|Run|Other; Main lift=text; Top set=text; Minutes=number; Effort=scale 1-10 -->\n| Date | Workout | Main lift | Top set | Minutes | Effort |\n| --- | --- | --- | --- | --- | --- |\n| 2026-09-26 | Pull | Deadlift | 120 kg x 3 | 60 | 9 |\n| 2026-09-28 | Legs | Squat | 100 kg x 5 | 55 | 8 |\n| 2026-09-30 | Push | Bench press | 70 kg x 6 | 50 | 7 |\n\n## Program\n- Monday: legs (squat, lunges, calves)\n- Wednesday: push (bench, overhead press, dips)\n- Friday: pull (deadlift, rows, pull-ups)\n- Weekend: an easy run\n\n## Personal bests\n- Squat: 100 kg x 5 (2026-09-28)\n- Bench press: 70 kg x 6 (2026-09-30)\n",
   "related": [
     "habit-tracker",
     "mood-energy-log",

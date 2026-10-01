@@ -69,6 +69,14 @@ describe("the gallery", () => {
     expect(html).not.toContain(">Everyone<");
   });
 
+  it("shows each category chip with its templates' colours, and no trial switches", () => {
+    const html = gallery();
+    const chips = html.slice(html.indexOf('aria-label="Category"'), html.indexOf("templates</p>"));
+    // Three dots per category chip, in its templates' cover colours; none on "All".
+    expect(chips.match(/<i style="background:#[0-9a-f]{6}"/g)).toHaveLength(12);
+    expect(html).not.toContain("data-top");
+  });
+
   it("has no numbered steps above the cards", () => {
     expect(gallery()).not.toContain("<ol");
   });

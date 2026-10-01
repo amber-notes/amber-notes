@@ -43,6 +43,17 @@
       }
     },
     {
+      "tool": "log_table_row",
+      "args": {
+        "values": {
+          "What": "Train Lisbon to Sintra",
+          "When": "16 May, 09:10",
+          "Confirmation": "CP-55120",
+          "Paid": "Yes"
+        }
+      }
+    },
+    {
       "tool": "append_to_note",
       "args": {
         "under_heading": "Days",
@@ -64,7 +75,7 @@
       }
     }
   ],
-  "example": "Trip plan\n\nEverything for one trip: the plan for each day, the bookings, and what to pack.\n\n## Bookings\n<!-- pane-table: What=text; When=text; Confirmation=text; Paid=choice Yes|No -->\n| What | When | Confirmation | Paid |\n| --- | --- | --- | --- |\n| Flights ARN to LIS | 14 May, 07:10 | K7Q2PX | Yes |\n| Hotel in Príncipe Real, 4 nights | 14 to 18 May | 48213377 | No |\n\n## Days\n### Thursday 14 May\n- Land 10:40, drop bags at the hotel\n- Lunch at Time Out Market\n- Sunset at Miradouro da Senhora do Monte\n\n### Friday 15 May\n- Tram 28 before 9, ahead of the crowds\n- Alfama on foot, lunch at a tasca\n- Dinner at Ramiro (book ahead)\n\n## Packing\n- [ ] Passport\n- [ ] Chargers\n- [ ] Travel insurance details\n- [ ] Comfortable shoes\n- [ ] Sunglasses\n- [ ] A light jacket for the evenings\n\n## Ideas\n- Day trip to Sintra\n- LX Factory on Sunday\n",
+  "example": "Trip plan\n\nEverything for one trip: the plan for each day, the bookings, and what to pack.\n\n## Bookings\n<!-- pane-table: What=text; When=text; Confirmation=text; Paid=choice Yes|No -->\n| What | When | Confirmation | Paid |\n| --- | --- | --- | --- |\n| Flights ARN to LIS | 14 May, 07:10 | K7Q2PX | Yes |\n| Hotel in Príncipe Real, 4 nights | 14 to 18 May | 48213377 | No |\n| Train Lisbon to Sintra | 16 May, 09:10 | CP-55120 | Yes |\n\n## Days\n### Thursday 14 May\n- Land 10:40, drop bags at the hotel\n- Lunch at Time Out Market\n- Sunset at Miradouro da Senhora do Monte\n\n### Friday 15 May\n- Tram 28 before 9, ahead of the crowds\n- Alfama on foot, lunch at a tasca\n- Dinner at Ramiro (book ahead)\n\n## Packing\n- [ ] Passport\n- [ ] Chargers\n- [ ] Travel insurance details\n- [ ] Comfortable shoes\n- [ ] Sunglasses\n- [ ] A light jacket for the evenings\n\n## Ideas\n- Day trip to Sintra\n- LX Factory on Sunday\n",
   "related": [
     "budget-log",
     "meal-plan",

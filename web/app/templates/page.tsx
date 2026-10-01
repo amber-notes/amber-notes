@@ -4,6 +4,7 @@ import { JsonLd, breadcrumbs, incredible, maker, organization, templateLibrary }
 import { CATEGORIES, anchor, inCategory, templates } from "@/lib/templates";
 import Card from "./Card";
 import Library from "./Library";
+import { COVERS, coverPath } from "@/lib/template-covers";
 import s from "./templates.module.css";
 
 export const dynamic = "force-static";
@@ -17,6 +18,9 @@ export const metadata: Metadata = pageMetadata({
 
 const at = (i: number) => ({ "--i": i }) as React.CSSProperties;
 
+/// The covers fanned beside the title.
+const FAN = ["habit-tracker", "meeting-notes", "reading-list", "meal-plan"];
+
 export default function Page() {
   const all = templates();
   return (
@@ -24,6 +28,8 @@ export default function Page() {
       <JsonLd graph={[breadcrumbs([{ name: "Templates", path: "/templates" }]), templateLibrary(all), organization, maker, incredible]} />
       <div className={s.gallery}>
         <section className={s.hero}>
+          {/* Four covers fanned beside the title, a taste of the cards below. */}
+          <span className={s.fan} aria-hidden="true">{FAN.map((slug) => <img key={slug} src={coverPath(slug)} alt="" width={800} height={800} />)}</span>
           <h1 className={`${s.h1} rise`} style={at(0)}>Templates <mark className={s.mark}>your AI</mark> fills in.</h1>
           <p className={`${s.lede} rise`} style={at(1)}>
             {APP_TEMPLATES.live
@@ -36,7 +42,10 @@ export default function Page() {
           <Library
             items={all.map((t) => ({ slug: t.slug, category: t.category }))}
             cards={all.map((t) => <Card key={t.slug} t={t} />)}
-            categories={CATEGORIES.map((c) => ({ name: c, anchor: anchor(c), count: inCategory(c).length }))}
+            categories={CATEGORIES.map((c) => {
+              const ts = inCategory(c);
+              return { name: c, anchor: anchor(c), count: ts.length, swatch: ts.slice(0, 3).map((t) => COVERS[t.slug].ground) };
+            })}
           />
         </div>
       </div>

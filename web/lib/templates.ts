@@ -227,7 +227,14 @@ export function slice(t: Template, lines = 8): SliceRow[] {
     else if (/^\s*\[[^\]]+\]\(pane-note:/.test(l)) out.push({ kind: "subnote", text: plain(l), fresh });
     else if (b) out.push({ kind: "item", ...labelled(b[1]), fresh });
     else if (l.startsWith(">")) out.push({ kind: "quote", text: plain(l.replace(/^>\s*/, "")), fresh });
-    else if (/^\*\*[^*]+\*\*$/.test(l.trim())) { out.push({ kind: "label", text: plain(l) }); used++; continue; }
+    else if (/^\*\*[^*]+\*\*$/.test(l.trim())) {
+      // A label right under the opening heading joins it ("30 September · Yesterday"), so the lines
+      // under it get the room.
+      const prev = out[out.length - 1];
+      if (out.length === 1 && prev.kind === "heading") prev.text += ` · ${plain(l)}`;
+      else { out.push({ kind: "label", text: plain(l) }); used++; }
+      continue;
+    }
     else out.push({ kind: "text", ...labelled(l.trim()), fresh });
     tinted = true; used++;
   }
