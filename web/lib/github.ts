@@ -4,11 +4,11 @@
 export const REPO = "emilwagman/amber-notes";
 export const GITHUB_URL = `https://github.com/${REPO}`;
 
-const opts = { next: { revalidate: 3600 }, headers: { Accept: "application/vnd.github+json", "User-Agent": "amber-notes-site" } };
+const headers = { Accept: "application/vnd.github+json", "User-Agent": "amber-notes-site" };
 
-async function get<T>(path: string): Promise<T | null> {
+async function get<T>(path: string, revalidate = 3600): Promise<T | null> {
   try {
-    const r = await fetch(`https://api.github.com/repos/${REPO}${path}`, opts);
+    const r = await fetch(`https://api.github.com/repos/${REPO}${path}`, { next: { revalidate }, headers });
     return r.ok ? ((await r.json()) as T) : null;
   } catch {
     return null;
@@ -20,6 +20,13 @@ export type RepoStats = { stars: number; description: string | null; license: st
 export async function repoStats(): Promise<RepoStats | null> {
   const r = await get<{ stargazers_count: number; description: string | null; license: { spdx_id: string } | null; pushed_at: string }>("");
   return r ? { stars: r.stargazers_count, description: r.description, license: r.license?.spdx_id ?? null, pushedAt: r.pushed_at } : null;
+}
+
+/// The star count alone, fresher than repoStats(): app/stars.json serves it to the header after load.
+export async function starCount(revalidate: number): Promise<number | null> {
+  const r = await get<{ stargazers_count?: unknown }>("", revalidate);
+  const n = r?.stargazers_count;
+  return typeof n === "number" && Number.isInteger(n) && n >= 0 ? n : null;
 }
 
 /// Share of the code by language, largest first; small ones are folded into "Other".
