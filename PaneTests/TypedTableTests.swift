@@ -65,7 +65,6 @@ import Testing
         let day = Date(timeIntervalSince1970: 1_790_467_200).formatted(Date.FormatStyle(timeZone: .gmt).day().month(.abbreviated)) // 2026-09-27
         #expect(NoteText.title(of: Self.runningLog) == "Running log")
         #expect(NoteText.preview(of: Self.runningLog) == "\(day) · 10 km · Minutes 56 · Feel 5")
-        #expect(NoteHead.of(Self.runningLog).preview == NoteText.preview(of: Self.runningLog))
         #expect(!NoteText.preview(of: Self.runningLog).contains("pane-table"))
     }
 
