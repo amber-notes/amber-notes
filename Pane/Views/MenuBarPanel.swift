@@ -248,7 +248,7 @@ struct MenuBarPanel: View {
                 .font(.callout)
                 .foregroundStyle(.secondary)
             Button("Sign In…") { showWindow() }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.amberProminent)
                 .accessibilityIdentifier("menubar.signIn")
         }
         .padding(24)

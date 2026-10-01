@@ -705,6 +705,13 @@ final class ConnectCenter: NSObject {
     /// A request by link on this device. It shows now, or next when a sheet is showing: it never
     /// replaces what the person is looking at.
     func receive(_ url: URL, from sender: URL? = nil) {
+        // "Use this template" and "Use this note" links: their sheet shows over the notes.
+        if NoteSourceCenter.shared.receive(url) {
+            #if os(macOS)
+            activate()
+            #endif
+            return
+        }
         guard let id = ConnectLink.requestID(from: url) else { return }
         #if os(macOS)
         let from = sender.flatMap { Self.isBrowser($0) ? $0 : nil }
@@ -1021,7 +1028,7 @@ struct ConsentSheet: View {
                         Text("Allow").frame(maxWidth: .infinity)
                     }
                     .keyboardShortcut(.defaultAction)
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.amberProminent)
                     .controlSize(.large)
                     .disabled(!armed)
                     .accessibilityIdentifier("connect.allow")
@@ -1059,7 +1066,7 @@ struct ConsentSheet: View {
                     Text("Allow").frame(maxWidth: .infinity)
                 }
                 .keyboardShortcut(.defaultAction)
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.amberProminent)
                 .controlSize(.large)
                 .disabled(!armed || match == nil || typed.count < 2)
                 .accessibilityIdentifier("connect.allow")

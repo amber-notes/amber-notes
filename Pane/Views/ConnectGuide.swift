@@ -215,7 +215,7 @@ struct WebConnectGuide: View {
                 Label("Send Steps to Yourself", systemImage: "paperplane")
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.amberProminent)
             .controlSize(.large)
             .accessibilityIdentifier("connect.sendSteps")
         } footer: {
@@ -236,7 +236,7 @@ struct WebConnectGuide: View {
                 Label(started ? "Open \(plan.ai) Again" : plan.prefills ? "Add to \(plan.ai)" : "Copy Address and Open \(plan.ai)", systemImage: "arrow.up.forward.app")
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.amberProminent)
             .controlSize(.large)
             .accessibilityIdentifier("connect.open")
             if started {
@@ -493,7 +493,7 @@ struct IncredibleGuide: View {
                 Label("Send Steps to Yourself", systemImage: "paperplane")
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.amberProminent)
             .controlSize(.large)
             .accessibilityIdentifier("connect.sendSteps")
         }
@@ -512,7 +512,7 @@ struct IncredibleGuide: View {
                     Label(started ? "Open Incredible Again" : "Open Incredible", systemImage: "arrow.up.forward.app")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.amberProminent)
                 .controlSize(.large)
                 .accessibilityIdentifier("connect.open")
             } else {
@@ -520,7 +520,7 @@ struct IncredibleGuide: View {
                     Label("Get Incredible", systemImage: "arrow.up.forward.app")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.amberProminent)
                 .controlSize(.large)
                 .accessibilityIdentifier("connect.get")
             }

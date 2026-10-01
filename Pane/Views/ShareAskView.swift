@@ -50,8 +50,7 @@ struct ShareAskView: View {
             VStack(spacing: Metrics.buttonGap) {
                 ForEach(Array(content.choices.enumerated()), id: \.element) { i, choice in
                     if i == 0 {
-                        // Dark ink on amber: readable on the deeper light-mode amber and the brighter dark one.
-                        share(choice, ink: Color(Palette.onAmber)).buttonStyle(.borderedProminent)
+                        share(choice, prominent: true).buttonStyle(.amberProminent)
                     } else {
                         share(choice).buttonStyle(.bordered)
                     }
@@ -69,11 +68,12 @@ struct ShareAskView: View {
         .accessibilityIdentifier("shareAsk")
     }
 
-    private func share(_ choice: ShareAsk.Choice, ink: Color? = nil) -> some View {
+    /// `prominent`: the amber primary button, whose style colours the label itself.
+    private func share(_ choice: ShareAsk.Choice, prominent: Bool = false) -> some View {
         Button {
             if let url = store.choose(choice) { openURL(url) }
         } label: {
-            Text(ShareAsk.buttonTitle(choice)).foregroundStyle(ink.map(AnyShapeStyle.init) ?? AnyShapeStyle(.tint)).frame(maxWidth: .infinity)
+            Text(ShareAsk.buttonTitle(choice)).foregroundStyle(prominent ? AnyShapeStyle(Color(AmberProminentButtonStyle.label)) : AnyShapeStyle(.tint)).frame(maxWidth: .infinity)
         }
         .controlSize(.large)
         #if os(iOS)

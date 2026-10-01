@@ -75,16 +75,10 @@ struct WhatsNewCard: View {
 
     @ViewBuilder
     private var buttons: some View {
-        // TODO: `.buttonStyle(.amberProminent)` once PR 96 is on main; until then the setup card's look.
-        Button(action: onDismiss) {
-            Text("Got it").foregroundStyle(Color(Palette.onAmber))
-        }
-        .buttonStyle(.borderedProminent)
-        #if os(iOS)
-        .buttonBorderShape(.capsule)
-        #endif
-        .fixedSize()
-        .accessibilityIdentifier("whatsNew.dismiss")
+        Button("Got it", action: onDismiss)
+            .buttonStyle(.amberProminent)
+            .fixedSize()
+            .accessibilityIdentifier("whatsNew.dismiss")
         Group {
             switch secondary {
             case .reconnect:
