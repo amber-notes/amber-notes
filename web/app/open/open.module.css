@@ -1,5 +1,6 @@
-/* The pages behind "Use this template" and "Use this note" (/open/template, /open/copy) when the
-   link stays in the browser: one card in the site's cream theme, the app first, the fallback under it. */
+/* The pages behind "Use template" and "Use this note" (/open/template, /open/copy) when the link
+   stays in the browser: one card in the site's cream theme. It tries the app first; the way to get
+   Amber Notes appears only if the app didn't open (data-state on .page, set by OpenApp). */
 .page { display: grid; justify-items: center; padding: 48px 16px 0; }
 @media (max-width: 600px) { .page { padding-top: 20px; } }
 .card {
@@ -37,3 +38,27 @@
 .md { width: 100%; text-align: left; }
 .md summary { min-height: 32px; display: inline-flex; align-items: center; color: var(--muted); font-size: 14px; font-weight: 600; cursor: pointer; border-radius: 6px; }
 .md pre { margin: 6px 0 0; max-height: 260px; overflow: auto; padding: 12px 14px; border-radius: 12px; background: var(--soft); font: 12.5px/1.55 ui-monospace, "SF Mono", Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* The card's three states. Without JavaScript the page stays on "fallback". */
+.page[data-state="trying"] .whenOpened, .page[data-state="trying"] .whenFallback,
+.page[data-state="opened"] .whenTrying, .page[data-state="opened"] .whenFallback,
+.page[data-state="fallback"] .whenTrying, .page[data-state="fallback"] .whenOpened { display: none; }
+.page[data-state="trying"] .small:has(> a[href^="ambernotes:"]) { display: none; }
+.status { display: inline-flex; align-items: center; gap: 10px; margin: 4px 0 0; color: var(--muted); font-size: 14.5px; font-weight: 600; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--amber); }
+@media (prefers-reduced-motion: no-preference) {
+  .dot { animation: breathe 1.1s ease-in-out infinite alternate; }
+  .page[data-state="fallback"] .card > * { animation: settle 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+}
+@keyframes breathe { from { opacity: 0.35; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+@keyframes settle { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.stack { display: grid; gap: 8px; width: 100%; justify-items: center; margin-top: 4px; }
+.soon { margin: 0; color: var(--muted); font-size: 14.5px; font-weight: 600; }
+.alt { width: 100%; padding-top: 14px; box-shadow: inset 0 1px 0 var(--line); }
+.md[open] .secondary { margin-top: 10px; }
+.md .small { margin-top: 8px; }
+.alt .md summary { display: flex; justify-content: center; gap: 6px; width: 100%; min-height: 40px; color: var(--link); font-size: 15px; list-style: none; }
+.alt .md summary::-webkit-details-marker { display: none; }
+.alt .md summary::after { content: ""; width: 7px; height: 7px; margin-top: -3px; border: solid currentColor; border-width: 0 2px 2px 0; transform: rotate(45deg); align-self: center; }
+.alt .md[open] summary::after { margin-top: 3px; transform: rotate(-135deg); }
+@media (hover: hover) { .alt .md summary:hover { color: var(--ink); } }

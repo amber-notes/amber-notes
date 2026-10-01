@@ -55,7 +55,8 @@
 /* A card: the template's cover fills it, the title sits once on the cover's calm lower third, and
    a slice of the real note with "Use template" closes it, so the card reads as something to open
    before anyone hovers it. The ground below the picture is the cover's own colour, so the picture
-   carries on. On hover the card moves as one piece: only .card transforms, and it clips the cover. */
+   carries on. On hover the card moves as one piece: only .card transforms, and it clips the cover.
+   The title's link is stretched over the whole card; "Use template" is its own link, lifted above it. */
 .card {
   position: relative; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto 1fr; border-radius: 22px; overflow: hidden; isolation: isolate; color: var(--ink);
   text-decoration: none; background: var(--ground); cursor: pointer; padding-bottom: 14px;
@@ -70,20 +71,23 @@
 }
 @media (hover: hover) {
   .card:hover { box-shadow: 0 0 0 1px var(--line), 0 28px 48px -26px rgba(60, 30, 5, 0.6); }
-  .card:hover .use { background: var(--cta-bg); color: var(--cta-ink); }
 }
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
   .card:hover { transform: translateY(-3px); }
   .card:hover:active { transform: translateY(-3px) scale(0.98); }
   .card:hover .use svg { transform: translateX(3px); }
 }
-.card:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
-.card:focus-visible .use { background: var(--cta-bg); color: var(--cta-ink); }
+.cardLink { color: inherit; text-decoration: none; outline: none; }
+.cardLink::after { content: ""; position: absolute; inset: 0; z-index: 1; border-radius: inherit; }
+.card:has(.cardLink:focus-visible) { outline: 2px solid var(--amber); outline-offset: 3px; }
+a.use { position: relative; z-index: 2; text-decoration: none; }
+a.use:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+@media (hover: hover) { a.use:hover { background: var(--cta-bg); color: var(--cta-ink); } }
 
 /* The cover: square, at the top, full width; its plain lower third is where the title sits. */
-.cover { position: absolute; inset: 0 0 auto; aspect-ratio: 1; }
+.cover { position: absolute; z-index: -1; inset: 0 0 auto; aspect-ratio: 1; }
 .cover img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.cardText { position: relative; grid-row: 2; display: grid; gap: 6px; padding: 0 22px 18px; }
+.cardText { grid-row: 2; display: grid; gap: 6px; padding: 0 22px 18px; }
 .card[data-ink="dark"] .cardText { color: #2a1d10; }
 .card[data-ink="light"] .cardText { color: #fff4e6; }
 .cardTitle { margin: 0; font-size: 26px; line-height: 1.15; font-weight: 750; letter-spacing: -0.02em; }
@@ -139,7 +143,7 @@
 @media (max-width: 960px) { .intro { position: static; padding-top: 12px; } }
 .title { margin: 0; font-size: clamp(40px, 5vw, 64px); line-height: 1; font-weight: 800; letter-spacing: -0.04em; text-wrap: balance; }
 .for { margin: -4px 0 0; color: var(--ink); font-size: 16px; font-weight: 600; }
-.ctas { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
+.ctas { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; margin-top: 4px; }
 .primary, .secondary {
   display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 50px; padding: 0 22px; border: 0; border-radius: 14px;
   font: inherit; font-weight: 700; font-size: 16px; text-decoration: none; box-sizing: border-box; cursor: pointer;

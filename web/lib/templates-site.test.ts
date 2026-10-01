@@ -8,7 +8,7 @@ import { GET } from "../app/api/templates/[slug]/route";
 import { llmsTxt } from "./llms";
 import { renderNote } from "./render";
 import { NotePage } from "./NotePage";
-import { APP_TEMPLATES, SITE_URL } from "./site";
+import { APP_STORE_LIVE, APP_TEMPLATES, SITE_URL } from "./site";
 import Gallery from "../app/templates/page";
 import TemplatePage from "../app/templates/[slug]/page";
 import { copyableMarkdown } from "./shared";
@@ -83,9 +83,15 @@ describe("the gallery", () => {
 
   it("makes every card one link that says what it opens", () => {
     const html = gallery();
-    const cards = html.match(/<a class="[^"]*card[^"]*" href="\/templates\/[^"]+"[^>]*>/g) ?? [];
+    const cards = html.match(/<article class="[^"]*card[^"]*"[\s\S]*?<\/article>/g) ?? [];
     expect(cards).toHaveLength(templates().length);
-    expect(html.match(/>Use template</g)).toHaveLength(templates().length);
+    for (const [k, t] of templates().entries()) {
+      const card = cards[k];
+      // One link to the template's page, one to Amber Notes, and never a link inside a link.
+      expect(card.match(/<a /g), t.slug).toHaveLength(APP_TEMPLATES.live ? 2 : 1);
+      expect(card).toContain(`href="/templates/${t.slug}">${t.title.replace("&", "&amp;")}</a>`);
+      if (APP_TEMPLATES.live) expect(card).toContain(`href="/open/template/${t.slug}" aria-label="Use template: ${t.title}">Use template`);
+    }
   });
 
   it("gives every card its own cover, with alt text, and lists them in the image sitemap", () => {
@@ -136,6 +142,23 @@ describe("a template's page", () => {
   });
 });
 
+describe("once the app opens template links (APP_TEMPLATES)", () => {
+  it.runIf(APP_TEMPLATES.live)("leads a template's page with Use template, then Copy the prompt", async () => {
+    const html = renderToStaticMarkup(await TemplatePage(params("habit-tracker")));
+    const use = html.indexOf('href="/open/template/habit-tracker"'), copy = html.indexOf(">Copy the prompt<");
+    expect(use).toBeGreaterThan(0);
+    expect(copy).toBeGreaterThan(use);
+    expect(html).toContain("Use template</a>");
+  });
+
+  it("keeps the open page out of search, and template pages in it", async () => {
+    const open = await import("../app/open/template/[slug]/page");
+    expect(open.metadata.robots).toMatchObject({ index: false });
+    const page = await import("../app/templates/[slug]/page");
+    expect(JSON.stringify(await page.generateMetadata(params("habit-tracker")))).not.toContain('"index":false');
+  });
+});
+
 describe("before the app opens template links (APP_TEMPLATES)", () => {
   it("names the release that adds them", () => expect(APP_TEMPLATES.version).toMatch(/^\d+\.\d+/));
 
@@ -154,13 +177,18 @@ describe("before the app opens template links (APP_TEMPLATES)", () => {
 describe("the open pages", () => {
   afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
-  it("offers the app's scheme for a template, the download and the markdown", async () => {
+  it("tries the app for a template, then offers the Mac app, the iPhone's status and the prompt", async () => {
     const html = renderToStaticMarkup(await OpenTemplate(params("habit-tracker")));
     expect(html).toContain('href="ambernotes://template/habit-tracker"');
     expect(html).toContain(">Open Amber Notes</a>");
-    expect(html).toContain('href="/download"');
-    expect(html).toContain("Copy the markdown");
-    expect(html).toContain("Habit tracker\n\nOne row a day.");
+    expect(html).toContain('href="/download/mac"');
+    expect(html).toContain(APP_STORE_LIVE ? "Get it for iPhone" : "iPhone app: coming soon");
+    expect(html).toContain("Or use it with ChatGPT or Claude");
+    expect(html).toContain("Copy the prompt");
+    const t = templates().find((x) => x.slug === "habit-tracker")!;
+    expect(html.replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&")).toContain(instructions(t)[0].prompt);
+    // Without JavaScript the way to get the app shows; the page itself is never indexed.
+    expect(html).toContain('data-state="fallback"');
   });
 
   it("offers the app's scheme for a shared note, with the copyable markdown", async () => {

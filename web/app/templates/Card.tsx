@@ -1,25 +1,31 @@
 import { COVERS, coverPath, inkOn } from "@/lib/template-covers";
-import { slice, templatePath, type SliceRow, type Template } from "@/lib/templates";
+import { APP_TEMPLATES } from "@/lib/site";
+import { slice, templatePath, usePath, type SliceRow, type Template } from "@/lib/templates";
 import s from "./templates.module.css";
 
 /// One template in the gallery or under "More templates": its cover fills the card, the title sits
 /// once on the cover's calm lower third, and under it a slice of the real note, filled in, with
-/// "Use template". The whole card is the link.
+/// "Use template". The card is one link to the template's page (its title link, stretched over the
+/// card), except "Use template", its own link straight to Amber Notes. No link sits inside another.
 export default function Card({ t, heading = "h2" }: { t: Template; heading?: "h2" | "h3" }) {
   const H = heading;
   const cover = COVERS[t.slug];
   return (
-    <a className={s.card} href={templatePath(t.slug)} data-ink={inkOn(cover.ground)} style={{ "--ground": cover.ground } as React.CSSProperties}>
+    <article className={s.card} data-ink={inkOn(cover.ground)} style={{ "--ground": cover.ground } as React.CSSProperties}>
       <span className={s.cover}><img src={coverPath(t.slug)} alt={cover.alt} width={800} height={800} loading="lazy" decoding="async" /></span>
       <span className={s.cardText}>
-        <H className={s.cardTitle}>{t.title}</H>
+        <H className={s.cardTitle}><a className={s.cardLink} href={templatePath(t.slug)}>{t.title}</a></H>
         <span className={s.cardLine}>{t.tagline}</span>
       </span>
-      <span className={s.slice} aria-hidden="true">
-        <span className={s.sliceNote}>{slice(t).map((r, i) => <Row key={i} r={r} />)}</span>
-        <span className={s.cardFoot}><span className={s.use}>Use template<ArrowGlyph /></span></span>
+      <span className={s.slice}>
+        <span className={s.sliceNote} aria-hidden="true">{slice(t).map((r, i) => <Row key={i} r={r} />)}</span>
+        <span className={s.cardFoot}>
+          {APP_TEMPLATES.live
+            ? <a className={s.use} href={usePath(t.slug)} aria-label={`Use template: ${t.title}`}>Use template<ArrowGlyph /></a>
+            : <span className={s.use} aria-hidden="true">Use template<ArrowGlyph /></span>}
+        </span>
       </span>
-    </a>
+    </article>
   );
 }
 

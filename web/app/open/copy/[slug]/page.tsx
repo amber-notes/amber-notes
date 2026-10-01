@@ -28,8 +28,8 @@ export default async function Page({ params }: Props) {
   return (
     <OpenCard
       href={`ambernotes://copy/${slug}`}
-      title="Opening Amber Notes"
-      lede={<>Amber Notes adds a copy of <b>{note.title}</b> to your notes. Photos and files stay with the person who shared it. If it didn&apos;t open, try again.</>}
+      what="this note"
+      lede={<>Amber Notes adds a copy of <b>{note.title}</b> to your notes. Photos and files stay with the person who shared it.</>}
       markdown={copyableMarkdown(note.body)}
       back={{ href: `/n/${slug}`, label: "Back to the note" }}
     />
