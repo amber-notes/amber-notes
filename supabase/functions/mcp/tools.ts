@@ -26,7 +26,8 @@ type Tool = {
   title: string;
   description: string;
   inputSchema: Record<string, unknown>;
-  annotations: { readOnlyHint: boolean; destructiveHint: boolean; idempotentHint?: boolean; openWorldHint: false };
+  // title is repeated here because Claude's directory reads annotations.title.
+  annotations: { title?: string; readOnlyHint: boolean; destructiveHint: boolean; idempotentHint?: boolean; openWorldHint: false };
   // ChatGPT reads this per tool: which OAuth scope the call needs.
   securitySchemes?: { type: "oauth2"; scopes: string[] }[];
 };
@@ -234,7 +235,7 @@ export const tools: Tool[] = ([
     inputSchema: { type: "object", properties: { id: str("Note id.") }, required: ["id"] },
     annotations: read,
   },
-] satisfies Tool[]).map((t) => ({ ...t, securitySchemes: [{ type: "oauth2" as const, scopes: [t.annotations.readOnlyHint ? "notes:read" : "notes:write"] }] }));
+] satisfies Tool[]).map((t) => ({ ...t, annotations: { title: t.title, ...t.annotations }, securitySchemes: [{ type: "oauth2" as const, scopes: [t.annotations.readOnlyHint ? "notes:read" : "notes:write"] }] }));
 
 const writeTools = new Set(tools.filter((t) => !t.annotations.readOnlyHint).map((t) => t.name));
 

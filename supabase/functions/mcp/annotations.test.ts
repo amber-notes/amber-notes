@@ -2,9 +2,10 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { tools } from "./tools.ts";
 
-Deno.test("every tool has a title and all three hints as explicit booleans", () => {
+Deno.test("every tool has a title, also in annotations, and all three hints as explicit booleans", () => {
   for (const t of tools) {
     assert(t.title.trim(), `${t.name} has no title`);
+    assertEquals(t.annotations.title, t.title, `${t.name}.annotations.title`);
     for (const hint of ["readOnlyHint", "destructiveHint", "openWorldHint"] as const) {
       assertEquals(typeof t.annotations[hint], "boolean", `${t.name}.${hint}`);
     }
