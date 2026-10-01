@@ -44,14 +44,14 @@ struct AccountNotice: Decodable, Equatable, Identifiable, Sendable {
         created_at = try c.decode(Date.self, forKey: .created_at)
     }
 
+    /// When it happened, always with the day: "1 Oct, 22:35".
+    static func when(_ date: Date) -> String { date.formatted(.dateTime.day().month(.abbreviated).hour().minute()) }
+
     /// The alert's words.
-    func text(now: Date = .now) -> (title: String, message: String) {
+    func text() -> (title: String, message: String) {
         switch kind {
         case .aiConnected:
-            let when = Calendar.current.isDate(created_at, inSameDayAs: now)
-                ? created_at.formatted(date: .omitted, time: .shortened)
-                : created_at.formatted(date: .abbreviated, time: .shortened)
-            return ("Connected \(name ?? "an AI") \u{00B7} \(when)", "It can use your notes. If you didn't connect it, disconnect it now.")
+            return ("Connected \(name ?? "an AI")", "\(Self.when(created_at)). It can use your notes. If you didn't connect it, disconnect it.")
         case .startedFresh:
             return ("Your notes were deleted and a new key was made on another device",
                     "Save your new recovery key in Settings \u{203A} Privacy & Security.")
@@ -62,6 +62,27 @@ struct AccountNotice: Decodable, Equatable, Identifiable, Sendable {
             return ("", "")
         }
     }
+}
+
+extension [AccountNotice] {
+    /// One alert for these: a notice on its own, or AI connections said together, newest first.
+    var text: (title: String, message: String) {
+        guard count > 1 else { return first?.text() ?? ("", "") }
+        let lines = sorted { $0.created_at > $1.created_at }
+            .map { "\($0.name ?? "An AI") \u{00B7} \(AccountNotice.when($0.created_at))" }
+        return ("\(count) AIs were connected",
+                lines.joined(separator: "\n") + "\n\nThey can use your notes. If you didn't connect one, disconnect it in Settings \u{203A} Connect an AI.")
+    }
+}
+
+/// What this account's own list says about a connection a notice is about.
+enum ConnectionLookup: Equatable, Sendable {
+    /// Still connected, under this name.
+    case active(String)
+    /// Disconnected, or gone: it has no access, so it isn't news.
+    case inactive
+    /// The list couldn't be read: said anyway, as "an AI".
+    case unknown
 }
 
 /// Which notices this device still has to say, per account. Pure, so it's unit-tested.
@@ -109,13 +130,16 @@ struct NoticeLedger {
     }
 }
 
-/// Fetches and listens for the account's notices while the library is open, and shows them one at
-/// a time (`current`), each once per device.
+/// Fetches and listens for the account's notices while the library is open, and shows them one
+/// alert at a time (`current`), each once per device. AI connections waiting together show as one
+/// alert (`group`), not one after another.
 @MainActor
 @Observable
 final class AccountNotices {
-    /// The notice showing now.
+    /// The notice showing now (for AI connections said together, the newest).
     private(set) var current: AccountNotice?
+    /// Everything the alert showing now says: `current` alone, or AI connections, newest first.
+    private(set) var group: [AccountNotice] = []
     private var queue: [AccountNotice] = []
     @ObservationIgnored private let client: SupabaseClient
     @ObservationIgnored private let ledger: NoticeLedger
@@ -124,23 +148,24 @@ final class AccountNotices {
     @ObservationIgnored private var tasks: [Task<Void, Never>] = []
     @ObservationIgnored private var stopped = false
 
-    /// The name of the connection a grant is, as Settings › Connect an AI lists it; nil when it's gone.
-    @ObservationIgnored private let connectionName: (UUID) async -> String?
+    /// The connection a grant is, as Settings › Connect an AI lists it.
+    @ObservationIgnored private let connection: (UUID) async -> ConnectionLookup
 
     init(client: SupabaseClient, user: UUID, defaults: UserDefaults = .standard,
          approvedHere: @escaping () -> Date? = { ConnectCenter.shared.approved?.at },
-         connectionName: ((UUID) async -> String?)? = nil) {
+         connection: ((UUID) async -> ConnectionLookup)? = nil) {
         self.client = client
         ledger = NoticeLedger(account: user, defaults: defaults)
         self.approvedHere = approvedHere
-        self.connectionName = connectionName ?? { grant in await Self.connectionName(client, grant: grant) }
+        self.connection = connection ?? { grant in await Self.connection(client, grant: grant) }
     }
 
-    nonisolated static func connectionName(_ client: SupabaseClient, grant: UUID) async -> String? {
-        struct Row: Decodable { var name: String; var kind: String?; var redirect_host: String? }
-        guard let rows: [Row] = try? await client.from("mcp_tokens").select("name,kind,redirect_host")
-            .eq("id", value: grant.uuidString.lowercased()).limit(1).execute().value, let r = rows.first else { return nil }
-        return Connection.title(name: r.name, kind: r.kind, host: r.redirect_host)
+    nonisolated static func connection(_ client: SupabaseClient, grant: UUID) async -> ConnectionLookup {
+        struct Row: Decodable { var name: String; var kind: String?; var redirect_host: String?; var revoked_at: Date? }
+        guard let rows: [Row] = try? await client.from("mcp_tokens").select("name,kind,redirect_host,revoked_at")
+            .eq("id", value: grant.uuidString.lowercased()).limit(1).execute().value else { return .unknown }
+        guard let r = rows.first, r.revoked_at == nil else { return .inactive }
+        return .active(Connection.title(name: r.name, kind: r.kind, host: r.redirect_host))
     }
 
     func start() async {
@@ -201,19 +226,30 @@ final class AccountNotices {
 
     func take(_ rows: [AccountNotice]) async {
         guard !stopped else { return }
-        var fresh = ledger.unseen(rows.filter { $0.kind != .unknown }, approvedHere: approvedHere())
-        for i in fresh.indices where fresh[i].kind == .aiConnected {
-            if let grant = fresh[i].grant_id { fresh[i].name = await connectionName(grant) }
+        let unseen = ledger.unseen(rows.filter { $0.kind != .unknown }, approvedHere: approvedHere())
+        var fresh: [AccountNotice] = []
+        for var n in unseen {
+            if n.kind == .aiConnected, let grant = n.grant_id {
+                switch await connection(grant) {
+                case .active(let name): n.name = name
+                // Disconnected since: nothing to warn about. Said, so it never comes back.
+                case .inactive: ledger.markSeen(n.id); continue
+                case .unknown: break
+                }
+            }
+            fresh.append(n)
         }
         guard !stopped else { return }
-        let known = Set(queue.map(\.id)).union(current.map { [$0.id] } ?? [])
+        let known = Set(queue.map(\.id)).union(group.map(\.id)).union(current.map { [$0.id] } ?? [])
         queue += fresh.filter { !known.contains($0.id) }
         showNext()
     }
 
-    /// OK: the notice is said, and the next one shows.
+    /// OK: the alert is said (every notice in it), and the next one shows.
     func dismiss() {
+        for n in group { ledger.markSeen(n.id) }
         if let current { ledger.markSeen(current.id) }
+        group = []
         current = nil
         showNext()
     }
@@ -227,7 +263,14 @@ final class AccountNotices {
 
     private func showNext() {
         guard current == nil, !queue.isEmpty else { return }
-        current = queue.removeFirst()
+        let next = queue.removeFirst()
+        if next.kind == .aiConnected {
+            group = ([next] + queue.filter { $0.kind == .aiConnected }).sorted { $0.created_at > $1.created_at }
+            queue.removeAll { $0.kind == .aiConnected }
+        } else {
+            group = [next]
+        }
+        current = group.first
     }
 }
 

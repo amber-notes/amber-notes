@@ -63,6 +63,8 @@ import Testing
         /// account_key_resets.generation: bumped by start_fresh.
         var generation = 0
         var offline = false
+        /// Answers nothing (a request that hangs).
+        var hangs = false
         /// start_fresh wants a recent sign-in.
         var needsReauth = false
         /// The insert lands but the answer is lost.
@@ -71,6 +73,7 @@ import Testing
         private(set) var startedFresh: [String] = []
 
         func fetch() async throws -> ServerKeyState {
+            if hangs { try await Task.sleep(for: .seconds(3600)) }
             if offline { throw URLError(.notConnectedToInternet) }
             return ServerKeyState(key: row, generation: generation)
         }
@@ -285,6 +288,78 @@ import Testing
         #expect(crypto.recoverySavedAt == nil)
         try await crypto.markRecoveryKeySaved()
         #expect(crypto.recoverySavedAt != nil && server.row?.recovery_saved_at != nil)
+        crypto.signedOut()
+    }
+
+    @Test func unlockingWithTheRecoveryKeyCountsAsSavingIt() async throws {
+        let k = try existingKey()
+        let (crypto, _) = device(FakeKeychain(cloud: Cloud(), autoReceive: false))
+        await crypto.attach(account: user, server: server)
+        #expect(crypto.phase == .waiting && !crypto.recoveryKeySaved)
+        try await crypto.recover(typed: k.recoveryText)
+        #expect(crypto.phase == .ready)
+        #expect(crypto.recoveryKeySaved && server.row?.recovery_saved_at != nil, "Privacy & Security says Saved, here and on other devices")
+        crypto.signedOut()
+    }
+
+    @Test func unlockingWithTheRecoveryKeyWhileTheServerCantBeToldTellsItLater() async throws {
+        let k = try existingKey()
+        let (crypto, _) = device(FakeKeychain(cloud: Cloud(), autoReceive: false))
+        // The key row is read; then the connection drops before "saved" can be sent.
+        final class Flaky: AccountKeyServer, @unchecked Sendable {
+            let inner: FakeServer
+            var failMark = true
+            init(_ inner: FakeServer) { self.inner = inner }
+            func fetch() async throws -> ServerKeyState { try await inner.fetch() }
+            func create(_ key: ServerKey, generation: Int) async throws -> (key: ServerKey, created: Bool) { try await inner.create(key, generation: generation) }
+            func markRecoveryKeySaved() async throws -> Date? {
+                if failMark { throw URLError(.networkConnectionLost) }
+                return try await inner.markRecoveryKeySaved()
+            }
+            func startFresh(keyID: String) async throws -> Bool { try await inner.startFresh(keyID: keyID) }
+        }
+        let flaky = Flaky(server)
+        await crypto.attach(account: user, server: flaky)
+        try await crypto.recover(typed: k.recoveryText)
+        #expect(crypto.recoveryKeySaved, "this device knows")
+        #expect(server.row?.recovery_saved_at == nil)
+        flaky.failMark = false
+        await crypto.recheck()
+        #expect(server.row?.recovery_saved_at != nil, "and tells the server on its next check")
+        #expect(!defaults.bool(forKey: AccountCrypto.recoveryProvenKey(user)))
+        crypto.signedOut()
+    }
+
+    @Test func aServerThatDoesntAnswerAtStartupEndsInTryAgainNotASpinner() async throws {
+        _ = try existingKey()
+        server.hangs = true
+        let crypto = AccountCrypto(store: FakeKeychain(cloud: Cloud(), autoReceive: false), defaults: defaults,
+                                   retryInterval: .seconds(3600), fetchTimeout: .milliseconds(50))
+        await crypto.attach(account: user, server: server)
+        #expect(crypto.phase == .unreachable)
+        crypto.signedOut()
+    }
+
+    @Test func withoutTheKeyTheRecoveryKeyComesFirstAndNothingSpinsForever() {
+        typealias G = KeyGateView
+        #expect(G.shown(.waiting, .auto) == .recovery, "no key here: the recovery key at once, iCloud Keychain checked behind it")
+        #expect(G.shown(.mismatch, .auto) == .recovery)
+        #expect(G.shown(.waiting, .keychain) == .waiting, "waiting is a choice")
+        #expect(G.shown(.mismatch, .keychain) == .recovery, "a wrong key here can't be waited out")
+        #expect(G.shown(.waiting, .startFresh) == .startFresh)
+        #expect(G.shown(.ready, .keychain) == .welcome, "the key arrived while you were typing")
+        #expect(G.shown(.unreachable, .auto) == .unreachable)
+        #expect(G.shown(.checking, .auto) == .checking)
+    }
+
+    @Test func choosingToWaitSpinsOnlyUntilTheHelpShows() async throws {
+        _ = try existingKey()
+        let crypto = AccountCrypto(store: FakeKeychain(cloud: Cloud(), autoReceive: false), defaults: defaults,
+                                   pollInterval: .seconds(2), helpAfter: .seconds(20), sleep: { _ in throw CancellationError() })
+        await crypto.attach(account: user, server: server)
+        #expect(crypto.phase == .waiting && !crypto.showsKeychainHelp)
+        for _ in 0 ..< 10 { crypto.pollKeychain() }
+        #expect(crypto.showsKeychainHelp, "after about 20 seconds the spinner gives way to what to check")
         crypto.signedOut()
     }
 

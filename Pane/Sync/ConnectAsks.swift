@@ -16,6 +16,10 @@ import UIKit
 // the app runs and by looking again when it comes to the front, and opens the consent sheet. The
 // device that allows it seals the code to the page's key; the page picks it up and goes on.
 //
+// Realtime can miss a row (a channel still joining, a socket the system dropped), so while the
+// app is in front it also looks every few seconds, and every couple of seconds while a connect
+// guide is open: that's when an ask is expected, and the person is watching for it.
+//
 // A push (Push.swift) tells devices that aren't running. It only says "look now": tapping it
 // opens the ask by id, and the app fetches the ask itself and checks it like any other.
 
@@ -66,18 +70,52 @@ final class ConnectAsks {
     /// Who's asking, for the notification ("ChatGPT"), or nil when it can't be told.
     private let describe: (UUID) async -> String?
     private let now: () -> Date
+    private let sleep: @Sendable (Duration) async throws -> Void
     private var channel: RealtimeChannelV2?
     private var tasks: [Task<Void, Never>] = []
+    private var poller: Task<Void, Never>?
     private var stopped = false
 
+    /// How often the app looks while it's in front: every `tick` while a connect guide is open,
+    /// every `idleTicks` ticks otherwise.
+    nonisolated static let tick: Duration = .seconds(2)
+    nonisolated static let idleTicks = 5
+
     init(client: SupabaseClient, user: UUID, center: ConnectCenter = .shared, notifier: ConnectNotifier = .system,
-         describe: ((UUID) async -> String?)? = nil, now: @escaping () -> Date = { .now }) {
+         describe: ((UUID) async -> String?)? = nil, now: @escaping () -> Date = { .now },
+         sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }) {
         self.client = client
         self.user = user
         self.center = center
         self.notifier = notifier
         self.describe = describe ?? { id in try? await ConnectAPI.request(client, id: id).who }
         self.now = now
+        self.sleep = sleep
+    }
+
+    /// Whether a tick looks at the server: always while a guide expects an ask, otherwise once
+    /// every `idleTicks`.
+    nonisolated static func looks(expecting: Bool, ticksSinceLook: Int) -> Bool {
+        expecting || ticksSinceLook >= idleTicks
+    }
+
+    /// The app came to the front (looks every few seconds) or went away (stops; a push covers it).
+    func setForeground(_ front: Bool) {
+        poller?.cancel()
+        poller = nil
+        guard front, !stopped else { return }
+        let sleep = sleep
+        poller = Task { [weak self] in
+            var ticks = 0
+            while true {
+                do { try await sleep(Self.tick) } catch { return }
+                guard let self, !Task.isCancelled, !self.stopped else { return }
+                ticks += 1
+                guard Self.looks(expecting: self.center.expecting > 0, ticksSinceLook: ticks) else { continue }
+                ticks = 0
+                await self.refresh()
+            }
+        }
     }
 
     /// Looks for asks already waiting, then listens for new ones and for answers from elsewhere.
@@ -113,6 +151,8 @@ final class ConnectAsks {
 
     func stop() async {
         stopped = true
+        poller?.cancel()
+        poller = nil
         tasks.forEach { $0.cancel() }
         tasks = []
         if let channel { await channel.unsubscribe() }

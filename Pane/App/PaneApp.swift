@@ -470,6 +470,7 @@ struct AppGate: View {
                 Task { await NoteVault.shared.refresh() }
                 // A browser's ask that came while the app was away (pushed or not) is picked up here.
                 if let connectAsks { Task { await connectAsks.refresh() } }
+                connectAsks?.setForeground(true)
                 if let notices { Task { await notices.refresh() } }
                 // The account's key never changes; if another device started fresh, this one
                 // finds out here and gets the new key.
@@ -477,6 +478,7 @@ struct AppGate: View {
                 context.drainInbox()
                 sync.schedule()
             } else {
+                connectAsks?.setForeground(false)
                 // Leaving the app: whatever you just typed is written and synced.
                 DebouncedSave.flushAll()
                 sync.schedule()
@@ -507,6 +509,7 @@ struct AppGate: View {
             let asks = ConnectAsks(client: client, user: user)
             connectAsks = asks
             Task { await asks.start() }
+            asks.setForeground(phase == .active)
             // Pushes for asks, while the app isn't running.
             Task { await PushRegistration.shared.attach(account: user, service: SupabasePushTokens(client: client)) }
         }
@@ -677,31 +680,22 @@ struct CaptureScreen: View {
     }
 }
 
-/// The account's notices and "your recovery key changed", each a plain alert, one at a time.
+/// The account's notices and "your recovery key changed", each a plain alert, one at a time. AI
+/// connections that came together are one alert. Disconnect is a plain button there; the red one
+/// is on the confirmation after it.
 private struct NoticeAlerts: ViewModifier {
     let notices: AccountNotices?
     let crypto: AccountCrypto
     @Binding var problem: String?
+    /// Disconnect was chosen on a notice: asked once more, in red.
+    @State private var disconnecting: AccountNotice?
 
     func body(content: Content) -> some View {
         let notice = notices?.current
         content
-            .alert(notice?.text().title ?? "", isPresented: Binding(get: { notice != nil }, set: { if !$0, notices?.current == notice { notices?.dismiss() } }),
-                   presenting: notice) { n in
-                if n.kind == .aiConnected, n.grant_id != nil {
-                    Button("Disconnect", role: .destructive) {
-                        Task {
-                            do { try await notices?.disconnect(n) } catch { problem = "Couldn't disconnect it. Try again in Settings \u{203A} Connect an AI." }
-                        }
-                    }
-                    .accessibilityIdentifier("notice.disconnect")
-                }
-                Button("OK", role: .cancel) { notices?.dismiss() }
-                    .accessibilityIdentifier("notice.ok")
-            } message: { n in
-                Text(n.text().message)
-            }
-            .alert(PrivacyCopy.recoveryChangedTitle, isPresented: Binding(get: { notice == nil && crypto.recoveryKeyChangeNeedsSaying },
+            .modifier(noticeAlert)
+            .modifier(confirmDisconnect(over: notice))
+            .alert(PrivacyCopy.recoveryChangedTitle, isPresented: Binding(get: { notice == nil && disconnecting == nil && crypto.recoveryKeyChangeNeedsSaying },
                                                                          set: { if !$0 { crypto.recoveryKeyChangeShown() } })) {
                 Button("OK", role: .cancel) { crypto.recoveryKeyChangeShown() }
             } message: {
@@ -711,6 +705,68 @@ private struct NoticeAlerts: ViewModifier {
                 Button("OK", role: .cancel) { problem = nil }
             } message: {
                 Text(problem ?? "")
+            }
+    }
+
+    /// The notice showing: one, or the AI connections that came together.
+    private var noticeAlert: NoticeAlert {
+        NoticeAlert(notices: notices, disconnect: { disconnecting = $0 })
+    }
+
+    private func confirmDisconnect(over notice: AccountNotice?) -> ConfirmDisconnect {
+        ConfirmDisconnect(disconnecting: $disconnecting, blocked: notice != nil) { n in
+            do { try await notices?.disconnect(n) } catch { problem = "Couldn't disconnect it. Try again in Settings \u{203A} Connect an AI." }
+        }
+    }
+}
+
+private struct NoticeAlert: ViewModifier {
+    let notices: AccountNotices?
+    let disconnect: (AccountNotice) -> Void
+
+    func body(content: Content) -> some View {
+        let notice = notices?.current
+        let group = notices?.group ?? []
+        let text = group.text
+        let canDisconnect = group.count == 1 && notice?.kind == .aiConnected && notice?.grant_id != nil
+        return content
+            .alert(text.title, isPresented: Binding(get: { notice != nil }, set: { if !$0, notices?.current == notice { notices?.dismiss() } }),
+                   presenting: notice) { n in
+                if canDisconnect {
+                    Button("Disconnect\u{2026}") {
+                        disconnect(n)
+                        notices?.dismiss()
+                    }
+                    .accessibilityIdentifier("notice.disconnect")
+                }
+                Button("OK", role: .cancel) { notices?.dismiss() }
+                    .accessibilityIdentifier("notice.ok")
+            } message: { _ in
+                Text(text.message)
+            }
+    }
+}
+
+/// Disconnect, asked once more: the red button is here.
+private struct ConfirmDisconnect: ViewModifier {
+    @Binding var disconnecting: AccountNotice?
+    /// Another alert is up.
+    let blocked: Bool
+    let run: (AccountNotice) async -> Void
+
+    func body(content: Content) -> some View {
+        let n = disconnecting
+        return content
+            .alert("Disconnect \(n?.name ?? "this AI")?", isPresented: Binding(get: { n != nil && !blocked }, set: { if !$0 { disconnecting = nil } }),
+                   presenting: n) { n in
+                Button("Disconnect", role: .destructive) {
+                    disconnecting = nil
+                    Task { await run(n) }
+                }
+                .accessibilityIdentifier("notice.confirmDisconnect")
+                Button("Cancel", role: .cancel) { disconnecting = nil }
+            } message: { _ in
+                Text("It loses access to your notes right away.")
             }
     }
 }

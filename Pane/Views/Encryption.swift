@@ -18,7 +18,25 @@ struct KeyGateView: View {
     @FocusState private var focused: Bool
     @Environment(\.displayScale) private var displayScale
 
-    enum Screen { case auto, recovery, startFresh }
+    /// What you chose: `auto` is the recovery key while the key isn't here; `keychain` is waiting
+    /// for iCloud Keychain instead.
+    enum Screen { case auto, keychain, recovery, startFresh }
+
+    enum Shown: Equatable { case welcome, waiting, recovery, startFresh, unreachable, checking }
+
+    /// The screen for where startup is and what you chose. Without the key here, the recovery key
+    /// comes first and iCloud Keychain keeps being checked behind it: a device that has no other
+    /// device (or whose Keychain doesn't sync) never sits on a spinner.
+    static func shown(_ phase: AccountCrypto.Phase, _ screen: Screen) -> Shown {
+        switch (phase, screen) {
+        case (.ready, _): .welcome
+        case (.waiting, .startFresh), (.mismatch, .startFresh): .startFresh
+        case (.waiting, .keychain): .waiting
+        case (.waiting, _), (.mismatch, _): .recovery
+        case (.unreachable, _): .unreachable
+        default: .checking
+        }
+    }
 
     init(crypto: AccountCrypto, backend: Backend, screen: Screen = .auto) {
         self.crypto = crypto
@@ -73,13 +91,13 @@ struct KeyGateView: View {
     }
 
     @ViewBuilder private var content: some View {
-        switch (crypto.phase, screen) {
-        case (.ready, _): welcome
-        case (.waiting, .startFresh), (.mismatch, .startFresh): startFresh
-        case (.waiting, .recovery), (.mismatch, _): recoveryEntry
-        case (.waiting, _): waiting
-        case (.unreachable, _): unreachable
-        default: ProgressView().controlSize(.regular).frame(height: 120)
+        switch Self.shown(crypto.phase, screen) {
+        case .welcome: welcome
+        case .startFresh: startFresh
+        case .recovery: recoveryEntry
+        case .waiting: waiting
+        case .unreachable: unreachable
+        case .checking: ProgressView().controlSize(.regular).frame(height: 120)
         }
     }
 
@@ -110,26 +128,16 @@ struct KeyGateView: View {
         }
     }
 
+    /// You chose to wait for iCloud Keychain. A spinner only for a little while; then what to
+    /// check. The recovery key is always one tap away.
     private var waiting: some View {
         VStack(spacing: 18) {
-            heading(Copy.waitingTitle, nil)
-            ProgressView().controlSize(.regular)
-            if crypto.showsKeychainHelp {
-                VStack(spacing: 14) {
-                    Text(Copy.keychainHelp)
-                        .font(.footnote)
-                        .foregroundStyle(Color.muted)
-                        .multilineTextAlignment(.center)
-                        .fixedSize(horizontal: false, vertical: true)
-                    mainButton("Use recovery key", id: "e2ee.useRecovery", enabled: true) { screen = .recovery }
-                    Text(Copy.recoveryHint)
-                        .font(.footnote)
-                        .foregroundStyle(Color.muted)
-                        .multilineTextAlignment(.center)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .transition(.opacity)
+            heading(Copy.waitingTitle, crypto.showsKeychainHelp ? Copy.keychainHelp : nil)
+            if !crypto.showsKeychainHelp {
+                ProgressView().controlSize(.regular)
+                    .transition(.opacity)
             }
+            mainButton("Use recovery key", id: "e2ee.useRecovery", enabled: true) { screen = .recovery }
             signOut
         }
         .animation(.easeOut(duration: 0.25), value: crypto.showsKeychainHelp)
@@ -137,10 +145,10 @@ struct KeyGateView: View {
 
     private var recoveryEntry: some View {
         VStack(spacing: 18) {
-            heading("Enter your recovery key", crypto.phase == .mismatch ? Copy.mismatch : nil)
+            heading("Enter your recovery key", crypto.phase == .mismatch ? Copy.mismatch : Copy.notHereYet)
             VStack(spacing: 10) {
                 field {
-                    TextField("XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX", text: $recovery)
+                    TextField("Recovery key", text: $recovery)
                         .font(.system(size: Row.text, design: .monospaced))
                         .autocorrectionDisabled()
                         #if os(iOS)
@@ -150,7 +158,7 @@ struct KeyGateView: View {
                         .onSubmit { if canSubmitRecovery { submitRecovery() } }
                 }
                 .accessibilityIdentifier("e2ee.recovery")
-                Text(Copy.recoveryHint)
+                Text(Copy.recoveryFormat + " " + Copy.recoveryHint)
                     .font(.footnote)
                     .foregroundStyle(Color.muted)
                     .multilineTextAlignment(.center)
@@ -162,7 +170,7 @@ struct KeyGateView: View {
             }
             VStack(spacing: 10) {
                 if crypto.phase == .waiting {
-                    quietButton("Keep waiting for iCloud Keychain", id: "e2ee.back") { screen = .auto }
+                    quietButton("Wait for iCloud Keychain instead", id: "e2ee.back") { screen = .keychain }
                 }
                 quietButton("I don't have my key", id: "e2ee.noKey") { screen = .startFresh }
                 signOut
@@ -372,12 +380,14 @@ struct KeyGateView: View {
 enum KeyCopy {
     static let welcomeTitle = "Your notes are encrypted."
     static let welcomeMessage = "Only your devices, and AI connections you approve, can unlock your notes."
-    static let waitingTitle = "Getting your key from iCloud Keychain…"
+    static let waitingTitle = "Waiting for iCloud Keychain…"
+    static let notHereYet = "Your key isn't on this device yet. If iCloud Keychain brings it, your notes open by themselves."
     #if os(macOS)
     static let keychainHelp = "Check that iCloud Keychain is on here and on your other device: System Settings › [your name] › iCloud › Passwords and Keychain."
     #else
     static let keychainHelp = "Check that iCloud Keychain is on here and on your other device: Settings › [your name] › iCloud › Passwords and Keychain."
     #endif
+    static let recoveryFormat = "28 letters and numbers, in groups of four."
     static let recoveryHint = "Find it on your other device in Amber Notes › Settings › Privacy & Security."
     static let mismatch = "The key on this device isn't your account's current key."
     static let unreachable = "Connect to the internet. This device checks your key with Amber Notes before opening your notes."
