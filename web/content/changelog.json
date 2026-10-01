@@ -1,5 +1,23 @@
 [
   {
+    "version": "1.1",
+    "date": "2026-10-01",
+    "title": "Encrypted, end to end",
+    "items": [
+      "Every note, folder, file and earlier version is encrypted on your devices. We can't read them",
+      "Your key syncs through iCloud Keychain, so your notes open on your other devices with nothing to type",
+      "Save a recovery key in Settings › Privacy & Security, for when none of your devices is nearby",
+      "Approve an AI on your iPhone or Mac: type the two-digit number your browser shows",
+      "Each device shows a notice when an AI connects, with Disconnect",
+      "Get a notification on your iPhone or Mac when an AI asks to connect",
+      "Export your notes as Markdown from Settings › Privacy & Security",
+      "Connect Incredible from Connect an AI",
+      "Import from Evernote, Google Keep, or Markdown and text files (Obsidian, Notion, Bear and more), with folders, checklists and attachments",
+      "One Import Notes button on the setup card, for Apple Notes and the rest",
+      "After updating, connect your AI apps once more"
+    ]
+  },
+  {
     "version": "1.0",
     "date": "2026-09-29",
     "title": "Hello, Amber Notes",
