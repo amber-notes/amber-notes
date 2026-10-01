@@ -14,6 +14,14 @@ struct ImportSource: Identifiable, Hashable, Sendable {
     var problem: String?
 }
 
+/// Choices only some imports have (Google Keep's labels and archive).
+struct ImportOptions: Hashable, Sendable {
+    /// Keep labels become folders (a note goes in its first label's); otherwise #tags.
+    var labelsAsFolders = true
+    /// Archived Keep notes come in too, in a folder named Archive.
+    var includeArchived = false
+}
+
 /// Where imported notes go.
 enum ImportDestination: Hashable, Sendable {
     /// A folder per source, named after it (an existing top-level one of that name is used).
@@ -33,6 +41,8 @@ struct ImportSummary: Equatable, Sendable {
     var tooLong = 0
     /// In the trash where they came from.
     var trashed = 0
+    /// Archived where they came from, and archived notes weren't asked for.
+    var archived = 0
     /// Attachments over the 50 MB a file can be.
     var filesTooBig = 0
     /// Attachments a note names but the export doesn't hold.
@@ -49,7 +59,7 @@ struct ImportSummary: Equatable, Sendable {
     var stopped = false
     var noteIDs: [UUID] = []
 
-    var skipped: Int { alreadyImported + empty + tooLong + trashed }
+    var skipped: Int { alreadyImported + empty + tooLong + trashed + archived }
 }
 
 /// Makes notes, folders and files for an import, the same way for every source: as ordinary local

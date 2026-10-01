@@ -83,5 +83,23 @@ extension NetworkFaults {
         #expect(kitchen.folder?.name == "Projects" && kitchen.folder?.parent?.name == "Obsidian vault")
         await engineA.stop(); await engineB.stop()
     }
+
+    @Test func aKeepTakeoutGoesUpSealedWithItsPins() async throws {
+        let (a, engineA) = try device()
+        let summary = await KeepImporter(context: a).run([KeepImporter.inspect(try KeepImportTests.takeout())], into: .perSource)
+        #expect(summary.notes == 5 && summary.attachments == 2)
+        await engineA.sync()
+        let files = try a.fetch(FetchDescriptor<Pane.Attachment>())
+        defer { for f in files { try? FileManager.default.removeItem(at: FileStore.url(for: f.id, filename: f.filename).deletingLastPathComponent()) } }
+        let sent = everythingSent()
+        for secret in ["Groceries", "Oat milk", "Google Keep", "Travel", "livrarialello", "1a2b3c4d5e"] {
+            #expect(!sent.contains(secret), "\(secret) reached the server readable")
+        }
+        let (b, engineB) = try device()
+        await engineB.sync()
+        let groceries = try #require(try b.fetch(FetchDescriptor<Note>()).first { $0.title == "Groceries" })
+        #expect(groceries.isPinned && groceries.folder?.name == "Home")
+        await engineA.stop(); await engineB.stop()
+    }
 }
 }

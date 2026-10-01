@@ -18,6 +18,7 @@ import UIKit
     static func sources(_ kind: ImportKind) -> [ImportSource] {
         switch kind {
         case .evernote: evernote
+        case .keep: [ImportSource(url: URL(fileURLWithPath: "/demo/takeout-20260930T101500Z-001.zip"), name: "Google Keep", notes: 842, bytes: 61_400_000)]
         case .markdown: [
             ImportSource(url: URL(fileURLWithPath: "/demo/Second brain"), name: "Second brain", notes: 1_126, bytes: 88_300_000),
             ImportSource(url: URL(fileURLWithPath: "/demo/Notion export.zip"), name: "Notion export", notes: 363, bytes: 24_100_000),
@@ -46,6 +47,12 @@ import UIKit
         let s = sources(kind)
         var done = summary
         if kind == .markdown { done.encrypted = 0; done.notNotes = 41 }
+        if kind == .keep {
+            done.encrypted = 0
+            done.filesMissing = 0
+            done.archived = 37
+            done.dropped = ["212 notes had colors, which Amber Notes doesn't have.", "3 notes had reminders, which Amber Notes doesn't keep."]
+        }
         return [("empty", .choosing, []), ("files", .choosing, s), ("progress", .importing(done: 642, total: 1_489), s), ("summary", .finished(done), s)]
     }
 
