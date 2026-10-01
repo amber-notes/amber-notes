@@ -272,15 +272,10 @@ struct SetupCard: View {
         .accessibilityIdentifier("setup.import.\(symbol)")
     }
 
-    /// Dark ink on amber: readable on the deeper light-mode amber and the brighter dark one.
+    /// The app's amber primary button (white on the deeper amber, in light and dark).
     private func primary(_ title: String, id: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(title).foregroundStyle(Color(Palette.onAmber))
-        }
-            .buttonStyle(.borderedProminent)
-            #if os(iOS)
-            .buttonBorderShape(.capsule)
-            #endif
+        Button(title, action: action)
+            .buttonStyle(.amberProminent)
             .fixedSize()
             .accessibilityIdentifier(id)
     }

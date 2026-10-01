@@ -38,6 +38,24 @@ import Testing
         print("CONTRAST amber button \(appearance.rawValue): \(String(format: "%.2f", ratio)):1; old dark-mode fill \(String(format: "%.2f", Self.contrast(darkAmber, label))):1")
     }
 
+    /// Every amber primary button uses the one style: the setup card's, the share ask's, the
+    /// sheets'. The system's prominent style (and dark ink on its dark-mode amber) is the bug.
+    @Test func everyPrimaryButtonUsesTheAmberStyle() throws {
+        let views = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Pane/Views")
+        let files = try FileManager.default.contentsOfDirectory(at: views, includingPropertiesForKeys: nil).filter { $0.pathExtension == "swift" }
+        #expect(files.count > 10)
+        var prominent: [String] = []
+        for f in files {
+            let src = try String(contentsOf: f, encoding: .utf8)
+            if src.contains(".borderedProminent") { prominent.append(f.lastPathComponent) }
+        }
+        #expect(prominent.isEmpty, "use .amberProminent in \(prominent)")
+        for name in ["SetupCard.swift", "ShareAskView.swift", "ImportSheet.swift", "AppleNotesImport.swift", "NoteSourceSheet.swift"] {
+            let src = try String(contentsOf: views.appendingPathComponent(name), encoding: .utf8)
+            #expect(src.contains(".amberProminent"), "\(name)")
+        }
+    }
+
     @Test func fillIsTheSameInBothAppearances() {
         let light = Self.resolved(AmberProminentButtonStyle.fill, .aqua), dark = Self.resolved(AmberProminentButtonStyle.fill, .darkAqua)
         #expect(light == dark)
