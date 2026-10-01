@@ -430,17 +430,22 @@ final class ShareLinkStore {
     var confirming: PublicStep?
     /// Where "you've been told what sharing publishes" is kept, per note. Tests use their own.
     @ObservationIgnored var defaults: UserDefaults = .standard
+    /// "You used Share Link" (its tip goes, here and on your other devices). Tests leave it out:
+    /// it reaches TipKit and the app-wide settings.
+    @ObservationIgnored var markUsed: (Feature) -> Void = { FeatureUse.mark($0) }
 
     nonisolated static func askedKey(_ note: UUID) -> String { "share.asked.\(note.uuidString.lowercased())" }
 
-    /// Share Link…: asks once per note (sharing publishes a readable copy), then just shares.
-    func requestShare() {
-        guard let note = noteID else { return }
+    /// Share Link…: asks once per note (sharing publishes a readable copy), then just shares. The
+    /// sharing, when it starts, is returned so a caller can wait for it.
+    @discardableResult
+    func requestShare() -> Task<Void, Never>? {
+        guard let note = noteID else { return nil }
         if defaults.bool(forKey: Self.askedKey(note)) {
-            Task { await shareAndCopy() }
-        } else {
-            confirming = .createLink
+            return Task { await shareAndCopy() }
         }
+        confirming = .createLink
+        return nil
     }
 
     /// You read what sharing publishes and went ahead.
@@ -481,7 +486,7 @@ final class ShareLinkStore {
             guard noteID == note else { return }
             copyURL(ShareLinkConfig.url(slug: slug, base: baseURL))
             state.shared(slug: slug, includesSubNotes: state.includesSubNotes, copied: true)
-            FeatureUse.mark(.shareLink)
+            markUsed(.shareLink)
         } catch {
             state.failed(Self.message(for: error))
         }
