@@ -192,7 +192,7 @@ Example prompts (policy 3.E asks for at least three). The expected results are f
 | # | Prompt | Expected tools | Expected result |
 |---|---|---|---|
 | 1 | "Find my Lisbon trip note and summarize the plan." | search_notes, read_note | Summary of "Lisbon in May" (Travel): the checklist, what's done and what's open, and the three places to eat. Nothing changes. |
-| 2 | "What's the confirmation number for my Lisbon hotel?" | search_notes, read_note | "LX-48213, Memmo Príncipe Real, 12–15 May", read from the sub-note "Hotel booking". |
+| 2 | "What's the confirmation number for my Lisbon hotel?" | search_notes, read_note | "LX-48213, Casa do Príncipe in Príncipe Real, 14 to 18 May", read from the sub-note "Hotel booking". |
 | 3 | "Check off 'Tram 28 early' in my Lisbon note." | set_checklist_item | The item is ticked and Claude confirms. The note's history has the previous version. |
 | 4 | "Log today's run in my Running log: 5.2 km, 28 minutes, felt 4 out of 5." | read_table, log_table_row | A row for today in the tracker. A second run the same day updates that row instead of adding one. |
 | 5 | "Turn my design meeting points into a checklist in a new note called Design follow-ups in Work." | read_note, create_note | A new note in Work with three unchecked items. |
@@ -313,7 +313,7 @@ The script works as that user through the public API, and it reads the password 
 | Folder | Note | What it exercises |
 |---|---|---|
 | Travel | Lisbon in May | headings, a checklist (2 open, 2 done), the Where to eat table (Place, Dish, Area), the sub-note link |
-| Travel | Hotel booking (sub-note of Lisbon in May) | the facts for prompt P2: Memmo Príncipe Real, 12–15 May, LX-48213 |
+| Travel | Hotel booking (sub-note of Lisbon in May) | the facts for prompt P2: Casa do Príncipe, 14 to 18 May, LX-48213 |
 | Travel | Packing list | a checklist of 8 items |
 | Work | Meeting with design | three bullet points for P5 |
 | Work | Q4 planning | goals, risks and decisions under headings |

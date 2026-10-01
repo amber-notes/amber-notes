@@ -59,7 +59,7 @@
               "description": "Answer a factual question from a sub-note",
               "prompt": "What's the confirmation number for my Lisbon hotel, and what dates is it for?",
               "tools_triggered": "search_notes, read_note",
-              "expected_behavior": "Reads the \"Hotel booking\" note (a sub-note of Lisbon in May) and answers: Memmo Príncipe Real, 12–15 May, confirmation LX-48213. Mentions that asking for a late checkout is still open. Nothing is changed."
+              "expected_behavior": "Reads the \"Hotel booking\" note (a sub-note of Lisbon in May) and answers: Casa do Príncipe in Príncipe Real, 14 to 18 May, confirmation LX-48213. Nothing is changed."
             },
             {
               "description": "Tick a checklist item",
