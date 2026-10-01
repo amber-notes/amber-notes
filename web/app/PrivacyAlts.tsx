@@ -58,11 +58,17 @@ function MoreLink({ dark }: { dark?: boolean }) {
 export function VaultCard() {
   const v = HOME_ALTS.vault;
   const [ref, seen] = useFirstView<HTMLElement>();
-  const [shut, setShut] = useState(true); // complete at rest
+  const [kind, setKind] = useState<LockKind>("brass");
+  // Complete at rest. With motion allowed, the shackle waits open (off screen) and settles closed on first view.
+  const [shut, setShut] = useState(true);
   useEffect(() => {
-    if (!seen || reduce()) return;
-    setShut(false);
-    const t = window.setTimeout(() => setShut(true), 450);
+    const k = LOCK_KINDS[new URLSearchParams(window.location.search).get("lock") ?? ""];
+    if (k) setKind(k);
+    if (!reduce()) setShut(false);
+  }, []);
+  useEffect(() => {
+    if (!seen) return;
+    const t = window.setTimeout(() => setShut(true), 180);
     return () => clearTimeout(t);
   }, [seen]);
   return (
@@ -81,14 +87,105 @@ export function VaultCard() {
         <div className={p.cipherWall}>
           {Array.from({ length: 9 }, (_, i) => <p key={i}>{cipher("Lisbon, 4 days in May. Day 3: Sintra. Dinner at Trindade. Pack light.", i + 3)}</p>)}
         </div>
-        <svg className={p.bigLock} data-shut={shut || undefined} viewBox="0 0 160 190">
-          <path className={p.shackle} d="M44 86V58a36 36 0 0 1 72 0v28" fill="none" strokeWidth="16" strokeLinecap="round" />
-          <rect x="18" y="80" width="124" height="100" rx="28" className={p.body} />
-          <circle cx="80" cy="122" r="11" className={p.hole} />
-          <rect x="75" y="126" width="10" height="26" rx="5" className={p.hole} />
-        </svg>
+        <Lock kind={kind} shut={shut} />
       </div>
     </section>
+  );
+}
+
+/* The vault's padlock, in three finishes (?lock=1|2|3). One geometry, drawn on a 160 x 200 grid:
+   a 12-unit shackle over a 116 x 96 body with 24-unit corners, and a keyhole a little below centre. */
+type LockKind = "brass" | "line" | "glass";
+const LOCK_KINDS: Record<string, LockKind> = { "1": "brass", "2": "line", "3": "glass" };
+const SHACKLE = "M52 98V64a28 28 0 0 1 56 0v34";
+const KEYHOLE = "M80 117a10.5 10.5 0 0 1 5.6 19.4l2.2 14.6a3 3 0 0 1-3 3.5h-9.6a3 3 0 0 1-3-3.5l2.2-14.6A10.5 10.5 0 0 1 80 117Z";
+
+function Lock({ kind, shut }: { kind: LockKind; shut: boolean }) {
+  return (
+    <div className={p.lock} data-kind={kind} data-shut={shut || undefined}>
+      <span className={p.lockGlow} />
+      {kind === "brass" && <BrassLock />}
+      {kind === "line" && <LineLock />}
+      {kind === "glass" && <GlassLock />}
+    </div>
+  );
+}
+
+function BrassLock() {
+  return (
+    <svg viewBox="0 0 160 200">
+      <defs>
+        <linearGradient id="brassBody" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#ffd28a" /><stop offset="0.18" stopColor="#f5b04a" />
+          <stop offset="0.62" stopColor="#dc8a1e" /><stop offset="1" stopColor="#a65a0c" />
+        </linearGradient>
+        <linearGradient id="brassBevel" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#fff3d6" stopOpacity="0.9" /><stop offset="0.25" stopColor="#fff3d6" stopOpacity="0" />
+          <stop offset="0.8" stopColor="#5a2e04" stopOpacity="0" /><stop offset="1" stopColor="#5a2e04" stopOpacity="0.55" />
+        </linearGradient>
+        <linearGradient id="brassShackle" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="#8a5a1e" /><stop offset="0.3" stopColor="#ffe2ab" />
+          <stop offset="0.55" stopColor="#d9a24e" /><stop offset="1" stopColor="#6e420e" />
+        </linearGradient>
+        <radialGradient id="brassSheen" cx="0.3" cy="0.12" r="0.6">
+          <stop offset="0" stopColor="#fff" stopOpacity="0.45" /><stop offset="1" stopColor="#fff" stopOpacity="0" />
+        </radialGradient>
+        <radialGradient id="brassHole" cx="0.5" cy="0.3" r="0.8">
+          <stop offset="0" stopColor="#3a1f08" /><stop offset="1" stopColor="#140800" />
+        </radialGradient>
+        <clipPath id="brassClip"><rect x="22" y="88" width="116" height="96" rx="24" /></clipPath>
+        <filter id="brassSoft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="3" /></filter>
+      </defs>
+      <g className={p.shackle}>
+        <path d={SHACKLE} fill="none" stroke="#3b2510" strokeWidth="14" strokeLinecap="round" />
+        <path d={SHACKLE} fill="none" stroke="url(#brassShackle)" strokeWidth="11" strokeLinecap="round" />
+        <path d={SHACKLE} fill="none" stroke="#fff6e6" strokeOpacity="0.5" strokeWidth="1.4" strokeLinecap="round" transform="translate(-1.8 -0.8)" />
+      </g>
+      <rect x="22" y="88" width="116" height="96" rx="24" fill="url(#brassBody)" />
+      <g clipPath="url(#brassClip)">
+        {/* a soft inner shadow along the lower edge, and a sheen on the upper left */}
+        <rect x="22" y="88" width="116" height="96" rx="24" fill="none" stroke="#6b3604" strokeOpacity="0.5" strokeWidth="8" filter="url(#brassSoft)" transform="translate(0 -4)" />
+        <ellipse cx="62" cy="96" rx="58" ry="26" fill="url(#brassSheen)" />
+      </g>
+      <rect x="22.75" y="88.75" width="114.5" height="94.5" rx="23.25" fill="none" stroke="url(#brassBevel)" strokeWidth="1.5" />
+      <path d={KEYHOLE} fill="#ffe2ae" fillOpacity="0.55" transform="translate(0 1.4)" />
+      <path d={KEYHOLE} fill="url(#brassHole)" />
+    </svg>
+  );
+}
+
+function LineLock() {
+  return (
+    <svg viewBox="0 0 160 200">
+      <g className={p.shackle}>
+        <path d={SHACKLE} fill="none" stroke="#f5a53a" strokeWidth="3.5" strokeLinecap="round" />
+      </g>
+      <rect x="22" y="88" width="116" height="96" rx="24" fill="#2a1d10" fillOpacity="0.85" stroke="#f5a53a" strokeWidth="3.5" />
+      <rect x="31" y="97" width="98" height="78" rx="15" fill="none" stroke="#f5a53a" strokeOpacity="0.28" strokeWidth="1.25" />
+      <path d={KEYHOLE} fill="none" stroke="#ffc775" strokeWidth="3" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function GlassLock() {
+  return (
+    <>
+      <svg viewBox="0 0 160 200" className={p.glassBack}>
+        <defs>
+          <linearGradient id="glassShackle" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stopColor="#f5c27a" stopOpacity="0.4" /><stop offset="0.35" stopColor="#fff1da" stopOpacity="0.95" /><stop offset="1" stopColor="#f5c27a" stopOpacity="0.35" />
+          </linearGradient>
+        </defs>
+        <g className={p.shackle}>
+          <path d="M52 128V64a28 28 0 0 1 56 0v64" fill="none" stroke="url(#glassShackle)" strokeWidth="12" strokeLinecap="round" />
+        </g>
+      </svg>
+      <div className={p.glassBody}>
+        <svg viewBox="22 88 116 96">
+          <path d={KEYHOLE} fill="#f5a53a" />
+        </svg>
+      </div>
+    </>
   );
 }
 
