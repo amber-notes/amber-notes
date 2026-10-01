@@ -1,5 +1,5 @@
 /* The download page: the site's cream theme, one big button, the install steps drawn simply. */
-.wrap { width: 100%; max-width: 1120px; margin: 0 auto; padding: 24px 20px 0; box-sizing: border-box; display: grid; gap: 72px; }
+.wrap { width: 100%; max-width: 1120px; margin: 0 auto; padding: 24px var(--gutter) 0; box-sizing: border-box; display: grid; gap: 72px; }
 .hero { display: grid; justify-items: center; text-align: center; gap: 18px; padding-top: 32px; }
 .icon { border-radius: 22.5%; box-shadow: 0 0 0 0.5px var(--line), 0 24px 48px -16px rgba(150, 70, 0, 0.45); margin-bottom: 8px; }
 .title { margin: 0; max-width: 14ch; font-size: clamp(40px, 6.5vw, 72px); line-height: 1; font-weight: 800; letter-spacing: -0.04em; text-wrap: balance; }

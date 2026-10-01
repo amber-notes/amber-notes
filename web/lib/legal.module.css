@@ -1,6 +1,6 @@
 /* Privacy policy and terms: colours from the page theme, the centred column shared with the
    changelog and help pages, a summary card, and the contents list. */
-.main { width: 100%; max-width: 1240px; margin: 0 auto; padding: 0 20px; box-sizing: border-box; }
+.main { width: 100%; max-width: 1240px; margin: 0 auto; padding: 0 var(--gutter); box-sizing: border-box; }
 /* The same centred column as the changelog and help pages. */
 .col { width: 100%; max-width: 760px; margin: 0 auto; padding-top: 40px; display: grid; gap: 40px; align-content: start; }
 

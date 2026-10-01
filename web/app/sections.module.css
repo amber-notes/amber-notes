@@ -122,7 +122,7 @@
 @media (prefers-reduced-motion: no-preference) { .shackle { transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); } }
 
 /* ── The ending: a full-width band in the site's near-black brown ── */
-.band { width: 100vw; margin-left: calc(50% - 50vw); background: #2a1d10; color: #fbeedd; padding: 110px 20px 120px; box-sizing: border-box; margin-bottom: -56px; } /* the footer then sits 64 px below the band */
+.band { width: 100vw; margin-left: calc(50% - 50vw); background: #2a1d10; color: #fbeedd; padding: 110px var(--gutter) 120px; box-sizing: border-box; margin-bottom: -56px; } /* the footer then sits 64 px below the band */
 .bandInner { max-width: 1200px; margin: 0 auto; display: grid; justify-items: center; text-align: center; gap: 22px; }
 .bandIcon { border-radius: 22px; box-shadow: 0 20px 50px -16px rgba(0, 0, 0, 0.6); }
 .bandTitle { margin: 8px 0 0; max-width: 22ch; font-size: clamp(40px, 6.4vw, 80px); line-height: 1; font-weight: 800; letter-spacing: -0.045em; text-wrap: balance; }

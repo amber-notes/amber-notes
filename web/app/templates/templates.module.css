@@ -1,7 +1,7 @@
 /* The template library: the gallery and each template's page. The site's cream theme around the
    app's own white note paper; the instructions sit on the home page's dark brown, like the vault card. */
 
-.main { width: 100%; max-width: 1240px; margin: 0 auto; padding: 0 20px; box-sizing: border-box; display: grid; gap: 96px; align-content: start; }
+.main { width: 100%; max-width: 1240px; margin: 0 auto; padding: 0 var(--gutter); box-sizing: border-box; display: grid; gap: 96px; align-content: start; }
 @media (max-width: 700px) { .main { gap: 72px; } }
 
 /* ── Gallery: the promise, then the filter and the cards close under it ── */

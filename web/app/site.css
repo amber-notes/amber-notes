@@ -1,3 +1,8 @@
+/* The side gutter every page container and the header share: 16px on phones, so the logo and the
+   page's headline start on one edge. */
+:root { --gutter: 20px; }
+@media (max-width: 430px) { :root { --gutter: 16px; } }
+
 /* The marketing site's shared look: fixed page themes, one header and footer, and the page
    transitions. Share pages (/n/*) don't set data-theme, so none of this applies to them. */
 
@@ -29,7 +34,7 @@ html[data-theme] ::selection { background: var(--mark); }
 .site-header {
   view-transition-name: site-header;
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  width: 100%; max-width: 1240px; height: 84px; margin: 0 auto; padding: 0 20px; box-sizing: border-box;
+  width: 100%; max-width: 1240px; height: 84px; margin: 0 auto; padding: 0 var(--gutter); box-sizing: border-box;
 }
 .site-brand { display: inline-flex; align-items: center; gap: 11px; min-height: 44px; color: var(--ink); text-decoration: none; font-weight: 750; font-size: 19px; letter-spacing: -0.01em; white-space: nowrap; }
 .site-brand img { border-radius: 8px; box-shadow: 0 0 0 0.5px var(--line); }
@@ -67,7 +72,6 @@ html[data-theme] ::selection { background: var(--mark); }
 @media (min-width: 601px) { .site-cta .site-cta-short { display: none; } }
 /* Phones: a 16px gutter on both sides, and the brand, GitHub and Download tightened to fit it down to 360. */
 @media (max-width: 430px) {
-  .site-header { padding: 0 16px; }
   .site-brand { font-size: 17px; gap: 9px; }
   .site-brand img { width: 30px; height: 30px; }
   .site-nav { gap: 4px; }
@@ -82,7 +86,7 @@ html[data-theme] ::selection { background: var(--mark); }
 /* Footer: identical on every page. */
 .site-footer {
   view-transition-name: site-footer;
-  width: 100%; max-width: 1240px; margin: 120px auto 0; padding: 0 20px; box-sizing: border-box;
+  width: 100%; max-width: 1240px; margin: 120px auto 0; padding: 0 var(--gutter); box-sizing: border-box;
   display: grid; justify-items: center; gap: 12px; text-align: center; overflow: hidden;
 }
 /* One row: the page links, a hairline, then the social icons; the credit line centred under it. */
