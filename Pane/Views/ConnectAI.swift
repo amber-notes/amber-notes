@@ -1242,8 +1242,6 @@ struct Connection: Decodable, Identifiable {
     let last_used_at: Date?
     let revoked_at: Date?
     let redirect_host: String?
-    /// From servers that took tokens in links; nothing sets it now.
-    var url_used_at: Date? = nil
 
     var isOAuth: Bool { kind == "oauth" }
     /// What the list calls it. A sign-in the app can't vouch for is named by where access went,

@@ -352,7 +352,7 @@ import Testing
 @Suite struct WebConnectTests {
     private func row(_ name: String, host: String?, kind: String = "oauth", at: Date, revoked: Bool = false) -> Connection {
         Connection(id: UUID(), name: name, kind: kind, can_write: true, created_at: at, last_used_at: nil,
-                   revoked_at: revoked ? at : nil, redirect_host: host, url_used_at: nil)
+                   revoked_at: revoked ? at : nil, redirect_host: host)
     }
 
     @Test func anUnverifiedConnectionIsTitledByWhereAccessWent() {
@@ -437,7 +437,7 @@ import Testing
 @Suite struct IncredibleConnectTests {
     private func row(host: String?, kind: String = "oauth", at: Date, revoked: Bool = false) -> Connection {
         Connection(id: UUID(), name: "An app on this computer", kind: kind, can_write: false, created_at: at, last_used_at: nil,
-                   revoked_at: revoked ? at : nil, redirect_host: host, url_used_at: nil)
+                   revoked_at: revoked ? at : nil, redirect_host: host)
     }
 
     @Test func isInTheListAfterTheOthers() {

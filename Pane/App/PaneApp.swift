@@ -626,9 +626,9 @@ struct CaptureScreen: View {
 
     static let connections: [Connection] = [
         Connection(id: UUID(), name: "ChatGPT", kind: "oauth", can_write: true, created_at: .now.addingTimeInterval(-86400 * 3),
-                   last_used_at: .now.addingTimeInterval(-720), revoked_at: nil, redirect_host: "chatgpt.com", url_used_at: nil),
+                   last_used_at: .now.addingTimeInterval(-720), revoked_at: nil, redirect_host: "chatgpt.com"),
         Connection(id: UUID(), name: "Claude Code", kind: "token", can_write: true, created_at: .now.addingTimeInterval(-86400),
-                   last_used_at: .now.addingTimeInterval(-3 * 3600), revoked_at: nil, redirect_host: nil, url_used_at: nil),
+                   last_used_at: .now.addingTimeInterval(-3 * 3600), revoked_at: nil, redirect_host: nil),
     ]
 
     var body: some View {
