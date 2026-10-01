@@ -1,11 +1,13 @@
 /* Home page: the promise and the demo; the sections below live in sections.module.css. The
    changelog and help pages share the centred column at the end. Colours come from the page theme. */
-.main { width: 100%; max-width: 1240px; margin: 0 auto; padding: 0 20px; box-sizing: border-box; display: grid; gap: 160px; align-content: start; }
+.main { width: 100%; max-width: 1240px; margin: 0 auto; padding: 0 20px; box-sizing: border-box; display: grid; grid-template-columns: minmax(0, 1fr); gap: 160px; align-content: start; } /* one column that never grows to fit the wider demo */
 @media (max-width: 700px) { .main { gap: 96px; } }
 
-.hero { display: grid; justify-items: center; text-align: center; gap: 14px; padding-top: 96px; }
-.hero .ctas { margin-top: 6px; }
-@media (max-width: 600px) { .hero { padding-top: 44px; gap: 20px; } }
+/* Two groups, spaced twice as far apart as their parts: the promise (headline 24 px above its line),
+   then the buttons 48 px below it; the nav sits 136 px above, the demo 80 px below. */
+.hero { display: grid; justify-items: center; text-align: center; gap: 24px; padding-top: 136px; }
+.hero .ctas { margin-top: 24px; }
+@media (max-width: 600px) { .hero { padding-top: 56px; gap: 18px; } .hero .ctas { margin-top: 18px; } }
 .h1 { margin: 0; max-width: 21ch; font-size: clamp(40px, 5vw, 74px); line-height: 0.98; font-weight: 800; letter-spacing: -0.045em; text-wrap: balance; }
 /* "your AI" never splits across lines; a tight marker sits behind the words, not an offset bar. */
 .mark {
