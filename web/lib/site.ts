@@ -17,6 +17,11 @@ export const APP_STORE_LIVE = false;
 export const APP_STORE_ID = "6817253103";
 export const APP_STORE_URL = `https://apps.apple.com/app/id${APP_STORE_ID}`;
 
+/// The app release that opens template and shared-note links (ambernotes.app/open/template/… and
+/// /open/copy/…). Until it's in the App Store, the site doesn't offer "Use this template" or "Use this
+/// note": an older app opens on those links and does nothing. Flip `live` with that release.
+export const APP_TEMPLATES = { version: "1.1", live: false } as const;
+
 /// Where Amber Notes runs, in a table cell: true today, and right again the day the iPhone app ships.
 export const DEVICES = APP_STORE_LIVE ? "iPhone and Mac" : "Mac now; iPhone coming soon";
 

@@ -1,0 +1,39 @@
+/* The pages behind "Use this template" and "Use this note" (/open/template, /open/copy) when the
+   link stays in the browser: one card in the site's cream theme, the app first, the fallback under it. */
+.page { display: grid; justify-items: center; padding: 48px 16px 0; }
+@media (max-width: 600px) { .page { padding-top: 20px; } }
+.card {
+  width: min(460px, 100%); box-sizing: border-box; display: grid; gap: 14px; justify-items: center; text-align: center;
+  padding: 32px 28px 28px; border-radius: 28px; background: var(--card);
+  box-shadow: 0 0 0 1px var(--line), 0 1px 2px rgba(60, 30, 5, 0.06), 0 24px 48px -28px rgba(60, 30, 5, 0.45);
+}
+@media (max-width: 420px) { .card { padding: 26px 18px 20px; border-radius: 24px; } }
+.mark { border-radius: 22.5%; box-shadow: 0 0 0 0.5px var(--line), 0 10px 20px -10px rgba(150, 70, 0, 0.45); margin-bottom: 4px; }
+.title { margin: 0; font-size: 26px; line-height: 1.15; font-weight: 800; letter-spacing: -0.02em; text-wrap: balance; overflow-wrap: anywhere; }
+.lede { margin: 0; color: var(--muted); font-size: 16px; line-height: 1.45; text-wrap: pretty; overflow-wrap: anywhere; }
+.lede b { color: var(--ink); }
+.primary, .secondary {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 50px; padding: 0 20px; box-sizing: border-box;
+  border: 0; border-radius: 14px; font: inherit; font-weight: 700; font-size: 16px; text-decoration: none; cursor: pointer;
+}
+.primary { background: var(--cta-bg); color: var(--cta-ink); box-shadow: 0 10px 22px -12px rgba(60, 30, 5, 0.6); }
+.secondary { background: var(--soft); color: var(--ink); }
+.secondary[data-done] { background: color-mix(in srgb, var(--soft) 70%, var(--amber)); }
+@media (hover: hover) {
+  .primary:hover { background: color-mix(in srgb, var(--cta-bg) 86%, var(--amber)); }
+  .secondary:hover { background: color-mix(in srgb, var(--soft) 80%, var(--amber)); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .primary, .secondary { transition: transform 0.12s ease-out, background-color 0.15s ease-out; }
+  .primary:active, .secondary:active { transform: scale(0.97); }
+}
+.primary:focus-visible, .secondary:focus-visible, .card a:focus-visible, .card summary:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.or { display: flex; align-items: center; gap: 12px; width: 100%; margin-top: 6px; color: var(--muted); font-size: 13px; font-weight: 600; }
+.or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; }
+@media (max-width: 480px) { .pair { grid-template-columns: 1fr; } }
+.small { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.45; }
+.small a { color: var(--link); }
+.md { width: 100%; text-align: left; }
+.md summary { min-height: 32px; display: inline-flex; align-items: center; color: var(--muted); font-size: 14px; font-weight: 600; cursor: pointer; border-radius: 6px; }
+.md pre { margin: 6px 0 0; max-height: 260px; overflow: auto; padding: 12px 14px; border-radius: 12px; background: var(--soft); font: 12.5px/1.55 ui-monospace, "SF Mono", Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
