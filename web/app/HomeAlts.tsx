@@ -23,7 +23,6 @@ function useFirstView<T extends HTMLElement>(threshold = 0.45) {
   return [ref, seen] as const;
 }
 
-const Tick = () => <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m3.5 8.5 3 3 6-7" /></svg>;
 const Check = () => <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m3.5 8.5 3 3 6-7" /></svg>;
 const Replay = () => <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2.5 8a5.5 5.5 0 1 0 1.7-4M2.5 2.5v3h3" /></svg>;
 
@@ -37,17 +36,15 @@ type Line = { text: string; kind: "check" | "done" | "bullet" | "para"; added?: 
 type Scene = { app: string; glyph: "openai" | "claude"; surface: "phone" | "desk" | "term"; ask: string; title: string; date: string; lines: Line[]; receipt: string };
 const SCENES: Scene[] = [
   {
-    app: "ChatGPT", glyph: "openai", surface: "phone", ask: "Add what I need for paella on Sunday", title: "Groceries", date: "30 September 2026 at 06:44", receipt: "ChatGPT changed 5 lines",
+    app: "ChatGPT", glyph: "openai", surface: "phone", ask: "Add what I need for paella on Sunday", title: "Groceries", date: "", receipt: "ChatGPT changed 3 lines",
     lines: [
-      { text: "For the weekend, and Sunday dinner with Sara and Jonas.", kind: "para" },
-      ...["Paella rice", "Saffron", "Chorizo", "Chicken thighs", "Smoked paprika"].map((text) => ({ text, kind: "check" as const, added: true })),
-      { text: "Oat milk", kind: "check" }, { text: "Lemons", kind: "check" }, { text: "Coffee beans", kind: "check" }, { text: "Sourdough", kind: "done" },
+      ...["Paella rice", "Saffron", "Chorizo"].map((text) => ({ text, kind: "check" as const, added: true })),
+      { text: "Oat milk", kind: "check" }, { text: "Sourdough", kind: "done" },
     ],
   },
   {
-    app: "Claude", glyph: "claude", surface: "desk", ask: "Swap day 3 for a day trip to Sintra", title: "Lisbon, 4 days in May", date: "29 September 2026 at 21:12", receipt: "Claude changed 1 line",
+    app: "Claude", glyph: "claude", surface: "desk", ask: "Swap day 3 for a day trip to Sintra", title: "Lisbon, 4 days in May", date: "", receipt: "Claude changed 1 line",
     lines: [
-      { text: "Flights booked, hotel in Chiado.", kind: "para" },
       { text: "Day 1: Alfama and the castle", kind: "bullet" },
       { text: "Day 2: Belém and pastéis de nata", kind: "bullet" },
       { text: "Day 3: Day trip to Sintra", kind: "bullet", was: "Day 3: LX Factory and the river" },
@@ -55,7 +52,7 @@ const SCENES: Scene[] = [
     ],
   },
   {
-    app: "Claude Code", glyph: "claude", surface: "term", ask: "Write today's standup into my notes", title: "Standup notes", date: "1 October 2026 at 09:02", receipt: "Claude Code changed 3 lines",
+    app: "Claude Code", glyph: "claude", surface: "term", ask: "Write today's standup into my notes", title: "Standup notes", date: "", receipt: "Claude Code changed 3 lines",
     lines: [
       { text: "Mon: reviewed the sync pull request", kind: "bullet" },
       { text: "Tue: fixed the share link on iPhone", kind: "bullet", added: true },
@@ -91,10 +88,10 @@ export function AiTryUndo() {
   const ask = s.ask.slice(0, typed);
   const typing = typed < s.ask.length;
   return (
-    <section ref={ref} className={h.section} aria-labelledby="ai">
+    <section ref={ref} className={`${h.section} ${h.compact}`} aria-labelledby="ai">
       <div className={h.head}>
         <h2 id="ai" className={h.h2}>Works with the AI you already use</h2>
-        <p className={h.lede}>Ask in ChatGPT, Claude or Claude Code. The change lands in your note, tinted so you see it, with Undo. Try it.</p>
+        <p className={h.lede}>Ask ChatGPT, Claude or Claude Code. The edit lands tinted, with Undo. Try it.</p>
       </div>
       <div className={h.tryStage}>
         <div className={h.tryLeft}>
@@ -119,7 +116,6 @@ export function AiTryUndo() {
           </div>
         </div>
         <figure className={h.noteWin} aria-label={`${s.title} in Amber Notes. ${phase === "undone" ? "The edit was undone." : `${s.receipt}, with Undo.`}`}>
-          <p className={h.noteDate} aria-hidden="true">{s.date}</p>
           <h3 className={h.noteTitle} aria-hidden="true">{s.title}</h3>
           <ul className={h.noteLines} aria-hidden="true">
             {s.lines.map((l) => {
@@ -239,132 +235,4 @@ export function AiHistory() {
       <Also />
     </section>
   );
-}
-
-/* ═════════════ Bring all your Apple Notes over in one go ═════════════ */
-
-const FOLDERS = [{ name: "Notes", n: 612 }, { name: "Recipes", n: 188 }, { name: "Work", n: 241 }, { name: "Travel", n: 97 }, { name: "Home", n: 146 }];
-const TOTAL = FOLDERS.reduce((s, f) => s + f.n, 0); // 1,284, as on the import sheet
-
-/// Counts from 0 to `to` over `ms` once `go` is true; complete at rest.
-function useCount(go: boolean, to: number, ms = 1800, delay = 300) {
-  const [n, setN] = useState(to);
-  useEffect(() => {
-    if (!go || reduce()) return;
-    let raf = 0, start = 0;
-    setN(0);
-    const tick = (now: number) => {
-      if (!start) start = now + delay;
-      const t = Math.max(0, Math.min(1, (now - start) / ms));
-      setN(Math.round(to * (1 - Math.pow(1 - t, 3))));
-      if (t < 1) raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [go, to, ms, delay]);
-  return n;
-}
-
-function ImportHead({ lede }: { lede: string }) {
-  return (
-    <div className={h.head}>
-      <h2 id="import" className={h.h2}>Bring all your Apple Notes over in one go</h2>
-      <p className={h.lede}>{lede}</p>
-    </div>
-  );
-}
-
-const IMPORT_TICKS = ["Folders kept", "Checklists and tables", "Pins, with Full Disk Access", "Apple Notes unchanged"];
-
-/// A. The real import sheet, with the result beside it.
-export function ImportSheet() {
-  const [ref, seen] = useFirstView<HTMLElement>();
-  const n = useCount(seen, TOTAL);
-  return (
-    <section ref={ref} className={h.section} aria-labelledby="import">
-      <ImportHead lede="On your Mac, pick everything or just the notes you want. Folders, checklists and tables come along, pins too if you allow Full Disk Access, and your Apple Notes stay untouched." />
-      <div className={h.sheetStage}>
-        <figure className={h.sheetShot}>
-          <SheetCrop alt="The Import from Apple Notes sheet in Amber Notes on a Mac: notes picked, Keep Apple Notes folders and Also bring over pinned notes ticked, and an Import 1,284 Notes button." />
-        </figure>
-        <div className={h.result} data-play={seen || undefined} aria-label={`Imported ${TOTAL.toLocaleString("en")} notes. ${IMPORT_TICKS.join(", ")}.`}>
-          <p className={h.route} aria-hidden="true">
-            <img src="/apple-notes.webp" alt="" width={44} height={44} />
-            <span className={h.routeLine}><i /></span>
-            <img src="/mark-256.png" alt="" width={36} height={36} className={h.routeMark} />
-          </p>
-          <p className={h.bigCount} aria-hidden="true"><span className={h.num}>{n.toLocaleString("en")}</span> notes</p>
-          <ul className={h.tickList} aria-hidden="true">{IMPORT_TICKS.map((t) => <li key={t}><Tick />{t}</li>)}</ul>
-          <p className={h.fine}>Pins come over when you tick that option and give Amber Notes Full Disk Access in System Settings. Everything is on your iPhone a second later.</p>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/// B. Folder by folder: Apple Notes' folders move across into Amber Notes, and Apple Notes keeps its own.
-export function ImportFolders() {
-  const [ref, seen] = useFirstView<HTMLElement>(0.4);
-  const [step, setStep] = useState(FOLDERS.length + 1); // complete at rest
-  useEffect(() => {
-    if (!seen || reduce()) return;
-    setStep(0);
-    const ts = Array.from({ length: FOLDERS.length + 1 }, (_, i) => window.setTimeout(() => setStep(i + 1), 700 + i * 380));
-    return () => ts.forEach(clearTimeout);
-  }, [seen]);
-  const done = step > FOLDERS.length;
-  const count = FOLDERS.slice(0, Math.min(step, FOLDERS.length)).reduce((s, f) => s + f.n, 0);
-  return (
-    <section ref={ref} className={h.band} aria-labelledby="import">
-      <div className={h.bandInner}>
-        <ImportHead lede="On your Mac, choose File, then Import from Apple Notes. Every folder comes across, and nothing in Apple Notes changes." />
-        <div className={h.panes} aria-label={`${FOLDERS.map((f) => `${f.name}, ${f.n} notes`).join("; ")}. ${TOTAL.toLocaleString("en")} notes imported, Apple Notes unchanged.`}>
-          <div className={h.pane} aria-hidden="true">
-            <p className={h.paneHead}><img src="/apple-notes.webp" alt="" width={30} height={30} />Apple Notes<em>Unchanged</em></p>
-            <ul className={h.folderList}>{FOLDERS.map((f) => <li key={f.name}><Folder /><b>{f.name}</b><span className={h.num}>{f.n}</span></li>)}</ul>
-          </div>
-          <div className={h.mid} aria-hidden="true">
-            <span className={h.importBtn} data-pressed={step === 0 || undefined}>Import {TOTAL.toLocaleString("en")} Notes</span>
-            <span className={h.flow}>{FOLDERS.map((f, i) => <i key={f.name} data-on={step === i + 1 || undefined} />)}</span>
-          </div>
-          <div className={`${h.pane} ${h.paneAmber}`} aria-hidden="true">
-            <p className={h.paneHead}><img src="/mark-256.png" alt="" width={26} height={26} className={h.routeMark} />Amber Notes<em className={h.num}>{count.toLocaleString("en")}</em></p>
-            <ul className={h.folderList}>{FOLDERS.map((f, i) => <li key={f.name} data-on={step > i || undefined}><Folder /><b>{f.name}</b><span className={h.num}>{f.n}</span></li>)}</ul>
-            <p className={h.paneDone} data-on={done || undefined}><Tick /> Folders, checklists and tables came along</p>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/// C. Import on the Mac, there on the iPhone: the real sheet, then the real list.
-export function ImportMacPhone() {
-  const [ref, seen] = useFirstView<HTMLElement>(0.4);
-  return (
-    <section ref={ref} className={h.section} aria-labelledby="import">
-      <ImportHead lede="If you know Apple Notes, you already know Amber Notes. Import on your Mac in one go, and everything's on your iPhone a second later." />
-      <div className={h.macPhone} data-play={seen || undefined}>
-        <figure className={h.mpMac}>
-          <SheetCrop alt="The Import from Apple Notes sheet in Amber Notes on a Mac, with an Import 1,284 Notes button." />
-          <figcaption><b>On your Mac</b> Import everything, or pick the notes you want.</figcaption>
-        </figure>
-        <div className={h.mpSync} aria-hidden="true"><span className={h.mpLine}><i /></span><span className={h.mpLabel}>a second later</span></div>
-        <figure className={h.mpPhone}>
-          <img src="/blog/iphone-list.webp" alt="Amber Notes on iPhone: the note list, with pinned notes and today's notes, each in its folder, some marked Edited by ChatGPT, Claude Code or Claude." width={1206} height={2622} loading="lazy" />
-          <figcaption><b>On your iPhone</b> The same notes, in the same folders.</figcaption>
-        </figure>
-      </div>
-      <ul className={h.tickRow}>{IMPORT_TICKS.map((t) => <li key={t}><Tick />{t}</li>)}</ul>
-    </section>
-  );
-}
-
-/// The import sheet alone, cut from the window capture (the sheet sits at 451, 444, 1078 x 1280 in the 1980 x 1800 image).
-function SheetCrop({ alt }: { alt: string }) {
-  return <span className={h.sheetCrop}><img src="/blog/import-sheet.webp" alt={alt} width={1980} height={1800} loading="lazy" /></span>;
-}
-
-function Folder() {
-  return <svg width="17" height="14" viewBox="0 0 17 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" aria-hidden="true"><path d="M1.5 3.5a1.5 1.5 0 0 1 1.5-1.5h3.2l1.5 1.6H14a1.5 1.5 0 0 1 1.5 1.5v6.4A1.5 1.5 0 0 1 14 13H3a1.5 1.5 0 0 1-1.5-1.5Z" /></svg>;
 }

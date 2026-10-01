@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { AIGlyph } from "@/lib/ai-glyphs";
 import { HOME_PRIVACY, PRIVACY_PATH } from "@/lib/privacy";
 import DownloadLink from "./DownloadLink";
-import { AiCaptures, AiHistory, AiTryUndo, ImportFolders, ImportMacPhone, ImportSheet } from "./HomeAlts";
+import { AiCaptures, AiHistory, AiTryUndo } from "./HomeAlts";
 import a from "./sections.module.css";
 
 const reduce = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -38,9 +38,8 @@ const JOBS: Job[] = [
 ];
 
 const AI_ALTS = { a: AiTryUndo, b: AiCaptures, c: AiHistory };
-const IMPORT_ALTS = { a: ImportSheet, b: ImportFolders, c: ImportMacPhone };
 
-/// Design study: ?ai=a|b|c and ?import=a|b|c swap in an alternative; without them, today's sections.
+/// Design study: ?ai=a|b|c swaps in an alternative; without it, today's section.
 function useAlt<T extends Record<string, unknown>>(param: string, alts: T) {
   const [alt, setAlt] = useState<keyof T | null>(null);
   useEffect(() => {
@@ -56,11 +55,6 @@ export function AiSection() {
   return <AiJobs />;
 }
 
-export function ImportSection() {
-  const alt = useAlt("import", IMPORT_ALTS);
-  if (alt) { const Alt = IMPORT_ALTS[alt]; return <Alt />; }
-  return <ImportRun />;
-}
 
 /// Three different jobs in three apps, each a request and what landed in Amber Notes.
 function AiJobs() {
@@ -126,7 +120,7 @@ const TOTAL = FOLDERS.reduce((s, f) => s + f.n, 0); // 1,284
 const PINNED = 12;
 
 /// The import, run once: a thin amber bar fills while folders count up; then the total.
-function ImportRun() {
+export function ImportSection() {
   const [ref, seen] = useFirstView<HTMLElement>(0.45);
   const [p, setP] = useState(1); // complete at rest
   useEffect(() => {
