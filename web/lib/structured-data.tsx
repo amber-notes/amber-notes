@@ -1,5 +1,6 @@
 import { GITHUB_URL } from "./github";
 import { APP_STORE_LIVE, APP_STORE_URL, INCREDIBLE_URL, MAKER_GITHUB, MAKER_URL, SITE_NAME, SITE_URL, X_URL } from "./site";
+import { MAC_DMG } from "./downloads";
 
 /// schema.org JSON-LD for search engines. Only facts the site states elsewhere: the app is free,
 /// runs on macOS 26 and iOS, and is made by one person. No ratings or reviews, because there are none yet.
@@ -66,7 +67,8 @@ export function app(version: string | null): Thing {
     ...(version ? { softwareVersion: version } : {}),
     offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
     isAccessibleForFree: true,
-    downloadUrl: `${SITE_URL}/downloads/Amber-Notes.dmg`,
+    // The file itself, not the counter: a search engine reading this isn't a download.
+    downloadUrl: `${SITE_URL}${MAC_DMG}`,
     installUrl: APP_STORE_LIVE ? APP_STORE_URL : `${SITE_URL}/download`,
     image: `${SITE_URL}/mark.png`,
     screenshot: `${SITE_URL}/demo/lisbon/lisbon-1-faded.webp`,

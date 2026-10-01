@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/site";
+import { MAC_DOWNLOAD_PATH } from "@/lib/downloads";
 import styles from "./download.module.css";
 
 export const metadata: Metadata = pageMetadata({
@@ -39,7 +40,7 @@ export default function Download() {
             <p className={`${styles.meta} rise`} style={r(2)}>
               Version {release.version} · {size} · {date}
             </p>
-            <a className={`${styles.button} rise`} style={r(3)} href={`/downloads/${release.file}`} download={release.file}>
+            <a className={`${styles.button} rise`} style={r(3)} href={MAC_DOWNLOAD_PATH} download={release.file}>
               <Apple /> Download for Mac
             </a>
             <p className={`${styles.req} rise`} style={r(4)}>Free · Requires macOS {macos} or later</p>

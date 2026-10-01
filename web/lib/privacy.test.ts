@@ -74,6 +74,16 @@ describe("privacy copy", () => {
     expect(page).toContain("Export Your Notes");
   });
 
+  it("says what the website counts, and never that it counts nothing", () => {
+    for (const text of [policy, page, FACTS.map((f) => f.text).join(" ")]) {
+      expect(text).toMatch(/counts page views and where visitors came from/);
+      expect(text).toMatch(/Mac downloads as daily totals/);
+      expect(text).not.toMatch(/(on|or) (the|this) website, and we never/);
+      expect(text).not.toMatch(/(apps and this website|website) (have|has|uses) no (analytics|tracking)/);
+    }
+    expect(policy).toMatch(/Vercel Web Analytics, which uses no cookies and doesn't identify you/);
+  });
+
   it("is a cream page like the other legal pages", () => {
     expect(themeFor(PRIVACY_PATH)).toBe("cream");
   });
