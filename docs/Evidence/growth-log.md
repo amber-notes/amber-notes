@@ -5,6 +5,24 @@ assistants. Newest first. Research behind it: [seo-aeo-research-2026-09-30.md](s
 
 `docs/` had no README naming a folder for evidence, so this and the research live in `docs/Evidence/`.
 
+## 1 October 2026: blog pagination and category pages
+
+### Changed (branch `site/blog-pagination`)
+
+- **/blog** shows the 12 newest posts. Later pages are at /blog/page/2 and on, all built at build time; /blog/page/1 redirects (308) to /blog.
+- **Categories are pages now.** /blog/category/apple-notes and the others replace the old #anchor filters. The filters only hid cards on the page in front of you, which pagination would have broken, and they never covered Apple Notes. Each category page has its own title, description and canonical, and is paged the same way (/blog/category/<name>/page/2 when it grows past 12). This is the indexable Apple Notes hub the plan proposed.
+- **At the bottom of each page:** Previous, the page numbers and Next, each with a hit area of at least 44 by 44 px. The current page is marked with aria-current.
+- **Head tags:** `<link rel="prev">` and `<link rel="next">` (React puts them in the head). Each page is its own canonical, and page 1 stays /blog. Titles: "Blog · Amber Notes", "Blog, page 2 · Amber Notes", "Apple Notes · Blog · Amber Notes".
+- **Sitemap:** every page of the index and of each category, with the newest date among the posts that page shows. Google treats paginated pages as ordinary, self-canonical pages, and listing them costs nothing. Every post is listed too, so no post depends on a list page to be found.
+- **Posts:** breadcrumbs, the category link under the title and the grouped "All posts" headings now go to the category pages instead of /blog#category.
+- **Tests (`lib/seo.test.ts`):**
+  - newest first, and every post on exactly one page
+  - full pages except the last, and no empty page
+  - page 1 at the list's own address, and the /page/1 redirect
+  - static params for every page and category
+  - every page in the sitemap, with no /page/1 and no duplicates
+  - no post may take the slugs "page" or "category"
+
 ## 1 October 2026: covers redone to the approved standard
 
 Emil flagged the newer covers: captures pinned to the top with empty ground below, text too small to read, content cut mid-line, and a Codex row on the Gemini card.
