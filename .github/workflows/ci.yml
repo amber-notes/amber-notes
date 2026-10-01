@@ -47,11 +47,22 @@ jobs:
           set -o pipefail
           mkdir -p build
           xcodebuild test -project Pane.xcodeproj -scheme Pane -destination 'platform=macOS' \
-            -only-testing:PaneTests -derivedDataPath build/ci \
+            -only-testing:PaneTests -derivedDataPath build/ci -resultBundlePath build/ci-tests.xcresult \
             ENABLE_TESTABILITY=YES ENABLE_HARDENED_RUNTIME=NO \
             CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= PROVISIONING_PROFILE_SPECIFIER= \
             | tee build/ci-test.log | grep -E "✔ Test run|✘|error:|\*\* TEST" || true
           grep -q "\*\* TEST SUCCEEDED \*\*" build/ci-test.log
+      # A failure keeps the whole log and the result bundle: a test host that hangs or crashes
+      # records no issue in the filtered output above, only its name under "Failing tests".
+      - name: Keep the test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-test-results
+          path: |
+            build/ci-test.log
+            build/ci-tests.xcresult
+          retention-days: 7
       - name: iOS simulator build
         run: |
           set -o pipefail

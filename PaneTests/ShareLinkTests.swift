@@ -88,6 +88,7 @@ private actor FakeShareLinks: ShareLinkService {
         let fake = FakeShareLinks()
         let store = ShareLinkStore()
         store.copyURL = { _ in }
+        store.markUsed = { _ in }
         store.defaults = MemoryDefaults()
         store.baseURL = URL(string: "https://ambernotes.app")
         let note = UUID()
@@ -99,15 +100,45 @@ private actor FakeShareLinks: ShareLinkService {
         await store.confirmedShare()
         #expect(store.state.slug != nil)
         await store.stopSharing()
-        store.requestShare()
+        let sharing = store.requestShare()
         #expect(store.confirming == nil, "the same note isn't asked about again")
-        let end = Date.now.addingTimeInterval(2)
-        while store.state.slug == nil, Date.now < end { try? await Task.sleep(for: .milliseconds(20)) }
-        #expect(store.state.slug != nil)
+        // Waits for the sharing itself, not a time window: on a busy machine it can take longer.
+        await sharing?.value
+        #expect(sharing != nil && store.state.slug != nil)
 
         await store.load(note: UUID(), service: FakeShareLinks())
         store.requestShare()
         #expect(store.confirming == .createLink, "another note is")
+    }
+
+    @Test func askingAgainSharesAtOnceAndCanBeAwaited() async {
+        // The share runs on the main actor, which other tests can keep busy for seconds: callers
+        // wait for the share itself, never a time window.
+        let fake = FakeShareLinks()
+        let store = ShareLinkStore()
+        store.copyURL = { _ in }
+        store.markUsed = { _ in }
+        store.defaults = MemoryDefaults()
+        store.baseURL = URL(string: "https://ambernotes.app")
+        let note = UUID()
+        await store.load(note: note, service: fake)
+        store.defaults.set(true, forKey: ShareLinkStore.askedKey(note))
+        let sharing = store.requestShare()
+        #expect(sharing != nil && store.confirming == nil)
+        await sharing?.value
+        #expect(store.state.slug == "AAAAAAAAAAAAAAAAAAAAAAAA")
+    }
+
+    @Test func sharingMarksTheFeatureUsedOnce() async {
+        var used: [Feature] = []
+        let store = ShareLinkStore()
+        store.copyURL = { _ in }
+        store.markUsed = { used.append($0) }
+        store.defaults = MemoryDefaults()
+        store.baseURL = URL(string: "https://ambernotes.app")
+        await store.load(note: UUID(), service: FakeShareLinks())
+        await store.shareAndCopy()
+        #expect(used == [.shareLink])
     }
 
     @Test func productionNeverHandsOutALocalLink() {

@@ -541,6 +541,9 @@ final class SyncEngine {
     private(set) var liveShares: [UUID: Bool] = [:]
     private var publishQueue: Set<UUID> = []
     private var publishTask: Task<Void, Never>?
+    /// Publishes scheduled and not finished (tests wait for them: `publishesSettled`). One replaced
+    /// by a newer one may still be writing, so each is kept until it ends.
+    private var publishInFlight: [UUID: Task<Void, Never>] = [:]
     /// How long after the last pushed change a page is written again. Tests shorten it.
     static var publishDelay: Duration = .seconds(2)
 
@@ -557,6 +560,15 @@ final class SyncEngine {
         }
         let next = Dictionary(verified.map { ($0.note_id, $0.include_subnotes) }, uniquingKeysWith: { a, _ in a })
         if next != liveShares { liveShares = next }
+    }
+
+    /// Waits until the page publishing scheduled so far has run (a newer one replaces an older one).
+    /// For tests, instead of guessing how long it takes on a busy machine.
+    func publishesSettled() async {
+        while let (id, t) = publishInFlight.first {
+            await t.value
+            publishInFlight[id] = nil
+        }
     }
 
     /// Sharing changed on this device (Share Link, sub-notes, Stop Sharing).
@@ -582,16 +594,24 @@ final class SyncEngine {
         guard !roots.isEmpty else { return }
         publishQueue.formUnion(roots)
         publishTask?.cancel()
-        publishTask = Task { [weak self] in
-            try? await Task.sleep(for: Self.publishDelay)
-            guard !Task.isCancelled, let self, let client = self.backend.client, let user = self.backend.userID else { return }
-            let roots = self.publishQueue
-            self.publishQueue = []
-            self.publishTask = nil
-            for r in roots {
-                // Checks the live share's tag again, and uses what it says about sub-notes.
-                await SharePublisher.republish(root: r, client: client, context: self.context, user: user)
-            }
+        let id = UUID()
+        let task = Task { [weak self] in
+            await self?.publishQueued()
+            self?.publishInFlight[id] = nil
+        }
+        publishTask = task
+        publishInFlight[id] = task
+    }
+
+    private func publishQueued() async {
+        try? await Task.sleep(for: Self.publishDelay)
+        guard !Task.isCancelled, let client = backend.client, let user = backend.userID else { return }
+        let roots = publishQueue
+        publishQueue = []
+        publishTask = nil
+        for r in roots {
+            // Checks the live share's tag again, and uses what it says about sub-notes.
+            await SharePublisher.republish(root: r, client: client, context: context, user: user)
         }
     }
 

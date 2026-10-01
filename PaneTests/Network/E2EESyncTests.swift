@@ -268,9 +268,9 @@ extension NetworkFaults {
         Wire.sealer!.shareTag(note: note, slug: slug, includeSubNotes: include)
     }
 
-    private func waitForPublishes(_ seconds: TimeInterval = 0.6) async throws {
-        let end = Date.now.addingTimeInterval(seconds)
-        while Date.now < end { try await Task.sleep(for: .milliseconds(20)) }
+    /// Waits for the page publishing the engine has scheduled, however long a busy machine takes.
+    private func waitForPublishes(_ engine: SyncEngine) async throws {
+        await engine.publishesSettled()
     }
 
     @Test func sharingTagsTheShareAndPublishesTheCopyAndItsMissingFilesAndEditsRepublish() async throws {
@@ -330,7 +330,7 @@ extension NetworkFaults {
         n.body = "Private plans, more"
         n.touch()
         await a.engine.sync(pulling: false)
-        try await waitForPublishes()
+        try await waitForPublishes(a.engine)
         #expect(await SharePublisher.republish(root: n.id, client: StubSupabase.client(), context: a.context, user: user) == nil)
         #expect(!StubSupabase.rpcCalls.contains { ["publish_share", "share_note", "publish_share_file"].contains($0.name) }, "nothing is published")
         let links = SupabaseShareLinks(client: StubSupabase.client())
@@ -452,7 +452,7 @@ extension NetworkFaults {
             #expect(a.engine.liveShares[n.id] == nil)
             StubSupabase.edit(n.id, body: "Trip, from the AI", updatedAt: .now.addingTimeInterval(2), aiEditor: "ChatGPT")
             await a.engine.sync()
-            try await waitForPublishes()
+            try await waitForPublishes(a.engine)
             #expect(!StubSupabase.rpcCalls.contains { $0.name == "publish_share" }, "never published")
             StubSupabase.answer("share_slug") { _ in slug }
             await #expect(throws: SharePublisher.Failure.self) {
@@ -469,9 +469,8 @@ extension NetworkFaults {
         StubSupabase.rpcCalls.filter { $0.name == "publish_share" }.map { $0.params }
     }
 
-    private func waitForPublish(after count: Int) async throws -> [String: Any]? {
-        let end = Date.now.addingTimeInterval(3)
-        while publishes().count <= count, Date.now < end { try await Task.sleep(for: .milliseconds(20)) }
+    private func waitForPublish(_ engine: SyncEngine, after count: Int) async throws -> [String: Any]? {
+        await engine.publishesSettled()
         return publishes().count > count ? publishes().last : nil
     }
 
@@ -491,14 +490,14 @@ extension NetworkFaults {
         StubSupabase.answer("publish_share") { _ in ["slug": slug, "missing_files": [String]()] }
         await a.engine.sync()
         #expect(a.engine.liveShares[root.id] == true)
-        try await waitForPublishes()
+        try await waitForPublishes(a.engine)
         var before = publishes().count
 
         // The AI edits the shared note on the server; this device pulls it and publishes the page.
         let rootText = root.body + "\nAdded by the AI"
         StubSupabase.edit(root.id, body: rootText, updatedAt: .now.addingTimeInterval(2), aiEditor: "ChatGPT")
         await a.engine.sync()
-        let published = try #require(try await waitForPublish(after: before))
+        let published = try #require(try await waitForPublish(a.engine, after: before))
         #expect(published["p_slug"] as? String == slug)
         #expect((published["p_copy"] as? [String: Any])?["body"] as? String == rootText)
 
@@ -507,7 +506,7 @@ extension NetworkFaults {
         StubSupabase.edit(page.id, body: "Day one, by the AI", updatedAt: .now.addingTimeInterval(3), aiEditor: "Claude")
         let rows: [NoteDTO] = try await StubSupabase.client().from("notes").select().eq("id", value: page.id.uuidString.lowercased()).execute().value
         a.engine.take(rows)
-        let again = try #require(try await waitForPublish(after: before))
+        let again = try #require(try await waitForPublish(a.engine, after: before))
         let pages = (again["p_copy"] as? [String: Any])?["pages"] as? [[String: Any]] ?? []
         #expect(pages.first?["body"] as? String == "Day one, by the AI")
         await a.engine.stop()
@@ -530,14 +529,14 @@ extension NetworkFaults {
         plantShare(root.id, slug: slug, include: true, tag: myTag(root.id, slug, true))
         StubSupabase.answer("publish_share") { _ in ["slug": slug, "missing_files": [String]()] }
         await a.engine.sync()
-        try await waitForPublishes()
+        try await waitForPublishes(a.engine)
         let before = publishes().count
         StubSupabase.edit(plain.id, body: "Not shared, AI", updatedAt: .now.addingTimeInterval(2), aiEditor: "ChatGPT")
         StubSupabase.edit(planted.id, body: "Planted, AI", updatedAt: .now.addingTimeInterval(2), aiEditor: "ChatGPT")
         StubSupabase.edit(stray.id, body: "Diary, AI", updatedAt: .now.addingTimeInterval(2), aiEditor: "ChatGPT")
         await a.engine.sync()
         #expect(a.context.note(plain.id)?.body == "Not shared, AI" && a.context.note(stray.id)?.body == "Diary, AI", "the edits arrived")
-        try await waitForPublishes()
+        try await waitForPublishes(a.engine)
         #expect(publishes().count == before, "nothing is published")
         await a.engine.stop()
     }
@@ -565,7 +564,7 @@ extension NetworkFaults {
         diary.body = "Diary, today"
         diary.touch()
         await a.engine.sync(pulling: false)
-        try await waitForPublishes()
+        try await waitForPublishes(a.engine)
         #expect(!StubSupabase.rpcCalls.contains { $0.name == "publish_share" }, "an edit to it publishes nothing")
         // An edit to the shared note publishes its page, without the diary.
         linked.body = "Day one, morning"
