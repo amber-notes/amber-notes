@@ -84,6 +84,7 @@ struct SettingsView: View {
                     }
                 }
                 #endif
+                AboutSection()
                 if case .signedIn = backend.state {
                     // Signing out sits apart, last, as in System Settings.
                     Section {
@@ -290,3 +291,40 @@ private struct MenuBarSection: View {
     }
 }
 #endif
+
+/// About › Open source: three quiet links to the code on GitHub. Nothing here ever asks.
+struct AboutSection: View {
+    static let links: [(title: String, url: URL, id: String)] = [
+        ("Star on GitHub", ShareAsk.repository, "settings.github"),
+        ("Report an issue", ShareAsk.newIssue, "settings.reportIssue"),
+        ("Contribute", ShareAsk.contributing, "settings.contribute"),
+    ]
+
+    var body: some View {
+        Section("About") {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Open source")
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 6) { links(separated: true) }
+                    VStack(alignment: .leading, spacing: 4) { links(separated: false) }
+                }
+                .font(.footnote)
+                .tint(Color(PColor.paneAccent))
+            }
+            .padding(.vertical, 2)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("settings.openSource")
+        }
+    }
+
+    @ViewBuilder private func links(separated: Bool) -> some View {
+        ForEach(Array(Self.links.enumerated()), id: \.offset) { i, link in
+            if separated && i > 0 {
+                Text("\u{00B7}").foregroundStyle(.tertiary).accessibilityHidden(true)
+            }
+            Link(link.title, destination: link.url)
+                .frame(minHeight: 24)
+                .accessibilityIdentifier(link.id)
+        }
+    }
+}
