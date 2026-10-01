@@ -473,6 +473,11 @@ extension NetworkFaults {
         let defaults = MemoryDefaults()
         let vault = NoteVault(keyStore: MemoryKeyStore(), remote: remote, defaults: defaults, iterations: fast)
         let engine = SyncEngine(backend: Backend(testClient: StubSupabase.client(), email: "qa@example.com"), context: context, defaults: defaults, vault: vault)
+        // `SyncSignal` is one global hook (the app has one engine), so it would belong to the
+        // device made last: a note touched on the Mac (locking it) would start the phone's push
+        // loop, and an "offline" phone would push its edit before the lock lands. These tests
+        // say when each device syncs.
+        SyncSignal.onChange = nil
         return Device(context: context, engine: engine, vault: vault)
     }
 
