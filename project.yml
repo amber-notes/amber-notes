@@ -52,6 +52,25 @@ targets:
       - package: ZIPFoundation
       - target: PaneShare
         platformFilter: iOS
+    # SwiftPM resource bundles (ZIPFoundation's and swift-crypto's privacy manifests, and any
+    # added later) arrive in Contents/Resources signed with the archive's Apple Development
+    # identity. The App Store export re-signs only the app and its nested code, so Apple
+    # rejected those bundles (ITMS-90284). Without their own signature they're plain resources,
+    # sealed by the app's signature, which the export does re-sign. Bundles with an executable
+    # keep theirs. The bundles' names aren't known ahead, so the script can't declare them as
+    # outputs; the target turns off user script sandboxing (this is its only script).
+    postBuildScripts:
+      - name: Unsign resource bundles
+        basedOnDependencyAnalysis: false
+        script: |
+          [ "$PLATFORM_NAME" = macosx ] || exit 0
+          cd "$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH" || exit 0
+          for b in *.bundle; do
+            [ -d "$b/Contents/_CodeSignature" ] || continue
+            /usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$b/Contents/Info.plist" >/dev/null 2>&1 && continue
+            rm -rf "$b/Contents/_CodeSignature"
+            echo "Unsigned $b"
+          done
     info:
       path: Pane/Resources/Info.plist
       properties: &appInfo
@@ -109,6 +128,7 @@ targets:
         PRODUCT_NAME: $(PANE_PRODUCT_NAME)
         PRODUCT_MODULE_NAME: Pane
         GENERATE_INFOPLIST_FILE: NO
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
         TARGETED_DEVICE_FAMILY: "1,2"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
