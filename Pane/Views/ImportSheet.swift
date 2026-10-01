@@ -4,7 +4,7 @@ import UniformTypeIdentifiers
 
 /// Where notes come from, and how its sheet talks about it.
 enum ImportKind: String, Identifiable, CaseIterable, Sendable {
-    case evernote, markdown
+    case evernote, keep, markdown
 
     var id: String { rawValue }
 
@@ -12,6 +12,7 @@ enum ImportKind: String, Identifiable, CaseIterable, Sendable {
         switch self {
         case .evernote: "Import from Evernote"
         case .markdown: "Import Markdown or Text"
+        case .keep: "Import from Google Keep"
         }
     }
 
@@ -20,6 +21,7 @@ enum ImportKind: String, Identifiable, CaseIterable, Sendable {
         switch self {
         case .evernote: "Import from Evernote"
         case .markdown: "Import Markdown"
+        case .keep: "Import from Keep"
         }
     }
 
@@ -28,6 +30,7 @@ enum ImportKind: String, Identifiable, CaseIterable, Sendable {
         switch self {
         case .evernote: "Evernote"
         case .markdown: "Markdown files"
+        case .keep: "Google Keep"
         }
     }
 
@@ -36,6 +39,7 @@ enum ImportKind: String, Identifiable, CaseIterable, Sendable {
         switch self {
         case .evernote: "From Evernote…"
         case .markdown: "From Markdown or Text Files…"
+        case .keep: "From Google Keep…"
         }
     }
 
@@ -44,6 +48,7 @@ enum ImportKind: String, Identifiable, CaseIterable, Sendable {
         switch self {
         case .evernote: "Import from Evernote…"
         case .markdown: "Import Markdown or Text…"
+        case .keep: "Import from Google Keep…"
         }
     }
 
@@ -51,6 +56,7 @@ enum ImportKind: String, Identifiable, CaseIterable, Sendable {
         switch self {
         case .evernote: "Each notebook you exported becomes a folder. Nothing in Evernote changes."
         case .markdown: "Each folder or .zip becomes a folder, subfolders included. Your files aren't changed."
+        case .keep: "From your Google Takeout download. Nothing in Keep changes."
         }
     }
 
@@ -58,6 +64,7 @@ enum ImportKind: String, Identifiable, CaseIterable, Sendable {
         switch self {
         case .evernote: "Choose your Evernote exports"
         case .markdown: "Choose a folder or .zip of notes"
+        case .keep: "Choose your Google Takeout"
         }
     }
 
@@ -65,6 +72,7 @@ enum ImportKind: String, Identifiable, CaseIterable, Sendable {
         switch self {
         case .evernote: "In Evernote, export each notebook as an ENEX file (.enex). You can pick several at once."
         case .markdown: "Markdown (.md) and text (.txt) files from Obsidian, Notion, Bear, Joplin, Logseq, Simplenote, Standard Notes or anywhere else. Pictures and files they link to come too."
+        case .keep: "At takeout.google.com, export Keep. Then choose the .zip, or the Takeout or Keep folder inside it."
         }
     }
 
@@ -72,6 +80,7 @@ enum ImportKind: String, Identifiable, CaseIterable, Sendable {
         switch self {
         case .evernote: "Choose Files…"
         case .markdown: "Choose a Folder or .zip…"
+        case .keep: "Choose the Takeout…"
         }
     }
 
@@ -79,6 +88,7 @@ enum ImportKind: String, Identifiable, CaseIterable, Sendable {
         switch self {
         case .evernote: "Add More Files…"
         case .markdown: "Add More…"
+        case .keep: "Add More…"
         }
     }
 
@@ -87,6 +97,7 @@ enum ImportKind: String, Identifiable, CaseIterable, Sendable {
         switch self {
         case .evernote: ("notebook", "notebooks")
         case .markdown: ("folder", "folders")
+        case .keep: ("Takeout", "Takeouts")
         }
     }
 
@@ -94,6 +105,7 @@ enum ImportKind: String, Identifiable, CaseIterable, Sendable {
         switch self {
         case .evernote: "A folder for each notebook"
         case .markdown: "A folder for each folder or .zip"
+        case .keep: "A folder named Google Keep"
         }
     }
 
@@ -101,6 +113,7 @@ enum ImportKind: String, Identifiable, CaseIterable, Sendable {
         switch self {
         case .evernote: "book.closed"
         case .markdown: "folder"
+        case .keep: "lightbulb"
         }
     }
 
@@ -108,6 +121,7 @@ enum ImportKind: String, Identifiable, CaseIterable, Sendable {
         switch self {
         case .evernote: [.enex, .xml]
         case .markdown: [.folder, .zip]
+        case .keep: [.folder, .zip]
         }
     }
 
@@ -115,15 +129,17 @@ enum ImportKind: String, Identifiable, CaseIterable, Sendable {
         switch self {
         case .evernote: EvernoteImporter.inspect(url)
         case .markdown: MarkdownImporter.inspect(url)
+        case .keep: KeepImporter.inspect(url)
         }
     }
 
     @MainActor
-    func run(_ sources: [ImportSource], into destination: ImportDestination, context: ModelContext,
+    func run(_ sources: [ImportSource], into destination: ImportDestination, options: ImportOptions = ImportOptions(), context: ModelContext,
              progress: (Int, Int) -> Void, shouldStop: () -> Bool) async -> ImportSummary {
         switch self {
         case .evernote: await EvernoteImporter(context: context).run(sources, into: destination, progress: progress, shouldStop: shouldStop)
         case .markdown: await MarkdownImporter(context: context).run(sources, into: destination, progress: progress, shouldStop: shouldStop)
+        case .keep: await KeepImporter(context: context, options: options).run(sources, into: destination, progress: progress, shouldStop: shouldStop)
         }
     }
 }
@@ -152,6 +168,7 @@ struct ImportSheet: View {
     @State private var sources: [ImportSource]
     @State private var phase: Phase
     @State private var destination: ImportDestination = .perSource
+    @State private var options = ImportOptions()
     @State private var folders: [(id: UUID, name: String)] = []
     @State private var picking = false
     @State private var inspecting = false
@@ -231,11 +248,13 @@ struct ImportSheet: View {
                         .padding(.top, 8)
                         .disabled(isImporting)
                         .accessibilityIdentifier("evernote.addMore")
-                    destinationPicker
-                        .fixedSize()
-                        .disabled(importable.isEmpty)
-                        .padding(.horizontal, 20)
-                        .padding(.top, 24)
+                    VStack(alignment: .leading, spacing: 10) {
+                        destinationPicker.fixedSize()
+                        if kind == .keep { keepOptions }
+                    }
+                    .disabled(importable.isEmpty)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 24)
                 }
                 .padding(.bottom, 12)
             }
@@ -300,7 +319,10 @@ struct ImportSheet: View {
                         Text("\(count(noteCount, "note", "notes")) in \(count(importable.count, kind.sourceNoun.one, kind.sourceNoun.many)).")
                             .monospacedDigit()
                     }
-                    Section { destinationPicker }
+                    Section {
+                        destinationPicker
+                        if kind == .keep { keepOptions }
+                    }
                         .disabled(isImporting || importable.isEmpty)
                 }
             }
@@ -392,6 +414,22 @@ struct ImportSheet: View {
         .accessibilityElement(children: .combine)
     }
 
+    /// Keep's labels and archive: where they go is the person's choice.
+    @ViewBuilder
+    private var keepOptions: some View {
+        Picker("Labels become", selection: $options.labelsAsFolders) {
+            Text("Folders").tag(true)
+            Text("Tags").tag(false)
+        }
+        .fixedSize()
+        .accessibilityIdentifier("import.labels")
+        Toggle("Also import archived notes, into a folder named Archive", isOn: $options.includeArchived)
+            #if os(macOS)
+            .toggleStyle(.checkbox)
+            #endif
+            .accessibilityIdentifier("import.archived")
+    }
+
     private var destinationPicker: some View {
         Picker("Put notes in", selection: $destination) {
             Text(kind.perSourceTitle).tag(ImportDestination.perSource)
@@ -460,6 +498,7 @@ struct ImportSheet: View {
     private func skippedReasons(_ s: ImportSummary) -> String {
         var parts: [String] = []
         if s.alreadyImported > 0 { parts.append("\(s.alreadyImported.formatted(.number.locale(locale))) already imported") }
+        if s.archived > 0 { parts.append("\(s.archived.formatted(.number.locale(locale))) archived") }
         if s.trashed > 0 { parts.append("\(s.trashed.formatted(.number.locale(locale))) in the trash") }
         if s.empty > 0 { parts.append("\(s.empty.formatted(.number.locale(locale))) empty") }
         if s.tooLong > 0 { parts.append("\(s.tooLong.formatted(.number.locale(locale))) longer than a note can be") }
@@ -500,7 +539,7 @@ struct ImportSheet: View {
         guard !chosen.isEmpty else { return }
         stopRequested = false
         phase = .importing(done: 0, total: noteCount)
-        let summary = await kind.run(chosen, into: destination, context: context,
+        let summary = await kind.run(chosen, into: destination, options: options, context: context,
                                      progress: { done, total in phase = .importing(done: done, total: total) },
                                      shouldStop: { stopRequested })
         phase = .finished(summary)

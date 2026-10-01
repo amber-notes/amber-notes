@@ -1,0 +1,24 @@
+{
+ "color": "DEFAULT",
+ "isTrashed": false,
+ "isPinned": false,
+ "isArchived": false,
+ "title": "Sketch",
+ "userEditedTimestampUsec": 1704447300000000,
+ "createdTimestampUsec": 1704447300000000,
+ "textContent": "Garden layout",
+ "attachments": [
+  {
+   "filePath": "sketch.png",
+   "mimetype": "image/png"
+  }
+ ],
+ "drawingInfo": {
+  "drawingId": "d1"
+ },
+ "reminders": [
+  {
+   "time": "2024-02-01T09:00:00Z"
+  }
+ ]
+}

@@ -1,0 +1,32 @@
+{
+ "color": "DEFAULT",
+ "isTrashed": false,
+ "isPinned": false,
+ "isArchived": false,
+ "title": "Porto ideas",
+ "userEditedTimestampUsec": 1696000000000000,
+ "createdTimestampUsec": 1695900000000000,
+ "labels": [
+  {
+   "name": "Travel"
+  },
+  {
+   "name": "Family"
+  }
+ ],
+ "textContent": "Port tasting\r\nLivraria Lello at 9 — book ahead 📚",
+ "annotations": [
+  {
+   "description": "",
+   "source": "WEBLINK",
+   "title": "Livraria Lello",
+   "url": "https://www.livrarialello.pt/"
+  }
+ ],
+ "attachments": [
+  {
+   "filePath": "1a2b3c4d5e.jpeg",
+   "mimetype": "image/jpeg"
+  }
+ ]
+}

@@ -1,0 +1,20 @@
+{
+ "color": "DEFAULT",
+ "isTrashed": false,
+ "isPinned": false,
+ "isArchived": true,
+ "title": "Old list",
+ "userEditedTimestampUsec": 1704447300000000,
+ "createdTimestampUsec": 1704447300000000,
+ "labels": [
+  {
+   "name": "Home"
+  }
+ ],
+ "listContent": [
+  {
+   "text": "Paint",
+   "isChecked": true
+  }
+ ]
+}
