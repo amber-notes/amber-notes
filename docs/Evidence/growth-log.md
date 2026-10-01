@@ -8,8 +8,9 @@ assistants. Newest first. Research behind it: [seo-aeo-research-2026-09-30.md](s
 ## 1 October 2026: the Claude Cowork cover fills its card
 
 - Emil flagged that the prompt sat small in the middle third of its panel. The other covers fill theirs.
-- It's now drawn at 4x, cropped to the title, message and buttons, and downsampled, so it stays sharp. It spans about 85% of the panel width, like the Groceries cover. At card size the title is about the size of "Groceries" there.
-- A prompt down to its buttons is taller for its width than the other captures, so the card's usual fade would have dimmed Don't Allow and Allow. A new `fit` option on a card's picture fades only its last few pixels. Only this card uses it.
+- It's now drawn at 4x, cropped to the title, message and buttons, and downsampled so it stays sharp. It spans about 65% of the panel width, with the same top padding as Groceries.
+- At card size the message text matches the Groceries body line. The title is a little smaller than "Groceries", because a macOS alert's title is only slightly bigger than its message.
+- The buttons end above the card's usual fade, so the fade shows under them like on the other covers. (A first pass at 85% was too big, and needed a special fade.)
 - Compared at the same size beside the Groceries and Gemini cards (`compare-1440.png`).
 - The blue Allow, the rose ground and the share card carry over.
 

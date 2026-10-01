@@ -52,7 +52,7 @@ export function Figure({ shot, caption, priority, ground = "soft" }: { shot: Sho
 /// edge (the card's corners clip it) and running off the bottom. Shown at about full size.
 export function ThumbArt({ thumb }: { thumb: Thumb }) {
   return (
-    <div className={`${b.thumb} ${b.ground}`} data-ground={thumb.ground} data-fit={thumb.fit ? "" : undefined} aria-hidden="true">
+    <div className={`${b.thumb} ${b.ground}`} data-ground={thumb.ground} aria-hidden="true">
       <img src={thumb.src} alt="" width={thumb.width / 2} height={thumb.height / 2} loading="lazy" decoding="async" />
     </div>
   );

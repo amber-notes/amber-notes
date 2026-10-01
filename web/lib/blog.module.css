@@ -62,9 +62,6 @@
   -webkit-mask-size: 100% calc(62.5cqw - 20px); mask-size: 100% calc(62.5cqw - 20px);
   -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
 }
-/* A capture that fills the card to its last line (a prompt down to its buttons): the same fade, just
-   over the last few pixels, so nothing it shows is dimmed. */
-.thumb[data-fit] img { -webkit-mask-image: linear-gradient(to bottom, #000 97%, transparent 100%); mask-image: linear-gradient(to bottom, #000 97%, transparent 100%); }
 /* In cards the grounds are quiet tints of the palette; the post's own picture keeps its fuller one. */
 .thumb[data-ground] { background: #fbeedd; box-shadow: none; }
 .thumb[data-ground="paper"] { background: #fbf6ef; }
