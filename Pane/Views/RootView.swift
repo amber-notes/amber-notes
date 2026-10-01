@@ -19,9 +19,10 @@ struct RootView: View {
     @State private var showImport = false
     @State private var importingSheet = false
     @State private var importError: String?
-    @State private var showEvernote = false
-    /// Exports the Evernote sheet opens with (shared, opened from Files, dropped on the app).
-    @State private var evernoteFiles: [URL] = []
+    /// The import sheet showing (Evernote, Markdown…).
+    @State private var importing: ImportKind?
+    /// Files the import sheet opens with (shared, opened from Files, dropped on the app).
+    @State private var importFiles: [URL] = []
     @AppStorage("lastScope") private var lastScopeData: Data = Data()
     @AppStorage("lastNote") private var lastNote: String = ""
 
@@ -37,7 +38,7 @@ struct RootView: View {
             .focusedSceneValue(\.editorController, editor)
             .focusedSceneValue(\.importAction, { showImport = true })
             .focusedSceneValue(\.importSheetAction, { importingSheet = true })
-            .focusedSceneValue(\.evernoteImportAction, { evernoteFiles = []; showEvernote = true })
+            .focusedSceneValue(\.importFromAction, { kind in importFiles = []; importing = kind })
             .focusedSceneValue(\.deleteNoteAction, deleteAction)
     }
 
@@ -117,8 +118,8 @@ struct RootView: View {
                 }
             }
             #endif
-            .sheet(isPresented: $showEvernote, onDismiss: EvernoteInbox.clear) {
-                EvernoteImportView(files: evernoteFiles) { ids in
+            .sheet(item: $importing, onDismiss: EvernoteInbox.clear) { kind in
+                ImportSheet(kind, files: importFiles) { ids in
                     #if os(macOS)
                     if let first = ids.first { scope = .all; selectedNote = first }
                     #endif
@@ -134,9 +135,9 @@ struct RootView: View {
     }
 
     private func offerEvernote() {
-        guard !EvernoteInbox.files.isEmpty, !showEvernote else { return }
-        evernoteFiles = EvernoteInbox.files
-        showEvernote = true
+        guard !EvernoteInbox.files.isEmpty, importing == nil else { return }
+        importFiles = EvernoteInbox.files
+        importing = .evernote
     }
 
     private func importSpreadsheet(_ result: Result<URL, Error>) {
@@ -309,8 +310,8 @@ private struct ImportActionKey: FocusedValueKey {
     typealias Value = () -> Void
 }
 
-private struct EvernoteImportActionKey: FocusedValueKey {
-    typealias Value = () -> Void
+private struct ImportFromActionKey: FocusedValueKey {
+    typealias Value = (ImportKind) -> Void
 }
 
 private struct EditorControllerKey: FocusedValueKey {
@@ -338,10 +339,10 @@ extension FocusedValues {
         get { self[ImportActionKey.self] }
         set { self[ImportActionKey.self] = newValue }
     }
-    /// File › Import from Evernote…
-    var evernoteImportAction: (() -> Void)? {
-        get { self[EvernoteImportActionKey.self] }
-        set { self[EvernoteImportActionKey.self] = newValue }
+    /// File › Import from Evernote…, Import Markdown or Text…
+    var importFromAction: ((ImportKind) -> Void)? {
+        get { self[ImportFromActionKey.self] }
+        set { self[ImportFromActionKey.self] = newValue }
     }
     var editorController: EditorController? {
         get { self[EditorControllerKey.self] }
@@ -361,7 +362,7 @@ struct PaneCommands: Commands {
     @FocusedValue(\.editorController) private var editor
     @FocusedValue(\.importAction) private var importNotes
     @FocusedValue(\.importSheetAction) private var importSheet
-    @FocusedValue(\.evernoteImportAction) private var importEvernote
+    @FocusedValue(\.importFromAction) private var importFrom
     @FocusedValue(\.showHistoryAction) private var showHistory
 
     var body: some Commands {
@@ -385,8 +386,10 @@ struct PaneCommands: Commands {
         CommandGroup(replacing: .importExport) {
             Button("Import from Apple Notes…") { importNotes?() }
                 .disabled(importNotes == nil)
-            Button("Import from Evernote…") { importEvernote?() }
-                .disabled(importEvernote == nil)
+            ForEach(ImportKind.allCases) { kind in
+                Button(kind.menuTitle) { importFrom?(kind) }
+                    .disabled(importFrom == nil)
+            }
             Button("Import Spreadsheet as Table…") { importSheet?() }
                 .disabled(importSheet == nil)
             Divider()

@@ -21,7 +21,7 @@ struct NoteListView: View {
     @State private var pendingForever: Set<UUID>?
     @FocusedValue(\.importAction) private var importNotes
     @FocusedValue(\.importSheetAction) private var importSheet
-    @FocusedValue(\.evernoteImportAction) private var importEvernote
+    @FocusedValue(\.importFromAction) private var importFrom
     @Environment(SetupStore.self) private var setup: SetupStore?
     @Environment(Backend.self) private var backend: Backend?
     @State private var connecting = false
@@ -285,7 +285,9 @@ struct NoteListView: View {
                     Button("New Folder", systemImage: "folder.badge.plus") { NotificationCenter.default.post(name: .paneNewFolder, object: nil) }
                     Divider()
                     Button("Import from Apple Notes…", systemImage: "square.and.arrow.down") { importNotes?() }
-                    Button("Import from Evernote…", systemImage: "tray.and.arrow.down") { importEvernote?() }
+                    ForEach(ImportKind.allCases) { kind in
+                        Button(kind.menuTitle, systemImage: kind.symbol) { importFrom?(kind) }
+                    }
                     Button("Import Spreadsheet as Table…", systemImage: "tablecells") { importSheet?() }
                     Divider()
                     SettingsLink { Label("Settings…", systemImage: "gearshape") }
@@ -332,7 +334,7 @@ struct NoteListView: View {
             progress: progress,
             celebrating: setup.showingCelebration,
             onImport: onImport,
-            onImportEvernote: { importEvernote?() },
+            onImportFrom: { kind in importFrom?(kind) },
             onStartFresh: { Task { await setup.mark("imported") } },
             onConnect: { connecting = true },
             onShareHowTo: onShareHowTo,

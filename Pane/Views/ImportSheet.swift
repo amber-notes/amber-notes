@@ -2,35 +2,163 @@ import SwiftData
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Bring in notebooks exported from Evernote (.enex files). Each becomes a folder, or they all go
-/// into one you pick. Nothing in Evernote is changed.
-struct EvernoteImportView: View {
+/// Where notes come from, and how its sheet talks about it.
+enum ImportKind: String, Identifiable, CaseIterable, Sendable {
+    case evernote, markdown
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .evernote: "Import from Evernote"
+        case .markdown: "Import Markdown or Text"
+        }
+    }
+
+    /// The iPhone's title, which has room for about 20 characters between its buttons.
+    var shortTitle: String {
+        switch self {
+        case .evernote: "Import from Evernote"
+        case .markdown: "Import Markdown"
+        }
+    }
+
+    /// The source, as the setup card names it.
+    var sourceName: String {
+        switch self {
+        case .evernote: "Evernote"
+        case .markdown: "Markdown files"
+        }
+    }
+
+    /// The setup card's choice.
+    var choiceTitle: String {
+        switch self {
+        case .evernote: "From Evernote…"
+        case .markdown: "From Markdown or Text Files…"
+        }
+    }
+
+    /// The menu item that opens the sheet.
+    var menuTitle: String {
+        switch self {
+        case .evernote: "Import from Evernote…"
+        case .markdown: "Import Markdown or Text…"
+        }
+    }
+
+    var subtitle: String {
+        switch self {
+        case .evernote: "Each notebook you exported becomes a folder. Nothing in Evernote changes."
+        case .markdown: "Each folder or .zip becomes a folder, subfolders included. Your files aren't changed."
+        }
+    }
+
+    var emptyTitle: String {
+        switch self {
+        case .evernote: "Choose your Evernote exports"
+        case .markdown: "Choose a folder or .zip of notes"
+        }
+    }
+
+    var emptyText: String {
+        switch self {
+        case .evernote: "In Evernote, export each notebook as an ENEX file (.enex). You can pick several at once."
+        case .markdown: "Markdown (.md) and text (.txt) files from Obsidian, Notion, Bear, Joplin, Logseq, Simplenote, Standard Notes or anywhere else. Pictures and files they link to come too."
+        }
+    }
+
+    var chooseTitle: String {
+        switch self {
+        case .evernote: "Choose Files…"
+        case .markdown: "Choose a Folder or .zip…"
+        }
+    }
+
+    var addMoreTitle: String {
+        switch self {
+        case .evernote: "Add More Files…"
+        case .markdown: "Add More…"
+        }
+    }
+
+    /// What one source is called, in the list's header and its count.
+    var sourceNoun: (one: String, many: String) {
+        switch self {
+        case .evernote: ("notebook", "notebooks")
+        case .markdown: ("folder", "folders")
+        }
+    }
+
+    var perSourceTitle: String {
+        switch self {
+        case .evernote: "A folder for each notebook"
+        case .markdown: "A folder for each folder or .zip"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .evernote: "book.closed"
+        case .markdown: "folder"
+        }
+    }
+
+    var contentTypes: [UTType] {
+        switch self {
+        case .evernote: [.enex, .xml]
+        case .markdown: [.folder, .zip]
+        }
+    }
+
+    nonisolated func inspect(_ url: URL) -> ImportSource {
+        switch self {
+        case .evernote: EvernoteImporter.inspect(url)
+        case .markdown: MarkdownImporter.inspect(url)
+        }
+    }
+
+    @MainActor
+    func run(_ sources: [ImportSource], into destination: ImportDestination, context: ModelContext,
+             progress: (Int, Int) -> Void, shouldStop: () -> Bool) async -> ImportSummary {
+        switch self {
+        case .evernote: await EvernoteImporter(context: context).run(sources, into: destination, progress: progress, shouldStop: shouldStop)
+        case .markdown: await MarkdownImporter(context: context).run(sources, into: destination, progress: progress, shouldStop: shouldStop)
+        }
+    }
+}
+
+/// The import sheet every source shares: pick files or folders, see what's in them, choose where
+/// the notes go, watch them come in, and read what happened. Nothing at the source is changed.
+struct ImportSheet: View {
     /// The sheet's height on the Mac (captures can ask for another).
     nonisolated(unsafe) static var height: CGFloat = 560
 
     enum Phase: Equatable {
         case choosing
         case importing(done: Int, total: Int)
-        case finished(EvernoteImportSummary)
+        case finished(ImportSummary)
     }
 
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @Environment(\.locale) private var locale
+    let kind: ImportKind
     /// Files to start with: shared into the app, opened from Files or dropped.
     var files: [URL] = []
     /// Called with the new notes' ids once the import is done.
     var onImported: ([UUID]) -> Void = { _ in }
 
-    @State private var sources: [ENEXSource]
+    @State private var sources: [ImportSource]
     @State private var phase: Phase
-    @State private var destination: EvernoteDestination = .perNotebook
+    @State private var destination: ImportDestination = .perSource
     @State private var folders: [(id: UUID, name: String)] = []
     @State private var picking = false
     @State private var inspecting = false
     @State private var stopRequested = false
 
-    init(files: [URL] = [], sources: [ENEXSource] = [], phase: Phase = .choosing, onImported: @escaping ([UUID]) -> Void = { _ in }) {
+    init(_ kind: ImportKind, files: [URL] = [], sources: [ImportSource] = [], phase: Phase = .choosing, onImported: @escaping ([UUID]) -> Void = { _ in }) {
+        self.kind = kind
         self.files = files
         self.onImported = onImported
         _sources = State(initialValue: sources)
@@ -43,13 +171,13 @@ struct EvernoteImportView: View {
     private static let compact = false
     #endif
 
-    private var importable: [ENEXSource] { sources.filter { $0.problem == nil } }
+    private var importable: [ImportSource] { sources.filter { $0.problem == nil } }
     private var noteCount: Int { importable.reduce(0) { $0 + $1.notes } }
     private var isImporting: Bool { if case .importing = phase { true } else { false } }
 
     var body: some View {
         chrome
-            .fileImporter(isPresented: $picking, allowedContentTypes: [.enex, .xml], allowsMultipleSelection: true) { result in
+            .fileImporter(isPresented: $picking, allowedContentTypes: kind.contentTypes, allowsMultipleSelection: true) { result in
                 if case .success(let urls) = result { add(urls) }
             }
             .task {
@@ -64,8 +192,8 @@ struct EvernoteImportView: View {
     private var chrome: some View {
         VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Import from Evernote").font(.system(size: 17, weight: .bold))
-                Text("Each notebook you exported becomes a folder. Nothing in Evernote changes.")
+                Text(kind.title).font(.system(size: 17, weight: .bold))
+                Text(kind.subtitle)
                     .font(.callout).foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -97,7 +225,7 @@ struct EvernoteImportView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(sources) { s in sourceRow(s).padding(.horizontal, 20).padding(.vertical, 8) }
-                    Button("Add More Files…") { picking = true }
+                    Button(kind.addMoreTitle) { picking = true }
                         .buttonStyle(.link)
                         .padding(.horizontal, 20)
                         .padding(.top, 8)
@@ -163,20 +291,20 @@ struct EvernoteImportView: View {
                 } else {
                     Section {
                         ForEach(sources) { sourceRow($0) }
-                        Button("Add More Files…") { picking = true }
+                        Button(kind.addMoreTitle) { picking = true }
                             .disabled(isImporting)
                             .accessibilityIdentifier("evernote.addMore")
                     } header: {
-                        Text("Notebooks")
+                        Text(kind.sourceNoun.many.capitalized)
                     } footer: {
-                        Text("\(count(noteCount, "note", "notes")) in \(count(importable.count, "notebook", "notebooks")). Nothing in Evernote changes.")
+                        Text("\(count(noteCount, "note", "notes")) in \(count(importable.count, kind.sourceNoun.one, kind.sourceNoun.many)).")
                             .monospacedDigit()
                     }
                     Section { destinationPicker }
                         .disabled(isImporting || importable.isEmpty)
                 }
             }
-            .navigationTitle("Import from Evernote")
+            .navigationTitle(kind.shortTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 switch phase {
@@ -217,15 +345,15 @@ struct EvernoteImportView: View {
             Image(systemName: "tray.and.arrow.down")
                 .font(.system(size: 34, weight: .light))
                 .foregroundStyle(.secondary)
-            Text("Choose your Evernote exports").font(.headline)
-            Text("In Evernote, export each notebook as an ENEX file (.enex). You can pick several at once.")
+            Text(kind.emptyTitle).font(.headline)
+            Text(kind.emptyText)
                 .font(.callout).foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
             if inspecting {
                 ProgressView().controlSize(.small).padding(.top, 6)
             } else {
-                Button("Choose Files…") { picking = true }
+                Button(kind.chooseTitle) { picking = true }
                     .buttonStyle(.bordered)
                     .padding(.top, 6)
                     .accessibilityIdentifier("evernote.choose")
@@ -236,9 +364,9 @@ struct EvernoteImportView: View {
         .padding(.horizontal, 20)
     }
 
-    private func sourceRow(_ s: ENEXSource) -> some View {
+    private func sourceRow(_ s: ImportSource) -> some View {
         HStack(spacing: 12) {
-            Image(systemName: s.problem == nil ? "book.closed" : "exclamationmark.triangle")
+            Image(systemName: s.problem == nil ? kind.symbol : "exclamationmark.triangle")
                 .font(.system(size: 17))
                 .foregroundStyle(s.problem == nil ? AnyShapeStyle(.tint) : AnyShapeStyle(.orange))
                 .frame(width: 24)
@@ -266,10 +394,10 @@ struct EvernoteImportView: View {
 
     private var destinationPicker: some View {
         Picker("Put notes in", selection: $destination) {
-            Text("A folder for each notebook").tag(EvernoteDestination.perNotebook)
+            Text(kind.perSourceTitle).tag(ImportDestination.perSource)
             if !folders.isEmpty {
                 Divider()
-                ForEach(folders, id: \.id) { f in Text(f.name).tag(EvernoteDestination.folder(f.id)) }
+                ForEach(folders, id: \.id) { f in Text(f.name).tag(ImportDestination.folder(f.id)) }
             }
         }
         .accessibilityIdentifier("evernote.destination")
@@ -284,7 +412,7 @@ struct EvernoteImportView: View {
         .accessibilityIdentifier("evernote.import")
     }
 
-    private func summaryView(_ s: EvernoteImportSummary) -> some View {
+    private func summaryView(_ s: ImportSummary) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             Label {
                 Text(s.stopped ? "Stopped after \(count(s.notes, "note", "notes"))" : "Imported \(count(s.notes, "note", "notes"))")
@@ -305,6 +433,11 @@ struct EvernoteImportView: View {
                     summaryRow("lock", "\(count(s.encrypted, "encrypted section", "encrypted sections")) couldn't be opened",
                                detail: "Evernote's encryption can't be read outside Evernote. Each one is marked in its note.")
                 }
+                if s.notNotes > 0 {
+                    summaryRow("doc.badge.ellipsis", "\(count(s.notNotes, "file", "files")) that aren't notes left out",
+                               detail: "Spreadsheets, backups and settings that no note links to.")
+                }
+                ForEach(s.dropped, id: \.self) { summaryRow("minus.circle", $0) }
                 ForEach(s.failedFiles, id: \.self) { summaryRow("exclamationmark.triangle", $0) }
             }
             .font(.callout)
@@ -324,15 +457,16 @@ struct EvernoteImportView: View {
         }
     }
 
-    private func skippedReasons(_ s: EvernoteImportSummary) -> String {
+    private func skippedReasons(_ s: ImportSummary) -> String {
         var parts: [String] = []
         if s.alreadyImported > 0 { parts.append("\(s.alreadyImported.formatted(.number.locale(locale))) already imported") }
+        if s.trashed > 0 { parts.append("\(s.trashed.formatted(.number.locale(locale))) in the trash") }
         if s.empty > 0 { parts.append("\(s.empty.formatted(.number.locale(locale))) empty") }
         if s.tooLong > 0 { parts.append("\(s.tooLong.formatted(.number.locale(locale))) longer than a note can be") }
         return parts.joined(separator: ", ").capitalizedFirst + "."
     }
 
-    private func fileReasons(_ s: EvernoteImportSummary) -> String {
+    private func fileReasons(_ s: ImportSummary) -> String {
         var parts: [String] = []
         if s.filesMissing > 0 { parts.append("\(s.filesMissing.formatted(.number.locale(locale))) missing from the export") }
         if s.filesTooBig > 0 { parts.append("\(s.filesTooBig.formatted(.number.locale(locale))) over 50 MB") }
@@ -354,7 +488,8 @@ struct EvernoteImportView: View {
         guard !new.isEmpty else { return }
         inspecting = true
         Task {
-            let found = await Task.detached { new.map(ENEXSource.inspect) }.value
+            let kind = kind
+            let found = await Task.detached { new.map(kind.inspect) }.value
             sources += found
             inspecting = false
         }
@@ -365,10 +500,9 @@ struct EvernoteImportView: View {
         guard !chosen.isEmpty else { return }
         stopRequested = false
         phase = .importing(done: 0, total: noteCount)
-        let importer = EvernoteImporter(context: context)
-        let summary = await importer.run(chosen, into: destination,
-                                         progress: { done, total in phase = .importing(done: done, total: total) },
-                                         shouldStop: { stopRequested })
+        let summary = await kind.run(chosen, into: destination, context: context,
+                                     progress: { done, total in phase = .importing(done: done, total: total) },
+                                     shouldStop: { stopRequested })
         phase = .finished(summary)
         EvernoteInbox.clear()
         onImported(summary.noteIDs)
