@@ -287,8 +287,8 @@ struct NoteHead: Codable, Equatable, Sendable {
     }
 
     static func of(_ body: String) -> NoteHead {
-        let lines = NoteText.firstLines(of: body, count: 2)
-        return NoteHead(title: lines.first ?? "New Note", preview: lines.count > 1 ? lines[1] : nil)
+        let head = NoteText.head(of: body)
+        return NoteHead(title: head.title, preview: head.preview)
     }
 
     init(from decoder: Decoder) throws {

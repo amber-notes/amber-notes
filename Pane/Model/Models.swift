@@ -104,9 +104,9 @@ enum NoteText {
         let body = note.body
         let length = body.utf16.count
         if let s = summaries[note.id], s.stamp == note.updatedAt, s.length == length { return (s.title, s.preview) }
-        let lines = firstLines(of: body, count: 2)
-        let title = lines.first ?? "New Note"
-        let preview = lines.count > 1 ? lines[1] : "No additional text"
+        let head = head(of: body)
+        let title = head.title
+        let preview = head.preview ?? "No additional text"
         summaries[note.id] = Summary(stamp: note.updatedAt, length: length, title: title, preview: preview)
         return (title, preview)
     }
@@ -116,8 +116,73 @@ enum NoteText {
     }
 
     static func preview(of body: String) -> String {
-        let lines = firstLines(of: body, count: 2)
-        return lines.count > 1 ? lines[1] : "No additional text"
+        head(of: body).preview ?? "No additional text"
+    }
+
+    /// The title and the line under it in the list. A table never previews as its header row:
+    /// the first line of text after it does, or, with none, its latest row ("27 Sep · 10 km · Minutes 56").
+    static func head(of body: String) -> (title: String, preview: String?) {
+        var title: String?
+        var table: [[String]] = []
+        var inTable = false
+        var rest = body[...]
+        while !rest.isEmpty {
+            // As in firstLines: found by byte, capped by scalar.
+            let end = rest.utf8.firstIndex(of: UInt8(ascii: "\n")) ?? rest.endIndex
+            let line = Substring(rest[..<end].unicodeScalars.prefix(2000))
+            rest = end < rest.endIndex ? rest[rest.index(after: end)...] : rest[rest.endIndex...]
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.isEmpty { inTable = false; continue }
+            if title != nil, trimmed.hasPrefix("|") {
+                // Only the first table counts; its separator row says nothing.
+                if table.isEmpty || inTable, let cells = tableCells(trimmed) { table.append(cells) }
+                inTable = true
+                continue
+            }
+            inTable = false
+            let cleaned = stripMarkup(String(line))
+            guard !cleaned.isEmpty else { continue }
+            let capped = String(String(cleaned.unicodeScalars.prefix(600)).prefix(300))
+            if let title { return (title, capped) }
+            title = capped
+        }
+        return (title ?? "New Note", tablePreview(table))
+    }
+
+    /// A table row's cells, or nil for the separator row.
+    private static func tableCells(_ line: String) -> [String]? {
+        var cells = line.split(separator: "|", omittingEmptySubsequences: false).map { $0.trimmingCharacters(in: .whitespaces) }
+        if cells.first == "" { cells.removeFirst() }
+        if cells.last == "" { cells.removeLast() }
+        if !cells.isEmpty, cells.allSatisfy({ !$0.isEmpty && $0.allSatisfy { "-: ".contains($0) } }) { return nil }
+        return cells.map(stripMarkup)
+    }
+
+    /// The table's latest row, each value read with its column: a date short, a number with its
+    /// unit ("Distance km" → "10 km") or its column's name ("Minutes 56"). Just a header: its names.
+    private static func tablePreview(_ rows: [[String]]) -> String? {
+        guard let header = rows.first else { return nil }
+        guard rows.count > 1, let last = rows.last else {
+            let names = header.filter { !$0.isEmpty }
+            return names.isEmpty ? nil : names.joined(separator: " · ")
+        }
+        let parts = last.enumerated().compactMap { i, value -> String? in
+            guard !value.isEmpty else { return nil }
+            if let day = shortDay(value) { return day }
+            let name = i < header.count ? header[i] : ""
+            guard Double(value) != nil, !name.isEmpty else { return value }
+            let words = name.split(separator: " ")
+            if words.count > 1, let unit = words.last, unit.count <= 3 { return "\(value) \(unit)" }
+            return "\(name) \(value)"
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    /// "2026-09-27" → "27 Sep" (in the reader's language), or nil when it isn't a date.
+    private static func shortDay(_ s: String) -> String? {
+        guard s.count == 10, let d = try? Date(s, strategy: Date.ISO8601FormatStyle().year().month().day().dateSeparator(.dash)) else { return nil }
+        // Parsed as midnight UTC, so shown in UTC: the day written, wherever you are.
+        return d.formatted(Date.FormatStyle(timeZone: .gmt).day().month(.abbreviated))
     }
 
     /// The first `count` lines that still say something once markup is stripped.
