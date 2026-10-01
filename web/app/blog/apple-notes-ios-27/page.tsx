@@ -1,17 +1,17 @@
 import { PostPage, postMetadata } from "@/lib/PostPage";
 
 export const dynamic = "force-static";
-export const metadata = postMetadata("apple-notes-ios-27", { title: "Apple Notes in iOS 27: what's new, and what AI can't do" });
+export const metadata = postMetadata("apple-notes-ios-27", { title: "What's new in Apple Notes in iOS 27, and how to use it" });
 
 const FAQ = [
   { q: "What's new in Apple Notes in iOS 27?", a: [
-    "Divider lines, links to a section of a note, Copy as Markdown and Markdown that formats itself when you paste it, and Siri AI, which can find a note or search inside one. On a Mac, macOS 27 brings the same, and renames File, Export as to File, Export To.",
+    "Divider lines, links to a section of a note, Copy as Markdown and Markdown that formats itself when you paste it, and Siri AI, which can find a note, search inside one, and add to or reformat a note when you ask. On a Mac, macOS 27 brings the same, and renames File, Export as to File, Export To.",
   ] },
   { q: "How do I add a divider line in Apple Notes?", a: [
     "On iPhone, tap where the line should go, tap the Expand button in the edit menu, then choose Insert Divider Line. On a Mac, choose Edit, Insert Divider Line, or press Command-L.",
   ] },
-  { q: "Can Siri read my Apple Notes in iOS 27?", a: [
-    "Siri AI can search for a note and search inside notes, for example “What was the note with the cookie recipe?”. It's in beta, in English to start, on iPhone 15 Pro and later, and not yet in the EU.",
+  { q: "Can Siri read and write my Apple Notes in iOS 27?", a: [
+    "Siri AI can search for a note and search inside notes, for example “What was the note with the cookie recipe?”, and it can add information to a new or existing note and reformat it when you ask. It's in beta, in English to start, on iPhone 15 Pro and later, and not yet in the EU.",
   ] },
   { q: "Can ChatGPT or Claude read my Apple Notes in iOS 27?", a: [
     "Not on their own. Siri can pass a request to ChatGPT if you turn on the ChatGPT extension, and you choose what goes with it. Claude isn't offered there. Apple Notes still has no API, so the ChatGPT and Claude apps can't search or edit your notes from iPhone or the web.",
@@ -22,7 +22,7 @@ export default function Page() {
   return (
     <PostPage
       slug="apple-notes-ios-27"
-      intro={<>iOS 27 and macOS 27 came out on 14 September, and Apple Notes got some of the features I&apos;ve wanted for years: divider lines, links to a section of a note, and Markdown both ways. Here&apos;s what&apos;s new, how to use each one, and the part the roundups skip: what ChatGPT and Claude still can&apos;t do with your notes.</>}
+      intro={<>iOS 27 and macOS 27 came out on 14 September, and Apple Notes got some of the features I&apos;ve wanted for years: divider lines, links to a section of a note, Markdown both ways, and a Siri that can find your notes and write into them. Here&apos;s what&apos;s new, how to use each one, and where ChatGPT and Claude fit.</>}
       faq={FAQ}
     >
       <h2>What&apos;s new, in one table</h2>
@@ -37,7 +37,7 @@ export default function Page() {
             <tr><th scope="row">Copy as Markdown</th><td>In the edit menu</td><td>Edit, Copy as Markdown</td></tr>
             <tr><th scope="row">Paste Markdown</th><td>Turns into headings and lists as you paste</td><td>The same</td></tr>
             <tr><th scope="row">Export as Markdown</th><td>Share, Export as Markdown (since iOS 26)</td><td>File, Export To, Markdown (was Export as)</td></tr>
-            <tr><th scope="row">Siri AI finds notes</th><td>&ldquo;What was the note with the cookie recipe?&rdquo;</td><td>Siri AI is in beta on macOS 27 too</td></tr>
+            <tr><th scope="row">Siri AI in Notes</th><td>Finds notes, and adds to or reformats one when you ask</td><td>Siri AI is in beta on macOS 27 too</td></tr>
           </tbody>
         </table>
       </div>
@@ -80,8 +80,11 @@ export default function Page() {
       <h2>Siri AI and your notes</h2>
       <p>
         The new Siri, called Siri AI, can search for notes and search inside them. Apple&apos;s example is &ldquo;What was the note with the
-        cookie recipe?&rdquo;, in <a href="https://support.apple.com/en-us/118442" rel="noopener">Use Notes on your iPhone</a>. Siri AI can also
-        write a draft or proofread something you&apos;ve written, such as a note. A few limits, from Apple:
+        cookie recipe?&rdquo;, in <a href="https://support.apple.com/en-us/118442" rel="noopener">Use Notes on your iPhone</a>. It can also
+        write into Notes: ask it to add something to a new or existing note, or to reformat what&apos;s there, as 9to5Mac
+        found in <a href="https://9to5mac.com/2026/09/28/heres-everything-new-for-apple-notes-in-ios-27/" rel="noopener">its roundup</a> on
+        28 September. That&apos;s a real change from earlier versions, where Siri could do little more than make a note. Siri AI can also
+        write a draft or proofread something you&apos;ve written. A few limits, from Apple:
       </p>
       <ul>
         <li>It&apos;s in beta, in English to start, with French, Japanese, Korean, Portuguese and Spanish due in October.</li>
@@ -89,10 +92,10 @@ export default function Page() {
         <li>It isn&apos;t available in the EU on iPhone at first, and some requests count against a daily limit.</li>
       </ul>
 
-      <h2>What ChatGPT and Claude still can&apos;t do</h2>
+      <h2>Where ChatGPT and Claude fit</h2>
       <p>
-        This is the part people ask me about most. Apple Notes still has no public API, so everything an AI does with it goes through your
-        device, and it stops there:
+        Siri now works in your notes, but ChatGPT and Claude mostly still can&apos;t. Apple Notes has no public API, so everything an
+        outside AI does with it goes through your device, and it stops there:
       </p>
       <div className="tableWrap">
         <table>
@@ -102,7 +105,7 @@ export default function Page() {
           <tbody>
             <tr><th scope="row">ChatGPT through Siri</th><td>Turn on the ChatGPT extension in Settings, Siri, and Siri can pass a request to ChatGPT, with content you choose to send</td><td>Apple doesn&apos;t describe a way for ChatGPT to search your notes or save into one</td></tr>
             <tr><th scope="row">The ChatGPT app</th><td>Paste a note in, and paste the answer back (it now arrives formatted)</td><td>Searching or editing your notes</td></tr>
-            <tr><th scope="row">Claude</th><td>On a Mac, the Claude desktop app can read Apple Notes through a desktop extension, and community MCP servers can edit them</td><td>Claude on iPhone and on the web can&apos;t reach Apple Notes; Siri doesn&apos;t offer Claude as an extension</td></tr>
+            <tr><th scope="row">Claude</th><td>On a Mac, the Claude desktop app can read and edit Apple Notes through Anthropic&apos;s Read and Write Apple Notes extension, and community MCP servers can too</td><td>Claude on iPhone and on the web can&apos;t reach Apple Notes; Siri doesn&apos;t offer Claude as an extension</td></tr>
             <tr><th scope="row">MCP in iOS</th><td>Nothing yet</td><td>Code for MCP support was spotted in a macOS 26.1 beta, but Apple hasn&apos;t shipped or announced it</td></tr>
           </tbody>
         </table>
@@ -117,7 +120,7 @@ export default function Page() {
 
       <h2>If you want your AI to work in your notes</h2>
       <p>
-        iOS 27 makes Apple Notes a nicer place to write. It doesn&apos;t let ChatGPT or Claude keep a list for you, fix a note while you&apos;re
+        iOS 27 makes Apple Notes a nicer place to write, and Siri can now help in it. It doesn&apos;t let ChatGPT or Claude keep a list for you, fix a note while you&apos;re
         on the train, or write your standup into it. That&apos;s the gap I built Amber Notes for: a notes app for iPhone and Mac that looks and
         works like Apple Notes, with a server built in that ChatGPT, Claude, Claude Code, Codex and Incredible can use to search, read and
         edit your notes. You approve each app once, every AI change shows up tinted with an Undo, and older versions stay in the history.

@@ -64,8 +64,8 @@ export default function Page() {
       </p>
       <p>
         Amber Notes is a free, open-source notes app for iPhone and Mac that works like Apple Notes and has one built in. It imports your
-        Apple Notes on your Mac without changing them. Once you add it to ChatGPT, ChatGPT can search, read and edit your notes, on the
-        web and in its phone app. You approve it in Amber Notes, and every change it makes can be undone.
+        Apple Notes on your Mac without changing them. Once you add it to ChatGPT, ChatGPT can search, read and edit your notes on
+        chatgpt.com. You approve it in Amber Notes, and every change it makes can be undone.
       </p>
       <p>
         <a href="/blog/move-from-apple-notes">How to move from Apple Notes</a> and{" "}

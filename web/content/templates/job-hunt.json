@@ -1,0 +1,68 @@
+{
+  "slug": "job-hunt",
+  "title": "Job hunt",
+  "category": "Work",
+  "audiences": [
+    "Personal",
+    "Work"
+  ],
+  "audience": "For anyone applying to more than a handful of jobs at once.",
+  "description": "A job search pipeline your AI keeps current: every application, its stage and the next step, plus interview prep.",
+  "seoTitle": "Job hunt pipeline template for ChatGPT and Claude",
+  "folder": "Personal",
+  "note": "Job hunt\n\nEvery application, where it stands, and what happens next. Paste a job ad and your AI files it.\n\n<!-- pane-table: Company=text; Role=text; Stage=choice Saved|Applied|Interview|Offer|Rejected|Withdrawn; Next step=text; Link=text -->\n| Company | Role | Stage | Next step | Link |\n| --- | --- | --- | --- | --- |\n\n## This week\n\n## Interview prep\n\n## People I've talked to\n",
+  "prompt": {
+    "default": "Use my Amber Notes note \"Job hunt\". When I paste a job ad or a link, add a row with log_table_row: Company, Role, Stage Saved, and the Link. When I tell you I applied or heard back, update that row's Stage and Next step with edit_note (read the note with read_note first). Before an interview, add five likely questions and my talking points under \"Interview prep\" with append_to_note, under a \"###\" heading with the company name. When I ask what's next, list the follow-ups under \"This week\" as a checklist."
+  },
+  "asks": [
+    "Save this one: Senior designer at Northwind, …",
+    "I have a first interview with Northwind on Thursday. Help me prep.",
+    "What should I follow up on this week?"
+  ],
+  "demo": [
+    {
+      "tool": "log_table_row",
+      "args": {
+        "values": {
+          "Company": "Northwind",
+          "Role": "Senior product designer",
+          "Stage": "Interview",
+          "Next step": "First interview, Thu 1 Oct",
+          "Link": "northwind.example/jobs/42"
+        }
+      }
+    },
+    {
+      "tool": "log_table_row",
+      "args": {
+        "values": {
+          "Company": "Fabrikam",
+          "Role": "Design lead",
+          "Stage": "Applied",
+          "Next step": "Follow up on 7 Oct"
+        }
+      }
+    },
+    {
+      "tool": "append_to_note",
+      "args": {
+        "under_heading": "This week",
+        "text": "- [ ] Send the portfolio link to Northwind\n- [ ] Follow up with Fabrikam on Wednesday"
+      }
+    },
+    {
+      "tool": "append_to_note",
+      "args": {
+        "under_heading": "Interview prep",
+        "text": "### Northwind\n1. Walk us through a project you're proud of. *The onboarding redesign: 18% more activation.*\n2. How do you work with engineers? *Weekly reviews, shared Figma, ship small.*\n3. Why Northwind? *Their logistics tools are the kind of complex I like.*"
+      }
+    }
+  ],
+  "example": "Job hunt\n\nEvery application, where it stands, and what happens next. Paste a job ad and your AI files it.\n\n<!-- pane-table: Company=text; Role=text; Stage=choice Saved|Applied|Interview|Offer|Rejected|Withdrawn; Next step=text; Link=text -->\n| Company | Role | Stage | Next step | Link |\n| --- | --- | --- | --- | --- |\n| Northwind | Senior product designer | Interview | First interview, Thu 1 Oct | northwind.example/jobs/42 |\n| Fabrikam | Design lead | Applied | Follow up on 7 Oct |   |\n\n## This week\n- [ ] Send the portfolio link to Northwind\n- [ ] Follow up with Fabrikam on Wednesday\n\n## Interview prep\n### Northwind\n1. Walk us through a project you're proud of. *The onboarding redesign: 18% more activation.*\n2. How do you work with engineers? *Weekly reviews, shared Figma, ship small.*\n3. Why Northwind? *Their logistics tools are the kind of complex I like.*\n\n## People I've talked to\n",
+  "related": [
+    "meeting-notes",
+    "weekly-review",
+    "content-calendar"
+  ],
+  "updated": "2026-10-01"
+}

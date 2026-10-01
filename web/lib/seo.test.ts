@@ -4,8 +4,12 @@ import nextConfig from "../next.config";
 import robots from "../app/robots";
 import sitemap from "../app/sitemap";
 import { MCP_URL } from "./facts";
+import { postShots } from "./post-images";
+import { DEFAULT_SHARE_IMAGE, pageMetadata } from "./site";
 import { llmsFullTxt, llmsTxt } from "./llms";
-import { categories, morePosts, posts, published } from "./posts";
+import { PER_PAGE, categories, categoryAnchor, categoryPath, morePosts, newestFirst, pageCount, pageOf, pagePath, posts, published } from "./posts";
+
+const INDEX_FOLDERS = ["page", "category"];
 
 const postSource = (slug: string) => readFileSync(new URL(`../app/blog/${slug}/page.tsx`, import.meta.url), "utf8");
 
@@ -20,8 +24,33 @@ describe("search and AI crawlers", () => {
   it("lists published posts in the sitemap, and never drafts", () => {
     const urls = sitemap().map((e) => e.url);
     expect(urls).toContain("https://ambernotes.app/blog");
-    expect(urls.some((u) => u.includes("/guides"))).toBe(false);
+    expect(urls.some((u) => new URL(u).pathname.startsWith("/guides"))).toBe(false);
     for (const p of posts) expect(urls.includes(`https://ambernotes.app/blog/${p.slug}`)).toBe(!p.draft);
+  });
+
+  it("lists every capture a post shows in the image sitemap, each with alt text and a file", () => {
+    const entries = sitemap();
+    for (const p of published()) {
+      const src = postSource(p.slug);
+      // Every figure names its capture from SHOTS, so the sitemap can find it.
+      expect([...src.matchAll(/<Figure\b/g)].length, p.slug).toBe([...src.matchAll(/<Figure\s+shot=\{SHOTS\.\w+\}/g)].length);
+      const shots = postShots(p.slug);
+      const images = entries.find((e) => e.url === `https://ambernotes.app/blog/${p.slug}`)?.images ?? [];
+      expect(shots.length, p.slug).toBeGreaterThan(0);
+      for (const s of shots) {
+        expect(s, p.slug).toBeDefined();
+        expect(images, p.slug).toContain(`https://ambernotes.app${s.src}`);
+        expect(s.alt.trim(), s.src).not.toBe("");
+        expect(existsSync(new URL(`../public${s.src}`, import.meta.url)), s.src).toBe(true);
+      }
+    }
+  });
+
+  it("gives every card picture short alt text", () => {
+    for (const p of published()) {
+      expect(p.thumb.alt.trim(), p.slug).not.toBe("");
+      expect(p.thumb.alt.length, p.slug).toBeLessThanOrEqual(100);
+    }
   });
 
   it("sends the old /guides addresses to the blog for good", async () => {
@@ -42,10 +71,12 @@ describe("search and AI crawlers", () => {
 });
 
 describe("the blog", () => {
-  it("has a page for every post, and no folder under /blog that isn't a post", () => {
+  it("has a page for every post, and no folder under /blog that isn't a post or the index's pages", () => {
     for (const p of posts) expect(existsSync(new URL(`../app/blog/${p.slug}/page.tsx`, import.meta.url))).toBe(true);
     const folders = readdirSync(new URL("../app/blog", import.meta.url), { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name);
-    expect(folders.sort()).toEqual(posts.map((p) => p.slug).sort());
+    expect(folders.sort()).toEqual([...posts.map((p) => p.slug), ...INDEX_FOLDERS].sort());
+    // A post can never take the index's addresses.
+    for (const f of INDEX_FOLDERS) expect(posts.some((p) => p.slug === f)).toBe(false);
   });
 
   it("takes each post's metadata from its entry, so drafts are noindex", () => {
@@ -117,6 +148,82 @@ describe("the blog", () => {
 
   it("only offers categories that have posts", () => {
     for (const c of categories()) expect(published().some((p) => p.category === c)).toBe(true);
+  });
+});
+
+describe("blog pages", () => {
+  const all = newestFirst();
+
+  it("puts the newest post first, and every post on exactly one page", () => {
+    const dates = all.map((p) => p.date);
+    expect(dates).toEqual([...dates].sort().reverse());
+    expect(pageOf(all, 1)[0].date).toBe(dates[0]);
+    const shown = Array.from({ length: pageCount(all) }, (_, i) => pageOf(all, i + 1)).flat().map((p) => p.slug);
+    expect(shown.sort()).toEqual(published().map((p) => p.slug).sort());
+  });
+
+  it("fills every page but the last, and never makes an empty one", () => {
+    const n = pageCount(all);
+    expect(n).toBe(Math.ceil(all.length / PER_PAGE));
+    for (let i = 1; i < n; i++) expect(pageOf(all, i)).toHaveLength(PER_PAGE);
+    expect(pageOf(all, n).length).toBeGreaterThan(0);
+    expect(pageOf(all, n + 1)).toHaveLength(0);
+    expect(pageCount([])).toBe(1);
+  });
+
+  it("keeps page 1 at the list's own address", () => {
+    expect(pagePath("/blog", 1)).toBe("/blog");
+    expect(pagePath("/blog", 2)).toBe("/blog/page/2");
+    expect(pagePath("/blog/category/guides", 3)).toBe("/blog/category/guides/page/3");
+  });
+
+  it("builds a static page for every page after the first, and a page for every category", async () => {
+    const index = await import("../app/blog/page/[n]/page");
+    expect(index.generateStaticParams()).toEqual(Array.from({ length: pageCount(all) - 1 }, (_, i) => ({ n: String(i + 2) })));
+    const cat = await import("../app/blog/category/[category]/page");
+    expect(cat.generateStaticParams()).toEqual(categories().map((c) => ({ category: categoryAnchor(c) })));
+  });
+
+  it("lists every page of the index and of each category in the sitemap, and never /page/1", () => {
+    const urls = sitemap().map((e) => e.url.replace("https://ambernotes.app", ""));
+    for (let i = 1; i <= pageCount(all); i++) expect(urls).toContain(pagePath("/blog", i));
+    for (const c of categories()) expect(urls).toContain(categoryPath(c));
+    expect(urls.some((u) => u.endsWith("/page/1"))).toBe(false);
+    expect(new Set(urls).size).toBe(urls.length);
+  });
+
+  it("redirects /page/1 to the list's own address", async () => {
+    const redirects = await nextConfig.redirects!();
+    expect(redirects).toContainEqual({ source: "/blog/page/1", destination: "/blog", permanent: true });
+  });
+});
+
+describe("share images", () => {
+  it("gives every published post its own share card, and every other page the site's", async () => {
+    const { postMetadata } = await import("./PostPage");
+    const route = await import("../app/og/blog/[slug]/route");
+    expect(route.generateStaticParams()).toEqual(published().map((p) => ({ slug: p.slug })));
+    for (const p of posts) {
+      const m = postMetadata(p.slug);
+      const og = (m.openGraph as { images: { url: string }[] }).images[0].url;
+      const tw = (m.twitter as { images: { url: string }[] }).images[0].url;
+      expect(og, p.slug).toBe(p.draft ? DEFAULT_SHARE_IMAGE.url : `/og/blog/${p.slug}`);
+      expect(tw, p.slug).toBe(og);
+    }
+    // Pages with a card of their own keep it.
+    for (const page of ["help", "download"]) {
+      const src = readFileSync(new URL(`../app/${page}/page.tsx`, import.meta.url), "utf8");
+      expect(src, page).toContain(`url: "/${page}/opengraph-image"`);
+    }
+    const index = pageMetadata({ title: "x", description: "y", path: "/z" });
+    expect((index.openGraph as { images: { url: string }[] }).images[0].url).toBe(DEFAULT_SHARE_IMAGE.url);
+  });
+
+  it("has a JPEG copy of every published post's cover for its share card", () => {
+    for (const p of published()) {
+      const name = p.thumb.src.replace(/^\/blog\//, "").replace(/\.webp$/, "");
+      expect(existsSync(new URL(`./og/covers/${name}.jpg`, import.meta.url)), name).toBe(true);
+    }
   });
 });
 

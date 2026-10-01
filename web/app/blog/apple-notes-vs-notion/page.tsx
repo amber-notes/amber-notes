@@ -1,3 +1,4 @@
+import { DEVICES } from "@/lib/site";
 import { PostPage, postMetadata } from "@/lib/PostPage";
 
 export const dynamic = "force-static";
@@ -8,11 +9,11 @@ type Row = [string, string, string, string];
 // Checked against Apple's and Notion's own pages on 30 September 2026.
 const ROWS: Row[] = [
   ["Best at", "Quick notes, lists and scans, instantly", "Structured pages and databases, shared with a team", "Quick notes like Apple Notes, that your AI can use"],
-  ["Devices", "Every Apple device, and iCloud.com in a browser", "Web, Mac, Windows, iPhone, Android", "Mac now; iPhone coming soon"],
+  ["Devices", "Every Apple device, and iCloud.com in a browser", "Web, Mac, Windows, iPhone, Android", DEVICES],
   ["Offline", "Yes, everything", "Pages you mark for offline, in the apps", "Yes, everything"],
   ["Price", "Free with your Apple account", "Free plan; paid plans per member", "Free"],
   ["Built-in AI", "Apple Intelligence Writing Tools, on supported devices", "Notion AI; full use on Business and Enterprise", "None built in; you bring your own AI"],
-  ["ChatGPT and Claude can search and edit", "No", "Yes, through Notion's MCP server", "Yes, through its MCP server, with Undo"],
+  ["ChatGPT and Claude can search and edit", "Only Claude Desktop on a Mac, through Anthropic's extension", "Yes, through Notion's MCP server", "Yes, through its MCP server, with Undo"],
   ["Version history", "No", "Page history, longer on paid plans", "Every version, including AI edits"],
 ];
 
@@ -21,7 +22,7 @@ const FAQ = [
     "For structured work, yes: databases, linked pages and a shared team workspace are things Apple Notes doesn't try to do. For quick everyday notes, Apple Notes is faster to open and write in, and it works fully offline.",
   ] },
   { q: "Can ChatGPT or Claude use my Apple Notes like they can use Notion?", a: [
-    "No. Notion has an MCP server that ChatGPT and Claude connect to; Apple Notes has no API, so they can't reach it from the web or your phone. Amber Notes works like Apple Notes and has an MCP server built in.",
+    "No. Notion has an MCP server that ChatGPT and Claude connect to; Apple Notes has no API, so they can't reach it from the web or your phone; only the Claude desktop app on a Mac can, through Anthropic's Read and Write Apple Notes extension. Amber Notes works like Apple Notes and has an MCP server built in.",
   ] },
 ];
 
@@ -67,8 +68,9 @@ export default function Page() {
       <h2>Where AI fits</h2>
       <p>
         This is where they differ most. Notion has Notion AI inside, and an official MCP server, so ChatGPT and Claude can search and edit your
-        workspace. Apple Notes has Writing Tools for the text in front of you, but no API, so no AI app can search your notes or save to them
-        from the web or your phone. <a href="/blog/apple-notes-api">Apple Notes API: what exists</a> explains why.
+        workspace. Apple Notes has Writing Tools for the text in front of you, and on a Mac, Anthropic&apos;s Read and Write Apple Notes
+        extension lets the Claude desktop app read and edit your notes. But there&apos;s no API, so no AI app can search your notes or save to
+        them from the web or your phone. <a href="/blog/apple-notes-api">Apple Notes API: what exists</a> explains why.
       </p>
       <p>
         If you like how Apple Notes feels and want your AI to use your notes, that&apos;s the gap I built Amber Notes for. It works like Apple

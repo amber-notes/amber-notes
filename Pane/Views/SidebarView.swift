@@ -118,6 +118,7 @@ struct SidebarView: View {
     @State private var deletingFolder: Folder?
     @State private var showSettings = false
     @FocusedValue(\.importSheetAction) private var importSheet
+    @FocusedValue(\.importFromAction) private var importFrom
     @Environment(Backend.self) private var backend: Backend?
     @Environment(SyncEngine.self) private var sync: SyncEngine?
 
@@ -185,6 +186,9 @@ struct SidebarView: View {
                 Menu {
                     Button("New Folder", systemImage: "folder.badge.plus") { startNewFolder(nil) }
                     Button("Import Spreadsheet as Table", systemImage: "tablecells.badge.ellipsis") { importSheet?() }
+                    ForEach(ImportKind.allCases) { kind in
+                        Button(kind.title, systemImage: kind.symbol) { importFrom?(kind) }
+                    }
                 } label: {
                     Label("New Folder", systemImage: "folder.badge.plus")
                 } primaryAction: { startNewFolder(nil) }

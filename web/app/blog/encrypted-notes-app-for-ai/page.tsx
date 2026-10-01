@@ -10,7 +10,7 @@ const FAQ = [
     "Yes. Your notes, their titles, folder names, file names and files, and every earlier version are encrypted on your iPhone or Mac before they're uploaded, with a key that iCloud Keychain carries between your devices. We store only the encrypted copies and can't read them.",
   ] },
   { q: "If the notes are encrypted, how can ChatGPT read them?", a: [
-    "When you approve an AI on your iPhone or Mac, that connection gets a copy of your notes' key, locked with a secret only the AI holds. During each of its requests, our server unlocks the key in memory, reads the notes the AI asks for, and forgets the key when the request ends. Disconnecting deletes that copy.",
+    "When you approve an AI on your iPhone or Mac, that connection gets a copy of your notes' key, locked with a key derived from that connection's own access token. We store only a hash of the token, so the copy can't be opened at rest; the AI sends the token with each request, and during that request our server unlocks the key in memory, reads the notes the AI asks for, and forgets the key when the request ends. Disconnecting deletes that copy.",
   ] },
   { q: "Can an AI read my locked notes?", a: [
     "No. Locked notes are encrypted a second time with a key made from your notes password, which never leaves your devices. An AI sees only their titles.",
@@ -49,8 +49,8 @@ export default function Page() {
       <ol>
         <li>You start connecting from ChatGPT or Claude. A page on ambernotes.app asks you to sign in and shows a two-digit number.</li>
         <li>Amber Notes on your iPhone or Mac asks whether to allow it. You type the number, choose Read Only or Read and Edit, and confirm with Face ID, Touch ID or your passcode.</li>
-        <li>That connection gets a copy of your notes&apos; key, locked with a secret only the AI holds.</li>
-        <li>During each of the AI&apos;s requests, our server unlocks the key in memory, reads the notes it asks for, encrypts any change it makes, and forgets the key when the request ends.</li>
+        <li>That connection gets a copy of your notes&apos; key, locked with a key derived from its own access token. We keep only a hash of the token, so the copy stays locked at rest.</li>
+        <li>The AI sends its token with each request. During that request, our server uses it to unlock the key in memory, reads the notes it asks for, encrypts any change it makes, and forgets the key when the request ends.</li>
         <li>Disconnect it in Settings, Connect an AI, and its copy of the key is deleted at once.</li>
       </ol>
       <p>

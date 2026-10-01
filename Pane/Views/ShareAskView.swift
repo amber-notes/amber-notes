@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// "Enjoying Amber Notes?" (see `ShareAsk`): the app's mark, two lines, and three buttons.
+/// "Enjoying Amber Notes?" (see `ShareAsk`): the app's mark, two lines, and three buttons
+/// (developers see the open source version: Star on GitHub first).
 /// A short sheet on iPhone, a small sheet on the Mac. Sharing opens the post in the browser and
 /// turns the sheet into a thank-you, which goes by itself a few seconds after you come back.
 struct ShareAskView: View {
@@ -33,26 +34,30 @@ struct ShareAskView: View {
     }
 
     private var ask: some View {
-        VStack(spacing: Metrics.gap) {
+        let content = ShareAsk.content(developer: store.developer)
+        return VStack(spacing: Metrics.gap) {
             AppMark(size: Metrics.mark)
             VStack(spacing: 6) {
-                Text("Enjoying Amber Notes?")
+                Text(content.title)
                     .font(Metrics.title)
                     .foregroundStyle(Color.ink)
                     .accessibilityAddTraits(.isHeader)
-                Text("I\u{2019}m building it on my own, and word of mouth is how people find it. If it\u{2019}s been useful, a post would mean a lot.")
+                Text(content.line)
                     .font(Metrics.line)
                     .foregroundStyle(Color.muted)
                     .fixedSize(horizontal: false, vertical: true)
             }
             VStack(spacing: Metrics.buttonGap) {
-                // Dark ink on amber: readable on the deeper light-mode amber and the brighter dark one.
-                share("Share on X", .sharedX, id: "shareAsk.x", ink: Color(Palette.onAmber))
-                    .buttonStyle(.borderedProminent)
-                share("Share on LinkedIn", .sharedLinkedIn, id: "shareAsk.linkedin")
-                    .buttonStyle(.bordered)
+                ForEach(Array(content.choices.enumerated()), id: \.element) { i, choice in
+                    if i == 0 {
+                        // Dark ink on amber: readable on the deeper light-mode amber and the brighter dark one.
+                        share(choice, ink: Color(Palette.onAmber)).buttonStyle(.borderedProminent)
+                    } else {
+                        share(choice).buttonStyle(.bordered)
+                    }
+                }
                 Button { store.choose(.dismissed) } label: {
-                    Text("Not now").frame(maxWidth: .infinity).frame(minHeight: Metrics.quietHeight)
+                    Text(ShareAsk.buttonTitle(.dismissed)).frame(maxWidth: .infinity).frame(minHeight: Metrics.quietHeight)
                 }
                 .buttonStyle(.borderless)
                 .foregroundStyle(Color.muted)
@@ -64,17 +69,26 @@ struct ShareAskView: View {
         .accessibilityIdentifier("shareAsk")
     }
 
-    private func share(_ title: String, _ choice: ShareAsk.Choice, id: String, ink: Color? = nil) -> some View {
+    private func share(_ choice: ShareAsk.Choice, ink: Color? = nil) -> some View {
         Button {
             if let url = store.choose(choice) { openURL(url) }
         } label: {
-            Text(title).foregroundStyle(ink.map(AnyShapeStyle.init) ?? AnyShapeStyle(.tint)).frame(maxWidth: .infinity)
+            Text(ShareAsk.buttonTitle(choice)).foregroundStyle(ink.map(AnyShapeStyle.init) ?? AnyShapeStyle(.tint)).frame(maxWidth: .infinity)
         }
         .controlSize(.large)
         #if os(iOS)
         .buttonBorderShape(.capsule)
         #endif
-        .accessibilityIdentifier(id)
+        .accessibilityIdentifier(Self.identifier(choice))
+    }
+
+    static func identifier(_ choice: ShareAsk.Choice) -> String {
+        switch choice {
+        case .sharedX: "shareAsk.x"
+        case .sharedLinkedIn: "shareAsk.linkedin"
+        case .starredGitHub: "shareAsk.github"
+        case .dismissed: "shareAsk.notNow"
+        }
     }
 
     private var thanks: some View {
@@ -86,7 +100,7 @@ struct ShareAskView: View {
                     .font(Metrics.title)
                     .foregroundStyle(Color.ink)
                     .accessibilityAddTraits(.isHeader)
-                Text("Every post helps someone find it.")
+                Text(ShareAsk.thanks(for: store.thankedFor))
                     .font(Metrics.line)
                     .foregroundStyle(Color.muted)
             }

@@ -1,0 +1,29 @@
+{
+ "color": "YELLOW",
+ "isTrashed": false,
+ "isPinned": true,
+ "isArchived": false,
+ "title": "Groceries",
+ "userEditedTimestampUsec": 1709366400123456,
+ "createdTimestampUsec": 1709280000000000,
+ "labels": [
+  {
+   "name": "Home"
+  }
+ ],
+ "listContent": [
+  {
+   "text": "Oat milk",
+   "textHtml": "<p>Oat milk</p>",
+   "isChecked": false
+  },
+  {
+   "text": "Lemons",
+   "isChecked": true
+  },
+  {
+   "text": "Saffron",
+   "isChecked": false
+  }
+ ]
+}

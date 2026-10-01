@@ -10,6 +10,8 @@ struct SetupCard: View {
     let celebrating: Bool
     /// Mac: opens the Apple Notes picker. nil on iPhone, which can't read Apple Notes.
     var onImport: (() -> Void)?
+    /// Opens an import from files (Evernote, Markdown…), on the Mac and iPhone.
+    var onImportFrom: ((ImportKind) -> Void)?
     let onStartFresh: () -> Void
     let onConnect: () -> Void
     /// iPhone: how to share notes one by one from Notes.
@@ -17,6 +19,8 @@ struct SetupCard: View {
     let onHide: () -> Void
 
     @State private var copied = false
+    /// The Import Notes choice is open.
+    @State private var choosingSource = false
     /// The page on screen, which trails `page` while a finished step plays out.
     @State private var shown: Page?
     /// Segments drawn green; they fill as steps finish.
@@ -192,7 +196,7 @@ struct SetupCard: View {
     private func line(_ step: SetupProgress.Step) -> Text {
         switch step {
         case .bring:
-            Text("Bring in your Apple Notes, all or just some.")
+            Text("Bring them in from \(Self.sources), all or just some.")
         case .connect:
             Text("Then ask it to add something to a note.")
         case .tryIt:
@@ -219,18 +223,53 @@ struct SetupCard: View {
         .font(Metrics.button)
     }
 
+    /// Where notes can come from, for the step's line: "Apple Notes, Evernote or Markdown files".
+    static var sources: String {
+        let names = ["Apple Notes"] + ImportKind.allCases.map(\.sourceName)
+        return names.dropLast().joined(separator: ", ") + " or " + names.last!
+    }
+
+    /// One choice: where your notes are. Apple Notes is read directly on the Mac and shared from
+    /// Notes on iPhone; the rest come from files you exported.
     @ViewBuilder
     private var bringButtons: some View {
-        if let onImport {
-            primary("Import from Apple Notes…", id: "setup.import", action: onImport)
-        } else if let onShareHowTo {
-            primary("Share from Notes", id: "setup.shareHowTo", action: onShareHowTo)
-        }
+        primary("Import Notes…", id: "setup.import") { choosingSource = true }
+            .popover(isPresented: $choosingSource, arrowEdge: .bottom) {
+                VStack(alignment: .leading, spacing: 2) {
+                    if let onImport {
+                        choice("From Apple Notes…", symbol: "note.text") { onImport() }
+                    } else if let onShareHowTo {
+                        choice("From Apple Notes…", symbol: "note.text") { onShareHowTo() }
+                    }
+                    if let onImportFrom {
+                        ForEach(ImportKind.allCases) { kind in
+                            choice(kind.choiceTitle, symbol: kind.symbol) { onImportFrom(kind) }
+                        }
+                    }
+                }
+                .padding(6)
+                .presentationCompactAdaptation(.popover)
+            }
         Button("Start Fresh", action: onStartFresh)
             .buttonStyle(.borderless)
             .foregroundStyle(.secondary)
             .fixedSize()
             .accessibilityIdentifier("setup.fresh")
+    }
+
+    /// One place notes can come from, in the Import Notes choice.
+    private func choice(_ title: String, symbol: String, action: @escaping () -> Void) -> some View {
+        Button {
+            choosingSource = false
+            action()
+        } label: {
+            Label(title, systemImage: symbol)
+                .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
+                .padding(.horizontal, 8)
+                .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("setup.import.\(symbol)")
     }
 
     /// Dark ink on amber: readable on the deeper light-mode amber and the brighter dark one.

@@ -1,0 +1,61 @@
+{
+  "slug": "recipe-box",
+  "title": "Recipe box",
+  "category": "Home and life",
+  "audiences": [
+    "Personal",
+    "Families"
+  ],
+  "audience": "For cooks whose recipes live in screenshots, tabs and someone else's blog.",
+  "description": "A recipe box your AI files for you: paste a recipe and it becomes a clean sub-note with ingredients as a checklist.",
+  "folder": "Recipes",
+  "note": "Recipe box\n\nYour recipes, cleaned up and filed: one sub-note each, with the ingredients as a checklist you can tick off while you cook.\n\n## Weeknight\n\n## Weekend\n\n## Baking\n\n## Want to try\n",
+  "prompt": {
+    "default": "Use my Amber Notes note \"Recipe box\". When I paste a recipe, clean it up: a title, servings and time on one line, the ingredients as a checklist, and short numbered steps, without the life story. Save it as a sub-note with create_sub_note under \"Weeknight\", \"Weekend\" or \"Baking\", whichever fits. Recipes I want to try later go under \"Want to try\" as a bullet with append_to_note. When I ask what to cook, search the box with search_notes."
+  },
+  "asks": [
+    "Save this recipe: …",
+    "What can I make with chickpeas and spinach?",
+    "Halve the lemon chicken recipe for two."
+  ],
+  "demo": [
+    {
+      "tool": "create_sub_note",
+      "args": {
+        "under_heading": "Weeknight",
+        "id": "3f6c2a1e-8b4d-4c2a-9e1f-5a7b8c9d0e1f",
+        "body": "Lemon chicken with rice\n\nServes 4, 35 minutes.\n\n- [ ] 8 chicken thighs\n- [ ] 2 lemons\n- [ ] 300 g rice\n\n1. Brown the chicken.\n2. Add the rice, lemon and water. Simmer 20 minutes."
+      }
+    },
+    {
+      "tool": "create_sub_note",
+      "args": {
+        "under_heading": "Weeknight",
+        "id": "9a1b2c3d-4e5f-4a6b-8c7d-0e1f2a3b4c5d",
+        "body": "Chickpea and spinach curry\n\nServes 4, 25 minutes."
+      }
+    },
+    {
+      "tool": "create_sub_note",
+      "args": {
+        "under_heading": "Baking",
+        "id": "c0ffee00-1234-4abc-8def-001122334455",
+        "body": "Cardamom buns\n\nMakes 16, 3 hours."
+      }
+    },
+    {
+      "tool": "append_to_note",
+      "args": {
+        "under_heading": "Want to try",
+        "text": "- Ramiro-style garlic prawns\n- Miso butter pasta"
+      }
+    }
+  ],
+  "example": "Recipe box\n\nYour recipes, cleaned up and filed: one sub-note each, with the ingredients as a checklist you can tick off while you cook.\n\n## Weeknight\n[Lemon chicken with rice](pane-note:3f6c2a1e-8b4d-4c2a-9e1f-5a7b8c9d0e1f)\n[Chickpea and spinach curry](pane-note:9a1b2c3d-4e5f-4a6b-8c7d-0e1f2a3b4c5d)\n\n## Weekend\n\n## Baking\n[Cardamom buns](pane-note:c0ffee00-1234-4abc-8def-001122334455)\n\n## Want to try\n- Ramiro-style garlic prawns\n- Miso butter pasta\n",
+  "related": [
+    "meal-plan",
+    "gift-ideas",
+    "budget-log"
+  ],
+  "updated": "2026-10-01"
+}

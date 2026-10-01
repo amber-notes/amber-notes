@@ -17,6 +17,14 @@ export const APP_STORE_LIVE = false;
 export const APP_STORE_ID = "6817253103";
 export const APP_STORE_URL = `https://apps.apple.com/app/id${APP_STORE_ID}`;
 
+/// The app release that opens template and shared-note links (ambernotes.app/open/template/… and
+/// /open/copy/…). Until it's in the App Store, the site doesn't offer "Use this template" or "Use this
+/// note": an older app opens on those links and does nothing. Flip `live` with that release.
+export const APP_TEMPLATES = { version: "1.1", live: false } as const;
+
+/// Where Amber Notes runs, in a table cell: true today, and right again the day the iPhone app ships.
+export const DEVICES = APP_STORE_LIVE ? "iPhone and Mac" : "Mac now; iPhone coming soon";
+
 type Page = {
   /// The <title>, as it shows in search results.
   title: string;
@@ -30,12 +38,18 @@ type Page = {
   index?: boolean;
   /// Articles say so to Open Graph, with when they were published and changed.
   article?: { published: string; modified: string; author: string };
+  /// The share picture (1200 × 630). Pages without their own get the site's card.
+  image?: { url: string; alt: string };
 };
+
+/// The site's own share card (app/opengraph-image.tsx), for pages without one of their own.
+export const DEFAULT_SHARE_IMAGE = { url: "/opengraph-image", alt: "Amber Notes: the notes app your AI can actually use. A note open on an iPhone." };
 
 /// Title, description, canonical, robots, Open Graph and Twitter for one page. Next.js replaces
 /// (doesn't merge) openGraph and twitter between layouts and pages, so each page gets all of it.
-export function pageMetadata({ title, description, path, shareTitle, index = true, article }: Page): Metadata {
-  const og = { title: shareTitle ?? title, description, url: path, siteName: SITE_NAME, locale: "en_US" };
+export function pageMetadata({ title, description, path, shareTitle, index = true, article, image = DEFAULT_SHARE_IMAGE }: Page): Metadata {
+  const images = [{ ...image, width: 1200, height: 630 }];
+  const og = { title: shareTitle ?? title, description, url: path, siteName: SITE_NAME, locale: "en_US", images };
   return {
     title,
     description,
@@ -44,6 +58,6 @@ export function pageMetadata({ title, description, path, shareTitle, index = tru
     openGraph: article
       ? { ...og, type: "article", publishedTime: article.published, modifiedTime: article.modified, authors: [article.author] }
       : { ...og, type: "website" },
-    twitter: { card: "summary_large_image", title: shareTitle ?? title, description, creator: X_HANDLE },
+    twitter: { card: "summary_large_image", title: shareTitle ?? title, description, creator: X_HANDLE, images },
   };
 }

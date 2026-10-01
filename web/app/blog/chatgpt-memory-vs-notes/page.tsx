@@ -40,8 +40,8 @@ export default function Page() {
       </ul>
       <p>
         Both are under Settings, Personalization, and you can turn either off. If you turn chat history off, OpenAI says what was learned
-        from past chats is deleted within 30 days; the chats themselves stay until you delete them. Free accounts get a lighter version
-        than Plus and Pro. OpenAI changes how memory works fairly often, so check <a href="https://help.openai.com/en/articles/8590148-memory-in-chatgpt" rel="noopener">Memory
+        from past chats is deleted within 30 days; the chats themselves stay until you delete them. What memory does can differ by plan,
+        and OpenAI changes it fairly often, so check <a href="https://help.openai.com/en/articles/8590148-memory-in-chatgpt" rel="noopener">Memory
         in ChatGPT</a> for the current details.
       </p>
 

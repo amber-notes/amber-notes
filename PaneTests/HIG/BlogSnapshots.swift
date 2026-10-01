@@ -2,6 +2,7 @@
 import AppKit
 import Supabase
 import SwiftUI
+import SwiftData
 import Testing
 @testable import Pane
 
@@ -42,9 +43,70 @@ import Testing
     /// password can't be recovered. For the post about a forgotten Apple Notes password.
     @Test func notesPasswordSheet() async throws {
         guard let dir = AppSnapshotTests.dir else { return }
-        let size = CGSize(width: 520, height: 520)
+        let size = CGSize(width: 440, height: 480)
         let view = NotesPasswordSetupSheet(onDone: {}).frame(width: size.width, height: size.height)
         try await VersionHistorySnapshots.shoot(view, to: dir.appending(path: "mac-notes-password-light.png"), size: size, dark: false)
+    }
+
+    /// Notes drawn at about a blog card's width (352 pt, so 704 px like the other card pictures), for
+    /// the covers of the newer posts. The cover is cropped from these at a clean content boundary.
+    @Test func notesForCards() async throws {
+        guard let dir = AppSnapshotTests.dir else { return }
+        let c = try AppSnapshotTests.container()
+        let ctx = c.mainContext
+        let notes = try ctx.fetch(FetchDescriptor<Note>())
+        func note(_ title: String) throws -> Note { try #require(notes.first { $0.title == title }) }
+        func from(_ heading: String, in text: String, until next: String? = nil) throws -> String {
+            let start = try #require(text.range(of: heading)).lowerBound
+            var rest = String(text[start...])
+            if let next, let end = rest.range(of: next) { rest = String(rest[..<end.lowerBound]) }
+            return rest.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        let lisbon = try note("Lisbon").body
+        let size = CGSize(width: 352, height: 440)
+        let controller = EditorController()
+        func shoot(_ n: Note, _ name: String, before: () -> Void = {}) async throws {
+            let view = NavigationStack { NoteDetailView(note: n, controller: controller, onNewNote: {}) }.modelContainer(c)
+            let w = AIEditSnapshots.window(view, size: size)
+            defer { w.orderOut(nil); w.close() }
+            try? await Task.sleep(for: .seconds(1.0))
+            before()
+            try? await Task.sleep(for: .seconds(1.6))
+            try AIEditSnapshots.snap(w, to: dir.appending(path: "\(name).png"))
+        }
+        try await shoot(try note("Welcome to Amber Notes"), "card-welcome")
+        try await shoot(ctx.createNote(in: .all, body: try from("## Food", in: lisbon)), "card-lisbon-food")
+        try await shoot(ctx.createNote(in: .all, body: try from("## Places", in: lisbon, until: "## Food")), "card-lisbon-places")
+    }
+
+    /// The Lisbon plan just after ChatGPT added to it: the tinted lines in the note, for the card of
+    /// the post on ChatGPT memory and notes.
+    @Test func chatGPTEditForCard() async throws {
+        guard let dir = AppSnapshotTests.dir else { return }
+        let c = try AppSnapshotTests.container()
+        try await AppSnapshotTests.withLastNote(c, "Lisbon") {
+            let w = AIEditSnapshots.window(AIEditSnapshots.root(c), size: CGSize(width: 1000, height: 600))
+            defer { w.orderOut(nil); w.close() }
+            try? await Task.sleep(for: .seconds(1.2))
+            Capture.aiEdit(c.mainContext, title: "Lisbon", scene: "lisbon", by: "ChatGPT")
+            try? await Task.sleep(for: .seconds(1.6))
+            try AIEditSnapshots.snap(w, to: dir.appending(path: "card-lisbon-chatgpt.png"))
+        }
+    }
+
+    /// The consent sheet for an app on this computer, as Gemini CLI, Codex or VS Code see it.
+    @Test func consentForCommandLine() async throws {
+        guard let dir = AppSnapshotTests.dir else { return }
+        let client = SupabaseClient(supabaseURL: URL(string: "http://127.0.0.1:9")!, supabaseKey: "test")
+        let r = ConnectRequest(id: UUID(), client_name: "", redirect_host: "an app on this computer", loopback: true, wants_write: true)
+        let view = ConsentSheet(client: client, requestID: r.id, initial: .asking(r), finish: { _ in }).frame(width: 420)
+        let host = NSHostingView(rootView: view.background(Color(nsColor: .windowBackgroundColor)))
+        host.appearance = NSAppearance(named: .aqua)
+        host.frame = CGRect(origin: .zero, size: host.fittingSize)
+        host.layoutSubtreeIfNeeded()
+        let rep = try #require(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+        host.cacheDisplay(in: host.bounds, to: rep)
+        try #require(rep.representation(using: .png, properties: [:])).write(to: dir.appending(path: "card-consent-local.png"))
     }
 
     /// Standup notes just after Claude Code added today's standup: the lines it wrote tinted, and

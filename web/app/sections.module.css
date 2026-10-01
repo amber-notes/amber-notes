@@ -46,7 +46,7 @@
 .also a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--amber); text-decoration-thickness: 2px; text-underline-offset: 3px; border-radius: 3px; }
 .also a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 
-/* ── Bring all your Apple Notes in one click: the import, run once ── */
+/* ── Bring all your Apple Notes over in one go: the import, run once ── */
 .run { display: grid; gap: 18px; padding: 26px 28px; border-radius: 28px; background: var(--card); box-shadow: 0 0 0 1px var(--line), 0 30px 60px -40px rgba(60, 30, 5, 0.5); }
 .runTitle { margin: 0; display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 16px; }
 /* Where the notes come from: Apple Notes' own icon (the .icns has its own margin, so it sits a touch outside the text). */
@@ -81,15 +81,45 @@
 .alsoTicks li { display: inline-flex; align-items: center; gap: 8px; }
 .alsoTicks svg { color: var(--amber); }
 
-/* ── Private by design: four facts in a row, then the link ── */
-.privacy { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 28px; }
-@media (max-width: 1000px) { .privacy { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 560px) { .privacy { grid-template-columns: 1fr; gap: 22px; } }
-.privacy li { display: grid; gap: 8px; align-content: start; }
-.privacy b { display: flex; align-items: flex-start; gap: 8px; font-size: 17px; line-height: 1.3; }
-.privacy b svg { flex: none; margin-top: 3px; color: var(--amber); }
-.privacy span { color: var(--muted); font-size: 16px; line-height: 1.5; }
-.privacy + .also { margin-top: -4px; }
+/* ── Private by design: one dark card, one claim, a brass lock over a wall of ciphertext ── */
+.vault {
+  position: relative; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: center; gap: 40px;
+  min-height: 460px; padding: 64px; border-radius: 32px; overflow: hidden; isolation: isolate; background: #2a1d10; color: #fbeedd;
+  box-shadow: 0 0 0 1px rgba(255, 220, 170, 0.08), 0 40px 80px -48px rgba(40, 18, 2, 0.9);
+}
+@media (max-width: 900px) { .vault { grid-template-columns: 1fr; min-height: 0; padding: 40px 28px 44px; gap: 12px; } }
+@media (max-width: 480px) { .vault { padding: 32px 20px 36px; border-radius: 26px; } }
+/* The ciphertext: most of the card, strongest behind the lock and fading out behind the words. */
+.cipherWall {
+  position: absolute; inset: -12px 0; z-index: -1; display: grid; align-content: center; gap: 4px; overflow: hidden;
+  font: 500 15px/1.65 ui-monospace, "SF Mono", Menlo, monospace; color: rgba(245, 165, 58, 0.2); white-space: nowrap; user-select: none;
+  mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0.1) 40%, #000 72%, rgba(0, 0, 0, 0.6));
+  -webkit-mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0.1) 40%, #000 72%, rgba(0, 0, 0, 0.6));
+}
+.cipherWall p { margin: 0; }
+.cipherWall p:nth-child(even) { transform: translateX(-4ch); }
+@media (max-width: 900px) {
+  .cipherWall { font-size: 13px; mask-image: linear-gradient(180deg, #000 4%, rgba(0, 0, 0, 0.08) 30%); -webkit-mask-image: linear-gradient(180deg, #000 4%, rgba(0, 0, 0, 0.08) 30%); }
+}
+.vaultText { display: grid; gap: 18px; justify-items: start; }
+.eyebrow { margin: 0; color: #f5a53a; font-weight: 700; font-size: 15px; }
+.vaultTitle { margin: 0; font-size: clamp(42px, 6vw, 76px); line-height: 0.98; font-weight: 800; letter-spacing: -0.045em; text-wrap: balance; }
+.vaultLede { margin: 0; max-width: 28em; color: #d9bf9f; font-size: clamp(17px, 1.9vw, 20px); line-height: 1.45; text-wrap: pretty; }
+.vaultLink { margin-top: 4px; color: #fbeedd; font-size: 15px; font-weight: 600; line-height: 32px; text-decoration: underline; text-decoration-color: #f0901a; text-decoration-thickness: 2px; text-underline-offset: 3px; border-radius: 4px; }
+.vaultLink:focus-visible { outline: 2px solid #f5a53a; outline-offset: 2px; }
+.vaultLink svg { margin-left: 6px; vertical-align: -2px; }
+.nowrap { white-space: nowrap; }
+@media (prefers-reduced-motion: no-preference) { .vaultLink svg { transition: transform 0.18s ease-out; } }
+@media (hover: hover) { .vaultLink:hover svg { transform: translateX(2px); } }
+
+/* The padlock: a 160 x 200 drawing at --s, with a soft amber glow behind it. Phones put a small one above the words. */
+.lock { --s: 1.15; position: relative; justify-self: center; width: calc(160px * var(--s)); height: calc(200px * var(--s)); }
+@media (max-width: 900px) { .lock { --s: 0.4; order: -1; justify-self: start; } }
+.lock::before { content: ""; position: absolute; inset: -45%; border-radius: 50%; background: radial-gradient(closest-side, rgba(245, 165, 58, 0.22), rgba(42, 29, 16, 0.6) 60%, transparent); }
+.lock svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.35)) drop-shadow(0 22px 30px rgba(10, 4, 0, 0.55)); }
+.shackle { transform: translateY(-16px); }
+.lock[data-shut] .shackle { transform: none; }
+@media (prefers-reduced-motion: no-preference) { .shackle { transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); } }
 
 /* ── The ending: a full-width band in the site's near-black brown ── */
 .band { width: 100vw; margin-left: calc(50% - 50vw); background: #2a1d10; color: #fbeedd; padding: 110px 20px 120px; box-sizing: border-box; margin-bottom: -56px; } /* the footer then sits 64 px below the band */

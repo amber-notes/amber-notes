@@ -5,6 +5,121 @@ assistants. Newest first. Research behind it: [seo-aeo-research-2026-09-30.md](s
 
 `docs/` had no README naming a folder for evidence, so this and the research live in `docs/Evidence/`.
 
+## 1 October 2026: the Claude Cowork cover fills its card
+
+- Emil flagged that the prompt sat small in the middle third of its panel. The other covers fill theirs.
+- It's now drawn at 4x, cropped to the title, message and buttons, and downsampled so it stays sharp. It spans about 65% of the panel width, with the same top padding as Groceries.
+- At card size the message text matches the Groceries body line. The title is a little smaller than "Groceries", because a macOS alert's title is only slightly bigger than its message.
+- The buttons end above the card's usual fade, so the fade shows under them like on the other covers. (A first pass at 85% was too big, and needed a special fade.)
+- Compared at the same size beside the Groceries and Gemini cards (`compare-1440.png`).
+- The blue Allow, the rose ground and the share card carry over.
+
+## 1 October 2026: the Claude Cowork cover, redrawn
+
+- The first Cowork cover was a status infographic with system-coloured icons, and it echoed the stepped list on "Can Claude read your Apple Notes?". It's replaced with a real moment: the macOS prompt that asks you to let Claude control Notes. The extension needs that permission the first time.
+- How it was drawn:
+  - AppKit drew it offscreen with NSAlert, so it never appears on screen.
+  - The wording is macOS's own, from TCC.framework's Localizable.loctable (`REQUEST_ACCESS_SERVICE_kTCCServiceAppleEvents`, "Don't Allow", "Allow").
+  - The icon is Claude's own app icon from /Applications/Claude.app.
+- Nothing about Claude's own UI is invented. I couldn't verify Claude Desktop's extension settings screen without driving the app, so I didn't draw it.
+- The cover crops the prompt's title, message and buttons, in the same panel shape, padding and fade as the approved covers. It stays on the rose ground, which differs from its neighbours (night, linen and dusk).
+- The full prompt, with the icon, is the post's first picture. The share card uses the new cover.
+- Allow is the default button (keyEquivalent Return), filled with the system accent colour, as it is in the real prompt. AppKit only draws that fill in the front window, and the offscreen window never is one, even when it's reported as key. So the render fills that one button itself: a capsule at the button's own frame, in `NSColor.controlAccentColor` (system blue, #007AFF in the light appearance), with the button's own font in white.
+
+## 1 October 2026: "How to use Claude Cowork with Apple Notes"
+
+### Why
+
+- People ask this in r/AppleNotesGang ("AppleNotes & Claude Cowork?", 34 comments) and r/ClaudeAI ("Is Claude allergic to Apple ecosystem?"). Answers there split between "use the Mac connector" and "impossible". Emil approved the post on 1 October.
+
+### Changed (branch `site/claude-cowork-apple-notes`)
+
+- New post `/blog/claude-cowork-apple-notes`, in Apple Notes, with an exact-match title. Every claim comes from Anthropic's own pages, read on 1 October:
+  - Cowork on web, desktop and mobile (support article 15520349): where it runs, the cloud change on 6 October, and that local connectors need Claude Desktop open.
+  - Desktop vs web connectors (11725091): desktop extensions aren't on web or mobile.
+  - Custom connectors (11175166): available in Cowork, Free gets one, they run from Anthropic's cloud.
+  - The Read and Write Apple Notes listing (claude.com/connectors): four tools, macOS automation.
+  - The checklist limitation (anthropics/claude-ai-mcp#29).
+- Not tested hands-on in Cowork, and the post says so.
+- Structure follows the audit's template:
+  - a short answer first, then where Cowork runs
+  - option 1, the extension, with steps and limits
+  - when the extension is enough
+  - option 2, a connector (Amber Notes): steps, Undo and version history, what moving means
+  - troubleshooting, then the FAQ
+- It links the Apple Notes import guide and /templates. The move guide links back.
+- The cover is a diagram rather than an Amber capture: Mac ✓ / Cowork on web or phone, only through the open Mac / Mac asleep ✕. It's drawn at card width, padded to the same shape as the approved covers, on a new ground, rose. It has its own share card at /og/blog/claude-cowork-apple-notes.
+- The Reddit reply drafts for both threads are in the private strategy folder (`strategy/reddit-drafts.md`, never pushed), for Emil to post.
+
+## 1 October 2026: accuracy and sharing fixes from the blog audit
+
+### Changed (branch `site/accuracy-sharing`)
+
+- **Share images.** Every post now has its own 1200 × 630 card at /og/blog/<slug>: the title beside the post's cover, in the site's card look. It's rendered by `renderCard` at build time, one per published post. `pageMetadata` now always sets og:image and twitter:image. Posts use their own card. Help and download keep theirs. Every other page uses the site's card. Before this, no blog page had a share image, because the page metadata replaced the root Open Graph object.
+  - The renderer can't read WebP, so the covers have small JPEG copies in `web/lib/og/covers`. A test checks that each published post has one.
+- **Claude and Apple Notes.** Anthropic's Read and Write Apple Notes extension reads and writes notes on a Mac. The rows and paragraphs that called this read-only or "community tools" are corrected in notes-apps-with-mcp, amber-notes-vs-apple-notes, best-notes-app-for-ai-agents, apple-notes-vs-notion and apple-notes-vs-obsidian. claude-and-apple-notes now says a Mac-hosted server exposed through a tunnel can reach Claude on iPhone, with the caveats.
+- **ChatGPT, web only.** OpenAI documents custom apps on the web, so every claim that they work in the ChatGPT phone app now says to use chatgpt.com. This covers the to-do FAQ, connect-chatgpt's "What you need", notes-apps-that-work-with-chatgpt, help and the draft. The plan lines now say "check what your plan allows; OpenAI's pages differ" on editing.
+- **iOS 27.** Siri AI can add to and reformat notes (9to5Mac, 28 September). The post's title is now "What's new in Apple Notes in iOS 27, and how to use it". Its angle and the Siri section were rewritten, and its AI table's Claude row is corrected.
+- **Availability.** The hard-coded "iPhone coming soon" lines in amber-notes-vs-apple-notes, apple-notes-vs-obsidian, apple-notes-vs-notion, best-notes-app-for-ai-agents, notes-apps-with-mcp, the to-do post and help now follow `APP_STORE_LIVE`. There's a new `DEVICES` helper.
+- **Codex.** The guide leads with `codex mcp add amber_notes --url https://mcp.ambernotes.app` and its sign-in. The token setup comes second, with a line on what `pane_` means.
+- **Nits:**
+  - Apple Notes API: the Shortcuts names are corrected against the Notes app's own actions on macOS 26.5. "Append Checklist Item" does exist; "Pin Notes" is really "Pin or Unpin Notes".
+  - ChatGPT memory: "Free gets a lighter version" became "what memory does can differ by plan".
+  - Encrypted notes: "a secret only the AI holds" became the exact mechanism. The key is derived from the connection's token, we keep only the token's hash, and the token arrives with each request.
+  - The move cover's "612" is not a mismatch. It's the Notes folder within the 1,284-note library on the same sheet, so the cover is unchanged.
+- **Dates.** The updated date on every post changed here is now 1 October.
+
+## 1 October 2026: blog pagination and category pages
+
+### Changed (branch `site/blog-pagination`)
+
+- **/blog** shows the 12 newest posts. Later pages are at /blog/page/2 and on, all built at build time; /blog/page/1 redirects (308) to /blog.
+- **Categories are pages now.** /blog/category/apple-notes and the others replace the old #anchor filters. The filters only hid cards on the page in front of you, which pagination would have broken, and they never covered Apple Notes. Each category page has its own title, description and canonical, and is paged the same way (/blog/category/<name>/page/2 when it grows past 12). This is the indexable Apple Notes hub the plan proposed.
+- **At the bottom of each page:** Previous, the page numbers and Next, each with a hit area of at least 44 by 44 px. The current page is marked with aria-current.
+- **Head tags:** `<link rel="prev">` and `<link rel="next">` (React puts them in the head). Each page is its own canonical, and page 1 stays /blog. Titles: "Blog · Amber Notes", "Blog, page 2 · Amber Notes", "Apple Notes · Blog · Amber Notes".
+- **Sitemap:** every page of the index and of each category, with the newest date among the posts that page shows. Google treats paginated pages as ordinary, self-canonical pages, and listing them costs nothing. Every post is listed too, so no post depends on a list page to be found.
+- **Posts:** breadcrumbs, the category link under the title and the grouped "All posts" headings now go to the category pages instead of /blog#category.
+- **Tests (`lib/seo.test.ts`):**
+  - newest first, and every post on exactly one page
+  - full pages except the last, and no empty page
+  - page 1 at the list's own address, and the /page/1 redirect
+  - static params for every page and category
+  - every page in the sitemap, with no /page/1 and no duplicates
+  - no post may take the slugs "page" or "category"
+
+## 1 October 2026: covers redone to the approved standard
+
+Emil flagged the newer covers: captures pinned to the top with empty ground below, text too small to read, content cut mid-line, and a Codex row on the Gemini card.
+
+### What the approved covers (PRs #32 and #34) do
+
+- A source about 700 to 860 px wide (2x), so text shows near full size on a card about 330 px wide.
+- One meaningful moment, with about 24 px of the panel's own colour around it at card size.
+- A picture about two thirds as tall as it is wide, so it fills the card's picture and fades out at the bottom.
+
+### Changed (branch `site/covers-redo`)
+
+- New offscreen renders in `PaneTests/HIG/BlogSnapshots.swift`:
+  - `notesForCards`: the Welcome, Food and Places notes at 352 pt (704 px), so lines wrap at card width.
+  - `chatGPTEditForCard`: Lisbon just after ChatGPT added a line.
+  - `consentForCommandLine`: the consent sheet for an app on this computer, as Gemini CLI sees it.
+  - `notesPasswordSheet` is now drawn at 440 pt.
+- Every cover is cut at a clean content boundary, ends above the fade, and sits in an even 48 px (2x) margin of its own panel colour, two thirds as tall as wide:
+
+  | Post | Cover |
+  |---|---|
+  | Recover deleted Apple Notes | dark version history: "2 lines differ", Groceries |
+  | Gemini | "Allow an app on this computer to use your notes?" (was a Codex row) |
+  | Forgot password | the password sheet's title and fields |
+  | Encrypted notes | ChatGPT consent, down to "except locked notes" |
+  | ChatGPT memory | Lisbon's plan with ChatGPT's tinted line |
+  | iOS 27 | the Food table |
+  | Markdown export | the Welcome note's title and its markdown line (no dangling heading) |
+  | Obsidian MCP | the Places list and the Hotel booking sub-note |
+
+- The two older covers that sat short at the top of the card, Apple Notes API (The basics) and the Claude Code work log (Standup), are padded to the same shape in their own background.
+- Checked: /blog at 1440 px and at a true 390 px viewport (Chrome DevTools device metrics), every card, with lazy images loaded.
+
 ## 1 October 2026: blog quality pass
 
 Audited the built pages (`next build`, then every `/blog/*.html`, `/help`, `/llms.txt` and `/llms-full.txt`).

@@ -80,6 +80,22 @@ targets:
             UTTypeDescription: Pane item
             UTTypeConformsTo: [public.data]
             UTTypeTagSpecification: {}
+        # Evernote exports (.enex), which Evernote doesn't declare. Opening one (Files, Finder,
+        # the share sheet) starts the Evernote import.
+        UTImportedTypeDeclarations:
+          - UTTypeIdentifier: com.evernote.enex
+            UTTypeDescription: Evernote export
+            UTTypeConformsTo: [public.xml, public.data]
+            UTTypeTagSpecification:
+              public.filename-extension: [enex]
+              public.mime-type: [application/enex+xml]
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Evernote export
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Alternate
+            LSItemContentTypes: [com.evernote.enex]
+        # Opened in place: the import copies the file before reading it.
+        LSSupportsOpeningDocumentsInPlace: true
     settings:
       base: &appSettings
         PRODUCT_BUNDLE_IDENTIFIER: dev.emilwagman.pane
@@ -175,6 +191,16 @@ targets:
       - path: PaneTests
         excludes: [Fixtures]
       - path: PaneTests/Fixtures
+        excludes: [Markdown, Keep]
+        buildPhase: resources
+      # Export trees from Obsidian, Notion, Bear, Joplin, Logseq, Simplenote and Standard Notes,
+      # copied whole so their folders (and hidden ones) stay as the apps write them.
+      - path: PaneTests/Fixtures/Markdown
+        type: folder
+        buildPhase: resources
+      # A Google Takeout download with its Keep folder, as Google writes it.
+      - path: PaneTests/Fixtures/Keep
+        type: folder
         buildPhase: resources
       # Server files the tests check against, copied into the bundle when it's built (the test
       # host can't read the checkout under ~/Documents without a privacy prompt).

@@ -7,7 +7,7 @@ export const PRIVACY_PATH = "/privacy-security";
 
 export type Fact = { title: string; text: string };
 
-/// The short list: the home page shows these, and the page opens with them.
+/// The short list the Privacy & Security page opens with.
 export const FACTS: Fact[] = [
   { title: "End-to-end encrypted", text: "Your notes, titles, folder names, files and earlier versions are encrypted on your iPhone or Mac with a key that only your devices, and AI connections you approve, can unlock. We can't read them." },
   { title: "AI only with your approval", text: "An AI app can read your notes only after you approve it on your iPhone or Mac. While it works, our server opens the notes it asks for in memory. Disconnect it at any time." },
@@ -55,7 +55,7 @@ export const READABLE: string[] = [
 /// "When you connect an AI" on the Privacy & Security page.
 export const AI_ACCESS: Item[] = [
   { label: "You approve it on your device.", text: "Your iPhone or Mac asks you, and you type the number the page you started on shows there. With no device nearby, you can approve in the browser with your recovery key." },
-  { label: "Our server opens your notes for it.", text: "Approving gives that AI connection a copy of your notes' key, locked with a secret only the AI holds. During each of its requests our server unlocks your whole notes' key in memory, reads the notes the AI asks for, and forgets the key when the request ends." },
+  { label: "Our server opens your notes for it.", text: "Approving gives that AI connection a copy of your notes' key, locked with a key derived from that connection's access token. We store only a hash of the token; the token itself arrives with each of the AI's requests. During each request our server unlocks your whole notes' key in memory, reads the notes the AI asks for, and forgets the key when the request ends." },
   { label: "Our hosts carry that text.", text: "For AI requests, the text of the notes the AI reads or writes, and its access tokens, pass through Vercel and Supabase in readable form on their way. Neither stores your notes." },
   { label: "Locked notes stay locked.", text: "An AI sees only their titles, never their text." },
 ];
@@ -96,3 +96,11 @@ export const COUNTS: string[] = [
   "which first-run setup steps you've done",
   "a random id for each installation and whether it's an iPhone or a Mac, to count devices",
 ];
+
+/// The home page's privacy card: one claim, and in the same breath the AI exception from CAVEAT.
+export const HOME_PRIVACY = {
+  eyebrow: "Private by design",
+  title: "We can't read your notes.",
+  text: "They're encrypted on your iPhone or Mac. When an AI you approve asks for notes, our server reads them in memory to answer it.",
+  link: "Read what we store, and every log we keep",
+};

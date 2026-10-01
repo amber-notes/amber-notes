@@ -1,0 +1,16 @@
+{
+ "color": "DEFAULT",
+ "isTrashed": false,
+ "isPinned": false,
+ "isArchived": false,
+ "title": "Missing photo",
+ "userEditedTimestampUsec": 1704447300000000,
+ "createdTimestampUsec": 1704447300000000,
+ "textContent": "It was here",
+ "attachments": [
+  {
+   "filePath": "gone.jpg",
+   "mimetype": "image/jpeg"
+  }
+ ]
+}

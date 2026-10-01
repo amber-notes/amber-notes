@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { renderNote, withoutTitle } from "./render";
 import type { SharedFile } from "./render";
-import { avatarURL, type SharedNote } from "./shared";
+import { avatarURL, copyLink, type SharedNote } from "./shared";
+import { APP_TEMPLATES } from "./site";
 import { sharerLabel, type Sharer } from "./sharer";
 
 function SharedBy({ by }: { by: Sharer | null | undefined }) {
@@ -41,7 +42,11 @@ export function NotePage({ slug, note, files }: { slug: string; note: SharedNote
           <img src="/mark-256.png" alt="" width={22} height={22} />
           <span>Amber Notes</span>
         </Link>
-        <SharedBy by={note.shared_by} />
+        <div className="bar-end">
+          <SharedBy by={note.shared_by} />
+          {/* Copies the whole note into the visitor's own Amber Notes, once the app handles the link. */}
+          {APP_TEMPLATES.live && <a className="use-note" href={copyLink(slug)}>Use this note</a>}
+        </div>
       </header>
       <main className="page">
         {note.is_sub && (

@@ -5,7 +5,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AIGlyph } from "@/lib/ai-glyphs";
-import { FACTS, PRIVACY_PATH } from "@/lib/privacy";
+import { HOME_PRIVACY, PRIVACY_PATH } from "@/lib/privacy";
 import DownloadLink from "./DownloadLink";
 import a from "./sections.module.css";
 
@@ -88,12 +88,12 @@ export function AiSection() {
           );
         })}
       </div>
-      <p className={a.also}>Also Codex, <a href="https://incredible.one" rel="noopener">Incredible</a>, and any app that supports MCP. <a href="/blog/connect-chatgpt-to-your-notes">How to connect</a></p>
+      <p className={a.also}>Also Codex, <a href="https://incredible.one" rel="noopener">Incredible</a>, and any app that supports MCP. <a href="/blog/connect-chatgpt-to-your-notes">How to connect</a> · <a href="/templates">Start from a template</a></p>
     </section>
   );
 }
 
-/* ───────────── Bring all your Apple Notes in one click ───────────── */
+/* ───────────── Bring all your Apple Notes over in one go ───────────── */
 
 const FOLDERS = [{ name: "Notes", n: 612 }, { name: "Recipes", n: 188 }, { name: "Work", n: 241 }, { name: "Travel", n: 97 }, { name: "Home", n: 146 }];
 const TOTAL = FOLDERS.reduce((s, f) => s + f.n, 0); // 1,284
@@ -122,15 +122,15 @@ export function ImportSection() {
   return (
     <section ref={ref} className={a.section} aria-labelledby="import">
       <div className={a.head}>
-        <h2 id="import" className={a.h2}>Bring all your Apple Notes in one click</h2>
+        <h2 id="import" className={a.h2}>Bring all your Apple Notes over in one go</h2>
         <p className={a.lede}>If you know Apple Notes, you already know Amber Notes.</p>
         <p className={a.lede}>
-          Pick everything, or just the notes you want. Folders, checklists, tables and pins come along, and your Apple Notes stay untouched.
+          Pick everything, or just the notes you want. Folders, checklists and tables come along, pins too if you allow Full Disk Access, and your Apple Notes stay untouched.
           Import on your Mac. Everything's on your iPhone a second later.
         </p>
         <p className={a.lede}>Your notes live in the cloud and sync between iPhone and Mac.</p>
       </div>
-      <div className={a.run} aria-label={`Imported ${TOTAL.toLocaleString("en")} notes from Apple Notes, with ${PINNED} pinned. Pins kept, Apple Notes unchanged.`}>
+      <div className={a.run} aria-label={`Imported ${TOTAL.toLocaleString("en")} notes from Apple Notes, with ${PINNED} pinned. Folders kept, Apple Notes unchanged.`}>
         <p className={a.runTitle} aria-hidden="true">
           <img src="/apple-notes.webp" alt="" width={30} height={30} />
           {full ? "Imported from Apple Notes" : "Importing from Apple Notes…"}
@@ -151,7 +151,7 @@ export function ImportSection() {
         </ul>
         <div className={a.runEnd} data-on={full || undefined} aria-hidden="true">
           <p className={a.big}><span className={a.num}>{TOTAL.toLocaleString("en")}</span> notes</p>
-          <ul className={a.ticks}><li><Tick /> Pins kept</li><li><Tick /> Apple Notes unchanged</li></ul>
+          <ul className={a.ticks}><li><Tick /> Folders kept</li><li><Tick /> Apple Notes unchanged</li></ul>
         </div>
       </div>
     </section>
@@ -175,22 +175,91 @@ export function AlsoLine() {
   );
 }
 
-/* ───────────── Privacy & Security, in four facts ───────────── */
+/* ───────────── Private by design: one claim, a brass lock ───────────── */
+
+/// Stand-in ciphertext: as long as the text, with no word breaks left, and the same on the server and in the browser.
+function cipher(text: string, seed: number) {
+  const abc = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  let h = (seed * 2654435761) >>> 0;
+  return [...text].map((ch, i) => {
+    h = Math.imul(h ^ (ch.charCodeAt(0) + i), 2246822507) >>> 0;
+    h = (h ^ (h >>> 13)) >>> 0;
+    return abc[h % 64];
+  }).join("");
+}
+const WALL = Array.from({ length: 22 }, (_, i) => cipher("Lisbon, 4 days in May. Day 3: Sintra. Dinner at Trindade. Pack light. Groceries: oat milk, lemons, bread. Standup: ship the import, fix the share link, plan Friday.", i + 3));
 
 export function PrivacySection() {
+  const v = HOME_PRIVACY;
+  const [ref, seen] = useFirstView<HTMLElement>();
+  // Complete at rest. With motion allowed, the shackle waits open (off screen) and settles closed on first view.
+  const [shut, setShut] = useState(true);
+  useEffect(() => { if (!reduce()) setShut(false); }, []);
+  useEffect(() => {
+    if (!seen) return;
+    const t = window.setTimeout(() => setShut(true), 180);
+    return () => clearTimeout(t);
+  }, [seen]);
   return (
-    <section className={a.section} aria-labelledby="privacy">
-      <div className={a.head}>
-        <h2 id="privacy" className={a.h2}>Private by design</h2>
-        <p className={a.lede}>What that means today, in plain words.</p>
+    <section ref={ref} className={a.vault} aria-labelledby="privacy">
+      <div className={a.cipherWall} aria-hidden="true">{WALL.map((l, i) => <p key={i}>{l}</p>)}</div>
+      <div className={a.vaultText}>
+        <p className={a.eyebrow}>{v.eyebrow}</p>
+        <h2 id="privacy" className={a.vaultTitle}>{v.title}</h2>
+        <p className={a.vaultLede}>{v.text}</p>
+        <a className={a.vaultLink} href={PRIVACY_PATH}>{v.link.replace(/ \S+$/, " ")}<span className={a.nowrap}>{v.link.split(" ").pop()}<Arrow /></span></a>
       </div>
-      <ul className={a.privacy}>
-        {FACTS.map((f) => (
-          <li key={f.title}><b><Tick />{f.title}</b><span>{f.text}</span></li>
-        ))}
-      </ul>
-      <p className={a.also}><a href={PRIVACY_PATH}>Privacy &amp; Security: what we store, and every log we keep</a></p>
+      <div className={a.lock} data-shut={shut || undefined} aria-hidden="true"><Padlock /></div>
     </section>
+  );
+}
+
+const Arrow = () => <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" /></svg>;
+
+/// A brass padlock on a 160 x 200 grid: a 12-unit shackle over a 116 x 96 body with 24-unit corners,
+/// the keyhole a little below centre.
+const SHACKLE = "M52 98V64a28 28 0 0 1 56 0v34";
+const KEYHOLE = "M80 117a10.5 10.5 0 0 1 5.6 19.4l2.2 14.6a3 3 0 0 1-3 3.5h-9.6a3 3 0 0 1-3-3.5l2.2-14.6A10.5 10.5 0 0 1 80 117Z";
+function Padlock() {
+  return (
+    <svg viewBox="0 0 160 200">
+      <defs>
+        <linearGradient id="brassBody" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#ffd28a" /><stop offset="0.18" stopColor="#f5b04a" />
+          <stop offset="0.62" stopColor="#dc8a1e" /><stop offset="1" stopColor="#a65a0c" />
+        </linearGradient>
+        <linearGradient id="brassBevel" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#fff3d6" stopOpacity="0.9" /><stop offset="0.25" stopColor="#fff3d6" stopOpacity="0" />
+          <stop offset="0.8" stopColor="#5a2e04" stopOpacity="0" /><stop offset="1" stopColor="#5a2e04" stopOpacity="0.55" />
+        </linearGradient>
+        <linearGradient id="brassShackle" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="#8a5a1e" /><stop offset="0.3" stopColor="#ffe2ab" />
+          <stop offset="0.55" stopColor="#d9a24e" /><stop offset="1" stopColor="#6e420e" />
+        </linearGradient>
+        <radialGradient id="brassSheen" cx="0.3" cy="0.12" r="0.6">
+          <stop offset="0" stopColor="#fff" stopOpacity="0.45" /><stop offset="1" stopColor="#fff" stopOpacity="0" />
+        </radialGradient>
+        <radialGradient id="brassHole" cx="0.5" cy="0.3" r="0.8">
+          <stop offset="0" stopColor="#3a1f08" /><stop offset="1" stopColor="#140800" />
+        </radialGradient>
+        <clipPath id="brassClip"><rect x="22" y="88" width="116" height="96" rx="24" /></clipPath>
+        <filter id="brassSoft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="3" /></filter>
+      </defs>
+      <g className={a.shackle}>
+        <path d={SHACKLE} fill="none" stroke="#3b2510" strokeWidth="14" strokeLinecap="round" />
+        <path d={SHACKLE} fill="none" stroke="url(#brassShackle)" strokeWidth="11" strokeLinecap="round" />
+        <path d={SHACKLE} fill="none" stroke="#fff6e6" strokeOpacity="0.5" strokeWidth="1.4" strokeLinecap="round" transform="translate(-1.8 -0.8)" />
+      </g>
+      <rect x="22" y="88" width="116" height="96" rx="24" fill="url(#brassBody)" />
+      <g clipPath="url(#brassClip)">
+        {/* a soft shadow inside the lower edge, and a sheen on the upper left */}
+        <rect x="22" y="88" width="116" height="96" rx="24" fill="none" stroke="#6b3604" strokeOpacity="0.5" strokeWidth="8" filter="url(#brassSoft)" transform="translate(0 -4)" />
+        <ellipse cx="62" cy="96" rx="58" ry="26" fill="url(#brassSheen)" />
+      </g>
+      <rect x="22.75" y="88.75" width="114.5" height="94.5" rx="23.25" fill="none" stroke="url(#brassBevel)" strokeWidth="1.5" />
+      <path d={KEYHOLE} fill="#ffe2ae" fillOpacity="0.55" transform="translate(0 1.4)" />
+      <path d={KEYHOLE} fill="url(#brassHole)" />
+    </svg>
   );
 }
 

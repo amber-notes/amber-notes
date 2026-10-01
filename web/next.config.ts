@@ -58,16 +58,29 @@ const config: NextConfig = {
       // The guides became the blog on 30 September 2026.
       { source: "/guides", destination: "/blog", permanent: true },
       { source: "/guides/:slug", destination: "/blog/:slug", permanent: true },
+      // Page 1 of the blog and of each category lives at the list's own address.
+      { source: "/blog/page/1", destination: "/blog", permanent: true },
+      { source: "/blog/category/:category/page/1", destination: "/blog/category/:category", permanent: true },
     ];
+  },
+  async rewrites() {
+    return {
+      // /templates/<slug>.json is the template's data (app/api/templates/[slug]), checked before the
+      // template's page so the page's [slug] never sees the ".json".
+      beforeFiles: [{ source: "/templates/:slug.json", destination: "/api/templates/:slug" }],
+      afterFiles: [],
+      fallback: [],
+    };
   },
   async headers() {
     return [
       {
         // Shared notes (and everything else not listed) are private-by-link: never indexed.
         // The home page, download, privacy policy, terms and support pages may be indexed, and
-        // robots.txt, the sitemap and llms.txt are for crawlers. Blog posts carry their own robots meta
+        // robots.txt, the sitemap and llms.txt are for crawlers. So are the templates' pages; their
+        // .json data isn't. Blog posts carry their own robots meta
         // (drafts say noindex). A new page for search is added here too.
-        source: "/((?!privacy|terms|support|help|download|changelog|blog|connect$|open/connect$|\\.well-known/apple-app-site-association$|robots\\.txt$|sitemap\\.xml$|llms\\.txt$|llms-full\\.txt$).+)",
+        source: "/((?!privacy|terms|support|help|download|changelog|blog|templates(?!/[^/]+\\.json$)|connect$|open/connect$|\\.well-known/apple-app-site-association$|robots\\.txt$|sitemap\\.xml$|llms\\.txt$|llms-full\\.txt$).+)",
         headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }, ...security],
       },
       { source: "/connect", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }, { key: "Cache-Control", value: "no-store" }, ...connectSecurity] },
@@ -85,6 +98,13 @@ const config: NextConfig = {
       { source: "/support", headers: security },
       { source: "/blog", headers: security },
       { source: "/blog/:slug", headers: security },
+      { source: "/templates", headers: security },
+      { source: "/templates/:slug", headers: security },
+      // The template data the app fetches: public and read-only, so any origin may read it.
+      {
+        source: "/templates/:slug.json",
+        headers: [{ key: "Access-Control-Allow-Origin", value: "*" }, { key: "Cache-Control", value: "public, max-age=300, s-maxage=3600" }],
+      },
     ];
   },
 };
