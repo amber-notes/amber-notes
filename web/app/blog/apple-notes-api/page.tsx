@@ -37,14 +37,15 @@ export default function Page() {
           </thead>
           <tbody>
             <tr><th scope="row">AppleScript (and JavaScript for Automation)</th><td>Mac</td><td>List folders and notes, read a note&apos;s title, dates and body, create notes and change their body</td><td>Bodies are HTML; locked notes can&apos;t be read; needs your Automation permission</td></tr>
-            <tr><th scope="row">Shortcuts</th><td>iPhone and Mac</td><td>Actions such as Create Note, Append to Note, Append Checklist Item, Move Notes to Folder, Pin Notes and Delete Notes</td><td>Runs on the device, when you or an automation start it</td></tr>
+            <tr><th scope="row">Shortcuts</th><td>iPhone and Mac</td><td>Actions such as Create Note, Append to Note, Append Checklist Item, Set Checklist Items Checked, Move Notes to Folder, Pin or Unpin Notes and Delete Notes</td><td>Runs on the device, when you or an automation start it</td></tr>
             <tr><th scope="row">Export</th><td>Mac, iPhone</td><td>Export a note, including as markdown on macOS 26 and iOS 26</td><td>One note at a time; a copy, not a live connection</td></tr>
             <tr><th scope="row">The Notes database</th><td>Mac</td><td>Read what the app stores, in an undocumented format</td><td>Protected by Full Disk Access; the format can change with any update; read-only in practice</td></tr>
           </tbody>
         </table>
       </div>
       <p>
-        Apple lists the Shortcuts actions in <a href="https://support.apple.com/en-us/125148" rel="noopener">What&apos;s new in Shortcuts</a>. On
+        The action names above are the ones the Notes app offers Shortcuts on macOS 26.5, read from the app itself; Apple describes
+        Shortcuts&apos; recent additions in <a href="https://support.apple.com/en-us/125148" rel="noopener">What&apos;s new in Shortcuts</a>. On
         devices with Apple Intelligence, the Use Model action can put a model, including ChatGPT, between those actions: for example, ask it
         to summarize some text and append the result to a note.
       </p>

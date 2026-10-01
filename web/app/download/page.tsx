@@ -8,6 +8,7 @@ export const metadata: Metadata = pageMetadata({
   title: "Download Amber Notes for Mac",
   description: "Download Amber Notes, the free notes app for Mac that ChatGPT and Claude can read and edit. Needs macOS 26 or later. Updates install themselves.",
   path: "/download",
+  image: { url: "/download/opengraph-image", alt: "Download Amber Notes for Mac. Free, for macOS 26 or later." },
 });
 
 /// Written by scripts/release-mac.sh next to the DMG it uploads (public/downloads/<file>).

@@ -1,4 +1,5 @@
 import { Figure } from "@/lib/blog";
+import { APP_STORE_LIVE } from "@/lib/site";
 import { PostPage, postMetadata } from "@/lib/PostPage";
 import { SHOTS } from "@/lib/posts";
 
@@ -10,7 +11,7 @@ const FAQ = [
     "Not one you can tick off outside the chat. Connected to a notes app with an MCP server, like Amber Notes, it can add to a checklist note, tick items and tidy the list, and you see the result in the notes app on your phone and Mac.",
   ] },
   { q: "Does it work from the ChatGPT app on my iPhone?", a: [
-    "Yes. You add Amber Notes once in ChatGPT on the web; after that it's available in the ChatGPT phone apps too. The Amber Notes iPhone app, where you see and tick the list, is coming soon to the App Store; the Mac app is out now.",
+    "Use ChatGPT on chatgpt.com for this: you add Amber Notes there, and OpenAI documents custom apps on the web only, so I can't promise it in the ChatGPT phone app. " + (APP_STORE_LIVE ? "The Amber Notes iPhone app, where you see and tick the list, is on the App Store." : "The Amber Notes iPhone app, where you see and tick the list, is coming soon to the App Store; the Mac app is out now."),
   ] },
   { q: "What if ChatGPT gets it wrong?", a: [
     "Every change keeps the previous version, and Amber Notes shows what ChatGPT changed with an Undo, so a wrong edit is one tap to put back.",
@@ -26,8 +27,8 @@ export default function Page() {
     >
       <h2>What you need</h2>
       <ul>
-        <li>Amber Notes, signed in: the Mac app now, the iPhone app once it&apos;s on the App Store.</li>
-        <li>ChatGPT connected to it. It takes a few minutes on the web, on Plus or higher: <a href="/blog/connect-chatgpt-to-your-notes">how to connect ChatGPT to your notes</a>.</li>
+        <li>Amber Notes, signed in: {APP_STORE_LIVE ? "on your iPhone and Mac." : "the Mac app now, the iPhone app once it's on the App Store."}</li>
+        <li>ChatGPT connected to it. It takes a few minutes on chatgpt.com, on Plus or higher (check what your plan allows; OpenAI&apos;s docs differ on editing): <a href="/blog/connect-chatgpt-to-your-notes">how to connect ChatGPT to your notes</a>.</li>
         <li>A note called something like &ldquo;To do&rdquo;, with a checklist in it. In the app, the checklist button in the toolbar (or ⌘⇧L on a Mac) starts one. Or ask ChatGPT to create it.</li>
       </ul>
 

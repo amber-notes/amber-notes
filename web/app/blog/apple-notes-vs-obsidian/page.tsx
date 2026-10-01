@@ -1,3 +1,4 @@
+import { DEVICES } from "@/lib/site";
 import { PostPage, postMetadata } from "@/lib/PostPage";
 
 export const dynamic = "force-static";
@@ -8,11 +9,11 @@ type Row = [string, string, string, string];
 // Checked against Apple's and Obsidian's own pages on 30 September 2026.
 const ROWS: Row[] = [
   ["Where notes live", "In iCloud, in Apple's own format", "Markdown files in a folder on your computer", "In the cloud and on your devices, as markdown"],
-  ["Devices", "Every Apple device, and iCloud.com in a browser", "Mac, Windows, Linux, iPhone, Android", "Mac now; iPhone coming soon"],
+  ["Devices", "Every Apple device, and iCloud.com in a browser", "Mac, Windows, Linux, iPhone, Android", DEVICES],
   ["Sync", "iCloud, free", "Obsidian Sync (paid), or your own: iCloud Drive, Git", "Built in, free"],
   ["Price", "Free", "Free for personal and work use; Sync and Publish are paid", "Free"],
   ["Extend it", "Shortcuts", "Thousands of community plugins and themes", "An MCP server for AI apps"],
-  ["AI apps can search and edit", "No, apart from Mac-only community tools", "Through community plugins, on your computer", "Yes, from any device, with your approval"],
+  ["AI apps can search and edit", "Only on a Mac: Claude Desktop through Anthropic's extension, or community servers", "Through community plugins, on your computer", "Yes, from any device, with your approval"],
   ["Open source", "No", "No (many plugins are)", "Yes (MIT)"],
 ];
 
@@ -67,8 +68,8 @@ export default function Page() {
       <h2>Where AI fits</h2>
       <p>
         Neither ships an MCP server of its own. With Obsidian, community plugins give Claude Desktop or Claude Code access to a vault on the
-        same computer, and because the notes are files, a file-system server works too. With Apple Notes, community servers drive the Notes app
-        on a Mac. Either way it stays on that computer: ChatGPT on the web and the phone apps can&apos;t reach it.{" "}
+        same computer, and because the notes are files, a file-system server works too. With Apple Notes, Anthropic&apos;s Read and Write Apple Notes
+        extension for Claude Desktop and community servers drive the Notes app on a Mac. Either way it stays on that computer: ChatGPT on the web and the phone apps can&apos;t reach it.{" "}
         <a href="/blog/obsidian-mcp">Obsidian MCP servers, compared</a> goes through the Obsidian ones and how to set them up, and{" "}
         <a href="/blog/notes-apps-with-mcp">notes apps with an MCP server, compared</a> covers the other apps.
       </p>

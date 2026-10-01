@@ -25,7 +25,7 @@ const FAQ = [
     "For searching and editing all your notes from ChatGPT, you need an app it can connect to: Amber Notes, Notion, OneNote, Evernote and Hjarni can. Which is best depends on where your notes are today and whether you want ChatGPT to write, not just read.",
   ] },
   { q: "Do I need a paid ChatGPT plan?", a: [
-    "OneNote and Notion appear in ChatGPT's own list of apps; OpenAI's help pages say which plans have them. Adding any other app yourself, such as Amber Notes, Evernote's MCP server or Hjarni, needs Developer mode, which is on Plus, Pro, Business, Enterprise and Edu.",
+    "OneNote and Notion appear in ChatGPT's own list of apps; OpenAI's help pages say which plans have them. Adding any other app yourself, such as Amber Notes, Evernote's MCP server or Hjarni, needs Developer mode, which is on Plus, Pro, Business, Enterprise and Edu. Check what your plan allows: OpenAI's pages differ on whether such apps can edit on every plan.",
   ] },
   { q: "Can ChatGPT read my Apple Notes?", a: [
     "Only the note you have open, in the ChatGPT app on a Mac. It can't search your other notes or save changes, because Apple Notes has no API it could connect to.",
@@ -78,7 +78,7 @@ export default function Page() {
 
       <h2>Setting it up</h2>
       <p>
-        For Amber Notes, it takes a few minutes in ChatGPT on the web, and then works in the ChatGPT phone apps too.{" "}
+        For Amber Notes, it takes a few minutes on chatgpt.com, which is where OpenAI documents custom apps.{" "}
         <a href="/blog/connect-chatgpt-to-your-notes">How to connect ChatGPT to your notes</a> has every step. If you&apos;re deciding
         between Apple Notes and something ChatGPT can reach, <a href="/blog/apple-notes-api">Apple Notes API: what exists</a> explains why
         Apple Notes stays out of reach.

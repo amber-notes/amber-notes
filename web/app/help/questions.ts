@@ -1,3 +1,4 @@
+import { APP_STORE_LIVE } from "@/lib/site";
 /// The Help page's questions. Short answers, accurate to the app as it ships. `more` links the
 /// blog post that covers the question in full.
 export type QA = { id: string; q: string; a: string[]; more?: { href: string; text: string } };
@@ -11,7 +12,7 @@ export const FAQ: QA[] = [
     "On iPhone, share a note from Apple Notes to Amber Notes. Or import on your Mac, and everything shows up on your iPhone a second later.",
   ], more: { href: "/blog/move-from-apple-notes", text: "How to move from Apple Notes, step by step" } },
   { id: "connect", q: "How do I connect ChatGPT, Claude, Claude Code, Codex or Incredible?", a: [
-    "In Amber Notes, open Settings → Connect an AI, pick ChatGPT or Claude and follow the steps. You add it once, on a computer. After that, it works in their phone apps too.",
+    "In Amber Notes, open Settings → Connect an AI, pick ChatGPT or Claude and follow the steps. You add it once, on a computer. Claude's phone apps can then use it too; for ChatGPT, use chatgpt.com, which is where OpenAI documents custom apps.",
     "Adding it yourself? The address is https://mcp.ambernotes.app. When ChatGPT or Claude asks for permission, sign in on the page that opens, then approve on your iPhone or Mac: type the number the page shows and choose Allow. No device nearby? Use your recovery key on that page.",
     "Claude Code gets a one-line command with a token of its own, and Codex a few lines for its config file. In Incredible, open Apps, search for Amber Notes, choose Connect, then approve it on your iPhone or Mac. On an older version of Incredible, add the address as an MCP server instead. Settings → Connect an AI → Incredible has the steps. Any other app that supports MCP connects with the address and a sign-in too.",
   ], more: { href: "/blog/connect-chatgpt-to-your-notes", text: "How to connect ChatGPT to your notes" } },
@@ -28,7 +29,7 @@ export const FAQ: QA[] = [
     "Yes. Amber Notes is free, with no ads and no tracking. It's also open source, so anyone can read the code.",
   ] },
   { id: "devices", q: "Which devices does it work on?", a: [
-    "Mac (macOS 26 or later) and iPhone. The iPhone app is coming to the App Store soon.",
+    APP_STORE_LIVE ? "Mac (macOS 26 or later) and iPhone." : "Mac (macOS 26 or later) and iPhone. The iPhone app is coming to the App Store soon.",
   ] },
   { id: "sync", q: "Does it sync between iPhone and Mac?", a: [
     "Yes. Your notes live in the cloud. Sign in with the same account on your Mac and iPhone, and a change on one shows up on the other in about a second, even while you're typing.",

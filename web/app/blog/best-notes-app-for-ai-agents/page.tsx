@@ -1,4 +1,5 @@
 import { Figure } from "@/lib/blog";
+import { APP_STORE_LIVE, DEVICES } from "@/lib/site";
 import { PostPage, postMetadata } from "@/lib/PostPage";
 import { SHOTS } from "@/lib/posts";
 
@@ -11,12 +12,12 @@ type Row = { app: string; remote: string; writes: string; undo: string; approval
 
 // Checked against each app's own documentation on 30 September 2026.
 const ROWS: Row[] = [
-  { app: "Amber Notes", remote: "Yes, built in", writes: "Line edits, appends, checklist ticks, table rows", undo: "Undo, and every version kept", approval: "OAuth plus Allow in the app; read only or read and edit", read: "Mac; iPhone coming soon" },
+  { app: "Amber Notes", remote: "Yes, built in", writes: "Line edits, appends, checklist ticks, table rows", undo: "Undo, and every version kept", approval: "OAuth plus Allow in the app; read only or read and edit", read: DEVICES },
   { app: "Notion", remote: "Yes, official", writes: "Pages, databases, blocks, comments", undo: "Page history (length depends on plan)", approval: "OAuth, with your workspace permissions", read: "Web, desktop, phone" },
   { app: "Evernote", remote: "Yes, official (beta)", writes: "Creates notes", undo: "Note history", approval: "OAuth", read: "Web, desktop, phone" },
   { app: "Obsidian", remote: "No; community plugins on your computer", writes: "Depends on the plugin", undo: "File recovery snapshots on that computer", approval: "Depends on the plugin", read: "Desktop, phone" },
   { app: "Bear", remote: "No; official server on your Mac", writes: "Yes", undo: "No note history", approval: "You set it up on the Mac", read: "Mac, iPhone" },
-  { app: "Apple Notes", remote: "No; community servers on your Mac", writes: "Depends on the server", undo: "No note history", approval: "macOS Automation permission", read: "Every Apple device" },
+  { app: "Apple Notes", remote: "No; Anthropic's Claude Desktop extension and community servers, on your Mac", writes: "Read, add and update notes, on that Mac", undo: "No note history", approval: "macOS Automation permission", read: "Every Apple device" },
 ];
 
 const FAQ = [
@@ -71,7 +72,7 @@ export default function Page() {
       </p>
       <Figure shot={SHOTS.historyBurst} caption="Every version, with who made it: you, ChatGPT or Claude Code." />
       <p>
-        Where it falls short today: the iPhone app is still on its way to the App Store, and there&apos;s no web app. If your team already
+        Where it falls short today: {APP_STORE_LIVE ? "" : "the iPhone app is still on its way to the App Store, and "}there&apos;s no web app. If your team already
         lives in Notion, Notion&apos;s server is the better fit.
       </p>
 

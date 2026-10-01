@@ -11,7 +11,7 @@ const FAQ = [
     "Yes. Add Amber Notes as an MCP server with an access token, and Claude Code can search, read, create and edit your notes, or only read them if you make the token read only.",
   ] },
   { q: "How do I add a notes MCP server to Codex?", a: [
-    "Create an access token for Codex in Amber Notes, under Settings, Connect an AI, Codex. It shows a few lines to add to ~/.codex/config.toml, with the server address and the token in an Authorization header.",
+    "Run codex mcp add amber_notes --url https://mcp.ambernotes.app. Codex opens your browser to sign in, and you approve it on your iPhone or Mac. If you'd rather use a token, Amber Notes, Settings, Connect an AI, Codex shows a few lines for ~/.codex/config.toml with the token in an Authorization header.",
   ] },
   { q: "Where is the access token stored?", a: [
     "In your Claude Code or Codex configuration on your computer. Amber Notes shows it once. Anyone with the token can use your notes, so keep it private, and disconnect it in Amber Notes if it leaks.",
@@ -22,7 +22,7 @@ export default function Page() {
   return (
     <PostPage
       slug="notes-in-claude-code-and-codex"
-      intro={<>I use Claude Code every day, and I wanted it to write the standup, keep a work log and look up what I decided last week, in the same notes I read on my phone. With Amber Notes it takes one command for Claude Code, or a few lines for Codex.</>}
+      intro={<>I use Claude Code every day, and I wanted it to write the standup, keep a work log and look up what I decided last week, in the same notes I read on my phone. With Amber Notes it takes one command in either.</>}
       faq={FAQ}
     >
       <h2>What it&apos;s good for</h2>
@@ -60,15 +60,24 @@ claude plugin install amber-notes`}</code></pre>
       </p>
 
       <h2>Codex</h2>
+      <p>One command adds the server:</p>
+      <pre><code>{`codex mcp add amber_notes --url ${MCP_URL}`}</code></pre>
+      <p>
+        Codex starts the sign-in straight away: your browser opens ambernotes.app, and you approve it on your iPhone or Mac by typing the
+        number the page shows. To sign in again later, run <code>codex mcp login amber_notes</code>.
+      </p>
+      <p>Rather use a token, for a machine with no browser? In Amber Notes, open Settings and, under Connect an AI, choose Codex:</p>
       <ol>
-        <li>In Amber Notes, open Settings and, under Connect an AI, choose Codex.</li>
         <li>Turn on Read only if you like, then choose Create Access Token.</li>
         <li>Copy the lines it shows into <code>~/.codex/config.toml</code>:</li>
       </ol>
       <pre><code>{`[mcp_servers.amber_notes]
 url = "${MCP_URL}"
 http_headers = { "Authorization" = "Bearer pane_…" }`}</code></pre>
-      <p>The token is shown once. Keep it private, like a password.</p>
+      <p>
+        The token starts with <code>pane_</code>, Amber Notes&apos; old working name, so you can tell it apart from other keys. It&apos;s shown
+        once. Keep it private, like a password.
+      </p>
 
       <h2>Check that it works</h2>
       <p>

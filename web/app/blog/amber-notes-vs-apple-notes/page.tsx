@@ -1,4 +1,5 @@
 import { Figure } from "@/lib/blog";
+import { APP_STORE_LIVE } from "@/lib/site";
 import { PostPage, postMetadata } from "@/lib/PostPage";
 import { SHOTS } from "@/lib/posts";
 
@@ -7,9 +8,9 @@ export const metadata = postMetadata("amber-notes-vs-apple-notes", { title: "Amb
 
 const ROWS: [string, string, string][] = [
   ["Price", "Free", "Free"],
-  ["Devices", "Mac now; iPhone coming soon to the App Store", "Every Apple device, and iCloud.com in a browser"],
+  ["Devices", APP_STORE_LIVE ? "iPhone and Mac" : "Mac now; iPhone coming soon to the App Store", "Every Apple device, and iCloud.com in a browser"],
   ["Folders, pins, checklists, tables", "Yes", "Yes"],
-  ["ChatGPT and Claude can find, read and edit notes", "Yes, with your approval (MCP), from any device", "Not built in; community tools work on a Mac only"],
+  ["ChatGPT and Claude can find, read and edit notes", "Yes, with your approval (MCP), from any device", "Only on a Mac: Claude Desktop through Anthropic's Read and Write Apple Notes extension, or community servers"],
   ["Claude Code and Codex", "Yes", "Through community tools, on a Mac"],
   ["Version history", "Yes, including every change an AI makes", "No"],
   ["Stored as markdown", "Yes, formatted on screen", "No, but a note can be exported as markdown"],
