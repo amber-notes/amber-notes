@@ -1,5 +1,5 @@
-/* The blog index, in the changelog and help pages' centred column: the title and lede, the
-   categories as a row of small filters, then the posts two to a row (one on phones). */
+/* The blog index and category pages, in the changelog and help pages' centred column: the title and
+   lede, the categories as a row of links, the posts two to a row (one on phones), then the pages. */
 .filters { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .filters a {
   display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 14px; border-radius: 999px;
@@ -14,6 +14,19 @@
 .grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 @media (max-width: 600px) { .grid { grid-template-columns: minmax(0, 1fr); } }
 .grid > li { display: grid; }
-.grid[data-filter="guides"] > li:not([data-category="guides"]),
-.grid[data-filter="comparisons"] > li:not([data-category="comparisons"]),
-.grid[data-filter="building-amber-notes"] > li:not([data-category="building-amber-notes"]) { display: none; }
+.pageNote { color: var(--muted); font-weight: inherit; }
+
+/* Previous, the page numbers, Next: each at least 44 px tall and wide, centred under the grid. */
+.pages { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 40px; }
+.pages ol { display: flex; gap: 4px; list-style: none; margin: 0; padding: 0; }
+.pages a, .pages .step {
+  display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; padding: 0 14px;
+  border-radius: 999px; color: var(--muted); font-weight: 600; font-size: 15px; text-decoration: none;
+  font-variant-numeric: tabular-nums;
+}
+.pages a { box-shadow: inset 0 0 0 1px var(--line); }
+.pages a[aria-current] { color: var(--ink); background: var(--soft); box-shadow: none; }
+.pages .step[data-off] { opacity: 0.4; }
+@media (hover: hover) { .pages a:hover { color: var(--ink); } }
+.pages a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+@media (prefers-reduced-motion: no-preference) { .pages a { transition: background-color 0.15s ease-out, color 0.15s ease-out; } }
