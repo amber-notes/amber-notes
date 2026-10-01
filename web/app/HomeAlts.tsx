@@ -168,7 +168,7 @@ export function AiCaptures() {
         </li>
         <li className={h.beatWide}>
           <img src="/blog/history.webp" alt="Version history for a Groceries note in Amber Notes on a Mac: versions by you on iPhone and Mac, ChatGPT and Claude Code, with the lines that differ tinted and a Restore This Version button." width={1800} height={1200} loading="lazy" />
-          <p><b><span>3</span>Any version, back in one click</b>Every change keeps the previous version, so you can restore any of them.</p>
+          <p><b><span>3</span>Go back to any version</b>Every change keeps the previous version, so you can restore any of them.</p>
         </li>
       </ol>
       <Also />
@@ -241,7 +241,7 @@ export function AiHistory() {
   );
 }
 
-/* ═════════════ Bring all your Apple Notes in one click ═════════════ */
+/* ═════════════ Bring all your Apple Notes over in one go ═════════════ */
 
 const FOLDERS = [{ name: "Notes", n: 612 }, { name: "Recipes", n: 188 }, { name: "Work", n: 241 }, { name: "Travel", n: 97 }, { name: "Home", n: 146 }];
 const TOTAL = FOLDERS.reduce((s, f) => s + f.n, 0); // 1,284, as on the import sheet
@@ -268,13 +268,13 @@ function useCount(go: boolean, to: number, ms = 1800, delay = 300) {
 function ImportHead({ lede }: { lede: string }) {
   return (
     <div className={h.head}>
-      <h2 id="import" className={h.h2}>Bring all your Apple Notes in one click</h2>
+      <h2 id="import" className={h.h2}>Bring all your Apple Notes over in one go</h2>
       <p className={h.lede}>{lede}</p>
     </div>
   );
 }
 
-const IMPORT_TICKS = ["Folders kept", "Checklists and tables", "Pinned notes", "Apple Notes unchanged"];
+const IMPORT_TICKS = ["Folders kept", "Checklists and tables", "Pins, with Full Disk Access", "Apple Notes unchanged"];
 
 /// A. The real import sheet, with the result beside it.
 export function ImportSheet() {
@@ -282,7 +282,7 @@ export function ImportSheet() {
   const n = useCount(seen, TOTAL);
   return (
     <section ref={ref} className={h.section} aria-labelledby="import">
-      <ImportHead lede="On your Mac, pick everything or just the notes you want. Folders, checklists, tables and pins come along, and your Apple Notes stay untouched." />
+      <ImportHead lede="On your Mac, pick everything or just the notes you want. Folders, checklists and tables come along, pins too if you allow Full Disk Access, and your Apple Notes stay untouched." />
       <div className={h.sheetStage}>
         <figure className={h.sheetShot}>
           <SheetCrop alt="The Import from Apple Notes sheet in Amber Notes on a Mac: notes picked, Keep Apple Notes folders and Also bring over pinned notes ticked, and an Import 1,284 Notes button." />
@@ -295,7 +295,7 @@ export function ImportSheet() {
           </p>
           <p className={h.bigCount} aria-hidden="true"><span className={h.num}>{n.toLocaleString("en")}</span> notes</p>
           <ul className={h.tickList} aria-hidden="true">{IMPORT_TICKS.map((t) => <li key={t}><Tick />{t}</li>)}</ul>
-          <p className={h.fine}>Pinned notes need Full Disk Access, and Amber Notes asks first. Everything is on your iPhone a second later.</p>
+          <p className={h.fine}>Pins come over when you tick that option and give Amber Notes Full Disk Access in System Settings. Everything is on your iPhone a second later.</p>
         </div>
       </div>
     </section>
@@ -330,7 +330,7 @@ export function ImportFolders() {
           <div className={`${h.pane} ${h.paneAmber}`} aria-hidden="true">
             <p className={h.paneHead}><img src="/mark-256.png" alt="" width={26} height={26} className={h.routeMark} />Amber Notes<em className={h.num}>{count.toLocaleString("en")}</em></p>
             <ul className={h.folderList}>{FOLDERS.map((f, i) => <li key={f.name} data-on={step > i || undefined}><Folder /><b>{f.name}</b><span className={h.num}>{f.n}</span></li>)}</ul>
-            <p className={h.paneDone} data-on={done || undefined}><Tick /> Pins, checklists and tables came along</p>
+            <p className={h.paneDone} data-on={done || undefined}><Tick /> Folders, checklists and tables came along</p>
           </div>
         </div>
       </div>
