@@ -385,11 +385,13 @@ struct ConnectAISheet: View {
         NavigationStack {
             Form { ConnectAISection(client: client) }
                 .formStyle(.grouped)
+                .connectGuides(client: client)
                 .navigationTitle("Connect an AI")
                 .toolbar {
                     ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
                 }
         }
+        .consentHost(client: client)
         #if os(macOS)
         .frame(width: 520, height: 560)
         #endif

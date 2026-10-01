@@ -14,8 +14,8 @@ Write down the times and what you saw in the table at the end.
 ## 2. The key arrives on the second device (time it)
 
 1. On the Mac, sign in to the same account. Start a stopwatch when you press Sign in.
-2. Expect "Getting your key from iCloud Keychain…". Stop the stopwatch when your notes appear. Write down the time.
-3. If nothing arrives within 20 seconds, the iCloud Keychain help and Use recovery key appear. Keep waiting up to 5 minutes before going on, and write down whether the key arrived.
+2. Expect "Enter your recovery key" with "Your key isn't on this device yet." Don't type anything. Stop the stopwatch when your notes appear. Write down the time.
+3. If nothing arrives, tap "Wait for iCloud Keychain instead": a spinner for about 20 seconds, then the iCloud Keychain help, with Use recovery key throughout. Keep waiting up to 5 minutes before going on, and write down whether the key arrived.
 4. On the Mac, open Lisbon, the Travel folder and the photo. Edit Lisbon; check the edit shows on the iPhone within a second or two.
 
 ## 3. The recovery key
@@ -27,8 +27,8 @@ Write down the times and what you saw in the table at the end.
 
 1. On the Mac, sign out of Amber Notes. In System Settings › [your name] › iCloud › Passwords and Keychain, turn Keychain off and choose to delete the items from this Mac.
 2. In Terminal: `security find-generic-password -s dev.emilwagman.pane.data-key` should find nothing. (If it's still there, delete Amber Notes' item in Keychain Access, "Amber Notes encryption key".)
-3. Sign in to Amber Notes again. Expect "Getting your key from iCloud Keychain…" and, at once (the Keychain doesn't sync now), the help and Use recovery key with "Find it on your other device in Amber Notes › Settings › Privacy & Security".
-4. Tap Use recovery key and type it with a mistake: expect "That recovery key has a typo." Type it again in lowercase with spaces instead of dashes: your notes appear.
+3. Sign in to Amber Notes again. Expect "Enter your recovery key" at once, with "Find it on your other device in Amber Notes › Settings › Privacy & Security".
+4. Type it with a mistake: expect "That recovery key has a typo." Type it again in lowercase with spaces instead of dashes: your notes appear. Settings › Privacy & Security says the recovery key is Saved.
 5. Turn Keychain back on.
 
 ## 5. An AI connection

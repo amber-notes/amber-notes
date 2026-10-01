@@ -315,6 +315,56 @@ import Testing
         return c
     }
 
+    @Test func theConsentSheetShowsOnTheTopSheetNotBehindIt() {
+        let center = quietCenter()
+        let root = UUID(), settings = UUID(), guide = UUID()
+        center.hostAppeared(root)
+        #expect(center.presents(host: root))
+        // Settings, then Connect Claude over it: an ask must show over both, not on the root
+        // (which is already presenting Settings and can't present anything else).
+        center.hostAppeared(settings)
+        center.hostAppeared(guide)
+        center.offer(ask())
+        #expect(center.presents(host: guide) && !center.presents(host: settings) && !center.presents(host: root))
+        center.hostGone(guide)
+        #expect(center.presents(host: settings))
+        center.hostGone(settings)
+        #expect(center.presents(host: root))
+        center.hostAppeared(root)
+        #expect(center.hosts == [root], "appearing again doesn't stack it twice")
+    }
+
+    @Test func anOpenGuideLooksForAsksAtOnceAndOnlyOnce() async {
+        let center = quietCenter()
+        final class Looks { var count = 0 }
+        let looks = Looks()
+        center.lookAgain = { looks.count += 1 }
+        center.expectAsks()
+        center.expectAsks()
+        for _ in 0 ..< 100 where looks.count < 1 { try? await Task.sleep(for: .milliseconds(5)) }
+        try? await Task.sleep(for: .milliseconds(20))
+        #expect(looks.count == 1 && center.expecting == 2)
+        center.stopExpectingAsks(); center.stopExpectingAsks(); center.stopExpectingAsks()
+        #expect(center.expecting == 0)
+    }
+
+    @Test func pollingLooksEveryTickWhileExpectingOtherwiseNowAndThen() {
+        #expect(ConnectAsks.looks(expecting: true, ticksSinceLook: 1))
+        #expect(!ConnectAsks.looks(expecting: false, ticksSinceLook: 1))
+        #expect(!ConnectAsks.looks(expecting: false, ticksSinceLook: ConnectAsks.idleTicks - 1))
+        #expect(ConnectAsks.looks(expecting: false, ticksSinceLook: ConnectAsks.idleTicks))
+        #expect(ConnectAsks.tick <= .seconds(2), "an ask shows within about two seconds on the Connect sheet")
+    }
+
+    @Test func aClosedGuideReloadsTheConnectedList() {
+        let route = ConnectGuideRoute()
+        route.guide = .claude
+        #expect(route.closed == 0)
+        route.guide = nil
+        route.guideClosed()
+        #expect(route.closed == 1)
+    }
+
     @Test func aLinkArrivingWhileASheetShowsWaitsItsTurn() {
         let center = quietCenter()
         let first = UUID(), second = UUID()

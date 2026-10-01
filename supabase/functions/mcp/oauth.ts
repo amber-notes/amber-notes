@@ -578,7 +578,8 @@ export function setPushSender(s: Sender | null | undefined) { pushSender = s; }
 /// allowed. Tokens Apple says are gone are deleted. Without an APNs key, nothing is sent.
 export async function notifyDevices(sql: Sql, user: string, requestId: string): Promise<void> {
   const send = pushSender === undefined ? (pushSender = apnsSender()) : pushSender;
-  if (!send) return;
+  // Said, so a push that never arrives because the APNs secrets are missing shows in the logs.
+  if (!send) return log("push_off");
   try {
     const tokens = await sql<{ token: string; environment: Environment }[]>`
       select token, environment from public.device_tokens

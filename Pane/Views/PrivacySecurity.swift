@@ -59,7 +59,7 @@ struct PrivacySecuritySection: View {
         }
         Section {
             LabeledContent("Recovery key") {
-                Text(crypto.recoverySavedAt == nil ? "Not saved" : "Saved")
+                Text(crypto.recoveryKeySaved ? "Saved" : "Not saved")
                     .foregroundStyle(.secondary)
                     .accessibilityIdentifier("privacy.recoveryStatus")
             }
