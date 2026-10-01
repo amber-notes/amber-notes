@@ -1,5 +1,16 @@
 [
   {
+    "version": "1.1.1",
+    "date": "2026-10-01",
+    "title": "Templates in the app",
+    "items": [
+      "Use a template from ambernotes.app/templates and it opens in Amber Notes, ready to add to a folder",
+      "\"Use this note\" on a shared note copies it into your own notes",
+      "A short note on what's new after a big update",
+      "Clearer amber buttons, easier to read in dark mode"
+    ]
+  },
+  {
     "version": "1.1",
     "date": "2026-10-01",
     "title": "Encrypted, end to end",
