@@ -7,6 +7,7 @@
   ],
   "audience": "For anyone who wants to see what lifts them and what drains them.",
   "description": "An evening mood and energy log. Tell your AI about your day in your own words and it scores and logs it in Amber Notes.",
+  "tagline": "A short evening check-in that shows patterns.",
   "seoTitle": "Mood and energy log template for ChatGPT and Claude",
   "folder": "Habits",
   "note": "Mood and energy log\n\nA short check-in each evening. After a few weeks, the patterns show what lifts you and what drains you.\n\n<!-- pane-table: Date=date; Mood=scale 1-5; Energy=scale 1-5; Sleep (hours)=number; Caffeine=choice None|1 cup|2 cups|3+ cups; What happened=text -->\n| Date | Mood | Energy | Sleep (hours) | Caffeine | What happened |\n| --- | --- | --- | --- | --- | --- |\n\n## Patterns\n",

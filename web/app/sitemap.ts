@@ -3,6 +3,7 @@ import { changelog } from "@/lib/changelog";
 import { postShots } from "@/lib/post-images";
 import { categories, categoryPath, newestFirst, pageCount, pageOf, pagePath, published } from "@/lib/posts";
 import { SITE_URL } from "@/lib/site";
+import { coverPath } from "@/lib/template-covers";
 import { templates } from "@/lib/templates";
 
 // The pages meant for search. Shared notes are never listed. The changelog is one page (its
@@ -27,7 +28,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
         return page(pagePath(base, i + 1), base === "/blog" && i === 0 ? 0.7 : 0.5, shown.map((p) => p.updated).sort().at(-1));
       })),
     ...published().map((p) => ({ ...page(`/blog/${p.slug}`, 0.8, p.updated), images: postShots(p.slug).map((s) => `${SITE_URL}${s.src}`) })),
-    page("/templates", 0.8, templates().map((t) => t.updated).sort().at(-1)),
+    // The gallery shows every template's cover; the alt text describing each is on the page.
+    { ...page("/templates", 0.8, templates().map((t) => t.updated).sort().at(-1)), images: templates().map((t) => `${SITE_URL}${coverPath(t.slug)}`) },
     ...templates().map((t) => page(`/templates/${t.slug}`, 0.7, t.updated)),
     page("/changelog", 0.5, released),
     page("/privacy-security", 0.5),

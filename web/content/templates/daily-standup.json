@@ -8,6 +8,7 @@
   ],
   "audience": "For developers who'd rather not reconstruct yesterday from memory at 9:58.",
   "description": "Daily standup notes, newest first. Claude Code writes yesterday from your commits; ChatGPT or Claude from what you tell it.",
+  "tagline": "Yesterday, today and blockers, newest first.",
   "seoTitle": "Daily standup template for Claude Code and ChatGPT",
   "folder": "Work",
   "note": "Standup notes\n\nYesterday, today and blockers, one section a day, newest first. Claude Code can write yesterday from your commits.\n\n## Blockers\n\n## Days\n",

@@ -8,6 +8,7 @@
   ],
   "audience": "For cooks whose recipes live in screenshots, tabs and someone else's blog.",
   "description": "A recipe box your AI files for you: paste a recipe and it becomes a clean sub-note with ingredients as a checklist.",
+  "tagline": "Your recipes, cleaned up and filed.",
   "folder": "Recipes",
   "note": "Recipe box\n\nYour recipes, cleaned up and filed: one sub-note each, with the ingredients as a checklist you can tick off while you cook.\n\n## Weeknight\n\n## Weekend\n\n## Baking\n\n## Want to try\n",
   "prompt": {

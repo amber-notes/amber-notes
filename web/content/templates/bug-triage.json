@@ -7,6 +7,7 @@
   ],
   "audience": "For small teams and solo developers without a full issue tracker.",
   "description": "A bug triage table your AI keeps. Paste a report or an issue and it files it by severity in Amber Notes.",
+  "tagline": "Every bug in one table, by how much it hurts.",
   "folder": "Work",
   "note": "Bug triage\n\nEvery bug report in one table, sorted by how much it hurts. Paste a report and your AI files it.\n\n<!-- pane-table: Bug=text; Severity=choice P0|P1|P2|P3; Area=text; Status=choice New|Confirmed|In progress|Fixed|Won't fix; Reported=text; Link=text -->\n| Bug | Severity | Area | Status | Reported | Link |\n| --- | --- | --- | --- | --- | --- |\n\n## Severity\n- **P0:** data loss, a security hole, or everyone is blocked. Drop everything.\n- **P1:** a main flow is broken for many people. This week.\n- **P2:** broken, but there's a workaround. Schedule it.\n- **P3:** polish. When there's time.\n\n## Details\n",
   "prompt": {

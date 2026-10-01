@@ -7,6 +7,7 @@
   ],
   "audience": "For creators, marketers and founders who post every week.",
   "description": "A content calendar with an idea bank. Your AI turns ideas into scheduled posts and keeps the status current in Amber Notes.",
+  "tagline": "What goes out when, plus a bank of ideas.",
   "folder": "Work",
   "note": "Content calendar\n\nWhat's going out, where and when, plus a bank of ideas so you never start from a blank page.\n\n<!-- pane-table: Publish on=text; Title=text; Channel=choice Blog|Newsletter|LinkedIn|Instagram|YouTube; Status=choice Idea|Drafting|Scheduled|Published -->\n| Publish on | Title | Channel | Status |\n| --- | --- | --- | --- |\n\n## Ideas\n\n## Voice\n- Short sentences. One idea per post.\n- Show the work: a screenshot or a number beats an adjective.\n- End with a question, not a sales pitch.\n",
   "prompt": {
