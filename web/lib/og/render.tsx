@@ -103,3 +103,40 @@ export function renderCard({ theme, title, sub, chips = [], art, titleSize = 74 
     },
   );
 }
+
+/// A template's share card, in the gallery card's look: the template's paper-cut cover on the right,
+/// its flat ground carried across the card under the app's name, the title and the tagline, in ink
+/// or cream, whichever reads on that ground.
+export function renderTemplateCard({ slug, title, tagline, ground, ink }: { slug: string; title: string; tagline: string; ground: string; ink: "dark" | "light" }) {
+  const color = ink === "dark" ? "#2a1d10" : "#fff4e6";
+  const mark = dataUrl(path.join(process.cwd(), "public", "mark.png"), "image/png");
+  return new ImageResponse(
+    (
+      <div style={{ width: "100%", height: "100%", display: "flex", background: ground, position: "relative", overflow: "hidden", fontFamily: "Inter" }}>
+        <img src={dataUrl(here(`template-covers/${slug}.jpg`), "image/jpeg")} width={630} height={630} style={{ position: "absolute", right: -50, top: 0 }} />
+        {/* The cover's left edge melts into the ground, so the card reads as one picture. */}
+        <div style={{ position: "absolute", left: 620, top: 0, width: 150, height: 630, backgroundImage: `linear-gradient(90deg, ${ground}, ${ground}00)` }} />
+        <div style={{ position: "relative", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "60px 0 60px 68px", width: 600, color }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <img src={mark} width={56} height={56} style={{ borderRadius: 13, boxShadow: "0 2px 6px rgba(40,20,0,0.25)" }} />
+            <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: -0.6 }}>Amber Notes</div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            <div style={{ fontSize: title.length > 18 ? 62 : 74, fontWeight: 800, lineHeight: 1.02, letterSpacing: -3 }}>{title}</div>
+            <div style={{ fontSize: 28, lineHeight: 1.3, fontWeight: 600, opacity: 0.9 }}>{tagline}</div>
+          </div>
+          <div style={{ display: "flex" }}>
+            <div style={{ display: "flex", fontSize: 22, fontWeight: 700, color: "#2a1d10", background: "#fffaf3", borderRadius: 12, padding: "10px 18px" }}>Free template for ChatGPT and Claude</div>
+          </div>
+        </div>
+      </div>
+    ),
+    {
+      ...size,
+      fonts: [
+        { name: "Inter", data: file("Inter-SemiBold.ttf"), weight: 600, style: "normal" },
+        { name: "Inter", data: file("Inter-ExtraBold.ttf"), weight: 800, style: "normal" },
+      ],
+    },
+  );
+}

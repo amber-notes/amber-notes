@@ -180,7 +180,12 @@
 /* The hero's example: the filled note, cut off like a scrolled window when it runs long. */
 .heroExample { display: grid; padding-top: 4px; }
 .heroWindow .paper { position: relative; max-height: 380px; overflow: hidden; }
-.heroExample .changes { margin-bottom: 12px; }
+.heroExample .changes { position: relative; margin-bottom: 12px; }
+/* The stage: the template's cover on its own ground, the picture showing above the note window. */
+.heroStage { position: relative; display: grid; padding: 150px 26px 26px; border-radius: 30px; overflow: hidden; isolation: isolate; background: var(--ground); }
+.heroCover { position: absolute; inset: 0 0 auto; z-index: -1; width: 100%; height: auto; aspect-ratio: 1; object-fit: cover; }
+.heroStage .heroWindow { position: relative; }
+@media (max-width: 700px) { .heroStage { padding: 110px 14px 14px; border-radius: 24px; } }
 .heroWindow .paper::after { content: ""; position: absolute; inset: auto 0 0; height: 56px; background: linear-gradient(rgba(255, 255, 255, 0), #fff); pointer-events: none; }
 @media (max-width: 700px) { .heroWindow .paper { max-height: 380px; } }
 .caption { margin: 14px 4px 0; color: var(--muted); font-size: 14px; line-height: 1.45; }

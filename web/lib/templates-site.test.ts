@@ -93,6 +93,10 @@ describe("the gallery", () => {
     }
     expect(new Set(templates().map((t) => COVERS[t.slug].ground)).size).toBe(templates().length);
   });
+
+  it("has a share-card copy of every cover (the share renderer can't read WebP)", () => {
+    for (const t of templates()) expect(existsSync(path.join(process.cwd(), "lib/og/template-covers", `${t.slug}.jpg`)), t.slug).toBe(true);
+  });
 });
 
 describe("a template's page", () => {
