@@ -18,6 +18,10 @@ const here = (f: string) => path.join(process.cwd(), "lib", "og", f);
 const file = (f: string) => fs.readFileSync(here(f));
 const dataUrl = (p: string, type: string) => `data:${type};base64,${fs.readFileSync(p).toString("base64")}`;
 
+/// A blog post's cover: the JPEG copy in lib/og/covers (the renderer can't read WebP), named like the
+/// card picture in public/blog.
+export type Cover = { name: string; width: number; height: number };
+
 type Card = {
   theme: keyof typeof THEMES;
   /// The headline, with the words to mark between [ and ].
@@ -25,8 +29,8 @@ type Card = {
   sub: string;
   /// Small labels under the sub line.
   chips?: string[];
-  /// The iPhone capture, or the big app icon.
-  art: "phone" | "icon";
+  /// The iPhone capture, the big app icon, or a blog post's cover.
+  art: "phone" | "icon" | Cover;
   titleSize?: number;
 };
 
@@ -38,7 +42,7 @@ export function renderCard({ theme, title, sub, chips = [], art, titleSize = 74 
   return new ImageResponse(
     (
       <div style={{ width: "100%", height: "100%", display: "flex", background: t.bg, position: "relative", overflow: "hidden", fontFamily: "Inter" }}>
-        <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "64px 0 64px 72px", width: art === "phone" ? 780 : 760 }}>
+        <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "64px 0 64px 72px", width: art === "phone" ? 780 : typeof art === "object" ? 640 : 760 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
             <img src={mark} width={64} height={64} style={{ borderRadius: 15, boxShadow: "0 2px 6px rgba(60,30,5,0.18)" }} />
             <div style={{ fontSize: 32, fontWeight: 800, color: t.ink, letterSpacing: -0.6 }}>Amber Notes</div>
@@ -68,7 +72,17 @@ export function renderCard({ theme, title, sub, chips = [], art, titleSize = 74 
           </div>
         </div>
 
-        {art === "phone" ? (
+        {typeof art === "object" ? (
+          // A post's cover, in a rounded panel on the right, centred top to bottom.
+          <div style={{ position: "absolute", right: 64, top: 0, bottom: 0, display: "flex", alignItems: "center" }}>
+            <img
+              src={dataUrl(here(`covers/${art.name}.jpg`), "image/jpeg")}
+              width={440}
+              height={Math.round((440 * art.height) / art.width)}
+              style={{ borderRadius: 24, boxShadow: `0 30px 60px -18px ${t.shadow}, 0 0 0 1px rgba(60,20,0,0.08)` }}
+            />
+          </div>
+        ) : art === "phone" ? (
           // The iPhone capture in a dark body, running off the bottom edge.
           <div style={{ position: "absolute", right: 64, top: 58, display: "flex", width: 330, height: 700, borderRadius: 56, background: "#17120d", padding: 11, boxShadow: "0 30px 60px -18px rgba(60,20,0,0.45)" }}>
             <img src={dataUrl(here("iphone-lisbon.png"), "image/png")} width={308} height={670} style={{ borderRadius: 46 }} />

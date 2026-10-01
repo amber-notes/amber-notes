@@ -12,7 +12,7 @@ const FAQ = [
     "Yes, on a Mac. The Claude desktop app can read, create and update Apple Notes through Anthropic's Read and Write Apple Notes extension, and community MCP servers let Claude Desktop and Claude Code do the same. It all runs on the Mac where your notes are, so it doesn't work from Claude on iPhone or on the web.",
   ] },
   { q: "Can Claude on my iPhone see my Apple Notes?", a: [
-    "No, and iOS 27 doesn't change that. Apple Notes has no public API and no way for an outside service to reach your notes in iCloud, so nothing can connect Claude on iPhone or claude.ai to them. Siri in iOS 27 can hand requests to ChatGPT, but Claude isn't offered there. The only way is to move your notes to an app that has its own MCP server.",
+    "Not directly, and iOS 27 doesn't change that. Apple Notes has no public API and no way for an outside service to reach your notes in iCloud. The workaround is to run an Apple Notes MCP server on your Mac and expose it to the internet through a tunnel, which only works while that Mac is on and needs care to keep private. Siri in iOS 27 can hand requests to ChatGPT, but Claude isn't offered there. The simpler way is to move your notes to an app that has its own MCP server.",
   ] },
   { q: "Why is the Apple Notes connector not working in Claude?", a: [
     "Most often because it's being used outside the Claude desktop app on a Mac: it doesn't work on claude.ai or in Claude on iPhone. On the Mac, check that Claude may control Notes in System Settings, Privacy & Security, Automation, then quit and reopen Claude. It also can't read locked notes, and it only sees notes while that Mac is awake.",
@@ -37,7 +37,9 @@ export default function Page() {
       </p>
       <p>
         Claude on the web and Claude on iPhone run in Anthropic&apos;s cloud. They can only reach apps that offer a server on the
-        internet, and Apple Notes doesn&apos;t have one.
+        internet, and Apple Notes doesn&apos;t have one. You can make one: run an Apple Notes MCP server on your Mac and expose it through a
+        tunnel, then add it as a custom connector. It only works while that Mac is awake, and anything you put on the internet that way
+        needs its own protection.
       </p>
 
       <h2>Your options</h2>

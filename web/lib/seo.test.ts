@@ -4,6 +4,7 @@ import nextConfig from "../next.config";
 import robots from "../app/robots";
 import sitemap from "../app/sitemap";
 import { MCP_URL } from "./facts";
+import { DEFAULT_SHARE_IMAGE, pageMetadata } from "./site";
 import { llmsFullTxt, llmsTxt } from "./llms";
 import { PER_PAGE, categories, categoryAnchor, categoryPath, morePosts, newestFirst, pageCount, pageOf, pagePath, posts, published } from "./posts";
 
@@ -168,6 +169,35 @@ describe("blog pages", () => {
   it("redirects /page/1 to the list's own address", async () => {
     const redirects = await nextConfig.redirects!();
     expect(redirects).toContainEqual({ source: "/blog/page/1", destination: "/blog", permanent: true });
+  });
+});
+
+describe("share images", () => {
+  it("gives every published post its own share card, and every other page the site's", async () => {
+    const { postMetadata } = await import("./PostPage");
+    const route = await import("../app/og/blog/[slug]/route");
+    expect(route.generateStaticParams()).toEqual(published().map((p) => ({ slug: p.slug })));
+    for (const p of posts) {
+      const m = postMetadata(p.slug);
+      const og = (m.openGraph as { images: { url: string }[] }).images[0].url;
+      const tw = (m.twitter as { images: { url: string }[] }).images[0].url;
+      expect(og, p.slug).toBe(p.draft ? DEFAULT_SHARE_IMAGE.url : `/og/blog/${p.slug}`);
+      expect(tw, p.slug).toBe(og);
+    }
+    // Pages with a card of their own keep it.
+    for (const page of ["help", "download"]) {
+      const src = readFileSync(new URL(`../app/${page}/page.tsx`, import.meta.url), "utf8");
+      expect(src, page).toContain(`url: "/${page}/opengraph-image"`);
+    }
+    const index = pageMetadata({ title: "x", description: "y", path: "/z" });
+    expect((index.openGraph as { images: { url: string }[] }).images[0].url).toBe(DEFAULT_SHARE_IMAGE.url);
+  });
+
+  it("has a JPEG copy of every published post's cover for its share card", () => {
+    for (const p of published()) {
+      const name = p.thumb.src.replace(/^\/blog\//, "").replace(/\.webp$/, "");
+      expect(existsSync(new URL(`./og/covers/${name}.jpg`, import.meta.url)), name).toBe(true);
+    }
   });
 });
 
