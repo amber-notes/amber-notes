@@ -33,9 +33,10 @@ export type Ground = "paper" | "soft" | "tint" | "amber" | "leaf" | "dark" | "du
 
 /// A card's picture: one real capture of the element the post is about, on the post's ground. The
 /// capture is cropped at 2x (3x from iPhone) to about the card's width, so it shows at full size.
-export type Thumb = { ground: Ground; src: string; width: number; height: number };
+/// `fit`: a capture whose last line (a prompt's buttons) must stay clear, so its fade starts lower.
+export type Thumb = { ground: Ground; src: string; width: number; height: number; fit?: boolean };
 
-const thumb = (ground: Ground, name: string, width: number, height: number): Thumb => ({ ground, src: `/blog/${name}.webp`, width, height });
+const thumb = (ground: Ground, name: string, width: number, height: number, fit = false): Thumb => ({ ground, src: `/blog/${name}.webp`, width, height, ...(fit ? { fit } : {}) });
 
 export const AUTHOR = { name: "Emil Wagman", avatar: "/emil-wagman.jpg" };
 
@@ -70,7 +71,7 @@ export const posts: Post[] = [
     date: "2026-10-01",
     updated: "2026-10-01",
     image: SHOTS.coworkAllow,
-    thumb: thumb("rose", "thumb-cowork-apple-notes", 780, 515),
+    thumb: thumb("rose", "thumb-cowork-apple-notes", 800, 528, true),
     draft: false,
   },
   {

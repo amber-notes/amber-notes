@@ -5,6 +5,14 @@ assistants. Newest first. Research behind it: [seo-aeo-research-2026-09-30.md](s
 
 `docs/` had no README naming a folder for evidence, so this and the research live in `docs/Evidence/`.
 
+## 1 October 2026: the Claude Cowork cover fills its card
+
+- Emil flagged that the prompt sat small in the middle third of its panel. The other covers fill theirs.
+- It's now drawn at 4x, cropped to the title, message and buttons, and downsampled, so it stays sharp. It spans about 85% of the panel width, like the Groceries cover. At card size the title is about the size of "Groceries" there.
+- A prompt down to its buttons is taller for its width than the other captures, so the card's usual fade would have dimmed Don't Allow and Allow. A new `fit` option on a card's picture fades only its last few pixels. Only this card uses it.
+- Compared at the same size beside the Groceries and Gemini cards (`compare-1440.png`).
+- The blue Allow, the rose ground and the share card carry over.
+
 ## 1 October 2026: the Claude Cowork cover, redrawn
 
 - The first Cowork cover was a status infographic with system-coloured icons, and it echoed the stepped list on "Can Claude read your Apple Notes?". It's replaced with a real moment: the macOS prompt that asks you to let Claude control Notes. The extension needs that permission the first time.
