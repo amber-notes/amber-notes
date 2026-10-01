@@ -233,3 +233,4 @@
 .compact .noteLines li > span { line-height: 25px; }
 /* Half over the edge, as if the receipt were floating above the window. */
 .compact .receiptSlot { bottom: -19px; }
+.compact .head { max-width: 860px; }
