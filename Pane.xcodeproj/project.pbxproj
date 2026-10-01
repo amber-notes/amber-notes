@@ -1125,6 +1125,7 @@
 				4C16E43470B6ADF24FEA250B /* Resources */,
 				2496F1C4667AAC04AF2E3730 /* Frameworks */,
 				452312188A1A8E5F26132ED7 /* Embed Foundation Extensions */,
+				A81129B5FF8296D1EE96F9B0 /* Unsign resource bundles */,
 			);
 			buildRules = (
 			);
@@ -1250,6 +1251,28 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		A81129B5FF8296D1EE96F9B0 /* Unsign resource bundles */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Unsign resource bundles";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "[ \"$PLATFORM_NAME\" = macosx ] || exit 0\ncd \"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\" || exit 0\nfor b in *.bundle; do\n  [ -d \"$b/Contents/_CodeSignature\" ] || continue\n  /usr/libexec/PlistBuddy -c \"Print :CFBundleExecutable\" \"$b/Contents/Info.plist\" >/dev/null 2>&1 && continue\n  rm -rf \"$b/Contents/_CodeSignature\"\n  echo \"Unsigned $b\"\ndone\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		2453B478514BB95B727C5EC2 /* Sources */ = {
@@ -1659,6 +1682,7 @@
 				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "Pane/Resources/$(PANE_MAC_ENTITLEMENTS)";
 				COMBINE_HIDPI_IMAGES = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Pane/Resources/Info-Direct.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1813,6 +1837,7 @@
 				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "Pane/Resources/$(PANE_MAC_ENTITLEMENTS)";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Pane/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1866,6 +1891,7 @@
 				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "Pane/Resources/$(PANE_MAC_ENTITLEMENTS)";
 				COMBINE_HIDPI_IMAGES = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Pane/Resources/Info-Direct.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1967,6 +1993,7 @@
 				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "Pane/Resources/$(PANE_MAC_ENTITLEMENTS)";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Pane/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
