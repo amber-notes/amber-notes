@@ -55,6 +55,29 @@ describe("a shared page", () => {
   });
 });
 
+describe("the gallery", () => {
+  const gallery = () => renderToStaticMarkup(Gallery());
+
+  it("filters by category in one row, without an audience filter", () => {
+    const html = gallery();
+    expect(html.match(/role="group"/g)).toHaveLength(1);
+    expect(html).toContain('aria-label="Category"');
+    expect(html).not.toContain("Who it&#x27;s for");
+    expect(html).not.toContain(">Everyone<");
+  });
+
+  it("has no numbered steps above the cards", () => {
+    expect(gallery()).not.toContain("<ol");
+  });
+
+  it("makes every card one link that says what it opens", () => {
+    const html = gallery();
+    const cards = html.match(/<a class="[^"]*card[^"]*" href="\/templates\/[^"]+">/g) ?? [];
+    expect(cards).toHaveLength(templates().length);
+    expect(html.match(/>Use template</g)).toHaveLength(templates().length);
+  });
+});
+
 describe("before the app opens template links (APP_TEMPLATES)", () => {
   it("names the release that adds them", () => expect(APP_TEMPLATES.version).toMatch(/^\d+\.\d+/));
 
