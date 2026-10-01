@@ -7,7 +7,7 @@ export const PRIVACY_PATH = "/privacy-security";
 
 export type Fact = { title: string; text: string };
 
-/// The short list: the home page shows these, and the page opens with them.
+/// The short list the Privacy & Security page opens with.
 export const FACTS: Fact[] = [
   { title: "End-to-end encrypted", text: "Your notes, titles, folder names, files and earlier versions are encrypted on your iPhone or Mac with a key that only your devices, and AI connections you approve, can unlock. We can't read them." },
   { title: "AI only with your approval", text: "An AI app can read your notes only after you approve it on your iPhone or Mac. While it works, our server opens the notes it asks for in memory. Disconnect it at any time." },
@@ -96,3 +96,11 @@ export const COUNTS: string[] = [
   "which first-run setup steps you've done",
   "a random id for each installation and whether it's an iPhone or a Mac, to count devices",
 ];
+
+/// The home page's privacy card: one claim, and in the same breath the AI exception from CAVEAT.
+export const HOME_PRIVACY = {
+  eyebrow: "Private by design",
+  title: "We can't read your notes.",
+  text: "They're encrypted on your iPhone or Mac. When an AI you approve asks for notes, our server reads them in memory to answer it.",
+  link: "Read what we store, and every log we keep",
+};
