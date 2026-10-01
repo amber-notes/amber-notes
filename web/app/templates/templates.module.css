@@ -92,10 +92,11 @@
 /* The real note's slice on white paper, then "Use template" on the same sheet. */
 .slice { position: relative; grid-row: 3; display: flex; flex-direction: column; min-width: 0; margin: 0 14px; border-radius: 8px; background: #fff; overflow: hidden; }
 .sliceNote {
-  position: relative; display: grid; gap: 6px; max-height: 124px; padding: 12px 14px 0; overflow: hidden; color: #1d1d1f;
+  position: relative; flex: 1 0 auto; display: flex; flex-direction: column; gap: 6px; height: 120px; padding: 12px 14px 0; overflow: hidden; color: #1d1d1f;
   font: 12.5px/1.35 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
 }
-.sliceNote::after { content: ""; position: absolute; inset: auto 0 0; height: 28px; background: linear-gradient(rgba(255, 255, 255, 0), #fff); }
+.sliceNote > * { flex: none; }
+.sliceNote::after { content: ""; position: absolute; inset: auto 0 0; height: 22px; background: linear-gradient(rgba(255, 255, 255, 0), #fff); }
 .sliceH { font-weight: 700; font-size: 13px; }
 .sliceSub { font-weight: 650; font-size: 12px; color: #6e6e73; }
 .sliceLine { display: flex; align-items: center; gap: 7px; min-width: 0; padding: 2px 6px; margin: 0 -6px; border-radius: 5px; }

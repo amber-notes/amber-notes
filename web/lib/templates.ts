@@ -162,7 +162,7 @@ export const changedCount = (t: Template) => changedLines(t.note, t.example).siz
 export const preview = (t: Template) => summary(withoutTitle(t.note), 120);
 
 /// One row of a card's slice of the note, drawn the way Amber Notes draws it. `fresh` marks the line
-/// the app would tint as just added by an AI.
+/// the app would tint as just added by an AI (for a table, the index of that row).
 export type SliceRow =
   | { kind: "heading"; text: string }
   | { kind: "label"; text: string }
@@ -171,54 +171,65 @@ export type SliceRow =
   | { kind: "text"; text: string; label?: string; fresh?: boolean }
   | { kind: "quote"; text: string; fresh?: boolean }
   | { kind: "subnote"; text: string; fresh?: boolean }
-  | { kind: "table"; columns: string[]; rows: string[][] };
+  | { kind: "table"; columns: string[]; rows: string[][]; fresh?: number };
 
-/// Where a card's slice starts, for notes whose first table or checklist isn't the part that shows
-/// what the template is for: the newest day, week or decision instead.
+/// Where each card's slice starts, chosen per template so the first lines show what makes it
+/// useful: a filled table, ticked items, the newest day or decision. The slice runs on from there
+/// across sections, so the card's panel is always full.
 const SLICE_FROM: Record<string, string> = {
-  "daily-standup": "30 September",
-  "weekly-review": "Week of 28 September",
-  "one-on-one-notes": "Follow-ups",
-  "decision-log": "Stay on Postgres, 29 September",
-  "book-notes": "Four Thousand Weeks by Oliver Burkeman",
-  "recipe-box": "Weeknight",
+  "habit-tracker": "|", "meeting-notes": "Open action items", "daily-standup": "30 September", "meal-plan": "|",
+  "reading-list": "|", "mood-energy-log": "|", "job-hunt": "|", "trip-plan": "|", "study-flashcards": "Cell respiration",
+  "decision-log": "Stay on Postgres, 29 September", "workout-log": "|", "budget-log": "|", "one-on-one-notes": "Follow-ups",
+  "book-notes": "Four Thousand Weeks by Oliver Burkeman", "bug-triage": "|", "weekly-review": "Week of 28 September",
+  "recipe-box": "Weeknight", "content-calendar": "|", "home-maintenance": "|", "gift-ideas": "|",
 };
 
-/// The card's slice of the filled-in example: its first table (the first rows that are filled in,
-/// the newest tinted), or one section's first few lines (the first tinted).
-export function slice(t: Template, max = 4): SliceRow[] {
-  const lines = withoutTitle(t.example).split("\n");
+/// The card's slice of the filled-in example, about `lines` lines long: from the template's chosen
+/// start, its heading, then tables (their filled-in rows) and list items, across sections. The
+/// first table's newest row, or else the first item, is tinted.
+export function slice(t: Template, lines = 8): SliceRow[] {
+  const md = withoutTitle(t.example).split("\n");
   const plain = (s: string) => s.replace(/\*\*|__|`/g, "").replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").trim();
   const heading = (l: string) => l.match(/^(#{1,6})\s+(.*)$/);
-  let at = -1;
-  const from = SLICE_FROM[t.slug];
-  if (from) at = lines.findIndex((l) => heading(l)?.[2].trim() === from);
-  else if (lines.some((l) => l.trim().startsWith("|"))) {
-    const i = lines.findIndex((l) => l.trim().startsWith("|"));
-    const cells = (row: string) => row.trim().replace(/^\||\|$/g, "").split("|").map(plain);
-    const rows: string[][] = [];
-    for (let j = i + 2; j < lines.length && lines[j].trim().startsWith("|"); j++) rows.push(cells(lines[j]));
-    return [{ kind: "table", columns: cells(lines[i]), rows: rows.filter((r) => r.filter(Boolean).length * 2 >= r.length).slice(0, 3) }];
-  } else at = lines.findIndex((l, i) => heading(l) && /^\s*([-*+]|\d+[.)])\s/.test(lines.slice(i + 1).find((x) => x.trim()) ?? ""));
+  const from = SLICE_FROM[t.slug] ?? "|";
+  const at = from === "|" ? md.findIndex((l) => l.trim().startsWith("|")) : md.findIndex((l) => heading(l)?.[2].trim() === from);
   if (at < 0) return [];
-  const level = heading(lines[at])![1].length;
-  const out: SliceRow[] = [{ kind: "heading", text: plain(heading(lines[at])![2]) }];
-  for (let i = at + 1; i < lines.length && out.length <= max; i++) {
-    const l = lines[i];
+  const out: SliceRow[] = [];
+  let used = 0, tinted = false;
+  const labelled = (rest: string) => { const m = rest.match(/^\*\*(.+?)\*\*\s*(.*)$/); return m ? { label: m[1], text: plain(m[2]) } : { text: plain(rest) }; };
+  for (let i = at; i < md.length && used < lines; i++) {
+    const l = md[i];
     if (!l.trim() || l.trim().startsWith("<!--")) continue;
     const h = heading(l);
-    if (h && h[1].length <= level) break;
-    const first = !out.some((r) => "fresh" in r && r.fresh) || undefined;
-    const labelled = (rest: string) => { const m = rest.match(/^\*\*(.+?)\*\*\s*(.*)$/); return m ? { label: m[1], text: plain(m[2]) } : { text: plain(rest) }; };
+    // Past the first block, headings and labels would land alone at the panel's faded foot, so the
+    // slice runs on with the lines themselves.
+    const started = out.some((r) => r.kind !== "heading" && r.kind !== "label");
+    if ((h || /^\*\*[^*]+\*\*$/.test(l.trim())) && started) continue;
+    if (h) {
+      // A heading with nothing under it (an empty section) adds nothing to a card.
+      const next = md.slice(i + 1).find((x) => x.trim() && !x.trim().startsWith("<!--"));
+      if (!next || heading(next)) continue;
+      out.push({ kind: "heading", text: plain(h[2]) }); used++; continue;
+    }
+    if (l.trim().startsWith("|")) {
+      const cells = (row: string) => row.trim().replace(/^\||\|$/g, "").split("|").map(plain);
+      const rows: string[][] = [];
+      let j = i + 2;
+      for (; j < md.length && md[j].trim().startsWith("|"); j++) rows.push(cells(md[j]));
+      const filled = rows.filter((r) => r.filter(Boolean).length * 2 >= r.length).slice(0, 3);
+      out.push({ kind: "table", columns: cells(l), rows: filled, fresh: tinted ? undefined : filled.length - 1 });
+      tinted = true; used += 1 + filled.length; i = j - 1; continue;
+    }
+    const fresh = !tinted || undefined;
     const c = l.match(/^\s*[-*+]\s+\[([ xX])\]\s+(.*)$/);
     const b = l.match(/^\s*(?:[-*+]|\d+[.)])\s+(.*)$/);
-    if (h) out.push({ kind: "heading", text: plain(h[2]) });
-    else if (c) out.push({ kind: "check", text: plain(c[2]), done: c[1] !== " ", fresh: first });
-    else if (/^\s*\[[^\]]+\]\(pane-note:/.test(l)) out.push({ kind: "subnote", text: plain(l), fresh: first });
-    else if (b) out.push({ kind: "item", ...labelled(b[1]), fresh: first });
-    else if (l.startsWith(">")) out.push({ kind: "quote", text: plain(l.replace(/^>\s*/, "")), fresh: first });
-    else if (/^\*\*[^*]+\*\*$/.test(l.trim())) out.push({ kind: "label", text: plain(l) });
-    else out.push({ kind: "text", ...labelled(l.trim()), fresh: first });
+    if (c) out.push({ kind: "check", text: plain(c[2]), done: c[1] !== " ", fresh });
+    else if (/^\s*\[[^\]]+\]\(pane-note:/.test(l)) out.push({ kind: "subnote", text: plain(l), fresh });
+    else if (b) out.push({ kind: "item", ...labelled(b[1]), fresh });
+    else if (l.startsWith(">")) out.push({ kind: "quote", text: plain(l.replace(/^>\s*/, "")), fresh });
+    else if (/^\*\*[^*]+\*\*$/.test(l.trim())) { out.push({ kind: "label", text: plain(l) }); used++; continue; }
+    else out.push({ kind: "text", ...labelled(l.trim()), fresh });
+    tinted = true; used++;
   }
   return out;
 }

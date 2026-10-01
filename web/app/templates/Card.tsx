@@ -37,7 +37,7 @@ function Row({ r }: { r: SliceRow }) {
       return (
         <span className={s.sliceTable} style={{ "--cols": cols } as React.CSSProperties}>
           <span className={s.sliceTr}>{r.columns.slice(0, cols).map((c, k) => <span key={k}>{c}</span>)}</span>
-          {r.rows.map((row, j) => <span key={j} className={s.sliceTr} data-fresh={j === r.rows.length - 1 || undefined}>{row.slice(0, cols).map(cell)}</span>)}
+          {r.rows.map((row, j) => <span key={j} className={s.sliceTr} data-fresh={j === r.fresh || undefined}>{row.slice(0, cols).map(cell)}</span>)}
         </span>
       );
     }

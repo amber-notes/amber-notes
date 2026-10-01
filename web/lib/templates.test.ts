@@ -257,12 +257,14 @@ describe("the example", () => {
     }
   });
 
-  it("shows a filled-in slice of the real note on the card", () => {
+  it("shows a full slice of the real note on the card, with one tinted line", () => {
     for (const t of all) {
       const rows = slice(t);
-      const table = rows[0]?.kind === "table" ? rows[0] : undefined;
-      if (table) expect(table.rows.length, t.slug).toBeGreaterThanOrEqual(2);
-      else expect(rows.length, t.slug).toBeGreaterThanOrEqual(3);
+      const lines = rows.reduce((n, r) => n + (r.kind === "table" ? 1 + r.rows.length : 1), 0);
+      expect(lines, t.slug).toBeGreaterThanOrEqual(5);
+      const tinted = rows.filter((r) => (r.kind === "table" ? r.fresh !== undefined : "fresh" in r && r.fresh));
+      expect(tinted.length, t.slug).toBe(1);
+      for (const r of rows) if (r.kind === "table") expect(r.rows.length, t.slug).toBeGreaterThanOrEqual(2);
     }
   });
 });
