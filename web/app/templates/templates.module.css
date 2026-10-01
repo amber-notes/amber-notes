@@ -53,15 +53,16 @@
 .grid > li[hidden] { display: none; }
 
 /* A card: the template's real structure in miniature on its category's ground, then the words, then
-   "Use template" at the foot, so the card reads as something to open before anyone hovers it. */
+   "Use template" at the foot, so the card reads as something to open before anyone hovers it. On hover
+   the card moves as one piece: .card transforms and clips the preview itself. The preview never moves
+   on its own; a transformed child near the rounded clip shows a seam at the card's edge mid-animation. */
 .card {
-  display: grid; grid-template-rows: auto 1fr auto; border-radius: 22px; overflow: hidden; color: var(--ink); text-decoration: none; background: var(--card);
+  display: grid; grid-template-rows: auto 1fr auto; border-radius: 22px; overflow: hidden; isolation: isolate; color: var(--ink); text-decoration: none; background: var(--card);
   cursor: pointer; box-shadow: 0 0 0 1px var(--line), 0 18px 36px -30px rgba(60, 30, 5, 0.55);
 }
 @media (prefers-reduced-motion: no-preference) {
   .card { transition: box-shadow 0.2s ease-out, transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1); }
   .card:active { transform: scale(0.98); transition-duration: 0.1s; }
-  .mini { transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.1); }
   .use { transition: background-color 0.15s ease-out, color 0.15s ease-out; }
   .use svg { transition: transform 0.2s cubic-bezier(0.2, 0.9, 0.3, 1.1); }
 }
@@ -72,7 +73,6 @@
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
   .card:hover { transform: translateY(-3px); }
   .card:hover:active { transform: translateY(-3px) scale(0.98); }
-  .card:hover .mini { transform: translateY(-3px); }
   .card:hover .use svg { transform: translateX(3px); }
 }
 .card:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
