@@ -46,7 +46,7 @@ The `*.pglite.test.ts` tests run every migration in an in-process Postgres, so t
 cd web && pnpm install && pnpm typecheck && pnpm test && pnpm build
 ```
 
-`pnpm dev` runs it locally.
+`pnpm dev` runs it locally. Most pages work without it; the shared-note, report and connect pages need `web/.env.local` with `SUPABASE_URL` and `SUPABASE_ANON_KEY` (the local stack). See [web/README.md](web/README.md).
 
 ## Pull requests
 
