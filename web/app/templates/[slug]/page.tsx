@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { AIGlyph } from "@/lib/ai-glyphs";
 import { APP_TEMPLATES, pageMetadata } from "@/lib/site";
 import { JsonLd, breadcrumbs, maker, organization, templateHowTo, templateWork } from "@/lib/structured-data";
+import { COVERS, coverPath } from "@/lib/template-covers";
 import { anchor, changedCount, instructions, noteTitle, searchTitle, template, templates, useLink, type Template } from "@/lib/templates";
 import Card from "../Card";
 import CopyButton from "../CopyButton";
@@ -84,9 +85,13 @@ export default async function Page({ params }: Props) {
             <p className={`${s.fine} rise`} style={at(3)}>Free. No Amber Notes yet? <a href="/download">Download it for Mac</a>.</p>
           </header>
           <div className={`${s.heroExample} rise-soft`} style={at(2)}>
-            <p className={s.changes} aria-hidden="true">{by} changed <span>{changed} {changed === 1 ? "line" : "lines"}</span><i>Undo</i></p>
-            <div className={s.heroWindow}>
-              <NoteWindow markdown={t.example} before={t.note} folder={t.folder} date="30 September 2026" label={`The ${t.title.toLowerCase()} template filled in by an AI`} />
+            {/* The filled note leads; the template's cover sits behind it as its stage, as on its card. */}
+            <div className={s.heroStage} style={{ "--ground": COVERS[t.slug].ground } as React.CSSProperties}>
+              <img className={s.heroCover} src={coverPath(t.slug)} alt="" width={800} height={800} />
+              <p className={s.changes} aria-hidden="true">{by} changed <span>{changed} {changed === 1 ? "line" : "lines"}</span><i>Undo</i></p>
+              <div className={s.heroWindow}>
+                <NoteWindow markdown={t.example} before={t.note} folder={t.folder} date="30 September 2026" label={`The ${t.title.toLowerCase()} template filled in by an AI`} />
+              </div>
             </div>
             <p className={s.caption}>
               The note after a few days of talking to your AI. Tinted lines are what it added, the way Amber Notes shows an AI&apos;s changes, with

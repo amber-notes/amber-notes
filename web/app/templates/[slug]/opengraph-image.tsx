@@ -1,4 +1,5 @@
-import { renderCard } from "@/lib/og/render";
+import { renderTemplateCard } from "@/lib/og/render";
+import { COVERS, inkOn } from "@/lib/template-covers";
 import { template, templates } from "@/lib/templates";
 
 export { size, contentType } from "@/lib/og/render";
@@ -10,12 +11,6 @@ export function generateStaticParams() {
 
 export default async function OpenGraphImage({ params }: { params: Promise<{ slug: string }> }) {
   const t = template((await params).slug)!;
-  return renderCard({
-    theme: "cream",
-    title: `${t.title} [template]`,
-    sub: t.description,
-    chips: [t.category, "ChatGPT", "Claude"],
-    art: "icon",
-    titleSize: 76,
-  });
+  const ground = COVERS[t.slug].ground;
+  return renderTemplateCard({ slug: t.slug, title: t.title, tagline: t.tagline, ground, ink: inkOn(ground) });
 }
