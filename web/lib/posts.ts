@@ -70,7 +70,7 @@ export const posts: Post[] = [
     date: "2026-10-01",
     updated: "2026-10-01",
     image: SHOTS.coworkAllow,
-    thumb: thumb("rose", "thumb-cowork-apple-notes", 780, 515, "The macOS prompt asking to let Claude control Notes"),
+    thumb: thumb("rose", "thumb-cowork-apple-notes", 800, 528, "The macOS prompt asking to let Claude control Notes"),
     draft: false,
   },
   {
