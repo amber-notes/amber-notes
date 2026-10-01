@@ -51,3 +51,33 @@ import Testing
         #expect(t.markdown.hasPrefix("<!-- pane-table: a=text; b=choice Yes|No -->"))
     }
 }
+
+/// Column widths on a narrow screen (TestFlight 1.1.1 cut the Running log's fourth column on iPhone).
+@Suite struct GridColumnWidthTests {
+    static let runningLog = GridTable(rows: [["Date", "Distance km", "Minutes", "Feel"], ["2026-09-22", "5", "27", "4"], ["2026-09-24", "7.5", "42", "3"]],
+                                      range: NSRange(location: 0, length: 0), index: 0)
+
+    @Test func aFourColumnLogFitsAnIPhone() {
+        let font = PFont.systemFont(ofSize: EditorMetrics.body)
+        let text = (0..<4).map { c in ceil(Self.runningLog.rows.map { ($0[c] as NSString).size(withAttributes: [.font: font]).width }.max() ?? 0) }
+        let roomy = text.map { min(max($0 + 24, 64), 280) }.reduce(0, +)
+        let tight = text.map { max($0 + 16, 44) }.reduce(0, +)
+        // A screen narrower than the roomy widths but wide enough for the text (an iPhone).
+        let available = (roomy + tight) / 2
+        let widths = Self.runningLog.columnWidths(available: available)
+        #expect(abs(widths.reduce(0, +) - available) < 0.5, "fits exactly: \(widths)")
+        for (c, w) in widths.enumerated() {
+            #expect(w >= text[c] + 16 - 0.01, "column \(c) keeps its text whole")
+        }
+    }
+
+    @Test func aWideTableStillScrolls() {
+        let wide = GridTable(rows: [(0..<8).map { "Column number \($0)" }], range: NSRange(location: 0, length: 0), index: 0)
+        #expect(wide.columnWidths(available: 340).reduce(0, +) > 340)
+    }
+
+    @Test func aNarrowTableStretches() {
+        let widths = GridTable(rows: [["A", "B"]], range: NSRange(location: 0, length: 0), index: 0).columnWidths(available: 340)
+        #expect(abs(widths.reduce(0, +) - 340) < 0.5)
+    }
+}

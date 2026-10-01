@@ -98,17 +98,26 @@ struct GridTable: Equatable {
         return TypedTable(columns: cols, rows: rows.dropFirst().map { $0 + Array(repeating: "", count: max(0, width - $0.count)) })
     }
 
-    /// Widths that fit each column's text, stretched to fill `available`.
+    /// Widths that fit each column's text, stretched to fill `available`. A table a little too
+    /// wide gives up spare room around its text first (down to the cell's own insets), so a
+    /// four-column log fits an iPhone instead of cutting its last column.
     func columnWidths(available: CGFloat) -> [CGFloat] {
         let width = max(columns, 1)
         let font = PFont.systemFont(ofSize: EditorMetrics.body)
-        var natural = (0..<width).map { c -> CGFloat in
-            let longest = rows.map { c < $0.count ? ($0[c] as NSString).size(withAttributes: [.font: font]).width : 0 }.max() ?? 0
-            return min(max(ceil(longest) + 24, 64), 280)
+        let longest = (0..<width).map { c -> CGFloat in
+            ceil(rows.map { c < $0.count ? ($0[c] as NSString).size(withAttributes: [.font: font]).width : 0 }.max() ?? 0)
         }
+        var natural = longest.map { min(max($0 + 24, 64), 280) }
         let total = natural.reduce(0, +)
         if total < available, total > 0 {
             natural = natural.map { $0 * available / total }
+        } else if total > available {
+            // The text plus the cells' 8-point insets either side.
+            let tight = zip(longest, natural).map { min(max($0 + 16, 44), $1) }
+            let least = tight.reduce(0, +)
+            if least >= available { return tight }
+            let give = (total - available) / (total - least)
+            natural = zip(natural, tight).map { n, t in n - (n - t) * give }
         }
         return natural
     }
@@ -132,6 +141,36 @@ extension TypedTable.ColumnType {
         switch self {
         case .number, .scale, .choice: true
         default: false
+        }
+    }
+}
+
+/// Which edges of a scrolled table have more columns past them.
+struct GridOverflow: Equatable {
+    var leading = false
+    var trailing = false
+
+    init(leading: Bool = false, trailing: Bool = false) {
+        self.leading = leading
+        self.trailing = trailing
+    }
+
+    init(_ g: ScrollGeometry) {
+        leading = g.contentOffset.x > 1
+        trailing = g.contentOffset.x + g.containerSize.width < g.contentSize.width - 1
+    }
+
+    /// Opaque where the table shows, fading over the last `width` points of an edge with more.
+    struct Fade: View {
+        let overflow: GridOverflow
+        static let width: CGFloat = 28
+
+        var body: some View {
+            HStack(spacing: 0) {
+                if overflow.leading { LinearGradient(colors: [.clear, .black], startPoint: .leading, endPoint: .trailing).frame(width: Self.width) }
+                Rectangle()
+                if overflow.trailing { LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing).frame(width: Self.width) }
+            }
         }
     }
 }
@@ -189,6 +228,8 @@ struct TableGridView: View {
     var exit: (Bool) -> Void = { _ in }
 
     @State private var draft: GridTable
+    /// Edges with more columns past them (see GridOverflow).
+    @State private var overflow = GridOverflow()
     @Environment(\.colorSchemeContrast) private var contrast
     @State private var trend: TrendColumn?
     @FocusState private var focus: GridCell?
@@ -229,6 +270,10 @@ struct TableGridView: View {
             }
             .scrollDisabled(total <= available + 0.5)
             .scrollIndicators(total <= available + 0.5 ? .hidden : .automatic)
+            // A table wider than the note fades at the edge that has more, so a cut column
+            // reads as "scroll for more", not as clipped.
+            .onScrollGeometryChange(for: GridOverflow.self) { GridOverflow($0) } action: { _, new in overflow = new }
+            .mask { GridOverflow.Fade(overflow: overflow) }
         }
         .onChange(of: table) { _, new in if new != draft { draft = new } }
         .onAppear {

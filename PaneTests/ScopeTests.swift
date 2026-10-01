@@ -40,4 +40,31 @@ import Testing
         #expect(n.folder?.id == home.id)
         #expect(Scope.settled(.folder(q4.id), liveFolders: ctx.allFolders().map(\.id)) == .folder(home.id))
     }
+
+    /// Compose on the iPhone folder list opens the new note inside its folder (TestFlight 1.1.1
+    /// added a note there that no editor showed).
+    @Test func composeFromTheFolderListOpensTheNotesFolder() throws {
+        let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let ctx = ModelContext(c)
+        let travel = ctx.createFolder(named: "Travel")
+        _ = ctx.createFolder(named: "Personal")
+        let n = ctx.createNote(in: .all)
+        #expect(Scope.opening(n) == .folder(travel.id))
+        #expect(Scope.settled(Scope.opening(n), liveFolders: ctx.allFolders().map(\.id)) == .folder(travel.id))
+    }
+
+    /// Relaunching on a blank note you never typed in discards it and opens the last real one,
+    /// instead of an empty page (the 1.1.1 relaunch).
+    @Test func aBlankNoteLeftOpenIsDiscardedAtLaunch() throws {
+        let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let ctx = ModelContext(c)
+        let folder = ctx.createFolder(named: "Notes")
+        let real = ctx.createNote(in: .folder(folder.id), body: "Groceries\n\n- [ ] Eggs\n")
+        let blank = ctx.createNote(in: .folder(folder.id))
+        blank.updatedAt = .now.addingTimeInterval(10)
+        #expect(ctx.noteToReopen(last: blank.id)?.id == real.id)
+        #expect(blank.deletedAt != nil, "discarded, so it syncs away too")
+        #expect(ctx.noteToReopen(last: real.id)?.id == real.id)
+        #expect(ctx.noteToReopen(last: nil)?.id == real.id)
+    }
 }

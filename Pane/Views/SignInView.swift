@@ -42,13 +42,20 @@ struct SignInView: View {
             .padding(.vertical, 56)
             .frame(width: 380)
         #else
-        card
-            .padding(28)
-            .frame(minWidth: 300, maxWidth: 380)
-            .glassEffect(.regular, in: .rect(cornerRadius: 28))
-            .padding(20)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background { Backdrop() }
+        // Top-anchored in a scroll view: the card keeps one place for the whole flow. The keyboard
+        // only scrolls it when it would cover the field you're typing in.
+        ScrollView {
+            card
+                .padding(28)
+                .frame(minWidth: 300, maxWidth: 380)
+                .glassEffect(.regular, in: .rect(cornerRadius: 28))
+                .padding(20)
+                .padding(.top, 20)
+                .frame(maxWidth: .infinity)
+        }
+        .scrollBounceBehavior(.basedOnSize)
+        .scrollDismissesKeyboard(.interactively)
+        .background { Backdrop() }
         #endif
     }
 
@@ -96,6 +103,9 @@ struct SignInView: View {
         }
         .animation(.snappy(duration: 0.2), value: error)
         .animation(reduceMotion ? nil : .smooth(duration: 0.3), value: flow.step)
+        // Once the password field is there (focusing it in the same update as it appears is
+        // lost, and a paste then lands on the email row).
+        .onChange(of: flow.showsPassword) { _, shows in if shows { focus = .password } }
     }
 
     /// The website's one-line promise, with its low amber marker under "your AI".
@@ -117,11 +127,12 @@ struct SignInView: View {
 
     private var emailSection: some View {
         VStack(spacing: 10) {
-            if flow.emailLocked {
-                lockedEmail
-            } else {
-                field {
-                    TextField("Email", text: $flow.email)
+            // One row for the email: a field, then (once it's checked) the address as text, swapped
+            // in place so the two never cross-fade over each other.
+            field {
+                if flow.showsEmailField {
+                    // Edits while it's being checked are ignored, so the answer matches the email.
+                    TextField("Email", text: Binding(get: { flow.email }, set: { if !flow.emailLocked { flow.email = $0 } }))
                         .textContentType(.username)
                         #if os(iOS)
                         .keyboardType(.emailAddress)
@@ -132,7 +143,30 @@ struct SignInView: View {
                         .submitLabel(.continue)
                         .onSubmit(primary)
                         .accessibilityIdentifier("signin.email")
+                        .transition(.identity)
+                } else {
+                    Text(flow.email)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityIdentifier("signin.lockedEmail")
+                        .transition(.identity)
                 }
+            }
+            if !flow.showsEmailField {
+                // On its own line, so a long address keeps the whole row.
+                Button("Use a different email") {
+                    flow.back()
+                    error = nil
+                    focus = .email
+                }
+                .buttonStyle(.plain)
+                .font(.footnote)
+                .foregroundStyle(.tint)
+                .frame(maxWidth: .infinity, minHeight: 24, alignment: .leading)
+                .contentShape(.rect)
+                .accessibilityIdentifier("signin.back")
+                .transition(.opacity)
             }
 
             if flow.showsPassword {
@@ -182,32 +216,6 @@ struct SignInView: View {
             }
         }
         .textFieldStyle(.plain)
-    }
-
-    /// The email, fixed once you've continued, with the way back.
-    private var lockedEmail: some View {
-        let shape = RoundedRectangle(cornerRadius: Row.radius, style: .continuous)
-        return HStack(spacing: 8) {
-            Text(flow.email)
-                .font(.system(size: Row.text))
-                .lineLimit(1)
-                .truncationMode(.middle)
-                .accessibilityIdentifier("signin.lockedEmail")
-            Spacer(minLength: 8)
-            Button("Use a different email") {
-                flow.back()
-                error = nil
-                focus = .email
-            }
-            .buttonStyle(.plain)
-            .font(.footnote)
-            .foregroundStyle(.tint)
-            .accessibilityIdentifier("signin.back")
-        }
-        .padding(.horizontal, 12)
-        .frame(height: Row.height)
-        .background(Color(Palette.field), in: shape)
-        .overlay(shape.strokeBorder(Color(Palette.fieldHairline), lineWidth: 1 / displayScale))
     }
 
     private func mainButton(_ title: String) -> some View {
@@ -284,7 +292,6 @@ struct SignInView: View {
                 let status = try? await backend.accountStatus(email: email)
                 guard flow.step == .checking, flow.email == email else { return }
                 flow.finishCheck(status)
-                if flow.showsPassword { focus = .password }
             }
         case .signIn, .create:
             let creating = flow.action == .create

@@ -54,3 +54,19 @@ import Testing
         #expect(TypedTable.find(in: "| a | b |\n| --- | --- |\n| 1 | 2 |").isEmpty)
     }
 }
+
+/// Note previews in the list (TestFlight 1.1.1 showed `<!-- pane-table: Date=date; …`).
+@Suite struct ListPreviewTests {
+    @Test func aTablesColumnTypesNeverShow() {
+        let body = "Running log\n\n<!-- pane-table: Date=date; Distance km=number; Minutes=number -->\n| Date | Distance km | Minutes |\n|---|---|---|\n| 2026-09-30 | 5 | 28 |"
+        #expect(NoteText.title(of: body) == "Running log")
+        #expect(NoteText.preview(of: body) == "Date  Distance km  Minutes")
+        #expect(NoteHead.of(body).preview == "Date  Distance km  Minutes")
+    }
+
+    @Test func commentsAreLeftOutLikeTheServer() {
+        #expect(NoteText.title(of: "<!-- hidden -->\nTitle") == "Title")
+        #expect(NoteText.title(of: "Before <!-- note -->after") == "Before after")
+        #expect(NoteText.preview(of: "Title\n<!-- an open comment") == "No additional text")
+    }
+}

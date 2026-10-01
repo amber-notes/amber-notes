@@ -311,7 +311,9 @@ struct AvatarView: View {
                     .font(.system(size: size * 0.4, weight: .semibold))
                     .foregroundStyle(.black.opacity(0.78))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Color.accentColor)
+                    // The app's amber, not the environment's accent: a sheet's accent can still be
+                    // the system blue for a moment, and the same person kept changing colour.
+                    .background(Color(PColor.paneAccent))
             }
         }
         .frame(width: size, height: size)

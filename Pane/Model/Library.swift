@@ -22,6 +22,13 @@ enum Scope: Hashable, Codable {
     }
 }
 
+extension Scope {
+    /// The list a note is shown in when it's opened from the iPhone folder list: its folder.
+    static func opening(_ note: Note) -> Scope {
+        note.folder.map { .folder($0.id) } ?? .all
+    }
+}
+
 extension UTType {
     static let paneItem = UTType(exportedAs: "dev.emilwagman.pane.item")
 }
@@ -92,6 +99,20 @@ extension ModelContext {
         insert(f)
         try? save()
         return f
+    }
+
+    /// The note to open at launch: the one you were on, otherwise the one edited last. A blank
+    /// note you left open (the app was closed before you typed) is discarded, as leaving it
+    /// would have done, instead of opening on an empty page.
+    func noteToReopen(last: UUID?) -> Note? {
+        func blank(_ n: Note) -> Bool { !n.isLocked && n.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        if let last, let n = note(last), n.deletedAt == nil, n.trashedAt == nil {
+            guard blank(n) else { return n }
+            purge(n)
+        }
+        var newest = FetchDescriptor<Note>(sortBy: [SortDescriptor(\.updatedAt, order: .reverse)])
+        newest.fetchLimit = 20
+        return ((try? fetch(newest)) ?? []).first { $0.deletedAt == nil && $0.trashedAt == nil && !blank($0) && !isNested($0) }
     }
 
     /// A note's sub-notes (those that name it as their parent).
