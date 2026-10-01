@@ -104,9 +104,7 @@ struct NoteSourceSheet: View {
             }
             folderPicker(draft)
             Button { model.add(context: context) } label: {
-                Text("Add to my notes")
-                    .foregroundStyle(Color(Palette.onAmber))
-                    .frame(maxWidth: .infinity)
+                Text("Add to my notes").frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
@@ -154,7 +152,7 @@ struct NoteSourceSheet: View {
                     NoteOpener.shared.open(note)
                     dismiss()
                 } label: {
-                    Text("Open note").foregroundStyle(Color(Palette.onAmber)).frame(maxWidth: .infinity)
+                    Text("Open note").frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
@@ -180,16 +178,30 @@ struct NoteSourceSheet: View {
                 .labelsHidden()
                 .accessibilityIdentifier("noteSource.client")
             }
-            Text(current.prompt)
-                .font(.callout.monospaced())
-                .foregroundStyle(Color.ink)
-                .textSelection(.enabled)
+            // The prompt to read; the note's markdown it carries (for an AI to create the note
+            // where it's missing) is copied with it but not shown. Long prompts scroll.
+            let shown = PromptText.shown(current.prompt)
+            VStack(alignment: .leading, spacing: 8) {
+                ScrollView {
+                    Text(shown.text)
+                        .font(.callout)
+                        .foregroundStyle(Color.ink)
+                        .textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(12)
+                }
+                .frame(maxHeight: 180)
                 .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(12)
                 .background(Color.notePage, in: .rect(cornerRadius: 10))
                 .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.separator, lineWidth: 0.5))
                 .accessibilityIdentifier("noteSource.prompt")
+                if shown.includesMarkdown {
+                    Label("The note\u{2019}s markdown is included when you copy.", systemImage: "doc.plaintext")
+                        .font(.footnote)
+                        .foregroundStyle(Color.muted)
+                }
+            }
             Button { copy(current.prompt) } label: {
                 Label(copied ? "Copied" : "Copy", systemImage: copied ? "checkmark" : "doc.on.doc")
                     .contentTransition(.symbolEffect(.replace))
@@ -239,6 +251,17 @@ extension NoteSourceModel: Identifiable {
 
 extension View {
     func noteSourceHandler() -> some View { modifier(NoteSourceHandler()) }
+}
+
+// MARK: Prompt
+
+/// A template's prompt as the sheet shows it: the words before the ```markdown block that carries
+/// the note (copied in full, not shown).
+nonisolated enum PromptText {
+    static func shown(_ prompt: String) -> (text: String, includesMarkdown: Bool) {
+        guard let r = prompt.range(of: "```markdown") else { return (prompt.trimmingCharacters(in: .whitespacesAndNewlines), false) }
+        return (String(prompt[..<r.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines), true)
+    }
 }
 
 // MARK: Preview
@@ -371,7 +394,8 @@ struct NotePreview: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 Grid(alignment: .leading, horizontalSpacing: 0, verticalSpacing: 0) {
                     GridRow { ForEach(Array(header.enumerated()), id: \.offset) { cell($0.element, header: true) } }
-                    ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                    // A tracker starts empty: one blank row shows it's a table to fill in.
+                    ForEach(Array((rows.isEmpty ? [header.map { _ in "" }] : rows).enumerated()), id: \.offset) { _, row in
                         GridRow { ForEach(Array(row.enumerated()), id: \.offset) { cell($0.element, header: false) } }
                     }
                 }
@@ -386,11 +410,11 @@ struct NotePreview: View {
 
     private func cell(_ s: String, header: Bool) -> some View {
         inline(s.isEmpty ? " " : s)
-            .font(header ? .callout.weight(.semibold) : .callout)
+            .font(header ? .footnote.weight(.semibold) : .footnote)
             .monospacedDigit()
             .lineLimit(2)
-            .frame(minWidth: 64, maxWidth: 200, alignment: .leading)
-            .padding(.horizontal, 10)
+            .frame(minWidth: 44, maxWidth: 160, alignment: .leading)
+            .padding(.horizontal, 8)
             .padding(.vertical, 6)
             .background(header ? AnyShapeStyle(.quaternary.opacity(0.6)) : AnyShapeStyle(.clear))
             .overlay(alignment: .trailing) { Rectangle().fill(.separator).frame(width: 0.5) }
@@ -456,12 +480,15 @@ struct NoteSourceCapture: View {
     }
 
     /// The sheet's state for one capture: `template`, `template-added` or `copy`.
-    static func model(_ name: String, context: ModelContext) async -> NoteSourceModel {
+    /// `template` replaces the made-up habit tracker (the snapshot tests pass the site's real one).
+    static func model(_ name: String, context: ModelContext, template: NoteTemplate? = nil) async -> NoteSourceModel {
         let copy = name == "copy"
         let link = NoteSourceLink(kind: copy ? .copy : .template, slug: copy ? "AbCdEfGhIjKlMnOpQrStUvWx" : "habit-tracker")
         var draft: NoteDraft
         if copy {
             draft = NoteDraft(link: link, title: "Lisbon", body: "Lisbon\n\nFour days of tiles, trams and pastries in May.\n\n## Plan\n- [ ] Tram 28 early, before the crowds\n- [ ] Day trip to Sintra\n- [x] Book flights\n\n## Food\n- Manteigaria: pastel de nata\n- Ramiro: seafood", leftOut: 2)
+        } else if let template {
+            draft = NoteDraft(template: template, link: NoteSourceLink(kind: .template, slug: template.slug))
         } else {
             draft = NoteDraft(link: link, title: "Habit tracker", body: habitTracker, leftOut: 0)
             draft.description = "Tick off your habits, and have your AI log each day as a row."

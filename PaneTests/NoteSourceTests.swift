@@ -73,8 +73,25 @@ private let habitJSON = """
 
 private let shareSlug = "AbCdEfGhIjKlMnOpQrStUvWx"
 
+private final class NoteSourceFixtureToken {}
+
 @MainActor
 @Suite struct NoteSourceTests {
+    /// The site's real template file (web/content/templates/habit-tracker.json, as served).
+    nonisolated static var habitTrackerFixture: URL { Bundle(for: NoteSourceFixtureToken.self).url(forResource: "habit-tracker", withExtension: "json")! }
+
+    @Test func decodesTheSitesRealTemplate() throws {
+        let t = try JSONDecoder().decode(NoteTemplate.self, from: Data(contentsOf: Self.habitTrackerFixture))
+        #expect(t.slug == "habit-tracker" && t.title == "Habit tracker" && t.folder == "Habits")
+        #expect(t.instructions.map(\.client) == ["chatgpt", "claude", "claude-code"])
+        #expect(NoteText.title(of: t.note) == "Habit tracker")
+        #expect(NotePreview.blocks(t.note).contains { if case .table(let h, _) = $0 { h.first == "Date" } else { false } })
+        // The prompt shows its words; the note's markdown rides along only in what's copied.
+        let shown = PromptText.shown(t.instructions[0].prompt)
+        #expect(shown.includesMarkdown && !shown.text.contains("```") && shown.text.hasPrefix("First, look for a note"))
+        #expect(PromptText.shown("Just this.") == ("Just this.", false))
+    }
+
     private func context() throws -> ModelContext {
         let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
         return ModelContext(c)
