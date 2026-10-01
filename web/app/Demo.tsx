@@ -24,9 +24,9 @@ const FILE: Record<Shot, string> = {
 const SHOTS = Object.keys(FILE) as Shot[];
 const src = (k: Shot) => `${FRAMES.dir}${FILE[k]}.webp`;
 // Each frame also comes 1180 and 800 wide (cwebp -q 84 -resize), so a phone doesn't download the 2x
-// capture. The window is 1180/1280 of the demo, which is the page column (at most 1200) wide.
+// capture. The window is 1180/1280 of the demo, which is up to 1400 wide (wider than the page column).
 const srcSet = (k: Shot) => `${FRAMES.dir}${FILE[k]}-800.webp 800w, ${FRAMES.dir}${FILE[k]}-1180.webp 1180w, ${src(k)} 2360w`;
-const SIZES = "(min-width: 1240px) 1106px, 92vw";
+const SIZES = "(min-width: 1440px) 1290px, 92vw";
 const ALT: Record<Shot, string> = {
   before: "Amber Notes on a Mac",
   listed: "A new note, Lisbon, 4 days in May, arriving in the list marked Written by ChatGPT",
@@ -83,12 +83,10 @@ function at(t: number): View {
   return v;
 }
 
-const W = 1280, KEY = 520; // design width; KEY = the top part of the desk that must fit the first view
 
 export default function Demo() {
   const [view, setView] = useState<View>(at(0));
   const [still, setStill] = useState(false);
-  const [fitW, setFitW] = useState<number | null>(null);
   const clock = useRef({ t: 0, last: 0, started: false });
   const pause = useRef({ offscreen: false, hidden: false });
   const outer = useRef<HTMLDivElement>(null);
@@ -96,22 +94,6 @@ export default function Demo() {
   const fieldRef = useRef<HTMLSpanElement>(null);
   const [overflow, setOverflow] = useState(false);
   const segs = useRef<(HTMLButtonElement | null)[]>([]);
-
-  // Wide screens: size the desk so the chat and the note fit the first view.
-  useLayoutEffect(() => {
-    const el = outer.current?.parentElement;
-    if (!el || !outer.current) return;
-    const fit = () => {
-      const avail = el.clientWidth;
-      if (window.innerWidth < 700) { setFitW(null); return; }
-      const top = outer.current!.getBoundingClientRect().top + window.scrollY;
-      const byHeight = ((window.innerHeight - top - 16) * W) / KEY;
-      setFitW(Math.max(Math.min(avail, 760), Math.min(avail, W, byHeight)));
-    };
-    fit();
-    window.addEventListener("resize", fit);
-    return () => window.removeEventListener("resize", fit);
-  }, []);
 
   const paintBar = (t: number) => {
     const p = Math.max(0, PART_AT.findIndex((s, k) => t >= s && t < PART_AT[k + 1]));
@@ -197,7 +179,7 @@ export default function Demo() {
 
   return (
     <div className={d.wrap}>
-      <div ref={outer} className={d.fit} style={fitW ? { width: fitW, margin: "0 auto" } : undefined}>
+      <div ref={outer} className={d.fit}>
         <div className={d.desk}>
           <Wallpaper />
           <div className={d.app} data-dim={(view.chat && !view.edit && (typing || view.thinking || view.sent > view.answered)) || undefined} data-edit={view.edit || undefined}
