@@ -33,6 +33,10 @@ export default function Page() {
         <li>&ldquo;Log today&apos;s hours in my Timesheet table.&rdquo;</li>
       </ul>
       <p>
+        The <a href="/templates/daily-standup">standup</a>, <a href="/templates/bug-triage">bug triage</a> and{" "}
+        <a href="/templates/decision-log">decision log</a> templates come with a prompt written for Claude Code.
+      </p>
+      <p>
         Amber Notes is a free notes app for iPhone and Mac with an MCP server built in, so your agent writes into the same notes you read
         everywhere else. You see what it changed, with Undo, and every earlier version is kept. If your notes are still in Apple Notes,{" "}
         <a href="/blog/move-from-apple-notes">move them over first</a>.

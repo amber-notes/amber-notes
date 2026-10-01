@@ -4,10 +4,10 @@ import Testing
 @testable import Pane
 
 extension NetworkFaults {
-/// An Evernote import goes through sync like anything typed (against StubSupabase): every note,
+/// Imports (Evernote, Markdown…) go through sync like anything typed (against StubSupabase): every note,
 /// folder and file goes up sealed, nothing readable reaches the server, and another device with
 /// the account's key opens it all, files placed where they were.
-@MainActor @Suite(.sealedAccount) struct EvernoteSyncTests {
+@MainActor @Suite(.sealedAccount) struct ImportSyncTests {
     let user = SealedAccount.user
 
     init() {
@@ -30,8 +30,8 @@ extension NetworkFaults {
 
     @Test func anImportedNotebookGoesUpSealedAndOpensOnTheOtherDevice() async throws {
         let (a, engineA) = try device()
-        let source = ENEXSource.inspect(EvernoteImportTests.recipes)
-        let summary = await EvernoteImporter(context: a).run([source], into: .perNotebook)
+        let source = EvernoteImporter.inspect(EvernoteImportTests.recipes)
+        let summary = await EvernoteImporter(context: a).run([source], into: .perSource)
         #expect(summary.notes == 5 && summary.attachments == 3)
         await engineA.sync()
 
@@ -62,6 +62,43 @@ extension NetworkFaults {
         #expect(await engineB.download(theirs))
         #expect(try Data(contentsOf: FileStore.url(for: pdf.id, filename: pdf.filename)) == original)
         for f in files { try? FileManager.default.removeItem(at: FileStore.url(for: f.id, filename: f.filename).deletingLastPathComponent()) }
+        await engineA.stop(); await engineB.stop()
+    }
+
+    @Test func anImportedVaultGoesUpSealedWithItsFoldersAndFiles() async throws {
+        let (a, engineA) = try device()
+        let summary = await MarkdownImporter(context: a).run([MarkdownImporter.inspect(try MarkdownImportTests.fixture("Obsidian vault"))], into: .perSource)
+        #expect(summary.notes == 4 && summary.attachments == 2)
+        await engineA.sync()
+        let files = try a.fetch(FetchDescriptor<Pane.Attachment>())
+        defer { for f in files { try? FileManager.default.removeItem(at: FileStore.url(for: f.id, filename: f.filename).deletingLastPathComponent()) } }
+        #expect(files.allSatisfy(\.uploaded) && StubSupabase.rows("folders").count == 3)
+        let sent = everythingSent()
+        for secret in ["Kitchen remodel", "Obsidian vault", "Projects", "carpenter", "cabin.png", "floor plan", "#inbox"] {
+            #expect(!sent.contains(secret), "\(secret) reached the server readable")
+        }
+        let (b, engineB) = try device()
+        await engineB.sync()
+        let kitchen = try #require(try b.fetch(FetchDescriptor<Note>()).first { $0.title == "Kitchen remodel" })
+        #expect(kitchen.folder?.name == "Projects" && kitchen.folder?.parent?.name == "Obsidian vault")
+        await engineA.stop(); await engineB.stop()
+    }
+
+    @Test func aKeepTakeoutGoesUpSealedWithItsPins() async throws {
+        let (a, engineA) = try device()
+        let summary = await KeepImporter(context: a).run([KeepImporter.inspect(try KeepImportTests.takeout())], into: .perSource)
+        #expect(summary.notes == 5 && summary.attachments == 2)
+        await engineA.sync()
+        let files = try a.fetch(FetchDescriptor<Pane.Attachment>())
+        defer { for f in files { try? FileManager.default.removeItem(at: FileStore.url(for: f.id, filename: f.filename).deletingLastPathComponent()) } }
+        let sent = everythingSent()
+        for secret in ["Groceries", "Oat milk", "Google Keep", "Travel", "livrarialello", "1a2b3c4d5e"] {
+            #expect(!sent.contains(secret), "\(secret) reached the server readable")
+        }
+        let (b, engineB) = try device()
+        await engineB.sync()
+        let groceries = try #require(try b.fetch(FetchDescriptor<Note>()).first { $0.title == "Groceries" })
+        #expect(groceries.isPinned && groceries.folder?.name == "Home")
         await engineA.stop(); await engineB.stop()
     }
 }

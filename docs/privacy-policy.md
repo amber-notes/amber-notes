@@ -43,7 +43,7 @@ This policy covers the Amber Notes apps for iPhone and Mac, the service that let
 - Your notes' key is made on your first device and kept in your iCloud Keychain. We never receive it in readable form.
 - We store a short identifier of the key and a check value that lets your devices confirm they have the right key. Neither can be used to read your notes.
 - Your recovery key is a key you save yourself. We store your notes' key locked with it, so a device can get your key with the recovery key. We never receive the recovery key.
-- Each AI connection you approve gets a copy of your notes' key, locked with a secret only that AI holds (see AI connections).
+- Each AI connection you approve gets a copy of your notes' key, locked with a key derived from that connection's access token, which we store only as a hash (see AI connections).
 
 **Your devices**
 
@@ -128,7 +128,7 @@ We don't use your data for advertising, and we don't make automated decisions ab
 Nothing reaches an AI assistant unless you connect one. When you connect ChatGPT, Claude, Claude Code, Codex or another assistant:
 
 - You approve the connection on your iPhone or Mac and choose **read only** or **read and edit**. When you start from a browser, the page shows a number and your device asks you to tap the same one. With no device nearby, you can approve on ambernotes.app with your recovery key.
-- Approving gives that connection a copy of your notes' key, locked with a secret only the assistant holds. During each of its requests, our server unlocks your whole notes' key in memory, decrypts the notes the assistant asks for, encrypts any change it makes, and forgets the key when the request ends.
+- Approving gives that connection a copy of your notes' key, locked with a key derived from that connection's access token. We keep only a hash of the token; the token itself arrives with each of the assistant's requests. During each request, our server unlocks your whole notes' key in memory, decrypts the notes the assistant asks for, encrypts any change it makes, and forgets the key when the request ends.
 - For those requests, the text the assistant reads or writes, and its access tokens, pass through our hosting providers Vercel and Supabase in readable form on their way. Neither stores your notes.
 - The assistant can read the notes it asks for and, if you allowed editing, change them. Every change it makes keeps the previous version, so you can undo it.
 - What you and the assistant exchange is handled by the company behind that assistant, under its own privacy policy. Notes it reads become part of your conversation with it.

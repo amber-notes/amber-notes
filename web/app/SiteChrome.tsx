@@ -64,6 +64,7 @@ export default function SiteChrome({ version, stars, children }: { version: stri
           {version && <span className="site-badge">v{version}</span>}
         </a>
         <nav className="site-nav" aria-label="Site">
+          <a href="/templates" aria-current={path === "/templates" || path.startsWith("/templates/") ? "page" : undefined}>Templates</a>
           <a href="/blog" aria-current={path === "/blog" || path.startsWith("/blog/") ? "page" : undefined}>Blog</a>
           <a href="/changelog" aria-current={current("/changelog")}>Changelog</a>
           <a href="/help" aria-current={path === "/help" || path === "/support" ? "page" : undefined}>Help</a>
@@ -79,6 +80,7 @@ export default function SiteChrome({ version, stars, children }: { version: stri
       <footer className="site-footer">
         <div className="site-footrow">
           <nav aria-label="More">
+            <a href="/templates">Templates</a>
             <a href="/blog">Blog</a>
             <a href="/changelog">Changelog</a>
             <a href="/privacy-security">Privacy & Security</a>

@@ -1,0 +1,72 @@
+{
+  "slug": "reading-list",
+  "title": "Reading list",
+  "category": "Learning",
+  "audiences": [
+    "Personal",
+    "Students"
+  ],
+  "audience": "For readers whose to-read pile lives in screenshots and browser tabs.",
+  "description": "A reading list with ratings and notes. Tell your AI about a book and it files it; ask it what to read next.",
+  "seoTitle": "Reading list template with notes for ChatGPT and Claude",
+  "folder": "Reading",
+  "note": "Reading list\n\nEvery book you want to read, are reading or have finished, with a line on why it's here.\n\n<!-- pane-table: Title=text; Author=text; Status=choice To read|Reading|Finished|Dropped; Rating=scale 1-5; Why=text -->\n| Title | Author | Status | Rating | Why |\n| --- | --- | --- | --- | --- |\n\n## Notes\n",
+  "prompt": {
+    "default": "Use my Amber Notes note \"Reading list\". When I mention a book, add a row with log_table_row: Title, Author, Status To read, and in Why, who recommended it or why I want it. When I start or finish a book, update its Status (and Rating from 1 to 5 when I finish) with edit_note, after reading the note with read_note. Put my thoughts on a book under \"Notes\" with append_to_note, under a \"###\" heading with the title. When I ask what to read next, read the table with read_table and suggest from what's marked To read, based on what I rated highly."
+  },
+  "asks": [
+    "Add Piranesi, Maja says it's the best thing she read this year.",
+    "Finished Four Thousand Weeks. Four stars.",
+    "What should I read next?"
+  ],
+  "demo": [
+    {
+      "tool": "log_table_row",
+      "args": {
+        "values": {
+          "Title": "Four Thousand Weeks",
+          "Author": "Oliver Burkeman",
+          "Status": "Finished",
+          "Rating": 4,
+          "Why": "Recommended by Jonas"
+        }
+      }
+    },
+    {
+      "tool": "log_table_row",
+      "args": {
+        "values": {
+          "Title": "Piranesi",
+          "Author": "Susanna Clarke",
+          "Status": "Reading",
+          "Why": "Maja's favourite this year"
+        }
+      }
+    },
+    {
+      "tool": "log_table_row",
+      "args": {
+        "values": {
+          "Title": "The Design of Everyday Things",
+          "Author": "Don Norman",
+          "Status": "To read",
+          "Why": "For work"
+        }
+      }
+    },
+    {
+      "tool": "append_to_note",
+      "args": {
+        "under_heading": "Notes",
+        "text": "### Four Thousand Weeks\nYou'll never get through everything, so choose what to neglect on purpose. Made me drop two side projects."
+      }
+    }
+  ],
+  "example": "Reading list\n\nEvery book you want to read, are reading or have finished, with a line on why it's here.\n\n<!-- pane-table: Title=text; Author=text; Status=choice To read|Reading|Finished|Dropped; Rating=scale 1-5; Why=text -->\n| Title | Author | Status | Rating | Why |\n| --- | --- | --- | --- | --- |\n| Four Thousand Weeks | Oliver Burkeman | Finished | 4 | Recommended by Jonas |\n| Piranesi | Susanna Clarke | Reading |   | Maja's favourite this year |\n| The Design of Everyday Things | Don Norman | To read |   | For work |\n\n## Notes\n### Four Thousand Weeks\nYou'll never get through everything, so choose what to neglect on purpose. Made me drop two side projects.\n",
+  "related": [
+    "book-notes",
+    "study-flashcards",
+    "weekly-review"
+  ],
+  "updated": "2026-10-01"
+}

@@ -1,0 +1,45 @@
+{
+  "slug": "book-notes",
+  "title": "Book notes",
+  "category": "Learning",
+  "audiences": [
+    "Personal",
+    "Students"
+  ],
+  "audience": "For readers who want to remember more than the cover a year later.",
+  "description": "Book notes your AI organizes: send highlights as you read, and it keeps the quotes, the big idea and what you'll do differently.",
+  "folder": "Reading",
+  "note": "Book notes\n\nWhat stuck from each book: the big idea, the lines worth keeping, and what you'll do differently. Newest book first.\n\n## Books\n",
+  "prompt": {
+    "default": "Use my Amber Notes note \"Book notes\". When I start a book, add a heading for it at the start of \"Books\" with append_to_note (at_start), like \"### Title by Author\". As I send you highlights and thoughts, add them under that book's heading with append_to_note: quotes as > quotes with the page number, my own thoughts as bullets. Keep my words; don't polish them. When I say I've finished, add \"**The big idea:**\" in three sentences and two to four things I'll do differently as a checklist."
+  },
+  "asks": [
+    "Starting Four Thousand Weeks by Oliver Burkeman.",
+    "Page 31: \"The day will never arrive when you finally have everything under control.\"",
+    "I finished it. Wrap it up."
+  ],
+  "demo": [
+    {
+      "tool": "append_to_note",
+      "args": {
+        "under_heading": "Books",
+        "at_start": true,
+        "text": "### Four Thousand Weeks by Oliver Burkeman"
+      }
+    },
+    {
+      "tool": "append_to_note",
+      "args": {
+        "under_heading": "Four Thousand Weeks by Oliver Burkeman",
+        "text": "> \"The day will never arrive when you finally have everything under control.\" (p. 31)\n\n- The to-do list is infinite by design. Finishing it isn't the goal.\n- Pick your three big projects; everything else waits.\n\n**The big idea:** life is short and attention is finite. Trying to do everything guarantees the important things get squeezed. Choose what to neglect, on purpose.\n\n- [ ] Keep a list of three active projects, no more\n- [ ] Do the most important thing first, before email"
+      }
+    }
+  ],
+  "example": "Book notes\n\nWhat stuck from each book: the big idea, the lines worth keeping, and what you'll do differently. Newest book first.\n\n## Books\n### Four Thousand Weeks by Oliver Burkeman\n> \"The day will never arrive when you finally have everything under control.\" (p. 31)\n\n- The to-do list is infinite by design. Finishing it isn't the goal.\n- Pick your three big projects; everything else waits.\n\n**The big idea:** life is short and attention is finite. Trying to do everything guarantees the important things get squeezed. Choose what to neglect, on purpose.\n\n- [ ] Keep a list of three active projects, no more\n- [ ] Do the most important thing first, before email\n",
+  "related": [
+    "reading-list",
+    "study-flashcards",
+    "weekly-review"
+  ],
+  "updated": "2026-10-01"
+}

@@ -55,7 +55,7 @@ export const READABLE: string[] = [
 /// "When you connect an AI" on the Privacy & Security page.
 export const AI_ACCESS: Item[] = [
   { label: "You approve it on your device.", text: "Your iPhone or Mac asks you, and you type the number the page you started on shows there. With no device nearby, you can approve in the browser with your recovery key." },
-  { label: "Our server opens your notes for it.", text: "Approving gives that AI connection a copy of your notes' key, locked with a secret only the AI holds. During each of its requests our server unlocks your whole notes' key in memory, reads the notes the AI asks for, and forgets the key when the request ends." },
+  { label: "Our server opens your notes for it.", text: "Approving gives that AI connection a copy of your notes' key, locked with a key derived from that connection's access token. We store only a hash of the token; the token itself arrives with each of the AI's requests. During each request our server unlocks your whole notes' key in memory, reads the notes the AI asks for, and forgets the key when the request ends." },
   { label: "Our hosts carry that text.", text: "For AI requests, the text of the notes the AI reads or writes, and its access tokens, pass through Vercel and Supabase in readable form on their way. Neither stores your notes." },
   { label: "Locked notes stay locked.", text: "An AI sees only their titles, never their text." },
 ];

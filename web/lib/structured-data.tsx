@@ -127,6 +127,59 @@ export function breadcrumbs(steps: { name: string; path: string }[]): Thing {
   };
 }
 
+/// A template: a note structure and the prompt that fills it in, free to use, made by the maker.
+export function templateWork(t: { slug: string; title: string; description: string; category: string; audience: string; updated: string; note: string }): Thing {
+  const url = `${SITE_URL}/templates/${t.slug}`;
+  return {
+    "@type": "CreativeWork",
+    "@id": `${url}#template`,
+    name: `${t.title} template`,
+    description: t.description,
+    url,
+    genre: t.category,
+    audience: { "@type": "Audience", audienceType: t.audience },
+    inLanguage: "en",
+    dateModified: t.updated,
+    isAccessibleForFree: true,
+    encodingFormat: "text/markdown",
+    text: t.note,
+    author: { "@id": PERSON_ID },
+    publisher: { "@id": ORG_ID },
+    isPartOf: { "@id": `${SITE_URL}/templates#library` },
+    about: { "@id": APP_ID },
+  };
+}
+
+/// How to use a template: add it, copy the prompt, talk to your AI.
+export function templateHowTo(t: { slug: string; title: string }, steps: { name: string; text: string }[]): Thing {
+  const url = `${SITE_URL}/templates/${t.slug}`;
+  return {
+    "@type": "HowTo",
+    "@id": `${url}#howto`,
+    name: `How to use the ${t.title.toLowerCase()} template with ChatGPT or Claude`,
+    url,
+    tool: [{ "@type": "HowToTool", name: "Amber Notes" }, { "@type": "HowToTool", name: "ChatGPT, Claude or Claude Code" }],
+    step: steps.map((st, i) => ({ "@type": "HowToStep", position: i + 1, name: st.name, text: st.text, url: `${url}#step-${i + 1}` })),
+  };
+}
+
+/// The gallery: a page that lists every template.
+export function templateLibrary(items: { slug: string; title: string }[]): Thing {
+  return {
+    "@type": "CollectionPage",
+    "@id": `${SITE_URL}/templates#library`,
+    name: "Amber Notes templates",
+    url: `${SITE_URL}/templates`,
+    inLanguage: "en",
+    publisher: { "@id": ORG_ID },
+    mainEntity: {
+      "@type": "ItemList",
+      numberOfItems: items.length,
+      itemListElement: items.map((t, i) => ({ "@type": "ListItem", position: i + 1, name: t.title, url: `${SITE_URL}/templates/${t.slug}` })),
+    },
+  };
+}
+
 /// A graph of things as one <script type="application/ld+json">. "<" is escaped so note-like
 /// text can never close the script element.
 export function JsonLd({ graph }: { graph: Thing[] }) {

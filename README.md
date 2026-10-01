@@ -30,7 +30,7 @@
 
 - **AI edits you can see and undo.** Whatever an assistant writes is tinted and labeled with its name, and one tap undoes it.
 - **Version history.** Every change keeps the previous version, with who made it: you on iPhone, you on Mac, or which AI.
-- **Apple Notes import** on the Mac, and **Evernote import** (.enex) on the Mac and iPhone, bring your notes over.
+- **Apple Notes import** on the Mac, and **Evernote** (.enex), **Google Keep** (Takeout) and **Markdown or text** imports on the Mac and iPhone, bring your notes over.
 - **Sync between iPhone and Mac** in about half a second.
 - **Connect ChatGPT, Claude, Claude Code or Codex.** You approve each connection in the app and choose read-only or read-and-edit.
 
@@ -47,6 +47,8 @@
 - **AI access over MCP.** Connect ChatGPT, Claude, Claude Code or Codex. You approve every connection inside the app and pick read-only or read-and-edit. Every change an assistant makes keeps the previous version.
 - **Apple Notes import** on the Mac, and a menu bar item for quick capture.
 - **Evernote import.** Each exported notebook (.enex) becomes a folder, with checklists, tables, images, PDFs, dates and tags kept. Importing the same export again skips what's already here.
+- **Google Keep import.** From a Google Takeout download: text and checklists, labels as folders or tags, pins, dates and images. Archived notes come only if you ask, into an Archive folder.
+- **Markdown or text import.** A folder or .zip from Obsidian, Notion, Bear, Joplin, Logseq, Simplenote or Standard Notes: subfolders become folders, linked images and files come along, front-matter dates and tags are kept, and wiki links become plain titles.
 - **Private by default.** Sign in with Apple or email. No ads, no analytics, no tracking. Delete your account from Settings.
 
 ## How it's built
