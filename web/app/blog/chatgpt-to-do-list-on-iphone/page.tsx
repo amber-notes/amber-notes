@@ -44,6 +44,10 @@ export default function Page() {
         <code>set_checklist_item</code> to tick one by its text, and <code>edit_note</code> for a precise change. It doesn&apos;t rewrite the
         whole note, so the rest of your list stays as it was. The <a href="/blog/mcp-server">MCP server page</a> lists every tool.
       </p>
+      <p>
+        For the weekly shop, the <a href="/templates/meal-plan">meal plan and groceries template</a> has the dinners table, the list and the
+        prompt to go with them.
+      </p>
 
       <h2>On your iPhone</h2>
       <p>

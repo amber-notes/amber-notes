@@ -16,6 +16,10 @@ export type RenderOptions = {
   files: Record<string, SharedFile>;
   /** Where a sub-note link goes, or null to show its name without a link. */
   subNoteHref: (id: string) => string | null;
+  /** Show Yes/No columns of typed tables as ticked or empty circles, as the app does. */
+  typedTables?: boolean;
+  /** 1-based lines of the markdown to tint, like the app tints the lines an AI just changed. */
+  changedLines?: ReadonlySet<number>;
 };
 
 /** The note's first line is its title; the page shows it separately. */
@@ -34,7 +38,7 @@ const schema: Schema = {
     a: [...(defaultSchema.attributes?.a ?? []).filter((x) => !(Array.isArray(x) && x[0] === "className")), "className", "target", "rel", "download"],
     img: [...(defaultSchema.attributes?.img ?? []), "loading", "decoding"],
     // List items carry their marker kind (li-dash, li-bullet) as well as GFM's task-list-item.
-    li: [...(defaultSchema.attributes?.li ?? []).filter((x) => !(Array.isArray(x) && x[0] === "className")), ["className", "task-list-item", "li-dash", "li-bullet"]],
+    li: [...(defaultSchema.attributes?.li ?? []).filter((x) => !(Array.isArray(x) && x[0] === "className")), ["className", "task-list-item", "li-dash", "li-bullet", "changed"]],
     input: [["type", "checkbox"], ["disabled", true], "checked"],
   },
   // Links are http(s) or mailto; our own sub-note pages are relative.
@@ -61,7 +65,7 @@ function textOf(node: Element): string {
   return s;
 }
 
-type MdNode = { type: string; ordered?: boolean; checked?: boolean | null; position?: { start: { offset?: number } }; data?: { hProperties?: Record<string, unknown> }; children?: MdNode[] };
+type MdNode = { type: string; value?: string; ordered?: boolean; checked?: boolean | null; position?: { start: { offset?: number; line?: number } }; data?: { hProperties?: Record<string, unknown> }; children?: MdNode[] };
 
 /** Markdown forgets which marker a list item used; the app shows "-" as a dash and "*" as a
  * bullet (Notes' Dashed and Bulleted lists), so read it back from the source. Checklist items
@@ -82,6 +86,56 @@ function remarkListMarkers() {
       node.children?.forEach(walk);
     };
     walk(tree);
+  };
+}
+
+/** Yes/No columns in a typed table (a choice whose first answer is Yes, as the app's TableGrid
+ * decides) become a ticked or an empty circle, with the answer kept for screen readers. */
+function remarkTypedTables() {
+  return (tree: MdNode) => {
+    const walk = (node: MdNode) => {
+      const kids = node.children ?? [];
+      kids.forEach((child, i) => {
+        const prev = kids[i - 1];
+        if (child.type === "table" && prev?.type === "html" && /^<!--\s*pane-table:/.test(prev.value ?? "")) {
+          const spec = (prev.value ?? "").replace(/^<!--\s*pane-table:|-->\s*$/g, "");
+          const yesNo = new Set(spec.split(";").flatMap((part) => {
+            const [name, type] = part.split("=").map((x) => x?.trim() ?? "");
+            return /^choice\s+yes\s*\|/i.test(type) ? [name.toLowerCase()] : [];
+          }));
+          const text = (n: MdNode) => (n.children ?? []).map((t) => t.value ?? "").join("").trim();
+          const [head, ...rows] = child.children ?? [];
+          const cols = (head?.children ?? []).map((c) => text(c).toLowerCase());
+          for (const row of rows) {
+            (row.children ?? []).forEach((cell, k) => {
+              const v = text(cell);
+              if (!yesNo.has(cols[k]) || !/^(yes|no)$/i.test(v)) return;
+              cell.children = [{ type: "html", value: `<span class="yn yn-${v.toLowerCase()}">${v}</span>` }];
+            });
+          }
+        }
+        walk(child);
+      });
+    };
+    walk(tree);
+  };
+}
+
+/** Tints the blocks that start on a changed line: list items, table rows, headings, paragraphs. */
+function remarkChanged(lines: ReadonlySet<number>) {
+  return (tree: MdNode) => {
+    const walk = (node: MdNode, inItem: boolean) => {
+      const line = (node.position?.start as { line?: number } | undefined)?.line;
+      const tint = ["listItem", "tableRow", "heading", "blockquote"].includes(node.type) || (node.type === "paragraph" && !inItem);
+      if (tint && line !== undefined && lines.has(line)) {
+        const props = node.data?.hProperties ?? {};
+        // GFM's task-list-item class comes from the item itself; hProperties would replace it.
+        const cls = Array.isArray(props.className) ? props.className : typeof node.checked === "boolean" ? ["task-list-item"] : [];
+        node.data = { ...node.data, hProperties: { ...props, className: [...cls, "changed"] } };
+      }
+      node.children?.forEach((c) => walk(c, inItem || node.type === "listItem"));
+    };
+    walk(tree, false);
   };
 }
 
@@ -133,6 +187,8 @@ export function renderNote(markdown: string, opts: RenderOptions): string {
     .use(remarkParse)
     .use(remarkGfm)
     .use(remarkListMarkers)
+    .use(opts.typedTables ? remarkTypedTables : () => undefined)
+    .use(opts.changedLines?.size ? () => remarkChanged(opts.changedLines!) : () => undefined)
     .use(remarkRehype, { allowDangerousHtml: true })
     .use(rehypeRaw)
     .use(rehypeAmber, opts)

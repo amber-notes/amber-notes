@@ -50,3 +50,16 @@ export async function sharedFiles(slug: string, sub?: string): Promise<Record<st
   const { files } = (await res.json()) as { files: Record<string, { path: string; name: string; type: string; size: number }> };
   return Object.fromEntries(Object.entries(files).map(([id, f]) => [id, { url: URL_ + f.path, name: f.name, type: f.type, size: f.size }]));
 }
+
+/** A shared note's markdown as another person can keep it: photos and files stay with their owner
+ * (their links only work on the share page), and sub-note links become their names. */
+export function copyableMarkdown(body: string): string {
+  return body
+    .replace(/!?\[[^\]]*\]\(pane-file:[0-9a-f-]{36}\)[ \t]*/gi, "")
+    .replace(/\[([^\]]*)\]\(pane-note:[0-9a-f-]{36}\)/gi, "$1")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/\s+$/, "") + "\n";
+}
+
+/** The universal link for "Use this note" (https://ambernotes.app/open/copy/<slug>). */
+export const copyLink = (slug: string) => `/open/copy/${slug}`;

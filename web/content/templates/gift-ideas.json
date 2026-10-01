@@ -1,0 +1,72 @@
+{
+  "slug": "gift-ideas",
+  "title": "Gift ideas",
+  "category": "Home and life",
+  "audiences": [
+    "Personal",
+    "Families"
+  ],
+  "audience": "For anyone who hears the perfect gift idea in March and forgets it by December.",
+  "description": "A gift idea list your AI fills as you go: ideas by person, sizes and likes, and suggestions before the next birthday.",
+  "folder": "Personal",
+  "note": "Gift ideas\n\nSave ideas the moment you hear them, so the next birthday is easy.\n\n<!-- pane-table: Person=text; Occasion=text; Idea=text; Budget=number; Status=choice Idea|Bought|Given -->\n| Person | Occasion | Idea | Budget | Status |\n| --- | --- | --- | --- | --- |\n\n## Sizes and likes\n",
+  "prompt": {
+    "default": "Use my Amber Notes note \"Gift ideas\". Whenever I mention something someone would like, add a row with log_table_row: Person, Occasion if I said one, Idea, Budget as a number if I gave one, and Status Idea. Keep what I learn about each person (sizes, favourite things, what they already have) under \"Sizes and likes\" with append_to_note. Before a birthday, when I ask, read the note and suggest three gifts within budget that fit what's there. When I buy one, set its Status to Bought with edit_note."
+  },
+  "asks": [
+    "Maja mentioned she wants a good chef's knife.",
+    "Dad's birthday is in three weeks. Ideas under 500?",
+    "Jonas wears a medium and loves anything green."
+  ],
+  "demo": [
+    {
+      "tool": "log_table_row",
+      "args": {
+        "values": {
+          "Person": "Maja",
+          "Occasion": "Birthday, 12 Nov",
+          "Idea": "A good chef's knife",
+          "Budget": 900,
+          "Status": "Idea"
+        }
+      }
+    },
+    {
+      "tool": "log_table_row",
+      "args": {
+        "values": {
+          "Person": "Dad",
+          "Occasion": "Birthday, 20 Oct",
+          "Idea": "Tickets to the football",
+          "Budget": 500,
+          "Status": "Bought"
+        }
+      }
+    },
+    {
+      "tool": "log_table_row",
+      "args": {
+        "values": {
+          "Person": "Jonas",
+          "Idea": "A green wool beanie",
+          "Budget": 300,
+          "Status": "Idea"
+        }
+      }
+    },
+    {
+      "tool": "append_to_note",
+      "args": {
+        "under_heading": "Sizes and likes",
+        "text": "- **Maja:** cooks a lot, already has a stand mixer.\n- **Jonas:** medium, loves anything green."
+      }
+    }
+  ],
+  "example": "Gift ideas\n\nSave ideas the moment you hear them, so the next birthday is easy.\n\n<!-- pane-table: Person=text; Occasion=text; Idea=text; Budget=number; Status=choice Idea|Bought|Given -->\n| Person | Occasion | Idea | Budget | Status |\n| --- | --- | --- | --- | --- |\n| Maja | Birthday, 12 Nov | A good chef's knife | 900 | Idea |\n| Dad | Birthday, 20 Oct | Tickets to the football | 500 | Bought |\n| Jonas |   | A green wool beanie | 300 | Idea |\n\n## Sizes and likes\n- **Maja:** cooks a lot, already has a stand mixer.\n- **Jonas:** medium, loves anything green.\n",
+  "related": [
+    "trip-plan",
+    "budget-log",
+    "recipe-box"
+  ],
+  "updated": "2026-10-01"
+}

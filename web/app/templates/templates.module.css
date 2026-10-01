@@ -1,0 +1,256 @@
+/* The template library: the gallery and each template's page. The site's cream theme around the
+   app's own white note paper; the instructions sit on the home page's dark brown, like the vault card. */
+
+.main { width: 100%; max-width: 1240px; margin: 0 auto; padding: 0 20px; box-sizing: border-box; display: grid; gap: 96px; align-content: start; }
+@media (max-width: 700px) { .main { gap: 72px; } }
+
+/* ── Gallery: the promise ── */
+.hero { display: grid; gap: 16px; justify-items: start; padding-top: 64px; max-width: 820px; }
+@media (max-width: 600px) { .hero { padding-top: 28px; gap: 14px; } }
+.h1 { margin: 0; font-size: clamp(42px, 5.6vw, 76px); line-height: 0.98; font-weight: 800; letter-spacing: -0.045em; text-wrap: balance; }
+.mark {
+  white-space: nowrap; color: inherit; padding: 0 0.08em; border-radius: 0.12em;
+  background: linear-gradient(transparent 58%, var(--mark) 58%, var(--mark) 90%, transparent 90%);
+  -webkit-box-decoration-break: clone; box-decoration-break: clone;
+}
+.lede { margin: 0; max-width: 36em; font-size: clamp(18px, 2vw, 21px); line-height: 1.45; color: var(--muted); text-wrap: pretty; }
+.lede b { color: var(--ink); font-weight: 650; }
+
+/* Three steps in one row: add, copy, ask. */
+.steps { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; width: 100%; counter-reset: step; }
+@media (max-width: 760px) { .steps { grid-template-columns: 1fr; gap: 8px; } }
+.steps li { counter-increment: step; display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 2px 12px; align-items: start; padding: 14px 16px; border-radius: 16px; background: var(--card); box-shadow: 0 0 0 1px var(--line); }
+.steps li::before { content: counter(step); grid-row: span 2; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--amber); color: #fff; font-weight: 800; font-size: 14px; font-variant-numeric: tabular-nums; }
+.steps b { font-size: 16px; font-weight: 700; line-height: 28px; }
+.steps span { color: var(--muted); font-size: 14.5px; line-height: 1.4; }
+
+/* ── Gallery: filters, then the cards ── */
+.library { display: grid; gap: 22px; }
+.filters { display: grid; gap: 10px; }
+.filterRow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.filterLabel { min-width: 72px; color: var(--muted); font-size: 13px; font-weight: 700; }
+@media (max-width: 600px) { .filterLabel { min-width: 0; width: 100%; } }
+.chip {
+  display: inline-flex; align-items: center; gap: 7px; min-height: 36px; padding: 0 14px; border: 0; border-radius: 999px;
+  background: transparent; color: var(--muted); font: inherit; font-weight: 600; font-size: 15px; text-decoration: none; cursor: pointer;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.chip[aria-pressed="true"] { color: var(--ink); background: var(--soft); box-shadow: none; }
+.chip:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+@media (hover: hover) { .chip:hover { color: var(--ink); } }
+@media (prefers-reduced-motion: no-preference) {
+  .chip { transition: background-color 0.15s ease-out, color 0.15s ease-out, transform 0.12s ease-out; }
+  .chip:active { transform: scale(0.97); }
+}
+.count { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.shown { margin: 0; color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; min-height: 20px; }
+.none { margin: 0; padding: 40px 20px; border-radius: 20px; background: var(--soft); color: var(--muted); text-align: center; }
+.none button { margin-left: 4px; border: 0; padding: 0; background: none; color: var(--link); font: inherit; font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; border-radius: 4px; }
+.none button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+.grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+@media (max-width: 1000px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 620px) { .grid { grid-template-columns: minmax(0, 1fr); gap: 14px; } }
+.grid > li { display: grid; }
+.grid > li[hidden] { display: none; }
+
+/* A card: the template's real structure in miniature on its category's ground, then the words. */
+.card {
+  display: grid; grid-template-rows: auto 1fr; border-radius: 22px; overflow: hidden; color: var(--ink); text-decoration: none; background: var(--card);
+  box-shadow: 0 0 0 1px var(--line), 0 18px 36px -30px rgba(60, 30, 5, 0.55);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .card { transition: box-shadow 0.18s ease-out, transform 0.12s ease-out; }
+  .card:active { transform: scale(0.985); }
+  .mini { transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.1); }
+}
+@media (hover: hover) {
+  .card:hover { box-shadow: 0 0 0 1.5px var(--amber), 0 22px 40px -28px rgba(60, 30, 5, 0.6); }
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) { .card:hover .mini { transform: translateY(-3px); } }
+.card:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
+.cardArt { position: relative; height: 212px; overflow: hidden; padding: 22px 22px 0; }
+.cardArt[data-cat="habits-and-health"] { background: linear-gradient(160deg, #eef0df, #dde3c6); }
+.cardArt[data-cat="work"] { background: linear-gradient(160deg, #f4eee6, #e6dccd); }
+.cardArt[data-cat="learning"] { background: linear-gradient(160deg, #efe8f0, #ddd0e0); }
+.cardArt[data-cat="home-and-life"] { background: linear-gradient(160deg, #fde9d6, #f6cfa9); }
+.cardText { display: grid; align-content: start; gap: 6px; padding: 18px 20px 20px; }
+.label { font-size: 12px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--link); }
+.cardTitle { margin: 0; font-size: 20px; line-height: 1.2; font-weight: 750; letter-spacing: -0.015em; }
+.cardLine { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.45; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.tag { padding: 2px 8px; border-radius: 6px; background: var(--soft); color: var(--muted); font-size: 12.5px; font-weight: 600; }
+
+/* The miniature: a little Amber Notes page, white, cut off at the bottom of the art. */
+.mini {
+  position: relative; height: 100%; padding: 16px 16px 0; border-radius: 12px 12px 0 0; background: #fff; color: #1d1d1f; overflow: hidden;
+  box-shadow: 0 0 0 0.5px rgba(60, 20, 0, 0.16), 0 14px 30px -14px rgba(60, 20, 0, 0.35);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+}
+.mini::after { content: ""; position: absolute; inset: auto 0 0; height: 42px; background: linear-gradient(rgba(255, 255, 255, 0), #fff); }
+.miniTitle { margin: 0 0 8px; font-size: 14px; font-weight: 750; letter-spacing: -0.01em; }
+.miniRows { display: grid; gap: 5px; font-size: 10.5px; line-height: 1.3; }
+.miniRows > * { margin: 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.miniH { font-weight: 700; font-size: 11.5px; margin-top: 3px !important; }
+.miniText { color: #6e6e73; }
+.miniCheck, .miniItem { display: flex; align-items: center; gap: 6px; }
+.miniCheck i { flex: none; width: 9px; height: 9px; border-radius: 50%; box-shadow: inset 0 0 0 1.2px #aeaeb2; }
+.miniCheck[data-done] i { background: #e39410; box-shadow: none; }
+.miniCheck[data-done] span { color: #8e8e93; }
+.miniItem i { flex: none; width: 4px; height: 4px; margin: 0 2.5px; border-radius: 50%; background: #1d1d1f; }
+.miniTable { display: grid; border-radius: 4px; overflow: hidden; box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.14); font-size: 9.5px; font-variant-numeric: tabular-nums; }
+.miniTr { display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); }
+.miniTr + .miniTr { box-shadow: 0 -0.5px 0 rgba(0, 0, 0, 0.12); }
+.miniTr span { padding: 3px 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.miniTr span + span { box-shadow: -0.5px 0 0 rgba(0, 0, 0, 0.12); }
+.miniTr:first-child { background: #f2f1ef; font-weight: 650; }
+.miniYes, .miniNo { display: inline-block; width: 8px; height: 8px; border-radius: 50%; vertical-align: -1px; }
+.miniYes { background: #e39410; }
+.miniNo { box-shadow: inset 0 0 0 1.2px #aeaeb2; }
+
+/* ── A template's page ── */
+.crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; padding: 24px 0 0; list-style: none; color: var(--muted); font-size: 14px; font-weight: 600; }
+.crumbs a { color: var(--muted); text-decoration: none; border-radius: 4px; display: inline-flex; align-items: center; min-height: 32px; }
+@media (hover: hover) { .crumbs a:hover { color: var(--ink); } }
+.crumbs a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.crumbs li + li::before { content: "›"; margin-right: 6px; color: var(--muted); }
+
+.top { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 56px; align-items: start; }
+@media (max-width: 960px) { .top { grid-template-columns: minmax(0, 1fr); gap: 36px; } }
+.intro { display: grid; gap: 18px; justify-items: start; padding-top: 28px; position: sticky; top: 24px; }
+@media (max-width: 960px) { .intro { position: static; padding-top: 12px; } }
+.title { margin: 0; font-size: clamp(40px, 5vw, 64px); line-height: 1; font-weight: 800; letter-spacing: -0.04em; text-wrap: balance; }
+.for { margin: -4px 0 0; color: var(--ink); font-size: 16px; font-weight: 600; }
+.ctas { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
+.primary, .secondary {
+  display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 50px; padding: 0 22px; border: 0; border-radius: 14px;
+  font: inherit; font-weight: 700; font-size: 16px; text-decoration: none; box-sizing: border-box; cursor: pointer;
+}
+.primary { background: var(--cta-bg); color: var(--cta-ink); box-shadow: 0 10px 24px -8px rgba(60, 30, 5, 0.55); }
+.secondary { background: var(--soft); color: var(--ink); }
+.primary:focus-visible, .secondary:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
+@media (hover: hover) {
+  .primary:hover { background: color-mix(in srgb, var(--cta-bg) 86%, var(--amber)); }
+  .secondary:hover { background: color-mix(in srgb, var(--soft) 82%, var(--amber)); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .primary, .secondary { transition: transform 0.12s ease-out, background-color 0.15s ease-out; }
+  .primary:active, .secondary:active { transform: scale(0.97); }
+}
+.fine { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.45; }
+.fine a { color: var(--link); }
+
+/* The note in an Amber Notes window. */
+.window { display: grid; border-radius: 16px; overflow: hidden; background: #fff; color: #1d1d1f; box-shadow: 0 0 0 0.5px rgba(60, 20, 0, 0.22), 0 30px 60px -28px rgba(60, 20, 0, 0.45), 0 2px 6px rgba(60, 20, 0, 0.08); }
+.bar { position: relative; display: flex; align-items: center; justify-content: center; height: 38px; background: #f6f3ef; box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.07); font-size: 13px; font-weight: 600; color: #4a4a4c; }
+.lights { position: absolute; left: 14px; top: 13px; display: flex; gap: 7px; }
+.lights i { width: 12px; height: 12px; border-radius: 50%; background: #ff5f57; box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.12); }
+.lights i:nth-child(2) { background: #febc2e; }
+.lights i:nth-child(3) { background: #28c840; }
+.folder { display: inline-flex; align-items: center; gap: 6px; }
+.folder svg { color: #e39410; }
+
+/* The app's note paper, light whatever the visitor's system says: the page around it is cream. */
+.paper {
+  --page: #fff; --text: #1d1d1f; --secondary: #6e6e73; --tertiary: #aeaeb2; --rule: rgba(0, 0, 0, 0.1); --fill: #f2f1ef;
+  --accent: #e39410; --accent-text: #b86e00; --accent-soft: rgba(233, 146, 16, 0.12); --code: #f5f4f2;
+  padding: 26px clamp(18px, 4vw, 40px) 34px; background: var(--page); color: var(--text);
+  font: 17px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; color-scheme: light;
+}
+.paperDate { margin: 0 0 6px; color: var(--secondary); font-size: 13px; text-align: center; font-variant-numeric: tabular-nums; }
+.paperTitle { margin: 6px 0 12px; font-size: 28px; line-height: 1.2; font-weight: 700; letter-spacing: -0.01em; }
+.paper :global(.note) { font-size: 17px; }
+.paper :global(.note table) { font-size: 15px; }
+.paper :global(.note th), .paper :global(.note td) { white-space: nowrap; vertical-align: middle; }
+.paper :global(.yn) { display: inline-block; width: 20px; height: 20px; border-radius: 50%; vertical-align: -4px; font-size: 0; color: transparent; box-shadow: inset 0 0 0 1.5px var(--tertiary); }
+.paper :global(.yn-yes) { box-shadow: none; background: var(--accent) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'><path d='M5.5 10.5l3 3 6-7' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/></svg>") center/100% no-repeat; }
+/* Sub-notes show as the app's chips; on this page they don't open anything. */
+.paper :global(.subnote-plain) { display: flex; align-items: center; gap: 10px; max-width: 420px; min-height: 48px; margin: 6px 0; padding: 8px 12px; border-radius: 12px; background: var(--fill); font-weight: 600; }
+.paper :global(.subnote-plain)::before { content: ""; width: 28px; height: 28px; border-radius: 7px; flex: none; background: var(--accent-soft) url("/mark-256.png") center/18px no-repeat; }
+/* What the AI just changed, tinted the way the app tints it. */
+.paper :global(.changed) { background: rgba(240, 144, 26, 0.13); box-shadow: -8px 0 0 rgba(240, 144, 26, 0.13), 8px 0 0 rgba(240, 144, 26, 0.13); border-radius: 4px; }
+.paper :global(tr.changed) { box-shadow: none; }
+.paper :global(tr.changed td) { background: rgba(240, 144, 26, 0.13); }
+.paper :global(.note > :last-child) { margin-bottom: 0; }
+.empty { margin: 0; color: var(--secondary); font-size: 15px; font-style: italic; }
+
+/* The app's change bar, under the example. */
+.changes {
+  display: flex; align-items: center; gap: 10px; justify-self: center; margin: 0 0 18px; padding: 8px 10px 8px 14px; border-radius: 999px;
+  background: #2a1d10; color: #fbeedd; font-size: 14px; font-weight: 600; box-shadow: 0 10px 24px -12px rgba(40, 18, 2, 0.8);
+}
+.changes span { color: #f5a53a; font-variant-numeric: tabular-nums; }
+.changes i { font-style: normal; padding: 4px 10px; border-radius: 999px; background: rgba(251, 238, 221, 0.12); font-size: 13px; }
+
+/* ── Sections on a template's page ── */
+.section { display: grid; gap: 28px; }
+.sectionHead { display: grid; gap: 12px; max-width: 680px; }
+.h2 { margin: 0; font-size: clamp(32px, 4.2vw, 50px); line-height: 1.02; font-weight: 800; letter-spacing: -0.035em; text-wrap: balance; }
+.sectionLede { margin: 0; color: var(--muted); font-size: clamp(17px, 1.9vw, 19px); line-height: 1.45; text-wrap: pretty; }
+.sectionLede a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--amber); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+
+/* The instructions: the vault card's dark brown, the prompt in monospace, one tab per AI. */
+.prompt {
+  position: relative; display: grid; gap: 22px; padding: 40px; border-radius: 30px; overflow: hidden; isolation: isolate; background: #2a1d10; color: #fbeedd;
+  box-shadow: 0 0 0 1px rgba(255, 220, 170, 0.08), 0 40px 80px -48px rgba(40, 18, 2, 0.9);
+}
+.prompt::before { content: ""; position: absolute; z-index: -1; right: -120px; top: -160px; width: 460px; height: 460px; border-radius: 50%; background: radial-gradient(closest-side, rgba(245, 165, 58, 0.18), transparent); }
+@media (max-width: 700px) { .prompt { padding: 26px 18px 22px; border-radius: 24px; gap: 18px; } }
+.promptHead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; }
+.promptTitle { margin: 0; font-size: clamp(26px, 3.4vw, 38px); line-height: 1.05; font-weight: 800; letter-spacing: -0.03em; }
+.tabs { display: inline-flex; gap: 4px; padding: 4px; border-radius: 14px; background: rgba(251, 238, 221, 0.08); }
+.tab { display: inline-flex; align-items: center; gap: 7px; min-height: 36px; padding: 0 14px; border: 0; border-radius: 10px; background: transparent; color: #d9bf9f; font: inherit; font-size: 14.5px; font-weight: 650; cursor: pointer; }
+.tab[aria-selected="true"] { background: #fbeedd; color: #2a1d10; }
+.tab:focus-visible { outline: 2px solid #f5a53a; outline-offset: 2px; }
+@media (hover: hover) { .tab:not([aria-selected="true"]):hover { color: #fbeedd; } }
+@media (prefers-reduced-motion: no-preference) { .tab { transition: background-color 0.15s ease-out, color 0.15s ease-out; } }
+.promptBox { position: relative; display: grid; border-radius: 18px; background: rgba(0, 0, 0, 0.22); box-shadow: inset 0 0 0 1px rgba(255, 220, 170, 0.1); }
+.promptText { margin: 0; padding: 22px 22px 18px; font: 500 15px/1.65 ui-monospace, "SF Mono", Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; color: #fbeedd; }
+@media (max-width: 700px) { .promptText { font-size: 13.5px; padding: 16px 14px 12px; } }
+.promptText code { color: #f5a53a; font: inherit; }
+.promptFoot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding: 12px 14px 14px 22px; box-shadow: inset 0 1px 0 rgba(255, 220, 170, 0.08); }
+@media (max-width: 700px) { .promptFoot { padding: 12px 12px 12px 14px; } }
+.promptWhere { margin: 0; color: #b89c7c; font-size: 13.5px; line-height: 1.4; max-width: 44em; }
+.copy {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 136px; min-height: 44px; padding: 0 18px; border: 0; border-radius: 12px;
+  background: #fbeedd; color: #2a1d10; font: inherit; font-size: 15px; font-weight: 700; cursor: pointer;
+}
+.copy[data-done] { background: #f5a53a; }
+.copy:focus-visible { outline: 2px solid #f5a53a; outline-offset: 3px; }
+@media (prefers-reduced-motion: no-preference) {
+  .copy { transition: transform 0.12s ease-out, background-color 0.2s ease-out; }
+  .copy:active { transform: scale(0.96); }
+}
+.asks { display: grid; gap: 10px; }
+.asksLabel { margin: 0; color: #f5a53a; font-weight: 700; font-size: 14px; }
+.asks ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.asks li { padding: 9px 13px; border-radius: 16px 16px 16px 6px; background: rgba(251, 238, 221, 0.1); color: #fbeedd; font-size: 15px; line-height: 1.35; }
+
+/* What you'll get: the example on a soft ground. */
+.result { display: grid; padding: clamp(18px, 4vw, 48px); border-radius: 30px; background: linear-gradient(180deg, #fbe7c9, #f6d3a4); }
+.result .window { width: min(100%, 820px); justify-self: center; }
+
+/* How to connect: one card per AI, each to its guide. */
+.connect { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 760px) { .connect { grid-template-columns: 1fr; } }
+.connect a {
+  display: grid; gap: 6px; height: 100%; box-sizing: border-box; padding: 20px; border-radius: 20px; background: var(--card); color: var(--ink); text-decoration: none;
+  box-shadow: 0 0 0 1px var(--line);
+}
+.connect b { display: flex; align-items: center; gap: 8px; font-size: 18px; }
+.connect span { color: var(--muted); font-size: 15px; line-height: 1.45; }
+.connect em { margin-top: 4px; font-style: normal; color: var(--link); font-weight: 650; font-size: 15px; }
+.connect a:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
+@media (hover: hover) { .connect a:hover { box-shadow: 0 0 0 1.5px var(--amber); } }
+@media (prefers-reduced-motion: no-preference) { .connect a { transition: box-shadow 0.15s ease-out, transform 0.12s ease-out; } .connect a:active { transform: scale(0.985); } }
+
+/* The ending: every shared note is a template too. */
+.loop { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 32px; align-items: center; padding: 48px; border-radius: 30px; background: var(--soft); }
+@media (max-width: 860px) { .loop { grid-template-columns: 1fr; padding: 28px 22px; } }
+.loopArt { display: grid; gap: 10px; justify-items: start; padding: 18px; border-radius: 18px; background: #fff; color: #1d1d1f; box-shadow: 0 0 0 0.5px rgba(60, 20, 0, 0.16), 0 20px 40px -24px rgba(60, 20, 0, 0.4); font-size: 14px; }
+.loopBar { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; padding-bottom: 10px; box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.08); font-weight: 600; }
+.loopBar img { border-radius: 5px; }
+.loopBar span { display: inline-flex; align-items: center; gap: 7px; }
+.loopUse { padding: 6px 12px; border-radius: 999px; background: #2a1d10; color: #fbeedd; font-size: 13px; font-weight: 700; white-space: nowrap; }
+.loopNote { margin: 0; font-weight: 700; font-size: 18px; }
+.loopLine { margin: 0; color: #6e6e73; }

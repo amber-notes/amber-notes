@@ -1,0 +1,62 @@
+{
+  "slug": "bug-triage",
+  "title": "Bug triage",
+  "category": "Work",
+  "audiences": [
+    "Developers"
+  ],
+  "audience": "For small teams and solo developers without a full issue tracker.",
+  "description": "A bug triage table your AI keeps. Paste a report or an issue and it files it by severity in Amber Notes.",
+  "folder": "Work",
+  "note": "Bug triage\n\nEvery bug report in one table, sorted by how much it hurts. Paste a report and your AI files it.\n\n<!-- pane-table: Bug=text; Severity=choice P0|P1|P2|P3; Area=text; Status=choice New|Confirmed|In progress|Fixed|Won't fix; Reported=text; Link=text -->\n| Bug | Severity | Area | Status | Reported | Link |\n| --- | --- | --- | --- | --- | --- |\n\n## Severity\n- **P0:** data loss, a security hole, or everyone is blocked. Drop everything.\n- **P1:** a main flow is broken for many people. This week.\n- **P2:** broken, but there's a workaround. Schedule it.\n- **P3:** polish. When there's time.\n\n## Details\n",
+  "prompt": {
+    "default": "Use my Amber Notes note \"Bug triage\". When I paste a bug report, file it: read the rules under \"Severity\" in the note, then add one row with log_table_row with a short Bug title, Severity by those rules, the Area, Status New, Reported as today's date, and the Link if there is one. If the report has steps to reproduce, add them under \"Details\" with append_to_note under a \"###\" heading with the bug title. To change a status, read the note with read_note and update the row with edit_note.",
+    "claudeCode": "Use my Amber Notes note \"Bug triage\". When I paste a bug report or a GitHub issue (read it with gh issue view), file it: read the rules under \"Severity\", add one row with log_table_row (a short Bug title, Severity, Area, Status New, Reported as today's date, Link), then look through this codebase for the likely cause and add the steps to reproduce and the files involved under \"Details\" with append_to_note, under a \"###\" heading with the bug title. When we fix one, set its Status to Fixed with edit_note."
+  },
+  "asks": [
+    "Here's a report from a customer: …",
+    "What's P1 and still open?",
+    "We fixed the export crash, mark it."
+  ],
+  "demo": [
+    {
+      "tool": "log_table_row",
+      "args": {
+        "values": {
+          "Bug": "Export crashes on notes with images",
+          "Severity": "P1",
+          "Area": "Export",
+          "Status": "New",
+          "Reported": "2026-09-29",
+          "Link": "#412"
+        }
+      }
+    },
+    {
+      "tool": "log_table_row",
+      "args": {
+        "values": {
+          "Bug": "Dark mode: date picker unreadable",
+          "Severity": "P3",
+          "Area": "Settings",
+          "Status": "Confirmed",
+          "Reported": "2026-09-30"
+        }
+      }
+    },
+    {
+      "tool": "append_to_note",
+      "args": {
+        "under_heading": "Details",
+        "text": "### Export crashes on notes with images\n1. Open a note with two or more photos.\n2. Choose Export as PDF.\n3. The app quits.\n\nLikely cause: images are loaded at full size before they're scaled."
+      }
+    }
+  ],
+  "example": "Bug triage\n\nEvery bug report in one table, sorted by how much it hurts. Paste a report and your AI files it.\n\n<!-- pane-table: Bug=text; Severity=choice P0|P1|P2|P3; Area=text; Status=choice New|Confirmed|In progress|Fixed|Won't fix; Reported=text; Link=text -->\n| Bug | Severity | Area | Status | Reported | Link |\n| --- | --- | --- | --- | --- | --- |\n| Export crashes on notes with images | P1 | Export | New | 2026-09-29 | #412 |\n| Dark mode: date picker unreadable | P3 | Settings | Confirmed | 2026-09-30 |   |\n\n## Severity\n- **P0:** data loss, a security hole, or everyone is blocked. Drop everything.\n- **P1:** a main flow is broken for many people. This week.\n- **P2:** broken, but there's a workaround. Schedule it.\n- **P3:** polish. When there's time.\n\n## Details\n### Export crashes on notes with images\n1. Open a note with two or more photos.\n2. Choose Export as PDF.\n3. The app quits.\n\nLikely cause: images are loaded at full size before they're scaled.\n",
+  "related": [
+    "daily-standup",
+    "decision-log",
+    "meeting-notes"
+  ],
+  "updated": "2026-10-01"
+}

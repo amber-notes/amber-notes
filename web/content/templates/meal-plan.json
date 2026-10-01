@@ -1,0 +1,57 @@
+{
+  "slug": "meal-plan",
+  "title": "Meal plan and groceries",
+  "category": "Home and life",
+  "audiences": [
+    "Personal",
+    "Families"
+  ],
+  "audience": "For households tired of deciding what's for dinner at 6 pm.",
+  "description": "A weekly meal plan with the grocery list that goes with it. Your AI plans the dinners and writes the list in Amber Notes.",
+  "seoTitle": "Meal plan and grocery list template for ChatGPT",
+  "folder": "Home",
+  "note": "Meal plan and groceries\n\nThis week's dinners and the shopping list that goes with them. Tick things off in the shop.\n\n## Dinners\n| Day | Dinner | Who cooks |\n| --- | --- | --- |\n| Monday | | |\n| Tuesday | | |\n| Wednesday | | |\n| Thursday | | |\n| Friday | | |\n| Saturday | | |\n| Sunday | | |\n\n## Groceries\n\n## Always in the cupboard\n- Olive oil, salt, pepper\n- Rice, pasta, oats\n- Onions, garlic\n",
+  "prompt": {
+    "default": "Use my Amber Notes note \"Meal plan and groceries\". On the weekend, ask me which nights we're cooking and anything to avoid, then suggest dinners and fill in the Dinners table with edit_note (read the note with read_note first). Then add what we need under \"Groceries\" as a checklist with append_to_note, grouped by aisle, leaving out what's under \"Always in the cupboard\". Keep weeknight dinners under 30 minutes. If I add something during the week, add it to the list."
+  },
+  "asks": [
+    "Plan dinners for this week. We're out on Friday, and no mushrooms.",
+    "Add oat milk and lemons to the groceries.",
+    "What's for dinner tonight?"
+  ],
+  "demo": [
+    {
+      "tool": "edit_note",
+      "args": {
+        "edits": [
+          {
+            "old_text": "| Monday | | |",
+            "new_text": "| Monday | Lemon chicken with rice | Sara |"
+          },
+          {
+            "old_text": "| Tuesday | | |",
+            "new_text": "| Tuesday | Pasta with tomato and basil | Jonas |"
+          },
+          {
+            "old_text": "| Wednesday | | |",
+            "new_text": "| Wednesday | Fish tacos | Sara |"
+          }
+        ]
+      }
+    },
+    {
+      "tool": "append_to_note",
+      "args": {
+        "under_heading": "Groceries",
+        "text": "**Fruit and veg**\n- [ ] Lemons\n- [ ] Basil\n- [ ] Cherry tomatoes\n- [ ] Limes\n\n**Meat and fish**\n- [ ] Chicken thighs\n- [ ] White fish\n\n**Other**\n- [ ] Tortillas\n- [x] Parmesan"
+      }
+    }
+  ],
+  "example": "Meal plan and groceries\n\nThis week's dinners and the shopping list that goes with them. Tick things off in the shop.\n\n## Dinners\n| Day | Dinner | Who cooks |\n| --- | --- | --- |\n| Monday | Lemon chicken with rice | Sara |\n| Tuesday | Pasta with tomato and basil | Jonas |\n| Wednesday | Fish tacos | Sara |\n| Thursday | | |\n| Friday | | |\n| Saturday | | |\n| Sunday | | |\n\n## Groceries\n**Fruit and veg**\n- [ ] Lemons\n- [ ] Basil\n- [ ] Cherry tomatoes\n- [ ] Limes\n\n**Meat and fish**\n- [ ] Chicken thighs\n- [ ] White fish\n\n**Other**\n- [ ] Tortillas\n- [x] Parmesan\n\n## Always in the cupboard\n- Olive oil, salt, pepper\n- Rice, pasta, oats\n- Onions, garlic\n",
+  "related": [
+    "recipe-box",
+    "budget-log",
+    "home-maintenance"
+  ],
+  "updated": "2026-10-01"
+}

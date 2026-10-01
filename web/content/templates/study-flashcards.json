@@ -1,0 +1,81 @@
+{
+  "slug": "study-flashcards",
+  "title": "Study notes and flashcards",
+  "category": "Learning",
+  "audiences": [
+    "Students"
+  ],
+  "audience": "For students who want an AI study partner that remembers what they keep getting wrong.",
+  "description": "Study notes plus flashcards your AI quizzes you on. Cards you miss go back to box 1, so you see them again first.",
+  "seoTitle": "Study notes and flashcards template for AI",
+  "folder": "Study",
+  "note": "Study notes and flashcards\n\nNotes for each topic, and flashcards your AI quizzes you on. Cards you miss go back to box 1; cards you know move up to box 5.\n\n## Notes\n\n## Flashcards\n<!-- pane-table: Question=text; Answer=text; Topic=text; Box=scale 1-5 -->\n| Question | Answer | Topic | Box |\n| --- | --- | --- | --- |\n",
+  "prompt": {
+    "default": "Use my Amber Notes note \"Study notes and flashcards\". When I paste lecture notes or a chapter, add a tidy summary under \"Notes\" with append_to_note, under a \"###\" heading with the topic, and make five to ten flashcards from it with log_table_row: Question, Answer, Topic, and Box 1. When I say \"quiz me\", read the table with read_table and ask me one card at a time, lowest box first, without showing the answer. After each answer, tell me if I was right and update its Box with edit_note: up one when I get it right, back to 1 when I don't."
+  },
+  "asks": [
+    "Here are my notes on cell respiration: …",
+    "Quiz me on biology, ten cards.",
+    "Which cards do I keep missing?"
+  ],
+  "demo": [
+    {
+      "tool": "append_to_note",
+      "args": {
+        "under_heading": "Notes",
+        "text": "### Cell respiration\n- Glucose is broken down to make ATP, the cell's energy.\n- Three stages: glycolysis, the Krebs cycle, the electron transport chain.\n- Most ATP comes from the electron transport chain, in the mitochondria."
+      }
+    },
+    {
+      "tool": "log_table_row",
+      "args": {
+        "values": {
+          "Question": "Where does glycolysis happen?",
+          "Answer": "In the cytoplasm",
+          "Topic": "Cell respiration",
+          "Box": 1
+        }
+      }
+    },
+    {
+      "tool": "log_table_row",
+      "args": {
+        "values": {
+          "Question": "Which stage makes the most ATP?",
+          "Answer": "The electron transport chain",
+          "Topic": "Cell respiration",
+          "Box": 1
+        }
+      }
+    },
+    {
+      "tool": "log_table_row",
+      "args": {
+        "values": {
+          "Question": "What is ATP for?",
+          "Answer": "It carries energy the cell can use",
+          "Topic": "Cell respiration",
+          "Box": 1
+        }
+      }
+    },
+    {
+      "tool": "edit_note",
+      "args": {
+        "edits": [
+          {
+            "old_text": "| Which stage makes the most ATP? | The electron transport chain | Cell respiration | 1 |",
+            "new_text": "| Which stage makes the most ATP? | The electron transport chain | Cell respiration | 2 |"
+          }
+        ]
+      }
+    }
+  ],
+  "example": "Study notes and flashcards\n\nNotes for each topic, and flashcards your AI quizzes you on. Cards you miss go back to box 1; cards you know move up to box 5.\n\n## Notes\n### Cell respiration\n- Glucose is broken down to make ATP, the cell's energy.\n- Three stages: glycolysis, the Krebs cycle, the electron transport chain.\n- Most ATP comes from the electron transport chain, in the mitochondria.\n\n## Flashcards\n<!-- pane-table: Question=text; Answer=text; Topic=text; Box=scale 1-5 -->\n| Question | Answer | Topic | Box |\n| --- | --- | --- | --- |\n| Where does glycolysis happen? | In the cytoplasm | Cell respiration | 1 |\n| Which stage makes the most ATP? | The electron transport chain | Cell respiration | 2 |\n| What is ATP for? | It carries energy the cell can use | Cell respiration | 1 |\n",
+  "related": [
+    "book-notes",
+    "reading-list",
+    "weekly-review"
+  ],
+  "updated": "2026-10-01"
+}

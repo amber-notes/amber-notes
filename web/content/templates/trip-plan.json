@@ -1,0 +1,73 @@
+{
+  "slug": "trip-plan",
+  "title": "Trip plan",
+  "category": "Home and life",
+  "audiences": [
+    "Personal",
+    "Families"
+  ],
+  "audience": "For anyone planning a trip who wants the plan, bookings and packing in one place.",
+  "description": "A trip plan your AI drafts and keeps current: a realistic day-by-day plan, your bookings and a packing checklist.",
+  "folder": "Travel",
+  "note": "Trip plan\n\nEverything for one trip: the plan for each day, the bookings, and what to pack.\n\n## Bookings\n<!-- pane-table: What=text; When=text; Confirmation=text; Paid=choice Yes|No -->\n| What | When | Confirmation | Paid |\n| --- | --- | --- | --- |\n\n## Days\n\n## Packing\n- [ ] Passport\n- [ ] Chargers\n- [ ] Travel insurance details\n- [ ] Comfortable shoes\n\n## Ideas\n",
+  "prompt": {
+    "default": "Use my Amber Notes note \"Trip plan\". I'll tell you where I'm going, when, and what I like. Write a day-by-day plan under \"Days\" with append_to_note: a \"###\" heading per day with three to five bullets, and keep it realistic, with travel time between places. When I paste a booking confirmation, add a row to the Bookings table with log_table_row (What, When, Confirmation, Paid). Add anything this trip needs to the \"Packing\" checklist, and save places I mention for later under \"Ideas\"."
+  },
+  "asks": [
+    "Lisbon, 4 days in May. I like food, views and walking. Not museums.",
+    "Here's the hotel confirmation: …",
+    "What do I still need to book?"
+  ],
+  "demo": [
+    {
+      "tool": "log_table_row",
+      "args": {
+        "values": {
+          "What": "Flights ARN to LIS",
+          "When": "14 May, 07:10",
+          "Confirmation": "K7Q2PX",
+          "Paid": "Yes"
+        }
+      }
+    },
+    {
+      "tool": "log_table_row",
+      "args": {
+        "values": {
+          "What": "Hotel in Príncipe Real, 4 nights",
+          "When": "14 to 18 May",
+          "Confirmation": "48213377",
+          "Paid": "No"
+        }
+      }
+    },
+    {
+      "tool": "append_to_note",
+      "args": {
+        "under_heading": "Days",
+        "text": "### Thursday 14 May\n- Land 10:40, drop bags at the hotel\n- Lunch at Time Out Market\n- Sunset at Miradouro da Senhora do Monte\n\n### Friday 15 May\n- Tram 28 before 9, ahead of the crowds\n- Alfama on foot, lunch at a tasca\n- Dinner at Ramiro (book ahead)"
+      }
+    },
+    {
+      "tool": "append_to_note",
+      "args": {
+        "under_heading": "Packing",
+        "text": "- [ ] Sunglasses\n- [ ] A light jacket for the evenings"
+      }
+    },
+    {
+      "tool": "append_to_note",
+      "args": {
+        "under_heading": "Ideas",
+        "text": "- Day trip to Sintra\n- LX Factory on Sunday"
+      }
+    }
+  ],
+  "example": "Trip plan\n\nEverything for one trip: the plan for each day, the bookings, and what to pack.\n\n## Bookings\n<!-- pane-table: What=text; When=text; Confirmation=text; Paid=choice Yes|No -->\n| What | When | Confirmation | Paid |\n| --- | --- | --- | --- |\n| Flights ARN to LIS | 14 May, 07:10 | K7Q2PX | Yes |\n| Hotel in Príncipe Real, 4 nights | 14 to 18 May | 48213377 | No |\n\n## Days\n### Thursday 14 May\n- Land 10:40, drop bags at the hotel\n- Lunch at Time Out Market\n- Sunset at Miradouro da Senhora do Monte\n\n### Friday 15 May\n- Tram 28 before 9, ahead of the crowds\n- Alfama on foot, lunch at a tasca\n- Dinner at Ramiro (book ahead)\n\n## Packing\n- [ ] Passport\n- [ ] Chargers\n- [ ] Travel insurance details\n- [ ] Comfortable shoes\n- [ ] Sunglasses\n- [ ] A light jacket for the evenings\n\n## Ideas\n- Day trip to Sintra\n- LX Factory on Sunday\n",
+  "related": [
+    "budget-log",
+    "meal-plan",
+    "gift-ideas"
+  ],
+  "updated": "2026-10-01"
+}

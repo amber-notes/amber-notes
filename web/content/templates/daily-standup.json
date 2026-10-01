@@ -1,0 +1,47 @@
+{
+  "slug": "daily-standup",
+  "title": "Standup notes",
+  "category": "Work",
+  "audiences": [
+    "Developers",
+    "Work"
+  ],
+  "audience": "For developers who'd rather not reconstruct yesterday from memory at 9:58.",
+  "description": "Daily standup notes, newest first. Claude Code writes yesterday from your commits; ChatGPT or Claude from what you tell it.",
+  "seoTitle": "Daily standup template for Claude Code and ChatGPT",
+  "folder": "Work",
+  "note": "Standup notes\n\nYesterday, today and blockers, one section a day, newest first. Claude Code can write yesterday from your commits.\n\n## Blockers\n\n## Days\n",
+  "prompt": {
+    "default": "Use my Amber Notes note \"Standup notes\". Each morning I'll tell you what I did yesterday and what's next. Add a section at the start of \"Days\" with append_to_note (at_start): a \"###\" heading with today's date, then Yesterday, Today and Blockers as short bullets. Anything blocked also goes under \"Blockers\"; when I say it's unblocked, remove it with edit_note.",
+    "claudeCode": "Write today's standup into my Amber Notes note \"Standup notes\". Run git log --since=yesterday --author=\"$(git config user.email)\" --oneline in this repo, turn the commits into two to five plain-language bullets (no hashes), and ask me what's next and what's blocking me. Then add a section at the start of \"Days\" with append_to_note (at_start): a \"###\" heading with today's date, then Yesterday, Today and Blockers. Anything blocked also goes under \"Blockers\"."
+  },
+  "asks": [
+    "Write today's standup.",
+    "What was I blocked on last week?",
+    "Summarize my standups since Monday for the sprint review."
+  ],
+  "demo": [
+    {
+      "tool": "append_to_note",
+      "args": {
+        "under_heading": "Blockers",
+        "text": "- Waiting on API keys for the staging payment provider"
+      }
+    },
+    {
+      "tool": "append_to_note",
+      "args": {
+        "under_heading": "Days",
+        "at_start": true,
+        "text": "### 30 September\n**Yesterday**\n- Fixed the sync conflict when two devices edit the same note\n- Added tests for the importer's table handling\n\n**Today**\n- Review the onboarding pull request\n- Start on the export to PDF\n\n**Blockers**\n- Staging payment keys\n"
+      }
+    }
+  ],
+  "example": "Standup notes\n\nYesterday, today and blockers, one section a day, newest first. Claude Code can write yesterday from your commits.\n\n## Blockers\n- Waiting on API keys for the staging payment provider\n\n## Days\n### 30 September\n**Yesterday**\n- Fixed the sync conflict when two devices edit the same note\n- Added tests for the importer's table handling\n\n**Today**\n- Review the onboarding pull request\n- Start on the export to PDF\n\n**Blockers**\n- Staging payment keys\n",
+  "related": [
+    "bug-triage",
+    "decision-log",
+    "meeting-notes"
+  ],
+  "updated": "2026-10-01"
+}

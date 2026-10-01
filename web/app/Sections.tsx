@@ -88,7 +88,7 @@ export function AiSection() {
           );
         })}
       </div>
-      <p className={a.also}>Also Codex, <a href="https://incredible.one" rel="noopener">Incredible</a>, and any app that supports MCP. <a href="/blog/connect-chatgpt-to-your-notes">How to connect</a></p>
+      <p className={a.also}>Also Codex, <a href="https://incredible.one" rel="noopener">Incredible</a>, and any app that supports MCP. <a href="/blog/connect-chatgpt-to-your-notes">How to connect</a> · <a href="/templates">Start from a template</a></p>
     </section>
   );
 }
