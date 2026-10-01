@@ -5,6 +5,39 @@ assistants. Newest first. Research behind it: [seo-aeo-research-2026-09-30.md](s
 
 `docs/` had no README naming a folder for evidence, so this and the research live in `docs/Evidence/`.
 
+## 1 October 2026: covers redone to the approved standard
+
+Emil flagged the newer covers: captures pinned to the top with empty ground below, text too small to read, content cut mid-line, and a Codex row on the Gemini card.
+
+### What the approved covers (PRs #32 and #34) do
+
+- A source about 700 to 860 px wide (2x), so text shows near full size on a card about 330 px wide.
+- One meaningful moment, with about 24 px of the panel's own colour around it at card size.
+- A picture about two thirds as tall as it is wide, so it fills the card's picture and fades out at the bottom.
+
+### Changed (branch `site/covers-redo`)
+
+- New offscreen renders in `PaneTests/HIG/BlogSnapshots.swift`:
+  - `notesForCards`: the Welcome, Food and Places notes at 352 pt (704 px), so lines wrap at card width.
+  - `chatGPTEditForCard`: Lisbon just after ChatGPT added a line.
+  - `consentForCommandLine`: the consent sheet for an app on this computer, as Gemini CLI sees it.
+  - `notesPasswordSheet` is now drawn at 440 pt.
+- Every cover is cut at a clean content boundary, ends above the fade, and sits in an even 48 px (2x) margin of its own panel colour, two thirds as tall as wide:
+
+  | Post | Cover |
+  |---|---|
+  | Recover deleted Apple Notes | dark version history: "2 lines differ", Groceries |
+  | Gemini | "Allow an app on this computer to use your notes?" (was a Codex row) |
+  | Forgot password | the password sheet's title and fields |
+  | Encrypted notes | ChatGPT consent, down to "except locked notes" |
+  | ChatGPT memory | Lisbon's plan with ChatGPT's tinted line |
+  | iOS 27 | the Food table |
+  | Markdown export | the Welcome note's title and its markdown line (no dangling heading) |
+  | Obsidian MCP | the Places list and the Hotel booking sub-note |
+
+- The two older covers that sat short at the top of the card, Apple Notes API (The basics) and the Claude Code work log (Standup), are padded to the same shape in their own background.
+- Checked: /blog at 1440 px and at a true 390 px viewport (Chrome DevTools device metrics), every card, with lazy images loaded.
+
 ## 1 October 2026: blog quality pass
 
 Audited the built pages (`next build`, then every `/blog/*.html`, `/help`, `/llms.txt` and `/llms-full.txt`).
