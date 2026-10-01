@@ -1,10 +1,12 @@
 /* The template library: the gallery and each template's page. The site's cream theme around the
    app's own white note paper; the instructions sit on the home page's dark brown, like the vault card. */
 
-.main { width: 100%; max-width: 1240px; margin: 0 auto; padding: 0 20px; box-sizing: border-box; display: grid; gap: 96px; align-content: start; }
+.main { width: 100%; max-width: 1240px; margin: 0 auto; padding: 0 var(--gutter); box-sizing: border-box; display: grid; gap: 96px; align-content: start; }
 @media (max-width: 700px) { .main { gap: 72px; } }
 
-/* ── Gallery: the promise ── */
+/* ── Gallery: the promise, then the filter and the cards close under it ── */
+.gallery { display: grid; gap: 44px; }
+@media (max-width: 600px) { .gallery { gap: 28px; } }
 .hero { display: grid; gap: 16px; justify-items: start; padding-top: 64px; max-width: 820px; }
 @media (max-width: 600px) { .hero { padding-top: 28px; gap: 14px; } }
 .h1 { margin: 0; font-size: clamp(42px, 5.6vw, 76px); line-height: 0.98; font-weight: 800; letter-spacing: -0.045em; text-wrap: balance; }
@@ -16,7 +18,7 @@
 .lede { margin: 0; max-width: 36em; font-size: clamp(18px, 2vw, 21px); line-height: 1.45; color: var(--muted); text-wrap: pretty; }
 .lede b { color: var(--ink); font-weight: 650; }
 
-/* Three steps in one row: add, copy, ask. */
+/* Three steps in one row, on a template's page: connect, paste, talk. */
 .steps { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; width: 100%; counter-reset: step; }
 @media (max-width: 760px) { .steps { grid-template-columns: 1fr; gap: 8px; } }
 .steps li { counter-increment: step; display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 2px 12px; align-items: start; padding: 14px 16px; border-radius: 16px; background: var(--card); box-shadow: 0 0 0 1px var(--line); }
@@ -26,10 +28,9 @@
 
 /* ── Gallery: filters, then the cards ── */
 .library { display: grid; gap: 22px; }
-.filters { display: grid; gap: 10px; }
+/* One row: the category chips, and how many templates show at its end. */
+.filters { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 20px; }
 .filterRow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.filterLabel { min-width: 72px; color: var(--muted); font-size: 13px; font-weight: 700; }
-@media (max-width: 600px) { .filterLabel { min-width: 0; width: 100%; } }
 .chip {
   display: inline-flex; align-items: center; gap: 7px; min-height: 36px; padding: 0 14px; border: 0; border-radius: 999px;
   background: transparent; color: var(--muted); font: inherit; font-weight: 600; font-size: 15px; text-decoration: none; cursor: pointer;
@@ -44,9 +45,6 @@
 }
 .count { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .shown { margin: 0; color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; min-height: 20px; }
-.none { margin: 0; padding: 40px 20px; border-radius: 20px; background: var(--soft); color: var(--muted); text-align: center; }
-.none button { margin-left: 4px; border: 0; padding: 0; background: none; color: var(--link); font: inherit; font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; border-radius: 4px; }
-.none button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 
 .grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
 @media (max-width: 1000px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -54,32 +52,48 @@
 .grid > li { display: grid; }
 .grid > li[hidden] { display: none; }
 
-/* A card: the template's real structure in miniature on its category's ground, then the words. */
+/* A card: the template's real structure in miniature on its category's ground, then the words, then
+   "Use template" at the foot, so the card reads as something to open before anyone hovers it. */
 .card {
-  display: grid; grid-template-rows: auto 1fr; border-radius: 22px; overflow: hidden; color: var(--ink); text-decoration: none; background: var(--card);
-  box-shadow: 0 0 0 1px var(--line), 0 18px 36px -30px rgba(60, 30, 5, 0.55);
+  display: grid; grid-template-rows: auto 1fr auto; border-radius: 22px; overflow: hidden; color: var(--ink); text-decoration: none; background: var(--card);
+  cursor: pointer; box-shadow: 0 0 0 1px var(--line), 0 18px 36px -30px rgba(60, 30, 5, 0.55);
 }
 @media (prefers-reduced-motion: no-preference) {
-  .card { transition: box-shadow 0.18s ease-out, transform 0.12s ease-out; }
-  .card:active { transform: scale(0.985); }
+  .card { transition: box-shadow 0.2s ease-out, transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .card:active { transform: scale(0.98); transition-duration: 0.1s; }
   .mini { transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.1); }
+  .use { transition: background-color 0.15s ease-out, color 0.15s ease-out; }
+  .use svg { transition: transform 0.2s cubic-bezier(0.2, 0.9, 0.3, 1.1); }
 }
 @media (hover: hover) {
-  .card:hover { box-shadow: 0 0 0 1.5px var(--amber), 0 22px 40px -28px rgba(60, 30, 5, 0.6); }
+  .card:hover { box-shadow: 0 0 0 1px var(--line), 0 28px 48px -26px rgba(60, 30, 5, 0.6); }
+  .card:hover .use { background: var(--cta-bg); color: var(--cta-ink); }
 }
-@media (hover: hover) and (prefers-reduced-motion: no-preference) { .card:hover .mini { transform: translateY(-3px); } }
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .card:hover { transform: translateY(-3px); }
+  .card:hover:active { transform: translateY(-3px) scale(0.98); }
+  .card:hover .mini { transform: translateY(-3px); }
+  .card:hover .use svg { transform: translateX(3px); }
+}
 .card:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
+.card:focus-visible .use { background: var(--cta-bg); color: var(--cta-ink); }
 .cardArt { position: relative; height: 212px; overflow: hidden; padding: 22px 22px 0; }
 .cardArt[data-cat="habits-and-health"] { background: linear-gradient(160deg, #eef0df, #dde3c6); }
 .cardArt[data-cat="work"] { background: linear-gradient(160deg, #f4eee6, #e6dccd); }
 .cardArt[data-cat="learning"] { background: linear-gradient(160deg, #efe8f0, #ddd0e0); }
 .cardArt[data-cat="home-and-life"] { background: linear-gradient(160deg, #fde9d6, #f6cfa9); }
-.cardText { display: grid; align-content: start; gap: 6px; padding: 18px 20px 20px; }
+.cardText { display: grid; align-content: start; gap: 6px; padding: 18px 20px 16px; }
 .label { font-size: 12px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--link); }
 .cardTitle { margin: 0; font-size: 20px; line-height: 1.2; font-weight: 750; letter-spacing: -0.015em; }
 .cardLine { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.45; }
-.tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-.tag { padding: 2px 8px; border-radius: 6px; background: var(--soft); color: var(--muted); font-size: 12.5px; font-weight: 600; }
+.cardFoot { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 14px 14px 20px; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.use {
+  flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px 0 14px; border-radius: 8px;
+  background: var(--soft); color: var(--ink); font-size: 14.5px; font-weight: 700; white-space: nowrap;
+}
+/* Outlined, so the audience tags never look like the filled "Use template" beside them. */
+.tag { padding: 2px 8px; border-radius: 6px; box-shadow: inset 0 0 0 1px var(--line); color: var(--muted); font-size: 12.5px; font-weight: 600; }
 
 /* The miniature: a little Amber Notes page, white, cut off at the bottom of the art. */
 .mini {
@@ -137,6 +151,38 @@
   .primary, .secondary { transition: transform 0.12s ease-out, background-color 0.15s ease-out; }
   .primary:active, .secondary:active { transform: scale(0.97); }
 }
+/* Copy the markdown: a quiet text button beside the one big one. */
+.quiet {
+  display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 0 10px; border: 0; border-radius: 10px; background: transparent;
+  color: var(--muted); font: inherit; font-weight: 650; font-size: 15px; cursor: pointer;
+}
+.quiet[data-done] { color: var(--ink); }
+.quiet:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+@media (hover: hover) { .quiet:hover { color: var(--ink); background: var(--soft); } }
+@media (prefers-reduced-motion: no-preference) {
+  .quiet { transition: color 0.15s ease-out, background-color 0.15s ease-out, transform 0.12s ease-out; }
+  .quiet:active { transform: scale(0.97); }
+}
+.promptCopy { display: grid; gap: 10px; justify-items: start; }
+.ctaRow { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+/* Which AI the prompt is for, only when Claude Code gets its own wording. */
+.forAi { display: inline-flex; gap: 2px; padding: 3px; border-radius: 12px; background: var(--soft); }
+.forAiOption {
+  min-height: 32px; padding: 0 12px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); font: inherit; font-size: 14px; font-weight: 650; cursor: pointer;
+}
+.forAiOption[aria-checked="true"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgba(60, 30, 5, 0.18); }
+.forAiOption:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+@media (hover: hover) { .forAiOption:hover { color: var(--ink); } }
+@media (prefers-reduced-motion: no-preference) { .forAiOption { transition: background-color 0.15s ease-out, color 0.15s ease-out; } }
+
+/* The hero's example: the filled note, cut off like a scrolled window when it runs long. */
+.heroExample { display: grid; padding-top: 4px; }
+.heroWindow .paper { position: relative; max-height: 380px; overflow: hidden; }
+.heroExample .changes { margin-bottom: 12px; }
+.heroWindow .paper::after { content: ""; position: absolute; inset: auto 0 0; height: 56px; background: linear-gradient(rgba(255, 255, 255, 0), #fff); pointer-events: none; }
+@media (max-width: 700px) { .heroWindow .paper { max-height: 380px; } }
+.caption { margin: 14px 4px 0; color: var(--muted); font-size: 14px; line-height: 1.45; }
+
 .fine { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.45; }
 .fine a { color: var(--link); }
 
@@ -189,45 +235,39 @@
 .sectionLede { margin: 0; color: var(--muted); font-size: clamp(17px, 1.9vw, 19px); line-height: 1.45; text-wrap: pretty; }
 .sectionLede a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--amber); text-decoration-thickness: 2px; text-underline-offset: 3px; }
 
-/* The instructions: the vault card's dark brown, the prompt in monospace, one tab per AI. */
+/* What the prompt does: plain words and things to say, on the card colour; the full prompt folded
+   away underneath, for anyone who wants to read it. */
 .prompt {
-  position: relative; display: grid; gap: 22px; padding: 40px; border-radius: 30px; overflow: hidden; isolation: isolate; background: #2a1d10; color: #fbeedd;
-  box-shadow: 0 0 0 1px rgba(255, 220, 170, 0.08), 0 40px 80px -48px rgba(40, 18, 2, 0.9);
+  display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr); gap: 28px 48px; align-items: start; padding: 40px; border-radius: 30px;
+  background: var(--card); box-shadow: 0 0 0 1px var(--line), 0 30px 60px -48px rgba(60, 30, 5, 0.5);
 }
-.prompt::before { content: ""; position: absolute; z-index: -1; right: -120px; top: -160px; width: 460px; height: 460px; border-radius: 50%; background: radial-gradient(closest-side, rgba(245, 165, 58, 0.18), transparent); }
-@media (max-width: 700px) { .prompt { padding: 26px 18px 22px; border-radius: 24px; gap: 18px; } }
-.promptHead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; }
-.promptTitle { margin: 0; font-size: clamp(26px, 3.4vw, 38px); line-height: 1.05; font-weight: 800; letter-spacing: -0.03em; }
-.tabs { display: inline-flex; gap: 4px; padding: 4px; border-radius: 14px; background: rgba(251, 238, 221, 0.08); }
-.tab { display: inline-flex; align-items: center; gap: 7px; min-height: 36px; padding: 0 14px; border: 0; border-radius: 10px; background: transparent; color: #d9bf9f; font: inherit; font-size: 14.5px; font-weight: 650; cursor: pointer; }
-.tab[aria-selected="true"] { background: #fbeedd; color: #2a1d10; }
-.tab:focus-visible { outline: 2px solid #f5a53a; outline-offset: 2px; }
-@media (hover: hover) { .tab:not([aria-selected="true"]):hover { color: #fbeedd; } }
-@media (prefers-reduced-motion: no-preference) { .tab { transition: background-color 0.15s ease-out, color 0.15s ease-out; } }
-.promptBox { position: relative; display: grid; border-radius: 18px; background: rgba(0, 0, 0, 0.22); box-shadow: inset 0 0 0 1px rgba(255, 220, 170, 0.1); }
-.promptText { margin: 0; padding: 22px 22px 18px; font: 500 15px/1.65 ui-monospace, "SF Mono", Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; color: #fbeedd; }
-@media (max-width: 700px) { .promptText { font-size: 13.5px; padding: 16px 14px 12px; } }
-.promptText code { color: #f5a53a; font: inherit; }
+@media (max-width: 860px) { .prompt { grid-template-columns: minmax(0, 1fr); padding: 26px 20px 22px; border-radius: 24px; gap: 22px; } }
+.promptHead { display: grid; gap: 14px; }
+.promptHead .sectionLede b { color: var(--ink); font-weight: 650; }
+.promptWhere { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.45; }
+.asks { display: grid; gap: 10px; align-content: start; }
+.asksLabel { margin: 0; color: var(--link); font-weight: 700; font-size: 14px; }
+.asks ul { list-style: none; margin: 0; padding: 0; display: grid; justify-items: start; gap: 8px; }
+.asks li { padding: 10px 14px; border-radius: 18px 18px 18px 6px; background: var(--soft); color: var(--ink); font-size: 16px; line-height: 1.35; }
+
+.full { grid-column: 1 / -1; border-radius: 18px; box-shadow: inset 0 0 0 1px var(--line); }
+.fullToggle {
+  display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 18px; border-radius: 18px; list-style: none; cursor: pointer;
+  color: var(--ink); font-weight: 650; font-size: 15.5px;
+}
+.fullToggle::-webkit-details-marker { display: none; }
+.fullToggle:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.full[open] .fullToggle svg { transform: rotate(180deg); }
+@media (hover: hover) { .fullToggle:hover { color: var(--link); } }
+@media (prefers-reduced-motion: no-preference) { .fullToggle svg { transition: transform 0.2s ease-out; } .fullToggle { transition: color 0.15s ease-out; } }
+.fullBody { display: grid; gap: 18px; padding: 0 18px 18px; }
+.fullVariant { display: grid; gap: 10px; }
+.fullFor { margin: 0; color: var(--muted); font-size: 13px; font-weight: 700; }
+.promptText { margin: 0; font: 500 14px/1.65 ui-monospace, "SF Mono", Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink); }
+@media (max-width: 700px) { .promptText { font-size: 13px; } }
+.promptText code { color: var(--link); font: inherit; }
 /* The note's markdown at the end of the prompt: copied with it, shown quieter and scrolled. */
-.promptMd { margin: 0 22px 18px; max-height: 168px; overflow: auto; padding: 12px 14px; border-radius: 12px; background: rgba(0, 0, 0, 0.25); color: #b89c7c; font: 500 12.5px/1.55 ui-monospace, "SF Mono", Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
-@media (max-width: 700px) { .promptMd { margin: 0 12px 12px; } }
-.promptFoot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding: 12px 14px 14px 22px; box-shadow: inset 0 1px 0 rgba(255, 220, 170, 0.08); }
-@media (max-width: 700px) { .promptFoot { padding: 12px 12px 12px 14px; } }
-.promptWhere { margin: 0; color: #b89c7c; font-size: 13.5px; line-height: 1.4; max-width: 44em; }
-.copy {
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 136px; min-height: 44px; padding: 0 18px; border: 0; border-radius: 12px;
-  background: #fbeedd; color: #2a1d10; font: inherit; font-size: 15px; font-weight: 700; cursor: pointer;
-}
-.copy[data-done] { background: #f5a53a; }
-.copy:focus-visible { outline: 2px solid #f5a53a; outline-offset: 3px; }
-@media (prefers-reduced-motion: no-preference) {
-  .copy { transition: transform 0.12s ease-out, background-color 0.2s ease-out; }
-  .copy:active { transform: scale(0.96); }
-}
-.asks { display: grid; gap: 10px; }
-.asksLabel { margin: 0; color: #f5a53a; font-weight: 700; font-size: 14px; }
-.asks ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
-.asks li { padding: 9px 13px; border-radius: 16px 16px 16px 6px; background: rgba(251, 238, 221, 0.1); color: #fbeedd; font-size: 15px; line-height: 1.35; }
+.promptMd { margin: 0; max-height: 168px; overflow: auto; padding: 12px 14px; border-radius: 10px; background: var(--soft); color: var(--muted); font: 500 12.5px/1.55 ui-monospace, "SF Mono", Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
 
 /* What you'll get: the example on a soft ground. */
 .result { display: grid; padding: clamp(18px, 4vw, 48px); border-radius: 30px; background: linear-gradient(180deg, #fbe7c9, #f6d3a4); }

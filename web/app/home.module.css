@@ -1,6 +1,6 @@
 /* Home page: the promise and the demo; the sections below live in sections.module.css. The
    changelog and help pages share the centred column at the end. Colours come from the page theme. */
-.main { width: 100%; max-width: 1240px; margin: 0 auto; padding: 0 20px; box-sizing: border-box; display: grid; grid-template-columns: minmax(0, 1fr); gap: 160px; align-content: start; } /* one column that never grows to fit the wider demo */
+.main { width: 100%; max-width: 1240px; margin: 0 auto; padding: 0 var(--gutter); box-sizing: border-box; display: grid; grid-template-columns: minmax(0, 1fr); gap: 160px; align-content: start; } /* one column that never grows to fit the wider demo */
 @media (max-width: 700px) { .main { gap: 96px; } }
 
 /* Two groups, spaced twice as far apart as their parts: the promise (headline 24 px above its line),

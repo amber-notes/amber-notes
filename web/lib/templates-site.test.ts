@@ -13,7 +13,7 @@ import Gallery from "../app/templates/page";
 import TemplatePage from "../app/templates/[slug]/page";
 import { copyableMarkdown } from "./shared";
 import { themeFor, themeScript } from "./theme";
-import { templates } from "./templates";
+import { instructions, templates } from "./templates";
 
 const params = (slug: string) => ({ params: Promise.resolve({ slug }) });
 
@@ -52,6 +52,58 @@ describe("a shared page", () => {
     // Only once the app release that handles the link is out (APP_TEMPLATES).
     if (APP_TEMPLATES.live) expect(html).toContain('<a class="use-note" href="/open/copy/abcdefghijklmnopqrstuvwx">Use this note</a>');
     else expect(html).not.toContain("/open/copy/");
+  });
+});
+
+describe("the gallery", () => {
+  const gallery = () => renderToStaticMarkup(Gallery());
+
+  it("filters by category in one row, without an audience filter", () => {
+    const html = gallery();
+    expect(html.match(/role="group"/g)).toHaveLength(1);
+    expect(html).toContain('aria-label="Category"');
+    expect(html).not.toContain("Who it&#x27;s for");
+    expect(html).not.toContain(">Everyone<");
+  });
+
+  it("has no numbered steps above the cards", () => {
+    expect(gallery()).not.toContain("<ol");
+  });
+
+  it("makes every card one link that says what it opens", () => {
+    const html = gallery();
+    const cards = html.match(/<a class="[^"]*card[^"]*" href="\/templates\/[^"]+">/g) ?? [];
+    expect(cards).toHaveLength(templates().length);
+    expect(html.match(/>Use template</g)).toHaveLength(templates().length);
+  });
+});
+
+describe("a template's page", () => {
+  const page = async (slug: string) => renderToStaticMarkup(await TemplatePage(params(slug)));
+
+  it("opens on the filled example, with the AI's lines tinted", async () => {
+    const html = await page("meeting-notes");
+    const hero = html.slice(0, html.indexOf('id="prompt"'));
+    expect(hero).toContain("30 September 2026");
+    expect(hero).toContain('class="changed"');
+  });
+
+  it("has one Copy the prompt button and keeps every prompt in the page, folded away", async () => {
+    for (const t of templates()) {
+      const html = await page(t.slug);
+      expect(html.match(/>Copy the prompt</g), t.slug).toHaveLength(1);
+      expect(html).toContain("Show the full prompt");
+      expect(html).not.toContain(">Tell your AI</h2>");
+      const text = html.replace(/<[^>]+>/g, "").replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+      for (const i of instructions(t)) expect(text, `${t.slug} ${i.client}`).toContain(i.prompt.slice(0, i.prompt.indexOf("```")).trimEnd());
+    }
+  });
+
+  it("offers a choice of AI only where Claude Code gets its own prompt", async () => {
+    expect(await page("meeting-notes")).not.toContain('role="radiogroup"');
+    const standup = await page("daily-standup");
+    expect(standup).toContain('role="radiogroup"');
+    expect(standup).toContain(">ChatGPT or Claude<");
   });
 });
 

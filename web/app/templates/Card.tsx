@@ -2,7 +2,7 @@ import { anchor, shape, templatePath, type Shape, type Template } from "@/lib/te
 import s from "./templates.module.css";
 
 /// One template in the gallery or under "More templates": its real note, filled in, in miniature,
-/// then what it is and who it's for.
+/// then what it is and who it's for. The whole card is the link; "Use template" says so at rest.
 export default function Card({ t, heading = "h2" }: { t: Template; heading?: "h2" | "h3" }) {
   const H = heading;
   return (
@@ -14,11 +14,16 @@ export default function Card({ t, heading = "h2" }: { t: Template; heading?: "h2
         <span className={s.label}>{t.category}</span>
         <H className={s.cardTitle}>{t.title}</H>
         <span className={s.cardLine}>{t.description}</span>
+      </span>
+      <span className={s.cardFoot}>
         <span className={s.tags}>{t.audiences.map((a) => <span key={a} className={s.tag}>{a}</span>)}</span>
+        <span className={s.use} aria-hidden="true">Use template<ArrowGlyph /></span>
       </span>
     </a>
   );
 }
+
+const ArrowGlyph = () => <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" /></svg>;
 
 /// A small Amber Notes page: the title, then the note's headings, checklists, lists and tables.
 export function Mini({ title, rows }: { title: string; rows: Shape[] }) {
