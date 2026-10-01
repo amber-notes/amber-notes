@@ -89,10 +89,12 @@
 .cardTitle { margin: 0; font-size: 26px; line-height: 1.15; font-weight: 750; letter-spacing: -0.02em; }
 .cardLine { margin: 0; font-size: 15px; line-height: 1.45; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* The real note's slice on white paper, then "Use template" on the same sheet. */
+/* The real note's slice on white paper, then "Use template" on the same sheet. The note area is at
+   least 120px and grows to fill the card, so every card in a row ends level and the slice runs to the
+   fade with no empty band. */
 .slice { position: relative; grid-row: 3; display: flex; flex-direction: column; min-width: 0; margin: 0 14px; border-radius: 8px; background: #fff; overflow: hidden; }
 .sliceNote {
-  position: relative; flex: 1 0 auto; display: flex; flex-direction: column; gap: 6px; height: 120px; padding: 12px 14px 0; overflow: hidden; color: #1d1d1f;
+  position: relative; flex: 1 0 120px; min-height: 0; display: flex; flex-direction: column; gap: 6px; padding: 12px 14px 0; overflow: hidden; color: #1d1d1f;
   font: 12.5px/1.35 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
 }
 .sliceNote > * { flex: none; }
@@ -299,3 +301,27 @@
 .loopUse { padding: 6px 12px; border-radius: 999px; background: #2a1d10; color: #fbeedd; font-size: 13px; font-weight: 700; white-space: nowrap; }
 .loopNote { margin: 0; font-weight: 700; font-size: 18px; }
 .loopLine { margin: 0; color: #6e6e73; }
+
+/* The chips carry their templates' colours as dots; the picked chip fills with its category's colour,
+   with ink or cream text, whichever reads (4.5:1 or better on every fill). */
+.swatch { display: inline-flex; margin-right: 2px; }
+.swatch i { width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 0 2px var(--bg); }
+.swatch i + i { margin-left: -4px; }
+.chip[aria-pressed="true"][data-ink] { background: var(--fill); }
+.chip[aria-pressed="true"][data-ink="dark"], .chip[aria-pressed="true"][data-ink="dark"] .count { color: #2a1d10; }
+.chip[aria-pressed="true"][data-ink="light"], .chip[aria-pressed="true"][data-ink="light"] .count { color: #fff4e6; }
+.chip[aria-pressed="true"]:not([data-ink]) { background: var(--cta-bg); color: var(--cta-ink); }
+.chip[aria-pressed="true"] .swatch i { box-shadow: 0 0 0 2px var(--fill, var(--cta-bg)); }
+
+/* Four covers fanned beside the title at desktop widths; on narrower screens the top stays short. */
+.hero { position: relative; }
+.fan { display: none; }
+@media (min-width: 901px) {
+  .hero { max-width: none; padding-top: 48px; padding-right: min(36%, 420px); }
+  .fan { display: block; position: absolute; right: 24px; top: 40px; width: 340px; height: 230px; }
+  .fan img { position: absolute; width: 150px; height: 150px; border-radius: 18px; box-shadow: 0 18px 30px -18px rgba(60, 30, 5, 0.55), 0 0 0 1px rgba(60, 30, 5, 0.08); }
+  .fan img:nth-child(1) { left: 0; top: 50px; transform: rotate(-9deg); }
+  .fan img:nth-child(2) { left: 70px; top: 14px; transform: rotate(-3deg); }
+  .fan img:nth-child(3) { left: 140px; top: 22px; transform: rotate(4deg); }
+  .fan img:nth-child(4) { left: 200px; top: 62px; transform: rotate(10deg); }
+}

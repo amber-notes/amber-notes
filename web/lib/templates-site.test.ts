@@ -69,6 +69,12 @@ describe("the gallery", () => {
     expect(html).not.toContain(">Everyone<");
   });
 
+  it("gives each category chip its colour, and no trial switches", () => {
+    const html = gallery();
+    expect(html.match(/data-ink="(dark|light)"/g)).toHaveLength(4);
+    expect(html).not.toContain("data-top");
+  });
+
   it("has no numbered steps above the cards", () => {
     expect(gallery()).not.toContain("<ol");
   });

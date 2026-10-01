@@ -46,6 +46,19 @@
       }
     },
     {
+      "tool": "log_table_row",
+      "args": {
+        "values": {
+          "Bug": "Sync stalls after waking from sleep",
+          "Severity": "P2",
+          "Area": "Sync",
+          "Status": "In progress",
+          "Reported": "2026-09-30",
+          "Link": "#418"
+        }
+      }
+    },
+    {
       "tool": "append_to_note",
       "args": {
         "under_heading": "Details",
@@ -53,7 +66,7 @@
       }
     }
   ],
-  "example": "Bug triage\n\nEvery bug report in one table, sorted by how much it hurts. Paste a report and your AI files it.\n\n<!-- pane-table: Bug=text; Severity=choice P0|P1|P2|P3; Area=text; Status=choice New|Confirmed|In progress|Fixed|Won't fix; Reported=text; Link=text -->\n| Bug | Severity | Area | Status | Reported | Link |\n| --- | --- | --- | --- | --- | --- |\n| Export crashes on notes with images | P1 | Export | New | 2026-09-29 | #412 |\n| Dark mode: date picker unreadable | P3 | Settings | Confirmed | 2026-09-30 |   |\n\n## Severity\n- **P0:** data loss, a security hole, or everyone is blocked. Drop everything.\n- **P1:** a main flow is broken for many people. This week.\n- **P2:** broken, but there's a workaround. Schedule it.\n- **P3:** polish. When there's time.\n\n## Details\n### Export crashes on notes with images\n1. Open a note with two or more photos.\n2. Choose Export as PDF.\n3. The app quits.\n\nLikely cause: images are loaded at full size before they're scaled.\n",
+  "example": "Bug triage\n\nEvery bug report in one table, sorted by how much it hurts. Paste a report and your AI files it.\n\n<!-- pane-table: Bug=text; Severity=choice P0|P1|P2|P3; Area=text; Status=choice New|Confirmed|In progress|Fixed|Won't fix; Reported=text; Link=text -->\n| Bug | Severity | Area | Status | Reported | Link |\n| --- | --- | --- | --- | --- | --- |\n| Export crashes on notes with images | P1 | Export | New | 2026-09-29 | #412 |\n| Dark mode: date picker unreadable | P3 | Settings | Confirmed | 2026-09-30 |   |\n| Sync stalls after waking from sleep | P2 | Sync | In progress | 2026-09-30 | #418 |\n\n## Severity\n- **P0:** data loss, a security hole, or everyone is blocked. Drop everything.\n- **P1:** a main flow is broken for many people. This week.\n- **P2:** broken, but there's a workaround. Schedule it.\n- **P3:** polish. When there's time.\n\n## Details\n### Export crashes on notes with images\n1. Open a note with two or more photos.\n2. Choose Export as PDF.\n3. The app quits.\n\nLikely cause: images are loaded at full size before they're scaled.\n",
   "related": [
     "daily-standup",
     "decision-log",

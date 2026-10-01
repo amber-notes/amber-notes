@@ -45,6 +45,17 @@
       }
     },
     {
+      "tool": "log_table_row",
+      "args": {
+        "values": {
+          "Company": "Contoso",
+          "Role": "Product designer",
+          "Stage": "Saved",
+          "Next step": "Apply by 9 Oct (Emma referred me)"
+        }
+      }
+    },
+    {
       "tool": "append_to_note",
       "args": {
         "under_heading": "This week",
@@ -59,7 +70,7 @@
       }
     }
   ],
-  "example": "Job hunt\n\nEvery application, where it stands, and what happens next. Paste a job ad and your AI files it.\n\n<!-- pane-table: Company=text; Role=text; Stage=choice Saved|Applied|Interview|Offer|Rejected|Withdrawn; Next step=text; Link=text -->\n| Company | Role | Stage | Next step | Link |\n| --- | --- | --- | --- | --- |\n| Northwind | Senior product designer | Interview | First interview, Thu 1 Oct | northwind.example/jobs/42 |\n| Fabrikam | Design lead | Applied | Follow up on 7 Oct |   |\n\n## This week\n- [ ] Send the portfolio link to Northwind\n- [ ] Follow up with Fabrikam on Wednesday\n\n## Interview prep\n### Northwind\n1. Walk us through a project you're proud of. *The onboarding redesign: 18% more activation.*\n2. How do you work with engineers? *Weekly reviews, shared Figma, ship small.*\n3. Why Northwind? *Their logistics tools are the kind of complex I like.*\n\n## People I've talked to\n",
+  "example": "Job hunt\n\nEvery application, where it stands, and what happens next. Paste a job ad and your AI files it.\n\n<!-- pane-table: Company=text; Role=text; Stage=choice Saved|Applied|Interview|Offer|Rejected|Withdrawn; Next step=text; Link=text -->\n| Company | Role | Stage | Next step | Link |\n| --- | --- | --- | --- | --- |\n| Northwind | Senior product designer | Interview | First interview, Thu 1 Oct | northwind.example/jobs/42 |\n| Fabrikam | Design lead | Applied | Follow up on 7 Oct |   |\n| Contoso | Product designer | Saved | Apply by 9 Oct (Emma referred me) |   |\n\n## This week\n- [ ] Send the portfolio link to Northwind\n- [ ] Follow up with Fabrikam on Wednesday\n\n## Interview prep\n### Northwind\n1. Walk us through a project you're proud of. *The onboarding redesign: 18% more activation.*\n2. How do you work with engineers? *Weekly reviews, shared Figma, ship small.*\n3. Why Northwind? *Their logistics tools are the kind of complex I like.*\n\n## People I've talked to\n",
   "related": [
     "meeting-notes",
     "weekly-review",
