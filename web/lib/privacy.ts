@@ -96,3 +96,41 @@ export const COUNTS: string[] = [
   "which first-run setup steps you've done",
   "a random id for each installation and whether it's an iPhone or a Mac, to count devices",
 ];
+
+/// Design alternatives for the home page's privacy section (?privacy=a|b|c|d). Every line here says
+/// no more than FACTS, ENCRYPTION, READABLE and AI_ACCESS above.
+export const HOME_ALTS = {
+  /// A: the vault card.
+  vault: {
+    eyebrow: "Private by design",
+    title: "We can't read your notes.",
+    text: "They're encrypted on your iPhone or Mac before they're uploaded, with a key that only your devices, and AI connections you approve, can unlock.",
+    caveat: "When an AI you connected asks for notes, our server reads them in memory to answer it.",
+  },
+  /// B: what happens when an AI connects.
+  approval: {
+    title: "No AI gets in without you",
+    lede: "Your notes are end-to-end encrypted. An AI app can read them only after you approve it on your iPhone or Mac.",
+    steps: [
+      { title: "You start in the AI app", text: "Connect Amber Notes in ChatGPT, Claude or another AI app. Your browser shows a number." },
+      { title: "Your device asks you", text: "Your iPhone or Mac asks whether to allow it. Type the number your browser shows." },
+      { title: "You stay in charge", text: "While it works, our server reads the notes it asks for, in memory. Locked notes stay locked. Disconnect it at any time." },
+    ],
+    shotAlt: "Amber Notes on a Mac asking \"Allow ChatGPT to use your notes?\", with Read and Edit or Read Only, and a line saying that while it's connected it can read everything except locked notes.",
+  },
+  /// C: what we can see, and what we can't.
+  ledger: {
+    hidden: "Encrypted on your device. We can't read:",
+    hiddenItems: ["your notes", "their titles", "folder names", "file names and files", "every earlier version"],
+    lockedNote: "Locked notes are encrypted a second time. Not even an AI you connect can read their text.",
+    readable: "Readable to us:",
+  },
+  /// D: one note, as you see it and as our server stores it.
+  twoViews: {
+    you: "On your iPhone",
+    server: "On our server",
+    youCaption: "Your note, as you write it.",
+    serverCaption: "The same note on our server: the text is encrypted. Its size, dates, pin and the AI app that edited it stay readable to us.",
+    readableTag: "Readable to us",
+  },
+};

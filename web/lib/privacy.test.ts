@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { AI_ACCESS, CAVEAT, COUNTS, ENCRYPTION, FACTS, LIMITS, LOGS, PRIVACY_PATH, READABLE, WHO_CAN_SEE } from "./privacy";
+import { AI_ACCESS, CAVEAT, COUNTS, ENCRYPTION, FACTS, HOME_ALTS, LIMITS, LOGS, PRIVACY_PATH, READABLE, WHO_CAN_SEE } from "./privacy";
 import { themeFor } from "./theme";
 
 const page = readFileSync(join(__dirname, "../app/privacy-security/page.tsx"), "utf8");
@@ -11,6 +11,7 @@ const items = [...ENCRYPTION.items, ...WHO_CAN_SEE, ...AI_ACCESS, ...LIMITS];
 const copy = [
   ...FACTS.flatMap((f) => [f.title, f.text]), CAVEAT.text, CAVEAT.link, ...LOGS.flatMap((l) => [l.name, l.what, l.kept]), ...COUNTS, ...READABLE,
   ...items.flatMap((i) => [i.label, i.text]), ENCRYPTION.note, page, policy,
+  JSON.stringify(HOME_ALTS),
 ];
 const all = copy.join("\n");
 

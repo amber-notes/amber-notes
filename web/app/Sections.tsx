@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { AIGlyph } from "@/lib/ai-glyphs";
 import { FACTS, PRIVACY_PATH } from "@/lib/privacy";
 import DownloadLink from "./DownloadLink";
+import { ApprovalCard, LedgerCard, TwoViewsCard, VaultCard } from "./PrivacyAlts";
 import a from "./sections.module.css";
 
 const reduce = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -177,7 +178,16 @@ export function AlsoLine() {
 
 /* ───────────── Privacy & Security, in four facts ───────────── */
 
+const PRIVACY_ALTS = { a: VaultCard, b: ApprovalCard, c: LedgerCard, d: TwoViewsCard };
+
+/// Design study: ?privacy=a|b|c|d swaps in an alternative; without it, the four facts as today.
 export function PrivacySection() {
+  const [alt, setAlt] = useState<keyof typeof PRIVACY_ALTS | null>(null);
+  useEffect(() => {
+    const v = new URLSearchParams(window.location.search).get("privacy");
+    if (v && v in PRIVACY_ALTS) setAlt(v as keyof typeof PRIVACY_ALTS);
+  }, []);
+  if (alt) { const Alt = PRIVACY_ALTS[alt]; return <Alt />; }
   return (
     <section className={a.section} aria-labelledby="privacy">
       <div className={a.head}>
