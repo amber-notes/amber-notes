@@ -118,6 +118,7 @@ struct SidebarView: View {
     @State private var deletingFolder: Folder?
     @State private var showSettings = false
     @FocusedValue(\.importSheetAction) private var importSheet
+    @FocusedValue(\.evernoteImportAction) private var importEvernote
     @Environment(Backend.self) private var backend: Backend?
     @Environment(SyncEngine.self) private var sync: SyncEngine?
 
@@ -185,6 +186,7 @@ struct SidebarView: View {
                 Menu {
                     Button("New Folder", systemImage: "folder.badge.plus") { startNewFolder(nil) }
                     Button("Import Spreadsheet as Table", systemImage: "tablecells.badge.ellipsis") { importSheet?() }
+                    Button("Import from Evernote", systemImage: "tray.and.arrow.down") { importEvernote?() }
                 } label: {
                     Label("New Folder", systemImage: "folder.badge.plus")
                 } primaryAction: { startNewFolder(nil) }

@@ -19,6 +19,9 @@ struct RootView: View {
     @State private var showImport = false
     @State private var importingSheet = false
     @State private var importError: String?
+    @State private var showEvernote = false
+    /// Exports the Evernote sheet opens with (shared, opened from Files, dropped on the app).
+    @State private var evernoteFiles: [URL] = []
     @AppStorage("lastScope") private var lastScopeData: Data = Data()
     @AppStorage("lastNote") private var lastNote: String = ""
 
@@ -34,6 +37,7 @@ struct RootView: View {
             .focusedSceneValue(\.editorController, editor)
             .focusedSceneValue(\.importAction, { showImport = true })
             .focusedSceneValue(\.importSheetAction, { importingSheet = true })
+            .focusedSceneValue(\.evernoteImportAction, { evernoteFiles = []; showEvernote = true })
             .focusedSceneValue(\.deleteNoteAction, deleteAction)
     }
 
@@ -113,6 +117,26 @@ struct RootView: View {
                 }
             }
             #endif
+            .sheet(isPresented: $showEvernote, onDismiss: EvernoteInbox.clear) {
+                EvernoteImportView(files: evernoteFiles) { ids in
+                    #if os(macOS)
+                    if let first = ids.first { scope = .all; selectedNote = first }
+                    #endif
+                }
+            }
+            // Exports shared into the app, or opened with it from Files or Finder.
+            .onReceive(NotificationCenter.default.publisher(for: .paneEvernoteOffered)) { _ in offerEvernote() }
+            .onOpenURL { url in
+                guard url.isFileURL, EvernoteInbox.isExport(url.lastPathComponent) else { return }
+                EvernoteInbox.offer([EvernoteInbox.keep(url) ?? url])
+            }
+            .onAppear { offerEvernote() }
+    }
+
+    private func offerEvernote() {
+        guard !EvernoteInbox.files.isEmpty, !showEvernote else { return }
+        evernoteFiles = EvernoteInbox.files
+        showEvernote = true
     }
 
     private func importSpreadsheet(_ result: Result<URL, Error>) {
@@ -285,6 +309,10 @@ private struct ImportActionKey: FocusedValueKey {
     typealias Value = () -> Void
 }
 
+private struct EvernoteImportActionKey: FocusedValueKey {
+    typealias Value = () -> Void
+}
+
 private struct EditorControllerKey: FocusedValueKey {
     typealias Value = EditorController
 }
@@ -310,6 +338,11 @@ extension FocusedValues {
         get { self[ImportActionKey.self] }
         set { self[ImportActionKey.self] = newValue }
     }
+    /// File › Import from Evernote…
+    var evernoteImportAction: (() -> Void)? {
+        get { self[EvernoteImportActionKey.self] }
+        set { self[EvernoteImportActionKey.self] = newValue }
+    }
     var editorController: EditorController? {
         get { self[EditorControllerKey.self] }
         set { self[EditorControllerKey.self] = newValue }
@@ -328,6 +361,7 @@ struct PaneCommands: Commands {
     @FocusedValue(\.editorController) private var editor
     @FocusedValue(\.importAction) private var importNotes
     @FocusedValue(\.importSheetAction) private var importSheet
+    @FocusedValue(\.evernoteImportAction) private var importEvernote
     @FocusedValue(\.showHistoryAction) private var showHistory
 
     var body: some Commands {
@@ -351,6 +385,8 @@ struct PaneCommands: Commands {
         CommandGroup(replacing: .importExport) {
             Button("Import from Apple Notes…") { importNotes?() }
                 .disabled(importNotes == nil)
+            Button("Import from Evernote…") { importEvernote?() }
+                .disabled(importEvernote == nil)
             Button("Import Spreadsheet as Table…") { importSheet?() }
                 .disabled(importSheet == nil)
             Divider()

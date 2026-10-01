@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE en-export SYSTEM "http://xml.evernote.com/pub/evernote-export4.dtd">
+<en-export export-date="20260930T101500Z" application="Evernote" version="10.105.4">
+<note><title>Grandma&apos;s cardamom buns</title><content>
+<![CDATA[<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE en-note SYSTEM "http://xml.evernote.com/pub/enml2.dtd">
+<en-note><div><b>Makes 24 buns.</b> Start the dough the <i>night before</i>.</div><div><br/></div><h2>Dough</h2><ul><li><div>500 g flour</div></li><li><div>2 tsp <span style="font-weight: bold;">freshly ground</span> cardamom</div></li><ul><li><div>green pods, not black</div></li><li><div>crush with a mortar</div></li></ul><li><div>75 g butter</div></li></ul><div><br/></div><div><en-media hash="4c048024771edb5751c98035a4b80a2a" type="image/png" width="480"/></div><h3>Steps</h3><ol><li>Warm the milk to 37&#176;C.</li><li>Knead for <u>ten minutes</u>.<ol><li>Rest an hour.</li></ol></li><li>Bake at 225 &deg;C &ndash; about 8 min.</li></ol></en-note>]]>
+</content><created>20190314T081500Z</created><updated>20240102T193000Z</updated><tag>baking</tag><tag>family recipes</tag><note-attributes><author>Sara Lind</author></note-attributes><resource><data encoding="base64">
+iVBORw0KGgoAAAANSUhEUgAAAAQAAAADCAIAAAA7ljmRAAAAEElEQVR4nGO41GMDRww4OQB+AhM5
+emg4oAAAAABJRU5ErkJggg==
+</data><mime>image/png</mime><width>4</width><height>3</height><recognition><![CDATA[<?xml version="1.0" encoding="UTF-8"?><recoIndex docType="picture"><item x="1" y="1" w="2" h="2"><t w="31">bun</t></item></recoIndex>]]></recognition></resource></note>
+<note><title>Weekly groceries</title><content>
+<![CDATA[<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE en-note SYSTEM "http://xml.evernote.com/pub/enml2.dtd">
+<en-note><div><en-todo checked="true"/>Oat milk</div><div><en-todo checked="false"/>Lemons</div><div><en-todo/>Saffron <i>(the good one)</i></div><div><br/></div><div>Evernote 10 list:</div><ul style="--en-todo:true;"><li style="--en-checked:true;"><div>Coffee</div></li><li style="--en-checked:false;"><div>Bread</div></li></ul></en-note>]]>
+</content><created>20240901T070000Z</created><updated>20240905T120000Z</updated><tag>home</tag><note-attributes><author>Sara Lind</author></note-attributes></note>
+<note><title>Pasta night for eight</title><content>
+<![CDATA[<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE en-note SYSTEM "http://xml.evernote.com/pub/enml2.dtd">
+<en-note><div>Pasta night for eight</div><div>Guests: Åsa, Jürgen, 李雷, محمد and Zoë 🍝&nbsp;&nbsp;(two vegetarians)</div><table style="border-collapse: collapse;"><tbody><tr><td><b>Dish</b></td><td><b>Who</b></td><td><b>Cost</b></td></tr><tr><td>Cacio e pepe</td><td>Jonas</td><td>120 kr</td></tr><tr><td>Salad | greens</td><td>Emma</td><td>45 kr</td></tr></tbody></table><div>Recipe from <a href="https://example.com/cacio-e-pepe">this blog</a> and https://example.com/raw.</div><hr/><div style="box-sizing: border-box; padding: 8px; font-family: Monaco, Menlo, Consolas, monospace; -en-codeblock: true;"><div>water = 4 L</div><div>salt = 40 g  # 10 g per litre</div></div><blockquote><div>Pasta water is the sauce.</div></blockquote><div>Snake_case and 2 * 3 stay as typed.</div></en-note>]]>
+</content><created>20250620T170000Z</created><updated>20250621T090000Z</updated><note-attributes><author>Sara Lind</author></note-attributes></note>
+<note><title>Bank details</title><content>
+<![CDATA[<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE en-note SYSTEM "http://xml.evernote.com/pub/enml2.dtd">
+<en-note><div>Account for the cabin:</div><div><en-crypt hint="the usual" cipher="AES" length="128">RU5DMI1mnQ7fKjBk9EgB1fXTVKS6ktnqvd8ndIGnoQcF6+jW1ZQ=</en-crypt></div><div>Ask Jonas for the rest.</div></en-note>]]>
+</content><created>20210211T090000Z</created><updated>20210211T091500Z</updated><tag>private</tag><note-attributes><author>Sara Lind</author></note-attributes></note>
+<note><title>Lease agreement</title><content>
+<![CDATA[<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE en-note SYSTEM "http://xml.evernote.com/pub/enml2.dtd">
+<en-note><div>Signed copy below.</div><en-media hash="198135f4db5e09c972e4b44907c29c39" type="application/pdf"/><div>Floor plan is attached too.</div><div><en-media hash="00000000000000000000000000000000" type="image/jpeg"/></div></en-note>]]>
+</content><created>20220801T100000Z</created><updated>20220801T100500Z</updated><note-attributes><author>Sara Lind</author></note-attributes><resource><data encoding="base64">
+JVBERi0xLjQKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4KZW5kb2Jq
+CjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDEgPj4KZW5kb2Jq
+CjMgMCBvYmoKPDwgL1R5cGUgL1BhZ2UgL1BhcmVudCAyIDAgUiAvTWVkaWFCb3ggWzAgMCAzMDAg
+MTQ0XSAvQ29udGVudHMgNCAwIFIgL1Jlc291cmNlcyA8PCAvRm9udCA8PCAvRjEgNSAwIFIgPj4g
+Pj4gPj4KZW5kb2JqCjQgMCBvYmoKPDwgL0xlbmd0aCA0NSA+PgpzdHJlYW0KQlQgL0YxIDE4IFRm
+IDI0IDcyIFRkIChMZWFzZSBhZ3JlZW1lbnQpIFRqIEVUCmVuZHN0cmVhbQplbmRvYmoKNSAwIG9i
+ago8PCAvVHlwZSAvRm9udCAvU3VidHlwZSAvVHlwZTEgL0Jhc2VGb250IC9IZWx2ZXRpY2EgPj4K
+ZW5kb2JqCnhyZWYKMCA2CjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDAwOSAwMDAwMCBuIAow
+MDAwMDAwMDU4IDAwMDAwIG4gCjAwMDAwMDAxMTUgMDAwMDAgbiAKMDAwMDAwMDI0MSAwMDAwMCBu
+IAowMDAwMDAwMzM2IDAwMDAwIG4gCnRyYWlsZXIKPDwgL1NpemUgNiAvUm9vdCAxIDAgUiA+Pgpz
+dGFydHhyZWYKNDA2CiUlRU9GCg==
+</data><mime>application/pdf</mime><resource-attributes><file-name>Lease 2022.pdf</file-name></resource-attributes></resource><resource><data encoding="base64">
+iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAEElEQVR4nGPQiFoARAwQCgAd5gSJ
+oVLBMgAAAABJRU5ErkJggg==
+</data><mime>image/png</mime><width>2</width><height>2</height><recognition><![CDATA[<?xml version="1.0" encoding="UTF-8"?><recoIndex docType="picture"><item x="1" y="1" w="2" h="2"><t w="31">bun</t></item></recoIndex>]]></recognition><resource-attributes><file-name>floor plan.png</file-name></resource-attributes></resource></note>
+<note><title></title><content>
+<![CDATA[<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE en-note SYSTEM "http://xml.evernote.com/pub/enml2.dtd">
+<en-note></en-note>]]>
+</content><created>20200101T000000Z</created><updated>20200101T000000Z</updated><note-attributes><author>Sara Lind</author></note-attributes></note>
+</en-export>
