@@ -191,6 +191,12 @@ targets:
       - path: PaneTests
         excludes: [Fixtures]
       - path: PaneTests/Fixtures
+        excludes: [Markdown]
+        buildPhase: resources
+      # Export trees from Obsidian, Notion, Bear, Joplin, Logseq, Simplenote and Standard Notes,
+      # copied whole so their folders (and hidden ones) stay as the apps write them.
+      - path: PaneTests/Fixtures/Markdown
+        type: folder
         buildPhase: resources
       # Server files the tests check against, copied into the bundle when it's built (the test
       # host can't read the checkout under ~/Documents without a privacy prompt).

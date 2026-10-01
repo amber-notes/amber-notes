@@ -55,7 +55,7 @@ import Testing
         defer { try? FileManager.default.removeItem(at: other) }
         #expect(throws: ENEXReader.Failure.notAnExport) { try ENEXReader.countNotes(in: other) }
         #expect(throws: ENEXReader.Failure.notAnExport) { try Self.read(other) }
-        #expect(ENEXSource.inspect(other).problem != nil)
+        #expect(EvernoteImporter.inspect(other).problem != nil)
     }
 
     @Test func aBrokenFileSaysSo() throws {
@@ -141,11 +141,11 @@ import Testing
     }
 
     @Test func titlesAndTags() {
-        #expect(EvernoteImporter.titleLine("# not a heading") == "\\# not a heading")
-        #expect(EvernoteImporter.titleLine("1. First") == "\\1. First")
-        #expect(EvernoteImporter.titleLine("snake_case *star*") == "snake_case \\*star\\*")
-        #expect(EvernoteImporter.tagLine(["baking", "family recipes", "#home", "Baking", " "]) == "#baking #family-recipes #home")
-        #expect(EvernoteImporter.tagLine([]) == nil)
+        #expect(ImportWriter.titleLine("# not a heading") == "\\# not a heading")
+        #expect(ImportWriter.titleLine("1. First") == "\\1. First")
+        #expect(ImportWriter.titleLine("snake_case *star*") == "snake_case \\*star\\*")
+        #expect(ImportWriter.tagLine(["baking", "family recipes", "#home", "Baking", " "]) == "#baking #family-recipes #home")
+        #expect(ImportWriter.tagLine([]) == nil)
     }
 
     // MARK: Importing
@@ -153,10 +153,10 @@ import Testing
     @Test func importsTheNotebookAsAFolder() async throws {
         let c = try Self.container()
         let ctx = c.mainContext
-        let source = ENEXSource.inspect(Self.recipes)
+        let source = EvernoteImporter.inspect(Self.recipes)
         #expect(source.name == "Recipes" && source.notes == 6 && source.problem == nil)
         var steps: [Int] = []
-        let summary = await EvernoteImporter(context: ctx).run([source], into: .perNotebook, progress: { done, _ in steps.append(done) })
+        let summary = await EvernoteImporter(context: ctx).run([source], into: .perSource, progress: { done, _ in steps.append(done) })
         #expect(summary.notes == 5)
         #expect(summary.empty == 1 && summary.alreadyImported == 0 && summary.skipped == 1)
         #expect(summary.attachments == 3)
@@ -221,19 +221,19 @@ import Testing
     @Test func importingTheSameFileAgainMakesNoCopies() async throws {
         let c = try Self.container()
         let ctx = c.mainContext
-        let source = ENEXSource.inspect(Self.recipes)
-        let first = await EvernoteImporter(context: ctx).run([source], into: .perNotebook)
+        let source = EvernoteImporter.inspect(Self.recipes)
+        let first = await EvernoteImporter(context: ctx).run([source], into: .perSource)
         #expect(first.notes == 5)
         // Moved and edited here since: still the same notes.
         let target = ctx.createFolder(named: "Kitchen")
         for n in try ctx.fetch(FetchDescriptor<Note>()) { n.folder = target; n.body += "\nMy own line" }
-        let again = await EvernoteImporter(context: ctx).run([source], into: .perNotebook)
+        let again = await EvernoteImporter(context: ctx).run([source], into: .perSource)
         #expect(again.notes == 0 && again.alreadyImported == 5 && again.attachments == 0)
         #expect(try ctx.fetch(FetchDescriptor<Note>()).count == 5)
         // A note deleted here comes back on the next import.
         let buns = try #require(try ctx.fetch(FetchDescriptor<Note>()).first { $0.title == "Grandma's cardamom buns" })
         ctx.trash(buns)
-        let third = await EvernoteImporter(context: ctx).run([source], into: .perNotebook)
+        let third = await EvernoteImporter(context: ctx).run([source], into: .perSource)
         #expect(third.notes == 1 && third.alreadyImported == 4)
         for f in try ctx.fetch(FetchDescriptor<Pane.Attachment>()) { try? FileManager.default.removeItem(at: FileStore.url(for: f.id, filename: f.filename).deletingLastPathComponent()) }
     }
@@ -243,8 +243,8 @@ import Testing
         defer { try? FileManager.default.removeItem(at: url) }
         let c = try Self.container()
         let ctx = c.mainContext
-        #expect(await EvernoteImporter(context: ctx).run([ENEXSource.inspect(url)], into: .perNotebook).notes == 2)
-        #expect(await EvernoteImporter(context: ctx).run([ENEXSource.inspect(url)], into: .perNotebook).alreadyImported == 2)
+        #expect(await EvernoteImporter(context: ctx).run([EvernoteImporter.inspect(url)], into: .perSource).notes == 2)
+        #expect(await EvernoteImporter(context: ctx).run([EvernoteImporter.inspect(url)], into: .perSource).alreadyImported == 2)
     }
 
     @Test func intoAFolderYouPick() async throws {
@@ -253,7 +253,7 @@ import Testing
         let inbox = ctx.createFolder(named: "From Evernote")
         let other = try Self.write(notes: [Self.enexNote(title: "Second notebook note", body: "<div>hi</div>", created: "20240101T090000Z")], name: "Work")
         defer { try? FileManager.default.removeItem(at: other) }
-        let summary = await EvernoteImporter(context: ctx).run([ENEXSource.inspect(Self.recipes), ENEXSource.inspect(other)], into: .folder(inbox.id))
+        let summary = await EvernoteImporter(context: ctx).run([EvernoteImporter.inspect(Self.recipes), EvernoteImporter.inspect(other)], into: .folder(inbox.id))
         #expect(summary.notes == 6)
         #expect(try ctx.fetch(FetchDescriptor<Note>()).allSatisfy { $0.folder?.id == inbox.id })
         #expect(ctx.allFolders().map(\.name) == ["From Evernote"], "no folder per notebook")
@@ -266,7 +266,7 @@ import Testing
         let mine = ctx.createFolder(named: "Work")
         let url = try Self.write(notes: [Self.enexNote(title: "Q4 planning", body: "<div>hi</div>", created: "20240101T090000Z")], name: "Work")
         defer { try? FileManager.default.removeItem(at: url) }
-        _ = await EvernoteImporter(context: ctx).run([ENEXSource.inspect(url)], into: .perNotebook)
+        _ = await EvernoteImporter(context: ctx).run([EvernoteImporter.inspect(url)], into: .perSource)
         let placed = try ctx.fetch(FetchDescriptor<Note>()).first?.folder?.id
         #expect(ctx.allFolders().count == 1 && placed == mine.id)
     }
@@ -278,7 +278,7 @@ import Testing
         let url = try Self.write(notes: [Self.enexNote(title: "Huge", body: long, created: "20240101T090000Z"),
                                          Self.enexNote(title: "Fine", body: "<div>ok</div>", created: "20240101T090000Z")])
         defer { try? FileManager.default.removeItem(at: url) }
-        let s = await EvernoteImporter(context: ctx).run([ENEXSource.inspect(url)], into: .perNotebook)
+        let s = await EvernoteImporter(context: ctx).run([EvernoteImporter.inspect(url)], into: .perSource)
         #expect(s.notes == 1 && s.tooLong == 1 && s.skipped == 1)
     }
 
@@ -288,7 +288,7 @@ import Testing
         let url = try Self.write(notes: (0..<40).map { Self.enexNote(title: "Note \($0)", body: "<div>\($0)</div>", created: "20240101T0900\(String(format: "%02d", $0 % 60))Z") })
         defer { try? FileManager.default.removeItem(at: url) }
         var done = 0
-        let s = await EvernoteImporter(context: ctx).run([ENEXSource.inspect(url)], into: .perNotebook, progress: { d, _ in done = d }, shouldStop: { done >= 10 })
+        let s = await EvernoteImporter(context: ctx).run([EvernoteImporter.inspect(url)], into: .perSource, progress: { d, _ in done = d }, shouldStop: { done >= 10 })
         #expect(s.stopped && s.notes == 10)
         #expect(try ctx.fetch(FetchDescriptor<Note>()).count == 10)
     }
@@ -323,11 +323,11 @@ import Testing
 
         let c = try Self.container()
         let ctx = c.mainContext
-        let source = ENEXSource.inspect(url)
+        let source = EvernoteImporter.inspect(url)
         #expect(source.notes == 3001 && source.bytes > 50_000_000)
         let before = Self.footprint()
         var peak = before
-        let s = await EvernoteImporter(context: ctx).run([source], into: .perNotebook, progress: { d, _ in if d % 250 == 0 { peak = max(peak, Self.footprint()) } })
+        let s = await EvernoteImporter(context: ctx).run([source], into: .perSource, progress: { d, _ in if d % 250 == 0 { peak = max(peak, Self.footprint()) } })
         peak = max(peak, Self.footprint())
         #expect(s.notes == 3001 && s.attachments == 1 && s.filesMissing == 0)
         let file = try #require(try ctx.fetch(FetchDescriptor<Pane.Attachment>()).first)
@@ -358,7 +358,7 @@ import Testing
         #expect(ctx.drainInbox().isEmpty, "an export isn't filed as a note holding the file")
         #expect(offered && EvernoteInbox.files.map(\.lastPathComponent) == ["Recipes.enex"])
         #expect(Inbox.pending().isEmpty)
-        #expect(ENEXSource.inspect(try #require(EvernoteInbox.files.first)).notes == 6)
+        #expect(EvernoteImporter.inspect(try #require(EvernoteInbox.files.first)).notes == 6)
     }
 
     // MARK: Helpers
