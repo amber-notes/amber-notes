@@ -39,6 +39,8 @@ struct RootView: View {
             .focusedSceneValue(\.importSheetAction, { importingSheet = true })
             .focusedSceneValue(\.evernoteImportAction, { evernoteFiles = []; showEvernote = true })
             .focusedSceneValue(\.deleteNoteAction, deleteAction)
+            // A template or shared note to add, from a link.
+            .noteSourceHandler()
     }
 
     private var split: some View {
