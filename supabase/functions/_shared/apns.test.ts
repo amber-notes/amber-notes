@@ -53,3 +53,42 @@ Deno.test("pushes go to the token's server with the topic, and Apple's answers a
   reply = () => Response.json({ reason: "TooManyRequests" }, { status: 429 });
   assertEquals(await send(push), "failed");
 });
+
+Deno.test("a key written with \\n for its line breaks still signs", async () => {
+  const { pem, publicKey } = await newKey();
+  const jwt = await providerToken(pem.replace(/\n/g, "\\n"), "KEYID12345", "4UM3XVUN9Y", 1_790_000_000_000);
+  const [h, c, sig] = jwt.split(".");
+  assert(await crypto.subtle.verify({ name: "ECDSA", hash: "SHA-256" }, publicKey, fromB64url(sig), new TextEncoder().encode(`${h}.${c}`)));
+});
+
+Deno.test("a key that doesn't parse fails the push and is logged, instead of throwing", async () => {
+  const lines: string[] = [];
+  const original = console.log;
+  console.log = (s: string) => lines.push(s);
+  try {
+    const fake = (() => Promise.resolve(new Response(null, { status: 200 }))) as unknown as typeof fetch;
+    const env: Record<string, string> = { APNS_KEY_P8: "not a key", APNS_KEY_ID: "KEYID12345", APNS_TEAM_ID: "4UM3XVUN9Y" };
+    const send = apnsSender((k) => env[k], fake)!;
+    assertEquals(await send({ token: "ab".repeat(32), environment: "production", payload: {} }), "failed");
+  } finally {
+    console.log = original;
+  }
+  assert(lines.some((l) => JSON.parse(l).event === "push_key_invalid"));
+});
+
+Deno.test("Apple's refusals are logged with their status and reason, and nothing about the device", async () => {
+  const { pem } = await newKey();
+  const lines: string[] = [];
+  const original = console.log;
+  console.log = (s: string) => lines.push(s);
+  try {
+    const fake = (() => Promise.resolve(Response.json({ reason: "InvalidProviderToken" }, { status: 403 }))) as unknown as typeof fetch;
+    const env: Record<string, string> = { APNS_KEY_P8: pem, APNS_KEY_ID: "KEYID12345", APNS_TEAM_ID: "4UM3XVUN9Y" };
+    const send = apnsSender((k) => env[k], fake)!;
+    assertEquals(await send({ token: "cd".repeat(32), environment: "production", payload: {} }), "failed");
+  } finally {
+    console.log = original;
+  }
+  assertEquals(lines.map((l) => JSON.parse(l)), [{ event: "push_rejected", status: 403, code: "InvalidProviderToken", where: "production" }]);
+  assert(!lines.join("").includes("cd".repeat(32)));
+});
