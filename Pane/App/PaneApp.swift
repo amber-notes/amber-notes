@@ -39,6 +39,12 @@ struct PaneApp: App {
         AccountCrypto.shared = AccountCrypto(store: inMemory ? MemoryAccountKeyStore() : KeychainAccountKeyStore())
         let sync = SyncEngine(backend: backend, context: container.mainContext)
         _sync = State(initialValue: sync)
+        // "What's new" after a major update: decided before anything is drawn or seeded, while
+        // the library still says whether this is a fresh install.
+        if !inMemory {
+            WhatsNewStore.shared.launch(running: WhatsNew.runningVersion, releases: WhatsNew.bundled,
+                                        existingUser: WhatsNew.existingUser(defaults: .standard, context: context))
+        }
         // With sync on, the library is seeded after the first pull so devices don't duplicate it.
         if backend.client == nil { Seed.ensureLibrary(container.mainContext, demo: args.contains("-demo")) }
         // Version history: the server's, or a made-up one for demos (`-demo -demoHistory`).
@@ -420,6 +426,8 @@ struct AppGate: View {
             guard new == .ready, old != .ready, case .signedIn = backend.state, let client = backend.client else { return }
             Task { await openLibrary(client) }
         }
+        // What's new waits while an ask or an alert is up.
+        .onChange(of: somethingAsking, initial: true) { _, asking in WhatsNewStore.shared.held = asking }
         // Each sync may have brought an AI's edit or a new connection: the card looks again.
         .onChange(of: sync.status) { _, _ in Task { await setup.refresh() } }
 
@@ -487,6 +495,11 @@ struct AppGate: View {
         .onAppear { context.drainInbox() }
     }
 
+    /// The share ask, a notice or the recovery key alert is on screen.
+    private var somethingAsking: Bool {
+        shareAsk.visible || notices?.current != nil || crypto.recoveryKeyChangeNeedsSaying
+    }
+
     /// The account's key is open here (or it isn't encrypted): sync, then everything that reads the library.
     private func openLibrary(_ client: SupabaseClient) async {
         // A browser can ask this device to approve an AI connection once it has the key.
@@ -522,7 +535,7 @@ struct AppGate: View {
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(1.5))
             guard backend.state != .signedOut, phase == .active else { return }
-            shareAsk.moment(setupVisible: setup.visible, tipShowing: PaneTips.all.contains { $0.shouldDisplay })
+            shareAsk.moment(setupVisible: setup.visible || WhatsNewStore.shared.card != nil, tipShowing: PaneTips.all.contains { $0.shouldDisplay })
         }
     }
 }

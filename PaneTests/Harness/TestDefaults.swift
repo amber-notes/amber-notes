@@ -13,4 +13,5 @@ final class TestDefaults: UserDefaults, @unchecked Sendable {
     override func object(forKey key: String) -> Any? { lock.withLock { values[key] } }
     override func set(_ value: Any?, forKey key: String) { lock.withLock { values[key] = value } }
     override func removeObject(forKey key: String) { lock.withLock { _ = values.removeValue(forKey: key) } }
+    override func dictionaryRepresentation() -> [String: Any] { lock.withLock { values } }
 }

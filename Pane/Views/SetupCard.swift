@@ -299,8 +299,9 @@ struct SetupCard: View {
         }
     }
 
-    /// Mac: 13 pt like the rows under it. iPhone: the list's own type sizes.
-    private enum Metrics {
+    /// Mac: 13 pt like the rows under it. iPhone: the list's own type sizes. The What's new card
+    /// uses the same.
+    enum Metrics {
         #if os(macOS)
         static let title = Font.system(size: 13, weight: .semibold)
         static let line = Font.system(size: 12)
@@ -364,8 +365,8 @@ struct DrawnCheck: View {
 
 /// Mac: the native control surface inside the list's margins, lifted by a soft layered shadow
 /// (a tight contact shadow under a wide, faint one). iPhone: nothing here; the card sits in its
-/// own grouped section, which draws the surface, insets and radius.
-private struct SetupCardSurface: ViewModifier {
+/// own grouped section, which draws the surface, insets and radius. The What's new card wears it too.
+struct SetupCardSurface: ViewModifier {
     func body(content: Content) -> some View {
         #if os(macOS)
         content.background {

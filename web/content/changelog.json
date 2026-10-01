@@ -3,6 +3,13 @@
     "version": "1.1",
     "date": "2026-10-01",
     "title": "Encrypted, end to end",
+    "major": true,
+    "highlights": [
+      "Your notes are encrypted on your devices. We can't read them.",
+      "Approve an AI on your iPhone or Mac by typing the number your browser shows.",
+      "Import from Evernote, Google Keep and Markdown files.",
+      "Connect your AI apps once more after this update."
+    ],
     "items": [
       "Every note, folder, file and earlier version is encrypted on your devices. We can't read them",
       "Your key syncs through iCloud Keychain, so your notes open on your other devices with nothing to type",
