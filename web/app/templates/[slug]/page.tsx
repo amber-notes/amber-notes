@@ -4,7 +4,7 @@ import { AIGlyph } from "@/lib/ai-glyphs";
 import { APP_TEMPLATES, pageMetadata } from "@/lib/site";
 import { JsonLd, breadcrumbs, maker, organization, templateHowTo, templateWork } from "@/lib/structured-data";
 import { COVERS, coverPath } from "@/lib/template-covers";
-import { anchor, changedCount, instructions, noteTitle, searchTitle, template, templates, useLink, type Template } from "@/lib/templates";
+import { anchor, changedCount, instructions, noteTitle, searchTitle, template, templates, usePath, type Template } from "@/lib/templates";
 import Card from "../Card";
 import CopyButton from "../CopyButton";
 import Instructions from "../Instructions";
@@ -30,7 +30,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 /// The steps, for the page and its HowTo data. Until the app opens template links, the AI makes the note.
 const steps = (t: Template) => APP_TEMPLATES.live
   ? [
-      { name: "Add the template to Amber Notes", text: `Choose Use this template. Amber Notes opens and adds the "${noteTitle(t)}" note to the folder you pick.` },
+      { name: "Add the template to Amber Notes", text: `Choose Use template. Amber Notes opens and adds the "${noteTitle(t)}" note to the folder you pick.` },
       { name: "Connect your AI", text: "Connect ChatGPT, Claude or Claude Code to Amber Notes once, and choose Read and Edit so it can fill in the note." },
       { name: "Give your AI the prompt", text: "Copy the prompt for your AI and paste it into a chat. Then tell it what happened, in your own words." },
     ]
@@ -77,12 +77,21 @@ export default async function Page({ params }: Props) {
             <p className={`${s.lede} rise`} style={at(1)}>{t.description}</p>
             <p className={`${s.for} rise`} style={at(1)}>{t.audience}</p>
             <div className={`${s.ctas} rise`} style={at(2)}>
-              {APP_TEMPLATES.live && <a className={s.primary} href={useLink(t.slug)}><PlusGlyph /> Use this template</a>}
-              <PromptCopy variants={vs} className={APP_TEMPLATES.live ? s.quiet : s.primary}>
-                <CopyButton text={t.note} label="Copy the markdown" className={s.quiet} />
-              </PromptCopy>
+              {APP_TEMPLATES.live && <a className={s.primary} href={usePath(t.slug)}><PlusGlyph /> Use template</a>}
+              {APP_TEMPLATES.live ? (
+                <>
+                  <PromptCopy variants={vs} className={s.secondary} />
+                  <CopyButton text={t.note} label="Copy the markdown" className={s.quiet} />
+                </>
+              ) : (
+                <PromptCopy variants={vs} className={s.primary}>
+                  <CopyButton text={t.note} label="Copy the markdown" className={s.quiet} />
+                </PromptCopy>
+              )}
             </div>
-            <p className={`${s.fine} rise`} style={at(3)}>Free. No Amber Notes yet? <a href="/download">Download it for Mac</a>.</p>
+            <p className={`${s.fine} rise`} style={at(3)}>
+              Free. {APP_TEMPLATES.live && <>Use template opens Amber Notes and adds the note. </>}No Amber Notes yet? <a href="/download">Download it for Mac</a>.
+            </p>
           </header>
           <div className={`${s.heroExample} rise-soft`} style={at(2)}>
             {/* The filled note leads; the template's cover sits behind it as its stage, as on its card. */}

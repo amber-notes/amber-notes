@@ -89,6 +89,8 @@ export const searchTitle = (t: Template) => t.seoTitle ?? `${t.title} template f
 export const templatePath = (slug: string) => `/templates/${slug}`;
 /// The universal link the app opens (https://ambernotes.app/open/template/<slug>).
 export const useLink = (slug: string) => `${SITE_URL}/open/template/${slug}`;
+/// The same, as the site's own buttons link it: a path, so a preview or local build stays on itself.
+export const usePath = (slug: string) => `/open/template/${slug}`;
 export const appLink = (slug: string) => `ambernotes://template/${slug}`;
 
 export const noteTitle = (t: Template) => t.note.split("\n")[0];
