@@ -1,0 +1,52 @@
+{
+  "slug": "meeting-notes",
+  "title": "Meeting notes",
+  "category": "Work",
+  "audiences": [
+    "Work"
+  ],
+  "audience": "For anyone who leaves meetings with messy notes and a vague sense of who does what.",
+  "description": "Paste rough meeting notes or a transcript and your AI turns them into decisions and action items in Amber Notes.",
+  "seoTitle": "Meeting notes to action items template for AI",
+  "folder": "Work",
+  "note": "Meeting notes\n\nAfter a meeting, paste your rough notes or the transcript into your AI. The summary and action items land here, newest meeting first.\n\n## Open action items\n\n## Meetings\n",
+  "prompt": {
+    "default": "Use my Amber Notes note \"Meeting notes\". After a meeting I'll paste my rough notes or a transcript. Add a section at the start of \"Meetings\" with append_to_note (at_start): a \"###\" heading with the meeting name and date, a two-line summary, and the decisions as bullets. Add each action item under \"Open action items\" as a checklist line like \"- [ ] Owner: task (due date)\". If something is unclear, ask me before writing it. When I say an item is done, tick it with set_checklist_item."
+  },
+  "asks": [
+    "Here are my notes from the pricing sync: …",
+    "What's still open for me?",
+    "Mark Jonas's design review as done."
+  ],
+  "demo": [
+    {
+      "tool": "append_to_note",
+      "args": {
+        "under_heading": "Open action items",
+        "text": "- [ ] Sara: send the new pricing table to sales (Fri 2 Oct)\n- [ ] Jonas: design review of the checkout page (Thu 1 Oct)\n- [ ] Emma: check the VAT rules for Norway (next week)"
+      }
+    },
+    {
+      "tool": "append_to_note",
+      "args": {
+        "under_heading": "Meetings",
+        "at_start": true,
+        "text": "### Pricing sync, 30 September\nWe keep three plans and drop the lifetime deal. The yearly discount goes from 20% to 15%.\n\n- Decided: no lifetime plan.\n- Decided: yearly discount is 15% from 1 November.\n- Open: whether students get the Pro plan free.\n"
+      }
+    },
+    {
+      "tool": "set_checklist_item",
+      "args": {
+        "item": "Jonas: design review of the checkout page (Thu 1 Oct)",
+        "checked": true
+      }
+    }
+  ],
+  "example": "Meeting notes\n\nAfter a meeting, paste your rough notes or the transcript into your AI. The summary and action items land here, newest meeting first.\n\n## Open action items\n- [ ] Sara: send the new pricing table to sales (Fri 2 Oct)\n- [ ] Emma: check the VAT rules for Norway (next week)\n- [x] Jonas: design review of the checkout page (Thu 1 Oct)\n\n## Meetings\n### Pricing sync, 30 September\nWe keep three plans and drop the lifetime deal. The yearly discount goes from 20% to 15%.\n\n- Decided: no lifetime plan.\n- Decided: yearly discount is 15% from 1 November.\n- Open: whether students get the Pro plan free.\n",
+  "related": [
+    "one-on-one-notes",
+    "decision-log",
+    "daily-standup"
+  ],
+  "updated": "2026-10-01"
+}

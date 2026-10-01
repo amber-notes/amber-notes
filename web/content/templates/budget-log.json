@@ -1,0 +1,71 @@
+{
+  "slug": "budget-log",
+  "title": "Budget and expenses",
+  "category": "Home and life",
+  "audiences": [
+    "Personal",
+    "Families"
+  ],
+  "audience": "For anyone who wants to know where the money went without a budgeting app.",
+  "description": "An expense log with a monthly budget. Tell your AI what you spent and it logs it; at month end it compares you to budget.",
+  "seoTitle": "Budget and expense log template for ChatGPT and Claude",
+  "folder": "Home",
+  "note": "Budget and expenses\n\nWhat you spend, one row each, and a monthly budget to measure it against. Amounts are in your own currency.\n\n<!-- pane-table: Date=text; What=text; Category=choice Groceries|Eating out|Transport|Home|Fun|Bills|Other; Amount=number -->\n| Date | What | Category | Amount |\n| --- | --- | --- | --- |\n\n## Monthly budget\n| Category | Budget |\n| --- | --- |\n| Groceries | 4000 |\n| Eating out | 1500 |\n| Transport | 800 |\n| Home | 1000 |\n| Fun | 1000 |\n| Bills | 3500 |\n\n## Month summaries\n",
+  "prompt": {
+    "default": "Use my Amber Notes note \"Budget and expenses\". When I tell you what I spent, add a row to the first table with log_table_row: Date as yyyy-mm-dd, What, a Category from its options, and Amount as a number. At the end of the month, when I ask, read both tables with read_table, add up each category against \"Monthly budget\", and add a short summary under \"Month summaries\" with append_to_note: what was over, what was under, and one suggestion. Don't give financial advice beyond that."
+  },
+  "asks": [
+    "Spent 412 on groceries and 85 on the bus card today.",
+    "How am I doing against the budget this month?",
+    "What did we spend on eating out in September?"
+  ],
+  "demo": [
+    {
+      "tool": "log_table_row",
+      "args": {
+        "values": {
+          "Date": "2026-09-28",
+          "What": "Weekly shop",
+          "Category": "Groceries",
+          "Amount": 412
+        }
+      }
+    },
+    {
+      "tool": "log_table_row",
+      "args": {
+        "values": {
+          "Date": "2026-09-28",
+          "What": "Bus card",
+          "Category": "Transport",
+          "Amount": 85
+        }
+      }
+    },
+    {
+      "tool": "log_table_row",
+      "args": {
+        "values": {
+          "Date": "2026-09-29",
+          "What": "Pizza with friends",
+          "Category": "Eating out",
+          "Amount": 260
+        }
+      }
+    },
+    {
+      "tool": "append_to_note",
+      "args": {
+        "under_heading": "Month summaries",
+        "text": "**September:** eating out was 1,840 against 1,500, mostly two dinners in the last week. Groceries came in 300 under. Suggestion: plan two more dinners at home next month."
+      }
+    }
+  ],
+  "example": "Budget and expenses\n\nWhat you spend, one row each, and a monthly budget to measure it against. Amounts are in your own currency.\n\n<!-- pane-table: Date=text; What=text; Category=choice Groceries|Eating out|Transport|Home|Fun|Bills|Other; Amount=number -->\n| Date | What | Category | Amount |\n| --- | --- | --- | --- |\n| 2026-09-28 | Weekly shop | Groceries | 412 |\n| 2026-09-28 | Bus card | Transport | 85 |\n| 2026-09-29 | Pizza with friends | Eating out | 260 |\n\n## Monthly budget\n| Category | Budget |\n| --- | --- |\n| Groceries | 4000 |\n| Eating out | 1500 |\n| Transport | 800 |\n| Home | 1000 |\n| Fun | 1000 |\n| Bills | 3500 |\n\n## Month summaries\n**September:** eating out was 1,840 against 1,500, mostly two dinners in the last week. Groceries came in 300 under. Suggestion: plan two more dinners at home next month.\n",
+  "related": [
+    "meal-plan",
+    "home-maintenance",
+    "gift-ideas"
+  ],
+  "updated": "2026-10-01"
+}

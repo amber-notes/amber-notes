@@ -1,6 +1,7 @@
 import { FACTS, MCP_URL, WHAT_IT_IS } from "./facts";
 import { GITHUB_URL } from "./github";
 import { published } from "./posts";
+import { searchTitle, templates } from "./templates";
 import { MCP_TOOLS } from "./mcp-tools";
 import { INCREDIBLE_URL, MAKER_URL, SITE_URL } from "./site";
 import { FAQ } from "../app/help/questions";
@@ -35,6 +36,13 @@ function summary(): string[] {
     "## Blog posts",
     "",
     ...published().map((p) => `- [${p.title}](${SITE_URL}/blog/${p.slug}): ${p.description}`),
+    "",
+    "## Templates",
+    "",
+    "Note templates with the prompt that lets an AI fill them in through the MCP tools. Each page has the note, the prompt for ChatGPT, Claude and Claude Code, and a filled-in example; the same data is at /templates/<slug>.json.",
+    "",
+    `- [All templates](${SITE_URL}/templates)`,
+    ...templates().map((t) => `- [${searchTitle(t)}](${SITE_URL}/templates/${t.slug}): ${t.description}`),
     "",
     "## More",
     "",

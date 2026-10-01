@@ -42,6 +42,10 @@ export default function Page() {
       <p>
         In Amber Notes the new lines are tinted, and the bar at the bottom says what Claude Code changed, with Undo, like the picture at the top.
       </p>
+      <p>
+        To skip the setup, add the <a href="/templates/daily-standup">standup notes template</a>: the note and the prompt for Claude Code,
+        ready to paste into <code>CLAUDE.md</code>.
+      </p>
 
       <h2>A daily log</h2>
       <p>

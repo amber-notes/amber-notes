@@ -163,6 +163,10 @@ export default function Page() {
         <li>&ldquo;Add today&apos;s standup to my work notes.&rdquo;</li>
       </ul>
       <p>
+        Or start from a <a href="/templates">template</a>: a note with the prompt that tells ChatGPT or Claude how to fill it in, like
+        the <a href="/templates/habit-tracker">habit tracker</a> or <a href="/templates/meeting-notes">meeting notes</a>.
+      </p>
+      <p>
         Stuck? The <a href="/help#connect">help page</a> has the short version, and you can message me on X.
       </p>
     </PostPage>
