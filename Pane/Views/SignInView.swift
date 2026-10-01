@@ -213,23 +213,12 @@ struct SignInView: View {
     private func mainButton(_ title: String) -> some View {
         let busy = working || flow.step == .checking
         let enabled = flow.buttonEnabled && !working
-        return Button(action: primary) {
-            ZStack {
-                Text(title).opacity(busy ? 0 : 1)
-                if busy { ProgressView().controlSize(.small).tint(Color(Palette.onAmber)) }
-            }
-            .font(.system(size: Row.text, weight: .semibold))
-            // Deep amber with dark ink when it can be pressed; quiet, near the field, when not.
-            .foregroundStyle(enabled || busy ? Color(Palette.onAmber) : Color.muted)
-            .frame(maxWidth: .infinity, minHeight: Row.height, maxHeight: Row.height)
-            .background(enabled || busy ? Color.accentColor : Color(Palette.quietButton), in: .rect(cornerRadius: Row.radius, style: .continuous))
-            .contentShape(.rect(cornerRadius: Row.radius, style: .continuous))
-        }
-        .buttonStyle(PressScale())
+        return Button(title, action: primary)
+        .buttonStyle(.amberProminent(height: Row.height, cornerRadius: Row.radius))
+        .amberBusy(busy)
         .disabled(!enabled)
         .animation(.easeOut(duration: 0.15), value: enabled)
         .keyboardShortcut(.defaultAction)
-        .accessibilityLabel(busy ? "\(title), working" : title)
         .accessibilityIdentifier("signin.submit")
         .padding(.top, 2)
     }

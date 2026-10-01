@@ -316,7 +316,7 @@ struct AppleNotesImportView: View {
                 Button(picked.isEmpty ? "Import" : "Import \(picked.count.formatted(.number.locale(locale))) \(picked.count == 1 ? "Note" : "Notes")") {
                     Task { await runImport() }
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.amberProminent)
                 .keyboardShortcut(.defaultAction)
                 .disabled(picked.isEmpty)
                 .fixedSize()
@@ -332,7 +332,7 @@ struct AppleNotesImportView: View {
             Text(text).font(.callout).fixedSize(horizontal: false, vertical: true)
             Spacer()
             Button("Done") { dismiss() }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.amberProminent)
                 .keyboardShortcut(.defaultAction)
         }
         .padding(.horizontal, 20)

@@ -407,7 +407,7 @@ struct MacVersionHistory: View {
             Task { if await model.restore() { close() } }
         }
         .keyboardShortcut(.defaultAction)
-        .buttonStyle(.borderedProminent)
+        .buttonStyle(.amberProminent)
         .disabled(model.selected == nil || model.selected?.version.isCurrent == true || model.previewText == nil || model.restoring)
         .accessibilityIdentifier("history.restore")
     }
