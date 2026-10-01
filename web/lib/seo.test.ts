@@ -4,6 +4,7 @@ import nextConfig from "../next.config";
 import robots from "../app/robots";
 import sitemap from "../app/sitemap";
 import { MCP_URL } from "./facts";
+import { postShots } from "./post-images";
 import { DEFAULT_SHARE_IMAGE, pageMetadata } from "./site";
 import { llmsFullTxt, llmsTxt } from "./llms";
 import { PER_PAGE, categories, categoryAnchor, categoryPath, morePosts, newestFirst, pageCount, pageOf, pagePath, posts, published } from "./posts";
@@ -25,6 +26,31 @@ describe("search and AI crawlers", () => {
     expect(urls).toContain("https://ambernotes.app/blog");
     expect(urls.some((u) => new URL(u).pathname.startsWith("/guides"))).toBe(false);
     for (const p of posts) expect(urls.includes(`https://ambernotes.app/blog/${p.slug}`)).toBe(!p.draft);
+  });
+
+  it("lists every capture a post shows in the image sitemap, each with alt text and a file", () => {
+    const entries = sitemap();
+    for (const p of published()) {
+      const src = postSource(p.slug);
+      // Every figure names its capture from SHOTS, so the sitemap can find it.
+      expect([...src.matchAll(/<Figure\b/g)].length, p.slug).toBe([...src.matchAll(/<Figure\s+shot=\{SHOTS\.\w+\}/g)].length);
+      const shots = postShots(p.slug);
+      const images = entries.find((e) => e.url === `https://ambernotes.app/blog/${p.slug}`)?.images ?? [];
+      expect(shots.length, p.slug).toBeGreaterThan(0);
+      for (const s of shots) {
+        expect(s, p.slug).toBeDefined();
+        expect(images, p.slug).toContain(`https://ambernotes.app${s.src}`);
+        expect(s.alt.trim(), s.src).not.toBe("");
+        expect(existsSync(new URL(`../public${s.src}`, import.meta.url)), s.src).toBe(true);
+      }
+    }
+  });
+
+  it("gives every card picture short alt text", () => {
+    for (const p of published()) {
+      expect(p.thumb.alt.trim(), p.slug).not.toBe("");
+      expect(p.thumb.alt.length, p.slug).toBeLessThanOrEqual(100);
+    }
   });
 
   it("sends the old /guides addresses to the blog for good", async () => {

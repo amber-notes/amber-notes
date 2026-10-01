@@ -49,11 +49,12 @@ export function Figure({ shot, caption, priority, ground = "soft" }: { shot: Sho
 }
 
 /// A card's picture: the post's one focal capture on its ground, filling the top of the card edge to
-/// edge (the card's corners clip it) and running off the bottom. Shown at about full size.
+/// edge (the card's corners clip it) and running off the bottom. Shown at about full size, with a
+/// short alt so image search knows what the picture shows.
 export function ThumbArt({ thumb }: { thumb: Thumb }) {
   return (
-    <div className={`${b.thumb} ${b.ground}`} data-ground={thumb.ground} aria-hidden="true">
-      <img src={thumb.src} alt="" width={thumb.width / 2} height={thumb.height / 2} loading="lazy" decoding="async" />
+    <div className={`${b.thumb} ${b.ground}`} data-ground={thumb.ground}>
+      <img src={thumb.src} alt={thumb.alt} width={thumb.width / 2} height={thumb.height / 2} loading="lazy" decoding="async" />
     </div>
   );
 }
