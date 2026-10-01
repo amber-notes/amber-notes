@@ -5,6 +5,18 @@ assistants. Newest first. Research behind it: [seo-aeo-research-2026-09-30.md](s
 
 `docs/` had no README naming a folder for evidence, so this and the research live in `docs/Evidence/`.
 
+## 1 October 2026: the Claude Cowork cover, redrawn
+
+- The first Cowork cover was a status infographic with system-coloured icons, and it echoed the stepped list on "Can Claude read your Apple Notes?". It's replaced with a real moment: the macOS prompt that asks you to let Claude control Notes. The extension needs that permission the first time.
+- How it was drawn:
+  - AppKit drew it offscreen with NSAlert, so it never appears on screen.
+  - The wording is macOS's own, from TCC.framework's Localizable.loctable (`REQUEST_ACCESS_SERVICE_kTCCServiceAppleEvents`, "Don't Allow", "Allow").
+  - The icon is Claude's own app icon from /Applications/Claude.app.
+- Nothing about Claude's own UI is invented. I couldn't verify Claude Desktop's extension settings screen without driving the app, so I didn't draw it.
+- The cover crops the prompt's title, message and buttons, in the same panel shape, padding and fade as the approved covers. It stays on the rose ground, which differs from its neighbours (night, linen and dusk).
+- The full prompt, with the icon, is the post's first picture. The share card uses the new cover.
+- Allow is the default button (keyEquivalent Return), filled with the system accent colour, as it is in the real prompt. AppKit only draws that fill in the front window, and the offscreen window never is one, even when it's reported as key. So the render fills that one button itself: a capsule at the button's own frame, in `NSColor.controlAccentColor` (system blue, #007AFF in the light appearance), with the button's own font in white.
+
 ## 1 October 2026: "How to use Claude Cowork with Apple Notes"
 
 ### Why
