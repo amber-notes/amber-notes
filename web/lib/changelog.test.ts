@@ -5,6 +5,10 @@ import { changelog, latestVersion } from "./changelog";
 describe("changelog", () => {
   const releases = changelog();
 
+  it("lists only major and minor releases, never a patch release", () => {
+    for (const r of releases) expect(r.version).toMatch(/^\d+\.\d+$/);
+  });
+
   it("reads every release, newest first", () => {
     expect(releases.length).toBeGreaterThan(0);
     expect(latestVersion()).toBe(releases[0].version);
