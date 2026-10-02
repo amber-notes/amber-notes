@@ -1,6 +1,6 @@
 # Security
 
-Please report security problems privately to **emil@norditech.se**, not in a public issue.
+Please report security problems privately to **hello@ambernotes.app**, not in a public issue.
 
 Include what you found, how to reproduce it, and what an attacker could do with it. You'll get a reply within a few days. Once a fix is out, you're welcome to publish the details, and I'll credit you if you like.
 

@@ -39,7 +39,7 @@ Supabase incident that affects our project.
    - what data it involved;
    - what we've done;
    - what they should do, for example disconnect and reconnect AI apps, or change a reused password;
-   - who to contact: emil@norditech.se.
+   - who to contact: hello@ambernotes.app.
 
 ## Afterwards
 
@@ -50,4 +50,4 @@ Supabase incident that affects our project.
 ## Processors telling us
 
 Supabase and Vercel notify breaches to the account email. Make sure the owner email on both is one
-you read (emil@norditech.se), and treat a breach notice from them as step 1.
+you read (hello@ambernotes.app), and treat a breach notice from them as step 1.

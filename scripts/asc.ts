@@ -108,7 +108,7 @@ async function setup(build: string) {
 
   // Beta App Information: description, feedback email, privacy policy.
   const locs = (await get(`/apps/${appId}/betaAppLocalizations`)).data as J[];
-  const locAttrs: J = { description: DESCRIPTION, feedbackEmail: "emil@norditech.se" };
+  const locAttrs: J = { description: DESCRIPTION, feedbackEmail: "hello@ambernotes.app" };
   if (PRIVACY_URL) locAttrs.privacyPolicyUrl = PRIVACY_URL;
   const en = locs.find((l) => l.attributes.locale === "en-US");
   if (en) await call("PATCH", `/betaAppLocalizations/${en.id}`, { data: { type: "betaAppLocalizations", id: en.id, attributes: locAttrs } });
@@ -118,7 +118,7 @@ async function setup(build: string) {
   // Beta App Review contact.
   const phone = env.ASC_CONTACT_PHONE ?? "";
   const detail = (await get(`/apps/${appId}/betaAppReviewDetail`)).data;
-  const reviewAttrs: J = { contactFirstName: "Emil", contactLastName: "Wagman", contactEmail: "emil@norditech.se", demoAccountRequired: false,
+  const reviewAttrs: J = { contactFirstName: "Emil", contactLastName: "Wagman", contactEmail: "hello@ambernotes.app", demoAccountRequired: false,
     notes: "Sign in with Apple creates an account; no demo account is needed. The Mac app's Apple Notes import asks Notes for the notes you pick and never changes them." };
   if (phone) reviewAttrs.contactPhone = phone;
   await call("PATCH", `/betaAppReviewDetails/${detail.id}`, { data: { type: "betaAppReviewDetails", id: detail.id, attributes: reviewAttrs } });

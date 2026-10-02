@@ -25,7 +25,7 @@ Amber Notes and choose Settings > Privacy & Security > Export Your Notes.
 
 Access tokens and passwords are never stored in readable form, so they aren't included.
 
-Questions: emil@norditech.se
+Questions: hello@ambernotes.app
 `;
 
 type Row = Record<string, unknown>;

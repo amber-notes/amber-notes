@@ -128,7 +128,7 @@ export default function PrivacySecurity() {
             <li><strong>Deleted notes</strong> stay in Recently Deleted for 30 days, then they&apos;re gone for good.</li>
             <li>
               You can also ask us to correct, restrict or stop using your data, or object to the usage counts. Write to{" "}
-              <a href="mailto:emil@norditech.se">emil@norditech.se</a>; we answer within a month. You can complain to the Swedish Authority
+              <a href="mailto:hello@ambernotes.app">hello@ambernotes.app</a>; we answer within a month. You can complain to the Swedish Authority
               for Privacy Protection (<a href="https://www.imy.se" target="_blank" rel="noopener noreferrer">IMY</a>).
             </li>
           </ul>
@@ -136,7 +136,7 @@ export default function PrivacySecurity() {
           <h2 id="open-source">Open source, so you can check</h2>
           <p>
             Everything above is in the code, and the code is on <a href={GITHUB} target="_blank" rel="noopener noreferrer">GitHub</a>:
-            the apps, the server and this website. Found a security problem? Write to <a href="mailto:emil@norditech.se">emil@norditech.se</a>,
+            the apps, the server and this website. Found a security problem? Write to <a href="mailto:hello@ambernotes.app">hello@ambernotes.app</a>,
             not a public issue.
           </p>
           <p>The legal details are in the <a href="/privacy">privacy policy</a>.</p>

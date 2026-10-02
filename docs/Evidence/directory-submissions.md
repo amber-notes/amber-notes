@@ -174,7 +174,7 @@ Paste these into claude.ai/directory/manage → Submit new → MCP connector.
 - **Categories:** Productivity. Add a second one if the portal has "Notes" or "Knowledge". The category list is only visible in the portal.
 - **Documentation URL:** https://ambernotes.app/blog/connect-chatgpt-to-your-notes (it has a Claude section). https://ambernotes.app/blog/mcp-server lists the tools.
 - **Privacy policy URL:** https://ambernotes.app/privacy
-- **Support contact:** emil@norditech.se (the address on /support and in the privacy policy), https://ambernotes.app/support
+- **Support contact:** hello@ambernotes.app (the address on /support and in the privacy policy), https://ambernotes.app/support
 - **Icon:** `brand/directory/icon-512.png`, or `icon-1024.png` if the portal asks for larger.
 - **Slug (permanent):** `amber-notes`
 
@@ -202,7 +202,7 @@ Example prompts (policy 3.E asks for at least three). The expected results are f
 ### 4.4 Company
 - **Company:** Emil Wagman (individual developer, Sweden). Use Norditech AB only if Emil wants the listing under the company, and then change the privacy policy's controller line to match.
 - **Website:** https://ambernotes.app
-- **Primary contact:** emil@norditech.se
+- **Primary contact:** hello@ambernotes.app
 
 ### 4.5 Authentication
 - **Type:** OAuth with dynamic client registration (`oauth_dcr`). The server doesn't advertise CIMD, so Claude uses DCR ([authentication](https://claude.com/docs/connectors/building/authentication)).
