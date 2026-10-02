@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { FAQ } from "../app/help/questions";
 import { app, article, breadcrumbs, faqPage, incredible, maker, organization, website } from "./structured-data";
@@ -25,6 +26,17 @@ describe("structured data", () => {
     expect(organization.founder).toEqual({ "@id": maker["@id"] });
     expect(website.publisher).toEqual({ "@id": organization["@id"] });
     expect(app("1.0").publisher).toEqual({ "@id": organization["@id"] });
+  });
+
+  it("names the site Amber Notes for Google, with the domain only as a fallback", () => {
+    expect(website.name).toBe("Amber Notes");
+    expect(website.alternateName).toEqual(["Amber Notes app", "ambernotes.app"]);
+  });
+
+  it("serves a favicon whose first frame is 48px, the size Google needs for its results", () => {
+    const ico = readFileSync(new URL("../app/favicon.ico", import.meta.url));
+    const frames = Array.from({ length: ico.readUInt16LE(4) }, (_, i) => ico[6 + 16 * i] || 256);
+    expect(frames).toEqual([48, 32, 16]);
   });
 
   it("ties the name to the GitHub repository, so it isn't mixed up with other apps called Amber Notes", () => {
