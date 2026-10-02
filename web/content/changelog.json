@@ -1,5 +1,20 @@
 [
   {
+    "version": "1.2",
+    "date": "2026-10-02",
+    "title": "Scan to connect",
+    "major": false,
+    "items": [
+      "Connect an AI by scanning a QR code with your iPhone. No number to type",
+      "On a Mac, one click on the connect page opens Amber Notes to allow it",
+      "The question is shorter: \"Allow Claude to use your notes?\", with read or edit access under Options",
+      "The Claude guide opens Amber Notes in Claude's directory, and its steps tick themselves",
+      "An AI's request stays in reach after you close its sheet, until you answer it",
+      "Every connected AI shows an icon and a name",
+      "A new leaf icon on iPhone and Mac"
+    ]
+  },
+  {
     "version": "1.1",
     "date": "2026-10-01",
     "title": "Encrypted, end to end",
