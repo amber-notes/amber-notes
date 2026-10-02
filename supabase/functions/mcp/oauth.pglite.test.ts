@@ -384,6 +384,10 @@ Deno.test("trusted names are recognized through spacing, case, digits and look-a
   assertEquals(displayName("Claude", "https://claude.ai/api/mcp/auth_callback"), "Claude");
   assertEquals(displayName("Claude", "https://claude.ai/other"), "claude.ai");
   assertEquals(displayName("Claude Code", "http://127.0.0.1:4000/cb"), "An app on this computer");
+  // ChatGPT's per-connector callback (servers without `iss`), and nothing that only looks like it.
+  assertEquals(displayName("ChatGPT", "https://chatgpt.com/connector/oauth/AbC_12-x"), "ChatGPT");
+  assertEquals(displayName("ChatGPT", "https://chatgpt.com/connector/oauth/a/b"), "chatgpt.com");
+  assertEquals(displayName("ChatGPT", "https://chatgpt.com.evil.example/connector/oauth/a"), "chatgpt.com.evil.example");
   // Any unverified app is titled by its address, whatever it's called.
   assertEquals(displayName("Incredible", "https://incredible.one/cb"), "incredible.one");
 });
@@ -539,7 +543,7 @@ Deno.test("F4: an attacker client named Claude is shown by its address, unverifi
   const me = await newUser(pg);
   const described = await (await call(sql, request("function", `/connect/request?id=${id}`, { headers: { authorization: `Bearer ${me.jwt}`, origin: SITE } }))).json();
   // What the consent screen gets: the attacker's own address, and no AI to vouch for it (the page
-  // and the app then lead with the host and start at Read Only).
+  // and the app then lead with the host and warn that they can't name it).
   assertEquals(described.client_name, "attacker.example");
   assertEquals(described.redirect_host, "attacker.example");
   assertEquals(described.verified_ai, null);

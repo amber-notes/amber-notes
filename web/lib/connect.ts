@@ -110,13 +110,17 @@ export type ConnectRequest = {
   redirect_host: string;
   /// The exact return address; /connect/decide takes it back unchanged.
   redirect_uri: string;
-  /// The server's view that this is a known AI's pinned callback. Only picks the default access;
-  /// the page never shows it as a name or a mark.
+  /// The server's view that this is a known AI's pinned callback. The page never shows it as a
+  /// name or a mark.
   verified_ai?: "ChatGPT" | "Claude" | null;
   loopback: boolean;
   wants_write: boolean;
   expires_at: string;
 };
+
+/// The access the page starts at: what the app asked for. Someone who just started connecting
+/// expects their AI to work; the number, not a weaker default, guards an app we can't name.
+export const startsWithWrite = (r: Pick<ConnectRequest, "wants_write">) => r.wants_write;
 
 /// Who will receive access, in words.
 export const destination = (host: string, loopback: boolean) => (loopback ? "an app on this computer" : host);

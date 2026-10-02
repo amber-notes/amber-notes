@@ -128,8 +128,8 @@ export default function Page() {
         <li>Choose Connect. Your browser opens Amber Notes.</li>
         <li>
           Amber Notes asks to allow an app on this computer that calls itself &ldquo;incredible&rdquo;. A sign-in that returns to your own
-          computer can&apos;t prove which app is asking, so it starts at Read Only. Pick Read and Edit if Incredible should change notes,
-          then choose Allow. On a Windows PC, you sign in on the page that opens and approve on your iPhone or Mac, or use your recovery key.
+          computer can&apos;t prove which app is asking, so only allow it if you just chose Connect. Pick Read only if Incredible should
+          only look things up, then choose Allow. On a Windows PC, you sign in on the page that opens and approve on your iPhone or Mac, or use your recovery key.
         </li>
         <li>Back in Incredible, choose Let&apos;s go.</li>
       </ol>
