@@ -117,7 +117,7 @@ final class NewDeviceSession {
     @ObservationIgnored private var offer: (NewDeviceOffer, expires: Date)?
     @ObservationIgnored private var shown = 0
 
-    init(crypto: AccountCrypto, server: AddDeviceServer?, device: UUID = DeviceIdentity.shared.id, platform: String = InstallID.platform,
+    init(crypto: AccountCrypto, server: AddDeviceServer?, device: UUID = DeviceIdentity.shared.id ?? UUID(), platform: String = InstallID.platform,
          name: String = AddDeviceNames.thisDevice, poll: Duration = .seconds(2), offers: Int = 6, preview: State? = nil,
          sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }) {
         self.crypto = crypto
@@ -610,7 +610,7 @@ struct AddDeviceSheet: View {
                 guard canConfirm() else { throw AddDeviceError.noDeviceLock }
                 guard await confirm(AddDeviceCopy.authReason(c.kind)) else { phase = .confirm(c); return }
                 guard let key = crypto.keyToHandOver else { throw AddDeviceError.notReady }
-                try await AddDeviceApproval.approve(c, key: key, user: user, device: DeviceIdentity.shared.id, server: server)
+                try await AddDeviceApproval.approve(c, key: key, user: user, device: DeviceIdentity.shared.id ?? UUID(), server: server)
                 AddDeviceMoment.here = .now
                 phase = .done(c)
                 added()

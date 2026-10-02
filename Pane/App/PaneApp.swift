@@ -537,7 +537,8 @@ struct AppGate: View {
         DeviceRemoval(
             push: {
                 // Edits that never reached the server would be erased with the rest: they go up
-                // first if the server answers in time. If it doesn't, the removal goes ahead.
+                // first. The wait ends with the push, whose requests have their own timeouts; a
+                // push that fails leaves the removal to go ahead.
                 guard AccountLibrary.hasUnsynced(context) else { return }
                 _ = try? await AccountCrypto.within(DeviceRemoval.pushLimit, sleep: { try await Task.sleep(for: $0) }) { @MainActor in
                     await sync.sync(pulling: false)

@@ -152,10 +152,15 @@ final class KeyDevices {
     private var account: UUID?
     private var server: KeyDeviceServer?
     private var refreshing = false
-    let device: UUID
+    /// This device's id in the list. Nil while its identity can't be read (the Keychain before
+    /// the first unlock): then it neither lists itself nor reads the list, and tries again later.
+    var device: UUID? { named ?? identity.id }
+    private let named: UUID?
     let platform: String
     let name: String
     private let identity: DeviceIdentity
+    /// A removal of this device is being carried out: it's done once, whoever noticed it.
+    private var obeying = false
 
     /// This device was removed from another one that has the key. The app pushes what hasn't
     /// synced if it can, drops the key, erases its copy of the notes and signs out (`DeviceRemoval`).
@@ -163,7 +168,7 @@ final class KeyDevices {
 
     /// `device`: tests name it; otherwise it's this device's own id (`DeviceIdentity`).
     init(device: UUID? = nil, platform: String = InstallID.platform, name: String = AddDeviceNames.thisDevice, identity: DeviceIdentity = .shared) {
-        self.device = device ?? identity.id
+        named = device
         self.platform = platform
         self.name = name
         self.identity = identity
@@ -178,14 +183,16 @@ final class KeyDevices {
     /// Reads the list, lists this device (or obeys its removal), and keeps the others for showing.
     func refresh(_ crypto: AccountCrypto) async {
         guard !refreshing, let server, let account, crypto.account == account, let key = crypto.keyToHandOver else { return }
+        // Without knowing which device this is, nothing is listed and nothing is claimed: under a
+        // made-up id this device would count its own old row as another device that holds the key.
+        guard let device, let epoch = identity.epoch(account) else { return }
         refreshing = true
         defer { refreshing = false }
         guard let rows = try? await server.list(), crypto.account == account, crypto.keyToHandOver == key else { return }
         // Removed from a device with the key. Only a key that lives on this device alone is given
         // up: one in iCloud Keychain would go from every device, so it stays, and the row is renewed.
-        let epoch = identity.epoch(account)
         if KeyDeviceList.removedHere(rows, key: key, user: account, this: device, epoch: epoch), !crypto.backedUp {
-            await removedHere?()
+            await obeyRemoval()
             return
         }
         let mine = rows.first { $0.device_id == device }.flatMap { KeyDeviceList.verified($0, key: key, user: account) }
@@ -206,7 +213,16 @@ final class KeyDevices {
     /// it stays marked as being removed); the epoch is local and always changes.
     func removalDone(account: UUID) async {
         identity.rotateEpoch(account)
-        try? await server?.forget(device: device)
+        if let device { try? await server?.forget(device: device) }
+    }
+
+    /// Carries out this device's removal once: looking at the list and trying to remove another
+    /// device can both notice it at the same moment.
+    private func obeyRemoval() async {
+        guard !obeying else { return }
+        obeying = true
+        defer { obeying = false }
+        await removedHere?()
     }
 
     /// Removes another device: it drops its key and its copy of the notes the next time it's
@@ -214,10 +230,10 @@ final class KeyDevices {
     /// devices removing each other would otherwise leave nobody with the key. That device acts on
     /// its own removal instead.
     func remove(_ d: KeyDevice, crypto: AccountCrypto) async throws {
-        guard let server, let account, let key = crypto.keyToHandOver else { throw KeyError.notReady }
+        guard let server, let account, let key = crypto.keyToHandOver, let device, let epoch = identity.epoch(account) else { throw KeyError.notReady }
         guard let rows = try? await server.list() else { throw KeyError.offline }
-        if KeyDeviceList.removedHere(rows, key: key, user: account, this: device, epoch: identity.epoch(account)), !crypto.backedUp {
-            await removedHere?()
+        if KeyDeviceList.removedHere(rows, key: key, user: account, this: device, epoch: epoch), !crypto.backedUp {
+            await obeyRemoval()
             throw KeyError.removedHere
         }
         do {
@@ -247,8 +263,9 @@ enum AddDeviceMoment {
 /// Carrying out this device's removal, in an order a kill midway can't undo: the key goes first
 /// and the fact is written down, so the next launch finishes the job instead of opening the notes.
 ///
-///   1. What hasn't synced is pushed, if the server can be reached within a few seconds. If it
-///      can't, the removal wins and those edits are lost (the Remove dialog says so).
+///   1. What hasn't synced is pushed, if the server can be reached. The wait is as long as the
+///      sync's own network timeouts allow; if the push fails, the removal wins and those edits are
+///      lost (the Remove dialog says so).
 ///   2. "Removed" is written down, then the key is deleted.
 ///   3. Sync stops and the library is erased.
 ///   4. The device's row leaves the list and its epoch changes.
@@ -259,7 +276,8 @@ struct DeviceRemoval {
     static let pendingFlag = "e2ee.removalPending"
     /// Said once on the sign-in screen.
     static let noticeFlag = "e2ee.removedHere"
-    /// How long the push of unsynced edits may take before the removal goes ahead without it.
+    /// After this long a push that honours cancellation is given up. A sync already under way
+    /// doesn't, so the real bound on the wait is the sync's own network timeouts.
     static let pushLimit: Duration = .seconds(10)
 
     var defaults: UserDefaults = .standard

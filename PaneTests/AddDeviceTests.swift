@@ -710,12 +710,99 @@ final class FakeAddDeviceServer: AddDeviceServer, @unchecked Sendable {
         crypto.signedOut()
     }
 
+    @Test func anUnreadableKeychainNeverMakesASecondIdentity() async throws {
+        // The device has an identity and a row in the list.
+        let store = MemoryDeviceIdentityStore()
+        let known = DeviceIdentity(store: store)
+        let id = try #require(known.id), epoch = try #require(known.epoch(user))
+        let (crypto, _) = await ready()
+        let first = KeyDevices(platform: "ios", name: "iPhone", identity: known)
+        first.attach(account: user, server: list)
+        await first.refresh(crypto)
+        #expect(list.rows.map(\.device_id) == [id] && first.loaded)
+        // Next launch, before the first unlock: the Keychain item can't be read.
+        store.unreadable = true
+        let locked = DeviceIdentity(store: store)
+        #expect(locked.id == nil && locked.epoch(user) == nil && store.saves == 2, "nothing new is made or written")
+        let early = KeyDevices(platform: "ios", name: "iPhone", identity: locked)
+        early.attach(account: user, server: list)
+        await early.refresh(crypto)
+        #expect(list.rows.map(\.device_id) == [id] && list.checkIns == 1, "it doesn't list itself under another id")
+        #expect(!early.loaded && early.others.isEmpty, "and claims nothing: its own row is not another device")
+        await #expect(throws: KeyError.notReady) { try await early.remove(KeyDevice(id: UUID(), name: "Mac", platform: "macos", how: .added, backedUp: false, addedAt: .now, removing: false), crypto: crypto) }
+        // Unlocked: the same identity is back, and the list is as it was.
+        store.unreadable = false
+        await early.refresh(crypto)
+        #expect(locked.id == id && locked.epoch(user) == epoch && early.loaded && early.others.isEmpty)
+        #expect(list.rows.map(\.device_id) == [id] && early.safety(crypto) == .unconfirmed, "never safe on the strength of its own ghost")
+        // The Keychain's answers: only "no such item" means there is none.
+        typealias K = KeychainDeviceIdentityStore
+        #expect(K.result(errSecItemNotFound, nil) == .none)
+        #expect(K.result(errSecInteractionNotAllowed, nil) == .unavailable && K.result(errSecAuthFailed, nil) == .unavailable && K.result(errSecSuccess, nil) == .unavailable)
+        #expect(K.result(errSecSuccess, Data([1])) == .found(Data([1])))
+        crypto.signedOut()
+    }
+
+    @Test func anIdentityThatCouldntBeSavedIsNoIdentity() async throws {
+        let store = MemoryDeviceIdentityStore()
+        store.failsToSave = true
+        let identity = DeviceIdentity(store: store)
+        #expect(identity.id == nil && identity.epoch(user) == nil, "an id that wasn't written would be another one next launch")
+        let (crypto, _) = await ready()
+        let d = KeyDevices(platform: "ios", name: "iPhone", identity: identity)
+        d.attach(account: user, server: list)
+        await d.refresh(crypto)
+        #expect(list.rows.isEmpty && !d.loaded)
+        // The save works later: one identity, then one epoch, and they stay.
+        store.failsToSave = false
+        await d.refresh(crypto)
+        let id = try #require(identity.id)
+        #expect(list.rows.map(\.device_id) == [id] && DeviceIdentity(store: store).id == id)
+        // An epoch that can't be saved isn't used either.
+        let other = UUID()
+        store.failsToSave = true
+        #expect(identity.epoch(other) == nil)
+        store.failsToSave = false
+        #expect(identity.epoch(other)?.count == 32)
+        crypto.signedOut()
+    }
+
+    @Test func aRemovalNoticedTwiceAtOnceIsCarriedOutOnce() async throws {
+        let (phoneCrypto, _) = await ready()
+        let key = try #require(phoneCrypto.keyToHandOver)
+        let macKeychain = KeyStartupTests.FakeKeychain(cloud: KeyStartupTests.Cloud(), autoReceive: false)
+        macKeychain.syncs = false
+        let macCrypto = AccountCrypto(store: macKeychain, defaults: defaults, sleep: { _ in throw CancellationError() })
+        await macCrypto.attach(account: user, server: keyServer)
+        try macCrypto.adopt(added: key)
+        let onPhone = devices(phone), onMac = devices(mac, name: "Mac", platform: "macos")
+        var removed = 0
+        onMac.removedHere = {
+            removed += 1
+            // The removal takes a while (it pushes, erases, signs out): time for a second notice.
+            try? await Task.sleep(for: .milliseconds(150))
+            macCrypto.forgetLocalKey()
+            await onMac.removalDone(account: user)
+        }
+        await onMac.refresh(macCrypto)
+        await onPhone.refresh(phoneCrypto)
+        await onMac.refresh(macCrypto)
+        let phoneRow = try #require(onMac.others.first)
+        try await onPhone.remove(try #require(onPhone.others.first), crypto: phoneCrypto)
+        // The Mac looks at the list and, in the same moment, its person taps Remove on the iPhone's row.
+        async let looked: Void = onMac.refresh(macCrypto)
+        async let tapped: Void? = try? onMac.remove(phoneRow, crypto: macCrypto)
+        _ = await (looked, tapped)
+        #expect(removed == 1 && macKeychain.local[user] == nil)
+        for c in [phoneCrypto, macCrypto] { c.signedOut() }
+    }
+
     @Test func aTransferredPhoneIsADeviceOfItsOwn() {
         // The id and the epochs live in a Keychain item that stays on the device.
         let store = MemoryDeviceIdentityStore()
         let old = DeviceIdentity(store: store)
-        let epoch = old.epoch(user)
-        #expect(epoch.count == 32 && old.epoch(user) == epoch)
+        let epoch = old.epoch(user) ?? ""
+        #expect(epoch.count == 32 && old.epoch(user) == epoch && old.id != nil)
         // The same device, next launch.
         let again = DeviceIdentity(store: store)
         #expect(again.id == old.id && again.epoch(user) == epoch)

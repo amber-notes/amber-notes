@@ -32,10 +32,12 @@ enum PrivacyCopy {
         }
     }
     static let unconfirmedTitle = "Can\u{2019}t confirm a backup of your key"
+    static let unconfirmedDetail = "Your key is backed up only if iCloud Keychain is on. Adding a device makes it safe."
+    static let howToCheck = "How to check"
     #if os(macOS)
-    static let unconfirmedDetail = "Your key is backed up if iCloud Keychain is on for this Apple Account. Amber Notes can\u{2019}t check that. Look in System Settings \u{203A} [your name] \u{203A} iCloud \u{203A} Passwords & Keychain, or add a device."
+    static let howToCheckDetail = "System Settings \u{203A} [your name] \u{203A} iCloud \u{203A} Passwords & Keychain. Amber Notes can\u{2019}t see that setting."
     #else
-    static let unconfirmedDetail = "Your key is backed up if iCloud Keychain is on for this Apple Account. Amber Notes can\u{2019}t check that. Look in Settings \u{203A} [your name] \u{203A} iCloud \u{203A} Passwords & Keychain, or add a device."
+    static let howToCheckDetail = "Settings \u{203A} [your name] \u{203A} iCloud \u{203A} Passwords & Keychain. Amber Notes can\u{2019}t see that setting."
     #endif
     static var onlyTitle: String { "Only this \(InstallID.kind) can open your notes" }
     static let onlyDetail = "If you lose it, your notes are lost. We can\u{2019}t open them either. Add another device to be safe."
@@ -83,6 +85,7 @@ struct PrivacySecuritySection: View {
     @State private var problem: String?
     @State private var adding = false
     @State private var removing: KeyDevice?
+    @State private var showsHowToCheck = false
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
@@ -200,6 +203,18 @@ struct PrivacySecuritySection: View {
                 keyRow(PrivacyCopy.safeTitle, PrivacyCopy.safeDetail(n), symbol: "checkmark.circle.fill", tint: .green, id: "privacy.safe")
             case .unconfirmed:
                 keyRow(PrivacyCopy.unconfirmedTitle, PrivacyCopy.unconfirmedDetail, symbol: "questionmark.circle", id: "privacy.unconfirmed")
+                // Where to look, for those who want to: out of the way until asked for.
+                if showsHowToCheck {
+                    Text(PrivacyCopy.howToCheckDetail)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("privacy.howToCheckDetail")
+                } else {
+                    Button(PrivacyCopy.howToCheck) { showsHowToCheck = true }
+                        .font(.footnote)
+                        .accessibilityIdentifier("privacy.howToCheck")
+                }
             case .onlyThisDevice:
                 keyRow(PrivacyCopy.onlyTitle, PrivacyCopy.onlyDetail, symbol: "exclamationmark.circle.fill", tint: .orange, id: "privacy.onlyThisDevice")
             }
@@ -266,6 +281,11 @@ private struct RecoveryKeyItem: Identifiable {
 /// Face ID, Touch ID or the device passcode (`deviceOwnerAuthentication`).
 enum DeviceOwner {
     @MainActor static func authenticate(reason: String) async -> Bool {
+        #if DEBUG
+        // UI tests run on a simulator with no passcode and no account (its key store is in memory):
+        // nothing is asked there. Release builds always ask.
+        if ProcessInfo.processInfo.arguments.contains("-uitest") { return true }
+        #endif
         let context = LAContext()
         var error: NSError?
         guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else {

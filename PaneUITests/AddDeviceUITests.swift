@@ -35,5 +35,33 @@ final class AddDeviceUITests: XCTestCase {
         XCTAssertTrue(app.textFields["addDevice.codeField"].waitForExistence(timeout: 5))
         shot("sheet")
     }
+
+    /// Shipped bug (1.2 and before): the sheet was attached to a form section and never came up
+    /// on iPhone, so "Save a recovery key…" did nothing after Face ID. It hangs on its button now.
+    func testSaveARecoveryKeyOpensItsSheet() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uitest", "-captureScreen", "key-kept-only"]
+        app.launch()
+        let save = app.buttons["privacy.saveRecovery"].firstMatch
+        XCTAssertTrue(save.waitForExistence(timeout: 8))
+        XCTAssertTrue(app.staticTexts["privacy.recoveryStatus"].firstMatch.label.contains("Not saved"), "no other way in is known: not called optional")
+        save.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["recovery.key"].firstMatch.waitForExistence(timeout: 5), "the sheet with the key comes up")
+        XCTAssertTrue(app.buttons["recovery.copy"].firstMatch.exists)
+        shot("save-recovery-key")
+    }
+
+    func testCantConfirmSaysItInTwoSentencesAndShowsWhereToLookOnRequest() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uitest", "-captureScreen", "key-kept-unconfirmed"]
+        app.launch()
+        let how = app.buttons["privacy.howToCheck"].firstMatch
+        XCTAssertTrue(how.waitForExistence(timeout: 8))
+        XCTAssertFalse(app.staticTexts["privacy.howToCheckDetail"].firstMatch.exists)
+        shot("cant-confirm")
+        how.tap()
+        XCTAssertTrue(app.staticTexts["privacy.howToCheckDetail"].firstMatch.waitForExistence(timeout: 3))
+        shot("cant-confirm-how-to-check")
+    }
 }
 #endif
