@@ -72,7 +72,7 @@ export default function Page() {
       </p>
       <Figure shot={SHOTS.historyBurst} caption="Every version, with who made it: you, ChatGPT or Claude Code." />
       <p>
-        Where it falls short today: {APP_STORE_LIVE ? "" : "the iPhone app is still on its way to the App Store, and "}there&apos;s no web app. If your team already
+        Where it falls short: it&apos;s for iPhone and Mac only, with no web, Windows or Android app{APP_STORE_LIVE ? "" : ", and the iPhone app is still on its way to the App Store"}. If your team already
         lives in Notion, Notion&apos;s server is the better fit.
       </p>
 

@@ -3,7 +3,7 @@ import path from "node:path";
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/site";
 import { MAC_DOWNLOAD_PATH } from "@/lib/downloads";
-import PlatformInterest from "../PlatformInterest";
+import PlatformNote from "../PlatformNote";
 import styles from "./download.module.css";
 
 export const metadata: Metadata = pageMetadata({
@@ -44,7 +44,7 @@ export default function Download() {
             <a className={`${styles.button} rise pi-apple`} style={r(3)} href={MAC_DOWNLOAD_PATH} download={release.file}>
               <Apple /> Download for Mac
             </a>
-            <PlatformInterest place="download" className="rise" style={r(3)} />
+            <PlatformNote place="download" className="rise" style={r(3)} />
             <p className={`${styles.req} rise`} style={r(4)}>Free · Requires macOS {macos} or later</p>
           </>
         ) : (

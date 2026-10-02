@@ -1,6 +1,6 @@
 import type { CaptureResult } from "posthog-js";
 import { describe, expect, it } from "vitest";
-import { clickEvent, interestShown, newScrollMarks, POSTHOG_DEFAULT_HOST, posthogAllowed, posthogOptions, posthogSettings, sanitizeEvent, scrolledPercent, visitorOptedOut } from "./posthog";
+import { clickEvent, newScrollMarks, POSTHOG_DEFAULT_HOST, posthogAllowed, posthogOptions, posthogSettings, sanitizeEvent, scrolledPercent, visitorOptedOut } from "./posthog";
 
 const here = new URL("https://ambernotes.app/blog/claude-and-apple-notes");
 const link = (href: string, attrs: Record<string, string> = {}) => ({ tagName: "A", getAttribute: (n: string) => (n === "href" ? href : attrs[n] ?? null) });
@@ -74,29 +74,13 @@ describe("website PostHog", () => {
     expect(clickEvent(button, here)).toEqual({ event: "copy_prompt_clicked", properties: { path: here.pathname }, leaves: false });
   });
 
-  it("sends the platform with the platform interest button, and with nothing else", () => {
-    const button = (name: string) => ({ tagName: "BUTTON", getAttribute: (n: string) => (n === "data-event" ? name : null) });
-    const home = new URL("https://ambernotes.app/?ref=x#closing");
-    expect(clickEvent(button("platform_interest_clicked"), home, { platform: "windows" })).toEqual({ event: "platform_interest_clicked", properties: { platform: "windows", path: "/" }, leaves: false });
-    expect(clickEvent(button("platform_interest_clicked"), home)).toBeNull();
-    expect(clickEvent(button("copy_prompt_clicked"), here, { platform: "windows" })?.properties).toEqual({ path: here.pathname });
-    expect(clickEvent(link("/download/mac"), here, { platform: "linux" })?.properties).toEqual({ path: here.pathname });
+  it("has no event of its own for Send myself the link", () => {
+    const send = link("mailto:?subject=Amber%20Notes&body=https%3A%2F%2Fambernotes.app");
+    expect(clickEvent(send, new URL("https://ambernotes.app/"))).toBeNull();
   });
 
-  it("says the ask was shown only while a real visitor can see it", () => {
-    expect(interestShown({ platform: "android" }, true, "/download")).toEqual({ event: "platform_interest_shown", properties: { platform: "android", path: "/download" }, leaves: false });
-    expect(interestShown({ platform: "android" }, false, "/")).toBeNull();
-    expect(interestShown({}, true, "/")).toBeNull();
-  });
-
-  it("counts nothing in a preview (?as=windows): not the ask, not the click", () => {
-    const button = { tagName: "BUTTON", getAttribute: (n: string) => (n === "data-event" ? "platform_interest_clicked" : null) };
-    const preview = { platform: "windows", as: "windows" };
-    expect(interestShown(preview, true, "/")).toBeNull();
-    expect(clickEvent(button, new URL("https://ambernotes.app/?as=windows"), preview)).toBeNull();
-    expect(interestShown({ platform: "ios", as: "iphone" }, true, "/")).toBeNull();
-    // Everything else on the page is counted as usual, without the parameter in any address.
-    expect(clickEvent(link("/download/mac"), new URL("https://ambernotes.app/?as=windows"), preview)).toEqual({ event: "download_mac_clicked", properties: { path: "/" }, leaves: false });
+  it("keeps a preview's ?as= out of every address it sends", () => {
+    expect(clickEvent(link("/download/mac"), new URL("https://ambernotes.app/?as=windows"))).toEqual({ event: "download_mac_clicked", properties: { path: "/" }, leaves: false });
     expect(sanitizeEvent(event({ $current_url: "https://ambernotes.app/download?as=windows" }))?.properties.$current_url).toBe("https://ambernotes.app/download");
   });
 

@@ -322,7 +322,7 @@ export const posts: Post[] = [
     excerpt: "Remote MCP, precise writes, undo, approval and a phone app to read the results: the criteria that matter, and how the options compare.",
     category: "Comparisons",
     date: "2026-09-30",
-    updated: "2026-10-01",
+    updated: "2026-10-02",
     image: SHOTS.tracker,
     thumb: thumb("cream", "thumb-tracker", 708, 749, "An evening tracker table with a row per day"),
     draft: false,
