@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  ALLOW_HEADING, APPLE_ON_WEB, appleSignInURL, destination, functionURL, pkcePair, returnURL, signInError, universalLink,
+  ALLOW_HEADING, APPLE_ON_WEB, appleSignInURL, destination, functionURL, pkcePair, returnURL, signInError, startsWithWrite, universalLink,
   type ConnectLabel, type ConnectRequest,
 } from "@/lib/connect";
 import {
@@ -51,7 +51,7 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [recoveryKey, setRecoveryKey] = useState("");
-  const [write, setWrite] = useState(false);
+  const [write, setWrite] = useState(true);
   const [request, setRequest] = useState<ConnectRequest | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -340,7 +340,7 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
         return end(info.expired ? EXPIRED : { kind: "ended", title: "Couldn't connect", text: info.error, retry: true });
       }
       setRequest(info.request);
-      setWrite(info.request.wants_write && info.request.verified_ai != null);
+      setWrite(startsWithWrite(info.request));
       setMode("recover");
       setView({ kind: "recover" });
     } catch {

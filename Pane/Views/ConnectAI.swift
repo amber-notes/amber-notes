@@ -71,8 +71,13 @@ enum ConnectTrust {
     /// "ChatGPT"; only ChatGPT receives answers at its callback. A server too old to send the
     /// address verifies nothing.
     static func verifiedAI(redirectURI: String?) -> String? {
-        redirectURI.flatMap { knownCallbacks[$0] }
+        guard let redirectURI else { return nil }
+        if let ai = knownCallbacks[redirectURI] { return ai }
+        return redirectURI.wholeMatch(of: chatGPTConnectorCallback) != nil ? "ChatGPT" : nil
     }
+
+    /// ChatGPT's per-connector callback, used when a server doesn't send `iss` (as on the server).
+    nonisolated(unsafe) static let chatGPTConnectorCallback = /https:\/\/chatgpt\.com\/connector\/oauth\/[A-Za-z0-9_-]{1,128}/
 
     /// The AI behind an existing connection, by the exact host its approval went to.
     static func verifiedAI(host: String, loopback: Bool) -> String? {
@@ -128,6 +133,11 @@ struct ConnectRequest: Decodable, Identifiable, Equatable {
     var iss: String? = nil
 
     var isAsked: Bool { asked == true }
+
+    /// The access the sheet starts at: what the app asked for. Someone who just started connecting
+    /// expects their AI to work; the warning and the number, not a weaker default, guard an app
+    /// Amber Notes can't name.
+    var startsWithWrite: Bool { wants_write }
 
     /// "Requested 2 minutes ago from Chrome on a Mac", for a request asked from a browser.
     func requestedLine(now: Date = .now) -> String? {
@@ -1176,8 +1186,7 @@ struct ConsentSheet: View {
     private func load() async {
         do {
             let r = try await ConnectAPI.request(client, id: requestID)
-            // An app Amber Notes can't vouch for starts at Read Only; the person can still pick more.
-            write = r.wants_write && r.verifiedAI != nil
+            write = r.startsWithWrite
             phase = .asking(r)
             if r.isAsked { await loadMatch(r) }
         } catch {

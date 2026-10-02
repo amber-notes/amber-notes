@@ -89,6 +89,15 @@ import Testing
         #expect(ConnectRequest(id: UUID(), client_name: "Claude", redirect_host: "claude.ai", redirect_uri: "https://claude.ai/api/mcp/auth_callback", claimed_name: "claude", loopback: false, wants_write: true).claimedName == nil)
     }
 
+    @Test func chatGPTsPerConnectorCallbackCountsButNothingLikeIt() {
+        #expect(ConnectTrust.verifiedAI(redirectURI: "https://chatgpt.com/connector/oauth/AbC_12-x") == "ChatGPT")
+        #expect(ConnectTrust.verifiedAI(redirectURI: "https://chatgpt.com/connector/oauth/") == nil)
+        #expect(ConnectTrust.verifiedAI(redirectURI: "https://chatgpt.com/connector/oauth/a/b") == nil)
+        #expect(ConnectTrust.verifiedAI(redirectURI: "https://chatgpt.com/connector/oauth/a?x=1") == nil)
+        #expect(ConnectTrust.verifiedAI(redirectURI: "https://chatgpt.com.evil.example/connector/oauth/a") == nil)
+        #expect(ConnectTrust.verifiedAI(redirectURI: "http://chatgpt.com/connector/oauth/a") == nil)
+    }
+
     @Test func aClientThatOnlyCallsItselfChatGPTGetsNoMark() {
         // Registered as "ChatGPT", but the approval would go to its own site.
         let spoof = ConnectRequest(id: UUID(), client_name: "ChatGPT", redirect_host: "chatgpt-login.example.com", loopback: false, wants_write: true)
@@ -116,6 +125,19 @@ import Testing
         var here = r
         here.asked = false
         #expect(here.verifiedAI == "Claude", "the same request by link on this device keeps its mark")
+    }
+
+    /// Emil connected Claude in his Mac's browser and approved on his iPhone: an asked request,
+    /// so no verified AI, and the sheet started at Read Only. It starts where the app asked.
+    @Test func accessStartsAtWhatTheAppAskedFor() {
+        #expect(asked("https://claude.ai/api/mcp/auth_callback").startsWithWrite)
+        #expect(asked("https://unknown.example/cb", claimed: nil).startsWithWrite)
+        let local = ConnectRequest(id: UUID(), client_name: "An app on this computer", redirect_host: "127.0.0.1",
+                                   redirect_uri: "http://127.0.0.1:4000/cb", loopback: true, wants_write: true)
+        #expect(local.startsWithWrite)
+        let readOnly = ConnectRequest(id: UUID(), client_name: "Claude", redirect_host: "claude.ai",
+                                      redirect_uri: "https://claude.ai/api/mcp/auth_callback", loopback: false, wants_write: false)
+        #expect(!readOnly.startsWithWrite, "an app that asked only to read can't be given more")
     }
 
     @Test func theRedirectIsBuiltAsTheServerBuildsIt() {
