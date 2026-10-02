@@ -3,7 +3,7 @@
 Adds the [Amber Notes](https://ambernotes.app) MCP server (`https://mcp.ambernotes.app`) to Claude Code, with a skill that tells Claude how the notes are laid out and how to edit them safely.
 
 ```sh
-claude plugin marketplace add emilwagman/amber-notes
+claude plugin marketplace add amber-notes/amber-notes
 claude plugin install amber-notes@amber-notes
 ```
 

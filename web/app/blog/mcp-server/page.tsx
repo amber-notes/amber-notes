@@ -117,7 +117,7 @@ export default function Page() {
         same for Obsidian vaults.
       </p>
       <p>
-        The server is open source. Read it in <a href="https://github.com/emilwagman/amber-notes/tree/main/supabase/functions/mcp" rel="noopener">supabase/functions/mcp</a> on GitHub.
+        The server is open source. Read it in <a href="https://github.com/amber-notes/amber-notes/tree/main/supabase/functions/mcp" rel="noopener">supabase/functions/mcp</a> on GitHub.
       </p>
     </PostPage>
   );

@@ -6,7 +6,7 @@
   "version": "1.0.0",
   "websiteUrl": "https://ambernotes.app/blog/mcp-server",
   "repository": {
-    "url": "https://github.com/emilwagman/amber-notes",
+    "url": "https://github.com/amber-notes/amber-notes",
     "source": "github",
     "id": "1394754812",
     "subfolder": "supabase/functions/mcp"

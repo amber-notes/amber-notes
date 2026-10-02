@@ -24,7 +24,7 @@ export type AgentInstall = {
 export const AGENT_INSTALLS: AgentInstall[] = [
   {
     tool: "Claude Code",
-    code: `claude plugin marketplace add emilwagman/amber-notes
+    code: `claude plugin marketplace add amber-notes/amber-notes
 claude plugin install amber-notes`,
     signIn: "The plugin adds the server and a skill that tells Claude how your notes are laid out. Then run /mcp in Claude Code, pick amber-notes and sign in.",
     alt: { text: "Or add only the server, for every project:", code: `claude mcp add --scope user --transport http ${SERVER_NAME} ${MCP_URL}` },
@@ -36,7 +36,7 @@ claude plugin install amber-notes`,
   },
   {
     tool: "Gemini CLI",
-    code: `gemini extensions install https://github.com/emilwagman/amber-notes`,
+    code: `gemini extensions install https://github.com/amber-notes/amber-notes`,
     signIn: "Then run /mcp auth amber-notes in Gemini CLI to sign in.",
   },
   {

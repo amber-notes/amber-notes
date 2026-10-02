@@ -356,7 +356,7 @@ import Testing
         // Same trigger as everyone's: seven days, then once.
         s.moment(setupVisible: false, tipShowing: false, now: Self.later)
         #expect(s.visible)
-        #expect(s.choose(.starredGitHub) == URL(string: "https://github.com/emilwagman/amber-notes")!)
+        #expect(s.choose(.starredGitHub) == URL(string: "https://github.com/amber-notes/amber-notes")!)
         #expect(s.thanked, "the thank-you shows as for a post")
         #expect(ShareAsk.thanks(for: s.thankedFor) == "Every star helps someone find it.")
         s.closed()
@@ -423,13 +423,13 @@ import Testing
     }
 
     @Test func theOpenSourceLinksGoToGitHub() {
-        #expect(ShareAsk.url(for: .starredGitHub)?.absoluteString == "https://github.com/emilwagman/amber-notes")
+        #expect(ShareAsk.url(for: .starredGitHub)?.absoluteString == "https://github.com/amber-notes/amber-notes")
         #expect(ShareAsk.url(for: .dismissed) == nil)
         #expect(AboutSection.links.map(\.title) == ["Star on GitHub", "Report an issue", "Contribute"])
         #expect(AboutSection.links.map(\.url.absoluteString) == [
-            "https://github.com/emilwagman/amber-notes",
-            "https://github.com/emilwagman/amber-notes/issues/new/choose",
-            "https://github.com/emilwagman/amber-notes/blob/main/CONTRIBUTING.md",
+            "https://github.com/amber-notes/amber-notes",
+            "https://github.com/amber-notes/amber-notes/issues/new/choose",
+            "https://github.com/amber-notes/amber-notes/blob/main/CONTRIBUTING.md",
         ])
     }
 }
