@@ -506,6 +506,9 @@ async function describeRequest(req: Request, sql: Sql): Promise<Response> {
   // A device answering a browser it can't see has no way to tell whose ChatGPT or Claude this is
   // (anyone can start a real ChatGPT sign-in and ask your devices), so no AI's mark or name is a
   // title then: the address is, and the name the client gives itself is only a claim.
+  // Showing the AI's icon or name as fact on the web connect page was considered and declined on
+  // 2 October 2026 for the same reason: a browser-started request proves where the code goes, not
+  // whose account it is. Don't add it back.
   const verified = asked.asked ? null : verifiedAI(r.redirect_uri);
   return json({
     id: r.id,
@@ -819,7 +822,7 @@ async function label(req: Request, sql: Sql): Promise<Response> {
   const r = await pending(sql, new URL(req.url).searchParams.get("id") ?? "");
   if (!r) return json({ error: EXPIRED }, 404);
   // Before anyone signs in, the page can't know whose sign-in this is, so no AI's mark either: the
-  // address, and what the client calls itself only as a claim.
+  // address, and what the client calls itself only as a claim. (Declined on purpose: see describeRequest.)
   return json({
     client_name: addressName(r.redirect_uri),
     claimed_name: claimedName(r.client_name) || null,
