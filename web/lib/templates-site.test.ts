@@ -17,6 +17,8 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { COVERS, coverPath } from "./template-covers";
 import { instructions, templates } from "./templates";
+import Card from "../app/templates/Card";
+import { templateWork } from "./structured-data";
 
 const params = (slug: string) => ({ params: Promise.resolve({ slug }) });
 
@@ -88,10 +90,20 @@ describe("the gallery", () => {
     for (const [k, t] of templates().entries()) {
       const card = cards[k];
       // One link to the template's page, one to Amber Notes, and never a link inside a link.
-      expect(card.match(/<a /g), t.slug).toHaveLength(APP_TEMPLATES.live ? 2 : 1);
+      expect(card.match(/<a /g), t.slug).toHaveLength((APP_TEMPLATES.live ? 2 : 1) + (t.author ? 1 : 0));
       expect(card).toContain(`href="/templates/${t.slug}">${t.title.replace("&", "&amp;")}</a>`);
       if (APP_TEMPLATES.live) expect(card).toContain(`href="/open/template/${t.slug}" aria-label="Use template: ${t.title}">Use template`);
     }
+  });
+
+  it("credits a community template's author on its card, as its own link beside Use template", () => {
+    const t = { ...templates()[0], author: "arnavtambe" };
+    const card = renderToStaticMarkup(Card({ t }));
+    expect(card).toContain('href="https://github.com/arnavtambe">by @arnavtambe</a>');
+    expect(card.match(/<a /g)).toHaveLength(APP_TEMPLATES.live ? 3 : 2);
+    expect(renderToStaticMarkup(Card({ t: templates()[0] }))).not.toContain("github.com");
+    expect(templateWork(t).contributor).toEqual({ "@type": "Person", name: "@arnavtambe", url: "https://github.com/arnavtambe" });
+    expect(templateWork(templates()[0]).contributor).toBeUndefined();
   });
 
   it("gives every card its own cover, with alt text, and lists them in the image sitemap", () => {

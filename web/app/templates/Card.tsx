@@ -1,12 +1,13 @@
 import { COVERS, coverPath, inkOn } from "@/lib/template-covers";
 import { APP_TEMPLATES } from "@/lib/site";
-import { slice, templatePath, usePath, type SliceRow, type Template } from "@/lib/templates";
+import { authorLink, slice, templatePath, usePath, type SliceRow, type Template } from "@/lib/templates";
 import s from "./templates.module.css";
 
 /// One template in the gallery or under "More templates": its cover fills the card, the title sits
 /// once on the cover's calm lower third, and under it a slice of the real note, filled in, with
 /// "Use template". The card is one link to the template's page (its title link, stretched over the
-/// card), except "Use template", its own link straight to Amber Notes. No link sits inside another.
+/// card), except "Use template", its own link straight to Amber Notes, and a community template's
+/// "by @handle", a link to its author on GitHub. No link sits inside another.
 export default function Card({ t, heading = "h2" }: { t: Template; heading?: "h2" | "h3" }) {
   const H = heading;
   const cover = COVERS[t.slug];
@@ -20,6 +21,7 @@ export default function Card({ t, heading = "h2" }: { t: Template; heading?: "h2
       <span className={s.slice}>
         <span className={s.sliceNote} aria-hidden="true">{slice(t).map((r, i) => <Row key={i} r={r} />)}</span>
         <span className={s.cardFoot}>
+          {t.author && <a className={s.by} href={authorLink(t.author)}>by @{t.author}</a>}
           {APP_TEMPLATES.live
             ? <a className={s.use} href={usePath(t.slug)} aria-label={`Use template: ${t.title}`}>Use template<ArrowGlyph /></a>
             : <span className={s.use} aria-hidden="true">Use template<ArrowGlyph /></span>}

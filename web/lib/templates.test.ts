@@ -5,7 +5,7 @@ import remarkParse from "remark-parse";
 import { unified } from "unified";
 import { describe, expect, it } from "vitest";
 import { MCP_TOOLS } from "./mcp-tools";
-import { AUDIENCES, CATEGORIES, ORDER, SLUG, changedLines, createStep, instructions, markdownIn, publicTemplate, renderTemplate, searchTitle, slice, templateFiles, templates, validTemplateSlug, type DemoCall, type Template } from "./templates";
+import { AUDIENCES, CATEGORIES, GITHUB_HANDLE, ORDER, SLUG, changedLines, createStep, instructions, markdownIn, publicTemplate, renderTemplate, searchTitle, slice, templateFiles, templates, validTemplateSlug, type DemoCall, type Template } from "./templates";
 
 // The server's own note functions (supabase/functions/mcp/notes.ts, plain TypeScript with no
 // imports), loaded by path so the site's build never depends on the server folder.
@@ -81,9 +81,8 @@ const toolNames = new Set(MCP_TOOLS.map((t) => t.name));
 const texts = (t: Template) => [t.title, t.audience, t.description, t.seoTitle ?? "", t.folder, t.note, t.example, ...Object.values(t.prompt), ...t.asks];
 
 describe("the template library", () => {
-  it("has 15 to 20 templates, every file listed once in ORDER", () => {
+  it("has at least 15 templates, every file listed once in ORDER", () => {
     expect(all.length).toBeGreaterThanOrEqual(15);
-    expect(all.length).toBeLessThanOrEqual(20);
     expect([...templateFiles()].sort()).toEqual([...ORDER].sort());
     expect(new Set(ORDER).size).toBe(ORDER.length);
   });
@@ -97,7 +96,7 @@ describe("the template library", () => {
   });
 
   it("follows the schema", () => {
-    const keys = ["slug", "title", "category", "audiences", "audience", "description", "tagline", "seoTitle", "folder", "note", "prompt", "asks", "demo", "example", "related", "updated"];
+    const keys = ["slug", "title", "category", "audiences", "audience", "description", "tagline", "seoTitle", "folder", "note", "prompt", "asks", "demo", "example", "related", "updated", "author"];
     for (const t of all) {
       for (const k of Object.keys(t)) expect(keys, `${t.slug}: ${k}`).toContain(k);
       expect(CATEGORIES).toContain(t.category);
@@ -114,7 +113,13 @@ describe("the template library", () => {
       expect(t.asks.length, t.slug).toBeGreaterThanOrEqual(2);
       expect(t.demo.length, t.slug).toBeGreaterThan(0);
       expect(t.updated).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      if (t.author !== undefined) expect(GITHUB_HANDLE.test(t.author), `${t.slug}: author is a GitHub handle without the @`).toBe(true);
     }
+  });
+
+  it("takes a GitHub handle as the author, and nothing else", () => {
+    for (const ok of ["arnavtambe", "a", "wufangyong973", "Some-Body", "x".repeat(39)]) expect(GITHUB_HANDLE.test(ok), ok).toBe(true);
+    for (const bad of ["@arnav", "-lead", "trail-", "dou--ble", "has space", "x".repeat(40), "https://github.com/a", ""]) expect(GITHUB_HANDLE.test(bad), bad).toBe(false);
   });
 
   it("gives every template a unique search title of at most 60 characters", () => {

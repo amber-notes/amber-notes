@@ -11,7 +11,7 @@ Fixed the bullet alignment in long notes"
 git push origin v1.0.1
 ```
 
-The tag message becomes the release notes, one line per item.
+The tag message becomes the release notes, one line per item. End it with a line that thanks everyone whose pull request is in the release, by GitHub handle: `Thanks to @arnavtambe and @wufangyong973`. List them with `git log --format='%an' <last tag>..HEAD | sort -u`, and add anyone new to Thanks in the README.
 
 The changelog (web/content/changelog.json, shown at /changelog and in the apps) lists only major and minor releases (1.0, 1.1, 1.2). Patch releases (1.1.1, 1.1.2) get release notes and an App Store "What's New", but no changelog entry; anything worth telling people goes into the next minor release's entry. You can also start the workflow by hand from the Actions tab (**release → Run workflow**) with a version and notes.
 
