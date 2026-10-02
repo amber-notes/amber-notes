@@ -5,6 +5,23 @@ assistants. Newest first. Research behind it: [seo-aeo-research-2026-09-30.md](s
 
 `docs/` had no README naming a folder for evidence, so this and the research live in `docs/Evidence/`.
 
+## 2 October 2026: "How to move Apple Notes from On My iPhone or Gmail to iCloud"
+
+### Why
+
+- Item 9 of the plan, approved on 2 October. The queries "move notes from on my iphone to icloud" and "move notes from gmail to icloud" mostly lead to old How-To Geek pages and vendor tools, according to the 30 September research.
+
+### Changed (branch `site/move-apple-notes-to-icloud`, stacked on `site/back-up-apple-notes`)
+
+- New post `/blog/move-apple-notes-to-icloud`, in Apple Notes. Every step was checked on 2 October against Apple's guides for iOS 26 and 27 and macOS 26 and 27, and against Apple Support 118442, 102476, 102537 and 108770. The post covers locked notes, attachments, shared notes and Gmail's IMAP limits.
+- Some claims come from the Mac app itself, read from Notes' Localizable.loctable on macOS 26.5:
+  - only iCloud notes can be shared;
+  - IMAP accounts refuse tags and pinning;
+  - On My Mac can't be turned off while it holds notes.
+  Claims I couldn't check were left out. Those include moving whole folders between accounts on iPhone, and any limit on selecting notes from more than one account.
+- The cover is Notes' own General settings with Default account set to iCloud. AppKit rendered it offscreen at 4x from the Settings storyboard inside Notes.app, so the controls and wording are the app's own. It sits on a new sky ground. The settings rows are wide, so the crop runs off the right edge to keep the text the size of the other covers. Fitting the whole rows into 85% of the panel made the text too small to read on a card.
+- I checked it at 1440 and 390 next to the first 8 covers. The share card uses a JPEG copy.
+
 ## 2 October 2026: "How to back up Apple Notes"
 
 ### Why
