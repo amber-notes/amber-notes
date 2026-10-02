@@ -1,6 +1,6 @@
 # Terms of Service
 
-Last updated: 30 September 2026
+Last updated: 2 October 2026
 
 ## The short version
 
@@ -47,7 +47,7 @@ You also may not try to reach other people's notes, overload or disrupt the serv
 - A note you share becomes a public web page. Anyone with its link can read it until you stop sharing, and the link may be passed on. You're responsible for what you share.
 - Every shared page has a **Report this page** link. We review reports, normally within 24 hours. A page that several different people report is hidden automatically while it's reviewed.
 - We remove pages that break these terms, and we close accounts that break them repeatedly or seriously.
-- If you think a page was removed by mistake, write to emil@norditech.se.
+- If you think a page was removed by mistake, write to hello@ambernotes.app.
 
 ## AI connections
 
@@ -90,4 +90,4 @@ These terms are governed by Swedish law. Disputes go to the Swedish courts, but 
 
 ## Contact
 
-Emil Wagman, Sweden · **emil@norditech.se**
+Emil Wagman, Sweden · **hello@ambernotes.app**

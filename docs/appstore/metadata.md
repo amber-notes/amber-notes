@@ -51,7 +51,7 @@ PRIVATE BY DESIGN
 • No ads, no tracking, no analytics
 • Delete your account and everything in it from Settings
 
-Amber Notes is made by one person who wanted a simpler notes app. Feedback is always welcome at emil@norditech.se.
+Amber Notes is made by one person who wanted a simpler notes app. Feedback is always welcome at hello@ambernotes.app.
 ```
 
 **Keywords** (no spaces after commas):
@@ -116,7 +116,7 @@ Expected result: **4+**.
 - User name: `appreview@norditech.se`
 - Password: in `.secrets/appreview.txt` (on the Mac; paste it into the form, never into chat)
 
-**Contact:** Emil Wagman, emil@norditech.se, phone: (Emil's number, required by the form)
+**Contact:** Emil Wagman, hello@ambernotes.app, phone: (Emil's number, required by the form)
 
 **Notes for the reviewer:**
 
