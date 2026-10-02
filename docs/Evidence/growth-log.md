@@ -5,6 +5,24 @@ assistants. Newest first. Research behind it: [seo-aeo-research-2026-09-30.md](s
 
 `docs/` had no README naming a folder for evidence, so this and the research live in `docs/Evidence/`.
 
+## 2 October 2026: "How to back up Apple Notes"
+
+### Why
+
+- Item 8 of the plan, held until today. People search "back up Apple Notes" because they assume iCloud is a backup. It isn't: a delete reaches every device, and iCloud Backup leaves out notes already in iCloud (Apple, 108770).
+
+### Changed (branch `site/back-up-apple-notes`)
+
+- New post `/blog/back-up-apple-notes`, in Apple Notes. It covers what iCloud protects you from, a table of the four options (export a note, an exporter on the Mac, iPhone backup, Time Machine), a routine with two steps, locked notes, and an FAQ. Facts were checked on 2 October against these sources:
+  - Apple 108770: iCloud Backup excludes notes already in iCloud.
+  - Apple's delete and recover pages: Recently Deleted keeps notes for 30 days.
+  - Apple's export pages: on macOS 26 it's File > Export as > Markdown, on macOS 27 it's Export To, and on iPhone it's Share > Export as Markdown.
+  - Apple 102307: Time Machine.
+  - The kzaremski/apple-notes-exporter README: GPL, keeps folders and attachments, needs Full Disk Access.
+- The cover is the Apple Notes File menu, open at Export as, with Markdown selected. It's drawn in HTML at 4x, and every item's wording is read from Notes' own MainMenu.nib on macOS 26.5. The nib also has an Archive item under Export as, but Apple's pages document only PDF and Markdown, so Archive is left out. The menu fills about 67% of the panel and ends above the fade. It's on a new mint ground, which differs from its neighbours. There's no Amber screenshot, because this is an Apple Notes post.
+- I checked the cover at 1440 and 390 next to the first 8 covers on /blog (`first8-1440.png`, `first8-390.png`). The share card uses a JPEG copy of the cover.
+- "How to recover deleted Apple Notes" now links here from its prevention list.
+
 ## 1 October 2026: the Claude Cowork cover fills its card
 
 - Emil flagged that the prompt sat small in the middle third of its panel. The other covers fill theirs.
