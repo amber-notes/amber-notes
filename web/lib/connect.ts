@@ -194,12 +194,3 @@ export async function pkcePair(): Promise<{ verifier: string; challenge: string 
   return { verifier, challenge };
 }
 
-/// How the connect pages look. Three candidates while the choice is open, all from the site's own
-/// tokens: "a" one centred card, "b" a panel with the request on one side and the form on the other,
-/// "c" no card, left-aligned, with the three steps across the top. Off production (previews, local),
-/// /connect?...&look=b shows another one.
-export type ConnectLook = "a" | "b" | "c";
-export const CONNECT_LOOK: ConnectLook = "a";
-export function lookFor(param: string | undefined, production: boolean): ConnectLook {
-  return !production && (param === "a" || param === "b" || param === "c") ? param : CONNECT_LOOK;
-}

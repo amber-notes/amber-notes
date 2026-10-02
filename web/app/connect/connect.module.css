@@ -257,20 +257,20 @@
 .doneTick { fill: none; stroke: #fff; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
 .pDash { fill: var(--a-bar); }
 
-/* The steps and the side panel belong to looks "c" and "b". */
-.steps, .side { display: none; }
+/* The request panel shows only on a page about one request (ConnectCard's `request`). */
+.side { display: none; }
 
-/* ── Look B: one wide panel. The request on a soft field beside the form; stacked on a phone. ── */
-.page[data-look="b"] { grid-template-columns: minmax(0, 940px); }
-.page[data-look="b"] .shell {
+/* ── A page about one request: the request on a soft panel beside the form; stacked on a phone. ── */
+.page[data-layout="panel"] { grid-template-columns: minmax(0, 940px); }
+.page[data-layout="panel"] .shell {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); justify-items: stretch; border-radius: 36px; overflow: hidden; background: var(--card);
   box-shadow: 0 0 0 1px var(--line), 0 1px 2px rgba(60, 30, 5, 0.06), 0 24px 48px -28px rgba(60, 30, 5, 0.45);
 }
-.page[data-look="b"] .side {
+.page[data-layout="panel"] .side {
   --a-body: #2a1d10; --a-screen: #ffe9c8; --a-paper: #fffdf8; --a-bar: rgba(42, 29, 16, 0.3); --a-bar-soft: rgba(42, 29, 16, 0.14); --a-shadow: rgba(110, 55, 5, 0.2);
   display: grid; align-content: center; justify-items: start; gap: 18px; padding: 44px 44px 48px; background: var(--soft); text-align: left;
 }
-:global([data-theme="leaf"]) .page[data-look="b"] .side {
+:global([data-theme="leaf"]) .page[data-layout="panel"] .side {
   --a-body: #f6dfc2; --a-screen: #5c3415; --a-paper: #fbeedd; --a-bar: rgba(46, 24, 10, 0.42); --a-bar-soft: rgba(46, 24, 10, 0.2); --a-shadow: rgba(0, 0, 0, 0.28);
 }
 .sidePicture { width: min(300px, 100%); height: auto; margin: 8px 0 4px; }
@@ -278,44 +278,25 @@
 .sideCaption { color: var(--muted); font-size: 15px; font-weight: 600; }
 .sideHost { color: var(--ink); font-size: 34px; line-height: 1.1; font-weight: 750; letter-spacing: -0.025em; overflow-wrap: anywhere; }
 .sideNote { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.45; }
-.page[data-look="b"] .card { align-content: center; padding: 44px 44px 40px; border-radius: 0; background: none; box-shadow: none; }
-.page[data-look="b"] .marks, .page[data-look="b"] .request { display: none; }
-.page[data-look="b"] .card, .page[data-look="b"] .title { text-align: left; justify-items: stretch; }
-.page[data-look="b"] .lede, .page[data-look="b"] .small, .page[data-look="b"] .hint { text-align: left; }
-.page[data-look="b"] .status { justify-content: flex-start; }
-.page[data-look="b"] .links { justify-items: start; }
-.page[data-look="b"] .qr, .page[data-look="b"] .art, .page[data-look="b"] .done, .page[data-look="b"] .matchNumber { justify-self: center; }
+.page[data-layout="panel"] .card { align-content: center; padding: 44px 44px 40px; border-radius: 0; background: none; box-shadow: none; }
+.page[data-layout="panel"] .marks, .page[data-layout="panel"] .request { display: none; }
+.page[data-layout="panel"] .card, .page[data-layout="panel"] .title { text-align: left; justify-items: stretch; }
+.page[data-layout="panel"] .lede, .page[data-layout="panel"] .small, .page[data-layout="panel"] .hint { text-align: left; }
+.page[data-layout="panel"] .status { justify-content: flex-start; }
+.page[data-layout="panel"] .links { justify-items: start; }
+.page[data-layout="panel"] .qr, .page[data-layout="panel"] .art, .page[data-layout="panel"] .done, .page[data-layout="panel"] .matchNumber { justify-self: center; }
 @media (max-width: 860px) {
-  .page[data-look="b"] { grid-template-columns: minmax(0, 460px); }
-  .page[data-look="b"] .shell { grid-template-columns: minmax(0, 1fr); border-radius: 30px; }
-  .page[data-look="b"] .side { grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 2px 14px; padding: 18px 20px; }
-  .page[data-look="b"] .side .mark { grid-row: span 2; }
-  .page[data-look="b"] .sidePicture { display: none; }
-  .page[data-look="b"] .sideHost { font-size: 22px; }
-  .page[data-look="b"] .sideCaption, .page[data-look="b"] .sideNote { font-size: 13px; }
-  .page[data-look="b"] .card { padding: 24px 20px 22px; }
+  .page[data-layout="panel"] { grid-template-columns: minmax(0, 460px); }
+  .page[data-layout="panel"] .shell { grid-template-columns: minmax(0, 1fr); border-radius: 30px; }
+  .page[data-layout="panel"] .side { grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 2px 14px; padding: 18px 20px; }
+  .page[data-layout="panel"] .side .mark { grid-row: span 2; }
+  .page[data-layout="panel"] .sidePicture { display: none; }
+  .page[data-layout="panel"] .sideHost { font-size: 22px; }
+  .page[data-layout="panel"] .sideCaption, .page[data-layout="panel"] .sideNote { font-size: 13px; }
+  .page[data-layout="panel"] .card { padding: 24px 20px 22px; }
 }
 
-/* ── Look C: no card. Left-aligned on the page, the three steps across the top. ── */
-.page[data-look="c"] { place-content: start center; padding-top: clamp(28px, 10vh, 104px); }
-.page[data-look="c"] .card { padding: 0; border-radius: 0; background: none; box-shadow: none; justify-items: stretch; text-align: left; gap: 18px; }
-.page[data-look="c"] .marks { justify-content: flex-start; margin-bottom: 0; }
-.page[data-look="c"] .marks .mark { width: 44px; height: 44px; }
-.page[data-look="c"] .title { font-size: 34px; line-height: 1.1; letter-spacing: -0.028em; text-align: left; }
-@media (max-width: 480px) { .page[data-look="c"] .title { font-size: 28px; } }
-.page[data-look="c"] .lede, .page[data-look="c"] .small, .page[data-look="c"] .hint { text-align: left; }
-.page[data-look="c"] .status { justify-content: flex-start; }
-.page[data-look="c"] .links { justify-items: start; }
-.page[data-look="c"] .foot { justify-self: start; margin-top: 12px; }
-.page[data-look="c"] .qr, .page[data-look="c"] .done, .page[data-look="c"] .matchNumber { justify-self: start; }
-.page[data-look="c"] .steps { display: flex; align-items: center; gap: 8px; margin: 0; padding: 0; list-style: none; font-size: 13px; font-weight: 650; color: var(--muted); }
-.steps li { display: flex; align-items: center; gap: 7px; }
-.steps li + li::before { content: ""; width: 18px; height: 1.5px; margin-right: 1px; background: var(--line); }
-.stepDot { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--field-line); font-size: 12px; font-variant-numeric: tabular-nums; }
-.steps li[data-state="now"] { color: var(--ink); }
-.steps li[data-state="now"] .stepDot { background: var(--ink); color: var(--card); box-shadow: none; }
-.steps li[data-state="done"] .stepDot { background: var(--amber); color: #fff; box-shadow: none; }
-@media (max-width: 480px) { .steps li:not([data-state="now"]) .stepLabel { display: none; } }
+
 
 /* The error's reserved line sits in the space between the last field and the button. */
 .form .error { margin: -9px 0 -9px; }
@@ -331,17 +312,16 @@
 /* B, on a wide screen: the mark at the top of the panel, the picture in the middle, the words at the foot. */
 .sideWords { display: grid; gap: 8px; }
 @media (min-width: 861px) {
-  .page[data-look="b"] .side { display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; min-height: 520px; box-sizing: border-box; }
-  .page[data-look="b"] .sidePicture { width: 100%; max-width: 360px; align-self: center; margin: 0; }
-  .page[data-look="b"] .title { font-size: 30px; }
+  .page[data-layout="panel"] .side { display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; min-height: 520px; box-sizing: border-box; }
+  .page[data-layout="panel"] .sidePicture { width: 100%; max-width: 360px; align-self: center; margin: 0; }
+  .page[data-layout="panel"] .title { font-size: 30px; }
 }
 @media (max-width: 860px) {
-  .page[data-look="b"] .sideWords { gap: 0; }
-  .page[data-look="b"] .sideNote { display: none; }
-  .page[data-look="b"] .request { display: block; }
-  .page[data-look="b"] .request b { font-weight: 650; }
+  .page[data-layout="panel"] .sideWords { gap: 0; }
+  .page[data-layout="panel"] .sideNote { display: none; }
+  .page[data-layout="panel"] .request { display: block; }
+  .page[data-layout="panel"] .request b { font-weight: 650; }
 }
-.page[data-look="c"] { padding-top: clamp(20px, 6vh, 64px); }
 @media (max-width: 480px) {
   .card { padding-top: 24px; }
   .marks .mark { width: 44px; height: 44px; }
@@ -351,7 +331,5 @@
 /* A short window: less air around the card, so the buttons stay in view. */
 @media (min-width: 481px) and (max-height: 860px) {
   .page { padding-top: 16px; padding-bottom: 16px; gap: 12px; }
-  .page:not([data-look="b"]) .card { gap: 14px; padding-top: 26px; padding-bottom: 22px; }
-  .page[data-look="c"] { padding-top: 20px; }
-  .page[data-look="c"] .card { padding: 0; }
+  .page:not([data-layout="panel"]) .card { gap: 14px; padding-top: 26px; padding-bottom: 22px; }
 }

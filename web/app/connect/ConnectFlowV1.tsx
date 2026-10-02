@@ -12,7 +12,7 @@ import {
   type AccountKey,
 } from "@/lib/connect-flow";
 import { newHandoffKeys, openHandoff, parseRecoveryKey, toBase64 } from "@/lib/e2ee";
-import { EmailFields, EndedScreen, ErrorLine, LeavingScreen, RequestLine, SignInButtons, Spinner, Steps } from "./ConnectScreens";
+import { EmailFields, EndedScreen, ErrorLine, LeavingScreen, RequestLine, SignInButtons, Spinner } from "./ConnectScreens";
 import { DeviceScreen } from "./DeviceLead";
 import styles from "./connect.module.css";
 
@@ -486,7 +486,6 @@ export default function ConnectFlowV1({ requestId, supabaseURL, anonKey, label, 
     <>
       {view.kind === "signIn" && !recovering && (
         <>
-          <Steps at={1} to={to} />
           <h1 className={styles.title}>{heading}</h1>
           <RequestLine to={to} claimed={label?.claimed_name} />
           <p className={styles.lede}>Sign in, and Amber Notes asks you on your iPhone or Mac.</p>
@@ -513,13 +512,11 @@ export default function ConnectFlowV1({ requestId, supabaseURL, anonKey, label, 
       {view.kind === "waiting" && devices && lead !== "recover" && lead !== "any" && (
         <DeviceScreen
           lead={lead} devices={devices} number={number} action="type" openLink={universalLink(requestId)} onRecover={showRecovery} onResend={resend}
-          steps={<Steps at={2} to={to} />}
         />
       )}
 
       {view.kind === "waiting" && !(devices && lead !== "recover" && lead !== "any") && (
         <>
-          <Steps at={2} to={to} />
           {number ? (
             <>
               <h1 className={styles.title}>Approve on your iPhone or Mac</h1>
@@ -545,7 +542,6 @@ export default function ConnectFlowV1({ requestId, supabaseURL, anonKey, label, 
 
       {recovering && (
         <>
-          <Steps at={2} to={to} />
           <h1 className={styles.title}>{heading}</h1>
           {request
             ? <RequestLine to={destination(request.redirect_host, request.loopback)} claimed={request.claimed_name} />

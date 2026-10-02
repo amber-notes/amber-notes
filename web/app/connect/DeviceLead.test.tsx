@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { browserOn, leadFor, parseDevices } from "@/lib/connect-flow";
 import ConnectCard from "./ConnectCard";
-import { ErrorLine, RequestLine, Steps } from "./ConnectScreens";
+import { ErrorLine, RequestLine } from "./ConnectScreens";
 import { DeviceScreen, numberBody, numberTitle } from "./DeviceLead";
 
 const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&#x27;/g, "'").replace(/\s+/g, " ").trim();
@@ -115,19 +115,12 @@ describe("the parts every connect screen shares", () => {
     expect(text(renderToStaticMarkup(<ErrorLine text="The email or password isn't right." />))).toBe("The email or password isn't right.");
   });
 
-  it("marks the step you're on", () => {
-    const html = renderToStaticMarkup(<Steps at={2} to="claude.ai" />);
-    expect(html).toMatch(/data-state="done"[^>]*>.*Sign in/);
-    expect(html).toMatch(/aria-current="step"[^>]*>.*Allow it/);
-    expect(text(html)).toContain("Back to claude.ai");
-  });
-
-  it("shows where access goes beside the form only in look b, and never another app's mark", () => {
+  it("shows where access goes beside the form only on a page about one request, and never another app's mark", () => {
     const label = { claimed_name: "Claude", redirect_host: "claude.ai", loopback: false };
-    const b = renderToStaticMarkup(<ConnectCard look="b" label={label}><p>x</p></ConnectCard>);
+    const b = renderToStaticMarkup(<ConnectCard request label={label}><p>x</p></ConnectCard>);
     expect(text(b)).toContain("Access goes to claude.ai");
     expect(text(b)).toContain("Nothing is shared until you allow it.");
-    const a = renderToStaticMarkup(<ConnectCard look="a" label={label}><p>x</p></ConnectCard>);
+    const a = renderToStaticMarkup(<ConnectCard label={label}><p>x</p></ConnectCard>);
     expect(a).not.toContain("<aside");
     for (const html of [a, b]) expect([...html.matchAll(/<img[^>]*src="([^"]+)"/g)].every((m) => m[1] === "/mark-256.png")).toBe(true);
   });

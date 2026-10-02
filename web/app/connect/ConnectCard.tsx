@@ -1,17 +1,17 @@
-import { CONNECT_LOOK, destination, type ConnectLabel, type ConnectLook } from "@/lib/connect";
+import { destination, type ConnectLabel } from "@/lib/connect";
 import styles from "./connect.module.css";
 
 /// The frame every connect page sits in: Amber Notes' mark, then whatever the page says. No other
-/// app's mark: nothing on these pages vouches for who is asking. `look` picks one of the three
-/// candidate layouts (lib/connect.ts); "b" also shows where access would go beside the form.
-export default function ConnectCard({ look = CONNECT_LOOK, label = null, children }: {
-  look?: ConnectLook; label?: ConnectLabel | null; children: React.ReactNode;
+/// app's mark: nothing on these pages vouches for who is asking. With `request` (a page about one
+/// connection request), where access would go sits on a panel beside the form; stacked on a phone.
+export default function ConnectCard({ request = false, label = null, children }: {
+  request?: boolean; label?: ConnectLabel | null; children: React.ReactNode;
 }) {
   const to = label?.redirect_host ? destination(label.redirect_host, label.loopback) : null;
   return (
-    <main className={styles.page} data-look={look}>
+    <main className={styles.page} data-layout={request ? "panel" : "card"}>
       <div className={styles.shell}>
-        {look === "b" && (
+        {request && (
           <aside className={styles.side}>
             <img className={styles.mark} src="/mark-256.png" alt="" width={44} height={44} />
             <RequestPicture to={to} />

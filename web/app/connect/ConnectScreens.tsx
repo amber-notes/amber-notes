@@ -25,21 +25,6 @@ export function RequestLine({ to, claimed = null }: { to: string | null; claimed
 }
 const AccessLine = RequestLine;
 
-/// Where you are: sign in, allow it, back to the app. Shown by the look that has no card ("c").
-export function Steps({ at, to, first = "Sign in" }: { at: 1 | 2 | 3; to: string | null; first?: string }) {
-  const labels = [first, "Allow it", `Back to ${to ?? "the app"}`];
-  return (
-    <ol className={styles.steps}>
-      {labels.map((text, i) => (
-        <li key={text} data-state={i + 1 < at ? "done" : i + 1 === at ? "now" : "next"} aria-current={i + 1 === at ? "step" : undefined}>
-          <span className={styles.stepDot} aria-hidden="true">{i + 1}</span>
-          <span className={styles.stepLabel}>{text}</span>
-        </li>
-      ))}
-    </ol>
-  );
-}
-
 /// What went wrong, in a line that is always there, so nothing below it moves when it speaks.
 export function ErrorLine({ text }: { text: string | null }) {
   return <p className={styles.error} role="alert">{text}</p>;
@@ -52,7 +37,6 @@ export function ScanScreen({ to, link, macLink, onNotify, onRecover }: {
 }) {
   return (
     <>
-      <Steps at={1} to={to} first="Scan" />
       <h1 className={styles.title}>Scan with your iPhone</h1>
       <AccessLine to={to} />
       <QRCode link={link} label="QR code to connect with Amber Notes on your iPhone" />
@@ -77,7 +61,6 @@ export function NotifySignInScreen({ to, onSubmit, onScan, ...signIn }: SignInPr
 }) {
   return (
     <>
-      <Steps at={1} to={to} />
       <h1 className={styles.title}>Sign in to get a notification</h1>
       <AccessLine to={to} />
       {APPLE_ON_WEB ? <SignInButtons onApple={signIn.onApple} busy={signIn.busy} /> : <p className={styles.small}>{APPLE_INSTEAD}</p>}
@@ -106,7 +89,6 @@ export function NotifyScreen({ number, onScan, lead = "any", devices = null, ope
     return (
       <DeviceScreen
         lead={lead} devices={devices} number={number} action="compare" openLink={openLink} onRecover={onRecover} onResend={onResend}
-        steps={<Steps at={2} to={to} />}
       >
         <button type="button" className={styles.link} onClick={onScan}>Scan the code instead</button>
       </DeviceScreen>
@@ -114,7 +96,6 @@ export function NotifyScreen({ number, onScan, lead = "any", devices = null, ope
   }
   return (
     <>
-      <Steps at={2} to={to} />
       {number ? (
         <>
           <h1 className={styles.title}>Compare the number</h1>
@@ -158,7 +139,6 @@ export function RecoverScreen({ to, signedIn, recoveryKey, onRecoveryKey, access
   const writing = write && canWrite;
   return (
     <>
-      <Steps at={2} to={to} />
       <h1 className={styles.title}>Use your recovery key</h1>
       <AccessLine to={to} />
       {noDevices && <p className={styles.lede}>No iPhone or Mac has opened Amber Notes on this account in the last 30 days, so approve this connection here with your recovery key.</p>}
@@ -212,7 +192,6 @@ export function WorkingScreen({ text }: { text: string }) {
 export function LeavingScreen({ allowed, host }: { allowed: boolean; host: string }) {
   return (
     <>
-      <Steps at={3} to={host} />
       {allowed && <DoneMark />}
       <h1 className={styles.title}>{allowed ? "Connected" : "Not connected"}</h1>
       <p className={styles.status} role="status"><Spinner /> Taking you back to {host}…</p>

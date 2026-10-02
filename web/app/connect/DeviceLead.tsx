@@ -48,14 +48,13 @@ export function numberBody(lead: Named, number: string, action: NumberAction): s
 /// Signed in: the one device to use, its picture, and the number once that device has opened the
 /// request. `openLink` opens the app on this device. `onResend` sends the notification again and
 /// answers with what went wrong, or null. `children` are the page's own small links.
-export function DeviceScreen({ lead, devices, number, action, openLink, onRecover, onResend, steps, children }: {
+export function DeviceScreen({ lead, devices, number, action, openLink, onRecover, onResend, children }: {
   lead: Named; devices: Devices; number: string | null; action: NumberAction;
-  openLink: string; onRecover: () => void; onResend?: () => Promise<string | null>; steps?: React.ReactNode; children?: React.ReactNode;
+  openLink: string; onRecover: () => void; onResend?: () => Promise<string | null>; children?: React.ReactNode;
 }) {
   const here = lead === "thisMac" || lead === "thisIphone";
   return (
     <>
-      {steps}
       <h1 className={styles.title}>{number ? numberTitle(lead, number, action) : TITLE[lead]}</h1>
       <DeviceArt mac={lead === "mac" || lead === "thisMac"} />
       {number && <span className={styles.matchNumber} aria-hidden="true">{number}</span>}
