@@ -115,6 +115,14 @@ import Testing
     let server = FakeServer()
     let defaults = UserDefaults(suiteName: "key-startup-\(UUID())")!
 
+    /// Runs the loops in the background at once: their waits only yield. The fetch's time limit
+    /// (12 s) gets a sleep that throws, which sets no limit; a limit that only yields races the
+    /// fake server's answer, and on a busy machine it wins and the device looks unreachable.
+    static let loopsRunAtOnce: @Sendable (Duration) async throws -> Void = { wait in
+        if wait >= .seconds(12) { throw CancellationError() }
+        await Task.yield()
+    }
+
     func device(_ keychain: FakeKeychain? = nil, sleep: @escaping @Sendable (Duration) async throws -> Void = { _ in throw CancellationError() }) -> (AccountCrypto, FakeKeychain) {
         let k = keychain ?? FakeKeychain(cloud: cloud)
         return (AccountCrypto(store: k, defaults: defaults, sleep: sleep), k)
@@ -217,7 +225,7 @@ import Testing
         cloud.keys[user] = k
         let keychain = FakeKeychain(cloud: cloud, autoReceive: false)
         keychain.receiveAfterLoads = 4
-        let (crypto, _) = device(keychain, sleep: { _ in await Task.yield() })
+        let (crypto, _) = device(keychain, sleep: Self.loopsRunAtOnce)
         await crypto.attach(account: user, server: server)
         #expect(crypto.phase == .waiting)
         await crypto.waitForBackground()
@@ -501,7 +509,7 @@ import Testing
 
     @Test func offlineRetriesInTheBackground() async throws {
         let k = try existingKey()
-        let (crypto, keychain) = device(sleep: { _ in await Task.yield() })
+        let (crypto, keychain) = device(sleep: Self.loopsRunAtOnce)
         server.offline = true
         await crypto.attach(account: user, server: server)
         #expect(crypto.phase == .unreachable)
@@ -514,7 +522,7 @@ import Testing
 
     @Test func aKeyUsedOfflineIsCheckedInTheBackground() async throws {
         let k = try existingKey()
-        let (crypto, keychain) = device(sleep: { _ in await Task.yield() })
+        let (crypto, keychain) = device(sleep: Self.loopsRunAtOnce)
         keychain.synced[user] = k
         server.offline = true
         await crypto.attach(account: user, server: server)
