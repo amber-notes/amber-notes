@@ -736,3 +736,60 @@ extension AIEditSnapshots {
         #expect((sent.body["handoff"] as? String)?.hasPrefix("amb2h.") == true)
     }
 }
+
+/// Every connected row has a mark or a plain glyph and a name: never a blank tile or cut-off text.
+@MainActor @Suite struct ConnectionTileTests {
+    static func conn(_ name: String, kind: String?, host: String?) -> Connection {
+        Connection(id: UUID(), name: name, kind: kind, can_write: true, created_at: .now, last_used_at: nil, revoked_at: nil, redirect_host: host)
+    }
+
+    @Test func eachConnectionHasAMarkOrAGlyph() {
+        #expect(Self.conn("Claude", kind: "oauth", host: "claude.ai").mark == "Claude")
+        #expect(Self.conn("Claude Code", kind: "pane", host: nil).mark == "Claude Code")
+        #expect(Self.conn("Codex", kind: nil, host: nil).mark == "Codex")
+        let token = Self.conn("My script", kind: "pane", host: nil)
+        #expect(token.mark == nil && token.symbol == "key.fill")
+        #expect(Self.conn("x", kind: "oauth", host: "127.0.0.1").symbol == "desktopcomputer")
+        #expect(Self.conn("x", kind: "oauth", host: "helper.example").symbol == "globe")
+        #expect(Self.conn("Claude", kind: "oauth", host: "evil.example").mark == nil, "the name never picks the mark")
+    }
+
+    @Test func aConnectionWithoutANameStillHasOne() {
+        #expect(Self.conn("", kind: "pane", host: nil).title == "Access token")
+        #expect(Self.conn("  ", kind: nil, host: nil).title == "Access token")
+        #expect(Self.conn("", kind: "oauth", host: nil).title == "An app")
+        #expect(Self.conn("My script", kind: "pane", host: nil).title == "My script")
+    }
+
+    #if os(macOS)
+    /// Renders the tile for a token with no host and checks it isn't blank: it has drawn pixels that
+    /// differ from its background. With AMBER_HIG_SHOTS set it also writes the Connected rows.
+    @Test func theTileForATokenWithoutAHostIsNeverBlank() throws {
+        let host = NSHostingView(rootView: ConnectionTile(connection: Self.conn("", kind: "pane", host: nil), size: 26).padding(2).background(Color.white))
+        host.appearance = NSAppearance(named: .aqua)
+        host.frame = CGRect(origin: .zero, size: host.fittingSize)
+        host.layoutSubtreeIfNeeded()
+        let rep = try #require(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+        host.cacheDisplay(in: host.bounds, to: rep)
+        var colors = Set<String>()
+        for x in stride(from: 0, to: rep.pixelsWide, by: 2) {
+            for y in stride(from: 0, to: rep.pixelsHigh, by: 2) {
+                if let c = rep.colorAt(x: x, y: y) { colors.insert(String(format: "%.2f-%.2f-%.2f", c.redComponent, c.greenComponent, c.blueComponent)) }
+            }
+        }
+        #expect(colors.count > 4, "a glyph on a tile, not one flat color")
+    }
+
+    @Test func connectedRowsSnapshot() async throws {
+        guard AppSnapshotTests.dir != nil else { return }
+        let rows = [Self.conn("Claude", kind: "oauth", host: "claude.ai"), Self.conn("", kind: "pane", host: nil),
+                    Self.conn("My script", kind: "pane", host: nil), Self.conn("Codex", kind: "pane", host: nil),
+                    Self.conn("incredible", kind: "oauth", host: "127.0.0.1")]
+        let client = SupabaseClient(supabaseURL: URL(string: "http://127.0.0.1:9")!, supabaseKey: "test")
+        for dark in [false, true] {
+            try await AppSnapshotTests.render(Form { ConnectAISection(client: client, preview: rows) }.formStyle(.grouped).frame(width: 520, height: 760)
+                .environment(ConnectGuideRoute()), name: "mac-connected-rows-\(dark ? "dark" : "light")", dark: dark, wait: 1)
+        }
+    }
+    #endif
+}

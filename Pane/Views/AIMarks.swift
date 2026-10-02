@@ -20,8 +20,10 @@ struct AIGlyph: View {
                 .foregroundStyle(Self.color(ai))
                 .accessibilityHidden(true)
         } else {
-            Text("MCP").font(.system(size: size * 0.42, weight: .heavy)).foregroundStyle(.tint)
+            // Any other app: a plain glyph that fits any size (text would be cut short in a small tile).
+            Image(systemName: "link").resizable().scaledToFit().frame(width: size * 0.8, height: size * 0.8)
                 .frame(width: size, height: size)
+                .foregroundStyle(.secondary)
                 .accessibilityHidden(true)
         }
     }

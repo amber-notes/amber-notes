@@ -1371,9 +1371,47 @@ struct Connection: Decodable, Identifiable {
     var title: String { Self.title(name: name, kind: kind, host: redirect_host) }
 
     static func title(name: String, kind: String?, host: String?) -> String {
+        let named = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard kind == "oauth", let host, !host.isEmpty,
-              ConnectTrust.verifiedAI(host: host, loopback: false) == nil else { return name }
-        return ["localhost", "127.0.0.1", "[::1]", "::1"].contains(host) ? "An app on this computer" : host
+              ConnectTrust.verifiedAI(host: host, loopback: false) == nil else {
+            return named.isEmpty ? (kind == "oauth" ? "An app" : "Access token") : named
+        }
+        return Self.isLoopback(host) ? "An app on this computer" : host
+    }
+
+    static func isLoopback(_ host: String) -> Bool { ["localhost", "127.0.0.1", "[::1]", "::1"].contains(host.lowercased()) }
+
+    /// The AI whose mark the row shows: by where a sign-in's approval went, or for an access token,
+    /// the guide that made it (Claude Code, Codex). Nil: a plain glyph (`symbol`).
+    var mark: String? {
+        if isOAuth { return ConnectTrust.verifiedAI(host: redirect_host ?? "", loopback: false) }
+        return ["Claude Code", "Codex"].contains(name) ? name : nil
+    }
+
+    /// A glyph for a connection without a mark: a key for an access token, a computer for an app
+    /// on this computer, a globe for anywhere else.
+    var symbol: String {
+        if !isOAuth { return "key.fill" }
+        return Self.isLoopback(redirect_host ?? "") ? "desktopcomputer" : "globe"
+    }
+}
+
+/// A connection's mark: the AI's, or a plain glyph in the same tile. Never a blank tile or text.
+struct ConnectionTile: View {
+    let connection: Connection
+    var size: CGFloat = 26
+
+    var body: some View {
+        if let ai = connection.mark {
+            AITile(ai: ai, size: size)
+        } else {
+            Image(systemName: connection.symbol)
+                .font(.system(size: size * 0.46, weight: .medium))
+                .foregroundStyle(.secondary)
+                .frame(width: size, height: size)
+                .background(.fill.tertiary, in: .rect(cornerRadius: size * 0.3, style: .continuous))
+                .accessibilityHidden(true)
+        }
     }
 }
 
@@ -1499,7 +1537,7 @@ struct ConnectAISection: View {
     private func row(_ c: Connection) -> some View {
         HStack(spacing: 10) {
             // The mark comes from where the approval went, never from the name.
-            AITile(ai: ConnectTrust.verifiedAI(host: c.redirect_host ?? "", loopback: false) ?? "", size: 26)
+            ConnectionTile(connection: c, size: 26)
             VStack(alignment: .leading, spacing: 3) {
                 Text(c.title)
                 Text(detail(c)).font(.caption).foregroundStyle(.secondary).monospacedDigit()
