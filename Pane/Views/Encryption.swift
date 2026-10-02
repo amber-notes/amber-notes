@@ -19,6 +19,7 @@ struct KeyGateView: View {
     @FocusState private var focused: Bool
     @Environment(\.displayScale) private var displayScale
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// What you chose: `auto` is the code another device scans while the key isn't here;
     /// `noDevice` lists the other ways, `keychain` is waiting for iCloud Keychain.
@@ -70,6 +71,7 @@ struct KeyGateView: View {
                 .frame(minWidth: 300, maxWidth: 400)
                 .glassEffect(.regular, in: .rect(cornerRadius: 28))
                 .padding(20)
+                .padding(.top, 20)
                 .frame(maxWidth: .infinity)
         }
         .scrollBounceBehavior(.basedOnSize)
@@ -79,8 +81,13 @@ struct KeyGateView: View {
 
     @ViewBuilder private var card: some View {
         VStack(spacing: 22) {
-            AppMark(size: 60)
+            // The sign-in card's mark, in the same place, so it stays put from one card to the next.
+            AppMark(size: 72)
+            // One screen fades into the next while the card eases to its new height: the mark
+            // stays put and nothing snaps.
             content
+                .id(Self.shown(crypto.phase, screen))
+                .transition(.opacity)
             if let error {
                 Text(error)
                     .font(.footnote)
@@ -91,6 +98,7 @@ struct KeyGateView: View {
             }
         }
         .animation(.snappy(duration: 0.2), value: error)
+        .animation(reduceMotion ? nil : .smooth(duration: 0.3), value: Self.shown(crypto.phase, screen))
         .onChange(of: crypto.phase) { _, _ in
             // The key arrived (or the account changed) while you were on another screen.
             if crypto.phase == .ready { screen = .auto }
@@ -247,8 +255,7 @@ struct KeyGateView: View {
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
                 mainButton("Unlock notes", id: "e2ee.submit", enabled: canSubmitRecovery) {
-                    try await crypto.recover(typed: recovery)
-                    recovery = ""
+                    try await unlock()
                 }
             }
             VStack(spacing: 10) {
@@ -262,7 +269,15 @@ struct KeyGateView: View {
     private var canSubmitRecovery: Bool { recovery.filter { $0.isLetter || $0.isNumber }.count >= 28 }
 
     private func submitRecovery() {
-        run { try await crypto.recover(typed: recovery); recovery = "" }
+        run { try await unlock() }
+    }
+
+    /// The keyboard goes down first, the usual way: left up, it vanishes in one frame when the
+    /// next screen takes the field away.
+    private func unlock() async throws {
+        focused = false
+        try await crypto.recover(typed: recovery)
+        recovery = ""
     }
 
     private var startFresh: some View {

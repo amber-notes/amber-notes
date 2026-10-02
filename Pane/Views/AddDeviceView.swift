@@ -54,6 +54,8 @@ enum AddDeviceCopy {
 struct QRCodeImage: View {
     let text: String
     var side: CGFloat = 176
+    /// The default code's size on screen, with its white margin.
+    static let outside: CGFloat = 176 + 2 * 14
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -204,24 +206,18 @@ struct NewDeviceCodeView: View {
         VStack(spacing: 14) {
             switch session.state {
             case .preparing:
-                ProgressView().controlSize(.regular).frame(height: 204)
+                // The code's own room, empty, so the card doesn't grow when the code comes.
+                VStack(spacing: 14) {
+                    Color.clear.frame(width: QRCodeImage.outside, height: QRCodeImage.outside)
+                    codeLines("XXXX-XXXX-XXXX")
+                }
+                .hidden()
+                .overlay(alignment: .top) { ProgressView().controlSize(.regular).frame(height: QRCodeImage.outside) }
+                .accessibilityHidden(true)
             case .showing(let qr, let code):
                 QRCodeImage(text: qr)
-                VStack(spacing: 4) {
-                    Text(AddDeviceCopy.codeLead)
-                        .font(.footnote)
-                        .foregroundStyle(Color.muted)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Text(code)
-                        .font(.system(.title3, design: .monospaced).weight(.semibold))
-                        .foregroundStyle(Color.ink)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.4)
-                        .textSelection(.enabled)
-                        .accessibilityLabel(code.map(String.init).joined(separator: " "))
-                        .accessibilityIdentifier("addDevice.code")
-                }
-                .multilineTextAlignment(.center)
+                codeLines(code)
+                    .transition(.opacity)
             case .expired:
                 message(AddDeviceCopy.expired)
                 Button(AddDeviceCopy.newCode) { session.again() }
@@ -241,6 +237,24 @@ struct NewDeviceCodeView: View {
             }
         }
         .frame(maxWidth: .infinity)
+    }
+
+    private func codeLines(_ code: String) -> some View {
+        VStack(spacing: 4) {
+            Text(AddDeviceCopy.codeLead)
+                .font(.footnote)
+                .foregroundStyle(Color.muted)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(code)
+                .font(.system(.title3, design: .monospaced).weight(.semibold))
+                .foregroundStyle(Color.ink)
+                .lineLimit(1)
+                .minimumScaleFactor(0.4)
+                .textSelection(.enabled)
+                .accessibilityLabel(code.map(String.init).joined(separator: " "))
+                .accessibilityIdentifier("addDevice.code")
+        }
+        .multilineTextAlignment(.center)
     }
 
     private func message(_ text: String) -> some View {
