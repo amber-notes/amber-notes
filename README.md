@@ -119,7 +119,7 @@ Everyone who has had a pull request merged, in the order they joined:
 
 - [@wufangyong973](https://github.com/wufangyong973): brought the website's README up to date ([#97](https://github.com/amber-notes/amber-notes/pull/97))
 - [@arnavtambe](https://github.com/arnavtambe): removed an unused field from the app's connections ([#109](https://github.com/amber-notes/amber-notes/pull/109))
-- [@sameer-dhande](https://github.com/sameer-dhande): made each help answer announce its own question to screen readers ([#170](https://github.com/amber-notes/amber-notes/pull/170))
+- [@sameer-dhande](https://github.com/sameer-dhande): made each help answer announce its own question to screen readers ([#170](https://github.com/amber-notes/amber-notes/pull/170)) and named the table's row and column handles for VoiceOver ([#176](https://github.com/amber-notes/amber-notes/pull/176))
 
 Want to be next? [CONTRIBUTING.md](CONTRIBUTING.md) has where to start, and ideas of your own are welcome in [Discussions](https://github.com/amber-notes/amber-notes/discussions/categories/ideas).
 
