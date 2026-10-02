@@ -517,7 +517,7 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
     case "notify":
       return (
         <NotifyScreen
-          number={number} onScan={backToScan} lead={lead} devices={devices}
+          number={number} onScan={backToScan} lead={lead} devices={devices} to={to}
           openLink={macLink ?? universalLink(requestId)} onRecover={showRecovery}
         />
       );

@@ -175,3 +175,175 @@
   --amber: #f5a53a; --link: #f7b865; --card: #3a2010; --cta-bg: #fbeedd; --cta-ink: #2e180a;
   background: var(--bg); color: var(--ink); color-scheme: dark;
 }
+
+/* ───── The design pass over every connect screen. These come after the rules above and win. ─────
+   One focus per screen: one filled button, everything else quiet. Fields sit in the page's cream,
+   a shade under the card, with a line you can see. Nothing here is a raw colour: the page's tokens,
+   plus two of its own. */
+.page {
+  --field: var(--bg, #fff4e6); --field-line: rgba(80, 45, 10, 0.24); --danger: #a3261d; --apple-bg: #000; --apple-ink: #fff;
+  grid-template-columns: minmax(0, 460px); padding: 32px 16px 28px;
+}
+:global([data-theme="leaf"]) .page {
+  --field: #2e180a; --field-line: rgba(255, 220, 170, 0.28); --danger: #ffb4a8; --apple-bg: #fff; --apple-ink: #000;
+}
+.shell { width: 100%; display: grid; justify-items: center; }
+.card { width: 100%; gap: 18px; padding: 36px 32px 28px; border-radius: 32px; }
+@media (max-width: 480px) { .card { gap: 16px; padding: 28px 20px 22px; border-radius: 30px; } }
+
+.title { font-size: 26px; line-height: 1.18; letter-spacing: -0.02em; }
+.lede { font-size: 16px; }
+
+/* Where access would go and what it could do: a slip of paper under the heading. */
+.request {
+  margin: 0; width: 100%; box-sizing: border-box; padding: 12px 16px; border-radius: 14px; text-align: left;
+  background: var(--soft); color: var(--muted); font-size: 15px; line-height: 1.45; text-wrap: pretty; overflow-wrap: anywhere;
+}
+.request b { color: var(--ink); }
+.requestName { display: block; margin-top: 2px; font-size: 13px; }
+
+/* Buttons: 50 high, one filled per screen. The second way in is an outline, not a beige slab. */
+.primary, .secondary, .apple { min-height: 50px; border-radius: 14px; font-size: 16px; }
+.secondary { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--ink) 70%, transparent); }
+@media (hover: hover) { .secondary:not(:disabled):hover { background: var(--soft); } }
+.primary:disabled, .secondary:disabled, .apple:disabled { opacity: 0.55; }
+/* Sign in with Apple, filled: black on the cream theme, white on the dark one (Apple's two solid styles). */
+.apple { background: var(--apple-bg); color: var(--apple-ink); box-shadow: none; font-weight: 600; font-size: 17px; gap: 7px; }
+.apple svg { margin-top: -2px; }
+
+.form { gap: 14px; }
+.field { gap: 7px; font-size: 13px; font-weight: 650; color: var(--ink); }
+.field input {
+  min-height: 50px; padding: 0 14px; border-radius: 12px; background: var(--field); color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--field-line);
+}
+.field input::placeholder { color: var(--muted); opacity: 0.6; }
+.field input:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; box-shadow: inset 0 0 0 1px var(--amber); }
+@media (prefers-reduced-motion: no-preference) { .field input { transition: box-shadow 0.15s ease-out; } }
+/* The error's line is always there, so the button under it never moves. */
+.error { min-height: 20px; margin: -4px 0; color: var(--danger); font-size: 14px; line-height: 20px; font-weight: 600; text-align: left; }
+
+.status { display: flex; align-items: flex-start; justify-content: center; gap: 10px; margin: 2px 0; font-size: 15px; line-height: 1.4; text-align: left; }
+.status .spinner { margin-top: 2px; }
+.spinner { vertical-align: -3px; }
+
+/* The reading you should do before typing a key: plain, with a rule down its side, not a box. */
+.note { padding: 2px 0 2px 14px; border-radius: 0; background: none; box-shadow: inset 3px 0 0 var(--line); font-size: 13px; }
+.warn { padding: 10px 14px; border-radius: 12px; background: color-mix(in srgb, var(--amber) 18%, transparent); color: var(--ink); font-size: 14px; }
+.segmented { border-radius: 12px; }
+.segmented button { min-height: 44px; border-radius: 9px; font-size: 15px; }
+.segmented button[aria-checked="true"] { background: var(--card); }
+
+/* The other ways in, under a hairline: small, one per line. */
+.quiet { width: 100%; display: grid; gap: 4px; margin-top: 2px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; line-height: 1.5; }
+.quiet p { margin: 0; }
+.quiet a, .small a { color: var(--link); font-weight: 600; text-underline-offset: 3px; padding: 6px 0; margin: -6px 0; border-radius: 4px; }
+.quiet a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.small { font-size: 14px; }
+.links { margin-top: 0; }
+.link { font-size: 15px; }
+.matchNumber, .artNumber { letter-spacing: 0.02em; }
+
+/* Connected: a tick of cut paper. */
+.done { margin-bottom: -2px; }
+.doneTick { fill: none; stroke: #fff; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+.pDash { fill: var(--a-bar); }
+
+/* The steps and the side panel belong to looks "c" and "b". */
+.steps, .side { display: none; }
+
+/* ── Look B: one wide panel. The request on a soft field beside the form; stacked on a phone. ── */
+.page[data-look="b"] { grid-template-columns: minmax(0, 940px); }
+.page[data-look="b"] .shell {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); justify-items: stretch; border-radius: 36px; overflow: hidden; background: var(--card);
+  box-shadow: 0 0 0 1px var(--line), 0 1px 2px rgba(60, 30, 5, 0.06), 0 24px 48px -28px rgba(60, 30, 5, 0.45);
+}
+.page[data-look="b"] .side {
+  --a-body: #2a1d10; --a-screen: #ffe9c8; --a-paper: #fffdf8; --a-bar: rgba(42, 29, 16, 0.3); --a-bar-soft: rgba(42, 29, 16, 0.14); --a-shadow: rgba(110, 55, 5, 0.2);
+  display: grid; align-content: center; justify-items: start; gap: 18px; padding: 44px 44px 48px; background: var(--soft); text-align: left;
+}
+:global([data-theme="leaf"]) .page[data-look="b"] .side {
+  --a-body: #f6dfc2; --a-screen: #5c3415; --a-paper: #fbeedd; --a-bar: rgba(46, 24, 10, 0.42); --a-bar-soft: rgba(46, 24, 10, 0.2); --a-shadow: rgba(0, 0, 0, 0.28);
+}
+.sidePicture { width: min(300px, 100%); height: auto; margin: 8px 0 4px; }
+.sideText { margin: 0; display: grid; gap: 2px; }
+.sideCaption { color: var(--muted); font-size: 15px; font-weight: 600; }
+.sideHost { color: var(--ink); font-size: 34px; line-height: 1.1; font-weight: 750; letter-spacing: -0.025em; overflow-wrap: anywhere; }
+.sideNote { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.45; }
+.page[data-look="b"] .card { align-content: center; padding: 44px 44px 40px; border-radius: 0; background: none; box-shadow: none; }
+.page[data-look="b"] .marks, .page[data-look="b"] .request { display: none; }
+.page[data-look="b"] .card, .page[data-look="b"] .title { text-align: left; justify-items: stretch; }
+.page[data-look="b"] .lede, .page[data-look="b"] .small, .page[data-look="b"] .hint { text-align: left; }
+.page[data-look="b"] .status { justify-content: flex-start; }
+.page[data-look="b"] .links { justify-items: start; }
+.page[data-look="b"] .qr, .page[data-look="b"] .art, .page[data-look="b"] .done, .page[data-look="b"] .matchNumber { justify-self: center; }
+@media (max-width: 860px) {
+  .page[data-look="b"] { grid-template-columns: minmax(0, 460px); }
+  .page[data-look="b"] .shell { grid-template-columns: minmax(0, 1fr); border-radius: 30px; }
+  .page[data-look="b"] .side { grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 2px 14px; padding: 18px 20px; }
+  .page[data-look="b"] .side .mark { grid-row: span 2; }
+  .page[data-look="b"] .sidePicture { display: none; }
+  .page[data-look="b"] .sideHost { font-size: 22px; }
+  .page[data-look="b"] .sideCaption, .page[data-look="b"] .sideNote { font-size: 13px; }
+  .page[data-look="b"] .card { padding: 24px 20px 22px; }
+}
+
+/* ── Look C: no card. Left-aligned on the page, the three steps across the top. ── */
+.page[data-look="c"] { place-content: start center; padding-top: clamp(28px, 10vh, 104px); }
+.page[data-look="c"] .card { padding: 0; border-radius: 0; background: none; box-shadow: none; justify-items: stretch; text-align: left; gap: 18px; }
+.page[data-look="c"] .marks { justify-content: flex-start; margin-bottom: 0; }
+.page[data-look="c"] .marks .mark { width: 44px; height: 44px; }
+.page[data-look="c"] .title { font-size: 34px; line-height: 1.1; letter-spacing: -0.028em; text-align: left; }
+@media (max-width: 480px) { .page[data-look="c"] .title { font-size: 28px; } }
+.page[data-look="c"] .lede, .page[data-look="c"] .small, .page[data-look="c"] .hint { text-align: left; }
+.page[data-look="c"] .status { justify-content: flex-start; }
+.page[data-look="c"] .links { justify-items: start; }
+.page[data-look="c"] .foot { justify-self: start; margin-top: 12px; }
+.page[data-look="c"] .qr, .page[data-look="c"] .done, .page[data-look="c"] .matchNumber { justify-self: start; }
+.page[data-look="c"] .steps { display: flex; align-items: center; gap: 8px; margin: 0; padding: 0; list-style: none; font-size: 13px; font-weight: 650; color: var(--muted); }
+.steps li { display: flex; align-items: center; gap: 7px; }
+.steps li + li::before { content: ""; width: 18px; height: 1.5px; margin-right: 1px; background: var(--line); }
+.stepDot { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--field-line); font-size: 12px; font-variant-numeric: tabular-nums; }
+.steps li[data-state="now"] { color: var(--ink); }
+.steps li[data-state="now"] .stepDot { background: var(--ink); color: var(--card); box-shadow: none; }
+.steps li[data-state="done"] .stepDot { background: var(--amber); color: #fff; box-shadow: none; }
+@media (max-width: 480px) { .steps li:not([data-state="now"]) .stepLabel { display: none; } }
+
+/* The error's reserved line sits in the space between the last field and the button. */
+.form .error { margin: -9px 0 -9px; }
+.quiet a, .small a, .inlineLink { white-space: nowrap; }
+@media (max-width: 480px) {
+  .page { padding-top: 20px; }
+  .marks .mark { width: 48px; height: 48px; }
+  .title { font-size: 24px; }
+  .request { padding: 10px 14px; font-size: 14px; }
+  .lede { font-size: 15px; }
+}
+
+/* B, on a wide screen: the mark at the top of the panel, the picture in the middle, the words at the foot. */
+.sideWords { display: grid; gap: 8px; }
+@media (min-width: 861px) {
+  .page[data-look="b"] .side { display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; min-height: 520px; box-sizing: border-box; }
+  .page[data-look="b"] .sidePicture { width: 100%; max-width: 360px; align-self: center; margin: 0; }
+  .page[data-look="b"] .title { font-size: 30px; }
+}
+@media (max-width: 860px) {
+  .page[data-look="b"] .sideWords { gap: 0; }
+  .page[data-look="b"] .sideNote { display: none; }
+  .page[data-look="b"] .request { display: block; }
+  .page[data-look="b"] .request b { font-weight: 650; }
+}
+.page[data-look="c"] { padding-top: clamp(20px, 6vh, 64px); }
+@media (max-width: 480px) {
+  .card { padding-top: 24px; }
+  .marks .mark { width: 44px; height: 44px; }
+  .field input, .primary, .secondary, .apple { min-height: 48px; }
+}
+.pDash { fill: var(--muted); opacity: 0.7; }
+/* A short window: less air around the card, so the buttons stay in view. */
+@media (min-width: 481px) and (max-height: 860px) {
+  .page { padding-top: 16px; padding-bottom: 16px; gap: 12px; }
+  .page:not([data-look="b"]) .card { gap: 14px; padding-top: 26px; padding-bottom: 22px; }
+  .page[data-look="c"] { padding-top: 20px; }
+  .page[data-look="c"] .card { padding: 0; }
+}

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import { fetchLabel, functionURL, problemText, qrConnectLive, validRequest } from "@/lib/connect";
+import { fetchLabel, functionURL, lookFor, problemText, qrConnectLive, validRequest } from "@/lib/connect";
 import { functionRegion, upstreamHeaders } from "@/lib/mcp-proxy";
 import { publicVersion } from "@/lib/public-release";
 import ConnectCard from "./ConnectCard";
@@ -13,14 +13,16 @@ import styles from "./connect.module.css";
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Connect to Amber Notes", robots: { index: false, follow: false } };
 
-export default async function Connect({ searchParams }: { searchParams: Promise<{ request?: string; problem?: string; recover?: string; code?: string; error?: string; qr?: string }> }) {
-  const { request, problem, recover, code, error, qr } = await searchParams;
+export default async function Connect({ searchParams }: { searchParams: Promise<{ request?: string; problem?: string; recover?: string; code?: string; error?: string; qr?: string; look?: string }> }) {
+  const { request, problem, recover, code, error, qr, look: lookParam } = await searchParams;
+  // Which of the three candidate layouts: the chosen one, or &look=a|b|c anywhere but production.
+  const look = lookFor(lookParam, process.env.VERCEL_ENV === "production");
   const supabaseURL = process.env.SUPABASE_URL ?? "";
   const anonKey = process.env.SUPABASE_ANON_KEY ?? "";
   if (validRequest(request) && (!supabaseURL || !anonKey)) {
     console.error("/connect: SUPABASE_URL or SUPABASE_ANON_KEY is not set");
     return (
-      <ConnectCard>
+      <ConnectCard look={look}>
         <h1 className={styles.title}>Couldn't connect</h1>
         <p className={styles.lede}>Connecting isn't available right now. Try again in a few minutes.</p>
       </ConnectCard>
@@ -28,7 +30,7 @@ export default async function Connect({ searchParams }: { searchParams: Promise<
   }
   if (!validRequest(request)) {
     return (
-      <ConnectCard>
+      <ConnectCard look={look}>
         <h1 className={styles.title}>{problem ? "Couldn't connect" : "This link isn't complete"}</h1>
         <p className={styles.lede}>{problemText(problem)}</p>
       </ConnectCard>
@@ -43,7 +45,7 @@ export default async function Connect({ searchParams }: { searchParams: Promise<
   // page those apps understand, and ?qr=1 for testing a newer build.
   const live = qrConnectLive(publicVersion());
   return (
-    <ConnectCard>
+    <ConnectCard look={look} label={label}>
       {qrConnectLive(publicVersion(), qr) ? <ConnectFlow {...flow} keepQR={!live} /> : <ConnectFlowV1 {...flow} />}
     </ConnectCard>
   );

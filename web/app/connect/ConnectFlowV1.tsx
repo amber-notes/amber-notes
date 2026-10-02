@@ -12,6 +12,7 @@ import {
   type AccountKey,
 } from "@/lib/connect-flow";
 import { newHandoffKeys, openHandoff, parseRecoveryKey, toBase64 } from "@/lib/e2ee";
+import { EmailFields, EndedScreen, ErrorLine, LeavingScreen, RequestLine, SignInButtons, Spinner, Steps } from "./ConnectScreens";
 import { DeviceScreen } from "./DeviceLead";
 import styles from "./connect.module.css";
 
@@ -462,6 +463,7 @@ export default function ConnectFlowV1({ requestId, supabaseURL, anonKey, label, 
   // MARK: The page
 
   const heading = ALLOW_HEADING;
+  const to = label?.redirect_host ? destination(label.redirect_host, label.loopback) : null;
   const recovering = mode === "recover" && (view.kind === "signIn" || view.kind === "recover");
   const canWrite = request ? request.wants_write : true;
 
@@ -469,22 +471,23 @@ export default function ConnectFlowV1({ requestId, supabaseURL, anonKey, label, 
     <>
       {view.kind === "signIn" && !recovering && (
         <>
+          <Steps at={1} to={to} />
           <h1 className={styles.title}>{heading}</h1>
-          <Asking label={label} />
+          <RequestLine to={to} claimed={label?.claimed_name} />
           <p className={styles.lede}>Sign in, and Amber Notes asks you on your iPhone or Mac.</p>
           {APPLE_ON_WEB && <SignInButtons onApple={signInWithApple} busy={busy} />}
           <form className={styles.form} method="post" onSubmit={submitSignIn}>
             <EmailFields email={email} password={password} onEmail={setEmail} onPassword={setPassword} />
-            {failure && <p className={styles.error} role="alert">{failure}</p>}
+            <ErrorLine text={failure} />
             <button type="submit" className={styles.secondary} disabled={!ready || busy} aria-busy={busy}>
-              {busy ? <><Spinner /> Signing in…</> : "Continue"}
+              {busy ? <><Spinner /> Signing in…</> : "Sign in with email"}
             </button>
           </form>
-          <p className={styles.small}>
-            Amber Notes on this computer? <a href={universalLink(requestId)}>Open Amber Notes</a>
-            {!APPLE_ON_WEB && <><br />{APPLE_INSTEAD}</>}
-            <br />No account yet? <a href="/download">Get Amber Notes</a>
-          </p>
+          <div className={styles.quiet}>
+            <p>Amber Notes on this computer? <a href={universalLink(requestId)}>Open Amber Notes</a></p>
+            {!APPLE_ON_WEB && <p>{APPLE_INSTEAD}</p>}
+            <p>No account yet? <a href="/download">Get Amber Notes</a></p>
+          </div>
         </>
       )}
 
@@ -493,11 +496,15 @@ export default function ConnectFlowV1({ requestId, supabaseURL, anonKey, label, 
       )}
 
       {view.kind === "waiting" && devices && lead !== "recover" && lead !== "any" && (
-        <DeviceScreen lead={lead} devices={devices} number={number} action="type" openLink={universalLink(requestId)} onRecover={showRecovery} />
+        <DeviceScreen
+          lead={lead} devices={devices} number={number} action="type" openLink={universalLink(requestId)} onRecover={showRecovery}
+          steps={<Steps at={2} to={to} />}
+        />
       )}
 
       {view.kind === "waiting" && !(devices && lead !== "recover" && lead !== "any") && (
         <>
+          <Steps at={2} to={to} />
           {number ? (
             <>
               <h1 className={styles.title}>Approve on your iPhone or Mac</h1>
@@ -525,11 +532,11 @@ export default function ConnectFlowV1({ requestId, supabaseURL, anonKey, label, 
 
       {recovering && (
         <>
+          <Steps at={2} to={to} />
           <h1 className={styles.title}>{heading}</h1>
           {request
-            ? <p className={styles.lede}>Access goes to <b>{destination(request.redirect_host, request.loopback)}</b>.
-                {request.claimed_name && <> It calls itself &ldquo;{request.claimed_name}&rdquo;.</>}</p>
-            : <Asking label={label} />}
+            ? <RequestLine to={destination(request.redirect_host, request.loopback)} claimed={request.claimed_name} />
+            : <RequestLine to={to} claimed={label?.claimed_name} />}
           {lead === "recover" && <p className={styles.lede}>No iPhone or Mac has opened Amber Notes on this account in the last 30 days, so allow it here with your recovery key.</p>}
           <p className={styles.note}>
             This runs our code in your browser. Your recovery key and your notes' key are used on this page only, and are never stored or sent to us.
@@ -555,7 +562,7 @@ export default function ConnectFlowV1({ requestId, supabaseURL, anonKey, label, 
               ? "It can search, read, create and change notes. Every change keeps the previous version."
               : "It can search and read notes, but not change them."}</p>
             <p className={styles.warn}>Only allow it if you just started connecting it yourself.</p>
-            {failure && <p className={styles.error} role="alert">{failure}</p>}
+            <ErrorLine text={failure} />
             <button type="submit" className={styles.primary} disabled={!ready || busy} aria-busy={busy}>
               {busy ? <><Spinner /> Allowing…</> : "Allow"}
             </button>
@@ -565,20 +572,9 @@ export default function ConnectFlowV1({ requestId, supabaseURL, anonKey, label, 
         </>
       )}
 
-      {view.kind === "leaving" && (
-        <>
-          <h1 className={styles.title}>{view.allowed ? "Connected" : "Not connected"}</h1>
-          <p className={styles.lede} role="status"><Spinner /> Taking you back to {hostOf(view.to)}…</p>
-        </>
-      )}
+      {view.kind === "leaving" && <LeavingScreen allowed={view.allowed} host={hostOf(view.to)} />}
 
-      {view.kind === "ended" && (
-        <>
-          <h1 className={styles.title}>{view.title}</h1>
-          <p className={styles.lede} role="alert">{view.text}</p>
-          {view.retry && <button type="button" className={styles.secondary} onClick={startOver}>Try again</button>}
-        </>
-      )}
+      {view.kind === "ended" && <EndedScreen title={view.title} text={view.text} onRetry={view.retry ? startOver : undefined} />}
     </>
   );
 }
@@ -599,60 +595,7 @@ export function MatchNumber({ number }: { number: string }) {
   );
 }
 
-/// What the app calls itself and where access goes, never as a title: nothing here is verified.
-function Asking({ label }: { label: ConnectLabel | null }) {
-  if (!label) return null;
-  const to = label.redirect_host ? destination(label.redirect_host, label.loopback) : null;
-  return (
-    <p className={styles.lede}>
-      {label.claimed_name && <>It calls itself &ldquo;{label.claimed_name}&rdquo;. </>}
-      {to && <>Access goes to <b>{to}</b>.</>}
-    </p>
-  );
-}
-
 function hostOf(url: string): string {
   try { return new URL(url).hostname || "the app"; } catch { return "the app"; }
 }
 
-function SignInButtons({ onApple, busy }: { onApple: () => void; busy: boolean }) {
-  return (
-    <>
-      <button type="button" className={styles.apple} onClick={onApple} disabled={busy}>
-        <AppleGlyph /> Sign in with Apple
-      </button>
-      <div className={styles.or}><span>or with email</span></div>
-    </>
-  );
-}
-
-/// No name attributes and a POST, and the CSP's form-action 'none': before the page's script runs,
-/// the form can't put the password anywhere. The buttons wait for the script anyway.
-function EmailFields({ email, password, onEmail, onPassword }: {
-  email: string; password: string; onEmail: (v: string) => void; onPassword: (v: string) => void;
-}) {
-  return (
-    <>
-      <label className={styles.field}>
-        <span>Email</span>
-        <input type="email" id="connect-email" autoComplete="username" required value={email} onChange={(e) => onEmail(e.target.value)} />
-      </label>
-      <label className={styles.field}>
-        <span>Password</span>
-        <input type="password" id="connect-password" autoComplete="current-password" required value={password} onChange={(e) => onPassword(e.target.value)} />
-      </label>
-    </>
-  );
-}
-
-function Spinner() {
-  return <span className={styles.spinner} aria-hidden="true" />;
-}
-
-function AppleGlyph() {
-  return (
-    <svg width="16" height="19" viewBox="0 0 17 20" fill="currentColor" aria-hidden="true">
-      <path d="M14.1 10.6c0-2.6 2.1-3.8 2.2-3.9-1.2-1.8-3.1-2-3.7-2-1.6-.2-3.1.9-3.9.9-.8 0-2-.9-3.4-.9-1.7 0-3.3 1-4.2 2.6-1.8 3.1-.5 7.7 1.3 10.2.9 1.2 1.9 2.6 3.2 2.6 1.3-.1 1.8-.8 3.3-.8 1.6 0 2 .8 3.4.8 1.4 0 2.3-1.3 3.1-2.5 1-1.4 1.4-2.8 1.4-2.9 0 0-2.7-1-2.7-4.1zM11.6 3c.7-.9 1.2-2 1-3.2-1 0-2.3.7-3 1.6-.7.8-1.3 2-1.1 3.1 1.2.1 2.3-.6 3.1-1.5z" />
-    </svg>
-  );
-}

@@ -1,6 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { browserOn, leadFor, parseDevices } from "@/lib/connect-flow";
+import ConnectCard from "./ConnectCard";
+import { ErrorLine, RequestLine, Steps } from "./ConnectScreens";
 import { DeviceScreen, numberTitle, type DeviceArt } from "./DeviceLead";
 
 const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&#x27;/g, "'").replace(/\s+/g, " ").trim();
@@ -77,5 +79,35 @@ describe("the signed-in screen", () => {
         }
       }
     }
+  });
+});
+
+describe("the parts every connect screen shares", () => {
+  it("says where access goes and what it could do, and the name only as what the app calls itself", () => {
+    expect(text(renderToStaticMarkup(<RequestLine to="claude.ai" claimed="Claude" />)))
+      .toBe("Access goes to claude.ai . It can read your notes, and edit them if you say so. It calls itself “Claude”.");
+    expect(renderToStaticMarkup(<RequestLine to={null} />)).toBe("");
+  });
+
+  it("keeps the error's line there when there is no error, so nothing below it moves", () => {
+    expect(renderToStaticMarkup(<ErrorLine text={null} />)).toContain('role="alert"');
+    expect(text(renderToStaticMarkup(<ErrorLine text="The email or password isn't right." />))).toBe("The email or password isn't right.");
+  });
+
+  it("marks the step you're on", () => {
+    const html = renderToStaticMarkup(<Steps at={2} to="claude.ai" />);
+    expect(html).toMatch(/data-state="done"[^>]*>.*Sign in/);
+    expect(html).toMatch(/aria-current="step"[^>]*>.*Allow it/);
+    expect(text(html)).toContain("Back to claude.ai");
+  });
+
+  it("shows where access goes beside the form only in look b, and never another app's mark", () => {
+    const label = { claimed_name: "Claude", redirect_host: "claude.ai", loopback: false };
+    const b = renderToStaticMarkup(<ConnectCard look="b" label={label}><p>x</p></ConnectCard>);
+    expect(text(b)).toContain("Access goes to claude.ai");
+    expect(text(b)).toContain("Nothing is shared until you allow it.");
+    const a = renderToStaticMarkup(<ConnectCard look="a" label={label}><p>x</p></ConnectCard>);
+    expect(a).not.toContain("<aside");
+    for (const html of [a, b]) expect([...html.matchAll(/<img[^>]*src="([^"]+)"/g)].every((m) => m[1] === "/mark-256.png")).toBe(true);
   });
 });

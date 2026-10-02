@@ -10,7 +10,7 @@ import styles from "./connect.module.css";
 /// "b" the notification itself, in its real words, on the top of a phone, the number under it;
 /// "c" the phone on an amber disc, and the number in two tiles shaped like the boxes you type it in.
 export type DeviceArt = "a" | "b" | "c";
-export const DEVICE_ART: DeviceArt = "a";
+export const DEVICE_ART: DeviceArt = "b";
 
 /// What you do with the number: 1.1.2 and earlier have you type it on the device, 1.2 shows it
 /// there for you to compare.
@@ -42,9 +42,9 @@ export function numberTitle(lead: Named, number: string, action: NumberAction): 
 /// Signed in, waiting for a device: the one device to use, its picture, and the number once that
 /// device has opened the request. `openLink` opens the app on this device. `children` are the
 /// page's own small links, under the quiet line about the other ways.
-export function DeviceScreen({ lead, devices, number, action, art = DEVICE_ART, openLink, onRecover, children }: {
+export function DeviceScreen({ lead, devices, number, action, art = DEVICE_ART, openLink, onRecover, steps, children }: {
   lead: Named; devices: Devices; number: string | null; action: NumberAction; art?: DeviceArt;
-  openLink: string; onRecover: () => void; children?: React.ReactNode;
+  openLink: string; onRecover: () => void; steps?: React.ReactNode; children?: React.ReactNode;
 }) {
   const phone = lead === "iphone" || lead === "thisIphone";
   const open = OPEN[lead];
@@ -53,6 +53,7 @@ export function DeviceScreen({ lead, devices, number, action, art = DEVICE_ART, 
     : "Then choose Allow. If it shows a different number, choose Don't allow.";
   return (
     <>
+      {steps}
       <h1 className={styles.title}>{number ? numberTitle(lead, number, action) : TITLE[lead]}</h1>
       {phone
         ? <PhoneArt art={art} number={number} action={action} />

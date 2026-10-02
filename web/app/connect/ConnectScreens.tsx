@@ -10,10 +10,39 @@ import styles from "./connect.module.css";
 /// While Sign in with Apple is off on the web (APPLE_ON_WEB), what Apple accounts do instead.
 export const APPLE_INSTEAD = "Signed up with Apple? Scan the code with your iPhone instead.";
 
-/// "Access goes to claude.ai." Where access would go, never who is asking: nothing here is verified.
-function AccessLine({ to }: { to: string | null }) {
-  if (!to) return null;
-  return <p className={styles.lede}>Access goes to <b>{to}</b>.</p>;
+/// The question in your head, in one line: where access would go and what it could do. Where it
+/// goes, never who is asking as a fact: nothing here is verified, so the name is only what the app
+/// calls itself.
+export function RequestLine({ to, claimed = null }: { to: string | null; claimed?: string | null }) {
+  if (!to && !claimed) return null;
+  return (
+    <p className={styles.request}>
+      {to && <>Access goes to <b>{to}</b>. </>}
+      It can read your notes, and edit them if you say so.
+      {claimed && <span className={styles.requestName}>It calls itself &ldquo;{claimed}&rdquo;.</span>}
+    </p>
+  );
+}
+const AccessLine = RequestLine;
+
+/// Where you are: sign in, allow it, back to the app. Shown by the look that has no card ("c").
+export function Steps({ at, to, first = "Sign in" }: { at: 1 | 2 | 3; to: string | null; first?: string }) {
+  const labels = [first, "Allow it", `Back to ${to ?? "the app"}`];
+  return (
+    <ol className={styles.steps}>
+      {labels.map((text, i) => (
+        <li key={text} data-state={i + 1 < at ? "done" : i + 1 === at ? "now" : "next"} aria-current={i + 1 === at ? "step" : undefined}>
+          <span className={styles.stepDot} aria-hidden="true">{i + 1}</span>
+          <span className={styles.stepLabel}>{text}</span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+/// What went wrong, in a line that is always there, so nothing below it moves when it speaks.
+export function ErrorLine({ text }: { text: string | null }) {
+  return <p className={styles.error} role="alert">{text}</p>;
 }
 
 /// The main screen: one QR code to scan with your iPhone. `link` is null until the code is ready;
@@ -23,6 +52,7 @@ export function ScanScreen({ to, link, macLink, onNotify, onRecover }: {
 }) {
   return (
     <>
+      <Steps at={1} to={to} first="Scan" />
       <h1 className={styles.title}>Scan with your iPhone</h1>
       <AccessLine to={to} />
       <QRCode link={link} label="QR code to connect with Amber Notes on your iPhone" />
@@ -47,14 +77,15 @@ export function NotifySignInScreen({ to, onSubmit, onScan, ...signIn }: SignInPr
 }) {
   return (
     <>
+      <Steps at={1} to={to} />
       <h1 className={styles.title}>Sign in to get a notification</h1>
       <AccessLine to={to} />
       {APPLE_ON_WEB ? <SignInButtons onApple={signIn.onApple} busy={signIn.busy} /> : <p className={styles.small}>{APPLE_INSTEAD}</p>}
       <form className={styles.form} method="post" onSubmit={onSubmit}>
         <EmailFields {...signIn} />
-        {signIn.failure && <p className={styles.error} role="alert">{signIn.failure}</p>}
+        <ErrorLine text={signIn.failure} />
         <button type="submit" className={styles.secondary} disabled={!signIn.ready || signIn.busy} aria-busy={signIn.busy}>
-          {signIn.busy ? <><Spinner /> Signing in…</> : "Continue"}
+          {signIn.busy ? <><Spinner /> Signing in…</> : "Sign in with email"}
         </button>
       </form>
       <BottomLinks>
@@ -66,14 +97,14 @@ export function NotifySignInScreen({ to, onSubmit, onScan, ...signIn }: SignInPr
 
 /// Waiting for the notification to be answered. Once the device has opened the request, the number
 /// to compare with what it shows.
-export function NotifyScreen({ number, onScan, lead = "any", devices = null, openLink = "", onRecover }: {
-  number: string | null; onScan: () => void;
+export function NotifyScreen({ number, onScan, lead = "any", devices = null, openLink = "", onRecover, to = null }: {
+  number: string | null; onScan: () => void; to?: string | null;
   /// The one device to name, once /connect/ask has said where the account has the app.
   lead?: Lead; devices?: Devices | null; openLink?: string; onRecover?: () => void;
 }) {
   if (devices && onRecover && lead !== "recover" && lead !== "any") {
     return (
-      <DeviceScreen lead={lead} devices={devices} number={number} action="compare" openLink={openLink} onRecover={onRecover}>
+      <DeviceScreen lead={lead} devices={devices} number={number} action="compare" openLink={openLink} onRecover={onRecover} steps={<Steps at={2} to={to} />}>
         <BottomLinks>
           <button type="button" className={styles.link} onClick={onScan}>Scan the code instead</button>
         </BottomLinks>
@@ -82,6 +113,7 @@ export function NotifyScreen({ number, onScan, lead = "any", devices = null, ope
   }
   return (
     <>
+      <Steps at={2} to={to} />
       {number ? (
         <>
           <h1 className={styles.title}>Compare the number</h1>
@@ -126,6 +158,7 @@ export function RecoverScreen({ to, signedIn, recoveryKey, onRecoveryKey, access
   const writing = write && canWrite;
   return (
     <>
+      <Steps at={2} to={to} />
       <h1 className={styles.title}>Use your recovery key</h1>
       <AccessLine to={to} />
       {noDevices && <p className={styles.lede}>No iPhone or Mac has opened Amber Notes on this account in the last 30 days, so allow it here with your recovery key.</p>}
@@ -158,7 +191,7 @@ export function RecoverScreen({ to, signedIn, recoveryKey, onRecoveryKey, access
           </div>
         </details>
         <p className={styles.warn}>Only allow it if you just started connecting it yourself.</p>
-        {signIn.failure && <p className={styles.error} role="alert">{signIn.failure}</p>}
+        <ErrorLine text={signIn.failure} />
         <button type="submit" className={styles.primary} disabled={!signIn.ready || signIn.busy} aria-busy={signIn.busy}>
           {signIn.busy ? <><Spinner /> Allowing…</> : "Allow"}
         </button>
@@ -179,8 +212,10 @@ export function WorkingScreen({ text }: { text: string }) {
 export function LeavingScreen({ allowed, host }: { allowed: boolean; host: string }) {
   return (
     <>
+      <Steps at={3} to={host} />
+      {allowed && <DoneMark />}
       <h1 className={styles.title}>{allowed ? "Connected" : "Not connected"}</h1>
-      <p className={styles.lede} role="status"><Spinner /> Taking you back to {host}…</p>
+      <p className={styles.status} role="status"><Spinner /> Taking you back to {host}…</p>
     </>
   );
 }
@@ -199,7 +234,7 @@ function BottomLinks({ children }: { children: React.ReactNode }) {
   return <div className={styles.links}>{children}</div>;
 }
 
-function SignInButtons({ onApple, busy }: { onApple: () => void; busy: boolean }) {
+export function SignInButtons({ onApple, busy }: { onApple: () => void; busy: boolean }) {
   return (
     <>
       <button type="button" className={styles.apple} onClick={onApple} disabled={busy}>
@@ -212,7 +247,7 @@ function SignInButtons({ onApple, busy }: { onApple: () => void; busy: boolean }
 
 /// No name attributes and a POST, and the CSP's form-action 'none': before the page's script runs,
 /// the form can't put the password anywhere. The buttons wait for the script anyway.
-function EmailFields({ email, password, onEmail, onPassword }: Pick<SignInProps, "email" | "password" | "onEmail" | "onPassword">) {
+export function EmailFields({ email, password, onEmail, onPassword }: Pick<SignInProps, "email" | "password" | "onEmail" | "onPassword">) {
   return (
     <>
       <label className={styles.field}>
@@ -224,6 +259,17 @@ function EmailFields({ email, password, onEmail, onPassword }: Pick<SignInProps,
         <input type="password" id="connect-password" autoComplete="current-password" required value={password} onChange={(e) => onPassword(e.target.value)} />
       </label>
     </>
+  );
+}
+
+/// A tick on an amber disc of cut paper: it worked.
+function DoneMark() {
+  return (
+    <svg className={styles.done} viewBox="0 0 64 64" width={64} height={64} aria-hidden="true" focusable="false">
+      <circle className={styles.pShadow} cx="34" cy="35" r="26" />
+      <circle className={styles.pDisc} cx="32" cy="32" r="26" />
+      <path className={styles.doneTick} d="M21 33.5l7.5 7.5L43.5 25" />
+    </svg>
   );
 }
 
