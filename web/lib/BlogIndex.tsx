@@ -10,7 +10,7 @@ import s from "../app/blog/blog.module.css";
 /// links to their own pages, and previous, numbered and next links at the bottom. Every page is
 /// static. Page 1 is the list's own address; later pages are <address>/page/<n>.
 
-const LEDE = "Notes on notes, AI, and building Amber Notes on my own.";
+const LEDE = <>Guides to connecting <b>ChatGPT, Claude and Codex</b> to your notes, Apple Notes how-tos, and fair comparisons. Written by the person building Amber Notes.</>;
 
 /// What each category's page says under its title (and in search results).
 const ABOUT: Record<Category, string> = {
@@ -58,24 +58,26 @@ export function BlogIndex({ category, page }: { category: Category | null; page:
       {page > 1 && <link rel="prev" href={pagePath(l.base, page - 1)} />}
       {page < pages && <link rel="next" href={pagePath(l.base, page + 1)} />}
       <JsonLd graph={[breadcrumbs(crumbs), organization, maker, incredible]} />
-      <section className={home.log}>
-        <div className={home.logHead}>
-          <h1 className={`${home.h2} rise`} style={{ "--i": 0 } as React.CSSProperties}>
-            {category ?? "Blog"}{page > 1 && <span className={s.pageNote}>, page {page}</span>}
+      <section className={s.index}>
+        <div className={s.hero}>
+          <h1 className={`${s.h1} rise`} style={{ "--i": 0 } as React.CSSProperties}>
+            {category ?? <>The Amber Notes <mark className={home.mark}>blog</mark></>}{page > 1 && <span className={s.pageNote}>, page {page}</span>}
           </h1>
-          <p className={`${home.lede} rise`} style={{ "--i": 1 } as React.CSSProperties}>{category ? ABOUT[category] : LEDE}</p>
-          <nav className={`${s.filters} rise`} style={{ "--i": 2 } as React.CSSProperties} aria-label="Categories">
+          <p className={`${s.lede} rise`} style={{ "--i": 1 } as React.CSSProperties}>{category ? ABOUT[category] : LEDE}</p>
+        </div>
+        <div className={`${s.library} rise`} style={{ "--i": 2 } as React.CSSProperties}>
+          <nav className={s.filters} aria-label="Categories">
             <a href="/blog" aria-current={category === null ? "page" : undefined}>All posts<span className={s.count}>{published().length}</span></a>
             {counts.map(({ c, n }) => (
               <a key={c} href={categoryPath(c)} aria-current={category === c ? "page" : undefined}>{c}<span className={s.count}>{n}</span></a>
             ))}
           </nav>
+          <ul className={s.grid}>
+            {posts.map((p) => (
+              <li key={p.slug}><PostCard post={p} /></li>
+            ))}
+          </ul>
         </div>
-        <ul className={`${s.grid} rise`} style={{ "--i": 3 } as React.CSSProperties}>
-          {posts.map((p) => (
-            <li key={p.slug}><PostCard post={p} /></li>
-          ))}
-        </ul>
         {pages > 1 && <Pagination base={l.base} page={page} pages={pages} />}
       </section>
     </div>

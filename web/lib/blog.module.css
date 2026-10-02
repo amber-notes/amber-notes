@@ -54,16 +54,13 @@
 .caption { margin-top: 10px; color: var(--muted); font-size: 14px; line-height: 1.45; text-align: center; text-wrap: balance; }
 
 /* ── A card's picture: one capture on the post's ground, edge to edge under the card's corners ── */
-.thumb { position: relative; aspect-ratio: 16 / 10; overflow: hidden; container-type: inline-size; }
+.thumb { position: relative; aspect-ratio: 16 / 10; overflow: hidden; }
 .thumb img {
   position: absolute; left: 6%; top: 20px; width: 88%; height: auto; border-radius: 10px; background: #fff;
   box-shadow: 0 0 0 0.5px rgba(60, 20, 0, 0.16), 0 12px 28px -12px rgba(60, 20, 0, 0.3), 0 1px 3px rgba(60, 20, 0, 0.1);
-  /* Cropped only at the bottom of the card's picture, where it fades into the ground. The fade is
-     sized to the picture (62.5% of its width, less the top gap), so a short capture never fades. */
-  -webkit-mask-image: linear-gradient(to bottom, #000 72%, transparent 96%); mask-image: linear-gradient(to bottom, #000 72%, transparent 96%);
-  -webkit-mask-size: 100% calc(62.5cqw - 20px); mask-size: 100% calc(62.5cqw - 20px);
-  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
 }
+/* A tall capture runs off the bottom edge of the picture, cut cleanly like a window seen through it. */
+.thumb[data-runs-off] img { min-height: calc(100% - 20px); border-radius: 10px 10px 0 0; object-fit: cover; object-position: top; }
 /* In cards the grounds are quiet tints of the palette; the post's own picture keeps its fuller one. */
 .thumb[data-ground] { background: #fbeedd; box-shadow: none; }
 .thumb[data-ground="paper"] { background: #fbf6ef; }
@@ -105,20 +102,25 @@
 .byline { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 7px; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 .byline > span:first-of-type { color: var(--ink); font-weight: 600; }
 
-/* ── A card, like the help page's: soft, 20 px corners; the picture runs to its edges, so the corners clip it ── */
+/* ── A card, like a template's: the picture runs to its edges under the card's corners, the words sit
+   on the light card colour, and on hover the card lifts as one piece (only .card transforms) ── */
 .card {
-  display: grid; align-content: start; gap: 14px; padding: 0 0 18px; border-radius: 20px; overflow: hidden;
-  color: var(--ink); text-decoration: none; background: var(--soft);
+  display: grid; align-content: start; gap: 18px; padding: 0 0 20px; border-radius: 22px; overflow: hidden; isolation: isolate;
+  color: var(--ink); text-decoration: none; background: var(--card);
+  box-shadow: 0 0 0 1px var(--line), 0 18px 36px -30px rgba(60, 30, 5, 0.55);
 }
 @media (prefers-reduced-motion: no-preference) {
-  .card { transition: box-shadow 0.15s ease-out, transform 0.12s ease-out; }
-  .card:active { transform: scale(0.98); }
+  .card { transition: box-shadow 0.2s ease-out, transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .card:active { transform: scale(0.98); transition-duration: 0.1s; }
 }
-@media (hover: hover) { .card:hover { box-shadow: 0 0 0 1.5px var(--amber); } }
+@media (hover: hover) { .card:hover { box-shadow: 0 0 0 1px var(--line), 0 28px 48px -26px rgba(60, 30, 5, 0.6); } }
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .card:hover { transform: translateY(-3px); }
+  .card:hover:active { transform: translateY(-3px) scale(0.98); }
+}
 .card:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
-.cardText { display: grid; gap: 6px; padding: 0 20px; }
-.label { font-size: 12px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--link); }
-.cardTitle { margin: 0; font-size: 19px; line-height: 1.2; font-weight: 750; letter-spacing: -0.015em; text-wrap: balance; }
+.cardText { display: grid; gap: 8px; padding: 0 22px; }
+.cardTitle { margin: 0; font-size: 22px; line-height: 1.18; font-weight: 750; letter-spacing: -0.02em; text-wrap: balance; }
 .excerpt {
   color: var(--muted); font-size: 15px; line-height: 1.45;
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden;
