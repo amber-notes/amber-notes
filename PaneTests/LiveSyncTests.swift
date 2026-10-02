@@ -59,17 +59,17 @@ import Testing
 
     // MARK: Typing keeps flowing out
 
-    @Test func continuousTypingIsWrittenAtLeastEveryMaxWait() async throws {
+    @Test func continuousTypingIsWrittenAtLeastEveryMaxWait() {
         let saver = DebouncedSave()
         var writes = 0
         let start = Date.now
-        // Type for a second without ever pausing 0.4 s.
-        while Date.now.timeIntervalSince(start) < 1.0 {
-            saver.schedule(base: "") { writes += 1 }
-            try await Task.sleep(for: .milliseconds(50))
+        // Type for a second, a key every 50 ms, without ever pausing 0.4 s. The keystrokes carry
+        // their own times, so a busy test machine can't stretch the gaps between them.
+        for key in 0..<20 {
+            saver.schedule(base: "", now: start.addingTimeInterval(Double(key) * 0.05)) { writes += 1 }
         }
         #expect(writes >= 2, "the note reaches the model while you type, not only when you stop")
-        saver.flush()
+        saver.cancel()
     }
 
     @Test func aPauseStillWritesOnce() async throws {

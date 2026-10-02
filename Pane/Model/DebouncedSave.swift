@@ -26,12 +26,13 @@ final class DebouncedSave {
     var isPending: Bool { pending != nil }
 
     /// Remembers what to write; `base` is the note's current text, kept from the first call.
-    func schedule(base current: String, _ write: @escaping () -> Void) {
+    /// `now` is when this keystroke happened (tests pass their own, so they never wait on a clock).
+    func schedule(base current: String, now: Date = .now, _ write: @escaping () -> Void) {
         if base == nil { base = current }
         pending = write
-        let started = since ?? .now
+        let started = since ?? now
         since = started
-        if Date.now.timeIntervalSince(started) >= Self.maxWait { flush(); return }
+        if now.timeIntervalSince(started) >= Self.maxWait { flush(); return }
         work?.cancel()
         let w = DispatchWorkItem { [weak self] in self?.flush() }
         work = w
