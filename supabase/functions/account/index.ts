@@ -12,6 +12,7 @@
 // account.
 
 import { connect, readiness } from "../_shared/db.ts";
+import { atHome } from "../_shared/region.ts";
 import { logError } from "../_shared/log.ts";
 import { collect, zip } from "./export.ts";
 import { forget } from "./forget.ts";
@@ -58,7 +59,7 @@ async function removeFiles(uid: string): Promise<number> {
 // One export a minute per account (per isolate): it reads everything, so it isn't free.
 const lastExport = new Map<string, number>();
 
-Deno.serve(async (req) => {
+Deno.serve(atHome("account", async (req) => {
   const exporting = req.method === "GET" && new URL(req.url).pathname.endsWith("/export");
   if (req.method !== "DELETE" && !exporting) return json({ error: "Use DELETE, or GET /account/export." }, 405);
   await ready();
@@ -88,4 +89,4 @@ Deno.serve(async (req) => {
     logError("account delete", e);
     return json({ error: "Couldn't delete the account. Nothing more was removed; try again." }, 500);
   }
-});
+}));

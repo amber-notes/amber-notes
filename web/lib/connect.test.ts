@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ALLOW_HEADING, appleSignInURL, appLink, destination, fetchLabel, functionURL, parseLabel, pkcePair, problemText, qrConnectLive, returnURL, scanFragment, signInError, startsWithWrite, universalLink, validRequest } from "./connect";
-import { allowedPath, upstream, upstreamHeaders } from "./mcp-proxy";
+import { allowedPath, functionRegion, upstream, upstreamHeaders } from "./mcp-proxy";
 
 const ID = "5a0f6c1e-2b1d-4c36-9e0a-6b6f0c1a2b3c";
 
@@ -148,6 +148,18 @@ describe("the mcp.ambernotes.app proxy", () => {
       "/.well-known/openid-configuration", "/.well-known/mcp/server-card.json"]) expect(allowedPath(ok), ok).toBe(true);
     for (const bad of ["/account", "/..%2faccount", "/authorize%2f..%2f..%2faccount", "/%5c..%5caccount", "/authorize\\..\\account",
       "/../share-files", "/.well-known/../../account", "/connect/decide/x", "/connect/label/x", "/connect/status/x", "/connect/asks", "/connect/scans", "/connect/scan/x", "/connect/reveal/x", "/connect/nonces", "/connect%2freveal", "/connect%2fask", "/connect/labels", "/register/", "/%2e%2e/account", "/.env"]) expect(allowedPath(bad), bad).toBe(false);
+  });
+});
+
+describe("where the site sends function calls", () => {
+  it("names the home region when one is set, and a caller can't name another", () => {
+    expect(functionRegion("eu-central-1")).toBe("eu-central-1");
+    expect(functionRegion(" EU-Central-1 ")).toBe("eu-central-1");
+    for (const bad of [undefined, "", "frankfurt", "eu-central-1; x", "eu_central_1"]) expect(functionRegion(bad)).toBeNull();
+    const asked = new Headers({ authorization: "Bearer amb_at_x", "x-region": "us-east-1", "x-real-ip": "198.51.100.7" });
+    expect(upstreamHeaders(asked, "secret", "eu-central-1").get("x-region")).toBe("eu-central-1");
+    // No home region set: nothing is asked for, and the caller's own x-region still doesn't pass.
+    expect(upstreamHeaders(asked, "secret").has("x-region")).toBe(false);
   });
 });
 

@@ -14,6 +14,7 @@
 // the limiter by salted hashes, and pads every reply to the same minimum time.
 
 import { connect, readiness } from "../_shared/db.ts";
+import { atHome } from "../_shared/region.ts";
 import { atLeast, hashKey, normalizeEmail, RateLimiter, statusFrom } from "./logic.ts";
 import { clientAddress } from "../_shared/client.ts";
 import { logError } from "../_shared/log.ts";
@@ -30,7 +31,7 @@ const FLOOR_MS = 350;
 const reply = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
 
-Deno.serve((req) => atLeast(FLOOR_MS, async () => {
+Deno.serve(atHome("account-status", (req) => atLeast(FLOOR_MS, async () => {
   if (req.method !== "POST") return reply({ error: "method not allowed" }, 405);
   await ready();
   const ip = clientAddress(req);
@@ -55,4 +56,4 @@ Deno.serve((req) => atLeast(FLOOR_MS, async () => {
     logError("account-status", e);
     return reply({ error: "unavailable" }, 500);
   }
-}));
+})));

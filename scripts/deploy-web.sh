@@ -39,6 +39,9 @@ for env in production preview; do
   # Only production proxies mcp.ambernotes.app; a preview never holds the secret.
   [[ $env == production ]] && pairs+=("MCP_PROXY_SECRET=$proxy_secret")
   [[ $env == production && -n $posthog_key ]] && pairs+=("NEXT_PUBLIC_POSTHOG_KEY=$posthog_key")
+  # The region the functions work in (the same value as the functions' FUNCTION_REGION secret), so
+  # the site's own calls go straight there. Unset leaves whatever Vercel already has.
+  [[ $env == production && -n ${FUNCTION_REGION:-} ]] && pairs+=("FUNCTION_REGION=$FUNCTION_REGION")
   for pair in "${pairs[@]}"; do
     name=${pair%%=*}; value=${pair#*=}
     vercel env rm "$name" "$env" --yes --scope "$team" >/dev/null 2>&1 || true

@@ -16,6 +16,7 @@
 
 import { clientAddress } from "../_shared/client.ts";
 import { connect, readiness } from "../_shared/db.ts";
+import { atHome } from "../_shared/region.ts";
 import { dailyHash, hashSecret } from "../_shared/hash.ts";
 import { log } from "../_shared/log.ts";
 import { contentDisposition, filePath, RateLimiter, referencedFiles, servedType, SLUG, UUID } from "./logic.ts";
@@ -28,7 +29,7 @@ const perIP = new RateLimiter(120, 60_000);
 const headers = { "content-type": "application/json", "cache-control": "no-store", "access-control-allow-origin": "*" };
 const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers });
 
-Deno.serve(async (req) => {
+Deno.serve(atHome("share-files", async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: { ...headers, "access-control-allow-methods": "GET, OPTIONS" } });
   if (req.method !== "GET") return reply({ error: "method not allowed" }, 405);
   await ready();
@@ -47,7 +48,7 @@ Deno.serve(async (req) => {
     log(file === null ? "share_files_list" : "share_files_get", { status: 500 });
     return reply({ error: "unavailable" }, 500);
   }
-});
+}));
 
 /** The files the page embeds, with the address each one is served at. */
 async function list(slug: string, sub: string | null): Promise<Response> {
