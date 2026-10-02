@@ -251,6 +251,19 @@ html[data-theme] ::selection { background: var(--mark); }
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
 }
+/* Between the blog's lists (data-vt="list", app/SiteChrome.tsx; the layers are named in
+   blog.module.css): the page itself doesn't fade, the title block swaps in place, the chips' pick
+   moves with a short fade, the posts crossfade, and nothing changes size or slides. */
+@media (prefers-reduced-motion: no-preference) {
+  html[data-vt="list"]::view-transition-old(root), html[data-vt="list"]::view-transition-new(root),
+  html[data-vt="list"]::view-transition-group(blog-title), html[data-vt="list"]::view-transition-group(blog-chips),
+  html[data-vt="list"]::view-transition-group(blog-posts), html[data-vt="list"]::view-transition-group(site-footer),
+  html[data-vt="list"]::view-transition-new(blog-title) { animation: none; }
+  html[data-vt="list"]::view-transition-old(blog-title) { display: none; }
+  html[data-vt="list"]::view-transition-old(blog-chips), html[data-vt="list"]::view-transition-new(blog-chips) { animation-duration: 150ms; }
+  html[data-vt="list"]::view-transition-old(blog-posts) { animation: vt-out 120ms ease-in both; }
+  html[data-vt="list"]::view-transition-new(blog-posts) { animation: vt-in 220ms ease-out both; }
+}
 @keyframes vt-out { to { opacity: 0; } }
 @keyframes vt-in { from { opacity: 0; } }
 
