@@ -1,7 +1,7 @@
 import { Figure } from "@/lib/blog";
 import { PostPage, postMetadata } from "@/lib/PostPage";
 import { SHOTS } from "@/lib/posts";
-import { MCP_URL } from "@/lib/facts";
+import { CLAUDE_DIRECTORY_URL, MCP_URL } from "@/lib/facts";
 
 export const dynamic = "force-static";
 export const metadata = postMetadata("connect-chatgpt-to-your-notes");
@@ -106,9 +106,13 @@ export default function Page() {
 
       <h2>Claude</h2>
       <p>
-        Under Connect an AI, choose Claude, then Add to Claude. Claude opens its Add custom connector dialog with Amber Notes already filled in. Choose Add,
-        then Connect, then Allow. It works on every Claude plan. The free plan includes one custom connector, and on Team
-        and Enterprise an Owner adds it for the organization.
+        Amber Notes is in Claude&apos;s connector directory. Open <a href={CLAUDE_DIRECTORY_URL} rel="noopener">its listing</a> on claude.ai or in the Claude desktop
+        app, choose Connect to Claude, sign in, then Allow in Amber Notes. Under Connect an AI, choose Claude for the same link. Once it&apos;s
+        added, Claude&apos;s iPhone and Android apps can use it too. On Team and Enterprise an Owner may need to allow it for the organization first.
+      </p>
+      <p>
+        Using an older Claude app, or one that doesn&apos;t show the listing? Add <code>{MCP_URL}</code> as a custom connector instead, under
+        Customize, Connectors. That works on every Claude plan, and the free plan includes one custom connector.
       </p>
 
       <h2>Claude Code and Codex</h2>

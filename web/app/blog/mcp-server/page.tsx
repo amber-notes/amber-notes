@@ -1,7 +1,7 @@
 import { Figure } from "@/lib/blog";
 import { PostPage, postMetadata } from "@/lib/PostPage";
 import { SHOTS } from "@/lib/posts";
-import { MCP_URL } from "@/lib/facts";
+import { CLAUDE_DIRECTORY_URL, MCP_URL } from "@/lib/facts";
 import { MCP_TOOLS, type McpTool } from "@/lib/mcp-tools";
 import { AGENT_INSTALLS } from "@/lib/agent-installs";
 
@@ -105,7 +105,8 @@ export default function Page() {
 
       <h2>Connect it</h2>
       <ul>
-        <li><a href="/blog/connect-chatgpt-to-your-notes">Connect ChatGPT or Claude to your notes</a>: add the address as a custom app or connector.</li>
+        <li>Claude: <a href={CLAUDE_DIRECTORY_URL} rel="noopener">Amber Notes in Claude&apos;s connector directory</a>, then Connect to Claude.</li>
+        <li><a href="/blog/connect-chatgpt-to-your-notes">Connect ChatGPT or Claude to your notes</a>: add the address as a custom app in ChatGPT, or as a custom connector in an older Claude app.</li>
         <li><a href="/blog/notes-in-claude-code-and-codex">Use your notes from Claude Code and Codex</a>: one command, or a few lines of config.</li>
         <li><a href="#install">Gemini CLI, VS Code and Incredible</a>: the steps for each are above.</li>
         <li>Anything else that speaks MCP: add the address and sign in when it asks.</li>

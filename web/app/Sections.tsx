@@ -5,6 +5,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AIGlyph } from "@/lib/ai-glyphs";
+import { CLAUDE_DIRECTORY_URL } from "@/lib/facts";
 import { HOME_PRIVACY, PRIVACY_PATH } from "@/lib/privacy";
 import DownloadLink from "./DownloadLink";
 import a from "./sections.module.css";
@@ -88,7 +89,7 @@ export function AiSection() {
           );
         })}
       </div>
-      <p className={a.also}>Also Codex, <a href="https://incredible.one" rel="noopener">Incredible</a>, and any app that supports MCP. <a href="/blog/connect-chatgpt-to-your-notes">How to connect</a> · <a href="/templates">Start from a template</a></p>
+      <p className={a.also}>Also Codex, <a href="https://incredible.one" rel="noopener">Incredible</a>, and any app that supports MCP. <a href={CLAUDE_DIRECTORY_URL} rel="noopener">Available in Claude&apos;s connector directory</a> · <a href="/blog/connect-chatgpt-to-your-notes">How to connect</a> · <a href="/templates">Start from a template</a></p>
     </section>
   );
 }
