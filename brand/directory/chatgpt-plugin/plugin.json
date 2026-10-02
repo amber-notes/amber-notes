@@ -9,7 +9,7 @@
     "url": "https://ambernotes.app"
   },
   "homepage": "https://ambernotes.app",
-  "repository": "https://github.com/emilwagman/amber-notes",
+  "repository": "https://github.com/amber-notes/amber-notes",
   "license": "MIT",
   "keywords": ["notes", "checklists", "productivity"],
   "extensions": {

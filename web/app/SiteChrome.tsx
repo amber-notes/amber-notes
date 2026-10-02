@@ -6,7 +6,7 @@ import DownloadLink from "./DownloadLink";
 import GitHubLink, { GitHubGlyph } from "./GitHubLink";
 import { themeFor } from "@/lib/theme";
 
-const GITHUB = "https://github.com/emilwagman/amber-notes";
+const GITHUB = "https://github.com/amber-notes/amber-notes";
 const X_URL = "https://x.com/EmilWagman";
 const MAKER_URL = "https://emilwagman.com";
 

@@ -71,7 +71,7 @@ You need macOS 26 with Xcode 26, Homebrew, and Docker (for the local Supabase st
 ```sh
 brew install xcodegen supabase/tap/supabase deno pnpm
 
-git clone https://github.com/emilwagman/amber-notes.git
+git clone https://github.com/amber-notes/amber-notes.git
 cd amber-notes
 supabase start            # local Postgres, Auth, Storage and Functions on ports 56420–56429
 xcodegen generate

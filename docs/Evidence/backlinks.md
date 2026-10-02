@@ -12,7 +12,7 @@ Status on 2026-09-30. "Open" means the pull request is waiting for the list's ma
 
 | Target | Status | Link | Needs |
 |---|---|---|---|
-| Repo topics on emilwagman/amber-notes | Done | [repo](https://github.com/emilwagman/amber-notes) | Nothing. Added `mcp-server`, `model-context-protocol`, `note-taking`; kept the existing ones, description and homepage. |
+| Repo topics on amber-notes/amber-notes | Done | [repo](https://github.com/amber-notes/amber-notes) | Nothing. Added `mcp-server`, `model-context-protocol`, `note-taking`; kept the existing ones, description and homepage. |
 | Official MCP Registry | Listed | `app.ambernotes/amber-notes` | Nothing. PulseMCP and mcp.directory import from it. |
 | Glama connector | Listed | [glama.ai](https://glama.ai/mcp/connectors/app.ambernotes/amber-notes) | Nothing. Its link goes to the GitHub repo, not the site. |
 | emilwagman.com | Linked | [emilwagman.com](https://www.emilwagman.com) | Nothing. Its GitHub link points to `Neobyte01`, not `emilwagman`, which owns the repo; worth checking. |
@@ -27,7 +27,7 @@ Status on 2026-09-30. "Open" means the pull request is waiting for the list's ma
 | iCHAIT/awesome-macOS | Skipped | | Its rules exclude "software whose main purpose is interfacing with generative tools like LLMs". Amber Notes is a notes app first, but it's pitched on AI access, so a PR would likely be closed. |
 | dkhamsing/open-source-ios-apps | Later | | After the iPhone app is on the App Store. |
 | Gemini CLI extension gallery (geminicli.com/extensions) | After merge | | Needs `gemini-extension.json` at the repo root on `main` (the reach/agents PR), then the `gemini-cli-extension` topic on the repo. Its crawler indexes tagged repos daily; no form ([releasing docs](https://geminicli.com/docs/extensions/releasing/)). |
-| Claude Code plugin marketplace | After merge | | Needs `.claude-plugin/marketplace.json` on `main`. Then `claude plugin marketplace add emilwagman/amber-notes` works for anyone; no listing step. |
+| Claude Code plugin marketplace | After merge | | Needs `.claude-plugin/marketplace.json` on `main`. Then `claude plugin marketplace add amber-notes/amber-notes` works for anyone; no listing step. |
 | Cursor | Blocked | | Cursor registers `cursor://anysphere.cursor-mcp/oauth/callback`, and the server accepts only https or loopback redirects, so sign-in fails at `/register`. |
 
 ## 2. The 25 best places, ranked
@@ -95,7 +95,7 @@ Tagline (under 60):
 Facts for forms:
 - Website: https://ambernotes.app
 - Download: https://ambernotes.app/download (Mac, requires macOS 26)
-- Source: https://github.com/emilwagman/amber-notes (MIT, Swift and SwiftUI; server in TypeScript on Supabase)
+- Source: https://github.com/amber-notes/amber-notes (MIT, Swift and SwiftUI; server in TypeScript on Supabase)
 - MCP server: `https://mcp.ambernotes.app` (Streamable HTTP, OAuth 2.1 with dynamic client registration; Claude Code and Codex use a revocable token)
 - MCP Registry name: `app.ambernotes/amber-notes`
 - Categories: Notes, Productivity, Knowledge and memory, Developer tools (for MCP directories)
@@ -108,7 +108,7 @@ Facts for forms:
 ```markdown
 Hi, I'm Emil. I'm CTO at [Incredible](https://incredible.one), where we build AI that does tasks on your computer.
 
-On the side I make [Amber Notes](https://ambernotes.app), an open-source notes app for Mac and iPhone that ChatGPT, Claude, Claude Code and Codex can read and edit. Every change an AI makes is highlighted and can be undone. Source: [emilwagman/amber-notes](https://github.com/emilwagman/amber-notes).
+On the side I make [Amber Notes](https://ambernotes.app), an open-source notes app for Mac and iPhone that ChatGPT, Claude, Claude Code and Codex can read and edit. Every change an AI makes is highlighted and can be undone. Source: [amber-notes/amber-notes](https://github.com/amber-notes/amber-notes).
 
 More at [emilwagman.com](https://www.emilwagman.com).
 ```
@@ -173,7 +173,7 @@ Body:
 > - Requires macOS 26
 > - iPhone app is in App Store review
 > - Download: https://ambernotes.app/download
-> - Source: https://github.com/emilwagman/amber-notes
+> - Source: https://github.com/amber-notes/amber-notes
 >
 > Happy to answer questions, and I'd like to hear what's missing compared with Apple Notes.
 
@@ -194,7 +194,7 @@ Body:
 >
 > I built much of it with Claude Code. [check]
 >
-> It's MIT-licensed: https://github.com/emilwagman/amber-notes. Download: https://ambernotes.app. I'd like feedback on which tools Claude uses well and which it fumbles.
+> It's MIT-licensed: https://github.com/amber-notes/amber-notes. Download: https://ambernotes.app. I'd like feedback on which tools Claude uses well and which it fumbles.
 
 ### Product Hunt
 

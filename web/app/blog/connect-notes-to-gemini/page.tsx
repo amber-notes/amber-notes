@@ -29,7 +29,7 @@ export default function Page() {
         OAuth, which is how Amber Notes works. I&apos;ve checked this path end to end.
       </p>
       <ol>
-        <li>Install the Amber Notes extension: <code>gemini extensions install https://github.com/emilwagman/amber-notes</code></li>
+        <li>Install the Amber Notes extension: <code>gemini extensions install https://github.com/amber-notes/amber-notes</code></li>
         <li>Start Gemini CLI and run <code>/mcp auth amber-notes</code>. Your browser opens ambernotes.app to sign in.</li>
         <li>The page shows a two-digit number. Amber Notes on your iPhone or Mac asks whether to allow the app: type the number, choose Read Only or Read and Edit, and choose Allow.</li>
         <li>Back in Gemini CLI, run <code>/mcp</code> to see amber-notes connected with its tools, then ask: &ldquo;Search my Amber Notes for the standup and summarise this week.&rdquo;</li>

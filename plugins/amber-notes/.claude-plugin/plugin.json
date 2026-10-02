@@ -8,7 +8,7 @@
     "url": "https://ambernotes.app"
   },
   "homepage": "https://ambernotes.app/blog/mcp-server",
-  "repository": "https://github.com/emilwagman/amber-notes",
+  "repository": "https://github.com/amber-notes/amber-notes",
   "license": "MIT",
   "keywords": ["notes", "apple-notes", "markdown", "checklists", "work-log", "mcp"]
 }

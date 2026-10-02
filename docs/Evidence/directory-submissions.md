@@ -416,7 +416,7 @@ Fields to enter:
 - **Display name:** Amber Notes
 - **Description:** Search, read and edit your notes in Amber Notes, the notes app for iPhone and Mac. Folders, checklists, tables and trackers. You choose read only or read and edit, and every change keeps the previous version.
 - **Homepage:** https://ambernotes.app/blog/mcp-server
-- **Repository:** https://github.com/emilwagman/amber-notes
+- **Repository:** https://github.com/amber-notes/amber-notes
 - **Icon:** https://ambernotes.app/mark-256.png
 - **Tags:** notes, productivity, checklists, apple, markdown
 
@@ -425,7 +425,7 @@ Fields to enter:
 Glama indexes GitHub repositories. `glama.json` at the repo root names `emilwagman` as the maintainer, which lets Emil claim the listing and edit its name and description.
 
 Fields to enter:
-- **Repository:** https://github.com/emilwagman/amber-notes
+- **Repository:** https://github.com/amber-notes/amber-notes
 - **Name:** Amber Notes
 - **Description:** same as Smithery.
 - **Hosted connector URL:** `https://mcp.ambernotes.app` (Streamable HTTP, OAuth).
@@ -435,7 +435,7 @@ Fields to enter:
 Choose the **Remote Server** type.
 
 Fields to enter:
-- **Repository URL:** https://github.com/emilwagman/amber-notes
+- **Repository URL:** https://github.com/amber-notes/amber-notes
 - **Name:** Amber Notes
 - **Server URL:** `https://mcp.ambernotes.app`
 - **Description:** same as Smithery.

@@ -77,14 +77,14 @@ describe("website PostHog", () => {
   it("names outbound links to the App Store, GitHub, Claude and ChatGPT, without their query", () => {
     const cases: [string, string][] = [
       ["https://apps.apple.com/app/id6817253103", "outbound_app_store_clicked"],
-      ["https://github.com/emilwagman/amber-notes?tab=readme", "outbound_github_clicked"],
+      ["https://github.com/amber-notes/amber-notes?tab=readme", "outbound_github_clicked"],
       ["https://claude.ai/new", "outbound_claude_clicked"],
       ["https://support.claude.com/en/articles/1", "outbound_claude_clicked"],
       ["https://chatgpt.com/", "outbound_chatgpt_clicked"],
       ["https://help.openai.com/en/articles/1", "outbound_chatgpt_clicked"],
     ];
     for (const [href, name] of cases) expect(clickEvent(link(href), here)?.event, href).toBe(name);
-    expect(clickEvent(link("https://github.com/emilwagman/amber-notes?tab=readme"), here)?.properties.destination).toBe("https://github.com/emilwagman/amber-notes");
+    expect(clickEvent(link("https://github.com/amber-notes/amber-notes?tab=readme"), here)?.properties.destination).toBe("https://github.com/amber-notes/amber-notes");
     expect(clickEvent(link("https://github.com/x"), here)?.leaves).toBe(true);
     expect(clickEvent(link("https://github.com/x", { target: "_blank" }), here)?.leaves).toBe(false);
   });

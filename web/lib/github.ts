@@ -1,7 +1,7 @@
 /// Public facts about the GitHub repository, fetched server-side (no token) and cached for an hour.
 /// Anything that fails returns null and the page simply leaves that detail out.
 
-export const REPO = "emilwagman/amber-notes";
+export const REPO = "amber-notes/amber-notes";
 export const GITHUB_URL = `https://github.com/${REPO}`;
 
 const headers = { Accept: "application/vnd.github+json", "User-Agent": "amber-notes-site" };

@@ -16,7 +16,7 @@ export const metadata: Metadata = pageMetadata({
 });
 
 const r = (i: number) => ({ "--i": i }) as React.CSSProperties;
-const GITHUB = "https://github.com/emilwagman/amber-notes";
+const GITHUB = "https://github.com/amber-notes/amber-notes";
 
 const Shield = () => (
   <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden="true">

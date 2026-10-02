@@ -78,7 +78,7 @@ To the extent the law allows, we're not liable for indirect or consequential los
 
 ## Open source
 
-The Amber Notes source code is open source under the MIT License, at [github.com/emilwagman/amber-notes](https://github.com/emilwagman/amber-notes). The license covers the code. These terms cover your use of the Amber Notes service we run.
+The Amber Notes source code is open source under the MIT License, at [github.com/amber-notes/amber-notes](https://github.com/amber-notes/amber-notes). The license covers the code. These terms cover your use of the Amber Notes service we run.
 
 ## Changes to these terms
 

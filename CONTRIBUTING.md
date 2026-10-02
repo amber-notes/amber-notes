@@ -1,6 +1,6 @@
 # Contributing
 
-Bug reports and small, focused fixes are welcome. For anything bigger, open an issue first so we can agree on the approach before you spend time on it. Issues labelled [good first issue](https://github.com/emilwagman/amber-notes/labels/good%20first%20issue) are small and well scoped.
+Bug reports and small, focused fixes are welcome. For anything bigger, open an issue first so we can agree on the approach before you spend time on it. Issues labelled [good first issue](https://github.com/amber-notes/amber-notes/labels/good%20first%20issue) are small and well scoped.
 
 Everyone taking part follows the [code of conduct](CODE_OF_CONDUCT.md). Report security problems privately, as described in [SECURITY.md](SECURITY.md), not in an issue.
 
@@ -10,7 +10,7 @@ You need macOS 26 with Xcode 26, Homebrew, and Docker (for the local backend).
 
 ```sh
 brew install xcodegen supabase/tap/supabase deno pnpm
-git clone https://github.com/emilwagman/amber-notes.git && cd amber-notes
+git clone https://github.com/amber-notes/amber-notes.git && cd amber-notes
 supabase start          # local Postgres, Auth, Storage and Functions (needs Docker)
 xcodegen generate       # makes Pane.xcodeproj from project.yml
 ```

@@ -41,8 +41,8 @@ describe("structured data", () => {
 
   it("ties the name to the GitHub repository, so it isn't mixed up with other apps called Amber Notes", () => {
     expect(organization).toMatchObject({ "@type": "Organization", name: "Amber Notes", url: "https://ambernotes.app" });
-    expect(organization.sameAs).toContain("https://github.com/emilwagman/amber-notes");
-    expect(app("1.0").sameAs).toContain("https://github.com/emilwagman/amber-notes");
+    expect(organization.sameAs).toContain("https://github.com/amber-notes/amber-notes");
+    expect(app("1.0").sameAs).toContain("https://github.com/amber-notes/amber-notes");
   });
 
   it("describes a post as an Article with its dates, an author and a publisher", () => {

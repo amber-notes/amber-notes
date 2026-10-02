@@ -11,7 +11,7 @@ describe("/stars.json", () => {
     expect(await res.json()).toEqual({ stars: 2 });
     expect(res.headers.get("cache-control")).toContain("s-maxage=600");
     expect(revalidate).toBe(600);
-    expect(fetch).toHaveBeenCalledWith("https://api.github.com/repos/emilwagman/amber-notes", expect.objectContaining({ next: { revalidate: 600 } }));
+    expect(fetch).toHaveBeenCalledWith("https://api.github.com/repos/amber-notes/amber-notes", expect.objectContaining({ next: { revalidate: 600 } }));
   });
 
   it.each([

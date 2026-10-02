@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-const GITHUB = "https://github.com/emilwagman/amber-notes";
+const GITHUB = "https://github.com/amber-notes/amber-notes";
 
 /// The live star count from /stars.json, or null when it can't be had (offline, GitHub down, a bad answer).
 export async function fetchStars(): Promise<number | null> {
