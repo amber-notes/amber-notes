@@ -10,7 +10,7 @@ const GITHUB = "https://github.com/amber-notes/amber-notes";
 /// As long as the sheet's exit in site.css.
 const EXIT_MS = 150;
 
-/// The phone header's menu (draft B): a button that opens a sheet with the site's pages, GitHub and
+/// The phone header's menu (drafts B and C): a button that opens a sheet with the site's pages, GitHub and
 /// the download. A modal <dialog>, so the browser holds focus inside it and Escape closes it.
 export default function MobileMenu({ path, stars: built }: { path: string; stars: number | null }) {
   const dialog = useRef<HTMLDialogElement>(null);
