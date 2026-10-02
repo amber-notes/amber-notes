@@ -6,7 +6,7 @@ link in the app or on the site, opens it on any device, and chooses a new passwo
 
 ## What a reset changes, and what it doesn't
 
-The account password only signs you in. Nothing is encrypted with it (`docs/Technical/e2ee-design.md`,
+**The password wraps nothing.** The account password only signs you in. Nothing is encrypted with it (`docs/Technical/e2ee-design.md`,
 `Pane/Model/E2EE.swift`): the data key lives in the Keychain and iCloud Keychain, the recovery wrap is
 sealed under the recovery key, an AI connection's wrap under its own token, and the one key made from
 a password is the separate notes password for locked notes (`Pane/Model/NoteLock.swift`).
@@ -93,16 +93,35 @@ The production project is `rodegaeruhyybqilrnpn`. On 2 October 2026 it had no cu
 stock recovery template.
 
 1. Merge and deploy the site, so `/reset-password` exists before any email points at it.
-2. Add `ambernotes.app` as a sending domain in Resend (region eu-west-1) and add its DNS records at
-   GoDaddy: MX and TXT (SPF) on `send.ambernotes.app` and the DKIM TXT on
-   `resend._domainkey.ambernotes.app`, with the values Resend shows. They don't touch the root MX
-   (forwardemail.net) or the existing DMARC record. Wait for Resend to say verified.
+2. DNS for sending. `ambernotes.app` was added to the Resend account on 2 October 2026 (domain id
+   `74963381-a703-4813-b926-836bae40677c`, region eu-west-1, not verified yet). Add at GoDaddy, then
+   press Verify in Resend (or `POST /domains/<id>/verify`):
+
+   | Type | Host (GoDaddy "Name") | Value | Priority | TTL |
+   |---|---|---|---|---|
+   | TXT | `resend._domainkey` | `p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC2KR3FD5PjNr3lhG978D2KEDzIjIa+iiv3HB1W6pu7uAqBH/ubmAbA6Hh12oTGQTs1LkAr0x7pJAQ9fx9k1kzDSQhhXlFOQHtCDGXDxCrtEjpCkGHHXhIAM/wUhBQ/F6CDOvgRajypQItjXjghqkumnVB25fLTq8/F7/LCYQvhxQIDAQAB` | | 1 hour |
+   | MX | `send` | `feedback-smtp.eu-west-1.amazonses.com` | 10 | 1 hour |
+   | TXT | `send` | `v=spf1 include:amazonses.com ~all` | | 1 hour |
+   | CNAME | `rsend` | `send.forge.rmta.net` | | 1 hour |
+
+   None of them touch the root MX (forwardemail.net, which receives hello@) or the existing DMARC
+   record (`p=quarantine`, relaxed alignment), which the DKIM signature on `ambernotes.app` passes.
 3. Make a Resend API key with sending access to that domain only. It is the SMTP password.
 4. `scripts/auth-email-config.sh > /tmp/auth-email.json`, add the key as `smtp_pass`, and
    `PATCH https://api.supabase.com/v1/projects/rodegaeruhyybqilrnpn/config/auth` with it. That sets
    the site URL, the recovery subject and template, one hour validity, the per-address minute, and
-   SMTP from `hello@ambernotes.app` ("Amber Notes"). The redirect list needs no change: the reset
-   uses no redirect.
+   SMTP from `hello@ambernotes.app` ("Amber Notes"). It also fixes `smtp_max_frequency` (1 s today,
+   so no per-address limit) to 60 s, and raises the hourly cap from 2 to 30, which only custom SMTP
+   allows. The redirect list needs no change: the reset uses no redirect.
+
+   Changing `site_url` from `http://127.0.0.1:3000` to `https://ambernotes.app` was checked against
+   every sign-in that redirects: the Mac download's Sign in with Apple and Connect Apple ID pass
+   `redirect_to=ambernotes://auth-callback` (`Backend.swift`), and `/connect` passes
+   `redirect_to=https://ambernotes.app/connect?…` (`lib/connect.ts`). Both are on the redirect list, so
+   Supabase uses them and never the site URL. The App Store apps sign in with Apple's id token and
+   email with a password, with no redirect at all. The site URL is only the fallback for a missing or
+   refused `redirect_to`, which today lands on a dead `127.0.0.1` page, and what `{{ .SiteURL }}` is in
+   templates.
 5. Ask for a reset for a test account on the live site and check it arrives, opens and saves.
 6. Ship the app build with Forgot password?.
 
