@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { scanAppLink, scanLink } from "@/lib/connect-flow";
+import { universalLink } from "@/lib/connect";
+import { DeviceScreen, type NumberAction } from "../DeviceLead";
 import type { PreviewState } from "./states";
 import { LeavingScreen, NotifyScreen, NotifySignInScreen, RecoverScreen, ScanScreen } from "../ConnectScreens";
 
@@ -15,9 +17,12 @@ const FINGERPRINT = "preview_key_hash_" + "0".repeat(26);
 const PREVIEW_LINK = scanLink(ID, SCAN, FINGERPRINT);
 const TO = "claude.ai";
 const noop = () => {};
+const sentAgain = async () => null;
 const prevent = (e: React.FormEvent) => e.preventDefault();
 
-export default function Preview({ state }: { state: PreviewState }) {
+export default function Preview({ state, number, action, both }: {
+  state: PreviewState; number: string | null; action: NumberAction; both: boolean;
+}) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [recoveryKey, setRecoveryKey] = useState("");
@@ -39,6 +44,14 @@ export default function Preview({ state }: { state: PreviewState }) {
           access={{ write, canWrite: true, onWrite: setWrite }} onSubmit={prevent} onScan={noop}
         />
       );
+    case "checkIphone":
+      return <DeviceScreen lead="iphone" devices={{ iphone: true, mac: both }} number={number} action={action} openLink={universalLink(ID)} onRecover={noop} onResend={sentAgain} />;
+    case "checkMac":
+      return <DeviceScreen lead="mac" devices={{ iphone: false, mac: true }} number={number} action={action} openLink={universalLink(ID)} onRecover={noop} onResend={sentAgain} />;
+    case "thisMac":
+      return <DeviceScreen lead="thisMac" devices={{ iphone: both, mac: true }} number={number} action={action} openLink={universalLink(ID)} onRecover={noop} onResend={sentAgain} />;
+    case "thisIphone":
+      return <DeviceScreen lead="thisIphone" devices={{ iphone: true, mac: both }} number={number} action={action} openLink={universalLink(ID)} onRecover={noop} onResend={sentAgain} />;
     case "leaving":
       return <LeavingScreen allowed host={TO} />;
   }

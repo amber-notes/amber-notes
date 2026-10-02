@@ -108,3 +108,250 @@
 .options summary:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 .optionsBody { display: grid; gap: 10px; margin-top: 10px; }
 .optionsBody .explain { min-height: 0; }
+
+/* The picture of the device to use (DeviceLead.tsx): flat cut paper on a soft field, in the page's
+   own browns and amber. The picture has its own colours per theme: a dark body and a light screen on
+   cream, a light body and a dark screen on leaf, so its outline shows on both. */
+.art {
+  --a-body: #2a1d10; --a-screen: #ffe9c8; --a-paper: #fffdf8; --a-bar: rgba(42, 29, 16, 0.3); --a-bar-soft: rgba(42, 29, 16, 0.14);
+  --a-shadow: rgba(110, 55, 5, 0.2);
+  display: flex; align-items: center; justify-content: center; gap: 28px; width: 100%; min-height: 188px; box-sizing: border-box;
+  padding: 16px; border-radius: 20px; background: var(--soft); overflow: hidden;
+}
+:global([data-theme="leaf"]) .art {
+  --a-body: #f6dfc2; --a-screen: #5c3415; --a-paper: #fbeedd; --a-bar: rgba(46, 24, 10, 0.42); --a-bar-soft: rgba(46, 24, 10, 0.2);
+  --a-shadow: rgba(0, 0, 0, 0.28);
+}
+.picture { display: block; flex: none; }
+.pBody { fill: var(--a-body); }
+.pScreen { fill: var(--a-screen); }
+.pPaper { fill: var(--a-paper); }
+.pShadow { fill: var(--a-shadow); }
+.pBar { fill: var(--a-bar); }
+.pBarSoft { fill: var(--a-bar-soft); }
+.pButton, .pCaret, .pDisc { fill: var(--amber); }
+.pDot { fill: var(--a-screen); opacity: 0.55; }
+.pDigit { fill: #2a1d10; font-size: 19px; font-weight: 750; font-variant-numeric: tabular-nums; }
+.artNumber { font-size: 64px; line-height: 1; font-weight: 750; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; color: var(--ink); }
+
+/* B: the notification in its own words, on the top of a phone that runs off the field's edge. */
+.artB { align-items: flex-end; padding: 22px 16px 0; min-height: 0; }
+.phoneTop {
+  position: relative; width: min(292px, 100%); box-sizing: border-box; margin-bottom: -1px; padding: 30px 10px 22px;
+  border-radius: 34px 34px 0 0; background: var(--a-screen); box-shadow: 0 0 0 7px var(--a-body), 6px 4px 0 7px var(--a-shadow);
+}
+.island { position: absolute; top: 10px; left: 50%; width: 64px; height: 12px; margin-left: -32px; border-radius: 6px; background: var(--a-body); }
+.push {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 18px; text-align: left;
+  background: var(--a-paper); color: #2a1d10; box-shadow: 0 3px 0 var(--a-shadow);
+}
+.pushMark { flex: none; border-radius: 22.5%; }
+.pushText { display: grid; min-width: 0; font-size: 13px; line-height: 1.3; }
+.pushApp { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; font-weight: 600; letter-spacing: 0.01em; color: rgba(42, 29, 16, 0.6); }
+.pushApp span { font-weight: 400; }
+.pushTitle { font-weight: 700; }
+.pushBody { color: rgba(42, 29, 16, 0.78); }
+
+/* The Mac: the top of its screen, with the app's icon and name on it. */
+.macTop {
+  position: relative; width: min(320px, 100%); box-sizing: border-box; margin-bottom: -1px; padding: 30px 16px 26px;
+  border-radius: 20px 20px 0 0; background: var(--a-screen); box-shadow: 0 0 0 7px var(--a-body), 6px 4px 0 7px var(--a-shadow);
+}
+.macCamera { position: absolute; top: 9px; left: 50%; width: 6px; height: 6px; margin-left: -3px; border-radius: 50%; background: var(--a-body); opacity: 0.55; }
+.macApp { display: grid; justify-items: center; gap: 8px; font-size: 13px; font-weight: 650; color: #2a1d10; }
+:global([data-theme="leaf"]) .macApp { color: #fbeedd; }
+/* The notification arrives once when the screen shows. It doesn't loop: nothing here is waiting on you to watch. */
+@media (prefers-reduced-motion: no-preference) {
+  .push, .macApp { animation: arrive 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.2) 0.25s both; }
+  @keyframes arrive { from { opacity: 0; transform: translateY(-14px) scale(0.97); } }
+}
+/* What a quiet link says back after you use it. */
+.linkSaid { margin: 0; min-height: 36px; display: grid; align-items: center; color: var(--muted); font-size: 14px; font-weight: 600; }
+.link:disabled { color: var(--muted); cursor: default; text-decoration: none; }
+
+/* A link inside the quiet line: the line's own size, with room to tap. */
+.inlineLink {
+  border: 0; background: none; padding: 6px 0; margin: -6px 0; font: inherit; font-weight: 600; color: var(--link); cursor: pointer;
+  text-decoration: underline; text-underline-offset: 3px; border-radius: 4px;
+}
+.inlineLink:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+/* Dev preview only (/connect/preview?theme=leaf): the card on the site's leaf theme, which /connect
+   itself never uses. The tokens are site.css's; a class, because the page's CSP allows no inline styles. */
+.leafPreview {
+  --bg: #2e180a; --ink: #fbeedd; --muted: #d9bf9f; --soft: #40240f; --line: rgba(255, 220, 170, 0.14);
+  --amber: #f5a53a; --link: #f7b865; --card: #3a2010; --cta-bg: #fbeedd; --cta-ink: #2e180a;
+  background: var(--bg); color: var(--ink); color-scheme: dark;
+}
+
+/* ───── The design pass over every connect screen. These come after the rules above and win. ─────
+   One focus per screen: one filled button, everything else quiet. Fields sit in the page's cream,
+   a shade under the card, with a line you can see. Nothing here is a raw colour: the page's tokens,
+   plus two of its own. */
+.page {
+  --field: var(--bg, #fff4e6); --field-line: rgba(80, 45, 10, 0.24); --danger: #a3261d; --apple-bg: #000; --apple-ink: #fff;
+  grid-template-columns: minmax(0, 460px); padding: 32px 16px 28px;
+}
+:global([data-theme="leaf"]) .page {
+  --field: #2e180a; --field-line: rgba(255, 220, 170, 0.28); --danger: #ffb4a8; --apple-bg: #fff; --apple-ink: #000;
+}
+.shell { width: 100%; display: grid; justify-items: center; }
+.card { width: 100%; gap: 18px; padding: 36px 32px 28px; border-radius: 32px; }
+@media (max-width: 480px) { .card { gap: 16px; padding: 28px 20px 22px; border-radius: 30px; } }
+
+.title { font-size: 26px; line-height: 1.18; letter-spacing: -0.02em; }
+.lede { font-size: 16px; }
+
+/* Where access would go and what it could do: a slip of paper under the heading. */
+.request {
+  margin: 0; width: 100%; box-sizing: border-box; padding: 12px 16px; border-radius: 14px; text-align: left;
+  background: var(--soft); color: var(--muted); font-size: 15px; line-height: 1.45; text-wrap: pretty; overflow-wrap: anywhere;
+}
+.request b { color: var(--ink); }
+.requestName { display: block; margin-top: 2px; font-size: 13px; }
+
+/* Buttons: 50 high, one filled per screen. The second way in is an outline, not a beige slab. */
+.primary, .secondary, .apple { min-height: 50px; border-radius: 14px; font-size: 16px; }
+.secondary { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--ink) 70%, transparent); }
+@media (hover: hover) { .secondary:not(:disabled):hover { background: var(--soft); } }
+.primary:disabled, .secondary:disabled, .apple:disabled { opacity: 0.55; }
+/* Sign in with Apple, filled: black on the cream theme, white on the dark one (Apple's two solid styles). */
+.apple { background: var(--apple-bg); color: var(--apple-ink); box-shadow: none; font-weight: 600; font-size: 17px; gap: 7px; }
+.apple svg { margin-top: -2px; }
+
+.form { gap: 14px; }
+.field { gap: 7px; font-size: 13px; font-weight: 650; color: var(--ink); }
+.field input {
+  min-height: 50px; padding: 0 14px; border-radius: 12px; background: var(--field); color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--field-line);
+}
+.field input::placeholder { color: var(--muted); opacity: 0.6; }
+.field input:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; box-shadow: inset 0 0 0 1px var(--amber); }
+@media (prefers-reduced-motion: no-preference) { .field input { transition: box-shadow 0.15s ease-out; } }
+/* The error's line is always there, so the button under it never moves. */
+.error { min-height: 20px; margin: -4px 0; color: var(--danger); font-size: 14px; line-height: 20px; font-weight: 600; text-align: left; }
+
+.status { display: flex; align-items: flex-start; justify-content: center; gap: 10px; margin: 2px 0; font-size: 15px; line-height: 1.4; text-align: left; }
+.status .spinner { margin-top: 2px; }
+.spinner { vertical-align: -3px; }
+
+/* The reading you should do before typing a key: plain, with a rule down its side, not a box. */
+.note { padding: 2px 0 2px 14px; border-radius: 0; background: none; box-shadow: inset 3px 0 0 var(--line); font-size: 13px; }
+.warn { padding: 10px 14px; border-radius: 12px; background: color-mix(in srgb, var(--amber) 18%, transparent); color: var(--ink); font-size: 14px; }
+.segmented { border-radius: 12px; }
+.segmented button { min-height: 44px; border-radius: 9px; font-size: 15px; }
+.segmented button[aria-checked="true"] { background: var(--card); }
+
+/* The other ways in, under a hairline: small, one per line. */
+.quiet { width: 100%; display: grid; gap: 4px; margin-top: 2px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; line-height: 1.5; }
+.quiet p { margin: 0; }
+.quiet a, .small a { color: var(--link); font-weight: 600; text-underline-offset: 3px; padding: 6px 0; margin: -6px 0; border-radius: 4px; }
+.quiet a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.small { font-size: 14px; }
+.links { margin-top: 0; }
+.link { font-size: 15px; }
+.matchNumber, .artNumber { letter-spacing: 0.02em; }
+
+/* Connected: a tick of cut paper. */
+.done { margin-bottom: -2px; }
+.doneTick { fill: none; stroke: #fff; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+.pDash { fill: var(--a-bar); }
+
+/* The request panel shows only on a page about one request (ConnectCard's `request`). */
+.side { display: none; }
+
+/* ── A page about one request: the request on a soft panel beside the form; stacked on a phone. ── */
+.page[data-layout="panel"] { grid-template-columns: minmax(0, 940px); }
+.page[data-layout="panel"] .shell {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); justify-items: stretch; border-radius: 36px; overflow: hidden; background: var(--card);
+  box-shadow: 0 0 0 1px var(--line), 0 1px 2px rgba(60, 30, 5, 0.06), 0 24px 48px -28px rgba(60, 30, 5, 0.45);
+}
+.page[data-layout="panel"] .side {
+  --a-body: #2a1d10; --a-screen: #ffe9c8; --a-paper: #fffdf8; --a-bar: rgba(42, 29, 16, 0.3); --a-bar-soft: rgba(42, 29, 16, 0.14); --a-shadow: rgba(110, 55, 5, 0.2);
+  display: grid; align-content: center; justify-items: start; gap: 18px; padding: 44px 44px 48px; background: var(--soft); text-align: left;
+}
+:global([data-theme="leaf"]) .page[data-layout="panel"] .side {
+  --a-body: #f6dfc2; --a-screen: #5c3415; --a-paper: #fbeedd; --a-bar: rgba(46, 24, 10, 0.42); --a-bar-soft: rgba(46, 24, 10, 0.2); --a-shadow: rgba(0, 0, 0, 0.28);
+}
+.sidePicture { width: min(300px, 100%); height: auto; margin: 8px 0 4px; }
+.sideText { margin: 0; display: grid; gap: 2px; }
+.sideCaption { color: var(--muted); font-size: 15px; font-weight: 600; }
+.sideHost { color: var(--ink); font-size: 34px; line-height: 1.1; font-weight: 750; letter-spacing: -0.025em; overflow-wrap: anywhere; }
+.sideNote { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.45; }
+.page[data-layout="panel"] .card { align-content: center; padding: 44px 44px 40px; border-radius: 0; background: none; box-shadow: none; }
+.page[data-layout="panel"] .marks, .page[data-layout="panel"] .request { display: none; }
+.page[data-layout="panel"] .card, .page[data-layout="panel"] .title { text-align: left; justify-items: stretch; }
+.page[data-layout="panel"] .lede, .page[data-layout="panel"] .small, .page[data-layout="panel"] .hint { text-align: left; }
+.page[data-layout="panel"] .status { justify-content: flex-start; }
+.page[data-layout="panel"] .links { justify-items: start; }
+.page[data-layout="panel"] .qr, .page[data-layout="panel"] .art, .page[data-layout="panel"] .done, .page[data-layout="panel"] .matchNumber { justify-self: center; }
+@media (max-width: 860px) {
+  .page[data-layout="panel"] { grid-template-columns: minmax(0, 460px); }
+  .page[data-layout="panel"] .shell { grid-template-columns: minmax(0, 1fr); border-radius: 30px; }
+  .page[data-layout="panel"] .side { grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 2px 14px; padding: 18px 20px; }
+  .page[data-layout="panel"] .side .mark { grid-row: span 2; }
+  .page[data-layout="panel"] .sidePicture { display: none; }
+  .page[data-layout="panel"] .sideHost { font-size: 22px; }
+  .page[data-layout="panel"] .sideCaption, .page[data-layout="panel"] .sideNote { font-size: 13px; }
+  .page[data-layout="panel"] .card { padding: 24px 20px 22px; }
+}
+
+
+
+/* The error's reserved line sits in the space between the last field and the button. */
+.form .error { margin: -9px 0 -9px; }
+.quiet a, .small a, .inlineLink { white-space: nowrap; }
+@media (max-width: 480px) {
+  .page { padding-top: 20px; }
+  .marks .mark { width: 48px; height: 48px; }
+  .title { font-size: 24px; }
+  .request { padding: 10px 14px; font-size: 14px; }
+  .lede { font-size: 15px; }
+}
+
+/* B, on a wide screen: the mark at the top of the panel, the picture in the middle, the words at the foot. */
+.sideWords { display: grid; gap: 8px; }
+@media (min-width: 861px) {
+  .page[data-layout="panel"] .side { display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; min-height: 520px; box-sizing: border-box; }
+  .page[data-layout="panel"] .sidePicture { width: 100%; max-width: 360px; align-self: center; margin: 0; }
+  .page[data-layout="panel"] .title { font-size: 30px; }
+}
+@media (max-width: 860px) {
+  .page[data-layout="panel"] .sideWords { gap: 0; }
+  .page[data-layout="panel"] .sideNote { display: none; }
+  .page[data-layout="panel"] .request { display: block; }
+  .page[data-layout="panel"] .request b { font-weight: 650; }
+}
+@media (max-width: 480px) {
+  .card { padding-top: 24px; }
+  .marks .mark { width: 44px; height: 44px; }
+  .field input, .primary, .secondary, .apple { min-height: 48px; }
+}
+.pDash { fill: var(--muted); opacity: 0.7; }
+/* A short window: less air around the card, so the buttons stay in view. */
+@media (min-width: 481px) and (max-height: 860px) {
+  .page { padding-top: 16px; padding-bottom: 16px; gap: 12px; }
+  .page:not([data-layout="panel"]) .card { gap: 14px; padding-top: 26px; padding-bottom: 22px; }
+}
+
+/* Email first: the password field waits in the form (so a password manager can fill it with the
+   email), out of sight and out of the tab order, until the email turns out to have an account. */
+.waiting { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); opacity: 0; pointer-events: none; }
+.form { position: relative; }
+/* What the email check says, where the button was. */
+.said { display: grid; gap: 10px; margin: 0; color: var(--muted); font-size: 15px; line-height: 1.45; text-align: left; }
+.said p { margin: 0; }
+.said b { color: var(--ink); }
+@media (prefers-reduced-motion: no-preference) {
+  .form .field:not(.waiting) + .field:not(.waiting) { animation: reveal 0.22s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+  .said { animation: reveal 0.22s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+  @keyframes reveal { from { opacity: 0; transform: translateY(-6px); } }
+}
+
+/* One focus: the frame names the host (the band, the panel), and the line under the heading says
+   what the app could do, as plain text. The name the app gives itself only on the wide panel, small. */
+.request { padding: 0; border-radius: 0; background: none; color: var(--muted); font-size: 16px; }
+.page[data-layout="panel"] .request { display: block; }
+.sideClaim { margin: 0; color: var(--muted); font-size: 13px; }
+@media (min-width: 861px) { .page[data-layout="panel"] .request { display: none; } }
+@media (max-width: 860px) { .sideClaim { display: none; } }

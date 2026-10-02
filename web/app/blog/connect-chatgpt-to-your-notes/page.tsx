@@ -56,7 +56,7 @@ export default function Page() {
         <li>Paste the address as the connection, choose OAuth, then Create.</li>
         <li>
           ChatGPT asks Amber Notes for permission, and a page on ambernotes.app opens. Sign in there (or choose Open Amber Notes if it&apos;s
-          on this computer). The page then says Approve on your iPhone or Mac and shows a two-digit number.
+          on this computer). The page then tells you to open Amber Notes on your iPhone or Mac, and shows a two-digit number once you have.
         </li>
         <li>
           Amber Notes on your iPhone or Mac asks &ldquo;Allow ChatGPT to use your notes?&rdquo; Type the number from the page, pick Read and
@@ -67,7 +67,7 @@ export default function Page() {
       </ol>
       <Figure shot={SHOTS.consent} caption="Nothing is shared until you choose Allow, and you pick Read and Edit or Read Only." />
       <p>
-        No iPhone or Mac nearby? On the page, choose No device nearby? Use your recovery key. Enter your recovery key (Amber Notes shows it in Settings, Privacy &amp; Security),
+        No iPhone or Mac nearby? On the page, choose Use your recovery key. Enter your recovery key (Amber Notes shows it in Settings, Privacy &amp; Security),
         pick Read and edit or Read only, and choose Allow. The key is used on that page only and never sent to us, but approving on your
         device is safer, so use it when you can.
       </p>

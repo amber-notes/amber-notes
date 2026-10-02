@@ -43,7 +43,7 @@ export default async function Connect({ searchParams }: { searchParams: Promise<
   // page those apps understand, and ?qr=1 for testing a newer build.
   const live = qrConnectLive(publicVersion());
   return (
-    <ConnectCard>
+    <ConnectCard request label={label}>
       {qrConnectLive(publicVersion(), qr) ? <ConnectFlow {...flow} keepQR={!live} /> : <ConnectFlowV1 {...flow} />}
     </ConnectCard>
   );

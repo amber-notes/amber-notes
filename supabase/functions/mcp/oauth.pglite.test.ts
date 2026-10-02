@@ -871,6 +871,14 @@ async function askAs(sql: Sql, user: User, id: string, browserKey: string, from 
   return { status: res.status, body: await res.json(), pickup: p?.pickup ?? "", nonce };
 }
 
+/** The page asks for the push again (POST /connect/resend, no session, with the pickup). */
+async function resendAs(sql: Sql, id: string, pickup: string, from: { ip?: string; origin?: string } = {}) {
+  const res = await call(sql, request("function", "/connect/resend", {
+    method: "POST", ip: from.ip, headers: { origin: from.origin ?? SITE, "content-type": "application/json" }, body: JSON.stringify({ id, pickup }),
+  }));
+  return { status: res.status, body: await res.json() };
+}
+
 /** The device writes its nonce (POST /connect/nonce, with the session, from the app). */
 async function deviceNonce(sql: Sql, user: User, id: string, nonce: string) {
   const res = await call(sql, request("function", "/connect/nonce", {
@@ -1469,6 +1477,152 @@ Deno.test("a scan code expires with its request", async () => {
   await sql`update public.oauth_requests set expires_at = now() - interval '1 second' where id = ${requestId}`;
   assertEquals((await scanAllow(sql, me, requestId, s.scan).catch(() => ({ decided: { status: 404 } }))).decided.status, 404);
   assertEquals((await scanAskAs(sql, requestId, toBase64(page.publicRaw), s.scan_hash, (await newPickup()).pickup_hash)).status, 404);
+});
+
+Deno.test("send it again pushes once more for the page that asked, and for nobody else", async () => {
+  const { sql, pg } = await db();
+  const me = await newUser(pg);
+  await app(pg, me.id, `select public.register_device_token($1, 'ios', $2, 'production')`, [crypto.randomUUID(), "ab".repeat(32)]);
+  const sent: { token: string; payload: any; collapseId?: string }[] = [];
+  setPushSender((p: any) => { sent.push(p); return Promise.resolve("sent"); });
+  try {
+    const { requestId } = await pendingRequest(sql);
+    const asked = await askAs(sql, me, requestId, toBase64((await newHandoffKeys()).publicRaw));
+    assertEquals(sent.length, 1);
+    // Without the page's pickup secret, from another site, or for a request that isn't asked: nothing.
+    assertEquals((await resendAs(sql, requestId, "0".repeat(64))).status, 404);
+    assertEquals((await resendAs(sql, requestId, asked.pickup, { origin: "https://evil.example" })).status, 403);
+    assertEquals((await resendAs(sql, (await pendingRequest(sql)).requestId, asked.pickup)).status, 404);
+    assertEquals(sent.length, 1);
+    // With it: the same push again, under the same collapse id, and nothing about the account.
+    assertEquals(await resendAs(sql, requestId, asked.pickup), { status: 200, body: { sent: true } });
+    assertEquals(sent.length, 2);
+    assertEquals(sent[1].payload, sent[0].payload);
+    assertEquals(sent[1].collapseId, requestId);
+    // A scanned code has no account yet: there is nobody to tell.
+    const scanned = await pendingRequest(sql);
+    const page = await newHandoffKeys(), pick = await newPickup();
+    const scan = await call(sql, request("function", "/connect/scan", { method: "POST", headers: { origin: SITE, "content-type": "application/json" },
+      body: JSON.stringify({ id: scanned.requestId, browser_key: toBase64(page.publicRaw), pickup_hash: pick.pickup_hash, scan_hash: "c".repeat(64), from: "Chrome on a Mac" }) }));
+    assertEquals(scan.status, 200); await scan.body?.cancel();
+    assertEquals((await resendAs(sql, scanned.requestId, pick.pickup)).status, 404);
+    assertEquals(sent.length, 2);
+  } finally {
+    setPushSender(null);
+  }
+});
+
+Deno.test("send it again is capped for the request and for the account, whatever address asks", async () => {
+  const { sql, pg } = await db();
+  const me = await newUser(pg);
+  await app(pg, me.id, `select public.register_device_token($1, 'ios', $2, 'production')`, [crypto.randomUUID(), "ab".repeat(32)]);
+  let pushes = 0;
+  setPushSender(() => { pushes++; return Promise.resolve("sent"); });
+  try {
+    const { requestId } = await pendingRequest(sql);
+    const asked = await askAs(sql, me, requestId, toBase64((await newHandoffKeys()).publicRaw));
+    assertEquals(pushes, 1);
+    // Three for a request over its whole life, then no more: a new address each time changes nothing.
+    for (let i = 0; i < 3; i++) assertEquals((await resendAs(sql, requestId, asked.pickup, { ip: `198.51.100.${10 + i}` })).status, 200);
+    for (let i = 0; i < 6; i++) {
+      const refused = await resendAs(sql, requestId, asked.pickup, { ip: `198.51.100.${20 + i}` });
+      assertEquals(refused.status, 429);
+      assertEquals(Object.keys(refused.body), ["error"]);
+    }
+    assertEquals(pushes, 4);
+    // The page asking again (a reload) doesn't hand the three back.
+    const again = await askAs(sql, me, requestId, toBase64((await newHandoffKeys()).publicRaw));
+    assertEquals(again.status, 200);
+    assertEquals((await resendAs(sql, requestId, again.pickup, { ip: "198.51.100.40" })).status, 429);
+    assertEquals(pushes, 5);
+
+    // The account's budget is ten asks in ten minutes, and each resend is one of them: so far one
+    // ask and three resends. Three more requests, each sent again once, is ten.
+    const more: { id: string; pickup: string }[] = [];
+    for (let i = 0; i < 3; i++) {
+      const r = await pendingRequest(sql);
+      const a = await askAs(sql, me, r.requestId, toBase64((await newHandoffKeys()).publicRaw));
+      assertEquals(a.status, 200);
+      assertEquals((await resendAs(sql, r.requestId, a.pickup, { ip: `198.51.100.${50 + i}` })).status, 200);
+      more.push({ id: r.requestId, pickup: a.pickup });
+    }
+    assertEquals(pushes, 11);
+    // Now nothing wakes the devices: not a resend from any address, and not a new ask.
+    for (const [i, m] of more.entries()) assertEquals((await resendAs(sql, m.id, m.pickup, { ip: `198.51.100.${60 + i}` })).status, 429);
+    const over = await askAs(sql, me, (await pendingRequest(sql)).requestId, toBase64((await newHandoffKeys()).publicRaw));
+    assertEquals(over.status, 429);
+    assertEquals(pushes, 11);
+
+    // One address is held too, before anything is read: twelve tries in ten minutes, right or wrong.
+    await pg.query(`delete from public.oauth_rate where bucket = 'resend'`);
+    for (let i = 0; i < 12; i++) assertEquals((await resendAs(sql, requestId, "0".repeat(64), { ip: "198.51.100.99" })).status, 404);
+    assertEquals((await resendAs(sql, requestId, "0".repeat(64), { ip: "198.51.100.99" })).status, 429);
+  } finally {
+    setPushSender(null);
+  }
+});
+
+Deno.test("an ask still answers when looking up the account's devices fails", async () => {
+  const { sql, pg } = await db();
+  const me = await newUser(pg);
+  await pg.query(`alter table public.pane_devices rename to pane_devices_gone`);
+  const lines: string[] = [];
+  const original = console.log;
+  console.log = (s: string) => lines.push(s);
+  try {
+    const { requestId } = await pendingRequest(sql);
+    const asked = await askAs(sql, me, requestId, toBase64((await newHandoffKeys()).publicRaw));
+    assertEquals(asked.status, 200);
+    assertEquals(Object.keys(asked.body).sort(), ["asked", "expires_at"]);
+    assertEquals((await pg.query(`select 1 from public.connect_asks where request_id = $1`, [requestId])).rows.length, 1);
+    assert(lines.some((l) => l.includes("devices_failed")), "the failure is logged");
+  } finally {
+    console.log = original;
+  }
+});
+
+Deno.test("the ask says where the account has Amber Notes, in two yes-or-no answers, and only to that account", async () => {
+  const { sql, pg } = await db();
+  const me = await newUser(pg), other = await newUser(pg);
+  const devicesFor = async (user: User) => {
+    const { requestId } = await pendingRequest(sql);
+    const asked = await askAs(sql, user, requestId, toBase64((await newHandoffKeys()).publicRaw));
+    assertEquals(Object.keys(asked.body).sort(), ["asked", "devices", "expires_at"]);
+    return asked.body.devices;
+  };
+  const seen = (user: User, device: string, platform: string, daysAgo = 0) =>
+    pg.query(`insert into public.pane_devices (user_id, device_id, platform, last_seen) values ($1, $2, $3, now() - make_interval(days => $4))`, [user.id, device, platform, daysAgo]);
+  const push = (user: User, device: string, platform: string, n: number) =>
+    pg.query(`insert into public.device_tokens (user_id, device_id, platform, token, environment) values ($1, $2, $3, $4, 'production')`, [user.id, device, platform, n.toString(16).padStart(64, "0")]);
+
+  // Nothing known: neither.
+  assertEquals(await devicesFor(me), { iphone: false, mac: false });
+  // Someone else's devices never count.
+  const theirPhone = crypto.randomUUID(), theirMac = crypto.randomUUID();
+  await seen(other, theirPhone, "ios"); await push(other, theirPhone, "ios", 1); await seen(other, theirMac, "macos");
+  assertEquals(await devicesFor(me), { iphone: false, mac: false });
+  assertEquals(await devicesFor(other), { iphone: true, mac: true });
+  // An iPhone that can't get the push isn't one to check; with a token it is.
+  const phone = crypto.randomUUID();
+  await seen(me, phone, "ios");
+  assertEquals(await devicesFor(me), { iphone: false, mac: false });
+  await push(me, phone, "ios", 2);
+  assertEquals(await devicesFor(me), { iphone: true, mac: false });
+  // A Mac counts by having opened the app lately, push or not.
+  const mac = crypto.randomUUID();
+  await seen(me, mac, "macos", 29);
+  assertEquals(await devicesFor(me), { iphone: true, mac: true });
+  // Not opened for 30 days: no longer named.
+  await pg.query(`update public.pane_devices set last_seen = now() - interval '31 days' where user_id = $1`, [me.id]);
+  assertEquals(await devicesFor(me), { iphone: false, mac: false });
+  // Nothing was written to answer.
+  assertEquals((await pg.query<{ n: number }>(`select count(*)::int n from public.pane_devices`)).rows[0].n, 4);
+  assertEquals((await pg.query<{ n: number }>(`select count(*)::int n from public.device_tokens`)).rows[0].n, 2);
+  // Signed out, there is no answer at all.
+  const { requestId } = await pendingRequest(sql);
+  const signedOut = await call(sql, request("function", "/connect/ask", { method: "POST", headers: { origin: SITE, "content-type": "application/json" }, body: JSON.stringify({ id: requestId }) }));
+  assertEquals(signedOut.status, 401);
+  assertEquals(Object.keys(await signedOut.json()), ["error"]);
 });
 
 Deno.test("signing in on the page for a notification keeps the code working, and the number path", async () => {

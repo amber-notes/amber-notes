@@ -83,6 +83,16 @@ export function revealRequest(functionBase: string, id: string, pickup: string, 
   }];
 }
 
+/// "Send it again": the page that asked, known by its pickup secret, has the account's devices told
+/// once more. No session.
+export function resendRequest(functionBase: string, id: string, pickup: string): [string, RequestInit] {
+  return [`${functionBase}/connect/resend`, {
+    method: "POST", cache: "no-store",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ id, pickup }),
+  }];
+}
+
 /// What the page does after a /connect/status answer.
 export type Step =
   | { kind: "wait" }
@@ -245,4 +255,68 @@ export function isMacBrowser(platform: string, ua: string, maxTouchPoints = 0): 
   if (/iPhone|iPad|iPod/.test(platform) || /iPhone|iPad|iPod/.test(ua)) return false;
   const mac = /^Mac/.test(platform) || (!platform && /\bMacintosh\b/.test(ua));
   return mac && maxTouchPoints <= 1;
+}
+
+// MARK: Which device to name
+
+/// Where the account has Amber Notes, from /connect/ask: an iPhone that opened it in the last 30
+/// days and gets the push, and a Mac that opened it in the last 30 days. Two yes-or-no answers.
+export type Devices = { iphone: boolean; mac: boolean };
+
+/// The devices in /connect/ask's answer, or null when it doesn't say (the page then names both).
+export function parseDevices(body: unknown): Devices | null {
+  const d = (body as { devices?: { iphone?: unknown; mac?: unknown } } | null)?.devices;
+  if (typeof d?.iphone !== "boolean" || typeof d?.mac !== "boolean") return null;
+  return { iphone: d.iphone, mac: d.mac };
+}
+
+/// What this browser runs on, as far as naming a device goes.
+export type BrowserOn = "mac" | "iphone" | "other";
+export function browserOn(platform: string, ua: string, maxTouchPoints = 0): BrowserOn {
+  if (/iPhone|iPod/.test(platform) || /iPhone|iPod/.test(ua)) return "iphone";
+  return isMacBrowser(platform, ua, maxTouchPoints) ? "mac" : "other";
+}
+
+/// The one thing the page tells you to do once you've signed in:
+/// - "thisMac": the browser is on a Mac and the account has a Mac app: open it here.
+/// - "thisIphone": the browser is on an iPhone and the account has the iPhone app: open it here.
+/// - "iphone": check your iPhone for the notification.
+/// - "mac": the account's only app is on a Mac, and this browser isn't on one: open it there.
+/// - "recover": no app seen lately: the recovery key leads.
+/// - "any": the server didn't say: name both, as before.
+export type Lead = "thisMac" | "thisIphone" | "iphone" | "mac" | "recover" | "any";
+export function leadFor(devices: Devices | null, on: BrowserOn): Lead {
+  if (!devices) return "any";
+  if (on === "mac" && devices.mac) return "thisMac";
+  if (on === "iphone" && devices.iphone) return "thisIphone";
+  if (devices.iphone) return "iphone";
+  if (devices.mac) return "mac";
+  return "recover";
+}
+
+// MARK: Email first
+
+/// What the site's /connect/account-status says about an email, as the app reads the same function
+/// (Pane/Views/EmailSignInFlow.swift): an account with a password, an account that signs in with
+/// Apple, or nobody. Null when it couldn't say.
+export type EmailStatus = "password" | "apple" | "none";
+
+export function parseEmailStatus(body: unknown): EmailStatus | null {
+  const b = body as { exists?: unknown; password?: unknown } | null;
+  if (typeof b?.exists !== "boolean" || typeof b.password !== "boolean") return null;
+  return !b.exists ? "none" : b.password ? "password" : "apple";
+}
+
+/// Good enough to ask about: something@something.something (the app's rule).
+export const emailLooksValid = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+
+/// Where the email-first sign-in is: typing the email, asking about it, the password (`fallback`
+/// when the check failed, so nobody is stuck), an Apple account, or no account.
+export type EmailStep = { kind: "email" } | { kind: "checking" } | { kind: "password"; fallback: boolean } | { kind: "apple" } | { kind: "none" };
+
+/// The step after the check. An answer that couldn't be had shows the password field, as the app does.
+export function afterCheck(status: EmailStatus | null): EmailStep {
+  if (status === "none") return { kind: "none" };
+  if (status === "apple") return { kind: "apple" };
+  return { kind: "password", fallback: status === null };
 }

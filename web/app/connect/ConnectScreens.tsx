@@ -1,4 +1,8 @@
+import { useEffect, useRef, useState } from "react";
 import { APPLE_ON_WEB } from "@/lib/connect";
+import { afterCheck, emailLooksValid, parseEmailStatus, type Devices, type EmailStatus, type EmailStep, type Lead } from "@/lib/connect-flow";
+import { APP_STORE_LIVE, APP_STORE_URL } from "@/lib/site";
+import { DeviceScreen } from "./DeviceLead";
 import { QRCode } from "./QRCode";
 import styles from "./connect.module.css";
 
@@ -8,10 +12,18 @@ import styles from "./connect.module.css";
 /// While Sign in with Apple is off on the web (APPLE_ON_WEB), what Apple accounts do instead.
 export const APPLE_INSTEAD = "Signed up with Apple? Scan the code with your iPhone instead.";
 
-/// "Access goes to claude.ai." Where access would go, never who is asking: nothing here is verified.
-function AccessLine({ to }: { to: string | null }) {
-  if (!to) return null;
-  return <p className={styles.lede}>Access goes to <b>{to}</b>.</p>;
+/// What the app could do, in one line under the heading. Where access goes is the page's frame's
+/// to say (ConnectCard: the band on a phone, the panel beside the form on a wide screen), so it
+/// isn't repeated here. `to` and `claimed` stay for the callers; nothing here verifies the name.
+export function RequestLine({ to, claimed = null }: { to: string | null; claimed?: string | null }) {
+  if (!to && !claimed) return null;
+  return <p className={styles.request}>It can read your notes, and edit them if you say so.</p>;
+}
+const AccessLine = RequestLine;
+
+/// What went wrong, in a line that is always there, so nothing below it moves when it speaks.
+export function ErrorLine({ text }: { text: string | null }) {
+  return <p className={styles.error} role="alert">{text}</p>;
 }
 
 /// The main screen: one QR code to scan with your iPhone. `link` is null until the code is ready;
@@ -48,13 +60,7 @@ export function NotifySignInScreen({ to, onSubmit, onScan, ...signIn }: SignInPr
       <h1 className={styles.title}>Sign in to get a notification</h1>
       <AccessLine to={to} />
       {APPLE_ON_WEB ? <SignInButtons onApple={signIn.onApple} busy={signIn.busy} /> : <p className={styles.small}>{APPLE_INSTEAD}</p>}
-      <form className={styles.form} method="post" onSubmit={onSubmit}>
-        <EmailFields {...signIn} />
-        {signIn.failure && <p className={styles.error} role="alert">{signIn.failure}</p>}
-        <button type="submit" className={styles.secondary} disabled={!signIn.ready || signIn.busy} aria-busy={signIn.busy}>
-          {signIn.busy ? <><Spinner /> Signing in…</> : "Continue"}
-        </button>
-      </form>
+      <EmailFirst {...signIn} onSubmit={onSubmit} />
       <BottomLinks>
         <button type="button" className={styles.link} onClick={onScan}>Scan the code instead</button>
       </BottomLinks>
@@ -64,20 +70,32 @@ export function NotifySignInScreen({ to, onSubmit, onScan, ...signIn }: SignInPr
 
 /// Waiting for the notification to be answered. Once the device has opened the request, the number
 /// to compare with what it shows.
-export function NotifyScreen({ number, onScan }: { number: string | null; onScan: () => void }) {
+export function NotifyScreen({ number, onScan, lead = "any", devices = null, openLink = "", onRecover, onResend, to = null }: {
+  number: string | null; onScan: () => void; to?: string | null; onResend?: () => Promise<string | null>;
+  /// The one device to name, once /connect/ask has said where the account has the app.
+  lead?: Lead; devices?: Devices | null; openLink?: string; onRecover?: () => void;
+}) {
+  if (devices && onRecover && lead !== "recover" && lead !== "any") {
+    return (
+      <DeviceScreen
+        lead={lead} devices={devices} number={number} action="compare" openLink={openLink} onRecover={onRecover} onResend={onResend}
+      >
+        <button type="button" className={styles.link} onClick={onScan}>Scan the code instead</button>
+      </DeviceScreen>
+    );
+  }
   return (
     <>
       {number ? (
         <>
           <h1 className={styles.title}>Compare the number</h1>
           <MatchNumber number={number} />
-          <p className={styles.lede}>If it shows a different number, choose Don&apos;t allow.</p>
+          <p className={styles.lede}>If the number is different, choose Don&apos;t allow.</p>
         </>
       ) : (
         <>
-          <h1 className={styles.title}>Check your iPhone or Mac</h1>
-          <p className={styles.lede}>Open the notification from Amber Notes.</p>
-          <p className={styles.status} role="status"><Spinner /> Waiting for your iPhone or Mac…</p>
+          <h1 className={styles.title}>Open Amber Notes on your iPhone or Mac</h1>
+          <p className={styles.lede}>Open the notification from Amber Notes to approve this connection.</p>
         </>
       )}
       <BottomLinks>
@@ -101,7 +119,9 @@ export function MatchNumber({ number }: { number: string }) {
 export type Access = { write: boolean; canWrite: boolean; onWrite: (write: boolean) => void };
 
 /// No iPhone: approve here with the recovery key. The access choice waits under Options.
-export function RecoverScreen({ to, signedIn, recoveryKey, onRecoveryKey, access, onSubmit, onScan, ...signIn }: SignInProps & {
+export function RecoverScreen({ to, signedIn, recoveryKey, onRecoveryKey, access, onSubmit, onScan, noDevices = false, ...signIn }: SignInProps & {
+  /// Signed in, and the account has no app seen lately: say why the recovery key leads.
+  noDevices?: boolean;
   to: string | null; signedIn: string | null; recoveryKey: string; onRecoveryKey: (v: string) => void;
   access: Access; onSubmit: (e: React.FormEvent) => void; onScan: () => void;
 }) {
@@ -111,6 +131,7 @@ export function RecoverScreen({ to, signedIn, recoveryKey, onRecoveryKey, access
     <>
       <h1 className={styles.title}>Use your recovery key</h1>
       <AccessLine to={to} />
+      {noDevices && <p className={styles.lede}>No iPhone or Mac has opened Amber Notes on this account in the last 30 days, so approve this connection here with your recovery key.</p>}
       <p className={styles.note}>
         This runs our code in your browser. Your recovery key and your notes&apos; key are used on this page only, and are never stored or sent to us.
         If this page were changed, it could read them. When you can, scan the code with your iPhone instead.
@@ -140,7 +161,7 @@ export function RecoverScreen({ to, signedIn, recoveryKey, onRecoveryKey, access
           </div>
         </details>
         <p className={styles.warn}>Only allow it if you just started connecting it yourself.</p>
-        {signIn.failure && <p className={styles.error} role="alert">{signIn.failure}</p>}
+        <ErrorLine text={signIn.failure} />
         <button type="submit" className={styles.primary} disabled={!signIn.ready || signIn.busy} aria-busy={signIn.busy}>
           {signIn.busy ? <><Spinner /> Allowing…</> : "Allow"}
         </button>
@@ -161,8 +182,9 @@ export function WorkingScreen({ text }: { text: string }) {
 export function LeavingScreen({ allowed, host }: { allowed: boolean; host: string }) {
   return (
     <>
+      {allowed && <DoneMark />}
       <h1 className={styles.title}>{allowed ? "Connected" : "Not connected"}</h1>
-      <p className={styles.lede} role="status"><Spinner /> Taking you back to {host}…</p>
+      <p className={styles.status} role="status"><Spinner /> Taking you back to {host}…</p>
     </>
   );
 }
@@ -181,7 +203,7 @@ function BottomLinks({ children }: { children: React.ReactNode }) {
   return <div className={styles.links}>{children}</div>;
 }
 
-function SignInButtons({ onApple, busy }: { onApple: () => void; busy: boolean }) {
+export function SignInButtons({ onApple, busy }: { onApple: () => void; busy: boolean }) {
   return (
     <>
       <button type="button" className={styles.apple} onClick={onApple} disabled={busy}>
@@ -192,9 +214,93 @@ function SignInButtons({ onApple, busy }: { onApple: () => void; busy: boolean }
   );
 }
 
+/// Asks the site whether an email has an account (app/connect/account-status). Null when it can't say.
+export async function askEmailStatus(email: string): Promise<EmailStatus | null> {
+  try {
+    const res = await fetch("/connect/account-status", {
+      method: "POST", cache: "no-store", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: email.trim() }),
+    });
+    return res.ok ? parseEmailStatus(await res.json().catch(() => null)) : null;
+  } catch {
+    return null;
+  }
+}
+
+/// Email first, as the app's sign-in does it (Pane/Views/EmailSignInFlow.swift): one Email field and
+/// Continue; the answer decides what comes next. An account with a password: the Password field
+/// opens under the email (still editable; changing it starts over) and the button becomes Sign in.
+/// An Apple account: Sign in with Apple, above. No account: the web can't make one, because an
+/// account's key is made on its first device, so the page says so and points to the app. The
+/// password field is in the form from the start, so a password manager that fills both at once
+/// can: Continue then signs in straight away. `onSubmit` is the page's own email and password
+/// sign-in; `check` asks about the email (askEmailStatus, or a test's).
+export function EmailFirst({ email, password, onEmail, onPassword, busy, ready, failure, onSubmit, check = askEmailStatus }: SignInProps & {
+  onSubmit: (e: React.FormEvent) => void; check?: (email: string) => Promise<EmailStatus | null>;
+}) {
+  const [step, setStep] = useState<EmailStep>({ kind: "email" });
+  const passwordRef = useRef<HTMLInputElement>(null);
+  const open = step.kind === "password";
+  useEffect(() => { if (open) passwordRef.current?.focus(); }, [open]);
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (open) return onSubmit(e);
+    if (step.kind === "checking" || !emailLooksValid(email)) return;
+    setStep({ kind: "checking" });
+    const next = afterCheck(await check(email));
+    setStep(next);
+    // Filled by a password manager along with the email: no reason to ask again.
+    if (next.kind === "password" && password) onSubmit(e);
+  }
+  function editEmail(v: string) {
+    onEmail(v);
+    if (step.kind !== "email") setStep({ kind: "email" });
+  }
+  function differentEmail() {
+    onPassword("");
+    setStep({ kind: "email" });
+    document.getElementById("connect-email")?.focus();
+  }
+  const checking = step.kind === "checking";
+  return (
+    <form className={styles.form} method="post" onSubmit={submit}>
+      <label className={styles.field}>
+        <span>Email</span>
+        <input type="email" id="connect-email" autoComplete="username" required value={email} onChange={(e) => editEmail(e.target.value)} readOnly={checking} />
+      </label>
+      <label className={open ? styles.field : `${styles.field} ${styles.waiting}`} aria-hidden={open ? undefined : true}>
+        <span>Password</span>
+        <input
+          ref={passwordRef} type="password" id="connect-password" autoComplete="current-password" required={open} tabIndex={open ? 0 : -1}
+          value={password} onChange={(e) => onPassword(e.target.value)}
+        />
+      </label>
+      {step.kind === "apple" && <p className={styles.said} role="status">This email signs in with Apple. Use Sign in with Apple above.</p>}
+      {step.kind === "none" ? (
+        <div className={styles.said} role="status">
+          <p><b>No Amber Notes account uses this email.</b></p>
+          <p>Accounts start in the app on your iPhone or Mac, which makes your notes&apos; key. Get Amber Notes, sign up there, then connect again.</p>
+          <a className={styles.primary} href={APP_STORE_LIVE ? APP_STORE_URL : "/download"}>Get Amber Notes</a>
+        </div>
+      ) : (
+        <>
+          <ErrorLine text={failure} />
+          {step.kind !== "apple" && (
+            <button type="submit" className={styles.secondary} disabled={!ready || busy || checking || (open ? !password : !emailLooksValid(email))} aria-busy={busy || checking}>
+              {busy ? <><Spinner /> Signing in…</> : checking ? <><Spinner /> Checking…</> : open ? "Sign in" : "Continue"}
+            </button>
+          )}
+        </>
+      )}
+      {(step.kind === "none" || step.kind === "apple") && (
+        <button type="button" className={styles.link} onClick={differentEmail}>Use a different email</button>
+      )}
+    </form>
+  );
+}
+
 /// No name attributes and a POST, and the CSP's form-action 'none': before the page's script runs,
 /// the form can't put the password anywhere. The buttons wait for the script anyway.
-function EmailFields({ email, password, onEmail, onPassword }: Pick<SignInProps, "email" | "password" | "onEmail" | "onPassword">) {
+export function EmailFields({ email, password, onEmail, onPassword }: Pick<SignInProps, "email" | "password" | "onEmail" | "onPassword">) {
   return (
     <>
       <label className={styles.field}>
@@ -206,6 +312,17 @@ function EmailFields({ email, password, onEmail, onPassword }: Pick<SignInProps,
         <input type="password" id="connect-password" autoComplete="current-password" required value={password} onChange={(e) => onPassword(e.target.value)} />
       </label>
     </>
+  );
+}
+
+/// A tick on an amber disc of cut paper: it worked.
+function DoneMark() {
+  return (
+    <svg className={styles.done} viewBox="0 0 64 64" width={64} height={64} aria-hidden="true" focusable="false">
+      <circle className={styles.pShadow} cx="34" cy="35" r="26" />
+      <circle className={styles.pDisc} cx="32" cy="32" r="26" />
+      <path className={styles.doneTick} d="M21 33.5l7.5 7.5L43.5 25" />
+    </svg>
   );
 }
 

@@ -37,7 +37,7 @@ type Call = { url: string; init: RequestInit; body: Record<string, string> };
 
 /// A fake Supabase: records every call, answers /connect/scan and /connect/ask, and /connect/status
 /// with whatever `status` returns.
-function fakeServer(status: (calls: Call[]) => Promise<unknown> | unknown) {
+function fakeServer(status: (calls: Call[]) => Promise<unknown> | unknown, devices?: { iphone: boolean; mac: boolean }) {
   const calls: Call[] = [];
   const fetch = vi.fn(async (input: RequestInfo | URL, init: RequestInit = {}) => {
     const url = String(input);
@@ -46,7 +46,8 @@ function fakeServer(status: (calls: Call[]) => Promise<unknown> | unknown) {
     const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { "content-type": "application/json" } });
     const expires_at = new Date(Date.now() + 600_000).toISOString();
     if (url === `${MCP}/connect/scan`) return json({ scan: true, expires_at });
-    if (url === `${MCP}/connect/ask`) return json({ asked: true, expires_at });
+    if (url === `${MCP}/connect/ask`) return json({ asked: true, expires_at, ...(devices ? { devices } : {}) });
+    if (url === `${MCP}/connect/resend`) return json({ sent: true });
     if (url === `${MCP}/connect/status`) return json(await status(calls));
     if (url === `${SUPABASE}/auth/v1/token?grant_type=password`) return json({ access_token: "tok", user: { id: "u1", email: "me@example.com" } });
     if (url.startsWith(`${SUPABASE}/auth/v1/logout`)) return new Response(null, { status: 204 });
@@ -102,7 +103,9 @@ describe("the connect page's QR code", () => {
     await until(() => !!container.querySelector("svg path"));
 
     expect(heading()).toBe("Scan with your iPhone");
-    expect(container.textContent).toContain("Access goes to claude.ai.");
+    expect(container.textContent).toContain("It can read your notes, and edit them if you say so.");
+    // The frame names the host (ConnectCard); the screen doesn't repeat it.
+    expect(container.textContent).not.toContain("Access goes to");
     const scan = server.calls.find((c) => c.url === `${MCP}/connect/scan`)!;
     expect(new Headers(scan.init.headers).has("authorization")).toBe(false);
     expect(Object.keys(scan.body).sort()).toEqual(["browser_key", "from", "id", "pickup_hash", "scan_hash"]);
@@ -176,7 +179,7 @@ describe("the connect page's QR code", () => {
     };
     await act(async () => { type("#connect-email", "me@example.com"); type("#connect-password", "test-only"); });
     await act(async () => container.querySelector<HTMLFormElement>("form")!.requestSubmit());
-    await until(() => server.calls.some((c) => c.url === `${MCP}/connect/ask`) && heading() === "Check your iPhone or Mac");
+    await until(() => server.calls.some((c) => c.url === `${MCP}/connect/ask`) && heading() === "Open Amber Notes on your iPhone or Mac");
 
     const scan = server.calls.find((c) => c.url === `${MCP}/connect/scan`)!;
     const ask = server.calls.find((c) => c.url === `${MCP}/connect/ask`)!;
@@ -192,6 +195,58 @@ describe("the connect page's QR code", () => {
     await act(async () => button("Scan the code instead").click());
     await until(() => !!container.querySelector("svg path"));
     expect(decodeQRMarkup(container.innerHTML)).toBe(before);
+  });
+});
+
+describe("naming the device once you've signed in", () => {
+  async function signInForANotification(devices: { iphone: boolean; mac: boolean }) {
+    const server = fakeServer(() => ({ state: "asked" }), devices);
+    vi.stubGlobal("fetch", server.fetch);
+    render();
+    await until(() => !!container.querySelector("svg path"));
+    await act(async () => button("Get a notification instead").click());
+    const type = (sel: string, value: string) => {
+      const input = container.querySelector<HTMLInputElement>(sel)!;
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, value);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    };
+    await act(async () => { type("#connect-email", "me@example.com"); type("#connect-password", "test-only"); });
+    await act(async () => container.querySelector<HTMLFormElement>("form")!.requestSubmit());
+    await until(() => server.calls.some((c) => c.url === `${MCP}/connect/ask`));
+    return server;
+  }
+  const signedOut = (calls: Call[]) => calls.findIndex((c) => c.url.startsWith(`${SUPABASE}/auth/v1/logout`));
+
+  it("says Open Amber Notes on your iPhone when the account has one, and sends the notification again when asked", async () => {
+    const server = await signInForANotification({ iphone: true, mac: false });
+    await until(() => heading() === "Open Amber Notes on your iPhone");
+    expect(container.textContent).toContain("Amber Notes sent a notification to your iPhone.");
+    expect(container.textContent).not.toContain("Waiting");
+    expect(container.querySelector('[role="status"]')).toBeNull();
+    expect(signedOut(server.calls)).toBeGreaterThan(-1);
+    expect(button("Scan the code instead")).toBeTruthy();
+    expect(button("Use your recovery key")).toBeTruthy();
+
+    await act(async () => button("Send it again").click());
+    await until(() => container.textContent!.includes("Sent again."));
+    const again = server.calls.find((c) => c.url === `${MCP}/connect/resend`)!;
+    const scan = server.calls.find((c) => c.url === `${MCP}/connect/scan`)!;
+    // The page's own pickup secret, and no session: it signed out after asking.
+    expect(new Headers(again.init.headers).has("authorization")).toBe(false);
+    expect(again.body.id).toBe(ID);
+    expect(Buffer.from(await crypto.subtle.digest("SHA-256", Buffer.from(again.body.pickup, "hex"))).toString("hex")).toBe(scan.body.pickup_hash);
+  });
+
+  it("leads with the recovery key, still signed in, when no app was seen lately", async () => {
+    const server = await signInForANotification({ iphone: false, mac: false });
+    await until(() => server.calls.some((c) => c.url.startsWith(`${MCP}/connect/request?id=`)));
+    const asked = server.calls.findIndex((c) => c.url === `${MCP}/connect/ask`);
+    const recover = server.calls.findIndex((c) => c.url.startsWith(`${MCP}/connect/request?id=`));
+    // The recovery key's first step ran with the session the ask used: nothing signed out in between.
+    expect(new Headers(server.calls[recover].init.headers).get("authorization")).toBe("Bearer tok");
+    const out = signedOut(server.calls);
+    expect(out === -1 || out > recover).toBe(true);
+    expect(recover).toBeGreaterThan(asked);
   });
 });
 
