@@ -8,14 +8,18 @@ import UIKit
 
 // Connect ChatGPT or Claude in as few moves as the two apps allow.
 //
-// Claude documents a link that opens its Add custom connector dialog with the name and address
-// filled in, so for Claude one button does it and the person confirms. ChatGPT has no such
-// link: the button copies the address and opens ChatGPT's Plugins page. Both add custom apps
-// only on the web or desktop, once; after that they work in the phone apps too. The steps stay
+// Amber Notes is listed in Claude's connector directory (since 2 October 2026), so for Claude one
+// button opens the listing and the person chooses Connect to Claude. Claude's install link for its
+// Add custom connector dialog, with the name and address filled in, stays as the fallback for
+// older Claude apps. ChatGPT has no such link: the button copies the address and opens ChatGPT's
+// Plugins page. Both are added on the web or desktop, once; after that they work in the phone
+// apps too. claude.ai doesn't hand /directory links to its iPhone app, so iPhone sends the link
+// to the computer, as before. The steps stay
 // in view (on a Mac, in a small window that floats over the browser), and the guide watches
 // for the sign-in itself and says when it worked, with a first thing to ask.
 //
-// Sources: claude.com/docs/connectors/building/directory-vs-custom (install link),
+// Sources: claude.ai/directory/amber-notes (the listing),
+// claude.com/docs/connectors/building/directory-vs-custom (install link),
 // developers.openai.com/api/docs/guides/developer-mode (ChatGPT: Plus and up, on the web).
 
 // MARK: Pure pieces (tested)
@@ -23,7 +27,7 @@ import UIKit
 /// What connecting one web AI takes, and where.
 struct WebConnectPlan: Equatable {
     let ai: String
-    /// True when the page opens with Amber Notes already filled in.
+    /// True when the page opens on Amber Notes itself, so there's no address to paste.
     let prefills: Bool
     let steps: [String]
     /// Who can do it at all.
@@ -32,6 +36,8 @@ struct WebConnectPlan: Equatable {
     let testPrompt: String
     let testPage: URL
     private let page: @Sendable (String) -> URL
+    /// Another way to add it, for apps that don't show the main page: a line, a button, the page.
+    var fallback: (line: String, button: String, page: @Sendable (String) -> URL)? = nil
 
     static func == (a: WebConnectPlan, b: WebConnectPlan) -> Bool { a.ai == b.ai }
 
@@ -73,14 +79,19 @@ struct WebConnectPlan: Equatable {
         ai: "Claude",
         prefills: true,
         steps: [
-            "Claude opens Add custom connector with Amber Notes filled in. Choose Add.",
-            "Choose Connect.",
+            "Claude opens Amber Notes in its connector directory. Choose Connect to Claude.",
             allowStep,
         ],
-        plans: "Works on every Claude plan; Free includes one custom connector. On Team and Enterprise, an Owner adds it.",
+        plans: "Amber Notes is in Claude's connector directory. On Team and Enterprise, an Owner may need to allow it first.",
         testPrompt: testPrompt,
         testPage: prefilled("https://claude.ai/new", testPrompt),
-        page: installLink)
+        page: { _ in directoryListing },
+        fallback: (line: "Using an older Claude app, or it doesn't show Amber Notes? Add it as a custom connector instead. That works on every plan; Free includes one.",
+                   button: "Add as Custom Connector",
+                   page: installLink))
+
+    /// Amber Notes in Claude's connector directory. Its Connect to Claude button adds it.
+    static let directoryListing = URL(string: "https://claude.ai/directory/amber-notes")!
 
     /// Claude's documented install link: the Add custom connector dialog, prefilled. The person still confirms.
     static func installLink(server: String) -> URL {
@@ -102,6 +113,7 @@ struct WebConnectPlan: Equatable {
         var lines = ["Connect \(ai) to Amber Notes (on a computer, once):", "", "1. Open \(setupPage(server: server).absoluteString)"]
         for (i, s) in steps.enumerated() { lines.append("\(i + 2). \(s)") }
         if !prefills { lines += ["", "Address:", server] }
+        if let fallback { lines += ["", fallback.line, fallback.page(server).absoluteString] }
         lines += ["", "After that, Amber Notes works in the \(ai) app on your phone too."]
         return lines.joined(separator: "\n")
     }
@@ -225,12 +237,12 @@ struct WebConnectGuide: View {
     static let allowLine = "Choose Open Amber Notes on this Mac, then Allow"
     #endif
 
-    /// What adding takes, while it's the step at hand: one line for Claude, the steps for ChatGPT.
+    /// What adding takes, while it's the step at hand.
     private var addDetail: String? {
         #if os(iOS)
         "On a computer, once. Then it works on your phone too."
         #else
-        plan.prefills ? nil : plan.steps.dropLast().joined(separator: " ")
+        plan.steps.dropLast().joined(separator: " ")
         #endif
     }
 
@@ -251,7 +263,7 @@ struct WebConnectGuide: View {
             started = true
             popOut?()
         } label: {
-            Label(started ? "Open \(plan.ai) Again" : plan.prefills ? "Add to \(plan.ai)" : "Copy Address and Open \(plan.ai)",
+            Label(started ? "Open \(plan.ai) Again" : plan.prefills ? "Open in \(plan.ai)'s Directory" : "Copy Address and Open \(plan.ai)",
                   systemImage: "arrow.up.forward.app")
                 .frame(maxWidth: .infinity)
         }
@@ -303,9 +315,18 @@ struct WebConnectGuide: View {
         .accessibilityIdentifier(done && i == 1 ? "connect.connected" : "connect.step.\(i)")
     }
 
-    /// The address, for adding it by hand. It holds no password.
+    /// The address, for adding it by hand, and the AI's other way in if it has one. It holds no password.
     private var addressSection: some View {
         Section {
+            if let fallback = plan.fallback {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(fallback.line).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    #if os(macOS)
+                    Button(fallback.button, systemImage: "plus.circle") { openURL(fallback.page(server)) }
+                        .accessibilityIdentifier("connect.fallback")
+                    #endif
+                }
+            }
             DisclosureGroup("Server Address") {
                 Text(server).font(.system(.callout, design: .monospaced)).textSelection(.enabled)
                 Button(copied ? "Copied" : "Copy Address", systemImage: copied ? "checkmark" : "doc.on.doc") { copy() }

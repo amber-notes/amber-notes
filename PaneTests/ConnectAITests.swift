@@ -514,9 +514,15 @@ import Testing
         }
     }
 
-    @Test func claudesInstallLinkFillsInNameAndAddress() throws {
+    @Test func claudeOpensItsDirectoryListing() throws {
+        let url = WebConnectPlan.claude.setupPage(server: "https://example.supabase.co/functions/v1/mcp")
+        #expect(url.absoluteString == "https://claude.ai/directory/amber-notes")
+        #expect(WebConnectPlan.chatgpt.fallback == nil)
+    }
+
+    @Test func claudesFallbackInstallLinkFillsInNameAndAddress() throws {
         let server = "https://example.supabase.co/functions/v1/mcp"
-        let url = WebConnectPlan.claude.setupPage(server: server)
+        let url = try #require(WebConnectPlan.claude.fallback).page(server)
         #expect(url.absoluteString == "https://claude.ai/customize/connectors?modal=add-custom-connector&connectorName=Amber%20Notes&connectorUrl=https%3A%2F%2Fexample.supabase.co%2Ffunctions%2Fv1%2Fmcp")
         let items = try #require(URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems)
         #expect(items.first { $0.name == "connectorUrl" }?.value == server, "decodes back to the exact address")
@@ -531,7 +537,8 @@ import Testing
 
     @Test func stepsSentToYourselfCarryTheAddressAndNoSecret() {
         let text = WebConnectPlan.claude.message(server: "https://example.supabase.co/functions/v1/mcp")
-        #expect(text.contains("connectorUrl=https%3A%2F%2Fexample.supabase.co"), "Claude's link carries the address")
+        #expect(text.contains("1. Open https://claude.ai/directory/amber-notes"), "Claude's steps start at the listing")
+        #expect(text.contains("connectorUrl=https%3A%2F%2Fexample.supabase.co"), "the fallback link carries the address")
         #expect(WebConnectPlan.chatgpt.message(server: "https://example.supabase.co/functions/v1/mcp").contains("\nhttps://example.supabase.co/functions/v1/mcp\n"))
         #expect(!text.contains("pane_"), "a web connection never needs a token")
     }
