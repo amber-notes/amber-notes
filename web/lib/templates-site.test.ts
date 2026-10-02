@@ -7,7 +7,7 @@ import OpenCopy from "../app/open/copy/[slug]/page";
 import { GET } from "../app/api/templates/[slug]/route";
 import { llmsTxt } from "./llms";
 import { renderNote } from "./render";
-import { NotePage, type NoteDesign } from "./NotePage";
+import { NotePage } from "./NotePage";
 import { APP_STORE_LIVE, APP_TEMPLATES, SITE_URL } from "./site";
 import Gallery from "../app/templates/page";
 import TemplatePage from "../app/templates/[slug]/page";
@@ -52,26 +52,26 @@ describe("Use this note: what a copy keeps", () => {
 
 describe("a shared page", () => {
   const note = { title: "Packing", body: "Packing\n\nHi", updated_at: "2026-09-30T10:00:00Z", include_subnotes: true, is_sub: true, root_title: "Trip", subnotes: [] };
-  const page = (design: NoteDesign) => renderToStaticMarkup(NotePage({ slug: "abcdefghijklmnopqrstuvwx", note, files: {}, design }));
+  const page = () => renderToStaticMarkup(NotePage({ slug: "abcdefghijklmnopqrstuvwx", note, files: {} }));
 
-  it.each(["sheet", "page"] as const)("has a Use this note button to the copy link, on sub-notes too (%s)", (design) => {
-    const html = page(design);
+  it("has a Use this note button to the copy link, on sub-notes too", () => {
+    const html = page();
     // Only once the app release that handles the link is out (APP_TEMPLATES).
     if (APP_TEMPLATES.live) expect(html).toMatch(/<a class="[^"]+" href="\/open\/copy\/abcdefghijklmnopqrstuvwx">Use this note<\/a>/);
     else expect(html).not.toContain("/open/copy/");
   });
 
-  it.each(["sheet", "page"] as const)("keeps the Report this page link, the way back to the note, and who shared it (%s)", (design) => {
-    const html = page(design);
+  it("keeps the Report this page link, the way back to the note, and who shared it under the title", () => {
+    const html = page();
     expect(html).toContain('<a href="/report/abcdefghijklmnopqrstuvwx">Report this page</a>');
     expect(html).toMatch(/<a class="[^"]+" href="\/n\/abcdefghijklmnopqrstuvwx"><span aria-hidden="true">‹<\/span> Trip<\/a>/);
     expect(html).toContain("Shared by ");
     expect(html).toContain("Edited 30 September 2026");
-    expect(html).toContain('<h1 class="');
+    expect(html.indexOf("Shared by ")).toBeGreaterThan(html.indexOf("<h1"));
   });
 
-  it.each(["sheet", "page"] as const)("mentions the app once, after the note (%s)", (design) => {
-    const html = page(design);
+  it("mentions the app once, after the note", () => {
+    const html = page();
     expect(html.match(/Get Amber Notes/g)).toHaveLength(1);
     expect(html.indexOf("Get Amber Notes")).toBeGreaterThan(html.indexOf('<article class="note">'));
   });

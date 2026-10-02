@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { devOnly } from "@/lib/dev-only";
 import { PREVIEW_NOTES, PREVIEW_SLUG } from "@/lib/preview-notes";
 import { copyableMarkdown } from "@/lib/shared";
 import OpenCard from "../../OpenCard";
@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Dev: open copy preview", robots: { index: false, follow: false } };
 
 export default function OpenCopyPreview() {
-  if (process.env.VERCEL_ENV === "production") notFound();
+  devOnly();
   const note = PREVIEW_NOTES.lisbon.note;
   return (
     <OpenCard

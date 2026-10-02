@@ -23,8 +23,7 @@ The whole public site, not just shared notes. What lives where:
   or error state. The shared note, the report form, the not-found pages and the `/open` pages are
   built from them. The long text pages share `web/lib/LegalPage.tsx` (`LongPage`, the contents list).
 - **Dev-only previews** (not on the production site): `/n/preview` and `/open/copy/preview` show the
-  shared-note pages from made-up notes (`web/lib/preview-notes.ts`), `/dev/not-found` the 404, and
-  `/dev/account` the proposed landing pages for account emails (`docs/Technical/account-emails.md`).
+  shared-note pages from made-up notes (`web/lib/preview-notes.ts`), and `/dev/account` the proposed landing pages for account emails (`docs/Technical/account-emails.md`).
 
 ## Running it
 

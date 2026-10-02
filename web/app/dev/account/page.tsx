@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { devOnly } from "@/lib/dev-only";
 import { ButtonRow, Card, EmptyState, Field, Sign, Stage, ui } from "@/lib/ui";
 
 // Dev only: the proposed landing pages for the links in account emails (docs/Technical/account-emails.md),
@@ -13,7 +13,7 @@ const openApp = <a className={ui.primary} href="ambernotes://">Open Amber Notes<
 const getApp = <p className={ui.small}>Don&apos;t have it on this device? <a href="/download">Get Amber Notes</a></p>;
 
 export default async function AccountPreview({ searchParams }: { searchParams: Promise<{ screen?: string }> }) {
-  if (process.env.VERCEL_ENV === "production") notFound();
+  devOnly();
   const { screen = "confirm" } = await searchParams;
   return <Stage inSite>{screens[screen] ?? screens.confirm}</Stage>;
 }
