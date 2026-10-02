@@ -7,6 +7,8 @@ import GitHubLink, { GitHubGlyph } from "./GitHubLink";
 import PlatformNote from "./PlatformNote";
 import MobileMenu from "./MobileMenu";
 import { themeFor } from "@/lib/theme";
+import { isBlogList } from "@/lib/blog-list";
+import { filterTransition } from "@/lib/filter-transition";
 
 const GITHUB = "https://github.com/amber-notes/amber-notes";
 const X_URL = "https://x.com/EmilWagman";
@@ -16,6 +18,7 @@ export default function SiteChrome({ version, stars, children }: { version: stri
   const path = usePathname();
   const router = useRouter();
   const done = useRef<(() => void) | null>(null);
+  const toList = useRef<"chips" | "pages" | null>(null);
   const site = themeFor(path) !== null;
 
   // Keep the theme in step with the page (also for back/forward), and finish a pending transition.
@@ -23,6 +26,12 @@ export default function SiteChrome({ version, stars, children }: { version: stri
     const t = themeFor(path);
     if (t) document.documentElement.dataset.theme = t;
     else delete document.documentElement.dataset.theme;
+    // A page link at the foot of a blog list lands with the list's chips at the top, not at the old scroll.
+    if (toList.current === "pages") {
+      const chips = document.querySelector("[data-blog-chips]");
+      if (chips && chips.getBoundingClientRect().top < 0) window.scrollTo({ top: Math.max(0, chips.getBoundingClientRect().top + window.scrollY - 24) });
+    }
+    toList.current = null;
     done.current?.();
     done.current = null;
   }, [path]);
@@ -35,14 +44,26 @@ export default function SiteChrome({ version, stars, children }: { version: stri
       if (!a || a.target || a.hasAttribute("download")) return;
       const url = new URL(a.href, location.href);
       if (url.origin !== location.origin || url.pathname === location.pathname || !themeFor(url.pathname)) return;
+      const href = url.pathname + url.search + url.hash;
+      // Between the blog's lists (a category chip, a page number) it's the site's filter motion
+      // (lib/filter-transition.ts): the page stays where it is and only the posts change, also
+      // without view transitions; with reduced motion, instantly.
+      const list = isBlogList(location.pathname) && isBlogList(url.pathname);
       const doc = document as Document & { startViewTransition?: (cb: () => Promise<void>) => unknown };
-      if (!doc.startViewTransition || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      const animate = !!doc.startViewTransition && !matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (!animate && !list) return;
       e.preventDefault();
-      doc.startViewTransition(() => new Promise<void>((resolve) => {
+      const arrive = () => new Promise<void>((resolve) => {
         done.current = resolve;
-        router.push(url.pathname + url.search + url.hash);
+        router.push(href, list ? { scroll: false } : undefined);
         window.setTimeout(resolve, 1500); // never hang if the route is slow
-      }));
+      });
+      if (list) {
+        toList.current = a.closest("[data-blog-pages]") ? "pages" : "chips";
+        void filterTransition(arrive, a.closest("[data-blog-chips], [data-blog-pages]") ? a : null);
+        return;
+      }
+      doc.startViewTransition!(arrive);
     };
     document.addEventListener("click", onClick);
     return () => document.removeEventListener("click", onClick);

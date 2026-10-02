@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { PostCard } from "./blog";
 import { categories, categoryPath, newestFirst, pageCount, pageOf, pagePath, published, type Category, type Ground } from "./posts";
 import { pageMetadata } from "./site";
+import BlogList from "./BlogList";
+import { FILTER_AFTER, FILTER_GRID } from "./filter-transition";
 import { JsonLd, breadcrumbs, maker, incredible, organization } from "./structured-data";
 import home from "../app/home.module.css";
 import s from "../app/blog/blog.module.css";
@@ -19,6 +21,13 @@ const ABOUT: Record<Category, string> = {
   "Comparisons": "Notes apps compared fairly: Apple Notes, Notion, Obsidian, and the ones ChatGPT and Claude can use.",
   "Building Amber Notes": "How Amber Notes is built: encryption, AI access, and the decisions behind them.",
 };
+
+/// The two longest titles and ledes of the lists' first pages. Each list reserves room for them
+/// (an invisible copy drawn by CSS from these attributes, never page text), so every list's title
+/// block is one height and the chips under it don't move when switching between them.
+const fit = (texts: string[]) => [...texts].sort((a, b) => b.length - a.length);
+const FIT_TITLE = () => fit(["The Amber Notes blog", ...categories()]);
+const FIT_LEDE = () => fit(["Guides to connecting ChatGPT, Claude and Codex to your notes, Apple Notes how-tos, and fair comparisons. Written by the person building Amber Notes.", ...categories().map((c) => ABOUT[c])]);
 
 /// Each post's ground as a dot on its category's chip: the ground's own hue, deepened so it reads at
 /// 12 px on the cream page the way the templates' cover colours do (the card tints are too pale).
@@ -70,15 +79,21 @@ export function BlogIndex({ category, page }: { category: Category | null; page:
       {page > 1 && <link rel="prev" href={pagePath(l.base, page - 1)} />}
       {page < pages && <link rel="next" href={pagePath(l.base, page + 1)} />}
       <JsonLd graph={[breadcrumbs(crumbs), organization, maker, incredible]} />
-      <section className={s.index}>
+      <BlogList className={s.index}>
         <div className={s.hero}>
-          <h1 className={`${s.h1} rise`} style={{ "--i": 0 } as React.CSSProperties}>
-            {category ?? <>The Amber Notes <mark className={home.mark}>blog</mark></>}{page > 1 && <span className={s.pageNote}>, page {page}</span>}
-          </h1>
-          <p className={`${s.lede} rise`} style={{ "--i": 1 } as React.CSSProperties}>{category ? ABOUT[category] : LEDE}</p>
+          <div className={s.heroText}>
+            <h1 className={`${s.h1} rise`} style={{ "--i": 0 } as React.CSSProperties}>
+              {category ?? <>The Amber Notes <mark className={home.mark}>blog</mark></>}{page > 1 && <span className={s.pageNote}>, page {page}</span>}
+            </h1>
+            <p className={`${s.lede} rise`} style={{ "--i": 1 } as React.CSSProperties}>{category ? ABOUT[category] : LEDE}</p>
+          </div>
+          <div className={s.heroFit} aria-hidden="true">
+            <span className={s.h1} data-a={FIT_TITLE()[0]} data-b={FIT_TITLE()[1]} />
+            <span className={s.lede} data-a={FIT_LEDE()[0]} data-b={FIT_LEDE()[1]} />
+          </div>
         </div>
         <div className={`${s.library} rise`} style={{ "--i": 2 } as React.CSSProperties}>
-          <nav className={s.filters} aria-label="Categories">
+          <nav className={s.filters} aria-label="Categories" data-blog-chips="">
             <a href="/blog" aria-current={category === null ? "page" : undefined}><span className={s.text}>All posts<span className={s.count}>{published().length}</span></span></a>
             {counts.map(({ c, n, dots }) => (
               <a key={c} href={categoryPath(c)} aria-current={category === c ? "page" : undefined}>
@@ -87,14 +102,14 @@ export function BlogIndex({ category, page }: { category: Category | null; page:
               </a>
             ))}
           </nav>
-          <ul className={s.grid}>
+          <ul className={`${s.grid} ${FILTER_GRID}`}>
             {posts.map((p) => (
               <li key={p.slug}><PostCard post={p} /></li>
             ))}
           </ul>
         </div>
         {pages > 1 && <Pagination base={l.base} page={page} pages={pages} />}
-      </section>
+      </BlogList>
     </div>
   );
 }
@@ -102,7 +117,7 @@ export function BlogIndex({ category, page }: { category: Category | null; page:
 function Pagination({ base, page, pages }: { base: string; page: number; pages: number }) {
   const numbers = Array.from({ length: pages }, (_, i) => i + 1);
   return (
-    <nav className={s.pages} aria-label="Pages">
+    <nav className={`${s.pages} ${FILTER_AFTER}`} aria-label="Pages" data-blog-pages="">
       {page > 1 ? <a className={s.step} href={pagePath(base, page - 1)} rel="prev">Previous</a> : <span className={s.step} aria-hidden="true" data-off>Previous</span>}
       <ol>
         {numbers.map((n) => (

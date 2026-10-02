@@ -251,6 +251,9 @@ html[data-theme] ::selection { background: var(--mark); }
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
 }
+/* The filter motion (lib/filter-transition.ts) is a fade-through of the grid, run from script; while
+   its content is swapped the grid is hidden, a new one mounting included. */
+html[data-filter="out"] .filter-grid { opacity: 0; }
 @keyframes vt-out { to { opacity: 0; } }
 @keyframes vt-in { from { opacity: 0; } }
 
