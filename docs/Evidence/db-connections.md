@@ -68,3 +68,21 @@ On production, the same script through the real transaction pooler, 40 clients e
 ## What the first deploy's log could not say
 
 The first version logged `mode` and `max`, which the log's allowlist of field names drops, so the line read `{"event":"db"}`. That it was pooled was confirmed another way: after six calls, every `postgres` connection in `pg_stat_activity` was the pooler's (application `Supavisor`) and none was a direct client. The line now uses fields the log keeps, and adds `ssl`.
+
+## The connection was not encrypted (found the same day)
+
+With the fixed log line, `mcp` reported `{"event":"db","mode":"pooled","count":3,"ssl":false}`: `SUPABASE_DB_URL` carries no `sslmode`, postgres.js encrypts only when asked, and the project does not enforce SSL (`GET /v1/projects/<ref>/ssl-enforcement` answers `{"database":false}`). The direct connection used the same address, so the functions' database traffic was never encrypted by the client. The boot lines in the function log say where the functions run: `us-east-1` and `us-west-1`, with the database in `eu-central-1`.
+
+What the pooler presents: `CN=*.pooler.supabase.com`, issued by Supabase Intermediate 2021 CA under Supabase Root 2021 CA, a root no public trust store has. The root Supabase publishes (`prod-ca-2021.crt`) has the same SHA-256 fingerprint as the one the pooler serves (`80:70:25:AD:…:CA:FA`), and `openssl s_client -starttls postgres -CAfile prod-ca-2021.crt -verify_hostname <host>` answers `Verification: OK`.
+
+Each setting, one connection to the production pooler, inside the Edge runtime the hosted functions run (`public.ecr.aws/supabase/edge-runtime`, v1.76.0 and v1.77.0, same results), with `npm:postgres@3.4.5`:
+
+| `ssl` option | Result |
+|---|---|
+| none (as deployed) | connects, unencrypted |
+| `"require"` | fails: `invalid peer certificate: UnknownIssuer` |
+| `{ ca: Supabase root, servername: host }` | connects |
+| the same with `servername: "wrong.example"` | refused: `NotValidForName` |
+| `{ servername: host }`, no `ca` | refused: `UnknownIssuer` |
+
+So `"require"` would have stopped every database call: this runtime verifies even when postgres.js asks it not to. Pinning the root is the setting that both connects and really verifies (a wrong name and a missing root are refused). In plain Deno 2.8 `"require"` does connect, without verifying, which is why this had to be tried in the runtime itself. The older v1.70.0 image could not complete any TLS handshake with this driver (connect timeout), so a runtime change can break it again: `DB_POOLER_TLS=off` is the way back without a deploy.

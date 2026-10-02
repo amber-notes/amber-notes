@@ -14,14 +14,29 @@
 // from SUPABASE_DB_URL. Without the secret (a local stack, a self-hosted one) the functions connect
 // directly, one connection per isolate, let go after a few idle seconds.
 //
+// The pooler is reached over the network, and the functions run in whatever region answers the
+// request (the logs show us-east-1 and us-west-1; the database is in eu-central-1), so the
+// connection is TLS, verified: the pooler's certificate comes from Supabase's own CA, which no
+// trust store knows, so its root is pinned here (supabase-ca.ts) and the host name is checked.
+// postgres.js's "require" is not a weaker option that works: it means "encrypt, don't check who
+// answers", but the Edge runtime (1.76 and 1.77) checks anyway and refuses the pooler as
+// UnknownIssuer. So it's verified or nothing: DB_POOLER_TLS=off turns TLS off without a deploy, for
+// the day the runtime can't verify (a rotated root, a runtime change), and says so in the log.
+// The direct address is used as it is. docs/Evidence/db-connections.md has the measurements.
+//
 // Transaction mode gives each transaction, or each statement outside one, whatever connection is
 // free. Nothing here keeps state on a connection between them: settings are set_config(..., true)
 // and locks are pg_advisory_xact_lock, inside sql.begin. Prepared statements are off for the same reason.
 import postgres from "npm:postgres@3.4.5";
 import { errorKind, log } from "./log.ts";
+import { SUPABASE_ROOT_CA_2021 } from "./supabase-ca.ts";
 
 export type Env = { get(name: string): string | undefined };
-export type Target = { url: string; pooled: boolean; ssl: boolean; options: { max: number; idle_timeout: number; connect_timeout: number; prepare: false } };
+export type Tls = "verify" | "off" | "url";
+type Options = { max: number; idle_timeout: number; connect_timeout: number; prepare: false; ssl?: false | { ca: string; servername: string } };
+/// `ssl` is whether the connection is encrypted; `tls` is how: "verify" (the pinned root and the
+/// host name), "off", or "url" for a direct address, which decides for itself with sslmode.
+export type Target = { url: string; pooled: boolean; ssl: boolean; tls: Tls; options: Options };
 
 /// The project's ref: the first label of SUPABASE_URL's host, or of a db.<ref>.supabase.co host.
 function projectRef(supabaseURL: string | undefined, dbHost: string): string | null {
@@ -36,11 +51,9 @@ export function target(env: Env, max = 3): Target {
   const direct = env.get("SUPABASE_DB_URL");
   if (!direct) throw new Error("SUPABASE_DB_URL is not set");
   const host = (env.get("DB_POOLER_HOST") ?? "").trim().toLowerCase();
-  // Whether the address asks for TLS (sslmode=require and stricter). postgres.js encrypts only
-  // then, and the pooled address keeps whatever SUPABASE_DB_URL says, so this is also true or
-  // false for the pooler. Logged, not forced: forcing it blind could stop every function.
+  // A direct address is used as it is: postgres.js encrypts when it carries sslmode=require or stricter.
   const ssl = /[?&]sslmode=(require|verify-ca|verify-full)\b/.test(direct);
-  const one: Target = { url: direct, pooled: false, ssl, options: { max: 1, idle_timeout: 5, connect_timeout: 10, prepare: false } };
+  const one: Target = { url: direct, pooled: false, ssl, tls: "url", options: { max: 1, idle_timeout: 5, connect_timeout: 10, prepare: false } };
   if (!host) return one;
   // Only a pooler host: never a way to point the functions at some other server by typo.
   if (!/^[a-z0-9-]+\.pooler\.supabase\.com$/.test(host)) return one;
@@ -51,13 +64,19 @@ export function target(env: Env, max = 3): Target {
   u.hostname = host;
   u.port = "6543";
   u.username = `${decodeURIComponent(u.username).split(".")[0] || "postgres"}.${ref}`;
-  return { url: u.toString(), pooled: true, ssl, options: { max, idle_timeout: 20, connect_timeout: 10, prepare: false } };
+  // Ours to decide for the pooler, whatever the direct address said.
+  u.searchParams.delete("sslmode");
+  u.searchParams.delete("ssl");
+  const tls: Tls = (env.get("DB_POOLER_TLS") ?? "").trim().toLowerCase() === "off" ? "off" : "verify";
+  const options: Options = { max, idle_timeout: 20, connect_timeout: 10, prepare: false,
+    ssl: tls === "verify" ? { ca: SUPABASE_ROOT_CA_2021, servername: host } : false };
+  return { url: u.toString(), pooled: true, ssl: tls === "verify", tls, options };
 }
 
 /// The function's pool. Says once, in the log, which way it connects (never the address).
 export function connect(env: Env = Deno.env, max = 3) {
   const t = target(env, max);
-  log("db", { mode: t.pooled ? "pooled" : "direct", count: t.options.max, ssl: t.ssl });
+  log("db", { mode: t.pooled ? "pooled" : "direct", count: t.options.max, ssl: t.ssl, tls: t.tls });
   return postgres(t.url, t.options);
 }
 

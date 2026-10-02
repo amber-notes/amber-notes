@@ -6,9 +6,10 @@
 // the caller passes. Exceptions are never logged with their message, since a message can quote the
 // text it failed on: use errorKind() for their class and code.
 
-// "mode", "ssl" and "attempts" are how the database is reached (_shared/db.ts): "pooled" or "direct",
-// whether its address asks for TLS, and how many tries a connection took.
-const ALLOWED = new Set(["event", "tool", "status", "ms", "code", "kind", "count", "path_kind", "method", "where", "mode", "ssl", "attempts"]);
+// "mode", "ssl", "tls" and "attempts" are how the database is reached (_shared/db.ts): "pooled" or
+// "direct", whether the connection is encrypted and how ("verify", "off", "url"), and how
+// many tries a connection took.
+const ALLOWED = new Set(["event", "tool", "status", "ms", "code", "kind", "count", "path_kind", "method", "where", "mode", "ssl", "tls", "attempts"]);
 const MAX = 64;
 
 export type Fields = Record<string, unknown>;
