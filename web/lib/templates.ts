@@ -52,6 +52,8 @@ export type Template = {
   related: string[];
   /// The day it was last checked against the app's tools (ISO date).
   updated: string;
+  /// The GitHub handle of the person who contributed it, without the @. Credited on its card and page.
+  author?: string;
 };
 
 export const ORDER = [
@@ -81,6 +83,10 @@ export function template(slug: string): Template | undefined {
 }
 
 export const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+/// A GitHub handle: letters, digits and single hyphens, at most 39 characters.
+export const GITHUB_HANDLE = /^[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}$/;
+export const authorLink = (handle: string) => `https://github.com/${handle}`;
 export const validTemplateSlug = (s: string) => s.length <= 64 && SLUG.test(s);
 
 export const anchor = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");

@@ -113,6 +113,15 @@ In the app, open **Settings → Connect an AI** and follow the steps for your cl
 - Shared pages are public to anyone with the link. The app warns before creating one, and a page stops working the moment you stop sharing.
 - [Privacy policy](https://ambernotes.app/privacy) · [Security policy](SECURITY.md)
 
+## Thanks
+
+Everyone who has had a pull request merged, in the order they joined:
+
+- [@wufangyong973](https://github.com/wufangyong973): brought the website's README up to date ([#97](https://github.com/amber-notes/amber-notes/pull/97))
+- [@arnavtambe](https://github.com/arnavtambe): removed an unused field from the app's connections ([#109](https://github.com/amber-notes/amber-notes/pull/109))
+
+Want to be next? [CONTRIBUTING.md](CONTRIBUTING.md) has where to start, and ideas of your own are welcome in [Discussions](https://github.com/amber-notes/amber-notes/discussions/categories/ideas).
+
 ## License
 
 [MIT](LICENSE). Made by Emil Wagman at [Incredible](https://incredible.one).

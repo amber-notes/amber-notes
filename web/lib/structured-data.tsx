@@ -132,7 +132,7 @@ export function breadcrumbs(steps: { name: string; path: string }[]): Thing {
 }
 
 /// A template: a note structure and the prompt that fills it in, free to use, made by the maker.
-export function templateWork(t: { slug: string; title: string; description: string; category: string; audience: string; updated: string; note: string }): Thing {
+export function templateWork(t: { slug: string; title: string; description: string; category: string; audience: string; updated: string; note: string; author?: string }): Thing {
   const url = `${SITE_URL}/templates/${t.slug}`;
   return {
     "@type": "CreativeWork",
@@ -148,6 +148,8 @@ export function templateWork(t: { slug: string; title: string; description: stri
     encodingFormat: "text/markdown",
     text: t.note,
     author: { "@id": PERSON_ID },
+    // A community template credits the person who wrote it.
+    ...(t.author ? { contributor: { "@type": "Person", name: `@${t.author}`, url: `https://github.com/${t.author}` } } : {}),
     publisher: { "@id": ORG_ID },
     isPartOf: { "@id": `${SITE_URL}/templates#library` },
     about: { "@id": APP_ID },

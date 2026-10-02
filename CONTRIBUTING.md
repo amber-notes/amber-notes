@@ -1,8 +1,33 @@
 # Contributing
 
-Bug reports and small, focused fixes are welcome. For anything bigger, open an issue first so we can agree on the approach before you spend time on it. Issues labelled [good first issue](https://github.com/amber-notes/amber-notes/labels/good%20first%20issue) are small and well scoped.
+Amber Notes is built in the open, and I'd love your help with it. The most useful thing you can bring is an idea of your own: something you want from a notes app your AI can use. Bug reports and fixes are welcome too.
 
 Everyone taking part follows the [code of conduct](CODE_OF_CONDUCT.md). Report security problems privately, as described in [SECURITY.md](SECURITY.md), not in an issue.
+
+## Bring your own idea
+
+Open a post in [Ideas](https://github.com/amber-notes/amber-notes/discussions/categories/ideas). Say what you were trying to do and where the app got in your way. You don't need a design or a plan. I reply within a day.
+
+Good ideas become issues, credited to you, and you're first in line to build it if you want to. If you'd rather just build, say so in the post and we'll agree on the approach before you spend time on it.
+
+## Where to start
+
+- [**help wanted**](https://github.com/amber-notes/amber-notes/labels/help%20wanted): real features with a short spec, where the code lives, how to test it and a size. Comment on one to claim it.
+  - [Shortcuts actions: add to a note, and create a note](https://github.com/amber-notes/amber-notes/issues/131) (Swift, M)
+  - [Let an AI update any table row](https://github.com/amber-notes/amber-notes/issues/132) (TypeScript, M)
+  - [Import Notion databases as tables](https://github.com/amber-notes/amber-notes/issues/133) (Swift, M)
+  - [Import from Day One](https://github.com/amber-notes/amber-notes/issues/134) (Swift, M)
+  - [Import Bear backups](https://github.com/amber-notes/amber-notes/issues/139) (Swift, S)
+  - [Translate the app, starting with Swedish](https://github.com/amber-notes/amber-notes/issues/135) (Swift, L)
+  - [Write a template for the gallery](https://github.com/amber-notes/amber-notes/issues/136) (JSON, S)
+- [**good first issue**](https://github.com/amber-notes/amber-notes/labels/good%20first%20issue): small, well-scoped fixes for a first pull request.
+- **A template** for the [template gallery](https://ambernotes.app/templates): no Swift needed, see [Add a template](#add-a-template).
+
+## What you can expect from me
+
+- A first review within two days. If I'm going to say no, I'll say so early, before you've done the work.
+- Help when you're stuck. Ask in the issue or the pull request; there are no silly questions about a codebase you've never seen.
+- Credit. Everyone with a merged pull request is listed under [Thanks](README.md#thanks) in the README and named in the release notes of the version that ships their work. Community templates show "by @you" on the website.
 
 ## Set up (about 10 minutes)
 
@@ -47,6 +72,60 @@ cd web && pnpm install && pnpm typecheck && pnpm test && pnpm build
 ```
 
 `pnpm dev` runs it locally. Most pages work without it; the shared-note, report and connect pages need `web/.env.local` with `SUPABASE_URL` and `SUPABASE_ANON_KEY` (the local stack). See [web/README.md](web/README.md).
+
+## Add a template
+
+A [template](https://ambernotes.app/templates) is a note plus the instructions that let ChatGPT, Claude or Claude Code fill it in. Each one is a JSON file in `web/content/templates/`, and it gets its own page on ambernotes.app with your name on it.
+
+**The bar.** A template earns its place when someone would use it every week:
+
+- **Useful.** It does a job people repeat: a log, a tracker, a plan they keep coming back to. Not a one-off document.
+- **Real content.** The example reads like a real person's note, with plausible names, numbers and dates. No lorem ipsum, no "Item 1".
+- **No brand names** in the title, the note or the example. "Workout log", not "Strava log". (ChatGPT, Claude and Claude Code are fine, since the prompt is written for them.)
+- **Sentence case** titles, no em dashes, and no promises that the AI acts on its own on a schedule. It acts when you talk to it.
+- **Not a near-copy** of a template we have. Check the gallery first.
+
+**Steps.**
+
+1. Copy the existing template closest to yours to `web/content/templates/<slug>.json` and rewrite it. The fields are documented on the `Template` type in `web/lib/templates.ts`.
+2. Add `"author": "your-github-handle"` (without the @). That's what puts "by @you" on the card and the page.
+3. Add your slug to `ORDER` in `web/lib/templates.ts`. If the note has no table, also add it to `SLICE_FROM` with the heading the card should start at.
+4. Write the `demo` calls: the MCP tool calls an AI would make for your `asks`. Then let the test write the example from them. The tests also check the card has at least five lines to show, so give the example a few rows:
+
+   ```sh
+   cd web && FILL_EXAMPLES=1 pnpm vitest run lib/templates.test.ts && pnpm vitest run lib/templates.test.ts
+   ```
+
+5. Open a pull request. Skip the cover: I draw every cover in the gallery's paper-cut style and push it to your branch. Until it's there, the site tests and the build fail on the missing cover, and that's expected.
+
+A small example, trimmed (a real one has three `asks` and a few `demo` calls):
+
+```json
+{
+  "slug": "plant-care",
+  "title": "Plant care",
+  "category": "Home and life",
+  "audiences": ["Personal"],
+  "audience": "For anyone whose plants are either drowning or thirsty.",
+  "description": "A plant care log your AI keeps: tell it what you watered or repotted, and ask what's due before you leave for a week.",
+  "tagline": "Every plant, watered on time.",
+  "folder": "Home",
+  "note": "Plant care\n\nWhat each plant needs and when it last got it.\n\n<!-- pane-table: Date=date; Plant=text; Did=choice Watered|Fed|Repotted -->\n| Date | Plant | Did |\n| --- | --- | --- |\n",
+  "prompt": {
+    "default": "Use my Amber Notes note \"Plant care\". When I tell you I watered, fed or repotted a plant, add a row with log_table_row. When I ask what's due, read the table with read_table and tell me which plants haven't been watered in over a week."
+  },
+  "asks": ["Watered the fiddle leaf and the monstera.", "What needs water before I leave on Friday?"],
+  "demo": [
+    { "tool": "log_table_row", "args": { "values": { "Date": "2026-09-28", "Plant": "Monstera", "Did": "Watered" } } }
+  ],
+  "example": "",
+  "related": ["home-maintenance", "habit-tracker", "meal-plan"],
+  "updated": "2026-10-02",
+  "author": "your-github-handle"
+}
+```
+
+Not sure your idea fits? Open a [Template idea](https://github.com/amber-notes/amber-notes/issues/new?template=template-idea.md) issue first and I'll tell you before you write it.
 
 ## Pull requests
 

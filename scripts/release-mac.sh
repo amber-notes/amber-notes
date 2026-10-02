@@ -4,6 +4,9 @@
 #
 #   scripts/release-mac.sh 1.0.1 "What changed, one line per item"
 #
+# End the notes with a line thanking this release's contributors by handle ("Thanks to @arnavtambe");
+# docs/RELEASING.md says how to list them.
+#
 # From a clean checkout of main (../AmberNotes-install): archive the PaneDirect target,
 # export with Developer ID, notarize and staple the app, build the DMG, notarize and staple
 # it, sign it for Sparkle (EdDSA key in the login Keychain), write the appcast and the

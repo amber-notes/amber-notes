@@ -4,7 +4,7 @@ import { AIGlyph } from "@/lib/ai-glyphs";
 import { APP_TEMPLATES, pageMetadata } from "@/lib/site";
 import { JsonLd, breadcrumbs, maker, organization, templateHowTo, templateWork } from "@/lib/structured-data";
 import { COVERS, coverPath } from "@/lib/template-covers";
-import { anchor, changedCount, instructions, noteTitle, searchTitle, template, templates, usePath, type Template } from "@/lib/templates";
+import { anchor, authorLink, changedCount, instructions, noteTitle, searchTitle, template, templates, usePath, type Template } from "@/lib/templates";
 import Card from "../Card";
 import CopyButton from "../CopyButton";
 import Instructions from "../Instructions";
@@ -75,7 +75,10 @@ export default async function Page({ params }: Props) {
           <header className={s.intro}>
             <h1 className={`${s.title} rise`} style={at(0)}>{t.title}</h1>
             <p className={`${s.lede} rise`} style={at(1)}>{t.description}</p>
-            <p className={`${s.for} rise`} style={at(1)}>{t.audience}</p>
+            <p className={`${s.for} rise`} style={at(1)}>
+              {t.audience}
+              {t.author && <> A community template by <a className={s.forBy} href={authorLink(t.author)}>@{t.author}</a>.</>}
+            </p>
             <div className={`${s.ctas} rise`} style={at(2)}>
               {APP_TEMPLATES.live && <a className={s.primary} href={usePath(t.slug)}><PlusGlyph /> Use template</a>}
               {APP_TEMPLATES.live ? (
