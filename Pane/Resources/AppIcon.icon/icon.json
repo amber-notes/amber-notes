@@ -1,64 +1,37 @@
 {
-  "fill": {
-    "solid": "srgb:0.85098,0.41569,0.02353,1.00000"
+  "fill" : {
+    "solid" : "srgb:0.90588,0.48627,0.05490,1.00000"
   },
-  "groups": [
+  "groups" : [
     {
-      "name": "Page",
-      "layers": [
+      "name" : "Leaf",
+      "layers" : [
         {
-          "name": "page",
-          "image-name": "page.png",
-          "glass": false,
-          "hidden": false,
-          "position": {
-            "scale": 1,
-            "translation-in-points": [
+          "name" : "leaf",
+          "image-name" : "leaf.png",
+          "glass" : false,
+          "hidden" : false,
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
               0,
               0
             ]
           }
         }
       ],
-      "shadow": {
-        "kind": "neutral",
-        "opacity": 0.5
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.8
       },
-      "translucency": {
-        "enabled": false,
-        "value": 0
+      "translucency" : {
+        "enabled" : false,
+        "value" : 0
       },
-      "specular": true
-    },
-    {
-      "name": "Ground",
-      "layers": [
-        {
-          "name": "ground",
-          "image-name": "ground.png",
-          "glass": false,
-          "hidden": false,
-          "position": {
-            "scale": 1,
-            "translation-in-points": [
-              0,
-              0
-            ]
-          }
-        }
-      ],
-      "shadow": {
-        "kind": "none",
-        "opacity": 0
-      },
-      "translucency": {
-        "enabled": false,
-        "value": 0
-      },
-      "specular": false
+      "specular" : true
     }
   ],
-  "supported-platforms": {
-    "squares": "shared"
+  "supported-platforms" : {
+    "squares" : "shared"
   }
 }
