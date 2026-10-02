@@ -38,7 +38,7 @@ export const SCOPES = ["notes:read", "notes:write"];
 const ACCESS_TTL = 60 * 60; // seconds
 const REFRESH_TTL_DAYS = 90;
 const CODE_TTL = 60; // seconds
-const LIMITS: Record<string, [number, number]> = { register: [30, 3600], authorize: [60, 600], token: [120, 600], request: [120, 600], label: [120, 600], decide: [60, 600], status: [400, 600], resend: [3, 600] };
+const LIMITS: Record<string, [number, number]> = { register: [30, 3600], authorize: [60, 600], token: [120, 600], request: [120, 600], label: [120, 600], decide: [60, 600], status: [400, 600], resend: [12, 600] };
 
 export type Grant = { user_id: string; token_id: string; name: string; can_write: boolean; resource?: string; dk_wrap: string | null };
 
@@ -164,7 +164,10 @@ export function redirectMatches(registered: string[], asked: string): boolean {
 export function clientIP(req: Request) {
   const forwarded = req.headers.get("x-mcp-client-ip");
   if (forwarded && fromProxy(req)) return forwarded;
-  return req.headers.get("cf-connecting-ip") ?? req.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown";
+  // Cloudflare sets cf-connecting-ip itself and refuses a request that brings its own. Without it
+  // (a local stack), the last x-forwarded-for entry is the one the nearest proxy added; the first
+  // is whatever the caller typed.
+  return req.headers.get("cf-connecting-ip") ?? req.headers.get("x-forwarded-for")?.split(",").at(-1)?.trim() ?? "unknown";
 }
 
 /// Whether the site's proxy sent this request: it carries the shared secret. Proxy headers without
@@ -563,8 +566,9 @@ async function ask(req: Request, sql: Sql): Promise<Response> {
   // A wrong number typed on a device holds the account's asks for an hour.
   const [blocked] = await sql`select 1 from public.connect_blocks where user_id = ${user} and blocked_until > now()`;
   if (blocked) return json({ error: BLOCKED }, 429);
+  // Each "Send it again" counts as an ask: they wake the same devices.
   const [{ n }] = await sql<{ n: number }[]>`
-    select count(*)::int n from public.connect_asks where user_id = ${user} and created_at > now() - interval '10 minutes'`;
+    select (count(*) + coalesce(sum(resends), 0))::int n from public.connect_asks where user_id = ${user} and created_at > now() - interval '10 minutes'`;
   if (n >= ASKS_PER_10_MINUTES) return json({ error: "Too many requests to connect. Wait a few minutes and try again." }, 429);
   const r = await pending(sql, String(body.id ?? ""));
   if (!r) return json({ error: EXPIRED }, 404);
@@ -584,7 +588,10 @@ async function ask(req: Request, sql: Sql): Promise<Response> {
   const notified = notifyDevices(sql, user, r.id);
   const edge = (globalThis as { EdgeRuntime?: { waitUntil(p: Promise<unknown>): void } }).EdgeRuntime;
   if (edge) edge.waitUntil(notified); else await notified;
-  return json({ asked: true, expires_at: row.expires_at, devices: await devicesOf(sql, user) });
+  // The devices are the ask and the push have already happened by now, so a lookup that fails
+  // leaves the field out (the page then names both devices) instead of failing the ask.
+  const devices = await devicesOf(sql, user).catch((e) => { log("devices_failed", { error: String(e?.message ?? e).slice(0, 200) }); return null; });
+  return json({ asked: true, expires_at: row.expires_at, ...(devices ? { devices } : {}) });
 }
 
 /// Where the account has Amber Notes, so the page can say "Check your iPhone" or "Open Amber Notes
@@ -738,10 +745,15 @@ async function status(req: Request, sql: Sql): Promise<Response> {
 
 /// "Send it again": POST {id, pickup}, no session. The page that asked (it holds the pickup secret)
 /// has the account's devices told once more, with the same push under the same collapse id, so it
-/// replaces the first one instead of stacking. Only while the ask is open and has an account, and
-/// three times in ten minutes from one address. Nothing about the account comes back.
+/// replaces the first one instead of stacking. Only while the ask is open and has an account.
+/// Three limits, so nobody who knows a password can keep a phone buzzing by changing address:
+/// the caller's address first (before anything is read), then at most three for the request over
+/// its whole life, then the account's ten asks in ten minutes, which each resend counts toward.
+/// Nothing about the account comes back.
+const RESENDS_PER_ASK = 3;
 async function resend(req: Request, sql: Sql): Promise<Response> {
   if (!allowedOrigin(req)) return json({ error: "Not allowed from this site." }, 403);
+  if (await limited(sql, req, "resend")) return json({ error: "Too many attempts. Wait a few minutes and try again." }, 429);
   const body = await req.json().catch(() => ({})) as { id?: unknown; pickup?: unknown };
   const id = typeof body.id === "string" && UUID.test(body.id) ? body.id : "";
   const pickup = typeof body.pickup === "string" && HEX64.test(body.pickup) ? body.pickup : "";
@@ -750,7 +762,14 @@ async function resend(req: Request, sql: Sql): Promise<Response> {
     select a.user_id, a.pickup_hash from public.connect_asks a join public.oauth_requests r on r.id = a.request_id
     where a.request_id = ${id} and a.answered_at is null and a.expires_at > now() and r.decided_at is null and r.expires_at > now()`;
   if (!a?.user_id || !timingSafeEqual(await sha256OfHex(pickup), a.pickup_hash)) return json({ error: EXPIRED }, 404);
-  if (await limited(sql, req, "resend")) return json({ error: "Sent a few times already. Wait a few minutes, or use your recovery key." }, 429);
+  // Counted in one statement, so two at once can't both take the last one.
+  const [counted] = await sql`
+    update public.connect_asks a set resends = a.resends + 1
+    where a.request_id = ${id} and a.answered_at is null and a.resends < ${RESENDS_PER_ASK}
+      and (select count(*) + coalesce(sum(b.resends), 0) from public.connect_asks b
+           where b.user_id = a.user_id and b.created_at > now() - interval '10 minutes') < ${ASKS_PER_10_MINUTES}
+    returning 1`;
+  if (!counted) return json({ error: "Sent a few times already. Use your recovery key, or start connecting again in a few minutes." }, 429);
   const notified = notifyDevices(sql, a.user_id, id);
   const edge = (globalThis as { EdgeRuntime?: { waitUntil(p: Promise<unknown>): void } }).EdgeRuntime;
   if (edge) edge.waitUntil(notified); else await notified;
