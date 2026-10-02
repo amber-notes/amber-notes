@@ -59,9 +59,9 @@ async function removeFiles(uid: string): Promise<number> {
 const lastExport = new Map<string, number>();
 
 Deno.serve(async (req) => {
-  await ready();
   const exporting = req.method === "GET" && new URL(req.url).pathname.endsWith("/export");
   if (req.method !== "DELETE" && !exporting) return json({ error: "Use DELETE, or GET /account/export." }, 405);
+  await ready();
   const token = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
   const uid = token ? await userFor(token) : null;
   if (!uid) return json({ error: exporting ? "Sign in again, then try exporting your data." : "Sign in again, then try deleting your account." }, 401);

@@ -83,8 +83,8 @@ jobs:
       - name: Unit tests
         run: >-
           deno test --allow-all
-          supabase/functions/_shared/e2ee.test.ts supabase/functions/_shared/log.test.ts supabase/functions/_shared/apns.test.ts supabase/functions/_shared/db.test.ts
-          supabase/functions/mcp/notes.test.ts supabase/functions/mcp/annotations.test.ts supabase/functions/mcp/card.test.ts
+          supabase/functions/_shared/e2ee.test.ts supabase/functions/_shared/log.test.ts supabase/functions/_shared/apns.test.ts supabase/functions/_shared/db.test.ts supabase/functions/_shared/client.test.ts
+          supabase/functions/mcp/notes.test.ts supabase/functions/mcp/needs_database.test.ts supabase/functions/mcp/annotations.test.ts supabase/functions/mcp/card.test.ts
           supabase/functions/mcp/oauth.pglite.test.ts supabase/functions/mcp/locked.pglite.test.ts supabase/functions/mcp/e2ee.pglite.test.ts
           supabase/functions/mcp/canary.pglite.test.ts supabase/functions/mcp/sealed_tools.pglite.test.ts supabase/functions/mcp/device_add.pglite.test.ts
           supabase/functions/mcp/tips.pglite.test.ts supabase/functions/mcp/share_ask.pglite.test.ts supabase/functions/mcp/open_source_ask.pglite.test.ts supabase/functions/mcp/download_counts.pglite.test.ts

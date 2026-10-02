@@ -18,10 +18,10 @@
 // free. Nothing here keeps state on a connection between them: settings are set_config(..., true)
 // and locks are pg_advisory_xact_lock, inside sql.begin. Prepared statements are off for the same reason.
 import postgres from "npm:postgres@3.4.5";
-import { log } from "./log.ts";
+import { errorKind, log } from "./log.ts";
 
 export type Env = { get(name: string): string | undefined };
-export type Target = { url: string; pooled: boolean; options: { max: number; idle_timeout: number; connect_timeout: number; prepare: false } };
+export type Target = { url: string; pooled: boolean; ssl: boolean; options: { max: number; idle_timeout: number; connect_timeout: number; prepare: false } };
 
 /// The project's ref: the first label of SUPABASE_URL's host, or of a db.<ref>.supabase.co host.
 function projectRef(supabaseURL: string | undefined, dbHost: string): string | null {
@@ -36,7 +36,11 @@ export function target(env: Env, max = 3): Target {
   const direct = env.get("SUPABASE_DB_URL");
   if (!direct) throw new Error("SUPABASE_DB_URL is not set");
   const host = (env.get("DB_POOLER_HOST") ?? "").trim().toLowerCase();
-  const one: Target = { url: direct, pooled: false, options: { max: 1, idle_timeout: 5, connect_timeout: 10, prepare: false } };
+  // Whether the address asks for TLS (sslmode=require and stricter). postgres.js encrypts only
+  // then, and the pooled address keeps whatever SUPABASE_DB_URL says, so this is also true or
+  // false for the pooler. Logged, not forced: forcing it blind could stop every function.
+  const ssl = /[?&]sslmode=(require|verify-ca|verify-full)\b/.test(direct);
+  const one: Target = { url: direct, pooled: false, ssl, options: { max: 1, idle_timeout: 5, connect_timeout: 10, prepare: false } };
   if (!host) return one;
   // Only a pooler host: never a way to point the functions at some other server by typo.
   if (!/^[a-z0-9-]+\.pooler\.supabase\.com$/.test(host)) return one;
@@ -47,23 +51,26 @@ export function target(env: Env, max = 3): Target {
   u.hostname = host;
   u.port = "6543";
   u.username = `${decodeURIComponent(u.username).split(".")[0] || "postgres"}.${ref}`;
-  return { url: u.toString(), pooled: true, options: { max, idle_timeout: 20, connect_timeout: 10, prepare: false } };
+  return { url: u.toString(), pooled: true, ssl, options: { max, idle_timeout: 20, connect_timeout: 10, prepare: false } };
 }
 
 /// The function's pool. Says once, in the log, which way it connects (never the address).
 export function connect(env: Env = Deno.env, max = 3) {
   const t = target(env, max);
-  log("db", { mode: t.pooled ? "pooled" : "direct", max: t.options.max });
+  log("db", { mode: t.pooled ? "pooled" : "direct", count: t.options.max, ssl: t.ssl });
   return postgres(t.url, t.options);
 }
 
-/// Postgres or the network refusing a new connection: nothing ran, so trying again is safe.
+/// Postgres, the pooler or the network refusing a new connection: nothing ran, so trying again is safe.
 /// 53300 too_many_connections, 53400 configuration_limit_exceeded, 57P03 cannot_connect_now,
-/// 08xxx connection exceptions, and postgres.js's own connection errors.
+/// 08xxx connection exceptions (PgBouncer refuses with 08P01), postgres.js's own connection errors,
+/// and the pooler's refusals, which Supavisor sends as XX000 with a message about clients or its pool.
 export function isConnectionError(e: unknown): boolean {
   const code = String((e as { code?: unknown } | null)?.code ?? "");
-  return code === "53300" || code === "53400" || code === "57P03" || code.startsWith("08")
-    || ["CONNECT_TIMEOUT", "CONNECTION_CLOSED", "CONNECTION_ENDED", "CONNECTION_DESTROYED", "ECONNREFUSED", "ECONNRESET", "ETIMEDOUT"].includes(code);
+  if (code === "53300" || code === "53400" || code === "57P03" || code.startsWith("08")) return true;
+  if (["CONNECT_TIMEOUT", "CONNECTION_CLOSED", "CONNECTION_ENDED", "CONNECTION_DESTROYED", "ECONNREFUSED", "ECONNRESET", "ETIMEDOUT"].includes(code)) return true;
+  const message = String((e as { message?: unknown } | null)?.message ?? "");
+  return code === "XX000" && /max client|maxclients|too many clients|client connections|pool|tenant|unable to check out|connection (to database )?not available/i.test(message);
 }
 
 type Ping = (strings: TemplateStringsArray, ...values: never[]) => PromiseLike<unknown>;
@@ -81,11 +88,11 @@ export function readiness(sql: Ping, { freshMs = 4000, waits = [150, 400, 900], 
       try {
         await sql`select 1`;
         lastOk = now();
-        if (attempt > 0) log("db_retry", { attempts: attempt + 1, ok: true });
+        if (attempt > 0) log("db_retry", { status: "ok", attempts: attempt + 1 });
         return true;
       } catch (e) {
         if (!isConnectionError(e) || attempt >= waits.length) {
-          log("db_retry", { attempts: attempt + 1, ok: false, code: String((e as { code?: unknown } | null)?.code ?? "") });
+          log("db_retry", { status: "failed", attempts: attempt + 1, ...errorKind(e) });
           return false;
         }
         await sleep(waits[attempt]);
