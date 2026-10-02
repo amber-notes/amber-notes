@@ -42,6 +42,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        {/* Google shows a site's favicon only at a multiple of 48px, so offer 48 and 96 by name. */}
+        <link rel="icon" href="/icon-48.png" type="image/png" sizes="48x48" />
+        <link rel="icon" href="/icon-96.png" type="image/png" sizes="96x96" />
       </head>
       <body>
         <SiteChrome version={latestVersion()} stars={stats?.stars ?? null}>{children}</SiteChrome>

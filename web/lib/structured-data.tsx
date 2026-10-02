@@ -48,6 +48,8 @@ export const website: Thing = {
   "@type": "WebSite",
   "@id": `${SITE_URL}/#website`,
   name: SITE_NAME,
+  // Google's site-name fallbacks, so results say "Amber Notes" rather than the domain.
+  alternateName: ["Amber Notes app", "ambernotes.app"],
   url: SITE_URL,
   inLanguage: "en",
   publisher: { "@id": ORG_ID },
