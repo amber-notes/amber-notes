@@ -4,6 +4,10 @@
 //   deno run -A scripts/asc.ts wait <build>           wait until iOS and Mac builds <build> are processed
 //   deno run -A scripts/asc.ts setup <build>          beta info, groups, the build in both groups,
 //                                                     beta review submission, public link
+//   deno run -A scripts/asc.ts mac-store [build]      the Mac App Store version page from
+//                                                     docs/appstore/metadata-mac.md and
+//                                                     .shots/appstore/mac/*.png; selects the build if
+//                                                     given. Never submits for review.
 //
 // Reads .secrets/asc.env (ASC_KEY_ID, ASC_ISSUER_ID, optional ASC_CONTACT_PHONE) and the .p8 key.
 // Beta App Review needs a contact phone number; without ASC_CONTACT_PHONE the review
@@ -201,8 +205,98 @@ async function wait(build: string) {
   throw new Error(`Build ${build} still processing after 45 minutes`);
 }
 
+/** A fenced block after a bold label in docs/appstore/metadata-mac.md. */
+function macBlock(text: string, label: string) {
+  const m = text.match(new RegExp(`\\*\\*${label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\*\\*[^\\n]*\\n\\n\`\`\`\\n([\\s\\S]*?)\\n\`\`\``));
+  if (!m) throw new Error(`metadata-mac.md has no ${label} block`);
+  return m[1];
+}
+
+async function macStore(build?: string) {
+  const a = await app();
+  const appId = a.id;
+  const text = await Deno.readTextFile("docs/appstore/metadata-mac.md");
+  const version = (await Deno.readTextFile("project.yml")).match(/MARKETING_VERSION: "([^"]+)"/)![1];
+  const versions = (await get(`/apps/${appId}/appStoreVersions?limit=20`)).data as J[];
+
+  // The macOS version: the one being prepared, or a new one at project.yml's version.
+  const open = ["PREPARE_FOR_SUBMISSION", "DEVELOPER_REJECTED", "REJECTED", "METADATA_REJECTED", "INVALID_BINARY"];
+  let v = versions.find((x) => x.attributes.platform === "MAC_OS" && open.includes(x.attributes.appStoreState));
+  if (v && v.attributes.versionString !== version) {
+    v = (await call("PATCH", `/appStoreVersions/${v.id}`, { data: { type: "appStoreVersions", id: v.id, attributes: { versionString: version } } })).data;
+  }
+  if (!v) {
+    v = (await call("POST", "/appStoreVersions", { data: { type: "appStoreVersions",
+      attributes: { platform: "MAC_OS", versionString: version, copyright: "2026 Emil Wagman", releaseType: "MANUAL" },
+      relationships: { app: { data: { type: "apps", id: appId } } } } })).data;
+  }
+  console.log(`✓ macOS version ${version} (${v.attributes.appStoreState ?? "new"})`);
+
+  // Its English page.
+  const attrs: J = { description: macBlock(text, "Description:"), keywords: macBlock(text, "Keywords"),
+    promotionalText: macBlock(text, "Promotional text"), supportUrl: "https://ambernotes.app/support", marketingUrl: "https://ambernotes.app" };
+  const locs = (await get(`/appStoreVersions/${v.id}/appStoreVersionLocalizations`)).data as J[];
+  let loc = locs.find((l) => l.attributes.locale === "en-US");
+  if (loc) loc = (await call("PATCH", `/appStoreVersionLocalizations/${loc.id}`, { data: { type: "appStoreVersionLocalizations", id: loc.id, attributes: attrs } })).data;
+  else loc = (await call("POST", "/appStoreVersionLocalizations", { data: { type: "appStoreVersionLocalizations", attributes: { locale: "en-US", ...attrs },
+    relationships: { appStoreVersion: { data: { type: "appStoreVersions", id: v.id } } } } })).data;
+  console.log("✓ Description, keywords, promotional text, support and marketing URLs");
+
+  // The screenshots, replaced by the ones in .shots/appstore/mac, in their file order.
+  const files = [...Deno.readDirSync(".shots/appstore/mac")].map((e) => e.name).filter((n) => /^\d-.*\.png$/.test(n)).sort();
+  if (!files.length) throw new Error("No screenshots in .shots/appstore/mac (run scripts/store-art/capture-mac.sh and render-mac.py)");
+  const sets = (await get(`/appStoreVersionLocalizations/${loc.id}/appScreenshotSets`)).data as J[];
+  let set = sets.find((s) => s.attributes.screenshotDisplayType === "APP_DESKTOP");
+  if (!set) set = (await call("POST", "/appScreenshotSets", { data: { type: "appScreenshotSets", attributes: { screenshotDisplayType: "APP_DESKTOP" },
+    relationships: { appStoreVersionLocalization: { data: { type: "appStoreVersionLocalizations", id: loc.id } } } } })).data;
+  for (const old of (await get(`/appScreenshotSets/${set.id}/appScreenshots`)).data as J[]) await call("DELETE", `/appScreenshots/${old.id}`);
+  const ids: string[] = [];
+  for (const name of files) {
+    const path = `.shots/appstore/mac/${name}`;
+    const bytes = await Deno.readFile(path);
+    const shot = (await call("POST", "/appScreenshots", { data: { type: "appScreenshots", attributes: { fileName: name, fileSize: bytes.length },
+      relationships: { appScreenshotSet: { data: { type: "appScreenshotSets", id: set.id } } } } })).data;
+    for (const op of shot.attributes.uploadOperations as J[]) {
+      const headers = Object.fromEntries((op.requestHeaders ?? []).map((h: J) => [h.name, h.value]));
+      const res = await fetch(op.url, { method: op.method, headers, body: bytes.slice(op.offset, op.offset + op.length) });
+      if (!res.ok) throw new Error(`upload of ${name} → ${res.status}`);
+    }
+    const md5 = new TextDecoder().decode((await new Deno.Command("md5", { args: ["-q", path] }).output()).stdout).trim();
+    await call("PATCH", `/appScreenshots/${shot.id}`, { data: { type: "appScreenshots", id: shot.id, attributes: { uploaded: true, sourceFileChecksum: md5 } } });
+    ids.push(shot.id);
+  }
+  await call("PATCH", `/appScreenshotSets/${set.id}/relationships/appScreenshots`, { data: ids.map((id) => ({ type: "appScreenshots", id })) });
+  console.log(`✓ ${ids.length} Mac screenshots: ${files.join(", ")}`);
+
+  // App Review: contact and demo account from the iPhone version; the notes from the doc, with
+  // the recovery key from the iPhone version's notes (it's never in the repo).
+  const ios = versions.filter((x) => x.attributes.platform === "IOS").sort((x, y) => y.attributes.createdDate.localeCompare(x.attributes.createdDate))[0];
+  const from = (await get(`/appStoreVersions/${ios.id}/appStoreReviewDetail`)).data.attributes;
+  const key = (from.notes ?? "").match(/RECOVERY KEY: (\S+)/)?.[1];
+  if (!key) throw new Error("The iPhone version's review notes have no recovery key to copy");
+  const review: J = { contactFirstName: from.contactFirstName, contactLastName: from.contactLastName, contactPhone: from.contactPhone,
+    contactEmail: from.contactEmail, demoAccountName: from.demoAccountName, demoAccountPassword: from.demoAccountPassword,
+    demoAccountRequired: from.demoAccountRequired, notes: macBlock(text, "Notes for the reviewer:").replace("RECOVERY KEY: (from the iPhone version)", `RECOVERY KEY: ${key}`) };
+  const existing = await get(`/appStoreVersions/${v.id}/appStoreReviewDetail`).catch(() => ({ data: null }));
+  if (existing.data) await call("PATCH", `/appStoreReviewDetails/${existing.data.id}`, { data: { type: "appStoreReviewDetails", id: existing.data.id, attributes: review } });
+  else await call("POST", "/appStoreReviewDetails", { data: { type: "appStoreReviewDetails", attributes: review,
+    relationships: { appStoreVersion: { data: { type: "appStoreVersions", id: v.id } } } } });
+  console.log("✓ App Review contact, demo account and notes");
+
+  if (build) {
+    const b = (await builds(appId, build)).find((x: J) => x.platform === "MAC_OS" && x.state === "VALID");
+    if (!b) throw new Error(`No processed Mac build ${build}`);
+    await call("PATCH", `/appStoreVersions/${v.id}/relationships/build`, { data: { type: "builds", id: b.id } });
+    console.log(`✓ Build ${build} selected`);
+  } else {
+    console.log("• No build selected (pass one: mac-store <build>)");
+  }
+  console.log("Not submitted for review.");
+}
+
 const [cmd, arg] = Deno.args;
 if (cmd === "status") await status();
 else if (cmd === "wait" && arg) await wait(arg);
 else if (cmd === "setup" && arg) await setup(arg);
-else console.log("usage: deno run -A scripts/asc.ts status | wait <build> | setup <build>");
+else if (cmd === "mac-store") await macStore(arg);
+else console.log("usage: deno run -A scripts/asc.ts status | wait <build> | setup <build> | mac-store [build]");
