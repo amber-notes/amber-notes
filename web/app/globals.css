@@ -1,4 +1,6 @@
-/* The share page reads like a note in Amber Notes: system type, a quiet page, amber accents. */
+/* A note as Amber Notes shows it: system type, a quiet page, amber accents. These are the note's
+   own colours and its content styles (.note), used by the shared-note page and by the note windows
+   on the template pages. The pages' chrome is in lib/ui.module.css and lib/note-page.module.css. */
 :root {
   color-scheme: light dark;
   --page: #ffffff;
@@ -39,54 +41,9 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 a { color: var(--accent-text); }
+/* A table or code block that scrolls sideways takes keyboard focus, so it shows the ring too. */
+.note table:focus-visible, .note pre:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 a:focus-visible, .file-chip:focus-visible, .subnote-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
-
-.shell { min-height: 100dvh; display: flex; flex-direction: column; }
-.bar {
-  position: sticky; top: 0; z-index: 1;
-  display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 52px; padding: 0 16px;
-  background: color-mix(in srgb, var(--chrome) 85%, transparent);
-  backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
-  border-bottom: 1px solid var(--rule);
-}
-.brand { display: inline-flex; align-items: center; gap: 8px; color: var(--text); text-decoration: none; font-weight: 600; font-size: 15px; min-height: 44px; }
-.brand img { border-radius: 5px; }
-.brand { flex: none; }
-
-/* The bar's right end: who shared it, then "Use this note". */
-.bar-end { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.use-note {
-  flex: none; display: inline-flex; align-items: center; min-height: 32px; padding: 0 14px; border-radius: 16px;
-  background: var(--text); color: var(--page); font-size: 14px; font-weight: 600; text-decoration: none; white-space: nowrap;
-  transition-property: transform, opacity; transition-duration: 120ms;
-}
-.use-note:active { transform: scale(0.97); }
-@media (hover: hover) { .use-note:hover { opacity: 0.85; } }
-.use-note:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-
-/* Who shared the note, at the right of the bar. Long names and emails truncate; the photo stays. */
-.sharer { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.avatar { flex: none; width: 28px; height: 28px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 0.5px var(--rule); }
-.avatar-initials { display: inline-flex; align-items: center; justify-content: center; background: var(--accent-soft); color: var(--accent-text); font-size: 12px; font-weight: 600; letter-spacing: 0.02em; }
-.sharer-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; text-align: right; order: -1; }
-.sharer-line, .sharer-email { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sharer-line { font-size: 13px; }
-.sharer-label { color: var(--secondary); }
-.sharer-name { font-weight: 600; }
-.sharer-email { font-size: 12px; color: var(--secondary); }
-@media (max-width: 480px) { .sharer-email { display: none; } }
-/* Narrow phones: only the avatar is left of "Use this note", and it never shrinks under the
-   button. These come after the rules above so they win. Below 360 px the logo stands alone. */
-@media (max-width: 420px) { .sharer-text { display: none; } .sharer { flex: none; } }
-@media (max-width: 360px) { .brand span { display: none; } }
-
-.page { width: 100%; max-width: 720px; margin: 0 auto; padding: 28px 16px 64px; flex: 1; }
-.parent { display: inline-flex; gap: 4px; align-items: center; min-height: 44px; font-size: 15px; text-decoration: none; }
-.date { margin: 0 0 6px; color: var(--secondary); font-size: 13px; text-align: center; font-variant-numeric: tabular-nums; }
-.title { margin: 8px 0 12px; font-size: 28px; line-height: 1.2; font-weight: 700; letter-spacing: -0.01em; overflow-wrap: anywhere; }
-.lede { color: var(--secondary); max-width: 34em; }
-.empty { display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 18vh; }
-.empty img { border-radius: 12px; margin-bottom: 8px; }
 
 .note { overflow-wrap: anywhere; }
 .note > :first-child { margin-top: 0; }
@@ -111,7 +68,8 @@ a:focus-visible, .file-chip:focus-visible, .subnote-chip:focus-visible { outline
 .note pre code { background: none; padding: 0; }
 .note hr { border: 0; border-top: 1px solid var(--rule); margin: 1.2em 0; }
 .note table { border-collapse: collapse; margin: 0.4em 0 1em; display: block; overflow-x: auto; max-width: 100%; font-variant-numeric: tabular-nums; }
-.note th, .note td { border: 1px solid var(--rule); padding: 6px 10px; text-align: left; vertical-align: top; }
+/* A cell breaks between words, never inside one: a table too wide for a phone scrolls sideways in its own box. */
+.note th, .note td { border: 1px solid var(--rule); padding: 6px 10px; text-align: left; vertical-align: top; overflow-wrap: break-word; }
 .note th { font-weight: 600; background: var(--fill); }
 .note img.embed-image { display: block; max-width: min(100%, 520px); height: auto; border-radius: 10px; margin: 0.4em 0; }
 .embed-missing { display: inline-block; color: var(--secondary); font-size: 15px; padding: 6px 10px; border-radius: 8px; background: var(--fill); }
@@ -131,26 +89,5 @@ a:focus-visible, .file-chip:focus-visible, .subnote-chip:focus-visible { outline
 .subnote-plain { font-weight: 600; }
 .subnotes { margin-top: 32px; }
 .subnotes h2 { font-size: 13px; font-weight: 600; text-transform: none; color: var(--secondary); margin: 0 0 6px; }
-
-.foot { text-align: center; color: var(--tertiary); font-size: 13px; padding: 24px 16px 32px; }
-.foot a { color: var(--secondary); }
-
-/* Report form: plain fields in the page's own style, 44pt targets. */
-.report { display: flex; flex-direction: column; gap: 16px; margin-top: 20px; max-width: 34em; }
-.field { display: flex; flex-direction: column; gap: 6px; font-size: 15px; font-weight: 600; }
-.optional { font-weight: 400; color: var(--secondary); }
-.field textarea, .field input {
-  font: 17px/1.4 inherit; font-family: inherit; color: var(--text); background: var(--fill);
-  border: 1px solid var(--rule); border-radius: 10px; padding: 10px 12px; min-height: 44px; resize: vertical;
-}
-.field textarea:focus-visible, .field input:focus-visible, .button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.button {
-  align-self: flex-start; min-height: 44px; padding: 0 20px; border: 0; border-radius: 22px;
-  background: var(--accent); color: #1d1d1f; font: 600 17px/1 inherit; font-family: inherit; cursor: pointer;
-  transition-property: transform; transition-duration: 120ms;
-}
-.button:active { transform: scale(0.97); }
-.notice { margin-bottom: 8px; }
-.notice-warn .title { color: var(--accent-text); }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }

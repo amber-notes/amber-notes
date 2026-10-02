@@ -18,6 +18,14 @@ The whole public site, not just shared notes. What lives where:
 - **Connect** — where an AI client's sign-in lands (`web/app/connect/` and
   `web/app/open/connect/`); the MCP proxy is `web/middleware.ts`.
 
+- **The functional pages' shared parts** — `web/lib/ui.tsx` and `ui.module.css`: the page shell and
+  its quiet top bar, a card, buttons and a button row, a form field, a status message and an empty
+  or error state. The shared note, the report form, the not-found pages and the `/open` pages are
+  built from them. The long text pages share `web/lib/LegalPage.tsx` (`LongPage`, the contents list).
+- **Dev-only previews** (not on the production site): `/n/preview` and `/open/copy/preview` show the
+  shared-note pages from made-up notes (`web/lib/preview-notes.ts`), `/dev/not-found` the 404, and
+  `/dev/account` the proposed landing pages for account emails (`docs/Technical/account-emails.md`).
+
 ## Running it
 
 `cd web && pnpm install && pnpm dev` serves it on http://localhost:5210.

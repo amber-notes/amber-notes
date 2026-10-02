@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ui } from "@/lib/ui";
 import s from "./open.module.css";
 
 /// Tries the app as the page loads and gives the page its state: "trying" for about 1.5 s, then
@@ -37,5 +38,5 @@ export default function OpenApp({ href, children }: { href: string; children: Re
       frame?.remove();
     };
   }, [href]);
-  return <div className={s.page} data-state={state}>{children}</div>;
+  return <div className={`${ui.stage} ${ui.stageInSite} ${s.page}`} data-state={state}>{children}</div>;
 }

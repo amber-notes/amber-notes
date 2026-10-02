@@ -1,0 +1,102 @@
+/* A shared note in the browser (lib/NotePage.tsx). The note is the content: the bar is one quiet
+   row, and Amber Notes is mentioned once, after the note.
+   Two candidate looks share this file until one is picked:
+   "sheet" (.desk): the note on the app's paper, lying on the site's cream (leaf brown in dark).
+   "page" (.plain): the page itself is the note, as in the app; the site's colours only close it. */
+
+/* ── The bar's right end: who shared it, then "Use this note" ── */
+.use {
+  flex: none; display: inline-flex; align-items: center; min-height: 40px; padding: 0 16px; border-radius: 12px;
+  background: var(--cta-bg); color: var(--cta-ink); font-size: 15px; font-weight: 700; text-decoration: none; white-space: nowrap;
+  box-shadow: 0 8px 18px -10px rgba(var(--shade), 0.6);
+  /* a 40px button with a 44px target */
+  position: relative;
+}
+.use::after { content: ""; position: absolute; inset: -2px 0; }
+@media (hover: hover) { .use:hover { background: color-mix(in srgb, var(--cta-bg) 86%, var(--amber)); } }
+@media (prefers-reduced-motion: no-preference) {
+  .use { transition: transform 0.12s ease-out, background-color 0.15s ease-out; }
+  .use:active { transform: scale(0.97); }
+}
+.use:focus-visible, .parent:focus-visible, .foot a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+.sharer { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.avatar { flex: none; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 0.5px var(--line); }
+.initials { display: inline-flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--amber) 22%, transparent); color: var(--link); font-size: 12px; font-weight: 700; letter-spacing: 0.02em; }
+.sharerText { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; text-align: right; order: -1; }
+.sharerLine, .sharerEmail { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sharerLine { font-size: 13.5px; }
+.sharerLabel { color: var(--muted); }
+.sharerName { font-weight: 650; }
+.sharerEmail { font-size: 12.5px; color: var(--muted); }
+@media (max-width: 480px) { .sharerEmail { display: none; } }
+/* Narrow phones: only the photo is left of "Use this note", and it never shrinks under the button.
+   These come after the rules above so they win. Below 361 px the logo stands alone (ui.module.css). */
+@media (max-width: 420px) { .sharerText { display: none; } .sharer { flex: none; } }
+
+/* The way back from a sub-note to the note it's in. */
+.parent { display: inline-flex; gap: 6px; align-items: center; min-height: 44px; border-radius: 8px; color: var(--link); font-size: 15px; font-weight: 600; text-decoration: none; overflow-wrap: anywhere; }
+@media (hover: hover) { .parent:hover { color: var(--ink); } }
+
+/* ── Sheet: the note on paper ── */
+.deskMain { flex: 1; width: 100%; max-width: 800px; margin: 0 auto; padding: 8px var(--gutter) 0; box-sizing: border-box; display: grid; align-content: start; grid-template-columns: minmax(0, 1fr); }
+.sheet {
+  /* The app's note paper. In dark it is the app's dark paper, warmed to sit on leaf brown. */
+  --page: #ffffff; --text: #1d1d1f; --secondary: #6e6e73; --tertiary: #aeaeb2; --rule: rgba(0, 0, 0, 0.1); --fill: #f2f1ef;
+  --accent: #e39410; --accent-text: #b86e00; --accent-soft: rgba(233, 146, 16, 0.12); --code: #f5f4f2;
+  padding: 36px 56px 48px; border-radius: 20px; background: var(--page); color: var(--text);
+  font: 17px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
+  box-shadow: 0 0 0 0.5px rgba(var(--shade), 0.2), 0 2px 6px rgba(var(--shade), 0.06), 0 30px 60px -32px rgba(var(--shade), 0.42);
+}
+@media (prefers-color-scheme: dark) {
+  .sheet {
+    --page: #1f1812; --text: #f7f1ea; --secondary: #b3a595; --tertiary: #7d6f61; --rule: rgba(255, 235, 210, 0.13); --fill: #2c231b;
+    --accent: #f5ad33; --accent-text: #f5ad33; --accent-soft: rgba(245, 173, 51, 0.16); --code: #2a211a;
+    box-shadow: 0 0 0 0.5px rgba(255, 220, 170, 0.16), 0 30px 60px -32px rgba(0, 0, 0, 0.7);
+  }
+}
+@media (max-width: 700px) { .sheet { padding: 28px 28px 36px; } }
+@media (max-width: 480px) {
+  /* On a phone the paper runs almost edge to edge, so the note keeps its width. */
+  .deskMain { padding-left: 8px; padding-right: 8px; }
+  .deskMain > .parent { margin-left: 8px; }
+  .sheet { padding: 22px 18px 30px; border-radius: 18px; }
+}
+.date { margin: 0 0 6px; color: var(--secondary); font-size: 13px; text-align: center; font-variant-numeric: tabular-nums; }
+.title { margin: 8px 0 12px; font-size: 28px; line-height: 1.2; font-weight: 700; letter-spacing: -0.01em; overflow-wrap: anywhere; }
+.sheet :global(.note > :last-child) { margin-bottom: 0; }
+
+/* ── Page: the page is the note ── */
+.plain { --bg: var(--page); background: var(--page); color: var(--text); }
+.plain .use { background: var(--text); color: var(--page); box-shadow: none; }
+@media (hover: hover) { .plain .use:hover { background: color-mix(in srgb, var(--text) 82%, var(--accent)); } }
+.plain .parent { color: var(--accent-text); }
+.plainMain { flex: 1; width: 100%; max-width: 720px; margin: 0 auto; padding: 28px var(--gutter) 0; box-sizing: border-box; font: 17px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif; }
+.bigTitle { margin: 0; font-size: clamp(30px, 5vw, 40px); line-height: 1.1; font-weight: 800; letter-spacing: -0.025em; text-wrap: balance; overflow-wrap: anywhere; }
+.byline { display: flex; align-items: center; gap: 12px; margin: 16px 0 28px; padding-bottom: 20px; box-shadow: inset 0 -1px 0 var(--rule); min-width: 0; }
+.byline p { margin: 0; display: grid; min-width: 0; line-height: 1.3; }
+.bylineName { font-size: 15px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bylineName .sharerLabel { color: var(--secondary); font-weight: 400; }
+.bylineDate { color: var(--secondary); font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.plain .initials { background: var(--accent-soft); color: var(--accent-text); font-size: 13px; }
+
+/* ── The one mention of the app, after the note ── */
+.get { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; margin-top: 32px; padding: 16px 16px 16px 18px; border-radius: 20px; background: var(--soft); color: var(--ink); }
+.get img { border-radius: 22.5%; box-shadow: 0 0 0 0.5px var(--line), 0 6px 14px -8px rgba(150, 70, 0, 0.45); }
+.get p { margin: 0; display: grid; gap: 2px; font-size: 14.5px; line-height: 1.4; }
+.get strong { font-size: 16px; font-weight: 700; letter-spacing: -0.005em; }
+.get span { color: var(--muted); text-wrap: pretty; }
+.get a { width: auto; min-height: 44px; padding: 0 18px; border-radius: 12px; font-size: 15px; background: var(--card); box-shadow: 0 0 0 1px var(--line), 0 1px 2px rgba(var(--shade), 0.08); white-space: nowrap; }
+@media (max-width: 560px) {
+  .get { grid-template-columns: auto minmax(0, 1fr); padding: 16px; }
+  .get a { grid-column: 1 / -1; width: 100%; min-height: 48px; }
+}
+/* On the plain page the site's cream (leaf brown in dark) shows only here. */
+.plain .get { margin-top: 48px; }
+
+.foot { display: flex; justify-content: center; padding: 20px var(--gutter) 28px; }
+.foot a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 10px; color: var(--muted); font-size: 13.5px; font-weight: 600; text-decoration: none; }
+.plain .foot a { color: var(--secondary); }
+@media (hover: hover) { .foot a:hover { color: var(--ink); } .plain .foot a:hover { color: var(--text); } }
+/* The plain page's own ground, behind the whole window (the pages without a theme are cream otherwise). */
+:global(body):has(.plain) { background: var(--page); }

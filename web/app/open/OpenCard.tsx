@@ -1,5 +1,6 @@
 import { APP_STORE_LIVE, APP_STORE_URL } from "@/lib/site";
 import CopyButton from "../templates/CopyButton";
+import { Card, Mark, ui } from "@/lib/ui";
 import OpenApp from "./OpenApp";
 import s from "./open.module.css";
 
@@ -18,23 +19,25 @@ export default function OpenCard({ href, what, lede, markdown, prompt, back }: {
 }) {
   return (
     <OpenApp href={href}>
-      <div className={s.card}>
-        <img className={s.mark} src="/mark-256.png" alt="" width={56} height={56} />
-        <h1 className={s.title}>
-          <span className={s.whenTrying}>Opening Amber Notes</span>
-          <span className={s.whenOpened}>Opened in Amber Notes</span>
-          <span className={s.whenFallback}>Get Amber Notes to use {what}</span>
-        </h1>
-        <p className={s.lede}>{lede}</p>
+      <Card className={s.anim}>
+        <Mark />
+        <div className={ui.group}>
+          <h1 className={ui.title}>
+            <span className={s.whenTrying}>Opening Amber Notes</span>
+            <span className={s.whenOpened}>Opened in Amber Notes</span>
+            <span className={s.whenFallback}>Get Amber Notes to use {what}</span>
+          </h1>
+          <p className={ui.lede}>{lede}</p>
+        </div>
         <p className={`${s.status} ${s.whenTrying}`} role="status"><i className={s.dot} aria-hidden="true" />Looking for Amber Notes on this device</p>
 
         <div className={`${s.stack} ${s.whenFallback}`}>
-          <a className={s.primary} href="/download/mac"><AppleGlyph /> Get Amber Notes for Mac</a>
+          <a className={ui.primary} href="/download/mac"><AppleGlyph /> Get Amber Notes for Mac</a>
           {APP_STORE_LIVE
-            ? <a className={s.secondary} href={APP_STORE_URL} target="_blank" rel="noopener noreferrer">Get it for iPhone</a>
+            ? <a className={ui.secondary} href={APP_STORE_URL} target="_blank" rel="noopener noreferrer">Get it for iPhone</a>
             : <p className={s.soon}>iPhone app: coming soon</p>}
         </div>
-        <p className={s.small}>
+        <p className={`${ui.small} ${s.again}`}>
           <span className={s.whenFallback}>Already have it? </span>
           <span className={s.whenOpened}>Didn&apos;t open? </span>
           <a href={href}>Open Amber Notes</a>
@@ -44,21 +47,21 @@ export default function OpenCard({ href, what, lede, markdown, prompt, back }: {
           {prompt ? (
             <details className={s.md}>
               <summary>Or use it with ChatGPT or Claude</summary>
-              <p className={s.small}>Paste this into a chat with Amber Notes connected. Your AI creates the note, then fills it in.</p>
+              <p className={ui.small}>Paste this into a chat with Amber Notes connected. Your AI creates the note, then fills it in.</p>
               <pre>{prompt}</pre>
-              <CopyButton text={prompt} label="Copy the prompt" className={s.secondary} />
+              <CopyButton text={prompt} label="Copy the prompt" className={ui.secondary} />
             </details>
           ) : (
             <details className={s.md}>
               <summary>Or copy it as markdown</summary>
-              <p className={s.small}>The markdown pastes into Amber Notes or any notes app that reads markdown.</p>
+              <p className={ui.small}>The markdown pastes into Amber Notes or any notes app that reads markdown.</p>
               <pre>{markdown}</pre>
-              <CopyButton text={markdown} label="Copy the markdown" className={s.secondary} />
+              <CopyButton text={markdown} label="Copy the markdown" className={ui.secondary} />
             </details>
           )}
         </div>
-        {back && <p className={s.small}><a href={back.href}>{back.label}</a></p>}
-      </div>
+        {back && <p className={`${ui.small} ${s.backRow}`}><a className={s.back} href={back.href}>{back.label}</a></p>}
+      </Card>
     </OpenApp>
   );
 }

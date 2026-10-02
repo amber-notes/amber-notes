@@ -24,9 +24,9 @@ export default function Changelog() {
           </p>
         </div>
         {releases.map((r, n) => (
-          <article key={r.version} className={`${styles.entry} rise`} style={{ "--i": 2 + n } as React.CSSProperties}>
+          <article key={r.version} id={`v${r.version}`} className={`${styles.entry} rise`} style={{ "--i": 2 + n } as React.CSSProperties}>
             <div className={styles.entryMeta}>
-              <span className={styles.entryVersion}>{r.version}</span>
+              <a className={styles.entryVersion} href={`#v${r.version}`} aria-label={`Version ${r.version}`}>{r.version}</a>
               <time className={styles.entryDate} dateTime={r.date}>
                 {new Date(r.date + "T12:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
               </time>

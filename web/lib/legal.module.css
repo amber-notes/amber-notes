@@ -1,50 +1,76 @@
-/* Privacy policy and terms: colours from the page theme, the centred column shared with the
-   changelog and help pages, a summary card, and the contents list. */
-.main { width: 100%; max-width: 1240px; margin: 0 auto; padding: 0 var(--gutter); box-sizing: border-box; }
-/* The same centred column as the changelog and help pages. */
-.col { width: 100%; max-width: 760px; margin: 0 auto; padding-top: 40px; display: grid; gap: 40px; align-content: start; }
-
-/* Grid items may shrink below their content, so a long code line scrolls in its box instead of widening the page. */
-.col > * { min-width: 0; }
+/* The long text pages (privacy policy, terms, Privacy & Security): colours from the page theme, the
+   title, a summary card, the contents list, and the text itself. Blog posts use the text styles
+   (.article) too. */
 
 .head { display: grid; gap: 12px; }
 .title { margin: 0; font-size: clamp(34px, 4.8vw, 56px); line-height: 1.02; font-weight: 800; letter-spacing: -0.035em; text-wrap: balance; }
 .updated { margin: 0; color: var(--muted); font-size: clamp(17px, 1.8vw, 19px); font-variant-numeric: tabular-nums; }
 
 .summary { padding: 26px 28px; border-radius: 24px; background: var(--soft); display: grid; gap: 12px; }
+@media (max-width: 480px) { .summary { padding: 22px 20px; border-radius: 22px; } }
 .summaryTitle { margin: 0; font-size: 20px; font-weight: 750; letter-spacing: -0.01em; }
 .summaryBody ul { margin: 0; padding-left: 1.2em; display: grid; gap: 8px; }
 .summaryBody li { font-size: 17px; line-height: 1.5; }
 .summaryBody li::marker { color: var(--amber); }
 .summaryBody p { margin: 0; }
 
-.layout { position: relative; display: grid; gap: 40px; }
+/* ── The long text pages (privacy policy, terms, Privacy & Security): the blog post's grid, with
+   the contents where the blog has its share rail. ── */
+.grid {
+  width: 100%; max-width: 1240px; margin: 0 auto; padding: 40px var(--gutter) 0; box-sizing: border-box;
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 760px) minmax(0, 1fr); column-gap: 40px; align-items: start;
+}
+.gridCol { grid-column: 2; grid-row: 1; display: grid; gap: 40px; min-width: 0; }
+/* Grid items may shrink below their content, so a wide table scrolls in its box instead of widening the page. */
+.gridCol > * { min-width: 0; }
+@media (max-width: 1100px) {
+  .grid { grid-template-columns: minmax(0, 1fr); }
+  .gridCol { grid-column: 1; width: 100%; max-width: 760px; justify-self: center; }
+}
+@media (max-width: 600px) { .grid { padding-top: 24px; } .gridCol { gap: 32px; } }
 
-/* Contents: a compact block above the text, in two columns where there's room. */
-.toc { font-size: 14.5px; }
-.tocInner { display: grid; gap: 10px; padding: 18px 22px; border-radius: 20px; box-shadow: 0 0 0 1px var(--line); }
-.tocLabel { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
-.toc ol { list-style: none; margin: 0; padding: 0; columns: 2; column-gap: 28px; }
-@media (max-width: 560px) { .toc ol { columns: 1; } }
-.toc li { break-inside: avoid; }
-.toc ol a { display: block; padding: 5px 10px; margin: 0 -10px; border-radius: 8px; color: var(--muted); text-decoration: none; line-height: 1.35; }
+/* Contents in the left margin: it stays in view and marks the section being read. */
+.rail { grid-column: 1; grid-row: 1; justify-self: end; width: min(200px, 100%); height: 100%; }
+.railInner { position: sticky; top: 24px; max-height: calc(100dvh - 48px); overflow-y: auto; overscroll-behavior: contain; padding: 6px 10px 6px 0; scrollbar-width: thin; }
+@media (max-width: 1100px) { .rail { display: none; } }
+.toc { display: grid; gap: 10px; font-size: 14px; }
+.tocLabel { margin: 0; font-size: 12.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; }
+.toc ol a { display: flex; align-items: center; min-height: 32px; padding: 4px 10px; margin: 0 -10px; border-radius: 10px; color: var(--muted); font-weight: 600; text-decoration: none; line-height: 1.3; }
+.toc ol a[aria-current] { color: var(--ink); background: var(--soft); }
 @media (hover: hover) { .toc ol a:hover { color: var(--ink); background: var(--soft); } }
-.toc a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
-.tocOther { margin: 4px 0 0; }
-.tocOther a { color: var(--ink); font-weight: 600; text-decoration: none; }
+@media (prefers-reduced-motion: no-preference) { .toc ol a { transition: color 0.15s ease-out, background-color 0.15s ease-out; } }
+.toc a:focus-visible, .fold summary:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.tocOther { margin: 6px 0 0; }
+.tocOther a { display: inline-flex; align-items: center; min-height: 32px; border-radius: 8px; color: var(--ink); font-weight: 600; text-decoration: none; }
 @media (hover: hover) { .tocOther a:hover { text-decoration: underline; text-decoration-color: var(--amber); text-underline-offset: 4px; } }
 
-/* Very wide screens: the contents move into the left margin and stay in view; the text doesn't move. */
-@media (min-width: 1400px) {
-  .toc { position: absolute; top: 0; bottom: 0; right: calc(100% + 56px); width: 210px; }
-  .tocInner { position: sticky; top: 24px; padding: 0; box-shadow: none; border-radius: 0; }
-  .toc ol { columns: 1; }
-}
+/* Narrower screens: the contents are one row above the text; it opens the list. */
+.foldRow { display: none; }
+@media (max-width: 1100px) { .foldRow { display: block; } }
+.fold { border-radius: 18px; background: var(--card); box-shadow: 0 0 0 1px var(--line), 0 14px 28px -24px rgba(var(--shade), 0.45); }
+.fold summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; padding: 0 18px; border-radius: 18px; font-size: 16px; font-weight: 700; cursor: pointer; list-style: none; -webkit-tap-highlight-color: transparent; }
+.fold summary::-webkit-details-marker { display: none; }
+.fold summary svg { flex: none; width: 28px; height: 28px; padding: 7px; box-sizing: border-box; border-radius: 50%; background: var(--soft); color: var(--muted); }
+.fold[open] summary svg { transform: rotate(180deg); color: var(--ink); }
+@media (prefers-reduced-motion: no-preference) { .fold summary svg { transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), color 0.15s ease-out; } }
+.fold .toc { padding: 0 18px 16px; font-size: 15px; }
+.fold .toc ol { columns: 2; column-gap: 28px; display: block; }
+.fold .toc li { break-inside: avoid; }
+.fold .toc ol a { min-height: 44px; }
+.fold .tocOther a { min-height: 44px; }
+@media (max-width: 560px) { .fold .toc ol { columns: 1; } }
 
 /* The document itself */
 .article { font-size: 17px; line-height: 1.65; }
 .article > :first-child { margin-top: 0; }
 .article h2 { margin: 52px 0 14px; font-size: 26px; line-height: 1.15; font-weight: 800; letter-spacing: -0.02em; scroll-margin-top: 24px; text-wrap: balance; }
+/* The "#" beside a section's heading links to it. It shows when the heading is pointed at or the link has focus. */
+.article :global(a.anchor) { margin-left: 0.35em; padding: 0 0.2em; color: var(--muted); font-weight: 600; text-decoration: none; opacity: 0; border-radius: 6px; }
+.article h2:hover :global(a.anchor), .article :global(a.anchor):focus-visible { opacity: 1; }
+@media (hover: hover) { .article :global(a.anchor):hover { color: var(--link); } }
+@media (hover: none) { .article :global(a.anchor) { display: none; } }
+@media (prefers-reduced-motion: no-preference) { .article :global(a.anchor) { transition: opacity 0.15s ease-out, color 0.15s ease-out; } }
 .article h2:first-child { margin-top: 0; }
 .article p { margin: 0 0 14px; }
 .article :global(p.label) { margin: 26px 0 8px; font-size: 18px; }
@@ -53,6 +79,7 @@
 .article a { color: var(--ink); font-weight: 600; text-decoration: underline; text-decoration-color: var(--amber); text-decoration-thickness: 2px; text-underline-offset: 3px; }
 .article a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; border-radius: 3px; }
 .article :global(.tableWrap) { overflow-x: auto; margin: 6px 0 20px; border-radius: 14px; box-shadow: 0 0 0 1px var(--line); }
+.article :global(.tableWrap):focus-visible, .article pre:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 .article table { border-collapse: collapse; width: 100%; font-size: 15px; line-height: 1.45; }
 .article th, .article td { text-align: left; vertical-align: top; padding: 11px 14px; border-bottom: 1px solid var(--line); }
 .article th { font-size: 13px; font-weight: 700; color: var(--muted); background: var(--soft); }

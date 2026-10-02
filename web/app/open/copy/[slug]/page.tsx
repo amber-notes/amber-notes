@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { copyableMarkdown, sharedNote, validSlug } from "@/lib/shared";
 import OpenCard from "../../OpenCard";
-import s from "../../open.module.css";
+import { EmptyState, Stage, ui } from "@/lib/ui";
 
 // The universal link behind a shared page's "Use this note" (https://ambernotes.app/open/copy/<slug>).
 // Read on every visit, like the shared page: Stop Sharing takes this down at once too.
@@ -15,14 +15,11 @@ export default async function Page({ params }: Props) {
   const note = validSlug(slug) ? await sharedNote(slug) : null;
   if (!note || note.is_sub) {
     return (
-      <div className={s.page}>
-        <div className={s.card}>
-          <img className={s.mark} src="/mark-256.png" alt="" width={56} height={56} />
-          <h1 className={s.title}>This note isn&apos;t shared anymore</h1>
-          <p className={s.lede}>Its owner stopped sharing it, or the link isn&apos;t complete. Ask them for a new link.</p>
-          <a className={s.primary} href="/templates">Browse templates</a>
-        </div>
-      </div>
+      <Stage inSite>
+        <EmptyState title="This note isn't shared anymore" actions={<a className={ui.primary} href="/templates">Browse templates</a>}>
+          Its owner stopped sharing it, or the link isn&apos;t complete. Ask them for a new link.
+        </EmptyState>
+      </Stage>
     );
   }
   return (
