@@ -36,12 +36,12 @@ export default function Faq({ items }: { items: QA[] }) {
         return (
           <div key={it.id} id={it.id} className={f.item} data-open={on || undefined}>
             <h2 className={f.q}>
-              <button type="button" aria-expanded={on} aria-controls={`${it.id}-a`} onClick={() => toggle(it.id)}>
+              <button id={`${it.id}-q`} type="button" aria-expanded={on} aria-controls={`${it.id}-a`} onClick={() => toggle(it.id)}>
                 <span>{it.q}</span>
                 <svg className={f.chev} width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 5.5 7 9.5l4-4" /></svg>
               </button>
             </h2>
-            <div id={`${it.id}-a`} role="region" aria-labelledby={it.id} className={f.a} inert={!on || undefined}>
+            <div id={`${it.id}-a`} role="region" aria-labelledby={`${it.id}-q`} className={f.a} inert={!on || undefined}>
               <div>
                 {it.a.map((p) => <p key={p}>{p}</p>)}
                 {it.more && <p className={f.more}><a href={it.more.href}>{it.more.text}</a></p>}
