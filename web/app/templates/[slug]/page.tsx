@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { AIGlyph } from "@/lib/ai-glyphs";
+import { CLAUDE_DIRECTORY_URL } from "@/lib/facts";
 import { APP_TEMPLATES, pageMetadata } from "@/lib/site";
 import { JsonLd, breadcrumbs, maker, organization, templateHowTo, templateWork } from "@/lib/structured-data";
 import { COVERS, coverPath } from "@/lib/template-covers";
@@ -137,7 +138,7 @@ export default async function Page({ params }: Props) {
         </ol>
         <ul className={s.connect}>
           <li><a href="/blog/connect-chatgpt-to-your-notes"><b><AIGlyph name="openai" size={18} />ChatGPT</b><span>Plus, Pro, Business, Enterprise or Edu, on the web. A few minutes in Developer mode.</span><em>Connect ChatGPT</em></a></li>
-          <li><a href="/blog/mcp-server"><b><AIGlyph name="claude" size={18} />Claude</b><span>Every plan, including free. Add Amber Notes as a custom connector, then Allow.</span><em>Connect Claude</em></a></li>
+          <li><a href={CLAUDE_DIRECTORY_URL} rel="noopener"><b><AIGlyph name="claude" size={18} />Claude</b><span>Open Amber Notes in Claude&apos;s connector directory, choose Connect to Claude, then Allow.</span><em>Connect Claude</em></a></li>
           <li><a href="/blog/notes-in-claude-code-and-codex"><b><AIGlyph name="claude" size={18} />Claude Code</b><span>One command in your terminal, or the button in Amber Notes on a Mac.</span><em>Connect Claude Code</em></a></li>
         </ul>
       </section>

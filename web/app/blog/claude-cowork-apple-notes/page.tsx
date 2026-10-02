@@ -1,5 +1,5 @@
 import { PostPage, postMetadata } from "@/lib/PostPage";
-import { MCP_URL } from "@/lib/facts";
+import { CLAUDE_DIRECTORY_URL, MCP_URL } from "@/lib/facts";
 
 export const dynamic = "force-static";
 export const metadata = postMetadata("claude-cowork-apple-notes");
@@ -92,10 +92,10 @@ export default function Page() {
       </p>
       <p>
         I make one, Amber Notes: a free notes app for iPhone and Mac that works like Apple Notes, with an MCP server built in. In Cowork it
-        behaves like any custom connector:
+        behaves like any other connector from Claude&apos;s directory:
       </p>
       <ol>
-        <li>On claude.ai, go to Customize, Connectors, choose + and then Add custom connector, and paste <code>{MCP_URL}</code>.</li>
+        <li>Open <a href={CLAUDE_DIRECTORY_URL} rel="noopener">Amber Notes in Claude&apos;s connector directory</a> and choose Connect to Claude. (No listing in your Claude? Go to Customize, Connectors, choose + and then Add custom connector, and paste <code>{MCP_URL}</code>.)</li>
         <li>Sign in when asked, and approve Claude in Amber Notes on your iPhone or Mac by typing the number the page shows. Pick Read Only or Read and Edit.</li>
         <li>In Cowork, turn the connector on from the + menu and ask away, from any device.</li>
       </ol>
