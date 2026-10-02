@@ -365,14 +365,14 @@ The negative prompts can't be checked this way. They test the assistant not call
 
 ## 9. Assets
 
-All made from `brand/` sources with `sips`:
+All written by `brand/leaf/make.py brand` from the leaf icon in `brand/leaf/`:
 
 | File | Size | Use |
 |---|---|---|
-| `brand/directory/icon-1024.png` | 1024², RGB | Claude icon if larger is wanted (from `brand/icon-ios-1024.png`) |
+| `brand/directory/icon-1024.png` | 1024², RGB | Claude icon if larger is wanted (the flat leaf icon) |
 | `brand/directory/icon-512.png` | 512², RGB | Claude icon. Also ChatGPT `logo` and `logoDark`. |
-| `brand/directory/mark-512.png` | 512², transparent | Spare. The mark without its background. |
-| `brand/directory/mark-128.png` | 128², transparent | ChatGPT `composerIcon` and `composerIconDark` |
+| `brand/directory/mark-512.png` | 512², transparent | Spare. The rounded app icon, as the site's `mark.png`. |
+| `brand/directory/mark-128.png` | 128², transparent | Spare, the same at 128. ChatGPT `composerIcon` and `composerIconDark` use the leaf favicon at 128. |
 
 Screenshots are not needed. Claude asks for them only for MCP Apps with UI, and OpenAI rejects them without UI.
 

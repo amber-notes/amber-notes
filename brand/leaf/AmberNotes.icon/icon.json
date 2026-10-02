@@ -1,0 +1,37 @@
+{
+  "fill" : {
+    "solid" : "srgb:0.90588,0.48627,0.05490,1.00000"
+  },
+  "groups" : [
+    {
+      "name" : "Leaf",
+      "layers" : [
+        {
+          "name" : "leaf",
+          "image-name" : "leaf.png",
+          "glass" : false,
+          "hidden" : false,
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              0,
+              0
+            ]
+          }
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.8
+      },
+      "translucency" : {
+        "enabled" : false,
+        "value" : 0
+      },
+      "specular" : true
+    }
+  ],
+  "supported-platforms" : {
+    "squares" : "shared"
+  }
+}
