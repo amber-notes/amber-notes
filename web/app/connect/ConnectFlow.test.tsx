@@ -19,12 +19,12 @@ describe("the number on the connect page", () => {
 });
 
 describe("signing in on the connect page", () => {
-  it("offers no Sign in with Apple while the web can't finish it, and says how an Apple account allows instead", () => {
+  it("offers Sign in with Apple and email, plus opening the app on this computer", () => {
     const html = renderToStaticMarkup(
       <ConnectFlow requestId="00000000-0000-4000-8000-000000000000" supabaseURL="https://ref.supabase.co" anonKey="anon" label={null} recover={false} />,
     );
-    expect(html).not.toContain("Sign in with Apple");
-    expect(html).toContain(APPLE_INSTEAD.replace(/'/g, "&#x27;"));
+    expect(html).toContain("Sign in with Apple");
+    expect(html).not.toContain(APPLE_INSTEAD.replace(/'/g, "&#x27;"));
     expect(html).toContain("/open/connect?request=00000000-0000-4000-8000-000000000000");
   });
 });
