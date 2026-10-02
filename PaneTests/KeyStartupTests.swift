@@ -72,6 +72,8 @@ import Testing
         var hangs = false
         /// start_fresh wants a recent sign-in.
         var needsReauth = false
+        /// start_fresh within 72 hours of a password reset: refused until this.
+        var pausedUntil: Date?
         /// The insert lands but the answer is lost.
         var loseCreateResponse = false
         private(set) var creates = 0
@@ -106,6 +108,7 @@ import Testing
 
         func startFresh(keyID: String) async throws -> Bool {
             if offline { throw URLError(.notConnectedToInternet) }
+            if let pausedUntil { throw KeyError.pausedAfterReset(until: pausedUntil) }
             if needsReauth { throw KeyError.reauth }
             startedFresh.append(keyID)
             guard row?.key_id == keyID else { return false }
@@ -736,6 +739,38 @@ import Testing
         #expect(crypto.phase == .ready && server.generation == 1 && removedFiles == [user])
         #expect(defaults.bool(forKey: AccountCrypto.startedFreshHereKey(user)), "this device's own notice isn't news here")
         crypto.signedOut()
+    }
+
+    @Test func startFreshIsPausedAfterAPasswordResetAndSaysUntilWhen() async throws {
+        let old = try existingKey()
+        let (crypto, _) = device(FakeKeychain(cloud: cloud, autoReceive: false))
+        var removedFiles: [UUID] = []
+        crypto.removeAccountFiles = { removedFiles.append($0) }
+        await crypto.attach(account: user, server: server)
+        let until = Date(timeIntervalSince1970: 1_790_000_000)
+        server.pausedUntil = until
+        do {
+            try await crypto.startFresh(confirmation: "start fresh")
+            Issue.record("start fresh went through during the pause")
+        } catch let e as KeyError {
+            #expect(e == .pausedAfterReset(until: until), "not turned into offline")
+            let text = e.localizedDescription
+            #expect(text.hasPrefix("Start fresh is paused for 72 hours after a password reset, to protect your notes. Try again on "))
+            #expect(text.contains(until.formatted(date: .long, time: .shortened)))
+        }
+        #expect(server.row?.key_id == old.keyID && removedFiles.isEmpty)
+        // After the window the server lets it through.
+        server.pausedUntil = nil
+        try await crypto.startFresh(confirmation: "start fresh")
+        #expect(server.generation == 1 && removedFiles == [user])
+        crypto.signedOut()
+    }
+
+    @Test func theServersPauseTimeIsRead() {
+        #expect(SupabaseAccountKeys.pausedUntil("2026-10-05T14:30:00Z") == Date(timeIntervalSince1970: 1_791_210_600))
+        #expect(SupabaseAccountKeys.pausedUntil(nil) == nil)
+        #expect(SupabaseAccountKeys.pausedUntil("soon") == nil)
+        #expect(KeyError.pausedAfterReset(until: nil).localizedDescription.hasSuffix("Try again in 3 days."))
     }
 
     @Test func startingFreshWithAWrongKeyHereKeepsItAsideQuietly() async throws {

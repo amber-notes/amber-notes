@@ -24,10 +24,25 @@ files, shares, devices, AI connections (`mcp_tokens` and their wraps are not Sup
 notes password or locked notes. `scripts/password-reset-e2e.test.ts` compares those rows byte for
 byte before and after.
 
-What it means for safety: someone who can read a person's email can now set a new password and sign
-in, as with any email reset. They still can't read the notes without the key (a new device needs Add
-a device or the recovery key), but a signed-in session can do what a session can, Start fresh
-included. The "password changed" notice (below, optional) tells the owner when it happens.
+What it means for safety: someone who can read a person's email can set a new password and sign in,
+as with any email reset. They still can't read the notes without the key (a new device needs Add a
+device or the recovery key). They could have deleted every note with Start fresh, so the server now
+refuses `start_fresh` for 72 hours after a reset was asked for
+(`supabase/migrations/20261002200000_start_fresh_after_reset.sql`), and the "password changed" email
+tells the owner at once.
+
+The pause is decided on the server; nothing from the app counts. Supabase stamps
+`auth.users.recovery_sent_at` when it sends a reset email or a sign-in link (magic link), and clears it
+again once the password is changed (checked on the local stack, GoTrue 2.186), so it can't be read
+after a reset. A trigger on `auth.users` (`pane_note_recovery`) records the moment it is stamped,
+and every password change, in `public.account_recoveries`, which no client can read or write;
+`start_fresh` refuses while that moment, or `recovery_sent_at`, is under 72 hours old. Magic links matter here: email sign-in links work
+for every email account today, reset or not, and the pause covers them too. The app says "Start
+fresh is paused for 72 hours after a password reset, to protect your notes. Try again on <date>."
+(`KeyError.pausedAfterReset`, the date from the error's detail). Two things to know: anyone who
+knows an address can ask for a reset, so they can keep that account's Start fresh paused, which is
+the safe side to fail on; and Delete account (`supabase/functions/account`) needs only a signed-in
+session, so a reset or a magic link still reaches it. That one isn't paused.
 
 ## The flow
 
@@ -81,8 +96,9 @@ analytics exclusion lists (`web/lib/analytics.ts`, `web/lib/posthog.ts`).
   Production needs custom SMTP.
 - **The page doesn't work under `pnpm dev`.** The strict CSP blocks the dev build's `eval`, as on
   `/connect`. Try it with `pnpm build && pnpm start`.
-- **`recovery_sent_at` is not evidence** that a mail went out: Supabase clears it once the link is
-  used. Delivery is checked in the mail provider's log.
+- **`recovery_sent_at` is not evidence** that a mail went out, or of a reset after the fact:
+  Supabase clears it when the password is changed. Delivery is checked in the mail provider's log;
+  the Start fresh pause keeps its own record.
 
 ## Limits
 
@@ -97,7 +113,9 @@ The production project is `rodegaeruhyybqilrnpn`. On 2 October 2026 it had no cu
 `site_url` `http://127.0.0.1:3000`, `smtp_max_frequency` 1 s, `rate_limit_email_sent` 2 and Supabase's
 stock recovery template.
 
-1. Merge and deploy the site, so `/reset-password` exists before any email points at it.
+1. Merge, apply `supabase/migrations/20261002200000_start_fresh_after_reset.sql` to the project (the
+   Start fresh pause; it must be live before reset emails go out), and deploy the site, so
+   `/reset-password` exists before any email points at it.
 2. DNS for sending. `ambernotes.app` was added to the Resend account on 2 October 2026 (domain id
    `74963381-a703-4813-b926-836bae40677c`, region eu-west-1, not verified yet). Add at GoDaddy, then
    press Verify in Resend (or `POST /domains/<id>/verify`):
@@ -130,11 +148,10 @@ stock recovery template.
 5. Ask for a reset for a test account on the live site and check it arrives, opens and saves.
 6. Ship the app build with Forgot password?.
 
-Optional, after that: the "password changed" notice (`supabase/templates/password_changed.html`),
-with `mailer_notifications_password_changed_enabled: true`,
-`mailer_subjects_password_changed_notification` and
-`mailer_templates_password_changed_notification_content`. It isn't in the local config because the
-installed CLI (2.75) resolves its template path differently from the other templates.
+The same PATCH turns on the "password changed" notice (`supabase/templates/password_changed.html`,
+same look as the reset email): every password change emails the account, with a link to the reset
+page and hello@. It isn't in the local config because the installed CLI (2.75) resolves its
+template path differently from the other templates.
 
 ## Testing
 

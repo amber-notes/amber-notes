@@ -171,6 +171,19 @@ Deno.test({ name: "password reset end to end", sanitizeResources: false, sanitiz
       assert(await signIn(NEW), "the password is still the one just set");
     });
 
+    await t.step("Start fresh is refused for 72 hours after the reset, even with a fresh sign-in", async () => {
+      const session = await signIn(NEW);
+      assert(session);
+      const r = await fetch(`${API}/rest/v1/rpc/start_fresh`, {
+        method: "POST", headers: { ...headers, authorization: `Bearer ${session.access_token}` }, body: JSON.stringify({ p_key_id: KEY_ID }),
+      });
+      const body = await r.json();
+      assertEquals(r.ok, false);
+      assertEquals(body.hint, "paused_after_reset");
+      const until = new Date(body.details).getTime();
+      assert(Math.abs(until - (Date.now() + 72 * 3600_000)) < 5 * 60_000, `opens again in 72 hours: ${body.details}`);
+    });
+
     await t.step("the key, the notes and the AI connection are untouched", async () => {
       assertEquals(await snapshot(uid), before);
     });
@@ -180,9 +193,9 @@ Deno.test({ name: "password reset end to end", sanitizeResources: false, sanitiz
     });
 
     await t.step("the session the link opened was ended", async () => {
-      // Only the two sign-ins with the new password above: the device's session and the link's are gone.
+      // Only the three sign-ins with the new password above: the device's session and the link's are gone.
       const sessions = await db`select count(*)::int as n from auth.sessions where user_id = ${uid}`;
-      assertEquals(sessions[0].n, 2);
+      assertEquals(sessions[0].n, 3);
       const fromLink = await db`select count(*)::int as n from auth.sessions s join auth.mfa_amr_claims c on c.session_id = s.id
                                 where s.user_id = ${uid} and c.authentication_method = 'recovery'`;
       assertEquals(fromLink[0].n, 0);

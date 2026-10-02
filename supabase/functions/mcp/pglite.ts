@@ -14,7 +14,7 @@ const stubs = `
   alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
   alter default privileges in schema public grant execute on functions to anon, authenticated, service_role;
   alter default privileges in schema extensions grant execute on functions to anon, authenticated, service_role;
-  create table auth.users (id uuid primary key, email text, raw_app_meta_data jsonb, raw_user_meta_data jsonb, created_at timestamptz default now());
+  create table auth.users (id uuid primary key, email text, raw_app_meta_data jsonb, raw_user_meta_data jsonb, created_at timestamptz default now(), recovery_sent_at timestamptz, encrypted_password text);
   create function auth.uid() returns uuid language sql stable as
     $$ select (nullif(current_setting('request.jwt.claims', true), '')::json->>'sub')::uuid $$;
   create function auth.jwt() returns jsonb language sql stable as $$ select nullif(current_setting('request.jwt.claims', true), '')::jsonb $$;
