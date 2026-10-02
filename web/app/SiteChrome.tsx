@@ -60,7 +60,7 @@ export default function SiteChrome({ version, stars, children }: { version: stri
       });
       if (list) {
         toList.current = a.closest("[data-blog-pages]") ? "pages" : "chips";
-        return filterTransition(arrive);
+        return filterTransition(arrive, a.closest("[data-blog-chips], [data-blog-pages]") ? a : null);
       }
       doc.startViewTransition!(arrive);
     };

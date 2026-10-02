@@ -5,8 +5,8 @@
 /// grid follows its new height. site.css has the timings, keyed on data-vt="filter"; the pieces carry
 /// the classes below. With reduced motion, or no view transitions, the change is instant.
 
-/// The chip row, each card (with its own --vt name, set by filterCard), and whatever follows the grid.
-export const FILTER_CHIPS = "filter-chips";
+/// Each card (with its own --vt name, set by filterCard), and whatever follows the grid. The chip
+/// row isn't part of the motion: pickChip moves its pick at the click.
 export const FILTER_AFTER = "filter-after";
 export const filterCard = (id: string) => ({ className: "filter-card", style: { "--vt": `card-${id}` } as React.CSSProperties });
 
@@ -67,9 +67,22 @@ async function decoded(ms = 300): Promise<void> {
   await Promise.race([Promise.all(imgs.map((img) => img.decode().catch(() => {}))), new Promise((r) => setTimeout(r, ms))]);
 }
 
+/// Moves the pick in a chip row to `chip` right away, before anything else happens: the page's own
+/// render then lands on the same state, so the pick changes once, at the click.
+export function pickChip(chip: Element | null): void {
+  const row = chip?.closest("[role=group], nav");
+  if (!chip || !row) return;
+  for (const el of row.querySelectorAll("[aria-current], [aria-pressed]")) {
+    if (el.hasAttribute("aria-pressed")) el.setAttribute("aria-pressed", String(el === chip));
+    else if (el !== chip) el.removeAttribute("aria-current");
+  }
+  if (chip.tagName === "A") chip.setAttribute("aria-current", "page");
+}
+
 /// Runs `update` (it must leave the new cards in the DOM by the time it returns or resolves) inside
-/// the filter transition, or straight away when it won't animate.
-export function filterTransition(update: () => Promise<void> | void): void {
+/// the filter transition, or straight away when it won't animate. `chip` is the one clicked.
+export function filterTransition(update: () => Promise<void> | void, chip: Element | null = null): void {
+  pickChip(chip);
   if (!filterAnimates()) { void update(); return; }
   const root = document.documentElement;
   const before = cards();

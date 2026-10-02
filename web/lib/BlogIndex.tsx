@@ -3,7 +3,7 @@ import { PostCard } from "./blog";
 import { categories, categoryPath, newestFirst, pageCount, pageOf, pagePath, published, type Category, type Ground } from "./posts";
 import { pageMetadata } from "./site";
 import BlogList from "./BlogList";
-import { FILTER_AFTER, FILTER_CHIPS, filterCard } from "./filter-transition";
+import { FILTER_AFTER, filterCard } from "./filter-transition";
 import { JsonLd, breadcrumbs, maker, incredible, organization } from "./structured-data";
 import home from "../app/home.module.css";
 import s from "../app/blog/blog.module.css";
@@ -93,7 +93,7 @@ export function BlogIndex({ category, page }: { category: Category | null; page:
           </div>
         </div>
         <div className={`${s.library} rise`} style={{ "--i": 2 } as React.CSSProperties}>
-          <nav className={`${s.filters} ${FILTER_CHIPS}`} aria-label="Categories" data-blog-chips="">
+          <nav className={s.filters} aria-label="Categories" data-blog-chips="">
             <a href="/blog" aria-current={category === null ? "page" : undefined}><span className={s.text}>All posts<span className={s.count}>{published().length}</span></span></a>
             {counts.map(({ c, n, dots }) => (
               <a key={c} href={categoryPath(c)} aria-current={category === c ? "page" : undefined}>

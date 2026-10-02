@@ -37,7 +37,8 @@
 @media (hover: hover) { .filters a:not([aria-current]):hover { color: var(--ink); } }
 .filters a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 @media (prefers-reduced-motion: no-preference) {
-  .filters a { transition: background-color 0.15s ease-out, color 0.15s ease-out, transform 0.12s ease-out; }
+  /* The pick moves in one step (lib/filter-transition.ts); only the press animates. */
+  .filters a { transition: transform 0.12s ease-out; }
   .filters a:active { transform: scale(0.97); }
 }
 /* Each category's chip carries its newest posts' grounds as dots, like the templates chips; a ring
@@ -76,4 +77,4 @@
 .pages .step[data-off] { opacity: 0.4; }
 @media (hover: hover) { .pages a:hover { color: var(--ink); } }
 .pages a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
-@media (prefers-reduced-motion: no-preference) { .pages a { transition: background-color 0.15s ease-out, color 0.15s ease-out; } }
+@media (prefers-reduced-motion: no-preference) { .pages a { transition: color 0.15s ease-out; } }

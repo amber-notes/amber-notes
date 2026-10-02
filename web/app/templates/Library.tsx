@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { flushSync } from "react-dom";
-import { FILTER_CHIPS, filterCard, filterTransition } from "@/lib/filter-transition";
+import { filterCard, filterTransition } from "@/lib/filter-transition";
 import s from "./templates.module.css";
 
 type Item = { slug: string; category: string };
@@ -19,8 +19,10 @@ export default function Library({ items, cards, categories }: { items: Item[]; c
   }, [categories]);
 
   // The site's filter motion (lib/filter-transition.ts), as on the blog's chips.
-  const update = (c: string | null) => {
-    filterTransition(() => flushSync(() => setCategory(c)));
+  const update = (c: string | null, chip: Element) => {
+    // Clicking the picked chip again shows them all, so the pick goes to All.
+    const picked = c === null ? chip.closest("[role=group]")?.querySelector("button") ?? chip : chip;
+    filterTransition(() => flushSync(() => setCategory(c)), picked);
     history.replaceState(null, "", c ? `?category=${c}` : location.pathname);
   };
 
@@ -30,11 +32,11 @@ export default function Library({ items, cards, categories }: { items: Item[]; c
 
   return (
     <div className={s.library}>
-      <div className={`${s.filters} ${FILTER_CHIPS}`}>
+      <div className={s.filters}>
         <div className={s.filterRow} role="group" aria-label="Category">
-          <button type="button" className={s.chip} aria-pressed={category === null} onClick={() => update(null)}>All</button>
+          <button type="button" className={s.chip} aria-pressed={category === null} onClick={(e) => update(null, e.currentTarget)}>All</button>
           {categories.map((c) => (
-            <button key={c.anchor} type="button" className={s.chip} aria-pressed={category === c.anchor} onClick={() => update(category === c.anchor ? null : c.anchor)}
+            <button key={c.anchor} type="button" className={s.chip} aria-pressed={category === c.anchor} onClick={(e) => update(category === c.anchor ? null : c.anchor, e.currentTarget)}
 >
               {c.swatch && <span className={s.swatch} aria-hidden="true">{c.swatch.map((g) => <i key={g} style={{ background: g }} />)}</span>}
               <span className={s.text}>{c.name}<span className={s.count}>{c.count}</span></span>

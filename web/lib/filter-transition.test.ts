@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { filterCard, filterRules, filterTransition } from "./filter-transition";
+import { filterCard, filterRules, filterTransition, pickChip } from "./filter-transition";
 
 afterEach(() => { vi.unstubAllGlobals(); delete document.documentElement.dataset.vt; delete (document as { startViewTransition?: unknown }).startViewTransition; });
 const motion = (reduce: boolean) => vi.stubGlobal("matchMedia", (q: string) => ({ matches: q.includes("reduce") && reduce }));
@@ -43,7 +43,7 @@ describe("the filter motion", () => {
 
   it("keeps every timing at 240ms or under, exits shorter, and all of it behind reduced motion", () => {
     const css = readFileSync(resolve(__dirname, "../app/site.css"), "utf8");
-    const block = css.slice(css.indexOf('html[data-vt="filter"] .filter-chips'), css.indexOf("@keyframes filter-in"));
+    const block = css.slice(css.indexOf('html[data-vt="filter"] .filter-card'), css.indexOf("@keyframes filter-in"));
     for (const ms of block.matchAll(/(\d+)ms/g)) expect(+ms[1]).toBeLessThanOrEqual(240);
     expect(block).toContain("::view-transition-old(*):only-child { animation: vt-out 120ms");
     expect(block).toContain("::view-transition-new(*):only-child { animation: filter-in 240ms");
@@ -66,5 +66,26 @@ describe("the filter motion", () => {
     expect(rules).toContain(`${v("old", "card-c")}:only-child { animation: none; }`); // far lands on c's place
     const lone = filterRules(new Map([["card-x", box(0, 0)]]), new Map(), 800);
     expect(lone).not.toContain("animation: none"); // nothing lands there: it just fades
+  });
+
+  it("moves a chip row's pick in one step, before the change runs", () => {
+    document.body.innerHTML = '<nav><a href="/blog" aria-current="page">All</a><a href="/blog/category/guides">Guides</a></nav><div role="group"><button aria-pressed="true">All</button><button aria-pressed="false">Work</button></div>';
+    motion(true);
+    const [all, guides] = document.querySelectorAll("a");
+    let seen = "";
+    filterTransition(() => { seen = `${all.getAttribute("aria-current")}/${guides.getAttribute("aria-current")}`; }, guides);
+    expect(seen).toBe("null/page");
+    const [pAll, work] = document.querySelectorAll("button");
+    pickChip(work);
+    expect([pAll.getAttribute("aria-pressed"), work.getAttribute("aria-pressed")]).toEqual(["false", "true"]);
+  });
+
+  it("never animates the chips", () => {
+    const css = readFileSync(resolve(__dirname, "../app/site.css"), "utf8");
+    expect(css).not.toMatch(/filter-chips/);
+    for (const f of ["../app/blog/blog.module.css", "../app/templates/templates.module.css"]) {
+      const c = readFileSync(resolve(__dirname, f), "utf8");
+      expect(c, f).not.toMatch(/\.(filters a|chip) \{ transition:[^}]*(background|color)/);
+    }
   });
 });
