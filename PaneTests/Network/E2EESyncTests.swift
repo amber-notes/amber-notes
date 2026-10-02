@@ -780,6 +780,8 @@ extension NetworkFaults {
 
         // In the background it stops: a push covers that.
         asks.setForeground(false)
+        // A look already under way when it stopped may still land; after that, none.
+        try await Task.sleep(for: .milliseconds(60))
         let stopped = looks()
         try await Task.sleep(for: .milliseconds(60))
         #expect(looks() == stopped)
