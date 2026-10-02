@@ -15,6 +15,7 @@
 
 import { connect, readiness } from "../_shared/db.ts";
 import { atLeast, hashKey, normalizeEmail, RateLimiter, statusFrom } from "./logic.ts";
+import { clientAddress } from "../_shared/client.ts";
 import { logError } from "../_shared/log.ts";
 
 // Through the transaction pooler when DB_POOLER_HOST is set (_shared/db.ts says why).
@@ -32,7 +33,7 @@ const reply = (body: unknown, status = 200) =>
 Deno.serve((req) => atLeast(FLOOR_MS, async () => {
   await ready();
   if (req.method !== "POST") return reply({ error: "method not allowed" }, 405);
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown";
+  const ip = clientAddress(req);
   const ipKey = await hashKey(SALT, ip);
   if (!perMinute.allow(ipKey) || !perHour.allow(ipKey)) return reply({ error: "slow down" }, 429);
 

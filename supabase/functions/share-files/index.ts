@@ -14,6 +14,7 @@
 // shared_file(), which answers only for a file the (sub)page's published copy embeds and only while
 // the link is live. Logs carry an event name and a status, never a slug or a file name.
 
+import { clientAddress } from "../_shared/client.ts";
 import { connect, readiness } from "../_shared/db.ts";
 import { dailyHash, hashSecret } from "../_shared/hash.ts";
 import { log } from "../_shared/log.ts";
@@ -31,7 +32,7 @@ Deno.serve(async (req) => {
   await ready();
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: { ...headers, "access-control-allow-methods": "GET, OPTIONS" } });
   if (req.method !== "GET") return reply({ error: "method not allowed" }, 405);
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown";
+  const ip = clientAddress(req);
   if (!perIP.allow(await dailyHash(hashSecret(), ip))) return reply({ error: "slow down" }, 429);
 
   const url = new URL(req.url);
