@@ -6,7 +6,6 @@ import DownloadLink from "./DownloadLink";
 import GitHubLink, { GitHubGlyph } from "./GitHubLink";
 import PlatformNote from "./PlatformNote";
 import MobileMenu from "./MobileMenu";
-import { HEADER_DRAFTS } from "@/lib/header-drafts";
 import { themeFor } from "@/lib/theme";
 
 const GITHUB = "https://github.com/amber-notes/amber-notes";
@@ -78,7 +77,7 @@ export default function SiteChrome({ version, stars, children }: { version: stri
           </DownloadLink>
           <PlatformNote place="header" />
         </nav>
-        {HEADER_DRAFTS && <MobileMenu path={path} stars={stars} />}
+        <MobileMenu path={path} stars={stars} />
       </header>
       <main className="site-main">{children}</main>
       <footer className="site-footer">

@@ -72,6 +72,7 @@ html[data-theme] ::selection { background: var(--mark); }
   .site-nav { gap: 2px; }
   .site-nav a { padding: 0 10px; }
   .site-nav a.site-cta { padding: 0 16px; }
+  .site-nav a.site-gh { min-width: 44px; padding: 0; justify-content: center; } /* the icon alone, still a 44px target */
 }
 @media (max-width: 799px) { .site-nav a.site-gh, .site-cta .site-cta-long { display: none; } }
 @media (min-width: 800px) { .site-cta .site-cta-short { display: none; } }
@@ -84,38 +85,22 @@ html[data-theme] ::selection { background: var(--mark); }
 @media (prefers-reduced-motion: no-preference) { .site-nav a.site-cta { transition: transform 0.12s ease-out, background-color 0.15s ease-out; } .site-nav a.site-cta:active { transform: scale(0.97); } }
 .site-brand:focus-visible, .site-nav a:focus-visible, .site-footer a:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
 
-/* ── Phones (600px and under): no Download button in the header; the pages carry it. Three drafts,
-   picked with ?header=a|b|c on a preview (lib/header-drafts.ts). A is what production shows. ── */
+/* ── Phones (600px and under): the logo, Templates, and a button that opens the menu with the rest
+   (app/MobileMenu.tsx). No Download button in the header; the pages and the menu carry it. ── */
 .site-menu-button, .site-menu { display: none; }
 @media (max-width: 600px) {
-  /* The leaf alone is 30px wide: its 44px hit area reaches into the gutter, the leaf stays on it. */
-  .site-brand { min-width: 44px; margin-left: -7px; padding-left: 7px; box-sizing: border-box; }
-  /* The current page, where the links show (A and C): full ink, and a short amber line under the word. */
-  .site-nav a[aria-current="page"]::after { content: ""; position: absolute; left: var(--pad); right: var(--pad); bottom: 7px; height: 2px; border-radius: 1px; background: var(--amber); }
-
-  /* A: the leaf, then the four pages in one row. The row's side padding grows with the screen, and
-     its last word ends on the gutter. Fits from 320px. */
-  html:not([data-header]) .site-header { gap: 0; }
-  html:not([data-header]) .site-nav { --pad: clamp(4px, 7vw - 17px, 12px); gap: 0; margin-right: calc(-1 * var(--pad)); }
-  html:not([data-header]) .site-nav a { padding: 0 var(--pad); border-radius: 10px; }
-
-  /* B: the logo, and a button that opens the menu. */
-  html[data-header="b"] .site-nav { display: none; }
-
-  /* C: the logo, Templates beside the menu button, and the rest in the menu. */
-  html[data-header="c"] .site-header { gap: 4px; }
-  html[data-header="c"] .site-nav { --pad: 10px; margin-left: auto; }
-  html[data-header="c"] .site-nav a:not([href="/templates"]) { display: none; }
-  html[data-header] .site-menu-button { display: inline-flex; }
+  .site-header { gap: 4px; }
+  .site-nav { margin-left: auto; }
+  .site-nav a:not([href="/templates"]) { display: none; }
+  /* The current page: full ink, and a short amber line under the word. */
+  .site-nav a[aria-current="page"]::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: 7px; height: 2px; border-radius: 1px; background: var(--amber); }
+  .site-menu-button { display: inline-flex; }
 }
-/* A: the name beside the leaf only where the row still fits (about 540px). */
-@media (max-width: 539px) { html:not([data-header]) .site-header > .site-brand .site-name { display: none; } }
+/* The narrowest phones (320px): the name and Templates a size smaller, in the sheet too, so the name doesn't shift when it opens. */
 @media (max-width: 359px) {
-  html:not([data-header]) .site-nav { --pad: 4px; }
-  html:not([data-header]) .site-nav a, html[data-header="c"] .site-nav a { font-size: 15px; letter-spacing: -0.01em; }
-  html[data-header="c"] .site-brand { font-size: 16px; gap: 8px; } /* in the sheet too, so the name does not shift when it opens */
-  html[data-header="c"] .site-nav { --pad: 8px; }
-  html[data-header="c"] .site-nav a { padding: 0 8px; }
+  .site-brand { font-size: 16px; gap: 8px; }
+  .site-nav a { padding: 0 8px; font-size: 15px; letter-spacing: -0.01em; }
+  .site-nav a[aria-current="page"]::after { left: 8px; right: 8px; }
 }
 
 /* The menu button: two lines on a soft tile; in the sheet the same tile, in the same place, closes it. */
@@ -162,7 +147,13 @@ html[data-theme] ::selection { background: var(--mark); }
   background: var(--cta-bg); color: var(--cta-ink); text-decoration: none; font-weight: 700; font-size: 17px;
 }
 .site-sheet-cta-quiet { background: var(--soft); color: var(--ink); }
-.site-sheet-action p { margin: 4px 0 6px; text-align: center; color: var(--muted); font-size: 14px; font-weight: 600; }
+.site-sheet-for { display: grid; gap: 8px; }
+/* The same switch as the pages' platform note: an iPhone gets the iPhone words, Windows, Android and
+   Linux get "For iPhone and Mac", everyone else the Mac download. */
+.site-sheet-for.site-sheet-ios, .site-sheet-for.site-sheet-other { display: none; }
+:root[data-platform="ios"] .site-sheet-for.site-sheet-ios,
+:root:is([data-platform="windows"], [data-platform="android"], [data-platform="linux"]) .site-sheet-for.site-sheet-other { display: grid; }
+.site-sheet-action p { margin: 4px 0 6px; text-align: center; text-wrap: balance; color: var(--muted); font-size: 14px; font-weight: 600; }
 @media (hover: hover) { .site-sheet-rows a:hover { background: var(--soft); } }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -268,8 +259,9 @@ html[data-theme] ::selection { background: var(--mark); }
 .pi-button:focus-visible, .pi-send:focus-visible, .pi-link:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
 .pi-link:focus-visible { border-radius: 6px; }
 
-/* In the header the note is a quiet link where Download for Mac sits. Phones have no room for it. */
-@media (min-width: 601px) {
+/* In the header the note is a quiet link where Download for Mac sits, from the width it fits
+   beside the four page links. Narrower screens have no room for it; on phones it's in the menu. */
+@media (min-width: 720px) {
   :root:is([data-platform="windows"], [data-platform="android"], [data-platform="linux"]) .site-nav a.pi-head { display: inline-flex; margin-left: 6px; }
 }
 @media (hover: hover) {

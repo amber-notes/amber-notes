@@ -10,9 +10,18 @@ const GITHUB = "https://github.com/amber-notes/amber-notes";
 /// As long as the sheet's exit in site.css.
 const EXIT_MS = 150;
 
-/// The phone header's menu (drafts B and C): a button that opens a sheet with the site's pages, GitHub and
-/// the download. A modal <dialog>, so the browser holds focus inside it and Escape closes it.
-export default function MobileMenu({ path, stars: built }: { path: string; stars: number | null }) {
+/// The pages in the menu, in the desktop header's order. `under` also marks the page current on the pages below it.
+export const MENU_PAGES: { href: string; label: string; icon: () => React.ReactElement; under?: boolean; also?: string }[] = [
+  { href: "/templates", label: "Templates", icon: TemplatesIcon, under: true },
+  { href: "/blog", label: "Blog", icon: BlogIcon, under: true },
+  { href: "/changelog", label: "Changelog", icon: ChangelogIcon },
+  { href: "/help", label: "Help", icon: HelpIcon, also: "/support" },
+];
+
+/// The phone header's menu: a button that opens a sheet with everything the desktop header has:
+/// the pages, GitHub with its stars, and the download (or, where the Mac download is no use, what
+/// the header says there instead). A modal <dialog>, so the browser holds focus inside it.
+export default function MobileMenu({ path, stars: built, appStoreLive = APP_STORE_LIVE }: { path: string; stars: number | null; appStoreLive?: boolean }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const sheet = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -45,7 +54,7 @@ export default function MobileMenu({ path, stars: built }: { path: string; stars
     const wide = matchMedia("(min-width: 601px)");
     const onChange = () => { if (wide.matches && dialog.current?.open) dialog.current.close(); };
     wide.addEventListener("change", onChange);
-    return () => { wide.removeEventListener("change", onChange); document.documentElement.style.overflow = ""; };
+    return () => { wide.removeEventListener("change", onChange); window.clearTimeout(fade.current); document.documentElement.style.overflow = ""; };
   }, []);
 
   const current = (on: boolean) => (on ? "page" : undefined);
@@ -57,6 +66,7 @@ export default function MobileMenu({ path, stars: built }: { path: string; stars
       <dialog
         ref={dialog} id="site-menu" className="site-menu" aria-label="Menu" data-closing={closing || undefined}
         onCancel={(e) => { e.preventDefault(); close(); }}
+        onKeyDown={(e) => { if (e.key === "Escape") { e.preventDefault(); close(); } }}
         onClose={() => { window.clearTimeout(fade.current); document.documentElement.style.overflow = ""; setOpen(false); setClosing(false); trigger.current?.focus(); }}
         onClick={(e) => { if (e.target === e.currentTarget) close(); }}
       >
@@ -71,19 +81,32 @@ export default function MobileMenu({ path, stars: built }: { path: string; stars
             </button>
           </div>
           <nav className="site-sheet-rows" aria-label="Site menu">
-            <a href="/templates" aria-current={current(path === "/templates" || path.startsWith("/templates/"))}><TemplatesIcon />Templates</a>
-            <a href="/blog" aria-current={current(path === "/blog" || path.startsWith("/blog/"))}><BlogIcon />Blog</a>
-            <a href="/changelog" aria-current={current(path === "/changelog")}><ChangelogIcon />Changelog</a>
-            <a href="/help" aria-current={current(path === "/help" || path === "/support")}><HelpIcon />Help</a>
+            {MENU_PAGES.map(({ href, label, icon: Icon, under, also }) => (
+              <a key={href} href={href} aria-current={current(path === href || path === also || (!!under && path.startsWith(`${href}/`)))}><Icon />{label}</a>
+            ))}
             <a href={GITHUB} target="_blank" rel="noopener noreferrer" aria-label={stars !== null ? `GitHub, ${stars} stars` : "GitHub"}>
               <GitHubGlyph />GitHub{stars !== null && <span className="site-sheet-stars">★ {stars.toLocaleString("en")}</span>}
             </a>
           </nav>
-          {/* The same two actions as the home page: the Mac download, and the iPhone app once it's on the App Store. */}
+          {/* What the desktop header ends with, as fits the visitor (lib/platform.ts marks <html>, site.css shows one). */}
           <div className="site-sheet-action">
-            {APP_STORE_LIVE && <a className="site-sheet-cta" href={APP_STORE_URL} target="_blank" rel="noopener noreferrer"><AppleGlyph /> Get it for iPhone</a>}
-            <DownloadLink className={APP_STORE_LIVE ? "site-sheet-cta site-sheet-cta-quiet" : "site-sheet-cta"}><AppleGlyph /> Download for Mac</DownloadLink>
-            {!APP_STORE_LIVE && <p>iPhone · coming soon</p>}
+            {/* A Mac, or a platform we can't tell: the download, as on the home page. */}
+            <div className="site-sheet-for pi-apple pi-not-ios">
+              {appStoreLive && <a className="site-sheet-cta" href={APP_STORE_URL} target="_blank" rel="noopener noreferrer"><AppleGlyph /> Get it for iPhone</a>}
+              <DownloadLink className={appStoreLive ? "site-sheet-cta site-sheet-cta-quiet" : "site-sheet-cta"}><AppleGlyph /> Download for Mac</DownloadLink>
+              {!appStoreLive && <p>iPhone · coming soon</p>}
+            </div>
+            {/* An iPhone: the iPhone app, or where it stands; the Mac download is a page away, not a file. */}
+            <div className="site-sheet-for site-sheet-ios">
+              {appStoreLive
+                ? <a className="site-sheet-cta" href={APP_STORE_URL} target="_blank" rel="noopener noreferrer"><AppleGlyph /> Download for iPhone</a>
+                : <p>Amber Notes for iPhone is coming to the App Store soon.</p>}
+              <a className="site-sheet-cta site-sheet-cta-quiet" href="/download"><AppleGlyph /> Download for Mac</a>
+            </div>
+            {/* Windows, Android and Linux: the header's own words there. */}
+            <div className="site-sheet-for site-sheet-other">
+              <a className="site-sheet-cta site-sheet-cta-quiet" href="/download">For iPhone and Mac</a>
+            </div>
           </div>
         </div>
       </dialog>
