@@ -2,40 +2,39 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  ALLOW_HEADING, APPLE_ON_WEB, appleSignInURL, destination, functionURL, pkcePair, returnURL, signInError, startsWithWrite, universalLink,
+  appleSignInURL, destination, functionURL, pkcePair, returnURL, signInError, startsWithWrite,
   type ConnectLabel, type ConnectRequest,
 } from "@/lib/connect";
 import {
-  browserFrom, newPageNonce, newPickup, pageCommit, pageNumber, parseKeyRow, recoveryApproval, RecoveryError, revealRequest, sealedDestination,
-  statusRequest, statusStep, withCode,
+  browserFrom, isMacBrowser, keyFingerprint, newPageNonce, newPickup, newScan, pageCommit, pageNumber, parseKeyRow, recoveryApproval, RecoveryError,
+  revealRequest, scanAppLink, scanLink, scanRequest, sealedDestination, statusRequest, statusStep, withCode,
   type AccountKey,
 } from "@/lib/connect-flow";
 import { newHandoffKeys, openHandoff, parseRecoveryKey, toBase64 } from "@/lib/e2ee";
-import styles from "./connect.module.css";
+import {
+  EndedScreen, LeavingScreen, NotifyScreen, NotifySignInScreen, RecoverScreen, ScanScreen, WorkingScreen,
+} from "./ConnectScreens";
 
 // The connect page in the browser. See lib/connect.ts for the whole flow.
 
 type Session = { token: string; userId: string; email: string };
-type Mode = "devices" | "recover";
 type View =
-  | { kind: "signIn" }
+  | { kind: "scan" }
+  | { kind: "notifySignIn" }
   | { kind: "working"; text: string }
-  | { kind: "waiting" }
+  | { kind: "notify" }
   | { kind: "recover" }
   | { kind: "leaving"; to: string; allowed: boolean }
   | { kind: "ended"; title: string; text: string; retry?: boolean };
 
 /// The PKCE verifier for one Sign in with Apple round trip: the only thing the page ever stores.
 const APPLE_PKCE = "amber.connect.pkce";
-const POLL_MS = 2000;
-/// After this long without an answer the page says where the request shows, and points to the recovery key.
-export const NUDGE_MS = 20_000;
+export const POLL_MS = 2000;
 const OFFLINE = "Couldn't reach Amber Notes. Check your connection and try again.";
-/// While Sign in with Apple is off on the web: an account made with it has no password, so it allows in the app.
-export const APPLE_INSTEAD = "Signed up with Apple? Allow it in Amber Notes instead: open the app on this computer, or connect from your iPhone.";
 const EXPIRED: View = { kind: "ended", title: "This request has expired", text: "Start connecting again from ChatGPT, Claude or the other app you were using." };
+const LOST: View = { kind: "ended", title: "Couldn't finish here", text: "Start connecting again from the other app." };
 
-export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, recover, authCode, authError }: {
+export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, recover, authCode, authError, pollMs = POLL_MS }: {
   requestId: string;
   supabaseURL: string;
   anonKey: string;
@@ -45,9 +44,10 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
   /// Back from Sign in with Apple: Supabase's one-time code, or why it failed.
   authCode?: string;
   authError?: string;
+  /// How often /connect/status is asked (tests make it short).
+  pollMs?: number;
 }) {
-  const [mode, setMode] = useState<Mode>(recover ? "recover" : "devices");
-  const [view, setView] = useState<View>(authCode ? { kind: "working", text: "Signing in…" } : { kind: "signIn" });
+  const [view, setView] = useState<View>(authCode ? { kind: "working", text: "Signing in…" } : recover ? { kind: "recover" } : { kind: "scan" });
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [recoveryKey, setRecoveryKey] = useState("");
@@ -57,30 +57,41 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(false);
   const [polling, setPolling] = useState(false);
+  /// What the QR code encodes, and the same for the app on this Mac (null elsewhere).
+  const [link, setLink] = useState<string | null>(null);
+  const [macLink, setMacLink] = useState<string | null>(null);
   // Kept out of React state: the session and the key pair live in this page's memory only.
   const session = useRef<Session | null>(null);
   const [signedIn, setSignedIn] = useState<string | null>(null);
   const handoffKey = useRef<CryptoKey | null>(null);
-  /// The pickup secret: /connect/status hands the answer only to it.
-  const pickup = useRef<string | null>(null);
-  /// The page's nonce Np, public key and whether Np has gone to /connect/reveal (only once).
+  const publicRaw = useRef<Uint8Array<ArrayBuffer> | null>(null);
+  /// The pickup secret and its hash: /connect/status hands the answer only to it. The QR code and a
+  /// notification share it, and the page's key.
+  const pickup = useRef<{ pickup: string; pickup_hash: string } | null>(null);
+  /// The page's nonce Np, for a notification only, and whether it has gone to /connect/reveal (once).
   const pageNonce = useRef<Uint8Array<ArrayBuffer> | null>(null);
-  const publicRaw = useRef<Uint8Array | null>(null);
   const revealed = useRef(false);
-  /// The two digits to type on the device, once the device's nonce is in and Np is revealed.
+  /// The two digits to compare with the device, once the device's nonce is in and Np is revealed.
   const [number, setNumber] = useState<string | null>(null);
   const expiresAt = useRef<number | null>(null);
   const finished = useRef(false);
   const mcp = functionURL(supabaseURL);
   const base = supabaseURL.replace(/\/+$/, "");
+  const to = label?.redirect_host ? destination(label.redirect_host, label.loopback) : null;
 
   useEffect(() => {
     setReady(true);
-    if (authCode) void finishAppleSignIn(authCode);
-    else if (authError) {
-      setFailure("Sign in with Apple didn't finish. Try again.");
-      window.history.replaceState(null, "", returnURL(window.location.origin, requestId, recover));
-    }
+    void (async () => {
+      const ok = await prepare();
+      if (authCode) {
+        if (ok) await finishAppleSignIn(authCode);
+        else window.history.replaceState(null, "", returnURL(window.location.origin, requestId, recover));
+      } else if (authError) {
+        setFailure("Sign in with Apple didn't finish. Try again.");
+        window.history.replaceState(null, "", returnURL(window.location.origin, requestId, recover));
+        if (ok && !recover) setView({ kind: "notifySignIn" });
+      }
+    })();
     // A closed or reloaded page ends a session it still holds.
     const closing = () => { if (session.current) void signOut(session.current.token, true); };
     window.addEventListener("pagehide", closing);
@@ -88,15 +99,7 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
     // Runs once, for the address the page was opened with.
   }, []);
 
-  // No answer for a while: say where the request shows up (a closed iPhone app doesn't get it).
-  const [nudge, setNudge] = useState(false);
-  useEffect(() => {
-    if (!polling) { setNudge(false); return; }
-    const t = setTimeout(() => setNudge(true), NUDGE_MS);
-    return () => clearTimeout(t);
-  }, [polling]);
-
-  // Waiting for a device: /connect/status every two seconds until there's an answer or it expires.
+  // Waiting for an answer: /connect/status every two seconds until there's one or it expires.
   useEffect(() => {
     if (!polling) return;
     let stopped = false;
@@ -105,7 +108,7 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
       if (stopped || finished.current) return;
       let body: unknown = null;
       try {
-        const secret = pickup.current;
+        const secret = pickup.current?.pickup;
         if (secret) {
           const res = await fetch(...statusRequest(mcp, requestId, secret));
           if (res.ok) body = await res.json();
@@ -115,13 +118,13 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
       const step = statusStep(body, Date.now(), expiresAt.current);
       switch (step.kind) {
         case "wait":
-          timer = setTimeout(tick, POLL_MS);
+          timer = setTimeout(tick, pollMs);
           return;
         case "deviceReady": {
-          // The device opened the request and committed to its nonce: reveal ours, once, then show the number.
-          if (!revealed.current) {
-            const np = pageNonce.current, pub = publicRaw.current, secret = pickup.current;
-            if (!np || !pub || !secret) return end({ kind: "ended", title: "Couldn't finish here", text: "Start connecting again from the other app." });
+          // A notified device opened the request and committed to its nonce: reveal ours, once, then
+          // show the number. A scanned code has no number, so there's nothing to reveal.
+          const np = pageNonce.current, pub = publicRaw.current, secret = pickup.current?.pickup;
+          if (!revealed.current && np && pub && secret) {
             let res: Response | null = null;
             try { res = await fetch(...revealRequest(mcp, requestId, secret, np)); } catch {}
             if (stopped || finished.current) return;
@@ -135,17 +138,17 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
               setNumber(await pageNumber(pub, np, step.deviceNonce, requestId));
             }
           }
-          timer = setTimeout(tick, POLL_MS);
+          timer = setTimeout(tick, pollMs);
           return;
         }
         case "approved": {
           const key = handoffKey.current;
-          if (!key) return end({ kind: "ended", title: "Couldn't finish here", text: "Start connecting again from the other app." });
+          if (!key) return end(LOST);
           try {
             // Only where the approving device sealed it, never the answer's unsealed redirect.
             return leave(sealedDestination(await openHandoff(step.handoff, key, requestId)), true);
           } catch {
-            return end({ kind: "ended", title: "Couldn't finish here", text: "Start connecting again from the other app." });
+            return end(LOST);
           }
         }
         case "denied":
@@ -156,19 +159,21 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
         case "expired": return end(EXPIRED);
       }
     };
-    timer = setTimeout(tick, POLL_MS);
+    timer = setTimeout(tick, pollMs);
     return () => { stopped = true; clearTimeout(timer); };
   }, [polling]);
 
   function end(v: View) {
     finished.current = true;
     handoffKey.current = null;
+    publicRaw.current = null;
     pickup.current = null;
     pageNonce.current?.fill(0);
     pageNonce.current = null;
-    publicRaw.current = null;
     revealed.current = false;
     setNumber(null);
+    setLink(null);
+    setMacLink(null);
     setPolling(false);
     setView(v);
   }
@@ -178,12 +183,50 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
     window.location.assign(to);
   }
 
+  // MARK: The QR code
+
+  /// Makes the page's key pair, pickup secret and scan secret, tells /connect/scan their public half
+  /// and hashes, shows the code and starts waiting. False when the page can't go on.
+  async function prepare(): Promise<boolean> {
+    try {
+      const keys = await newHandoffKeys();
+      const secret = await newPickup();
+      const scan = await newScan();
+      const fingerprint = await keyFingerprint(keys.publicRaw);
+      const res = await fetch(...scanRequest(mcp, {
+        id: requestId, browser_key: toBase64(keys.publicRaw), pickup_hash: secret.pickup_hash, scan_hash: scan.scan_hash,
+        from: browserFrom(navigator.userAgent),
+      }));
+      const body = await res.json().catch(() => null) as { expires_at?: string; error?: string } | null;
+      if (!res.ok) {
+        if (res.status === 404) end(EXPIRED);
+        else end({ kind: "ended", title: "Couldn't connect", text: body?.error ?? OFFLINE, retry: res.status !== 429 });
+        return false;
+      }
+      handoffKey.current = keys.privateKey;
+      publicRaw.current = keys.publicRaw;
+      pickup.current = secret;
+      pageNonce.current = null;
+      revealed.current = false;
+      const t = Date.parse(body?.expires_at ?? "");
+      expiresAt.current = Number.isNaN(t) ? null : t;
+      setLink(scanLink(requestId, scan.scan, fingerprint));
+      setMacLink(isMacBrowser(navigator.platform, navigator.userAgent, navigator.maxTouchPoints)
+        ? scanAppLink(requestId, scan.scan, fingerprint) : null);
+      finished.current = false;
+      setPolling(true);
+      return true;
+    } catch {
+      end({ kind: "ended", title: "Couldn't connect", text: OFFLINE, retry: true });
+      return false;
+    }
+  }
+
   // MARK: Signing in
 
-  async function signInWithApple() {
+  async function signInWithApple(recovering: boolean) {
     setBusy(true);
     const { verifier, challenge } = await pkcePair();
-    const recovering = mode === "recover";
     try { sessionStorage.setItem(APPLE_PKCE, JSON.stringify({ verifier, request: requestId })); } catch {}
     window.location.assign(appleSignInURL(supabaseURL, returnURL(window.location.origin, requestId, recovering), challenge));
   }
@@ -191,13 +234,14 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
   async function finishAppleSignIn(code: string) {
     // The code leaves the address bar (and the history) before anything else happens.
     window.history.replaceState(null, "", returnURL(window.location.origin, requestId, recover));
+    const back: View = recover ? { kind: "recover" } : { kind: "notifySignIn" };
     let saved: { verifier?: string; request?: string } = {};
     try {
       saved = JSON.parse(sessionStorage.getItem(APPLE_PKCE) ?? "{}");
     } catch {}
     try { sessionStorage.removeItem(APPLE_PKCE); } catch {}
     if (!saved.verifier || saved.request !== requestId) {
-      setView({ kind: "signIn" });
+      setView(back);
       setFailure("Sign in with Apple didn't finish. Try again.");
       return;
     }
@@ -209,13 +253,16 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
       });
       const s = sessionFrom(await res.json().catch(() => null), "your Apple ID");
       if (!res.ok || !s) {
-        setView({ kind: "signIn" });
+        setView(back);
         setFailure("Sign in with Apple didn't finish. Try again.");
         return;
       }
-      await signedInAs(s, recover ? "recover" : "devices");
+      session.current = s;
+      setSignedIn(s.email);
+      if (recover) await loadRecover(s);
+      else await ask(s);
     } catch {
-      setView({ kind: "signIn" });
+      setView(back);
       setFailure(OFFLINE);
     }
   }
@@ -240,19 +287,16 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
     setFailure(null);
     try {
       const s = await passwordSignIn();
-      if (s) await signedInAs(s, "devices");
+      if (s) {
+        session.current = s;
+        setSignedIn(s.email);
+        await ask(s);
+      }
     } catch {
       setFailure(OFFLINE);
     } finally {
       setBusy(false);
     }
-  }
-
-  async function signedInAs(s: Session, m: Mode) {
-    session.current = s;
-    setSignedIn(s.email);
-    if (m === "devices") await ask(s);
-    else await loadRecover(s);
   }
 
   /// Ends the web session. It was only for this one step.
@@ -268,20 +312,24 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
     if (!closing) await Promise.race([ended, new Promise((r) => setTimeout(r, 1500))]);
   }
 
-  // MARK: Asking your devices
+  // MARK: A notification instead
 
+  /// Asks the account's devices with the same key and pickup as the QR code, so the code keeps working.
   async function ask(s: Session) {
     setView({ kind: "working", text: "Asking your iPhone or Mac…" });
+    const pub = publicRaw.current, secret = pickup.current;
+    if (!pub || !secret || !handoffKey.current) {
+      await signOut(s.token);
+      return end(LOST);
+    }
+    const np = newPageNonce();
     try {
-      const keys = await newHandoffKeys();
-      const secret = await newPickup();
-      const np = newPageNonce();
       const res = await fetch(`${mcp}/connect/ask`, {
         method: "POST",
         headers: { authorization: `Bearer ${s.token}`, "content-type": "application/json" },
         body: JSON.stringify({
-          id: requestId, browser_key: toBase64(keys.publicRaw), pickup_hash: secret.pickup_hash, from: browserFrom(navigator.userAgent),
-          match_commit: await pageCommit(keys.publicRaw, np),
+          id: requestId, browser_key: toBase64(pub), pickup_hash: secret.pickup_hash, from: browserFrom(navigator.userAgent),
+          match_commit: await pageCommit(pub, np),
         }),
       });
       const body = await res.json().catch(() => null) as { expires_at?: string; error?: string } | null;
@@ -292,19 +340,17 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
         // A 429 can mean the account's connecting is paused for a while: the server's message says how long.
         return end({ kind: "ended", title: "Couldn't connect", text: body?.error ?? OFFLINE, retry: res.status !== 429 });
       }
-      handoffKey.current = keys.privateKey;
-      pickup.current = secret.pickup;
+      pageNonce.current?.fill(0);
       pageNonce.current = np;
-      publicRaw.current = keys.publicRaw;
       revealed.current = false;
       setNumber(null);
       const t = Date.parse(body?.expires_at ?? "");
-      expiresAt.current = Number.isNaN(t) ? null : t;
+      if (!Number.isNaN(t)) expiresAt.current = t;
+      setView({ kind: "notify" });
       finished.current = false;
-      setMode("devices");
-      setView({ kind: "waiting" });
       setPolling(true);
     } catch {
+      np.fill(0);
       await signOut(s.token);
       end({ kind: "ended", title: "Couldn't connect", text: OFFLINE, retry: true });
     }
@@ -341,7 +387,6 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
       }
       setRequest(info.request);
       setWrite(startsWithWrite(info.request));
-      setMode("recover");
       setView({ kind: "recover" });
     } catch {
       setView({ kind: "recover" });
@@ -409,7 +454,7 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
     }
   }
 
-  /// Back to waiting on the devices if this page asked them.
+  /// Back to waiting on the code or the devices, if the page still holds its key.
   function resumeWaiting() {
     if (handoffKey.current) {
       finished.current = false;
@@ -417,150 +462,62 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
     }
   }
 
+  // MARK: Moving between screens
+
+  function showNotify() {
+    setFailure(null);
+    setView({ kind: "notifySignIn" });
+  }
+
   function showRecovery() {
     forget();
     setFailure(null);
-    setMode("recover");
     setView({ kind: "recover" });
   }
 
-  async function backToDevices() {
+  async function backToScan() {
     forget();
     setFailure(null);
-    setMode("devices");
-    if (handoffKey.current) {
-      if (session.current) await signOut(session.current.token);
-      setView({ kind: "waiting" });
-      return;
-    }
-    if (session.current) return ask(session.current);
-    setView({ kind: "signIn" });
+    if (session.current) await signOut(session.current.token);
+    if (!handoffKey.current) return startOver();
+    setView({ kind: "scan" });
   }
 
   function startOver() {
     forget();
     setFailure(null);
     finished.current = false;
-    setView(mode === "recover" && session.current ? { kind: "recover" } : { kind: "signIn" });
+    setView({ kind: "scan" });
+    void prepare();
   }
 
   // MARK: The page
 
-  const heading = ALLOW_HEADING;
-  const recovering = mode === "recover" && (view.kind === "signIn" || view.kind === "recover");
+  const signIn = { email, password, onEmail: setEmail, onPassword: setPassword, busy, ready, failure };
   const canWrite = request ? request.wants_write : true;
+  const recoverTo = request ? destination(request.redirect_host, request.loopback) : to;
 
-  return (
-    <>
-      {view.kind === "signIn" && !recovering && (
-        <>
-          <h1 className={styles.title}>{heading}</h1>
-          <Asking label={label} />
-          <p className={styles.lede}>Sign in, and Amber Notes asks you on your iPhone or Mac.</p>
-          {APPLE_ON_WEB && <SignInButtons onApple={signInWithApple} busy={busy} />}
-          <form className={styles.form} method="post" onSubmit={submitSignIn}>
-            <EmailFields email={email} password={password} onEmail={setEmail} onPassword={setPassword} />
-            {failure && <p className={styles.error} role="alert">{failure}</p>}
-            <button type="submit" className={styles.secondary} disabled={!ready || busy} aria-busy={busy}>
-              {busy ? <><Spinner /> Signing in…</> : "Continue"}
-            </button>
-          </form>
-          <p className={styles.small}>
-            Amber Notes on this computer? <a href={universalLink(requestId)}>Open Amber Notes</a>
-            {!APPLE_ON_WEB && <><br />{APPLE_INSTEAD}</>}
-            <br />No account yet? <a href="/download">Get Amber Notes</a>
-          </p>
-        </>
-      )}
-
-      {view.kind === "working" && (
-        <p className={styles.status} role="status"><Spinner /> {view.text}</p>
-      )}
-
-      {view.kind === "waiting" && (
-        <>
-          {number ? (
-            <>
-              <h1 className={styles.title}>Approve on your iPhone or Mac</h1>
-              <MatchNumber number={number} />
-              <p className={styles.lede}>Type this number in Amber Notes there, then Allow, and this page takes you back to finish connecting. If Amber Notes doesn't ask for it, choose Don't allow.</p>
-              <p className={styles.status} role="status"><Spinner /> Waiting for you to allow it on your iPhone or Mac…</p>
-            </>
-          ) : (
-            <>
-              <h1 className={styles.title}>Open Amber Notes on your iPhone or Mac</h1>
-              <p className={styles.lede}>Amber Notes there asks you about this request. When it opens it, a number shows here for you to type there.</p>
-              <p className={styles.status} role="status"><Spinner /> Waiting for your iPhone or Mac…</p>
-            </>
-          )}
-          {nudge && (
-            <p className={styles.small} role="status">
-              Open Amber Notes on your iPhone or Mac to see the request. No device nearby? Use your recovery key below.
-            </p>
-          )}
-          <a className={styles.secondary} href={universalLink(requestId)}>Open Amber Notes</a>
-          <p className={styles.small}>Answer in the app if it's on this computer.</p>
-          <button type="button" className={styles.link} onClick={showRecovery}>No device nearby? Use your recovery key</button>
-        </>
-      )}
-
-      {recovering && (
-        <>
-          <h1 className={styles.title}>{heading}</h1>
-          {request
-            ? <p className={styles.lede}>Access goes to <b>{destination(request.redirect_host, request.loopback)}</b>.
-                {request.claimed_name && <> It calls itself &ldquo;{request.claimed_name}&rdquo;.</>}</p>
-            : <Asking label={label} />}
-          <p className={styles.note}>
-            This runs our code in your browser. Your recovery key and your notes' key are used on this page only, and are never stored or sent to us.
-            If this page were changed, it could read them. When you can, approve from your iPhone or Mac instead.
-          </p>
-          {!signedIn && APPLE_ON_WEB && <SignInButtons onApple={signInWithApple} busy={busy} />}
-          {!signedIn && !APPLE_ON_WEB && <p className={styles.small}>{APPLE_INSTEAD}</p>}
-          <form className={styles.form} method="post" onSubmit={submitRecovery}>
-            {signedIn ? null : <EmailFields email={email} password={password} onEmail={setEmail} onPassword={setPassword} />}
-            <label className={styles.field}>
-              <span>Recovery key</span>
-              <input
-                type="text" id="connect-recovery" required autoComplete="off" autoCorrect="off" autoCapitalize="characters" spellCheck={false}
-                placeholder="XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX" className={styles.code}
-                value={recoveryKey} onChange={(e) => setRecoveryKey(e.target.value)}
-              />
-            </label>
-            <div className={styles.segmented} role="radiogroup" aria-label="Access">
-              <button type="button" role="radio" aria-checked={write && canWrite} disabled={!canWrite} onClick={() => setWrite(true)}>Read and edit</button>
-              <button type="button" role="radio" aria-checked={!(write && canWrite)} onClick={() => setWrite(false)}>Read only</button>
-            </div>
-            <p className={styles.explain}>{write && canWrite
-              ? "It can search, read, create and change notes. Every change keeps the previous version."
-              : "It can search and read notes, but not change them."}</p>
-            <p className={styles.warn}>Only allow it if you just started connecting it yourself.</p>
-            {failure && <p className={styles.error} role="alert">{failure}</p>}
-            <button type="submit" className={styles.primary} disabled={!ready || busy} aria-busy={busy}>
-              {busy ? <><Spinner /> Allowing…</> : "Allow"}
-            </button>
-          </form>
-          {signedIn && <p className={styles.small}>Signed in as {signedIn}.</p>}
-          <button type="button" className={styles.link} onClick={backToDevices}>Approve on your iPhone or Mac instead</button>
-        </>
-      )}
-
-      {view.kind === "leaving" && (
-        <>
-          <h1 className={styles.title}>{view.allowed ? "Connected" : "Not connected"}</h1>
-          <p className={styles.lede} role="status"><Spinner /> Taking you back to {hostOf(view.to)}…</p>
-        </>
-      )}
-
-      {view.kind === "ended" && (
-        <>
-          <h1 className={styles.title}>{view.title}</h1>
-          <p className={styles.lede} role="alert">{view.text}</p>
-          {view.retry && <button type="button" className={styles.secondary} onClick={startOver}>Try again</button>}
-        </>
-      )}
-    </>
-  );
+  switch (view.kind) {
+    case "scan":
+      return <ScanScreen to={to} link={link} macLink={macLink} onNotify={showNotify} onRecover={showRecovery} />;
+    case "notifySignIn":
+      return <NotifySignInScreen {...signIn} to={to} onApple={() => signInWithApple(false)} onSubmit={submitSignIn} onScan={backToScan} />;
+    case "notify":
+      return <NotifyScreen number={number} onScan={backToScan} />;
+    case "recover":
+      return (
+        <RecoverScreen
+          {...signIn} to={recoverTo} signedIn={signedIn} recoveryKey={recoveryKey} onRecoveryKey={setRecoveryKey}
+          access={{ write, canWrite, onWrite: setWrite }} onApple={() => signInWithApple(true)} onSubmit={submitRecovery} onScan={backToScan}
+        />
+      );
+    case "working":
+      return <WorkingScreen text={view.text} />;
+    case "leaving":
+      return <LeavingScreen allowed={view.allowed} host={hostOf(view.to)} />;
+    case "ended":
+      return <EndedScreen title={view.title} text={view.text} onRetry={view.retry ? startOver : undefined} />;
+  }
 }
 
 /// The signed-in account, from a Supabase Auth token response.
@@ -569,70 +526,6 @@ function sessionFrom(body: { access_token?: unknown; user?: { id?: unknown; emai
   return { token: body.access_token, userId: body.user.id, email: typeof body.user.email === "string" ? body.user.email : fallbackEmail };
 }
 
-/// The two digits you type on the device (matchNumber of this page's key, both nonces and the request).
-export function MatchNumber({ number }: { number: string }) {
-  return (
-    <div className={styles.match}>
-      <span className={styles.matchNumber} aria-hidden="true">{number}</span>
-      <p className={styles.matchText}>Type {number} on your iPhone or Mac</p>
-    </div>
-  );
-}
-
-/// What the app calls itself and where access goes, never as a title: nothing here is verified.
-function Asking({ label }: { label: ConnectLabel | null }) {
-  if (!label) return null;
-  const to = label.redirect_host ? destination(label.redirect_host, label.loopback) : null;
-  return (
-    <p className={styles.lede}>
-      {label.claimed_name && <>It calls itself &ldquo;{label.claimed_name}&rdquo;. </>}
-      {to && <>Access goes to <b>{to}</b>.</>}
-    </p>
-  );
-}
-
 function hostOf(url: string): string {
   try { return new URL(url).hostname || "the app"; } catch { return "the app"; }
-}
-
-function SignInButtons({ onApple, busy }: { onApple: () => void; busy: boolean }) {
-  return (
-    <>
-      <button type="button" className={styles.apple} onClick={onApple} disabled={busy}>
-        <AppleGlyph /> Sign in with Apple
-      </button>
-      <div className={styles.or}><span>or with email</span></div>
-    </>
-  );
-}
-
-/// No name attributes and a POST, and the CSP's form-action 'none': before the page's script runs,
-/// the form can't put the password anywhere. The buttons wait for the script anyway.
-function EmailFields({ email, password, onEmail, onPassword }: {
-  email: string; password: string; onEmail: (v: string) => void; onPassword: (v: string) => void;
-}) {
-  return (
-    <>
-      <label className={styles.field}>
-        <span>Email</span>
-        <input type="email" id="connect-email" autoComplete="username" required value={email} onChange={(e) => onEmail(e.target.value)} />
-      </label>
-      <label className={styles.field}>
-        <span>Password</span>
-        <input type="password" id="connect-password" autoComplete="current-password" required value={password} onChange={(e) => onPassword(e.target.value)} />
-      </label>
-    </>
-  );
-}
-
-function Spinner() {
-  return <span className={styles.spinner} aria-hidden="true" />;
-}
-
-function AppleGlyph() {
-  return (
-    <svg width="16" height="19" viewBox="0 0 17 20" fill="currentColor" aria-hidden="true">
-      <path d="M14.1 10.6c0-2.6 2.1-3.8 2.2-3.9-1.2-1.8-3.1-2-3.7-2-1.6-.2-3.1.9-3.9.9-.8 0-2-.9-3.4-.9-1.7 0-3.3 1-4.2 2.6-1.8 3.1-.5 7.7 1.3 10.2.9 1.2 1.9 2.6 3.2 2.6 1.3-.1 1.8-.8 3.3-.8 1.6 0 2 .8 3.4.8 1.4 0 2.3-1.3 3.1-2.5 1-1.4 1.4-2.8 1.4-2.9 0 0-2.7-1-2.7-4.1zM11.6 3c.7-.9 1.2-2 1-3.2-1 0-2.3.7-3 1.6-.7.8-1.3 2-1.1 3.1 1.2.1 2.3-.6 3.1-1.5z" />
-    </svg>
-  );
 }

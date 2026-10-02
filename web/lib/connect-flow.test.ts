@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
-  browserFrom, newCode, newPageNonce, newPickup, pageCommit, pageNumber, parseKeyRow, recoveryApproval, RecoveryError, revealRequest, safeDeniedRedirect,
+  browserFrom, isMacBrowser, keyFingerprint, newScan, scanAppLink, scanLink, scanRequest, newCode, newPageNonce, newPickup, pageCommit, pageNumber, parseKeyRow, recoveryApproval, RecoveryError, revealRequest, safeDeniedRedirect,
   sealedDestination, sha256Hex, statusRequest, statusStep, withCode,
 } from "./connect-flow";
 import { fromBase64, openHandoff, toBase64, tokenKey, unwrap } from "./e2ee";
@@ -233,5 +233,63 @@ describe("approving with the recovery key", () => {
     expect(parseKeyRow({ error: "x" })).toBe(null);
     expect(parseKeyRow([{ key_id: 1 }])).toBe(null);
     expect(fromBase64(v.data_key).length).toBe(32);
+  });
+});
+
+describe("the QR code's secret, key fingerprint and links", () => {
+  const ID = "5a0f6c1e-2b1d-4c36-9e0a-6b6f0c1a2b3c";
+
+  it("makes a 22-character base64url scan secret and the hex SHA-256 of its text", async () => {
+    const bytes = Uint8Array.from({ length: 16 }, (_, i) => 250 - i * 7);
+    const { scan, scan_hash } = await newScan(bytes);
+    expect(scan).toMatch(/^[A-Za-z0-9_-]{22}$/);
+    expect(Buffer.from(scan, "base64url")).toEqual(Buffer.from(bytes));
+    expect(scan_hash).toBe(await sha256Hex(scan));
+    expect(scan_hash).toMatch(/^[0-9a-f]{64}$/);
+    expect((await newScan()).scan).not.toBe((await newScan()).scan);
+    await expect(newScan(new Uint8Array(15))).rejects.toThrow();
+  });
+
+  it("names the page's key by the base64url SHA-256 of its 65 raw bytes", async () => {
+    const raw = fromBase64(v.handoff.browser_public);
+    const fp = await keyFingerprint(raw);
+    expect(fp).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    const want = Buffer.from(await crypto.subtle.digest("SHA-256", raw)).toString("base64url");
+    expect(fp).toBe(want);
+    await expect(keyFingerprint(new Uint8Array(64))).rejects.toThrow();
+  });
+
+  it("puts the secret and fingerprint in the fragment of the universal link and the app's scheme", async () => {
+    const { scan } = await newScan();
+    const fp = await keyFingerprint(fromBase64(v.handoff.browser_public));
+    const link = scanLink(ID.toUpperCase(), scan, fp);
+    expect(link).toBe(`https://ambernotes.app/open/connect?request=${ID}#s=${scan}&k=${fp}`);
+    const u = new URL(link);
+    expect(u.search).toBe(`?request=${ID}`);
+    expect(u.hash).toBe(`#s=${scan}&k=${fp}`);
+    expect(scanAppLink(ID, scan, fp)).toBe(`ambernotes://connect?request=${ID}#s=${scan}&k=${fp}`);
+    expect(() => scanLink(ID, "short", fp)).toThrow();
+    expect(() => scanLink(ID, scan, fp + "&x=1")).toThrow();
+  });
+
+  it("posts /connect/scan with no session", () => {
+    const body = { id: ID, browser_key: v.handoff.browser_public, pickup_hash: "a".repeat(64), scan_hash: "b".repeat(64), from: "Safari on a Mac" };
+    const [url, init] = scanRequest("https://ref.supabase.co/functions/v1/mcp", body);
+    expect(url).toBe("https://ref.supabase.co/functions/v1/mcp/connect/scan");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body as string)).toEqual(body);
+    expect(JSON.stringify(init.headers)).not.toMatch(/authorization/i);
+  });
+
+  it("tells a Mac's browser from an iPhone's and an iPad's", () => {
+    const macUA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36";
+    expect(isMacBrowser("MacIntel", macUA, 0)).toBe(true);
+    expect(isMacBrowser("", macUA)).toBe(true);
+    // iPadOS Safari says it's a Mac but has touch.
+    expect(isMacBrowser("MacIntel", macUA, 5)).toBe(false);
+    expect(isMacBrowser("iPhone", "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)", 5)).toBe(false);
+    expect(isMacBrowser("iPad", "Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X)", 5)).toBe(false);
+    expect(isMacBrowser("Win32", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", 0)).toBe(false);
+    expect(isMacBrowser("Linux x86_64", "Mozilla/5.0 (X11; Linux x86_64)", 0)).toBe(false);
   });
 });

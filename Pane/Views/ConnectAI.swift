@@ -131,6 +131,10 @@ struct ConnectRequest: Decodable, Identifiable, Equatable {
     /// that hands the code to a browser builds that address itself and seals it with the code.
     var state: String? = nil
     var iss: String? = nil
+    /// Asked by a page that shows a QR code: the page's public key (base64), which the device that
+    /// scanned the code checks against the code (`ConnectScan`).
+    var scan: Bool? = nil
+    var browser_key: String? = nil
 
     var isAsked: Bool { asked == true }
 
@@ -149,10 +153,10 @@ struct ConnectRequest: Decodable, Identifiable, Equatable {
         return "Requested \(when) from \(from)"
     }
 
-    /// The AI this request provably comes from, if any. Never for a request asked from a
-    /// browser: anyone can start one with ChatGPT's return address, and the page that waits for
-    /// the answer is whoever asked, so only the number the page shows ties it to the person.
-    var verifiedAI: String? { isAsked ? nil : ConnectTrust.verifiedAI(redirectURI: redirect_uri) }
+    /// The AI access goes to, when the return address is its own. For a request asked from a
+    /// browser too: what ties that request to the person is the code they scanned on their own
+    /// screen (or the number it shows), and the address decides who gets access.
+    var verifiedAI: String? { ConnectTrust.verifiedAI(redirectURI: redirect_uri) }
     /// Who's asking, as the sheet names it: the verified AI, or else where access goes.
     var who: String { verifiedAI ?? ConnectTrust.destination(host: redirect_host, loopback: loopback) }
     /// The name an unverified app gave itself, shown only as a secondary claim, and only as the
@@ -312,11 +316,6 @@ enum ConnectMatch {
     @MainActor private static var nonces: [NonceKey: Data] = [:]
 
     /// Two digits typed on the keypad: a digit adds (up to two), delete takes the last one off.
-    static func typing(_ typed: String, _ key: String) -> String {
-        if key == "delete" { return String(typed.dropLast()) }
-        guard key.count == 1, key.allSatisfy(\.isASCIIDigit), typed.count < 2 else { return typed }
-        return typed + key
-    }
 }
 
 /// What the sheet says about number matching.
@@ -328,10 +327,7 @@ enum ConnectMatchCopy {
     static let expired = "This request expired. Start connecting again in your browser."
     static let changed = "The page in your browser changed. Start connecting again in your browser."
     static let changedWhileAnswering = "This request changed while you were answering it, so it was declined. Start connecting again."
-}
-
-private extension Character {
-    var isASCIIDigit: Bool { ("0" ... "9").contains(self) }
+    static let rescan = "This code changed on your computer. Scan it again."
 }
 
 enum ConnectAPI {
@@ -458,11 +454,12 @@ enum ConnectAPI {
     /// then takes no asks for this account for an hour and tells every device.
     static func decide(id: UUID, redirectURI: String?, allow: Bool, write: Bool,
                        code: (code: String, hash: String, wrap: String)?, browserKey: Data? = nil, handoffRedirect: String? = nil,
-                       wrongNumber: Bool = false, send: Send) async throws -> Answer {
+                       wrongNumber: Bool = false, scan: String? = nil, send: Send) async throws -> Answer {
         guard let redirectURI else { throw Failure(message: "Update Amber Notes to connect an AI.") }
         guard !allow || code != nil else { throw Failure(message: "Open Amber Notes and finish setting up encryption first.") }
         var body: [String: Any] = ["id": id.uuidString.lowercased(), "allow": allow, "write": write, "redirect_uri": redirectURI]
         if !allow, wrongNumber { body["wrong_number"] = true }
+        if let scan { body["scan"] = scan }
         if allow, let code {
             body["code_hash"] = code.hash
             body["code_wrap"] = code.wrap
@@ -497,10 +494,17 @@ enum ConnectAPI {
     /// the request is declined (never as a wrong number) and no code is made or sealed. Allowing
     /// seals the code only to the key the number was made from.
     @MainActor static func answer(_ r: ConnectRequest, allow: Bool, write: Bool, wrongNumber: Bool = false, match: ConnectMatch.Match?,
+                       scanned: (scan: ConnectScan, key: Data)? = nil,
                        read: () async throws -> ConnectAskMatch?, code: () throws -> (code: String, hash: String, wrap: String),
                        send: Send) async throws -> Answered {
         var key: Data?
-        if r.isAsked, let match {
+        if r.isAsked, let scanned {
+            // Scanned from the page: its key was checked against the code when the sheet opened.
+            if allow { key = scanned.key }
+            let made = allow ? try code() : nil
+            return .answered(try await decide(id: r.id, redirectURI: r.redirect_uri, allow: allow, write: write, code: made, browserKey: key,
+                                              handoffRedirect: r.handoffRedirect, scan: scanned.scan.secret, send: send))
+        } else if r.isAsked, let match {
             switch ConnectMatch.recheck(match, now: try await read()) {
             case .expired:
                 throw Failure(message: ConnectMatchCopy.expired)
@@ -584,6 +588,8 @@ final class ConnectCenter: NSObject {
     private(set) var queue: [UUID] = []
     /// Requests in the queue that came by link on this device (not asks).
     private var links: Set<UUID> = []
+    /// What a scanned QR code (or the page's Open Amber Notes on this Mac) carried, by request id.
+    private(set) var scans: [UUID: ConnectScan] = [:]
     /// Asks that have been offered here: each opens the sheet by itself once.
     private var offered: Set<UUID> = []
     /// Answered on this device: the update saying so doesn't cut the sheet's "Allowed" short.
@@ -726,6 +732,7 @@ final class ConnectCenter: NSObject {
         asks = [:]
         queue = []
         links = []
+        scans = [:]
         offered = []
         answeredHere = []
         learnedAt = [:]
@@ -777,6 +784,7 @@ final class ConnectCenter: NSObject {
             return
         }
         guard let id = ConnectLink.requestID(from: url) else { return }
+        if let scan = ConnectScan(url: url) { scans[id] = scan }
         #if os(macOS)
         let from = sender.flatMap { Self.isBrowser($0) ? $0 : nil }
         if let from { browsers[id] = from } else { browsers[id] = nil }
@@ -961,17 +969,22 @@ struct ConsentSheet: View {
     enum Phase: Equatable { case loading, asking(ConnectRequest), working, done(String), handedOff(String), failed(String) }
     @State private var phase: Phase
     @State private var write = true
-    /// Asked from a browser: what the number was made from (the page's key and commit as first
-    /// read, and the revealed nonce), and the number the page shows. Nil until the page has
-    /// revealed its nonce and it opened the commit.
+    @State private var showOptions = false
+    @Environment(\.dynamicTypeSize) private var typeSize
+    /// Asked from a browser that the person signed in on (a notification): what the number was
+    /// made from (the page's key and commit as first read, and the revealed nonce), and the
+    /// number both screens show. Nil until the page has revealed its nonce and it opened the commit.
     typealias Match = ConnectMatch.Match
     @State private var match: Match?
-    /// The two digits typed so far.
-    @State private var typed = ""
-    /// Allow and the keypad wait a moment after what the sheet shows changes, so a tap meant
-    /// for what was there before doesn't land on what's there now.
+    /// Scanned from the page's QR code (or opened by its button on this Mac): the code's secret,
+    /// and the page's key once it's checked against the code. Then no number is needed.
+    @State private var scanned: (scan: ConnectScan, key: Data)?
+    /// Allow waits a moment after what the sheet shows changes, so a tap meant for what was there
+    /// before doesn't land on what's there now.
     @State private var armed = false
     static let armDelay: Duration = .seconds(1)
+    /// The sheet's height follows what it shows (iPhone), up to the full screen.
+    @State private var contentHeight: CGFloat = 0
     /// Face ID or Touch ID before allowing; tests and captures answer for it.
     var confirm: (String) async -> Bool = ConnectApproval.confirm
     var canConfirm: () -> Bool = { ConnectApproval.canConfirm }
@@ -983,282 +996,274 @@ struct ConsentSheet: View {
     }
     /// How often the ask is read again while the page hasn't revealed its nonce.
     var pollInterval: Duration = .seconds(1)
+    /// What the link carried, when it was a scanned code. Read from `ConnectCenter` by default.
+    var scan: ConnectScan?
 
     init(client: SupabaseClient, requestID: UUID, initial: Phase = .loading, finish: @escaping (URL) -> Void,
-         allowed: @escaping (ConnectRequest) -> Void = { _ in }, answering: @escaping (UUID) -> Void = { _ in }) {
+         allowed: @escaping (ConnectRequest) -> Void = { _ in }, answering: @escaping (UUID) -> Void = { _ in },
+         scan: ConnectScan? = nil, previewMatch: Match? = nil, previewOptions: Bool = false) {
         self.client = client
         self.requestID = requestID
         self.finish = finish
         self.allowed = allowed
         self.answering = answering
+        self.scan = scan ?? ConnectCenter.shared.scans[requestID]
         _phase = State(initialValue: initial)
+        _match = State(initialValue: previewMatch)
+        _showOptions = State(initialValue: previewOptions)
     }
 
     private struct Shown: Equatable { var phase: Phase; var match: Match? }
 
     var body: some View {
-        VStack(spacing: 20) {
-            header
-            content
-        }
-        .padding(28)
-        #if os(macOS)
-        .frame(width: 420)
-        #else
-        .presentationDetents([.medium, .large])
-        #endif
-        .task {
-            if phase == .loading { await load() }
-            else if case .asking(let r) = phase, r.isAsked, match == nil { await loadMatch(r) }
-        }
-        .task(id: Shown(phase: phase, match: match)) {
-            armed = false
-            try? await Task.sleep(for: Self.armDelay)
-            if !Task.isCancelled { armed = true }
-        }
-        .animation(.smooth(duration: 0.25), value: phase)
+        sized
+            #if os(macOS)
+            .frame(width: 420)
+            #endif
+            .task {
+                if phase == .loading { await load() }
+                else if case .asking(let r) = phase { await opened(r) }
+            }
+            .task(id: Shown(phase: phase, match: match)) {
+                armed = false
+                try? await Task.sleep(for: Self.armDelay)
+                if !Task.isCancelled { armed = true }
+            }
+            .animation(.smooth(duration: 0.25), value: phase)
     }
 
-    /// Who's asking, and for what: the AI's mark (only when its address proves it), a link, our icon.
+    /// iPhone: as tall as what it shows, scrolling when that's more than the screen (the
+    /// largest text sizes). Nothing is ever cut short.
     @ViewBuilder
-    private var header: some View {
-        if case .asking(let r) = phase {
-            let ai = r.verifiedAI
-            HStack(spacing: 14) {
-                if let ai {
-                    AITile(ai: ai, size: 56)
-                } else {
-                    // An app we can't vouch for: a plain glyph, never a borrowed mark.
-                    Image(systemName: r.loopback ? "desktopcomputer" : "globe")
-                        .font(.system(size: 24, weight: .medium))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 56, height: 56)
-                        .background(.fill.tertiary, in: .rect(cornerRadius: 56 * 0.3, style: .continuous))
-                }
-                Image(systemName: "link")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(.tertiary)
-                AppMark(size: 56)
-            }
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(ai.map { "\($0) and Amber Notes" } ?? "An app and Amber Notes")
-            .accessibilityIdentifier(ai == nil ? "connect.header.unknown" : "connect.header.\(ai!)")
-        } else {
-            AppMark(size: 56)
+    private var sized: some View {
+        #if os(iOS)
+        ScrollView {
+            content
+                .padding(.horizontal, 24)
+                .padding(.top, 32)
+                .padding(.bottom, 16)
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
         }
+        .scrollBounceBehavior(.basedOnSize)
+        .presentationDetents(contentHeight > 0 ? [.height(contentHeight + 24)] : [.medium])
+        .presentationDragIndicator(.visible)
+        #else
+        content.padding(28)
+        #endif
     }
 
     @ViewBuilder
     private var content: some View {
         switch phase {
         case .loading, .working:
-            ProgressView().controlSize(.large).frame(height: 120)
+            ProgressView().controlSize(.large).frame(maxWidth: .infinity).frame(height: 160)
         case .asking(let r):
             asking(r)
         case .done(let name):
-            VStack(spacing: 8) {
-                Label("Connected", systemImage: "checkmark.circle.fill")
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(.green)
-                Text("Go back to \(name) to finish.").foregroundStyle(.secondary)
-            }
-            .accessibilityElement(children: .combine)
+            finished("Go back to \(name) to finish.")
         case .handedOff:
-            VStack(spacing: 8) {
-                Label("Allowed", systemImage: "checkmark.circle.fill")
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(.green)
-                Text("It finishes connecting in your browser.")
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(.secondary)
-            }
-            .accessibilityElement(children: .combine)
+            #if os(macOS)
+            finished("It finishes connecting in your browser.")
+            #else
+            finished("It finishes connecting on your computer.")
+            #endif
         case .failed(let message):
             VStack(spacing: 14) {
+                AppMark(size: 56)
                 Text("Couldn't connect").font(.title3.weight(.semibold))
                 Text(message).multilineTextAlignment(.center).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("connect.failure")
                 Button("Close") { dismiss() }.keyboardShortcut(.cancelAction)
             }
+            .frame(maxWidth: .infinity)
         }
     }
 
-    /// The title. Asked from a browser, nothing about who's asking is confirmed: what it calls
-    /// itself is only a claim.
-    nonisolated static func title(_ r: ConnectRequest) -> String {
-        guard r.isAsked else { return "Allow \(r.who) to use your notes?" }
-        return r.claimedName.map { "An app that says it's \($0) wants to use your notes" } ?? "An app wants to use your notes"
+    private func finished(_ detail: String) -> some View {
+        VStack(spacing: 10) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 52))
+                .foregroundStyle(.green)
+                .accessibilityHidden(true)
+            Text("Connected").font(.title2.weight(.semibold)).accessibilityIdentifier("connect.done")
+            Text(detail).multilineTextAlignment(.center).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .accessibilityElement(children: .combine)
     }
+
+    /// The AI's mark when the return address is its own, a link, our icon.
+    private func marks(_ r: ConnectRequest) -> some View {
+        let ai = r.verifiedAI
+        return HStack(spacing: 14) {
+            if let ai {
+                AITile(ai: ai, size: 56)
+            } else {
+                // An app we can't vouch for: a plain glyph, never a borrowed mark.
+                Image(systemName: r.loopback ? "desktopcomputer" : "globe")
+                    .font(.system(size: 24, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 56, height: 56)
+                    .background(.fill.tertiary, in: .rect(cornerRadius: 56 * 0.3, style: .continuous))
+            }
+            Image(systemName: "link")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(.tertiary)
+            AppMark(size: 56)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(ai.map { "\($0) and Amber Notes" } ?? "An app and Amber Notes")
+        .accessibilityIdentifier(ai == nil ? "connect.header.unknown" : "connect.header.\(ai!)")
+    }
+
+    /// The title: who gets access, by the address it goes to.
+    nonisolated static func title(_ r: ConnectRequest) -> String { "Allow \(r.who) to use your notes?" }
+
+    /// A request by notification: the number both screens show, compared by the person.
+    private func byNumber(_ r: ConnectRequest) -> Bool { r.isAsked && scanned == nil }
 
     private func asking(_ r: ConnectRequest) -> some View {
-        let known = r.verifiedAI != nil
-        return VStack(spacing: 18) {
-            VStack(spacing: 6) {
-                Text(Self.title(r))
-                    .font(.title3.weight(.semibold))
-                    .multilineTextAlignment(.center)
-                Group {
-                    if r.isAsked {
-                        Text("It asks for access to go to \(Text(r.redirect_host).bold()). We can't confirm where access goes.")
-                    } else if let claimed = r.claimedName {
-                        Text("Access goes to \(Text(r.redirect_host).bold()). It calls itself \u{201C}\(claimed)\u{201D}.")
-                    } else {
-                        Text("Access goes to \(Text(r.redirect_host).bold()).")
-                    }
-                }
-                .foregroundStyle(.secondary)
+        VStack(spacing: 0) {
+            marks(r)
+            Text(Self.title(r))
+                .font(.title2.weight(.semibold))
                 .multilineTextAlignment(.center)
-                .accessibilityIdentifier("connect.destination")
-                // Asked from a browser: when, and in what, so a request you didn't start stands out.
-                if let line = r.requestedLine() {
-                    Text(line)
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .accessibilityIdentifier("connect.requested")
-                }
-            }
-
-            // An app that asked only to read can't be given more.
-            let canEdit = Binding(get: { write && r.wants_write }, set: { write = $0 })
-            Picker("Access", selection: canEdit) {
-                Text("Read and Edit").tag(true)
-                Text("Read Only").tag(false)
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .disabled(!r.wants_write)
-            .accessibilityIdentifier("connect.access")
-
-            Text((canEdit.wrappedValue ? "It can read, create and change your notes. Every change keeps the previous version." : "It can read your notes, but not change them.")
-                 + " While it's connected, it can read everything you keep here except locked notes.")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(minHeight: 40, alignment: .top)
-
-            if r.isAsked {
-                numbers(r)
-            } else {
-                Label(known ? "Only allow this if you just started connecting \(r.who)." :
-                        "Amber Notes doesn't recognize this app. Only allow it if you just started connecting it yourself.",
-                      systemImage: known ? "info.circle" : "exclamationmark.triangle.fill")
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 18)
+                .accessibilityIdentifier("connect.title")
+            if r.verifiedAI == nil {
+                Label("Amber Notes doesn't recognize this app. Only allow it if you just started connecting it.",
+                      systemImage: "exclamationmark.triangle.fill")
                     .font(.footnote)
-                    .foregroundStyle(known ? AnyShapeStyle(.secondary) : AnyShapeStyle(.orange))
+                    .foregroundStyle(.orange)
                     .multilineTextAlignment(.leading)
-
-                HStack(spacing: 12) {
-                    Button { Task { await decide(r, allow: false) } } label: {
-                        Text("Don't Allow").frame(maxWidth: .infinity)
-                    }
-                    .keyboardShortcut(.cancelAction)
-                    .controlSize(.large)
-                    .accessibilityIdentifier("connect.deny")
-                    Button { Task { await decide(r, allow: true) } } label: {
-                        Text("Allow").frame(maxWidth: .infinity)
-                    }
-                    .keyboardShortcut(.defaultAction)
-                    .buttonStyle(.amberProminent)
-                    .controlSize(.large)
-                    .disabled(!armed)
-                    .accessibilityIdentifier("connect.allow")
-                }
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 10)
+                    .accessibilityIdentifier("connect.unknown")
             }
-        }
-    }
-
-    /// Asked from a browser: type the two digits the page shows. The right ones allow (after
-    /// Face ID or Touch ID); any others decline.
-    @ViewBuilder
-    private func numbers(_ r: ConnectRequest) -> some View {
-        VStack(spacing: 12) {
-            Label(match == nil ? "Waiting for your browser to show a number\u{2026}" :
-                    "Only continue if you just started connecting an AI in your browser. Type the number it shows.",
-                  systemImage: "exclamationmark.triangle.fill")
-                .font(.footnote)
-                .foregroundStyle(.orange)
-                .multilineTextAlignment(.leading)
-                .accessibilityIdentifier("connect.matchHint")
-            if match != nil {
-                typedDigits
-                keypad
-            } else {
-                ProgressView().frame(height: 44)
-            }
-            HStack(spacing: 12) {
-                Button { Task { await decide(r, allow: false) } } label: {
-                    Text("Don't Allow").frame(maxWidth: .infinity)
-                }
-                .keyboardShortcut(.cancelAction)
-                .controlSize(.large)
-                .accessibilityIdentifier("connect.deny")
-                Button { Task { await entered(r) } } label: {
+            if byNumber(r) { number.padding(.top, 20) }
+            VStack(spacing: 4) {
+                Button { Task { await decide(r, allow: true) } } label: {
                     Text("Allow").frame(maxWidth: .infinity)
                 }
                 .keyboardShortcut(.defaultAction)
                 .buttonStyle(.amberProminent)
                 .controlSize(.large)
-                .disabled(!armed || match == nil || typed.count < 2)
+                .disabled(!armed || (byNumber(r) && match == nil))
                 .accessibilityIdentifier("connect.allow")
+                Button("Don\u{2019}t Allow") { Task { await decide(r, allow: false) } }
+                    .keyboardShortcut(.cancelAction)
+                    .frame(minHeight: 44)
+                    .accessibilityIdentifier("connect.deny")
             }
+            .padding(.top, 24)
+            options(r)
         }
     }
 
-    /// The two boxes the digits go in.
-    private var typedDigits: some View {
-        HStack(spacing: 10) {
-            ForEach(0 ..< 2, id: \.self) { i in
-                let digit = i < typed.count ? String(Array(typed)[i]) : ""
-                Text(digit.isEmpty ? " " : digit)
-                    .font(.system(size: 28, weight: .semibold, design: .rounded))
+    /// Asked by notification: the two digits the page shows, to compare.
+    @ViewBuilder
+    private var number: some View {
+        VStack(spacing: 6) {
+            if let match {
+                Text(match.number)
+                    .font(.system(size: 52, weight: .semibold, design: .rounded))
                     .monospacedDigit()
-                    .frame(width: 48, height: 56)
-                    .background(.fill.tertiary, in: .rect(cornerRadius: 12, style: .continuous))
+                    .accessibilityLabel("Number \(match.number.map(String.init).joined(separator: " "))")
+                    .accessibilityIdentifier("connect.number")
+                Text("Allow only if your computer shows the same number.")
+            } else {
+                ProgressView().frame(height: 62)
+                Text("Waiting for your computer\u{2026}")
             }
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(typed.isEmpty ? "No digits typed" : "Typed \(typed.map(String.init).joined(separator: " "))")
-        .accessibilityIdentifier("connect.typed")
+        .font(.callout)
+        .foregroundStyle(.secondary)
+        .multilineTextAlignment(.center)
+        .fixedSize(horizontal: false, vertical: true)
     }
 
-    /// A numeric keypad. On a Mac the number keys and Delete type too.
-    private var keypad: some View {
-        let keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "delete"]
-        return LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
-            ForEach(keys, id: \.self) { key in
-                if key.isEmpty {
-                    Color.clear.frame(height: 44)
-                } else {
-                    Button { typed = ConnectMatch.typing(typed, key) } label: {
-                        Group {
-                            if key == "delete" {
-                                Image(systemName: "delete.left").font(.title3)
-                            } else {
-                                Text(key).font(.title2.weight(.medium)).monospacedDigit()
+    /// Access and where it goes, out of the way: most people keep what the app asked for.
+    private func options(_ r: ConnectRequest) -> some View {
+        let canEdit = Binding(get: { write && r.wants_write }, set: { write = $0 })
+        return DisclosureGroup(isExpanded: $showOptions) {
+            VStack(alignment: .leading, spacing: 10) {
+                // Segments don't grow with the largest text sizes; a menu does.
+                Group {
+                    if typeSize.isAccessibilitySize {
+                        // Segments and menus don't fit the largest text sizes: a choice per line does.
+                        VStack(alignment: .leading, spacing: 8) {
+                            ForEach([true, false], id: \.self) { edit in
+                                Button { canEdit.wrappedValue = edit } label: {
+                                    Label(edit ? "Read and edit" : "Read only",
+                                          systemImage: canEdit.wrappedValue == edit ? "checkmark.circle.fill" : "circle")
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(.primary)
+                                .accessibilityAddTraits(canEdit.wrappedValue == edit ? .isSelected : [])
                             }
                         }
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                        .contentShape(.rect)
+                    } else {
+                        Picker("Access", selection: canEdit) {
+                            Text("Read and edit").tag(true)
+                            Text("Read only").tag(false)
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
                     }
-                    .buttonStyle(.bordered)
-                    .keyboardShortcut(key == "delete" ? KeyEquivalent.delete : KeyEquivalent(Character(key)), modifiers: [])
-                    .disabled(!armed)
-                    .accessibilityLabel(key == "delete" ? "Delete" : key)
-                    .accessibilityIdentifier("connect.key.\(key)")
+                }
+                .disabled(!r.wants_write)
+                .accessibilityIdentifier("connect.access")
+                Text(canEdit.wrappedValue ? "It can read, create and change notes. Every change keeps the previous version." :
+                        "It can read notes, but not change them.")
+                Text("Access goes to \(Text(r.redirect_host).bold()). Locked notes stay private.")
+                    .accessibilityIdentifier("connect.destination")
+                if let line = r.requestedLine() {
+                    Text(line).accessibilityIdentifier("connect.requested")
                 }
             }
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.top, 8)
+        } label: {
+            Text(canEdit.wrappedValue ? "Options: read and edit" : "Options: read only")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
         }
+        .tint(.secondary)
+        .padding(.top, 6)
+        .accessibilityIdentifier("connect.options")
     }
 
     private func load() async {
         do {
             let r = try await ConnectAPI.request(client, id: requestID)
+            // Someone who just started connecting expects their AI to work.
             write = r.startsWithWrite
             phase = .asking(r)
-            if r.isAsked { await loadMatch(r) }
+            await opened(r)
         } catch {
             phase = .failed(error.localizedDescription)
         }
+    }
+
+    /// A request asked from a browser: scanned, its key checked against the code; otherwise by
+    /// notification, with the number.
+    private func opened(_ r: ConnectRequest) async {
+        guard r.isAsked, match == nil, scanned == nil else { return }
+        if let scan, r.scan == true {
+            guard let key = r.browser_key.flatMap({ Data(base64Encoded: $0) }), scan.holds(browserKey: key) else {
+                phase = .failed(ConnectMatchCopy.rescan)
+                return
+            }
+            scanned = (scan, key)
+            return
+        }
+        await loadMatch(r)
     }
 
     /// Writes this device's nonce on the ask, then reads the ask about every second until the page
@@ -1292,7 +1297,6 @@ struct ConsentSheet: View {
             // Answering already reads the ask again itself.
             guard case .asking = phase, match == m else { return }
             match = nil
-            typed = ""
             if seen == .changed {
                 await decide(r, allow: false, declined: ConnectMatchCopy.changedWhileAnswering)
             } else {
@@ -1306,22 +1310,10 @@ struct ConsentSheet: View {
         }
     }
 
-    /// Allow, with two digits typed: the page's number allows; any other declines, and the server
-    /// is told it was a wrong number (unless the ask changed meanwhile: then it's declined as that).
-    private func entered(_ r: ConnectRequest) async {
-        guard armed, let match, typed.count == 2 else { return }
-        guard typed == match.number else {
-            typed = ""
-            await decide(r, allow: false, declined: ConnectMatchCopy.wrongNumber, wrongNumber: true)
-            return
-        }
-        await decide(r, allow: true)
-    }
-
-    private func decide(_ r: ConnectRequest, allow: Bool, declined: String? = nil, wrongNumber: Bool = false) async {
+    private func decide(_ r: ConnectRequest, allow: Bool, declined: String? = nil) async {
         // Handing over the key to your notes takes you, not just a click.
         if allow {
-            guard armed else { return }
+            guard armed, !byNumber(r) || match != nil else { return }
             guard canConfirm() else {
                 phase = .failed("Turn on a passcode, Face ID or Touch ID on this device to connect an AI.")
                 return
@@ -1332,10 +1324,11 @@ struct ConsentSheet: View {
         do {
             answering(r.id)
             // The connection gets its own copy of the account's key, wrapped under a code made here.
-            // Asked from a browser: the code goes to that page, sealed to the key the number was
-            // made from, with the address it goes to; the ask must still be what the number was made from.
-            let answered = try await ConnectAPI.answer(r, allow: allow, write: write && r.wants_write, wrongNumber: wrongNumber,
-                                                       match: r.isAsked ? match : nil, read: { try await askMatch(client, r.id) },
+            // Asked from a browser: the code goes to that page, sealed to its key (checked against
+            // the scanned code, or the key the number was made from), with the address it goes to.
+            let answered = try await ConnectAPI.answer(r, allow: allow, write: write && r.wants_write,
+                                                       match: r.isAsked ? match : nil, scanned: scanned,
+                                                       read: { try await askMatch(client, r.id) },
                                                        code: { try AccountCrypto.shared.connectionCode() }, send: ConnectAPI.sender(client))
             guard case .answered(let answer) = answered else {
                 match = nil
@@ -1586,7 +1579,7 @@ extension View {
 
 /// Step by step for one app. ChatGPT and Claude need only the address; Claude Code and
 /// Codex get a fresh token that's used once here and never shown in a link.
-private struct GuideSheet: View {
+struct GuideSheet: View {
     let guide: ConnectAISection.Guide
     let client: SupabaseClient
     @Environment(\.dismiss) private var dismiss

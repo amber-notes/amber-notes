@@ -91,6 +91,12 @@ describe("the connect pages' CSP", () => {
     expect(policy).toContain("connect-src 'self';");
     expect(policy).not.toContain(SUPABASE);
   });
+
+  it("gives the Dev-only /connect/preview the same strict policy, with no network", async () => {
+    const policy = await csp("/connect/preview?state=scan");
+    expect(policy).toContain("style-src 'self' 'nonce-");
+    expect(policy).toContain("connect-src 'self';");
+  });
 });
 
 describe("the connect pages' referrer", () => {

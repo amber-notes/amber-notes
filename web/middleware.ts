@@ -13,19 +13,21 @@ import { allowedPath, MCP_HOST, sitePath, upstream, upstreamHeaders } from "@/li
 //
 // 2. The connect pages (/connect, and /open/connect where the universal link lands in a browser) get
 //    a per-response nonce, a strict CSP and no referrer. /connect may also call the Supabase project.
+//    The Dev-only /connect/preview gets the same CSP, so what it shows is what /connect can render.
 
 export const config = {
   matcher: [
     { source: "/:path*", has: [{ type: "host", value: "mcp\\.ambernotes\\.app" }] },
     "/connect",
     "/open/connect",
+    "/connect/preview",
   ],
 };
 
 export async function middleware(req: NextRequest) {
   const host = (req.headers.get("host") ?? "").toLowerCase();
   if (host === MCP_HOST) return proxy(req);
-  if (req.nextUrl.pathname === "/connect" || req.nextUrl.pathname === "/open/connect") return connectPage(req);
+  if (["/connect", "/open/connect", "/connect/preview"].includes(req.nextUrl.pathname)) return connectPage(req);
   return NextResponse.next();
 }
 

@@ -46,6 +46,13 @@ struct WebConnectPlan: Equatable {
         }
     }
 
+    /// The page shows a code to scan; on a Mac it also opens Amber Notes here.
+    #if os(macOS)
+    static let allowStep = "Choose Open Amber Notes on this Mac, or scan the code with your iPhone. Then choose Allow."
+    #else
+    static let allowStep = "Scan the code it shows with this iPhone, then choose Allow."
+    #endif
+
     static let testPrompt = "Search my Amber Notes and tell me what I wrote most recently."
 
     static let chatgpt = WebConnectPlan(
@@ -55,7 +62,7 @@ struct WebConnectPlan: Equatable {
             "Turn on Developer mode in Settings, Security and login (once).",
             "In Plugins, choose + and name it Amber Notes.",
             "Paste the address, choose OAuth, then Create.",
-            "Allow Amber Notes to open, then choose Allow.",
+            allowStep,
         ],
         plans: "Needs ChatGPT Plus, Pro, Business, Enterprise or Edu, on the web.",
         testPrompt: testPrompt,
@@ -68,7 +75,7 @@ struct WebConnectPlan: Equatable {
         steps: [
             "Claude opens Add custom connector with Amber Notes filled in. Choose Add.",
             "Choose Connect.",
-            "Allow Amber Notes to open, then choose Allow.",
+            allowStep,
         ],
         plans: "Works on every Claude plan; Free includes one custom connector. On Team and Enterprise, an Owner adds it.",
         testPrompt: testPrompt,
@@ -83,7 +90,7 @@ struct WebConnectPlan: Equatable {
     }
 
     /// A new chat with the question typed in. Not documented by either app, so the question is
-    /// also copied (see ConnectedSection).
+    /// also copied (see WebConnectGuide.tryIt).
     static func prefilled(_ page: String, _ prompt: String) -> URL {
         var c = URLComponents(string: page)!
         c.queryItems = [URLQueryItem(name: "q", value: prompt)]
@@ -150,13 +157,15 @@ final class ConnectWatch {
 
 // MARK: The guide
 
-/// Connect ChatGPT or Claude: one button, the steps, the address, then "connected".
+/// Connect ChatGPT or Claude: three steps that tick themselves as it happens. Add Amber Notes in
+/// the AI, allow it here, ask the AI something.
 struct WebConnectGuide: View {
     let plan: WebConnectPlan
     let client: SupabaseClient
     /// Mac: opens the floating steps, and closes the sheet this sits in.
     var popOut: (() -> Void)? = nil
     @State private var watch: ConnectWatch
+    @State private var center = ConnectCenter.shared
     @State private var copied = false
     @State private var started: Bool
     @Environment(\.openURL) private var openURL
@@ -175,20 +184,24 @@ struct WebConnectGuide: View {
 
     private var server: String { BackendConfig.mcpPublicURL?.absoluteString ?? "" }
 
+    /// 0: add it in the AI. 1: the request is here, allow it. 2: connected.
+    private var stage: Int {
+        if watch.isConnected { return 2 }
+        return center.pending != nil ? 1 : 0
+    }
+
     var body: some View {
         Group {
-            if watch.isConnected {
-                ConnectedSection(plan: plan)
-            } else {
-                #if os(iOS)
-                onAComputer
-                #else
-                start
-                #endif
-                stepsSection
-                addressSection
+            Section {
+                step(0, "Add Amber Notes in \(plan.ai)", detail: addDetail) { addButton }
+                step(1, Self.allowLine, detail: nil) { EmptyView() }
+                step(2, "Ask \(plan.ai) about your notes", detail: nil) { tryIt }
+            } footer: {
+                Text(stage == 2 ? "It works in the \(plan.ai) app on your phone too." : plan.plans)
             }
+            if stage < 2 { addressSection }
         }
+        .animation(.smooth(duration: 0.3), value: stage)
         .task { await watch.run(client: client) }
         // The approval comes to this device: it looks for it every couple of seconds while the
         // guide is open, and may notify (asked now, so the push shows if the app goes away).
@@ -207,72 +220,97 @@ struct WebConnectGuide: View {
     }
 
     #if os(iOS)
-    /// iPhone: custom apps are added on the web, once. Say so up front.
-    private var onAComputer: some View {
-        Section {
-            Label {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Takes a minute on a computer, once.").font(.body.weight(.semibold))
-                    Text("Then Amber Notes works in the \(plan.ai) app on your phone too.").foregroundStyle(.secondary)
-                }
-            } icon: {
-                Image(systemName: "laptopcomputer").foregroundStyle(.tint)
-            }
-            ShareLink(item: plan.message(server: server), subject: Text("Connect \(plan.ai) to Amber Notes")) {
-                Label("Send Steps to Yourself", systemImage: "paperplane")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.amberProminent)
-            .controlSize(.large)
-            .accessibilityIdentifier("connect.sendSteps")
-        } footer: {
-            Text("\(plan.plans) On a Mac with Amber Notes, Handoff brings this guide with you.")
-        }
-    }
+    static let allowLine = "Scan the code on your computer with this iPhone, then choose Allow"
+    #else
+    static let allowLine = "Choose Open Amber Notes on this Mac, then Allow"
     #endif
 
-    /// The one button: copy the address, open the right page, keep the steps in view.
-    private var start: some View {
-        Section {
-            Button {
-                copy()
-                openURL(plan.setupPage(server: server))
-                started = true
-                popOut?()
-            } label: {
-                Label(started ? "Open \(plan.ai) Again" : plan.prefills ? "Add to \(plan.ai)" : "Copy Address and Open \(plan.ai)", systemImage: "arrow.up.forward.app")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.amberProminent)
-            .controlSize(.large)
-            .accessibilityIdentifier("connect.open")
-            if started {
-                Label("Waiting for you to choose Allow…", systemImage: "hourglass")
-                    .foregroundStyle(.secondary)
-                    .accessibilityIdentifier("connect.waiting")
-            }
-        } footer: {
-            Text(plan.plans)
-        }
+    /// What adding takes, while it's the step at hand: one line for Claude, the steps for ChatGPT.
+    private var addDetail: String? {
+        #if os(iOS)
+        "On a computer, once. Then it works on your phone too."
+        #else
+        plan.prefills ? nil : plan.steps.dropLast().joined(separator: " ")
+        #endif
     }
 
-    private var stepsSection: some View {
-        Section("In \(plan.ai)") {
-            ForEach(Array(plan.steps.enumerated()), id: \.offset) { i, line in
-                ConnectStep(number: i + 1, text: line)
-            }
+    /// iPhone: custom AIs are added on the web, so the link goes to the computer. Mac: open it.
+    @ViewBuilder
+    private var addButton: some View {
+        #if os(iOS)
+        ShareLink(item: plan.message(server: server), subject: Text("Connect \(plan.ai) to Amber Notes")) {
+            Label("Send Link to My Computer", systemImage: "paperplane").frame(maxWidth: .infinity)
         }
+        .buttonStyle(.amberProminent)
+        .controlSize(.large)
+        .accessibilityIdentifier("connect.sendSteps")
+        #else
+        Button {
+            copy()
+            openURL(plan.setupPage(server: server))
+            started = true
+            popOut?()
+        } label: {
+            Label(started ? "Open \(plan.ai) Again" : plan.prefills ? "Add to \(plan.ai)" : "Copy Address and Open \(plan.ai)",
+                  systemImage: "arrow.up.forward.app")
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.amberProminent)
+        .controlSize(.large)
+        .accessibilityIdentifier("connect.open")
+        #endif
     }
 
+    private var tryIt: some View {
+        Button {
+            // The question is copied too, in case the chat opens empty.
+            ConnectClipboard.set(plan.testPrompt)
+            openURL(plan.testPage)
+        } label: {
+            Label("Try It in \(plan.ai)", systemImage: "arrow.up.forward.app").frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.amberProminent)
+        .controlSize(.large)
+        .accessibilityIdentifier("connect.tryIt")
+    }
+
+    /// One step: a number that becomes a check, the line, and its button while it's the one at hand.
+    private func step(_ i: Int, _ text: String, detail: String?, @ViewBuilder action: () -> some View) -> some View {
+        let done = stage > i, now = stage == i
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Image(systemName: done ? "checkmark.circle.fill" : now ? "\(i + 1).circle.fill" : "\(i + 1).circle")
+                    .font(.title3)
+                    .foregroundStyle(done ? AnyShapeStyle(.green) : now ? AnyShapeStyle(.tint) : AnyShapeStyle(.tertiary))
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(text)
+                        .fontWeight(now ? .semibold : .regular)
+                        .foregroundStyle(now ? .primary : .secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if now, let detail {
+                        Text(detail).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                Spacer(minLength: 0)
+                if now && i == 1 { ProgressView().accessibilityIdentifier("connect.waiting") }
+            }
+            if now { action() }
+        }
+        .padding(.vertical, 4)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(done ? "Done: \(text)" : text)
+        .accessibilityIdentifier(done && i == 1 ? "connect.connected" : "connect.step.\(i)")
+    }
+
+    /// The address, for adding it by hand. It holds no password.
     private var addressSection: some View {
         Section {
-            Text(server).font(.system(.callout, design: .monospaced)).textSelection(.enabled)
-            Button(copied ? "Copied" : "Copy Address", systemImage: copied ? "checkmark" : "doc.on.doc") { copy() }
-                .accessibilityIdentifier("connect.copyAddress")
-        } header: {
-            Text("Server address")
-        } footer: {
-            Text("The address holds no password. Access is granted only when you choose Allow in Amber Notes.")
+            DisclosureGroup("Server Address") {
+                Text(server).font(.system(.callout, design: .monospaced)).textSelection(.enabled)
+                Button(copied ? "Copied" : "Copy Address", systemImage: copied ? "checkmark" : "doc.on.doc") { copy() }
+                    .accessibilityIdentifier("connect.copyAddress")
+            }
         }
     }
 
@@ -292,46 +330,6 @@ struct ConnectStep: View {
             Text(text)
         }
         .accessibilityElement(children: .combine)
-    }
-}
-
-/// "ChatGPT is connected", and a first thing to ask it.
-struct ConnectedSection: View {
-    let plan: WebConnectPlan
-    @State private var copied = false
-    @Environment(\.openURL) private var openURL
-
-    var body: some View {
-        Section {
-            HStack(spacing: 12) {
-                AITile(ai: plan.ai, size: 40)
-                Image(systemName: "checkmark.circle.fill").font(.title2).foregroundStyle(.green)
-                AppMark(size: 40)
-            }
-            .frame(maxWidth: .infinity)
-            .accessibilityHidden(true)
-            Text("\(plan.ai) is connected")
-                .font(.title3.weight(.semibold))
-                .frame(maxWidth: .infinity)
-                .accessibilityIdentifier("connect.connected")
-        }
-        Section {
-            Text("“\(plan.testPrompt)”").foregroundStyle(.primary)
-            Button("Try It in \(plan.ai)", systemImage: "arrow.up.forward.app") {
-                // The question is copied too, in case the chat opens empty.
-                ConnectClipboard.set(plan.testPrompt)
-                openURL(plan.testPage)
-            }
-                .accessibilityIdentifier("connect.tryIt")
-            Button(copied ? "Copied" : "Copy Question", systemImage: copied ? "checkmark" : "doc.on.doc") {
-                ConnectClipboard.set(plan.testPrompt)
-                withAnimation(.snappy) { copied = true }
-            }
-        } header: {
-            Text("Try it")
-        } footer: {
-            Text("It works in the \(plan.ai) app on your phone too. You can disconnect it in Settings any time.")
-        }
     }
 }
 
@@ -399,7 +397,7 @@ enum IncredibleConnect {
     static let steps = [
         "Open Apps and search for Amber Notes.",
         "Choose Connect. Your browser opens Amber Notes.",
-        "Allow Amber Notes to open, then choose Allow.",
+        "Scan the code it shows with your iPhone (or open Amber Notes on this Mac), then choose Allow.",
         "Back in Incredible, choose Let's go.",
     ]
 
@@ -407,7 +405,7 @@ enum IncredibleConnect {
     static let olderVersion = "If Amber Notes isn't in Apps, add it as your own MCP server: choose Add it here at the bottom of Apps (or Add another MCP server), paste the address, choose Continue, then Sign in. After you choose Allow, choose Add server."
 
     /// What Amber Notes shows when Incredible asks, since it can't name Incredible for sure.
-    static let consentNote = "Amber Notes asks to allow an app on this computer that calls itself \u{201C}incredible\u{201D}. It can't prove which app that is, so only allow it if you just chose Connect. Pick Read Only if Incredible should only look things up, then choose Allow."
+    static let consentNote = "Amber Notes asks to allow an app on this computer that calls itself \u{201C}incredible\u{201D}. It can't prove which app that is, so only allow it if you just chose Connect. Choose Allow. Options has Read only, if Incredible should only look things up."
 
     /// The newest sign-in that went back to an app on the person's own computer since the guide
     /// opened. That's where Incredible's answer goes; the name it registered decides nothing.
@@ -423,7 +421,7 @@ enum IncredibleConnect {
     static func message(server: String) -> String {
         var lines = ["Connect Incredible to Amber Notes (in Incredible on your computer, once):", ""]
         for (i, s) in steps.enumerated() { lines.append("\(i + 1). \(s)") }
-        lines += ["", "On a Windows PC, sign in on the Amber Notes page that opens and choose Allow there.",
+        lines += ["", "On a Windows PC, scan the code on the Amber Notes page that opens with your iPhone, then choose Allow.",
                   "", olderVersion, "", "Address:", server]
         return lines.joined(separator: "\n")
     }

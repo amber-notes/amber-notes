@@ -5,24 +5,29 @@
 // /connect/label); neither is verified, so neither is shown as a title. Your notes' key is on
 // your devices (and in the AI connections you approved), so approving happens on a device:
 //
-// 1. You sign in on the page, only so it knows which account to ask. It makes a P-256 key pair,
-//    a pickup secret and a 16-byte nonce Np (all stay in the page's memory), sends the public half,
-//    the secret's hash and match_commit (matchCommit of the public key and Np) to /connect/ask with
-//    this browser's name ("Chrome on a Mac"), and signs out straight away.
-//    When the device opens the request it sends its own nonce Nd, which /connect/status passes on
-//    as device_nonce. Only then does the page reveal Np (/connect/reveal, once) and show two digits,
-//    matchNumber(public key, Np, Nd, request). You type them on the device, which checks the commit
-//    and gets the same number only for the page's own key, so a key swapped on the way shows.
-// 2. Your iPhone or Mac asks you. Allow there seals the authorization code and the AI's redirect,
-//    together, to the page's key. The page polls /connect/status with the pickup secret, opens the
-//    handoff and goes only to the redirect sealed inside it, with the code added.
-//    "Open Amber Notes" is a shortcut to the same question in the app on this computer, with the
-//    universal link https://ambernotes.app/open/connect?request=<id> (when that stays in the
-//    browser, /open/connect tries the app's own scheme, ambernotes://connect?request=<id>).
-// 3. No device nearby: the recovery key. The page signs in again, reads the account's key row
-//    (the recovery wrap and verifier), opens the notes' key with the typed recovery key in the
-//    browser, makes the code, wraps the notes' key under it and sends /connect/decide the code's
-//    hash and wrap. The recovery key and the notes' key never leave the page (lib/connect-flow.ts).
+// 1. The page shows a QR code. On load it makes a P-256 key pair and a pickup secret (both stay in
+//    the page's memory) and a scan secret, and sends /connect/scan the public key, both secrets'
+//    hashes and this browser's name ("Chrome on a Mac"), with no session. The code is the universal
+//    link https://ambernotes.app/open/connect?request=<id>#s=<scan secret>&k=<key fingerprint>; the
+//    fragment never reaches a server. Your iPhone scans it, checks the page's key against k, and
+//    answers /connect/decide with the scan secret: scanning proves you're there, so no sign-in and
+//    no number. On a Mac, "Open Amber Notes on this Mac" is the same link in the app's own scheme
+//    (ambernotes://connect?request=<id>#s=…&k=…). When the universal link stays in a browser,
+//    /open/connect tries that scheme with the fragment kept.
+// 2. "Get a notification instead": you sign in, only so the page knows which account to ask. It
+//    sends /connect/ask the same public key and pickup hash (so the code keeps working), with
+//    match_commit (matchCommit of the key and a 16-byte nonce Np), and signs out straight away.
+//    When the device opens the request it sends its own nonce Nd, which /connect/status passes on as
+//    device_nonce. Only then does the page reveal Np (/connect/reveal, once) and show two digits,
+//    matchNumber(public key, Np, Nd, request), to compare with the device's before choosing Allow.
+//    The device gets the same number only for the page's own key, so a key swapped on the way shows.
+//    Either way, Allow seals the authorization code and the AI's redirect, together, to the page's
+//    key. The page polls /connect/status with the pickup secret, opens the handoff and goes only to
+//    the redirect sealed inside it, with the code added.
+// 3. No iPhone: the recovery key. The page signs in, reads the account's key row (the recovery wrap
+//    and verifier), opens the notes' key with the typed recovery key in the browser, makes the code,
+//    wraps the notes' key under it and sends /connect/decide the code's hash and wrap. The recovery
+//    key and the notes' key never leave the page (lib/connect-flow.ts).
 //
 // The session lives only in the page's memory and travels only in an Authorization header, to
 // Supabase Auth, the account_keys row and the MCP function. No cookie, nothing in storage, except
@@ -38,6 +43,15 @@ export const universalLink = (id: string) => `https://ambernotes.app/open/connec
 
 /// The app's own scheme, for when the universal link stays in the browser.
 export const appLink = (id: string) => `ambernotes://connect?request=${id.toLowerCase()}`;
+
+/// The scan secret and key fingerprint a QR code carries in its fragment (#s=<22>&k=<43>), as
+/// "#s=…&k=…", or null for anything else. The fragment never reaches a server, so /open/connect reads
+/// it in the browser and passes it on to the app's own scheme only in this exact shape.
+const SCAN_FRAGMENT = /^#?s=([A-Za-z0-9_-]{22})&k=([A-Za-z0-9_-]{43})$/;
+export function scanFragment(hash: string | null | undefined): string | null {
+  const m = SCAN_FRAGMENT.exec(hash ?? "");
+  return m ? `#s=${m[1]}&k=${m[2]}` : null;
+}
 
 /// What the page shows about who is asking, from /connect/label. Nothing here is verified: the
 /// name is what the app calls itself, and the host is where access would go.

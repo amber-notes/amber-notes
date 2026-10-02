@@ -109,8 +109,8 @@ import Testing
     }
 }
 
-/// A request asked from a browser elsewhere: no mark or name, number matching, and the address the
-/// code goes to built here exactly as the server builds it.
+/// A request asked from a browser elsewhere: named by where access goes, scanned or number-matched,
+/// and the address the code goes to built here exactly as the server builds it.
 @Suite struct AskedRequestTests {
     private func asked(_ uri: String, claimed: String? = "Claude") -> ConnectRequest {
         ConnectRequest(id: UUID(), client_name: URL(string: uri)!.host()!, redirect_host: URL(string: uri)!.host()!, redirect_uri: uri,
@@ -118,14 +118,14 @@ import Testing
                        state: "s1", iss: "https://mcp.ambernotes.app")
     }
 
-    @Test func anAskedRequestNeverShowsAnAIsMarkOrName() {
+    @Test func anAskedRequestIsNamedByWhereAccessGoes() {
         let r = asked("https://claude.ai/api/mcp/auth_callback")
-        #expect(r.verifiedAI == nil, "even Claude's own callback: whoever asked is the page that waits")
-        #expect(r.who == "claude.ai")
-        #expect(r.claimedName == "Claude", "shown only as what it calls itself")
-        var here = r
-        here.asked = false
-        #expect(here.verifiedAI == "Claude", "the same request by link on this device keeps its mark")
+        #expect(r.verifiedAI == "Claude", "access goes to Claude's own callback")
+        #expect(r.who == "Claude")
+        let other = asked("https://claude.ai.evil.example/cb")
+        #expect(other.verifiedAI == nil)
+        #expect(other.who == "claude.ai.evil.example", "a name an app gives itself is never the title")
+        #expect(other.claimedName == "Claude", "shown only as what it calls itself")
     }
 
     /// Emil connected Claude in his Mac's browser and approved on his iPhone: an asked request,
@@ -154,21 +154,11 @@ import Testing
         #expect(old.handoffRedirect == nil, "a server that doesn't say: nothing to seal")
     }
 
-    @Test func theTitleNeverSaysWhoItIs() {
-        #expect(ConsentSheet.title(asked("https://claude.ai/api/mcp/auth_callback")) == "An app that says it's Claude wants to use your notes")
-        #expect(ConsentSheet.title(asked("https://claude.ai/api/mcp/auth_callback", claimed: nil)) == "An app wants to use your notes")
-        var here = asked("https://claude.ai/api/mcp/auth_callback")
-        here.asked = false
-        #expect(ConsentSheet.title(here) == "Allow Claude to use your notes?")
-    }
-
-    @Test func theKeypadTakesTwoDigits() {
-        var typed = ""
-        for key in ["4", "x", "12", "2", "9"] { typed = ConnectMatch.typing(typed, key) }
-        #expect(typed == "42", "a third digit, and anything but a digit, is ignored")
-        typed = ConnectMatch.typing(typed, "delete")
-        #expect(typed == "4")
-        #expect(ConnectMatch.typing(ConnectMatch.typing("", "delete"), "0") == "0")
+    @Test func theTitleIsOneLineNamingWhoGetsAccess() {
+        #expect(ConsentSheet.title(asked("https://claude.ai/api/mcp/auth_callback")) == "Allow Claude to use your notes?")
+        #expect(ConsentSheet.title(asked("https://helper.example/cb", claimed: "ChatGPT")) == "Allow helper.example to use your notes?")
+        let local = ConnectRequest(id: UUID(), client_name: "x", redirect_host: "127.0.0.1", redirect_uri: "http://127.0.0.1:4000/cb", loopback: true, wants_write: true)
+        #expect(ConsentSheet.title(local) == "Allow an app on this computer to use your notes?")
     }
 
     @MainActor @Test func aDeviceWritesOneNoncePerRequestAndCommit() {
@@ -689,3 +679,53 @@ extension AIEditSnapshots {
     }
 }
 #endif
+
+
+/// The page's QR code: what it carries, and the key check before anything is sealed.
+@Suite struct ConnectScanTests {
+    static let id = "5a0f6c1e-2b1d-4c36-9e0a-6b6f0c1a2b3c"
+    static let key = Data([4] + Array(repeating: 7, count: 64))
+    static var keyHash: String { ConnectScan.base64url(Data(SHA256.hash(data: key))) }
+
+    @Test func theLinkCarriesTheSecretAndTheKeyHashInItsFragment() throws {
+        let secret = "AbCdEfGhIjKlMnOpQrSt_-"
+        for base in ["https://ambernotes.app/open/connect", "ambernotes://connect"] {
+            let url = try #require(URL(string: "\(base)?request=\(Self.id)#s=\(secret)&k=\(Self.keyHash)"))
+            #expect(ConnectLink.requestID(from: url)?.uuidString.lowercased() == Self.id)
+            let scan = try #require(ConnectScan(url: url))
+            #expect(scan.secret == secret)
+            #expect(scan.holds(browserKey: Self.key))
+            #expect(!scan.holds(browserKey: Data([4] + Array(repeating: 8, count: 64))), "another page's key")
+        }
+        for bad in ["", "#s=short&k=\(Self.keyHash)", "#s=\(secret)", "#k=\(Self.keyHash)&s=\(secret)x", "#s=\(secret)&k=\(Self.keyHash)!"] {
+            #expect(ConnectScan(url: URL(string: "https://ambernotes.app/open/connect?request=\(Self.id)\(bad)")!) == nil, "\(bad)")
+        }
+    }
+
+    @MainActor @Test func aScannedLinkIsRememberedForItsRequest() throws {
+        let center = ConnectCenter()
+        let url = try #require(URL(string: "ambernotes://connect?request=\(Self.id)#s=AbCdEfGhIjKlMnOpQrSt_-&k=\(Self.keyHash)"))
+        center.receive(url)
+        #expect(center.scans[UUID(uuidString: Self.id)!]?.secret == "AbCdEfGhIjKlMnOpQrSt_-")
+        center.clearAsks()
+        #expect(center.scans.isEmpty)
+    }
+
+    /// The answer carries the secret, and seals the code to the page's key; no number is involved.
+    @MainActor @Test func aScannedAnswerSendsTheSecretAndSealsToThePage() async throws {
+        final class Sent: @unchecked Sendable { var body: [String: Any] = [:] }
+        let sent = Sent()
+        let r = ConnectRequest(id: UUID(uuidString: Self.id)!, client_name: "Claude", redirect_host: "claude.ai",
+                               redirect_uri: "https://claude.ai/api/mcp/auth_callback", loopback: false, wants_write: true,
+                               asked: true, state: "s1", iss: "https://mcp.ambernotes.app", scan: true)
+        let page = P256.KeyAgreement.PrivateKey()
+        let scan = try #require(ConnectScan(url: URL(string: "ambernotes://connect?request=\(Self.id)#s=AbCdEfGhIjKlMnOpQrSt_-&k=\(ConnectScan.base64url(Data(SHA256.hash(data: page.publicKey.x963Representation))))")!))
+        #expect(scan.holds(browserKey: page.publicKey.x963Representation))
+        let answered = try await ConnectAPI.answer(r, allow: true, write: true, match: nil, scanned: (scan, page.publicKey.x963Representation),
+                                                   read: { nil }, code: { ("amb_code_1", String(repeating: "a", count: 64), "amb2.0000000000000000.AAAA") },
+                                                   send: { _, _, body in sent.body = body ?? [:]; return try JSONSerialization.data(withJSONObject: ["handoff": true]) })
+        #expect(answered == .answered(.handedOff))
+        #expect(sent.body["scan"] as? String == "AbCdEfGhIjKlMnOpQrSt_-")
+        #expect((sent.body["handoff"] as? String)?.hasPrefix("amb2h.") == true)
+    }
+}
