@@ -51,12 +51,9 @@ export function Figure({ shot, caption, priority, ground = "soft" }: { shot: Sho
 /// A card's picture: the post's one focal capture on its ground, filling the top of the card edge to
 /// edge (the card's corners clip it) and running off the bottom. Shown at about full size, with a
 /// short alt so image search knows what the picture shows.
-/// A capture taller than the picture (88% of its width, 20 px down a 16:10 frame, about 0.57 of
-/// the width with room for the gap) runs off its bottom edge, so it is drawn square there.
 export function ThumbArt({ thumb }: { thumb: Thumb }) {
-  const runsOff = (0.88 * thumb.height) / thumb.width > 0.55;
   return (
-    <div className={`${b.thumb} ${b.ground}`} data-ground={thumb.ground} data-runs-off={runsOff || undefined}>
+    <div className={`${b.thumb} ${b.ground}`} data-ground={thumb.ground}>
       <img src={thumb.src} alt={thumb.alt} width={thumb.width / 2} height={thumb.height / 2} loading="lazy" decoding="async" />
     </div>
   );
@@ -73,6 +70,7 @@ export function PostCard({ post, heading = "h2" }: { post: Post; heading?: "h2" 
     <a className={b.card} href={`/blog/${post.slug}`} data-category={categoryAnchor(post.category)}>
       <ThumbArt thumb={post.thumb} />
       <span className={b.cardText}>
+        <span className={b.label}>{post.category}</span>
         <H className={b.cardTitle}>{post.title}</H>
         <span className={b.excerpt}>{post.excerpt}</span>
         <span className={b.byline}>

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { PostCard } from "./blog";
-import { categories, categoryPath, newestFirst, pageCount, pageOf, pagePath, published, type Category } from "./posts";
+import { categories, categoryPath, newestFirst, pageCount, pageOf, pagePath, published, type Category, type Ground } from "./posts";
 import { pageMetadata } from "./site";
 import { JsonLd, breadcrumbs, maker, incredible, organization } from "./structured-data";
 import home from "../app/home.module.css";
@@ -19,6 +19,18 @@ const ABOUT: Record<Category, string> = {
   "Comparisons": "Notes apps compared fairly: Apple Notes, Notion, Obsidian, and the ones ChatGPT and Claude can use.",
   "Building Amber Notes": "How Amber Notes is built: encryption, AI access, and the decisions behind them.",
 };
+
+/// Each post's ground as a dot on its category's chip: the ground's own hue, deepened so it reads at
+/// 12 px on the cream page the way the templates' cover colours do (the card tints are too pale).
+const DOT: Record<Ground, string> = {
+  paper: "#cfae7c", soft: "#e6b678", tint: "#eeb05f", amber: "#e8891e", leaf: "#3e200b", dark: "#3a3a3c", dunes: "#eea24e",
+  ink: "#3a2716", peach: "#f0a46a", cream: "#e2c79f", sand: "#d9b98a", clay: "#d98a5c", mist: "#b5aa9d", honey: "#edb544",
+  sage: "#a6b47e", heather: "#b597ad", blush: "#df9a88", wheat: "#d6b468", fog: "#9fb0a9", dusk: "#a493bf", pearl: "#c2b49c",
+  linen: "#bc9a68", night: "#2c2a33", rose: "#d996a8", mint: "#86bf9f", sky: "#8eaed6",
+};
+
+/// The first three distinct dots of a category's newest posts, as the templates chips show theirs.
+const swatch = (c: Category) => [...new Set(newestFirst().filter((p) => p.category === c).map((p) => DOT[p.thumb.ground]))].slice(0, 3);
 
 type List = { category: Category | null; base: string; posts: ReturnType<typeof published> };
 
@@ -51,7 +63,7 @@ export function BlogIndex({ category, page }: { category: Category | null; page:
   const crumbs = [{ name: "Blog", path: "/blog" }];
   if (category) crumbs.push({ name: category, path: l.base });
   if (page > 1) crumbs.push({ name: `Page ${page}`, path: pagePath(l.base, page) });
-  const counts = categories().map((c) => ({ c, n: published().filter((p) => p.category === c).length }));
+  const counts = categories().map((c) => ({ c, n: published().filter((p) => p.category === c).length, dots: swatch(c) }));
 
   return (
     <div className={home.main}>
@@ -68,8 +80,11 @@ export function BlogIndex({ category, page }: { category: Category | null; page:
         <div className={`${s.library} rise`} style={{ "--i": 2 } as React.CSSProperties}>
           <nav className={s.filters} aria-label="Categories">
             <a href="/blog" aria-current={category === null ? "page" : undefined}>All posts<span className={s.count}>{published().length}</span></a>
-            {counts.map(({ c, n }) => (
-              <a key={c} href={categoryPath(c)} aria-current={category === c ? "page" : undefined}>{c}<span className={s.count}>{n}</span></a>
+            {counts.map(({ c, n, dots }) => (
+              <a key={c} href={categoryPath(c)} aria-current={category === c ? "page" : undefined}>
+                <span className={s.swatch} aria-hidden="true">{dots.map((g) => <i key={g} style={{ background: g }} />)}</span>
+                {c}<span className={s.count}>{n}</span>
+              </a>
             ))}
           </nav>
           <ul className={s.grid}>

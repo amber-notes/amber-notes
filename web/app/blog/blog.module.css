@@ -24,6 +24,12 @@
   .filters a { transition: background-color 0.15s ease-out, color 0.15s ease-out, transform 0.12s ease-out; }
   .filters a:active { transform: scale(0.97); }
 }
+/* Each category's chip carries its newest posts' grounds as dots, like the templates chips; a ring
+   of the page colour keeps overlapping dots apart, and a cream one does on the dark pick. */
+.swatch { display: inline-flex; margin-right: 2px; }
+.swatch i { width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 0 2px var(--bg); }
+.swatch i + i { margin-left: -4px; }
+.filters a[aria-current] .swatch i { box-shadow: 0 0 0 1.5px var(--cta-ink); }
 .count { font-size: 13px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
 
 .grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 44px 32px; }
@@ -41,7 +47,7 @@
   font-variant-numeric: tabular-nums;
 }
 .pages a { box-shadow: inset 0 0 0 1px var(--line); }
-.pages a[aria-current] { color: var(--cta-ink); background: var(--cta-bg); box-shadow: none; }
+.pages a[aria-current] { color: var(--ink); background: var(--soft); box-shadow: none; }
 .pages .step[data-off] { opacity: 0.4; }
 @media (hover: hover) { .pages a:hover { color: var(--ink); } }
 .pages a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
