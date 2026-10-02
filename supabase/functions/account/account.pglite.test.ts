@@ -61,6 +61,7 @@ async function seed(pg: PGlite, me: string) {
     [asked, me, "B" + "A".repeat(86) + "="]);
   await pg.query(`insert into public.account_notices (user_id, kind, what) values ($1, 'started_fresh', 'x')`, [me]);
   await pg.query(`insert into public.account_key_resets (user_id, generation) values ($1, 1)`, [me]);
+  await pg.query(`insert into public.account_recoveries (user_id) values ($1)`, [me]);
   await pg.query(`insert into public.device_tokens (user_id, device_id, platform, token, environment) values ($1, gen_random_uuid(), 'ios', $2, 'sandbox')`, [me, crypto.randomUUID().replaceAll('-', '').repeat(2)]);
   await pg.query(`insert into public.device_adds (id, user_id, device_id, platform, public_key, key_id, scan_hash, scan_tag, scan_name, code_hash, code_tag, code_name, pickup_hash)
     select gen_random_uuid(), $1, gen_random_uuid(), 'macos', $2, k.key_id, $3, repeat('1', 64), 'amb2n.AAAA', $4, repeat('2', 64), 'amb2n.AAAA', repeat('3', 64)
