@@ -34,7 +34,7 @@ const OFFLINE = "Couldn't reach Amber Notes. Check your connection and try again
 const EXPIRED: View = { kind: "ended", title: "This request has expired", text: "Start connecting again from ChatGPT, Claude or the other app you were using." };
 const LOST: View = { kind: "ended", title: "Couldn't finish here", text: "Start connecting again from the other app." };
 
-export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, recover, authCode, authError, pollMs = POLL_MS }: {
+export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, recover, authCode, authError, keepQR = false, pollMs = POLL_MS }: {
   requestId: string;
   supabaseURL: string;
   anonKey: string;
@@ -44,6 +44,8 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
   /// Back from Sign in with Apple: Supabase's one-time code, or why it failed.
   authCode?: string;
   authError?: string;
+  /// Shown through ?qr=1 before the QR page is public: the address keeps it through a sign-in.
+  keepQR?: boolean;
   /// How often /connect/status is asked (tests make it short).
   pollMs?: number;
 }) {
@@ -85,10 +87,10 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
       const ok = await prepare();
       if (authCode) {
         if (ok) await finishAppleSignIn(authCode);
-        else window.history.replaceState(null, "", returnURL(window.location.origin, requestId, recover));
+        else window.history.replaceState(null, "", returnURL(window.location.origin, requestId, recover, keepQR));
       } else if (authError) {
         setFailure("Sign in with Apple didn't finish. Try again.");
-        window.history.replaceState(null, "", returnURL(window.location.origin, requestId, recover));
+        window.history.replaceState(null, "", returnURL(window.location.origin, requestId, recover, keepQR));
         if (ok && !recover) setView({ kind: "notifySignIn" });
       }
     })();
@@ -228,12 +230,12 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
     setBusy(true);
     const { verifier, challenge } = await pkcePair();
     try { sessionStorage.setItem(APPLE_PKCE, JSON.stringify({ verifier, request: requestId })); } catch {}
-    window.location.assign(appleSignInURL(supabaseURL, returnURL(window.location.origin, requestId, recovering), challenge));
+    window.location.assign(appleSignInURL(supabaseURL, returnURL(window.location.origin, requestId, recovering, keepQR), challenge));
   }
 
   async function finishAppleSignIn(code: string) {
     // The code leaves the address bar (and the history) before anything else happens.
-    window.history.replaceState(null, "", returnURL(window.location.origin, requestId, recover));
+    window.history.replaceState(null, "", returnURL(window.location.origin, requestId, recover, keepQR));
     const back: View = recover ? { kind: "recover" } : { kind: "notifySignIn" };
     let saved: { verifier?: string; request?: string } = {};
     try {

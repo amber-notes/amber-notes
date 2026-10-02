@@ -53,6 +53,15 @@ The same scripts run locally, reading keys from the gitignored `.secrets/`:
 - `scripts/release-mac.sh 1.0.1 "notes"`: the Mac DMG and update
 - `scripts/testflight.sh ios`: the iOS upload
 
+## What the site holds back until a release is public
+
+The site reads the public version from `web/content/release.json`, which `scripts/release-mac.sh` (and the release workflow's Mac job) writes. Two things follow it by themselves, with no flag to flip:
+
+- **/changelog** shows no entry newer than that version (`web/lib/changelog.ts`). Add the entry when you cut the release; it appears when the Mac release is public.
+- **/connect** shows the QR code page only from 1.2 (`qrConnectLive` in `web/lib/connect.ts`). Apps before 1.2 can't scan the code or answer "Open Amber Notes on this Mac" from that page, so until then /connect shows the page before it (`ConnectFlowV1`: sign in, a notification, a number to type, or the recovery key). To test the QR page with a TestFlight build, add `&qr=1` to the connect address: `https://ambernotes.app/connect?request=<id>&qr=1`.
+
+So the Mac release of 1.2 turns the QR page on for everyone, iPhone included. Run it only once iPhone 1.2 is approved and released on the App Store, or people on iPhone 1.1.2 get a code they can't scan (the page's "Get a notification instead" still works for them). If the App Review notes describe the connect page, update them for the QR page at the same time.
+
 ## Backend changes
 
 The Supabase database and Edge Functions are not part of the app release. Deploy them separately with `supabase db push` and `supabase functions deploy`, before shipping an app version that depends on them. Migrations must be additive, so older app versions keep working.

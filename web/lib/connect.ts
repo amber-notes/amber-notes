@@ -149,8 +149,25 @@ export function signInError(status: number, body: { error_code?: string } | null
 
 /// Where Supabase sends the browser back after Sign in with Apple. `recover` brings the page back
 /// to the recovery key.
-export const returnURL = (origin: string, id: string, recover = false) =>
-  `${origin}/connect?request=${id.toLowerCase()}${recover ? "&recover=1" : ""}`;
+/// `qr` keeps a tester's ?qr=1 (see qrConnectLive) through the sign-in.
+export const returnURL = (origin: string, id: string, recover = false, qr = false) =>
+  `${origin}/connect?request=${id.toLowerCase()}${recover ? "&recover=1" : ""}${qr ? "&qr=1" : ""}`;
+
+/// The first app version that can scan /connect's QR code (and answer "Open Amber Notes on this
+/// Mac" from that page). Older apps show "request has expired" for both.
+export const QR_CONNECT_FROM = "1.2";
+
+/// Whether /connect shows the QR page (ConnectFlow) or the one before it (ConnectFlowV1: sign in,
+/// a notification, a number to type). The QR page is for everyone once the public release
+/// (content/release.json, written by scripts/release-mac.sh) is 1.2 or later. Until then
+/// /connect?...&qr=1 shows it, for testing a TestFlight build. No public release known: the old page.
+export function qrConnectLive(publicVersion: string | null, override?: string): boolean {
+  if (override === "1") return true;
+  if (!publicVersion) return false;
+  const [major, minor = 0] = publicVersion.split(".").map(Number);
+  const [fromMajor, fromMinor = 0] = QR_CONNECT_FROM.split(".").map(Number);
+  return major > fromMajor || (major === fromMajor && minor >= fromMinor);
+}
 
 /// Whether the page offers Sign in with Apple. It needs the web Services ID (app.ambernotes.signin)
 /// first in Supabase's Apple client ids, and a client secret that lasts six months: renew it with

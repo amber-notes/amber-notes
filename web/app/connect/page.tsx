@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import { fetchLabel, functionURL, problemText, validRequest } from "@/lib/connect";
+import { fetchLabel, functionURL, problemText, qrConnectLive, validRequest } from "@/lib/connect";
 import { upstreamHeaders } from "@/lib/mcp-proxy";
+import { publicVersion } from "@/lib/public-release";
 import ConnectCard from "./ConnectCard";
 import ConnectFlow from "./ConnectFlow";
+import ConnectFlowV1 from "./ConnectFlowV1";
 import styles from "./connect.module.css";
 
 // Where an AI's sign-in lands (the MCP server's /authorize sends it here). It says what the app calls itself;
@@ -11,8 +13,8 @@ import styles from "./connect.module.css";
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Connect to Amber Notes", robots: { index: false, follow: false } };
 
-export default async function Connect({ searchParams }: { searchParams: Promise<{ request?: string; problem?: string; recover?: string; code?: string; error?: string }> }) {
-  const { request, problem, recover, code, error } = await searchParams;
+export default async function Connect({ searchParams }: { searchParams: Promise<{ request?: string; problem?: string; recover?: string; code?: string; error?: string; qr?: string }> }) {
+  const { request, problem, recover, code, error, qr } = await searchParams;
   const supabaseURL = process.env.SUPABASE_URL ?? "";
   const anonKey = process.env.SUPABASE_ANON_KEY ?? "";
   if (validRequest(request) && (!supabaseURL || !anonKey)) {
@@ -33,12 +35,16 @@ export default async function Connect({ searchParams }: { searchParams: Promise<
     );
   }
   const label = await labelFor(request);
+  const flow = {
+    requestId: request.toLowerCase(), supabaseURL, anonKey, label, recover: recover === "1",
+    authCode: typeof code === "string" ? code : undefined, authError: typeof error === "string" ? error : undefined,
+  };
+  // The QR page once the public apps can scan it (lib/connect.ts, qrConnectLive); until then the
+  // page those apps understand, and ?qr=1 for testing a newer build.
+  const live = qrConnectLive(publicVersion());
   return (
     <ConnectCard>
-      <ConnectFlow
-        requestId={request.toLowerCase()} supabaseURL={supabaseURL} anonKey={anonKey} label={label}
-        recover={recover === "1"} authCode={typeof code === "string" ? code : undefined} authError={typeof error === "string" ? error : undefined}
-      />
+      {qrConnectLive(publicVersion(), qr) ? <ConnectFlow {...flow} keepQR={!live} /> : <ConnectFlowV1 {...flow} />}
     </ConnectCard>
   );
 }
