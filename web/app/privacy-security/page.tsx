@@ -56,6 +56,8 @@ export default function PrivacySecurity() {
           <p>
             The website and shared note pages run on Vercel, and are built in Frankfurt too. Vercel passes requests on to our server,
             including the requests AI apps make, and sees a shared note while it shows the page, but it doesn&apos;t store your notes.
+            Our server does its work in Frankfurt: a request from anywhere enters Supabase&apos;s network at the nearest location and
+            is passed to Frankfurt before it&apos;s handled.
           </p>
 
           <h2 id="encryption">What&apos;s encrypted</h2>
