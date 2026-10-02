@@ -1,12 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { INTEREST_KEY, markInterest, platformScript } from "./platform";
+import { endPreview, INTEREST_KEY, markInterest, platformScript, PREVIEW_KEY } from "./platform";
 
 type Nav = { userAgent?: string; maxTouchPoints?: number; userAgentData?: { platform?: string } };
 
+/// A tab's sessionStorage, as the <head> script sees it.
+function tab(start: Record<string, string> = {}) {
+  const kept = new Map(Object.entries(start));
+  return { kept, getItem: (k: string) => kept.get(k) ?? null, setItem: (k: string, v: string) => void kept.set(k, v), removeItem: (k: string) => void kept.delete(k) };
+}
+
 /// Runs the <head> script the way a browser would, and gives back what it put on <html>.
-function run(navigator: Nav | undefined, localStorage: unknown = { getItem: () => null }) {
+function run(navigator: Nav | undefined, localStorage: unknown = { getItem: () => null }, search = "", sessionStorage: unknown = tab()) {
   const html = { dataset: {} as Record<string, string> };
-  new Function("navigator", "document", "localStorage", platformScript)(navigator, { documentElement: html }, localStorage);
+  new Function("navigator", "document", "localStorage", "location", "sessionStorage", platformScript)(navigator, { documentElement: html }, localStorage, { search }, sessionStorage);
   return html.dataset;
 }
 
@@ -84,5 +90,65 @@ describe("saying yes", () => {
     const html = { dataset: {} as Record<string, string | undefined> };
     expect(() => markInterest({ documentElement: html }, storage)).not.toThrow();
     expect(html.dataset.interest).toBe("done");
+  });
+});
+
+describe("previewing another platform with ?as=", () => {
+  const mac = { userAgent: UA.mac };
+
+  it.each([
+    ["windows", "windows"], ["android", "android"], ["linux", "linux"], ["iphone", "ios"], ["mac", "mac"],
+  ])("?as=%s shows the site as that visitor sees it, and says it's a preview", (as, platform) => {
+    expect(run(mac, undefined, `?as=${as}`)).toEqual({ platform, as });
+    expect(run({ userAgent: UA.windows }, undefined, `?utm_source=x&as=${as}`)).toEqual({ platform, as });
+  });
+
+  it("sticks for the tab while the parameter is gone, and ?as=off clears it", () => {
+    const session = tab();
+    expect(run(mac, undefined, "?as=windows", session).as).toBe("windows");
+    expect(session.kept.get(PREVIEW_KEY)).toBe("windows");
+    expect(run(mac, undefined, "", session)).toEqual({ platform: "windows", as: "windows" });
+    expect(run(mac, undefined, "?as=linux", session)).toEqual({ platform: "linux", as: "linux" });
+    expect(run(mac, undefined, "?as=off", session)).toEqual({ platform: "mac" });
+    expect(session.kept.size).toBe(0);
+    expect(run(mac, undefined, "", session)).toEqual({ platform: "mac" });
+  });
+
+  it("changes nothing for a visitor without the parameter, or with one it doesn't know", () => {
+    const session = tab();
+    for (const search of ["", "?ref=x", "?as=", "?as=ios", "?as=WINDOWS", "?as=windows2", "?has=windows", "?as=other"]) {
+      expect(run({ userAgent: UA.windows }, undefined, search, session), search).toEqual({ platform: "windows" });
+    }
+    expect(session.kept.size).toBe(0);
+  });
+
+  it("ignores a real \"already said yes\", so the ask can be looked at again", () => {
+    const yes = { getItem: () => "1" };
+    expect(run({ userAgent: UA.windows }, yes, "?as=windows")).toEqual({ platform: "windows", as: "windows" });
+    expect(run({ userAgent: UA.windows }, yes, "?as=off").interest).toBe("done");
+  });
+
+  it("works for the page it's on when the browser refuses sessionStorage", () => {
+    const refused = { getItem: () => { throw new DOMException("denied", "SecurityError"); }, setItem: () => { throw new DOMException("denied", "SecurityError"); } };
+    expect(run(mac, undefined, "?as=android", refused)).toEqual({ platform: "android", as: "android" });
+    expect(run(mac, undefined, "", refused)).toEqual({ platform: "mac" });
+    expect(run(mac, undefined, "", undefined as never)).toEqual({ platform: "mac" });
+  });
+
+  it("shows the thanks after a yes without writing the real value", () => {
+    const html = { dataset: { platform: "windows", as: "windows" } as Record<string, string | undefined> };
+    const storage = () => { throw new Error("a preview must not touch localStorage"); };
+    markInterest({ documentElement: html }, storage);
+    expect(html.dataset.interest).toBe("done");
+  });
+
+  it("Reset forgets the preview and reloads the page without the parameter", () => {
+    const session = tab({ [PREVIEW_KEY]: "windows" });
+    const went: string[] = [];
+    endPreview(() => session, { pathname: "/download", replace: (url) => void went.push(url) });
+    expect(session.kept.size).toBe(0);
+    expect(went).toEqual(["/download"]);
+    endPreview(() => { throw new DOMException("denied", "SecurityError"); }, { pathname: "/", replace: (url) => void went.push(url) });
+    expect(went).toEqual(["/download", "/"]);
   });
 });

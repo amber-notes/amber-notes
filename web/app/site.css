@@ -177,3 +177,20 @@ html[data-theme] ::selection { background: var(--mark); }
   .pi-button, .pi-head button { transition: transform 0.12s ease-out, background-color 0.15s ease-out; }
   .pi-button:active, .pi-head button:active { transform: scale(0.97); }
 }
+
+/* The preview pill (app/PlatformPreview.tsx): only while the site is shown as another platform's
+   visitor sees it (?as=windows sets data-as on <html>). Its colours are its own, so it reads the
+   same on every page. */
+.pi-dev, .pi-dev [data-as] { display: none; }
+:root[data-as] .pi-dev {
+  position: fixed; left: 16px; bottom: 16px; z-index: 1000; display: flex; align-items: center; gap: 6px;
+  height: 36px; padding: 0 6px 0 14px; border-radius: 18px; background: #2a1d10; color: #fbeedd;
+  font: 600 13px/1 -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif;
+  box-shadow: 0 0 0 1px rgba(251, 238, 221, 0.22), 0 10px 24px -8px rgba(40, 20, 0, 0.55);
+}
+:root[data-as="windows"] .pi-dev [data-as="windows"], :root[data-as="android"] .pi-dev [data-as="android"],
+:root[data-as="linux"] .pi-dev [data-as="linux"], :root[data-as="iphone"] .pi-dev [data-as="iphone"],
+:root[data-as="mac"] .pi-dev [data-as="mac"] { display: inline; }
+.pi-dev button { height: 24px; padding: 0 10px; border: 0; border-radius: 12px; cursor: pointer; background: rgba(251, 238, 221, 0.16); color: inherit; font: inherit; }
+.pi-dev button:focus-visible { outline: 2px solid #f5a53a; outline-offset: 2px; }
+@media (hover: hover) { .pi-dev button:hover { background: rgba(251, 238, 221, 0.28); } }
