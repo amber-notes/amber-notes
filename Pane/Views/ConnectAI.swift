@@ -889,21 +889,21 @@ struct ConsentSheet: View {
     var allowed: (ConnectRequest) -> Void = { _ in }
     /// Told just before the answer is sent.
     var answering: (UUID) -> Void = { _ in }
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) var dismiss
 
     enum Phase: Equatable { case loading, asking(ConnectRequest), working, done(String), handedOff(String), failed(String) }
-    @State private var phase: Phase
-    @State private var write = true
+    @State var phase: Phase
+    @State var write = true
     /// Asked from a browser: what the number was made from (the page's key and commit as first
     /// read, and the revealed nonce), and the number the page shows. Nil until the page has
     /// revealed its nonce and it opened the commit.
     typealias Match = ConnectMatch.Match
-    @State private var match: Match?
+    @State var match: Match?
     /// The two digits typed so far.
-    @State private var typed = ""
+    @State var typed = ""
     /// Allow and the keypad wait a moment after what the sheet shows changes, so a tap meant
     /// for what was there before doesn't land on what's there now.
-    @State private var armed = false
+    @State var armed = false
     static let armDelay: Duration = .seconds(1)
     /// Face ID or Touch ID before allowing; tests and captures answer for it.
     var confirm: (String) async -> Bool = ConnectApproval.confirm
@@ -917,8 +917,15 @@ struct ConsentSheet: View {
     /// How often the ask is read again while the page hasn't revealed its nonce.
     var pollInterval: Duration = .seconds(1)
 
+    /// Dev: which connect design shows (the tasting menu, `ConnectDesign`).
+    var design: ConnectDesign = .active
+
     init(client: SupabaseClient, requestID: UUID, initial: Phase = .loading, finish: @escaping (URL) -> Void,
-         allowed: @escaping (ConnectRequest) -> Void = { _ in }, answering: @escaping (UUID) -> Void = { _ in }) {
+         allowed: @escaping (ConnectRequest) -> Void = { _ in }, answering: @escaping (UUID) -> Void = { _ in },
+         design: ConnectDesign = .active, previewMatch: Match? = nil, previewTyped: String = "") {
+        self.design = design
+        _match = State(initialValue: previewMatch)
+        _typed = State(initialValue: previewTyped)
         self.client = client
         self.requestID = requestID
         self.finish = finish
@@ -930,15 +937,21 @@ struct ConsentSheet: View {
     private struct Shown: Equatable { var phase: Phase; var match: Match? }
 
     var body: some View {
-        VStack(spacing: 20) {
-            header
-            content
+        Group {
+            if design == .current {
+                VStack(spacing: 20) {
+                    header
+                    content
+                }
+                .padding(28)
+            } else {
+                candidate
+            }
         }
-        .padding(28)
         #if os(macOS)
         .frame(width: 420)
         #else
-        .presentationDetents([.medium, .large])
+        .presentationDetents(design == .current ? [.medium, .large] : candidateDetents)
         #endif
         .task {
             if phase == .loading { await load() }
@@ -1138,7 +1151,7 @@ struct ConsentSheet: View {
     }
 
     /// The two boxes the digits go in.
-    private var typedDigits: some View {
+    var typedDigits: some View {
         HStack(spacing: 10) {
             ForEach(0 ..< 2, id: \.self) { i in
                 let digit = i < typed.count ? String(Array(typed)[i]) : ""
@@ -1155,7 +1168,7 @@ struct ConsentSheet: View {
     }
 
     /// A numeric keypad. On a Mac the number keys and Delete type too.
-    private var keypad: some View {
+    var keypad: some View {
         let keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "delete"]
         return LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
             ForEach(keys, id: \.self) { key in
@@ -1241,7 +1254,7 @@ struct ConsentSheet: View {
 
     /// Allow, with two digits typed: the page's number allows; any other declines, and the server
     /// is told it was a wrong number (unless the ask changed meanwhile: then it's declined as that).
-    private func entered(_ r: ConnectRequest) async {
+    func entered(_ r: ConnectRequest) async {
         guard armed, let match, typed.count == 2 else { return }
         guard typed == match.number else {
             typed = ""
@@ -1251,7 +1264,7 @@ struct ConsentSheet: View {
         await decide(r, allow: true)
     }
 
-    private func decide(_ r: ConnectRequest, allow: Bool, declined: String? = nil, wrongNumber: Bool = false) async {
+    func decide(_ r: ConnectRequest, allow: Bool, declined: String? = nil, wrongNumber: Bool = false) async {
         // Handing over the key to your notes takes you, not just a click.
         if allow {
             guard armed else { return }
@@ -1363,9 +1376,23 @@ struct ConnectAISection: View {
         }
     }
 
+    /// Dev: which connect design shows.
+    var design: ConnectDesign = .active
+
     var body: some View {
-        guides
-        connected
+        if design == .current {
+            guides
+            connected
+        } else {
+            ConnectAISimple(design: design, connections: connections, loaded: loaded, error: error,
+                            open: { route?.guide = $0 }, disconnect: { removing = $0 })
+                .task(id: route?.closed ?? 0) { await load() }
+                .confirmationDialog("Disconnect \(removing?.title ?? "")?", isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }), titleVisibility: .visible) {
+                    Button("Disconnect", role: .destructive) { if let r = removing { Task { await revoke(r) } } }
+                } message: {
+                    Text("It loses access to your notes right away.")
+                }
+        }
     }
 
     /// One joined list of AIs, each with its mark, name and how it connects, and the promises under it.
@@ -1514,9 +1541,13 @@ extension View {
 
 /// Step by step for one app. ChatGPT and Claude need only the address; Claude Code and
 /// Codex get a fresh token that's used once here and never shown in a link.
-private struct GuideSheet: View {
+struct GuideSheet: View {
     let guide: ConnectAISection.Guide
     let client: SupabaseClient
+    /// Dev: which connect design shows.
+    var design: ConnectDesign = .active
+    /// Captures: show the connected state.
+    var previewConnected = false
     @Environment(\.dismiss) private var dismiss
     #if os(macOS)
     @Environment(\.openWindow) private var openWindow
@@ -1558,7 +1589,11 @@ private struct GuideSheet: View {
                     dismiss()
                 })
                 #else
-                WebConnectGuide(plan: plan, client: client)
+                if design == .current {
+                    WebConnectGuide(plan: plan, client: client, connected: previewConnected)
+                } else {
+                    SimpleWebGuide(plan: plan, client: client, design: design, connected: previewConnected)
+                }
                 #endif
             }
         case .claudeCode:

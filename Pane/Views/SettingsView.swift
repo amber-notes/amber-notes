@@ -112,6 +112,9 @@ struct SettingsView: View {
                 }
                 #endif
                 AboutSection()
+                #if DEBUG
+                ConnectDesignDevSection()
+                #endif
                 if case .signedIn = backend.state {
                     // Signing out sits apart, last, as in System Settings.
                     Section {

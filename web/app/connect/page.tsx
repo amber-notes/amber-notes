@@ -4,6 +4,7 @@ import { fetchLabel, functionURL, problemText, validRequest } from "@/lib/connec
 import { upstreamHeaders } from "@/lib/mcp-proxy";
 import ConnectCard from "./ConnectCard";
 import ConnectFlow from "./ConnectFlow";
+import { designFrom } from "./ConnectScreen";
 import styles from "./connect.module.css";
 
 // Where an AI's sign-in lands (the MCP server's /authorize sends it here). It says what the app calls itself;
@@ -11,8 +12,8 @@ import styles from "./connect.module.css";
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Connect to Amber Notes", robots: { index: false, follow: false } };
 
-export default async function Connect({ searchParams }: { searchParams: Promise<{ request?: string; problem?: string; recover?: string; code?: string; error?: string }> }) {
-  const { request, problem, recover, code, error } = await searchParams;
+export default async function Connect({ searchParams }: { searchParams: Promise<{ request?: string; problem?: string; recover?: string; code?: string; error?: string; design?: string }> }) {
+  const { request, problem, recover, code, error, design } = await searchParams;
   const supabaseURL = process.env.SUPABASE_URL ?? "";
   const anonKey = process.env.SUPABASE_ANON_KEY ?? "";
   if (validRequest(request) && (!supabaseURL || !anonKey)) {
@@ -38,6 +39,7 @@ export default async function Connect({ searchParams }: { searchParams: Promise<
       <ConnectFlow
         requestId={request.toLowerCase()} supabaseURL={supabaseURL} anonKey={anonKey} label={label}
         recover={recover === "1"} authCode={typeof code === "string" ? code : undefined} authError={typeof error === "string" ? error : undefined}
+        design={process.env.VERCEL_ENV !== "production" && typeof design === "string" ? designFrom(design) : "current"}
       />
     </ConnectCard>
   );
