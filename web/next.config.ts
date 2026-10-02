@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { posthogSettings } from "./lib/posthog";
 
 // Note content is sanitized; this is the second line. Next.js needs its own inline
 // scripts, so scripts stay same-origin + inline, and everything else is pinned down:
@@ -19,11 +20,15 @@ const csp = (connect: string) => [
   "frame-ancestors 'none'",
 ].join("; ");
 
+// With a PostHog key in the build, public pages may also send website usage to PostHog
+// (lib/posthog.ts). Its scripts are bundled with the site; only the capture endpoint is called.
+const posthog = posthogSettings({ key: process.env.NEXT_PUBLIC_POSTHOG_KEY, host: process.env.NEXT_PUBLIC_POSTHOG_HOST });
+
 const security = [
   { key: "Referrer-Policy", value: "no-referrer" },
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
-  { key: "Content-Security-Policy", value: csp("'self'") },
+  { key: "Content-Security-Policy", value: csp(posthog ? `'self' ${new URL(posthog.host).origin}` : "'self'") },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), interest-cohort=()" },
 ];
 

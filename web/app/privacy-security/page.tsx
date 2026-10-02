@@ -89,14 +89,16 @@ export default function PrivacySecurity() {
             {WHO_CAN_SEE.map((i) => <li key={i.label}><strong>{i.label}</strong> {i.text}</li>)}
           </ul>
 
-          <h2 id="no-tracking">No ads, no tracking</h2>
+          <h2 id="no-tracking">No ads, no tracking in the app</h2>
           <p>
             There are no ads, and there never will be. The apps have no tracking, no third-party analytics and no crash-reporting tools.
             We never sell or share your data.
           </p>
           <p>
-            This website counts page views and where visitors came from with Vercel Web Analytics, which uses no cookies and doesn&apos;t
-            identify you, and counts Mac downloads as daily totals. None of this touches your notes or your computer.
+            This website counts page views and where visitors came from with Vercel Web Analytics, and which links and buttons are
+            clicked and how far pages are scrolled with PostHog, in the EU. Neither uses cookies or keeps a profile of you, and neither
+            runs on shared notes or the connect pages. It also counts Mac downloads as daily totals. None of this touches your notes or
+            your computer.
           </p>
           <p>The apps count a few things on our own server, so we can tell whether Amber Notes works for people. Kept for 12 months, never shared:</p>
           <ul>

@@ -8,7 +8,7 @@ const doc = readLegal("privacy-policy.md");
 export const dynamic = "force-static";
 export const metadata: Metadata = pageMetadata({
   title: "Privacy Policy · Amber Notes",
-  description: "What Amber Notes stores, why, where, for how long, and your rights. No ads, no third-party tracking.",
+  description: "What Amber Notes stores, why, where, for how long, and your rights. No ads, no tracking in the apps.",
   path: "/privacy",
 });
 

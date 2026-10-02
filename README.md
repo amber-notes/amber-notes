@@ -49,7 +49,7 @@
 - **Evernote import.** Each exported notebook (.enex) becomes a folder, with checklists, tables, images, PDFs, dates and tags kept. Importing the same export again skips what's already here.
 - **Google Keep import.** From a Google Takeout download: text and checklists, labels as folders or tags, pins, dates and images. Archived notes come only if you ask, into an Archive folder.
 - **Markdown or text import.** A folder or .zip from Obsidian, Notion, Bear, Joplin, Logseq, Simplenote or Standard Notes: subfolders become folders, linked images and files come along, front-matter dates and tags are kept, and wiki links become plain titles.
-- **Private by default.** Sign in with Apple or email. No ads, no analytics, no tracking. Delete your account from Settings.
+- **Private by default.** Sign in with Apple or email. No ads, no analytics or tracking in the app; the website counts visits without cookies. Delete your account from Settings.
 
 ## How it's built
 

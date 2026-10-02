@@ -170,7 +170,7 @@ function PinIcon() {
 export function AlsoLine() {
   return (
     <ul className={a.alsoTicks} aria-label="Also">
-      <li><Tick /> Lists that tidy themselves</li><li><Tick /> Real tables</li><li><Tick /> Photos and files</li><li><Tick /> No ads, no tracking</li>
+      <li><Tick /> Lists that tidy themselves</li><li><Tick /> Real tables</li><li><Tick /> Photos and files</li><li><Tick /> No ads, no tracking in the app</li>
     </ul>
   );
 }
@@ -273,7 +273,7 @@ export function Closing() {
       <div className={a.bandInner}>
         <img src="/mark-256.png" alt="" width={96} height={96} className={a.bandIcon} />
         <h2 id="closing" className={a.bandTitle}>Your notes deserve better than copy and paste.</h2>
-        <p className={a.bandLede}>Free and open source, with no ads and no tracking. Import your Apple Notes, connect your AI, and get back to writing.</p>
+        <p className={a.bandLede}>Free and open source, with no ads and no tracking in the app. Import your Apple Notes, connect your AI, and get back to writing.</p>
         <div className={a.bandCtas}>
           <DownloadLink className={a.bandPrimary}><Apple /> Download for Mac</DownloadLink>
           <span className={a.bandSecondary}>iPhone · coming soon</span>

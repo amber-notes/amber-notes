@@ -1,6 +1,6 @@
 # Record of processing activities
 
-Internal record under GDPR Article 30. Last reviewed 30 September 2026. Keep it in step with
+Internal record under GDPR Article 30. Last reviewed 2 October 2026. Keep it in step with
 `docs/privacy-policy.md` (what people read) and `web/lib/privacy.ts` (the website's short form).
 
 **Controller:** Emil Wagman, individual developer, Sweden. Contact: hello@ambernotes.app.
@@ -22,6 +22,7 @@ and no DPO (no large-scale special-category data or systematic monitoring).
 | 8 | Usage counts | Users | AI edits per day, active days, tips shown and used, setup steps, install id and platform | Learn whether the app works; ask once to share after a week | Legitimate interests (objection honoured on request) | Supabase | 12 months |
 | 9 | Hosting logs | Users; website visitors | IP address, user agent, path and query, rough location, time | Operate and secure the service (the hosts' own logs) | Legitimate interests | Supabase, Vercel | Supabase: 1 day. Vercel runtime logs: 1 hour; Observability: 12 hours |
 | 10 | Support email | Anyone who writes | Email, message | Answer questions and GDPR requests | Legitimate interests; legal obligation for GDPR requests | Forward Email (forwarding), Google (Gmail) | As long as needed to answer, then deleted |
+| 11 | Website usage | Website visitors (never on shared notes, connect, report or universal-link pages) | Vercel Web Analytics: page, referrer, country, browser and device, day-scoped hash. PostHog: page, clicks on links and buttons, scroll depth, referrer, browser and device, a random per-page-load id kept in memory; no cookies, no person profiles, no recordings, IP discarded in the project settings | Learn how people find the site and which pages lead to a download | Legitimate interests | Vercel; PostHog (EU cloud) | As long as each plan keeps it (at least a month) |
 
 No special categories are processed on purpose. Notes can contain anything the user writes; they're
 processed only to store and show them to the user and the AI apps the user approves.
@@ -32,6 +33,7 @@ processed only to store and show them to the user and the AI apps the user appro
 |---|---|---|---|---|
 | Supabase Pte. Ltd. | Database, storage, auth, Edge Functions | eu-central-1 (Frankfurt) | [DPA](https://supabase.com/legal/dpa), part of the Terms, covers the Free plan | SCCs (in the DPA). [Sub-processors](https://supabase.com/legal/customer-resources/subprocessor-list) |
 | Vercel, Inc. | Website, shared pages, MCP proxy at mcp.ambernotes.app, downloads | fra1 (Frankfurt) functions, global CDN | **Gap:** Vercel's [DPA](https://vercel.com/legal/dpa) applies to Pro and Enterprise only; the project is on Hobby | EU-U.S. Data Privacy Framework ([privacy policy](https://vercel.com/legal/privacy-policy)). [Sub-processors](https://vercel.com/legal/sub-processors) |
+| PostHog, Inc. | Website usage analytics (page views, clicks, scroll depth); website only, off unless `NEXT_PUBLIC_POSTHOG_KEY` is set | EU Cloud (Frankfurt, Germany) | [DPA](https://posthog.com/dpa) | SCCs (in the DPA). [Sub-processors](https://posthog.com/subprocessors) |
 | Apple | Sign in with Apple, App Store, TestFlight | Global | Apple's developer terms | Apple's own |
 
 **Open item:** move the Vercel project to Pro (the DPA then applies), or accept the risk in writing.

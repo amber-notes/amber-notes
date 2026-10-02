@@ -7,7 +7,7 @@ Last updated: 2 October 2026
 - Your notes are yours. Your notes, their titles, folder names, file names and files, and earlier versions are encrypted on your iPhone or Mac with a key only your devices hold, before they're uploaded. We store the encrypted copies so they sync, and we can't read them.
 - Some details stay readable to us, such as your email address, dates and sizes, and how your notes are organized. The section on end-to-end encryption lists all of them, and its limits.
 - No ads, no tracking and no third-party analytics in the apps, and we never sell or share your data.
-- The website counts page views and where visitors came from with Vercel Web Analytics, which uses no cookies and doesn't identify you, and counts Mac downloads as daily totals. None of this touches your notes or your computer.
+- The website counts page views and where visitors came from with Vercel Web Analytics, and which links and buttons are clicked and how far pages are scrolled with PostHog, in the EU. Neither uses cookies or keeps a profile of you, and neither runs on shared notes or the connect pages. It also counts Mac downloads as daily totals. None of this touches your notes or your computer.
 - We count how features are used on our own server to improve the app. We never share or sell it.
 - An AI assistant can only read your notes if you connect it and approve it on your iPhone or Mac, or with your recovery key on ambernotes.app. While it works, our server opens the notes it asks for in memory. You can disconnect it at any time.
 - A note you lock is encrypted a second time with your notes password. Not us and not an AI can read its text.
@@ -83,12 +83,13 @@ We count how features are used on our own server to improve the app. We never sh
 **Visits to the website**
 
 - **Page views,** with Vercel Web Analytics: which page was viewed, the site you came from, and your country, browser and type of device. It uses no cookies and stores nothing on your device, and it doesn't identify you or follow you to other sites. Vercel tells visits apart for a day with a hash it doesn't store. Shared notes, the connect pages and report pages are never counted, and page addresses are counted without anything after them, such as a code in a link.
+- **Clicks and scrolling,** with PostHog, hosted in Frankfurt, Germany (EU): which pages were viewed, which links and buttons were clicked on them (such as Download for Mac, Use template, or a link to the App Store or GitHub), how far down each page you scrolled, the site you came from, and your browser and type of device. It uses no cookies and stores nothing on your device: each visit gets a random id that's gone when you leave or reload the page. It keeps no profile of you, records no screens or keystrokes, and is set not to keep your IP address. It never runs on shared notes, the connect pages, report pages or the links that open the app, page addresses are sent without anything after them, and it doesn't run at all if your browser sends Do Not Track or Global Privacy Control.
 - **Mac downloads,** as one total per day: the date and a number. Nothing about who downloaded, not even a network address. Updates the Mac app installs itself aren't counted.
 - None of this touches your notes or your computer, and none of it is linked to your account.
 
 **What we don't collect**
 
-- No advertising identifiers, no location, no contacts, and no third-party analytics or crash-reporting tools.
+- No advertising identifiers, no location, no contacts, and no third-party analytics or crash-reporting tools in the apps.
 - We never receive your notes' key, your recovery key or your notes password in readable form, except that during an AI connection's requests our server unlocks your notes' key in memory (see AI connections).
 - The Apple Notes import runs on your Mac, and only the notes you choose are uploaded. If you turn on "Also bring over pinned notes", the app reads only which notes are pinned, from a temporary copy of the Notes database on your Mac, and deletes the copy straight after.
 
@@ -102,7 +103,7 @@ We process personal data under the EU General Data Protection Regulation (GDPR) 
 | Sign-in records, rate limits, hashed network addresses, request logs | To keep the service secure and stop abuse | Legitimate interests |
 | Reports about shared pages | To review and remove content that breaks our Terms | Legitimate interests, and legal obligations where they apply |
 | Feature usage counts | To learn whether the app works for people and improve it | Legitimate interests |
-| Website page views and daily download totals | To learn how people find the website and how many download the app | Legitimate interests |
+| Website page views, clicks and scroll depth, and daily download totals | To learn how people find the website, which pages help, and how many download the app | Legitimate interests |
 
 We don't use your data for advertising, and we don't make automated decisions about you with legal or similarly significant effects.
 
@@ -158,6 +159,7 @@ Nothing reaches an AI assistant unless you connect one. When you connect ChatGPT
 |---|---|---|---|
 | Supabase (Supabase Pte. Ltd.) | Database, file storage, sign-in and server functions | Frankfurt, Germany (EU) | Standard Contractual Clauses, in its [data processing agreement](https://supabase.com/legal/dpa) ([sub-processors](https://supabase.com/legal/customer-resources/subprocessor-list)) |
 | Vercel, Inc. | The website, shared note pages, the address AI apps connect to (mcp.ambernotes.app), Mac app downloads, update checks, website page view counts | Pages are built in Frankfurt, Germany (EU) and delivered through Vercel's global network | EU-U.S. Data Privacy Framework ([privacy policy](https://vercel.com/legal/privacy-policy), [sub-processors](https://vercel.com/legal/sub-processors)) |
+| PostHog, Inc. | Website usage only: page views, clicks and scroll depth. Never on shared notes or the connect pages, and never in the apps | Frankfurt, Germany (EU) | Standard Contractual Clauses, in its [data processing agreement](https://posthog.com/dpa) ([sub-processors](https://posthog.com/subprocessors)) |
 | Apple | Sign in with Apple and the App Store, if you use them | Under Apple's own privacy policy | Apple's own terms |
 | Forward Email and Google (Gmail) | Email you send to hello@ambernotes.app: Forward Email passes it on, and it's read and kept in Gmail | United States | Under each company's own terms |
 
@@ -191,7 +193,7 @@ Rate limits on sign-in and connection requests count a one-way hash of the IP ad
 - **Sign-in records:** 30 days. **Rate-limit hashes:** 2 hours. **Unfinished AI sign-ins and expired access tokens:** a day after they expire.
 - **Reports:** the reporter's hash is blanked after 30 days; a report is deleted 12 months after it was made, once it's been reviewed.
 - **Logs** at our hosting providers: 1 hour to 1 day, as listed under Logs.
-- **Website counts:** page view counts stay at Vercel for as long as its plan keeps them (at least a month). Daily download totals hold nothing about a person and are kept.
+- **Website counts:** page view counts stay at Vercel, and clicks and scroll depth at PostHog, for as long as their plans keep them (at least a month). Daily download totals hold nothing about a person and are kept.
 - **Your notes' key, locked:** the copy locked with your recovery key is kept until you delete your account or start fresh; each AI connection's copy is deleted when you disconnect it.
 - **Browser approvals:** the approval sealed to a browser is kept until the browser picks it up, and the request expires after 10 minutes.
 - **Backups:** our current hosting plan keeps no backups of the database, so what's deleted is gone. If that changes, a backup would hold only the encrypted copies and the locked copies of your key, for the period this policy states.
@@ -210,7 +212,7 @@ Write to **hello@ambernotes.app**. We answer within one month. If you think we'v
 
 ## Cookies and storage on the website
 
-The website sets no cookies. Its page view counts (Vercel Web Analytics) store nothing in your browser. Only the page where you connect an AI (ambernotes.app/connect) stores anything in your browser, and only what that page needs to work:
+The website sets no cookies. Its page view counts (Vercel Web Analytics) and its click and scroll counts (PostHog) store nothing in your browser; PostHog's random visit id lives only in the open page's memory. Only the page where you connect an AI (ambernotes.app/connect) stores anything in your browser, and only what that page needs to work:
 
 - **sessionStorage, `amber.connect.pkce`:** a one-time code for Sign in with Apple, kept while you go to Apple and back, and deleted as soon as you return.
 

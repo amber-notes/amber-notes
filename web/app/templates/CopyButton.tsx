@@ -23,7 +23,8 @@ export async function copyText(text: string): Promise<boolean> {
   }
 }
 
-export default function CopyButton({ text, label, done = "Copied", className }: { text: string; label: string; done?: string; className?: string }) {
+/// `event` names the click for website analytics (lib/posthog.ts).
+export default function CopyButton({ text, label, done = "Copied", className, event }: { text: string; label: string; done?: string; className?: string; event?: string }) {
   const [state, setState] = useState<"idle" | "done" | "failed">("idle");
   const timer = useRef<number | undefined>(undefined);
   useEffect(() => () => window.clearTimeout(timer.current), []);
@@ -38,7 +39,7 @@ export default function CopyButton({ text, label, done = "Copied", className }: 
   };
 
   return (
-    <button type="button" className={className} onClick={copy} data-done={state === "done" || undefined}>
+    <button type="button" className={className} onClick={copy} data-done={state === "done" || undefined} data-event={event}>
       {state === "done" ? <Check /> : <CopyGlyph />}
       <span aria-live="polite">{state === "done" ? done : state === "failed" ? "Select and copy it" : label}</span>
     </button>
