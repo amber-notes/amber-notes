@@ -18,8 +18,6 @@
 }
 .filters a[aria-current] { color: var(--cta-ink); background: var(--cta-bg); box-shadow: none; }
 .filters a[aria-current] .count { color: var(--cta-ink); opacity: 0.75; }
-/* On phones the chips are a little tighter, so two of the longer names share a row. */
-@media (max-width: 600px) { .filters a { padding: 0 12px; gap: 6px; } }
 @media (hover: hover) { .filters a:not([aria-current]):hover { color: var(--ink); } }
 .filters a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 @media (prefers-reduced-motion: no-preference) {
