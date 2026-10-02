@@ -63,25 +63,127 @@ html[data-theme] ::selection { background: var(--mark); }
 .site-nav a:not(.site-cta):not(.site-gh) { color: var(--muted); }
 .site-nav a[aria-current="page"]:not(.site-cta):not(.site-gh) { color: var(--ink); }
 .site-nav a.site-cta[aria-current="page"] { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px var(--amber); }
-/* Narrower screens drop the stars, then the text links; the brand and the Download button always stay. */
-@media (max-width: 760px) { .site-stars { display: none; } .site-header { height: 72px; } }
-/* The text links go before the header runs out of room (Templates, Blog, Changelog and Help need about 900 px). */
-@media (max-width: 920px) { .site-nav a:not(.site-cta):not(.site-gh) { display: none; } }
-@media (max-width: 600px) { .site-cta .site-cta-long { display: none; } }
-@media (max-width: 430px) { .site-badge { display: none; } }
-@media (min-width: 601px) { .site-cta .site-cta-short { display: none; } }
-/* Phones: a 16px gutter on both sides, and the brand, GitHub and Download tightened to fit it down to 360. */
+@media (max-width: 760px) { .site-header { height: 72px; } }
+/* Tablets and narrow windows (601 to 920px): the four text links always stay. To make room the header
+   sheds the version and the stars and tightens the links; under 800px GitHub goes (the footer has it)
+   and the button says just "Download"; under 700px the button goes too, and the pages carry it. */
+@media (max-width: 920px) {
+  .site-badge, .site-stars { display: none; }
+  .site-nav { gap: 2px; }
+  .site-nav a { padding: 0 10px; }
+  .site-nav a.site-cta { padding: 0 16px; }
+  .site-nav a.site-gh { min-width: 44px; padding: 0; justify-content: center; } /* the icon alone, still a 44px target */
+}
+@media (max-width: 799px) { .site-nav a.site-gh, .site-cta .site-cta-long { display: none; } }
+@media (min-width: 800px) { .site-cta .site-cta-short { display: none; } }
+@media (max-width: 699px) { .site-nav a.site-cta { display: none; } }
 @media (max-width: 430px) {
   .site-brand { font-size: 17px; gap: 9px; }
   .site-brand img { width: 30px; height: 30px; }
-  .site-nav { gap: 4px; }
-  .site-nav a.site-gh { padding: 0 10px; }
-  .site-nav a.site-cta { margin-left: 0; padding: 0 14px; }
 }
-@media (max-width: 359px) { .site-nav a.site-gh { display: none; } }
 @media (hover: hover) { .site-nav a:not(.site-cta):hover { background: var(--soft); color: var(--ink); } .site-nav a.site-cta:hover { background: color-mix(in srgb, var(--cta-bg) 86%, var(--amber)); } }
 @media (prefers-reduced-motion: no-preference) { .site-nav a.site-cta { transition: transform 0.12s ease-out, background-color 0.15s ease-out; } .site-nav a.site-cta:active { transform: scale(0.97); } }
 .site-brand:focus-visible, .site-nav a:focus-visible, .site-footer a:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
+
+/* ── Phones (600px and under): the logo, Templates, and a button that opens the menu with the rest
+   (app/MobileMenu.tsx). No Download button in the header; the pages and the menu carry it. ── */
+.site-menu-button, .site-menu { display: none; }
+@media (max-width: 600px) {
+  .site-header { gap: 4px; }
+  .site-nav { margin-left: auto; }
+  .site-nav a:not([href="/templates"]) { display: none; }
+  /* The current page: full ink, and a short amber line under the word. */
+  .site-nav a[aria-current="page"]::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: 7px; height: 2px; border-radius: 1px; background: var(--amber); }
+  .site-menu-button { display: inline-flex; }
+}
+/* The narrowest phones (320px): the name and Templates a size smaller, in the sheet too, so the name doesn't shift when it opens. */
+@media (max-width: 359px) {
+  .site-brand { font-size: 16px; gap: 8px; }
+  .site-nav a { padding: 0 8px; font-size: 15px; letter-spacing: -0.01em; }
+  .site-nav a[aria-current="page"]::after { left: 8px; right: 8px; }
+}
+
+/* The menu button: two lines on a soft tile; in the sheet the same tile, in the same place, closes it. */
+.site-menu-button {
+  position: relative; align-items: center; justify-content: center; flex: none; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 14px;
+  background: var(--soft); color: var(--ink); cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.site-menu-button span { position: absolute; left: 13px; width: 18px; height: 2px; border-radius: 1px; background: currentColor; }
+.site-menu-button span:first-child { top: 17px; }
+.site-menu-button span:last-child { top: 25px; }
+.site-menu-close { display: inline-flex; }
+.site-menu-close span:first-child { top: 21px; transform: rotate(45deg); }
+.site-menu-close span:last-child { top: 21px; transform: rotate(-45deg); }
+.site-menu-button:focus-visible, .site-sheet a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+@media (hover: hover) { .site-menu-button:hover { background: color-mix(in srgb, var(--soft) 82%, var(--amber)); } }
+
+/* The sheet: a card that drops from the header and covers it, so the logo and the button stay where they were. */
+.site-menu[open] { display: block; }
+.site-menu {
+  position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 6px 8px 8px; border: 0; box-sizing: border-box;
+  background: transparent; color: var(--ink); overflow-y: auto; overscroll-behavior: contain;
+}
+.site-menu::backdrop { background: rgba(30, 15, 5, 0.42); }
+.site-sheet {
+  display: grid; gap: 8px; padding: 8px; border-radius: 24px; background: var(--card);
+  box-shadow: 0 0 0 1px var(--line), 0 4px 10px -4px rgba(40, 20, 5, 0.22), 0 28px 64px -24px rgba(40, 20, 5, 0.5);
+}
+.site-sheet:focus { outline: none; } /* opening puts focus on the sheet itself; Tab goes to the logo, then Close */
+/* The header's own row again, centred on the header's centre line (36px), so the logo and the button don't move. */
+.site-sheet-top { display: flex; align-items: center; justify-content: space-between; height: 44px; }
+.site-sheet-rows { display: grid; gap: 2px; }
+.site-sheet-rows a {
+  display: flex; align-items: center; gap: 14px; min-height: 56px; padding: 0 12px; border-radius: 16px;
+  color: var(--ink); text-decoration: none; font-weight: 650; font-size: 19px; letter-spacing: -0.01em;
+}
+.site-sheet-rows svg { flex: none; width: 24px; height: 24px; color: var(--link); }
+.site-sheet-rows svg[fill="currentColor"] { width: 21px; height: 21px; margin: 0 1.5px; } /* GitHub's own mark, filled: a little smaller to weigh the same as the line icons */
+.site-sheet-rows a[aria-current="page"] { background: var(--soft); }
+.site-sheet-stars { margin-left: auto; color: var(--muted); font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: 0; }
+/* The download: its own group, twice as far from the rows as they are from each other. */
+.site-sheet-action { display: grid; gap: 8px; margin-top: 8px; }
+.site-sheet-cta {
+  display: flex; align-items: center; justify-content: center; gap: 9px; min-height: 52px; border-radius: 16px;
+  background: var(--cta-bg); color: var(--cta-ink); text-decoration: none; font-weight: 700; font-size: 17px;
+}
+.site-sheet-cta-quiet { background: var(--soft); color: var(--ink); }
+.site-sheet-for { display: grid; gap: 8px; }
+/* The same switch as the pages' platform note: an iPhone gets the iPhone words, Windows, Android and
+   Linux get "For iPhone and Mac", everyone else the Mac download. */
+.site-sheet-for.site-sheet-ios, .site-sheet-for.site-sheet-other { display: none; }
+:root[data-platform="ios"] .site-sheet-for.site-sheet-ios,
+:root:is([data-platform="windows"], [data-platform="android"], [data-platform="linux"]) .site-sheet-for.site-sheet-other { display: grid; }
+.site-sheet-action p { margin: 4px 0 6px; text-align: center; text-wrap: balance; color: var(--muted); font-size: 14px; font-weight: 600; }
+@media (hover: hover) { .site-sheet-rows a:hover { background: var(--soft); } }
+
+@media (prefers-reduced-motion: no-preference) {
+  .site-menu-button { transition: transform 0.12s ease-out, background-color 0.15s ease-out; }
+  .site-menu-button:active { transform: scale(0.95); }
+  .site-menu-button span { transition: transform 0.12s ease-out; }
+  .site-sheet-rows a, .site-sheet-cta { transition: transform 0.12s ease-out, background-color 0.15s ease-out; }
+  .site-sheet-rows a:active, .site-sheet-cta:active { transform: scale(0.98); }
+  /* In: the card fades in over the header without moving, so the logo and the button stay put; the
+     rows drop into place in reading order with a little overshoot; the two lines turn into the cross.
+     Out: a short plain fade. */
+  .site-menu[open] .site-sheet { animation: sheet-in 0.18s ease-out both; }
+  .site-menu[open]::backdrop { animation: sheet-veil 0.24s ease-out both; }
+  .site-menu[open] .site-sheet-rows a, .site-menu[open] .site-sheet-action { animation: sheet-row 0.36s cubic-bezier(0.34, 1.56, 0.64, 1) both; animation-delay: calc(20ms + var(--i, 0) * 28ms); }
+  .site-sheet-rows a:nth-child(2) { --i: 1; } .site-sheet-rows a:nth-child(3) { --i: 2; } .site-sheet-rows a:nth-child(4) { --i: 3; } .site-sheet-rows a:nth-child(5) { --i: 4; }
+  .site-sheet-action { --i: 5; }
+  .site-menu[open] .site-menu-close span:first-child { animation: sheet-cross-a 0.26s cubic-bezier(0.34, 1.36, 0.64, 1) both; }
+  .site-menu[open] .site-menu-close span:last-child { animation: sheet-cross-b 0.26s cubic-bezier(0.34, 1.36, 0.64, 1) both; }
+  .site-menu[open][data-closing] .site-sheet { animation: sheet-out 0.15s cubic-bezier(0.4, 0, 0.2, 1) both; }
+  .site-menu[open][data-closing]::backdrop { animation: sheet-veil-out 0.15s cubic-bezier(0.4, 0, 0.2, 1) both; }
+  .site-menu[open][data-closing] .site-sheet-rows a, .site-menu[open][data-closing] .site-sheet-action,
+  .site-menu[open][data-closing] .site-menu-close span { animation: none; }
+}
+@keyframes sheet-in { from { opacity: 0; } }
+@keyframes sheet-out { to { opacity: 0; } }
+@keyframes sheet-veil { from { opacity: 0; } }
+@keyframes sheet-veil-out { to { opacity: 0; } }
+@keyframes sheet-row { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+@keyframes sheet-cross-a { from { top: 17px; transform: none; } to { top: 21px; transform: rotate(45deg); } }
+@keyframes sheet-cross-b { from { top: 25px; transform: none; } to { top: 21px; transform: rotate(-45deg); } }
 
 /* Footer: identical on every page. */
 .site-footer {
@@ -157,8 +259,9 @@ html[data-theme] ::selection { background: var(--mark); }
 .pi-button:focus-visible, .pi-send:focus-visible, .pi-link:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
 .pi-link:focus-visible { border-radius: 6px; }
 
-/* In the header the note is a quiet link where Download for Mac sits. Phones have no room for it. */
-@media (min-width: 601px) {
+/* In the header the note is a quiet link where Download for Mac sits, from the width it fits
+   beside the four page links. Narrower screens have no room for it; on phones it's in the menu. */
+@media (min-width: 720px) {
   :root:is([data-platform="windows"], [data-platform="android"], [data-platform="linux"]) .site-nav a.pi-head { display: inline-flex; margin-left: 6px; }
 }
 @media (hover: hover) {

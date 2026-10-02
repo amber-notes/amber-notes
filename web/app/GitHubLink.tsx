@@ -16,15 +16,21 @@ export async function fetchStars(): Promise<number | null> {
   }
 }
 
-/// The header's GitHub link. The page renders with the star count it was built with, then swaps in
-/// the live one after load; when that fails, the built number stays.
-export default function GitHubLink({ stars: built }: { stars: number | null }) {
+/// The star count the page was built with, then the live one once it's fetched.
+export function useStars(built: number | null): number | null {
   const [stars, setStars] = useState(built);
   useEffect(() => {
     let live = true;
     fetchStars().then((n) => { if (live && n !== null) setStars(n); });
     return () => { live = false; };
   }, []);
+  return stars;
+}
+
+/// The header's GitHub link. The page renders with the star count it was built with, then swaps in
+/// the live one after load; when that fails, the built number stays.
+export default function GitHubLink({ stars: built }: { stars: number | null }) {
+  const stars = useStars(built);
   return (
     <a className="site-gh" href={GITHUB} target="_blank" rel="noopener noreferrer" aria-label={stars !== null ? `GitHub, ${stars} stars` : "GitHub"}>
       <GitHubGlyph />{stars !== null && <span className="site-stars">★ {stars.toLocaleString("en")}</span>}
