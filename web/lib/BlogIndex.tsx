@@ -79,11 +79,11 @@ export function BlogIndex({ category, page }: { category: Category | null; page:
         </div>
         <div className={`${s.library} rise`} style={{ "--i": 2 } as React.CSSProperties}>
           <nav className={s.filters} aria-label="Categories">
-            <a href="/blog" aria-current={category === null ? "page" : undefined}>All posts<span className={s.count}>{published().length}</span></a>
+            <a href="/blog" aria-current={category === null ? "page" : undefined}><span className={s.text}>All posts<span className={s.count}>{published().length}</span></span></a>
             {counts.map(({ c, n, dots }) => (
               <a key={c} href={categoryPath(c)} aria-current={category === c ? "page" : undefined}>
                 <span className={s.swatch} aria-hidden="true">{dots.map((g) => <i key={g} style={{ background: g }} />)}</span>
-                {c}<span className={s.count}>{n}</span>
+                <span className={s.text}>{c}<span className={s.count}>{n}</span></span>
               </a>
             ))}
           </nav>

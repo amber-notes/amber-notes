@@ -43,6 +43,9 @@
   .chip { transition: background-color 0.15s ease-out, color 0.15s ease-out, transform 0.12s ease-out; }
   .chip:active { transform: scale(0.97); }
 }
+/* The name and its count sit on one baseline (the count is smaller, so centring it on its own
+   lifts it); the chip centres that pair, and the dots, as a whole. */
+.text { display: inline-flex; align-items: baseline; gap: 7px; }
 .count { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .shown { margin: 0; color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; min-height: 20px; }
 
