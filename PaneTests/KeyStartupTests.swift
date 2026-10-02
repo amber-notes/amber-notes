@@ -23,6 +23,8 @@ import Testing
         var synced: [UUID: StoredKey] = [:]
         var pending: [UUID: StoredKey] = [:]
         var previous: [UUID: StoredKey] = [:]
+        /// The key another device handed over (Add a device): on this device only.
+        var local: [UUID: StoredKey] = [:]
         private(set) var syncedWrites = 0
 
         init(cloud: Cloud, autoReceive: Bool = true) {
@@ -34,6 +36,7 @@ import Testing
 
         func load(account: UUID, slot: KeySlot) -> StoredKey? {
             if slot == .previous { return previous[account] }
+            if slot == .local { return local[account] }
             guard slot == .synced else { return pending[account] }
             loads += 1
             if autoReceive || receiveAfterLoads.map({ loads > $0 }) == true { receive() }
@@ -43,6 +46,7 @@ import Testing
         func save(_ key: StoredKey, account: UUID, slot: KeySlot) -> Bool {
             if slot == .pending { pending[account] = key; return true }
             if slot == .previous { previous[account] = key; return true }
+            if slot == .local { local[account] = key; return true }
             syncedWrites += 1
             synced[account] = key
             cloud.keys[account] = key
@@ -53,6 +57,7 @@ import Testing
             switch slot {
             case .pending: pending[account] = nil
             case .previous: previous[account] = nil
+            case .local: local[account] = nil
             case .synced: synced[account] = nil; cloud.keys[account] = nil
             }
         }
@@ -348,12 +353,15 @@ import Testing
         crypto.signedOut()
     }
 
-    @Test func withoutTheKeyTheRecoveryKeyComesFirstAndNothingSpinsForever() {
+    @Test func withoutTheKeyTheCodeForAnotherDeviceComesFirstAndNothingSpinsForever() {
         typealias G = KeyGateView
-        #expect(G.shown(.waiting, .auto) == .recovery, "no key here: the recovery key at once, iCloud Keychain checked behind it")
-        #expect(G.shown(.mismatch, .auto) == .recovery)
+        #expect(G.shown(.waiting, .auto) == .addDevice, "no key here: a code another device scans, iCloud Keychain checked behind it")
+        #expect(G.shown(.mismatch, .auto) == .addDevice)
+        #expect(G.shown(.waiting, .recovery) == .recovery, "the recovery key is a choice, never the first ask")
+        #expect(G.shown(.mismatch, .recovery) == .recovery)
+        #expect(G.shown(.waiting, .noDevice) == .noDevice && G.shown(.mismatch, .noDevice) == .noDevice)
         #expect(G.shown(.waiting, .keychain) == .waiting, "waiting is a choice")
-        #expect(G.shown(.mismatch, .keychain) == .recovery, "a wrong key here can't be waited out")
+        #expect(G.shown(.mismatch, .keychain) == .addDevice, "a wrong key here can't be waited out")
         #expect(G.shown(.waiting, .startFresh) == .startFresh)
         #expect(G.shown(.ready, .keychain) == .welcome, "the key arrived while you were typing")
         #expect(G.shown(.unreachable, .auto) == .unreachable)

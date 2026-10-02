@@ -10,6 +10,7 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var confirmSignOut = false
     @State private var route = SettingsRoute.shared
+    @State private var addingDevice = false
 
     var body: some View {
         #if os(macOS)
@@ -81,16 +82,26 @@ struct SettingsView: View {
                         .id(SettingsRoute.connectAI)
                 }
                 if case .signedIn = backend.state, AccountCrypto.shared.isReady {
+                    let addDevice = backend.client.map { SupabaseAddDevice(client: $0) }
                     #if os(macOS)
-                    PrivacySecuritySection(crypto: AccountCrypto.shared)
+                    PrivacySecuritySection(crypto: AccountCrypto.shared, addDeviceServer: addDevice)
                     #else
                     Section {
                         NavigationLink {
-                            PrivacySecurityView(crypto: AccountCrypto.shared)
+                            PrivacySecurityView(crypto: AccountCrypto.shared, addDeviceServer: addDevice)
                         } label: {
                             Label(PrivacyCopy.title, systemImage: "lock.shield")
                         }
                         .accessibilityIdentifier("settings.privacy")
+                        // What a new device's screen says to open: Settings › Add a device.
+                        Button { addingDevice = true } label: {
+                            Label(AddDeviceCopy.sheetTitle, systemImage: "plus.circle")
+                        }
+                        .accessibilityIdentifier("settings.addDevice")
+                        .sheet(isPresented: $addingDevice) {
+                            AddDeviceSheet(crypto: AccountCrypto.shared, server: addDevice)
+                                .onDisappear { Task { await KeyDevices.shared.refresh(AccountCrypto.shared) } }
+                        }
                     }
                     #endif
                 }

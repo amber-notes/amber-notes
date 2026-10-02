@@ -201,7 +201,11 @@ enum E2EE {
     }
 
     /// The canonical form of a typed recovery key: its 28 characters, or nil when it can't be one.
-    static func canonicalRecoveryKey(_ typed: String) -> String? {
+    static func canonicalRecoveryKey(_ typed: String) -> String? { canonicalCrockford(typed, count: 28) }
+
+    /// Typed Crockford base32, read forgivingly: case, spaces and dashes don't matter, O reads as
+    /// 0, I and L as 1. Nil unless it comes to exactly `count` characters of the alphabet.
+    static func canonicalCrockford(_ typed: String, count: Int) -> String? {
         let separators: Set<Character> = ["-", "_", ".", "\u{2010}", "\u{2011}", "\u{2012}", "\u{2013}", "\u{2014}", "\u{2015}"]
         let s = String(typed.uppercased().filter { !$0.isWhitespace && !separators.contains($0) }.map { c -> Character in
             switch c {
@@ -210,7 +214,7 @@ enum E2EE {
             default: c
             }
         })
-        return s.count == 28 && s.allSatisfy(crockford.contains) ? s : nil
+        return s.count == count && s.allSatisfy(crockford.contains) ? s : nil
     }
 
     /// The 16 key bytes a typed recovery key stands for, or nil (wrong length, letter or check).
@@ -421,6 +425,20 @@ struct ServerKey: Codable, Equatable, Sendable {
     var recovery_saved_at: Date?
 }
 
+/// How a device came to hold the key, as the list in Privacy & Security says it.
+enum KeyHow: String, Codable, Sendable {
+    /// Made on it (the account's first device).
+    case made
+    /// Brought by iCloud Keychain.
+    case keychain
+    /// Handed over by another device (Add a device).
+    case added
+    /// Opened with the recovery key.
+    case recovery
+    /// It already had the key when it first listed itself: where from isn't known.
+    case unknown
+}
+
 /// The account's key row (nil when it has none) and its reset generation (`account_key_resets`,
 /// 0 when it never started fresh).
 struct ServerKeyState: Equatable, Sendable {
@@ -451,6 +469,9 @@ enum KeySlot: String, Sendable, CaseIterable {
     /// The key from before the account started fresh, kept on this device only: never used for
     /// sync, never deleted by the app except with the account.
     case previous
+    /// The account's key as another device handed it over (Add a device), on this device only:
+    /// it never joins iCloud Keychain, so removing this device removes exactly this copy.
+    case local
 }
 
 protocol AccountKeyStore: Sendable {
@@ -528,7 +549,8 @@ struct KeychainAccountKeyStore: AccountKeyStore {
         var q = Self.query(account, slot: slot)
         q[kSecAttrSynchronizable as String] = slot == .synced
         q[kSecAttrAccessible as String] = slot == .synced ? kSecAttrAccessibleAfterFirstUnlock : kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-        q[kSecAttrLabel as String] = slot == .previous ? "Amber Notes encryption key (before starting fresh)" : "Amber Notes encryption key"
+        q[kSecAttrLabel as String] = slot == .previous ? "Amber Notes encryption key (before starting fresh)"
+            : slot == .local ? "Amber Notes encryption key (this device)" : "Amber Notes encryption key"
         q[kSecValueData as String] = key.encoded
         return SecItemAdd(q as CFDictionary, nil) == errSecSuccess
     }
@@ -574,19 +596,30 @@ enum KeyStartup {
         case unreachable
     }
 
-    static func decide(user: UUID, synced: StoredKey?, pending: StoredKey?, server: Server) -> Decision {
+    /// `local`: the key another device handed this one (Add a device), kept on this device only.
+    /// It stands in wherever the synced key is missing or isn't the account's.
+    static func decide(user: UUID, synced: StoredKey?, pending: StoredKey?, local: StoredKey? = nil, server: Server) -> Decision {
+        // With no server row to check against, the key of the later reset generation is the
+        // account's. A tie goes to the handed-over key: it was checked against the server when it
+        // came, at a moment the synced item was missing or wrong.
+        let held: StoredKey? = switch (synced, local) {
+        case (let s?, let l?): s.generation > l.generation ? s : l
+        case (let s?, nil): s
+        case (nil, let l): l
+        }
         switch server {
         case .unreachable:
             // Offline with the key here: carry on (sync waits for the network anyway); the key
             // is checked once the server answers.
-            return synced.map { .ready($0, verified: false, promote: false) } ?? .unreachable
+            return held.map { .ready($0, verified: false, promote: false) } ?? .unreachable
         case .none(let generation):
-            // A synced key is replaced only after a reset the server counted (start_fresh): a
-            // server that merely forgets the row gets the same key back.
-            guard let synced else { return .create(generation: generation) }
-            return synced.generation >= generation ? .reregister(synced) : .replace(previous: synced, generation: generation)
+            // A key is replaced only after a reset the server counted (start_fresh): a server
+            // that merely forgets the row gets the same key back.
+            guard let held else { return .create(generation: generation) }
+            return held.generation >= generation ? .reregister(held) : .replace(previous: held, generation: generation)
         case .key(let s):
             if let synced, synced.matches(s, user: user) { return .ready(synced, verified: true, promote: false) }
+            if let local, local.matches(s, user: user) { return .ready(local, verified: true, promote: false) }
             // A key this device made without hearing back that the server took it.
             if let pending, pending.matches(s, user: user) { return .ready(pending, verified: true, promote: true) }
             return synced == nil ? .wait : .mismatch
@@ -602,6 +635,10 @@ enum KeyError: LocalizedError, Equatable {
     case staleGeneration
     /// Signed in again for Start fresh, yet the session doesn't show a recent sign-in.
     case reauthUnconfirmed
+    /// A key handed over by another device that isn't the account's: never used.
+    case notAccountsKey
+    /// This device was itself removed, so it can't remove another.
+    case removedHere
 
     var errorDescription: String? {
         switch self {
@@ -613,6 +650,8 @@ enum KeyError: LocalizedError, Equatable {
         case .offline: "You're offline. Connect to the internet and try again."
         case .notReady: "Your notes aren't open on this device yet."
         case .confirmation: "Type \u{201C}\(AccountCrypto.startFreshPhrase)\u{201D} to confirm."
+        case .removedHere: "This device was removed from another of your devices, so it can\u{2019}t remove one."
+        case .notAccountsKey: "What the other device sent isn't this account's key. Show a new code and try again."
         }
     }
 }
@@ -655,6 +694,11 @@ final class AccountCrypto {
     /// void: said once (`recoveryKeyChangeShown`), and in Privacy & Security until the new one is saved.
     private(set) var recoveryKeyChanged = false
     private(set) var recoveryKeyChangeNeedsSaying = false
+    /// How the key got here, when it arrived while the app was running (nil: it was already here).
+    private(set) var arrivedHow: KeyHow?
+    /// The open key is kept as an iCloud Keychain item (which reaches the person's other iPhone
+    /// and Mac when iCloud Keychain is on), not on this device only.
+    private(set) var backedUp = false
     /// The account's reset generation, as last seen.
     private var serverGeneration = 0
     private var startingFresh = false
@@ -738,7 +782,8 @@ final class AccountCrypto {
         guard gen == generation else { return }
         if case .key(let s) = remote { serverKey = s }
         await carryOut(KeyStartup.decide(user: account, synced: store.load(account: account, slot: .synced),
-                                         pending: store.load(account: account, slot: .pending), server: remote))
+                                         pending: store.load(account: account, slot: .pending),
+                                         local: store.load(account: account, slot: .local), server: remote))
     }
 
     private func carryOut(_ decision: KeyStartup.Decision) async {
@@ -756,6 +801,8 @@ final class AccountCrypto {
             // Kept on this device, never synced and never used: notes someone chose to delete
             // may still be in a backup somewhere, and this is the only key to them.
             store.save(previous, account: account, slot: .previous)
+            // The handed-over copy goes only when it's the key just kept aside.
+            if store.load(account: account, slot: .local) == previous { store.remove(account: account, slot: .local) }
             // Whichever device makes the new key, the recovery key this person saved is void.
             // (Not news on the device where they just chose to start fresh.)
             if !startingFresh { defaults.set(true, forKey: Self.recoveryChangedKey(account)) }
@@ -788,12 +835,12 @@ final class AccountCrypto {
             if created, k.matches(winner, user: account) {
                 store.save(k, account: account, slot: .synced)
                 store.remove(account: account, slot: .pending)
-                open(k, verified: true)
+                open(k, verified: true, how: .made)
             } else {
                 // Another device made the account's key first: that one it is.
                 store.remove(account: account, slot: .pending)
                 await carryOut(KeyStartup.decide(user: account, synced: store.load(account: account, slot: .synced),
-                                                 pending: nil, server: .key(winner)))
+                                                 pending: nil, local: store.load(account: account, slot: .local), server: .key(winner)))
             }
         } catch KeyError.staleGeneration {
             guard gen == generation else { return }
@@ -856,7 +903,7 @@ final class AccountCrypto {
         guard let k = store.load(account: account, slot: .synced) else { return false }
         if k.matches(serverKey, user: account) {
             store.remove(account: account, slot: .pending)
-            open(k, verified: true)
+            open(k, verified: true, how: .keychain)
             return true
         }
         phase = .mismatch
@@ -889,6 +936,47 @@ final class AccountCrypto {
         await restart()
     }
 
+    // MARK: Add a device
+
+    /// The key another device sealed for this one (Add a device), opened. It's used only when
+    /// it's the account's by the server's id and verifier and its recovery key opens the
+    /// account's recovery wrap; then it's kept on this device only.
+    func adopt(added k: StoredKey) throws {
+        guard let account, let serverKey, phase == .waiting || phase == .mismatch else { throw KeyError.notReady }
+        guard k.matches(serverKey, user: account),
+              let opened = try? E2EE.unwrap(serverKey.recovery_wrap, with: E2EE.recoveryKEK(k.recovery, user: account), purpose: "recovery", user: account),
+              E2EE.bytes(opened) == k.dataKey else { throw KeyError.notAccountsKey }
+        guard store.save(k, account: account, slot: .local) else { throw KeyError.notReady }
+        store.remove(account: account, slot: .pending)
+        open(k, verified: true, how: .added)
+    }
+
+    /// The key as this device holds it, to seal for a device being added. Only while it's open
+    /// and the server has confirmed it.
+    var keyToHandOver: StoredKey? { isReady && !unverified ? key : nil }
+
+    /// The same, for an account that isn't attached (a removal being finished at launch).
+    func forgetLocalKey(of account: UUID) {
+        store.remove(account: account, slot: .local)
+        if !store.syncs {
+            store.remove(account: account, slot: .synced)
+            store.remove(account: account, slot: .pending)
+        }
+        if account == self.account, phase != .off { stop(); drop(); phase = .checking }
+    }
+
+    /// This device was removed from another one that has the key (the removal's tag was checked
+    /// against this device's own key): the copy that lives only here goes. A copy iCloud Keychain
+    /// holds is never touched, since deleting it would take it from every device. On a build whose
+    /// Keychain doesn't sync (the Developer ID Mac), every slot lives only here, so they all go.
+    func forgetLocalKey() {
+        guard let account else { return }
+        forgetLocalKey(of: account)
+        stop()
+        drop()
+        phase = .checking
+    }
+
     // MARK: The recovery key and starting fresh
 
     func recover(typed: String) async throws {
@@ -909,7 +997,7 @@ final class AccountCrypto {
               k.matches(current, user: account) else { throw KeyError.wrongKey }
         store.save(k, account: account, slot: .synced)
         store.remove(account: account, slot: .pending)
-        open(k, verified: true)
+        open(k, verified: true, how: .recovery)
         // Typing the recovery key proves it's saved somewhere: Privacy & Security says so, here
         // and on the account's other devices. Offline, this device remembers and tells the server later.
         if current.recovery_saved_at == nil || recoveryKeyChanged {
@@ -1023,11 +1111,13 @@ final class AccountCrypto {
 
     // MARK: Pieces
 
-    private func open(_ k: StoredKey, verified: Bool) {
+    private func open(_ k: StoredKey, verified: Bool, how: KeyHow? = nil) {
         guard let account else { return }
         stop()
         staleRestarts = 0
         key = k
+        if let how { arrivedHow = how }
+        backedUp = store.syncs && store.load(account: account, slot: .synced) == k
         unverified = !verified
         showsKeychainHelp = false
         E2EE.sealer = Sealer(key: k.key, user: account)
@@ -1041,6 +1131,8 @@ final class AccountCrypto {
     private func drop() {
         generation += 1
         key = nil
+        arrivedHow = nil
+        backedUp = false
         unverified = false
         polls = 0
         showsKeychainHelp = false

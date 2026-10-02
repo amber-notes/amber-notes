@@ -63,6 +63,9 @@ export async function collect(sql: Sql, uid: string, now = new Date()): Promise<
   const tips = await sql<Row[]>`select day, tip, event, n from public.pane_tip_activity where user_id = ${uid} order by day`;
   const days = await sql<Row[]>`select day from public.pane_active_days where user_id = ${uid} order by day`;
   const devices = await sql<Row[]>`select device_id, platform, first_seen, last_seen from public.pane_devices where user_id = ${uid}`;
+  // The devices that hold the key, without their sealed names.
+  const key_devices = await sql<Row[]>`
+    select device_id, platform, how, backed_up, added_at, seen_at, removed_at from public.key_devices where user_id = ${uid} order by added_at`;
   const [share_ask] = await sql<Row[]>`select choice, decided_at from public.pane_share_ask where user_id = ${uid}`;
   const features = await sql<Row[]>`select feature, first_at from public.pane_feature_use where user_id = ${uid}`;
   const sessions = await sql<Row[]>`
@@ -80,7 +83,7 @@ export async function collect(sql: Sql, uid: string, now = new Date()): Promise<
     ai_connections: connections,
     share_links: shares,
     locked_notes: lock ?? null,
-    usage: { totals: totals ?? null, setup: setup ?? null, ai_edits_per_day: ai_edits, tips, active_days: days.map((d) => d.day), devices, share_ask: share_ask ?? null, features_used: features },
+    usage: { totals: totals ?? null, setup: setup ?? null, ai_edits_per_day: ai_edits, tips, active_days: days.map((d) => d.day), devices, key_devices, share_ask: share_ask ?? null, features_used: features },
     sign_ins: sessions,
   };
 

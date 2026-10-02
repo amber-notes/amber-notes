@@ -65,7 +65,7 @@ extension Backend {
 
 extension ModelContext {
     /// Forgets every note, folder and file on this device (after the account is gone).
-    @MainActor func wipeLocalLibrary() {
+    @MainActor func wipeLocalLibrary(files: URL? = nil) {
         // One by one (a batch delete refuses rows that other rows still point at), and through
         // `erase` so it's SwiftData's delete, not Library's delete(folder) that moves to Recently Deleted.
         func erase<T: PersistentModel>(_ type: T.Type) {
@@ -75,7 +75,7 @@ extension ModelContext {
         erase(Note.self)
         erase(Folder.self)
         try? save()
-        try? FileManager.default.removeItem(at: FileStore.root)
+        try? FileManager.default.removeItem(at: files ?? FileStore.root)
         AIEditStore.shared.forgetAll()
     }
 }

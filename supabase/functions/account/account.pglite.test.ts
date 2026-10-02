@@ -62,6 +62,12 @@ async function seed(pg: PGlite, me: string) {
   await pg.query(`insert into public.account_notices (user_id, kind, what) values ($1, 'started_fresh', 'x')`, [me]);
   await pg.query(`insert into public.account_key_resets (user_id, generation) values ($1, 1)`, [me]);
   await pg.query(`insert into public.device_tokens (user_id, device_id, platform, token, environment) values ($1, gen_random_uuid(), 'ios', $2, 'sandbox')`, [me, crypto.randomUUID().replaceAll('-', '').repeat(2)]);
+  await pg.query(`insert into public.device_adds (id, user_id, device_id, platform, public_key, key_id, scan_hash, scan_tag, scan_name, code_hash, code_tag, code_name, pickup_hash)
+    select gen_random_uuid(), $1, gen_random_uuid(), 'macos', $2, k.key_id, $3, repeat('1', 64), 'amb2n.AAAA', $4, repeat('2', 64), 'amb2n.AAAA', repeat('3', 64)
+    from public.account_keys k where k.user_id = $1`,
+    [me, "B" + "A".repeat(86) + "=", crypto.randomUUID().replaceAll("-", "").repeat(2), crypto.randomUUID().replaceAll("-", "").repeat(2)]);
+  await pg.query(`insert into public.key_devices (user_id, device_id, platform, how, backed_up, key_id, epoch, name_ct, tag)
+    select $1, gen_random_uuid(), 'macos', 'added', false, k.key_id, repeat('5', 32), 'amb2.' || k.key_id || '.AAAA', repeat('4', 64) from public.account_keys k where k.user_id = $1`, [me]);
   await pg.query(`insert into public.connect_blocks (user_id, blocked_until) values ($1, now() - interval '1 day')`, [me]);
   await pg.query(`insert into public.pane_setup (user_id, imported_at) values ($1, now())`, [me]);
   await pg.query(`insert into public.pane_activity (user_id, day, kind, n) values ($1, current_date, 'ai_edit', 3) on conflict do nothing`, [me]);
@@ -150,6 +156,7 @@ Deno.test("the export has everything the server can read, no note text or names,
   assertEquals(data.locked_notes.hint, "Blue");
   assertEquals(data.usage.ai_edits_per_day.length, 1);
   assertEquals(data.usage.devices.length, 1);
+  assertEquals([data.usage.key_devices.length, data.usage.key_devices[0].how, data.usage.key_devices[0].name_ct], [1, "added", undefined], "the devices that hold the key, without their sealed names");
   assertEquals(data.sign_ins[0].ip, "203.0.113.9");
   assert(data.notes.find((n: { id: string }) => n.id === as.locked).locked, "locked notes are marked");
 

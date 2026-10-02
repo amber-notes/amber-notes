@@ -33,4 +33,23 @@ enum AccountLibrary {
         for key in ["syncCursor.\(previous)", "syncCursor.\(previous.uppercased())"] { defaults.removeObject(forKey: key) }
         return true
     }
+
+    /// Whether anything on this device hasn't reached the server yet.
+    static func hasUnsynced(_ context: ModelContext) -> Bool {
+        let notes = (try? context.fetchCount(FetchDescriptor<Note>(predicate: #Predicate { $0.dirty }))) ?? 0
+        let folders = (try? context.fetchCount(FetchDescriptor<Folder>(predicate: #Predicate { $0.dirty }))) ?? 0
+        let files = (try? context.fetchCount(FetchDescriptor<Attachment>(predicate: #Predicate { $0.dirty || !$0.uploaded }))) ?? 0
+        return notes + folders + files > 0
+    }
+
+    /// This device was removed from the account's devices: its copy of the notes goes, with the
+    /// memory of where sync was, so signing in again starts from an empty library.
+    static func erase(context: ModelContext, defaults: UserDefaults = .standard, files: URL? = nil) {
+        context.wipeLocalLibrary(files: files)
+        memoryKeys.forEach { defaults.removeObject(forKey: $0) }
+        if let owner = defaults.string(forKey: ownerKey) {
+            for key in ["syncCursor.\(owner)", "syncCursor.\(owner.uppercased())"] { defaults.removeObject(forKey: key) }
+        }
+        defaults.removeObject(forKey: ownerKey)
+    }
 }

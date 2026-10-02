@@ -79,5 +79,49 @@
     "browser_public": "BK9UVJFFOUIVTsSUpYNV3UxnHJDcdDxhBku4sbTTreT3DLEyPUco0UiCeYKZb+qWErEcuYT/3HcRWxnYsMFGx8M=",
     "device_ephemeral_private": "mv4ekNAtMnOAUgdYkMSMSEL9u2KWSfl9fk1ANRmDQkk=",
     "sealed": "amb2h.BJgbbmR7v1utkIThichjwbNcLtkSsO6Io4byJvSWMnivOrGvp16poywexhsGTfDyqW3oBISg1Wal8OYiNL6cUV+goaKjpKWmp6ipqquW7KHsV7DXIIscfg8Ex2+yDrf4SRZL8gPHV3akxI4r4z3SlLTckTd/6eTR6U0UGOgBglRptbjNazAzx7ICx1U/qGdU9jFTyHBfJyWpoc3yE3sLb5flQDuWZmlTfv0rLMLeHoTcVhZIR2oFtWwhhrFbH8W0mwASGoVBbvaje4ehYBhHEJlgPdjReXobsjIpYKP21PLYMIz9qCz505ukZi8z58nHZGGTRMBwhr0XdgxDmVTL+p6XCofu0xmrdda4vLfuYuLnJQcY"
+  },
+  "add_device": {
+    "request_id": "33333333-4444-4555-8666-777777777777",
+    "name": "Sara’s MacBook Air",
+    "platform": "macos",
+    "stored": "AgECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gMDEyMzQ1Njc4OTo7PD0+PwAAAAA=",
+    "new_device_private": "QXyZcLcMdeE+bd6yWeP+ekEpAq02Lun8zke9B0gTuOg=",
+    "new_device_public": "BK9UVJFFOUIVTsSUpYNV3UxnHJDcdDxhBku4sbTTreT3DLEyPUco0UiCeYKZb+qWErEcuYT/3HcRWxnYsMFGx8M=",
+    "approving_ephemeral_private": "mv4ekNAtMnOAUgdYkMSMSEL9u2KWSfl9fk1ANRmDQkk=",
+    "qr": {
+      "secret": "gIGCg4SFhoeIiYqLjI2Ojw==",
+      "text": "amber-notes add-device v1 gIGCg4SFhoeIiYqLjI2Ojw",
+      "answer": "aa5ce66b0d365b05922125f8149b3fe11e4f883606c133985c2ba013b3ebf2f8",
+      "answer_hash": "a8212fdad87a2be912f8d4ae7fb37553a4b7cedacb8cb48d8685655d5b1f2534",
+      "bind": "zEZmMD4ROhvDXoK8SCUvrg8r5lG7hWHFJXTheYKYBro=",
+      "tag": "4a2eb60bbf1f148f489820460aec7b1706a5141cc70966d851d6655a74673497",
+      "name_sealed": "amb2n.oKGio6SlpqeoqaqrWloc5wrqtHY68PJ4XsY1V/2s0n77VhreHCQT1+lHR9d5EKN0",
+      "sealed": "amb2d.BJgbbmR7v1utkIThichjwbNcLtkSsO6Io4byJvSWMnivOrGvp16poywexhsGTfDyqW3oBISg1Wal8OYiNL6cUV+goaKjpKWmp6ipqqv2vH6d8o6tXKXgijex4uSOHigZ/9Z+JF322fAuYwi/43NcLSHqn65EAu9aoo7lcxYPwJFA/X3XTmUKDWib1MUBIiWEsk8="
+    },
+    "code": {
+      "bytes": "kZKTlJWWl5g=",
+      "text": "J699-754N-JTBS",
+      "canonical": "J699754NJTBS",
+      "typed": "j699 754n jtbs",
+      "prk": "ngFCa/lnXkWpogpRiP9xJk+zWwPw2TMHHwv+s+LsZn8=",
+      "answer": "8c6edff96a22d2af686fdf5cd5a5b0c3c7ca122b032ccb91fb7b83ce17771ba1",
+      "answer_hash": "d485266a6f67239488727b383c59067d0db7011a84674ff4c1c11ea12d6af943",
+      "bind": "JoeOifpS6ngKLJV/1KpFKwFreYy6ZRihPsWvn1z85fg=",
+      "tag": "cb6060b6ff1a7a87b5d28651338026bb07c8d8f28da40a9daaa4bf15606e8c7f",
+      "name_sealed": "amb2n.oKGio6SlpqeoqaqrSrBlS2a0g57oxtWFS2N8wkXsk0WnnCba24NPfZ0DKB/b1duO",
+      "sealed": "amb2d.BJgbbmR7v1utkIThichjwbNcLtkSsO6Io4byJvSWMnivOrGvp16poywexhsGTfDyqW3oBISg1Wal8OYiNL6cUV+goaKjpKWmp6ipqqtKf9hNb0o6Gk3h+x8KGSQYY2GUvtN116IlObJfsetWGuTENxh69+7lsO/Eqr1c7IExg/GpHmpzHpla8xGvnIh0s3HtnsA="
+    }
+  },
+  "key_device": {
+    "device_id": "44444444-5555-4666-8777-888888888888",
+    "platform": "macos",
+    "how": "added",
+    "backed_up": false,
+    "epoch": "b0b1b2b3b4b5b6b7b8b9babbbcbdbebf",
+    "name": "Sara’s MacBook Air",
+    "name_context": "device:44444444-5555-4666-8777-888888888888",
+    "name_sealed": "amb2.ae216c2ef5247a37.oKGio6Slpqeoqaqr6rBPBx81w3dfQ8MIs+pP73eW2WvXDPnZ7q1tJPgO3YYnIPed",
+    "tag": "46645972f7e546c6123098fa5c18cfb255b322a0fca00584c501175c7a20a7a9",
+    "removal_tag": "3d2304e37080ba82c6b9feb33843cf990c9afb9d4091484b1be89274eab147ab"
   }
 }

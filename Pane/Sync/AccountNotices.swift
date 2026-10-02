@@ -4,7 +4,7 @@ import OSLog
 import Supabase
 
 // Things every device of the account should say (public.account_notices): an AI was connected,
-// the account started fresh, or a wrong number was typed when connecting an AI. The server writes them; each device fetches them when the
+// the account started fresh, a device was added, or a wrong number was typed when connecting an AI. The server writes them; each device fetches them when the
 // library opens and hears new ones through realtime, and says each one once.
 
 /// One row of account_notices. What it says is built here from its kind and, for an AI
@@ -13,6 +13,8 @@ import Supabase
 struct AccountNotice: Decodable, Equatable, Identifiable, Sendable {
     enum Kind: String, Sendable {
         case aiConnected = "ai_connected", startedFresh = "started_fresh", wrongNumber = "wrong_number"
+        /// Another device got the account's key (Add a device).
+        case deviceAdded = "device_added"
         /// A kind from a newer server: not shown.
         case unknown
     }
@@ -58,6 +60,9 @@ struct AccountNotice: Decodable, Equatable, Identifiable, Sendable {
         case .wrongNumber:
             return ("Someone who knows your password tried to connect an AI. Change your password.",
                     "The number typed didn't match, so it was declined. Amber Notes takes no new requests to connect an AI for an hour.")
+        case .deviceAdded:
+            return ("A device was added to your account",
+                    "\(Self.when(created_at)). It can open your notes. If you didn\u{2019}t add it: remove it in Settings \u{203A} Privacy & Security, change your password, and disconnect and reconnect your AIs. Removing signs a real Amber Notes app out and erases its copy. A device that took your key keeps what it already has: the key can\u{2019}t be changed yet.")
         case .unknown:
             return ("", "")
         }
@@ -105,9 +110,10 @@ struct NoticeLedger {
     }
 
     /// The notices to say, oldest first. Seen ones are left out. This device's own news isn't
-    /// news: the newest "started fresh" after this device started fresh, and an AI connection
-    /// approved here a moment before (`approvedHere`), are marked seen without showing.
-    func unseen(_ rows: [AccountNotice], now: Date = .now, approvedHere: Date? = nil) -> [AccountNotice] {
+    /// news: the newest "started fresh" after this device started fresh, an AI connection
+    /// approved here a moment before (`approvedHere`), and a device added from here or this one
+    /// being added (`addedHere`), are marked seen without showing.
+    func unseen(_ rows: [AccountNotice], now: Date = .now, approvedHere: Date? = nil, addedHere: Date? = nil) -> [AccountNotice] {
         let seen = seen
         var out: [AccountNotice] = []
         let sorted = rows.sorted { $0.id < $1.id }
@@ -120,6 +126,11 @@ struct NoticeLedger {
                 continue
             }
             if n.kind == .aiConnected, let approvedHere, abs(n.created_at.timeIntervalSince(approvedHere)) < 120 {
+                markSeen(n.id)
+                continue
+            }
+            // A device added from this one, or this one being added, a moment before.
+            if n.kind == .deviceAdded, let addedHere, abs(n.created_at.timeIntervalSince(addedHere)) < 120 {
                 markSeen(n.id)
                 continue
             }
@@ -226,7 +237,7 @@ final class AccountNotices {
 
     func take(_ rows: [AccountNotice]) async {
         guard !stopped else { return }
-        let unseen = ledger.unseen(rows.filter { $0.kind != .unknown }, approvedHere: approvedHere())
+        let unseen = ledger.unseen(rows.filter { $0.kind != .unknown }, approvedHere: approvedHere(), addedHere: AddDeviceMoment.here)
         var fresh: [AccountNotice] = []
         for var n in unseen {
             if n.kind == .aiConnected, let grant = n.grant_id {

@@ -37,6 +37,9 @@ struct PaneApp: App {
         _backend = State(initialValue: backend)
         // Before sync: it hooks start fresh into this instance.
         AccountCrypto.shared = AccountCrypto(store: inMemory ? MemoryAccountKeyStore() : KeychainAccountKeyStore())
+        // Which device this is, for the list of devices that hold the key: in a Keychain item that stays on it.
+        DeviceIdentity.shared = DeviceIdentity(store: inMemory ? MemoryDeviceIdentityStore() : KeychainDeviceIdentityStore())
+        KeyDevices.shared = KeyDevices()
         let sync = SyncEngine(backend: backend, context: container.mainContext)
         _sync = State(initialValue: sync)
         // "What's new" after a major update: decided before anything is drawn or seeded, while
@@ -319,6 +322,8 @@ struct AppGate: View {
     /// "Connected ChatGPT", "Your notes were deleted…": said once on each device.
     @State private var notices: AccountNotices?
     @State private var noticeProblem: String?
+    /// This device was removed from another one, and hasn't said so yet.
+    @AppStorage(DeviceRemoval.noticeFlag) private var removedHere = false
     /// Captures: `-captureConsent ChatGPT` shows the Allow sheet over the notes.
     @State private var consent = CaptureScreen.consentRequest
     @Environment(\.modelContext) private var context
@@ -336,6 +341,11 @@ struct AppGate: View {
         }
         .sheet(item: $consent) { r in
             ConsentSheet(client: CaptureScreen.client, requestID: r.id, initial: .asking(r), finish: { _ in })
+        }
+        .alert(PrivacyCopy.removedTitle, isPresented: $removedHere) {
+            Button("OK", role: .cancel) { removedHere = false }
+        } message: {
+            Text(PrivacyCopy.removedMessage)
         }
     }
 
@@ -398,6 +408,12 @@ struct AppGate: View {
             if CaptureScreen.setupFlow { playSetupFlow() }
         }
         .task(id: backend.state) {
+            // A removal of this device that was cut short (the app was killed midway) is finished
+            // before anything else: the key is already gone, the notes follow.
+            if UserDefaults.standard.string(forKey: DeviceRemoval.pendingFlag) != nil {
+                KeyDevices.shared.attach(account: backend.userID, server: backend.client.map { SupabaseKeyDevices(client: $0) })
+                await removal.resumeIfInterrupted()
+            }
             // A sign-out that was offline removes this device's push token now.
             if let client = backend.client { await PushRegistration.shared.retryPendingForget(service: SupabasePushTokens(client: client)) }
             guard case .signedIn = backend.state, let client = backend.client else {
@@ -405,6 +421,7 @@ struct AppGate: View {
                 shareAsk.attach(account: nil, service: nil)
                 if backend.state == .disabled { NoteVault.shared.attach(account: nil, remote: nil) } else { NoteVault.shared.lockNow() }
                 AccountCrypto.shared.signedOut()
+                KeyDevices.shared.attach(account: nil, server: nil)
                 PushRegistration.shared.detach()
                 await sync.stop()
                 await connectAsks?.stop()
@@ -417,6 +434,8 @@ struct AppGate: View {
             shareAsk.attach(account: backend.userID, service: SupabaseShareAsk(client: client))
             NoteVault.shared.attach(account: backend.userID, remote: SupabaseLockRemote(client: client))
             await NoteVault.shared.refresh()
+            KeyDevices.shared.attach(account: backend.userID, server: SupabaseKeyDevices(client: client))
+            KeyDevices.shared.removedHere = { await removedFromDevices() }
             await AccountCrypto.shared.attach(account: backend.userID, server: SupabaseAccountKeys(client: client))
             // Without the key the gate asks for it; the library starts when it's open (below).
             guard AccountCrypto.shared.allowsSync else { return }
@@ -474,7 +493,11 @@ struct AppGate: View {
                 if let notices { Task { await notices.refresh() } }
                 // The account's key never changes; if another device started fresh, this one
                 // finds out here and gets the new key.
-                Task { await AccountCrypto.shared.recheck() }
+                Task {
+                    await AccountCrypto.shared.recheck()
+                    // This device says it holds the key, or learns it was removed.
+                    await KeyDevices.shared.refresh(AccountCrypto.shared)
+                }
                 context.drainInbox()
                 sync.schedule()
             } else {
@@ -502,8 +525,38 @@ struct AppGate: View {
         shareAsk.visible || notices?.current != nil || crypto.recoveryKeyChangeNeedsSaying
     }
 
+    /// Another device with the key removed this one: its copy of the notes and of the key go,
+    /// and it signs out. Said once on the sign-in screen.
+    private func removedFromDevices() async {
+        guard let account = backend.userID else { return }
+        await removal.run(account: account)
+    }
+
+    /// The steps of this device's removal, in the order `DeviceRemoval` runs them.
+    private var removal: DeviceRemoval {
+        DeviceRemoval(
+            push: {
+                // Edits that never reached the server would be erased with the rest: they go up
+                // first. The wait ends with the push, whose requests have their own timeouts; a
+                // push that fails leaves the removal to go ahead.
+                guard AccountLibrary.hasUnsynced(context) else { return }
+                _ = try? await AccountCrypto.within(DeviceRemoval.pushLimit, sleep: { try await Task.sleep(for: $0) }) { @MainActor in
+                    await sync.sync(pulling: false)
+                }
+            },
+            dropKey: { AccountCrypto.shared.forgetLocalKey(of: $0) },
+            erase: {
+                await sync.stop()
+                AccountLibrary.erase(context: context)
+            },
+            forget: { await KeyDevices.shared.removalDone(account: $0) },
+            signOut: { await backend.signOut() })
+    }
+
     /// The account's key is open here (or it isn't encrypted): sync, then everything that reads the library.
     private func openLibrary(_ client: SupabaseClient) async {
+        // This device lists itself among the ones that hold the key (and obeys its removal).
+        Task { await KeyDevices.shared.refresh(crypto) }
         // A browser can ask this device to approve an AI connection once it has the key.
         if connectAsks == nil, let user = backend.userID {
             let asks = ConnectAsks(client: client, user: user)
@@ -600,7 +653,7 @@ private struct WindowCloser: NSViewRepresentable {
 
 /// Captures only (`-uitest`): one screen on its own, or the setup card at a given step, so the
 /// iPhone simulator can show them without anyone tapping through.
-///   `-captureScreen connect`, `connect-chatgpt`, `connect-claude`, `connected-chatgpt`, `connect-incredible`, `settings`, `template`, `template-added`, `copy` or `signin`; `-captureSetup 1…4` (4: the moment after your AI's first edit).
+///   `-captureScreen connect`, `connect-chatgpt`, `connect-claude`, `connected-chatgpt`, `connect-incredible`, `settings`, `template`, `template-added`, `copy`, `signin`, `new-device`, `add-device` (the sheet as this device opens it), `add-device-type`, `add-device-confirm`, `add-device-done`, `key-kept`, `key-kept-unconfirmed`, `key-kept-only` or `device-added-notice`; `-captureSetup 1…4` (4: the moment after your AI's first edit).
 struct CaptureScreen: View {
     let name: String
     let backend: Backend
@@ -674,6 +727,8 @@ struct CaptureScreen: View {
         case "template", "template-added", "copy":
             // "Use this template" ready to add, just added, and "Use this note".
             NoteSourceCapture(name: name)
+        case let screen where screen.hasPrefix("add-device") || screen == "new-device" || screen.hasPrefix("key-kept") || screen == "device-added-notice":
+            AddDeviceCapture(name: screen)
         default:
             SignInView(backend: backend)
         }
