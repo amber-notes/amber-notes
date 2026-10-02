@@ -6,11 +6,13 @@ import {
   type ConnectLabel, type ConnectRequest,
 } from "@/lib/connect";
 import {
+  browserOn, leadFor, parseDevices, type Devices, type Lead,
   browserFrom, newPageNonce, newPickup, pageCommit, pageNumber, parseKeyRow, recoveryApproval, RecoveryError, revealRequest, sealedDestination,
   statusRequest, statusStep, withCode,
   type AccountKey,
 } from "@/lib/connect-flow";
 import { newHandoffKeys, openHandoff, parseRecoveryKey, toBase64 } from "@/lib/e2ee";
+import { DeviceScreen } from "./DeviceLead";
 import styles from "./connect.module.css";
 
 // The connect page as it was before the QR code (ConnectFlow.tsx): sign in, a notification on your
@@ -73,6 +75,9 @@ export default function ConnectFlowV1({ requestId, supabaseURL, anonKey, label, 
   const revealed = useRef(false);
   /// The two digits to type on the device, once the device's nonce is in and Np is revealed.
   const [number, setNumber] = useState<string | null>(null);
+  // Where the account has Amber Notes (from /connect/ask), and so the one device the page names.
+  const [devices, setDevices] = useState<Devices | null>(null);
+  const [lead, setLead] = useState<Lead>("any");
   const expiresAt = useRef<number | null>(null);
   const finished = useRef(false);
   const mcp = functionURL(supabaseURL);
@@ -289,7 +294,10 @@ export default function ConnectFlowV1({ requestId, supabaseURL, anonKey, label, 
         }),
       });
       const body = await res.json().catch(() => null) as { expires_at?: string; error?: string } | null;
-      await signOut(s.token);
+      const has = res.ok ? parseDevices(body) : null;
+      const next = leadFor(has, browserOn(navigator.platform, navigator.userAgent, navigator.maxTouchPoints));
+      // No app seen lately: the recovery key leads, and it needs this session.
+      if (!res.ok || next !== "recover") await signOut(s.token);
       if (!res.ok) {
         np.fill(0);
         if (res.status === 404) return end(EXPIRED);
@@ -305,9 +313,12 @@ export default function ConnectFlowV1({ requestId, supabaseURL, anonKey, label, 
       const t = Date.parse(body?.expires_at ?? "");
       expiresAt.current = Number.isNaN(t) ? null : t;
       finished.current = false;
+      setDevices(has);
+      setLead(next);
+      setPolling(true);
+      if (next === "recover") return await loadRecover(s);
       setMode("devices");
       setView({ kind: "waiting" });
-      setPolling(true);
     } catch {
       await signOut(s.token);
       end({ kind: "ended", title: "Couldn't connect", text: OFFLINE, retry: true });
@@ -481,7 +492,11 @@ export default function ConnectFlowV1({ requestId, supabaseURL, anonKey, label, 
         <p className={styles.status} role="status"><Spinner /> {view.text}</p>
       )}
 
-      {view.kind === "waiting" && (
+      {view.kind === "waiting" && devices && lead !== "recover" && lead !== "any" && (
+        <DeviceScreen lead={lead} devices={devices} number={number} action="type" openLink={universalLink(requestId)} onRecover={showRecovery} />
+      )}
+
+      {view.kind === "waiting" && !(devices && lead !== "recover" && lead !== "any") && (
         <>
           {number ? (
             <>
@@ -515,6 +530,7 @@ export default function ConnectFlowV1({ requestId, supabaseURL, anonKey, label, 
             ? <p className={styles.lede}>Access goes to <b>{destination(request.redirect_host, request.loopback)}</b>.
                 {request.claimed_name && <> It calls itself &ldquo;{request.claimed_name}&rdquo;.</>}</p>
             : <Asking label={label} />}
+          {lead === "recover" && <p className={styles.lede}>No iPhone or Mac has opened Amber Notes on this account in the last 30 days, so allow it here with your recovery key.</p>}
           <p className={styles.note}>
             This runs our code in your browser. Your recovery key and your notes' key are used on this page only, and are never stored or sent to us.
             If this page were changed, it could read them. When you can, approve from your iPhone or Mac instead.

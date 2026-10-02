@@ -1,4 +1,6 @@
 import { APPLE_ON_WEB } from "@/lib/connect";
+import type { Devices, Lead } from "@/lib/connect-flow";
+import { DeviceScreen } from "./DeviceLead";
 import { QRCode } from "./QRCode";
 import styles from "./connect.module.css";
 
@@ -64,7 +66,20 @@ export function NotifySignInScreen({ to, onSubmit, onScan, ...signIn }: SignInPr
 
 /// Waiting for the notification to be answered. Once the device has opened the request, the number
 /// to compare with what it shows.
-export function NotifyScreen({ number, onScan }: { number: string | null; onScan: () => void }) {
+export function NotifyScreen({ number, onScan, lead = "any", devices = null, openLink = "", onRecover }: {
+  number: string | null; onScan: () => void;
+  /// The one device to name, once /connect/ask has said where the account has the app.
+  lead?: Lead; devices?: Devices | null; openLink?: string; onRecover?: () => void;
+}) {
+  if (devices && onRecover && lead !== "recover" && lead !== "any") {
+    return (
+      <DeviceScreen lead={lead} devices={devices} number={number} action="compare" openLink={openLink} onRecover={onRecover}>
+        <BottomLinks>
+          <button type="button" className={styles.link} onClick={onScan}>Scan the code instead</button>
+        </BottomLinks>
+      </DeviceScreen>
+    );
+  }
   return (
     <>
       {number ? (
@@ -101,7 +116,9 @@ export function MatchNumber({ number }: { number: string }) {
 export type Access = { write: boolean; canWrite: boolean; onWrite: (write: boolean) => void };
 
 /// No iPhone: approve here with the recovery key. The access choice waits under Options.
-export function RecoverScreen({ to, signedIn, recoveryKey, onRecoveryKey, access, onSubmit, onScan, ...signIn }: SignInProps & {
+export function RecoverScreen({ to, signedIn, recoveryKey, onRecoveryKey, access, onSubmit, onScan, noDevices = false, ...signIn }: SignInProps & {
+  /// Signed in, and the account has no app seen lately: say why the recovery key leads.
+  noDevices?: boolean;
   to: string | null; signedIn: string | null; recoveryKey: string; onRecoveryKey: (v: string) => void;
   access: Access; onSubmit: (e: React.FormEvent) => void; onScan: () => void;
 }) {
@@ -111,6 +128,7 @@ export function RecoverScreen({ to, signedIn, recoveryKey, onRecoveryKey, access
     <>
       <h1 className={styles.title}>Use your recovery key</h1>
       <AccessLine to={to} />
+      {noDevices && <p className={styles.lede}>No iPhone or Mac has opened Amber Notes on this account in the last 30 days, so allow it here with your recovery key.</p>}
       <p className={styles.note}>
         This runs our code in your browser. Your recovery key and your notes&apos; key are used on this page only, and are never stored or sent to us.
         If this page were changed, it could read them. When you can, scan the code with your iPhone instead.

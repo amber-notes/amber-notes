@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  appleSignInURL, destination, functionURL, pkcePair, returnURL, signInError, startsWithWrite,
+  universalLink, appleSignInURL, destination, functionURL, pkcePair, returnURL, signInError, startsWithWrite,
   type ConnectLabel, type ConnectRequest,
 } from "@/lib/connect";
 import {
+  browserOn, leadFor, parseDevices, type Devices, type Lead,
   browserFrom, isMacBrowser, keyFingerprint, newPageNonce, newPickup, newScan, pageCommit, pageNumber, parseKeyRow, recoveryApproval, RecoveryError,
   revealRequest, scanAppLink, scanLink, scanRequest, sealedDestination, statusRequest, statusStep, withCode,
   type AccountKey,
@@ -62,6 +63,9 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
   /// What the QR code encodes, and the same for the app on this Mac (null elsewhere).
   const [link, setLink] = useState<string | null>(null);
   const [macLink, setMacLink] = useState<string | null>(null);
+  // Where the account has Amber Notes (from /connect/ask), and so the one device the page names.
+  const [devices, setDevices] = useState<Devices | null>(null);
+  const [lead, setLead] = useState<Lead>("any");
   // Kept out of React state: the session and the key pair live in this page's memory only.
   const session = useRef<Session | null>(null);
   const [signedIn, setSignedIn] = useState<string | null>(null);
@@ -335,7 +339,10 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
         }),
       });
       const body = await res.json().catch(() => null) as { expires_at?: string; error?: string } | null;
-      await signOut(s.token);
+      const has = res.ok ? parseDevices(body) : null;
+      const next = leadFor(has, browserOn(navigator.platform, navigator.userAgent, navigator.maxTouchPoints));
+      // No app seen lately: the recovery key leads, and it needs this session.
+      if (!res.ok || next !== "recover") await signOut(s.token);
       if (!res.ok) {
         np.fill(0);
         if (res.status === 404) return end(EXPIRED);
@@ -348,9 +355,12 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
       setNumber(null);
       const t = Date.parse(body?.expires_at ?? "");
       if (!Number.isNaN(t)) expiresAt.current = t;
-      setView({ kind: "notify" });
+      setDevices(has);
+      setLead(next);
       finished.current = false;
       setPolling(true);
+      if (next === "recover") return await loadRecover(s);
+      setView({ kind: "notify" });
     } catch {
       np.fill(0);
       await signOut(s.token);
@@ -505,10 +515,16 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
     case "notifySignIn":
       return <NotifySignInScreen {...signIn} to={to} onApple={() => signInWithApple(false)} onSubmit={submitSignIn} onScan={backToScan} />;
     case "notify":
-      return <NotifyScreen number={number} onScan={backToScan} />;
+      return (
+        <NotifyScreen
+          number={number} onScan={backToScan} lead={lead} devices={devices}
+          openLink={macLink ?? universalLink(requestId)} onRecover={showRecovery}
+        />
+      );
     case "recover":
       return (
         <RecoverScreen
+          noDevices={lead === "recover"}
           {...signIn} to={recoverTo} signedIn={signedIn} recoveryKey={recoveryKey} onRecoveryKey={setRecoveryKey}
           access={{ write, canWrite, onWrite: setWrite }} onApple={() => signInWithApple(true)} onSubmit={submitRecovery} onScan={backToScan}
         />

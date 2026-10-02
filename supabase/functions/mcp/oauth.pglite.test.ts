@@ -1471,6 +1471,50 @@ Deno.test("a scan code expires with its request", async () => {
   assertEquals((await scanAskAs(sql, requestId, toBase64(page.publicRaw), s.scan_hash, (await newPickup()).pickup_hash)).status, 404);
 });
 
+Deno.test("the ask says where the account has Amber Notes, in two yes-or-no answers, and only to that account", async () => {
+  const { sql, pg } = await db();
+  const me = await newUser(pg), other = await newUser(pg);
+  const devicesFor = async (user: User) => {
+    const { requestId } = await pendingRequest(sql);
+    const asked = await askAs(sql, user, requestId, toBase64((await newHandoffKeys()).publicRaw));
+    assertEquals(Object.keys(asked.body).sort(), ["asked", "devices", "expires_at"]);
+    return asked.body.devices;
+  };
+  const seen = (user: User, device: string, platform: string, daysAgo = 0) =>
+    pg.query(`insert into public.pane_devices (user_id, device_id, platform, last_seen) values ($1, $2, $3, now() - make_interval(days => $4))`, [user.id, device, platform, daysAgo]);
+  const push = (user: User, device: string, platform: string, n: number) =>
+    pg.query(`insert into public.device_tokens (user_id, device_id, platform, token, environment) values ($1, $2, $3, $4, 'production')`, [user.id, device, platform, n.toString(16).padStart(64, "0")]);
+
+  // Nothing known: neither.
+  assertEquals(await devicesFor(me), { iphone: false, mac: false });
+  // Someone else's devices never count.
+  const theirPhone = crypto.randomUUID(), theirMac = crypto.randomUUID();
+  await seen(other, theirPhone, "ios"); await push(other, theirPhone, "ios", 1); await seen(other, theirMac, "macos");
+  assertEquals(await devicesFor(me), { iphone: false, mac: false });
+  assertEquals(await devicesFor(other), { iphone: true, mac: true });
+  // An iPhone that can't get the push isn't one to check; with a token it is.
+  const phone = crypto.randomUUID();
+  await seen(me, phone, "ios");
+  assertEquals(await devicesFor(me), { iphone: false, mac: false });
+  await push(me, phone, "ios", 2);
+  assertEquals(await devicesFor(me), { iphone: true, mac: false });
+  // A Mac counts by having opened the app lately, push or not.
+  const mac = crypto.randomUUID();
+  await seen(me, mac, "macos", 29);
+  assertEquals(await devicesFor(me), { iphone: true, mac: true });
+  // Not opened for 30 days: no longer named.
+  await pg.query(`update public.pane_devices set last_seen = now() - interval '31 days' where user_id = $1`, [me.id]);
+  assertEquals(await devicesFor(me), { iphone: false, mac: false });
+  // Nothing was written to answer.
+  assertEquals((await pg.query<{ n: number }>(`select count(*)::int n from public.pane_devices`)).rows[0].n, 4);
+  assertEquals((await pg.query<{ n: number }>(`select count(*)::int n from public.device_tokens`)).rows[0].n, 2);
+  // Signed out, there is no answer at all.
+  const { requestId } = await pendingRequest(sql);
+  const signedOut = await call(sql, request("function", "/connect/ask", { method: "POST", headers: { origin: SITE, "content-type": "application/json" }, body: JSON.stringify({ id: requestId }) }));
+  assertEquals(signedOut.status, 401);
+  assertEquals(Object.keys(await signedOut.json()), ["error"]);
+});
+
 Deno.test("signing in on the page for a notification keeps the code working, and the number path", async () => {
   const { sql, pg } = await db();
   const { requestId } = await pendingRequest(sql);

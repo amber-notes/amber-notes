@@ -108,3 +108,70 @@
 .options summary:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 .optionsBody { display: grid; gap: 10px; margin-top: 10px; }
 .optionsBody .explain { min-height: 0; }
+
+/* The picture of the device to use (DeviceLead.tsx): flat cut paper on a soft field, in the page's
+   own browns and amber. The picture has its own colours per theme: a dark body and a light screen on
+   cream, a light body and a dark screen on leaf, so its outline shows on both. */
+.art {
+  --a-body: #2a1d10; --a-screen: #ffe9c8; --a-paper: #fffdf8; --a-bar: rgba(42, 29, 16, 0.3); --a-bar-soft: rgba(42, 29, 16, 0.14);
+  --a-shadow: rgba(110, 55, 5, 0.2);
+  display: flex; align-items: center; justify-content: center; gap: 28px; width: 100%; min-height: 188px; box-sizing: border-box;
+  padding: 16px; border-radius: 20px; background: var(--soft); overflow: hidden;
+}
+:global([data-theme="leaf"]) .art {
+  --a-body: #f6dfc2; --a-screen: #5c3415; --a-paper: #fbeedd; --a-bar: rgba(46, 24, 10, 0.42); --a-bar-soft: rgba(46, 24, 10, 0.2);
+  --a-shadow: rgba(0, 0, 0, 0.28);
+}
+.picture { display: block; flex: none; }
+.pBody { fill: var(--a-body); }
+.pScreen { fill: var(--a-screen); }
+.pPaper { fill: var(--a-paper); }
+.pShadow { fill: var(--a-shadow); }
+.pBar { fill: var(--a-bar); }
+.pBarSoft { fill: var(--a-bar-soft); }
+.pButton, .pCaret, .pDisc { fill: var(--amber); }
+.pDot { fill: var(--a-screen); opacity: 0.55; }
+.pDigit { fill: #2a1d10; font-size: 19px; font-weight: 750; font-variant-numeric: tabular-nums; }
+.artNumber { font-size: 64px; line-height: 1; font-weight: 750; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; color: var(--ink); }
+
+/* B: the notification in its own words, on the top of a phone that runs off the field's edge. */
+.artB { align-items: flex-end; padding: 22px 16px 0; min-height: 0; }
+.phoneTop {
+  position: relative; width: min(292px, 100%); box-sizing: border-box; margin-bottom: -1px; padding: 30px 10px 22px;
+  border-radius: 34px 34px 0 0; background: var(--a-screen); box-shadow: 0 0 0 7px var(--a-body), 6px 4px 0 7px var(--a-shadow);
+}
+.island { position: absolute; top: 10px; left: 50%; width: 64px; height: 12px; margin-left: -32px; border-radius: 6px; background: var(--a-body); }
+.push {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 18px; text-align: left;
+  background: var(--a-paper); color: #2a1d10; box-shadow: 0 3px 0 var(--a-shadow);
+}
+.pushMark { flex: none; border-radius: 22.5%; }
+.pushText { display: grid; min-width: 0; font-size: 13px; line-height: 1.3; }
+.pushApp { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; font-weight: 600; letter-spacing: 0.01em; color: rgba(42, 29, 16, 0.6); }
+.pushApp span { font-weight: 400; }
+.pushTitle { font-weight: 700; }
+.pushBody { color: rgba(42, 29, 16, 0.78); }
+
+/* C: the phone on an amber disc, and the number in two tiles shaped like the boxes it goes in. */
+.artC { background: none; padding: 0; gap: 20px; min-height: 176px; overflow: visible; }
+.tiles { display: flex; gap: 8px; }
+.tile {
+  display: grid; place-items: center; width: 54px; height: 66px; border-radius: 15px; background: var(--a-paper); color: #2a1d10;
+  font-size: 40px; line-height: 1; font-weight: 750; font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 0 1px var(--line), 0 4px 0 var(--a-shadow);
+}
+
+/* A link inside the quiet line: the line's own size, with room to tap. */
+.inlineLink {
+  border: 0; background: none; padding: 6px 0; margin: -6px 0; font: inherit; font-weight: 600; color: var(--link); cursor: pointer;
+  text-decoration: underline; text-underline-offset: 3px; border-radius: 4px;
+}
+.inlineLink:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+/* Dev preview only (/connect/preview?theme=leaf): the card on the site's leaf theme, which /connect
+   itself never uses. The tokens are site.css's; a class, because the page's CSP allows no inline styles. */
+.leafPreview {
+  --bg: #2e180a; --ink: #fbeedd; --muted: #d9bf9f; --soft: #40240f; --line: rgba(255, 220, 170, 0.14);
+  --amber: #f5a53a; --link: #f7b865; --card: #3a2010; --cta-bg: #fbeedd; --cta-ink: #2e180a;
+  background: var(--bg); color: var(--ink); color-scheme: dark;
+}

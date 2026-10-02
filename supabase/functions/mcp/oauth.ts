@@ -583,7 +583,22 @@ async function ask(req: Request, sql: Sql): Promise<Response> {
   const notified = notifyDevices(sql, user, r.id);
   const edge = (globalThis as { EdgeRuntime?: { waitUntil(p: Promise<unknown>): void } }).EdgeRuntime;
   if (edge) edge.waitUntil(notified); else await notified;
-  return json({ asked: true, expires_at: row.expires_at });
+  return json({ asked: true, expires_at: row.expires_at, devices: await devicesOf(sql, user) });
+}
+
+/// Where the account has Amber Notes, so the page can say "Check your iPhone" or "Open Amber Notes
+/// on this Mac" instead of naming both. Two yes-or-no answers and nothing else, only ever for the
+/// account that just signed in to ask: an iPhone that opened the app in the last 30 days and can
+/// get the push, and a Mac that opened it in the last 30 days. Read from what the apps already
+/// record (pane_devices, device_tokens); nothing is stored for this.
+async function devicesOf(sql: Sql, user: string): Promise<{ iphone: boolean; mac: boolean }> {
+  const [d] = await sql<{ iphone: boolean; mac: boolean }[]>`
+    select
+      exists (select 1 from public.pane_devices p join public.device_tokens t on t.user_id = p.user_id and t.device_id = p.device_id
+              where p.user_id = ${user} and p.platform = 'ios' and p.last_seen > now() - interval '30 days') as iphone,
+      exists (select 1 from public.pane_devices p
+              where p.user_id = ${user} and p.platform = 'macos' and p.last_seen > now() - interval '30 days') as mac`;
+  return { iphone: d?.iphone === true, mac: d?.mac === true };
 }
 
 /// The page shows a QR code instead of signing in: POST {id, browser_key, pickup_hash, scan_hash, from},
