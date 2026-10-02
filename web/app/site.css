@@ -270,8 +270,11 @@ html[data-vt="filter"] .filter-after { view-transition-name: filter-after; }
   html[data-vt="filter"]::view-transition-group(filter-chips) { animation: none; }
   html[data-vt="filter"]::view-transition-old(filter-title) { display: none; }
   html[data-vt="filter"]::view-transition-old(filter-chips), html[data-vt="filter"]::view-transition-new(filter-chips) { animation-duration: 150ms; }
+  /* What follows the grid paints under the cards (lib/filter-transition.ts layers the cards). */
+  html[data-vt="filter"]::view-transition-group(filter-after), html[data-vt="filter"]::view-transition-group(site-footer) { z-index: 1; }
 }
-@keyframes filter-in { from { opacity: 0; transform: translateY(8px); } }
+/* Opaque by 60%, so where a card lands on one that's leaving, the two overlap only briefly. */
+@keyframes filter-in { from { opacity: 0; transform: translateY(8px); } 60% { opacity: 1; } to { opacity: 1; transform: none; } }
 @keyframes vt-out { to { opacity: 0; } }
 @keyframes vt-in { from { opacity: 0; } }
 
