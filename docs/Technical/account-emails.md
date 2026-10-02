@@ -1,5 +1,8 @@
 # Account emails: what exists, and a proposal
 
+Password reset has since been built, at `/reset-password` rather than `/account/reset`:
+`docs/Technical/password-reset.md`. The rest of this audit still describes the other emails.
+
 Audit of 2 October 2026, made from the repository and from the project's public auth settings
 (`GET /auth/v1/settings`). Nothing in the Supabase project was changed, and nothing here is
 turned on. The templates and pages below are proposals.

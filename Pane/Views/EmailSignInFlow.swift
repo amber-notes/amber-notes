@@ -25,10 +25,14 @@ struct EmailSignInFlow: Equatable {
         case create
         /// The email belongs to a Sign in with Apple account.
         case apple
+        /// "Forgot password?": send a reset link to the email. `sending` while it goes out.
+        case forgot(sending: Bool)
+        /// The link was asked for. The words are the same whether or not an account uses the email.
+        case forgotSent
     }
 
     /// What the full-width button does right now.
-    enum Action: Equatable { case check, signIn, create }
+    enum Action: Equatable { case check, signIn, create, sendReset, backToSignIn }
 
     static let minimumPassword = 12
 
@@ -63,6 +67,8 @@ struct EmailSignInFlow: Equatable {
         case .signIn: .signIn
         case .create: .create
         case .apple: nil
+        case .forgot: .sendReset
+        case .forgotSent: .backToSignIn
         }
     }
 
@@ -71,6 +77,8 @@ struct EmailSignInFlow: Equatable {
         case .check: "Continue"
         case .signIn: "Sign In"
         case .create: "Create Account"
+        case .sendReset: "Email Me a Link"
+        case .backToSignIn: "Back to Sign In"
         case nil: nil
         }
     }
@@ -78,10 +86,17 @@ struct EmailSignInFlow: Equatable {
     var buttonEnabled: Bool {
         switch step {
         case .email: emailLooksValid
-        case .checking, .apple: false
+        case .checking, .apple, .forgot(sending: true): false
         case .signIn: !password.isEmpty
         case .create: password.count >= Self.minimumPassword
+        case .forgot(sending: false), .forgotSent: true
         }
+    }
+
+    /// "Forgot password?" sits under the password of an account that has one (or might).
+    var offersReset: Bool {
+        if case .signIn = step { return true }
+        return false
     }
 
     /// Continue (or Return in the email field): start asking. False if there's nothing to ask.
@@ -108,6 +123,34 @@ struct EmailSignInFlow: Equatable {
     mutating func back() {
         step = .email
         password = ""
+    }
+
+    /// "Forgot password?".
+    mutating func forgotPassword() {
+        guard offersReset else { return }
+        step = .forgot(sending: false)
+        password = ""
+    }
+
+    /// "Email Me a Link": false if it's already going out.
+    mutating func beginReset() -> Bool {
+        guard step == .forgot(sending: false) else { return false }
+        step = .forgot(sending: true)
+        return true
+    }
+
+    /// The request went out (`sent`), or didn't reach the server: then the button is back.
+    mutating func finishReset(sent: Bool) {
+        guard step == .forgot(sending: true) else { return }
+        step = sent ? .forgotSent : .forgot(sending: false)
+    }
+
+    /// "Back to Sign In", after asking for a link or instead of it: the password field again.
+    mutating func backToSignIn() {
+        switch step {
+        case .forgot(sending: false), .forgotSent: step = .signIn(fallback: false)
+        default: break
+        }
     }
 
     /// "New? Create an account", offered only when the check failed.

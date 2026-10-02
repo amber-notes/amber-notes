@@ -189,6 +189,14 @@ struct SignInView: View {
                     .transition(.opacity)
             }
 
+            if case .forgot = flow.step {
+                note("We'll email you a link to choose a new password.", id: "signin.forgotNote")
+            }
+
+            if flow.step == .forgotSent {
+                note("If an account uses this email, we've sent it a link. Open it on any device to choose a new password. The link works for one hour.", id: "signin.resetSent")
+            }
+
             if flow.step == .apple {
                 Text("This email signs in with Apple. Use Sign in with Apple above.")
                     .font(.footnote)
@@ -203,23 +211,57 @@ struct SignInView: View {
                 mainButton(title)
             }
 
+            if flow.offersReset {
+                smallButton("Forgot password?", id: "signin.forgot") {
+                    flow.forgotPassword()
+                    error = nil
+                }
+            }
+
+            if flow.step == .forgot(sending: false) {
+                smallButton("Back to Sign In", id: "signin.backToSignIn") {
+                    flow.backToSignIn()
+                    error = nil
+                    focus = .password
+                }
+            }
+
             if flow.step == .signIn(fallback: true) {
-                Button("New? Create an account") {
+                smallButton("New? Create an account", id: "signin.create") {
                     flow.chooseCreate()
                     error = nil
                     focus = .password
                 }
-                .buttonStyle(.plain)
-                .font(.footnote)
-                .foregroundStyle(.tint)
-                .accessibilityIdentifier("signin.create")
             }
         }
         .textFieldStyle(.plain)
     }
 
+    /// A line of explanation under the email, in the card's quiet voice.
+    private func note(_ text: String, id: String) -> some View {
+        Text(text)
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
+            .transition(.opacity)
+            .accessibilityIdentifier(id)
+    }
+
+    /// A text button under the main one, still big enough to hit.
+    private func smallButton(_ title: String, id: String, action: @escaping () -> Void) -> some View {
+        Button(title, action: action)
+            .buttonStyle(.plain)
+            .font(.footnote)
+            .foregroundStyle(.tint)
+            .frame(minHeight: 28)
+            .contentShape(.rect)
+            .transition(.opacity)
+            .accessibilityIdentifier(id)
+    }
+
     private func mainButton(_ title: String) -> some View {
-        let busy = working || flow.step == .checking
+        let busy = working || flow.step == .checking || flow.step == .forgot(sending: true)
         let enabled = flow.buttonEnabled && !working
         return Button(title, action: primary)
         .buttonStyle(.amberProminent(height: Row.height, cornerRadius: Row.radius))
@@ -306,6 +348,21 @@ struct SignInView: View {
                 }
                 working = false
             }
+        case .sendReset:
+            guard flow.beginReset() else { return }
+            let email = flow.email
+            Task {
+                do {
+                    try await backend.requestPasswordReset(email: email)
+                    flow.finishReset(sent: true)
+                } catch {
+                    flow.finishReset(sent: false)
+                    self.error = "Can't reach the server. Check your connection."
+                }
+            }
+        case .backToSignIn:
+            flow.backToSignIn()
+            focus = .password
         case nil:
             break
         }

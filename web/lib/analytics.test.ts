@@ -10,8 +10,8 @@ describe("website analytics", () => {
     expect(send("https://ambernotes.app/download")).toBe("https://ambernotes.app/download");
   });
 
-  it("never counts shared notes, connect, report or universal-link pages", () => {
-    for (const path of ["/n/abc123", "/n", "/connect", "/connect?code=1", "/open/connect", "/open/note/x", "/report/abc123"]) {
+  it("never counts shared notes, connect, password reset, report or universal-link pages", () => {
+    for (const path of ["/n/abc123", "/n", "/connect", "/connect?code=1", "/open/connect", "/open/note/x", "/report/abc123", "/reset-password", "/reset-password?token_hash=abc&type=recovery"]) {
       expect(send(`https://ambernotes.app${path}`), path).toBeNull();
     }
   });

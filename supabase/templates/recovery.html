@@ -1,40 +1,84 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="light">
-<meta name="supported-color-schemes" content="light">
+<meta name="x-apple-disable-message-reformatting">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
 <title>Reset your Amber Notes password</title>
+<!--
+  Password reset. Supabase: Authentication > Emails > Reset password (mailer_templates_recovery_content),
+  subject "Reset your Amber Notes password" (mailer_subjects_recovery). See docs/Technical/password-reset.md.
+
+  The link is a token hash to ambernotes.app/reset-password, never Supabase's ConfirmationURL: mail
+  scanners open links, and the page spends the token only when Save is pressed. {{ .SiteURL }} must be
+  https://ambernotes.app in production.
+
+  Dark mode: Apple Mail and Outlook for Mac and iOS read the media query below; Outlook.com marks its
+  dark mode with [data-ogsc]/[data-ogsb]; Gmail's apps invert colours themselves, and these colours stay
+  readable when inverted. The button is a table cell, plus a VML shape for classic Outlook, which
+  draws mail with Word and ignores padding and radius on links.
+-->
+<style>
+  :root { color-scheme: light dark; supported-color-schemes: light dark; }
+  @media (prefers-color-scheme: dark) {
+    .bg { background: #1b120a !important; }
+    .card { background: #2a1a0c !important; border-color: #4a3018 !important; }
+    .ink { color: #fff4e6 !important; }
+    .muted { color: #d8c2a5 !important; }
+    .link { color: #ffb45c !important; }
+    .btn { background: #fff4e6 !important; }
+    .btn a, .btn span { color: #2a1d10 !important; }
+  }
+  [data-ogsc] .ink { color: #fff4e6 !important; }
+  [data-ogsc] .muted { color: #d8c2a5 !important; }
+  [data-ogsc] .link { color: #ffb45c !important; }
+  [data-ogsb] .bg { background: #1b120a !important; }
+  [data-ogsb] .card { background: #2a1a0c !important; }
+</style>
 </head>
-<body style="margin:0;padding:0;background:#fff4e6;color:#2a1d10;-webkit-text-size-adjust:100%;">
-<!-- Password reset. Supabase: Authentication > Emails > Reset password. Subject: "Reset your Amber Notes password". -->
-<div style="display:none;max-height:0;overflow:hidden;opacity:0;">Choose a new password. The link works for one hour.</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fff4e6;">
+<body class="bg" style="margin:0;padding:0;background:#fff4e6;color:#2a1d10;-webkit-text-size-adjust:100%;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">Choose a new password. The link works for one hour.&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;</div>
+<table role="presentation" class="bg" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fff4e6;">
 <tr><td align="center" style="padding:32px 16px 40px;">
+  <!--[if mso]><table role="presentation" width="480" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:480px;">
     <tr><td style="padding:0 4px 20px;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
       <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
         <td style="padding-right:10px;"><img src="https://ambernotes.app/mark-256.png" width="32" height="32" alt="" style="display:block;border:0;border-radius:8px;"></td>
-        <td style="font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:18px;font-weight:700;letter-spacing:-0.01em;color:#2a1d10;">Amber Notes</td>
+        <td class="ink" style="font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:18px;font-weight:700;letter-spacing:-0.01em;color:#2a1d10;">Amber Notes</td>
       </tr></table>
     </td></tr>
-    <tr><td style="background:#fffaf3;border:1px solid #f0e2cf;border-radius:24px;padding:32px 28px 28px;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-      <h1 style="margin:0 0 10px;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:26px;line-height:1.15;font-weight:800;letter-spacing:-0.02em;color:#2a1d10;">Reset your password</h1>
-      <p style="margin:0 0 24px;font-size:16px;line-height:1.5;color:#74604c;">Choose a new password for the Amber Notes account <b style="color:#2a1d10;">{{ .Email }}</b>. The link works once, for one hour. Your notes stay as they are: they are locked with your key, not with your password.</p>
+    <tr><td class="card" style="background:#fffaf3;border:1px solid #f0e2cf;border-radius:24px;padding:32px 28px 28px;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+      <h1 class="ink" style="margin:0 0 10px;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:26px;line-height:1.15;font-weight:800;letter-spacing:-0.02em;color:#2a1d10;">Reset your password</h1>
+      <p class="muted" style="margin:0 0 24px;font-size:16px;line-height:1.5;color:#74604c;">Someone asked to reset the password for the Amber Notes account <b class="ink" style="color:#2a1d10;">{{ .Email }}</b>. If it was you, choose a new one. The link works once, for one hour.</p>
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 24px;"><tr>
-        <td align="center" bgcolor="#2a1d10" style="border-radius:14px;">
-          <a href="{{ .SiteURL }}/account/reset?token_hash={{ .TokenHash }}&type=recovery" style="display:block;padding:15px 20px;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:16px;font-weight:700;line-height:1.25;color:#fff4e6;text-decoration:none;border-radius:14px;">Choose a new password</a>
+        <td align="center">
+          <!--[if mso]>
+          <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="{{ .SiteURL }}/reset-password?token_hash={{ .TokenHash }}&amp;type=recovery" style="height:50px;v-text-anchor:middle;width:424px;" arcsize="28%" stroke="f" fillcolor="#2a1d10">
+            <w:anchorlock/>
+            <center style="color:#fff4e6;font-family:Arial,sans-serif;font-size:16px;font-weight:bold;">Choose a new password</center>
+          </v:roundrect>
+          <![endif]-->
+          <!--[if !mso]><!-->
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr>
+            <td class="btn" align="center" bgcolor="#2a1d10" style="background:#2a1d10;border-radius:14px;">
+              <a href="{{ .SiteURL }}/reset-password?token_hash={{ .TokenHash }}&amp;type=recovery" target="_blank" style="display:block;padding:15px 20px;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:16px;font-weight:700;line-height:20px;color:#fff4e6;text-decoration:none;border-radius:14px;"><span style="color:#fff4e6;">Choose a new password</span></a>
+            </td>
+          </tr></table>
+          <!--<![endif]-->
         </td>
       </tr></table>
-
-      <p style="margin:0;font-size:14px;line-height:1.5;color:#74604c;">If the button doesn&#39;t work, open this address in your browser:<br><a href="{{ .SiteURL }}/account/reset?token_hash={{ .TokenHash }}&type=recovery" style="color:#a85700;word-break:break-all;">{{ .SiteURL }}/account/reset?token_hash={{ .TokenHash }}&type=recovery</a></p>
+      <p class="muted" style="margin:0 0 16px;font-size:15px;line-height:1.5;color:#74604c;">Your notes stay as they are. They&#39;re locked with your key, not with your password.</p>
+      <p class="muted" style="margin:0;font-size:13px;line-height:1.5;color:#74604c;">If the button doesn&#39;t work, open this address in your browser:<br><a class="link" href="{{ .SiteURL }}/reset-password?token_hash={{ .TokenHash }}&amp;type=recovery" style="color:#a85700;word-break:break-all;">{{ .SiteURL }}/reset-password?token_hash={{ .TokenHash }}&amp;type=recovery</a></p>
     </td></tr>
-    <tr><td style="padding:20px 4px 0;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.5;color:#74604c;">
-      You got this email because someone asked to reset the password for this address. If it wasn&#39;t you, ignore it: your password stays the same.<br>
-      Amber Notes, a notes app for iPhone and Mac. <a href="https://ambernotes.app/help" style="color:#74604c;">Help</a> · <a href="https://ambernotes.app/privacy" style="color:#74604c;">Privacy</a>
+    <tr><td class="muted" style="padding:20px 4px 0;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.5;color:#74604c;">
+      If you didn&#39;t ask for this, ignore this email. Your password stays the same.<br>
+      Amber Notes, a notes app for iPhone and Mac. <a class="muted" href="https://ambernotes.app/help" style="color:#74604c;">Help</a> · <a class="muted" href="https://ambernotes.app/privacy" style="color:#74604c;">Privacy</a>
     </td></tr>
   </table>
+  <!--[if mso]></td></tr></table><![endif]-->
 </td></tr>
 </table>
 </body>

@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import Pane
 
@@ -87,5 +88,68 @@ import Testing
         f.back()
         f.finishCheck(.password)
         #expect(f.step == .email)
+    }
+
+    @Test func forgotPasswordSendsALinkAndComesBack() {
+        var f = EmailSignInFlow(email: "you@example.com")
+        _ = f.beginCheck()
+        f.finishCheck(.password)
+        #expect(f.offersReset)
+        f.password = "half typed"
+        f.forgotPassword()
+        #expect(f.step == .forgot(sending: false))
+        #expect(f.password.isEmpty)
+        #expect(!f.showsPassword)
+        #expect(f.emailLocked, "the link goes to the email already typed")
+        #expect(f.buttonTitle == "Email Me a Link")
+        let first = f.beginReset()
+        let second = f.beginReset()
+        #expect(first)
+        #expect(!second, "a second press while it goes out sends nothing")
+        #expect(!f.buttonEnabled)
+        f.finishReset(sent: true)
+        #expect(f.step == .forgotSent)
+        #expect(f.buttonTitle == "Back to Sign In")
+        f.backToSignIn()
+        #expect(f.step == .signIn(fallback: false))
+        #expect(f.showsPassword)
+    }
+
+    @Test func aResetThatDidntGoOutCanBeSentAgain() {
+        var f = EmailSignInFlow(email: "you@example.com")
+        _ = f.beginCheck()
+        f.finishCheck(nil)
+        #expect(f.offersReset, "offered when the check failed too")
+        f.forgotPassword()
+        _ = f.beginReset()
+        f.finishReset(sent: false)
+        #expect(f.step == .forgot(sending: false))
+        #expect(f.buttonEnabled)
+    }
+
+    @Test func onlyAnAccountWithAPasswordIsOfferedAReset() {
+        for status in [AccountStatus.new, .appleOnly] {
+            var f = EmailSignInFlow(email: "you@example.com")
+            _ = f.beginCheck()
+            f.finishCheck(status)
+            #expect(!f.offersReset)
+            f.forgotPassword()
+            #expect(f.step != .forgot(sending: false))
+        }
+        var f = EmailSignInFlow(email: "you@example.com")
+        #expect(!f.offersReset, "not before the email is checked")
+        f.forgotPassword()
+        #expect(f.step == .email)
+    }
+
+    @MainActor @Test func theResetRequestIsAPlainRecoverWithNoPKCE() throws {
+        let r = Backend.passwordResetRequest(base: URL(string: "https://ref.supabase.co")!, key: "anon", email: " you@example.com ")
+        #expect(r.url?.absoluteString == "https://ref.supabase.co/auth/v1/recover")
+        #expect(r.httpMethod == "POST")
+        #expect(r.value(forHTTPHeaderField: "apikey") == "anon")
+        let data = try #require(r.httpBody)
+        let body = try JSONSerialization.jsonObject(with: data) as? [String: String]
+        #expect(body == ["email": "you@example.com"], "no code_challenge, no redirect: the email's link is the template's")
+        #expect(r.url?.query == nil)
     }
 }
