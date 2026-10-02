@@ -81,7 +81,10 @@ describe("privacy copy", () => {
       expect(text).not.toMatch(/(on|or) (the|this) website, and we never/);
       expect(text).not.toMatch(/(apps and this website|website) (have|has|uses) no (analytics|tracking)/);
     }
-    expect(policy).toMatch(/Vercel Web Analytics, which uses no cookies and doesn't identify you/);
+    expect(policy).toMatch(/with PostHog, in the EU\. Neither uses cookies or keeps a profile of you, and neither runs on shared notes or the connect pages/);
+    expect(page).toMatch(/with PostHog, in the EU\. Neither uses cookies or keeps a profile of you/);
+    expect(policy).toMatch(/\| PostHog, Inc\. \| Website usage only/);
+    expect(policy).toContain("None of this touches your notes or your computer");
   });
 
   it("is a cream page like the other legal pages", () => {

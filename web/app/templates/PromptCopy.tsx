@@ -27,7 +27,7 @@ export default function PromptCopy({ variants, className, children }: { variants
         </div>
       )}
       <div className={s.ctaRow}>
-        <CopyButton text={current.prompt} label="Copy the prompt" className={className} />
+        <CopyButton text={current.prompt} label="Copy the prompt" className={className} event="copy_prompt_clicked" />
         {children}
       </div>
     </div>

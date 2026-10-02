@@ -11,7 +11,7 @@ export type Fact = { title: string; text: string };
 export const FACTS: Fact[] = [
   { title: "End-to-end encrypted", text: "Your notes, titles, folder names, files and earlier versions are encrypted on your iPhone or Mac with a key that only your devices, and AI connections you approve, can unlock. We can't read them." },
   { title: "AI only with your approval", text: "An AI app can read your notes only after you approve it on your iPhone or Mac. While it works, our server opens the notes it asks for in memory. Disconnect it at any time." },
-  { title: "No ads, no tracking", text: "No ads, no tracking and no third-party analytics in the apps. The apps count a few things on our own server. This website counts page views and where visitors came from, without cookies, and Mac downloads as daily totals. We never sell or share your data." },
+  { title: "No ads, no tracking", text: "No ads, no tracking and no third-party analytics in the apps. The apps count a few things on our own server. This website counts page views and where visitors came from, clicks and how far pages are scrolled, without cookies or profiles and never on shared notes, and Mac downloads as daily totals. We never sell or share your data." },
   { title: "Stored in the EU", text: "Your encrypted notes and files are kept in Frankfurt, Germany." },
 ];
 
