@@ -50,7 +50,11 @@ To turn PostHog off again: `vercel env rm NEXT_PUBLIC_POSTHOG_KEY production` an
 | `use_template_clicked` | Any link to `/open/template/<slug>` | `path`, `template` |
 | `copy_prompt_clicked` | The Copy the prompt button on template pages (`data-event` on the button) | `path` |
 | `outbound_app_store_clicked`, `outbound_github_clicked`, `outbound_claude_clicked`, `outbound_chatgpt_clicked` | Links to apps.apple.com, github.com, claude.ai or claude.com, chatgpt.com or openai.com | `path`, `destination` (origin and path) |
+| `platform_interest_shown` | Once per page view, when a visitor on Windows, Android or Linux sees the ask that stands in for Download for Mac (`web/app/PlatformInterest.tsx`), and hasn't said yes yet | `platform` (`windows`, `android` or `linux`), `path` |
+| `platform_interest_clicked` | That visitor clicks "Yes, I want it on Windows" (or Android, or Linux). The button then stays a thanks in that browser, so each browser counts once | `platform`, `path` |
 | `$autocapture` | Other clicks on links and buttons | PostHog's own element chain |
+
+Interest in a platform is `platform_interest_clicked` over `platform_interest_shown`, broken down by `platform`. The site remembers a yes in the browser's localStorage (`amber.platform-interest` = `1`); PostHog itself still stores nothing.
 
 A new named click: give the element `data-event="<name>"`, or add a host to `OUTBOUND` in `web/lib/posthog.ts`.
 

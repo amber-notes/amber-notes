@@ -127,3 +127,53 @@ html[data-theme] ::selection { background: var(--mark); }
 }
 @keyframes vt-out { to { opacity: 0; } }
 @keyframes vt-in { from { opacity: 0; } }
+
+/* Platform interest (app/PlatformInterest.tsx). lib/platform.ts marks <html> with the visitor's
+   platform before first paint, and with data-interest="done" once they've said yes. On Windows,
+   Android or Linux the Mac call to action (.pi-apple) gives way to the ask; on an iPhone the ones
+   marked .pi-not-ios give way to the iPhone words. Everyone else sees the page as it was sent. */
+.pi, .pi-head, .pi-name > span, .pi-done { display: none; }
+:root:is([data-platform="windows"], [data-platform="android"], [data-platform="linux"]) .pi-apple,
+:root[data-platform="ios"] .pi-not-ios,
+:root[data-interest="done"] .pi-open { display: none; }
+:root:is([data-platform="windows"], [data-platform="android"], [data-platform="linux"]) .pi-ask.pi,
+:root[data-platform="ios"] .pi-ios { display: grid; }
+:root[data-platform="windows"] .pi-name > [data-on="windows"],
+:root[data-platform="android"] .pi-name > [data-on="android"],
+:root[data-platform="linux"] .pi-name > [data-on="linux"] { display: inline; }
+:root[data-interest="done"] .pi-done { display: flex; }
+
+.pi { --pi-ink: var(--ink); --pi-muted: var(--muted); --pi-bg: var(--cta-bg); --pi-on: var(--cta-ink); justify-items: center; gap: 14px; text-align: center; }
+/* The closing band is leaf brown on every theme. */
+.pi-band { --pi-ink: #fbeedd; --pi-muted: #d9bf9f; --pi-bg: #fbeedd; --pi-on: #2a1d10; margin-top: 8px; }
+.pi-hero { margin-top: 24px; }
+.pi-download { margin-top: 6px; }
+@media (max-width: 600px) { .pi-hero { margin-top: 18px; } }
+.pi-line { margin: 0; max-width: 24em; font-size: 17px; line-height: 1.45; color: var(--pi-muted); text-wrap: balance; }
+.pi-line strong { color: var(--pi-ink); font-weight: 650; }
+.pi-button, .pi-thanks { min-height: 50px; box-sizing: border-box; align-items: center; justify-content: center; font-size: 16px; }
+.pi-button {
+  display: inline-flex; gap: 9px; padding: 0 24px; border: 0; border-radius: 14px; cursor: pointer;
+  background: var(--pi-bg); color: var(--pi-on); font: inherit; font-weight: 700; font-size: 16px; text-decoration: none;
+}
+.pi-hero .pi-button, .pi-download .pi-button { box-shadow: 0 10px 24px -8px rgba(60, 30, 5, 0.55); }
+/* The thanks takes the button's place and its height, so nothing under it moves. */
+.pi-thanks { margin: 0; max-width: 22em; color: var(--pi-ink); font-weight: 600; line-height: 1.35; text-wrap: balance; }
+.pi-link { display: inline-flex; align-items: center; min-height: 24px; color: var(--pi-muted); font-size: 15px; font-weight: 600; text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 40%, transparent); text-underline-offset: 3px; }
+.pi-button:focus-visible, .pi-link:focus-visible, .pi-head button:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
+.pi-link:focus-visible { border-radius: 6px; }
+
+/* In the header the ask is the button alone, where Download for Mac sits. Phones have no room for it. */
+@media (min-width: 601px) {
+  :root:is([data-platform="windows"], [data-platform="android"], [data-platform="linux"]) .pi-head { display: inline-flex; align-items: center; margin-left: 6px; }
+}
+.pi-head button { height: 44px; padding: 0 18px; border: 0; border-radius: 13px; cursor: pointer; background: var(--cta-bg); color: var(--cta-ink); font: inherit; font-weight: 600; font-size: 16px; white-space: nowrap; }
+.pi-head .pi-done { align-items: center; height: 44px; padding: 0 8px 0 12px; color: var(--muted); font-weight: 600; font-size: 15px; white-space: nowrap; }
+@media (hover: hover) {
+  .pi-button:hover, .pi-head button:hover { background: color-mix(in srgb, var(--pi-bg, var(--cta-bg)) 86%, var(--amber)); }
+  .pi-link:hover { color: var(--pi-ink); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .pi-button, .pi-head button { transition: transform 0.12s ease-out, background-color 0.15s ease-out; }
+  .pi-button:active, .pi-head button:active { transform: scale(0.97); }
+}

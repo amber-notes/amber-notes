@@ -1,14 +1,15 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { connectCSP, newNonce, supabaseOrigin } from "./connect-csp";
+import { platformScript } from "./platform";
 import { themeScript } from "./theme";
 
 describe("the connect pages' CSP", () => {
-  it("allows scripts by nonce or the theme script's hash, never inline", async () => {
+  it("allows scripts by nonce or the two <head> scripts' hashes, never inline", async () => {
     const nonce = newNonce();
     const csp = await connectCSP(nonce);
-    const hash = createHash("sha256").update(themeScript).digest("base64");
-    expect(csp).toContain(`script-src 'self' 'nonce-${nonce}' 'sha256-${hash}'`);
+    const [theme, platform] = [themeScript, platformScript].map((s) => createHash("sha256").update(s).digest("base64"));
+    expect(csp).toContain(`script-src 'self' 'nonce-${nonce}' 'sha256-${theme}' 'sha256-${platform}';`);
     expect(csp).not.toContain("unsafe-inline");
     expect(csp).not.toContain("unsafe-eval");
     expect(csp).toContain("frame-ancestors 'none'");

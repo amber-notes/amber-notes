@@ -4,6 +4,7 @@ import "./site.css";
 import SiteChrome from "./SiteChrome";
 import SiteAnalytics from "./SiteAnalytics";
 import { themeScript } from "@/lib/theme";
+import { platformScript } from "@/lib/platform";
 import { latestVersion } from "@/lib/changelog";
 import { repoStats } from "@/lib/github";
 import { APP_STORE_ID, APP_STORE_LIVE, SITE_NAME, SITE_URL } from "@/lib/site";
@@ -42,6 +43,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <script dangerouslySetInnerHTML={{ __html: platformScript }} />
         {/* Tabs get the leaf drawn for 16 and 32px; Google shows a site's favicon only at a multiple of 48px, so offer 48 and 96 by name. */}
         <link rel="icon" href="/icon-16.png" type="image/png" sizes="16x16" />
         <link rel="icon" href="/icon-32.png" type="image/png" sizes="32x32" />

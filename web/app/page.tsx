@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import styles from "./home.module.css";
 import Demo from "./Demo";
 import DownloadLink from "./DownloadLink";
+import PlatformInterest from "./PlatformInterest";
 import { AiSection, AlsoLine, Closing, ImportSection, PrivacySection } from "./Sections";
 import { latestVersion } from "@/lib/changelog";
 import { APP_STORE_LIVE, APP_STORE_URL, pageMetadata } from "@/lib/site";
@@ -28,7 +29,7 @@ export default function Home() {
         <p className={`${styles.lede} rise`} {...rise(1)}>
           Import your Apple Notes. Connect ChatGPT, Claude, Claude Code, Codex or Incredible.
         </p>
-        <div className={`${styles.ctas} rise`} {...rise(2)}>
+        <div className={`${styles.ctas} rise pi-apple pi-not-ios`} {...rise(2)}>
           <DownloadLink className={styles.primary}><AppleGlyph /> Download for Mac</DownloadLink>
           {APP_STORE_LIVE ? (
             <a className={styles.secondary} href={APP_STORE_URL} target="_blank" rel="noopener noreferrer">Get it for iPhone</a>
@@ -36,6 +37,7 @@ export default function Home() {
             <span className={styles.secondary}>iPhone · coming soon</span>
           )}
         </div>
+        <PlatformInterest place="hero" className="rise" {...rise(2)} />
       </section>
 
       <div className="rise-soft" {...rise(3)}><Demo /></div>

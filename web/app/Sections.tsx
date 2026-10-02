@@ -8,6 +8,7 @@ import { AIGlyph } from "@/lib/ai-glyphs";
 import { CLAUDE_DIRECTORY_URL } from "@/lib/facts";
 import { HOME_PRIVACY, PRIVACY_PATH } from "@/lib/privacy";
 import DownloadLink from "./DownloadLink";
+import PlatformInterest from "./PlatformInterest";
 import a from "./sections.module.css";
 
 const reduce = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -275,11 +276,12 @@ export function Closing() {
         <img src="/mark-256.png" alt="" width={96} height={96} className={a.bandIcon} />
         <h2 id="closing" className={a.bandTitle}>Your notes deserve better than copy and paste.</h2>
         <p className={a.bandLede}>Free and open source, with no ads and no tracking in the app. Import your Apple Notes, connect your AI, and get back to writing.</p>
-        <div className={a.bandCtas}>
+        <div className={`${a.bandCtas} pi-apple pi-not-ios`}>
           <DownloadLink className={a.bandPrimary}><Apple /> Download for Mac</DownloadLink>
           <span className={a.bandSecondary}>iPhone · coming soon</span>
         </div>
-        <p className={a.bandFine}>Requires macOS 26. Updates install themselves.</p>
+        <PlatformInterest place="band" />
+        <p className={`${a.bandFine} pi-apple pi-not-ios`}>Requires macOS 26. Updates install themselves.</p>
       </div>
     </section>
   );

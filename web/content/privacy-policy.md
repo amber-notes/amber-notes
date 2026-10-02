@@ -212,11 +212,12 @@ Write to **hello@ambernotes.app**. We answer within one month. If you think we'v
 
 ## Cookies and storage on the website
 
-The website sets no cookies. Its page view counts (Vercel Web Analytics) and its click and scroll counts (PostHog) store nothing in your browser; PostHog's random visit id lives only in the open page's memory. Only the page where you connect an AI (ambernotes.app/connect) stores anything in your browser, and only what that page needs to work:
+The website sets no cookies. Its page view counts (Vercel Web Analytics) and its click and scroll counts (PostHog) store nothing in your browser; PostHog's random visit id lives only in the open page's memory. Only two things store anything in your browser, and only what they need to work: the page where you connect an AI (ambernotes.app/connect), and the button that says you want Amber Notes on Windows, Android or Linux.
 
 - **sessionStorage, `amber.connect.pkce`:** a one-time code for Sign in with Apple, kept while you go to Apple and back, and deleted as soon as you return.
+- **localStorage, `amber.platform-interest`:** the value `1`, saved when you click the button that says you want Amber Notes on your platform, so the site doesn't ask you again. It says nothing about you and is never sent anywhere. The click itself is counted like any other button click, with your platform and the page.
 
-Everything else on that page stays in its memory and is gone when you close it: your sign-in (which it ends as soon as your devices have been asked), the key and secret it uses to receive your device's approval, and, if you use it, your recovery key. Because these are strictly necessary for something you asked for, there's no cookie banner.
+Everything else on the connect page stays in its memory and is gone when you close it: your sign-in (which it ends as soon as your devices have been asked), the key and secret it uses to receive your device's approval, and, if you use it, your recovery key. Because these are strictly necessary for something you asked for, there's no cookie banner.
 
 ## Children
 
