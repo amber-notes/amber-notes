@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import type { PostHog } from "posthog-js";
-import { clickEvent, newScrollMarks, posthogAllowed, posthogOptions, scrolledPercent, visitorOptedOut } from "@/lib/posthog";
+import { clickEvent, INTEREST_CLICKED, INTEREST_SHOWN, newScrollMarks, posthogAllowed, posthogOptions, scrolledPercent, visitorOptedOut } from "@/lib/posthog";
 
 let loading: Promise<PostHog | null> | undefined;
 
@@ -16,7 +16,8 @@ function start(key: string, host: string): Promise<PostHog | null> {
 }
 
 /// Website usage with PostHog (lib/posthog.ts). SiteAnalytics renders this only on public pages,
-/// and only when the build has a key. Named clicks and scroll depth are sent from here; page views,
+/// and only when the build has a key. Named clicks, scroll depth and "the platform ask was shown"
+/// are sent from here; page views,
 /// page leaves and other link and button clicks by PostHog itself.
 export default function PostHogAnalytics({ apiKey, host, path }: { apiKey: string; host: string; path: string }) {
   useEffect(() => {
@@ -27,7 +28,7 @@ export default function PostHogAnalytics({ apiKey, host, path }: { apiKey: strin
     const onClick = (e: MouseEvent) => {
       const el = e.target instanceof Element ? e.target.closest("a, button") : null;
       if (!posthog || !el || !posthogAllowed(window.location.pathname)) return;
-      const named = clickEvent(el, new URL(window.location.href));
+      const named = clickEvent(el, new URL(window.location.href), document.documentElement.dataset.platform);
       if (named) posthog.capture(named.event, named.properties, named.leaves ? { transport: "sendBeacon" } : { send_instantly: true });
     };
     // Measured on each scroll event, not in an animation frame: a background tab runs none.
@@ -43,6 +44,11 @@ export default function PostHogAnalytics({ apiKey, host, path }: { apiKey: strin
     start(apiKey, host).then((ph) => {
       if (gone || !ph) return;
       posthog = ph;
+      // Once per page view, when the page is asking this visitor whether they want Amber Notes on
+      // their platform (not after they've said yes, and not where the ask is hidden).
+      const platform = document.documentElement.dataset.platform;
+      const asking = Array.from(document.querySelectorAll(`[data-event="${INTEREST_CLICKED}"]`)).some((el) => el.getClientRects().length > 0);
+      if (platform && asking) ph.capture(INTEREST_SHOWN, { platform, path });
       document.addEventListener("click", onClick, true);
       window.addEventListener("scroll", onScroll, { passive: true });
     });

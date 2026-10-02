@@ -1,12 +1,13 @@
 // The connect pages' Content-Security-Policy (/connect and /open/connect): scripts only from this
-// site, with this response's nonce (Next.js puts it on its own inline scripts), or the theme script
-// by its hash. No 'unsafe-inline' anywhere. /connect calls the Supabase project itself (Auth, the
+// site, with this response's nonce (Next.js puts it on its own inline scripts), or the layout's two
+// <head> scripts (theme and platform) by their hashes. No 'unsafe-inline' anywhere. /connect calls the Supabase project itself (Auth, the
 // account's key row, the MCP function), so it may connect to this site and that origin only;
 // /open/connect calls nothing, so only this site. Forms post nowhere: the page's script sends them,
 // and before it runs a form can't put a password or recovery key in a request.
+import { platformScript } from "./platform";
 import { themeScript } from "./theme";
 
-let themeHash: Promise<string> | undefined;
+let headHashes: Promise<string> | undefined;
 
 async function sha256Base64(text: string): Promise<string> {
   const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)));
@@ -28,11 +29,11 @@ export function supabaseOrigin(url: string | undefined): string | null {
 }
 
 export async function connectCSP(nonce: string, supabaseURL?: string): Promise<string> {
-  themeHash ??= sha256Base64(themeScript);
+  headHashes ??= Promise.all([themeScript, platformScript].map(sha256Base64)).then((hashes) => hashes.map((h) => `'sha256-${h}'`).join(" "));
   const supabase = supabaseOrigin(supabaseURL);
   return [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'sha256-${await themeHash}'`,
+    `script-src 'self' 'nonce-${nonce}' ${await headHashes}`,
     `style-src 'self' 'nonce-${nonce}'`,
     "img-src 'self' data:",
     "font-src 'self'",

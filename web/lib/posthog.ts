@@ -94,6 +94,11 @@ function withoutQuery(url: string): string {
   }
 }
 
+/// How many visitors on Windows, Android or Linux want Amber Notes there (app/PlatformInterest.tsx):
+/// the ask was on the page, and its button was clicked. Both carry the platform and the page only.
+export const INTEREST_SHOWN = "platform_interest_shown";
+export const INTEREST_CLICKED = "platform_interest_clicked";
+
 export type SiteEvent = { event: string; properties: Record<string, string>; leaves: boolean };
 
 const OUTBOUND: [string, RegExp][] = [
@@ -105,11 +110,12 @@ const OUTBOUND: [string, RegExp][] = [
 
 /// The named event for a click on a link or button, or null for one we don't name. Only the page's
 /// path and where the link goes are sent. `leaves` is true when the click takes the visitor off the
-/// site, so the event goes out before the page unloads.
-export function clickEvent(el: { tagName: string; getAttribute(name: string): string | null }, here: URL): SiteEvent | null {
+/// site, so the event goes out before the page unloads. `platform` is what lib/platform.ts put on
+/// <html>; only the platform interest button sends it.
+export function clickEvent(el: { tagName: string; getAttribute(name: string): string | null }, here: URL, platform?: string | null): SiteEvent | null {
   const path = here.pathname;
   const named = el.getAttribute("data-event");
-  if (named) return { event: named, properties: { path }, leaves: false };
+  if (named) return { event: named, properties: named === INTEREST_CLICKED && platform ? { platform, path } : { path }, leaves: false };
   if (el.tagName.toLowerCase() !== "a") return null;
   const href = el.getAttribute("href");
   if (!href) return null;

@@ -74,6 +74,15 @@ describe("website PostHog", () => {
     expect(clickEvent(button, here)).toEqual({ event: "copy_prompt_clicked", properties: { path: here.pathname }, leaves: false });
   });
 
+  it("sends the platform with the platform interest button, and with nothing else", () => {
+    const button = (name: string) => ({ tagName: "BUTTON", getAttribute: (n: string) => (n === "data-event" ? name : null) });
+    const home = new URL("https://ambernotes.app/?ref=x#closing");
+    expect(clickEvent(button("platform_interest_clicked"), home, "windows")).toEqual({ event: "platform_interest_clicked", properties: { platform: "windows", path: "/" }, leaves: false });
+    expect(clickEvent(button("platform_interest_clicked"), home)?.properties).toEqual({ path: "/" });
+    expect(clickEvent(button("copy_prompt_clicked"), here, "windows")?.properties).toEqual({ path: here.pathname });
+    expect(clickEvent(link("/download/mac"), here, "linux")?.properties).toEqual({ path: here.pathname });
+  });
+
   it("names outbound links to the App Store, GitHub, Claude and ChatGPT, without their query", () => {
     const cases: [string, string][] = [
       ["https://apps.apple.com/app/id6817253103", "outbound_app_store_clicked"],

@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import DownloadLink from "./DownloadLink";
 import GitHubLink, { GitHubGlyph } from "./GitHubLink";
+import PlatformInterest from "./PlatformInterest";
 import { themeFor } from "@/lib/theme";
 
 const GITHUB = "https://github.com/amber-notes/amber-notes";
@@ -70,9 +71,10 @@ export default function SiteChrome({ version, stars, children }: { version: stri
           <a href="/changelog" aria-current={current("/changelog")}>Changelog</a>
           <a href="/help" aria-current={path === "/help" || path === "/support" ? "page" : undefined}>Help</a>
           <GitHubLink stars={stars} />
-          <DownloadLink className="site-cta" aria-current={current("/download")}>
+          <DownloadLink className="site-cta pi-apple" aria-current={current("/download")}>
             <AppleGlyph /> <span className="site-cta-long">Download for Mac</span><span className="site-cta-short">Download</span>
           </DownloadLink>
+          <PlatformInterest place="header" />
         </nav>
       </header>
       <main className="site-main">{children}</main>
