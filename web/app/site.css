@@ -251,28 +251,9 @@ html[data-theme] ::selection { background: var(--mark); }
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
 }
-/* The filter motion (lib/filter-transition.ts): the blog's and the templates' category chips. The
-   page itself doesn't fade, the title swaps in place, and the chips are part of the page: their pick
-   moves in one step, at the click, never animated. Cards that stay glide to their new place on
-   the standard curve, cards that leave fade out fast, cards that arrive fade in rising 8px, and what
-   follows the grid (the page numbers, the next section, the footer) moves with its height. All of it
-   inside 240ms; exits shorter than entrances. */
-html[data-vt="filter"] .filter-card { view-transition-name: var(--vt); }
-html[data-vt="filter"] .filter-after { view-transition-name: filter-after; }
-@media (prefers-reduced-motion: no-preference) {
-  html[data-vt="filter"]::view-transition-group(*) { animation-duration: 240ms; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
-  html[data-vt="filter"]::view-transition-old(*), html[data-vt="filter"]::view-transition-new(*) { animation-duration: 240ms; }
-  html[data-vt="filter"]::view-transition-old(*):only-child { animation: vt-out 120ms cubic-bezier(0.4, 0, 1, 1) both; }
-  html[data-vt="filter"]::view-transition-new(*):only-child { animation: filter-in 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
-  html[data-vt="filter"]::view-transition-old(root), html[data-vt="filter"]::view-transition-new(root),
-  html[data-vt="filter"]::view-transition-group(root), html[data-vt="filter"]::view-transition-group(site-header),
-  html[data-vt="filter"]::view-transition-group(filter-title), html[data-vt="filter"]::view-transition-new(filter-title) { animation: none; }
-  html[data-vt="filter"]::view-transition-old(filter-title) { display: none; }
-  /* What follows the grid paints under the cards (lib/filter-transition.ts layers the cards). */
-  html[data-vt="filter"]::view-transition-group(filter-after), html[data-vt="filter"]::view-transition-group(site-footer) { z-index: 1; }
-}
-/* Opaque by 60%, so where a card lands on one that's leaving, the two overlap only briefly. */
-@keyframes filter-in { from { opacity: 0; transform: translateY(8px); } 60% { opacity: 1; } to { opacity: 1; transform: none; } }
+/* The filter motion (lib/filter-transition.ts) is a fade-through of the grid, run from script; while
+   its content is swapped the grid is hidden, a new one mounting included. */
+html[data-filter="out"] .filter-grid { opacity: 0; }
 @keyframes vt-out { to { opacity: 0; } }
 @keyframes vt-in { from { opacity: 0; } }
 

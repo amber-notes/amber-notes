@@ -46,8 +46,8 @@ export default function SiteChrome({ version, stars, children }: { version: stri
       if (url.origin !== location.origin || url.pathname === location.pathname || !themeFor(url.pathname)) return;
       const href = url.pathname + url.search + url.hash;
       // Between the blog's lists (a category chip, a page number) it's the site's filter motion
-      // (lib/filter-transition.ts): the page stays where it is and only the posts change. Also with
-      // reduced motion or no view transitions, just instantly.
+      // (lib/filter-transition.ts): the page stays where it is and only the posts change, also
+      // without view transitions; with reduced motion, instantly.
       const list = isBlogList(location.pathname) && isBlogList(url.pathname);
       const doc = document as Document & { startViewTransition?: (cb: () => Promise<void>) => unknown };
       const animate = !!doc.startViewTransition && !matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -60,7 +60,8 @@ export default function SiteChrome({ version, stars, children }: { version: stri
       });
       if (list) {
         toList.current = a.closest("[data-blog-pages]") ? "pages" : "chips";
-        return filterTransition(arrive, a.closest("[data-blog-chips], [data-blog-pages]") ? a : null);
+        void filterTransition(arrive, a.closest("[data-blog-chips], [data-blog-pages]") ? a : null);
+        return;
       }
       doc.startViewTransition!(arrive);
     };

@@ -60,11 +60,11 @@
 .grid > li { display: grid; }
 .pageNote { color: var(--muted); font-weight: inherit; }
 
-/* Switching between the blog's lists is the site's filter motion (lib/filter-transition.ts,
-   site.css). The title block is its own layer there, so it swaps in place without fading, and
-   arriving from another list nothing plays its entrance again (lib/BlogList.tsx). */
+/* Switching between the blog's lists is the site's filter motion (lib/filter-transition.ts): the
+   title swaps in place, and arriving from another list nothing plays its entrance again
+   (lib/BlogList.tsx). */
 .index[data-still] :global(.rise) { animation: none; }
-:global(html[data-vt="filter"]) .hero { view-transition-name: filter-title; }
+
 
 /* Previous, the page numbers, Next: each at least 44 px tall and wide, centred under the grid. */
 .pages { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 12px; }

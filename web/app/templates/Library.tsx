@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { flushSync } from "react-dom";
-import { filterCard, filterTransition } from "@/lib/filter-transition";
+import { FILTER_GRID, filterTransition } from "@/lib/filter-transition";
 import s from "./templates.module.css";
 
 type Item = { slug: string; category: string };
@@ -22,7 +22,7 @@ export default function Library({ items, cards, categories }: { items: Item[]; c
   const update = (c: string | null, chip: Element) => {
     // Clicking the picked chip again shows them all, so the pick goes to All.
     const picked = c === null ? chip.closest("[role=group]")?.querySelector("button") ?? chip : chip;
-    filterTransition(() => flushSync(() => setCategory(c)), picked);
+    void filterTransition(() => flushSync(() => setCategory(c)), picked);
     history.replaceState(null, "", c ? `?category=${c}` : location.pathname);
   };
 
@@ -45,8 +45,8 @@ export default function Library({ items, cards, categories }: { items: Item[]; c
         </div>
         <p className={s.shown} aria-live="polite">{category ? `${shown} of ${items.length} templates` : `${items.length} templates`}</p>
       </div>
-      <ul className={s.grid}>
-        {items.map((i, k) => <li key={i.slug} hidden={!show[k]} {...filterCard(i.slug)}>{cards[k]}</li>)}
+      <ul className={`${s.grid} ${FILTER_GRID}`}>
+        {items.map((i, k) => <li key={i.slug} hidden={!show[k]}>{cards[k]}</li>)}
       </ul>
     </div>
   );

@@ -3,7 +3,7 @@ import { PostCard } from "./blog";
 import { categories, categoryPath, newestFirst, pageCount, pageOf, pagePath, published, type Category, type Ground } from "./posts";
 import { pageMetadata } from "./site";
 import BlogList from "./BlogList";
-import { FILTER_AFTER, filterCard } from "./filter-transition";
+import { FILTER_AFTER, FILTER_GRID } from "./filter-transition";
 import { JsonLd, breadcrumbs, maker, incredible, organization } from "./structured-data";
 import home from "../app/home.module.css";
 import s from "../app/blog/blog.module.css";
@@ -102,9 +102,9 @@ export function BlogIndex({ category, page }: { category: Category | null; page:
               </a>
             ))}
           </nav>
-          <ul className={s.grid}>
+          <ul className={`${s.grid} ${FILTER_GRID}`}>
             {posts.map((p) => (
-              <li key={p.slug} {...filterCard(p.slug)}><PostCard post={p} /></li>
+              <li key={p.slug}><PostCard post={p} /></li>
             ))}
           </ul>
         </div>
