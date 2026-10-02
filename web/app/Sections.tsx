@@ -8,7 +8,7 @@ import { AIGlyph } from "@/lib/ai-glyphs";
 import { CLAUDE_DIRECTORY_URL } from "@/lib/facts";
 import { HOME_PRIVACY, PRIVACY_PATH } from "@/lib/privacy";
 import DownloadLink from "./DownloadLink";
-import PlatformInterest from "./PlatformInterest";
+import PlatformNote from "./PlatformNote";
 import a from "./sections.module.css";
 
 const reduce = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -280,7 +280,7 @@ export function Closing() {
           <DownloadLink className={a.bandPrimary}><Apple /> Download for Mac</DownloadLink>
           <span className={a.bandSecondary}>iPhone · coming soon</span>
         </div>
-        <PlatformInterest place="band" />
+        <PlatformNote place="band" />
         <p className={`${a.bandFine} pi-apple pi-not-ios`}>Requires macOS 26. Updates install themselves.</p>
       </div>
     </section>

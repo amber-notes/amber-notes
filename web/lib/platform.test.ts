@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { endPreview, INTEREST_KEY, markInterest, platformScript, PREVIEW_KEY } from "./platform";
+import { describe, expect, it, vi } from "vitest";
+import { endPreview, mailLink, platformScript, PREVIEW_KEY, sendLink } from "./platform";
 
 type Nav = { userAgent?: string; maxTouchPoints?: number; userAgentData?: { platform?: string } };
 
@@ -10,9 +10,9 @@ function tab(start: Record<string, string> = {}) {
 }
 
 /// Runs the <head> script the way a browser would, and gives back what it put on <html>.
-function run(navigator: Nav | undefined, localStorage: unknown = { getItem: () => null }, search = "", sessionStorage: unknown = tab()) {
+function run(navigator: Nav | undefined, search = "", sessionStorage: unknown = tab()) {
   const html = { dataset: {} as Record<string, string> };
-  new Function("navigator", "document", "localStorage", "location", "sessionStorage", platformScript)(navigator, { documentElement: html }, localStorage, { search }, sessionStorage);
+  new Function("navigator", "document", "location", "sessionStorage", platformScript)(navigator, { documentElement: html }, { search }, sessionStorage);
   return html.dataset;
 }
 
@@ -59,37 +59,36 @@ describe("the visitor's platform, before first paint", () => {
     expect(run(undefined)).toEqual({});
   });
 
-  it("shows the thanks from the first frame to a visitor who already said yes", () => {
-    const asked: string[] = [];
-    const stored = { getItem: (key: string) => (asked.push(key), "1") };
-    expect(run({ userAgent: UA.windows }, stored)).toEqual({ platform: "windows", interest: "done" });
-    expect(asked).toEqual([INTEREST_KEY]);
-    expect(run({ userAgent: UA.windows }).interest).toBeUndefined();
-  });
-
-  it("still knows the platform when the browser refuses storage", () => {
-    const refused = { getItem: () => { throw new DOMException("denied", "SecurityError"); } };
-    expect(run({ userAgent: UA.android }, refused)).toEqual({ platform: "android" });
-    expect(run({ userAgent: UA.android }, undefined as never)).toMatchObject({ platform: "android" });
+  it("keeps nothing in localStorage", () => {
+    expect(platformScript).not.toContain("localStorage");
+    expect(run({ userAgent: UA.windows })).toEqual({ platform: "windows" });
   });
 });
 
-describe("saying yes", () => {
-  it("marks the page and remembers it in this browser, storing nothing about the visitor", () => {
-    const html = { dataset: {} as Record<string, string | undefined> };
-    const saved: [string, string][] = [];
-    markInterest({ documentElement: html }, () => ({ setItem: (k, v) => void saved.push([k, v]) }));
-    expect(html.dataset.interest).toBe("done");
-    expect(saved).toEqual([[INTEREST_KEY, "1"]]);
+describe("Send myself the link", () => {
+  it("is an email to nobody yet, with the link in it", () => {
+    expect(mailLink("https://ambernotes.app")).toBe("mailto:?subject=Amber%20Notes&body=https%3A%2F%2Fambernotes.app");
+    expect(mailLink("https://ambernotes.app/download")).toContain("body=https%3A%2F%2Fambernotes.app%2Fdownload");
   });
 
-  it.each([
-    ["storage is full or turned off", () => ({ setItem: () => { throw new DOMException("full", "QuotaExceededError"); } })],
-    ["reading localStorage itself throws", () => { throw new DOMException("denied", "SecurityError"); }],
-  ])("still shows the thanks when %s", (_, storage) => {
-    const html = { dataset: {} as Record<string, string | undefined> };
-    expect(() => markInterest({ documentElement: html }, storage)).not.toThrow();
-    expect(html.dataset.interest).toBe("done");
+  it("opens the share sheet where the browser has one, in place of the email", () => {
+    const share = vi.fn(async () => {});
+    const event = { preventDefault: vi.fn() };
+    sendLink({ share }, event, "https://ambernotes.app");
+    expect(share).toHaveBeenCalledWith({ title: "Amber Notes", url: "https://ambernotes.app" });
+    expect(event.preventDefault).toHaveBeenCalledOnce();
+  });
+
+  it("lets the email open where there's no share sheet", () => {
+    const event = { preventDefault: vi.fn() };
+    sendLink({}, event, "https://ambernotes.app");
+    expect(event.preventDefault).not.toHaveBeenCalled();
+  });
+
+  it("stays quiet when the share sheet is closed without sending", async () => {
+    const share = vi.fn(async () => { throw new DOMException("cancelled", "AbortError"); });
+    expect(() => sendLink({ share }, { preventDefault() {} }, "https://ambernotes.app")).not.toThrow();
+    await Promise.resolve();
   });
 });
 
@@ -99,47 +98,35 @@ describe("previewing another platform with ?as=", () => {
   it.each([
     ["windows", "windows"], ["android", "android"], ["linux", "linux"], ["iphone", "ios"], ["mac", "mac"],
   ])("?as=%s shows the site as that visitor sees it, and says it's a preview", (as, platform) => {
-    expect(run(mac, undefined, `?as=${as}`)).toEqual({ platform, as });
-    expect(run({ userAgent: UA.windows }, undefined, `?utm_source=x&as=${as}`)).toEqual({ platform, as });
+    expect(run(mac, `?as=${as}`)).toEqual({ platform, as });
+    expect(run({ userAgent: UA.windows }, `?utm_source=x&as=${as}`)).toEqual({ platform, as });
   });
 
   it("sticks for the tab while the parameter is gone, and ?as=off clears it", () => {
     const session = tab();
-    expect(run(mac, undefined, "?as=windows", session).as).toBe("windows");
+    expect(run(mac, "?as=windows", session).as).toBe("windows");
     expect(session.kept.get(PREVIEW_KEY)).toBe("windows");
-    expect(run(mac, undefined, "", session)).toEqual({ platform: "windows", as: "windows" });
-    expect(run(mac, undefined, "?as=linux", session)).toEqual({ platform: "linux", as: "linux" });
-    expect(run(mac, undefined, "?as=off", session)).toEqual({ platform: "mac" });
+    expect(run(mac, "", session)).toEqual({ platform: "windows", as: "windows" });
+    expect(run(mac, "?as=linux", session)).toEqual({ platform: "linux", as: "linux" });
+    expect(run(mac, "?as=off", session)).toEqual({ platform: "mac" });
     expect(session.kept.size).toBe(0);
-    expect(run(mac, undefined, "", session)).toEqual({ platform: "mac" });
+    expect(run(mac, "", session)).toEqual({ platform: "mac" });
   });
 
   it("changes nothing for a visitor without the parameter, or with one it doesn't know", () => {
     const session = tab();
     for (const search of ["", "?ref=x", "?as=", "?as=ios", "?as=WINDOWS", "?as=windows2", "?has=windows", "?as=other"]) {
-      expect(run({ userAgent: UA.windows }, undefined, search, session), search).toEqual({ platform: "windows" });
+      expect(run({ userAgent: UA.windows }, search, session), search).toEqual({ platform: "windows" });
     }
     expect(session.kept.size).toBe(0);
   });
 
-  it("ignores a real \"already said yes\", so the ask can be looked at again", () => {
-    const yes = { getItem: () => "1" };
-    expect(run({ userAgent: UA.windows }, yes, "?as=windows")).toEqual({ platform: "windows", as: "windows" });
-    expect(run({ userAgent: UA.windows }, yes, "?as=off").interest).toBe("done");
-  });
-
   it("works for the page it's on when the browser refuses sessionStorage", () => {
     const refused = { getItem: () => { throw new DOMException("denied", "SecurityError"); }, setItem: () => { throw new DOMException("denied", "SecurityError"); } };
-    expect(run(mac, undefined, "?as=android", refused)).toEqual({ platform: "android", as: "android" });
-    expect(run(mac, undefined, "", refused)).toEqual({ platform: "mac" });
-    expect(run(mac, undefined, "", undefined as never)).toEqual({ platform: "mac" });
-  });
-
-  it("shows the thanks after a yes without writing the real value", () => {
-    const html = { dataset: { platform: "windows", as: "windows" } as Record<string, string | undefined> };
-    const storage = () => { throw new Error("a preview must not touch localStorage"); };
-    markInterest({ documentElement: html }, storage);
-    expect(html.dataset.interest).toBe("done");
+    expect(run(mac, "?as=android", refused)).toEqual({ platform: "android", as: "android" });
+    expect(run(mac, "", refused)).toEqual({ platform: "mac" });
+    expect(run(mac, "", undefined as never)).toEqual({ platform: "mac" });
+    expect(run({ userAgent: UA.android }, "", undefined as never)).toEqual({ platform: "android" });
   });
 
   it("Reset forgets the preview and reloads the page without the parameter", () => {

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import styles from "./home.module.css";
 import Demo from "./Demo";
 import DownloadLink from "./DownloadLink";
-import PlatformInterest from "./PlatformInterest";
+import PlatformNote from "./PlatformNote";
 import { AiSection, AlsoLine, Closing, ImportSection, PrivacySection } from "./Sections";
 import { latestVersion } from "@/lib/changelog";
 import { APP_STORE_LIVE, APP_STORE_URL, pageMetadata } from "@/lib/site";
@@ -37,7 +37,7 @@ export default function Home() {
             <span className={styles.secondary}>iPhone · coming soon</span>
           )}
         </div>
-        <PlatformInterest place="hero" className="rise" {...rise(2)} />
+        <PlatformNote place="hero" className="rise" {...rise(2)} />
       </section>
 
       <div className="rise-soft" {...rise(3)}><Demo /></div>
