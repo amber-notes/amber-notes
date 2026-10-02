@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import Supabase
 import Testing
 @testable import Pane
 
@@ -400,6 +401,78 @@ import Testing
         center.sheetClosed()
         center.showNext()
         #expect(center.pending == second && center.queue.isEmpty)
+    }
+
+    /// The approval that "insta disappeared" and never came back: a sheet closed without an answer
+    /// (a swipe, a tap beside the half-height sheet) left the ask known here but unreachable.
+    @Test func anAskClosedWithoutAnAnswerStaysWaitingAndOpensAgain() {
+        let center = quietCenter()
+        let a = ask()
+        center.offer(a)
+        #expect(center.pending == a.id && center.waiting().isEmpty, "showing, so not waiting")
+        center.sheetClosed()
+        #expect(center.pending == nil)
+        #expect(center.waiting().map(\.id) == [a.id], "closing the sheet doesn't answer it")
+        #expect(ConnectWaitingRow.detail(a) == "Requested from Chrome on a Mac.")
+        center.offer(a)
+        #expect(center.pending == nil, "looking again doesn't push it back in the person's face")
+        #expect(center.presentation(for: a.id, push: true).contains(.banner), "a push for it can still be seen and tapped")
+        center.showAsk(a.id)
+        #expect(center.pending == a.id && center.waiting().isEmpty, "Approval waiting opens it again")
+    }
+
+    @Test func anAskAnsweredHereIsntWaiting() {
+        let center = quietCenter()
+        let a = ask()
+        center.offer(a)
+        center.answering(a.id)
+        center.sheetClosed()
+        #expect(center.waiting().isEmpty)
+        let expired = ConnectAsk(request_id: UUID(), browser_key: "", started_from: "", created_at: .now.addingTimeInterval(-700),
+                                 expires_at: .now.addingTimeInterval(-100))
+        center.offer(expired)
+        #expect(center.waiting().isEmpty && center.pending == nil, "an expired ask is never waiting")
+    }
+
+    @Test func theShowingAskKeepsItsSheetThroughEveryUpdate() {
+        let center = quietCenter()
+        let a = ask()
+        center.offer(a)
+        // The page reloaded (a new key, a new created_at), the nonces arrived: the same request.
+        center.offer(ConnectAsk(request_id: a.id, browser_key: "AAAA", started_from: a.started_from, created_at: .now.addingTimeInterval(5),
+                                expires_at: a.expires_at))
+        #expect(center.pending == a.id && center.queue.isEmpty && center.waiting().isEmpty)
+    }
+
+    /// A look at the server that started before an ask existed came back after realtime brought
+    /// it, and closed the sheet that had just opened.
+    @Test func anOlderLookCantCloseANewerAsk() async {
+        let center = quietCenter()
+        let a = ask()
+        final class Server { var calls = 0; var open: [ConnectAsk] = []; var held: CheckedContinuation<Void, Never>? }
+        let server = Server()
+        let quiet = ConnectNotifier(isFrontmost: { true }, askPermission: {}, post: { _, _ in }, withdraw: { _ in })
+        let asks = ConnectAsks(client: SupabaseClient(supabaseURL: URL(string: "http://127.0.0.1:9")!, supabaseKey: "test"),
+                               user: UUID(), center: center, notifier: quiet, describe: { _ in nil },
+                               fetchOpen: { _ in
+                                   server.calls += 1
+                                   let answer = server.open
+                                   if server.calls == 1 { await withCheckedContinuation { server.held = $0 } }
+                                   return answer
+                               })
+        let look = Task { await asks.refresh() }
+        for _ in 0 ..< 200 where server.held == nil { try? await Task.sleep(for: .milliseconds(5)) }
+        #expect(server.held != nil, "the first look is out, from before the ask")
+        server.open = [a]
+        await asks.take(a)
+        #expect(center.pending == a.id, "realtime opened it")
+        server.held?.resume()
+        await look.value
+        #expect(center.pending == a.id, "the older look's empty answer doesn't close it")
+        // A look that starts after it, and doesn't find it, does: it was answered elsewhere.
+        server.open = []
+        await asks.refresh()
+        #expect(center.pending == nil && center.waiting().isEmpty)
     }
 
     @Test func aLinkDoesntReplaceAnAskAndAnAskDoesntReplaceALink() {

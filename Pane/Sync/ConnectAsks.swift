@@ -70,6 +70,8 @@ final class ConnectAsks {
     /// Who's asking, for the notification ("ChatGPT"), or nil when it can't be told.
     private let describe: (UUID) async -> String?
     private let now: () -> Date
+    /// The asks still open on the server at a moment, newest first. Tests answer for it.
+    private let fetchOpen: (Date) async throws -> [ConnectAsk]
     private let sleep: @Sendable (Duration) async throws -> Void
     private var channel: RealtimeChannelV2?
     private var tasks: [Task<Void, Never>] = []
@@ -83,6 +85,7 @@ final class ConnectAsks {
 
     init(client: SupabaseClient, user: UUID, center: ConnectCenter = .shared, notifier: ConnectNotifier = .system,
          describe: ((UUID) async -> String?)? = nil, now: @escaping () -> Date = { .now },
+         fetchOpen: ((Date) async throws -> [ConnectAsk])? = nil,
          sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }) {
         self.client = client
         self.user = user
@@ -90,6 +93,13 @@ final class ConnectAsks {
         self.notifier = notifier
         self.describe = describe ?? { id in try? await ConnectAPI.request(client, id: id).who }
         self.now = now
+        self.fetchOpen = fetchOpen ?? { at in
+            try await client.from("connect_asks").select(ConnectAsk.columns)
+                .is("answered_at", value: nil)
+                .gt("expires_at", value: at.formatted(Date.ISO8601FormatStyle(includingFractionalSeconds: true)))
+                .order("created_at", ascending: false)
+                .execute().value
+        }
         self.sleep = sleep
     }
 
@@ -162,19 +172,18 @@ final class ConnectAsks {
     }
 
     /// Unanswered, unexpired asks, newest first: the newest opens, the rest wait their turn. Asks
-    /// this device knew that have gone (answered elsewhere, or expired) close.
+    /// this device knew that have gone (answered elsewhere, or expired) close. Looks overlap (a
+    /// tick, a push, coming to the front, realtime rejoining), and an older one can come back after
+    /// realtime brought a new ask: only asks known before this look started can be gone.
     func refresh() async {
         guard !stopped else { return }
         let at = now()
+        let mark = center.lookStarts()
         do {
-            let rows: [ConnectAsk] = try await client.from("connect_asks").select(ConnectAsk.columns)
-                .is("answered_at", value: nil)
-                .gt("expires_at", value: at.formatted(Date.ISO8601FormatStyle(includingFractionalSeconds: true)))
-                .order("created_at", ascending: false)
-                .execute().value
+            let rows = try await fetchOpen(at)
             guard !stopped else { return }
             let open = rows.filter { $0.isOpen(now: at) }.sorted { $0.created_at > $1.created_at }
-            for gone in center.askIDs where !open.contains(where: { $0.id == gone }) { withdraw(gone) }
+            for gone in center.gone(from: Set(open.map(\.id)), lookedAt: mark) { withdraw(gone) }
             for ask in open { await take(ask) }
         } catch {
             asksLog.error("fetching connect asks failed: \(String(describing: error), privacy: .public)")
@@ -309,7 +318,7 @@ extension ConnectCenter: UNUserNotificationCenterDelegate {
     func presentation(for id: UUID, push: Bool) -> UNNotificationPresentationOptions {
         guard push else { return [] }
         if let lookAgain { Task { await lookAgain() } }
-        if pending == id || askIDs.contains(id) { return [] }
+        if pending == id || queue.contains(id) { return [] }
         return [.banner, .list, .sound]
     }
 

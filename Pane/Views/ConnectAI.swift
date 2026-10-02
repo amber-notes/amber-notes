@@ -588,6 +588,10 @@ final class ConnectCenter: NSObject {
     private var offered: Set<UUID> = []
     /// Answered on this device: the update saying so doesn't cut the sheet's "Allowed" short.
     private var answeredHere: Set<UUID> = []
+    /// When each ask became known here, counted, so a look at the server that started before it
+    /// can't close it (see `gone(from:lookedAt:)`).
+    private var learned = 0
+    private var learnedAt: [UUID: Int] = [:]
     private var expiry: Task<Void, Never>?
     /// Between one sheet closing and the next opening.
     var nextDelay: Duration = .milliseconds(450)
@@ -656,6 +660,10 @@ final class ConnectCenter: NSObject {
     @discardableResult
     func offer(_ ask: ConnectAsk, now: Date = .now) -> Bool {
         guard ask.isOpen(now: now) else { withdraw(ask.id); return false }
+        if asks[ask.id] == nil {
+            learned += 1
+            learnedAt[ask.id] = learned
+        }
         asks[ask.id] = ask
         guard !offered.contains(ask.id) else { return false }
         offered.insert(ask.id)
@@ -667,13 +675,32 @@ final class ConnectCenter: NSObject {
     /// An ask was answered on another device, or expired: its sheet closes.
     func withdraw(_ id: UUID) {
         asks[id] = nil
+        learnedAt[id] = nil
         queue.removeAll { $0 == id }
         guard pending == id, !answeredHere.contains(id) else { return }
         pending = nil
         showNextSoon()
     }
 
-    /// The notification for an ask was tapped: it's next, or showing already.
+    /// Where a look at the server starts, for `gone(from:lookedAt:)`.
+    func lookStarts() -> Int { learned }
+
+    /// The asks a look at the server no longer found (answered elsewhere, or expired). An ask that
+    /// became known after the look started isn't gone: realtime brought it while the look was out,
+    /// and the look's answer is simply older than it.
+    func gone(from open: Set<UUID>, lookedAt mark: Int) -> [UUID] {
+        asks.keys.filter { !open.contains($0) && (learnedAt[$0] ?? 0) <= mark }
+    }
+
+    /// Asks still waiting for an answer whose sheet isn't showing: closed without an answer (a
+    /// swipe, a tap beside it) or queued behind another. Closing the sheet never answers an ask;
+    /// it stays here until it's answered or expires, and "Approval waiting" opens it again.
+    func waiting(now: Date = .now) -> [ConnectAsk] {
+        asks.values.filter { $0.id != pending && $0.isOpen(now: now) && !answeredHere.contains($0.id) }
+            .sorted { $0.created_at > $1.created_at }
+    }
+
+    /// The notification for an ask was tapped, or "Approval waiting": it's next, or showing already.
     func showAsk(_ id: UUID) {
         guard pending != id else { return }
         if pending == nil { show(id); return }
@@ -684,9 +711,10 @@ final class ConnectCenter: NSObject {
     /// The sheet is answering this request; it closes itself.
     func answering(_ id: UUID) { answeredHere.insert(id) }
 
-    /// The sheet closed, answered or not: the next ask shows.
+    /// The sheet closed, answered or not: the next ask shows. One answered here is done; one that
+    /// wasn't stays waiting (`waiting`).
     func sheetClosed() {
-        if let id = pending { answeredHere.remove(id) }
+        if let id = pending, answeredHere.remove(id) != nil { asks[id] = nil }
         pending = nil
         expiry?.cancel()
         showNextSoon()
@@ -700,6 +728,7 @@ final class ConnectCenter: NSObject {
         links = []
         offered = []
         answeredHere = []
+        learnedAt = [:]
         expiry?.cancel()
     }
 
@@ -861,6 +890,44 @@ struct ConsentHost: ViewModifier {
     }
 
     private struct PendingID: Identifiable { let id: UUID }
+}
+
+/// "Approval waiting": an ask whose sheet isn't showing (closed without an answer, or queued),
+/// on top of the notes list and in Connect an AI. Tapping it opens the sheet again.
+struct ConnectWaitingRow: View {
+    let ask: ConnectAsk
+    @State private var center = ConnectCenter.shared
+
+    /// "Requested from Chrome on a Mac."
+    nonisolated static func detail(_ ask: ConnectAsk) -> String {
+        "Requested from \(ask.started_from.isEmpty ? "a web browser" : ask.started_from)."
+    }
+
+    var body: some View {
+        Button { center.showAsk(ask.id) } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "lock.shield.fill")
+                    .font(.title3)
+                    .foregroundStyle(.tint)
+                    .frame(width: 32, height: 32)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Approval waiting").font(.body.weight(.semibold)).foregroundStyle(.primary)
+                    Text(Self.detail(ask)).font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Text("Review").font(.body.weight(.medium)).foregroundStyle(.tint)
+            }
+            .padding(.vertical, 2)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Approval waiting. \(Self.detail(ask))")
+        .accessibilityHint("Opens the request to connect an AI")
+        .accessibilityAddTraits(.isButton)
+        .accessibilityIdentifier("connect.waiting")
+    }
 }
 
 extension View {
@@ -1363,7 +1430,12 @@ struct ConnectAISection: View {
         }
     }
 
+    @State private var center = ConnectCenter.shared
+
     var body: some View {
+        if let ask = center.waiting().first {
+            Section { ConnectWaitingRow(ask: ask) }
+        }
         guides
         connected
     }
