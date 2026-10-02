@@ -216,7 +216,7 @@ The website sets no cookies. Its page view counts (Vercel Web Analytics) and its
 
 - **sessionStorage, `amber.connect.pkce`:** a one-time code for Sign in with Apple, kept while you go to Apple and back, and deleted as soon as you return.
 
-Everything else on that page stays in its memory and is gone when you close it: your sign-in (which it ends as soon as your devices have been asked), the key and secret it uses to receive your device's approval, and, if you use it, your recovery key. Because these are strictly necessary for something you asked for, there's no cookie banner.
+Everything else on that page stays in its memory and is gone when you close it: your sign-in (which it ends when the connection is allowed, declined or expires, or when you close the page), the key and secret it uses to receive your device's approval, and, if you use it, your recovery key. Because these are strictly necessary for something you asked for, there's no cookie banner.
 
 ## Children
 
