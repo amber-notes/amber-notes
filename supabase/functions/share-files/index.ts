@@ -14,18 +14,21 @@
 // shared_file(), which answers only for a file the (sub)page's published copy embeds and only while
 // the link is live. Logs carry an event name and a status, never a slug or a file name.
 
-import postgres from "npm:postgres@3.4.5";
+import { connect, readiness } from "../_shared/db.ts";
 import { dailyHash, hashSecret } from "../_shared/hash.ts";
 import { log } from "../_shared/log.ts";
 import { contentDisposition, filePath, RateLimiter, referencedFiles, servedType, SLUG, UUID } from "./logic.ts";
 
-const sql = postgres(Deno.env.get("SUPABASE_DB_URL")!, { max: 2, idle_timeout: 20, prepare: false });
+// Through the transaction pooler when DB_POOLER_HOST is set (_shared/db.ts says why).
+const sql = connect(Deno.env, 2);
+const ready = readiness(sql);
 const perIP = new RateLimiter(120, 60_000);
 
 const headers = { "content-type": "application/json", "cache-control": "no-store", "access-control-allow-origin": "*" };
 const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers });
 
 Deno.serve(async (req) => {
+  await ready();
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: { ...headers, "access-control-allow-methods": "GET, OPTIONS" } });
   if (req.method !== "GET") return reply({ error: "method not allowed" }, 405);
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown";

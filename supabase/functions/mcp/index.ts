@@ -1,8 +1,13 @@
 // Amber Notes's MCP server, served as a Supabase edge function. Everything is in server.ts.
 
-import postgres from "npm:postgres@3.4.5";
+import { connect, readiness } from "../_shared/db.ts";
 import { handleRequest } from "./server.ts";
 
-const sql = postgres(Deno.env.get("SUPABASE_DB_URL")!, { max: 3, idle_timeout: 20, prepare: false });
+// Through the transaction pooler when DB_POOLER_HOST is set (_shared/db.ts says why).
+const sql = connect(Deno.env, 3);
+const ready = readiness(sql);
 
-Deno.serve((req) => handleRequest(req, sql));
+Deno.serve(async (req) => {
+  await ready();
+  return handleRequest(req, sql);
+});
