@@ -83,6 +83,107 @@ html[data-theme] ::selection { background: var(--mark); }
 @media (prefers-reduced-motion: no-preference) { .site-nav a.site-cta { transition: transform 0.12s ease-out, background-color 0.15s ease-out; } .site-nav a.site-cta:active { transform: scale(0.97); } }
 .site-brand:focus-visible, .site-nav a:focus-visible, .site-footer a:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
 
+/* ── Phones (600px and under): no Download button in the header; the pages carry it. Two drafts,
+   picked with ?header=a|b on a preview (lib/header-drafts.ts). A is what production shows. ── */
+.site-menu-button, .site-menu { display: none; }
+@media (max-width: 600px) {
+  .site-nav a.site-cta, .site-nav a.site-gh { display: none; }
+  /* The leaf alone is 30px wide: its 44px hit area reaches into the gutter, the leaf stays on it. */
+  .site-brand { min-width: 44px; margin-left: -7px; padding-left: 7px; box-sizing: border-box; }
+
+  /* A: the leaf, then the four pages in one row. The row's side padding grows with the screen, and
+     its last word ends on the gutter. Fits from 320px. */
+  html:not([data-header="b"]) .site-header { gap: 0; }
+  html:not([data-header="b"]) .site-badge { display: none; }
+  html:not([data-header="b"]) .site-nav { --pad: clamp(4px, 7vw - 17px, 12px); gap: 0; margin-right: calc(-1 * var(--pad)); }
+  html:not([data-header="b"]) .site-nav a:not(.site-cta):not(.site-gh) { display: inline-flex; padding: 0 var(--pad); border-radius: 10px; }
+  /* The current page: full ink, and a short amber line under the word. */
+  html:not([data-header="b"]) .site-nav a[aria-current="page"]::after { content: ""; position: absolute; left: var(--pad); right: var(--pad); bottom: 7px; height: 2px; border-radius: 1px; background: var(--amber); }
+
+  /* B: the logo, and a button that opens the menu. */
+  html[data-header="b"] .site-nav { display: none; }
+  html[data-header="b"] .site-menu-button { display: inline-flex; }
+}
+/* A: the name beside the leaf only where the row still fits (about 540px). */
+@media (max-width: 539px) { html:not([data-header="b"]) .site-header > .site-brand .site-name { display: none; } }
+@media (max-width: 359px) { html:not([data-header="b"]) .site-nav { --pad: 4px; } html:not([data-header="b"]) .site-nav a:not(.site-cta):not(.site-gh) { font-size: 15px; letter-spacing: -0.01em; } }
+
+/* The menu button: two lines on a soft tile; in the sheet the same tile, in the same place, closes it. */
+.site-menu-button {
+  position: relative; align-items: center; justify-content: center; flex: none; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 14px;
+  background: var(--soft); color: var(--ink); cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.site-menu-button span { position: absolute; left: 13px; width: 18px; height: 2px; border-radius: 1px; background: currentColor; }
+.site-menu-button span:first-child { top: 17px; }
+.site-menu-button span:last-child { top: 25px; }
+.site-menu-close { display: inline-flex; }
+.site-menu-close span:first-child { top: 21px; transform: rotate(45deg); }
+.site-menu-close span:last-child { top: 21px; transform: rotate(-45deg); }
+.site-menu-button:focus-visible, .site-sheet a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+@media (hover: hover) { .site-menu-button:hover { background: color-mix(in srgb, var(--soft) 82%, var(--amber)); } }
+
+/* The sheet: a card that drops from the header and covers it, so the logo and the button stay where they were. */
+.site-menu[open] { display: block; }
+.site-menu {
+  position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 6px 8px 8px; border: 0; box-sizing: border-box;
+  background: transparent; color: var(--ink); overflow-y: auto; overscroll-behavior: contain;
+}
+.site-menu::backdrop { background: rgba(30, 15, 5, 0.42); }
+.site-sheet {
+  display: grid; gap: 8px; padding: 8px; border-radius: 24px; background: var(--card);
+  box-shadow: 0 0 0 1px var(--line), 0 4px 10px -4px rgba(40, 20, 5, 0.22), 0 28px 64px -24px rgba(40, 20, 5, 0.5);
+}
+.site-sheet:focus { outline: none; } /* opening puts focus on the sheet itself; Tab goes to the logo, then Close */
+/* The header's own row again, centred on the header's centre line (36px), so the logo and the button don't move. */
+.site-sheet-top { display: flex; align-items: center; justify-content: space-between; height: 44px; }
+.site-sheet-rows { display: grid; gap: 2px; }
+.site-sheet-rows a {
+  display: flex; align-items: center; gap: 14px; min-height: 56px; padding: 0 12px; border-radius: 16px;
+  color: var(--ink); text-decoration: none; font-weight: 650; font-size: 19px; letter-spacing: -0.01em;
+}
+.site-sheet-rows svg { flex: none; width: 24px; height: 24px; color: var(--link); }
+.site-sheet-rows svg[fill="currentColor"] { width: 21px; height: 21px; margin: 0 1.5px; } /* GitHub's own mark, filled: a little smaller to weigh the same as the line icons */
+.site-sheet-rows a[aria-current="page"] { background: var(--soft); }
+.site-sheet-stars { margin-left: auto; color: var(--muted); font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: 0; }
+/* The download: its own group, twice as far from the rows as they are from each other. */
+.site-sheet-action { display: grid; gap: 8px; margin-top: 8px; }
+.site-sheet-cta {
+  display: flex; align-items: center; justify-content: center; gap: 9px; min-height: 52px; border-radius: 16px;
+  background: var(--cta-bg); color: var(--cta-ink); text-decoration: none; font-weight: 700; font-size: 17px;
+}
+.site-sheet-cta-quiet { background: var(--soft); color: var(--ink); }
+.site-sheet-action p { margin: 4px 0 6px; text-align: center; color: var(--muted); font-size: 14px; font-weight: 600; }
+@media (hover: hover) { .site-sheet-rows a:hover { background: var(--soft); } }
+
+@media (prefers-reduced-motion: no-preference) {
+  .site-menu-button { transition: transform 0.12s ease-out, background-color 0.15s ease-out; }
+  .site-menu-button:active { transform: scale(0.95); }
+  .site-menu-button span { transition: transform 0.12s ease-out; }
+  .site-sheet-rows a, .site-sheet-cta { transition: transform 0.12s ease-out, background-color 0.15s ease-out; }
+  .site-sheet-rows a:active, .site-sheet-cta:active { transform: scale(0.98); }
+  /* In: the card fades in over the header without moving, so the logo and the button stay put; the
+     rows drop into place in reading order with a little overshoot; the two lines turn into the cross.
+     Out: a short plain fade. */
+  .site-menu[open] .site-sheet { animation: sheet-in 0.18s ease-out both; }
+  .site-menu[open]::backdrop { animation: sheet-veil 0.24s ease-out both; }
+  .site-menu[open] .site-sheet-rows a, .site-menu[open] .site-sheet-action { animation: sheet-row 0.36s cubic-bezier(0.34, 1.56, 0.64, 1) both; animation-delay: calc(20ms + var(--i, 0) * 28ms); }
+  .site-sheet-rows a:nth-child(2) { --i: 1; } .site-sheet-rows a:nth-child(3) { --i: 2; } .site-sheet-rows a:nth-child(4) { --i: 3; } .site-sheet-rows a:nth-child(5) { --i: 4; }
+  .site-sheet-action { --i: 5; }
+  .site-menu[open] .site-menu-close span:first-child { animation: sheet-cross-a 0.26s cubic-bezier(0.34, 1.36, 0.64, 1) both; }
+  .site-menu[open] .site-menu-close span:last-child { animation: sheet-cross-b 0.26s cubic-bezier(0.34, 1.36, 0.64, 1) both; }
+  .site-menu[open][data-closing] .site-sheet { animation: sheet-out 0.15s cubic-bezier(0.4, 0, 0.2, 1) both; }
+  .site-menu[open][data-closing]::backdrop { animation: sheet-veil-out 0.15s cubic-bezier(0.4, 0, 0.2, 1) both; }
+  .site-menu[open][data-closing] .site-sheet-rows a, .site-menu[open][data-closing] .site-sheet-action,
+  .site-menu[open][data-closing] .site-menu-close span { animation: none; }
+}
+@keyframes sheet-in { from { opacity: 0; } }
+@keyframes sheet-out { to { opacity: 0; } }
+@keyframes sheet-veil { from { opacity: 0; } }
+@keyframes sheet-veil-out { to { opacity: 0; } }
+@keyframes sheet-row { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+@keyframes sheet-cross-a { from { top: 17px; transform: none; } to { top: 21px; transform: rotate(45deg); } }
+@keyframes sheet-cross-b { from { top: 25px; transform: none; } to { top: 21px; transform: rotate(-45deg); } }
+
 /* Footer: identical on every page. */
 .site-footer {
   view-transition-name: site-footer;

@@ -44,7 +44,12 @@ const MOVED = ["/", "/help", "/download", "/changelog", "/connect"];
 // The connect pages (/connect, /open/connect) get their CSP, with a nonce, from middleware.ts.
 const connectSecurity = security.filter((h) => h.key !== "Content-Security-Policy");
 
+// The two phone header drafts (lib/header-drafts.ts) can be compared with ?header=a|b on a Vercel
+// preview and in local development (or a local build with HEADER_DRAFTS=1). Never in production.
+const headerDrafts = process.env.VERCEL_ENV === "preview" || process.env.NODE_ENV === "development" || process.env.HEADER_DRAFTS === "1";
+
 const config: NextConfig = {
+  env: { NEXT_PUBLIC_HEADER_DRAFTS: headerDrafts && process.env.VERCEL_ENV !== "production" ? "1" : "" },
   // The blog reads each post's source for its reading time (lib/blog.tsx). A server render (crawlers
   // get one) must find those files in the function bundle, or the post fails with ENOENT.
   outputFileTracingIncludes: { "/blog/*": ["./app/blog/**/page.tsx"] },
