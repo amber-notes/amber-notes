@@ -12,15 +12,44 @@ import PDFKit
 enum PrivacyCopy {
     static let title = "Privacy & Security"
     static let summary = "Encrypted on your devices. We can't read your notes. When you connect an AI, our server unlocks your notes for that AI's requests."
-    static let recoveryFooter = "Your recovery key opens your notes on a new device when none of your other devices is at hand."
+    static let recoveryFooter = "A recovery key opens your notes on a new device when none of your other devices is at hand. If every device is gone and you saved no recovery key, your notes are lost. We can\u{2019}t open them either."
     static let pageTitle = "Amber Notes recovery key"
     static let pageGuidance = "Keep this somewhere safe. With it, you can open your notes on a new device if you don't have your other devices."
+    static let keyHeader = "Where your key is kept"
+    static let keyFooter = "Without one of these, nobody can open your notes, including us. A connected AI can read them while it\u{2019}s connected."
+    static var thisDevice: String { "This \(InstallID.kind)" }
+    static var keptInKeychain: String { "Keeps your key in its Keychain, where iCloud Keychain can pick it up" }
+    static var keptHere: String { "Keeps your key on this \(InstallID.kind) only" }
+    static let keychainTitle = "iCloud Keychain"
+    static let keychainDetail = "Brings your key to your other iPhone or Mac, if it\u{2019}s on for this Apple Account."
+    static var safeTitle: String { "Safe if you lose this \(InstallID.kind)" }
+    static func safeDetail(_ ways: Int) -> String {
+        switch ways {
+        case 1: "One other way can open your notes."
+        case 2: "Two other ways can open your notes."
+        case 3: "Three other ways can open your notes."
+        default: "\(ways) other ways can open your notes."
+        }
+    }
+    static let unconfirmedTitle = "Can\u{2019}t confirm a backup of your key"
+    #if os(macOS)
+    static let unconfirmedDetail = "Your key is backed up if iCloud Keychain is on for this Apple Account. Amber Notes can\u{2019}t check that. Look in System Settings \u{203A} [your name] \u{203A} iCloud \u{203A} Passwords & Keychain, or add a device."
+    #else
+    static let unconfirmedDetail = "Your key is backed up if iCloud Keychain is on for this Apple Account. Amber Notes can\u{2019}t check that. Look in Settings \u{203A} [your name] \u{203A} iCloud \u{203A} Passwords & Keychain, or add a device."
+    #endif
+    static var onlyTitle: String { "Only this \(InstallID.kind) can open your notes" }
+    static let onlyDetail = "If you lose it, your notes are lost. We can\u{2019}t open them either. Add another device to be safe."
+    static let addDevice = "Add a device\u{2026}"
+    static func removeTitle(_ name: String) -> String { "Remove \(name)?" }
+    static let removeMessage = "It\u{2019}s signed out and its copy of your notes is erased the next time it\u{2019}s online. Notes on it that haven\u{2019}t synced are erased too. Anything it already showed could have been copied before that."
+    static var removedTitle: String { "This \(InstallID.kind) was removed" }
+    static let removedMessage = "Another of your devices removed it, so its copy of your notes was erased. To open them here again, sign in and add this device."
     static let showReason = "Show your recovery key"
     static let saveReason = "Save your recovery key"
     static let fileName = "Amber Notes Recovery Key"
     static let recoveryChangedTitle = "Your recovery key changed"
-    static let recoveryChanged = "Your account started fresh on another device, so your old recovery key no longer opens your notes. Save the new one."
-    static let recoveryChangedAlert = "Your account started fresh on another device, so it has a new recovery key. Save it in Settings › Privacy & Security."
+    static let recoveryChanged = "Your account started fresh on another device, so a recovery key you saved before no longer opens your notes. The new one is here."
+    static let recoveryChangedAlert = "Your account started fresh on another device, so it has a new recovery key. If you keep one, the new one is in Settings › Privacy & Security."
     static let exportFooter = "Every note as a Markdown file in its folder, with its files. Your notes are encrypted, so the export is made on this device."
 }
 
@@ -28,9 +57,11 @@ enum PrivacyCopy {
 /// Settings › Privacy & Security on iPhone, a page of its own.
 struct PrivacySecurityView: View {
     let crypto: AccountCrypto
+    var devices: KeyDevices = .shared
+    var addDeviceServer: AddDeviceServer?
 
     var body: some View {
-        Form { PrivacySecuritySection(crypto: crypto) }
+        Form { PrivacySecuritySection(crypto: crypto, devices: devices, addDeviceServer: addDeviceServer) }
             .formStyle(.grouped)
             .navigationTitle(PrivacyCopy.title)
             .navigationBarTitleDisplayMode(.inline)
@@ -38,14 +69,21 @@ struct PrivacySecurityView: View {
 }
 #endif
 
-/// The encryption summary and the recovery key: shown behind Face ID or Touch ID (or the device
-/// passcode), and saved by printing, as a PDF or by copying it.
+/// The encryption summary, where the key is kept (this device, iCloud Keychain, devices added,
+/// and Add a device), and the recovery key, which is optional: shown behind Face ID or Touch ID
+/// (or the device passcode), and saved by printing, as a PDF or by copying it.
 struct PrivacySecuritySection: View {
     let crypto: AccountCrypto
+    var devices: KeyDevices = .shared
+    /// Adding a device talks to the server; nil in previews.
+    var addDeviceServer: AddDeviceServer?
     /// The recovery key while it's shown.
     @State private var shown: String?
     @State private var saving: String?
     @State private var problem: String?
+    @State private var adding = false
+    @State private var removing: KeyDevice?
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         Section {
@@ -57,9 +95,10 @@ struct PrivacySecuritySection: View {
             Text(PrivacyCopy.title)
             #endif
         }
+        keySection
         Section {
             LabeledContent("Recovery key") {
-                Text(crypto.recoveryKeySaved ? "Saved" : "Not saved")
+                Text(recoveryStatus)
                     .foregroundStyle(.secondary)
                     .accessibilityIdentifier("privacy.recoveryStatus")
             }
@@ -81,27 +120,131 @@ struct PrivacySecuritySection: View {
                 Button("Show recovery key") { Task { await reveal(reason: PrivacyCopy.showReason) { shown = $0 } } }
                     .accessibilityIdentifier("privacy.showRecovery")
             }
+            // The sheet hangs on its button: on a Section it isn't presented on iPhone.
             Button("Save a recovery key…") { Task { await reveal(reason: PrivacyCopy.saveReason) { saving = $0 } } }
                 .accessibilityIdentifier("privacy.saveRecovery")
+                .sheet(item: Binding(get: { saving.map(RecoveryKeyItem.init) }, set: { saving = $0?.key })) { item in
+                    SaveRecoveryKeySheet(key: item.key) { await markSaved() }
+                }
             if let problem {
                 Text(problem).font(.footnote).foregroundStyle(.red)
             }
         } footer: {
-            Text(PrivacyCopy.recoveryFooter)
+            // "Optional" only while something else is known to open the notes.
+            Text((recoveryStatus == "Optional" ? "Optional. " : "") + PrivacyCopy.recoveryFooter)
         }
         Section {
             ExportNotesButton()
         } footer: {
             Text(PrivacyCopy.exportFooter)
         }
-        .sheet(item: Binding(get: { saving.map(RecoveryKeyItem.init) }, set: { saving = $0?.key })) { item in
-            SaveRecoveryKeySheet(key: item.key) { await markSaved() }
+        .task {
+            await crypto.recheck()
+            await devices.refresh(crypto)
         }
-        .task { await crypto.recheck() }
         #if os(iOS)
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in shown = nil }
         #endif
         .onDisappear { shown = nil }
+    }
+
+    // MARK: Where your key is kept
+
+    private var keySection: some View {
+        Section {
+            safety
+            keyRow(PrivacyCopy.thisDevice, crypto.backedUp ? PrivacyCopy.keptInKeychain : PrivacyCopy.keptHere,
+                   symbol: InstallID.platform == "macos" ? "laptopcomputer" : "iphone", id: "privacy.thisDevice")
+            if crypto.backedUp || devices.others.contains(where: { $0.backedUp && !$0.removing && $0.isRecent() }) {
+                keyRow(PrivacyCopy.keychainTitle, PrivacyCopy.keychainDetail, symbol: "icloud", id: "privacy.keychain")
+            }
+            ForEach(devices.others) { d in
+                keyRow(d.name, d.detail(), symbol: d.symbol, id: "privacy.device") {
+                    if d.canRemove {
+                        // The question hangs on the button that asked it.
+                        Button("Remove\u{2026}", role: .destructive) { removing = d }
+                            .accessibilityIdentifier("privacy.removeDevice")
+                            .confirmationDialog(PrivacyCopy.removeTitle(d.name),
+                                                isPresented: Binding(get: { removing?.id == d.id }, set: { if !$0 { removing = nil } }),
+                                                titleVisibility: .visible) {
+                                Button("Remove", role: .destructive) { Task { await remove(d) } }
+                                    .accessibilityIdentifier("privacy.confirmRemove")
+                            } message: {
+                                Text(PrivacyCopy.removeMessage)
+                            }
+                    }
+                }
+            }
+            // The sheet hangs on its button: on a Section it isn't presented.
+            Button(PrivacyCopy.addDevice) { adding = true }
+                .accessibilityIdentifier("privacy.addDevice")
+                .sheet(isPresented: $adding) {
+                    AddDeviceSheet(crypto: crypto, server: addDeviceServer)
+                        .onDisappear { Task { await devices.refresh(crypto) } }
+                }
+        } header: {
+            Text(PrivacyCopy.keyHeader)
+        } footer: {
+            Text(PrivacyCopy.keyFooter)
+        }
+    }
+
+    /// One line on top. Green only on evidence: another device seen lately, or a saved recovery
+    /// key. A key that's only stored for iCloud Keychain gets a plain "can't confirm". A key on
+    /// this device alone gets the warning.
+    @ViewBuilder private var safety: some View {
+        // Before the list has loaded, nothing is claimed either way.
+        if devices.loaded || crypto.recoveryKeySaved {
+            switch devices.safety(crypto) {
+            case .safe(let n):
+                keyRow(PrivacyCopy.safeTitle, PrivacyCopy.safeDetail(n), symbol: "checkmark.circle.fill", tint: .green, id: "privacy.safe")
+            case .unconfirmed:
+                keyRow(PrivacyCopy.unconfirmedTitle, PrivacyCopy.unconfirmedDetail, symbol: "questionmark.circle", id: "privacy.unconfirmed")
+            case .onlyThisDevice:
+                keyRow(PrivacyCopy.onlyTitle, PrivacyCopy.onlyDetail, symbol: "exclamationmark.circle.fill", tint: .orange, id: "privacy.onlyThisDevice")
+            }
+        }
+    }
+
+    /// "Optional" is only said while something else is known to open the notes.
+    private var recoveryStatus: String {
+        if crypto.recoveryKeySaved { return "Saved" }
+        if case .safe = devices.safety(crypto) { return "Optional" }
+        return "Not saved"
+    }
+
+    private func keyRow(_ title: String, _ detail: String, symbol: String, tint: Color = .secondary, id: String) -> some View {
+        keyRow(title, detail, symbol: symbol, tint: tint, id: id) { EmptyView() }
+    }
+
+    private func keyRow(_ title: String, _ detail: String, symbol: String, tint: Color = .secondary, id: String,
+                        @ViewBuilder trailing: () -> some View) -> some View {
+        // At the largest text sizes the glyph sits above the words and the action below them.
+        let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 6)) : AnyLayout(HStackLayout(spacing: 12))
+        return layout {
+            Image(systemName: symbol)
+                .font(.title3)
+                .foregroundStyle(tint)
+                .frame(minWidth: 28)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                Text(detail).font(.footnote).foregroundStyle(.secondary)
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityElement(children: .combine)
+            if !typeSize.isAccessibilitySize { Spacer(minLength: 8) }
+            trailing()
+        }
+        // A container, so the button in it keeps its own identifier.
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(id)
+    }
+
+    private func remove(_ d: KeyDevice) async {
+        problem = nil
+        guard await DeviceOwner.authenticate(reason: "remove \(d.name)") else { return }
+        do { try await devices.remove(d, crypto: crypto) } catch { problem = error.localizedDescription }
     }
 
     private func reveal(reason: String, then show: (String) -> Void) async {

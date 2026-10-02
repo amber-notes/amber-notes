@@ -15,10 +15,11 @@ import Testing
         let backend = Backend()
         let size = CGSize(width: 440, height: 600)
 
-        // Signed in on a device whose Keychain doesn't have the key: the recovery key, at once.
+        // Signed in on a device whose Keychain doesn't have the key: the code another device scans
+        // (PaneTests/HIG/AddDeviceSnapshots.swift has that screen in full), then the recovery key by choice.
         var (crypto, key) = try await Self.waitingDevice()
-        try await AppSnapshotTests.shoot(KeyGateView(crypto: crypto, backend: backend), name: "key-no-key-yet-\(mode)", size: size, dark: dark, toolbar: false)
-        // "Wait for iCloud Keychain instead": a spinner for a while, then what to check.
+        try await AppSnapshotTests.shoot(KeyGateView(crypto: crypto, backend: backend, screen: .recovery), name: "key-no-key-yet-\(mode)", size: size, dark: dark, toolbar: false)
+        // "No device left?" then iCloud Keychain: a spinner for a while, then what to check.
         try await AppSnapshotTests.shoot(KeyGateView(crypto: crypto, backend: backend, screen: .keychain), name: "key-wait-icloud-\(mode)", size: size, dark: dark, toolbar: false)
         for _ in 0 ..< 10 { crypto.pollKeychain() }
         try await AppSnapshotTests.shoot(KeyGateView(crypto: crypto, backend: backend, screen: .keychain), name: "key-wait-icloud-help-\(mode)", size: size, dark: dark, toolbar: false)

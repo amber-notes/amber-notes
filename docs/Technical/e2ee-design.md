@@ -8,7 +8,8 @@ The requirement: we can't read anyone's notes. Everything a person writes is enc
 
 - Every account has one random 256-bit data key (DK). It seals note bodies, titles and previews, folder names, file names and file bytes, and every earlier version.
 - DK lives in the Keychain as a synchronizable item, so iCloud Keychain (end-to-end encrypted by Apple) brings it to the person's other iPhone and Mac. The server has no key material.
-- A recovery key always exists. Any unlocked device can show it (Settings › Privacy & Security, behind Face ID or Touch ID). It's the fallback between devices; there's no pairing protocol.
+- A device that iCloud Keychain doesn't reach gets the key from one that has it: Add a device. The new device shows a code, the other scans or types it, and the key goes over sealed to the new device (see Add a device below).
+- A recovery key always exists and is optional. Any unlocked device can show it (Settings › Privacy & Security, behind Face ID or Touch ID). Nothing asks anyone to save it.
 - Passwords and Sign in with Apple only sign you in. They have nothing to do with the key, and a password reset is the normal email reset.
 - An AI connection gets DK wrapped under a secret derived from its own token, which only the AI holds. During an AI request the server unwraps it, decrypts what the request needs in memory, and drops it. Disconnecting deletes the wrap.
 - A shared page shows a readable copy the device publishes, kept only while the note is shared.
@@ -31,6 +32,10 @@ One module per side, pinned to each other by `supabase/functions/_shared/e2ee-ve
 | Recovery wrap | DK sealed under HKDF-SHA256(recovery key bytes, salt `amber-notes/e2ee`, info `recovery <user id>`), context `wrap:recovery:<user id>` |
 | Token wraps | DK sealed under HKDF-SHA256(the code or token as UTF-8, salt `amber-notes/e2ee`, info `wrap <purpose>`), purposes `code`, `access`, `refresh`, `pane` |
 | Code handoff | `amb2h.<base64 device ephemeral P-256 public key (65) ‖ nonce ‖ ciphertext ‖ tag>`, key HKDF-SHA256(ECDH secret, salt `amber-notes/e2ee`, info `handoff <request id>`), AAD `amb2h\|<request id>` |
+| Add-device secrets | QR text `amber-notes add-device v1 <22 base64url>` (16 bytes, not a link); typed code 12 Crockford characters (60 bits), stretched with PBKDF2-HMAC-SHA256, 600 000 rounds, salt `amber-notes/add-device\|<user id>`. Each gives `answer` (hex HKDF, info `add-device answer <user id>`; the server holds SHA-256 of its bytes) and `bind` (info `add-device bind <user id>`, never sent) |
+| Add-device tag and name | tag: hex HMAC-SHA256(bind, `amber-notes add-device\|<request id>\|<platform>\|` ‖ public key). Name: `amb2n.<base64 nonce ‖ ciphertext ‖ tag>`, key HKDF(bind, info `add-device name`), AAD `amb2n\|<request id>\|<platform>` |
+| Device key handoff | `amb2d.<base64 approving device's ephemeral P-256 public key (65) ‖ nonce ‖ ciphertext ‖ tag>`, key HKDF-SHA256(ECDH secret ‖ bind, salt `amber-notes/e2ee`, info `add-device <request id>`), AAD `amb2d\|<request id>\|<user id>`, plaintext the stored key (53 bytes) |
+| Device list | name: a box with context `device:<device id>`; epoch: 16 random bytes (hex) the device makes when it comes to hold the key; tag hex HMAC-SHA256(HKDF(DK, info `devices`), `device\|<user id>\|<device id>\|<platform>\|<how>\|<1 or 0>\|<epoch>`); removal tag the same key over `remove\|<user id>\|<device id>\|<epoch>` |
 
 Unchanged text keeps its box: the apps cache the last box per context by a hash of the plaintext, and the MCP server doesn't write text it didn't change. The database treats a new box as a change (a new version, an AI edit count), so this matters.
 
@@ -45,6 +50,8 @@ Unchanged text keeps its box: the apps cache the last box per context by a hash 
 | `account_keys` | `key_id`, `verifier`, `recovery_saved_at` | `recovery_wrap` |
 | `mcp_tokens`, `oauth_tokens`, `oauth_requests` | token hashes, names, scopes | `dk_wrap`, `code_wrap` |
 | `connect_asks` | which account asked, when, the browser's description and public key | the code sealed to the browser, until it's picked up |
+| `device_adds` | which account and device (a random id) asked, the device kind, its public key, when | the device's name (under the pairing secret); the key sealed to the new device, until it's picked up |
+| `key_devices` | which devices (random ids) hold the key, their kind, how they got it, whether it's an iCloud Keychain item, dates | the device's name |
 | `note_shares`, `note_share_pages`, `note_share_files` | the published copy of a shared note, its included sub-notes and embedded files, while shared | |
 
 Still readable and not covered by this work: the profile name and photo (shown on shared pages), and the notes-password hint.
@@ -60,13 +67,44 @@ Guards in the database:
 
 1. DK in the Keychain matches the server's key id and verifier: ready.
 2. The server has no key: make one (DK, recovery key, verifier, wrap) and call `create_account_key`, an insert-if-absent. This is the only place a key is made. The new key stays in a device-only Keychain slot until the server has taken it, so a device that loses the race never overwrites the synced key, and one that crashes mid-way still has the key the server took.
-3. The server has a key this device doesn't: the recovery key screen shows at once ("Your key isn't on this device yet. If iCloud Keychain brings it, your notes open by themselves."), with the hint "Find it on your other device in Amber Notes › Settings › Privacy & Security", while the Keychain is polled every 2 seconds behind it. "Wait for iCloud Keychain instead" shows a spinner for about 20 seconds (none on a device whose Keychain doesn't sync), then the iCloud Keychain help ("Settings › [your name] › iCloud › Passwords and Keychain"); Use recovery key stays on that screen. Polling continues. No key is made here. Unlocking with the recovery key counts as the key being saved (`mark_recovery_key_saved`; offline, the device remembers and tells the server on its next check). Startup's first read of the server gives up after 12 seconds and offers Try again.
-4. The Keychain has a key that doesn't match: it's never used; the recovery screen shows, and polling continues in case iCloud Keychain brings the right one.
-5. "I don't have my key": plain copy about what happens, then Start fresh with a typed confirmation. `start_fresh(key_id)` deletes the account's notes, folders, files, shares, AI connections and key (only if that key is still the account's), the app removes the account's Storage objects, and startup goes to step 2.
+3. The server has a key this device doesn't: "Open your notes on this Mac" shows at once, with a QR code and a typed code for a device that has the key (Add a device, below), while the Keychain is polled every 2 seconds behind it. Two small links sit under the code: "Use a recovery key instead", and "No device left?", which lists what can still open the notes (iCloud Keychain, a recovery key if one was saved) and ends in Start fresh. Waiting for iCloud Keychain shows a spinner for about 20 seconds, then the iCloud Keychain help ("Settings › [your name] › iCloud › Passwords and Keychain"). Polling continues. No key is made here. Unlocking with the recovery key counts as the key being saved (`mark_recovery_key_saved`; offline, the device remembers and tells the server on its next check). Startup's first read of the server gives up after 12 seconds and offers Try again.
+4. The Keychain has a key that doesn't match: it's never used; the same screen shows, and polling continues in case iCloud Keychain brings the right one.
+5. "None of these work": plain copy about what happens, then Start fresh with a typed confirmation. `start_fresh(key_id)` deletes the account's notes, folders, files, shares, AI connections and key (only if that key is still the account's), the app removes the account's Storage objects, and startup goes to step 2.
 
 Offline with a key: carry on and verify once the server answers. Offline without one: retry. The server's key changing while running (Start fresh on another device) drops the key and runs startup again. Sign out keeps DK; Delete account removes it from the Keychain (and so from iCloud Keychain).
 
-Keychain: service `dev.emilwagman.pane.data-key`, account = user id, value = version ‖ DK ‖ recovery key bytes, `kSecAttrSynchronizable`, `kSecAttrAccessibleAfterFirstUnlock`, `kSecUseDataProtectionKeychain`. No access group in queries: the default is the first of `keychain-access-groups` = `$(AppIdentifierPrefix)dev.emilwagman.pane`, the same for the iPhone app and the Mac App Store and team-signed Mac builds. Device-only items use the `ThisDeviceOnly` classes. Builds without the data protection keychain (ad-hoc dev builds, the Developer ID download, which has no provisioning profile) keep the key on that device only and get it from the recovery key.
+A key from Add a device is in its own slot (service `dev.emilwagman.pane.data-key.local`, `ThisDeviceOnly`); startup uses it wherever the synced item is missing or isn't the account's.
+
+Keychain: service `dev.emilwagman.pane.data-key`, account = user id, value = version ‖ DK ‖ recovery key bytes, `kSecAttrSynchronizable`, `kSecAttrAccessibleAfterFirstUnlock`, `kSecUseDataProtectionKeychain`. No access group in queries: the default is the first of `keychain-access-groups` = `$(AppIdentifierPrefix)dev.emilwagman.pane`, the same for the iPhone app and the Mac App Store and team-signed Mac builds. Device-only items use the `ThisDeviceOnly` classes. Builds without the data protection keychain (ad-hoc dev builds, the Developer ID download, which has no provisioning profile) keep the key on that device only and get it from another device (Add a device) or the recovery key.
+
+## Add a device
+
+The threat model is `docs/Evidence/add-device-threat-model.md`. In short:
+
+1. The new device makes a P-256 key pair, a scan secret (the QR code) and a typed code, files `device_add_request`, and shows both. A code lives 5 minutes and is replaced by itself a few times, then on request.
+2. A device with the key opens Settings › Add a device: the camera inside the app on iPhone, the typed code on a Mac. It finds the request (`device_add_find`, this account's only), checks the new device's public key against the tag, and asks "Add this Mac?" with the device's name. Add needs Face ID, Touch ID or the passcode.
+3. It seals the stored key to the new device (`amb2d`) and answers once (`device_add_answer`). Every device gets the notice "A device was added to your account".
+4. The new device picks the sealed key up (`device_add_pickup`, then `device_add_done`, which deletes the server's copy), opens it, checks it against the account's key id, verifier and recovery wrap (`AccountCrypto.adopt`), and keeps it in a `ThisDeviceOnly` Keychain item (`KeySlot.local`). It never becomes an iCloud Keychain item, so removing the device removes exactly that copy.
+
+Settings › Privacy & Security shows "Where your key is kept": this device, iCloud Keychain (worded conditionally: it brings the key to other devices if it's on for the Apple Account), and the other devices that hold the key (`key_devices`; a row counts only when its tag, made with the key, verifies), each with how and when it got the key and when it was last seen. One line on top has three states (`KeySafety`):
+
+- **Safe if you lose this iPhone**: another device that holds the key was seen in the last 30 days, or a recovery key was saved.
+- **Can't confirm a backup of your key**: the key is only stored as an iCloud Keychain item. That's a backup if iCloud Keychain is on, which the app can't check; it says so, and where to look.
+- **Only this Mac can open your notes**: the key lives on this device alone and nothing else is known.
+
+A device whose key lives on it alone can be removed. The next time it's online it pushes what hasn't synced if it can, deletes the key, erases its copy of the notes and signs out, in an order a kill midway can't undo (`DeviceRemoval`).
+
+Which device a device is (its id in these tables, and its epoch per account) is kept in a `ThisDeviceOnly` Keychain item (`DeviceIdentity`), so a phone set up by transfer from an old one is a device of its own.
+
+### When this ships
+
+The privacy policy doesn't mention any of this yet, on purpose: the site deploys from `docs/privacy-policy.md`, and every sentence there must be true on the day. In the release that ships Add a device, add to the policy (and bump its date):
+
+- Under "Your encryption key, locked": "When you add a device, one of your devices that has the key sends it to the new one, locked so that only the new device can open it. We hold that locked copy until the new device picks it up, and for an hour at most. The request holds the new device's kind (iPhone or Mac) and a public key; its name is encrypted. On iPhone the camera reads the new device's code on the device itself, and no picture is stored or sent." and "Each device that holds your key lists itself, so Settings can show where your key is kept: its kind, when it was added and last seen, how it got the key and whether it keeps it in iCloud Keychain. Its name is encrypted."
+- Under retention: "Adding a device: a request expires after 5 minutes and is deleted within the hour, with the locked key if nobody picked it up. A device leaves the list of devices that hold your key when you remove it, or after 12 months without being seen."
+- In "What's encrypted", after the iCloud Keychain sentence: "A device it doesn't reach gets the key from one of your devices that has it (Settings › Add a device), or from your recovery key if you saved one."
+
+The iPhone review notes in App Store Connect need the line the Mac notes already have: tap "Use a recovery key instead" under the code.
 
 ## AI connections
 
@@ -125,6 +163,7 @@ The privacy policy, the website and the App Store privacy answers still describe
 
 - The server handles plaintext in memory during AI requests. A malicious server change could copy it. Locked notes stay out of reach (their key comes from the notes password).
 - iCloud Keychain is one more holder of the key, by design.
+- If every device is gone, no iCloud Keychain item holds the key and no recovery key was saved, the notes can't be opened by anyone. There is no server-held key and no key rotation: a removed device that never comes online again keeps what it has.
 - Sizes, dates, folder structure, sub-note structure, pins and which notes are locked stay readable.
 - Search over very large libraries can be partial when the scan budget runs out.
 - The profile name and photo and the notes-password hint are still plaintext.

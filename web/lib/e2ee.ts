@@ -1,6 +1,3 @@
-// web copy: supabase/functions/_shared/e2ee.ts, byte for byte below these lines, for the connect page's
-// web copy: code in the browser. Edit the shared file and copy it here; lib/e2ee.test.ts fails when they differ.
-
 // End-to-end encryption: the formats every side shares (the apps in Pane/Model/E2EE.swift and the
 // MCP server here). See docs/Technical/e2ee-design.md. e2ee-vectors.json pins every format; the
 // Swift and Deno tests both check against it.
@@ -306,6 +303,205 @@ export async function openHandoff(sealed: string, browserPrivate: CryptoKey, req
   } catch {
     throw new OpenError("wrong key or request");
   }
+}
+
+// MARK: Adding a device: the whole key, from a device that has it to one that doesn't
+//
+// A signed-in device without the key shows a QR code and a typed code. A device with the key reads
+// one of them inside Amber Notes and seals the key to the new device (docs/Evidence/
+// add-device-threat-model.md). Both carry a pairing secret the server never sees:
+//
+//   QR text      "amber-notes add-device v1 <22 base64url>"   16 random bytes; not a link, so only
+//                the scanner in the app acts on it
+//   typed code   12 Crockford characters in three groups of four: 60 random bits
+//
+//   prk     the QR's 16 bytes, or for the typed code PBKDF2-HMAC-SHA256(code canonical,
+//           salt "amber-notes/add-device|<user id>", 600 000 rounds, 32 bytes)
+//   answer  hex HKDF-SHA256(prk, salt "amber-notes/e2ee", info "add-device answer <user id>"):
+//           what the approving device shows the server, which holds only the SHA-256 of its bytes
+//   bind    HKDF-SHA256(prk, same salt, info "add-device bind <user id>"): never sent
+//   tag     hex HMAC-SHA256(bind, "amber-notes add-device|<request id>|<platform>|" ‖ new device's
+//           public key, raw 65): the approving device checks it before sealing, so a key swapped
+//           on the way shows
+//   name    the new device's name, which the server never reads:
+//           amb2n.<base64 nonce (12) ‖ ciphertext ‖ tag>, key HKDF-SHA256(bind, same salt, info
+//           "add-device name"), AAD "amb2n|<request id>|<platform>"
+//
+//   amb2d.<base64 approving device's ephemeral public key (65) ‖ nonce (12) ‖ ciphertext ‖ tag>
+//   key = HKDF-SHA256(ECDH shared secret ‖ bind, salt "amber-notes/e2ee", info "add-device <request id>")
+//   AAD = "amb2d|<request id>|<user id>"
+//   plaintext = the key as the Keychain holds it: version (2) ‖ DK (32) ‖ recovery key (16) ‖
+//               generation (4)
+//
+// The bind in the sealing key works both ways: only someone who read the new device's screen can
+// seal something it accepts, and nobody who swapped its public key can open what was sealed.
+
+export const ADD_DEVICE_QR = /^amber-notes add-device v1 ([A-Za-z0-9_-]{22})$/;
+export const ADD_DEVICE_SEALED = /^amb2d\.([A-Za-z0-9+/]+={0,2})$/;
+export const ADD_DEVICE_ROUNDS = 600_000;
+
+const b64url = (b: Uint8Array) => toBase64(b).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const fromB64url = (s: string) => fromBase64(s.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - s.length % 4) % 4));
+
+/** What the new device's QR code says. */
+export const addDeviceQR = (secret: Uint8Array) => `amber-notes add-device v1 ${b64url(secret)}`;
+
+/** The 16 bytes a scanned code carries, or null when it isn't an add-device code. */
+export function readAddDeviceQR(text: string): Bytes | null {
+  const m = ADD_DEVICE_QR.exec(text);
+  if (!m) return null;
+  const b = fromB64url(m[1]);
+  return b.length === 16 ? b : null;
+}
+
+/** The typed code for 60 bits (the first 60 of 8 bytes): three groups of four. */
+export function addDeviceCodeText(bytes: Uint8Array): string {
+  if (bytes.length !== 8) throw new Error("an add-device code is made from 8 bytes");
+  let bits = 0n;
+  for (const b of bytes) bits = (bits << 8n) | BigInt(b);
+  bits >>= 4n;
+  let out = "";
+  for (let i = 11; i >= 0; i--) out += CROCKFORD[Number((bits >> BigInt(i * 5)) & 31n)];
+  return out.match(/.{4}/g)!.join("-");
+}
+
+/** The canonical form of a typed code: its 12 characters, or null when it can't be one. */
+export function canonicalAddDeviceCode(typed: string): string | null {
+  const s = typed.toUpperCase().replace(/[\s\-‐-―_.]/g, "").replace(/O/g, "0").replace(/[IL]/g, "1");
+  return /^[0-9A-HJKMNP-TV-Z]{12}$/.test(s) ? s : null;
+}
+
+/** The typed code stretched, so guessing it costs: PBKDF2-HMAC-SHA256, 600 000 rounds. */
+export async function addDeviceCodePrk(canonical: string, userId: string): Promise<Bytes> {
+  const pw = await crypto.subtle.importKey("raw", enc.encode(canonical), "PBKDF2", false, ["deriveBits"]);
+  return new Uint8Array(await crypto.subtle.deriveBits(
+    { name: "PBKDF2", hash: "SHA-256", salt: enc.encode(`amber-notes/add-device|${userId.toLowerCase()}`), iterations: ADD_DEVICE_ROUNDS }, pw, 256));
+}
+
+export type AddDevicePairing = { answer: string; bind: Bytes };
+
+/** What a pairing secret (the QR's bytes, or the stretched typed code) gives both devices. */
+export async function addDevicePairing(prk: Bytes, userId: string): Promise<AddDevicePairing> {
+  const ikm = await crypto.subtle.importKey("raw", prk, "HKDF", false, ["deriveBits"]);
+  const derive = async (what: string) => new Uint8Array(await crypto.subtle.deriveBits(
+    { name: "HKDF", hash: "SHA-256", salt: SALT, info: enc.encode(`add-device ${what} ${userId.toLowerCase()}`) }, ikm, 256));
+  return { answer: hex(await derive("answer")), bind: await derive("bind") };
+}
+
+/** hex SHA-256 of the answer's 32 bytes (not of its hex text): what the server keeps and compares. */
+export async function addDeviceAnswerHash(answer: string): Promise<string> {
+  const raw = Uint8Array.from(answer.match(/../g) ?? [], (h) => parseInt(h, 16));
+  return hex(new Uint8Array(await crypto.subtle.digest("SHA-256", raw)));
+}
+
+export type AddDeviceRequest = { requestId: string; platform: string; publicRaw: Uint8Array };
+
+/** The new device's public key and kind, vouched for by the pairing secret. */
+export async function addDeviceTag(bind: Bytes, r: AddDeviceRequest): Promise<string> {
+  const key = await crypto.subtle.importKey("raw", bind, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const msg = concat(enc.encode(`amber-notes add-device|${r.requestId.toLowerCase()}|${r.platform}|`), r.publicRaw);
+  return hex(new Uint8Array(await crypto.subtle.sign("HMAC", key, msg)));
+}
+
+export const ADD_DEVICE_NAME = /^amb2n\.([A-Za-z0-9+/]+={0,2})$/;
+
+async function addDeviceNameKey(bind: Bytes): Promise<CryptoKey> {
+  const ikm = await crypto.subtle.importKey("raw", bind, "HKDF", false, ["deriveKey"]);
+  return await crypto.subtle.deriveKey({ name: "HKDF", hash: "SHA-256", salt: SALT, info: enc.encode("add-device name") },
+    ikm, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+}
+const addDeviceNameAAD = (requestId: string, platform: string) => enc.encode(`amb2n|${requestId.toLowerCase()}|${platform}`);
+
+/** The new device's name, readable only with the pairing secret. `nonce` is for test vectors only. */
+export async function sealDeviceName(name: string, bind: Bytes, requestId: string, platform: string, nonce?: Bytes): Promise<string> {
+  const iv = nonce ?? crypto.getRandomValues(new Uint8Array(12));
+  const ct = new Uint8Array(await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv, additionalData: addDeviceNameAAD(requestId, platform) }, await addDeviceNameKey(bind), enc.encode(name)));
+  return `amb2n.${toBase64(concat(iv, ct))}`;
+}
+
+export async function openDeviceName(sealed: string, bind: Bytes, requestId: string, platform: string): Promise<string> {
+  const m = ADD_DEVICE_NAME.exec(sealed);
+  if (!m) throw new OpenError("not a device name");
+  const b = fromBase64(m[1]);
+  if (b.length < 28) throw new OpenError("device name too short");
+  try {
+    return dec.decode(await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: b.subarray(0, 12), additionalData: addDeviceNameAAD(requestId, platform) }, await addDeviceNameKey(bind), b.subarray(12)));
+  } catch {
+    throw new OpenError("wrong code or request");
+  }
+}
+
+async function addDeviceKey(priv: CryptoKey, pub: CryptoKey, bind: Bytes, requestId: string): Promise<CryptoKey> {
+  const shared = new Uint8Array(await crypto.subtle.deriveBits({ name: "ECDH", public: pub }, priv, 256));
+  const ikm = await crypto.subtle.importKey("raw", concat(shared, bind), "HKDF", false, ["deriveKey"]);
+  return await crypto.subtle.deriveKey(
+    { name: "HKDF", hash: "SHA-256", salt: SALT, info: enc.encode(`add-device ${requestId.toLowerCase()}`) },
+    ikm, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+}
+
+const addDeviceAAD = (requestId: string, userId: string) => enc.encode(`amb2d|${requestId.toLowerCase()}|${userId.toLowerCase()}`);
+
+/** The stored key (53 bytes) sealed to the new device. `ephemeral` and `nonce` are for test vectors only. */
+export async function sealDeviceKey(stored: Bytes, newDevicePublicRaw: Bytes, bind: Bytes, requestId: string, userId: string,
+  ephemeral?: CryptoKeyPair, nonce?: Bytes): Promise<string> {
+  const pub = await crypto.subtle.importKey("raw", newDevicePublicRaw, { name: "ECDH", namedCurve: "P-256" }, false, []);
+  const eph = ephemeral ?? await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"]);
+  const key = await addDeviceKey(eph.privateKey, pub, bind, requestId);
+  const iv = nonce ?? crypto.getRandomValues(new Uint8Array(12));
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv, additionalData: addDeviceAAD(requestId, userId) }, key, stored));
+  return `amb2d.${toBase64(concat(new Uint8Array(await crypto.subtle.exportKey("raw", eph.publicKey)), iv, ct))}`;
+}
+
+export async function openDeviceKey(sealed: string, newDevicePrivate: CryptoKey, bind: Bytes, requestId: string, userId: string): Promise<Bytes> {
+  const m = ADD_DEVICE_SEALED.exec(sealed);
+  if (!m) throw new OpenError("not a device key");
+  const b = fromBase64(m[1]);
+  if (b.length < 65 + 12 + 16) throw new OpenError("device key too short");
+  try {
+    const pub = await crypto.subtle.importKey("raw", b.subarray(0, 65), { name: "ECDH", namedCurve: "P-256" }, false, []);
+    const key = await addDeviceKey(newDevicePrivate, pub, bind, requestId);
+    return new Uint8Array(await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: b.subarray(65, 77), additionalData: addDeviceAAD(requestId, userId) }, key, b.subarray(77)));
+  } catch {
+    throw new OpenError("wrong key, code or request");
+  }
+}
+
+// MARK: The devices that hold the key
+//
+// Each device with the key lists itself (key_devices) so Privacy & Security can say where the key
+// is kept. A row counts only with a tag made with the key, so nobody without the key can add a
+// device to the list or take one off it. The device's name is sealed like a folder's name:
+//
+//   name         an amb2 box, context "device:<device id>"
+//   epoch        16 random bytes (hex) the device makes each time it comes to hold the key, and
+//                keeps to itself as well
+//   device tag   hex HMAC-SHA256(HKDF(DK, info "devices"), "device|<user id>|<device id>|<platform>|<how>|<1 or 0>|<epoch>")
+//   removal tag  hex HMAC-SHA256(HKDF(DK, info "devices"), "remove|<user id>|<device id>|<epoch>")
+//
+// A device obeys a removal only for the epoch it holds now, so a removal tag from before it was
+// added again is worth nothing.
+
+export const deviceContext = (id: string) => `device:${id.toLowerCase()}`;
+
+async function devicesKey(raw: Bytes): Promise<CryptoKey> {
+  const ikm = await crypto.subtle.importKey("raw", raw, "HKDF", false, ["deriveKey"]);
+  return await crypto.subtle.deriveKey({ name: "HKDF", hash: "SHA-256", salt: SALT, info: enc.encode("devices") },
+    ikm, { name: "HMAC", hash: "SHA-256", length: 256 }, false, ["sign"]);
+}
+
+export type KeyDevice = { deviceId: string; platform: string; how: string; backedUp: boolean; epoch: string };
+
+export async function keyDeviceTag(raw: Bytes, userId: string, d: KeyDevice): Promise<string> {
+  const msg = `device|${userId.toLowerCase()}|${d.deviceId.toLowerCase()}|${d.platform}|${d.how}|${d.backedUp ? 1 : 0}|${d.epoch}`;
+  return hex(new Uint8Array(await crypto.subtle.sign("HMAC", await devicesKey(raw), enc.encode(msg))));
+}
+
+export async function keyDeviceRemovalTag(raw: Bytes, userId: string, deviceId: string, epoch: string): Promise<string> {
+  const msg = `remove|${userId.toLowerCase()}|${deviceId.toLowerCase()}|${epoch}`;
+  return hex(new Uint8Array(await crypto.subtle.sign("HMAC", await devicesKey(raw), enc.encode(msg))));
 }
 
 // MARK: Files

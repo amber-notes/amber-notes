@@ -5,6 +5,8 @@ import { assert, assertEquals, assertRejects } from "jsr:@std/assert@1";
 import {
   aesKey, bodyContext, hex, newHandoffKeys, canonicalRecoveryKey, fileMetaContext, folderContext, fromBase64, headContext, keyIdOf, open, OpenError,
   handoffPayload, matchCommit, matchNumber, openFile, openHandoff, parseRecoveryKey, readHandoffPayload, sealHandoff, shareTag, recoveryKEK, recoveryKeyText, seal, sealFile, tokenKey, toBase64, unwrap, Vault, verifierOf, wrap,
+  addDeviceAnswerHash, addDeviceCodePrk, addDeviceCodeText, addDevicePairing, addDeviceQR, addDeviceTag, canonicalAddDeviceCode,
+  deviceContext, keyDeviceRemovalTag, keyDeviceTag, openDeviceKey, openDeviceName, readAddDeviceQR, sealDeviceKey, sealDeviceName,
   type WrapPurpose,
 } from "./e2ee.ts";
 
@@ -84,6 +86,48 @@ async function build() {
         browser_private: toBase64(browser.d), browser_public: toBase64(browser.publicRaw),
         device_ephemeral_private: toBase64(device.d),
         sealed: await sealHandoff(code, browser.publicRaw, request, device, nonce),
+      };
+    })(),
+    // Adding a device: the new device's key pair is BROWSER's, the approving device's ephemeral
+    // one is DEVICE's. The stored key is version 2 ‖ data key ‖ recovery key ‖ generation 0.
+    add_device: await (async () => {
+      const fresh = await ecdh(BROWSER), approving = await ecdh(DEVICE);
+      const request = "33333333-4444-4555-8666-777777777777";
+      const name = "Sara’s MacBook Air", platform = "macos";
+      const stored = new Uint8Array([2, ...dataKey, ...recovery, 0, 0, 0, 0]);
+      const secret = bytes(0x80, 16);
+      const codeText = addDeviceCodeText(bytes(0x91, 8));
+      const side = async (prk: Uint8Array<ArrayBuffer>) => {
+        const p = await addDevicePairing(prk, userId);
+        return {
+          answer: p.answer, answer_hash: await addDeviceAnswerHash(p.answer), bind: toBase64(p.bind),
+          tag: await addDeviceTag(p.bind, { requestId: request, platform, publicRaw: fresh.publicRaw }),
+          name_sealed: await sealDeviceName(name, p.bind, request, platform, nonce),
+          sealed: await sealDeviceKey(stored, fresh.publicRaw, p.bind, request, userId, approving, nonce),
+        };
+      };
+      const canonical = canonicalAddDeviceCode(codeText)!;
+      return {
+        request_id: request, name, platform, stored: toBase64(stored),
+        new_device_private: toBase64(fresh.d), new_device_public: toBase64(fresh.publicRaw),
+        approving_ephemeral_private: toBase64(approving.d),
+        qr: { secret: toBase64(secret), text: addDeviceQR(secret), ...await side(secret) },
+        code: {
+          bytes: toBase64(bytes(0x91, 8)), text: codeText, canonical,
+          // Typed back sloppily: lower case, spaces, O for 0, l for 1.
+          typed: codeText.toLowerCase().replace(/-/g, " ").replace(/0/g, "O").replace(/1/g, "l"),
+          prk: toBase64(await addDeviceCodePrk(canonical, userId)),
+          ...await side(await addDeviceCodePrk(canonical, userId)),
+        },
+      };
+    })(),
+    key_device: await (async () => {
+      const d = { deviceId: "44444444-5555-4666-8777-888888888888", platform: "macos", how: "added", backedUp: false, epoch: hex(bytes(0xb0, 16)) };
+      const name = "Sara’s MacBook Air";
+      return {
+        device_id: d.deviceId, platform: d.platform, how: d.how, backed_up: d.backedUp, epoch: d.epoch, name,
+        name_context: deviceContext(d.deviceId), name_sealed: await seal(name, key, keyId, deviceContext(d.deviceId), nonce),
+        tag: await keyDeviceTag(dataKey, userId, d), removal_tag: await keyDeviceRemovalTag(dataKey, userId, d.deviceId, d.epoch),
       };
     })(),
   };
@@ -228,4 +272,73 @@ Deno.test("the pickup hash is SHA-256 of the secret's raw bytes", async () => {
   const raw = Uint8Array.from(v.pickup.secret.match(/../g).map((h: string) => parseInt(h, 16)));
   assertEquals(hex(new Uint8Array(await crypto.subtle.digest("SHA-256", raw))), v.pickup.hash);
   assert(hex(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(v.pickup.secret)))) !== v.pickup.hash);
+});
+
+Deno.test("adding a device: the QR and the typed code both seal the key only for the device that showed them", async () => {
+  const v = JSON.parse(await Deno.readTextFile(path));
+  const a = v.add_device;
+  const fresh = await ecdh(BROWSER);
+  for (const side of [a.qr, a.code]) {
+    const bind = fromBase64(side.bind);
+    assertEquals(toBase64(await openDeviceKey(side.sealed, fresh.privateKey, bind, a.request_id, v.user_id)), a.stored);
+    // Another request, another account, another device's key or a bind from the other secret: nothing opens.
+    await assertRejects(() => openDeviceKey(side.sealed, fresh.privateKey, bind, crypto.randomUUID(), v.user_id), OpenError);
+    await assertRejects(() => openDeviceKey(side.sealed, fresh.privateKey, bind, a.request_id, crypto.randomUUID()), OpenError);
+    await assertRejects(async () => openDeviceKey(side.sealed, (await ecdh(DEVICE)).privateKey, bind, a.request_id, v.user_id), OpenError);
+    const other = fromBase64(side === a.qr ? a.code.bind : a.qr.bind);
+    await assertRejects(() => openDeviceKey(side.sealed, fresh.privateKey, other, a.request_id, v.user_id), OpenError);
+    // The tag covers the key, the kind and the request: change any and it differs.
+    const r = { requestId: a.request_id, platform: a.platform, publicRaw: fresh.publicRaw };
+    assertEquals(await addDeviceTag(bind, r), side.tag);
+    assert(await addDeviceTag(bind, { ...r, publicRaw: (await ecdh(DEVICE)).publicRaw }) !== side.tag);
+    assert(await addDeviceTag(bind, { ...r, platform: "ios" }) !== side.tag);
+    assert(await addDeviceTag(bind, { ...r, requestId: crypto.randomUUID() }) !== side.tag);
+    assert(await addDeviceTag(other, r) !== side.tag);
+    // The name opens only with the secret that was read, for this request and kind.
+    assertEquals(await openDeviceName(side.name_sealed, bind, a.request_id, a.platform), a.name);
+    await assertRejects(() => openDeviceName(side.name_sealed, other, a.request_id, a.platform), OpenError);
+    await assertRejects(() => openDeviceName(side.name_sealed, bind, a.request_id, "ios"), OpenError);
+    await assertRejects(() => openDeviceName(side.name_sealed, bind, crypto.randomUUID(), a.platform), OpenError);
+  }
+  // A random seal opens too (fresh ephemeral key and nonce).
+  const bind = fromBase64(a.qr.bind);
+  const sealed = await sealDeviceKey(fromBase64(a.stored), fresh.publicRaw, bind, a.request_id, v.user_id);
+  assert(sealed !== a.qr.sealed);
+  assertEquals(toBase64(await openDeviceKey(sealed, fresh.privateKey, bind, a.request_id, v.user_id)), a.stored);
+  await assertRejects(() => openDeviceKey("amb2h." + sealed.slice(6), fresh.privateKey, bind, a.request_id, v.user_id), OpenError);
+});
+
+Deno.test("adding a device: the code reads back however it's typed, and the QR text is not a link", async () => {
+  const v = JSON.parse(await Deno.readTextFile(path));
+  const a = v.add_device;
+  assertEquals(a.code.text.length, 14);
+  assertEquals(canonicalAddDeviceCode(a.code.typed), a.code.canonical);
+  assertEquals(canonicalAddDeviceCode(a.code.canonical.slice(1)), null);
+  assertEquals(canonicalAddDeviceCode(a.code.canonical.slice(0, 11) + "U"), null);
+  assertEquals(toBase64(readAddDeviceQR(a.qr.text)!), a.qr.secret);
+  assertEquals(readAddDeviceQR("https://ambernotes.app/open/connect?request=1#s=AbCdEfGhIjKlMnOpQrSt_-"), null);
+  assertEquals(readAddDeviceQR(a.qr.text + " "), null);
+  assertEquals(readAddDeviceQR(a.qr.text.replace("v1", "v2")), null);
+  assert(!URL.canParse(a.qr.text), "a camera or a browser has nothing to open");
+  // The answer the server sees says nothing about the bind, and the two secrets give different ones.
+  assert(a.qr.answer !== a.code.answer && a.qr.bind !== a.code.bind);
+  assertEquals((await addDevicePairing(fromBase64(a.qr.secret), v.user_id.toUpperCase())).answer, a.qr.answer);
+  assert((await addDevicePairing(fromBase64(a.qr.secret), crypto.randomUUID())).answer !== a.qr.answer);
+});
+
+Deno.test("the device list's tags need the key", async () => {
+  const v = JSON.parse(await Deno.readTextFile(path));
+  const k = v.key_device, dk = fromBase64(v.data_key);
+  const d = { deviceId: k.device_id, platform: k.platform, how: k.how, backedUp: k.backed_up, epoch: k.epoch };
+  assertEquals(await open(k.name_sealed, await aesKey(dk), k.name_context), k.name);
+  assertEquals(await keyDeviceTag(dk, v.user_id, d), k.tag);
+  assert(await keyDeviceTag(new Uint8Array(32), v.user_id, d) !== k.tag);
+  assert(await keyDeviceTag(dk, v.user_id, { ...d, backedUp: true }) !== k.tag);
+  assertEquals(await keyDeviceRemovalTag(dk, v.user_id, k.device_id.toUpperCase(), k.epoch), k.removal_tag);
+  assert(await keyDeviceRemovalTag(dk, v.user_id, crypto.randomUUID(), k.epoch) !== k.removal_tag);
+  // A removal is for one epoch: after the device is added again, the old tag is worth nothing.
+  const later = "c".repeat(32);
+  assert(await keyDeviceRemovalTag(dk, v.user_id, k.device_id, later) !== k.removal_tag);
+  assert(await keyDeviceTag(dk, v.user_id, { ...d, epoch: later }) !== k.tag);
+  assert(k.tag !== k.removal_tag);
 });
