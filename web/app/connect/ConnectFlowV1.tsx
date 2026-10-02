@@ -6,7 +6,7 @@ import {
   type ConnectLabel, type ConnectRequest,
 } from "@/lib/connect";
 import {
-  browserOn, leadFor, parseDevices, type Devices, type Lead,
+  browserOn, leadFor, parseDevices, resendRequest, type Devices, type Lead,
   browserFrom, newPageNonce, newPickup, pageCommit, pageNumber, parseKeyRow, recoveryApproval, RecoveryError, revealRequest, sealedDestination,
   statusRequest, statusStep, withCode,
   type AccountKey,
@@ -326,6 +326,21 @@ export default function ConnectFlowV1({ requestId, supabaseURL, anonKey, label, 
     }
   }
 
+
+  /// "Send it again": the server tells the account's devices once more. What went wrong, or null.
+  async function resend(): Promise<string | null> {
+    const secret = pickup.current;
+    if (!secret) return "Couldn't send it again. Reload this page and start over.";
+    try {
+      const res = await fetch(...resendRequest(mcp, requestId, secret));
+      if (res.ok) return null;
+      const body = await res.json().catch(() => null) as { error?: string } | null;
+      return res.status === 429 && body?.error ? body.error : "Couldn't send it again. Use your recovery key instead.";
+    } catch {
+      return OFFLINE;
+    }
+  }
+
   // MARK: The recovery key
 
   function forget() {
@@ -497,7 +512,7 @@ export default function ConnectFlowV1({ requestId, supabaseURL, anonKey, label, 
 
       {view.kind === "waiting" && devices && lead !== "recover" && lead !== "any" && (
         <DeviceScreen
-          lead={lead} devices={devices} number={number} action="type" openLink={universalLink(requestId)} onRecover={showRecovery}
+          lead={lead} devices={devices} number={number} action="type" openLink={universalLink(requestId)} onRecover={showRecovery} onResend={resend}
           steps={<Steps at={2} to={to} />}
         />
       )}
@@ -509,14 +524,12 @@ export default function ConnectFlowV1({ requestId, supabaseURL, anonKey, label, 
             <>
               <h1 className={styles.title}>Approve on your iPhone or Mac</h1>
               <MatchNumber number={number} />
-              <p className={styles.lede}>Type this number in Amber Notes there, then Allow, and this page takes you back to finish connecting. If Amber Notes doesn't ask for it, choose Don't allow.</p>
-              <p className={styles.status} role="status"><Spinner /> Waiting for you to allow it on your iPhone or Mac…</p>
+              <p className={styles.lede}>Type this number in Amber Notes, then choose Allow. If Amber Notes shows no number box, choose Don't allow.</p>
             </>
           ) : (
             <>
               <h1 className={styles.title}>Open Amber Notes on your iPhone or Mac</h1>
-              <p className={styles.lede}>Amber Notes there asks you about this request. When it opens it, a number shows here for you to type there.</p>
-              <p className={styles.status} role="status"><Spinner /> Waiting for your iPhone or Mac…</p>
+              <p className={styles.lede}>Amber Notes asks you to approve this connection. A number then shows here for you to type in the app.</p>
             </>
           )}
           {nudge && (
@@ -525,7 +538,7 @@ export default function ConnectFlowV1({ requestId, supabaseURL, anonKey, label, 
             </p>
           )}
           <a className={styles.secondary} href={universalLink(requestId)}>Open Amber Notes</a>
-          <p className={styles.small}>Answer in the app if it's on this computer.</p>
+          <p className={styles.small}>Use this button if Amber Notes is on this computer.</p>
           <button type="button" className={styles.link} onClick={showRecovery}>No device nearby? Use your recovery key</button>
         </>
       )}
@@ -537,7 +550,7 @@ export default function ConnectFlowV1({ requestId, supabaseURL, anonKey, label, 
           {request
             ? <RequestLine to={destination(request.redirect_host, request.loopback)} claimed={request.claimed_name} />
             : <RequestLine to={to} claimed={label?.claimed_name} />}
-          {lead === "recover" && <p className={styles.lede}>No iPhone or Mac has opened Amber Notes on this account in the last 30 days, so allow it here with your recovery key.</p>}
+          {lead === "recover" && <p className={styles.lede}>No iPhone or Mac has opened Amber Notes on this account in the last 30 days, so approve this connection here with your recovery key.</p>}
           <p className={styles.note}>
             This runs our code in your browser. Your recovery key and your notes' key are used on this page only, and are never stored or sent to us.
             If this page were changed, it could read them. When you can, approve from your iPhone or Mac instead.

@@ -97,17 +97,18 @@ export function NotifySignInScreen({ to, onSubmit, onScan, ...signIn }: SignInPr
 
 /// Waiting for the notification to be answered. Once the device has opened the request, the number
 /// to compare with what it shows.
-export function NotifyScreen({ number, onScan, lead = "any", devices = null, openLink = "", onRecover, to = null }: {
-  number: string | null; onScan: () => void; to?: string | null;
+export function NotifyScreen({ number, onScan, lead = "any", devices = null, openLink = "", onRecover, onResend, to = null }: {
+  number: string | null; onScan: () => void; to?: string | null; onResend?: () => Promise<string | null>;
   /// The one device to name, once /connect/ask has said where the account has the app.
   lead?: Lead; devices?: Devices | null; openLink?: string; onRecover?: () => void;
 }) {
   if (devices && onRecover && lead !== "recover" && lead !== "any") {
     return (
-      <DeviceScreen lead={lead} devices={devices} number={number} action="compare" openLink={openLink} onRecover={onRecover} steps={<Steps at={2} to={to} />}>
-        <BottomLinks>
-          <button type="button" className={styles.link} onClick={onScan}>Scan the code instead</button>
-        </BottomLinks>
+      <DeviceScreen
+        lead={lead} devices={devices} number={number} action="compare" openLink={openLink} onRecover={onRecover} onResend={onResend}
+        steps={<Steps at={2} to={to} />}
+      >
+        <button type="button" className={styles.link} onClick={onScan}>Scan the code instead</button>
       </DeviceScreen>
     );
   }
@@ -118,13 +119,12 @@ export function NotifyScreen({ number, onScan, lead = "any", devices = null, ope
         <>
           <h1 className={styles.title}>Compare the number</h1>
           <MatchNumber number={number} />
-          <p className={styles.lede}>If it shows a different number, choose Don&apos;t allow.</p>
+          <p className={styles.lede}>If the number is different, choose Don&apos;t allow.</p>
         </>
       ) : (
         <>
-          <h1 className={styles.title}>Check your iPhone or Mac</h1>
-          <p className={styles.lede}>Open the notification from Amber Notes.</p>
-          <p className={styles.status} role="status"><Spinner /> Waiting for your iPhone or Mac…</p>
+          <h1 className={styles.title}>Open Amber Notes on your iPhone or Mac</h1>
+          <p className={styles.lede}>Open the notification from Amber Notes to approve this connection.</p>
         </>
       )}
       <BottomLinks>
@@ -161,7 +161,7 @@ export function RecoverScreen({ to, signedIn, recoveryKey, onRecoveryKey, access
       <Steps at={2} to={to} />
       <h1 className={styles.title}>Use your recovery key</h1>
       <AccessLine to={to} />
-      {noDevices && <p className={styles.lede}>No iPhone or Mac has opened Amber Notes on this account in the last 30 days, so allow it here with your recovery key.</p>}
+      {noDevices && <p className={styles.lede}>No iPhone or Mac has opened Amber Notes on this account in the last 30 days, so approve this connection here with your recovery key.</p>}
       <p className={styles.note}>
         This runs our code in your browser. Your recovery key and your notes&apos; key are used on this page only, and are never stored or sent to us.
         If this page were changed, it could read them. When you can, scan the code with your iPhone instead.

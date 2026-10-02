@@ -21,6 +21,7 @@ function fakeServer(devices?: { iphone: boolean; mac: boolean }) {
     calls.push({ url, init });
     const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { "content-type": "application/json" } });
     if (url === `${MCP}/connect/ask`) return json({ asked: true, expires_at: new Date(Date.now() + 600_000).toISOString(), ...(devices ? { devices } : {}) });
+    if (url === `${MCP}/connect/resend`) return json({ sent: true });
     if (url === `${MCP}/connect/status`) return json({ state: "asked" });
     if (url === `${SUPABASE}/auth/v1/token?grant_type=password`) return json({ access_token: "tok", user: { id: "u1", email: "me@example.com" } });
     if (url.startsWith(`${SUPABASE}/auth/v1/logout`)) return new Response(null, { status: 204 });
@@ -77,20 +78,32 @@ const MAC = { platform: "MacIntel", ua: "Mozilla/5.0 (Macintosh; Intel Mac OS X 
 const signedOutAt = (calls: Call[]) => calls.findIndex((c) => c.url.startsWith(`${SUPABASE}/auth/v1/logout`));
 
 describe("the page public apps use, once you've signed in", () => {
-  it("says Check your iPhone when the account has one", async () => {
+  it("says Open Amber Notes on your iPhone when the account has one, with no waiting line", async () => {
     const server = await signIn({ iphone: true, mac: false });
-    await until(() => heading() === "Check your iPhone");
-    expect(container.textContent).toContain("Amber Notes sent it a notification.");
+    await until(() => heading() === "Open Amber Notes on your iPhone");
+    expect(container.textContent).toContain("Amber Notes sent a notification to your iPhone.");
     expect(container.textContent).not.toContain("iPhone or Mac");
+    expect(container.textContent).not.toContain("Waiting");
     expect(signedOutAt(server.calls)).toBeGreaterThan(-1);
+  });
+
+  it("sends the notification again with the page's pickup secret, and says so", async () => {
+    const server = await signIn({ iphone: true, mac: false });
+    await until(() => heading() === "Open Amber Notes on your iPhone");
+    const again = [...container.querySelectorAll("button")].find((b) => b.textContent === "Send it again")!;
+    await act(async () => again.click());
+    await until(() => container.textContent!.includes("Sent again."));
+    const call = server.calls.find((c) => c.url === `${MCP}/connect/resend`)!;
+    expect(new Headers(call.init.headers).has("authorization")).toBe(false);
+    expect(JSON.parse(String(call.init.body)).pickup).toMatch(/^[0-9a-f]{64}$/);
   });
 
   it("leads with one button on a Mac whose account has the Mac app", async () => {
     await signIn({ iphone: true, mac: true }, MAC);
-    await until(() => heading() === "Continue in Amber Notes");
-    const open = [...container.querySelectorAll("a")].find((a) => a.textContent === "Open Amber Notes on this Mac")!;
+    await until(() => heading() === "Open Amber Notes on this Mac");
+    const open = [...container.querySelectorAll("a")].find((a) => a.textContent === "Open Amber Notes")!;
     expect(open.getAttribute("href")).toBe(`https://ambernotes.app/open/connect?request=${ID}`);
-    expect(container.textContent).toContain("Nothing opened? Check your iPhone for a notification");
+    expect(container.textContent).toContain("Nothing opened? Open the notification on your iPhone instead.");
   });
 
   it("names both, as before, when the server doesn't say", async () => {

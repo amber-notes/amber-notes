@@ -38,7 +38,7 @@ export const SCOPES = ["notes:read", "notes:write"];
 const ACCESS_TTL = 60 * 60; // seconds
 const REFRESH_TTL_DAYS = 90;
 const CODE_TTL = 60; // seconds
-const LIMITS: Record<string, [number, number]> = { register: [30, 3600], authorize: [60, 600], token: [120, 600], request: [120, 600], label: [120, 600], decide: [60, 600], status: [400, 600] };
+const LIMITS: Record<string, [number, number]> = { register: [30, 3600], authorize: [60, 600], token: [120, 600], request: [120, 600], label: [120, 600], decide: [60, 600], status: [400, 600], resend: [3, 600] };
 
 export type Grant = { user_id: string; token_id: string; name: string; can_write: boolean; resource?: string; dk_wrap: string | null };
 
@@ -92,7 +92,7 @@ export function subpath(req: Request): string {
 }
 
 export function isOAuthPath(p: string) {
-  return p.startsWith("/.well-known/") || ["/register", "/authorize", "/token", "/revoke", "/connect/request", "/connect/label", "/connect/ask", "/connect/scan", "/connect/status", "/connect/nonce", "/connect/reveal", "/connect/decide", "/connect/release"].includes(p);
+  return p.startsWith("/.well-known/") || ["/register", "/authorize", "/token", "/revoke", "/connect/request", "/connect/label", "/connect/ask", "/connect/scan", "/connect/resend", "/connect/status", "/connect/nonce", "/connect/reveal", "/connect/decide", "/connect/release"].includes(p);
 }
 
 const json = (body: unknown, status = 200, headers: Record<string, string> = {}) =>
@@ -343,6 +343,7 @@ export async function handleOAuth(req: Request, sql: Sql, path: string): Promise
       case "/connect/label": return req.method === "GET" ? await label(req, sql) : json({ error: "method_not_allowed" }, 405);
       case "/connect/ask": return req.method === "POST" ? await ask(req, sql) : json({ error: "method_not_allowed" }, 405);
       case "/connect/scan": return req.method === "POST" ? await scanAsk(req, sql) : json({ error: "method_not_allowed" }, 405);
+      case "/connect/resend": return req.method === "POST" ? await resend(req, sql) : json({ error: "method_not_allowed" }, 405);
       case "/connect/status": return req.method === "POST" ? await status(req, sql) : json({ error: "method_not_allowed" }, 405);
       case "/connect/nonce": return req.method === "POST" ? await deviceNonce(req, sql) : json({ error: "method_not_allowed" }, 405);
       case "/connect/reveal": return req.method === "POST" ? await reveal(req, sql) : json({ error: "method_not_allowed" }, 405);
@@ -733,6 +734,27 @@ async function status(req: Request, sql: Sql): Promise<Response> {
   if (r.decided) return json({ state: "answered_in_app" });
   if (!a) return json({ state: "pending" });
   return json(picksUp ? { state: "asked", device_nonce: a.device_nonce } : { state: "asked" });
+}
+
+/// "Send it again": POST {id, pickup}, no session. The page that asked (it holds the pickup secret)
+/// has the account's devices told once more, with the same push under the same collapse id, so it
+/// replaces the first one instead of stacking. Only while the ask is open and has an account, and
+/// three times in ten minutes from one address. Nothing about the account comes back.
+async function resend(req: Request, sql: Sql): Promise<Response> {
+  if (!allowedOrigin(req)) return json({ error: "Not allowed from this site." }, 403);
+  const body = await req.json().catch(() => ({})) as { id?: unknown; pickup?: unknown };
+  const id = typeof body.id === "string" && UUID.test(body.id) ? body.id : "";
+  const pickup = typeof body.pickup === "string" && HEX64.test(body.pickup) ? body.pickup : "";
+  if (!id || !pickup) return json({ error: EXPIRED }, 404);
+  const [a] = await sql<{ user_id: string | null; pickup_hash: string }[]>`
+    select a.user_id, a.pickup_hash from public.connect_asks a join public.oauth_requests r on r.id = a.request_id
+    where a.request_id = ${id} and a.answered_at is null and a.expires_at > now() and r.decided_at is null and r.expires_at > now()`;
+  if (!a?.user_id || !timingSafeEqual(await sha256OfHex(pickup), a.pickup_hash)) return json({ error: EXPIRED }, 404);
+  if (await limited(sql, req, "resend")) return json({ error: "Sent a few times already. Wait a few minutes, or use your recovery key." }, 429);
+  const notified = notifyDevices(sql, a.user_id, id);
+  const edge = (globalThis as { EdgeRuntime?: { waitUntil(p: Promise<unknown>): void } }).EdgeRuntime;
+  if (edge) edge.waitUntil(notified); else await notified;
+  return json({ sent: true });
 }
 
 /// The page's half of number matching: POST {id, pickup, nonce}, no session. Only with the pickup

@@ -83,6 +83,16 @@ export function revealRequest(functionBase: string, id: string, pickup: string, 
   }];
 }
 
+/// "Send it again": the page that asked, known by its pickup secret, has the account's devices told
+/// once more. No session.
+export function resendRequest(functionBase: string, id: string, pickup: string): [string, RequestInit] {
+  return [`${functionBase}/connect/resend`, {
+    method: "POST", cache: "no-store",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ id, pickup }),
+  }];
+}
+
 /// What the page does after a /connect/status answer.
 export type Step =
   | { kind: "wait" }

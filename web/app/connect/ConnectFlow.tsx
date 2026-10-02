@@ -6,7 +6,7 @@ import {
   type ConnectLabel, type ConnectRequest,
 } from "@/lib/connect";
 import {
-  browserOn, leadFor, parseDevices, type Devices, type Lead,
+  browserOn, leadFor, parseDevices, resendRequest, type Devices, type Lead,
   browserFrom, isMacBrowser, keyFingerprint, newPageNonce, newPickup, newScan, pageCommit, pageNumber, parseKeyRow, recoveryApproval, RecoveryError,
   revealRequest, scanAppLink, scanLink, scanRequest, sealedDestination, statusRequest, statusStep, withCode,
   type AccountKey,
@@ -368,6 +368,21 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
     }
   }
 
+
+  /// "Send it again": the server tells the account's devices once more. What went wrong, or null.
+  async function resend(): Promise<string | null> {
+    const secret = pickup.current?.pickup;
+    if (!secret) return "Couldn't send it again. Reload this page and start over.";
+    try {
+      const res = await fetch(...resendRequest(mcp, requestId, secret));
+      if (res.ok) return null;
+      const body = await res.json().catch(() => null) as { error?: string } | null;
+      return res.status === 429 && body?.error ? body.error : "Couldn't send it again. Use your recovery key instead.";
+    } catch {
+      return OFFLINE;
+    }
+  }
+
   // MARK: The recovery key
 
   function forget() {
@@ -518,7 +533,7 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
       return (
         <NotifyScreen
           number={number} onScan={backToScan} lead={lead} devices={devices} to={to}
-          openLink={macLink ?? universalLink(requestId)} onRecover={showRecovery}
+          openLink={macLink ?? universalLink(requestId)} onRecover={showRecovery} onResend={resend}
         />
       );
     case "recover":
