@@ -7,7 +7,9 @@
 // no longer works". A scanner loads pages; it doesn't type a password and press Save. So the token
 // waits, and is redeemed only by savePassword.
 //
-// The link carries a token hash (`?token_hash=…&type=recovery`), redeemed with POST /auth/v1/verify.
+// The link carries a token hash in its fragment (`#token_hash=…&type=recovery`), redeemed with
+// POST /auth/v1/verify. A fragment never reaches a server, a proxy or a log, and the page takes it
+// out of the address bar as soon as it has read it.
 // That needs nothing stored in this browser, so the link works on any device and in a mail app's
 // own browser. The reset is always requested without PKCE (request/route.ts and the apps), because
 // a PKCE link can only be redeemed in the browser that asked for it.
@@ -26,8 +28,10 @@ export type ResetLink = { kind: "token"; tokenHash: string } | { kind: "refused"
 export function readResetLink(query: URLSearchParams, fragment: URLSearchParams): ResetLink {
   // Supabase's own verify page redirects with an error in the query or the fragment.
   if (query.get("error_code") || fragment.get("error_code") || query.get("error") || fragment.get("error")) return { kind: "refused" };
-  const tokenHash = query.get("token_hash")?.trim();
-  if (tokenHash && query.get("type") === "recovery" && /^[A-Za-z0-9_-]{8,200}$/.test(tokenHash)) return { kind: "token", tokenHash };
+  // The token only counts in the fragment: one in the query would have reached the server's logs.
+  if (query.has("token_hash")) return { kind: "refused" };
+  const tokenHash = fragment.get("token_hash")?.trim();
+  if (tokenHash && fragment.get("type") === "recovery" && /^[A-Za-z0-9_-]{8,200}$/.test(tokenHash)) return { kind: "token", tokenHash };
   if (tokenHash) return { kind: "refused" };
   return { kind: "none" };
 }
@@ -51,7 +55,8 @@ export interface ResetAuth {
   /// Spends the link. A session's access token, or null when the link is used or expired.
   verify(tokenHash: string): Promise<string | null>;
   setPassword(accessToken: string, password: string): Promise<"ok" | "same" | "weak" | "expired" | "error">;
-  /// Ends the session the link opened; the web never stays signed in.
+  /// Ends the session the link opened; the web never stays signed in. Sent with keepalive, so it
+  /// also goes out when the page is closing.
   signOut(accessToken: string): Promise<void>;
 }
 
@@ -79,7 +84,7 @@ export function authAPI(supabaseURL: string, anonKey: string, f: typeof fetch = 
       return "error";
     },
     async signOut(accessToken) {
-      await f(`${base}/logout?scope=local`, { method: "POST", headers: headers(accessToken) }).catch(() => undefined);
+      await f(`${base}/logout?scope=local`, { method: "POST", headers: headers(accessToken), keepalive: true }).catch(() => undefined);
     },
   };
 }
@@ -91,6 +96,15 @@ export type SaveOutcome = { kind: "done" } | { kind: "expired" } | { kind: "erro
 export type Pending = { tokenHash: string | null; session: string | null; inFlight?: Promise<SaveOutcome> };
 
 export const newPending = (tokenHash: string): Pending => ({ tokenHash, session: null });
+
+/// The page is going away (pagehide) before Save finished: end the session the link opened, if
+/// it got that far, so no signed-in session outlives the page.
+export function abandon(pending: Pending | null, auth: ResetAuth): void {
+  if (!pending?.session) return;
+  const session = pending.session;
+  pending.session = null;
+  void auth.signOut(session);
+}
 
 /// Save: check the password, spend the link (once), set the password, end the session. A second
 /// press while the first is running gets the first one's answer.

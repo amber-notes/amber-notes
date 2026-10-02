@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { authAPI, emailFromFragment, newPending, passwordProblem, readResetLink, requestLink, savePassword, type ResetAuth } from "./password-reset";
+import { abandon, authAPI, emailFromFragment, newPending, passwordProblem, readResetLink, requestLink, savePassword, type ResetAuth } from "./password-reset";
 
 const q = (s: string) => new URLSearchParams(s);
 const none = q("");
@@ -15,14 +15,17 @@ function fakeAuth(over: Partial<{ [K in keyof ResetAuth]: ReturnType<typeof vi.f
 }
 
 describe("reading the link (all a mail scanner gets to)", () => {
-  it("keeps a recovery token hash to spend later", () => {
-    expect(readResetLink(q("token_hash=made-up-token-hash&type=recovery"), none)).toEqual({ kind: "token", tokenHash: "made-up-token-hash" });
+  it("keeps a recovery token hash from the fragment to spend later", () => {
+    expect(readResetLink(none, q("token_hash=made-up-token-hash&type=recovery"))).toEqual({ kind: "token", tokenHash: "made-up-token-hash" });
+  });
+  it("doesn't take a token from the query, where server logs would have it", () => {
+    expect(readResetLink(q("token_hash=made-up-token-hash&type=recovery"), none).kind).toBe("refused");
   });
   it("calls a link Supabase refused, or a mangled one, no longer working", () => {
     expect(readResetLink(q("error=access_denied&error_code=otp_expired"), none).kind).toBe("refused");
     expect(readResetLink(none, q("error_code=otp_expired")).kind).toBe("refused");
-    expect(readResetLink(q("token_hash=abc123def456&type=signup"), none).kind).toBe("refused");
-    expect(readResetLink(q("token_hash=<script>&type=recovery"), none).kind).toBe("refused");
+    expect(readResetLink(none, q("token_hash=abc123def456&type=signup")).kind).toBe("refused");
+    expect(readResetLink(none, q("token_hash=<script>&type=recovery")).kind).toBe("refused");
   });
   it("is the request form with no link at all", () => {
     expect(readResetLink(none, none).kind).toBe("none");
@@ -90,6 +93,25 @@ describe("Save", () => {
   });
 });
 
+describe("leaving the page before Save finished", () => {
+  it("ends the session the link opened, once", async () => {
+    const auth = fakeAuth({ setPassword: vi.fn<ResetAuth["setPassword"]>(async () => "weak") });
+    const pending = newPending("t7");
+    await savePassword(pending, GOOD, auth);
+    expect(pending.session).toBe("access-token");
+    abandon(pending, auth);
+    abandon(pending, auth);
+    expect(auth.signOut).toHaveBeenCalledOnce();
+    expect(auth.signOut).toHaveBeenCalledWith("access-token");
+  });
+  it("has nothing to end when the link wasn't spent", () => {
+    const auth = fakeAuth();
+    abandon(newPending("t8"), auth);
+    abandon(null, auth);
+    expect(auth.signOut).not.toHaveBeenCalled();
+  });
+});
+
 describe("authAPI, against Supabase Auth's endpoints", () => {
   function server(answers: Record<string, { status: number; body?: unknown }>) {
     const calls: { url: string; init: RequestInit }[] = [];
@@ -126,6 +148,7 @@ describe("authAPI, against Supabase Auth's endpoints", () => {
     const { calls, f } = server({ "POST /auth/v1/logout": { status: 204 } });
     await authAPI("https://ref.supabase.co", "anon", f).signOut("at");
     expect(calls[0].url).toBe("https://ref.supabase.co/auth/v1/logout?scope=local");
+    expect(calls[0].init.keepalive).toBe(true);
   });
 });
 

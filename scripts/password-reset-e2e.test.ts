@@ -74,8 +74,8 @@ async function inChrome(url: string) {
     const ws = new WebSocket(targets.find((t) => t.type === "page")!.webSocketDebuggerUrl);
     await new Promise((r) => ws.onopen = r);
     const answer = new Promise<{ result: { result: { value: string } } }>((r) => ws.onmessage = (e) => r(JSON.parse(e.data)));
-    ws.send(JSON.stringify({ id: 1, method: "Runtime.evaluate", params: { returnByValue: true, expression: "JSON.stringify({ text: document.body.innerText, hydrated: Object.keys(document.querySelector('form') ?? {}).some((k) => k.startsWith('__react')) })" } }));
-    const value = JSON.parse((await answer).result.result.value) as { text: string; hydrated: boolean };
+    ws.send(JSON.stringify({ id: 1, method: "Runtime.evaluate", params: { returnByValue: true, expression: "JSON.stringify({ text: document.body.innerText, hydrated: Object.keys(document.querySelector('form') ?? {}).some((k) => k.startsWith('__react')), hash: location.hash })" } }));
+    const value = JSON.parse((await answer).result.result.value) as { text: string; hydrated: boolean; hash: string };
     ws.close();
     return value;
   } finally {
@@ -129,21 +129,23 @@ Deno.test({ name: "password reset end to end", sanitizeResources: false, sanitiz
       const hrefs = [...mail.HTML.matchAll(/href="([^"]+reset-password[^"]+)"/g)].map((m) => m[1].replaceAll("&amp;", "&"));
       assert(hrefs.length >= 2 && hrefs.every((h) => h === hrefs[0]), "every link in the email is the same");
       link = hrefs[0];
-      assertMatch(link, /\/reset-password\?token_hash=[0-9a-f]{20,}&type=recovery$/);
+      assertMatch(link, /\/reset-password#token_hash=[0-9a-f]{20,}&type=recovery$/);
       assertEquals(await recoveryTokens(uid), 1);
     });
 
     await t.step("opening the link spends nothing", async () => {
       if (SITE) {
         const url = new URL(link);
-        const local = `${SITE}${url.pathname}${url.search}`;
+        const local = `${SITE}${url.pathname}${url.hash}`;
         // A scanner that fetches the address, then one that runs the page in a browser.
         const page = await fetch(local);
         assertEquals(page.status, 200);
-        assertMatch(await page.text(), /Choose a new password/);
+        // The server never sees the token (it's in the fragment), so it draws no form.
+        assertEquals((await page.text()).includes("token_hash"), false);
         const shown = await inChrome(local);
         assertMatch(shown.text, /Choose a new password/);
         assert(shown.hydrated, "the page's scripts ran, as in a scanner's browser");
+        assertEquals(shown.hash, "", "the token left the address bar");
       } else {
         console.log("  (RESET_SITE not set: the browser scanner step was skipped)");
       }
@@ -151,7 +153,7 @@ Deno.test({ name: "password reset end to end", sanitizeResources: false, sanitiz
     });
 
     await t.step("Save spends the link and sets the password; the old one stops working", async () => {
-      const read = readResetLink(new URL(link).searchParams, new URLSearchParams());
+      const read = readResetLink(new URLSearchParams(), new URLSearchParams(new URL(link).hash.slice(1)));
       assert(read.kind === "token");
       const pending = newPending(read.tokenHash);
       assertEquals(await savePassword(pending, "too short", auth), { kind: "error", message: "Use at least 12 characters." });
@@ -163,7 +165,7 @@ Deno.test({ name: "password reset end to end", sanitizeResources: false, sanitiz
     });
 
     await t.step("the link works once", async () => {
-      const read = readResetLink(new URL(link).searchParams, new URLSearchParams());
+      const read = readResetLink(new URLSearchParams(), new URLSearchParams(new URL(link).hash.slice(1)));
       assert(read.kind === "token");
       assertEquals(await savePassword(newPending(read.tokenHash), `${NEW} again`, auth), { kind: "expired" });
       assert(await signIn(NEW), "the password is still the one just set");

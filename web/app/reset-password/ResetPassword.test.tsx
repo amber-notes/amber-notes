@@ -39,34 +39,41 @@ async function submit() {
 }
 
 describe("the reset page", () => {
-  it("draws the password form on the server for a link, with nothing that runs on load", () => {
-    const html = renderToStaticMarkup(<ResetPassword initial="form" supabaseURL="" anonKey="" />);
-    expect(html).toContain("Choose a new password");
-    expect(html).toContain('autoComplete="new-password"');
-    expect(html).toContain("Save password");
+  it("draws nothing on the server: the token is in the fragment, which only the browser reads", () => {
+    expect(renderToStaticMarkup(<ResetPassword initial="opening" supabaseURL="" anonKey="" />)).toBe("");
   });
 
   it("opening the link spends nothing (what Safe Links and other scanners do)", async () => {
-    const { auth } = await open("/reset-password?token_hash=abc123def456&type=recovery", "form");
+    const { auth } = await open("/reset-password#token_hash=abc123def456&type=recovery", "opening");
     expect(text()).toContain("Choose a new password");
     expect(auth.verify).not.toHaveBeenCalled();
     expect(auth.setPassword).not.toHaveBeenCalled();
-    expect(window.location.search).toContain("token_hash");
+    expect(window.location.hash, "the token leaves the address bar once read").toBe("");
+    expect(input("password").getAttribute("autocomplete")).toBe("new-password");
+  });
+
+  it("leaving after the link was spent but before the password was set ends that session", async () => {
+    const { auth } = await open("/reset-password#token_hash=abc123def456&type=recovery", "opening", fakeAuth({ setPassword: vi.fn(async () => "weak" as const) }));
+    await type("password", GOOD);
+    await submit();
+    expect(auth.signOut).not.toHaveBeenCalled();
+    await act(async () => { window.dispatchEvent(new Event("pagehide")); });
+    expect(auth.signOut).toHaveBeenCalledWith("at");
   });
 
   it("Save spends the link, changes the password and says so, and the token leaves the address bar", async () => {
-    const { auth } = await open("/reset-password?token_hash=abc123def456&type=recovery", "form");
+    const { auth } = await open("/reset-password#token_hash=abc123def456&type=recovery", "opening");
     await type("password", GOOD);
     await submit();
     expect(auth.verify).toHaveBeenCalledWith("abc123def456");
     expect(auth.setPassword).toHaveBeenCalledWith("at", GOOD);
     expect(text()).toContain("Your password is changed");
     expect(text()).toContain("Sign in with it on your iPhone or Mac.");
-    expect(window.location.search).toBe("");
+    expect(window.location.hash).toBe("");
   });
 
   it("a short password is said under the field and the link stays unspent", async () => {
-    const { auth } = await open("/reset-password?token_hash=abc123def456&type=recovery", "form");
+    const { auth } = await open("/reset-password#token_hash=abc123def456&type=recovery", "opening");
     await type("password", "short");
     await submit();
     expect(text()).toContain("Use at least 12 characters.");
@@ -75,7 +82,7 @@ describe("the reset page", () => {
   });
 
   it("shows and hides the password", async () => {
-    await open("/reset-password?token_hash=abc123def456&type=recovery", "form");
+    await open("/reset-password#token_hash=abc123def456&type=recovery", "opening");
     expect(input("password").type).toBe("password");
     await act(async () => (document.querySelector('button[aria-controls="password"]') as HTMLButtonElement).click());
     expect(input("password").type).toBe("text");
@@ -83,7 +90,7 @@ describe("the reset page", () => {
 
   it("a used or expired link: says so, and sends a new one", async () => {
     const send = vi.fn(async (_email: string): Promise<"sent" | "invalid" | "failed"> => "sent");
-    await open("/reset-password?token_hash=abc123def456&type=recovery", "form", fakeAuth({ verify: vi.fn(async () => null) }), send);
+    await open("/reset-password#token_hash=abc123def456&type=recovery", "opening", fakeAuth({ verify: vi.fn(async () => null) }), send);
     await type("password", GOOD);
     await submit();
     expect(text()).toContain("This link no longer works");
@@ -94,12 +101,12 @@ describe("the reset page", () => {
   });
 
   it("a link Supabase refused goes straight to the expired screen", async () => {
-    await open("/reset-password#error=access_denied&error_code=otp_expired", "request");
+    await open("/reset-password#error=access_denied&error_code=otp_expired", "opening");
     expect(text()).toContain("This link no longer works");
   });
 
   it("asking for a link answers the same for any email, with the email from the fragment filled in", async () => {
-    const { send } = await open("/reset-password#email=sara%40example.com", "request");
+    const { send } = await open("/reset-password#email=sara%40example.com", "opening");
     expect(input("email").value).toBe("sara@example.com");
     expect(window.location.hash).toBe("");
     await submit();

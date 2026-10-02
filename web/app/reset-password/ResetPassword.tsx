@@ -2,13 +2,15 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  authAPI, emailFromFragment, MIN_PASSWORD, newPending, passwordProblem, readResetLink, requestLink, savePassword,
+  abandon, authAPI, emailFromFragment, MIN_PASSWORD, newPending, passwordProblem, readResetLink, requestLink, savePassword,
   type Pending, type ResetAuth,
 } from "@/lib/password-reset";
 import { ButtonRow, Card, EmptyState, Field, Sign, ui } from "@/lib/ui";
 import s from "./reset.module.css";
 
-export type Screen = "request" | "sent" | "form" | "done" | "expired";
+/// "opening": before the page has read its address (the token is in the fragment, which only the
+/// browser sees), nothing is drawn.
+export type Screen = "opening" | "request" | "sent" | "form" | "done" | "expired";
 
 /// The reset page's screens: ask for a link, "check your email", choose a new password, changed,
 /// and a link that no longer works (with a way to get a new one). `auth` and `send` are for tests.
@@ -24,18 +26,26 @@ export default function ResetPassword({ initial, supabaseURL, anonKey, auth, sen
   const [error, setError] = useState<string | null>(null);
   const pending = useRef<Pending | null>(null);
 
-  // Read the link once. Nothing is spent here: a mail scanner that opens the page stops at this.
+  // Read the link once, then take it out of the address bar and the history: the token and an email
+  // handed over from /connect stay only in this page's memory. Nothing is spent here; a mail
+  // scanner that opens the page stops at this.
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
     const fragment = new URLSearchParams(window.location.hash.slice(1));
     const link = readResetLink(query, fragment);
     if (link.kind === "token") pending.current = newPending(link.tokenHash);
-    else setScreen(link.kind === "refused" ? "expired" : "request");
+    setScreen(link.kind === "token" ? "form" : link.kind === "refused" ? "expired" : "request");
     const handed = emailFromFragment(fragment);
     if (handed) setEmail(handed);
-    // The email came in the fragment; it doesn't stay in the address bar or the history.
-    if (fragment.has("email")) window.history.replaceState(window.history.state, "", window.location.pathname + window.location.search);
+    forgetLink();
   }, []);
+
+  // Closed or navigated away from after the link was spent but before the password was set.
+  useEffect(() => {
+    const leave = () => abandon(pending.current, api);
+    window.addEventListener("pagehide", leave);
+    return () => window.removeEventListener("pagehide", leave);
+  }, [api]);
 
   function forgetLink() {
     if (window.location.search || window.location.hash) window.history.replaceState(window.history.state, "", window.location.pathname);
@@ -73,6 +83,8 @@ export default function ResetPassword({ initial, supabaseURL, anonKey, auth, sen
     setError(null);
     setScreen("request");
   }
+
+  if (screen === "opening") return null;
 
   if (screen === "done") {
     return (

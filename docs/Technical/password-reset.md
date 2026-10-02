@@ -41,13 +41,18 @@ included. The "password changed" notice (below, optional) tells the owner when i
    unknown one gets 200. The app treats any answer as sent too. Only "couldn't reach the server" is
    said.
 3. **Email.** `supabase/templates/recovery.html`: one button to
-   `{{ .SiteURL }}/reset-password?token_hash={{ .TokenHash }}&type=recovery`, valid one hour, once.
+   `{{ .SiteURL }}/reset-password#token_hash={{ .TokenHash }}&type=recovery`, valid one hour, once.
+   The token is in the fragment, so it never reaches Vercel, a proxy or a log.
 4. **Page.** `web/app/reset-password/` with the decisions in `web/lib/password-reset.ts`. Opening the
-   link only reads it. Save checks the password (12 to 72 characters), then spends the token
+   link only reads it: the page keeps the token in memory and clears the fragment from the address
+   bar and history at once, so a reload shows the request form (send a new link) rather than the
+   token. A token in the query is refused. Save checks the password (12 to 72 characters), then spends the token
    (`POST /auth/v1/verify`), sets the password (`PUT /auth/v1/user`) and ends that session
    (`POST /auth/v1/logout?scope=local`). Then: "Your password is changed. Sign in with it on your
    iPhone or Mac." A used, expired or refused link shows "This link no longer works" with an email
-   field to send a new one. With no link, the page is the request form.
+   field to send a new one. With no link, the page is the request form. If the page is closed after
+   the token was spent but before the password was set (a refused password, then leaving), it ends
+   that session on `pagehide`, sent with `keepalive`.
 
 The page has the connect pages' strict CSP (nonce scripts, `connect-src` this site and the Supabase
 project, `form-action 'none'`), no referrer, `no-store`, `noindex`, no site header, and is on both
