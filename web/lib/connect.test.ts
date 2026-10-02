@@ -86,6 +86,7 @@ describe("the connect page", () => {
 
   it("explains an /authorize problem without echoing anything from the address", () => {
     expect(problemText("unknown_app")).toMatch(/doesn't know this app/);
+    expect(problemText("unknown_app")).toMatch(/In Claude.*In ChatGPT.*https:\/\/mcp\.ambernotes\.app/);
     expect(problemText("<script>alert(1)</script>")).toMatch(/Start connecting again/);
     expect(problemText(undefined)).toMatch(/Start connecting again/);
   });

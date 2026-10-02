@@ -3,7 +3,7 @@
 Internal record under GDPR Article 30. Last reviewed 2 October 2026. Keep it in step with
 `docs/privacy-policy.md` (what people read) and `web/lib/privacy.ts` (the website's short form).
 
-**Controller:** Emil Wagman, individual developer, Sweden. Contact: emil@norditech.se.
+**Controller:** Emil Wagman, individual developer, Sweden. Contact: hello@ambernotes.app.
 **Representative / DPO:** none. Not required: no EU representative (the controller is in the EU),
 and no DPO (no large-scale special-category data or systematic monitoring).
 **Supervisory authority:** Integritetsskyddsmyndigheten (IMY), Sweden.
@@ -21,7 +21,7 @@ and no DPO (no large-scale special-category data or systematic monitoring).
 | 7 | Rate limiting | Anyone calling sign-in and connect endpoints | Daily-keyed HMAC of IP address | Stop abuse | Legitimate interests | Supabase | 2 hours |
 | 8 | Usage counts | Users | AI edits per day, active days, tips shown and used, setup steps, install id and platform | Learn whether the app works; ask once to share after a week | Legitimate interests (objection honoured on request) | Supabase | 12 months |
 | 9 | Hosting logs | Users; website visitors | IP address, user agent, path and query, rough location, time | Operate and secure the service (the hosts' own logs) | Legitimate interests | Supabase, Vercel | Supabase: 1 day. Vercel runtime logs: 1 hour; Observability: 12 hours |
-| 10 | Support email | Anyone who writes | Email, message | Answer questions and GDPR requests | Legitimate interests; legal obligation for GDPR requests | Email provider (norditech.se mail host) | As long as needed to answer, then deleted |
+| 10 | Support email | Anyone who writes | Email, message | Answer questions and GDPR requests | Legitimate interests; legal obligation for GDPR requests | Forward Email (forwarding), Google (Gmail) | As long as needed to answer, then deleted |
 | 11 | Website usage | Website visitors (never on shared notes, connect, report or universal-link pages) | Vercel Web Analytics: page, referrer, country, browser and device, day-scoped hash. PostHog: page, clicks on links and buttons, scroll depth, referrer, browser and device, a random per-page-load id kept in memory; no cookies, no person profiles, no recordings, IP discarded in the project settings | Learn how people find the site and which pages lead to a download | Legitimate interests | Vercel; PostHog (EU cloud) | As long as each plan keeps it (at least a month) |
 
 No special categories are processed on purpose. Notes can contain anything the user writes; they're

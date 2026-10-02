@@ -18,7 +18,7 @@ Last updated: 2 October 2026
 
 ## Who we are
 
-Amber Notes is made by Emil Wagman, an individual developer in Sweden. He is the controller of the personal data described here. Questions about privacy go to **emil@norditech.se**.
+Amber Notes is made by Emil Wagman, an individual developer in Sweden. He is the controller of the personal data described here. Questions about privacy go to **hello@ambernotes.app**.
 
 This policy covers the Amber Notes apps for iPhone and Mac, the service that lets AI assistants connect to your notes, and the website at ambernotes.app, including shared note pages.
 
@@ -161,6 +161,7 @@ Nothing reaches an AI assistant unless you connect one. When you connect ChatGPT
 | Vercel, Inc. | The website, shared note pages, the address AI apps connect to (mcp.ambernotes.app), Mac app downloads, update checks, website page view counts | Pages are built in Frankfurt, Germany (EU) and delivered through Vercel's global network | EU-U.S. Data Privacy Framework ([privacy policy](https://vercel.com/legal/privacy-policy), [sub-processors](https://vercel.com/legal/sub-processors)) |
 | PostHog, Inc. | Website usage only: page views, clicks and scroll depth. Never on shared notes or the connect pages, and never in the apps | Frankfurt, Germany (EU) | Standard Contractual Clauses, in its [data processing agreement](https://posthog.com/dpa) ([sub-processors](https://posthog.com/subprocessors)) |
 | Apple | Sign in with Apple and the App Store, if you use them | Under Apple's own privacy policy | Apple's own terms |
+| Forward Email and Google (Gmail) | Email you send to hello@ambernotes.app: Forward Email passes it on, and it's read and kept in Gmail | United States | Under each company's own terms |
 
 Your encrypted notes and files are stored only at Supabase, in Frankfurt. Supabase processes them only on our instructions. Vercel handles requests to the website on their way through: it sees a shared note while it shows the page, and the requests AI apps send to mcp.ambernotes.app, including the text of the notes they read or write, but it doesn't store your notes. Either company's support staff could access data from outside the EU; those transfers are covered as the table says.
 
@@ -207,7 +208,7 @@ Under the GDPR you can:
 - **take it with you:** **Settings → Privacy & Security → Export Your Notes** makes a zip on your device with every note as Markdown in its folder, with its files. We can't read your notes, so only your device can export them. Ask us for everything else we keep about you, and we'll send it as JSON;
 - **object** to processing based on legitimate interests, including the feature usage counts, or ask us to **restrict** it.
 
-Write to **emil@norditech.se**. We answer within one month. If you think we've handled your data wrongly, you can complain to the Swedish Authority for Privacy Protection (Integritetsskyddsmyndigheten, IMY) at imy.se, or to the data protection authority where you live.
+Write to **hello@ambernotes.app**. We answer within one month. If you think we've handled your data wrongly, you can complain to the Swedish Authority for Privacy Protection (Integritetsskyddsmyndigheten, IMY) at imy.se, or to the data protection authority where you live.
 
 ## Cookies and storage on the website
 
@@ -231,4 +232,4 @@ When this policy changes, the date at the top changes. If a change matters to yo
 
 ## Contact
 
-Emil Wagman, Sweden · **emil@norditech.se**
+Emil Wagman, Sweden · **hello@ambernotes.app**

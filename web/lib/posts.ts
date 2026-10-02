@@ -29,7 +29,7 @@ export type Post = {
 
 /// The ground a cover (and the post's first picture) sits on: the site's palette, the help page's
 /// leaf brown, the app's dark look, or the home page's dunes.
-export type Ground = "paper" | "soft" | "tint" | "amber" | "leaf" | "dark" | "dunes" | "ink" | "peach" | "cream" | "sand" | "clay" | "mist" | "honey" | "sage" | "heather" | "blush" | "wheat" | "fog" | "dusk" | "pearl" | "linen" | "night" | "rose";
+export type Ground = "paper" | "soft" | "tint" | "amber" | "leaf" | "dark" | "dunes" | "ink" | "peach" | "cream" | "sand" | "clay" | "mist" | "honey" | "sage" | "heather" | "blush" | "wheat" | "fog" | "dusk" | "pearl" | "linen" | "night" | "rose" | "mint" | "sky";
 
 /// A card's picture: one real capture of the element the post is about, on the post's ground. The
 /// capture is cropped at 2x (3x from iPhone) to about the card's width, so it shows at full size.
@@ -47,6 +47,8 @@ export const SHOTS = {
   consentE2ee: { src: "/blog/amber-notes-allow-chatgpt-encrypted-notes.webp", alt: "Amber Notes on a Mac asking \"Allow ChatGPT to use your notes?\": access goes to chatgpt.com, a choice of Read and Edit or Read Only, and a line saying that while it's connected it can read everything except locked notes.", width: 840, height: 712, window: false, title: "Amber Notes" },
   notesPassword: { src: "/blog/amber-notes-locked-notes-password.webp", alt: "Amber Notes on a Mac: Create a password for your locked notes, with Password, Verify and Hint fields, and the warning that if you forget this password, your locked notes can't be recovered, not even by us.", width: 880, height: 600, window: false, title: "Locked Notes" },
   coworkAllow: { src: "/blog/claude-wants-access-to-control-notes-macos.webp", alt: "The macOS prompt that appears when Claude first uses the Apple Notes extension: \u201cClaude\u201d wants access to control \u201cNotes\u201d. Allowing control will provide access to documents and data in \u201cNotes\u201d, and to perform actions within that app. Buttons: Don\u2019t Allow and Allow.", width: 520, height: 532, window: true },
+  notesDefaultAccount: { src: "/blog/notes-default-account.webp", alt: "The General settings of Apple Notes on a Mac running macOS 26: Sort notes by Date Edited, New notes start with Title, and Default account set to iCloud, which Siri uses when creating notes.", width: 1093, height: 298, window: true },
+  notesExportMenu: { src: "/blog/notes-export-menu.webp", alt: "The File menu of Apple Notes on a Mac running macOS 26, open at Export as, with PDF and Markdown in the submenu and Markdown selected.", width: 700, height: 453, window: true },
   importSheet: { src: "/blog/amber-notes-import-from-apple-notes.webp", alt: "The Import from Apple Notes sheet in Amber Notes on a Mac: notes picked, Keep Apple Notes folders and Also bring over pinned notes ticked, and an Import 1,284 Notes button.", width: 1980, height: 1800, window: true },
   aiEdit: { src: "/blog/amber-notes-chatgpt-edit-undo.webp", alt: "A Groceries note in Amber Notes on a Mac. The five lines ChatGPT just added are tinted, and a bar at the bottom says ChatGPT changed 5 lines, with Undo.", width: 1260, height: 1520, window: false, title: "Groceries" },
   history: { src: "/blog/amber-notes-version-history-chatgpt.webp", alt: "Version history for a Groceries note in Amber Notes on a Mac: versions by you on iPhone and Mac, ChatGPT and Claude Code, with the lines that differ tinted and a Restore This Version button.", width: 1800, height: 1200, window: false, title: "Groceries" },
@@ -61,6 +63,30 @@ export const SHOTS = {
 } satisfies Record<string, Shot>;
 
 export const posts: Post[] = [
+  {
+    slug: "move-apple-notes-to-icloud",
+    title: "How to move Apple Notes from On My iPhone or Gmail to iCloud",
+    description: "Move notes from On My iPhone or Gmail into iCloud on iPhone or Mac, and what to check first for locked notes and Gmail notes.",
+    excerpt: "Notes in On My iPhone or Gmail stay where they are until you move them. How to move them into iCloud, and what to check before and after.",
+    category: "Apple Notes",
+    date: "2026-10-02",
+    updated: "2026-10-02",
+    image: SHOTS.notesDefaultAccount,
+    thumb: thumb("sky", "thumb-notes-default-account", 800, 528, "Apple Notes settings on a Mac with Default account set to iCloud"),
+    draft: false,
+  },
+  {
+    slug: "back-up-apple-notes",
+    title: "How to back up Apple Notes",
+    description: "iCloud syncs Apple Notes but keeps no old copies. How to back up every note to files on your Mac, and what iPhone backups and Time Machine cover.",
+    excerpt: "iCloud keeps your notes in sync, which isn't the same as a copy you can go back to. What actually backs up Apple Notes, and a routine to follow.",
+    category: "Apple Notes",
+    date: "2026-10-02",
+    updated: "2026-10-02",
+    image: SHOTS.notesExportMenu,
+    thumb: thumb("mint", "thumb-notes-export-menu", 800, 528, "The Apple Notes File menu open at Export as, with Markdown selected"),
+    draft: false,
+  },
   {
     slug: "claude-cowork-apple-notes",
     title: "How to use Claude Cowork with Apple Notes",
@@ -80,7 +106,7 @@ export const posts: Post[] = [
     excerpt: "Within 30 days it's almost always in Recently Deleted. After that, what still works, what doesn't, and what recovery apps won't tell you.",
     category: "Apple Notes",
     date: "2026-10-01",
-    updated: "2026-10-01",
+    updated: "2026-10-02",
     image: SHOTS.history,
     thumb: thumb("night", "thumb-restore-dark", 846, 558, "An earlier version of a Groceries note in Amber Notes, in dark mode"),
     draft: false,
