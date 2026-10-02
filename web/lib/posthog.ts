@@ -1,7 +1,8 @@
 import type { CaptureResult, PostHogConfig } from "posthog-js";
 
 // Website usage with PostHog (app/PostHogAnalytics.tsx): page views, clicks on links and buttons,
-// and how far a page is scrolled. Only when NEXT_PUBLIC_POSTHOG_KEY is set at build time; without
+// and how far a page is scrolled. On the marketing pages only (heatmapsAllowed), also where on the
+// page clicks land, and rage and dead clicks, counted into heatmaps; never a recording of a visit. Only when NEXT_PUBLIC_POSTHOG_KEY is set at build time; without
 // it nothing loads. Never in the apps, and never on a page that can show something private: shared
 // notes, the connect pages, universal links, report pages and the download redirect. No cookies,
 // nothing kept in the browser, no person profiles, no recordings. Everything here is decided
@@ -9,7 +10,17 @@ import type { CaptureResult, PostHogConfig } from "posthog-js";
 
 export const POSTHOG_DEFAULT_HOST = "https://eu.i.posthog.com";
 
-const PRIVATE = /^\/(?:n|open|report)(?:\/|$)|^\/connect|^\/download\/mac(?:\/|$)/;
+const PRIVATE = /^\/(?:n|open|report|reset-password|account)(?:\/|$)|^\/connect|^\/download\/mac(?:\/|$)/;
+
+/// The marketing pages, the only ones where click positions, rage clicks and dead clicks are kept:
+/// home, download, the templates and each template, the blog and its posts, help, the changelog and
+/// Privacy & Security.
+const MARKETING = /^\/(?:|download|templates(?:\/[^/]+)?|blog(?:\/.+)?|help|changelog|privacy-security)\/?$/;
+
+/// Whether heatmap, rage-click and dead-click data may be kept for this page.
+export function heatmapsAllowed(path: string | null | undefined): path is string {
+  return posthogAllowed(path) && MARKETING.test(path);
+}
 
 /// Whether PostHog may load, or send anything, on this page.
 export function posthogAllowed(path: string | null | undefined): path is string {
@@ -40,9 +51,11 @@ export function posthogOptions(host: string): Partial<PostHogConfig> {
     // $pageleave carries $prev_pageview_max_scroll_percentage, as does the next $pageview.
     capture_pageleave: true,
     autocapture: { dom_event_allowlist: ["click"], element_allowlist: ["a", "button"], capture_copied_text: false },
-    rageclick: false,
-    capture_dead_clicks: false,
-    capture_heatmaps: false,
+    // Heatmaps of where clicks land, and clicks that were repeated in one spot or did nothing, kept
+    // only on the marketing pages (sanitizeEvent). Counted into maps of each page; no recording.
+    rageclick: true,
+    capture_dead_clicks: true,
+    capture_heatmaps: true,
     capture_exceptions: false,
     capture_performance: false,
     disable_session_recording: true,
@@ -64,20 +77,46 @@ export function posthogOptions(host: string): Partial<PostHogConfig> {
 // $current_url, $referrer, $session_entry_url, $initial_referrer and the like.
 const URL_PROPERTY = /(?:url|referrer)$/i;
 
-/// The last word on every event: nothing from a private page, page addresses without a query or
-/// fragment, and nothing about a person.
+// The events that say where on a page something was clicked.
+const HEATMAP_EVENTS = new Set(["$$heatmap", "$rageclick", "$dead_click"]);
+// Of what PostHog's heatmaps collect, clicks only: no pointer movement.
+const HEATMAP_KINDS = new Set(["click", "rageclick", "deadclick"]);
+
+/// The last word on every event: nothing from a private page, no click positions from a page that
+/// isn't a marketing page, page addresses without a query or fragment, and nothing about a person.
 export function sanitizeEvent(event: CaptureResult | null): CaptureResult | null {
   if (!event) return null;
   const props = { ...event.properties };
   const here = typeof window === "undefined" ? undefined : window.location.pathname;
-  for (const path of [here, props.$pathname, pathOf(props.$current_url)]) {
-    if (path !== undefined && !posthogAllowed(path)) return null;
+  const paths = [here, props.$pathname, pathOf(props.$current_url)].filter((p): p is string => p !== undefined);
+  if (paths.some((path) => !posthogAllowed(path))) return null;
+  if (HEATMAP_EVENTS.has(event.event) && event.event !== "$$heatmap" && !paths.every(heatmapsAllowed)) return null;
+  if (event.event === "$$heatmap") {
+    const data = heatmapData(props.$heatmap_data);
+    if (!data) return null;
+    props.$heatmap_data = data;
   }
   for (const [key, value] of Object.entries(props)) {
     if (URL_PROPERTY.test(key) && typeof value === "string") props[key] = withoutQuery(value);
   }
   const { $set: _set, $set_once: _once, ...rest } = event;
   return { ...rest, properties: props };
+}
+
+/// A heatmap batch, keyed by page address: only marketing pages, addresses without a query or
+/// fragment, clicks only. Null when nothing is left.
+function heatmapData(data: unknown): Record<string, unknown[]> | null {
+  if (!data || typeof data !== "object") return null;
+  const out: Record<string, unknown[]> = {};
+  for (const [url, points] of Object.entries(data as Record<string, unknown>)) {
+    const path = pathOf(url);
+    if (!heatmapsAllowed(path) || !Array.isArray(points)) continue;
+    const clicks = points.filter((p) => HEATMAP_KINDS.has((p as { type?: string })?.type ?? ""));
+    if (!clicks.length) continue;
+    const key = withoutQuery(url);
+    out[key] = [...(out[key] ?? []), ...clicks];
+  }
+  return Object.keys(out).length ? out : null;
 }
 
 function pathOf(url: unknown): string | undefined {

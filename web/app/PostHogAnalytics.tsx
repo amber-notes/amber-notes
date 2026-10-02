@@ -11,7 +11,11 @@ let loading: Promise<PostHog | null> | undefined;
 function start(key: string, host: string): Promise<PostHog | null> {
   loading ??= visitorOptedOut(navigator as Navigator & { globalPrivacyControl?: boolean }, window as Window & { doNotTrack?: string | null })
     ? Promise.resolve(null)
-    : import("posthog-js").then(({ default: posthog }) => posthog.init(key, posthogOptions(host)) ?? posthog).catch(() => null);
+    // Dead clicks are a PostHog extension it would otherwise fetch from its own servers; it comes
+    // with the site instead, so the page still talks to the capture endpoint only.
+    : import("posthog-js/dist/dead-clicks-autocapture")
+      .then(() => import("posthog-js"))
+      .then(({ default: posthog }) => posthog.init(key, posthogOptions(host)) ?? posthog).catch(() => null);
   return loading;
 }
 

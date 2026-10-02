@@ -1,6 +1,6 @@
 import type { CaptureResult } from "posthog-js";
 import { describe, expect, it } from "vitest";
-import { clickEvent, newScrollMarks, POSTHOG_DEFAULT_HOST, posthogAllowed, posthogOptions, posthogSettings, sanitizeEvent, scrolledPercent, visitorOptedOut } from "./posthog";
+import { clickEvent, heatmapsAllowed, newScrollMarks, POSTHOG_DEFAULT_HOST, posthogAllowed, posthogOptions, posthogSettings, sanitizeEvent, scrolledPercent, visitorOptedOut } from "./posthog";
 
 const here = new URL("https://ambernotes.app/blog/claude-and-apple-notes");
 const link = (href: string, attrs: Record<string, string> = {}) => ({ tagName: "A", getAttribute: (n: string) => (n === "href" ? href : attrs[n] ?? null) });
@@ -15,7 +15,7 @@ describe("website PostHog", () => {
   });
 
   it("never loads on shared notes, connect, universal-link, report or download-redirect pages", () => {
-    for (const path of ["/n", "/n/abc123", "/connect", "/connect/done", "/connect-ai", "/open/connect", "/open/template/x", "/report/abc123", "/download/mac"]) {
+    for (const path of ["/n", "/n/abc123", "/connect", "/connect/done", "/connect-ai", "/open/connect", "/open/template/x", "/report/abc123", "/download/mac", "/reset-password", "/reset-password/done", "/account/reset"]) {
       expect(posthogAllowed(path), path).toBe(false);
     }
     expect(posthogAllowed(null)).toBe(false);
@@ -37,7 +37,10 @@ describe("website PostHog", () => {
     expect(o.respect_dnt).toBe(true);
     expect(o.autocapture).toMatchObject({ dom_event_allowlist: ["click"], element_allowlist: ["a", "button"] });
     expect(o.session_recording).toMatchObject({ maskAllInputs: true });
-    expect(o.capture_heatmaps).toBe(false);
+    expect(o.capture_heatmaps).toBe(true);
+    expect(o.rageclick).toBe(true);
+    expect(o.capture_dead_clicks).toBe(true);
+    expect(o.disable_session_recording).toBe(true);
     expect(o.disable_external_dependency_loading).toBe(true);
     expect(o.advanced_disable_flags).toBe(true);
   });
@@ -118,5 +121,53 @@ describe("website PostHog", () => {
     expect(newScrollMarks(60, sent)).toEqual([]);
     expect(newScrollMarks(100, sent)).toEqual([100]);
     expect(newScrollMarks(null, new Set())).toEqual([]);
+  });
+});
+
+describe("heatmaps, rage clicks and dead clicks", () => {
+  const point = (type: string) => ({ x: 10, y: 20, target_fixed: false, type });
+
+  it("are kept on the marketing pages only", () => {
+    for (const path of ["/", "/download", "/templates", "/templates/trip-plan", "/blog", "/blog/apple-notes-mcp", "/blog/category/guides", "/help", "/changelog", "/privacy-security"]) {
+      expect(heatmapsAllowed(path), path).toBe(true);
+    }
+    for (const path of ["/n/abc", "/connect", "/open/template/x", "/report/abc", "/reset-password", "/download/mac", "/privacy", "/terms", "/support", "/templates/x/y", "/nothing"]) {
+      expect(heatmapsAllowed(path), path).toBe(false);
+    }
+  });
+
+  it("send clicks from marketing pages only, without queries, and no pointer movement", () => {
+    const out = sanitizeEvent(event({
+      $current_url: "https://ambernotes.app/templates?category=work",
+      $heatmap_data: {
+        "https://ambernotes.app/templates?category=work#top": [point("click"), point("mousemove"), point("rageclick")],
+        "https://ambernotes.app/": [point("click")],
+        "https://ambernotes.app/n/abcdefghijklmnopqrstuvwx": [point("click")],
+        "https://ambernotes.app/terms": [point("click")],
+        "https://ambernotes.app/blog": [point("mousemove")],
+      },
+    }, { event: "$$heatmap" }));
+    expect(out?.properties.$heatmap_data).toEqual({
+      "https://ambernotes.app/templates": [point("click"), point("rageclick")],
+      "https://ambernotes.app/": [point("click")],
+    });
+  });
+
+  it("drop a heatmap batch with nothing left", () => {
+    expect(sanitizeEvent(event({ $current_url: "https://ambernotes.app/", $heatmap_data: { "https://ambernotes.app/privacy": [point("click")] } }, { event: "$$heatmap" }))).toBeNull();
+    expect(sanitizeEvent(event({ $current_url: "https://ambernotes.app/" }, { event: "$$heatmap" }))).toBeNull();
+  });
+
+  it("keep rage and dead clicks on marketing pages and drop them elsewhere", () => {
+    for (const name of ["$rageclick", "$dead_click"]) {
+      expect(sanitizeEvent(event({ $current_url: "https://ambernotes.app/download", $pathname: "/download" }, { event: name })), name).not.toBeNull();
+      expect(sanitizeEvent(event({ $current_url: "https://ambernotes.app/terms", $pathname: "/terms" }, { event: name })), name).toBeNull();
+      expect(sanitizeEvent(event({ $current_url: "https://ambernotes.app/n/abc", $pathname: "/n/abc" }, { event: name })), name).toBeNull();
+    }
+  });
+
+  it("leave ordinary events on other public pages alone", () => {
+    expect(sanitizeEvent(event({ $current_url: "https://ambernotes.app/terms", $pathname: "/terms" }))).not.toBeNull();
+    expect(sanitizeEvent(event({ $current_url: "https://ambernotes.app/terms" }, { event: "$autocapture" }))).not.toBeNull();
   });
 });
