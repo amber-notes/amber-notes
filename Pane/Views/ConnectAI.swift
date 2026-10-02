@@ -1415,7 +1415,7 @@ struct ConnectAISection: View {
         var hint: String {
             switch self {
             case .chatgpt: "Plugins → +"
-            case .claude: "Add custom connector"
+            case .claude: "Directory → Connect to Claude"
             case .claudeCode: "claude mcp add amber-notes"
             case .codex: "~/.codex/config.toml"
             case .incredible: "Apps → Amber Notes → Connect"
