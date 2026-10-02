@@ -89,7 +89,7 @@ export default function PrivacySecurity() {
             {WHO_CAN_SEE.map((i) => <li key={i.label}><strong>{i.label}</strong> {i.text}</li>)}
           </ul>
 
-          <h2 id="no-tracking">No ads, no tracking</h2>
+          <h2 id="no-tracking">No ads, no tracking in the app</h2>
           <p>
             There are no ads, and there never will be. The apps have no tracking, no third-party analytics and no crash-reporting tools.
             We never sell or share your data.

@@ -26,7 +26,7 @@ export const FAQ: QA[] = [
     "Only once you connect it and approve it on your iPhone or Mac. You choose read-only, or read and edit. While it's connected, it can read every note except locked ones: our server opens the notes it asks for in memory, during its requests. Every change an AI makes keeps the previous version, and you can disconnect any assistant in Settings at any time.",
   ], more: { href: "/blog/mcp-server", text: "How the Amber Notes MCP server works" } },
   { id: "free", q: "Is it free?", a: [
-    "Yes. Amber Notes is free, with no ads and no tracking. It's also open source, so anyone can read the code.",
+    "Yes. Amber Notes is free, with no ads and no tracking in the app. It's also open source, so anyone can read the code.",
   ] },
   { id: "devices", q: "Which devices does it work on?", a: [
     APP_STORE_LIVE ? "Mac (macOS 26 or later) and iPhone." : "Mac (macOS 26 or later) and iPhone. The iPhone app is coming to the App Store soon.",
