@@ -56,6 +56,8 @@ To turn PostHog off again: `vercel env rm NEXT_PUBLIC_POSTHOG_KEY production` an
 
 Interest in a platform is `platform_interest_clicked` over `platform_interest_shown`, broken down by `platform`. The site remembers a yes in the browser's localStorage (`amber.platform-interest` = `1`); PostHog itself still stores nothing.
 
+To see the site as another platform's visitor does, open `https://ambernotes.app/?as=windows` (or `android`, `linux`, `iphone`, `mac`). It holds for that browser tab (sessionStorage, `amber.platform-as`) until `?as=off` or the "Dev" pill's Reset. A preview sends neither platform interest event and never writes `amber.platform-interest`.
+
 A new named click: give the element `data-event="<name>"`, or add a host to `OUTBOUND` in `web/lib/posthog.ts`.
 
 ### The download funnel

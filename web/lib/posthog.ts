@@ -99,6 +99,16 @@ function withoutQuery(url: string): string {
 export const INTEREST_SHOWN = "platform_interest_shown";
 export const INTEREST_CLICKED = "platform_interest_clicked";
 
+/// <html>'s data-platform, and data-as when the site's owner is previewing another platform
+/// (?as=windows, lib/platform.ts). A preview is never a visitor, so it counts nothing.
+export type Visitor = { platform?: string; as?: string };
+
+/// "The ask was on the page", once per page view: only while it's visible to a real visitor.
+export function interestShown(visitor: Visitor, asking: boolean, path: string): SiteEvent | null {
+  if (!asking || !visitor.platform || visitor.as) return null;
+  return { event: INTEREST_SHOWN, properties: { platform: visitor.platform, path }, leaves: false };
+}
+
 export type SiteEvent = { event: string; properties: Record<string, string>; leaves: boolean };
 
 const OUTBOUND: [string, RegExp][] = [
@@ -110,12 +120,13 @@ const OUTBOUND: [string, RegExp][] = [
 
 /// The named event for a click on a link or button, or null for one we don't name. Only the page's
 /// path and where the link goes are sent. `leaves` is true when the click takes the visitor off the
-/// site, so the event goes out before the page unloads. `platform` is what lib/platform.ts put on
-/// <html>; only the platform interest button sends it.
-export function clickEvent(el: { tagName: string; getAttribute(name: string): string | null }, here: URL, platform?: string | null): SiteEvent | null {
+/// site, so the event goes out before the page unloads. `visitor` is what lib/platform.ts put on
+/// <html>; only the platform interest button sends the platform, and not in a preview.
+export function clickEvent(el: { tagName: string; getAttribute(name: string): string | null }, here: URL, visitor: Visitor = {}): SiteEvent | null {
   const path = here.pathname;
   const named = el.getAttribute("data-event");
-  if (named) return { event: named, properties: named === INTEREST_CLICKED && platform ? { platform, path } : { path }, leaves: false };
+  if (named === INTEREST_CLICKED) return visitor.as || !visitor.platform ? null : { event: named, properties: { platform: visitor.platform, path }, leaves: false };
+  if (named) return { event: named, properties: { path }, leaves: false };
   if (el.tagName.toLowerCase() !== "a") return null;
   const href = el.getAttribute("href");
   if (!href) return null;

@@ -3,6 +3,7 @@ import "./globals.css";
 import "./site.css";
 import SiteChrome from "./SiteChrome";
 import SiteAnalytics from "./SiteAnalytics";
+import PlatformPreview from "./PlatformPreview";
 import { themeScript } from "@/lib/theme";
 import { platformScript } from "@/lib/platform";
 import { latestVersion } from "@/lib/changelog";
@@ -53,6 +54,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body>
         <SiteChrome version={latestVersion()} stars={stats?.stars ?? null}>{children}</SiteChrome>
         <SiteAnalytics />
+        <PlatformPreview />
       </body>
     </html>
   );
