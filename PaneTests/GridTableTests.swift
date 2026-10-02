@@ -50,6 +50,12 @@ import Testing
         t.types = [.text, .choice(["Yes", "No"])]
         #expect(t.markdown.hasPrefix("<!-- pane-table: a=text; b=choice Yes|No -->"))
     }
+
+    @Test func handleLabelsDescribeRowAndColumnOptions() {
+        #expect(TableGridView.columnHandleLabel(header: "Hours", column: 0) == "Hours column options")
+        #expect(TableGridView.columnHandleLabel(header: "", column: 1) == "Column 2 options")
+        #expect(TableGridView.rowHandleLabel(row: 2) == "Row 3 options")
+    }
 }
 
 /// Column widths on a narrow screen (TestFlight 1.1.1 cut the Running log's fourth column on iPhone).

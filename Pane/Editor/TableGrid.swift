@@ -325,7 +325,7 @@ struct TableGridView: View {
             ZStack(alignment: .leading) {
                 Color.clear.frame(height: GridMetrics.handle)
                 if let f = focus, f.column < widths.count {
-                    handle(horizontal: true) { columnMenu(f.column) }
+                    handle(horizontal: true, label: columnHandleLabel(f.column)) { columnMenu(f.column) }
                         .offset(x: GridMetrics.handle + widths[..<f.column].reduce(0, +) + widths[f.column] / 2 - 14)
                 }
             }
@@ -334,7 +334,7 @@ struct TableGridView: View {
                 ZStack(alignment: .top) {
                     Color.clear.frame(width: GridMetrics.handle)
                     if let f = focus {
-                        handle(horizontal: false) { rowMenu(f.row) }
+                        handle(horizontal: false, label: rowHandleLabel(f.row)) { rowMenu(f.row) }
                             .offset(y: CGFloat(f.row) * GridMetrics.row + GridMetrics.row / 2 - 12)
                     }
                 }
@@ -396,6 +396,22 @@ struct TableGridView: View {
             step(from: f, by: press.modifiers.contains(.shift) ? -1 : 1, cols: cols)
             return .handled
         }
+    }
+
+    private func columnHandleLabel(_ c: Int) -> String {
+        Self.columnHandleLabel(header: draft.rows.first.flatMap { c < $0.count ? $0[c] : nil } ?? "", column: c)
+    }
+
+    static func columnHandleLabel(header: String, column: Int) -> String {
+        "\(header.isEmpty ? "Column \(column + 1)" : "\(header) column") options"
+    }
+
+    private func rowHandleLabel(_ r: Int) -> String {
+        Self.rowHandleLabel(row: r)
+    }
+
+    static func rowHandleLabel(row: Int) -> String {
+        "Row \(row + 1) options"
     }
 
     private func cellLabel(_ r: Int, _ c: Int) -> String {
@@ -599,7 +615,7 @@ struct TableGridView: View {
         go(GridCell(row: f.row + 1, column: f.column))
     }
 
-    private func handle(horizontal: Bool, @ViewBuilder menu: () -> some View) -> some View {
+    private func handle(horizontal: Bool, label: String, @ViewBuilder menu: () -> some View) -> some View {
         Menu { menu() } label: {
             Image(systemName: "ellipsis")
                 .rotationEffect(.degrees(horizontal ? 0 : 90))
@@ -612,6 +628,7 @@ struct TableGridView: View {
         .buttonStyle(.plain)
         .menuIndicator(.hidden)
         .fixedSize()
+        .accessibilityLabel(label)
     }
 
     @ViewBuilder
