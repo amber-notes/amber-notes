@@ -29,9 +29,9 @@ const headers = { "content-type": "application/json", "cache-control": "no-store
 const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers });
 
 Deno.serve(async (req) => {
-  await ready();
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: { ...headers, "access-control-allow-methods": "GET, OPTIONS" } });
   if (req.method !== "GET") return reply({ error: "method not allowed" }, 405);
+  await ready();
   const ip = clientAddress(req);
   if (!perIP.allow(await dailyHash(hashSecret(), ip))) return reply({ error: "slow down" }, 429);
 

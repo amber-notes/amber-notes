@@ -78,6 +78,17 @@ async function authenticate(sql: Sql, p: Presented, req: Request): Promise<Calle
  *  likely an old setup with the token in the address. */
 const TOKEN_IN_ADDRESS = "Tokens in the address aren't accepted. Put your token in an Authorization header instead (Amber Notes › Settings › Connect an AI).";
 
+/// Whether answering this request reads or writes the database. Discovery (the server card, the
+/// /.well-known/ documents), preflights and the answers that only say "sign in" or "use POST" don't,
+/// so they never wait for a connection and stay instant when the database is slow.
+export function needsDatabase(req: Request): boolean {
+  if (req.method === "OPTIONS") return false;
+  const path = subpath(req);
+  if (path === SERVER_CARD_PATH || path.startsWith("/.well-known/")) return false;
+  if (isOAuthPath(path)) return true;
+  return req.method === "POST" && path === "" && Boolean(tokenFrom(req));
+}
+
 export async function handleRequest(req: Request, sql: Sql): Promise<Response> {
   const path = subpath(req);
   if (path === SERVER_CARD_PATH && (req.method === "GET" || req.method === "HEAD")) return serverCardResponse();

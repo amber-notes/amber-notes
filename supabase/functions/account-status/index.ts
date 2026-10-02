@@ -31,8 +31,8 @@ const reply = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
 
 Deno.serve((req) => atLeast(FLOOR_MS, async () => {
-  await ready();
   if (req.method !== "POST") return reply({ error: "method not allowed" }, 405);
+  await ready();
   const ip = clientAddress(req);
   const ipKey = await hashKey(SALT, ip);
   if (!perMinute.allow(ipKey) || !perHour.allow(ipKey)) return reply({ error: "slow down" }, 429);

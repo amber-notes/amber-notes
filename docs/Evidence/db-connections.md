@@ -63,4 +63,8 @@ On production, the same script through the real transaction pooler, 40 clients e
 
 1. `supabase secrets set DB_POOLER_HOST=aws-1-eu-central-1.pooler.supabase.com --project-ref <ref>`
 2. Deploy the four functions.
-3. The log should say `{"event":"db","mode":"pooled","max":3}` for `mcp`. Then 40 calls to `/connect/status` in a row should all answer 200.
+3. The log should say `{"event":"db","mode":"pooled","count":3,"ssl":true}` for `mcp`. Then 40 calls to `/connect/status` in a row should all answer 200.
+
+## What the first deploy's log could not say
+
+The first version logged `mode` and `max`, which the log's allowlist of field names drops, so the line read `{"event":"db"}`. That it was pooled was confirmed another way: after six calls, every `postgres` connection in `pg_stat_activity` was the pooler's (application `Supavisor`) and none was a direct client. The line now uses fields the log keeps, and adds `ssl`.
