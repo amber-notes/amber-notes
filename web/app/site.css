@@ -17,6 +17,30 @@ html[data-theme="leaf"] {
   --amber: #f5a53a; --link: #f7b865; --mark: rgba(245, 165, 58, 0.32); --card: #3a2010;
   --wordmark: rgba(255, 200, 130, 0.06); --cta-bg: #fbeedd; --cta-ink: #2e180a; color-scheme: dark;
 }
+/* Pages with no fixed theme (shared notes and the report form) follow the visitor's system: the
+   same cream in light and the same leaf brown in dark, so they are the same product as the site. */
+html:not([data-theme]) {
+  --bg: #fff4e6; --ink: #2a1d10; --muted: #74604c; --soft: #f7e5cc; --line: rgba(80, 45, 10, 0.12);
+  --amber: #f0901a; --link: #a85700; --mark: rgba(240, 144, 26, 0.35); --card: #fffaf3;
+  --wordmark: rgba(120, 70, 20, 0.07); --cta-bg: #2a1d10; --cta-ink: #fff4e6;
+}
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme]) {
+    --bg: #2e180a; --ink: #fbeedd; --muted: #d9bf9f; --soft: #40240f; --line: rgba(255, 220, 170, 0.14);
+    --amber: #f5a53a; --link: #f7b865; --mark: rgba(245, 165, 58, 0.32); --card: #3a2010;
+    --wordmark: rgba(255, 200, 130, 0.06); --cta-bg: #fbeedd; --cta-ink: #2e180a;
+  }
+}
+/* What a form field is filled with, and the colour of an error, on each ground. */
+html[data-theme="cream"], html:not([data-theme]) { --field: #ffffff; --danger: #b3261e; --shade: 60, 30, 5; }
+html[data-theme="leaf"] { --field: #26140a; --danger: #ffb4a8; --shade: 10, 4, 0; }
+@media (prefers-color-scheme: dark) { html:not([data-theme]) { --field: #26140a; --danger: #ffb4a8; --shade: 10, 4, 0; } }
+html:not([data-theme]) body {
+  background: var(--bg); color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", system-ui, sans-serif;
+}
+html:not([data-theme]) ::selection { background: var(--mark); }
+
 html[data-theme] body {
   background: var(--bg); color: var(--ink);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", system-ui, sans-serif;

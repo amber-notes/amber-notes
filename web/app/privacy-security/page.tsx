@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import legal from "@/lib/legal.module.css";
+import { LongPage, SectionHeading } from "@/lib/LegalPage";
 import { pageMetadata } from "@/lib/site";
 import { AI_ACCESS, CAVEAT, COUNTS, ENCRYPTION, FACTS, LIMITS, LOGS, PRIVACY_PATH, READABLE, WHO_CAN_SEE } from "@/lib/privacy";
 import s from "./privacy.module.css";
@@ -18,6 +19,19 @@ export const metadata: Metadata = pageMetadata({
 const r = (i: number) => ({ "--i": i }) as React.CSSProperties;
 const GITHUB = "https://github.com/amber-notes/amber-notes";
 
+const SECTIONS = [
+  { id: "what-we-store", title: "What we store, and where" },
+  { id: "encryption", title: "What's encrypted" },
+  { id: "readable", title: "What stays readable to us" },
+  { id: "ai", title: "When you connect an AI" },
+  { id: "limits", title: "Limits" },
+  { id: "who-can-see", title: "Who can see what" },
+  { id: "no-tracking", title: "No ads, no tracking in the app" },
+  { id: "logs", title: "Every log, and how long it's kept" },
+  { id: "your-data", title: "Your data, your choice" },
+  { id: "open-source", title: "Open source, so you can check" },
+];
+
 const Shield = () => (
   <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden="true">
     <path d="M10 2 3.5 4.5v5c0 4 2.8 7 6.5 8.5 3.7-1.5 6.5-4.5 6.5-8.5v-5Z" /><path d="m7 10 2 2 4-4.5" strokeLinecap="round" />
@@ -26,13 +40,12 @@ const Shield = () => (
 
 export default function PrivacySecurity() {
   return (
-    <div className={legal.main}>
-      <div className={legal.col}>
-        <div className={`${legal.head} rise`} style={r(0)}>
-          <h1 className={legal.title}>Privacy & Security</h1>
-          <p className={legal.updated}>What we store, who can see it, and every log we keep. In plain words.</p>
-        </div>
-
+    <LongPage
+      title="Privacy & Security"
+      sub="What we store, who can see it, and every log we keep. In plain words."
+      sections={SECTIONS}
+      other={{ href: "/privacy", label: "Privacy Policy" }}
+      lead={<>
         <ul className={`${s.facts} rise`} style={r(1)}>
           {FACTS.map((f) => (
             <li key={f.title} className={s.fact}>
@@ -41,13 +54,13 @@ export default function PrivacySecurity() {
             </li>
           ))}
         </ul>
-
         <p className={`${s.caveat} rise`} style={r(2)}>
           {CAVEAT.text} <a href={CAVEAT.href}>{CAVEAT.link}</a>
         </p>
-
+      </>}
+    >
         <article className={`${legal.article} rise`} style={r(3)}>
-          <h2 id="what-we-store">What we store, and where</h2>
+          <SectionHeading id="what-we-store">What we store, and where</SectionHeading>
           <p>
             Your account (your email address, or Apple&apos;s relay address if you use Hide My Email), your notes, folders, files and
             earlier versions of each note as encrypted copies, your profile name and photo if you set them, your devices, and the AI apps
@@ -60,19 +73,19 @@ export default function PrivacySecurity() {
             is passed to Frankfurt before it&apos;s handled.
           </p>
 
-          <h2 id="encryption">What&apos;s encrypted</h2>
+          <SectionHeading id="encryption">{"What's encrypted"}</SectionHeading>
           <ul>
             {ENCRYPTION.items.map((i) => <li key={i.label}><strong>{i.label}</strong> {i.text}</li>)}
           </ul>
           <p>{ENCRYPTION.note}</p>
 
-          <h2 id="readable">What stays readable to us</h2>
+          <SectionHeading id="readable">What stays readable to us</SectionHeading>
           <p>To sync your notes and run your account, some details aren&apos;t encrypted:</p>
           <ul>
             {READABLE.map((t) => <li key={t}>{t.charAt(0).toUpperCase() + t.slice(1)}.</li>)}
           </ul>
 
-          <h2 id="ai">When you connect an AI</h2>
+          <SectionHeading id="ai">When you connect an AI</SectionHeading>
           <ul>
             {AI_ACCESS.map((i) => <li key={i.label}><strong>{i.label}</strong> {i.text}</li>)}
             <li>You choose <strong>Read Only</strong> or <strong>Read and Edit</strong> for each one.</li>
@@ -81,17 +94,17 @@ export default function PrivacySecurity() {
             <li>What an AI app reads becomes part of your conversation with it, and the company behind it handles that under its own privacy policy.</li>
           </ul>
 
-          <h2 id="limits">Limits</h2>
+          <SectionHeading id="limits">Limits</SectionHeading>
           <ul>
             {LIMITS.map((i) => <li key={i.label}><strong>{i.label}</strong> {i.text}</li>)}
           </ul>
 
-          <h2 id="who-can-see">Who can see what</h2>
+          <SectionHeading id="who-can-see">Who can see what</SectionHeading>
           <ul>
             {WHO_CAN_SEE.map((i) => <li key={i.label}><strong>{i.label}</strong> {i.text}</li>)}
           </ul>
 
-          <h2 id="no-tracking">No ads, no tracking in the app</h2>
+          <SectionHeading id="no-tracking">No ads, no tracking in the app</SectionHeading>
           <p>
             There are no ads, and there never will be. The apps have no tracking, no third-party analytics and no crash-reporting tools.
             We never sell or share your data.
@@ -107,25 +120,25 @@ export default function PrivacySecurity() {
             {COUNTS.map((c) => <li key={c}>{c.charAt(0).toUpperCase() + c.slice(1)}.</li>)}
           </ul>
 
-          <h2 id="logs">Every log, and how long it&apos;s kept</h2>
+          <SectionHeading id="logs">{"Every log, and how long it's kept"}</SectionHeading>
           <p>
             We don&apos;t write the text of your notes, email addresses, access tokens or IP addresses into any log of our own. Our hosts log
             the requests that reach them; we can&apos;t turn that off, but they keep it briefly.
           </p>
-          <table>
+          <div className="tableWrap"><table className={s.logs}>
             <thead><tr><th>Log</th><th>What&apos;s in it</th><th>Kept</th></tr></thead>
             <tbody>
               {LOGS.map((l) => (
                 <tr key={l.name}><td>{l.name}</td><td>{l.what}</td><td className={s.kept}>{l.kept}</td></tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
           <p>
             Our hosting plan keeps no backups of the database, so what you delete is gone. If that changes, a backup would hold only the
             encrypted copies and the locked copies of your key, for as long as this page and the privacy policy say.
           </p>
 
-          <h2 id="your-data">Your data, your choice</h2>
+          <SectionHeading id="your-data">Your data, your choice</SectionHeading>
           <ul>
             <li><strong>Export:</strong> Settings → Privacy &amp; Security → Export Your Notes makes a zip on your device with every note as Markdown in its folder, with its files. We can&apos;t read your notes, so the export can only be made there. For everything else we keep about you, write to us.</li>
             <li><strong>Delete:</strong> Settings → Delete Account deletes your account and everything in it from our server at once: notes, files, versions, AI connections, share links and usage counts.</li>
@@ -137,7 +150,7 @@ export default function PrivacySecurity() {
             </li>
           </ul>
 
-          <h2 id="open-source">Open source, so you can check</h2>
+          <SectionHeading id="open-source">Open source, so you can check</SectionHeading>
           <p>
             Everything above is in the code, and the code is on <a href={GITHUB} target="_blank" rel="noopener noreferrer">GitHub</a>:
             the apps, the server and this website. Found a security problem? Write to <a href="mailto:hello@ambernotes.app">hello@ambernotes.app</a>,
@@ -145,7 +158,6 @@ export default function PrivacySecurity() {
           </p>
           <p>The legal details are in the <a href="/privacy">privacy policy</a>.</p>
         </article>
-      </div>
-    </div>
+    </LongPage>
   );
 }

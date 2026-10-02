@@ -1,0 +1,61 @@
+/* A shared note in the browser (lib/NotePage.tsx). The page is the note, as in the app: the note's
+   own paper colours (app/globals.css), a quiet bar, and the site's cream (leaf brown in dark) only in
+   the one mention of Amber Notes after the note. */
+
+/* ── "Use this note", at the right of the bar ── */
+.use {
+  flex: none; display: inline-flex; align-items: center; min-height: 40px; padding: 0 16px; border-radius: 12px;
+  background: var(--cta-bg); color: var(--cta-ink); font-size: 15px; font-weight: 700; text-decoration: none; white-space: nowrap;
+  box-shadow: 0 8px 18px -10px rgba(var(--shade), 0.6);
+  /* a 40px button with a 44px target */
+  position: relative;
+}
+.use::after { content: ""; position: absolute; inset: -2px 0; }
+@media (hover: hover) { .use:hover { background: color-mix(in srgb, var(--cta-bg) 86%, var(--amber)); } }
+@media (prefers-reduced-motion: no-preference) {
+  .use { transition: transform 0.12s ease-out, background-color 0.15s ease-out; }
+  .use:active { transform: scale(0.97); }
+}
+.use:focus-visible, .parent:focus-visible, .foot a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+.avatar { flex: none; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 0.5px var(--line); }
+.initials { display: inline-flex; align-items: center; justify-content: center; font-weight: 700; letter-spacing: 0.02em; }
+
+/* The way back from a sub-note to the note it's in. */
+.parent { display: inline-flex; gap: 6px; align-items: center; min-height: 44px; border-radius: 8px; color: var(--link); font-size: 15px; font-weight: 600; text-decoration: none; overflow-wrap: anywhere; }
+@media (hover: hover) { .parent:hover { color: var(--ink); } }
+
+/* ── Page: the page is the note ── */
+.plain { --bg: var(--page); background: var(--page); color: var(--text); }
+.plain .use { background: var(--text); color: var(--page); box-shadow: none; }
+@media (hover: hover) { .plain .use:hover { background: color-mix(in srgb, var(--text) 82%, var(--accent)); } }
+.plain .parent { color: var(--accent-text); }
+.plainMain { flex: 1; width: 100%; max-width: 720px; margin: 0 auto; padding: 28px var(--gutter) 0; box-sizing: border-box; font: 17px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif; }
+.bigTitle { margin: 0; font-size: clamp(30px, 5vw, 40px); line-height: 1.1; font-weight: 800; letter-spacing: -0.025em; text-wrap: balance; overflow-wrap: anywhere; }
+.byline { display: flex; align-items: center; gap: 12px; margin: 16px 0 28px; padding-bottom: 20px; box-shadow: inset 0 -1px 0 var(--rule); min-width: 0; }
+.byline p { margin: 0; display: grid; min-width: 0; line-height: 1.3; }
+.bylineName { font-size: 15px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bylineName .sharerLabel { color: var(--secondary); font-weight: 400; }
+.bylineDate { color: var(--secondary); font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.plain .initials { background: var(--accent-soft); color: var(--accent-text); font-size: 13px; }
+
+/* ── The one mention of the app, after the note ── */
+.get { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; margin-top: 32px; padding: 16px 16px 16px 18px; border-radius: 20px; background: var(--soft); color: var(--ink); }
+.get img { border-radius: 22.5%; box-shadow: 0 0 0 0.5px var(--line), 0 6px 14px -8px rgba(150, 70, 0, 0.45); }
+.get p { margin: 0; display: grid; gap: 2px; font-size: 14.5px; line-height: 1.4; }
+.get strong { font-size: 16px; font-weight: 700; letter-spacing: -0.005em; }
+.get span { color: var(--muted); text-wrap: pretty; }
+.get a { width: auto; min-height: 44px; padding: 0 18px; border-radius: 12px; font-size: 15px; background: var(--card); box-shadow: 0 0 0 1px var(--line), 0 1px 2px rgba(var(--shade), 0.08); white-space: nowrap; }
+@media (max-width: 560px) {
+  .get { grid-template-columns: auto minmax(0, 1fr); padding: 16px; }
+  .get a { grid-column: 1 / -1; width: 100%; min-height: 48px; }
+}
+/* On the plain page the site's cream (leaf brown in dark) shows only here. */
+.plain .get { margin-top: 48px; }
+
+.foot { display: flex; justify-content: center; padding: 20px var(--gutter) 28px; }
+.foot a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 10px; color: var(--muted); font-size: 13.5px; font-weight: 600; text-decoration: none; }
+.plain .foot a { color: var(--secondary); }
+@media (hover: hover) { .foot a:hover { color: var(--ink); } .plain .foot a:hover { color: var(--text); } }
+/* The plain page's own ground, behind the whole window (the pages without a theme are cream otherwise). */
+:global(body):has(.plain) { background: var(--page); }

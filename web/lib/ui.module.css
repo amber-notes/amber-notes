@@ -1,0 +1,117 @@
+/* The functional pages' shared parts (lib/ui.tsx): the page shell and its quiet top bar, one card,
+   buttons and a button row, a form field, a status message, an empty or error state, and the foot.
+   Everything is drawn from the site's theme tokens (app/site.css), so a page looks right on cream,
+   on leaf brown, and on the pages that follow the visitor's system. */
+
+/* ── Page shell: the pages without the site's header and footer ── */
+.shell { min-height: 100dvh; display: flex; flex-direction: column; background: var(--bg); color: var(--ink); }
+
+/* The top bar: the logo on the left, at most one thing to do on the right. It stays in view. */
+.bar {
+  position: sticky; top: 0; z-index: 2; width: 100%;
+  background: color-mix(in srgb, var(--bg) 84%, transparent);
+  backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+.barRow { display: flex; align-items: center; justify-content: space-between; gap: 12px; max-width: 1240px; height: 64px; margin: 0 auto; padding: 0 var(--gutter); box-sizing: border-box; }
+.brand { flex: none; display: inline-flex; align-items: center; gap: 9px; min-height: 44px; border-radius: 12px; color: var(--ink); text-decoration: none; font-weight: 750; font-size: 17px; letter-spacing: -0.01em; white-space: nowrap; }
+.brand img { border-radius: 7px; box-shadow: 0 0 0 0.5px var(--line), 0 1px 2px rgba(var(--shade), 0.12); }
+.barEnd { display: flex; align-items: center; gap: 12px; min-width: 0; }
+@media (max-width: 360px) { .brand span { display: none; } } /* the narrowest phones: the logo alone */
+@media (max-width: 360px) { .brand { min-width: 44px; } }
+@media (hover: hover) { .brand:hover span { opacity: 0.75; } }
+@media (prefers-reduced-motion: no-preference) {
+  .brand { transition: transform 0.12s ease-out; }
+  .brand span { transition: opacity 0.15s ease-out; }
+  .brand:active { transform: scale(0.97); }
+}
+
+/* One card in the middle of the page. */
+.stage { flex: 1; width: 100%; display: grid; justify-items: center; align-content: start; gap: 24px; padding: clamp(12px, 7vh, 88px) var(--gutter) 24px; box-sizing: border-box; }
+/* Inside the site's header and footer the header already gives the top space. */
+.stageInSite { padding-top: clamp(12px, 6vh, 72px); padding-bottom: 0; }
+
+/* ── Card ── */
+.card {
+  width: min(460px, 100%); box-sizing: border-box; display: grid; gap: 14px; justify-items: center; text-align: center;
+  padding: 32px 28px 28px; border-radius: 28px; background: var(--card); color: var(--ink);
+  box-shadow: 0 0 0 1px var(--line), 0 1px 2px rgba(var(--shade), 0.06), 0 24px 48px -28px rgba(var(--shade), 0.45);
+}
+.cardWide { width: min(520px, 100%); }
+/* A form reads from the left edge. */
+.cardForm { justify-items: stretch; text-align: left; gap: 24px; }
+@media (max-width: 420px) { .card { padding: 26px 18px 20px; border-radius: 24px; } }
+.group { display: grid; gap: 10px; min-width: 0; } /* things that belong together: half the card's own gap */
+.mark { border-radius: 22.5%; box-shadow: 0 0 0 0.5px var(--line), 0 10px 20px -10px rgba(150, 70, 0, 0.45); margin-bottom: 4px; }
+
+/* ── Type ── */
+.title { margin: 0; font-size: 26px; line-height: 1.15; font-weight: 800; letter-spacing: -0.02em; text-wrap: balance; overflow-wrap: anywhere; }
+.lede { margin: 0; color: var(--muted); font-size: 16px; line-height: 1.45; text-wrap: pretty; overflow-wrap: anywhere; }
+.lede b { color: var(--ink); }
+.small { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.45; }
+.lede a, .small a, .link { color: var(--link); text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 45%, transparent); text-underline-offset: 3px; border-radius: 4px; }
+@media (hover: hover) { .lede a:hover, .small a:hover, .link:hover { color: var(--ink); } }
+
+/* ── Buttons ── */
+.primary, .secondary {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 50px; padding: 0 20px; box-sizing: border-box;
+  border: 0; border-radius: 14px; font: inherit; font-weight: 700; font-size: 16px; line-height: 1.2; text-decoration: none; cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.primary { background: var(--cta-bg); color: var(--cta-ink); box-shadow: 0 10px 22px -12px rgba(var(--shade), 0.6); }
+.secondary { background: var(--soft); color: var(--ink); }
+/* On a card the soft fill is a shade deeper, so the button still reads as one. */
+.card .secondary { background: color-mix(in srgb, var(--soft), var(--ink) 6%); }
+.secondary[data-done], .card .secondary[data-done] { background: color-mix(in srgb, var(--soft) 70%, var(--amber)); }
+@media (hover: hover) {
+  .primary:hover { background: color-mix(in srgb, var(--cta-bg) 86%, var(--amber)); }
+  .secondary:hover, .card .secondary:hover { background: color-mix(in srgb, var(--soft) 80%, var(--amber)); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .primary, .secondary { transition: transform 0.12s ease-out, background-color 0.15s ease-out; }
+  .primary:active, .secondary:active { transform: scale(0.97); }
+}
+/* A row of buttons: the thing to do first, anything else beside it; one column on a phone. */
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; width: 100%; }
+.actions > .primary, .actions > .secondary { width: auto; flex: 1 1 180px; }
+/* A text link that still takes a finger: the quiet way out beside a button. */
+.quiet { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 10px; border-radius: 10px; color: var(--muted); font-size: 15px; font-weight: 600; text-decoration: none; }
+@media (hover: hover) { .quiet:hover { color: var(--ink); background: var(--soft); } }
+@media (prefers-reduced-motion: no-preference) { .quiet { transition: color 0.15s ease-out, background-color 0.15s ease-out; } }
+
+/* ── Form field: the label always shows; an error sits under the field it is about ── */
+.field { display: grid; gap: 8px; min-width: 0; }
+.label { font-size: 15px; font-weight: 650; line-height: 1.3; }
+.optional { font-weight: 400; color: var(--muted); }
+.input {
+  width: 100%; min-height: 48px; padding: 12px 14px; box-sizing: border-box; border: 0; border-radius: 12px;
+  font: inherit; font-size: 16px; line-height: 1.4; background: var(--field); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); resize: vertical;
+}
+.input::placeholder { color: var(--muted); opacity: 0.75; }
+textarea.input { min-height: 132px; }
+.input[aria-invalid="true"] { box-shadow: inset 0 0 0 1.5px var(--danger); }
+.hint { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.4; }
+.error { margin: 0; color: var(--danger); font-size: 14px; font-weight: 600; line-height: 1.4; }
+@media (prefers-reduced-motion: no-preference) { .input { transition: box-shadow 0.15s ease-out; } }
+
+/* ── Status message: what just happened, in the card ── */
+.status { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; padding: 12px 14px; border-radius: 14px; background: var(--soft); text-align: left; font-size: 15px; line-height: 1.45; }
+.status svg { grid-row: span 2; margin-top: 2px; color: var(--link); }
+.status strong { font-weight: 700; }
+.status p { margin: 0; grid-column: 2; color: var(--muted); }
+.status[data-tone="warn"] { background: color-mix(in srgb, var(--amber) 18%, transparent); }
+/* The round sign above an outcome's title: a tick when it worked. */
+.sign { display: grid; place-items: center; width: 56px; height: 56px; margin-bottom: 4px; border-radius: 50%; background: color-mix(in srgb, var(--amber) 20%, transparent); color: var(--link); }
+
+/* ── Foot: the pages' last, quiet line ── */
+.foot { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 4px; padding: 24px var(--gutter) 28px; color: var(--muted); font-size: 13.5px; }
+.foot a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 10px; border-radius: 10px; color: var(--muted); font-weight: 600; text-decoration: none; }
+@media (hover: hover) { .foot a:hover { color: var(--ink); } }
+
+.brand:focus-visible, .primary:focus-visible, .secondary:focus-visible, .quiet:focus-visible, .foot a:focus-visible, .link:focus-visible,
+.lede a:focus-visible, .small a:focus-visible, .card summary:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.input:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+
+/* A form's fields, then its buttons twice as far away as the fields are from each other. */
+.form { display: grid; gap: 16px; min-width: 0; }
+.form > .actions { margin-top: 12px; }
+.cardForm .actions > .primary { flex: 0 1 auto; min-width: 168px; }
+@media (max-width: 480px) { .cardForm .actions > .primary { flex: 1 1 100%; } .cardForm .actions > .quiet { flex: 1 1 100%; } }

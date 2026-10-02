@@ -1,64 +1,37 @@
 /* The pages behind "Use template" and "Use this note" (/open/template, /open/copy) when the link
-   stays in the browser: one card in the site's cream theme. It tries the app first; the way to get
-   Amber Notes appears only if the app didn't open (data-state on .page, set by OpenApp). */
-.page { display: grid; justify-items: center; padding: 48px 16px 0; }
-@media (max-width: 600px) { .page { padding-top: 20px; } }
-.card {
-  width: min(460px, 100%); box-sizing: border-box; display: grid; gap: 14px; justify-items: center; text-align: center;
-  padding: 32px 28px 28px; border-radius: 28px; background: var(--card);
-  box-shadow: 0 0 0 1px var(--line), 0 1px 2px rgba(60, 30, 5, 0.06), 0 24px 48px -28px rgba(60, 30, 5, 0.45);
-}
-@media (max-width: 420px) { .card { padding: 26px 18px 20px; border-radius: 24px; } }
-.mark { border-radius: 22.5%; box-shadow: 0 0 0 0.5px var(--line), 0 10px 20px -10px rgba(150, 70, 0, 0.45); margin-bottom: 4px; }
-.title { margin: 0; font-size: 26px; line-height: 1.15; font-weight: 800; letter-spacing: -0.02em; text-wrap: balance; overflow-wrap: anywhere; }
-.lede { margin: 0; color: var(--muted); font-size: 16px; line-height: 1.45; text-wrap: pretty; overflow-wrap: anywhere; }
-.lede b { color: var(--ink); }
-.primary, .secondary {
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 50px; padding: 0 20px; box-sizing: border-box;
-  border: 0; border-radius: 14px; font: inherit; font-weight: 700; font-size: 16px; text-decoration: none; cursor: pointer;
-}
-.primary { background: var(--cta-bg); color: var(--cta-ink); box-shadow: 0 10px 22px -12px rgba(60, 30, 5, 0.6); }
-.secondary { background: var(--soft); color: var(--ink); }
-.secondary[data-done] { background: color-mix(in srgb, var(--soft) 70%, var(--amber)); }
-@media (hover: hover) {
-  .primary:hover { background: color-mix(in srgb, var(--cta-bg) 86%, var(--amber)); }
-  .secondary:hover { background: color-mix(in srgb, var(--soft) 80%, var(--amber)); }
-}
-@media (prefers-reduced-motion: no-preference) {
-  .primary, .secondary { transition: transform 0.12s ease-out, background-color 0.15s ease-out; }
-  .primary:active, .secondary:active { transform: scale(0.97); }
-}
-.primary:focus-visible, .secondary:focus-visible, .card a:focus-visible, .card summary:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+   stays in the browser: one card (lib/ui) in the site's cream theme. It tries the app first; the way
+   to get Amber Notes appears only if the app didn't open (data-state on .page, set by OpenApp). */
 .or { display: flex; align-items: center; gap: 12px; width: 100%; margin-top: 6px; color: var(--muted); font-size: 13px; font-weight: 600; }
 .or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
-.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; }
-@media (max-width: 480px) { .pair { grid-template-columns: 1fr; } }
-.small { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.45; }
-.small a { color: var(--link); }
 .md { width: 100%; text-align: left; }
-.md summary { min-height: 32px; display: inline-flex; align-items: center; color: var(--muted); font-size: 14px; font-weight: 600; cursor: pointer; border-radius: 6px; }
+.md summary { min-height: 44px; display: inline-flex; align-items: center; color: var(--muted); font-size: 14px; font-weight: 600; cursor: pointer; border-radius: 10px; }
+.md pre:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 .md pre { margin: 6px 0 0; max-height: 260px; overflow: auto; padding: 12px 14px; border-radius: 12px; background: var(--soft); font: 12.5px/1.55 ui-monospace, "SF Mono", Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
 
 /* The card's three states. Without JavaScript the page stays on "fallback". */
 .page[data-state="trying"] .whenOpened, .page[data-state="trying"] .whenFallback,
 .page[data-state="opened"] .whenTrying, .page[data-state="opened"] .whenFallback,
 .page[data-state="fallback"] .whenTrying, .page[data-state="fallback"] .whenOpened { display: none; }
-.page[data-state="trying"] .small:has(> a[href^="ambernotes:"]) { display: none; }
+.page[data-state="trying"] .again { display: none; }
 .status { display: inline-flex; align-items: center; gap: 10px; margin: 4px 0 0; color: var(--muted); font-size: 14.5px; font-weight: 600; }
 .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--amber); }
 @media (prefers-reduced-motion: no-preference) {
   .dot { animation: breathe 1.1s ease-in-out infinite alternate; }
-  .page[data-state="fallback"] .card > * { animation: settle 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+  .page[data-state="fallback"] .anim > * { animation: settle 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 }
 @keyframes breathe { from { opacity: 0.35; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
 @keyframes settle { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-.stack { display: grid; gap: 8px; width: 100%; justify-items: center; margin-top: 4px; }
+.stack { display: grid; gap: 8px; width: 100%; justify-items: center; margin-top: 10px; }
 .soon { margin: 0; color: var(--muted); font-size: 14.5px; font-weight: 600; }
-.alt { width: 100%; padding-top: 14px; box-shadow: inset 0 1px 0 var(--line); }
-.md[open] .secondary { margin-top: 10px; }
-.md .small { margin-top: 8px; }
-.alt .md summary { display: flex; justify-content: center; gap: 6px; width: 100%; min-height: 40px; color: var(--link); font-size: 15px; list-style: none; }
+/* The other way to use it: a group of its own, twice as far from the buttons as they are from each other. */
+.alt { width: 100%; margin-top: 6px; padding-top: 8px; box-shadow: inset 0 1px 0 var(--line); }
+.md[open] :global(button) { margin-top: 10px; }
+.md p { margin-top: 4px; }
+.alt .md summary { display: flex; justify-content: center; gap: 6px; width: 100%; min-height: 44px; color: var(--link); font-size: 15px; list-style: none; }
 .alt .md summary::-webkit-details-marker { display: none; }
 .alt .md summary::after { content: ""; width: 7px; height: 7px; margin-top: -3px; border: solid currentColor; border-width: 0 2px 2px 0; transform: rotate(45deg); align-self: center; }
 .alt .md[open] summary::after { margin-top: 3px; transform: rotate(-135deg); }
 @media (hover: hover) { .alt .md summary:hover { color: var(--ink); } }
+/* The quiet links under the card's buttons take a finger. */
+.again a, .back { display: inline-flex; align-items: center; min-height: 44px; }
+.again, .backRow { margin: -6px 0; }

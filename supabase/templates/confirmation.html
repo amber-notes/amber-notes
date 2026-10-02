@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>Confirm your email for Amber Notes</title>
+</head>
+<body style="margin:0;padding:0;background:#fff4e6;color:#2a1d10;-webkit-text-size-adjust:100%;">
+<!-- Sign-up confirmation. Supabase: Authentication > Emails > Confirm signup. Subject: "Confirm your email for Amber Notes". Sent only when "Confirm email" is on. -->
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">One step left: confirm that this is your email address.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fff4e6;">
+<tr><td align="center" style="padding:32px 16px 40px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:480px;">
+    <tr><td style="padding:0 4px 20px;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+        <td style="padding-right:10px;"><img src="https://ambernotes.app/mark-256.png" width="32" height="32" alt="" style="display:block;border:0;border-radius:8px;"></td>
+        <td style="font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:18px;font-weight:700;letter-spacing:-0.01em;color:#2a1d10;">Amber Notes</td>
+      </tr></table>
+    </td></tr>
+    <tr><td style="background:#fffaf3;border:1px solid #f0e2cf;border-radius:24px;padding:32px 28px 28px;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+      <h1 style="margin:0 0 10px;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:26px;line-height:1.15;font-weight:800;letter-spacing:-0.02em;color:#2a1d10;">Confirm your email</h1>
+      <p style="margin:0 0 24px;font-size:16px;line-height:1.5;color:#74604c;">You created an Amber Notes account with <b style="color:#2a1d10;">{{ .Email }}</b>. Confirm that the address is yours, then go back to the app.</p>
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 24px;"><tr>
+        <td align="center" bgcolor="#2a1d10" style="border-radius:14px;">
+          <a href="{{ .SiteURL }}/account/confirm?token_hash={{ .TokenHash }}&type=email" style="display:block;padding:15px 20px;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:16px;font-weight:700;line-height:1.25;color:#fff4e6;text-decoration:none;border-radius:14px;">Confirm email</a>
+        </td>
+      </tr></table>
+
+      <p style="margin:0;font-size:14px;line-height:1.5;color:#74604c;">If the button doesn&#39;t work, open this address in your browser:<br><a href="{{ .SiteURL }}/account/confirm?token_hash={{ .TokenHash }}&type=email" style="color:#a85700;word-break:break-all;">{{ .SiteURL }}/account/confirm?token_hash={{ .TokenHash }}&type=email</a></p>
+    </td></tr>
+    <tr><td style="padding:20px 4px 0;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.5;color:#74604c;">
+      You got this email because someone created an Amber Notes account with this address. If it wasn&#39;t you, ignore it: an account that isn&#39;t confirmed can&#39;t be used.<br>
+      Amber Notes, a notes app for iPhone and Mac. <a href="https://ambernotes.app/help" style="color:#74604c;">Help</a> · <a href="https://ambernotes.app/privacy" style="color:#74604c;">Privacy</a>
+    </td></tr>
+  </table>
+</td></tr>
+</table>
+</body>
+</html>

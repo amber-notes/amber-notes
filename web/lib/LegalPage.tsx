@@ -6,15 +6,22 @@ import remarkGfm from "remark-gfm";
 import remarkRehype from "remark-rehype";
 import rehypeStringify from "rehype-stringify";
 import { SKIP, visit } from "unist-util-visit";
+import { LegalToc, type Section } from "./LegalToc";
 import styles from "./legal.module.css";
 
 /// The privacy policy and terms: our own markdown (docs/*.md, copied to content/ on deploy),
-/// so unlike shared notes it isn't sanitized, and every section gets an anchor for the contents.
+/// so unlike shared notes it isn't sanitized, and every section gets an anchor for the contents
+/// and a "#" beside its heading that links to it.
 
-type Section = { id: string; title: string };
 type Legal = { title: string; updated: string | null; summary: string | null; html: string; sections: Section[] };
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+/// The "#" beside a section's heading: the link to that section, shown on hover and on focus.
+const anchor = (id: string, title: string) => ({
+  type: "element", tagName: "a", properties: { href: `#${id}`, className: ["anchor"], ariaLabel: `Link to the section “${title}”` },
+  children: [{ type: "text", value: "#" }],
+});
 
 function toHtml(markdown: string, sections?: Section[]): string {
   return String(
@@ -33,6 +40,7 @@ function toHtml(markdown: string, sections?: Section[]): string {
             const text = (node.children ?? []).map((c: any) => c.value ?? "").join("");
             const id = slug(text);
             node.properties = { ...node.properties, id };
+            node.children = [...(node.children ?? []), anchor(id, text)];
             sections.push({ id, title: text });
           }
           if (node.tagName === "a" && /^https?:/.test(String(node.properties?.href ?? ""))) {
@@ -71,39 +79,57 @@ export function readLegal(file: string): Legal {
   return { title, updated, summary, html, sections };
 }
 
-export function LegalPage({ doc, other }: { doc: Legal; other: { href: string; label: string } }) {
-  const r = (i: number) => ({ "--i": i }) as React.CSSProperties;
+/// A section heading with its id and "#" link, for long pages written as JSX (Privacy & Security).
+export function SectionHeading({ id, children }: { id: string; children: string }) {
   return (
-    <div className={styles.main}>
-      <div className={styles.col}>
-        <div className={`${styles.head} rise`} style={r(0)}>
-          <h1 className={styles.title}>{doc.title}</h1>
-          {doc.updated && <p className={styles.updated}>Last updated {doc.updated}</p>}
-        </div>
+    <h2 id={id}>
+      {children}
+      <a className="anchor" href={`#${id}`} aria-label={`Link to the section “${children}”`}>#</a>
+    </h2>
+  );
+}
 
-        {doc.summary && (
-          <section className={`${styles.summary} rise`} style={r(1)} aria-labelledby="short-version">
-            <h2 id="short-version" className={styles.summaryTitle}>The short version</h2>
-            <div className={styles.summaryBody} dangerouslySetInnerHTML={{ __html: doc.summary }} />
-          </section>
-        )}
-
-        <div className={`${styles.layout} rise`} style={r(2)}>
-          {/* Above the text on most screens; in the left margin on very wide ones, the text staying centred. */}
-          <nav className={styles.toc} aria-label="On this page">
-            <div className={styles.tocInner}>
-              <p className={styles.tocLabel}>On this page</p>
-              <ol>
-                {doc.sections.map((s) => (
-                  <li key={s.id}><a href={`#${s.id}`}>{s.title}</a></li>
-                ))}
-              </ol>
-              <p className={styles.tocOther}><a href={other.href}>{other.label} →</a></p>
-            </div>
-          </nav>
-          <article className={styles.article} dangerouslySetInnerHTML={{ __html: doc.html }} />
+/// The long text pages' layout: the contents in the left margin on wide screens (the blog's share
+/// rail is in the same place), the readable column, and on narrower screens the contents as one
+/// row above the text. `lead` is what sits between the title and the text.
+export function LongPage({ title, sub, lead, sections, other, children }: {
+  title: string; sub?: React.ReactNode; lead?: React.ReactNode; sections: Section[]; other?: { href: string; label: string }; children: React.ReactNode;
+}) {
+  return (
+    <div className={styles.grid}>
+      <aside className={styles.rail}>
+        <div className={styles.railInner}><LegalToc sections={sections} other={other} place="rail" /></div>
+      </aside>
+      <div className={styles.gridCol}>
+        <div className={`${styles.head} rise`} style={{ "--i": 0 } as React.CSSProperties}>
+          <h1 className={styles.title}>{title}</h1>
+          {sub && <p className={styles.updated}>{sub}</p>}
         </div>
+        {lead}
+        <div className={`${styles.foldRow} rise`} style={{ "--i": 2 } as React.CSSProperties}>
+          <LegalToc sections={sections} other={other} place="fold" />
+        </div>
+        {children}
       </div>
     </div>
+  );
+}
+
+export function LegalPage({ doc, other }: { doc: Legal; other: { href: string; label: string } }) {
+  return (
+    <LongPage
+      title={doc.title}
+      sub={doc.updated ? `Last updated ${doc.updated}` : undefined}
+      sections={doc.sections}
+      other={other}
+      lead={doc.summary && (
+        <section className={`${styles.summary} rise`} style={{ "--i": 1 } as React.CSSProperties} aria-labelledby="short-version">
+          <h2 id="short-version" className={styles.summaryTitle}>The short version</h2>
+          <div className={styles.summaryBody} dangerouslySetInnerHTML={{ __html: doc.summary }} />
+        </section>
+      )}
+    >
+      <article className={`${styles.article} rise`} style={{ "--i": 3 } as React.CSSProperties} dangerouslySetInnerHTML={{ __html: doc.html }} />
+    </LongPage>
   );
 }

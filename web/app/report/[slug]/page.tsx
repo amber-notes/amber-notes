@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { sendReport, type ReportOutcome } from "@/lib/report";
 import { validSlug } from "@/lib/shared";
+import { ButtonRow, Card, EmptyState, Field, Foot, Shell, Sign, Stage, Status, TopBar, ui } from "@/lib/ui";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Report a page · Amber Notes" };
@@ -24,48 +25,51 @@ export default async function Report({ params, searchParams }: {
   const { sent } = await searchParams;
   if (!validSlug(slug)) notFound();
   const outcome = sent && sent in MESSAGES ? MESSAGES[sent as ReportOutcome] : null;
+  // A report with nothing written is said under the field it's about; the other two that ask for
+  // another try are said above the form.
+  const noReason = sent === "missing_reason";
   return (
-    <div className="shell">
-      <header className="bar">
-        <Link href={`/n/${slug}`} className="brand" aria-label="Amber Notes">
-          <img src="/mark-256.png" alt="" width={22} height={22} />
-          <span>Amber Notes</span>
-        </Link>
-      </header>
-      <main className="page">
-        {outcome && (
-          <div className={`notice${outcome.again ? " notice-warn" : ""}`} role="status">
-            <h1 className="title">{outcome.title}</h1>
-            <p className="lede">{outcome.text}</p>
-          </div>
-        )}
-        {(!outcome || outcome.again) && (
-          <>
-            {!outcome && <h1 className="title">Report this page</h1>}
-            {!outcome && (
-              <p className="lede">
+    <Shell>
+      <TopBar href={`/n/${slug}`} />
+      <Stage>
+        {outcome && !outcome.again ? (
+          <EmptyState
+            title={outcome.title}
+            sign={<Sign kind={sent === "not_found" ? "gone" : "done"} />}
+            actions={<Link className={ui.secondary} href="/">Go to the home page</Link>}
+          >
+            <span role="status">{outcome.text}</span>
+          </EmptyState>
+        ) : (
+          <Card form wide>
+            <div className={ui.group}>
+              <h1 className={ui.title}>Report this page</h1>
+              <p className={ui.lede}>
                 Tell us what's wrong with this shared note. Pages that break the <Link href="/terms">terms of use</Link> are taken down.
               </p>
-            )}
-            <form className="report" action={sendReport}>
+            </div>
+            {outcome && !noReason && <Status title={outcome.title} tone="warn">{outcome.text}</Status>}
+            <form className={ui.form} action={sendReport}>
               <input type="hidden" name="slug" value={slug} />
-              <label className="field">
-                <span>What's wrong?</span>
-                <textarea name="reason" required maxLength={1000} rows={5} placeholder="For example: it contains someone's private information." />
-              </label>
-              <label className="field">
-                <span>Your email <span className="optional">(optional, if you want a reply)</span></span>
-                <input type="email" name="contact" maxLength={200} autoComplete="email" />
-              </label>
-              <button type="submit" className="button">Send Report</button>
+              <Field
+                multiline id="reason" name="reason" label="What's wrong?" required maxLength={1000} rows={5}
+                placeholder="For example: it contains someone's private information."
+                error={noReason && outcome ? `${outcome.title}. ${outcome.text}` : undefined}
+              />
+              <Field id="contact" name="contact" label="Your email" optional="(optional, if you want a reply)" type="email" maxLength={200} autoComplete="email" />
+              <ButtonRow>
+                <button type="submit" className={ui.primary}>Send report</button>
+                <Link className={ui.quiet} href={`/n/${slug}`}>Go back to the note</Link>
+              </ButtonRow>
             </form>
-          </>
+          </Card>
         )}
-        {outcome && !outcome.again && <p><Link href="/">Done</Link></p>}
-      </main>
-      <footer className="foot">
-        <Link href="/privacy">Privacy</Link> · <Link href="/terms">Terms</Link> · <Link href="/support">Support</Link>
-      </footer>
-    </div>
+      </Stage>
+      <Foot>
+        <Link href="/privacy">Privacy</Link>
+        <Link href="/terms">Terms</Link>
+        <Link href="/support">Support</Link>
+      </Foot>
+    </Shell>
   );
 }
