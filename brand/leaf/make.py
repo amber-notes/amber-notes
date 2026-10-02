@@ -10,7 +10,7 @@ Sources (from the round 1 "leaf page" icon, layered in Icon Composer):
 - render-1024.png: Apple's own render of it (ictool, iOS Default, converted to sRGB), rounded, with
   the system's lighting. Every "app icon" picture outside the app is cut from it.
 - AppIcon_1024.png: flat and opaque, unmasked, for places that mask it themselves.
-- leaf.png: the leaf alone. favicon-16/32/48.png: the leaf filling a rounded amber square.
+- leaf.png: the leaf alone; the favicons are drawn from it.
 """
 import os
 import shutil
@@ -44,17 +44,19 @@ def save(im, path, px=None, opaque=False):
     (im.convert("RGB") if opaque else im).save(out(path), optimize=True)
 
 
-def favicon(px):
-    """The leaf cropped to its bounds, filling 84% of a rounded amber square (as favicon-48 was drawn)."""
-    if px in (16, 32, 48):
-        return src(f"favicon-{px}.png")
+def favicon(px, fill=0.59):
+    """The leaf cropped to its bounds and centred on a rounded amber square. In browser tabs it fills
+    59% of the square, the same share as in the app icon; at 84% it nearly touched the edges. At 16px
+    it's a plain silhouette, which stays crisp where the lines would blur."""
     leaf = src("leaf.png")
     crop = leaf.crop(leaf.split()[3].getbbox())
     s = px * 16
     base = Image.new("RGBA", (s, s), (0, 0, 0, 0))
     ImageDraw.Draw(base).rounded_rectangle((0, 0, s - 1, s - 1), radius=int(s * 0.225), fill=AMBER + (255,))
-    k = 0.84 * s / max(crop.size)
+    k = fill * s / max(crop.size)
     c = crop.resize((int(crop.width * k), int(crop.height * k)), Image.LANCZOS)
+    if px <= 16:
+        c = Image.merge("RGBA", [Image.new("L", c.size, v) for v in (0xFF, 0xF4, 0xE6)] + [c.split()[3]])
     base.alpha_composite(c, ((s - c.width) // 2, (s - c.height) // 2))
     return base.resize((px, px), Image.LANCZOS)
 
@@ -122,7 +124,7 @@ def brand():
     for name in ("logo", "logo-dark"):
         save(flat, f"{plugin}/{name}.png", 512, opaque=True)
     for name in ("icon", "icon-dark"):
-        save(favicon(128), f"{plugin}/{name}.png")
+        save(favicon(128, fill=0.84), f"{plugin}/{name}.png")
     save(render, "docs/images/icon.png", 256)
 
 
