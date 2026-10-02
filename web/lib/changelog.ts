@@ -14,12 +14,30 @@ export type Release = {
   highlights?: string[];
 };
 
+const read = (file: string) => JSON.parse(fs.readFileSync(path.join(process.cwd(), "content", file), "utf8"));
+
+/// The releases people can get. An entry is written when its release is cut (the apps bundle the
+/// file), which can be days before the release is public, so the site shows nothing newer than the
+/// public Mac release (content/release.json, written by scripts/release-mac.sh).
 export function changelog(): Release[] {
   try {
-    return JSON.parse(fs.readFileSync(path.join(process.cwd(), "content", "changelog.json"), "utf8"));
+    const all: Release[] = read("changelog.json");
+    let live: string | null = null;
+    try { live = read("release.json").version ?? null; } catch { /* no public release yet: show all */ }
+    return released(all, live);
   } catch {
     return [];
   }
+}
+
+/// `releases` without those newer than `live`, the public version ("1.1.2" covers 1.1, not 1.2).
+export function released(releases: Release[], live: string | null): Release[] {
+  if (!live) return releases;
+  const [major, minor = 0] = live.split(".").map(Number);
+  return releases.filter((r) => {
+    const [a, b = 0] = r.version.split(".").map(Number);
+    return a < major || (a === major && b <= minor);
+  });
 }
 
 export function latestVersion(): string | null {
