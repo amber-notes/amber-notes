@@ -107,7 +107,7 @@
 
 /* ── A card, like the help page's: soft, 20 px corners; the picture runs to its edges, so the corners clip it ── */
 .card {
-  display: grid; align-content: start; gap: 14px; padding: 0 0 18px; border-radius: 20px; overflow: hidden;
+  display: grid; grid-template-rows: auto 1fr; gap: 14px; padding: 0 0 18px; border-radius: 20px; overflow: hidden;
   color: var(--ink); text-decoration: none; background: var(--soft);
 }
 @media (prefers-reduced-motion: no-preference) {
@@ -116,11 +116,17 @@
 }
 @media (hover: hover) { .card:hover { box-shadow: 0 0 0 1.5px var(--amber); } }
 .card:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
-.cardText { display: grid; gap: 6px; padding: 0 20px; }
+/* Cards in a row are equally tall; the text fills the card and the spare room goes above the
+   byline, so every card's author and date sit on the same line at its foot. */
+.cardText { display: grid; grid-template-rows: auto auto 1fr auto; gap: 6px; padding: 0 20px; }
 .label { font-size: 12px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--link); }
-.cardTitle { margin: 0; font-size: 19px; line-height: 1.2; font-weight: 750; letter-spacing: -0.015em; text-wrap: balance; }
+/* Titles fill the first line and never leave one word alone on the last. Balancing them into two
+   equal halves split names across lines ("Claude / Cowork", "to- / do list"). */
+.cardTitle { margin: 0; font-size: 19px; line-height: 1.2; font-weight: 750; letter-spacing: -0.015em; text-wrap: pretty; }
 .excerpt {
   color: var(--muted); font-size: 15px; line-height: 1.45;
-  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden;
+  align-self: start; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden;
 }
+/* One card to a row on phones, so nothing has to line up: the excerpt shows whole. */
+@media (max-width: 620px) { .excerpt { display: block; -webkit-line-clamp: none; line-clamp: none; } }
 .card .byline { margin-top: 6px; }

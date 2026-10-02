@@ -34,7 +34,7 @@ export default function Library({ items, cards, categories }: { items: Item[]; c
             <button key={c.anchor} type="button" className={s.chip} aria-pressed={category === c.anchor} onClick={() => update(category === c.anchor ? null : c.anchor)}
 >
               {c.swatch && <span className={s.swatch} aria-hidden="true">{c.swatch.map((g) => <i key={g} style={{ background: g }} />)}</span>}
-              {c.name}<span className={s.count}>{c.count}</span>
+              <span className={s.text}>{c.name}<span className={s.count}>{c.count}</span></span>
             </button>
           ))}
         </div>

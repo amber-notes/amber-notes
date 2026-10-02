@@ -18,6 +18,8 @@
 }
 .filters a[aria-current] { color: var(--cta-ink); background: var(--cta-bg); box-shadow: none; }
 .filters a[aria-current] .count { color: var(--cta-ink); opacity: 0.75; }
+/* On phones the chips are a little tighter, so two of the longer names share a row. */
+@media (max-width: 600px) { .filters a { padding: 0 12px; gap: 6px; } }
 @media (hover: hover) { .filters a:not([aria-current]):hover { color: var(--ink); } }
 .filters a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 @media (prefers-reduced-motion: no-preference) {
@@ -30,6 +32,9 @@
 .swatch i { width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 0 2px var(--bg); }
 .swatch i + i { margin-left: -4px; }
 .filters a[aria-current] .swatch i { box-shadow: 0 0 0 1.5px var(--cta-ink); }
+/* The name and its count sit on one baseline (the count is smaller, so centring it on its own
+   lifts it); the chip centres that pair, and the dots, as a whole. */
+.text { display: inline-flex; align-items: baseline; gap: 7px; }
 .count { font-size: 13px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
 
 .grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 44px 32px; }
