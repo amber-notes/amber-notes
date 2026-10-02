@@ -134,6 +134,11 @@ export function signInError(status: number, body: { error_code?: string } | null
 export const returnURL = (origin: string, id: string, recover = false) =>
   `${origin}/connect?request=${id.toLowerCase()}${recover ? "&recover=1" : ""}`;
 
+/// Whether the page offers Sign in with Apple. Off until Supabase has the web Services ID and its
+/// client secret (scripts/apple-web-secret.ts): until then Supabase answers the button with
+/// "Unsupported provider: missing OAuth secret". The page says what to do instead.
+export const APPLE_ON_WEB = false;
+
 /// Supabase's OAuth start for Apple, with a PKCE challenge.
 export function appleSignInURL(supabaseURL: string, returnTo: string, challenge: string): string {
   const u = new URL(`${supabaseURL.replace(/\/+$/, "")}/auth/v1/authorize`);
