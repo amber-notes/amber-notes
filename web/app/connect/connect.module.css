@@ -347,3 +347,11 @@
   .said { animation: reveal 0.22s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
   @keyframes reveal { from { opacity: 0; transform: translateY(-6px); } }
 }
+
+/* One focus: the frame names the host (the band, the panel), and the line under the heading says
+   what the app could do, as plain text. The name the app gives itself only on the wide panel, small. */
+.request { padding: 0; border-radius: 0; background: none; color: var(--muted); font-size: 16px; }
+.page[data-layout="panel"] .request { display: block; }
+.sideClaim { margin: 0; color: var(--muted); font-size: 13px; }
+@media (min-width: 861px) { .page[data-layout="panel"] .request { display: none; } }
+@media (max-width: 860px) { .sideClaim { display: none; } }

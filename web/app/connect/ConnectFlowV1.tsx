@@ -6,7 +6,7 @@ import {
   type ConnectLabel, type ConnectRequest,
 } from "@/lib/connect";
 import {
-  browserOn, leadFor, parseDevices, resendRequest, type Devices, type Lead,
+  browserOn, isMacBrowser, leadFor, parseDevices, resendRequest, type Devices, type Lead,
   browserFrom, newPageNonce, newPickup, pageCommit, pageNumber, parseKeyRow, recoveryApproval, RecoveryError, revealRequest, sealedDestination,
   statusRequest, statusStep, withCode,
   type AccountKey,
@@ -84,7 +84,10 @@ export default function ConnectFlowV1({ requestId, supabaseURL, anonKey, label, 
   const mcp = functionURL(supabaseURL);
   const base = supabaseURL.replace(/\/+$/, "");
 
+  // "Open it" for Amber Notes on this Mac, only on a Mac: known once the page runs.
+  const [onMac, setOnMac] = useState(false);
   useEffect(() => {
+    setOnMac(isMacBrowser(navigator.platform, navigator.userAgent, navigator.maxTouchPoints));
     setReady(true);
     if (authCode) void finishAppleSignIn(authCode);
     else if (authError) {
@@ -488,17 +491,17 @@ export default function ConnectFlowV1({ requestId, supabaseURL, anonKey, label, 
         <>
           <h1 className={styles.title}>{heading}</h1>
           <RequestLine to={to} claimed={label?.claimed_name} />
-          <p className={styles.lede}>Sign in, and Amber Notes asks you on your iPhone or Mac.</p>
           {APPLE_ON_WEB && <SignInButtons onApple={signInWithApple} busy={busy} />}
           <EmailFirst
             email={email} password={password} onEmail={setEmail} onPassword={setPassword} onApple={signInWithApple}
             busy={busy} ready={ready} failure={failure} onSubmit={submitSignIn}
           />
-          <div className={styles.quiet}>
-            <p>Amber Notes on this computer? <a href={universalLink(requestId)}>Open Amber Notes</a></p>
-            {!APPLE_ON_WEB && <p>{APPLE_INSTEAD}</p>}
-            <p>No account yet? <a href="/download">Get Amber Notes</a></p>
-          </div>
+          {(onMac || !APPLE_ON_WEB) && (
+            <div className={styles.quiet}>
+              {onMac && <p>Amber Notes on this Mac? <a href={universalLink(requestId)}>Open it</a></p>}
+              {!APPLE_ON_WEB && <p>{APPLE_INSTEAD}</p>}
+            </div>
+          )}
         </>
       )}
 

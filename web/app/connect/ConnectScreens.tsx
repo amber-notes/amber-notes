@@ -12,18 +12,12 @@ import styles from "./connect.module.css";
 /// While Sign in with Apple is off on the web (APPLE_ON_WEB), what Apple accounts do instead.
 export const APPLE_INSTEAD = "Signed up with Apple? Scan the code with your iPhone instead.";
 
-/// The question in your head, in one line: where access would go and what it could do. Where it
-/// goes, never who is asking as a fact: nothing here is verified, so the name is only what the app
-/// calls itself.
+/// What the app could do, in one line under the heading. Where access goes is the page's frame's
+/// to say (ConnectCard: the band on a phone, the panel beside the form on a wide screen), so it
+/// isn't repeated here. `to` and `claimed` stay for the callers; nothing here verifies the name.
 export function RequestLine({ to, claimed = null }: { to: string | null; claimed?: string | null }) {
   if (!to && !claimed) return null;
-  return (
-    <p className={styles.request}>
-      {to && <>Access goes to <b>{to}</b>. </>}
-      It can read your notes, and edit them if you say so.
-      {claimed && <span className={styles.requestName}>It calls itself &ldquo;{claimed}&rdquo;.</span>}
-    </p>
-  );
+  return <p className={styles.request}>It can read your notes, and edit them if you say so.</p>;
 }
 const AccessLine = RequestLine;
 

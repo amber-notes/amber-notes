@@ -104,9 +104,9 @@ describe("the signed-in screen", () => {
 });
 
 describe("the parts every connect screen shares", () => {
-  it("says where access goes and what it could do, and the name only as what the app calls itself", () => {
-    expect(text(renderToStaticMarkup(<RequestLine to="claude.ai" claimed="Claude" />)))
-      .toBe("Access goes to claude.ai . It can read your notes, and edit them if you say so. It calls itself “Claude”.");
+  it("says what the app could do, once, and leaves the host to the frame", () => {
+    // The frame names the host; the line says only what the app could do.
+    expect(text(renderToStaticMarkup(<RequestLine to="claude.ai" claimed="Claude" />))).toBe("It can read your notes, and edit them if you say so.");
     expect(renderToStaticMarkup(<RequestLine to={null} />)).toBe("");
   });
 
@@ -120,6 +120,7 @@ describe("the parts every connect screen shares", () => {
     const b = renderToStaticMarkup(<ConnectCard request label={label}><p>x</p></ConnectCard>);
     expect(text(b)).toContain("Access goes to claude.ai");
     expect(text(b)).toContain("Nothing is shared until you allow it.");
+    expect(text(b)).toContain("It calls itself “Claude”.");
     const a = renderToStaticMarkup(<ConnectCard label={label}><p>x</p></ConnectCard>);
     expect(a).not.toContain("<aside");
     for (const html of [a, b]) expect([...html.matchAll(/<img[^>]*src="([^"]+)"/g)].every((m) => m[1] === "/mark-256.png")).toBe(true);

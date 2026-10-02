@@ -20,6 +20,7 @@ export default function ConnectCard({ request = false, label = null, children }:
                 {to ? <><span className={styles.sideCaption}>Access goes to</span> <b className={styles.sideHost}>{to}</b></> : <b className={styles.sideHost}>An app wants to use your notes</b>}
               </p>
               <p className={styles.sideNote}>It can read your notes, and edit them if you say so. Nothing is shared until you allow it.</p>
+              {label?.claimed_name && <p className={styles.sideClaim}>It calls itself &ldquo;{label.claimed_name}&rdquo;.</p>}
             </div>
           </aside>
         )}

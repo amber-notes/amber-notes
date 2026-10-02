@@ -103,7 +103,9 @@ describe("the connect page's QR code", () => {
     await until(() => !!container.querySelector("svg path"));
 
     expect(heading()).toBe("Scan with your iPhone");
-    expect(container.textContent).toContain("Access goes to claude.ai.");
+    expect(container.textContent).toContain("It can read your notes, and edit them if you say so.");
+    // The frame names the host (ConnectCard); the screen doesn't repeat it.
+    expect(container.textContent).not.toContain("Access goes to");
     const scan = server.calls.find((c) => c.url === `${MCP}/connect/scan`)!;
     expect(new Headers(scan.init.headers).has("authorization")).toBe(false);
     expect(Object.keys(scan.body).sort()).toEqual(["browser_key", "from", "id", "pickup_hash", "scan_hash"]);

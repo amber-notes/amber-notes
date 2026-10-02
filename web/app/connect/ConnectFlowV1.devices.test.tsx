@@ -77,6 +77,22 @@ async function signIn(devices?: { iphone: boolean; mac: boolean }, on: { platfor
 const MAC = { platform: "MacIntel", ua: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15" };
 const signedOutAt = (calls: Call[]) => calls.findIndex((c) => c.url.startsWith(`${SUPABASE}/auth/v1/logout`));
 
+describe("the page public apps use, before signing in", () => {
+  it("shows \"Amber Notes on this Mac? Open it\" only on a Mac", async () => {
+    for (const [on, shown] of [[MAC, true], [{ platform: "Win32", ua: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" }, false], [{ platform: "iPhone", ua: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)" }, false]] as const) {
+      vi.spyOn(navigator, "platform", "get").mockReturnValue(on.platform);
+      vi.spyOn(navigator, "userAgent", "get").mockReturnValue(on.ua);
+      vi.spyOn(navigator, "maxTouchPoints", "get").mockReturnValue(0);
+      act(() => root.render(<ConnectFlowV1 key={on.platform} requestId={ID} supabaseURL={SUPABASE} anonKey="anon" label={null} recover={false} />));
+      await act(() => new Promise((r) => setTimeout(r, 0)));
+      const open = [...container.querySelectorAll("a")].find((a) => a.textContent === "Open it");
+      expect(Boolean(open), on.platform).toBe(shown);
+      if (open) expect(open.getAttribute("href")).toBe(`https://ambernotes.app/open/connect?request=${ID}`);
+      vi.restoreAllMocks();
+    }
+  });
+});
+
 describe("the page public apps use, once you've signed in", () => {
   it("says Open Amber Notes on your iPhone when the account has one, with no waiting line", async () => {
     const server = await signIn({ iphone: true, mac: false });

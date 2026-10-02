@@ -19,12 +19,17 @@ describe("the number on the connect page", () => {
 });
 
 describe("signing in on the connect page", () => {
-  it("offers Sign in with Apple and email, plus opening the app on this computer", () => {
+  it("offers Sign in with Apple and email first, and nothing else before the page knows it's on a Mac", () => {
     const html = renderToStaticMarkup(
       <ConnectFlow requestId="00000000-0000-4000-8000-000000000000" supabaseURL="https://ref.supabase.co" anonKey="anon" label={null} recover={false} />,
     );
     expect(html).toContain("Sign in with Apple");
+    expect(html).toContain(">Continue<");
     expect(html).not.toContain(APPLE_INSTEAD.replace(/'/g, "&#x27;"));
-    expect(html).toContain("/open/connect?request=00000000-0000-4000-8000-000000000000");
+    // One focus: no lede that the next screen repeats, no sign-up link, no "this computer" line yet.
+    expect(html).not.toContain("Sign in, and Amber Notes asks you");
+    expect(html).not.toContain("No account yet");
+    expect(html).not.toContain("/open/connect?request=");
   });
+
 });
