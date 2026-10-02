@@ -1,5 +1,6 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { connect, isConnectionError, readiness, target } from "./db.ts";
+import { SUPABASE_ROOT_CA_2021 } from "./supabase-ca.ts";
 
 const env = (vars: Record<string, string>) => ({ get: (k: string) => vars[k] });
 const REF = "abcdefghijklmnopqrst";
@@ -12,15 +13,16 @@ Deno.test("with the pooler's host, the functions connect through the transaction
   assertEquals(u.username, `postgres.${REF}`);
   // The password is the one in SUPABASE_DB_URL, still encoded.
   assertEquals(u.password, "p%40ss%2Fword");
-  assertEquals([t.pooled, t.ssl], [true, false]);
-  assertEquals(t.options, { max: 3, idle_timeout: 20, connect_timeout: 10, prepare: false });
+  // Encrypted and verified, whatever the direct address said: Supabase's root pinned, the host name checked.
+  assertEquals([t.pooled, t.ssl, t.tls], [true, true, "verify"]);
+  assertEquals(t.options, { max: 3, idle_timeout: 20, connect_timeout: 10, prepare: false, ssl: { ca: SUPABASE_ROOT_CA_2021, servername: "aws-1-eu-central-1.pooler.supabase.com" } });
   // The ref can come from the database host when SUPABASE_URL isn't a project address.
   assertEquals(target(env({ SUPABASE_DB_URL: DIRECT, SUPABASE_URL: "http://kong:8000", DB_POOLER_HOST: "aws-1-eu-central-1.pooler.supabase.com" })).pooled, true);
   assertEquals(target(env({ SUPABASE_DB_URL: DIRECT, DB_POOLER_HOST: "aws-0-us-east-1.pooler.supabase.com" }), 2).options.max, 2);
 });
 
 Deno.test("without it, or with anything that isn't a pooler host, one direct connection that lets go quickly", () => {
-  const direct = { url: DIRECT, pooled: false, ssl: false, options: { max: 1, idle_timeout: 5, connect_timeout: 10, prepare: false as const } };
+  const direct = { url: DIRECT, pooled: false, ssl: false, tls: "url" as const, options: { max: 1, idle_timeout: 5, connect_timeout: 10, prepare: false as const } };
   assertEquals(target(env({ SUPABASE_DB_URL: DIRECT })), direct);
   assertEquals(target(env({ SUPABASE_DB_URL: DIRECT, DB_POOLER_HOST: "  " })), direct);
   for (const bad of ["evil.example", "db.example.com:6543", "x.pooler.supabase.com.evil.example", "https://aws-1-eu-central-1.pooler.supabase.com", "a b.pooler.supabase.com"]) {
@@ -31,16 +33,35 @@ Deno.test("without it, or with anything that isn't a pooler host, one direct con
   assertEquals(target(env({ SUPABASE_DB_URL: local, SUPABASE_URL: "http://kong:8000", DB_POOLER_HOST: "aws-1-eu-central-1.pooler.supabase.com" })).url, local);
 });
 
-Deno.test("it says whether the address asks for TLS, for the pooled address too, and never changes it", () => {
+Deno.test("the pooled connection is verified TLS unless DB_POOLER_TLS says off, and there is no unverified middle", () => {
   const vars = { SUPABASE_URL: `https://${REF}.supabase.co`, DB_POOLER_HOST: "aws-1-eu-central-1.pooler.supabase.com" };
+  // Whatever sslmode the direct address carries, the pooled one doesn't keep it: the option decides.
+  for (const tail of ["", "?sslmode=require", "?sslmode=disable", "?ssl=true"]) {
+    const t = target(env({ ...vars, SUPABASE_DB_URL: DIRECT + tail }));
+    assertEquals([t.ssl, t.tls, new URL(t.url).search], [true, "verify", ""], tail);
+    assertEquals(t.options.ssl, { ca: SUPABASE_ROOT_CA_2021, servername: "aws-1-eu-central-1.pooler.supabase.com" });
+  }
+  const off = target(env({ ...vars, SUPABASE_DB_URL: DIRECT, DB_POOLER_TLS: " Off " }));
+  assertEquals([off.ssl, off.tls, off.options.ssl], [false, "off", false]);
+  // Anything else is not a way to turn verification off.
+  for (const other of ["no", "false", "0", "disable", "require", "verify", ""]) assertEquals(target(env({ ...vars, SUPABASE_DB_URL: DIRECT, DB_POOLER_TLS: other })).tls, "verify", other);
+});
+
+Deno.test("a direct address decides for itself: encrypted only when it carries sslmode=require or stricter", () => {
   for (const mode of ["require", "verify-ca", "verify-full"]) {
-    const t = target(env({ ...vars, SUPABASE_DB_URL: `${DIRECT}?sslmode=${mode}` }));
-    assertEquals([t.pooled, t.ssl, new URL(t.url).searchParams.get("sslmode")], [true, true, mode]);
+    const t = target(env({ SUPABASE_DB_URL: `${DIRECT}?sslmode=${mode}` }));
+    assertEquals([t.pooled, t.ssl, t.tls, t.url, "ssl" in t.options], [false, true, "url", `${DIRECT}?sslmode=${mode}`, false]);
   }
   for (const not of ["", "?sslmode=disable", "?sslmode=prefer", "?application_name=sslmode=require-ish"]) {
-    assertEquals(target(env({ ...vars, SUPABASE_DB_URL: DIRECT + not })).ssl, false, not);
+    assertEquals(target(env({ SUPABASE_DB_URL: DIRECT + not })).ssl, false, not);
   }
-  assertEquals(target(env({ SUPABASE_DB_URL: `${DIRECT}?sslmode=require` })).ssl, true);
+});
+
+Deno.test("the pinned root is Supabase Root 2021 CA, the certificate Supabase publishes", async () => {
+  const der = Uint8Array.from(atob(SUPABASE_ROOT_CA_2021.replace(/-----[A-Z ]+-----|\s/g, "")), (c) => c.charCodeAt(0));
+  const sha = [...new Uint8Array(await crypto.subtle.digest("SHA-256", der))].map((b) => b.toString(16).padStart(2, "0").toUpperCase()).join(":");
+  assertEquals(sha, "80:70:25:AD:50:D4:ED:21:9D:2C:9C:7D:29:9C:00:4F:82:4E:B0:0C:F7:F6:5A:FE:F6:07:D0:7B:72:E6:CA:FA");
+  assertEquals(SUPABASE_ROOT_CA_2021.match(/BEGIN CERTIFICATE/g)?.length, 1);
 });
 
 Deno.test("the log says how the database is reached, in fields the log keeps", () => {
@@ -54,11 +75,11 @@ Deno.test("the log says how the database is reached, in fields the log keeps", (
     console.log = real;
   }
   assertEquals(seen.map((s) => JSON.parse(s)), [
-    { event: "db", mode: "pooled", count: 3, ssl: true },
-    { event: "db", mode: "direct", count: 1, ssl: false },
+    { event: "db", mode: "pooled", count: 3, ssl: true, tls: "verify" },
+    { event: "db", mode: "direct", count: 1, ssl: false, tls: "url" },
   ]);
-  // Never the address.
-  assert(!seen.join("").includes("supabase.co") && !seen.join("").includes("pooler"));
+  // Never the address or the certificate.
+  assert(!seen.join("").includes("supabase.co") && !seen.join("").includes("pooler") && !seen.join("").includes("CERTIFICATE"));
 });
 
 Deno.test("a refused connection is told apart from a query that failed", () => {
