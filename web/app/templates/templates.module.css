@@ -38,6 +38,8 @@
 }
 .chip[aria-pressed="true"] { color: var(--ink); background: var(--soft); box-shadow: none; }
 .chip:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+/* Never a layer of the filter motion: the pick moves in the page at the click (lib/filter-transition.ts). */
+.filterRow, .chip { view-transition-name: none; }
 @media (hover: hover) { .chip:hover { color: var(--ink); } }
 @media (prefers-reduced-motion: no-preference) {
   /* The pick moves in one step (lib/filter-transition.ts); only the press animates. */

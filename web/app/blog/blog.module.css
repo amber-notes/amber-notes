@@ -36,6 +36,8 @@
 @media (max-width: 600px) { .filters a { padding: 0 12px; gap: 6px; } }
 @media (hover: hover) { .filters a:not([aria-current]):hover { color: var(--ink); } }
 .filters a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+/* Never a layer of the filter motion: the pick moves in the page at the click (lib/filter-transition.ts). */
+.filters, .filters a { view-transition-name: none; }
 @media (prefers-reduced-motion: no-preference) {
   /* The pick moves in one step (lib/filter-transition.ts); only the press animates. */
   .filters a { transition: transform 0.12s ease-out; }
