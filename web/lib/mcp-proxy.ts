@@ -22,7 +22,10 @@ export function allowedPath(rawPath: string): boolean {
 /// Where a request to the MCP host goes: the function, with the same path and query.
 export function upstream(supabaseURL: string, pathname: string, search: string): URL {
   const path = pathname === "/" ? "" : pathname;
-  return new URL(`${supabaseURL.replace(/\/+$/, "")}/functions/v1/mcp${path}${search}`);
+  const to = new URL(`${supabaseURL.replace(/\/+$/, "")}/functions/v1/mcp${path}${search}`);
+  // Where the function runs is ours to say (x-region below), never the caller's.
+  for (const key of [...to.searchParams.keys()]) if (key.toLowerCase() === "forcefunctionregion") to.searchParams.delete(key);
+  return to;
 }
 
 /// What an MCP client or the consent page needs the server to see. Cookies, forwarding headers

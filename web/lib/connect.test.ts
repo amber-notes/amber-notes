@@ -160,6 +160,9 @@ describe("where the site sends function calls", () => {
     expect(upstreamHeaders(asked, "secret", "eu-central-1").get("x-region")).toBe("eu-central-1");
     // No home region set: nothing is asked for, and the caller's own x-region still doesn't pass.
     expect(upstreamHeaders(asked, "secret").has("x-region")).toBe(false);
+    // Nor as a query parameter: it's dropped on the way to the function, the rest of the query kept.
+    expect(upstream("https://ref.supabase.co", "/connect/request", "?id=1&forceFunctionRegion=us-east-1").toString()).toBe("https://ref.supabase.co/functions/v1/mcp/connect/request?id=1");
+    expect(upstream("https://ref.supabase.co", "/", "?ForceFunctionRegion=us-east-1").toString()).toBe("https://ref.supabase.co/functions/v1/mcp");
   });
 });
 

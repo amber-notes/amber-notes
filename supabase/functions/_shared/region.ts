@@ -12,9 +12,11 @@
 //
 // The relay vouches for the caller's address with MCP_PROXY_SECRET, the same way the site's proxy
 // does, so rate limits still count the real caller; without that secret nothing is relayed. A
-// request that already came from a relay is never relayed again. If the home region can't be
-// reached, the request is answered where it is, and the log says so ("relay_failed"): better an
-// answer than none, and it shows up.
+// request that already came from a relay (it says so, under the same secret) is never relayed again.
+//
+// When home can't be reached, a read (GET, HEAD) is answered where it landed and the log says
+// "relay_failed". Anything else gets a 502 and the caller tries again: once a write has been sent,
+// home may have run it, and running it here as well would do it twice.
 import { clientAddress } from "./client.ts";
 import { errorKind, log } from "./log.ts";
 
@@ -47,6 +49,13 @@ function equal(a: string, b: string) {
   return diff === 0;
 }
 
+/// Whether a relay sent this request: it carries the mark and the secret. The mark alone is
+/// anyone's to send, and would keep a request out of the home region.
+export function fromRelay(req: Request, env: Env): boolean {
+  const secret = env.get("MCP_PROXY_SECRET") ?? "";
+  return req.headers.has(RELAY_HEADER) && secret !== "" && equal(req.headers.get("x-mcp-proxy-secret") ?? "", secret);
+}
+
 /// Whether this request should be handed to the home region: there is one, this isn't it, the
 /// secret that carries the caller's address is set, and the request didn't come from a relay.
 /// Preflights are answered where they are: they carry nothing.
@@ -54,20 +63,23 @@ export function shouldRelay(req: Request, env: Env): boolean {
   const home = homeRegion(env), at = here(env);
   if (!home || !at || at === home) return false;
   if (!env.get("MCP_PROXY_SECRET") || !env.get("SUPABASE_URL")) return false;
-  if (req.headers.has(RELAY_HEADER) || req.method === "OPTIONS") return false;
+  if (fromRelay(req, env) || req.method === "OPTIONS") return false;
   return true;
 }
 
 /// The same request at the function's public address: /functions/v1/<name> and whatever followed
-/// the name, with the query.
+/// the name, with the query. Without forceFunctionRegion: where the relayed request runs is the
+/// relay's to say (x-region), never the caller's.
 export function homeURL(req: Request, name: string, supabaseURL: string): string {
   const u = new URL(req.url);
   const rest = u.pathname.replace(/^\/functions\/v1/, "").replace(new RegExp(`^/${name}(?=/|$)`), "");
+  for (const key of [...u.searchParams.keys()]) if (key.toLowerCase() === "forcefunctionregion") u.searchParams.delete(key);
   return `${supabaseURL.replace(/\/+$/, "")}/functions/v1/${name}${rest}${u.search}`;
 }
 
-// Never copied: the connection's own headers, and addresses only a proxy in front may state.
-const DROP = new Set(["host", "connection", "content-length", "transfer-encoding", "keep-alive", "upgrade", "te", "expect",
+// Never copied: the connection's own headers (accept-encoding too, so the runtime asks home only
+// for encodings it decodes itself), and addresses only a proxy in front may state.
+const DROP = new Set(["host", "connection", "content-length", "transfer-encoding", "keep-alive", "upgrade", "te", "expect", "accept-encoding",
   "x-region", "x-forwarded-for", "x-forwarded-host", "x-forwarded-proto", "x-forwarded-port", "x-real-ip", "forwarded", "cf-connecting-ip", "cf-ray", "cf-ipcountry", "cdn-loop"]);
 
 /// The headers the home region gets: the caller's own, the region asked for, and the caller's
@@ -83,39 +95,50 @@ export function relayHeaders(req: Request, env: Env): Headers {
     out.set("x-mcp-proxy-secret", secret);
   }
   out.set("x-region", homeRegion(env)!);
+  // Ours to set: whatever the caller sent under this name is replaced.
   out.set(RELAY_HEADER, here(env) ?? "1");
   return out;
 }
 
-/// Hands the request to the home region when it should be, and gives its answer; null when this
-/// isolate should answer itself (it is home, relaying is off, or home couldn't be reached). The
-/// body is read first, so a request that couldn't be relayed can still be answered here: `again`
-/// is that request, to use instead of the original.
+const RETRY = "Couldn't reach Amber Notes just now. Try again.";
+
+/// Hands the request to the home region when it should be, and gives its answer. `again` means
+/// this isolate should answer itself: it is home, relaying is off, or home couldn't be reached for
+/// a read. A write is never run here after it was sent home: home may have run it, so the caller
+/// gets a 502 and tries again. Whatever home's side did answer is passed back as it is.
 export async function relay(req: Request, name: string, env: Env = Deno.env, send: Fetch = fetch): Promise<{ response: Response } | { again: Request }> {
   if (!shouldRelay(req, env)) return { again: req };
-  const body = req.method === "GET" || req.method === "HEAD" ? undefined : await req.arrayBuffer();
-  const again = () => new Request(req.url, { method: req.method, headers: req.headers, body });
+  const read = req.method === "GET" || req.method === "HEAD";
+  const body = read ? undefined : await req.arrayBuffer();
+  const at = here(env) ?? "";
   const started = Date.now();
+  const unreachable = (fields: Record<string, unknown>): { response: Response } | { again: Request } => {
+    log("relay_failed", { where: at, method: req.method, ...fields });
+    if (read) return { again: new Request(req.url, { method: req.method, headers: req.headers }) };
+    return { response: new Response(JSON.stringify({ error: RETRY }), { status: 502, headers: { "content-type": "application/json", "cache-control": "no-store", "retry-after": "2", [RELAY_HEADER]: at } }) };
+  };
+  let up: Response;
   try {
-    const up = await send(homeURL(req, name, env.get("SUPABASE_URL")!), {
+    up = await send(homeURL(req, name, env.get("SUPABASE_URL")!), {
       method: req.method, headers: relayHeaders(req, env), body, redirect: "manual", signal: AbortSignal.timeout(120_000),
     });
-    // Home didn't run it (the gateway refused, or sent it somewhere else): answer here instead.
-    const ran = (up.headers.get(REGION_HEADER) ?? "").toLowerCase();
-    if (ran !== homeRegion(env)) {
-      await up.body?.cancel();
-      log("relay_failed", { where: here(env) ?? "", status: up.status });
-      return { again: again() };
-    }
-    const headers = new Headers(up.headers);
-    for (const h of ["content-encoding", "content-length", "transfer-encoding", "connection"]) headers.delete(h);
-    headers.set(RELAY_HEADER, here(env) ?? "1");
-    log("relay", { where: here(env) ?? "", status: up.status, ms: Date.now() - started });
-    return { response: new Response(up.body, { status: up.status, statusText: up.statusText, headers }) };
   } catch (e) {
-    log("relay_failed", { where: here(env) ?? "", ...errorKind(e) });
-    return { again: again() };
+    return unreachable(errorKind(e));
   }
+  const ran = (up.headers.get(REGION_HEADER) ?? "").toLowerCase();
+  // No function answered (the gateway did, with an error): a read can still be answered here.
+  if (!ran && up.status >= 500 && read) {
+    await up.body?.cancel();
+    return unreachable({ status: up.status });
+  }
+  const headers = new Headers(up.headers);
+  for (const h of ["content-encoding", "content-length", "transfer-encoding", "connection"]) headers.delete(h);
+  headers.set(RELAY_HEADER, at);
+  // Anything else is the answer: from home, or, if it says another region or none, from wherever
+  // it did run, which the log records as a failure to get home.
+  if (ran === homeRegion(env)) log("relay", { where: at, status: up.status, ms: Date.now() - started });
+  else log("relay_failed", { where: at, method: req.method, status: up.status });
+  return { response: new Response(up.body, { status: up.status, statusText: up.statusText, headers }) };
 }
 
 /// The answer with the region that did the work on it.
