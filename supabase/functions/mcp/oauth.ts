@@ -369,10 +369,10 @@ async function register(req: Request, sql: Sql): Promise<Response> {
   const cleaned = cleanName(String(body.client_name ?? ""));
   const name = cleaned && (!claimsATrustedName(cleaned) || uris.some((u) => verifiedAI(u))) ? cleaned : displayName(cleaned || "app", uris[0]);
   const id = randomToken("amb_client_").slice(0, 43);
-  // Registration is open by design, so clients that never got an approval are forgotten
-  // after a day, and a flood of fresh ones (many addresses at once) is turned away.
-  await sql`delete from public.oauth_clients c where c.created_at < now() - interval '1 day'
-            and not exists (select 1 from public.mcp_tokens t where t.client_id = c.id)`;
+  // Registration is open by design, so a flood of fresh clients (many addresses at once) is turned
+  // away. Clients cache their client_id and come back with it, sometimes much later, so one is only
+  // forgotten once it has no connection and nothing happened on it for a long while.
+  await forgetIdleClients(sql);
   const [{ recent }] = await sql<{ recent: number }[]>`select count(*)::int recent from public.oauth_clients where created_at > now() - interval '1 hour'`;
   if (recent >= 2000) return oauthError("slow_down", "Too many registrations right now. Try again later.", 429);
   await sql`insert into public.oauth_clients (id, client_name, redirect_uris) values (${id}, ${name}, ${uris})`;
@@ -389,13 +389,25 @@ async function register(req: Request, sql: Sql): Promise<Response> {
   }, 201);
 }
 
+/// How long a client with no connection is kept after it registered or last started a sign-in.
+export const IDLE_CLIENT_DAYS = 90;
+
+/// Forgets clients that have no connection and saw no registration or /authorize for IDLE_CLIENT_DAYS.
+export async function forgetIdleClients(sql: Sql): Promise<void> {
+  await sql`delete from public.oauth_clients c
+            where coalesce(c.last_used_at, c.created_at) < now() - make_interval(days => ${IDLE_CLIENT_DAYS})
+            and not exists (select 1 from public.mcp_tokens t where t.client_id = c.id)`;
+}
+
 // MARK: Authorization
 
 async function authorize(req: Request, sql: Sql, base: string): Promise<Response> {
   const q = req.method === "POST" ? await formOrJson(req) : Object.fromEntries(new URL(req.url).searchParams);
   if (await limited(sql, req, "authorize")) return problem("too_many");
   const [client] = await sql<{ id: string; redirect_uris: string[] }[]>`select id, redirect_uris from public.oauth_clients where id = ${q.client_id ?? ""}`;
+  // An unknown client gets our page, never a redirect (RFC 6749 4.1.2.1): its redirect_uri is unverified.
   if (!client) return problem("unknown_app");
+  await sql`update public.oauth_clients set last_used_at = now() where id = ${client.id}`;
   const redirect = q.redirect_uri ?? (client.redirect_uris.length === 1 ? client.redirect_uris[0] : "");
   if (!redirect || !redirectMatches(client.redirect_uris, redirect)) return problem("wrong_return");
   // Nothing is sent back to a client nobody has approved yet: a bad request ends on our own page,

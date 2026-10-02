@@ -232,6 +232,47 @@ Deno.test("a bad /authorize ends on our own page, never at the client's address"
   assertEquals(onOurPage(await q({ client_id: "amb_client_nope" })), "unknown_app");
 });
 
+Deno.test("a client that registered days ago and never connected can still sign in", async () => {
+  // Clients cache their client_id (Glama registered once, came back two days later).
+  const { pg, sql } = await db();
+  const clientId = await register(sql, "proxy");
+  await pg.query(`update public.oauth_clients set created_at = now() - interval '2 days' where id = $1`, [clientId]);
+  await register(sql, "proxy");
+  const res = await authorize(sql, "proxy", clientId, (await pkce()).challenge);
+  assertMatch(new URL(res.headers.get("location")!).searchParams.get("request") ?? "", /^[0-9a-f-]{36}$/);
+});
+
+Deno.test("/authorize stamps the client as used", async () => {
+  const { pg, sql } = await db();
+  const clientId = await register(sql, "proxy");
+  const before = await pg.query<{ last_used_at: Date | null }>(`select last_used_at from public.oauth_clients where id = $1`, [clientId]);
+  assertEquals(before.rows[0].last_used_at, null);
+  await authorize(sql, "proxy", clientId, (await pkce()).challenge);
+  const after = await pg.query<{ last_used_at: Date | null }>(`select last_used_at from public.oauth_clients where id = $1`, [clientId]);
+  assert(after.rows[0].last_used_at, "last_used_at is set");
+});
+
+Deno.test("a registration forgets only clients with no connection and 90 idle days", async () => {
+  const { pg, sql } = await db();
+  const { clientId: connected } = await connect(sql, pg, "proxy");
+  const idle = await register(sql, "proxy");
+  const usedLately = await register(sql, "proxy");
+  const youngish = await register(sql, "proxy");
+  const age = (id: string, created: string, used: string | null) =>
+    pg.query(`update public.oauth_clients set created_at = now() - $2::interval, last_used_at = now() - $3::interval where id = $1`, [id, created, used]);
+  await age(connected, "200 days", "200 days");
+  await age(idle, "91 days", null);
+  await age(usedLately, "200 days", "89 days");
+  await age(youngish, "89 days", null);
+  await register(sql, "proxy");
+  const left = (await pg.query<{ id: string }>(`select id from public.oauth_clients`)).rows.map((r) => r.id);
+  assert(!left.includes(idle), "an idle client with no connection is forgotten");
+  for (const kept of [connected, usedLately, youngish]) assert(left.includes(kept), `${kept} is kept`);
+  // The forgotten one now ends on our page.
+  const res = await authorize(sql, "proxy", idle, (await pkce()).challenge);
+  assertEquals(new URL(res.headers.get("location")!).searchParams.get("problem"), "unknown_app");
+});
+
 Deno.test("full flow through mcp.ambernotes.app: iss, code, token, and the token works at both addresses", async () => {
   const { sql, pg } = await db();
   const { clientId, verifier, back, me } = await connect(sql, pg, "proxy");

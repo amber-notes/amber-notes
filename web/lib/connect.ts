@@ -89,7 +89,8 @@ export async function fetchLabel(functionBase: string, id: string, headers: Head
 /// get the general message; nothing from the address is ever shown.
 export function problemText(code: string | undefined): string {
   switch (code) {
-    case "unknown_app": return "Amber Notes doesn't know this app. Remove the connector and add it again.";
+    case "unknown_app":
+      return "Amber Notes doesn't know this app's connection anymore. In Claude, remove the Amber Notes connector under Settings → Connectors and add it again. In ChatGPT, delete the Amber Notes app under Settings → Apps and add it again. In any other app, remove the server and add https://mcp.ambernotes.app again.";
     case "wrong_return": return "The app's return address doesn't match what it registered. Remove the connector and add it again.";
     case "too_many": return "Too many attempts. Wait a few minutes, then start connecting again.";
     case "pkce": case "unsupported": case "wrong_server":
