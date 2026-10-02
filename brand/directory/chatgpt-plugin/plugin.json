@@ -86,7 +86,7 @@
               "prompt": "What's the weather in Lisbon this weekend?"
             },
             {
-              "description": "Booking travel is outside what Amber Notes does. Expected: ChatGPT says it can't book flights. It may offer to add a reminder to the Lisbon checklist, but changes nothing unless asked.",
+              "description": "Booking travel is outside what Amber Notes does. Expected: ChatGPT handles the request with its own abilities (for example asks for the departure airport, or says it can't book flights) and does not use Amber Notes to do it. It may offer to add a reminder to the Lisbon checklist, but changes no note unless asked.",
               "prompt": "Book me a flight to Lisbon for May 12."
             },
             {
