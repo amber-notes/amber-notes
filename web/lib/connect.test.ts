@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ALLOW_HEADING, appleSignInURL, appLink, destination, fetchLabel, functionURL, parseLabel, pkcePair, problemText, returnURL, scanFragment, signInError, startsWithWrite, universalLink, validRequest } from "./connect";
+import { ALLOW_HEADING, appleSignInURL, appLink, destination, fetchLabel, functionURL, parseLabel, pkcePair, problemText, qrConnectLive, returnURL, scanFragment, signInError, startsWithWrite, universalLink, validRequest } from "./connect";
 import { allowedPath, upstream, upstreamHeaders } from "./mcp-proxy";
 
 const ID = "5a0f6c1e-2b1d-4c36-9e0a-6b6f0c1a2b3c";
@@ -44,6 +44,8 @@ describe("the connect page", () => {
   it("comes back from Sign in with Apple to the same request, and to the recovery key when asked", () => {
     expect(returnURL("https://ambernotes.app", ID.toUpperCase())).toBe(`https://ambernotes.app/connect?request=${ID}`);
     expect(returnURL("https://ambernotes.app", ID, true)).toBe(`https://ambernotes.app/connect?request=${ID}&recover=1`);
+    expect(returnURL("https://ambernotes.app", ID, false, true)).toBe(`https://ambernotes.app/connect?request=${ID}&qr=1`);
+    expect(returnURL("https://ambernotes.app", ID, true, true)).toBe(`https://ambernotes.app/connect?request=${ID}&recover=1&qr=1`);
     const u = new URL(appleSignInURL("https://ref.supabase.co/", returnURL("https://ambernotes.app", ID, true), "chal"));
     expect(u.origin + u.pathname).toBe("https://ref.supabase.co/auth/v1/authorize");
     expect(u.searchParams.get("provider")).toBe("apple");
@@ -141,11 +143,25 @@ describe("the mcp.ambernotes.app proxy", () => {
   });
 
   it("serves only the server's own paths, nothing encoded", () => {
-    for (const ok of ["/", "/register", "/authorize", "/token", "/revoke", "/connect/request", "/connect/label", "/connect/ask", "/connect/status", "/connect/nonce", "/connect/reveal", "/connect/decide", "/connect/release",
+    for (const ok of ["/", "/register", "/authorize", "/token", "/revoke", "/connect/request", "/connect/label", "/connect/ask", "/connect/scan", "/connect/status", "/connect/nonce", "/connect/reveal", "/connect/decide", "/connect/release",
       "/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/mcp", "/.well-known/oauth-authorization-server",
       "/.well-known/openid-configuration", "/.well-known/mcp/server-card.json"]) expect(allowedPath(ok), ok).toBe(true);
     for (const bad of ["/account", "/..%2faccount", "/authorize%2f..%2f..%2faccount", "/%5c..%5caccount", "/authorize\\..\\account",
-      "/../share-files", "/.well-known/../../account", "/connect/decide/x", "/connect/label/x", "/connect/status/x", "/connect/asks", "/connect/reveal/x", "/connect/nonces", "/connect%2freveal", "/connect%2fask", "/connect/labels", "/register/", "/%2e%2e/account", "/.env"]) expect(allowedPath(bad), bad).toBe(false);
+      "/../share-files", "/.well-known/../../account", "/connect/decide/x", "/connect/label/x", "/connect/status/x", "/connect/asks", "/connect/scans", "/connect/scan/x", "/connect/reveal/x", "/connect/nonces", "/connect%2freveal", "/connect%2fask", "/connect/labels", "/register/", "/%2e%2e/account", "/.env"]) expect(allowedPath(bad), bad).toBe(false);
+  });
+});
+
+describe("which connect page shows", () => {
+  it("is the QR page only once the public release can scan it", () => {
+    for (const older of ["1.0", "1.1", "1.1.2"]) expect(qrConnectLive(older), older).toBe(false);
+    for (const newer of ["1.2", "1.2.1", "1.10", "2.0"]) expect(qrConnectLive(newer), newer).toBe(true);
+    expect(qrConnectLive(null)).toBe(false);
+  });
+
+  it("shows the QR page early with ?qr=1, and with nothing else", () => {
+    expect(qrConnectLive("1.1.2", "1")).toBe(true);
+    expect(qrConnectLive(null, "1")).toBe(true);
+    for (const other of ["0", "true", "", "11"]) expect(qrConnectLive("1.1.2", other), other).toBe(false);
   });
 });
 

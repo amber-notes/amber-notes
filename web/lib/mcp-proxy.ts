@@ -5,7 +5,7 @@ export const MCP_HOST = new URL(MCP_URL).host;
 
 /// The only paths the server has. Anything else, and anything encoded that could walk out of the
 /// function's path (%2f, %5c, backslashes, dots), never reaches Supabase.
-const PATHS = /^\/(?:|register|authorize|token|revoke|connect\/(?:request|label|ask|status|nonce|reveal|decide|release)|\.well-known\/(?:oauth-protected-resource|oauth-authorization-server|openid-configuration)(?:\/[A-Za-z0-9_-]+)?|\.well-known\/mcp\/server-card\.json)$/;
+const PATHS = /^\/(?:|register|authorize|token|revoke|connect\/(?:request|label|ask|scan|status|nonce|reveal|decide|release)|\.well-known\/(?:oauth-protected-resource|oauth-authorization-server|openid-configuration)(?:\/[A-Za-z0-9_-]+)?|\.well-known\/mcp\/server-card\.json)$/;
 
 /// What the site serves itself on the MCP host, the same file as on ambernotes.app: the favicon
 /// Claude shows next to the server, and OpenAI's domain challenge (app/.well-known/).
