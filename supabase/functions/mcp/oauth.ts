@@ -225,7 +225,12 @@ export const KNOWN_CALLBACKS: Record<string, "ChatGPT" | "Claude"> = {
   "https://claude.com/api/mcp/auth_callback": "Claude",
 };
 
-export const verifiedAI = (redirectURI: string): "ChatGPT" | "Claude" | null => KNOWN_CALLBACKS[redirectURI] ?? null;
+/// ChatGPT's per-connector callback, used when a server doesn't send `iss` (this one does, so it's a
+/// fallback): https://developers.openai.com/apps-sdk/build/auth
+const CHATGPT_CONNECTOR_CALLBACK = /^https:\/\/chatgpt\.com\/connector\/oauth\/[A-Za-z0-9_-]{1,128}$/;
+
+export const verifiedAI = (redirectURI: string): "ChatGPT" | "Claude" | null =>
+  KNOWN_CALLBACKS[redirectURI] ?? (CHATGPT_CONNECTOR_CALLBACK.test(redirectURI) ? "ChatGPT" : null);
 
 // Latin look-alikes from other scripts, so "Сlaude" (Cyrillic С) still reads as Claude.
 const LOOKALIKES: Record<string, string> = {

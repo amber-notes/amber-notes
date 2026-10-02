@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ALLOW_HEADING, appleSignInURL, appLink, destination, fetchLabel, functionURL, parseLabel, pkcePair, problemText, returnURL, signInError, universalLink, validRequest } from "./connect";
+import { ALLOW_HEADING, appleSignInURL, appLink, destination, fetchLabel, functionURL, parseLabel, pkcePair, problemText, returnURL, signInError, startsWithWrite, universalLink, validRequest } from "./connect";
 import { allowedPath, upstream, upstreamHeaders } from "./mcp-proxy";
 
 const ID = "5a0f6c1e-2b1d-4c36-9e0a-6b6f0c1a2b3c";
@@ -18,6 +18,11 @@ describe("the connect page", () => {
   it("opens the app with the universal link, and the app's own scheme as the fallback", () => {
     expect(universalLink(ID.toUpperCase())).toBe(`https://ambernotes.app/open/connect?request=${ID}`);
     expect(appLink(ID.toUpperCase())).toBe(`ambernotes://connect?request=${ID}`);
+  });
+
+  it("starts at the access the app asked for, not at Read only", () => {
+    expect(startsWithWrite({ wants_write: true })).toBe(true);
+    expect(startsWithWrite({ wants_write: false })).toBe(false);
   });
 
   it("never makes an app's name the title", () => {

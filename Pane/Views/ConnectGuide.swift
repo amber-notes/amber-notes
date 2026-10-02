@@ -407,7 +407,7 @@ enum IncredibleConnect {
     static let olderVersion = "If Amber Notes isn't in Apps, add it as your own MCP server: choose Add it here at the bottom of Apps (or Add another MCP server), paste the address, choose Continue, then Sign in. After you choose Allow, choose Add server."
 
     /// What Amber Notes shows when Incredible asks, since it can't name Incredible for sure.
-    static let consentNote = "Amber Notes asks to allow an app on this computer that calls itself \u{201C}incredible\u{201D}. It can't prove which app that is, so it starts at Read Only. Pick Read and Edit if Incredible should change notes, then choose Allow."
+    static let consentNote = "Amber Notes asks to allow an app on this computer that calls itself \u{201C}incredible\u{201D}. It can't prove which app that is, so only allow it if you just chose Connect. Pick Read Only if Incredible should only look things up, then choose Allow."
 
     /// The newest sign-in that went back to an app on the person's own computer since the guide
     /// opened. That's where Incredible's answer goes; the name it registered decides nothing.
