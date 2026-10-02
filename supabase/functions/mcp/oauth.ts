@@ -92,7 +92,7 @@ export function subpath(req: Request): string {
 }
 
 export function isOAuthPath(p: string) {
-  return p.startsWith("/.well-known/") || ["/register", "/authorize", "/token", "/revoke", "/connect/request", "/connect/label", "/connect/ask", "/connect/status", "/connect/nonce", "/connect/reveal", "/connect/decide", "/connect/release"].includes(p);
+  return p.startsWith("/.well-known/") || ["/register", "/authorize", "/token", "/revoke", "/connect/request", "/connect/label", "/connect/ask", "/connect/scan", "/connect/status", "/connect/nonce", "/connect/reveal", "/connect/decide", "/connect/release"].includes(p);
 }
 
 const json = (body: unknown, status = 200, headers: Record<string, string> = {}) =>
@@ -342,6 +342,7 @@ export async function handleOAuth(req: Request, sql: Sql, path: string): Promise
       case "/connect/request": return await describeRequest(req, sql);
       case "/connect/label": return req.method === "GET" ? await label(req, sql) : json({ error: "method_not_allowed" }, 405);
       case "/connect/ask": return req.method === "POST" ? await ask(req, sql) : json({ error: "method_not_allowed" }, 405);
+      case "/connect/scan": return req.method === "POST" ? await scanAsk(req, sql) : json({ error: "method_not_allowed" }, 405);
       case "/connect/status": return req.method === "POST" ? await status(req, sql) : json({ error: "method_not_allowed" }, 405);
       case "/connect/nonce": return req.method === "POST" ? await deviceNonce(req, sql) : json({ error: "method_not_allowed" }, 405);
       case "/connect/reveal": return req.method === "POST" ? await reveal(req, sql) : json({ error: "method_not_allowed" }, 405);
@@ -523,10 +524,14 @@ async function describeRequest(req: Request, sql: Sql): Promise<Response> {
   });
 }
 
-async function askedFrom(sql: Sql, id: string): Promise<{ asked: boolean; started_at?: Date; started_from?: string }> {
-  const [a] = await sql<{ created_at: Date; started_from: string }[]>`
-    select created_at, started_from from public.connect_asks where request_id = ${id}`;
-  return a ? { asked: true, started_at: a.created_at, started_from: a.started_from } : { asked: false };
+async function askedFrom(sql: Sql, id: string): Promise<{ asked: boolean; started_at?: Date; started_from?: string; scan?: boolean; browser_key?: string }> {
+  const [a] = await sql<{ created_at: Date; started_from: string; browser_key: string; scan: boolean }[]>`
+    select created_at, started_from, browser_key, scan_hash is not null as scan from public.connect_asks where request_id = ${id}`;
+  if (!a) return { asked: false };
+  // A page that shows a QR code: the device that scanned it checks this key against the key's
+  // hash in the code, then seals the authorization code to it.
+  const scan = a.scan ? { scan: true, browser_key: a.browser_key } : {};
+  return { asked: true, started_at: a.created_at, started_from: a.started_from, ...scan };
 }
 
 // MARK: Approving from your devices, for a browser anywhere
@@ -568,10 +573,10 @@ async function ask(req: Request, sql: Sql): Promise<Response> {
   const [row] = await sql<{ expires_at: Date }[]>`
     insert into public.connect_asks (request_id, user_id, browser_key, started_from, expires_at, pickup_hash, match_commit)
     values (${r.id}, ${user}, ${key}, ${from}, ${r.expires_at}, ${pickupHash}, ${commit})
-    on conflict (request_id) do update set browser_key = excluded.browser_key, started_from = excluded.started_from,
+    on conflict (request_id) do update set user_id = excluded.user_id, browser_key = excluded.browser_key, started_from = excluded.started_from,
       pickup_hash = excluded.pickup_hash, match_commit = excluded.match_commit, device_nonce = null, page_nonce = null,
       created_at = now()
-      where connect_asks.answered_at is null and connect_asks.user_id = ${user}
+      where connect_asks.answered_at is null and (connect_asks.user_id is null or connect_asks.user_id = ${user})
     returning expires_at`;
   if (!row) return json({ error: EXPIRED }, 404);
   // The push only wakes the account's devices; it doesn't hold up the page.
@@ -579,6 +584,38 @@ async function ask(req: Request, sql: Sql): Promise<Response> {
   const edge = (globalThis as { EdgeRuntime?: { waitUntil(p: Promise<unknown>): void } }).EdgeRuntime;
   if (edge) edge.waitUntil(notified); else await notified;
   return json({ asked: true, expires_at: row.expires_at });
+}
+
+/// The page shows a QR code instead of signing in: POST {id, browser_key, pickup_hash, scan_hash, from},
+/// no session. The code holds the request, a one-time scan secret and the SHA-256 of the page's
+/// key; the server keeps only the secret's SHA-256. The device that scans it signs the request as
+/// its own, checks the page's key against the code, and answers with the secret (/connect/decide),
+/// which works once and only until the request expires. Nobody is notified: scanning is the ask.
+/// A reloaded page sends a new key and secret, which replace the old ones until a device answers.
+async function scanAsk(req: Request, sql: Sql): Promise<Response> {
+  if (!allowedOrigin(req)) return json({ error: "Not allowed from this site." }, 403);
+  if (await limited(sql, req, "request")) return json({ error: "Too many attempts. Wait a few minutes and try again." }, 429);
+  const body = await req.json().catch(() => ({})) as { id?: string; browser_key?: unknown; from?: unknown; pickup_hash?: unknown; scan_hash?: unknown };
+  const key = typeof body.browser_key === "string" ? body.browser_key : "";
+  if (!RAW_P256.test(key) || atob(key).charCodeAt(0) !== 4) return json({ error: "Reload this page and try again." }, 400);
+  const pickupHash = typeof body.pickup_hash === "string" ? body.pickup_hash : "";
+  const scanHash = typeof body.scan_hash === "string" ? body.scan_hash : "";
+  if (!HEX64.test(pickupHash) || !HEX64.test(scanHash) || pickupHash === scanHash) return json({ error: "Reload this page and try again." }, 400);
+  const from = cleanName(typeof body.from === "string" ? body.from : "").slice(0, 60) || "a web browser";
+  const r = await pending(sql, String(body.id ?? ""));
+  if (!r) return json({ error: EXPIRED }, 404);
+  // The account that answers is whoever scans; until then the ask belongs to nobody, and no
+  // device sees it. A page that signed in for a notification keeps its account and number.
+  const [row] = await sql<{ expires_at: Date }[]>`
+    insert into public.connect_asks (request_id, user_id, browser_key, started_from, expires_at, pickup_hash, scan_hash)
+    values (${r.id}, null, ${key}, ${from}, ${r.expires_at}, ${pickupHash}, ${scanHash})
+    on conflict (request_id) do update set browser_key = excluded.browser_key, started_from = excluded.started_from,
+      pickup_hash = excluded.pickup_hash, scan_hash = excluded.scan_hash, user_id = null, match_commit = null,
+      device_nonce = null, page_nonce = null, created_at = now()
+      where connect_asks.answered_at is null
+    returning expires_at`;
+  if (!row) return json({ error: EXPIRED }, 404);
+  return json({ scan: true, expires_at: row.expires_at });
 }
 
 const BLOCKED = "Connecting AIs is paused for an hour on this account because a wrong number was typed. If that wasn't you, change your password.";
@@ -736,6 +773,7 @@ async function label(req: Request, sql: Sql): Promise<Response> {
 }
 
 const CHANGED = "This request changed. Start connecting again from the other app.";
+const SCAN_CHANGED = "This code changed on your computer. Scan it again.";
 
 /// Allow or deny, from the app. The app shows the exact return address from /connect/request and
 /// sends it back, so what the person approved is where the code goes. Allow creates the grant and
@@ -751,7 +789,7 @@ async function decide(req: Request, sql: Sql): Promise<Response> {
   const user = await sessionUser(req);
   if (!user) return json({ error: "Sign in to Amber Notes first." }, 401);
   if (await limited(sql, req, "decide")) return json({ error: "Too many attempts." }, 429);
-  const body = await req.json().catch(() => ({})) as { id?: string; allow?: boolean; write?: boolean; redirect_uri?: unknown; code_hash?: unknown; code_wrap?: unknown; handoff?: unknown; wrong_number?: unknown };
+  const body = await req.json().catch(() => ({})) as { id?: string; allow?: boolean; write?: boolean; redirect_uri?: unknown; code_hash?: unknown; code_wrap?: unknown; handoff?: unknown; wrong_number?: unknown; scan?: unknown };
   const r = await pending(sql, String(body.id ?? ""));
   if (!r) return json({ error: EXPIRED }, 404);
   if (!(await claim(sql, r, user))) return json({ error: NOT_YOURS }, 403);
@@ -772,8 +810,16 @@ async function decide(req: Request, sql: Sql): Promise<Response> {
   }
   // Asked from a browser: a device's code goes to that page, sealed to its key, and the device
   // opens nothing. The page itself (approving with the recovery key) keeps its own code.
-  const [asked] = await sql<{ request_id: string; started_from: string }[]>`
-    select request_id, started_from from public.connect_asks where request_id = ${r.id}`;
+  const [asked] = await sql<{ request_id: string; started_from: string; scan_hash: string | null }[]>`
+    select request_id, started_from, scan_hash from public.connect_asks where request_id = ${r.id}`;
+  // Scanned from the page's QR code: the secret in the code, checked against its hash. A wrong
+  // one answers nothing (someone else's code, or an old one from before the page reloaded).
+  let scanned = false;
+  if (typeof body.scan === "string") {
+    const ok = asked?.scan_hash && /^[A-Za-z0-9_-]{22}$/.test(body.scan) && timingSafeEqual(await sha256Hex(body.scan), asked.scan_hash);
+    if (!ok) return json({ error: SCAN_CHANGED }, 409);
+    scanned = true;
+  }
   const fromPage = req.headers.get("origin") === new URL(connectPage()).origin;
   const handoff = typeof body.handoff === "string" && !fromPage ? body.handoff : "";
   if (asked && allow && !fromPage && (!HANDOFF.test(handoff) || handoff.length > 600)) return json({ error: "Update Amber Notes to connect an AI." }, 400);
@@ -786,8 +832,13 @@ async function decide(req: Request, sql: Sql): Promise<Response> {
   const write = body.write === true && (scopes.length === 0 || scopes.includes("notes:write"));
   const wrongNumber = Boolean(asked) && !allow && body.wrong_number === true;
   // One answer per request, even when two arrive at once.
-  const answered = await sql.begin(async (tx): Promise<boolean | "reveal"> => {
-    if (asked && allow && !fromPage) {
+  const answered = await sql.begin(async (tx): Promise<boolean | "reveal" | "rescan"> => {
+    if (asked && allow && !fromPage && scanned) {
+      // Under the row's lock: a page that reloaded meanwhile has a new secret, and this one is old.
+      const [a] = await tx<{ scan_hash: string | null }[]>`
+        select scan_hash from public.connect_asks where request_id = ${r.id} for update`;
+      if (a?.scan_hash !== asked.scan_hash) return "rescan";
+    } else if (asked && allow && !fromPage) {
       // Read under the row's lock, so a page that asks again (both nonces start over) can't slip
       // in between the check and the answer.
       const [a] = await tx<{ page_nonce: string | null }[]>`
@@ -820,13 +871,15 @@ async function decide(req: Request, sql: Sql): Promise<Response> {
     return true;
   });
   if (answered === "reveal") return json({ error: "Finish on the page in your browser first." }, 409);
+  if (answered === "rescan") return json({ error: SCAN_CHANGED }, 409);
   if (!answered) return json({ error: EXPIRED }, 404);
   if (!allow) {
     u.searchParams.set("error", "access_denied");
     u.searchParams.set("error_description", "The person declined in Amber Notes.");
   }
   if (asked) {
-    await sql`update public.connect_asks set answered_at = now(), denied = ${!allow}, redirect = ${u.toString()},
+    // A scanned ask becomes the account's that answered it, like one it asked for.
+    await sql`update public.connect_asks set answered_at = now(), denied = ${!allow}, redirect = ${u.toString()}, user_id = coalesce(user_id, ${user}),
       answer = ${allow && handoff ? handoff : null}, delivered_at = ${fromPage ? new Date() : null} where request_id = ${r.id}`;
   }
   const handedOff = asked && !fromPage ? { handoff: true } : {};

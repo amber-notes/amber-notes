@@ -1371,3 +1371,122 @@ Deno.test("a device that signed out offline forgets its token later, without a s
   assertEquals((await anon(`select public.forget_device_token($1) as n`, [t.toUpperCase()]))[0].n, 1);
   assertEquals((await pg.query(`select 1 from public.device_tokens`)).rows.length, 0);
 });
+
+// MARK: Scanning the page's QR code
+
+/** The page's scan secret (16 random bytes, base64url) and its hash, as web/lib/connect-flow.ts makes them. */
+async function newScan() {
+  const scan = b64url(crypto.getRandomValues(new Uint8Array(16)));
+  return { scan, scan_hash: await sha256Hex(scan) };
+}
+
+/** The page shows a QR code: no session. */
+async function scanAskAs(sql: Sql, id: string, browserKey: string, scan_hash: string, pickup_hash: string, origin: string | null = SITE) {
+  const headers: Record<string, string> = { "content-type": "application/json" };
+  if (origin) headers.origin = origin;
+  const res = await call(sql, request("proxy", "/connect/scan", {
+    method: "POST", headers, body: JSON.stringify({ id, browser_key: browserKey, from: "Safari on a Mac", pickup_hash, scan_hash }),
+  }));
+  return { status: res.status, body: await res.json() };
+}
+
+/** The device that scanned: reads the request, then allows with the code sealed to the page and the secret. */
+async function scanAllow(sql: Sql, user: User, id: string, scan: string | undefined) {
+  const described = await (await call(sql, request("function", `/connect/request?id=${id}`, { headers: { authorization: `Bearer ${user.jwt}` } }))).json();
+  const built = new URL(described.redirect_uri);
+  if (described.state) built.searchParams.set("state", described.state);
+  built.searchParams.set("iss", described.iss);
+  const { code, body } = await appDecision(user, id, described.redirect_uri);
+  const handoff = await sealHandoff(handoffPayload({ code, redirect: built.toString() }), fromBase64(described.browser_key), id);
+  return { described, code, decided: await decideAs(sql, user, { ...JSON.parse(body), handoff, ...(scan === undefined ? {} : { scan }) }) };
+}
+
+Deno.test("scanning the page's code approves without a number, and the page picks the code up once", async () => {
+  const { sql, pg } = await db();
+  const { clientId, verifier, requestId } = await pendingRequest(sql);
+  const me = await newUser(pg);
+  const page = await newHandoffKeys();
+  const { scan, scan_hash } = await newScan();
+  const { pickup, pickup_hash } = await newPickup();
+  // Only from the site, with a real key, and a pickup that isn't the scan secret's hash.
+  assertEquals((await scanAskAs(sql, requestId, toBase64(page.publicRaw), scan_hash, pickup_hash, "https://evil.example")).status, 403);
+  assertEquals((await scanAskAs(sql, requestId, "not a key", scan_hash, pickup_hash)).status, 400);
+  assertEquals((await scanAskAs(sql, requestId, toBase64(page.publicRaw), scan_hash, scan_hash)).status, 400);
+  assertEquals((await scanAskAs(sql, requestId, toBase64(page.publicRaw), scan_hash, pickup_hash)).status, 200);
+  assertEquals(await statusOf(sql, requestId, pickup), { state: "asked", device_nonce: null });
+  // Nobody is asked, and no device sees it until one scans.
+  assertEquals((await app(pg, me.id, `select 1 from public.connect_asks`)).length, 0);
+
+  const { described, code, decided } = await scanAllow(sql, me, requestId, scan);
+  assertEquals([described.asked, described.scan, described.browser_key], [true, true, toBase64(page.publicRaw)]);
+  assertEquals([decided.status, decided.body.handoff], [200, true]);
+  // The answered ask is the account's now, like one it asked for.
+  assertEquals((await app(pg, me.id, `select 1 from public.connect_asks`)).length, 1);
+  const done = await statusOf(sql, requestId, pickup);
+  assertEquals(done.state, "approved");
+  assertEquals(readHandoffPayload(await openHandoff(done.handoff, page.privateKey, requestId)).code, code);
+  assertEquals(await statusOf(sql, requestId, pickup), { state: "delivered" });
+  assertEquals((await exchange(sql, "proxy", clientId, code, verifier)).status, 200);
+  // The secret works once: the request is answered.
+  const replay = await call(sql, request("function", `/connect/request?id=${requestId}`, { headers: { authorization: `Bearer ${me.jwt}` } }));
+  assertEquals(replay.status, 404);
+  await replay.body?.cancel();
+  const { body } = await appDecision(me, requestId, CHATGPT);
+  assertEquals((await decideAs(sql, me, { ...JSON.parse(body), scan })).status, 404);
+});
+
+Deno.test("a wrong or old scan secret answers nothing, and without one a device can't allow", async () => {
+  const { sql, pg } = await db();
+  const { requestId } = await pendingRequest(sql);
+  const me = await newUser(pg);
+  const page = await newHandoffKeys();
+  const first = await newScan();
+  assertEquals((await scanAskAs(sql, requestId, toBase64(page.publicRaw), first.scan_hash, (await newPickup()).pickup_hash)).status, 200);
+  const wrong = await scanAllow(sql, me, requestId, (await newScan()).scan);
+  assertEquals([wrong.decided.status, wrong.decided.body.error], [409, "This code changed on your computer. Scan it again."]);
+  assertEquals((await scanAllow(sql, me, requestId, "x")).decided.status, 409);
+  // No secret: only the number-matching path, which this ask never started.
+  assertEquals((await scanAllow(sql, me, requestId, undefined)).decided.status, 409);
+  // The page reloaded: a new key and secret replace the old ones.
+  const again = await newHandoffKeys();
+  const second = await newScan();
+  assertEquals((await scanAskAs(sql, requestId, toBase64(again.publicRaw), second.scan_hash, (await newPickup()).pickup_hash)).status, 200);
+  assertEquals((await scanAllow(sql, me, requestId, first.scan)).decided.status, 409);
+  const [open] = await sql`select decided_at from public.oauth_requests where id = ${requestId}` as { decided_at: Date | null }[];
+  assertEquals(open.decided_at, null);
+  assertEquals((await scanAllow(sql, me, requestId, second.scan)).decided.status, 200);
+  // Answered: a reload can't put a new key on it.
+  assertEquals((await scanAskAs(sql, requestId, toBase64(page.publicRaw), first.scan_hash, (await newPickup()).pickup_hash)).status, 404);
+});
+
+Deno.test("a scan code expires with its request", async () => {
+  const { sql, pg } = await db();
+  const { requestId } = await pendingRequest(sql);
+  const me = await newUser(pg);
+  const page = await newHandoffKeys();
+  const s = await newScan();
+  assertEquals((await scanAskAs(sql, requestId, toBase64(page.publicRaw), s.scan_hash, (await newPickup()).pickup_hash)).status, 200);
+  await sql`update public.oauth_requests set expires_at = now() - interval '1 second' where id = ${requestId}`;
+  assertEquals((await scanAllow(sql, me, requestId, s.scan).catch(() => ({ decided: { status: 404 } }))).decided.status, 404);
+  assertEquals((await scanAskAs(sql, requestId, toBase64(page.publicRaw), s.scan_hash, (await newPickup()).pickup_hash)).status, 404);
+});
+
+Deno.test("signing in on the page for a notification keeps the code working, and the number path", async () => {
+  const { sql, pg } = await db();
+  const { requestId } = await pendingRequest(sql);
+  const me = await newUser(pg);
+  const page = await newHandoffKeys();
+  const s = await newScan();
+  const p = await newPickup();
+  assertEquals((await scanAskAs(sql, requestId, toBase64(page.publicRaw), s.scan_hash, p.pickup_hash)).status, 200);
+  // Same key and pickup, now signed in: the account's devices see it and match numbers.
+  const asked = await askAs(sql, me, requestId, toBase64(page.publicRaw), "Safari on a Mac", p);
+  assertEquals(asked.status, 200);
+  assertEquals((await app(pg, me.id, `select 1 from public.connect_asks`)).length, 1);
+  // Another account can't take it over.
+  const other = await newUser(pg);
+  assertEquals((await askAs(sql, other, requestId, toBase64(page.publicRaw), "Safari on a Mac", p)).status, 403);
+  // Scanning still works.
+  assertEquals((await scanAllow(sql, me, requestId, s.scan)).decided.status, 200);
+  assertEquals((await statusOf(sql, requestId, p.pickup)).state, "approved");
+});

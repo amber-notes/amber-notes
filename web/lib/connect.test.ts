@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ALLOW_HEADING, appleSignInURL, appLink, destination, fetchLabel, functionURL, parseLabel, pkcePair, problemText, returnURL, signInError, startsWithWrite, universalLink, validRequest } from "./connect";
+import { ALLOW_HEADING, appleSignInURL, appLink, destination, fetchLabel, functionURL, parseLabel, pkcePair, problemText, returnURL, scanFragment, signInError, startsWithWrite, universalLink, validRequest } from "./connect";
 import { allowedPath, upstream, upstreamHeaders } from "./mcp-proxy";
 
 const ID = "5a0f6c1e-2b1d-4c36-9e0a-6b6f0c1a2b3c";
@@ -146,5 +146,21 @@ describe("the mcp.ambernotes.app proxy", () => {
       "/.well-known/openid-configuration", "/.well-known/mcp/server-card.json"]) expect(allowedPath(ok), ok).toBe(true);
     for (const bad of ["/account", "/..%2faccount", "/authorize%2f..%2f..%2faccount", "/%5c..%5caccount", "/authorize\\..\\account",
       "/../share-files", "/.well-known/../../account", "/connect/decide/x", "/connect/label/x", "/connect/status/x", "/connect/asks", "/connect/reveal/x", "/connect/nonces", "/connect%2freveal", "/connect%2fask", "/connect/labels", "/register/", "/%2e%2e/account", "/.env"]) expect(allowedPath(bad), bad).toBe(false);
+  });
+});
+
+describe("the QR code's fragment on /open/connect", () => {
+  const s = "q4Xb7Tz2LmNp8RsVw1Yc3A", k = "Jx3kQ9vR2mT7wY5zA1bC4dE6fG8hI0jK2lM4nO6pQ8r";
+
+  it("passes on exactly #s=<22>&k=<43>", () => {
+    expect(scanFragment(`#s=${s}&k=${k}`)).toBe(`#s=${s}&k=${k}`);
+    expect(scanFragment(`s=${s}&k=${k}`)).toBe(`#s=${s}&k=${k}`);
+  });
+
+  it("drops anything else", () => {
+    for (const hash of ["", "#", null, undefined, `#k=${k}&s=${s}`, `#s=${s}`, `#s=${s}x&k=${k}`, `#s=${s}&k=${k}&x=1`,
+      `#s=${s}&k=${k.slice(1)}`, `#s=${s.slice(0, 21)}+&k=${k}`, `#s=${s}&k=${k}"><script>`]) {
+      expect(scanFragment(hash), String(hash)).toBeNull();
+    }
   });
 });

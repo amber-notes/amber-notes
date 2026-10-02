@@ -2,6 +2,7 @@
 // pickup secret, reading /connect/status, going on to the AI with the sealed code and redirect, and
 // approving with the recovery key.
 // The page (app/connect/ConnectFlow.tsx) does the fetching and the showing. See lib/connect.ts.
+import { appLink, scanFragment, universalLink } from "./connect";
 import { HANDOFF, hex, matchCommit, matchNumber, parseRecoveryKey, readHandoffPayload, recoveryKEK, tokenKey, unwrap, verifierOf, wrap } from "./e2ee";
 
 /// This browser in plain words for the devices' prompt ("Chrome on a Mac"). Only the browser's
@@ -194,4 +195,54 @@ export function parseKeyRow(body: unknown): AccountKey | null {
   const row = Array.isArray(body) ? body[0] : null;
   if (typeof row?.key_id !== "string" || typeof row.verifier !== "string" || typeof row.recovery_wrap !== "string") return null;
   return { key_id: row.key_id, verifier: row.verifier, recovery_wrap: row.recovery_wrap };
+}
+
+// MARK: The QR code
+
+const b64url = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
+/// The scan secret: 16 random bytes as base64url without padding (22 characters). It travels only in
+/// the QR code's fragment; /connect/scan gets scan_hash, the lowercase hex SHA-256 of the secret's
+/// UTF-8 text. The device that scans the code answers /connect/decide with the secret itself.
+export async function newScan(bytes: Uint8Array = crypto.getRandomValues(new Uint8Array(16))): Promise<{ scan: string; scan_hash: string }> {
+  if (bytes.length !== 16) throw new Error("a scan secret is 16 bytes");
+  const scan = b64url(bytes);
+  return { scan, scan_hash: await sha256Hex(scan) };
+}
+
+/// The page's key as the QR code names it: base64url (no padding) of SHA-256 over the raw 65-byte
+/// public key. The device checks the key /connect/request shows against it before sealing anything.
+export async function keyFingerprint(publicRaw: Uint8Array<ArrayBuffer>): Promise<string> {
+  if (publicRaw.length !== 65 || publicRaw[0] !== 4) throw new Error("a raw P-256 public key is 65 bytes");
+  return b64url(new Uint8Array(await crypto.subtle.digest("SHA-256", publicRaw)));
+}
+
+const scanPart = (scan: string, fingerprint: string) => {
+  const f = scanFragment(`#s=${scan}&k=${fingerprint}`);
+  if (!f) throw new Error("not a scan secret and key fingerprint");
+  return f;
+};
+
+/// What the QR code encodes: the universal link, with the secret and fingerprint in the fragment so
+/// they never reach a server log.
+export const scanLink = (id: string, scan: string, fingerprint: string) => universalLink(id) + scanPart(scan, fingerprint);
+
+/// The same, in the app's own scheme: the "Open Amber Notes on this Mac" button (Chrome doesn't open
+/// universal links).
+export const scanAppLink = (id: string, scan: string, fingerprint: string) => appLink(id) + scanPart(scan, fingerprint);
+
+/// The /connect/scan call: no session, the page's public key, the pickup's hash and the scan secret's hash.
+export function scanRequest(functionBase: string, body: { id: string; browser_key: string; pickup_hash: string; scan_hash: string; from: string }): [string, RequestInit] {
+  return [`${functionBase}/connect/scan`, {
+    method: "POST", cache: "no-store",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  }];
+}
+
+/// A Mac's browser, not an iPhone's or an iPad's (iPadOS Safari says "MacIntel" but has touch).
+export function isMacBrowser(platform: string, ua: string, maxTouchPoints = 0): boolean {
+  if (/iPhone|iPad|iPod/.test(platform) || /iPhone|iPad|iPod/.test(ua)) return false;
+  const mac = /^Mac/.test(platform) || (!platform && /\bMacintosh\b/.test(ua));
+  return mac && maxTouchPoints <= 1;
 }
