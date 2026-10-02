@@ -27,6 +27,7 @@ struct NoteListView: View {
     @Environment(SyncEngine.self) private var sync: SyncEngine?
     @State private var connecting = false
     @State private var sharingHowTo = false
+    @State private var connectCenter = ConnectCenter.shared
     /// "What's new" after a major update (WhatsNew.swift), and whether the list has settled.
     @State private var whatsNew = WhatsNewStore.shared
     @State private var settled = false
@@ -96,6 +97,20 @@ struct NoteListView: View {
 
     private func list(_ scopedNotes: [Note], _ visible: [Note], _ folders: [Folder]) -> some View {
         List(selection: $selection) {
+            // An ask to connect an AI whose sheet was closed without an answer: always a way back.
+            if scope != .trash, search.isEmpty, let ask = connectCenter.waiting().first {
+                #if os(iOS)
+                Section {
+                    ConnectWaitingRow(ask: ask).selectionDisabled()
+                }
+                .listRowBackground(Color(Palette.row))
+                #else
+                ConnectWaitingRow(ask: ask)
+                    .listRowInsets(EdgeInsets(top: 6, leading: 10, bottom: 10, trailing: 10))
+                    .listRowSeparator(.hidden)
+                    .selectionDisabled()
+                #endif
+            }
             if showsSetup, let setup, let progress = setup.progress {
                 #if os(iOS)
                 // Its own grouped section, so it has the list's insets, radius and ground.
