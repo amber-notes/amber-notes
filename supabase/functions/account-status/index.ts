@@ -13,11 +13,13 @@
 // booleans, is rate-limited per IP (10 a minute, 30 an hour) and per address (20 an hour), keys
 // the limiter by salted hashes, and pads every reply to the same minimum time.
 
-import postgres from "npm:postgres@3.4.5";
+import { connect, readiness } from "../_shared/db.ts";
 import { atLeast, hashKey, normalizeEmail, RateLimiter, statusFrom } from "./logic.ts";
 import { logError } from "../_shared/log.ts";
 
-const sql = postgres(Deno.env.get("SUPABASE_DB_URL")!, { max: 2, idle_timeout: 20, prepare: false });
+// Through the transaction pooler when DB_POOLER_HOST is set (_shared/db.ts says why).
+const sql = connect(Deno.env, 2);
+const ready = readiness(sql);
 const SALT = Deno.env.get("ACCOUNT_STATUS_SALT") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const perMinute = new RateLimiter(10, 60_000);
 const perHour = new RateLimiter(30, 3_600_000);
@@ -28,6 +30,7 @@ const reply = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
 
 Deno.serve((req) => atLeast(FLOOR_MS, async () => {
+  await ready();
   if (req.method !== "POST") return reply({ error: "method not allowed" }, 405);
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown";
   const ipKey = await hashKey(SALT, ip);

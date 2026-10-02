@@ -11,12 +11,14 @@
 // from auth.users. The caller is whoever the access token says: there is no way to name another
 // account.
 
-import postgres from "npm:postgres@3.4.5";
+import { connect, readiness } from "../_shared/db.ts";
 import { logError } from "../_shared/log.ts";
 import { collect, zip } from "./export.ts";
 import { forget } from "./forget.ts";
 
-const sql = postgres(Deno.env.get("SUPABASE_DB_URL")!, { max: 1, idle_timeout: 20, prepare: false });
+// Through the transaction pooler when DB_POOLER_HOST is set (_shared/db.ts says why).
+const sql = connect(Deno.env, 1);
+const ready = readiness(sql);
 const API = Deno.env.get("SUPABASE_URL")!;
 const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANON = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -57,6 +59,7 @@ async function removeFiles(uid: string): Promise<number> {
 const lastExport = new Map<string, number>();
 
 Deno.serve(async (req) => {
+  await ready();
   const exporting = req.method === "GET" && new URL(req.url).pathname.endsWith("/export");
   if (req.method !== "DELETE" && !exporting) return json({ error: "Use DELETE, or GET /account/export." }, 405);
   const token = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");

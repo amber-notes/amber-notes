@@ -64,4 +64,6 @@ So the Mac release of 1.2 turns the QR page on for everyone, iPhone included. Ru
 
 ## Backend changes
 
+The functions reach Postgres through Supabase's transaction pooler, so a burst of requests can't use up the database's 60 connections (`supabase/functions/_shared/db.ts`, and what happened without it in `docs/Evidence/db-connections.md`). That needs one secret per project, set once: `supabase secrets set DB_POOLER_HOST=<host> --project-ref <ref>`, with the host from Project Settings > Database > Connection pooling (for production, `aws-1-eu-central-1.pooler.supabase.com`). After a deploy, the function's log says `{"event":"db","mode":"pooled"}`; `"direct"` means the secret is missing.
+
 The Supabase database and Edge Functions are not part of the app release. Deploy them separately with `supabase db push` and `supabase functions deploy`, before shipping an app version that depends on them. Migrations must be additive, so older app versions keep working.
