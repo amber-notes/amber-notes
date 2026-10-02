@@ -333,3 +333,17 @@
   .page { padding-top: 16px; padding-bottom: 16px; gap: 12px; }
   .page:not([data-layout="panel"]) .card { gap: 14px; padding-top: 26px; padding-bottom: 22px; }
 }
+
+/* Email first: the password field waits in the form (so a password manager can fill it with the
+   email), out of sight and out of the tab order, until the email turns out to have an account. */
+.waiting { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); opacity: 0; pointer-events: none; }
+.form { position: relative; }
+/* What the email check says, where the button was. */
+.said { display: grid; gap: 10px; margin: 0; color: var(--muted); font-size: 15px; line-height: 1.45; text-align: left; }
+.said p { margin: 0; }
+.said b { color: var(--ink); }
+@media (prefers-reduced-motion: no-preference) {
+  .form .field:not(.waiting) + .field:not(.waiting) { animation: reveal 0.22s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+  .said { animation: reveal 0.22s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+  @keyframes reveal { from { opacity: 0; transform: translateY(-6px); } }
+}

@@ -1,5 +1,7 @@
+import { useEffect, useRef, useState } from "react";
 import { APPLE_ON_WEB } from "@/lib/connect";
-import type { Devices, Lead } from "@/lib/connect-flow";
+import { afterCheck, emailLooksValid, parseEmailStatus, type Devices, type EmailStatus, type EmailStep, type Lead } from "@/lib/connect-flow";
+import { APP_STORE_LIVE, APP_STORE_URL } from "@/lib/site";
 import { DeviceScreen } from "./DeviceLead";
 import { QRCode } from "./QRCode";
 import styles from "./connect.module.css";
@@ -64,13 +66,7 @@ export function NotifySignInScreen({ to, onSubmit, onScan, ...signIn }: SignInPr
       <h1 className={styles.title}>Sign in to get a notification</h1>
       <AccessLine to={to} />
       {APPLE_ON_WEB ? <SignInButtons onApple={signIn.onApple} busy={signIn.busy} /> : <p className={styles.small}>{APPLE_INSTEAD}</p>}
-      <form className={styles.form} method="post" onSubmit={onSubmit}>
-        <EmailFields {...signIn} />
-        <ErrorLine text={signIn.failure} />
-        <button type="submit" className={styles.secondary} disabled={!signIn.ready || signIn.busy} aria-busy={signIn.busy}>
-          {signIn.busy ? <><Spinner /> Signing in…</> : "Sign in with email"}
-        </button>
-      </form>
+      <EmailFirst {...signIn} onSubmit={onSubmit} />
       <BottomLinks>
         <button type="button" className={styles.link} onClick={onScan}>Scan the code instead</button>
       </BottomLinks>
@@ -221,6 +217,90 @@ export function SignInButtons({ onApple, busy }: { onApple: () => void; busy: bo
       </button>
       <div className={styles.or}><span>or with email</span></div>
     </>
+  );
+}
+
+/// Asks the site whether an email has an account (app/connect/account-status). Null when it can't say.
+export async function askEmailStatus(email: string): Promise<EmailStatus | null> {
+  try {
+    const res = await fetch("/connect/account-status", {
+      method: "POST", cache: "no-store", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: email.trim() }),
+    });
+    return res.ok ? parseEmailStatus(await res.json().catch(() => null)) : null;
+  } catch {
+    return null;
+  }
+}
+
+/// Email first, as the app's sign-in does it (Pane/Views/EmailSignInFlow.swift): one Email field and
+/// Continue; the answer decides what comes next. An account with a password: the Password field
+/// opens under the email (still editable; changing it starts over) and the button becomes Sign in.
+/// An Apple account: Sign in with Apple, above. No account: the web can't make one, because an
+/// account's key is made on its first device, so the page says so and points to the app. The
+/// password field is in the form from the start, so a password manager that fills both at once
+/// can: Continue then signs in straight away. `onSubmit` is the page's own email and password
+/// sign-in; `check` asks about the email (askEmailStatus, or a test's).
+export function EmailFirst({ email, password, onEmail, onPassword, busy, ready, failure, onSubmit, check = askEmailStatus }: SignInProps & {
+  onSubmit: (e: React.FormEvent) => void; check?: (email: string) => Promise<EmailStatus | null>;
+}) {
+  const [step, setStep] = useState<EmailStep>({ kind: "email" });
+  const passwordRef = useRef<HTMLInputElement>(null);
+  const open = step.kind === "password";
+  useEffect(() => { if (open) passwordRef.current?.focus(); }, [open]);
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (open) return onSubmit(e);
+    if (step.kind === "checking" || !emailLooksValid(email)) return;
+    setStep({ kind: "checking" });
+    const next = afterCheck(await check(email));
+    setStep(next);
+    // Filled by a password manager along with the email: no reason to ask again.
+    if (next.kind === "password" && password) onSubmit(e);
+  }
+  function editEmail(v: string) {
+    onEmail(v);
+    if (step.kind !== "email") setStep({ kind: "email" });
+  }
+  function differentEmail() {
+    onPassword("");
+    setStep({ kind: "email" });
+    document.getElementById("connect-email")?.focus();
+  }
+  const checking = step.kind === "checking";
+  return (
+    <form className={styles.form} method="post" onSubmit={submit}>
+      <label className={styles.field}>
+        <span>Email</span>
+        <input type="email" id="connect-email" autoComplete="username" required value={email} onChange={(e) => editEmail(e.target.value)} readOnly={checking} />
+      </label>
+      <label className={open ? styles.field : `${styles.field} ${styles.waiting}`} aria-hidden={open ? undefined : true}>
+        <span>Password</span>
+        <input
+          ref={passwordRef} type="password" id="connect-password" autoComplete="current-password" required={open} tabIndex={open ? 0 : -1}
+          value={password} onChange={(e) => onPassword(e.target.value)}
+        />
+      </label>
+      {step.kind === "apple" && <p className={styles.said} role="status">This email signs in with Apple. Use Sign in with Apple above.</p>}
+      {step.kind === "none" ? (
+        <div className={styles.said} role="status">
+          <p><b>No Amber Notes account uses this email.</b></p>
+          <p>Accounts start in the app on your iPhone or Mac, which makes your notes&apos; key. Get Amber Notes, sign up there, then connect again.</p>
+          <a className={styles.primary} href={APP_STORE_LIVE ? APP_STORE_URL : "/download"}>Get Amber Notes</a>
+        </div>
+      ) : (
+        <>
+          <ErrorLine text={failure} />
+          {step.kind !== "apple" && (
+            <button type="submit" className={styles.secondary} disabled={!ready || busy || checking || (open ? !password : !emailLooksValid(email))} aria-busy={busy || checking}>
+              {busy ? <><Spinner /> Signing in…</> : checking ? <><Spinner /> Checking…</> : open ? "Sign in" : "Continue"}
+            </button>
+          )}
+        </>
+      )}
+      {(step.kind === "none" || step.kind === "apple") && (
+        <button type="button" className={styles.link} onClick={differentEmail}>Use a different email</button>
+      )}
+    </form>
   );
 }
 

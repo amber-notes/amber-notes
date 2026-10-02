@@ -12,7 +12,7 @@ import {
   type AccountKey,
 } from "@/lib/connect-flow";
 import { newHandoffKeys, openHandoff, parseRecoveryKey, toBase64 } from "@/lib/e2ee";
-import { EmailFields, EndedScreen, ErrorLine, LeavingScreen, RequestLine, SignInButtons, Spinner } from "./ConnectScreens";
+import { EmailFields, EmailFirst, EndedScreen, ErrorLine, LeavingScreen, RequestLine, SignInButtons, Spinner } from "./ConnectScreens";
 import { DeviceScreen } from "./DeviceLead";
 import styles from "./connect.module.css";
 
@@ -490,13 +490,10 @@ export default function ConnectFlowV1({ requestId, supabaseURL, anonKey, label, 
           <RequestLine to={to} claimed={label?.claimed_name} />
           <p className={styles.lede}>Sign in, and Amber Notes asks you on your iPhone or Mac.</p>
           {APPLE_ON_WEB && <SignInButtons onApple={signInWithApple} busy={busy} />}
-          <form className={styles.form} method="post" onSubmit={submitSignIn}>
-            <EmailFields email={email} password={password} onEmail={setEmail} onPassword={setPassword} />
-            <ErrorLine text={failure} />
-            <button type="submit" className={styles.secondary} disabled={!ready || busy} aria-busy={busy}>
-              {busy ? <><Spinner /> Signing in…</> : "Sign in with email"}
-            </button>
-          </form>
+          <EmailFirst
+            email={email} password={password} onEmail={setEmail} onPassword={setPassword} onApple={signInWithApple}
+            busy={busy} ready={ready} failure={failure} onSubmit={submitSignIn}
+          />
           <div className={styles.quiet}>
             <p>Amber Notes on this computer? <a href={universalLink(requestId)}>Open Amber Notes</a></p>
             {!APPLE_ON_WEB && <p>{APPLE_INSTEAD}</p>}

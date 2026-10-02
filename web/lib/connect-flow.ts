@@ -293,3 +293,30 @@ export function leadFor(devices: Devices | null, on: BrowserOn): Lead {
   if (devices.mac) return "mac";
   return "recover";
 }
+
+// MARK: Email first
+
+/// What the site's /connect/account-status says about an email, as the app reads the same function
+/// (Pane/Views/EmailSignInFlow.swift): an account with a password, an account that signs in with
+/// Apple, or nobody. Null when it couldn't say.
+export type EmailStatus = "password" | "apple" | "none";
+
+export function parseEmailStatus(body: unknown): EmailStatus | null {
+  const b = body as { exists?: unknown; password?: unknown } | null;
+  if (typeof b?.exists !== "boolean" || typeof b.password !== "boolean") return null;
+  return !b.exists ? "none" : b.password ? "password" : "apple";
+}
+
+/// Good enough to ask about: something@something.something (the app's rule).
+export const emailLooksValid = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+
+/// Where the email-first sign-in is: typing the email, asking about it, the password (`fallback`
+/// when the check failed, so nobody is stuck), an Apple account, or no account.
+export type EmailStep = { kind: "email" } | { kind: "checking" } | { kind: "password"; fallback: boolean } | { kind: "apple" } | { kind: "none" };
+
+/// The step after the check. An answer that couldn't be had shows the password field, as the app does.
+export function afterCheck(status: EmailStatus | null): EmailStep {
+  if (status === "none") return { kind: "none" };
+  if (status === "apple") return { kind: "apple" };
+  return { kind: "password", fallback: status === null };
+}
