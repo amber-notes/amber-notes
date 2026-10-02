@@ -81,8 +81,10 @@ describe("privacy copy", () => {
       expect(text).not.toMatch(/(on|or) (the|this) website, and we never/);
       expect(text).not.toMatch(/(apps and this website|website) (have|has|uses) no (analytics|tracking)/);
     }
-    expect(policy).toMatch(/with PostHog, in the EU\. Neither uses cookies or keeps a profile of you, and neither runs on shared notes or the connect pages/);
-    expect(page).toMatch(/with PostHog, in the EU\. Neither uses cookies or keeps a profile of you/);
+    expect(policy).toMatch(/where on a page people click and how far pages are scrolled with PostHog, in the EU\. These are counted across all visitors; no visit is recorded\. Neither uses cookies, stores anything in your browser or keeps a profile of you, and neither runs on shared notes or the connect pages/);
+    expect(page).toMatch(/where on a page people click and how far pages are scrolled with PostHog, in the EU\. These are counted across all\s+visitors; no visit is recorded\. Neither uses cookies or keeps a profile of you/);
+    // Heatmaps are named, and limited to the marketing pages, in the long form too.
+    expect(policy).toMatch(/where on the page each click landed.*no visit is recorded or replayed/);
     expect(policy).toMatch(/\| PostHog, Inc\. \| Website usage only/);
     expect(policy).toContain("None of this touches your notes or your computer");
   });
