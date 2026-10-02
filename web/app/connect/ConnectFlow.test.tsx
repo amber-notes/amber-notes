@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { pageNumber } from "@/lib/connect-flow";
 import { fromBase64 } from "@/lib/e2ee";
-import { MatchNumber } from "./ConnectFlow";
+import ConnectFlow, { APPLE_INSTEAD, MatchNumber } from "./ConnectFlow";
 
 const v = JSON.parse(readFileSync(new URL("../../../supabase/functions/_shared/e2ee-vectors.json", import.meta.url), "utf8"));
 
@@ -15,5 +15,16 @@ describe("the number on the connect page", () => {
     expect(number).toBe(v.handoff.match_number);
     expect(html).toContain(`>${v.handoff.match_number}</span>`);
     expect(html).toContain(`Type ${v.handoff.match_number} on your iPhone or Mac`);
+  });
+});
+
+describe("signing in on the connect page", () => {
+  it("offers no Sign in with Apple while the web can't finish it, and says how an Apple account allows instead", () => {
+    const html = renderToStaticMarkup(
+      <ConnectFlow requestId="00000000-0000-4000-8000-000000000000" supabaseURL="https://ref.supabase.co" anonKey="anon" label={null} recover={false} />,
+    );
+    expect(html).not.toContain("Sign in with Apple");
+    expect(html).toContain(APPLE_INSTEAD.replace(/'/g, "&#x27;"));
+    expect(html).toContain("/open/connect?request=00000000-0000-4000-8000-000000000000");
   });
 });

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  ALLOW_HEADING, appleSignInURL, destination, functionURL, pkcePair, returnURL, signInError, universalLink,
+  ALLOW_HEADING, APPLE_ON_WEB, appleSignInURL, destination, functionURL, pkcePair, returnURL, signInError, universalLink,
   type ConnectLabel, type ConnectRequest,
 } from "@/lib/connect";
 import {
@@ -31,6 +31,8 @@ const POLL_MS = 2000;
 /// After this long without an answer the page says where the request shows, and points to the recovery key.
 export const NUDGE_MS = 20_000;
 const OFFLINE = "Couldn't reach Amber Notes. Check your connection and try again.";
+/// While Sign in with Apple is off on the web: an account made with it has no password, so it allows in the app.
+export const APPLE_INSTEAD = "Signed up with Apple? Allow it in Amber Notes instead: open the app on this computer, or connect from your iPhone.";
 const EXPIRED: View = { kind: "ended", title: "This request has expired", text: "Start connecting again from ChatGPT, Claude or the other app you were using." };
 
 export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, recover, authCode, authError }: {
@@ -455,7 +457,7 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
           <h1 className={styles.title}>{heading}</h1>
           <Asking label={label} />
           <p className={styles.lede}>Sign in, and Amber Notes asks you on your iPhone or Mac.</p>
-          <SignInButtons onApple={signInWithApple} busy={busy} />
+          {APPLE_ON_WEB && <SignInButtons onApple={signInWithApple} busy={busy} />}
           <form className={styles.form} method="post" onSubmit={submitSignIn}>
             <EmailFields email={email} password={password} onEmail={setEmail} onPassword={setPassword} />
             {failure && <p className={styles.error} role="alert">{failure}</p>}
@@ -465,6 +467,7 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
           </form>
           <p className={styles.small}>
             Amber Notes on this computer? <a href={universalLink(requestId)}>Open Amber Notes</a>
+            {!APPLE_ON_WEB && <><br />{APPLE_INSTEAD}</>}
             <br />No account yet? <a href="/download">Get Amber Notes</a>
           </p>
         </>
@@ -512,7 +515,8 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
             This runs our code in your browser. Your recovery key and your notes' key are used on this page only, and are never stored or sent to us.
             If this page were changed, it could read them. When you can, approve from your iPhone or Mac instead.
           </p>
-          {!signedIn && <SignInButtons onApple={signInWithApple} busy={busy} />}
+          {!signedIn && APPLE_ON_WEB && <SignInButtons onApple={signInWithApple} busy={busy} />}
+          {!signedIn && !APPLE_ON_WEB && <p className={styles.small}>{APPLE_INSTEAD}</p>}
           <form className={styles.form} method="post" onSubmit={submitRecovery}>
             {signedIn ? null : <EmailFields email={email} password={password} onEmail={setEmail} onPassword={setPassword} />}
             <label className={styles.field}>
