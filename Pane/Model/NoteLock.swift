@@ -263,7 +263,10 @@ final class NoteVault {
 
     /// Picks up a setup made on another device, or notices a password changed there.
     func refresh() async {
+        let asked = account
         guard let remote, let fresh = try? await remote.fetch() else { return }
+        // Signed out or into another account while the server was answering: not this one's.
+        guard account == asked else { return }
         take(fresh)
     }
 

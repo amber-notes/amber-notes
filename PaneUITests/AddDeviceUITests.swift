@@ -9,6 +9,24 @@ final class AddDeviceUITests: XCTestCase {
         try? XCUIScreen.main.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: "\(dir)/add-device-\(name).png"))
     }
 
+    /// After sign-in, on a server that takes the connection and never answers: the spinner offers
+    /// Sign out after a few seconds, well before the key fetch gives up and says it can't reach it.
+    func testTheKeyCheckSpinnerOffersSignOutBeforeItGivesUp() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uitest", "-captureScreen", "key-checking"]
+        let launched = Date()
+        app.launch()
+        XCTAssertTrue(app.activityIndicators.firstMatch.waitForExistence(timeout: 8))
+        let signOut = app.buttons["e2ee.signOut"].firstMatch
+        XCTAssertFalse(signOut.exists, "not straight away: a quick check never shows it")
+        XCTAssertTrue(signOut.waitForExistence(timeout: 10))
+        XCTAssertTrue(signOut.isHittable)
+        XCTAssertFalse(app.buttons["e2ee.retry"].exists, "still the spinner, not Can't reach")
+        XCTAssertTrue(app.activityIndicators.firstMatch.exists)
+        print("PERF key check: Sign out after \(Date().timeIntervalSince(launched)) s from launch")
+        shot("checking-sign-out")
+    }
+
     func testRemoveAsksFirstAndSaysUnsyncedNotesAreErased() {
         let app = XCUIApplication()
         app.launchArguments = ["-uitest", "-captureScreen", "key-kept"]

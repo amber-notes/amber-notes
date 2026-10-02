@@ -115,8 +115,16 @@ struct KeyGateView: View {
         case .recovery: recoveryEntry
         case .waiting: waiting
         case .unreachable: unreachable
-        case .checking: ProgressView().controlSize(.regular).frame(height: 120)
+        case .checking: checking
         }
+    }
+
+    /// A check that takes this long offers Sign out under the spinner: a server that takes
+    /// connections but never answers shouldn't hold you here until the fetch gives up.
+    static let signOutAfter: Duration = .seconds(4)
+
+    private var checking: some View {
+        CheckingScreen { signOut }
     }
 
     private func heading(_ title: String, _ message: String?) -> some View {
@@ -491,4 +499,26 @@ enum KeyCopy {
     ]
     static let signInAgain = "To delete your notes, sign in again first."
 
+}
+
+/// The spinner while the key check is out, with Sign out once it has taken a while. Its place is
+/// kept from the start so nothing moves when it appears.
+private struct CheckingScreen<SignOut: View>: View {
+    @ViewBuilder var signOut: SignOut
+    @State private var slow = false
+
+    var body: some View {
+        VStack(spacing: 18) {
+            ProgressView().controlSize(.regular).frame(height: 120)
+            signOut
+                .opacity(slow ? 1 : 0)
+                .disabled(!slow)
+                .accessibilityHidden(!slow)
+        }
+        .animation(.easeOut(duration: 0.25), value: slow)
+        .task {
+            guard (try? await Task.sleep(for: KeyGateView.signOutAfter)) != nil else { return }
+            slow = true
+        }
+    }
 }
