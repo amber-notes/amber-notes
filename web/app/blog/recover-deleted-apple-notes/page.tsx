@@ -88,7 +88,7 @@ export default function Page() {
       <h2>So it doesn&apos;t happen again</h2>
       <ul>
         <li>Keep a copy of the notes you can&apos;t lose: <a href="/blog/export-apple-notes-to-markdown">export them to Markdown</a>, one at a time or with an exporter for everything.</li>
-        <li>On a Mac, turn on Time Machine.</li>
+        <li>On a Mac, turn on Time Machine. <a href="/blog/back-up-apple-notes">How to back up Apple Notes</a> has a routine that covers the rest.</li>
         <li>If you lock notes, know the password; a forgotten one is its own problem, covered in <a href="/blog/forgot-apple-notes-password">forgot your Apple Notes password</a>.</li>
       </ul>
       <p>
