@@ -8,6 +8,7 @@ import PlatformNote from "./PlatformNote";
 import MobileMenu from "./MobileMenu";
 import { themeFor } from "@/lib/theme";
 import { isBlogList } from "@/lib/blog-list";
+import { filterTransition } from "@/lib/filter-transition";
 
 const GITHUB = "https://github.com/amber-notes/amber-notes";
 const X_URL = "https://x.com/EmilWagman";
@@ -44,25 +45,24 @@ export default function SiteChrome({ version, stars, children }: { version: stri
       const url = new URL(a.href, location.href);
       if (url.origin !== location.origin || url.pathname === location.pathname || !themeFor(url.pathname)) return;
       const href = url.pathname + url.search + url.hash;
-      // Between the blog's lists (a category chip, a page number) only the posts change: the page
-      // stays where it is, and the title, chips and header hold still (blog.module.css). Also with
-      // reduced motion or no view transitions, just without the crossfade.
+      // Between the blog's lists (a category chip, a page number) it's the site's filter motion
+      // (lib/filter-transition.ts): the page stays where it is and only the posts change. Also with
+      // reduced motion or no view transitions, just instantly.
       const list = isBlogList(location.pathname) && isBlogList(url.pathname);
-      const doc = document as Document & { startViewTransition?: (cb: () => Promise<void>) => { finished: Promise<void> } };
+      const doc = document as Document & { startViewTransition?: (cb: () => Promise<void>) => unknown };
       const animate = !!doc.startViewTransition && !matchMedia("(prefers-reduced-motion: reduce)").matches;
       if (!animate && !list) return;
       e.preventDefault();
-      if (list) toList.current = a.closest("[data-blog-pages]") ? "pages" : "chips";
-      const go = () => router.push(href, list ? { scroll: false } : undefined);
-      if (!animate) return go();
-      const root = document.documentElement;
-      if (list) root.dataset.vt = "list";
-      const t = doc.startViewTransition!(() => new Promise<void>((resolve) => {
+      const arrive = () => new Promise<void>((resolve) => {
         done.current = resolve;
-        go();
+        router.push(href, list ? { scroll: false } : undefined);
         window.setTimeout(resolve, 1500); // never hang if the route is slow
-      }));
-      t.finished.finally(() => { if (root.dataset.vt === "list") delete root.dataset.vt; });
+      });
+      if (list) {
+        toList.current = a.closest("[data-blog-pages]") ? "pages" : "chips";
+        return filterTransition(arrive);
+      }
+      doc.startViewTransition!(arrive);
     };
     document.addEventListener("click", onClick);
     return () => document.removeEventListener("click", onClick);

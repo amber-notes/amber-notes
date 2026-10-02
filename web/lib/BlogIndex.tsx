@@ -3,6 +3,7 @@ import { PostCard } from "./blog";
 import { categories, categoryPath, newestFirst, pageCount, pageOf, pagePath, published, type Category, type Ground } from "./posts";
 import { pageMetadata } from "./site";
 import BlogList from "./BlogList";
+import { FILTER_AFTER, FILTER_CHIPS, filterCard } from "./filter-transition";
 import { JsonLd, breadcrumbs, maker, incredible, organization } from "./structured-data";
 import home from "../app/home.module.css";
 import s from "../app/blog/blog.module.css";
@@ -92,7 +93,7 @@ export function BlogIndex({ category, page }: { category: Category | null; page:
           </div>
         </div>
         <div className={`${s.library} rise`} style={{ "--i": 2 } as React.CSSProperties}>
-          <nav className={s.filters} aria-label="Categories" data-blog-chips="">
+          <nav className={`${s.filters} ${FILTER_CHIPS}`} aria-label="Categories" data-blog-chips="">
             <a href="/blog" aria-current={category === null ? "page" : undefined}><span className={s.text}>All posts<span className={s.count}>{published().length}</span></span></a>
             {counts.map(({ c, n, dots }) => (
               <a key={c} href={categoryPath(c)} aria-current={category === c ? "page" : undefined}>
@@ -103,7 +104,7 @@ export function BlogIndex({ category, page }: { category: Category | null; page:
           </nav>
           <ul className={s.grid}>
             {posts.map((p) => (
-              <li key={p.slug}><PostCard post={p} /></li>
+              <li key={p.slug} {...filterCard(p.slug)}><PostCard post={p} /></li>
             ))}
           </ul>
         </div>
@@ -116,7 +117,7 @@ export function BlogIndex({ category, page }: { category: Category | null; page:
 function Pagination({ base, page, pages }: { base: string; page: number; pages: number }) {
   const numbers = Array.from({ length: pages }, (_, i) => i + 1);
   return (
-    <nav className={s.pages} aria-label="Pages" data-blog-pages="">
+    <nav className={`${s.pages} ${FILTER_AFTER}`} aria-label="Pages" data-blog-pages="">
       {page > 1 ? <a className={s.step} href={pagePath(base, page - 1)} rel="prev">Previous</a> : <span className={s.step} aria-hidden="true" data-off>Previous</span>}
       <ol>
         {numbers.map((n) => (

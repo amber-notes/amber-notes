@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { flushSync } from "react-dom";
+import { FILTER_CHIPS, filterCard, filterTransition } from "@/lib/filter-transition";
 import s from "./templates.module.css";
 
 type Item = { slug: string; category: string };
@@ -16,8 +18,9 @@ export default function Library({ items, cards, categories }: { items: Item[]; c
     setCategory(categories.some((x) => x.anchor === c) ? c : null);
   }, [categories]);
 
+  // The site's filter motion (lib/filter-transition.ts), as on the blog's chips.
   const update = (c: string | null) => {
-    setCategory(c);
+    filterTransition(() => flushSync(() => setCategory(c)));
     history.replaceState(null, "", c ? `?category=${c}` : location.pathname);
   };
 
@@ -27,7 +30,7 @@ export default function Library({ items, cards, categories }: { items: Item[]; c
 
   return (
     <div className={s.library}>
-      <div className={s.filters}>
+      <div className={`${s.filters} ${FILTER_CHIPS}`}>
         <div className={s.filterRow} role="group" aria-label="Category">
           <button type="button" className={s.chip} aria-pressed={category === null} onClick={() => update(null)}>All</button>
           {categories.map((c) => (
@@ -41,7 +44,7 @@ export default function Library({ items, cards, categories }: { items: Item[]; c
         <p className={s.shown} aria-live="polite">{category ? `${shown} of ${items.length} templates` : `${items.length} templates`}</p>
       </div>
       <ul className={s.grid}>
-        {items.map((i, k) => <li key={i.slug} hidden={!show[k]}>{cards[k]}</li>)}
+        {items.map((i, k) => <li key={i.slug} hidden={!show[k]} {...filterCard(i.slug)}>{cards[k]}</li>)}
       </ul>
     </div>
   );

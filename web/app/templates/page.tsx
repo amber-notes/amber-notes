@@ -50,7 +50,7 @@ export default function Page() {
         </div>
       </div>
 
-      {APP_TEMPLATES.live && <section className={s.loop} aria-labelledby="loop">
+      {APP_TEMPLATES.live && <section className={`${s.loop} filter-after`} aria-labelledby="loop">
         <div className={s.sectionHead}>
           <h2 id="loop" className={s.h2}>Every shared note is a template too</h2>
           <p className={s.sectionLede}>
