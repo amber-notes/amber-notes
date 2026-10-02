@@ -118,28 +118,43 @@ export function MatchNumber({ number }: { number: string }) {
 
 export type Access = { write: boolean; canWrite: boolean; onWrite: (write: boolean) => void };
 
-/// No iPhone: approve here with the recovery key. The access choice waits under Options.
-export function RecoverScreen({ to, signedIn, recoveryKey, onRecoveryKey, access, onSubmit, onScan, noDevices = false, ...signIn }: SignInProps & {
+/// No iPhone or Mac nearby: approve here with the recovery key. Two steps, never one long form:
+/// sign in first (once per visit), then only the key and Allow. Access follows what the app asked for.
+export function RecoverScreen({ to, signedIn, recoveryKey, onRecoveryKey, access, onSubmit, onSignIn, other, noDevices = false, appleInstead = APPLE_INSTEAD, ...signIn }: SignInProps & {
+  /// What to say while Sign in with Apple is off on the web.
+  appleInstead?: string;
   /// Signed in, and the account has no app seen lately: say why the recovery key leads.
   noDevices?: boolean;
   to: string | null; signedIn: string | null; recoveryKey: string; onRecoveryKey: (v: string) => void;
-  access: Access; onSubmit: (e: React.FormEvent) => void; onScan: () => void;
+  access: Access; onSubmit: (e: React.FormEvent) => void; onSignIn: (e: React.FormEvent) => void;
+  /// The way back to a device: "Scan the code instead" or "Approve on your iPhone or Mac instead".
+  other: { label: string; onClick: () => void };
 }) {
   const { write, canWrite, onWrite } = access;
-  const writing = write && canWrite;
+  const where = to ?? "this app";
+  const back = (
+    <BottomLinks>
+      <button type="button" className={styles.link} onClick={other.onClick}>{other.label}</button>
+    </BottomLinks>
+  );
+  if (!signedIn) {
+    return (
+      <>
+        <h1 className={styles.title}>Use your recovery key</h1>
+        <p className={styles.lede}>Sign in first. Then enter your recovery key to allow <b>{where}</b>.</p>
+        {APPLE_ON_WEB && <SignInButtons onApple={signIn.onApple} busy={signIn.busy} />}
+        <EmailFirst {...signIn} onSubmit={onSignIn} />
+        {!APPLE_ON_WEB && <p className={styles.small}>{appleInstead}</p>}
+        {back}
+      </>
+    );
+  }
   return (
     <>
       <h1 className={styles.title}>Use your recovery key</h1>
-      <AccessLine to={to} />
-      {noDevices && <p className={styles.lede}>No iPhone or Mac has opened Amber Notes on this account in the last 30 days, so approve this connection here with your recovery key.</p>}
-      <p className={styles.note}>
-        This runs our code in your browser. Your recovery key and your notes&apos; key are used on this page only, and are never stored or sent to us.
-        If this page were changed, it could read them. When you can, scan the code with your iPhone instead.
-      </p>
-      {!signedIn && APPLE_ON_WEB && <SignInButtons onApple={signIn.onApple} busy={signIn.busy} />}
-      {!signedIn && !APPLE_ON_WEB && <p className={styles.small}>{APPLE_INSTEAD}</p>}
+      {noDevices && <p className={styles.lede}>No iPhone or Mac has opened Amber Notes on this account in the last 30 days.</p>}
+      <p className={styles.lede}>Enter your recovery key to allow <b>{where}</b>. Only do this if you just started connecting it yourself.</p>
       <form className={styles.form} method="post" onSubmit={onSubmit}>
-        {signedIn ? null : <EmailFields {...signIn} />}
         <label className={styles.field}>
           <span>Recovery key</span>
           <input
@@ -148,28 +163,19 @@ export function RecoverScreen({ to, signedIn, recoveryKey, onRecoveryKey, access
             value={recoveryKey} onChange={(e) => onRecoveryKey(e.target.value)}
           />
         </label>
-        <details className={styles.options}>
-          <summary>Options</summary>
-          <div className={styles.optionsBody}>
-            <div className={styles.segmented} role="radiogroup" aria-label="Access">
-              <button type="button" role="radio" aria-checked={writing} disabled={!canWrite} onClick={() => onWrite(true)}>Read and edit</button>
-              <button type="button" role="radio" aria-checked={!writing} onClick={() => onWrite(false)}>Read only</button>
-            </div>
-            <p className={styles.explain}>{writing
-              ? "It can search, read, create and change notes. Every change keeps the previous version."
-              : "It can search and read notes, but not change them."}</p>
-          </div>
-        </details>
-        <p className={styles.warn}>Only allow it if you just started connecting it yourself.</p>
+        {canWrite && (
+          <label className={styles.check}>
+            <input type="checkbox" checked={!write} onChange={(e) => onWrite(!e.target.checked)} />
+            <span>Read only: it can&apos;t change your notes</span>
+          </label>
+        )}
         <ErrorLine text={signIn.failure} />
         <button type="submit" className={styles.primary} disabled={!signIn.ready || signIn.busy} aria-busy={signIn.busy}>
           {signIn.busy ? <><Spinner /> Allowing…</> : "Allow"}
         </button>
+        <p className={styles.small}>Your key is used on this page only and never sent to us. Signed in as {signedIn}.</p>
       </form>
-      {signedIn && <p className={styles.small}>Signed in as {signedIn}.</p>}
-      <BottomLinks>
-        <button type="button" className={styles.link} onClick={onScan}>Scan the code instead</button>
-      </BottomLinks>
+      {back}
     </>
   );
 }

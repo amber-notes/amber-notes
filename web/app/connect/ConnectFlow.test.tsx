@@ -188,8 +188,8 @@ describe("the connect page's QR code", () => {
     expect(ask.body.pickup_hash).toBe(scan.body.pickup_hash);
     expect(ask.body.match_commit).toMatch(/^[0-9a-f]{64}$/);
     expect(server.calls.filter((c) => c.url === `${MCP}/connect/scan`)).toHaveLength(1);
-    // Signed out straight after asking.
-    expect(server.calls.some((c) => c.url.startsWith(`${SUPABASE}/auth/v1/logout`))).toBe(true);
+    // Still signed in after asking, so the recovery key never asks for the password again.
+    expect(server.calls.some((c) => c.url.startsWith(`${SUPABASE}/auth/v1/logout`))).toBe(false);
 
     // Back to the code: the same one.
     await act(async () => button("Scan the code instead").click());
@@ -223,7 +223,7 @@ describe("naming the device once you've signed in", () => {
     expect(container.textContent).toContain("Amber Notes sent a notification to your iPhone.");
     expect(container.textContent).not.toContain("Waiting");
     expect(container.querySelector('[role="status"]')).toBeNull();
-    expect(signedOut(server.calls)).toBeGreaterThan(-1);
+    expect(signedOut(server.calls)).toBe(-1);
     expect(button("Scan the code instead")).toBeTruthy();
     expect(button("Use your recovery key")).toBeTruthy();
 
@@ -299,21 +299,27 @@ describe("the recovery key path", () => {
     await until(() => !!container.querySelector("svg path"));
     await act(async () => button("No iPhone? Use your recovery key").click());
     await until(() => heading() === "Use your recovery key");
-    // Access sits under a closed Options, already at Read and edit.
-    const options = container.querySelector("details")!;
-    expect(options.open).toBe(false);
-    expect(container.querySelector('[role="radio"][aria-checked="true"]')?.textContent).toBe("Read and edit");
+    // Step one is only the sign-in: no key field next to the password.
+    expect(container.querySelector("#connect-recovery")).toBeNull();
     await act(async () => {
       type("#connect-email", "me@example.com");
       type("#connect-password", "test-password-for-a-fake-server");
-      type("#connect-recovery", vectors.recovery.typed);
     });
+    await act(async () => container.querySelector<HTMLFormElement>("form")!.requestSubmit());
+    await until(() => !!container.querySelector("#connect-recovery"));
+    // Step two: the key alone. Access follows the request; read only is one unticked box when it asked to write.
+    expect(container.querySelector("#connect-email")).toBeNull();
+    expect(container.querySelector("#connect-password")).toBeNull();
+    const readOnly = container.querySelector<HTMLInputElement>('input[type="checkbox"]');
+    if (wantsWrite) expect(readOnly?.checked).toBe(false);
+    else expect(readOnly).toBeNull();
+    await act(async () => type("#connect-recovery", vectors.recovery.typed));
     await act(async () => container.querySelector<HTMLFormElement>("form")!.requestSubmit());
     await until(() => server.calls.some((c) => c.url === `${MCP}/connect/decide`));
     return server.calls.find((c) => c.url === `${MCP}/connect/decide`)!.body;
   }
 
-  it("allows Read and edit without opening Options when the app asked to write", async () => {
+  it("allows Read and edit by default when the app asked to write", async () => {
     const decided = await allowWithRecoveryKey(true);
     expect(decided.allow).toBe(true);
     expect(decided.write).toBe(true);

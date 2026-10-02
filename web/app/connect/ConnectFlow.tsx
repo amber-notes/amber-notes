@@ -171,6 +171,8 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
 
   function end(v: View) {
     finished.current = true;
+    // The visit is over: end the sign-in it kept for the recovery key.
+    if (session.current) void signOut(session.current.token, true);
     handoffKey.current = null;
     publicRaw.current = null;
     pickup.current = null;
@@ -341,8 +343,9 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
       const body = await res.json().catch(() => null) as { expires_at?: string; error?: string } | null;
       const has = res.ok ? parseDevices(body) : null;
       const next = leadFor(has, browserOn(navigator.platform, navigator.userAgent, navigator.maxTouchPoints));
-      // No app seen lately: the recovery key leads, and it needs this session.
-      if (!res.ok || next !== "recover") await signOut(s.token);
+      // The session stays in this page's memory until the request ends, so "Use your recovery key"
+      // never asks for the password a second time (end() and pagehide sign it out).
+      if (!res.ok) await signOut(s.token);
       if (!res.ok) {
         np.fill(0);
         if (res.status === 404) return end(EXPIRED);
@@ -433,12 +436,10 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
       const check = await parseRecoveryKey(typed);
       if (!check) throw new RecoveryError("typo");
       check.fill(0);
-      let s = session.current;
+      const s = session.current;
       if (!s) {
-        s = await passwordSignIn();
-        if (!s) return;
-        session.current = s;
-        setSignedIn(s.email);
+        setFailure("Sign in first.");
+        return;
       }
       const info = await fetchRecoverInfo(s);
       if ("error" in info) {
@@ -499,13 +500,33 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
   function showRecovery() {
     forget();
     setFailure(null);
-    setView({ kind: "recover" });
+    if (session.current) void loadRecover(session.current);
+    else setView({ kind: "recover" });
+  }
+
+  /// The recovery key's first step when not signed in yet: sign in, then the key alone.
+  async function submitRecoverSignIn(e: React.FormEvent) {
+    e.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setFailure(null);
+    try {
+      const s = await passwordSignIn();
+      if (s) {
+        session.current = s;
+        setSignedIn(s.email);
+        await loadRecover(s);
+      }
+    } catch {
+      setFailure(OFFLINE);
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function backToScan() {
     forget();
     setFailure(null);
-    if (session.current) await signOut(session.current.token);
     if (!handoffKey.current) return startOver();
     setView({ kind: "scan" });
   }
@@ -541,7 +562,8 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
         <RecoverScreen
           noDevices={lead === "recover"}
           {...signIn} to={recoverTo} signedIn={signedIn} recoveryKey={recoveryKey} onRecoveryKey={setRecoveryKey}
-          access={{ write, canWrite, onWrite: setWrite }} onApple={() => signInWithApple(true)} onSubmit={submitRecovery} onScan={backToScan}
+          access={{ write, canWrite, onWrite: setWrite }} onApple={() => signInWithApple(true)} onSubmit={submitRecovery} onSignIn={submitRecoverSignIn}
+          other={{ label: "Scan the code instead", onClick: () => void backToScan() }}
         />
       );
     case "working":
