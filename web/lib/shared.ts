@@ -1,4 +1,5 @@
 // Reads a shared note through the public RPC and the share-files function.
+import { functionRegion } from "./mcp-proxy";
 import type { SharedFile } from "./render";
 
 export type SharedNote = {
@@ -15,6 +16,7 @@ export type SharedNote = {
 
 const URL_ = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const KEY = process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
+const REGION = functionRegion(process.env.FUNCTION_REGION);
 
 const SLUG = /^[A-Za-z0-9_-]{24,64}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -43,7 +45,8 @@ export async function sharedFiles(slug: string, sub?: string): Promise<Record<st
   if (!URL_) return {};
   const q = new URLSearchParams({ slug, ...(sub ? { sub } : {}) });
   const res = await fetch(`${URL_}/functions/v1/share-files?${q}`, {
-    headers: { apikey: KEY, authorization: `Bearer ${KEY}` },
+    // This runs on Vercel, wherever that is: name the region the function works in.
+    headers: { apikey: KEY, authorization: `Bearer ${KEY}`, ...(REGION ? { "x-region": REGION } : {}) },
     cache: "no-store",
   });
   if (!res.ok) return {};

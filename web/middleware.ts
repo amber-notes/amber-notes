@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { connectCSP, newNonce } from "@/lib/connect-csp";
-import { allowedPath, MCP_HOST, sitePath, upstream, upstreamHeaders } from "@/lib/mcp-proxy";
+import { allowedPath, functionRegion, MCP_HOST, sitePath, upstream, upstreamHeaders } from "@/lib/mcp-proxy";
 
 // Two jobs, each on its own requests.
 //
@@ -45,7 +45,7 @@ function proxy(req: NextRequest) {
   }
   if (!allowedPath(raw.pathname)) return NextResponse.json({ error: "not_found" }, { status: 404 });
   const to = upstream(supabase, raw.pathname, raw.search);
-  return NextResponse.rewrite(to, { request: { headers: upstreamHeaders(req.headers, secret) } });
+  return NextResponse.rewrite(to, { request: { headers: upstreamHeaders(req.headers, secret, functionRegion(process.env.FUNCTION_REGION)) } });
 }
 
 async function connectPage(req: NextRequest) {

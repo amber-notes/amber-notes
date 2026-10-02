@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { fetchLabel, functionURL, problemText, qrConnectLive, validRequest } from "@/lib/connect";
-import { upstreamHeaders } from "@/lib/mcp-proxy";
+import { functionRegion, upstreamHeaders } from "@/lib/mcp-proxy";
 import { publicVersion } from "@/lib/public-release";
 import ConnectCard from "./ConnectCard";
 import ConnectFlow from "./ConnectFlow";
@@ -56,5 +56,6 @@ async function labelFor(id: string) {
   if (!supabase) return null;
   const secret = process.env.MCP_PROXY_SECRET;
   const incoming = await headers();
-  return fetchLabel(functionURL(supabase), id, secret ? upstreamHeaders(incoming, secret) : new Headers());
+  const region = functionRegion(process.env.FUNCTION_REGION);
+  return fetchLabel(functionURL(supabase), id, secret ? upstreamHeaders(incoming, secret, region) : new Headers(region ? { "x-region": region } : {}));
 }
