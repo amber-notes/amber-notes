@@ -548,8 +548,8 @@ const RAW_P256 = /^[A-Za-z0-9+/]{86}[AEIMQUYcgkosw048]=$/;
 
 /// The web page, signed in only to say whose request this is, asks the account's devices to
 /// approve it. It sends the public half of a key pair it keeps in memory; the approving device
-/// seals the authorization code to it, so only that page can open it. The page signs out straight
-/// after and waits on /connect/status.
+/// seals the authorization code to it, so only that page can open it. The page then waits on
+/// /connect/status, keeping the sign-in in memory (for the recovery key) until the request ends.
 async function ask(req: Request, sql: Sql): Promise<Response> {
   if (!allowedOrigin(req)) return json({ error: "Not allowed from this site." }, 403);
   const user = await sessionUser(req);
