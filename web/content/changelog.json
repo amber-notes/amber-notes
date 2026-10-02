@@ -1,30 +1,5 @@
 [
   {
-    "version": "1.1.2",
-    "date": "2026-10-02",
-    "title": "Smoother connecting and sign-in",
-    "items": [
-      "Approving an AI now shows the request even when Settings or a guide is open",
-      "Amber Notes asks for notification permission when you start connecting an AI, so the request can reach your phone",
-      "Signing in on a new device goes straight to your recovery key, with no long wait",
-      "Unlocking with your recovery key now counts as having it saved",
-      "Connection notices are one calm summary, and disconnected AIs no longer show up",
-      "New notes from the Folders screen open right away, and note previews no longer show table markup",
-      "Sign-in, search and Settings layout fixes"
-    ]
-  },
-  {
-    "version": "1.1.1",
-    "date": "2026-10-01",
-    "title": "Templates in the app",
-    "items": [
-      "Use a template from ambernotes.app/templates and it opens in Amber Notes, ready to add to a folder",
-      "\"Use this note\" on a shared note copies it into your own notes",
-      "A short note on what's new after a big update",
-      "Clearer amber buttons, easier to read in dark mode"
-    ]
-  },
-  {
     "version": "1.1",
     "date": "2026-10-01",
     "title": "Encrypted, end to end",
@@ -46,6 +21,8 @@
       "Connect Incredible from Connect an AI",
       "Import from Evernote, Google Keep, or Markdown and text files (Obsidian, Notion, Bear and more), with folders, checklists and attachments",
       "One Import Notes button on the setup card, for Apple Notes and the rest",
+      "Use a template from ambernotes.app/templates and it opens in Amber Notes, ready to add to a folder",
+      "\"Use this note\" on a shared note copies it into your own notes",
       "After updating, connect your AI apps once more"
     ]
   },

@@ -1,7 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 
-/// One release, newest first in content/changelog.json. scripts/release-mac.sh adds an entry on every release.
+/// One release, newest first in content/changelog.json. Only major and minor releases (1.0, 1.1, 1.2) get an
+/// entry; patch releases (1.1.1, 1.1.2) don't, and anything worth telling people goes into the next minor.
 /// The apps bundle the same file: a release marked `major` shows a "What's new" card with its
 /// `highlights` (3 or 4 short lines) once after updating.
 export type Release = {
