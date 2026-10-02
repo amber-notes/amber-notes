@@ -134,10 +134,10 @@ export function signInError(status: number, body: { error_code?: string } | null
 export const returnURL = (origin: string, id: string, recover = false) =>
   `${origin}/connect?request=${id.toLowerCase()}${recover ? "&recover=1" : ""}`;
 
-/// Whether the page offers Sign in with Apple. Off until Supabase has the web Services ID and its
-/// client secret (scripts/apple-web-secret.ts): until then Supabase answers the button with
-/// "Unsupported provider: missing OAuth secret". The page says what to do instead.
-export const APPLE_ON_WEB = false;
+/// Whether the page offers Sign in with Apple. It needs the web Services ID (app.ambernotes.signin)
+/// first in Supabase's Apple client ids, and a client secret that lasts six months: renew it with
+/// scripts/apple-web-secret.py. Without it Supabase answers "Unsupported provider: missing OAuth secret".
+export const APPLE_ON_WEB = true;
 
 /// Supabase's OAuth start for Apple, with a PKCE challenge.
 export function appleSignInURL(supabaseURL: string, returnTo: string, challenge: string): string {
