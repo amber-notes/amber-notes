@@ -363,6 +363,14 @@ struct AppGate: View {
         }
     }
 
+    /// The notes stay closed until this device has the account's key; the first time it does,
+    /// one screen says what that means. Just signed in, before the key check has started, it's
+    /// the key screen too (the library flashed by for a few frames).
+    private var keyGateShown: Bool {
+        (crypto.phase != .ready && crypto.phase != .off) || crypto.needsWelcome
+            || (backend.client != nil && crypto.account != backend.userID)
+    }
+
     private var gate: some View {
         Group {
             switch backend.state {
@@ -377,9 +385,7 @@ struct AppGate: View {
                     .toolbar(removing: .title)
                     #endif
                     .transition(.opacity)
-            case .signedIn where (crypto.phase != .ready && crypto.phase != .off) || crypto.needsWelcome:
-                // The notes stay closed until this device has the account's key; the first time
-                // it does, one screen says what that means.
+            case .signedIn where keyGateShown:
                 KeyGateView(crypto: crypto, backend: backend)
                     #if os(macOS)
                     .toolbar(removing: .title)

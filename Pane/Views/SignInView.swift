@@ -73,30 +73,38 @@ struct SignInView: View {
             }
 
             VStack(spacing: 12) {
-                AppleAuthButton(label: .signIn, height: Row.height, title: "Sign in with Apple", web: webSignIn) { result in
-                    switch result {
-                    case .success(let credential): signIn(credential)
-                    case .failure(let failure): error = AppleSignIn.message(for: failure)
+                // Asking for a password, the Apple row folds away as the password row comes in,
+                // so the main button keeps its place and the whole form fits above the keyboard.
+                if flow.showsApple {
+                    VStack(spacing: 12) {
+                        AppleAuthButton(label: .signIn, height: Row.height, title: "Sign in with Apple", web: webSignIn) { result in
+                            switch result {
+                            case .success(let credential): signIn(credential)
+                            case .failure(let failure): error = AppleSignIn.message(for: failure)
+                            }
+                        }
+                        .disabled(working)
+                        .opacity(working ? 0.6 : 1)
+                        .accessibilityIdentifier("signin.apple")
+
+                        if Self.emailFallback { orDivider }
                     }
+                    .transition(.opacity)
                 }
-                .disabled(working)
-                .opacity(working ? 0.6 : 1)
-                .accessibilityIdentifier("signin.apple")
 
                 if Self.emailFallback {
-                    orDivider
                     emailSection
                 }
 
-                if let error {
-                    Text(error)
-                        .font(.footnote)
-                        .foregroundStyle(.red)
-                        .multilineTextAlignment(.center)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .transition(.opacity)
-                        .accessibilityIdentifier("signin.error")
-                }
+                // Always there, a line high when empty, so an error coming or going moves nothing.
+                Text(error ?? " ")
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .opacity(error == nil ? 0 : 1)
+                    .accessibilityHidden(error == nil)
+                    .accessibilityIdentifier(error == nil ? "" : "signin.error")
             }
 
             ConsentFooter()
@@ -127,10 +135,12 @@ struct SignInView: View {
 
     private var emailSection: some View {
         VStack(spacing: 10) {
-            // One row for the email: a field, then (once it's checked) the address as text, swapped
-            // in place so the two never cross-fade over each other.
+            // One row for the email: a field, then (once it's checked) the address as text. Both
+            // stay in place and swap at once (no cross-fade of two texts), so the row itself can
+            // ease up when Sign in with Apple folds away, and the keyboard goes straight on to
+            // the password field.
             field {
-                if flow.showsEmailField {
+                ZStack(alignment: .leading) {
                     // Edits while it's being checked are ignored, so the answer matches the email.
                     TextField("Email", text: Binding(get: { flow.email }, set: { if !flow.emailLocked { flow.email = $0 } }))
                         .textContentType(.username)
@@ -142,29 +152,34 @@ struct SignInView: View {
                         .focused($focus, equals: .email)
                         .submitLabel(.continue)
                         .onSubmit(primary)
+                        .animation(nil) { $0.opacity(flow.showsEmailField ? 1 : 0) }
+                        .allowsHitTesting(flow.showsEmailField)
+                        .accessibilityHidden(!flow.showsEmailField)
                         .accessibilityIdentifier("signin.email")
-                        .transition(.identity)
-                } else {
                     Text(flow.email)
                         .lineLimit(1)
                         .truncationMode(.middle)
                         .frame(maxWidth: .infinity, alignment: .leading)
+                        .animation(nil) { $0.opacity(flow.showsEmailField ? 0 : 1) }
+                        .accessibilityHidden(flow.showsEmailField)
                         .accessibilityIdentifier("signin.lockedEmail")
-                        .transition(.identity)
                 }
             }
             if !flow.showsEmailField {
                 // On its own line, so a long address keeps the whole row.
-                Button("Use a different email") {
+                Button {
                     flow.back()
                     error = nil
                     focus = .email
+                } label: {
+                    // The whole row takes the tap, not just the words.
+                    Text("Use a different email")
+                        .frame(maxWidth: .infinity, minHeight: 24, alignment: .leading)
+                        .contentShape(.rect)
                 }
                 .buttonStyle(.plain)
                 .font(.footnote)
                 .foregroundStyle(.tint)
-                .frame(maxWidth: .infinity, minHeight: 24, alignment: .leading)
-                .contentShape(.rect)
                 .accessibilityIdentifier("signin.back")
                 .transition(.opacity)
             }
@@ -178,15 +193,7 @@ struct SignInView: View {
                         .onSubmit(primary)
                         .accessibilityIdentifier("signin.password")
                 }
-                .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .top)))
-            }
-
-            if flow.step == .create {
-                Text("New here? We'll create your account.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .transition(.opacity)
+                .transition(.opacity)
             }
 
             if flow.step == .apple {
@@ -201,6 +208,15 @@ struct SignInView: View {
 
             if let title = flow.buttonTitle {
                 mainButton(title)
+            }
+
+            // Under the button, like the link below, so the button stays where it was.
+            if flow.step == .create {
+                Text("New here? We'll create your account.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .transition(.opacity)
             }
 
             if flow.step == .signIn(fallback: true) {

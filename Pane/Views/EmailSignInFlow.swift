@@ -50,6 +50,10 @@ struct EmailSignInFlow: Equatable {
     /// jump; it can't be changed meanwhile (`emailLocked`). After that it's text.
     var showsEmailField: Bool { step == .email || step == .checking }
 
+    /// Sign in with Apple, above the email: everywhere but the password step, where the email
+    /// has an account that signs in with a password ("Use a different email" brings it back).
+    var showsApple: Bool { !showsPassword }
+
     var showsPassword: Bool {
         switch step {
         case .signIn, .create: true
