@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { changelog, latestVersion } from "./changelog";
+import { changelog, latestVersion, released } from "./changelog";
 
 // The apps bundle content/changelog.json too: a `major` release shows a "What's new" card with its highlights.
 describe("changelog", () => {
@@ -16,6 +16,14 @@ describe("changelog", () => {
       expect(r.version).toMatch(/^\d+(\.\d+)*$/);
       expect(r.items.length).toBeGreaterThan(0);
     }
+  });
+
+  it("shows nothing newer than the public release", () => {
+    const all = ["1.2", "1.1", "1.0"].map((version) => ({ version, date: "", title: "", items: ["x"] }));
+    expect(released(all, "1.1.2").map((r) => r.version)).toEqual(["1.1", "1.0"]);
+    expect(released(all, "1.2").map((r) => r.version)).toEqual(["1.2", "1.1", "1.0"]);
+    expect(released(all, "2.0").length).toBe(3);
+    expect(released(all, null).length).toBe(3);
   });
 
   it("gives every major release 3 or 4 short highlights for the app's card", () => {
