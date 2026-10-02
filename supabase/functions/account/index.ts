@@ -2,6 +2,7 @@
 //
 //   DELETE /functions/v1/account         Authorization: Bearer <the user's access token>
 //   → 200 { deleted: true, files: <n> }
+//   → 403 { error, hint: "paused_after_reset", until } for 72 hours after a password reset (pause.ts)
 //   GET    /functions/v1/account/export  Authorization: Bearer <the user's access token>
 //   → 200 application/zip, "amber-notes-export-YYYY-MM-DD.zip" (see export.ts)
 //
@@ -16,6 +17,7 @@ import { atHome } from "../_shared/region.ts";
 import { logError } from "../_shared/log.ts";
 import { collect, zip } from "./export.ts";
 import { forget } from "./forget.ts";
+import { DELETE_PAUSED, deletePausedUntil } from "./pause.ts";
 
 // Through the transaction pooler when DB_POOLER_HOST is set (_shared/db.ts says why).
 const sql = connect(Deno.env, 1);
@@ -81,6 +83,8 @@ Deno.serve(atHome("account", async (req) => {
       return json({ error: "Couldn't prepare your export. Try again." }, 500);
     }
   }
+  const until = await deletePausedUntil(sql, uid);
+  if (until) return json({ error: DELETE_PAUSED, hint: "paused_after_reset", until }, 403);
   try {
     const files = await removeFiles(uid);
     await forget(sql, uid);

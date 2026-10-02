@@ -143,45 +143,64 @@ Deno.test("start fresh deletes the notes, connections and key; a second device's
   await refused(note(pg, me, key), "old key");
 });
 
-Deno.test("start fresh is paused for 72 hours after a password reset or sign-in link was asked for", async () => {
+// Start fresh's pause (20261002200000_start_fresh_after_reset.sql): only a real password change or a
+// sign-in from an emailed link starts it; asking for a link doesn't.
+const recentPassword = (me: string) => ({ "request.jwt.claims": JSON.stringify({ sub: me, role: "authenticated", amr: [{ method: "password", timestamp: Math.floor(Date.now() / 1000) - 30 }] }) });
+const tryStartFresh = (pg: PGlite, me: string, key: string) => asUser<any>(pg, me, `select public.start_fresh($1) as done`, [key], recentPassword(me));
+const pauseFrom = (pg: PGlite, me: string, hoursAgo: number) =>
+  pg.query(`update public.account_recoveries set at = now() - make_interval(secs => $2::double precision * 3600) where user_id = $1`, [me, String(hoursAgo)]);
+/// What the auth server writes when a session is made: one amr claim per sign-in method.
+async function signInWith(pg: PGlite, me: string, method: string) {
+  const [{ id }] = (await pg.query<any>(`insert into auth.sessions (user_id) values ($1) returning id`, [me])).rows;
+  await pg.query(`insert into auth.mfa_amr_claims (session_id, authentication_method) values ($1, $2)`, [id, method]);
+}
+
+Deno.test("asking for a reset or a sign-in link doesn't pause Start fresh: nobody can block it with requests", async () => {
   const pg = await schemaDB();
   const me = await newUser(pg);
   const { key } = await withKey(pg, me);
-  await note(pg, me, key);
-  const claims = { "request.jwt.claims": JSON.stringify({ sub: me, role: "authenticated", amr: [{ method: "password", timestamp: Math.floor(Date.now() / 1000) - 30 }] }) };
-  const startFresh = () => asUser<any>(pg, me, `select public.start_fresh($1) as done`, [key], claims);
-  // What Supabase does: stamps recovery_sent_at when it sends the link, clears it when the password
-  // is changed. The trigger keeps the moment; the test then moves it back in time.
+  // What Supabase does on a reset request and on a magic link request: it stamps recovery_sent_at.
   await pg.query(`update auth.users set recovery_sent_at = now() where id = $1`, [me]);
-  await pg.query(`update auth.users set recovery_sent_at = null, encrypted_password = 'new' where id = $1`, [me]);
-  assertEquals((await pg.query<any>(`select count(*)::int n from public.account_recoveries where user_id = $1`, [me])).rows[0].n, 1);
-  const resetAgo = (hours: number) => pg.query(`update public.account_recoveries set at = now() - make_interval(secs => $2::double precision * 3600) where user_id = $1`, [me, String(hours)]);
-
-  // Just inside the window: refused, with when it opens again for the app to say, and nothing deleted.
-  await resetAgo(71.9);
-  const err = await assertRejects(startFresh) as { message: string; hint?: string; detail?: string };
-  assertStringIncludes(err.message, "paused for 72 hours after a password reset");
-  assertEquals(err.hint, "paused_after_reset");
-  const until = new Date(err.detail!);
-  assert(Math.abs(until.getTime() - (Date.now() + 0.1 * 3600_000)) < 60_000, `opens again in about 6 minutes: ${err.detail}`);
-  assertEquals((await app(pg, me, `select count(*)::int n from public.notes`))[0].n, 1);
-  // A sign-in from long ago is refused for the pause first, not for the sign-in.
-  await refused(app(pg, me, `select public.start_fresh($1) as done`, [key]), "paused for 72 hours");
-
-  // Just past it: allowed again.
-  await resetAgo(72.1);
-  assertEquals((await startFresh())[0].done, true);
-  assertEquals((await app(pg, me, `select count(*)::int n from public.notes`))[0].n, 0);
+  // A password sign-in doesn't count either.
+  await signInWith(pg, me, "password");
+  assertEquals((await pg.query<any>(`select count(*)::int n from public.account_recoveries`)).rows[0].n, 0);
+  assertEquals((await tryStartFresh(pg, me, key))[0].done, true);
 });
 
-Deno.test("a password change alone starts the pause too, and nobody can read or clear the record", async () => {
+for (const [what, happen] of [
+  ["a completed password reset", (pg: PGlite, me: string) => pg.query(`update auth.users set recovery_sent_at = null, encrypted_password = 'new hash' where id = $1`, [me])],
+  ["a sign-in from an emailed link", (pg: PGlite, me: string) => signInWith(pg, me, "otp")],
+] as const) {
+  Deno.test(`${what} pauses Start fresh for 72 hours: refused at 71.9 h, allowed at 72.1 h`, async () => {
+    const pg = await schemaDB();
+    const me = await newUser(pg);
+    const { key } = await withKey(pg, me);
+    await note(pg, me, key);
+    await happen(pg, me);
+    // Refused at once, with when it opens again for the app to say, and nothing deleted.
+    const err = await assertRejects(() => tryStartFresh(pg, me, key)) as { message: string; hint?: string; detail?: string };
+    assertStringIncludes(err.message, "paused for 72 hours after a password reset");
+    assertEquals(err.hint, "paused_after_reset");
+    assert(Math.abs(new Date(err.detail!).getTime() - (Date.now() + 72 * 3600_000)) < 60_000, `opens again in 72 hours: ${err.detail}`);
+    // An old sign-in is refused for the pause first, not for the sign-in.
+    await refused(app(pg, me, `select public.start_fresh($1) as done`, [key]), "paused for 72 hours");
+    await pauseFrom(pg, me, 71.9);
+    await refused(tryStartFresh(pg, me, key), "paused for 72 hours");
+    assertEquals((await app(pg, me, `select count(*)::int n from public.notes`))[0].n, 1);
+    await pauseFrom(pg, me, 72.1);
+    assertEquals((await tryStartFresh(pg, me, key))[0].done, true);
+    assertEquals((await app(pg, me, `select count(*)::int n from public.notes`))[0].n, 0);
+  });
+}
+
+Deno.test("nobody can read, clear or write the pause's record", async () => {
   const pg = await schemaDB();
   const me = await newUser(pg);
-  const { key } = await withKey(pg, me);
-  await pg.query(`update auth.users set encrypted_password = 'changed' where id = $1`, [me]);
-  await refused(app(pg, me, `select public.start_fresh($1) as done`, [key]), "paused for 72 hours");
+  await signInWith(pg, me, "otp");
   await refused(app(pg, me, `select * from public.account_recoveries`), "permission denied");
   await refused(app(pg, me, `delete from public.account_recoveries`), "permission denied");
+  await refused(app(pg, me, `select public.pane_mark_recovery($1)`, [me]), "permission denied");
+  await refused(app(pg, me, `select public.pane_reset_pause_until($1)`, [me]), "permission denied");
 });
 
 Deno.test("an account that never asked for a reset can start fresh", async () => {

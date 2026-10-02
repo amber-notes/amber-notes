@@ -92,6 +92,9 @@ async function snapshot(uid: string) {
   return JSON.stringify({ keys: keys?.v, notes, tokens });
 }
 
+const pauses = async (uid: string) =>
+  Number((await db`select count(*)::int as n from public.account_recoveries where user_id = ${uid}`)[0].n);
+
 const recoveryTokens = async (uid: string) =>
   Number((await db`select count(*)::int as n from auth.one_time_tokens where user_id = ${uid} and token_type = 'recovery_token'`)[0].n);
 
@@ -131,6 +134,7 @@ Deno.test({ name: "password reset end to end", sanitizeResources: false, sanitiz
       link = hrefs[0];
       assertMatch(link, /\/reset-password#token_hash=[0-9a-f]{20,}&type=recovery$/);
       assertEquals(await recoveryTokens(uid), 1);
+      assertEquals(await pauses(uid), 0, "asking for a link starts no pause");
     });
 
     await t.step("opening the link spends nothing", async () => {
@@ -160,6 +164,7 @@ Deno.test({ name: "password reset end to end", sanitizeResources: false, sanitiz
       assertEquals(await recoveryTokens(uid), 1, "a refused password didn't spend the link");
       assertEquals(await savePassword(pending, NEW, auth), { kind: "done" });
       assertEquals(await recoveryTokens(uid), 0);
+      assertEquals(await pauses(uid), 1, "the completed reset started the pause");
       assert(await signIn(NEW), "the new password signs in");
       assertEquals(await signIn(OLD), null, "the old password is refused");
     });
@@ -182,6 +187,32 @@ Deno.test({ name: "password reset end to end", sanitizeResources: false, sanitiz
       assertEquals(body.hint, "paused_after_reset");
       const until = new Date(body.details).getTime();
       assert(Math.abs(until - (Date.now() + 72 * 3600_000)) < 5 * 60_000, `opens again in 72 hours: ${body.details}`);
+    });
+
+    await t.step("a magic-link sign-in starts the pause too; asking for one doesn't", async () => {
+      const other = `link-${tag}@example.com`;
+      const [{ id: otherId }] = await db`
+        insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at,
+                                confirmation_token, recovery_token, email_change_token_new, email_change, email_change_token_current, reauthentication_token,
+                                raw_app_meta_data, raw_user_meta_data)
+        values (gen_random_uuid(), '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', ${other}, crypt(${OLD}, gen_salt('bf')), now(), now(), now(),
+                '', '', '', '', '', '', '{"provider":"email","providers":["email"]}', '{}')
+        returning id`;
+      try {
+        const asked = await fetch(`${API}/auth/v1/otp`, { method: "POST", headers, body: JSON.stringify({ email: other, create_user: false }) });
+        assertEquals(asked.status, 200, await asked.clone().text());
+        await asked.body?.cancel();
+        const mail = await mailTo(other);
+        assert(mail, "the sign-in link arrived");
+        assertEquals(await pauses(otherId), 0, "asking for a sign-in link starts no pause");
+        const token = (mail.HTML + mail.Text).match(/token=([0-9a-f]{20,})/)![1];
+        const v = await fetch(`${API}/auth/v1/verify`, { method: "POST", headers, body: JSON.stringify({ type: "magiclink", token_hash: token }) });
+        assertEquals(v.status, 200);
+        await v.body?.cancel();
+        assertEquals(await pauses(otherId), 1, "signing in with it did");
+      } finally {
+        await db`delete from auth.users where id = ${otherId}`;
+      }
     });
 
     await t.step("the key, the notes and the AI connection are untouched", async () => {

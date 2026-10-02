@@ -773,6 +773,14 @@ import Testing
         #expect(KeyError.pausedAfterReset(until: nil).localizedDescription.hasSuffix("Try again in 3 days."))
     }
 
+    @Test func deletingTheAccountSaysWhenItsPausedAndUntilWhen() throws {
+        let body = Data(#"{"error":"x","hint":"paused_after_reset","until":"2026-10-05T14:30:00.000Z"}"#.utf8)
+        let until = Date(timeIntervalSince1970: 1_791_210_600)
+        #expect(Backend.deletePausedMessage(body) == "Deleting your account is paused for 72 hours after a password reset, to protect your notes. Try again on \(until.formatted(date: .long, time: .shortened)).")
+        #expect(Backend.deletePausedMessage(Data(#"{"error":"Couldn't delete the account."}"#.utf8)) == nil, "other refusals keep their own words")
+        #expect(Backend.deletePausedMessage(Data("not json".utf8)) == nil)
+    }
+
     @Test func startingFreshWithAWrongKeyHereKeepsItAsideQuietly() async throws {
         _ = try existingKey()
         let other = StoredKey.generate()

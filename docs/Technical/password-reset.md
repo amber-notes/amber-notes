@@ -24,25 +24,27 @@ files, shares, devices, AI connections (`mcp_tokens` and their wraps are not Sup
 notes password or locked notes. `scripts/password-reset-e2e.test.ts` compares those rows byte for
 byte before and after.
 
-What it means for safety: someone who can read a person's email can set a new password and sign in,
-as with any email reset. They still can't read the notes without the key (a new device needs Add a
-device or the recovery key). They could have deleted every note with Start fresh, so the server now
-refuses `start_fresh` for 72 hours after a reset was asked for
-(`supabase/migrations/20261002200000_start_fresh_after_reset.sql`), and the "password changed" email
-tells the owner at once.
+What it means for safety: someone who can read a person's email can set a new password, or sign in
+with an emailed link, as with any email account. They still can't read the notes without the key (a
+new device needs Add a device or the recovery key). They could have deleted every note, with Start
+fresh or Delete Account, so both are paused for 72 hours
+(`supabase/migrations/20261002200000_start_fresh_after_reset.sql`), and the "password changed"
+email tells the owner at once.
 
-The pause is decided on the server; nothing from the app counts. Supabase stamps
-`auth.users.recovery_sent_at` when it sends a reset email or a sign-in link (magic link), and clears it
-again once the password is changed (checked on the local stack, GoTrue 2.186), so it can't be read
-after a reset. A trigger on `auth.users` (`pane_note_recovery`) records the moment it is stamped,
-and every password change, in `public.account_recoveries`, which no client can read or write;
-`start_fresh` refuses while that moment, or `recovery_sent_at`, is under 72 hours old. Magic links matter here: email sign-in links work
-for every email account today, reset or not, and the pause covers them too. The app says "Start
-fresh is paused for 72 hours after a password reset, to protect your notes. Try again on <date>."
-(`KeyError.pausedAfterReset`, the date from the error's detail). Two things to know: anyone who
-knows an address can ask for a reset, so they can keep that account's Start fresh paused, which is
-the safe side to fail on; and Delete account (`supabase/functions/account`) needs only a signed-in
-session, so a reset or a magic link still reaches it. That one isn't paused.
+The pause starts only when something happened, never on a request, so nobody can keep an account's
+owner from Start fresh by asking for links. It starts when the password changes (a trigger on
+`auth.users.encrypted_password`) or when a session is made from an emailed link: reset links and
+magic links both sign in with the `otp` method, which Supabase writes to `auth.mfa_amr_claims` (a
+second trigger; checked on the local stack, GoTrue 2.186). Asking only stamps
+`auth.users.recovery_sent_at`, which isn't read; Supabase also clears it when the password changes.
+The moment goes in `public.account_recoveries`, which no client can read or write, and
+`public.pane_reset_pause_until` is the one place that decides. `start_fresh` refuses with hint
+`paused_after_reset` and the time it opens again as the detail; `DELETE /functions/v1/account`
+answers 403 with the same hint and `until` (`supabase/functions/account/pause.ts`). The apps say
+"Start fresh is paused for 72 hours after a password reset, to protect your notes. Try again on
+<date>." and "Deleting your account is paused for 72 hours after a password reset, to protect your
+notes. Try again on <date>." Magic links matter here: email sign-in links work for every email
+account today, reset or not, and the pause covers them too.
 
 ## The flow
 
@@ -98,7 +100,7 @@ analytics exclusion lists (`web/lib/analytics.ts`, `web/lib/posthog.ts`).
   `/connect`. Try it with `pnpm build && pnpm start`.
 - **`recovery_sent_at` is not evidence** that a mail went out, or of a reset after the fact:
   Supabase clears it when the password is changed. Delivery is checked in the mail provider's log;
-  the Start fresh pause keeps its own record.
+  the pause keeps its own record.
 
 ## Limits
 
@@ -114,7 +116,8 @@ The production project is `rodegaeruhyybqilrnpn`. On 2 October 2026 it had no cu
 stock recovery template.
 
 1. Merge, apply `supabase/migrations/20261002200000_start_fresh_after_reset.sql` to the project (the
-   Start fresh pause; it must be live before reset emails go out), and deploy the site, so
+   Start fresh and Delete Account pause; it must be live before reset emails go out) and deploy the
+   `account` function (its half of the pause), and deploy the site, so
    `/reset-password` exists before any email points at it.
 2. DNS for sending. `ambernotes.app` was added to the Resend account on 2 October 2026 (domain id
    `74963381-a703-4813-b926-836bae40677c`, region eu-west-1, not verified yet). Add at GoDaddy, then

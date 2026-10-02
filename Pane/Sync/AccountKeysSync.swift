@@ -58,6 +58,6 @@ struct SupabaseAccountKeys: AccountKeyServer {
 
     /// The server's "until", in UTC (`2026-10-05T14:30:00Z`).
     nonisolated static func pausedUntil(_ detail: String?) -> Date? {
-        detail.flatMap { try? Date($0, strategy: .iso8601) }
+        detail.flatMap(Backend.pauseDate)
     }
 }
