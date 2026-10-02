@@ -33,9 +33,20 @@ describe("the layout's analytics", () => {
   it("never loads PostHog on shared notes, connect, universal-link, report or download-redirect pages", () => {
     vi.stubEnv("NEXT_PUBLIC_POSTHOG_KEY", "phc_test");
     for (const path of ["/n/abc123", "/connect", "/open/connect", "/open/template/standup", "/report/abc123", "/download/mac"]) {
-      const html = render(path);
-      expect(html, path).not.toContain("data-posthog");
-      expect(html, path).toContain("data-vercel");
+      expect(render(path), path).not.toContain("data-posthog");
+    }
+  });
+
+  it("loads Vercel Web Analytics on public pages", () => {
+    for (const path of ["/", "/download", "/blog/apple-notes-mcp", "/templates/trip-plan", "/help", "/notes", "/openings"]) {
+      expect(render(path), path).toContain("data-vercel");
+    }
+  });
+
+  it("never loads Vercel Web Analytics, or its loader, on shared notes, connect, universal-link or report pages", () => {
+    for (const path of ["/n/abc123", "/n/abc123/sub", "/connect", "/connect/preview", "/open/connect", "/open/template/standup", "/open/copy/abc123", "/report/abc123"]) {
+      expect(render(path), path).not.toContain("data-vercel");
     }
   });
 });
+
