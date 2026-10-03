@@ -1,6 +1,10 @@
 import Foundation
 import Testing
 @testable import Pane
+#if os(macOS)
+import AppKit
+import SwiftUI
+#endif
 
 /// Getting a device the account's key (`AccountCrypto`, `KeyStartup`), with a fake Keychain and a
 /// fake server. The loops in the background are switched off (their sleep throws) unless a test
@@ -751,6 +755,61 @@ import Testing
         #expect(!crypto.recoveryKeyChanged, "the person chose it here: no alert about it")
         crypto.signedOut()
     }
+
+    // MARK: Accessibility
+
+    /// VoiceOver must read "Recovery key, text field" — not the placeholder — when the recovery entry screen is shown.
+    #if os(macOS)
+    @Test func recoveryKeyFieldHasAccessibilityLabel() async throws {
+        let (crypto, _) = try await KeyFlowSnapshots.waitingDevice()
+        defer { crypto.signedOut() }
+        let view = KeyGateView(crypto: crypto, backend: Backend(), screen: .recovery)
+        let size = CGSize(width: 400, height: 600)
+        // Put the view in a real offscreen window — AppKit only builds the NSView subtree
+        // (and transfers SwiftUI accessibility modifiers onto AppKit controls) after a full
+        // display pass inside a window; a bare NSHostingView without one produces no NSTextFields.
+        let window = NSWindow(
+            contentRect: CGRect(x: -30000, y: -30000, width: size.width, height: size.height),
+            styleMask: [.titled, .closable, .fullSizeContentView],
+            backing: .buffered,
+            defer: false
+        )
+        window.isReleasedWhenClosed = false
+        window.contentViewController = NSHostingController(rootView: view)
+        window.setContentSize(size)
+        window.orderFrontRegardless()
+        defer { window.orderOut(nil); window.close() }
+
+        // Walk the NSView subtree for the NSTextField whose identifier is "e2ee.recovery".
+        func findTextField(in view: NSView) -> NSTextField? {
+            if let tf = view as? NSTextField,
+               tf.accessibilityIdentifier() == "e2ee.recovery" { return tf }
+            for sub in view.subviews {
+                if let found = findTextField(in: sub) { return found }
+            }
+            return nil
+        }
+
+        // Poll with explicit display/layout flushes: SwiftUI may not have materialised the
+        // NSTextField into the AppKit tree by the time the first yield returns, especially on
+        // slower CI runners. Each iteration forces a synchronous render pass before searching.
+        var recoveryField: NSTextField?
+        for _ in 0 ..< 20 {
+            window.displayIfNeeded()
+            window.contentView?.layoutSubtreeIfNeeded()
+            if let root = window.contentView {
+                recoveryField = findTextField(in: root)
+            }
+            if recoveryField != nil { break }
+            await Task.yield()
+        }
+
+        let tf = try #require(recoveryField,
+            "no NSTextField with identifier \"e2ee.recovery\" found in the recovery entry screen")
+        #expect(tf.accessibilityLabel() == "Recovery key",
+                "VoiceOver must read \"Recovery key\" — not the placeholder — so screen-reader users know what the field is for")
+    }
+    #endif
 
     // MARK: Leaving
 
