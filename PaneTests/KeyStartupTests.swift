@@ -765,23 +765,35 @@ import SwiftUI
         defer { crypto.signedOut() }
         let view = KeyGateView(crypto: crypto, backend: Backend(), screen: .recovery)
         let size = CGSize(width: 400, height: 600)
-        let host = NSHostingView(rootView: view)
-        host.frame = CGRect(origin: .zero, size: size)
-        // Lay out so accessibility elements are created.
-        host.layoutSubtreeIfNeeded()
-        try? await Task.sleep(for: .seconds(0.1))
-        // Walk the NSAccessibility subtree to find the element with identifier "e2ee.recovery".
-        func findLabel(in element: AnyObject) -> String? {
-            guard let ax = element as? NSAccessibilityProtocol else { return nil }
-            if ax.accessibilityIdentifier() == "e2ee.recovery",
-               let label = ax.accessibilityLabel() { return label }
-            for child in ax.accessibilityChildren() ?? [] {
-                if let found = findLabel(in: child as AnyObject) { return found }
+        // Put the view in a real offscreen window — AppKit accessibility requires a window to build
+        // its element tree; a bare NSHostingView without one returns nil for all attributes.
+        let window = NSWindow(
+            contentRect: CGRect(x: -30000, y: -30000, width: size.width, height: size.height),
+            styleMask: [.titled, .closable, .fullSizeContentView],
+            backing: .buffered,
+            defer: false
+        )
+        window.isReleasedWhenClosed = false
+        window.contentViewController = NSHostingController(rootView: view)
+        window.setContentSize(size)
+        window.orderFrontRegardless()
+        defer { window.orderOut(nil); window.close() }
+        // Wait for SwiftUI to finish its layout pass and populate the accessibility tree.
+        try? await Task.sleep(for: .seconds(0.3))
+        // Walk the NSView subtree to find the NSTextField whose accessibilityIdentifier is
+        // "e2ee.recovery" and confirm it carries the VoiceOver label "Recovery key".
+        func findTextField(in view: NSView) -> NSTextField? {
+            if let tf = view as? NSTextField,
+               tf.accessibilityIdentifier() == "e2ee.recovery" { return tf }
+            for sub in view.subviews {
+                if let found = findTextField(in: sub) { return found }
             }
             return nil
         }
-        let label = findLabel(in: host)
-        #expect(label == "Recovery key", "VoiceOver must read \"Recovery key\" — not the placeholder — so screen-reader users know what the field is for")
+        let root = try #require(window.contentView)
+        let tf = try #require(findTextField(in: root), "no NSTextField with identifier \"e2ee.recovery\" found in the recovery entry screen")
+        #expect(tf.accessibilityLabel() == "Recovery key",
+                "VoiceOver must read \"Recovery key\" — not the placeholder — so screen-reader users know what the field is for")
     }
     #endif
 
