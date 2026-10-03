@@ -628,6 +628,8 @@ enum KeyStartup {
 }
 
 enum KeyError: LocalizedError, Equatable {
+    var isPausedAfterReset: Bool { if case .pausedAfterReset = self { true } else { false } }
+
     case typo, wrongKey, offline, notReady, confirmation
     /// Starting fresh needs a sign-in in the last few minutes.
     case reauth
@@ -639,6 +641,9 @@ enum KeyError: LocalizedError, Equatable {
     case notAccountsKey
     /// This device was itself removed, so it can't remove another.
     case removedHere
+    /// The server refuses Start fresh for 72 hours after a password reset (or a sign-in link) was
+    /// asked for, until `until` (docs/Technical/password-reset.md).
+    case pausedAfterReset(until: Date?)
 
     var errorDescription: String? {
         switch self {
@@ -652,6 +657,9 @@ enum KeyError: LocalizedError, Equatable {
         case .confirmation: "Type \u{201C}\(AccountCrypto.startFreshPhrase)\u{201D} to confirm."
         case .removedHere: "This device was removed from another of your devices, so it can\u{2019}t remove one."
         case .notAccountsKey: "What the other device sent isn't this account's key. Show a new code and try again."
+        case .pausedAfterReset(let until):
+            "Start fresh is paused for 72 hours after a password reset, to protect your notes."
+                + (until.map { " Try again on \($0.formatted(date: .long, time: .shortened))." } ?? " Try again in 3 days.")
         }
     }
 }
@@ -1015,7 +1023,10 @@ final class AccountCrypto {
         do { current = try await server.fetch().key } catch { throw KeyError.offline }
         if let current {
             let deleted: Bool
-            do { deleted = try await server.startFresh(keyID: current.key_id) } catch KeyError.reauth { throw KeyError.reauth } catch { throw KeyError.offline }
+            do { deleted = try await server.startFresh(keyID: current.key_id) }
+            catch KeyError.reauth { throw KeyError.reauth }
+            catch let paused as KeyError where paused.isPausedAfterReset { throw paused }
+            catch { throw KeyError.offline }
             if deleted {
                 // Every device hears of it (account_notices); this one did it, so it doesn't say so.
                 defaults.set(true, forKey: Self.startedFreshHereKey(account))

@@ -99,8 +99,9 @@ import Testing
         let r = ConnectRequest(id: UUID(), client_name: "ChatGPT", redirect_host: "chatgpt.com", loopback: false, wants_write: true)
         try await Self.render(ConsentSheet(client: client, requestID: r.id, initial: .asking(r), finish: { _ in }), name: "mac-consent-\(mode)", dark: dark)
         try await Self.shoot(SignInView(backend: backend).fixedSize().containerBackground(for: .window) { Backdrop() }, name: "mac-signin-\(mode)", size: CGSize(width: 380, height: 470), dark: dark, toolbar: false)
-        // The email-first steps: an existing account, a new email, and a Sign in with Apple account.
-        for (name, step) in [("existing", EmailSignInFlow.Step.signIn(fallback: false)), ("new", .create), ("fallback", .signIn(fallback: true)), ("apple", .apple)] {
+        // The email-first steps: an existing account, a new email, a Sign in with Apple account, and Forgot password?.
+        for (name, step) in [("existing", EmailSignInFlow.Step.signIn(fallback: false)), ("new", .create), ("fallback", .signIn(fallback: true)), ("apple", .apple),
+                             ("forgot", .forgot(sending: false)), ("forgot-sent", .forgotSent)] {
             let flow = EmailSignInFlow(step: step, email: "you@example.com", password: step == .create ? "correct horse battery" : "")
             try await Self.shoot(SignInView(backend: backend, flow: flow).fixedSize().containerBackground(for: .window) { Backdrop() }, name: "mac-signin-\(name)-\(mode)", size: CGSize(width: 380, height: 520), dark: dark, toolbar: false)
         }

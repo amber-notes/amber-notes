@@ -92,6 +92,13 @@ describe("the connect pages' CSP", () => {
     expect(policy).not.toContain(SUPABASE);
   });
 
+  it("gives /reset-password the strict policy, calling only this site and the Supabase project", async () => {
+    const policy = await csp("/reset-password?token_hash=abc&type=recovery");
+    expect(policy).toContain(`connect-src 'self' ${SUPABASE};`);
+    expect(policy).toContain("form-action 'none'");
+    expect(policy).not.toContain("unsafe-inline");
+  });
+
   it("gives the Dev-only /connect/preview the same strict policy, with no network", async () => {
     const policy = await csp("/connect/preview?state=scan");
     expect(policy).toContain("style-src 'self' 'nonce-");
@@ -102,17 +109,19 @@ describe("the connect pages' CSP", () => {
 describe("the connect pages' referrer", () => {
   const page = (path: string) => middleware(new NextRequest(`https://ambernotes.app${path}`, { headers: { host: "ambernotes.app" } }));
 
-  it("sends no referrer from /connect or /open/connect", async () => {
-    for (const path of ["/connect?request=5a0f6c1e-2b1d-4c36-9e0a-6b6f0c1a2b3c", "/open/connect?request=5a0f6c1e-2b1d-4c36-9e0a-6b6f0c1a2b3c"]) {
+  it("sends no referrer from /connect, /open/connect or /reset-password", async () => {
+    for (const path of ["/connect?request=5a0f6c1e-2b1d-4c36-9e0a-6b6f0c1a2b3c", "/open/connect?request=5a0f6c1e-2b1d-4c36-9e0a-6b6f0c1a2b3c", "/reset-password?token_hash=abc&type=recovery"]) {
       expect((await page(path)).headers.get("referrer-policy"), path).toBe("no-referrer");
     }
   });
 
   it("says so in next.config.ts too, for responses middleware doesn't touch", async () => {
     const rules = await nextConfig.headers!();
-    for (const source of ["/connect", "/open/connect"]) {
+    for (const source of ["/connect", "/open/connect", "/reset-password"]) {
       const rule = rules.find((r) => r.source === source);
       expect(rule?.headers.find((h) => h.key === "Referrer-Policy")?.value, source).toBe("no-referrer");
+      expect(rule?.headers.find((h) => h.key === "Cache-Control")?.value, source).toBe("no-store");
+      expect(rule?.headers.some((h) => h.key === "Content-Security-Policy"), source).toBe(false);
     }
   });
 });

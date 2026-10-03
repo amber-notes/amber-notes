@@ -14,6 +14,8 @@ import { allowedPath, functionRegion, MCP_HOST, sitePath, upstream, upstreamHead
 // 2. The connect pages (/connect, and /open/connect where the universal link lands in a browser) get
 //    a per-response nonce, a strict CSP and no referrer. /connect may also call the Supabase project.
 //    The Dev-only /connect/preview gets the same CSP, so what it shows is what /connect can render.
+//    /reset-password is the same kind of page (a link's one-time token, a new password) and gets the
+//    same treatment; it calls the Supabase project too.
 
 export const config = {
   matcher: [
@@ -21,13 +23,14 @@ export const config = {
     "/connect",
     "/open/connect",
     "/connect/preview",
+    "/reset-password",
   ],
 };
 
 export async function middleware(req: NextRequest) {
   const host = (req.headers.get("host") ?? "").toLowerCase();
   if (host === MCP_HOST) return proxy(req);
-  if (["/connect", "/open/connect", "/connect/preview"].includes(req.nextUrl.pathname)) return connectPage(req);
+  if (["/connect", "/open/connect", "/connect/preview", "/reset-password"].includes(req.nextUrl.pathname)) return connectPage(req);
   return NextResponse.next();
 }
 
@@ -50,7 +53,7 @@ function proxy(req: NextRequest) {
 
 async function connectPage(req: NextRequest) {
   const nonce = newNonce();
-  const csp = await connectCSP(nonce, req.nextUrl.pathname === "/connect" ? process.env.SUPABASE_URL : undefined);
+  const csp = await connectCSP(nonce, ["/connect", "/reset-password"].includes(req.nextUrl.pathname) ? process.env.SUPABASE_URL : undefined);
   // Next.js reads the nonce from the request's CSP and puts it on the scripts it renders.
   const headers = new Headers(req.headers);
   headers.set("content-security-policy", csp);
