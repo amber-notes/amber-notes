@@ -732,7 +732,8 @@ private struct CodeScanner: UIViewRepresentable {
 ///   `add-device-type`, `add-device-confirm`, `add-device-done`: the typed code, the question, "Added".
 ///   `key-kept` (safe), `key-kept-unconfirmed`, `key-kept-only`: Privacy & Security in its three
 ///   states (PaneUITests/AddDeviceUITests taps Remove and Add a device on them).
-///   `device-added-notice`: what every other device says after one is added.
+///   `device-added-notice`: what every other device says after one is added. `key-checking`: just
+///   signed in, on a server that takes the connection and never answers.
 struct AddDeviceCapture: View {
     let name: String
     @State private var crypto: AccountCrypto
@@ -750,7 +751,11 @@ struct AddDeviceCapture: View {
     /// An account that has a key (the new device waits) or has none yet (this device makes it).
     private struct Server: AccountKeyServer {
         let key: ServerKey?
-        func fetch() async throws -> ServerKeyState { ServerKeyState(key: key) }
+        var hangs = false
+        func fetch() async throws -> ServerKeyState {
+            if hangs { try await Task.sleep(for: .seconds(3600)) }
+            return ServerKeyState(key: key)
+        }
         func create(_ key: ServerKey, generation: Int) async throws -> (key: ServerKey, created: Bool) { (key, true) }
         func markRecoveryKeySaved() async throws -> Date? { .now }
         func startFresh(keyID: String) async throws -> Bool { false }
@@ -769,6 +774,11 @@ struct AddDeviceCapture: View {
         }
         .task {
             let user = UUID()
+            if name == "key-checking" {
+                Task { await crypto.attach(account: user, server: Server(key: nil, hangs: true)) }
+                ready = true
+                return
+            }
             let waits = name == "new-device"
             await crypto.attach(account: user, server: Server(key: waits ? try? StoredKey.generate().serverRow(user: user) : nil))
             crypto.welcomeShown()
@@ -783,6 +793,8 @@ struct AddDeviceCapture: View {
 
     @ViewBuilder private var screen: some View {
         switch name {
+        case "key-checking":
+            KeyGateView(crypto: crypto, backend: Backend())
         case "new-device":
             KeyGateView(crypto: crypto, backend: Backend(),
                         session: NewDeviceSession(crypto: crypto, server: nil,
