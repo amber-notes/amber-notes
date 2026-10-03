@@ -1,6 +1,10 @@
 import Foundation
 import Testing
 @testable import Pane
+#if os(macOS)
+import AppKit
+import SwiftUI
+#endif
 
 /// Getting a device the account's key (`AccountCrypto`, `KeyStartup`), with a fake Keychain and a
 /// fake server. The loops in the background are switched off (their sleep throws) unless a test
@@ -751,6 +755,35 @@ import Testing
         #expect(!crypto.recoveryKeyChanged, "the person chose it here: no alert about it")
         crypto.signedOut()
     }
+
+    // MARK: Accessibility
+
+    /// VoiceOver must read "Recovery key, text field" — not the placeholder — when the recovery entry screen is shown.
+    #if os(macOS)
+    @Test func recoveryKeyFieldHasAccessibilityLabel() async throws {
+        let (crypto, _) = try await KeyFlowSnapshots.waitingDevice()
+        defer { crypto.signedOut() }
+        let view = KeyGateView(crypto: crypto, backend: Backend(), screen: .recovery)
+        let size = CGSize(width: 400, height: 600)
+        let host = NSHostingView(rootView: view)
+        host.frame = CGRect(origin: .zero, size: size)
+        // Lay out so accessibility elements are created.
+        host.layoutSubtreeIfNeeded()
+        try? await Task.sleep(for: .seconds(0.1))
+        // Walk the NSAccessibility subtree to find the element with identifier "e2ee.recovery".
+        func findLabel(in element: AnyObject) -> String? {
+            guard let ax = element as? NSAccessibilityProtocol else { return nil }
+            if ax.accessibilityIdentifier() == "e2ee.recovery",
+               let label = ax.accessibilityLabel() { return label }
+            for child in ax.accessibilityChildren() ?? [] {
+                if let found = findLabel(in: child as AnyObject) { return found }
+            }
+            return nil
+        }
+        let label = findLabel(in: host)
+        #expect(label == "Recovery key", "VoiceOver must read \"Recovery key\" — not the placeholder — so screen-reader users know what the field is for")
+    }
+    #endif
 
     // MARK: Leaving
 

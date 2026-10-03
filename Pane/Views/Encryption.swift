@@ -255,6 +255,7 @@ struct KeyGateView: View {
                         #endif
                         .focused($focused)
                         .onSubmit { if canSubmitRecovery { submitRecovery() } }
+                        .accessibilityLabel("Recovery key")
                 }
                 .accessibilityIdentifier("e2ee.recovery")
                 Text(Copy.recoveryFormat + " " + Copy.recoveryHint)
