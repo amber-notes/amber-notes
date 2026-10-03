@@ -54,6 +54,8 @@ enum AddDeviceCopy {
 struct QRCodeImage: View {
     let text: String
     var side: CGFloat = 176
+    /// The default code's size on screen, with its white margin.
+    static let outside: CGFloat = 176 + 2 * 14
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -204,24 +206,18 @@ struct NewDeviceCodeView: View {
         VStack(spacing: 14) {
             switch session.state {
             case .preparing:
-                ProgressView().controlSize(.regular).frame(height: 204)
+                // The code's own room, empty, so the card doesn't grow when the code comes.
+                VStack(spacing: 14) {
+                    Color.clear.frame(width: QRCodeImage.outside, height: QRCodeImage.outside)
+                    codeLines("XXXX-XXXX-XXXX")
+                }
+                .hidden()
+                .overlay(alignment: .top) { ProgressView().controlSize(.regular).frame(height: QRCodeImage.outside) }
+                .accessibilityHidden(true)
             case .showing(let qr, let code):
                 QRCodeImage(text: qr)
-                VStack(spacing: 4) {
-                    Text(AddDeviceCopy.codeLead)
-                        .font(.footnote)
-                        .foregroundStyle(Color.muted)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Text(code)
-                        .font(.system(.title3, design: .monospaced).weight(.semibold))
-                        .foregroundStyle(Color.ink)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.4)
-                        .textSelection(.enabled)
-                        .accessibilityLabel(code.map(String.init).joined(separator: " "))
-                        .accessibilityIdentifier("addDevice.code")
-                }
-                .multilineTextAlignment(.center)
+                codeLines(code)
+                    .transition(.opacity)
             case .expired:
                 message(AddDeviceCopy.expired)
                 Button(AddDeviceCopy.newCode) { session.again() }
@@ -241,6 +237,24 @@ struct NewDeviceCodeView: View {
             }
         }
         .frame(maxWidth: .infinity)
+    }
+
+    private func codeLines(_ code: String) -> some View {
+        VStack(spacing: 4) {
+            Text(AddDeviceCopy.codeLead)
+                .font(.footnote)
+                .foregroundStyle(Color.muted)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(code)
+                .font(.system(.title3, design: .monospaced).weight(.semibold))
+                .foregroundStyle(Color.ink)
+                .lineLimit(1)
+                .minimumScaleFactor(0.4)
+                .textSelection(.enabled)
+                .accessibilityLabel(code.map(String.init).joined(separator: " "))
+                .accessibilityIdentifier("addDevice.code")
+        }
+        .multilineTextAlignment(.center)
     }
 
     private func message(_ text: String) -> some View {
@@ -718,7 +732,8 @@ private struct CodeScanner: UIViewRepresentable {
 ///   `add-device-type`, `add-device-confirm`, `add-device-done`: the typed code, the question, "Added".
 ///   `key-kept` (safe), `key-kept-unconfirmed`, `key-kept-only`: Privacy & Security in its three
 ///   states (PaneUITests/AddDeviceUITests taps Remove and Add a device on them).
-///   `device-added-notice`: what every other device says after one is added.
+///   `device-added-notice`: what every other device says after one is added. `key-checking`: just
+///   signed in, on a server that takes the connection and never answers.
 struct AddDeviceCapture: View {
     let name: String
     @State private var crypto: AccountCrypto
@@ -736,7 +751,11 @@ struct AddDeviceCapture: View {
     /// An account that has a key (the new device waits) or has none yet (this device makes it).
     private struct Server: AccountKeyServer {
         let key: ServerKey?
-        func fetch() async throws -> ServerKeyState { ServerKeyState(key: key) }
+        var hangs = false
+        func fetch() async throws -> ServerKeyState {
+            if hangs { try await Task.sleep(for: .seconds(3600)) }
+            return ServerKeyState(key: key)
+        }
         func create(_ key: ServerKey, generation: Int) async throws -> (key: ServerKey, created: Bool) { (key, true) }
         func markRecoveryKeySaved() async throws -> Date? { .now }
         func startFresh(keyID: String) async throws -> Bool { false }
@@ -755,6 +774,11 @@ struct AddDeviceCapture: View {
         }
         .task {
             let user = UUID()
+            if name == "key-checking" {
+                Task { await crypto.attach(account: user, server: Server(key: nil, hangs: true)) }
+                ready = true
+                return
+            }
             let waits = name == "new-device"
             await crypto.attach(account: user, server: Server(key: waits ? try? StoredKey.generate().serverRow(user: user) : nil))
             crypto.welcomeShown()
@@ -769,6 +793,8 @@ struct AddDeviceCapture: View {
 
     @ViewBuilder private var screen: some View {
         switch name {
+        case "key-checking":
+            KeyGateView(crypto: crypto, backend: Backend())
         case "new-device":
             KeyGateView(crypto: crypto, backend: Backend(),
                         session: NewDeviceSession(crypto: crypto, server: nil,

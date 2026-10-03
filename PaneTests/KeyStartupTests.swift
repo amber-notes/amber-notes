@@ -808,6 +808,18 @@ import Testing
 }
 
 /// The session's last real sign-in, read from its access token's `amr` claim, as the server reads it.
+/// Just signed in: the key gate's spinner waits on the key check alone.
+@MainActor @Suite struct SignedInStartupTests {
+    @Test(.timeLimit(.minutes(1))) func theKeyCheckDoesNotWaitForTheNoteLock() async {
+        var checked = false
+        // A server that takes the connection and never answers.
+        let (never, close) = AsyncStream<Void>.makeStream()
+        await SignedInStartup(refreshLock: { for await _ in never {} }, checkKey: { checked = true }).run()
+        #expect(checked)
+        close.finish()
+    }
+}
+
 @Suite struct SignInRecencyTests {
     private func token(_ payload: [String: Any]) throws -> String {
         let json = try JSONSerialization.data(withJSONObject: payload)

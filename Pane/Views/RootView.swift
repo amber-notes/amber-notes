@@ -92,9 +92,15 @@ struct RootView: View {
                     // makes a note nobody sees and search focuses a field that isn't on screen.
                     // With something presented, the iPhone folder list stays, as it's what you see.
                     guard sizeClass != .compact || !Presentation.isActive else { return }
-                    restoreScope()
-                    restoreNote()
-                    openFromLaunchArguments()
+                    // Opened where you were, not pushed there: with animation the folder list
+                    // showed for a moment and the note then slid in over it.
+                    var instant = Transaction()
+                    instant.disablesAnimations = true
+                    withTransaction(instant) {
+                        restoreScope()
+                        restoreNote()
+                        openFromLaunchArguments()
+                    }
                 }
                 #else
                 restoreScope()

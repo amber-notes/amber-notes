@@ -82,6 +82,26 @@ import Testing
         #expect(f.email == "you@example.com", "the email stays so you can fix a typo")
     }
 
+    /// Sign in with Apple folds away while a password is asked for (or reset), so the card keeps
+    /// its main button in place and fits above the keyboard; everywhere else it's there.
+    @Test func signInWithAppleFoldsAwayOnlyForThePassword() {
+        var f = EmailSignInFlow(email: "you@example.com")
+        #expect(f.showsApple)
+        _ = f.beginCheck()
+        #expect(f.showsApple, "still there while the email is checked")
+        f.finishCheck(.password)
+        #expect(!f.showsApple)
+        f.back()
+        #expect(f.showsApple, "Use a different email brings it back")
+        _ = f.beginCheck()
+        f.finishCheck(.new)
+        #expect(!f.showsApple, "choosing a password too")
+        f.back()
+        _ = f.beginCheck()
+        f.finishCheck(.appleOnly)
+        #expect(f.showsApple, "an Apple account signs in with it")
+    }
+
     @Test func aLateAnswerIsIgnoredOnceYouWentBack() {
         var f = EmailSignInFlow(email: "you@example.com")
         _ = f.beginCheck()
@@ -101,6 +121,7 @@ import Testing
         #expect(f.password.isEmpty)
         #expect(!f.showsPassword)
         #expect(f.emailLocked, "the link goes to the email already typed")
+        #expect(!f.showsApple, "a password account stays on the password path")
         #expect(f.buttonTitle == "Email Me a Link")
         let first = f.beginReset()
         let second = f.beginReset()
@@ -109,6 +130,7 @@ import Testing
         #expect(!f.buttonEnabled)
         f.finishReset(sent: true)
         #expect(f.step == .forgotSent)
+        #expect(!f.showsApple)
         #expect(f.buttonTitle == "Back to Sign In")
         f.backToSignIn()
         #expect(f.step == .signIn(fallback: false))
