@@ -765,8 +765,9 @@ import SwiftUI
         defer { crypto.signedOut() }
         let view = KeyGateView(crypto: crypto, backend: Backend(), screen: .recovery)
         let size = CGSize(width: 400, height: 600)
-        // Put the view in a real offscreen window — AppKit accessibility requires a window to build
-        // its element tree; a bare NSHostingView without one returns nil for all attributes.
+        // Put the view in a real offscreen window — AppKit only builds the NSView subtree
+        // (and transfers SwiftUI accessibility modifiers onto AppKit controls) after a full
+        // display pass inside a window; a bare NSHostingView without one produces no NSTextFields.
         let window = NSWindow(
             contentRect: CGRect(x: -30000, y: -30000, width: size.width, height: size.height),
             styleMask: [.titled, .closable, .fullSizeContentView],
@@ -778,10 +779,8 @@ import SwiftUI
         window.setContentSize(size)
         window.orderFrontRegardless()
         defer { window.orderOut(nil); window.close() }
-        // Wait for SwiftUI to finish its layout pass and populate the accessibility tree.
-        try? await Task.sleep(for: .seconds(0.3))
-        // Walk the NSView subtree to find the NSTextField whose accessibilityIdentifier is
-        // "e2ee.recovery" and confirm it carries the VoiceOver label "Recovery key".
+
+        // Walk the NSView subtree for the NSTextField whose identifier is "e2ee.recovery".
         func findTextField(in view: NSView) -> NSTextField? {
             if let tf = view as? NSTextField,
                tf.accessibilityIdentifier() == "e2ee.recovery" { return tf }
@@ -790,8 +789,23 @@ import SwiftUI
             }
             return nil
         }
-        let root = try #require(window.contentView)
-        let tf = try #require(findTextField(in: root), "no NSTextField with identifier \"e2ee.recovery\" found in the recovery entry screen")
+
+        // Poll with explicit display/layout flushes: SwiftUI may not have materialised the
+        // NSTextField into the AppKit tree by the time the first yield returns, especially on
+        // slower CI runners. Each iteration forces a synchronous render pass before searching.
+        var recoveryField: NSTextField?
+        for _ in 0 ..< 20 {
+            window.displayIfNeeded()
+            window.contentView?.layoutSubtreeIfNeeded()
+            if let root = window.contentView {
+                recoveryField = findTextField(in: root)
+            }
+            if recoveryField != nil { break }
+            await Task.yield()
+        }
+
+        let tf = try #require(recoveryField,
+            "no NSTextField with identifier \"e2ee.recovery\" found in the recovery entry screen")
         #expect(tf.accessibilityLabel() == "Recovery key",
                 "VoiceOver must read \"Recovery key\" — not the placeholder — so screen-reader users know what the field is for")
     }
