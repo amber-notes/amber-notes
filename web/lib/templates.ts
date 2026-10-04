@@ -118,6 +118,13 @@ export function instructions(t: Template): { client: ClientId; name: string; pro
 }
 
 /// The markdown inside a prompt's fence, as create_note would get it.
+/// The prompts worth telling apart: AIs that get the same words share one entry ("ChatGPT or Claude").
+export function promptVariants(t: Template): { name: string; prompt: string }[] {
+  const byPrompt = new Map<string, string[]>();
+  for (const i of instructions(t)) byPrompt.set(i.prompt, [...(byPrompt.get(i.prompt) ?? []), i.name]);
+  return [...byPrompt].map(([prompt, names]) => ({ name: names.join(" or ").replace(/ or (?=.* or )/g, ", "), prompt }));
+}
+
 export function markdownIn(prompt: string): string | null {
   const m = prompt.match(/```markdown\n([\s\S]*?)\n```\s*$/);
   return m ? m[1] + "\n" : null;

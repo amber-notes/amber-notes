@@ -5,7 +5,7 @@ import { CLAUDE_DIRECTORY_URL } from "@/lib/facts";
 import { APP_TEMPLATES, pageMetadata } from "@/lib/site";
 import { JsonLd, breadcrumbs, maker, organization, templateHowTo, templateWork } from "@/lib/structured-data";
 import { COVERS, coverPath } from "@/lib/template-covers";
-import { anchor, authorLink, changedCount, instructions, noteTitle, searchTitle, template, templates, usePath, type Template } from "@/lib/templates";
+import { anchor, authorLink, changedCount, noteTitle, promptVariants, searchTitle, template, templates, usePath, type Template } from "@/lib/templates";
 import Card from "../Card";
 import CopyButton from "../CopyButton";
 import Instructions from "../Instructions";
@@ -43,13 +43,6 @@ const steps = (t: Template) => APP_TEMPLATES.live
 
 const at = (i: number) => ({ "--i": i }) as React.CSSProperties;
 
-/// The prompts worth telling apart: AIs that get the same words share one entry ("ChatGPT or Claude").
-function variants(t: Template) {
-  const byPrompt = new Map<string, string[]>();
-  for (const i of instructions(t)) byPrompt.set(i.prompt, [...(byPrompt.get(i.prompt) ?? []), i.name]);
-  return [...byPrompt].map(([prompt, names]) => ({ name: names.join(" or ").replace(/ or (?=.* or )/g, ", "), prompt }));
-}
-
 /// The note's own first line under its title: what the note is for, in its own words.
 const intro = (t: Template) => t.note.split("\n").slice(1).find((l) => l.trim() && !l.startsWith("#") && !l.startsWith("<!--"))?.trim() ?? "";
 
@@ -60,7 +53,7 @@ export default async function Page({ params }: Props) {
   const changed = changedCount(t);
   // The example bar names the AI the template is mostly used with.
   const by = t.prompt.claudeCode && t.audiences.includes("Developers") ? "Claude Code" : "ChatGPT";
-  const vs = variants(t);
+  const vs = promptVariants(t);
   return (
     <div className={s.main}>
       <JsonLd graph={[

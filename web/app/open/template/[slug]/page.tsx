@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { appLink, instructions, noteTitle, template, templates } from "@/lib/templates";
 import OpenCard from "../../OpenCard";
+import { OptionA, OptionB, OptionC } from "./Options";
 
 // The universal link behind "Use template" (https://ambernotes.app/open/template/<slug>). From
 // another site or an email it opens Amber Notes directly; from a click on this site, or where the
@@ -19,14 +20,16 @@ export function generateStaticParams() {
 export default async function Page({ params }: Props) {
   const t = template((await params).slug);
   if (!t) notFound();
+  const href = appLink(t.slug);
   return (
     <OpenCard
-      href={appLink(t.slug)}
+      href={href}
       what="this template"
       lede={<>Amber Notes adds the <b>{noteTitle(t)}</b> note and shows the prompt for your AI.</>}
       markdown={t.note}
       prompt={instructions(t)[0].prompt}
       back={{ href: `/templates/${t.slug}`, label: `See the ${t.title.toLowerCase()} template` }}
+      options={{ a: <OptionA t={t} href={href} />, b: <OptionB t={t} href={href} />, c: <OptionC t={t} href={href} /> }}
     />
   );
 }

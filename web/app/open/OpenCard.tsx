@@ -2,12 +2,13 @@ import { APP_STORE_LIVE, APP_STORE_URL } from "@/lib/site";
 import CopyButton from "../templates/CopyButton";
 import { Card, Mark, ui } from "@/lib/ui";
 import OpenApp from "./OpenApp";
+import Pick from "./Pick";
 import s from "./open.module.css";
 
 /// Where "Use template" and "Use this note" land when the link stays in the browser. It tries the
 /// app at once; if Amber Notes doesn't open within about 1.5 s, the card turns into the way to get
 /// it, and, for a template, the prompt to use it with ChatGPT or Claude instead.
-export default function OpenCard({ href, what, lede, markdown, prompt, back }: {
+export default function OpenCard({ href, what, lede, markdown, prompt, back, options = {} }: {
   href: string;
   /// What's being added, for the headings ("this template", "this note").
   what: string;
@@ -16,52 +17,56 @@ export default function OpenCard({ href, what, lede, markdown, prompt, back }: {
   /// A template's prompt: the way to use it without the app.
   prompt?: string;
   back?: { href: string; label: string };
+  /// Other designs of the page, under review: `?v=<key>` shows one of them instead of the card.
+  options?: Record<string, React.ReactNode>;
 }) {
   return (
     <OpenApp href={href}>
-      <Card className={s.anim}>
-        <Mark />
-        <div className={ui.group}>
-          <h1 className={ui.title}>
-            <span className={s.whenTrying}>Opening Amber Notes</span>
-            <span className={s.whenOpened}>Opened in Amber Notes</span>
-            <span className={s.whenFallback}>Get Amber Notes to use {what}</span>
-          </h1>
-          <p className={ui.lede}>{lede}</p>
-        </div>
-        <p className={`${s.status} ${s.whenTrying}`} role="status"><i className={s.dot} aria-hidden="true" />Looking for Amber Notes on this device</p>
+      <Pick options={options}>
+        <Card className={s.anim}>
+          <Mark />
+          <div className={ui.group}>
+            <h1 className={ui.title}>
+              <span className={s.whenTrying}>Opening Amber Notes</span>
+              <span className={s.whenOpened}>Opened in Amber Notes</span>
+              <span className={s.whenFallback}>Get Amber Notes to use {what}</span>
+            </h1>
+            <p className={ui.lede}>{lede}</p>
+          </div>
+          <p className={`${s.status} ${s.whenTrying}`} role="status"><i className={s.dot} aria-hidden="true" />Looking for Amber Notes on this device</p>
 
-        <div className={`${s.stack} ${s.whenFallback}`}>
-          <a className={ui.primary} href="/download/mac"><AppleGlyph /> Get Amber Notes for Mac</a>
-          {APP_STORE_LIVE
-            ? <a className={ui.secondary} href={APP_STORE_URL} target="_blank" rel="noopener noreferrer">Get it for iPhone</a>
-            : <p className={s.soon}>iPhone app: coming soon</p>}
-        </div>
-        <p className={`${ui.small} ${s.again}`}>
-          <span className={s.whenFallback}>Already have it? </span>
-          <span className={s.whenOpened}>Didn&apos;t open? </span>
-          <a href={href}>Open Amber Notes</a>
-        </p>
+          <div className={`${s.stack} ${s.whenFallback}`}>
+            <a className={ui.primary} href="/download/mac"><AppleGlyph /> Get Amber Notes for Mac</a>
+            {APP_STORE_LIVE
+              ? <a className={ui.secondary} href={APP_STORE_URL} target="_blank" rel="noopener noreferrer">Get it for iPhone</a>
+              : <p className={s.soon}>iPhone app: coming soon</p>}
+          </div>
+          <p className={`${ui.small} ${s.again}`}>
+            <span className={s.whenFallback}>Already have it? </span>
+            <span className={s.whenOpened}>Didn&apos;t open? </span>
+            <a href={href}>Open Amber Notes</a>
+          </p>
 
-        <div className={`${s.alt} ${s.whenFallback}`}>
-          {prompt ? (
-            <details className={s.md}>
-              <summary>Or use it with ChatGPT or Claude</summary>
-              <p className={ui.small}>Paste this into a chat with Amber Notes connected. Your AI creates the note, then fills it in.</p>
-              <pre>{prompt}</pre>
-              <CopyButton text={prompt} label="Copy the prompt" className={ui.secondary} />
-            </details>
-          ) : (
-            <details className={s.md}>
-              <summary>Or copy it as markdown</summary>
-              <p className={ui.small}>The markdown pastes into Amber Notes or any notes app that reads markdown.</p>
-              <pre>{markdown}</pre>
-              <CopyButton text={markdown} label="Copy the markdown" className={ui.secondary} />
-            </details>
-          )}
-        </div>
-        {back && <p className={`${ui.small} ${s.backRow}`}><a className={s.back} href={back.href}>{back.label}</a></p>}
-      </Card>
+          <div className={`${s.alt} ${s.whenFallback}`}>
+            {prompt ? (
+              <details className={s.md}>
+                <summary>Or use it with ChatGPT or Claude</summary>
+                <p className={ui.small}>Paste this into a chat with Amber Notes connected. Your AI creates the note, then fills it in.</p>
+                <pre>{prompt}</pre>
+                <CopyButton text={prompt} label="Copy the prompt" className={ui.secondary} />
+              </details>
+            ) : (
+              <details className={s.md}>
+                <summary>Or copy it as markdown</summary>
+                <p className={ui.small}>The markdown pastes into Amber Notes or any notes app that reads markdown.</p>
+                <pre>{markdown}</pre>
+                <CopyButton text={markdown} label="Copy the markdown" className={ui.secondary} />
+              </details>
+            )}
+          </div>
+          {back && <p className={`${ui.small} ${s.backRow}`}><a className={s.back} href={back.href}>{back.label}</a></p>}
+        </Card>
+      </Pick>
     </OpenApp>
   );
 }
