@@ -5,6 +5,29 @@ assistants. Newest first. Research behind it: [seo-aeo-research-2026-09-30.md](s
 
 `docs/` had no README naming a folder for evidence, so this and the research live in `docs/Evidence/`.
 
+## 4 October 2026: three new templates (Cornell notes, daily journal, grocery list)
+
+### Why
+
+- The template library (strategy 6c) had 20 templates and none for three note structures people search for by name. Google autocomplete on 4 October:
+  - "cornell notes template" suggests *word*, *docs*, *google docs*, *printable*, *onenote*, *notion*;
+  - "daily journal template" suggests *pdf*, *google docs*, *obsidian*, *notion*, *ideas*;
+  - "apple notes grocery list" suggests *template*, *template free*, *organize grocery list*, *sort grocery list*.
+- Each one is a structure an AI does the dull part of: writing the cue questions and summary, turning a ramble into a dated entry, sorting items by aisle.
+
+### Changed (branch `site/templates-cornell-journal-grocery`)
+
+- `/templates/cornell-notes` (Learning): a section per lecture with a Cue and Notes table and a summary line; the AI quizzes from the cues and keeps a "Cues to revisit" checklist.
+- `/templates/daily-journal` (Habits and health): four questions, entries newest first under a weekday heading. It's prose with labels; the mood and energy log stays the table version.
+- `/templates/grocery-list` (Home and life): one standing list under aisle headings; the AI files items from a sentence, skips duplicates and removes ticked lines after the shop. The meal plan stays the weekly dinners plus their list, and the two link each other.
+- Examples are replayed from the demo calls with the server's own note functions, as for the other 20 (`FILL_EXAMPLES=1`). One real behaviour shows in the grocery example: ticking an item moves it to the end of its list.
+- Related links: study notes and flashcards now points to Cornell notes, weekly review to the daily journal, meal plan to the grocery list.
+- Covers: paper-cut, same kit and style key as the first 20, in three new colours (petrol slate, plum, tomato red), placed so no grid neighbour shares a hue. The grocery cover was regenerated once (its trolley handle was malformed) and darkened 10% so cream text reaches 4.8:1. QC notes are in the cover kit, outside the repo.
+
+### To measure next
+
+- Search Console: impressions for "cornell notes template", "daily journal template" and "apple notes grocery list template" once the pages are indexed.
+- PostHog: `use_template_clicked` and `copy_prompt_clicked` on the three pages.
 ## 4 October 2026: status, and "Apple Notes tags and Smart Folders"
 
 ### Measured

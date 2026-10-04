@@ -1,0 +1,46 @@
+{
+  "slug": "daily-journal",
+  "title": "Daily journal",
+  "category": "Habits and health",
+  "audiences": [
+    "Personal"
+  ],
+  "audience": "For people who want to keep a journal but stall at the empty page.",
+  "description": "A daily journal your AI keeps with you. Answer four short questions, or just tell it about your day, and it writes the entry, newest day first.",
+  "tagline": "Four questions a day, written up for you.",
+  "folder": "Journal",
+  "note": "Daily journal\n\nA few lines a day. Tell your AI about your day, or let it ask the questions below, and the entry lands here, newest day first.\n\n## Questions\n1. What happened today?\n2. What took energy, and what gave it back?\n3. What do I want to remember?\n4. What's one thing for tomorrow?\n\n## Entries\n",
+  "prompt": {
+    "default": "Use my Amber Notes note \"Daily journal\". When I say I want to journal, ask me the questions under \"Questions\" one at a time, and skip any I pass on. If I tell you about my day in one go instead, write the entry from that without asking. Add the day at the start of \"Entries\" with append_to_note (at_start): a \"###\" heading with the weekday and date, then my answers as short lines in my own words, each starting with a bold label (Today, Energy, Remember, Tomorrow). Don't add advice unless I ask for it. When I ask what's been on my mind lately, read the note with read_note and answer from my entries."
+  },
+  "asks": [
+    "I want to journal.",
+    "Today was long: the move is done, the boxes aren't, and I finally slept.",
+    "What's been on my mind this week?"
+  ],
+  "demo": [
+    {
+      "tool": "append_to_note",
+      "args": {
+        "under_heading": "Entries",
+        "at_start": true,
+        "text": "### Thursday 1 October\n- **Today:** presented the budget; it went better than the rehearsal.\n- **Energy:** the 9 am meeting took it, the walk at lunch gave it back.\n- **Remember:** Ana said the second slide was the clearest.\n- **Tomorrow:** reply to the landlord before noon.\n"
+      }
+    },
+    {
+      "tool": "append_to_note",
+      "args": {
+        "under_heading": "Entries",
+        "at_start": true,
+        "text": "### Friday 2 October\n- **Today:** quiet day; finished the report and left at five.\n- **Energy:** low after lunch, better after coffee with Jonas.\n- **Remember:** the bakery on the corner opens at seven.\n- **Tomorrow:** call Mum.\n"
+      }
+    }
+  ],
+  "example": "Daily journal\n\nA few lines a day. Tell your AI about your day, or let it ask the questions below, and the entry lands here, newest day first.\n\n## Questions\n1. What happened today?\n2. What took energy, and what gave it back?\n3. What do I want to remember?\n4. What's one thing for tomorrow?\n\n## Entries\n### Friday 2 October\n- **Today:** quiet day; finished the report and left at five.\n- **Energy:** low after lunch, better after coffee with Jonas.\n- **Remember:** the bakery on the corner opens at seven.\n- **Tomorrow:** call Mum.\n### Thursday 1 October\n- **Today:** presented the budget; it went better than the rehearsal.\n- **Energy:** the 9 am meeting took it, the walk at lunch gave it back.\n- **Remember:** Ana said the second slide was the clearest.\n- **Tomorrow:** reply to the landlord before noon.\n",
+  "related": [
+    "mood-energy-log",
+    "weekly-review",
+    "habit-tracker"
+  ],
+  "updated": "2026-10-04"
+}
