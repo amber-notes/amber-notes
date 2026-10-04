@@ -85,7 +85,7 @@ export default function Page() {
       <h2>Gmail notes are different</h2>
       <p>
         Notes in a Gmail account are kept in your Google account and sync with Notes over IMAP, the protocol Mail uses. Apple says many
-        Notes features don&apos;t work there, and those notes can&apos;t be locked. On macOS 26, Notes also turns down tags and pinning in
+        Notes features don&apos;t work there, and those notes can&apos;t be locked. On macOS 26, Notes also turns down <a href="/blog/apple-notes-tags-smart-folders">tags</a> and pinning in
         an IMAP account, with a message saying they aren&apos;t supported. When you delete one, Gmail usually keeps it in that
         account&apos;s Trash in the Mail app rather than in Recently Deleted.
       </p>
