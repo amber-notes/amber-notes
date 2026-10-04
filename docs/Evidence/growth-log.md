@@ -5,6 +5,23 @@ assistants. Newest first. Research behind it: [seo-aeo-research-2026-09-30.md](s
 
 `docs/` had no README naming a folder for evidence, so this and the research live in `docs/Evidence/`.
 
+## 4 October 2026: "Tables in Apple Notes: what you can and can't do"
+
+### Why
+
+- Item 20 of the keyword map ("apple notes table column width / sum", P2). Google autocomplete for "apple notes table" on 4 October: *change column width*, *sum*, *add column*, *column width*, *resize column*, *formula*, *sum column*, *adjust column width*. Each is a problem query whose honest answer is "you can't, and here's what works instead". The results are Apple Community threads and thin how-to pages.
+
+### Changed (branch `site/apple-notes-tables`)
+
+- New post `/blog/apple-notes-tables`, in Apple Notes. Search title "Apple Notes tables: column width, sums and formulas". It covers adding a table, rows and columns, column width, sums and Math Results, bringing data in, and Amber Notes' typed tables. Checked on 4 October:
+  - Apple, Add a table in Notes on Mac (macOS 27 and 26): the two-by-two default, Tab or Return in the last cell adds a row, the row and column handles, Convert to Text from Table Actions, pasting drops named styles, tables copied from Safari or Pages.
+  - Apple, Create and format notes on iPhone (iOS 27): the Add Table button. Apple's iPhone guide says nothing more about tables, so the steps in the post are the Mac's.
+  - Apple, Solve math in Notes on Mac: Math Results in the note body, variables, Format, Math Results. Apple says nothing about table cells, and the post says so.
+  - Notes on macOS 26.5: the Format menu read by loading MainMenu.nib with AppKit (Move Item, Table with Option-Command-T, Convert to Text, Reverse Table Direction, Show Note As Light Background); no width, sort or formula item anywhere in Localizable.loctable; the Shortcuts action Add Table to Note, which takes CSV, from the app's App Intents metadata.
+  - Amber Notes: column types and the column menu (`TableGrid.swift`), Show Trend (`TableChart.swift`), File, Import Spreadsheet as Table (`XLSXImporter.swift`, formulas keep their last value), the Apple Notes import keeping tables on the Mac (`RichTextToMarkdown.swift`), and `read_table` and `log_table_row` in the MCP tools.
+- Left out because I couldn't check them: whether Math Results work inside a table cell, whether the Markdown export keeps tables, iOS 27 Markdown paste of tables, and the iPhone steps for rows and columns.
+- The cover is the Format menu of Notes at Table, drawn in HTML at 2x and 2.5x with the items and order read from the nib, on a new lemon ground. The post's second picture is the existing Evening tracker capture.
+- `/blog/apple-notes-ios-27` links to the new post from its divider-lines section.
 ## 4 October 2026: three new templates (Cornell notes, daily journal, grocery list)
 
 ### Why
