@@ -882,6 +882,14 @@ final class SyncEngine {
             offset += 500
         }
         if changed { try? context.save() }
+        // Note pages (prototype): a backend without the table leaves this out; it never stops a sync.
+        if let pages: [NotePageDTO] = try? await client.from("note_pages").select("note_id,page_ct,client,updated_at,server_updated_at")
+            .gt("server_updated_at", value: stamp).order("server_updated_at").execute().value {
+            for r in pages {
+                NotePageStore.shared.take(r)
+                if let s = r.server_updated_at, s > newest { newest = s }
+            }
+        }
         cursor = newest
         await refreshShares(client)
         // Only devices publish shared pages (the server can't read them): a note that changed
@@ -1069,6 +1077,15 @@ struct FolderDTO: Codable {
         try c.encode(updated_at, forKey: .updated_at)
         try c.encode(deleted_at, forKey: .deleted_at)
     }
+}
+
+/// A note's page as the server keeps it (prototype, NotePage): sealed, or nil once removed.
+struct NotePageDTO: Decodable {
+    var note_id: UUID
+    var page_ct: String?
+    var client: String?
+    var updated_at: Date
+    var server_updated_at: Date?
 }
 
 struct NoteDTO: Codable {

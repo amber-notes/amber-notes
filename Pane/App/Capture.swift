@@ -398,3 +398,72 @@ extension Capture {
     }
 }
 #endif
+
+/// Note pages (prototype, NotePage), for recordings: a habit tracker and a budget as plain
+/// markdown tables, and pages arriving as a sync would bring them.
+///   `-pageDemo`                                   seeds the two notes
+///   `-seedPage "Budget=/path/budget.html"`        a page already there (made by Claude)
+///   `-aiPage "Habit tracker=/path/page.html" -aiPageBy Claude -aiAfter 3`   one arriving later
+extension Capture {
+    /// Fourteen days of habits, ending yesterday with gaps, and today's row half done.
+    static func habitNote(today: Date = .now) -> String {
+        let marks = ["✓✓·✓", "✓✓✓✓", "·✓✓·", "✓✓✓✓", "✓·✓✓", "✓✓✓·", "··✓✓", "✓✓✓✓", "✓✓·✓", "✓✓✓✓", "✓·✓✓", "✓✓✓✓", "✓✓✓·", "✓✓✓✓", "✓···"]
+        var rows: [String] = []
+        for (i, m) in marks.enumerated() {
+            let d = Calendar.current.date(byAdding: .day, value: i - (marks.count - 1), to: today)!
+            rows.append("| \(TypedTable.day(d)) | " + m.map { $0 == "✓" ? "✓" : " " }.joined(separator: " | ") + " |")
+        }
+        return "Habit tracker\n\nSmall things, most days. A ✓ means done.\n\n| Date | Walk | Read | Stretch | No phone in bed |\n| --- | --- | --- | --- | --- |\n"
+            + rows.joined(separator: "\n") + "\n"
+    }
+
+    static let budgetNote = """
+    October budget
+
+    Spending for the month. Amounts in kronor.
+
+    | Date | Item | Category | Amount |
+    | --- | --- | --- | --- |
+    | 2026-10-01 | Rent | Home | 9200 |
+    | 2026-10-01 | Groceries | Food | 640 |
+    | 2026-10-02 | Train card | Travel | 970 |
+    | 2026-10-02 | Lunch with Sara | Food | 185 |
+    | 2026-10-03 | Groceries | Food | 410 |
+    | 2026-10-03 | Phone | Home | 299 |
+    | 2026-10-04 | Cinema | Fun | 290 |
+
+    - [ ] Cancel the old gym membership
+    - [x] Move savings on payday
+    """
+
+    @MainActor static func notePagesFromArguments(_ context: ModelContext) {
+        let args = ProcessInfo.processInfo.arguments
+        guard args.contains("-uitest") else { return }
+        if args.contains("-pageDemo") {
+            let budget = context.createNote(in: .all, body: budgetNote)
+            budget.updatedAt = .now.addingTimeInterval(-90)
+            let habits = context.createNote(in: .all, body: habitNote())
+            habits.isPinned = true
+            try? context.save()
+        }
+        func note(_ title: String) -> Note? {
+            ((try? context.fetch(FetchDescriptor<Note>())) ?? []).first { $0.title == title && $0.deletedAt == nil }
+        }
+        func split(_ arg: String) -> (Note, String)? {
+            guard let eq = arg.firstIndex(of: "=") else { return nil }
+            let path = String(arg[arg.index(after: eq)...])
+            guard let n = note(String(arg[..<eq])), let html = try? String(contentsOfFile: path, encoding: .utf8) else { return nil }
+            return (n, html)
+        }
+        let by = argument("-aiPageBy") ?? "Claude"
+        if let arg = argument("-seedPage"), let (n, html) = split(arg) {
+            NotePageStore.shared[n.id] = .init(html: html, by: by, at: .now.addingTimeInterval(-3600))
+        }
+        if let arg = argument("-aiPage") {
+            let delay = argument("-aiAfter").flatMap(Double.init) ?? 2.5
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                if let (n, html) = split(arg) { NotePageStore.shared[n.id] = .init(html: html, by: by, at: .now) }
+            }
+        }
+    }
+}

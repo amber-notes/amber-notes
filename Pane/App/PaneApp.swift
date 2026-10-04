@@ -64,6 +64,7 @@ struct PaneApp: App {
         FeatureUse.client = backend.client
         PaneTips.configure()
         Capture.scheduleFromArguments(container.mainContext)
+        Capture.notePagesFromArguments(container.mainContext)
         #if os(macOS)
         Capture.demoSequenceFromArguments(container.mainContext)
         Capture.importSequenceFromArguments()

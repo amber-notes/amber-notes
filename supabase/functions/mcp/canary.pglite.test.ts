@@ -191,6 +191,9 @@ Deno.test("no text of an encrypted account is stored or logged readably, whateve
     assertEquals([image.type, image.mimeType, atob(image.data)], ["image", "image/png", `PNG image ${CANARY}`]);
     const pdf = (await rpc("tools/call", { name: "get_file", arguments: { id: scan.id } })).content[1];
     assertEquals([pdf.type, pdf.resource.mimeType, atob(pdf.resource.blob), pdf.resource.uri], ["resource", "application/pdf", `%PDF-1.4 ${CANARY}`, `pane-file:${scan.id}`]);
+    // A page is sealed like the note: the canary in it must not show anywhere either.
+    await tool("set_note_page", { id: tracker, html: `<!doctype html><main>${CANARY}</main><script>amber.onChange(() => {})</script>` });
+    assertStringIncludes((await tool("get_note_page", { id: tracker })).html, CANARY);
     await tool("delete_note", { id: created.id });
     await tool("restore_note", { id: created.id });
     await tool("delete_folder", { folder: `Created ${CANARY}` });

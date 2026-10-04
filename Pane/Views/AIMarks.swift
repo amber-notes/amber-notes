@@ -10,7 +10,13 @@ struct AIGlyph: View {
     static let storeSafe = ProcessInfo.processInfo.arguments.contains("-uitest") && ProcessInfo.processInfo.arguments.contains("-storeSafe")
 
     var body: some View {
-        if Self.storeSafe {
+        if ai == Self.page {
+            // An edit made on a note's page (NotePage): the page's own mark.
+            Image(systemName: "square.grid.2x2").resizable().scaledToFit().frame(width: size * 0.85, height: size * 0.85)
+                .frame(width: size, height: size)
+                .foregroundStyle(Color.amberInk)
+                .accessibilityHidden(true)
+        } else if Self.storeSafe {
             Image(systemName: "sparkle").resizable().scaledToFit().frame(width: size * 0.85, height: size * 0.85)
                 .frame(width: size, height: size)
                 .foregroundStyle(.tint)
@@ -27,6 +33,9 @@ struct AIGlyph: View {
                 .accessibilityHidden(true)
         }
     }
+
+    /// Who made an edit on a note's page.
+    static let page = "Page"
 
     static func asset(_ ai: String) -> String? {
         switch ai {

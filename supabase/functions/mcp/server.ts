@@ -27,6 +27,7 @@ Tables are markdown tables; trackers are tables with typed columns. Use read_tab
 Checklists are "- [ ] item" lines; use set_checklist_item to tick them. A line like [Title](pane-note:<id>) links a sub-note: a whole note that lives inside
 its parent. Use create_sub_note to make one; read it with read_note(id). Deleted notes go to Recently Deleted
 and can be restored; every edit keeps the previous version (note_history / restore_revision).
+A note with has_page: true also has a page: a custom view of its data (set_note_page). Edit the markdown as usual; the page follows it.
 A note marked locked: true is locked by the user with a separate password: its title is visible here, and nothing else.
 It can't be read, searched or changed here; only the user can open it, in Amber Notes.`;
 

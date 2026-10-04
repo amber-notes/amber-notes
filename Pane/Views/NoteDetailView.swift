@@ -15,10 +15,18 @@ struct NoteDetailView: View {
     /// "ChatGPT changed 5 lines · Undo", while an AI's edit that just landed is on show.
     @State private var receipt: AIEdit.Receipt?
     @State private var undoFailed: String?
+    /// For Undo of a page an AI made: the page before it (nil: none).
+    @State private var undoPage: NotePageStore.Page?
     /// Lock Note: setting the password up, asking for it, or confirming.
     @State private var lockSheet: LockSheet?
     @State private var confirmLock = false
     @State private var lockProblem: String?
+    /// Note pages (prototype): Page or Text, when the note has a page.
+    @State private var mode: NoteMode = .page
+    /// The text before edits made on the page, tinted once Text shows again.
+    @State private var pageTint: String?
+    /// The page as last shown, to tell an AI's new page from one already seen.
+    @State private var shownPage: NotePageStore.Page?
     @Bindable var note: Note
     let controller: EditorController
     var autofocus = false
@@ -58,6 +66,8 @@ struct NoteDetailView: View {
             .overlay(alignment: .bottom) { aiReceipt }
             .overlay(alignment: .bottom) { undoProblem }
             .onChange(of: note.aiEditedAt) { _, _ in showAIEdit() }
+            .onChange(of: NotePageStore.shared[note.id]) { _, now in pageArrived(now) }
+            .onChange(of: mode) { _, now in if now == .text { tintPageEdits() } }
             // Captures: `-lockCapture setup` or `confirm` (see Capture).
             .onReceive(NotificationCenter.default.publisher(for: Capture.lockCapture)) { n in
                 switch n.object as? String {
@@ -73,6 +83,9 @@ struct NoteDetailView: View {
             }
             .task(id: note.id) {
                 receipt = nil
+                shownPage = NotePageStore.shared[note.id]
+                pageTint = nil
+                mode = .page
                 showAIEdit()
                 #if os(macOS)
                 PaneTips.menuBarShown = MenuBarSettings.allowed && UserDefaults.standard.object(forKey: MenuBarSettings.key) as? Bool ?? true
@@ -151,6 +164,14 @@ struct NoteDetailView: View {
 
     private func undo(_ r: AIEdit.Receipt) {
         withAnimation(.smooth(duration: 0.25)) { receipt = nil }
+        if r.kind == .pageMade {
+            // The note's text never changed: the page goes back to what it was.
+            shownPage = undoPage
+            NotePageStore.shared[note.id] = undoPage
+            if undoPage == nil { mode = .text }
+            return
+        }
+        if r.kind == .pageEdit { pageTint = nil }
         // The editor takes the old text as an outside change, which also clears the tint.
         let note = self.note
         Task { @MainActor in
@@ -171,15 +192,94 @@ struct NoteDetailView: View {
     @ViewBuilder
     private var editor: some View {
         if let text = vault.text(of: note) {
-            MarkdownEditor(initialText: text, header: DateBucket.header(note.updatedAt), controller: controller, autofocus: autofocus, onChange: save)
-                .onAppear { if note.isLocked { vault.touch() } }
+            // Both stay alive, so switching is instant and the editor can tint what the page changed.
+            ZStack {
+                MarkdownEditor(initialText: text, header: DateBucket.header(note.updatedAt), controller: controller, autofocus: autofocus, onChange: save)
+                    .onAppear { if note.isLocked { vault.touch() } }
+                    .opacity(showingPage ? 0 : 1)
+                    .allowsHitTesting(!showingPage)
+                    .accessibilityHidden(showingPage)
+                if let page = notePage {
+                    NotePageView(html: page.html, text: text, onUpdate: applyPageEdit)
+                        .id(note.id)
+                        .opacity(showingPage ? 1 : 0)
+                        .allowsHitTesting(showingPage)
+                        .accessibilityHidden(!showingPage)
+                }
+            }
         } else {
             LockedNoteView(note: note)
         }
     }
 
-    /// A locked note that isn't open: nothing on screen to edit.
-    private var hidden: Bool { vault.text(of: note) == nil }
+    /// A locked note that isn't open: nothing on screen to edit. The page has no caret either.
+    private var hidden: Bool { vault.text(of: note) == nil || showingPage }
+
+    // MARK: Note pages (prototype)
+
+    enum NoteMode: String { case page, text }
+
+    /// The note's page, unless the note is locked (a locked note never shows one).
+    private var notePage: NotePageStore.Page? { note.isLocked ? nil : NotePageStore.shared[note.id] }
+    private var showingPage: Bool { notePage != nil && mode == .page }
+
+    /// An edit the page asked for, applied to the markdown as an edit of yours: it syncs, keeps a
+    /// version, and the receipt offers Undo. The page re-renders from the new text.
+    private func applyPageEdit(_ op: NotePage.Op) throws {
+        let before = note.body
+        let after = try NotePage.apply(op, to: before)
+        guard after != before else { return }
+        note.body = after
+        note.touch()
+        try? context.save()
+        if pageTint == nil { pageTint = before }
+        let r = AIEdit.Receipt(noteID: note.id, by: AIGlyph.page, at: .now, previous: before, after: after,
+                               lines: ChangeTint.changedLines(from: before, to: after).count, kind: .pageEdit)
+        withAnimation(.spring(duration: 0.45, bounce: 0.25)) { receipt = r }
+        Task { @MainActor in
+            // Longer than an AI's: you may switch to Text to see the change before you undo it.
+            try? await Task.sleep(for: .seconds(10 * ChangeTint.slowMotion))
+            while ChangeTint.holdForCapture, receipt == r { try? await Task.sleep(for: .seconds(0.1)) }
+            if receipt == r { withAnimation(.easeIn(duration: 0.2)) { receipt = nil } }
+        }
+    }
+
+    /// Back in Text: what the page changed is tinted, as an AI's edit is.
+    private func tintPageEdits() {
+        guard let before = pageTint else { return }
+        pageTint = nil
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(0.15 * ChangeTint.slowMotion))
+            controller.tintChanges(from: before)
+        }
+    }
+
+    /// A page an AI made or changed while the note is open: show it, say who, offer Undo.
+    private func pageArrived(_ now: NotePageStore.Page?) {
+        let before = shownPage
+        shownPage = now
+        guard let now, now != before, now.by != AIGlyph.page else { return }
+        withAnimation(.smooth(duration: 0.3)) { mode = .page }
+        let r = AIEdit.Receipt(noteID: note.id, by: now.by, at: now.at, previous: note.body, lines: 0, kind: .pageMade)
+        undoPage = before
+        withAnimation(.spring(duration: 0.45, bounce: 0.25)) { receipt = r }
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(5.5 * ChangeTint.slowMotion))
+            while ChangeTint.holdForCapture, receipt == r { try? await Task.sleep(for: .seconds(0.1)) }
+            if receipt == r { withAnimation(.easeIn(duration: 0.2)) { receipt = nil } }
+        }
+    }
+
+    /// Page / Text, shown only when the note has a page.
+    private var modePicker: some View {
+        Picker("View", selection: $mode.animation(.smooth(duration: 0.25))) {
+            Text("Page").tag(NoteMode.page)
+            Text("Text").tag(NoteMode.text)
+        }
+        .pickerStyle(.segmented)
+        .fixedSize()
+        .accessibilityIdentifier("note.mode")
+    }
 
     enum LockSheet: String, Identifiable {
         case setUp, password
@@ -356,6 +456,9 @@ struct NoteDetailView: View {
 
     @ToolbarContentBuilder
     private var toolbar: some ToolbarContent {
+        if notePage != nil {
+            ToolbarItem(placement: .principal) { modePicker }
+        }
         #if os(iOS)
         ToolbarItem(placement: .bottomBar) {
             Button("Checklist", systemImage: "checklist", action: controller.checklist).disabled(hidden)
@@ -364,7 +467,7 @@ struct NoteDetailView: View {
             Button("Table", systemImage: "tablecells", action: controller.insertTable).disabled(hidden)
         }
         ToolbarItem(placement: .bottomBar) {
-            Button("Attach", systemImage: "paperclip") { importing = true }.disabled(note.isLocked)
+            Button("Attach", systemImage: "paperclip") { importing = true }.disabled(note.isLocked || showingPage)
         }
         ToolbarSpacer(.flexible, placement: .bottomBar)
         ToolbarItem(placement: .bottomBar) {
@@ -480,6 +583,15 @@ struct NoteDetailView: View {
                 #else
                 Button("Show Version History…", systemImage: "clock.arrow.circlepath") { showHistory = true }
                 #endif
+            }
+            if notePage != nil {
+                Button("Remove Page", systemImage: "square.grid.2x2") {
+                    // The note's text stays as it is: the page was only a view of it.
+                    NotePageStore.shared[note.id] = nil
+                    shownPage = nil
+                    mode = .text
+                }
+                .accessibilityIdentifier("editor.removePage")
             }
             Divider()
             if note.isLocked {

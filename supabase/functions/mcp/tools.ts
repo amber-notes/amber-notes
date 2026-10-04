@@ -9,6 +9,7 @@
 import type { PendingQuery, Row, Sql, TransactionSql } from "npm:postgres@3.4.5";
 import { toBase64, type Head, type Vault } from "../_shared/e2ee.ts";
 import { errorKind, log } from "../_shared/log.ts";
+import { MAX_PAGE_BYTES, PAGE_CONTRACT, pageProblems } from "./page.ts";
 import { appendText, applyEdits, coerce, findTables, fitLines, isTextType, mimeOf, outline, previewOf, replaceTable, searchFilter, searchInMemory, setChecklistItem, sliceLines, titleOf, typeSpec, type Edit, type Table } from "./notes.ts";
 
 export type ToolContext = { sql: Sql; userId: string; client: string; canWrite: boolean; vault: Vault };
@@ -221,6 +222,22 @@ export const tools: Tool[] = ([
     description: "Removes the row for a date (trackers) or at a 0-based row index from a table.",
     inputSchema: { type: "object", properties: { ...noteRef, table: int("Which table, counting from 0. Default: the first tracker, else the first table."), date: str("yyyy-mm-dd."), index: int("0-based row index.") } },
     annotations: { ...write, destructiveHint: true },
+  },
+  // Note pages (prototype): a view over a note's data, see page.ts.
+  {
+    name: "set_note_page", title: "Make a page for a note",
+    description: "Gives a note a page: a custom view of its data (a habit grid with streaks, a budget with totals, a reading log), shown in Amber Notes with a Page / Text switch. " +
+      "The note's markdown stays the data and the source of truth: keep its table or checklist as it is (fix it first with the other tools if needed) and make the page read and change it. " +
+      "Replaces the note's current page, if any; an empty html removes the page, and no data is lost either way.\n" + PAGE_CONTRACT +
+      `\nOne self-contained HTML document, at most ${MAX_PAGE_BYTES / 1024} KB. Pages with external addresses or network calls are refused.`,
+    inputSchema: { type: "object", properties: { ...noteRef, html: str("The whole page: one HTML document with inline CSS and JS. Empty string removes the page.") }, required: ["html"] },
+    annotations: { ...write, destructiveHint: true, idempotentHint: true },
+  },
+  {
+    name: "get_note_page", title: "Read a note's page",
+    description: "Returns a note's page (the HTML set with set_note_page) and the rules a page follows, so you can change it. A note without a page returns has_page: false.",
+    inputSchema: { type: "object", properties: { ...noteRef } },
+    annotations: read,
   },
   // ChatGPT's connector conventions.
   {
@@ -780,6 +797,7 @@ const handlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<unknown>> =
       in_recently_deleted: n.trashed_at !== null,
       parent: parentRow ? { id: parentRow.id, title: parentRow.title } : null,
       sub_notes: subs,
+      ...((await tx`select 1 from public.note_pages where note_id = ${n.id} and page_ct is not null`).length ? { has_page: true } : {}),
       outline: o,
       ...(shown.truncated
         ? { lines: `${first}-${first + shown.lines - 1}`, truncated: true, next_start_line: first + shown.lines }
@@ -1091,6 +1109,34 @@ const handlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<unknown>> =
     const [gone] = t.rows.splice(i, 1);
     await save(tx, c, n, before, replaceTable(before, t));
     return { deleted_row: Object.fromEntries(t.columns.map((col, k) => [col.name, gone[k]])) };
+  },
+
+  async set_note_page(tx, a, c) {
+    const n = await findNote(tx, c, a);
+    const html = typeof a.html === "string" ? a.html : "";
+    if (!html.trim()) {
+      const gone = await tx`update public.note_pages set page_ct = null where note_id = ${n.id} and page_ct is not null returning note_id`;
+      return { id: n.id, title: n.title, page: gone.length ? "removed" : "none" };
+    }
+    const problems = pageProblems(html);
+    if (problems.length) throw new ToolError(`The page wasn't saved:\n- ${problems.join("\n- ")}`);
+    const sealed = await c.v.sealPage(n.id, html);
+    const [{ created }] = await tx<{ created: boolean }[]>`
+      insert into public.note_pages (note_id, page_ct) values (${n.id}, ${sealed})
+      on conflict (note_id) do update set page_ct = excluded.page_ct
+      returning (xmax = 0) as created`;
+    return { id: n.id, title: n.title, page: created ? "created" : "replaced", bytes: new TextEncoder().encode(html).length,
+      note: "The person sees it in Amber Notes under Page. The note's markdown is unchanged." };
+  },
+
+  async get_note_page(tx, a, c) {
+    const n = await findNote(tx, c, a, true);
+    const [row] = await tx<{ page_ct: string | null; client: string | null; updated_at: Date }[]>`
+      select page_ct, client, updated_at from public.note_pages where note_id = ${n.id}`;
+    if (!row?.page_ct) return { id: n.id, title: n.title, has_page: false, rules: PAGE_CONTRACT };
+    let html: string;
+    try { html = await c.v.openPage(n.id, row.page_ct); } catch { throw new ToolError("This note's page can't be opened with this connection's key."); }
+    return { id: n.id, title: n.title, has_page: true, made_by: row.client, updated: iso(row.updated_at), rules: PAGE_CONTRACT, html };
   },
 
   async search(tx, a, c) {

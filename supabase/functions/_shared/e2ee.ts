@@ -9,7 +9,7 @@
 //   AAD = "amb2.<key id>|<context>"
 //
 // The key id is the first 16 hex digits of SHA-256(DK). The context binds a box to what it is:
-// "body:<note id>", "head:<note id>", "folder:<id>", "file-meta:<id>", and for a wrap of DK itself
+// "body:<note id>", "head:<note id>", "page:<note id>", "folder:<id>", "file-meta:<id>", and for a wrap of DK itself
 // "wrap:<purpose>:<user id>". A file's bytes are one box: "AMB2F" ‖ key id ‖ nonce ‖ ciphertext ‖
 // tag, with the context "file:<attachment id>".
 //
@@ -34,6 +34,7 @@ export const headContext = (id: string) => `head:${id.toLowerCase()}`;
 export const folderContext = (id: string) => `folder:${id.toLowerCase()}`;
 export const fileMetaContext = (id: string) => `file-meta:${id.toLowerCase()}`;
 export const fileContext = (id: string) => `file:${id.toLowerCase()}`;
+export const pageContext = (id: string) => `page:${id.toLowerCase()}`;
 export const wrapContext = (purpose: WrapPurpose, userId: string) => `wrap:${purpose}:${userId.toLowerCase()}`;
 
 /** What a note shows in lists, sealed next to its body. A locked note's head is its title only. */
@@ -573,6 +574,8 @@ export class Vault {
     const title = String(h?.title ?? "New Note");
     return typeof h?.preview === "string" ? { title, preview: h.preview } : { title };
   }
+  sealPage(id: string, html: string) { return seal(html, this.key, this.keyId, pageContext(id)); }
+  openPage(id: string, sealed: string) { return open(sealed, this.key, pageContext(id)); }
   sealFolder(id: string, name: string) { return seal(name, this.key, this.keyId, folderContext(id)); }
   openFolder(id: string, sealed: string) { return open(sealed, this.key, folderContext(id)); }
   sealFileMeta(id: string, meta: FileMeta) { return seal(JSON.stringify(meta), this.key, this.keyId, fileMetaContext(id)); }
