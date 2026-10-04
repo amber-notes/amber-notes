@@ -297,6 +297,8 @@ export function EmailFirst({ email, password, onEmail, onPassword, busy, ready, 
           )}
         </>
       )}
+      {/* In a new tab, so this request's page stays open; the email goes in the fragment, which reaches no server. */}
+      {open && <a className={styles.link} href={`/reset-password#email=${encodeURIComponent(email.trim())}`} target="_blank" rel="noopener">Forgot password?</a>}
       {(step.kind === "none" || step.kind === "apple") && (
         <button type="button" className={styles.link} onClick={differentEmail}>Use a different email</button>
       )}

@@ -260,6 +260,27 @@ final class Backend {
         try await client.auth.signUp(email: email.trimmingCharacters(in: .whitespaces), password: password)
     }
 
+    /// "Forgot password?": Supabase emails a link to ambernotes.app/reset-password, where the new
+    /// password is chosen (docs/Technical/password-reset.md). A plain request rather than
+    /// `auth.resetPasswordForEmail`, which adds a PKCE challenge: that link could only be opened in
+    /// the browser that asked, and here nothing asks from a browser. Whatever the server answers
+    /// counts as sent, so the screen says the same for every email; it throws only when the server
+    /// can't be reached.
+    func requestPasswordReset(email: String) async throws {
+        guard let url = BackendConfig.url, let key = BackendConfig.key else { throw URLError(.notConnectedToInternet) }
+        _ = try await AppNetwork.session.data(for: Self.passwordResetRequest(base: url, key: key, email: email))
+    }
+
+    nonisolated static func passwordResetRequest(base: URL, key: String, email: String) -> URLRequest {
+        var request = URLRequest(url: base.appending(path: "auth/v1/recover"), timeoutInterval: 15)
+        request.httpMethod = "POST"
+        request.setValue(key, forHTTPHeaderField: "apikey")
+        request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: ["email": email.trimmingCharacters(in: .whitespacesAndNewlines)])
+        return request
+    }
+
     /// Words a person can act on, instead of raw server errors.
     static func message(for error: Error, signingUp: Bool) -> String {
         if error is URLError { return "Can't reach the server. Check your connection." }
