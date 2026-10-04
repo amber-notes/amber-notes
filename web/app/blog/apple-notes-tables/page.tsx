@@ -47,6 +47,7 @@ export default function Page() {
       </p>
 
       <h2>Rows and columns</h2>
+      <p>On a Mac:</p>
       <ul>
         <li>Move between cells with Tab or the arrow keys.</li>
         <li>Press Tab or Return in the last cell to add a row at the bottom.</li>
@@ -54,6 +55,10 @@ export default function Page() {
         <li>To move a row or column, select it, then click and hold until it lifts off the table, and drag.</li>
         <li>Selecting a row or column and pressing Delete clears it. If it&apos;s already empty, Delete removes it.</li>
       </ul>
+      <p>
+        On iPhone, tap a cell, then tap the handle above its column or beside its row for the same options: add one before or after,
+        or delete it.
+      </p>
       <p>
         Pasting into a cell drops named styles such as Monostyled and Subheading. You can also copy a whole
         table out of Safari or Pages and paste it into a note, though Apple warns that some formatting won&apos;t come along.
