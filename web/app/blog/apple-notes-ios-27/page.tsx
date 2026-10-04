@@ -48,6 +48,10 @@ export default function Page() {
         Insert Divider Line. On a Mac, choose Edit, Insert Divider Line, or press Command-L. Apple describes both in its
         guides, <a href="https://support.apple.com/guide/iphone/create-and-format-notes-iph1ac0b3a2/ios" rel="noopener">Create and format notes on iPhone</a> and <a href="https://support.apple.com/guide/notes/apd1955d3b21/mac" rel="noopener">Format notes on Mac</a>.
       </p>
+      <p>
+        Tables aren&apos;t on this year&apos;s list. They still have no column widths and no formulas; <a href="/blog/apple-notes-tables">tables
+        in Apple Notes</a> covers what they do and the workarounds.
+      </p>
 
       <h2>Links to a section of a note</h2>
       <p>
