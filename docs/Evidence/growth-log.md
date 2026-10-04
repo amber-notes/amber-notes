@@ -28,6 +28,34 @@ assistants. Newest first. Research behind it: [seo-aeo-research-2026-09-30.md](s
 
 - Search Console: impressions for "cornell notes template", "daily journal template" and "apple notes grocery list template" once the pages are indexed.
 - PostHog: `use_template_clicked` and `copy_prompt_clicked` on the three pages.
+## 4 October 2026: status, and "Apple Notes tags and Smart Folders"
+
+### Measured
+
+- **Google Search Console: not reached.** The browser profile this loop uses is signed in to hello@ambernotes.app and emil@incredible.one, and neither has access to the ambernotes.app property (domain or URL prefix). Impressions, clicks and positions by query, and the index coverage report, need Emil's account. Nothing below comes from Search Console.
+- **PostHog (EU project 291184, live since 2 October), page views on ambernotes.app:** 148 on 2 October, 39 on 3 October, 12 on 4 October by about 13:00 CEST. The id is per page load (nothing is stored), so "visitors" can't be counted. 157 of 199 views came from macOS, which includes our own checks.
+- **Where views came from (2 to 4 October):** direct 186, google.com 6, github.com 4, bing.com 2, facebook.com 1.
+- **Search landings:** Google sent /blog/apple-notes-ios-27 (2), /, /blog/apple-notes-api, /download and /blog/forgot-apple-notes-password (1 each). Bing sent /templates (2). So at least those five pages are in Google's index and /templates is in Bing's.
+- **Top pages:** / 88, /templates 35, /blog 20, /changelog 10, /help 9, /download 7. One template page was viewed once (meeting-notes). `download_mac_clicked`: 3. No `use_template_clicked` or `copy_prompt_clicked`.
+- **Web search (Claude's backend), `site:ambernotes.app`:** the home page, connect-chatgpt-to-your-notes, claude-cowork-apple-notes and claude-and-apple-notes. On 30 September it returned no site pages.
+- **Bing and IndexNow:** the sitemap lists 61 URLs and the IndexNow key file answers 200. Bing Webmaster Tools needs a login, so crawl and index numbers there weren't read.
+- **Not indexed, as far as can be seen:** no template page has had a search visit, and neither have most posts. Without Search Console it's unknown whether they're unindexed or indexed without clicks.
+
+Reading: search traffic is a handful of clicks a day, mostly to Apple Notes problem posts (iOS 27, API, forgotten password). That supports writing more Apple Notes problem posts and template pages for searched note structures. Getting Search Console access for this loop is the most useful next step: without it, picks rest on autocomplete and competitors, not our own impressions.
+
+### Picked
+
+- Autocomplete on 4 October: "apple notes tags" suggests *not working*, *vs folders*, *not showing*, *nested tags*. "apple notes smart folders" suggests *not working*, *how do smart folders work*, *subfolder*. "apple notes table" suggests *change column width*, *sum*, *formula*, *add column*. Template seeds: "cornell notes template" (*notion*, *onenote*, *google docs*), "daily journal template" (*obsidian*, *notion*), "apple notes grocery list template", "apple notes sort grocery list".
+- Two posts: Apple Notes tags and Smart Folders (plan item 18 and 19, this branch) and tables in Apple Notes (plan item 20, its own branch). Three templates: Cornell notes, daily journal, grocery list (one branch).
+- Skipped: "Apple Notes on Windows" from the plan, since the site is iPhone and Mac only; meeting notes to action items, since the meeting-notes template already targets it.
+
+### Changed (branch `site/apple-notes-tags-smart-folders`)
+
+- New post `/blog/apple-notes-tags-smart-folders`, in Apple Notes: how tags and Smart Folders work on iPhone and Mac, tags versus folders, nine "when tags don't work" cases, the Shortcuts actions, and an FAQ.
+- Facts were checked on 4 October against Apple Support 102288 (published 22 May 2026) and the Notes User Guide for Mac pages "Use tags" and "Use Smart Folders" (macOS 27 back to 15). The Mac app's own messages come from Notes' Localizable.loctable on macOS 26.5: tags need an iCloud account; IMAP and Exchange refuse tags; tagged notes can't be locked; the Convert to Smart Folder limits; a Smart Folder that uses only a deleted tag is deleted too; the unsupported Smart Folder message. The rule menu and its options come from SmartFolderFilterRow.nib, SmartFolderTagFilterView.nib, SmartFolderDateFilterView.nib and SmartFolderChecklistsFilterView.nib. The Shortcuts actions come from Notes' App Intents metadata.
+- Left out because I couldn't check them: whether On My iPhone takes tags, whether the Mac has its own Auto Convert to Tag switch, and how Amber Notes' import treats Apple Notes tags.
+- The Amber Notes section says plainly that Amber Notes has no tags or Smart Folders, and what ChatGPT or Claude can do instead with search_notes and move_note. The iPhone line follows `APP_STORE_LIVE`.
+- The cover is the first pop-up menu of a Smart Folder rule, open with Tags checked. It's drawn in HTML at 4x, with item names and order read from SmartFolderFilterRow.nib, and sits on a new coral ground. The card crops it at the bottom, so the menu text matches the size on the export-menu cover. Checked on /blog at 1440 next to the sky and mint covers. move-apple-notes-to-icloud now links the post from its IMAP paragraph.
 
 ## 2 October 2026: "How to move Apple Notes from On My iPhone or Gmail to iCloud"
 
