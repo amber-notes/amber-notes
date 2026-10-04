@@ -29,7 +29,7 @@ export type Post = {
 
 /// The ground a cover (and the post's first picture) sits on: the site's palette, the help page's
 /// leaf brown, the app's dark look, or the home page's dunes.
-export type Ground = "paper" | "soft" | "tint" | "amber" | "leaf" | "dark" | "dunes" | "ink" | "peach" | "cream" | "sand" | "clay" | "mist" | "honey" | "sage" | "heather" | "blush" | "wheat" | "fog" | "dusk" | "pearl" | "linen" | "night" | "rose" | "mint" | "sky" | "lemon";
+export type Ground = "paper" | "soft" | "tint" | "amber" | "leaf" | "dark" | "dunes" | "ink" | "peach" | "cream" | "sand" | "clay" | "mist" | "honey" | "sage" | "heather" | "blush" | "wheat" | "fog" | "dusk" | "pearl" | "linen" | "night" | "rose" | "mint" | "sky" | "lemon" | "coral";
 
 /// A card's picture: one real capture of the element the post is about, on the post's ground. The
 /// capture is cropped at 2x (3x from iPhone) to about the card's width, so it shows at full size.
@@ -49,6 +49,7 @@ export const SHOTS = {
   coworkAllow: { src: "/blog/claude-wants-access-to-control-notes-macos.webp", alt: "The macOS prompt that appears when Claude first uses the Apple Notes extension: \u201cClaude\u201d wants access to control \u201cNotes\u201d. Allowing control will provide access to documents and data in \u201cNotes\u201d, and to perform actions within that app. Buttons: Don\u2019t Allow and Allow.", width: 520, height: 532, window: true },
   notesDefaultAccount: { src: "/blog/notes-default-account.webp", alt: "The General settings of Apple Notes on a Mac running macOS 26: Sort notes by Date Edited, New notes start with Title, and Default account set to iCloud, which Siri uses when creating notes.", width: 1093, height: 298, window: true },
   notesTableMenu: { src: "/blog/notes-format-table-menu.webp", alt: "The Format menu of Apple Notes on a Mac running macOS 26, at Table (Option-Command-T), with Convert to Text and Reverse Table Direction below it.", width: 700, height: 436, window: true },
+  notesSmartFolderFilters: { src: "/blog/notes-smart-folder-filters.webp", alt: "The first pop-up menu of a Smart Folder rule in Apple Notes on a Mac running macOS 26, with Tags checked above Date Created, Date Edited, Shared, Mentions, Checklists, Attachments, Folders, Quick Notes, Pinned Notes and Locked Notes.", width: 560, height: 800, window: true },
   notesExportMenu: { src: "/blog/notes-export-menu.webp", alt: "The File menu of Apple Notes on a Mac running macOS 26, open at Export as, with PDF and Markdown in the submenu and Markdown selected.", width: 700, height: 453, window: true },
   importSheet: { src: "/blog/amber-notes-import-from-apple-notes.webp", alt: "The Import from Apple Notes sheet in Amber Notes on a Mac: notes picked, Keep Apple Notes folders and Also bring over pinned notes ticked, and an Import 1,284 Notes button.", width: 1980, height: 1800, window: true },
   aiEdit: { src: "/blog/amber-notes-chatgpt-edit-undo.webp", alt: "A Groceries note in Amber Notes on a Mac. The five lines ChatGPT just added are tinted, and a bar at the bottom says ChatGPT changed 5 lines, with Undo.", width: 1260, height: 1520, window: false, title: "Groceries" },
@@ -74,6 +75,18 @@ export const posts: Post[] = [
     updated: "2026-10-04",
     image: SHOTS.notesTableMenu,
     thumb: thumb("lemon", "thumb-notes-format-table-menu", 800, 528, "The Apple Notes Format menu on a Mac, open at Table"),
+    draft: false,
+  },
+  {
+    slug: "apple-notes-tags-smart-folders",
+    title: "Apple Notes tags and Smart Folders: how they work, and why they stop working",
+    description: "How tags and Smart Folders work in Apple Notes on iPhone and Mac, and the fixes when a tag won't form, a note can't be tagged or a Smart Folder is empty.",
+    excerpt: "A tag is a word after #, and a Smart Folder is a saved filter. Why a tag won't form, why a note refuses tags, and what a Smart Folder can't do.",
+    category: "Apple Notes",
+    date: "2026-10-04",
+    updated: "2026-10-04",
+    image: SHOTS.notesSmartFolderFilters,
+    thumb: thumb("coral", "thumb-notes-smart-folder-filters", 800, 528, "The rule menu of an Apple Notes Smart Folder on a Mac, with Tags checked"),
     draft: false,
   },
   {
