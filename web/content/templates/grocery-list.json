@@ -1,0 +1,66 @@
+{
+  "slug": "grocery-list",
+  "title": "Grocery list",
+  "category": "Home and life",
+  "audiences": [
+    "Personal",
+    "Families"
+  ],
+  "audience": "For anyone who keeps a grocery list in their notes and is tired of sorting it by aisle by hand.",
+  "description": "A grocery list your AI keeps sorted by aisle. Say what you need in one sentence; it files each item and clears what you've ticked.",
+  "tagline": "Sorted by aisle, before you get to the shop.",
+  "folder": "Home",
+  "note": "Grocery list\n\nOne running list for the shop, sorted by aisle. Tell your AI what you need and it files each thing under the right aisle. Tick things off as you shop.\n\n## Fruit and veg\n\n## Bread and dairy\n\n## Meat and fish\n\n## Cupboard\n\n## Frozen\n\n## Household\n",
+  "prompt": {
+    "default": "Use my Amber Notes note \"Grocery list\". When I tell you what we need, even in one long sentence, read the note with read_note, then add each item as a checklist line under the aisle heading it belongs to with append_to_note. Skip anything already on the list and unticked. Keep item names short and add a quantity only when I give one. When I say I'm back from the shop, remove the ticked lines with edit_note and tell me what's left. If something doesn't fit an aisle, put it under \"Household\"."
+  },
+  "asks": [
+    "We need oat milk, lemons, two cans of chickpeas, bin bags and something for Friday's tacos.",
+    "I'm back from the shop.",
+    "What's still on the list?"
+  ],
+  "demo": [
+    {
+      "tool": "append_to_note",
+      "args": {
+        "under_heading": "Fruit and veg",
+        "text": "- [ ] Lemons\n- [ ] Limes\n- [ ] Avocados"
+      }
+    },
+    {
+      "tool": "append_to_note",
+      "args": {
+        "under_heading": "Bread and dairy",
+        "text": "- [ ] Oat milk\n- [ ] Tortillas"
+      }
+    },
+    {
+      "tool": "append_to_note",
+      "args": {
+        "under_heading": "Cupboard",
+        "text": "- [ ] Chickpeas, 2 cans"
+      }
+    },
+    {
+      "tool": "append_to_note",
+      "args": {
+        "under_heading": "Household",
+        "text": "- [ ] Bin bags"
+      }
+    },
+    {
+      "tool": "set_checklist_item",
+      "args": {
+        "item": "Limes",
+        "checked": true
+      }
+    }
+  ],
+  "example": "Grocery list\n\nOne running list for the shop, sorted by aisle. Tell your AI what you need and it files each thing under the right aisle. Tick things off as you shop.\n\n## Fruit and veg\n- [ ] Lemons\n- [ ] Avocados\n- [x] Limes\n\n## Bread and dairy\n- [ ] Oat milk\n- [ ] Tortillas\n\n## Meat and fish\n\n## Cupboard\n- [ ] Chickpeas, 2 cans\n\n## Frozen\n\n## Household\n- [ ] Bin bags\n",
+  "related": [
+    "meal-plan",
+    "recipe-box",
+    "budget-log"
+  ],
+  "updated": "2026-10-04"
+}

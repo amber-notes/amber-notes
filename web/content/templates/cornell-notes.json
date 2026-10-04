@@ -1,0 +1,51 @@
+{
+  "slug": "cornell-notes",
+  "title": "Cornell notes",
+  "category": "Learning",
+  "audiences": [
+    "Students"
+  ],
+  "audience": "For students who take notes in class but never get round to turning them into questions.",
+  "description": "Cornell notes your AI sets up for you: your notes on the right, a question for each on the left, and a short summary. Then it quizzes you.",
+  "tagline": "Your notes, the questions, and a summary.",
+  "folder": "Study",
+  "note": "Cornell notes\n\nOne section per lecture or chapter. Your notes go on the right, a question that each one answers on the left, and a summary of two or three sentences closes the section. To revise, cover the right column and answer the cues.\n\n## Lectures\n\n## Cues to revisit\n",
+  "prompt": {
+    "default": "Use my Amber Notes note \"Cornell notes\". When I paste or dictate notes from a lecture or a chapter, add a section at the end of \"Lectures\" with append_to_note: a \"###\" heading with the topic and the date, then a table with two columns, Cue and Notes. Put my notes on the right as short rows in my own words, and on the left a question each row answers. End the section with a line starting \"**Summary:**\", two or three plain sentences. When I say \"quiz me\", read the note with read_note and ask me the cues one at a time without showing the notes. Add any I miss under \"Cues to revisit\" as a checklist with append_to_note, and tick one with set_checklist_item when I get it right later."
+  },
+  "asks": [
+    "Here are my notes from today's economics lecture: …",
+    "Quiz me on supply and demand.",
+    "Which cues am I still missing?"
+  ],
+  "demo": [
+    {
+      "tool": "append_to_note",
+      "args": {
+        "under_heading": "Lectures",
+        "text": "### Supply and demand, 1 October\n| Cue | Notes |\n| --- | --- |\n| What shifts the demand curve? | Income, tastes, prices of related goods, expectations. A change in the good's own price only moves along the curve. |\n| What is the equilibrium price? | The price where the quantity demanded equals the quantity supplied. |\n| What does a price ceiling below equilibrium cause? | A shortage: at that price, people want more than sellers offer. |\n\n**Summary:** Supply and demand meet at one price and quantity. Anything other than the price itself shifts a curve and moves that point; a price ceiling set too low leaves a shortage."
+      }
+    },
+    {
+      "tool": "append_to_note",
+      "args": {
+        "under_heading": "Cues to revisit",
+        "text": "- [ ] What shifts the demand curve?\n- [ ] What does a price ceiling below equilibrium cause?"
+      }
+    },
+    {
+      "tool": "set_checklist_item",
+      "args": {
+        "item": "What does a price ceiling below equilibrium cause?",
+        "checked": true
+      }
+    }
+  ],
+  "example": "Cornell notes\n\nOne section per lecture or chapter. Your notes go on the right, a question that each one answers on the left, and a summary of two or three sentences closes the section. To revise, cover the right column and answer the cues.\n\n## Lectures\n### Supply and demand, 1 October\n| Cue | Notes |\n| --- | --- |\n| What shifts the demand curve? | Income, tastes, prices of related goods, expectations. A change in the good's own price only moves along the curve. |\n| What is the equilibrium price? | The price where the quantity demanded equals the quantity supplied. |\n| What does a price ceiling below equilibrium cause? | A shortage: at that price, people want more than sellers offer. |\n\n**Summary:** Supply and demand meet at one price and quantity. Anything other than the price itself shifts a curve and moves that point; a price ceiling set too low leaves a shortage.\n\n## Cues to revisit\n- [ ] What shifts the demand curve?\n- [x] What does a price ceiling below equilibrium cause?\n",
+  "related": [
+    "study-flashcards",
+    "book-notes",
+    "reading-list"
+  ],
+  "updated": "2026-10-04"
+}
