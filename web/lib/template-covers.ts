@@ -24,6 +24,9 @@ export const COVERS: Record<string, Cover> = {
   "content-calendar": { ground: "#7a171f", alt: "Paper-cut pinboard of cards joined by red string, with a camera and a coffee cup" },
   "home-maintenance": { ground: "#e4ba8b", alt: "Paper-cut house with a wrench, a paint roller, a step ladder and a toolbox" },
   "gift-ideas": { ground: "#7cbf91", alt: "Paper-cut wrapped gift boxes with ribbons, a gift tag and confetti" },
+  "cornell-notes": { ground: "#1f4956", alt: "Paper-cut spiral notebook with its page split into a cue column, a notes column and a summary band, beside a pencil, a ruler and an eraser" },
+  "daily-journal": { ground: "#4a213d", alt: "Paper-cut open journal with a ribbon bookmark and a fountain pen, beside a sprig of lavender and an oak leaf" },
+  "grocery-list": { ground: "#c83829", alt: "Paper-cut shopping trolley carrying two paper bags with a baguette, greens, bananas and a carrot" },
 };
 
 export const coverPath = (slug: string) => `/templates/covers/${slug}.webp`;
