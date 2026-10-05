@@ -33,16 +33,24 @@ extension CollabStore {
 
     func setAccess(_ access: ShareState.Access, for note: Note) async throws {
         guard let relay else { throw CollabRelay.Problem(message: "Not connected") }
-        if access == .view {
-            if sessions[note.id] != nil { try await relay.rpc("collab_stop_link", [note.id.uuidString.lowercased()]) }
+        switch access {
+        case .off:
+            // The link stops working at once. Turning it on again makes a new one.
+            try await stopSharing(note)
+            linkOff.insert(note.id)
+        case .view:
+            linkOff.remove(note.id)
+            if links[note.id] == nil { _ = try await publishLink(note) }
+            if sessions[note.id] != nil, editable.contains(note.id) { try await relay.rpc("collab_stop_link", [note.id.uuidString.lowercased()]) }
             editable.remove(note.id)
-            return
+        case .edit:
+            linkOff.remove(note.id)
+            // The note becomes a shared note (its own key) if it isn't one yet.
+            if sessions[note.id] == nil { try await share(note) }
+            if links[note.id] == nil { _ = try await publishLink(note) }
+            try await publishEditLink(note)
+            editable.insert(note.id)
         }
-        // Edit: the note becomes a shared note (its own key) if it isn't one yet.
-        if sessions[note.id] == nil { try await share(note) }
-        if links[note.id] == nil { _ = try await publishLink(note) }
-        try await publishEditLink(note)
-        editable.insert(note.id)
     }
 
     private func publishEditLink(_ note: Note) async throws {
@@ -52,16 +60,11 @@ extension CollabStore {
         try await relay.rpc("collab_create_link", [l.id, note.id.uuidString.lowercased(), "editor", k.epoch, lk.answerHash, wrap])
     }
 
-    /// Reset Link: a new note key for everyone in it, and a new link. The old link stops working.
-    func resetLink(_ note: Note) async throws {
-        if sessions[note.id] != nil { try await rotate(note, removing: nil) }
-        _ = try await publishLink(note, rotate: true)
-        if editable.contains(note.id) { try await publishEditLink(note) }
-    }
-
-    /// Removes someone: a new key for everyone else, and a new link (the old one would let them back).
+    /// Removes someone: quietly, a new key for everyone else and a new link (the old one would let
+    /// them back in). The new link reaches people when it's shared again.
     func remove(_ user: UUID, from note: Note) async throws {
         try await rotate(note, removing: user)
+        guard !linkOff.contains(note.id) else { return }
         _ = try await publishLink(note, rotate: true)
         if editable.contains(note.id) { try await publishEditLink(note) }
     }
@@ -99,10 +102,8 @@ extension CollabStore {
     func people(in note: Note) -> [ShareState.Person] {
         guard let session = sessions[note.id] else { return [] }
         return session.members.map { m in
-            let peer = session.peers[m.id]
-            let status = m.id == session.me ? "Here" : peer.map { $0.isTyping ? "Editing now" : "Here now" } ?? (m.accepted ? "Not here" : "Invited")
-            return ShareState.Person(id: m.id, name: m.name, isMe: m.id == session.me, role: m.role, status: status,
-                                     safetyCode: m.publicKey.map { CollabCrypto.safetyCode(identity.publicRaw, $0) }, typing: peer?.isTyping ?? false)
+            ShareState.Person(id: m.id, name: m.name, isMe: m.id == session.me, role: m.role,
+                              safetyCode: m.id == session.me ? nil : m.publicKey.map { CollabCrypto.safetyCode(identity.publicRaw, $0) })
         }.sorted { ($0.isMe ? 0 : 1, $0.role == "owner" ? 0 : 1) < ($1.isMe ? 0 : 1, $1.role == "owner" ? 0 : 1) }
     }
 

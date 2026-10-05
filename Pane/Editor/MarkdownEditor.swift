@@ -530,6 +530,15 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
     private var remoteCarets: [RemoteCaret] = []
     private var caretViews: [UUID: (bar: UIView, flag: UILabel, selection: [UIView])] = [:]
 
+    /// `amount` of `color` over `ground`, as one opaque colour.
+    static func mix(_ color: UIColor, into ground: UIColor, amount: CGFloat) -> UIColor {
+        var (r1, g1, b1, a1): (CGFloat, CGFloat, CGFloat, CGFloat) = (0, 0, 0, 0)
+        var (r2, g2, b2, a2): (CGFloat, CGFloat, CGFloat, CGFloat) = (0, 0, 0, 0)
+        color.getRed(&r1, green: &g1, blue: &b1, alpha: &a1)
+        ground.getRed(&r2, green: &g2, blue: &b2, alpha: &a2)
+        return UIColor(red: r2 + (r1 - r2) * amount, green: g2 + (g1 - g2) * amount, blue: b2 + (b1 - b2) * amount, alpha: 1)
+    }
+
     func showRemoteCarets(_ carets: [RemoteCaret]) {
         guard carets != remoteCarets else { return }
         remoteCarets = carets
@@ -564,7 +573,7 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
                 return (bar, flag as UILabel, [])
             }()
             v.bar.backgroundColor = color
-            v.flag.backgroundColor = color.withAlphaComponent(0.88)
+            v.flag.backgroundColor = color
             v.flag.text = c.name
             let loc = min(c.range.location, length), end = min(NSMaxRange(c.range), length)
             guard let pos = position(from: beginningOfDocument, offset: loc) else { continue }
@@ -585,7 +594,8 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
                let range = textRange(from: a, to: b) {
                 for r in selectionRects(for: range) where r.rect.width > 0 {
                     let tint = UIView(frame: r.rect)
-                    tint.backgroundColor = color.withAlphaComponent(0.18)
+                    // Solid, not see-through: the person's colour mixed into the page, behind the text.
+                    tint.backgroundColor = Self.mix(color, into: Palette.page.resolvedColor(with: traitCollection), amount: 0.2)
                     tint.isUserInteractionEnabled = false
                     insertSubview(tint, at: 0)
                     v.selection.append(tint)

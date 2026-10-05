@@ -242,7 +242,6 @@ struct NoteDetailView: View {
             .background(Color.notePage.ignoresSafeArea())
             .safeAreaInset(edge: .top, spacing: 0) {
                 VStack(spacing: 0) {
-                    if let collab { EditingLine(session: collab) }
                     if let parent = parentNote { parentLink(parent) }
                     if note.trashedAt != nil { trashBanner }
                 }

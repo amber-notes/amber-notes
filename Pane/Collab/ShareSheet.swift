@@ -1,116 +1,78 @@
 import SwiftUI
 
-/// Share (prototype): one sheet, built around one link. "Anyone with the link can View or Edit."
+/// Share (prototype): who's in the note, one Share Link button, and what the link lets people do.
 ///
-/// - View: the link opens a read-only copy on the web (and its app, read only) with no account.
-///   The key is in the link's fragment, so we can't read it.
-/// - Edit: opening the link in Amber Notes adds you to the note as an editor. The fragment also
-///   carries the join secret; the server keeps only a hash of what it derives.
-/// - People in the note are listed under the link, each with Remove. Removing someone, or Reset
-///   Link, makes a new note key and a new link.
-/// - Checking a person's safety code is on their row (Verify), out of the main flow.
-/// - Share as Template is its own item at the bottom, with its public notice.
+/// - People come first: everyone in the note with their role. Remove is in a row's context menu
+///   (and a swipe on iPhone); removing someone quietly gives the note a new key and a new link.
+/// - Share Link hands the link to the system share sheet (iPhone) or share menu (Mac), which
+///   already have Copy. The link itself is never shown.
+/// - "People with the link can edit / view", or the link is off. Off deletes the link; turning it
+///   on again makes a new one, which is also the way to retire a link that went too far.
+/// - Can view opens a read-only page (no account); Can edit opens the note in Amber Notes and adds
+///   the person to it. Both stay end-to-end encrypted: the key travels in the link's fragment.
+/// - Share as Template is a quiet item at the bottom.
 ///
-/// No email invites in v1: people who sign in with Apple often hide their address, so a link is
-/// the one thing that always reaches them.
+/// No email invites in v1: people who sign in with Apple often hide their address.
 struct ShareState: Equatable {
-    enum Access: String, CaseIterable, Identifiable { case view = "View", edit = "Edit"; var id: String { rawValue } }
+    enum Access: String, CaseIterable, Identifiable {
+        case edit = "Can edit", view = "Can view", off = "Off"
+        var id: String { rawValue }
+    }
     struct Person: Identifiable, Equatable {
         let id: UUID
         var name: String
         var isMe = false
         var role: String
-        /// Here now, Editing now, Not here.
-        var status: String
         var safetyCode: String?
-        var typing = false
     }
     var link: URL?
     var access: Access = .view
     var people: [Person] = []
-    var working = false
     var problem: String?
 }
 
-/// The sheet's content, on its own so it can be shown with sample state (Mac shots, previews).
+/// The sheet's content, on its own so it can be shown with sample state (the gallery, Mac shots).
 struct ShareForm: View {
     let title: String
     let state: ShareState
     var setAccess: (ShareState.Access) -> Void = { _ in }
-    var copy: () -> Void = {}
     var remove: (ShareState.Person) -> Void = { _ in }
-    var reset: () -> Void = {}
-    var stop: () -> Void = {}
     var template: () -> Void = {}
     var done: () -> Void = {}
-    @State private var copied = false
 
     var body: some View {
         Form {
             Section {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(state.link?.absoluteString ?? "Making a link…")
-                        .font(.footnote.monospaced())
-                        .foregroundStyle(state.link == nil ? .secondary : .primary)
-                        .lineLimit(2)
-                        .truncationMode(.middle)
-                        .textSelection(.enabled)
-                        .accessibilityIdentifier("share.link")
+                ForEach(state.people) { p in
+                    Group {
+                        if p.isMe || p.safetyCode == nil { PersonRow(person: p) }
+                        else { NavigationLink(value: p.id) { PersonRow(person: p) } }
+                    }
+                    #if os(iOS)
+                    .swipeActions { if !p.isMe { Button("Remove", role: .destructive) { remove(p) } } }
+                    #endif
+                    .contextMenu { if !p.isMe { Button("Remove from Note", systemImage: "person.badge.minus", role: .destructive) { remove(p) } } }
                 }
-                Picker("Anyone with the link can", selection: Binding(get: { state.access }, set: setAccess)) {
+            }
+
+            Section {
+                shareButton
+                Picker(selection: Binding(get: { state.access }, set: setAccess)) {
                     ForEach(ShareState.Access.allCases) { Text($0.rawValue).tag($0) }
+                } label: {
+                    Text("People with the link")
                 }
+                .pickerStyle(.menu)
                 .accessibilityIdentifier("share.access")
-                HStack {
-                    Button(copied ? "Copied" : "Copy Link", systemImage: copied ? "checkmark" : "doc.on.doc") {
-                        copy()
-                        withAnimation(.snappy) { copied = true }
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) { withAnimation(.snappy) { copied = false } }
-                    }
-                    .disabled(state.link == nil)
-                    Spacer()
-                    if let link = state.link {
-                        ShareLink(item: link, subject: Text(title)) { Label("Send Link…", systemImage: "square.and.arrow.up") }
-                    }
-                }
-                #if os(macOS)
-                .buttonStyle(.borderless)
-                #endif
             } footer: {
-                Text(state.access == .view
-                     ? "They can read the note and use its app, read only, in a browser or in Amber Notes. No account needed. The end of the link is the key, so we can't read the note."
-                     : "Opening the link in Amber Notes adds them to this note, and they can edit it with you. They show up below. The end of the link is the key, so we can't read the note.")
-            }
-
-            if !state.people.isEmpty {
-                Section("People") {
-                    ForEach(state.people) { p in
-                        Group {
-                            if p.isMe { PersonRow(person: p) } else { NavigationLink(value: p.id) { PersonRow(person: p) } }
-                        }
-                            #if os(iOS)
-                            .swipeActions { if !p.isMe { Button("Remove", role: .destructive) { remove(p) } } }
-                            #endif
-                            .contextMenu { if !p.isMe { Button("Remove", systemImage: "person.badge.minus", role: .destructive) { remove(p) } } }
-                    }
-                }
+                if let problem = state.problem { Text(problem).foregroundStyle(.red) }
             }
 
             Section {
-                Button("Reset Link", systemImage: "arrow.triangle.2.circlepath", action: reset).disabled(state.link == nil)
-                Button("Stop Sharing", systemImage: "xmark.circle", role: .destructive, action: stop).disabled(state.link == nil)
-            } footer: {
-                Text("Reset Link makes a new link and a new key; the old link stops working. People already in the note stay.")
-            }
-
-            Section {
-                Button("Share as Template…", systemImage: "square.on.square", action: template)
+                Button("Share as Template…", action: template)
+                    .foregroundStyle(.secondary)
                     .accessibilityIdentifier("share.template")
-            } footer: {
-                Text("A public page anyone can start their own copy from. Your notes and data aren't included.")
             }
-
-            if let problem = state.problem { Text(problem).foregroundStyle(.red) }
         }
         .formStyle(.grouped)
         #if os(macOS)
@@ -125,6 +87,20 @@ struct ShareForm: View {
             if let p = state.people.first(where: { $0.id == id }) { PersonDetail(person: p, remove: { remove(p) }) }
         }
     }
+
+    /// One button. The system share sheet (iPhone) or menu (Mac) has Copy and every app to send it with.
+    @ViewBuilder
+    private var shareButton: some View {
+        if let link = state.link, state.access != .off {
+            ShareLink(item: link, subject: Text(title)) {
+                Label("Share Link", systemImage: "square.and.arrow.up")
+            }
+            .accessibilityIdentifier("share.link")
+        } else {
+            Button("Share Link", systemImage: "square.and.arrow.up") { setAccess(.view) }
+                .accessibilityIdentifier("share.link")
+        }
+    }
 }
 
 private struct PersonRow: View {
@@ -132,33 +108,34 @@ private struct PersonRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            PersonAvatar(name: person.name, color: person.isMe ? Color(PColor.paneAccent) : CollabSession.color(for: person.id), size: 32, typing: person.typing)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(person.isMe ? "\(person.name) (you)" : person.name)
-                Text(person.status).font(.caption).foregroundStyle(.secondary)
-            }
+            // On its own in a row, an avatar needs no ring.
+            PersonAvatar(name: person.name, color: person.isMe ? Color(PColor.paneAccent) : CollabSession.color(for: person.id), size: 32,
+                         ring: .clear, ink: person.isMe ? .avatarOnAmber : .white)
+            Text(person.isMe ? "\(person.name) (you)" : person.name)
             Spacer()
             Text(person.role == "owner" ? "Owner" : person.role == "editor" ? "Can edit" : "Can view")
-                .font(.callout).foregroundStyle(.secondary)
+                .foregroundStyle(.secondary)
         }
         .accessibilityElement(children: .combine)
     }
 }
 
-/// A person's row, opened: who they are, verifying them, removing them.
+/// A person, opened: their safety code for anyone who wants to check, and Remove.
 private struct PersonDetail: View {
     let person: ShareState.Person
     let remove: () -> Void
     @Environment(\.dismiss) private var dismiss
 
+    private var first: String { person.name.split(separator: " ").first.map(String.init) ?? person.name }
+
     var body: some View {
         Form {
             Section {
                 HStack(spacing: 14) {
-                    PersonAvatar(name: person.name, color: CollabSession.color(for: person.id), size: 48)
+                    PersonAvatar(name: person.name, color: CollabSession.color(for: person.id), size: 48, ring: .clear)
                     VStack(alignment: .leading) {
                         Text(person.name).font(.headline)
-                        Text(person.role == "owner" ? "Owner" : "Can edit").foregroundStyle(.secondary)
+                        Text(person.role == "owner" ? "Owner" : person.role == "editor" ? "Can edit" : "Can view").foregroundStyle(.secondary)
                     }
                 }
             }
@@ -166,19 +143,17 @@ private struct PersonDetail: View {
                 Section {
                     Text(code).font(.title2.monospacedDigit()).frame(maxWidth: .infinity, alignment: .center).textSelection(.enabled)
                 } header: {
-                    Text("Verify \(person.name.split(separator: " ").first.map(String.init) ?? person.name)")
+                    Text("Verify \(first)")
                 } footer: {
-                    Text("If \(person.name.split(separator: " ").first.map(String.init) ?? person.name) sees the same code on your row, nobody in between, us included, could have swapped the keys that lock this note. You don't need to do this; it's here if you want to be sure.")
+                    Text("If \(first) sees the same code, you're sharing with the real \(first).")
                 }
             }
             Section {
                 Button("Remove from Note", role: .destructive) { remove(); dismiss() }
-            } footer: {
-                Text("They lose access to new changes. What they already saw stays with them. The note gets a new key and a new link.")
             }
         }
         .formStyle(.grouped)
-        .navigationTitle(person.name)
+        .navigationTitle(first)
     }
 }
 
@@ -194,26 +169,30 @@ struct ShareSheet: View {
         NavigationStack {
             ShareForm(title: note.title, state: state,
                       setAccess: { a in Task { await set(a) } },
-                      copy: copyLink,
                       remove: { p in Task { await run { try await store.remove(p.id, from: note) } } },
-                      reset: { Task { await run { try await store.resetLink(note) } } },
-                      stop: { Task { try? await store.stopSharing(note); dismiss() } },
                       template: { showTemplate = true },
                       done: { dismiss() })
             .navigationDestination(isPresented: $showTemplate) { TemplateForm(note: note, store: store) }
         }
         .task {
-            await run { try await store.ensureLink(note) }
+            // Opening Share makes the link (View) unless the note has one; it isn't shown, only shared.
+            await run { if store.linkURL(note) == nil, !store.linkOff.contains(note.id) { try await store.ensureLink(note) } }
             // People come and go: keep the list current while the sheet is open.
             while !Task.isCancelled {
-                state.people = store.people(in: note)
+                state.people = people
                 if let auto = CollabDemo.pendingAccess { CollabDemo.pendingAccess = nil; try? await Task.sleep(for: .seconds(1.2)); await set(auto) }
                 try? await Task.sleep(for: .seconds(0.5))
             }
         }
         #if os(macOS)
-        .frame(minWidth: 460, minHeight: 520)
+        .frame(minWidth: 420, minHeight: 360)
         #endif
+    }
+
+    /// Everyone in the note; before anyone else joins, just you.
+    private var people: [ShareState.Person] {
+        let list = store.people(in: note)
+        return list.isEmpty ? [.init(id: store.me ?? UUID(), name: store.name, isMe: true, role: "owner")] : list
     }
 
     private func set(_ access: ShareState.Access) async {
@@ -222,8 +201,6 @@ struct ShareSheet: View {
     }
 
     private func run(_ work: () async throws -> Void) async {
-        state.working = true
-        defer { state.working = false }
         do {
             try await work()
             state.problem = nil
@@ -231,17 +208,8 @@ struct ShareSheet: View {
             state.problem = (error as? LocalizedError)?.errorDescription ?? "Couldn't share. Try again."
         }
         state.link = store.linkURL(note)
-        state.access = store.access(note)
-        state.people = store.people(in: note)
+        state.access = store.linkURL(note) == nil ? .off : store.access(note)
+        state.people = people
         if let link = state.link { CollabDemo.wrote(state.access == .edit ? "edit-link" : "link", link) }
-    }
-
-    private func copyLink() {
-        guard let url = state.link else { return }
-        #if os(iOS)
-        UIPasteboard.general.url = url
-        #else
-        NSPasteboard.general.clearContents(); NSPasteboard.general.setString(url.absoluteString, forType: .string)
-        #endif
     }
 }

@@ -14,9 +14,9 @@ import Testing
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         for dark in [false, true] {
             let mode = dark ? "dark" : "light"
-            let avatars = MacStoreShots.window(CollabGallery().tint(Color(PColor.paneAccent)), size: CGSize(width: 720, height: 520), dark: dark)
+            let avatars = MacStoreShots.window(CollabGallery().tint(Color(PColor.paneAccent)), size: CGSize(width: 720, height: 560), dark: dark)
             let share = MacStoreShots.window(NavigationStack { ShareForm(title: "Team offsite", state: CollabGallery.share) }.tint(Color(PColor.paneAccent)),
-                                             size: CGSize(width: 520, height: 720), dark: dark)
+                                             size: CGSize(width: 480, height: 440), dark: dark)
             defer { for w in [avatars, share] { w.orderOut(nil); w.close() } }
             try? await Task.sleep(for: .seconds(1))
             try await MacStoreShots.shoot(dir, "collab-\(mode)", [("avatars", avatars), ("share", share)])

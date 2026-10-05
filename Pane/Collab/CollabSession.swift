@@ -110,7 +110,7 @@ final class CollabSession {
         text = (try? doc.text(obj: body)) ?? ""
     }
 
-    /// The note has a new key (someone was removed, or Reset Link): everything from here on is
+    /// The note has a new key (someone was removed): everything from here on is
     /// sealed with it. The document itself doesn't change.
     func reseal(nk: SymmetricKey, epoch: Int) {
         self.nk = nk
@@ -337,11 +337,18 @@ final class CollabSession {
 
     // MARK: Showing people
 
-    /// Each person keeps one colour everywhere. Amber stays for AI edits.
+    /// Each person keeps one colour everywhere: six muted, earthy tones that sit beside the amber
+    /// brand without competing with it (clay, sage, dusk blue, plum, teal, olive). Amber itself is
+    /// you, and AI edits. All take white initials at 4.5:1 or better.
     static func color(for user: UUID) -> Color {
-        let palette: [UInt32] = [0x2A8C82, 0x3D6FD9, 0x8A5CD6, 0xD6457A, 0x3F9A4A, 0x5B6B7F]
         let h = user.uuidString.unicodeScalars.reduce(UInt32(7)) { ($0 &* 31) &+ $1.value }
-        let rgb = palette[Int(h % UInt32(palette.count))]
+        return color(at: Int(h % UInt32(palette.count)))
+    }
+
+    static let palette: [UInt32] = [0xA85A3C, 0x5E7A5A, 0x4F6B87, 0x7E5878, 0x3F7774, 0x7A6F3A]
+
+    static func color(at i: Int) -> Color {
+        let rgb = palette[i % palette.count]
         return Color(red: Double(rgb >> 16 & 0xFF) / 255, green: Double(rgb >> 8 & 0xFF) / 255, blue: Double(rgb & 0xFF) / 255)
     }
 
