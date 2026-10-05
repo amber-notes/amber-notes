@@ -84,7 +84,8 @@ enum NotePageLibraries {
 
     enum Declared: Hashable { case bundled(String), npm(NpmRef) }
 
-    static func declared(in html: String) -> [Declared] {
+    static func declared(in stored: String) -> [Declared] {
+        let html = NotePageProject.entryHTML(stored)
         guard let r = html.range(of: #"<meta[^>]*name=["']amber-libs["'][^>]*>"#, options: .regularExpression) else { return [] }
         let tag = String(html[r])
         guard let c = tag.range(of: #"content=(['"])([\s\S]*?)\1"#, options: .regularExpression) else { return [] }
@@ -148,6 +149,20 @@ enum NotePageLibraries {
         return data
     }
 
+    /// ES module builds, by the name after amber-lib:///esm/.
+    static let modules = ["preact": "preact.module.js", "preact-hooks": "preact-hooks.module.js",
+                          "preact-jsx-runtime": "preact-jsx-runtime.module.js", "htm": "htm.module.js", "amber-router": "amber-router.module.js"]
+
+    static func resource(_ file: String) -> Data? {
+        let base = (file as NSString).deletingPathExtension, ext = (file as NSString).pathExtension
+        return Bundle.main.url(forResource: base, withExtension: ext).flatMap { try? Data(contentsOf: $0) }
+    }
+
+    /// amber-ui: the component kit (amber-ui/ in the repository, built by scripts/build-app.ts kit):
+    /// each component's source, its compiled module and the kit's stylesheet.
+    struct Kit: Decodable { var version: String; var src: [String: String]; var compiled: [String: String]; var css: String }
+    static let kit: Kit? = resource("amber-ui.json").flatMap { try? JSONDecoder().decode(Kit.self, from: $0) }
+
     static func bundledData(_ name: String) -> Data? {
         guard let lib = bundled.first(where: { $0.name == name }) else { return nil }
         let base = (lib.file as NSString).deletingPathExtension, ext = (lib.file as NSString).pathExtension
@@ -167,13 +182,33 @@ final class LibraryScheme: NSObject, WKURLSchemeHandler {
         let path = url.path.hasPrefix("/") ? String(url.path.dropFirst()) : url.path
         func reply(_ data: Data, type: String = "text/javascript") {
             guard !stopped.contains(ObjectIdentifier(task)) else { return }
-            task.didReceive(URLResponse(url: url, mimeType: type, expectedContentLength: data.count, textEncodingName: "utf-8"))
+            // CORS-readable: an app's modules (amber-app:) import these.
+            task.didReceive(HTTPURLResponse(url: url, statusCode: 200, httpVersion: "HTTP/1.1",
+                                            headerFields: ["Content-Type": type + "; charset=utf-8", "Content-Length": "\(data.count)", "Access-Control-Allow-Origin": "*"])!)
             task.didReceive(data)
             task.didFinish()
         }
         // The stylesheets every app starts with (NotePageTheme.links).
         if path == "amber-tokens.css" { reply(Data(NotePageTheme.tokens.utf8), type: "text/css"); return }
         if path == "amber-base.css" { reply(Data(NotePageTheme.base.utf8), type: "text/css"); return }
+        // ES modules for apps with files: Preact and friends as shipped, the kit, and the other
+        // libraries as their global's default export.
+        if path.hasPrefix("esm/") {
+            let name = String(path.dropFirst(4).dropLast(3))
+            if let file = NotePageLibraries.modules[name], let data = NotePageLibraries.resource(file) { reply(data); return }
+            if let lib = NotePageLibraries.bundled.first(where: { $0.name == name }) {
+                reply(Data("import \"amber-lib:///\(lib.name)\";\nexport default globalThis[\"\(lib.global)\"];\n".utf8)); return
+            }
+            task.didFailWithError(URLError(.fileDoesNotExist)); return
+        }
+        if path.hasPrefix("amber-ui/"), let kit = NotePageLibraries.kit {
+            let rest = String(path.dropFirst("amber-ui/".count))
+            if rest == "amber-ui.css" { reply(Data(kit.css.utf8), type: "text/css"); return }
+            if rest.hasPrefix("src/"), let src = kit.src[String(rest.dropFirst(4))] { reply(Data(src.utf8), type: "text/plain"); return }
+            let key = rest == "index.js" ? "index.jsx" : rest
+            if let js = kit.compiled[key] { reply(Data(js.utf8)); return }
+            task.didFailWithError(URLError(.fileDoesNotExist)); return
+        }
         if path.hasPrefix("npm/") {
             let integrity = (url.query ?? "").removingPercentEncoding ?? ""
             let spec = String(path.dropFirst(4))

@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		005CA83D3102FABCDD0EA094 /* MacImportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BBAD3D7E5ED5CA9C34129EE /* MacImportTests.swift */; };
+		006F71C4EE202E9444573F3C /* preact-jsx-runtime.module.js in Resources */ = {isa = PBXBuildFile; fileRef = 977A543BBB6A9AE0D3019BBE /* preact-jsx-runtime.module.js */; };
 		01F8A032F59404B7F22B1A3F /* LegalLinks.swift in Sources */ = {isa = PBXBuildFile; fileRef = E43C8835EE05529FC6C66B17 /* LegalLinks.swift */; };
 		026084E1D300F5B1897A4489 /* AddDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CB90883FB5418E63A15FD23 /* AddDevice.swift */; };
 		039FA59088DF11BD28A3096C /* AppleNotesImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 483CA88017A03E92EEC52DFD /* AppleNotesImport.swift */; };
@@ -30,9 +31,11 @@
 		0A6B9A9A19248ECD421938B7 /* NoteLockTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2856CB2ECE7B50E11419DC6C /* NoteLockTests.swift */; };
 		0A86AB7D095A52739A9CD44B /* LegalLinksTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F653B9FD402A31DD6E0FAE8 /* LegalLinksTests.swift */; };
 		0BA88B107179AE56774F18B0 /* DemoHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E11FB95A2E7F9A4A70976E7 /* DemoHistory.swift */; };
+		0C05872843462398AB27FE32 /* preact.module.js in Resources */ = {isa = PBXBuildFile; fileRef = 533FEF595166704617E0EA6B /* preact.module.js */; };
 		0D31B2E5C2082D78B0FFD6A4 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA6ECF7DA4BD18007EE9AD20 /* RootView.swift */; };
 		0E21A62A8EB76E514AEADA04 /* LiveSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C9713C82676B677E851130A /* LiveSyncTests.swift */; };
 		0E5A93367DF00F588EC6C7A3 /* DecoratedLayoutFragment.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC4C25B7D160D0B147F9EC20 /* DecoratedLayoutFragment.swift */; };
+		0F46C8D98BE583B848F7ED64 /* htm.module.js in Resources */ = {isa = PBXBuildFile; fileRef = 586174156618B0DB73BFE5A7 /* htm.module.js */; };
 		0F5DB7BF6D4ABC653F3234D3 /* Palette.swift in Sources */ = {isa = PBXBuildFile; fileRef = E64B3C5141EE3AF3984622FC /* Palette.swift */; };
 		105C2E3316639A90FAF84346 /* XLSXImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAD496AC65E3034908CB0DD0 /* XLSXImporter.swift */; };
 		1083082C020B49A0A7213EB6 /* AccountNotices.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED7F107D0DDA0B69E2BCE603 /* AccountNotices.swift */; };
@@ -48,6 +51,7 @@
 		14E3C2B4C906F7EB17833216 /* ConnectAsks.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2FFA510B01DACFC168BE214 /* ConnectAsks.swift */; };
 		15DFFDBFF48AEC62306795ED /* Encryption.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9675E1E6CE2A9DBBE319BDF4 /* Encryption.swift */; };
 		16A1317773F12574F6C85584 /* NotePageLibraries.swift in Sources */ = {isa = PBXBuildFile; fileRef = 999D65FF932EF270CB1D17B4 /* NotePageLibraries.swift */; };
+		16F81C7F50D02120E71CDFB5 /* amber-ui.json in Resources */ = {isa = PBXBuildFile; fileRef = 24D8355994666F6DBB272BC0 /* amber-ui.json */; };
 		17952D9B18FCF13C16B334ED /* KeyDevices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E0AC08F58F5BE90DD5AAD44 /* KeyDevices.swift */; };
 		17F5C4C03D14547F0527AF27 /* TableGrid.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1C50C228D538B5E390EF49D /* TableGrid.swift */; };
 		186AEC104A2516CB9646F065 /* NoteIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 667042B618528FF4943E6948 /* NoteIntents.swift */; };
@@ -121,11 +125,13 @@
 		45A54F95009096AE8F8C1A51 /* ComposeFromFoldersUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE9EC2B9105EAE247A65C8 /* ComposeFromFoldersUITests.swift */; };
 		46BFEF129C92C8BA646178A5 /* WebAuthSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 622B499961F7BD5908B9A435 /* WebAuthSession.swift */; };
 		47C38A4148DC095ED336FC53 /* NavigationStressUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2902D289A3A2604F93C3100B /* NavigationStressUITests.swift */; };
+		4815454E7475783A094F3508 /* preact-hooks.module.js in Resources */ = {isa = PBXBuildFile; fileRef = 52D415B84CA735B3B8845F5E /* preact-hooks.module.js */; };
 		4A75427660181B9B34E15062 /* NoteListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AFF5865DFB1F37542A9EF3A /* NoteListView.swift */; };
 		4B39B0C547908D6D8CB1F9D4 /* RichPaste.swift in Sources */ = {isa = PBXBuildFile; fileRef = 550E4D52A7E05ECB1417CCD0 /* RichPaste.swift */; };
 		4B416560AE0A07C8AC22CD06 /* MarkdownImportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8ECD0B12EBDDFDF91722F337 /* MarkdownImportTests.swift */; };
 		4B5697845D621DC2E6E8DCBF /* VersionTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32C37BFE60FE99C9B27E17B3 /* VersionTextView.swift */; };
 		4E2EFB68D9E42B2267AE915F /* KeepImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39A273CF66124CF6366B545E /* KeepImport.swift */; };
+		4E40076CD2A78F48319B1D0A /* NotePageProject.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CE7E9207A8F80614C5BB35C /* NotePageProject.swift */; };
 		4EEB5ED061D12156C5CF6E21 /* WhatsNew.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAFFEBDDE84EB3DB20AA0F63 /* WhatsNew.swift */; };
 		4F076F4BD77FEA75A56F4078 /* EditorHarness.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F75721B99AD389AEFA24318 /* EditorHarness.swift */; };
 		4F2E162B27450D4C56EACFF6 /* SyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5FF211616E406434EE7DC37 /* SyncTests.swift */; };
@@ -158,6 +164,7 @@
 		5BB1A82995AEA7369C1475CE /* NoteSourceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 672E87D77CAD63F58ED84550 /* NoteSourceTests.swift */; };
 		5C6E98AB33671AE17E68D216 /* NotePageNetwork.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97049D2AEE2C89B14A54B08B /* NotePageNetwork.swift */; };
 		5CABF6503D037751767E8C01 /* ListTitleUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E10AB39932C3189F22847302 /* ListTitleUITests.swift */; };
+		5D2EBF8B212F7365F11A9F15 /* preact-jsx-runtime.module.js in Resources */ = {isa = PBXBuildFile; fileRef = 977A543BBB6A9AE0D3019BBE /* preact-jsx-runtime.module.js */; };
 		5DF4070A3BE600B9F2D1F641 /* DecoratedLayoutFragment.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC4C25B7D160D0B147F9EC20 /* DecoratedLayoutFragment.swift */; };
 		5E153129A4B637873EE0F5A4 /* AppMark.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B255CC05106DC01C927C7CD /* AppMark.swift */; };
 		5EFE2991114664DF1D981C66 /* AIEditSnapshots.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3C667730E3C8E3C905E7874 /* AIEditSnapshots.swift */; };
@@ -186,6 +193,7 @@
 		6C0580F1C29D50F09C2AB55A /* TextDiff.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7329AFAFDF70725C833E38C /* TextDiff.swift */; };
 		6C07D3EBDADDBC4860E889F3 /* NoteLock.swift in Sources */ = {isa = PBXBuildFile; fileRef = F640AF3B161AEAD5FD260995 /* NoteLock.swift */; };
 		6C0D68D980CC55FA3C391007 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3891EC4D2DC7BF10221F3CBC /* SettingsView.swift */; };
+		6D597B1C5F30A6957832112C /* preact-hooks.module.js in Resources */ = {isa = PBXBuildFile; fileRef = 52D415B84CA735B3B8845F5E /* preact-hooks.module.js */; };
 		6ECD30112C54E00E2746A529 /* LiveViewerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 005D993BB051DBCB7CB4CED0 /* LiveViewerTests.swift */; };
 		6F0A081CD5824B2A571CBAA7 /* AppleSignIn.swift in Sources */ = {isa = PBXBuildFile; fileRef = F289BCC7CFF17C5E38FD609F /* AppleSignIn.swift */; };
 		6FA4E2DB5FE1AEFC619DB94A /* OfflineHTML.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CA53D7CEAE7816342EA0A55 /* OfflineHTML.swift */; };
@@ -227,6 +235,7 @@
 		839D91BEA0F428D99FB24805 /* XLSXImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAD496AC65E3034908CB0DD0 /* XLSXImporter.swift */; };
 		83D3C7CBEE74D767F5D349E2 /* NotePageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34BFC88418CBABA209D07247 /* NotePageView.swift */; };
 		846DE3D93ECC3E318F996A36 /* NoteSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0BA4CCE07685FDDE8BA6E09 /* NoteSource.swift */; };
+		8473EC64CA618857F5AF810B /* preact.module.js in Resources */ = {isa = PBXBuildFile; fileRef = 533FEF595166704617E0EA6B /* preact.module.js */; };
 		8475D84E4DF8DEAF9935EFFC /* NoteSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0BA4CCE07685FDDE8BA6E09 /* NoteSource.swift */; };
 		84F999934D2C8E2260931A07 /* Updater.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBAD2D5CF280D4F4179CB2F7 /* Updater.swift */; };
 		85B167443F5306A56A6853A5 /* EvernoteImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = C50F24771D014A8D43AD8481 /* EvernoteImport.swift */; };
@@ -285,8 +294,10 @@
 		AF9F9245EBE68587BEB4E21D /* Inbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99F11FB36958597987AD023E /* Inbox.swift */; };
 		B09B1D94FAEF75CF5F9EE61F /* SharedItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F0CA0A157AFFD73FB9DEA75 /* SharedItem.swift */; };
 		B1838349B2E160ED73FE1808 /* WebAuthSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 622B499961F7BD5908B9A435 /* WebAuthSession.swift */; };
+		B29F2A3CDF3B7AB2C36912B9 /* NotePageProject.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CE7E9207A8F80614C5BB35C /* NotePageProject.swift */; };
 		B2ED3B92BF26B120620D6A92 /* NoteLockSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD40DB3A0959421F768D4D34 /* NoteLockSync.swift */; };
 		B2F7CE0BA4833686E5050E97 /* CheckPop.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE674CEBF2979E842FF6221C /* CheckPop.swift */; };
+		B333717CEDA6A81DC8B20E72 /* amber-ui.json in Resources */ = {isa = PBXBuildFile; fileRef = 24D8355994666F6DBB272BC0 /* amber-ui.json */; };
 		B3F002E30EABB6099A2A950A /* LayoutHangTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DFAA356C8EA6422D73B1A4F /* LayoutHangTests.swift */; };
 		B42365DC281602AD586DB89C /* NotePage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8202889E526383AF7BD0F449 /* NotePage.swift */; };
 		B568FC006AB97255DF994967 /* ChecklistLookTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7306680E0E335C07172C36F /* ChecklistLookTests.swift */; };
@@ -338,6 +349,7 @@
 		D20513814DBDC876A698E1CD /* DeleteAccount.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D94335681A191B7DF159080 /* DeleteAccount.swift */; };
 		D244AB9C25BD0BFA2CB7C90A /* E2EE.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE72D528EBDE663B26CDC39D /* E2EE.swift */; };
 		D27B960C6EB2CD6BB7F56F84 /* WhatsNew.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAFFEBDDE84EB3DB20AA0F63 /* WhatsNew.swift */; };
+		D3FB73D832E7F1736AD7C35B /* amber-router.module.js in Resources */ = {isa = PBXBuildFile; fileRef = F238F5CBF7C5E4F2F4B5172F /* amber-router.module.js */; };
 		D48F87E78AFE583C4562AA6C /* TableInteractionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7B3FEBC5E8B405D61B40897 /* TableInteractionTests.swift */; };
 		D49F57F54EB1B22444DB5F5C /* ConnectScan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27BC2BBC304C6026622F0BF6 /* ConnectScan.swift */; };
 		D4E65675891D948C33B1A9DC /* MakeAnApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31665AF22829F277EBD00282 /* MakeAnApp.swift */; };
@@ -393,11 +405,13 @@
 		F3D8103CA4E31AB9BF87ECBD /* BulletLookTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF514831FEE33CB560873B07 /* BulletLookTests.swift */; };
 		F5B73F371B2B139D43A192FC /* OfflineHTMLTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67FFA212DC37DF44CA3F7B21 /* OfflineHTMLTests.swift */; };
 		F5DFE70493F7E13C3AAA35FD /* HomeScreenTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45E841E864DEFA026AC0CF16 /* HomeScreenTests.swift */; };
+		F73476038C5A573415483440 /* htm.module.js in Resources */ = {isa = PBXBuildFile; fileRef = 586174156618B0DB73BFE5A7 /* htm.module.js */; };
 		F82CD94581B514FAC2DF2D37 /* NetFault.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20BEF7BDF0FB91CAF7F007D5 /* NetFault.swift */; };
 		F85280FCFD2B30F92510732B /* EmbedViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C26CCB578DED7A0AE1BD8B5 /* EmbedViews.swift */; };
 		F8BA4E680B4B577A466691D4 /* MenuBarModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E9CE1B4EE228D52D58729C2 /* MenuBarModel.swift */; };
 		F9056BC1B1B9B2AE0C137E25 /* TwoDeviceLiveSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D2F57DF5286D7F9C5F954F1 /* TwoDeviceLiveSyncTests.swift */; };
 		F92C4865D194D66F6C1C2793 /* MenuBarTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44D4445CBE0C9888D0A78476 /* MenuBarTests.swift */; };
+		F933C4842DCCD1A6AE0B54A4 /* amber-router.module.js in Resources */ = {isa = PBXBuildFile; fileRef = F238F5CBF7C5E4F2F4B5172F /* amber-router.module.js */; };
 		F99A3DE164DE43C54A5BE075 /* AddDeviceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BF202EE121B78E2D670FEBB /* AddDeviceTests.swift */; };
 		FA3706C99C0A3F68BC5AE172 /* NotePageData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74B99DE5320A61F5F5F0A9B8 /* NotePageData.swift */; };
 		FAEBB7147246189CC7DCE328 /* HarnessSanityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0C106B1F9776D0E452FE8BA /* HarnessSanityTests.swift */; };
@@ -471,11 +485,13 @@
 		1A7835B48C799CF04F5FF31C /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
 		1B6942657FF41A9E90A2C2DA /* topojson.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = topojson.js; sourceTree = "<group>"; };
 		1C274796E62FCADF3B9FB8B0 /* NoteExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteExport.swift; sourceTree = "<group>"; };
+		1CE7E9207A8F80614C5BB35C /* NotePageProject.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotePageProject.swift; sourceTree = "<group>"; };
 		1DB0DAFE95B79BD85E820E69 /* NotePageDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotePageDevice.swift; sourceTree = "<group>"; };
 		1F653B9FD402A31DD6E0FAE8 /* LegalLinksTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegalLinksTests.swift; sourceTree = "<group>"; };
 		205EB78628F64ADE88A5BF62 /* Info-Direct.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "Info-Direct.plist"; sourceTree = "<group>"; };
 		20BEF7BDF0FB91CAF7F007D5 /* NetFault.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetFault.swift; sourceTree = "<group>"; };
 		212906CC78A0D33147DA9115 /* AIEditTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIEditTests.swift; sourceTree = "<group>"; };
+		24D8355994666F6DBB272BC0 /* amber-ui.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "amber-ui.json"; sourceTree = "<group>"; };
 		24F0468D706470F75BC78618 /* CardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardView.swift; sourceTree = "<group>"; };
 		25098E4C4EF554486AD7952E /* AIEdit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIEdit.swift; sourceTree = "<group>"; };
 		27341730693C9C5F11516EAE /* PaneShare.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PaneShare.entitlements; sourceTree = "<group>"; };
@@ -537,11 +553,14 @@
 		527730BB3E3E09A863D6895A /* NetFaultTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetFaultTests.swift; sourceTree = "<group>"; };
 		529388344853209DFB22B984 /* PaneDirect.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PaneDirect.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		52A05065D6AC46E02DC096AF /* StubSupabase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StubSupabase.swift; sourceTree = "<group>"; };
+		52D415B84CA735B3B8845F5E /* preact-hooks.module.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "preact-hooks.module.js"; sourceTree = "<group>"; };
 		52D997E7DDEDD95A01EC24BA /* Backend.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Backend.xcconfig; sourceTree = "<group>"; };
+		533FEF595166704617E0EA6B /* preact.module.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = preact.module.js; sourceTree = "<group>"; };
 		54785B843656F68AE620E39F /* TestDefaults.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestDefaults.swift; sourceTree = "<group>"; };
 		550BEF23962BF4E461634AD1 /* SessionStorageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStorageTests.swift; sourceTree = "<group>"; };
 		550E4D52A7E05ECB1417CCD0 /* RichPaste.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichPaste.swift; sourceTree = "<group>"; };
 		569EB1430761546DBD046F80 /* AccountKeysSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountKeysSync.swift; sourceTree = "<group>"; };
+		586174156618B0DB73BFE5A7 /* htm.module.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = htm.module.js; sourceTree = "<group>"; };
 		591D65AE1B7FABAAE04A733D /* tracker-prefixed.xlsx */ = {isa = PBXFileReference; path = "tracker-prefixed.xlsx"; sourceTree = "<group>"; };
 		599DE60FE9E6F13C56486743 /* IncrementalStyleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IncrementalStyleTests.swift; sourceTree = "<group>"; };
 		5D94335681A191B7DF159080 /* DeleteAccount.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeleteAccount.swift; sourceTree = "<group>"; };
@@ -611,6 +630,7 @@
 		96BF2077E54147D5949A2E4B /* EditorController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorController.swift; sourceTree = "<group>"; };
 		96E8277205CE8467252CB1A6 /* confetti.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = confetti.js; sourceTree = "<group>"; };
 		97049D2AEE2C89B14A54B08B /* NotePageNetwork.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotePageNetwork.swift; sourceTree = "<group>"; };
+		977A543BBB6A9AE0D3019BBE /* preact-jsx-runtime.module.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "preact-jsx-runtime.module.js"; sourceTree = "<group>"; };
 		97BBCF0A4A8EA967BB4FAE0E /* ENMLToMarkdown.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ENMLToMarkdown.swift; sourceTree = "<group>"; };
 		981BAC3EFB574BCE93F3A6DD /* Pane-mac-signed.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Pane-mac-signed.entitlements"; sourceTree = "<group>"; };
 		99375A4ACF211AEE18EC4EC3 /* RichTextToMarkdown.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextToMarkdown.swift; sourceTree = "<group>"; };
@@ -693,6 +713,7 @@
 		F0BA4CCE07685FDDE8BA6E09 /* NoteSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteSource.swift; sourceTree = "<group>"; };
 		F0FD3EFDF28989E46C2DEBCE /* EvernoteImportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvernoteImportTests.swift; sourceTree = "<group>"; };
 		F197879E6AA9D80E74248F7D /* Pane-mac-appstore.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Pane-mac-appstore.entitlements"; sourceTree = "<group>"; };
+		F238F5CBF7C5E4F2F4B5172F /* amber-router.module.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "amber-router.module.js"; sourceTree = "<group>"; };
 		F289BCC7CFF17C5E38FD609F /* AppleSignIn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignIn.swift; sourceTree = "<group>"; };
 		F3D58E8E551A1584CC8A7AC7 /* AmberButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AmberButton.swift; sourceTree = "<group>"; };
 		F640AF3B161AEAD5FD260995 /* NoteLock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteLock.swift; sourceTree = "<group>"; };
@@ -765,16 +786,22 @@
 			isa = PBXGroup;
 			children = (
 				7C5A3BE24CB24DDD03944249 /* amber-base.css */,
+				F238F5CBF7C5E4F2F4B5172F /* amber-router.module.js */,
+				24D8355994666F6DBB272BC0 /* amber-ui.json */,
 				CFFEC0432D36C47F49C28AEB /* anime.js */,
 				6A6208FEEA0F5F12A1F9C829 /* chart.js */,
 				96E8277205CE8467252CB1A6 /* confetti.js */,
 				F9539637FC0845A1B6AD2C29 /* d3.js */,
 				451FCC96A1E65D0DCF2FB5B6 /* dayjs.js */,
 				F9AB7B84121134A7EF8CBE69 /* htm.js */,
+				586174156618B0DB73BFE5A7 /* htm.module.js */,
 				31EE3E7E16D9DA7C161252EE /* libraries.json */,
 				CE878236645FC7961A369E8A /* marked.js */,
 				E37BFAF54A1A956AD495D1DE /* preact-hooks.js */,
+				52D415B84CA735B3B8845F5E /* preact-hooks.module.js */,
+				977A543BBB6A9AE0D3019BBE /* preact-jsx-runtime.module.js */,
 				19D80BDF04976B1F5E2449A1 /* preact.js */,
+				533FEF595166704617E0EA6B /* preact.module.js */,
 				FA63BA9CC98D699F71D53B85 /* purify.js */,
 				F760CF7B8C66F8A3AD1A896E /* router.js */,
 				DECBA8160361EDF621DEF177 /* three.js */,
@@ -904,6 +931,7 @@
 				1DB0DAFE95B79BD85E820E69 /* NotePageDevice.swift */,
 				999D65FF932EF270CB1D17B4 /* NotePageLibraries.swift */,
 				97049D2AEE2C89B14A54B08B /* NotePageNetwork.swift */,
+				1CE7E9207A8F80614C5BB35C /* NotePageProject.swift */,
 				34BFC88418CBABA209D07247 /* NotePageView.swift */,
 				F7FCC3B1CE1BD0C5DAF0E77D /* NoteSourceSheet.swift */,
 				B0FD9CDD3DAFE1CEB8218DCB /* PrivacySecurity.swift */,
@@ -1404,6 +1432,8 @@
 				329CDFF2E1D412083D1CC558 /* Assets.xcassets in Resources */,
 				992872A37D586E84420A3093 /* Info-Direct.plist in Resources */,
 				27BF89E3E5F784861EE58524 /* amber-base.css in Resources */,
+				F933C4842DCCD1A6AE0B54A4 /* amber-router.module.js in Resources */,
+				16F81C7F50D02120E71CDFB5 /* amber-ui.json in Resources */,
 				5464191780D6BA417D2ADA56 /* anime.js in Resources */,
 				D57E9678072EF60A03C09994 /* changelog.json in Resources */,
 				21DE1B041B3219E290CA9F69 /* chart.js in Resources */,
@@ -1411,10 +1441,14 @@
 				D7137A72A44C0EF9BDED2C78 /* d3.js in Resources */,
 				257B536842B201E95D30D967 /* dayjs.js in Resources */,
 				2DD6CB3865B3B81FC250F8DF /* htm.js in Resources */,
+				F73476038C5A573415483440 /* htm.module.js in Resources */,
 				6AF5B3376F82BF3A0BABB6E0 /* libraries.json in Resources */,
 				9957E4607D0E56C13A4EB547 /* marked.js in Resources */,
 				724FD55D6B4E21698BA7F35F /* preact-hooks.js in Resources */,
+				6D597B1C5F30A6957832112C /* preact-hooks.module.js in Resources */,
+				006F71C4EE202E9444573F3C /* preact-jsx-runtime.module.js in Resources */,
 				7A39FF51239708385F72BE50 /* preact.js in Resources */,
+				0C05872843462398AB27FE32 /* preact.module.js in Resources */,
 				AAEEF706B53C7F9082F6C35F /* purify.js in Resources */,
 				B95B234DA31EE4E50A363495 /* router.js in Resources */,
 				72B39C20D54050C92ACFAC0D /* sample-habit-tracker.html in Resources */,
@@ -1433,6 +1467,8 @@
 				B78600EE4717F44851D4F0C0 /* Assets.xcassets in Resources */,
 				09421089BA6B69D611F9DEA3 /* Info.plist in Resources */,
 				BF098AF84D129909C75C13CF /* amber-base.css in Resources */,
+				D3FB73D832E7F1736AD7C35B /* amber-router.module.js in Resources */,
+				B333717CEDA6A81DC8B20E72 /* amber-ui.json in Resources */,
 				635EB0854859743AEBF90BC5 /* anime.js in Resources */,
 				222A8316412AD1988A2068ED /* changelog.json in Resources */,
 				702D254A2BA6152E5195D309 /* chart.js in Resources */,
@@ -1440,10 +1476,14 @@
 				63275A4C35ED4EFF7754101F /* d3.js in Resources */,
 				093583D1082D0EEA478EDFCF /* dayjs.js in Resources */,
 				C67F73D849AF2E836059063E /* htm.js in Resources */,
+				0F46C8D98BE583B848F7ED64 /* htm.module.js in Resources */,
 				CE1DB02087AE2B23511AF3ED /* libraries.json in Resources */,
 				E0021816C242995928B1F014 /* marked.js in Resources */,
 				73A5D47993ADAE635DB2EEFA /* preact-hooks.js in Resources */,
+				4815454E7475783A094F3508 /* preact-hooks.module.js in Resources */,
+				5D2EBF8B212F7365F11A9F15 /* preact-jsx-runtime.module.js in Resources */,
 				80E5F1164751A401C881FC04 /* preact.js in Resources */,
+				8473EC64CA618857F5AF810B /* preact.module.js in Resources */,
 				D0B10CCF4167D29E4467B478 /* purify.js in Resources */,
 				BD7DC414B794B8845559A584 /* router.js in Resources */,
 				A70D13605754FCC0DAF6D739 /* sample-habit-tracker.html in Resources */,
@@ -1677,6 +1717,7 @@
 				730DED4757B02155361FB0E4 /* NotePageDevice.swift in Sources */,
 				16A1317773F12574F6C85584 /* NotePageLibraries.swift in Sources */,
 				5C6E98AB33671AE17E68D216 /* NotePageNetwork.swift in Sources */,
+				4E40076CD2A78F48319B1D0A /* NotePageProject.swift in Sources */,
 				83D3C7CBEE74D767F5D349E2 /* NotePageView.swift in Sources */,
 				846DE3D93ECC3E318F996A36 /* NoteSource.swift in Sources */,
 				0515E04B7FD2744F9BCA27BE /* NoteSourceSheet.swift in Sources */,
@@ -1835,6 +1876,7 @@
 				FED98958CC1697484A0A2034 /* NotePageDevice.swift in Sources */,
 				E919027807E1DEA72B51E0FC /* NotePageLibraries.swift in Sources */,
 				63B8C0E40C655A8710B468AD /* NotePageNetwork.swift in Sources */,
+				B29F2A3CDF3B7AB2C36912B9 /* NotePageProject.swift in Sources */,
 				2B69CBFA3196047D9F11B805 /* NotePageView.swift in Sources */,
 				8475D84E4DF8DEAF9935EFFC /* NoteSource.swift in Sources */,
 				FCF1189A7391FEBD04B20565 /* NoteSourceSheet.swift in Sources */,

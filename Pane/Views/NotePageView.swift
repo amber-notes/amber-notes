@@ -29,12 +29,12 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
     /// Requests and navigations the sandbox stopped (for the Dev readout and tests).
     private(set) var blocked: [String] = []
 
-    static let policy = "default-src 'none'; script-src 'unsafe-inline' amber-lib:; style-src 'unsafe-inline' amber-lib:; img-src data: amber-file:; font-src data:; media-src data: amber-file:; "
-        + "connect-src 'none'; frame-src 'none'; child-src 'none'; worker-src 'none'; object-src 'none'; manifest-src 'none'; form-action 'none'; base-uri 'none'"
+    static let policy = "default-src 'none'; script-src 'unsafe-inline' amber-app: amber-lib:; style-src 'unsafe-inline' amber-app: amber-lib:; img-src data: amber-app: amber-file:; font-src data: amber-app:; media-src data: amber-app: amber-file:; "
+        + "connect-src amber-app:; frame-src 'none'; child-src 'none'; worker-src 'none'; object-src 'none'; manifest-src 'none'; form-action 'none'; base-uri 'none'"
 
     /// Every request is blocked; the page's own document is given as a string, not loaded.
     /// The note's own files (amber-file:, served by the app from this device) are the one exception.
-    static let rules = #"[{"trigger":{"url-filter":".*"},"action":{"type":"block"}},{"trigger":{"url-filter":"^amber-file:"},"action":{"type":"ignore-previous-rules"}},{"trigger":{"url-filter":"^amber-lib:"},"action":{"type":"ignore-previous-rules"}}]"#
+    static let rules = #"[{"trigger":{"url-filter":".*"},"action":{"type":"block"}},{"trigger":{"url-filter":"^amber-file:"},"action":{"type":"ignore-previous-rules"}},{"trigger":{"url-filter":"^amber-lib:"},"action":{"type":"ignore-previous-rules"}},{"trigger":{"url-filter":"^amber-app:"},"action":{"type":"ignore-previous-rules"}}]"#
     private static var compiled: WKContentRuleList?
 
     /// One sandbox made ahead of time, its web content process already running, so opening a note
@@ -62,7 +62,7 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
     /// Compiles the rule list once. Pages wait for it: none loads without it.
     static func prepare() async throws -> WKContentRuleList {
         if let compiled { return compiled }
-        guard let list = try await WKContentRuleListStore.default().compileContentRuleList(forIdentifier: "amber-note-page-v3", encodedContentRuleList: rules) else {
+        guard let list = try await WKContentRuleListStore.default().compileContentRuleList(forIdentifier: "amber-note-page-v4", encodedContentRuleList: rules) else {
             throw NotePage.OpError("The app couldn't start.")
         }
         compiled = list
@@ -78,6 +78,7 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
         let scheme = FileScheme()
         config.setURLSchemeHandler(scheme, forURLScheme: "amber-file")
         config.setURLSchemeHandler(libraries, forURLScheme: "amber-lib")
+        config.setURLSchemeHandler(app, forURLScheme: "amber-app")
         #if os(iOS)
         config.dataDetectorTypes = []
         config.allowsInlineMediaPlayback = false
@@ -111,6 +112,8 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
     /// Shows `html` with `body` as its note. The document's own <!doctype> gives way to the policy.
     /// Libraries (amber-lib:): the bundled set, and the npm packages this page declared.
     private let libraries = LibraryScheme()
+    /// The app's own files (amber-app:).
+    private let app = AppScheme()
 
     /// The note's files the page may show (amber.files.url): nil for any other.
     var files: @MainActor (UUID) -> URL? = { _ in nil }
@@ -118,14 +121,19 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
     /// Shown inside its parent note, smaller: the page gets the class amber-widget on <html>.
     var isWidget = false
 
-    func load(html: String, body: String, data: NotePageData.Doc = NotePageData.empty(), restore: String? = nil) {
+    func load(html stored: String, body: String, data: NotePageData.Doc = NotePageData.empty(), restore: String? = nil) {
         let ucc = webView.configuration.userContentController
         ucc.removeAllUserScripts()
+        // One file or a project; one that can't be shown (over the limits, uncompiled) shows nothing,
+        // which reports it as failed, so the version before comes back.
+        let project = NotePageProject.parse(stored) ?? NotePageProject(files: ["/index.html": ""])
+        app.project = project
+        let html = project.index
         libraries.allowed = Set(NotePageLibraries.declared(in: html).compactMap { if case .npm(let r) = $0 { r } else { nil } })
         ucc.addUserScript(WKUserScript(source: Self.bootstrap(data: NotePage.data(of: body), store: data, restore: restore, widget: isWidget),
                                        injectionTime: .atDocumentStart, forMainFrameOnly: true, in: .page))
         loading = true
-        webView.loadHTMLString(Self.sandboxed(html), baseURL: nil)
+        webView.loadHTMLString(Self.sandboxed(html), baseURL: NotePageProject.base)
     }
 
     /// The note changed (the page's own edit, typing elsewhere, sync, Undo): the page re-renders.
@@ -144,7 +152,7 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
         while let f = rest.first, f.isWhitespace || f == "\u{FEFF}" { rest = rest.dropFirst() }
         if rest.prefix(9).lowercased() == "<!doctype", let end = rest.firstIndex(of: ">") { rest = rest[rest.index(after: end)...] }
         return #"<!doctype html><meta http-equiv="Content-Security-Policy" content="\#(policy)"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">"#
-            + NotePageTheme.links(for: html) + NotePageLibraries.scriptTags(for: html) + rest
+            + NotePageTheme.links(for: html) + NotePageProject.importMap + NotePageLibraries.scriptTags(for: html) + rest
     }
 
     /// How the page is being used right now, for swapping in a new version: how long since you
@@ -408,7 +416,7 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
     func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction) async -> WKNavigationActionPolicy {
         // Only the page itself, as it's first shown. Links, forms, reloads and redirects stay put.
         let url = action.request.url?.absoluteString ?? ""
-        if loading, url == "about:blank", action.targetFrame?.isMainFrame == true {
+        if loading, url == NotePageProject.base.absoluteString || url == "about:blank", action.targetFrame?.isMainFrame == true {
             loading = false
             return .allow
         }

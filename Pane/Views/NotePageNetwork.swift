@@ -42,7 +42,8 @@ enum NotePageNetwork {
         }
     }
 
-    static func needs(of html: String) -> Needs {
+    static func needs(of stored: String) -> Needs {
+        let html = NotePageProject.entryHTML(stored)
         guard let r = html.range(of: #"<meta[^>]*name=["']amber-needs["'][^>]*>"#, options: .regularExpression) else { return Needs() }
         let tag = String(html[r])
         guard let c = tag.range(of: #"content=(['"])([\s\S]*)\1"#, options: .regularExpression) else { return Needs() }

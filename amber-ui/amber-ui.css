@@ -1,0 +1,123 @@
+/* amber-ui.css, version 1 (Amber Notes): the look of the amber-ui components. In the cascade layer
+   "amber-ui", after amber-base: any style the app writes wins. Colours and sizes come from the
+   amber-tokens variables, so light and dark follow by themselves. */
+@layer amber-tokens, amber-base, amber-ui;
+
+@layer amber-ui {
+  /* Buttons */
+  .aui-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 0; cursor: pointer;
+    font: inherit; font-weight: 600; border-radius: var(--amber-radius-small); padding: 10px 16px; min-height: 44px; box-sizing: border-box; }
+  .aui-button--small { padding: 6px 12px; min-height: 32px; font-size: 0.9rem; }
+  .aui-button--primary { background: var(--amber-accent); color: var(--amber-on-accent); }
+  .aui-button--secondary { background: var(--amber-fill); color: var(--amber-text); }
+  .aui-button--plain { background: none; color: var(--amber-accent-text); padding-inline: 8px; }
+  .aui-button--destructive { background: var(--amber-fill); color: var(--amber-danger); }
+  .aui-button:disabled { opacity: 1; background: var(--amber-fill); color: var(--amber-text-secondary); cursor: default; }
+
+  /* Cards and lists */
+  .aui-card { background: var(--amber-surface); border-radius: var(--amber-radius); padding: 14px 16px; }
+  .aui-card__title, .aui-list__title { font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--amber-text-secondary); margin: 0 0 8px; }
+  .aui-list { margin: 0 0 20px; }
+  .aui-list__title { margin: 0 4px 8px; }
+  .aui-list__rows { background: var(--amber-surface); border-radius: var(--amber-radius); overflow: hidden; }
+  .aui-list__footer { color: var(--amber-text-secondary); font-size: 0.85rem; margin: 8px 4px 0; }
+  .aui-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; min-height: 48px; box-sizing: border-box;
+    width: 100%; text-align: start; font: inherit; color: inherit; background: none; border: 0; text-decoration: none; }
+  .aui-row + .aui-row { border-top: 1px solid var(--amber-separator); }
+  .aui-row--action { cursor: pointer; }
+  .aui-row__text { flex: 1; min-width: 0; display: grid; gap: 2px; }
+  .aui-row__title { font-weight: 600; overflow-wrap: anywhere; }
+  .aui-row__subtitle { color: var(--amber-text-secondary); font-size: 0.85rem; }
+  .aui-row__trailing { color: var(--amber-text-secondary); flex: none; display: flex; align-items: center; gap: 8px; }
+  .aui-row__chevron { width: 16px; height: 16px; color: var(--amber-text-secondary); flex: none; }
+
+  /* Fields (visible fields come from amber-base; here, layout and labels) */
+  .aui-field { display: grid; gap: 6px; margin: 0 0 14px; min-width: 0; }
+  .aui-field__label { font-weight: 600; font-size: 0.9rem; }
+  .aui-field__hint { color: var(--amber-text-secondary); font-size: 0.85rem; margin: 0; }
+  .aui-input { width: 100%; box-sizing: border-box; min-height: 44px; font-size: max(16px, 1rem); }
+  .aui-textarea { min-height: 96px; resize: vertical; }
+
+  /* Toggle */
+  .aui-toggle { display: flex; align-items: center; gap: 12px; min-height: 44px; cursor: pointer; }
+  .aui-toggle__label { flex: 1; }
+  .aui-toggle input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .aui-toggle__track { width: 51px; height: 31px; border-radius: 16px; background: var(--amber-fill); border: 1px solid var(--amber-field-border);
+    box-sizing: border-box; position: relative; flex: none; transition: background .15s; }
+  .aui-toggle__thumb { position: absolute; top: 2px; left: 2px; width: 25px; height: 25px; border-radius: 50%; background: var(--amber-field);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.25); transition: transform .15s; }
+  .aui-toggle input:checked + .aui-toggle__track { background: var(--amber-accent); border-color: var(--amber-accent); }
+  .aui-toggle input:checked + .aui-toggle__track .aui-toggle__thumb { transform: translateX(20px); background: #FFFFFF; }
+  .aui-toggle input:focus-visible + .aui-toggle__track { outline: 2px solid var(--amber-accent); outline-offset: 2px; }
+
+  /* Slider */
+  .aui-slider { display: grid; gap: 6px; margin: 0 0 14px; }
+  .aui-slider__top { display: flex; justify-content: space-between; font-weight: 600; }
+  .aui-slider output { color: var(--amber-text-secondary); font-variant-numeric: tabular-nums; }
+  .aui-slider input { width: 100%; accent-color: var(--amber-accent); }
+
+  /* Stat */
+  .aui-stat { background: var(--amber-surface); border-radius: var(--amber-radius); padding: 12px 14px; display: grid; gap: 2px; min-width: 0; }
+  .aui-stat__value { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .aui-stat__label, .aui-stat__hint { color: var(--amber-text-secondary); font-size: 0.85rem; }
+
+  /* Empty state */
+  .aui-empty { text-align: center; padding: 40px 20px; display: grid; justify-items: center; gap: 8px; }
+  .aui-empty__title { font-size: 1.2rem; margin: 0; }
+  .aui-empty__body { color: var(--amber-text-secondary); margin: 0 0 8px; max-width: 32ch; }
+
+  /* Tabs (segmented) */
+  .aui-tabs { display: inline-flex; background: var(--amber-fill); border-radius: 999px; padding: 3px; max-width: 100%; overflow-x: auto; }
+  .aui-tabs__tab { border: 0; background: none; font: inherit; font-weight: 600; font-size: 0.9rem; padding: 7px 14px; border-radius: 999px; color: var(--amber-text); cursor: pointer; white-space: nowrap; }
+  .aui-tabs__tab[aria-selected="true"] { background: var(--amber-bg); box-shadow: 0 1px 2px rgb(0 0 0 / 0.12); }
+
+  /* Sheets and dialogs: solid surfaces over a dimmed app. */
+  .aui-modal { position: fixed; inset: 0; z-index: 50; display: flex; }
+  .aui-scrim { position: absolute; inset: 0; background: rgb(20 14 8 / 0.4); }
+  .aui-modal--sheet { align-items: flex-end; }
+  .aui-sheet { position: relative; width: 100%; max-height: 100%; display: flex; flex-direction: column; box-sizing: border-box;
+    background: var(--amber-bg); border-radius: 16px 16px 0 0; border-top: 1px solid var(--amber-separator); outline: none; }
+  .aui-sheet__header { display: flex; align-items: center; gap: 8px; padding: 14px 12px 6px 18px; }
+  .aui-sheet__title { flex: 1; margin: 0; font-size: 1.15rem; }
+  .aui-sheet__body { overflow: auto; padding: 6px 18px 12px; min-height: 0; }
+  .aui-sheet__actions { display: flex; gap: 10px; justify-content: flex-end; padding: 10px 18px max(14px, var(--amber-safe-bottom), var(--amber-inset-bottom));
+    border-top: 1px solid var(--amber-separator); background: var(--amber-bg); }
+  .aui-sheet__actions .aui-button { flex: 1; }
+  .aui-modal--dialog { align-items: center; justify-content: center; padding: 20px; }
+  .aui-dialog { position: relative; width: min(340px, 100%); background: var(--amber-bg); border-radius: var(--amber-radius); border: 1px solid var(--amber-separator);
+    padding: 20px; box-sizing: border-box; outline: none; display: grid; gap: 10px; text-align: center; }
+  .aui-dialog__title { margin: 0; font-size: 1.1rem; }
+  .aui-dialog__body { color: var(--amber-text-secondary); }
+  .aui-dialog__actions { display: flex; gap: 10px; margin-top: 6px; }
+  .aui-dialog__actions .aui-button { flex: 1; }
+  @media (min-width: 700px) {
+    .aui-modal--sheet { align-items: center; justify-content: center; padding: 24px; }
+    .aui-sheet { width: min(520px, 100%); max-height: min(80vh, 100%); border-radius: var(--amber-radius); border: 1px solid var(--amber-separator); }
+  }
+
+  /* Screens: a tab bar at the bottom; a sidebar from 900 px. */
+  .aui-shell { min-height: 100vh; display: grid; grid-template-rows: 1fr auto; }
+  .aui-shell__main { min-width: 0; }
+  .aui-tabbar { position: sticky; bottom: 0; z-index: 10; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--amber-bg);
+    border-top: 1px solid var(--amber-separator); padding: 6px 8px max(6px, var(--amber-safe-bottom), var(--amber-inset-bottom)); }
+  .aui-tabbar__title { display: none; }
+  .aui-tabbar__item { display: grid; justify-items: center; gap: 2px; padding: 4px; color: var(--amber-text-secondary); text-decoration: none; font-size: 0.72rem; font-weight: 600; }
+  .aui-tabbar__item .aui-icon { width: 24px; height: 24px; }
+  .aui-tabbar__item[aria-current="page"] { color: var(--amber-accent-text); }
+  @media (min-width: 900px) {
+    .aui-shell { grid-template-rows: none; grid-template-columns: 220px 1fr; }
+    .aui-tabbar { order: -1; position: sticky; top: 0; align-self: start; height: 100vh; box-sizing: border-box; grid-auto-flow: row; grid-auto-rows: min-content; grid-auto-columns: auto;
+      gap: 2px; border-top: 0; border-right: 1px solid var(--amber-separator); background: var(--amber-surface); padding: 18px 10px; }
+    .aui-tabbar__title { display: block; font-weight: 700; font-size: 1.1rem; padding: 4px 10px 12px; }
+    .aui-tabbar__item { grid-template-columns: 22px 1fr; justify-items: start; align-items: center; gap: 10px; padding: 9px 10px; border-radius: var(--amber-radius-small); font-size: 0.95rem; }
+    .aui-tabbar__item .aui-icon { width: 20px; height: 20px; }
+    .aui-tabbar__item[aria-current="page"] { background: var(--amber-accent-soft); }
+  }
+
+  /* Toast: above the tab bar and Amber's own things. */
+  .aui-toast-host { position: fixed; left: 0; right: 0; bottom: calc(76px + var(--amber-inset-bottom)); display: flex; justify-content: center; pointer-events: none; z-index: 60; }
+  .aui-toast { background: var(--amber-text); color: var(--amber-bg); padding: 10px 16px; border-radius: 999px; font-weight: 600; font-size: 0.9rem; }
+
+  .aui-icon { width: 20px; height: 20px; flex: none; }
+}

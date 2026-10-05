@@ -202,7 +202,7 @@ import WebKit
         let results = try await sandbox.webView.evaluateJavaScript("window.__results") as? [String]
         #expect(results == ["fetch blocked", "xhr blocked", "image blocked"])
         #expect(server.connections == before, "the sandboxed page reached the network")
-        #expect(sandbox.webView.url?.absoluteString == "about:blank")
+        #expect(sandbox.webView.url?.absoluteString == "amber-app:///index.html")
         #expect(sandbox.blocked.contains { $0.hasPrefix("navigation \(base)") })
     }
 
@@ -796,7 +796,7 @@ import WebKit
         _ = try await sandbox.webView.evaluateJavaScript("document.getElementById('go').click(); 1")
         try await run(sandbox.webView, until: "document.getElementById('item') !== null")
         #expect(try await sandbox.webView.evaluateJavaScript("document.getElementById('item').textContent") as? String == "item 7")
-        #expect(sandbox.webView.url?.absoluteString == "about:blank")
+        #expect(sandbox.webView.url?.absoluteString == "amber-app:///index.html")
     }
 
     /// Something too wide in an app never makes the whole page pan sideways.
@@ -869,6 +869,48 @@ import WebKit
         sandbox.setInsets(bottom: 58)
         try await run(sandbox.webView, until: "getComputedStyle(document.getElementById('bar')).paddingBottom === '58px'")
         #expect(try await sandbox.webView.evaluateJavaScript("JSON.stringify([window.__e, amber.insets.bottom])") as? String == "[[58],58]")
+    }
+
+    /// A project of files: index.html, JSX modules (compiled by the tooling), CSS, amber-ui and the
+    /// import map, served from amber-app: with nothing else reachable.
+    @Test func aProjectOfFilesRunsWithTheKit() async throws {
+        let dir = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().appending(path: "demo/note-pages")
+        let stored = try String(contentsOf: dir.appending(path: "training-app.json"), encoding: .utf8)
+        let project = try #require(NotePageProject.parse(stored))
+        #expect(project.files.keys.contains("/src/App.jsx") && project.compiled["/src/App.jsx"] != nil)
+        let note = try String(contentsOf: dir.appending(path: "training.md"), encoding: .utf8)
+        let sandbox = NotePageSandbox(rules: try await NotePageSandbox.prepare())
+        var result: (Bool, [String])?
+        sandbox.onReady = { result = (true, []) }
+        sandbox.onFailure = { result = (false, $0) }
+        sandbox.load(html: stored, body: note)
+        try await run(sandbox.webView, until: "document.querySelector('.aui-tabbar') !== null && document.querySelector('h1') !== null")
+        for _ in 0..<60 where result == nil { try await Task.sleep(for: .milliseconds(50)) }
+        #expect(result?.0 == true, "\(String(describing: result))")
+        #expect(try await sandbox.webView.evaluateJavaScript("document.querySelector('h1').textContent") as? String == "Today")
+        // The kit's own styles are layered: they load, and the app's plain CSS beats them.
+        try await run(sandbox.webView, until: "getComputedStyle(document.querySelector('.aui-tabbar')).position === 'sticky'")
+        _ = try await sandbox.webView.evaluateJavaScript("document.querySelector('.aui-tabbar__item:nth-of-type(2)').click(); 1")
+        try await run(sandbox.webView, until: "document.querySelector('h1').textContent === 'Plan'")
+        // The source of each component ships too, for copying into the app's /src/components.
+        #expect(NotePageLibraries.kit?.src["Button.jsx"]?.contains("export function Button") == true)
+        #expect(sandbox.webView.url?.absoluteString == "amber-app:///index.html")
+    }
+
+    @Test func projectsHaveLimitsAndMustBeCompiled() throws {
+        func stored(_ files: [String: String], _ compiled: [String: String] = [:]) -> String {
+            String(data: try! JSONSerialization.data(withJSONObject: ["amberApp": 1, "files": files, "compiled": compiled]), encoding: .utf8)!
+        }
+        #expect(NotePageProject.parse(stored(["/index.html": "<p>x</p>"])) != nil)
+        #expect(NotePageProject.parse(stored(["/main.html": "x"])) == nil, "no /index.html")
+        #expect(NotePageProject.parse(stored(["/index.html": "x", "/src/App.jsx": "<p/>"])) == nil, "not compiled")
+        #expect(NotePageProject.parse(stored(["/index.html": "x", "/../etc": "x"])) == nil)
+        #expect(NotePageProject.parse(stored(["/index.html": "x", "/big.js": String(repeating: "a", count: 600_000)])) == nil)
+        var many = ["/index.html": "x"]; for i in 0..<NotePageProject.maxFiles { many["/f\(i).js"] = "" }
+        #expect(NotePageProject.parse(stored(many)) == nil)
+        // A one-file app is a project of one file.
+        #expect(NotePageProject.parse("<p>hi</p>")?.files == ["/index.html": "<p>hi</p>"])
+        #expect(NotePageProject.entryHTML(stored(["/index.html": "<meta name=\"amber-libs\" content=\"chart\">"])).contains("amber-libs"))
     }
 
     @Test func npmPackagesNeedAPinnedVersionAndAMatchingHash() async throws {

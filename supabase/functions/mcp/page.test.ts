@@ -93,3 +93,14 @@ Deno.test("the AI's copy of amber-base.css is the file the app ships", () => {
   assertEquals(AMBER_BASE_CSS.includes("!important"), false);
   for (const t of ["--amber-field", "--amber-root-font", "--amber-accent"]) assertEquals(AMBER_TOKENS.includes(t), true);
 });
+
+import { AMBER_UI } from "./amber-ui.ts";
+
+Deno.test("the AI's copy of amber-ui is the kit the app ships", () => {
+  const shipped = JSON.parse(Deno.readTextFileSync(new URL("../../../Pane/Resources/AppLibraries/amber-ui.json", import.meta.url)));
+  assertEquals(AMBER_UI.src, shipped.src);
+  assertEquals(AMBER_UI.css, shipped.css);
+  for (const c of ["Button", "Sheet", "TabBar", "ListRow", "Toggle", "Slider", "Toast", "EmptyState", "Dialog", "Tabs", "Stat", "Input", "Select", "TextArea", "Card"]) {
+    assertEquals(Object.values(AMBER_UI.src).some((s) => s.includes(`export function ${c}`)), true, c);
+  }
+});

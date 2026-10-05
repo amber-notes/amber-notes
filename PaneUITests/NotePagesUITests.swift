@@ -599,4 +599,47 @@ final class NotePagesUITests: XCTestCase {
         mark("ledger-end")
         pause(1)
     }
+
+    func webStarting(_ label: String) -> XCUIElement {
+        app.webViews.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", label)).firstMatch
+    }
+
+    /// Training as a scaffolded project (index.html, src/main.jsx, App.jsx, screens, components,
+    /// styles.css, data.js) on amber-ui: a sheet with the keyboard, tabs, a pushed screen, settings.
+    func testTrainingProject() {
+        launch(["-seedNote", "\(pages)/training.md", "-open", "Training", "-seedPage", "Training=\(pages)/training-app.json"])
+        mark("project-start")
+        pause(3.5)
+        shot("p1-today")
+        webStarting("Bench press").tap()
+        pause(1.5)
+        shot("p2-sheet-keyboard")
+        let field = app.webViews.textFields.firstMatch
+        if field.waitForExistence(timeout: 2) { field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 5) + "65") }
+        pause(0.6)
+        app.webViews.buttons["Log Set"].firstMatch.tap()
+        pause(1.5)
+        shot("p3-logged")
+        web("Plan").tap()
+        pause(1.2)
+        shot("p4-plan")
+        webStarting("Wed · Lower").tap()
+        pause(1.2)
+        shot("p5-plan-day")
+        web("Back").tap()
+        pause(0.8)
+        web("Progress").tap()
+        pause(1.5)
+        shot("p6-progress")
+        web("Settings").tap()
+        pause(1)
+        web("lb").tap()
+        pause(0.8)
+        shot("p7-settings")
+        web("Back").tap()
+        pause(1.2)
+        shot("p8-progress-lb")
+        mark("project-end")
+        pause(1)
+    }
 }
