@@ -45,6 +45,7 @@ Deno.test("wildcard hosts cover their servers; !important is called out because 
   assertEquals(networkReport(html, []), []);
   assertStringIncludes(pageWarnings(`<html lang="en"><style>input { border: 0 !important; }</style><p style="color: red !important">x</p>`).join(), "!important appears 2 times");
   assertEquals(pageWarnings(`<html lang="en"><style>input { border: 0; }</style>`).some((w) => w.includes("!important")), false);
+  assertStringIncludes(pageWarnings(`<html lang="en"><meta name="amber-settings" content="{}"><script>amber.openSettings()</script>`).join(), "were removed");
 });
 
 Deno.test("libraries: pasted copies, unpinned or unhashed npm entries, unknown names and undeclared globals are flagged", () => {

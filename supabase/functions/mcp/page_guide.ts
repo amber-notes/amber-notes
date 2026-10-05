@@ -74,6 +74,7 @@ Names, goals, limits, currencies, categories, the habits to track: the person sh
 - Sensible defaults, so the app works before anyone opens settings; changes apply instantly (no Save button), with real inputs that have labels.
 - Store them in the app's data, values.settings: read amber.data.values.settings (with your defaults merged in) and write amber.store.set("settings", { ...current, goal: 5 }) or amber.setData({ values: { settings: { goal: 5 } } }). An AI sets them for the person with update_page_data { values: { settings: { … } } }.
 - Settings aren't records: rows the person logs stay in the note's tables or the app's collections.
+- There is no native settings form: <meta name="amber-settings">, amber.settings and amber.openSettings() are gone (check_app flags them).
 
 ## Reading data robustly
 
@@ -127,10 +128,11 @@ That is all the styling an app is given; there is nothing hidden. Treat it as a 
 
 ## Focus and structure
 
-Design around the person's job, with one focus per screen. Ask what they open the app to do most often, and make that the first screen; everything else lives one step away.
+Design around the person's job, with one focus per screen. Name the job in one sentence before designing ("start today's workout and log it set by set"); the first screen does that job and nothing competes with it. Everything else lives one step away.
 
 - A training app opens on today's workout. Plan editing and progress are their own screens, not sections stacked under it. A budget opens on "how much is left this month" and the add button; categories and history are a tap away. A reading log opens on what you're reading now.
-- Real app structure is welcome: tabs (a bottom tab bar on iPhone, a sidebar or top tabs on a wide Mac window), pushed detail screens with a back button, sheets for adding or editing, and segmented controls to switch views. Keep it shallow: 2 to 5 places, each with one job.
+- One primary action per screen, big and obvious (Start, Add, Study now); everything else is quieter. Summary before detail: the number that matters at the top, the list after, history on its own tab.
+- Real app structure is welcome. Tabs: 2 to 4 sections named by what the person does or looks at (Today, Plan, Progress), a bottom tab bar on iPhone and a sidebar from 900 px. Push a screen for one thing (one workout, one person) with a back button that names where it goes. A doing mode (a workout, a review, cooking) hides the tabs and shows one step at a time. Sheets for short tasks that return to where you were (add, edit, pick), never for whole sections. Segmented controls switch views.
 - Keep the current screen in the app's store (amber.store.set("screen", …)) so the app reopens where the person was, and in history (history.pushState) only if you handle the back gesture yourself.
 - On the first screen: one primary action, one or two key numbers, then a short list or view. If you're stacking more than four independent sections (a summary, a chart, a form, a history, settings…) on one screen, split them into screens or tabs. check_app warns when a screen holds too many.
 - Navigation controls are real buttons with labels (aria-current on the active tab), at least 44 pt, and the active place is obvious.
@@ -148,6 +150,15 @@ amber.onChange(() => preact.render(html\`<\${App} />\`, document.body));
 
   The router keeps the screen in memory (the page can't navigate): links as <a href="#/item/3">, route("/add"), back(), useRoute(); a route like path="/item/:id" passes id. Re-render from amber.onChange so every screen follows the note. Plain JavaScript is fine for a one-screen app.
 
+## Sheets and popups
+
+- One sheet at a time: a fixed header (title, close) and a body that scrolls on its own; the page behind doesn't scroll.
+- The sheet's main action is pinned to its bottom and never scrolls away.
+- On iPhone a sheet rises from the bottom; the keyboard resizes the app's web view, so a bottom-pinned sheet or bar already sits above it (no visualViewport code needed); scroll a focused field into view. From 700 px a sheet is a centred panel no taller than the window.
+- Escape and the scrim close it; focus moves into it and comes back to what opened it.
+- Nothing floats over what the person is working on: toasts and timers get their own space, not over a field or the last row.
+- Motion explains a change (a pushed screen slides, a sheet rises, a tick pops) and respects prefers-reduced-motion.
+
 ## Sizes
 
 You own the layout at every size; the app must work and look intended across the whole range, with no sideways scrolling.
@@ -158,8 +169,11 @@ You own the layout at every size; the app must work and look intended across the
 - Embedded in another note (a sub-note shown inside its parent): a short strip, often 300-700 px wide; <html data-amber-context="widget"> (and the class amber-widget) and amber.context = { embedded, width, height } tell you. Keep a compact form that still makes sense there (the title, the one number or control that matters).
 - Text sizes in rem: on iPhone the root follows the reader's text size, so the layout must hold at larger text too.
 - Touch targets at least 44 pt on iPhone. Hover only as an extra on Mac, never the only way. Keyboard shortcuts are welcome on Mac (and for games).
+- Nothing is ever wider than the window. Flex and grid children that hold text get min-width: 0, and long words wrap. Rows with several controls wrap onto a second line on the phone instead of shrinking or clipping; give values their unit ("5 reps") rather than separate labels.
+- Decorations stay inside their box. overflow: hidden is only for things meant to be cut (images, ellipsis text), never to hide a layout that doesn't fit.
+- Fixed bars respect the safe area (env(safe-area-inset-bottom) or --amber-safe-bottom). The host's own controls sit outside the app, so no extra space is needed for them.
 - Use what fits: CSS grid and flex with wrapping, container queries (container-type: inline-size; @container (min-width: …)), clamp() for type, and media queries. The app also sets the classes amber-narrow / amber-medium / amber-wide on <html> (under 600, to 900, from 900 px) as a convenience; don't rely on them.
-- check_app renders at 375, 768 and 1,280 px (and the widget strip for sub-notes) and reports overflow, clipped text, small targets on the phone and an empty wide window.
+- check_app renders at 375, 768 and 1,280 px (and the widget strip for sub-notes) and reports overflow, clipped text, small targets on the phone and an empty wide window. Look at every screen and every sheet in light and dark at 320, 390 and 1,440 px before calling it done; check_app sees only the first screen.
 
 ## Libraries
 
