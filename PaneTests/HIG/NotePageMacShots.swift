@@ -72,7 +72,7 @@ import Testing
         // The list's app mark, both designs, on the Lisbon note so the list shows the two app notes.
         for style in [NoteAppMark.Style.detail, .title] {
             NoteAppMark.style = style
-            defer { NoteAppMark.style = .detail }
+            defer { NoteAppMark.style = .title }
             for dark in [false, true] {
                 let (w, _) = try await Self.open("Lisbon", size: CGSize(width: 1280, height: 800), dark: dark, list: 560)
                 defer { w.orderOut(nil); w.close() }

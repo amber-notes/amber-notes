@@ -164,4 +164,56 @@ final class NotePagesUITests: XCTestCase {
         pause(1.2)
         shot("toggle-b-menu")
     }
+
+    /// Apps inside a note: Budget 2026 with three sub-notes shown as widgets.
+    func testWidgets() {
+        launch(["-open", "Budget 2026", "-widgetDemo", pages])
+        mark("widgets-start")
+        pause(3)
+        shot("20-widgets-top")
+        app.textViews["editor"].firstMatch.swipeUp(velocity: .slow)
+        pause(1.5)
+        shot("21-widgets-scrolled")
+        // The first tap wakes the savings app; then its +500 adds a deposit to the app's data.
+        let savings = app.descendants(matching: .any)["widget.Savings: Lisbon trip"].firstMatch
+        if savings.waitForExistence(timeout: 3) { savings.tap() }
+        pause(1.2)
+        let plus = web("+500")
+        if plus.waitForExistence(timeout: 4) { plus.tap() }
+        pause(1.5)
+        shot("22-widget-saved")
+        // Open goes to the full screen.
+        let open = app.buttons["widget.open.Spending by month"].firstMatch
+        app.textViews["editor"].firstMatch.swipeDown(velocity: .slow)
+        pause(1)
+        if open.waitForExistence(timeout: 3) { open.tap() }
+        pause(2.5)
+        shot("23-widget-opened")
+        mark("widgets-end")
+        pause(1)
+    }
+
+    /// Scrolling a note with three widgets (or, with WIDGETS=links, the same note with plain
+    /// links), for the app's frame probe: ten slow and fast scrolls after it has settled.
+    func testWidgetScroll() {
+        let links = ProcessInfo.processInfo.environment["WIDGETS"] == "links"
+        launch(["-open", "Budget 2026", "-widgetDemo", pages, "-frameProbe"] + (links ? ["-widgetLinksOnly"] : []))
+        pause(6)
+        let editor = app.textViews["editor"].firstMatch
+        for i in 0..<5 {
+            editor.swipeUp(velocity: i % 2 == 0 ? .fast : .slow)
+            editor.swipeDown(velocity: i % 2 == 0 ? .fast : .slow)
+        }
+        pause(1.5)
+    }
+
+    /// The app mark in the list, both designs.
+    func testAppMark() {
+        let style = ProcessInfo.processInfo.environment["APP_MARK"] ?? "detail"
+        launch(["-seedPage", "Habit tracker=\(pages)/habit-tracker.html", "-appMark", style])
+        let all = app.staticTexts["All Notes"].firstMatch
+        if all.waitForExistence(timeout: 4) { all.tap() }
+        pause(1.5)
+        shot("mark-\(style)")
+    }
 }

@@ -1,4 +1,6 @@
+import SwiftData
 import SwiftUI
+import UniformTypeIdentifiers
 import WebKit
 
 /// The locked web view a note's page runs in (prototype; see NotePage).
@@ -264,6 +266,10 @@ struct NotePageView: View {
     let noteID: UUID
     let html: String
     let text: String
+    /// Pictures of a widget and of the full screen are kept apart (they're laid out differently).
+    var snapshotVariant = "full"
+    /// A widget doesn't scroll inside: the parent note does.
+    var scrolls = true
     let onUpdate: (NotePage.Op) throws -> Void
     /// The page threw while loading or drew nothing.
     var onFailure: ([String]) -> Void = { _ in }
@@ -275,7 +281,7 @@ struct NotePageView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            if !ready, let shot = NotePageSnapshots.shared.image(noteID, html: html, dark: scheme == .dark) {
+            if !ready, let shot = NotePageSnapshots.shared.image(noteID, html: html, dark: scheme == .dark, variant: snapshotVariant) {
                 snapshot(shot)
                     .onAppear { NotePageTiming.shown(noteID, "snapshot") }
             }
@@ -289,15 +295,18 @@ struct NotePageView: View {
         .task(id: html) {
             do {
                 let s = try await NotePageSandbox.make()
+                #if os(iOS)
+                s.webView.scrollView.isScrollEnabled = scrolls
+                #endif
                 s.onUpdate = onUpdate
                 ready = false
-                s.onReady = { [noteID, html, scheme] in
+                s.onReady = { [noteID, html, scheme, snapshotVariant] in
                     NotePageTiming.shown(noteID, "interactive")
                     withAnimation(.easeOut(duration: 0.15)) { ready = true }
                     // The picture for next time, once the page has settled.
                     Task { @MainActor in
                         try? await Task.sleep(for: .milliseconds(400))
-                        NotePageSnapshots.shared.take(s.webView, noteID, html: html, dark: scheme == .dark)
+                        NotePageSnapshots.shared.take(s.webView, noteID, html: html, dark: scheme == .dark, variant: snapshotVariant)
                     }
                 }
                 s.onFailure = onFailure
@@ -332,29 +341,29 @@ final class NotePageSnapshots {
     private var latest: [String: PImage] = [:]
     private let dir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appending(path: "note-page-snapshots", directoryHint: .isDirectory)
 
-    private func key(_ id: UUID, _ html: String, _ dark: Bool) -> String {
-        "\(id.uuidString)-\(E2EE.sha256Hex(html).prefix(16))-\(dark ? "d" : "l")"
+    private func key(_ id: UUID, _ html: String, _ dark: Bool, _ variant: String) -> String {
+        "\(id.uuidString)-\(E2EE.sha256Hex(html).prefix(16))-\(dark ? "d" : "l")-\(variant)"
     }
 
-    func image(_ id: UUID, html: String, dark: Bool) -> PImage? {
-        let k = key(id, html, dark)
+    func image(_ id: UUID, html: String, dark: Bool, variant: String = "full") -> PImage? {
+        let k = key(id, html, dark, variant)
         if let i = images[k] { return i }
         guard let data = try? Data(contentsOf: dir.appending(path: k + ".png")), let i = PImage(data: data) else {
-            return latest["\(id.uuidString)-\(dark)"]
+            return latest["\(id.uuidString)-\(dark)-\(variant)"]
         }
         images[k] = i
         return i
     }
 
-    func take(_ web: WKWebView, _ id: UUID, html: String, dark: Bool) {
-        let k = key(id, html, dark)
+    func take(_ web: WKWebView, _ id: UUID, html: String, dark: Bool, variant: String = "full") {
+        let k = key(id, html, dark, variant)
         let config = WKSnapshotConfiguration()
         config.afterScreenUpdates = false
         web.takeSnapshot(with: config) { [weak self] image, _ in
             guard let self, let image else { return }
             Task { @MainActor in
                 self.images[k] = image
-                self.latest["\(id.uuidString)-\(dark)"] = image
+                self.latest["\(id.uuidString)-\(dark)-\(variant)"] = image
                 #if os(iOS)
                 let png = image.pngData()
                 #else
@@ -468,5 +477,127 @@ enum NotePageTiming {
             try? Data(line.utf8).write(to: url)
         }
         if what == "interactive" { opened[id] = nil }
+    }
+}
+
+/// What a page asks of the app, for any note showing as an app: in its own screen or as a widget
+/// in its parent.
+@MainActor
+enum NotePageActions {
+    /// A note op (tick, set cell, add row…), written to the note's text like typing. Returns the
+    /// text before, or nil when nothing changed.
+    @discardableResult
+    static func apply(_ op: NotePage.Op, to note: Note) throws -> String? {
+        let before = note.body
+        let after = try NotePage.apply(op, to: before)
+        guard after != before else { return nil }
+        note.body = after
+        note.touch()
+        try? note.modelContext?.save()
+        return before
+    }
+
+    /// The app's own data and files (amber.store, amber.files). Returns the reply for the page, and
+    /// the data before a data change (nil for files), for Undo.
+    static func data(_ message: Any, note: Note, context: ModelContext, sync: SyncEngine?) async throws -> (reply: [String: Any], before: NotePageData.Doc?) {
+        let m = message as? [String: Any] ?? [:]
+        switch m["op"] as? String {
+        case "file.save":
+            guard let b64 = m["base64"] as? String, let bytes = Data(base64Encoded: b64) else { throw NotePage.OpError("Send { name, type, base64 }.") }
+            guard bytes.count <= 50 * 1024 * 1024 else { throw NotePage.OpError("Files can be at most 50 MB.") }
+            let name = (m["name"] as? String).map { String($0.prefix(200)) } ?? "File"
+            let type = (m["type"] as? String).flatMap { UTType(mimeType: $0) } ?? UTType(filenameExtension: (name as NSString).pathExtension) ?? .data
+            let a = try FileStore.importData(bytes, filename: name, type: type)
+            context.insert(a)
+            try? context.save()
+            SyncSignal.changed()
+            return (["file": ["$file": a.id.uuidString.lowercased(), "name": a.filename, "type": type.preferredMIMEType ?? "application/octet-stream", "size": a.size]], nil)
+        case "file.read":
+            guard let s = m["id"] as? String, let id = UUID(uuidString: s), let a = context.attachment(id) else { throw NotePage.OpError("No such file.") }
+            if !FileStore.exists(a) { _ = await sync?.download(a) }
+            guard let bytes = try? Data(contentsOf: FileStore.url(for: a.id, filename: a.filename)) else { throw NotePage.OpError("That file isn't on this device yet.") }
+            guard bytes.count <= 20 * 1024 * 1024 else { throw NotePage.OpError("That file is too big to show in the app (20 MB at most).") }
+            return (["dataURL": "data:\(a.type.preferredMIMEType ?? "application/octet-stream");base64,\(bytes.base64EncodedString())", "name": a.filename], nil)
+        default:
+            let store = NotePageDataStore.shared
+            let before = store.doc(note.id)
+            let (after, made) = try NotePageData.apply(try NotePageData.Op(message), to: before)
+            store.set(note.id, after)
+            return (["data": after].merging(made.map { ["id": $0] } ?? [:]) { a, _ in a }, before)
+        }
+    }
+}
+
+/// A sub-note that is an app, shown where its parent links it: the picture of it from last time,
+/// live once you tap it, with Open for the full screen. In other apps and exports it stays a link.
+struct SubNoteWidget: View {
+    let id: UUID
+    let name: String
+    let controller: EditorController?
+    let remove: () -> Void
+    @State private var live = false
+    @Environment(\.colorScheme) private var scheme
+    @Environment(SyncEngine.self) private var sync: SyncEngine?
+
+    var body: some View {
+        let note = controller?.resolveNoteModel(id)
+        let page = NotePageStore.shared[id]
+        VStack(spacing: 0) {
+            HStack(spacing: 8) {
+                Image(systemName: NoteAppMark.symbol)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Color.amberInk)
+                Text(note?.title ?? name)
+                    .font(.system(size: EditorMetrics.body * 0.88, weight: .semibold))
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+                Button { controller?.openNote(id) } label: {
+                    Label("Open", systemImage: "arrow.up.left.and.arrow.down.right")
+                        .font(.system(size: EditorMetrics.body * 0.8, weight: .semibold))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Color.amberInk)
+                .accessibilityIdentifier("widget.open.\(note?.title ?? name)")
+            }
+            .padding(.horizontal, 12)
+            .frame(height: WidgetMetrics.header)
+            Divider().opacity(0.5)
+            ZStack(alignment: .top) {
+                if let page, let note, live || NotePageSnapshots.shared.image(id, html: page.html, dark: scheme == .dark, variant: "widget") == nil {
+                    NotePageView(noteID: id, html: page.html, text: note.body, snapshotVariant: "widget", scrolls: false,
+                                 onUpdate: { op in _ = try NotePageActions.apply(op, to: note) },
+                                 onData: { m in try await NotePageActions.data(m, note: note, context: note.modelContext!, sync: sync).reply })
+                        .allowsHitTesting(live)
+                } else if let page, let shot = NotePageSnapshots.shared.image(id, html: page.html, dark: scheme == .dark, variant: "widget") {
+                    shotView(shot)
+                }
+                if !live {
+                    // The first tap wakes it; the parent keeps scrolling smoothly meanwhile.
+                    Color.clear.contentShape(.rect).onTapGesture { live = true }
+                        .accessibilityElement()
+                        .accessibilityLabel("\(note?.title ?? name), app")
+                        .accessibilityHint("Activates it")
+                        .accessibilityAddTraits(.isButton)
+                        .accessibilityIdentifier("widget.\(note?.title ?? name)")
+                }
+            }
+            .clipped()
+        }
+        .background(Color.paneChip, in: .rect(cornerRadius: 14, style: .continuous))
+        .clipShape(.rect(cornerRadius: 14, style: .continuous))
+        .contextMenu {
+            Button("Open", systemImage: "arrow.right") { controller?.openNote(id) }
+            Divider()
+            Button("Remove Link", systemImage: "link.badge.plus", role: .destructive, action: remove)
+        }
+    }
+
+    @ViewBuilder
+    private func shotView(_ image: PImage) -> some View {
+        #if os(iOS)
+        Image(uiImage: image).resizable().scaledToFill().frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top).clipped()
+        #else
+        Image(nsImage: image).resizable().scaledToFill().frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top).clipped()
+        #endif
     }
 }

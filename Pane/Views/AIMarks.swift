@@ -118,12 +118,12 @@ struct AIReceipt: View {
 }
 
 /// The mark of a note that is also an app (it has a page; see NotePage): in the note list and search
-/// results, on its toggle, and on a sub-note's link. Two designs while we choose (`-appMark title`
-/// puts an amber mark after the title; the default is a small grey glyph beside the date).
+/// results, on its toggle, and on a sub-note's link. Two designs: an amber mark after the title (picked)
+/// or, with `-appMark detail`, a small grey glyph beside the date.
 enum NoteAppMark {
     static let symbol = "square.grid.2x2"
     enum Style { case detail, title }
-    nonisolated(unsafe) static var style: Style = Capture.argument("-appMark") == "title" ? .title : .detail
+    nonisolated(unsafe) static var style: Style = Capture.argument("-appMark") == "detail" ? .detail : .title
 
     @MainActor static func has(_ note: Note) -> Bool { !note.isLocked && NotePageStore.shared[note.id] != nil }
 }

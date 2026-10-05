@@ -88,6 +88,40 @@ enum FileStore {
 }
 
 /// Image heights from their real proportions, for the width images show at.
+/// Sub-notes that are apps show in their parent as a live widget instead of a link (prototype;
+/// see NotePage). Kept here, off the main actor, because embed heights are read while laying out.
+enum NoteWidgets {
+    nonisolated(unsafe) private static var apps: [UUID: CGFloat] = [:]
+    #if os(iOS)
+    static let standard: CGFloat = 300
+    #else
+    static let standard: CGFloat = 320
+    #endif
+    /// Wider than images and cards: an app uses the note's width.
+    static let maxWidth: CGFloat = 920
+
+    /// The widget's height for a sub-note that is an app, nil for any other note.
+    static func height(_ id: UUID) -> CGFloat? { apps[id] }
+    static func isApp(_ id: UUID) -> Bool { apps[id] != nil }
+
+    /// A page can ask for its widget height with <meta name="amber-widget-height" content="260">,
+    /// from 160 to 600 points.
+    static func update(_ id: UUID, html: String?) {
+        guard let html else { apps[id] = nil; return }
+        var h = standard
+        if let r = html.range(of: #"<meta[^>]*name=["']amber-widget-height["'][^>]*content=["']?(\d+)"#, options: .regularExpression),
+           let n = html[r].split(whereSeparator: { !$0.isNumber }).last.flatMap({ Double($0) }) {
+            h = min(max(CGFloat(n), 160), 600)
+        }
+        apps[id] = h + WidgetMetrics.header
+    }
+}
+
+enum WidgetMetrics {
+    /// The widget's title bar, above the app.
+    static let header: CGFloat = 40
+}
+
 enum ImageSizes {
     nonisolated(unsafe) static var aspect: [UUID: CGFloat] = [:]
     static let maxWidth: CGFloat = 520
@@ -162,7 +196,7 @@ struct LineEmbed: Equatable {
         case .file: 60
         case .image: ImageSizes.height(for: self)
         case .link: 76
-        case .note: 58
+        case .note(let id, _): NoteWidgets.height(id) ?? 58
         }
     }
 

@@ -80,7 +80,8 @@ final class EditorCore {
         }
         for e in embeds {
             // Cards and images share one column width, so their edges line up.
-            let maxW = ImageSizes.maxWidth
+            var maxW = ImageSizes.maxWidth
+            if case .note(let id, _) = e.kind, NoteWidgets.isApp(id) { maxW = NoteWidgets.maxWidth }
             guard let f = frame(at: e.range.location, height: e.height, maxWidth: maxW) else { continue }
             let remove = {
                 let ns = target.currentText as NSString

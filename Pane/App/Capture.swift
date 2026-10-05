@@ -446,6 +446,10 @@ extension Capture {
             habits.isPinned = true
             try? context.save()
         }
+        // `-widgetDemo <dir>`: "Budget 2026" with three sub-notes that are apps, shown as widgets.
+        if let dir = argument("-widgetDemo") {
+            budgetWithWidgets(context, pages: URL(fileURLWithPath: dir))
+        }
         func note(_ title: String) -> Note? {
             ((try? context.fetch(FetchDescriptor<Note>())) ?? []).first { $0.title == title && $0.deletedAt == nil }
         }
@@ -467,3 +471,98 @@ extension Capture {
         }
     }
 }
+
+extension Capture {
+    /// A budget note with prose and three apps inside it: spending by month, adding an expense, and
+    /// a savings goal kept in the app's own data.
+    @MainActor static func budgetWithWidgets(_ context: ModelContext, pages: URL) {
+        let parent = context.createNote(in: .all, body: "Budget 2026")
+        parent.isPinned = true
+        func app(_ body: String, _ file: String) -> Note {
+            let n = context.createSubNote(of: parent, body: body)
+            if !ProcessInfo.processInfo.arguments.contains("-widgetLinksOnly"), let html = try? String(contentsOf: pages.appending(path: file), encoding: .utf8) {
+                NotePageStore.shared[n.id] = .init(html: html, by: "Claude", at: .now.addingTimeInterval(-3600))
+            }
+            return n
+        }
+        let months = ["January", "February", "March", "April", "May", "June", "July", "August", "September"]
+        let spend = [(9200, 3100, 900, 600), (9200, 2900, 1400, 450), (9200, 3300, 700, 800), (9200, 2700, 2100, 500), (9200, 3000, 4800, 900),
+                     (9200, 2600, 1200, 1500), (9200, 3400, 3900, 700), (9200, 2800, 800, 400), (9200, 2950, 1100, 650)]
+        let chart = app("Spending by month\n\n| Month | Home | Food | Travel | Fun |\n| --- | --- | --- | --- | --- |\n"
+            + zip(months, spend).map { "| \($0) | \($1.0) | \($1.1) | \($1.2) | \($1.3) |" }.joined(separator: "\n") + "\n", "spending-chart.html")
+        let today = TypedTable.day(.now)
+        let form = app("Add an expense\n\n| Date | Item | Category | Amount |\n| --- | --- | --- | --- |\n"
+            + "| \(today) | Groceries | Food | 640 |\n| \(today) | Train card | Travel | 970 |\n| \(today) | Cinema | Fun | 290 |\n", "expense-form.html")
+        let savings = app("Savings: Lisbon trip\n\nMoney put aside for Lisbon in May. The deposits are kept in the app.", "savings-goal.html")
+        var data = NotePageData.empty()
+        data["values"] = ["goal": 15000]
+        let stamp = ISO8601DateFormatter()
+        data["collections"] = ["deposits": [(1000, 40), (2500, 30), (1500, 21), (2000, 9), (1400, 2)].enumerated().map { i, d in
+            ["id": "d\(i)", "amount": d.0, "created": stamp.string(from: .now.addingTimeInterval(-86400 * Double(d.1))), "updated": stamp.string(from: .now)] as [String: Any]
+        }]
+        NotePageDataStore.shared.set(savings.id, data)
+        func link(_ n: Note) -> String { "[\(n.title)](pane-note:\(n.id.uuidString.lowercased()))" }
+        parent.body = """
+        Budget 2026
+
+        The plan for the year: spend less on eating out, and save for Lisbon in May.
+
+        ## Spending
+        Rent is the same all year. Food is down from last year; travel spiked in May.
+        \(link(chart))
+
+        ## This month
+        \(link(form))
+
+        ## Saving
+        \(link(savings))
+
+        ## Notes
+        - Rent goes up in January, check the new contract
+        - Cancel the old gym membership
+        """
+        parent.touch()
+        try? context.save()
+    }
+}
+
+#if os(iOS)
+import QuartzCore
+
+/// Measurements only (`-uitest -frameProbe`): frame times from 5 s after launch, written each second
+/// to Documents/frame-probe.txt as "frames hitches longest_ms" (a hitch: a frame over 1.5x the
+/// display's interval).
+@MainActor
+final class FrameProbe: NSObject {
+    static var shared: FrameProbe?
+    private var link: CADisplayLink?
+    private var last: CFTimeInterval = 0
+    private var frames = 0, hitches = 0
+    private var longest: CFTimeInterval = 0
+    private let start = CACurrentMediaTime()
+    private var written: CFTimeInterval = 0
+
+    static func startFromArguments() {
+        guard ProcessInfo.processInfo.arguments.contains("-frameProbe") else { return }
+        let p = FrameProbe()
+        p.link = CADisplayLink(target: p, selector: #selector(tick(_:)))
+        p.link?.add(to: .main, forMode: .common)
+        shared = p
+    }
+
+    @objc private func tick(_ l: CADisplayLink) {
+        let now = l.timestamp
+        defer { last = now }
+        guard now - start > 5, last > 0 else { return }
+        let dt = now - last, target = l.targetTimestamp - l.timestamp
+        frames += 1
+        longest = max(longest, dt)
+        if dt > max(target, 1.0 / 120) * 1.5 { hitches += 1 }
+        if now - written > 1 {
+            written = now
+            let url = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appending(path: "frame-probe.txt")
+            try? "\(frames) \(hitches) \(String(format: "%.1f", longest * 1000))".write(to: url, atomically: true, encoding: .utf8)
+        }
+    }
+}
+#endif

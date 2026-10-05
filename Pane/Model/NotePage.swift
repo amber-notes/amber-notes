@@ -261,6 +261,7 @@ final class NotePageStore {
             pages = saved.pages
             history = saved.history
         }
+        for (id, p) in pages { NoteWidgets.update(id, html: p.html) }
     }
 
     static var defaultFile: URL {
@@ -275,6 +276,7 @@ final class NotePageStore {
             guard old != newValue else { return }
             if let old, old.html != newValue?.html { remember(old, for: id) }
             pages[id] = newValue
+            NoteWidgets.update(id, html: newValue?.html)
             save()
         }
     }
@@ -289,6 +291,7 @@ final class NotePageStore {
         if let now = pages[id] { h.append(now) }
         history[id] = h.suffix(Self.keep).map { $0 }
         pages[id] = back
+        NoteWidgets.update(id, html: back.html)
         save()
         return back
     }
