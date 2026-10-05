@@ -264,7 +264,8 @@ struct NoteDetailView: View {
                     .allowsHitTesting(!showingPage)
                     .accessibilityHidden(showingPage)
                 if let page = notePage {
-                    NotePageView(noteID: note.id, html: page.html, text: text, onUpdate: applyPageEdit, onFailure: pageFailed, onData: pageData)
+                    NotePageView(noteID: note.id, html: page.html, text: text, onUpdate: applyPageEdit, onFailure: pageFailed, onData: pageData,
+                                 files: { [context] id in NotePageActions.file(id, note: note, context: context) })
                         .id(note.id)
                         .opacity(showingPage ? 1 : 0)
                         .allowsHitTesting(showingPage)
@@ -310,19 +311,12 @@ struct NoteDetailView: View {
 
     /// The app's own data and files (amber.store, amber.files). Data changes are kept next to the
     /// page, never in the note's text, and get a receipt with Undo like any other change.
+    /// The app's own data, files, the device and the network. Data changes are the app's own
+    /// state (a ticked set, a rating): kept quietly, versioned on the server, without a receipt;
+    /// receipts are for changes to the note's text.
     private func pageData(_ message: Any) async throws -> [String: Any] {
-        let (reply, before) = try await NotePageActions.data(message, note: note, context: context, sync: sync, html: notePage?.html ?? "",
-                                                             ask: askHost, needKey: { need in withAnimation(.smooth) { keyNeeded = need } })
-        guard let before else { return reply }
-        if undoData == nil || receipt?.kind != .dataEdit { undoData = before }
-        let r = AIEdit.Receipt(noteID: note.id, by: AIGlyph.page, at: .now, previous: note.body, lines: 0, kind: .dataEdit)
-        withAnimation(.spring(duration: 0.45, bounce: 0.25)) { receipt = r }
-        Task { @MainActor in
-            try? await Task.sleep(for: .seconds(6 * ChangeTint.slowMotion))
-            while ChangeTint.holdForCapture, receipt == r { try? await Task.sleep(for: .seconds(0.1)) }
-            if receipt == r { withAnimation(.easeIn(duration: 0.2)) { receipt = nil }; undoData = nil }
-        }
-        return reply
+        try await NotePageActions.data(message, note: note, context: context, sync: sync, html: notePage?.html ?? "",
+                                       ask: askHost, needKey: { need in withAnimation(.smooth) { keyNeeded = need } }).reply
     }
 
     private func askHost(_ host: String) async -> Bool {

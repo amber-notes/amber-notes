@@ -37,6 +37,9 @@ enum NotePage {
         var rowLines: [Int]
         /// The line after the last row: where a new row goes.
         var end: Int
+        /// The header line, and the type comment above it, if any.
+        var header: Int = 0
+        var typeLine: Int? = nil
     }
 
     /// Every table in the note, in order: a header line, a separator line and its rows, with an
@@ -53,8 +56,10 @@ enum NotePage {
             guard isRow(lines[i]), i + 1 < lines.count, isSeparator(lines[i + 1]) else { i += 1; continue }
             var types: [String: TypedTable.ColumnType] = [:]
             let above = i > 0 ? lines[i - 1].trimmingCharacters(in: .whitespaces) : ""
+            var typeLine: Int?
             if above.hasPrefix("<!--"), above.contains(TypedTable.marker), let typed = TypedTable.parse(comment: above, table: [lines[i], lines[i + 1]]) {
                 for c in typed.columns { types[c.name] = c.type }
+                typeLine = i - 1
             }
             let header = TypedTable.cells(lines[i])
             var rows: [[String]] = [], rowLines: [Int] = []
@@ -66,7 +71,7 @@ enum NotePage {
                 rowLines.append(j)
                 j += 1
             }
-            out.append(Table(columns: header.map { .init(name: $0, type: types[$0] ?? .text) }, rows: rows, rowLines: rowLines, end: j))
+            out.append(Table(columns: header.map { .init(name: $0, type: types[$0] ?? .text) }, rows: rows, rowLines: rowLines, end: j, header: i, typeLine: typeLine))
             i = j
         }
         return out
@@ -75,7 +80,7 @@ enum NotePage {
     // MARK: Edits from the page
 
     /// The only changes a page can ask for.
-    enum Op: Equatable {
+    indirect enum Op: Equatable {
         case toggleChecklist(line: Int)
         case setCell(table: Int, row: Int, col: Column, value: String)
         case appendRow(table: Int, values: Values)
@@ -86,12 +91,26 @@ enum NotePage {
         /// A new open item: after the last open item of the checklist under the heading (else the
         /// note's first checklist; with none, a new list at the end).
         case addChecklistItem(text: String, underHeading: String?)
+        /// A new column at the end (or after `after`), empty in every row.
+        case addColumn(table: Int, name: String, type: String?, after: Column?)
+        case renameColumn(table: Int, col: Column, to: String)
+        /// Several ops as one edit (one change, one Undo); all or nothing.
+        case batch([Op])
 
         enum Column: Equatable { case index(Int), name(String) }
         enum Values: Equatable { case byName([String: String]), inOrder([String]) }
 
         /// Reads what the page posted. Anything else is refused, not guessed at.
         init(_ message: Any) throws {
+            if let list = message as? [Any] {
+                guard !list.isEmpty, list.count <= 200 else { throw OpError("Send 1 to 200 ops at once.") }
+                self = .batch(try list.map { m in
+                    let op = try Op(m)
+                    if case .batch = op { throw OpError("Ops can't nest.") }
+                    return op
+                })
+                return
+            }
             guard let m = message as? [String: Any], let op = m["op"] as? String else { throw OpError("Send { op, … }.") }
             func int(_ k: String) throws -> Int {
                 if let n = m[k] as? Int { return n }
@@ -117,6 +136,18 @@ enum NotePage {
                 self = .deleteRow(table: try int("table"), row: try int("row"))
             case "move_row":
                 self = .moveRow(table: try int("table"), from: try int("from"), to: try int("to"))
+            case "add_column":
+                let name = try Op.text(m["name"])
+                guard !name.trimmingCharacters(in: .whitespaces).isEmpty, name.count <= 80 else { throw OpError("name must be the column's name.") }
+                var after: Column?
+                if let a = m["after"] as? String { after = .name(a) } else if m["after"] != nil { after = .index(try int("after")) }
+                self = .addColumn(table: try int("table"), name: name, type: m["type"] as? String, after: after)
+            case "rename_column":
+                let col: Column
+                if let name = m["col"] as? String { col = .name(name) } else { col = .index(try int("col")) }
+                let to = try Op.text(m["to"])
+                guard !to.trimmingCharacters(in: .whitespaces).isEmpty, to.count <= 80 else { throw OpError("to must be the new name.") }
+                self = .renameColumn(table: try int("table"), col: col, to: to)
             case "add_checklist_item":
                 guard let t = m["text"] as? String, !t.trimmingCharacters(in: .whitespaces).isEmpty else { throw OpError("text must be the item's text.") }
                 self = .addChecklistItem(text: try Op.text(t), underHeading: m["under_heading"] as? String)
@@ -155,6 +186,37 @@ enum NotePage {
     static func apply(_ op: Op, to body: String) throws -> String {
         var lines = body.components(separatedBy: "\n")
         switch op {
+        case .batch(let ops):
+            var out = body
+            for (i, o) in ops.enumerated() {
+                do { out = try apply(o, to: out) } catch let e as OpError { throw OpError("Op \(i + 1): \(e.message) Nothing was changed.") }
+            }
+            return out
+        case .addColumn(let t, let name, let type, let after):
+            let table = try Self.table(t, in: lines)
+            guard !table.columns.contains(where: { $0.name.caseInsensitiveCompare(name) == .orderedSame }) else { throw OpError("Table \(t) already has a column \(name).") }
+            let at = try after.map { try column($0, of: table) + 1 } ?? table.columns.count
+            func insert(_ cells: [String], _ v: String) -> [String] { var c = cells; c.insert(v, at: at); return c }
+            lines[table.header] = rowLine(insert(table.columns.map(\.name), name))
+            lines[table.header + 1] = "|" + Array(repeating: " --- ", count: table.columns.count + 1).joined(separator: "|") + "|"
+            for (r, line) in table.rowLines.enumerated() { lines[line] = rowLine(insert(table.rows[r], "")) }
+            if let tl = table.typeLine {
+                var cols = table.columns
+                cols.insert(.init(name: name, type: TypedTable.ColumnType.parse(type ?? "text")), at: at)
+                lines[tl] = "<!-- \(TypedTable.marker) " + cols.map { "\($0.name)=\($0.type.spec)" }.joined(separator: "; ") + " -->"
+            }
+        case .renameColumn(let t, let col, let to):
+            let table = try Self.table(t, in: lines)
+            let c = try column(col, of: table)
+            guard !table.columns.enumerated().contains(where: { $0.offset != c && $0.element.name.caseInsensitiveCompare(to) == .orderedSame }) else { throw OpError("Table \(t) already has a column \(to).") }
+            var names = table.columns.map(\.name)
+            names[c] = to
+            lines[table.header] = rowLine(names)
+            if let tl = table.typeLine {
+                var cols = table.columns
+                cols[c].name = to
+                lines[tl] = "<!-- \(TypedTable.marker) " + cols.map { "\($0.name)=\($0.type.spec)" }.joined(separator: "; ") + " -->"
+            }
         case .toggleChecklist(let line):
             guard line >= 1, line <= lines.count, ListPrefix(line: lines[line - 1])?.checkbox != nil else {
                 throw OpError("Line \(line) isn't a checklist item.")

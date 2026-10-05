@@ -1,3 +1,4 @@
+import ImageIO
 import SwiftData
 import SwiftUI
 import UniformTypeIdentifiers
@@ -26,11 +27,12 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
     /// Requests and navigations the sandbox stopped (for the Dev readout and tests).
     private(set) var blocked: [String] = []
 
-    static let policy = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; font-src data:; media-src data:; "
+    static let policy = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: amber-file:; font-src data:; media-src data: amber-file:; "
         + "connect-src 'none'; frame-src 'none'; child-src 'none'; worker-src 'none'; object-src 'none'; manifest-src 'none'; form-action 'none'; base-uri 'none'"
 
     /// Every request is blocked; the page's own document is given as a string, not loaded.
-    static let rules = #"[{"trigger":{"url-filter":".*"},"action":{"type":"block"}}]"#
+    /// The note's own files (amber-file:, served by the app from this device) are the one exception.
+    static let rules = #"[{"trigger":{"url-filter":".*"},"action":{"type":"block"}},{"trigger":{"url-filter":"^amber-file:"},"action":{"type":"ignore-previous-rules"}}]"#
     private static var compiled: WKContentRuleList?
 
     /// One sandbox made ahead of time, its web content process already running, so opening a note
@@ -58,7 +60,7 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
     /// Compiles the rule list once. Pages wait for it: none loads without it.
     static func prepare() async throws -> WKContentRuleList {
         if let compiled { return compiled }
-        guard let list = try await WKContentRuleListStore.default().compileContentRuleList(forIdentifier: "amber-note-page-v1", encodedContentRuleList: rules) else {
+        guard let list = try await WKContentRuleListStore.default().compileContentRuleList(forIdentifier: "amber-note-page-v2", encodedContentRuleList: rules) else {
             throw NotePage.OpError("The app couldn't start.")
         }
         compiled = list
@@ -71,12 +73,15 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
         config.defaultWebpagePreferences.allowsContentJavaScript = true
         config.preferences.javaScriptCanOpenWindowsAutomatically = false
         config.userContentController.add(rules)
+        let scheme = FileScheme()
+        config.setURLSchemeHandler(scheme, forURLScheme: "amber-file")
         #if os(iOS)
         config.dataDetectorTypes = []
         config.allowsInlineMediaPlayback = false
         #endif
         webView = WKWebView(frame: .zero, configuration: config)
         super.init()
+        scheme.owner = self
         // Through a weak proxy: the content controller keeps its handlers alive, and the sandbox
         // must go when its view does.
         let proxy = WeakHandler(self)
@@ -98,10 +103,16 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
     }
 
     /// Shows `html` with `body` as its note. The document's own <!doctype> gives way to the policy.
+    /// The note's files the page may show (amber.files.url): nil for any other.
+    var files: @MainActor (UUID) -> URL? = { _ in nil }
+
+    /// Shown inside its parent note, smaller: the page gets the class amber-widget on <html>.
+    var isWidget = false
+
     func load(html: String, body: String, data: NotePageData.Doc = NotePageData.empty(), restore: String? = nil) {
         let ucc = webView.configuration.userContentController
         ucc.removeAllUserScripts()
-        ucc.addUserScript(WKUserScript(source: Self.bootstrap(data: NotePage.data(of: body), store: data, restore: restore, settings: NotePageSettings.defaults(in: html)),
+        ucc.addUserScript(WKUserScript(source: Self.bootstrap(data: NotePage.data(of: body), store: data, restore: restore, settings: NotePageSettings.defaults(in: html), widget: isWidget),
                                        injectionTime: .atDocumentStart, forMainFrameOnly: true, in: .page))
         loading = true
         webView.loadHTMLString(Self.sandboxed(html), baseURL: nil)
@@ -129,7 +140,7 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
         return ((d["idle"] as? Double) ?? .infinity, (d["focused"] as? Bool) ?? false, json)
     }
 
-    static func bootstrap(data: [String: Any], store: NotePageData.Doc = NotePageData.empty(), restore: String? = nil, settings: [String: Any] = [:]) -> String {
+    static func bootstrap(data: [String: Any], store: NotePageData.Doc = NotePageData.empty(), restore: String? = nil, settings: [String: Any] = [:], widget: Bool = false) -> String {
         let defaults = (try? JSONSerialization.data(withJSONObject: settings)).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
         let json = (try? JSONSerialization.data(withJSONObject: data)).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
         let storeJSON = String(data: NotePageData.encode(store), encoding: .utf8) ?? "{}"
@@ -171,12 +182,19 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
             files: {
               save: (file) => ask({ op: "file.save", ...file }),
               read: (ref) => ask({ op: "file.read", id: (ref && ref.$file) || ref }),
+              // An address for <img>, <audio> or <video> right away (no data: URL in the data):
+              // only for files this note or its app's data refer to. width: a smaller picture.
+              url: (ref, o) => "amber-file:///" + ((ref && ref.$file) || ref) + (o && o.width ? "?w=" + Math.round(o.width) : ""),
             },
             // The device, through the system's own prompts and pickers. Results go to the page only.
             device: {
-              reminders: { create: (r) => ask({ op: "device.reminders.create", ...r }) },
+              reminders: {
+                create: (r) => ask({ op: "device.reminders.create", ...r }),
+                complete: (id) => ask({ op: "device.reminders.complete", id }),
+                delete: (id) => ask({ op: "device.reminders.delete", id }),
+              },
               calendar: { today: () => ask({ op: "device.calendar.today" }) },
-              notify: (n) => ask({ op: "device.notify", ...n }),
+              notify: Object.assign((n) => ask({ op: "device.notify", ...n }), { cancel: (id) => ask({ op: "device.notify.cancel", id }) }),
               openURL: (url) => ask({ op: "device.openURL", url }),
               photos: { pick: (o) => ask({ op: "device.photos.pick", ...(o || {}) }) },
               camera: { take: () => ask({ op: "device.camera.take" }) },
@@ -241,6 +259,7 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
           const sized = () => {
             if (!document.documentElement) return;
             const w = window.innerWidth, c = document.documentElement.classList;
+            c.toggle("amber-widget", \(widget ? "true" : "false"));
             c.toggle("amber-narrow", w < 600); c.toggle("amber-medium", w >= 600 && w < 900); c.toggle("amber-wide", w >= 900);
           };
           sized();
@@ -340,6 +359,8 @@ struct NotePageView: View {
     /// The page threw while loading or drew nothing.
     var onFailure: ([String]) -> Void = { _ in }
     var onData: @MainActor (Any) async throws -> [String: Any] = { _ in throw NotePage.OpError("Not available.") }
+    /// The note's files the app may show (amber.files.url).
+    var files: @MainActor (UUID) -> URL? = { _ in nil }
     @State private var sandbox: NotePageSandbox?
     @State private var failed: String?
     @State private var ready = false
@@ -381,6 +402,7 @@ struct NotePageView: View {
                 s.webView.scrollView.isScrollEnabled = scrolls
                 #endif
                 s.onUpdate = onUpdate
+                s.isWidget = snapshotVariant == "widget"
                 ready = false
                 s.onReady = { [noteID, html, scheme, snapshotVariant] in
                     NotePageTiming.shown(noteID, "interactive")
@@ -393,6 +415,7 @@ struct NotePageView: View {
                 }
                 s.onFailure = onFailure
                 s.onData = onData
+                s.files = files
                 s.load(html: html, body: text, data: NotePageDataStore.shared.doc(noteID), restore: restore)
                 sandbox = s
             } catch {
@@ -520,6 +543,13 @@ enum NotePageTheme {
     static let surface = (0xF4F1EE, 0x2A2927), fill = (0xEBE6E1, 0x34322F), radius = (10, 6), size = 14
     #endif
 
+    /// Text size: on iPhone the reader's Dynamic Type size (so rem follows it too); on the Mac 14 px.
+    #if os(iOS)
+    static let dynamicType = "html { font: -apple-system-body; } body { font-size: 1rem; }"
+    #else
+    static let dynamicType = "html { font-size: 14px; } body { font-size: 1rem; }"
+    #endif
+
     static let css: String = {
         func hex(_ c: PColor, dark: Bool) -> String {
             var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
@@ -555,7 +585,8 @@ enum NotePageTheme {
         --amber-font: -apple-system, system-ui, sans-serif; --amber-font-rounded: ui-rounded, -apple-system, system-ui, sans-serif; \
         --amber-font-mono: ui-monospace, Menlo, monospace; }
         @media (prefers-color-scheme: dark) { :root { \(vars(dark: true)); } }
-        body { margin: 0; background: var(--amber-bg); color: var(--amber-text); font: \(size)px/1.35 var(--amber-font); -webkit-text-size-adjust: 100%; }
+        \(dynamicType)
+        body { margin: 0; background: var(--amber-bg); color: var(--amber-text); font-family: var(--amber-font); line-height: 1.35; -webkit-text-size-adjust: 100%; }
         """
     }()
 }
@@ -640,6 +671,14 @@ enum NotePageActions {
         return before
     }
 
+    /// A file the note's app may show: one the note or its app's data refers to, on this device.
+    static func file(_ id: UUID, note: Note, context: ModelContext) -> URL? {
+        let key = id.uuidString.lowercased()
+        let data = String(data: NotePageDataStore.shared.docs[note.id] ?? Data(), encoding: .utf8) ?? ""
+        guard note.body.lowercased().contains(key) || data.lowercased().contains(key), let a = context.attachment(id), FileStore.exists(a) else { return nil }
+        return FileStore.url(for: a.id, filename: a.filename)
+    }
+
     /// The app's own data and files (amber.store, amber.files). Returns the reply for the page, and
     /// the data before a data change (nil for files), for Undo.
     static func data(_ message: Any, note: Note, context: ModelContext, sync: SyncEngine?, html: String = "",
@@ -717,7 +756,8 @@ struct SubNoteWidget: View {
                 if let page, let note, live || NotePageSnapshots.shared.image(id, html: page.html, dark: scheme == .dark, variant: "widget") == nil {
                     NotePageView(noteID: id, html: page.html, text: note.body, snapshotVariant: "widget", scrolls: false,
                                  onUpdate: { op in _ = try NotePageActions.apply(op, to: note) },
-                                 onData: { m in try await NotePageActions.data(m, note: note, context: note.modelContext!, sync: sync).reply })
+                                 onData: { m in try await NotePageActions.data(m, note: note, context: note.modelContext!, sync: sync).reply },
+                                 files: { id in note.modelContext.flatMap { NotePageActions.file(id, note: note, context: $0) } })
                         .allowsHitTesting(live)
                 } else if let page, let shot = NotePageSnapshots.shared.image(id, html: page.html, dark: scheme == .dark, variant: "widget") {
                     shotView(shot)
@@ -751,4 +791,36 @@ struct SubNoteWidget: View {
         Image(nsImage: image).resizable().scaledToFill().frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top).clipped()
         #endif
     }
+}
+
+/// amber-file:///<id>?w=<width>: one of the note's files, from this device, for <img>/<audio>/<video>.
+/// Only files the sandbox's owner allows (the note or its app's data refer to them); a width makes a
+/// smaller JPEG for pictures.
+private final class FileScheme: NSObject, WKURLSchemeHandler {
+    weak var owner: NotePageSandbox?
+
+    func webView(_ webView: WKWebView, start task: any WKURLSchemeTask) {
+        MainActor.assumeIsolated {
+            guard let url = task.request.url, let id = UUID(uuidString: url.lastPathComponent), let file = owner?.files(id),
+                  var data = try? Data(contentsOf: file) else {
+                task.didFailWithError(URLError(.fileDoesNotExist))
+                return
+            }
+            var type = UTType(filenameExtension: file.pathExtension)?.preferredMIMEType ?? "application/octet-stream"
+            if let w = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first(where: { $0.name == "w" })?.value.flatMap(Int.init),
+               let src = CGImageSourceCreateWithData(data as CFData, nil),
+               let img = CGImageSourceCreateThumbnailAtIndex(src, 0, [kCGImageSourceCreateThumbnailFromImageAlways: true, kCGImageSourceThumbnailMaxPixelSize: min(max(w, 32), 2048) * 2, kCGImageSourceCreateThumbnailWithTransform: true] as CFDictionary) {
+                let out = NSMutableData()
+                if let dst = CGImageDestinationCreateWithData(out, UTType.jpeg.identifier as CFString, 1, nil) {
+                    CGImageDestinationAddImage(dst, img, [kCGImageDestinationLossyCompressionQuality: 0.8] as CFDictionary)
+                    if CGImageDestinationFinalize(dst) { data = out as Data; type = "image/jpeg" }
+                }
+            }
+            task.didReceive(URLResponse(url: url, mimeType: type, expectedContentLength: data.count, textEncodingName: nil))
+            task.didReceive(data)
+            task.didFinish()
+        }
+    }
+
+    func webView(_ webView: WKWebView, stop task: any WKURLSchemeTask) {}
 }

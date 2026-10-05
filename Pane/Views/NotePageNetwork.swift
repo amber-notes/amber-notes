@@ -265,11 +265,23 @@ extension NotePageNetwork {
         let shownURL = redact(request.url?.absoluteString ?? s)
         var entry = NotePageNetLog.Entry(at: .now, method: method, url: shownURL, sent: redact(body), key: key?.need.name,
                                          carriesNoteText: carriesNoteText(shownURL + "\n" + body, note: note.body))
+        // Redirects go only where the request itself could: a declared, approved host (or, with a
+        // key, one of the key's hosts). Each hop is logged.
+        var allowed = Set(needs.hosts.filter { log.isApproved($0, for: note.id) })
+        if let key { allowed = Set(key.need.hosts).intersection(key.stored.hosts) }
+        let guard_ = RedirectGuard(allowed: allowed)
         do {
-            let (data, response) = try await URLSession(configuration: .ephemeral).data(for: request)
+            let (data, response) = try await URLSession(configuration: .ephemeral).data(for: request, delegate: guard_)
             let http = response as? HTTPURLResponse
             entry.status = http?.statusCode
             log.add(entry, for: note.id)
+            for hop in guard_.hops {
+                log.add(.init(at: .now, method: method, url: redact(hop), sent: "", status: http?.statusCode, key: key?.need.name, carriesNoteText: carriesNoteText(hop, note: note.body)), for: note.id)
+            }
+            if let refused = guard_.refused {
+                log.add(.init(at: .now, method: method, url: redact(refused), sent: "", error: "Not followed: not a declared, allowed address", key: key?.need.name, carriesNoteText: false), for: note.id)
+                throw NotePage.OpError("The service sent the request on to \(URL(string: refused)?.host ?? refused), which this app didn't declare. It wasn't followed.")
+            }
             guard data.count <= 5 * 1024 * 1024 else { throw NotePage.OpError("The answer was over 5 MB.") }
             var out: [String: Any] = ["status": http?.statusCode ?? 0, "contentType": http?.value(forHTTPHeaderField: "Content-Type") ?? ""]
             if let text = String(data: data, encoding: .utf8) { out["body"] = text } else { out["body"] = data.base64EncodedString(); out["base64"] = true }
@@ -426,5 +438,29 @@ struct NotePageNetLogView: View {
         #if os(macOS)
         .frame(minWidth: 520, minHeight: 480)
         #endif
+    }
+}
+
+/// Follows a redirect only to an allowed host, and remembers each hop.
+private final class RedirectGuard: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+    let allowed: Set<String>
+    private let lock = NSLock()
+    private var _hops: [String] = []
+    private var _refused: String?
+    var hops: [String] { lock.withLock { _hops } }
+    var refused: String? { lock.withLock { _refused } }
+
+    init(allowed: Set<String>) { self.allowed = allowed }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
+                    newRequest request: URLRequest, completionHandler: @escaping @Sendable (URLRequest?) -> Void) {
+        guard let url = request.url else { completionHandler(nil); return }
+        if NotePageNetwork.allowedScheme(url), let host = NotePageNetwork.hostKey(url), allowed.contains(host) {
+            lock.withLock { _hops.append(url.absoluteString) }
+            completionHandler(request)
+        } else {
+            lock.withLock { _refused = url.absoluteString }
+            completionHandler(nil)
+        }
     }
 }

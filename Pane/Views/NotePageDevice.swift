@@ -33,6 +33,11 @@ enum NotePageDevice {
     static func handle(_ m: [String: Any], context: ModelContext) async throws -> [String: Any] {
         switch m["op"] as? String {
         case "reminders.create": return try await createReminder(m)
+        case "reminders.complete", "reminders.delete": return try await changeReminder(m, delete: m["op"] as? String == "reminders.delete")
+        case "notify.cancel":
+            guard let id = m["id"] as? String else { throw NotePage.OpError("Send { id } from notify.") }
+            UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [id])
+            return [:]
         case "calendar.today": return try await today()
         case "notify": return try await notify(m)
         case "openURL": return try openURL(m)
@@ -84,7 +89,24 @@ enum NotePageDevice {
         }
         if (m["repeat"] as? String) == "daily" { r.addRecurrenceRule(EKRecurrenceRule(recurrenceWith: .daily, interval: 1, end: nil)) }
         try events.save(r, commit: true)
+        made.insert(r.calendarItemIdentifier)
         return ["id": r.calendarItemIdentifier, "title": title]
+    }
+
+    /// Only reminders this app made can be changed: the id comes from reminders.create.
+    private static func changeReminder(_ m: [String: Any], delete: Bool) async throws -> [String: Any] {
+        guard let id = m["id"] as? String else { throw NotePage.OpError("Send { id } from reminders.create.") }
+        guard try await events.requestFullAccessToReminders() else { throw Unavailable("Reminders isn't allowed for Amber Notes.") }
+        guard let r = events.calendarItem(withIdentifier: id) as? EKReminder else { throw NotePage.OpError("That reminder isn't there any more.") }
+        guard made.contains(id) else { throw NotePage.OpError("Only reminders made by an app in Amber Notes can be changed.") }
+        if delete { try events.remove(r, commit: true) } else { r.isCompleted = true; try events.save(r, commit: true) }
+        return [:]
+    }
+
+    /// Reminders made by apps in notes, so an app can't change ones you made yourself.
+    private static var made: Set<String> {
+        get { Set(UserDefaults.standard.stringArray(forKey: "noteAppReminders") ?? []) }
+        set { UserDefaults.standard.set(Array(newValue.suffix(500)), forKey: "noteAppReminders") }
     }
 
     private static func today() async throws -> [String: Any] {
@@ -149,14 +171,34 @@ enum NotePageDevice {
         return [:]
     }
 
-    /// A picture of the map around a place, for the page to show (it can't load map tiles itself).
+    /// A picture of the map, for the page to show (it can't load map tiles itself): around a place,
+    /// or fitted to several pins. Returns the picture, the region it shows, and where each pin landed
+    /// (in the picture's points), so the page can draw on top.
     private static func mapSnapshot(_ m: [String: Any]) async throws -> [String: Any] {
-        guard let lat = m["lat"] as? Double, let lon = m["lon"] as? Double else { throw NotePage.OpError("Send { lat, lon }.") }
-        let km = min(max((m["km"] as? Double) ?? 2, 0.2), 500)
+        struct Pin { var c: CLLocationCoordinate2D; var label: String? }
+        var pins: [Pin] = ((m["pins"] as? [[String: Any]]) ?? []).prefix(50).compactMap { p in
+            guard let la = p["lat"] as? Double, let lo = p["lon"] as? Double else { return nil }
+            return Pin(c: .init(latitude: la, longitude: lo), label: (p["label"] as? String).map { String($0.prefix(3)) })
+        }
+        let center: CLLocationCoordinate2D
+        if let lat = m["lat"] as? Double, let lon = m["lon"] as? Double {
+            center = .init(latitude: lat, longitude: lon)
+            if pins.isEmpty, (m["pin"] as? Bool) != false { pins = [Pin(c: center)] }
+        } else if let first = pins.first {
+            center = first.c
+        } else {
+            throw NotePage.OpError("Send { lat, lon } or { pins: [{ lat, lon, label }] }.")
+        }
         let o = MKMapSnapshotter.Options()
-        let center = CLLocationCoordinate2D(latitude: lat, longitude: lon)
-        o.region = MKCoordinateRegion(center: center, latitudinalMeters: km * 1000, longitudinalMeters: km * 1000)
         o.size = CGSize(width: min(max((m["width"] as? Double) ?? 600, 100), 1200), height: min(max((m["height"] as? Double) ?? 300, 100), 900))
+        if pins.count > 1, (m["fit"] as? Bool) != false {
+            let lats = pins.map(\.c.latitude), lons = pins.map(\.c.longitude)
+            let span = MKCoordinateSpan(latitudeDelta: max((lats.max()! - lats.min()!) * 1.35, 0.005), longitudeDelta: max((lons.max()! - lons.min()!) * 1.35, 0.005))
+            o.region = MKCoordinateRegion(center: .init(latitude: (lats.max()! + lats.min()!) / 2, longitude: (lons.max()! + lons.min()!) / 2), span: span)
+        } else {
+            let km = min(max((m["km"] as? Double) ?? 2, 0.2), 500)
+            o.region = MKCoordinateRegion(center: center, latitudinalMeters: km * 1000, longitudinalMeters: km * 1000)
+        }
         if let dark = m["dark"] as? Bool {
             #if os(iOS)
             o.traitCollection = UITraitCollection(userInterfaceStyle: dark ? .dark : .light)
@@ -165,27 +207,40 @@ enum NotePageDevice {
             #endif
         }
         let shot = try await MKMapSnapshotter(options: o).start()
-        let point = shot.point(for: center)
+        let points = pins.map { shot.point(for: $0.c) }
+        let amber = (r: 0.85, g: 0.42, b: 0.02)
         #if os(iOS)
         let image = UIGraphicsImageRenderer(size: o.size).image { _ in
             shot.image.draw(at: .zero)
-            UIColor(red: 0.85, green: 0.42, blue: 0.02, alpha: 1).setFill()
-            UIBezierPath(ovalIn: CGRect(x: point.x - 8, y: point.y - 8, width: 16, height: 16)).fill()
-            UIColor.white.setStroke()
-            let ring = UIBezierPath(ovalIn: CGRect(x: point.x - 8, y: point.y - 8, width: 16, height: 16)); ring.lineWidth = 3; ring.stroke()
+            for (i, p) in points.enumerated() {
+                let rect = CGRect(x: p.x - 11, y: p.y - 11, width: 22, height: 22)
+                UIColor(red: amber.r, green: amber.g, blue: amber.b, alpha: 1).setFill()
+                UIBezierPath(ovalIn: rect).fill()
+                UIColor.white.setStroke()
+                let ring = UIBezierPath(ovalIn: rect); ring.lineWidth = 2.5; ring.stroke()
+                if let label = pins[i].label {
+                    let a: [NSAttributedString.Key: Any] = [.font: UIFont.systemFont(ofSize: 11, weight: .bold), .foregroundColor: UIColor.white]
+                    let sz = (label as NSString).size(withAttributes: a)
+                    (label as NSString).draw(at: CGPoint(x: p.x - sz.width / 2, y: p.y - sz.height / 2), withAttributes: a)
+                }
+            }
         }
         let png = image.pngData()
         #else
         let image = NSImage(size: o.size, flipped: false) { _ in
             shot.image.draw(at: .zero, from: .zero, operation: .copy, fraction: 1)
-            NSColor(red: 0.85, green: 0.42, blue: 0.02, alpha: 1).setFill()
-            NSBezierPath(ovalIn: CGRect(x: point.x - 8, y: point.y - 8, width: 16, height: 16)).fill()
+            for p in points {
+                NSColor(red: amber.r, green: amber.g, blue: amber.b, alpha: 1).setFill()
+                NSBezierPath(ovalIn: CGRect(x: p.x - 9, y: o.size.height - p.y - 9, width: 18, height: 18)).fill()
+            }
             return true
         }
         let png = image.tiffRepresentation.flatMap { NSBitmapImageRep(data: $0)?.representation(using: .png, properties: [:]) }
         #endif
         guard let png else { throw Unavailable("The map couldn't be drawn.") }
-        return ["dataURL": "data:image/png;base64," + png.base64EncodedString()]
+        return ["dataURL": "data:image/png;base64," + png.base64EncodedString(),
+                "region": ["lat": o.region.center.latitude, "lon": o.region.center.longitude, "latSpan": o.region.span.latitudeDelta, "lonSpan": o.region.span.longitudeDelta],
+                "points": points.map { ["x": $0.x, "y": $0.y] }]
     }
 
     // MARK: Photos, the camera, files, contacts
@@ -311,12 +366,20 @@ enum NotePageDevice {
         }.value
         contactDelegate = nil
         guard let contact else { return ["contact": NSNull()] }
-        return ["contact": [
+        var out: [String: Any] = [
             "name": CNContactFormatter.string(from: contact, style: .fullName) ?? "",
             "organization": contact.organizationName,
             "emails": contact.emailAddresses.map { $0.value as String },
             "phones": contact.phoneNumbers.map { $0.value.stringValue },
-        ]]
+            "addresses": contact.postalAddresses.map { CNPostalAddressFormatter.string(from: $0.value, style: .mailingAddress) },
+        ]
+        if contact.isKeyAvailable(CNContactBirthdayKey), let b = contact.birthday, let month = b.month, let day = b.day {
+            out["birthday"] = b.year.map { String(format: "%04d-%02d-%02d", $0, month, day) } ?? String(format: "--%02d-%02d", month, day)
+        }
+        if contact.isKeyAvailable(CNContactThumbnailImageDataKey), let t = contact.thumbnailImageData {
+            out["photo"] = "data:image/jpeg;base64," + t.base64EncodedString()
+        }
+        return ["contact": out]
     }
 
     private final class FileDelegate: NSObject, UIDocumentPickerDelegate {

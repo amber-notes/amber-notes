@@ -640,4 +640,105 @@ import WebKit
         #expect(MakeAnApp.idea(for: Capture.habitNote()).hasPrefix("a tracker app"))
         #expect(MakeAnApp.prompt(title: "Packing", body: "Packing\n- [ ] a\n- [ ] b\n- [ ] c").contains("make my note \u{201C}Packing\u{201D} an app: a checklist app"))
     }
+
+    // MARK: Round five
+
+    func applyAny(_ message: Any, to body: String = habits) throws -> String {
+        try NotePage.apply(try NotePage.Op(message), to: body)
+    }
+
+    @Test func severalOpsAreOneChangeAndAllOrNothing() throws {
+        let ops: [Any] = [["op": "append_row", "table": 0, "values": ["2026-10-05", "✓"]],
+                          ["op": "append_row", "table": 0, "values": ["2026-10-06", "", "✓"]],
+                          // Each op sees the note as the ones before it left it: two rows in, the list moved down two lines.
+                          ["op": "toggle_checklist", "line": 12]]
+        let out = try applyAny(ops)
+        #expect(out.contains("| 2026-10-04 |  | ✓ |\n| 2026-10-05 | ✓ |  |\n| 2026-10-06 |  | ✓ |"))
+        #expect(out.contains("- [x] Pick a book"))
+        // One bad op: nothing changes, and the error says which.
+        #expect(throws: NotePage.OpError("Op 2: Table 3 doesn't exist (0-0). Nothing was changed.")) {
+            try applyAny([["op": "append_row", "table": 0, "values": ["x"]], ["op": "set_cell", "table": 3, "row": 0, "col": 0, "value": "y"]] as [Any])
+        }
+        #expect(throws: NotePage.OpError.self) { try applyAny([] as [Any]) }
+    }
+
+    @Test func columnsCanBeAddedAndRenamedKeepingTypes() throws {
+        let added = try apply(["op": "add_column", "table": 0, "name": "Stretch", "type": "choice ✓", "after": "Walk"])
+        #expect(added.contains("<!-- pane-table: Date=date; Walk=choice ✓; Stretch=choice ✓; Read=text -->"))
+        #expect(added.contains("| Date | Walk | Stretch | Read |\n| --- | --- | --- | --- |\n| 2026-10-03 | ✓ |  |  |"))
+        let renamed = try apply(["op": "rename_column", "table": 0, "col": "Read", "to": "Reading"], to: added)
+        #expect(renamed.contains("Read=text") == false && renamed.contains("Reading=text") && renamed.contains("| Date | Walk | Stretch | Reading |"))
+        #expect(throws: NotePage.OpError("Table 0 already has a column walk.")) { try apply(["op": "add_column", "table": 0, "name": "walk"]) }
+    }
+
+    @Test func noteFilesShowByAddressOnlyWhenTheNoteRefersToThem() async throws {
+        let dir = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let png = dir.appending(path: "dot.png")
+        // A 40x20 red PNG.
+        let ctx = CGContext(data: nil, width: 40, height: 20, bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        ctx.setFillColor(red: 1, green: 0, blue: 0, alpha: 1); ctx.fill(CGRect(x: 0, y: 0, width: 40, height: 20))
+        let dst = CGImageDestinationCreateWithURL(png as CFURL, "public.png" as CFString, 1, nil)!
+        CGImageDestinationAddImage(dst, ctx.makeImage()!, nil); CGImageDestinationFinalize(dst)
+        let mine = UUID(), other = UUID()
+        let sandbox = NotePageSandbox(rules: try await NotePageSandbox.prepare())
+        sandbox.files = { id in id == mine ? png : nil }
+        sandbox.load(html: """
+        <img id=a><img id=b><script>
+          amber.onChange(() => {});
+          window.__r = {};
+          for (const [k, id] of [["a", "\(mine.uuidString)"], ["b", "\(other.uuidString)"]]) {
+            const i = document.getElementById(k);
+            i.onload = () => { __r[k] = i.naturalWidth; }; i.onerror = () => { __r[k] = "blocked"; };
+            i.src = amber.files.url({ $file: id });
+          }
+        </script>
+        """, body: "x")
+        try await run(sandbox.webView, until: "window.__r && window.__r.a !== undefined && window.__r.b !== undefined")
+        #expect(try await sandbox.webView.evaluateJavaScript("window.__r.a") as? Int == 40)
+        #expect(try await sandbox.webView.evaluateJavaScript("window.__r.b") as? String == "blocked")
+    }
+
+    @Test func aWidgetGetsItsClassAndTextFollowsTheReadersSize() async throws {
+        let sandbox = NotePageSandbox(rules: try await NotePageSandbox.prepare())
+        sandbox.isWidget = true
+        sandbox.load(html: "<p id=p>x</p><script>amber.onChange(() => {})</script>", body: "x")
+        try await run(sandbox.webView, until: "document.getElementById('p') !== null")
+        #expect(try await sandbox.webView.evaluateJavaScript("document.documentElement.classList.contains('amber-widget')") as? Bool == true)
+        #expect(NotePageTheme.css.contains("html { font-size: 14px; }") || NotePageTheme.css.contains("-apple-system-body"))
+    }
+
+    @Test func redirectsGoOnlyToDeclaredAllowedHosts() async throws {
+        let target = try Echo()
+        let tport = try await target.start()
+        defer { target.listener.cancel() }
+        // A server that sends every request on to the target.
+        let hop = try NWListener(using: { let p = NWParameters.tcp; p.requiredLocalEndpoint = .hostPort(host: "127.0.0.1", port: .any); return p }())
+        hop.newConnectionHandler = { c in
+            c.start(queue: .global())
+            c.receive(minimumIncompleteLength: 1, maximumLength: 65536) { _, _, _, _ in
+                c.send(content: Data("HTTP/1.1 302 Found\r\nLocation: http://localhost:\(tport)/landed\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".utf8),
+                       completion: .contentProcessed { _ in c.cancel() })
+            }
+        }
+        hop.start(queue: .global())
+        defer { hop.cancel() }
+        for _ in 0..<100 where hop.port == nil || hop.port?.rawValue == 0 { try await Task.sleep(for: .milliseconds(20)) }
+        let from = "127.0.0.1:\(hop.port!.rawValue)", to = "localhost:\(tport)"
+        let note = Note(body: "Redirects")
+        func fetch(_ hosts: [String]) async throws -> [String: Any] {
+            let html = #"<meta name="amber-needs" content='{"hosts":\#(hosts.map { "\"\($0)\"" }.joined(separator: ","))]}'>"#
+                .replacingOccurrences(of: "{\"hosts\":", with: "{\"hosts\":[")
+            return try await NotePageNetwork.fetch(["url": "http://\(from)/start"], note: note, html: html, ask: { _ in true }, needKey: { _ in })
+        }
+        // Not declared: not followed, and nothing reaches it.
+        await #expect(throws: NotePage.OpError.self) { _ = try await fetch([from]) }
+        #expect(target.requests.isEmpty)
+        #expect(NotePageNetLog.shared.entries[note.id]?.last?.url.contains("/landed") == true)
+        // Declared and allowed: followed, and the hop is logged.
+        NotePageNetLog.shared.approve(to, for: note.id)
+        let r = try await fetch([from, to])
+        #expect(r["status"] as? Int == 200)
+        #expect(target.requests.count == 1)
+    }
 }
