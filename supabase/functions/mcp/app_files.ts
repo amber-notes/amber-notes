@@ -6,9 +6,9 @@
 
 import { hostDeclared, declaredHosts } from "./page.ts";
 import { sampleData, sampleNote } from "./app_sample.ts";
-import { render, renderedFindings } from "./app_check.ts";
+import { render, renderedFindings, testSummary } from "./app_check.ts";
 import {
-  brokenImports, cleanPath, compile, editText, isReact, linkProject, needsCompile, numbered, parseStored, type Project, projectProblems, serialize, sourceProblems, styleWarnings,
+  brokenImports, cleanPath, compile, editText, isReact, isTest, linkProject, needsCompile, numbered, parseStored, type Project, projectProblems, serialize, sourceProblems, styleWarnings,
 } from "./app_project.ts";
 import { scaffold } from "./app_scaffold.ts";
 import { bodyOf, Content, findNote, type Note, ToolError, type Call, type Tx } from "./tools.ts";
@@ -112,13 +112,18 @@ async function saveProject(tx: Tx, c: Call, n: Note, unlinked: Project, changed:
     views: [{ width: 390, scheme: "light" }, { width: 1280, scheme: "light" }], capture: a.look === true, interact: false, probes: false,
   });
   const found = typeof r === "string" ? null : renderedFindings(r);
+  // The project's own tests run on every save when it has them.
+  const tested = Object.keys(p.files).some(isTest) && typeof r !== "string"
+    ? await render({ html: stored, markdown: sampleNote(body, t), data: sampleData(await dataOf(tx, c, n.id), t), today: t, tests: true }) : null;
+  const tests = tested && typeof tested !== "string" ? testSummary(tested) : null;
   // Errors: the app is broken (an import to nothing, a script error, overflow…). Notes: information.
-  const errors = [...broken, ...(found?.errors ?? [])];
+  const errors = [...broken, ...(found?.errors ?? []), ...(tests?.failures.map((f) => `test failed: ${f}`) ?? [])];
   const notes = [...warnings, ...(found?.notes ?? [])].slice(0, 10);
   const result = {
     app: { id: n.id, title: n.title }, [changed.startsWith("deleted") ? "deleted" : "saved"]: changed.replace(/^deleted /, ""), files: Object.keys(p.files).length,
     ...(errors.length ? { errors } : found ? { opens: "Opens cleanly at 390 and 1280 px (over a sample of its data)." } : {}),
     ...(found === null ? { browser: r } : {}),
+    ...(tests ? { tests: `${tests.passed} passed, ${tests.failed} failed` } : {}),
     ...(notes.length ? { notes } : {}),
     next: errors.length ? "Fix the errors, then keep going." : "Keep going; run check_app (and preview_app) when the app is done.",
   };

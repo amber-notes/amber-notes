@@ -81,6 +81,7 @@ The device, through the system's own prompts: device.reminders, calendar, notify
 ## Seeing your work
 
 - Every save tells you what broke. Pass look: true to get a screenshot.
+- You can try your app with try_app and write tests in tests/ (run_app_tests); do it for anything non-trivial.
 - preview_app: screenshots at iPhone and Mac sizes, light and dark, over a sample with your data's shape.
 - check_app: the full check at 320, 390 and 1280 px, light and dark, with no data, a new record and 400 records. errors mean broken; notes are information.
 - Look at it before you tell the person it's done, then say in a line or two what the app does.

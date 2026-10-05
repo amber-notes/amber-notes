@@ -1,7 +1,7 @@
 // check_app and preview_app: let an AI see what it built. See app_check.ts for the findings and
 // app_sample.ts for the sample a note's app is rendered over.
 
-import { type KeyInfo, render, renderedFindings, staticReport, titleReport } from "./app_check.ts";
+import { type KeyInfo, render, renderedFindings, staticReport, testSummary, titleReport } from "./app_check.ts";
 import { noteForPage } from "./page_input.ts";
 import { resolvePackage } from "./libraries.ts";
 import { sampleData, sampleNote } from "./app_sample.ts";
@@ -33,6 +33,31 @@ export const appTools = [
         data: { type: "string", enum: ["sample", "real"], description: "Default sample." },
       },
     },
+    annotations: read,
+  },
+  {
+    name: "try_app", title: "Use a note's app",
+    description: "Uses the app like a person would, in a browser, and shows you what happened after each step: what's on screen (headings, buttons, fields and their values, text), console errors, what changed in the app's data, and screenshots. " +
+      "Steps: { tap: \"Add\" } (a button, link or tab by its text or label, or a CSS selector), { type: \"85\", into: \"Weight\" } (a field by its label or placeholder), { scroll: \"down\" | \"up\" }, { wait: 500 | \"Saved\" }, { press: \"Enter\" }, { resize: \"phone\" | \"desktop\" }, { dark: true | false }. " +
+      "It runs on a throwaway copy: a sample with the shape of the app's data by default (data: \"real\" only if the person allowed it), and nothing is ever written back.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ...noteRef,
+        steps: { type: "array", items: { type: "object" }, description: "Up to 30 steps, done in order." },
+        start: { type: "string", enum: ["phone", "desktop"], description: "Window to start in (default phone, 390 px)." },
+        screenshots: { type: "string", enum: ["last", "each", "none"], description: "Default last (and any step that failed)." },
+        data: { type: "string", enum: ["sample", "real"], description: "Default sample." },
+      },
+      required: ["steps"],
+    },
+    annotations: read,
+  },
+  {
+    name: "run_app_tests", title: "Run a note's app tests",
+    description: "Runs the app's tests: files under tests/ named *.test.tsx (or .ts, .jsx, .js), written like Vitest with Testing Library: import { describe, it, expect, vi } from \"vitest\"; import { render, screen, within, waitFor } from \"@testing-library/react\"; import userEvent from \"@testing-library/user-event\"; expect has the usual and jest-dom matchers (toBeInTheDocument, toHaveTextContent, toHaveValue…). " +
+      "They run in a browser against a throwaway copy of the app's data, which starts over for each test, and every save runs them too. Returns passed, failed and each failure's message.",
+    inputSchema: { type: "object", properties: { ...noteRef } },
     annotations: read,
   },
   {
@@ -89,6 +114,38 @@ export const appHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<u
       ...(browser === null ? { browser: r } : { browser_checked: `390 px and 1280 px in light and dark, and 320 px${n.parent_id !== null || /amber-widget/.test(html) ? ", and the 340 px widget strip" : ""}, over a sample of its data` }),
       next: errors.length ? "Fix the errors: the app is broken for the person until they're gone. The notes are information; act on the ones you agree with." : notes.length ? "Nothing is broken. The notes are information; act on the ones you agree with." : "Nothing to fix.",
     };
+  },
+
+  async try_app(tx, a, c) {
+    const { n, html, data, body } = await appOf(tx, c, a);
+    if (!Array.isArray(a.steps) || !a.steps.length) throw new ToolError("steps is a list like [{ tap: \"Add\" }, { type: \"5\", into: \"Km\" }].");
+    const real = a.data === "real";
+    if (real) {
+      const [p] = await tx<{ app_previews_real: boolean }[]>`select app_previews_real from public.profiles where user_id = ${c.ctx.userId}`;
+      if (!p?.app_previews_real) throw new ToolError("Trying the app with real data is off. It uses a sample with the same shape by default (data: \"sample\"). The person can allow real data in Amber Notes › Settings › Apps in Notes.");
+    }
+    const t = today();
+    const r = await render({ html, markdown: real ? body : sampleNote(body, t), data: real ? data : sampleData(data, t), today: t,
+      views: [a.start === "desktop" ? { width: 1280, scheme: "light" } : { width: 390, scheme: "light" }], steps: a.steps.slice(0, 30), probes: false });
+    if (typeof r === "string") return { app: { id: n.id, title: n.title }, tried: false, reason: r };
+    const steps = r.trial ?? [];
+    const which = a.screenshots ?? "last";
+    const report = steps.map((s, i) => ({ step: i + 1, did: s.step, ...(s.ok ? {} : { failed: s.error }), ...(s.errors.length ? { errors: s.errors } : {}), ...(s.data.length ? { data_changed: s.data } : {}), screen: s.screen }));
+    const blocks: Record<string, unknown>[] = [{ type: "text", text: JSON.stringify({ app: n.title, data: real ? "a copy of the person's data" : "a sample with the app's data shape", steps: report }, null, 2) }];
+    steps.forEach((s, i) => {
+      if (!s.png || which === "none" || (which === "last" && i !== steps.length - 1 && s.ok)) return;
+      blocks.push({ type: "text", text: `After step ${i + 1}:` });
+      blocks.push({ type: "image", data: s.png, mimeType: "image/png" });
+    });
+    return new Content(blocks, { app: { id: n.id, title: n.title }, steps: report });
+  },
+
+  async run_app_tests(tx, a, c) {
+    const { n, html, data, body } = await appOf(tx, c, a);
+    const t = today();
+    const r = await render({ html, markdown: sampleNote(body, t), data: sampleData(data, t), today: t, tests: true });
+    if (typeof r === "string") return { app: { id: n.id, title: n.title }, ran: false, reason: r };
+    return { app: { id: n.id, title: n.title }, ...testSummary(r), ...(r.tests?.length || r.testErrors?.length ? {} : { note: "No tests yet: add files like tests/app.test.tsx." }) };
   },
 
   async resolve_package(_tx, a) {

@@ -17,6 +17,10 @@ export const STACK_NAMES = [
   "radix-ui", "class-variance-authority", "clsx", "tailwind-merge", "lucide-react", "recharts", "date-fns", "zod", "framer-motion", "motion", "sonner", "react-day-picker",
 ];
 
+/** What a test file (tests/*.test.tsx) may import besides the app's names: run_app_tests provides them. */
+export const TEST_IMPORTS = ["vitest", "@testing-library/react", "@testing-library/preact", "@testing-library/user-event", "@testing-library/dom", "@testing-library/jest-dom", "@testing-library/jest-dom/vitest"];
+export const isTest = (path: string) => /^\/tests?\/.*\.test\.(tsx|ts|jsx|js)$/.test(path) || /\/__tests__\//.test(path);
+
 /** Bare names the app's import map resolves (the host owns the map; the page never writes one). */
 export const BARE_IMPORTS = [
   "preact", "preact/hooks", "preact/jsx-runtime", "htm", "amber", "amber-ui", "amber-router",
@@ -195,7 +199,7 @@ export function brokenImports(p: Project): string[] {
       for (const spec of importsOf(text)) {
         if (/^https?:|^\/\//.test(spec)) out.push(`${path} imports ${spec}: the app has no network. Use a bundled library or a file in the project.`);
         else if (spec.startsWith(".") || spec.startsWith("/") || spec.startsWith("@/")) { if (!resolveImport(p, path, spec)) out.push(`${path} imports ${spec}, but there's no such file.`); }
-        else if (!BARE_IMPORTS.includes(spec) && !spec.startsWith("@radix-ui/")) out.push(`${path} imports "${spec}", which isn't available (${BARE_IMPORTS.join(", ")}). Use one of those, pin an npm file with resolve_package, or add the code as a file.`);
+        else if (!BARE_IMPORTS.includes(spec) && !spec.startsWith("@radix-ui/") && !(isTest(path) && TEST_IMPORTS.includes(spec))) out.push(`${path} imports "${spec}", which isn't available (${BARE_IMPORTS.join(", ")}). Use one of those, pin an npm file with resolve_package, or add the code as a file.`);
       }
     }
     if (path.endsWith(".html")) {

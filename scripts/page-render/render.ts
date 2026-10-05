@@ -94,6 +94,9 @@ function importMap(): string {
   // The React stack the app ships (Pane/Resources/AppLibraries/stack.json), and "@/" for /src/.
   for (const [name, file] of Object.entries(stack().map)) imports[name] = `${LIB_HOST}stack/${file}`;
   imports["@/"] = `${APP_HOST}src/`;
+  // run_app_tests only: Vitest and Testing Library as test-harness.js gives them.
+  for (const name of ["vitest", "@testing-library/react", "@testing-library/preact", "@testing-library/user-event", "@testing-library/dom"]) imports[name] = `${LIB_HOST}test/harness.js`;
+  for (const name of ["@testing-library/jest-dom", "@testing-library/jest-dom/vitest"]) imports[name] = `${LIB_HOST}test/empty.js`;
   return `<script type="importmap">${JSON.stringify({ imports })}</script>`;
 }
 
@@ -124,6 +127,8 @@ const stack = (() => { let v: { map: Record<string, string>; modules: Record<str
 
 /** LIB_HOST paths only projects use: esm/<name>.js, amber-ui/… and vendor/…. */
 function moduleFile(path: string): { body: string; type: string } | null {
+  if (path === "test/harness.js") return { body: hosts(Deno.readTextFileSync(new URL("./test-harness.js", import.meta.url))), type: "text/javascript" };
+  if (path === "test/empty.js") return { body: "export {};\n", type: "text/javascript" };
   if (path.startsWith("stack/")) { const js = stack().modules[path.slice(6)]; return js === undefined ? null : { body: hosts(js), type: "text/javascript" }; }
   if (path.startsWith("esm/")) {
     const name = path.slice(4).replace(/\.js$/, "");
@@ -367,7 +372,114 @@ export type Render = {
   interaction: { tried: string; ok: boolean | null; error?: string; framesPerSecond?: number };
   probes: Partial<Record<"follows" | "escapes" | "empty" | "large", { pass: boolean; detail?: string }>>;
   markdownAfter: string; dataAfter: unknown;
+  /** try_app: what each step did. */
+  trial?: TrialStep[];
+  /** run_app_tests: each test's result. */
+  tests?: { name: string; ok: boolean; error?: string; ms: number; file?: string }[];
+  testErrors?: string[];
 };
+
+/** One thing to do in the app, like a person would (try_app). */
+export type Step =
+  | { tap: string } | { type: string; into: string } | { scroll: "down" | "up" | string } | { wait: number | string }
+  | { press: string } | { resize: "phone" | "desktop" } | { dark: boolean };
+export type TrialStep = {
+  step: Step; ok: boolean; error?: string; png?: string; errors: string[];
+  /** Headings, buttons, links, fields and text the person can see now (short). */
+  screen: string[];
+  /** What changed in the app's data: paths added, changed or removed. */
+  data: string[];
+};
+
+/** The changes between two JSON values, as short lines ("+ collections.log[5]", "~ values.goal: 3 → 4"). */
+function jsonDiff(a: unknown, b: unknown, path = "", out: string[] = []): string[] {
+  if (out.length > 30) return out;
+  const short = (v: unknown) => { const t = JSON.stringify(v) ?? "undefined"; return t.length > 80 ? t.slice(0, 77) + "…" : t; };
+  if (JSON.stringify(a) === JSON.stringify(b)) return out;
+  const obj = (v: unknown) => v !== null && typeof v === "object";
+  if (!obj(a) || !obj(b) || Array.isArray(a) !== Array.isArray(b)) { out.push(a === undefined ? `+ ${path}: ${short(b)}` : b === undefined ? `- ${path}` : `~ ${path}: ${short(a)} → ${short(b)}`); return out; }
+  const keys = new Set([...Object.keys(a as object), ...Object.keys(b as object)]);
+  for (const k of keys) jsonDiff((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k], Array.isArray(a) ? `${path}[${k}]` : path ? `${path}.${k}` : k, out);
+  return out;
+}
+
+/** try_app: one page, steps done like a person would, and after each a screenshot, the errors, what
+ *  the screen shows and what changed in the data. Data changes stay in this throwaway copy. */
+async function trial(open: (w: number, s: "light" | "dark") => Promise<{ page: Page; errors: string[] }>, store: () => unknown, opts: RenderOptions): Promise<Render> {
+  const first = opts.views?.[0] ?? { width: 390, scheme: "light" as const };
+  let { page, errors } = await open(first.width, first.scheme);
+  const out: TrialStep[] = [];
+  const screen = () => page.evaluate(() => {
+    const seen = (el: Element) => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el); return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < innerHeight && s.visibility !== "hidden" && s.display !== "none"; };
+    const name = (el: Element) => (el.getAttribute("aria-label") || (el as HTMLElement).innerText || (el as HTMLInputElement).placeholder || el.getAttribute("title") || "").replace(/\s+/g, " ").trim().slice(0, 60);
+    const lines: string[] = [];
+    for (const el of document.querySelectorAll("h1, h2, h3, [role=heading], button, a[href], [role=button], [role=tab], [role=switch], [role=checkbox], input, select, textarea, [role=dialog]")) {
+      if (!seen(el)) continue;
+      const tag = el.tagName.toLowerCase(), role = el.getAttribute("role");
+      const kind = role ?? (/^h\d$/.test(tag) ? "heading" : tag === "a" ? "link" : tag === "input" ? `input ${(el as HTMLInputElement).type}` : tag);
+      const extra = (el as HTMLInputElement).value !== undefined && /input|select|textarea/.test(tag) ? ` = "${String((el as HTMLInputElement).value).slice(0, 40)}"` : el.getAttribute("aria-pressed") === "true" || el.getAttribute("aria-selected") === "true" || el.getAttribute("aria-checked") === "true" || el.getAttribute("data-state") === "checked" ? " (on)" : "";
+      lines.push(`${kind}: ${name(el)}${extra}`);
+      if (lines.length >= 40) break;
+    }
+    const text = (document.body?.innerText ?? "").replace(/\s+/g, " ").trim();
+    return [...lines, `text: ${text.slice(0, 400)}${text.length > 400 ? "…" : ""}`];
+  }).catch((e) => [`(the page didn't answer: ${String(e).slice(0, 100)})`]);
+  // The element a person means: a selector, else a label, a role's name, or visible text.
+  const target = async (what: string) => {
+    if (/^[#.\[]|^[a-z]+[#.\[]/.test(what)) return page.locator(what).first();
+    for (const l of [page.getByLabel(what, { exact: false }), page.getByRole("button", { name: what }), page.getByRole("link", { name: what }), page.getByRole("tab", { name: what }), page.getByPlaceholder(what), page.getByText(what, { exact: false })]) {
+      if (await l.first().isVisible().catch(() => false)) return l.first();
+    }
+    throw new Error(`Nothing visible matches "${what}".`);
+  };
+  for (const step of (opts.steps ?? []).slice(0, 30)) {
+    const before = JSON.parse(JSON.stringify(store()));
+    const errs = errors.length;
+    let ok = true, error: string | undefined;
+    try {
+      if ("tap" in step) await (await target(step.tap)).click({ timeout: 3000 });
+      else if ("type" in step) { const el = await target(step.into); await el.click({ timeout: 3000 }); await el.fill(String(step.type), { timeout: 3000 }).catch(async () => { await page.keyboard.type(String(step.type)); }); }
+      else if ("scroll" in step) await page.mouse.wheel(0, step.scroll === "up" ? -600 : 600);
+      else if ("wait" in step) typeof step.wait === "number" ? await page.waitForTimeout(Math.min(step.wait, 5000)) : await page.getByText(step.wait).first().waitFor({ timeout: 5000 });
+      else if ("press" in step) await page.keyboard.press(step.press);
+      else if ("resize" in step) await page.setViewportSize(step.resize === "desktop" ? { width: 1280, height: 900 } : { width: 390, height: 844 });
+      else if ("dark" in step) await page.emulateMedia({ colorScheme: step.dark ? "dark" : "light" });
+      else throw new Error(`Unknown step ${JSON.stringify(step)}.`);
+      await page.waitForTimeout(250);
+    } catch (e) { ok = false; error = String((e as Error).message ?? e).split("\n")[0].slice(0, 200); }
+    const png = await page.screenshot({ type: "png", scale: "css" }).then((b) => btoa(Array.from(b, (x) => String.fromCharCode(x)).join(""))).catch(() => undefined);
+    out.push({ step, ok, ...(error ? { error } : {}), png, errors: errors.slice(errs), screen: await screen(), data: jsonDiff(before, store()) });
+  }
+  await page.context().close();
+  return { views: [], blocked: [], updates: [], setData: 0, interaction: { tried: "none", ok: null }, probes: {}, markdownAfter: "", dataAfter: store(), trial: out };
+}
+
+/** The page run_app_tests opens instead of the app: imports each test file, then runs them. */
+export function testRunnerProject(stored: string): string | null {
+  const p = projectOf(stored);
+  if (!p) return null;
+  const files = Object.keys(p.files).filter((f) => /^\/tests?\/.*\.test\.(tsx|ts|jsx|js)$/.test(f) || /\/__tests__\/.*\.(tsx|ts|jsx|js)$/.test(f)).sort();
+  if (!files.length) return null;
+  const html = `<!doctype html><html lang="en"><body><script type="module">
+const results = [], errors = [];
+const { run } = await import("vitest");
+for (const f of ${JSON.stringify(files)}) {
+  const before = results.length;
+  try { await import(f); } catch (e) { errors.push(f + ": " + String(e && e.message || e).slice(0, 400)); continue; }
+  for (const r of await run(() => window.__amberReset())) results.push({ ...r, file: f });
+}
+window.__testResults = { results, errors };
+</script></body></html>`;
+  return JSON.stringify({ amberApp: 1, files: { ...p.files, "/index.html": html }, compiled: p.compiled });
+}
+
+async function runTests(open: (w: number, s: "light" | "dark") => Promise<{ page: Page; errors: string[] }>): Promise<Render> {
+  const { page, errors } = await open(390, "light");
+  const got = await page.waitForFunction(() => (window as any).__testResults, null, { timeout: 30000 }).then((h) => h.jsonValue() as Promise<{ results: Render["tests"]; errors: string[] }>).catch(() => ({ results: [], errors: ["The tests didn't finish in 30 s."] }));
+  await page.context().close();
+  return { views: [], blocked: [], updates: [], setData: 0, interaction: { tried: "none", ok: null }, probes: {}, markdownAfter: "", dataAfter: null,
+    tests: got.results ?? [], testErrors: [...(got.errors ?? []), ...errors.filter((e) => !/^Failed to load resource/.test(e)).slice(0, 5)] };
+}
 
 let browser: Browser | null = null;
 export async function closeBrowser() { await browser?.close(); browser = null; }
@@ -398,6 +510,10 @@ export type RenderOptions = {
   probes?: boolean;
   /** Also render as a widget in a parent note: a 340 x 260 strip with html.amber-widget. */
   widget?: boolean;
+  /** try_app: open the app once (the first view) and do these steps, screenshot after each. */
+  steps?: Step[];
+  /** run_app_tests: run the project's tests/*.test.* files instead of opening the app. */
+  tests?: boolean;
 };
 
 /** Renders, starting WebKit again (once) if it went away under load. */
@@ -485,12 +601,20 @@ async function renderOnce(html: string, markdown: string, data: unknown, opts: R
         return { ok: false, error: (e as Error).message };
       }
     });
+    // run_app_tests: every test starts from the same data.
+    await page.exposeFunction("__amberReset", async () => {
+      md = markdown; store = empty(data);
+      await page.evaluate(([n, d]) => (window as any).amber._receive(n, d), [noteForPage(md, opts.today), store]);
+    });
     if (widget) await page.addInitScript("window.__amberWidget = true;");
     await page.addInitScript(bootstrap(noteForPage(md, opts.today), store));
     await page.goto(home, { waitUntil: "load", timeout: 15000 }).catch((e) => errors.push(`load: ${(e as Error).message.slice(0, 200)}`));
     await page.waitForTimeout(400);
     return { page, errors };
   };
+
+  if (opts.steps?.length) { md = markdown; store = empty(data); return await trial(open, () => store, opts); }
+  if (opts.tests) { md = markdown; store = empty(data); return await runTests(open); }
 
   const wanted: { width: number; scheme: "light" | "dark"; widget?: boolean }[] = opts.views ?? ([[390, "light"], [390, "dark"], [320, "light"], [1280, "light"], [1280, "dark"]] as const).map(([width, scheme]) => ({ width, scheme }));
   if (opts.widget && !wanted.some((v) => v.widget)) wanted.push({ width: 340, scheme: "light", widget: true });

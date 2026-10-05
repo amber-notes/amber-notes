@@ -65,7 +65,16 @@ type View = {
   headings?: string[]; excerpt?: string; png?: string;
   titleCount?: number; ghostFields?: string[]; sections?: number; nav?: boolean; junk?: string[]; under44?: string[]; under44Count?: number; clipped?: string[]; clippedCount?: number; usedWidth?: number; canvases?: number; svgShapes?: number; gridCols?: number; frames?: number;
 };
-export type Rendered = { views: View[]; interaction: { tried: string; ok: boolean | null; error?: string; framesPerSecond?: number }; probes: Record<string, { pass: boolean; detail?: string }>; blocked: string[]; ms: number };
+export type Rendered = { views: View[]; interaction: { tried: string; ok: boolean | null; error?: string; framesPerSecond?: number }; probes: Record<string, { pass: boolean; detail?: string }>; blocked: string[]; ms: number;
+  trial?: { step: Record<string, unknown>; ok: boolean; error?: string; png?: string; errors: string[]; screen: string[]; data: string[] }[];
+  tests?: { name: string; ok: boolean; error?: string; ms: number; file?: string }[]; testErrors?: string[] };
+
+/** run_app_tests' answer: counts, and each failure with its message. */
+export function testSummary(r: Rendered): { passed: number; failed: number; failures: string[] } {
+  const t = r.tests ?? [];
+  return { passed: t.filter((x) => x.ok).length, failed: t.filter((x) => !x.ok).length + (r.testErrors?.length ?? 0),
+    failures: [...(r.testErrors ?? []), ...t.filter((x) => !x.ok).map((x) => `${x.file ? x.file + ": " : ""}${x.name}: ${x.error}`)] };
+}
 
 const same = (a: string, b: string) => a.toLowerCase().replace(/\s+/g, " ").trim() === b.toLowerCase().replace(/\s+/g, " ").trim();
 

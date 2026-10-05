@@ -76,6 +76,19 @@ Deno.test("a project app: scaffold, files, edits, compile errors, checks and ver
     await tool(pg, a, "edit_app_file", { id, path: "/src/screens/home.tsx", old_string: "@/components/Entry", new_string: "@/components/LogEntry" });
     assertStringIncludes(await fails(tool(pg, a, "delete_app_file", { id, path: "/index.html" })), "can't be deleted");
 
+    // Tests run on every save; try_app uses the app like a person, on a throwaway copy.
+    const withTests = await tool(pg, a, "write_app_file", { id, path: "/tests/home.test.tsx", content: `import { it, expect } from "vitest"\nimport { render, screen } from "@testing-library/react"\nimport Home from "@/screens/home"\nit("lists the log", () => { render(<Home />); expect(screen.getAllByRole("listitem").length).toBeGreaterThan(0) })\nit("is wrong on purpose", () => { render(<Home />); expect(screen.queryByText("No such thing")).toBeInTheDocument() })\n` });
+    assertEquals(withTests.tests, "1 passed, 1 failed");
+    assertStringIncludes(withTests.errors.join("\n"), "is wrong on purpose");
+    assertEquals((await tool(pg, a, "run_app_tests", { id }, false)).passed, 1);
+    const tried = await tool(pg, a, "try_app", { id, steps: [{ tap: "Settings" }, { type: "Ada", into: "Name" }, { tap: "Nowhere" }] }, false);
+    assert(tried instanceof Content);
+    const steps = (tried.structured as { steps: { failed?: string; data_changed?: string[]; screen: string[] }[] }).steps;
+    assertEquals(steps.map((s) => !s.failed), [true, true, false]);
+    assertStringIncludes(steps[1].data_changed!.join(), "settings");
+    assertEquals(tried.content.filter((b) => b.type === "image").length, 1);
+    await tool(pg, a, "delete_app_file", { id, path: "/tests/home.test.tsx" });
+
     // check_app knows projects; edit_note_page points to the file tools; get_note_page lists files.
     const checked = await tool(pg, a, "check_app", { id }, false);
     assertEquals([checked.ok, checked.errors], [true, []]);

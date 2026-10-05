@@ -222,6 +222,8 @@ Deno.test("no text of an encrypted account is stored or logged readably, whateve
     // No renderer is configured here: check_app does what needs no browser, preview_app says so.
     assert(Array.isArray((await tool("check_app", { id: tracker })).errors));
     assertEquals((await tool("preview_app", { id: tracker })).previews, "unavailable");
+    assertEquals((await tool("try_app", { id: tracker, steps: [{ tap: CANARY }] })).tried, false);
+    assertEquals((await tool("run_app_tests", { id: tracker })).ran, false);
     // A bundled library needs no lookup (and no network here): resolve_package says so.
     assertStringIncludes(await tool("resolve_package", { name: "chart.js" }, false), "bundled");
     await tool("delete_note", { id: created.id });
