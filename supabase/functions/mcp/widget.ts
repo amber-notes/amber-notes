@@ -1,84 +1,42 @@
-// Note page widgets (prototype): a home-screen widget for a note's page. WidgetKit can't run the
-// page's HTML, so the widget is a small JSON spec built from fixed native blocks whose values bind
-// to the note's tables and checklists. The app works the values out and draws them; the spec holds
-// no data. Pure, so it's unit-tested. The app's own reader (NoteWidget.parse) has the same limits.
+// Note page widgets (prototype): set_note_widget, the tool an AI uses to give a note's app a
+// home-screen widget. What a widget may hold, and its check, are in widget_spec.ts (pure, tested).
 
-export const MAX_WIDGET_BYTES = 8 * 1024;
-export const MAX_BLOCKS = 8;
-export const MAX_BUTTONS = 2;
-const FACES = ["small", "medium", "large", "circular", "rectangular"] as const;
-const BLOCKS = ["title", "text", "number", "ring", "bar", "list", "chart", "grid", "button", "row"];
-const BINDINGS = ["streak", "done_today", "done_days", "done_count_today", "habits", "rows", "sum", "latest", "checked", "unchecked", "title"];
-const OPS = ["toggle_today", "toggle_checklist"];
+import { findNote, ToolError, type Call, type Tx } from "./tools.ts";
+import { WIDGET_CONTRACT, widgetProblems } from "./widget_spec.ts";
 
-/** What a widget can hold. The same words go to the AI in set_note_widget's description. */
-export const WIDGET_CONTRACT = `A widget is JSON: { small?: [block], medium?: [block], large?: [block], circular?: [block], rectangular?: [block] } (circular and rectangular are the iPhone Lock Screen; give at least small).
-At most ${MAX_BLOCKS} blocks per size. Blocks, each { type, ... }:
-  title { text, sub? }    text { text }    number { value, label? }
-  ring { value, max, center?, label? }    bar { value, max, label? }
-  list { checklist: true, limit? } | { items: [value] } | { table, column, last? }
-  chart { series, kind: "bar" | "line" }    grid { table, columns?, days? }  (a habit grid: one row per column, ✓ cells filled)
-  button { label, op }    row { blocks: [block] }  (up to 3 side by side)
-A value is text, a number, a list of values (joined into one text), or one binding over the note:
-  { streak: { table, column } }  days in a row the column is done (✓, x, yes, done), back from today, or from yesterday while today is open
-  { done_today: { table, column } }  { done_days: { table, column, days } }  { done_count_today: { table } }  { habits: { table } }
-  { rows: { table } }  { sum: { table, column, days?, month?: true } }  { latest: { table, column } }  { checked: {} }  { unchecked: {} }  { title: {} }
-Tables count from 0, as in read_note; dates come from the table's Date column (yyyy-mm-dd).
-A series: { table, column, days, agg: "sum" | "done" } (one value per day) or { table, column, last } (one per row).
-Buttons (at most ${MAX_BUTTONS} different ones) change the note, as a page's edits do: { op: "toggle_today", table, column, value? } ticks today's cell (adding today's row if needed), { op: "toggle_checklist", text } ticks a checklist item.
-Keep it glanceable: a small widget is about 160 points square; one big figure, a ring or a short list, and at most one button.`;
+type Args = Record<string, unknown>;
+const str = (d: string) => ({ type: "string", description: d });
+const noteRef = { id: str("Note id (preferred)."), title: str("Note title, if you don't have the id. Must match one note.") };
+const change = { readOnlyHint: false, destructiveHint: true, openWorldHint: false } as const;
 
-type Json = null | boolean | number | string | Json[] | { [k: string]: Json };
+export const widgetTools = [
+  {
+    name: "set_note_widget", title: "Make a widget for a note",
+    description: "Gives a note a home-screen widget (iPhone home and Lock Screen, Mac desktop): the widget for the note's app, made of a few native blocks whose values bind to the note's tables and checklists, " +
+      "such as a habit streak with a ring and a Done button, or this month's total. Widgets can't run HTML, so this is a separate small spec, usually made alongside the note's app (set_note_page). " +
+      "Replaces the note's widget; null or an empty object removes it. The person adds it from the home screen's widget gallery (Amber Notes, Note). When talking to the person, call it the widget for the note's app, never a page.\n" + WIDGET_CONTRACT,
+    inputSchema: { type: "object", properties: { ...noteRef, widget: { type: ["object", "null"], description: "The widget spec, or null to remove it." } }, required: ["widget"] },
+    annotations: { ...change, idempotentHint: true },
+  },
+];
 
-/** Why a widget can't be stored, or an empty list when it can. */
-export function widgetProblems(spec: unknown): string[] {
-  const out: string[] = [];
-  const text = typeof spec === "string" ? spec : JSON.stringify(spec);
-  const bytes = new TextEncoder().encode(text ?? "").length;
-  if (bytes > MAX_WIDGET_BYTES) return [`The widget is ${Math.ceil(bytes / 1024)} KB; the limit is ${MAX_WIDGET_BYTES / 1024} KB.`];
-  let w: Json;
-  try { w = typeof spec === "string" ? JSON.parse(spec) : spec as Json; } catch { return ["The widget isn't valid JSON."]; }
-  if (!w || typeof w !== "object" || Array.isArray(w)) return ["A widget is a JSON object with sizes as keys."];
-  const faces = FACES.filter((f) => f in w);
-  if (!faces.length) return [`Give at least one size: ${FACES.join(", ")}.`];
-  const extra = Object.keys(w).filter((k) => !(FACES as readonly string[]).includes(k));
-  if (extra.length) out.push(`Unknown keys: ${extra.join(", ")}. Sizes are ${FACES.join(", ")}.`);
-  const ops = new Set<string>();
-
-  const value = (v: Json | undefined, where: string) => {
-    if (v === undefined || v === null || typeof v === "string" || typeof v === "number" || typeof v === "boolean") return;
-    if (Array.isArray(v)) { v.forEach((x) => value(x, where)); return; }
-    const keys = Object.keys(v);
-    if (keys.length !== 1 || !BINDINGS.includes(keys[0])) out.push(`${where}: a binding is one of ${BINDINGS.join(", ")}, got {${keys.join(", ")}}.`);
-  };
-  const block = (b: Json, where: string, depth: number) => {
-    if (!b || typeof b !== "object" || Array.isArray(b)) { out.push(`${where}: a block is an object.`); return; }
-    const type = b.type;
-    if (typeof type !== "string" || !BLOCKS.includes(type)) { out.push(`${where}: unknown block type ${JSON.stringify(type)}. Types: ${BLOCKS.join(", ")}.`); return; }
-    for (const k of ["text", "sub", "value", "max", "center", "label"]) value(b[k], `${where}.${k}`);
-    if (type === "button") {
-      const op = b.op;
-      if (!op || typeof op !== "object" || Array.isArray(op) || !OPS.includes(op.op as string)) out.push(`${where}: a button's op is ${OPS.join(" or ")}.`);
-      else {
-        if (op.op === "toggle_today" && (typeof op.table !== "number" || typeof op.column !== "string")) out.push(`${where}: toggle_today needs table (a number) and column (a name).`);
-        if (op.op === "toggle_checklist" && typeof op.text !== "string") out.push(`${where}: toggle_checklist needs the item's text.`);
-        ops.add(JSON.stringify(op, Object.keys(op).sort()));
-      }
+export const widgetHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<unknown>> = {
+  async set_note_widget(tx, a, c) {
+    const n = await findNote(tx, c, a);
+    const w = a.widget;
+    if (w === null || w === undefined || (typeof w === "object" && !Array.isArray(w) && !Object.keys(w).length)) {
+      const gone = await tx`update public.note_pages set widget_ct = null where note_id = ${n.id} and widget_ct is not null returning note_id`;
+      return { id: n.id, title: n.title, widget: gone.length ? "removed" : "none" };
     }
-    if (type === "row") {
-      if (depth > 0) out.push(`${where}: rows don't nest.`);
-      const inner = Array.isArray(b.blocks) ? b.blocks : [];
-      if (!inner.length || inner.length > 3) out.push(`${where}: a row holds 1 to 3 blocks.`);
-      inner.forEach((x, i) => block(x, `${where}.blocks[${i}]`, depth + 1));
-    }
-    if ((type === "grid" || type === "chart") && b.days !== undefined && (typeof b.days !== "number" || b.days < 1 || b.days > 31)) out.push(`${where}: days is 1 to 31.`);
-  };
-  for (const f of faces) {
-    const blocks = w[f];
-    if (!Array.isArray(blocks)) { out.push(`${f} is a list of blocks.`); continue; }
-    if (blocks.length > MAX_BLOCKS) out.push(`${f} has ${blocks.length} blocks; at most ${MAX_BLOCKS}.`);
-    blocks.forEach((b, i) => block(b, `${f}[${i}]`, 0));
-  }
-  if (ops.size > MAX_BUTTONS) out.push(`A widget has at most ${MAX_BUTTONS} different buttons; this one has ${ops.size}.`);
-  return out;
-}
+    const problems = widgetProblems(w);
+    if (problems.length) throw new ToolError(`The widget wasn't saved:\n- ${problems.join("\n- ")}`);
+    const json = typeof w === "string" ? w : JSON.stringify(w);
+    const sealed = await c.v.sealWidget(n.id, json);
+    const [{ created }] = await tx<{ created: boolean }[]>`
+      insert into public.note_pages (note_id, widget_ct) values (${n.id}, ${sealed})
+      on conflict (note_id) do update set widget_ct = excluded.widget_ct
+      returning (xmax = 0) as created`;
+    return { id: n.id, title: n.title, widget: created ? "created" : "replaced",
+      note: "The person adds it from the home screen's widget gallery (Amber Notes, Note). It updates as the note changes." };
+  },
+};

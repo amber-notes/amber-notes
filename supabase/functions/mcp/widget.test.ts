@@ -1,7 +1,7 @@
-// What set_note_widget accepts as a widget (widget.ts).
+// What set_note_widget accepts as a widget (widget_spec.ts).
 //   cd supabase/functions/mcp && deno test -A widget.test.ts
 import { assertEquals, assertStringIncludes } from "jsr:@std/assert@1";
-import { MAX_WIDGET_BYTES, widgetProblems } from "./widget.ts";
+import { MAX_WIDGET_BYTES, widgetProblems } from "./widget_spec.ts";
 
 const habit = JSON.parse(await Deno.readTextFile(new URL("../../../demo/note-pages/habit-tracker.widget.json", import.meta.url)));
 

@@ -10,7 +10,7 @@ import type { PendingQuery, Row, Sql, TransactionSql } from "npm:postgres@3.4.5"
 import { toBase64, type Head, type Vault } from "../_shared/e2ee.ts";
 import { errorKind, log } from "../_shared/log.ts";
 import { MAX_PAGE_BYTES, PAGE_CONTRACT, pageProblems } from "./page.ts";
-import { WIDGET_CONTRACT, widgetProblems } from "./widget.ts";
+import { widgetHandlers, widgetTools } from "./widget.ts";
 import { appendText, applyEdits, coerce, findTables, fitLines, isTextType, mimeOf, outline, previewOf, replaceTable, searchFilter, searchInMemory, setChecklistItem, sliceLines, titleOf, typeSpec, type Edit, type Table } from "./notes.ts";
 
 export type ToolContext = { sql: Sql; userId: string; client: string; canWrite: boolean; vault: Vault };
@@ -21,7 +21,7 @@ export class Content {
   constructor(readonly content: Record<string, unknown>[], readonly structured?: Record<string, unknown>) {}
 }
 
-type Tx = TransactionSql;
+export type Tx = TransactionSql;
 type Args = Record<string, unknown>;
 type Tool = {
   name: string;
@@ -240,15 +240,7 @@ export const tools: Tool[] = ([
     inputSchema: { type: "object", properties: { ...noteRef } },
     annotations: read,
   },
-  // Note page widgets (prototype): a home-screen widget for a note, see widget.ts.
-  {
-    name: "set_note_widget", title: "Make a widget for a note",
-    description: "Gives a note a home-screen widget (iPhone home and Lock Screen, Mac desktop): a few native blocks whose values bind to the note's tables and checklists, " +
-      "such as a habit streak with a ring and a Done button, or this month's total. Widgets can't run HTML, so this is a separate small spec, usually made alongside a page (set_note_page). " +
-      "Replaces the note's widget; null or an empty object removes it. The person adds it from the home screen's widget gallery (Amber Notes, Note). When talking to the person, call the page the note's app.\n" + WIDGET_CONTRACT,
-    inputSchema: { type: "object", properties: { ...noteRef, widget: { type: ["object", "null"], description: "The widget spec, or null to remove it." } }, required: ["widget"] },
-    annotations: { ...write, destructiveHint: true, idempotentHint: true },
-  },
+  ...widgetTools,
   // ChatGPT's connector conventions.
   {
     name: "search", title: "Search",
@@ -267,7 +259,7 @@ export const tools: Tool[] = ([
 const writeTools = new Set(tools.filter((t) => !t.annotations.readOnlyHint).map((t) => t.name));
 
 /** One tool call: the vault, and how much scan time it spent (charged when it ends). */
-type Call = { v: Vault; ctx: ToolContext; scanMs: number };
+export type Call = { v: Vault; ctx: ToolContext; scanMs: number };
 
 export async function runTool(name: string, args: Args, ctx: ToolContext): Promise<unknown> {
   if (!tools.some((t) => t.name === name)) throw new ToolError(`Unknown tool ${name}.`);
@@ -557,7 +549,7 @@ async function findFolder(tx: Tx, v: Vault, ref: string, create: boolean): Promi
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-async function findNote(tx: Tx, c: Call, args: Args, includeTrashed = false): Promise<Note> {
+export async function findNote(tx: Tx, c: Call, args: Args, includeTrashed = false): Promise<Note> {
   const id = typeof args.id === "string" ? args.id : undefined;
   const title = typeof args.title === "string" ? args.title.trim() : undefined;
   if (id) {
@@ -1154,24 +1146,7 @@ const handlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<unknown>> =
     return { id: n.id, title: n.title, has_page: true, made_by: row.client, updated: iso(row.updated_at), rules: PAGE_CONTRACT, html, ...w };
   },
 
-  async set_note_widget(tx, a, c) {
-    const n = await findNote(tx, c, a);
-    const w = a.widget;
-    if (w === null || w === undefined || (typeof w === "object" && !Array.isArray(w) && !Object.keys(w).length)) {
-      const gone = await tx`update public.note_pages set widget_ct = null where note_id = ${n.id} and widget_ct is not null returning note_id`;
-      return { id: n.id, title: n.title, widget: gone.length ? "removed" : "none" };
-    }
-    const problems = widgetProblems(w);
-    if (problems.length) throw new ToolError(`The widget wasn't saved:\n- ${problems.join("\n- ")}`);
-    const json = typeof w === "string" ? w : JSON.stringify(w);
-    const sealed = await c.v.sealWidget(n.id, json);
-    const [{ created }] = await tx<{ created: boolean }[]>`
-      insert into public.note_pages (note_id, widget_ct) values (${n.id}, ${sealed})
-      on conflict (note_id) do update set widget_ct = excluded.widget_ct
-      returning (xmax = 0) as created`;
-    return { id: n.id, title: n.title, widget: created ? "created" : "replaced",
-      note: "The person adds it from the home screen's widget gallery (Amber Notes, Note). It updates as the note changes." };
-  },
+  ...widgetHandlers,
 
   async search(tx, a, c) {
     const q = String(a.query ?? "").trim();
