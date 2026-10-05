@@ -36,7 +36,7 @@ export function sandboxed(html: string): string {
 // Pane/Views/NotePageView.swift bootstrap(data:store:), with the app's message handlers replaced by
 // the harness's. The device, the on-device model and amber.fetch answer { ok: false } here: the
 // evals check pages handle that, not what the device returns.
-const bootstrap = (note: unknown, data: unknown) => `(() => {
+const bootstrap = (note: unknown, data: unknown, defaults: Record<string, unknown> = {}) => `(() => {
   const listeners = [];
   const ask = (msg) => window.__amberData(msg)
     .then((r) => { if (r && r.data) amber.data = r.data; if (r) delete r.data; return r; })
@@ -75,11 +75,19 @@ const bootstrap = (note: unknown, data: unknown) => `(() => {
     amber.note = note; if (data) amber.data = data;
     for (const fn of listeners) { try { fn(note, amber.data); } catch (e) { console.error(e); } }
   } });
+  const settingDefaults = ${JSON.stringify(defaults)};
+  Object.defineProperty(amber, "settings", { get() { return Object.assign({}, settingDefaults, (amber.data.values && amber.data.values.settings) || {}); } });
   window.amber = amber;
   const sized = () => { if (!document.documentElement) return addEventListener("DOMContentLoaded", sized, { once: true }); const w = window.innerWidth, c = document.documentElement.classList;
     c.toggle("amber-narrow", w < 600); c.toggle("amber-medium", w >= 600 && w < 900); c.toggle("amber-wide", w >= 900); };
   sized(); addEventListener("resize", sized);
 })();`;
+
+/** <meta name="amber-settings">: each setting's default, as the app fills them in. */
+function settingDefaults(html: string): Record<string, unknown> {
+  const content = html.match(/<meta[^>]*name=["']amber-settings["'][^>]*>/i)?.[0]?.match(/content=(['"])([\s\S]*?)\1/)?.[2];
+  try { return Object.fromEntries((JSON.parse(content ?? "{}").settings ?? []).filter((x: { key?: string }) => x.key).map((x: { key: string; default?: unknown }) => [x.key, x.default ?? null])); } catch { return {}; }
+}
 
 /** The app's data ops (Pane/Model/NotePageData.swift apply). */
 function applyDataOp(doc: { values: Record<string, unknown>; collections: Record<string, Record<string, unknown>[]> }, m: Record<string, unknown>) {
@@ -215,7 +223,7 @@ async function renderOnce(html: string, markdown: string, data: unknown, opts: R
         return { ok: false, error: (e as Error).message };
       }
     });
-    await page.addInitScript(bootstrap(noteForPage(md, opts.today), store));
+    await page.addInitScript(bootstrap(noteForPage(md, opts.today), store, settingDefaults(html)));
     await page.goto(home, { waitUntil: "load", timeout: 15000 }).catch((e) => errors.push(`load: ${(e as Error).message.slice(0, 200)}`));
     await page.waitForTimeout(400);
     return { page, errors };

@@ -26,7 +26,7 @@ for (const t of PAGE_TEMPLATES) {
   if (!sample) { console.log(`${t.name}: no sample note`); failed++; continue; }
   const task: Task = { id: t.name, prompt: "", seed: { body: sample.body }, page: true, interact: true, checks: () => [] };
   const render = await renderPage(t.html, sample.body, sample.data ?? {}, { today: "2026-10-05", interact: true, shots: shots ? `${shots}/${t.name}` : undefined });
-  const checks = scoreTask(task, { before: sample.body, after: sample.body, pageBefore: null, page: t.html, dataBefore: null, data: sample.data ?? null, calls: [], answer: "", others: [], render }, render, pageProblems);
+  const checks = scoreTask(task, { before: sample.body, after: sample.body, pageBefore: null, page: t.html, dataBefore: null, data: sample.data ?? null, calls: [], answer: "The note's app.", others: [], render }, render, pageProblems);
   const bad = checks.filter((c) => !c.pass);
   const warnings = pageWarnings(t.html, sample.body);
   if (bad.length || warnings.length) failed++;

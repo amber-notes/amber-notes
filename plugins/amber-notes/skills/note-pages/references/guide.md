@@ -17,6 +17,7 @@ Change the note only through amber.update(op), which returns a Promise of { ok: 
   { op: "append_row", table, values }         values: { columnName: text } or [text, ...]
   { op: "delete_row", table, row }  { op: "move_row", table, from, to }
   { op: "set_text", heading, text }            replaces the text under that heading (up to the next heading of the same level)
+  { op: "add_checklist_item", text, under_heading? }  a new open "- [ ] text" after the last open item of that checklist (keep checklists as checklists)
 Each change lands in the note's markdown as a normal edit the person can see and undo.
 The page's own data (not the note's text; for state the person wouldn't type, like settings, logs, a schedule): amber.data = { values, collections };
   amber.store.get(key) / amber.store.set(key, value); amber.store.collection(name).list() / query(fn) / get(id) / add(fields) -> { id } / update(id, patch) / remove(id); amber.setData(mergePatch).
@@ -24,6 +25,8 @@ The page's own data (not the note's text; for state the person wouldn't type, li
 The device, through the system's own prompts (results go to the page only; write to the note explicitly if wanted): amber.device.reminders.create({ title, due, repeat: "daily" }), calendar.today() -> { events: [{ title, start, end, location, attendees }] },
   notify({ title, body, at | in }), openURL(url), photos.pick({ limit }) / camera.take() -> { files: [{ $file, thumb }] }, contacts.pick() -> { contact }, files.pick(), location.once() -> { lat, lon, place },
   maps.open({ lat, lon | query, directions }), maps.snapshot({ lat, lon, km, width, height, dark }) -> { dataURL }. On-device AI: amber.ai.available(), amber.ai.respond(prompt, { instructions }) -> { text }. Every call returns { ok, ... } or { ok: false, error }.
+Settings the person can change without an AI: declare <meta name="amber-settings" content='{"settings": [{ "key": "budget", "label": "Monthly budget", "type": "number", "default": 15000 }]}'> (types: text, number, choice with "options", list, color, currency).
+  Amber Notes shows them in App Settings; read amber.settings (defaults filled in); onChange runs when they change. Use settings for names, goals, limits, currencies and categories instead of hardcoding them.
 Network: the page itself can't reach anything. Declare hosts in <meta name="amber-needs" content='{"hosts": ["api.open-meteo.com"], "keys": [{ "name": "OpenWeather", "hosts": ["api.openweathermap.org"], "query": "appid={key}", "help": "How to get one" }]}'>
   and call amber.fetch(url, { method, headers, body, key }) -> { ok, status, body }. The person approves each host once and sees every request; with key, the app adds that API key (the page never sees it).
 Look like Amber Notes: the app sets these CSS variables on :root, already switched for light and dark, and gives body its font, text colour and background. Use them instead of your own colours and fonts:
@@ -73,10 +76,11 @@ Some apps need a service that wants an API key (weather, stocks, translation). K
 - Tick: amber.update({ op: "toggle_checklist", line: item.line }).
 - Edit a cell: amber.update({ op: "set_cell", table: t.index, row: i, col: "Amount", value: "120" }).
 - Add a row: amber.update({ op: "append_row", table: t.index, values: { Date: amber.note.today, Item: "Coffee", Amount: "4" } }).
-- Add a checklist item: there's no op for it yet, so rewrite that heading's section with set_text: the section's current lines from amber.note.markdown plus "- [ ] New item". Keep checklists as checklists; never turn them into a table so the app can add to them.
+- Add a checklist item: amber.update({ op: "add_checklist_item", text: "Sunscreen", under_heading: "Clothes" }). Keep checklists as checklists; never turn them into a table so the app can add to them.
 - Check the result: if !r.ok show r.error next to the control. Don't update your own state optimistically for table data; onChange fires with the new note right after a successful update.
 - Write values the way the note already writes them (✓ vs x, "4" vs "4.00", the same date format).
 - Where data lives: records the person reads or edits as text (expenses, runs, contacts, a reading list) go in a table or checklist in the note, so they're visible under Text and work with every tool. The page's own data (amber.data) holds what isn't text: settings and goals (amber.store.set), a flashcard schedule, the chosen view, and app-only records such as timed sets or photo logs (collections). Don't copy table rows into data.
+- Things the person should be able to change without you (a budget limit, a goal, their name, categories, a currency) are settings: declare them in <meta name="amber-settings"> and read amber.settings. Amber Notes shows them under App Settings.
 - Put data into the app's store from here with update_page_data (values, add, update, remove, import, files); query it with get_page_data (a collection, a where, a limit).
 
 ## Design

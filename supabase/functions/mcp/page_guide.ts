@@ -71,10 +71,11 @@ Some apps need a service that wants an API key (weather, stocks, translation). K
 - Tick: amber.update({ op: "toggle_checklist", line: item.line }).
 - Edit a cell: amber.update({ op: "set_cell", table: t.index, row: i, col: "Amount", value: "120" }).
 - Add a row: amber.update({ op: "append_row", table: t.index, values: { Date: amber.note.today, Item: "Coffee", Amount: "4" } }).
-- Add a checklist item: there's no op for it yet, so rewrite that heading's section with set_text: the section's current lines from amber.note.markdown plus "- [ ] New item". Keep checklists as checklists; never turn them into a table so the app can add to them.
+- Add a checklist item: amber.update({ op: "add_checklist_item", text: "Sunscreen", under_heading: "Clothes" }). Keep checklists as checklists; never turn them into a table so the app can add to them.
 - Check the result: if !r.ok show r.error next to the control. Don't update your own state optimistically for table data; onChange fires with the new note right after a successful update.
 - Write values the way the note already writes them (✓ vs x, "4" vs "4.00", the same date format).
 - Where data lives: records the person reads or edits as text (expenses, runs, contacts, a reading list) go in a table or checklist in the note, so they're visible under Text and work with every tool. The page's own data (amber.data) holds what isn't text: settings and goals (amber.store.set), a flashcard schedule, the chosen view, and app-only records such as timed sets or photo logs (collections). Don't copy table rows into data.
+- Things the person should be able to change without you (a budget limit, a goal, their name, categories, a currency) are settings: declare them in <meta name="amber-settings"> and read amber.settings. Amber Notes shows them under App Settings.
 - Put data into the app's store from here with update_page_data (values, add, update, remove, import, files); query it with get_page_data (a collection, a where, a limit).
 
 ## Design

@@ -89,7 +89,7 @@ export const appHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<u
     const real = a.data === "real";
     if (real) {
       const [p] = await tx<{ app_previews_real: boolean }[]>`select app_previews_real from public.profiles where user_id = ${c.ctx.userId}`;
-      if (!p?.app_previews_real) throw new ToolError("Previews with real data are off. They show a sample with the same shape by default (data: \"sample\"). The person can allow real data in Amber Notes › Settings › Privacy, \"Let AIs preview apps with my notes\".");
+      if (!p?.app_previews_real) throw new ToolError("Previews with real data are off. They show a sample with the same shape by default (data: \"sample\"). The person can allow real data in Amber Notes › Settings › Apps in Notes, \"Let AIs preview apps with my notes\".");
     }
     const t = today();
     const r = await render({ html, markdown: real ? body : sampleNote(body, t), data: real ? data : sampleData(data, t), today: t, views, capture: true, interact: false, probes: false });
