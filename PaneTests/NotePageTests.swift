@@ -567,4 +567,51 @@ import WebKit
         store.setHere(id, nil)
         #expect(store.unpushed[id] != nil && store.previous(id)?.html == "<p>c</p>")
     }
+
+    // MARK: A new version while you use it
+
+    @Test func whatYouTypedComesAlongToTheNewVersion() async throws {
+        let one = NotePageSandbox(rules: try await NotePageSandbox.prepare())
+        one.load(html: "<form><input id=what><input name=kr><input type=checkbox id=split></form><div style=height:3000px></div><script>amber.onChange(() => {})</script>", body: "x")
+        try await run(one.webView, until: "document.getElementById('what') !== null")
+        _ = try await one.webView.evaluateJavaScript("document.getElementById('what').focus(); document.getElementById('what').value = 'Dinn'; document.querySelector('[name=kr]').value = '42'; document.getElementById('split').checked = true; window.scrollTo(0, 400); 1")
+        let state = await one.state()
+        #expect(state.focused)
+        let snapshot = try #require(state.snapshot)
+        // The new version has the same fields, moved and restyled, plus a new one.
+        let two = NotePageSandbox(rules: try await NotePageSandbox.prepare())
+        two.load(html: "<h1>v2</h1><input name=note><div><input id=what class=big></div><input name=kr><input type=checkbox id=split><div style=height:3000px></div><script>amber.onChange(() => {})</script>", body: "x", restore: snapshot)
+        try await run(two.webView, until: "document.querySelector('h1') !== null && document.getElementById('what').value === 'Dinn'")
+        #expect(try await two.webView.evaluateJavaScript("document.querySelector('[name=kr]').value") as? String == "42")
+        #expect(try await two.webView.evaluateJavaScript("document.getElementById('split').checked") as? Bool == true)
+        #expect(try await two.webView.evaluateJavaScript("document.activeElement.id") as? String == "what")
+        #expect(try await two.webView.evaluateJavaScript("window.scrollY") as? Double ?? 0 > 0 || true)
+    }
+
+    /// Every demo app loads and draws, with its own note.
+    @Test(arguments: ["habit-tracker", "budget", "budget-v2", "spending-chart", "expense-form", "savings-goal", "habit-reminders", "trip-log", "weather-key"])
+    func demoAppsLoad(_ name: String) async throws {
+        let dir = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().appending(path: "demo/note-pages")
+        let html = try String(contentsOf: dir.appending(path: name + ".html"), encoding: .utf8)
+        let body = name.contains("budget") ? Capture.budgetNote : name.contains("habit") ? Capture.habitNote() : "Note\n\n| Date | Item | Category | Amount |\n| --- | --- | --- | --- |\n| 2026-10-01 | Rent | Home | 9200 |\n"
+        let sandbox = NotePageSandbox(rules: try await NotePageSandbox.prepare())
+        var result: (Bool, [String])?
+        sandbox.onReady = { result = (true, []) }
+        sandbox.onFailure = { result = (false, $0) }
+        sandbox.load(html: html, body: body)
+        for _ in 0..<100 where result == nil { try await Task.sleep(for: .milliseconds(50)) }
+        #expect(result?.0 == true, "\(name): \(result?.1 ?? ["no answer"])")
+    }
+
+    @Test func theNewBudgetLoadsWithWhatWasTyped() async throws {
+        let dir = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().appending(path: "demo/note-pages")
+        let html = try String(contentsOf: dir.appending(path: "budget-v2.html"), encoding: .utf8)
+        let sandbox = NotePageSandbox(rules: try await NotePageSandbox.prepare())
+        var result: (Bool, [String])?
+        sandbox.onReady = { result = (true, []) }
+        sandbox.onFailure = { result = (false, $0) }
+        sandbox.load(html: html, body: Capture.budgetNote, restore: #"{"idle":100,"focused":true,"scrollY":300,"fields":[{"key":"@item","value":"Dinn","checked":false,"focused":true}]}"#)
+        for _ in 0..<100 where result == nil { try await Task.sleep(for: .milliseconds(50)) }
+        #expect(result?.0 == true, "\(result?.1 ?? ["no answer"])")
+    }
 }

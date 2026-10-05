@@ -331,4 +331,35 @@ final class NotePagesUITests: XCTestCase {
         shot("41-weather-log")
         pause(1)
     }
+
+    /// Claude's new version arrives while a form is half filled: it waits behind the bar, and the
+    /// typing comes along when you switch.
+    func testLiveUpdate() {
+        launch(["-open", "October budget", "-seedPage", "October budget=\(pages)/budget.html",
+                "-aiPage", "October budget=\(pages)/budget-v2.html", "-aiPageBy", "Claude", "-aiAfter", "9"])
+        mark("live-start")
+        pause(3)
+        let what = app.webViews.textFields["What"].firstMatch
+        XCTAssertTrue(what.waitForExistence(timeout: 5))
+        what.tap()
+        // The simulator's first keyboard shows a typing tip.
+        let tip = app.buttons["Continue"].firstMatch
+        if tip.waitForExistence(timeout: 1.5) { tip.tap(); what.tap() }
+        for c in "Dinn" { what.typeText(String(c)); pause(0.5) }
+        let bar = app.buttons["app.switch"].firstMatch
+        XCTAssertTrue(bar.waitForExistence(timeout: 12), "the new version should wait")
+        pause(1.5)
+        shot("50-live-waiting")
+        bar.tap()
+        pause(2.5)
+        shot("51-live-switched")
+        let again = app.webViews.textFields["What"].firstMatch
+        XCTAssertEqual(again.value as? String, "Dinn", "what you typed comes along")
+        pause(0.5)
+        again.typeText("er")
+        pause(1.5)
+        shot("52-live-continue")
+        mark("live-end")
+        pause(1)
+    }
 }

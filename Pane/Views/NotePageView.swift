@@ -98,10 +98,10 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
     }
 
     /// Shows `html` with `body` as its note. The document's own <!doctype> gives way to the policy.
-    func load(html: String, body: String, data: NotePageData.Doc = NotePageData.empty()) {
+    func load(html: String, body: String, data: NotePageData.Doc = NotePageData.empty(), restore: String? = nil) {
         let ucc = webView.configuration.userContentController
         ucc.removeAllUserScripts()
-        ucc.addUserScript(WKUserScript(source: Self.bootstrap(data: NotePage.data(of: body), store: data), injectionTime: .atDocumentStart, forMainFrameOnly: true, in: .page))
+        ucc.addUserScript(WKUserScript(source: Self.bootstrap(data: NotePage.data(of: body), store: data, restore: restore), injectionTime: .atDocumentStart, forMainFrameOnly: true, in: .page))
         loading = true
         webView.loadHTMLString(Self.sandboxed(html), baseURL: nil)
     }
@@ -119,7 +119,16 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
             + #"<style id="amber-theme">\#(NotePageTheme.css)</style>"# + rest
     }
 
-    static func bootstrap(data: [String: Any], store: NotePageData.Doc = NotePageData.empty()) -> String {
+    /// How the page is being used right now, for swapping in a new version: how long since you
+    /// last touched it, whether a field has focus, and what's typed and where it's scrolled (JSON,
+    /// for `load(restore:)`).
+    func state() async -> (idle: Double, focused: Bool, snapshot: String?) {
+        let r = try? await webView.callAsyncJavaScript("return window.amber && window.amber._state ? JSON.stringify(window.amber._state()) : null", arguments: [:], in: nil, contentWorld: .page)
+        guard let json = r as? String, let d = try? JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any] else { return (.infinity, false, nil) }
+        return ((d["idle"] as? Double) ?? .infinity, (d["focused"] as? Bool) ?? false, json)
+    }
+
+    static func bootstrap(data: [String: Any], store: NotePageData.Doc = NotePageData.empty(), restore: String? = nil) -> String {
         let json = (try? JSONSerialization.data(withJSONObject: data)).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
         let storeJSON = String(data: NotePageData.encode(store), encoding: .utf8) ?? "{}"
         return """
@@ -193,6 +202,35 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
             for (const fn of listeners) { try { fn(note, amber.data); } catch (e) { console.error(e); } }
           } });
           window.amber = amber;
+          // For swapping in a new version while you use it: when you last touched the page, what's
+          // in its fields and where it's scrolled; and putting that back into the new version.
+          let touched = 0;
+          for (const t of ["pointerdown", "keydown", "input", "wheel", "touchstart"]) addEventListener(t, () => { touched = Date.now(); }, true);
+          const fields = () => [...document.querySelectorAll("input, textarea, select")].filter((e) => (e.id || e.name) && e.type !== "file" && e.type !== "password")
+            .map((e) => ({ key: e.id ? "#" + e.id : "@" + e.name, value: e.value, checked: e.checked, focused: e === document.activeElement }));
+          Object.defineProperty(amber, "_state", { value() {
+            const a = document.activeElement;
+            const focused = !!a && a !== document.body && a.matches("input, textarea, select, [contenteditable]");
+            return { idle: touched ? Date.now() - touched : 1e9, focused, scrollY: window.scrollY, fields: fields() };
+          } });
+          const restore = \(restore ?? "null");
+          let restored = false;
+          const put = () => {
+            if (restored) return;
+            restored = true;
+            for (const f of restore.fields || []) {
+              const el = f.key[0] === "#" ? document.getElementById(f.key.slice(1)) : document.querySelector(`[name="${CSS.escape(f.key.slice(1))}"]`);
+              if (!el) continue;
+              if (el.type === "checkbox" || el.type === "radio") el.checked = f.checked; else el.value = f.value;
+              if (f.focused) {
+                el.focus({ preventScroll: true });
+                try { el.setSelectionRange(el.value.length, el.value.length); } catch (e) {}
+              }
+            }
+            window.scrollTo(0, restore.scrollY || 0);
+          };
+          // After the page's first render; a hidden view may not draw a frame, so a timer stands in.
+          if (restore) addEventListener("load", () => { requestAnimationFrame(put); setTimeout(put, 60); });
           // Width classes on <html>, kept current as the window resizes: narrow under 600 px,
           // medium to 900, wide from 900.
           const sized = () => {
@@ -300,22 +338,38 @@ struct NotePageView: View {
     @State private var sandbox: NotePageSandbox?
     @State private var failed: String?
     @State private var ready = false
+    /// The version on screen, and a newer one waiting while you use this one.
+    @State private var shown: String?
+    @State private var pending: String?
+    /// What was typed and where it was scrolled, for the version swapped in.
+    @State private var carry: String?
     @Environment(\.colorScheme) private var scheme
+
+    private var current: String { shown ?? html }
 
     var body: some View {
         ZStack(alignment: .top) {
-            if !ready, let shot = NotePageSnapshots.shared.image(noteID, html: html, dark: scheme == .dark, variant: snapshotVariant) {
+            if !ready, let shot = NotePageSnapshots.shared.image(noteID, html: current, dark: scheme == .dark, variant: snapshotVariant) {
                 snapshot(shot)
                     .onAppear { NotePageTiming.shown(noteID, "snapshot") }
             }
             if let sandbox {
+                // A new version comes in a new web view: the host is rebuilt for it.
                 WebViewHost(view: sandbox.webView)
+                    .id(ObjectIdentifier(sandbox))
                     .opacity(ready ? 1 : 0)
             } else if let failed {
                 ContentUnavailableView("Can't open this app", systemImage: "exclamationmark.triangle", description: Text(failed))
             }
+            if pending != nil { updateBar.transition(.move(edge: .top).combined(with: .opacity)) }
         }
-        .task(id: html) {
+        .onAppear { if shown == nil { shown = html } }
+        .onChange(of: html) { _, now in Task { await arrived(now) } }
+        .task(id: pending) { await waitForIdle() }
+        .task(id: current) {
+            let html = current
+            let restore = carry
+            carry = nil
             do {
                 let s = try await NotePageSandbox.make()
                 #if os(iOS)
@@ -334,7 +388,7 @@ struct NotePageView: View {
                 }
                 s.onFailure = onFailure
                 s.onData = onData
-                s.load(html: html, body: text, data: NotePageDataStore.shared.doc(noteID))
+                s.load(html: html, body: text, data: NotePageDataStore.shared.doc(noteID), restore: restore)
                 sandbox = s
             } catch {
                 failed = error.localizedDescription
@@ -342,6 +396,59 @@ struct NotePageView: View {
         }
         .onChange(of: text) { _, now in sandbox?.push(body: now, data: NotePageDataStore.shared.doc(noteID)) }
         .onChange(of: NotePageDataStore.shared.docs[noteID]) { _, _ in sandbox?.push(body: text, data: NotePageDataStore.shared.doc(noteID)) }
+    }
+
+    /// "Claude updated this app · Switch", while you're in the middle of something.
+    private var updateBar: some View {
+        let by = NotePageStore.shared[noteID]?.by ?? "Your AI"
+        return HStack(spacing: 10) {
+            Image(systemName: "sparkles").foregroundStyle(Color.amberInk)
+            Text(by == AIGlyph.page ? "This app was updated" : "\(by) updated this app")
+                .font(.subheadline.weight(.semibold))
+            Spacer(minLength: 8)
+            Button("Switch") { Task { await swap() } }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Color.amberInk)
+                .accessibilityIdentifier("app.switch")
+        }
+        .padding(.horizontal, 14)
+        .frame(height: 40)
+        .background(.regularMaterial, in: .capsule)
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+        .accessibilityElement(children: .contain)
+    }
+
+    /// A new version arrived. In the middle of something (touched in the last 5 seconds, or a field
+    /// has focus), it waits behind the bar; otherwise it comes in now, keeping what's typed and the
+    /// scroll position.
+    private func arrived(_ new: String) async {
+        guard new != current else { pending = nil; return }
+        guard let s = sandbox, ready else { shown = new; return }
+        let now = await s.state()
+        if now.focused || now.idle < 5000 {
+            withAnimation(.smooth(duration: 0.25)) { pending = new }
+        } else {
+            carry = now.snapshot
+            shown = new
+        }
+    }
+
+    private func swap() async {
+        guard let new = pending else { return }
+        carry = await sandbox?.state().snapshot
+        withAnimation(.smooth(duration: 0.25)) { pending = nil }
+        shown = new
+    }
+
+    /// Swaps on its own once you've left the app alone for 10 seconds.
+    private func waitForIdle() async {
+        while pending != nil, !Task.isCancelled {
+            try? await Task.sleep(for: .seconds(1))
+            guard let s = sandbox else { continue }
+            let now = await s.state()
+            if !now.focused, now.idle >= 10_000 { await swap(); return }
+        }
     }
 
     @ViewBuilder
@@ -487,6 +594,14 @@ enum NotePageTiming {
     static func open(_ id: UUID) {
         guard enabled else { return }
         opened[id] = .now
+    }
+
+    /// Captures only: a line in Documents/note-page-debug.txt.
+    static func debug(_ line: String) {
+        guard ProcessInfo.processInfo.arguments.contains("-uitest") else { return }
+        let url = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appending(path: "note-page-debug.txt")
+        let l = "\(Date().timeIntervalSince1970) \(line)\n"
+        if let h = try? FileHandle(forWritingTo: url) { h.seekToEndOfFile(); h.write(Data(l.utf8)); try? h.close() } else { try? Data(l.utf8).write(to: url) }
     }
 
     static func shown(_ id: UUID, _ what: String) {
