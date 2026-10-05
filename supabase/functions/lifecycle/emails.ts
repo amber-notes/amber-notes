@@ -296,6 +296,14 @@ function inline(s: string, linkClass: string, color: string): string {
   return out + esc(s.slice(last));
 }
 
+/// Cream or dark ink on a ground colour, whichever reads better (for the picture's alt text).
+function inkOn(hex: string): string {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  // Contrast against cream (luminance 0.92) and against the dark ink (0.013).
+  return (0.92 + 0.05) / (lum + 0.05) >= (lum + 0.05) / (0.013 + 0.05) ? "#fff4e6" : "#2a1d10";
+}
+
 const table = (attrs = "") => `<table role="presentation" cellpadding="0" cellspacing="0" border="0"${attrs}>`;
 
 /// A checkbox as the app draws it, built from a table cell so Outlook for Windows shows it too.
@@ -374,8 +382,10 @@ function htmlOf(d: Draft, c: Context): string {
   const v = c.variant ?? 0;
   const body = d.blocks.map((b) => blockHTML(b, c)).join("\n");
   const dot = (color: string) => `<td width="10" height="10" bgcolor="${color}" style="width:10px;height:10px;border-radius:5px;background:${color};font-size:0;line-height:0;">&nbsp;</td><td width="6" style="width:6px;font-size:0;line-height:0;">&nbsp;</td>`;
-  const art = `  <tr><td bgcolor="${d.art.ground}" style="background:${d.art.ground};border-radius:20px;line-height:0;font-size:0;">
-    <img src="${a}/${d.art.file}" width="520" height="312" alt="${esc(d.art.alt)}" style="display:block;width:100%;max-width:520px;height:auto;border:0;border-radius:20px;color:#fff4e6;font-family:${SANS};font-size:14px;line-height:1.4;">
+  // With pictures blocked, the picture's place shows the email's title, large, on the picture's own
+  // ground colour, so the block reads as meant (the picture is decoration; the title says it all).
+  const art = `  <tr><td align="center" valign="middle" bgcolor="${d.art.ground}" style="background:${d.art.ground};border-radius:20px;line-height:0;font-size:0;text-align:center;">
+    <img src="${a}/${d.art.file}" width="520" height="312" alt="${esc(d.title)}" style="display:block;width:100%;max-width:520px;height:auto;border:0;border-radius:20px;color:${inkOn(d.art.ground)};font-family:${DISPLAY};font-size:26px;font-weight:700;line-height:1.3;text-align:center;">
   </td></tr>
   <tr><td class="gap" style="height:16px;line-height:16px;font-size:0;">&nbsp;</td></tr>
 `;
@@ -449,7 +459,7 @@ ${table(` class="ground" width="100%" bgcolor="${L.ground}" style="background:${
 ${table(' width="100%" style="max-width:520px;"')}
   <tr><td style="padding:0 4px 18px;">
     ${table()}<tr>
-      <td style="padding-right:10px;"><img src="${a}/mark.png" width="28" height="28" alt="" style="display:block;border:0;border-radius:7px;"></td>
+      <td style="padding-right:10px;">${table()}<tr><td width="28" height="28" align="center" valign="middle" bgcolor="#f0901a" style="width:28px;height:28px;background:#f0901a;border-radius:7px;text-align:center;"><img src="${a}/mark.png" width="28" height="28" alt="A" style="display:block;width:28px;height:28px;border:0;border-radius:7px;color:#fff4e6;font-family:${DISPLAY};font-size:16px;font-weight:800;line-height:28px;text-align:center;"></td></tr></table></td>
       <td class="ink" style="font-family:${DISPLAY};font-size:18px;font-weight:700;color:#2a1d10;">Amber Notes</td>
     </tr></table>
   </td></tr>
@@ -470,7 +480,7 @@ ${body}
       <tr><td class="pad" style="padding:0 32px 26px;font-family:${SANS};">
         ${table(' width="100%"')}<tr><td class="rule" style="border-top:1px solid ${L.edge};padding-top:18px;">
           ${table()}<tr>
-            <td valign="middle" style="padding-right:12px;"><img src="${a}/emil.jpg" width="44" height="44" alt="" style="display:block;width:44px;height:44px;border:0;border-radius:22px;"></td>
+            <td valign="middle" style="padding-right:12px;">${table()}<tr><td width="44" height="44" align="center" valign="middle" bgcolor="#74604c" style="width:44px;height:44px;background:#74604c;border-radius:22px;text-align:center;"><img src="${a}/emil.jpg" width="44" height="44" alt="E" style="display:block;width:44px;height:44px;border:0;border-radius:22px;color:#fff4e6;font-family:${DISPLAY};font-size:19px;font-weight:700;line-height:44px;text-align:center;"></td></tr></table></td>
             <td valign="middle" style="font-family:${SANS};">
               <p class="ink" style="margin:0;font-size:16px;line-height:1.35;font-weight:600;color:${L.text};">Emil</p>
               <p class="sec" style="margin:0;font-size:14px;line-height:1.4;color:${L.secondary};">I make Amber Notes. Just reply to reach me.</p>

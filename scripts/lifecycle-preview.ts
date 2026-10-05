@@ -29,6 +29,13 @@ for (const v of variants) {
   await Deno.writeTextFile(`${out}/${v.name}.html`, e.html);
   await Deno.writeTextFile(`${out}/${v.name}-light.html`, light);
   await Deno.writeTextFile(`${out}/${v.name}-dark.html`, dark);
+  // Pictures blocked, as Outlook shows mail by default: no src, so only the alt text and the cells'
+  // own colours remain.
+  if (v.name === "stuck" || v.name === "connect") {
+    const blocked = (html: string) => html.replace(/ src="[^"]*"/g, "");
+    await Deno.writeTextFile(`${out}/${v.name}-blocked-light.html`, blocked(light));
+    await Deno.writeTextFile(`${out}/${v.name}-blocked-dark.html`, blocked(dark));
+  }
   await Deno.writeTextFile(`${out}/${v.name}.txt`, `Subject: ${e.subject}\nPreview: ${e.preview}\n\n${e.text}`);
   index.push({ name: v.name, kind: v.kind, subjectB: render(v.kind, { ...v.ctx, variant: 1 }).subject, previewB: render(v.kind, { ...v.ctx, variant: 1 }).preview, subject: e.subject, preview: e.preview, bytes: new TextEncoder().encode(e.html).length });
 }
