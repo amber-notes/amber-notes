@@ -19,6 +19,12 @@ struct NoteDetailView: View {
     @State private var lockSheet: LockSheet?
     @State private var confirmLock = false
     @State private var lockProblem: String?
+    /// A wiki link was tapped whose note doesn't exist yet: its name, while we offer to make it.
+    @State private var missingNote: String?
+    /// The title when the note opened; renaming it points wiki links at the new title on leaving.
+    @State private var titleAtOpen: String?
+    /// Notes that link here.
+    @State private var backlinks: [Note] = []
     @Bindable var note: Note
     let controller: EditorController
     var autofocus = false
@@ -31,7 +37,20 @@ struct NoteDetailView: View {
             .quickLookPreview(previewBinding)
             .fileImporter(isPresented: $importing, allowedContentTypes: [.item], allowsMultipleSelection: true, onCompletion: attach)
             .onAppear(perform: wireController)
-            .onDisappear { saver.flush() }
+            .onDisappear {
+                saver.flush()
+                followRename()
+            }
+            .confirmationDialog(missingNote.map { "Create \u{201C}\($0)\u{201D}?" } ?? "", isPresented: Binding(get: { missingNote != nil }, set: { if !$0 { missingNote = nil } }), titleVisibility: .visible) {
+                Button("Create Note") { if let name = missingNote { createLinkedNote(name) } }
+                    .accessibilityIdentifier("wiki.create")
+            } message: {
+                Text("No note has this title yet.")
+            }
+            .onReceive(NotificationCenter.default.publisher(for: ModelContext.didSave)) { _ in
+                WikiDirectory.invalidate()
+                refreshLinks()
+            }
             .shareLinkChrome(shareLinks, note: note)
             .focusedSceneValue(\.showHistoryAction, { if !note.isLocked { showHistory = true } })
             .sheet(item: $lockSheet) { step in
@@ -72,6 +91,8 @@ struct NoteDetailView: View {
                 controller.clearTint()
             }
             .task(id: note.id) {
+                titleAtOpen = note.body.isEmpty || note.isLocked ? nil : note.title
+                refreshLinks()
                 receipt = nil
                 showAIEdit()
                 #if os(macOS)
@@ -309,6 +330,37 @@ struct NoteDetailView: View {
         }
     }
 
+    // MARK: Wiki links
+
+    /// Colours for the editor's wiki links and the "Linked from" list, from the library as it is now.
+    private func refreshLinks() {
+        controller.wiki = WikiDirectory.scope(for: note, in: context)
+        backlinks = note.isLocked ? [] : context.backlinks(to: note)
+    }
+
+    /// A wiki link was tapped: open its note, or offer to make it, as Obsidian does.
+    private func followWikiLink(_ target: String) {
+        if let linked = context.resolveWikiLink(target, from: note) {
+            onOpenNote(linked.id, false)
+        } else {
+            missingNote = WikiLinks.name(of: target)
+        }
+    }
+
+    /// The note a link named, made in this note's folder and opened for writing.
+    private func createLinkedNote(_ title: String) {
+        let made = context.createNote(in: note.folder.map { .folder($0.id) } ?? .all, body: title + "\n")
+        WikiDirectory.invalidate()
+        onOpenNote(made.id, true)
+    }
+
+    /// Leaving a note whose title changed: links to its old title now name the new one.
+    private func followRename() {
+        guard let old = titleAtOpen, !note.isLocked, note.deletedAt == nil, note.title != old else { return }
+        titleAtOpen = note.title
+        context.retargetWikiLinks(to: note, renamedFrom: old)
+    }
+
     /// A new sub-note, linked where the caret is, opened for writing.
     private func createSubNote() {
         let child = context.createSubNote(of: note)
@@ -331,6 +383,7 @@ struct NoteDetailView: View {
         controller.resolveAttachment = { id in context.attachment(id) }
         controller.resolveNote = { id in context.note(id).map { ($0.title, $0.preview) } }
         controller.openNote = { id in onOpenNote(id, false) }
+        controller.openWiki = { target in followWikiLink(target) }
         // A locked note's files and sub-notes would stay readable: it can't take them.
         controller.newSubNote = { if !note.isLocked { createSubNote() } }
         controller.download = { a in await sync?.download(a) ?? false }
@@ -478,6 +531,14 @@ struct NoteDetailView: View {
                 ForEach(context.allFolders()) { f in
                     Button(f.name) { context.move(note, to: f) }.disabled(note.folder?.id == f.id)
                 }
+            }
+            if !backlinks.isEmpty {
+                Menu("Linked from", systemImage: "link") {
+                    ForEach(backlinks, id: \.id) { n in
+                        Button(n.title) { onOpenNote(n.id, false) }
+                    }
+                }
+                .accessibilityIdentifier("editor.backlinks")
             }
             if !note.isLocked {
                 #if os(iOS)

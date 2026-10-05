@@ -79,6 +79,8 @@ struct MarkdownStyler {
     var bodySize = EditorMetrics.body
     /// Style the first plain line as the title (off for card contents).
     var firstLineIsTitle = true
+    /// Which wiki links lead to a note (nil: show them all as links).
+    var wiki: WikiScope?
 
     var bodyFont: PFont {
         #if os(iOS)
@@ -244,6 +246,7 @@ struct MarkdownStyler {
         }
 
         styleUnderlines(storage, in: full, isActive: isActive, skip: walker.codeRanges)
+        styleWikiLinks(storage, in: full, isActive: isActive)
         let grids = styleGrids(storage, in: full, grids: structure.grids)
         let embeds = styleEmbeds(storage, in: full, embeds: structure.embeds)
         return StyledBlocks(embeds: embeds, grids: grids)
@@ -303,6 +306,37 @@ struct MarkdownStyler {
             let look = hiddenOrDim(active: isActive(m.range))
             storage.addAttributes(look, range: NSRange(location: m.range.location, length: 3))
             storage.addAttributes(look, range: NSRange(location: NSMaxRange(inner), length: 4))
+        }
+    }
+
+    /// Wiki links (`[[Title]]`, `[[Folder/Title]]`, `[[Title|shown]]`, `[[Title#Heading]]`) show
+    /// as links: the brackets, the folders in front and a target with an alias hide like other
+    /// syntax, and show dimmed on the caret's line. A link to a note that doesn't exist yet is
+    /// fainter, as in Obsidian. Tapping one goes through LinkPolicy's `.wiki`.
+    private func styleWikiLinks(_ storage: NSTextStorage, in scope: NSRange, isActive: (NSRange) -> Bool) {
+        let ns = storage.string as NSString
+        let part = ns.substring(with: scope)
+        guard part.contains("[[") else { return }
+        func shift(_ r: NSRange) -> NSRange { NSRange(location: r.location + scope.location, length: r.length) }
+        for link in WikiLinks.links(in: part) {
+            let range = shift(link.range)
+            let target = shift(link.targetRange)
+            let syntax = hiddenOrDim(active: isActive(range))
+            // What's left showing: the alias, else the name (after any folders) and heading.
+            var shown: NSRange
+            if let alias = link.aliasRange.map(shift), alias.length > 0 {
+                shown = alias
+            } else {
+                let written = ns.substring(with: target)
+                let slash = written.lastIndex(of: "/").map { written.utf16.distance(from: written.startIndex, to: $0) + 1 } ?? 0
+                shown = NSRange(location: target.location + slash, length: NSMaxRange(link.headingRange.map(shift) ?? target) - target.location - slash)
+            }
+            guard shown.length > 0 else { continue }
+            storage.addAttributes(syntax, range: NSRange(location: range.location, length: shown.location - range.location))
+            storage.addAttributes(syntax, range: NSRange(location: NSMaxRange(shown), length: NSMaxRange(range) - NSMaxRange(shown)))
+            let exists = wiki?.resolves(link.target) ?? true
+            storage.addAttribute(.foregroundColor, value: exists ? PColor.paneAccent : PColor.paneAccentFaded, range: shown)
+            if let url = LinkPolicy.wikiURL(link.target) { storage.addAttribute(.link, value: url, range: shown) }
         }
     }
 

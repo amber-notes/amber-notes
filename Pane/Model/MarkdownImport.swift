@@ -128,17 +128,26 @@ final class MarkdownImporter {
 
     /// The files of one source, read once: notes, other files by path and by name (for Obsidian's
     /// embeds, which name a file anywhere in the vault).
+    @MainActor
     final class Tree {
         let root: URL
         var notes: [(path: [String], url: URL)] = []
         /// Files that aren't notes, by their standardized path.
         var files: [String: URL] = [:]
         var byName: [String: [URL]] = [:]
-        var notesByName: [String: String] = [:]
         var used: Set<String> = []
         var trashed = 0
         /// Folders every note shares (an export's own top folder, Simplenote's `notes/`): not repeated as folders here.
         let commonPrefix: Int
+        /// Each note's path as a wiki link names it: folders, then the file name without its
+        /// extension (a TextBundle's folder name), lowercased. By standardized file path.
+        private var linkPaths: [String: [String]] = [:]
+        /// Notes by file name without extension, lowercased.
+        private var notesByName: [String: [URL]] = [:]
+        private var titles: [String: String?] = [:]
+        /// Where each note is in `notes`, by standardized file path.
+        private var noteIndex: [String: Int] = [:]
+        private var titleCounts: [String: [URL]]?
 
         init(root: URL) {
             self.root = root.standardizedFileURL
@@ -148,11 +157,13 @@ final class MarkdownImporter {
                     // Standard Notes' and others' backups end in .txt but are JSON.
                     files[url.standardizedFileURL.path] = url
                 case .note:
+                    noteIndex[url.standardizedFileURL.path] = notes.count
                     notes.append((path, url))
-                    let stem = (path.last! as NSString).deletingPathExtension
-                    let title = path.dropLast().last.map { $0.lowercased().hasSuffix(".textbundle") } == true
-                        ? (path[path.count - 2] as NSString).deletingPathExtension : stem
-                    notesByName[title.lowercased()] = MarkdownImporter.cleanName(title)
+                    let bundle = path.dropLast().last.map { $0.lowercased().hasSuffix(".textbundle") } == true
+                    let stem = bundle ? (path[path.count - 2] as NSString).deletingPathExtension : (path.last! as NSString).deletingPathExtension
+                    let dirs = path.dropLast(bundle ? 2 : 1)
+                    linkPaths[url.standardizedFileURL.path] = (dirs + [stem]).map { $0.lowercased() }
+                    notesByName[stem.lowercased(), default: []].append(url)
                 case .file:
                     files[url.standardizedFileURL.path] = url
                     // A TextBundle's own files (info.json) are part of its note, not left-overs.
@@ -188,13 +199,102 @@ final class MarkdownImporter {
             return byName[(decoded as NSString).lastPathComponent.lowercased()]?.first
         }
 
-        /// The title of a note a link points at, by file name.
-        func noteTitle(_ raw: String) -> String? {
-            let s = (raw.removingPercentEncoding ?? raw)
-            let stem = ((s as NSString).lastPathComponent as NSString).deletingPathExtension
-            guard MarkdownImporter.noteExtensions.contains((s as NSString).pathExtension.lowercased()) || (s as NSString).pathExtension.isEmpty else { return nil }
-            return notesByName[stem.lowercased()]
+        /// The note a markdown link (`[text](Other%20note.md)`) points at.
+        func noteFile(_ raw: String, from note: URL) -> URL? {
+            var s = raw.trimmingCharacters(in: .whitespaces)
+            if s.hasPrefix("<"), s.hasSuffix(">") { s = String(s.dropFirst().dropLast()) }
+            if let q = s.firstIndex(where: { $0 == "?" || $0 == "#" }) { s = String(s[..<q]) }
+            let decoded = s.removingPercentEncoding ?? s
+            let ext = (decoded as NSString).pathExtension.lowercased()
+            guard ext.isEmpty || MarkdownImporter.noteExtensions.contains(ext) else { return nil }
+            for candidate in [decoded, s] where !candidate.isEmpty {
+                for url in [URL(fileURLWithPath: candidate, relativeTo: note.deletingLastPathComponent()).standardizedFileURL,
+                            root.appending(path: candidate).standardizedFileURL] where linkPaths[url.path] != nil {
+                    return url
+                }
+            }
+            guard !ext.isEmpty else { return nil }
+            let stem = ((decoded as NSString).lastPathComponent as NSString).deletingPathExtension.lowercased()
+            return notesByName[stem]?.first
         }
+
+        /// The note a wiki link's target names, found the way Obsidian finds it: a path from
+        /// the vault's top or from the linking note's folder, else the one note whose path ends
+        /// with it; among several, the one nearest the linking note, then the shortest path.
+        func wikiTarget(_ target: String, from note: URL) -> URL? {
+            let parts = WikiLinks.stripExtension(target).split(separator: "/").map { $0.trimmingCharacters(in: .whitespaces).lowercased() }.filter { !$0.isEmpty && $0 != "." }
+            guard !parts.isEmpty, let here = linkPaths[note.standardizedFileURL.path]?.dropLast() else { return nil }
+            var relative = Array(here)
+            for p in parts { if p == ".." { _ = relative.popLast() } else { relative.append(p) } }
+            let wanted = parts.filter { $0 != ".." }
+            var hits: [(url: String, path: [String])] = []
+            for (url, path) in linkPaths {
+                if path == wanted || path == relative { return URL(fileURLWithPath: url) }
+                if path.count >= wanted.count, Array(path.suffix(wanted.count)) == wanted { hits.append((url, path)) }
+            }
+            func shared(_ p: [String]) -> Int {
+                var n = 0
+                while n < p.count - 1, n < here.count, p[n] == here[here.startIndex + n] { n += 1 }
+                return n
+            }
+            return hits.min { a, b in
+                if shared(a.path) != shared(b.path) { return shared(a.path) > shared(b.path) }
+                if a.path.count != b.path.count { return a.path.count < b.path.count }
+                return a.url < b.url
+            }.map { URL(fileURLWithPath: $0.url) }
+        }
+
+        /// The title a note gets here (front matter, first heading, else file name); nil for one
+        /// that won't be a note.
+        func title(of url: URL) -> String? {
+            let key = url.standardizedFileURL.path
+            if let t = titles[key] { return t }
+            let t = noteIndex[key].flatMap { MarkdownImporter.read(notes[$0])?.title }
+            titles[key] = t
+            return t
+        }
+
+        /// The folders a note lands in, under the source's folder.
+        func folders(of url: URL) -> [String] {
+            guard let i = noteIndex[url.standardizedFileURL.path] else { return [] }
+            let n = notes[i]
+            let bundle = n.path.count >= 2 && n.path[n.path.count - 2].lowercased().hasSuffix(".textbundle")
+            return Array(n.path.dropLast(bundle ? 2 : 1).dropFirst(commonPrefix)).map(MarkdownImporter.cleanName)
+        }
+
+        /// What a link to this note says once imported: its title, with as many of its folders in
+        /// front as it takes to tell it apart from other notes here with the same title.
+        func linkTarget(for url: URL) -> String? {
+            guard let title = title(of: url) else { return nil }
+            if titleCounts == nil {
+                var counts: [String: [URL]] = [:]
+                for n in notes { if let t = self.title(of: n.url) { counts[WikiLinks.key(t), default: []].append(n.url) } }
+                titleCounts = counts
+            }
+            let others = (titleCounts?[WikiLinks.key(title)] ?? []).filter { $0.standardizedFileURL.path != url.standardizedFileURL.path }.map(folders(of:))
+            guard !others.isEmpty else { return title }
+            let mine = folders(of: url)
+            for k in 1...max(mine.count, 1) where k <= mine.count {
+                let suffix = Array(mine.suffix(k)).map { $0.lowercased() }
+                if !others.contains(where: { o in o.count >= k && Array(o.suffix(k)).map { $0.lowercased() } == suffix }) {
+                    return (mine.suffix(k) + [title]).joined(separator: "/")
+                }
+            }
+            return title
+        }
+    }
+
+    /// A note file read and taken apart; nil when it can't be read or isn't a note.
+    static func read(_ note: (path: [String], url: URL)) -> (parsed: MarkdownNote, title: String, fileStem: String, isBundle: Bool)? {
+        let isBundle = note.path.count >= 2 && note.path[note.path.count - 2].lowercased().hasSuffix(".textbundle")
+        let fileStem = isBundle ? (note.path[note.path.count - 2] as NSString).deletingPathExtension : (note.path.last! as NSString).deletingPathExtension
+        guard let data = try? Data(contentsOf: note.url) else { return nil }
+        let text = decode(data)
+        if isJSON(text) { return nil }
+        let isText = ["txt", "text"].contains(note.url.pathExtension.lowercased())
+        let parsed = MarkdownNote.parse(text, fileName: cleanName(fileStem), notion: fileStem != cleanName(fileStem), plainText: isText)
+        let title = (parsed.title ?? cleanName(fileStem)).replacingOccurrences(of: "\n", with: " ").trimmingCharacters(in: .whitespaces)
+        return (parsed, title.isEmpty ? "Untitled" : title, fileStem, isBundle)
     }
 
     private func add(_ note: (path: [String], url: URL), in tree: Tree, source: ImportSource, destination: ImportDestination) {
@@ -210,7 +310,8 @@ final class MarkdownImporter {
         let isText = ["txt", "text"].contains(note.url.pathExtension.lowercased())
         var parsed = MarkdownNote.parse(text, fileName: Self.cleanName(fileStem), notion: fileStem != Self.cleanName(fileStem), plainText: isText)
 
-        // Links and embeds: files inside the export become attachments, other notes their titles.
+        // Links and embeds: files inside the export become attachments; links to other notes
+        // become wiki links to their titles, so they still lead there.
         var files: [Attachment] = []
         parsed.body = MarkdownNote.rewriteLinks(parsed.body, file: { raw in
             guard let url = tree.file(raw, from: note.url) else { return nil }
@@ -218,7 +319,9 @@ final class MarkdownImporter {
             tree.used.insert(url.standardizedFileURL.path)
             files.append(a)
             return a.markdown
-        }, noteTitle: tree.noteTitle, missing: { self.writer.summary.filesMissing += 1 })
+        }, note: { raw, wiki in
+            (wiki ? tree.wikiTarget(raw, from: note.url) : tree.noteFile(raw, from: note.url)).flatMap(tree.linkTarget)
+        }, missing: { self.writer.summary.filesMissing += 1 })
 
         let body = parsed.body.trimmingCharacters(in: .whitespacesAndNewlines)
         if body.isEmpty && parsed.title == nil && files.isEmpty {
@@ -424,12 +527,15 @@ struct MarkdownNote: Equatable {
 
     private static let wiki = try! NSRegularExpression(pattern: #"(!?)\[\[([^\]\n]+?)\]\]"#)
     private static let mdLink = try! NSRegularExpression(pattern: #"(!?)\[((?:[^\[\]\n]|\[[^\]\n]*\])*)\]\(\s*(<[^>\n]+>|[^)\s]+)(?:\s+"[^"\n]*")?\s*\)"#)
+    private static let inlineCode = try! NSRegularExpression(pattern: #"(`+)(?:(?!\1).)+?\1"#)
     private static let htmlImage = try! NSRegularExpression(pattern: #"<img\s[^>]*src="([^"]+)"[^>]*>"#, options: .caseInsensitive)
 
     /// Links and embeds made Amber Notes': a file inside the export becomes an attachment on a line
-    /// of its own (`file` returns its markdown), a link to another note becomes its title, a wiki
-    /// link `[[Page|Alias]]` its alias. Web links stay. Code blocks are left alone.
-    static func rewriteLinks(_ body: String, file: (String) -> String?, noteTitle: (String) -> String?, missing: () -> Void) -> String {
+    /// of its own (`file` returns its markdown); a wiki link or markdown link to another note in
+    /// the export becomes a wiki link to the title that note gets (`note` returns it, given the
+    /// link's target and whether it was a wiki link). A wiki link to a note that isn't there stays
+    /// as written, like Obsidian's links to notes not yet made. Web links stay. Code is left alone.
+    static func rewriteLinks(_ body: String, file: (String) -> String?, note: (String, Bool) -> String?, missing: () -> Void) -> String {
         var out: [String] = []
         var fence = false
         for line in body.components(separatedBy: "\n") {
@@ -437,12 +543,16 @@ struct MarkdownNote: Equatable {
             if fence { out.append(line); continue }
             var embeds: [String] = []
             var s = line
-            s = replace(wiki, in: s) { m in
+            let code = inlineCode.matches(in: line, range: NSRange(location: 0, length: (line as NSString).length)).map(\.range)
+            s = replace(wiki, in: s) { m, range in
+                if code.contains(where: { NSLocationInRange(range.location, $0) }) { return m[0] }
                 let embed = !m[1].isEmpty
                 let inner = m[2]
                 let target = String(inner.split(separator: "|", maxSplits: 1).first ?? "").trimmingCharacters(in: .whitespaces)
-                let alias = inner.contains("|") ? String(inner.split(separator: "|", maxSplits: 1)[1]) : nil
-                let page = String(target.split(separator: "#", maxSplits: 1).first ?? "")
+                let alias = inner.contains("|") ? String(inner.split(separator: "|", maxSplits: 1)[1]).trimmingCharacters(in: .whitespaces) : nil
+                let parts = target.split(separator: "#", maxSplits: 1).map(String.init)
+                let page = (parts.first ?? "").trimmingCharacters(in: .whitespaces)
+                let heading = parts.count > 1 ? parts[1].trimmingCharacters(in: .whitespaces) : nil
                 if embed {
                     let ext = (page as NSString).pathExtension.lowercased()
                     if !ext.isEmpty, !noteExtensions.contains(ext) {
@@ -450,23 +560,32 @@ struct MarkdownNote: Equatable {
                         return ""
                     }
                 }
-                // An image size (`![[pic.png|300]]`) isn't an alias.
-                if let alias, Int(alias) == nil { return alias }
-                return noteTitle(page) ?? MarkdownImporter.cleanName((page as NSString).lastPathComponent)
+                guard !page.isEmpty else { return alias ?? heading ?? "" }
+                // An embedded note (`![[Note]]`) comes in as a link to it.
+                guard let resolved = note(page, true) else { return "[[\(inner)]]" }
+                // What the reader saw stays what they see, when the title differs from the name.
+                let shown = alias ?? (WikiLinks.key(WikiLinks.name(of: resolved)) == WikiLinks.key(WikiLinks.name(of: page)) ? nil : WikiLinks.name(of: page))
+                return WikiLinks.markdown(target: resolved, heading: heading, alias: shown)
             }
-            s = replace(htmlImage, in: s) { m in
+            s = replace(htmlImage, in: s) { m, _ in
                 guard !isExternal(m[1]) else { return m[0] }
                 if let md = file(m[1]) { embeds.append(md) } else { missing() }
                 return ""
             }
-            s = replace(mdLink, in: s) { m in
+            let codeNow = inlineCode.matches(in: s, range: NSRange(location: 0, length: (s as NSString).length)).map(\.range)
+            s = replace(mdLink, in: s) { m, range in
+                if codeNow.contains(where: { NSLocationInRange(range.location, $0) }) { return m[0] }
                 let image = !m[1].isEmpty
                 let text = m[2]
                 let dest = m[3]
                 guard !isExternal(dest) else { return m[0] }
-                if let title = noteTitle(dest), !image { return text.isEmpty ? title : text }
+                let linked = image ? nil : note(dest, false)
+                if let linked {
+                    let same = text.isEmpty || WikiLinks.key(text) == WikiLinks.key(WikiLinks.name(of: linked))
+                    return WikiLinks.markdown(target: linked, alias: same ? nil : text)
+                }
                 if let md = file(dest) { embeds.append(md); return image ? "" : text }
-                if noteTitle(dest) == nil, !(dest as NSString).pathExtension.isEmpty, !noteExtensions.contains((dest as NSString).pathExtension.lowercased()) { missing() }
+                if !(dest as NSString).pathExtension.isEmpty, !noteExtensions.contains((dest as NSString).pathExtension.lowercased()) { missing() }
                 return text
             }
             if s == line {
@@ -491,14 +610,14 @@ struct MarkdownNote: Equatable {
         return d.hasPrefix("#") || d.range(of: #"^[A-Za-z][A-Za-z0-9+.-]*:"#, options: .regularExpression) != nil
     }
 
-    private static func replace(_ re: NSRegularExpression, in s: String, with make: ([String]) -> String) -> String {
+    private static func replace(_ re: NSRegularExpression, in s: String, with make: ([String], NSRange) -> String) -> String {
         let ns = s as NSString
         var out = ""
         var last = 0
         for m in re.matches(in: s, range: NSRange(location: 0, length: ns.length)) {
             out += ns.substring(with: NSRange(location: last, length: m.range.location - last))
             let groups = (0..<m.numberOfRanges).map { m.range(at: $0).location == NSNotFound ? "" : ns.substring(with: m.range(at: $0)) }
-            out += make(groups)
+            out += make(groups, m.range)
             last = NSMaxRange(m.range)
         }
         return out + ns.substring(from: last)

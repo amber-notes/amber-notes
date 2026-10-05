@@ -110,6 +110,10 @@ final class EditorController {
     @ObservationIgnored var resolveNote: (UUID) -> (title: String, preview: String)? = { _ in nil }
     /// Opens a note by id (set by the note screen).
     @ObservationIgnored var openNote: (UUID) -> Void = { _ in }
+    /// Which wiki links lead to a note, for the editor's colours (set by the note screen).
+    var wiki: WikiScope?
+    /// Follows a wiki link by its target, or offers to make the note (set by the note screen).
+    @ObservationIgnored var openWiki: (String) -> Void = { _ in }
     /// Creates a sub-note linked from here (set by the note screen).
     @ObservationIgnored var newSubNote: () -> Void = {}
 }

@@ -131,6 +131,14 @@ final class EditorCore {
         publish(blocks)
     }
 
+    /// The library's titles changed (or the note moved): wiki links are coloured again.
+    func setWiki(_ wiki: WikiScope?, storage: NSTextStorage, selection: NSRange?) {
+        guard styler.wiki != wiki else { return }
+        styler.wiki = wiki
+        needsFull = true
+        restyle(storage, selection: selection, force: true)
+    }
+
     /// The last few restyle regions, for tests that check incremental styling.
     private(set) var lastRegions: [String] = []
 
@@ -430,6 +438,7 @@ private struct PlatformEditor: UIViewRepresentable {
     func makeUIView(context: Context) -> PaneTextView {
         let view = PaneTextView(frame: .zero)
         view.core.styler.firstLineIsTitle = titleLine
+        view.core.styler.wiki = controller.wiki
         view.configure(text: initialText, header: header)
         view.accessibilityIdentifier = identifier
         view.core.onChange = onChange
@@ -446,6 +455,7 @@ private struct PlatformEditor: UIViewRepresentable {
         view.setHeader(header)
         view.syncExternal(initialText)
         if controller.target !== view { controller.target = view }
+        view.setWiki(controller.wiki)
         // Read here so a change to it lays the text out again.
         _ = controller.bottomReserve
         view.setNeedsLayout()
@@ -792,6 +802,8 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
 
     private var editingSelection: NSRange? { isFirstResponder ? selectedRange : nil }
 
+    func setWiki(_ wiki: WikiScope?) { core.setWiki(wiki, storage: textStorage, selection: editingSelection) }
+
     func textViewDidBeginEditing(_ textView: UITextView) {
         controller?.isEditing = true
         core.restyle(textStorage, selection: selectedRange, force: true)
@@ -807,6 +819,7 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
         switch LinkPolicy.action(for: url) {
         case .open(let url): return UIAction { _ in UIApplication.shared.open(url) }
         case .note(let id): return UIAction { [weak self] _ in self?.controller?.openNote(id) }
+        case .wiki(let target): return UIAction { [weak self] _ in self?.controller?.openWiki(target) }
         case .nothing: return nil
         }
     }
@@ -974,6 +987,7 @@ private struct PlatformEditor: NSViewRepresentable {
         scroll.scrollerStyle = .overlay
         let view = PaneTextView(frame: .zero)
         view.core.styler.firstLineIsTitle = titleLine
+        view.core.styler.wiki = controller.wiki
         view.configure(text: initialText, header: header)
         view.setAccessibilityIdentifier(identifier)
         view.core.onChange = onChange
@@ -991,6 +1005,7 @@ private struct PlatformEditor: NSViewRepresentable {
         view.setHeader(header)
         view.syncExternal(initialText)
         if controller.target !== view { controller.target = view }
+        view.setWiki(controller.wiki)
     }
 }
 
@@ -1179,6 +1194,7 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
         switch LinkPolicy.action(for: link) {
         case .open(let url): NSWorkspace.shared.open(url)
         case .note(let id): controller?.openNote(id)
+        case .wiki(let target): controller?.openWiki(target)
         case .nothing: NSSound.beep()
         }
         return true
@@ -1315,6 +1331,8 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
     }
 
     private var editingSelection: NSRange? { window?.firstResponder === self ? selectedRange() : nil }
+
+    func setWiki(_ wiki: WikiScope?) { if let storage = textStorage { core.setWiki(wiki, storage: storage, selection: editingSelection) } }
 
     override func becomeFirstResponder() -> Bool {
         let ok = super.becomeFirstResponder()
