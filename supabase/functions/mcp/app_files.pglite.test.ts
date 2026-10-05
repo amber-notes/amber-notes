@@ -27,27 +27,27 @@ Deno.test("a project app: scaffold, files, edits, compile errors, checks and ver
     // The app's data is JSON in its store (the sample keeps its shape).
     await tool(pg, a, "update_page_data", { id, values: { log: [{ Date: "2026-10-01", Exercise: "Squat", Kg: "80" }, { Date: "2026-10-03", Exercise: "Bench", Kg: "60" }] } });
     const made = await tool(pg, a, "create_app", { id });
-    assertEquals(made.files.map((f: { path: string }) => f.path), ["/README.md", "/index.html", "/src/App.jsx", "/src/data.js", "/src/main.jsx", "/src/screens/Home.jsx", "/src/screens/Settings.jsx", "/src/styles.css"]);
+    assertEquals(made.files.map((f: { path: string }) => f.path), ["/README.md", "/index.html", "/package.json", "/src/App.tsx", "/src/components/ui/button.tsx", "/src/components/ui/card.tsx", "/src/components/ui/input.tsx", "/src/components/ui/label.tsx", "/src/index.css", "/src/lib/amber.ts", "/src/lib/utils.ts", "/src/main.tsx", "/tsconfig.json"]);
     assertEquals(made.opens, "Opens cleanly at 390 and 1280 px (over a sample of its data).");
     assertStringIncludes(await fails(tool(pg, a, "create_app", { id })), "already has an app");
 
     const listed = await tool(pg, a, "list_app_files", { id }, false);
     assertStringIncludes(listed.readme, "# Training");
-    const home = await tool(pg, a, "read_app_file", { id, path: "src/screens/Home.jsx" }, false);
-    assertStringIncludes(home.content, "     1\timport { useNote } from \"amber\";");
+    const main = await tool(pg, a, "read_app_file", { id, path: "src/main.tsx" }, false);
+    assertStringIncludes(main.content, "     1\timport { StrictMode } from \"react\";");
 
-    // A screen over the app's log, through a new component.
-    await tool(pg, a, "write_app_file", { id, path: "/src/components/Entry.jsx", content: `import { ListRow } from "amber-ui";\nexport default function Entry({ row }) { return <ListRow title={row.Exercise} subtitle={row.Date} trailing={row.Kg + " kg"} />; }\n` });
+    // A list over the app's log, through a new component, the way it's done in any React app.
+    await tool(pg, a, "write_app_file", { id, path: "/src/components/Entry.tsx", content: `import { Dumbbell } from "lucide-react";\nexport default function Entry({ row }: { row: { Exercise: string; Date: string; Kg: string } }) { return <li className="flex items-center gap-3 py-2"><Dumbbell className="size-4" /><span className="flex-1">{row.Exercise}</span><span className="text-muted-foreground">{row.Kg} kg</span></li>; }\n` });
     const edited = await tool(pg, a, "edit_app_file", {
-      id, path: "/src/screens/Home.jsx",
-      old_string: `import { EmptyState } from "amber-ui";`,
-      new_string: `import { useStore } from "amber";\nimport { EmptyState, List } from "amber-ui";\nimport Entry from "../components/Entry.jsx";`,
+      id, path: "/src/App.tsx",
+      old_string: `import { useNote } from "@/lib/amber";`,
+      new_string: `import { useNote, useStore } from "@/lib/amber";\nimport Entry from "@/components/Entry";`,
     });
     assertStringIncludes(JSON.stringify(edited), "saved");
     const r2 = await tool(pg, a, "edit_app_file", {
-      id, path: "/src/screens/Home.jsx",
-      old_string: `      <EmptyState title="Nothing here yet" body="This screen does the app's main job." />`,
-      new_string: `      <List title="Log">{useStore("log", [])[0].map((r) => <Entry row={r} />)}</List>`,
+      id, path: "/src/App.tsx",
+      old_string: `          <Button>Get started</Button>`,
+      new_string: `          <ul>{useStore("log", [] as { Exercise: string; Date: string; Kg: string }[])[0].map((r, i) => <Entry key={i} row={r} />)}</ul>`,
       look: true,
     });
     assert(r2 instanceof Content);
@@ -55,23 +55,24 @@ Deno.test("a project app: scaffold, files, edits, compile errors, checks and ver
     assertEquals(result.opens, "Opens cleanly at 390 and 1280 px (over a sample of its data).");
     assert(r2.content.some((b) => b.type === "image"));
 
-    // Refused: a syntax error, a network address; warned: a missing import, table by position, window.amber.
-    assertStringIncludes(await fails(tool(pg, a, "write_app_file", { id, path: "/src/screens/Bad.jsx", content: "export default () => <div>\n" })), "/src/screens/Bad.jsx:2:");
-    assertStringIncludes(await fails(tool(pg, a, "write_app_file", { id, path: "/src/x.js", content: `fetch("https://evil.example/x")` })), "external addresses");
-    const w = await tool(pg, a, "write_app_file", { id, path: "/src/screens/Old.jsx", content: `import Gone from "./Gone.jsx";\nexport default () => <p>{window.amber.note.tables[0].rows.length}</p>;\n` });
-    const warned = [...w.errors, ...w.notes].join("\n");
-    for (const want of ["./Gone.jsx", "window.amber", "keep data in the note"]) assertStringIncludes(warned, want);
-    await tool(pg, a, "delete_app_file", { id, path: "/src/screens/Old.jsx" });
+    // Refused: a syntax error, CSS that doesn't compile, a network address. Errors: an import to nothing.
+    assertStringIncludes(await fails(tool(pg, a, "write_app_file", { id, path: "/src/Bad.tsx", content: "export default () => <div>\n" })), "/src/Bad.tsx:2:");
+    assertStringIncludes(await fails(tool(pg, a, "write_app_file", { id, path: "/src/x.ts", content: `fetch("https://evil.example/x")` })), "external addresses");
+    assertStringIncludes(await fails(tool(pg, a, "edit_app_file", { id, path: "/src/index.css", old_string: `@import "tw-animate-css";`, new_string: `@import "tw-animate-css";\n.x { @apply not-a-class; }` })), "doesn't compile");
+    const w = await tool(pg, a, "write_app_file", { id, path: "/src/Old.tsx", content: `import Gone from "./Gone";\nimport { useTable } from "amber";\nexport default () => <p>{useTable("Log").rows.length}{(window as any).amber.note.title}</p>;\n` });
+    assertStringIncludes(w.errors.join("\n"), "./Gone");
+    for (const want of ["window.amber", "keep data in the note"]) assertStringIncludes(w.notes.join("\n"), want);
+    await tool(pg, a, "delete_app_file", { id, path: "/src/Old.tsx" });
 
-    // A script error shows up in the write's check.
-    const broken = await tool(pg, a, "edit_app_file", { id, path: "/src/components/Entry.jsx", old_string: "return <ListRow", new_string: "nope.x; return <ListRow" });
+    // A script error shows up as an error in the write's answer.
+    const broken = await tool(pg, a, "edit_app_file", { id, path: "/src/components/Entry.tsx", old_string: "return <li", new_string: "(globalThis as any).nope.x; return <li" });
     assertStringIncludes(JSON.stringify(broken.errors), "nope");
-    await tool(pg, a, "edit_app_file", { id, path: "/src/components/Entry.jsx", old_string: "nope.x; ", new_string: "" });
+    await tool(pg, a, "edit_app_file", { id, path: "/src/components/Entry.tsx", old_string: "(globalThis as any).nope.x; ", new_string: "" });
 
     // Moving a file breaks its importer until that's fixed.
-    const moved = await tool(pg, a, "move_app_file", { id, from: "/src/components/Entry.jsx", to: "/src/components/LogEntry.jsx" });
-    assertStringIncludes(moved.errors.join("\n"), "../components/Entry.jsx");
-    await tool(pg, a, "edit_app_file", { id, path: "/src/screens/Home.jsx", old_string: "../components/Entry.jsx", new_string: "../components/LogEntry.jsx" });
+    const moved = await tool(pg, a, "move_app_file", { id, from: "/src/components/Entry.tsx", to: "/src/components/LogEntry.tsx" });
+    assertStringIncludes(moved.errors.join("\n"), "@/components/Entry");
+    await tool(pg, a, "edit_app_file", { id, path: "/src/App.tsx", old_string: "@/components/Entry", new_string: "@/components/LogEntry" });
     assertStringIncludes(await fails(tool(pg, a, "delete_app_file", { id, path: "/index.html" })), "can't be deleted");
 
     // check_app knows projects; edit_note_page points to the file tools; get_note_page lists files.
@@ -79,7 +80,7 @@ Deno.test("a project app: scaffold, files, edits, compile errors, checks and ver
     assertEquals([checked.ok, checked.errors], [true, []]);
     assertStringIncludes(await fails(tool(pg, a, "edit_note_page", { id, edits: [{ old_text: "a", new_text: "b" }] })), "edit_app_file");
     const page = await tool(pg, a, "get_note_page", { id }, false);
-    assert(page.project && page.files.includes("/src/components/LogEntry.jsx"));
+    assert(page.project && page.files.includes("/src/components/LogEntry.tsx"));
 
     // A whole session of writes is one version: the app before it (none here) and nothing between.
     const versions = await tool(pg, a, "get_note_page", { id }, false);

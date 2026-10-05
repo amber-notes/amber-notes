@@ -180,12 +180,9 @@ export const dataTools = [
     annotations: change,
   },
   {
-    name: "get_page_guide", title: "How to build note pages",
-    description: "The guide to building and changing a note's app: the project (Preact, the \"amber\" hooks, amber-ui, amber-router), where data lives, design and accessibility, the default stylesheet and the workflow. Call once before making, redesigning or fixing an app. With example, returns a complete example project's files; with kit, one amber-ui component's source to copy into the app.",
-    inputSchema: { type: "object", properties: {
-      example: { type: "string", enum: Object.keys(APP_EXAMPLES), description: "A complete example project." },
-      kit: { type: "string", enum: KIT_COMPONENTS, description: "An amber-ui component's source file." },
-    } },
+    name: "get_page_guide", title: "Where a note's app lives",
+    description: "Where a note's app lives and what it can use: iPhone and Mac, the project (Vite + React + TypeScript + Tailwind + shadcn/ui) and how it's compiled, its JSON data and the tools for it, network and API keys, and how to see your work. Call once before making or changing an app.",
+    inputSchema: { type: "object", properties: {} },
     annotations: read,
   },
   ...appTools,

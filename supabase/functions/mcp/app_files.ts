@@ -8,7 +8,7 @@ import { hostDeclared, declaredHosts } from "./page.ts";
 import { sampleData, sampleNote } from "./app_sample.ts";
 import { render, renderedFindings } from "./app_check.ts";
 import {
-  brokenImports, cleanPath, compile, editText, needsCompile, numbered, parseStored, type Project, projectProblems, serialize, sourceProblems, styleWarnings,
+  brokenImports, cleanPath, compile, editText, isReact, linkProject, needsCompile, numbered, parseStored, type Project, projectProblems, serialize, sourceProblems, styleWarnings,
 } from "./app_project.ts";
 import { scaffold } from "./app_scaffold.ts";
 import { bodyOf, Content, findNote, type Note, ToolError, type Call, type Tx } from "./tools.ts";
@@ -24,9 +24,9 @@ const AFTER = "Every write compiles .jsx/.tsx/.ts, checks the whole project and 
 
 export const fileTools = [
   {
-    name: "create_app", title: "Start a note's app as a project",
-    description: "Gives a note an app as a small Preact project to build on: /index.html, /src/main.jsx, /src/App.jsx (an amber-ui Shell: tab bar on iPhone, sidebar from 900 px), /src/screens/Home.jsx, /src/screens/Settings.jsx, /src/data.js, /src/styles.css and /README.md. " +
-      "Start every new app here (unless it is truly one small screen), then shape it with write_app_file and edit_app_file. Call get_page_guide first. A note that already has an app is left alone unless replace is true (the old app stays in its versions).",
+    name: "create_app", title: "Start a note's app",
+    description: "Gives a note an app as a normal Vite + React + TypeScript + Tailwind + shadcn/ui project: package.json, tsconfig.json, index.html, src/main.tsx, src/App.tsx, src/index.css (Tailwind, shadcn's variables set from Amber's colours), src/lib/utils.ts (cn), src/lib/amber.ts (the app's data), src/components/ui/ (shadcn components) and README.md. " +
+      "Then build the app with write_app_file and edit_app_file. A note that already has an app is left alone unless replace is true (the old app stays in its versions).",
     inputSchema: { type: "object", properties: { ...noteRef, replace: { type: "boolean", description: "Replace the note's current app with a fresh project." } } },
     annotations: write,
   },
@@ -89,7 +89,10 @@ const lines = (t: string) => t.split("\n").length;
 const fileList = (p: Project) => Object.keys(p.files).sort().map((path) => ({ path, bytes: new TextEncoder().encode(p.files[path]).length, lines: lines(p.files[path]) }));
 
 /** Checks, stores and reports a project after one change. Refuses what the app couldn't run. */
-async function saveProject(tx: Tx, c: Call, n: Note, p: Project, changed: string, a: Args) {
+async function saveProject(tx: Tx, c: Call, n: Note, unlinked: Project, changed: string, a: Args) {
+  const linked = await linkProject(unlinked);
+  if (linked.error) throw new ToolError(`Not saved: the CSS doesn't compile.\n${linked.error}`);
+  const p = linked.project;
   const stored = serialize(p);
   const declared = declaredHosts(p.files["/index.html"] ?? "");
   const problems = [...projectProblems(p), ...sourceProblems(p, (h) => hostDeclared(declared, h))];
@@ -126,8 +129,9 @@ async function saveProject(tx: Tx, c: Call, n: Note, p: Project, changed: string
 /** A project with one file set: compiled if it needs it. A syntax error refuses the write. */
 async function withFile(p: Project, path: string, content: string): Promise<Project> {
   const next: Project = { amberApp: 1, files: { ...p.files, [path]: content }, compiled: { ...p.compiled } };
-  if (needsCompile(path)) {
-    const out = await compile(path, content);
+  const react = isReact(next);
+  if (needsCompile(path, react)) {
+    const out = await compile(path, content, react ? "react" : "preact");
     if ("error" in out) throw new ToolError(`Not saved: ${path} doesn't compile.\n${out.error}`);
     next.compiled[path] = out.code;
   }

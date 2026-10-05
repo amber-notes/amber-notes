@@ -46,11 +46,42 @@ Deno.test("imports: missing files, unknown bare names, URLs and an own import ma
     "/src/styles.css": "",
   } };
   const r = brokenImports(p).join("\n");
-  assertStringIncludes(r, "/src/App.jsx doesn't exist");
+  assertStringIncludes(r, "imports ./App.jsx, but there's no such file");
   assertStringIncludes(r, `"lodash"`);
   assertStringIncludes(r, "https://esm.sh/x");
   assertStringIncludes(r, "cdn.example");
   assert(!r.includes("preact\""));
   assertStringIncludes(projectProblems({ ...p, files: { "/index.html": `<script type="importmap">{}</script>` } }).join(), "import map");
   assertStringIncludes(projectProblems({ ...p, files: { "/a.js": "" } }).join(), "/index.html");
+});
+
+Deno.test("a React + Tailwind project links like Vite: @/ alias, no extensions, CSS from the classes used", async () => {
+  const { linkProject, isReact } = await import("./app_project.ts");
+  const files: Record<string, string> = {
+    "/index.html": `<div id="root"></div><script type="module" src="/src/main.tsx"></script>`,
+    "/package.json": `{ "dependencies": { "react": "^19" } }`,
+    "/src/main.tsx": `import { createRoot } from "react-dom/client";\nimport "./index.css";\nimport App from "@/App";\ncreateRoot(document.getElementById("root")!).render(<App />);`,
+    "/src/App.tsx": `import { cn } from "@/lib/utils";\nimport { Button } from "./components/ui/button";\nexport default function App() { return <main className={cn("flex p-4", "md:grid-cols-3")}><Button /></main>; }`,
+    "/src/components/ui/button.tsx": `export function Button() { return <button className="rounded-md bg-primary px-3 dark:bg-zinc-900">Go</button>; }`,
+    "/src/lib/utils.ts": `export const cn = (...xs: string[]) => xs.join(" ");`,
+    "/src/index.css": `@import "tailwindcss";\n@import "tw-animate-css";\n@theme inline { --color-primary: var(--amber-accent); }`,
+  };
+  const p = { amberApp: 1 as const, files, compiled: {} as Record<string, string> };
+  assert(isReact(p));
+  const t0 = performance.now();
+  for (const f of Object.keys(files).filter((f) => /\.tsx?$/.test(f))) { const r = await compile(f, files[f], "react"); assert("code" in r); p.compiled[f] = r.code; }
+  const t1 = performance.now();
+  const linked = await linkProject(p);
+  const t2 = performance.now();
+  console.log(`compile ${Math.round(t1 - t0)} ms (4 files), link + tailwind ${Math.round(t2 - t1)} ms (tailwind ${linked.ms.tailwind} ms)`);
+  const c = linked.project.compiled;
+  assertStringIncludes(c["/src/main.tsx"], `from "/src/App.tsx"`);
+  assertStringIncludes(c["/src/main.tsx"], `l.href = "/src/index.css"`);
+  assertStringIncludes(c["/src/main.tsx"], `from "react/jsx-runtime"`);
+  assertStringIncludes(c["/src/App.tsx"], `from "/src/lib/utils.ts"`);
+  assertStringIncludes(c["/src/App.tsx"], `from "/src/components/ui/button.tsx"`);
+  for (const cls of [".flex", ".p-4", ".bg-primary", "md\\:grid-cols-3", "dark\\:bg-zinc-900"]) assertStringIncludes(c["/src/index.css"], cls);
+  assertEquals(brokenImports(linked.project), []);
+  // Linking again changes nothing.
+  assertEquals((await linkProject(linked.project)).project.compiled, c);
 });

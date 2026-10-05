@@ -209,7 +209,7 @@ Deno.test("no text of an encrypted account is stored or logged readably, whateve
     assertEquals(added.data.values, { note: CANARY, more: CANARY });
     assertEquals((await tool("get_page_data", { id: tracker, collection: "runs", where: { what: { contains: "imported" } } })).records[0].km, 5);
     assertEquals((await tool("query_app_data", { id: tracker, from: "runs", where: { what: { contains: CANARY } }, sum: ["km"] })).sum.km, 5);
-    assertStringIncludes((await tool("get_page_guide")).guide, "amber.onChange");
+    assertStringIncludes((await tool("get_page_guide")).guide, "useCollection");
     // The app as a project of files: the canary in a source file, its compiled module and the README.
     await tool("create_app", { id: tracker, replace: true });
     await tool("write_app_file", { id: tracker, path: "/src/canary.js", content: `export const c = "${CANARY}";` });

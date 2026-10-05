@@ -12,7 +12,9 @@ export const MAX_PROJECT_BYTES = 3 * 1024 * 1024;
 /** Bare names the app's import map resolves (the host owns the map; the page never writes one). */
 export const BARE_IMPORTS = [
   "preact", "preact/hooks", "preact/jsx-runtime", "htm", "amber", "amber-ui", "amber-router",
-  "chart.js", "d3", "three", "tone", "dayjs", "marked", "dompurify", "animejs", "canvas-confetti", "topojson-client",
+  "chart.js", "d3", "three", "tone", "dayjs", "marked", "dompurify", "animejs", "canvas-confetti", "topojson-client", "world-atlas",
+  // The React stack (on preact/compat) and shadcn/ui's dependencies, as the app's import map has them.
+  "react", "react-dom", "react-dom/client", "react/jsx-runtime", "clsx", "tailwind-merge", "class-variance-authority", "lucide-react", "@radix-ui/*",
 ];
 
 const COMPILED = /\.(jsx|tsx|ts)$/;
@@ -79,13 +81,14 @@ export function numbered(text: string, offset = 1, limit = 2000): { text: string
 }
 
 let ready: Promise<void> | null = null;
-/** The agreed transform: esbuild, JSX automatic with preact, ESM, es2020, imports as written. */
-export async function compile(path: string, source: string): Promise<{ code: string } | { error: string }> {
+/** The agreed transform: esbuild, JSX automatic (React's runtime, which the app maps to
+ *  preact/compat, or Preact's for older projects), ESM, es2020, imports as written. */
+export async function compile(path: string, source: string, jsxImportSource: "react" | "preact" = "preact"): Promise<{ code: string } | { error: string }> {
   ready ??= esbuild.initialize({ worker: false });
   await ready;
-  const loader = path.endsWith(".tsx") ? "tsx" : path.endsWith(".ts") ? "ts" : "jsx";
+  const loader = path.endsWith(".tsx") ? "tsx" : path.endsWith(".ts") ? "ts" : /\.m?js$/.test(path) ? "js" : "jsx";
   try {
-    const r = await esbuild.transform(source, { loader, jsx: "automatic", jsxImportSource: "preact", format: "esm", target: "es2020", sourcemap: false, sourcefile: path });
+    const r = await esbuild.transform(source, { loader, jsx: "automatic", jsxImportSource, format: "esm", target: "es2020", sourcemap: false, sourcefile: path });
     return { code: r.code };
   } catch (e) {
     // deno-lint-ignore no-explicit-any
@@ -93,7 +96,71 @@ export async function compile(path: string, source: string): Promise<{ code: str
     return { error: errs?.length ? errs.slice(0, 5).map((x) => `${path}:${x.location?.line ?? "?"}:${(x.location?.column ?? 0) + 1}: ${x.text}${x.location?.lineText ? `\n    ${x.location.lineText.trim()}` : ""}`).join("\n") : String(e) };
   }
 }
-export const needsCompile = (path: string) => COMPILED.test(path);
+export const needsCompile = (path: string, react = false) => COMPILED.test(path) || (react && /\.m?js$/.test(path));
+
+/** A React project (React's names, which the app maps to preact/compat) rather than a Preact one. */
+export const isReact = (p: Project) => /"react"/.test(p.files["/package.json"] ?? "") || Object.entries(p.files).some(([f, t]) => /\.(jsx|tsx)$/.test(f) && /from\s*["']react["']/.test(t));
+
+const EXTS = [".tsx", ".ts", ".jsx", ".js", ".mjs"];
+/** Where an import points in the project, the way Vite resolves it: "@/x" is /src/x, and a path
+ *  without an extension finds x.tsx, x.ts, x.jsx, x.js or x/index.*. null: a bare name (the import
+ *  map's) or nothing there. */
+export function resolveImport(p: Project, from: string, spec: string): string | null {
+  let base: string;
+  if (spec.startsWith("@/")) base = "/src/" + spec.slice(2);
+  else if (spec.startsWith(".") || spec.startsWith("/")) base = resolveFrom(from, spec);
+  else return null;
+  if (p.files[base] !== undefined) return base;
+  for (const e of EXTS) if (p.files[base + e] !== undefined) return base + e;
+  for (const e of EXTS) if (p.files[`${base}/index${e}`] !== undefined) return `${base}/index${e}`;
+  return null;
+}
+
+const CSS_LINK = (href: string) => `(() => { if (!document.querySelector('link[href="${href}"]')) { const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "${href}"; document.head.appendChild(l); } })();`;
+
+/**
+ * Links a project after a change, as a bundler would but file by file: every compiled module's
+ * imports point at the exact file they mean ("@/lib/utils" → "/src/lib/utils.ts"), a CSS import
+ * becomes a <link> to it, and each stylesheet that imports Tailwind is generated from the classes
+ * the project's files use. The device serves the result as it is.
+ */
+export async function linkProject(p: Project): Promise<{ project: Project; ms: { tailwind: number }; error?: string }> {
+  const compiled: Record<string, string> = {};
+  for (const [path, code] of Object.entries(p.compiled)) {
+    if (path.endsWith(".css")) continue;
+    let out = code.replace(/(^|[;\n])\s*import\s*["']([^"']+\.css)["'];?/g, (m, lead, spec) => {
+      const to = resolveImport(p, path, spec);
+      return to ? `${lead}${CSS_LINK(to)}` : m;
+    });
+    out = out.replace(/(\bfrom\s*|\bimport\s*\(\s*|(?:^|[;\n])\s*import\s*)(["'])([^"']+)\2/g, (m, lead, q, spec) => {
+      const to = resolveImport(p, path, spec);
+      return to && to !== spec ? `${lead}${q}${to}${q}` : m;
+    });
+    compiled[path] = out;
+  }
+  const t0 = performance.now();
+  const sources = Object.entries(p.files).filter(([f]) => !f.endsWith(".css") && !f.endsWith(".md")).map(([, t]) => t).join("\n");
+  for (const [path, css] of Object.entries(p.files)) {
+    if (!path.endsWith(".css") || !/@import\s+["']tailwindcss["']/.test(css)) continue;
+    try { compiled[path] = await tailwind(css, sources); } catch (e) { return { project: p, ms: { tailwind: 0 }, error: `${path}: ${(e as Error).message}` }; }
+  }
+  return { project: { amberApp: 1, files: p.files, compiled }, ms: { tailwind: Math.round(performance.now() - t0) } };
+}
+
+/** Tailwind v4 from the classes in the project's sources (no scanner: every token is a candidate,
+ *  and Tailwind keeps the ones that are classes). */
+async function tailwind(css: string, sources: string): Promise<string> {
+  const [{ compile: twCompile }, { STYLESHEETS }] = await Promise.all([import("npm:tailwindcss@4.1.14"), import("./tailwind.gen.ts")]);
+  const c = await twCompile(css, {
+    base: "/",
+    loadStylesheet: (id: string) => {
+      if (STYLESHEETS[id] !== undefined) return Promise.resolve({ base: "/", content: STYLESHEETS[id], path: id });
+      throw new Error(`@import "${id}": only "tailwindcss" and "tw-animate-css" can be imported in CSS here.`);
+    },
+    loadModule: () => { throw new Error("Tailwind plugins (@plugin) aren't available here."); },
+  });
+  return c.build([...new Set(sources.split(/[^A-Za-z0-9_\-:\[\]\/.#%()!@&*=,'+]+/).filter((x) => x && x.length < 200))]);
+}
 
 /** Static import specifiers in a module (import … from "x", import "x", import("x"), export … from "x"). */
 export function importsOf(code: string): string[] {
@@ -120,8 +187,8 @@ export function brokenImports(p: Project): string[] {
     if (/\.(m?js|jsx|tsx?)$/.test(path)) {
       for (const spec of importsOf(text)) {
         if (/^https?:|^\/\//.test(spec)) out.push(`${path} imports ${spec}: the app has no network. Use a bundled library or a file in the project.`);
-        else if (spec.startsWith(".") || spec.startsWith("/")) { if (!p.files[resolveFrom(path, spec)]) out.push(`${path} imports ${spec}, but ${resolveFrom(path, spec)} doesn't exist.`); }
-        else if (!BARE_IMPORTS.includes(spec)) out.push(`${path} imports "${spec}", which isn't a bundled name (${BARE_IMPORTS.join(", ")}). Use one of those, or add the code as a file.`);
+        else if (spec.startsWith(".") || spec.startsWith("/") || spec.startsWith("@/")) { if (!resolveImport(p, path, spec)) out.push(`${path} imports ${spec}, but there's no such file.`); }
+        else if (!BARE_IMPORTS.includes(spec) && !BARE_IMPORTS.some((b) => b.endsWith("/*") && spec.startsWith(b.slice(0, -1)))) out.push(`${path} imports "${spec}", which isn't available (${BARE_IMPORTS.filter((b) => !b.endsWith("/*")).join(", ")}). Use one of those, or add the code as a file.`);
       }
     }
     if (path.endsWith(".html")) {
@@ -164,8 +231,8 @@ export function sourceProblems(p: Project, declared: (host: string) => boolean):
 export function styleWarnings(p: Project): string[] {
   const out: string[] = [];
   const code = Object.entries(p.files).filter(([path]) => isCode(path));
-  const globals = code.filter(([, t]) => /\bwindow\.amber\b|(?<![\w.])amber\s*\.\s*(note|update|onChange|setData|store|data)\b/.test(t)).map(([path]) => path);
-  if (globals.length) out.push(`${globals.slice(0, 3).join(", ")} use window.amber directly. In a project use the hooks: import { useNote, useTable, useChecklist, useAppData, useSettings, batch } from "amber".`);
+  const globals = code.filter(([, t]) => /\bwindow\b[^;\n]{0,20}\.amber\b|(?<![\w.])amber\s*\.\s*(note|update|onChange|setData|store|data)\b/.test(t)).map(([path]) => path);
+  if (globals.length) out.push(`${globals.slice(0, 3).join(", ")} use window.amber directly. In a project, import what you need from "@/lib/amber" (useStore, useCollection, useSettings, batch, fetch, device…).`);
   // The app's data is JSON in its own store; the note's text is only read once, to convert an old note.
   const noteData = code.filter(([, t]) => /\buse(Table|Checklist)\s*\(|\.tables\s*\[|\bop\s*:\s*["'](append_row|set_cell|toggle_checklist|add_checklist_item|delete_row)/.test(t)).map(([path]) => path);
   if (noteData.length) out.push(`${noteData.slice(0, 3).join(", ")} keep data in the note's tables or checklists. An app's data is JSON in its own store: useStore / useCollection / useSettings from "amber" (or localStorage, which syncs). useImported() gives what an older note held, to start from once.`);
@@ -176,6 +243,5 @@ export function styleWarnings(p: Project): string[] {
   const css = Object.entries(p.files).filter(([path]) => path.endsWith(".css")).map(([, t]) => t).join("\n");
   const important = (css.match(/!\s*important/gi) ?? []).length;
   if (important) out.push(`!important appears ${important} time${important > 1 ? "s" : ""}: it isn't needed. amber-base.css and amber-ui sit in cascade layers, so any rule the app writes already wins.`);
-  if (/(^|[\s,}])(html|body)\s*[,{][^}]*background/i.test(css)) out.push("Don't set a background on html or body: put it on the app's own container.");
   return out;
 }

@@ -1,108 +1,169 @@
-// The project every new app starts from (create_app): a normal small Preact project on amber-ui,
-// with a home screen, a settings screen, a phone tab bar that becomes a sidebar from 900 px, and a
-// README the AI keeps current. Written in the style the guide teaches: hooks from "amber", tables by
-// heading, settings inside the app.
+// The project every new app starts from (create_app): a normal Vite + React + TypeScript + Tailwind +
+// shadcn/ui project, the stack AIs know best, so an AI works on it the way it would anywhere. Amber
+// Notes compiles it on save (nothing is installed: package.json is there for orientation) and runs
+// React through preact/compat. src/components/ui/ holds the shadcn components the app ships.
+
+import { SHADCN } from "./shadcn.ts";
 
 export function scaffold(title: string, lang = "en"): Record<string, string> {
-  const safe = title.replace(/[<>&"]/g, "").trim() || "App";
+  const safe = title.replace(/[<>&"`$\\]/g, "").trim() || "App";
   return {
+    "/package.json": JSON.stringify({
+      name: safe.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "app",
+      private: true, type: "module",
+      "//": "Amber Notes compiles this project when a file is saved and runs it inside the note. Nothing is installed: these are the packages the app provides.",
+      dependencies: {
+        react: "19", "react-dom": "19", "lucide-react": "*", clsx: "*", "tailwind-merge": "*", "class-variance-authority": "*", "@radix-ui/react-slot": "*", amber: "*",
+      },
+      devDependencies: { typescript: "5", vite: "7", tailwindcss: "4", "tw-animate-css": "*" },
+    }, null, 2) + "\n",
+    "/tsconfig.json": JSON.stringify({
+      compilerOptions: { target: "ES2020", module: "ESNext", moduleResolution: "bundler", jsx: "react-jsx", strict: true, skipLibCheck: true, baseUrl: ".", paths: { "@/*": ["./src/*"] } },
+      include: ["src"],
+    }, null, 2) + "\n",
     "/index.html": `<!doctype html>
 <html lang="${lang}">
 <head>
   <meta charset="utf-8">
   <title>${safe}</title>
-  <link rel="stylesheet" href="/src/styles.css">
 </head>
 <body>
-  <div id="app"></div>
-  <script type="module" src="/src/main.jsx"></script>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
 </body>
 </html>
 `,
-    "/src/main.jsx": `import { render } from "preact";
-import App from "./App.jsx";
+    "/src/main.tsx": `import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import "./index.css";
+import App from "@/App";
 
-render(<App />, document.getElementById("app"));
+createRoot(document.getElementById("root")!).render(<StrictMode><App /></StrictMode>);
 `,
-    "/src/App.jsx": `import { Router, Route } from "amber-router";
-import { Shell, Icon } from "amber-ui";
-import Home from "./screens/Home.jsx";
-import Settings from "./screens/Settings.jsx";
-
-// The app's places: a tab bar at the bottom on iPhone, a sidebar from 900 px. Two to four,
-// named by what the person does there. Add a screen in src/screens/ and a line here.
-const screens = [
-  { path: "/", label: "Home", icon: <Icon name="home" /> },
-  { path: "/settings", label: "Settings", icon: <Icon name="gear" /> },
-];
+    "/src/App.tsx": `import { useNote } from "@/lib/amber";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Sparkles } from "lucide-react";
 
 export default function App() {
-  return (
-    <Shell items={screens} title="${safe}">
-      <Router>
-        <Route path="/" component={Home} default />
-        <Route path="/settings" component={Settings} />
-      </Router>
-    </Shell>
-  );
-}
-`,
-    "/src/screens/Home.jsx": `import { useNote } from "amber";
-import { EmptyState } from "amber-ui";
-
-// The first screen does the app's one main job. Replace this with it.
-export default function Home() {
   const note = useNote();
   return (
-    <div class="screen">
-      <h1>{note.title}</h1>
-      <EmptyState title="Nothing here yet" body="This screen does the app's main job." />
-    </div>
+    <main className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-8">
+      <h1 className="text-3xl font-semibold tracking-tight">{note.title}</h1>
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Sparkles className="size-5" /> Nothing here yet</CardTitle>
+          <CardDescription>This is where the app does its job.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button>Get started</Button>
+        </CardContent>
+      </Card>
+    </main>
   );
 }
 `,
-    "/src/screens/Settings.jsx": `import { useSettings } from "amber";
-import { List, Input } from "amber-ui";
-import { DEFAULTS } from "../data.js";
+    "/src/index.css": `@import "tailwindcss";
+@import "tw-animate-css";
 
-// What the person can change without asking an AI. Applies as they type; kept in the app's data
-// (an AI can set it with update_page_data { values: { settings: { ... } } }).
-export default function Settings() {
-  const [settings, update] = useSettings(DEFAULTS);
-  return (
-    <div class="screen">
-      <h1>Settings</h1>
-      <List>
-        <Input label="Name" value={settings.name} onInput={(e) => update({ name: e.currentTarget.value })} />
-      </List>
-    </div>
-  );
+/* Light and dark follow the device (prefers-color-scheme). */
+@custom-variant dark (@media (prefers-color-scheme: dark));
+
+/* shadcn/ui's variables, set from Amber's own (amber-tokens.css switches them for light and dark,
+   iPhone and Mac). Change any of them to give the app its own look. */
+:root {
+  --radius: var(--amber-radius-small);
+  --background: var(--amber-bg);
+  --foreground: var(--amber-text);
+  --card: var(--amber-surface);
+  --card-foreground: var(--amber-text);
+  --popover: var(--amber-surface);
+  --popover-foreground: var(--amber-text);
+  --primary: var(--amber-accent);
+  --primary-foreground: var(--amber-on-accent);
+  --secondary: var(--amber-fill);
+  --secondary-foreground: var(--amber-text);
+  --muted: var(--amber-fill);
+  --muted-foreground: var(--amber-text-secondary);
+  --accent: var(--amber-accent-soft);
+  --accent-foreground: var(--amber-text);
+  --destructive: var(--amber-danger);
+  --border: var(--amber-separator);
+  --input: var(--amber-field-border);
+  --ring: var(--amber-accent);
+  --chart-1: var(--amber-accent);
+  --chart-2: #3c63b0;
+  --chart-3: #2f7d5b;
+  --chart-4: #a3478a;
+  --chart-5: var(--amber-text-secondary);
+}
+
+@theme inline {
+  --font-sans: var(--amber-font);
+  --font-mono: var(--amber-font-mono);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+}
+
+@layer base {
+  * { @apply border-border outline-ring/50; }
+  body { @apply bg-background text-foreground antialiased; }
 }
 `,
-    "/src/data.js": `// Defaults and small helpers. The app's data is JSON in its own store: useStore(key, initial),
-// useCollection(name) and useSettings(DEFAULTS) from "amber" (localStorage works too, and syncs).
-export const DEFAULTS = { name: "" };
+    "/src/lib/utils.ts": `import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 `,
-    "/src/styles.css": `/* The app's own look. Plain CSS wins over amber-base.css and amber-ui (they sit in cascade layers),
-   so restyle anything here; the --amber-* variables switch for light and dark. */
-.screen { max-width: var(--amber-content-max); margin: 0 auto; padding: 16px var(--amber-gutter) 32px; }
-.screen h1 { font-size: 1.8rem; letter-spacing: -0.02em; margin: 4px 0 16px; }
+    "/src/lib/amber.ts": `// The app's data and the device, from Amber Notes. Data is JSON, kept for this app only:
+// encrypted, synced across the person's devices, with Undo. localStorage works too (it is kept the
+// same way).
+export {
+  useStore, useAppData, useCollection, useSettings, batch, setSummary, useImported, useNote,
+  fetch, device, ai, files,
+} from "amber";
 `,
     "/README.md": `# ${safe}
 
 What this app is for, in one sentence.
 
 ## Screens
-- Home (src/screens/Home.jsx): the main job.
-- Settings (src/screens/Settings.jsx): what the person can change, kept with useSettings.
+- App (src/App.tsx)
 
 ## Data
-- The note: (which tables and checklists, by heading).
-- The app's own data: settings (useSettings).
+- (Which keys and collections the app keeps, e.g. useCollection("workouts"), useSettings({ unit: "kg" }).)
 
 ## Files
-- src/App.jsx: the screens in an amber-ui Shell (tab bar on iPhone, sidebar from 900 px).
-- src/components/: pieces used by several screens.
+- src/components/ui/: shadcn/ui components (the app's own copies; change them freely).
+- src/lib/amber.ts: data hooks from Amber Notes. src/lib/utils.ts: cn().
 `,
+    ...Object.fromEntries(Object.entries(SHADCN).map(([name, src]) => [`/src/components/ui/${name}`, src])),
   };
 }

@@ -1,18 +1,18 @@
-import { useTable, useSettings } from "amber";
+import { useSettings } from "amber";
 import { List, ListRow } from "amber-ui";
 import ScreenHeader from "../components/ScreenHeader.jsx";
-import { DEFAULTS, weight, exercisesOf } from "../data.js";
+import { DEFAULTS, weight, useTraining } from "../data.js";
 
 export default function PlanDay({ day: name }) {
-  const plan = useTable("Plan"), log = useTable("Log");
+  const { plan, log } = useTraining();
   const [{ unit }] = useSettings(DEFAULTS);
-  const day = plan.rows.find((r) => r.Day === name);
-  const best = (ex) => Math.max(0, ...log.rows.filter((r) => r.Exercise === ex).map((r) => +r.Weight || 0));
+  const day = plan.find((d) => d.day === name);
+  const best = (ex) => Math.max(0, ...log.items.filter((s) => s.exercise === ex).map((s) => s.weight));
   return (
     <div class="screen">
-      <ScreenHeader title={day ? day.Workout : name} subtitle={name} canGoBack />
+      <ScreenHeader title={day ? day.workout : name} subtitle={name} canGoBack />
       <List>
-        {exercisesOf(day).map((ex) => <ListRow title={ex} trailing={best(ex) ? `Best ${weight(best(ex), unit)}` : "Not yet"} />)}
+        {(day ? day.exercises : []).map((ex) => <ListRow title={ex} trailing={best(ex) ? `Best ${weight(best(ex), unit)}` : "Not yet"} />)}
       </List>
     </div>
   );

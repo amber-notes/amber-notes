@@ -115,10 +115,10 @@ Deno.test("app data: 500 imported records, queries, nested values and files", as
   }
 });
 
-Deno.test("the guide and templates come from get_page_guide", async () => {
+Deno.test("the guide comes from get_page_guide (and the old one-file templates still do)", async () => {
   const pg = await schemaDB();
   const a = await account(pg);
-  assertStringIncludes((await tool(pg, a, "get_page_guide", {}, false)).guide, "amber.onChange");
+  assertStringIncludes((await tool(pg, a, "get_page_guide", {}, false)).guide, "useCollection");
   assertStringIncludes((await tool(pg, a, "get_page_guide", { template: "budget" }, false)).html, "amber.update");
 });
 
