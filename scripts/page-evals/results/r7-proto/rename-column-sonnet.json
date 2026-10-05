@@ -1,0 +1,274 @@
+{
+  "task": "rename-column",
+  "model": "claude-sonnet-5-5",
+  "round": "r7-proto",
+  "skill": false,
+  "seconds": 12,
+  "score": 0.9473684210526315,
+  "passed": 18,
+  "total": 19,
+  "checks": [
+    {
+      "name": "has_page",
+      "pass": true
+    },
+    {
+      "name": "server_checks",
+      "pass": true
+    },
+    {
+      "name": "no_console_errors",
+      "pass": true
+    },
+    {
+      "name": "no_network",
+      "pass": true
+    },
+    {
+      "name": "fits_390",
+      "pass": true
+    },
+    {
+      "name": "fits_1280",
+      "pass": true
+    },
+    {
+      "name": "shows_data",
+      "pass": true
+    },
+    {
+      "name": "dark_mode",
+      "pass": true
+    },
+    {
+      "name": "light_contrast",
+      "pass": true
+    },
+    {
+      "name": "labelled_controls",
+      "pass": true
+    },
+    {
+      "name": "says_app",
+      "pass": false,
+      "detail": "the reply calls it a page, or doesn't call it the app"
+    },
+    {
+      "name": "probe_follows",
+      "pass": true
+    },
+    {
+      "name": "probe_escapes",
+      "pass": true
+    },
+    {
+      "name": "probe_empty",
+      "pass": true
+    },
+    {
+      "name": "probe_large",
+      "pass": true
+    },
+    {
+      "name": "renamed",
+      "pass": true
+    },
+    {
+      "name": "values_kept",
+      "pass": true
+    },
+    {
+      "name": "page_shows_amounts",
+      "pass": true
+    },
+    {
+      "name": "prose_kept",
+      "pass": true
+    }
+  ],
+  "tool_calls": 5,
+  "tool_errors": 0,
+  "usage": {
+    "input": 10,
+    "output": 639,
+    "cacheRead": 29589,
+    "cacheWrite": 12750,
+    "turns": 4
+  },
+  "usd": 0.0442,
+  "page_bytes": 1340,
+  "data": null,
+  "answer": "I renamed the Amt column to \"Amount (kr)\" in Household expenses.\n\nThe page found that column by its old name, so the rename would have broken the total and the amounts. I changed the page to look for \"Amt\" or \"Amount\" at the start of the name. I haven't opened it in the app to check it, so it's worth a quick look. The previous version of the page is kept if you want to go back to it.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Household expenses"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Household expenses\",\n  \"results\": [\n    {\n      \"id\": \"15b9ccfd-bb6e-4f85-8ea9-0f44d179d06b\",\n      \"title\": \"Household expenses\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T13:43:25.139Z\",\n      \"snippet\": \"«Household expenses» | Date | Item | Category | Amt | | --- | --- | --- | --- | | 2026-09-02 | Electricity | Bills | 640 | | 2026-09-05 | Groceries | Food | 1 210 | | 2026-09-11 | Dentist | Health\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "15b9ccfd-bb6e-4f85-8ea9-0f44d179d06b"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"15b9ccfd-bb6e-4f85-8ea9-0f44d179d06b\",\n  \"title\": \"Household expenses\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T13:43:25.139Z\",\n  \"updated\": \"2026-10-05T13:43:25.139Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"has_page\": true,\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 11,\n    \"words\": 76\n  },\n  \"markdown\": \"Household expenses\\n\\n| Date | Item | Category | Amt |\\n| --- | --- | --- | --- |\\n| 2026-09-02 | Electricity | Bills | 640 |\\n| 2026-09-05 | Grocer… (789 chars)"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "15b9ccfd-bb6e-4f85-8ea9-0f44d179d06b"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"15b9ccfd-bb6e-4f85-8ea9-0f44d179d06b\",\n  \"title\": \"Household expenses\",\n  \"has_page\": true,\n  \"made_by\": \"Claude\",\n  \"updated\": \"2026-10-05T13:43:25.146Z\",\n  \"rules\": \"The page runs in Amber Notes in a sandbox with no network: no fetch, no external scripts, styles, fonts or images. Put all CSS and JS inline; images only as data: URIs or inline SVG.\\nRead the note from window.amber.note, never hardcode its contents (the note changes; the page must follow):\\n  amber.note = { title, markdown, today: \\\"yyyy-mm-dd\\\", tables: [{ index, columns: [{ name, type }], rows: [[cell, ...], ...] }… (6117 chars)"
+    },
+    {
+      "name": "edit_note",
+      "args": {
+        "id": "15b9ccfd-bb6e-4f85-8ea9-0f44d179d06b",
+        "edits": "[{\"old_text\":\"| Category | Amt |\",\"new_text\":\"| Category | Amount (kr) |\"}]"
+      },
+      "error": false,
+      "result": "{\n  \"edited\": {\n    \"id\": \"15b9ccfd-bb6e-4f85-8ea9-0f44d179d06b\",\n    \"title\": \"Household expenses\",\n    \"version\": 2,\n    \"updated\": \"2026-10-05T13:43:30.742Z\"\n  },\n  \"edits_applied\": 1\n}"
+    },
+    {
+      "name": "edit_note_page",
+      "args": {
+        "id": "15b9ccfd-bb6e-4f85-8ea9-0f44d179d06b",
+        "edits": "[{\"old_text\":\"/^amt$/i.test(c.name)\",\"new_text\":\"/^(amt|amount)\\\\b/i.test(c.name)\"}]"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"15b9ccfd-bb6e-4f85-8ea9-0f44d179d06b\",\n  \"title\": \"Household expenses\",\n  \"page\": \"replaced\",\n  \"bytes\": 1340,\n  \"note\": \"The person sees it in Amber Notes under Page. The note's markdown is unchanged. The previous page is kept (get_note_page lists it).\"\n}"
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "390-light",
+        "width": 390,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 147,
+        "shown": 11,
+        "sampled": 11,
+        "bg": "rgb(255, 255, 255)",
+        "fg": "rgb(34, 34, 34)",
+        "contrast": 15.909984431773273,
+        "bgLuminance": 1,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r7-proto/shots/rename-column-sonnet-390-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Household expenses"
+        ],
+        "excerpt": "Household expenses 13 915 kr Electricity Bills 640 Groceries Food 1 210 Dentist Health 950 Groceries Food 880 Rent Housing 9 500 Groceries Food 735"
+      },
+      {
+        "name": "390-dark",
+        "width": 390,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 147,
+        "shown": 11,
+        "sampled": 11,
+        "bg": "rgb(27, 25, 22)",
+        "fg": "rgb(243, 238, 232)",
+        "contrast": 15.206632798714999,
+        "bgLuminance": 0.009862005146758307,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r7-proto/shots/rename-column-sonnet-390-dark.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Household expenses"
+        ],
+        "excerpt": "Household expenses 13 915 kr Electricity Bills 640 Groceries Food 1 210 Dentist Health 950 Groceries Food 880 Rent Housing 9 500 Groceries Food 735"
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 147,
+        "shown": 11,
+        "sampled": 11,
+        "bg": "rgb(255, 255, 255)",
+        "fg": "rgb(34, 34, 34)",
+        "contrast": 15.909984431773273,
+        "bgLuminance": 1,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r7-proto/shots/rename-column-sonnet-1280-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Household expenses"
+        ],
+        "excerpt": "Household expenses 13 915 kr Electricity Bills 640 Groceries Food 1 210 Dentist Health 950 Groceries Food 880 Rent Housing 9 500 Groceries Food 735"
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 147,
+        "shown": 11,
+        "sampled": 11,
+        "bg": "rgb(27, 25, 22)",
+        "fg": "rgb(243, 238, 232)",
+        "contrast": 15.206632798714999,
+        "bgLuminance": 0.009862005146758307,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Household expenses"
+        ],
+        "excerpt": "Household expenses 13 915 kr Electricity Bills 640 Groceries Food 1 210 Dentist Health 950 Groceries Food 880 Rent Housing 9 500 Groceries Food 735"
+      }
+    ],
+    "blocked": [],
+    "updates": [],
+    "setData": 0,
+    "interaction": {
+      "tried": "none",
+      "ok": null
+    },
+    "probes": {
+      "follows": {
+        "pass": true,
+        "detail": "shown, but not as written"
+      },
+      "escapes": {
+        "pass": true
+      },
+      "empty": {
+        "pass": true,
+        "detail": "blank page"
+      },
+      "large": {
+        "pass": true,
+        "detail": "573 ms to load 400 rows"
+      }
+    },
+    "dataAfter": {}
+  }
+}

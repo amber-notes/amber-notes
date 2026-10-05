@@ -1,0 +1,60 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--amber-font)}
+.wrap{max-width:560px;margin:0 auto;padding:16px var(--amber-gutter) 32px}
+.top{display:flex;justify-content:space-between;align-items:center;color:var(--amber-text-secondary);font-size:14px;margin-bottom:10px}
+.bar{height:6px;background:var(--amber-fill);border-radius:3px;overflow:hidden;margin-bottom:16px}
+.bar i{display:block;height:100%;background:var(--amber-accent);width:0}
+.scene{perspective:1000px}
+.card{position:relative;height:260px;width:100%;cursor:pointer;transform-style:preserve-3d;transition:transform .4s;-webkit-tap-highlight-color:transparent}
+.card.flip{transform:rotateY(180deg)}
+.face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;background:var(--amber-surface);border-radius:var(--amber-radius);border:1px solid var(--amber-separator);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px}
+.back{transform:rotateY(180deg);background:var(--amber-accent-soft)}
+.word{font-family:var(--amber-font-rounded);font-size:38px;font-weight:700}
+.hint{margin-top:14px;font-size:13px;color:var(--amber-text-secondary)}
+.tag{position:absolute;top:12px;right:14px;font-size:12px;color:var(--amber-accent-text);font-weight:600}
+.btns{display:flex;gap:10px;margin-top:16px}
+button{font:inherit;border:0;border-radius:var(--amber-radius-small);padding:14px;flex:1;background:var(--amber-fill);color:var(--amber-text);font-weight:600}
+button.go{background:var(--amber-accent);color:var(--amber-on-accent)}
+.row{display:flex;gap:10px;margin-top:10px}
+.row button{font-weight:500;font-size:14px;padding:10px}
+.done{text-align:center;padding:50px 10px}
+</style></head><body><div class="wrap" id="app"></div>
+<script>
+let note=null,known={},queue=[],pos=0,flipped=false,onlyNew=false,started=false;
+function words(n){const t=n.tables[0];if(!t)return[];return t.rows.map(r=>({es:String(r[0]).trim(),en:String(r[1]).trim()})).filter(w=>w.es)}
+function build(){const w=words(note);const u=w.filter(x=>!known[x.es]),k=w.filter(x=>known[x.es]);queue=onlyNew?u:u.concat(k);pos=0;flipped=false}
+function save(){amber.store.set('known',known)}
+function render(){
+ const all=words(note),nk=all.filter(w=>known[w.es]).length;
+ const app=document.getElementById('app');
+ let h=`<div class="top"><span>${nk} of ${all.length} known</span><span>${queue.length?Math.min(pos+1,queue.length)+' / '+queue.length:''}</span></div><div class="bar"><i style="width:${all.length?nk/all.length*100:0}%"></i></div>`;
+ if(!queue.length||pos>=queue.length){
+  h+=`<div class="done"><div class="word">${queue.length?'Round done 🎉':'Nothing to study'}</div><p class="hint">${nk} of ${all.length} known</p><div class="btns"><button class="go" id="restart">${queue.length?'Start again':'Show all'}</button></div></div>`;
+ } else {
+  const w=queue[pos],isK=known[w.es];
+  h+=`<div class="scene"><div class="card ${flipped?'flip':''}" id="card"><div class="face"><span class="tag">${isK?'known ✓':'learning'}</span><div class="word">${esc(w.es)}</div><div class="hint">Tap to flip</div></div><div class="face back"><div class="word" style="font-size:30px">${esc(w.en)}</div></div></div></div>
+  <div class="btns"><button id="again">Still learning</button><button class="go" id="knew">I know it</button></div>
+  <div class="row"><button id="prev">← Back</button><button id="skip">Skip →</button></div>`;
+ }
+ h+=`<div class="row"><button id="toggle">${onlyNew?'Showing: unknown only':'Showing: unknown first, then known'}</button><button id="reset">Reset progress</button></div>`;
+ app.innerHTML=h;
+ const $=id=>document.getElementById(id);
+ if($('card'))$('card').onclick=()=>{flipped=!flipped;$('card').classList.toggle('flip',flipped)};
+ if($('knew'))$('knew').onclick=()=>mark(true);
+ if($('again'))$('again').onclick=()=>mark(false);
+ if($('skip'))$('skip').onclick=()=>{pos++;flipped=false;render()};
+ if($('prev'))$('prev').onclick=()=>{if(pos>0)pos--;flipped=false;render()};
+ if($('restart'))$('restart').onclick=()=>{onlyNew=false;build();render()};
+ $('toggle').onclick=()=>{onlyNew=!onlyNew;build();render()};
+ $('reset').onclick=()=>{if(confirm('Mark every verb as not known?')){known={};save();build();render()}};
+}
+function mark(v){const w=queue[pos];if(v)known[w.es]=true;else delete known[w.es];save();pos++;flipped=false;render()}
+function esc(s){return s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}
+amber.onChange((n,d)=>{
+ note=n;
+ if(!started){known=Object.assign({},(d&&d.values&&d.values.known)||{});started=true;build()}
+ render();
+});
+</script></body></html>

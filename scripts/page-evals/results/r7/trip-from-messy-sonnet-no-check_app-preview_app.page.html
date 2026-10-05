@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  * { box-sizing: border-box; }
+  main { max-width: var(--amber-content-max); margin: 0 auto; padding: 20px var(--amber-gutter) 80px; }
+  h1 { font-size: 28px; letter-spacing: -.02em; margin: 4px 0 16px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--amber-text-secondary); margin: 0 0 8px 4px; }
+  .card { background: var(--amber-surface); border-radius: var(--amber-radius); border: 1px solid var(--amber-separator); overflow: hidden; }
+  section { margin-bottom: 20px; }
+  .count { padding: 20px 16px; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; background: var(--amber-accent-soft); }
+  .big { font-size: 56px; font-weight: 700; line-height: 1; color: var(--amber-accent-text); font-variant-numeric: tabular-nums; font-family: var(--amber-font-rounded); }
+  .muted { color: var(--amber-text-secondary); font-size: 14px; }
+  .fact { padding: 12px 16px; border-top: 1px solid var(--amber-separator); }
+  .fact:first-child { border-top: 0; }
+  .fact .k { font-size: 13px; color: var(--amber-text-secondary); }
+  .fact .v { overflow-wrap: anywhere; }
+  .item { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 48px; padding: 8px 16px; border: 0; border-top: 1px solid var(--amber-separator); background: none; color: var(--amber-text); font: inherit; text-align: left; border-radius: 0; }
+  .item:first-child { border-top: 0; }
+  .box { flex: none; width: 24px; height: 24px; border-radius: 7px; border: 2px solid var(--amber-text-secondary); display: grid; place-items: center; }
+  .done .box { background: var(--amber-accent); border-color: var(--amber-accent); color: var(--amber-on-accent); }
+  .done .t { text-decoration: line-through; color: var(--amber-text-secondary); }
+  .t { flex: 1; overflow-wrap: anywhere; }
+  .prog { font-size: 13px; color: var(--amber-text-secondary); float: right; margin-right: 4px; text-transform: none; letter-spacing: 0; }
+  .empty { padding: 20px 16px; color: var(--amber-text-secondary); }
+  .err { color: var(--amber-danger); padding: 8px 4px; min-height: 1em; }
+  .cols { display: block; }
+  @media (min-width: 900px) { .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; } }
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script>
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  let error = "";
+  const tick = '<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M2.5 7.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+  function days(a, b) { return Math.round((Date.parse(b + "T00:00:00Z") - Date.parse(a + "T00:00:00Z")) / 86400000); }
+
+  function render(note, data) {
+    const lines = note.markdown.split("\n");
+    const facts = []; const groups = []; let cur = null; let inTrip = false;
+    lines.forEach((ln, i) => {
+      const h = ln.match(/^#{1,6}\s+(.*)/);
+      if (h) { cur = null; inTrip = /trip|facts|details/i.test(h[1]); if (i > 0 && /^#{2,}/.test(ln) && !inTrip) { cur = { name: h[1], items: [] }; groups.push(cur); } return; }
+      const c = ln.match(/^\s*- \[( |x|X)\]\s+(.*)/);
+      if (c && cur) { cur.items.push({ line: i + 1, text: c[2], checked: c[1] !== " " }); return; }
+      const f = ln.match(/^([A-Za-z][^:]{1,30}):\s*(.+)$/);
+      if (f && i > 0 && !c) facts.push({ k: f[1], v: f[2] });
+    });
+    const v = (data && data.values) || {};
+    let count = "";
+    if (v.start) {
+      const d = days(note.today, v.start);
+      const endD = v.end ? days(note.today, v.end) : d;
+      let big, sub;
+      if (d > 0) { big = d; sub = d === 1 ? "day to go" : "days to go"; }
+      else if (d === 0) { big = "Today"; sub = "you fly out"; }
+      else if (endD >= 0) { big = "Now"; sub = "enjoy Porto"; }
+      else { big = "Done"; sub = "trip finished"; }
+      count = `<section><div class="card count"><span class="big">${esc(big)}</span><span>${sub}<br><span class="muted">${esc(v.start)}${v.end ? " to " + esc(v.end) : ""}</span></span></div></section>`;
+    }
+    const factsHtml = facts.length ? `<section><h2>At a glance</h2><div class="card">${facts.map((f) => `<div class="fact"><div class="k">${esc(f.k)}</div><div class="v">${esc(f.v)}</div></div>`).join("")}</div></section>` : "";
+    const groupsHtml = groups.map((g) => {
+      const n = g.items.filter((x) => x.checked).length;
+      return `<section><h2>${esc(g.name)}<span class="prog">${n} of ${g.items.length}</span></h2><div class="card">${g.items.length ? g.items.map((x) => `<button class="item ${x.checked ? "done" : ""}" role="checkbox" aria-checked="${x.checked}" data-line="${x.line}"><span class="box">${x.checked ? tick : ""}</span><span class="t">${esc(x.text)}</span></button>`).join("") : '<div class="empty">Nothing here yet.</div>'}</div></section>`;
+    }).join("");
+    document.getElementById("app").innerHTML = `<h1>${esc(note.title)}</h1>${count}<div class="cols"><div>${factsHtml}</div><div>${groupsHtml}</div></div><div class="err" role="alert">${esc(error)}</div>`;
+    document.querySelectorAll(".item").forEach((b) => b.onclick = async () => {
+      const r = await amber.update({ op: "toggle_checklist", line: +b.dataset.line });
+      error = r.ok ? "" : r.error;
+      if (!r.ok) render(amber.note, amber.data);
+    });
+  }
+  amber.onChange(render);
+</script>
+</body>
+</html>

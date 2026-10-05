@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="amber-needs" content='{"hosts":["api.openweathermap.org"],"keys":[{"name":"OpenWeather","hosts":["api.openweathermap.org"],"query":"appid={key}","help":"Sign up free at openweathermap.org, then copy your key from My API keys."}]}'>
+<style>
+  * { box-sizing: border-box; }
+  main { max-width: var(--amber-content-max); margin: 0 auto; padding: 20px var(--amber-gutter) 96px; }
+  h1 { font-size: 28px; letter-spacing: -.02em; margin: 4px 0 4px; }
+  h2 { font-size: 17px; margin: 24px 0 8px; }
+  .muted { color: var(--amber-text-secondary); font-size: 14px; }
+  .days { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 16px; }
+  @media (min-width: 600px) { .days { grid-template-columns: repeat(5, 1fr); } }
+  .day { background: var(--amber-surface); border: 1px solid var(--amber-separator); border-radius: var(--amber-radius); padding: 14px 16px; display: flex; flex-direction: row; align-items: center; gap: 12px; }
+  @media (min-width: 600px) { .day { flex-direction: column; align-items: flex-start; } }
+  .day .info { flex: 1; min-width: 0; }
+  .dn { font-weight: 600; }
+  .temp { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; font-family: var(--amber-font-rounded); }
+  .lo { color: var(--amber-text-secondary); font-size: 16px; font-weight: 500; }
+  svg { width: 40px; height: 40px; flex: none; color: var(--amber-accent-text); }
+  .card { background: var(--amber-surface); border: 1px solid var(--amber-separator); border-radius: var(--amber-radius); padding: 16px; }
+  .msg { color: var(--amber-text-secondary); }
+  .err { color: var(--amber-danger); }
+  button { font: inherit; font-weight: 600; min-height: 44px; padding: 0 16px; border: 0; border-radius: var(--amber-radius-small); background: var(--amber-accent); color: var(--amber-on-accent); margin-top: 12px; }
+  .todo { background: var(--amber-surface); border: 1px solid var(--amber-separator); border-radius: var(--amber-radius); overflow: hidden; }
+  .todo button { all: unset; box-sizing: border-box; display: flex; gap: 12px; align-items: center; width: 100%; min-height: 48px; padding: 8px 16px; border-top: 1px solid var(--amber-separator); cursor: pointer; }
+  .todo button:first-child { border-top: 0; }
+  .box { width: 22px; height: 22px; border-radius: 6px; border: 2px solid var(--amber-text-secondary); flex: none; display: grid; place-items: center; font-size: 14px; line-height: 1; }
+  .on .box { background: var(--amber-accent); border-color: var(--amber-accent); color: var(--amber-on-accent); }
+  .on span.t { text-decoration: line-through; color: var(--amber-text-secondary); }
+</style>
+</head>
+<body>
+<main>
+  <h1 id="title">Porto weekend</h1>
+  <div class="muted">5-day forecast for Porto, Portugal</div>
+  <div id="wx" aria-live="polite"></div>
+  <div id="list"></div>
+</main>
+<script>
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  let state = { status: "loading", days: [], msg: "" };
+  const icons = {
+    clear: '<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><circle cx="20" cy="20" r="7"/><path d="M20 4v4M20 32v4M4 20h4M32 20h4M8.7 8.7l2.8 2.8M28.5 28.5l2.8 2.8M31.3 8.7l-2.8 2.8M11.5 28.5l-2.8 2.8"/></svg>',
+    cloud: '<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 29a7 7 0 0 1-.5-14 9 9 0 0 1 17.4 2A6 6 0 0 1 28 29z"/></svg>',
+    rain: '<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 24a7 7 0 0 1-.5-13 9 9 0 0 1 17.4 2A6 6 0 0 1 28 24z"/><path d="M13 29l-2 5M21 29l-2 5M29 29l-2 5"/></svg>',
+    storm: '<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 24a7 7 0 0 1-.5-13 9 9 0 0 1 17.4 2A6 6 0 0 1 28 24z"/><path d="M21 25l-4 6h6l-4 6"/></svg>',
+    snow: '<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M20 5v30M7 12.5l26 15M33 12.5l-26 15"/></svg>'
+  };
+  const kind = (id) => id >= 200 && id < 300 ? "storm" : id < 600 ? "rain" : id < 700 ? "snow" : id === 800 ? "clear" : id < 800 ? "cloud" : id === 801 ? "clear" : "cloud";
+
+  function group(list) {
+    const by = {};
+    for (const it of list) {
+      const d = it.dt_txt.slice(0, 10);
+      (by[d] = by[d] || []).push(it);
+    }
+    return Object.keys(by).sort().slice(0, 5).map((d) => {
+      const a = by[d];
+      const hi = Math.max(...a.map((x) => x.main.temp_max)), lo = Math.min(...a.map((x) => x.main.temp_min));
+      const pop = Math.max(...a.map((x) => x.pop || 0));
+      const pick = a.find((x) => x.dt_txt.includes("12:00")) || a[Math.floor(a.length / 2)];
+      return { d, hi, lo, pop, desc: pick.weather[0].description, id: pick.weather[0].id, wind: Math.max(...a.map((x) => x.wind.speed)) };
+    });
+  }
+  const dayName = (d) => new Date(d + "T12:00:00Z").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+
+  async function load() {
+    state = { status: "loading", days: [], msg: "" }; drawWx();
+    const r = await amber.fetch("https://api.openweathermap.org/data/2.5/forecast?q=Porto,PT&units=metric", { key: "OpenWeather" });
+    if (!r.ok && !r.status) { state = { status: "error", msg: r.error || "Could not reach OpenWeather. Check that the key named OpenWeather is set in Settings › API Keys and that you approved the host." }; return drawWx(); }
+    let b = r.body;
+    try { if (typeof b === "string") b = JSON.parse(b); } catch (e) { b = {}; }
+    if (r.status === 401) state = { status: "error", msg: "OpenWeather rejected the key. New keys can take a couple of hours to activate. Check it in Settings › API Keys." };
+    else if (!r.ok || !b || !b.list) state = { status: "error", msg: (b && b.message) || r.error || "Forecast unavailable right now." };
+    else state = { status: "ok", days: group(b.list) };
+    drawWx();
+  }
+
+  function drawWx() {
+    const el = document.getElementById("wx");
+    if (state.status === "loading") el.innerHTML = '<div class="card msg" style="margin-top:16px">Loading forecast…</div>';
+    else if (state.status === "error") el.innerHTML = `<div class="card" style="margin-top:16px"><div class="err" role="alert">${esc(state.msg)}</div><button id="retry">Try again</button></div>`;
+    else el.innerHTML = '<div class="days">' + state.days.map((x) => `<div class="day">${icons[kind(x.id)]}<div class="info"><div class="dn">${esc(dayName(x.d))}</div><div class="temp">${Math.round(x.hi)}°<span class="lo"> / ${Math.round(x.lo)}°</span></div><div class="muted">${esc(x.desc)}</div><div class="muted">Rain ${Math.round(x.pop * 100)}% · Wind ${Math.round(x.wind * 3.6)} km/h</div></div></div>`).join("") + '</div><p class="muted">The free forecast only reaches 5 days ahead, so Fri 16 – Sun 18 Oct will show up as the trip gets closer.</p>';
+    const rb = document.getElementById("retry"); if (rb) rb.onclick = load;
+  }
+
+  function drawList(note) {
+    document.getElementById("title").textContent = note.title;
+    const c = note.checklists;
+    document.getElementById("list").innerHTML = c.length ? '<h2>To do before</h2><div class="todo">' + c.map((i) => `<button class="${i.checked ? "on" : ""}" data-l="${i.line}" aria-pressed="${i.checked}"><span class="box">${i.checked ? "✓" : ""}</span><span class="t">${esc(i.text)}</span></button>`).join("") + "</div>" : "";
+    document.querySelectorAll("[data-l]").forEach((b) => b.onclick = () => amber.update({ op: "toggle_checklist", line: +b.dataset.l }));
+  }
+  let first = true;
+  amber.onChange((note) => { drawList(note); if (first) { first = false; load(); } });
+</script>
+</body>
+</html>

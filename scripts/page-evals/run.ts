@@ -187,7 +187,8 @@ async function openaiSession(system: string, tools: { name: string; description:
     let res!: Response;
     // Their 5xx and 429 are passing: try again, a few times.
     for (let attempt = 0; attempt < 4; attempt++) {
-      res = await fetch("https://api.openai.com/v1/responses", { method: "POST", headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body });
+      res = await fetch("https://api.openai.com/v1/responses", { method: "POST", headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body, signal: AbortSignal.timeout(240_000) })
+        .catch((e) => new Response(String(e), { status: 599 }));
       if (res.status < 500 && res.status !== 429) break;
       await res.body?.cancel();
       await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
@@ -252,7 +253,7 @@ async function runTask(task: Task) {
   const usd = cost(session.usage);
   await Deno.writeTextFile(SPEND, JSON.stringify({ at: new Date().toISOString(), round, task: task.id, model: model.id, usd: +usd.toFixed(4), usage: session.usage }) + "\n", { append: true });
   const result = {
-    task: task.id, model: model.id, round, skill: !!skill, seconds: Math.round((performance.now() - t0) / 1000),
+    task: task.id, model: model.id, round, skill: !!skill, ...(hidden.size ? { hidden: [...hidden] } : {}), seconds: Math.round((performance.now() - t0) / 1000),
     score: checks.filter((c) => c.pass).length / checks.length, passed: checks.filter((c) => c.pass).length, total: checks.length,
     checks, tool_calls: session.log.length, tool_errors: session.log.filter((l) => l.error).length, usage: session.usage, usd: +usd.toFixed(4),
     page_bytes: after.page ? new TextEncoder().encode(after.page).length : 0, data: after.data,

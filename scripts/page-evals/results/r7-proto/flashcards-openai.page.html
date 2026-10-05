@@ -1,0 +1,137 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spanish verbs flashcards</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:var(--amber-font);color:var(--amber-text)}.wrap{max-width:var(--amber-content-max);margin:0 auto;padding:var(--amber-gutter)}.top{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;margin:4px 0 18px}.title h1{font-family:var(--amber-font-rounded);font-size:28px;line-height:1.1;margin:0 0 6px}.muted{color:var(--amber-text-secondary);font-size:14px;line-height:1.35}.pill{display:inline-flex;gap:6px;align-items:center;background:var(--amber-accent-soft);color:var(--amber-accent-text);border-radius:999px;padding:7px 10px;font-weight:650;font-size:13px;white-space:nowrap}.grid{display:grid;gap:16px}.cardPanel{background:var(--amber-surface);border:1px solid var(--amber-separator);border-radius:var(--amber-radius);padding:14px;box-shadow:0 10px 30px rgba(0,0,0,.04)}.flash{position:relative;min-height:320px;border-radius:calc(var(--amber-radius) + 4px);background:linear-gradient(160deg,var(--amber-fill),var(--amber-surface));border:1px solid var(--amber-separator);display:flex;align-items:center;justify-content:center;text-align:center;padding:28px;cursor:pointer;user-select:none;transition:transform .18s ease}.flash:active{transform:scale(.99)}.sideLabel{position:absolute;top:16px;left:16px;color:var(--amber-text-secondary);font-size:13px;font-weight:650}.knownMark{position:absolute;top:14px;right:14px;background:var(--amber-accent);color:var(--amber-on-accent);padding:6px 9px;border-radius:999px;font-size:12px;font-weight:750}.term{font-family:var(--amber-font-rounded);font-size:clamp(38px,10vw,76px);line-height:1.02;word-break:break-word}.hint{position:absolute;bottom:16px;left:18px;right:18px;color:var(--amber-text-secondary);font-size:13px}.buttons{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.buttons.three{grid-template-columns:1fr 1fr 1fr}button,select{font:inherit;border:0;border-radius:var(--amber-radius-small);background:var(--amber-fill);color:var(--amber-text);padding:13px 14px;font-weight:650}button{cursor:pointer}button.primary{background:var(--amber-accent);color:var(--amber-on-accent)}button.soft{background:var(--amber-accent-soft);color:var(--amber-accent-text)}button.danger{color:var(--amber-danger)}button:disabled{opacity:.45;cursor:not-allowed}.bar{height:10px;background:var(--amber-fill);border-radius:999px;overflow:hidden;margin:14px 0 6px}.bar span{display:block;height:100%;background:var(--amber-accent);width:0%;transition:width .2s}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.stat{background:var(--amber-surface);border:1px solid var(--amber-separator);border-radius:var(--amber-radius-small);padding:12px;text-align:center}.num{font-family:var(--amber-font-rounded);font-size:24px;font-weight:800}.label{color:var(--amber-text-secondary);font-size:12px;margin-top:2px}.settings{background:var(--amber-surface);border:1px solid var(--amber-separator);border-radius:var(--amber-radius);padding:14px}.row{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--amber-separator)}.row:last-child{border-bottom:0}.row span{font-weight:650}.list{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.chip{border:1px solid var(--amber-separator);background:var(--amber-fill);border-radius:999px;padding:7px 10px;font-size:13px}.chip.known{background:var(--amber-accent-soft);color:var(--amber-accent-text);border-color:transparent}.empty{padding:28px;text-align:center;color:var(--amber-text-secondary)}@media(min-width:900px){.grid{grid-template-columns:minmax(0,1.35fr) minmax(280px,.65fr);align-items:start}.flash{min-height:420px}.title h1{font-size:34px}}@media(max-width:520px){.top{display:block}.pill{margin-top:12px}.buttons,.buttons.three{grid-template-columns:1fr}.flash{min-height:300px}.stats{grid-template-columns:1fr 1fr 1fr}.cardPanel{padding:10px}.row{display:block}.row select,.row button{width:100%;margin-top:8px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="title"><h1>Verb flashcards</h1><div class="muted" id="subtitle">Loading cards…</div></div>
+    <div class="pill" id="queuePill">Learning first</div>
+  </div>
+  <div class="grid">
+    <section class="cardPanel">
+      <div id="card" class="flash" role="button" tabindex="0" aria-label="Flashcard: tap to flip">
+        <div class="empty">No verbs found yet.</div>
+      </div>
+      <div class="bar"><span id="progress"></span></div>
+      <div class="muted" id="position">—</div>
+      <div class="buttons three">
+        <button id="again">Still learning</button>
+        <button id="flip" class="soft">Flip</button>
+        <button id="know" class="primary">I know this</button>
+      </div>
+      <div class="buttons">
+        <button id="prev">Previous</button>
+        <button id="next">Next</button>
+      </div>
+    </section>
+    <aside>
+      <div class="stats">
+        <div class="stat"><div class="num" id="leftNum">0</div><div class="label">left</div></div>
+        <div class="stat"><div class="num" id="knownNum">0</div><div class="label">known</div></div>
+        <div class="stat"><div class="num" id="totalNum">0</div><div class="label">total</div></div>
+      </div>
+      <div class="settings" style="margin-top:16px">
+        <div class="row"><span>Card direction</span><select id="direction"><option value="se">Spanish → English</option><option value="es">English → Spanish</option></select></div>
+        <div class="row"><span>Order</span><select id="order"><option value="note">Note order</option><option value="shuffle">Shuffle unknown first</option></select></div>
+        <div class="row"><span>Progress</span><button id="reset" class="danger">Reset known cards</button></div>
+      </div>
+      <div class="settings" style="margin-top:16px">
+        <div class="muted"><strong>All cards</strong><br>Cards marked known move to the end, so the verbs you are still learning come first.</div>
+        <div class="list" id="chips"></div>
+      </div>
+    </aside>
+  </div>
+</div>
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  let note=null, cards=[], queue=[], known={}, settings={direction:'se',order:'note'}, index=0, flipped=false, loading=false;
+  const key='flashcards.v1';
+  function norm(s){return String(s||'').trim();}
+  function cardKey(c){return norm(c.front)+'|'+norm(c.back);}
+  function getRows(n){
+    const t=(n.tables||[]).find(t=>t.columns&&t.columns.some(c=>c.name==='Spanish')&&t.columns.some(c=>c.name==='English'))||(n.tables||[])[0];
+    if(!t)return [];
+    const names=t.columns.map(c=>c.name); const si=names.indexOf('Spanish'), ei=names.indexOf('English');
+    if(si<0||ei<0)return [];
+    return (t.rows||[]).map((r,i)=>({front:norm(r[si]),back:norm(r[ei]),row:i})).filter(c=>c.front&&c.back);
+  }
+  function hash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0;}
+  function buildQueue(){
+    let arr=cards.slice();
+    if(settings.order==='shuffle')arr.sort((a,b)=>hash(cardKey(a))-hash(cardKey(b)));
+    arr.sort((a,b)=>(known[cardKey(a)]?1:0)-(known[cardKey(b)]?1:0));
+    queue=arr;
+    if(index>=queue.length)index=Math.max(0,queue.length-1);
+  }
+  async function loadState(){
+    if(loading)return; loading=true;
+    try{
+      const saved=await amber.store.get(key);
+      if(saved&&typeof saved==='object'){
+        known=saved.known||{};
+        settings=Object.assign(settings,saved.settings||{});
+        index=saved.index||0;
+      }
+    }catch(e){}
+    loading=false;
+  }
+  async function saveState(){
+    try{await amber.store.set(key,{known,settings,index,updated:new Date().toISOString()});}catch(e){}
+  }
+  function face(c){
+    const dir=settings.direction;
+    if(!flipped)return dir==='se'?{label:'Spanish',text:c.front}:{label:'English',text:c.back};
+    return dir==='se'?{label:'English',text:c.back}:{label:'Spanish',text:c.front};
+  }
+  function render(){
+    buildQueue();
+    $('direction').value=settings.direction; $('order').value=settings.order;
+    const total=cards.length, knownCount=cards.filter(c=>known[cardKey(c)]).length, left=Math.max(0,total-knownCount);
+    $('leftNum').textContent=left; $('knownNum').textContent=knownCount; $('totalNum').textContent=total;
+    $('progress').style.width=total?Math.round(knownCount/total*100)+'%':'0%';
+    $('subtitle').textContent=total?`${left} still learning • ${knownCount} known`:'Add Spanish and English columns to the table to make cards.';
+    $('queuePill').textContent=left?'Learning first':'All known — review mode';
+    const chipBox=$('chips'); chipBox.innerHTML='';
+    cards.forEach(c=>{const d=document.createElement('span');d.className='chip '+(known[cardKey(c)]?'known':'');d.textContent=c.front;chipBox.appendChild(d);});
+    const c=queue[index];
+    if(!c){$('card').innerHTML='<div class="empty">No verbs found yet.</div>';$('position').textContent='—';return;}
+    const f=face(c), isKnown=!!known[cardKey(c)];
+    $('card').innerHTML=`<div class="sideLabel">${f.label}</div>${isKnown?'<div class="knownMark">Known</div>':''}<div class="term"></div><div class="hint">Tap to flip</div>`;
+    $('card').querySelector('.term').textContent=f.text;
+    $('position').textContent=`Card ${index+1} of ${queue.length} ${isKnown?'• marked known':'• still learning'}`;
+    $('again').disabled=!total; $('know').disabled=!total; $('flip').disabled=!total; $('prev').disabled=!total; $('next').disabled=!total;
+  }
+  function advance(preferUnknown){
+    buildQueue();
+    if(!queue.length)return;
+    if(preferUnknown){
+      const start=index;
+      for(let step=1;step<=queue.length;step++){const ni=(start+step)%queue.length;if(!known[cardKey(queue[ni])]){index=ni;flipped=false;saveState();render();return;}}
+    }
+    index=(index+1)%queue.length; flipped=false; saveState(); render();
+  }
+  async function setKnown(v){const c=queue[index]; if(!c)return; known[cardKey(c)]=v; await saveState(); advance(true);}
+  $('card').addEventListener('click',()=>{flipped=!flipped;render();});
+  $('card').addEventListener('keydown',e=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();flipped=!flipped;render();}});
+  $('flip').addEventListener('click',()=>{flipped=!flipped;render();});
+  $('know').addEventListener('click',()=>setKnown(true));
+  $('again').addEventListener('click',()=>setKnown(false));
+  $('next').addEventListener('click',()=>advance(false));
+  $('prev').addEventListener('click',()=>{buildQueue(); if(queue.length){index=(index-1+queue.length)%queue.length;flipped=false;saveState();render();}});
+  $('direction').addEventListener('change',e=>{settings.direction=e.target.value;flipped=false;saveState();render();});
+  $('order').addEventListener('change',e=>{settings.order=e.target.value;index=0;flipped=false;saveState();render();});
+  $('reset').addEventListener('click',async()=>{known={};index=0;flipped=false;await saveState();render();});
+  let sx=null; $('card').addEventListener('touchstart',e=>{sx=e.changedTouches[0].clientX},{passive:true}); $('card').addEventListener('touchend',e=>{if(sx===null)return;const dx=e.changedTouches[0].clientX-sx;sx=null;if(Math.abs(dx)>60){dx<0?advance(false):$('prev').click();}},{passive:true});
+  amber.onChange(async function(n){note=n; cards=getRows(note); await loadState(); render();});
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,81 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{box-sizing:border-box}
+.wrap{max-width:var(--amber-content-max);margin:0 auto;padding:16px var(--amber-gutter) 40px;font-family:var(--amber-font)}
+h1{font-size:22px;margin:0 0 4px}
+.sub{color:var(--amber-text-secondary);font-size:14px;margin-bottom:14px}
+.weeks,.days{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.chip{border:0;background:var(--amber-fill);color:var(--amber-text);padding:8px 14px;border-radius:var(--amber-radius-small);font:inherit;font-size:14px;cursor:pointer}
+.chip.on{background:var(--amber-accent);color:var(--amber-on-accent)}
+.chip.done{outline:2px solid var(--amber-accent)}
+.lifts{display:grid;gap:12px;grid-template-columns:1fr}
+@media(min-width:900px){.lifts{grid-template-columns:1fr 1fr}}
+.card{background:var(--amber-surface);border-radius:var(--amber-radius);padding:16px}
+.card h2{margin:0;font-size:18px}
+.meta{color:var(--amber-text-secondary);font-size:14px;margin:2px 0 12px}
+.sets{display:flex;gap:10px;flex-wrap:wrap}
+.set{width:56px;height:56px;border-radius:50%;border:2px solid var(--amber-accent);background:transparent;color:var(--amber-accent-text);font:600 16px var(--amber-font-rounded);cursor:pointer}
+.set.on{background:var(--amber-accent);color:var(--amber-on-accent)}
+.bar{height:6px;background:var(--amber-fill);border-radius:3px;margin:0 0 16px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--amber-accent)}
+.banner{background:var(--amber-accent-soft);color:var(--amber-accent-text);padding:10px 14px;border-radius:var(--amber-radius-small);margin-bottom:12px;font-size:14px}
+.nav{display:flex;gap:8px;margin-top:16px}
+.reset{background:none;border:0;color:var(--amber-text-secondary);font:inherit;font-size:13px;margin-top:20px;cursor:pointer;text-decoration:underline}
+</style></head><body><div class="wrap" id="app"></div>
+<script>
+const START="2026-10-12";
+function build(){
+  const base=[
+    {day:"Mon",lifts:[["Squat",3,5,60],["Bench press",3,5,40]]},
+    {day:"Wed",lifts:[["Deadlift",1,5,80],["Barbell row",3,8,35]]},
+    {day:"Fri",lifts:[["Squat",3,5,62.5],["Overhead press",3,5,25]].map(x=>x)}
+  ];
+  base[2].lifts=[["Squat",3,5,62.5],["Overhead press",3,5,25]];
+  const off={Mon:0,Wed:2,Fri:4};
+  const weeks=[];
+  for(let w=0;w<4;w++){
+    weeks.push({name:w==3?"Week 4 · Deload":"Week "+(w+1),days:base.map(d=>({day:d.day,offset:w*7+off[d.day],lifts:d.lifts.map(l=>({name:l[0],sets:w==3?2:l[1],reps:l[2],kg:w==3?l[3]:l[3]+2.5*w}))}))});
+  }
+  return weeks;
+}
+let sel=null,state={program:null,done:{}};
+function dateOf(off){const d=new Date(START+"T00:00:00");d.setDate(d.getDate()+off);return d;}
+function fmt(d){return d.toLocaleDateString(undefined,{weekday:"short",day:"numeric",month:"short"});}
+function dayDone(w,d){return state.program[w].days[d].lifts.every((l,i)=>{const a=state.done[w+"-"+d+"-"+i]||[];return a.filter(Boolean).length>=l.sets;});}
+function firstOpen(){for(let w=0;w<state.program.length;w++)for(let d=0;d<3;d++)if(!dayDone(w,d))return [w,d];return [3,2];}
+function render(){
+  const P=state.program;if(!P)return;
+  if(!sel)sel=firstOpen();
+  const [w,d]=sel,day=P[w].days[d],dt=dateOf(day.offset);
+  const todayStr=(window.amber.note.today||"");
+  const isToday=dt.toISOString().slice(0,10)==todayStr||fmt(dt)==fmt(new Date(todayStr+"T00:00:00"));
+  let h='<h1>Strength</h1><div class="sub">4-week block from '+fmt(new Date(START+"T00:00:00"))+'</div>';
+  h+='<div class="weeks">'+P.map((x,i)=>'<button class="chip'+(i==w?' on':'')+'" data-w="'+i+'">'+x.name+'</button>').join('')+'</div>';
+  h+='<div class="days">'+P[w].days.map((x,i)=>'<button class="chip'+(i==d?' on':'')+(dayDone(w,i)&&i!=d?' done':'')+'" data-d="'+i+'">'+x.day+(dayDone(w,i)?' ✓':'')+'</button>').join('')+'</div>';
+  h+='<div class="sub">'+P[w].name+' · '+fmt(dt)+(isToday?' · today':'')+'</div>';
+  if(w==3)h+='<div class="banner">Deload: 2×5 at week 1 weights. Keep it easy.</div>';
+  if(dayDone(w,d))h+='<div class="banner">Day complete — nice work.</div>';
+  h+='<div class="lifts">'+day.lifts.map((l,i)=>{const k=w+"-"+d+"-"+i,a=state.done[k]||[];const n=a.filter(Boolean).length;
+    return '<div class="card"><h2>'+l.name+'</h2><div class="meta">'+l.sets+' × '+l.reps+' @ '+l.kg+' kg · '+n+'/'+l.sets+' sets</div><div class="bar"><i style="width:'+(n/l.sets*100)+'%"></i></div><div class="sets">'+
+    Array.from({length:l.sets},(_,s)=>'<button class="set'+(a[s]?' on':'')+'" data-k="'+k+'" data-s="'+s+'">'+(a[s]?'✓':l.reps)+'</button>').join('')+'</div></div>';}).join('')+'</div>';
+  const nx=d<2?[w,d+1]:(w<3?[w+1,0]:null),pv=d>0?[w,d-1]:(w>0?[w-1,2]:null);
+  h+='<div class="nav">'+(pv?'<button class="chip" data-go="'+pv+'">← Previous</button>':'')+(nx?'<button class="chip on" data-go="'+nx+'">Next day →</button>':'')+'</div>';
+  h+='<button class="reset" id="reset">Reset progress</button>';
+  document.getElementById("app").innerHTML=h;
+}
+document.addEventListener("click",e=>{
+  const t=e.target.closest("button");if(!t||!state.program)return;
+  if(t.dataset.w!==undefined)sel=[+t.dataset.w,0],render();
+  else if(t.dataset.d!==undefined)sel=[sel[0],+t.dataset.d],render();
+  else if(t.dataset.go){sel=t.dataset.go.split(",").map(Number);render();}
+  else if(t.dataset.k){const k=t.dataset.k,s=+t.dataset.s;const a=(state.done[k]||[]).slice();while(a.length<=s)a.push(false);a[s]=!a[s];state.done[k]=a;amber.setData({values:{done:state.done}});render();}
+  else if(t.id=="reset"){if(confirm("Clear all ticked sets?")){state.done={};amber.setData({values:{done:{}}});sel=null;render();}}
+});
+amber.onChange((note,data)=>{
+  const v=(data&&data.values)||{};
+  if(!v.program){const p=build();state.program=p;amber.setData({values:{program:p,done:v.done||{}}});}
+  else state.program=v.program;
+  state.done=v.done||{};
+  render();
+});
+</script></body></html>

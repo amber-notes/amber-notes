@@ -1,0 +1,81 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="amber-needs" content='{"hosts":["query1.finance.yahoo.com"]}'>
+<style>
+*{box-sizing:border-box}
+.wrap{max-width:var(--amber-content-max);margin:0 auto;padding:16px var(--amber-gutter) 32px}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+h1{font-family:var(--amber-font-rounded);font-size:22px;margin:0}
+button{background:var(--amber-accent);color:var(--amber-on-accent);border:0;border-radius:var(--amber-radius-small);padding:8px 14px;font:inherit;font-weight:600}
+.sub{color:var(--amber-text-secondary);font-size:13px}
+.totals{display:grid;grid-template-columns:1fr;gap:10px;margin:16px 0}
+.card{background:var(--amber-surface);border-radius:var(--amber-radius);padding:14px}
+.big{font-family:var(--amber-font-rounded);font-size:28px;font-weight:700}
+.lbl{color:var(--amber-text-secondary);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+.rows{display:grid;gap:10px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;align-items:center}
+.sym{font-weight:700;font-size:17px}
+.r{text-align:right}
+.pos{color:#2e9e4f}.neg{color:var(--amber-danger)}
+.err{color:var(--amber-danger);font-size:13px}
+@media(min-width:600px){.totals{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}}
+@media(min-width:900px){.row{grid-template-columns:1.2fr repeat(5,1fr)}.r{text-align:right}.hide-wide{display:none}.big{font-size:34px}}
+.cell small{display:block;color:var(--amber-text-secondary);font-size:11px}
+</style></head><body><div class="wrap">
+<header><div><h1>Stocks I watch</h1><div class="sub" id="status">Loading…</div></div><button id="rf">Refresh</button></div>
+<div class="totals" id="totals"></div>
+<div class="rows" id="rows"></div>
+<p class="sub">Profit = (live price − buy price) × shares, in each stock's own currency. Buy prices are assumed to be in that currency. Add an exchange suffix in the Ticker cell (e.g. VOLV-B.ST) to override; VOLV-B is read as VOLV-B.ST (Stockholm).</p>
+</div>
+<script>
+const MAP={"VOLV-B":"VOLV-B.ST"};
+let note=null,quotes={},loading=false,updated=null;
+const num=s=>parseFloat(String(s).replace(/[^0-9.,\-]/g,'').replace(',','.'));
+const fmt=(n,d=2)=>isFinite(n)?n.toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d}):'–';
+const sgn=n=>(n>=0?'+':'')+fmt(n);
+const cls=n=>n>=0?'pos':'neg';
+function holdings(){
+  const t=note&&note.tables[0];if(!t)return[];
+  const ci=n=>t.columns.findIndex(c=>c.name.toLowerCase()===n);
+  const a=ci('ticker'),b=ci('shares'),c=ci('buy price');
+  return t.rows.map(r=>({t:String(r[a]).trim(),sh:num(r[b]),buy:num(r[c])})).filter(h=>h.t);
+}
+async function load(){
+  if(loading||!note)return;loading=true;
+  document.getElementById('status').textContent='Fetching live prices…';
+  await Promise.all(holdings().map(async h=>{
+    const sym=MAP[h.t.toUpperCase()]||h.t;
+    try{
+      const r=await amber.fetch('https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?range=1d&interval=1d');
+      if(!r.ok)throw new Error('HTTP '+r.status);
+      const j=typeof r.body==='string'?JSON.parse(r.body):r.body;
+      const m=j.chart.result[0].meta;
+      quotes[h.t]={price:m.regularMarketPrice,prev:m.chartPreviousClose??m.previousClose,cur:m.currency,sym};
+    }catch(e){quotes[h.t]={error:String(e.message||e),sym}}
+  }));
+  loading=false;updated=new Date();render();
+}
+function render(){
+  if(!note)return;
+  const hs=holdings(),tot={};let html='';
+  hs.forEach(h=>{
+    const q=quotes[h.t];
+    if(!q){html+=`<div class="card"><span class="sym">${h.t}</span> <span class="sub">loading…</span></div>`;return;}
+    if(q.error){html+=`<div class="card"><span class="sym">${h.t}</span> <span class="err">${q.error} (${q.sym})</span></div>`;return;}
+    const cost=h.sh*h.buy,val=h.sh*q.price,p=val-cost,pc=cost?p/cost*100:0,day=q.prev?(q.price-q.prev)/q.prev*100:0;
+    const T=tot[q.cur]=tot[q.cur]||{cost:0,val:0};T.cost+=cost;T.val+=val;
+    html+=`<div class="card row">
+    <div class="cell"><span class="sym">${h.t}</span><small>${fmt(h.sh,h.sh%1?2:0)} sh · bought ${fmt(h.buy)}</small></div>
+    <div class="cell r"><span class="lbl hide-wide">Price</span>${fmt(q.price)} ${q.cur}<small class="${cls(day)}">${sgn(day)}% today</small></div>
+    <div class="cell r"><span class="lbl hide-wide">Cost</span>${fmt(cost)}</div>
+    <div class="cell r"><span class="lbl hide-wide">Value</span>${fmt(val)}</div>
+    <div class="cell r ${cls(p)}"><span class="lbl hide-wide">Profit</span><b>${sgn(p)}</b></div>
+    <div class="cell r ${cls(pc)}"><span class="lbl hide-wide">Return</span>${sgn(pc)}%</div></div>`;
+  });
+  document.getElementById('rows').innerHTML=html;
+  document.getElementById('totals').innerHTML=Object.entries(tot).map(([c,t])=>{const p=t.val-t.cost;return `<div class="card"><div class="lbl">Total profit (${c})</div><div class="big ${cls(p)}">${sgn(p)}</div><div class="sub">${sgn(t.cost?p/t.cost*100:0)}% · value ${fmt(t.val)} of cost ${fmt(t.cost)}</div></div>`}).join('');
+  document.getElementById('status').textContent=updated?'Updated '+updated.toLocaleTimeString():'';
+}
+document.getElementById('rf').onclick=()=>{quotes={};render();load()};
+let first=true;
+amber.onChange(n=>{note=n;render();if(first){first=false;load()}else{const hs=holdings();if(hs.some(h=>!quotes[h.t]))load()}});
+</script></body></html>

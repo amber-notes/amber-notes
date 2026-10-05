@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  *{box-sizing:border-box}body{margin:0;padding:18px 0 88px;color:var(--amber-text);font-family:var(--amber-font)}
+  .wrap{max-width:var(--amber-content-max);margin:0 auto;padding:0 var(--amber-gutter)}
+  header{margin:4px 0 16px}.kicker{margin:0 0 4px;color:var(--amber-text-secondary);font-size:15px}h1{margin:0;font-size:34px;line-height:1.05;letter-spacing:-.035em}h2{margin:0 0 10px;font-size:17px}.sub{margin:8px 0 0;color:var(--amber-text-secondary);font-size:16px}
+  .summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0}.stat{background:var(--amber-surface);border:1px solid var(--amber-separator);border-radius:var(--amber-radius);padding:12px;min-width:0}.stat b{display:block;font-size:25px;line-height:1.1}.stat span{display:block;margin-top:3px;color:var(--amber-text-secondary);font-size:14px}
+  .layout{display:grid;gap:16px}.card{background:var(--amber-surface);border:1px solid var(--amber-separator);border-radius:var(--amber-radius);overflow:hidden}.pad{padding:14px}.empty{padding:28px 16px;text-align:center;color:var(--amber-text-secondary);font-size:16px}.err{min-height:1.25em;margin:8px 2px 0;color:var(--amber-danger);font-size:15px}
+  .habit{appearance:none;width:100%;min-height:62px;display:flex;align-items:center;gap:12px;padding:12px 14px;border:0;border-top:1px solid var(--amber-separator);background:transparent;color:var(--amber-text);font:inherit;text-align:left}.habit:first-child{border-top:0}.habit:active{background:var(--amber-accent-soft)}.habit:focus-visible,.goal input:focus-visible{outline:3px solid var(--amber-accent);outline-offset:-3px}.tick{width:34px;height:34px;border-radius:50%;border:2px solid var(--amber-separator);background:var(--amber-fill);display:grid;place-items:center;flex:none}.habit[aria-pressed="true"] .tick{background:var(--amber-accent);border-color:var(--amber-accent)}.tick svg{width:18px;height:18px;opacity:0;color:var(--amber-on-accent)}.habit[aria-pressed="true"] .tick svg{opacity:1}.htext{flex:1;min-width:0}.name{display:block;font-size:18px;overflow-wrap:anywhere}.meta{display:block;margin-top:3px;color:var(--amber-text-secondary);font-size:14px;font-variant-numeric:tabular-nums}.pill{display:inline-flex;align-items:center;justify-content:center;min-width:36px;border-radius:999px;padding:5px 8px;background:var(--amber-accent-soft);color:var(--amber-accent-text);font-size:14px;font-weight:650}
+  .goals{display:grid;gap:0}.goal{display:grid;grid-template-columns:minmax(0,1fr) minmax(72px,1.2fr) auto;align-items:center;gap:10px;min-height:58px;padding:10px 14px;border-top:1px solid var(--amber-separator)}.goal:first-child{border-top:0}.bar{height:10px;border-radius:999px;background:var(--amber-fill);overflow:hidden}.bar i{display:block;height:100%;background:var(--amber-accent);border-radius:inherit}.goal input{width:54px;min-height:40px;border:0;border-radius:var(--amber-radius-small);background:var(--amber-fill);color:var(--amber-text);font:inherit;text-align:center}
+  .gridWrap{padding:12px}.grid{display:grid;gap:5px}.row{display:grid;grid-template-columns:minmax(68px,1.25fr) repeat(14,minmax(10px,1fr));gap:3px;align-items:center}.dayHead,.habitHead{color:var(--amber-text-secondary);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:clip}.habitHead{padding-right:4px}.cell{aspect-ratio:1;border-radius:4px;background:var(--amber-fill);border:1px solid var(--amber-separator)}.cell.on{background:var(--amber-accent);border-color:var(--amber-accent)}.cell.today{box-shadow:0 0 0 2px var(--amber-text) inset}.cell.miss{opacity:.55}.noteList{display:grid;gap:8px}.noteItem{padding:10px 12px;border-radius:var(--amber-radius-small);background:var(--amber-fill);font-size:15px}.noteItem b{font-variant-numeric:tabular-nums}.sr{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+  @media (min-width:900px){body{padding-top:28px}.layout{grid-template-columns:minmax(340px,.85fr) minmax(0,1.15fr);align-items:start}.wide{display:grid;gap:16px}.summary{max-width:620px}h1{font-size:42px}.row{grid-template-columns:minmax(110px,1.4fr) repeat(14,minmax(22px,1fr));gap:4px}.dayHead{font-size:13px}.cell{border-radius:6px}.side{position:sticky;top:18px}}
+</style>
+</head>
+<body>
+<div class="wrap"><main id="app" aria-live="polite"></main></div>
+<script>
+const DONE=/^(✓|✔|x|yes|y|1|true|done)$/i;
+const tick='<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const addDays=(iso,n)=>{const d=new Date(iso+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)};
+const dayName=iso=>new Date(iso+'T12:00:00Z').toLocaleDateString(undefined,{weekday:'short'});
+const shortDate=iso=>new Date(iso+'T12:00:00Z').toLocaleDateString(undefined,{month:'short',day:'numeric'});
+const weekStart=iso=>{const d=new Date(iso+'T12:00:00Z');return addDays(iso,-((d.getUTCDay()+6)%7))};
+let error='';
+function tableFor(note){return note.tables.find(t=>t.columns.some(c=>/^(date|day)$/i.test(c.name)))||note.tables[0]}
+function render(note,data){
+  const root=document.getElementById('app');
+  const table=tableFor(note);
+  if(!table){root.innerHTML=`<header><p class="kicker">Habit tracker</p><h1>${esc(note.title)}</h1></header><div class="card empty">Add a table with a Date column and one column per habit.</div>`;return}
+  const dateCol=table.columns.findIndex(c=>/^(date|day)$/i.test(c.name));
+  if(dateCol<0){root.innerHTML=`<header><p class="kicker">Habit tracker</p><h1>${esc(note.title)}</h1></header><div class="card empty">I found a table, but it needs a Date column.</div>`;return}
+  const habits=table.columns.map((c,i)=>({name:c.name,i})).filter(h=>h.i!==dateCol&&!/^(notes?|comments?)$/i.test(h.name));
+  if(!habits.length){root.innerHTML=`<header><p class="kicker">Habit tracker</p><h1>${esc(note.title)}</h1></header><div class="card empty">Add habit columns next to Date to start tracking.</div>`;return}
+  const today=note.today, dateName=table.columns[dateCol].name;
+  const byDate=new Map(); table.rows.forEach((r,i)=>{const d=String(r[dateCol]||'').trim(); if(d) byDate.set(d,{row:r,index:i})});
+  const isDone=(date,h)=>DONE.test(String(byDate.get(date)?.row[h.i]??'').trim());
+  const streak=h=>{let n=0,d=today;if(!isDone(d,h))d=addDays(d,-1);while(isDone(d,h)){n++;d=addDays(d,-1)}return n};
+  const best=h=>{let b=0,n=0;[...byDate.keys()].sort().forEach(d=>{if(isDone(d,h)){n++;b=Math.max(b,n)}else n=0});return b};
+  const ws=weekStart(today), week=Array.from({length:7},(_,i)=>addDays(ws,i)).filter(d=>d<=today);
+  const days=Array.from({length:14},(_,i)=>addDays(today,i-13));
+  const todayDone=habits.filter(h=>isDone(today,h)).length;
+  const activeStreaks=habits.map(streak); const longest=Math.max(0,...activeStreaks);
+  const goals=(data&&data.values&&data.values.goals)||{};
+  const notesCol=table.columns.findIndex(c=>/^(notes?|comments?)$/i.test(c.name));
+  const recentNotes=notesCol<0?[]:table.rows.map(r=>({date:r[dateCol],text:r[notesCol]})).filter(x=>String(x.text||'').trim()).slice(-3).reverse();
+  root.innerHTML=`<header><p class="kicker">${esc(dayName(today))}, ${esc(shortDate(today))}</p><h1>${esc(note.title)}</h1><p class="sub">Tap a habit to tick it off for today.</p></header>
+    <section class="summary" aria-label="Today summary"><div class="stat"><b>${todayDone}/${habits.length}</b><span>done today</span></div><div class="stat"><b>${longest}</b><span>best active streak</span></div><div class="stat"><b>${week.reduce((a,d)=>a+habits.filter(h=>isDone(d,h)).length,0)}</b><span>ticks this week</span></div></section>
+    <div class="layout"><section class="side"><h2>Today</h2><div class="card" role="group" aria-label="Today habits">${habits.map(h=>{const on=isDone(today,h),s=streak(h);return `<button class="habit" type="button" data-h="${h.i}" aria-pressed="${on}" aria-label="${on?'Untick':'Tick'} ${esc(h.name)} for today"><span class="tick">${tick}</span><span class="htext"><span class="name">${esc(h.name)}</span><span class="meta">${s?`${s} day${s===1?'':'s'} in a row`:'No current streak'} · best ${best(h)}</span></span><span class="pill">${week.filter(d=>isDone(d,h)).length}/wk</span></button>`}).join('')}</div><div class="err" role="alert">${esc(error)}</div></section>
+    <div class="wide"><section><h2>Last 14 days</h2><div class="card gridWrap"><div class="grid" role="table" aria-label="Last 14 days habit grid"><div class="row" role="row"><span></span>${days.map(d=>`<span class="dayHead" role="columnheader" title="${esc(shortDate(d))}">${d===today?'Today':esc(dayName(d))}</span>`).join('')}</div>${habits.map(h=>`<div class="row" role="row"><span class="habitHead" role="rowheader">${esc(h.name)}</span>${days.map(d=>`<span class="cell ${isDone(d,h)?'on':'miss'} ${d===today?'today':''}" role="cell" title="${esc(h.name)} — ${esc(shortDate(d))}: ${isDone(d,h)?'done':'not done'}"></span>`).join('')}</div>`).join('')}</div></div></section>
+    <section><h2>Weekly goals</h2><div class="card goals">${habits.map(h=>{const n=week.filter(d=>isDone(d,h)).length,g=Number(goals[h.name])||0,p=g?Math.min(100,Math.round(n/g*100)):0;return `<label class="goal"><span><span class="name">${esc(h.name)}</span><span class="meta">${n}${g?' of '+g:' done'} this week</span></span><span class="bar" aria-hidden="true"><i style="width:${p}%"></i></span><input data-goal="${esc(h.name)}" aria-label="Weekly goal for ${esc(h.name)}" type="number" min="0" max="7" inputmode="numeric" value="${g||''}" placeholder="Goal"></label>`}).join('')}</div></section>
+    ${recentNotes.length?`<section><h2>Recent notes</h2><div class="noteList">${recentNotes.map(n=>`<div class="noteItem"><b>${esc(n.date)}</b> ${esc(n.text)}</div>`).join('')}</div></section>`:''}</div></div>`;
+  root.querySelectorAll('.habit').forEach(btn=>btn.addEventListener('click',async()=>{const h=habits.find(x=>x.i===Number(btn.dataset.h)); const existing=byDate.get(today); const value=isDone(today,h)?'':'✓'; let res; try{res=existing?await amber.update({op:'set_cell',table:table.index,row:existing.index,col:h.name,value}):await amber.update({op:'append_row',table:table.index,values:{[dateName]:today,[h.name]:value}})}catch(e){res={ok:false,error:String(e.message||e)}} error=res&&res.ok?'':(res&&res.error)||'Could not update the note.'; if(!res||!res.ok)render(amber.note,amber.data)}));
+  root.querySelectorAll('[data-goal]').forEach(input=>input.addEventListener('change',async()=>{let v=input.value===''?null:Math.max(0,Math.min(7,Math.round(Number(input.value)||0))); let res; try{res=await amber.setData({values:{goals:{[input.dataset.goal]:v}}})}catch(e){res={ok:false,error:String(e.message||e)}} error=!res||res.ok?'':res.error; if(res&&res.ok===false)render(amber.note,amber.data)}));
+}
+amber.onChange(render);
+</script>
+</body>
+</html>

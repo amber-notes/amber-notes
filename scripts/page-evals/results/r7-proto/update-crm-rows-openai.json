@@ -1,0 +1,65 @@
+{
+  "task": "update-crm-rows",
+  "model": "gpt-5.5",
+  "round": "r7-proto",
+  "skill": false,
+  "seconds": 10,
+  "score": 1,
+  "passed": 3,
+  "total": 3,
+  "checks": [
+    {
+      "name": "acme_won",
+      "pass": true
+    },
+    {
+      "name": "nordljus_value",
+      "pass": true
+    },
+    {
+      "name": "only_two_lines",
+      "pass": true
+    }
+  ],
+  "tool_calls": 3,
+  "tool_errors": 0,
+  "usage": {
+    "input": 4369,
+    "output": 293,
+    "cacheRead": 14336,
+    "cacheWrite": 0,
+    "turns": 4
+  },
+  "usd": 0.0102,
+  "page_bytes": 0,
+  "data": null,
+  "answer": "Updated **Clients**: Acme AB is now **Won**, and Nordljus’s value is now **12000**.",
+  "calls": [
+    {
+      "name": "get_overview",
+      "args": {},
+      "error": false,
+      "result": "{\n  \"total_notes\": 1,\n  \"folders\": [],\n  \"pinned\": [],\n  \"recently_edited\": [\n    {\n      \"id\": \"b2e98816-8de8-493f-aa82-30004aff0edc\",\n      \"title\": \"Clients\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T13:49:28.877Z\",\n      \"preview\": \"Company  Contact  Email  Stage  Value · Acme AB  Sarah Lee  sarah@acme.se  Proposal  8000 · Nordljus  Erik Holm  erik@nordljus.se  Lead  30…\"\n    }\n  ],\n  \"recently_deleted\": 0\n}"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "b2e98816-8de8-493f-aa82-30004aff0edc",
+        "line_numbers": "true"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"b2e98816-8de8-493f-aa82-30004aff0edc\",\n  \"title\": \"Clients\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T13:49:28.877Z\",\n  \"updated\": \"2026-10-05T13:49:28.877Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 8,\n    \"words\": 62\n  },\n  \"markdown\": \"1│ Clients\\n2│ \\n3│ | Company | Contact | Email | Stage | Value |\\n4│ | --- | --- | --- | --- | --- |\\n5│ | Acme AB | Sarah Lee | sarah@acme.se | Proposal | 8000 |\\n6│ | Nordljus |… (722 chars)"
+    },
+    {
+      "name": "edit_note",
+      "args": {
+        "id": "b2e98816-8de8-493f-aa82-30004aff0edc",
+        "expected_version": "1",
+        "edits": "[{\"old_text\":\"| Acme AB | Sarah Lee | sarah@acme.se | Proposal | 8000 |\",\"new_text\":\"| Acme AB | Sarah Lee | sarah@acme.se | Won | 8000 |\"},{\"old_text\":\"| Nordljus | Erik Holm | erik@nordljus.se | Lead | 3000 |\",\"new_text\":\"| Nordljus | Erik Holm | erik@nordljus.se | Lead | 12000 |\"}]"
+      },
+      "error": false,
+      "result": "{\n  \"edited\": {\n    \"id\": \"b2e98816-8de8-493f-aa82-30004aff0edc\",\n    \"title\": \"Clients\",\n    \"version\": 2,\n    \"updated\": \"2026-10-05T13:49:36.772Z\"\n  },\n  \"edits_applied\": 2\n}"
+    }
+  ],
+  "render": null
+}

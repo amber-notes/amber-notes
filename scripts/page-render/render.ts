@@ -154,7 +154,20 @@ export type RenderOptions = {
   probes?: boolean;
 };
 
+/** Renders, starting WebKit again (once) if it went away under load. */
 export async function renderPage(html: string, markdown: string, data: unknown, opts: RenderOptions): Promise<Render> {
+  try {
+    return await renderOnce(html, markdown, data, opts);
+  } catch (e) {
+    if (!/closed|crash|disconnect/i.test(String(e))) throw e;
+    await browser?.close().catch(() => {});
+    browser = null;
+    return await renderOnce(html, markdown, data, opts);
+  }
+}
+
+async function renderOnce(html: string, markdown: string, data: unknown, opts: RenderOptions): Promise<Render> {
+  if (browser && !browser.isConnected()) browser = null;
   browser ??= await webkit.launch();
   const empty = (x: unknown) => ({ values: {}, collections: {}, ...(x as object ?? {}) });
   let md = markdown, store: unknown = empty(data);

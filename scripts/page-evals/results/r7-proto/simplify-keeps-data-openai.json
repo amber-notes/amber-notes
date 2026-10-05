@@ -1,0 +1,263 @@
+{
+  "task": "simplify-keeps-data",
+  "model": "gpt-5.5",
+  "round": "r7-proto",
+  "skill": false,
+  "seconds": 25,
+  "score": 0.9444444444444444,
+  "passed": 17,
+  "total": 18,
+  "checks": [
+    {
+      "name": "has_page",
+      "pass": true
+    },
+    {
+      "name": "server_checks",
+      "pass": true
+    },
+    {
+      "name": "no_console_errors",
+      "pass": true
+    },
+    {
+      "name": "no_network",
+      "pass": true
+    },
+    {
+      "name": "fits_390",
+      "pass": true
+    },
+    {
+      "name": "fits_1280",
+      "pass": true
+    },
+    {
+      "name": "shows_data",
+      "pass": true
+    },
+    {
+      "name": "dark_mode",
+      "pass": true
+    },
+    {
+      "name": "light_contrast",
+      "pass": true
+    },
+    {
+      "name": "uses_theme",
+      "pass": true
+    },
+    {
+      "name": "labelled_controls",
+      "pass": true
+    },
+    {
+      "name": "says_app",
+      "pass": false,
+      "detail": "the reply calls it a page, or doesn't call it the app"
+    },
+    {
+      "name": "probe_follows",
+      "pass": true
+    },
+    {
+      "name": "probe_escapes",
+      "pass": true
+    },
+    {
+      "name": "probe_empty",
+      "pass": true
+    },
+    {
+      "name": "probe_large",
+      "pass": true
+    },
+    {
+      "name": "note_unchanged",
+      "pass": true
+    },
+    {
+      "name": "page_changed",
+      "pass": true
+    }
+  ],
+  "tool_calls": 4,
+  "tool_errors": 0,
+  "usage": {
+    "input": 13170,
+    "output": 1824,
+    "cacheRead": 14336,
+    "cacheWrite": 0,
+    "turns": 4
+  },
+  "usd": 0.0365,
+  "page_bytes": 3675,
+  "data": null,
+  "answer": "Done — I simplified the “Household expenses” page so it only shows Food and Housing. The expense table itself is unchanged, and the previous page version is saved in history.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "\"Household expenses\" OR \"Household\" expenses",
+        "limit": "10"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"\\\"Household expenses\\\" OR \\\"Household\\\" expenses\",\n  \"results\": [\n    {\n      \"id\": \"c9a5bdfb-ff04-4dc5-af99-b926337cfff2\",\n      \"title\": \"Household expenses\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T13:50:25.547Z\",\n      \"snippet\": \"«Household expenses» | Date | Item | Category | Amt | | --- | --- | --- | --- | | 2026-09-02 | Electricity | Bills | 640 | | 2026-09-05 | Groceries | Food | 1 210 | | 2026-09-11 | Dentist | Health\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "c9a5bdfb-ff04-4dc5-af99-b926337cfff2",
+        "line_numbers": "true"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"c9a5bdfb-ff04-4dc5-af99-b926337cfff2\",\n  \"title\": \"Household expenses\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T13:50:25.547Z\",\n  \"updated\": \"2026-10-05T13:50:25.547Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"has_page\": true,\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 11,\n    \"words\": 76\n  },\n  \"markdown\": \" 1│ Household expenses\\n 2│ \\n 3│ | Date | Item | Category | Amt |\\n 4│ | --- | --- | --- | --- |\\n 5│ | 2026-09-02 | Electricity | Bills | 640 |\\n … (833 chars)"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "c9a5bdfb-ff04-4dc5-af99-b926337cfff2"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"c9a5bdfb-ff04-4dc5-af99-b926337cfff2\",\n  \"title\": \"Household expenses\",\n  \"has_page\": true,\n  \"made_by\": \"Claude\",\n  \"updated\": \"2026-10-05T13:50:25.557Z\",\n  \"rules\": \"The page runs in Amber Notes in a sandbox with no network: no fetch, no external scripts, styles, fonts or images. Put all CSS and JS inline; images only as data: URIs or inline SVG.\\nRead the note from window.amber.note, never hardcode its contents (the note changes; the page must follow):\\n  amber.note = { title, markdown, today: \\\"yyyy-mm-dd\\\", tables: [{ index, columns: [{ name, type }], rows: [[cell, ...], ...] }… (11274 chars)"
+    },
+    {
+      "name": "set_note_page",
+      "args": {
+        "id": "c9a5bdfb-ff04-4dc5-af99-b926337cfff2",
+        "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Household expenses</title>\n<style>\n  * { box-sizing: border-box; }\n  main { max-width: var(--amber-content-max); margin: 0 auto; padding: 8px var(--amber-gutter) 48px; }\n  h1 { margin: 6px 0 18px; font-size: 28px; line-height: 1.1… (3675 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"c9a5bdfb-ff04-4dc5-af99-b926337cfff2\",\n  \"title\": \"Household expenses\",\n  \"page\": \"replaced\",\n  \"bytes\": 3675,\n  \"note\": \"The person sees it in Amber Notes under Page. The note's markdown is unchanged. The previous page is kept (get_note_page lists it).\"\n}"
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "390-light",
+        "width": 390,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 178,
+        "shown": 8,
+        "sampled": 11,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r7-proto/shots/simplify-keeps-data-openai-390-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Household expenses"
+        ],
+        "excerpt": "Household expenses FOOD 2 825 kr 3 entries Groceries 2026-10-03 735 kr Groceries 2026-09-19 880 kr Groceries 2026-09-05 1 210 kr HOUSING 9 500 kr 1 entry Rent 2026-10-01 9 500 kr"
+      },
+      {
+        "name": "390-dark",
+        "width": 390,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 178,
+        "shown": 8,
+        "sampled": 11,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r7-proto/shots/simplify-keeps-data-openai-390-dark.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Household expenses"
+        ],
+        "excerpt": "Household expenses FOOD 2 825 kr 3 entries Groceries 2026-10-03 735 kr Groceries 2026-09-19 880 kr Groceries 2026-09-05 1 210 kr HOUSING 9 500 kr 1 entry Rent 2026-10-01 9 500 kr"
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 178,
+        "shown": 8,
+        "sampled": 11,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r7-proto/shots/simplify-keeps-data-openai-1280-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Household expenses"
+        ],
+        "excerpt": "Household expenses FOOD 2 825 kr 3 entries Groceries 2026-10-03 735 kr Groceries 2026-09-19 880 kr Groceries 2026-09-05 1 210 kr HOUSING 9 500 kr 1 entry Rent 2026-10-01 9 500 kr"
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 178,
+        "shown": 8,
+        "sampled": 11,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Household expenses"
+        ],
+        "excerpt": "Household expenses FOOD 2 825 kr 3 entries Groceries 2026-10-03 735 kr Groceries 2026-09-19 880 kr Groceries 2026-09-05 1 210 kr HOUSING 9 500 kr 1 entry Rent 2026-10-01 9 500 kr"
+      }
+    ],
+    "blocked": [],
+    "updates": [],
+    "setData": 0,
+    "interaction": {
+      "tried": "none",
+      "ok": null
+    },
+    "probes": {
+      "follows": {
+        "pass": true,
+        "detail": "shown, but not as written"
+      },
+      "escapes": {
+        "pass": true
+      },
+      "empty": {
+        "pass": true,
+        "detail": "blank page"
+      },
+      "large": {
+        "pass": true,
+        "detail": "577 ms to load 400 rows"
+      }
+    },
+    "dataAfter": {}
+  }
+}

@@ -1,0 +1,89 @@
+{
+  "task": "typed-import",
+  "model": "gpt-5.5",
+  "round": "r7",
+  "skill": false,
+  "seconds": 12,
+  "score": 1,
+  "passed": 6,
+  "total": 6,
+  "checks": [
+    {
+      "name": "oct_3",
+      "pass": true
+    },
+    {
+      "name": "oct_4",
+      "pass": true
+    },
+    {
+      "name": "today",
+      "pass": true
+    },
+    {
+      "name": "rows_kept",
+      "pass": true
+    },
+    {
+      "name": "prose_kept",
+      "pass": true
+    },
+    {
+      "name": "date_order",
+      "pass": true
+    }
+  ],
+  "tool_calls": 4,
+  "tool_errors": 0,
+  "usage": {
+    "input": 4278,
+    "output": 339,
+    "cacheRead": 37376,
+    "cacheWrite": 0,
+    "turns": 5
+  },
+  "usd": 0.0134,
+  "page_bytes": 0,
+  "data": null,
+  "answer": "Done — logged the 3 Oct, 4 Oct, and today’s runs in your Runs note.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Runs",
+        "limit": "10"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Runs\",\n  \"results\": [\n    {\n      \"id\": \"41067b47-e3fc-4112-8dd5-ae4c66cb56ef\",\n      \"title\": \"Runs\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T14:05:15.104Z\",\n      \"snippet\": \"«Runs» <!-- pane-table: Date=date; Km=number; Minutes=number; Feel=scale 1-5 --> | Date | Km | Minutes | Feel | | --- | --- | --- | --- | | 2026-08-28 | 5.0 | 27 | 4\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "41067b47-e3fc-4112-8dd5-ae4c66cb56ef",
+        "line_numbers": "true"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"41067b47-e3fc-4112-8dd5-ae4c66cb56ef\",\n  \"title\": \"Runs\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T14:05:15.104Z\",\n  \"updated\": \"2026-10-05T14:05:15.104Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 12,\n    \"words\": 81\n  },\n  \"markdown\": \" 1│ Runs\\n 2│ \\n 3│ <!-- pane-table: Date=date; Km=number; Minutes=number; Feel=scale 1-5 -->\\n 4│ | Date | Km | Minutes | Feel |\\n 5│ | --- | --- | --- | --- |\\n 6│ | 2026-08-28 | 5… (797 chars)"
+    },
+    {
+      "name": "read_table",
+      "args": {
+        "id": "41067b47-e3fc-4112-8dd5-ae4c66cb56ef",
+        "table": "0"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"41067b47-e3fc-4112-8dd5-ae4c66cb56ef\",\n    \"title\": \"Runs\"\n  },\n  \"columns\": [\n    {\n      \"name\": \"Date\",\n      \"type\": \"date\"\n    },\n    {\n      \"name\": \"Km\",\n      \"type\": \"number\"\n    },\n    {\n      \"name\": \"Minutes\",\n      \"type\": \"number\"\n    },\n    {\n      \"name\": \"Feel\",\n      \"type\": \"scale 1-5\"\n    }\n  ],\n  \"rows\": [\n    {\n      \"Date\": \"2026-08-28\",\n      \"Km\": \"5.0\",\n      \"Minutes\": \"27\",\n      \"Feel\": \"4\"\n    },\n    {\n      \"Date\": \"2026-09-02\",\n      \"Km\": \"6.2\",\n      \"Minutes\": \"34\",\n      \"Feel\": \"3\"\n    },\n    {\n      \"Date\": \"2026-09-09\",\n      \"Km\"… (983 chars)"
+    },
+    {
+      "name": "add_table_rows",
+      "args": {
+        "id": "41067b47-e3fc-4112-8dd5-ae4c66cb56ef",
+        "table": "0",
+        "rows": "[{\"Date\":\"2026-10-03\",\"Km\":6.4,\"Minutes\":35,\"Feel\":5},{\"Date\":\"2026-10-04\",\"Km\":10,\"Minutes\":58,\"Feel\":2},{\"Date\":\"2026-10-05\",\"Km\":5.5,\"Minutes\":31,\"Feel\":4}]"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"41067b47-e3fc-4112-8dd5-ae4c66cb56ef\",\n    \"title\": \"Runs\",\n    \"version\": 2\n  },\n  \"added_rows\": 3,\n  \"table\": {\n    \"index\": 0,\n    \"columns\": [\n      {\n        \"name\": \"Date\",\n        \"type\": \"date\"\n      },\n      {\n        \"name\": \"Km\",\n        \"type\": \"number\"\n      },\n      {\n        \"name\": \"Minutes\",\n        \"type\": \"number\"\n      },\n      {\n        \"name\": \"Feel\",\n        \"type\": \"scale 1-5\"\n      }\n    ],\n    \"total_rows\": 9\n  }\n}"
+    }
+  ],
+  "render": null
+}

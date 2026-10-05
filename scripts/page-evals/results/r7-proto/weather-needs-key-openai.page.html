@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="amber-needs" content='{"keys":[{"name":"OpenWeather","hosts":["api.openweathermap.org"],"query":"appid={key}","help":"Create a free OpenWeather API key and add it in Amber Notes Settings › API Keys as OpenWeather."}]}'>
+<title>Porto forecast</title>
+<style>
+  *{box-sizing:border-box} body{margin:0;font-family:var(--amber-font);color:var(--amber-text)}
+  .wrap{max-width:var(--amber-content-max);margin:0 auto;padding:18px var(--amber-gutter) 30px}
+  header{display:flex;gap:14px;align-items:flex-start;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap}
+  .eyebrow{color:var(--amber-accent-text);font-weight:700;font-size:.82rem;letter-spacing:.04em;text-transform:uppercase;margin-bottom:4px}
+  h1{font-family:var(--amber-font-rounded);font-size:clamp(1.8rem,5vw,3.2rem);line-height:1;margin:0 0 8px}
+  .sub{color:var(--amber-text-secondary);font-size:1rem;line-height:1.35;max-width:680px}
+  button{appearance:none;border:0;border-radius:var(--amber-radius-small);background:var(--amber-accent);color:var(--amber-on-accent);font:700 1rem var(--amber-font);padding:11px 14px;cursor:pointer;box-shadow:none}
+  button:disabled{opacity:.55;cursor:default}.ghost{background:var(--amber-fill);color:var(--amber-text)}
+  .status{white-space:pre-line;border:1px solid var(--amber-separator);background:var(--amber-surface);border-radius:var(--amber-radius);padding:14px;margin:14px 0;color:var(--amber-text-secondary);line-height:1.4}
+  .status.err{border-color:color-mix(in srgb,var(--amber-danger) 35%,var(--amber-separator));color:var(--amber-text)}
+  .hero{display:grid;grid-template-columns:1fr;gap:14px;margin:14px 0 18px}
+  .card{background:var(--amber-surface);border:1px solid var(--amber-separator);border-radius:var(--amber-radius);padding:16px;overflow:hidden}
+  .now{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;min-height:150px;background:linear-gradient(135deg,var(--amber-accent-soft),var(--amber-surface) 62%)}
+  .temp{font-family:var(--amber-font-rounded);font-size:clamp(3rem,12vw,5.6rem);font-weight:800;letter-spacing:-.07em;line-height:.9}.desc{text-transform:capitalize;font-weight:700;font-size:1.15rem}.muted{color:var(--amber-text-secondary)}
+  .icon{font-size:4rem;line-height:1;text-align:center}.facts{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.fact{background:var(--amber-fill);border-radius:var(--amber-radius-small);padding:12px}.fact b{display:block;font-size:1.25rem;margin-top:2px}.fact span{color:var(--amber-text-secondary);font-size:.85rem}
+  .days{display:grid;grid-template-columns:1fr;gap:10px}.day{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;background:var(--amber-surface);border:1px solid var(--amber-separator);border-radius:var(--amber-radius);padding:13px}.dayIcon{font-size:2rem}.date{font-weight:800}.range{font-family:var(--amber-font-rounded);font-size:1.15rem;font-weight:800}.rain{font-size:.9rem;color:var(--amber-text-secondary);margin-top:3px}.bar{height:7px;border-radius:999px;background:var(--amber-fill);margin-top:8px;overflow:hidden}.bar i{display:block;height:100%;border-radius:999px;background:var(--amber-accent);width:var(--w,40%)}
+  .hours{display:flex;gap:10px;overflow:auto;padding-bottom:4px;scroll-snap-type:x proximity}.hour{min-width:92px;scroll-snap-align:start;background:var(--amber-fill);border-radius:var(--amber-radius-small);padding:10px;text-align:center}.hour .t{font-weight:800;font-size:1.15rem}.sectionTitle{font-family:var(--amber-font-rounded);font-size:1.25rem;margin:22px 0 10px}.footer{margin-top:16px;color:var(--amber-text-secondary);font-size:.9rem;line-height:1.4}.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.small{font-size:.86rem;color:var(--amber-text-secondary)}
+  @media (min-width:700px){.hero{grid-template-columns:1.2fr .8fr}.days{grid-template-columns:repeat(2,1fr)}}
+  @media (min-width:1000px){.days{grid-template-columns:repeat(5,1fr)}.day{display:block}.dayIcon{margin:7px 0}.range{margin-top:8px}.facts{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div><div class="eyebrow">OpenWeather · 5-day forecast</div><h1 id="title">Porto weather</h1><div class="sub" id="subtitle">Forecast for Porto, Portugal.</div></div>
+    <div class="actions"><button id="refresh">Refresh</button><button class="ghost" id="openMap">Map</button></div>
+  </header>
+  <div id="status" class="status">Loading forecast…</div>
+  <section class="hero" id="hero" hidden>
+    <div class="card now"><div><div class="muted" id="nowLabel">Current</div><div class="temp" id="nowTemp">--°</div><div class="desc" id="nowDesc">—</div><div class="small" id="updated"></div></div><div class="icon" id="nowIcon">☁️</div></div>
+    <div class="card"><div class="facts" id="facts"></div></div>
+  </section>
+  <h2 class="sectionTitle" id="dailyHeading" hidden>Next 5 days</h2>
+  <section class="days" id="days"></section>
+  <h2 class="sectionTitle" id="hourlyHeading" hidden>Coming hours</h2>
+  <section class="hours" id="hours"></section>
+  <div class="footer">Uses OpenWeather’s 5 day / 3 hour forecast. If it says an API key is needed, add one in Amber Notes Settings › API Keys named <b>OpenWeather</b>.</div>
+</div>
+<script>
+(function(){
+  const CITY='Porto,PT';
+  const LAT=41.1579, LON=-8.6291;
+  const $=id=>document.getElementById(id);
+  const status=$('status'), hero=$('hero'), days=$('days'), hours=$('hours');
+  let currentNote=null;
+  const icons={Thunderstorm:'⛈️',Drizzle:'🌦️',Rain:'🌧️',Snow:'❄️',Mist:'🌫️',Smoke:'🌫️',Haze:'🌫️',Dust:'🌫️',Fog:'🌫️',Sand:'🌫️',Ash:'🌫️',Squall:'💨',Tornado:'🌪️',Clear:'☀️',Clouds:'☁️'};
+  function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+  function dayName(dt, tz){return new Intl.DateTimeFormat(undefined,{weekday:'short',month:'short',day:'numeric',timeZone:tz}).format(dt);}
+  function timeFmt(dt, tz){return new Intl.DateTimeFormat(undefined,{hour:'2-digit',minute:'2-digit',timeZone:tz}).format(dt);}
+  function setStatus(text, err){status.textContent=text;status.hidden=false;status.className='status'+(err?' err':'');}
+  function hideStatus(){status.hidden=true;}
+  function noteTripDates(note){
+    const m=(note&&note.markdown||'').match(/fri\s+16\s+oct|16\s+oct/i);
+    return m?'Your trip is 16–18 Oct; this shows the current 5-day forecast for Porto.':'Forecast for Porto, Portugal.';
+  }
+  function iconFor(item){return icons[item.weather&&item.weather[0]&&item.weather[0].main]||'☁️';}
+  function aggregate(list, tz){
+    const map=new Map();
+    list.forEach(it=>{const d=new Intl.DateTimeFormat('en-CA',{timeZone:tz,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(it.dt*1000)); if(!map.has(d))map.set(d,[]); map.get(d).push(it);});
+    return Array.from(map.entries()).slice(0,5).map(([date,items])=>{
+      const temps=items.map(x=>x.main.temp), pops=items.map(x=>x.pop||0);
+      const noon=items.reduce((best,x)=>Math.abs(new Date(x.dt*1000).getHours()-12)<Math.abs(new Date(best.dt*1000).getHours()-12)?x:best,items[0]);
+      return {date,items,noon,min:Math.round(Math.min(...temps)),max:Math.round(Math.max(...temps)),pop:Math.round(Math.max(...pops)*100),desc:noon.weather[0].description,icon:iconFor(noon)};
+    });
+  }
+  function renderForecast(data){
+    const list=data.list||[], city=data.city||{}, tzName='Europe/Lisbon';
+    if(!list.length){setStatus('OpenWeather returned no forecast rows.',true);return;}
+    hideStatus(); hero.hidden=false; $('dailyHeading').hidden=false; $('hourlyHeading').hidden=false;
+    $('title').textContent=(currentNote&&currentNote.title?currentNote.title:'Porto')+' weather';
+    $('subtitle').textContent=noteTripDates(currentNote);
+    const now=list[0];
+    $('nowLabel').textContent='Next forecast · '+timeFmt(new Date(now.dt*1000),tzName);
+    $('nowTemp').textContent=Math.round(now.main.temp)+'°'; $('nowDesc').textContent=now.weather[0].description; $('nowIcon').textContent=iconFor(now);
+    $('updated').textContent='Updated '+new Date().toLocaleString();
+    const sunrise=city.sunrise?timeFmt(new Date(city.sunrise*1000),tzName):'—', sunset=city.sunset?timeFmt(new Date(city.sunset*1000),tzName):'—';
+    $('facts').innerHTML=[['Feels like',Math.round(now.main.feels_like)+'°'],['Wind',Math.round((now.wind.speed||0)*3.6)+' km/h'],['Humidity',(now.main.humidity||0)+'%'],['Rain chance',Math.round((now.pop||0)*100)+'%'],['Sunrise',sunrise],['Sunset',sunset]].map(f=>`<div class="fact"><span>${esc(f[0])}</span><b>${esc(f[1])}</b></div>`).join('');
+    const daily=aggregate(list,tzName), minAll=Math.min(...daily.map(d=>d.min)), maxAll=Math.max(...daily.map(d=>d.max));
+    days.innerHTML=daily.map(d=>{const width=Math.max(8,((d.max-minAll)/(Math.max(1,maxAll-minAll))*80)+20);return `<article class="day"><div><div class="date">${esc(dayName(new Date(d.items[0].dt*1000),tzName))}</div><div class="rain">${esc(d.desc)} · ${d.pop}% rain</div></div><div class="dayIcon">${d.icon}</div><div><div class="range">${d.min}° / ${d.max}°</div><div class="bar"><i style="--w:${width}%"></i></div></div></article>`}).join('');
+    hours.innerHTML=list.slice(0,10).map(it=>`<div class="hour"><div class="muted">${esc(timeFmt(new Date(it.dt*1000),tzName))}</div><div style="font-size:1.7rem">${iconFor(it)}</div><div class="t">${Math.round(it.main.temp)}°</div><div class="rain">${Math.round((it.pop||0)*100)}% rain</div></div>`).join('');
+  }
+  async function load(){
+    setStatus('Loading forecast…'); $('refresh').disabled=true;
+    try{
+      const url='https://api.openweathermap.org/data/2.5/forecast?q='+encodeURIComponent(CITY)+'&units=metric';
+      const res=await amber.fetch(url,{key:'OpenWeather'});
+      if(!res.ok) throw new Error(res.error||('OpenWeather request failed: '+res.status));
+      const data=JSON.parse(res.body);
+      if(data.cod&&String(data.cod)!=='200') throw new Error(data.message||'OpenWeather returned an error.');
+      renderForecast(data);
+    }catch(e){
+      setStatus((e&&e.message?e.message:String(e))+'\n\nMake sure an OpenWeather API key is saved in Amber Notes Settings › API Keys as “OpenWeather”.',true);
+      hero.hidden=true; $('dailyHeading').hidden=true; $('hourlyHeading').hidden=true; days.innerHTML=''; hours.innerHTML='';
+    }finally{$('refresh').disabled=false;}
+  }
+  $('refresh').addEventListener('click',load);
+  $('openMap').addEventListener('click',()=>{ if(amber.device&&amber.device.maps) amber.device.maps.open({lat:LAT,lon:LON}); });
+  amber.onChange(function(note){currentNote=note; $('title').textContent=(note&&note.title?note.title:'Porto')+' weather'; $('subtitle').textContent=noteTripDates(note);});
+  load();
+})();
+</script>
+</body>
+</html>

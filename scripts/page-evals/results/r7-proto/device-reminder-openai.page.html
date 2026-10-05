@@ -1,0 +1,57 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Porto weekend</title>
+<style>
+  *{box-sizing:border-box} body{margin:0;font-family:var(--amber-font);color:var(--amber-text)}
+  .wrap{max-width:var(--amber-content-max);margin:0 auto;padding:calc(var(--amber-gutter)*1.2) var(--amber-gutter) 40px}
+  .hero{padding:22px;border-radius:var(--amber-radius);background:linear-gradient(135deg,var(--amber-accent-soft),var(--amber-surface));border:1px solid var(--amber-separator);margin-bottom:16px}
+  h1{margin:0 0 8px;font-family:var(--amber-font-rounded);font-size:clamp(30px,5vw,54px);line-height:1.02}
+  h2{margin:0 0 12px;font-size:18px;font-family:var(--amber-font-rounded)}
+  .sub{color:var(--amber-text-secondary);font-size:16px;line-height:1.4}.grid{display:grid;gap:14px}.card{background:var(--amber-surface);border:1px solid var(--amber-separator);border-radius:var(--amber-radius);padding:16px}.big{font-size:22px;font-weight:700}.muted{color:var(--amber-text-secondary)}
+  .row{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;border-top:1px solid var(--amber-separator);padding-top:10px;margin-top:10px}.row:first-of-type{border-top:0;padding-top:0;margin-top:0}.label{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--amber-text-secondary);margin-bottom:4px}
+  button{appearance:none;border:0;border-radius:var(--amber-radius-small);background:var(--amber-accent);color:var(--amber-on-accent);font:600 16px var(--amber-font);padding:13px 16px;width:100%;cursor:pointer}button:disabled{opacity:.65;cursor:default}.ghost{background:var(--amber-fill);color:var(--amber-text)}
+  ul{margin:0;padding-left:20px}li{margin:7px 0}.todo{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--amber-separator)}.todo:first-child{border-top:0}.todo button{width:28px;height:28px;padding:0;border-radius:50%;background:var(--amber-fill);color:var(--amber-text);border:1px solid var(--amber-separator);flex:0 0 auto}.todo.done span{text-decoration:line-through;color:var(--amber-text-secondary)}.todo.done button{background:var(--amber-accent);color:var(--amber-on-accent);border-color:var(--amber-accent)}
+  .status{margin-top:10px;font-size:14px;color:var(--amber-text-secondary);min-height:20px}.mono{font-family:var(--amber-font-mono);font-size:13px}.pill{display:inline-block;padding:5px 9px;border-radius:999px;background:var(--amber-accent-soft);color:var(--amber-accent-text);font-size:13px;font-weight:700;margin-top:8px}
+  @media (min-width:900px){.grid{grid-template-columns:1.15fr .85fr}.span{grid-column:1/-1}.hero{padding:30px}.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.actions button{width:auto}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <section class="hero"><h1 id="title">Weekend</h1><div class="sub" id="summary"></div><div class="pill" id="countdown"></div></section>
+  <div class="grid">
+    <section class="card"><h2>Trip details</h2><div id="details"></div></section>
+    <section class="card"><h2>Pack reminder</h2><p class="muted" id="reminderText">Set a phone reminder for the evening before the outbound flight.</p><div class="actions"><button id="remindBtn">Remind me to pack</button><button class="ghost" id="mapsBtn">Open hotel in Maps</button></div><div class="status" id="status"></div></section>
+    <section class="card"><h2>Ideas</h2><ul id="ideas"></ul></section>
+    <section class="card"><h2>To do before</h2><div id="todos"></div></section>
+  </div>
+</div>
+<script>
+(function(){
+  const $=id=>document.getElementById(id); let currentNote=null, currentData=null;
+  const months={jan:0,january:0,feb:1,february:1,mar:2,march:2,apr:3,april:3,may:4,jun:5,june:5,jul:6,july:6,aug:7,august:7,sep:8,sept:8,september:8,oct:9,october:9,nov:10,november:10,dec:11,december:11};
+  function lines(n){return (n.markdown||'').split(/\r?\n/)}
+  function clean(s){return (s||'').replace(/^\s*[-*]\s*/,'').trim()}
+  function field(note,name){let re=new RegExp('^\\s*'+name+'\\s*:\\s*(.+)$','i');let l=lines(note).find(x=>re.test(x));return l?l.match(re)[1].trim():''}
+  function section(note,heading){let arr=lines(note),out=[],on=false;for(let l of arr){if(/^\s*\w[\w ]*\s*$/.test(l)&&!l.includes(':')&&!/^\s*[-*]/.test(l)){if(on)break;on=l.trim().toLowerCase()==heading.toLowerCase();continue} if(on&&l.trim())out.push(clean(l))}return out}
+  function outbound(note){let f=field(note,'flights'); let m=f.match(/out\s+([a-z]{3,9})?\s*(\d{1,2})\s+([a-z]{3,9})\s+(\d{1,2}:\d{2})\s+([^,;]+)/i); if(!m)return null; let today=new Date((note.today||new Date().toISOString().slice(0,10))+'T12:00:00'); let y=today.getFullYear(), mo=months[m[3].toLowerCase()], d=+m[2]; let dt=new Date(y,mo,d,...m[4].split(':').map(Number)); if(dt<today)new Date(dt.setFullYear(y+1)); let rem=new Date(dt); rem.setDate(rem.getDate()-1); rem.setHours(20,0,0,0); return {text:m[0],date:dt,reminder:rem,route:m[5].trim(),time:m[4],raw:f}}
+  function fmt(dt,opts){return dt?dt.toLocaleString([],opts):''} function isoLocal(dt){let p=n=>String(n).padStart(2,'0');return dt.getFullYear()+'-'+p(dt.getMonth()+1)+'-'+p(dt.getDate())+'T'+p(dt.getHours())+':'+p(dt.getMinutes())+':00'}
+  function render(note,data){currentNote=note;currentData=data||{};let out=outbound(note), hotel=field(note,'hotel'), budget=field(note,'budget'); $('title').textContent=note.title||'Trip'; $('summary').textContent=out?('Outbound '+fmt(out.date,{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})+' · '+out.route):'Trip page from your note';
+    $('countdown').textContent=out?('Pack reminder: '+fmt(out.reminder,{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})):'Add an outbound flight line to enable the pack reminder';
+    let details=[]; if(out)details.push(['Flight',out.raw]); if(hotel)details.push(['Hotel',hotel]); if(budget)details.push(['Budget',budget]); $('details').innerHTML=details.map(x=>'<div class="row"><div><div class="label">'+esc(x[0])+'</div><div class="big">'+esc(x[1])+'</div></div></div>').join('')||'<p class="muted">No trip details found yet.</p>';
+    $('ideas').innerHTML=section(note,'ideas').map(x=>'<li>'+esc(x)+'</li>').join('')||'<li class="muted">No ideas yet.</li>';
+    $('todos').innerHTML=(note.checklists||[]).map(c=>'<div class="todo '+(c.checked?'done':'')+'"><button data-line="'+c.line+'">'+(c.checked?'✓':'')+'</button><span>'+esc(c.text)+'</span></div>').join('')||'<p class="muted">No checklist items yet.</p>';
+    $('reminderText').textContent=out?'This will create a phone reminder for '+fmt(out.reminder,{weekday:'long',day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'})+'.':'I could not find an outbound flight date in the note.'; $('remindBtn').disabled=!out;
+    let saved=(data&&data.values&&data.values.packReminder)||null; $('status').textContent=saved&&saved.due?('Last set for '+saved.due.replace('T',' ')):'';
+  }
+  function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+  $('todos').addEventListener('click',e=>{let b=e.target.closest('button[data-line]'); if(b&&currentNote) amber.update({op:'toggle_checklist',line:+b.dataset.line});});
+  $('remindBtn').addEventListener('click',async()=>{let out=outbound(currentNote); if(!out)return; let due=isoLocal(out.reminder); $('remindBtn').disabled=true; $('status').textContent='Asking Reminders…'; let r=await amber.device.reminders.create({title:'Pack for '+(currentNote.title||'the trip'),due,repeat:'none'}); if(r&&r.ok){$('status').textContent='Reminder set for '+due.replace('T',' ')+'.'; if(amber.setData) amber.setData({values:{packReminder:{due:due,setAt:new Date().toISOString()}}});} else {$('status').textContent='Could not set reminder: '+((r&&r.error)||'cancelled'); $('remindBtn').disabled=false;}});
+  $('mapsBtn').addEventListener('click',async()=>{let h=field(currentNote,'hotel'); if(h) await amber.device.maps.open({query:h});});
+  amber.onChange(render);
+})();
+</script>
+</body>
+</html>

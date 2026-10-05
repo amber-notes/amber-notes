@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  * { box-sizing: border-box; }
+  main { max-width: var(--amber-content-max); margin: 0 auto; padding: 20px var(--amber-gutter) 96px; }
+  h1 { font-size: 28px; letter-spacing: -.02em; margin: 4px 0 4px; }
+  h2 { font-size: 22px; margin: 0; }
+  .muted { color: var(--amber-text-secondary); font-size: 14px; }
+  .card { background: var(--amber-surface); border-radius: var(--amber-radius); border: 1px solid var(--amber-separator); margin-bottom: 16px; padding: 16px; }
+  .head { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+  .head .mid { flex: 1; text-align: center; }
+  button { font: inherit; font-weight: 600; min-height: 44px; min-width: 44px; padding: 0 14px; border: 0; border-radius: var(--amber-radius-small); background: var(--amber-fill); color: var(--amber-text); }
+  button:disabled { opacity: .4; }
+  .lift { padding: 14px 0; border-top: 1px solid var(--amber-separator); }
+  .lift:first-of-type { border-top: 0; }
+  .lt { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+  .lt b { font-size: 18px; }
+  .num { font-variant-numeric: tabular-nums; }
+  .sets { display: flex; flex-wrap: wrap; gap: 8px; }
+  .set { min-width: 64px; min-height: 52px; background: var(--amber-fill); border: 2px solid transparent; }
+  .set[aria-pressed="true"] { background: var(--amber-accent); color: var(--amber-on-accent); }
+  .bar { height: 8px; border-radius: 4px; background: var(--amber-fill); overflow: hidden; margin-top: 12px; }
+  .bar i { display: block; height: 100%; background: var(--amber-accent); }
+  .chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 10px; }
+  .chip { min-height: 48px; font-size: 14px; padding: 4px; line-height: 1.2; }
+  .chip[aria-current="true"] { outline: 2px solid var(--amber-accent); }
+  .chip.full { background: var(--amber-accent-soft); }
+  .wk { margin-top: 14px; font-size: 13px; font-weight: 600; color: var(--amber-text-secondary); }
+  .tag { color: var(--amber-accent-text); font-weight: 600; font-size: 14px; }
+  .empty { padding: 28px 16px; text-align: center; color: var(--amber-text-secondary); }
+  @media (min-width: 900px) { .layout { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; align-items: start; } .chips { grid-template-columns: repeat(3, 1fr); } }
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script>
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  let sel = null, last = null;
+
+  function fmt(start, off) {
+    const p = String(start || "").split("-").map(Number);
+    if (p.length !== 3 || p.some(isNaN)) return "";
+    const d = new Date(Date.UTC(p[0], p[1] - 1, p[2] + off));
+    return d.getUTCDate() + " " + MON[d.getUTCMonth()];
+  }
+  const kg = (n) => (Math.round(n * 100) / 100) + " kg";
+
+  function render(note, data) {
+    last = [note, data];
+    const app = document.getElementById("app");
+    const v = (data && data.values) || {};
+    const prog = Array.isArray(v.program) ? v.program : [];
+    const done = v.done || {};
+    const sessions = [];
+    prog.forEach((w) => (w.days || []).forEach((d) => sessions.push({ w, d })));
+    if (!sessions.length) { app.innerHTML = `<h1>${esc(note.title)}</h1><div class="card empty">No program in the app's data yet.</div>`; return; }
+    sessions.forEach((s, i) => {
+      s.i = i;
+      s.total = s.d.lifts.reduce((a, l) => a + l.sets, 0);
+      s.count = s.d.lifts.reduce((a, l, li) => { for (let k = 0; k < l.sets; k++) if (done[i + "." + li + "." + k]) a++; return a; }, 0);
+    });
+    if (sel === null || sel >= sessions.length) {
+      const nx = sessions.find((s) => s.count < s.total);
+      sel = nx ? nx.i : sessions.length - 1;
+    }
+    const s = sessions[sel];
+    const all = sessions.reduce((a, x) => a + x.count, 0), tot = sessions.reduce((a, x) => a + x.total, 0);
+    const lifts = s.d.lifts.map((l, li) => `
+      <div class="lift">
+        <div class="lt"><b>${esc(l.name)}</b><span class="num muted">${l.sets} × ${l.reps} @ ${kg(l.kg)}</span></div>
+        <div class="sets">${Array.from({ length: l.sets }, (_, k) => {
+          const on = !!done[s.i + "." + li + "." + k];
+          return `<button class="set num" data-key="${s.i}.${li}.${k}" aria-pressed="${on}" aria-label="${esc(l.name)} set ${k + 1} of ${l.sets}, ${l.reps} reps at ${kg(l.kg)}">${on ? "✓ " : ""}Set ${k + 1}</button>`;
+        }).join("")}</div>
+      </div>`).join("");
+    const grid = prog.map((w) => `<div class="wk">${esc(w.label || "Week " + w.week)}</div><div class="chips">${sessions.filter((x) => x.w === w).map((x) =>
+      `<button class="chip${x.count === x.total ? " full" : ""}" data-go="${x.i}" ${x.i === sel ? 'aria-current="true"' : ""} aria-label="${esc(x.d.day)} ${esc(fmt(v.start, x.d.offset))}, ${x.count} of ${x.total} sets done">${esc(x.d.day)}<br><span class="num muted">${x.count}/${x.total}</span></button>`).join("")}</div>`).join("");
+    const pct = s.total ? Math.round(100 * s.count / s.total) : 0;
+    app.innerHTML = `
+      <h1>${esc(note.title)}</h1>
+      <div class="muted num">${all} of ${tot} sets done in the block</div>
+      <div class="layout" style="margin-top:16px">
+        <div>
+          <div class="card">
+            <div class="head">
+              <button id="prev" aria-label="Previous day" ${sel === 0 ? "disabled" : ""}>&larr;</button>
+              <div class="mid"><h2>${esc(s.d.day)} ${esc(fmt(v.start, s.d.offset))}</h2><div class="muted">${esc(s.w.label || "Week " + s.w.week)} · day ${s.i + 1} of ${sessions.length}</div></div>
+              <button id="next" aria-label="Next day" ${sel === sessions.length - 1 ? "disabled" : ""}>&rarr;</button>
+            </div>
+            <div class="bar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" aria-label="Day progress"><i style="width:${pct}%"></i></div>
+            <div class="muted num" style="margin-top:6px">${s.count} of ${s.total} sets${s.count === s.total ? " · <span class='tag'>Day complete</span>" : ""}</div>
+          </div>
+          <div class="card">${lifts}</div>
+        </div>
+        <div class="card"><b>Program</b>${grid}</div>
+      </div>`;
+    document.getElementById("prev").onclick = () => { sel = Math.max(0, sel - 1); render(...last); };
+    document.getElementById("next").onclick = () => { sel = Math.min(sessions.length - 1, sel + 1); render(...last); };
+    app.querySelectorAll("[data-go]").forEach((b) => b.onclick = () => { sel = +b.dataset.go; render(...last); });
+    app.querySelectorAll("[data-key]").forEach((b) => b.onclick = () => {
+      const k = b.dataset.key, nd = Object.assign({}, ((last[1] && last[1].values) || {}).done);
+      if (nd[k]) delete nd[k]; else nd[k] = true;
+      amber.store.set("done", nd);
+    });
+  }
+  amber.onChange(render);
+</script>
+</body>
+</html>

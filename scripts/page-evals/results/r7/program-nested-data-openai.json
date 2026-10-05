@@ -1,0 +1,855 @@
+{
+  "task": "program-nested-data",
+  "model": "gpt-5.5",
+  "round": "r7",
+  "skill": false,
+  "seconds": 88,
+  "score": 0.9411764705882353,
+  "passed": 16,
+  "total": 17,
+  "checks": [
+    {
+      "name": "has_page",
+      "pass": true
+    },
+    {
+      "name": "server_checks",
+      "pass": true
+    },
+    {
+      "name": "no_console_errors",
+      "pass": true
+    },
+    {
+      "name": "no_network",
+      "pass": true
+    },
+    {
+      "name": "fits_390",
+      "pass": true
+    },
+    {
+      "name": "fits_1280",
+      "pass": true
+    },
+    {
+      "name": "shows_data",
+      "pass": true
+    },
+    {
+      "name": "dark_mode",
+      "pass": true
+    },
+    {
+      "name": "light_contrast",
+      "pass": true
+    },
+    {
+      "name": "uses_theme",
+      "pass": true
+    },
+    {
+      "name": "labelled_controls",
+      "pass": true
+    },
+    {
+      "name": "edits_from_page",
+      "pass": true
+    },
+    {
+      "name": "says_app",
+      "pass": true
+    },
+    {
+      "name": "note_unchanged",
+      "pass": true
+    },
+    {
+      "name": "program_in_data",
+      "pass": true
+    },
+    {
+      "name": "four_weeks",
+      "pass": true
+    },
+    {
+      "name": "app_reads_data",
+      "pass": false,
+      "detail": "the app doesn't read its data"
+    }
+  ],
+  "tool_calls": 11,
+  "tool_errors": 0,
+  "usage": {
+    "input": 63336,
+    "output": 6665,
+    "cacheRead": 157184,
+    "cacheWrite": 0,
+    "turns": 10
+  },
+  "usd": 0.1655,
+  "page_bytes": 10634,
+  "data": {
+    "values": {
+      "program": {
+        "name": "4-week strength block",
+        "startDate": "2026-10-12",
+        "daysPerWeek": [
+          "Mon",
+          "Wed",
+          "Fri"
+        ],
+        "weeks": [
+          {
+            "week": 1,
+            "label": "Week 1",
+            "sessions": [
+              {
+                "id": "w1-mon",
+                "day": "Mon",
+                "name": "Squat + Bench",
+                "lifts": [
+                  {
+                    "name": "Squat",
+                    "sets": 3,
+                    "reps": 5,
+                    "weightKg": 60
+                  },
+                  {
+                    "name": "Bench",
+                    "sets": 3,
+                    "reps": 5,
+                    "weightKg": 40
+                  }
+                ]
+              },
+              {
+                "id": "w1-wed",
+                "day": "Wed",
+                "name": "Deadlift + Row",
+                "lifts": [
+                  {
+                    "name": "Deadlift",
+                    "sets": 1,
+                    "reps": 5,
+                    "weightKg": 80
+                  },
+                  {
+                    "name": "Row",
+                    "sets": 3,
+                    "reps": 8,
+                    "weightKg": 35
+                  }
+                ]
+              },
+              {
+                "id": "w1-fri",
+                "day": "Fri",
+                "name": "Squat + Press",
+                "lifts": [
+                  {
+                    "name": "Squat",
+                    "sets": 3,
+                    "reps": 5,
+                    "weightKg": 62.5
+                  },
+                  {
+                    "name": "Press",
+                    "sets": 3,
+                    "reps": 5,
+                    "weightKg": 25
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "week": 2,
+            "label": "Week 2",
+            "sessions": [
+              {
+                "id": "w2-mon",
+                "day": "Mon",
+                "name": "Squat + Bench",
+                "lifts": [
+                  {
+                    "name": "Squat",
+                    "sets": 3,
+                    "reps": 5,
+                    "weightKg": 62.5
+                  },
+                  {
+                    "name": "Bench",
+                    "sets": 3,
+                    "reps": 5,
+                    "weightKg": 42.5
+                  }
+                ]
+              },
+              {
+                "id": "w2-wed",
+                "day": "Wed",
+                "name": "Deadlift + Row",
+                "lifts": [
+                  {
+                    "name": "Deadlift",
+                    "sets": 1,
+                    "reps": 5,
+                    "weightKg": 82.5
+                  },
+                  {
+                    "name": "Row",
+                    "sets": 3,
+                    "reps": 8,
+                    "weightKg": 37.5
+                  }
+                ]
+              },
+              {
+                "id": "w2-fri",
+                "day": "Fri",
+                "name": "Squat + Press",
+                "lifts": [
+                  {
+                    "name": "Squat",
+                    "sets": 3,
+                    "reps": 5,
+                    "weightKg": 65
+                  },
+                  {
+                    "name": "Press",
+                    "sets": 3,
+                    "reps": 5,
+                    "weightKg": 27.5
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "week": 3,
+            "label": "Week 3",
+            "sessions": [
+              {
+                "id": "w3-mon",
+                "day": "Mon",
+                "name": "Squat + Bench",
+                "lifts": [
+                  {
+                    "name": "Squat",
+                    "sets": 3,
+                    "reps": 5,
+                    "weightKg": 65
+                  },
+                  {
+                    "name": "Bench",
+                    "sets": 3,
+                    "reps": 5,
+                    "weightKg": 45
+                  }
+                ]
+              },
+              {
+                "id": "w3-wed",
+                "day": "Wed",
+                "name": "Deadlift + Row",
+                "lifts": [
+                  {
+                    "name": "Deadlift",
+                    "sets": 1,
+                    "reps": 5,
+                    "weightKg": 85
+                  },
+                  {
+                    "name": "Row",
+                    "sets": 3,
+                    "reps": 8,
+                    "weightKg": 40
+                  }
+                ]
+              },
+              {
+                "id": "w3-fri",
+                "day": "Fri",
+                "name": "Squat + Press",
+                "lifts": [
+                  {
+                    "name": "Squat",
+                    "sets": 3,
+                    "reps": 5,
+                    "weightKg": 67.5
+                  },
+                  {
+                    "name": "Press",
+                    "sets": 3,
+                    "reps": 5,
+                    "weightKg": 30
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "week": 4,
+            "label": "Week 4 deload",
+            "deload": true,
+            "sessions": [
+              {
+                "id": "w4-mon",
+                "day": "Mon",
+                "name": "Squat + Bench",
+                "lifts": [
+                  {
+                    "name": "Squat",
+                    "sets": 2,
+                    "reps": 5,
+                    "weightKg": 60
+                  },
+                  {
+                    "name": "Bench",
+                    "sets": 2,
+                    "reps": 5,
+                    "weightKg": 40
+                  }
+                ]
+              },
+              {
+                "id": "w4-wed",
+                "day": "Wed",
+                "name": "Deadlift + Row",
+                "lifts": [
+                  {
+                    "name": "Deadlift",
+                    "sets": 2,
+                    "reps": 5,
+                    "weightKg": 80
+                  },
+                  {
+                    "name": "Row",
+                    "sets": 2,
+                    "reps": 5,
+                    "weightKg": 35
+                  }
+                ]
+              },
+              {
+                "id": "w4-fri",
+                "day": "Fri",
+                "name": "Squat + Press",
+                "lifts": [
+                  {
+                    "name": "Squat",
+                    "sets": 2,
+                    "reps": 5,
+                    "weightKg": 62.5
+                  },
+                  {
+                    "name": "Press",
+                    "sets": 2,
+                    "reps": 5,
+                    "weightKg": 25
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "progress": {}
+    },
+    "collections": {}
+  },
+  "answer": "Done — I made the Strength note’s App side into a day-by-day strength program with set tick-offs, progress, navigation, and deload week. The program is stored in the app’s data, not in the note text, and the app passed Amber Notes’ checks.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Strength",
+        "limit": "10"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Strength\",\n  \"results\": [\n    {\n      \"id\": \"c2b0a2f1-7e5a-45b5-8a0e-67ca004c87ab\",\n      \"title\": \"Strength\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T14:06:18.745Z\",\n      \"snippet\": \"«Strength» Starting the 4-week block on 12 October\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "get_page_guide",
+      "args": {},
+      "error": false,
+      "result": "{\n  \"guide\": \"# Building apps in Amber Notes notes\\n\\nA note can have an app: one HTML document shown on the note's App side, next to its Text side. A habit grid, a budget with totals, flashcards, a trip planner. In the tools it's called the note's page (set_note_page, get_note_page); when you talk to the person, call it \\\"the note's app\\\" or \\\"the App side\\\", and never \\\"page\\\" or \\\"Pages\\\".\\n\\nThe note's text stays the person's own data: they can always flip to Text and see and edit every row. The app reads it, changes it through checked edits, and keeps its own data (settings, logs, records… (19625 chars)"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "c2b0a2f1-7e5a-45b5-8a0e-67ca004c87ab",
+        "line_numbers": "true"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"c2b0a2f1-7e5a-45b5-8a0e-67ca004c87ab\",\n  \"title\": \"Strength\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T14:06:18.745Z\",\n  \"updated\": \"2026-10-05T14:06:18.745Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 3,\n    \"words\": 8\n  },\n  \"markdown\": \"1│ Strength\\n2│ \\n3│ Starting the 4-week block on 12 October.\"\n}"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "c2b0a2f1-7e5a-45b5-8a0e-67ca004c87ab"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"c2b0a2f1-7e5a-45b5-8a0e-67ca004c87ab\",\n  \"title\": \"Strength\",\n  \"has_page\": false,\n  \"rules\": \"The page runs in Amber Notes in a sandbox with no network: no fetch, no external scripts, styles, fonts or images. Put all CSS and JS inline; images only as data: URIs or inline SVG.\\nRead the note from window.amber.note, never hardcode its contents (the note changes; the page must follow):\\n  amber.note = { title, markdown, today: \\\"yyyy-mm-dd\\\", tables: [{ index, columns: [{ name, type }], rows: [[cell, ...], ...] }], checklists: [{ line, text, checked }] }\\n  amber.onChange(fn) calls fn… (4901 chars)"
+    },
+    {
+      "name": "update_page_data",
+      "args": {
+        "id": "c2b0a2f1-7e5a-45b5-8a0e-67ca004c87ab",
+        "values": "{\"program\":{\"name\":\"4-week strength block\",\"startDate\":\"2026-10-12\",\"daysPerWeek\":[\"Mon\",\"Wed\",\"Fri\"],\"weeks\":[{\"week\":1,\"label\":\"Week 1\",\"sessions\":[{\"id\":\"w1-mon\",\"day\":\"Mon\",\"name\":\"Squat + Bench\",\"lifts\":[{\"name\":\"Squat\",\"sets\":3,\"reps\":5,\"weightKg\":60},{\"name\":\"Bench\",\"sets\":3,\"reps\":5,\"weightK… (2267 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"c2b0a2f1-7e5a-45b5-8a0e-67ca004c87ab\",\n    \"title\": \"Strength\"\n  },\n  \"changes\": 1,\n  \"data\": {\n    \"values\": {\n      \"program\": {\n        \"name\": \"4-week strength block\",\n        \"startDate\": \"2026-10-12\",\n        \"daysPerWeek\": [\n          \"Mon\",\n          \"Wed\",\n          \"Fri\"\n        ],\n        \"weeks\": [\n          {\n            \"week\": 1,\n            \"label\": \"Week 1\",\n            \"sessions\": [\n              {\n                \"id\": \"w1-mon\",\n                \"day\": \"Mon\",\n                \"name\": \"Squat + Bench\",\n                \"lifts\": [\n                  {\n     … (7318 chars)"
+    },
+    {
+      "name": "set_note_page",
+      "args": {
+        "id": "c2b0a2f1-7e5a-45b5-8a0e-67ca004c87ab",
+        "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<style>\n*{box-sizing:border-box}main{max-width:var(--amber-content-max);margin:0 auto;padding:20px var(--amber-gutter) 96px}.top{display:flex;flex-direction:column;gap:… (10587 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"c2b0a2f1-7e5a-45b5-8a0e-67ca004c87ab\",\n  \"title\": \"Strength\",\n  \"page\": \"replaced\",\n  \"bytes\": 10596,\n  \"note\": \"The person sees it on the note's App side (call it the note's app, not a page). The note's text is unchanged. The previous version is kept (get_note_page lists it). Next: run check_app and fix what it finds.\"\n}"
+    },
+    {
+      "name": "check_app",
+      "args": {
+        "id": "c2b0a2f1-7e5a-45b5-8a0e-67ca004c87ab"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"c2b0a2f1-7e5a-45b5-8a0e-67ca004c87ab\",\n    \"title\": \"Strength\"\n  },\n  \"ok\": false,\n  \"issues\": [\n    \"390-light: 1 text element(s) with contrast under 4.5:1 (\\\"Tick all sets\\\").\",\n    \"1280-light: 1 text element(s) with contrast under 4.5:1 (\\\"Tick all sets\\\").\"\n  ],\n  \"browser_checked\": \"390 px light and dark, 1280 px light, over a sample note\",\n  \"next\": \"Fix these with edit_note_page (or set_note_page), then run check_app again.\"\n}"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "c2b0a2f1-7e5a-45b5-8a0e-67ca004c87ab"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"c2b0a2f1-7e5a-45b5-8a0e-67ca004c87ab\",\n  \"title\": \"Strength\",\n  \"has_page\": true,\n  \"made_by\": \"Claude\",\n  \"updated\": \"2026-10-05T14:07:09.965Z\",\n  \"rules\": \"The page runs in Amber Notes in a sandbox with no network: no fetch, no external scripts, styles, fonts or images. Put all CSS and JS inline; images only as data: URIs or inline SVG.\\nRead the note from window.amber.note, never hardcode its contents (the note changes; the page must follow):\\n  amber.note = { title, markdown, today: \\\"yyyy-mm-dd\\\", tables: [{ index, columns: [{ name, type }], rows: [[cell, ...], ...] }], checkli… (22988 chars)"
+    },
+    {
+      "name": "edit_note_page",
+      "args": {
+        "id": "c2b0a2f1-7e5a-45b5-8a0e-67ca004c87ab",
+        "edits": "[{\"old_text\":\".set.done{background:var(--amber-accent);color:var(--amber-on-accent)}button{font:inherit;font-weight:700;min-height:44px;border:0;border-radius:var(--amber-radius-small);padding:10px 14px;background:var(--amber-accent);color:var(--amber-on-accent)}\",\"new_text\":\".set.done{background:va… (567 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"c2b0a2f1-7e5a-45b5-8a0e-67ca004c87ab\",\n  \"title\": \"Strength\",\n  \"page\": \"replaced\",\n  \"bytes\": 10634,\n  \"note\": \"The person sees it on the note's App side (call it the note's app, not a page). The note's text is unchanged. The previous version is kept (get_note_page lists it). Next: run check_app and fix what it finds.\"\n}"
+    },
+    {
+      "name": "check_app",
+      "args": {
+        "id": "c2b0a2f1-7e5a-45b5-8a0e-67ca004c87ab"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"c2b0a2f1-7e5a-45b5-8a0e-67ca004c87ab\",\n    \"title\": \"Strength\"\n  },\n  \"ok\": true,\n  \"issues\": [],\n  \"browser_checked\": \"390 px light and dark, 1280 px light, over a sample note\",\n  \"next\": \"Nothing to fix.\"\n}"
+    },
+    {
+      "name": "preview_app",
+      "args": {
+        "id": "c2b0a2f1-7e5a-45b5-8a0e-67ca004c87ab",
+        "widths": "[390,1280]",
+        "themes": "[\"light\",\"dark\"]"
+      },
+      "error": false,
+      "result": "{\n  \"app\": \"Strength\",\n  \"data\": \"a sample with the note's shape (not the person's data)\",\n  \"views\": [\n    {\n      \"view\": \"390-light\",\n      \"headings\": [\n        \"Sample note\",\n        \"Block progress\",\n        \"Sample 7\",\n        \"Sample 8\",\n        \"Program days\"\n      ],\n      \"text\": \"Sample note Sample 1 · starts Fri, Oct 9 0/48 sets done In 3 days Sample 5 Sample 2 · Sample 6 Thu, Oct 8 0 of 4 sets ticked off Previous day Next day Tick all sets Untick this day Block progress 0% 0 of 12 workouts complete Sample 7 Set-by-set checklist 2.11×1.88 · 10.3kg Set 1 Set 2 Sample 8 Set-by-set c… (2992 chars)"
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "390-light",
+        "width": 390,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 948,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r7/shots/program-nested-data-openai-390-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Strength",
+          "Block progress",
+          "Squat",
+          "Bench",
+          "Program days"
+        ],
+        "excerpt": "Strength 4-week strength block · starts Mon, Oct 12 0/60 sets done In 6 days Week 1 Mon · Squat + Bench Sun, Oct 11 0 of 6 sets ticked off Previous day Next day Tick all sets Untick this day Block progress 0% 0 of 12 workouts complete Squat Set-by-set checklist 3×5 · 60kg Set 1 Set 2 Set 3 Bench Set-by-set checklist 3×5 · 40kg Set 1 Set 2 Set 3 Program days Week 1 · Mon · Squat + Bench Sun, Oct 11 0/6 Week 1 · Wed · Deadlift + Row Tue, Oct 13 0/4 Week 1 · Fri · Squat + Press Thu, Oct 15 0/6 Week"
+      },
+      {
+        "name": "390-dark",
+        "width": 390,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 948,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r7/shots/program-nested-data-openai-390-dark.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Strength",
+          "Block progress",
+          "Squat",
+          "Bench",
+          "Program days"
+        ],
+        "excerpt": "Strength 4-week strength block · starts Mon, Oct 12 0/60 sets done In 6 days Week 1 Mon · Squat + Bench Sun, Oct 11 0 of 6 sets ticked off Previous day Next day Tick all sets Untick this day Block progress 0% 0 of 12 workouts complete Squat Set-by-set checklist 3×5 · 60kg Set 1 Set 2 Set 3 Bench Set-by-set checklist 3×5 · 40kg Set 1 Set 2 Set 3 Program days Week 1 · Mon · Squat + Bench Sun, Oct 11 0/6 Week 1 · Wed · Deadlift + Row Tue, Oct 13 0/4 Week 1 · Fri · Squat + Press Thu, Oct 15 0/6 Week"
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 948,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r7/shots/program-nested-data-openai-1280-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Strength",
+          "Block progress",
+          "Squat",
+          "Bench",
+          "Program days"
+        ],
+        "excerpt": "Strength 4-week strength block · starts Mon, Oct 12 0/60 sets done In 6 days Week 1 Mon · Squat + Bench Sun, Oct 11 0 of 6 sets ticked off Previous day Next day Tick all sets Untick this day Block progress 0% 0 of 12 workouts complete Squat Set-by-set checklist 3×5 · 60kg Set 1 Set 2 Set 3 Bench Set-by-set checklist 3×5 · 40kg Set 1 Set 2 Set 3 Program days Week 1 · Mon · Squat + Bench Sun, Oct 11 0/6 Week 1 · Wed · Deadlift + Row Tue, Oct 13 0/4 Week 1 · Fri · Squat + Press Thu, Oct 15 0/6 Week"
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 948,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Strength",
+          "Block progress",
+          "Squat",
+          "Bench",
+          "Program days"
+        ],
+        "excerpt": "Strength 4-week strength block · starts Mon, Oct 12 0/60 sets done In 6 days Week 1 Mon · Squat + Bench Sun, Oct 11 0 of 6 sets ticked off Previous day Next day Tick all sets Untick this day Block progress 0% 0 of 12 workouts complete Squat Set-by-set checklist 3×5 · 60kg Set 1 Set 2 Set 3 Bench Set-by-set checklist 3×5 · 40kg Set 1 Set 2 Set 3 Program days Week 1 · Mon · Squat + Bench Sun, Oct 11 0/6 Week 1 · Wed · Deadlift + Row Tue, Oct 13 0/4 Week 1 · Fri · Squat + Press Thu, Oct 15 0/6 Week"
+      }
+    ],
+    "blocked": [],
+    "updates": [],
+    "setData": 1,
+    "interaction": {
+      "tried": "control",
+      "ok": true
+    },
+    "probes": {},
+    "dataAfter": {
+      "values": {
+        "program": {
+          "name": "4-week strength block",
+          "startDate": "2026-10-12",
+          "daysPerWeek": [
+            "Mon",
+            "Wed",
+            "Fri"
+          ],
+          "weeks": [
+            {
+              "week": 1,
+              "label": "Week 1",
+              "sessions": [
+                {
+                  "id": "w1-mon",
+                  "day": "Mon",
+                  "name": "Squat + Bench",
+                  "lifts": [
+                    {
+                      "name": "Squat",
+                      "sets": 3,
+                      "reps": 5,
+                      "weightKg": 60
+                    },
+                    {
+                      "name": "Bench",
+                      "sets": 3,
+                      "reps": 5,
+                      "weightKg": 40
+                    }
+                  ]
+                },
+                {
+                  "id": "w1-wed",
+                  "day": "Wed",
+                  "name": "Deadlift + Row",
+                  "lifts": [
+                    {
+                      "name": "Deadlift",
+                      "sets": 1,
+                      "reps": 5,
+                      "weightKg": 80
+                    },
+                    {
+                      "name": "Row",
+                      "sets": 3,
+                      "reps": 8,
+                      "weightKg": 35
+                    }
+                  ]
+                },
+                {
+                  "id": "w1-fri",
+                  "day": "Fri",
+                  "name": "Squat + Press",
+                  "lifts": [
+                    {
+                      "name": "Squat",
+                      "sets": 3,
+                      "reps": 5,
+                      "weightKg": 62.5
+                    },
+                    {
+                      "name": "Press",
+                      "sets": 3,
+                      "reps": 5,
+                      "weightKg": 25
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "week": 2,
+              "label": "Week 2",
+              "sessions": [
+                {
+                  "id": "w2-mon",
+                  "day": "Mon",
+                  "name": "Squat + Bench",
+                  "lifts": [
+                    {
+                      "name": "Squat",
+                      "sets": 3,
+                      "reps": 5,
+                      "weightKg": 62.5
+                    },
+                    {
+                      "name": "Bench",
+                      "sets": 3,
+                      "reps": 5,
+                      "weightKg": 42.5
+                    }
+                  ]
+                },
+                {
+                  "id": "w2-wed",
+                  "day": "Wed",
+                  "name": "Deadlift + Row",
+                  "lifts": [
+                    {
+                      "name": "Deadlift",
+                      "sets": 1,
+                      "reps": 5,
+                      "weightKg": 82.5
+                    },
+                    {
+                      "name": "Row",
+                      "sets": 3,
+                      "reps": 8,
+                      "weightKg": 37.5
+                    }
+                  ]
+                },
+                {
+                  "id": "w2-fri",
+                  "day": "Fri",
+                  "name": "Squat + Press",
+                  "lifts": [
+                    {
+                      "name": "Squat",
+                      "sets": 3,
+                      "reps": 5,
+                      "weightKg": 65
+                    },
+                    {
+                      "name": "Press",
+                      "sets": 3,
+                      "reps": 5,
+                      "weightKg": 27.5
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "week": 3,
+              "label": "Week 3",
+              "sessions": [
+                {
+                  "id": "w3-mon",
+                  "day": "Mon",
+                  "name": "Squat + Bench",
+                  "lifts": [
+                    {
+                      "name": "Squat",
+                      "sets": 3,
+                      "reps": 5,
+                      "weightKg": 65
+                    },
+                    {
+                      "name": "Bench",
+                      "sets": 3,
+                      "reps": 5,
+                      "weightKg": 45
+                    }
+                  ]
+                },
+                {
+                  "id": "w3-wed",
+                  "day": "Wed",
+                  "name": "Deadlift + Row",
+                  "lifts": [
+                    {
+                      "name": "Deadlift",
+                      "sets": 1,
+                      "reps": 5,
+                      "weightKg": 85
+                    },
+                    {
+                      "name": "Row",
+                      "sets": 3,
+                      "reps": 8,
+                      "weightKg": 40
+                    }
+                  ]
+                },
+                {
+                  "id": "w3-fri",
+                  "day": "Fri",
+                  "name": "Squat + Press",
+                  "lifts": [
+                    {
+                      "name": "Squat",
+                      "sets": 3,
+                      "reps": 5,
+                      "weightKg": 67.5
+                    },
+                    {
+                      "name": "Press",
+                      "sets": 3,
+                      "reps": 5,
+                      "weightKg": 30
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "week": 4,
+              "label": "Week 4 deload",
+              "deload": true,
+              "sessions": [
+                {
+                  "id": "w4-mon",
+                  "day": "Mon",
+                  "name": "Squat + Bench",
+                  "lifts": [
+                    {
+                      "name": "Squat",
+                      "sets": 2,
+                      "reps": 5,
+                      "weightKg": 60
+                    },
+                    {
+                      "name": "Bench",
+                      "sets": 2,
+                      "reps": 5,
+                      "weightKg": 40
+                    }
+                  ]
+                },
+                {
+                  "id": "w4-wed",
+                  "day": "Wed",
+                  "name": "Deadlift + Row",
+                  "lifts": [
+                    {
+                      "name": "Deadlift",
+                      "sets": 2,
+                      "reps": 5,
+                      "weightKg": 80
+                    },
+                    {
+                      "name": "Row",
+                      "sets": 2,
+                      "reps": 5,
+                      "weightKg": 35
+                    }
+                  ]
+                },
+                {
+                  "id": "w4-fri",
+                  "day": "Fri",
+                  "name": "Squat + Press",
+                  "lifts": [
+                    {
+                      "name": "Squat",
+                      "sets": 2,
+                      "reps": 5,
+                      "weightKg": 62.5
+                    },
+                    {
+                      "name": "Press",
+                      "sets": 2,
+                      "reps": 5,
+                      "weightKg": 25
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "progress": {}
+      },
+      "collections": {}
+    }
+  }
+}

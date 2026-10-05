@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Household expenses</title>
+<style>
+  * { box-sizing: border-box; }
+  main { max-width: var(--amber-content-max); margin: 0 auto; padding: 18px var(--amber-gutter) 72px; }
+  .topline { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin: 2px 0 16px; }
+  h1 { font-size: 28px; line-height: 1.08; letter-spacing: -.025em; margin: 0; }
+  .muted { color: var(--amber-text-secondary); }
+  .small { font-size: 13px; }
+  .card { background: var(--amber-surface); border: 1px solid var(--amber-separator); border-radius: var(--amber-radius); overflow: hidden; }
+  .hero { padding: 20px; margin-bottom: 18px; }
+  .heroLabel { color: var(--amber-text-secondary); font-size: 14px; margin-bottom: 6px; }
+  .heroTotal { font-size: clamp(42px, 11vw, 76px); line-height: .98; letter-spacing: -.055em; font-weight: 750; font-variant-numeric: tabular-nums; }
+  .heroMeta { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px 14px; color: var(--amber-text-secondary); font-size: 14px; }
+  .grid { display: grid; gap: 18px; }
+  @media (min-width: 900px) { .grid { grid-template-columns: minmax(280px, .85fr) minmax(0, 1.35fr); align-items: start; } }
+  h2 { font-size: 15px; text-transform: uppercase; letter-spacing: .055em; color: var(--amber-text-secondary); margin: 0 0 8px 4px; }
+  .months { padding: 8px; }
+  .monthButton { display: grid; grid-template-columns: 82px minmax(0, 1fr) max-content; align-items: center; gap: 10px; width: 100%; min-height: 52px; padding: 9px 10px; margin: 0; border: 0; border-radius: var(--amber-radius-small); background: transparent; color: var(--amber-text); font: inherit; text-align: left; cursor: pointer; }
+  .monthButton + .monthButton { margin-top: 2px; }
+  .monthButton[aria-pressed="true"] { background: var(--amber-accent-soft); }
+  .monthName { font-weight: 650; white-space: nowrap; }
+  .track { height: 12px; border-radius: 999px; background: var(--amber-fill); overflow: hidden; min-width: 0; }
+  .fill { height: 100%; border-radius: inherit; background: var(--amber-accent); min-width: 3px; }
+  .monthAmount, .amount { font-variant-numeric: tabular-nums; font-weight: 650; }
+  .category { margin-bottom: 12px; }
+  .categoryHead { display: flex; align-items: baseline; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--amber-separator); }
+  .categoryName { font-size: 18px; font-weight: 700; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .categoryShare { color: var(--amber-text-secondary); font-size: 13px; white-space: nowrap; }
+  .row { display: grid; grid-template-columns: minmax(0, 1fr) max-content; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--amber-separator); min-height: 54px; align-items: center; }
+  .row:first-of-type { border-top: 0; }
+  .item { min-width: 0; overflow-wrap: anywhere; }
+  .date { color: var(--amber-text-secondary); font-size: 13px; margin-top: 3px; font-variant-numeric: tabular-nums; }
+  .empty { padding: 28px 18px; text-align: center; color: var(--amber-text-secondary); }
+  .pill { display: inline-flex; align-items: center; min-height: 32px; padding: 4px 10px; border-radius: 999px; background: var(--amber-fill); color: var(--amber-text-secondary); font-size: 13px; white-space: nowrap; }
+  @media (max-width: 520px) { .topline { display: block; } .pill { margin-top: 10px; } .monthButton { grid-template-columns: 70px minmax(0, 1fr); } .monthAmount { grid-column: 2; color: var(--amber-text-secondary); font-size: 13px; } .hero { padding: 18px 16px; } .row { padding: 12px 14px; } }
+</style>
+</head>
+<body>
+<main id="app" aria-live="polite"></main>
+<script>
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const money = (n) => (Number(n) || 0).toLocaleString("sv-SE", { maximumFractionDigits: 0 }) + " kr";
+  const numberFrom = (v) => { const n = parseFloat(String(v ?? "").replace(/\s/g, "").replace(",", ".")); return Number.isFinite(n) ? n : 0; };
+  const monthName = (ym) => {
+    if (!/^\d{4}-\d{2}$/.test(ym)) return ym || "No month";
+    const d = new Date(Number(ym.slice(0,4)), Number(ym.slice(5,7)) - 1, 1);
+    return d.toLocaleDateString("en", { month: "short", year: "numeric" });
+  };
+  const colIndex = (t, re) => t.columns.findIndex((c) => re.test(c.name));
+  let selectedMonth = "";
+
+  function buildRows(note) {
+    const table = note.tables.find((t) => colIndex(t, /^(date|day)$/i) >= 0 && colIndex(t, /^(amt|amount|sum|cost|price|kr)$/i) >= 0)
+      || note.tables.find((t) => colIndex(t, /^(amt|amount|sum|cost|price|kr)$/i) >= 0)
+      || note.tables[0];
+    if (!table) return { table: null, rows: [], cols: {} };
+    const cols = {
+      date: colIndex(table, /^(date|day)$/i),
+      item: colIndex(table, /^(item|what|description|name|title)$/i),
+      category: colIndex(table, /^(category|cat|type)$/i),
+      amount: colIndex(table, /^(amt|amount|sum|cost|price|kr)$/i)
+    };
+    if (cols.amount < 0) return { table, rows: [], cols };
+    const rows = table.rows.map((r, i) => {
+      const rawDate = cols.date >= 0 ? String(r[cols.date] ?? "") : "";
+      return {
+        index: i,
+        date: rawDate,
+        month: /^\d{4}-\d{2}/.test(rawDate) ? rawDate.slice(0, 7) : "No date",
+        item: cols.item >= 0 ? r[cols.item] : "Expense",
+        category: (cols.category >= 0 && String(r[cols.category] ?? "").trim()) || "Uncategorised",
+        amount: numberFrom(r[cols.amount])
+      };
+    });
+    return { table, rows, cols };
+  }
+
+  function render(note) {
+    const app = document.getElementById("app");
+    const { table, rows, cols } = buildRows(note);
+    if (!table) { app.innerHTML = `<div class="topline"><h1>${esc(note.title)}</h1></div><div class="card empty">Add an expenses table to the note to see totals here.</div>`; return; }
+    if (cols.amount < 0) { app.innerHTML = `<div class="topline"><h1>${esc(note.title)}</h1></div><div class="card empty">Add an Amt or Amount column to the expenses table.</div>`; return; }
+    const monthTotals = new Map();
+    for (const r of rows) monthTotals.set(r.month, (monthTotals.get(r.month) || 0) + r.amount);
+    const months = [...monthTotals.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+    const current = note.today && /^\d{4}-\d{2}/.test(note.today) ? note.today.slice(0, 7) : "";
+    if (!selectedMonth || !monthTotals.has(selectedMonth)) selectedMonth = monthTotals.has(current) ? current : (months[0] ? months[0][0] : "");
+    const selectedRows = rows.filter((r) => r.month === selectedMonth).sort((a, b) => String(b.date).localeCompare(String(a.date)) || b.index - a.index);
+    const selectedTotal = selectedRows.reduce((s, r) => s + r.amount, 0);
+    const maxMonth = Math.max(1, ...months.map((m) => m[1]));
+    const byCategory = new Map();
+    for (const r of selectedRows) {
+      if (!byCategory.has(r.category)) byCategory.set(r.category, { total: 0, rows: [] });
+      const g = byCategory.get(r.category);
+      g.total += r.amount;
+      g.rows.push(r);
+    }
+    const categories = [...byCategory.entries()].sort((a, b) => b[1].total - a[1].total || a[0].localeCompare(b[0]));
+    app.innerHTML = `
+      <div class="topline">
+        <div><h1>${esc(note.title)}</h1><div class="muted small">Expenses read directly from your note</div></div>
+        <div class="pill">${esc(table.rows.length)} rows</div>
+      </div>
+      <section class="card hero" aria-label="Monthly total">
+        <div class="heroLabel">${esc(monthName(selectedMonth))} total</div>
+        <div class="heroTotal">${esc(money(selectedTotal))}</div>
+        <div class="heroMeta"><span>${selectedRows.length} expense${selectedRows.length === 1 ? "" : "s"}</span><span>${categories.length} categor${categories.length === 1 ? "y" : "ies"}</span></div>
+      </section>
+      <div class="grid">
+        <section>
+          <h2>Monthly bars</h2>
+          <div class="card months">${months.length ? months.map(([m, total]) => `
+            <button class="monthButton" type="button" data-month="${esc(m)}" aria-pressed="${m === selectedMonth ? "true" : "false"}" aria-label="Show ${esc(monthName(m))}, ${esc(money(total))}">
+              <span class="monthName">${esc(monthName(m))}</span>
+              <span class="track" aria-hidden="true"><span class="fill" style="width:${Math.max(4, total / maxMonth * 100).toFixed(1)}%"></span></span>
+              <span class="monthAmount">${esc(money(total))}</span>
+            </button>`).join("") : `<div class="empty">No expenses yet.</div>`}</div>
+        </section>
+        <section>
+          <h2>By category</h2>
+          ${categories.length ? categories.map(([name, group]) => `
+            <article class="card category">
+              <div class="categoryHead">
+                <div class="categoryName">${esc(name)}</div>
+                <div class="categoryShare">${selectedTotal ? Math.round(group.total / selectedTotal * 100) : 0}%</div>
+                <div class="amount">${esc(money(group.total))}</div>
+              </div>
+              ${group.rows.map((r) => `<div class="row"><div class="item">${esc(r.item)}<div class="date">${esc(r.date || r.month)}</div></div><div class="amount">${esc(money(r.amount))}</div></div>`).join("")}
+            </article>`).join("") : `<div class="card empty">No expenses in ${esc(monthName(selectedMonth))}.</div>`}
+        </section>
+      </div>`;
+    app.querySelectorAll(".monthButton").forEach((btn) => {
+      btn.addEventListener("click", () => { selectedMonth = btn.getAttribute("data-month") || selectedMonth; render(amber.note); });
+    });
+  }
+  amber.onChange(render);
+</script>
+</body>
+</html>

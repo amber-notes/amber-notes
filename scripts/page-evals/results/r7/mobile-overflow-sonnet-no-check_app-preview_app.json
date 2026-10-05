@@ -1,0 +1,270 @@
+{
+  "task": "mobile-overflow",
+  "model": "claude-sonnet-5-5",
+  "round": "r7",
+  "skill": false,
+  "hidden": [
+    "check_app",
+    "preview_app"
+  ],
+  "seconds": 20,
+  "score": 1,
+  "passed": 18,
+  "total": 18,
+  "checks": [
+    {
+      "name": "has_page",
+      "pass": true
+    },
+    {
+      "name": "server_checks",
+      "pass": true
+    },
+    {
+      "name": "no_console_errors",
+      "pass": true
+    },
+    {
+      "name": "no_network",
+      "pass": true
+    },
+    {
+      "name": "fits_390",
+      "pass": true
+    },
+    {
+      "name": "fits_1280",
+      "pass": true
+    },
+    {
+      "name": "shows_data",
+      "pass": true
+    },
+    {
+      "name": "dark_mode",
+      "pass": true
+    },
+    {
+      "name": "light_contrast",
+      "pass": true
+    },
+    {
+      "name": "uses_theme",
+      "pass": true
+    },
+    {
+      "name": "labelled_controls",
+      "pass": true
+    },
+    {
+      "name": "says_app",
+      "pass": true
+    },
+    {
+      "name": "probe_follows",
+      "pass": true
+    },
+    {
+      "name": "probe_escapes",
+      "pass": true
+    },
+    {
+      "name": "probe_empty",
+      "pass": true
+    },
+    {
+      "name": "probe_large",
+      "pass": true
+    },
+    {
+      "name": "note_unchanged",
+      "pass": true
+    },
+    {
+      "name": "page_changed",
+      "pass": true
+    }
+  ],
+  "tool_calls": 5,
+  "tool_errors": 0,
+  "usage": {
+    "input": 10,
+    "output": 1892,
+    "cacheRead": 62633,
+    "cacheWrite": 27602,
+    "turns": 4
+  },
+  "usd": 0.1005,
+  "page_bytes": 2558,
+  "data": null,
+  "answer": "I rebuilt the Meal plan's App side so it fits an iPhone without sideways scrolling. I couldn't run check_app or preview_app, so I haven't viewed it at phone width.\n\nThe old layout was a table fixed at 900 px wide. Each day is now its own card, with Breakfast, Lunch, Dinner and Snack listed under the day name. Days marked Shop = Yes get a \"Shop\" badge, and the Notes text shows at the bottom of the card. On a phone the cards stack in one column. On wider screens they sit in two or three columns.\n\nThe note's text and table are unchanged. The previous version of the App side is kept if you want it back.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Meal plan"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Meal plan\",\n  \"results\": [\n    {\n      \"id\": \"b2d8e0a3-b29d-4249-b258-2c6e89809777\",\n      \"title\": \"Meal plan\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T14:13:09.887Z\",\n      \"snippet\": \"«Meal plan» | Day | Breakfast | Lunch | Dinner | Snack | Shop | Notes | | --- | --- | --- | --- | --- | --- | --- | | Monday | Oats with berries | Leftover curry | Salmon, potatoes | Apple | Yes | Kids at Mia's | | Tuesday\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "get_page_guide",
+      "args": {},
+      "error": false,
+      "result": "{\n  \"guide\": \"# Building apps in Amber Notes notes\\n\\nA note can have an app: one HTML document shown on the note's App side, next to its Text side. A habit grid, a budget with totals, flashcards, a trip planner. In the tools it's called the note's page (set_note_page, get_note_page); when you talk to the person, call it \\\"the note's app\\\" or \\\"the App side\\\", and never \\\"page\\\" or \\\"Pages\\\".\\n\\nThe note's text stays the person's own data: they can always flip to Text and see and edit every row. The app reads it, changes it through checked edits, and keeps its own data (settings, logs, records… (19625 chars)"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "b2d8e0a3-b29d-4249-b258-2c6e89809777"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"b2d8e0a3-b29d-4249-b258-2c6e89809777\",\n  \"title\": \"Meal plan\",\n  \"has_page\": true,\n  \"made_by\": \"Claude\",\n  \"updated\": \"2026-10-05T14:13:09.895Z\",\n  \"rules\": \"The page runs in Amber Notes in a sandbox with no network: no fetch, no external scripts, styles, fonts or images. Put all CSS and JS inline; images only as data: URIs or inline SVG.\\nRead the note from window.amber.note, never hardcode its contents (the note changes; the page must follow):\\n  amber.note = { title, markdown, today: \\\"yyyy-mm-dd\\\", tables: [{ index, columns: [{ name, type }], rows: [[cell, ...], ...] }], checkl… (7248 chars)"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "b2d8e0a3-b29d-4249-b258-2c6e89809777"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"b2d8e0a3-b29d-4249-b258-2c6e89809777\",\n  \"title\": \"Meal plan\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T14:13:09.887Z\",\n  \"updated\": \"2026-10-05T14:13:09.887Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"has_page\": true,\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 10,\n    \"words\": 128\n  },\n  \"markdown\": \"Meal plan\\n\\n| Day | Breakfast | Lunch | Dinner | Snack | Shop | Notes |\\n| --- | --- | --- | --- | --- | --- | --- |\\n| Monday | Oats with berries | Leftov… (1005 chars)"
+    },
+    {
+      "name": "set_note_page",
+      "args": {
+        "id": "b2d8e0a3-b29d-4249-b258-2c6e89809777",
+        "html": "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<style>\n*{box-sizing:border-box}\nmain{max-width:var(--amber-content-max);margin:0 auto;padding:20px var(--amber-gutter) 48px}\nh1{font-size:28px;letter-spacing:-.02em;margin… (2556 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"b2d8e0a3-b29d-4249-b258-2c6e89809777\",\n  \"title\": \"Meal plan\",\n  \"page\": \"replaced\",\n  \"bytes\": 2558,\n  \"note\": \"The person sees it on the note's App side (call it the note's app, not a page). The note's text is unchanged. The previous version is kept (get_note_page lists it). Next: run check_app and fix what it finds.\"\n}"
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "390-light",
+        "width": 390,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 505,
+        "shown": 11,
+        "sampled": 12,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r7/shots/mobile-overflow-sonnet-no-check_app-preview_app-390-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Meal plan"
+        ],
+        "excerpt": "Meal plan Monday Shop Breakfast Oats with berries Lunch Leftover curry Dinner Salmon, potatoes Snack Apple Kids at Mia's Tuesday Breakfast Yoghurt, granola Lunch Lentil soup Dinner Tacos Snack Nuts Gym after work Wednesday Shop Breakfast Eggs on toast Lunch Chicken salad Dinner Pasta pesto Snack Carrots Thursday Breakfast Oats with berries Lunch Sushi (office) Dinner Veggie burgers Snack Banana Late meeting Friday Shop Breakfast Smoothie Lunch Falafel wrap Dinner Pizza night Snack Popcorn Movie "
+      },
+      {
+        "name": "390-dark",
+        "width": 390,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 505,
+        "shown": 11,
+        "sampled": 12,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r7/shots/mobile-overflow-sonnet-no-check_app-preview_app-390-dark.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Meal plan"
+        ],
+        "excerpt": "Meal plan Monday Shop Breakfast Oats with berries Lunch Leftover curry Dinner Salmon, potatoes Snack Apple Kids at Mia's Tuesday Breakfast Yoghurt, granola Lunch Lentil soup Dinner Tacos Snack Nuts Gym after work Wednesday Shop Breakfast Eggs on toast Lunch Chicken salad Dinner Pasta pesto Snack Carrots Thursday Breakfast Oats with berries Lunch Sushi (office) Dinner Veggie burgers Snack Banana Late meeting Friday Shop Breakfast Smoothie Lunch Falafel wrap Dinner Pizza night Snack Popcorn Movie "
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 505,
+        "shown": 11,
+        "sampled": 12,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r7/shots/mobile-overflow-sonnet-no-check_app-preview_app-1280-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Meal plan"
+        ],
+        "excerpt": "Meal plan Monday Shop Breakfast Oats with berries Lunch Leftover curry Dinner Salmon, potatoes Snack Apple Kids at Mia's Tuesday Breakfast Yoghurt, granola Lunch Lentil soup Dinner Tacos Snack Nuts Gym after work Wednesday Shop Breakfast Eggs on toast Lunch Chicken salad Dinner Pasta pesto Snack Carrots Thursday Breakfast Oats with berries Lunch Sushi (office) Dinner Veggie burgers Snack Banana Late meeting Friday Shop Breakfast Smoothie Lunch Falafel wrap Dinner Pizza night Snack Popcorn Movie "
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 505,
+        "shown": 11,
+        "sampled": 12,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Meal plan"
+        ],
+        "excerpt": "Meal plan Monday Shop Breakfast Oats with berries Lunch Leftover curry Dinner Salmon, potatoes Snack Apple Kids at Mia's Tuesday Breakfast Yoghurt, granola Lunch Lentil soup Dinner Tacos Snack Nuts Gym after work Wednesday Shop Breakfast Eggs on toast Lunch Chicken salad Dinner Pasta pesto Snack Carrots Thursday Breakfast Oats with berries Lunch Sushi (office) Dinner Veggie burgers Snack Banana Late meeting Friday Shop Breakfast Smoothie Lunch Falafel wrap Dinner Pizza night Snack Popcorn Movie "
+      }
+    ],
+    "blocked": [],
+    "updates": [],
+    "setData": 0,
+    "interaction": {
+      "tried": "none",
+      "ok": null
+    },
+    "probes": {
+      "follows": {
+        "pass": true,
+        "detail": "shown, but not as written"
+      },
+      "escapes": {
+        "pass": true
+      },
+      "empty": {
+        "pass": true,
+        "detail": "blank page"
+      },
+      "large": {
+        "pass": true,
+        "detail": "596 ms to load 400 rows"
+      }
+    },
+    "dataAfter": {}
+  }
+}

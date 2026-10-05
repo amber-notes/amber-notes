@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="amber-needs" content='{"hosts": ["query1.finance.yahoo.com"], "keys": []}'>
+<style>
+  * { box-sizing: border-box; }
+  main { max-width: var(--amber-content-max); margin: 0 auto; padding: 20px var(--amber-gutter) 96px; }
+  h1 { font-size: 28px; letter-spacing: -.02em; margin: 4px 0 16px; }
+  .card { background: var(--amber-surface); border-radius: var(--amber-radius); border: 1px solid var(--amber-separator); margin-bottom: 16px; overflow: hidden; }
+  .totals { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-bottom: 16px; }
+  .total { padding: 16px; background: var(--amber-surface); border: 1px solid var(--amber-separator); border-radius: var(--amber-radius); }
+  .big { font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+  .row { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 12px 16px; border-top: 1px solid var(--amber-separator); }
+  .row:first-child { border-top: 0; }
+  .sym { font-weight: 700; }
+  .muted { color: var(--amber-text-secondary); font-size: 14px; }
+  .num { font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; }
+  .right { text-align: right; }
+  .pos { color: var(--amber-accent-text); }
+  .neg { color: var(--amber-danger); }
+  .bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  button { font: inherit; font-weight: 600; min-height: 44px; padding: 0 18px; border: 0; border-radius: var(--amber-radius-small); background: var(--amber-fill); color: var(--amber-text); border: 1px solid var(--amber-separator); }
+  button:disabled { opacity: .6; }
+  .empty { padding: 28px 16px; text-align: center; color: var(--amber-text-secondary); }
+  .err { color: var(--amber-danger); }
+</style>
+</head>
+<body>
+<main id="app" aria-live="polite"></main>
+<script>
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const num = (s) => { const n = parseFloat(String(s ?? "").replace(/\s/g, "").replace(",", ".")); return isNaN(n) ? null : n; };
+  const fmt = (n, d = 2) => n.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
+  const sgn = (n) => (n > 0 ? "+" : n < 0 ? "−" : "") + fmt(Math.abs(n));
+  const cls = (n) => (n > 0 ? "pos" : n < 0 ? "neg" : "");
+  const quotes = {}; // ticker -> {price, prev, currency} | {error}
+  let loading = false, updated = "", lastKey = "";
+
+  async function getQuote(sym) {
+    const r = await amber.fetch("https://query1.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(sym) + "?interval=1d&range=5d");
+    if (!r.ok) return { error: r.error || ("HTTP " + r.status) };
+    let b = r.body;
+    if (typeof b === "string") { try { b = JSON.parse(b); } catch (e) { return { error: "Unreadable reply" }; } }
+    const m = b && b.chart && b.chart.result && b.chart.result[0] && b.chart.result[0].meta;
+    if (!m || m.regularMarketPrice == null) return { error: "Not found" };
+    return { price: m.regularMarketPrice, prev: m.chartPreviousClose ?? m.previousClose, currency: m.currency || "", symbol: sym };
+  }
+  async function quote(t) {
+    let q = await getQuote(t);
+    if (q.error && !t.includes(".")) { const q2 = await getQuote(t + ".ST"); if (!q2.error) q = q2; }
+    return q;
+  }
+  function holdings(note) {
+    const t = note.tables.find((t) => t.columns.some((c) => /ticker|symbol/i.test(c.name)));
+    if (!t) return null;
+    const ix = (re) => t.columns.findIndex((c) => re.test(c.name));
+    const a = ix(/ticker|symbol/i), s = ix(/share|qty|quantity/i), p = ix(/buy|cost|price/i);
+    return t.rows.map((r) => ({ t: String(r[a] || "").trim(), shares: num(r[s]), buy: num(r[p]) })).filter((h) => h.t);
+  }
+  async function refresh() {
+    const hs = holdings(amber.note) || [];
+    loading = true; render(amber.note);
+    await Promise.all(hs.map(async (h) => { quotes[h.t] = await quote(h.t); }));
+    loading = false; updated = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    render(amber.note);
+  }
+  function render(note) {
+    const app = document.getElementById("app");
+    const hs = holdings(note);
+    if (!hs) { app.innerHTML = `<h1>${esc(note.title)}</h1><div class="card empty">Add a table with Ticker, Shares and Buy price columns.</div>`; return; }
+    const key = hs.map((h) => h.t).join(",");
+    if (key !== lastKey) { lastKey = key; if (hs.length && !loading) setTimeout(refresh, 0); }
+    const tot = {};
+    const rows = hs.map((h) => {
+      const q = quotes[h.t];
+      if (!q) return `<div class="row"><div><span class="sym">${esc(h.t)}</span><div class="muted">${loading ? "Loading…" : "No price yet"}</div></div></div>`;
+      if (q.error) return `<div class="row"><div><span class="sym">${esc(h.t)}</span><div class="muted err">${esc(q.error)}</div></div></div>`;
+      const ok = h.shares != null && h.buy != null;
+      const value = h.shares != null ? q.price * h.shares : null;
+      const cost = ok ? h.buy * h.shares : null;
+      const pl = ok ? value - cost : null;
+      const pct = ok && cost ? (pl / cost) * 100 : null;
+      const day = q.prev ? ((q.price - q.prev) / q.prev) * 100 : null;
+      if (ok) { const T = (tot[q.currency] = tot[q.currency] || { cost: 0, value: 0 }); T.cost += cost; T.value += value; }
+      return `<div class="row">
+        <div><span class="sym">${esc(h.t)}</span> <span class="muted">${h.shares ?? "?"} sh · bought ${h.buy != null ? fmt(h.buy) : "?"}</span>
+          <div class="muted">Now ${fmt(q.price)} ${esc(q.currency)}${day != null ? ` · today <span class="${cls(day)}">${day >= 0 ? "+" : "−"}${fmt(Math.abs(day))}%</span>` : ""}</div></div>
+        <div class="right">${pl != null ? `<div class="num ${cls(pl)}">${sgn(pl)} ${esc(q.currency)}</div><div class="muted ${cls(pl)}">${pct != null ? (pct >= 0 ? "+" : "−") + fmt(Math.abs(pct)) + "%" : ""}</div>` : ""}</div>
+      </div>`;
+    }).join("");
+    const totals = Object.keys(tot).map((c) => {
+      const T = tot[c], pl = T.value - T.cost, pct = T.cost ? (pl / T.cost) * 100 : 0;
+      return `<div class="total"><div class="muted">Profit in ${esc(c)}</div><div class="big ${cls(pl)}">${sgn(pl)}</div><div class="muted">${pct >= 0 ? "+" : "−"}${fmt(Math.abs(pct))}% · value ${fmt(T.value)} · cost ${fmt(T.cost)}</div></div>`;
+    }).join("");
+    app.innerHTML = `<h1>${esc(note.title)}</h1>
+      <div class="bar"><span class="muted">${loading ? "Fetching prices…" : updated ? "Updated " + esc(updated) : ""}</span><button id="r" ${loading ? "disabled" : ""}>Refresh prices</button></div>
+      ${totals ? `<div class="totals">${totals}</div>` : ""}
+      <div class="card">${hs.length ? rows : '<div class="empty">No stocks yet.</div>'}</div>
+      <p class="muted">Prices from Yahoo Finance, may be delayed. Profit is shown per currency, not converted. Tickers without an exchange suffix fall back to .ST (Stockholm).</p>`;
+    document.getElementById("r").onclick = refresh;
+  }
+  amber.onChange(render);
+</script>
+</body>
+</html>

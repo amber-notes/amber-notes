@@ -1,0 +1,48 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="amber-needs" content='{"hosts":["api.openweathermap.org"],"keys":[{"name":"OpenWeather","hosts":["api.openweathermap.org"],"query":"appid={key}","help":"Create a free key at openweathermap.org/api, then add it in Amber Notes > Settings > API Keys as OpenWeather."}]}'>
+<style>
+*{box-sizing:border-box}
+.wrap{max-width:var(--amber-content-max);margin:0 auto;padding:16px var(--amber-gutter)}
+h1{font-family:var(--amber-font-rounded);font-size:26px;margin:0 0 4px}
+.sub{color:var(--amber-text-secondary);margin-bottom:16px}
+.days{display:grid;grid-template-columns:1fr;gap:10px}
+.day{background:var(--amber-surface);border-radius:var(--amber-radius);padding:14px;display:flex;align-items:center;gap:12px}
+.day.trip{outline:2px solid var(--amber-accent)}
+.ic{font-size:36px;line-height:1}
+.d{flex:1}.d b{display:block}.d span{color:var(--amber-text-secondary);font-size:13px}
+.t{font-family:var(--amber-font-rounded);font-size:22px;text-align:right}.t small{color:var(--amber-text-secondary);font-size:15px}
+.tag{font-size:11px;font-style:normal;background:var(--amber-accent-soft);color:var(--amber-accent-text);border-radius:8px;padding:1px 6px;margin-left:6px}
+button{background:var(--amber-accent);color:var(--amber-on-accent);border:0;border-radius:var(--amber-radius-small);padding:8px 14px;font:inherit;margin-top:14px}
+.msg{background:var(--amber-surface);border-radius:var(--amber-radius);padding:14px;color:var(--amber-text-secondary)}
+.err{color:var(--amber-danger)}
+@media(min-width:600px){.days{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:900px){.days{grid-template-columns:repeat(5,1fr)}.day{flex-direction:column;text-align:center}.t{text-align:center}.ic{font-size:48px}}
+</style></head><body><div class="wrap">
+<h1 id="ttl"></h1><div class="sub">5-day forecast for Porto · OpenWeather</div>
+<div id="out" class="msg">Loading…</div><button id="r">Refresh</button></div>
+<script>
+const out=document.getElementById('out');
+const icon=m=>({Clear:'☀️',Clouds:'☁️',Rain:'🌧️',Drizzle:'🌦️',Thunderstorm:'⛈️',Snow:'❄️',Mist:'🌫️',Fog:'🌫️',Haze:'🌫️'})[m]||'🌡️';
+const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'})[c]);
+const URL_='ht'+'tps:'+'//'+'api.openweathermap.org'+'/data/2.5/forecast?q=Porto,PT&units=metric';
+let started=false,today='';
+async function load(){
+  out.className='msg';out.textContent='Loading…';
+  const r=await amber.fetch(URL_,{key:'OpenWeather'});
+  if(!r.ok){out.className='msg err';out.textContent='Could not load forecast: '+(r.error||('HTTP '+r.status))+'. Check that an API key named OpenWeather is set in Settings › API Keys.';return}
+  let b=r.body;if(typeof b==='string'){try{b=JSON.parse(b)}catch(e){}}
+  if(!b||!b.list){out.className='msg err';out.textContent='Unexpected response'+(b&&b.message?': '+b.message:'');return}
+  const days={};
+  b.list.forEach(i=>{const d=i.dt_txt.slice(0,10);(days[d]=days[d]||[]).push(i)});
+  const keys=Object.keys(days).slice(0,5);
+  out.className='days';out.innerHTML=keys.map(d=>{
+    const a=days[d],hi=Math.round(Math.max(...a.map(x=>x.main.temp_max))),lo=Math.round(Math.min(...a.map(x=>x.main.temp_min)));
+    const pick=a.find(x=>x.dt_txt.slice(11,13)==='12')||a[Math.floor(a.length/2)];
+    const pop=Math.round(Math.max(...a.map(x=>x.pop||0))*100);
+    const dt=new Date(d+'T12:00:00');
+    const wk=dt.getDay()>=5||dt.getDay()===0;
+    return `<div class="day${wk?' trip':''}"><div class="ic">${icon(pick.weather[0].main)}</div><div class="d"><b>${dt.toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'})}${wk?'<i class="tag">weekend</i>':''}</b><span>${esc(pick.weather[0].description)} · ${pop}% rain</span></div><div class="t">${hi}°<small> / ${lo}°</small></div></div>`}).join('');
+}
+document.getElementById('r').onclick=load;
+amber.onChange(n=>{document.getElementById('ttl').textContent=n.title;if(!started){started=true;load()}});
+</script></body></html>

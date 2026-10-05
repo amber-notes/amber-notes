@@ -1,0 +1,78 @@
+{
+  "task": "checklist-add-tick",
+  "model": "gpt-5.5",
+  "round": "r7-proto",
+  "skill": false,
+  "seconds": 15,
+  "score": 1,
+  "passed": 4,
+  "total": 4,
+  "checks": [
+    {
+      "name": "added_under_clothes",
+      "pass": true
+    },
+    {
+      "name": "ticked",
+      "pass": true
+    },
+    {
+      "name": "rest_untouched",
+      "pass": true
+    },
+    {
+      "name": "page_untouched",
+      "pass": true
+    }
+  ],
+  "tool_calls": 4,
+  "tool_errors": 0,
+  "usage": {
+    "input": 6670,
+    "output": 444,
+    "cacheRead": 16896,
+    "cacheWrite": 0,
+    "turns": 5
+  },
+  "usd": 0.0149,
+  "page_bytes": 1796,
+  "data": null,
+  "answer": "Done — I added sunscreen, swimsuit, and sunglasses under Clothes, and marked Passport and Adapter (EU) as packed.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Lisbon OR packing OR clothes passport adapter sunscreen swimsuit sunglasses",
+        "limit": "10"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Lisbon OR packing OR clothes passport adapter sunscreen swimsuit sunglasses\",\n  \"results\": []\n}"
+    },
+    {
+      "name": "get_overview",
+      "args": {},
+      "error": false,
+      "result": "{\n  \"total_notes\": 1,\n  \"folders\": [],\n  \"pinned\": [],\n  \"recently_edited\": [\n    {\n      \"id\": \"9cf7be42-9af3-4703-a182-ad27c057fd1d\",\n      \"title\": \"Lisbon trip packing\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T13:49:25.039Z\",\n      \"preview\": \"Clothes · T-shirts x4 · Linen shorts · Rain jacket · Sneakers · Documents · Passport · Boarding passes · Travel insurance card · Tech · Pho…\"\n    }\n  ],\n  \"recently_deleted\": 0\n}"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "9cf7be42-9af3-4703-a182-ad27c057fd1d",
+        "line_numbers": "true"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"9cf7be42-9af3-4703-a182-ad27c057fd1d\",\n  \"title\": \"Lisbon trip packing\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T13:49:25.039Z\",\n  \"updated\": \"2026-10-05T13:49:25.039Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"has_page\": true,\n  \"outline\": {\n    \"headings\": [\n      {\n        \"line\": 3,\n        \"level\": 2,\n        \"text\": \"Clothes\"\n      },\n      {\n        \"line\": 9,\n        \"level\": 2,\n        \"text\": \"Documents\"\n      },\n      {\n        \"line\": 14,\n        \"level\": 2,\n        \"text\": \"Tech\"\n      }\n    ],\n    \"chec… (1019 chars)"
+    },
+    {
+      "name": "edit_note",
+      "args": {
+        "id": "9cf7be42-9af3-4703-a182-ad27c057fd1d",
+        "expected_version": "1",
+        "edits": "[{\"old_text\":\"## Clothes\\n- [ ] T-shirts x4\\n- [ ] Linen shorts\\n- [ ] Rain jacket\\n- [x] Sneakers\\n\\n## Documents\",\"new_text\":\"## Clothes\\n- [ ] T-shirts x4\\n- [ ] Linen shorts\\n- [ ] Rain jacket\\n- [x] Sneakers\\n- [ ] Sunscreen\\n- [ ] Swimsuit\\n- [ ] Sunglasses\\n\\n## Documents\"},{\"old_text\":\"- [ ]… (406 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"edited\": {\n    \"id\": \"9cf7be42-9af3-4703-a182-ad27c057fd1d\",\n    \"title\": \"Lisbon trip packing\",\n    \"version\": 2,\n    \"updated\": \"2026-10-05T13:49:36.117Z\"\n  },\n  \"edits_applied\": 3\n}"
+    }
+  ],
+  "render": null
+}

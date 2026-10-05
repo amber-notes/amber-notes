@@ -1,0 +1,273 @@
+{
+  "task": "weather-needs-key",
+  "model": "claude-sonnet-5-5",
+  "round": "r7-proto",
+  "skill": false,
+  "seconds": 41,
+  "score": 0.9444444444444444,
+  "passed": 17,
+  "total": 18,
+  "checks": [
+    {
+      "name": "has_page",
+      "pass": true
+    },
+    {
+      "name": "server_checks",
+      "pass": true
+    },
+    {
+      "name": "no_console_errors",
+      "pass": true
+    },
+    {
+      "name": "no_network",
+      "pass": true
+    },
+    {
+      "name": "fits_390",
+      "pass": true
+    },
+    {
+      "name": "fits_1280",
+      "pass": true
+    },
+    {
+      "name": "shows_data",
+      "pass": true
+    },
+    {
+      "name": "dark_mode",
+      "pass": true
+    },
+    {
+      "name": "light_contrast",
+      "pass": true
+    },
+    {
+      "name": "uses_theme",
+      "pass": true
+    },
+    {
+      "name": "labelled_controls",
+      "pass": true
+    },
+    {
+      "name": "says_app",
+      "pass": false,
+      "detail": "the reply calls it a page, or doesn't call it the app"
+    },
+    {
+      "name": "declares_key",
+      "pass": true
+    },
+    {
+      "name": "fetch_with_key",
+      "pass": true
+    },
+    {
+      "name": "explains_settings",
+      "pass": true
+    },
+    {
+      "name": "explains_signup",
+      "pass": true
+    },
+    {
+      "name": "not_in_chat",
+      "pass": true
+    },
+    {
+      "name": "facts_kept",
+      "pass": true
+    }
+  ],
+  "tool_calls": 7,
+  "tool_errors": 2,
+  "usage": {
+    "input": 14,
+    "output": 6843,
+    "cacheRead": 58536,
+    "cacheWrite": 18037,
+    "turns": 6
+  },
+  "usd": 0.1253,
+  "page_bytes": 4091,
+  "data": null,
+  "answer": "I added a page to your \"Porto weekend\" note. It shows the next 5 days of weather for Porto, and I haven't been able to run it, so it's untested. For each day it shows the high and low, an icon, a short description and the chance of rain. Fridays, Saturdays and Sundays are highlighted, and there's a Refresh button. Your note text hasn't changed.\n\n**You need to add an API key before it will load.** You don't have one set up yet. Get a free key at openweathermap.org, then add it in Amber Notes under Settings › API Keys with the name **OpenWeather**. You'll also be asked to approve the api.openweathermap.org host the first time the page loads.\n\nOpenWeather's 5-day forecast only covers the next 5 days, which end around 10 October. Your trip on 16–18 October won't show up until about 11 October. Until then the page shows the coming weekend, not the trip.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Porto"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Porto\",\n  \"results\": [\n    {\n      \"id\": \"a8bc17c4-2396-432a-98ac-561779b51cce\",\n      \"title\": \"Porto weekend\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T13:45:51.367Z\",\n      \"snippet\": \"«Porto» weekend flights: out fri 16 oct 07:10 ARN->OPO (TP 781), back sun 18 oct 19:40 (TP 784) hotel: Casa do\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "list_api_keys",
+      "args": {},
+      "error": false,
+      "result": "{\n  \"keys\": [],\n  \"note\": \"Values are never shown or sent to AIs. To add a key: Amber Notes › Settings › API Keys.\"\n}"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "a8bc17c4-2396-432a-98ac-561779b51cce"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"a8bc17c4-2396-432a-98ac-561779b51cce\",\n  \"title\": \"Porto weekend\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T13:45:51.367Z\",\n  \"updated\": \"2026-10-05T13:45:51.367Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 2,\n      \"done\": 1\n    },\n    \"lines\": 18,\n    \"words\": 91\n  },\n  \"markdown\": \"Porto weekend\\n\\nflights: out fri 16 oct 07:10 ARN->OPO (TP 781), back sun 18 oct 19:40 (TP 784)\\nhotel: Casa do Conto, Rua da Boavista 703, conf #CC-55821, check in from 15… (927 chars)"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "a8bc17c4-2396-432a-98ac-561779b51cce"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"a8bc17c4-2396-432a-98ac-561779b51cce\",\n  \"title\": \"Porto weekend\",\n  \"has_page\": false,\n  \"rules\": \"The page runs in Amber Notes in a sandbox with no network: no fetch, no external scripts, styles, fonts or images. Put all CSS and JS inline; images only as data: URIs or inline SVG.\\nRead the note from window.amber.note, never hardcode its contents (the note changes; the page must follow):\\n  amber.note = { title, markdown, today: \\\"yyyy-mm-dd\\\", tables: [{ index, columns: [{ name, type }], rows: [[cell, ...], ...] }], checklists: [{ line, text, checked }] }\\n  amber.onChange(fn) cal… (4641 chars)"
+    },
+    {
+      "name": "set_note_page",
+      "args": {
+        "id": "a8bc17c4-2396-432a-98ac-561779b51cce",
+        "html": "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n<meta name=\"amber-needs\" content='{\"hosts\":[\"api.openweathermap.org\"],\"keys\":[{\"name\":\"OpenWeather\",\"hosts\":[\"api.openweathermap.org\"],\"query\":\"appid={key}\",\"help\":\"Create a free key … (3946 chars)"
+      },
+      "error": true,
+      "result": "The page wasn't saved:\n- External addresses aren't allowed: https://api.openweathermap.org/data/2.5/forecast?q=Porto,PT&units=metric. The page has no network of its own; to call a service, declare its host in <meta name=\"amber-needs\"> and use amber.fetch."
+    },
+    {
+      "name": "set_note_page",
+      "args": {
+        "id": "a8bc17c4-2396-432a-98ac-561779b51cce",
+        "html": "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n<meta name=\"amber-needs\" content='{\"hosts\":[\"api.openweathermap.org\"],\"keys\":[{\"name\":\"OpenWeather\",\"hosts\":[\"api.openweathermap.org\"],\"query\":\"appid={key}\",\"help\":\"Create a free key … (3949 chars)"
+      },
+      "error": true,
+      "result": "The page wasn't saved:\n- The page must read the note from window.amber.note (or amber.onChange), not carry a copy of its data."
+    },
+    {
+      "name": "set_note_page",
+      "args": {
+        "id": "a8bc17c4-2396-432a-98ac-561779b51cce",
+        "html": "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n<meta name=\"amber-needs\" content='{\"hosts\":[\"api.openweathermap.org\"],\"keys\":[{\"name\":\"OpenWeather\",\"hosts\":[\"api.openweathermap.org\"],\"query\":\"appid={key}\",\"help\":\"Create a free key … (4041 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"a8bc17c4-2396-432a-98ac-561779b51cce\",\n  \"title\": \"Porto weekend\",\n  \"page\": \"created\",\n  \"bytes\": 4091,\n  \"note\": \"The person sees it in Amber Notes under Page. The note's markdown is unchanged.\"\n}"
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "390-light",
+        "width": 390,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 198,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r7-proto/shots/weather-needs-key-sonnet-390-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [
+          "Refresh"
+        ],
+        "faintCount": 1,
+        "headings": [
+          "Porto weekend"
+        ],
+        "excerpt": "Porto weekend 5-day forecast for Porto · OpenWeather Could not load forecast: The person hasn't allowed this host yet.. Check that an API key named OpenWeather is set in Settings › API Keys. Refresh"
+      },
+      {
+        "name": "390-dark",
+        "width": 390,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 198,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r7-proto/shots/weather-needs-key-sonnet-390-dark.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Porto weekend"
+        ],
+        "excerpt": "Porto weekend 5-day forecast for Porto · OpenWeather Could not load forecast: The person hasn't allowed this host yet.. Check that an API key named OpenWeather is set in Settings › API Keys. Refresh"
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 198,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r7-proto/shots/weather-needs-key-sonnet-1280-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [
+          "Refresh"
+        ],
+        "faintCount": 1,
+        "headings": [
+          "Porto weekend"
+        ],
+        "excerpt": "Porto weekend 5-day forecast for Porto · OpenWeather Could not load forecast: The person hasn't allowed this host yet.. Check that an API key named OpenWeather is set in Settings › API Keys. Refresh"
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 198,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Porto weekend"
+        ],
+        "excerpt": "Porto weekend 5-day forecast for Porto · OpenWeather Could not load forecast: The person hasn't allowed this host yet.. Check that an API key named OpenWeather is set in Settings › API Keys. Refresh"
+      }
+    ],
+    "blocked": [],
+    "updates": [],
+    "setData": 0,
+    "interaction": {
+      "tried": "none",
+      "ok": null
+    },
+    "probes": {},
+    "dataAfter": {}
+  }
+}

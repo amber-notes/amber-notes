@@ -1,0 +1,288 @@
+{
+  "task": "flashcards",
+  "model": "gpt-5.5",
+  "round": "r7",
+  "skill": false,
+  "hidden": [
+    "check_app",
+    "preview_app"
+  ],
+  "seconds": 43,
+  "score": 1,
+  "passed": 19,
+  "total": 19,
+  "checks": [
+    {
+      "name": "has_page",
+      "pass": true
+    },
+    {
+      "name": "server_checks",
+      "pass": true
+    },
+    {
+      "name": "no_console_errors",
+      "pass": true
+    },
+    {
+      "name": "no_network",
+      "pass": true
+    },
+    {
+      "name": "fits_390",
+      "pass": true
+    },
+    {
+      "name": "fits_1280",
+      "pass": true
+    },
+    {
+      "name": "shows_data",
+      "pass": true
+    },
+    {
+      "name": "dark_mode",
+      "pass": true
+    },
+    {
+      "name": "light_contrast",
+      "pass": true
+    },
+    {
+      "name": "uses_theme",
+      "pass": true
+    },
+    {
+      "name": "labelled_controls",
+      "pass": true
+    },
+    {
+      "name": "edits_from_page",
+      "pass": true
+    },
+    {
+      "name": "says_app",
+      "pass": true
+    },
+    {
+      "name": "probe_escapes",
+      "pass": true
+    },
+    {
+      "name": "probe_empty",
+      "pass": true
+    },
+    {
+      "name": "probe_large",
+      "pass": true
+    },
+    {
+      "name": "note_unchanged",
+      "pass": true
+    },
+    {
+      "name": "remembers_with_page_data",
+      "pass": true
+    },
+    {
+      "name": "no_local_storage",
+      "pass": true
+    }
+  ],
+  "tool_calls": 6,
+  "tool_errors": 0,
+  "usage": {
+    "input": 18136,
+    "output": 3141,
+    "cacheRead": 62464,
+    "cacheWrite": 0,
+    "turns": 6
+  },
+  "usd": 0.0619,
+  "page_bytes": 7085,
+  "data": null,
+  "answer": "Done — your “Spanish verbs” note now has a phone-friendly flashcard app on the App side.\n\nIt flips Spanish ↔ English, lets you mark cards “Known” or “Again,” remembers known verbs, and shows unknown verbs first.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Spanish verbs",
+        "limit": "10"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Spanish verbs\",\n  \"results\": [\n    {\n      \"id\": \"b29d96ec-bd3b-4acf-b7f0-d0e4b5cd1d0d\",\n      \"title\": \"Spanish verbs\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T14:17:33.599Z\",\n      \"snippet\": \"«Spanish verbs» | «Spanish» | English | | --- | --- | | hablar | to speak | | comer | to eat | | vivir | to live | | tener | to have | | hacer | to do, to make | | ir | to go\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "get_page_guide",
+      "args": {},
+      "error": false,
+      "result": "{\n  \"guide\": \"# Building apps in Amber Notes notes\\n\\nA note can have an app: one HTML document shown on the note's App side, next to its Text side. A habit grid, a budget with totals, flashcards, a trip planner. In the tools it's called the note's page (set_note_page, get_note_page); when you talk to the person, call it \\\"the note's app\\\" or \\\"the App side\\\", and never \\\"page\\\" or \\\"Pages\\\".\\n\\nThe note's text stays the person's own data: they can always flip to Text and see and edit every row. The app reads it, changes it through checked edits, and keeps its own data (settings, logs, records… (19625 chars)"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "b29d96ec-bd3b-4acf-b7f0-d0e4b5cd1d0d",
+        "line_numbers": "true"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"b29d96ec-bd3b-4acf-b7f0-d0e4b5cd1d0d\",\n  \"title\": \"Spanish verbs\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T14:17:33.599Z\",\n  \"updated\": \"2026-10-05T14:17:33.599Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 17,\n    \"words\": 94\n  },\n  \"markdown\": \" 1│ Spanish verbs\\n 2│ \\n 3│ | Spanish | English |\\n 4│ | --- | --- |\\n 5│ | hablar | to speak |\\n 6│ | comer | to eat |\\n 7│ | vivir | to live |\\n 8│ | tener | to have |\\n … (853 chars)"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "b29d96ec-bd3b-4acf-b7f0-d0e4b5cd1d0d"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"b29d96ec-bd3b-4acf-b7f0-d0e4b5cd1d0d\",\n  \"title\": \"Spanish verbs\",\n  \"has_page\": false,\n  \"rules\": \"The page runs in Amber Notes in a sandbox with no network: no fetch, no external scripts, styles, fonts or images. Put all CSS and JS inline; images only as data: URIs or inline SVG.\\nRead the note from window.amber.note, never hardcode its contents (the note changes; the page must follow):\\n  amber.note = { title, markdown, today: \\\"yyyy-mm-dd\\\", tables: [{ index, columns: [{ name, type }], rows: [[cell, ...], ...] }], checklists: [{ line, text, checked }] }\\n  amber.onChange(fn) cal… (5406 chars)"
+    },
+    {
+      "name": "set_note_page",
+      "args": {
+        "id": "b29d96ec-bd3b-4acf-b7f0-d0e4b5cd1d0d",
+        "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<style>\n*{box-sizing:border-box}main{max-width:var(--amber-content-max);margin:0 auto;padding:18px var(--amber-gutter) 90px}.top{display:flex;align-items:flex-start;jus… (7083 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"b29d96ec-bd3b-4acf-b7f0-d0e4b5cd1d0d\",\n  \"title\": \"Spanish verbs\",\n  \"page\": \"created\",\n  \"bytes\": 7085,\n  \"note\": \"The person sees it on the note's App side (call it the note's app, not a page). The note's text is unchanged. Next: run check_app and fix what it finds.\"\n}"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "b29d96ec-bd3b-4acf-b7f0-d0e4b5cd1d0d"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"b29d96ec-bd3b-4acf-b7f0-d0e4b5cd1d0d\",\n  \"title\": \"Spanish verbs\",\n  \"has_page\": true,\n  \"made_by\": \"Claude\",\n  \"updated\": \"2026-10-05T14:18:03.641Z\",\n  \"rules\": \"The page runs in Amber Notes in a sandbox with no network: no fetch, no external scripts, styles, fonts or images. Put all CSS and JS inline; images only as data: URIs or inline SVG.\\nRead the note from window.amber.note, never hardcode its contents (the note changes; the page must follow):\\n  amber.note = { title, markdown, today: \\\"yyyy-mm-dd\\\", tables: [{ index, columns: [{ name, type }], rows: [[cell, ...], ...] }], ch… (12791 chars)"
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "390-light",
+        "width": 390,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 248,
+        "shown": 1,
+        "sampled": 10,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r7/shots/flashcards-openai-no-check_app-preview_app-390-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [
+          "Flip"
+        ],
+        "faintCount": 1,
+        "headings": [
+          "Spanish verbs"
+        ],
+        "excerpt": "Spanish verbs Flip through verbs. Cards not marked Known come first. 1 / 12 SPANISH hablar Tap Flip to reveal the answer Flip Again Known Previous Next Review all cards 12 cards 0 known 12 to learn No known verbs yet. Mark one Known to remember it."
+      },
+      {
+        "name": "390-dark",
+        "width": 390,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 248,
+        "shown": 1,
+        "sampled": 10,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r7/shots/flashcards-openai-no-check_app-preview_app-390-dark.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Spanish verbs"
+        ],
+        "excerpt": "Spanish verbs Flip through verbs. Cards not marked Known come first. 1 / 12 SPANISH hablar Tap Flip to reveal the answer Flip Again Known Previous Next Review all cards 12 cards 0 known 12 to learn No known verbs yet. Mark one Known to remember it."
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 248,
+        "shown": 1,
+        "sampled": 10,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r7/shots/flashcards-openai-no-check_app-preview_app-1280-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [
+          "Flip"
+        ],
+        "faintCount": 1,
+        "headings": [
+          "Spanish verbs"
+        ],
+        "excerpt": "Spanish verbs Flip through verbs. Cards not marked Known come first. 1 / 12 SPANISH hablar Tap Flip to reveal the answer Flip Again Known Previous Next Review all cards 12 cards 0 known 12 to learn No known verbs yet. Mark one Known to remember it."
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 248,
+        "shown": 1,
+        "sampled": 10,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Spanish verbs"
+        ],
+        "excerpt": "Spanish verbs Flip through verbs. Cards not marked Known come first. 1 / 12 SPANISH hablar Tap Flip to reveal the answer Flip Again Known Previous Next Review all cards 12 cards 0 known 12 to learn No known verbs yet. Mark one Known to remember it."
+      }
+    ],
+    "blocked": [],
+    "updates": [],
+    "setData": 1,
+    "interaction": {
+      "tried": "control",
+      "ok": true
+    },
+    "probes": {
+      "follows": {
+        "pass": false,
+        "detail": "a new row in the note doesn't show"
+      },
+      "escapes": {
+        "pass": true
+      },
+      "empty": {
+        "pass": true,
+        "detail": "blank page"
+      },
+      "large": {
+        "pass": true,
+        "detail": "549 ms to load 400 rows"
+      }
+    },
+    "dataAfter": {}
+  }
+}

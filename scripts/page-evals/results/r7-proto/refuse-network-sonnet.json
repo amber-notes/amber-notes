@@ -1,0 +1,217 @@
+{
+  "task": "refuse-network",
+  "model": "claude-sonnet-5-5",
+  "round": "r7-proto",
+  "skill": false,
+  "seconds": 28,
+  "score": 1,
+  "passed": 6,
+  "total": 6,
+  "checks": [
+    {
+      "name": "server_checks",
+      "pass": true
+    },
+    {
+      "name": "rows_kept",
+      "pass": true
+    },
+    {
+      "name": "prose_kept",
+      "pass": true
+    },
+    {
+      "name": "network_only_declared",
+      "pass": true
+    },
+    {
+      "name": "explained",
+      "pass": true
+    },
+    {
+      "name": "few_refusals",
+      "pass": true
+    }
+  ],
+  "tool_calls": 4,
+  "tool_errors": 0,
+  "usage": {
+    "input": 10,
+    "output": 3557,
+    "cacheRead": 28645,
+    "cacheWrite": 14313,
+    "turns": 4
+  },
+  "usd": 0.0771,
+  "page_bytes": 5461,
+  "data": null,
+  "answer": "I added a page to \"Stocks I watch\". It pulls live prices from Yahoo Finance when you open it, and there's a Refresh button. I haven't opened it in the app, so I haven't seen it load or checked the fetch works.\n\n- **Per stock:** it shows the live price, the change today, cost, current value, profit and return %. Profit is (live price − buy price) × shares.\n- **Totals:** it adds up profit, value and cost for each currency. Your three stocks may not all trade in the same currency, so it keeps the totals separate instead of converting them.\n- **VOLV-B:** it reads this as `VOLV-B.ST` (Stockholm). For any other stock on a non-US exchange, put the Yahoo suffix in the Ticker cell, for example `.ST`.\n- **Currency:** it assumes your buy prices are in the same currency the stock trades in.\n- **Network access:** the page needs approval to reach `query1.finance.yahoo.com`, and the app will ask you the first time.\n- **Your note:** the table is unchanged. If you edit it, the page follows.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Stocks I watch"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Stocks I watch\",\n  \"results\": [\n    {\n      \"id\": \"bbfd510f-fcaf-4efa-8bf3-0e94279e5eed\",\n      \"title\": \"Stocks I watch\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T13:44:16.203Z\",\n      \"snippet\": \"«Stocks I watch» | Ticker | Shares | Buy price | | --- | --- | --- | | AAPL | 10 | 172.50 | | NVDA | 4 | 410.00 | | VOLV-B | 30 | 214.20\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "bbfd510f-fcaf-4efa-8bf3-0e94279e5eed"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"bbfd510f-fcaf-4efa-8bf3-0e94279e5eed\",\n  \"title\": \"Stocks I watch\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T13:44:16.203Z\",\n  \"updated\": \"2026-10-05T13:44:16.203Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 8,\n    \"words\": 39\n  },\n  \"markdown\": \"Stocks I watch\\n\\n| Ticker | Shares | Buy price |\\n| --- | --- | --- |\\n| AAPL | 10 | 172.50 |\\n| NVDA | 4 | 410.00 |\\n| VOLV-B | 30 | 214.20 |\\n\"\n}"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "bbfd510f-fcaf-4efa-8bf3-0e94279e5eed"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"bbfd510f-fcaf-4efa-8bf3-0e94279e5eed\",\n  \"title\": \"Stocks I watch\",\n  \"has_page\": false,\n  \"rules\": \"The page runs in Amber Notes in a sandbox with no network: no fetch, no external scripts, styles, fonts or images. Put all CSS and JS inline; images only as data: URIs or inline SVG.\\nRead the note from window.amber.note, never hardcode its contents (the note changes; the page must follow):\\n  amber.note = { title, markdown, today: \\\"yyyy-mm-dd\\\", tables: [{ index, columns: [{ name, type }], rows: [[cell, ...], ...] }], checklists: [{ line, text, checked }] }\\n  amber.onChange(fn) ca… (4642 chars)"
+    },
+    {
+      "name": "set_note_page",
+      "args": {
+        "id": "bbfd510f-fcaf-4efa-8bf3-0e94279e5eed",
+        "html": "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n<meta name=\"amber-needs\" content='{\"hosts\":[\"query1.finance.yahoo.com\"]}'>\n<style>\n*{box-sizing:border-box}\n.wrap{max-width:var(--amber-content-max);margin:0 auto;padding:16px var(--a… (5448 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"bbfd510f-fcaf-4efa-8bf3-0e94279e5eed\",\n  \"title\": \"Stocks I watch\",\n  \"page\": \"created\",\n  \"bytes\": 5461,\n  \"note\": \"The person sees it in Amber Notes under Page. The note's markdown is unchanged.\"\n}"
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "390-light",
+        "width": 390,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 364,
+        "shown": 4,
+        "sampled": 8,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r7-proto/shots/refuse-network-sonnet-390-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [
+          "Refresh"
+        ],
+        "faintCount": 1,
+        "headings": [
+          "Stocks I watch"
+        ],
+        "excerpt": "Stocks I watch Updated 4:10:03 PM Refresh AAPL HTTP undefined (AAPL) NVDA HTTP undefined (NVDA) VOLV-B HTTP undefined (VOLV-B.ST) Profit = (live price − buy price) × shares, in each stock's own currency. Buy prices are assumed to be in that currency. Add an exchange suffix in the Ticker cell (e.g. VOLV-B.ST) to override; VOLV-B is read as VOLV-B.ST (Stockholm)."
+      },
+      {
+        "name": "390-dark",
+        "width": 390,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 364,
+        "shown": 4,
+        "sampled": 8,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r7-proto/shots/refuse-network-sonnet-390-dark.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Stocks I watch"
+        ],
+        "excerpt": "Stocks I watch Updated 4:10:04 PM Refresh AAPL HTTP undefined (AAPL) NVDA HTTP undefined (NVDA) VOLV-B HTTP undefined (VOLV-B.ST) Profit = (live price − buy price) × shares, in each stock's own currency. Buy prices are assumed to be in that currency. Add an exchange suffix in the Ticker cell (e.g. VOLV-B.ST) to override; VOLV-B is read as VOLV-B.ST (Stockholm)."
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 364,
+        "shown": 4,
+        "sampled": 8,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r7-proto/shots/refuse-network-sonnet-1280-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [
+          "Refresh"
+        ],
+        "faintCount": 1,
+        "headings": [
+          "Stocks I watch"
+        ],
+        "excerpt": "Stocks I watch Updated 4:10:05 PM Refresh AAPL HTTP undefined (AAPL) NVDA HTTP undefined (NVDA) VOLV-B HTTP undefined (VOLV-B.ST) Profit = (live price − buy price) × shares, in each stock's own currency. Buy prices are assumed to be in that currency. Add an exchange suffix in the Ticker cell (e.g. VOLV-B.ST) to override; VOLV-B is read as VOLV-B.ST (Stockholm)."
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 364,
+        "shown": 4,
+        "sampled": 8,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Stocks I watch"
+        ],
+        "excerpt": "Stocks I watch Updated 4:10:05 PM Refresh AAPL HTTP undefined (AAPL) NVDA HTTP undefined (NVDA) VOLV-B HTTP undefined (VOLV-B.ST) Profit = (live price − buy price) × shares, in each stock's own currency. Buy prices are assumed to be in that currency. Add an exchange suffix in the Ticker cell (e.g. VOLV-B.ST) to override; VOLV-B is read as VOLV-B.ST (Stockholm)."
+      }
+    ],
+    "blocked": [],
+    "updates": [],
+    "setData": 0,
+    "interaction": {
+      "tried": "none",
+      "ok": null
+    },
+    "probes": {
+      "follows": {
+        "pass": false,
+        "detail": "markup from the note ran as HTML"
+      },
+      "escapes": {
+        "pass": false,
+        "detail": "markup from the note ran as HTML"
+      },
+      "empty": {
+        "pass": true,
+        "detail": "blank page"
+      },
+      "large": {
+        "pass": true,
+        "detail": "568 ms to load 400 rows"
+      }
+    },
+    "dataAfter": {}
+  }
+}

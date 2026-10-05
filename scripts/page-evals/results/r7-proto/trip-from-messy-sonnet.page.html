@@ -1,0 +1,66 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{box-sizing:border-box}
+.wrap{max-width:var(--amber-content-max);margin:0 auto;padding:16px var(--amber-gutter) 32px}
+h1{font-family:var(--amber-font-rounded);margin:8px 0 16px}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--amber-text-secondary);margin:0 0 10px}
+.card{background:var(--amber-surface);border-radius:var(--amber-radius);padding:16px;margin-bottom:16px}
+.count{background:var(--amber-accent-soft);text-align:center}
+.count .n{font-family:var(--amber-font-rounded);font-size:56px;font-weight:700;color:var(--amber-accent-text);line-height:1}
+.count .l{color:var(--amber-text-secondary);margin-top:4px}
+.grid{display:grid;gap:16px}
+@media(min-width:900px){.grid{grid-template-columns:1fr 1fr}.count .n{font-size:84px}}
+.row{padding:8px 0;border-bottom:1px solid var(--amber-separator)}
+.row:last-child{border:0}
+.k{color:var(--amber-text-secondary);font-size:13px}
+.item{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--amber-separator);cursor:pointer}
+.item:last-child{border:0}
+.box{width:22px;height:22px;border-radius:50%;border:2px solid var(--amber-accent);flex:none;display:flex;align-items:center;justify-content:center;color:var(--amber-on-accent);font-size:14px}
+.done .box{background:var(--amber-accent)}
+.done .t{text-decoration:line-through;color:var(--amber-text-secondary)}
+.prog{color:var(--amber-text-secondary);font-size:13px;float:right}
+</style></head><body><div class="wrap" id="app"></div>
+<script>
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function field(lines,key){const l=lines.find(x=>x.toLowerCase().startsWith(key));return l?l.slice(key.length).replace(/^:\s*/,'').trim():''}
+function render(note){
+ const lines=note.markdown.split('\n');
+ const flights=field(lines,'flights'),hotel=field(lines,'hotel'),budget=field(lines,'budget');
+ const todoIdx=lines.findIndex(l=>/^\s*to do/i.test(l));
+ const ideas=[],todos=[];
+ note.checklists.forEach(c=>{
+  const i=lines.findIndex(l=>l.includes(c.text));
+  (todoIdx>=0&&i>todoIdx?todos:ideas).push(c);
+ });
+ // flights
+ let out='',back='';
+ const m=flights.match(/out\s*(.*?),\s*back\s*(.*)/i);
+ if(m){out=m[1];back=m[2]}else out=flights;
+ // countdown
+ const t=new Date(note.today+'T00:00:00'),d=new Date(t.getFullYear()+'-10-16T00:00:00');
+ const days=Math.round((d-t)/864e5);
+ const cd=days>0?days:days===0?'Today!':'';
+ const lbl=days>0?(days===1?'day to go until Porto':'days to go until Porto'):days===0?'Fly out this morning':'Hope it was great';
+ const hp=hotel.split(',').map(s=>s.trim());
+ const list=a=>a.length?a.map(c=>`<div class="item ${c.checked?'done':''}" data-l="${c.line}"><div class="box">${c.checked?'✓':''}</div><div class="t">${esc(c.text)}</div></div>`).join(''):'<div class="k">Nothing here</div>';
+ const dn=a=>a.filter(c=>c.checked).length+'/'+a.length;
+ document.getElementById('app').innerHTML=`
+ <h1>${esc(note.title)}</h1>
+ <div class="card count"><div class="n">${cd}</div><div class="l">${lbl} · Fri 16 Oct</div></div>
+ <div class="grid">
+ <div class="card"><h2>Flights</h2>
+  <div class="row"><div class="k">Out · TP 781</div>${esc(out.replace(/\(.*?\)/,'').trim())}</div>
+  ${back?`<div class="row"><div class="k">Back · TP 784</div>${esc(back.replace(/\(.*?\)/,'').trim())}</div>`:''}
+ </div>
+ <div class="card"><h2>Hotel</h2>
+  <div class="row"><b>${esc(hp[0]||'')}</b></div>
+  ${hp.slice(1).map(x=>`<div class="row">${esc(x)}</div>`).join('')}
+  ${budget?`<div class="row"><div class="k">Budget</div>${esc(budget)}</div>`:''}
+ </div>
+ <div class="card"><h2>Ideas <span class="prog">${dn(ideas)}</span></h2>${list(ideas)}</div>
+ <div class="card"><h2>To do before <span class="prog">${dn(todos)}</span></h2>${list(todos)}</div>
+ </div>`;
+ document.querySelectorAll('.item').forEach(e=>e.onclick=()=>amber.update({op:'toggle_checklist',line:+e.dataset.l}));
+}
+amber.onChange(render);
+</script></body></html>

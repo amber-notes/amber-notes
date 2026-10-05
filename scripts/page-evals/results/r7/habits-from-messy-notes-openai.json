@@ -1,0 +1,433 @@
+{
+  "task": "habits-from-messy-notes",
+  "model": "gpt-5.5",
+  "round": "r7",
+  "skill": false,
+  "seconds": 121,
+  "score": 1,
+  "passed": 20,
+  "total": 20,
+  "checks": [
+    {
+      "name": "has_page",
+      "pass": true
+    },
+    {
+      "name": "server_checks",
+      "pass": true
+    },
+    {
+      "name": "no_console_errors",
+      "pass": true
+    },
+    {
+      "name": "no_network",
+      "pass": true
+    },
+    {
+      "name": "fits_390",
+      "pass": true
+    },
+    {
+      "name": "fits_1280",
+      "pass": true
+    },
+    {
+      "name": "shows_data",
+      "pass": true
+    },
+    {
+      "name": "dark_mode",
+      "pass": true
+    },
+    {
+      "name": "light_contrast",
+      "pass": true
+    },
+    {
+      "name": "uses_theme",
+      "pass": true
+    },
+    {
+      "name": "labelled_controls",
+      "pass": true
+    },
+    {
+      "name": "edits_from_page",
+      "pass": true
+    },
+    {
+      "name": "says_app",
+      "pass": true
+    },
+    {
+      "name": "probe_follows",
+      "pass": true
+    },
+    {
+      "name": "probe_escapes",
+      "pass": true
+    },
+    {
+      "name": "probe_empty",
+      "pass": true
+    },
+    {
+      "name": "probe_large",
+      "pass": true
+    },
+    {
+      "name": "table_made",
+      "pass": true
+    },
+    {
+      "name": "facts_kept",
+      "pass": true
+    },
+    {
+      "name": "tuesday_read_only",
+      "pass": true
+    }
+  ],
+  "tool_calls": 19,
+  "tool_errors": 1,
+  "usage": {
+    "input": 60102,
+    "output": 7991,
+    "cacheRead": 300800,
+    "cacheWrite": 0,
+    "turns": 16
+  },
+  "usd": 0.1926,
+  "page_bytes": 11206,
+  "data": null,
+  "answer": "Done — I turned your **Habits** note into a proper habit tracker on the **App** side.\n\nI also:\n- Converted your existing free-form habit notes into a dated table.\n- Imported the past week’s entries.\n- Added today’s row.\n- Made the App side phone-friendly for ticking habits off.\n- Added streaks, a 14-day grid, weekly totals, and editable weekly goals.\n- Ran the app check and preview; no issues were reported.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Habits",
+        "limit": "10"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Habits\",\n  \"results\": [\n    {\n      \"id\": \"b72442bd-d968-4087-a8b3-9374e4f600e5\",\n      \"title\": \"Habits\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T13:57:56.652Z\",\n      \"snippet\": \"«Habits» trying to do these every day: walk, read, stretch, no phone in bed mon 28 sep - walked, read, stretched tue 29 - read only\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "get_page_guide",
+      "args": {
+        "template": "habit-tracker"
+      },
+      "error": false,
+      "result": "{\n  \"template\": \"habit-tracker\",\n  \"description\": \"Tick today's habits, see streaks, a 14-day grid and progress toward weekly goals kept in page data.\",\n  \"expects\": \"A table with a Date column (yyyy-mm-dd) and one column per habit; a done day is ✓ (x, yes and 1 also count). Optional amber.data.values.goals = { \\\"Habit\\\": days per week }.\",\n  \"html\": \"<!doctype html>\\n<!-- template: habit-tracker | Tick today's habits, see streaks, a 14-day grid and progress toward weekly goals kept in page data. | A table with a Date column (yyyy-mm-dd) and one column per habit; a done day is ✓ (x, yes and 1 … (8491 chars)"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "b72442bd-d968-4087-a8b3-9374e4f600e5",
+        "line_numbers": "true"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"b72442bd-d968-4087-a8b3-9374e4f600e5\",\n  \"title\": \"Habits\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T13:57:56.652Z\",\n  \"updated\": \"2026-10-05T13:57:56.652Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 12,\n    \"words\": 61\n  },\n  \"markdown\": \" 1│ Habits\\n 2│ \\n 3│ trying to do these every day: walk, read, stretch, no phone in bed\\n 4│ \\n 5│ mon 28 sep - walked, read, stretched\\n 6│ tue 29 - read only, too tired\\n 7│ wed… (780 chars)"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "b72442bd-d968-4087-a8b3-9374e4f600e5"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"b72442bd-d968-4087-a8b3-9374e4f600e5\",\n  \"title\": \"Habits\",\n  \"has_page\": false,\n  \"rules\": \"The page runs in Amber Notes in a sandbox with no network: no fetch, no external scripts, styles, fonts or images. Put all CSS and JS inline; images only as data: URIs or inline SVG.\\nRead the note from window.amber.note, never hardcode its contents (the note changes; the page must follow):\\n  amber.note = { title, markdown, today: \\\"yyyy-mm-dd\\\", tables: [{ index, columns: [{ name, type }], rows: [[cell, ...], ...] }], checklists: [{ line, text, checked }] }\\n  amber.onChange(fn) calls fn(n… (4898 chars)"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "b72442bd-d968-4087-a8b3-9374e4f600e5"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"b72442bd-d968-4087-a8b3-9374e4f600e5\",\n  \"title\": \"Habits\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T13:57:56.652Z\",\n  \"updated\": \"2026-10-05T13:57:56.652Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 12,\n    \"words\": 61\n  },\n  \"markdown\": \"Habits\\n\\ntrying to do these every day: walk, read, stretch, no phone in bed\\n\\nmon 28 sep - walked, read, stretched\\ntue 29 - read only, too tired\\nwed 30: walk + stretch + no pho… (732 chars)"
+    },
+    {
+      "name": "edit_note",
+      "args": {
+        "id": "b72442bd-d968-4087-a8b3-9374e4f600e5",
+        "expected_version": "1",
+        "edits": "[{\"old_text\":\"Habits\\n\\ntrying to do these every day: walk, read, stretch, no phone in bed\\n\\nmon 28 sep - walked, read, stretched\\ntue 29 - read only, too tired\\nwed 30: walk + stretch + no phone!!\\nthu 1 oct walked read stretched no phone\\nfri 2 - nothing (party)\\nsat 3 walk, read\\nsun 4 read, str… (780 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"edited\": {\n    \"id\": \"b72442bd-d968-4087-a8b3-9374e4f600e5\",\n    \"title\": \"Habits\",\n    \"version\": 2,\n    \"updated\": \"2026-10-05T13:58:21.140Z\"\n  },\n  \"edits_applied\": 1\n}"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "b72442bd-d968-4087-a8b3-9374e4f600e5",
+        "line_numbers": "true"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"b72442bd-d968-4087-a8b3-9374e4f600e5\",\n  \"title\": \"Habits\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T13:57:56.652Z\",\n  \"updated\": \"2026-10-05T13:58:21.140Z\",\n  \"version\": 2,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 15,\n    \"words\": 123\n  },\n  \"markdown\": \" 1│ Habits\\n 2│ \\n 3│ Track each habit daily. Mark a habit done with ✓.\\n 4│ \\n 5│ | Date | Walk | Read | Stretch | No phone in bed | Notes |\\n 6│ | --- | --- | --- | --- | --- | … (924 chars)"
+    },
+    {
+      "name": "read_table",
+      "args": {
+        "id": "b72442bd-d968-4087-a8b3-9374e4f600e5",
+        "table": "0"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"b72442bd-d968-4087-a8b3-9374e4f600e5\",\n    \"title\": \"Habits\"\n  },\n  \"columns\": [\n    {\n      \"name\": \"Date\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Walk\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Read\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Stretch\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"No phone in bed\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Notes\",\n      \"type\": \"text\"\n    }\n  ],\n  \"rows\": [\n    {\n      \"Date\": \"2026-09-28\",\n      \"Walk\": \"✓\",\n      \"Read\": \"✓\",\n      \"Stretch\": \"✓\",\n      \"No phone in bed\": \"\",\n    … (1686 chars)"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "b72442bd-d968-4087-a8b3-9374e4f600e5"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"b72442bd-d968-4087-a8b3-9374e4f600e5\",\n  \"title\": \"Habits\",\n  \"has_page\": false,\n  \"rules\": \"The page runs in Amber Notes in a sandbox with no network: no fetch, no external scripts, styles, fonts or images. Put all CSS and JS inline; images only as data: URIs or inline SVG.\\nRead the note from window.amber.note, never hardcode its contents (the note changes; the page must follow):\\n  amber.note = { title, markdown, today: \\\"yyyy-mm-dd\\\", tables: [{ index, columns: [{ name, type }], rows: [[cell, ...], ...] }], checklists: [{ line, text, checked }] }\\n  amber.onChange(fn) calls fn(n… (5922 chars)"
+    },
+    {
+      "name": "set_note_page",
+      "args": {
+        "id": "b72442bd-d968-4087-a8b3-9374e4f600e5",
+        "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<style>\n  *{box-sizing:border-box}body{margin:0;padding:18px 0 88px;color:var(--amber-text);font-family:var(--amber-font)}\n  .wrap{max-width:var(--amber-content-max);ma… (11153 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"b72442bd-d968-4087-a8b3-9374e4f600e5\",\n  \"title\": \"Habits\",\n  \"page\": \"created\",\n  \"bytes\": 11162,\n  \"note\": \"The person sees it on the note's App side (call it the note's app, not a page). The note's text is unchanged. Next: run check_app and fix what it finds.\",\n  \"warnings\": [\n    \"Fixed widths over 380 px (min-width: 520px) overflow a 390 px phone. Use max-width or percentages.\"\n  ],\n  \"fix_warnings\": \"Saved. Fix these with edit_note_page, then run check_app, before you reply.\"\n}"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "b72442bd-d968-4087-a8b3-9374e4f600e5"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"b72442bd-d968-4087-a8b3-9374e4f600e5\",\n  \"title\": \"Habits\",\n  \"has_page\": true,\n  \"made_by\": \"Claude\",\n  \"updated\": \"2026-10-05T13:58:58.790Z\",\n  \"rules\": \"The page runs in Amber Notes in a sandbox with no network: no fetch, no external scripts, styles, fonts or images. Put all CSS and JS inline; images only as data: URIs or inline SVG.\\nRead the note from window.amber.note, never hardcode its contents (the note changes; the page must follow):\\n  amber.note = { title, markdown, today: \\\"yyyy-mm-dd\\\", tables: [{ index, columns: [{ name, type }], rows: [[cell, ...], ...] }], checklist… (17379 chars)"
+    },
+    {
+      "name": "edit_note_page",
+      "args": {
+        "id": "b72442bd-d968-4087-a8b3-9374e4f600e5",
+        "edits": "[{\"old_text\":\".gridWrap{overflow:auto;padding:12px}.grid{display:grid;gap:5px;min-width:520px}.row{display:grid;grid-template-columns:minmax(110px,1.4fr) repeat(14,minmax(22px,1fr));gap:4px;align-items:center}.dayHead,.habitHead{color:var(--amber-text-secondary);font-size:13px;white-space:nowrap}.ha… (1599 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"b72442bd-d968-4087-a8b3-9374e4f600e5\",\n  \"title\": \"Habits\",\n  \"page\": \"replaced\",\n  \"bytes\": 11206,\n  \"note\": \"The person sees it on the note's App side (call it the note's app, not a page). The note's text is unchanged. The previous version is kept (get_note_page lists it). Next: run check_app and fix what it finds.\"\n}"
+    },
+    {
+      "name": "check_app",
+      "args": {
+        "id": "b72442bd-d968-4087-a8b3-9374e4f600e5"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"b72442bd-d968-4087-a8b3-9374e4f600e5\",\n    \"title\": \"Habits\"\n  },\n  \"ok\": false,\n  \"issues\": [],\n  \"browser\": \"The app renderer answered 500; only the checks that need no browser ran.\",\n  \"next\": \"Nothing to fix.\"\n}"
+    },
+    {
+      "name": "preview_app",
+      "args": {
+        "id": "b72442bd-d968-4087-a8b3-9374e4f600e5",
+        "widths": "[390,1280]",
+        "themes": "[\"light\",\"dark\"]",
+        "data": "sample"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"b72442bd-d968-4087-a8b3-9374e4f600e5\",\n    \"title\": \"Habits\"\n  },\n  \"previews\": \"unavailable\",\n  \"reason\": \"The app renderer answered 500; only the checks that need no browser ran.\",\n  \"instead\": \"Run check_app for the checks that need no browser.\"\n}"
+    },
+    {
+      "name": "check_app",
+      "args": {
+        "id": "b72442bd-d968-4087-a8b3-9374e4f600e5"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"b72442bd-d968-4087-a8b3-9374e4f600e5\",\n    \"title\": \"Habits\"\n  },\n  \"ok\": false,\n  \"issues\": [],\n  \"browser\": \"The app renderer answered 500; only the checks that need no browser ran.\",\n  \"next\": \"Nothing to fix.\"\n}"
+    },
+    {
+      "name": "edit_table_columns",
+      "args": {
+        "id": "b72442bd-d968-4087-a8b3-9374e4f600e5",
+        "table": "0",
+        "changes": "[{\"set_type\":\"Date\",\"type\":\"date\"}]"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"b72442bd-d968-4087-a8b3-9374e4f600e5\",\n    \"title\": \"Habits\"\n  },\n  \"table\": 0,\n  \"changes\": [\n    \"Date is now date\"\n  ],\n  \"columns\": [\n    {\n      \"name\": \"Date\",\n      \"type\": \"date\"\n    },\n    {\n      \"name\": \"Walk\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Read\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Stretch\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"No phone in bed\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Notes\",\n      \"type\": \"text\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "check_app",
+      "args": {
+        "id": "b72442bd-d968-4087-a8b3-9374e4f600e5"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"b72442bd-d968-4087-a8b3-9374e4f600e5\",\n    \"title\": \"Habits\"\n  },\n  \"ok\": true,\n  \"issues\": [],\n  \"browser_checked\": \"390 px light and dark, 1280 px light, over a sample note\",\n  \"next\": \"Nothing to fix.\"\n}"
+    },
+    {
+      "name": "preview_app",
+      "args": {
+        "id": "b72442bd-d968-4087-a8b3-9374e4f600e5",
+        "widths": "[390,1280]",
+        "themes": "[\"light\",\"dark\"]",
+        "data": "sample"
+      },
+      "error": false,
+      "result": "{\n  \"app\": \"Habits\",\n  \"data\": \"a sample with the note's shape (not the person's data)\",\n  \"views\": [\n    {\n      \"view\": \"390-light\",\n      \"headings\": [\n        \"Sample note\",\n        \"Today\",\n        \"Last 14 days\",\n        \"Weekly goals\",\n        \"Recent notes\"\n      ],\n      \"text\": \"Mon, Oct 5 Sample note Tap a habit to tick it off for today. 0/4 done today 0 best active streak 0 ticks this week Today Walk No current streak · best 1 0/wk Read No current streak · best 1 0/wk Stretch No current streak · best 1 0/wk No phone in bed No current streak · best 1 0/wk Last 14 days Tue Wed Thu Fr… (2986 chars)"
+    },
+    {
+      "name": "preview_app",
+      "args": {
+        "id": "b72442bd-d968-4087-a8b3-9374e4f600e5",
+        "widths": "[390]",
+        "themes": "[\"light\"]",
+        "data": "real"
+      },
+      "error": true,
+      "result": "Previews with real data are off. They show a sample with the same shape by default (data: \"sample\"). The person can allow real data in Amber Notes › Settings › Privacy, \"Let AIs preview apps with my notes\"."
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "390-light",
+        "width": 390,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 543,
+        "shown": 1,
+        "sampled": 1,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r7/shots/habits-from-messy-notes-openai-390-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Habits",
+          "Today",
+          "Last 14 days",
+          "Weekly goals",
+          "Recent notes"
+        ],
+        "excerpt": "Mon, Oct 5 Habits Tap a habit to tick it off for today. 0/4 done today 2 best active streak 0 ticks this week Today Walk No current streak · best 2 0/wk Read 2 days in a row · best 2 0/wk Stretch 1 day in a row · best 2 0/wk No phone in bed 1 day in a row · best 2 0/wk Last 14 days Tue Wed Thu Fri Sat Sun Mon Tue Wed Thu Fri Sat Sun Today Walk Read Stretch No phone in bed Weekly goals Walk 0 done this week Read 0 done this week Stretch 0 done this week No phone in bed 0 done this week Recent not"
+      },
+      {
+        "name": "390-dark",
+        "width": 390,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 543,
+        "shown": 1,
+        "sampled": 1,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r7/shots/habits-from-messy-notes-openai-390-dark.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Habits",
+          "Today",
+          "Last 14 days",
+          "Weekly goals",
+          "Recent notes"
+        ],
+        "excerpt": "Mon, Oct 5 Habits Tap a habit to tick it off for today. 0/4 done today 2 best active streak 0 ticks this week Today Walk No current streak · best 2 0/wk Read 2 days in a row · best 2 0/wk Stretch 1 day in a row · best 2 0/wk No phone in bed 1 day in a row · best 2 0/wk Last 14 days Tue Wed Thu Fri Sat Sun Mon Tue Wed Thu Fri Sat Sun Today Walk Read Stretch No phone in bed Weekly goals Walk 0 done this week Read 0 done this week Stretch 0 done this week No phone in bed 0 done this week Recent not"
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 543,
+        "shown": 1,
+        "sampled": 1,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r7/shots/habits-from-messy-notes-openai-1280-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Habits",
+          "Today",
+          "Last 14 days",
+          "Weekly goals",
+          "Recent notes"
+        ],
+        "excerpt": "Mon, Oct 5 Habits Tap a habit to tick it off for today. 0/4 done today 2 best active streak 0 ticks this week Today Walk No current streak · best 2 0/wk Read 2 days in a row · best 2 0/wk Stretch 1 day in a row · best 2 0/wk No phone in bed 1 day in a row · best 2 0/wk Last 14 days Tue Wed Thu Fri Sat Sun Mon Tue Wed Thu Fri Sat Sun Today Walk Read Stretch No phone in bed Weekly goals Walk 0 done this week Read 0 done this week Stretch 0 done this week No phone in bed 0 done this week Recent not"
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 543,
+        "shown": 1,
+        "sampled": 1,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Habits",
+          "Today",
+          "Last 14 days",
+          "Weekly goals",
+          "Recent notes"
+        ],
+        "excerpt": "Mon, Oct 5 Habits Tap a habit to tick it off for today. 0/4 done today 2 best active streak 0 ticks this week Today Walk No current streak · best 2 0/wk Read 2 days in a row · best 2 0/wk Stretch 1 day in a row · best 2 0/wk No phone in bed 1 day in a row · best 2 0/wk Last 14 days Tue Wed Thu Fri Sat Sun Mon Tue Wed Thu Fri Sat Sun Today Walk Read Stretch No phone in bed Weekly goals Walk 0 done this week Read 0 done this week Stretch 0 done this week No phone in bed 0 done this week Recent not"
+      }
+    ],
+    "blocked": [],
+    "updates": [
+      {
+        "op": {
+          "op": "set_cell",
+          "table": 0,
+          "row": 7,
+          "col": "Walk",
+          "value": "✓"
+        },
+        "ok": true
+      }
+    ],
+    "setData": 0,
+    "interaction": {
+      "tried": "control",
+      "ok": true
+    },
+    "probes": {
+      "follows": {
+        "pass": true,
+        "detail": "shown, but not as written"
+      },
+      "escapes": {
+        "pass": true
+      },
+      "empty": {
+        "pass": true,
+        "detail": "blank page"
+      },
+      "large": {
+        "pass": true,
+        "detail": "569 ms to load 400 rows"
+      }
+    },
+    "dataAfter": {}
+  }
+}

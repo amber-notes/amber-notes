@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  *{box-sizing:border-box} body{margin:0;padding:0;color:var(--amber-text);font-family:var(--amber-font)}
+  .wrap{max-width:var(--amber-content-max);margin:0 auto;padding:22px var(--amber-gutter) 42px}
+  header{display:flex;flex-direction:column;gap:14px;margin-bottom:18px}
+  .eyebrow{color:var(--amber-accent-text);font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+  h1{font-family:var(--amber-font-rounded);font-size:clamp(32px,6vw,58px);line-height:.95;letter-spacing:-.055em;margin:0}
+  .sub{color:var(--amber-text-secondary);font-size:16px;max-width:68ch;line-height:1.45;margin:0}
+  .stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:20px 0}
+  .stat{background:linear-gradient(180deg,var(--amber-surface),var(--amber-fill));border:1px solid var(--amber-separator);border-radius:var(--amber-radius);padding:15px;min-height:104px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 10px 26px rgba(0,0,0,.04)}
+  .stat strong{font-size:clamp(28px,8vw,46px);line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.045em}
+  .stat span{color:var(--amber-text-secondary);font-size:13px;font-weight:650;text-transform:uppercase;letter-spacing:.045em}
+  .section-title{display:flex;align-items:end;justify-content:space-between;gap:12px;margin:28px 0 12px}
+  h2{margin:0;font-size:18px;letter-spacing:-.02em}.hint{color:var(--amber-text-secondary);font-size:13px}
+  .panel{background:var(--amber-surface);border:1px solid var(--amber-separator);border-radius:var(--amber-radius);overflow:hidden}
+  .months{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:0;align-items:end;min-height:180px;padding:18px 12px 12px}
+  .month{min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:end;gap:8px;height:150px;border-left:1px solid var(--amber-separator)}.month:first-child{border-left:0}
+  .bar{width:min(34px,62%);min-height:4px;border-radius:999px 999px 4px 4px;background:linear-gradient(180deg,var(--amber-accent),var(--amber-accent-text));box-shadow:0 6px 16px color-mix(in srgb,var(--amber-accent) 24%,transparent)}
+  .count{font-size:13px;font-weight:800;color:var(--amber-text)}.mon{color:var(--amber-text-secondary);font-size:12px;white-space:nowrap}
+  .shelf{display:grid;grid-template-columns:repeat(auto-fill,minmax(138px,1fr));gap:14px;align-items:stretch}
+  .book{position:relative;min-height:218px;border-radius:18px;padding:16px 14px;color:var(--amber-on-accent);overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 14px 30px rgba(0,0,0,.16);isolation:isolate}
+  .book:before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,0,0,.34),rgba(255,255,255,.12) 12%,rgba(255,255,255,.02) 26%,rgba(0,0,0,.22));z-index:-1}.book:after{content:"";position:absolute;left:13px;top:0;bottom:0;width:2px;background:rgba(255,255,255,.25)}
+  .book-title{font-family:var(--amber-font-rounded);font-weight:800;font-size:18px;line-height:1.04;letter-spacing:-.035em;text-shadow:0 1px 2px rgba(0,0,0,.22);overflow-wrap:anywhere}.author{font-size:13px;line-height:1.25;opacity:.9;margin-top:8px}.meta{display:flex;flex-direction:column;gap:5px;font-size:12px;opacity:.94}.stars{letter-spacing:.04em;font-size:14px}.date{font-variant-numeric:tabular-nums}
+  .empty{padding:28px;text-align:center;color:var(--amber-text-secondary)}
+  .want{display:flex;flex-wrap:wrap;gap:8px;padding:14px}.pill{background:var(--amber-accent-soft);color:var(--amber-accent-text);border:1px solid color-mix(in srgb,var(--amber-accent) 30%,var(--amber-separator));border-radius:999px;padding:8px 11px;font-size:14px}
+  @media (min-width:700px){.stats{grid-template-columns:repeat(4,minmax(0,1fr))}.shelf{grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:18px}.book{min-height:248px;padding:18px 16px}.book-title{font-size:21px}}
+  @media (min-width:900px){header{display:grid;grid-template-columns:1.05fr .95fr;align-items:end}.stats{margin:0}.main-grid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:22px;align-items:start}.side{position:sticky;top:18px}.months{grid-template-columns:repeat(3,minmax(0,1fr));min-height:300px}.month{height:132px}.month:nth-child(4){border-left:0}}
+</style>
+</head>
+<body>
+<main class="wrap" id="app"></main>
+<script>
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const findCol=(t,tests)=>t.columns.findIndex(c=>tests.some(re=>re.test(c.name)));
+const hash=s=>{let h=17; for(const ch of String(s)) h=(h*31+ch.charCodeAt(0))%360; return h};
+const monthLabel=m=>new Date(m+"-15T12:00:00Z").toLocaleString(undefined,{month:"short"});
+const niceDate=d=>/^\d{4}-\d{2}-\d{2}$/.test(String(d))?new Date(d+"T12:00:00Z").toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"}):String(d||"");
+const stars=n=>Number.isFinite(n)?"★★★★★".slice(0,Math.round(n))+"☆☆☆☆☆".slice(0,5-Math.round(n)):"Not rated";
+function wantList(md){const m=String(md||"").match(/want to read\s*:\s*([^\n]+)/i);return m?m[1].replace(/\.$/,"").split(/,|;/).map(x=>x.trim()).filter(Boolean):[]}
+function render(note){
+  const root=document.getElementById("app");
+  const table=note.tables.find(t=>findCol(t,[/^title$/i,/^book$/i])>-1) || note.tables[0];
+  if(!table){root.innerHTML=`<header><div><div class="eyebrow">Reading log</div><h1>${esc(note.title)}</h1></div></header><div class="panel empty">No table found yet.</div>`;return}
+  const titleCol=findCol(table,[/^title$/i,/^book$/i]);
+  const authorCol=findCol(table,[/^author$/i,/^by$/i]);
+  const finishedCol=findCol(table,[/^finished$/i,/finish/i,/^date$/i,/read/i]);
+  const ratingCol=findCol(table,[/^rating$/i,/stars/i,/score/i]);
+  const books=table.rows.map((r,i)=>({i,title:r[titleCol]||"Untitled",author:authorCol>-1?r[authorCol]:"",finished:finishedCol>-1?r[finishedCol]:"",rating:ratingCol>-1?Number(r[ratingCol]):NaN}));
+  const rated=books.filter(b=>Number.isFinite(b.rating));
+  const avg=rated.length?rated.reduce((s,b)=>s+b.rating,0)/rated.length:NaN;
+  const year=note.today.slice(0,4);
+  const thisYear=books.filter(b=>String(b.finished).startsWith(year)).length;
+  const lastRead=books.filter(b=>b.finished).sort((a,b)=>String(b.finished).localeCompare(String(a.finished)))[0];
+  const months=Array.from({length:6},(_,k)=>{const d=new Date(note.today.slice(0,7)+"-15T12:00:00Z");d.setUTCMonth(d.getUTCMonth()-5+k);return d.toISOString().slice(0,7)});
+  const per=months.map(m=>books.filter(b=>String(b.finished).startsWith(m)).length); const max=Math.max(1,...per);
+  const sorted=books.slice().sort((a,b)=>String(b.finished).localeCompare(String(a.finished))||b.i-a.i);
+  const wants=wantList(note.markdown);
+  root.innerHTML=`
+    <header>
+      <div><div class="eyebrow">Reading log</div><h1>${esc(note.title)}</h1><p class="sub">A visual shelf generated from your existing table: cover-style cards, rating summary, and monthly reading pace.</p></div>
+      <section class="stats" aria-label="Reading statistics">
+        <div class="stat"><strong>${books.length}</strong><span>Total books</span></div>
+        <div class="stat"><strong>${thisYear}</strong><span>Read in ${esc(year)}</span></div>
+        <div class="stat"><strong>${Number.isFinite(avg)?avg.toFixed(1):"–"}</strong><span>Average rating</span></div>
+        <div class="stat"><strong>${esc(lastRead?monthLabel(String(lastRead.finished).slice(0,7)):"–")}</strong><span>Latest finish</span></div>
+      </section>
+    </header>
+    <div class="main-grid">
+      <section><div class="section-title"><h2>Cover shelf</h2><span class="hint">Newest first</span></div><div class="shelf">${sorted.map(b=>{const h=hash(b.title);return `<article class="book" style="background:linear-gradient(145deg,hsl(${h} 58% 36%),hsl(${(h+36)%360} 64% 24%))"><div><div class="book-title">${esc(b.title)}</div><div class="author">${esc(b.author)}</div></div><div class="meta"><span class="stars" aria-label="${Number.isFinite(b.rating)?b.rating+' out of 5':'Not rated'}">${esc(stars(b.rating))}</span><span class="date">${esc(niceDate(b.finished))}</span></div></article>`}).join("")||`<div class="panel empty">No books logged yet.</div>`}</div></section>
+      <aside class="side"><div class="section-title"><h2>Books per month</h2><span class="hint">Last 6</span></div><div class="panel months" role="img" aria-label="Books finished per month: ${esc(months.map((m,i)=>monthLabel(m)+': '+per[i]).join(', '))}">${months.map((m,i)=>`<div class="month"><span class="count">${per[i]}</span><div class="bar" style="height:${Math.max(4,Math.round(104*per[i]/max))}px"></div><span class="mon">${esc(monthLabel(m))}</span></div>`).join("")}</div>${wants.length?`<div class="section-title"><h2>Want to read</h2></div><div class="panel want">${wants.map(w=>`<span class="pill">${esc(w)}</span>`).join("")}</div>`:""}</aside>
+    </div>`;
+}
+amber.onChange(render);
+</script>
+</body>
+</html>

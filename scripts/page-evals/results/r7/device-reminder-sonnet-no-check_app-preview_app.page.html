@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+*{box-sizing:border-box}
+main{max-width:var(--amber-content-max);margin:0 auto;padding:20px var(--amber-gutter) 96px}
+h1{font-size:28px;letter-spacing:-.02em;margin:4px 0 16px}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--amber-text-secondary);margin:0 0 8px}
+.card{background:var(--amber-surface);border-radius:var(--amber-radius);border:1px solid var(--amber-separator);margin-bottom:16px;overflow:hidden}
+.row{display:flex;align-items:flex-start;gap:12px;padding:12px 16px;border-top:1px solid var(--amber-separator);min-height:48px}
+.row:first-child{border-top:0}
+.grow{flex:1;min-width:0;overflow-wrap:anywhere}
+.muted{color:var(--amber-text-secondary);font-size:14px}
+.k{width:90px;flex:none;color:var(--amber-text-secondary);font-size:14px}
+button{font:inherit;font-weight:600;min-height:44px;padding:0 16px;border:0;border-radius:var(--amber-radius-small);background:var(--amber-accent);color:var(--amber-on-accent)}
+.check{width:100%;text-align:left;background:none;color:var(--amber-text);display:flex;gap:12px;align-items:center;font-weight:400;padding:0 16px;border-top:1px solid var(--amber-separator);border-radius:0}
+.check:first-child{border-top:0}
+.box{width:22px;height:22px;border-radius:6px;border:2px solid var(--amber-text-secondary);flex:none;display:grid;place-items:center;font-size:14px;line-height:1}
+.done .box{background:var(--amber-accent);border-color:var(--amber-accent);color:var(--amber-on-accent)}
+.done .t{text-decoration:line-through;color:var(--amber-text-secondary)}
+.msg{padding:0 16px 14px;min-height:1em;font-size:14px}
+.pad{padding:16px}
+.cols{display:block}
+@media (min-width:900px){.cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}}
+</style>
+</head>
+<body>
+<main id="app" aria-live="polite"></main>
+<script>
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+const MON=["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
+let msg="",ok=true;
+function parse(md){
+  const lines=md.split("\n").slice(1);
+  const facts=[],ideas=[];let sec="";
+  for(const l of lines){
+    const s=l.trim();if(!s)continue;
+    if(/^ideas$/i.test(s)){sec="ideas";continue}
+    if(/^to do/i.test(s)){sec="todo";continue}
+    if(sec==="ideas"&&s.startsWith("- "))ideas.push(s.slice(2));
+    else if(!sec){const m=s.match(/^([^:]{1,20}):\s*(.+)$/);if(m)facts.push([m[1],m[2]]);else if(/^budget/i.test(s))facts.push(["budget",s.replace(/^budget\s*/i,"")])}
+  }
+  return {facts,ideas};
+}
+function flight(md,today){
+  const m=md.match(/out\s+(?:\w+\s+)?(\d{1,2})\s+([a-z]{3})\w*\s+(\d{1,2}):(\d{2})/i);
+  if(!m)return null;
+  const mo=MON.indexOf(m[2].toLowerCase());if(mo<0)return null;
+  let y=+today.slice(0,4);
+  let d=new Date(y,mo,+m[1],+m[3],+m[4]);
+  return d;
+}
+const pad=n=>String(n).padStart(2,"0");
+function iso(d){return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`}
+function render(note){
+  const app=document.getElementById("app");
+  const {facts,ideas}=parse(note.markdown);
+  const f=flight(note.markdown,note.today);
+  let rem="";
+  if(f){
+    const d=new Date(f.getFullYear(),f.getMonth(),f.getDate()-1,19,0);
+    rem=`<div class="card pad"><button id="rem">Remind me to pack on ${d.toDateString().slice(0,10)} at 19:00</button><div class="muted" style="margin-top:8px">The evening before your ${pad(f.getHours())}:${pad(f.getMinutes())} flight.</div><div class="msg" role="status" style="color:${ok?"var(--amber-text-secondary)":"var(--amber-danger)"};padding:8px 0 0">${esc(msg)}</div></div>`;
+  }else rem=`<div class="card pad muted">Add a line like “out fri 16 oct 07:10” to set a packing reminder.</div>`;
+  const cl=note.checklists;
+  app.innerHTML=`<h1>${esc(note.title)}</h1>${rem}
+  <div class="cols"><div>
+  ${facts.length?`<h2>Trip</h2><div class="card">${facts.map(([k,v])=>`<div class="row"><div class="k">${esc(k)}</div><div class="grow">${esc(v)}</div></div>`).join("")}</div>`:""}
+  ${ideas.length?`<h2>Ideas</h2><div class="card">${ideas.map(i=>`<div class="row"><div class="grow">${esc(i)}</div></div>`).join("")}</div>`:""}
+  </div><div>
+  ${cl.length?`<h2>To do before · ${cl.filter(c=>c.checked).length}/${cl.length}</h2><div class="card">${cl.map(c=>`<button class="check ${c.checked?"done":""}" data-l="${c.line}" aria-pressed="${c.checked}"><span class="box">${c.checked?"✓":""}</span><span class="t">${esc(c.text)}</span></button>`).join("")}</div>`:""}
+  </div></div>`;
+  app.querySelectorAll(".check").forEach(b=>b.onclick=()=>amber.update({op:"toggle_checklist",line:+b.dataset.l}));
+  const b=document.getElementById("rem");
+  if(b)b.onclick=async()=>{
+    const d=new Date(f.getFullYear(),f.getMonth(),f.getDate()-1,19,0);
+    const r=await amber.device.reminders.create({title:"Pack for Porto (flight tomorrow "+pad(f.getHours())+":"+pad(f.getMinutes())+")",due:iso(d)});
+    ok=!!r.ok;msg=r.ok?"Reminder set.":(r.error||"Couldn't set the reminder.");
+    render(amber.note);
+  };
+}
+amber.onChange(render);
+</script>
+</body>
+</html>

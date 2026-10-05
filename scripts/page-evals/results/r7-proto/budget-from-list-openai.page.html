@@ -1,0 +1,65 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Budget</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:var(--amber-font);color:var(--amber-text)}.wrap{max-width:var(--amber-content-max);margin:0 auto;padding:18px var(--amber-gutter) 32px}.hero{display:grid;gap:12px;margin-bottom:14px}.card{background:var(--amber-surface);border:1px solid var(--amber-separator);border-radius:var(--amber-radius);padding:16px;box-shadow:0 1px 0 rgba(0,0,0,.02)}.top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.label{color:var(--amber-text-secondary);font-size:13px}.big{font-family:var(--amber-font-rounded);font-size:34px;line-height:1.05;font-weight:800;letter-spacing:-.03em}.money{font-variant-numeric:tabular-nums}.sub{color:var(--amber-text-secondary);margin-top:4px}.progress{height:14px;background:var(--amber-fill);border-radius:999px;overflow:hidden;margin-top:14px}.bar{height:100%;width:0;background:var(--amber-accent);border-radius:999px;transition:width .25s ease}.bar.over{background:var(--amber-danger)}.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}.stat .big{font-size:24px}.grid{display:grid;gap:14px}.categories{display:grid;gap:10px}.catrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center}.catname{font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.catbar{grid-column:1/3;height:8px;background:var(--amber-fill);border-radius:999px;overflow:hidden}.catbar span{display:block;height:100%;background:var(--amber-accent);border-radius:999px}.form{display:grid;gap:10px}.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}label{display:grid;gap:5px;font-size:13px;color:var(--amber-text-secondary)}input{width:100%;font:inherit;color:var(--amber-text);background:var(--amber-fill);border:1px solid var(--amber-separator);border-radius:var(--amber-radius-small);padding:12px}button{appearance:none;border:0;border-radius:var(--amber-radius-small);background:var(--amber-accent);color:var(--amber-on-accent);font:inherit;font-weight:800;padding:13px 16px;min-height:48px}button:disabled{opacity:.55}.msg{min-height:20px;font-size:13px;color:var(--amber-text-secondary)}.msg.err{color:var(--amber-danger)}.recent{display:grid;gap:8px}.expense{display:grid;grid-template-columns:1fr auto;gap:8px;padding:10px 0;border-top:1px solid var(--amber-separator)}.expense:first-child{border-top:0}.desc{font-weight:650}.meta{color:var(--amber-text-secondary);font-size:13px}.empty{color:var(--amber-text-secondary);padding:8px 0}h1{margin:0 0 4px;font-size:24px;letter-spacing:-.02em}h2{font-size:17px;margin:0 0 12px}.pill{display:inline-flex;align-items:center;border-radius:999px;padding:5px 9px;background:var(--amber-accent-soft);color:var(--amber-accent-text);font-size:13px;font-weight:700}@media (min-width:900px){.hero{grid-template-columns:2fr 1fr}.grid{grid-template-columns:1fr 1fr}.add{grid-column:1/3}.big{font-size:42px}.stat .big{font-size:28px}}</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>October budget</h1>
+  <div class="hero">
+    <section class="card">
+      <div class="top"><div><div class="label">Spent vs limit</div><div class="big money"><span id="spent">0 kr</span></div><div class="sub">of <span id="limit">0 kr</span></div></div><span id="pct" class="pill">0%</span></div>
+      <div class="progress"><div id="bar" class="bar"></div></div>
+    </section>
+    <section class="stats">
+      <div class="card stat"><div class="label">Remaining</div><div id="remaining" class="big money">0 kr</div></div>
+      <div class="card stat"><div class="label">Expenses</div><div id="count" class="big">0</div></div>
+    </section>
+  </div>
+  <div class="grid">
+    <section class="card add">
+      <h2>Add expense</h2>
+      <form id="form" class="form">
+        <div class="row2"><label>Date<input id="date" type="date" required></label><label>Amount (kr)<input id="amount" inputmode="decimal" placeholder="129" required></label></div>
+        <label>Description<input id="description" autocomplete="off" placeholder="Coffee, groceries…" required></label>
+        <label>Category<input id="category" list="cats" autocomplete="off" placeholder="food" required></label><datalist id="cats"></datalist>
+        <button id="addBtn" type="submit">Add expense</button><div id="msg" class="msg"></div>
+      </form>
+    </section>
+    <section class="card"><h2>Spending by category</h2><div id="categories" class="categories"></div></section>
+    <section class="card"><h2>Recent expenses</h2><div id="recent" class="recent"></div></section>
+  </div>
+</div>
+<script>
+(function(){
+  const $=id=>document.getElementById(id); let tableIndex=0, currentNote=null;
+  const fmt=n=>new Intl.NumberFormat(undefined,{maximumFractionDigits:0}).format(Math.round(n))+' kr';
+  const num=v=>{if(v==null)return 0;let s=String(v).replace(/\s/g,'').replace(/kr/ig,'').replace(',','.');let m=s.match(/-?\d+(\.\d+)?/);return m?Number(m[0]):0};
+  function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+  function parseLimit(md){let m=(md||'').match(/Limit this month:\s*([\d\s.,]+)/i);return m?num(m[1]):0}
+  function colMap(t){let m={};(t.columns||[]).forEach((c,i)=>m[String(c.name).toLowerCase()]=i);return m}
+  function rows(note){let t=(note.tables||[])[0]; if(!t)return []; tableIndex=t.index; let c=colMap(t); return (t.rows||[]).map((r,i)=>({i,date:r[c.date]||'',description:r[c.description]||'',category:r[c.category]||'uncategorized',amount:num(r[c.amount])})).filter(x=>x.amount||x.description)}
+  function render(note){currentNote=note; const data=rows(note), limit=parseLimit(note.markdown), spent=data.reduce((s,x)=>s+x.amount,0), pct=limit?spent/limit*100:0, rem=limit-spent;
+    $('spent').textContent=fmt(spent); $('limit').textContent=limit?fmt(limit):'no limit'; $('remaining').textContent=fmt(Math.max(0,rem)); $('remaining').style.color=rem<0?'var(--amber-danger)':''; $('count').textContent=data.length; $('pct').textContent=limit?Math.round(pct)+'%':'—'; $('bar').style.width=Math.min(100,pct)+'%'; $('bar').classList.toggle('over',pct>100);
+    if(!$('date').value) $('date').value=note.today||new Date().toISOString().slice(0,10);
+    let cats={}; data.forEach(x=>cats[x.category]=(cats[x.category]||0)+x.amount); let max=Math.max(1,...Object.values(cats)); let list=Object.entries(cats).sort((a,b)=>b[1]-a[1]); $('cats').innerHTML=list.map(([k])=>'<option value="'+esc(k)+'"></option>').join('');
+    $('categories').innerHTML=list.length?list.map(([k,v])=>'<div class="catrow"><div class="catname">'+esc(k)+'</div><div class="money">'+fmt(v)+'</div><div class="catbar"><span style="width:'+Math.max(3,v/max*100)+'%"></span></div></div>').join(''):'<div class="empty">No expenses yet.</div>';
+    $('recent').innerHTML=data.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')||b.i-a.i).slice(0,8).map(x=>'<div class="expense"><div><div class="desc">'+esc(x.description)+'</div><div class="meta">'+esc(x.date)+' · '+esc(x.category)+'</div></div><div class="money">'+fmt(x.amount)+'</div></div>').join('')||'<div class="empty">No expenses yet.</div>';
+  }
+  async function add(e){e.preventDefault(); const btn=$('addBtn'), msg=$('msg'); msg.textContent=''; msg.className='msg';
+    if(!currentNote||!(currentNote.tables||[]).length){msg.textContent='No expenses table found.';msg.className='msg err';return}
+    let amount=num($('amount').value), desc=$('description').value.trim(), cat=$('category').value.trim(); if(!amount||!desc||!cat){msg.textContent='Fill in amount, description and category.';msg.className='msg err';return}
+    btn.disabled=true; btn.textContent='Adding…';
+    let res=await amber.update({op:'append_row',table:tableIndex,values:{Date:$('date').value,Description:desc,Category:cat,Amount:String(amount)}});
+    btn.disabled=false; btn.textContent='Add expense';
+    if(res&&res.ok){$('amount').value='';$('description').value='';$('category').value='';msg.textContent='Added.'}else{msg.textContent=(res&&res.error)||'Could not add expense.';msg.className='msg err'}
+  }
+  $('form').addEventListener('submit',add); amber.onChange(render);
+})();
+</script>
+</body>
+</html>

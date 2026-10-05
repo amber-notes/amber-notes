@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+*{box-sizing:border-box}main{max-width:var(--amber-content-max);margin:0 auto;padding:18px var(--amber-gutter) 90px}.top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin:4px 0 14px}h1{font-size:28px;line-height:1.1;letter-spacing:-.02em;margin:0}.muted{color:var(--amber-text-secondary)}.small{font-size:14px}.card{background:var(--amber-surface);border:1px solid var(--amber-separator);border-radius:var(--amber-radius);overflow:hidden}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}.stat{background:var(--amber-surface);border:1px solid var(--amber-separator);border-radius:var(--amber-radius-small);padding:10px;text-align:center}.num{font-variant-numeric:tabular-nums;font-weight:700;font-size:22px}.stage{min-height:350px;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:22px 16px;text-align:center}.label{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--amber-text-secondary);margin-bottom:12px}.term{font-family:var(--amber-font-rounded);font-size:44px;line-height:1.08;font-weight:800;overflow-wrap:anywhere}.answer{font-size:31px;line-height:1.15;font-weight:750;overflow-wrap:anywhere}.hint{margin-top:14px;color:var(--amber-text-secondary)}.bar{height:8px;background:var(--amber-fill);border-radius:999px;overflow:hidden;margin:12px 0}.bar span{display:block;height:100%;width:0;background:var(--amber-accent);transition:width .2s}.controls{display:grid;gap:10px;margin-top:12px}.twocol{display:grid;grid-template-columns:1fr 1fr;gap:10px}button{font:inherit;font-weight:700;min-height:48px;padding:0 16px;border:0;border-radius:var(--amber-radius-small);background:var(--amber-fill);color:var(--amber-text)}button.primary{background:var(--amber-accent);color:var(--amber-on-accent)}button.soft{background:var(--amber-accent-soft);color:var(--amber-accent-text)}button.danger{color:var(--amber-danger)}button:disabled{opacity:.55}.row{display:flex;align-items:center;gap:10px;padding:12px 14px;border-top:1px solid var(--amber-separator)}.row:first-child{border-top:0}.grow{flex:1;min-width:0}.pill{display:inline-flex;align-items:center;min-height:28px;padding:3px 9px;border-radius:999px;background:var(--amber-fill);font-size:13px;color:var(--amber-text-secondary)}.err{color:var(--amber-danger);min-height:20px;margin-top:10px}.empty{padding:28px 16px;text-align:center;color:var(--amber-text-secondary)}@media (min-width:900px){.layout{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(280px,.8fr);gap:16px;align-items:start}.stage{min-height:430px}.term{font-size:58px}.answer{font-size:42px}.controls{grid-template-columns:1fr}.stats{margin-top:0}}
+</style>
+</head>
+<body>
+<main id="app" aria-live="polite"></main>
+<script>
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const norm=s=>String(s??"").trim();
+let pos=0,flipped=false,showAll=false,error="";
+function firstTable(note){return note.tables.find(t=>t.columns.length>=2)||null}
+function keyFor(c){return c.front+"\u001f"+c.back}
+function cardsFrom(t){return t.rows.map((r,i)=>({front:norm(r[0]),back:norm(r[1]),row:i})).filter(c=>c.front||c.back)}
+function render(note,data){
+ const app=document.getElementById("app"),t=firstTable(note),known={...((data&&data.values&&data.values.known)||{})};
+ if(!t){app.innerHTML=`<h1>${esc(note.title)}</h1><div class="card empty">Add a table with two columns, like Spanish and English, to make flashcards.</div>`;return}
+ const all=cardsFrom(t),unknown=all.filter(c=>!known[keyFor(c)]),knownCards=all.filter(c=>known[keyFor(c)]),deck=(showAll||unknown.length===0)?all:unknown;
+ if(pos>=deck.length)pos=0;if(pos<0)pos=Math.max(0,deck.length-1);
+ const c=deck[pos],pct=all.length?Math.round(knownCards.length/all.length*100):0;
+ if(!all.length){app.innerHTML=`<h1>${esc(note.title)}</h1><div class="card empty">Your verb table is empty. Add Spanish verbs on the Text side and they will appear here.</div>`;return}
+ const side=flipped?"English":"Spanish",main=flipped?c.back:c.front,isKnown=!!known[keyFor(c)];
+ const recent=knownCards.slice(-8).reverse();
+ app.innerHTML=`
+  <div class="top"><div><h1>${esc(note.title)}</h1><div class="muted small">Flip through verbs. Cards not marked Known come first.</div></div><span class="pill">${esc(pos+1)} / ${esc(deck.length)}</span></div>
+  <div class="layout">
+   <section>
+    <div class="card stage" role="group" aria-label="Flashcard">
+     <div class="label">${esc(side)}</div>
+     <div class="${flipped?'answer':'term'}">${esc(main||"—")}</div>
+     <div class="hint">${flipped?esc(c.front):"Tap Flip to reveal the answer"}</div>
+    </div>
+    <div class="bar" aria-label="Known progress"><span style="width:${pct}%"></span></div>
+    <div class="controls">
+     <button class="primary" id="flip">${flipped?"Show Spanish":"Flip"}</button>
+     <div class="twocol"><button id="again">Again</button><button class="soft" id="known">Known</button></div>
+     <div class="twocol"><button id="prev">Previous</button><button id="next">Next</button></div>
+     <button id="toggle">${showAll?"Unknown first":"Review all cards"}</button>
+    </div>
+    <div class="err" role="alert">${esc(error)}</div>
+   </section>
+   <aside>
+    <div class="stats"><div class="stat"><div class="num">${all.length}</div><div class="muted small">cards</div></div><div class="stat"><div class="num">${knownCards.length}</div><div class="muted small">known</div></div><div class="stat"><div class="num">${unknown.length}</div><div class="muted small">to learn</div></div></div>
+    <div class="card">${recent.length?recent.map(x=>`<div class="row"><div class="grow"><strong>${esc(x.front)}</strong><div class="muted small">${esc(x.back)}</div></div><span class="pill">Known</span></div>`).join(""):'<div class="empty">No known verbs yet. Mark one Known to remember it.</div>'}</div>
+   </aside>
+  </div>`;
+ document.getElementById("flip").onclick=()=>{flipped=!flipped;render(note,data)};
+ document.getElementById("next").onclick=()=>{pos=(pos+1)%deck.length;flipped=false;render(note,data)};
+ document.getElementById("prev").onclick=()=>{pos=(pos-1+deck.length)%deck.length;flipped=false;render(note,data)};
+ document.getElementById("toggle").onclick=()=>{showAll=!showAll;pos=0;flipped=false;render(note,data)};
+ document.getElementById("known").onclick=async()=>{const k=keyFor(c),next={...known,[k]:note.today};const r=await amber.setData({values:{known:next}});error=r&&r.ok===false?r.error:"";pos=Math.min(pos,Math.max(0,deck.length-2));flipped=false;if(error)render(note,data)};
+ document.getElementById("again").onclick=async()=>{const k=keyFor(c),next={...known};delete next[k];const r=await amber.setData({values:{known:next}});error=r&&r.ok===false?r.error:"";pos=(pos+1)%deck.length;flipped=false;if(error)render(note,data)};
+}
+amber.onChange(render);
+</script>
+</body>
+</html>

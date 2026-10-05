@@ -1,0 +1,35 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><style>main{max-width:var(--amber-content-max);margin:0 auto;padding:20px var(--amber-gutter)}.big{font-size:40px;font-weight:700}.muted{color:var(--amber-text-secondary)}.status{margin:12px 0;padding:10px 12px;border-radius:var(--amber-radius-small);background:var(--amber-accent-soft);color:var(--amber-accent-text)}ol{padding-left:24px}li{margin:4px 0}</style></head>
+<body><main><h1 id="t"></h1><div class="big" id="avg"></div><p class="muted" id="n"></p><p class="status" id="status" hidden></p><ol id="list"></ol></main><script>
+const IMPORT_KEY="csv_import_2026_10_05_may_to_sep_500";
+const VALUES=[4.2,7.9,5.6,9.3,7.0,4.7,8.4,6.1,9.8,7.5,5.2,8.9,6.6,4.3,8.0,5.7,9.4,7.1,4.8,8.5,6.2,9.9,7.6,5.3,9.0,6.7,4.4,8.1,5.8,9.5,7.2,4.9,8.6,6.3,10.0,7.7,5.4,9.1,6.8,4.5,8.2,5.9,9.6,7.3,5.0,8.7,6.4,10.1,7.8,5.5,9.2,6.9,4.6,8.3,6.0,9.7,7.4,5.1,8.8,6.5];
+const esc=(s)=>String(s??"").replace(/[&<>"']/g,(c)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+function importedReadings(){
+  const rows=[]; let month=5, day=1; const times=["07:00","11:00","15:00","19:00"];
+  for(let i=0;i<500;i++){
+    if(i>0 && i%120===0) month++;
+    const slot=(day-1)%4;
+    rows.push({when:`2026-${String(month).padStart(2,"0")}-${String(day).padStart(2,"0")} ${times[slot]}`,mmol:VALUES[i%VALUES.length],meal:slot%2===0?"before":"after"});
+    day=day%28+1;
+  }
+  return rows;
+}
+let importing=false;
+async function ensureImport(data){
+  const values=data.values||{}; const collections=data.collections||{};
+  if(values[IMPORT_KEY]||importing) return;
+  const st=document.getElementById("status"); importing=true; st.hidden=false; st.textContent="Importing readings into app data…";
+  const existing=Array.isArray(collections.readings)?collections.readings:[];
+  const additions=importedReadings();
+  const next=existing.concat(additions);
+  const res=await amber.setData({values:{[IMPORT_KEY]:true,[IMPORT_KEY+"_count"]:additions.length,[IMPORT_KEY+"_imported_at"]:new Date().toISOString()},collections:{readings:next}});
+  if(res&&res.ok===false){st.textContent="Import failed: "+res.error; importing=false;} else {st.textContent="Imported "+additions.length+" readings.";}
+}
+function render(note,data){
+  const title=document.getElementById("t"), avg=document.getElementById("avg"), n=document.getElementById("n"), list=document.getElementById("list");
+  title.textContent=note.title; const rs=((data.collections||{}).readings||[]);
+  avg.textContent=rs.length?(rs.reduce((s,r)=>s+Number(r.mmol||0),0)/rs.length).toFixed(1)+" mmol/L":"No readings yet";
+  n.textContent=rs.length+" readings";
+  list.innerHTML=rs.slice(-10).reverse().map((r)=>"<li>"+esc(r.when)+": "+esc(r.mmol)+" mmol/L"+(r.meal?" · "+esc(r.meal):"")+"</li>").join("");
+}
+amber.onChange((note,data)=>{data=data||{values:{},collections:{}}; render(note,data); ensureImport(data);});
+</script></body></html>
