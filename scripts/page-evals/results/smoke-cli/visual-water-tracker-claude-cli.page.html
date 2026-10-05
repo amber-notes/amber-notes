@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { --w-bg:#eaf4fb; --w-card:#ffffff; --w-line:#c9deee; --w-deep:#0b5c93; --w-mid:#2f8fd0; --w-light:#a9d4f1; --w-empty:#d8e8f4; --w-ink:#0d2a3f; --w-ink2:#46647b; --w-ok:#0b5c93; }
+  @media (prefers-color-scheme: dark) { :root { --w-bg:#0b1b28; --w-card:#12293b; --w-line:#25435b; --w-deep:#7cc4f5; --w-mid:#4aa3e3; --w-light:#2b5878; --w-empty:#1b3549; --w-ink:#e6f3fc; --w-ink2:#9bbbd1; --w-ok:#7cc4f5; } }
+  * { box-sizing: border-box; }
+  .wrap { background: var(--w-bg); color: var(--w-ink); min-height: 100vh; }
+  main { max-width: var(--amber-content-max); margin: 0 auto; padding: 20px var(--amber-gutter) 40px; }
+  h1 { font-family: var(--amber-font-rounded); font-size: 1.75rem; margin: 4px 0 16px; letter-spacing: -.02em; }
+  .card { background: var(--w-card); border: 1px solid var(--w-line); border-radius: 20px; padding: 18px; }
+  .hero { display: flex; gap: 22px; align-items: center; flex-wrap: wrap; justify-content: center; }
+  .tank { width: 120px; height: 200px; border: 3px solid var(--w-deep); border-radius: 14px 14px 30px 30px; background: var(--w-empty); position: relative; overflow: hidden; flex: none; }
+  .tank .fill { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(var(--w-mid), var(--w-deep)); transition: height .6s ease; }
+  .tank .tick { position: absolute; left: 0; right: 0; border-top: 1px dashed rgba(255,255,255,.55); }
+  .big { font-family: var(--amber-font-rounded); font-size: 4.5rem; line-height: 1; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--w-deep); }
+  .big small { font-size: 1.5rem; color: var(--w-ink2); font-weight: 600; }
+  .say { font-size: 1.05rem; margin: 8px 0 14px; color: var(--w-ink); font-weight: 600; }
+  .btns { display: flex; gap: 10px; }
+  button { font: inherit; font-weight: 700; min-height: 48px; min-width: 48px; padding: 0 20px; border-radius: 14px; border: 2px solid var(--w-deep); background: var(--w-deep); color: var(--w-card); cursor: pointer; }
+  button.alt { background: var(--w-card); color: var(--w-deep); }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 14px 0; }
+  .stat { background: var(--w-card); border: 1px solid var(--w-line); border-radius: 16px; padding: 12px; text-align: center; }
+  .stat b { display: block; font-size: 1.6rem; font-variant-numeric: tabular-nums; color: var(--w-deep); font-family: var(--amber-font-rounded); }
+  .stat span { font-size: .8rem; color: var(--w-ink2); }
+  h2 { font-size: 1rem; margin: 0 0 12px; color: var(--w-ink2); font-weight: 600; }
+  .chart { position: relative; display: flex; align-items: flex-end; gap: 4px; height: 180px; padding-top: 18px; }
+  .goal { position: absolute; left: 0; right: 0; border-top: 2px dashed var(--w-ink2); pointer-events: none; }
+  .goal i { position: absolute; right: 0; top: -20px; font-style: normal; font-size: .75rem; color: var(--w-ink2); background: var(--w-card); padding: 0 4px; }
+  .col { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; min-width: 0; }
+  .bar { width: 100%; max-width: 40px; border-radius: 8px 8px 3px 3px; background: var(--w-light); min-height: 3px; }
+  .bar.hit { background: var(--w-mid); }
+  .bar.today { outline: 2px solid var(--w-deep); outline-offset: 1px; }
+  .v { font-size: .8rem; font-variant-numeric: tabular-nums; color: var(--w-ink); height: 16px; }
+  .labels { display: flex; gap: 4px; margin-top: 6px; }
+  .labels span { flex: 1; text-align: center; font-size: .8rem; color: var(--w-ink2); min-width: 0; }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: .8rem; color: var(--w-ink2); margin-top: 12px; }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+  .err { color: var(--amber-danger); min-height: 1em; font-size: .9rem; margin-top: 8px; }
+  @media (min-width: 900px) { .grid { display: grid; grid-template-columns: 380px 1fr; gap: 16px; align-items: start; } .stats { margin-top: 0; } .chart { height: 240px; } }
+  @media (prefers-reduced-motion: reduce) { .tank .fill { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap"><main id="app"></main></div>
+<script>
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+  let error = "";
+  const addDays = (iso, n) => { const d = new Date(iso + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+
+  function render(note) {
+    const app = document.getElementById("app");
+    const t = note.tables.find(t => t.columns.some(c => /^date$/i.test(c.name)) && t.columns.some(c => /glass/i.test(c.name)));
+    if (!t) { app.innerHTML = `<h1>${esc(note.title)}</h1><div class="card">Add a table with Date and Glasses columns to see your water here.</div>`; return; }
+    const di = t.columns.findIndex(c => /^date$/i.test(c.name));
+    const gi = t.columns.findIndex(c => /glass/i.test(c.name));
+    const gm = /goal[^0-9\n]*(\d+)/i.exec(note.markdown);
+    const goal = gm ? Math.max(1, +gm[1]) : 8;
+    const byDate = {}, rowOf = {};
+    t.rows.forEach((r, i) => { const n = parseFloat(String(r[gi]).replace(",", ".")); byDate[r[di]] = isNaN(n) ? 0 : n; rowOf[r[di]] = i; });
+    const today = note.today;
+    const cur = byDate[today] || 0;
+    const days = [];
+    for (let i = 13; i >= 0; i--) { const d = addDays(today, -i); days.push({ d, n: byDate[d] || 0 }); }
+    const max = Math.max(goal, ...days.map(x => x.n)) * 1.1;
+    const hits = days.filter(x => x.n >= goal).length;
+    const logged = days.filter(x => x.d in byDate);
+    const avg = logged.length ? (logged.reduce((a, x) => a + x.n, 0) / logged.length) : 0;
+    let streak = 0, k = (byDate[today] || 0) >= goal ? 0 : 1;
+    for (; k < 400; k++) { if ((byDate[addDays(today, -k)] || 0) >= goal) streak++; else break; }
+    const pct = Math.min(100, cur / goal * 100);
+    const left = goal - cur;
+    const say = left <= 0 ? (cur > goal ? `Goal beaten by ${cur - goal}` : "Goal reached") : `${left} more glass${left === 1 ? "" : "es"} to go`;
+    const ticks = Array.from({ length: goal - 1 }, (_, i) => `<div class="tick" style="bottom:${(i + 1) / goal * 100}%"></div>`).join("");
+    app.innerHTML = `
+      <h1>${esc(note.title)}</h1>
+      <div class="grid"><div>
+        <section class="card hero" aria-label="Today">
+          <div class="tank" role="img" aria-label="${cur} of ${goal} glasses today"><div class="fill" style="height:${pct}%"></div>${ticks}</div>
+          <div>
+            <div class="big">${cur}<small> / ${goal}</small></div>
+            <div class="say">${say}</div>
+            <div class="btns"><button id="plus" aria-label="Add a glass">+ Glass</button><button class="alt" id="minus" aria-label="Remove a glass">−</button></div>
+            <div class="err" role="alert">${esc(error)}</div>
+          </div>
+        </section>
+        <div class="stats">
+          <div class="stat"><b>${streak}</b><span>day streak</span></div>
+          <div class="stat"><b>${hits}/14</b><span>goal days</span></div>
+          <div class="stat"><b>${avg.toFixed(1)}</b><span>avg glasses</span></div>
+        </div>
+      </div>
+      <section class="card" aria-label="Last 14 days">
+        <h2>Last 14 days</h2>
+        <div class="chart" role="img" aria-label="Glasses per day for the last 14 days; goal ${goal}">
+          <div class="goal" style="bottom:calc((100% - 18px) * ${goal / max})"><i>goal ${goal}</i></div>
+          ${days.map(x => `<div class="col"><div class="v">${x.n >= goal ? "✓ " : ""}${x.d in byDate ? x.n : ""}</div><div class="bar ${x.n >= goal ? "hit" : ""} ${x.d === today ? "today" : ""}" style="height:calc((100% - 34px) * ${x.n / max})"></div></div>`).join("")}
+        </div>
+        <div class="labels">${days.map(x => `<span>${+x.d.slice(8)}</span>`).join("")}</div>
+        <div class="legend"><span><i style="background:var(--w-mid)"></i>Goal met ✓</span><span><i style="background:var(--w-light)"></i>Under goal</span><span><i style="outline:2px solid var(--w-deep);background:var(--w-card)"></i>Today</span></div>
+      </section></div>`;
+    const set = async n => {
+      n = Math.max(0, n);
+      const r = today in rowOf
+        ? await amber.update({ op: "set_cell", table: t.index, row: rowOf[today], col: gi, value: String(n) })
+        : await amber.update({ op: "append_row", table: t.index, values: { [t.columns[di].name]: today, [t.columns[gi].name]: String(n) } });
+      error = r.ok ? "" : r.error;
+      if (!r.ok) render(amber.note);
+    };
+    document.getElementById("plus").onclick = () => set(cur + 1);
+    document.getElementById("minus").onclick = () => set(cur - 1);
+  }
+  amber.onChange(render);
+</script>
+</body>
+</html>

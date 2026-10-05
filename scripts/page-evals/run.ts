@@ -16,11 +16,12 @@ import { closeBrowser, renderPage, type Render } from "../page-render/render.ts"
 import { TASKS, type Check, type Final, type Task } from "./tasks.ts";
 import { scoreTask } from "./score.ts";
 
-const args = parseArgs(Deno.args, { string: ["round", "model", "tasks", "server", "concurrency", "budget", "repeat", "label", "hide"], boolean: ["skill", "no-render"] });
+const args = parseArgs(Deno.args, { string: ["round", "model", "tasks", "server", "concurrency", "budget", "repeat", "label", "hide", "cli-model"], boolean: ["skill", "no-render", "allow-paid"] });
 /** Tools taken out of tools/list for this run (an A/B on check_app and preview_app, say). */
 const hidden = new Set((args.hide ?? "").split(",").map((x) => x.trim()).filter(Boolean));
 const round = args.round ?? "dev";
-const modelKey = args.model ?? "sonnet";
+// The subscription CLIs by default; per-token APIs only with --allow-paid (Emil, 2026-10-05).
+const modelKey = args.model ?? "claude-cli";
 const here = new URL(".", import.meta.url);
 const root = args.server ? new URL(args.server.endsWith("/") ? args.server : args.server + "/", "file://" + Deno.cwd() + "/") : new URL("../../", import.meta.url);
 const outDir = new URL(`results/${round}/`, here);
@@ -59,7 +60,10 @@ const { account, app, file, note, opened } = await import(mcp("mcp/sealed.ts"));
 const { tokenKey, wrap } = await import(mcp("_shared/e2ee.ts"));
 const { pageProblems } = await import(mcp("mcp/page.ts"));
 
-const MODELS: Record<string, { id: string; provider: "anthropic" | "openai" | "openrouter"; inPerM: number; outPerM: number; cacheReadPerM: number; cacheWritePerM: number }> = {
+const MODELS: Record<string, { id: string; provider: "anthropic" | "openai" | "openrouter" | "claude-cli" | "codex-cli"; inPerM: number; outPerM: number; cacheReadPerM: number; cacheWritePerM: number }> = {
+  // Subscription CLIs (no per-token billing): Claude Code headless and the Codex CLI.
+  "claude-cli": { id: `claude-code:${args["cli-model"] ?? "sonnet"}`, provider: "claude-cli", inPerM: 0, outPerM: 0, cacheReadPerM: 0, cacheWritePerM: 0 },
+  "codex-cli": { id: `codex:${args["cli-model"] ?? "default"}`, provider: "codex-cli", inPerM: 0, outPerM: 0, cacheReadPerM: 0, cacheWritePerM: 0 },
   // Through OpenRouter (its own cost accounting is what gets logged).
   "or-sonnet": { id: "anthropic/claude-sonnet-5.5", provider: "openrouter", inPerM: 2, outPerM: 10, cacheReadPerM: 0.2, cacheWritePerM: 2.5 },
   "or-opus": { id: "anthropic/claude-opus-5.5", provider: "openrouter", inPerM: 4, outPerM: 20, cacheReadPerM: 0.2, cacheWritePerM: 5 },
@@ -70,6 +74,7 @@ const MODELS: Record<string, { id: string; provider: "anthropic" | "openai" | "o
 };
 const model = MODELS[modelKey];
 if (!model) throw new Error(`Unknown model ${modelKey}`);
+if (!["claude-cli", "codex-cli"].includes(model.provider) && !args["allow-paid"]) throw new Error(`${modelKey} bills per token. Use claude-cli or codex-cli, or pass --allow-paid with explicit approval.`);
 
 // What a chat client tells the model around an MCP server, kept short and neutral.
 const CLIENT_SYSTEM = `You are an AI assistant. The person has connected their Amber Notes app to you with an MCP server, and its tools are available. The person is busy and won't answer questions before you finish: make sensible choices, do the whole task with the tools, then reply briefly with what you did. Today is 2026-10-05.`;
@@ -130,7 +135,13 @@ async function setup(task: Task) {
     } catch { /* a server without page data */ }
     return { body, page, data };
   };
-  return { pg, id, others, rpc, call, init, state, fileIds };
+  // The same server over HTTP on this Mac, for the CLIs.
+  const http = Deno.serve({ hostname: "127.0.0.1", port: 0, onListen: () => {} }, (req) => {
+    const u = new URL(req.url);
+    return handleRequest(new Request(`http://127.0.0.1/functions/v1/mcp${u.pathname === "/" ? "" : u.pathname}`, req), sql);
+  });
+  const url = `http://127.0.0.1:${http.addr.port}/`;
+  return { pg, id, others, rpc, call, init, state, fileIds, url, token, http };
 }
 
 // MARK: A model session
@@ -222,6 +233,103 @@ async function openaiSession(system: string, tools: { name: string; description:
   return { usage, log, answer };
 }
 
+// The CLIs see none of the person's own setup: no API keys in their environment (so they use the
+// subscription), a fresh empty working directory, no user or project settings or CLAUDE.md, and
+// only the Amber MCP server.
+const CLI_ENV = (() => { const e = Deno.env.toObject(); for (const k of ["ANTHROPIC_API_KEY", "OPENAI_API_KEY", "OPENROUTER_API_KEY", "RENDER_SECRET"]) delete e[k]; return e; })();
+const scratch = () => Deno.makeTempDir({ prefix: "amber-eval-" });
+
+/** Text of an MCP tool result as the CLIs report it. */
+// deno-lint-ignore no-explicit-any
+const resultText = (c: any): string => typeof c === "string" ? c : Array.isArray(c) ? c.map((b) => (b?.type === "text" ? b.text : b?.type ? `[${b.type}]` : JSON.stringify(b))).join("\n") : JSON.stringify(c ?? "");
+
+async function claudeCliSession(system: string, url: string, token: string, prompt: string, hide: Set<string>) {
+  const dir = await scratch();
+  const config = `${dir}/mcp.json`;
+  await Deno.writeTextFile(config, JSON.stringify({ mcpServers: { amber: { type: "http", url, headers: { Authorization: `Bearer ${token}` } } } }));
+  const cmd = new Deno.Command("nice", {
+    args: ["-n", "10", "claude", "-p", prompt, "--model", args["cli-model"] ?? "sonnet", "--system-prompt", system,
+      "--setting-sources", "local", "--strict-mcp-config", "--mcp-config", config, "--tools", "", "--allowedTools", "mcp__amber__*",
+      ...(hide.size ? ["--disallowedTools", ...[...hide].map((h) => `mcp__amber__${h}`)] : []),
+      "--output-format", "stream-json", "--verbose", "--no-session-persistence", "--max-turns", "40"],
+    cwd: dir, env: CLI_ENV, clearEnv: true, stdout: "piped", stderr: "piped",
+  });
+  const out = await cmd.output();
+  const usage: Usage & { equivalentUsd?: number } = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, turns: 0 };
+  const log: Logged[] = [];
+  const pending = new Map<string, Logged>();
+  let answer = "";
+  for (const line of new TextDecoder().decode(out.stdout).split("\n")) {
+    // deno-lint-ignore no-explicit-any
+    let ev: any;
+    try { ev = JSON.parse(line); } catch { continue; }
+    if (ev.type === "system" && ev.subtype === "init" && ev.apiKeySource && ev.apiKeySource !== "none") throw new Error(`claude used ${ev.apiKeySource}, not the subscription: stopping.`);
+    if (ev.type === "assistant") {
+      usage.turns++;
+      for (const b of ev.message?.content ?? []) {
+        if (b.type === "text" && b.text?.trim()) answer = b.text;
+        if (b.type === "tool_use") { const l = { name: String(b.name).replace(/^mcp__amber__/, ""), args: b.input ?? {}, error: false, result: "" }; log.push(l); pending.set(b.id, l); }
+      }
+    }
+    if (ev.type === "user") {
+      for (const b of ev.message?.content ?? []) {
+        if (b.type === "tool_result" && pending.has(b.tool_use_id)) { const l = pending.get(b.tool_use_id)!; l.error = b.is_error === true; l.result = short(resultText(b.content), 600); }
+      }
+    }
+    if (ev.type === "result") {
+      if (typeof ev.result === "string" && ev.result.trim()) answer = ev.result;
+      const u = ev.usage ?? {};
+      usage.input = u.input_tokens ?? 0; usage.output = u.output_tokens ?? 0; usage.cacheRead = u.cache_read_input_tokens ?? 0; usage.cacheWrite = u.cache_creation_input_tokens ?? 0;
+      usage.equivalentUsd = ev.total_cost_usd;
+    }
+  }
+  if (!answer && !log.length) throw new Error(`claude -p produced nothing: ${new TextDecoder().decode(out.stderr).slice(0, 300)}`);
+  await Deno.remove(dir, { recursive: true }).catch(() => {});
+  return { usage: { ...usage, usd: 0 }, log, answer };
+}
+
+async function codexCliSession(system: string, url: string, token: string, prompt: string, hide: Set<string>) {
+  // Its own CODEX_HOME: no user config or AGENTS.md, the login linked from ~/.codex.
+  const home = await scratch();
+  const dir = await scratch();
+  await Deno.symlink(`${Deno.env.get("HOME")}/.codex/auth.json`, `${home}/auth.json`);
+  await Deno.writeTextFile(`${home}/config.toml`, [
+    ...(args["cli-model"] ? [`model = "${args["cli-model"]}"`] : []),
+    `model_reasoning_effort = "medium"`,
+    // Tool calls run without asking, as a person who already approved the connection would have it.
+    `[mcp_servers.amber]`, `url = "${url}"`, `bearer_token_env_var = "AMBER_EVAL_TOKEN"`, `default_tools_approval_mode = "approve"`,
+    ...(hide.size ? [`disabled_tools = ${JSON.stringify([...hide])}`] : []),
+  ].join("\n") + "\n");
+  const cmd = new Deno.Command("nice", {
+    args: ["-n", "10", "codex", "exec", "--json", "--skip-git-repo-check", "--ephemeral", "-s", "read-only",
+      `${system}\n\n---\n\n${prompt}`],
+    cwd: dir, env: { ...CLI_ENV, CODEX_HOME: home, AMBER_EVAL_TOKEN: token }, clearEnv: true, stdout: "piped", stderr: "piped",
+  });
+  const out = await cmd.output();
+  const usage: Usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, turns: 0 };
+  const log: Logged[] = [];
+  let answer = "";
+  for (const line of new TextDecoder().decode(out.stdout).split("\n")) {
+    // deno-lint-ignore no-explicit-any
+    let ev: any;
+    try { ev = JSON.parse(line); } catch { continue; }
+    const item = ev.item ?? {};
+    if (ev.type === "item.completed" && item.type === "mcp_tool_call") {
+      log.push({ name: String(item.tool), args: item.arguments ?? {}, error: item.status === "failed" || item.result?.isError === true || !!item.error, result: short(resultText(item.result?.content ?? item.error ?? ""), 600) });
+    }
+    if (ev.type === "item.completed" && item.type === "agent_message" && item.text?.trim()) answer = item.text;
+    if (ev.type === "turn.completed") {
+      usage.turns++;
+      const u = ev.usage ?? {};
+      usage.input += (u.input_tokens ?? 0) - (u.cached_input_tokens ?? 0); usage.cacheRead += u.cached_input_tokens ?? 0; usage.output += u.output_tokens ?? 0;
+    }
+  }
+  if (!answer && !log.length) throw new Error(`codex exec produced nothing: ${new TextDecoder().decode(out.stderr).slice(-400)}`);
+  await Deno.remove(home, { recursive: true }).catch(() => {});
+  await Deno.remove(dir, { recursive: true }).catch(() => {});
+  return { usage: { ...usage, usd: 0 }, log, answer };
+}
+
 /**
  * OpenRouter's chat completions with tools, for Claude and GPT alike. Anthropic models get cache
  * breakpoints on the system prompt and the newest message; images from preview_app go in a user
@@ -295,7 +403,11 @@ async function runTask(task: Task, rep = 1) {
   const othersBefore = await Promise.all(s.others.map((o) => s.state(o)));
   const listed = (await s.rpc("tools/list")).tools.filter((t: { name: string }) => !hidden.has(t.name));
   const system = `${CLIENT_SYSTEM}\n\n<mcp_server name="amber-notes">\n${s.init.instructions}\n</mcp_server>${skill ? `\n\n<skill name="note-pages">\n${skill}\n</skill>` : ""}`;
-  const session = model.provider === "anthropic" ? await claudeSession(system, listed, task.prompt, s.call)
+  // The CLIs get the server's instructions from the server itself, as any client does.
+  const cliSystem = `${CLIENT_SYSTEM}${skill ? `\n\n<skill name="note-pages">\n${skill}\n</skill>` : ""}`;
+  const session = model.provider === "claude-cli" ? await claudeCliSession(cliSystem, s.url, s.token, task.prompt, hidden)
+    : model.provider === "codex-cli" ? await codexCliSession(cliSystem, s.url, s.token, task.prompt, hidden)
+    : model.provider === "anthropic" ? await claudeSession(system, listed, task.prompt, s.call)
     : model.provider === "openrouter" ? await openrouterSession(system, listed, task.prompt, s.call)
     : await openaiSession(system, listed, task.prompt, s.call);
   const after = await s.state(s.id);
@@ -326,6 +438,7 @@ async function runTask(task: Task, rep = 1) {
   await Deno.writeTextFile(new URL(`${stem}.json`, outDir), JSON.stringify(result, null, 2));
   await Deno.writeTextFile(new URL(`${stem}.page.html`, outDir), after.page ?? "");
   await Deno.writeTextFile(new URL(`${stem}.note.md`, outDir), after.body);
+  await s.http.shutdown();
   await s.pg.close();
   const failed = checks.filter((c) => !c.pass).map((c) => `${c.name}${c.detail ? ` (${c.detail.slice(0, 80)})` : ""}`);
   console.log(`${task.id.padEnd(26)} ${(result.score * 100).toFixed(0).padStart(3)}%  ${String(result.tool_calls).padStart(2)} calls  $${usd.toFixed(3)}  ${failed.length ? "FAIL: " + failed.join("; ") : ""}`);
@@ -336,7 +449,8 @@ const wanted = args.tasks ? args.tasks.split(",").map((s) => s.trim()) : TASKS.m
 const reps = Math.max(1, Number(args.repeat ?? 1));
 const queue = wanted.flatMap((id) => { const t = TASKS.find((x) => x.id === id); if (!t) throw new Error(`No task ${id}`); return Array.from({ length: reps }, (_, k) => ({ t, rep: k + 1 })); });
 const results: Awaited<ReturnType<typeof runTask>>[] = [];
-const workers = Number(args.concurrency ?? 3);
+// The Mac is shared: the CLIs run at most two at a time.
+const workers = Math.min(Number(args.concurrency ?? 2), ["claude-cli", "codex-cli"].includes(model.provider) ? 2 : 4);
 await Promise.all(Array.from({ length: workers }, async () => {
   while (queue.length) {
     if (await spent() > BUDGET) { console.log(`Budget of $${BUDGET} reached; stopping.`); return; }
