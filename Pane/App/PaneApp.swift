@@ -65,6 +65,8 @@ struct PaneApp: App {
         PaneTips.configure()
         Capture.scheduleFromArguments(container.mainContext)
         Capture.notePagesFromArguments(container.mainContext)
+        // Note pages: compile the sandbox's rules and start a web view now, not when a page opens.
+        if !PaneApp.isUnitTestHost, !ProcessInfo.processInfo.arguments.contains("-noPagePrewarm") { NotePageSandbox.prewarm() }
         #if os(macOS)
         Capture.demoSequenceFromArguments(container.mainContext)
         Capture.importSequenceFromArguments()

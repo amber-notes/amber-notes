@@ -193,8 +193,11 @@ enum NotePage {
     }
 }
 
-/// The pages this device has, per note: the HTML, who made it and when. Kept beside the library
-/// in its own file, like AIEditStore, so the SwiftData model doesn't change.
+/// The pages this device has, per note: the HTML, who made it and when, and the pages before it.
+/// Kept beside the library in its own file, like AIEditStore, so the SwiftData model doesn't change.
+///
+/// No page is ever dropped here: a page that's replaced or removed goes to the note's history (the
+/// last 10), and bringing one back puts the current one into history in its place.
 @MainActor
 @Observable
 final class NotePageStore {
@@ -204,15 +207,21 @@ final class NotePageStore {
         var at: Date
     }
 
+    static let keep = 10
     static let shared = NotePageStore(file: PaneApp.isUnitTestHost || ProcessInfo.processInfo.arguments.contains("-uitest") ? nil : defaultFile)
 
     private(set) var pages: [UUID: Page] = [:]
+    /// Earlier pages per note, oldest first.
+    private(set) var history: [UUID: [Page]] = [:]
     @ObservationIgnored private let file: URL?
+
+    private struct Saved: Codable { var pages: [UUID: Page]; var history: [UUID: [Page]] }
 
     init(file: URL?) {
         self.file = file
-        if let file, let data = try? Data(contentsOf: file), let saved = try? JSONDecoder().decode([UUID: Page].self, from: data) {
-            pages = saved
+        if let file, let data = try? Data(contentsOf: file), let saved = try? JSONDecoder().decode(Saved.self, from: data) {
+            pages = saved.pages
+            history = saved.history
         }
     }
 
@@ -220,13 +229,37 @@ final class NotePageStore {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appending(path: "Pane/note-pages.json")
     }
 
+    /// Setting a different page (or none) keeps the one it replaces in history.
     subscript(id: UUID) -> Page? {
         get { pages[id] }
         set {
-            guard pages[id] != newValue else { return }
+            let old = pages[id]
+            guard old != newValue else { return }
+            if let old, old.html != newValue?.html { remember(old, for: id) }
             pages[id] = newValue
             save()
         }
+    }
+
+    /// The page before this one, if any.
+    func previous(_ id: UUID) -> Page? { history[id]?.last }
+
+    /// Brings the last earlier page back; the current one takes its place in history.
+    @discardableResult
+    func restorePrevious(_ id: UUID) -> Page? {
+        guard var h = history[id], let back = h.popLast() else { return nil }
+        if let now = pages[id] { h.append(now) }
+        history[id] = h.suffix(Self.keep).map { $0 }
+        pages[id] = back
+        save()
+        return back
+    }
+
+    private func remember(_ page: Page, for id: UUID) {
+        var h = history[id] ?? []
+        h.removeAll { $0.html == page.html }
+        h.append(page)
+        history[id] = Array(h.suffix(Self.keep))
     }
 
     /// A page from the server. One that won't open with this device's key is left as it was.
@@ -238,11 +271,12 @@ final class NotePageStore {
 
     func forgetAll() {
         pages = [:]
+        history = [:]
         if let file { try? FileManager.default.removeItem(at: file) }
     }
 
     private func save() {
-        guard let file, let data = try? JSONEncoder().encode(pages) else { return }
+        guard let file, let data = try? JSONEncoder().encode(Saved(pages: pages, history: history)) else { return }
         try? FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
         try? data.write(to: file, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
     }

@@ -9,7 +9,7 @@
 import type { PendingQuery, Row, Sql, TransactionSql } from "npm:postgres@3.4.5";
 import { toBase64, type Head, type Vault } from "../_shared/e2ee.ts";
 import { errorKind, log } from "../_shared/log.ts";
-import { MAX_PAGE_BYTES, PAGE_CONTRACT, pageProblems } from "./page.ts";
+import { MAX_PAGE_BYTES, PAGE_CONTRACT, PAGE_REWRITE, pageProblems } from "./page.ts";
 import { appendText, applyEdits, coerce, findTables, fitLines, isTextType, mimeOf, outline, previewOf, replaceTable, searchFilter, searchInMemory, setChecklistItem, sliceLines, titleOf, typeSpec, type Edit, type Table } from "./notes.ts";
 
 export type ToolContext = { sql: Sql; userId: string; client: string; canWrite: boolean; vault: Vault };
@@ -227,16 +227,30 @@ export const tools: Tool[] = ([
   {
     name: "set_note_page", title: "Make a page for a note",
     description: "Gives a note a page: a custom view of its data (a habit grid with streaks, a budget with totals, a reading log), shown in Amber Notes with a Page / Text switch. " +
-      "The note's markdown stays the data and the source of truth: keep its table or checklist as it is (fix it first with the other tools if needed) and make the page read and change it. " +
-      "Replaces the note's current page, if any; an empty html removes the page, and no data is lost either way.\n" + PAGE_CONTRACT +
+      "The note's markdown stays the data and the source of truth: this tool never changes it. Keep the note's table or checklist as it is (fix it first with the other tools if needed) and make the page read and change it. " +
+      "Replaces the note's current page, if any; an empty html removes it. The last 10 pages are kept, so nothing is lost.\n" + PAGE_REWRITE + "\n" + PAGE_CONTRACT +
       `\nOne self-contained HTML document, at most ${MAX_PAGE_BYTES / 1024} KB. Pages with external addresses or network calls are refused.`,
     inputSchema: { type: "object", properties: { ...noteRef, html: str("The whole page: one HTML document with inline CSS and JS. Empty string removes the page.") }, required: ["html"] },
     annotations: { ...write, destructiveHint: true, idempotentHint: true },
   },
   {
+    name: "edit_note_page", title: "Edit a note's page",
+    description: "Precise edits to a note's current page, like edit_note for notes: each old_text must match the page's HTML exactly once (copy it from get_note_page) and is replaced by new_text. " +
+      "Edits apply in order; if one doesn't match, or the result breaks the page rules, nothing changes. The page before the edit is kept (the last 10 are). The note's markdown is never changed.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ...noteRef,
+        edits: { type: "array", items: { type: "object", properties: { old_text: str("Exact existing HTML."), new_text: str("Replacement; empty string deletes."), replace_all: bool("Replace every occurrence.") }, required: ["old_text", "new_text"] } },
+      },
+      required: ["edits"],
+    },
+    annotations: { ...write, destructiveHint: true },
+  },
+  {
     name: "get_note_page", title: "Read a note's page",
-    description: "Returns a note's page (the HTML set with set_note_page) and the rules a page follows, so you can change it. A note without a page returns has_page: false.",
-    inputSchema: { type: "object", properties: { ...noteRef } },
+    description: "Returns a note's page (its HTML), the rules a page follows, and the earlier pages kept (the last 10, newest first). Pass version_id to read an earlier page; to bring it back, send its html to set_note_page. A note without a page returns has_page: false.",
+    inputSchema: { type: "object", properties: { ...noteRef, version_id: int("An earlier page, from versions.") } },
     annotations: read,
   },
   // ChatGPT's connector conventions.
@@ -690,6 +704,28 @@ async function searchAll(tx: Tx, c: Call, q: string, limit: number) {
   return { ...found, scan };
 }
 
+/** A note's current page, opened; null when it has none. */
+async function pageOf(tx: Tx, c: Call, id: string): Promise<string | null> {
+  const [row] = await tx<{ page_ct: string | null }[]>`select page_ct from public.note_pages where note_id = ${id} for update`;
+  if (!row?.page_ct) return null;
+  try { return await c.v.openPage(id, row.page_ct); } catch { throw new ToolError("This note's page can't be opened with this connection's key."); }
+}
+
+/** Checks and stores a page. The page it replaces goes to note_page_versions (in the database). */
+async function savePage(tx: Tx, c: Call, n: Note, html: string) {
+  const problems = pageProblems(html);
+  if (problems.length) throw new ToolError(`The page wasn't saved:\n- ${problems.join("\n- ")}`);
+  // The same page again isn't a change: it makes no version.
+  if (await pageOf(tx, c, n.id) === html) return { id: n.id, title: n.title, page: "unchanged" };
+  const sealed = await c.v.sealPage(n.id, html);
+  const [{ created }] = await tx<{ created: boolean }[]>`
+    insert into public.note_pages (note_id, page_ct) values (${n.id}, ${sealed})
+    on conflict (note_id) do update set page_ct = excluded.page_ct
+    returning (xmax = 0) as created`;
+  return { id: n.id, title: n.title, page: created ? "created" : "replaced", bytes: new TextEncoder().encode(html).length,
+    note: "The person sees it in Amber Notes under Page. The note's markdown is unchanged." + (created ? "" : " The previous page is kept (get_note_page lists it).") };
+}
+
 // MARK: Handlers
 
 const handlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<unknown>> = {
@@ -1116,27 +1152,42 @@ const handlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<unknown>> =
     const html = typeof a.html === "string" ? a.html : "";
     if (!html.trim()) {
       const gone = await tx`update public.note_pages set page_ct = null where note_id = ${n.id} and page_ct is not null returning note_id`;
-      return { id: n.id, title: n.title, page: gone.length ? "removed" : "none" };
+      return { id: n.id, title: n.title, page: gone.length ? "removed" : "none", ...(gone.length ? { note: "The removed page is kept with the earlier pages (get_note_page)." } : {}) };
     }
-    const problems = pageProblems(html);
-    if (problems.length) throw new ToolError(`The page wasn't saved:\n- ${problems.join("\n- ")}`);
-    const sealed = await c.v.sealPage(n.id, html);
-    const [{ created }] = await tx<{ created: boolean }[]>`
-      insert into public.note_pages (note_id, page_ct) values (${n.id}, ${sealed})
-      on conflict (note_id) do update set page_ct = excluded.page_ct
-      returning (xmax = 0) as created`;
-    return { id: n.id, title: n.title, page: created ? "created" : "replaced", bytes: new TextEncoder().encode(html).length,
-      note: "The person sees it in Amber Notes under Page. The note's markdown is unchanged." };
+    return await savePage(tx, c, n, html);
+  },
+
+  async edit_note_page(tx, a, c) {
+    const n = await findNote(tx, c, a);
+    const current = await pageOf(tx, c, n.id);
+    if (current === null) throw new ToolError(`"${n.title}" has no page. Make one with set_note_page.`);
+    if (!Array.isArray(a.edits) || !a.edits.length) throw new ToolError("edits must be a non-empty list of { old_text, new_text }.");
+    let html: string;
+    try { html = applyEdits(current, a.edits as Edit[]); } catch (e) { throw new ToolError((e as Error).message.replace("Read the note again", "Read the page again (get_note_page)").replace("append_to_note", "set_note_page")); }
+    if (html === current) return { id: n.id, title: n.title, page: "unchanged" };
+    if (!html.trim()) throw new ToolError("That would leave the page empty. To remove a page, call set_note_page with an empty html.");
+    return await savePage(tx, c, n, html);
   },
 
   async get_note_page(tx, a, c) {
     const n = await findNote(tx, c, a, true);
+    const versions = await tx<{ id: string; page_ct: string; client: string | null; made_at: Date; replaced_at: Date }[]>`
+      select id, page_ct, client, made_at, replaced_at from public.note_page_versions where note_id = ${n.id} order by id desc limit 10`;
+    const list = versions.map((v) => ({ version_id: Number(v.id), made_by: v.client, made: iso(v.made_at), replaced: iso(v.replaced_at), bytes: Math.round(v.page_ct.length * 3 / 4) }));
+    if (a.version_id !== undefined && a.version_id !== null) {
+      const want = wholeNumber(a.version_id, "version_id");
+      const v = versions.find((x) => Number(x.id) === want);
+      if (!v) throw new ToolError(`No earlier page ${want} for this note. Versions: ${list.map((x) => x.version_id).join(", ") || "none"}.`);
+      let html: string;
+      try { html = await c.v.openPage(n.id, v.page_ct); } catch { throw new ToolError("That page can't be opened with this connection's key."); }
+      return { id: n.id, title: n.title, version_id: want, made_by: v.client, made: iso(v.made_at), html, note: "An earlier page. To bring it back, send this html to set_note_page." };
+    }
     const [row] = await tx<{ page_ct: string | null; client: string | null; updated_at: Date }[]>`
       select page_ct, client, updated_at from public.note_pages where note_id = ${n.id}`;
-    if (!row?.page_ct) return { id: n.id, title: n.title, has_page: false, rules: PAGE_CONTRACT };
+    if (!row?.page_ct) return { id: n.id, title: n.title, has_page: false, rules: PAGE_CONTRACT, versions: list };
     let html: string;
     try { html = await c.v.openPage(n.id, row.page_ct); } catch { throw new ToolError("This note's page can't be opened with this connection's key."); }
-    return { id: n.id, title: n.title, has_page: true, made_by: row.client, updated: iso(row.updated_at), rules: PAGE_CONTRACT, html };
+    return { id: n.id, title: n.title, has_page: true, made_by: row.client, updated: iso(row.updated_at), rules: PAGE_CONTRACT, html, versions: list };
   },
 
   async search(tx, a, c) {

@@ -4,31 +4,26 @@
 <meta charset="utf-8">
 <title>Habit tracker</title>
 <style>
+  /* Amber Notes' own colours and type, from the app (--amber-*), so the page looks native. */
   :root {
-    --bg: #fbf8f3; --card: #ffffff; --ink: #1d1a16; --muted: #8a8178; --line: rgba(60, 40, 20, 0.09);
-    --amber: #e8891c; --amber-soft: #fdebd3; --amber-ink: #8a4b06; --empty: #f0ebe4;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #1b1916; --card: #26231f; --ink: #f3eee8; --muted: #9c948a; --line: rgba(255, 240, 220, 0.08);
-      --amber: #f19a33; --amber-soft: #4a3216; --amber-ink: #ffcf91; --empty: #34302a;
-    }
+    --bg: var(--amber-bg); --card: var(--amber-surface); --ink: var(--amber-text); --muted: var(--amber-text-secondary);
+    --line: var(--amber-separator); --amber: var(--amber-accent); --amber-soft: var(--amber-accent-soft);
+    --amber-ink: var(--amber-accent-text); --empty: var(--amber-fill);
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { margin: 0; background: var(--bg); color: var(--ink); }
-  body { font: 16px/1.35 -apple-system, system-ui, sans-serif; padding: 20px 18px 120px; max-width: 640px; margin: 0 auto; -webkit-user-select: none; user-select: none; }
-  h1 { font-size: 30px; line-height: 1.1; letter-spacing: -0.02em; margin: 6px 0 4px; }
+  body { padding: 8px 18px 60px; max-width: 640px; margin: 0 auto; -webkit-user-select: none; user-select: none; }
+  h1 { font-size: 28px; line-height: 1.1; font-weight: 700; letter-spacing: -0.02em; margin: 6px 0 4px; }
   .sub { color: var(--muted); font-size: 15px; margin-bottom: 22px; }
   .sub b { color: var(--amber-ink); font-weight: 600; }
   .label { font-size: 13px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); margin: 0 4px 8px; }
-  .card { background: var(--card); border-radius: 18px; box-shadow: 0 1px 2px rgba(60, 30, 0, 0.06), 0 8px 24px rgba(60, 30, 0, 0.05); margin-bottom: 22px; overflow: hidden; }
+  .card { background: var(--card); border-radius: var(--amber-radius); margin-bottom: 22px; overflow: hidden; }
   .habit { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-top: 0.5px solid var(--line); cursor: pointer; }
   .habit:first-child { border-top: 0; }
   .name { flex: 1; font-size: 17px; }
   .streak { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; display: flex; align-items: center; gap: 4px; }
   .streak.hot { color: var(--amber-ink); font-weight: 600; }
   .streak svg { width: 13px; height: 13px; }
-  .check { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--line); display: grid; place-items: center; transition: transform .25s cubic-bezier(.34,1.56,.64,1), background .2s; flex: none; }
+  .check { width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid var(--amber-text-secondary); display: grid; place-items: center; transition: transform .25s cubic-bezier(.34,1.56,.64,1), background .2s; flex: none; }
   .habit.done .check { background: var(--amber); border-color: var(--amber); }
   .check svg { width: 16px; height: 16px; opacity: 0; transition: opacity .15s; }
   .habit.done .check svg { opacity: 1; }
@@ -48,7 +43,7 @@
   .stat .n { font-size: 26px; font-weight: 650; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
   .stat .t { font-size: 13px; color: var(--muted); }
   .foot { color: var(--muted); font-size: 13px; text-align: center; margin-top: 8px; }
-  .err { color: #c0392b; font-size: 14px; text-align: center; min-height: 18px; }
+  .err { color: var(--amber-danger); font-size: 14px; text-align: center; min-height: 18px; }
   .empty { padding: 30px 18px; text-align: center; color: var(--muted); }
 </style>
 </head>
@@ -57,7 +52,7 @@
 <script>
   const DONE = /^(✓|✔|x|yes|y|1|true|done)$/i;
   const flame = '<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M8.6 1c.4 2.2-.5 3.4-1.6 4.6C5.8 6.9 4 8.6 4 11a4 4 0 0 0 8 0c0-1.7-.8-2.9-1.5-3.8-.1 1-.6 1.8-1.4 2.2.5-2.8-.3-6.4-.5-8.4Z"/></svg>';
-  const tick = '<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const tick = '<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="var(--amber-on-accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const pad = (n) => String(n).padStart(2, "0");
   const dayOf = (iso, delta) => { const d = new Date(iso + "T12:00:00"); d.setDate(d.getDate() + delta); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };

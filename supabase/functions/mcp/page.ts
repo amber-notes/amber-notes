@@ -8,6 +8,9 @@
 /** Bigger than any page needs; a note's data never goes in it. */
 export const MAX_PAGE_BYTES = 256 * 1024;
 
+/** Before changing a page that exists: keep what the person relies on. */
+export const PAGE_REWRITE = `Before changing a note's page, call get_note_page and read_note: keep reading the same tables and column names, keep the ops the page already uses, and keep its layout unless asked to change it. For small changes use edit_note_page instead of sending the whole page again.`;
+
 /** What the page is given and may do. The same words go to the AI in set_note_page's description. */
 export const PAGE_CONTRACT = `The page runs in Amber Notes in a sandbox with no network: no fetch, no external scripts, styles, fonts or images. Put all CSS and JS inline; images only as data: URIs or inline SVG.
 Read the note from window.amber.note, never hardcode its contents (the note changes; the page must follow):
@@ -17,7 +20,12 @@ Change the note only through amber.update(op), which returns a Promise of { ok: 
   { op: "toggle_checklist", line }            line from amber.note.checklists
   { op: "set_cell", table, row, col, value }  table index, row index (0-based, header excluded), col index or column name; plain one-line text
   { op: "append_row", table, values }         values: { columnName: text } or [text, ...]
-Each change lands in the note's markdown as a normal edit the person can see and undo. Support light and dark (prefers-color-scheme) and small screens.`;
+Each change lands in the note's markdown as a normal edit the person can see and undo.
+Look like Amber Notes: the app sets these CSS variables on :root, already switched for light and dark, and gives body its font, text colour and background. Use them instead of your own colours and fonts:
+  --amber-bg (the note's background), --amber-surface (cards and grouped rows), --amber-fill (controls, empty cells), --amber-text, --amber-text-secondary, --amber-separator,
+  --amber-accent (amber, for marks and filled controls), --amber-accent-text (amber for text), --amber-accent-soft (a soft amber fill), --amber-on-accent (text on --amber-accent),
+  --amber-danger, --amber-radius (cards), --amber-radius-small (controls), --amber-font (the system font), --amber-font-rounded, --amber-font-mono.
+Keep it readable on small screens; don't set a background on html or body.`;
 
 const NAMESPACES = /^https?:\/\/www\.w3\.org\/(2000\/svg|1999\/xhtml|1999\/xlink|XML\/1998\/namespace)$/;
 

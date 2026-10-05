@@ -33,8 +33,11 @@ final class NotePagesUITests: XCTestCase {
         app.webViews.descendants(matching: .any).matching(NSPredicate(format: "label == %@", label)).firstMatch
     }
 
+    /// Page / Text: the toolbar button shows the one you'd switch to.
     func mode(_ name: String) {
-        app.segmentedControls["note.mode"].buttons[name].firstMatch.tap()
+        let b = app.buttons["note.mode"].firstMatch
+        XCTAssertTrue(b.waitForExistence(timeout: 5))
+        if b.label == "Show \(name)" { b.tap() }
     }
 
     /// (a)-(e): text, Claude's page arriving, a tick on the page, the tick in the text, Undo.
@@ -44,7 +47,7 @@ final class NotePagesUITests: XCTestCase {
         pause(1.5)
         shot("01-habit-text")
         pause(4.5)
-        XCTAssertTrue(app.segmentedControls["note.mode"].waitForExistence(timeout: 5), "the page should arrive")
+        XCTAssertTrue(app.buttons["note.mode"].waitForExistence(timeout: 5), "the page should arrive")
         pause(1.2)
         shot("02-habit-page-arrives")
         pause(3)
@@ -107,5 +110,58 @@ final class NotePagesUITests: XCTestCase {
         XCTAssertFalse(web("Sent").exists, "nothing may get out")
         mark("sandbox-end")
         pause(1.5)
+    }
+
+    /// Open-to-interactive, measured by the app (`-pageTimings`): the habit tracker opened from the
+    /// list eight times; the first open of the launch is the cold one.
+    func testPageTimings() {
+        launch(["-seedPage", "Habit tracker=\(pages)/habit-tracker.html", "-pageTimings"])
+        let all = app.staticTexts["All Notes"].firstMatch
+        if all.waitForExistence(timeout: 4) { all.tap() }
+        for _ in 0..<8 {
+            let row = app.staticTexts["Habit tracker"].firstMatch
+            XCTAssertTrue(row.waitForExistence(timeout: 5))
+            row.tap()
+            pause(2.5)
+            app.navigationBars.buttons.element(boundBy: 0).tap()
+            pause(1.0)
+        }
+    }
+
+    /// (d) of the no-loss work: Claude's rewrite throws as it loads; the previous page comes back.
+    func testFallback() {
+        launch(["-open", "Habit tracker", "-seedPage", "Habit tracker=\(pages)/habit-tracker.html",
+                "-aiPage", "Habit tracker=\(pages)/habit-tracker-broken.html", "-aiPageBy", "Claude", "-aiAfter", "3"])
+        mark("fallback-start")
+        pause(2.5)
+        shot("13-fallback-before")
+        pause(1.6)
+        shot("14-fallback-notice")
+        pause(3)
+        app.buttons["editor.more"].firstMatch.tap()
+        pause(1)
+        shot("15-fallback-menu")
+        app.buttons["editor.more"].firstMatch.tap()
+        mark("fallback-end")
+        pause(1)
+    }
+
+    /// The two Page / Text designs, for choosing: a toolbar button, or a choice in More.
+    func testToggleButton() {
+        launch(["-open", "Habit tracker", "-seedPage", "Habit tracker=\(pages)/habit-tracker.html"])
+        pause(2.5)
+        shot("toggle-a-page")
+        mode("Text")
+        pause(1.2)
+        shot("toggle-a-text")
+    }
+
+    func testToggleMenu() {
+        launch(["-open", "Habit tracker", "-seedPage", "Habit tracker=\(pages)/habit-tracker.html", "-pageToggle", "menu"])
+        pause(2.5)
+        shot("toggle-b-page")
+        app.buttons["editor.more"].firstMatch.tap()
+        pause(1.2)
+        shot("toggle-b-menu")
     }
 }

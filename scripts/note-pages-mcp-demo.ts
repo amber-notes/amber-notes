@@ -59,7 +59,9 @@ await call("read_note", { title: "Habit tracker" }, "Claude reads the note first
 await call("set_note_page", { id, html: pageHTML.replace("<main", `<link rel="stylesheet" href="https://fonts.example.com/inter.css"><main`) },
   "A first try that loads a web font: refused, with the reason");
 const set = await call("set_note_page", { id, html: pageHTML }, "The page, self-contained");
-const got = await call("get_note_page", { id }, "Read back");
+const edited = await call("edit_note_page", { id, edits: [{ old_text: `<div class="label">Last two weeks</div>`, new_text: `<div class="label">Last 14 days</div>` }] },
+  "A small change without resending the page: edit_note_page");
+const got = await call("get_note_page", { id }, "Read back: the edited page, and the page before it kept as a version");
 const reread = await call("read_note", { id }, "read_note now says the note has a page; its markdown is unchanged");
 
 const [stored] = (await pg.query<{ page_ct: string; client: string }>(`select page_ct, client from public.note_pages where note_id = $1`, [id])).rows;
@@ -68,9 +70,11 @@ const summary = {
   server: "supabase/functions/mcp/server.ts handleRequest, served with Deno.serve on 127.0.0.1, PGlite database with every migration",
   tools: listed.tools.filter((t: { name: string }) => t.name.endsWith("note_page")).map((t: { name: string; annotations: unknown }) => ({ name: t.name, annotations: t.annotations })),
   set_result: set.structuredContent,
+  edit_result: edited.structuredContent,
   get_has_page: got.structuredContent.has_page,
+  versions_kept: got.structuredContent.versions,
   markdown_unchanged: reread.structuredContent.markdown === body,
-  stored: { client: stored.client, page_ct_prefix: stored.page_ct.slice(0, 60) + "…", page_ct_bytes: stored.page_ct.length, opens_to_same_html: opened === pageHTML },
+  stored: { client: stored.client, page_ct_prefix: stored.page_ct.slice(0, 60) + "…", page_ct_bytes: stored.page_ct.length, opens_to_edited_html: opened === pageHTML.replace("Last two weeks", "Last 14 days") },
 };
 await Deno.writeTextFile(out, JSON.stringify({ summary, exchange: log, note_body: body }, null, 2));
 await server.shutdown();

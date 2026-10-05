@@ -93,3 +93,88 @@ Deno.test("locking a note takes its page; another account can't see or write one
   await app(pg, a.id, `update public.notes set body_ct = null, locked_body = $2 where id = $1`, [id, `amb2.${lockKey}.${btoa("x".repeat(48))}`]);
   assertEquals((await pg.query(`select 1 from public.note_pages where note_id = $1`, [id])).rows.length, 0);
 });
+
+// MARK: No data loss
+
+const noteRow = async (pg: PGlite, id: string) =>
+  (await pg.query(`select body_ct, head_ct, locked_body, version, updated_at, server_updated_at, body_source, body_client, body_at from public.notes where id = $1`, [id])).rows[0];
+
+Deno.test("no page tool ever touches the note: its row is byte-identical and no version is made", async () => {
+  const pg = await schemaDB();
+  const a = await account(pg);
+  const id = await note(pg, a, HABITS);
+  const before = await noteRow(pg, id);
+  await tool(pg, a, "set_note_page", { id, html: PAGE });
+  await tool(pg, a, "set_note_page", { id, html: PAGE.replace("days", "entries") });
+  await tool(pg, a, "edit_note_page", { id, edits: [{ old_text: "entries", new_text: "days logged" }] });
+  await tool(pg, a, "set_note_page", { id, html: "" });
+  await tool(pg, a, "get_note_page", { id }, false);
+  assertEquals(await noteRow(pg, id), before);
+  assertEquals((await pg.query(`select 1 from public.note_revisions where note_id = $1`, [id])).rows.length, 0);
+  assertEquals((await opened(pg, a, id)).body, HABITS);
+});
+
+Deno.test("the last 10 pages are kept, newest first, and an earlier one reads back whole", async () => {
+  const pg = await schemaDB();
+  const a = await account(pg);
+  const id = await note(pg, a, HABITS);
+  const page = (i: number) => PAGE.replace("days", `days v${i}`);
+  for (let i = 1; i <= 12; i++) await tool(pg, a, "set_note_page", { id, html: page(i) });
+  const got = await tool(pg, a, "get_note_page", { id }, false);
+  assertEquals(got.html, page(12));
+  assertEquals(got.versions.length, 10);
+  const oldest = got.versions[9], newest = got.versions[0];
+  assertEquals((await tool(pg, a, "get_note_page", { id, version_id: newest.version_id }, false)).html, page(11));
+  assertEquals((await tool(pg, a, "get_note_page", { id, version_id: oldest.version_id }, false)).html, page(2));
+  // Removing the page keeps it with the others; the AI brings one back by sending its html.
+  await tool(pg, a, "set_note_page", { id, html: "" });
+  const after = await tool(pg, a, "get_note_page", { id }, false);
+  assertEquals(after.has_page, false);
+  assertEquals((await tool(pg, a, "get_note_page", { id, version_id: after.versions[0].version_id }, false)).html, page(12));
+  await assertRejects(() => tool(pg, a, "get_note_page", { id, version_id: 999 }, false), ToolError, "No earlier page 999");
+  // Sending the same page again isn't a new version.
+  await tool(pg, a, "set_note_page", { id, html: page(12) });
+  await tool(pg, a, "set_note_page", { id, html: page(12) });
+  assertEquals((await tool(pg, a, "get_note_page", { id }, false)).versions[0].version_id, after.versions[0].version_id);
+});
+
+Deno.test("earlier pages are the owner's, read-only, and go when the note is locked", async () => {
+  const pg = await schemaDB();
+  const a = await account(pg);
+  const b = await account(pg);
+  const id = await note(pg, a, HABITS);
+  await tool(pg, a, "set_note_page", { id, html: PAGE });
+  await tool(pg, a, "set_note_page", { id, html: PAGE.replace("days", "entries") });
+  assertEquals((await app(pg, a.id, `select count(*)::int n from public.note_page_versions`))[0].n, 1);
+  assertEquals(await app(pg, b.id, `select * from public.note_page_versions`), []);
+  const box = (await app(pg, a.id, `select page_ct from public.note_page_versions`))[0].page_ct;
+  await assertRejects(() => app(pg, a.id, `insert into public.note_page_versions (note_id, user_id, page_ct, made_at) values ($1, $2, $3, now())`, [id, a.id, box]));
+  await assertRejects(() => app(pg, a.id, `delete from public.note_page_versions`).then((r) => { if ((r as unknown[]).length === 0) throw new Error("denied"); }));
+  assertEquals((await pg.query(`select 1 from public.note_page_versions`)).rows.length, 1);
+  const lockKey = await notesPassword(pg, a);
+  await app(pg, a.id, `update public.notes set body_ct = null, locked_body = $2 where id = $1`, [id, `amb2.${lockKey}.${btoa("x".repeat(48))}`]);
+  assertEquals((await pg.query(`select 1 from public.note_page_versions`)).rows.length, 0);
+});
+
+// MARK: Editing a page
+
+Deno.test("edit_note_page changes the page in place, keeps the one before, and checks the result", async () => {
+  const pg = await schemaDB();
+  const a = await account(pg);
+  const id = await note(pg, a, HABITS);
+  await assertRejects(() => tool(pg, a, "edit_note_page", { id, edits: [{ old_text: "a", new_text: "b" }] }), ToolError, "has no page");
+  await tool(pg, a, "set_note_page", { id, html: PAGE });
+  const r = await tool(pg, a, "edit_note_page", { id, edits: [{ old_text: `" days"`, new_text: `" days tracked"` }] });
+  assertEquals(r.page, "replaced");
+  const got = await tool(pg, a, "get_note_page", { id }, false);
+  assertEquals(got.html, PAGE.replace(`" days"`, `" days tracked"`));
+  assertEquals((await tool(pg, a, "get_note_page", { id, version_id: got.versions[0].version_id }, false)).html, PAGE);
+  await assertRejects(() => tool(pg, a, "edit_note_page", { id, edits: [{ old_text: "nowhere", new_text: "x" }] }), ToolError, "get_note_page");
+  await assertRejects(() => tool(pg, a, "edit_note_page", { id, edits: [{ old_text: "n", new_text: "x" }] }), ToolError, "appears");
+  // An edit that would reach the network is refused whole.
+  const err = await assertRejects(() => tool(pg, a, "edit_note_page", { id, edits: [{ old_text: "<main", new_text: `<img src="https://t.example/p.gif"><main` }] }), ToolError);
+  assertStringIncludes(err.message, "https://t.example/p.gif");
+  await assertRejects(() => tool(pg, a, "edit_note_page", { id, edits: [{ old_text: "<main", new_text: "<main" }] }, false), ToolError, "read-only");
+  assertEquals((await tool(pg, a, "get_note_page", { id }, false)).html, got.html);
+  assertEquals((await tool(pg, a, "edit_note_page", { id, edits: [{ old_text: "<main", new_text: "<main" }] })).page, "unchanged");
+});

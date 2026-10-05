@@ -176,19 +176,22 @@ import WebKit
     }
 
     @Test func aPageCanReachNothingOutside() async throws {
+        // Without the sandbox, the same page does reach a listener: the test can tell. (Its own
+        // listener, so its late requests can't count against the sandbox.)
+        let control = try Listener()
+        let controlPort = try await control.start()
+        defer { control.listener.cancel() }
+        let open = WKWebView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
+        open.loadHTMLString(Self.leakyPage("http://127.0.0.1:\(controlPort)"), baseURL: nil)
+        for _ in 0..<100 where control.connections == 0 { try await Task.sleep(for: .milliseconds(50)) }
+        #expect(control.connections > 0, "the control page should have reached its listener")
+        open.stopLoading()
+
         let server = try Listener()
         let port = try await server.start()
         defer { server.listener.cancel() }
         let base = "http://127.0.0.1:\(port)"
-
-        // Without the sandbox, the same page does reach the server: the listener can tell.
-        let open = WKWebView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
-        open.loadHTMLString(Self.leakyPage(base), baseURL: nil)
-        for _ in 0..<100 where server.connections == 0 { try await Task.sleep(for: .milliseconds(50)) }
-        #expect(server.connections > 0, "the control page should have reached the listener")
-        open.stopLoading()
-        try await Task.sleep(for: .milliseconds(300))
-        let before = server.connections
+        let before = 0
 
         let sandbox = NotePageSandbox(rules: try await NotePageSandbox.prepare())
         sandbox.load(html: Self.leakyPage(base), body: "Secret\n\nmy bank PIN")
@@ -231,5 +234,70 @@ import WebKit
         #expect(try await sandbox.webView.evaluateJavaScript("window.__bad.error") as? String == "Unknown op replace_note.")
         try await run(sandbox.webView, until: "window.__seen.length === 2")
         #expect(try await sandbox.webView.evaluateJavaScript("window.__seen") as? [String] == ["", "✓"])
+    }
+
+    // MARK: No page is lost
+
+    @Test func replacedAndRemovedPagesAreKeptAndComeBack() {
+        let store = NotePageStore(file: nil)
+        let id = UUID()
+        func page(_ i: Int) -> NotePageStore.Page { .init(html: "<p>v\(i)</p>", by: "Claude", at: .now) }
+        for i in 1...12 { store[id] = page(i) }
+        #expect(store[id]?.html == "<p>v12</p>")
+        #expect(store.history[id]?.map(\.html) == (2...11).map { "<p>v\($0)</p>" })
+        // Bringing one back keeps the current one in its place: toggling twice is where you started.
+        #expect(store.restorePrevious(id)?.html == "<p>v11</p>")
+        #expect(store.previous(id)?.html == "<p>v12</p>")
+        store.restorePrevious(id)
+        #expect(store[id]?.html == "<p>v12</p>")
+        // Removing keeps it too.
+        store[id] = nil
+        #expect(store[id] == nil)
+        #expect(store.previous(id)?.html == "<p>v12</p>")
+        #expect(store.restorePrevious(id)?.html == "<p>v12</p>")
+        // The same page again isn't history.
+        let before = store.history[id]
+        store[id] = .init(html: "<p>v12</p>", by: "Claude", at: .now.addingTimeInterval(5))
+        #expect(store.history[id] == before)
+    }
+
+    /// Loads `html` and waits for the sandbox to say it drew or failed.
+    func outcome(_ html: String) async throws -> (ready: Bool, errors: [String]) {
+        let sandbox = NotePageSandbox(rules: try await NotePageSandbox.prepare())
+        var result: (Bool, [String])?
+        sandbox.onReady = { result = (true, []) }
+        sandbox.onFailure = { result = (false, $0) }
+        sandbox.load(html: html, body: Self.habits)
+        for _ in 0..<100 where result == nil { try await Task.sleep(for: .milliseconds(50)) }
+        return try #require(result)
+    }
+
+    @Test func aPageThatThrowsOrDrawsNothingIsReportedAsFailed() async throws {
+        let good = try await outcome("<main id=m></main><script>amber.onChange((n) => { m.textContent = n.title })</script>")
+        #expect(good.ready)
+        let throwsInRender = try await outcome("<main id=m></main><script>amber.onChange((n) => { m.textContent = n.tables[0].rows[0][9].toFixed(1) })</script>")
+        #expect(!throwsInRender.ready)
+        #expect(throwsInRender.errors.first?.contains("undefined") == true)
+        let throwsAtTop = try await outcome("<script>amber.onChange(() => {}); nope();</script><p>x</p>")
+        #expect(!throwsAtTop.ready)
+        let blank = try await outcome("<main></main><script>amber.onChange(() => {})</script>")
+        #expect(!blank.ready)
+        #expect(blank.errors == ["The page drew nothing."])
+        let broken = try String(contentsOf: URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .appending(path: "demo/note-pages/habit-tracker-broken.html"), encoding: .utf8)
+        #expect(try await !outcome(broken).ready)
+    }
+
+    @Test func everyPageGetsTheAppsThemeAsVariables() async throws {
+        #expect(NotePageSandbox.sandboxed("<p>x</p>").contains("<style id=\"amber-theme\">"))
+        #expect(NotePageTheme.css.contains("--amber-accent: #D96A06"))
+        #expect(NotePageTheme.css.contains("@media (prefers-color-scheme: dark) { :root { --amber-bg:"))
+        let sandbox = NotePageSandbox(rules: try await NotePageSandbox.prepare())
+        sandbox.load(html: "<style>p { color: var(--amber-accent-text); border-radius: var(--amber-radius) }</style><p id=p>x</p><script>amber.onChange(() => {})</script>", body: "x")
+        try await run(sandbox.webView, until: "document.getElementById('p') !== null && document.readyState === 'complete'")
+        let accent = try await sandbox.webView.evaluateJavaScript("getComputedStyle(document.documentElement).getPropertyValue('--amber-accent').trim()") as? String
+        #expect(accent == "#D96A06" || accent == "#F4AD33", "\(accent ?? "nil") in \(NotePageTheme.css)")
+        let font = try await sandbox.webView.evaluateJavaScript("getComputedStyle(document.body).fontFamily") as? String
+        #expect(font?.contains("system-ui") == true)
     }
 }

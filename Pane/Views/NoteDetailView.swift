@@ -27,6 +27,8 @@ struct NoteDetailView: View {
     @State private var pageTint: String?
     /// The page as last shown, to tell an AI's new page from one already seen.
     @State private var shownPage: NotePageStore.Page?
+    /// Pages that failed to load here: never fallen back to twice.
+    @State private var failedPages: Set<String> = []
     @Bindable var note: Note
     let controller: EditorController
     var autofocus = false
@@ -61,7 +63,7 @@ struct NoteDetailView: View {
                 if let history = NoteHistory.shared { VersionHistorySheet(note: note, history: history) }
             }
             #if os(iOS)
-            .safeAreaInset(edge: .bottom, spacing: 0) { phoneTips }
+            .safeAreaInset(edge: .bottom, spacing: 0) { if !showingPage { phoneTips } }
             #endif
             .overlay(alignment: .bottom) { aiReceipt }
             .overlay(alignment: .bottom) { undoProblem }
@@ -84,6 +86,7 @@ struct NoteDetailView: View {
             .task(id: note.id) {
                 receipt = nil
                 shownPage = NotePageStore.shared[note.id]
+                if shownPage != nil { NotePageTiming.open(note.id) }
                 pageTint = nil
                 mode = .page
                 showAIEdit()
@@ -114,11 +117,16 @@ struct NoteDetailView: View {
     @ViewBuilder
     private var undoProblem: some View {
         if let undoFailed {
+            // Room for two lines: a notice is never squeezed into one.
             Text(undoFailed)
                 .font(.system(size: AIReceipt.text, weight: .semibold))
-                .padding(.horizontal, 14)
-                .frame(height: AIReceipt.height)
-                .background(.regularMaterial, in: .capsule)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .frame(minHeight: AIReceipt.height)
+                .background(.regularMaterial, in: .rect(cornerRadius: AIReceipt.height / 2))
+                .padding(.horizontal, 24)
                 #if os(macOS)
                 .padding(.bottom, 20)
                 #else
@@ -126,6 +134,7 @@ struct NoteDetailView: View {
                 #endif
                 .transition(.opacity)
                 .accessibilityAddTraits(.isStaticText)
+                .accessibilityIdentifier("note.notice")
         }
     }
 
@@ -164,11 +173,13 @@ struct NoteDetailView: View {
 
     private func undo(_ r: AIEdit.Receipt) {
         withAnimation(.smooth(duration: 0.25)) { receipt = nil }
-        if r.kind == .pageMade {
-            // The note's text never changed: the page goes back to what it was.
-            shownPage = undoPage
-            NotePageStore.shared[note.id] = undoPage
-            if undoPage == nil { mode = .text }
+        if r.kind == .pageMade || r.kind == .pageChanged {
+            // The note's text never changed: the page goes back to what it was (the new one is kept).
+            if undoPage != nil { restorePreviousPage() } else {
+                NotePageStore.shared[note.id] = nil
+                shownPage = nil
+                mode = .text
+            }
             return
         }
         if r.kind == .pageEdit { pageTint = nil }
@@ -200,7 +211,7 @@ struct NoteDetailView: View {
                     .allowsHitTesting(!showingPage)
                     .accessibilityHidden(showingPage)
                 if let page = notePage {
-                    NotePageView(html: page.html, text: text, onUpdate: applyPageEdit)
+                    NotePageView(noteID: note.id, html: page.html, text: text, onUpdate: applyPageEdit, onFailure: pageFailed)
                         .id(note.id)
                         .opacity(showingPage ? 1 : 0)
                         .allowsHitTesting(showingPage)
@@ -260,7 +271,7 @@ struct NoteDetailView: View {
         shownPage = now
         guard let now, now != before, now.by != AIGlyph.page else { return }
         withAnimation(.smooth(duration: 0.3)) { mode = .page }
-        let r = AIEdit.Receipt(noteID: note.id, by: now.by, at: now.at, previous: note.body, lines: 0, kind: .pageMade)
+        let r = AIEdit.Receipt(noteID: note.id, by: now.by, at: now.at, previous: note.body, lines: 0, kind: before == nil ? .pageMade : .pageChanged)
         undoPage = before
         withAnimation(.spring(duration: 0.45, bounce: 0.25)) { receipt = r }
         Task { @MainActor in
@@ -270,15 +281,83 @@ struct NoteDetailView: View {
         }
     }
 
-    /// Page / Text, shown only when the note has a page.
-    private var modePicker: some View {
-        Picker("View", selection: $mode.animation(.smooth(duration: 0.25))) {
-            Text("Page").tag(NoteMode.page)
-            Text("Text").tag(NoteMode.text)
+    /// Where Page / Text lives (prototype, two designs): a toolbar button beside More (the default),
+    /// or a choice inside More (`-pageToggle menu`).
+    enum PageToggle { case button, menu }
+    static let pageToggle: PageToggle = Capture.argument("-pageToggle") == "menu" ? .menu : .button
+
+    /// One button, like the note's other toolbar items: it shows what you'd switch to.
+    private var modeButton: some View {
+        Button {
+            withAnimation(.smooth(duration: 0.25)) { mode = mode == .page ? .text : .page }
+        } label: {
+            Label(mode == .page ? "Show Text" : "Show Page", systemImage: mode == .page ? "text.alignleft" : "rectangle.grid.1x2")
         }
-        .pickerStyle(.segmented)
-        .fixedSize()
+        #if os(macOS)
+        .tint(.primary)
+        .help(mode == .page ? "Show Text" : "Show Page")
+        #endif
         .accessibilityIdentifier("note.mode")
+    }
+
+    /// Page / Text as a choice in More, with the page's other actions.
+    @ViewBuilder
+    private var pageMenuItems: some View {
+        if notePage != nil {
+            Section {
+                if Self.pageToggle == .menu {
+                    Picker("View as", selection: $mode.animation(.smooth(duration: 0.25))) {
+                        Label("Page", systemImage: "rectangle.grid.1x2").tag(NoteMode.page)
+                        Label("Text", systemImage: "text.alignleft").tag(NoteMode.text)
+                    }
+                    .pickerStyle(.inline)
+                    .accessibilityIdentifier("note.modeMenu")
+                }
+                if NotePageStore.shared.previous(note.id) != nil {
+                    Button("Previous Page", systemImage: "arrow.uturn.backward") { restorePreviousPage() }
+                        .accessibilityIdentifier("editor.previousPage")
+                }
+                Button("Remove Page", systemImage: "rectangle.slash") {
+                    // The note's text stays as it is, and the page is kept: Previous Page brings it back.
+                    NotePageStore.shared[note.id] = nil
+                    shownPage = nil
+                    mode = .text
+                }
+                .accessibilityIdentifier("editor.removePage")
+            }
+        }
+    }
+
+    private func restorePreviousPage() {
+        guard let back = NotePageStore.shared.restorePrevious(note.id) else { return }
+        shownPage = back
+        withAnimation(.smooth(duration: 0.25)) { mode = .page }
+    }
+
+    /// The page threw while loading or drew nothing: the one before it comes back, and the note
+    /// says so. With no page before it, the note shows its text. The failed page is kept.
+    private func pageFailed(_ reasons: [String]) {
+        guard let page = notePage else { return }
+        let who = page.by == AIGlyph.page ? "The" : "\(page.by)'s"
+        failedPages.insert(page.html)
+        // The new page's receipt goes: the notice says what happened instead.
+        withAnimation(.smooth(duration: 0.2)) { receipt = nil }
+        if let before = NotePageStore.shared.previous(note.id), !failedPages.contains(before.html) {
+            restorePreviousPage()
+            notice("\(who) new page didn't load, so the previous page is back.")
+        } else {
+            withAnimation(.smooth(duration: 0.25)) { mode = .text }
+            notice("This page didn't load. Showing the text.")
+        }
+    }
+
+    private func notice(_ text: String) {
+        withAnimation(.smooth(duration: 0.25)) { undoFailed = text }
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(5 * ChangeTint.slowMotion))
+            while ChangeTint.holdForCapture, undoFailed == text { try? await Task.sleep(for: .seconds(0.1)) }
+            if undoFailed == text { withAnimation(.smooth(duration: 0.25)) { undoFailed = nil } }
+        }
     }
 
     enum LockSheet: String, Identifiable {
@@ -330,7 +409,8 @@ struct NoteDetailView: View {
             .navigationTitle("")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar(controller.isEditing ? .hidden : .automatic, for: .bottomBar)
+            // A page shows nothing of the text editor: no writing tools over it.
+            .toolbar(controller.isEditing || showingPage ? .hidden : .automatic, for: .bottomBar)
             .animation(.snappy(duration: 0.2), value: controller.isEditing)
             #endif
             .toolbar { toolbar }
@@ -456,9 +536,6 @@ struct NoteDetailView: View {
 
     @ToolbarContentBuilder
     private var toolbar: some ToolbarContent {
-        if notePage != nil {
-            ToolbarItem(placement: .principal) { modePicker }
-        }
         #if os(iOS)
         ToolbarItem(placement: .bottomBar) {
             Button("Checklist", systemImage: "checklist", action: controller.checklist).disabled(hidden)
@@ -472,6 +549,9 @@ struct NoteDetailView: View {
         ToolbarSpacer(.flexible, placement: .bottomBar)
         ToolbarItem(placement: .bottomBar) {
             Button("New Note", systemImage: "square.and.pencil", action: onNewNote)
+        }
+        if notePage != nil, Self.pageToggle == .button {
+            ToolbarItem(placement: .primaryAction) { modeButton }
         }
         ToolbarItem(placement: .primaryAction) { moreMenu }
         #else
@@ -487,6 +567,8 @@ struct NoteDetailView: View {
                 .accessibilityIdentifier("list.newNote")
         }
         ToolbarSpacer(.flexible)
+        // A page has no text to format: the writing tools go while it shows.
+        if !showingPage {
         ToolbarItemGroup {
             formatMenu.disabled(hidden)
             Button("Checklist", systemImage: "checklist", action: controller.checklist)
@@ -499,8 +581,10 @@ struct NoteDetailView: View {
                 .help("Attach File (⇧⌘A)")
                 .disabled(note.isLocked)
         }
+        }
         ToolbarSpacer(.fixed)
         ToolbarItemGroup {
+            if notePage != nil, Self.pageToggle == .button { modeButton }
             shareMenu
             moreMenu
         }
@@ -584,15 +668,7 @@ struct NoteDetailView: View {
                 Button("Show Version History…", systemImage: "clock.arrow.circlepath") { showHistory = true }
                 #endif
             }
-            if notePage != nil {
-                Button("Remove Page", systemImage: "square.grid.2x2") {
-                    // The note's text stays as it is: the page was only a view of it.
-                    NotePageStore.shared[note.id] = nil
-                    shownPage = nil
-                    mode = .text
-                }
-                .accessibilityIdentifier("editor.removePage")
-            }
+            pageMenuItems
             Divider()
             if note.isLocked {
                 if vault.isUnlocked {

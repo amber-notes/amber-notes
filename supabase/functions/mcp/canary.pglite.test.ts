@@ -194,6 +194,7 @@ Deno.test("no text of an encrypted account is stored or logged readably, whateve
     // A page is sealed like the note: the canary in it must not show anywhere either.
     await tool("set_note_page", { id: tracker, html: `<!doctype html><main>${CANARY}</main><script>amber.onChange(() => {})</script>` });
     assertStringIncludes((await tool("get_note_page", { id: tracker })).html, CANARY);
+    await tool("edit_note_page", { id: tracker, edits: [{ old_text: `<main>${CANARY}`, new_text: `<main>edited ${CANARY}` }] });
     await tool("delete_note", { id: created.id });
     await tool("restore_note", { id: created.id });
     await tool("delete_folder", { folder: `Created ${CANARY}` });

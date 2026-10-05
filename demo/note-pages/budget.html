@@ -4,18 +4,18 @@
 <meta charset="utf-8">
 <title>Budget</title>
 <style>
-  :root { --bg: #fbf8f3; --card: #fff; --ink: #1d1a16; --muted: #8a8178; --line: rgba(60,40,20,.09); --amber: #e8891c; --amber-ink: #8a4b06; --field: #f3eee7;
-    --c0: #e8891c; --c1: #3f8f6b; --c2: #4b74c9; --c3: #b5579a; --c4: #8a8178; }
-  @media (prefers-color-scheme: dark) { :root { --bg: #1b1916; --card: #26231f; --ink: #f3eee8; --muted: #9c948a; --line: rgba(255,240,220,.08); --amber-ink: #ffcf91; --field: #34302a; } }
+  /* Amber Notes' own colours and type, from the app (--amber-*); categories get the amber first. */
+  :root { --bg: var(--amber-bg); --card: var(--amber-surface); --ink: var(--amber-text); --muted: var(--amber-text-secondary); --line: var(--amber-separator);
+    --amber: var(--amber-accent); --amber-ink: var(--amber-accent-text); --field: var(--amber-fill);
+    --c0: var(--amber-accent); --c1: #3f8f6b; --c2: #4b74c9; --c3: #b5579a; --c4: var(--amber-text-secondary); }
   * { box-sizing: border-box; }
-  html, body { margin: 0; background: var(--bg); color: var(--ink); }
-  body { font: 16px/1.35 -apple-system, system-ui, sans-serif; padding: 20px 18px 120px; max-width: 640px; margin: 0 auto; }
-  h1 { font-size: 30px; letter-spacing: -0.02em; margin: 6px 0 2px; }
+  body { padding: 8px 18px 60px; max-width: 640px; margin: 0 auto; }
+  h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; margin: 6px 0 2px; }
   .total { font-size: 44px; font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; margin: 14px 0 0; }
   .sub { color: var(--muted); font-size: 15px; margin-bottom: 18px; }
   .bar { display: flex; height: 12px; border-radius: 6px; overflow: hidden; margin: 6px 0 14px; background: var(--field); }
   .bar div { height: 100%; transition: width .4s; }
-  .card { background: var(--card); border-radius: 18px; box-shadow: 0 1px 2px rgba(60,30,0,.06), 0 8px 24px rgba(60,30,0,.05); margin-bottom: 20px; overflow: hidden; }
+  .card { background: var(--card); border-radius: var(--amber-radius); margin-bottom: 20px; overflow: hidden; }
   .cat, .item { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-top: .5px solid var(--line); }
   .cat:first-child, .item:first-child { border-top: 0; }
   .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
@@ -24,9 +24,9 @@
   .muted { color: var(--muted); font-size: 13px; }
   .label { font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin: 0 4px 8px; }
   form { display: grid; grid-template-columns: 1.4fr 1fr .9fr auto; gap: 8px; padding: 12px; }
-  input, select { font: inherit; font-size: 16px; padding: 9px 10px; border-radius: 10px; border: 0; background: var(--field); color: var(--ink); min-width: 0; }
-  button { font: inherit; font-weight: 600; border: 0; border-radius: 10px; padding: 0 14px; background: var(--amber); color: #fff; }
-  .err { color: #c0392b; font-size: 14px; padding: 0 16px 10px; }
+  input, select { font: inherit; font-size: 16px; padding: 9px 10px; border-radius: var(--amber-radius-small); border: 0; background: var(--field); color: var(--ink); min-width: 0; }
+  button { font: inherit; font-weight: 600; border: 0; border-radius: var(--amber-radius-small); padding: 0 14px; background: var(--amber); color: var(--amber-on-accent); }
+  .err { color: var(--amber-danger); font-size: 14px; padding: 0 16px 10px; }
   .new { animation: flash 1.2s ease-out; }
   @keyframes flash { from { background: rgba(232,137,28,.25); } to { background: transparent; } }
 </style>
