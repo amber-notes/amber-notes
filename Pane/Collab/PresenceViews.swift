@@ -107,11 +107,11 @@ struct PersonAvatar: View {
         case .none:
             EmptyView()
         case .pencil:
-            // The glyph about half the badge, with real room around it.
+            // A heavy glyph, about 60% of the badge, so it reads at real size. Sized by font, not
+            // by resizing: a resized symbol ignores the weight and draws thin.
             Image(systemName: "pencil")
-                .resizable().scaledToFit()
-                .fontWeight(.bold)
-                .frame(width: inner * 0.52, height: inner * 0.52)
+                .font(.system(size: inner * 0.66, weight: .heavy))
+                .frame(width: inner * 0.6, height: inner * 0.6)
                 .foregroundStyle(pencilStyle == .colour ? Color.white : color)
                 .frame(width: inner, height: inner)
                 .background(pencilStyle == .colour ? color : Color.white, in: .circle)
