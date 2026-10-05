@@ -74,7 +74,8 @@ const MODELS: Record<string, { id: string; provider: "anthropic" | "openai" | "o
 };
 const model = MODELS[modelKey];
 if (!model) throw new Error(`Unknown model ${modelKey}`);
-if (!["claude-cli", "codex-cli"].includes(model.provider) && !args["allow-paid"]) throw new Error(`${modelKey} bills per token. Use claude-cli or codex-cli, or pass --allow-paid with explicit approval.`);
+const paid = !["claude-cli", "codex-cli"].includes(model.provider);
+if (paid && !args["allow-paid"]) throw new Error(`${modelKey} bills per token. Use claude-cli or codex-cli, or pass --allow-paid with explicit approval.`);
 
 // What a chat client tells the model around an MCP server, kept short and neutral.
 const CLIENT_SYSTEM = `You are an AI assistant. The person has connected their Amber Notes app to you with an MCP server, and its tools are available. The person is busy and won't answer questions before you finish: make sensible choices, do the whole task with the tools, then reply briefly with what you did. Today is 2026-10-05.`;
@@ -453,7 +454,8 @@ const results: Awaited<ReturnType<typeof runTask>>[] = [];
 const workers = Math.min(Number(args.concurrency ?? 2), ["claude-cli", "codex-cli"].includes(model.provider) ? 2 : 4);
 await Promise.all(Array.from({ length: workers }, async () => {
   while (queue.length) {
-    if (await spent() > BUDGET) { console.log(`Budget of $${BUDGET} reached; stopping.`); return; }
+    // The CLIs bill nothing per token, so the paid-API budget doesn't stop them.
+    if (paid && await spent() > BUDGET) { console.log(`Budget of $${BUDGET} reached; stopping.`); return; }
     const { t, rep } = queue.shift()!;
     try { results.push(await runTask(t, rep)); } catch (e) { console.error(`${t.id}: ${(e as Error).stack ?? e}`); }
   }
