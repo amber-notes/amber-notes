@@ -97,9 +97,9 @@ Drawn to Google's branding guidelines (developers.google.com/identity/branding-g
 - "Sign in with Google", next to "Sign in with Apple".
 - Light: white fill, `#747775` 1 pt border, `#1F1F1F` text. Dark: `#131314` fill, `#8E918F` border,
   `#E3E3E3` text.
-- Height, corner radius and title size match Sign in with Apple's at the same height: the form's
-  row (`SignInView.Row`); the title is the Mac's row title, and on iPhone 18 pt medium, which is what
-  Apple's own button draws at the 48 pt row (`GoogleAuthButton.titleFont`).
+- Height, corner radius and title size are the form's (`SignInView.Row`,
+  `AmberProminentButtonStyle.rowTitle`), which match Sign in with Apple's at the same height
+  (18 pt medium at the iPhone's 48 pt row), so the two read as one family.
 
 One deliberate difference: the title is in the system font, as on Apple's button above it, not
 Google Sans. Google's page names Google Sans Medium; matching Apple's title size and face was the

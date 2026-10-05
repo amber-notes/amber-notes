@@ -59,11 +59,6 @@ import Testing
         #expect(GoogleAuthButton.logoSize(height: 30) == 16)
     }
 
-    /// Apple's own iPhone button draws "Sign in with Apple" at 18 pt at the 48 pt row.
-    @Test func theTitleMatchesApplesAtTheIPhoneRow() {
-        #expect(GoogleAuthButton.titleSize(height: 48) == 18)
-    }
-
     @Test func theSignInScreenOffersGoogleAndSaysSoPlainly() {
         #expect(SignInView.offersGoogle)
         #expect(SignInView.noPasswordNote.contains("Apple or Google"))

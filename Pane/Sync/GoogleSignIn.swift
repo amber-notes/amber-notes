@@ -40,7 +40,7 @@ struct GoogleAuthButton: View {
                     .frame(width: Self.logoSize(height: height), height: Self.logoSize(height: height))
                     .accessibilityHidden(true)
                 Text(title)
-                    .font(Self.titleFont(height: height))
+                    .font(AmberProminentButtonStyle.rowTitle(height: height))
                     .foregroundStyle(Color(Palette.rgb(colors.label)))
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
@@ -55,19 +55,6 @@ struct GoogleAuthButton: View {
         .opacity(isEnabled ? 1 : 0.6)
         .accessibilityLabel(title)
     }
-
-    /// The title as Sign in with Apple draws its own at the same height. The Mac's Apple button is
-    /// ours (`MacAppleButton`, the form's row title); the iPhone's is Apple's, which draws 18 pt
-    /// medium at the 48 pt row (measured in the simulator, iOS 26), a little under the row title.
-    static func titleFont(height: CGFloat) -> Font {
-        #if os(macOS)
-        AmberProminentButtonStyle.rowTitle(height: height)
-        #else
-        .system(size: titleSize(height: height), weight: .medium)
-        #endif
-    }
-
-    static func titleSize(height: CGFloat) -> CGFloat { (height * 0.375).rounded() }
 
     /// Between the logo and the words: Google's 12 pt on iPhone, 10 on the Mac's smaller row.
     #if os(macOS)
