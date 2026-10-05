@@ -356,9 +356,11 @@ function blockHTML(b: Block, c: Context): string {
     return `<td class="tcol" width="33%" valign="top" style="width:33%;padding:0 5px;">
 ${table(` width="100%" class="tcard" bgcolor="${L.paper}" style="background:${L.paper};border:1px solid ${L.paperEdge};border-radius:${CARD_R}px;"`)}
 <tr><td style="line-height:0;font-size:0;"><a href="${use}"><img src="${c.assets}/tc-${t.slug}.jpg" width="142" height="99" alt="${esc(t.title)} template cover" style="display:block;width:100%;height:auto;border:0;border-radius:${CARD_R}px ${CARD_R}px 0 0;color:${L.secondary};font-family:${SANS};font-size:12px;"></a></td></tr>
-<tr><td class="tbody" height="124" valign="top" style="height:124px;padding:10px 12px 12px;font-family:${SANS};">
+<tr><td class="tbody" height="104" valign="top" style="height:104px;padding:10px 12px 0;font-family:${SANS};vertical-align:top;">
 <a href="${use}" style="text-decoration:none;"><span class="ink tct" style="display:block;font-family:${DISPLAY};font-size:15px;line-height:1.25;font-weight:700;color:${L.text};">${esc(t.title)}</span></a>
-<a href="${use}" style="text-decoration:none;"><span class="sec tcs" style="display:block;margin:4px 0 8px;font-size:13px;line-height:1.4;color:${L.secondary};">${esc(t.tagline)}</span></a>
+<a href="${use}" style="text-decoration:none;"><span class="sec tcs" style="display:block;margin:4px 0 0;font-size:13px;line-height:1.4;color:${L.secondary};">${esc(t.tagline)}</span></a>
+</td></tr>
+<tr><td class="tuse" height="34" valign="bottom" style="height:34px;padding:8px 12px 12px;font-family:${SANS};vertical-align:bottom;">
 <a href="${use}" style="font-size:13px;font-weight:600;line-height:18px;color:${L.accentText};text-decoration:none;"><span class="lnk" style="color:${L.accentText};">Use template &rarr;</span></a>
 </td></tr></table></td>`;
   }).join("\n");
@@ -400,7 +402,8 @@ function htmlOf(d: Draft, c: Context): string {
     .small { line-height: 1.6 !important; }
     .crow { padding-bottom: 16px !important; }
     .tcol { display: block !important; width: 100% !important; padding: 0 0 12px !important; }
-    .tbody { height: auto !important; padding: 12px 16px 14px !important; }
+    .tbody { height: auto !important; padding: 12px 16px 0 !important; }
+    .tuse { height: auto !important; padding: 8px 16px 14px !important; }
     .tct { font-size: 18px !important; }
     .tcs { font-size: 15px !important; }
   }
