@@ -328,6 +328,9 @@ In agent hours, building on the prototype:
 5. Does a shared note keep its place in the owner's folders and land in "Shared with me" for others, or should there be one "Shared" folder for everyone?
 6. Free or paid? Collaboration is the clearest reason for a team plan, which runs against "no enterprise work this year"; a two-person share could stay free.
 7. Is it fine that a member's AI request lets the server see the shared note during that request, as it does for your own notes now?
-8. Sealed links show no title in link previews. Fine, or should the owner be able to publish the title openly?
-9. Should "Switch to an encrypted link" be offered to everyone with a live link, given that the old address stops working when they switch?
-10. Can anyone share a template, or only notes with an app? And do shared templates ever appear in the gallery (picked by us), or stay link-only?
+
+Decided for v1 (5 October 2026, team lead, pending Emil's say):
+
+- Sealed links show no title in link previews; the owner can't opt in to a public title yet.
+- Old `/n` links are never switched automatically. The Share sheet offers "Switch to an encrypted link", and switching stops the old address.
+- Shared templates stay link-only; none appear in the gallery for now.
