@@ -31,6 +31,15 @@ enum NotePageNetwork {
     struct Needs: Codable, Equatable {
         var hosts: [String] = []
         var keys: [KeyNeed] = []
+
+        init(hosts: [String] = [], keys: [KeyNeed] = []) { self.hosts = hosts; self.keys = keys }
+
+        /// Either list may be left out.
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            hosts = try c.decodeIfPresent([String].self, forKey: .hosts) ?? []
+            keys = try c.decodeIfPresent([KeyNeed].self, forKey: .keys) ?? []
+        }
     }
 
     static func needs(of html: String) -> Needs {

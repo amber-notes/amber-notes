@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Weather</title>
+<meta name="amber-needs" content='{"keys":[{"name":"OpenWeather","hosts":["localhost:8790"],"query":"appid={key}","help":"Make a free key at openweathermap.org under My API keys. (In this demo the service is a stand-in running on this Mac; any key works.)"}]}'>
+<style>
+  main { max-width: var(--amber-content-max); margin: 0 auto; padding: 8px var(--amber-gutter) 60px; }
+  h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; margin: 6px 0 14px; }
+  .now { background: var(--amber-surface); border-radius: var(--amber-radius); padding: 18px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px; align-items: center; }
+  .temp { font-size: 64px; font-weight: 700; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+  .desc { font-size: 20px; font-weight: 600; } .muted { color: var(--amber-text-secondary); }
+  .days { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
+  .day { background: var(--amber-surface); border-radius: var(--amber-radius-small); padding: 10px; text-align: center; font-variant-numeric: tabular-nums; }
+  button { font: inherit; font-weight: 600; border: 0; border-radius: var(--amber-radius-small); padding: 9px 14px; background: var(--amber-accent); color: var(--amber-on-accent); margin-top: 14px; }
+  .err { color: var(--amber-text-secondary); margin-top: 10px; }
+</style></head>
+<body><main id="app"></main>
+<script>
+  // The city is the note's first line after the title; the key is added by Amber Notes.
+  let state = { loading: true };
+  const city = () => (amber.note.markdown.split("\n").slice(1).find((l) => l.trim()) || "Lisbon").replace(/[#*_]/g, "").trim();
+  async function load() {
+    state = { loading: true }; render();
+    const r = await amber.fetch(`http://localhost:8790/data/2.5/weather?q=${encodeURIComponent(city())}&units=metric`, { key: "OpenWeather" });
+    if (!r.ok) state = { error: r.error };
+    else if (r.status !== 200) state = { error: `The service said ${r.status}.` };
+    else state = { data: JSON.parse(r.body) };
+    render();
+  }
+  function render() {
+    const app = document.getElementById("app");
+    if (state.loading) { app.innerHTML = `<h1>${city()}</h1><div class="muted">Getting the weather…</div>`; return; }
+    if (state.error) { app.innerHTML = `<h1>${city()}</h1><div class="now"><div class="temp">–</div><div><div class="desc">No weather yet</div><div class="err">${state.error}</div></div></div><button id="retry">Try Again</button>`;
+      document.getElementById("retry").addEventListener("click", load); return; }
+    const d = state.data;
+    app.innerHTML = `<h1>${d.name}</h1>
+      <div class="now"><div class="temp">${Math.round(d.main.temp)}°</div><div><div class="desc">${d.weather[0].description}</div><div class="muted">Feels like ${Math.round(d.main.feels_like)}° · wind ${Math.round(d.wind.speed)} m/s</div></div></div>
+      <div class="days">${d.daily.map((x) => `<div class="day"><div class="muted">${x.day}</div><div><b>${x.max}°</b> ${x.min}°</div></div>`).join("")}</div>`;
+  }
+  load();
+</script></body></html>

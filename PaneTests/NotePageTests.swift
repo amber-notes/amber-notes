@@ -1,5 +1,6 @@
 import Foundation
 import Network
+import SwiftData
 import Testing
 import WebKit
 @testable import Pane
@@ -452,6 +453,9 @@ import WebKit
         #expect(n.hosts == ["api.open-meteo.com"])
         #expect(n.keys.first?.name == "OpenWeather" && n.keys.first?.query == "appid={key}")
         #expect(NotePageNetwork.needs(of: "<p>none</p>") == .init())
+        // Either list may be left out.
+        #expect(NotePageNetwork.needs(of: #"<meta name="amber-needs" content='{"hosts":["a.example"]}'>"#).hosts == ["a.example"])
+        #expect(NotePageNetwork.needs(of: #"<meta name="amber-needs" content='{"keys":[{"name":"K","hosts":["b.example"]}]}'>"#).keys.map(\.name) == ["K"])
         var r = URLRequest(url: URL(string: "https://api.openweathermap.org/data?q=Lisbon")!)
         try? NotePageNetwork.inject(n.keys[0], value: "s3cret", into: &r)
         #expect(r.url?.absoluteString == "https://api.openweathermap.org/data?q=Lisbon&appid=s3cret")
@@ -507,5 +511,22 @@ import WebKit
         #expect(NoteIntents.appending("Milk", to: "Groceries\n- Eggs") == "Groceries\n- Eggs\nMilk\n")
         #expect(NoteIntents.appending("Milk\n\n", to: "Groceries\n") == "Groceries\nMilk\n")
         #expect(NoteIntents.appending("", to: "Groceries") == "Groceries")
+    }
+
+    /// The on-device model on this Mac, when there is one: prints what it says (no assertion on
+    /// the words; it can be unavailable).
+    @Test func onDeviceModelAnswersOrSaysWhyNot() async throws {
+        let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let a = try await NotePageDevice.handle(["op": "ai.available"], context: c.mainContext)
+        print("AI-AVAILABLE \(a)")
+        do {
+            let r = try await NotePageDevice.handle(["op": "ai.respond", "prompt": "Meeting: Lunch with Jonas at Time Out Market. Suggest three short questions to ask.",
+                                                     "instructions": "Three numbered questions, one line each."], context: c.mainContext)
+            print("AI-TEXT \(r["text"] ?? "")")
+            #expect((r["text"] as? String)?.isEmpty == false)
+        } catch {
+            print("AI-UNAVAILABLE \(error.localizedDescription)")
+            #expect(a["available"] as? Bool != true || error.localizedDescription.contains("couldn't answer"))
+        }
     }
 }

@@ -13,7 +13,8 @@ final class NotePagesUITests: XCTestCase {
 
     func launch(_ extra: [String]) {
         app = XCUIApplication()
-        app.launchArguments = ["-uitest", "-demo", "-pageDemo"] + extra
+        // The showcase brings its own notes (its habit tracker would clash with the demo's).
+        app.launchArguments = ["-uitest", "-demo"] + (extra.contains("-showcase") ? [] : ["-pageDemo"]) + extra
         app.launch()
     }
 
@@ -53,7 +54,7 @@ final class NotePagesUITests: XCTestCase {
         pause(3)
         shot("03-habit-page")
         mark("habit-tick")
-        let read = web("Read")
+        let read = web("Read today")
         XCTAssertTrue(read.waitForExistence(timeout: 5))
         read.tap()
         pause(1.0)
@@ -215,5 +216,119 @@ final class NotePagesUITests: XCTestCase {
         if all.waitForExistence(timeout: 4) { all.tap() }
         pause(1.5)
         shot("mark-\(style)")
+    }
+
+    // MARK: Showcase
+
+    /// Taps the system's own permission alert, whichever it is.
+    func allowSystemAlert(_ labels: [String] = ["Allow Full Access", "Allow While Using App", "Allow", "OK"], timeout: Double = 6) {
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        for _ in 0..<Int(timeout * 2) {
+            for l in labels where springboard.buttons[l].exists { springboard.buttons[l].tap(); return }
+            pause(0.5)
+        }
+    }
+
+    func openNote(_ title: String) {
+        let all = app.staticTexts["All Notes"].firstMatch
+        if all.waitForExistence(timeout: 4) { all.tap() }
+        let row = app.staticTexts[title].firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        row.tap()
+        pause(2)
+    }
+
+    /// The habit tracker sets a daily reminder through Reminders' own prompt.
+    func testShowcaseHabit() {
+        launch(["-showcase", pages, "-open", "Habit tracker"])
+        pause(2.5)
+        shot("30-habit-app")
+        let bell = app.webViews.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'Remind me daily: Read'")).firstMatch
+        XCTAssertTrue(bell.waitForExistence(timeout: 5))
+        bell.tap()
+        allowSystemAlert()
+        pause(2)
+        shot("31-habit-reminder-set")
+        pause(1)
+    }
+
+    /// Meeting prep: today's events from Calendar, a person from Contacts' picker, on-device AI.
+    func testShowcaseMeeting() {
+        launch(["-showcase", pages, "-seedCalendar", "-open", "Meeting prep"])
+        allowSystemAlert(timeout: 3)
+        pause(3)
+        shot("32-meeting-today")
+        let lunch = web("Lunch with Jonas")
+        if lunch.waitForExistence(timeout: 4) { lunch.tap() }
+        pause(1)
+        let add = web("Add a person…")
+        if add.waitForExistence(timeout: 4) { add.tap() }
+        pause(2)
+        let kate = app.staticTexts["Kate Bell"].firstMatch
+        if kate.waitForExistence(timeout: 5) { kate.tap() }
+        pause(2)
+        let ask = web("Suggest questions")
+        if ask.waitForExistence(timeout: 4) { ask.tap() }
+        pause(4)
+        app.webViews.firstMatch.swipeUp(velocity: .slow)
+        pause(1.5)
+        shot("33-meeting-prepared")
+        pause(1)
+    }
+
+    /// The trip log: location (system prompt), the map, the weather through an approved host, photos.
+    func testShowcaseTrip() {
+        launch(["-showcase", pages, "-open", "Lisbon trip log"])
+        pause(2.5)
+        shot("34-trip-empty")
+        web("Where am I?").tap()
+        allowSystemAlert()
+        let allow = app.alerts.buttons["Allow"].firstMatch
+        if allow.waitForExistence(timeout: 8) {
+            shot("35-trip-allow-host")
+            allow.tap()
+        }
+        pause(3)
+        shot("36-trip-here")
+        web("Add photos").tap()
+        pause(3)
+        let photo = app.images.matching(NSPredicate(format: "label BEGINSWITH 'Photo'")).firstMatch
+        if photo.waitForExistence(timeout: 5) {
+            photo.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            for l in ["Add", "Done"] where app.buttons[l].firstMatch.exists { app.buttons[l].firstMatch.tap(); break }
+        }
+        pause(3)
+        shot("37-trip-photos")
+        pause(1)
+    }
+
+    /// The weather app needs an API key: the card, adding the key, the app working, the log.
+    func testShowcaseWeather() {
+        launch(["-showcase", pages, "-open", "Weather"])
+        pause(3)
+        shot("38-weather-needs-key")
+        let add = app.buttons["keycard.add"].firstMatch
+        XCTAssertTrue(add.waitForExistence(timeout: 5))
+        add.tap()
+        pause(1.2)
+        let value = app.secureTextFields["apikey.value"].firstMatch
+        XCTAssertTrue(value.waitForExistence(timeout: 4))
+        value.tap()
+        value.typeText("demo-key-123")
+        pause(0.6)
+        shot("39-weather-add-key")
+        app.buttons["apikey.save"].firstMatch.tap()
+        pause(1)
+        web("Try Again").tap()
+        let allow = app.alerts.buttons["Allow"].firstMatch
+        if allow.waitForExistence(timeout: 6) { allow.tap() }
+        pause(2.5)
+        shot("40-weather-works")
+        app.buttons["editor.more"].firstMatch.tap()
+        pause(0.8)
+        app.buttons["editor.netLog"].firstMatch.tap()
+        pause(1.5)
+        shot("41-weather-log")
+        pause(1)
     }
 }

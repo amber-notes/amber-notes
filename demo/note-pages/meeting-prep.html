@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Meeting prep</title>
+<style>
+  main { max-width: var(--amber-content-max); margin: 0 auto; padding: 8px var(--amber-gutter) 60px; }
+  h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; margin: 6px 0 2px; }
+  .sub { color: var(--amber-text-secondary); margin-bottom: 18px; }
+  .layout { display: grid; gap: 18px; }
+  @media (min-width: 900px) { .layout { grid-template-columns: minmax(280px, 360px) minmax(0, 1fr); align-items: start; } }
+  .card { background: var(--amber-surface); border-radius: var(--amber-radius); overflow: hidden; }
+  .ev { display: grid; grid-template-columns: 58px minmax(0, 1fr); gap: 10px; padding: 12px 14px; border-top: .5px solid var(--amber-separator); cursor: pointer; }
+  .ev:first-child { border-top: 0; }
+  .ev.sel { background: var(--amber-accent-soft); }
+  .time { font-variant-numeric: tabular-nums; font-weight: 600; font-size: 15px; }
+  .time small { display: block; color: var(--amber-text-secondary); font-weight: 400; }
+  .title { font-weight: 600; } .meta { color: var(--amber-text-secondary); font-size: 14px; }
+  .panel { padding: 16px; }
+  .panel h2 { font-size: 21px; margin: 0 0 4px; }
+  .label { font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--amber-text-secondary); margin: 16px 0 8px; }
+  .people { display: flex; flex-wrap: wrap; gap: 8px; }
+  .person { display: flex; align-items: center; gap: 8px; background: var(--amber-bg); border-radius: 999px; padding: 4px 12px 4px 4px; font-size: 15px; }
+  .avatar { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--amber-accent); color: var(--amber-on-accent); font-size: 12px; font-weight: 700; }
+  textarea { width: 100%; box-sizing: border-box; min-height: 90px; font: inherit; border: 0; border-radius: var(--amber-radius-small); padding: 10px; background: var(--amber-bg); color: var(--amber-text); resize: vertical; }
+  .btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  button { font: inherit; font-weight: 600; font-size: 15px; border: 0; border-radius: var(--amber-radius-small); padding: 8px 12px; background: var(--amber-fill); color: var(--amber-text); }
+  button.primary { background: var(--amber-accent); color: var(--amber-on-accent); }
+  .ai { background: var(--amber-bg); border-radius: var(--amber-radius-small); padding: 10px 12px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; margin-top: 10px; }
+  .ai.note { color: var(--amber-text-secondary); }
+  .empty { padding: 20px; color: var(--amber-text-secondary); }
+</style></head>
+<body><main id="app"><h1>Meeting prep</h1><div class="sub">Asking Calendar for today…</div></main>
+<script>
+  // Today's events come from Calendar on this device; prep notes and added people are kept in the
+  // app's own data. Nothing goes into the note's text unless you press "Save to note".
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const hm = (iso) => new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  const initials = (n) => n.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+  let events = [], sel = 0, ai = "", aiNote = "", status = "";
+  const keyOf = (e) => `${e.title}|${e.start}`;
+  const prep = () => (amber.data.values.prep || {})[keyOf(events[sel])] || { notes: "", people: [] };
+
+  async function load() {
+    const r = await amber.device.calendar.today();
+    if (!r.ok) { status = r.error; events = []; } else { events = r.events.filter((e) => !e.allDay); status = ""; }
+    render();
+  }
+
+  async function savePrep(p) {
+    const all = Object.assign({}, amber.data.values.prep || {}, { [keyOf(events[sel])]: p });
+    await amber.store.set("prep", all);
+  }
+
+  function render() {
+    const app = document.getElementById("app");
+    const today = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+    if (!events.length) { app.innerHTML = `<h1>Meeting prep</h1><div class="sub">${today}</div><div class="card empty">${esc(status || "No meetings today.")}</div>`; return; }
+    const e = events[sel], p = prep();
+    const people = [...e.attendees.map((a) => a.name || a.email), ...p.people.map((x) => x.name)].filter(Boolean);
+    app.innerHTML = `<h1>Meeting prep</h1><div class="sub">${today} · ${events.length} meetings</div>
+      <div class="layout"><section class="card">${events.map((x, i) => `
+        <div class="ev ${i === sel ? "sel" : ""}" data-i="${i}"><div class="time">${hm(x.start)}<small>${hm(x.end)}</small></div>
+          <div><div class="title">${esc(x.title)}</div><div class="meta">${esc(x.location || x.calendar)}${x.attendees.length ? ` · ${x.attendees.length} people` : ""}</div></div></div>`).join("")}</section>
+      <section class="card panel"><h2>${esc(e.title)}</h2><div class="meta">${hm(e.start)}–${hm(e.end)}${e.location ? " · " + esc(e.location) : ""}</div>
+        <div class="label">People</div>
+        <div class="people">${people.map((n) => `<div class="person"><span class="avatar">${esc(initials(n))}</span>${esc(n)}</div>`).join("") || '<span class="meta">Nobody listed</span>'}</div>
+        <div class="btns"><button id="add">Add a person…</button></div>
+        <div class="label">My prep</div>
+        <textarea id="notes" placeholder="What I want out of this meeting">${esc(p.notes)}</textarea>
+        <div class="btns"><button class="primary" id="ask">Suggest questions</button><button id="save">Save to note</button></div>
+        ${ai ? `<div class="ai">${esc(ai)}</div>` : ""}${aiNote ? `<div class="ai note">${esc(aiNote)}</div>` : ""}
+      </section></div>`;
+    app.querySelectorAll(".ev").forEach((el) => el.addEventListener("click", () => { sel = +el.dataset.i; ai = aiNote = ""; render(); }));
+    document.getElementById("notes").addEventListener("change", (ev) => savePrep({ ...prep(), notes: ev.target.value }));
+    document.getElementById("add").addEventListener("click", async () => {
+      const r = await amber.device.contacts.pick();
+      if (r.ok && r.contact) { await savePrep({ ...prep(), people: [...prep().people, { name: r.contact.name, email: (r.contact.emails || [])[0] || "" }] }); render(); }
+    });
+    document.getElementById("ask").addEventListener("click", async () => {
+      ai = ""; aiNote = "Thinking on this device…"; render();
+      const r = await amber.ai.respond(`Meeting: ${e.title}. People: ${people.join(", ")}. My notes: ${prep().notes || "none"}. Suggest three short questions to ask.`,
+        { instructions: "You help someone prepare for a meeting. Three numbered questions, one line each." });
+      if (r.ok) { ai = r.text; aiNote = "Written on this device. Nothing was sent anywhere."; } else { aiNote = r.error; }
+      render();
+    });
+    document.getElementById("save").addEventListener("click", async () => {
+      const text = `${hm(e.start)} ${e.title}\nPeople: ${people.join(", ")}\n${prep().notes}${ai ? "\n" + ai : ""}`;
+      const r = await amber.update({ op: "set_text", heading: "Today", text });
+      aiNote = r.ok ? "Saved under Today in the note." : r.error; render();
+    });
+  }
+  amber.onChange(() => { if (events.length) render(); });
+  load();
+</script></body></html>

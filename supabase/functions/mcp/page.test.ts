@@ -49,3 +49,12 @@ Deno.test("page data is an object of values and collections of records with uniq
   const big = JSON.stringify({ values: { a: "x".repeat(70_000) }, collections: { runs: [{ id: "1" }] } });
   assertEquals(pageDataView(big).data_outline, { values: ["a"], collections: { runs: 1 } });
 });
+
+Deno.test("declared hosts may appear for amber.fetch; the page's own fetch still may not", () => {
+  const needs = `<meta name="amber-needs" content='{"hosts":["api.open-meteo.com"],"keys":[{"name":"OW","hosts":["api.openweathermap.org"]}]}'>`;
+  const p = (s: string) => pageProblems(needs + page(`<script>${s}</script>`));
+  assertEquals(p(`amber.fetch("https://api.open-meteo.com/v1/forecast?latitude=1")`), []);
+  assertEquals(p(`amber.fetch("https://api.openweathermap.org/data/2.5/weather", { key: "OW" })`), []);
+  assertStringIncludes(p(`amber.fetch("https://evil.example/x")`).join(), "evil.example");
+  assertStringIncludes(p(`fetch("https://api.open-meteo.com/v1")`).join(), "itself (fetch)");
+});

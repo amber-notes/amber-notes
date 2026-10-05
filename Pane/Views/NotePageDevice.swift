@@ -221,6 +221,12 @@ enum NotePageDevice {
     }
 
     #if os(iOS)
+    /// Carries a picker's result out of its callback.
+    final class Box<T>: @unchecked Sendable {
+        let value: T
+        init(_ value: T) { self.value = value }
+    }
+
     static func top() throws -> UIViewController {
         let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
         guard var vc = scenes.flatMap(\.windows).first(where: \.isKeyWindow)?.rootViewController else { throw Unavailable("Nothing to show it on.") }
@@ -245,10 +251,10 @@ enum NotePageDevice {
         let d = PhotoDelegate()
         photoDelegate = d
         picker.delegate = d
-        let results: [PHPickerResult] = await withCheckedContinuation { c in
-            d.done = { c.resume(returning: $0) }
-            (try? top())?.present(picker, animated: true) ?? c.resume(returning: [])
-        }
+        let results: [PHPickerResult] = await withCheckedContinuation { (c: CheckedContinuation<Box<[PHPickerResult]>, Never>) in
+            d.done = { c.resume(returning: Box($0)) }
+            (try? top())?.present(picker, animated: true) ?? c.resume(returning: Box([]))
+        }.value
         photoDelegate = nil
         var files: [[String: Any]] = []
         for r in results {
@@ -299,10 +305,10 @@ enum NotePageDevice {
         let d = ContactDelegate()
         contactDelegate = d
         picker.delegate = d
-        let contact: CNContact? = await withCheckedContinuation { c in
-            d.done = { c.resume(returning: $0) }
-            (try? top())?.present(picker, animated: true) ?? c.resume(returning: nil)
-        }
+        let contact: CNContact? = await withCheckedContinuation { (c: CheckedContinuation<Box<CNContact?>, Never>) in
+            d.done = { c.resume(returning: Box($0)) }
+            (try? top())?.present(picker, animated: true) ?? c.resume(returning: Box(nil))
+        }.value
         contactDelegate = nil
         guard let contact else { return ["contact": NSNull()] }
         return ["contact": [
@@ -368,6 +374,9 @@ enum NotePageDevice {
         #if canImport(FoundationModels)
         switch SystemLanguageModel.default.availability {
         case .available: return ["available": true]
+        case .unavailable(.deviceNotEligible): return ["available": false, "reason": "this device can't run Apple Intelligence"]
+        case .unavailable(.appleIntelligenceNotEnabled): return ["available": false, "reason": "Apple Intelligence is turned off in Settings"]
+        case .unavailable(.modelNotReady): return ["available": false, "reason": "the model is still downloading"]
         case .unavailable(let why): return ["available": false, "reason": "\(why)"]
         }
         #else
@@ -380,11 +389,15 @@ enum NotePageDevice {
         guard let prompt = m["prompt"] as? String, !prompt.isEmpty, prompt.count <= 20_000 else { throw NotePage.OpError("Send { prompt } (at most 20,000 characters).") }
         #if canImport(FoundationModels)
         guard case .available = SystemLanguageModel.default.availability else {
-            throw Unavailable("On-device AI isn't available here (\(aiAvailability()["reason"] ?? "")). It needs Apple Intelligence turned on.")
+            throw Unavailable("On-device AI isn't available here: \(aiAvailability()["reason"] ?? "unknown").")
         }
         let session = LanguageModelSession(instructions: (m["instructions"] as? String) ?? "Answer briefly and plainly.")
-        let answer = try await session.respond(to: prompt)
-        return ["text": answer.content]
+        do {
+            let answer = try await session.respond(to: prompt)
+            return ["text": answer.content]
+        } catch {
+            throw Unavailable("The on-device model couldn't answer right now. Try again in a moment.")
+        }
         #else
         throw Unavailable("On-device AI isn't available on this system.")
         #endif

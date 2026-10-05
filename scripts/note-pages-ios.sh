@@ -22,6 +22,11 @@ if ! nice -n 10 xcodebuild -project Pane.xcodeproj -scheme Pane -destination "id
   echo "BUILD FAILED"; exit 1
 fi
 
+# Showcase: Lisbon for location, Calendar allowed for the made-up meetings, the weather stand-in.
+xcrun simctl location "$SIM" set 38.7139,-9.1334 2>/dev/null || true
+xcrun simctl privacy "$SIM" grant calendar dev.emilwagman.pane 2>/dev/null || true
+python3 scripts/note-pages-weather-mock.py & MOCK=$!
+trap 'kill $MOCK 2>/dev/null' EXIT
 for t in ${=TESTS:-testHabitTracker testBudget testSandbox}; do
   xcrun simctl io "$SIM" recordVideo --codec h264 --force "$OUT/$t.mp4" 2>/dev/null &
   REC=$!

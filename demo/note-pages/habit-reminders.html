@@ -38,6 +38,11 @@
   .check svg { width: 16px; height: 16px; opacity: 0; transition: opacity .15s; }
   .habit.done .check svg { opacity: 1; }
   .habit:active .check { transform: scale(0.88); }
+  .bell { width: 30px; height: 30px; border: 0; border-radius: 50%; background: none; color: var(--amber-text-secondary); display: grid; place-items: center; flex: none; }
+  .bell svg { width: 17px; height: 17px; }
+  .bell.on { color: var(--amber-accent-text); background: var(--amber-accent-soft); }
+  .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--amber-text); color: var(--amber-bg); padding: 10px 16px; border-radius: 999px; font-size: 15px; font-weight: 600; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  .toast.show { opacity: 1; }
   .pop { animation: pop .35s cubic-bezier(.34,1.56,.64,1); }
   @keyframes pop { 0% { transform: scale(.7); } 100% { transform: scale(1); } }
   .grid { padding: 14px 14px 12px; display: grid; gap: 6px; }
@@ -59,7 +64,7 @@
 </style>
 </head>
 <body>
-<main id="app"></main>
+<main id="app"></main><div class="toast" id="toast" role="status"></div>
 <script>
   const DONE = /^(✓|✔|x|yes|y|1|true|done)$/i;
   const flame = '<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M8.6 1c.4 2.2-.5 3.4-1.6 4.6C5.8 6.9 4 8.6 4 11a4 4 0 0 0 8 0c0-1.7-.8-2.9-1.5-3.8-.1 1-.6 1.8-1.4 2.2.5-2.8-.3-6.4-.5-8.4Z"/></svg>';
@@ -68,6 +73,16 @@
   const pad = (n) => String(n).padStart(2, "0");
   const dayOf = (iso, delta) => { const d = new Date(iso + "T12:00:00"); d.setDate(d.getDate() + delta); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
   let popped = null, error = "";
+  // Which habits have a daily reminder lives in the app's own data, not in the note.
+  const bellIcon = '<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M8 1.5a4 4 0 0 0-4 4v2.4L2.8 10.3a.6.6 0 0 0 .5.9h9.4a.6.6 0 0 0 .5-.9L12 7.9V5.5a4 4 0 0 0-4-4Zm-1.7 10.8a1.8 1.8 0 0 0 3.4 0Z"/></svg>';
+  function toast(t) { const el = document.getElementById("toast"); el.textContent = t; el.classList.add("show"); setTimeout(() => el.classList.remove("show"), 2200); }
+  async function remind(name) {
+    const r = await amber.device.reminders.create({ title: `${name}`, notes: "From the Habit tracker note", due: "20:00", repeat: "daily" });
+    if (!r.ok) { toast(r.error); return; }
+    const on = Object.assign({}, amber.data.values.reminders || {}, { [name]: r.id });
+    await amber.store.set("reminders", on);
+    toast(`Daily reminder for ${name} at 20:00`);
+  }
 
   function model(note) {
     const t = note.tables.find((t) => t.columns.some((c) => /^date$/i.test(c.name)));
@@ -110,6 +125,7 @@
         <div class="habit ${h.today ? "done" : ""}" data-i="${i}">
           <div class="name">${esc(h.name)}</div>
           <div class="streak ${h.streak >= 3 ? "hot" : ""}">${h.streak ? flame + h.streak + (h.streak === 1 ? " day" : " days") : "Start today"}</div>
+          <button class="bell ${(amber.data.values.reminders || {})[h.name] ? "on" : ""}" data-bell="${esc(h.name)}" aria-label="Remind me daily: ${esc(h.name)}">${bellIcon}</button>
           <div class="check ${popped === i ? "pop" : ""}" role="checkbox" aria-checked="${h.today}" aria-label="${esc(h.name)} today">${tick}</div>
         </div>`).join("")}
       </div>
@@ -127,9 +143,10 @@
         <div class="stat"><div class="n">${Math.max(0, ...m.habits.map((h) => h.best))}</div><div class="t">Best run</div></div>
       </div>
       </section></div>
-      <div class="foot">Ticks are written to the table in this note.</div>`;
+      <div class="foot">Ticks are written to the table in this note. Bells add a daily reminder in Reminders.</div>`;
     popped = null;
     app.querySelectorAll(".habit").forEach((el) => el.addEventListener("click", () => toggle(m, m.habits[+el.dataset.i], +el.dataset.i)));
+    app.querySelectorAll(".bell").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); remind(b.dataset.bell); }));
   }
 
   async function toggle(m, h, i) {

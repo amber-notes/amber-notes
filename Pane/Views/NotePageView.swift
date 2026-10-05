@@ -233,7 +233,7 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
                     reply["ok"] = true
                     replyHandler(reply, nil)
                 } catch {
-                    replyHandler(["ok": false, "error": (error as? LocalizedError)?.errorDescription ?? "That didn't work."], nil)
+                    replyHandler(["ok": false, "error": (error as? LocalizedError)?.errorDescription ?? error.localizedDescription], nil)
                 }
             }
             return

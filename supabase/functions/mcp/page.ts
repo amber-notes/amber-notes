@@ -23,6 +23,14 @@ Change the note only through amber.update(op), which returns a Promise of { ok: 
   { op: "delete_row", table, row }  { op: "move_row", table, from, to }
   { op: "set_text", heading, text }            replaces the text under that heading (up to the next heading of the same level)
 Each change lands in the note's markdown as a normal edit the person can see and undo.
+The page's own data (not the note's text; for state the person wouldn't type, like settings, logs, a schedule): amber.data = { values, collections };
+  amber.store.get(key) / amber.store.set(key, value); amber.store.collection(name).list() / query(fn) / get(id) / add(fields) -> { id } / update(id, patch) / remove(id); amber.setData(mergePatch).
+  amber.onChange(fn) passes (note, data). Up to 4 MB. Files: amber.files.save({ name, type, base64 }) -> { file: { $file, ... } }, amber.files.read(ref) -> { dataURL }; keep the ref in a record.
+The device, through the system's own prompts (results go to the page only; write to the note explicitly if wanted): amber.device.reminders.create({ title, due, repeat: "daily" }), calendar.today() -> { events: [{ title, start, end, location, attendees }] },
+  notify({ title, body, at | in }), openURL(url), photos.pick({ limit }) / camera.take() -> { files: [{ $file, thumb }] }, contacts.pick() -> { contact }, files.pick(), location.once() -> { lat, lon, place },
+  maps.open({ lat, lon | query, directions }), maps.snapshot({ lat, lon, km, width, height, dark }) -> { dataURL }. On-device AI: amber.ai.available(), amber.ai.respond(prompt, { instructions }) -> { text }. Every call returns { ok, ... } or { ok: false, error }.
+Network: the page itself can't reach anything. Declare hosts in <meta name="amber-needs" content='{"hosts": ["api.open-meteo.com"], "keys": [{ "name": "OpenWeather", "hosts": ["api.openweathermap.org"], "query": "appid={key}", "help": "How to get one" }]}'>
+  and call amber.fetch(url, { method, headers, body, key }) -> { ok, status, body }. The person approves each host once and sees every request; with key, the app adds that API key (the page never sees it).
 Look like Amber Notes: the app sets these CSS variables on :root, already switched for light and dark, and gives body its font, text colour and background. Use them instead of your own colours and fonts:
   --amber-bg (the note's background), --amber-surface (cards and grouped rows), --amber-fill (controls, empty cells), --amber-text, --amber-text-secondary, --amber-separator,
   --amber-accent (amber, for marks and filled controls), --amber-accent-text (amber for text), --amber-accent-soft (a soft amber fill), --amber-on-accent (text on --amber-accent),
@@ -31,6 +39,19 @@ Fit every width: the page fills the note, from 320 px on a small iPhone to 1,800
 
 const NAMESPACES = /^https?:\/\/www\.w3\.org\/(2000\/svg|1999\/xhtml|1999\/xlink|XML\/1998\/namespace)$/;
 
+/** The hosts a page declares in <meta name="amber-needs" content='{"hosts": [...], "keys": [{"hosts": [...]}]}'>. */
+export function declaredHosts(html: string): Set<string> {
+  const tag = html.match(/<meta[^>]*name=["']amber-needs["'][^>]*>/i)?.[0];
+  const content = tag?.match(/content=(['"])([\s\S]*)\1/)?.[2];
+  if (!content) return new Set();
+  try {
+    const n = JSON.parse(content.replace(/&quot;/g, '"'));
+    return new Set([...(n.hosts ?? []), ...(n.keys ?? []).flatMap((k: { hosts?: string[] }) => k.hosts ?? [])].map((h: string) => String(h).toLowerCase()));
+  } catch {
+    return new Set();
+  }
+}
+
 /** Why a page can't be stored, or null when it can. */
 export function pageProblems(html: string): string[] {
   const out: string[] = [];
@@ -38,9 +59,13 @@ export function pageProblems(html: string): string[] {
   if (bytes > MAX_PAGE_BYTES) out.push(`The page is ${Math.ceil(bytes / 1024)} KB; the limit is ${MAX_PAGE_BYTES / 1024} KB. The note's data comes from window.amber.note, so the page itself stays small.`);
   if (!/<(script|style|body|div|main|html)\b/i.test(html)) out.push("This doesn't look like an HTML page.");
 
-  // Any address with a scheme (https://, ws://, ftp://…), except the SVG and XHTML namespace names.
-  const urls = [...html.matchAll(/\b[a-z][a-z0-9+.-]*:\/\/[^\s"'<>)]*/gi)].map((m) => m[0]).filter((u) => !NAMESPACES.test(u.replace(/\/$/, "")));
-  if (urls.length) out.push(`External addresses aren't allowed (the page has no network): ${[...new Set(urls)].slice(0, 3).join(", ")}.`);
+  // Any address with a scheme (https://, ws://, ftp://…), except the SVG and XHTML namespace names
+  // and the hosts the page declares for amber.fetch.
+  const declared = declaredHosts(html);
+  const urls = [...html.matchAll(/\b[a-z][a-z0-9+.-]*:\/\/[^\s"'<>)]*/gi)].map((m) => m[0])
+    .filter((u) => !NAMESPACES.test(u.replace(/\/$/, "")))
+    .filter((u) => { try { const x = new URL(u); return !(/^https?:$/.test(x.protocol) && declared.has(x.host.toLowerCase())); } catch { return true; } });
+  if (urls.length) out.push(`External addresses aren't allowed: ${[...new Set(urls)].slice(0, 3).join(", ")}. The page has no network of its own; to call a service, declare its host in <meta name="amber-needs"> and use amber.fetch.`);
   // Protocol-relative addresses and stylesheet imports.
   if (/\b(src|href|action|formaction|poster|data|srcset|background)\s*=\s*["']?\s*\/\//i.test(html) || /url\(\s*["']?\s*\/\//i.test(html)) {
     out.push("Protocol-relative addresses (//host/...) aren't allowed.");
@@ -49,9 +74,9 @@ export function pageProblems(html: string): string[] {
   const tags = [...new Set([...html.matchAll(/<(base|link|iframe|frame|frameset|object|embed|portal|applet)\b/gi)].map((m) => m[1].toLowerCase()))];
   if (tags.length) out.push(`<${tags.join(">, <")}> isn't allowed: everything must be inline.`);
   if (/<meta\b[^>]*http-equiv\s*=\s*["']?\s*refresh/i.test(html)) out.push("A meta refresh isn't allowed.");
-  const apis = [...new Set([...html.matchAll(/\b(fetch|sendBeacon|importScripts)\s*\(|\bnew\s+(XMLHttpRequest|WebSocket|EventSource|Worker|SharedWorker|RTCPeerConnection)\b|\bnavigator\.serviceWorker\b|\bwindow\.open\s*\(/g)]
+  const apis = [...new Set([...html.matchAll(/(?<!amber\s*\.\s*)\b(fetch|sendBeacon|importScripts)\s*\(|\bnew\s+(XMLHttpRequest|WebSocket|EventSource|Worker|SharedWorker|RTCPeerConnection)\b|\bnavigator\.serviceWorker\b|\bwindow\.open\s*\(/g)]
     .map((m) => m[1] ?? m[2] ?? m[0].replace(/\s*\($/, "")))];
-  if (apis.length) out.push(`The page can't use the network (${apis.join(", ")}). Read the note from window.amber.note and change it with amber.update.`);
+  if (apis.length) out.push(`The page can't use the network itself (${apis.join(", ")}). Use amber.fetch for declared hosts, and amber.note / amber.update for the note.`);
   if (!/\bamber\s*\.\s*(note|onChange)\b/.test(html)) out.push("The page must read the note from window.amber.note (or amber.onChange), not carry a copy of its data.");
   return out;
 }
