@@ -6,8 +6,8 @@
   "skill": false,
   "seconds": 39,
   "score": 1,
-  "passed": 24,
-  "total": 24,
+  "passed": 26,
+  "total": 26,
   "checks": [
     {
       "name": "has_page",
@@ -39,6 +39,14 @@
     },
     {
       "name": "phone_targets",
+      "pass": true
+    },
+    {
+      "name": "focused_screen",
+      "pass": true
+    },
+    {
+      "name": "visible_fields",
       "pass": true
     },
     {
@@ -223,6 +231,9 @@
           "Household expenses"
         ],
         "excerpt": "Household expenses 13 915 kr Electricity Bills 640 Groceries Food 1 210 Dentist Health 950 Groceries Food 880 Rent Housing 9 500 Groceries Food 735",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -263,6 +274,9 @@
           "Household expenses"
         ],
         "excerpt": "Household expenses 13 915 kr Electricity Bills 640 Groceries Food 1 210 Dentist Health 950 Groceries Food 880 Rent Housing 9 500 Groceries Food 735",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -303,6 +317,9 @@
           "Household expenses"
         ],
         "excerpt": "Household expenses 13 915 kr Electricity Bills 640 Groceries Food 1 210 Dentist Health 950 Groceries Food 880 Rent Housing 9 500 Groceries Food 735",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -343,6 +360,9 @@
           "Household expenses"
         ],
         "excerpt": "Household expenses 13 915 kr Electricity Bills 640 Groceries Food 1 210 Dentist Health 950 Groceries Food 880 Rent Housing 9 500 Groceries Food 735",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -382,6 +402,9 @@
           "Household expenses"
         ],
         "excerpt": "Household expenses 13 915 kr Electricity Bills 640 Groceries Food 1 210 Dentist Health 950 Groceries Food 880 Rent Housing 9 500 Groceries Food 735",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -420,7 +443,7 @@
       },
       "large": {
         "pass": true,
-        "detail": "595 ms to load 400 rows"
+        "detail": "602 ms to load 400 rows"
       }
     },
     "dataAfter": {}

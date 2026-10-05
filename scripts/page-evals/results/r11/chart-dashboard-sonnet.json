@@ -5,9 +5,9 @@
   "round": "r11",
   "skill": false,
   "seconds": 45,
-  "score": 1,
-  "passed": 27,
-  "total": 27,
+  "score": 0.7241379310344828,
+  "passed": 21,
+  "total": 29,
   "checks": [
     {
       "name": "has_page",
@@ -19,7 +19,8 @@
     },
     {
       "name": "no_console_errors",
-      "pass": true
+      "pass": false,
+      "detail": "375-light: Refused to load amber-lib:chart.js because it does not appear in the script-src directive of the Content Security Policy. | 375-light: ReferenceError: Can't find variable: Chart"
     },
     {
       "name": "no_network",
@@ -39,6 +40,14 @@
     },
     {
       "name": "phone_targets",
+      "pass": true
+    },
+    {
+      "name": "focused_screen",
+      "pass": true
+    },
+    {
+      "name": "visible_fields",
       "pass": true
     },
     {
@@ -67,7 +76,8 @@
     },
     {
       "name": "distinct_look",
-      "pass": true
+      "pass": false,
+      "detail": "accent hue 31, 0% non-amber color"
     },
     {
       "name": "labelled_controls",
@@ -87,19 +97,23 @@
     },
     {
       "name": "probe_follows",
-      "pass": true
+      "pass": false,
+      "detail": "Refused to load amber-lib:chart.js because it does not appear in the script-src directive of the Content Security Policy."
     },
     {
       "name": "probe_escapes",
-      "pass": true
+      "pass": false,
+      "detail": "Refused to load amber-lib:chart.js because it does not appear in the script-src directive of the Content Security Policy."
     },
     {
       "name": "probe_empty",
-      "pass": true
+      "pass": false,
+      "detail": "Refused to load amber-lib:chart.js because it does not appear in the script-src directive of the Content Security Policy."
     },
     {
       "name": "probe_large",
-      "pass": true
+      "pass": false,
+      "detail": "Refused to load amber-lib:chart.js because it does not appear in the script-src directive of the Content Security Policy."
     },
     {
       "name": "note_unchanged",
@@ -111,11 +125,13 @@
     },
     {
       "name": "libraries_ok",
-      "pass": true
+      "pass": false,
+      "detail": "Don't point <script src> at amber-lib: yourself: declare libraries in <meta name=\"amber-libs\"> (or await amber.lib(name)). The app uses Chart but doesn't declare it: add \"chart\" to <meta name=\"amber-libs\">."
     },
     {
       "name": "uses_a_chart_library",
-      "pass": true
+      "pass": false,
+      "detail": "no bundled chart library and no drawn charts"
     }
   ],
   "tool_calls": 6,
@@ -186,9 +202,12 @@
         "name": "375-light",
         "width": 375,
         "scheme": "light",
-        "errors": [],
+        "errors": [
+          "Refused to load amber-lib:chart.js because it does not appear in the script-src directive of the Content Security Policy.",
+          "ReferenceError: Can't find variable: Chart"
+        ],
         "overflowPx": 0,
-        "textLength": 534,
+        "textLength": 537,
         "shown": 7,
         "sampled": 12,
         "bg": "rgb(255, 254, 253)",
@@ -211,6 +230,9 @@
           "Best and worst month per line"
         ],
         "excerpt": "Sales 2026 Jan to Sep · 9 months · 3 lines 671,100 Total sales 90,200 Sep · +9.9% vs Aug Sep Best month · 90,200 Jan Weakest month · 60,000 Trend by line Sales mix Monthly total (best and weakest highlighted) Line trends Coffee 465,300 69.3% of sales ▲ 2,050/mo +46.2% since Jan Pastries 162,600 24.2% of sales ▲ 900/mo +48.0% since Jan Merch 43,200 6.4% of sales ▲ 200/mo +120.0% since Jan Best and worst month per line Line Best Worst Coffee Sep · 61,400 Jan · 42,000 Pastries Sep · 22,200 Feb · 14",
+        "ghostFields": [],
+        "sections": 5,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -220,10 +242,10 @@
         "canvases": 3,
         "svgShapes": 0,
         "gridCols": 2,
-        "frames": 18,
+        "frames": 0,
         "look": {
-          "accentHue": 32,
-          "nonAmberVivid": 0.029643037400864172,
+          "accentHue": 31,
+          "nonAmberVivid": 0.00045643706432460686,
           "tintedBg": false
         }
       },
@@ -231,9 +253,12 @@
         "name": "375-dark",
         "width": 375,
         "scheme": "dark",
-        "errors": [],
+        "errors": [
+          "Refused to load amber-lib:chart.js because it does not appear in the script-src directive of the Content Security Policy.",
+          "ReferenceError: Can't find variable: Chart"
+        ],
         "overflowPx": 0,
-        "textLength": 534,
+        "textLength": 537,
         "shown": 7,
         "sampled": 12,
         "bg": "rgb(0, 0, 0)",
@@ -256,6 +281,9 @@
           "Best and worst month per line"
         ],
         "excerpt": "Sales 2026 Jan to Sep · 9 months · 3 lines 671,100 Total sales 90,200 Sep · +9.9% vs Aug Sep Best month · 90,200 Jan Weakest month · 60,000 Trend by line Sales mix Monthly total (best and weakest highlighted) Line trends Coffee 465,300 69.3% of sales ▲ 2,050/mo +46.2% since Jan Pastries 162,600 24.2% of sales ▲ 900/mo +48.0% since Jan Merch 43,200 6.4% of sales ▲ 200/mo +120.0% since Jan Best and worst month per line Line Best Worst Coffee Sep · 61,400 Jan · 42,000 Pastries Sep · 22,200 Feb · 14",
+        "ghostFields": [],
+        "sections": 5,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -265,10 +293,10 @@
         "canvases": 3,
         "svgShapes": 0,
         "gridCols": 2,
-        "frames": 17,
+        "frames": 0,
         "look": {
-          "accentHue": 35,
-          "nonAmberVivid": 0.029643037400864172,
+          "accentHue": 38,
+          "nonAmberVivid": 0.00045643706432460686,
           "tintedBg": false
         }
       },
@@ -276,9 +304,12 @@
         "name": "768-light",
         "width": 768,
         "scheme": "light",
-        "errors": [],
+        "errors": [
+          "Refused to load amber-lib:chart.js because it does not appear in the script-src directive of the Content Security Policy.",
+          "ReferenceError: Can't find variable: Chart"
+        ],
         "overflowPx": 0,
-        "textLength": 534,
+        "textLength": 537,
         "shown": 7,
         "sampled": 12,
         "bg": "rgb(255, 254, 253)",
@@ -301,6 +332,9 @@
           "Best and worst month per line"
         ],
         "excerpt": "Sales 2026 Jan to Sep · 9 months · 3 lines 671,100 Total sales 90,200 Sep · +9.9% vs Aug Sep Best month · 90,200 Jan Weakest month · 60,000 Trend by line Sales mix Monthly total (best and weakest highlighted) Line trends Coffee 465,300 69.3% of sales ▲ 2,050/mo +46.2% since Jan Pastries 162,600 24.2% of sales ▲ 900/mo +48.0% since Jan Merch 43,200 6.4% of sales ▲ 200/mo +120.0% since Jan Best and worst month per line Line Best Worst Coffee Sep · 61,400 Jan · 42,000 Pastries Sep · 22,200 Feb · 14",
+        "ghostFields": [],
+        "sections": 5,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -310,10 +344,10 @@
         "canvases": 3,
         "svgShapes": 0,
         "gridCols": 2,
-        "frames": 17,
+        "frames": 0,
         "look": {
-          "accentHue": 32,
-          "nonAmberVivid": 0.028046994181417328,
+          "accentHue": 31,
+          "nonAmberVivid": 0.0002419463208510467,
           "tintedBg": false
         }
       },
@@ -321,9 +355,12 @@
         "name": "1280-light",
         "width": 1280,
         "scheme": "light",
-        "errors": [],
+        "errors": [
+          "Refused to load amber-lib:chart.js because it does not appear in the script-src directive of the Content Security Policy.",
+          "ReferenceError: Can't find variable: Chart"
+        ],
         "overflowPx": 0,
-        "textLength": 534,
+        "textLength": 537,
         "shown": 7,
         "sampled": 12,
         "bg": "rgb(255, 254, 253)",
@@ -346,6 +383,9 @@
           "Best and worst month per line"
         ],
         "excerpt": "Sales 2026 Jan to Sep · 9 months · 3 lines 671,100 Total sales 90,200 Sep · +9.9% vs Aug Sep Best month · 90,200 Jan Weakest month · 60,000 Trend by line Sales mix Monthly total (best and weakest highlighted) Line trends Coffee 465,300 69.3% of sales ▲ 2,050/mo +46.2% since Jan Pastries 162,600 24.2% of sales ▲ 900/mo +48.0% since Jan Merch 43,200 6.4% of sales ▲ 200/mo +120.0% since Jan Best and worst month per line Line Best Worst Coffee Sep · 61,400 Jan · 42,000 Pastries Sep · 22,200 Feb · 14",
+        "ghostFields": [],
+        "sections": 5,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -355,10 +395,10 @@
         "canvases": 3,
         "svgShapes": 0,
         "gridCols": 4,
-        "frames": 17,
+        "frames": 0,
         "look": {
-          "accentHue": 32,
-          "nonAmberVivid": 0.030094655100863066,
+          "accentHue": 31,
+          "nonAmberVivid": 0.00029044924990465987,
           "tintedBg": false
         }
       },
@@ -366,9 +406,12 @@
         "name": "1280-dark",
         "width": 1280,
         "scheme": "dark",
-        "errors": [],
+        "errors": [
+          "Refused to load amber-lib:chart.js because it does not appear in the script-src directive of the Content Security Policy.",
+          "ReferenceError: Can't find variable: Chart"
+        ],
         "overflowPx": 0,
-        "textLength": 534,
+        "textLength": 537,
         "shown": 7,
         "sampled": 12,
         "bg": "rgb(0, 0, 0)",
@@ -390,6 +433,9 @@
           "Best and worst month per line"
         ],
         "excerpt": "Sales 2026 Jan to Sep · 9 months · 3 lines 671,100 Total sales 90,200 Sep · +9.9% vs Aug Sep Best month · 90,200 Jan Weakest month · 60,000 Trend by line Sales mix Monthly total (best and weakest highlighted) Line trends Coffee 465,300 69.3% of sales ▲ 2,050/mo +46.2% since Jan Pastries 162,600 24.2% of sales ▲ 900/mo +48.0% since Jan Merch 43,200 6.4% of sales ▲ 200/mo +120.0% since Jan Best and worst month per line Line Best Worst Coffee Sep · 61,400 Jan · 42,000 Pastries Sep · 22,200 Feb · 14",
+        "ghostFields": [],
+        "sections": 5,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -399,10 +445,10 @@
         "canvases": 3,
         "svgShapes": 0,
         "gridCols": 4,
-        "frames": 18,
+        "frames": 0,
         "look": {
-          "accentHue": 35,
-          "nonAmberVivid": 0.0295535279437359,
+          "accentHue": 38,
+          "nonAmberVivid": 0.00029044924990465987,
           "tintedBg": false
         }
       }
@@ -416,19 +462,20 @@
     },
     "probes": {
       "follows": {
-        "pass": true,
-        "detail": "shown, but not as written"
+        "pass": false,
+        "detail": "Refused to load amber-lib:chart.js because it does not appear in the script-src directive of the Content Security Policy."
       },
       "escapes": {
-        "pass": true
+        "pass": false,
+        "detail": "Refused to load amber-lib:chart.js because it does not appear in the script-src directive of the Content Security Policy."
       },
       "empty": {
-        "pass": true,
-        "detail": "blank page"
+        "pass": false,
+        "detail": "Refused to load amber-lib:chart.js because it does not appear in the script-src directive of the Content Security Policy."
       },
       "large": {
-        "pass": true,
-        "detail": "669 ms to load 400 rows"
+        "pass": false,
+        "detail": "Refused to load amber-lib:chart.js because it does not appear in the script-src directive of the Content Security Policy."
       }
     },
     "dataAfter": {}

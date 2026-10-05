@@ -5,9 +5,9 @@
   "round": "r10",
   "skill": false,
   "seconds": 54,
-  "score": 1,
-  "passed": 22,
-  "total": 22,
+  "score": 0.9583333333333334,
+  "passed": 23,
+  "total": 24,
   "checks": [
     {
       "name": "has_page",
@@ -39,6 +39,15 @@
     },
     {
       "name": "phone_targets",
+      "pass": true
+    },
+    {
+      "name": "focused_screen",
+      "pass": false,
+      "detail": "7 sections on the first phone screen"
+    },
+    {
+      "name": "visible_fields",
       "pass": true
     },
     {
@@ -207,6 +216,9 @@
           "Tech , 0 of 2 packed"
         ],
         "excerpt": "Lisbon trip packing 1 of 9 items packed Clothes , 1 of 4 packed T-shirts x4 Linen shorts Rain jacket Sneakers Documents , 0 of 3 packed Passport Boarding passes Travel insurance card Tech , 0 of 2 packed Phone charger Adapter (EU) New item Add to section Add item",
+        "ghostFields": [],
+        "sections": 7,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -250,6 +262,9 @@
           "Tech , 0 of 2 packed"
         ],
         "excerpt": "Lisbon trip packing 1 of 9 items packed Clothes , 1 of 4 packed T-shirts x4 Linen shorts Rain jacket Sneakers Documents , 0 of 3 packed Passport Boarding passes Travel insurance card Tech , 0 of 2 packed Phone charger Adapter (EU) New item Add to section Add item",
+        "ghostFields": [],
+        "sections": 7,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -293,6 +308,9 @@
           "Tech , 0 of 2 packed"
         ],
         "excerpt": "Lisbon trip packing 1 of 9 items packed Clothes , 1 of 4 packed T-shirts x4 Linen shorts Rain jacket Sneakers Documents , 0 of 3 packed Passport Boarding passes Travel insurance card Tech , 0 of 2 packed Phone charger Adapter (EU) New item Add to section Add item",
+        "ghostFields": [],
+        "sections": 7,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -336,6 +354,9 @@
           "Tech , 0 of 2 packed"
         ],
         "excerpt": "Lisbon trip packing 1 of 9 items packed Clothes , 1 of 4 packed T-shirts x4 Linen shorts Rain jacket Sneakers Documents , 0 of 3 packed Passport Boarding passes Travel insurance card Tech , 0 of 2 packed Phone charger Adapter (EU) New item Add to section Add item",
+        "ghostFields": [],
+        "sections": 7,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -378,6 +399,9 @@
           "Tech , 0 of 2 packed"
         ],
         "excerpt": "Lisbon trip packing 1 of 9 items packed Clothes , 1 of 4 packed T-shirts x4 Linen shorts Rain jacket Sneakers Documents , 0 of 3 packed Passport Boarding passes Travel insurance card Tech , 0 of 2 packed Phone charger Adapter (EU) New item Add to section Add item",
+        "ghostFields": [],
+        "sections": 7,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,

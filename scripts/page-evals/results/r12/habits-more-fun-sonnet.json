@@ -5,9 +5,9 @@
   "round": "r12",
   "skill": false,
   "seconds": 70,
-  "score": 1,
-  "passed": 23,
-  "total": 23,
+  "score": 0.9615384615384616,
+  "passed": 25,
+  "total": 26,
   "checks": [
     {
       "name": "has_page",
@@ -42,6 +42,14 @@
       "pass": true
     },
     {
+      "name": "focused_screen",
+      "pass": true
+    },
+    {
+      "name": "visible_fields",
+      "pass": true
+    },
+    {
       "name": "no_junk_text",
       "pass": true
     },
@@ -62,8 +70,13 @@
       "pass": true
     },
     {
-      "name": "uses_theme",
+      "name": "themed",
       "pass": true
+    },
+    {
+      "name": "distinct_look",
+      "pass": false,
+      "detail": "accent hue 28, 0% non-amber color"
     },
     {
       "name": "labelled_controls",
@@ -215,6 +228,9 @@
           "Habit tracker"
         ],
         "excerpt": "Habit tracker 2/3 Nice, keep going 🔥 1 left today Level 2 · 14 ticks TODAY 🚶 Walk 3 days in a row ✓ 📖 Read 2 days in a row ✓ 🧘 Stretch 1 day BADGES 🔥 3-day streak 🚀 7-day streak (locked) 🌟 Perfect day 🏅 3 perfect days (locked) 💯 50 ticks (locked) 👑 Level 5 (locked) LAST TWO WEEKS T W T F S S M T W T F S S M Walk Read Stretch",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -224,7 +240,12 @@
         "canvases": 1,
         "svgShapes": 5,
         "gridCols": 15,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "375-dark",
@@ -250,6 +271,9 @@
           "Habit tracker"
         ],
         "excerpt": "Habit tracker 2/3 Nice, keep going 🔥 1 left today Level 2 · 14 ticks TODAY 🚶 Walk 3 days in a row ✓ 📖 Read 2 days in a row ✓ 🧘 Stretch 1 day BADGES 🔥 3-day streak 🚀 7-day streak (locked) 🌟 Perfect day 🏅 3 perfect days (locked) 💯 50 ticks (locked) 👑 Level 5 (locked) LAST TWO WEEKS T W T F S S M T W T F S S M Walk Read Stretch",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -259,7 +283,12 @@
         "canvases": 1,
         "svgShapes": 5,
         "gridCols": 15,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 38,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "768-light",
@@ -291,6 +320,9 @@
           "Habit tracker"
         ],
         "excerpt": "Habit tracker 2/3 Nice, keep going 🔥 1 left today Level 2 · 14 ticks TODAY 🚶 Walk 3 days in a row ✓ 📖 Read 2 days in a row ✓ 🧘 Stretch 1 day BADGES 🔥 3-day streak 🚀 7-day streak (locked) 🌟 Perfect day 🏅 3 perfect days (locked) 💯 50 ticks (locked) 👑 Level 5 (locked) LAST TWO WEEKS T W T F S S M T W T F S S M Walk Read Stretch",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -300,7 +332,12 @@
         "canvases": 1,
         "svgShapes": 5,
         "gridCols": 15,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "1280-light",
@@ -332,6 +369,9 @@
           "Habit tracker"
         ],
         "excerpt": "Habit tracker 2/3 Nice, keep going 🔥 1 left today Level 2 · 14 ticks TODAY 🚶 Walk 3 days in a row ✓ 📖 Read 2 days in a row ✓ 🧘 Stretch 1 day BADGES 🔥 3-day streak 🚀 7-day streak (locked) 🌟 Perfect day 🏅 3 perfect days (locked) 💯 50 ticks (locked) 👑 Level 5 (locked) LAST FOUR WEEKS T W T F S S M T W T F S S M T W T F S S M T W T F S S M Walk Read Stretch",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -341,7 +381,12 @@
         "canvases": 2,
         "svgShapes": 5,
         "gridCols": 29,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "1280-dark",
@@ -366,6 +411,9 @@
           "Habit tracker"
         ],
         "excerpt": "Habit tracker 2/3 Nice, keep going 🔥 1 left today Level 2 · 14 ticks TODAY 🚶 Walk 3 days in a row ✓ 📖 Read 2 days in a row ✓ 🧘 Stretch 1 day BADGES 🔥 3-day streak 🚀 7-day streak (locked) 🌟 Perfect day 🏅 3 perfect days (locked) 💯 50 ticks (locked) 👑 Level 5 (locked) LAST FOUR WEEKS T W T F S S M T W T F S S M T W T F S S M T W T F S S M Walk Read Stretch",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -375,7 +423,12 @@
         "canvases": 2,
         "svgShapes": 5,
         "gridCols": 29,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 37,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       }
     ],
     "blocked": [],
@@ -395,7 +448,7 @@
     "interaction": {
       "tried": "control",
       "ok": true,
-      "framesPerSecond": 60
+      "framesPerSecond": 30
     },
     "probes": {
       "empty": {
@@ -404,7 +457,7 @@
       },
       "large": {
         "pass": true,
-        "detail": "564 ms to load 400 rows"
+        "detail": "598 ms to load 400 rows"
       }
     },
     "dataAfter": {}

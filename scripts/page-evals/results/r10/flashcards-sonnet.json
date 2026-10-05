@@ -6,8 +6,8 @@
   "skill": false,
   "seconds": 52,
   "score": 1,
-  "passed": 25,
-  "total": 25,
+  "passed": 27,
+  "total": 27,
   "checks": [
     {
       "name": "has_page",
@@ -39,6 +39,14 @@
     },
     {
       "name": "phone_targets",
+      "pass": true
+    },
+    {
+      "name": "focused_screen",
+      "pass": true
+    },
+    {
+      "name": "visible_fields",
       "pass": true
     },
     {
@@ -201,6 +209,9 @@
           "Spanish verbs"
         ],
         "excerpt": "Spanish verbs 0 of 12 known · 12 to go SPANISH hablar Tap to see the answer Again I know it All cards hablar · to speak comer · to eat vivir · to live tener · to have hacer · to do, to make ir · to go poder · to be able to decir · to say querer · to want saber · to know (facts) conocer · to know (people, places) salir · to leave, to go out",
+        "ghostFields": [],
+        "sections": 1,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -241,6 +252,9 @@
           "Spanish verbs"
         ],
         "excerpt": "Spanish verbs 0 of 12 known · 12 to go SPANISH hablar Tap to see the answer Again I know it All cards hablar · to speak comer · to eat vivir · to live tener · to have hacer · to do, to make ir · to go poder · to be able to decir · to say querer · to want saber · to know (facts) conocer · to know (people, places) salir · to leave, to go out",
+        "ghostFields": [],
+        "sections": 1,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -281,6 +295,9 @@
           "Spanish verbs"
         ],
         "excerpt": "Spanish verbs 0 of 12 known · 12 to go SPANISH hablar Tap to see the answer Again I know it All cards hablar · to speak comer · to eat vivir · to live tener · to have hacer · to do, to make ir · to go poder · to be able to decir · to say querer · to want saber · to know (facts) conocer · to know (people, places) salir · to leave, to go out",
+        "ghostFields": [],
+        "sections": 1,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -321,6 +338,9 @@
           "Spanish verbs"
         ],
         "excerpt": "Spanish verbs 0 of 12 known · 12 to go SPANISH hablar Tap to see the answer Again I know it All cards hablar · to speak comer · to eat vivir · to live tener · to have hacer · to do, to make ir · to go poder · to be able to decir · to say querer · to want saber · to know (facts) conocer · to know (people, places) salir · to leave, to go out",
+        "ghostFields": [],
+        "sections": 1,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -360,6 +380,9 @@
           "Spanish verbs"
         ],
         "excerpt": "Spanish verbs 0 of 12 known · 12 to go SPANISH hablar Tap to see the answer Again I know it All cards hablar · to speak comer · to eat vivir · to live tener · to have hacer · to do, to make ir · to go poder · to be able to decir · to say querer · to want saber · to know (facts) conocer · to know (people, places) salir · to leave, to go out",
+        "ghostFields": [],
+        "sections": 1,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -399,7 +422,7 @@
       },
       "large": {
         "pass": true,
-        "detail": "593 ms to load 400 rows"
+        "detail": "649 ms to load 400 rows"
       }
     },
     "dataAfter": {}

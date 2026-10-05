@@ -5,9 +5,9 @@
   "round": "r12",
   "skill": false,
   "seconds": 71,
-  "score": 0.9166666666666666,
-  "passed": 22,
-  "total": 24,
+  "score": 0.9259259259259259,
+  "passed": 25,
+  "total": 27,
   "checks": [
     {
       "name": "has_page",
@@ -42,6 +42,14 @@
       "pass": true
     },
     {
+      "name": "focused_screen",
+      "pass": true
+    },
+    {
+      "name": "visible_fields",
+      "pass": true
+    },
+    {
       "name": "no_junk_text",
       "pass": true
     },
@@ -58,8 +66,13 @@
       "pass": true
     },
     {
-      "name": "uses_theme",
+      "name": "themed",
       "pass": true
+    },
+    {
+      "name": "distinct_look",
+      "pass": false,
+      "detail": "accent hue none, 0% non-amber color"
     },
     {
       "name": "labelled_controls",
@@ -75,8 +88,7 @@
     },
     {
       "name": "plays",
-      "pass": false,
-      "detail": "0 frames in the second after the first tap"
+      "pass": true
     },
     {
       "name": "not_a_list",
@@ -213,6 +225,9 @@
           "Spanish verbs"
         ],
         "excerpt": "Spanish verbs ¡Vamos! 10 questions · 10 seconds each · quick, correct answers and streaks score more. Keys 1–4 work too. 0 day streak 0 best score 12 verbs Play today's round",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -222,7 +237,12 @@
         "canvases": 0,
         "svgShapes": 0,
         "gridCols": 0,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": null,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "375-dark",
@@ -248,6 +268,9 @@
           "Spanish verbs"
         ],
         "excerpt": "Spanish verbs ¡Vamos! 10 questions · 10 seconds each · quick, correct answers and streaks score more. Keys 1–4 work too. 0 day streak 0 best score 12 verbs Play today's round",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -257,7 +280,12 @@
         "canvases": 0,
         "svgShapes": 0,
         "gridCols": 0,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": null,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "768-light",
@@ -283,6 +311,9 @@
           "Spanish verbs"
         ],
         "excerpt": "Spanish verbs ¡Vamos! 10 questions · 10 seconds each · quick, correct answers and streaks score more. Keys 1–4 work too. 0 day streak 0 best score 12 verbs Play today's round",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -292,7 +323,12 @@
         "canvases": 0,
         "svgShapes": 0,
         "gridCols": 0,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": null,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "1280-light",
@@ -318,6 +354,9 @@
           "Spanish verbs"
         ],
         "excerpt": "Spanish verbs ¡Vamos! 10 questions · 10 seconds each · quick, correct answers and streaks score more. Keys 1–4 work too. 0 day streak 0 best score 12 verbs Play today's round",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -327,7 +366,12 @@
         "canvases": 0,
         "svgShapes": 0,
         "gridCols": 0,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": null,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "1280-dark",
@@ -352,6 +396,9 @@
           "Spanish verbs"
         ],
         "excerpt": "Spanish verbs ¡Vamos! 10 questions · 10 seconds each · quick, correct answers and streaks score more. Keys 1–4 work too. 0 day streak 0 best score 12 verbs Play today's round",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -361,7 +408,12 @@
         "canvases": 0,
         "svgShapes": 0,
         "gridCols": 0,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": null,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       }
     ],
     "blocked": [],
@@ -370,7 +422,7 @@
     "interaction": {
       "tried": "control",
       "ok": false,
-      "framesPerSecond": 0,
+      "framesPerSecond": 20,
       "error": "no control sent an edit"
     },
     "probes": {
@@ -387,7 +439,7 @@
       },
       "large": {
         "pass": true,
-        "detail": "564 ms to load 400 rows"
+        "detail": "595 ms to load 400 rows"
       }
     },
     "dataAfter": {}

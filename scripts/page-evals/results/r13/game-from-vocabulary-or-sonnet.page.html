@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="amber-libs" content="confetti">
+<meta name="amber-settings" content='{"settings":[{"key":"direction","label":"Direction","type":"choice","options":["Spanish to English","English to Spanish","Mixed"],"default":"Mixed","help":"Which way each question goes."},{"key":"seconds","label":"Seconds per question","type":"number","default":8},{"key":"rounds","label":"Questions per round","type":"number","default":10}]}'>
+<style>
+  :root { --g-bg:#fff3df; --g-card:#ffffff; --g-ink:#2a1a0a; --g-sub:#6b5236; --g-hot:#c2410c; --g-hot-ink:#ffffff; --g-ok:#166534; --g-ok-bg:#d9f5e1; --g-bad:#b91c1c; --g-bad-bg:#fde0e0; --g-line:#e8cfa8; --g-track:#f0dcba; }
+  @media (prefers-color-scheme: dark) { :root { --g-bg:#1c1530; --g-card:#2a2144; --g-ink:#fff4e0; --g-sub:#c9bddf; --g-hot:#ffb347; --g-hot-ink:#2a1500; --g-ok:#8ff0a8; --g-ok-bg:#1c4a2e; --g-bad:#ffb0b0; --g-bad-bg:#5a1f2a; --g-line:#4a3d70; --g-track:#3a2f5c; } }
+  * { box-sizing: border-box; }
+  main { max-width: 1000px; margin: 0 auto; padding: 16px var(--amber-gutter) 40px; }
+  .stage { background: var(--g-bg); color: var(--g-ink); border-radius: 24px; padding: 18px 16px 22px; border: 1px solid var(--g-line); font-family: var(--amber-font-rounded); }
+  h1 { font-size: 1.5rem; margin: 0; letter-spacing: -.02em; }
+  .top { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .chip { background: var(--g-card); border: 1px solid var(--g-line); border-radius: 99px; padding: 6px 12px; font-size: .85rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .sub { color: var(--g-sub); font-size: .95rem; margin: 6px 0 16px; }
+  button { font: inherit; font-family: var(--amber-font-rounded); font-weight: 800; border: 0; cursor: pointer; color: var(--g-ink); }
+  .go { width: 100%; min-height: 64px; border-radius: 20px; background: var(--g-hot); color: var(--g-hot-ink); font-size: 1.4rem; box-shadow: 0 5px 0 rgba(0,0,0,.25); }
+  .go:active { transform: translateY(3px); box-shadow: 0 2px 0 rgba(0,0,0,.25); }
+  .ghost { min-height: 48px; padding: 0 18px; border-radius: 14px; background: var(--g-card); border: 1px solid var(--g-line); }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0 0 16px; }
+  .stat { background: var(--g-card); border: 1px solid var(--g-line); border-radius: 16px; padding: 10px 6px; text-align: center; }
+  .stat b { display: block; font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: .75rem; color: var(--g-sub); }
+  .bar { height: 12px; background: var(--g-track); border-radius: 99px; overflow: hidden; margin: 6px 0 14px; }
+  .bar i { display: block; height: 100%; background: var(--g-hot); border-radius: 99px; width: 0; }
+  h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: var(--g-sub); margin: 18px 0 8px; }
+  .verbs { display: flex; flex-wrap: wrap; gap: 6px; }
+  .v { background: var(--g-card); border: 1px solid var(--g-line); border-radius: 10px; padding: 4px 9px; font-size: .85rem; font-weight: 700; }
+  .v small { color: var(--g-sub); font-weight: 600; margin-left: 4px; font-size: .8rem; }
+  .v.l3 { background: var(--g-ok-bg); }
+  .hud { display: flex; justify-content: space-between; align-items: center; font-weight: 800; font-variant-numeric: tabular-nums; gap: 8px; }
+  .combo { color: var(--g-hot); min-width: 4.5em; text-align: right; }
+  .timer { height: 14px; background: var(--g-track); border-radius: 99px; overflow: hidden; margin: 10px 0 18px; }
+  .timer i { display: block; height: 100%; width: 100%; background: var(--g-hot); border-radius: 99px; }
+  .card { background: var(--g-card); border: 2px solid var(--g-line); border-radius: 22px; text-align: center; padding: 26px 12px; margin-bottom: 14px; }
+  .card small { display: block; color: var(--g-sub); font-weight: 700; font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; }
+  .card b { display: block; font-size: clamp(2rem, 9vw, 2.8rem); margin-top: 6px; overflow-wrap: anywhere; }
+  .opts { display: grid; gap: 10px; }
+  .opt { min-height: 60px; padding: 8px 14px; border-radius: 16px; background: var(--g-card); border: 2px solid var(--g-line); font-size: 1.05rem; text-align: left; display: flex; gap: 10px; align-items: center; box-shadow: 0 3px 0 var(--g-line); }
+  .opt em { font-style: normal; opacity: .7; font-size: .8rem; min-width: 1.2em; }
+  .opt.ok { background: var(--g-ok-bg); border-color: var(--g-ok); color: var(--g-ok); }
+  .opt.bad { background: var(--g-bad-bg); border-color: var(--g-bad); color: var(--g-bad); }
+  .opt:disabled { cursor: default; }
+  .msg { min-height: 1.6em; text-align: center; font-weight: 800; margin-top: 12px; }
+  .big { font-size: 3.4rem; font-weight: 900; text-align: center; font-variant-numeric: tabular-nums; margin: 6px 0; }
+  .miss { background: var(--g-card); border: 1px solid var(--g-line); border-radius: 14px; padding: 6px 12px; margin-bottom: 14px; }
+  .miss div { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-top: 1px solid var(--g-line); }
+  .miss div:first-child { border-top: 0; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .row2 .go { font-size: 1.1rem; }
+  @media (min-width: 700px) { .opts { grid-template-columns: 1fr 1fr; } .stage { padding: 28px 32px 32px; } .card { padding: 44px 12px; } .verbs { gap: 8px; } }
+  @media (prefers-reduced-motion: no-preference) { .opt.bad { animation: sh .3s; } @keyframes sh { 25% { transform: translateX(-6px);} 75% { transform: translateX(6px);} } }
+</style>
+</head>
+<body>
+<main><div class="stage" id="app" aria-live="polite"></div></main>
+<script>
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+const app = document.getElementById("app");
+let NOTE = null, screen = "home", G = null, raf = 0, nextT = 0;
+const V = () => (amber.data && amber.data.values) || {};
+const S = () => amber.settings || {};
+
+function pairs() {
+  if (!NOTE) return [];
+  let t = NOTE.tables.find(t => t.columns.length >= 2 && /spanish/i.test(t.columns[0].name)) || NOTE.tables.find(t => t.columns.length >= 2);
+  if (!t) return [];
+  return t.rows.map(r => ({ es: String(r[0] || "").trim(), en: String(r[1] || "").trim() })).filter(p => p.es && p.en);
+}
+const lvl = (m, es) => (m[es] && m[es].lvl) || 0;
+const addDay = (d, n) => { const x = new Date(d + "T00:00:00Z"); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
+
+function home() {
+  const P = pairs(), v = V(), m = v.mastery || {}, today = NOTE.today;
+  const streakAlive = v.lastDay === today || v.lastDay === addDay(today, -1);
+  const streak = streakAlive ? (v.streak || 0) : 0;
+  const mastered = P.filter(p => lvl(m, p.es) >= 3).length;
+  const pct = P.length ? Math.round(mastered / P.length * 100) : 0;
+  app.innerHTML = `
+    <div class="top"><h1>${esc(NOTE.title)}</h1><span class="chip">${v.lastDay === today ? "Played today" : "Not played today"}</span></div>
+    <p class="sub">Beat the clock: pick the right meaning. Quick answers and combos score more.</p>
+    <div class="stats">
+      <div class="stat"><b>${streak}</b><span>day streak</span></div>
+      <div class="stat"><b>${v.best || 0}</b><span>best score</span></div>
+      <div class="stat"><b>${mastered}/${P.length}</b><span>mastered</span></div>
+    </div>
+    ${P.length < 2 ? '<p class="sub">Add at least 2 rows to the Spanish | English table in the note to play.</p>' : '<button class="go" id="play">Play a round</button>'}
+    <h2>Mastery ${pct}%</h2>
+    <div class="bar" role="img" aria-label="${pct} percent of verbs mastered"><i style="width:${pct}%"></i></div>
+    <div class="verbs">${P.map(p => { const l = lvl(m, p.es); return `<span class="v l${l}">${esc(p.es)}<small>${l >= 3 ? "mastered" : l + "/3"}</small></span>`; }).join("")}</div>`;
+  const b = document.getElementById("play"); if (b) b.onclick = start;
+}
+
+function pickWeighted(P, m, n) {
+  const pool = P.slice(), out = [];
+  while (out.length < n && pool.length) {
+    const w = pool.map(p => 4 - lvl(m, p.es));
+    let r = Math.random() * w.reduce((a, b) => a + b, 0), i = 0;
+    while (i < pool.length - 1 && (r -= w[i]) > 0) i++;
+    out.push(pool.splice(i, 1)[0]);
+  }
+  return out;
+}
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+function start() {
+  const P = pairs(); if (P.length < 2) return;
+  const n = Math.max(3, Math.min(+S().rounds || 10, P.length));
+  G = { P, qs: pickWeighted(P, V().mastery || {}, n), i: 0, score: 0, streak: 0, maxStreak: 0, correct: 0, missed: [], lvls: {}, limit: Math.max(3, +S().seconds || 8), locked: false };
+  screen = "play"; ask();
+}
+
+function ask() {
+  const q = G.qs[G.i], d = S().direction || "Mixed";
+  const toEn = d === "Spanish to English" ? true : d === "English to Spanish" ? false : Math.random() < .5;
+  const ans = toEn ? q.en : q.es, prompt = toEn ? q.es : q.en;
+  const others = shuffle(G.P.filter(p => p !== q && (toEn ? p.en : p.es) !== ans)).slice(0, 3).map(p => toEn ? p.en : p.es);
+  G.cur = { q, ans, opts: shuffle([ans, ...others]) };
+  G.locked = false; G.t = 0; G.last = 0;
+  const mult = G.streak >= 6 ? 3 : G.streak >= 3 ? 2 : 1;
+  app.innerHTML = `
+    <div class="hud"><span>Question ${G.i + 1}/${G.qs.length}</span><span>Score <span id="sc">${G.score}</span></span><span class="combo" id="cb">${mult > 1 ? "Combo x" + mult : ""}</span></div>
+    <div class="timer" role="img" aria-label="Time left"><i id="tm"></i></div>
+    <div class="card"><small>${toEn ? "Spanish" : "English"}</small><b>${esc(prompt)}</b></div>
+    <div class="opts">${G.cur.opts.map((o, i) => `<button class="opt" data-i="${i}"><em>${i + 1}</em><span>${esc(o)}</span></button>`).join("")}</div>
+    <div class="msg" id="msg"></div>`;
+  app.querySelectorAll(".opt").forEach(b => b.onclick = () => pick(+b.dataset.i));
+  cancelAnimationFrame(raf); raf = requestAnimationFrame(tick);
+}
+
+function tick(ts) {
+  if (screen !== "play" || G.locked) return;
+  if (document.visibilityState === "visible") {
+    if (G.last) G.t += Math.min(0.1, (ts - G.last) / 1000);
+    G.last = ts;
+  } else G.last = 0;
+  const left = Math.max(0, 1 - G.t / G.limit), tm = document.getElementById("tm");
+  if (tm) tm.style.width = (left * 100) + "%";
+  if (left <= 0) return pick(-1);
+  raf = requestAnimationFrame(tick);
+}
+
+function pick(i) {
+  if (G.locked || screen !== "play") return;
+  G.locked = true; cancelAnimationFrame(raf);
+  const c = G.cur, right = i >= 0 && c.opts[i] === c.ans, es = c.q.es;
+  const btns = app.querySelectorAll(".opt"); btns.forEach(b => b.disabled = true);
+  const ri = c.opts.indexOf(c.ans);
+  btns[ri].classList.add("ok"); btns[ri].lastElementChild.textContent = "✓ " + c.ans;
+  let msg;
+  if (right) {
+    G.streak++; G.maxStreak = Math.max(G.maxStreak, G.streak); G.correct++;
+    const mult = G.streak > 6 ? 3 : G.streak > 3 ? 2 : 1;
+    const pts = (100 + Math.round((1 - G.t / G.limit) * 50)) * mult;
+    G.score += pts; msg = "+" + pts + (mult > 1 ? " (combo x" + mult + ")" : "");
+    G.lvls[es] = Math.min(3, (G.lvls[es] ?? lvl(V().mastery || {}, es)) + 1);
+  } else {
+    G.streak = 0; G.missed.push(c.q); G.lvls[es] = 0;
+    btns[i] && (btns[i].classList.add("bad"), btns[i].lastElementChild.textContent = "✗ " + c.opts[i]);
+    msg = i < 0 ? "Time's up" : "Not quite";
+  }
+  document.getElementById("sc").textContent = G.score;
+  document.getElementById("msg").textContent = msg;
+  nextT = setTimeout(() => { G.i++; G.i >= G.qs.length ? finish() : ask(); }, right ? 900 : 1700);
+}
+
+function finish() {
+  const v = V(), today = NOTE.today, m = Object.assign({}, v.mastery || {});
+  for (const es in G.lvls) m[es] = { lvl: G.lvls[es] };
+  const streak = v.lastDay === today ? (v.streak || 1) : v.lastDay === addDay(today, -1) ? (v.streak || 0) + 1 : 1;
+  const isBest = G.score > (v.best || 0);
+  amber.store.set("mastery", m); amber.store.set("lastDay", today); amber.store.set("streak", streak);
+  if (isBest) amber.store.set("best", G.score);
+  screen = "result";
+  const perfect = !G.missed.length;
+  app.innerHTML = `
+    <div class="top"><h1>${perfect ? "Perfect round!" : "Round done"}</h1><span class="chip">${streak} day streak</span></div>
+    <div class="big">${G.score}</div>
+    <p class="sub" style="text-align:center">${isBest ? "New best score!" : "Best: " + (v.best || 0)} · ${G.correct}/${G.qs.length} right · best combo ${G.maxStreak}</p>
+    ${G.missed.length ? `<h2>Review these</h2><div class="miss">${G.missed.map(q => `<div><b>${esc(q.es)}</b><span>${esc(q.en)}</span></div>`).join("")}</div>` : ""}
+    <div class="row2"><button class="go" id="again">Again</button><button class="go ghost" id="home" style="box-shadow:none;background:var(--g-card);color:var(--g-ink);border:1px solid var(--g-line)">Home</button></div>`;
+  document.getElementById("again").onclick = start;
+  document.getElementById("home").onclick = () => { screen = "home"; home(); };
+  if (window.confetti && (isBest || perfect) && !matchMedia("(prefers-reduced-motion: reduce)").matches) confetti({ particleCount: 80, spread: 70, origin: { y: .5 } });
+}
+
+document.addEventListener("keydown", e => {
+  if (screen === "play" && /^[1-4]$/.test(e.key)) pick(+e.key - 1);
+});
+document.addEventListener("visibilitychange", () => { if (G) G.last = 0; });
+
+amber.onChange(note => { NOTE = note; if (screen === "home") home(); });
+</script>
+</body>
+</html>

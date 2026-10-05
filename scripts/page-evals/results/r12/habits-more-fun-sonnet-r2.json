@@ -5,9 +5,9 @@
   "round": "r12",
   "skill": false,
   "seconds": 66,
-  "score": 1,
-  "passed": 23,
-  "total": 23,
+  "score": 0.9615384615384616,
+  "passed": 25,
+  "total": 26,
   "checks": [
     {
       "name": "has_page",
@@ -42,6 +42,14 @@
       "pass": true
     },
     {
+      "name": "focused_screen",
+      "pass": true
+    },
+    {
+      "name": "visible_fields",
+      "pass": true
+    },
+    {
       "name": "no_junk_text",
       "pass": true
     },
@@ -62,8 +70,13 @@
       "pass": true
     },
     {
-      "name": "uses_theme",
+      "name": "themed",
       "pass": true
+    },
+    {
+      "name": "distinct_look",
+      "pass": false,
+      "detail": "accent hue 28, 0% non-amber color"
     },
     {
       "name": "labelled_controls",
@@ -215,6 +228,9 @@
           "Habit tracker"
         ],
         "excerpt": "Habit tracker 2/3 Over halfway, keep it up! 🔥 3-day streak going Lv 2 4/10 TODAY 🚶 Walk 🔥 3 days · best 3 📖 Read 🔥 2 days · best 2 🧘 Stretch 🔥 1 day · best 3 BADGES · 3/6 🌱 First step Tick any habit 🔥 3-day streak 3 days in a row ⚡ Week warrior 7 days in a row 🌟 Perfect day Every habit in a day 🏆 Perfect ×3 3 perfect days 💯 25 ticks 25 habits done LAST TWO WEEKS T W T F S S M T W T F S S M Walk Read Stretch",
+        "ghostFields": [],
+        "sections": 2,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -224,7 +240,12 @@
         "canvases": 0,
         "svgShapes": 5,
         "gridCols": 15,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "375-dark",
@@ -250,6 +271,9 @@
           "Habit tracker"
         ],
         "excerpt": "Habit tracker 2/3 Over halfway, keep it up! 🔥 3-day streak going Lv 2 4/10 TODAY 🚶 Walk 🔥 3 days · best 3 📖 Read 🔥 2 days · best 2 🧘 Stretch 🔥 1 day · best 3 BADGES · 3/6 🌱 First step Tick any habit 🔥 3-day streak 3 days in a row ⚡ Week warrior 7 days in a row 🌟 Perfect day Every habit in a day 🏆 Perfect ×3 3 perfect days 💯 25 ticks 25 habits done LAST TWO WEEKS T W T F S S M T W T F S S M Walk Read Stretch",
+        "ghostFields": [],
+        "sections": 2,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -259,7 +283,12 @@
         "canvases": 0,
         "svgShapes": 5,
         "gridCols": 15,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 38,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "768-light",
@@ -291,6 +320,9 @@
           "Habit tracker"
         ],
         "excerpt": "Habit tracker 2/3 Over halfway, keep it up! 🔥 3-day streak going Lv 2 4/10 TODAY 🚶 Walk 🔥 3 days · best 3 📖 Read 🔥 2 days · best 2 🧘 Stretch 🔥 1 day · best 3 BADGES · 3/6 🌱 First step Tick any habit 🔥 3-day streak 3 days in a row ⚡ Week warrior 7 days in a row 🌟 Perfect day Every habit in a day 🏆 Perfect ×3 3 perfect days 💯 25 ticks 25 habits done LAST TWO WEEKS T W T F S S M T W T F S S M Walk Read Stretch",
+        "ghostFields": [],
+        "sections": 2,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -300,7 +332,12 @@
         "canvases": 0,
         "svgShapes": 5,
         "gridCols": 15,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "1280-light",
@@ -332,6 +369,9 @@
           "Habit tracker"
         ],
         "excerpt": "Habit tracker 2/3 Over halfway, keep it up! 🔥 3-day streak going Lv 2 4/10 TODAY 🚶 Walk 🔥 3 days · best 3 📖 Read 🔥 2 days · best 2 🧘 Stretch 🔥 1 day · best 3 BADGES · 3/6 🌱 First step Tick any habit 🔥 3-day streak 3 days in a row ⚡ Week warrior 7 days in a row 🌟 Perfect day Every habit in a day 🏆 Perfect ×3 3 perfect days 💯 25 ticks 25 habits done LAST FOUR WEEKS T W T F S S M T W T F S S M T W T F S S M T W T F S S M Walk Read Stretch",
+        "ghostFields": [],
+        "sections": 2,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -341,7 +381,12 @@
         "canvases": 0,
         "svgShapes": 5,
         "gridCols": 29,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "1280-dark",
@@ -366,6 +411,9 @@
           "Habit tracker"
         ],
         "excerpt": "Habit tracker 2/3 Over halfway, keep it up! 🔥 3-day streak going Lv 2 4/10 TODAY 🚶 Walk 🔥 3 days · best 3 📖 Read 🔥 2 days · best 2 🧘 Stretch 🔥 1 day · best 3 BADGES · 3/6 🌱 First step Tick any habit 🔥 3-day streak 3 days in a row ⚡ Week warrior 7 days in a row 🌟 Perfect day Every habit in a day 🏆 Perfect ×3 3 perfect days 💯 25 ticks 25 habits done LAST FOUR WEEKS T W T F S S M T W T F S S M T W T F S S M T W T F S S M Walk Read Stretch",
+        "ghostFields": [],
+        "sections": 2,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -375,7 +423,12 @@
         "canvases": 0,
         "svgShapes": 5,
         "gridCols": 29,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 37,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       }
     ],
     "blocked": [],
@@ -404,7 +457,7 @@
       },
       "large": {
         "pass": true,
-        "detail": "565 ms to load 400 rows"
+        "detail": "611 ms to load 400 rows"
       }
     },
     "dataAfter": {}

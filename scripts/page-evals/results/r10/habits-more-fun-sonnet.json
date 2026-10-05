@@ -5,9 +5,9 @@
   "round": "r10",
   "skill": false,
   "seconds": 71,
-  "score": 0.9583333333333334,
-  "passed": 23,
-  "total": 24,
+  "score": 0.9615384615384616,
+  "passed": 25,
+  "total": 26,
   "checks": [
     {
       "name": "has_page",
@@ -39,6 +39,14 @@
     },
     {
       "name": "phone_targets",
+      "pass": true
+    },
+    {
+      "name": "focused_screen",
+      "pass": true
+    },
+    {
+      "name": "visible_fields",
       "pass": true
     },
     {
@@ -217,6 +225,9 @@
           "Badges"
         ],
         "excerpt": "Habit tracker 2/3 Over halfway, keep going! 1 to go today Level 2 · 14 ticks TODAY 🚶 Walk 🔥 3 days in a row 📚 Read 🔥 2 days in a row 🧘 Stretch 🔥 1 day in a row LAST TWO WEEKS T W T F S S M T W T F S S M Walk Read Stretch BADGES 🔥 On fire Unlocked! ⚡ Week warrior 7-day streak 🌟 Perfect day Unlocked! 🏆 Perfect x3 3 perfect days 🎯 Level 5 40 ticks 💯 Centurion 100 ticks",
+        "ghostFields": [],
+        "sections": 3,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -260,6 +271,9 @@
           "Badges"
         ],
         "excerpt": "Habit tracker 2/3 Over halfway, keep going! 1 to go today Level 2 · 14 ticks TODAY 🚶 Walk 🔥 3 days in a row 📚 Read 🔥 2 days in a row 🧘 Stretch 🔥 1 day in a row LAST TWO WEEKS T W T F S S M T W T F S S M Walk Read Stretch BADGES 🔥 On fire Unlocked! ⚡ Week warrior 7-day streak 🌟 Perfect day Unlocked! 🏆 Perfect x3 3 perfect days 🎯 Level 5 40 ticks 💯 Centurion 100 ticks",
+        "ghostFields": [],
+        "sections": 3,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -303,6 +317,9 @@
           "Badges"
         ],
         "excerpt": "Habit tracker 2/3 Over halfway, keep going! 1 to go today Level 2 · 14 ticks TODAY 🚶 Walk 🔥 3 days in a row 📚 Read 🔥 2 days in a row 🧘 Stretch 🔥 1 day in a row LAST TWO WEEKS T W T F S S M T W T F S S M Walk Read Stretch BADGES 🔥 On fire Unlocked! ⚡ Week warrior 7-day streak 🌟 Perfect day Unlocked! 🏆 Perfect x3 3 perfect days 🎯 Level 5 40 ticks 💯 Centurion 100 ticks",
+        "ghostFields": [],
+        "sections": 3,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -346,6 +363,9 @@
           "Badges"
         ],
         "excerpt": "Habit tracker 2/3 Over halfway, keep going! 1 to go today Level 2 · 14 ticks TODAY 🚶 Walk 🔥 3 days in a row 📚 Read 🔥 2 days in a row 🧘 Stretch 🔥 1 day in a row LAST FOUR WEEKS T W T F S S M T W T F S S M T W T F S S M T W T F S S M Walk Read Stretch BADGES 🔥 On fire Unlocked! ⚡ Week warrior 7-day streak 🌟 Perfect day Unlocked! 🏆 Perfect x3 3 perfect days 🎯 Level 5 40 ticks 💯 Centurion 100 ticks",
+        "ghostFields": [],
+        "sections": 3,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -388,6 +408,9 @@
           "Badges"
         ],
         "excerpt": "Habit tracker 2/3 Over halfway, keep going! 1 to go today Level 2 · 14 ticks TODAY 🚶 Walk 🔥 3 days in a row 📚 Read 🔥 2 days in a row 🧘 Stretch 🔥 1 day in a row LAST FOUR WEEKS T W T F S S M T W T F S S M T W T F S S M T W T F S S M Walk Read Stretch BADGES 🔥 On fire Unlocked! ⚡ Week warrior 7-day streak 🌟 Perfect day Unlocked! 🏆 Perfect x3 3 perfect days 🎯 Level 5 40 ticks 💯 Centurion 100 ticks",
+        "ghostFields": [],
+        "sections": 3,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -431,7 +454,7 @@
       },
       "large": {
         "pass": true,
-        "detail": "609 ms to load 400 rows"
+        "detail": "617 ms to load 400 rows"
       }
     },
     "dataAfter": {}

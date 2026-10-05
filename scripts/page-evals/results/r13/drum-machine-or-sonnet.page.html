@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+  :root { --kick:#b83a05; --snare:#1864ab; --hat:#237a37; --other:#862e9c; --now:#f59f00; }
+  @media (prefers-color-scheme: dark) { :root { --kick:#ff8c5a; --snare:#74b9ff; --hat:#69db7c; --other:#da77f2; --now:#ffd43b; } }
+  * { box-sizing: border-box; }
+  main { max-width: var(--amber-content-max); margin: 0 auto; padding: 20px var(--amber-gutter) 48px; }
+  h1 { font-family: var(--amber-font-rounded); font-size: 1.75rem; letter-spacing: -.02em; margin: 4px 0 16px; }
+  .bar { min-width: 0; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; background: var(--amber-surface); border: 1px solid var(--amber-separator); border-radius: var(--amber-radius); padding: 12px 14px; margin-bottom: 16px; }
+  button { font: inherit; font-weight: 600; min-height: 44px; min-width: 44px; padding: 0 18px; border: 0; border-radius: var(--amber-radius-small); background: var(--amber-fill); color: var(--amber-text); cursor: pointer; }
+  button.play { background: var(--amber-text); color: var(--amber-bg); min-width: 110px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+  .tempo { display: flex; align-items: center; gap: 10px; flex: 1 1 220px; font-size: .9rem; color: var(--amber-text-secondary); }
+  .tempo input { flex: 1; min-width: 80px; min-height: 44px; accent-color: var(--amber-accent); }
+  .bpm { font-family: var(--amber-font-mono); font-variant-numeric: tabular-nums; color: var(--amber-text); min-width: 4.5em; font-weight: 600; }
+  .track { background: var(--amber-surface); border: 1px solid var(--amber-separator); border-radius: var(--amber-radius); padding: 12px; margin-bottom: 12px; }
+  .track h2 { font-size: .85rem; letter-spacing: .08em; text-transform: uppercase; margin: 0 0 8px; color: var(--c); }
+  .steps { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px; }
+  @media (min-width: 900px) { .steps { grid-template-columns: repeat(16, minmax(0, 1fr)); } }
+  .step { min-height: 44px; padding: 0; border-radius: 8px; background: var(--amber-fill); border: 2px solid transparent; position: relative; }
+  .step.beat { background: var(--amber-separator); }
+  .step.on { background: var(--c); }
+  .step.on::after { content: ""; position: absolute; inset: 0; margin: auto; width: 8px; height: 8px; border-radius: 50%; background: var(--amber-bg); }
+  .step.now { border-color: var(--now); outline: 2px solid var(--now); outline-offset: -2px; }
+  .hint, .err { color: var(--amber-text-secondary); font-size: .85rem; margin: 8px 2px; }
+  .err { color: var(--amber-danger); }
+  .empty { padding: 28px 16px; text-align: center; color: var(--amber-text-secondary); }
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script>
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+  let note = null, playing = false, ac = null, step = 0, nextTime = 0, timer = null, noiseBuf = null, error = "", bpm = null, curStep = -1;
+  const queue = [];
+  const isOn = v => /^(x|✓|1|yes|true)$/i.test(String(v || "").trim());
+
+  function model() {
+    if (!note) return null;
+    const t = note.tables.find(t => t.columns.some(c => /^step$/i.test(c.name)) && t.columns.length > 1);
+    if (!t) return null;
+    const si = t.columns.findIndex(c => /^step$/i.test(c.name));
+    const inst = t.columns.map((c, i) => ({ name: c.name, i })).filter(c => c.i !== si);
+    return { t, inst, n: t.rows.length };
+  }
+  function noteBpm() {
+    const m = /(\d{2,3})\s*bpm/i.exec(note.markdown || "");
+    return m ? +m[1] : 120;
+  }
+  function kind(name) {
+    name = name.toLowerCase();
+    if (/kick|bass|bd/.test(name)) return "kick";
+    if (/snare|clap|sn/.test(name)) return "snare";
+    if (/hat|hh|cymbal/.test(name)) return "hat";
+    return "other";
+  }
+  function noise() {
+    if (!noiseBuf) { noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+    const s = ac.createBufferSource(); s.buffer = noiseBuf; return s;
+  }
+  function voice(k, t) {
+    const g = ac.createGain(); g.connect(ac.destination);
+    if (k === "kick") {
+      const o = ac.createOscillator(); o.frequency.setValueAtTime(160, t); o.frequency.exponentialRampToValueAtTime(40, t + .15);
+      g.gain.setValueAtTime(1, t); g.gain.exponentialRampToValueAtTime(.001, t + .4); o.connect(g); o.start(t); o.stop(t + .45);
+    } else if (k === "snare") {
+      const n = noise(), f = ac.createBiquadFilter(); f.type = "highpass"; f.frequency.value = 1500;
+      g.gain.setValueAtTime(.6, t); g.gain.exponentialRampToValueAtTime(.001, t + .2); n.connect(f); f.connect(g); n.start(t); n.stop(t + .25);
+      const o = ac.createOscillator(), og = ac.createGain(); o.type = "triangle"; o.frequency.value = 190; og.gain.setValueAtTime(.4, t); og.gain.exponentialRampToValueAtTime(.001, t + .1); o.connect(og); og.connect(ac.destination); o.start(t); o.stop(t + .12);
+    } else if (k === "hat") {
+      const n = noise(), f = ac.createBiquadFilter(); f.type = "highpass"; f.frequency.value = 7000;
+      g.gain.setValueAtTime(.3, t); g.gain.exponentialRampToValueAtTime(.001, t + .05); n.connect(f); f.connect(g); n.start(t); n.stop(t + .08);
+    } else {
+      const o = ac.createOscillator(); o.type = "square"; o.frequency.value = 520;
+      g.gain.setValueAtTime(.15, t); g.gain.exponentialRampToValueAtTime(.001, t + .15); o.connect(g); o.start(t); o.stop(t + .18);
+    }
+  }
+  function ensureAudio() {
+    if (!ac) { const C = window.AudioContext || window.webkitAudioContext; if (!C) { error = "Sound isn't available here."; return false; } ac = new C(); }
+    if (ac.state === "suspended") ac.resume();
+    return true;
+  }
+  function schedule() {
+    const m = model(); if (!m || !m.n) return;
+    while (nextTime < ac.currentTime + .12) {
+      const s = step % m.n, row = m.t.rows[s] || [];
+      m.inst.forEach(c => { if (isOn(row[c.i])) voice(kind(c.name), nextTime); });
+      queue.push({ s, at: nextTime });
+      nextTime += 60 / bpm / 4;
+      step = (s + 1) % m.n;
+    }
+  }
+  function highlight() {
+    if (playing && ac) {
+      while (queue.length && queue[0].at <= ac.currentTime) curStep = queue.shift().s;
+    }
+    document.querySelectorAll(".step.now").forEach(e => e.classList.remove("now"));
+    if (playing && curStep >= 0) document.querySelectorAll('.step[data-s="' + curStep + '"]').forEach(e => e.classList.add("now"));
+    if (playing) requestAnimationFrame(highlight);
+  }
+  function start() {
+    if (!ensureAudio()) return render();
+    playing = true; step = 0; curStep = -1; queue.length = 0; nextTime = ac.currentTime + .05;
+    timer = setInterval(schedule, 25); schedule(); requestAnimationFrame(highlight); render();
+  }
+  function stop() { playing = false; clearInterval(timer); queue.length = 0; curStep = -1; render(); }
+  document.addEventListener("visibilitychange", () => { if (document.hidden && playing) stop(); });
+
+  async function toggle(r, c, on, name) {
+    if (!on && ensureAudio()) voice(kind(name), ac.currentTime);
+    const res = await amber.update({ op: "set_cell", table: model().t.index, row: r, col: c, value: on ? "" : "x" });
+    error = res.ok ? "" : res.error;
+    if (!res.ok) render();
+  }
+  function render() {
+    const app = document.getElementById("app");
+    const m = model();
+    if (!m || !m.n) { app.innerHTML = `<h1>${esc(note.title)}</h1><div class="bar empty">Add a table with a Step column and one column per sound (Kick, Snare, Hat) to the note.</div>`; return; }
+    if (bpm === null) bpm = (amber.data.values && amber.data.values.bpm) || noteBpm();
+    app.innerHTML = `
+      <h1>${esc(note.title)}</h1>
+      <div class="bar">
+        <button class="play" id="play" aria-label="${playing ? "Stop" : "Play"}">
+          <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">${playing ? '<rect x="2" y="2" width="12" height="12" rx="2" fill="currentColor"/>' : '<path d="M3 1.5v13l11-6.5z" fill="currentColor"/>'}</svg>${playing ? "Stop" : "Play"}</button>
+        <label class="tempo" for="bpm">Tempo <input id="bpm" type="range" min="60" max="200" value="${bpm}"><span class="bpm" id="bpmv">${bpm} bpm</span></label>
+      </div>
+      ${m.inst.map(c => `<section class="track" style="--c:var(--${kind(c.name)})"><h2>${esc(c.name)}</h2>
+        <div class="steps">${t_steps(m, c)}</div></section>`).join("")}
+      <div class="hint">Tap a step to switch it on or off. The pattern is saved in the note's table.</div>
+      <div class="err" role="alert">${esc(error)}</div>`;
+    document.getElementById("play").onclick = () => playing ? stop() : start();
+    const sl = document.getElementById("bpm");
+    sl.oninput = () => { bpm = +sl.value; document.getElementById("bpmv").textContent = bpm + " bpm"; };
+    sl.onchange = () => amber.store.set("bpm", bpm);
+    app.querySelectorAll(".step").forEach(b => b.onclick = () => toggle(+b.dataset.s, +b.dataset.c, b.classList.contains("on"), b.dataset.n));
+    if (playing) highlight();
+  }
+  function t_steps(m, c) {
+    let h = "";
+    for (let s = 0; s < m.n; s++) {
+      const on = isOn(m.t.rows[s][c.i]);
+      h += `<button class="step${on ? " on" : ""}${s % 4 === 0 ? " beat" : ""}" data-s="${s}" data-c="${c.i}" data-n="${esc(c.name)}" aria-pressed="${on}" aria-label="${esc(c.name)} step ${s + 1}"></button>`;
+    }
+    return h;
+  }
+  amber.onChange(n => { note = n; render(); });
+</script>
+</body>
+</html>

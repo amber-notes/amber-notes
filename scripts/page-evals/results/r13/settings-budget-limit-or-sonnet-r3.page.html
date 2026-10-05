@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Budget</title>
+<meta name="amber-settings" content='{"settings":[{"key":"budget","label":"Monthly limit","type":"number","default":12000},{"key":"currency","label":"Currency","type":"currency","default":"SEK"},{"key":"categories","label":"Categories","type":"list","default":["Home","Food","Travel","Fun"],"help":"The choices when you add an expense."}]}'>
+<style>
+  /* Amber Notes' own colours and type, from the app (--amber-*); categories get the amber first. */
+  :root { --bg: var(--amber-bg); --card: var(--amber-surface); --ink: var(--amber-text); --muted: var(--amber-text-secondary); --line: var(--amber-separator);
+    --amber: var(--amber-accent); --amber-ink: var(--amber-accent-text); --field: var(--amber-fill);
+    --c0: var(--amber-accent); --c1: #3f8f6b; --c2: #4b74c9; --c3: #b5579a; --c4: var(--amber-text-secondary); }
+  * { box-sizing: border-box; }
+  /* Phone: one column. From 900 px: the month on the left, adding and the latest on the right. */
+  main { max-width: var(--amber-content-max); margin: 0 auto; padding: 8px var(--amber-gutter) 60px; }
+  .layout > section { min-width: 0; }
+  @media (min-width: 900px) {
+    .layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 28px; align-items: start; }
+    .total { font-size: 56px; }
+  }
+  h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; margin: 6px 0 2px; }
+  .total { font-size: 44px; font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; margin: 14px 0 0; }
+  .sub { color: var(--muted); font-size: 15px; margin-bottom: 18px; }
+  .bar { display: flex; height: 12px; border-radius: 6px; overflow: hidden; margin: 6px 0 14px; background: var(--field); }
+  .bar div { height: 100%; transition: width .4s; }
+  .card { background: var(--card); border-radius: var(--amber-radius); margin-bottom: 20px; overflow: hidden; }
+  .cat, .item { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-top: .5px solid var(--line); }
+  .cat:first-child, .item:first-child { border-top: 0; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+  .grow { flex: 1; min-width: 0; }
+  .amt { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .label { font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin: 0 4px 8px; }
+  form { display: grid; grid-template-columns: 1.4fr 1fr .9fr auto; gap: 8px; padding: 12px; }
+  input, select { font: inherit; font-size: 16px; padding: 9px 10px; border-radius: var(--amber-radius-small); border: 1px solid var(--amber-field-border); background: var(--amber-field); color: var(--ink); min-width: 0; }
+  button { min-height: 44px; font: inherit; font-weight: 600; border: 0; border-radius: var(--amber-radius-small); padding: 0 14px; background: var(--amber-accent-text); color: var(--amber-bg); }
+  .err { color: var(--amber-danger); font-size: 14px; padding: 0 16px 10px; }
+  .new { animation: flash 1.2s ease-out; }
+  @keyframes flash { from { background: rgba(232,137,28,.25); } to { background: transparent; } }
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script>
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  // Money in the currency from App Settings (amber.settings), no AI needed to change it.
+  const kr = (n) => { const c = amber.settings.currency || "SEK"; return c === "SEK" ? n.toLocaleString("sv-SE", { maximumFractionDigits: 0 }) + " kr" : n.toLocaleString("en-GB", { style: "currency", currency: c, maximumFractionDigits: 0 }); };
+  let lastCount = null, error = "";
+
+  function render(note) {
+    const t = note.tables.find((t) => t.columns.some((c) => /amount|amt|cost|kr|price/i.test(c.name)));
+    const app = document.getElementById("app");
+    if (!t) { app.innerHTML = `<h1>${esc(note.title)}</h1><div class="card" style="padding:24px">Add a table with an Amount column.</div>`; return; }
+    const col = (re) => t.columns.findIndex((c) => re.test(c.name));
+    const a = col(/amount|amt|cost|kr|price/i), cat = col(/categ/i), item = col(/item|what|description/i), date = col(/^date$/i);
+    const rows = t.rows.map((r) => ({ r, n: parseFloat(String(r[a]).replace(/\s/g, "").replace(",", ".")) || 0 }));
+    const total = rows.reduce((s, x) => s + x.n, 0);
+    const byCat = new Map();
+    for (const x of rows) { const k = (cat >= 0 && x.r[cat]) || "Other"; byCat.set(k, (byCat.get(k) || 0) + x.n); }
+    const cats = [...byCat].sort((p, q) => q[1] - p[1]);
+    const color = (i) => `var(--c${Math.min(i, 4)})`;
+    const fresh = lastCount !== null && t.rows.length > lastCount;
+    lastCount = t.rows.length;
+    app.innerHTML = `
+      <h1>${esc(note.title)}</h1>
+      <div class="layout"><section>
+      <div class="total">${kr(total)}</div>
+      <div class="sub">${rows.length} entries · ${kr(Math.max(0, (amber.settings.budget || 0) - total))} left of ${kr(amber.settings.budget || 0)}</div>
+      <div class="bar">${cats.map(([k, v], i) => `<div style="width:${(100 * v / (total || 1)).toFixed(2)}%;background:${color(i)}"></div>`).join("")}</div>
+      <div class="card">${cats.map(([k, v], i) => `<div class="cat"><div class="dot" style="background:${color(i)}"></div><div class="grow">${esc(k)}</div><div class="muted">${Math.round(100 * v / (total || 1))}%</div><div class="amt">${kr(v)}</div></div>`).join("")}</div>
+      </section><section>
+      <div class="label">Add an expense</div>
+      <div class="card">
+        <form id="add">
+          <input name="item" placeholder="What" aria-label="What" required>
+          <select name="cat" aria-label="Category">${[...new Set([...(amber.settings.categories || []), ...cats.map(([k]) => k)])].map((k) => `<option>${esc(k)}</option>`).join("")}</select>
+          <input name="amount" aria-label="Amount" placeholder="kr" inputmode="decimal" required>
+          <button>Add</button>
+        </form>
+        ${error ? `<div class="err">${esc(error)}</div>` : ""}
+      </div>
+      <div class="label">Latest</div>
+      <div class="card">${rows.slice().reverse().slice(0, 6).map((x, i) => `<div class="item ${fresh && i === 0 ? "new" : ""}"><div class="grow">${esc(item >= 0 ? x.r[item] : "")}<div class="muted">${esc(date >= 0 ? x.r[date] : "")} · ${esc(cat >= 0 ? x.r[cat] : "")}</div></div><div class="amt">${kr(x.n)}</div></div>`).join("")}</div></section></div>`;
+    document.getElementById("add").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const f = new FormData(e.target);
+      const values = { [t.columns[a].name]: String(f.get("amount")).trim() };
+      if (item >= 0) values[t.columns[item].name] = String(f.get("item")).trim();
+      if (cat >= 0) values[t.columns[cat].name] = String(f.get("cat"));
+      if (date >= 0) values[t.columns[date].name] = amber.note.today;
+      const r = await amber.update({ op: "append_row", table: t.index, values });
+      error = r.ok ? "" : r.error;
+      if (!r.ok) render(amber.note);
+    });
+  }
+  amber.onChange(render);
+</script>
+</body>
+</html>

@@ -55,7 +55,7 @@ type View = {
   name: string; width: number; scheme: string; errors: string[]; overflowPx: number; textLength: number; contrast: number; bgLuminance: number;
   unnamedControls: string[]; smallTargets: number; smallText?: string[]; smallTextCount?: number; faintText?: string[]; faintCount?: number;
   headings?: string[]; excerpt?: string; png?: string;
-  ghostFields?: string[]; sections?: number; nav?: boolean; junk?: string[]; under44?: string[]; under44Count?: number; clipped?: string[]; clippedCount?: number; usedWidth?: number; canvases?: number; svgShapes?: number; gridCols?: number; frames?: number;
+  titleCount?: number; ghostFields?: string[]; sections?: number; nav?: boolean; junk?: string[]; under44?: string[]; under44Count?: number; clipped?: string[]; clippedCount?: number; usedWidth?: number; canvases?: number; svgShapes?: number; gridCols?: number; frames?: number;
 };
 export type Rendered = { views: View[]; interaction: { tried: string; ok: boolean | null; error?: string; framesPerSecond?: number }; probes: Record<string, { pass: boolean; detail?: string }>; blocked: string[]; ms: number };
 
@@ -72,7 +72,7 @@ export function titleReport(r: Rendered, title: string): string[] {
   if (!v.headings.length || !same(v.headings[0], title)) {
     out.push(`The app's first heading should be the note's title ("${title}"), read from amber.note.title: nothing around the app shows the title.${v.headings[0] ? ` Its first heading is "${v.headings[0]}".` : " It has no heading."}`);
   }
-  const twice = v.headings.filter((h) => same(h, title)).length;
+  const twice = Math.max(v.headings.filter((h) => same(h, title)).length, v.titleCount ?? 0);
   if (twice > 1) out.push(`The note's title is shown ${twice} times; show it once, as the first heading.`);
   return out;
 }

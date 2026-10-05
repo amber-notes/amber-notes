@@ -5,9 +5,9 @@
   "round": "r12",
   "skill": false,
   "seconds": 62,
-  "score": 1,
-  "passed": 23,
-  "total": 23,
+  "score": 0.9230769230769231,
+  "passed": 24,
+  "total": 26,
   "checks": [
     {
       "name": "has_page",
@@ -42,6 +42,15 @@
       "pass": true
     },
     {
+      "name": "focused_screen",
+      "pass": true
+    },
+    {
+      "name": "visible_fields",
+      "pass": false,
+      "detail": "bpm, bpm, bpm"
+    },
+    {
       "name": "no_junk_text",
       "pass": true
     },
@@ -58,8 +67,13 @@
       "pass": true
     },
     {
-      "name": "uses_theme",
+      "name": "themed",
       "pass": true
+    },
+    {
+      "name": "distinct_look",
+      "pass": false,
+      "detail": "accent hue 28, 0% non-amber color"
     },
     {
       "name": "labelled_controls",
@@ -207,6 +221,11 @@
           "Beat"
         ],
         "excerpt": "Beat Tap a step to switch it on or off. Changes are saved in the note's table. Play Tempo (bpm) Clear all Kick Snare Hat",
+        "ghostFields": [
+          "bpm"
+        ],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -216,7 +235,12 @@
         "canvases": 0,
         "svgShapes": 14,
         "gridCols": 4,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "375-dark",
@@ -242,6 +266,11 @@
           "Beat"
         ],
         "excerpt": "Beat Tap a step to switch it on or off. Changes are saved in the note's table. Play Tempo (bpm) Clear all Kick Snare Hat",
+        "ghostFields": [
+          "bpm"
+        ],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -251,7 +280,12 @@
         "canvases": 0,
         "svgShapes": 14,
         "gridCols": 4,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 38,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "768-light",
@@ -277,6 +311,11 @@
           "Beat"
         ],
         "excerpt": "Beat Tap a step to switch it on or off. Changes are saved in the note's table. Play Tempo (bpm) Clear all Kick Snare Hat",
+        "ghostFields": [
+          "bpm"
+        ],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -286,7 +325,12 @@
         "canvases": 0,
         "svgShapes": 14,
         "gridCols": 8,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "1280-light",
@@ -312,6 +356,11 @@
           "Beat"
         ],
         "excerpt": "Beat Tap a step to switch it on or off. Changes are saved in the note's table. Play Tempo (bpm) Clear all Kick Snare Hat",
+        "ghostFields": [
+          "bpm"
+        ],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -321,7 +370,12 @@
         "canvases": 0,
         "svgShapes": 14,
         "gridCols": 16,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "1280-dark",
@@ -346,6 +400,11 @@
           "Beat"
         ],
         "excerpt": "Beat Tap a step to switch it on or off. Changes are saved in the note's table. Play Tempo (bpm) Clear all Kick Snare Hat",
+        "ghostFields": [
+          "bpm"
+        ],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -355,7 +414,12 @@
         "canvases": 0,
         "svgShapes": 14,
         "gridCols": 16,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 38,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       }
     ],
     "blocked": [],
@@ -468,7 +532,7 @@
     "interaction": {
       "tried": "control",
       "ok": true,
-      "framesPerSecond": 60
+      "framesPerSecond": 30
     },
     "probes": {
       "empty": {
@@ -477,7 +541,7 @@
       },
       "large": {
         "pass": true,
-        "detail": "558 ms to load 400 rows"
+        "detail": "604 ms to load 400 rows"
       }
     },
     "dataAfter": {}

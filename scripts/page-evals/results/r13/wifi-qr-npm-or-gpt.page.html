@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="amber-libs" content="npm:qrcode-generator@1.4.4/qrcode.js#sha256-GK45n4EYK8nekW6cd7GV3yDMWNby1VpisIWimfG/F4A=">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 18px var(--amber-gutter) 34px; color: var(--amber-text); font-family: var(--amber-font); }
+  .wrap { max-width: var(--amber-content-max); margin: 0 auto; }
+  .hero { display: grid; gap: 18px; align-items: center; min-height: calc(100vh - 52px); }
+  h1 { margin: 0; font-size: clamp(2rem, 7vw, 5rem); line-height: .95; letter-spacing: -.06em; font-family: var(--amber-font-rounded); }
+  .eyebrow { margin: 0 0 8px; color: var(--amber-accent-text); font-weight: 800; text-transform: uppercase; letter-spacing: .11em; font-size: .78rem; }
+  .sub { color: var(--amber-text-secondary); font-size: 1.08rem; margin: 12px 0 0; max-width: 34rem; line-height: 1.4; }
+  .panel { position: relative; border: 1px solid var(--amber-separator); background: linear-gradient(160deg, var(--amber-surface), var(--amber-accent-soft)); border-radius: calc(var(--amber-radius) + 14px); padding: clamp(16px, 4vw, 28px); overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.08); }
+  .panel:before { content: ""; position: absolute; width: 220px; height: 220px; right: -80px; top: -90px; border-radius: 50%; background: var(--amber-accent-soft); opacity: .8; }
+  .qr-shell { position: relative; display: grid; justify-items: center; gap: 14px; }
+  :root { --qr-paper: rgb(255, 255, 255); }
+  .qr { width: min(76vw, 520px); max-width: 100%; aspect-ratio: 1; display: grid; place-items: center; padding: clamp(10px, 2.4vw, 18px); background: var(--qr-paper); border-radius: 28px; border: 1px solid rgba(0,0,0,.10); box-shadow: 0 14px 30px rgba(0,0,0,.14); }
+  .qr svg { display: block; width: 100%; height: 100%; }
+  .network-card { width: 100%; border-radius: 20px; border: 1px solid var(--amber-separator); background: var(--amber-bg); padding: 14px 16px; }
+  .label { color: var(--amber-text-secondary); font-size: .82rem; margin-bottom: 4px; }
+  .ssid { font-size: clamp(1.45rem, 5vw, 2.4rem); font-weight: 850; letter-spacing: -.035em; overflow-wrap: anywhere; font-family: var(--amber-font-rounded); }
+  .actions { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 14px; }
+  button { min-height: 48px; border-radius: var(--amber-radius-small); border: 1px solid var(--amber-separator); background: var(--amber-fill); color: var(--amber-text); font: inherit; font-weight: 750; padding: 10px 14px; }
+  button.primary { background: var(--amber-accent); border-color: var(--amber-accent); color: var(--amber-on-accent); }
+  .manual { margin-top: 12px; color: var(--amber-text-secondary); font-size: .95rem; line-height: 1.45; }
+  .manual code { color: var(--amber-text); font-family: var(--amber-font-mono); font-size: .95em; background: var(--amber-fill); border: 1px solid var(--amber-separator); border-radius: 8px; padding: 2px 6px; overflow-wrap: anywhere; }
+  .empty { border: 1px dashed var(--amber-separator); border-radius: var(--amber-radius); padding: 20px; background: var(--amber-surface); color: var(--amber-text-secondary); line-height: 1.45; }
+  .toast { min-height: 1.2em; margin-top: 8px; color: var(--amber-accent-text); font-weight: 700; }
+  @media (min-width: 900px) { .hero { grid-template-columns: minmax(0, .9fr) minmax(360px, 1.1fr); gap: clamp(28px, 6vw, 72px); } .actions { grid-template-columns: 1fr 1fr; } .qr { width: min(42vw, 560px); } }
+  html.amber-widget body { padding: 12px; } html.amber-widget .hero { min-height: 0; } html.amber-widget h1 { font-size: 1.7rem; } html.amber-widget .sub, html.amber-widget .manual { display: none; } html.amber-widget .qr { width: min(72vw, 260px); border-radius: 18px; } html.amber-widget .panel { padding: 12px; border-radius: 20px; }
+</style>
+</head>
+<body>
+<main class="wrap" id="app"></main>
+<script>
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+function parseWifi(markdown) {
+  const lines = String(markdown || "").split(/\r?\n/);
+  const out = { ssid: "", password: "", security: "WPA" };
+  for (const line of lines) {
+    const m = line.match(/^\s*(?:[-*]\s*)?(network|ssid|wi-?fi name|wifi name|password|pass|security|type)\s*[:：-]\s*(.*?)\s*$/i);
+    if (!m) continue;
+    const key = m[1].toLowerCase();
+    const val = m[2].trim().replace(/^`|`$/g, "");
+    if (/network|ssid|name/.test(key)) out.ssid = val;
+    else if (/password|pass/.test(key)) out.password = val;
+    else if (/security|type/.test(key)) out.security = val;
+  }
+  return out;
+}
+function wifiEscape(s) { return String(s ?? "").replace(/([\\;,:"])/g, "\\$1"); }
+function securityType(s) {
+  const t = String(s || "").toUpperCase();
+  if (!t || /NONE|OPEN|NO\s*PASS/.test(t)) return "nopass";
+  if (/WEP/.test(t)) return "WEP";
+  if (/WPA/.test(t)) return "WPA";
+  return "WPA";
+}
+function payloadFor(w) {
+  const t = securityType(w.security);
+  return `WIFI:T:${t};S:${wifiEscape(w.ssid)};${t === "nopass" ? "" : `P:${wifiEscape(w.password)};`}H:false;;`;
+}
+function makeQr(text) {
+  if (typeof qrcode !== "function") throw new Error("QR library did not load");
+  const qr = qrcode(0, "M");
+  qr.addData(text);
+  qr.make();
+  return qr.createSvgTag(8, 3).replace("<svg", "<svg role=\"img\" aria-label=\"QR code to join the guest Wi-Fi\"");
+}
+function render(note) {
+  const root = document.getElementById("app");
+  const wifi = parseWifi(note.markdown);
+  if (!wifi.ssid) {
+    root.innerHTML = `<section class="hero"><div><p class="eyebrow">Guest Wi‑Fi</p><h1>${esc(note.title)}</h1><p class="sub">Add lines like <code>Network: Your Guest Network</code> and <code>Password: secret</code> to this note, then the QR code will appear here.</p></div><div class="empty">No network name found.</div></section>`;
+    return;
+  }
+  let qrHtml = "";
+  let err = "";
+  try { qrHtml = makeQr(payloadFor(wifi)); } catch (e) { err = e.message || String(e); }
+  const hasPass = securityType(wifi.security) !== "nopass" && wifi.password;
+  root.innerHTML = `<section class="hero">
+    <div>
+      <p class="eyebrow">Guest Wi‑Fi</p>
+      <h1>${esc(note.title)}</h1>
+      <p class="sub">Point a phone camera at the code. The phone will offer to join <strong>${esc(wifi.ssid)}</strong> automatically.</p>
+    </div>
+    <div class="panel"><div class="qr-shell">
+      <div class="qr">${err ? `<div class="empty">${esc(err)}</div>` : qrHtml}</div>
+      <div class="network-card"><div class="label">Network name</div><div class="ssid">${esc(wifi.ssid)}</div></div>
+    </div>
+    <div class="manual">Manual join: choose <code>${esc(wifi.ssid)}</code>${hasPass ? ` and enter the password from the note if the camera prompt does not appear.` : `.`}</div></div>
+  </section>`;
+}
+amber.onChange(render);
+</script>
+</body>
+</html>

@@ -5,9 +5,9 @@
   "round": "r12",
   "skill": false,
   "seconds": 61,
-  "score": 1,
+  "score": 0.8846153846153846,
   "passed": 23,
-  "total": 23,
+  "total": 26,
   "checks": [
     {
       "name": "has_page",
@@ -42,6 +42,16 @@
       "pass": true
     },
     {
+      "name": "focused_screen",
+      "pass": false,
+      "detail": "6 sections on the first phone screen"
+    },
+    {
+      "name": "visible_fields",
+      "pass": false,
+      "detail": "bpm, bpm, bpm"
+    },
+    {
       "name": "no_junk_text",
       "pass": true
     },
@@ -58,8 +68,13 @@
       "pass": true
     },
     {
-      "name": "uses_theme",
+      "name": "themed",
       "pass": true
+    },
+    {
+      "name": "distinct_look",
+      "pass": false,
+      "detail": "accent hue 31, 0% non-amber color"
     },
     {
       "name": "labelled_controls",
@@ -210,6 +225,11 @@
           "Hat"
         ],
         "excerpt": "Beat Play Tempo (bpm) Mute Tap a step to turn it on or off. The pattern is saved in the note's table as x marks. Kick 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 Snare 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 Hat 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16",
+        "ghostFields": [
+          "bpm"
+        ],
+        "sections": 6,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -219,7 +239,12 @@
         "canvases": 0,
         "svgShapes": 1,
         "gridCols": 4,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 31,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "375-dark",
@@ -248,6 +273,11 @@
           "Hat"
         ],
         "excerpt": "Beat Play Tempo (bpm) Mute Tap a step to turn it on or off. The pattern is saved in the note's table as x marks. Kick 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 Snare 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 Hat 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16",
+        "ghostFields": [
+          "bpm"
+        ],
+        "sections": 6,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -257,7 +287,12 @@
         "canvases": 0,
         "svgShapes": 1,
         "gridCols": 4,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 37,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "768-light",
@@ -286,6 +321,11 @@
           "Hat"
         ],
         "excerpt": "Beat Play Tempo (bpm) Mute Tap a step to turn it on or off. The pattern is saved in the note's table as x marks. Kick 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 Snare 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 Hat 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16",
+        "ghostFields": [
+          "bpm"
+        ],
+        "sections": 6,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -295,7 +335,12 @@
         "canvases": 0,
         "svgShapes": 1,
         "gridCols": 8,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 31,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "1280-light",
@@ -324,6 +369,11 @@
           "Hat"
         ],
         "excerpt": "Beat Play Tempo (bpm) Mute Tap a step to turn it on or off. The pattern is saved in the note's table as x marks. Kick 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 Snare 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 Hat 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16",
+        "ghostFields": [
+          "bpm"
+        ],
+        "sections": 6,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -333,7 +383,12 @@
         "canvases": 0,
         "svgShapes": 1,
         "gridCols": 16,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 31,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "1280-dark",
@@ -361,6 +416,11 @@
           "Hat"
         ],
         "excerpt": "Beat Play Tempo (bpm) Mute Tap a step to turn it on or off. The pattern is saved in the note's table as x marks. Kick 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 Snare 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 Hat 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16",
+        "ghostFields": [
+          "bpm"
+        ],
+        "sections": 6,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -370,7 +430,12 @@
         "canvases": 0,
         "svgShapes": 1,
         "gridCols": 16,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 37,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       }
     ],
     "blocked": [],
@@ -390,7 +455,7 @@
     "interaction": {
       "tried": "control",
       "ok": true,
-      "framesPerSecond": 61
+      "framesPerSecond": 31
     },
     "probes": {
       "empty": {
@@ -399,7 +464,7 @@
       },
       "large": {
         "pass": true,
-        "detail": "576 ms to load 400 rows"
+        "detail": "604 ms to load 400 rows"
       }
     },
     "dataAfter": {}

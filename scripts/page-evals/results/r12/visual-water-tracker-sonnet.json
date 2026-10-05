@@ -5,9 +5,9 @@
   "round": "r12",
   "skill": false,
   "seconds": 62,
-  "score": 1,
-  "passed": 22,
-  "total": 22,
+  "score": 0.96,
+  "passed": 24,
+  "total": 25,
   "checks": [
     {
       "name": "has_page",
@@ -42,6 +42,14 @@
       "pass": true
     },
     {
+      "name": "focused_screen",
+      "pass": true
+    },
+    {
+      "name": "visible_fields",
+      "pass": true
+    },
+    {
       "name": "no_junk_text",
       "pass": true
     },
@@ -62,8 +70,13 @@
       "pass": true
     },
     {
-      "name": "uses_theme",
+      "name": "themed",
       "pass": true
+    },
+    {
+      "name": "distinct_look",
+      "pass": false,
+      "detail": "accent hue 28, 0% non-amber color"
     },
     {
       "name": "labelled_controls",
@@ -205,6 +218,9 @@
           "Last 14 days"
         ],
         "excerpt": "Water TODAY 3 / 8 5 more glasses to go. + 1 glass − 1 2 day streak 7/14 goal days, last 14 7.0 average a day LAST 14 DAYS goal 8 6 8 5 9 7 8 4 8 10 6 7 8 9 3 22 23 24 25 26 27 28 29 30 01 02 03 04 05 Goal met Below goal",
+        "ghostFields": [],
+        "sections": 4,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -214,7 +230,12 @@
         "canvases": 0,
         "svgShapes": 11,
         "gridCols": 3,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "375-dark",
@@ -242,6 +263,9 @@
           "Last 14 days"
         ],
         "excerpt": "Water TODAY 3 / 8 5 more glasses to go. + 1 glass − 1 2 day streak 7/14 goal days, last 14 7.0 average a day LAST 14 DAYS goal 8 6 8 5 9 7 8 4 8 10 6 7 8 9 3 22 23 24 25 26 27 28 29 30 01 02 03 04 05 Goal met Below goal",
+        "ghostFields": [],
+        "sections": 4,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -251,7 +275,12 @@
         "canvases": 0,
         "svgShapes": 11,
         "gridCols": 3,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 38,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "768-light",
@@ -279,6 +308,9 @@
           "Last 14 days"
         ],
         "excerpt": "Water TODAY 3 / 8 5 more glasses to go. + 1 glass − 1 2 day streak 7/14 goal days, last 14 7.0 average a day LAST 14 DAYS goal 8 6 8 5 9 7 8 4 8 10 6 7 8 9 3 22 23 24 25 26 27 28 29 30 01 02 03 04 05 Goal met Below goal",
+        "ghostFields": [],
+        "sections": 4,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -288,7 +320,12 @@
         "canvases": 0,
         "svgShapes": 11,
         "gridCols": 3,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "1280-light",
@@ -316,6 +353,9 @@
           "Last 14 days"
         ],
         "excerpt": "Water TODAY 3 / 8 5 more glasses to go. + 1 glass − 1 2 day streak 7/14 goal days, last 14 7.0 average a day LAST 14 DAYS goal 8 6 8 5 9 7 8 4 8 10 6 7 8 9 3 22 23 24 25 26 27 28 29 30 01 02 03 04 05 Goal met Below goal",
+        "ghostFields": [],
+        "sections": 4,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -325,7 +365,12 @@
         "canvases": 0,
         "svgShapes": 11,
         "gridCols": 3,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "1280-dark",
@@ -352,6 +397,9 @@
           "Last 14 days"
         ],
         "excerpt": "Water TODAY 3 / 8 5 more glasses to go. + 1 glass − 1 2 day streak 7/14 goal days, last 14 7.0 average a day LAST 14 DAYS goal 8 6 8 5 9 7 8 4 8 10 6 7 8 9 3 22 23 24 25 26 27 28 29 30 01 02 03 04 05 Goal met Below goal",
+        "ghostFields": [],
+        "sections": 4,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -361,7 +409,12 @@
         "canvases": 0,
         "svgShapes": 11,
         "gridCols": 3,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 38,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       }
     ],
     "blocked": [],
@@ -390,7 +443,7 @@
       },
       "large": {
         "pass": true,
-        "detail": "571 ms to load 400 rows"
+        "detail": "602 ms to load 400 rows"
       }
     },
     "dataAfter": {}

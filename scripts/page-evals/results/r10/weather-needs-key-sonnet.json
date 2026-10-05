@@ -5,9 +5,9 @@
   "round": "r10",
   "skill": false,
   "seconds": 68,
-  "score": 0.9565217391304348,
-  "passed": 22,
-  "total": 23,
+  "score": 0.96,
+  "passed": 24,
+  "total": 25,
   "checks": [
     {
       "name": "has_page",
@@ -39,6 +39,14 @@
     },
     {
       "name": "phone_targets",
+      "pass": true
+    },
+    {
+      "name": "focused_screen",
+      "pass": true
+    },
+    {
+      "name": "visible_fields",
       "pass": true
     },
     {
@@ -232,6 +240,9 @@
           "To do before"
         ],
         "excerpt": "Porto weekend 5-day forecast · OpenWeather Couldn't load the forecast: The person hasn't allowed this host yet. Try again Trip flights: out fri 16 oct 07:10 ARN->OPO (TP 781), back sun 18 oct 19:40 (TP 784) hotel: Casa do Conto, Rua da Boavista 703, conf #CC-55821, check in from 15:00 budget ~ 6000 kr total To do before book lello tickets buy travel insurance download offline maps",
+        "ghostFields": [],
+        "sections": 3,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -274,6 +285,9 @@
           "To do before"
         ],
         "excerpt": "Porto weekend 5-day forecast · OpenWeather Couldn't load the forecast: The person hasn't allowed this host yet. Try again Trip flights: out fri 16 oct 07:10 ARN->OPO (TP 781), back sun 18 oct 19:40 (TP 784) hotel: Casa do Conto, Rua da Boavista 703, conf #CC-55821, check in from 15:00 budget ~ 6000 kr total To do before book lello tickets buy travel insurance download offline maps",
+        "ghostFields": [],
+        "sections": 3,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -316,6 +330,9 @@
           "To do before"
         ],
         "excerpt": "Porto weekend 5-day forecast · OpenWeather Couldn't load the forecast: The person hasn't allowed this host yet. Try again Trip flights: out fri 16 oct 07:10 ARN->OPO (TP 781), back sun 18 oct 19:40 (TP 784) hotel: Casa do Conto, Rua da Boavista 703, conf #CC-55821, check in from 15:00 budget ~ 6000 kr total To do before book lello tickets buy travel insurance download offline maps",
+        "ghostFields": [],
+        "sections": 3,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -358,6 +375,9 @@
           "To do before"
         ],
         "excerpt": "Porto weekend 5-day forecast · OpenWeather Couldn't load the forecast: The person hasn't allowed this host yet. Try again Trip flights: out fri 16 oct 07:10 ARN->OPO (TP 781), back sun 18 oct 19:40 (TP 784) hotel: Casa do Conto, Rua da Boavista 703, conf #CC-55821, check in from 15:00 budget ~ 6000 kr total To do before book lello tickets buy travel insurance download offline maps",
+        "ghostFields": [],
+        "sections": 3,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -399,6 +419,9 @@
           "To do before"
         ],
         "excerpt": "Porto weekend 5-day forecast · OpenWeather Couldn't load the forecast: The person hasn't allowed this host yet. Try again Trip flights: out fri 16 oct 07:10 ARN->OPO (TP 781), back sun 18 oct 19:40 (TP 784) hotel: Casa do Conto, Rua da Boavista 703, conf #CC-55821, check in from 15:00 budget ~ 6000 kr total To do before book lello tickets buy travel insurance download offline maps",
+        "ghostFields": [],
+        "sections": 3,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,

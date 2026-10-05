@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+  :root { --k:#e0662f; --s:#2f8fe0; --h:#2aa876; --o:#a566d9; }
+  @media (prefers-color-scheme: dark) { :root { --k:#ff8a55; --s:#5cb0ff; --h:#4cd49b; --o:#c58cf5; } }
+  * { box-sizing: border-box; }
+  main { max-width: var(--amber-content-max); margin: 0 auto; padding: 20px var(--amber-gutter) 56px; }
+  h1 { font-family: var(--amber-font-rounded); font-size: 1.9rem; letter-spacing: -.02em; margin: 4px 0 14px; }
+  .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 16px; }
+  button.play { min-height: 52px; min-width: 132px; font: inherit; font-weight: 700; font-size: 1.05rem; border: 0; border-radius: 26px; background: var(--amber-text); color: var(--amber-bg); display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; }
+  button.play svg { width: 18px; height: 18px; fill: currentColor; }
+  .tempo { display: flex; align-items: center; gap: 10px; flex: 1 1 220px; min-height: 44px; }
+  .tempo label { font-size: .9rem; color: var(--amber-text-secondary); white-space: nowrap; }
+  .tempo input[type=range] { flex: 1; min-width: 80px; padding: 0; min-height: 44px; background: transparent; border: 0; accent-color: var(--amber-accent); }
+  .bpm { font-variant-numeric: tabular-nums; font-weight: 700; font-family: var(--amber-font-mono); min-width: 3.4ch; text-align: right; }
+  .track { background: var(--amber-surface); border: 1px solid var(--amber-separator); border-radius: var(--amber-radius); padding: 12px; margin-bottom: 12px; }
+  .track h2 { margin: 0 0 8px; font-size: .95rem; font-family: var(--amber-font-rounded); display: flex; align-items: center; gap: 8px; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--c); display: inline-block; }
+  .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  @media (min-width: 520px) { .steps { grid-template-columns: repeat(8, 1fr); } }
+  @media (min-width: 1000px) { .steps { grid-template-columns: repeat(16, 1fr); } }
+  .step { min-height: 44px; border-radius: var(--amber-radius-small); border: 1px solid var(--amber-separator); background: var(--amber-fill); cursor: pointer; padding: 0; position: relative; color: var(--amber-text); font: inherit; font-size: .75rem; font-variant-numeric: tabular-nums; }
+  .step.beat { border-color: var(--amber-text-secondary); }
+  .step.on { background: var(--c); border-color: var(--c); }
+  .step.on::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+  .step.now { outline: 3px solid var(--amber-text); outline-offset: 1px; }
+  .step .n { position: absolute; left: 5px; top: 3px; color: var(--amber-text); font-weight: 600; }
+  .step.on .n { color: #000; }
+  .err { color: var(--amber-danger); min-height: 1.2em; }
+  .hint { color: var(--amber-text-secondary); font-size: .9rem; margin: 4px 0 0; }
+  .empty { padding: 24px; text-align: center; color: var(--amber-text-secondary); background: var(--amber-surface); border-radius: var(--amber-radius); }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<main>
+  <h1 id="title">Beat</h1>
+  <div class="bar">
+    <button class="play" id="play" type="button" aria-label="Play"></button>
+    <div class="tempo"><label for="tempo">Tempo</label><input type="range" id="tempo" name="tempo" min="60" max="200" step="1" value="120"><span class="bpm" id="bpm">120</span></div>
+  </div>
+  <div id="grid"></div>
+  <div class="err" id="err" role="alert"></div>
+  <p class="hint">Tap a step to switch it on or off. The pattern is the table in the note's text.</p>
+</main>
+<script>
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const COLORS = ["var(--k)", "var(--s)", "var(--h)", "var(--o)"];
+  let tracks = [];       // {name, col, steps:[bool]}
+  let tableIndex = 0, stepCol = -1;
+  let bpm = 120, playing = false, cur = -1;
+  let ctx = null, timer = null, nextTime = 0, nextStep = 0, queue = [], raf = 0, noiseBuf = null;
+
+  const isOn = (v) => /^(x|✓|yes|1|true)$/i.test(String(v || "").trim());
+
+  function parse(note) {
+    const t = note.tables.find((t) => t.columns.some((c) => /^step$/i.test(c.name))) || note.tables[0];
+    if (!t) { tracks = []; return null; }
+    tableIndex = t.index;
+    stepCol = t.columns.findIndex((c) => /^step$/i.test(c.name));
+    tracks = [];
+    t.columns.forEach((c, i) => {
+      if (i === stepCol) return;
+      tracks.push({ name: c.name, col: i, steps: t.rows.map((r) => isOn(r[i])) });
+    });
+    return t;
+  }
+
+  function render(note) {
+    document.getElementById("title").textContent = note.title;
+    const t = parse(note);
+    const g = document.getElementById("grid");
+    if (!t || !tracks.length || !t.rows.length) {
+      g.innerHTML = '<div class="empty">Add a table with a Step column and one column per drum (Kick, Snare, Hat) to the note.</div>';
+      return;
+    }
+    g.innerHTML = tracks.map((tr, ti) => `
+      <section class="track" style="--c:${COLORS[ti % COLORS.length]}">
+        <h2><span class="dot"></span>${esc(tr.name)}</h2>
+        <div class="steps">${tr.steps.map((on, si) => `<button type="button" class="step${on ? " on" : ""}${si % 4 === 0 ? " beat" : ""}${si === cur ? " now" : ""}" data-t="${ti}" data-s="${si}" aria-pressed="${on}" aria-label="${esc(tr.name)} step ${si + 1}"><span class="n">${si + 1}</span></button>`).join("")}</div>
+      </section>`).join("");
+  }
+
+  document.getElementById("grid").addEventListener("click", async (e) => {
+    const b = e.target.closest(".step");
+    if (!b) return;
+    const tr = tracks[+b.dataset.t], si = +b.dataset.s;
+    const on = !tr.steps[si];
+    const r = await amber.update({ op: "set_cell", table: tableIndex, row: si, col: tr.name, value: on ? "x" : "" });
+    document.getElementById("err").textContent = r.ok ? "" : r.error;
+    if (on && r.ok) { ensureCtx(); if (ctx) voice(tr.name, ctx.currentTime + 0.01); }
+  });
+
+  /* ---- sound ---- */
+  function ensureCtx() {
+    if (!ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      ctx = new AC();
+      noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+      const d = noiseBuf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
+    if (ctx.state === "suspended") ctx.resume();
+  }
+  function noise(t, dur, type, freq, gain) {
+    const s = ctx.createBufferSource(); s.buffer = noiseBuf;
+    const f = ctx.createBiquadFilter(); f.type = type; f.frequency.value = freq;
+    const g = ctx.createGain(); g.gain.setValueAtTime(gain, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    s.connect(f); f.connect(g); g.connect(ctx.destination); s.start(t); s.stop(t + dur + 0.02);
+  }
+  function tone(t, f0, f1, dur, gain, type) {
+    const o = ctx.createOscillator(); o.type = type || "sine";
+    o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    const g = ctx.createGain(); g.gain.setValueAtTime(gain, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t + dur + 0.02);
+  }
+  function voice(name, t) {
+    if (/kick|bass|bd/i.test(name)) tone(t, 150, 40, 0.28, 0.9);
+    else if (/snare|clap|sd/i.test(name)) { noise(t, 0.18, "highpass", 1500, 0.6); tone(t, 220, 120, 0.1, 0.4, "triangle"); }
+    else if (/hat|hh|cym/i.test(name)) noise(t, 0.05, "highpass", 7000, 0.35);
+    else tone(t, 440, 330, 0.12, 0.3, "square");
+  }
+
+  /* ---- sequencer ---- */
+  function len() { return tracks.length ? tracks[0].steps.length : 16; }
+  function schedule() {
+    while (nextTime < ctx.currentTime + 0.12) {
+      const n = len();
+      const s = nextStep % n;
+      tracks.forEach((tr) => { if (tr.steps[s]) voice(tr.name, nextTime); });
+      queue.push({ s, t: nextTime });
+      nextTime += 60 / bpm / 4;
+      nextStep = (s + 1) % n;
+    }
+  }
+  function mark(s) {
+    if (s === cur) return;
+    document.querySelectorAll(".step.now").forEach((el) => el.classList.remove("now"));
+    cur = s;
+    if (s >= 0) document.querySelectorAll('.step[data-s="' + s + '"]').forEach((el) => el.classList.add("now"));
+  }
+  function frame() {
+    if (!playing) return;
+    while (queue.length && queue[0].t <= ctx.currentTime) mark(queue.shift().s);
+    raf = requestAnimationFrame(frame);
+  }
+  function setButton() {
+    const b = document.getElementById("play");
+    b.setAttribute("aria-label", playing ? "Stop" : "Play");
+    b.innerHTML = playing
+      ? '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>Stop'
+      : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4l13 8-13 8z"/></svg>Play';
+  }
+  function start() {
+    ensureCtx(); if (!ctx || !tracks.length) return;
+    playing = true; nextStep = 0; queue = []; nextTime = ctx.currentTime + 0.05;
+    timer = setInterval(schedule, 25); schedule(); raf = requestAnimationFrame(frame); setButton();
+  }
+  function stop() {
+    playing = false; clearInterval(timer); cancelAnimationFrame(raf); queue = []; mark(-1); setButton();
+  }
+  document.getElementById("play").onclick = () => (playing ? stop() : start());
+  document.addEventListener("visibilitychange", () => { if (document.hidden && playing) stop(); });
+  document.addEventListener("keydown", (e) => { if (e.code === "Space" && !/INPUT|BUTTON/.test(e.target.tagName)) { e.preventDefault(); playing ? stop() : start(); } });
+
+  const tempo = document.getElementById("tempo");
+  function setBpm(v, save) {
+    bpm = Math.max(60, Math.min(200, v)); tempo.value = bpm;
+    document.getElementById("bpm").textContent = bpm;
+    if (save) amber.store.set("bpm", bpm);
+  }
+  tempo.addEventListener("input", () => setBpm(+tempo.value, false));
+  tempo.addEventListener("change", () => setBpm(+tempo.value, true));
+
+  let first = true;
+  amber.onChange((note, data) => {
+    if (first) {
+      first = false;
+      const saved = data && data.values && data.values.bpm;
+      const m = /(\d{2,3})\s*bpm/i.exec(note.markdown || "");
+      setBpm(saved || (m ? +m[1] : 120), false);
+    }
+    render(note);
+  });
+  setButton();
+</script>
+</body>
+</html>

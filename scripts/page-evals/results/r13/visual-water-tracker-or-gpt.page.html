@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="amber-settings" content='{"settings":[{"key":"goal","label":"Daily goal","type":"number","default":8},{"key":"unit","label":"Unit label","type":"text","default":"glasses"}]}'>
+<style>
+  :root{
+    --water:#0077e6; --water-deep:#0057b8; --water-soft:#dcefff; --water-line:#9dd1ff; --primary-text:#ffffff;
+    --ok:#16a66a; --warn:#ff9f0a;
+  }
+  @media (prefers-color-scheme: dark){:root{--water:#85cfff;--water-deep:#5eb6ff;--water-soft:#123553;--water-line:#2d648f;--ok:#5bd492;--warn:#ffb340;--primary-text:#06243a;}}
+  *{box-sizing:border-box}
+  body{margin:0;padding:calc(18px + env(safe-area-inset-top)) var(--amber-gutter) calc(34px + env(safe-area-inset-bottom));font-family:var(--amber-font);color:var(--amber-text)}
+  .wrap{max-width:var(--amber-content-max);margin:0 auto;display:grid;gap:1rem}
+  header{display:flex;align-items:end;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+  h1{font-size:clamp(1.8rem,5.5vw,3.2rem);line-height:1;margin:.2rem 0 .1rem;letter-spacing:-.045em;font-family:var(--amber-font-rounded)}
+  .date{color:var(--amber-text-secondary);font-size:.98rem}
+  .hero{display:grid;grid-template-columns:1fr;gap:1rem;align-items:stretch}
+  .card{background:var(--amber-surface);border:1px solid var(--amber-separator);border-radius:calc(var(--amber-radius) + 8px);box-shadow:0 .75rem 2rem rgba(0,0,0,.05);overflow:hidden}
+  .today{position:relative;min-height:28rem;padding:1.1rem;display:grid;grid-template-rows:auto 1fr auto;isolation:isolate;background:linear-gradient(180deg,var(--water-soft),var(--amber-surface) 62%)}
+  .score{display:flex;align-items:flex-start;justify-content:space-between;gap:.75rem;z-index:2}
+  .big{font-family:var(--amber-font-rounded);font-size:clamp(3.4rem,16vw,7.5rem);font-weight:800;letter-spacing:-.08em;line-height:.85;font-variant-numeric:tabular-nums}
+  .big small{font-size:.25em;letter-spacing:-.03em;color:var(--amber-text-secondary);font-weight:700;margin-left:.1em}
+  .status{text-align:right;color:var(--amber-text-secondary);font-weight:650;max-width:11rem}
+  .status strong{display:block;color:var(--amber-text);font-size:1.15rem}
+  .bottle-zone{display:grid;place-items:center;padding:.5rem 0 1rem;min-height:15rem}
+  .bottle{width:min(58vw,18rem);height:min(72vw,22rem);max-height:23rem;border:.34rem solid var(--water-line);border-radius:3.2rem 3.2rem 2rem 2rem;position:relative;overflow:hidden;background:rgba(255,255,255,.24);box-shadow:inset 0 0 0 .3rem rgba(255,255,255,.22),0 1rem 2.3rem rgba(0,102,204,.15)}
+  .bottle:before{content:"";position:absolute;top:.6rem;left:50%;translate:-50% 0;width:34%;height:.65rem;border-radius:999px;background:var(--water-line);opacity:.55;z-index:3}
+  .fill{position:absolute;left:0;right:0;bottom:0;height:var(--pct);min-height:0;background:linear-gradient(180deg,var(--water),var(--water-deep));transition:height .35s ease;border-radius:2.3rem 2.3rem 1.5rem 1.5rem}
+  .fill:before,.fill:after{content:"";position:absolute;left:50%;top:-1.35rem;width:140%;height:3rem;border-radius:43%;background:rgba(255,255,255,.36);animation:wave 7s linear infinite;transform-origin:50% 50%}
+  .fill:after{background:rgba(255,255,255,.22);animation-duration:10s;animation-direction:reverse;top:-1rem}
+  @keyframes wave{from{transform:translateX(-50%) rotate(0)}to{transform:translateX(-50%) rotate(360deg)}}
+  @media (prefers-reduced-motion:reduce){.fill:before,.fill:after{animation:none}.fill{transition:none}}
+  .controls{display:grid;grid-template-columns:1fr 1fr;gap:.7rem;z-index:2}
+  button{min-height:3rem;border-radius:var(--amber-radius-small);border:1px solid var(--amber-field-border);font:inherit;font-weight:750;cursor:pointer;color:var(--amber-text);background:var(--amber-field);padding:.75rem .9rem}
+  button.primary{grid-column:1/-1;background:var(--water-deep);border-color:var(--water-deep);color:var(--primary-text);font-size:1.08rem}
+  button:focus-visible{outline:3px solid var(--amber-accent);outline-offset:2px}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  .side{display:grid;gap:1rem}
+  .statgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem;padding:.85rem}
+  .stat{background:var(--amber-fill);border:1px solid var(--amber-separator);border-radius:var(--amber-radius);padding:.9rem;min-height:6.2rem;display:grid;align-content:space-between}
+  .label{color:var(--amber-text-secondary);font-size:.84rem;font-weight:700;text-transform:uppercase;letter-spacing:.055em}
+  .value{font-family:var(--amber-font-rounded);font-size:2rem;font-weight:850;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+  .value.good{color:var(--ok)}.value.warn{color:var(--warn)}
+  .panel{padding:1rem;display:grid;gap:.85rem}
+  h2{font-size:.9rem;text-transform:uppercase;letter-spacing:.06em;color:var(--amber-text-secondary);margin:0;font-weight:800}
+  .week{display:grid;grid-template-columns:repeat(7,1fr);gap:.45rem;align-items:end;min-height:9rem;padding-top:.2rem}
+  .day{display:grid;gap:.35rem;justify-items:center;align-content:end;min-width:0}
+  .barbox{height:6.5rem;width:100%;max-width:2.2rem;border-radius:999px;background:var(--amber-fill);border:1px solid var(--amber-separator);position:relative;overflow:hidden}
+  .barfill{position:absolute;left:0;right:0;bottom:0;height:var(--h);background:linear-gradient(180deg,var(--water),var(--water-deep));border-radius:999px 999px 0 0}
+  .dow{font-size:.82rem;color:var(--amber-text-secondary);font-weight:700;white-space:nowrap}.num{font-size:.78rem;font-variant-numeric:tabular-nums;font-weight:750}
+  .drops{display:grid;grid-template-columns:repeat(7,1fr);gap:.55rem}.drop{aspect-ratio:1;display:grid;place-items:center;border-radius:50% 50% 55% 50%;rotate:45deg;background:var(--amber-fill);border:1px solid var(--amber-separator);position:relative}.drop span{rotate:-45deg;font-size:.78rem;font-weight:800;font-variant-numeric:tabular-nums}.drop.full{background:var(--water);border-color:var(--water);color:white}.drop.today{outline:2px solid var(--amber-text);outline-offset:2px}
+  .empty{padding:2rem;text-align:center;color:var(--amber-text-secondary)}
+  .err{min-height:1.25rem;color:var(--amber-danger);font-weight:650}
+  @media (min-width:760px){.hero{grid-template-columns:minmax(20rem,.9fr) minmax(22rem,1.1fr)}.today{min-height:35rem}.side{grid-template-rows:auto 1fr}.drops{grid-template-columns:repeat(14,1fr)} }
+  @media (min-width:1100px){.wrap{gap:1.2rem}.today{min-height:39rem}.bottle{width:19rem;height:24rem}.statgrid{grid-template-columns:repeat(4,1fr)} }
+  .amber-widget body{padding:12px}.amber-widget .today{min-height:22rem}.amber-widget .side{display:none}
+</style>
+</head>
+<body>
+<main class="wrap" id="app" aria-live="polite"></main>
+<script>
+(function(){
+  const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+  const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
+  const addDays=(iso,n)=>{const d=new Date(iso+"T12:00:00Z");d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)};
+  const shortDay=iso=>new Date(iso+"T12:00:00Z").toLocaleDateString(undefined,{weekday:"short"}).slice(0,3);
+  const niceDate=iso=>new Date(iso+"T12:00:00Z").toLocaleDateString(undefined,{weekday:"long",month:"short",day:"numeric"});
+  let error="";
+  function number(v){const n=parseFloat(String(v??"").replace(/[^0-9.-]/g,""));return Number.isFinite(n)?n:0}
+  function findTable(note){return note.tables.find(t=>t.columns.some(c=>/^date$/i.test(c.name))&&t.columns.some(c=>/^glasses|water|cups|count$/i.test(c.name)))||note.tables.find(t=>t.columns.length>=2)}
+  function render(note){
+    const root=document.getElementById("app");
+    const t=findTable(note);
+    const title=esc(note.title||"Water");
+    if(!t){root.innerHTML=`<header><div><h1>${title}</h1><div class="date">Today</div></div></header><section class="card empty">Add a table with Date and Glasses columns to see your water visually.</section>`;return}
+    const dateCol=Math.max(0,t.columns.findIndex(c=>/^date$/i.test(c.name)));
+    const glassCol=(t.columns.findIndex(c=>/^glasses|water|cups|count$/i.test(c.name))>-1?t.columns.findIndex(c=>/^glasses|water|cups|count$/i.test(c.name)):t.columns.findIndex((_,i)=>i!==dateCol));
+    const dateName=t.columns[dateCol].name, glassName=t.columns[glassCol].name;
+    const settings=amber.settings||{};
+    const parsedGoal=(note.markdown.match(/goal\s*:\s*(\d+(?:\.\d+)?)/i)||[])[1];
+    const goal=Math.max(1,number(settings.goal||parsedGoal||8));
+    const unit=String(settings.unit||"glasses");
+    const today=note.today;
+    const rows=t.rows.map((r,i)=>({i,date:String(r[dateCol]||""),glasses:number(r[glassCol])})).filter(r=>r.date);
+    const byDate=new Map(rows.map(r=>[r.date,r]));
+    const todayRow=byDate.get(today); const current=todayRow?todayRow.glasses:0;
+    const pct=clamp(current/goal*100,0,100);
+    const remaining=Math.max(0,Math.ceil(goal-current));
+    const last7=Array.from({length:7},(_,i)=>addDays(today,i-6));
+    const last14=Array.from({length:14},(_,i)=>addDays(today,i-13));
+    const vals7=last7.map(d=>byDate.get(d)?.glasses||0);
+    const vals14=last14.map(d=>byDate.get(d)?.glasses||0);
+    const met14=vals14.filter(v=>v>=goal).length;
+    const avg7=vals7.reduce((a,b)=>a+b,0)/7;
+    let streak=0; for(let d=today;(byDate.get(d)?.glasses||0)>=goal;d=addDays(d,-1)) streak++;
+    const best=Math.max(0,...rows.map(r=>r.glasses));
+    const mood=current>=goal?"Goal met":remaining===1?"1 to go":`${remaining} to go`;
+    const moodClass=current>=goal?"good":"warn";
+    root.innerHTML=`
+      <header><div><h1>${title}</h1><div class="date">${esc(niceDate(today))}</div></div></header>
+      <section class="hero">
+        <div class="card today">
+          <div class="score"><div class="big">${esc(current)}<small>/${esc(goal)}</small></div><div class="status"><strong class="${moodClass}">${esc(mood)}</strong><span>${esc(unit)} today</span></div></div>
+          <div class="bottle-zone" aria-label="${Math.round(pct)} percent of daily water goal"><div class="bottle"><div class="fill" style="--pct:${pct}%"></div></div></div>
+          <div class="controls"><button class="primary" data-action="add" aria-label="Add one glass">+ Add a glass</button><button data-action="minus" ${current<=0?"disabled":""} aria-label="Remove one glass">− Remove</button><button data-action="goal" aria-label="Set today to daily goal">Fill to goal</button></div>
+        </div>
+        <div class="side">
+          <div class="card statgrid" aria-label="Water summary">
+            <div class="stat"><div class="label">7-day avg</div><div class="value">${esc(avg7.toFixed(1))}</div></div>
+            <div class="stat"><div class="label">Streak</div><div class="value ${streak?"good":""}">${esc(streak)}</div></div>
+            <div class="stat"><div class="label">Last 14 met</div><div class="value">${esc(met14)}/14</div></div>
+            <div class="stat"><div class="label">Best day</div><div class="value">${esc(best)}</div></div>
+          </div>
+          <div class="card panel"><h2>Last 7 days</h2><div class="week">${last7.map((d,i)=>{const v=vals7[i],h=clamp(v/goal*100,0,100);return `<div class="day" title="${esc(d)}: ${esc(v)}"><div class="barbox"><div class="barfill" style="--h:${h}%"></div></div><div class="num">${esc(v)}</div><div class="dow">${esc(shortDay(d))}</div></div>`}).join("")}</div></div>
+          <div class="card panel"><h2>14-day glance</h2><div class="drops">${last14.map((d,i)=>{const v=vals14[i];return `<div class="drop ${v>=goal?"full":""} ${d===today?"today":""}" title="${esc(d)}: ${esc(v)}"><span>${esc(v)}</span></div>`}).join("")}</div><div class="err" role="alert">${esc(error)}</div></div>
+        </div>
+      </section>`;
+    async function setToday(v){
+      const value=String(Math.max(0,Math.round(v*10)/10));
+      const op=todayRow?{op:"set_cell",table:t.index,row:todayRow.i,col:glassName,value}:{op:"append_row",table:t.index,values:{[dateName]:today,[glassName]:value}};
+      const res=await amber.update(op); error=res.ok?"":res.error; if(!res.ok) render(amber.note);
+    }
+    root.querySelector('[data-action="add"]').addEventListener("click",()=>setToday(current+1));
+    root.querySelector('[data-action="minus"]').addEventListener("click",()=>setToday(current-1));
+    root.querySelector('[data-action="goal"]').addEventListener("click",()=>setToday(goal));
+  }
+  amber.onChange(render);
+})();
+</script>
+</body>
+</html>

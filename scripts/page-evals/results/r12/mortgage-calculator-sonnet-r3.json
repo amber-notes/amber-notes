@@ -5,9 +5,9 @@
   "round": "r12",
   "skill": false,
   "seconds": 78,
-  "score": 1,
+  "score": 0.875,
   "passed": 21,
-  "total": 21,
+  "total": 24,
   "checks": [
     {
       "name": "has_page",
@@ -42,6 +42,16 @@
       "pass": true
     },
     {
+      "name": "focused_screen",
+      "pass": false,
+      "detail": "6 sections on the first phone screen"
+    },
+    {
+      "name": "visible_fields",
+      "pass": false,
+      "detail": "loan, rate, years"
+    },
+    {
       "name": "no_junk_text",
       "pass": true
     },
@@ -62,8 +72,13 @@
       "pass": true
     },
     {
-      "name": "uses_theme",
+      "name": "themed",
       "pass": true
+    },
+    {
+      "name": "distinct_look",
+      "pass": false,
+      "detail": "accent hue 28, 0% non-amber color"
     },
     {
       "name": "labelled_controls",
@@ -218,6 +233,13 @@
           "Balance over time"
         ],
         "excerpt": "Mortgage Loan kr Interest rate % Years yrs Amortization Straight Annuity Reset to note First month's payment 21 600 kr / mo Falls every month to 10 703 kr in the last one Total interest 1 645 467 kr Total paid 4 845 467 kr Interest share 34,0 % Where the money goes Principal 3 200 000 kr Interest 1 645 467 kr Balance over time Today Year 25 Look at year: 0 (today) Still owed 3 200 000 kr Interest paid so far 0 kr Payment that month 21 600 kr",
+        "ghostFields": [
+          "loan",
+          "rate",
+          "years"
+        ],
+        "sections": 6,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -227,7 +249,12 @@
         "canvases": 1,
         "svgShapes": 2,
         "gridCols": 2,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "375-dark",
@@ -255,6 +282,13 @@
           "Balance over time"
         ],
         "excerpt": "Mortgage Loan kr Interest rate % Years yrs Amortization Straight Annuity Reset to note First month's payment 21 600 kr / mo Falls every month to 10 703 kr in the last one Total interest 1 645 467 kr Total paid 4 845 467 kr Interest share 34,0 % Where the money goes Principal 3 200 000 kr Interest 1 645 467 kr Balance over time Today Year 25 Look at year: 0 (today) Still owed 3 200 000 kr Interest paid so far 0 kr Payment that month 21 600 kr",
+        "ghostFields": [
+          "loan",
+          "rate",
+          "years"
+        ],
+        "sections": 6,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -264,7 +298,12 @@
         "canvases": 1,
         "svgShapes": 2,
         "gridCols": 2,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 37,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "768-light",
@@ -292,6 +331,13 @@
           "Balance over time"
         ],
         "excerpt": "Mortgage Loan kr Interest rate % Years yrs Amortization Straight Annuity Reset to note First month's payment 21 600 kr / mo Falls every month to 10 703 kr in the last one Total interest 1 645 467 kr Total paid 4 845 467 kr Interest share 34,0 % Where the money goes Principal 3 200 000 kr Interest 1 645 467 kr Balance over time Today Year 25 Look at year: 0 (today) Still owed 3 200 000 kr Interest paid so far 0 kr Payment that month 21 600 kr",
+        "ghostFields": [
+          "loan",
+          "rate",
+          "years"
+        ],
+        "sections": 6,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -301,7 +347,12 @@
         "canvases": 1,
         "svgShapes": 2,
         "gridCols": 5,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "1280-light",
@@ -329,6 +380,13 @@
           "Balance over time"
         ],
         "excerpt": "Mortgage Loan kr Interest rate % Years yrs Amortization Straight Annuity Reset to note First month's payment 21 600 kr / mo Falls every month to 10 703 kr in the last one Total interest 1 645 467 kr Total paid 4 845 467 kr Interest share 34,0 % Where the money goes Principal 3 200 000 kr Interest 1 645 467 kr Balance over time Today Year 25 Look at year: 0 (today) Still owed 3 200 000 kr Interest paid so far 0 kr Payment that month 21 600 kr",
+        "ghostFields": [
+          "loan",
+          "rate",
+          "years"
+        ],
+        "sections": 6,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -338,7 +396,12 @@
         "canvases": 1,
         "svgShapes": 2,
         "gridCols": 4,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "1280-dark",
@@ -365,6 +428,13 @@
           "Balance over time"
         ],
         "excerpt": "Mortgage Loan kr Interest rate % Years yrs Amortization Straight Annuity Reset to note First month's payment 21 600 kr / mo Falls every month to 10 703 kr in the last one Total interest 1 645 467 kr Total paid 4 845 467 kr Interest share 34,0 % Where the money goes Principal 3 200 000 kr Interest 1 645 467 kr Balance over time Today Year 25 Look at year: 0 (today) Still owed 3 200 000 kr Interest paid so far 0 kr Payment that month 21 600 kr",
+        "ghostFields": [
+          "loan",
+          "rate",
+          "years"
+        ],
+        "sections": 6,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -374,7 +444,12 @@
         "canvases": 1,
         "svgShapes": 2,
         "gridCols": 4,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 37,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       }
     ],
     "blocked": [],

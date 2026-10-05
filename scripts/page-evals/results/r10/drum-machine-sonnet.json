@@ -5,9 +5,9 @@
   "round": "r10",
   "skill": false,
   "seconds": 78,
-  "score": 0.9583333333333334,
-  "passed": 23,
-  "total": 24,
+  "score": 0.9230769230769231,
+  "passed": 24,
+  "total": 26,
   "checks": [
     {
       "name": "has_page",
@@ -39,6 +39,15 @@
     },
     {
       "name": "phone_targets",
+      "pass": true
+    },
+    {
+      "name": "focused_screen",
+      "pass": false,
+      "detail": "6 sections on the first phone screen"
+    },
+    {
+      "name": "visible_fields",
       "pass": true
     },
     {
@@ -241,6 +250,9 @@
           "Hat"
         ],
         "excerpt": "Beat Play Tempo 120 bpm Clear KICK 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 SNARE 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 HAT 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 Tap a step to switch it on or off. Changes are saved in the note's table, and edits made there are played too.",
+        "ghostFields": [],
+        "sections": 6,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -284,6 +296,9 @@
           "Hat"
         ],
         "excerpt": "Beat Play Tempo 120 bpm Clear KICK 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 SNARE 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 HAT 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 Tap a step to switch it on or off. Changes are saved in the note's table, and edits made there are played too.",
+        "ghostFields": [],
+        "sections": 6,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -327,6 +342,9 @@
           "Hat"
         ],
         "excerpt": "Beat Play Tempo 120 bpm Clear KICK 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 SNARE 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 HAT 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 Tap a step to switch it on or off. Changes are saved in the note's table, and edits made there are played too.",
+        "ghostFields": [],
+        "sections": 6,
+        "nav": false,
         "junk": [],
         "under44": [
           "1",
@@ -376,6 +394,9 @@
           "Hat"
         ],
         "excerpt": "Beat Play Tempo 120 bpm Clear KICK 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 SNARE 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 HAT 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 Tap a step to switch it on or off. Changes are saved in the note's table, and edits made there are played too.",
+        "ghostFields": [],
+        "sections": 6,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -418,6 +439,9 @@
           "Hat"
         ],
         "excerpt": "Beat Play Tempo 120 bpm Clear KICK 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 SNARE 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 HAT 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 Tap a step to switch it on or off. Changes are saved in the note's table, and edits made there are played too.",
+        "ghostFields": [],
+        "sections": 6,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -554,7 +578,7 @@
       },
       "large": {
         "pass": true,
-        "detail": "604 ms to load 400 rows"
+        "detail": "678 ms to load 400 rows"
       }
     },
     "dataAfter": {}

@@ -5,9 +5,9 @@
   "round": "r12",
   "skill": false,
   "seconds": 65,
-  "score": 1,
-  "passed": 23,
-  "total": 23,
+  "score": 0.9615384615384616,
+  "passed": 25,
+  "total": 26,
   "checks": [
     {
       "name": "has_page",
@@ -42,6 +42,14 @@
       "pass": true
     },
     {
+      "name": "focused_screen",
+      "pass": true
+    },
+    {
+      "name": "visible_fields",
+      "pass": true
+    },
+    {
       "name": "no_junk_text",
       "pass": true
     },
@@ -62,8 +70,13 @@
       "pass": true
     },
     {
-      "name": "uses_theme",
+      "name": "themed",
       "pass": true
+    },
+    {
+      "name": "distinct_look",
+      "pass": false,
+      "detail": "accent hue 28, 0% non-amber color"
     },
     {
       "name": "labelled_controls",
@@ -215,6 +228,9 @@
           "Habit tracker"
         ],
         "excerpt": "Habit tracker 2/3 Over halfway. Nice! 1 to go for a perfect day Level 2 · Sprout 160 XP · 40 to next TODAY 🚶 Walk 🔥 3 days 📖 Read Done! 🔥 2 days 🧘 Stretch Done! 🔥 1 day THIS WEEK M 2 T W T F S S 2 ticks this week 3 best streak 1 perfect days BADGES 🔥 On fire Unlocked ⚡ Unstoppable 7-day streak 🌟 Perfect day Unlocked 🏅 Hat trick 3 perfect days 💯 Centurion Unlocked 🚀 Veteran 50 ticks LAST 5 WEEKS",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -224,7 +240,12 @@
         "canvases": 0,
         "svgShapes": 2,
         "gridCols": 7,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "375-dark",
@@ -250,6 +271,9 @@
           "Habit tracker"
         ],
         "excerpt": "Habit tracker 2/3 Over halfway. Nice! 1 to go for a perfect day Level 2 · Sprout 160 XP · 40 to next TODAY 🚶 Walk 🔥 3 days 📖 Read Done! 🔥 2 days 🧘 Stretch Done! 🔥 1 day THIS WEEK M 2 T W T F S S 2 ticks this week 3 best streak 1 perfect days BADGES 🔥 On fire Unlocked ⚡ Unstoppable 7-day streak 🌟 Perfect day Unlocked 🏅 Hat trick 3 perfect days 💯 Centurion Unlocked 🚀 Veteran 50 ticks LAST 5 WEEKS",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -259,7 +283,12 @@
         "canvases": 0,
         "svgShapes": 2,
         "gridCols": 7,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 38,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "768-light",
@@ -291,6 +320,9 @@
           "Habit tracker"
         ],
         "excerpt": "Habit tracker 2/3 Over halfway. Nice! 1 to go for a perfect day Level 2 · Sprout 160 XP · 40 to next TODAY 🚶 Walk 🔥 3 days 📖 Read Done! 🔥 2 days 🧘 Stretch Done! 🔥 1 day THIS WEEK M 2 T W T F S S 2 ticks this week 3 best streak 1 perfect days BADGES 🔥 On fire Unlocked ⚡ Unstoppable 7-day streak 🌟 Perfect day Unlocked 🏅 Hat trick 3 perfect days 💯 Centurion Unlocked 🚀 Veteran 50 ticks LAST 5 WEEKS",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -300,7 +332,12 @@
         "canvases": 0,
         "svgShapes": 2,
         "gridCols": 7,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "1280-light",
@@ -332,6 +369,9 @@
           "Habit tracker"
         ],
         "excerpt": "Habit tracker 2/3 Over halfway. Nice! 1 to go for a perfect day Level 2 · Sprout 160 XP · 40 to next TODAY 🚶 Walk 🔥 3 days 📖 Read Done! 🔥 2 days 🧘 Stretch Done! 🔥 1 day THIS WEEK M 2 T W T F S S 2 ticks this week 3 best streak 1 perfect days BADGES 🔥 On fire Unlocked ⚡ Unstoppable 7-day streak 🌟 Perfect day Unlocked 🏅 Hat trick 3 perfect days 💯 Centurion Unlocked 🚀 Veteran 50 ticks LAST 5 WEEKS",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -341,7 +381,12 @@
         "canvases": 0,
         "svgShapes": 2,
         "gridCols": 7,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "1280-dark",
@@ -366,6 +411,9 @@
           "Habit tracker"
         ],
         "excerpt": "Habit tracker 2/3 Over halfway. Nice! 1 to go for a perfect day Level 2 · Sprout 160 XP · 40 to next TODAY 🚶 Walk 🔥 3 days 📖 Read Done! 🔥 2 days 🧘 Stretch Done! 🔥 1 day THIS WEEK M 2 T W T F S S 2 ticks this week 3 best streak 1 perfect days BADGES 🔥 On fire Unlocked ⚡ Unstoppable 7-day streak 🌟 Perfect day Unlocked 🏅 Hat trick 3 perfect days 💯 Centurion Unlocked 🚀 Veteran 50 ticks LAST 5 WEEKS",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -375,7 +423,12 @@
         "canvases": 0,
         "svgShapes": 2,
         "gridCols": 7,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 38,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       }
     ],
     "blocked": [],
@@ -404,7 +457,7 @@
       },
       "large": {
         "pass": true,
-        "detail": "578 ms to load 400 rows"
+        "detail": "625 ms to load 400 rows"
       }
     },
     "dataAfter": {}

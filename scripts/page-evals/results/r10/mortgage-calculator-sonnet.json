@@ -5,9 +5,9 @@
   "round": "r10",
   "skill": false,
   "seconds": 82,
-  "score": 0.9545454545454546,
+  "score": 0.875,
   "passed": 21,
-  "total": 22,
+  "total": 24,
   "checks": [
     {
       "name": "has_page",
@@ -40,6 +40,16 @@
     {
       "name": "phone_targets",
       "pass": true
+    },
+    {
+      "name": "focused_screen",
+      "pass": false,
+      "detail": "6 sections on the first phone screen"
+    },
+    {
+      "name": "visible_fields",
+      "pass": false,
+      "detail": "loanN, rateN, yearsN"
     },
     {
       "name": "no_junk_text",
@@ -240,6 +250,13 @@
           "Year by year"
         ],
         "excerpt": "Mortgage Loan kr Interest rate % Term years Amortization Annuity Straight Reset to note values FIRST MONTHLY PAYMENT 21 600 kr / month Falls to 10 703 kr in the last month TOTAL INTEREST 1 645 467 kr TOTAL PAID 4 845 467 kr INTEREST / LOAN 51 % Principal 3 200 000 kr Interest 1 645 467 kr Remaining balance 0 y 5 y 10 y 15 y 20 y 25 y half paid off after 13 y Year by year Year Interest Principal Balance 1 128 795 kr 128 000 kr 3 072 000 kr 2 123 547 kr 128 000 kr 2 944 000 kr 3 118 299 kr 128 000",
+        "ghostFields": [
+          "loanN",
+          "rateN",
+          "yearsN"
+        ],
+        "sections": 6,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -282,6 +299,13 @@
           "Year by year"
         ],
         "excerpt": "Mortgage Loan kr Interest rate % Term years Amortization Annuity Straight Reset to note values FIRST MONTHLY PAYMENT 21 600 kr / month Falls to 10 703 kr in the last month TOTAL INTEREST 1 645 467 kr TOTAL PAID 4 845 467 kr INTEREST / LOAN 51 % Principal 3 200 000 kr Interest 1 645 467 kr Remaining balance 0 y 5 y 10 y 15 y 20 y 25 y half paid off after 13 y Year by year Year Interest Principal Balance 1 128 795 kr 128 000 kr 3 072 000 kr 2 123 547 kr 128 000 kr 2 944 000 kr 3 118 299 kr 128 000",
+        "ghostFields": [
+          "loanN",
+          "rateN",
+          "yearsN"
+        ],
+        "sections": 6,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -324,6 +348,13 @@
           "Year by year"
         ],
         "excerpt": "Mortgage Loan kr Interest rate % Term years Amortization Annuity Straight Reset to note values FIRST MONTHLY PAYMENT 21 600 kr / month Falls to 10 703 kr in the last month TOTAL INTEREST 1 645 467 kr TOTAL PAID 4 845 467 kr INTEREST / LOAN 51 % Principal 3 200 000 kr Interest 1 645 467 kr Remaining balance 0 y 5 y 10 y 15 y 20 y 25 y half paid off after 13 y Year by year Year Interest Principal Balance 1 128 795 kr 128 000 kr 3 072 000 kr 2 123 547 kr 128 000 kr 2 944 000 kr 3 118 299 kr 128 000",
+        "ghostFields": [
+          "loanN",
+          "rateN",
+          "yearsN"
+        ],
+        "sections": 6,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -366,6 +397,13 @@
           "Year by year"
         ],
         "excerpt": "Mortgage Loan kr Interest rate % Term years Amortization Annuity Straight Reset to note values FIRST MONTHLY PAYMENT 21 600 kr / month Falls to 10 703 kr in the last month TOTAL INTEREST 1 645 467 kr TOTAL PAID 4 845 467 kr INTEREST / LOAN 51 % Principal 3 200 000 kr Interest 1 645 467 kr Remaining balance 0 y 5 y 10 y 15 y 20 y 25 y half paid off after 13 y Year by year Year Interest Principal Balance 1 128 795 kr 128 000 kr 3 072 000 kr 2 123 547 kr 128 000 kr 2 944 000 kr 3 118 299 kr 128 000",
+        "ghostFields": [
+          "loanN",
+          "rateN",
+          "yearsN"
+        ],
+        "sections": 6,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -407,6 +445,13 @@
           "Year by year"
         ],
         "excerpt": "Mortgage Loan kr Interest rate % Term years Amortization Annuity Straight Reset to note values FIRST MONTHLY PAYMENT 21 600 kr / month Falls to 10 703 kr in the last month TOTAL INTEREST 1 645 467 kr TOTAL PAID 4 845 467 kr INTEREST / LOAN 51 % Principal 3 200 000 kr Interest 1 645 467 kr Remaining balance 0 y 5 y 10 y 15 y 20 y 25 y half paid off after 13 y Year by year Year Interest Principal Balance 1 128 795 kr 128 000 kr 3 072 000 kr 2 123 547 kr 128 000 kr 2 944 000 kr 3 118 299 kr 128 000",
+        "ghostFields": [
+          "loanN",
+          "rateN",
+          "yearsN"
+        ],
+        "sections": 6,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,

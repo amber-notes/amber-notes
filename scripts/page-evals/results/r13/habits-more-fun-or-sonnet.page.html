@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="amber-libs" content="confetti">
+<title>Habit tracker</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { -webkit-user-select: none; user-select: none; }
+  main { max-width: var(--amber-content-max); margin: 0 auto; padding: 8px var(--amber-gutter) 60px; }
+  h1 { font-family: var(--amber-font-rounded); font-size: 1.75rem; margin: 6px 0 12px; letter-spacing: -.02em; }
+  h2 { font-size: .8rem; letter-spacing: .05em; text-transform: uppercase; color: var(--amber-text-secondary); margin: 22px 4px 8px; }
+  .hero { background: #2f6f4a; color: #fff; border-radius: 20px; padding: 16px 18px; display: flex; gap: 14px; align-items: center; }
+  @media (prefers-color-scheme: dark) { .hero { background: #1f4a33; } .xp { background: #12301f; } }
+  .hero .plant { font-size: 3rem; line-height: 1; flex: none; }
+  .hero .txt { flex: 1; min-width: 0; }
+  .hero .lvl { font-family: var(--amber-font-rounded); font-weight: 700; font-size: 1.2rem; }
+  .hero .msg { font-size: .9rem; opacity: .95; margin-top: 2px; }
+  .xp { height: 10px; border-radius: 5px; background: #1c4a30; margin-top: 10px; overflow: hidden; }
+  .xp div { height: 100%; background: #ffd666; border-radius: 5px; transition: width .5s cubic-bezier(.34,1.56,.64,1); }
+  .xpl { font-size: .75rem; margin-top: 4px; opacity: .9; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .tile { position: relative; border: 2px solid var(--c); background: var(--amber-surface); color: var(--amber-text); border-radius: 20px; padding: 16px 12px 14px; min-height: 140px; font: inherit; text-align: center; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; --c2: var(--c); transition: transform .2s cubic-bezier(.34,1.56,.64,1), background .2s; }
+  .tile:active { transform: scale(.94); }
+  .tile .em { font-size: 2.6rem; line-height: 1.1; filter: grayscale(.8); opacity: .75; transition: all .25s; }
+  .tile .nm { font-family: var(--amber-font-rounded); font-weight: 700; font-size: 1.1rem; }
+  .tile .st { font-size: .85rem; color: var(--amber-text-secondary); }
+  .tile.done { background: var(--c); color: #fff; }
+  .tile.done .em { filter: none; opacity: 1; transform: scale(1.15); }
+  .tile.done .st { color: #fff; }
+  .tile .badge { position: absolute; top: 8px; right: 10px; width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--c); display: grid; place-items: center; font-weight: 800; font-size: .9rem; }
+  .tile .badge { color: var(--amber-text); opacity: 0; }
+  .tile.done .badge { background: #fff; color: #1b1b1b; border-color: #fff; opacity: 1; }
+  .pop { animation: pop .45s cubic-bezier(.34,1.56,.64,1); }
+  @keyframes pop { 0% { transform: scale(.8) rotate(-4deg); } 100% { transform: scale(1); } }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+  .week { display: flex; justify-content: space-between; gap: 6px; }
+  .wd { flex: 1; text-align: center; font-size: .75rem; color: var(--amber-text-secondary); }
+  .ring { width: 100%; max-width: 48px; aspect-ratio: 1; margin: 4px auto 0; border-radius: 50%; display: grid; place-items: center; font-size: 1.1rem; font-weight: 700; background: var(--amber-fill); color: var(--amber-text); }
+  .ring.part { background: #ffe9a8; color: #5a4300; }
+  .ring.full { background: #2f7d4f; color: #fff; }
+  .wd.today { color: var(--amber-text); font-weight: 700; }
+  .wd.today .ring { outline: 2px solid var(--amber-text); outline-offset: 2px; }
+  .wd.future .ring { opacity: .4; }
+  .badges { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+  .bd { background: var(--amber-surface); border-radius: 16px; padding: 12px; text-align: center; border: 1px solid var(--amber-separator); }
+  .bd .e { font-size: 1.8rem; }
+  .bd .t { font-size: .85rem; font-weight: 600; }
+  .bd .d { font-size: .75rem; color: var(--amber-text-secondary); }
+  .bd.off .e { filter: grayscale(1); opacity: .35; }
+  .bd.off .t { color: var(--amber-text-secondary); }
+  .grid { background: var(--amber-surface); border-radius: 16px; padding: 12px; display: grid; gap: 5px; }
+  .row { display: grid; grid-template-columns: 72px repeat(var(--days), minmax(0,1fr)); gap: 3px; align-items: center; }
+  .row .h { font-size: .8rem; color: var(--amber-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cell { aspect-ratio: 1; border-radius: 50%; background: var(--amber-fill); }
+  .cell.on { background: var(--c); }
+  .cell.today { outline: 2px solid var(--amber-text); outline-offset: -2px; }
+  .err { color: var(--amber-danger); min-height: 1.2em; text-align: center; font-size: .9rem; }
+  .empty { padding: 30px; text-align: center; color: var(--amber-text-secondary); }
+  @media (min-width: 900px) { .row { grid-template-columns: 100px repeat(var(--days), minmax(0,1fr)); } h1 { font-size: 2.1rem; } }
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script>
+  const DONE = /^(✓|✔|x|yes|y|1|true|done)$/i;
+  const COLORS = ["#2f7d4f", "#3b63c9", "#b85a00", "#7c4dbb", "#0f7b8a", "#c2306b"];
+  const EMOJI = [[/walk|run|jog|step/i,"🚶"],[/read|book/i,"📖"],[/stretch|yoga/i,"🤸"],[/water|drink/i,"💧"],[/med|mind/i,"🧘"],[/sleep|bed/i,"😴"],[/write|journal/i,"✍️"],[/gym|lift|workout/i,"🏋️"],[/code|study|learn/i,"💡"],[/cook|eat|meal/i,"🥗"]];
+  const emoji = (n) => (EMOJI.find(([r]) => r.test(n)) || [0, "⭐"])[1];
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const pad = (n) => String(n).padStart(2, "0");
+  const dayOf = (iso, d) => { const x = new Date(iso + "T12:00:00"); x.setDate(x.getDate() + d); return `${x.getFullYear()}-${pad(x.getMonth()+1)}-${pad(x.getDate())}`; };
+  let popped = null, error = "", fire = null;
+  function getFire() {
+    if (fire || !window.confetti) return fire;
+    const c = document.createElement("canvas");
+    c.setAttribute("aria-hidden", "true");
+    c.style.cssText = "position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:50";
+    document.body.appendChild(c);
+    fire = confetti.create(c, { resize: true, useWorker: false });
+    return fire;
+  }
+
+  function model(note) {
+    const t = note.tables.find((t) => t.columns.some((c) => /^(date|day)$/i.test(c.name)));
+    if (!t) return null;
+    const dc = t.columns.findIndex((c) => /^(date|day)$/i.test(c.name));
+    const habits = t.columns.map((c, i) => ({ name: c.name, col: i })).filter((h) => h.col !== dc);
+    const by = new Map(t.rows.map((r, i) => [r[dc], { cells: r, index: i }]));
+    const done = (d, h) => { const r = by.get(d); return !!r && DONE.test(String(r.cells[h.col] ?? "").trim()); };
+    habits.forEach((h, k) => {
+      h.color = COLORS[k % COLORS.length]; h.emoji = emoji(h.name); h.today = done(note.today, h);
+      let d = h.today ? note.today : dayOf(note.today, -1), n = 0;
+      while (done(d, h)) { n++; d = dayOf(d, -1); }
+      h.streak = n;
+      let best = 0, run = 0;
+      for (let i = -89; i <= 0; i++) { if (done(dayOf(note.today, i), h)) { run++; best = Math.max(best, run); } else run = 0; }
+      h.best = best;
+    });
+    let xp = 0, perfect = 0;
+    t.rows.forEach((r) => { const c = habits.filter((h) => DONE.test(String(r[h.col] ?? "").trim())).length; xp += c; if (c && c === habits.length) perfect++; });
+    return { t, dc, habits, by, done, xp, perfect };
+  }
+
+  function render(note) {
+    const app = document.getElementById("app");
+    const m = model(note);
+    if (!m || !m.habits.length) { app.innerHTML = `<h1>${esc(note.title)}</h1><div class="empty">Add a table with a Date column and one column per habit.</div>`; return; }
+    const N = m.habits.length, today = note.today;
+    const doneToday = m.habits.filter((h) => h.today).length;
+    const lvl = Math.floor(m.xp / 10) + 1, into = m.xp % 10;
+    const stages = ["🌱", "🌿", "🪴", "🌳", "🌸", "🍎"];
+    const plant = stages[Math.min(stages.length - 1, Math.floor((lvl - 1) / 1))];
+    const msg = doneToday === N ? "Perfect day! 🎉 Everything's done." : doneToday ? `${N - doneToday} more to complete today.` : "Tap a habit to start growing.";
+    const dow = new Date(today + "T12:00:00").getDay();
+    const mon = dayOf(today, -((dow + 6) % 7));
+    const week = Array.from({ length: 7 }, (_, k) => dayOf(mon, k));
+    const span = window.innerWidth >= 900 ? 28 : 14;
+    const days = Array.from({ length: span }, (_, i) => dayOf(today, i - span + 1));
+    const bestStreak = Math.max(0, ...m.habits.map((h) => Math.max(h.best, h.streak)));
+    const badges = [
+      ["🌟", "First tick", "Log any habit", m.xp >= 1],
+      ["🔥", "On fire", "3 days in a row", bestStreak >= 3],
+      ["🚀", "Week warrior", "7 days in a row", bestStreak >= 7],
+      ["🎯", "Perfect day", "Do every habit in a day", m.perfect >= 1],
+      ["🏆", "Perfect x3", "Three perfect days", m.perfect >= 3],
+      ["💯", "100 ticks", "Reach 100 XP", m.xp >= 100],
+    ];
+    app.innerHTML = `
+      <h1>${esc(note.title)}</h1>
+      <div class="hero"><div class="plant" aria-hidden="true">${plant}</div><div class="txt">
+        <div class="lvl">Level ${lvl}</div><div class="msg">${esc(msg)}</div>
+        <div class="xp" role="progressbar" aria-valuemin="0" aria-valuemax="10" aria-valuenow="${into}" aria-label="Progress to next level"><div style="width:${into * 10}%"></div></div>
+        <div class="xpl">${m.xp} ticks · ${10 - into} to level ${lvl + 1}</div></div></div>
+      <h2>Today</h2>
+      <div class="tiles">${m.habits.map((h, i) => `
+        <button class="tile ${h.today ? "done" : ""} ${popped === i ? "pop" : ""}" style="--c:${h.color}" data-i="${i}" aria-pressed="${h.today}">
+          <span class="badge" aria-hidden="true">✓</span><span class="em" aria-hidden="true">${h.emoji}</span>
+          <span class="nm">${esc(h.name)}</span>
+          <span class="st">${h.streak ? `🔥 ${h.streak} day${h.streak > 1 ? "s" : ""}` : "Start a streak"}</span>
+        </button>`).join("")}</div>
+      <div class="err" role="alert">${esc(error)}</div>
+      <h2>This week</h2>
+      <div class="week">${week.map((d) => {
+        const c = m.habits.filter((h) => m.done(d, h)).length, fut = d > today;
+        const cls = c === N ? "full" : c ? "part" : "";
+        return `<div class="wd ${d === today ? "today" : ""} ${fut ? "future" : ""}">${"SMTWTFS"[new Date(d + "T12:00:00").getDay()]}<div class="ring ${cls}" aria-label="${c} of ${N} done">${c === N ? "★" : c || ""}</div></div>`;
+      }).join("")}</div>
+      <h2>Badges</h2>
+      <div class="badges">${badges.map((b) => `<div class="bd ${b[3] ? "" : "off"}"><div class="e">${b[0]}</div><div class="t">${b[1]}</div><div class="d">${b[3] ? "Unlocked!" : b[2]}</div></div>`).join("")}</div>
+      <h2>Last ${span} days</h2>
+      <div class="grid" role="img" aria-label="Habit history">${m.habits.map((h) => `<div class="row" style="--days:${span};--c:${h.color}"><span class="h">${h.emoji} ${esc(h.name)}</span>${days.map((d) => `<span class="cell ${m.done(d, h) ? "on" : ""} ${d === today ? "today" : ""}"></span>`).join("")}</div>`).join("")}</div>`;
+    popped = null;
+    app.querySelectorAll(".tile").forEach((el) => el.addEventListener("click", () => toggle(m, +el.dataset.i)));
+  }
+
+  async function toggle(m, i) {
+    const h = m.habits[i], today = amber.note.today, row = m.by.get(today);
+    const value = h.today ? "" : "✓";
+    popped = i;
+    const r = row
+      ? await amber.update({ op: "set_cell", table: m.t.index, row: row.index, col: h.name, value })
+      : await amber.update({ op: "append_row", table: m.t.index, values: { [m.t.columns[m.dc].name]: today, [h.name]: value } });
+    error = r.ok ? "" : r.error;
+    if (!r.ok) { render(amber.note); return; }
+    if (value && getFire()) {
+      const all = m.habits.every((x, k) => k === i || x.today);
+      if (all) { fire({ particleCount: 160, spread: 100, origin: { y: .6 }, useWorker: false }); }
+      else fire({ particleCount: 40, spread: 60, startVelocity: 25, origin: { y: .7 }, colors: [h.color, "#ffd666", "#ffffff"], useWorker: false });
+    }
+  }
+
+  amber.onChange(render);
+  let wide = window.innerWidth >= 900;
+  addEventListener("resize", () => { if ((window.innerWidth >= 900) !== wide) { wide = !wide; render(amber.note); } });
+</script>
+</body>
+</html>

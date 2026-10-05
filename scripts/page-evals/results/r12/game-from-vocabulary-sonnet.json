@@ -5,9 +5,9 @@
   "round": "r12",
   "skill": false,
   "seconds": 99,
-  "score": 0.96,
-  "passed": 24,
-  "total": 25,
+  "score": 0.9285714285714286,
+  "passed": 26,
+  "total": 28,
   "checks": [
     {
       "name": "has_page",
@@ -42,6 +42,14 @@
       "pass": true
     },
     {
+      "name": "focused_screen",
+      "pass": true
+    },
+    {
+      "name": "visible_fields",
+      "pass": true
+    },
+    {
       "name": "no_junk_text",
       "pass": true
     },
@@ -58,8 +66,13 @@
       "pass": true
     },
     {
-      "name": "uses_theme",
+      "name": "themed",
       "pass": true
+    },
+    {
+      "name": "distinct_look",
+      "pass": false,
+      "detail": "accent hue none, 0% non-amber color"
     },
     {
       "name": "labelled_controls",
@@ -242,6 +255,9 @@
           "Spanish verbs"
         ],
         "excerpt": "Spanish verbs Best 0 Day streak 0 Verbs 12 ¿Listo? 60 seconds. Match each verb with its meaning, in both directions. Chain right answers for up to x5 points. Play today to keep your streak going. Start Verbs in play (from your note) hablar comer vivir tener hacer ir poder decir querer saber conocer salir",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -251,7 +267,12 @@
         "canvases": 0,
         "svgShapes": 0,
         "gridCols": 0,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": null,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "375-dark",
@@ -277,6 +298,9 @@
           "Spanish verbs"
         ],
         "excerpt": "Spanish verbs Best 0 Day streak 0 Verbs 12 ¿Listo? 60 seconds. Match each verb with its meaning, in both directions. Chain right answers for up to x5 points. Play today to keep your streak going. Start Verbs in play (from your note) hablar comer vivir tener hacer ir poder decir querer saber conocer salir",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -286,7 +310,12 @@
         "canvases": 0,
         "svgShapes": 0,
         "gridCols": 0,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": null,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "768-light",
@@ -312,6 +341,9 @@
           "Spanish verbs"
         ],
         "excerpt": "Spanish verbs Best 0 Day streak 0 Verbs 12 ¿Listo? 60 seconds. Match each verb with its meaning, in both directions. Chain right answers for up to x5 points. Play today to keep your streak going. Start Verbs in play (from your note) hablar comer vivir tener hacer ir poder decir querer saber conocer salir",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -321,7 +353,12 @@
         "canvases": 0,
         "svgShapes": 0,
         "gridCols": 0,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": null,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "1280-light",
@@ -347,6 +384,9 @@
           "Spanish verbs"
         ],
         "excerpt": "Spanish verbs Best 0 Day streak 0 Verbs 12 ¿Listo? 60 seconds. Match each verb with its meaning, in both directions. Chain right answers for up to x5 points. Play today to keep your streak going. Start Verbs in play (from your note) hablar comer vivir tener hacer ir poder decir querer saber conocer salir",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -356,7 +396,12 @@
         "canvases": 0,
         "svgShapes": 0,
         "gridCols": 0,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": null,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "1280-dark",
@@ -381,6 +426,9 @@
           "Spanish verbs"
         ],
         "excerpt": "Spanish verbs Best 0 Day streak 0 Verbs 12 ¿Listo? 60 seconds. Match each verb with its meaning, in both directions. Chain right answers for up to x5 points. Play today to keep your streak going. Start Verbs in play (from your note) hablar comer vivir tener hacer ir poder decir querer saber conocer salir",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -390,7 +438,12 @@
         "canvases": 0,
         "svgShapes": 0,
         "gridCols": 0,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": null,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       }
     ],
     "blocked": [],
@@ -399,7 +452,7 @@
     "interaction": {
       "tried": "control",
       "ok": true,
-      "framesPerSecond": 60
+      "framesPerSecond": 30
     },
     "probes": {
       "follows": {
@@ -415,7 +468,7 @@
       },
       "large": {
         "pass": true,
-        "detail": "560 ms to load 400 rows"
+        "detail": "587 ms to load 400 rows"
       }
     },
     "dataAfter": {}

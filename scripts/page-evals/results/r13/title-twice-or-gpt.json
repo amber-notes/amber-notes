@@ -1,0 +1,523 @@
+{
+  "task": "title-twice",
+  "rep": 1,
+  "model": "openai/gpt-5.5",
+  "round": "r13",
+  "skill": false,
+  "seconds": 372,
+  "score": 0.8,
+  "passed": 4,
+  "total": 5,
+  "checks": [
+    {
+      "name": "has_page",
+      "pass": true
+    },
+    {
+      "name": "still_renders",
+      "pass": true
+    },
+    {
+      "name": "note_unchanged",
+      "pass": true
+    },
+    {
+      "name": "page_changed",
+      "pass": false,
+      "detail": "the page wasn't changed"
+    },
+    {
+      "name": "small_fix",
+      "pass": true
+    }
+  ],
+  "tool_calls": 18,
+  "tool_errors": 13,
+  "usage": {
+    "input": 36751,
+    "output": 1787,
+    "cacheRead": 168448,
+    "cacheWrite": 0,
+    "turns": 17,
+    "usd": 0.321589
+  },
+  "usd": 0.3216,
+  "page_bytes": 10072,
+  "data": null,
+  "answer": "",
+  "calls": [
+    {
+      "name": "get_overview",
+      "args": {},
+      "error": false,
+      "result": "{\n  \"total_notes\": 1,\n  \"folders\": [],\n  \"pinned\": [],\n  \"recently_edited\": [\n    {\n      \"id\": \"0a95c5b9-6e94-443d-8cf7-b913661c2aca\",\n      \"title\": \"Habit tracker\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T20:14:55.080Z\",\n      \"preview\": \"Date  Walk  Read  Stretch · 2026-09-29  ✓  ✓ · 2026-09-30  ✓ · 2026-10-01  ✓  ✓ · 2026-10-02  ✓  ✓  ✓ · 2026-10-03  ✓  ✓ · 2026-10-04  ✓  ✓…\"\n    }\n  ],\n  \"recently_deleted\": 0\n}"
+    },
+    {
+      "name": "get_page_guide",
+      "args": {
+        "template": "habit-tracker"
+      },
+      "error": false,
+      "result": "{\n  \"template\": \"habit-tracker\",\n  \"description\": \"Tick today's habits, see streaks, a 14-day grid and progress toward a weekly goal. The goal and which habits to show are App Settings.\",\n  \"expects\": \"A table with a Date column (yyyy-mm-dd) and one column per habit; a done day is ✓ (x, yes and 1 also count).\",\n  \"html\": \"<!doctype html>\\n<!-- template: habit-tracker | Tick today's habits, see streaks, a 14-day grid and progress toward a weekly goal. The goal and which habits to show are App Settings. | A table with a Date column (yyyy-mm-dd) and one column per habit; a done day is ✓ (x, yes a… (8723 chars)"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "0a95c5b9-6e94-443d-8cf7-b913661c2aca",
+        "title": "",
+        "start_line": "1",
+        "end_line": "80",
+        "line_numbers": "true"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"0a95c5b9-6e94-443d-8cf7-b913661c2aca\",\n  \"title\": \"Habit tracker\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T20:14:55.080Z\",\n  \"updated\": \"2026-10-05T20:14:55.080Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"has_page\": true,\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 12,\n    \"words\": 76\n  },\n  \"lines\": \"1-12\",\n  \"markdown\": \" 1│ Habit tracker\\n 2│ \\n 3│ | Date | Walk | Read | Stretch |\\n 4│ | --- | --- | --- | --- |\\n 5│ | 2026-09-29 | ✓ | ✓ |   |\\n 6│ | 20… (791 chars)"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "0a95c5b9-6e94-443d-8cf7-b913661c2aca",
+        "title": "",
+        "version_id": "0"
+      },
+      "error": true,
+      "result": "No earlier page 0 for this note. Versions: none."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "0a95c5b9-6e94-443d-8cf7-b913661c2aca",
+        "title": "",
+        "version_id": "0"
+      },
+      "error": true,
+      "result": "No earlier page 0 for this note. Versions: none."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "0a95c5b9-6e94-443d-8cf7-b913661c2aca",
+        "title": "",
+        "version_id": "-1"
+      },
+      "error": true,
+      "result": "No earlier page -1 for this note. Versions: none."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "0a95c5b9-6e94-443d-8cf7-b913661c2aca",
+        "title": "",
+        "version_id": "1"
+      },
+      "error": true,
+      "result": "No earlier page 1 for this note. Versions: none."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "0a95c5b9-6e94-443d-8cf7-b913661c2aca",
+        "title": "",
+        "version_id": "999"
+      },
+      "error": true,
+      "result": "No earlier page 999 for this note. Versions: none."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "0a95c5b9-6e94-443d-8cf7-b913661c2aca",
+        "title": "",
+        "version_id": "0"
+      },
+      "error": true,
+      "result": "No earlier page 0 for this note. Versions: none."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "0a95c5b9-6e94-443d-8cf7-b913661c2aca",
+        "title": "",
+        "version_id": "0"
+      },
+      "error": true,
+      "result": "No earlier page 0 for this note. Versions: none."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "0a95c5b9-6e94-443d-8cf7-b913661c2aca",
+        "title": "",
+        "version_id": "0"
+      },
+      "error": true,
+      "result": "No earlier page 0 for this note. Versions: none."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "0a95c5b9-6e94-443d-8cf7-b913661c2aca",
+        "title": "",
+        "version_id": "-999"
+      },
+      "error": true,
+      "result": "No earlier page -999 for this note. Versions: none."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "0a95c5b9-6e94-443d-8cf7-b913661c2aca",
+        "title": "",
+        "version_id": "0"
+      },
+      "error": true,
+      "result": "No earlier page 0 for this note. Versions: none."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "",
+        "title": "Habit tracker",
+        "version_id": "0"
+      },
+      "error": true,
+      "result": "No earlier page 0 for this note. Versions: none."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "0a95c5b9-6e94-443d-8cf7-b913661c2aca",
+        "title": "",
+        "version_id": "0"
+      },
+      "error": true,
+      "result": "No earlier page 0 for this note. Versions: none."
+    },
+    {
+      "name": "check_app",
+      "args": {
+        "id": "0a95c5b9-6e94-443d-8cf7-b913661c2aca",
+        "title": ""
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"0a95c5b9-6e94-443d-8cf7-b913661c2aca\",\n    \"title\": \"Habit tracker\"\n  },\n  \"ok\": false,\n  \"issues\": [\n    \"The app's first heading should be the note's title (\\\"Sample note\\\"), read from amber.note.title: nothing around the app shows the title. Its first heading is \\\"Habit tracker\\\".\",\n    \"375-light: 14 text element(s) under 12 px (\\\"T\\\", \\\"W\\\", \\\"T\\\").\",\n    \"375-light: 3 control(s) smaller than 44 pt to tap on iPhone (\\\"\\\", \\\"\\\", \\\"\\\").\",\n    \"375-dark: 14 text element(s) under 12 px (\\\"T\\\", \\\"W\\\", \\\"T\\\").\",\n    \"375-dark: 3 control(s) smaller than 44 pt to tap on iP… (954 chars)"
+    },
+    {
+      "name": "preview_app",
+      "args": {
+        "id": "0a95c5b9-6e94-443d-8cf7-b913661c2aca",
+        "title": "",
+        "widths": "[375]",
+        "themes": "[\"light\"]",
+        "data": "sample"
+      },
+      "error": false,
+      "result": "{\n  \"app\": \"Habit tracker\",\n  \"data\": \"a sample with the note's shape (not the person's data)\",\n  \"views\": [\n    {\n      \"view\": \"375-light\",\n      \"headings\": [\n        \"Habit tracker\",\n        \"Sample note\"\n      ],\n      \"text\": \"Habit tracker Sample note 0 of 3 done today TODAY Walk Start today Read Start today Stretch Start today LAST TWO WEEKS T W T F S S M T W T F S S M Walk Read Stretch 0% This week 0 Longest now 1 Best run Ticks are written to the table in this note.\"\n    }\n  ],\n  \"issues\": [\n    \"The app's first heading should be the note's title (\\\"Sample note\\\"), read from amber.no… (874 chars)"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "0a95c5b9-6e94-443d-8cf7-b913661c2aca",
+        "title": "",
+        "version_id": "364587"
+      },
+      "error": true,
+      "result": "No earlier page 364587 for this note. Versions: none."
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "375-light",
+        "width": 375,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 240,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r13/shots/title-twice-or-gpt-375-light.png",
+        "smallText": [
+          "T",
+          "W",
+          "T",
+          "F",
+          "S"
+        ],
+        "smallTextCount": 14,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Habit tracker",
+          "Habit tracker"
+        ],
+        "excerpt": "Habit tracker Habit tracker 2 of 3 done today TODAY Walk 3 days Read 2 days Stretch 1 day LAST TWO WEEKS T W T F S S M T W T F S S M Walk Read Stretch 67% This week 3 Longest now, Walk 3 Best run Ticks are written to the table in this note.",
+        "titleCount": 2,
+        "ghostFields": [],
+        "sections": 3,
+        "nav": false,
+        "junk": [],
+        "under44": [
+          "",
+          "",
+          ""
+        ],
+        "under44Count": 3,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 1,
+        "canvases": 0,
+        "svgShapes": 6,
+        "gridCols": 17,
+        "frames": 0,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "375-dark",
+        "width": 375,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 240,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r13/shots/title-twice-or-gpt-375-dark.png",
+        "smallText": [
+          "T",
+          "W",
+          "T",
+          "F",
+          "S"
+        ],
+        "smallTextCount": 14,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Habit tracker",
+          "Habit tracker"
+        ],
+        "excerpt": "Habit tracker Habit tracker 2 of 3 done today TODAY Walk 3 days Read 2 days Stretch 1 day LAST TWO WEEKS T W T F S S M T W T F S S M Walk Read Stretch 67% This week 3 Longest now, Walk 3 Best run Ticks are written to the table in this note.",
+        "titleCount": 2,
+        "ghostFields": [],
+        "sections": 3,
+        "nav": false,
+        "junk": [],
+        "under44": [
+          "",
+          "",
+          ""
+        ],
+        "under44Count": 3,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 1,
+        "canvases": 0,
+        "svgShapes": 6,
+        "gridCols": 17,
+        "frames": 0,
+        "look": {
+          "accentHue": 38,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "768-light",
+        "width": 768,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 240,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r13/shots/title-twice-or-gpt-768-light.png",
+        "smallText": [
+          "T",
+          "W",
+          "T",
+          "F",
+          "S"
+        ],
+        "smallTextCount": 14,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Habit tracker",
+          "Habit tracker"
+        ],
+        "excerpt": "Habit tracker Habit tracker 2 of 3 done today TODAY Walk 3 days Read 2 days Stretch 1 day LAST TWO WEEKS T W T F S S M T W T F S S M Walk Read Stretch 67% This week 3 Longest now, Walk 3 Best run Ticks are written to the table in this note.",
+        "titleCount": 2,
+        "ghostFields": [],
+        "sections": 3,
+        "nav": false,
+        "junk": [],
+        "under44": [
+          "",
+          "",
+          ""
+        ],
+        "under44Count": 3,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 1,
+        "canvases": 0,
+        "svgShapes": 6,
+        "gridCols": 17,
+        "frames": 0,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 269,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r13/shots/title-twice-or-gpt-1280-light.png",
+        "smallText": [
+          "T",
+          "W",
+          "T",
+          "F",
+          "S"
+        ],
+        "smallTextCount": 28,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Habit tracker",
+          "Habit tracker"
+        ],
+        "excerpt": "Habit tracker Habit tracker 2 of 3 done today TODAY Walk 3 days Read 2 days Stretch 1 day LAST FOUR WEEKS T W T F S S M T W T F S S M T W T F S S M T W T F S S M Walk Read Stretch 67% This week 3 Longest now, Walk 3 Best run Ticks are written to the table in this note.",
+        "titleCount": 2,
+        "ghostFields": [],
+        "sections": 3,
+        "nav": false,
+        "junk": [],
+        "under44": [
+          "",
+          "",
+          ""
+        ],
+        "under44Count": 3,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 1,
+        "canvases": 0,
+        "svgShapes": 6,
+        "gridCols": 31,
+        "frames": 0,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 269,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "smallText": [
+          "T",
+          "W",
+          "T",
+          "F",
+          "S"
+        ],
+        "smallTextCount": 28,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Habit tracker",
+          "Habit tracker"
+        ],
+        "excerpt": "Habit tracker Habit tracker 2 of 3 done today TODAY Walk 3 days Read 2 days Stretch 1 day LAST FOUR WEEKS T W T F S S M T W T F S S M T W T F S S M T W T F S S M Walk Read Stretch 67% This week 3 Longest now, Walk 3 Best run Ticks are written to the table in this note.",
+        "titleCount": 2,
+        "ghostFields": [],
+        "sections": 3,
+        "nav": false,
+        "junk": [],
+        "under44": [
+          "",
+          "",
+          ""
+        ],
+        "under44Count": 3,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 1,
+        "canvases": 0,
+        "svgShapes": 6,
+        "gridCols": 31,
+        "frames": 0,
+        "look": {
+          "accentHue": 38,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
+      }
+    ],
+    "blocked": [],
+    "updates": [],
+    "setData": 0,
+    "interaction": {
+      "tried": "none",
+      "ok": null
+    },
+    "probes": {
+      "empty": {
+        "pass": true,
+        "detail": "blank page"
+      },
+      "large": {
+        "pass": true,
+        "detail": "594 ms to load 400 rows"
+      }
+    },
+    "dataAfter": {}
+  }
+}

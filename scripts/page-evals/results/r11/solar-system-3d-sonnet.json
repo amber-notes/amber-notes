@@ -5,9 +5,9 @@
   "round": "r11",
   "skill": false,
   "seconds": 98,
-  "score": 1,
-  "passed": 27,
-  "total": 27,
+  "score": 0.7241379310344828,
+  "passed": 21,
+  "total": 29,
   "checks": [
     {
       "name": "has_page",
@@ -19,7 +19,8 @@
     },
     {
       "name": "no_console_errors",
-      "pass": true
+      "pass": false,
+      "detail": "375-light: Refused to load amber-lib:three because it does not appear in the script-src directive of the Content Security Policy. | 375-dark: Refused to load amber-lib:three because it does not appear in the script-src directive of the Content Security Policy."
     },
     {
       "name": "no_network",
@@ -39,6 +40,14 @@
     },
     {
       "name": "phone_targets",
+      "pass": true
+    },
+    {
+      "name": "focused_screen",
+      "pass": true
+    },
+    {
+      "name": "visible_fields",
       "pass": true
     },
     {
@@ -71,7 +80,8 @@
     },
     {
       "name": "title_once",
-      "pass": true
+      "pass": false,
+      "detail": "The app's first heading should be the note's title (\"Planets\"), read from amber.note.title: nothing around the app shows the title. It has no heading."
     },
     {
       "name": "says_app",
@@ -79,7 +89,8 @@
     },
     {
       "name": "plays",
-      "pass": true
+      "pass": false,
+      "detail": "0 frames in the second after the first tap"
     },
     {
       "name": "not_a_list",
@@ -87,15 +98,18 @@
     },
     {
       "name": "probe_escapes",
-      "pass": true
+      "pass": false,
+      "detail": "Refused to load amber-lib:three because it does not appear in the script-src directive of the Content Security Policy."
     },
     {
       "name": "probe_empty",
-      "pass": true
+      "pass": false,
+      "detail": "Refused to load amber-lib:three because it does not appear in the script-src directive of the Content Security Policy."
     },
     {
       "name": "probe_large",
-      "pass": true
+      "pass": false,
+      "detail": "Refused to load amber-lib:three because it does not appear in the script-src directive of the Content Security Policy."
     },
     {
       "name": "note_unchanged",
@@ -107,11 +121,13 @@
     },
     {
       "name": "libraries_ok",
-      "pass": true
+      "pass": false,
+      "detail": "The app uses THREE but doesn't declare it: add \"three\" to <meta name=\"amber-libs\">."
     },
     {
       "name": "uses_three",
-      "pass": true
+      "pass": false,
+      "detail": "doesn't load the bundled three"
     },
     {
       "name": "reads_the_table",
@@ -203,10 +219,12 @@
         "name": "375-light",
         "width": 375,
         "scheme": "light",
-        "errors": [],
+        "errors": [
+          "Refused to load amber-lib:three because it does not appear in the script-src directive of the Content Security Policy."
+        ],
         "overflowPx": 0,
-        "textLength": 272,
-        "shown": 3,
+        "textLength": 177,
+        "shown": 0,
         "sampled": 12,
         "bg": "rgb(255, 254, 253)",
         "fg": "rgb(42, 29, 16)",
@@ -219,11 +237,11 @@
         "smallTextCount": 0,
         "faintText": [],
         "faintCount": 0,
-        "headings": [
-          "Planets",
-          "Tap a planet"
-        ],
-        "excerpt": "Planets MercuryVenusEarthMarsJupiterSaturnDrag to spin · scroll or pinch to zoom · tap a planet Tap a planet Its numbers from the table appear here. Squashed to fit: spacing uses the square root of distance, size uses radius to the power 0.45, and the Sun is not to scale.",
+        "headings": [],
+        "excerpt": "Drag to spin · scroll or pinch to zoom · tap a planet Squashed to fit: spacing uses the square root of distance, size uses radius to the power 0.45, and the Sun is not to scale.",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -233,10 +251,10 @@
         "canvases": 1,
         "svgShapes": 0,
         "gridCols": 0,
-        "frames": 13,
+        "frames": 0,
         "look": {
-          "accentHue": 229,
-          "nonAmberVivid": 0.0334732862204296,
+          "accentHue": null,
+          "nonAmberVivid": 0,
           "tintedBg": true
         }
       },
@@ -244,10 +262,12 @@
         "name": "375-dark",
         "width": 375,
         "scheme": "dark",
-        "errors": [],
+        "errors": [
+          "Refused to load amber-lib:three because it does not appear in the script-src directive of the Content Security Policy."
+        ],
         "overflowPx": 0,
-        "textLength": 272,
-        "shown": 3,
+        "textLength": 177,
+        "shown": 0,
         "sampled": 12,
         "bg": "rgb(0, 0, 0)",
         "fg": "rgb(246, 239, 231)",
@@ -260,11 +280,11 @@
         "smallTextCount": 0,
         "faintText": [],
         "faintCount": 0,
-        "headings": [
-          "Planets",
-          "Tap a planet"
-        ],
-        "excerpt": "Planets MercuryVenusEarthMarsJupiterSaturnDrag to spin · scroll or pinch to zoom · tap a planet Tap a planet Its numbers from the table appear here. Squashed to fit: spacing uses the square root of distance, size uses radius to the power 0.45, and the Sun is not to scale.",
+        "headings": [],
+        "excerpt": "Drag to spin · scroll or pinch to zoom · tap a planet Squashed to fit: spacing uses the square root of distance, size uses radius to the power 0.45, and the Sun is not to scale.",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -274,10 +294,10 @@
         "canvases": 1,
         "svgShapes": 0,
         "gridCols": 0,
-        "frames": 14,
+        "frames": 0,
         "look": {
-          "accentHue": 229,
-          "nonAmberVivid": 0.0334732862204296,
+          "accentHue": null,
+          "nonAmberVivid": 0,
           "tintedBg": true
         }
       },
@@ -285,10 +305,12 @@
         "name": "768-light",
         "width": 768,
         "scheme": "light",
-        "errors": [],
+        "errors": [
+          "Refused to load amber-lib:three because it does not appear in the script-src directive of the Content Security Policy."
+        ],
         "overflowPx": 0,
-        "textLength": 272,
-        "shown": 3,
+        "textLength": 177,
+        "shown": 0,
         "sampled": 12,
         "bg": "rgb(255, 254, 253)",
         "fg": "rgb(42, 29, 16)",
@@ -301,11 +323,11 @@
         "smallTextCount": 0,
         "faintText": [],
         "faintCount": 0,
-        "headings": [
-          "Planets",
-          "Tap a planet"
-        ],
-        "excerpt": "Planets MercuryVenusEarthMarsJupiterSaturnDrag to spin · scroll or pinch to zoom · tap a planet Tap a planet Its numbers from the table appear here. Squashed to fit: spacing uses the square root of distance, size uses radius to the power 0.45, and the Sun is not to scale.",
+        "headings": [],
+        "excerpt": "Drag to spin · scroll or pinch to zoom · tap a planet Squashed to fit: spacing uses the square root of distance, size uses radius to the power 0.45, and the Sun is not to scale.",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -315,10 +337,10 @@
         "canvases": 1,
         "svgShapes": 0,
         "gridCols": 0,
-        "frames": 14,
+        "frames": 0,
         "look": {
-          "accentHue": 229,
-          "nonAmberVivid": 0.015522073669946738,
+          "accentHue": null,
+          "nonAmberVivid": 0,
           "tintedBg": true
         }
       },
@@ -326,10 +348,12 @@
         "name": "1280-light",
         "width": 1280,
         "scheme": "light",
-        "errors": [],
+        "errors": [
+          "Refused to load amber-lib:three because it does not appear in the script-src directive of the Content Security Policy."
+        ],
         "overflowPx": 0,
-        "textLength": 272,
-        "shown": 3,
+        "textLength": 177,
+        "shown": 0,
         "sampled": 12,
         "bg": "rgb(255, 254, 253)",
         "fg": "rgb(42, 29, 16)",
@@ -342,11 +366,11 @@
         "smallTextCount": 0,
         "faintText": [],
         "faintCount": 0,
-        "headings": [
-          "Planets",
-          "Tap a planet"
-        ],
-        "excerpt": "Planets MercuryVenusEarthMarsJupiterSaturnDrag to spin · scroll or pinch to zoom · tap a planet Tap a planet Its numbers from the table appear here. Squashed to fit: spacing uses the square root of distance, size uses radius to the power 0.45, and the Sun is not to scale.",
+        "headings": [],
+        "excerpt": "Drag to spin · scroll or pinch to zoom · tap a planet Squashed to fit: spacing uses the square root of distance, size uses radius to the power 0.45, and the Sun is not to scale.",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -356,10 +380,10 @@
         "canvases": 1,
         "svgShapes": 0,
         "gridCols": 0,
-        "frames": 14,
+        "frames": 0,
         "look": {
-          "accentHue": 229,
-          "nonAmberVivid": 0.010937555597701935,
+          "accentHue": null,
+          "nonAmberVivid": 0,
           "tintedBg": true
         }
       },
@@ -367,10 +391,12 @@
         "name": "1280-dark",
         "width": 1280,
         "scheme": "dark",
-        "errors": [],
+        "errors": [
+          "Refused to load amber-lib:three because it does not appear in the script-src directive of the Content Security Policy."
+        ],
         "overflowPx": 0,
-        "textLength": 272,
-        "shown": 3,
+        "textLength": 177,
+        "shown": 0,
         "sampled": 12,
         "bg": "rgb(0, 0, 0)",
         "fg": "rgb(246, 239, 231)",
@@ -382,11 +408,11 @@
         "smallTextCount": 0,
         "faintText": [],
         "faintCount": 0,
-        "headings": [
-          "Planets",
-          "Tap a planet"
-        ],
-        "excerpt": "Planets MercuryVenusEarthMarsJupiterSaturnDrag to spin · scroll or pinch to zoom · tap a planet Tap a planet Its numbers from the table appear here. Squashed to fit: spacing uses the square root of distance, size uses radius to the power 0.45, and the Sun is not to scale.",
+        "headings": [],
+        "excerpt": "Drag to spin · scroll or pinch to zoom · tap a planet Squashed to fit: spacing uses the square root of distance, size uses radius to the power 0.45, and the Sun is not to scale.",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -396,10 +422,10 @@
         "canvases": 1,
         "svgShapes": 0,
         "gridCols": 0,
-        "frames": 14,
+        "frames": 0,
         "look": {
-          "accentHue": 229,
-          "nonAmberVivid": 0.010937555597701935,
+          "accentHue": null,
+          "nonAmberVivid": 0,
           "tintedBg": true
         }
       }
@@ -408,26 +434,26 @@
     "updates": [],
     "setData": 0,
     "interaction": {
-      "tried": "control",
-      "ok": false,
-      "framesPerSecond": 30,
-      "error": "no control sent an edit"
+      "tried": "none",
+      "ok": null,
+      "framesPerSecond": 0
     },
     "probes": {
       "follows": {
-        "pass": true,
-        "detail": "shown, but not as written"
+        "pass": false,
+        "detail": "Refused to load amber-lib:three because it does not appear in the script-src directive of the Content Security Policy."
       },
       "escapes": {
-        "pass": true
+        "pass": false,
+        "detail": "Refused to load amber-lib:three because it does not appear in the script-src directive of the Content Security Policy."
       },
       "empty": {
-        "pass": true,
-        "detail": "blank page"
+        "pass": false,
+        "detail": "Refused to load amber-lib:three because it does not appear in the script-src directive of the Content Security Policy."
       },
       "large": {
-        "pass": true,
-        "detail": "683 ms to load 400 rows"
+        "pass": false,
+        "detail": "Refused to load amber-lib:three because it does not appear in the script-src directive of the Content Security Policy."
       }
     },
     "dataAfter": {}

@@ -5,9 +5,9 @@
   "round": "r10",
   "skill": false,
   "seconds": 45,
-  "score": 0.9583333333333334,
-  "passed": 23,
-  "total": 24,
+  "score": 0.9615384615384616,
+  "passed": 25,
+  "total": 26,
   "checks": [
     {
       "name": "has_page",
@@ -39,6 +39,14 @@
     },
     {
       "name": "phone_targets",
+      "pass": true
+    },
+    {
+      "name": "focused_screen",
+      "pass": true
+    },
+    {
+      "name": "visible_fields",
       "pass": true
     },
     {
@@ -212,6 +220,9 @@
           "Habit tracker"
         ],
         "excerpt": "Habit tracker 2 of 3 done today TODAY Walk 3 days Read 2 days Stretch 1 day WEEKLY GOALS Walk 0 of 5 days − + Read 1 of 4 days − + Stretch 1 of 3 days − + Week runs Monday to Sunday. Use − and + to change a goal. LAST TWO WEEKS T W T F S S M T W T F S S M Walk Read Stretch 67% This week 3 Longest now, Walk 3 Best run Ticks are written to the table in this note.",
+        "ghostFields": [],
+        "sections": 3,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -252,6 +263,9 @@
           "Habit tracker"
         ],
         "excerpt": "Habit tracker 2 of 3 done today TODAY Walk 3 days Read 2 days Stretch 1 day WEEKLY GOALS Walk 0 of 5 days − + Read 1 of 4 days − + Stretch 1 of 3 days − + Week runs Monday to Sunday. Use − and + to change a goal. LAST TWO WEEKS T W T F S S M T W T F S S M Walk Read Stretch 67% This week 3 Longest now, Walk 3 Best run Ticks are written to the table in this note.",
+        "ghostFields": [],
+        "sections": 3,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -292,6 +306,9 @@
           "Habit tracker"
         ],
         "excerpt": "Habit tracker 2 of 3 done today TODAY Walk 3 days Read 2 days Stretch 1 day WEEKLY GOALS Walk 0 of 5 days − + Read 1 of 4 days − + Stretch 1 of 3 days − + Week runs Monday to Sunday. Use − and + to change a goal. LAST TWO WEEKS T W T F S S M T W T F S S M Walk Read Stretch 67% This week 3 Longest now, Walk 3 Best run Ticks are written to the table in this note.",
+        "ghostFields": [],
+        "sections": 3,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -332,6 +349,9 @@
           "Habit tracker"
         ],
         "excerpt": "Habit tracker 2 of 3 done today TODAY Walk 3 days Read 2 days Stretch 1 day WEEKLY GOALS Walk 0 of 5 days − + Read 1 of 4 days − + Stretch 1 of 3 days − + Week runs Monday to Sunday. Use − and + to change a goal. LAST FOUR WEEKS T W T F S S M T W T F S S M T W T F S S M T W T F S S M Walk Read Stretch 67% This week 3 Longest now, Walk 3 Best run Ticks are written to the table in this note.",
+        "ghostFields": [],
+        "sections": 3,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -371,6 +391,9 @@
           "Habit tracker"
         ],
         "excerpt": "Habit tracker 2 of 3 done today TODAY Walk 3 days Read 2 days Stretch 1 day WEEKLY GOALS Walk 0 of 5 days − + Read 1 of 4 days − + Stretch 1 of 3 days − + Week runs Monday to Sunday. Use − and + to change a goal. LAST FOUR WEEKS T W T F S S M T W T F S S M T W T F S S M T W T F S S M Walk Read Stretch 67% This week 3 Longest now, Walk 3 Best run Ticks are written to the table in this note.",
+        "ghostFields": [],
+        "sections": 3,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -414,7 +437,7 @@
       },
       "large": {
         "pass": true,
-        "detail": "603 ms to load 400 rows"
+        "detail": "612 ms to load 400 rows"
       }
     },
     "dataAfter": {}

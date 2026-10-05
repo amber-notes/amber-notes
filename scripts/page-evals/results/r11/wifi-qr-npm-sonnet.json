@@ -5,9 +5,9 @@
   "round": "r11",
   "skill": false,
   "seconds": 54,
-  "score": 0.96,
-  "passed": 24,
-  "total": 25,
+  "score": 0.8148148148148148,
+  "passed": 22,
+  "total": 27,
   "checks": [
     {
       "name": "has_page",
@@ -19,7 +19,8 @@
     },
     {
       "name": "no_console_errors",
-      "pass": true
+      "pass": false,
+      "detail": "375-light: Refused to load amber-lib:npm/qrcode-generator@2.0.4/dist/qrcode.js because it does not appear in the script-src directive of the Content Security Policy. | 375-dark: Refused to load amber-lib:npm/qrcode-generator@2.0.4/dist/qrcode.js because it does not appear in the script-src directive of the Content Security Policy."
     },
     {
       "name": "no_network",
@@ -39,6 +40,14 @@
     },
     {
       "name": "phone_targets",
+      "pass": true
+    },
+    {
+      "name": "focused_screen",
+      "pass": true
+    },
+    {
+      "name": "visible_fields",
       "pass": true
     },
     {
@@ -84,7 +93,8 @@
     },
     {
       "name": "not_a_list",
-      "pass": true
+      "pass": false,
+      "detail": "no canvas, 0 drawn shapes, at most 2 grid columns"
     },
     {
       "name": "note_unchanged",
@@ -96,11 +106,13 @@
     },
     {
       "name": "libraries_ok",
-      "pass": true
+      "pass": false,
+      "detail": "Don't point <script src> at amber-lib: yourself: declare libraries in <meta name=\"amber-libs\"> (or await amber.lib(name))."
     },
     {
-      "name": "pinned_npm_or_own_code",
-      "pass": true
+      "name": "pinned_npm",
+      "pass": false,
+      "detail": "no pinned, hashed npm package in amber-libs"
     },
     {
       "name": "wifi_payload",
@@ -196,9 +208,11 @@
         "name": "375-light",
         "width": 375,
         "scheme": "light",
-        "errors": [],
+        "errors": [
+          "Refused to load amber-lib:npm/qrcode-generator@2.0.4/dist/qrcode.js because it does not appear in the script-src directive of the Content Security Policy."
+        ],
         "overflowPx": 0,
-        "textLength": 128,
+        "textLength": 154,
         "shown": 0,
         "sampled": 0,
         "bg": "rgb(255, 254, 253)",
@@ -215,15 +229,18 @@
         "headings": [
           "Guest wifi"
         ],
-        "excerpt": "Guest wifi Open the phone camera and point it at the code to join. Network Lindgren Guest Password •••••••• Show Security WPA2",
+        "excerpt": "Guest wifi Could not make a QR code. Open the phone camera and point it at the code to join. Network Lindgren Guest Password •••••••• Show Security WPA2",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
         "clipped": [],
         "clippedCount": 0,
         "usedWidth": 0.9146666666666666,
-        "canvases": 1,
-        "svgShapes": 1,
+        "canvases": 0,
+        "svgShapes": 0,
         "gridCols": 1,
         "frames": 0,
         "look": {
@@ -236,9 +253,11 @@
         "name": "375-dark",
         "width": 375,
         "scheme": "dark",
-        "errors": [],
+        "errors": [
+          "Refused to load amber-lib:npm/qrcode-generator@2.0.4/dist/qrcode.js because it does not appear in the script-src directive of the Content Security Policy."
+        ],
         "overflowPx": 0,
-        "textLength": 128,
+        "textLength": 154,
         "shown": 0,
         "sampled": 0,
         "bg": "rgb(0, 0, 0)",
@@ -255,15 +274,18 @@
         "headings": [
           "Guest wifi"
         ],
-        "excerpt": "Guest wifi Open the phone camera and point it at the code to join. Network Lindgren Guest Password •••••••• Show Security WPA2",
+        "excerpt": "Guest wifi Could not make a QR code. Open the phone camera and point it at the code to join. Network Lindgren Guest Password •••••••• Show Security WPA2",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
         "clipped": [],
         "clippedCount": 0,
         "usedWidth": 0.9146666666666666,
-        "canvases": 1,
-        "svgShapes": 1,
+        "canvases": 0,
+        "svgShapes": 0,
         "gridCols": 1,
         "frames": 0,
         "look": {
@@ -276,9 +298,11 @@
         "name": "768-light",
         "width": 768,
         "scheme": "light",
-        "errors": [],
+        "errors": [
+          "Refused to load amber-lib:npm/qrcode-generator@2.0.4/dist/qrcode.js because it does not appear in the script-src directive of the Content Security Policy."
+        ],
         "overflowPx": 0,
-        "textLength": 128,
+        "textLength": 154,
         "shown": 0,
         "sampled": 0,
         "bg": "rgb(255, 254, 253)",
@@ -295,15 +319,18 @@
         "headings": [
           "Guest wifi"
         ],
-        "excerpt": "Guest wifi Open the phone camera and point it at the code to join. Network Lindgren Guest Password •••••••• Show Security WPA2",
+        "excerpt": "Guest wifi Could not make a QR code. Open the phone camera and point it at the code to join. Network Lindgren Guest Password •••••••• Show Security WPA2",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
         "clipped": [],
         "clippedCount": 0,
         "usedWidth": 0.5546875,
-        "canvases": 1,
-        "svgShapes": 1,
+        "canvases": 0,
+        "svgShapes": 0,
         "gridCols": 1,
         "frames": 0,
         "look": {
@@ -316,9 +343,11 @@
         "name": "1280-light",
         "width": 1280,
         "scheme": "light",
-        "errors": [],
+        "errors": [
+          "Refused to load amber-lib:npm/qrcode-generator@2.0.4/dist/qrcode.js because it does not appear in the script-src directive of the Content Security Policy."
+        ],
         "overflowPx": 0,
-        "textLength": 128,
+        "textLength": 154,
         "shown": 0,
         "sampled": 0,
         "bg": "rgb(255, 254, 253)",
@@ -335,15 +364,18 @@
         "headings": [
           "Guest wifi"
         ],
-        "excerpt": "Guest wifi Open the phone camera and point it at the code to join. Network Lindgren Guest Password •••••••• Show Security WPA2",
+        "excerpt": "Guest wifi Could not make a QR code. Open the phone camera and point it at the code to join. Network Lindgren Guest Password •••••••• Show Security WPA2",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
         "clipped": [],
         "clippedCount": 0,
         "usedWidth": 0.73753662109375,
-        "canvases": 1,
-        "svgShapes": 1,
+        "canvases": 0,
+        "svgShapes": 0,
         "gridCols": 2,
         "frames": 0,
         "look": {
@@ -356,9 +388,11 @@
         "name": "1280-dark",
         "width": 1280,
         "scheme": "dark",
-        "errors": [],
+        "errors": [
+          "Refused to load amber-lib:npm/qrcode-generator@2.0.4/dist/qrcode.js because it does not appear in the script-src directive of the Content Security Policy."
+        ],
         "overflowPx": 0,
-        "textLength": 128,
+        "textLength": 154,
         "shown": 0,
         "sampled": 0,
         "bg": "rgb(0, 0, 0)",
@@ -374,15 +408,18 @@
         "headings": [
           "Guest wifi"
         ],
-        "excerpt": "Guest wifi Open the phone camera and point it at the code to join. Network Lindgren Guest Password •••••••• Show Security WPA2",
+        "excerpt": "Guest wifi Could not make a QR code. Open the phone camera and point it at the code to join. Network Lindgren Guest Password •••••••• Show Security WPA2",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
         "clipped": [],
         "clippedCount": 0,
         "usedWidth": 0.73753662109375,
-        "canvases": 1,
-        "svgShapes": 1,
+        "canvases": 0,
+        "svgShapes": 0,
         "gridCols": 2,
         "frames": 0,
         "look": {

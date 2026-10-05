@@ -5,9 +5,9 @@
   "round": "r10",
   "skill": false,
   "seconds": 62,
-  "score": 1,
-  "passed": 25,
-  "total": 25,
+  "score": 0.9629629629629629,
+  "passed": 26,
+  "total": 27,
   "checks": [
     {
       "name": "has_page",
@@ -40,6 +40,15 @@
     {
       "name": "phone_targets",
       "pass": true
+    },
+    {
+      "name": "focused_screen",
+      "pass": true
+    },
+    {
+      "name": "visible_fields",
+      "pass": false,
+      "detail": "item, amount, cat"
     },
     {
       "name": "no_junk_text",
@@ -237,6 +246,13 @@
           "Latest"
         ],
         "excerpt": "October budget 12 357,50 kr 2 642,50 kr left of 15 000,00 kr (82% used) BY CATEGORY housing 77% 9 500,00 kr food 11% 1 349,50 kr transport 8% 970,00 kr subscriptions 2% 278,00 kr fun 2% 260,00 kr ADD AN EXPENSE What Amount Category Add LATEST Netflix 2026-10-05 · subscriptions 149,00 kr Cinema 2026-10-04 · fun 260,00 kr Groceries Lidl 2026-10-04 · food 412,50 kr Spotify 2026-10-03 · subscriptions 129,00 kr Coffee w/ Lina 2026-10-03 · food 92,00 kr SL card 2026-10-02 · transport 970,00 kr Groceri",
+        "ghostFields": [
+          "item",
+          "amount",
+          "cat"
+        ],
+        "sections": 4,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -280,6 +296,13 @@
           "Latest"
         ],
         "excerpt": "October budget 12 357,50 kr 2 642,50 kr left of 15 000,00 kr (82% used) BY CATEGORY housing 77% 9 500,00 kr food 11% 1 349,50 kr transport 8% 970,00 kr subscriptions 2% 278,00 kr fun 2% 260,00 kr ADD AN EXPENSE What Amount Category Add LATEST Netflix 2026-10-05 · subscriptions 149,00 kr Cinema 2026-10-04 · fun 260,00 kr Groceries Lidl 2026-10-04 · food 412,50 kr Spotify 2026-10-03 · subscriptions 129,00 kr Coffee w/ Lina 2026-10-03 · food 92,00 kr SL card 2026-10-02 · transport 970,00 kr Groceri",
+        "ghostFields": [
+          "item",
+          "amount",
+          "cat"
+        ],
+        "sections": 4,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -323,6 +346,13 @@
           "Latest"
         ],
         "excerpt": "October budget 12 357,50 kr 2 642,50 kr left of 15 000,00 kr (82% used) BY CATEGORY housing 77% 9 500,00 kr food 11% 1 349,50 kr transport 8% 970,00 kr subscriptions 2% 278,00 kr fun 2% 260,00 kr ADD AN EXPENSE What Amount Category Add LATEST Netflix 2026-10-05 · subscriptions 149,00 kr Cinema 2026-10-04 · fun 260,00 kr Groceries Lidl 2026-10-04 · food 412,50 kr Spotify 2026-10-03 · subscriptions 129,00 kr Coffee w/ Lina 2026-10-03 · food 92,00 kr SL card 2026-10-02 · transport 970,00 kr Groceri",
+        "ghostFields": [
+          "item",
+          "amount",
+          "cat"
+        ],
+        "sections": 4,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -366,6 +396,13 @@
           "Latest"
         ],
         "excerpt": "October budget 12 357,50 kr 2 642,50 kr left of 15 000,00 kr (82% used) BY CATEGORY housing 77% 9 500,00 kr food 11% 1 349,50 kr transport 8% 970,00 kr subscriptions 2% 278,00 kr fun 2% 260,00 kr ADD AN EXPENSE What Amount Category Add LATEST Netflix 2026-10-05 · subscriptions 149,00 kr Cinema 2026-10-04 · fun 260,00 kr Groceries Lidl 2026-10-04 · food 412,50 kr Spotify 2026-10-03 · subscriptions 129,00 kr Coffee w/ Lina 2026-10-03 · food 92,00 kr SL card 2026-10-02 · transport 970,00 kr Groceri",
+        "ghostFields": [
+          "item",
+          "amount",
+          "cat"
+        ],
+        "sections": 4,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -408,6 +445,13 @@
           "Latest"
         ],
         "excerpt": "October budget 12 357,50 kr 2 642,50 kr left of 15 000,00 kr (82% used) BY CATEGORY housing 77% 9 500,00 kr food 11% 1 349,50 kr transport 8% 970,00 kr subscriptions 2% 278,00 kr fun 2% 260,00 kr ADD AN EXPENSE What Amount Category Add LATEST Netflix 2026-10-05 · subscriptions 149,00 kr Cinema 2026-10-04 · fun 260,00 kr Groceries Lidl 2026-10-04 · food 412,50 kr Spotify 2026-10-03 · subscriptions 129,00 kr Coffee w/ Lina 2026-10-03 · food 92,00 kr SL card 2026-10-02 · transport 970,00 kr Groceri",
+        "ghostFields": [
+          "item",
+          "amount",
+          "cat"
+        ],
+        "sections": 4,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -461,7 +505,7 @@
       },
       "large": {
         "pass": true,
-        "detail": "598 ms to load 400 rows"
+        "detail": "593 ms to load 400 rows"
       }
     },
     "dataAfter": {}

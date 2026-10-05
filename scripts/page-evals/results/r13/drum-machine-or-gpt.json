@@ -1,0 +1,640 @@
+{
+  "task": "drum-machine",
+  "rep": 1,
+  "model": "openai/gpt-5.5",
+  "round": "r13",
+  "skill": false,
+  "seconds": 186,
+  "score": 0.9615384615384616,
+  "passed": 25,
+  "total": 26,
+  "checks": [
+    {
+      "name": "has_page",
+      "pass": true
+    },
+    {
+      "name": "server_checks",
+      "pass": true
+    },
+    {
+      "name": "no_console_errors",
+      "pass": true
+    },
+    {
+      "name": "no_network",
+      "pass": true
+    },
+    {
+      "name": "fits_phone",
+      "pass": true
+    },
+    {
+      "name": "fits_desktop",
+      "pass": true
+    },
+    {
+      "name": "uses_wide_window",
+      "pass": true
+    },
+    {
+      "name": "phone_targets",
+      "pass": true
+    },
+    {
+      "name": "focused_screen",
+      "pass": true
+    },
+    {
+      "name": "visible_fields",
+      "pass": true
+    },
+    {
+      "name": "no_junk_text",
+      "pass": true
+    },
+    {
+      "name": "no_clipped_text",
+      "pass": true
+    },
+    {
+      "name": "dark_mode",
+      "pass": true
+    },
+    {
+      "name": "light_contrast",
+      "pass": true
+    },
+    {
+      "name": "themed",
+      "pass": true
+    },
+    {
+      "name": "distinct_look",
+      "pass": true
+    },
+    {
+      "name": "labelled_controls",
+      "pass": true
+    },
+    {
+      "name": "title_once",
+      "pass": true
+    },
+    {
+      "name": "says_app",
+      "pass": true
+    },
+    {
+      "name": "plays",
+      "pass": false,
+      "detail": "0 frames in the second after the first tap"
+    },
+    {
+      "name": "not_a_list",
+      "pass": true
+    },
+    {
+      "name": "probe_empty",
+      "pass": true
+    },
+    {
+      "name": "probe_large",
+      "pass": true
+    },
+    {
+      "name": "rows_kept",
+      "pass": true
+    },
+    {
+      "name": "pattern_in_note",
+      "pass": true
+    },
+    {
+      "name": "sound_after_tap",
+      "pass": true
+    }
+  ],
+  "tool_calls": 25,
+  "tool_errors": 9,
+  "usage": {
+    "input": 92879,
+    "output": 7203,
+    "cacheRead": 402176,
+    "cacheWrite": 0,
+    "turns": 23,
+    "usd": 0.881573
+  },
+  "usd": 0.8816,
+  "page_bytes": 9059,
+  "data": null,
+  "answer": "Done — I turned the Beat note’s App side into a drum machine.\n\n- Tap pads to toggle steps on/off.\n- Press Play/Stop to hear the loop.\n- The pattern is still stored in the note’s markdown table as `x` values, so it stays readable/editable as text.\n- I also fixed the step numbering in the app preview and ran the app check; it passes.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Beat",
+        "limit": "10"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Beat\",\n  \"results\": [\n    {\n      \"id\": \"19e075cc-224b-4f26-9892-88cebac058db\",\n      \"title\": \"Beat\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T20:06:17.356Z\",\n      \"snippet\": \"«Beat» Four on the floor with a back«beat». 120 bpm. | Step | Kick | Snare | Hat | | --- | --- | --- | --- | | 1 | x | | x | | 2 | | | | | 3 | | | x | | 4 | | | | | 5 | x | x\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "get_page_guide",
+      "args": {
+        "template": "workout-log"
+      },
+      "error": false,
+      "result": "{\n  \"template\": \"workout-log\",\n  \"description\": \"Weekly distance and time for the last eight weeks, this week's totals against a weekly goal (an App Setting), the latest sessions and a log form.\",\n  \"expects\": \"A table with Date (yyyy-mm-dd), optionally Type (Run, Bike...), a distance column (Km, Distance) and a time column (Minutes, Time).\",\n  \"html\": \"<!doctype html>\\n<!-- template: workout-log | Weekly distance and time for the last eight weeks, this week's totals against a weekly goal (an App Setting), the latest sessions and a log form. | A table with Date (yyyy-mm-dd), optionally Type (R… (9421 chars)"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "19e075cc-224b-4f26-9892-88cebac058db",
+        "title": "",
+        "start_line": "1",
+        "end_line": "200",
+        "line_numbers": "true"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"19e075cc-224b-4f26-9892-88cebac058db\",\n  \"title\": \"Beat\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T20:06:17.356Z\",\n  \"updated\": \"2026-10-05T20:06:17.356Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 23,\n    \"words\": 138\n  },\n  \"lines\": \"1-23\",\n  \"markdown\": \" 1│ Beat\\n 2│ \\n 3│ Four on the floor with a backbeat. 120 bpm.\\n 4│ \\n 5│ | Step | Kick | Snare | Hat |\\n 6│ | --- | --- | --- | --- |\\n 7│ | 1 | x |  | x |\\n 8│… (923 chars)"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "19e075cc-224b-4f26-9892-88cebac058db",
+        "title": "",
+        "version_id": "0"
+      },
+      "error": true,
+      "result": "No earlier page 0 for this note. Versions: none."
+    },
+    {
+      "name": "read_table",
+      "args": {
+        "id": "19e075cc-224b-4f26-9892-88cebac058db",
+        "title": "",
+        "table": "0",
+        "last": "40"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"19e075cc-224b-4f26-9892-88cebac058db\",\n    \"title\": \"Beat\"\n  },\n  \"columns\": [\n    {\n      \"name\": \"Step\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Kick\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Snare\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Hat\",\n      \"type\": \"text\"\n    }\n  ],\n  \"rows\": [\n    {\n      \"Step\": \"1\",\n      \"Kick\": \"x\",\n      \"Snare\": \"\",\n      \"Hat\": \"x\"\n    },\n    {\n      \"Step\": \"2\",\n      \"Kick\": \"\",\n      \"Snare\": \"\",\n      \"Hat\": \"\"\n    },\n    {\n      \"Step\": \"3\",\n      \"Kick\": \"\",\n      \"Snare\": \"\",\n      \"Hat\": \"x\"\n    }… (1749 chars)"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "19e075cc-224b-4f26-9892-88cebac058db",
+        "title": "",
+        "version_id": "0"
+      },
+      "error": true,
+      "result": "No earlier page 0 for this note. Versions: none."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "19e075cc-224b-4f26-9892-88cebac058db",
+        "title": "",
+        "version_id": "-1"
+      },
+      "error": true,
+      "result": "No earlier page -1 for this note. Versions: none."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "19e075cc-224b-4f26-9892-88cebac058db",
+        "title": "",
+        "version_id": "0"
+      },
+      "error": true,
+      "result": "No earlier page 0 for this note. Versions: none."
+    },
+    {
+      "name": "set_note_page",
+      "args": {
+        "id": "19e075cc-224b-4f26-9892-88cebac058db",
+        "title": "",
+        "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<style>\n  :root{--bg:var(--amber-bg);--surface:var(--amber-surface);--fill:var(--amber-fill);--text:var(--amber-text);--muted:var(--amber-text-secondary);--line:var(--a… (8863 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"19e075cc-224b-4f26-9892-88cebac058db\",\n  \"title\": \"Beat\",\n  \"page\": \"created\",\n  \"bytes\": 8872,\n  \"note\": \"The person sees it on the note's App side (call it the note's app, not a page). The note's text is unchanged. Next: run check_app and fix what it finds.\",\n  \"warnings\": [\n    \"alert/confirm/prompt don't show in the sandbox. Show messages inline.\"\n  ],\n  \"fix_warnings\": \"Saved. Fix these with edit_note_page, then run check_app, before you reply.\"\n}"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "19e075cc-224b-4f26-9892-88cebac058db",
+        "title": "",
+        "version_id": "0"
+      },
+      "error": true,
+      "result": "No earlier page 0 for this note. Versions: none."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "19e075cc-224b-4f26-9892-88cebac058db",
+        "title": "",
+        "version_id": "999"
+      },
+      "error": true,
+      "result": "No earlier page 999 for this note. Versions: none."
+    },
+    {
+      "name": "edit_note_page",
+      "args": {
+        "id": "19e075cc-224b-4f26-9892-88cebac058db",
+        "title": "",
+        "edits": "[{\"old_text\":\".footer{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;color:var(--muted);font-size:.9rem}.pill{border:1px solid var(--line);border-radius:999px;padding:6px 10px;background:var(--surface)}button{cursor:pointer;touch-action:manipulation}button:focus-visible{outline:3px solid var(--… (1764 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"19e075cc-224b-4f26-9892-88cebac058db\",\n  \"title\": \"Beat\",\n  \"page\": \"replaced\",\n  \"bytes\": 9123,\n  \"note\": \"The person sees it on the note's App side (call it the note's app, not a page). The note's text is unchanged. The previous version is kept (get_note_page lists it). Next: run check_app and fix what it finds.\"\n}"
+    },
+    {
+      "name": "check_app",
+      "args": {
+        "id": "19e075cc-224b-4f26-9892-88cebac058db",
+        "title": ""
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"19e075cc-224b-4f26-9892-88cebac058db\",\n    \"title\": \"Beat\"\n  },\n  \"ok\": false,\n  \"issues\": [\n    \"375-light: 48 text element(s) under 12 px (\\\"2\\\", \\\"2\\\", \\\"2\\\").\",\n    \"375-light: 1 text element(s) with contrast under 4.5:1 (\\\"Play\\\").\",\n    \"375-dark: 48 text element(s) under 12 px (\\\"2\\\", \\\"2\\\", \\\"2\\\").\",\n    \"768-light: 48 text element(s) under 12 px (\\\"2\\\", \\\"2\\\", \\\"2\\\").\",\n    \"768-light: 1 text element(s) with contrast under 4.5:1 (\\\"Play\\\").\",\n    \"1280-light: 48 text element(s) under 12 px (\\\"2\\\", \\\"2\\\", \\\"2\\\").\",\n    \"1280-light: 1 text element(s) with contras… (810 chars)"
+    },
+    {
+      "name": "edit_note_page",
+      "args": {
+        "id": "19e075cc-224b-4f26-9892-88cebac058db",
+        "title": "",
+        "edits": "[{\"old_text\":\".play{width:72px;height:72px;border-radius:50%;border:0;background:var(--accent);color:var(--accentText);font:700 1.1rem var(--amber-font-rounded);box-shadow:0 0 0 7px var(--soft);display:grid;place-items:center}\",\"new_text\":\".play{width:72px;height:72px;border-radius:50%;border:0;back… (707 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"19e075cc-224b-4f26-9892-88cebac058db\",\n  \"title\": \"Beat\",\n  \"page\": \"replaced\",\n  \"bytes\": 9113,\n  \"note\": \"The person sees it on the note's App side (call it the note's app, not a page). The note's text is unchanged. The previous version is kept (get_note_page lists it). Next: run check_app and fix what it finds.\"\n}"
+    },
+    {
+      "name": "check_app",
+      "args": {
+        "id": "19e075cc-224b-4f26-9892-88cebac058db",
+        "title": ""
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"19e075cc-224b-4f26-9892-88cebac058db\",\n    \"title\": \"Beat\"\n  },\n  \"ok\": true,\n  \"issues\": [],\n  \"browser_checked\": \"375 px light and dark, 768 and 1280 px light, over a sample note\",\n  \"next\": \"Nothing to fix.\"\n}"
+    },
+    {
+      "name": "preview_app",
+      "args": {
+        "id": "19e075cc-224b-4f26-9892-88cebac058db",
+        "title": "",
+        "widths": "[375,1280]",
+        "themes": "[\"light\",\"dark\"]",
+        "data": "sample"
+      },
+      "error": false,
+      "result": "{\n  \"app\": \"Beat\",\n  \"data\": \"a sample with the note's shape (not the person's data)\",\n  \"views\": [\n    {\n      \"view\": \"375-light\",\n      \"headings\": [\n        \"Sample note\"\n      ],\n      \"text\": \"Sample note Play 120 BPM Tap pads to write x’s into the note’s pattern table. Press play to hear the loop. Kick 4/16 ●2 ·2 ·2 ·2 ●2 ·2 ·2 ·2 ●2 ·11 ·11 ·12 ●12 ·9 ·10 ·10 Snare 2/16 ·2 ·2 ·2 ·2 ●2 ·2 ·2 ·2 ·2 ·11 ·11 ·12 ●12 ·9 ·10 ·10 Hat 8/16 ●2 ·2 ●2 ·2 ●2 ·2 ●2 ·2 ●2 ·11 ●11 ·12 ●12 ·9 ●10 ·10 Pattern: 16 steps Sounds: Kick · Snare · Hat\"\n    },\n    {\n      \"view\": \"375-dark\",\n      \"headings\":… (2000 chars)"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "19e075cc-224b-4f26-9892-88cebac058db",
+        "title": "",
+        "start_line": "1",
+        "end_line": "80",
+        "line_numbers": "true"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"19e075cc-224b-4f26-9892-88cebac058db\",\n  \"title\": \"Beat\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T20:06:17.356Z\",\n  \"updated\": \"2026-10-05T20:06:17.356Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"has_page\": true,\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 23,\n    \"words\": 138\n  },\n  \"lines\": \"1-23\",\n  \"markdown\": \" 1│ Beat\\n 2│ \\n 3│ Four on the floor with a backbeat. 120 bpm.\\n 4│ \\n 5│ | Step | Kick | Snare | Hat |\\n 6│ | --- | --- | --- | --- |\\n 7│ |… (943 chars)"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "19e075cc-224b-4f26-9892-88cebac058db",
+        "title": "Beat",
+        "version_id": "0"
+      },
+      "error": true,
+      "result": "No earlier page 0 for this note. Versions: 2, 1."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "19e075cc-224b-4f26-9892-88cebac058db",
+        "title": "Beat",
+        "version_id": "2"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"19e075cc-224b-4f26-9892-88cebac058db\",\n  \"title\": \"Beat\",\n  \"version_id\": 2,\n  \"made_by\": \"Claude\",\n  \"made\": \"2026-10-05T20:07:24.903Z\",\n  \"html\": \"<!doctype html>\\n<html lang=\\\"en\\\">\\n<head>\\n<meta charset=\\\"utf-8\\\">\\n<meta name=\\\"viewport\\\" content=\\\"width=device-width, initial-scale=1\\\">\\n<style>\\n  :root{--bg:var(--amber-bg);--surface:var(--amber-surface);--fill:var(--amber-fill);--text:var(--amber-text);--muted:var(--amber-text-secondary);--line:var(--amber-separator);--accent:var(--amber-accent);--accentText:var(--amber-on-accent);--soft:var(--amber-accent-soft);--danger:var(… (9715 chars)"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "19e075cc-224b-4f26-9892-88cebac058db",
+        "title": "Beat",
+        "version_id": "3"
+      },
+      "error": true,
+      "result": "No earlier page 3 for this note. Versions: 2, 1."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "19e075cc-224b-4f26-9892-88cebac058db",
+        "title": "Beat",
+        "version_id": "0"
+      },
+      "error": true,
+      "result": "No earlier page 0 for this note. Versions: 2, 1."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "19e075cc-224b-4f26-9892-88cebac058db",
+        "title": "Beat",
+        "version_id": "2"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"19e075cc-224b-4f26-9892-88cebac058db\",\n  \"title\": \"Beat\",\n  \"version_id\": 2,\n  \"made_by\": \"Claude\",\n  \"made\": \"2026-10-05T20:07:24.903Z\",\n  \"html\": \"<!doctype html>\\n<html lang=\\\"en\\\">\\n<head>\\n<meta charset=\\\"utf-8\\\">\\n<meta name=\\\"viewport\\\" content=\\\"width=device-width, initial-scale=1\\\">\\n<style>\\n  :root{--bg:var(--amber-bg);--surface:var(--amber-surface);--fill:var(--amber-fill);--text:var(--amber-text);--muted:var(--amber-text-secondary);--line:var(--amber-separator);--accent:var(--amber-accent);--accentText:var(--amber-on-accent);--soft:var(--amber-accent-soft);--danger:var(… (9715 chars)"
+    },
+    {
+      "name": "edit_note_page",
+      "args": {
+        "id": "19e075cc-224b-4f26-9892-88cebac058db",
+        "title": "",
+        "edits": "[{\"old_text\":\"aria-label=\\\"${esc(tr.name)} step ${esc(stepCol>=0?r[stepCol]:i+1)} ${on(r[tr.col])?\\\"on\\\":\\\"off\\\"}\\\">${on(r[tr.col])?\\\"●\\\":\\\"·\\\"}<small>${esc(stepCol>=0?r[stepCol]:i+1)}</small>\",\"new_text\":\"aria-label=\\\"${esc(tr.name)} step ${i+1} ${on(r[tr.col])?\\\"on\\\":\\\"off\\\"}\\\">${on(r[tr.col])?\\\"●… (353 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"19e075cc-224b-4f26-9892-88cebac058db\",\n  \"title\": \"Beat\",\n  \"page\": \"replaced\",\n  \"bytes\": 9059,\n  \"note\": \"The person sees it on the note's App side (call it the note's app, not a page). The note's text is unchanged. The previous version is kept (get_note_page lists it). Next: run check_app and fix what it finds.\"\n}"
+    },
+    {
+      "name": "check_app",
+      "args": {
+        "id": "19e075cc-224b-4f26-9892-88cebac058db",
+        "title": ""
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"19e075cc-224b-4f26-9892-88cebac058db\",\n    \"title\": \"Beat\"\n  },\n  \"ok\": true,\n  \"issues\": [],\n  \"browser_checked\": \"375 px light and dark, 768 and 1280 px light, over a sample note\",\n  \"next\": \"Nothing to fix.\"\n}"
+    },
+    {
+      "name": "preview_app",
+      "args": {
+        "id": "19e075cc-224b-4f26-9892-88cebac058db",
+        "title": "",
+        "widths": "[375,1280]",
+        "themes": "[\"light\",\"dark\"]",
+        "data": "sample"
+      },
+      "error": false,
+      "result": "{\n  \"app\": \"Beat\",\n  \"data\": \"a sample with the note's shape (not the person's data)\",\n  \"views\": [\n    {\n      \"view\": \"375-light\",\n      \"headings\": [\n        \"Sample note\"\n      ],\n      \"text\": \"Sample note Play 120 BPM Tap pads to write x’s into the note’s pattern table. Press play to hear the loop. Kick 4/16 ●1 ·2 ·3 ·4 ●5 ·6 ·7 ·8 ●9 ·10 ·11 ·12 ●13 ·14 ·15 ·16 Snare 2/16 ·1 ·2 ·3 ·4 ●5 ·6 ·7 ·8 ·9 ·10 ·11 ·12 ●13 ·14 ·15 ·16 Hat 8/16 ●1 ·2 ●3 ·4 ●5 ·6 ●7 ·8 ●9 ·10 ●11 ·12 ●13 ·14 ●15 ·16 Pattern: 16 steps Sounds: Kick · Snare · Hat\"\n    },\n    {\n      \"view\": \"375-dark\",\n      \"heading… (2012 chars)"
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "375-light",
+        "width": 375,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 341,
+        "shown": 3,
+        "sampled": 3,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r13/shots/drum-machine-or-gpt-375-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Beat"
+        ],
+        "excerpt": "Beat Play 120 BPM Tap pads to write x’s into the note’s pattern table. Press play to hear the loop. Kick 4/16 ●1 ·2 ·3 ·4 ●5 ·6 ·7 ·8 ●9 ·10 ·11 ·12 ●13 ·14 ·15 ·16 Snare 2/16 ·1 ·2 ·3 ·4 ●5 ·6 ·7 ·8 ·9 ·10 ·11 ·12 ●13 ·14 ·15 ·16 Hat 8/16 ●1 ·2 ●3 ·4 ●5 ·6 ●7 ·8 ●9 ·10 ●11 ·12 ●13 ·14 ●15 ·16 Pattern: 16 steps Sounds: Kick · Snare · Hat",
+        "titleCount": 1,
+        "ghostFields": [],
+        "sections": 2,
+        "nav": false,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.9146666666666666,
+        "canvases": 0,
+        "svgShapes": 0,
+        "gridCols": 16,
+        "frames": 0,
+        "look": {
+          "accentHue": 174,
+          "nonAmberVivid": 0.07313774751229783,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "375-dark",
+        "width": 375,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 341,
+        "shown": 3,
+        "sampled": 3,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r13/shots/drum-machine-or-gpt-375-dark.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Beat"
+        ],
+        "excerpt": "Beat Play 120 BPM Tap pads to write x’s into the note’s pattern table. Press play to hear the loop. Kick 4/16 ●1 ·2 ·3 ·4 ●5 ·6 ·7 ·8 ●9 ·10 ·11 ·12 ●13 ·14 ·15 ·16 Snare 2/16 ·1 ·2 ·3 ·4 ●5 ·6 ·7 ·8 ·9 ·10 ·11 ·12 ●13 ·14 ·15 ·16 Hat 8/16 ●1 ·2 ●3 ·4 ●5 ·6 ●7 ·8 ●9 ·10 ●11 ·12 ●13 ·14 ●15 ·16 Pattern: 16 steps Sounds: Kick · Snare · Hat",
+        "titleCount": 1,
+        "ghostFields": [],
+        "sections": 2,
+        "nav": false,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.9146666666666666,
+        "canvases": 0,
+        "svgShapes": 0,
+        "gridCols": 16,
+        "frames": 0,
+        "look": {
+          "accentHue": 175,
+          "nonAmberVivid": 0.07313774751229783,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "768-light",
+        "width": 768,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 341,
+        "shown": 3,
+        "sampled": 3,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r13/shots/drum-machine-or-gpt-768-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Beat"
+        ],
+        "excerpt": "Beat Play 120 BPM Tap pads to write x’s into the note’s pattern table. Press play to hear the loop. Kick 4/16 ●1 ·2 ·3 ·4 ●5 ·6 ·7 ·8 ●9 ·10 ·11 ·12 ●13 ·14 ·15 ·16 Snare 2/16 ·1 ·2 ·3 ·4 ●5 ·6 ·7 ·8 ·9 ·10 ·11 ·12 ●13 ·14 ·15 ·16 Hat 8/16 ●1 ·2 ●3 ·4 ●5 ·6 ●7 ·8 ●9 ·10 ●11 ·12 ●13 ·14 ●15 ·16 Pattern: 16 steps Sounds: Kick · Snare · Hat",
+        "titleCount": 1,
+        "ghostFields": [],
+        "sections": 2,
+        "nav": false,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.9300130208333334,
+        "canvases": 0,
+        "svgShapes": 0,
+        "gridCols": 16,
+        "frames": 0,
+        "look": {
+          "accentHue": 174,
+          "nonAmberVivid": 0.07025122019286142,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 341,
+        "shown": 3,
+        "sampled": 3,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r13/shots/drum-machine-or-gpt-1280-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Beat"
+        ],
+        "excerpt": "Beat Play 120 BPM Tap pads to write x’s into the note’s pattern table. Press play to hear the loop. Kick 4/16 ●1 ·2 ·3 ·4 ●5 ·6 ·7 ·8 ●9 ·10 ·11 ·12 ●13 ·14 ·15 ·16 Snare 2/16 ·1 ·2 ·3 ·4 ●5 ·6 ·7 ·8 ·9 ·10 ·11 ·12 ●13 ·14 ·15 ·16 Hat 8/16 ●1 ·2 ●3 ·4 ●5 ·6 ●7 ·8 ●9 ·10 ●11 ·12 ●13 ·14 ●15 ·16 Pattern: 16 steps Sounds: Kick · Snare · Hat",
+        "titleCount": 1,
+        "ghostFields": [],
+        "sections": 2,
+        "nav": false,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.859375,
+        "canvases": 0,
+        "svgShapes": 0,
+        "gridCols": 16,
+        "frames": 0,
+        "look": {
+          "accentHue": 174,
+          "nonAmberVivid": 0.07526772626831663,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 341,
+        "shown": 3,
+        "sampled": 3,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Beat"
+        ],
+        "excerpt": "Beat Play 120 BPM Tap pads to write x’s into the note’s pattern table. Press play to hear the loop. Kick 4/16 ●1 ·2 ·3 ·4 ●5 ·6 ·7 ·8 ●9 ·10 ·11 ·12 ●13 ·14 ·15 ·16 Snare 2/16 ·1 ·2 ·3 ·4 ●5 ·6 ·7 ·8 ·9 ·10 ·11 ·12 ●13 ·14 ·15 ·16 Hat 8/16 ●1 ·2 ●3 ·4 ●5 ·6 ●7 ·8 ●9 ·10 ●11 ·12 ●13 ·14 ●15 ·16 Pattern: 16 steps Sounds: Kick · Snare · Hat",
+        "titleCount": 1,
+        "ghostFields": [],
+        "sections": 2,
+        "nav": false,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.859375,
+        "canvases": 0,
+        "svgShapes": 0,
+        "gridCols": 16,
+        "frames": 0,
+        "look": {
+          "accentHue": 175,
+          "nonAmberVivid": 0.07526772626831663,
+          "tintedBg": false
+        }
+      }
+    ],
+    "blocked": [],
+    "updates": [
+      {
+        "op": {
+          "op": "set_cell",
+          "table": 0,
+          "row": 0,
+          "col": 1,
+          "value": ""
+        },
+        "ok": true
+      }
+    ],
+    "setData": 0,
+    "interaction": {
+      "tried": "control",
+      "ok": true,
+      "framesPerSecond": 0
+    },
+    "probes": {
+      "empty": {
+        "pass": true,
+        "detail": "blank page"
+      },
+      "large": {
+        "pass": true,
+        "detail": "608 ms to load 400 rows"
+      }
+    },
+    "dataAfter": {}
+  }
+}

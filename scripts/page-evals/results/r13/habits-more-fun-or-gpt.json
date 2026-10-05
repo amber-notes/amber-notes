@@ -1,0 +1,699 @@
+{
+  "task": "habits-more-fun",
+  "rep": 1,
+  "model": "openai/gpt-5.5",
+  "round": "r13",
+  "skill": false,
+  "seconds": 226,
+  "score": 0.9230769230769231,
+  "passed": 24,
+  "total": 26,
+  "checks": [
+    {
+      "name": "has_page",
+      "pass": true
+    },
+    {
+      "name": "server_checks",
+      "pass": true
+    },
+    {
+      "name": "no_console_errors",
+      "pass": true
+    },
+    {
+      "name": "no_network",
+      "pass": true
+    },
+    {
+      "name": "fits_phone",
+      "pass": true
+    },
+    {
+      "name": "fits_desktop",
+      "pass": true
+    },
+    {
+      "name": "uses_wide_window",
+      "pass": true
+    },
+    {
+      "name": "phone_targets",
+      "pass": true
+    },
+    {
+      "name": "focused_screen",
+      "pass": true
+    },
+    {
+      "name": "visible_fields",
+      "pass": true
+    },
+    {
+      "name": "no_junk_text",
+      "pass": true
+    },
+    {
+      "name": "no_clipped_text",
+      "pass": true
+    },
+    {
+      "name": "shows_data",
+      "pass": true
+    },
+    {
+      "name": "dark_mode",
+      "pass": true
+    },
+    {
+      "name": "light_contrast",
+      "pass": true
+    },
+    {
+      "name": "themed",
+      "pass": true
+    },
+    {
+      "name": "distinct_look",
+      "pass": false,
+      "detail": "accent hue 28, 0% non-amber color"
+    },
+    {
+      "name": "labelled_controls",
+      "pass": true
+    },
+    {
+      "name": "edits_from_page",
+      "pass": false,
+      "detail": "control: Refused to load blob:https://page.amber.invalid/6a80591d-a9e1-4097-a866-d305f4b55266 because it does not appear in the worker-src directive of the Content Security Policy."
+    },
+    {
+      "name": "title_once",
+      "pass": true
+    },
+    {
+      "name": "says_app",
+      "pass": true
+    },
+    {
+      "name": "not_a_list",
+      "pass": true
+    },
+    {
+      "name": "probe_empty",
+      "pass": true
+    },
+    {
+      "name": "probe_large",
+      "pass": true
+    },
+    {
+      "name": "note_unchanged",
+      "pass": true
+    },
+    {
+      "name": "page_changed",
+      "pass": true
+    }
+  ],
+  "tool_calls": 30,
+  "tool_errors": 11,
+  "usage": {
+    "input": 73834,
+    "output": 9596,
+    "cacheRead": 467968,
+    "cacheWrite": 0,
+    "turns": 28,
+    "usd": 0.8910339999999998
+  },
+  "usd": 0.891,
+  "page_bytes": 13276,
+  "data": null,
+  "answer": "Done — I turned the Habit tracker’s App side into a playful **Tiny Victory Garden**:\n\n- Today’s habits are now “quests” with plant icons.\n- Completing habits grows the garden and updates the score.\n- Finishing all habits triggers confetti.\n- Added **Today / Garden / Map** sections.\n- Added weekly progress, streaks, badges, and a 14-day map.\n- Added App Settings for garden name, weekly goal, and style.\n- Fixed the preview spacing/readability issues and rechecked it — the app passes Amber’s checks.\n\nYour note’s table/text was left unchanged.",
+  "calls": [
+    {
+      "name": "get_overview",
+      "args": {},
+      "error": false,
+      "result": "{\n  \"total_notes\": 1,\n  \"folders\": [],\n  \"pinned\": [],\n  \"recently_edited\": [\n    {\n      \"id\": \"28622a6e-5592-4871-b198-5c34038aa434\",\n      \"title\": \"Habit tracker\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T20:06:17.366Z\",\n      \"preview\": \"Date  Walk  Read  Stretch · 2026-09-29  ✓  ✓ · 2026-09-30  ✓ · 2026-10-01  ✓  ✓ · 2026-10-02  ✓  ✓  ✓ · 2026-10-03  ✓  ✓ · 2026-10-04  ✓  ✓…\"\n    }\n  ],\n  \"recently_deleted\": 0\n}"
+    },
+    {
+      "name": "get_page_guide",
+      "args": {
+        "template": "habit-tracker"
+      },
+      "error": false,
+      "result": "{\n  \"template\": \"habit-tracker\",\n  \"description\": \"Tick today's habits, see streaks, a 14-day grid and progress toward a weekly goal. The goal and which habits to show are App Settings.\",\n  \"expects\": \"A table with a Date column (yyyy-mm-dd) and one column per habit; a done day is ✓ (x, yes and 1 also count).\",\n  \"html\": \"<!doctype html>\\n<!-- template: habit-tracker | Tick today's habits, see streaks, a 14-day grid and progress toward a weekly goal. The goal and which habits to show are App Settings. | A table with a Date column (yyyy-mm-dd) and one column per habit; a done day is ✓ (x, yes a… (8723 chars)"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "28622a6e-5592-4871-b198-5c34038aa434",
+        "title": "",
+        "start_line": "1",
+        "end_line": "120",
+        "line_numbers": "true"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"28622a6e-5592-4871-b198-5c34038aa434\",\n  \"title\": \"Habit tracker\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T20:06:17.366Z\",\n  \"updated\": \"2026-10-05T20:06:17.366Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"has_page\": true,\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 12,\n    \"words\": 76\n  },\n  \"lines\": \"1-12\",\n  \"markdown\": \" 1│ Habit tracker\\n 2│ \\n 3│ | Date | Walk | Read | Stretch |\\n 4│ | --- | --- | --- | --- |\\n 5│ | 2026-09-29 | ✓ | ✓ |   |\\n 6│ | 20… (791 chars)"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "28622a6e-5592-4871-b198-5c34038aa434",
+        "title": "",
+        "version_id": "0"
+      },
+      "error": true,
+      "result": "No earlier page 0 for this note. Versions: none."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "28622a6e-5592-4871-b198-5c34038aa434",
+        "title": "",
+        "version_id": "0"
+      },
+      "error": true,
+      "result": "No earlier page 0 for this note. Versions: none."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "28622a6e-5592-4871-b198-5c34038aa434",
+        "title": "",
+        "version_id": "-1"
+      },
+      "error": true,
+      "result": "No earlier page -1 for this note. Versions: none."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "28622a6e-5592-4871-b198-5c34038aa434",
+        "title": "",
+        "version_id": "0"
+      },
+      "error": true,
+      "result": "No earlier page 0 for this note. Versions: none."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "28622a6e-5592-4871-b198-5c34038aa434",
+        "title": "",
+        "version_id": "0"
+      },
+      "error": true,
+      "result": "No earlier page 0 for this note. Versions: none."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "28622a6e-5592-4871-b198-5c34038aa434",
+        "title": "",
+        "version_id": "0"
+      },
+      "error": true,
+      "result": "No earlier page 0 for this note. Versions: none."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "28622a6e-5592-4871-b198-5c34038aa434",
+        "title": "",
+        "version_id": "0"
+      },
+      "error": true,
+      "result": "No earlier page 0 for this note. Versions: none."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "28622a6e-5592-4871-b198-5c34038aa434",
+        "title": "Habit tracker",
+        "version_id": "0"
+      },
+      "error": true,
+      "result": "No earlier page 0 for this note. Versions: none."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "28622a6e-5592-4871-b198-5c34038aa434",
+        "title": "Habit tracker",
+        "version_id": "999999"
+      },
+      "error": true,
+      "result": "No earlier page 999999 for this note. Versions: none."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "28622a6e-5592-4871-b198-5c34038aa434",
+        "title": "Habit tracker",
+        "version_id": "0"
+      },
+      "error": true,
+      "result": "No earlier page 0 for this note. Versions: none."
+    },
+    {
+      "name": "set_note_page",
+      "args": {
+        "id": "28622a6e-5592-4871-b198-5c34038aa434",
+        "title": "",
+        "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<meta name=\"amber-libs\" content=\"confetti\">\n<meta name=\"amber-settings\" content='{\"settings\":[{\"key\":\"weeklyGoal\",\"label\":\"Weekly goal per habit\",\"type\":\"number\",\"defau… (13154 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"28622a6e-5592-4871-b198-5c34038aa434\",\n  \"title\": \"Habit tracker\",\n  \"page\": \"replaced\",\n  \"bytes\": 13234,\n  \"note\": \"The person sees it on the note's App side (call it the note's app, not a page). The note's text is unchanged. The previous version is kept (get_note_page lists it). Next: run check_app and fix what it finds.\"\n}"
+    },
+    {
+      "name": "check_app",
+      "args": {
+        "id": "28622a6e-5592-4871-b198-5c34038aa434",
+        "title": ""
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"28622a6e-5592-4871-b198-5c34038aa434\",\n    \"title\": \"Habit tracker\"\n  },\n  \"ok\": false,\n  \"issues\": [\n    \"375-light: 1 text element(s) under 12 px (\\\"today\\\").\",\n    \"375-light: 3 text element(s) with contrast under 4.5:1 (\\\"0/3\\\", \\\"today\\\", \\\"Today\\\").\",\n    \"375-dark: 1 text element(s) under 12 px (\\\"today\\\").\",\n    \"375-dark: 3 text element(s) with contrast under 4.5:1 (\\\"✓\\\", \\\"✓\\\", \\\"✓\\\").\",\n    \"768-light: 1 text element(s) under 12 px (\\\"today\\\").\",\n    \"768-light: 3 text element(s) with contrast under 4.5:1 (\\\"0/3\\\", \\\"today\\\", \\\"Today\\\").\",\n    \"1280-light: 1… (1176 chars)"
+    },
+    {
+      "name": "edit_note_page",
+      "args": {
+        "id": "28622a6e-5592-4871-b198-5c34038aa434",
+        "title": "",
+        "edits": "[{\"old_text\":\".score{flex:0 0 auto;min-width:92px;min-height:92px;border-radius:28px;display:grid;place-items:center;text-align:center;background:var(--amber-accent);color:var(--amber-on-accent);box-shadow:0 14px 34px rgba(0,0,0,.12);padding:10px}\\n  .score strong{font-size:2rem;line-height:1;font-v… (2562 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"28622a6e-5592-4871-b198-5c34038aa434\",\n  \"title\": \"Habit tracker\",\n  \"page\": \"replaced\",\n  \"bytes\": 13207,\n  \"note\": \"The person sees it on the note's App side (call it the note's app, not a page). The note's text is unchanged. The previous version is kept (get_note_page lists it). Next: run check_app and fix what it finds.\"\n}"
+    },
+    {
+      "name": "check_app",
+      "args": {
+        "id": "28622a6e-5592-4871-b198-5c34038aa434",
+        "title": ""
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"28622a6e-5592-4871-b198-5c34038aa434\",\n    \"title\": \"Habit tracker\"\n  },\n  \"ok\": false,\n  \"issues\": [\n    \"375-dark: 3 text element(s) with contrast under 4.5:1 (\\\"✓\\\", \\\"✓\\\", \\\"✓\\\").\"\n  ],\n  \"browser_checked\": \"375 px light and dark, 768 and 1280 px light, and the 340 px widget strip, over a sample note\",\n  \"next\": \"Fix these with edit_note_page (or set_note_page), then run check_app again.\"\n}"
+    },
+    {
+      "name": "edit_note_page",
+      "args": {
+        "id": "28622a6e-5592-4871-b198-5c34038aa434",
+        "title": "",
+        "edits": "[{\"old_text\":\".tile.on{background:var(--amber-accent-soft);color:var(--amber-text)}\",\"new_text\":\".tile.on{background:var(--amber-text);color:var(--amber-bg)}\",\"replace_all\":false}]"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"28622a6e-5592-4871-b198-5c34038aa434\",\n  \"title\": \"Habit tracker\",\n  \"page\": \"replaced\",\n  \"bytes\": 13198,\n  \"note\": \"The person sees it on the note's App side (call it the note's app, not a page). The note's text is unchanged. The previous version is kept (get_note_page lists it). Next: run check_app and fix what it finds.\"\n}"
+    },
+    {
+      "name": "check_app",
+      "args": {
+        "id": "28622a6e-5592-4871-b198-5c34038aa434",
+        "title": ""
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"28622a6e-5592-4871-b198-5c34038aa434\",\n    \"title\": \"Habit tracker\"\n  },\n  \"ok\": false,\n  \"issues\": [\n    \"375-dark: 3 text element(s) with contrast under 4.5:1 (\\\"✓\\\", \\\"✓\\\", \\\"✓\\\").\"\n  ],\n  \"browser_checked\": \"375 px light and dark, 768 and 1280 px light, and the 340 px widget strip, over a sample note\",\n  \"next\": \"Fix these with edit_note_page (or set_note_page), then run check_app again.\"\n}"
+    },
+    {
+      "name": "edit_note_page",
+      "args": {
+        "id": "28622a6e-5592-4871-b198-5c34038aa434",
+        "title": "",
+        "edits": "[{\"old_text\":\".quest[aria-pressed=\\\"true\\\"] .check{background:var(--amber-accent);border-color:var(--amber-accent);color:var(--amber-on-accent)}\",\"new_text\":\".quest[aria-pressed=\\\"true\\\"] .check{background:var(--amber-text);border-color:var(--amber-text);color:var(--amber-bg)}\",\"replace_all\":false}]"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"28622a6e-5592-4871-b198-5c34038aa434\",\n  \"title\": \"Habit tracker\",\n  \"page\": \"replaced\",\n  \"bytes\": 13187,\n  \"note\": \"The person sees it on the note's App side (call it the note's app, not a page). The note's text is unchanged. The previous version is kept (get_note_page lists it). Next: run check_app and fix what it finds.\"\n}"
+    },
+    {
+      "name": "check_app",
+      "args": {
+        "id": "28622a6e-5592-4871-b198-5c34038aa434",
+        "title": ""
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"28622a6e-5592-4871-b198-5c34038aa434\",\n    \"title\": \"Habit tracker\"\n  },\n  \"ok\": false,\n  \"issues\": [\n    \"375-dark: 3 text element(s) with contrast under 4.5:1 (\\\"✓\\\", \\\"✓\\\", \\\"✓\\\").\"\n  ],\n  \"browser_checked\": \"375 px light and dark, 768 and 1280 px light, and the 340 px widget strip, over a sample note\",\n  \"next\": \"Fix these with edit_note_page (or set_note_page), then run check_app again.\"\n}"
+    },
+    {
+      "name": "edit_note_page",
+      "args": {
+        "id": "28622a6e-5592-4871-b198-5c34038aa434",
+        "title": "",
+        "edits": "[{\"old_text\":\"<span class=\\\"check\\\">✓</span></button>`\",\"new_text\":\"<span class=\\\"check\\\">${on?'✓':''}</span></button>`\",\"replace_all\":false}]"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"28622a6e-5592-4871-b198-5c34038aa434\",\n  \"title\": \"Habit tracker\",\n  \"page\": \"replaced\",\n  \"bytes\": 13198,\n  \"note\": \"The person sees it on the note's App side (call it the note's app, not a page). The note's text is unchanged. The previous version is kept (get_note_page lists it). Next: run check_app and fix what it finds.\"\n}"
+    },
+    {
+      "name": "check_app",
+      "args": {
+        "id": "28622a6e-5592-4871-b198-5c34038aa434",
+        "title": ""
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"28622a6e-5592-4871-b198-5c34038aa434\",\n    \"title\": \"Habit tracker\"\n  },\n  \"ok\": true,\n  \"issues\": [],\n  \"browser_checked\": \"375 px light and dark, 768 and 1280 px light, and the 340 px widget strip, over a sample note\",\n  \"next\": \"Nothing to fix.\"\n}"
+    },
+    {
+      "name": "preview_app",
+      "args": {
+        "id": "28622a6e-5592-4871-b198-5c34038aa434",
+        "title": "",
+        "widths": "[375,1280]",
+        "themes": "[\"light\",\"dark\"]",
+        "data": "sample"
+      },
+      "error": false,
+      "result": "{\n  \"app\": \"Habit tracker\",\n  \"data\": \"a sample with the note's shape (not the person's data)\",\n  \"views\": [\n    {\n      \"view\": \"375-light\",\n      \"headings\": [\n        \"Sample note\",\n        \"Today's reward\"\n      ],\n      \"text\": \"TINY VICTORY GARDEN Sample note Tap today's quests to grow the garden. Streaks add sparkle; finishing the day throws confetti. 0/3 TODAY 🌱 🌷 🌻 🌱 WalkStart a streak today 🌷 ReadStart a streak today 🌻 StretchStart a streak today Today's reward ✨ Keep going 3 quests left 🔥 0 days best streak Today Garden Map\"\n    },\n    {\n      \"view\": \"375-dark\",\n      \"headi… (1993 chars)"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "28622a6e-5592-4871-b198-5c34038aa434",
+        "title": "",
+        "start_line": "1",
+        "end_line": "20",
+        "line_numbers": "true"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"28622a6e-5592-4871-b198-5c34038aa434\",\n  \"title\": \"Habit tracker\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T20:06:17.366Z\",\n  \"updated\": \"2026-10-05T20:06:17.366Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"has_page\": true,\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 12,\n    \"words\": 76\n  },\n  \"lines\": \"1-12\",\n  \"markdown\": \" 1│ Habit tracker\\n 2│ \\n 3│ | Date | Walk | Read | Stretch |\\n 4│ | --- | --- | --- | --- |\\n 5│ | 2026-09-29 | ✓ | ✓ |   |\\n 6│ | 20… (791 chars)"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "28622a6e-5592-4871-b198-5c34038aa434",
+        "title": "",
+        "version_id": "0"
+      },
+      "error": true,
+      "result": "No earlier page 0 for this note. Versions: 5, 4, 3, 2, 1."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "28622a6e-5592-4871-b198-5c34038aa434",
+        "title": "",
+        "version_id": "5"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"28622a6e-5592-4871-b198-5c34038aa434\",\n  \"title\": \"Habit tracker\",\n  \"version_id\": 5,\n  \"made_by\": \"Claude\",\n  \"made\": \"2026-10-05T20:08:25.408Z\",\n  \"html\": \"<!doctype html>\\n<html lang=\\\"en\\\">\\n<head>\\n<meta charset=\\\"utf-8\\\">\\n<meta name=\\\"viewport\\\" content=\\\"width=device-width, initial-scale=1\\\">\\n<meta name=\\\"amber-libs\\\" content=\\\"confetti\\\">\\n<meta name=\\\"amber-settings\\\" content='{\\\"settings\\\":[{\\\"key\\\":\\\"weeklyGoal\\\",\\\"label\\\":\\\"Weekly goal per habit\\\",\\\"type\\\":\\\"number\\\",\\\"default\\\":5},{\\\"key\\\":\\\"gardenName\\\",\\\"label\\\":\\\"Garden name\\\",\\\"type\\\":\\\"text\\\",\\\"default\\\":\\\"Tiny V… (13875 chars)"
+    },
+    {
+      "name": "edit_note_page",
+      "args": {
+        "id": "28622a6e-5592-4871-b198-5c34038aa434",
+        "title": "",
+        "edits": "[{\"old_text\":\".qname{font-size:1.04rem;font-weight:800;overflow-wrap:anywhere}.qmeta{margin-top:2px;color:var(--amber-text-secondary);font-size:.86rem}\",\"new_text\":\".qname{display:block;font-size:1.04rem;font-weight:800;overflow-wrap:anywhere;line-height:1.15}.qmeta{display:block;margin-top:4px;colo… (883 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"28622a6e-5592-4871-b198-5c34038aa434\",\n  \"title\": \"Habit tracker\",\n  \"page\": \"replaced\",\n  \"bytes\": 13276,\n  \"note\": \"The person sees it on the note's App side (call it the note's app, not a page). The note's text is unchanged. The previous version is kept (get_note_page lists it). Next: run check_app and fix what it finds.\"\n}"
+    },
+    {
+      "name": "check_app",
+      "args": {
+        "id": "28622a6e-5592-4871-b198-5c34038aa434",
+        "title": ""
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"28622a6e-5592-4871-b198-5c34038aa434\",\n    \"title\": \"Habit tracker\"\n  },\n  \"ok\": true,\n  \"issues\": [],\n  \"browser_checked\": \"375 px light and dark, 768 and 1280 px light, and the 340 px widget strip, over a sample note\",\n  \"next\": \"Nothing to fix.\"\n}"
+    },
+    {
+      "name": "preview_app",
+      "args": {
+        "id": "28622a6e-5592-4871-b198-5c34038aa434",
+        "title": "",
+        "widths": "[375,1280]",
+        "themes": "[\"light\",\"dark\"]",
+        "data": "sample"
+      },
+      "error": false,
+      "result": "{\n  \"app\": \"Habit tracker\",\n  \"data\": \"a sample with the note's shape (not the person's data)\",\n  \"views\": [\n    {\n      \"view\": \"375-light\",\n      \"headings\": [\n        \"Sample note\",\n        \"Today's reward\"\n      ],\n      \"text\": \"TINY VICTORY GARDEN Sample note Tap today's quests to grow the garden. Streaks add sparkle; finishing the day throws confetti. 0/3 TODAY 🌱 🌷 🌻 🌱 Walk Start a streak today 🌷 Read Start a streak today 🌻 Stretch Start a streak today Today's reward ✨ Keep going 3 quests left 🔥 0 days best streak Today Garden Map\"\n    },\n    {\n      \"view\": \"375-dark\",\n      \"he… (2005 chars)"
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "375-light",
+        "width": 375,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 301,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r13/shots/habits-more-fun-or-gpt-375-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [
+          "🌷",
+          "🌻"
+        ],
+        "faintCount": 2,
+        "headings": [
+          "Habit tracker",
+          "Today's reward"
+        ],
+        "excerpt": "TINY VICTORY GARDEN Habit tracker Tap today's quests to grow the garden. Streaks add sparkle; finishing the day throws confetti. 2/3 TODAY 🌱 🌷 🌻 🌱 Walk 3 day streak 🌷 Read 2 day streak ✓ 🌻 Stretch 1 day streak ✓ Today's reward ✨ Keep going 1 quests left 🔥 3 days best streak Today Garden Map",
+        "titleCount": 1,
+        "ghostFields": [],
+        "sections": 3,
+        "nav": true,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.914625,
+        "canvases": 0,
+        "svgShapes": 0,
+        "gridCols": 3,
+        "frames": 0,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "375-dark",
+        "width": 375,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 301,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r13/shots/habits-more-fun-or-gpt-375-dark.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Habit tracker",
+          "Today's reward"
+        ],
+        "excerpt": "TINY VICTORY GARDEN Habit tracker Tap today's quests to grow the garden. Streaks add sparkle; finishing the day throws confetti. 2/3 TODAY 🌱 🌷 🌻 🌱 Walk 3 day streak 🌷 Read 2 day streak ✓ 🌻 Stretch 1 day streak ✓ Today's reward ✨ Keep going 1 quests left 🔥 3 days best streak Today Garden Map",
+        "titleCount": 1,
+        "ghostFields": [],
+        "sections": 3,
+        "nav": true,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.914625,
+        "canvases": 0,
+        "svgShapes": 0,
+        "gridCols": 3,
+        "frames": 0,
+        "look": {
+          "accentHue": 38,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "768-light",
+        "width": 768,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 301,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r13/shots/habits-more-fun-or-gpt-768-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [
+          "🌷",
+          "🌻"
+        ],
+        "faintCount": 2,
+        "headings": [
+          "Habit tracker",
+          "Today's reward"
+        ],
+        "excerpt": "TINY VICTORY GARDEN Habit tracker Tap today's quests to grow the garden. Streaks add sparkle; finishing the day throws confetti. 2/3 TODAY 🌱 🌷 🌻 🌱 Walk 3 day streak 🌷 Read 2 day streak ✓ 🌻 Stretch 1 day streak ✓ Today's reward ✨ Keep going 1 quests left 🔥 3 days best streak Today Garden Map",
+        "titleCount": 1,
+        "ghostFields": [],
+        "sections": 3,
+        "nav": true,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.9078776041666666,
+        "canvases": 0,
+        "svgShapes": 0,
+        "gridCols": 4,
+        "frames": 0,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 301,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r13/shots/habits-more-fun-or-gpt-1280-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [
+          "🌷",
+          "🌻"
+        ],
+        "faintCount": 2,
+        "headings": [
+          "Habit tracker",
+          "Today's reward"
+        ],
+        "excerpt": "TINY VICTORY GARDEN Habit tracker Tap today's quests to grow the garden. Streaks add sparkle; finishing the day throws confetti. 2/3 TODAY 🌱 🌷 🌻 🌱 Walk 3 day streak 🌷 Read 2 day streak ✓ 🌻 Stretch 1 day streak ✓ Today's reward ✨ Keep going 1 quests left 🔥 3 days best streak Today Garden Map",
+        "titleCount": 1,
+        "ghostFields": [],
+        "sections": 3,
+        "nav": true,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.78359375,
+        "canvases": 0,
+        "svgShapes": 0,
+        "gridCols": 4,
+        "frames": 0,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 301,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Habit tracker",
+          "Today's reward"
+        ],
+        "excerpt": "TINY VICTORY GARDEN Habit tracker Tap today's quests to grow the garden. Streaks add sparkle; finishing the day throws confetti. 2/3 TODAY 🌱 🌷 🌻 🌱 Walk 3 day streak 🌷 Read 2 day streak ✓ 🌻 Stretch 1 day streak ✓ Today's reward ✨ Keep going 1 quests left 🔥 3 days best streak Today Garden Map",
+        "titleCount": 1,
+        "ghostFields": [],
+        "sections": 3,
+        "nav": true,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.78359375,
+        "canvases": 0,
+        "svgShapes": 0,
+        "gridCols": 4,
+        "frames": 0,
+        "look": {
+          "accentHue": 38,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
+      }
+    ],
+    "blocked": [],
+    "updates": [
+      {
+        "op": {
+          "op": "set_cell",
+          "table": 0,
+          "row": 6,
+          "col": "Walk",
+          "value": "✓"
+        },
+        "ok": true
+      }
+    ],
+    "setData": 0,
+    "interaction": {
+      "tried": "control",
+      "ok": false,
+      "framesPerSecond": 0,
+      "error": "Refused to load blob:https://page.amber.invalid/6a80591d-a9e1-4097-a866-d305f4b55266 because it does not appear in the worker-src directive of the Content Security Policy."
+    },
+    "probes": {
+      "empty": {
+        "pass": true,
+        "detail": "blank page"
+      },
+      "large": {
+        "pass": true,
+        "detail": "629 ms to load 400 rows"
+      }
+    },
+    "dataAfter": {}
+  }
+}

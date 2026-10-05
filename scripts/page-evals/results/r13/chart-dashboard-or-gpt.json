@@ -1,0 +1,676 @@
+{
+  "task": "chart-dashboard",
+  "rep": 1,
+  "model": "openai/gpt-5.5",
+  "round": "r13",
+  "skill": false,
+  "seconds": 238,
+  "score": 0.9285714285714286,
+  "passed": 26,
+  "total": 28,
+  "checks": [
+    {
+      "name": "has_page",
+      "pass": true
+    },
+    {
+      "name": "server_checks",
+      "pass": true
+    },
+    {
+      "name": "no_console_errors",
+      "pass": true
+    },
+    {
+      "name": "no_network",
+      "pass": true
+    },
+    {
+      "name": "fits_phone",
+      "pass": true
+    },
+    {
+      "name": "fits_desktop",
+      "pass": true
+    },
+    {
+      "name": "uses_wide_window",
+      "pass": true
+    },
+    {
+      "name": "phone_targets",
+      "pass": true
+    },
+    {
+      "name": "focused_screen",
+      "pass": true
+    },
+    {
+      "name": "visible_fields",
+      "pass": true
+    },
+    {
+      "name": "no_junk_text",
+      "pass": true
+    },
+    {
+      "name": "no_clipped_text",
+      "pass": true
+    },
+    {
+      "name": "shows_data",
+      "pass": false,
+      "detail": "0/12 recent values visible, 405 chars of text"
+    },
+    {
+      "name": "dark_mode",
+      "pass": true
+    },
+    {
+      "name": "light_contrast",
+      "pass": true
+    },
+    {
+      "name": "themed",
+      "pass": true
+    },
+    {
+      "name": "distinct_look",
+      "pass": false,
+      "detail": "accent hue 39, 1% non-amber color"
+    },
+    {
+      "name": "labelled_controls",
+      "pass": true
+    },
+    {
+      "name": "title_once",
+      "pass": true
+    },
+    {
+      "name": "says_app",
+      "pass": true
+    },
+    {
+      "name": "not_a_list",
+      "pass": true
+    },
+    {
+      "name": "probe_escapes",
+      "pass": true
+    },
+    {
+      "name": "probe_empty",
+      "pass": true
+    },
+    {
+      "name": "probe_large",
+      "pass": true
+    },
+    {
+      "name": "note_unchanged",
+      "pass": true
+    },
+    {
+      "name": "no_pasted_library",
+      "pass": true
+    },
+    {
+      "name": "libraries_ok",
+      "pass": true
+    },
+    {
+      "name": "uses_a_chart_library",
+      "pass": true
+    }
+  ],
+  "tool_calls": 27,
+  "tool_errors": 12,
+  "usage": {
+    "input": 71576,
+    "output": 12467,
+    "cacheRead": 464128,
+    "cacheWrite": 0,
+    "turns": 26,
+    "usd": 0.9639540000000001
+  },
+  "usd": 0.964,
+  "page_bytes": 13284,
+  "data": null,
+  "answer": "Done — I tightened the Sales 2026 dashboard after reviewing the previews.\n\nWhat changed:\n- Mobile now shows the chart much sooner by hiding the extra best/worst/range cards on the Trend tab.\n- Desktop still shows the full summary row.\n- The dashboard has tabs for Trend, Mix, and Best & worst.\n- Charts are working in light and dark mode.\n- I ran the app checker again and it passes with no issues.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "\"Sales 2026\"",
+        "limit": "10"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"\\\"Sales 2026\\\"\",\n  \"results\": [\n    {\n      \"id\": \"156ccd95-a0d2-4ac8-bb35-36a30d8eaf18\",\n      \"title\": \"Sales 2026\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T20:10:01.827Z\",\n      \"snippet\": \"«Sales 2026» | Month | Coffee | Pastries | Merch | | --- | --- | --- | --- | | Jan | 42000 | 15000 | 3000 | | Feb | 46300 | 14700 | 4700 | | Mar | 50600 | 16800 | 6400 | | Apr | 47400 | 16500 | 3100 | | May | 51700\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "get_page_guide",
+      "args": {
+        "template": "budget"
+      },
+      "error": false,
+      "result": "{\n  \"template\": \"budget\",\n  \"description\": \"Spending this month against a monthly budget, by category, with a month picker and a quick add form. Budget, currency and categories are App Settings.\",\n  \"expects\": \"A table with Date (yyyy-mm-dd), an amount column (Amount, Cost, Price, Kr or Sum) and optionally Item and Category columns.\",\n  \"html\": \"<!doctype html>\\n<!-- template: budget | Spending this month against a monthly budget, by category, with a month picker and a quick add form. Budget, currency and categories are App Settings. | A table with Date (yyyy-mm-dd), an amount column (Amount, … (9968 chars)"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "156ccd95-a0d2-4ac8-bb35-36a30d8eaf18",
+        "title": "",
+        "start_line": "1",
+        "end_line": "200",
+        "line_numbers": "true"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"156ccd95-a0d2-4ac8-bb35-36a30d8eaf18\",\n  \"title\": \"Sales 2026\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T20:10:01.827Z\",\n  \"updated\": \"2026-10-05T20:10:01.827Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 14,\n    \"words\": 101\n  },\n  \"lines\": \"1-14\",\n  \"markdown\": \" 1│ Sales 2026\\n 2│ \\n 3│ | Month | Coffee | Pastries | Merch |\\n 4│ | --- | --- | --- | --- |\\n 5│ | Jan | 42000 | 15000 | 3000 |\\n 6│ | Feb | 46300 | 1470… (871 chars)"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "156ccd95-a0d2-4ac8-bb35-36a30d8eaf18",
+        "title": "",
+        "version_id": "0"
+      },
+      "error": true,
+      "result": "No earlier page 0 for this note. Versions: none."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "156ccd95-a0d2-4ac8-bb35-36a30d8eaf18",
+        "title": "",
+        "version_id": "0"
+      },
+      "error": true,
+      "result": "No earlier page 0 for this note. Versions: none."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "156ccd95-a0d2-4ac8-bb35-36a30d8eaf18",
+        "title": "",
+        "version_id": "12345"
+      },
+      "error": true,
+      "result": "No earlier page 12345 for this note. Versions: none."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "156ccd95-a0d2-4ac8-bb35-36a30d8eaf18",
+        "title": "",
+        "version_id": "-1"
+      },
+      "error": true,
+      "result": "No earlier page -1 for this note. Versions: none."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "156ccd95-a0d2-4ac8-bb35-36a30d8eaf18",
+        "title": "",
+        "version_id": "999999"
+      },
+      "error": true,
+      "result": "No earlier page 999999 for this note. Versions: none."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "156ccd95-a0d2-4ac8-bb35-36a30d8eaf18",
+        "title": "",
+        "version_id": "0"
+      },
+      "error": true,
+      "result": "No earlier page 0 for this note. Versions: none."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "156ccd95-a0d2-4ac8-bb35-36a30d8eaf18",
+        "title": "",
+        "version_id": "0"
+      },
+      "error": true,
+      "result": "No earlier page 0 for this note. Versions: none."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "156ccd95-a0d2-4ac8-bb35-36a30d8eaf18",
+        "title": "Sales 2026",
+        "version_id": "0"
+      },
+      "error": true,
+      "result": "No earlier page 0 for this note. Versions: none."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "156ccd95-a0d2-4ac8-bb35-36a30d8eaf18",
+        "title": "Sales 2026",
+        "version_id": "0"
+      },
+      "error": true,
+      "result": "No earlier page 0 for this note. Versions: none."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "156ccd95-a0d2-4ac8-bb35-36a30d8eaf18",
+        "title": "Sales 2026",
+        "version_id": "0"
+      },
+      "error": true,
+      "result": "No earlier page 0 for this note. Versions: none."
+    },
+    {
+      "name": "read_table",
+      "args": {
+        "id": "156ccd95-a0d2-4ac8-bb35-36a30d8eaf18",
+        "title": "",
+        "table": "0",
+        "last": "20"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"156ccd95-a0d2-4ac8-bb35-36a30d8eaf18\",\n    \"title\": \"Sales 2026\"\n  },\n  \"columns\": [\n    {\n      \"name\": \"Month\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Coffee\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Pastries\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Merch\",\n      \"type\": \"text\"\n    }\n  ],\n  \"rows\": [\n    {\n      \"Month\": \"Jan\",\n      \"Coffee\": \"42000\",\n      \"Pastries\": \"15000\",\n      \"Merch\": \"3000\"\n    },\n    {\n      \"Month\": \"Feb\",\n      \"Coffee\": \"46300\",\n      \"Pastries\": \"14700\",\n      \"Merch\": \"4700\"\n    },\n    {\n      \"Month\": \"Ma… (1362 chars)"
+    },
+    {
+      "name": "set_note_page",
+      "args": {
+        "id": "156ccd95-a0d2-4ac8-bb35-36a30d8eaf18",
+        "title": "Sales 2026",
+        "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<meta name=\"amber-libs\" content=\"chart\">\n<style>\n  *{box-sizing:border-box}\n  body{margin:0;padding:clamp(1rem,3vw,1.5rem) var(--amber-gutter) 2rem;color:var(--amber-te… (12097 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"156ccd95-a0d2-4ac8-bb35-36a30d8eaf18\",\n  \"title\": \"Sales 2026\",\n  \"page\": \"created\",\n  \"bytes\": 12102,\n  \"note\": \"The person sees it on the note's App side (call it the note's app, not a page). The note's text is unchanged. Next: run check_app and fix what it finds.\"\n}"
+    },
+    {
+      "name": "check_app",
+      "args": {
+        "id": "156ccd95-a0d2-4ac8-bb35-36a30d8eaf18",
+        "title": "Sales 2026"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"156ccd95-a0d2-4ac8-bb35-36a30d8eaf18\",\n    \"title\": \"Sales 2026\"\n  },\n  \"ok\": false,\n  \"issues\": [\n    \"375-light: the first screen stacks 7 separate sections. Give the app one focus per screen: open on what the person does most, and move the rest to tabs, pushed screens or sheets.\",\n    \"375-dark: the first screen stacks 7 separate sections. Give the app one focus per screen: open on what the person does most, and move the rest to tabs, pushed screens or sheets.\"\n  ],\n  \"browser_checked\": \"375 px light and dark, 768 and 1280 px light, over a sample note\",\n  \"next\": \"Fi… (676 chars)"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "156ccd95-a0d2-4ac8-bb35-36a30d8eaf18",
+        "title": "Sales 2026",
+        "version_id": "0"
+      },
+      "error": true,
+      "result": "No earlier page 0 for this note. Versions: none."
+    },
+    {
+      "name": "set_note_page",
+      "args": {
+        "id": "156ccd95-a0d2-4ac8-bb35-36a30d8eaf18",
+        "title": "Sales 2026",
+        "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<meta name=\"amber-libs\" content=\"chart\">\n<style>\n  *{box-sizing:border-box}body{margin:0;padding:clamp(1rem,3vw,1.5rem) var(--amber-gutter) 2rem;color:var(--amber-text)… (13184 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"156ccd95-a0d2-4ac8-bb35-36a30d8eaf18\",\n  \"title\": \"Sales 2026\",\n  \"page\": \"replaced\",\n  \"bytes\": 13189,\n  \"note\": \"The person sees it on the note's App side (call it the note's app, not a page). The note's text is unchanged. The previous version is kept (get_note_page lists it). Next: run check_app and fix what it finds.\"\n}"
+    },
+    {
+      "name": "check_app",
+      "args": {
+        "id": "156ccd95-a0d2-4ac8-bb35-36a30d8eaf18",
+        "title": "Sales 2026"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"156ccd95-a0d2-4ac8-bb35-36a30d8eaf18\",\n    \"title\": \"Sales 2026\"\n  },\n  \"ok\": false,\n  \"issues\": [\n    \"375-light: 1 text element(s) with contrast under 4.5:1 (\\\"Trend\\\").\",\n    \"768-light: 1 text element(s) with contrast under 4.5:1 (\\\"Trend\\\").\",\n    \"1280-light: 1 text element(s) with contrast under 4.5:1 (\\\"Trend\\\").\",\n    \"Using the app's first control: no control sent an edit.\"\n  ],\n  \"browser_checked\": \"375 px light and dark, 768 and 1280 px light, over a sample note\",\n  \"next\": \"Fix these with edit_note_page (or set_note_page), then run check_app again.\"\n}"
+    },
+    {
+      "name": "edit_note_page",
+      "args": {
+        "id": "156ccd95-a0d2-4ac8-bb35-36a30d8eaf18",
+        "title": "Sales 2026",
+        "edits": "[{\"old_text\":\".tab{font:inherit;font-weight:750;min-height:44px;padding:.55rem .85rem;border-radius:999px;border:1px solid var(--amber-separator);background:var(--amber-surface);color:var(--amber-text);white-space:nowrap}.tab[aria-selected=\\\"true\\\"]{background:var(--amber-accent);color:var(--amber-o… (1313 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"156ccd95-a0d2-4ac8-bb35-36a30d8eaf18\",\n  \"title\": \"Sales 2026\",\n  \"page\": \"replaced\",\n  \"bytes\": 13271,\n  \"note\": \"The person sees it on the note's App side (call it the note's app, not a page). The note's text is unchanged. The previous version is kept (get_note_page lists it). Next: run check_app and fix what it finds.\"\n}"
+    },
+    {
+      "name": "check_app",
+      "args": {
+        "id": "156ccd95-a0d2-4ac8-bb35-36a30d8eaf18",
+        "title": "Sales 2026"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"156ccd95-a0d2-4ac8-bb35-36a30d8eaf18\",\n    \"title\": \"Sales 2026\"\n  },\n  \"ok\": true,\n  \"issues\": [],\n  \"browser_checked\": \"375 px light and dark, 768 and 1280 px light, over a sample note\",\n  \"next\": \"Nothing to fix.\"\n}"
+    },
+    {
+      "name": "preview_app",
+      "args": {
+        "id": "156ccd95-a0d2-4ac8-bb35-36a30d8eaf18",
+        "title": "Sales 2026",
+        "widths": "[375,1280]",
+        "themes": "[\"light\",\"dark\"]",
+        "data": "sample"
+      },
+      "error": false,
+      "result": "{\n  \"app\": \"Sales 2026\",\n  \"data\": \"a sample with the note's shape (not the person's data)\",\n  \"views\": [\n    {\n      \"view\": \"375-light\",\n      \"headings\": [\n        \"Sample note\",\n        \"Total sales\",\n        \"Monthly sales trend\",\n        \"Line performance\"\n      ],\n      \"text\": \"Sample note Charts for how each line is trending, the sales mix, and the best and worst months. Trend Mix Best & worst TOTAL SALES 988K Month 9 90.6K ▼ -5.7% vs prior month Coffee leads the mix Best month Month 4 154,622 Worst month Month 6 77,056 Range 77.6K best minus worst Monthly sales trend Line performance… (2910 chars)"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "156ccd95-a0d2-4ac8-bb35-36a30d8eaf18",
+        "title": "Sales 2026",
+        "version_id": "0"
+      },
+      "error": true,
+      "result": "No earlier page 0 for this note. Versions: 2, 1."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "156ccd95-a0d2-4ac8-bb35-36a30d8eaf18",
+        "title": "Sales 2026",
+        "version_id": "2"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"156ccd95-a0d2-4ac8-bb35-36a30d8eaf18\",\n  \"title\": \"Sales 2026\",\n  \"version_id\": 2,\n  \"made_by\": \"Claude\",\n  \"made\": \"2026-10-05T20:12:10.238Z\",\n  \"html\": \"<!doctype html>\\n<html lang=\\\"en\\\">\\n<head>\\n<meta charset=\\\"utf-8\\\">\\n<meta name=\\\"viewport\\\" content=\\\"width=device-width, initial-scale=1\\\">\\n<meta name=\\\"amber-libs\\\" content=\\\"chart\\\">\\n<style>\\n  *{box-sizing:border-box}body{margin:0;padding:clamp(1rem,3vw,1.5rem) var(--amber-gutter) 2rem;color:var(--amber-text);font-family:var(--amber-font)}.wrap{max-width:var(--amber-content-max);margin:0 auto}h1{font-size:clamp(1.75rem,4v… (13870 chars)"
+    },
+    {
+      "name": "edit_note_page",
+      "args": {
+        "id": "156ccd95-a0d2-4ac8-bb35-36a30d8eaf18",
+        "title": "Sales 2026",
+        "edits": "[{\"old_text\":\".cards{display:grid;grid-template-columns:1fr;gap:.85rem}\",\"new_text\":\".cards{display:none;grid-template-columns:1fr;gap:.85rem}\",\"replace_all\":false},{\"old_text\":\"@media (min-width:700px){.cards{grid-template-columns:repeat(3,1fr)}\",\"new_text\":\"@media (min-width:700px){.cards{display:… (364 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"156ccd95-a0d2-4ac8-bb35-36a30d8eaf18\",\n  \"title\": \"Sales 2026\",\n  \"page\": \"replaced\",\n  \"bytes\": 13284,\n  \"note\": \"The person sees it on the note's App side (call it the note's app, not a page). The note's text is unchanged. The previous version is kept (get_note_page lists it). Next: run check_app and fix what it finds.\"\n}"
+    },
+    {
+      "name": "check_app",
+      "args": {
+        "id": "156ccd95-a0d2-4ac8-bb35-36a30d8eaf18",
+        "title": "Sales 2026"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"156ccd95-a0d2-4ac8-bb35-36a30d8eaf18\",\n    \"title\": \"Sales 2026\"\n  },\n  \"ok\": true,\n  \"issues\": [],\n  \"browser_checked\": \"375 px light and dark, 768 and 1280 px light, over a sample note\",\n  \"next\": \"Nothing to fix.\"\n}"
+    },
+    {
+      "name": "preview_app",
+      "args": {
+        "id": "156ccd95-a0d2-4ac8-bb35-36a30d8eaf18",
+        "title": "Sales 2026",
+        "widths": "[375,1280]",
+        "themes": "[\"light\",\"dark\"]",
+        "data": "sample"
+      },
+      "error": false,
+      "result": "{\n  \"app\": \"Sales 2026\",\n  \"data\": \"a sample with the note's shape (not the person's data)\",\n  \"views\": [\n    {\n      \"view\": \"375-light\",\n      \"headings\": [\n        \"Sample note\",\n        \"Total sales\",\n        \"Monthly sales trend\",\n        \"Line performance\"\n      ],\n      \"text\": \"Sample note Charts for how each line is trending, the sales mix, and the best and worst months. Trend Mix Best & worst TOTAL SALES 988K Month 9 90.6K ▼ -5.7% vs prior month Coffee leads the mix Monthly sales trend Line performance Coffee +174% 84,995 latest · avg MoM +173% 56% of total mix Pastries -100% 300 lat… (2744 chars)"
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "375-light",
+        "width": 375,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 405,
+        "shown": 0,
+        "sampled": 12,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r13/shots/chart-dashboard-or-gpt-375-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Sales 2026",
+          "Total sales",
+          "Monthly sales trend",
+          "Line performance"
+        ],
+        "excerpt": "Sales 2026 Charts for how each line is trending, the sales mix, and the best and worst months. Trend Mix Best & worst TOTAL SALES 671.1K Sep 90.2K ▲ +9.9% vs prior month Coffee leads the mix Monthly sales trend Line performance Coffee +46% 61,400 latest · avg MoM +5.1% 69% of total mix Pastries +48% 22,200 latest · avg MoM +5.3% 24% of total mix Merch +120% 6,600 latest · avg MoM +21% 6% of total mix",
+        "titleCount": 1,
+        "ghostFields": [],
+        "sections": 4,
+        "nav": true,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.9146666666666666,
+        "canvases": 1,
+        "svgShapes": 0,
+        "gridCols": 1,
+        "frames": 15,
+        "look": {
+          "accentHue": 39,
+          "nonAmberVivid": 0.004770437073804845,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "375-dark",
+        "width": 375,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 405,
+        "shown": 0,
+        "sampled": 12,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r13/shots/chart-dashboard-or-gpt-375-dark.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Sales 2026",
+          "Total sales",
+          "Monthly sales trend",
+          "Line performance"
+        ],
+        "excerpt": "Sales 2026 Charts for how each line is trending, the sales mix, and the best and worst months. Trend Mix Best & worst TOTAL SALES 671.1K Sep 90.2K ▲ +9.9% vs prior month Coffee leads the mix Monthly sales trend Line performance Coffee +46% 61,400 latest · avg MoM +5.1% 69% of total mix Pastries +48% 22,200 latest · avg MoM +5.3% 24% of total mix Merch +120% 6,600 latest · avg MoM +21% 6% of total mix",
+        "titleCount": 1,
+        "ghostFields": [],
+        "sections": 4,
+        "nav": true,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.9146666666666666,
+        "canvases": 1,
+        "svgShapes": 0,
+        "gridCols": 1,
+        "frames": 15,
+        "look": {
+          "accentHue": 39,
+          "nonAmberVivid": 0.004770437073804845,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "768-light",
+        "width": 768,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 479,
+        "shown": 1,
+        "sampled": 12,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r13/shots/chart-dashboard-or-gpt-768-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Sales 2026",
+          "Total sales",
+          "Monthly sales trend",
+          "Line performance"
+        ],
+        "excerpt": "Sales 2026 Charts for how each line is trending, the sales mix, and the best and worst months. Trend Mix Best & worst TOTAL SALES 671.1K Sep 90.2K ▲ +9.9% vs prior month Coffee leads the mix Best month Sep 90,200 Worst month Jan 60,000 Range 30.2K best minus worst Monthly sales trend Line performance Coffee +46% 61,400 latest · avg MoM +5.1% 69% of total mix Pastries +48% 22,200 latest · avg MoM +5.3% 24% of total mix Merch +120% 6,600 latest · avg MoM +21% 6% of total mix",
+        "titleCount": 1,
+        "ghostFields": [],
+        "sections": 4,
+        "nav": true,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.9300130208333334,
+        "canvases": 1,
+        "svgShapes": 0,
+        "gridCols": 3,
+        "frames": 14,
+        "look": {
+          "accentHue": 39,
+          "nonAmberVivid": 0.008623083520339324,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 479,
+        "shown": 1,
+        "sampled": 12,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r13/shots/chart-dashboard-or-gpt-1280-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Sales 2026",
+          "Total sales",
+          "Monthly sales trend",
+          "Line performance"
+        ],
+        "excerpt": "Sales 2026 Charts for how each line is trending, the sales mix, and the best and worst months. Trend Mix Best & worst TOTAL SALES 671.1K Sep 90.2K ▲ +9.9% vs prior month Coffee leads the mix Best month Sep 90,200 Worst month Jan 60,000 Range 30.2K best minus worst Monthly sales trend Line performance Coffee +46% 61,400 latest · avg MoM +5.1% 69% of total mix Pastries +48% 22,200 latest · avg MoM +5.3% 24% of total mix Merch +120% 6,600 latest · avg MoM +21% 6% of total mix",
+        "titleCount": 1,
+        "ghostFields": [],
+        "sections": 4,
+        "nav": true,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.859375,
+        "canvases": 1,
+        "svgShapes": 0,
+        "gridCols": 3,
+        "frames": 15,
+        "look": {
+          "accentHue": 39,
+          "nonAmberVivid": 0.009531171251741055,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 479,
+        "shown": 1,
+        "sampled": 12,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Sales 2026",
+          "Total sales",
+          "Monthly sales trend",
+          "Line performance"
+        ],
+        "excerpt": "Sales 2026 Charts for how each line is trending, the sales mix, and the best and worst months. Trend Mix Best & worst TOTAL SALES 671.1K Sep 90.2K ▲ +9.9% vs prior month Coffee leads the mix Best month Sep 90,200 Worst month Jan 60,000 Range 30.2K best minus worst Monthly sales trend Line performance Coffee +46% 61,400 latest · avg MoM +5.1% 69% of total mix Pastries +48% 22,200 latest · avg MoM +5.3% 24% of total mix Merch +120% 6,600 latest · avg MoM +21% 6% of total mix",
+        "titleCount": 1,
+        "ghostFields": [],
+        "sections": 4,
+        "nav": true,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.859375,
+        "canvases": 1,
+        "svgShapes": 0,
+        "gridCols": 3,
+        "frames": 15,
+        "look": {
+          "accentHue": 39,
+          "nonAmberVivid": 0.00956986660360689,
+          "tintedBg": false
+        }
+      }
+    ],
+    "blocked": [],
+    "updates": [],
+    "setData": 0,
+    "interaction": {
+      "tried": "none",
+      "ok": null
+    },
+    "probes": {
+      "follows": {
+        "pass": true,
+        "detail": "shown, but not as written"
+      },
+      "escapes": {
+        "pass": true
+      },
+      "empty": {
+        "pass": true,
+        "detail": "blank page"
+      },
+      "large": {
+        "pass": true,
+        "detail": "609 ms to load 400 rows"
+      }
+    },
+    "dataAfter": {}
+  }
+}

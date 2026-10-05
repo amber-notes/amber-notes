@@ -5,9 +5,9 @@
   "round": "r10",
   "skill": false,
   "seconds": 74,
-  "score": 0.9545454545454546,
-  "passed": 21,
-  "total": 22,
+  "score": 0.9583333333333334,
+  "passed": 23,
+  "total": 24,
   "checks": [
     {
       "name": "has_page",
@@ -39,6 +39,14 @@
     },
     {
       "name": "phone_targets",
+      "pass": true
+    },
+    {
+      "name": "focused_screen",
+      "pass": true
+    },
+    {
+      "name": "visible_fields",
       "pass": true
     },
     {
@@ -624,6 +632,9 @@
           "Week 1 · Mon"
         ],
         "excerpt": "Strength 0 of 60 sets done · block starts Oct 12 WEEK 1 Mon 0/6 Wed 0/4 Fri 0/6 WEEK 2 Mon 0/6 Wed 0/4 Fri 0/6 WEEK 3 Mon 0/6 Wed 0/4 Fri 0/6 WEEK 4 · DELOAD Mon 0/4 Wed 0/4 Fri 0/4 Week 1 · Mon Oct 12 · 0 of 6 sets Squat 60 kg 3 × 5 Set 1 5 reps Set 2 5 reps Set 3 5 reps Bench press 40 kg 3 × 5 Set 1 5 reps Set 2 5 reps Set 3 5 reps Previous Skip to next",
+        "ghostFields": [],
+        "sections": 1,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -665,6 +676,9 @@
           "Week 1 · Mon"
         ],
         "excerpt": "Strength 0 of 60 sets done · block starts Oct 12 WEEK 1 Mon 0/6 Wed 0/4 Fri 0/6 WEEK 2 Mon 0/6 Wed 0/4 Fri 0/6 WEEK 3 Mon 0/6 Wed 0/4 Fri 0/6 WEEK 4 · DELOAD Mon 0/4 Wed 0/4 Fri 0/4 Week 1 · Mon Oct 12 · 0 of 6 sets Squat 60 kg 3 × 5 Set 1 5 reps Set 2 5 reps Set 3 5 reps Bench press 40 kg 3 × 5 Set 1 5 reps Set 2 5 reps Set 3 5 reps Previous Skip to next",
+        "ghostFields": [],
+        "sections": 1,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -706,6 +720,9 @@
           "Week 1 · Mon"
         ],
         "excerpt": "Strength 0 of 60 sets done · block starts Oct 12 WEEK 1 Mon 0/6 Wed 0/4 Fri 0/6 WEEK 2 Mon 0/6 Wed 0/4 Fri 0/6 WEEK 3 Mon 0/6 Wed 0/4 Fri 0/6 WEEK 4 · DELOAD Mon 0/4 Wed 0/4 Fri 0/4 Week 1 · Mon Oct 12 · 0 of 6 sets Squat 60 kg 3 × 5 Set 1 5 reps Set 2 5 reps Set 3 5 reps Bench press 40 kg 3 × 5 Set 1 5 reps Set 2 5 reps Set 3 5 reps Previous Skip to next",
+        "ghostFields": [],
+        "sections": 1,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -747,6 +764,9 @@
           "Week 1 · Mon"
         ],
         "excerpt": "Strength 0 of 60 sets done · block starts Oct 12 WEEK 1 Mon 0/6 Wed 0/4 Fri 0/6 WEEK 2 Mon 0/6 Wed 0/4 Fri 0/6 WEEK 3 Mon 0/6 Wed 0/4 Fri 0/6 WEEK 4 · DELOAD Mon 0/4 Wed 0/4 Fri 0/4 Week 1 · Mon Oct 12 · 0 of 6 sets Squat 60 kg 3 × 5 Set 1 5 reps Set 2 5 reps Set 3 5 reps Bench press 40 kg 3 × 5 Set 1 5 reps Set 2 5 reps Set 3 5 reps Previous Skip to next",
+        "ghostFields": [],
+        "sections": 1,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -787,6 +807,9 @@
           "Week 1 · Mon"
         ],
         "excerpt": "Strength 0 of 60 sets done · block starts Oct 12 WEEK 1 Mon 0/6 Wed 0/4 Fri 0/6 WEEK 2 Mon 0/6 Wed 0/4 Fri 0/6 WEEK 3 Mon 0/6 Wed 0/4 Fri 0/6 WEEK 4 · DELOAD Mon 0/4 Wed 0/4 Fri 0/4 Week 1 · Mon Oct 12 · 0 of 6 sets Squat 60 kg 3 × 5 Set 1 5 reps Set 2 5 reps Set 3 5 reps Bench press 40 kg 3 × 5 Set 1 5 reps Set 2 5 reps Set 3 5 reps Previous Skip to next",
+        "ghostFields": [],
+        "sections": 1,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,

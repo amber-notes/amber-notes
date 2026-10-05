@@ -5,9 +5,9 @@
   "round": "r10",
   "skill": false,
   "seconds": 33,
-  "score": 0.9523809523809523,
-  "passed": 20,
-  "total": 21,
+  "score": 0.9565217391304348,
+  "passed": 22,
+  "total": 23,
   "checks": [
     {
       "name": "has_page",
@@ -39,6 +39,14 @@
     },
     {
       "name": "phone_targets",
+      "pass": true
+    },
+    {
+      "name": "focused_screen",
+      "pass": true
+    },
+    {
+      "name": "visible_fields",
       "pass": true
     },
     {
@@ -194,6 +202,9 @@
           "Household expenses"
         ],
         "excerpt": "Household expenses Add a table with an Amount column.",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -234,6 +245,9 @@
           "Household expenses"
         ],
         "excerpt": "Household expenses Add a table with an Amount column.",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -274,6 +288,9 @@
           "Household expenses"
         ],
         "excerpt": "Household expenses Add a table with an Amount column.",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -314,6 +331,9 @@
           "Household expenses"
         ],
         "excerpt": "Household expenses Add a table with an Amount column.",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -353,6 +373,9 @@
           "Household expenses"
         ],
         "excerpt": "Household expenses Add a table with an Amount column.",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -391,7 +414,7 @@
       },
       "large": {
         "pass": true,
-        "detail": "594 ms to load 400 rows"
+        "detail": "599 ms to load 400 rows"
       }
     },
     "dataAfter": {}

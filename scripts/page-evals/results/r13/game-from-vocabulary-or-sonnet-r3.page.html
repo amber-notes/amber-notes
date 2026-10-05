@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="amber-libs" content="confetti">
+<style>
+:root{--g-bg:#fff4e0;--g-card:#ffffff;--g-ink:#2b1a12;--g-ink2:#6b4f40;--g-red:#c4242b;--g-red-ink:#fff;--g-gold:#e8a200;--g-ok:#1f7a45;--g-ok-bg:#d6f2e0;--g-bad:#b3261e;--g-bad-bg:#fbdcd8;--g-line:#e7cfae}
+@media (prefers-color-scheme:dark){:root{--g-bg:#2a1512;--g-card:#3a1f1a;--g-ink:#fff1de;--g-ink2:#e0c3a8;--g-red:#ff6b5e;--g-red-ink:#2a1512;--g-gold:#ffc23d;--g-ok:#7be0a1;--g-ok-bg:#1d4a31;--g-bad:#ff9d94;--g-bad-bg:#5a2420;--g-line:#5c3a30}}
+*{box-sizing:border-box}
+.game{background:var(--g-bg);color:var(--g-ink);max-width:640px;margin:0 auto;min-height:100vh;padding:18px var(--amber-gutter) calc(28px + env(safe-area-inset-bottom));font-family:var(--amber-font-rounded)}
+h1{font-size:1.5rem;margin:0 0 14px;letter-spacing:-.02em}
+.hud{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;font-variant-numeric:tabular-nums;font-weight:700}
+.pill{background:var(--g-card);border:2px solid var(--g-line);border-radius:999px;padding:6px 14px;font-size:.95rem}
+.hearts{display:flex;gap:4px}
+.hearts svg{width:26px;height:26px}
+.bar{height:14px;background:var(--g-card);border:2px solid var(--g-line);border-radius:99px;overflow:hidden;margin-bottom:18px}
+.bar i{display:block;height:100%;width:100%;background:var(--g-gold);transform-origin:left;border-radius:99px}
+.prompt{background:var(--g-card);border:2px solid var(--g-line);border-radius:22px;padding:26px 16px;text-align:center;margin-bottom:16px}
+.prompt small{display:block;color:var(--g-ink2);font-size:.85rem;font-weight:600;margin-bottom:8px;text-transform:uppercase;letter-spacing:.08em}
+.prompt b{font-size:2.3rem;line-height:1.15;overflow-wrap:anywhere}
+.opts{display:grid;gap:10px}
+.opt,.big{font:inherit;font-weight:700;font-size:1.05rem;min-height:56px;border-radius:16px;border:2px solid var(--g-line);background:var(--g-card);color:var(--g-ink);padding:10px 14px;text-align:left;display:flex;gap:12px;align-items:center;cursor:pointer;box-shadow:0 4px 0 var(--g-line)}
+.opt:active{transform:translateY(3px);box-shadow:0 1px 0 var(--g-line)}
+.opt kbd{font:inherit;font-size:.8rem;color:var(--g-ink2);border:1.5px solid var(--g-line);border-radius:8px;min-width:26px;text-align:center;padding:1px 0}
+.opt.ok{background:var(--g-ok-bg);border-color:var(--g-ok);box-shadow:0 4px 0 var(--g-ok)}
+.opt.bad{background:var(--g-bad-bg);border-color:var(--g-bad);box-shadow:0 4px 0 var(--g-bad)}
+.opt:disabled{cursor:default}
+.big{background:var(--g-red);color:var(--g-red-ink);border-color:var(--g-red);box-shadow:0 5px 0 rgba(0,0,0,.25);justify-content:center;font-size:1.25rem;width:100%;min-height:62px}
+.big.alt{background:var(--g-card);color:var(--g-ink);border-color:var(--g-line);box-shadow:0 4px 0 var(--g-line);margin-top:12px;min-height:52px;font-size:1rem}
+.hero{text-align:center;padding:22px 8px 8px}
+.hero .ol{font-size:4rem;font-weight:800;color:var(--g-red);line-height:1}
+.hero p{color:var(--g-ink2);margin:8px 0 22px;font-weight:600}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:0 0 22px}
+.stat{background:var(--g-card);border:2px solid var(--g-line);border-radius:16px;padding:12px 6px;text-align:center}
+.stat b{display:block;font-size:1.5rem;font-variant-numeric:tabular-nums}
+.stat span{font-size:.78rem;color:var(--g-ink2);font-weight:600}
+.msg{min-height:1.6em;text-align:center;font-weight:800;margin-top:12px;font-size:1.05rem}
+.msg.ok{color:var(--g-ok)}.msg.bad{color:var(--g-bad)}
+.list{background:var(--g-card);border:2px solid var(--g-line);border-radius:16px;padding:6px 14px;margin:14px 0}
+.list div{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--g-line)}
+.list div:first-child{border-top:0}
+.list span:last-child{color:var(--g-ink2);text-align:right}
+.score{font-size:3.4rem;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;color:var(--g-red)}
+.center{text-align:center;font-weight:700}
+.empty{text-align:center;padding:30px 10px;color:var(--g-ink2);font-weight:600}
+.wrap{display:block}.bank h2{font-size:1rem;margin:22px 0 8px;color:var(--g-ink2)}
+.bank .list{max-height:none}
+@media (min-width:900px){.game{max-width:var(--amber-content-max)}.wrap.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:32px;align-items:start}.wrap.two .bank h2{margin-top:0}.wrap.play{max-width:640px;margin:0 auto}}
+@media (prefers-reduced-motion:no-preference){.shake{animation:sh .3s}@keyframes sh{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}}
+</style>
+</head>
+<body>
+<div class="game" id="app"></div>
+<script>
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+const ROUND=10, SECS=8, LIVES=3;
+let words=[], title="", screen="start", g=null, raf=0, last=0, answered=false;
+const app=document.getElementById("app");
+const vals=()=> (amber.data&&amber.data.values)||{};
+const heart=on=>`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-8-5.2-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 5.8-8 11-8 11z" fill="${on?'var(--g-red)':'none'}" stroke="var(--g-red)" stroke-width="2"/></svg>`;
+function readWords(note){
+  title=note.title;
+  const t=note.tables.find(t=>t.columns.length>=2);
+  words=t?t.rows.map(r=>({es:(r[0]||"").trim(),en:(r[1]||"").trim()})).filter(w=>w.es&&w.en):[];
+}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function daysBetween(a,b){return Math.round((new Date(b)-new Date(a))/864e5)}
+function renderStart(){
+  const v=vals(), best=v.best||0, played=v.rounds||0;
+  let streak=v.dayStreak||0;
+  if(v.lastDay && daysBetween(v.lastDay,amber.note.today)>1) streak=0;
+  const doneToday=v.lastDay===amber.note.today;
+  if(words.length<4){app.innerHTML=`<h1>${esc(title)}</h1><div class="empty">Add at least 4 rows to the table (Spanish | English) to start playing.</div>`;return}
+  app.innerHTML=`<h1>${esc(title)}</h1>
+  <div class="hero"><div class="ol" aria-hidden="true">¡Vamos!</div>
+  <p>${ROUND} verbs, ${SECS} seconds each, ${LIVES} lives. Chain right answers for a bigger multiplier.</p></div>
+  <div class="stats"><div class="stat"><b>${streak}</b><span>day streak</span></div><div class="stat"><b>${best}</b><span>best score</span></div><div class="stat"><b>${words.length}</b><span>verbs</span></div></div>
+  <button class="big" id="go">${doneToday?"Play again":"Play today's round"}</button>`;
+  const miss=v.misses||{};
+  const bank=`<div class="bank"><h2>Your verbs</h2><div class="list">${words.map(w=>`<div><span lang="es"><b>${esc(w.es)}</b></span><span>${esc(w.en)}${miss[w.es]?" · tricky":""}</span></div>`).join("")}</div></div>`;
+  app.innerHTML=`<h1>${esc(title)}</h1><div class="wrap two"><div>${app.innerHTML.replace(/^<h1>.*?<\/h1>/,"")}</div>${bank}</div>`;
+  document.getElementById("go").onclick=start;
+}
+function pickQuestions(){
+  const miss=vals().misses||{};
+  // weight weaker verbs higher
+  let pool=words.map(w=>({w,k:Math.random()*(1+2*(miss[w.es]||0))})).sort((a,b)=>b.k-a.k).slice(0,Math.min(ROUND,words.length)).map(x=>x.w);
+  return shuffle(pool).map(w=>{
+    const toEn=Math.random()<.6;
+    const ans=toEn?w.en:w.es;
+    const others=shuffle(words.filter(x=>x!==w)).map(x=>toEn?x.en:x.es).filter((x,i,a)=>x!==ans&&a.indexOf(x)===i).slice(0,3);
+    return {w,toEn,ans,opts:shuffle([ans,...others])};
+  });
+}
+function start(){
+  g={qs:pickQuestions(),i:0,score:0,lives:LIVES,streak:0,bestStreak:0,right:0,wrong:[],t:SECS,hadMiss:{}};
+  screen="play";nextQ();
+}
+function mult(){return Math.min(4,1+Math.floor(g.streak/3))}
+function nextQ(){
+  answered=false;g.t=SECS;renderPlay();last=0;cancelAnimationFrame(raf);raf=requestAnimationFrame(tick);
+}
+function renderPlay(msg,cls,pick){
+  const q=g.qs[g.i];
+  app.innerHTML=`<h1>${esc(title)}</h1>
+  <div class="hud"><span class="pill">${g.i+1}/${g.qs.length}</span><span class="pill" aria-label="Score">${g.score}${mult()>1?` · x${mult()}`:""}</span><span class="hearts" role="img" aria-label="${g.lives} lives left">${Array.from({length:LIVES},(_,k)=>heart(k<g.lives)).join("")}</span></div>
+  <div class="bar" role="img" aria-label="Time left"><i id="tb"></i></div>
+  <div class="prompt" id="pr"><small>${q.toEn?"Spanish → English":"English → Spanish"}</small><b lang="${q.toEn?'es':'en'}">${esc(q.toEn?q.w.es:q.w.en)}</b></div>
+  <div class="opts">${q.opts.map((o,k)=>`<button class="opt${answered?(o===q.ans?" ok":(o===pick?" bad":"")):""}" data-k="${k}" ${answered?"disabled":""}><kbd>${k+1}</kbd><span>${esc(o)}</span></button>`).join("")}</div>
+  <div class="msg ${cls||""}" role="status">${esc(msg||"")}</div>`;
+  app.querySelectorAll(".opt").forEach(b=>b.onclick=()=>answer(q.opts[+b.dataset.k]));
+  updBar();
+}
+function updBar(){const el=document.getElementById("tb");if(el)el.style.transform=`scaleX(${Math.max(0,g.t/SECS)})`}
+function tick(ts){
+  if(screen!=="play"||answered)return;
+  if(document.visibilityState==="hidden"){last=0;raf=requestAnimationFrame(tick);return}
+  if(last)g.t-=Math.min(.1,(ts-last)/1000);
+  last=ts;updBar();
+  if(g.t<=0){answer(null);return}
+  raf=requestAnimationFrame(tick);
+}
+function answer(choice){
+  if(answered||screen!=="play")return;answered=true;
+  const q=g.qs[g.i], ok=choice===q.ans;
+  let msg,cls;
+  if(ok){g.streak++;g.bestStreak=Math.max(g.bestStreak,g.streak);g.right++;const pts=Math.round((100+g.t*10)*mult());g.score+=pts;msg=`+${pts}  ¡Muy bien!`;cls="ok"}
+  else{g.streak=0;g.lives--;g.wrong.push(q.w);g.hadMiss[q.w.es]=1;msg=choice===null?`Time! ${q.w.es} = ${q.w.en}`:`${q.w.es} = ${q.w.en}`;cls="bad"}
+  renderPlay(msg,cls,choice);
+  if(!ok){const pr=document.getElementById("pr");pr&&pr.classList.add("shake")}
+  setTimeout(()=>{ if(screen!=="play")return; g.i++; if(g.lives<=0||g.i>=g.qs.length)finish(); else nextQ()}, ok?650:1500);
+}
+async function finish(){
+  screen="end";cancelAnimationFrame(raf);
+  const v=vals(), today=amber.note.today;
+  const newBest=g.score>(v.best||0);
+  const misses={...(v.misses||{})};
+  g.qs.slice(0,g.i).forEach(q=>{const k=q.w.es;if(g.hadMiss[k])misses[k]=(misses[k]||0)+1;else if(misses[k])misses[k]=Math.max(0,misses[k]-1)});
+  let ds=v.dayStreak||0;
+  if(v.lastDay!==today)ds=(v.lastDay&&daysBetween(v.lastDay,today)===1)?ds+1:1;
+  g.newBest=newBest;g.ds=ds;
+  const r=await amber.setData({values:{best:Math.max(v.best||0,g.score),rounds:(v.rounds||0)+1,lastDay:today,dayStreak:ds,misses}});
+  g.saveErr=(r&&r.ok===false)?r.error:"";
+  renderEnd();
+  if(newBest&&g.score>0&&typeof confetti==="function"&&!matchMedia("(prefers-reduced-motion:reduce)").matches)confetti({particleCount:120,spread:80,origin:{y:.4}});
+}
+function renderEnd(){
+  const won=g.lives>0;
+  app.innerHTML=`<h1>${esc(title)}</h1>
+  <p class="center">${won?"Round complete!":"Out of lives"}${g.newBest&&g.score>0?" · New best!":""}</p>
+  <div class="score">${g.score}</div>
+  <div class="stats"><div class="stat"><b>${g.right}/${g.i}</b><span>correct</span></div><div class="stat"><b>${g.bestStreak}</b><span>best chain</span></div><div class="stat"><b>${g.ds}</b><span>day streak</span></div></div>
+  ${g.wrong.length?`<p class="center">Review these</p><div class="list">${g.wrong.map(w=>`<div><span lang="es"><b>${esc(w.es)}</b></span><span>${esc(w.en)}</span></div>`).join("")}</div>`:`<p class="center">Perfect, nothing to review.</p>`}
+  ${g.saveErr?`<p class="center" role="alert">Couldn't save progress: ${esc(g.saveErr)}</p>`:""}
+  <button class="big" id="again">Play again</button><button class="big alt" id="home">Back</button>`;
+  document.getElementById("again").onclick=start;
+  document.getElementById("home").onclick=()=>{screen="start";renderStart()};
+}
+document.addEventListener("keydown",e=>{
+  if(screen!=="play"||answered)return;
+  const n=parseInt(e.key,10);const q=g.qs[g.i];
+  if(n>=1&&n<=q.opts.length)answer(q.opts[n-1]);
+});
+document.addEventListener("visibilitychange",()=>{last=0});
+amber.onChange(note=>{
+  readWords(note);
+  if(screen==="start")renderStart();
+});
+</script>
+</body>
+</html>

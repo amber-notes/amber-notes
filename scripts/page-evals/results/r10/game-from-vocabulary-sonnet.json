@@ -5,9 +5,9 @@
   "round": "r10",
   "skill": false,
   "seconds": 82,
-  "score": 0.9230769230769231,
-  "passed": 24,
-  "total": 26,
+  "score": 0.9285714285714286,
+  "passed": 26,
+  "total": 28,
   "checks": [
     {
       "name": "has_page",
@@ -39,6 +39,14 @@
     },
     {
       "name": "phone_targets",
+      "pass": true
+    },
+    {
+      "name": "focused_screen",
+      "pass": true
+    },
+    {
+      "name": "visible_fields",
       "pass": true
     },
     {
@@ -230,6 +238,9 @@
           "Spanish verbs"
         ],
         "excerpt": "Spanish verbs [object Promise] Best score [object Promise] Day streak 0/12 Mastered Verb Rush: 60 seconds Answer fast. Chain correct answers for a bigger combo. A wrong answer costs 4 seconds and breaks your combo. Play today's round hablar comer vivir tener hacer ir poder decir querer saber conocer salir 12 verbs from your note: grey new, outlined learning, solid mastered.",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [
           "[object Promise]"
         ],
@@ -272,6 +283,9 @@
           "Spanish verbs"
         ],
         "excerpt": "Spanish verbs [object Promise] Best score [object Promise] Day streak 0/12 Mastered Verb Rush: 60 seconds Answer fast. Chain correct answers for a bigger combo. A wrong answer costs 4 seconds and breaks your combo. Play today's round hablar comer vivir tener hacer ir poder decir querer saber conocer salir 12 verbs from your note: grey new, outlined learning, solid mastered.",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [
           "[object Promise]"
         ],
@@ -314,6 +328,9 @@
           "Spanish verbs"
         ],
         "excerpt": "Spanish verbs [object Promise] Best score [object Promise] Day streak 0/12 Mastered Verb Rush: 60 seconds Answer fast. Chain correct answers for a bigger combo. A wrong answer costs 4 seconds and breaks your combo. Play today's round hablar comer vivir tener hacer ir poder decir querer saber conocer salir 12 verbs from your note: grey new, outlined learning, solid mastered.",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [
           "[object Promise]"
         ],
@@ -356,6 +373,9 @@
           "Spanish verbs"
         ],
         "excerpt": "Spanish verbs [object Promise] Best score [object Promise] Day streak 0/12 Mastered Verb Rush: 60 seconds Answer fast. Chain correct answers for a bigger combo. A wrong answer costs 4 seconds and breaks your combo. Play today's round hablar comer vivir tener hacer ir poder decir querer saber conocer salir 12 verbs from your note: grey new, outlined learning, solid mastered.",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [
           "[object Promise]"
         ],
@@ -397,6 +417,9 @@
           "Spanish verbs"
         ],
         "excerpt": "Spanish verbs [object Promise] Best score [object Promise] Day streak 0/12 Mastered Verb Rush: 60 seconds Answer fast. Chain correct answers for a bigger combo. A wrong answer costs 4 seconds and breaks your combo. Play today's round hablar comer vivir tener hacer ir poder decir querer saber conocer salir 12 verbs from your note: grey new, outlined learning, solid mastered.",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [
           "[object Promise]"
         ],
@@ -438,7 +461,7 @@
       },
       "large": {
         "pass": true,
-        "detail": "605 ms to load 400 rows"
+        "detail": "900 ms to load 400 rows"
       }
     },
     "dataAfter": {}

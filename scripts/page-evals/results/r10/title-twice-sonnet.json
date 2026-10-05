@@ -6,8 +6,8 @@
   "skill": false,
   "seconds": 33,
   "score": 1,
-  "passed": 21,
-  "total": 21,
+  "passed": 23,
+  "total": 23,
   "checks": [
     {
       "name": "has_page",
@@ -39,6 +39,14 @@
     },
     {
       "name": "phone_targets",
+      "pass": true
+    },
+    {
+      "name": "focused_screen",
+      "pass": true
+    },
+    {
+      "name": "visible_fields",
       "pass": true
     },
     {
@@ -185,6 +193,9 @@
           "Habit tracker"
         ],
         "excerpt": "Habit tracker 2 of 3 done today TODAY Walk 3 days Read 2 days Stretch 1 day LAST TWO WEEKS T W T F S S M T W T F S S M Walk Read Stretch 67% This week 3 Longest now, Walk 3 Best run Ticks are written to the table in this note.",
+        "ghostFields": [],
+        "sections": 3,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -225,6 +236,9 @@
           "Habit tracker"
         ],
         "excerpt": "Habit tracker 2 of 3 done today TODAY Walk 3 days Read 2 days Stretch 1 day LAST TWO WEEKS T W T F S S M T W T F S S M Walk Read Stretch 67% This week 3 Longest now, Walk 3 Best run Ticks are written to the table in this note.",
+        "ghostFields": [],
+        "sections": 3,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -265,6 +279,9 @@
           "Habit tracker"
         ],
         "excerpt": "Habit tracker 2 of 3 done today TODAY Walk 3 days Read 2 days Stretch 1 day LAST TWO WEEKS T W T F S S M T W T F S S M Walk Read Stretch 67% This week 3 Longest now, Walk 3 Best run Ticks are written to the table in this note.",
+        "ghostFields": [],
+        "sections": 3,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -305,6 +322,9 @@
           "Habit tracker"
         ],
         "excerpt": "Habit tracker 2 of 3 done today TODAY Walk 3 days Read 2 days Stretch 1 day LAST FOUR WEEKS T W T F S S M T W T F S S M T W T F S S M T W T F S S M Walk Read Stretch 67% This week 3 Longest now, Walk 3 Best run Ticks are written to the table in this note.",
+        "ghostFields": [],
+        "sections": 3,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -344,6 +364,9 @@
           "Habit tracker"
         ],
         "excerpt": "Habit tracker 2 of 3 done today TODAY Walk 3 days Read 2 days Stretch 1 day LAST FOUR WEEKS T W T F S S M T W T F S S M T W T F S S M T W T F S S M Walk Read Stretch 67% This week 3 Longest now, Walk 3 Best run Ticks are written to the table in this note.",
+        "ghostFields": [],
+        "sections": 3,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -375,7 +398,7 @@
       },
       "large": {
         "pass": true,
-        "detail": "594 ms to load 400 rows"
+        "detail": "613 ms to load 400 rows"
       }
     },
     "dataAfter": {}

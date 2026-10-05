@@ -5,9 +5,9 @@
   "round": "r10",
   "skill": false,
   "seconds": 39,
-  "score": 1,
-  "passed": 23,
-  "total": 23,
+  "score": 0.96,
+  "passed": 24,
+  "total": 25,
   "checks": [
     {
       "name": "has_page",
@@ -40,6 +40,15 @@
     {
       "name": "phone_targets",
       "pass": true
+    },
+    {
+      "name": "focused_screen",
+      "pass": true
+    },
+    {
+      "name": "visible_fields",
+      "pass": false,
+      "detail": "month, item, amount"
     },
     {
       "name": "no_junk_text",
@@ -210,6 +219,14 @@
           "Latest"
         ],
         "excerpt": "Household expenses 10 235,00 kr 2 expenses Month BY CATEGORY Housing 93% 9 500,00 kr Food 7% 735,00 kr ADD AN EXPENSE What Amount Category Add LATEST Groceries 2026-10-03 · Food 735,00 kr Rent 2026-10-01 · Housing 9 500,00 kr",
+        "ghostFields": [
+          "month",
+          "item",
+          "amount",
+          "cat"
+        ],
+        "sections": 4,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -253,6 +270,14 @@
           "Latest"
         ],
         "excerpt": "Household expenses 10 235,00 kr 2 expenses Month BY CATEGORY Housing 93% 9 500,00 kr Food 7% 735,00 kr ADD AN EXPENSE What Amount Category Add LATEST Groceries 2026-10-03 · Food 735,00 kr Rent 2026-10-01 · Housing 9 500,00 kr",
+        "ghostFields": [
+          "month",
+          "item",
+          "amount",
+          "cat"
+        ],
+        "sections": 4,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -296,6 +321,14 @@
           "Latest"
         ],
         "excerpt": "Household expenses 10 235,00 kr 2 expenses Month BY CATEGORY Housing 93% 9 500,00 kr Food 7% 735,00 kr ADD AN EXPENSE What Amount Category Add LATEST Groceries 2026-10-03 · Food 735,00 kr Rent 2026-10-01 · Housing 9 500,00 kr",
+        "ghostFields": [
+          "month",
+          "item",
+          "amount",
+          "cat"
+        ],
+        "sections": 4,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -339,6 +372,14 @@
           "Latest"
         ],
         "excerpt": "Household expenses 10 235,00 kr 2 expenses Month BY CATEGORY Housing 93% 9 500,00 kr Food 7% 735,00 kr ADD AN EXPENSE What Amount Category Add LATEST Groceries 2026-10-03 · Food 735,00 kr Rent 2026-10-01 · Housing 9 500,00 kr",
+        "ghostFields": [
+          "month",
+          "item",
+          "amount",
+          "cat"
+        ],
+        "sections": 4,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -381,6 +422,14 @@
           "Latest"
         ],
         "excerpt": "Household expenses 10 235,00 kr 2 expenses Month BY CATEGORY Housing 93% 9 500,00 kr Food 7% 735,00 kr ADD AN EXPENSE What Amount Category Add LATEST Groceries 2026-10-03 · Food 735,00 kr Rent 2026-10-01 · Housing 9 500,00 kr",
+        "ghostFields": [
+          "month",
+          "item",
+          "amount",
+          "cat"
+        ],
+        "sections": 4,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -419,7 +468,7 @@
       },
       "large": {
         "pass": true,
-        "detail": "605 ms to load 400 rows"
+        "detail": "606 ms to load 400 rows"
       }
     },
     "dataAfter": {}

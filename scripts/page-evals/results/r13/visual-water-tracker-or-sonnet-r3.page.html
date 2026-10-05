@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="amber-settings" content='{"settings":[{"key":"goal","label":"Daily goal (glasses)","type":"number","default":8}]}'>
+<style>
+:root{--w-bg:#e8f4fc;--w-card:#ffffff;--w-ink:#0b3552;--w-sub:#47657a;--w-water:#2f9be0;--w-deep:#0f6bb0;--w-miss:#b9dcf3;--w-line:#c5dff0;--w-goal:#a63a05;--w-on:#fff}
+@media (prefers-color-scheme:dark){:root{--w-bg:#0c2233;--w-card:#12344d;--w-ink:#e6f4fd;--w-sub:#9ec3dc;--w-water:#4fb3f5;--w-deep:#7cc8fa;--w-miss:#2b5675;--w-line:#245070;--w-goal:#ffb089;--w-on:#06243a}}
+*{box-sizing:border-box}
+main{max-width:var(--amber-content-max);margin:0 auto;padding:16px var(--amber-gutter) 48px}
+.wrap{background:var(--w-bg);color:var(--w-ink);border-radius:20px;padding:16px;font-family:var(--amber-font-rounded)}
+h1{font-size:1.6rem;margin:0 0 12px;letter-spacing:-.02em}
+.grid{display:grid;gap:14px}
+@media(min-width:900px){.grid{grid-template-columns:minmax(300px,380px) 1fr;align-items:start}}
+.card{background:var(--w-card);border-radius:16px;padding:16px;border:1px solid var(--w-line)}
+.today{display:flex;align-items:center;gap:16px;flex-wrap:wrap;justify-content:center}
+.glass{width:120px;height:170px;flex:none}
+.big{font-size:3.2rem;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.big small{font-size:1.3rem;color:var(--w-sub);font-weight:600}
+.sub{color:var(--w-sub);font-size:.9rem;margin-top:4px}
+.btns{display:flex;gap:8px;margin-top:12px}
+button{font:inherit;font-weight:700;min-height:44px;min-width:44px;padding:0 18px;border:0;border-radius:12px;background:var(--w-deep);color:var(--w-on);cursor:pointer}
+button.alt{background:var(--w-miss);color:var(--w-ink)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+.stat{background:var(--w-card);border:1px solid var(--w-line);border-radius:14px;padding:10px;text-align:center}
+.stat b{display:block;font-size:1.5rem;font-variant-numeric:tabular-nums}
+.stat span{font-size:.78rem;color:var(--w-sub)}
+h2{font-size:1rem;margin:0 0 10px}
+.chart{position:relative;height:220px;display:flex;align-items:flex-end;gap:4px;padding-top:22px;border-bottom:2px solid var(--w-line)}
+.goal{position:absolute;left:0;right:0;border-top:2px dashed var(--w-goal);pointer-events:none}
+.goal i{position:absolute;right:0;top:-1.3rem;font-style:normal;font-size:.8rem;background:var(--w-card);padding:0 4px;border-radius:4px;color:var(--w-goal);font-weight:700}
+.col{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;min-width:0}
+.bar{width:100%;border-radius:6px 6px 0 0;background:var(--w-miss);border:2px solid var(--w-water);border-bottom:0;position:relative;min-height:0}
+.bar.hit{background:var(--w-water);border-color:var(--w-deep)}
+.bar.now{outline:2px solid var(--w-ink);outline-offset:1px}
+.v{font-size:.8rem;font-weight:700;font-variant-numeric:tabular-nums;margin-bottom:2px}
+.days{display:flex;gap:4px;margin-top:4px}
+.days span{flex:1;text-align:center;font-size:.8rem;color:var(--w-sub);min-width:0}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.8rem;color:var(--w-sub);margin-top:10px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin-right:4px;border:2px solid var(--w-water)}
+.err{color:var(--amber-danger);min-height:1em;font-size:.85rem}
+.empty{padding:20px;text-align:center;color:var(--w-sub)}
+@media(prefers-reduced-motion:no-preference){.fillr{transition:y .5s,height .5s}.bar{transition:height .4s}}
+</style>
+</head>
+<body>
+<main><div class="wrap" id="app" aria-live="polite"></div></main>
+<script>
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+let error="";
+const addDays=(d,n)=>{const t=new Date(d+"T00:00:00Z");t.setUTCDate(t.getUTCDate()+n);return t.toISOString().slice(0,10)};
+function render(note){
+  const app=document.getElementById("app");
+  const t=note.tables.find(t=>t.columns.some(c=>/^date$/i.test(c.name))&&t.columns.some(c=>/glass/i.test(c.name)));
+  if(!t){app.innerHTML=`<h1>${esc(note.title)}</h1><div class="card empty">Add a table with Date and Glasses columns to see your water.</div>`;return}
+  const di=t.columns.findIndex(c=>/^date$/i.test(c.name)),gi=t.columns.findIndex(c=>/glass/i.test(c.name));
+  const goal=Math.max(1,Number(amber.settings&&amber.settings.goal)||8);
+  const map={};const rowOf={};
+  t.rows.forEach((r,i)=>{const n=parseFloat(String(r[gi]).replace(",","."));map[r[di]]=isNaN(n)?0:n;rowOf[r[di]]=i});
+  const today=note.today,cur=map[today]||0;
+  const days=[];for(let i=13;i>=0;i--){const d=addDays(today,-i);days.push({d,v:map[d]})}
+  const max=Math.max(goal,...days.map(x=>x.v||0))*1.1;
+  let streak=0,d=today;if(!((map[d]||0)>=goal))d=addDays(d,-1);
+  while((map[d]||0)>=goal){streak++;d=addDays(d,-1)}
+  const win=days.filter(x=>x.v!=null);
+  const hit=win.filter(x=>x.v>=goal).length;
+  const avg=win.length?(win.reduce((a,x)=>a+x.v,0)/win.length):0;
+  const pct=Math.min(1,cur/goal),h=140*pct;
+  const left=Math.max(0,goal-cur);
+  const msg=cur>=goal?"Goal reached. Nice work.":`${left} more ${left===1?"glass":"glasses"} to go`;
+  app.innerHTML=`<h1>${esc(note.title)}</h1>
+  <div class="grid"><div>
+   <div class="card today">
+    <svg class="glass" viewBox="0 0 120 170" role="img" aria-label="Glass ${Math.round(pct*100)} percent full">
+     <defs><clipPath id="c"><path d="M14 14H106L96 160Q95 166 89 166H31Q25 166 24 160Z"/></clipPath></defs>
+     <g clip-path="url(#c)"><rect width="120" height="170" fill="var(--w-bg)"/>
+      <rect class="fillr" x="0" y="${166-h}" width="120" height="${h+4}" fill="var(--w-water)"/>
+      <rect class="fillr" x="0" y="${166-h}" width="120" height="5" fill="var(--w-deep)" opacity="${h>0?1:0}"/></g>
+     <path d="M14 14H106L96 160Q95 166 89 166H31Q25 166 24 160Z" fill="none" stroke="var(--w-deep)" stroke-width="4" stroke-linejoin="round"/>
+    </svg>
+    <div><div class="big">${cur}<small> / ${goal}</small></div><div class="sub">glasses today</div><div class="sub"><b>${esc(msg)}</b></div>
+    <div class="btns"><button id="add" aria-label="Add a glass">+ Glass</button><button id="sub" class="alt" aria-label="Remove a glass">−</button></div></div>
+   </div>
+   <div class="err" role="alert">${esc(error)}</div>
+   <div class="stats"><div class="stat"><b>${streak}</b><span>day streak</span></div><div class="stat"><b>${hit}/${win.length}</b><span>goal days (14d)</span></div><div class="stat"><b>${avg.toFixed(1)}</b><span>daily average</span></div></div>
+  </div>
+  <div class="card"><h2>Last 14 days</h2>
+   <div class="chart" role="img" aria-label="Bar chart of glasses per day for the last 14 days against a goal of ${goal}">
+    <div class="goal" style="bottom:${goal/max*(100)}%"><i>goal ${goal}</i></div>
+    ${days.map(x=>`<div class="col"><div class="v">${x.v==null?"":x.v}</div><div class="bar ${x.v>=goal?"hit":""} ${x.d===today?"now":""}" style="height:${x.v?x.v/max*100:0}%"></div></div>`).join("")}
+   </div>
+   <div class="days">${days.map(x=>`<span>${+x.d.slice(8)}</span>`).join("")}</div>
+   <div class="legend"><span><i style="background:var(--w-water)"></i>Goal met</span><span><i style="background:var(--w-miss)"></i>Under goal</span><span>Outlined = today</span></div>
+  </div></div>`;
+  const set=async v=>{v=Math.max(0,v);const r=today in rowOf?await amber.update({op:"set_cell",table:t.index,row:rowOf[today],col:t.columns[gi].name,value:String(v)}):await amber.update({op:"append_row",table:t.index,values:{[t.columns[di].name]:today,[t.columns[gi].name]:String(v)}});error=r.ok?"":r.error;if(!r.ok)render(amber.note)};
+  document.getElementById("add").onclick=()=>set(cur+1);
+  document.getElementById("sub").onclick=()=>set(cur-1);
+}
+amber.onChange(render);
+</script>
+</body>
+</html>

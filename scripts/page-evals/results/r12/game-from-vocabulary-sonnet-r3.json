@@ -5,9 +5,9 @@
   "round": "r12",
   "skill": false,
   "seconds": 80,
-  "score": 1,
-  "passed": 24,
-  "total": 24,
+  "score": 0.9629629629629629,
+  "passed": 26,
+  "total": 27,
   "checks": [
     {
       "name": "has_page",
@@ -42,6 +42,14 @@
       "pass": true
     },
     {
+      "name": "focused_screen",
+      "pass": true
+    },
+    {
+      "name": "visible_fields",
+      "pass": true
+    },
+    {
       "name": "no_junk_text",
       "pass": true
     },
@@ -58,8 +66,13 @@
       "pass": true
     },
     {
-      "name": "uses_theme",
+      "name": "themed",
       "pass": true
+    },
+    {
+      "name": "distinct_look",
+      "pass": false,
+      "detail": "accent hue 31, 0% non-amber color"
     },
     {
       "name": "labelled_controls",
@@ -211,6 +224,9 @@
           "Spanish verbs"
         ],
         "excerpt": "Spanish verbs 60 seconds. Pick the right translation. Chain correct answers to build a combo. 0 Best score 0 Day streak 12 Verbs Start",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -220,7 +236,12 @@
         "canvases": 0,
         "svgShapes": 0,
         "gridCols": 3,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 31,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "375-dark",
@@ -246,6 +267,9 @@
           "Spanish verbs"
         ],
         "excerpt": "Spanish verbs 60 seconds. Pick the right translation. Chain correct answers to build a combo. 0 Best score 0 Day streak 12 Verbs Start",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -255,7 +279,12 @@
         "canvases": 0,
         "svgShapes": 0,
         "gridCols": 3,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 37,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "768-light",
@@ -281,6 +310,9 @@
           "Spanish verbs"
         ],
         "excerpt": "Spanish verbs 60 seconds. Pick the right translation. Chain correct answers to build a combo. 0 Best score 0 Day streak 12 Verbs Start",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -290,7 +322,12 @@
         "canvases": 0,
         "svgShapes": 0,
         "gridCols": 3,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 31,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "1280-light",
@@ -316,6 +353,9 @@
           "Spanish verbs"
         ],
         "excerpt": "Spanish verbs 60 seconds. Pick the right translation. Chain correct answers to build a combo. 0 Best score 0 Day streak 12 Verbs Start",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -325,7 +365,12 @@
         "canvases": 0,
         "svgShapes": 0,
         "gridCols": 3,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 31,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "1280-dark",
@@ -350,6 +395,9 @@
           "Spanish verbs"
         ],
         "excerpt": "Spanish verbs 60 seconds. Pick the right translation. Chain correct answers to build a combo. 0 Best score 0 Day streak 12 Verbs Start",
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -359,7 +407,12 @@
         "canvases": 0,
         "svgShapes": 0,
         "gridCols": 3,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 37,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       }
     ],
     "blocked": [],
@@ -368,7 +421,7 @@
     "interaction": {
       "tried": "control",
       "ok": false,
-      "framesPerSecond": 60,
+      "framesPerSecond": 30,
       "error": "no control sent an edit"
     },
     "probes": {
@@ -385,7 +438,7 @@
       },
       "large": {
         "pass": true,
-        "detail": "560 ms to load 400 rows"
+        "detail": "597 ms to load 400 rows"
       }
     },
     "dataAfter": {}

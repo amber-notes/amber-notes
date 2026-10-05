@@ -1,0 +1,583 @@
+{
+  "task": "game-from-vocabulary",
+  "rep": 1,
+  "model": "openai/gpt-5.5",
+  "round": "r13",
+  "skill": false,
+  "seconds": 145,
+  "score": 0.9642857142857143,
+  "passed": 27,
+  "total": 28,
+  "checks": [
+    {
+      "name": "has_page",
+      "pass": true
+    },
+    {
+      "name": "server_checks",
+      "pass": true
+    },
+    {
+      "name": "no_console_errors",
+      "pass": true
+    },
+    {
+      "name": "no_network",
+      "pass": true
+    },
+    {
+      "name": "fits_phone",
+      "pass": true
+    },
+    {
+      "name": "fits_desktop",
+      "pass": true
+    },
+    {
+      "name": "uses_wide_window",
+      "pass": true
+    },
+    {
+      "name": "phone_targets",
+      "pass": true
+    },
+    {
+      "name": "focused_screen",
+      "pass": true
+    },
+    {
+      "name": "visible_fields",
+      "pass": true
+    },
+    {
+      "name": "no_junk_text",
+      "pass": true
+    },
+    {
+      "name": "no_clipped_text",
+      "pass": true
+    },
+    {
+      "name": "dark_mode",
+      "pass": true
+    },
+    {
+      "name": "light_contrast",
+      "pass": true
+    },
+    {
+      "name": "themed",
+      "pass": true
+    },
+    {
+      "name": "distinct_look",
+      "pass": true
+    },
+    {
+      "name": "labelled_controls",
+      "pass": true
+    },
+    {
+      "name": "title_once",
+      "pass": true
+    },
+    {
+      "name": "says_app",
+      "pass": true
+    },
+    {
+      "name": "plays",
+      "pass": false,
+      "detail": "0 frames in the second after the first tap"
+    },
+    {
+      "name": "not_a_list",
+      "pass": true
+    },
+    {
+      "name": "probe_follows",
+      "pass": true
+    },
+    {
+      "name": "probe_escapes",
+      "pass": true
+    },
+    {
+      "name": "probe_empty",
+      "pass": true
+    },
+    {
+      "name": "probe_large",
+      "pass": true
+    },
+    {
+      "name": "note_unchanged",
+      "pass": true
+    },
+    {
+      "name": "keeps_score",
+      "pass": true
+    },
+    {
+      "name": "uses_the_words",
+      "pass": true
+    }
+  ],
+  "tool_calls": 20,
+  "tool_errors": 9,
+  "usage": {
+    "input": 32961,
+    "output": 8866,
+    "cacheRead": 252928,
+    "cacheWrite": 0,
+    "turns": 19,
+    "usd": 0.5572489999999999
+  },
+  "usd": 0.5572,
+  "page_bytes": 13210,
+  "data": null,
+  "answer": "Done — I turned your “Spanish verbs” note into a phone-friendly **Verb Quest** game on the note’s App side.\n\nIt uses your existing Spanish/English table to make quick multiple-choice rounds, with:\n- daily quest-style play\n- XP, best score, and streak tracking\n- Spanish → English / English → Spanish practice\n- a full verb vault pulled live from the note\n\nI also checked it for phone and desktop layouts, light/dark mode, contrast, and live note updates.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Spanish verbs OR verbos español Spanish",
+        "limit": "10"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Spanish verbs OR verbos español Spanish\",\n  \"results\": []\n}"
+    },
+    {
+      "name": "get_overview",
+      "args": {},
+      "error": false,
+      "result": "{\n  \"total_notes\": 1,\n  \"folders\": [],\n  \"pinned\": [],\n  \"recently_edited\": [\n    {\n      \"id\": \"4298b645-96d9-452a-a66e-49837a7d0664\",\n      \"title\": \"Spanish verbs\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T20:06:17.371Z\",\n      \"preview\": \"Spanish  English · hablar  to speak · comer  to eat · vivir  to live · tener  to have · hacer  to do, to make · ir  to go · poder  to be ab…\"\n    }\n  ],\n  \"recently_deleted\": 0\n}"
+    },
+    {
+      "name": "get_page_guide",
+      "args": {
+        "template": "flashcards"
+      },
+      "error": false,
+      "result": "{\n  \"template\": \"flashcards\",\n  \"description\": \"Flip cards one at a time, mark each Known or Again; cards you don't know yet come first, and what you know is remembered in the app's data. Which side shows first is an App Setting.\",\n  \"expects\": \"A table whose first two columns are the front and the back (e.g. Spanish | English, Question | Answer). Keeps amber.data.values.known, front text to the date it was known.\",\n  \"html\": \"<!doctype html>\\n<!-- template: flashcards | Flip cards one at a time, mark each Known or Again; cards you don't know yet come first, and what you know is remembered in … (8210 chars)"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "4298b645-96d9-452a-a66e-49837a7d0664",
+        "title": "",
+        "start_line": "1",
+        "end_line": "200",
+        "line_numbers": "true"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"4298b645-96d9-452a-a66e-49837a7d0664\",\n  \"title\": \"Spanish verbs\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T20:06:17.371Z\",\n  \"updated\": \"2026-10-05T20:06:17.371Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 17,\n    \"words\": 94\n  },\n  \"lines\": \"1-17\",\n  \"markdown\": \" 1│ Spanish verbs\\n 2│ \\n 3│ | Spanish | English |\\n 4│ | --- | --- |\\n 5│ | hablar | to speak |\\n 6│ | comer | to eat |\\n 7│ | vivir | to live |\\n 8│ | t… (872 chars)"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "4298b645-96d9-452a-a66e-49837a7d0664",
+        "title": "",
+        "version_id": "0"
+      },
+      "error": true,
+      "result": "No earlier page 0 for this note. Versions: none."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "4298b645-96d9-452a-a66e-49837a7d0664",
+        "title": "",
+        "version_id": "0"
+      },
+      "error": true,
+      "result": "No earlier page 0 for this note. Versions: none."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "4298b645-96d9-452a-a66e-49837a7d0664",
+        "title": "",
+        "version_id": "-1"
+      },
+      "error": true,
+      "result": "No earlier page -1 for this note. Versions: none."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "4298b645-96d9-452a-a66e-49837a7d0664",
+        "title": "",
+        "version_id": "0"
+      },
+      "error": true,
+      "result": "No earlier page 0 for this note. Versions: none."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "4298b645-96d9-452a-a66e-49837a7d0664",
+        "title": "",
+        "version_id": "0"
+      },
+      "error": true,
+      "result": "No earlier page 0 for this note. Versions: none."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "4298b645-96d9-452a-a66e-49837a7d0664",
+        "title": "",
+        "version_id": "0"
+      },
+      "error": true,
+      "result": "No earlier page 0 for this note. Versions: none."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "4298b645-96d9-452a-a66e-49837a7d0664",
+        "title": "Spanish verbs",
+        "version_id": "0"
+      },
+      "error": true,
+      "result": "No earlier page 0 for this note. Versions: none."
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "4298b645-96d9-452a-a66e-49837a7d0664",
+        "title": "Spanish verbs",
+        "version_id": "0"
+      },
+      "error": true,
+      "result": "No earlier page 0 for this note. Versions: none."
+    },
+    {
+      "name": "set_note_page",
+      "args": {
+        "id": "4298b645-96d9-452a-a66e-49837a7d0664",
+        "title": "Spanish verbs",
+        "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<meta name=\"amber-settings\" content='{\"settings\":[{\"key\":\"roundSize\",\"label\":\"Questions per quest\",\"type\":\"choice\",\"options\":[\"5\",\"8\",\"10\"],\"default\":\"5\"},{\"key\":\"direc… (12499 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"4298b645-96d9-452a-a66e-49837a7d0664\",\n  \"title\": \"Spanish verbs\",\n  \"page\": \"created\",\n  \"bytes\": 12509,\n  \"note\": \"The person sees it on the note's App side (call it the note's app, not a page). The note's text is unchanged. Next: run check_app and fix what it finds.\",\n  \"warnings\": [\n    \"Fixed colors without a dark variant (background: #177245, color: #fff, color: #fff): use --amber-* variables, or add @media (prefers-color-scheme: dark).\",\n    \"amber.update / amber.setData results aren't checked: show r.error when r.ok is false.\"\n  ],\n  \"fix_warnings\": \"Saved. Fix these with ed… (654 chars)"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "4298b645-96d9-452a-a66e-49837a7d0664",
+        "title": "Spanish verbs",
+        "version_id": "0"
+      },
+      "error": true,
+      "result": "No earlier page 0 for this note. Versions: none."
+    },
+    {
+      "name": "edit_note_page",
+      "args": {
+        "id": "4298b645-96d9-452a-a66e-49837a7d0664",
+        "title": "Spanish verbs",
+        "edits": "[{\"old_text\":\"*{box-sizing:border-box}body{margin:0;padding:calc(14px + env(safe-area-inset-top)) var(--amber-gutter) calc(88px + env(safe-area-inset-bottom));color:var(--amber-text);font-family:var(--amber-font);}.wrap\",\"new_text\":\":root{--quest-ok:#176f43;--quest-ok-text:#fff}@media (prefers-color… (1734 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"4298b645-96d9-452a-a66e-49837a7d0664\",\n  \"title\": \"Spanish verbs\",\n  \"page\": \"replaced\",\n  \"bytes\": 12846,\n  \"note\": \"The person sees it on the note's App side (call it the note's app, not a page). The note's text is unchanged. The previous version is kept (get_note_page lists it). Next: run check_app and fix what it finds.\"\n}"
+    },
+    {
+      "name": "check_app",
+      "args": {
+        "id": "4298b645-96d9-452a-a66e-49837a7d0664",
+        "title": "Spanish verbs"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"4298b645-96d9-452a-a66e-49837a7d0664\",\n    \"title\": \"Spanish verbs\"\n  },\n  \"ok\": false,\n  \"issues\": [\n    \"375-light: 2 text element(s) with contrast under 4.5:1 (\\\"¡\\\", \\\"Start quest\\\").\",\n    \"768-light: 2 text element(s) with contrast under 4.5:1 (\\\"¡\\\", \\\"Start quest\\\").\",\n    \"1280-light: 2 text element(s) with contrast under 4.5:1 (\\\"¡\\\", \\\"Start quest\\\").\",\n    \"Using the app's first control: no control sent an edit.\",\n    \"A new row in the note doesn't show in the app: a new row in the note doesn't show. Render from amber.note in amber.onChange.\"\n  ],\n  \"browser… (768 chars)"
+    },
+    {
+      "name": "edit_note_page",
+      "args": {
+        "id": "4298b645-96d9-452a-a66e-49837a7d0664",
+        "title": "Spanish verbs",
+        "edits": "[{\"old_text\":\":root{--quest-ok:#176f43;--quest-ok-text:#fff}@media (prefers-color-scheme:dark){:root{--quest-ok:#5dc991;--quest-ok-text:#102015}}\",\"new_text\":\":root{--quest-ok:#176f43;--quest-ok-text:#fff;--quest-primary:#4c1d95;--quest-primary-text:#fff}@media (prefers-color-scheme:dark){:root{--qu… (2554 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"4298b645-96d9-452a-a66e-49837a7d0664\",\n  \"title\": \"Spanish verbs\",\n  \"page\": \"replaced\",\n  \"bytes\": 13319,\n  \"note\": \"The person sees it on the note's App side (call it the note's app, not a page). The note's text is unchanged. The previous version is kept (get_note_page lists it). Next: run check_app and fix what it finds.\"\n}"
+    },
+    {
+      "name": "check_app",
+      "args": {
+        "id": "4298b645-96d9-452a-a66e-49837a7d0664",
+        "title": "Spanish verbs"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"4298b645-96d9-452a-a66e-49837a7d0664\",\n    \"title\": \"Spanish verbs\"\n  },\n  \"ok\": false,\n  \"issues\": [\n    \"A new row in the note doesn't show in the app: a new row in the note doesn't show. Render from amber.note in amber.onChange.\"\n  ],\n  \"browser_checked\": \"375 px light and dark, 768 and 1280 px light, over a sample note\",\n  \"next\": \"Fix these with edit_note_page (or set_note_page), then run check_app again.\"\n}"
+    },
+    {
+      "name": "edit_note_page",
+      "args": {
+        "id": "4298b645-96d9-452a-a66e-49837a7d0664",
+        "title": "Spanish verbs",
+        "edits": "[{\"old_text\":\"let side=`<section class=\\\"panel side\\\"><div class=\\\"row\\\"><strong>Verb vault</strong><span class=\\\"badge\\\">${all.length} verbs</span></div><div class=\\\"cards\\\">${all.slice(0,8).map(x=>`<div class=\\\"mini\\\"><b>${esc(x.sp)}</b><span>${esc(x.en)}</span></div>`).join(\\\"\\\")}${all.length>8?`… (718 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"4298b645-96d9-452a-a66e-49837a7d0664\",\n  \"title\": \"Spanish verbs\",\n  \"page\": \"replaced\",\n  \"bytes\": 13210,\n  \"note\": \"The person sees it on the note's App side (call it the note's app, not a page). The note's text is unchanged. The previous version is kept (get_note_page lists it). Next: run check_app and fix what it finds.\"\n}"
+    },
+    {
+      "name": "check_app",
+      "args": {
+        "id": "4298b645-96d9-452a-a66e-49837a7d0664",
+        "title": "Spanish verbs"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"4298b645-96d9-452a-a66e-49837a7d0664\",\n    \"title\": \"Spanish verbs\"\n  },\n  \"ok\": true,\n  \"issues\": [],\n  \"browser_checked\": \"375 px light and dark, 768 and 1280 px light, over a sample note\",\n  \"next\": \"Nothing to fix.\"\n}"
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "375-light",
+        "width": 375,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 458,
+        "shown": 10,
+        "sampled": 10,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r13/shots/game-from-vocabulary-or-gpt-375-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Spanish verbs"
+        ],
+        "excerpt": "¡ Verb Quest Spanish verbs A tiny daily dungeon: pick translations, earn XP, keep your streak. 0 day streak 0 total XP 0 best round Daily quest ready 5 questions READY? Enter the verb dungeon Start quest Shuffle practice Verb vault 12 verbs hablar to speak comer to eat vivir to live tener to have hacer to do, to make ir to go poder to be able to decir to say querer to want saber to know (facts) conocer to know (people, places) salir to leave, to go out",
+        "titleCount": 1,
+        "ghostFields": [],
+        "sections": 3,
+        "nav": false,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.8346666666666667,
+        "canvases": 0,
+        "svgShapes": 0,
+        "gridCols": 3,
+        "frames": 0,
+        "look": {
+          "accentHue": 264,
+          "nonAmberVivid": 0.03820662590820243,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "375-dark",
+        "width": 375,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 458,
+        "shown": 10,
+        "sampled": 10,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r13/shots/game-from-vocabulary-or-gpt-375-dark.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Spanish verbs"
+        ],
+        "excerpt": "¡ Verb Quest Spanish verbs A tiny daily dungeon: pick translations, earn XP, keep your streak. 0 day streak 0 total XP 0 best round Daily quest ready 5 questions READY? Enter the verb dungeon Start quest Shuffle practice Verb vault 12 verbs hablar to speak comer to eat vivir to live tener to have hacer to do, to make ir to go poder to be able to decir to say querer to want saber to know (facts) conocer to know (people, places) salir to leave, to go out",
+        "titleCount": 1,
+        "ghostFields": [],
+        "sections": 3,
+        "nav": false,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.8346666666666667,
+        "canvases": 0,
+        "svgShapes": 0,
+        "gridCols": 3,
+        "frames": 0,
+        "look": {
+          "accentHue": 253,
+          "nonAmberVivid": 0.03820662590820243,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "768-light",
+        "width": 768,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 458,
+        "shown": 10,
+        "sampled": 10,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r13/shots/game-from-vocabulary-or-gpt-768-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Spanish verbs"
+        ],
+        "excerpt": "¡ Verb Quest Spanish verbs A tiny daily dungeon: pick translations, earn XP, keep your streak. 0 day streak 0 total XP 0 best round Daily quest ready 5 questions READY? Enter the verb dungeon Start quest Shuffle practice Verb vault 12 verbs hablar to speak comer to eat vivir to live tener to have hacer to do, to make ir to go poder to be able to decir to say querer to want saber to know (facts) conocer to know (people, places) salir to leave, to go out",
+        "titleCount": 1,
+        "ghostFields": [],
+        "sections": 3,
+        "nav": false,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.8909505208333334,
+        "canvases": 0,
+        "svgShapes": 0,
+        "gridCols": 3,
+        "frames": 0,
+        "look": {
+          "accentHue": 264,
+          "nonAmberVivid": 0.04172398014798395,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 458,
+        "shown": 10,
+        "sampled": 10,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r13/shots/game-from-vocabulary-or-gpt-1280-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Spanish verbs"
+        ],
+        "excerpt": "¡ Verb Quest Spanish verbs A tiny daily dungeon: pick translations, earn XP, keep your streak. 0 day streak 0 total XP 0 best round Daily quest ready 5 questions READY? Enter the verb dungeon Start quest Shuffle practice Verb vault 12 verbs hablar to speak comer to eat vivir to live tener to have hacer to do, to make ir to go poder to be able to decir to say querer to want saber to know (facts) conocer to know (people, places) salir to leave, to go out",
+        "titleCount": 1,
+        "ghostFields": [],
+        "sections": 3,
+        "nav": false,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.8359375,
+        "canvases": 0,
+        "svgShapes": 0,
+        "gridCols": 3,
+        "frames": 0,
+        "look": {
+          "accentHue": 264,
+          "nonAmberVivid": 0.04577852966050738,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 458,
+        "shown": 10,
+        "sampled": 10,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Spanish verbs"
+        ],
+        "excerpt": "¡ Verb Quest Spanish verbs A tiny daily dungeon: pick translations, earn XP, keep your streak. 0 day streak 0 total XP 0 best round Daily quest ready 5 questions READY? Enter the verb dungeon Start quest Shuffle practice Verb vault 12 verbs hablar to speak comer to eat vivir to live tener to have hacer to do, to make ir to go poder to be able to decir to say querer to want saber to know (facts) conocer to know (people, places) salir to leave, to go out",
+        "titleCount": 1,
+        "ghostFields": [],
+        "sections": 3,
+        "nav": false,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.8359375,
+        "canvases": 0,
+        "svgShapes": 0,
+        "gridCols": 3,
+        "frames": 0,
+        "look": {
+          "accentHue": 253,
+          "nonAmberVivid": 0.04577852966050738,
+          "tintedBg": false
+        }
+      }
+    ],
+    "blocked": [],
+    "updates": [],
+    "setData": 1,
+    "interaction": {
+      "tried": "control",
+      "ok": true,
+      "framesPerSecond": 0
+    },
+    "probes": {
+      "follows": {
+        "pass": true,
+        "detail": "shown, but not as written"
+      },
+      "escapes": {
+        "pass": true
+      },
+      "empty": {
+        "pass": true,
+        "detail": "blank page"
+      },
+      "large": {
+        "pass": true,
+        "detail": "693 ms to load 400 rows"
+      }
+    },
+    "dataAfter": {}
+  }
+}

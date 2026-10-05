@@ -5,9 +5,9 @@
   "round": "r12",
   "skill": false,
   "seconds": 67,
-  "score": 1,
-  "passed": 21,
-  "total": 21,
+  "score": 0.9166666666666666,
+  "passed": 22,
+  "total": 24,
   "checks": [
     {
       "name": "has_page",
@@ -42,6 +42,15 @@
       "pass": true
     },
     {
+      "name": "focused_screen",
+      "pass": true
+    },
+    {
+      "name": "visible_fields",
+      "pass": false,
+      "detail": "loanN, rateN, yearsN"
+    },
+    {
       "name": "no_junk_text",
       "pass": true
     },
@@ -62,8 +71,13 @@
       "pass": true
     },
     {
-      "name": "uses_theme",
+      "name": "themed",
       "pass": true
+    },
+    {
+      "name": "distinct_look",
+      "pass": false,
+      "detail": "accent hue 28, 0% non-amber color"
     },
     {
       "name": "labelled_controls",
@@ -199,6 +213,13 @@
           "Mortgage"
         ],
         "excerpt": "Mortgage Reset to note Loan kr Interest rate % Years yr AMORTIZATION Straight Annuity Equal principal each month; interest shrinks, so payments fall. FIRST MONTHLY PAYMENT 21 600kr / month First month. Falls to 10 703 kr by the last month. TOTAL INTEREST 1 645 467 kr TOTAL PAID 4 845 467 kr WHERE THE MONEY GOES Principal 3 200 000 kr Interest 1 645 467 kr (34%) REMAINING BALANCE 0 10 20 Year by year",
+        "ghostFields": [
+          "loanN",
+          "rateN",
+          "yearsN"
+        ],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -208,7 +229,12 @@
         "canvases": 0,
         "svgShapes": 2,
         "gridCols": 2,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "375-dark",
@@ -234,6 +260,13 @@
           "Mortgage"
         ],
         "excerpt": "Mortgage Reset to note Loan kr Interest rate % Years yr AMORTIZATION Straight Annuity Equal principal each month; interest shrinks, so payments fall. FIRST MONTHLY PAYMENT 21 600kr / month First month. Falls to 10 703 kr by the last month. TOTAL INTEREST 1 645 467 kr TOTAL PAID 4 845 467 kr WHERE THE MONEY GOES Principal 3 200 000 kr Interest 1 645 467 kr (34%) REMAINING BALANCE 0 10 20 Year by year",
+        "ghostFields": [
+          "loanN",
+          "rateN",
+          "yearsN"
+        ],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -243,7 +276,12 @@
         "canvases": 0,
         "svgShapes": 2,
         "gridCols": 2,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 37,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "768-light",
@@ -269,6 +307,13 @@
           "Mortgage"
         ],
         "excerpt": "Mortgage Reset to note Loan kr Interest rate % Years yr AMORTIZATION Straight Annuity Equal principal each month; interest shrinks, so payments fall. FIRST MONTHLY PAYMENT 21 600kr / month First month. Falls to 10 703 kr by the last month. TOTAL INTEREST 1 645 467 kr TOTAL PAID 4 845 467 kr WHERE THE MONEY GOES Principal 3 200 000 kr Interest 1 645 467 kr (34%) REMAINING BALANCE 0 10 20 Year by year",
+        "ghostFields": [
+          "loanN",
+          "rateN",
+          "yearsN"
+        ],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -278,7 +323,12 @@
         "canvases": 1,
         "svgShapes": 2,
         "gridCols": 2,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "1280-light",
@@ -304,6 +354,13 @@
           "Mortgage"
         ],
         "excerpt": "Mortgage Reset to note Loan kr Interest rate % Years yr AMORTIZATION Straight Annuity Equal principal each month; interest shrinks, so payments fall. FIRST MONTHLY PAYMENT 21 600kr / month First month. Falls to 10 703 kr by the last month. TOTAL INTEREST 1 645 467 kr TOTAL PAID 4 845 467 kr WHERE THE MONEY GOES Principal 3 200 000 kr Interest 1 645 467 kr (34%) REMAINING BALANCE 0 10 20 Year by year",
+        "ghostFields": [
+          "loanN",
+          "rateN",
+          "yearsN"
+        ],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -313,7 +370,12 @@
         "canvases": 1,
         "svgShapes": 2,
         "gridCols": 2,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "1280-dark",
@@ -338,6 +400,13 @@
           "Mortgage"
         ],
         "excerpt": "Mortgage Reset to note Loan kr Interest rate % Years yr AMORTIZATION Straight Annuity Equal principal each month; interest shrinks, so payments fall. FIRST MONTHLY PAYMENT 21 600kr / month First month. Falls to 10 703 kr by the last month. TOTAL INTEREST 1 645 467 kr TOTAL PAID 4 845 467 kr WHERE THE MONEY GOES Principal 3 200 000 kr Interest 1 645 467 kr (34%) REMAINING BALANCE 0 10 20 Year by year",
+        "ghostFields": [
+          "loanN",
+          "rateN",
+          "yearsN"
+        ],
+        "sections": 0,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -347,7 +416,12 @@
         "canvases": 1,
         "svgShapes": 2,
         "gridCols": 2,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 37,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       }
     ],
     "blocked": [],

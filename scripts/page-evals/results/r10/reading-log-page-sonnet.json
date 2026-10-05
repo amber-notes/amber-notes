@@ -5,9 +5,9 @@
   "round": "r10",
   "skill": false,
   "seconds": 83,
-  "score": 1,
-  "passed": 22,
-  "total": 22,
+  "score": 0.9583333333333334,
+  "passed": 23,
+  "total": 24,
   "checks": [
     {
       "name": "has_page",
@@ -40,6 +40,15 @@
     {
       "name": "phone_targets",
       "pass": true
+    },
+    {
+      "name": "focused_screen",
+      "pass": true
+    },
+    {
+      "name": "visible_fields",
+      "pass": false,
+      "detail": "title, author, rating"
     },
     {
       "name": "no_junk_text",
@@ -235,6 +244,14 @@
           "Log a book"
         ],
         "excerpt": "Reading log 5 books 5 / 24 in 2026 4.2 average rating BOOKS PER MONTH 0 May 1 Jun 2 Jul 1 Aug 1 Sep 0 Oct READ The Dispossessed Ursula K. Le Guin ★★★★★ 2026-09-12 Klara and the Sun Kazuo Ishiguro ★★★☆☆ 2026-08-21 Tomorrow, and Tomorrow, and Tomorrow Gabrielle Zevin ★★★★☆ 2026-07-30 Piranesi Susanna Clarke ★★★★☆ 2026-07-02 The Overstory Richard Powers ★★★★★ 2026-06-14 LOG A BOOK Title Author Rating Finished Add book",
+        "ghostFields": [
+          "title",
+          "author",
+          "rating",
+          "date"
+        ],
+        "sections": 4,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -278,6 +295,14 @@
           "Log a book"
         ],
         "excerpt": "Reading log 5 books 5 / 24 in 2026 4.2 average rating BOOKS PER MONTH 0 May 1 Jun 2 Jul 1 Aug 1 Sep 0 Oct READ The Dispossessed Ursula K. Le Guin ★★★★★ 2026-09-12 Klara and the Sun Kazuo Ishiguro ★★★☆☆ 2026-08-21 Tomorrow, and Tomorrow, and Tomorrow Gabrielle Zevin ★★★★☆ 2026-07-30 Piranesi Susanna Clarke ★★★★☆ 2026-07-02 The Overstory Richard Powers ★★★★★ 2026-06-14 LOG A BOOK Title Author Rating Finished Add book",
+        "ghostFields": [
+          "title",
+          "author",
+          "rating",
+          "date"
+        ],
+        "sections": 4,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -321,6 +346,14 @@
           "Log a book"
         ],
         "excerpt": "Reading log 5 books 5 / 24 in 2026 4.2 average rating BOOKS PER MONTH 0 May 1 Jun 2 Jul 1 Aug 1 Sep 0 Oct READ The Dispossessed Ursula K. Le Guin ★★★★★ 2026-09-12 Klara and the Sun Kazuo Ishiguro ★★★☆☆ 2026-08-21 Tomorrow, and Tomorrow, and Tomorrow Gabrielle Zevin ★★★★☆ 2026-07-30 Piranesi Susanna Clarke ★★★★☆ 2026-07-02 The Overstory Richard Powers ★★★★★ 2026-06-14 LOG A BOOK Title Author Rating Finished Add book",
+        "ghostFields": [
+          "title",
+          "author",
+          "rating",
+          "date"
+        ],
+        "sections": 4,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -364,6 +397,14 @@
           "Log a book"
         ],
         "excerpt": "Reading log 5 books 5 / 24 in 2026 4.2 average rating BOOKS PER MONTH 0 May 1 Jun 2 Jul 1 Aug 1 Sep 0 Oct READ The Dispossessed Ursula K. Le Guin ★★★★★ 2026-09-12 Klara and the Sun Kazuo Ishiguro ★★★☆☆ 2026-08-21 Tomorrow, and Tomorrow, and Tomorrow Gabrielle Zevin ★★★★☆ 2026-07-30 Piranesi Susanna Clarke ★★★★☆ 2026-07-02 The Overstory Richard Powers ★★★★★ 2026-06-14 LOG A BOOK Title Author Rating Finished Add book",
+        "ghostFields": [
+          "title",
+          "author",
+          "rating",
+          "date"
+        ],
+        "sections": 4,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -406,6 +447,14 @@
           "Log a book"
         ],
         "excerpt": "Reading log 5 books 5 / 24 in 2026 4.2 average rating BOOKS PER MONTH 0 May 1 Jun 2 Jul 1 Aug 1 Sep 0 Oct READ The Dispossessed Ursula K. Le Guin ★★★★★ 2026-09-12 Klara and the Sun Kazuo Ishiguro ★★★☆☆ 2026-08-21 Tomorrow, and Tomorrow, and Tomorrow Gabrielle Zevin ★★★★☆ 2026-07-30 Piranesi Susanna Clarke ★★★★☆ 2026-07-02 The Overstory Richard Powers ★★★★★ 2026-06-14 LOG A BOOK Title Author Rating Finished Add book",
+        "ghostFields": [
+          "title",
+          "author",
+          "rating",
+          "date"
+        ],
+        "sections": 4,
+        "nav": false,
         "junk": [],
         "under44": [],
         "under44Count": 0,
@@ -444,7 +493,7 @@
       },
       "large": {
         "pass": true,
-        "detail": "612 ms to load 400 rows"
+        "detail": "604 ms to load 400 rows"
       }
     },
     "dataAfter": {}

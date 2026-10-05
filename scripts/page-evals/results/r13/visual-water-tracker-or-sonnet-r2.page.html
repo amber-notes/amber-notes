@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="amber-settings" content='{"settings":[{"key":"goal","label":"Daily goal (glasses)","type":"number","default":8}]}'>
+<style>
+:root{--w-bg:#e8f3fb;--w-card:#ffffff;--w-deep:#1769aa;--w-mid:#4aa3df;--w-pale:#bfe0f5;--w-ink:#0b2e4a;--w-sub:#3d5a73;--w-line:#9cc7e6;--w-glass:#1769aa}
+@media (prefers-color-scheme:dark){:root{--w-bg:#0b1e2e;--w-card:#12314a;--w-deep:#5db4ee;--w-mid:#3a8fcf;--w-pale:#1d4666;--w-ink:#e6f3fc;--w-sub:#a9c6dc;--w-line:#3b6e94;--w-glass:#8cc9f2}}
+*{box-sizing:border-box}
+.wrap{background:var(--w-bg);color:var(--w-ink);min-height:100vh}
+main{max-width:var(--amber-content-max);margin:0 auto;padding:20px var(--amber-gutter) 48px}
+h1{font-family:var(--amber-font-rounded);font-size:1.75rem;margin:0 0 16px;letter-spacing:-.02em}
+.grid{display:grid;gap:16px}
+@media (min-width:900px){.grid{grid-template-columns:minmax(300px,380px) 1fr;align-items:start}}
+.card{background:var(--w-card);border-radius:20px;padding:20px;border:1px solid var(--w-line)}
+.hero{text-align:center}
+.glass{width:min(220px,60%);height:auto;display:block;margin:0 auto}
+.big{font-family:var(--amber-font-rounded);font-size:3rem;font-weight:700;font-variant-numeric:tabular-nums;line-height:1;margin-top:8px}
+.big small{font-size:1.25rem;color:var(--w-sub);font-weight:600}
+.msg{color:var(--w-sub);margin:6px 0 16px;font-size:1rem}
+.btns{display:flex;gap:10px}
+button{font:inherit;font-weight:700;min-height:48px;border:0;border-radius:14px;cursor:pointer}
+.add{flex:1;background:var(--w-deep);color:var(--w-bg)}
+.sub{width:56px;background:var(--w-pale);color:var(--w-ink);border:1px solid var(--w-line)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.stat{background:var(--w-card);border:1px solid var(--w-line);border-radius:16px;padding:12px;text-align:center}
+.stat b{display:block;font-family:var(--amber-font-rounded);font-size:1.6rem;font-variant-numeric:tabular-nums}
+.stat span{font-size:.8rem;color:var(--w-sub)}
+h2{font-size:1rem;margin:0 0 14px;color:var(--w-sub);font-weight:600}
+.chart{position:relative;height:220px;display:flex;align-items:flex-end;gap:2px;padding-top:20px}
+.col{flex:1;min-width:0;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center}
+.col .v{font-size:.78rem;font-variant-numeric:tabular-nums;color:var(--w-sub)}
+.col .bar{width:100%;max-width:34px;border-radius:6px 6px 2px 2px;background:var(--w-pale);border:1.5px solid var(--w-mid);margin-top:2px}
+.col .bar.hit{background:var(--w-deep);border-color:var(--w-deep)}
+.col .d{font-size:.78rem;color:var(--w-sub);margin-top:4px;height:1rem}
+.col.today .d{color:var(--w-ink);font-weight:700}
+.plot{position:absolute;left:0;right:0;top:20px;bottom:21px;pointer-events:none}
+.goal{position:absolute;left:0;right:0;border-top:2px dashed var(--w-ink);opacity:.55}
+.goal span{position:absolute;right:0;top:-1.3rem;font-size:.78rem;background:var(--w-card);padding:0 4px;color:var(--w-ink)}
+.legend{display:flex;gap:16px;font-size:.8rem;color:var(--w-sub);margin-top:12px;flex-wrap:wrap}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.err{color:var(--amber-danger);min-height:1.2em;font-size:.9rem}
+.empty{color:var(--w-sub);text-align:center;padding:24px}
+@media (prefers-reduced-motion:no-preference){.fill{transition:y .5s ease,height .5s ease}.bar{transition:height .4s}}
+</style>
+</head>
+<body>
+<div class="wrap"><main id="app"></main></div>
+<script>
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+let error="";
+const num=s=>{const n=parseFloat(String(s).replace(/\s/g,"").replace(",","."));return isNaN(n)?0:n};
+function addDays(iso,n){const d=new Date(iso+"T12:00:00Z");d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)}
+function render(note){
+  const app=document.getElementById("app");
+  const goal=Math.max(1,num((amber.settings||{}).goal)||8);
+  const t=note.tables.find(t=>t.columns.some(c=>/^date$/i.test(c.name))&&t.columns.some(c=>/glass|cup|water/i.test(c.name)));
+  if(!t){app.innerHTML=`<h1>${esc(note.title)}</h1><div class="card empty">Add a table with Date and Glasses columns to see it here.</div>`;return}
+  const di=t.columns.findIndex(c=>/^date$/i.test(c.name)),gi=t.columns.findIndex(c=>/glass|cup|water/i.test(c.name));
+  const byDate={},rowOf={};
+  t.rows.forEach((r,i)=>{byDate[r[di]]=(byDate[r[di]]||0)+num(r[gi]);rowOf[r[di]]=i});
+  const today=note.today,cur=byDate[today]||0;
+  const days=[];for(let i=13;i>=0;i--){const d=addDays(today,-i);days.push({d,v:byDate[d]||0})}
+  const max=Math.max(goal,...days.map(x=>x.v))*1.1;
+  const hits=days.filter(x=>x.v>=goal).length;
+  const logged=days.filter(x=>x.v>0);
+  const avg=logged.length?(logged.reduce((a,x)=>a+x.v,0)/logged.length):0;
+  let streak=0;let k=cur>=goal?0:1;while((byDate[addDays(today,-k)]||0)>=goal){streak++;k++}
+  if(cur>=goal)streak=streak; // counts today when reached
+  const pct=Math.min(1,cur/goal);
+  const gTop=30,gH=140,gy=gTop+gH*(1-pct);
+  const left=goal-cur;
+  const msg=cur>=goal?(cur>goal?`Goal smashed, ${cur-goal} extra.`:"Goal reached. Nice work."):`${left} more ${left===1?"glass":"glasses"} to go.`;
+  const bars=days.map(x=>{
+    const h=x.v/max*100;
+    return `<div class="col${x.d===today?" today":""}" title="${esc(x.d)}: ${x.v}"><span class="v">${x.v||""}</span><div class="bar${x.v>=goal?" hit":""}" style="height:${h}%"></div><span class="d">${x.d.slice(8)}</span></div>`}).join("");
+  const gp=goal/max*100;
+  app.innerHTML=`<h1>${esc(note.title)}</h1>
+  <div class="grid">
+   <section class="card hero" aria-label="Today">
+    <svg class="glass" viewBox="0 0 160 200" role="img" aria-label="Glass ${Math.round(pct*100)} percent full: ${cur} of ${goal} glasses today">
+     <defs><clipPath id="cp"><path d="M26 30 H134 L124 176 Q123 186 113 186 H47 Q37 186 36 176 Z"/></clipPath></defs>
+     <g clip-path="url(#cp)"><rect width="160" height="200" fill="var(--w-pale)"/>
+      <rect class="fill" x="0" y="${gy}" width="160" height="${gTop+gH+60-gy}" fill="var(--w-mid)"/>
+      <rect class="fill" x="0" y="${gy}" width="160" height="4" fill="var(--w-deep)"/></g>
+     <path d="M26 30 H134 L124 176 Q123 186 113 186 H47 Q37 186 36 176 Z" fill="none" stroke="var(--w-glass)" stroke-width="5" stroke-linejoin="round"/>
+    </svg>
+    <div class="big">${cur}<small> / ${goal}</small></div>
+    <p class="msg">${esc(msg)}</p>
+    <div class="btns"><button class="sub" id="minus" aria-label="Remove one glass" ${cur<1?"disabled":""}>−1</button><button class="add" id="plus">+ Add a glass</button></div>
+    <div class="err" role="alert">${esc(error)}</div>
+   </section>
+   <div>
+    <div class="stats">
+     <div class="stat"><b>${hits}/14</b><span>days at goal</span></div>
+     <div class="stat"><b>${streak}</b><span>day streak</span></div>
+     <div class="stat"><b>${avg.toFixed(1)}</b><span>daily average</span></div>
+    </div>
+    <section class="card"><h2>Last 14 days</h2>
+     <div class="chart" role="img" aria-label="Bar chart of glasses per day for the last 14 days, goal ${goal}">
+      <div class="plot"><div class="goal" style="bottom:${gp}%"><span>goal ${goal}</span></div></div>${bars}</div>
+     <div class="legend"><span><i style="background:var(--w-deep)"></i>Goal met</span><span><i style="background:var(--w-pale);border:1.5px solid var(--w-mid)"></i>Below goal</span></div>
+    </section>
+   </div>
+  </div>`;
+  const setTo=async n=>{
+    const r=(today in rowOf)?await amber.update({op:"set_cell",table:t.index,row:rowOf[today],col:gi,value:String(Math.max(0,n))}):await amber.update({op:"append_row",table:t.index,values:{[t.columns[di].name]:today,[t.columns[gi].name]:String(Math.max(0,n))}});
+    error=r.ok?"":r.error;if(!r.ok)render(amber.note)};
+  document.getElementById("plus").onclick=()=>setTo(cur+1);
+  document.getElementById("minus").onclick=()=>setTo(cur-1);
+}
+amber.onChange(render);
+</script>
+</body>
+</html>
