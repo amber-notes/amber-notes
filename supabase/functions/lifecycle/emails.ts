@@ -33,13 +33,7 @@ export type Context = {
   connectTried: boolean;
   /// Which subject line and preview (0 or 1) when two are being compared.
   variant?: 0 | 1;
-  /// How Try this first lays out its prompts. The default is the chosen one; the others are kept
-  /// so the three can be compared in the previews.
-  promptStyle?: PromptStyle;
 };
-
-export type PromptStyle = "bubbles" | "list" | "featured";
-export const PROMPT_STYLE: PromptStyle = "featured";
 
 export type Email = { kind: Kind; subject: string; preview: string; html: string; text: string };
 
@@ -319,33 +313,12 @@ function shotHTML(c: Context, x: Shot): string {
 const pill = (href: string, label: string) =>
   `<a href="${esc(href)}" style="display:inline-block;padding:5px 11px;border:1px solid ${L.pillEdge};border-radius:14px;font-family:${SANS};font-size:13px;font-weight:600;line-height:16px;color:${L.text};text-decoration:none;"><span class="ink" style="color:${L.text};">${label}</span></a>`;
 
-/// Try this first's prompts, in one of three layouts (PromptStyle).
+/// Try this first's prompts, as sent in a chat: each in a bubble on the right, and where to send it
+/// under it (chosen over a numbered list and a featured prompt, 5 October 2026).
 function promptsHTML(prompts: { id: string; text: string }[], c: Context): string {
-  const style = c.promptStyle ?? PROMPT_STYLE;
-  const gpt = (x: { text: string }) => askChatGPT(x.text), cl = (x: { id: string }) => askClaude(c, x.id);
-  if (style === "bubbles") {
-    // As sent in a chat: the prompt in a bubble on the right, and where to send it under it.
-    return prompts.map((x) => `${table(' width="100%" style="margin:0 0 18px;"')}<tr><td align="right">
+  return prompts.map((x) => `${table(' width="100%" style="margin:0 0 18px;"')}<tr><td align="right">
 ${table(' style="max-width:92%;"')}<tr><td class="bubble" bgcolor="${L.bubble}" style="background:${L.bubble};border-radius:20px 20px 6px 20px;padding:11px 15px;font-family:${SANS};font-size:16px;line-height:1.45;mso-line-height-rule:exactly;color:${L.text};"><span class="ink" style="color:${L.text};">${esc(x.text)}</span></td></tr></table>
-</td></tr><tr><td align="right" style="padding-top:8px;">${pill(gpt(x), "Ask ChatGPT &rsaquo;")}&nbsp;&nbsp;${pill(cl(x), "Ask Claude &rsaquo;")}</td></tr></table>`).join("\n");
-  }
-  if (style === "list") {
-    // A numbered list of the prompts as quotes, with where to send each on the right.
-    return `${table(' width="100%" style="margin:0 0 14px;"')}` + prompts.map((x, i) => `<tr>
-<td class="sec" width="22" valign="top" style="width:22px;padding:14px 0;border-top:1px solid ${L.edge};font-family:${SANS};font-size:16px;line-height:1.45;color:${L.secondary};">${i + 1}.</td>
-<td valign="top" style="padding:14px 10px 14px 0;border-top:1px solid ${L.edge};font-family:${SANS};font-size:16px;line-height:1.45;mso-line-height-rule:exactly;"><span class="ink" style="color:${L.text};">${esc(x.text)}</span></td>
-<td width="92" valign="top" align="right" style="width:92px;padding:14px 0;border-top:1px solid ${L.edge};">${pill(gpt(x), "ChatGPT")}<div style="height:6px;line-height:6px;font-size:0;">&nbsp;</div>${pill(cl(x), "Claude")}</td>
-</tr>`).join("") + `</table>`;
-  }
-  // Featured: the first prompt large, with its two buttons; the others as short links under it.
-  const [first, ...rest] = prompts;
-  const button = (href: string, label: string, dark: boolean) => dark
-    ? `<a href="${esc(href)}" style="display:inline-block;padding:10px 16px;border-radius:12px;font-family:${SANS};font-size:15px;font-weight:600;line-height:20px;color:${L.ctaInk};text-decoration:none;"><span class="btn-ink" style="color:${L.ctaInk};">${label}</span></a>`
-    : `<a href="${esc(href)}" style="display:inline-block;padding:9px 15px;border:1px solid ${L.pillEdge};border-radius:12px;font-family:${SANS};font-size:15px;font-weight:600;line-height:20px;color:${L.text};text-decoration:none;"><span class="ink" style="color:${L.text};">${label}</span></a>`;
-  return `<p class="ink" style="margin:4px 0 14px;font-family:${DISPLAY};font-size:21px;line-height:1.35;font-weight:600;color:${L.text};">${esc(first.text)}</p>
-${table(' style="margin:0 0 24px;"')}<tr><td class="btn" bgcolor="${L.cta}" style="background:${L.cta};border-radius:12px;">${button(gpt(first), "Ask ChatGPT", true)}</td><td width="10" style="width:10px;">&nbsp;</td><td>${button(cl(first), "Ask Claude", false)}</td></tr></table>
-<p class="sec" style="margin:0 0 8px;font-family:${SANS};font-size:14px;line-height:1.4;color:${L.secondary};">Or try one of these:</p>
-` + rest.map((x) => `<p class="ink" style="margin:0 0 12px;font-family:${SANS};font-size:16px;line-height:1.45;color:${L.text};">${esc(x.text)} <span style="white-space:nowrap;"><a class="lnk" href="${esc(gpt(x))}" style="color:${L.accentText};font-weight:600;text-decoration:none;">ChatGPT</a><span class="sec" style="color:${L.secondary};"> · </span><a class="lnk" href="${esc(cl(x))}" style="color:${L.accentText};font-weight:600;text-decoration:none;">Claude</a></span></p>`).join("\n") + `<div style="height:8px;line-height:8px;font-size:0;">&nbsp;</div>`;
+</td></tr><tr><td align="right" style="padding-top:8px;">${pill(askChatGPT(x.text), "Ask ChatGPT &rsaquo;")}&nbsp;&nbsp;${pill(askClaude(c, x.id), "Ask Claude &rsaquo;")}</td></tr></table>`).join("\n");
 }
 
 function blockHTML(b: Block, c: Context): string {

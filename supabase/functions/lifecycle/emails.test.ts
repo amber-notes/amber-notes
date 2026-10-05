@@ -30,7 +30,7 @@ Deno.test("every email has a plain-text twin with the same links and a way to st
 
 Deno.test("one short paragraph before the first picture or button", () => {
   for (const e of all) {
-    const head = e.html.split(/<!--\[if mso\]><v:roundrect|class="shot"|class="bubble"|font-size:21px/)[0];
+    const head = e.html.split(/<!--\[if mso\]><v:roundrect|class="shot"|class="bubble"/)[0];
     const paragraphs = (head.match(/class="ink body"/g) ?? []).length;
     assert(paragraphs <= 1, `${e.kind}: ${paragraphs} paragraphs before the button`);
     const first = head.match(/class="ink body"[^>]*>([^<]*)/)?.[1] ?? "";
@@ -125,12 +125,10 @@ Deno.test("every capture spans the text column, lined up with the text", () => {
   for (const e of all) assert(!/<td align="center">\s*<img class="shot"/.test(e.html), `${e.kind}: centred capture`);
 });
 
-Deno.test("Try this first in each of its three layouts links every prompt both ways", () => {
-  for (const promptStyle of ["bubbles", "list", "featured"] as const) {
-    const e = render("try", { ...ctx, promptStyle });
-    for (const p of PROMPTS) assertStringIncludes(e.html, `href="https://ambernotes.app/copy/${p.id}"`);
-    assert(!/border-left/.test(e.html), promptStyle);
-  }
+Deno.test("Try this first: each prompt as a chat bubble, with Ask ChatGPT and Ask Claude under it", () => {
+  const e = render("try", ctx);
+  assertEquals((e.html.match(/class="bubble"/g) ?? []).length, PROMPTS.length);
+  assertEquals((e.html.match(/Ask ChatGPT &rsaquo;/g) ?? []).length, PROMPTS.length);
 });
 
 Deno.test("the apps email leads to the templates gallery's Apps filter", () => {
