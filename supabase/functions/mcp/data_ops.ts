@@ -688,3 +688,73 @@ export function fileRefs(value: unknown, out: string[] = []): string[] {
   }
   return out;
 }
+
+/** The records a question is about: a collection by name, or an array anywhere in values by a
+ *  dotted path ("values.log", "values.localStorage.workouts"); a JSON string there (how
+ *  localStorage keeps things) is parsed. */
+export function recordsAt(store: Store, from: string): Record<string, unknown>[] {
+  if (store.collections[from]) return store.collections[from];
+  let v = atPath(store, from.startsWith("values.") || from.startsWith("collections.") ? from : `values.${from}`);
+  if (typeof v === "string") { try { v = JSON.parse(v); } catch { /* not JSON */ } }
+  if (v && typeof v === "object" && !Array.isArray(v)) {
+    // An object of records keyed by id or date ({ "2026-10-01": { … } }): its entries, with the key.
+    v = Object.entries(v as Record<string, unknown>).map(([key, x]) => (x && typeof x === "object" && !Array.isArray(x) ? { key, ...(x as object) } : { key, value: x }));
+  }
+  if (!Array.isArray(v)) {
+    const arrays = [...Object.keys(store.collections).map((k) => `${k} (collection)`), ...Object.entries(store.values).filter(([, x]) => Array.isArray(x) || (typeof x === "string" && /^\s*\[/.test(x))).map(([k]) => `values.${k}`)];
+    throw new DataError(`Nothing to query at "${from}". Lists in this app's data: ${arrays.join(", ") || "none"} (get_page_data shows all of it).`);
+  }
+  return v.map((x) => (x && typeof x === "object" ? x as Record<string, unknown> : { value: x }));
+}
+
+const WEEKDAY_MS = 86400000;
+/** A record's group key: a field's value, or a date field bucketed by day, week (Monday) or month. */
+function bucket(r: Record<string, unknown>, by: string): string {
+  const [field, unit] = by.split(":");
+  const raw = atPath(r, field);
+  if (!unit) return raw === undefined || raw === null || raw === "" ? "(none)" : typeof raw === "object" ? JSON.stringify(raw) : String(raw);
+  const s = String(raw ?? "");
+  const d = new Date(/^\d{4}-\d{2}-\d{2}$/.test(s) ? s + "T00:00:00Z" : s);
+  if (isNaN(d.getTime())) return "(no date)";
+  if (unit === "day") return d.toISOString().slice(0, 10);
+  if (unit === "month") return d.toISOString().slice(0, 7);
+  if (unit === "year") return d.toISOString().slice(0, 4);
+  if (unit === "week") return new Date(d.getTime() - ((d.getUTCDay() + 6) % 7) * WEEKDAY_MS).toISOString().slice(0, 10);
+  throw new DataError(`group_by "${by}": the unit is day, week, month or year.`);
+}
+
+/**
+ * Answers a question over an app's JSON: filter (where), group (a field, or a date field by day,
+ * week, month or year) and sum / average / min / max of numeric fields, with counts.
+ */
+export function aggregate(records: Record<string, unknown>[], q: { where?: Record<string, unknown>; group_by?: string; sum?: string[]; avg?: string[]; min?: string[]; max?: string[]; sort?: "key" | "count" | string; limit?: number }) {
+  const where = q.where ?? {};
+  if (typeof where !== "object" || Array.isArray(where)) throw new DataError("where must be an object of field → value or test.");
+  const tests = Object.entries(where).map(([k, v]) => [k, condition(k, v)] as const);
+  const str = (x: unknown) => (x === null || x === undefined ? "" : typeof x === "object" ? JSON.stringify(x) : String(x));
+  const hits = records.filter((r) => tests.every(([k, t]) => t(str(atPath(r, k)))));
+  const num = (r: Record<string, unknown>, f: string) => { const v = atPath(r, f); const n = typeof v === "number" ? v : parseFloat(String(v ?? "").replace(/\s/g, "").replace(",", ".")); return Number.isFinite(n) ? n : null; };
+  const stats = (rows: Record<string, unknown>[]) => {
+    const out: Record<string, unknown> = { count: rows.length };
+    const pick = (fields: string[] | undefined, name: string, fn: (xs: number[]) => number) => {
+      if (!fields?.length) return;
+      out[name] = Object.fromEntries(fields.map((f) => { const xs = rows.map((r) => num(r, f)).filter((x): x is number => x !== null); return [f, xs.length ? Math.round(fn(xs) * 1000) / 1000 : null]; }));
+    };
+    pick(q.sum, "sum", (xs) => xs.reduce((a, b) => a + b, 0));
+    pick(q.avg, "avg", (xs) => xs.reduce((a, b) => a + b, 0) / xs.length);
+    pick(q.min, "min", (xs) => Math.min(...xs));
+    pick(q.max, "max", (xs) => Math.max(...xs));
+    return out;
+  };
+  const total = stats(hits);
+  if (!q.group_by) return { matched: hits.length, of: records.length, ...total };
+  const groups = new Map<string, Record<string, unknown>[]>();
+  for (const r of hits) { const k = bucket(r, q.group_by); groups.set(k, [...(groups.get(k) ?? []), r]); }
+  let list = [...groups].map(([key, rows]) => ({ [q.group_by!]: key, ...stats(rows) }));
+  const sort = q.sort ?? "key";
+  list = list.sort((a, b) => sort === "key" ? String(a[q.group_by!]).localeCompare(String(b[q.group_by!]))
+    : sort === "count" ? (b.count as number) - (a.count as number)
+    : (((b.sum as Record<string, number>)?.[sort] ?? 0) - ((a.sum as Record<string, number>)?.[sort] ?? 0)));
+  const limit = Math.min(Math.max(1, q.limit ?? 100), 500);
+  return { matched: hits.length, of: records.length, total, groups: list.slice(0, limit), ...(list.length > limit ? { more_groups: list.length - limit } : {}) };
+}

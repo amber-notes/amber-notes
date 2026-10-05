@@ -6,7 +6,7 @@
 // own lines, and anything that would drop a value (a column with values, several rows at once)
 // has to be asked for by name.
 
-import { addChecklistItems, addRows, atPath, changeStore, DataError, fileRefs, newFiles, placeFiles, queryRecords, recordsFromCsv, deleteRows, hasTable, newTable, parseDelimited, editColumns, pastedRows, updateChecklistItems, updateRows, type ChecklistChange, type ColumnChange, type RowInput } from "./data_ops.ts";
+import { addChecklistItems, addRows, aggregate, atPath, recordsAt, changeStore, DataError, fileRefs, newFiles, placeFiles, queryRecords, recordsFromCsv, deleteRows, hasTable, newTable, parseDelimited, editColumns, pastedRows, updateChecklistItems, updateRows, type ChecklistChange, type ColumnChange, type RowInput } from "./data_ops.ts";
 import { findTables, mimeOf, typeSpec } from "./notes.ts";
 import { PAGE_GUIDE } from "./page_guide.ts";
 import { noteForPage } from "./page_input.ts";
@@ -134,6 +134,28 @@ export const dataTools = [
         fields: { type: "array", items: { type: "string" }, description: "For collection: only these fields (and id)." },
         path: str("Dotted path to one part, e.g. \"values.goal\"."),
       },
+    },
+    annotations: read,
+  },
+  {
+    name: "query_app_data", title: "Ask about a note's app data",
+    description: "Answers questions over the JSON an app keeps (\"how was my week?\", \"what did I spend on food in September?\"): pick the records (a collection, or a list anywhere in values by path, like \"log\" or \"localStorage.workouts\"; a JSON string there is parsed), filter them with where, group them by a field or by a date field per day, week, month or year (\"date:week\"), and get counts with sum, avg, min and max of numeric fields. " +
+      "Use get_page_data first if you don't know the data's shape. Read-only.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ...noteRef,
+        from: str("A collection's name, or a dotted path in values to a list (\"log\", \"localStorage.workouts\")."),
+        where: { type: "object", description: "Field → value or test (equals, contains, starts_with, from, to, empty), e.g. { \"date\": { \"from\": \"2026-09-28\", \"to\": \"2026-10-04\" } }." },
+        group_by: str("A field, or a date field with :day, :week (weeks start Monday), :month or :year, e.g. \"date:week\"."),
+        sum: { type: "array", items: { type: "string" }, description: "Numeric fields to add up." },
+        avg: { type: "array", items: { type: "string" } },
+        min: { type: "array", items: { type: "string" } },
+        max: { type: "array", items: { type: "string" } },
+        sort: str("Groups by \"key\" (default), \"count\", or a summed field (largest first)."),
+        limit: { type: "integer", description: "Groups to return, default 100." },
+      },
+      required: ["from"],
     },
     annotations: read,
   },
@@ -304,6 +326,16 @@ export const dataHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
     const json = JSON.stringify(data);
     if (json.length <= 60_000) return { note, data };
     return { note, outline: outline(data), bytes: json.length, more: "Too big to show whole: read a collection with collection (and where/limit), or a part with path." };
+  },
+
+  async query_app_data(tx, a, c) {
+    const n = await findNote(tx, c, a, true);
+    const data = await pageDataOf(tx, c, n.id);
+    const list = (v: unknown) => (Array.isArray(v) ? v.map(String) : undefined);
+    return { app: { id: n.id, title: n.title }, from: a.from, ...attempt(() => aggregate(recordsAt(data, String(a.from ?? "").trim()), {
+      where: (a.where ?? {}) as Record<string, unknown>, group_by: typeof a.group_by === "string" && a.group_by.trim() ? a.group_by.trim() : undefined,
+      sum: list(a.sum), avg: list(a.avg), min: list(a.min), max: list(a.max), sort: typeof a.sort === "string" ? a.sort : undefined, limit: Number.isInteger(a.limit) ? Number(a.limit) : undefined,
+    })) };
   },
 
   async update_page_data(tx, a, c) {

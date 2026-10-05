@@ -79,8 +79,8 @@ export default function Settings() {
   );
 }
 `,
-    "/src/data.js": `// Defaults and small helpers. The note's tables come from useTable("Heading") and checklists from
-// useChecklist("Heading") (both from "amber"); the app's own state from useAppData.
+    "/src/data.js": `// Defaults and small helpers. The app's data is JSON in its own store: useStore(key, initial),
+// useCollection(name) and useSettings(DEFAULTS) from "amber" (localStorage works too, and syncs).
 export const DEFAULTS = { name: "" };
 `,
     "/src/styles.css": `/* The app's own look. Plain CSS wins over amber-base.css and amber-ui (they sit in cascade layers),

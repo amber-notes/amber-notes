@@ -208,6 +208,7 @@ Deno.test("no text of an encrypted account is stored or logged readably, whateve
     const added = await tool("update_page_data", { id: tracker, values: { more: CANARY }, add: { runs: [{ what: CANARY }] }, import: { collection: "runs", csv: `what,km\nimported ${CANARY},5` } });
     assertEquals(added.data.values, { note: CANARY, more: CANARY });
     assertEquals((await tool("get_page_data", { id: tracker, collection: "runs", where: { what: { contains: "imported" } } })).records[0].km, 5);
+    assertEquals((await tool("query_app_data", { id: tracker, from: "runs", where: { what: { contains: CANARY } }, sum: ["km"] })).sum.km, 5);
     assertStringIncludes((await tool("get_page_guide")).guide, "amber.onChange");
     // The app as a project of files: the canary in a source file, its compiled module and the README.
     await tool("create_app", { id: tracker, replace: true });
@@ -219,7 +220,7 @@ Deno.test("no text of an encrypted account is stored or logged readably, whateve
     assertStringIncludes((await tool("read_app_file", { id: tracker, path: "/src/Canary.jsx" })).content, CANARY);
     assertStringIncludes((await tool("list_app_files", { id: tracker })).readme, CANARY);
     // No renderer is configured here: check_app does what needs no browser, preview_app says so.
-    assert(Array.isArray((await tool("check_app", { id: tracker })).issues));
+    assert(Array.isArray((await tool("check_app", { id: tracker })).errors));
     assertEquals((await tool("preview_app", { id: tracker })).previews, "unavailable");
     // A bundled library needs no lookup (and no network here): resolve_package says so.
     assertStringIncludes(await tool("resolve_package", { name: "chart.js" }, false), "bundled");

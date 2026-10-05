@@ -6,7 +6,7 @@
 // by the evals. Edits run through page_input.ts, the TypeScript twin of Pane/Model/NotePage.swift.
 import { Buffer } from "node:buffer";
 import { webkit, type Browser, type Page } from "npm:playwright-core@1.63.0";
-import { applyPageOp, noteForPage } from "../../supabase/functions/mcp/page_input.ts";
+import { applyPageOp, importedFrom, noteForPage } from "../../supabase/functions/mcp/page_input.ts";
 import { mergePatch } from "../../supabase/functions/mcp/data_ops.ts";
 import { findTables } from "../../supabase/functions/mcp/notes.ts";
 import { AMBER_BASE_CSS } from "../../supabase/functions/mcp/amber-base.ts";
@@ -169,9 +169,12 @@ async function sri(bytes: Uint8Array, want: string): Promise<boolean> {
 // evals check pages handle that, not what the device returns.
 const bootstrap = (note: unknown, data: unknown) => `(() => {
   const listeners = [];
-  const ask = (msg) => window.__amberData(msg)
+  const post = (msg) => window.__amberData(msg)
     .then((r) => { if (r && r.data) amber.data = r.data; if (r) delete r.data; return r; })
     .catch((e) => ({ ok: false, error: String((e && e.message) || e) }));
+  // Inside amber.batch(), data changes and note edits are collected and sent as one each (as the app).
+  let batching = null;
+  const ask = (msg) => (batching && /^(store|collection)\./.test(msg.op)) ? (batching.data.push(msg), Promise.resolve({ ok: true })) : post(msg);
   const unavailable = (what) => () => Promise.resolve({ ok: false, error: what + " isn't available here." });
   // Silent: every live audio context's destination is a gain of 0 in front of the real one (Tone.js
   // and any wrapper reach it through the same getter), and media elements start muted.
@@ -191,7 +194,11 @@ const bootstrap = (note: unknown, data: unknown) => `(() => {
   window.requestAnimationFrame = (fn) => { window.__frames++; return raf(fn); };
   const amber = {
     note: ${JSON.stringify(note)},
-    update(op) { return window.__amberUpdate(op).catch((e) => ({ ok: false, error: String((e && e.message) || e) })); },
+    update(op) {
+      if (batching) { batching.notes.push(...(Array.isArray(op) ? op : [op])); return Promise.resolve({ ok: true }); }
+      return window.__amberUpdate(op).catch((e) => ({ ok: false, error: String((e && e.message) || e) }));
+    },
+    setSummary(text) { return post({ op: "note.summary", text: String(text == null ? "" : text) }); },
     onChange(fn) { listeners.push(fn); try { fn(amber.note, amber.data); } catch (e) { console.error(e); } return () => { const i = listeners.indexOf(fn); if (i >= 0) listeners.splice(i, 1); }; },
     insets: { top: 0, bottom: 0 },
     data: ${JSON.stringify(data)},
@@ -226,6 +233,44 @@ const bootstrap = (note: unknown, data: unknown) => `(() => {
     context: { embedded: !!window.__amberWidget, width: innerWidth, height: innerHeight },
     fetch: (url) => { window.__amberFetched && window.__amberFetched(String(url)); return Promise.resolve({ ok: false, error: "The person hasn't allowed this host yet." }); },
   };
+  amber.batch = async (fn) => {
+    if (batching) return fn();
+    batching = { notes: [], data: [] };
+    let b;
+    try { await fn(); } finally { b = batching; batching = null; }
+    const results = [];
+    if (b.data.length) results.push(await post(b.data.length === 1 ? b.data[0] : { op: "batch", ops: b.data }));
+    if (b.notes.length) results.push(await amber.update(b.notes.length === 1 ? b.notes[0] : b.notes));
+    return results.find((r) => r && r.ok === false) || { ok: true };
+  };
+  // localStorage is the app's own data (values.localStorage), sessionStorage lasts while the app is
+  // open, IndexedDB isn't there: as Pane/Views/NotePageView.swift.
+  const storage = (persist) => {
+    let map = Object.assign({}, persist ? ((amber.data.values || {}).localStorage || {}) : {});
+    let timer = null;
+    const flush = () => { timer = null; post({ op: "store.set", key: "localStorage", value: map }); };
+    const changed = () => { if (!persist) return; clearTimeout(timer); timer = setTimeout(flush, 250); };
+    if (persist) listeners.push((note, data) => { if (!timer && data && data.values) map = Object.assign({}, data.values.localStorage || {}); });
+    const api = {
+      getItem: (k) => Object.prototype.hasOwnProperty.call(map, k) ? map[k] : null,
+      setItem: (k, v) => { map[String(k)] = String(v); changed(); },
+      removeItem: (k) => { delete map[String(k)]; changed(); },
+      clear: () => { map = {}; changed(); },
+      key: (i) => Object.keys(map)[i] ?? null,
+      get length() { return Object.keys(map).length; },
+    };
+    return new Proxy(api, {
+      get: (t, k) => k in t ? t[k] : api.getItem(k),
+      set: (t, k, v) => { api.setItem(k, v); return true; },
+      deleteProperty: (t, k) => { api.removeItem(k); return true; },
+      has: (t, k) => k in t || Object.prototype.hasOwnProperty.call(map, k),
+      ownKeys: () => Object.keys(map),
+      getOwnPropertyDescriptor: (t, k) => Object.prototype.hasOwnProperty.call(map, k) ? { value: map[k], enumerable: true, configurable: true, writable: true } : undefined,
+    });
+  };
+  for (const [name, value] of [["localStorage", storage(true)], ["sessionStorage", storage(false)], ["indexedDB", undefined]]) {
+    try { Object.defineProperty(window, name, { value, configurable: true, writable: false }); } catch (e) {}
+  }
   Object.defineProperty(amber, "_receive", { value(note, data) {
     amber.note = note; if (data) amber.data = data;
     for (const fn of listeners) { try { fn(note, amber.data); } catch (e) { console.error(e); } }
@@ -236,6 +281,30 @@ const bootstrap = (note: unknown, data: unknown) => `(() => {
   sized(); addEventListener("resize", sized);
   { const w = () => { if (!document.documentElement) return addEventListener("DOMContentLoaded", w, { once: true }); document.documentElement.dataset.amberContext = window.__amberWidget ? "widget" : "full"; if (window.__amberWidget) document.documentElement.classList.add("amber-widget"); }; w(); }
 })();`;
+
+type DataDoc = { values: Record<string, unknown>; collections: Record<string, unknown> };
+/** Every list of records in an app's data, with a way to put a changed list back: collections,
+ *  arrays in values (one level down too), and arrays kept in localStorage as JSON strings. */
+function dataLists(doc: DataDoc): { items: Record<string, unknown>[]; with: (items: unknown[]) => DataDoc; withIn: (d: DataDoc, items: unknown[]) => DataDoc }[] {
+  const out: { items: Record<string, unknown>[]; with: (items: unknown[]) => DataDoc; withIn: (d: DataDoc, items: unknown[]) => DataDoc }[] = [];
+  const records = (v: unknown) => Array.isArray(v) && v.length > 0 && v.every((x) => x && typeof x === "object" && !Array.isArray(x)) ? v as Record<string, unknown>[] : null;
+  const add = (items: Record<string, unknown>[] | null, put: (d: DataDoc, items: unknown[]) => DataDoc) => { if (items) out.push({ items, withIn: put, with: (xs) => put(doc, xs) }); };
+  const clone = (d: DataDoc): DataDoc => JSON.parse(JSON.stringify(d));
+  for (const [k, v] of Object.entries(doc.collections ?? {})) add(records(v), (d, xs) => { const c = clone(d); c.collections[k] = xs; return c; });
+  for (const [k, v] of Object.entries(doc.values ?? {})) {
+    if (k === "imported") continue;
+    add(records(v), (d, xs) => { const c = clone(d); c.values[k] = xs; return c; });
+    if (v && typeof v === "object" && !Array.isArray(v)) {
+      for (const [k2, v2] of Object.entries(v as Record<string, unknown>)) {
+        let parsed: unknown = v2;
+        const asString = typeof v2 === "string";
+        if (asString) { try { parsed = JSON.parse(v2 as string); } catch { continue; } }
+        add(records(parsed), (d, xs) => { const c = clone(d); (c.values[k] as Record<string, unknown>)[k2] = asString ? JSON.stringify(xs) : xs; return c; });
+      }
+    }
+  }
+  return out;
+}
 
 /** The app's data ops (Pane/Model/NotePageData.swift apply). */
 function applyDataOp(doc: { values: Record<string, unknown>; collections: Record<string, Record<string, unknown>[]> }, m: Record<string, unknown>) {
@@ -261,6 +330,12 @@ function applyDataOp(doc: { values: Record<string, unknown>; collections: Record
       if (k < 0) throw new Error(`No record ${m.id} in ${m.name}.`);
       l.splice(k, 1); break;
     }
+    case "batch": {
+      let cur = d;
+      for (const op of (m.ops as Record<string, unknown>[]) ?? []) cur = applyDataOp(cur, op).d;
+      d.values = cur.values; d.collections = cur.collections; break;
+    }
+    case "note.summary": if (typeof m.text !== "string" || m.text.length > 300) throw new Error("setSummary takes a line of text, at most 300 characters."); break;
     default: throw new Error(`Unknown op ${m.op}.`);
   }
   if (new TextEncoder().encode(JSON.stringify(d)).length > 4 * 1048576) throw new Error("This app's data would be over 4 MB.");
@@ -329,7 +404,11 @@ export async function renderPage(html: string, markdown: string, data: unknown, 
 async function renderOnce(html: string, markdown: string, data: unknown, opts: RenderOptions): Promise<Render> {
   if (browser && !browser.isConnected()) browser = null;
   browser ??= await webkit.launch();
-  const empty = (x: unknown) => ({ values: {}, collections: {}, ...(x as object ?? {}) });
+  // As the app: a note's first app gets what the note held in values.imported, once.
+  const empty = (x: unknown) => {
+    const d = { values: {}, collections: {}, ...(x as object ?? {}) } as { values: Record<string, unknown>; collections: Record<string, unknown> };
+    return d.values.imported === undefined ? { ...d, values: { ...d.values, imported: importedFrom(markdown) } } : d;
+  };
   let md = markdown, store: unknown = empty(data);
   const updates: Render["updates"] = [];
   const blocked: string[] = [];
@@ -602,45 +681,65 @@ async function renderOnce(html: string, markdown: string, data: unknown, opts: R
   }
   if (viewUpdates) interaction.error = `${viewUpdates} edit(s) were sent just by opening the page`;
 
-  // Robustness: the same page over changed notes. A new row with markup in it (does the page
-  // follow the note, and escape it?), every row removed, and 400 rows.
+  // Robustness: the same app over changed data. A new record with markup in it (does the app follow
+  // its data, and escape it?), everything removed, and 400 records. Apps keep their data as JSON in
+  // their store (a collection, a list in values, or a list kept in localStorage as a string); older
+  // apps read the note's tables, and are probed through the note instead.
   const probes: Render["probes"] = {};
   if (opts.probes === false) return { views, blocked: [...new Set(blocked)], updates, setData, interaction, probes, markdownAfter: markdown, dataAfter: data };
-  const tables = findTables(markdown);
-  const main = tables.slice().sort((a, b) => b.rows.length - a.rows.length)[0];
-  const lines = markdown.split("\n");
-  const rowAt = (t: typeof main) => { const out: number[] = []; for (let k = t.start; k <= t.end; k++) if (/^\s*\|/.test(lines[k]) && !/^[\s|:-]+$/.test(lines[k])) out.push(k); return out.slice(1); };
   const PROBE = 'Zq <b>probe</b> & "x"';
-  const textCol = main ? main.columns.findIndex((c, k) => c.type.kind === "text" && !/date|day/i.test(c.name) && main.rows.some((r) => r[k] && !/^[\d\s.,✓✔xX·-]+$/.test(r[k]))) : -1;
-  const measure = async (body: string) => {
-    md = body; store = empty(data);
+  const measure = async (body: string, d: unknown = data) => {
+    md = body; store = empty(d);
     const t0 = performance.now();
-    const { page, errors } = await open(375, "light");
+    const { page, errors } = await open(390, "light");
     const ms = performance.now() - t0;
     const r = await page.evaluate((probe: string) => ({ text: document.body?.innerText ?? "", injected: [...document.querySelectorAll("b")].some((b) => b.textContent === "probe" && (b.parentElement?.textContent ?? "").includes("Zq")) }), PROBE).catch(() => ({ text: "", injected: false }));
     await page.context().close();
     return { errors, ms, ...r };
   };
-  if (main && textCol >= 0 && main.rows.length) {
-    const cells = [...main.rows[main.rows.length - 1]];
+  const follow = (r: Awaited<ReturnType<typeof measure>>, what: string) => {
+    probes.follows = { pass: r.text.includes(PROBE) && r.errors.length === 0, detail: r.errors[0] ?? (r.injected ? "markup from its data ran as HTML" : r.text.includes("Zq") ? "shown, but not as written" : `a new ${what} doesn't show`) };
+    probes.escapes = { pass: !r.injected && r.errors.length === 0, detail: r.injected ? "markup from its data ran as HTML" : r.errors[0] };
+  };
+  const lists = dataLists(empty(data));
+  const main = lists.sort((a, b) => b.items.length - a.items.length)[0];
+  if (main && main.items.length) {
+    const last = main.items[main.items.length - 1];
+    const key = Object.keys(last).find((k) => typeof last[k] === "string" && !/^(id|created|updated|date|day|time|at)$/i.test(k) && !/^\d{4}-\d{2}-\d{2}/.test(last[k] as string) && !/^[\d\s.,:-]+$/.test(last[k] as string));
+    if (key) {
+      const probe = { ...last, [key]: PROBE, ...(typeof last.id === "string" ? { id: "probe-1" } : {}) };
+      follow(await measure(markdown, main.with([...main.items, probe])), "record in the app's data");
+    }
+    const r = await measure(markdown, lists.reduce((d, l) => l.withIn(d, []), empty(data)));
+    probes.empty = { pass: r.errors.length === 0 && r.text.trim().length > 0, detail: r.errors[0] ?? "blank app" };
+    const many: Record<string, unknown>[] = [];
+    for (let k = 0; many.length < 400; k++) { const x = main.items[k % main.items.length]; many.push(typeof x.id === "string" ? { ...x, id: `${x.id}-${k}` } : x); }
+    const big = await measure(markdown, main.with(many));
+    probes.large = { pass: big.errors.length === 0 && big.ms < 3000, detail: big.errors[0] ?? `${Math.round(big.ms)} ms to load 400 records` };
+    return { views, blocked: [...new Set(blocked)], updates, setData, interaction, probes, markdownAfter: markdown, dataAfter: data };
+  }
+  const tables = findTables(markdown);
+  const mainTable = tables.slice().sort((a, b) => b.rows.length - a.rows.length)[0];
+  const lines = markdown.split("\n");
+  const rowAt = (t: typeof mainTable) => { const out: number[] = []; for (let k = t.start; k <= t.end; k++) if (/^\s*\|/.test(lines[k]) && !/^[\s|:-]+$/.test(lines[k])) out.push(k); return out.slice(1); };
+  const textCol = mainTable ? mainTable.columns.findIndex((c, k) => c.type.kind === "text" && !/date|day/i.test(c.name) && mainTable.rows.some((r) => r[k] && !/^[\d\s.,✓✔xX·-]+$/.test(r[k]))) : -1;
+  if (mainTable && textCol >= 0 && mainTable.rows.length) {
+    const cells = [...mainTable.rows[mainTable.rows.length - 1]];
     cells[textCol] = PROBE;
-    const at = rowAt(main);
+    const at = rowAt(mainTable);
     const l2 = [...lines];
     l2.splice(at[at.length - 1] + 1, 0, "| " + cells.map((c) => c.replace(/\|/g, "\\|")).join(" | ") + " |");
-    const r = await measure(l2.join("\n"));
-    probes.follows = { pass: r.text.includes(PROBE) && r.errors.length === 0, detail: r.errors[0] ?? (r.injected ? "markup from the note ran as HTML" : r.text.includes("Zq") ? "shown, but not as written" : "a new row in the note doesn't show") };
-    probes.escapes = { pass: !r.injected && r.errors.length === 0, detail: r.injected ? "markup from the note ran as HTML" : r.errors[0] };
+    follow(await measure(l2.join("\n")), "row in the note");
   }
   if (tables.length) {
     const drop = new Set(tables.flatMap((t) => rowAt(t)));
-    const empty = lines.filter((l, k) => !drop.has(k) && !/^\s*[-*+]\s+\[[ xX]\]/.test(l)).join("\n");
-    const r = await measure(empty);
+    const r = await measure(lines.filter((l, k) => !drop.has(k) && !/^\s*[-*+]\s+\[[ xX]\]/.test(l)).join("\n"));
     probes.empty = { pass: r.errors.length === 0 && r.text.trim().length > 0, detail: r.errors[0] ?? "blank page" };
   }
-  if (main && main.rows.length) {
-    const at = rowAt(main);
+  if (mainTable && mainTable.rows.length) {
+    const at = rowAt(mainTable);
     const extra: string[] = [];
-    for (let k = 0; extra.length + main.rows.length < 400; k++) extra.push(lines[at[k % at.length]]);
+    for (let k = 0; extra.length + mainTable.rows.length < 400; k++) extra.push(lines[at[k % at.length]]);
     const l2 = [...lines];
     l2.splice(at[at.length - 1] + 1, 0, ...extra);
     const r = await measure(l2.join("\n"));

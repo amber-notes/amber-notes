@@ -54,7 +54,7 @@ export function staticReport(html: string, body: string, keys: KeyInfo[]): { err
     // A project of files: its own checks, and the network report over all of its code.
     const declared = declaredHosts(p.files["/index.html"] ?? "");
     const all = Object.entries(p.files).filter(([f]) => !f.endsWith(".md")).map(([, t]) => t).join("\n").replace(/(?<![\w.])fetch\s*\(/g, "amber.fetch(");
-    return { errors: [...projectProblems(p), ...sourceProblems(p, (h) => hostDeclared(declared, h))], warnings: [...brokenImports(p), ...styleWarnings(p), ...networkReport(all, keys)] };
+    return { errors: [...projectProblems(p), ...sourceProblems(p, (h) => hostDeclared(declared, h)), ...brokenImports(p)], warnings: [...styleWarnings(p), ...networkReport(all, keys)] };
   }
   return { errors: pageProblems(html), warnings: [...pageWarnings(html, body), ...networkReport(html, keys), ...libraryReport(html)] };
 }
@@ -85,35 +85,46 @@ export function titleReport(r: Rendered, title: string): string[] {
   return out;
 }
 
-/** Findings from the browser, worded as fixes. */
-export function renderedReport(r: Rendered): string[] {
-  const out: string[] = [];
+/**
+ * What the browser saw, in two kinds. errors: the app is broken for the person (a script error,
+ * sideways scrolling, text you can't read, a blank screen, markup from its data running, something
+ * it tried to load). notes: information for the AI's own judgment (small targets, faint text, a
+ * crowded first screen, an empty wide window…), never a reason to call the app unfinished.
+ */
+export function renderedFindings(r: Rendered): { errors: string[]; notes: string[] } {
+  const errors: string[] = [], notes: string[] = [];
   for (const v of r.views) {
-    for (const e of [...new Set(v.errors)].slice(0, 3)) out.push(`${v.name}: script error: ${e}`);
-    if (v.overflowPx > 1) out.push(`${v.name}: wider than the screen by ${v.overflowPx} px (scrolls sideways). Use max-width/percentages, wrap or let wide tables scroll in their own box.`);
-    if (v.width < 600 && (v.sections ?? 0) > 5) out.push(`${v.name}: the first screen stacks ${v.sections} separate sections. Give the app one focus per screen: open on what the person does most, and move the rest to tabs, pushed screens or sheets.`);
-    if (v.ghostFields?.length) out.push(`${v.name}: ${v.ghostFields.length} field(s) don't look like fields (missing a border or a solid fill): ${v.ghostFields.slice(0, 3).join(", ")}. Every input, select and textarea needs a solid fill and a 1px border in both themes (var(--amber-field), var(--amber-field-border)); don't set border: 0 or a transparent background.`);
-    if (v.junk?.length) out.push(`${v.name}: shows ${v.junk.map((j) => `"${j}"`).join(", ")}: a value used before it was ready (amber.store.get returns a promise; read amber.data.values for sync use) or a missing field.`);
-    if (v.textLength < 10) out.push(`${v.name}: shows almost no text (blank page?).`);
-    if (v.contrast < 4.5) out.push(`${v.name}: body text contrast is ${v.contrast.toFixed(1)}:1 (needs 4.5:1). Use --amber-text on the app's background.`);
-    if (v.scheme === "dark" && v.bgLuminance > 0.4) out.push(`${v.name}: the background stays light in dark mode. Use the --amber-* variables, which switch.`);
-    if ((v.smallTextCount ?? 0) > 0) out.push(`${v.name}: ${v.smallTextCount} text element(s) under 12 px (${(v.smallText ?? []).slice(0, 3).map((t) => `"${t}"`).join(", ")}).`);
-    if ((v.faintCount ?? 0) > 0) out.push(`${v.name}: ${v.faintCount} text element(s) with contrast under 4.5:1 (${(v.faintText ?? []).slice(0, 3).map((t) => `"${t}"`).join(", ")}).`);
-    if (v.unnamedControls.length) out.push(`${v.name}: ${v.unnamedControls.length} control(s) without a label VoiceOver can read: ${v.unnamedControls.slice(0, 2).join(" ")}`);
-    if (v.width < 600 && (v.under44Count ?? 0) > 0) out.push(`${v.name}: ${v.under44Count} control(s) smaller than 44 pt to tap on iPhone (${(v.under44 ?? []).slice(0, 3).map((t) => `"${t}"`).join(", ")}).`);
-    if ((v.clippedCount ?? 0) > 0) out.push(`${v.name}: ${v.clippedCount} text element(s) cut off by their box (${(v.clipped ?? []).slice(0, 3).map((t) => `"${t}"`).join(", ")}). Let text wrap, or shorten it with an ellipsis on purpose.`);
-    if (v.width >= 1100 && v.usedWidth !== undefined && v.usedWidth > 0 && v.usedWidth < 0.45) out.push(`${v.name}: the content uses ${Math.round(v.usedWidth * 100)}% of the window's width, a phone column floating in a wide window. Use the room (more columns, a bigger view, side by side) from about 900 px.`);
+    for (const e of [...new Set(v.errors)].slice(0, 3)) errors.push(`${v.name}: script error: ${e}`);
+    if (v.overflowPx > 1) errors.push(`${v.name}: wider than the screen by ${v.overflowPx} px (content is cut off at the right edge).`);
+    if (v.textLength < 10) errors.push(`${v.name}: shows almost no text (a blank screen?).`);
+    if (v.contrast < 3) errors.push(`${v.name}: body text is hard to see (contrast ${v.contrast.toFixed(1)}:1 against its background${v.scheme === "dark" ? ", in dark mode" : ""}).`);
+    else if (v.contrast < 4.5) notes.push(`${v.name}: body text contrast is ${v.contrast.toFixed(1)}:1 (4.5:1 reads well).`);
+    if (v.junk?.length) notes.push(`${v.name}: shows ${v.junk.map((j) => `"${j}"`).join(", ")}, probably a value used before it was ready or a missing field.`);
+    if ((v.faintCount ?? 0) > 0) notes.push(`${v.name}: ${v.faintCount} text element(s) with contrast under 4.5:1 (${(v.faintText ?? []).slice(0, 3).map((t) => `"${t}"`).join(", ")}).`);
+    if ((v.smallTextCount ?? 0) > 0) notes.push(`${v.name}: ${v.smallTextCount} text element(s) under 12 px (${(v.smallText ?? []).slice(0, 3).map((t) => `"${t}"`).join(", ")}).`);
+    if ((v.clippedCount ?? 0) > 0) notes.push(`${v.name}: ${v.clippedCount} text element(s) cut off by their box (${(v.clipped ?? []).slice(0, 3).map((t) => `"${t}"`).join(", ")}).`);
+    if (v.ghostFields?.length) notes.push(`${v.name}: ${v.ghostFields.length} field(s) without a visible border or fill: ${v.ghostFields.slice(0, 3).join(", ")}.`);
+    if (v.unnamedControls.length) notes.push(`${v.name}: ${v.unnamedControls.length} control(s) without a label VoiceOver can read: ${v.unnamedControls.slice(0, 2).join(" ")}`);
+    if (v.width < 600 && (v.under44Count ?? 0) > 0) notes.push(`${v.name}: ${v.under44Count} control(s) smaller than 44 pt to tap (${(v.under44 ?? []).slice(0, 3).map((t) => `"${t}"`).join(", ")}).`);
+    if (v.width < 600 && (v.sections ?? 0) > 5) notes.push(`${v.name}: the first screen stacks ${v.sections} separate sections.`);
+    if (v.width >= 1100 && v.usedWidth !== undefined && v.usedWidth > 0 && v.usedWidth < 0.45) notes.push(`${v.name}: the content uses ${Math.round(v.usedWidth * 100)}% of the window's width.`);
   }
-  if (r.interaction.tried !== "none" && r.interaction.ok === false) out.push(`Using the app's first control: ${r.interaction.error ?? "no edit reached the note"}.`);
+  if (r.interaction.tried !== "none" && r.interaction.ok === false) (/error/i.test(r.interaction.error ?? "") ? errors : notes).push(`Using the app's first control: ${r.interaction.error ?? "nothing changed"}.`);
   for (const [k, p] of Object.entries(r.probes ?? {})) {
     if (p.pass) continue;
-    if (k === "escapes") out.push("A note value with < and & in it ran as HTML: escape values before putting them in innerHTML.");
-    if (k === "empty") out.push(`With an empty table or checklist the app breaks: ${p.detail ?? ""}. Show an empty state instead.`);
-    if (k === "large") out.push(`With 400 rows: ${p.detail ?? "it fails"}.`);
-    if (k === "follows") out.push(`A new row in the note doesn't show in the app: ${p.detail ?? ""}. Render from amber.note in amber.onChange.`);
+    if (k === "escapes") errors.push("A value with < and & in it ran as HTML: the app puts its data into the page unescaped.");
+    if (k === "empty") errors.push(`With no data the app breaks: ${p.detail ?? ""}.`);
+    if (k === "large") (/ms to load/.test(p.detail ?? "") ? notes : errors).push(`With 400 records: ${p.detail ?? "it fails"}.`);
+    if (k === "follows") notes.push(`A new record in its data didn't show on the first screen: ${p.detail ?? ""}.`);
   }
-  if (r.blocked.length) out.push(`The app tried to load ${r.blocked.slice(0, 2).join(", ")}: nothing loads in the app; inline it or use amber.fetch for a declared host.`);
-  return [...new Set(out)];
+  if (r.blocked.length) errors.push(`The app tried to load ${r.blocked.slice(0, 2).join(", ")}: nothing outside the app loads.`);
+  return { errors: [...new Set(errors)], notes: [...new Set(notes)] };
+}
+
+/** Everything the browser saw, errors first (for callers that want one list). */
+export function renderedReport(r: Rendered): string[] {
+  const f = renderedFindings(r);
+  return [...f.errors, ...f.notes];
 }
 
 /** Calls the render service, or says why it can't. */

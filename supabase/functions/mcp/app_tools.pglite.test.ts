@@ -73,15 +73,17 @@ Deno.test("check_app and preview_app render a sample through the render service"
     const bad = `<!doctype html><html><body style="background:#fff"><main id="m" style="width:900px"></main><input placeholder="amount"><script>amber.onChange((n) => { m.innerHTML = n.tables[0].rows.map((r) => "<p style='font-size:9px'>" + r[1] + "</p>").join(""); setTimeout(() => nope.x); })</script></body></html>`;
     await tool(pg, a, "set_note_page", { id, html: bad });
     const r = await tool(pg, a, "check_app", { id }, false);
-    const all = r.issues.join("\n");
+    const all = [...r.errors, ...r.notes].join("\n");
     assertEquals(r.ok, false);
-    for (const want of ["script error", "wider than the screen", "under 12 px", "without a label", "--amber-*", "ran as HTML"]) assertStringIncludes(all, want);
+    // Breakage is an error; the rest is information.
+    for (const want of ["script error", "wider than the screen", "ran as HTML"]) assertStringIncludes(r.errors.join("\n"), want);
+    for (const want of ["under 12 px", "without a label", "--amber-*"]) assertStringIncludes(r.notes.join("\n"), want);
     // The render service got a sample, not the note.
     assert(!all.includes("Hotel Avenida") && !all.includes("Pastéis"));
 
     const good = `<!doctype html><html lang="en"><body><main id="m" style="max-width:var(--amber-content-max);margin:0 auto;padding:16px var(--amber-gutter)"></main><script>const esc=(s)=>String(s).replace(/[&<>"']/g,(c)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);amber.onChange((n) => { const t = n.tables[0]; m.innerHTML = "<h1>" + esc(n.title) + "</h1>" + (t ? t.rows.map((r) => "<p style='background:var(--amber-surface);color:var(--amber-text)'>" + esc(r[1]) + "</p>").join("") : "<p>No rows yet.</p>"); })</script></body></html>`;
     await tool(pg, a, "set_note_page", { id, html: good });
-    assertEquals((await tool(pg, a, "check_app", { id }, false)).issues, []);
+    assertEquals((await tool(pg, a, "check_app", { id }, false)).errors, []);
     const p = await tool(pg, a, "preview_app", { id, widths: [390], themes: ["light", "dark"] }, false);
     assert(p instanceof Content);
     const images = p.content.filter((b: Record<string, unknown>) => b.type === "image");

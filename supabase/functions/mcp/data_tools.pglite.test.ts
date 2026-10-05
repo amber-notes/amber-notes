@@ -121,3 +121,20 @@ Deno.test("the guide and templates come from get_page_guide", async () => {
   assertStringIncludes((await tool(pg, a, "get_page_guide", {}, false)).guide, "amber.onChange");
   assertStringIncludes((await tool(pg, a, "get_page_guide", { template: "budget" }, false)).html, "amber.update");
 });
+
+Deno.test("query_app_data answers over an app's JSON: collections, lists in values, localStorage strings", async () => {
+  const pg = await schemaDB();
+  const a = await account(pg);
+  const id = await note(pg, a, "Training\n");
+  const runs = [
+    { date: "2026-09-29", kind: "Run", km: 5 }, { date: "2026-10-01", kind: "Run", km: 6.5 }, { date: "2026-10-02", kind: "Bike", km: 20 },
+    { date: "2026-10-06", kind: "Run", km: "7,5" },
+  ];
+  await tool(pg, a, "update_page_data", { id, add: { sessions: runs }, values: { log: runs, localStorage: { workouts: JSON.stringify(runs) } } });
+  const week = await tool(pg, a, "query_app_data", { id, from: "sessions", group_by: "date:week", sum: ["km"] }, false);
+  assertEquals(week.groups.map((g: any) => [g["date:week"], g.count, g.sum.km]), [["2026-09-28", 3, 31.5], ["2026-10-05", 1, 7.5]]);
+  const runsOnly = await tool(pg, a, "query_app_data", { id, from: "localStorage.workouts", where: { kind: "run", date: { from: "2026-09-28", to: "2026-10-04" } }, avg: ["km"], max: ["km"] }, false);
+  assertEquals([runsOnly.matched, runsOnly.avg.km, runsOnly.max.km], [2, 5.75, 6.5]);
+  assertEquals((await tool(pg, a, "query_app_data", { id, from: "log", group_by: "kind", sort: "count" }, false)).groups[0], { kind: "Run", count: 3 });
+  assertStringIncludes(await fails(tool(pg, a, "query_app_data", { id, from: "nope" }, false)), "sessions (collection)");
+});

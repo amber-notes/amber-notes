@@ -166,11 +166,12 @@ export function styleWarnings(p: Project): string[] {
   const code = Object.entries(p.files).filter(([path]) => isCode(path));
   const globals = code.filter(([, t]) => /\bwindow\.amber\b|(?<![\w.])amber\s*\.\s*(note|update|onChange|setData|store|data)\b/.test(t)).map(([path]) => path);
   if (globals.length) out.push(`${globals.slice(0, 3).join(", ")} use window.amber directly. In a project use the hooks: import { useNote, useTable, useChecklist, useAppData, useSettings, batch } from "amber".`);
-  const byIndex = code.filter(([, t]) => /\.tables\s*\[\s*\d|\btable\s*:\s*\d|useTable\s*\(\s*\)|useChecklist\s*\(\s*\)/.test(t)).map(([path]) => path);
-  if (byIndex.length) out.push(`${byIndex.slice(0, 3).join(", ")} find a table or checklist by position. Name it: useTable("Log") (the heading above it, or a column name), useChecklist("Packing"); positions break when the person edits the note.`);
+  // The app's data is JSON in its own store; the note's text is only read once, to convert an old note.
+  const noteData = code.filter(([, t]) => /\buse(Table|Checklist)\s*\(|\.tables\s*\[|\bop\s*:\s*["'](append_row|set_cell|toggle_checklist|add_checklist_item|delete_row)/.test(t)).map(([path]) => path);
+  if (noteData.length) out.push(`${noteData.slice(0, 3).join(", ")} keep data in the note's tables or checklists. An app's data is JSON in its own store: useStore / useCollection / useSettings from "amber" (or localStorage, which syncs). useImported() gives what an older note held, to start from once.`);
   if (!p.files["/README.md"]) out.push("Add /README.md: what the app is for, its screens and files, and where its data lives (the note's tables by heading, the app's own data). Keep it current; the next AI reads it first.");
   if (!/<html[^>]*\blang\s*=/i.test(p.files["/index.html"] ?? "")) out.push('Add lang="en" (or the note\'s language) to <html> in /index.html.');
-  if (code.some(([, t]) => /\b(localStorage|sessionStorage|indexedDB|document\.cookie)\b/.test(t))) out.push("localStorage, sessionStorage, IndexedDB and cookies aren't kept. Use useAppData or useSettings from \"amber\".");
+  if (code.some(([, t]) => /\b(indexedDB|document\.cookie)\b/.test(t))) out.push("IndexedDB and cookies aren't available. Use the store (useStore, useCollection) or localStorage, which is kept and synced.");
   if (code.some(([, t]) => /(?<![\w.])(alert|confirm|prompt)\s*\(/.test(t))) out.push("alert/confirm/prompt don't show. Use a Sheet or Dialog from amber-ui, or an inline message.");
   const css = Object.entries(p.files).filter(([path]) => path.endsWith(".css")).map(([, t]) => t).join("\n");
   const important = (css.match(/!\s*important/gi) ?? []).length;

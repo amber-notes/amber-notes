@@ -64,6 +64,23 @@ function headingAbove(lines: string[], line: number): string | null {
   return null;
 }
 
+/** What a text note held when it became an app (NotePageData.imported(from:)), for values.imported:
+ *  tables by the heading above them (rows by column name), checklists by heading, and the text. */
+export function importedFrom(body: string): { tables: Record<string, Record<string, string>[]>; checklists: Record<string, { text: string; checked: boolean }[]>; text: string } {
+  const lines = body.split("\n");
+  const tbls: Record<string, Record<string, string>[]> = {}, checklists: Record<string, { text: string; checked: boolean }[]> = {};
+  tables(lines).forEach((t, i) => {
+    const name = headingAbove(lines, t.header) ?? `Table ${i + 1}`;
+    tbls[name] = t.rows.map((r) => { const o: Record<string, string> = {}; t.columns.forEach((c, k) => { if (!(c.name in o)) o[c.name] = r[k] ?? ""; }); return o; });
+  });
+  lines.forEach((l, i) => {
+    const m = l.match(CHECK);
+    if (!m) return;
+    (checklists[headingAbove(lines, i) ?? "Checklist"] ??= []).push({ text: l.slice(m[0].length), checked: m[4] !== " " });
+  });
+  return { tables: tbls, checklists, text: body };
+}
+
 export function noteForPage(body: string, today: string): PageNote {
   const lines = body.split("\n");
   return {

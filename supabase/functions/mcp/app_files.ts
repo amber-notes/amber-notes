@@ -6,8 +6,7 @@
 
 import { hostDeclared, declaredHosts } from "./page.ts";
 import { sampleData, sampleNote } from "./app_sample.ts";
-import { render, renderedReport, titleReport } from "./app_check.ts";
-import { noteForPage } from "./page_input.ts";
+import { render, renderedFindings } from "./app_check.ts";
 import {
   brokenImports, cleanPath, compile, editText, needsCompile, numbered, parseStored, type Project, projectProblems, serialize, sourceProblems, styleWarnings,
 } from "./app_project.ts";
@@ -79,6 +78,13 @@ async function projectOf(tx: Tx, c: Call, id: string): Promise<{ project: Projec
   try { return { project: parseStored(await c.v.openPage(id, row.page_ct)), exists: true }; } catch { throw new ToolError("This note's app can't be opened with this connection's key."); }
 }
 
+/** The app's own data (for a sample with its shape), or empty. */
+async function dataOf(tx: Tx, c: Call, id: string): Promise<unknown> {
+  const [row] = await tx<{ data_ct: string | null }[]>`select data_ct from public.note_pages where note_id = ${id}`;
+  if (!row?.data_ct) return { values: {}, collections: {} };
+  try { return JSON.parse(await c.v.openPageData(id, row.data_ct)); } catch { return { values: {}, collections: {} }; }
+}
+
 const lines = (t: string) => t.split("\n").length;
 const fileList = (p: Project) => Object.keys(p.files).sort().map((path) => ({ path, bytes: new TextEncoder().encode(p.files[path]).length, lines: lines(p.files[path]) }));
 
@@ -94,19 +100,24 @@ async function saveProject(tx: Tx, c: Call, n: Note, p: Project, changed: string
   await tx`insert into public.note_pages (note_id, page_ct) values (${n.id}, ${await c.v.sealPage(n.id, stored)})
     on conflict (note_id) do update set page_ct = excluded.page_ct`;
   await tx`select set_config('pane.coalesce', 'off', true)`;
-  const warnings = [...brokenImports(p), ...styleWarnings(p)];
+  const broken = brokenImports(p);
+  const warnings = styleWarnings(p);
   const body = await bodyOf(c.v, n);
   const t = new Date().toISOString().slice(0, 10);
   const r = await render({
-    html: stored, markdown: sampleNote(body, t), data: sampleData({ values: {}, collections: {} }, t), today: t,
+    html: stored, markdown: sampleNote(body, t), data: sampleData(await dataOf(tx, c, n.id), t), today: t,
     views: [{ width: 390, scheme: "light" }, { width: 1280, scheme: "light" }], capture: a.look === true, interact: false, probes: false,
   });
-  const check = typeof r === "string" ? r : [...titleReport(r, noteForPage(sampleNote(body, t), t).title), ...renderedReport(r)].slice(0, 8);
+  const found = typeof r === "string" ? null : renderedFindings(r);
+  // Errors: the app is broken (an import to nothing, a script error, overflow…). Notes: information.
+  const errors = [...broken, ...(found?.errors ?? [])];
+  const notes = [...warnings, ...(found?.notes ?? [])].slice(0, 10);
   const result = {
     app: { id: n.id, title: n.title }, [changed.startsWith("deleted") ? "deleted" : "saved"]: changed.replace(/^deleted /, ""), files: Object.keys(p.files).length,
-    ...(warnings.length ? { warnings } : {}),
-    check: Array.isArray(check) ? (check.length ? check : "Opens cleanly at 390 and 1280 px (over a sample note).") : check,
-    next: warnings.length || (Array.isArray(check) && check.length) ? "Fix these, then keep going." : "Keep going; run check_app (and preview_app) when the app is done.",
+    ...(errors.length ? { errors } : found ? { opens: "Opens cleanly at 390 and 1280 px (over a sample of its data)." } : {}),
+    ...(found === null ? { browser: r } : {}),
+    ...(notes.length ? { notes } : {}),
+    next: errors.length ? "Fix the errors, then keep going." : "Keep going; run check_app (and preview_app) when the app is done.",
   };
   const shot = typeof r !== "string" && a.look === true ? r.views.find((v) => v.png)?.png : undefined;
   return shot ? new Content([{ type: "text", text: JSON.stringify(result, null, 2) }, { type: "image", data: shot, mimeType: "image/png" }], result) : result;

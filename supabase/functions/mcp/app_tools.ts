@@ -1,7 +1,7 @@
 // check_app and preview_app: let an AI see what it built. See app_check.ts for the findings and
 // app_sample.ts for the sample a note's app is rendered over.
 
-import { type KeyInfo, render, renderedReport, staticReport, titleReport } from "./app_check.ts";
+import { type KeyInfo, render, renderedFindings, staticReport, titleReport } from "./app_check.ts";
 import { noteForPage } from "./page_input.ts";
 import { resolvePackage } from "./libraries.ts";
 import { sampleData, sampleNote } from "./app_sample.ts";
@@ -78,15 +78,16 @@ export const appHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<u
       // Shown inside a parent note too: also as the widget strip.
       widget: n.parent_id !== null || /amber-widget/.test(html),
     });
-    const browser = typeof r === "string" ? null : [...titleReport(r, noteForPage(sampleNote(body, t), t).title), ...renderedReport(r)];
-    const issues = [...found.errors, ...found.warnings, ...(browser ?? [])];
+    const browser = typeof r === "string" ? null : renderedFindings(r);
+    const errors = [...found.errors, ...(browser?.errors ?? [])];
+    const notes = [...found.warnings, ...(typeof r === "string" ? [] : titleReport(r, noteForPage(sampleNote(body, t), t).title)), ...(browser?.notes ?? [])];
     return {
       app: { id: n.id, title: n.title },
-      ok: issues.length === 0 && browser !== null,
-      ...(found.errors.length ? { refused_by_server: found.errors } : {}),
-      issues,
-      ...(browser === null ? { browser: r } : { browser_checked: `390 px and 1280 px in light and dark, and 320 px${n.parent_id !== null || /amber-widget/.test(html) ? ", and the 340 px widget strip" : ""}, over a sample note` }),
-      next: issues.length ? "Fix these (edit_app_file for a project of files, edit_note_page for a one-file app), then run check_app again." : "Nothing to fix.",
+      ok: errors.length === 0 && browser !== null,
+      errors,
+      notes,
+      ...(browser === null ? { browser: r } : { browser_checked: `390 px and 1280 px in light and dark, and 320 px${n.parent_id !== null || /amber-widget/.test(html) ? ", and the 340 px widget strip" : ""}, over a sample of its data` }),
+      next: errors.length ? "Fix the errors: the app is broken for the person until they're gone. The notes are information; act on the ones you agree with." : notes.length ? "Nothing is broken. The notes are information; act on the ones you agree with." : "Nothing to fix.",
     };
   },
 
@@ -108,7 +109,8 @@ export const appHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<u
     const t = today();
     const r = await render({ html, markdown: real ? body : sampleNote(body, t), data: real ? data : sampleData(data, t), today: t, views, capture: true, interact: false, probes: false });
     if (typeof r === "string") return { app: { id: n.id, title: n.title }, previews: "unavailable", reason: r, instead: "Run check_app for the checks that need no browser." };
-    const issues = [...titleReport(r, noteForPage(real ? body : sampleNote(body, t), t).title), ...renderedReport(r)];
+    const f = renderedFindings(r);
+    const issues = [...f.errors, ...f.notes];
     const blocks: Record<string, unknown>[] = [{
       type: "text",
       text: JSON.stringify({
