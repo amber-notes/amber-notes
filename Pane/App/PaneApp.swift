@@ -64,6 +64,13 @@ struct PaneApp: App {
         FeatureUse.client = backend.client
         PaneTips.configure()
         Capture.scheduleFromArguments(container.mainContext)
+        // Collaboration (prototype): `-collab <name>` against the local relay (scripts/collab-demo.sh).
+        if let collab = CollabStore.fromArguments() {
+            collab.context = container.mainContext
+            CollabStore.shared = collab
+            Task { @MainActor in await collab.start() }
+            CollabDemo.run(container.mainContext, store: collab)
+        }
         #if os(macOS)
         Capture.demoSequenceFromArguments(container.mainContext)
         Capture.importSequenceFromArguments()

@@ -1,0 +1,15 @@
+{
+  "note": "6f1c1b0e-2a7d-4c55-9a43-1d2e3f405162",
+  "epoch": 3,
+  "from": "1a2b3c4d-0000-4000-8000-000000000001",
+  "to": "1a2b3c4d-0000-4000-8000-000000000002",
+  "sender_d": "Mj61Q4HUKcrrnQxV5y4aONq8U2XJowqjD+3OZNEyfJE=",
+  "sender_public": "BK/d0Ncmtcp+gluQwRVc8CJSJwzNTHcgUbIIqdh6jxrtPTrIHW/wmWsUuLtcvFRvG3pBhUEhSucYxfgq05+EdbY=",
+  "recipient_d": "PlF8Ukrz1lQHXqQKsl83cig+FrNFpQtEhUdN53uwW5o=",
+  "recipient_public": "BHEpCsy7v6k1qOv4OpXQ1dy/q+OYw9ripk1/ojLlpBEfeWxnYT/UyqAcOHQoiVWwz+/xhd9+rGpUDTCXdFHk4sQ=",
+  "note_key": "5qdf0cqDGbOuAxEwxXNYC7LwcdOdzx1jrXww9bXcZ5k=",
+  "wrap": "amb3k.BN7t7XfYmNOc2juMqIasmzazZ31P5eGUs/4pJHG/+vfEgy09574OG0TDL40AcvmV4XyHjtWws5ABQ1GRpNPznu9wt0WLjxtYBACZjXBZfqFY0M6HG7ylIBpboQULcrOytqoAInYgmqSqdxK+mgZtWfdLviM7XiH1uZ3Fzmw=",
+  "update": "amb3u.3.tVCYmrcBLytEUGqGWhFXqOUuj4GXkJKDTunf3kMiFEmp75ACfmsDrXvQNw==",
+  "update_plain": "hello from deno",
+  "safety_code": "3830 5522 7160"
+}

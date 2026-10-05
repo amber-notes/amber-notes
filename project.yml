@@ -15,6 +15,10 @@ packages:
   Markdown:
     url: https://github.com/swiftlang/swift-markdown
     from: 0.6.0
+  # Collaboration prototype: the text CRDT behind shared notes (docs/Technical/collaboration-design.md).
+  Automerge:
+    url: https://github.com/automerge/automerge-swift
+    from: 0.7.2
   # Updates for the Mac download only (target PaneDirect); App Store builds never link it.
   Sparkle:
     url: https://github.com/sparkle-project/Sparkle
@@ -50,6 +54,7 @@ targets:
       - package: Markdown
       - package: Supabase
       - package: ZIPFoundation
+      - package: Automerge
       - target: PaneShare
         platformFilter: iOS
     # SwiftPM resource bundles (ZIPFoundation's and swift-crypto's privacy manifests, and any
@@ -153,6 +158,7 @@ targets:
       - package: Markdown
       - package: Supabase
       - package: ZIPFoundation
+      - package: Automerge
       - package: Sparkle
     info:
       path: Pane/Resources/Info-Direct.plist
@@ -231,10 +237,13 @@ targets:
       # host can't read the checkout under ~/Documents without a privacy prompt).
       - path: supabase/functions/_shared/e2ee-vectors.json
         buildPhase: resources
+      - path: supabase/functions/_shared/collab-vectors.json
+        buildPhase: resources
       - path: supabase/migrations/20260929230000_tip_events.sql
         buildPhase: resources
     dependencies:
       - target: Pane
+      - package: Automerge
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES

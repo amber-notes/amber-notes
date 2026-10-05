@@ -12,6 +12,8 @@ final class EditorController {
     /// Room kept free under the note's last line for something laid over the bottom (iPhone
     /// tips), so the text can always scroll clear of it.
     var bottomReserve: CGFloat = 0
+    /// Collaboration (prototype): other people's carets in a shared note, drawn over the text.
+    var remoteCarets: [RemoteCaret] = []
     /// The file being shown in Quick Look.
     var previewURL: URL?
     /// Files being fetched from the server.
@@ -127,4 +129,6 @@ protocol EditorTarget: AnyObject {
     func tintChanges(from previous: String)
     /// Clears that tint at once.
     func clearTint()
+    /// Takes text that changed elsewhere (sync, a collaborator), replacing only what differs.
+    func syncExternal(_ new: String)
 }

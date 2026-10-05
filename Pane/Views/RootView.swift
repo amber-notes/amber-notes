@@ -48,6 +48,8 @@ struct RootView: View {
             .focusedSceneValue(\.deleteNoteAction, deleteAction)
             // A template or shared note to add, from a link.
             .noteSourceHandler()
+            // Collaboration (prototype): an invitation to someone else's note.
+            .modifier(CollabInviteAlert())
             #if os(iOS)
             .alert("Launch alert", isPresented: $launchAlert) { Button("OK", role: .cancel) {} }
             #endif

@@ -19,6 +19,8 @@ struct NoteDetailView: View {
     @State private var lockSheet: LockSheet?
     @State private var confirmLock = false
     @State private var lockProblem: String?
+    /// Collaboration (prototype): the people sheet.
+    @State private var showPeople = false
     @Bindable var note: Note
     let controller: EditorController
     var autofocus = false
@@ -81,7 +83,11 @@ struct NoteDetailView: View {
                 ShareAsk.noteUsed()
             }
             .onChange(of: showHistory) { _, open in if open { FeatureUse.mark(.versionHistory) } }
+            .modifier(CollabWiring(note: note, controller: controller, showPeople: $showPeople))
     }
+
+    /// Collaboration (prototype): the open shared note's session, when there is one.
+    private var collab: CollabSession? { CollabStore.shared?.session(for: note.id) }
 
     #if os(iOS)
     /// On iPhone the note's tips sit just above the toolbar: a popover from a toolbar button
@@ -171,7 +177,10 @@ struct NoteDetailView: View {
     @ViewBuilder
     private var editor: some View {
         if let text = vault.text(of: note) {
-            MarkdownEditor(initialText: text, header: DateBucket.header(note.updatedAt), controller: controller, autofocus: autofocus, onChange: save)
+            // A shared note's editor takes merged text from its session (CollabWiring), not from
+            // the note's mirrored body, which can lag a keystroke behind and undo it.
+            MarkdownEditor(initialText: text, header: DateBucket.header(note.updatedAt), controller: controller, autofocus: autofocus,
+                           followsInitialText: collab == nil, onChange: save)
                 .onAppear { if note.isLocked { vault.touch() } }
         } else {
             LockedNoteView(note: note)
@@ -223,6 +232,7 @@ struct NoteDetailView: View {
             .background(Color.notePage.ignoresSafeArea())
             .safeAreaInset(edge: .top, spacing: 0) {
                 VStack(spacing: 0) {
+                    if let collab { EditingLine(session: collab) }
                     if let parent = parentNote { parentLink(parent) }
                     if note.trashedAt != nil { trashBanner }
                 }
@@ -238,6 +248,11 @@ struct NoteDetailView: View {
 
     /// Every keystroke lands here; the model is written once typing pauses.
     private func save(_ text: String) {
+        // A shared note's text lives in its document; the note follows it (CollabStore).
+        if let collab {
+            collab.local(text, selection: controller.target?.currentSelection)
+            return
+        }
         PaneTips.typed()
         ShareAsk.noteUsed(typing: true)
         let note = self.note
@@ -370,6 +385,9 @@ struct NoteDetailView: View {
         ToolbarItem(placement: .bottomBar) {
             Button("New Note", systemImage: "square.and.pencil", action: onNewNote)
         }
+        if let collab {
+            ToolbarItem(placement: .primaryAction) { PresenceStack(session: collab) { showPeople = true } }
+        }
         ToolbarItem(placement: .primaryAction) { moreMenu }
         #else
         // Like Notes: compose first (just right of the divider), the writing tools together, then share and more.
@@ -397,6 +415,9 @@ struct NoteDetailView: View {
                 .disabled(note.isLocked)
         }
         ToolbarSpacer(.fixed)
+        if let collab {
+            ToolbarItem { PresenceStack(session: collab) { showPeople = true } }
+        }
         ToolbarItemGroup {
             shareMenu
             moreMenu
@@ -441,6 +462,17 @@ struct NoteDetailView: View {
     /// Everything about sharing in one place, like Notes: the public link, and sending a copy.
     @ViewBuilder
     private var shareItems: some View {
+        if let store = CollabStore.shared, store.isReady {
+            Section {
+                Button(collab == nil ? "Collaborate…" : "People…", systemImage: "person.2") {
+                    Task { @MainActor in
+                        if collab == nil { try? await store.share(note) }
+                        showPeople = true
+                    }
+                }
+                .accessibilityIdentifier("collab.share")
+            }
+        }
         ShareLinkMenuSection(store: shareLinks, note: note)
         Section {
             ShareLink(item: note.body, preview: SharePreview(note.title)) {
@@ -509,5 +541,35 @@ struct NoteDetailView: View {
         }
         #endif
         .accessibilityIdentifier("editor.more")
+    }
+}
+
+/// Collaboration (prototype): hooks an open shared note to its session. The editor takes merged
+/// text from others, their carets are drawn, and your caret goes out as presence.
+private struct CollabWiring: ViewModifier {
+    let note: Note
+    let controller: EditorController
+    @Binding var showPeople: Bool
+
+    private var session: CollabSession? { CollabStore.shared?.session(for: note.id) }
+
+    func body(content: Content) -> some View {
+        content
+            .task(id: session.map { ObjectIdentifier($0) }) {
+                guard let session else { controller.remoteCarets = []; return }
+                session.onRemoteText = { [weak controller] text in controller?.target?.syncExternal(text) }
+                // Your caret, a few times a second (it also goes with every keystroke).
+                while !Task.isCancelled {
+                    if let sel = controller.target?.currentSelection { session.selectionChanged(sel) }
+                    controller.remoteCarets = session.remoteCarets
+                    try? await Task.sleep(for: .seconds(0.1))
+                }
+            }
+            .sheet(isPresented: $showPeople) {
+                if let session, let store = CollabStore.shared {
+                    PeopleSheet(session: session, store: store)
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: CollabDemo.invite)) { _ in showPeople = true }
     }
 }

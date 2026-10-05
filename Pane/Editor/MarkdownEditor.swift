@@ -9,10 +9,13 @@ struct MarkdownEditor: View {
     var autofocus = false
     var identifier = "editor"
     var titleLine = true
+    /// False for a shared note (collaboration prototype): its text arrives through the controller's
+    /// target as it merges, never through `initialText`, which can be a render behind your typing.
+    var followsInitialText = true
     let onChange: (String) -> Void
 
     var body: some View {
-        PlatformEditor(initialText: initialText, header: header, controller: controller, autofocus: autofocus, identifier: identifier, titleLine: titleLine, onChange: onChange)
+        PlatformEditor(initialText: initialText, header: header, controller: controller, autofocus: autofocus, identifier: identifier, titleLine: titleLine, followsInitialText: followsInitialText, onChange: onChange)
     }
 }
 
@@ -425,6 +428,7 @@ private struct PlatformEditor: UIViewRepresentable {
     let autofocus: Bool
     let identifier: String
     let titleLine: Bool
+    let followsInitialText: Bool
     let onChange: (String) -> Void
 
     func makeUIView(context: Context) -> PaneTextView {
@@ -444,12 +448,22 @@ private struct PlatformEditor: UIViewRepresentable {
     func updateUIView(_ view: PaneTextView, context: Context) {
         view.core.onChange = onChange
         view.setHeader(header)
-        view.syncExternal(initialText)
+        if followsInitialText { view.syncExternal(initialText) }
         if controller.target !== view { controller.target = view }
         // Read here so a change to it lays the text out again.
         _ = controller.bottomReserve
+        view.showRemoteCarets(controller.remoteCarets)
         view.setNeedsLayout()
     }
+}
+
+/// A name flag with a little room around the text.
+private final class PaddedLabel: UILabel {
+    override var intrinsicContentSize: CGSize {
+        let s = super.intrinsicContentSize
+        return CGSize(width: s.width + 10, height: s.height + 4)
+    }
+    override func drawText(in rect: CGRect) { super.drawText(in: rect.insetBy(dx: 5, dy: 2)) }
 }
 
 final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestureRecognizerDelegate, UITextDropDelegate {
@@ -508,6 +522,68 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
         headerLabel.frame = CGRect(x: 0, y: DateFold.labelTop, width: bounds.width, height: DateFold.labelHeight)
         foldDate(hasDate)
         layoutCards()
+        layoutRemoteCarets()
+    }
+
+    // MARK: Other people's carets (collaboration prototype)
+
+    private var remoteCarets: [RemoteCaret] = []
+    private var caretViews: [UUID: (bar: UIView, flag: UILabel, selection: [UIView])] = [:]
+
+    func showRemoteCarets(_ carets: [RemoteCaret]) {
+        guard carets != remoteCarets else { return }
+        remoteCarets = carets
+        layoutRemoteCarets()
+    }
+
+    /// A bar in the person's colour where their caret is, their first name on a flag above it, and
+    /// a tint over what they've selected. Not hit-testable: you type and tap through them.
+    private func layoutRemoteCarets() {
+        let live = Set(remoteCarets.map(\.id))
+        for (id, v) in caretViews where !live.contains(id) {
+            v.bar.removeFromSuperview(); v.flag.removeFromSuperview(); v.selection.forEach { $0.removeFromSuperview() }
+            caretViews[id] = nil
+        }
+        let length = (text as NSString).length
+        for c in remoteCarets {
+            let color = UIColor(c.color)
+            var v = caretViews[c.id] ?? {
+                let bar = UIView(), flag = PaddedLabel()
+                bar.isUserInteractionEnabled = false
+                bar.layer.cornerRadius = 1
+                flag.isUserInteractionEnabled = false
+                flag.font = .systemFont(ofSize: 11, weight: .semibold)
+                flag.textColor = .white
+                flag.layer.cornerRadius = 4
+                flag.layer.masksToBounds = true
+                addSubview(bar); addSubview(flag)
+                return (bar, flag as UILabel, [])
+            }()
+            v.bar.backgroundColor = color
+            v.flag.backgroundColor = color
+            v.flag.text = c.name
+            let loc = min(c.range.location, length), end = min(NSMaxRange(c.range), length)
+            guard let pos = position(from: beginningOfDocument, offset: loc) else { continue }
+            let rect = caretRect(for: pos)
+            UIView.animate(withDuration: 0.12, delay: 0, options: [.beginFromCurrentState, .allowUserInteraction]) {
+                v.bar.frame = CGRect(x: rect.minX, y: rect.minY, width: 2, height: rect.height)
+                let size = v.flag.intrinsicContentSize
+                v.flag.frame = CGRect(x: rect.minX, y: rect.minY - size.height - 1, width: size.width, height: size.height)
+            }
+            v.selection.forEach { $0.removeFromSuperview() }
+            v.selection = []
+            if end > loc, let a = position(from: beginningOfDocument, offset: loc), let b = position(from: beginningOfDocument, offset: end),
+               let range = textRange(from: a, to: b) {
+                for r in selectionRects(for: range) where r.rect.width > 0 {
+                    let tint = UIView(frame: r.rect)
+                    tint.backgroundColor = color.withAlphaComponent(0.18)
+                    tint.isUserInteractionEnabled = false
+                    insertSubview(tint, at: 0)
+                    v.selection.append(tint)
+                }
+            }
+            caretViews[c.id] = v
+        }
     }
 
     /// Keeps a short note scrollable by the date's height, and opens every note scrolled past it.
@@ -964,6 +1040,7 @@ private struct PlatformEditor: NSViewRepresentable {
     let autofocus: Bool
     let identifier: String
     let titleLine: Bool
+    let followsInitialText: Bool
     let onChange: (String) -> Void
 
     func makeNSView(context: Context) -> NSScrollView {
@@ -989,7 +1066,7 @@ private struct PlatformEditor: NSViewRepresentable {
         guard let view = scroll.documentView as? PaneTextView else { return }
         view.core.onChange = onChange
         view.setHeader(header)
-        view.syncExternal(initialText)
+        if followsInitialText { view.syncExternal(initialText) }
         if controller.target !== view { controller.target = view }
     }
 }
