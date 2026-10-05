@@ -13,7 +13,8 @@ final class BestAppsUITests: XCTestCase {
 
     func launch(_ title: String, _ extra: [String] = []) {
         app = XCUIApplication()
-        app.launchArguments = ["-uitest", "-bestApps", dir, "-open", title] + extra
+        let libs = ProcessInfo.processInfo.environment["INLINE_LIBS"].flatMap { $0.isEmpty ? nil : ["-inlineLibs", $0] } ?? []
+        app.launchArguments = ["-uitest", "-bestApps", dir, "-open", title] + libs + extra
         app.launch()
     }
 
@@ -70,7 +71,7 @@ final class BestAppsUITests: XCTestCase {
     func testStills() {
         let only = ProcessInfo.processInfo.environment["ONLY"].flatMap { $0.isEmpty ? nil : $0 }.map { Set($0.split(separator: ",").map(String.init)) }
         for (dirName, title) in [("habits", "Habits"), ("money", "Money"), ("training", "Training"), ("reading", "Reading"),
-                                 ("trip", "Rome"), ("people", "People"), ("kitchen", "Kitchen"), ("study", "Biology: the cell")] {
+                                 ("trip", "Rome"), ("people", "People"), ("kitchen", "Kitchen"), ("study", "Biology: the cell"), ("words", "Swedish words"), ("beat", "Beat"), ("shelf", "Bookshelf")] {
             guard FileManager.default.fileExists(atPath: "\(dir)/\(dirName)/app.html"), only?.contains(dirName) ?? true else { continue }
             launch(title)
             pause(1.5)
@@ -102,10 +103,11 @@ final class BestAppsUITests: XCTestCase {
     func button(_ label: String) -> XCUIElement {
         let end = Date().addingTimeInterval(5)
         repeat {
-            for q in [app.webViews.buttons, app.webViews.toggles, app.webViews.switches] where q[label].firstMatch.exists { return q[label].firstMatch }
+            for q in [app.webViews.buttons, app.webViews.toggles, app.webViews.switches, app.webViews.cells] where q[label].firstMatch.exists { return q[label].firstMatch }
             pause(0.25)
         } while Date() < end
-        return app.webViews.buttons[label].firstMatch
+        let any = app.webViews.descendants(matching: .any).matching(NSPredicate(format: "label == %@", label)).firstMatch
+        return any.exists ? any : app.webViews.buttons[label].firstMatch
     }
 
     /// Today's note with the habits widget: tick from the widget, open the app, finish the day.
@@ -309,5 +311,109 @@ final class BestAppsUITests: XCTestCase {
         tap(undo, then: 1.5)
         XCTAssertTrue(button("Start workout").waitForExistence(timeout: 3), "Undo takes the app's data back")
         shot("undo-training")
+    }
+
+    // MARK: The fun ones
+
+    /// Everything on screen in the web view, read in one go (labels and frames), so a game can be
+    /// played at a human pace instead of one slow query per tile.
+    func webSnapshot() -> [(label: String, frame: CGRect)] {
+        guard let root = try? app.webViews.firstMatch.snapshot() else { return [] }
+        var out: [(String, CGRect)] = []
+        func walk(_ s: XCUIElementSnapshot) { if !s.label.isEmpty { out.append((s.label, s.frame)) }; s.children.forEach(walk) }
+        walk(root)
+        return out
+    }
+
+    func tapAt(_ f: CGRect) {
+        app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: f.midX, dy: f.midY)).tap()
+    }
+
+    /// Word Rush, played: the pairs come from the note's own table.
+    func testWords() {
+        let md = (try? String(contentsOfFile: "\(dir)/words/note.md", encoding: .utf8)) ?? ""
+        var answer: [String: String] = [:]
+        for line in md.split(separator: "\n") where line.hasPrefix("| ") && !line.contains("---") {
+            let c = line.split(separator: "|").map { $0.trimmingCharacters(in: .whitespaces) }
+            if c.count >= 2, c[0] != "Svenska" { answer[c[0]] = c[1] }
+        }
+        launch("Swedish words")
+        pause(2.5)
+        mark("start")
+        tap(button("Play"), then: 0.6)
+        let end = Date().addingTimeInterval(24)
+        var missed = false
+        while Date() < end {
+            let snap = webSnapshot()
+            let tiles = snap.filter { $0.frame.height > 40 && $0.frame.height < 120 }
+            guard let left = tiles.first(where: { answer[$0.label] != nil }) else { pause(0.3); continue }
+            let want = missed ? "" : answer[left.label]!
+            // One honest mistake, early on, to show what a miss does.
+            if !missed, Date() > end.addingTimeInterval(-16), let wrong = tiles.first(where: { $0.label != answer[left.label] && answer[$0.label] == nil && $0.frame.minX > left.frame.maxX }) {
+                tapAt(left.frame); pause(0.15); tapAt(wrong.frame); pause(0.6); missed = true; continue
+            }
+            guard let right = tiles.first(where: { $0.label == (want.isEmpty ? answer[left.label]! : want) }) else { pause(0.3); continue }
+            tapAt(left.frame); pause(0.12); tapAt(right.frame); pause(0.45)
+        }
+        shot("words-playing")
+        // The round runs out on its own.
+        let over = app.webViews.staticTexts["Round over"].firstMatch
+        _ = over.waitForExistence(timeout: 12)
+        pause(2.2)
+        shot("words-result")
+        mark("end")
+    }
+
+    /// Beat, played: the pattern runs, pads change the note, the Fill pattern follows.
+    func testBeat() {
+        launch("Beat")
+        pause(2.5)
+        mark("start")
+        tap(button("Play"), then: 2.4)
+        func pad(_ prefix: String) {
+            let snap = webSnapshot()
+            try? snap.map { "\($0.label) \($0.frame)" }.joined(separator: "\n").write(toFile: "\(shots)/beat-labels.txt", atomically: true, encoding: .utf8)
+            if let p = snap.first(where: { $0.label.hasPrefix(prefix) && $0.frame.height > 20 }) { tapAt(p.frame); pause(0.8) } else { XCTFail("no pad \(prefix)") }
+        }
+        pad("Snare step 4"); pad("Clap step 8"); pad("Bass step 3"); pad("Bass step 3")
+        pause(1.6)
+        shot("beat-playing")
+        tap(button("Fill"), then: 2.6)
+        tap(button("Groove"), then: 1.6)
+        mode("Text"); pause(2.2); mode("App"); pause(1.2)
+        shot("beat-text")
+        tap(button("Stop"), then: 0.8)
+        mark("end")
+    }
+
+    /// The 3D bookshelf: look around, pull a book out, move it to another shelf. Logs the frame rate.
+    func testShelf() {
+        launch("Bookshelf")
+        pause(3.5)
+        mark("start")
+        let canvas = app.webViews.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH 'Bookshelf. Use'")).firstMatch
+        guard canvas.waitForExistence(timeout: 6) else { XCTFail("no canvas"); return }
+        let c = canvas.frame
+        let mid = app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: c.midX, dy: c.midY))
+        mid.press(forDuration: 0.05, thenDragTo: mid.withOffset(CGVector(dx: 110, dy: 30)), withVelocity: XCUIGestureVelocity(70), thenHoldForDuration: 0.1)
+        pause(1.2)
+        mid.press(forDuration: 0.05, thenDragTo: mid.withOffset(CGVector(dx: -150, dy: -20)), withVelocity: XCUIGestureVelocity(70), thenHoldForDuration: 0.1)
+        pause(1.4)
+        let rate = app.webViews.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH 'Frame rate'")).firstMatch
+        if rate.exists { print("SHELF \(rate.label)"); try? rate.label.write(toFile: "\(shots)/shelf-fps-iphone.txt", atomically: true, encoding: .utf8) }
+        // A book on the read shelf: pull it out.
+        for (fx, fy) in [(0.42, 0.42), (0.5, 0.45), (0.38, 0.6), (0.55, 0.62)] {
+            app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: c.minX + c.width * fx, dy: c.minY + c.height * fy)).tap()
+            pause(1.6)
+            if button("Up next").exists { break }
+        }
+        shot("shelf-picked")
+        pause(1.2)
+        tap(button("5 stars"), then: 1.0)
+        tap(button("Up next"), then: 2.4)
+        shot("shelf-moved")
+        mid.press(forDuration: 0.05, thenDragTo: mid.withOffset(CGVector(dx: 80, dy: 40)), withVelocity: XCUIGestureVelocity(60), thenHoldForDuration: 0.1)
+        pause(1.8)
+        mark("end")
     }
 }

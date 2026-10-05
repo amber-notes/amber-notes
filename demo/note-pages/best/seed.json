@@ -1,11 +1,52 @@
 [
-  { "dir": "habits", "pinned": true, "minutesAgo": 3 },
-  { "dir": "money", "minutesAgo": 40 },
-  { "dir": "training", "minutesAgo": 90 },
-  { "dir": "reading", "minutesAgo": 200 },
-  { "dir": "trip", "minutesAgo": 300 },
-  { "dir": "people", "minutesAgo": 500 },
-  { "dir": "kitchen", "minutesAgo": 700 },
-  { "dir": "study", "minutesAgo": 900 },
-  { "body": "Today\n\nMonday plan: groceries after work, call Maja about the weekend.\n\n{{link:habits}}\n\n- [ ] Book the dentist\n- [ ] Return the library books\n", "pinned": true, "minutesAgo": 1 }
+ {
+  "dir": "habits",
+  "pinned": true,
+  "minutesAgo": 3
+ },
+ {
+  "dir": "money",
+  "minutesAgo": 40
+ },
+ {
+  "dir": "training",
+  "minutesAgo": 90
+ },
+ {
+  "dir": "reading",
+  "minutesAgo": 200
+ },
+ {
+  "dir": "trip",
+  "minutesAgo": 300
+ },
+ {
+  "dir": "people",
+  "minutesAgo": 500
+ },
+ {
+  "dir": "kitchen",
+  "minutesAgo": 700
+ },
+ {
+  "dir": "study",
+  "minutesAgo": 900
+ },
+ {
+  "dir": "words",
+  "minutesAgo": 1000
+ },
+ {
+  "dir": "beat",
+  "minutesAgo": 1100
+ },
+ {
+  "dir": "shelf",
+  "minutesAgo": 1200
+ },
+ {
+  "body": "Today\n\nMonday plan: groceries after work, call Maja about the weekend.\n\n{{link:habits}}\n\n- [ ] Book the dentist\n- [ ] Return the library books\n",
+  "pinned": true,
+  "minutesAgo": 1
+ }
 ]

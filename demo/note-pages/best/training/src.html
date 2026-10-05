@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="amber-settings" content='{"settings":[{"key":"rest","label":"Rest between sets","type":"choice","options":["1 minute","1½ minutes","2 minutes","3 minutes","4 minutes","5 minutes"],"default":"2 minutes"},{"key":"step","label":"Weight step","type":"choice","options":["1.25 kg","2.5 kg","5 kg"],"default":"2.5 kg","help":"How much heavier the next workout suggests."},{"key":"notify","label":"Notify when rest is over","type":"choice","options":["On","Off"],"default":"On","help":"Even with the phone locked."}]}'>
 <title>Training</title>
 <style>
 /*KIT_CSS*/
@@ -99,11 +100,8 @@
 <script>
 /*KIT_JS*/
 const { esc, ico, D, num, col, sheet, announce } = Kit;
-const S = Kit.settings([
-  { key: "rest", label: "Rest between sets", type: "select", default: 120, options: [[60, "1 minute"], [90, "1½ minutes"], [120, "2 minutes"], [180, "3 minutes"], [240, "4 minutes"], [300, "5 minutes"]] },
-  { key: "step", label: "Weight step", type: "select", default: 2.5, options: [[1.25, "1.25 kg"], [2.5, "2.5 kg"], [5, "5 kg"]], help: "How much the − and + buttons change." },
-  { key: "notify", label: "Notify when rest is over", type: "toggle", default: true, help: "Even with the phone locked." },
-]);
+const S = { get: () => { const s = Kit.settings(); return { rest: Math.round((parseFloat(String(s.rest).replace("½", ".5")) || 2) * 60), step: parseFloat(String(s.step).replace(",", ".")) || 2.5, notify: Kit.on(s.notify) }; } };
+let restNote = null;
 let lift = null, record = null, restTimer = null, clockTimer = null;
 const kgText = (n) => (Math.round(n * 100) / 100).toString().replace(".", ",");
 const e1rm = (kg, reps) => kg * (1 + Math.min(reps, 12) / 30);
@@ -190,7 +188,7 @@ function render(note = amber.note) {
 
   app.innerHTML = `
   <header class="top"><div class="titles"><h1>${esc(note.title)}</h1><div class="sub">${m.sessions.length} workouts since ${D.fmt(m.sessions[m.sessions.length - 1].date, { day: "numeric", month: "long" })}</div></div>
-    <button class="round" id="settings" aria-label="Settings">${ico("gear")}</button></header>
+    </header>
   ${record ? `<section class="card record rise" style="margin-bottom:1rem">${ico("trophy")}<h2>${record.length === 1 ? "New personal record" : `${record.length} new personal records`}</h2><p>${record.map((r) => `${esc(r.ex)}: ${r.sets}×${r.reps} at ${kgText(r.kg)} kg`).join("<br>")}</p></section>` : ""}
   <div class="cols side">
     <div>${hero}</div>
@@ -274,12 +272,15 @@ function rest(label) {
       <button data-rest="30" aria-label="Thirty seconds more">+30s</button><button data-rest="0">Skip</button>`;
     if (left <= 0) { stopRest(); announce("Rest's over."); }
   };
-  el.onclick = (e) => { const b = e.target.closest("[data-rest]"); if (!b) return; if (b.dataset.rest === "0") stopRest(); else { end += 30000; draw(); } };
+  el.onclick = (e) => { const b = e.target.closest("[data-rest]"); if (!b) return; if (b.dataset.rest === "0") stopRest(); else { end += 30000; draw(); if (restNote) { amber.device.notify.cancel(restNote); restNote = null; } if (S.get().notify) amber.device.notify({ title: "Rest's over", body: `Next: ${label}`, in: Math.round((end - Date.now()) / 1000) }).then((r) => { if (r.ok) restNote = r.id; }); } };
   draw(); el.classList.add("on");
   restTimer = setInterval(draw, 1000);
-  if (S.get().notify) amber.device.notify({ title: "Rest's over", body: `Next: ${label}`, in: secs });
+  if (restNote) amber.device.notify.cancel(restNote);
+  restNote = null;
+  if (S.get().notify) amber.device.notify({ title: "Rest's over", body: `Next: ${label}`, in: secs }).then((r) => { if (r.ok) restNote = r.id; });
 }
-function stopRest() { clearInterval(restTimer); document.getElementById("rest").classList.remove("on"); }
+// Stopping early also takes back the notification that was waiting for the end of the rest.
+function stopRest() { clearInterval(restTimer); document.getElementById("rest").classList.remove("on"); if (restNote) { amber.device.notify.cancel(restNote); restNote = null; } }
 
 async function finish() {
   const m = model(amber.note); const s = amber.data.values.session;
@@ -305,7 +306,6 @@ async function finish() {
 document.addEventListener("click", async (e) => {
   const t = e.target.closest("#start,#settings,#finish,#discard,[data-lift],[data-plan],[data-set],[data-addset]"); if (!t) return;
   if (t.id === "start") start(document.querySelector("[data-plan][aria-pressed=true]")?.dataset.plan);
-  else if (t.id === "settings") S.open("Training settings");
   else if (t.id === "finish") finish();
   else if (t.id === "discard") { if (t.dataset.sure) { stopRest(); await amber.store.set("session", null); } else { t.dataset.sure = 1; t.textContent = "Discard workout?"; } }
   else if (t.dataset.lift) { lift = t.dataset.lift; render(); }

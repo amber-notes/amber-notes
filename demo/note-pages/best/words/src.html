@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="amber-settings" content='{"settings":[{"key":"seconds","label":"Round length","type":"choice","options":["30 seconds","60 seconds","90 seconds"],"default":"60 seconds"},{"key":"sound","label":"Sound when a round starts","type":"choice","options":["Off","On"],"default":"Off","help":"You can also turn it on with the speaker in the game."}]}'>
+<title>Word Rush</title>
+<style>
+/*KIT_CSS*/
+:root { --ok: #2E9E5B; --bad: #D64545; }
+@media (prefers-color-scheme: dark) { :root { --ok: #4CD38A; --bad: #FF6B6B; } }
+.wrap.game { max-width: 760px; }
+.hero { border-radius: calc(var(--amber-radius) + 6px); padding: 1.4rem 1.3rem 1.3rem; background:
+  radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--amber-accent) 32%, transparent), transparent 60%),
+  radial-gradient(90% 80% at 0% 100%, color-mix(in srgb, var(--c3) 22%, transparent), transparent 60%), var(--amber-surface); position: relative; overflow: hidden; }
+.hero .k { font-size: .78rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--amber-accent-text); }
+.hero h2 { font-family: var(--amber-font-rounded); font-size: 2.6rem; line-height: 1; letter-spacing: -.03em; margin: .35rem 0 .5rem; font-weight: 800; }
+.hero p { color: var(--amber-text-secondary); max-width: 26rem; }
+.hero .row3 { display: flex; gap: .6rem; align-items: center; margin-top: 1.1rem; flex-wrap: wrap; }
+.hero .btn.primary { min-height: 3.2rem; padding: 0 1.6rem; font-size: 1.1rem; }
+.floaty { position: absolute; right: -.4rem; top: .6rem; display: grid; gap: .4rem; transform: rotate(8deg); pointer-events: none; opacity: .9; }
+.floaty span { font-family: var(--amber-font-rounded); font-weight: 800; font-size: .9rem; padding: .35rem .7rem; border-radius: .7rem; background: var(--amber-bg); box-shadow: var(--shadow); animation: bob 3s ease-in-out infinite; }
+.floaty span:nth-child(2) { margin-left: 1.4rem; animation-delay: -.8s; } .floaty span:nth-child(3) { margin-left: .4rem; animation-delay: -1.6s; }
+@keyframes bob { 50% { transform: translateY(-5px); } }
+@media (max-width: 520px) { .floaty { display: none; } }
+.stats3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; margin-top: 1rem; }
+.stats3 div { background: var(--amber-surface); border-radius: var(--amber-radius); padding: .8rem .9rem; }
+.stats3 b { display: block; font-family: var(--amber-font-rounded); font-size: 1.5rem; font-weight: 800; letter-spacing: -.02em; }
+.stats3 span { font-size: .78rem; color: var(--amber-text-secondary); }
+.tricky { display: flex; flex-wrap: wrap; gap: .4rem; padding: .9rem 1rem; }
+.tricky span { font-size: .88rem; padding: .3rem .7rem; border-radius: 999px; background: var(--amber-fill); }
+.tricky span b { font-weight: 700; }
+.tricky span i { font-style: normal; color: var(--bad); font-weight: 700; margin-left: .3rem; font-size: .78rem; }
+
+/* Playing */
+.hud { display: flex; align-items: center; gap: .7rem; margin: .2rem 0 .8rem; }
+.hud .score { font-family: var(--amber-font-rounded); font-size: 2.1rem; font-weight: 800; letter-spacing: -.03em; min-width: 4.5ch; }
+.hud .combo { font-family: var(--amber-font-rounded); font-weight: 800; font-size: 1rem; color: var(--amber-on-accent); background: var(--amber-accent); border-radius: 999px; padding: .2rem .65rem; transform-origin: center; }
+.hud .combo.zero { background: var(--amber-fill); color: var(--amber-text-secondary); }
+.hud .combo.bump { animation: pop .35s var(--ease-pop); }
+.hud .grow { flex: 1; }
+.hud .t { font-family: var(--amber-font-rounded); font-weight: 800; font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+.hud .t.low { color: var(--bad); animation: pulse .6s ease-in-out infinite alternate; }
+@keyframes pulse { to { opacity: .45; } }
+.timebar { height: .45rem; border-radius: 99px; background: var(--amber-fill); overflow: hidden; margin-bottom: 1rem; }
+.timebar b { display: block; height: 100%; background: linear-gradient(90deg, var(--amber-accent), color-mix(in srgb, var(--amber-accent) 70%, var(--c6))); border-radius: 99px; transform-origin: left; }
+.board { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem .8rem; position: relative; padding: .9rem; border-radius: calc(var(--amber-radius) + 6px); background:
+  radial-gradient(80% 60% at 0% 0%, color-mix(in srgb, var(--amber-accent) 14%, transparent), transparent 70%),
+  radial-gradient(80% 60% at 100% 100%, color-mix(in srgb, var(--c3) 14%, transparent), transparent 70%), var(--amber-surface); }
+.col:first-child .tile:not(.sel):not(.ok):not(.bad) { background: color-mix(in srgb, var(--amber-accent) 10%, var(--amber-bg)); }
+.col:last-child .tile:not(.sel):not(.ok):not(.bad) { background: color-mix(in srgb, var(--c3) 9%, var(--amber-bg)); }
+.col { display: grid; gap: .6rem; }
+.colh { font-size: .72rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--amber-text-secondary); text-align: center; }
+.tile { position: relative; min-height: 3.7rem; border: 0; border-radius: 1rem; background: var(--amber-surface); color: var(--amber-text); font-family: var(--amber-font-rounded); font-size: 1.12rem; font-weight: 700; padding: .5rem .8rem; box-shadow: 0 2px 0 color-mix(in srgb, var(--amber-text) 10%, transparent); transition: transform .12s var(--ease-out), background .18s, color .18s, box-shadow .18s; touch-action: manipulation; overflow-wrap: anywhere; }
+.tile:active { transform: scale(.96); }
+.tile .key { position: absolute; left: .55rem; top: .4rem; font-size: .66rem; font-family: var(--amber-font-mono); color: var(--amber-text-secondary); opacity: .7; display: none; }
+@media (pointer: fine) { .tile .key { display: block; } }
+.tile.sel { background: var(--amber-accent); color: var(--amber-on-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--amber-accent) 35%, transparent); transform: translateY(-2px); }
+.tile.ok { background: var(--ok); color: #fff; animation: okpop .38s var(--ease-pop) forwards; }
+@keyframes okpop { 40% { transform: scale(1.08); } 100% { transform: scale(.4); opacity: 0; } }
+.tile.bad { background: var(--bad); color: #fff; animation: shake .35s; }
+@keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+.tile.in { animation: tilein .35s var(--ease-pop) both; }
+@keyframes tilein { from { transform: scale(.6); opacity: 0; } }
+.spark { position: fixed; width: .5rem; height: .5rem; border-radius: 50%; pointer-events: none; z-index: 60; animation: spark .7s var(--ease-out) forwards; }
+@keyframes spark { to { transform: translate(var(--dx), var(--dy)) scale(.2); opacity: 0; } }
+.float { position: fixed; z-index: 61; pointer-events: none; font-family: var(--amber-font-rounded); font-weight: 800; color: var(--ok); font-size: 1.2rem; animation: up .8s var(--ease-out) forwards; }
+@keyframes up { to { transform: translateY(-2.4rem); opacity: 0; } }
+.sound { width: 2.6rem; height: 2.6rem; }
+
+/* Results */
+.result { text-align: center; padding: 1.8rem 1.2rem 1.4rem; }
+.result .big { font-family: var(--amber-font-rounded); font-size: 4.2rem; font-weight: 800; letter-spacing: -.04em; line-height: 1; }
+.result .badge { display: inline-block; margin: .6rem 0 .2rem; padding: .3rem .8rem; border-radius: 999px; background: var(--amber-accent); color: var(--amber-on-accent); font-weight: 800; font-size: .85rem; animation: pop .5s var(--ease-pop); }
+.result p { color: var(--amber-text-secondary); margin-top: .4rem; }
+.result .row3 { display: flex; gap: .6rem; justify-content: center; margin-top: 1.2rem; flex-wrap: wrap; }
+.scores li { font-variant-numeric: tabular-nums; }
+.scores .rank { width: 1.6rem; font-weight: 800; color: var(--amber-text-secondary); }
+.scores .pts { font-family: var(--amber-font-rounded); font-weight: 800; }
+@media (min-width: 900px) { .tile { min-height: 4.2rem; font-size: 1.25rem; } }
+</style>
+</head>
+<body>
+<main class="wrap game" id="app" aria-live="polite"></main>
+<script>
+/*KIT_JS*/
+const { esc, ico, col, announce } = Kit;
+const ROWS = 5;
+let state = "home", game = null, soundOn = false, lastResult = null, ac = null;
+
+function words(note) {
+  const t = note.tables.find((t) => t.columns.length >= 2);
+  if (!t) return null;
+  const a = 0, b = 1, m = col(t, /^(missed|misses)$/i);
+  return { t, a, b, m, list: t.rows.map((r, i) => ({ i, q: r[a].trim(), ans: r[b].trim(), missed: m >= 0 ? parseInt(r[m]) || 0 : 0 })).filter((w) => w.q && w.ans) };
+}
+const seconds = () => parseInt(Kit.settings().seconds) || 60;
+
+// Sound: a small synth, silent until you turn it on.
+function audio() { if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === "suspended") ac.resume(); return ac; }
+function tone(freq, t0, dur, type = "sine", vol = .18) {
+  if (!soundOn) return;
+  const a = audio(), o = a.createOscillator(), g = a.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, a.currentTime + t0);
+  g.gain.setValueAtTime(0, a.currentTime + t0); g.gain.linearRampToValueAtTime(vol, a.currentTime + t0 + .01); g.gain.exponentialRampToValueAtTime(.0008, a.currentTime + t0 + dur);
+  o.connect(g).connect(a.destination); o.start(a.currentTime + t0); o.stop(a.currentTime + t0 + dur + .05);
+}
+const sfx = {
+  pick: () => tone(660, 0, .08, "triangle", .1),
+  ok: (c) => { const base = 523 * Math.pow(2, Math.min(c, 12) / 12); tone(base, 0, .14, "triangle"); tone(base * 1.5, .07, .18, "triangle"); },
+  bad: () => { tone(160, 0, .22, "sawtooth", .12); tone(120, .05, .22, "sawtooth", .1); },
+  end: () => [523, 659, 784, 1046].forEach((f, k) => tone(f, k * .1, .25, "triangle")),
+};
+
+// Words you miss come back more often.
+function pick(list, avoid) {
+  const pool = list.filter((w) => !avoid.has(w.q));
+  const weight = (w) => 1 + w.missed * 1.5 + (game && game.missed[w.q] ? 2 : 0);
+  let total = pool.reduce((s, w) => s + weight(w), 0), r = Math.random() * total;
+  for (const w of pool) { r -= weight(w); if (r <= 0) return w; }
+  return pool[0];
+}
+
+function start() {
+  const W = words(amber.note); if (!W || W.list.length < ROWS) return;
+  if (Kit.on(Kit.settings().sound)) soundOn = true;
+  if (soundOn) audio();
+  game = { W, score: 0, combo: 0, best: 0, matched: 0, wrong: 0, missed: {}, left: [], right: [], sel: null, ends: Date.now() + seconds() * 1000, total: seconds() * 1000, lastOk: 0 };
+  const used = new Set();
+  for (let k = 0; k < ROWS; k++) { const w = pick(W.list, used); used.add(w.q); game.left.push(w); }
+  game.right = shuffle(game.left.slice());
+  state = "play"; render(); tick();
+}
+const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+let raf;
+function tick() {
+  cancelAnimationFrame(raf);
+  const loop = () => {
+    if (state !== "play") return;
+    const left = Math.max(0, game.ends - Date.now());
+    const bar = document.getElementById("tb"), t = document.getElementById("tt");
+    if (bar) bar.style.transform = `scaleX(${left / game.total})`;
+    if (t) { const s = Math.ceil(left / 1000); t.textContent = `0:${String(s).padStart(2, "0")}`; t.classList.toggle("low", s <= 10); }
+    if (left <= 0) return finish();
+    raf = requestAnimationFrame(loop);
+  };
+  raf = requestAnimationFrame(loop);
+}
+// A hidden app stops the clock and picks up where it was.
+document.addEventListener("visibilitychange", () => {
+  if (state !== "play") return;
+  if (document.hidden) { game.pausedLeft = game.ends - Date.now(); cancelAnimationFrame(raf); }
+  else if (game.pausedLeft != null) { game.ends = Date.now() + game.pausedLeft; game.pausedLeft = null; tick(); }
+});
+
+function choose(side, k) {
+  if (state !== "play") return;
+  const el = document.querySelector(`[data-side="${side}"][data-k="${k}"]`);
+  if (!el || el.classList.contains("ok")) return;
+  if (!game.sel || game.sel.side === side) {
+    document.querySelectorAll(".tile.sel").forEach((x) => x.classList.remove("sel"));
+    game.sel = { side, k }; el.classList.add("sel"); sfx.pick(); return;
+  }
+  const L = side === "l" ? k : game.sel.k, R = side === "r" ? k : game.sel.k;
+  const lw = game.left[L], rw = game.right[R];
+  const lEl = document.querySelector(`[data-side="l"][data-k="${L}"]`), rEl = document.querySelector(`[data-side="r"][data-k="${R}"]`);
+  game.sel = null;
+  document.querySelectorAll(".tile.sel").forEach((x) => x.classList.remove("sel"));
+  if (lw.q === rw.q) {
+    const now = Date.now();
+    game.combo = now - game.lastOk < 3000 ? game.combo + 1 : 1; game.lastOk = now;
+    game.best = Math.max(game.best, game.combo);
+    const pts = 10 * game.combo; game.score += pts; game.matched++;
+    lEl.classList.add("ok"); rEl.classList.add("ok"); sfx.ok(game.combo);
+    burst(rEl, pts);
+    hud();
+    setTimeout(() => refill(L, R), 300);
+  } else {
+    game.combo = 0; game.wrong++; game.missed[lw.q] = (game.missed[lw.q] || 0) + 1;
+    lEl.classList.add("bad"); rEl.classList.add("bad"); sfx.bad();
+    hud();
+    setTimeout(() => { lEl.classList.remove("bad"); rEl.classList.remove("bad"); }, 380);
+  }
+}
+function refill(L, R) {
+  if (state !== "play") return;
+  const used = new Set(game.left.map((w) => w.q));
+  const w = pick(game.W.list, used);
+  game.left[L] = w;
+  // The new answer lands in a random free spot on the right; the old answer there moves over.
+  const spot = Math.floor(Math.random() * ROWS);
+  game.right[R] = game.right[spot]; game.right[spot] = w;
+  drawBoard([`l${L}`, `r${spot}`, `r${R}`]);
+}
+function burst(el, pts) {
+  const r = el.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  for (let k = 0; k < 10; k++) {
+    const s = document.createElement("i"); s.className = "spark";
+    const a = Math.random() * Math.PI * 2, d = 30 + Math.random() * 40;
+    s.style.cssText = `left:${cx}px;top:${cy}px;background:var(--c${(k % 6) + 1});--dx:${Math.cos(a) * d}px;--dy:${Math.sin(a) * d}px`;
+    document.body.appendChild(s); setTimeout(() => s.remove(), 750);
+  }
+  const f = document.createElement("div"); f.className = "float"; f.textContent = `+${pts}`; f.style.left = `${cx - 14}px`; f.style.top = `${cy - 20}px`;
+  document.body.appendChild(f); setTimeout(() => f.remove(), 850);
+}
+
+function hud() {
+  const s = document.getElementById("sc"), c = document.getElementById("cb");
+  if (s) s.textContent = game.score;
+  if (c) { c.textContent = `×${Math.max(1, game.combo)}`; c.classList.toggle("zero", game.combo < 2); c.classList.remove("bump"); void c.offsetWidth; if (game.combo > 1) c.classList.add("bump"); }
+}
+
+const KEYS_L = ["1", "2", "3", "4", "5"], KEYS_R = ["A", "S", "D", "F", "G"];
+function drawBoard(fresh = []) {
+  const b = document.getElementById("board"); if (!b) return;
+  b.innerHTML = `<div class="col" role="group" aria-label="Svenska"><div class="colh">${esc(game.W.t.columns[game.W.a].name)}</div>${game.left.map((w, k) => `<button class="tile ${fresh.includes("l" + k) ? "in" : ""}" data-side="l" data-k="${k}" aria-label="${esc(w.q)}"><span class="key">${KEYS_L[k]}</span>${esc(w.q)}</button>`).join("")}</div>
+    <div class="col" role="group" aria-label="English"><div class="colh">${esc(game.W.t.columns[game.W.b].name)}</div>${game.right.map((w, k) => `<button class="tile ${fresh.includes("r" + k) ? "in" : ""}" data-side="r" data-k="${k}" aria-label="${esc(w.ans)}"><span class="key">${KEYS_R[k]}</span>${esc(w.ans)}</button>`).join("")}</div>`;
+}
+
+// The round's misses go into the note's Missed column, as one change.
+async function finish() {
+  state = "done"; cancelAnimationFrame(raf); sfx.end();
+  const W = words(amber.note);
+  const scores = (amber.data.collections.scores || []);
+  const prevBest = Math.max(0, ...scores.map((s) => s.score));
+  lastResult = { score: game.score, best: game.best, matched: game.matched, wrong: game.wrong, missed: { ...game.missed }, newBest: game.score > prevBest && game.score > 0 };
+  await amber.store.collection("scores").add({ score: game.score, best: game.best, matched: game.matched, wrong: game.wrong });
+  const misses = Object.entries(game.missed);
+  if (misses.length && W) {
+    const ops = [];
+    let mcol = W.m;
+    if (mcol < 0) { ops.push({ op: "add_column", table: W.t.index, name: "Missed" }); mcol = W.t.columns.length; }
+    for (const [q, n] of misses) { const w = W.list.find((x) => x.q === q); if (w) ops.push({ op: "set_cell", table: W.t.index, row: w.i, col: mcol, value: String(w.missed + n) }); }
+    const r = await amber.update(ops);
+    if (!r.ok) lastResult.err = r.error;
+  }
+  render();
+}
+
+function render(note = amber.note) {
+  const app = document.getElementById("app");
+  const W = words(note);
+  if (state === "play" && game) {
+    app.innerHTML = `<div class="hud"><div class="score num" id="sc" aria-label="Score">${game.score}</div><span class="combo zero" id="cb">×1</span><span class="grow"></span>
+      <span class="t num" id="tt">0:${String(Math.ceil((game.ends - Date.now()) / 1000)).padStart(2, "0")}</span>
+      <button class="round sound" id="snd" aria-pressed="${soundOn}" aria-label="Sound ${soundOn ? "on" : "off"}">${soundIcon()}</button><button class="round" id="quit" aria-label="Stop the round">${ico("close")}</button></div>
+      <div class="timebar" aria-hidden="true"><b id="tb"></b></div><div class="board" id="board"></div>`;
+    drawBoard(); hud(); return;
+  }
+  const scores = (amber.data.collections.scores || []).slice().sort((a, b) => b.score - a.score);
+  const best = scores[0] ? scores[0].score : 0;
+  const tricky = W ? W.list.filter((w) => w.missed).sort((a, b) => b.missed - a.missed).slice(0, 8) : [];
+  if (!W || W.list.length < ROWS) {
+    app.innerHTML = `<header class="top"><div class="titles"><h1>${esc(note.title)}</h1></div></header><div class="card empty">${ico("cards")}<h3>Add some words</h3><p>Put at least ${ROWS} words in a table in this note: the word in the first column, what it means in the second.</p></div>`;
+    return;
+  }
+  const r = state === "done" && lastResult;
+  app.innerHTML = `
+  <header class="top"><div class="titles"><h1>${esc(note.title)}</h1><div class="sub">${W.list.length} words${tricky.length ? ` · ${tricky.length} tricky` : ""}</div></div>
+    <button class="round sound" id="snd" aria-pressed="${soundOn}" aria-label="Sound ${soundOn ? "on" : "off"}">${soundIcon()}</button></header>
+  ${r ? `<section class="card result rise"><div class="k muted small" style="font-weight:700;letter-spacing:.08em;text-transform:uppercase">Round over</div><div class="big num">${r.score}</div>
+      ${r.newBest ? `<span class="badge">New best</span>` : `<p>Best is ${best}</p>`}
+      <p>${r.matched} matched · ${r.wrong} wrong · longest combo ×${Math.max(1, r.best)}</p>
+      ${Object.keys(r.missed).length ? `<p>Missed: ${Object.keys(r.missed).map((q) => `<b>${esc(q)}</b>`).join(", ")}. They're counted in the note and come back more often.</p>` : ""}
+      ${r.err ? `<p class="err">${esc(r.err)}</p>` : ""}
+      <div class="row3"><button class="btn primary" id="play">${ico("play")} Play again</button></div></section>`
+  : `<section class="hero"><div class="floaty" aria-hidden="true"><span>${esc(W.list[3].q)}</span><span>${esc(W.list[7].ans)}</span><span>${esc(W.list[12].q)}</span></div>
+      <div class="k">Word Rush</div><h2>Match as many as you can</h2><p>Tap a word, then what it means. Quick matches build a combo. ${seconds()} seconds.</p>
+      <div class="row3"><button class="btn primary" id="play">${ico("play")} Play</button>${best ? `<span class="muted">Best ${best}</span>` : ""}</div></section>`}
+  <div class="stats3"><div><b class="num">${best}</b><span>Best score</span></div><div><b class="num">${scores.length}</b><span>Rounds played</span></div><div><b class="num">${scores.length ? Math.round(100 * scores.reduce((s, x) => s + x.matched, 0) / Math.max(1, scores.reduce((s, x) => s + x.matched + x.wrong, 0))) : 0}%</b><span>Right first time</span></div></div>
+  <div class="cols">
+    <div>${tricky.length ? `<div class="label"><span class="grow">Tricky words</span></div><section class="card tricky">${tricky.map((w) => `<span><b>${esc(w.q)}</b> ${esc(w.ans)}<i>${w.missed}</i></span>`).join("")}</section>` : ""}</div>
+    <div>${scores.length ? `<div class="label"><span class="grow">Top rounds</span></div><ul class="card list scores">${scores.slice(0, 5).map((s, k) => `<li><span class="rank">${k + 1}</span><span class="grow">${Kit.D.fmt(s.created.slice(0, 10), { weekday: "short", day: "numeric", month: "short" })}</span><span class="muted small">×${s.best}</span><span class="pts num">${s.score}</span></li>`).join("")}</ul>` : ""}</div>
+  </div>`;
+}
+const soundIcon = () => soundOn ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>`
+  : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9l5 6M22 9l-5 6"/></svg>`;
+
+document.addEventListener("click", (e) => {
+  const t = e.target.closest("#play,#snd,#quit,.tile"); if (!t) return;
+  if (t.id === "play") start();
+  else if (t.id === "snd") { soundOn = !soundOn; if (soundOn) { audio(); sfx.pick(); } t.setAttribute("aria-pressed", soundOn); t.setAttribute("aria-label", `Sound ${soundOn ? "on" : "off"}`); t.innerHTML = soundIcon(); }
+  else if (t.id === "quit") { state = "home"; cancelAnimationFrame(raf); render(); }
+  else choose(t.dataset.side, +t.dataset.k);
+});
+// On the Mac: 1 to 5 picks a word on the left, A S D F G one on the right; Space starts a round.
+document.addEventListener("keydown", (e) => {
+  if (e.metaKey || e.ctrlKey || e.target.closest("input, textarea")) return;
+  const k = e.key.toUpperCase();
+  if (state !== "play") { if (e.key === " " || e.key === "Enter") { if (!e.target.closest("button")) { e.preventDefault(); start(); } } return; }
+  if (KEYS_L.includes(k)) choose("l", KEYS_L.indexOf(k));
+  else if (KEYS_R.includes(k)) choose("r", KEYS_R.indexOf(k));
+  else if (e.key === "Escape") { state = "home"; render(); }
+});
+amber.onChange((note) => { if (state !== "play") render(note); });
+</script>
+</body>
+</html>

@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="amber-settings" content='{"settings":[{"key":"income","label":"Income a month, after tax","type":"number","default":30000},{"key":"save","label":"Saving a month","type":"number","default":3000,"help":"Set aside first, never counted as safe to spend."},{"key":"payday","label":"Payday (day of the month)","type":"number","default":25,"help":"The budget month runs from payday to payday."}]}'>
 <title>Money</title>
 <style>
 /*KIT_CSS*/
@@ -86,11 +87,7 @@
 <script>
 /*KIT_JS*/
 const { esc, ico, D, num, kr, col, sheet, announce } = Kit;
-const S = Kit.settings([
-  { key: "income", label: "Income a month", type: "number", unit: "kr", default: 30000, step: 100, help: "After tax." },
-  { key: "save", label: "Saving a month", type: "number", unit: "kr", default: 3000, step: 100, help: "Set aside first, never counted as safe to spend." },
-  { key: "payday", label: "Payday", type: "select", default: 25, options: [...Array(28)].map((_, i) => [i + 1, `The ${ord(i + 1)}`]), help: "The budget month runs from payday to payday." },
-]);
+const S = { get: () => Kit.settings() };
 function ord(n) { return n + (n % 10 === 1 && n !== 11 ? "st" : n % 10 === 2 && n !== 12 ? "nd" : n % 10 === 3 && n !== 13 ? "rd" : "th"); }
 const PALETTE = { Groceries: 2, "Eating out": 1, Transport: 3, Fun: 4, Shopping: 6, Health: 5, Home: 7, Bills: 7, Other: 7 };
 const cc = (c) => `var(--c${PALETTE[c] || (Math.abs([...c].reduce((a, x) => a + x.charCodeAt(0), 0)) % 6) + 1})`;
@@ -110,7 +107,7 @@ function model(note) {
   const c = { date: col(t, /^date$/i), item: col(t, /^(item|what|description|name)$/i), cat: col(t, /^category$/i), amt: col(t, /^amount$/i) };
   const bt = note.tables.find((x) => x !== t && col(x, /^bill$/i) >= 0);
   const s = S.get();
-  const p = period(note.today, Number(s.payday) || 25);
+  const p = period(note.today, Math.min(28, Math.max(1, Number(s.payday) || 25)));
   const tx = t.rows.map((r, i) => ({ i, date: (r[c.date] || "").trim(), item: c.item >= 0 ? r[c.item] : "", cat: (c.cat >= 0 && r[c.cat].trim()) || "Other", amt: num(r[c.amt]) }))
     .filter((x) => D.parse(x.date) && Number.isFinite(x.amt));
   const inP = tx.filter((x) => x.date >= p.start && x.date <= note.today);
@@ -164,7 +161,7 @@ function render(note = amber.note) {
   const app = document.getElementById("app");
   const m = model(note);
   if (!m) {
-    app.innerHTML = `<header class="top"><div class="titles"><h1>${esc(note.title || "Money")}</h1></div><button class="round" id="settings" aria-label="Settings">${ico("gear")}</button></header>
+    app.innerHTML = `<header class="top"><div class="titles"><h1>${esc(note.title || "Money")}</h1></div></header>
       <div class="card empty">${ico("coins")}<h3>Nothing spent yet</h3><p>Spending goes in a table in this note with Date, Item, Category and Amount. Add the first one here, or paste a bank export.</p>
       <button class="btn primary" id="first">${ico("plus")} Add spending</button></div>`;
     document.getElementById("first").onclick = () => amber.update({ op: "set_text", heading: "Spending", text: "| Date | Item | Category | Amount |\n| --- | --- | --- | --- |" }).then((r) => !r.ok && amber.update({ op: "set_text", heading: note.title, text: "" }));
@@ -181,7 +178,7 @@ function render(note = amber.note) {
       <span class="grow"><span class="ellipsis" style="display:block">${esc(x.item || x.cat)}</span><span class="cat">${esc(x.cat)}</span></span><span class="amt num">${kr(x.amt)}</span></button>`;
   app.innerHTML = `
   <header class="top"><div class="titles"><h1>${esc(note.title)}</h1><div class="sub">${D.fmt(p.start, { day: "numeric", month: "short" })} to ${D.fmt(p.end, { day: "numeric", month: "short" })} · day ${p.index + 1} of ${p.days}</div></div>
-    <button class="round" id="import" aria-label="Import from your bank">${ico("upload")}</button><button class="round" id="settings" aria-label="Settings">${ico("gear")}</button></header>
+    <button class="round" id="import" aria-label="Import from your bank">${ico("upload")}</button></header>
   <div class="cols side">
     <div>
       <section class="card safe" aria-label="Safe to spend today">
@@ -365,7 +362,6 @@ function importSheet() {
 document.addEventListener("click", (e) => {
   const t = e.target.closest("#add,#settings,#import,#budgets,#all,[data-tx],[data-pay]"); if (!t) return;
   if (t.id === "add") addSheet();
-  else if (t.id === "settings") S.open("Money settings");
   else if (t.id === "import") importSheet();
   else if (t.id === "budgets") budgetsSheet();
   else if (t.id === "all") { showAll = !showAll; render(); }

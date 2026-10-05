@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="amber-settings" content='{"settings":[{"key":"soon","label":"Show birthdays coming in","type":"choice","options":["2 weeks","1 month","6 weeks","3 months"],"default":"6 weeks"},{"key":"remindAt","label":"Remind me at","type":"text","default":"18:00","help":"For catch-up reminders, as 18:00."},{"key":"defaultEvery","label":"New people: keep in touch every","type":"choice","options":["1 week","2 weeks","1 month","3 months","6 months"],"default":"1 month"}]}'>
 <title>People</title>
 <style>
 /*KIT_CSS*/
@@ -74,18 +75,14 @@
 <script>
 /*KIT_JS*/
 const { esc, ico, D, col, sheet, announce } = Kit;
-const S = Kit.settings([
-  { key: "soon", label: "Show birthdays coming in", type: "select", default: 45, options: [[14, "2 weeks"], [30, "1 month"], [45, "6 weeks"], [90, "3 months"]] },
-  { key: "remindAt", label: "Remind me at", type: "time", default: "18:00", help: "For catch-up and birthday reminders." },
-  { key: "defaultEvery", label: "New people, keep in touch every", type: "select", default: "1 month", options: [["1 week", "Week"], ["2 weeks", "2 weeks"], ["1 month", "Month"], ["3 months", "3 months"], ["6 months", "6 months"]] },
-]);
+const S = { get: () => { const s = Kit.settings(); return { soon: days(s.soon) || 45, soonText: s.soon || "6 weeks", remindAt: /^\d\d?:\d\d$/.test(s.remindAt || "") ? s.remindAt.padStart(5, "0") : "18:00", defaultEvery: s.defaultEvery || "1 month" }; } };
 const EVERY = ["1 week", "2 weeks", "1 month", "2 months", "3 months", "6 months", "1 year"];
 let q = "", showAll = false;
 const key = (n) => String(n).trim().toLowerCase();
 const days = (every) => { const m = /(\d+)\s*(day|week|month|year)/i.exec(every || ""); if (!m) return 0; return +m[1] * { day: 1, week: 7, month: 30, year: 365 }[m[2].toLowerCase()]; };
 const hue = (s) => [...s].reduce((a, ch) => (a * 33 + ch.charCodeAt(0)) % 360, 11);
 const initials = (n) => n.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
-const avatar = (p, big = "") => `<span class="av ${big}" style="--g:linear-gradient(145deg, hsl(${hue(p.name)} 55% 58%), hsl(${(hue(p.name) + 40) % 360} 50% 42%))" aria-hidden="true">${esc(initials(p.name))}</span>`;
+const avatar = (p, big = "") => `<span class="av ${big}" style="--g:linear-gradient(145deg, hsl(${hue(p.name)} 55% 58%), hsl(${(hue(p.name) + 40) % 360} 50% 42%))" aria-hidden="true">${p.info && p.info.photo ? `<img src="${esc(amber.files.url(p.info.photo, { width: 160 }))}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">` : esc(initials(p.name))}</span>`;
 const ago = (n) => n <= 0 ? "today" : n === 1 ? "yesterday" : n < 14 ? `${n} days ago` : n < 60 ? `${Math.round(n / 7)} weeks ago` : n < 365 ? `${Math.round(n / 30)} months ago` : "over a year ago";
 
 function model(note) {
@@ -132,7 +129,7 @@ function render(note = amber.note) {
   const rem = amber.data.values.reminded || {};
   app.innerHTML = `
   <header class="top"><div class="titles"><h1>${esc(note.title)}</h1><div class="sub">${due.length ? `${due.length} to catch up` : "All caught up"}${bdays.length ? ` · ${bdays.length} ${bdays.length === 1 ? "birthday" : "birthdays"}` : ""}</div></div>
-    <button class="round" id="add" aria-label="Add someone">${ico("plus")}</button><button class="round" id="settings" aria-label="Settings">${ico("gear")}</button></header>
+    <button class="round" id="add" aria-label="Add someone">${ico("plus")}</button></header>
   <div class="label" style="margin-top:.2rem"><span class="grow">Catch up</span>${due.length > (innerWidth >= 900 ? 4 : 3) ? `<button id="more">${showAll ? "Show less" : `Show all ${due.length}`}</button>` : ""}</div>
   ${due.length ? `<section class="catch">${due.slice(0, showAll ? 99 : innerWidth >= 900 ? 4 : 3).map((p) => `<article class="card cu" data-row="${p.i}">
       <button class="av-btn" data-person="${p.i}" style="border:0;background:none;padding:0" aria-label="Open ${esc(p.name)}">${avatar(p).replace("</span>", ring(p) + "</span>")}</button>
@@ -146,7 +143,7 @@ function render(note = amber.note) {
       <section class="card list">${bdays.length ? bdays.map((p) => { const n = D.diff(p.bnext, today); return `<div class="row bday"><span class="cal"><span>${D.fmt(p.bnext, { month: "short" })}</span><b class="num">${+p.bnext.slice(8)}</b></span>
         <div class="grow"><div style="font-weight:600">${esc(p.name)}</div><div class="small ${n <= 7 ? "soon" : "muted"}">${n === 0 ? "Today" : n === 1 ? "Tomorrow" : n < 7 ? D.fmt(p.bnext, { weekday: "long" }) : `In ${n} days`}${p.age ? ` · turns ${p.age}` : ""}</div></div>
         <button class="bellb" data-bday="${p.i}" aria-pressed="${!!rem["bday:" + key(p.name)]}" aria-label="Remind me of ${esc(p.name)}'s birthday">${ico("gift")}</button></div>`; }).join("")
-        : `<div class="empty" style="padding:1.2rem"><p style="margin:0">No birthdays in the next ${s.soon} days.</p></div>`}</section>
+        : `<div class="empty" style="padding:1.2rem"><p style="margin:0">No birthdays in the next ${esc(s.soonText)}.</p></div>`}</section>
     </div>
     <div>
       <div class="label"><span class="grow">Everyone</span><span class="small num" style="text-transform:none">${m.people.length}</span></div>
@@ -166,7 +163,8 @@ async function talked(i, fromSheet) {
   if (card && !fromSheet) { card.classList.add("out"); await new Promise((r) => setTimeout(r, 380)); }
   const r = await cell(m, p, "last", amber.note.today);
   if (!r.ok) { announce(r.error); render(); return; }
-  if (amber.data.values.reminded && amber.data.values.reminded[key(p.name)]) await amber.setData({ values: { reminded: { [key(p.name)]: null } } });
+  const rid = amber.data.values.reminded && amber.data.values.reminded[key(p.name)];
+  if (rid) { if (typeof rid === "string") amber.device.reminders.complete(rid); await amber.setData({ values: { reminded: { [key(p.name)]: null } } }); }
   if (!fromSheet) noteSheet(i, true);
 }
 
@@ -234,10 +232,17 @@ async function addPerson() {
   const m = model(amber.note);
   const r = await amber.device.contacts.pick();
   let name = "", info = {};
-  if (r.ok && r.contact) { name = r.contact.name || r.contact.organization || ""; info = { phone: (r.contact.phones || [])[0] || null, email: (r.contact.emails || [])[0] || null }; }
+  let bday = "";
+  if (r.ok && r.contact) {
+    name = r.contact.name || r.contact.organization || "";
+    info = { phone: (r.contact.phones || [])[0] || null, email: (r.contact.emails || [])[0] || null };
+    // A birthday without a year comes as --mm-dd; the note keeps it as mm-dd.
+    if (r.contact.birthday) bday = r.contact.birthday.replace(/^--/, "");
+    if (r.contact.photo) { const f = await amber.files.save({ name: `${name}.jpg`, type: "image/jpeg", base64: r.contact.photo.split(",")[1] }); if (f.ok) info.photo = { $file: f.file.$file }; }
+  }
   sheet("Add someone", `<form id="af" class="fields">${r.ok ? "" : `<p class="muted small" style="margin:0">${esc(r.error || "Contacts isn't available here.")} Type the name instead.</p>`}
     <label class="field">Name<input id="an" required value="${esc(name)}" ${name ? "" : "autofocus"}></label>
-    <label class="field">Birthday<input id="ab" type="date"></label>
+    <label class="field">Birthday<input id="ab" ${/^\d{4}-/.test(bday) || !bday ? 'type="date"' : 'placeholder="mm-dd"'} value="${esc(bday)}"></label>
     <label class="field">Keep in touch<select id="ae">${EVERY.map((e) => `<option ${e === S.get().defaultEvery ? "selected" : ""}>${e}</option>`).join("")}</select></label>
     <div class="err" id="err" role="alert"></div><button class="btn primary block" ${name ? "autofocus" : ""}>Add</button></form>`, {
     mount(root, close) {
@@ -253,7 +258,7 @@ async function addPerson() {
         if (m.c.every >= 0) values[col2("every")] = root.querySelector("#ae").value;
         const x = await amber.update({ op: "append_row", table: m.t.index, values });
         if (!x.ok) { root.querySelector("#err").textContent = x.error; return; }
-        if (info.phone || info.email) await amber.setData({ values: { contacts: { [key(n)]: info } } });
+        if (info.phone || info.email || info.photo) await amber.setData({ values: { contacts: { [key(n)]: info } } });
         close(); announce(`${n} added.`);
       };
     },
@@ -264,7 +269,6 @@ document.addEventListener("click", (e) => {
   if (e.target.closest("#more")) { showAll = !showAll; render(); return; }
   const t = e.target.closest("#add,#settings,[data-talked],[data-remind],[data-bday],[data-person]"); if (!t || t.closest(".sheet")) return;
   if (t.id === "add") addPerson();
-  else if (t.id === "settings") S.open("People settings");
   else if (t.dataset.talked) talked(+t.dataset.talked);
   else if (t.dataset.remind) remind(+t.dataset.remind);
   else if (t.dataset.bday) remind(+t.dataset.bday, true);

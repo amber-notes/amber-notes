@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="amber-needs" content='{"hosts": ["api.open-meteo.com", "nominatim.openstreetmap.org"]}'>
+<meta name="amber-settings" content='{"settings":[{"key":"people","label":"Who is going","type":"list","default":["Me"],"help":"Shared costs are split evenly between them."},{"key":"currency","label":"Currency","type":"currency","default":"SEK"},{"key":"units","label":"Temperatures","type":"choice","options":["Celsius","Fahrenheit"],"default":"Celsius"}]}'>
 <title>Trip</title>
 <style>
 /*KIT_CSS*/
@@ -84,11 +85,7 @@
 <script>
 /*KIT_JS*/
 const { esc, ico, D, num, kr, col, sheet, announce } = Kit;
-const S = Kit.settings([
-  { key: "people", label: "Who's going", type: "text", default: "Me", help: "Names with commas. Costs are split evenly between them." },
-  { key: "currency", label: "Currency", type: "select", default: "kr", options: [["kr", "kr"], ["€", "€"], ["$", "$"], ["£", "£"]] },
-  { key: "units", label: "Temperatures", type: "select", default: "celsius", options: [["celsius", "Celsius"], ["fahrenheit", "Fahrenheit"]] },
-]);
+const S = { get: () => { const s = Kit.settings(); const people = Array.isArray(s.people) ? s.people : String(s.people || "Me").split(","); return { people: people.map((x) => String(x).trim()).filter(Boolean), currency: { SEK: "kr", NOK: "kr", DKK: "kr", EUR: "€", USD: "$", GBP: "£", CHF: "CHF ", JPY: "¥" }[s.currency] || "kr", units: /fahr/i.test(s.units) ? "fahrenheit" : "celsius" }; } };
 let day = null, wxErr = "", maps = {}, cityMap = null, adding = "";
 const dark = () => matchMedia("(prefers-color-scheme: dark)").matches;
 const place = (n) => (amber.data.values.places || {})[String(n).trim().toLowerCase()];
@@ -125,24 +122,21 @@ async function weather(m) {
   await amber.store.set("weather", { at: new Date().toISOString(), days });
 }
 
-// A map picture of the day's stops, centered on the first, with numbered pins laid over it.
+// A map picture of the day's stops, numbered, fitted to them; far-off stops (the airport) are left out.
 const inflight = new Set();
 async function dayMap(m, d, width) {
   const ks = `${d}-${dark()}-${width}`; if (maps[ks] || inflight.has(ks)) return null;
+  const stops = m.stops.filter((s) => s.day === d).map((s, k) => ({ k: k + 1, p: place(s.where) })).filter((x) => x.p);
+  if (!stops.length) return null;
+  const c = stops[0].p, dist = (p) => Math.hypot((p.lon - c.lon) * 111320 * Math.cos(c.lat * Math.PI / 180), (p.lat - c.lat) * 110540);
+  const near = stops.filter((x) => dist(x.p) < 8000);
   inflight.add(ks);
-  const pts = m.stops.filter((s) => s.day === d).map((s, k) => ({ k: k + 1, s, p: place(s.where) })).filter((x) => x.p);
-  if (!pts.length) return null;
-  const c = pts[0].p, mx = (p) => (p.lon - c.lon) * 111320 * Math.cos(c.lat * Math.PI / 180), my = (p) => (p.lat - c.lat) * 110540;
-  const near = pts.filter((x) => Math.hypot(mx(x.p), my(x.p)) < 8000);
-  const far = pts.length - near.length;
-  const reach = Math.max(600, ...near.map((x) => Math.max(Math.abs(mx(x.p)) * 9 / 16, Math.abs(my(x.p)))));
   const W = Math.min(1200, Math.round(width * 2)), H = Math.round(W * 9 / 16);
-  const km = (reach * 2 * 1.35) / 1000;
-  const r = await amber.device.maps.snapshot({ lat: c.lat, lon: c.lon, km, width: W, height: H, dark: dark() });
+  const r = await amber.device.maps.snapshot(near.length > 1 ? { pins: near.map((x) => ({ lat: x.p.lat, lon: x.p.lon, label: String(x.k) })), width: W, height: H, dark: dark() }
+    : { lat: c.lat, lon: c.lon, km: 1.5, width: W, height: H, dark: dark() });
   inflight.delete(ks);
   if (!r.ok) return null;
-  const mpp = (km * 1000) / H;
-  maps[ks] = { url: r.dataURL, pins: near.map((x) => ({ k: x.k, x: (W / 2 + mx(x.p) / mpp) / W * 100, y: (H / 2 - my(x.p) / mpp) / H * 100 })), far };
+  maps[ks] = { url: r.dataURL, far: stops.length - near.length };
   return maps[ks];
 }
 
@@ -151,7 +145,7 @@ async function heroMap(width) {
   const k = `${dark()}-${width}`; if ((cityMap && cityMap.k === k) || inflight.has(k)) return;
   inflight.add(k);
   const W = Math.min(1200, Math.round(width * 2)), H = Math.round(W * (width >= 860 ? 8 / 21 : 9 / 16));
-  const r = await amber.device.maps.snapshot({ lat: city.lat, lon: city.lon, km: 9, width: W, height: H, dark: dark() });
+  const r = await amber.device.maps.snapshot({ lat: city.lat, lon: city.lon, km: 9, width: W, height: H, dark: dark(), pin: false });
   inflight.delete(k);
   if (r.ok) { cityMap = { k, url: r.dataURL }; render(); }
 }
@@ -170,7 +164,7 @@ function render(note = amber.note) {
   const app = document.getElementById("app");
   const m = model(note), today = note.today;
   if (!m.days.length) {
-    app.innerHTML = `<header class="top"><div class="titles"><h1>${esc(note.title || "Trip")}</h1></div><button class="round" id="settings" aria-label="Settings">${ico("gear")}</button></header>
+    app.innerHTML = `<header class="top"><div class="titles"><h1>${esc(note.title || "Trip")}</h1></div></header>
       <div class="card empty">${ico("suitcase")}<h3>No plan yet</h3><p>The plan goes in a table in this note with Day, Time, What and Where. A Packing checklist and a Costs table (Date, What, Paid by, Amount) show up here too.</p></div>`;
     return;
   }
@@ -182,7 +176,7 @@ function render(note = amber.note) {
   const stops = m.stops.filter((s) => s.day === day);
   const wd = w[day];
   const packed = m.packing.filter((x) => x.checked).length;
-  const people = S.get().people.split(",").map((s) => s.trim()).filter(Boolean);
+  const people = S.get().people;
   let costs = [], cc = null;
   if (m.costs) {
     cc = { date: col(m.costs, /^date$/i), what: col(m.costs, /^what$/i), by: col(m.costs, /^paid by$/i), amt: col(m.costs, /^amount$/i) };
@@ -194,7 +188,7 @@ function render(note = amber.note) {
   const R = 15.9, C = 2 * Math.PI * R;
 
   app.innerHTML = `
-  <header class="top"><div class="titles"><h1>${esc(note.title)}</h1><div class="sub">${range}</div></div><button class="round" id="settings" aria-label="Settings">${ico("gear")}</button></header>
+  <header class="top"><div class="titles"><h1>${esc(note.title)}</h1><div class="sub">${range}</div></div></header>
   <section class="hero" data-w="hero">${cityMap ? `<img class="mapimg" src="${cityMap.url}" alt="Map of ${esc((amber.data.values.city || {}).name || note.title)}">` : `<div class="mapimg ph"></div>`}
     <div class="over"><b>${big}</b><span>${esc((amber.data.values.city || {}).name || "")}${m.stops.length ? ` · ${m.stops.length} plans` : ""}</span></div>
     <div class="wx" style="--n:${m.days.length}" role="group" aria-label="Days">${m.days.map((d) => { const x = w[d]; return `<button data-day="${d}" aria-pressed="${d === day}" aria-label="${D.fmt(d, { weekday: "long", day: "numeric", month: "long" })}${x ? `, ${wmo(x.code)[1]}, ${temp(x.max)}` : ""}">
@@ -203,7 +197,7 @@ function render(note = amber.note) {
   <div class="cols side">
     <div>
       <div class="dayhead"><h2>${D.fmt(day, { weekday: "long", day: "numeric", month: "long" })}</h2><span class="w">${wd ? `${wmo(wd.code)[1]}, ${temp(wd.max)}` : ""}</span></div>
-      <div class="daymap" data-w="daymap" ${dm ? "" : 'style="aspect-ratio:16/9"'}>${dm ? `<img src="${dm.url}" alt="Map of the day's stops">${dm.pins.map((p, k) => `<span class="pin" style="left:${p.x}%;top:${p.y}%;--i:${k}" aria-hidden="true">${p.k}</span>`).join("")}${dm.far ? `<span class="note2">${dm.far} more out of town</span>` : ""}` : ""}</div>
+      <div class="daymap" data-w="daymap" ${dm ? "" : 'style="aspect-ratio:16/9"'}>${dm ? `<img src="${dm.url}" alt="Map of the day's stops">${dm.far ? `<span class="note2">${dm.far} more out of town</span>` : ""}` : ""}</div>
       <section class="card list tl">${stops.map((s, k) => `<div class="row stop ${day < today || (day === today && s.time && s.time < nowTime()) ? "past" : ""}"><span class="tm">${esc(s.time)}</span><span class="no ${place(s.where) ? "" : "none"}">${k + 1}</span>
         <div><div class="wh">${esc(s.what)}</div>${s.where ? `<div class="pl">${esc(s.where)}</div>` : ""}</div>
         ${s.where ? `<button class="go" data-go="${s.i}" aria-label="Directions to ${esc(s.where)}">${ico("pin")}</button>` : "<span></span>"}</div>`).join("")}</section>
@@ -237,7 +231,7 @@ async function toggle(line) { const r = await amber.update({ op: "toggle_checkli
 
 function costSheet() {
   const m = model(amber.note);
-  const people = S.get().people.split(",").map((s) => s.trim()).filter(Boolean);
+  const people = S.get().people;
   let by = people[people.length - 1];
   sheet("Add a shared cost", `<form id="cf" class="fields"><label class="field">What<input id="cw" autofocus required placeholder="Dinner at Da Remo" maxlength="80"></label>
     <label class="field">Amount (${esc(S.get().currency)})<input id="ca" inputmode="decimal" required class="num"></label>
@@ -273,10 +267,10 @@ function stopSheet() {
         const t = m.plan, v = { day: root.querySelector("#sd").value, time: root.querySelector("#st").value, what: root.querySelector("#sw").value.trim(), where: root.querySelector("#sp").value.trim() };
         // Rows stay in time order: the new one goes after the last stop that comes before it.
         const before = m.stops.filter((s) => s.day < v.day || (s.day === v.day && s.time <= v.time)).pop();
-        const r = await amber.update({ op: "append_row", table: t.index, values: { [t.columns[m.c.day].name]: v.day, ...(m.c.time >= 0 ? { [t.columns[m.c.time].name]: v.time } : {}), [t.columns[m.c.what].name]: v.what, ...(m.c.where >= 0 ? { [t.columns[m.c.where].name]: v.where } : {}) } });
-        if (!r.ok) return (root.querySelector("#err").textContent = r.error);
+        const add = { op: "append_row", table: t.index, values: { [t.columns[m.c.day].name]: v.day, ...(m.c.time >= 0 ? { [t.columns[m.c.time].name]: v.time } : {}), [t.columns[m.c.what].name]: v.what, ...(m.c.where >= 0 ? { [t.columns[m.c.where].name]: v.where } : {}) } };
         const to = before ? before.i + 1 : 0;
-        if (to < t.rows.length) await amber.update({ op: "move_row", table: t.index, from: t.rows.length, to });
+        const r = await amber.update(to < t.rows.length ? [add, { op: "move_row", table: t.index, from: t.rows.length, to }] : add);
+        if (!r.ok) return (root.querySelector("#err").textContent = r.error);
         if (v.where && !place(v.where)) locate(v.where);
         day = v.day; close();
       };
@@ -296,8 +290,7 @@ async function locate(q) {
 
 document.addEventListener("click", (e) => {
   const t = e.target.closest("#settings,#addcost,#addstop,[data-day],[data-line],[data-go]"); if (!t) return;
-  if (t.id === "settings") S.open("Trip settings");
-  else if (t.id === "addcost") costSheet();
+  if (t.id === "addcost") costSheet();
   else if (t.id === "addstop") stopSheet();
   else if (t.dataset.day) { day = t.dataset.day; render(); }
   else if (t.dataset.line) toggle(t.dataset.line);

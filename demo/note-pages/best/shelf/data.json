@@ -1,0 +1,80 @@
+{
+ "values": {
+  "settings": {
+   "wood": "Oak",
+   "lamp": "On"
+  },
+  "covers": {
+   "tomorrow, and tomorrow, and tomorrow": {
+    "$seedFile": "covers/tomorrow-and-tomorrow-and-tomorrow.jpg"
+   },
+   "project hail mary": {
+    "$seedFile": "covers/project-hail-mary.jpg"
+   },
+   "anxious people": {
+    "$seedFile": "covers/anxious-people.jpg"
+   },
+   "piranesi": {
+    "$seedFile": "covers/piranesi.jpg"
+   },
+   "klara and the sun": {
+    "$seedFile": "covers/klara-and-the-sun.jpg"
+   },
+   "educated": {
+    "$seedFile": "covers/educated.jpg"
+   },
+   "lessons in chemistry": {
+    "$seedFile": "covers/lessons-in-chemistry.jpg"
+   },
+   "the midnight library": {
+    "$seedFile": "covers/the-midnight-library.jpg"
+   },
+   "norwegian wood": {
+    "$seedFile": "covers/norwegian-wood.jpg"
+   },
+   "the remains of the day": {
+    "$seedFile": "covers/the-remains-of-the-day.jpg"
+   },
+   "station eleven": {
+    "$seedFile": "covers/station-eleven.jpg"
+   },
+   "the hundred-year-old man who climbed out of the window and disappeared": {
+    "$seedFile": "covers/the-hundred-year-old-man-who-climbed-out.jpg"
+   },
+   "sapiens": {
+    "$seedFile": "covers/sapiens.jpg"
+   },
+   "the overstory": {
+    "$seedFile": "covers/the-overstory.jpg"
+   },
+   "pachinko": {
+    "$seedFile": "covers/pachinko.jpg"
+   },
+   "middlemarch": {
+    "$seedFile": "covers/middlemarch.jpg"
+   },
+   "the seven husbands of evelyn hugo": {
+    "$seedFile": "covers/the-seven-husbands-of-evelyn-hugo.jpg"
+   },
+   "circe": {
+    "$seedFile": "covers/circe.jpg"
+   },
+   "the road": {
+    "$seedFile": "covers/the-road.jpg"
+   },
+   "atomic habits": {
+    "$seedFile": "covers/atomic-habits.jpg"
+   },
+   "normal people": {
+    "$seedFile": "covers/normal-people.jpg"
+   },
+   "born a crime": {
+    "$seedFile": "covers/born-a-crime.jpg"
+   },
+   "the little prince": {
+    "$seedFile": "covers/the-little-prince.jpg"
+   }
+  }
+ },
+ "collections": {}
+}

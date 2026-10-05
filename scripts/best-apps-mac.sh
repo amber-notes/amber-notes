@@ -9,7 +9,7 @@ rm -rf "$OUT" && mkdir -p "$OUT"
 
 # US English (US dates, 1,284), whatever this Mac's region is. The same build settings as qa-test.sh.
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
-TEST_RUNNER_AMBER_BEST_MAC="$OUT" TEST_RUNNER_AMBER_BEST_ONLY="${ONLY:-}" nice -n 10 xcodebuild -project Pane.xcodeproj -scheme Pane -configuration Debug -destination 'platform=macOS' \
+TEST_RUNNER_AMBER_BEST_MAC="$OUT" TEST_RUNNER_AMBER_BEST_ONLY="${ONLY:-}" TEST_RUNNER_AMBER_INLINE_LIBS="${INLINE_LIBS:-}" nice -n 10 xcodebuild -project Pane.xcodeproj -scheme Pane -configuration Debug -destination 'platform=macOS' \
   -derivedDataPath build/ddqa -testLanguage en -testRegion US \
   ENABLE_TESTABILITY=YES ENABLE_HARDENED_RUNTIME=NO ONLY_ACTIVE_ARCH=YES SWIFT_ACTIVE_COMPILATION_CONDITIONS='$(inherited) QA' \
   CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= PROVISIONING_PROFILE_SPECIFIER= \

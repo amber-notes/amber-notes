@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="amber-settings" content='{"settings":[{"key":"servings","label":"Usual servings","type":"number","default":2,"help":"For dinners you plan from here."},{"key":"pantry","label":"Always at home","type":"list","default":["salt","pepper","olive oil"],"help":"Left off the shopping list."},{"key":"groupAisles","label":"Group the list by aisle","type":"choice","options":["On","Off"],"default":"On"}]}'>
 <title>Kitchen</title>
 <style>
 /* The shared look of the best-apps set: Amber Notes' variables, iOS-like grouped lists, sheets. */
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html { font-size: 17px; }
 body { font-size: 1rem; line-height: 1.35; }
 :root {
   --c1: #D96A06; --c2: #2F8577; --c3: #3D6DB5; --c4: #9A4E8E; --c5: #7C8A24; --c6: #C4455B; --c7: #8A6A4A;
@@ -206,24 +206,6 @@ const Kit = (() => {
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 
-  // Type follows the system: on the iPhone the body size follows Dynamic Type; the Mac is denser.
-  (function baseSize() {
-    const apply = () => {
-      const body = parseFloat(getComputedStyle(document.body).fontSize) || 17;
-      let size = body;
-      if (body >= 16) {
-        const p = document.createElement("span");
-        p.style.font = "-apple-system-body";
-        document.body.appendChild(p);
-        const dyn = parseFloat(getComputedStyle(p).fontSize);
-        p.remove();
-        if (p.style.font && dyn >= 14 && dyn <= 40) size = dyn;
-      }
-      document.documentElement.style.fontSize = size + "px";
-    };
-    if (document.body) apply(); else addEventListener("DOMContentLoaded", apply);
-  })();
-
   // Icons: inline SVG, drawn on a 24 grid with a 2 px stroke, like SF Symbols' regular weight.
   const paths = {
     gear: '<circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
@@ -287,34 +269,9 @@ const Kit = (() => {
   const col = (t, re) => t ? t.columns.findIndex((c) => re.test(c.name.trim())) : -1;
   const table = (note, ...res) => note.tables.find((t) => res.every((re) => col(t, re) >= 0));
 
-  // Where each table sits in the markdown, so several rows can go in with one edit (one Undo).
-  function tableLines(md) {
-    const lines = md.split("\n"), out = [];
-    const isRow = (l) => l.trim().startsWith("|");
-    const isSep = (l) => { const t = l.trim(); return t.startsWith("|") && t.includes("-") && [...t].every((c) => "|-: ".includes(c)); };
-    for (let i = 0; i < lines.length;) {
-      if (!(isRow(lines[i]) && isSep(lines[i + 1] || ""))) { i++; continue; }
-      let j = i + 2; while (j < lines.length && isRow(lines[j])) j++;
-      out.push({ start: i, end: j }); i = j;
-    }
-    return { lines, tables: out };
-  }
-  const level = (l) => { const m = /^(#{1,6}) /.exec(l); return m ? m[1].length : 0; };
-  const cellText = (v) => String(v ?? "").replace(/\n/g, " ").replace(/\|/g, "\\|");
-  /** Adds rows to table `index` in one edit: the section around the table is rewritten with set_text. */
-  async function addRows(index, rows, columns) {
-    const note = amber.note, t = note.tables[index];
-    const asCells = rows.map((r) => Array.isArray(r) ? r : (columns || t.columns.map((c) => c.name)).map((n) => r[n] ?? ""));
-    const { lines, tables } = tableLines(note.markdown);
-    const at = tables[index];
-    let h = -1; for (let k = at.start - 1; k >= 0; k--) if (level(lines[k])) { h = k; break; }
-    if (h < 0 || rows.length === 1) {
-      for (const r of asCells) { const res = await amber.update({ op: "append_row", table: index, values: r }); if (!res.ok) return res; }
-      return { ok: true };
-    }
-    const lv = level(lines[h]); let end = h + 1; while (end < lines.length && !(level(lines[end]) && level(lines[end]) <= lv)) end++;
-    const section = [...lines.slice(h + 1, at.end), ...asCells.map((c) => "| " + c.map(cellText).join(" | ") + " |"), ...lines.slice(at.end, end)];
-    return amber.update({ op: "set_text", heading: lines[h].replace(/^#+\s*/, ""), text: section.join("\n") });
+  /** Adds rows to table `index` as one change (one Undo). */
+  function addRows(index, rows) {
+    return amber.update(rows.map((values) => ({ op: "append_row", table: index, values })));
   }
 
   // A sheet: one at a time, Escape or the scrim closes it, focus goes in and comes back.
@@ -346,45 +303,13 @@ const Kit = (() => {
     back && back.focus && back.focus({ preventScroll: true });
   }
 
-  // App settings: declared once with defaults, changed in a sheet without asking an AI. Kept in the
-  // app's own data under "settings" (amber.settings when the app offers it).
-  function settings(schema) {
-    const get = () => {
-      const saved = (amber.settings && amber.settings.values) || (amber.data.values.settings || {});
-      return Object.fromEntries(schema.map((f) => [f.key, saved[f.key] ?? f.default]));
-    };
-    const save = (key, value) => amber.settings && amber.settings.set ? amber.settings.set(key, value) : amber.setData({ values: { settings: { [key]: value } } });
-    function open(title = "Settings", extra = "") {
-      const s = get();
-      const field = (f) => {
-        const id = "set-" + f.key;
-        if (f.type === "toggle") return `<label class="row" for="${id}"><span class="grow">${esc(f.label)}${f.help ? `<div class="muted small">${esc(f.help)}</div>` : ""}</span><input class="switch" type="checkbox" id="${id}" data-key="${f.key}" ${s[f.key] ? "checked" : ""}></label>`;
-        const input = f.type === "select"
-          ? `<select class="in" id="${id}" data-key="${f.key}">${f.options.map((o) => `<option value="${esc(o[0])}" ${String(s[f.key]) === String(o[0]) ? "selected" : ""}>${esc(o[1])}</option>`).join("")}</select>`
-          : `<input class="in num" id="${id}" data-key="${f.key}" type="${f.type === "number" ? "number" : f.type === "time" ? "time" : "text"}" ${f.type === "number" ? `inputmode="decimal" step="${f.step || 1}" min="${f.min ?? 0}"` : ""} value="${esc(s[f.key])}">`;
-        return `<div class="row stack"><label for="${id}" class="grow">${esc(f.label)}${f.unit ? ` <span class="muted">(${esc(f.unit)})</span>` : ""}${f.help ? `<div class="muted small">${esc(f.help)}</div>` : ""}</label><div class="set-input">${input}</div></div>`;
-      };
-      sheet(title, `<div class="card list settings-list">${schema.map(field).join("")}</div>${extra}<p class="muted small" style="margin:.9rem .3rem 0">Settings are kept in this note's app, on all your devices.</p>`, {
-        mount(root) {
-          root.addEventListener("change", (e) => {
-            const el = e.target.closest("[data-key]"); if (!el) return;
-            const f = schema.find((x) => x.key === el.dataset.key);
-            const v = f.type === "toggle" ? el.checked : f.type === "number" ? (Number.isFinite(parseFloat(el.value)) ? parseFloat(el.value) : f.default) : el.value;
-            save(f.key, v);
-          });
-        },
-      });
-    }
-    return { get, open, save };
-  }
-
-  const style = document.createElement("style");
-  style.textContent = `.settings-list .row.stack { flex-wrap: wrap; } .settings-list .set-input { width: 9.5rem; } .settings-list .set-input .in { text-align: right; } .settings-list label.row { cursor: pointer; }
-  @media (max-width: 420px) { .settings-list .set-input { width: 8rem; } }`;
-  document.head.appendChild(style);
+  // App settings are declared in <meta name="amber-settings"> and changed in Amber Notes' own
+  // App Settings sheet; amber.settings has the defaults filled in.
+  const settings = () => amber.settings || {};
+  const on = (v) => v === true || v === "On" || v === "on" || v === "Yes";
 
   // Charts drawn at their real width (so 10 px labels stay 10 px): width(key) is the last measured
-  // width of the element with data-w="key"; fit(render) re-renders once when a width changed.
+  // inner width of the element with data-w="key"; fit(render) re-renders once when a width changed.
   const widths = {};
   const width = (key, fallback) => widths[key] || fallback;
   function fit(render) {
@@ -403,18 +328,15 @@ const Kit = (() => {
   const hash = (s) => { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); };
   const announce = (() => { let el; return (msg) => { if (!el) { el = document.createElement("div"); el.className = "sr"; el.setAttribute("aria-live", "polite"); document.body.appendChild(el); } el.textContent = ""; setTimeout(() => (el.textContent = msg), 30); }; })();
 
-  return { width, fit, onResize, esc, $, $$, ico, D, num, kr, fmtN, done, col, table, addRows, sheet, close, settings, once, hash, announce };
+  return { width, fit, onResize, esc, $, $$, ico, D, num, kr, fmtN, done, col, table, addRows, sheet, close, settings, on, once, hash, announce };
 })();
 
 const { esc, ico, D, num, col, sheet, announce } = Kit;
-const S = Kit.settings([
-  { key: "servings", label: "Usual servings", type: "number", default: 2, min: 1, help: "For dinners you plan from here." },
-  { key: "pantry", label: "Always at home", type: "text", default: "salt, pepper, olive oil", help: "Left off the shopping list. Separate with commas." },
-  { key: "groupAisles", label: "Group the list by aisle", type: "toggle", default: true },
-]);
+const S = { get: () => { const s = Kit.settings(); return { servings: Number(s.servings) || 2, pantry: (Array.isArray(s.pantry) ? s.pantry : String(s.pantry || "").split(",")).join(","), groupAisles: Kit.on(s.groupAisles) }; } };
 const hue = (s) => [...s].reduce((a, ch) => (a * 29 + ch.charCodeAt(0)) % 360, 23);
 const grad = (name) => { const h = (hue(name) % 70) + 5; return `linear-gradient(150deg, hsl(${h} 62% 52%), hsl(${(h + 330) % 360} 55% 34%))`; };
-const art = (r) => r.photo ? `<img src="${r.photo}" alt="">` : `<span class="mono" aria-hidden="true">${esc(r.name[0])}</span>`;
+const photo = (r, w) => r.photo ? (typeof r.photo === "string" ? r.photo : amber.files.url(r.photo, { width: w || 600 })) : "";
+const art = (r) => r.photo ? `<img src="${photo(r)}" alt="">` : `<span class="mono" aria-hidden="true">${esc(r.name[0])}</span>`;
 const recipes = () => (amber.data.collections.recipes || []);
 const byName = (n) => recipes().find((r) => r.name.toLowerCase() === String(n).trim().toLowerCase());
 const fmtQ = (q) => { if (!q) return ""; const w = Math.floor(q + 1e-9), f = Math.round((q - w) * 100) / 100; const fr = { 0.25: "¼", 0.5: "½", 0.75: "¾" }[f]; return f === 0 ? String(w) : fr ? (w ? w : "") + fr : String(Math.round(q * 10) / 10).replace(".", ","); };
@@ -444,7 +366,7 @@ function render(note = amber.note) {
   const aisles = [...new Set(m.groc.map((g) => g.aisle || ""))];
   app.innerHTML = `
   <header class="top"><div class="titles"><h1>${esc(note.title)}</h1><div class="sub">${planned} ${planned === 1 ? "dinner" : "dinners"} planned${m.groc.length ? ` · ${m.groc.length - done} to buy` : ""}</div></div>
-    <button class="round" id="newr" aria-label="New recipe">${ico("plus")}</button><button class="round" id="settings" aria-label="Settings">${ico("gear")}</button></header>
+    <button class="round" id="newr" aria-label="New recipe">${ico("plus")}</button></header>
   <div class="cols side">
     <div>
       ${tr ? `<section class="tile tonight" style="--g:${grad(tr.name)}">${art(tr)}<div class="shade" style="background:linear-gradient(180deg, rgba(20,10,0,0) 15%, rgba(20,10,0,.8))"></div>
@@ -453,7 +375,7 @@ function render(note = amber.note) {
       : `<section class="card empty" style="padding:1.6rem">${ico("pot")}<h3>Nothing planned tonight</h3><p>Pick something from your recipes.</p>${m.t ? `<button class="btn primary" data-plan="${today}">Plan tonight</button>` : ""}</section>`}
       <div class="label"><span class="grow">This week</span></div>
       ${m.t ? `<section class="card list week">${m.plan.filter((p) => p.day >= D.add(today, -1)).map((p) => { const r = byName(p.dish); return `<button class="row ${p.day === today ? "today" : ""}" data-plan="${p.day}">
-          <span class="dd"><b>${D.fmt(p.day, { weekday: "short" })}</b><span>${+p.day.slice(8)} ${D.fmt(p.day, { month: "short" })}</span></span><span class="sw ${p.dish ? "" : "none"}" style="--g:${p.dish ? grad(p.dish) : ""}">${r && r.photo ? `<img src="${r.photo}" alt="">` : ""}</span>
+          <span class="dd"><b>${D.fmt(p.day, { weekday: "short" })}</b><span>${+p.day.slice(8)} ${D.fmt(p.day, { month: "short" })}</span></span><span class="sw ${p.dish ? "" : "none"}" style="--g:${p.dish ? grad(p.dish) : ""}">${r && r.photo ? `<img src="${photo(r, 120)}" alt="">` : ""}</span>
           <span class="grow">${p.dish ? `<span class="dish ellipsis" style="display:block">${esc(p.dish)}</span><span class="sv">${r ? `${r.minutes} min · ` : ""}${p.servings || "?"} servings</span>` : `<span class="plan">Plan something</span>`}</span>${ico("chevron", 'class="chev"')}</button>`; }).join("")}</section>
         <div class="mk"><button class="btn primary" id="make">${ico("cart")} Make grocery list</button><span class="muted small">From the dinners ahead</span></div>`
       : `<div class="card empty"><p>Add a table with Day, Dinner and Servings under a "This week" heading to plan dinners.</p></div>`}
@@ -515,7 +437,7 @@ async function setDinner(day, dish, servings) {
 
 function planSheet(day) {
   const m = model(amber.note), p = m.plan.find((x) => x.day === day);
-  sheet(D.fmt(day, { weekday: "long", day: "numeric", month: "long" }), `<div class="card list pick">${recipes().map((r) => `<button class="row" data-pick="${esc(r.id)}"><span class="sw" style="--g:${grad(r.name)}">${r.photo ? `<img src="${r.photo}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">` : esc(r.name[0])}</span><span class="grow"><b style="font-weight:600">${esc(r.name)}</b><div class="small muted">${r.minutes} min · ${esc((r.tags || []).join(", "))}</div></span>${p && p.dish === r.name ? ico("check", 'style="width:1.1rem;color:var(--amber-accent-text)"') : ""}</button>`).join("")}</div>
+  sheet(D.fmt(day, { weekday: "long", day: "numeric", month: "long" }), `<div class="card list pick">${recipes().map((r) => `<button class="row" data-pick="${esc(r.id)}"><span class="sw" style="--g:${grad(r.name)}">${r.photo ? `<img src="${photo(r, 120)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">` : esc(r.name[0])}</span><span class="grow"><b style="font-weight:600">${esc(r.name)}</b><div class="small muted">${r.minutes} min · ${esc((r.tags || []).join(", "))}</div></span>${p && p.dish === r.name ? ico("check", 'style="width:1.1rem;color:var(--amber-accent-text)"') : ""}</button>`).join("")}</div>
     ${p && p.dish ? `<button class="btn danger block" id="clearday" style="margin-top:.6rem">Clear this day</button>` : ""}`, {
     mount(root, close) {
       root.addEventListener("click", async (e) => {
@@ -631,8 +553,7 @@ function newRecipe() {
 document.addEventListener("click", (e) => {
   const tm = e.target.closest("[data-timer]"); if (tm) { timer(tm); return; }
   const t = e.target.closest("#settings,#make,#clear,#newr,[data-recipe],[data-cook],[data-plan],[data-line]"); if (!t || t.closest(".sheet")) return;
-  if (t.id === "settings") S.open("Kitchen settings");
-  else if (t.id === "make") groceryList();
+  if (t.id === "make") groceryList();
   else if (t.id === "clear") clearBought();
   else if (t.id === "newr") newRecipe();
   else if (t.dataset.recipe) recipeSheet(t.dataset.recipe);

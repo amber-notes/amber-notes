@@ -1,9 +1,9 @@
 {
  "values": {
   "settings": {
-   "rest": 120,
-   "step": 2.5,
-   "bar": 20
+   "rest": "2 minutes",
+   "step": "2.5 kg",
+   "notify": "On"
   },
   "plans": [
    {

@@ -1,5 +1,6 @@
 import Foundation
 import SwiftData
+import UniformTypeIdentifiers
 
 /// Note apps (prototype), the best-apps set for recordings: `-bestApps <dir>` seeds the notes in
 /// <dir>/seed.json, each from <app>/note.md, <app>/app.html and <app>/data.json. Dates in those files
@@ -39,6 +40,32 @@ extension Capture {
         return out
     }
 
+    /// {"$seedFile": "photos/x.jpg"} in seeded data becomes a file of the note's account, {"$file": id},
+    /// as a photo the person picked would be.
+    @MainActor static func seedFiles(_ value: Any, in dir: URL, context: ModelContext) -> Any {
+        if let list = value as? [Any] { return list.map { seedFiles($0, in: dir, context: context) } }
+        guard let d = value as? [String: Any] else { return value }
+        if let path = d["$seedFile"] as? String {
+            let url = dir.appending(path: path)
+            guard let bytes = try? Data(contentsOf: url), let type = UTType(filenameExtension: url.pathExtension),
+                  let a = try? FileStore.importData(bytes, filename: url.lastPathComponent, type: type) else { return NSNull() }
+            context.insert(a)
+            return ["$file": a.id.uuidString.lowercased()]
+        }
+        return d.mapValues { seedFiles($0, in: dir, context: context) }
+    }
+
+    /// Captures only (`-inlineLibs <AppLibraries dir>`): for a build without bundled libraries yet,
+    /// the declared libraries go into the page itself, so a 3D app can be recorded meanwhile.
+    static func inlineLibs(_ html: String) -> String {
+        guard let dir = argument("-inlineLibs") ?? ProcessInfo.processInfo.environment["AMBER_INLINE_LIBS"],
+              let r = html.range(of: #"<meta[^>]*name=["']amber-libs["'][^>]*content=["']([^"']*)["'][^>]*>"#, options: .regularExpression) else { return html }
+        let tag = String(html[r])
+        let names = tag.replacingOccurrences(of: #"^.*content=["']([^"']*)["'].*$"#, with: "$1", options: .regularExpression).split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+        let scripts = names.compactMap { try? String(contentsOfFile: "\(dir)/\($0).js", encoding: .utf8) }.map { "<script>\($0)</script>" }.joined()
+        return html.replacingCharacters(in: r, with: scripts)
+    }
+
     @MainActor static func bestApps(_ context: ModelContext, dir: URL) {
         guard let json = try? Data(contentsOf: dir.appending(path: "seed.json")),
               let seeds = try? JSONDecoder().decode([BestSeed].self, from: json) else { return }
@@ -53,11 +80,12 @@ extension Capture {
             if let d = seed.dir {
                 made[d] = n
                 if let html = try? String(contentsOf: dir.appending(path: "\(d)/app.html"), encoding: .utf8) {
-                    NotePageStore.shared[n.id] = .init(html: html, by: "Claude", at: .now.addingTimeInterval(-86400))
+                    NotePageStore.shared[n.id] = .init(html: inlineLibs(html), by: "Claude", at: .now.addingTimeInterval(-86400))
                 }
                 if let raw = try? String(contentsOf: dir.appending(path: "\(d)/data.json"), encoding: .utf8),
-                   let doc = try? JSONSerialization.jsonObject(with: Data(bestTokens(raw).utf8)) as? NotePageData.Doc {
-                    NotePageDataStore.shared.set(n.id, NotePageData.decode(NotePageData.encode(doc)))
+                   let doc = try? JSONSerialization.jsonObject(with: Data(bestTokens(raw).utf8)) as? NotePageData.Doc,
+                   let seeded = seedFiles(doc, in: dir.appending(path: d), context: context) as? NotePageData.Doc {
+                    NotePageDataStore.shared.set(n.id, NotePageData.decode(NotePageData.encode(seeded)))
                 }
             }
             if body.contains("{{link:") { links.append((n, body)) }

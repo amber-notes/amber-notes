@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="amber-widget-height" content="250">
+<meta name="amber-settings" content='{"settings":[{"key":"time","label":"Reminder time","type":"text","default":"20:30","help":"For habits with the bell on, as 21:30."},{"key":"range","label":"History","type":"choice","options":["Last 12 months","Last 6 months"],"default":"Last 12 months"},{"key":"celebrate","label":"Celebrate a full day","type":"choice","options":["On","Off"],"default":"On","help":"A small burst when everything is done."}]}'>
 <title>Habits</title>
 <style>
 /* The shared look of the best-apps set: Amber Notes' variables, iOS-like grouped lists, sheets. */
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html { font-size: 17px; }
 body { font-size: 1rem; line-height: 1.35; }
 :root {
   --c1: #D96A06; --c2: #2F8577; --c3: #3D6DB5; --c4: #9A4E8E; --c5: #7C8A24; --c6: #C4455B; --c7: #8A6A4A;
@@ -234,24 +234,6 @@ const Kit = (() => {
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 
-  // Type follows the system: on the iPhone the body size follows Dynamic Type; the Mac is denser.
-  (function baseSize() {
-    const apply = () => {
-      const body = parseFloat(getComputedStyle(document.body).fontSize) || 17;
-      let size = body;
-      if (body >= 16) {
-        const p = document.createElement("span");
-        p.style.font = "-apple-system-body";
-        document.body.appendChild(p);
-        const dyn = parseFloat(getComputedStyle(p).fontSize);
-        p.remove();
-        if (p.style.font && dyn >= 14 && dyn <= 40) size = dyn;
-      }
-      document.documentElement.style.fontSize = size + "px";
-    };
-    if (document.body) apply(); else addEventListener("DOMContentLoaded", apply);
-  })();
-
   // Icons: inline SVG, drawn on a 24 grid with a 2 px stroke, like SF Symbols' regular weight.
   const paths = {
     gear: '<circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
@@ -315,34 +297,9 @@ const Kit = (() => {
   const col = (t, re) => t ? t.columns.findIndex((c) => re.test(c.name.trim())) : -1;
   const table = (note, ...res) => note.tables.find((t) => res.every((re) => col(t, re) >= 0));
 
-  // Where each table sits in the markdown, so several rows can go in with one edit (one Undo).
-  function tableLines(md) {
-    const lines = md.split("\n"), out = [];
-    const isRow = (l) => l.trim().startsWith("|");
-    const isSep = (l) => { const t = l.trim(); return t.startsWith("|") && t.includes("-") && [...t].every((c) => "|-: ".includes(c)); };
-    for (let i = 0; i < lines.length;) {
-      if (!(isRow(lines[i]) && isSep(lines[i + 1] || ""))) { i++; continue; }
-      let j = i + 2; while (j < lines.length && isRow(lines[j])) j++;
-      out.push({ start: i, end: j }); i = j;
-    }
-    return { lines, tables: out };
-  }
-  const level = (l) => { const m = /^(#{1,6}) /.exec(l); return m ? m[1].length : 0; };
-  const cellText = (v) => String(v ?? "").replace(/\n/g, " ").replace(/\|/g, "\\|");
-  /** Adds rows to table `index` in one edit: the section around the table is rewritten with set_text. */
-  async function addRows(index, rows, columns) {
-    const note = amber.note, t = note.tables[index];
-    const asCells = rows.map((r) => Array.isArray(r) ? r : (columns || t.columns.map((c) => c.name)).map((n) => r[n] ?? ""));
-    const { lines, tables } = tableLines(note.markdown);
-    const at = tables[index];
-    let h = -1; for (let k = at.start - 1; k >= 0; k--) if (level(lines[k])) { h = k; break; }
-    if (h < 0 || rows.length === 1) {
-      for (const r of asCells) { const res = await amber.update({ op: "append_row", table: index, values: r }); if (!res.ok) return res; }
-      return { ok: true };
-    }
-    const lv = level(lines[h]); let end = h + 1; while (end < lines.length && !(level(lines[end]) && level(lines[end]) <= lv)) end++;
-    const section = [...lines.slice(h + 1, at.end), ...asCells.map((c) => "| " + c.map(cellText).join(" | ") + " |"), ...lines.slice(at.end, end)];
-    return amber.update({ op: "set_text", heading: lines[h].replace(/^#+\s*/, ""), text: section.join("\n") });
+  /** Adds rows to table `index` as one change (one Undo). */
+  function addRows(index, rows) {
+    return amber.update(rows.map((values) => ({ op: "append_row", table: index, values })));
   }
 
   // A sheet: one at a time, Escape or the scrim closes it, focus goes in and comes back.
@@ -374,45 +331,13 @@ const Kit = (() => {
     back && back.focus && back.focus({ preventScroll: true });
   }
 
-  // App settings: declared once with defaults, changed in a sheet without asking an AI. Kept in the
-  // app's own data under "settings" (amber.settings when the app offers it).
-  function settings(schema) {
-    const get = () => {
-      const saved = (amber.settings && amber.settings.values) || (amber.data.values.settings || {});
-      return Object.fromEntries(schema.map((f) => [f.key, saved[f.key] ?? f.default]));
-    };
-    const save = (key, value) => amber.settings && amber.settings.set ? amber.settings.set(key, value) : amber.setData({ values: { settings: { [key]: value } } });
-    function open(title = "Settings", extra = "") {
-      const s = get();
-      const field = (f) => {
-        const id = "set-" + f.key;
-        if (f.type === "toggle") return `<label class="row" for="${id}"><span class="grow">${esc(f.label)}${f.help ? `<div class="muted small">${esc(f.help)}</div>` : ""}</span><input class="switch" type="checkbox" id="${id}" data-key="${f.key}" ${s[f.key] ? "checked" : ""}></label>`;
-        const input = f.type === "select"
-          ? `<select class="in" id="${id}" data-key="${f.key}">${f.options.map((o) => `<option value="${esc(o[0])}" ${String(s[f.key]) === String(o[0]) ? "selected" : ""}>${esc(o[1])}</option>`).join("")}</select>`
-          : `<input class="in num" id="${id}" data-key="${f.key}" type="${f.type === "number" ? "number" : f.type === "time" ? "time" : "text"}" ${f.type === "number" ? `inputmode="decimal" step="${f.step || 1}" min="${f.min ?? 0}"` : ""} value="${esc(s[f.key])}">`;
-        return `<div class="row stack"><label for="${id}" class="grow">${esc(f.label)}${f.unit ? ` <span class="muted">(${esc(f.unit)})</span>` : ""}${f.help ? `<div class="muted small">${esc(f.help)}</div>` : ""}</label><div class="set-input">${input}</div></div>`;
-      };
-      sheet(title, `<div class="card list settings-list">${schema.map(field).join("")}</div>${extra}<p class="muted small" style="margin:.9rem .3rem 0">Settings are kept in this note's app, on all your devices.</p>`, {
-        mount(root) {
-          root.addEventListener("change", (e) => {
-            const el = e.target.closest("[data-key]"); if (!el) return;
-            const f = schema.find((x) => x.key === el.dataset.key);
-            const v = f.type === "toggle" ? el.checked : f.type === "number" ? (Number.isFinite(parseFloat(el.value)) ? parseFloat(el.value) : f.default) : el.value;
-            save(f.key, v);
-          });
-        },
-      });
-    }
-    return { get, open, save };
-  }
-
-  const style = document.createElement("style");
-  style.textContent = `.settings-list .row.stack { flex-wrap: wrap; } .settings-list .set-input { width: 9.5rem; } .settings-list .set-input .in { text-align: right; } .settings-list label.row { cursor: pointer; }
-  @media (max-width: 420px) { .settings-list .set-input { width: 8rem; } }`;
-  document.head.appendChild(style);
+  // App settings are declared in <meta name="amber-settings"> and changed in Amber Notes' own
+  // App Settings sheet; amber.settings has the defaults filled in.
+  const settings = () => amber.settings || {};
+  const on = (v) => v === true || v === "On" || v === "on" || v === "Yes";
 
   // Charts drawn at their real width (so 10 px labels stay 10 px): width(key) is the last measured
-  // width of the element with data-w="key"; fit(render) re-renders once when a width changed.
+  // inner width of the element with data-w="key"; fit(render) re-renders once when a width changed.
   const widths = {};
   const width = (key, fallback) => widths[key] || fallback;
   function fit(render) {
@@ -431,18 +356,14 @@ const Kit = (() => {
   const hash = (s) => { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); };
   const announce = (() => { let el; return (msg) => { if (!el) { el = document.createElement("div"); el.className = "sr"; el.setAttribute("aria-live", "polite"); document.body.appendChild(el); } el.textContent = ""; setTimeout(() => (el.textContent = msg), 30); }; })();
 
-  return { width, fit, onResize, esc, $, $$, ico, D, num, kr, fmtN, done, col, table, addRows, sheet, close, settings, once, hash, announce };
+  return { width, fit, onResize, esc, $, $$, ico, D, num, kr, fmtN, done, col, table, addRows, sheet, close, settings, on, once, hash, announce };
 })();
 
 const { esc, ico, D, done, col, sheet, announce } = Kit;
-const S = Kit.settings([
-  { key: "time", label: "Reminder time", type: "time", default: "20:30", help: "For habits with the bell on." },
-  { key: "range", label: "History", type: "select", default: "12", options: [["6", "Last 6 months"], ["12", "Last 12 months"]] },
-  { key: "celebrate", label: "Celebrate a full day", type: "toggle", default: true, help: "A small burst when everything is done." },
-]);
+const S = { get: () => Kit.settings() };
 let filter = "All", picked = null, justTicked = null, lastAll = null, errors = {};
 
-const isCompact = () => innerHeight < 420 && innerWidth < 900;
+const isCompact = () => document.documentElement.classList.contains("amber-widget");
 const sized = () => document.documentElement.classList.toggle("compact", isCompact());
 addEventListener("resize", () => { const was = document.documentElement.classList.contains("compact"); sized(); if (was !== document.documentElement.classList.contains("compact")) render(); });
 
@@ -486,7 +407,7 @@ function ring(doneN, total) {
 }
 
 function heatmap(m) {
-  const months = Number(S.get().range) || 12;
+  const months = /6/.test(S.get().range) ? 6 : 12;
   const weeks = months === 6 ? 27 : 53, cell = 13, gap = 3, top = 16, left = 22;
   const start = D.add(D.weekStart(m.today), -7 * (weeks - 1));
   const hs = filter === "All" ? m.habits : m.habits.filter((h) => h.name === filter);
@@ -556,7 +477,7 @@ function render(note = amber.note) {
     <div class="grid" style="--n:${Math.min(5, m.habits.length)}">${m.habits.map((h) => `<div class="cell"><button class="tick ${justTicked === h.name ? "pop" : ""}" data-tick="${esc(h.name)}" aria-pressed="${h.today}" aria-label="${esc(h.name)}, ${h.today ? "done" : "not done"} today">${ico("check")}</button><span>${esc(h.name)}</span><small class="num">${h.streak ? h.streak + "-day streak" : "&nbsp;"}</small></div>`).join("")}</div></div>
   <div class="full">
     <header class="top"><div class="titles"><h1>${esc(note.title)}</h1><div class="sub">${D.fmt(m.today, { weekday: "long", day: "numeric", month: "long" })}</div></div>
-      <button class="round" id="add" aria-label="Add a habit">${ico("plus")}</button><button class="round" id="settings" aria-label="Settings">${ico("gear")}</button></header>
+      <button class="round" id="add" aria-label="Add a habit">${ico("plus")}</button></header>
     <div class="cols side">
       <div>
         <section class="card hero" aria-label="Today">${ring(n, total)}
@@ -575,7 +496,7 @@ function render(note = amber.note) {
     <section class="card heat"><div class="chips" role="group" aria-label="Show">${["All", ...m.habits.map((h) => h.name)].map((x) => `<button class="chip" data-filter="${esc(x)}" aria-pressed="${filter === x}">${esc(x)}</button>`).join("")}</div>${heatmap(m)}</section>
   </div>`;
   fitHeat();
-  if (justTicked && allDone && lastAll === false && S.get().celebrate) burst();
+  if (justTicked && allDone && lastAll === false && Kit.on(S.get().celebrate)) burst();
   lastAll = allDone;
   justTicked = null;
 }
@@ -611,8 +532,9 @@ async function bell(name) {
   const meta = (amber.data.values.habits || {})[name] || {};
   errors[name] = "";
   if (meta.bell) {
-    await amber.setData({ values: { habits: { [name]: { bell: false } } } });
-    flash(`Bell off for ${name}. The reminder stays in Reminders until you delete it there.`);
+    if (meta.reminder) await amber.device.reminders.delete(meta.reminder);
+    await amber.setData({ values: { habits: { [name]: { bell: false, reminder: null } } } });
+    flash(`Bell off for ${name}. Its reminder is gone from Reminders.`);
     return;
   }
   const time = S.get().time || "20:30";
@@ -678,24 +600,8 @@ function addHabit(m) {
     },
   });
 }
-async function addColumn(m, name) {
-  const md = amber.note.markdown.split("\n");
-  const isRow = (l) => l.trim().startsWith("|");
-  let start = -1, seen = -1;
-  for (let i = 0; i < md.length - 1; i++) {
-    if (isRow(md[i]) && /^\s*\|[\s|:-]+\|?\s*$/.test(md[i + 1]) && md[i + 1].includes("-")) { seen++; if (seen === m.t.index) { start = i; break; } let j = i + 2; while (j < md.length && isRow(md[j])) j++; i = j - 1; }
-  }
-  let h = -1; for (let k = start - 1; k >= 0; k--) if (/^#{1,6} /.test(md[k])) { h = k; break; }
-  if (h < 0) return { ok: false, error: "Put the habits table under a heading (like ## Log) to add habits from the app." };
-  const lv = md[h].match(/^#+/)[0].length;
-  let end = h + 1; while (end < md.length && !(/^#{1,6} /.test(md[end]) && md[end].match(/^#+/)[0].length <= lv)) end++;
-  const section = md.slice(h + 1, end).map((l, k) => {
-    const i = h + 1 + k;
-    if (i < start || !isRow(l)) return l;
-    const tail = l.trimEnd().endsWith("|") ? "" : " |";
-    return l.trimEnd() + tail + (i === start ? ` ${name} |` : i === start + 1 ? " --- |" : "  |");
-  });
-  return amber.update({ op: "set_text", heading: md[h].replace(/^#+\s*/, ""), text: section.join("\n") });
+function addColumn(m, name) {
+  return amber.update({ op: "add_column", table: m.t.index, name });
 }
 
 document.addEventListener("click", (e) => {
@@ -705,7 +611,6 @@ document.addEventListener("click", (e) => {
   else if (t.dataset.bell) bell(t.dataset.bell);
   else if (t.dataset.open) openHabit(t.dataset.open);
   else if (t.dataset.filter) { filter = t.dataset.filter; picked = null; render(); }
-  else if (t.id === "settings") S.open("Habit settings");
   else if (t.id === "add") addHabit(model(amber.note));
   else if (t.dataset.d) { picked = picked === t.dataset.d ? null : t.dataset.d; render(); }
 });

@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="amber-settings" content='{"settings":[{"key":"tempo","label":"Tempo (BPM)","type":"number","default":100},{"key":"swing","label":"Swing","type":"choice","options":["None","Light","Heavy"],"default":"None"},{"key":"kit","label":"Kit","type":"choice","options":["Warm","Bright","Lo-fi"],"default":"Warm"},{"key":"chain","label":"After the last bar","type":"choice","options":["Loop this pattern","Play the next pattern"],"default":"Loop this pattern"}]}'>
+<title>Beat</title>
+<style>
+/*KIT_CSS*/
+:root { --pad: color-mix(in srgb, var(--amber-text) 7%, var(--amber-bg)); --kick: #E0762B; --snare: #D9475E; --clap: #B24FB0; --hat: #2F9C8C; --ohat: #3C8DD8; --bass: #7A5BD6; --deck: #1C1714; --deck-ink: #F6EFE7; }
+@media (prefers-color-scheme: dark) { :root { --pad: #24201D; --kick: #FF9A4D; --snare: #FF6F86; --clap: #E07BDE; --hat: #4FD1BC; --ohat: #6FB6FF; --bass: #A58BFF; --deck: #0E0C0B; } }
+.deck { background: var(--deck); color: var(--deck-ink); border-radius: calc(var(--amber-radius) + 8px); padding: 1rem 1rem 1.1rem; box-shadow: var(--shadow); position: relative; overflow: hidden; }
+.transport { display: flex; align-items: center; gap: .7rem; }
+.transport .lcd { min-width: 0; overflow: hidden; }
+.play { width: 3.6rem; height: 3.6rem; border-radius: 50%; border: 0; background: var(--amber-accent); color: var(--amber-on-accent); display: grid; place-items: center; flex: none; box-shadow: 0 6px 18px color-mix(in srgb, var(--amber-accent) 45%, transparent); transition: transform .12s; }
+.play:active { transform: scale(.93); }
+.play svg { width: 1.5rem; height: 1.5rem; fill: currentColor; }
+.lcd { font-family: var(--amber-font-mono); background: #000; color: #FFB547; border-radius: .7rem; padding: .45rem .7rem; display: flex; gap: .9rem; align-items: baseline; box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); }
+.lcd b { font-size: 1.35rem; letter-spacing: .02em; }
+.lcd span { font-size: .7rem; opacity: .65; text-transform: uppercase; letter-spacing: .08em; }
+.tempo { display: flex; align-items: center; gap: .3rem; flex: none; }
+.tempo button { width: 2.2rem; height: 2.2rem; border-radius: 50%; border: 0; background: rgba(255,255,255,.1); color: var(--deck-ink); font-size: 1.1rem; font-weight: 700; }
+.deck .grow { flex: 1; }
+.snd { width: 2.6rem; height: 2.6rem; border-radius: 50%; border: 0; background: rgba(255,255,255,.1); color: var(--deck-ink); display: grid; place-items: center; }
+.snd svg { width: 1.2rem; height: 1.2rem; }
+canvas.scope { display: block; width: 100%; height: 3.2rem; margin-top: .8rem; border-radius: .6rem; background: rgba(255,255,255,.04); }
+.patterns { display: flex; gap: .4rem; margin: 1rem 0 .7rem; flex-wrap: wrap; align-items: center; }
+.patterns button { border: 0; border-radius: 999px; padding: .4rem .95rem; min-height: 2.3rem; font-weight: 700; background: var(--amber-fill); color: var(--amber-text-secondary); }
+.patterns button[aria-current="true"] { background: var(--amber-text); color: var(--amber-bg); }
+.patterns .pages { margin-left: auto; display: none; }
+.grid { display: grid; grid-template-columns: 4.6rem repeat(var(--steps), minmax(0, 1fr)); gap: .35rem .3rem; align-items: center; user-select: none; -webkit-user-select: none; }
+.grid .name { font-size: .8rem; font-weight: 700; display: flex; align-items: center; gap: .35rem; border: 0; background: none; color: var(--amber-text); padding: 0; text-align: left; min-height: 2.75rem; }
+.grid .name i { width: .6rem; height: .6rem; border-radius: 50%; background: var(--c); flex: none; }
+.grid .name.muted { opacity: .35; text-decoration: line-through; }
+.pad { height: 2.75rem; border: 0; border-radius: .55rem; background: var(--pad); position: relative; padding: 0; font: 700 .62rem var(--amber-font-mono); color: #fff; transition: background .12s, transform .08s; touch-action: manipulation; }
+.pad.beat { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--amber-text) 10%, transparent); }
+.pad.on { background: var(--c); box-shadow: 0 0 14px color-mix(in srgb, var(--c) 45%, transparent); }
+.pad.now { outline: 2px solid color-mix(in srgb, var(--amber-text) 55%, transparent); outline-offset: 1px; }
+.pad.hit { animation: hit .22s var(--ease-out); }
+@keyframes hit { 0% { transform: scale(1.14); filter: brightness(1.4); } 100% { transform: none; } }
+.pad.cur { box-shadow: 0 0 0 2px var(--amber-accent) !important; }
+.steps { display: grid; grid-template-columns: 4.6rem repeat(var(--steps), minmax(0, 1fr)); gap: .3rem; margin-top: .35rem; }
+.steps span { text-align: center; font: 600 .62rem var(--amber-font-mono); color: var(--amber-text-secondary); }
+.steps span.now { color: var(--amber-accent-text); }
+.hint { margin-top: .9rem; font-size: .82rem; color: var(--amber-text-secondary); }
+.kbd { font-family: var(--amber-font-mono); font-size: .75rem; padding: .05rem .35rem; border-radius: .3rem; background: var(--amber-fill); }
+@media (max-width: 699px) { .patterns .pages { display: inline-flex; } }
+.pages button { position: relative; }
+.pages button.playing::after { content: ""; position: absolute; top: .3rem; right: .45rem; width: .4rem; height: .4rem; border-radius: 50%; background: var(--amber-accent); }
+@media (max-width: 520px) { .lcd { gap: .6rem; padding: .4rem .55rem; } .lcd b { font-size: 1.05rem; } .lcd .pname { display: none; } .play { width: 3.2rem; height: 3.2rem; } .grid, .steps { grid-template-columns: 3.9rem repeat(var(--steps), minmax(0, 1fr)); } }
+</style>
+</head>
+<body>
+<main class="wrap" id="app" aria-live="off"></main>
+<script>
+/*KIT_JS*/
+const { esc, ico, announce } = Kit;
+const COLORS = { kick: "--kick", snare: "--snare", clap: "--clap", hat: "--hat", "open hat": "--ohat", bass: "--bass" };
+const BASS = ["C2", "D#2", "F2", "G2", "A#2", "C3", "G1", "A#1"];
+let kbd = false, pat = 0, page = 0, playing = false, step = -1, muted = new Set(), soundOn = false, cursor = { r: 0, c: 0 };
+let ac, master, analyser, timer, nextTime = 0, nextStep = 0, queue = [];
+
+// The patterns: every table in the note with a Sound column, named by the heading above it.
+function patterns(note) {
+  const lines = note.markdown.split("\n"), names = [];
+  let heading = "";
+  for (let i = 0; i < lines.length; i++) {
+    const h = /^#{1,6}\s+(.*)/.exec(lines[i]); if (h) heading = h[1].trim();
+    if (lines[i].trim().startsWith("|") && /^\s*\|[\s|:-]+\|?\s*$/.test(lines[i + 1] || "") && (lines[i + 1] || "").includes("-")) {
+      names.push(heading || `Pattern ${names.length + 1}`);
+      while (i + 1 < lines.length && lines[i + 1].trim().startsWith("|")) i++;
+    }
+  }
+  return note.tables.map((t, k) => ({ t, name: names[k] || `Pattern ${k + 1}` }))
+    .filter((p) => /^(sound|instrument|track)$/i.test(p.t.columns[0].name.trim()) && p.t.columns.length > 2)
+    .map((p) => ({ ...p, steps: p.t.columns.length - 1, rows: p.t.rows.map((r, i) => ({ i, name: r[0].trim(), key: r[0].trim().toLowerCase(), cells: r.slice(1).map((c) => c.trim()) })) }));
+}
+const S = () => { const s = Kit.settings(); return { tempo: Math.min(220, Math.max(50, Number(s.tempo) || 100)), swing: { None: 0, Light: .12, Heavy: .24 }[s.swing] || 0, kit: s.kit || "Warm", chain: /next/i.test(s.chain || "") }; };
+const active = (v) => v && v !== "." && v !== "-" && v !== "0";
+const freq = (n) => { const m = /^([A-G])(#|b)?(-?\d)$/.exec(n || ""); if (!m) return 65.4; const semis = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }[m[1]] + (m[2] === "#" ? 1 : m[2] === "b" ? -1 : 0) + (+m[3] + 1) * 12; return 440 * Math.pow(2, (semis - 69) / 12); };
+
+// The synth: everything drawn with Web Audio, no samples.
+function audio() {
+  if (!ac) {
+    ac = new (window.AudioContext || window.webkitAudioContext)();
+    master = ac.createGain(); master.gain.value = .8;
+    const comp = ac.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4;
+    analyser = ac.createAnalyser(); analyser.fftSize = 1024;
+    master.connect(comp).connect(analyser).connect(ac.destination);
+  }
+  if (ac.state === "suspended") ac.resume();
+  return ac;
+}
+let noiseBuf;
+const noise = () => { if (noiseBuf) return noiseBuf; noiseBuf = ac.createBuffer(1, ac.sampleRate * .5, ac.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; return noiseBuf; };
+function env(node, t, peak, decay) { const g = ac.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(peak, t + .002); g.gain.exponentialRampToValueAtTime(.0001, t + decay); node.connect(g); g.connect(master); return g; }
+function burst(t, type, f, q, peak, decay) { const s = ac.createBufferSource(); s.buffer = noise(); const fl = ac.createBiquadFilter(); fl.type = type; fl.frequency.value = f; fl.Q.value = q; s.connect(fl); env(fl, t, peak, decay); s.start(t); s.stop(t + decay + .05); }
+function voice(key, t, cell) {
+  const kit = S().kit, bright = kit === "Bright" ? 1.5 : kit === "Lo-fi" ? .6 : 1;
+  if (key === "kick") { const o = ac.createOscillator(); o.frequency.setValueAtTime(150 * (kit === "Lo-fi" ? .85 : 1), t); o.frequency.exponentialRampToValueAtTime(42, t + .13); env(o, t, .95, .42); o.start(t); o.stop(t + .5); }
+  else if (key === "snare") { burst(t, "bandpass", 1900 * bright, .8, .55, .2); const o = ac.createOscillator(); o.type = "triangle"; o.frequency.setValueAtTime(190, t); env(o, t, .3, .1); o.start(t); o.stop(t + .15); }
+  else if (key === "clap") { for (const d of [0, .011, .023]) burst(t + d, "bandpass", 1300 * bright, 1.2, .45, d === .023 ? .18 : .03); }
+  else if (key === "hat") burst(t, "highpass", 7600 * bright, .7, .22, .045);
+  else if (key === "open hat") burst(t, "highpass", 6800 * bright, .7, .2, .32);
+  else if (key === "bass") {
+    const o = ac.createOscillator(); o.type = kit === "Lo-fi" ? "square" : "sawtooth"; o.frequency.value = freq(cell);
+    const f = ac.createBiquadFilter(); f.type = "lowpass"; f.Q.value = 6; f.frequency.setValueAtTime(1400 * bright, t); f.frequency.exponentialRampToValueAtTime(180, t + .22);
+    o.connect(f); env(f, t, .42, .3); o.start(t); o.stop(t + .35);
+  }
+}
+
+// A look-ahead scheduler: steps are queued against the audio clock, the screen follows.
+function schedule() {
+  const ps = patterns(amber.note); const p = ps[pat]; if (!p) return;
+  const s = S(), sixteenth = 60 / s.tempo / 4;
+  while (nextTime < ac.currentTime + .12) {
+    const k = nextStep % p.steps;
+    const t = nextTime + (k % 2 ? s.swing * sixteenth : 0);
+    if (soundOn) for (const r of p.rows) if (!muted.has(r.key) && active(r.cells[k])) voice(r.key, t, r.cells[k]);
+    queue.push({ k, t });
+    nextTime += sixteenth; nextStep++;
+    if (nextStep % p.steps === 0 && s.chain && ps.length > 1) { pat = (pat + 1) % ps.length; render(); }
+  }
+}
+function start() {
+  audio(); soundOn = true; playing = true; nextTime = ac.currentTime + .05; nextStep = 0; queue = [];
+  clearInterval(timer); timer = setInterval(schedule, 25); schedule(); requestAnimationFrame(draw); render(); announce("Playing.");
+}
+function stop() { playing = false; clearInterval(timer); step = -1; queue = []; render(); }
+document.addEventListener("visibilitychange", () => { if (document.hidden && playing) stop(); });
+
+// The playhead and the scope, drawn every frame from what the audio is playing now.
+function draw() {
+  if (!playing) return;
+  while (queue.length && queue[0].t <= ac.currentTime) { const q = queue.shift(); setStep(q.k); }
+  const c = document.getElementById("scope");
+  if (c && analyser) {
+    const w = c.width = c.clientWidth * devicePixelRatio, h = c.height = c.clientHeight * devicePixelRatio, g = c.getContext("2d");
+    const d = new Uint8Array(analyser.fftSize); analyser.getByteTimeDomainData(d);
+    g.lineWidth = 2 * devicePixelRatio; g.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--amber-accent"); g.beginPath();
+    for (let i = 0; i < d.length; i++) { const x = (i / d.length) * w, y = (d[i] / 255) * h; i ? g.lineTo(x, y) : g.moveTo(x, y); }
+    g.stroke();
+  }
+  requestAnimationFrame(draw);
+}
+function setStep(k) {
+  step = k;
+  const p = patterns(amber.note)[pat]; if (!p) return;
+  const per = perPage(p);
+  // On the phone the grid shows half the bar; the half that's playing is marked on its button.
+  document.querySelectorAll("[data-page]").forEach((b) => b.classList.toggle("playing", Math.floor(k / per) === +b.dataset.page));
+  document.querySelectorAll(".pad.now, .steps .now").forEach((e) => e.classList.remove("now"));
+  document.querySelectorAll(`[data-c="${k}"]`).forEach((e) => { e.classList.add("now"); if (e.classList.contains("on")) { e.classList.remove("hit"); void e.offsetWidth; e.classList.add("hit"); } });
+  const lc = document.getElementById("pos"); if (lc) lc.textContent = `${Math.floor(k / 4) + 1}.${(k % 4) + 1}`;
+}
+const perPage = (p) => (innerWidth < 700 ? Math.min(8, p.steps) : p.steps);
+
+function render(note = amber.note) {
+  const app = document.getElementById("app");
+  const ps = patterns(note);
+  if (!ps.length) {
+    app.innerHTML = `<header class="top"><div class="titles"><h1>${esc(note.title)}</h1></div></header><div class="card empty">${ico("play")}<h3>No pattern yet</h3><p>Add a table whose first column is Sound, with a row per sound (Kick, Snare, Hat, Bass) and a column per step (1 to 16). An x plays the step.</p></div>`;
+    return;
+  }
+  if (pat >= ps.length) pat = 0;
+  const p = ps[pat], s = S(), per = perPage(p), pages = Math.ceil(p.steps / per);
+  if (page >= pages) page = 0;
+  const from = page * per, cols = [...Array(per)].map((_, j) => from + j);
+  app.innerHTML = `
+  <header class="top"><div class="titles"><h1>${esc(note.title)}</h1><div class="sub">${ps.length} ${ps.length === 1 ? "pattern" : "patterns"} · ${p.rows.length} sounds · ${p.steps} steps</div></div></header>
+  <section class="deck" aria-label="Transport">
+    <div class="transport">
+      <button class="play" id="play" aria-label="${playing ? "Stop" : "Play"}">${playing ? `<svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>` : `<svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg>`}</button>
+      <div class="lcd" aria-hidden="true"><div><b id="pos">${step >= 0 ? `${Math.floor(step / 4) + 1}.${(step % 4) + 1}` : "1.1"}</b> <span>bar</span></div><div><b>${s.tempo}</b> <span>bpm</span></div><div class="pname"><b>${esc(p.name.slice(0, 8))}</b></div></div>
+      <div class="tempo"><button id="slower" aria-label="Slower">−</button><button id="faster" aria-label="Faster">+</button></div>
+      <span class="grow"></span>
+    </div>
+    <canvas class="scope" id="scope" aria-hidden="true"></canvas>
+  </section>
+  <div class="patterns" role="group" aria-label="Patterns">${ps.map((x, k) => `<button data-pat="${k}" aria-current="${k === pat}">${esc(x.name)}</button>`).join("")}
+    ${pages > 1 ? `<span class="pages seg" role="group" aria-label="Steps">${[...Array(pages)].map((_, k) => `<button data-page="${k}" aria-pressed="${k === page}">${k * per + 1}–${Math.min(p.steps, (k + 1) * per)}</button>`).join("")}</span>` : ""}</div>
+  <div class="grid" style="--steps:${per}" role="group" aria-label="${esc(p.name)} pattern">
+    ${p.rows.map((r, ri) => `<button class="name ${muted.has(r.key) ? "muted" : ""}" data-mute="${esc(r.key)}" style="--c:var(${COLORS[r.key] || "--c1"})" aria-pressed="${!muted.has(r.key)}" aria-label="${esc(r.name)}, ${muted.has(r.key) ? "muted" : "on"}"><i></i>${esc(r.name)}</button>
+      ${cols.map((c) => { const v = r.cells[c], on = active(v); return `<button class="pad ${on ? "on" : ""} ${c % 4 === 0 ? "beat" : ""} ${c === step ? "now" : ""} ${kbd && cursor.r === ri && cursor.c === c ? "cur" : ""}" data-r="${ri}" data-c="${c}" style="--c:var(${COLORS[r.key] || "--c1"})" aria-label="${esc(r.name)} step ${c + 1}${on ? `, ${r.key === "bass" ? esc(v) : "on"}` : ""}">${r.key === "bass" && on ? esc(v) : ""}</button>`; }).join("")}`).join("")}
+  </div>
+  <div class="steps" style="--steps:${per}"><span></span>${cols.map((c) => `<span data-c="${c}" class="${c === step ? "now" : ""}">${c + 1}</span>`).join("")}</div>
+  <p class="hint">Tap a pad to change the note's pattern. Tap a name to mute it. On the Mac: <span class="kbd">Space</span> plays, arrows move, <span class="kbd">Return</span> toggles.</p>`;
+}
+
+// A tap writes the step into the note's table: an x, or the next bass note.
+async function toggle(ri, c) {
+  const p = patterns(amber.note)[pat]; const r = p.rows[ri]; const v = r.cells[c];
+  let next = active(v) ? "" : "x";
+  if (r.key === "bass") { const k = BASS.indexOf(v); next = !active(v) ? BASS[0] : k >= 0 && k < BASS.length - 1 ? BASS[k + 1] : ""; }
+  const pad = document.querySelector(`.pad[data-r="${ri}"][data-c="${c}"]`); if (pad) pad.classList.toggle("on", !!next);
+  if (playing && next && soundOn) voice(r.key, ac.currentTime, next);
+  const res = await amber.update({ op: "set_cell", table: p.t.index, row: r.i, col: c + 1, value: next });
+  if (!res.ok) { announce(res.error); render(); }
+}
+async function tempo(d) { await amber.setData({ values: { settings: { tempo: S().tempo + d } } }); }
+
+document.addEventListener("click", (e) => {
+  const t = e.target.closest("#play,#slower,#faster,[data-pat],[data-page],[data-mute],.pad"); if (!t) return;
+  if (t.id === "play") playing ? stop() : start();
+  else if (t.id === "slower") tempo(-4);
+  else if (t.id === "faster") tempo(4);
+  else if (t.dataset.pat) { pat = +t.dataset.pat; page = 0; nextStep = 0; render(); }
+  else if (t.dataset.page) { page = +t.dataset.page; render(); }
+  else if (t.dataset.mute) { const k = t.dataset.mute; muted.has(k) ? muted.delete(k) : muted.add(k); render(); }
+  else { cursor = { r: +t.dataset.r, c: +t.dataset.c }; toggle(+t.dataset.r, +t.dataset.c); }
+});
+document.addEventListener("keydown", (e) => {
+  if (e.metaKey || e.ctrlKey || e.target.closest("input, textarea")) return;
+  const p = patterns(amber.note)[pat]; if (!p) return;
+  const mv = { ArrowLeft: [0, -1], ArrowRight: [0, 1], ArrowUp: [-1, 0], ArrowDown: [1, 0] }[e.key];
+  if (e.key === " ") { e.preventDefault(); playing ? stop() : start(); }
+  else if (mv) { e.preventDefault(); kbd = true; cursor = { r: (cursor.r + mv[0] + p.rows.length) % p.rows.length, c: (cursor.c + mv[1] + p.steps) % p.steps }; const per = perPage(p); page = Math.floor(cursor.c / per); render(); }
+  else if (e.key === "Enter") { e.preventDefault(); toggle(cursor.r, cursor.c); }
+  else if (e.key === "[" || e.key === "]") tempo(e.key === "]" ? 4 : -4);
+});
+Kit.onResize(() => render());
+amber.onChange((note) => render(note));
+</script>
+</body>
+</html>

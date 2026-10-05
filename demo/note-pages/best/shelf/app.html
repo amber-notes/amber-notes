@@ -1,0 +1,571 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="amber-libs" content="three">
+<meta name="amber-settings" content='{"settings":[{"key":"wood","label":"Wood","type":"choice","options":["Oak","Walnut","Birch"],"default":"Oak"},{"key":"lamp","label":"Reading lamp","type":"choice","options":["On","Off"],"default":"On","help":"A warm light over the shelf."}]}'>
+<title>Bookshelf</title>
+<style>
+/* The shared look of the best-apps set: Amber Notes' variables, iOS-like grouped lists, sheets. */
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body { font-size: 1rem; line-height: 1.35; }
+:root {
+  --c1: #D96A06; --c2: #2F8577; --c3: #3D6DB5; --c4: #9A4E8E; --c5: #7C8A24; --c6: #C4455B; --c7: #8A6A4A;
+  --good: #2E7D4F; --ease-out: cubic-bezier(.2, .8, .2, 1); --ease-pop: cubic-bezier(.3, 1.4, .5, 1);
+  --shadow: 0 1px 2px rgba(60, 30, 0, .06), 0 6px 24px rgba(60, 30, 0, .07);
+}
+@media (prefers-color-scheme: dark) {
+  :root { --c1: #F4AD33; --c2: #4FC1AE; --c3: #7DA6F0; --c4: #D58ACB; --c5: #B9C95A; --c6: #F07D90; --c7: #C9A57F; --good: #5BD08A; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 28px rgba(0,0,0,.35); }
+}
+main.wrap { max-width: var(--amber-content-max); margin: 0 auto; padding: .5rem var(--amber-gutter) 6rem; }
+h1, h2, h3, p { margin: 0; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2.5px solid var(--amber-accent); outline-offset: 2px; border-radius: 6px; }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--amber-text-secondary); }
+.small { font-size: .82rem; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Header: large title, a line under it, round buttons on the right. */
+.top { display: flex; align-items: flex-end; gap: .75rem; padding: .35rem 0 1rem; }
+.top .titles { flex: 1; min-width: 0; }
+.top h1 { font-size: 2rem; font-weight: 700; letter-spacing: -.025em; line-height: 1.1; overflow-wrap: anywhere; }
+.top .sub { color: var(--amber-text-secondary); margin-top: .2rem; font-size: .94rem; }
+.round { width: 2.6rem; height: 2.6rem; border-radius: 50%; border: 0; background: var(--amber-fill); color: var(--amber-text); display: inline-grid; place-items: center; flex: none; transition: transform .15s var(--ease-out), background .2s; }
+.round svg { width: 1.2rem; height: 1.2rem; }
+.round:active { transform: scale(.92); }
+.round.accent { background: var(--amber-accent); color: var(--amber-on-accent); }
+
+/* Section labels and cards. */
+.label { font-size: .8rem; font-weight: 600; letter-spacing: .02em; text-transform: uppercase; color: var(--amber-text-secondary); margin: 1.4rem .25rem .5rem; display: flex; align-items: baseline; gap: .5rem; }
+.label .grow { flex: 1; }
+.label button { text-transform: none; letter-spacing: 0; font-size: .88rem; font-weight: 600; color: var(--amber-accent-text); background: none; border: 0; padding: .3rem .2rem; }
+.card { background: var(--amber-surface); border-radius: var(--amber-radius); overflow: hidden; }
+.card.pad { padding: 1rem; }
+.list > .row, .list > li { display: flex; align-items: center; gap: .75rem; min-height: 2.9rem; padding: .6rem 1rem; position: relative; }
+.list > .row + .row::before, .list > li + li::before { content: ""; position: absolute; top: 0; left: 1rem; right: 0; border-top: 1px solid var(--amber-separator); }
+.list.inset > .row + .row::before { left: 3.6rem; }
+ul.list { list-style: none; margin: 0; padding: 0; }
+button.row { width: 100%; text-align: left; border: 0; background: none; color: inherit; font: inherit; transition: background .2s; }
+button.row:active { background: var(--amber-fill); }
+.grow { flex: 1; min-width: 0; }
+.ellipsis { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chev { color: var(--amber-text-secondary); opacity: .6; width: .7rem; flex: none; }
+
+/* Buttons. */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; min-height: 2.75rem; padding: 0 1.1rem; border: 0; border-radius: 999px; font-weight: 600; background: var(--amber-fill); color: var(--amber-text); transition: transform .15s var(--ease-out), opacity .2s, background .2s; white-space: nowrap; }
+.btn svg { width: 1.1rem; height: 1.1rem; }
+.btn:active { transform: scale(.96); }
+.btn.primary { background: var(--amber-accent); color: var(--amber-on-accent); }
+.btn.tint { background: var(--amber-accent-soft); color: var(--amber-accent-text); }
+.btn.plain { background: none; color: var(--amber-accent-text); padding: 0 .6rem; }
+.btn.danger { background: none; color: var(--amber-danger); }
+.btn.block { width: 100%; }
+.btn[disabled] { opacity: .45; pointer-events: none; }
+
+/* Segmented control. */
+.seg { display: inline-flex; background: var(--amber-fill); border-radius: 999px; padding: 3px; gap: 2px; position: relative; }
+.seg button { border: 0; background: none; border-radius: 999px; padding: .42rem .9rem; font-size: .88rem; font-weight: 600; color: var(--amber-text-secondary); min-height: 2.2rem; transition: color .2s, background .25s var(--ease-out), box-shadow .25s; }
+.seg button[aria-pressed="true"] { background: var(--amber-bg); color: var(--amber-text); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+
+/* Forms. */
+.field { display: flex; flex-direction: column; gap: .3rem; font-size: .8rem; font-weight: 600; color: var(--amber-text-secondary); }
+.field input, .field select, .field textarea, input.in, select.in, textarea.in { font-size: 1rem; font-weight: 400; color: var(--amber-text); background: var(--amber-fill); border: 0; border-radius: var(--amber-radius-small); padding: .65rem .8rem; min-height: 2.75rem; width: 100%; outline-offset: 0; }
+textarea { resize: vertical; line-height: 1.4; }
+.fields { display: grid; gap: .8rem; }
+.fields.two { grid-template-columns: 1fr 1fr; }
+.err { color: var(--amber-danger); font-size: .88rem; min-height: 1.2em; }
+.switch { appearance: none; -webkit-appearance: none; width: 3.1rem; height: 1.9rem; border-radius: 999px; background: var(--amber-fill); position: relative; flex: none; transition: background .25s; margin: 0; }
+.switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: calc(1.9rem - 4px); height: calc(1.9rem - 4px); border-radius: 50%; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,.2); transition: transform .3s var(--ease-pop); }
+.switch:checked { background: var(--good); }
+.switch:checked::after { transform: translateX(1.2rem); }
+
+/* Sheet: a bottom sheet on the phone, a centered panel when wide. */
+.scrim { position: fixed; inset: 0; background: rgba(20, 10, 0, .32); opacity: 0; transition: opacity .28s; z-index: 50; }
+.sheet { position: fixed; left: 0; right: 0; bottom: 0; max-height: 92vh; overflow: auto; background: var(--amber-bg); border-radius: 1.2rem 1.2rem 0 0; padding: .6rem 1.1rem calc(1.4rem + env(safe-area-inset-bottom)); z-index: 51; transform: translateY(105%); transition: transform .38s var(--ease-out); box-shadow: 0 -8px 40px rgba(0,0,0,.18); }
+.sheet .grab { width: 2.4rem; height: .3rem; border-radius: 99px; background: var(--amber-separator); margin: 0 auto .8rem; }
+.sheet header { display: flex; align-items: center; gap: .5rem; margin-bottom: 1rem; }
+.sheet header h2 { flex: 1; font-size: 1.2rem; font-weight: 700; }
+.open .scrim { opacity: 1; }
+.open .sheet { transform: none; }
+@media (min-width: 700px) {
+  .sheet { left: 50%; right: auto; bottom: auto; top: 50%; width: min(34rem, 92vw); border-radius: 1.2rem; transform: translate(-50%, -46%) scale(.97); opacity: 0; transition: transform .3s var(--ease-out), opacity .2s; padding: 1.2rem 1.4rem 1.4rem; }
+  .open .sheet { transform: translate(-50%, -50%); opacity: 1; }
+  .sheet .grab { display: none; }
+}
+@media (prefers-color-scheme: dark) { .sheet { background: var(--amber-surface); } .sheet .field input, .sheet .field select, .sheet .field textarea, .sheet .in { background: var(--amber-fill); } }
+
+/* Empty states. */
+.empty { text-align: center; padding: 2.2rem 1.2rem; color: var(--amber-text-secondary); }
+.empty svg { width: 2.6rem; height: 2.6rem; color: var(--amber-accent); opacity: .85; margin-bottom: .6rem; }
+.empty h3 { color: var(--amber-text); font-size: 1.05rem; margin-bottom: .3rem; }
+.empty p { max-width: 22rem; margin: 0 auto 1rem; font-size: .94rem; }
+
+/* A quiet confirmation under the header, for things that don't change the note. */
+.note-line { font-size: .85rem; color: var(--amber-text-secondary); min-height: 1.2em; transition: opacity .3s; }
+
+/* Motion: things that arrive rise in; nothing moves when asked not to. */
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes pop { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
+.rise { animation: rise .35s var(--ease-out) both; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+
+/* Wide: two columns where the app asks for them. */
+.cols { display: grid; gap: 0 1.6rem; grid-template-columns: minmax(0, 1fr); }
+.cols > * { min-width: 0; }
+@media (min-width: 900px) {
+  .cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  .cols.side { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); }
+  .top h1 { font-size: 2.2rem; }
+}
+
+.stage { position: relative; border-radius: calc(var(--amber-radius) + 6px); overflow: hidden; background: radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--amber-accent) 16%, var(--amber-surface)), var(--amber-surface) 70%); touch-action: none; }
+.stage canvas { display: block; width: 100%; height: 100%; cursor: grab; outline: none; }
+.stage canvas:active { cursor: grabbing; }
+.stage .tip { position: absolute; left: 50%; bottom: .8rem; transform: translateX(-50%); font-size: .8rem; color: var(--amber-text-secondary); background: color-mix(in srgb, var(--amber-bg) 80%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); padding: .35rem .8rem; border-radius: 999px; white-space: nowrap; transition: opacity .4s; pointer-events: none; }
+.shelfnames { position: absolute; left: .9rem; top: .8rem; display: grid; gap: .2rem; pointer-events: none; }
+.card3 { position: absolute; left: 50%; bottom: 1rem; transform: translate(-50%, 130%); width: min(26rem, calc(100% - 2rem)); background: color-mix(in srgb, var(--amber-bg) 92%, transparent); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border-radius: 1.1rem; box-shadow: var(--shadow); padding: .9rem 1rem 1rem; transition: transform .45s var(--ease-out); }
+.card3:not(.on) { visibility: hidden; transition: transform .45s var(--ease-out), visibility 0s .45s; }
+.card3.on { transform: translate(-50%, 0); }
+.card3 h2 { font-family: "New York", ui-serif, Georgia, serif; font-size: 1.25rem; line-height: 1.15; }
+.card3 .by { color: var(--amber-text-secondary); font-size: .9rem; margin-top: .15rem; }
+.card3 .row4 { display: flex; gap: .4rem; flex-wrap: wrap; margin-top: .8rem; }
+.card3 .row4 .btn { min-height: 2.3rem; padding: 0 .85rem; font-size: .88rem; }
+.card3 .close { position: absolute; right: .6rem; top: .6rem; width: 2.2rem; height: 2.2rem; }
+.rate { display: flex; gap: .1rem; margin-top: .4rem; }
+.rate button { border: 0; background: none; font-size: 1.4rem; line-height: 1; color: var(--amber-separator); min-width: 2rem; min-height: 2.2rem; padding: 0; }
+.rate button.on { color: var(--amber-accent); }
+.legend3 { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .9rem; }
+.legend3 span { font-size: .82rem; padding: .3rem .75rem; border-radius: 999px; background: var(--amber-surface); color: var(--amber-text-secondary); }
+.legend3 b { color: var(--amber-text); }
+.nogl { padding: 2rem; text-align: center; color: var(--amber-text-secondary); }
+</style>
+</head>
+<body>
+<main class="wrap" id="app">
+  <header class="top"><div class="titles"><h1 id="title"></h1><div class="sub" id="sub"></div></div></header>
+  <section class="stage" id="stage" aria-label="Bookshelf in 3D">
+    <canvas id="gl" tabindex="0" aria-label="Bookshelf. Use the arrow keys to pick a book, Return to pull it out."></canvas>
+    <div class="tip" id="tip">Drag to look around · tap a book to pull it out</div>
+    <div class="card3" id="card" role="dialog" aria-label="Book"></div>
+  </section>
+  <div class="legend3" id="legend"></div>
+  <ul class="sr" id="srlist"></ul>
+  <span class="sr" id="fps" aria-label="Frame rate not measured yet">Frame rate</span>
+</main>
+<script>
+// The shared helpers of the best-apps set. Everything here reads the note through amber.note and
+// changes it only through amber.update; the app's own state goes through amber.store.
+const Kit = (() => {
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+
+  // Icons: inline SVG, drawn on a 24 grid with a 2 px stroke, like SF Symbols' regular weight.
+  const paths = {
+    gear: '<circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+    close: '<path d="M6 6l12 12M18 6L6 18"/>',
+    bell: '<path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
+    flame: '<path d="M12 2c1 3.5 5 6 5 11a5 5 0 0 1-10 0c0-2.5 1.2-4 2.5-5.5C10 10 11 11 11.5 12c.5-3 .5-6.5.5-10z"/>',
+    chevron: '<path d="M9 5l7 7-7 7"/>',
+    back: '<path d="M15 5l-7 7 7 7"/>',
+    trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
+    search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>',
+    calendar: '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+    cart: '<path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.5L21 8H6"/><circle cx="10" cy="20.5" r="1.3"/><circle cx="17" cy="20.5" r="1.3"/>',
+    timer: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2h5"/>',
+    play: '<path d="M7 4.5v15l12.5-7.5z"/>',
+    pause: '<path d="M8 5v14M16 5v14"/>',
+    book: '<path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v16H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/>',
+    quote: '<path d="M7 11h4v6H5v-4a6 6 0 0 1 4-5.7M17 11h4v6h-6v-4a6 6 0 0 1 4-5.7"/>',
+    pin: '<path d="M12 22s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/>',
+    person: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+    gift: '<rect x="3" y="8" width="18" height="5" rx="1"/><path d="M5 13v8h14v-8M12 8v13M12 8S10.5 3 8 3.5 7 8 12 8zm0 0s1.5-5 4-4.5S17 8 12 8z"/>',
+    chat: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>',
+    upload: '<path d="M12 16V4M7 9l5-5 5 5M4 17v3h16v-3"/>',
+    list: '<path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/>',
+    sparkle: '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/>',
+    repeat: '<path d="M17 2l3 3-3 3"/><path d="M4 11V9a4 4 0 0 1 4-4h12M7 22l-3-3 3-3"/><path d="M20 13v2a4 4 0 0 1-4 4H4"/>',
+    trophy: '<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3"/>',
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+    cloud: '<path d="M7 18a4.5 4.5 0 1 1 .9-8.9A6 6 0 0 1 19.5 11 3.5 3.5 0 0 1 18 18z"/>',
+    rain: '<path d="M7 15a4.5 4.5 0 1 1 .9-8.9A6 6 0 0 1 19.5 8 3.5 3.5 0 0 1 18 15z"/><path d="M8 18l-1 3M12 18l-1 3M16 18l-1 3"/>',
+    suitcase: '<rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M9 7V4.5h6V7M3 12h18"/>',
+    coins: '<ellipse cx="9" cy="7" rx="6" ry="3"/><path d="M3 7v5c0 1.7 2.7 3 6 3s6-1.3 6-3V7"/><path d="M9 15v2c0 1.7 2.7 3 6 3s6-1.3 6-3v-5c0-1.7-2.7-3-6-3"/>',
+    knife: '<path d="M4 20L18 6a2.8 2.8 0 0 1 2 4L9 21z"/>',
+    pot: '<path d="M4 10h16v6a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4zM2 10h20M9 6c0-1.5 1-2 1-3M14 6c0-1.5 1-2 1-3"/>',
+    cards: '<rect x="3" y="6" width="14" height="15" rx="2.5"/><path d="M7 3h11.5A2.5 2.5 0 0 1 21 5.5V18"/>',
+    dumbbell: '<path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/>',
+    map: '<path d="M9 4L3 6.5v14L9 18l6 2.5 6-2.5V4l-6 2.5zM9 4v14M15 6.5v14"/>',
+    edit: '<path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"/>',
+    note: '<path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h5"/>',
+  };
+  const ico = (n, extra = "") => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}>${paths[n] || ""}</svg>`;
+
+  // Dates are "yyyy-mm-dd" strings from the note; the clock is amber.note.today.
+  const D = {
+    parse: (s) => { const m = /^(\d{4})-(\d\d)-(\d\d)/.exec(String(s || "").trim()); return m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])) : null; },
+    iso: (d) => d.toISOString().slice(0, 10),
+    add: (s, n) => { const d = D.parse(s); d.setUTCDate(d.getUTCDate() + n); return D.iso(d); },
+    diff: (a, b) => Math.round((D.parse(a) - D.parse(b)) / 86400000),
+    wd: (s) => (D.parse(s).getUTCDay() + 6) % 7, // 0 = Monday
+    weekStart: (s) => D.add(s, -D.wd(s)),
+    fmt: (s, o = { weekday: "short", day: "numeric", month: "short" }) => { const d = D.parse(s); return d ? d.toLocaleDateString("en-GB", { timeZone: "UTC", ...o }) : ""; },
+    month: (s) => D.fmt(s, { month: "long" }),
+    rel: (s, today) => { const n = D.diff(s, today); return n === 0 ? "Today" : n === 1 ? "Tomorrow" : n === -1 ? "Yesterday" : n > 1 && n < 7 ? D.fmt(s, { weekday: "long" }) : n > 0 ? `In ${n} days` : `${-n} days ago`; },
+  };
+
+  const num = (s) => { const n = parseFloat(String(s ?? "").replace(/\s| /g, "").replace(/kr|sek|€|\$/gi, "").replace(",", ".")); return Number.isFinite(n) ? n : NaN; };
+  const kr = (n, o = {}) => new Intl.NumberFormat("sv-SE", { maximumFractionDigits: o.dec ?? 0, minimumFractionDigits: o.dec ?? 0 }).format(Math.round(n * 10 ** (o.dec ?? 0)) / 10 ** (o.dec ?? 0)) + (o.unit === false ? "" : " " + (o.unit || "kr"));
+  const fmtN = (n, dec = 0) => new Intl.NumberFormat("sv-SE", { maximumFractionDigits: dec }).format(n);
+  const done = (s) => /^(✓|✔|x|yes|done|1|true)$/i.test(String(s ?? "").trim());
+  const col = (t, re) => t ? t.columns.findIndex((c) => re.test(c.name.trim())) : -1;
+  const table = (note, ...res) => note.tables.find((t) => res.every((re) => col(t, re) >= 0));
+
+  /** Adds rows to table `index` as one change (one Undo). */
+  function addRows(index, rows) {
+    return amber.update(rows.map((values) => ({ op: "append_row", table: index, values })));
+  }
+
+  // A sheet: one at a time, Escape or the scrim closes it, focus goes in and comes back.
+  let current = null;
+  function sheet(title, html, { mount, wide, actions = "" } = {}) {
+    close();
+    const back = document.activeElement;
+    const host = document.createElement("div");
+    host.className = "sheet-host";
+    host.innerHTML = `<div class="scrim" data-close></div><section class="sheet" role="dialog" aria-modal="true" aria-label="${esc(title)}" ${wide ? 'style="width:min(46rem,94vw)"' : ""}>
+      <div class="grab"></div><header><h2>${esc(title)}</h2>${actions}<button class="round" data-close aria-label="Close">${ico("close")}</button></header><div class="sheet-body">${html}</div></section>`;
+    document.body.appendChild(host);
+    const onKey = (e) => { if (e.key === "Escape") close(); };
+    host.addEventListener("click", (e) => { if (e.target.closest("[data-close]")) close(); });
+    addEventListener("keydown", onKey);
+    current = { host, back, onKey };
+    requestAnimationFrame(() => requestAnimationFrame(() => host.classList.add("open")));
+    mount && mount(host.querySelector(".sheet-body"), close);
+    setTimeout(() => (host.querySelector("[autofocus]") || host.querySelector(".sheet header .round")).focus({ preventScroll: true }), 60);
+    return close;
+  }
+  function close() {
+    if (!current) return;
+    const { host, back, onKey } = current;
+    current = null;
+    removeEventListener("keydown", onKey);
+    host.classList.remove("open");
+    setTimeout(() => host.remove(), 380);
+    back && back.focus && back.focus({ preventScroll: true });
+  }
+
+  // App settings are declared in <meta name="amber-settings"> and changed in Amber Notes' own
+  // App Settings sheet; amber.settings has the defaults filled in.
+  const settings = () => amber.settings || {};
+  const on = (v) => v === true || v === "On" || v === "on" || v === "Yes";
+
+  // Charts drawn at their real width (so 10 px labels stay 10 px): width(key) is the last measured
+  // inner width of the element with data-w="key"; fit(render) re-renders once when a width changed.
+  const widths = {};
+  const width = (key, fallback) => widths[key] || fallback;
+  function fit(render) {
+    let changed = false;
+    for (const el of document.querySelectorAll("[data-w]")) {
+      const cs = getComputedStyle(el);
+      const w = Math.round(el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight));
+      if (w && Math.abs((widths[el.dataset.w] || 0) - w) > 4) { widths[el.dataset.w] = w; changed = true; }
+    }
+    if (changed) render();
+  }
+  let resizeT;
+  const onResize = (render) => addEventListener("resize", () => { clearTimeout(resizeT); resizeT = setTimeout(() => { for (const k in widths) delete widths[k]; render(); fit(render); }, 120); });
+
+  const once = (fn) => { let p; return () => p || (p = fn()); };
+  const hash = (s) => { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); };
+  const announce = (() => { let el; return (msg) => { if (!el) { el = document.createElement("div"); el.className = "sr"; el.setAttribute("aria-live", "polite"); document.body.appendChild(el); } el.textContent = ""; setTimeout(() => (el.textContent = msg), 30); }; })();
+
+  return { width, fit, onResize, esc, $, $$, ico, D, num, kr, fmtN, done, col, table, addRows, sheet, close, settings, on, once, hash, announce };
+})();
+
+const { esc, col, announce } = Kit;
+const STATUS = ["Reading", "Read", "Want to read"];
+const SHELF_NAME = { Reading: "Reading now", Read: "Read", "Want to read": "Up next" };
+const key = (t) => String(t).trim().toLowerCase();
+const H = (s) => [...String(s)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
+
+function model(note) {
+  const t = Kit.table(note, /^title$/i); if (!t) return null;
+  const c = { title: col(t, /^title$/i), author: col(t, /^author$/i), status: col(t, /^status$/i), rating: col(t, /^rating$/i), pages: col(t, /^pages$/i) };
+  return { t, c, books: t.rows.map((r, i) => ({ i, title: r[c.title].trim(), author: c.author >= 0 ? r[c.author].trim() : "", status: STATUS.find((s) => s.toLowerCase() === (c.status >= 0 ? r[c.status] : "").trim().toLowerCase()) || "Want to read", rating: c.rating >= 0 ? (r[c.rating].match(/★/g) || []).length || parseInt(r[c.rating]) || 0 : 0, pages: c.pages >= 0 ? parseInt(r[c.pages]) || 300 : 300 })).filter((b) => b.title) };
+}
+
+// ---------- Textures, drawn on canvases ----------
+const coverCache = {};
+async function coverImage(b) {
+  const ref = (amber.data.values.covers || {})[key(b.title)];
+  if (!ref) return null;
+  if (coverCache[b.title]) return coverCache[b.title];
+  const r = await amber.files.read(ref);
+  if (!r.ok) return null;
+  const img = new Image(); img.src = r.dataURL; await img.decode().catch(() => {});
+  return (coverCache[b.title] = img.naturalWidth ? img : null);
+}
+function avgColor(img) {
+  const c = document.createElement("canvas"); c.width = c.height = 8; const g = c.getContext("2d"); g.drawImage(img, 0, 0, 8, 8);
+  const d = g.getImageData(0, 0, 8, 8).data; let r = 0, gg = 0, bb = 0; for (let i = 0; i < d.length; i += 4) { r += d[i]; gg += d[i + 1]; bb += d[i + 2]; }
+  const n = d.length / 4; return [r / n, gg / n, bb / n];
+}
+const hsl = (h, s, l) => `hsl(${h} ${s}% ${l}%)`;
+function spineTexture(b, rgb) {
+  const c = document.createElement("canvas"); c.width = 128; c.height = 512; const g = c.getContext("2d");
+  const base = rgb ? `rgb(${rgb.map((v) => Math.round(v * .85)).join(",")})` : hsl(H(b.title) % 360, 45, 38);
+  g.fillStyle = base; g.fillRect(0, 0, 128, 512);
+  const grad = g.createLinearGradient(0, 0, 128, 0); grad.addColorStop(0, "rgba(0,0,0,.35)"); grad.addColorStop(.18, "rgba(255,255,255,.12)"); grad.addColorStop(.5, "rgba(0,0,0,0)"); grad.addColorStop(1, "rgba(0,0,0,.3)");
+  g.fillStyle = grad; g.fillRect(0, 0, 128, 512);
+  const light = rgb ? (rgb[0] * .3 + rgb[1] * .59 + rgb[2] * .11) > 150 : false;
+  const ink = light ? "#1b120a" : "#fbf3e6";
+  g.fillStyle = ink; g.globalAlpha = .55; g.fillRect(0, 40, 128, 3); g.fillRect(0, 469, 128, 3); g.globalAlpha = 1;
+  g.save(); g.translate(64, 256); g.rotate(-Math.PI / 2);
+  g.fillStyle = ink; g.textAlign = "center"; g.textBaseline = "middle";
+  let size = 34; const title = b.title.length > 34 ? b.title.slice(0, 32) + "…" : b.title;
+  g.font = `600 ${size}px "New York", Georgia, serif`; while (g.measureText(title).width > 380 && size > 16) { size -= 2; g.font = `600 ${size}px "New York", Georgia, serif`; }
+  g.fillText(title, 0, -10);
+  g.font = `500 20px -apple-system, system-ui, sans-serif`; g.globalAlpha = .8; g.fillText(b.author.split(" ").slice(-1)[0] || "", 0, 34);
+  g.restore();
+  return c;
+}
+function coverTexture(b, img, rgb) {
+  const c = document.createElement("canvas"); c.width = 320; c.height = 480; const g = c.getContext("2d");
+  if (img) { g.drawImage(img, 0, 0, 320, 480); return c; }
+  const h = H(b.title) % 360; const gr = g.createLinearGradient(0, 0, 320, 480); gr.addColorStop(0, hsl(h, 45, 42)); gr.addColorStop(1, hsl((h + 30) % 360, 50, 26));
+  g.fillStyle = gr; g.fillRect(0, 0, 320, 480); g.fillStyle = "#fff"; g.font = `600 34px "New York", Georgia, serif`; g.textBaseline = "top";
+  const words = b.title.split(" "); let line = "", y = 50;
+  for (const w of words) { if (g.measureText(line + w).width > 260) { g.fillText(line, 30, y); y += 42; line = ""; } line += w + " "; } g.fillText(line, 30, y);
+  g.font = "500 20px -apple-system, sans-serif"; g.fillText(b.author, 30, 420); return c;
+}
+function paperTexture() {
+  const c = document.createElement("canvas"); c.width = 64; c.height = 256; const g = c.getContext("2d");
+  g.fillStyle = "#efe6d4"; g.fillRect(0, 0, 64, 256); g.strokeStyle = "rgba(120,90,50,.18)";
+  for (let x = 2; x < 64; x += 3) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, 256); g.stroke(); } return c;
+}
+function woodTexture(kind) {
+  const base = { Oak: [176, 128, 78], Walnut: [104, 68, 44], Birch: [214, 186, 146] }[kind] || [176, 128, 78];
+  const c = document.createElement("canvas"); c.width = 512; c.height = 128; const g = c.getContext("2d");
+  g.fillStyle = `rgb(${base})`; g.fillRect(0, 0, 512, 128);
+  for (let i = 0; i < 70; i++) { const y = Math.random() * 128, a = .04 + Math.random() * .08; g.strokeStyle = `rgba(${Math.random() < .5 ? "60,30,10" : "255,240,220"},${a})`; g.lineWidth = .5 + Math.random() * 2;
+    g.beginPath(); g.moveTo(0, y); for (let x = 0; x <= 512; x += 32) g.lineTo(x, y + Math.sin(x / 60 + i) * 2.5); g.stroke(); }
+  return c;
+}
+
+// ---------- The scene ----------
+let T, renderer, scene, camera, raycaster, shelfGroup, books = [], bookMeshes = [], picked = null, focus = 0;
+let fitted = false, yaw = 0, pitch = .08, dist = 9, target = { yaw: 0, pitch: .08, dist: 9 }, fitDist = 9, animating = 0, frames = [], lastBuilt = "";
+const SH = 2.1, DEPTH = 1.5, BOARD = .12;
+
+function init() {
+  T = window.THREE;
+  const cv = document.getElementById("gl");
+  try { renderer = new T.WebGLRenderer({ canvas: cv, antialias: true, alpha: true }); } catch (e) { document.getElementById("stage").innerHTML = `<div class="nogl">3D isn't available here: ${esc(e.message)}</div>`; return false; }
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = T.PCFSoftShadowMap;
+  renderer.outputColorSpace = T.SRGBColorSpace;
+  scene = new T.Scene();
+  camera = new T.PerspectiveCamera(32, 1, .1, 100);
+  raycaster = new T.Raycaster();
+  scene.add(new T.HemisphereLight(0xfff4e6, 0x3a2a1a, .9));
+  const key = new T.DirectionalLight(0xffe2b8, 1.6); key.position.set(-3, 6, 7); key.castShadow = true; key.shadow.mapSize.set(1024, 1024);
+  Object.assign(key.shadow.camera, { left: -8, right: 8, top: 6, bottom: -6 }); key.shadow.bias = -.0005; scene.add(key);
+  scene.userData.lamp = new T.PointLight(0xffb45e, 0, 9, 1.6); scene.userData.lamp.position.set(0, 4.2, 2.2); scene.add(scene.userData.lamp);
+  shelfGroup = new T.Group(); scene.add(shelfGroup);
+  bindInput(cv);
+  // Only the width decides the stage's height, so a height change never loops back here.
+  new ResizeObserver(() => requestAnimationFrame(resize)).observe(document.getElementById("stage"));
+  return true;
+}
+
+let lastW = 0;
+function resize() {
+  const st = document.getElementById("stage"); const w = st.clientWidth;
+  if (!w || w === lastW) return; lastW = w;
+  const h = Math.round(Math.min(Math.max(w * (w < 600 ? 1.38 : .56), 360), 720));
+  st.style.height = h + "px";
+  renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+  fit(); kick();
+  if (amber.note) render(amber.note);
+}
+// The camera backs off until the whole case fits, whatever the window's shape.
+function fit() {
+  const box = new T.Box3().setFromObject(shelfGroup); if (box.isEmpty()) return;
+  const size = box.getSize(new T.Vector3());
+  const vfov = camera.fov * Math.PI / 180, hfov = 2 * Math.atan(Math.tan(vfov / 2) * camera.aspect);
+  fitDist = Math.max((size.y / 2 + .75) / Math.tan(vfov / 2), (size.x / 2 + .5) / Math.tan(hfov / 2)) + DEPTH;
+  target.dist = fitDist; if (!fitted) { dist = fitDist; fitted = true; }
+}
+
+async function build(m) {
+  const tall = camera.aspect < 1;
+  const sig = JSON.stringify([m.books.map((b) => [b.title, b.status, b.pages]), Kit.settings().wood, tall]);
+  if (sig === lastBuilt) { lightUp(); return; }
+  lastBuilt = sig;
+  while (shelfGroup.children.length) shelfGroup.remove(shelfGroup.children[0]);
+  bookMeshes = []; picked = null;
+  const width = (b) => .16 + Math.min(b.pages, 900) / 900 * .34;
+  // A tall stage (a phone) gets a narrower case: a long shelf goes on over two boards.
+  const maxLen = tall ? 3.3 : 7;
+  const rows = [];
+  for (const st of STATUS) {
+    let cur = [], len = 0;
+    for (const b of m.books.filter((x) => x.status === st)) { if (len + width(b) > maxLen && cur.length) { rows.push(cur); cur = []; len = 0; } cur.push(b); len += width(b) + .025; }
+    rows.push(cur);
+  }
+  const lens = rows.map((r) => r.reduce((a, b) => a + width(b) + .025, 0));
+  const W = Math.max(4, ...lens) + .7, Hh = SH * rows.length + BOARD;
+  const wood = new T.CanvasTexture(woodTexture(Kit.settings().wood)); wood.colorSpace = T.SRGBColorSpace; wood.wrapS = wood.wrapT = T.RepeatWrapping;
+  const woodMat = new T.MeshStandardMaterial({ map: wood, roughness: .72 });
+  const backMat = new T.MeshStandardMaterial({ map: wood, roughness: .9, color: 0xb8a48c });
+  const add = (geo, mat, x, y, z) => { const me = new T.Mesh(geo, mat); me.position.set(x, y, z); me.castShadow = me.receiveShadow = true; shelfGroup.add(me); return me; };
+  add(new T.BoxGeometry(W, Hh, .08), backMat, 0, Hh / 2, -DEPTH / 2);
+  for (const sx of [-1, 1]) add(new T.BoxGeometry(BOARD, Hh + BOARD, DEPTH), woodMat, sx * (W / 2 + BOARD / 2), Hh / 2, 0);
+  for (let k = 0; k <= rows.length; k++) add(new T.BoxGeometry(W + BOARD * 2, BOARD, DEPTH), woodMat, 0, k * SH, 0);
+  const paper = new T.CanvasTexture(paperTexture()); paper.colorSpace = T.SRGBColorSpace;
+  const paperMat = new T.MeshStandardMaterial({ map: paper, roughness: .95 });
+  // Reading now on top, then read, then up next.
+  for (let r = 0; r < rows.length; r++) {
+    let x = -W / 2 + .35;
+    const y0 = (rows.length - 1 - r) * SH + BOARD / 2;
+    for (const b of rows[r]) {
+      const w = width(b), h = 1.35 + (H(b.title) % 40) / 100, d = 1.0 + (H(b.author) % 20) / 100;
+      const img = await coverImage(b); const rgb = img ? avgColor(img) : null;
+      const sp = new T.CanvasTexture(spineTexture(b, rgb)); sp.colorSpace = T.SRGBColorSpace; sp.anisotropy = 4;
+      const cv = new T.CanvasTexture(coverTexture(b, img, rgb)); cv.colorSpace = T.SRGBColorSpace;
+      const plain = new T.MeshStandardMaterial({ color: rgb ? new T.Color(`rgb(${rgb.map((v) => Math.round(v * .7)).join(",")})`) : new T.Color(hsl(H(b.title) % 360, 40, 30)), roughness: .6 });
+      // Box faces: +z is the spine, facing you on the shelf; +x the front cover, which turns to you
+      // when the book is pulled out; -x the back; the rest is paper.
+      const mesh = new T.Mesh(new T.BoxGeometry(w, h, d), [
+        new T.MeshStandardMaterial({ map: cv, roughness: .55 }), plain, paperMat, paperMat, new T.MeshStandardMaterial({ map: sp, roughness: .5 }), paperMat]);
+      mesh.position.set(x + w / 2, y0 + h / 2, DEPTH / 2 - d / 2 - .05);
+      if (b.status === "Want to read" && (H(b.title) % 5 === 0)) { mesh.rotation.z = -.08; mesh.position.y -= .02; }
+      mesh.castShadow = mesh.receiveShadow = true;
+      mesh.userData = { b, home: mesh.position.clone(), homeRot: mesh.rotation.clone(), t: 0 };
+      shelfGroup.add(mesh); bookMeshes.push(mesh);
+      x += w + .025;
+    }
+  }
+  shelfGroup.position.y = -Hh / 2;
+  fit(); lightUp(); kick();
+}
+function lightUp() { const on = Kit.on(Kit.settings().lamp); scene.userData.lamp.intensity = on ? 9 : 0; kick(); }
+
+// ---------- Motion: render only while something moves ----------
+function kick() { if (!animating) { animating = 1; requestAnimationFrame(loop); } }
+let lastT = 0; const renderMs = [];
+function loop(t) {
+  if (document.hidden) { animating = 0; return; }
+  const dt = Math.min(.05, (t - (lastT || t)) / 1000); lastT = t;
+  frames.push(t); while (frames.length && t - frames[0] > 1000) frames.shift();
+  let moving = false;
+  const ease = (a, b, k) => { const v = a + (b - a) * (1 - Math.pow(1 - k, dt * 60)); if (Math.abs(b - v) > 1e-4) moving = true; return Math.abs(b - v) < 1e-4 ? b : v; };
+  yaw = ease(yaw, target.yaw, .12); pitch = ease(pitch, target.pitch, .12); dist = ease(dist, target.dist, .12);
+  camera.position.set(Math.sin(yaw) * dist * Math.cos(pitch), Math.sin(pitch) * dist + .2, Math.cos(yaw) * dist * Math.cos(pitch));
+  camera.lookAt(0, 0, 0);
+  // Where a pulled-out book floats: in front of the camera, in the upper half of the view.
+  const vf = camera.fov * Math.PI / 180, D = 1.45 / ((camera.aspect < 1 ? .34 : .5) * 2 * Math.tan(vf / 2));
+  const dir = new T.Vector3(); camera.getWorldDirection(dir);
+  const up = new T.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
+  const outPos = camera.position.clone().add(dir.multiplyScalar(D)).add(up.multiplyScalar(D * Math.tan(vf / 2) * (camera.aspect < 1 ? .5 : .3))).sub(shelfGroup.position);
+  for (const me of bookMeshes) {
+    const u = me.userData, out = me === picked;
+    u.t = ease(u.t, out ? 1 : 0, .1);
+    const k = u.t, s = k * k * (3 - 2 * k);
+    // Out: slides forward, rises to the middle and turns its cover to you.
+    me.position.x = u.home.x + (outPos.x - u.home.x) * s;
+    me.position.y = u.home.y + (outPos.y - u.home.y) * s + Math.sin(s * Math.PI) * .35;
+    me.position.z = u.home.z + (outPos.z - u.home.z) * s;
+    me.rotation.y = -Math.PI / 2 * s;
+    me.rotation.z = u.homeRot.z * (1 - s);
+    const f = bookMeshes.indexOf(me) === focus && kbd && !picked;
+    me.position.z += f ? .18 : 0;
+  }
+  const r0 = performance.now(); renderer.render(scene, camera); renderMs.push(performance.now() - r0); if (renderMs.length > 120) renderMs.shift();
+  if (moving || dragging) requestAnimationFrame(loop); else { animating = 0; report(); }
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden) kick(); });
+// Frames drawn in the last second of movement: for the frame-rate checks on iPhone and Mac.
+function report() {
+  const n = frames.length; window.__fps = n;
+  const el = document.getElementById("fps"); if (el) el.setAttribute("aria-label", `Frame rate ${n}`);
+}
+// A slow turn for a set time, for measuring (the Mac check calls this).
+window.__spin = (ms) => new Promise((res) => {
+  const t0 = performance.now(), y0 = target.yaw; let n = 0;
+  const step = (t) => { n++; target.yaw = y0 + Math.sin((t - t0) / ms * Math.PI * 2) * .4; kick(); if (t - t0 < ms) requestAnimationFrame(step); else { target.yaw = y0; const avg = renderMs.reduce((a, b) => a + b, 0) / Math.max(1, renderMs.length); res(`${Math.round(n / (ms / 1000))} fps, ${avg.toFixed(1)} ms per frame to draw`); } };
+  requestAnimationFrame(step);
+});
+
+// ---------- Touch, mouse, trackpad and keys ----------
+let dragging = false, kbd = false;
+function bindInput(cv) {
+  let sx = 0, sy = 0, moved = 0, y0 = 0, p0 = 0; const pts = new Map(); let pinch = 0;
+  cv.addEventListener("pointerdown", (e) => { cv.setPointerCapture(e.pointerId); pts.set(e.pointerId, e); dragging = true; sx = e.clientX; sy = e.clientY; moved = 0; y0 = target.yaw; p0 = target.pitch; kick(); tipOff(); });
+  cv.addEventListener("pointermove", (e) => {
+    if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, e);
+    if (pts.size === 2) { const [a, b] = [...pts.values()]; const d = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY); if (pinch) target.dist = Math.min(fitDist * 1.6, Math.max(fitDist * .55, target.dist * pinch / d)); pinch = d; return; }
+    const dx = e.clientX - sx, dy = e.clientY - sy; moved = Math.max(moved, Math.hypot(dx, dy));
+    target.yaw = Math.max(-.6, Math.min(.6, y0 - dx * .005)); target.pitch = Math.max(-.15, Math.min(.5, p0 + dy * .004));
+  });
+  const up = (e) => { pts.delete(e.pointerId); if (pts.size < 2) pinch = 0; if (!pts.size) { dragging = false; if (moved < 6) tap(e); kick(); } };
+  cv.addEventListener("pointerup", up); cv.addEventListener("pointercancel", up);
+  cv.addEventListener("wheel", (e) => { e.preventDefault(); if (e.ctrlKey) target.dist = Math.min(fitDist * 1.6, Math.max(fitDist * .55, target.dist * (1 + e.deltaY * .01))); else { target.yaw = Math.max(-.6, Math.min(.6, target.yaw + e.deltaX * .003)); target.pitch = Math.max(-.15, Math.min(.5, target.pitch + e.deltaY * .002)); } kick(); tipOff(); }, { passive: false });
+  cv.addEventListener("keydown", (e) => {
+    const n = bookMeshes.length; if (!n) return;
+    if (["ArrowRight", "ArrowLeft", "ArrowUp", "ArrowDown"].includes(e.key)) { e.preventDefault(); kbd = true; focus = (focus + ({ ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key]) + n) % n; announce(bookMeshes[focus].userData.b.title); kick(); }
+    else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(bookMeshes[focus]); }
+    else if (e.key === "Escape") putBack();
+  });
+}
+function tipOff() { const t = document.getElementById("tip"); if (t) t.style.opacity = 0; }
+function tap(e) {
+  const r = renderer.domElement.getBoundingClientRect();
+  raycaster.setFromCamera(new T.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera);
+  const hit = raycaster.intersectObjects(bookMeshes)[0];
+  if (hit) pick(hit.object === picked ? null : hit.object); else putBack();
+}
+function pick(me) {
+  if (!me) return putBack();
+  picked = me; focus = bookMeshes.indexOf(me); target.yaw = 0; target.pitch = .05; target.dist = fitDist;
+  showCard(me.userData.b); kick();
+}
+function putBack() { picked = null; target.dist = fitDist; document.getElementById("card").classList.remove("on"); kick(); }
+
+function showCard(b) {
+  const el = document.getElementById("card");
+  el.innerHTML = `<button class="round close" id="putback" aria-label="Put it back">${Kit.ico("close")}</button><h2>${esc(b.title)}</h2><div class="by">${esc(b.author)} · ${b.pages} pages</div>
+    <div class="rate" role="group" aria-label="Rating">${[1, 2, 3, 4, 5].map((n) => `<button data-r="${n}" class="${n <= b.rating ? "on" : ""}" aria-label="${n} ${n === 1 ? "star" : "stars"}">★</button>`).join("")}</div>
+    <div class="row4">${STATUS.map((s) => `<button class="btn ${s === b.status ? "primary" : ""}" data-st="${s}">${SHELF_NAME[s]}</button>`).join("")}</div>`;
+  el.classList.add("on");
+}
+async function setCell(b, k, v) { const m = model(amber.note); return m.c[k] >= 0 ? amber.update({ op: "set_cell", table: m.t.index, row: b.i, col: m.t.columns[m.c[k]].name, value: v }) : { ok: false, error: "Add that column to the note first." }; }
+
+document.addEventListener("click", async (e) => {
+  const t = e.target.closest("#putback,[data-r],[data-st]"); if (!t || !picked) return;
+  const b = picked.userData.b;
+  if (t.id === "putback") putBack();
+  else if (t.dataset.r) { const v = +t.dataset.r === b.rating ? 0 : +t.dataset.r; b.rating = v; await setCell(b, "rating", "★".repeat(v)); showCard(b); }
+  else if (t.dataset.st && t.dataset.st !== b.status) { putBack(); const r = await setCell(b, "status", t.dataset.st); if (r.ok) announce(`${b.title} moved to ${SHELF_NAME[t.dataset.st]}.`); }
+});
+
+function render(note) {
+  document.getElementById("title").textContent = note.title;
+  const m = model(note);
+  if (!m) { document.getElementById("sub").textContent = "Add a table with Title, Author and Status to fill the shelf."; return; }
+  const n = (s) => m.books.filter((b) => b.status === s).length;
+  document.getElementById("sub").textContent = `${m.books.length} books`;
+  document.getElementById("legend").innerHTML = STATUS.map((s) => `<span><b>${n(s)}</b> ${SHELF_NAME[s].toLowerCase()}</span>`).join("") + `<span>Top: reading now · middle: read · bottom: up next</span>`;
+  document.getElementById("srlist").innerHTML = m.books.map((b) => `<li>${esc(b.title)} by ${esc(b.author)}, ${SHELF_NAME[b.status]}</li>`).join("");
+  build(m);
+}
+if (init()) amber.onChange((note) => render(note));
+</script>
+</body>
+</html>

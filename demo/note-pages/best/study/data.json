@@ -3,7 +3,7 @@
   "settings": {
    "exam": "{{d+18}}",
    "newPerDay": 5,
-   "order": "due"
+   "order": "Most overdue first"
   },
   "schedule": {
    "qvruve": {

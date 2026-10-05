@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="amber-settings" content='{"settings":[{"key":"exam","label":"Exam date","type":"text","default":"","help":"As 2026-10-23. Shows a countdown and keeps intervals short before it."},{"key":"newPerDay","label":"New cards a day","type":"number","default":10},{"key":"order","label":"Order","type":"choice","options":["Most overdue first","Shuffled"],"default":"Most overdue first"}]}'>
 <title>Study</title>
 <style>
 /*KIT_CSS*/
@@ -82,11 +83,7 @@
 <script>
 /*KIT_JS*/
 const { esc, ico, D, col, sheet, announce, hash } = Kit;
-const S = Kit.settings([
-  { key: "exam", label: "Exam date", type: "text", default: "", help: "yyyy-mm-dd. Shows a countdown and keeps intervals short before it." },
-  { key: "newPerDay", label: "New cards a day", type: "number", default: 10, min: 0 },
-  { key: "order", label: "Order", type: "select", default: "due", options: [["due", "Most overdue first"], ["shuffle", "Shuffled"]] },
-]);
+const S = { get: () => { const s = Kit.settings(); return { exam: s.exam || "", newPerDay: Number(s.newPerDay) || 0, order: /shuff/i.test(s.order) ? "shuffle" : "due" }; } };
 let session = null, suggestions = null, sugNote = "", sugBusy = false;
 
 function model(note) {
@@ -142,7 +139,7 @@ function render(note = amber.note) {
   const reviewedToday = (amber.data.values.days || {})[today] || 0;
   app.innerHTML = `
   <header class="top"><div class="titles"><h1>${esc(note.title)}</h1><div class="sub">${m.cards.length} cards${toExam != null && toExam >= 0 ? ` · exam ${toExam === 0 ? "today" : toExam === 1 ? "tomorrow" : `in ${toExam} days`}` : ""}</div></div>
-    <button class="round" id="add" aria-label="Add a card">${ico("plus")}</button><button class="round" id="settings" aria-label="Settings">${ico("gear")}</button></header>
+    <button class="round" id="add" aria-label="Add a card">${ico("plus")}</button></header>
   <div class="cols side">
     <div>
       <section class="card due"><div class="n num">${q.length}</div><div class="grow"><h2>${q.length ? (q.length === 1 ? "card to review" : "cards to review") : "All done for today"}</h2>
@@ -276,7 +273,6 @@ function addSheet() {
 document.addEventListener("click", (e) => {
   const t = e.target.closest("#study,#settings,#add,#suggest,#addall,#turn,#flip,[data-sug],[data-grade],[data-end]"); if (!t) return;
   if (t.id === "study") startReview();
-  else if (t.id === "settings") S.open("Study settings");
   else if (t.id === "add") addSheet();
   else if (t.id === "suggest") suggest();
   else if (t.id === "addall") { const m = model(amber.note), have = new Set(m.cards.map((c) => c.q.toLowerCase())); addCards(suggestions.filter((s) => !have.has(s.q.toLowerCase()))); }

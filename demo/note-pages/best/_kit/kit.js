@@ -5,24 +5,6 @@ const Kit = (() => {
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 
-  // Type follows the system: on the iPhone the body size follows Dynamic Type; the Mac is denser.
-  (function baseSize() {
-    const apply = () => {
-      const body = parseFloat(getComputedStyle(document.body).fontSize) || 17;
-      let size = body;
-      if (body >= 16) {
-        const p = document.createElement("span");
-        p.style.font = "-apple-system-body";
-        document.body.appendChild(p);
-        const dyn = parseFloat(getComputedStyle(p).fontSize);
-        p.remove();
-        if (p.style.font && dyn >= 14 && dyn <= 40) size = dyn;
-      }
-      document.documentElement.style.fontSize = size + "px";
-    };
-    if (document.body) apply(); else addEventListener("DOMContentLoaded", apply);
-  })();
-
   // Icons: inline SVG, drawn on a 24 grid with a 2 px stroke, like SF Symbols' regular weight.
   const paths = {
     gear: '<circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
@@ -86,34 +68,9 @@ const Kit = (() => {
   const col = (t, re) => t ? t.columns.findIndex((c) => re.test(c.name.trim())) : -1;
   const table = (note, ...res) => note.tables.find((t) => res.every((re) => col(t, re) >= 0));
 
-  // Where each table sits in the markdown, so several rows can go in with one edit (one Undo).
-  function tableLines(md) {
-    const lines = md.split("\n"), out = [];
-    const isRow = (l) => l.trim().startsWith("|");
-    const isSep = (l) => { const t = l.trim(); return t.startsWith("|") && t.includes("-") && [...t].every((c) => "|-: ".includes(c)); };
-    for (let i = 0; i < lines.length;) {
-      if (!(isRow(lines[i]) && isSep(lines[i + 1] || ""))) { i++; continue; }
-      let j = i + 2; while (j < lines.length && isRow(lines[j])) j++;
-      out.push({ start: i, end: j }); i = j;
-    }
-    return { lines, tables: out };
-  }
-  const level = (l) => { const m = /^(#{1,6}) /.exec(l); return m ? m[1].length : 0; };
-  const cellText = (v) => String(v ?? "").replace(/\n/g, " ").replace(/\|/g, "\\|");
-  /** Adds rows to table `index` in one edit: the section around the table is rewritten with set_text. */
-  async function addRows(index, rows, columns) {
-    const note = amber.note, t = note.tables[index];
-    const asCells = rows.map((r) => Array.isArray(r) ? r : (columns || t.columns.map((c) => c.name)).map((n) => r[n] ?? ""));
-    const { lines, tables } = tableLines(note.markdown);
-    const at = tables[index];
-    let h = -1; for (let k = at.start - 1; k >= 0; k--) if (level(lines[k])) { h = k; break; }
-    if (h < 0 || rows.length === 1) {
-      for (const r of asCells) { const res = await amber.update({ op: "append_row", table: index, values: r }); if (!res.ok) return res; }
-      return { ok: true };
-    }
-    const lv = level(lines[h]); let end = h + 1; while (end < lines.length && !(level(lines[end]) && level(lines[end]) <= lv)) end++;
-    const section = [...lines.slice(h + 1, at.end), ...asCells.map((c) => "| " + c.map(cellText).join(" | ") + " |"), ...lines.slice(at.end, end)];
-    return amber.update({ op: "set_text", heading: lines[h].replace(/^#+\s*/, ""), text: section.join("\n") });
+  /** Adds rows to table `index` as one change (one Undo). */
+  function addRows(index, rows) {
+    return amber.update(rows.map((values) => ({ op: "append_row", table: index, values })));
   }
 
   // A sheet: one at a time, Escape or the scrim closes it, focus goes in and comes back.
@@ -145,45 +102,13 @@ const Kit = (() => {
     back && back.focus && back.focus({ preventScroll: true });
   }
 
-  // App settings: declared once with defaults, changed in a sheet without asking an AI. Kept in the
-  // app's own data under "settings" (amber.settings when the app offers it).
-  function settings(schema) {
-    const get = () => {
-      const saved = (amber.settings && amber.settings.values) || (amber.data.values.settings || {});
-      return Object.fromEntries(schema.map((f) => [f.key, saved[f.key] ?? f.default]));
-    };
-    const save = (key, value) => amber.settings && amber.settings.set ? amber.settings.set(key, value) : amber.setData({ values: { settings: { [key]: value } } });
-    function open(title = "Settings", extra = "") {
-      const s = get();
-      const field = (f) => {
-        const id = "set-" + f.key;
-        if (f.type === "toggle") return `<label class="row" for="${id}"><span class="grow">${esc(f.label)}${f.help ? `<div class="muted small">${esc(f.help)}</div>` : ""}</span><input class="switch" type="checkbox" id="${id}" data-key="${f.key}" ${s[f.key] ? "checked" : ""}></label>`;
-        const input = f.type === "select"
-          ? `<select class="in" id="${id}" data-key="${f.key}">${f.options.map((o) => `<option value="${esc(o[0])}" ${String(s[f.key]) === String(o[0]) ? "selected" : ""}>${esc(o[1])}</option>`).join("")}</select>`
-          : `<input class="in num" id="${id}" data-key="${f.key}" type="${f.type === "number" ? "number" : f.type === "time" ? "time" : "text"}" ${f.type === "number" ? `inputmode="decimal" step="${f.step || 1}" min="${f.min ?? 0}"` : ""} value="${esc(s[f.key])}">`;
-        return `<div class="row stack"><label for="${id}" class="grow">${esc(f.label)}${f.unit ? ` <span class="muted">(${esc(f.unit)})</span>` : ""}${f.help ? `<div class="muted small">${esc(f.help)}</div>` : ""}</label><div class="set-input">${input}</div></div>`;
-      };
-      sheet(title, `<div class="card list settings-list">${schema.map(field).join("")}</div>${extra}<p class="muted small" style="margin:.9rem .3rem 0">Settings are kept in this note's app, on all your devices.</p>`, {
-        mount(root) {
-          root.addEventListener("change", (e) => {
-            const el = e.target.closest("[data-key]"); if (!el) return;
-            const f = schema.find((x) => x.key === el.dataset.key);
-            const v = f.type === "toggle" ? el.checked : f.type === "number" ? (Number.isFinite(parseFloat(el.value)) ? parseFloat(el.value) : f.default) : el.value;
-            save(f.key, v);
-          });
-        },
-      });
-    }
-    return { get, open, save };
-  }
-
-  const style = document.createElement("style");
-  style.textContent = `.settings-list .row.stack { flex-wrap: wrap; } .settings-list .set-input { width: 9.5rem; } .settings-list .set-input .in { text-align: right; } .settings-list label.row { cursor: pointer; }
-  @media (max-width: 420px) { .settings-list .set-input { width: 8rem; } }`;
-  document.head.appendChild(style);
+  // App settings are declared in <meta name="amber-settings"> and changed in Amber Notes' own
+  // App Settings sheet; amber.settings has the defaults filled in.
+  const settings = () => amber.settings || {};
+  const on = (v) => v === true || v === "On" || v === "on" || v === "Yes";
 
   // Charts drawn at their real width (so 10 px labels stay 10 px): width(key) is the last measured
-  // width of the element with data-w="key"; fit(render) re-renders once when a width changed.
+  // inner width of the element with data-w="key"; fit(render) re-renders once when a width changed.
   const widths = {};
   const width = (key, fallback) => widths[key] || fallback;
   function fit(render) {
@@ -202,5 +127,5 @@ const Kit = (() => {
   const hash = (s) => { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); };
   const announce = (() => { let el; return (msg) => { if (!el) { el = document.createElement("div"); el.className = "sr"; el.setAttribute("aria-live", "polite"); document.body.appendChild(el); } el.textContent = ""; setTimeout(() => (el.textContent = msg), 30); }; })();
 
-  return { width, fit, onResize, esc, $, $$, ico, D, num, kr, fmtN, done, col, table, addRows, sheet, close, settings, once, hash, announce };
+  return { width, fit, onResize, esc, $, $$, ico, D, num, kr, fmtN, done, col, table, addRows, sheet, close, settings, on, once, hash, announce };
 })();

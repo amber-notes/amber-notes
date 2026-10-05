@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="amber-libs" content="three">
+<meta name="amber-settings" content='{"settings":[{"key":"wood","label":"Wood","type":"choice","options":["Oak","Walnut","Birch"],"default":"Oak"},{"key":"lamp","label":"Reading lamp","type":"choice","options":["On","Off"],"default":"On","help":"A warm light over the shelf."}]}'>
+<title>Bookshelf</title>
+<style>
+/*KIT_CSS*/
+.stage { position: relative; border-radius: calc(var(--amber-radius) + 6px); overflow: hidden; background: radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--amber-accent) 16%, var(--amber-surface)), var(--amber-surface) 70%); touch-action: none; }
+.stage canvas { display: block; width: 100%; height: 100%; cursor: grab; outline: none; }
+.stage canvas:active { cursor: grabbing; }
+.stage .tip { position: absolute; left: 50%; bottom: .8rem; transform: translateX(-50%); font-size: .8rem; color: var(--amber-text-secondary); background: color-mix(in srgb, var(--amber-bg) 80%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); padding: .35rem .8rem; border-radius: 999px; white-space: nowrap; transition: opacity .4s; pointer-events: none; }
+.shelfnames { position: absolute; left: .9rem; top: .8rem; display: grid; gap: .2rem; pointer-events: none; }
+.card3 { position: absolute; left: 50%; bottom: 1rem; transform: translate(-50%, 130%); width: min(26rem, calc(100% - 2rem)); background: color-mix(in srgb, var(--amber-bg) 92%, transparent); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border-radius: 1.1rem; box-shadow: var(--shadow); padding: .9rem 1rem 1rem; transition: transform .45s var(--ease-out); }
+.card3:not(.on) { visibility: hidden; transition: transform .45s var(--ease-out), visibility 0s .45s; }
+.card3.on { transform: translate(-50%, 0); }
+.card3 h2 { font-family: "New York", ui-serif, Georgia, serif; font-size: 1.25rem; line-height: 1.15; }
+.card3 .by { color: var(--amber-text-secondary); font-size: .9rem; margin-top: .15rem; }
+.card3 .row4 { display: flex; gap: .4rem; flex-wrap: wrap; margin-top: .8rem; }
+.card3 .row4 .btn { min-height: 2.3rem; padding: 0 .85rem; font-size: .88rem; }
+.card3 .close { position: absolute; right: .6rem; top: .6rem; width: 2.2rem; height: 2.2rem; }
+.rate { display: flex; gap: .1rem; margin-top: .4rem; }
+.rate button { border: 0; background: none; font-size: 1.4rem; line-height: 1; color: var(--amber-separator); min-width: 2rem; min-height: 2.2rem; padding: 0; }
+.rate button.on { color: var(--amber-accent); }
+.legend3 { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .9rem; }
+.legend3 span { font-size: .82rem; padding: .3rem .75rem; border-radius: 999px; background: var(--amber-surface); color: var(--amber-text-secondary); }
+.legend3 b { color: var(--amber-text); }
+.nogl { padding: 2rem; text-align: center; color: var(--amber-text-secondary); }
+</style>
+</head>
+<body>
+<main class="wrap" id="app">
+  <header class="top"><div class="titles"><h1 id="title"></h1><div class="sub" id="sub"></div></div></header>
+  <section class="stage" id="stage" aria-label="Bookshelf in 3D">
+    <canvas id="gl" tabindex="0" aria-label="Bookshelf. Use the arrow keys to pick a book, Return to pull it out."></canvas>
+    <div class="tip" id="tip">Drag to look around · tap a book to pull it out</div>
+    <div class="card3" id="card" role="dialog" aria-label="Book"></div>
+  </section>
+  <div class="legend3" id="legend"></div>
+  <ul class="sr" id="srlist"></ul>
+  <span class="sr" id="fps" aria-label="Frame rate not measured yet">Frame rate</span>
+</main>
+<script>
+/*KIT_JS*/
+const { esc, col, announce } = Kit;
+const STATUS = ["Reading", "Read", "Want to read"];
+const SHELF_NAME = { Reading: "Reading now", Read: "Read", "Want to read": "Up next" };
+const key = (t) => String(t).trim().toLowerCase();
+const H = (s) => [...String(s)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
+
+function model(note) {
+  const t = Kit.table(note, /^title$/i); if (!t) return null;
+  const c = { title: col(t, /^title$/i), author: col(t, /^author$/i), status: col(t, /^status$/i), rating: col(t, /^rating$/i), pages: col(t, /^pages$/i) };
+  return { t, c, books: t.rows.map((r, i) => ({ i, title: r[c.title].trim(), author: c.author >= 0 ? r[c.author].trim() : "", status: STATUS.find((s) => s.toLowerCase() === (c.status >= 0 ? r[c.status] : "").trim().toLowerCase()) || "Want to read", rating: c.rating >= 0 ? (r[c.rating].match(/★/g) || []).length || parseInt(r[c.rating]) || 0 : 0, pages: c.pages >= 0 ? parseInt(r[c.pages]) || 300 : 300 })).filter((b) => b.title) };
+}
+
+// ---------- Textures, drawn on canvases ----------
+const coverCache = {};
+async function coverImage(b) {
+  const ref = (amber.data.values.covers || {})[key(b.title)];
+  if (!ref) return null;
+  if (coverCache[b.title]) return coverCache[b.title];
+  const r = await amber.files.read(ref);
+  if (!r.ok) return null;
+  const img = new Image(); img.src = r.dataURL; await img.decode().catch(() => {});
+  return (coverCache[b.title] = img.naturalWidth ? img : null);
+}
+function avgColor(img) {
+  const c = document.createElement("canvas"); c.width = c.height = 8; const g = c.getContext("2d"); g.drawImage(img, 0, 0, 8, 8);
+  const d = g.getImageData(0, 0, 8, 8).data; let r = 0, gg = 0, bb = 0; for (let i = 0; i < d.length; i += 4) { r += d[i]; gg += d[i + 1]; bb += d[i + 2]; }
+  const n = d.length / 4; return [r / n, gg / n, bb / n];
+}
+const hsl = (h, s, l) => `hsl(${h} ${s}% ${l}%)`;
+function spineTexture(b, rgb) {
+  const c = document.createElement("canvas"); c.width = 128; c.height = 512; const g = c.getContext("2d");
+  const base = rgb ? `rgb(${rgb.map((v) => Math.round(v * .85)).join(",")})` : hsl(H(b.title) % 360, 45, 38);
+  g.fillStyle = base; g.fillRect(0, 0, 128, 512);
+  const grad = g.createLinearGradient(0, 0, 128, 0); grad.addColorStop(0, "rgba(0,0,0,.35)"); grad.addColorStop(.18, "rgba(255,255,255,.12)"); grad.addColorStop(.5, "rgba(0,0,0,0)"); grad.addColorStop(1, "rgba(0,0,0,.3)");
+  g.fillStyle = grad; g.fillRect(0, 0, 128, 512);
+  const light = rgb ? (rgb[0] * .3 + rgb[1] * .59 + rgb[2] * .11) > 150 : false;
+  const ink = light ? "#1b120a" : "#fbf3e6";
+  g.fillStyle = ink; g.globalAlpha = .55; g.fillRect(0, 40, 128, 3); g.fillRect(0, 469, 128, 3); g.globalAlpha = 1;
+  g.save(); g.translate(64, 256); g.rotate(-Math.PI / 2);
+  g.fillStyle = ink; g.textAlign = "center"; g.textBaseline = "middle";
+  let size = 34; const title = b.title.length > 34 ? b.title.slice(0, 32) + "…" : b.title;
+  g.font = `600 ${size}px "New York", Georgia, serif`; while (g.measureText(title).width > 380 && size > 16) { size -= 2; g.font = `600 ${size}px "New York", Georgia, serif`; }
+  g.fillText(title, 0, -10);
+  g.font = `500 20px -apple-system, system-ui, sans-serif`; g.globalAlpha = .8; g.fillText(b.author.split(" ").slice(-1)[0] || "", 0, 34);
+  g.restore();
+  return c;
+}
+function coverTexture(b, img, rgb) {
+  const c = document.createElement("canvas"); c.width = 320; c.height = 480; const g = c.getContext("2d");
+  if (img) { g.drawImage(img, 0, 0, 320, 480); return c; }
+  const h = H(b.title) % 360; const gr = g.createLinearGradient(0, 0, 320, 480); gr.addColorStop(0, hsl(h, 45, 42)); gr.addColorStop(1, hsl((h + 30) % 360, 50, 26));
+  g.fillStyle = gr; g.fillRect(0, 0, 320, 480); g.fillStyle = "#fff"; g.font = `600 34px "New York", Georgia, serif`; g.textBaseline = "top";
+  const words = b.title.split(" "); let line = "", y = 50;
+  for (const w of words) { if (g.measureText(line + w).width > 260) { g.fillText(line, 30, y); y += 42; line = ""; } line += w + " "; } g.fillText(line, 30, y);
+  g.font = "500 20px -apple-system, sans-serif"; g.fillText(b.author, 30, 420); return c;
+}
+function paperTexture() {
+  const c = document.createElement("canvas"); c.width = 64; c.height = 256; const g = c.getContext("2d");
+  g.fillStyle = "#efe6d4"; g.fillRect(0, 0, 64, 256); g.strokeStyle = "rgba(120,90,50,.18)";
+  for (let x = 2; x < 64; x += 3) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, 256); g.stroke(); } return c;
+}
+function woodTexture(kind) {
+  const base = { Oak: [176, 128, 78], Walnut: [104, 68, 44], Birch: [214, 186, 146] }[kind] || [176, 128, 78];
+  const c = document.createElement("canvas"); c.width = 512; c.height = 128; const g = c.getContext("2d");
+  g.fillStyle = `rgb(${base})`; g.fillRect(0, 0, 512, 128);
+  for (let i = 0; i < 70; i++) { const y = Math.random() * 128, a = .04 + Math.random() * .08; g.strokeStyle = `rgba(${Math.random() < .5 ? "60,30,10" : "255,240,220"},${a})`; g.lineWidth = .5 + Math.random() * 2;
+    g.beginPath(); g.moveTo(0, y); for (let x = 0; x <= 512; x += 32) g.lineTo(x, y + Math.sin(x / 60 + i) * 2.5); g.stroke(); }
+  return c;
+}
+
+// ---------- The scene ----------
+let T, renderer, scene, camera, raycaster, shelfGroup, books = [], bookMeshes = [], picked = null, focus = 0;
+let fitted = false, yaw = 0, pitch = .08, dist = 9, target = { yaw: 0, pitch: .08, dist: 9 }, fitDist = 9, animating = 0, frames = [], lastBuilt = "";
+const SH = 2.1, DEPTH = 1.5, BOARD = .12;
+
+function init() {
+  T = window.THREE;
+  const cv = document.getElementById("gl");
+  try { renderer = new T.WebGLRenderer({ canvas: cv, antialias: true, alpha: true }); } catch (e) { document.getElementById("stage").innerHTML = `<div class="nogl">3D isn't available here: ${esc(e.message)}</div>`; return false; }
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = T.PCFSoftShadowMap;
+  renderer.outputColorSpace = T.SRGBColorSpace;
+  scene = new T.Scene();
+  camera = new T.PerspectiveCamera(32, 1, .1, 100);
+  raycaster = new T.Raycaster();
+  scene.add(new T.HemisphereLight(0xfff4e6, 0x3a2a1a, .9));
+  const key = new T.DirectionalLight(0xffe2b8, 1.6); key.position.set(-3, 6, 7); key.castShadow = true; key.shadow.mapSize.set(1024, 1024);
+  Object.assign(key.shadow.camera, { left: -8, right: 8, top: 6, bottom: -6 }); key.shadow.bias = -.0005; scene.add(key);
+  scene.userData.lamp = new T.PointLight(0xffb45e, 0, 9, 1.6); scene.userData.lamp.position.set(0, 4.2, 2.2); scene.add(scene.userData.lamp);
+  shelfGroup = new T.Group(); scene.add(shelfGroup);
+  bindInput(cv);
+  // Only the width decides the stage's height, so a height change never loops back here.
+  new ResizeObserver(() => requestAnimationFrame(resize)).observe(document.getElementById("stage"));
+  return true;
+}
+
+let lastW = 0;
+function resize() {
+  const st = document.getElementById("stage"); const w = st.clientWidth;
+  if (!w || w === lastW) return; lastW = w;
+  const h = Math.round(Math.min(Math.max(w * (w < 600 ? 1.38 : .56), 360), 720));
+  st.style.height = h + "px";
+  renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+  fit(); kick();
+  if (amber.note) render(amber.note);
+}
+// The camera backs off until the whole case fits, whatever the window's shape.
+function fit() {
+  const box = new T.Box3().setFromObject(shelfGroup); if (box.isEmpty()) return;
+  const size = box.getSize(new T.Vector3());
+  const vfov = camera.fov * Math.PI / 180, hfov = 2 * Math.atan(Math.tan(vfov / 2) * camera.aspect);
+  fitDist = Math.max((size.y / 2 + .75) / Math.tan(vfov / 2), (size.x / 2 + .5) / Math.tan(hfov / 2)) + DEPTH;
+  target.dist = fitDist; if (!fitted) { dist = fitDist; fitted = true; }
+}
+
+async function build(m) {
+  const tall = camera.aspect < 1;
+  const sig = JSON.stringify([m.books.map((b) => [b.title, b.status, b.pages]), Kit.settings().wood, tall]);
+  if (sig === lastBuilt) { lightUp(); return; }
+  lastBuilt = sig;
+  while (shelfGroup.children.length) shelfGroup.remove(shelfGroup.children[0]);
+  bookMeshes = []; picked = null;
+  const width = (b) => .16 + Math.min(b.pages, 900) / 900 * .34;
+  // A tall stage (a phone) gets a narrower case: a long shelf goes on over two boards.
+  const maxLen = tall ? 3.3 : 7;
+  const rows = [];
+  for (const st of STATUS) {
+    let cur = [], len = 0;
+    for (const b of m.books.filter((x) => x.status === st)) { if (len + width(b) > maxLen && cur.length) { rows.push(cur); cur = []; len = 0; } cur.push(b); len += width(b) + .025; }
+    rows.push(cur);
+  }
+  const lens = rows.map((r) => r.reduce((a, b) => a + width(b) + .025, 0));
+  const W = Math.max(4, ...lens) + .7, Hh = SH * rows.length + BOARD;
+  const wood = new T.CanvasTexture(woodTexture(Kit.settings().wood)); wood.colorSpace = T.SRGBColorSpace; wood.wrapS = wood.wrapT = T.RepeatWrapping;
+  const woodMat = new T.MeshStandardMaterial({ map: wood, roughness: .72 });
+  const backMat = new T.MeshStandardMaterial({ map: wood, roughness: .9, color: 0xb8a48c });
+  const add = (geo, mat, x, y, z) => { const me = new T.Mesh(geo, mat); me.position.set(x, y, z); me.castShadow = me.receiveShadow = true; shelfGroup.add(me); return me; };
+  add(new T.BoxGeometry(W, Hh, .08), backMat, 0, Hh / 2, -DEPTH / 2);
+  for (const sx of [-1, 1]) add(new T.BoxGeometry(BOARD, Hh + BOARD, DEPTH), woodMat, sx * (W / 2 + BOARD / 2), Hh / 2, 0);
+  for (let k = 0; k <= rows.length; k++) add(new T.BoxGeometry(W + BOARD * 2, BOARD, DEPTH), woodMat, 0, k * SH, 0);
+  const paper = new T.CanvasTexture(paperTexture()); paper.colorSpace = T.SRGBColorSpace;
+  const paperMat = new T.MeshStandardMaterial({ map: paper, roughness: .95 });
+  // Reading now on top, then read, then up next.
+  for (let r = 0; r < rows.length; r++) {
+    let x = -W / 2 + .35;
+    const y0 = (rows.length - 1 - r) * SH + BOARD / 2;
+    for (const b of rows[r]) {
+      const w = width(b), h = 1.35 + (H(b.title) % 40) / 100, d = 1.0 + (H(b.author) % 20) / 100;
+      const img = await coverImage(b); const rgb = img ? avgColor(img) : null;
+      const sp = new T.CanvasTexture(spineTexture(b, rgb)); sp.colorSpace = T.SRGBColorSpace; sp.anisotropy = 4;
+      const cv = new T.CanvasTexture(coverTexture(b, img, rgb)); cv.colorSpace = T.SRGBColorSpace;
+      const plain = new T.MeshStandardMaterial({ color: rgb ? new T.Color(`rgb(${rgb.map((v) => Math.round(v * .7)).join(",")})`) : new T.Color(hsl(H(b.title) % 360, 40, 30)), roughness: .6 });
+      // Box faces: +z is the spine, facing you on the shelf; +x the front cover, which turns to you
+      // when the book is pulled out; -x the back; the rest is paper.
+      const mesh = new T.Mesh(new T.BoxGeometry(w, h, d), [
+        new T.MeshStandardMaterial({ map: cv, roughness: .55 }), plain, paperMat, paperMat, new T.MeshStandardMaterial({ map: sp, roughness: .5 }), paperMat]);
+      mesh.position.set(x + w / 2, y0 + h / 2, DEPTH / 2 - d / 2 - .05);
+      if (b.status === "Want to read" && (H(b.title) % 5 === 0)) { mesh.rotation.z = -.08; mesh.position.y -= .02; }
+      mesh.castShadow = mesh.receiveShadow = true;
+      mesh.userData = { b, home: mesh.position.clone(), homeRot: mesh.rotation.clone(), t: 0 };
+      shelfGroup.add(mesh); bookMeshes.push(mesh);
+      x += w + .025;
+    }
+  }
+  shelfGroup.position.y = -Hh / 2;
+  fit(); lightUp(); kick();
+}
+function lightUp() { const on = Kit.on(Kit.settings().lamp); scene.userData.lamp.intensity = on ? 9 : 0; kick(); }
+
+// ---------- Motion: render only while something moves ----------
+function kick() { if (!animating) { animating = 1; requestAnimationFrame(loop); } }
+let lastT = 0; const renderMs = [];
+function loop(t) {
+  if (document.hidden) { animating = 0; return; }
+  const dt = Math.min(.05, (t - (lastT || t)) / 1000); lastT = t;
+  frames.push(t); while (frames.length && t - frames[0] > 1000) frames.shift();
+  let moving = false;
+  const ease = (a, b, k) => { const v = a + (b - a) * (1 - Math.pow(1 - k, dt * 60)); if (Math.abs(b - v) > 1e-4) moving = true; return Math.abs(b - v) < 1e-4 ? b : v; };
+  yaw = ease(yaw, target.yaw, .12); pitch = ease(pitch, target.pitch, .12); dist = ease(dist, target.dist, .12);
+  camera.position.set(Math.sin(yaw) * dist * Math.cos(pitch), Math.sin(pitch) * dist + .2, Math.cos(yaw) * dist * Math.cos(pitch));
+  camera.lookAt(0, 0, 0);
+  // Where a pulled-out book floats: in front of the camera, in the upper half of the view.
+  const vf = camera.fov * Math.PI / 180, D = 1.45 / ((camera.aspect < 1 ? .34 : .5) * 2 * Math.tan(vf / 2));
+  const dir = new T.Vector3(); camera.getWorldDirection(dir);
+  const up = new T.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
+  const outPos = camera.position.clone().add(dir.multiplyScalar(D)).add(up.multiplyScalar(D * Math.tan(vf / 2) * (camera.aspect < 1 ? .5 : .3))).sub(shelfGroup.position);
+  for (const me of bookMeshes) {
+    const u = me.userData, out = me === picked;
+    u.t = ease(u.t, out ? 1 : 0, .1);
+    const k = u.t, s = k * k * (3 - 2 * k);
+    // Out: slides forward, rises to the middle and turns its cover to you.
+    me.position.x = u.home.x + (outPos.x - u.home.x) * s;
+    me.position.y = u.home.y + (outPos.y - u.home.y) * s + Math.sin(s * Math.PI) * .35;
+    me.position.z = u.home.z + (outPos.z - u.home.z) * s;
+    me.rotation.y = -Math.PI / 2 * s;
+    me.rotation.z = u.homeRot.z * (1 - s);
+    const f = bookMeshes.indexOf(me) === focus && kbd && !picked;
+    me.position.z += f ? .18 : 0;
+  }
+  const r0 = performance.now(); renderer.render(scene, camera); renderMs.push(performance.now() - r0); if (renderMs.length > 120) renderMs.shift();
+  if (moving || dragging) requestAnimationFrame(loop); else { animating = 0; report(); }
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden) kick(); });
+// Frames drawn in the last second of movement: for the frame-rate checks on iPhone and Mac.
+function report() {
+  const n = frames.length; window.__fps = n;
+  const el = document.getElementById("fps"); if (el) el.setAttribute("aria-label", `Frame rate ${n}`);
+}
+// A slow turn for a set time, for measuring (the Mac check calls this).
+window.__spin = (ms) => new Promise((res) => {
+  const t0 = performance.now(), y0 = target.yaw; let n = 0;
+  const step = (t) => { n++; target.yaw = y0 + Math.sin((t - t0) / ms * Math.PI * 2) * .4; kick(); if (t - t0 < ms) requestAnimationFrame(step); else { target.yaw = y0; const avg = renderMs.reduce((a, b) => a + b, 0) / Math.max(1, renderMs.length); res(`${Math.round(n / (ms / 1000))} fps, ${avg.toFixed(1)} ms per frame to draw`); } };
+  requestAnimationFrame(step);
+});
+
+// ---------- Touch, mouse, trackpad and keys ----------
+let dragging = false, kbd = false;
+function bindInput(cv) {
+  let sx = 0, sy = 0, moved = 0, y0 = 0, p0 = 0; const pts = new Map(); let pinch = 0;
+  cv.addEventListener("pointerdown", (e) => { cv.setPointerCapture(e.pointerId); pts.set(e.pointerId, e); dragging = true; sx = e.clientX; sy = e.clientY; moved = 0; y0 = target.yaw; p0 = target.pitch; kick(); tipOff(); });
+  cv.addEventListener("pointermove", (e) => {
+    if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, e);
+    if (pts.size === 2) { const [a, b] = [...pts.values()]; const d = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY); if (pinch) target.dist = Math.min(fitDist * 1.6, Math.max(fitDist * .55, target.dist * pinch / d)); pinch = d; return; }
+    const dx = e.clientX - sx, dy = e.clientY - sy; moved = Math.max(moved, Math.hypot(dx, dy));
+    target.yaw = Math.max(-.6, Math.min(.6, y0 - dx * .005)); target.pitch = Math.max(-.15, Math.min(.5, p0 + dy * .004));
+  });
+  const up = (e) => { pts.delete(e.pointerId); if (pts.size < 2) pinch = 0; if (!pts.size) { dragging = false; if (moved < 6) tap(e); kick(); } };
+  cv.addEventListener("pointerup", up); cv.addEventListener("pointercancel", up);
+  cv.addEventListener("wheel", (e) => { e.preventDefault(); if (e.ctrlKey) target.dist = Math.min(fitDist * 1.6, Math.max(fitDist * .55, target.dist * (1 + e.deltaY * .01))); else { target.yaw = Math.max(-.6, Math.min(.6, target.yaw + e.deltaX * .003)); target.pitch = Math.max(-.15, Math.min(.5, target.pitch + e.deltaY * .002)); } kick(); tipOff(); }, { passive: false });
+  cv.addEventListener("keydown", (e) => {
+    const n = bookMeshes.length; if (!n) return;
+    if (["ArrowRight", "ArrowLeft", "ArrowUp", "ArrowDown"].includes(e.key)) { e.preventDefault(); kbd = true; focus = (focus + ({ ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key]) + n) % n; announce(bookMeshes[focus].userData.b.title); kick(); }
+    else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(bookMeshes[focus]); }
+    else if (e.key === "Escape") putBack();
+  });
+}
+function tipOff() { const t = document.getElementById("tip"); if (t) t.style.opacity = 0; }
+function tap(e) {
+  const r = renderer.domElement.getBoundingClientRect();
+  raycaster.setFromCamera(new T.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera);
+  const hit = raycaster.intersectObjects(bookMeshes)[0];
+  if (hit) pick(hit.object === picked ? null : hit.object); else putBack();
+}
+function pick(me) {
+  if (!me) return putBack();
+  picked = me; focus = bookMeshes.indexOf(me); target.yaw = 0; target.pitch = .05; target.dist = fitDist;
+  showCard(me.userData.b); kick();
+}
+function putBack() { picked = null; target.dist = fitDist; document.getElementById("card").classList.remove("on"); kick(); }
+
+function showCard(b) {
+  const el = document.getElementById("card");
+  el.innerHTML = `<button class="round close" id="putback" aria-label="Put it back">${Kit.ico("close")}</button><h2>${esc(b.title)}</h2><div class="by">${esc(b.author)} · ${b.pages} pages</div>
+    <div class="rate" role="group" aria-label="Rating">${[1, 2, 3, 4, 5].map((n) => `<button data-r="${n}" class="${n <= b.rating ? "on" : ""}" aria-label="${n} ${n === 1 ? "star" : "stars"}">★</button>`).join("")}</div>
+    <div class="row4">${STATUS.map((s) => `<button class="btn ${s === b.status ? "primary" : ""}" data-st="${s}">${SHELF_NAME[s]}</button>`).join("")}</div>`;
+  el.classList.add("on");
+}
+async function setCell(b, k, v) { const m = model(amber.note); return m.c[k] >= 0 ? amber.update({ op: "set_cell", table: m.t.index, row: b.i, col: m.t.columns[m.c[k]].name, value: v }) : { ok: false, error: "Add that column to the note first." }; }
+
+document.addEventListener("click", async (e) => {
+  const t = e.target.closest("#putback,[data-r],[data-st]"); if (!t || !picked) return;
+  const b = picked.userData.b;
+  if (t.id === "putback") putBack();
+  else if (t.dataset.r) { const v = +t.dataset.r === b.rating ? 0 : +t.dataset.r; b.rating = v; await setCell(b, "rating", "★".repeat(v)); showCard(b); }
+  else if (t.dataset.st && t.dataset.st !== b.status) { putBack(); const r = await setCell(b, "status", t.dataset.st); if (r.ok) announce(`${b.title} moved to ${SHELF_NAME[t.dataset.st]}.`); }
+});
+
+function render(note) {
+  document.getElementById("title").textContent = note.title;
+  const m = model(note);
+  if (!m) { document.getElementById("sub").textContent = "Add a table with Title, Author and Status to fill the shelf."; return; }
+  const n = (s) => m.books.filter((b) => b.status === s).length;
+  document.getElementById("sub").textContent = `${m.books.length} books`;
+  document.getElementById("legend").innerHTML = STATUS.map((s) => `<span><b>${n(s)}</b> ${SHELF_NAME[s].toLowerCase()}</span>`).join("") + `<span>Top: reading now · middle: read · bottom: up next</span>`;
+  document.getElementById("srlist").innerHTML = m.books.map((b) => `<li>${esc(b.title)} by ${esc(b.author)}, ${SHELF_NAME[b.status]}</li>`).join("");
+  build(m);
+}
+if (init()) amber.onChange((note) => render(note));
+</script>
+</body>
+</html>

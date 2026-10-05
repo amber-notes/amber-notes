@@ -39,7 +39,7 @@ for t in ${=TESTS:-testStills}; do
     python3 -c 'import time; print(time.time())' > "$OUT/rec-start.txt"
     sleep 1.5
   fi
-  TEST_RUNNER_PANE_SHOTS="$OUT" TEST_RUNNER_BEST_DIR="$PWD/demo/note-pages/best" TEST_RUNNER_SHOT_PREFIX="${APPEARANCE:-light}-" TEST_RUNNER_ONLY="${ONLY:-}" \
+  TEST_RUNNER_PANE_SHOTS="$OUT" TEST_RUNNER_BEST_DIR="$PWD/demo/note-pages/best" TEST_RUNNER_SHOT_PREFIX="${APPEARANCE:-light}-" TEST_RUNNER_ONLY="${ONLY:-}" TEST_RUNNER_INLINE_LIBS="${INLINE_LIBS:-}" \
     nice -n 10 xcodebuild -project Pane.xcodeproj -scheme Pane -destination "id=$SIM" -derivedDataPath build/dd CODE_SIGNING_ALLOWED=NO test-without-building \
     -only-testing:"PaneUITests/BestAppsUITests/$t" > "$OUT/$t.log" 2>&1 || true
   if [[ -n "$REC" ]]; then

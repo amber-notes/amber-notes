@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="amber-needs" content='{"hosts": ["openlibrary.org", "covers.openlibrary.org"]}'>
+<meta name="amber-needs" content='{"hosts": ["openlibrary.org", "covers.openlibrary.org", "archive.org"]}'>
+<meta name="amber-settings" content='{"settings":[{"key":"goal","label":"Books this year","type":"number","default":24},{"key":"sort","label":"Sort the shelf by","type":"choice","options":["Most recent","Title","Author","Rating"],"default":"Most recent"},{"key":"covers","label":"Fetch covers from Open Library","type":"choice","options":["On","Off"],"default":"On"}]}'>
 <title>Reading</title>
 <style>
 /*KIT_CSS*/
@@ -98,11 +99,7 @@ input[type=range] { width: 100%; accent-color: var(--amber-accent); height: 2.4r
 <script>
 /*KIT_JS*/
 const { esc, ico, D, num, col, sheet, announce } = Kit;
-const S = Kit.settings([
-  { key: "goal", label: "Books this year", type: "number", default: 24, min: 1, help: "Your reading goal for the year." },
-  { key: "sort", label: "Sort the shelf by", type: "select", default: "recent", options: [["recent", "Most recent"], ["title", "Title"], ["author", "Author"], ["rating", "Rating"]] },
-  { key: "covers", label: "Fetch covers", type: "toggle", default: true, help: "From Open Library, for books you add." },
-]);
+const S = { get: () => { const s = Kit.settings(); return { goal: s.goal, sort: { "Title": "title", "Author": "author", "Rating": "rating" }[s.sort] || "recent", covers: Kit.on(s.covers) }; } };
 const STATUSES = ["Reading", "Want to read", "Read", "Stopped"];
 let tab = "Read";
 const key = (t) => String(t).trim().toLowerCase();
@@ -124,7 +121,8 @@ function model(note) {
 
 const hue = (s) => [...s].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) % 360, 7);
 function cover(b, cls = "") {
-  if (b.cover) return `<div class="cover ${cls}"><img src="${esc(b.cover)}" alt=""></div>`;
+  const src = b.cover && (typeof b.cover === "string" ? b.cover : amber.files.url(b.cover, { width: 240 }));
+  if (src) return `<div class="cover ${cls}"><img src="${esc(src)}" alt=""></div>`;
   const h = hue(b.title);
   const long = b.title.split(/\s+/).some((w) => w.length > 8);
   return `<div class="cover gen ${long ? "long" : ""} ${cls}" style="--g:linear-gradient(160deg, hsl(${h} 45% 42%), hsl(${(h + 30) % 360} 50% 28%))"><b>${esc(b.title)}</b><span>${esc(b.author)}</span></div>`;
@@ -163,7 +161,7 @@ function render(note = amber.note) {
 
   app.innerHTML = `
   <header class="top"><div class="titles"><h1>${esc(note.title)}</h1><div class="sub">${readYear.length} ${readYear.length === 1 ? "book" : "books"} in ${year}${reading.length ? ` · ${reading.length} on the go` : ""}</div></div>
-    <button class="round" id="add" aria-label="Add a book">${ico("plus")}</button><button class="round" id="settings" aria-label="Settings">${ico("gear")}</button></header>
+    <button class="round" id="add" aria-label="Add a book">${ico("plus")}</button></header>
   ${reading.length ? `<div class="nows">${reading.map((b) => {
     const f = b.pages && b.page ? Math.min(1, b.page / b.pages) : 0;
     return `<section class="card now" aria-label="Reading ${esc(b.title)}">${cover(b)}<div class="info"><div class="k">Reading now</div><h2>${esc(b.title)}</h2><div class="by">${esc(b.author)}</div><div class="grow2"></div>
@@ -317,7 +315,9 @@ function addSheet() {
         if (m.c.status >= 0) values[n("status")] = "Want to read";
         const res = await amber.update({ op: "append_row", table: m.t.index, values });
         if (!res.ok) { err = res.error; draw(root); return; }
-        await amber.setData({ values: { books: { [key(d.title)]: { cover: d.thumb || null, year: d.year || null, pages: d.pages || null } } } });
+        let ref = null;
+        if (d.thumb) { const f = await amber.files.save({ name: `${d.title}.jpg`, type: "image/jpeg", base64: d.thumb.split(",")[1] }); if (f.ok) ref = { $file: f.file.$file }; }
+        await amber.setData({ values: { books: { [key(d.title)]: { cover: ref, year: d.year || null, pages: d.pages || null } } } });
         tab = "Want to read"; close(); announce(`${d.title} added to Up next.`);
       });
     },
@@ -328,7 +328,6 @@ document.addEventListener("click", (e) => {
   const t = e.target.closest("#add,#settings,[data-tab],[data-book],[data-page],[data-quote]"); if (!t) return;
   if (t.closest(".sheet") && !t.dataset.quote) return;
   if (t.id === "add") addSheet();
-  else if (t.id === "settings") S.open("Reading settings");
   else if (t.dataset.tab) { tab = t.dataset.tab; render(); }
   else if (t.dataset.book) bookSheet(+t.dataset.book);
   else if (t.dataset.page) pageSheet(+t.dataset.page);

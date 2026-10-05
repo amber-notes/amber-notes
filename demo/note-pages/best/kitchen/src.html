@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="amber-settings" content='{"settings":[{"key":"servings","label":"Usual servings","type":"number","default":2,"help":"For dinners you plan from here."},{"key":"pantry","label":"Always at home","type":"list","default":["salt","pepper","olive oil"],"help":"Left off the shopping list."},{"key":"groupAisles","label":"Group the list by aisle","type":"choice","options":["On","Off"],"default":"On"}]}'>
 <title>Kitchen</title>
 <style>
 /*KIT_CSS*/
@@ -87,14 +88,11 @@
 <script>
 /*KIT_JS*/
 const { esc, ico, D, num, col, sheet, announce } = Kit;
-const S = Kit.settings([
-  { key: "servings", label: "Usual servings", type: "number", default: 2, min: 1, help: "For dinners you plan from here." },
-  { key: "pantry", label: "Always at home", type: "text", default: "salt, pepper, olive oil", help: "Left off the shopping list. Separate with commas." },
-  { key: "groupAisles", label: "Group the list by aisle", type: "toggle", default: true },
-]);
+const S = { get: () => { const s = Kit.settings(); return { servings: Number(s.servings) || 2, pantry: (Array.isArray(s.pantry) ? s.pantry : String(s.pantry || "").split(",")).join(","), groupAisles: Kit.on(s.groupAisles) }; } };
 const hue = (s) => [...s].reduce((a, ch) => (a * 29 + ch.charCodeAt(0)) % 360, 23);
 const grad = (name) => { const h = (hue(name) % 70) + 5; return `linear-gradient(150deg, hsl(${h} 62% 52%), hsl(${(h + 330) % 360} 55% 34%))`; };
-const art = (r) => r.photo ? `<img src="${r.photo}" alt="">` : `<span class="mono" aria-hidden="true">${esc(r.name[0])}</span>`;
+const photo = (r, w) => r.photo ? (typeof r.photo === "string" ? r.photo : amber.files.url(r.photo, { width: w || 600 })) : "";
+const art = (r) => r.photo ? `<img src="${photo(r)}" alt="">` : `<span class="mono" aria-hidden="true">${esc(r.name[0])}</span>`;
 const recipes = () => (amber.data.collections.recipes || []);
 const byName = (n) => recipes().find((r) => r.name.toLowerCase() === String(n).trim().toLowerCase());
 const fmtQ = (q) => { if (!q) return ""; const w = Math.floor(q + 1e-9), f = Math.round((q - w) * 100) / 100; const fr = { 0.25: "¼", 0.5: "½", 0.75: "¾" }[f]; return f === 0 ? String(w) : fr ? (w ? w : "") + fr : String(Math.round(q * 10) / 10).replace(".", ","); };
@@ -124,7 +122,7 @@ function render(note = amber.note) {
   const aisles = [...new Set(m.groc.map((g) => g.aisle || ""))];
   app.innerHTML = `
   <header class="top"><div class="titles"><h1>${esc(note.title)}</h1><div class="sub">${planned} ${planned === 1 ? "dinner" : "dinners"} planned${m.groc.length ? ` · ${m.groc.length - done} to buy` : ""}</div></div>
-    <button class="round" id="newr" aria-label="New recipe">${ico("plus")}</button><button class="round" id="settings" aria-label="Settings">${ico("gear")}</button></header>
+    <button class="round" id="newr" aria-label="New recipe">${ico("plus")}</button></header>
   <div class="cols side">
     <div>
       ${tr ? `<section class="tile tonight" style="--g:${grad(tr.name)}">${art(tr)}<div class="shade" style="background:linear-gradient(180deg, rgba(20,10,0,0) 15%, rgba(20,10,0,.8))"></div>
@@ -133,7 +131,7 @@ function render(note = amber.note) {
       : `<section class="card empty" style="padding:1.6rem">${ico("pot")}<h3>Nothing planned tonight</h3><p>Pick something from your recipes.</p>${m.t ? `<button class="btn primary" data-plan="${today}">Plan tonight</button>` : ""}</section>`}
       <div class="label"><span class="grow">This week</span></div>
       ${m.t ? `<section class="card list week">${m.plan.filter((p) => p.day >= D.add(today, -1)).map((p) => { const r = byName(p.dish); return `<button class="row ${p.day === today ? "today" : ""}" data-plan="${p.day}">
-          <span class="dd"><b>${D.fmt(p.day, { weekday: "short" })}</b><span>${+p.day.slice(8)} ${D.fmt(p.day, { month: "short" })}</span></span><span class="sw ${p.dish ? "" : "none"}" style="--g:${p.dish ? grad(p.dish) : ""}">${r && r.photo ? `<img src="${r.photo}" alt="">` : ""}</span>
+          <span class="dd"><b>${D.fmt(p.day, { weekday: "short" })}</b><span>${+p.day.slice(8)} ${D.fmt(p.day, { month: "short" })}</span></span><span class="sw ${p.dish ? "" : "none"}" style="--g:${p.dish ? grad(p.dish) : ""}">${r && r.photo ? `<img src="${photo(r, 120)}" alt="">` : ""}</span>
           <span class="grow">${p.dish ? `<span class="dish ellipsis" style="display:block">${esc(p.dish)}</span><span class="sv">${r ? `${r.minutes} min · ` : ""}${p.servings || "?"} servings</span>` : `<span class="plan">Plan something</span>`}</span>${ico("chevron", 'class="chev"')}</button>`; }).join("")}</section>
         <div class="mk"><button class="btn primary" id="make">${ico("cart")} Make grocery list</button><span class="muted small">From the dinners ahead</span></div>`
       : `<div class="card empty"><p>Add a table with Day, Dinner and Servings under a "This week" heading to plan dinners.</p></div>`}
@@ -195,7 +193,7 @@ async function setDinner(day, dish, servings) {
 
 function planSheet(day) {
   const m = model(amber.note), p = m.plan.find((x) => x.day === day);
-  sheet(D.fmt(day, { weekday: "long", day: "numeric", month: "long" }), `<div class="card list pick">${recipes().map((r) => `<button class="row" data-pick="${esc(r.id)}"><span class="sw" style="--g:${grad(r.name)}">${r.photo ? `<img src="${r.photo}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">` : esc(r.name[0])}</span><span class="grow"><b style="font-weight:600">${esc(r.name)}</b><div class="small muted">${r.minutes} min · ${esc((r.tags || []).join(", "))}</div></span>${p && p.dish === r.name ? ico("check", 'style="width:1.1rem;color:var(--amber-accent-text)"') : ""}</button>`).join("")}</div>
+  sheet(D.fmt(day, { weekday: "long", day: "numeric", month: "long" }), `<div class="card list pick">${recipes().map((r) => `<button class="row" data-pick="${esc(r.id)}"><span class="sw" style="--g:${grad(r.name)}">${r.photo ? `<img src="${photo(r, 120)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">` : esc(r.name[0])}</span><span class="grow"><b style="font-weight:600">${esc(r.name)}</b><div class="small muted">${r.minutes} min · ${esc((r.tags || []).join(", "))}</div></span>${p && p.dish === r.name ? ico("check", 'style="width:1.1rem;color:var(--amber-accent-text)"') : ""}</button>`).join("")}</div>
     ${p && p.dish ? `<button class="btn danger block" id="clearday" style="margin-top:.6rem">Clear this day</button>` : ""}`, {
     mount(root, close) {
       root.addEventListener("click", async (e) => {
@@ -311,8 +309,7 @@ function newRecipe() {
 document.addEventListener("click", (e) => {
   const tm = e.target.closest("[data-timer]"); if (tm) { timer(tm); return; }
   const t = e.target.closest("#settings,#make,#clear,#newr,[data-recipe],[data-cook],[data-plan],[data-line]"); if (!t || t.closest(".sheet")) return;
-  if (t.id === "settings") S.open("Kitchen settings");
-  else if (t.id === "make") groceryList();
+  if (t.id === "make") groceryList();
   else if (t.id === "clear") clearBought();
   else if (t.id === "newr") newRecipe();
   else if (t.dataset.recipe) recipeSheet(t.dataset.recipe);

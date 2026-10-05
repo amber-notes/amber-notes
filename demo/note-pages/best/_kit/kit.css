@@ -1,6 +1,5 @@
 /* The shared look of the best-apps set: Amber Notes' variables, iOS-like grouped lists, sheets. */
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html { font-size: 17px; }
 body { font-size: 1rem; line-height: 1.35; }
 :root {
   --c1: #D96A06; --c2: #2F8577; --c3: #3D6DB5; --c4: #9A4E8E; --c5: #7C8A24; --c6: #C4455B; --c7: #8A6A4A;
