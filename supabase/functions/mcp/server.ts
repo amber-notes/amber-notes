@@ -18,7 +18,8 @@ import { errorKind, log } from "../_shared/log.ts";
 import { Content, runTool, ToolContext, ToolError, tools } from "./tools.ts";
 import { challenge, handleOAuth, isOAuthPath, publicBase, resolveAccessToken, subpath } from "./oauth.ts";
 import { SERVER_CARD_PATH, SERVER_INFO, serverCardResponse } from "./card.ts";
-import { GUIDE_URI, PAGE_GUIDE, PAGE_INSTRUCTIONS, PAGE_PROMPTS, templateUri } from "./page_guide.ts";
+import { BASE_CSS_URI, GUIDE_URI, PAGE_GUIDE, PAGE_INSTRUCTIONS, PAGE_PROMPTS, templateUri } from "./page_guide.ts";
+import { AMBER_BASE_CSS } from "./amber-base.ts";
 import { PAGE_TEMPLATES } from "./page_templates.gen.ts";
 
 const PROTOCOL_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
@@ -255,6 +256,7 @@ async function respond(msg: Rpc, id: string | number | null, ctx: ToolContext): 
 /** Read-only documents a client can attach: the page guide and the tested page templates. */
 const RESOURCES = [
   { uri: GUIDE_URI, name: "note-pages-guide", title: "Building note pages", description: "How to build and edit Amber Notes pages: the window.amber API, data model, design rules and a starter page.", mimeType: "text/markdown", text: PAGE_GUIDE },
+  { uri: BASE_CSS_URI, name: "amber-base-css", title: "amber-base.css", description: "The default stylesheet every note's app gets, before its own styles and in a cascade layer: override any rule, or opt out with <meta name=\"amber-base\" content=\"none\">.", mimeType: "text/css", text: AMBER_BASE_CSS },
   ...PAGE_TEMPLATES.map((t) => ({ uri: templateUri(t.name), name: `page-template-${t.name}`, title: `Page template: ${t.name}`, description: `${t.description} Expects: ${t.expects}`, mimeType: "text/html", text: t.html })),
 ];
 

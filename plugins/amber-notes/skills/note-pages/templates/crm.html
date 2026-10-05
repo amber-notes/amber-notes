@@ -1,10 +1,9 @@
 <!doctype html>
-<!-- template: crm | A sales pipeline: open value per stage, deals grouped by stage with a stage picker on each, search, and a form to add a contact. Currency and stages are App Settings. | A table with a name column (Company, Name or Contact), a Stage (or Status) column, optionally Value, Email and Contact columns. -->
+<!-- template: crm | A sales pipeline: open value per stage, deals grouped by stage with a stage picker on each, search, and a form to add a contact. Currency and stages are settings at the end of the app. | A table with a name column (Company, Name or Contact), a Stage (or Status) column, optionally Value, Email and Contact columns. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="amber-settings" content='{"settings": [{"key": "currency", "label": "Currency", "type": "currency", "default": "SEK"}, {"key": "stages", "label": "Stages", "type": "list", "default": ["Lead", "Proposal", "Won", "Lost"], "help": "In order. Stages already used in the note are added."}]}'>
 <style>
   :root { --bg: var(--amber-bg); --card: var(--amber-surface); --ink: var(--amber-text); --muted: var(--amber-text-secondary); --line: var(--amber-separator); --accent: var(--amber-accent); --accent-ink: var(--amber-on-accent); --field: var(--amber-fill); --won: #2f7d5b; --lost: #8a8178; }
   @media (prefers-color-scheme: dark) { :root { --won: #5cc497; --lost: #a39a90; } }
@@ -38,11 +37,35 @@
   /* This app's own look (navy, like a ledger); Amber's tokens fill in the rest. */
   :root { --accent: #1e40af; --accent-ink: #ffffff; --card: #f1f4fa; --field: #e6ebf5; }
   @media (prefers-color-scheme: dark) { :root { --accent: #8fb0ff; --accent-ink: #0b1533; --card: #171c27; --field: #232a38; } }
+  .settings { margin-top: 28px; }
+  .settings summary { cursor: pointer; color: var(--muted); min-height: 44px; padding: 11px 4px; }
+  .settings .card { display: grid; gap: 14px; padding: 14px 16px; }
+  .settings label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); min-width: 0; }
+  .settings input, .settings select { font: inherit; font-size: 16px; color: var(--ink); background: var(--amber-field); border: 1px solid var(--amber-field-border); border-radius: 10px; padding: 10px 12px; min-height: 44px; width: 100%; }
 </style>
 </head>
 <body>
 <main id="app" aria-live="polite"></main>
 <script>
+  // Settings live inside the app: a section at the end, saved in values.settings (an AI sets them with update_page_data).
+  const SETTINGS = [{"key": "currency", "label": "Currency", "type": "text", "default": "SEK"}, {"key": "stages", "label": "Stages", "type": "list", "default": ["Lead", "Proposal", "Won", "Lost"], "help": "In order. Stages already used in the note are added."}];
+  const settings = () => Object.assign(Object.fromEntries(SETTINGS.map((s) => [s.key, s.default])), (amber.data.values || {}).settings || {});
+  let settingsOpen = false;
+  function settingsHTML() {
+    const v = settings();
+    const field = (s) => s.type === "choice" ? `<select data-setting="${s.key}">${s.options.map((o) => `<option ${o === v[s.key] ? "selected" : ""}>${esc(o)}</option>`).join("")}</select>`
+      : `<input data-setting="${s.key}" ${s.type === "number" ? 'inputmode="decimal"' : ""} value="${esc(s.type === "list" ? (v[s.key] || []).join(", ") : v[s.key])}">`;
+    return `<details class="settings" id="settings" ${settingsOpen ? "open" : ""}><summary>Settings</summary><div class="card">${SETTINGS.map((s) => `<label>${esc(s.label)}${field(s)}${s.help ? `<span>${esc(s.help)}</span>` : ""}</label>`).join("")}</div></details>`;
+  }
+  function wireSettings() {
+    const box = document.getElementById("settings");
+    box.ontoggle = () => { settingsOpen = box.open; };
+    box.querySelectorAll("[data-setting]").forEach((el) => { el.onchange = () => {
+      const s = SETTINGS.find((x) => x.key === el.dataset.setting), raw = el.value.trim();
+      const value = s.type === "number" ? Number(raw.replace(",", ".")) || 0 : s.type === "list" ? raw.split(",").map((x) => x.trim()).filter(Boolean) : raw;
+      amber.setData({ values: { settings: { [s.key]: value } } }).then((r) => { if (!r.ok) { el.setCustomValidity(r.error); el.reportValidity(); } });
+    }; });
+  }
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const num = (s) => { const n = parseFloat(String(s ?? "").replace(/[\s ]/g, "").replace(/kr|sek|\$|€|£/gi, "").replace(",", ".")); return Number.isFinite(n) ? n : 0; };
   const col = (t, re) => t.columns.findIndex((c) => re.test(c.name));
@@ -57,9 +80,9 @@
     const typed = t.columns[st].type.startsWith("choice ") ? t.columns[st].type.slice(7).split("|") : null;
     const used = [...new Set(t.rows.map((r) => r[st]).filter(Boolean))];
     const rank = (s) => { const k = ORDER.indexOf(String(s).toLowerCase()); return k < 0 ? 3.5 : k; };
-    const listed = (Array.isArray(amber.settings.stages) ? amber.settings.stages : []).map(String).filter(Boolean);
+    const listed = (Array.isArray(settings().stages) ? settings().stages : []).map(String).filter(Boolean);
     const stages = typed || [...new Set([...listed, ...used.sort((a, b) => rank(a) - rank(b))])];
-    const fmt = (() => { try { return new Intl.NumberFormat("sv-SE", { style: "currency", currency: amber.settings.currency || "SEK", maximumFractionDigits: 0 }); } catch { return new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 0 }); } })();
+    const fmt = (() => { try { return new Intl.NumberFormat("sv-SE", { style: "currency", currency: settings().currency || "SEK", maximumFractionDigits: 0 }); } catch { return new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 0 }); } })();
     const money = (n) => fmt.format(n);
     const q = query.trim().toLowerCase();
     const deals = t.rows.map((r, i) => ({ r, i })).filter(({ r }) => !q || r.join(" ").toLowerCase().includes(q));
@@ -94,7 +117,9 @@
           <button>Add</button>
         </form>
         <div class="err" role="alert">${esc(error)}</div>
-      </div>`;
+      </div>
+      ${settingsHTML()}`;
+    wireSettings();
 
     const search = document.getElementById("q");
     search.oninput = () => { query = search.value; render(amber.note, amber.data); const s = document.getElementById("q"); s.focus(); s.setSelectionRange(s.value.length, s.value.length); };

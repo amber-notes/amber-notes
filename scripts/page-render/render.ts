@@ -9,12 +9,14 @@ import { webkit, type Browser, type Page } from "npm:playwright-core@1.63.0";
 import { applyPageOp, noteForPage } from "../../supabase/functions/mcp/page_input.ts";
 import { mergePatch } from "../../supabase/functions/mcp/data_ops.ts";
 import { findTables } from "../../supabase/functions/mcp/notes.ts";
+import { AMBER_BASE_CSS } from "../../supabase/functions/mcp/amber-base.ts";
 
 // Pane/Views/NotePageView.swift: NotePageSandbox.policy and sandboxed(_:).
 const POLICY = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; font-src data:; media-src data:; " +
   "connect-src 'none'; frame-src 'none'; child-src 'none'; worker-src 'none'; object-src 'none'; manifest-src 'none'; form-action 'none'; base-uri 'none'";
 
-// NotePageTheme.css as the iPhone app writes it (Pane/Views/NotePageView.swift, Palette).
+// amber-tokens.css as the iPhone app writes it (Pane/Views/NotePageView.swift, NotePageTheme.tokens),
+// then amber-base.css, the file the app ships, unless the page opts out with <meta name="amber-base" content="none">.
 const vars = (d: boolean) => [
   ["--amber-bg", d ? "#000000" : "#FFFEFD"], ["--amber-surface", d ? "#1C1B1A" : "#F4F1EE"], ["--amber-fill", d ? "#2C2A28" : "#EBE6E1"],
   ["--amber-text", d ? "#F6EFE7" : "#2A1D10"], ["--amber-text-secondary", d ? "#BCB0A3" : "#74604C"],
@@ -23,13 +25,12 @@ const vars = (d: boolean) => [
   ["--amber-danger", d ? "#FF6B5E" : "#C62828"],
   ["--amber-field", d ? "#1A1918" : "#FFFFFF"], ["--amber-field-border", d ? "#7A716A" : "#9A8673"],
 ].map(([k, v]) => `${k}: ${v}`).join("; ");
-export const THEME = `:root { color-scheme: light dark; ${vars(false)}; --amber-radius: 14px; --amber-radius-small: 10px; --amber-content-max: 1100px; --amber-gutter: clamp(16px, 3.5vw, 40px); ` +
-  `--amber-font: -apple-system, system-ui, sans-serif; --amber-font-rounded: ui-rounded, -apple-system, system-ui, sans-serif; --amber-font-mono: ui-monospace, Menlo, monospace; }\n` +
-  `@media (prefers-color-scheme: dark) { :root { ${vars(true)}; } }\n` +
-  `body { margin: 0; background: var(--amber-bg); color: var(--amber-text); font: 17px/1.35 var(--amber-font); -webkit-text-size-adjust: 100%; }\n` +
-  // The app's default fields: a solid fill and a border, low specificity so a page can restyle them.
-  `:where(input:not([type=checkbox], [type=radio], [type=range], [type=color], [type=file], [type=hidden]), select, textarea) { background: var(--amber-field); color: var(--amber-text); border: 1px solid var(--amber-field-border); }\n` +
-  `:where(input, select, textarea):focus-visible { outline: 2px solid var(--amber-accent); outline-offset: 1px; }`;
+export const TOKENS = `@layer amber-tokens {\n:root { ${vars(false)}; --amber-radius: 14px; --amber-radius-small: 10px; --amber-content-max: 1100px; --amber-gutter: clamp(16px, 3.5vw, 40px); ` +
+  `--amber-root-font: 17px/1.35 -apple-system, system-ui, sans-serif; ` +
+  `--amber-font: -apple-system, system-ui, sans-serif; --amber-font-rounded: ui-rounded, -apple-system, system-ui, sans-serif; --amber-font-mono: ui-monospace, Menlo, monospace; ` +
+  `--amber-safe-top: env(safe-area-inset-top, 0px); --amber-safe-right: env(safe-area-inset-right, 0px); --amber-safe-bottom: env(safe-area-inset-bottom, 0px); --amber-safe-left: env(safe-area-inset-left, 0px); }\n` +
+  `@media (prefers-color-scheme: dark) { :root { ${vars(true)}; } }\n}\n`;
+const baseOptOut = (html: string) => /<meta[^>]*name=["']amber-base["'][^>]*content=["']none["']/i.test(html);
 
 // Libraries (<meta name="amber-libs">, see supabase/functions/mcp/libraries.ts). The app serves them
 // from its own copies; here the same npm files come from a local cache at a made-up host the CSP
@@ -60,7 +61,7 @@ function prepare(html: string): { html: string; integrity: Map<string, string> }
   const policy = POLICY.replace("script-src 'unsafe-inline'", `script-src 'unsafe-inline' ${LIB_HOST}`);
   return {
     html: `<!doctype html><meta http-equiv="Content-Security-Policy" content="${policy}"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">` +
-      `<style id="amber-theme">${THEME}</style>` + tags.join("") + rest,
+      `<style id="amber-tokens">${TOKENS}</style>` + (baseOptOut(html) ? "" : `<style id="amber-base">${AMBER_BASE_CSS}</style>`) + tags.join("") + rest,
     integrity,
   };
 }
@@ -98,7 +99,7 @@ async function sri(bytes: Uint8Array, want: string): Promise<boolean> {
 // Pane/Views/NotePageView.swift bootstrap(data:store:), with the app's message handlers replaced by
 // the harness's. The device, the on-device model and amber.fetch answer { ok: false } here: the
 // evals check pages handle that, not what the device returns.
-const bootstrap = (note: unknown, data: unknown, defaults: Record<string, unknown> = {}) => `(() => {
+const bootstrap = (note: unknown, data: unknown) => `(() => {
   const listeners = [];
   const ask = (msg) => window.__amberData(msg)
     .then((r) => { if (r && r.data) amber.data = r.data; if (r) delete r.data; return r; })
@@ -160,20 +161,12 @@ const bootstrap = (note: unknown, data: unknown, defaults: Record<string, unknow
     amber.note = note; if (data) amber.data = data;
     for (const fn of listeners) { try { fn(note, amber.data); } catch (e) { console.error(e); } }
   } });
-  const settingDefaults = ${JSON.stringify(defaults)};
-  Object.defineProperty(amber, "settings", { get() { return Object.assign({}, settingDefaults, (amber.data.values && amber.data.values.settings) || {}); } });
   window.amber = amber;
   const sized = () => { if (!document.documentElement) return addEventListener("DOMContentLoaded", sized, { once: true }); const w = window.innerWidth, c = document.documentElement.classList;
     c.toggle("amber-narrow", w < 600); c.toggle("amber-medium", w >= 600 && w < 900); c.toggle("amber-wide", w >= 900); };
   sized(); addEventListener("resize", sized);
   { const w = () => { if (!document.documentElement) return addEventListener("DOMContentLoaded", w, { once: true }); document.documentElement.dataset.amberContext = window.__amberWidget ? "widget" : "full"; if (window.__amberWidget) document.documentElement.classList.add("amber-widget"); }; w(); }
 })();`;
-
-/** <meta name="amber-settings">: each setting's default, as the app fills them in. */
-function settingDefaults(html: string): Record<string, unknown> {
-  const content = html.match(/<meta[^>]*name=["']amber-settings["'][^>]*>/i)?.[0]?.match(/content=(['"])([\s\S]*?)\1/)?.[2];
-  try { return Object.fromEntries((JSON.parse(content ?? "{}").settings ?? []).filter((x: { key?: string }) => x.key).map((x: { key: string; default?: unknown }) => [x.key, x.default ?? null])); } catch { return {}; }
-}
 
 /** The app's data ops (Pane/Model/NotePageData.swift apply). */
 function applyDataOp(doc: { values: Record<string, unknown>; collections: Record<string, Record<string, unknown>[]> }, m: Record<string, unknown>) {
@@ -323,7 +316,7 @@ async function renderOnce(html: string, markdown: string, data: unknown, opts: R
       }
     });
     if (widget) await page.addInitScript("window.__amberWidget = true;");
-    await page.addInitScript(bootstrap(noteForPage(md, opts.today), store, settingDefaults(html)));
+    await page.addInitScript(bootstrap(noteForPage(md, opts.today), store));
     await page.goto(home, { waitUntil: "load", timeout: 15000 }).catch((e) => errors.push(`load: ${(e as Error).message.slice(0, 200)}`));
     await page.waitForTimeout(400);
     return { page, errors };
@@ -449,7 +442,15 @@ async function renderOnce(html: string, markdown: string, data: unknown, opts: R
         smallText: smallText.slice(0, 5), smallTextCount: smallText.length, faint: faint.slice(0, 5), faintCount: faint.length,
         headings: [...document.querySelectorAll("h1, h2, h3, [role=heading]")].filter(visible).map((h) => (h.textContent ?? "").trim().slice(0, 80)).slice(0, 12),
         excerpt: text.replace(/\s+/g, " ").trim().slice(0, 500),
-        overflow: Math.max(0, de.scrollWidth - window.innerWidth), textLength: text.trim().length,
+        // amber-base.css clips sideways overflow (html, body { overflow-x: clip }), so scrollWidth no longer
+        // shows it: measure how far anything that starts on screen reaches past the right edge, unless an
+        // inner scroller or clip holds it (a row of chips that scrolls is fine).
+        overflow: Math.max(0, de.scrollWidth - window.innerWidth, Math.round([...document.body.querySelectorAll("*")].reduce((m, el) => {
+          const r = el.getBoundingClientRect();
+          if (!r.width || !r.height || r.left >= window.innerWidth - 1 || r.right <= m) return m;
+          for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) if (getComputedStyle(p).overflowX !== "visible") return m;
+          return r.right;
+        }, 0) - window.innerWidth)), textLength: text.trim().length,
         shown: want.filter((w) => flat.includes(w.toLowerCase().replace(/\s+/g, " ")) || (/^[\d\s.,\u00a0]+$/.test(w) && flat.replace(/[\s,\u00a0\u202f]/g, "").includes(w.replace(/[\s,\u00a0]/g, "")))).length,
         bg, fg: bodyStyle.color, unnamed, small,
       };

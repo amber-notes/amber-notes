@@ -6,6 +6,7 @@ import type { PGlite } from "npm:@electric-sql/pglite@0.2.17";
 import { sampleData, sampleNote } from "./app_sample.ts";
 import { networkReport } from "./app_check.ts";
 import { libraryReport } from "./libraries.ts";
+import { pageWarnings } from "./page_lint.ts";
 import { findTables } from "./notes.ts";
 import { schemaDB } from "./pglite.ts";
 import { type Account, account, app, note, toolContext } from "./sealed.ts";
@@ -37,6 +38,13 @@ Deno.test("network and keys: declared vs used vs set up, and keys pasted into th
   assertStringIncludes(r, "has no value yet");
   assertStringIncludes(r, "looks like an API key");
   assertStringIncludes(networkReport(html, []).join(), "isn't in Settings › API Keys yet");
+});
+
+Deno.test("wildcard hosts cover their servers; !important is called out because the base never needs it", () => {
+  const html = `<meta name="amber-needs" content='{"hosts": ["*.archive.org"]}'><script>amber.fetch("https://ia800.us.archive.org/x"); amber.onChange(() => {})</script>`;
+  assertEquals(networkReport(html, []), []);
+  assertStringIncludes(pageWarnings(`<html lang="en"><style>input { border: 0 !important; }</style><p style="color: red !important">x</p>`).join(), "!important appears 2 times");
+  assertEquals(pageWarnings(`<html lang="en"><style>input { border: 0; }</style>`).some((w) => w.includes("!important")), false);
 });
 
 Deno.test("libraries: pasted copies, unpinned or unhashed npm entries, unknown names and undeclared globals are flagged", () => {

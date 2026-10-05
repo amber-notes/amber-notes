@@ -506,9 +506,9 @@ export const TASKS: Task[] = [
       const d = JSON.stringify(f.data ?? {});
       return [
         unchanged(f), pageChanged(f),
-        // Goals are app state or App Settings: either way, not the note's text.
-        check("goals_saved", (/5/.test(d) && /4/.test(d) && /3/.test(d) && /walk/i.test(d)) || /name=["']amber-settings["'][^>]*walk[^>]*/i.test(f.page ?? ""), `page data: ${d.slice(0, 120)}`),
-        check("goals_changeable", /amber\.(setData|store\.set)\s*\(|name=["']amber-settings["']/.test(f.page ?? ""), "the goals can't be changed (no setData, store.set or App Settings)"),
+        // Goals are the app's own settings, kept in its data: not the note's text.
+        check("goals_saved", /5/.test(d) && /4/.test(d) && /3/.test(d) && /walk/i.test(d), `page data: ${d.slice(0, 120)}`),
+        check("goals_changeable", /amber\.(setData|store\.set)\s*\(/.test(f.page ?? ""), "the goals can't be changed in the app (no setData or store.set)"),
         check("no_local_storage", !/localStorage/.test(f.page ?? ""), "uses localStorage"),
       ];
     },
@@ -747,13 +747,14 @@ export const TASKS: Task[] = [
     prompt: "In my Household expenses app, make the monthly limit something I can change myself without asking you. Start it at 12 000 kr.",
     seed: { body: EXPENSES, page: BUDGET_PAGE }, page: true,
     checks: (f) => {
-      const meta = (f.page ?? "").match(/<meta[^>]*name=["']amber-settings["'][^>]*>/i)?.[0] ?? "";
+      const page = f.page ?? "";
       const saved = JSON.stringify((f.data as { values?: { settings?: unknown } })?.values?.settings ?? {});
       return [
         unchanged(f), pageChanged(f),
-        check("declares_setting", /"type"\s*:\s*"(number|currency)"/.test(meta) && /limit|budget/i.test(meta), "no number setting for the limit in amber-settings"),
-        check("reads_settings", /amber\.settings/.test(f.page ?? ""), "the app doesn't read amber.settings"),
-        check("starts_at_12000", /12\s?000/.test(meta) || /12000/.test(saved), "the limit doesn't start at 12 000"),
+        // Settings live inside the app (no declared settings): a field the person can change, saved in values.settings.
+        check("no_declared_settings", !/name=["']amber-settings["']|amber\.(settings|openSettings)\b/.test(page), "uses the removed amber-settings / amber.settings"),
+        check("changeable_in_app", /<input|<select|createElement\(["']input/i.test(page) && /amber\.(setData|store\.set)\s*\(/.test(page) && /settings/.test(page), "no field in the app that saves the limit to its settings"),
+        check("starts_at_12000", /12\s?000/.test(saved) || /12_?000/.test(page), "the limit doesn't start at 12 000"),
         check("not_hardcoded", !/(const|let|var)\s+\w*(limit|budget)\w*\s*=\s*12\s?000/i.test(f.page ?? ""), "the limit is hardcoded in the app"),
       ];
     },

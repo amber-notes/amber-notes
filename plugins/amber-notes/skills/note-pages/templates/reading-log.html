@@ -1,10 +1,9 @@
 <!doctype html>
-<!-- template: reading-log | Books as cards with ratings, books per month against a yearly goal (an App Setting), the average rating, a want-to-read checklist and a form to log a finished book. | A table with Title and Author, optionally Finished (yyyy-mm-dd) and Rating (1-5) columns; checklist items are shown as want-to-read. -->
+<!-- template: reading-log | Books as cards with ratings, books per month against a yearly goal (set in the app), the average rating, a want-to-read checklist and a form to log a finished book. | A table with Title and Author, optionally Finished (yyyy-mm-dd) and Rating (1-5) columns; checklist items are shown as want-to-read. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="amber-settings" content='{"settings": [{"key": "goal", "label": "Books a year", "type": "number", "default": 24, "help": "0 for no goal"}]}'>
 <style>
   :root { --bg: var(--amber-bg); --card: var(--amber-surface); --ink: var(--amber-text); --muted: var(--amber-text-secondary); --line: var(--amber-separator); --accent: var(--amber-accent); --accent-ink: var(--amber-on-accent); --field: var(--amber-fill); --star: var(--amber-accent-text); }
   * { box-sizing: border-box; }
@@ -41,11 +40,35 @@
   :root { --accent: #7a2e2e; --accent-ink: #ffffff; --card: #f7f1e6; --star: #9a6b00; --field: #efe6d6; --line: rgba(90,60,30,.18); }
   @media (prefers-color-scheme: dark) { :root { --accent: #e8a0a0; --accent-ink: #2a0d0d; --card: #24201b; --star: #f2c14e; --field: #2f2a23; --line: rgba(255,235,210,.14); } }
   h1, .book .t, .stat b { font-family: ui-serif, 'New York', Georgia, serif; }
+  .settings { margin-top: 28px; }
+  .settings summary { cursor: pointer; color: var(--muted); min-height: 44px; padding: 11px 4px; }
+  .settings .card { display: grid; gap: 14px; padding: 14px 16px; }
+  .settings label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); min-width: 0; }
+  .settings input, .settings select { font: inherit; font-size: 16px; color: var(--ink); background: var(--amber-field); border: 1px solid var(--amber-field-border); border-radius: 10px; padding: 10px 12px; min-height: 44px; width: 100%; }
 </style>
 </head>
 <body>
 <main id="app" aria-live="polite"></main>
 <script>
+  // Settings live inside the app: a section at the end, saved in values.settings (an AI sets them with update_page_data).
+  const SETTINGS = [{"key": "goal", "label": "Books a year", "type": "number", "default": 24, "help": "0 for no goal"}];
+  const settings = () => Object.assign(Object.fromEntries(SETTINGS.map((s) => [s.key, s.default])), (amber.data.values || {}).settings || {});
+  let settingsOpen = false;
+  function settingsHTML() {
+    const v = settings();
+    const field = (s) => s.type === "choice" ? `<select data-setting="${s.key}">${s.options.map((o) => `<option ${o === v[s.key] ? "selected" : ""}>${esc(o)}</option>`).join("")}</select>`
+      : `<input data-setting="${s.key}" ${s.type === "number" ? 'inputmode="decimal"' : ""} value="${esc(s.type === "list" ? (v[s.key] || []).join(", ") : v[s.key])}">`;
+    return `<details class="settings" id="settings" ${settingsOpen ? "open" : ""}><summary>Settings</summary><div class="card">${SETTINGS.map((s) => `<label>${esc(s.label)}${field(s)}${s.help ? `<span>${esc(s.help)}</span>` : ""}</label>`).join("")}</div></details>`;
+  }
+  function wireSettings() {
+    const box = document.getElementById("settings");
+    box.ontoggle = () => { settingsOpen = box.open; };
+    box.querySelectorAll("[data-setting]").forEach((el) => { el.onchange = () => {
+      const s = SETTINGS.find((x) => x.key === el.dataset.setting), raw = el.value.trim();
+      const value = s.type === "number" ? Number(raw.replace(",", ".")) || 0 : s.type === "list" ? raw.split(",").map((x) => x.trim()).filter(Boolean) : raw;
+      amber.setData({ values: { settings: { [s.key]: value } } }).then((r) => { if (!r.ok) { el.setCustomValidity(r.error); el.reportValidity(); } });
+    }; });
+  }
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const col = (t, re) => t.columns.findIndex((c) => re.test(c.name));
   const hue = (s) => [...String(s)].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) % 360, 7);
@@ -69,7 +92,7 @@
       <h1>${esc(note.title)}</h1>
       <div class="stats">
         <div class="stat"><b>${books.length}</b><span>books</span></div>
-        <div class="stat"><b>${books.filter((b) => String(b.date).startsWith(year)).length}${Number(amber.settings.goal) ? `<span style="font-size:15px;color:var(--muted)"> / ${Number(amber.settings.goal)}</span>` : ""}</b><span>in ${year}</span></div>
+        <div class="stat"><b>${books.filter((b) => String(b.date).startsWith(year)).length}${Number(settings().goal) ? `<span style="font-size:15px;color:var(--muted)"> / ${Number(settings().goal)}</span>` : ""}</b><span>in ${year}</span></div>
         <div class="stat"><b>${rated.length ? avg.toFixed(1) : "–"}</b><span>average rating</span></div>
       </div>
       ${fi >= 0 ? `<h2>Last six months</h2><div class="card chart" role="img" aria-label="Books finished per month: ${months.map((m, k) => `${m} ${perMonth[k]}`).join(", ")}">${months.map((m, k) => `<div class="m"><div class="b" style="height:${(70 * perMonth[k]) / top}px"></div><div class="l">${new Date(m + "-15T12:00:00Z").toLocaleString("en", { month: "short" })}</div></div>`).join("")}</div>` : ""}
@@ -86,7 +109,9 @@
           <button>Add book</button>
         </form>
         <div class="err" role="alert">${esc(error)}</div>
-      </div>`;
+      </div>
+      ${settingsHTML()}`;
+    wireSettings();
 
     app.querySelectorAll("[data-line]").forEach((box) => box.addEventListener("change", async () => {
       const r = await amber.update({ op: "toggle_checklist", line: Number(box.dataset.line) });

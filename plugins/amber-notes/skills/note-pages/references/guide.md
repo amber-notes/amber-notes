@@ -27,10 +27,7 @@ The page's own data (not the note's text; for state the person wouldn't type, li
 The device, through the system's own prompts (results go to the page only; write to the note explicitly if wanted): amber.device.reminders.create({ title, due, repeat: "daily" }), calendar.today() -> { events: [{ title, start, end, location, attendees }] },
   notify({ title, body, at | in }) -> { id }, notify.cancel(id), reminders.complete(id) / reminders.delete(id) (only ones an app made), openURL(url), photos.pick({ limit }) / camera.take() -> { files: [{ $file, thumb }] }, contacts.pick() -> { contact: { name, organization, emails, phones, addresses, birthday?, photo? } }, files.pick(), location.once() -> { lat, lon, place },
   maps.open({ lat, lon | query, directions }), maps.snapshot({ lat, lon, km | pins: [{ lat, lon, label }], fit, pin, width, height, dark }) -> { dataURL, region, points: [{ x, y }] } (points: where each pin landed, to draw on top). On-device AI: amber.ai.available(), amber.ai.respond(prompt, { instructions }) -> { text }. Every call returns { ok, ... } or { ok: false, error }.
-Settings the person can change without an AI: declare <meta name="amber-settings" content='{"settings": [{ "key": "budget", "label": "Monthly budget", "type": "number", "default": 15000 }]}'> (types: text, number (with "min", "max", "step": a slider when both ends are given), choice with "options" (strings, or { "value": 120, "label": "2 minutes" }), multi (several options, a list), list, color, currency, toggle (true/false), time ("21:30"), date ("2026-10-05")).
-  Each may have "help" (a line under it), "section" (settings with the same section are grouped under that heading) and "showIf": "otherKey" or { "key": "otherKey", "equals": value } (shown only then).
-  amber.openSettings() opens that sheet; don't build a settings screen or a gear of your own.
-  Amber Notes shows them in App Settings; read amber.settings (defaults filled in); onChange runs when they change. Use settings for names, goals, limits, currencies and categories instead of hardcoding them.
+Settings: the app draws its own (a settings screen or sheet inside the app, in its own style) and keeps them in amber.data or the store, with defaults in the code. Use settings for names, goals, limits, currencies and categories instead of hardcoding them. There is no native settings form; More › App Info is only for the internet, Previous App and Remove App.
 Libraries: Amber Notes ships chart (Chart.js 4.4.4 → Chart), d3 (7.9.0 → d3), three (0.160.0 → THREE), tone (14.8.49 → Tone), dayjs (1.11.13), marked (12.0.2), purify (DOMPurify 3.1.6, use it on marked output),
   anime (3.2.2), confetti (canvas-confetti 1.9.3), topojson (topojson-client 3.1.0), world (country shapes, TopoJSON → worldAtlas110m).
   For a real application with several screens and state, use Preact without a build step: preact (10.24.3 → preact), preact-hooks (→ preactHooks), htm (3.1.1 → htm), router (Amber Notes, 1 kB → amberRouter: <Router> with path="/item/:id", <a href="#/add">, route(), back(); kept in memory, the page cannot navigate).
@@ -39,13 +36,13 @@ Libraries: Amber Notes ships chart (Chart.js 4.4.4 → Chart), d3 (7.9.0 → d3)
 Where the app is: amber.context = { embedded, width, height }; <html data-amber-context="widget|full">. The web view is the app's real size, with safe areas (env(safe-area-inset-*)); resizing and the keyboard work the standard web way.
 Network: the page itself can't reach anything. Declare hosts ("*.archive.org" covers its servers, for services that redirect to numbered hosts) in <meta name="amber-needs" content='{"hosts": ["api.open-meteo.com"], "keys": [{ "name": "OpenWeather", "hosts": ["api.openweathermap.org"], "query": "appid={key}", "help": "How to get one" }]}'>
   and call amber.fetch(url, { method, headers, body, key }) -> { ok, status, body }. The person approves each host once and sees every request; with key, the app adds that API key (the page never sees it). Redirects are followed only to declared, approved hosts.
-Look like Amber Notes: the app sets these CSS variables on :root, already switched for light and dark, and gives body its font, text colour and background. Use them instead of your own colours and fonts:
+Look like Amber Notes: every app starts with two stylesheets, loaded before its own: amber-tokens.css (these variables, already switched for light and dark) and amber-base.css (body font, colours and background, visible fields, links, no sideways overflow; get_page_guide shows its full text). Both are in cascade layers (amber-tokens, amber-base), so any style you write wins over them whatever its specificity; override freely. <meta name="amber-base" content="none"> drops amber-base.css and keeps the variables. Use the variables instead of your own colours and fonts:
   --amber-bg (the note's background), --amber-surface (cards and grouped rows), --amber-fill (controls, empty cells), --amber-text, --amber-text-secondary, --amber-separator,
   --amber-accent (amber, for marks and filled controls), --amber-accent-text (amber for text), --amber-accent-soft (a soft amber fill), --amber-on-accent (text on --amber-accent),
   --amber-danger, --amber-field and --amber-field-border (inputs), --amber-radius (cards), --amber-radius-small (controls), --amber-font (the system font), --amber-font-rounded, --amber-font-mono, --amber-content-max, --amber-gutter.
 Every input, select and textarea is visible as a field in both themes: a solid fill and a 1px border (inputs get background: var(--amber-field); border: 1px solid var(--amber-field-border) by default; don't remove them). Nothing see-through: solid colours only.
 Size text in rem: on iPhone the root follows the reader's text size. In a parent note the app can show as a small widget: <html> then has the class amber-widget; use a compact layout.
-Fit every width: the page fills the note, from 320 px on a small iPhone to 1,800 px in a full-screen Mac window, and re-lays out live as the window resizes. Put content in a container with max-width: var(--amber-content-max) (1100 px), margin: 0 auto and side padding var(--amber-gutter). Use one column under 600 px, and from 900 px use the room (side-by-side sections, more history, bigger numbers) with @media (min-width: 900px) or the classes amber-narrow / amber-medium / amber-wide the app keeps on <html>. Never a fixed width, never a stretched phone layout. Don't set a background on html or body.
+Fit every width: the page fills the note, from 320 px on a small iPhone to 1,800 px in a full-screen Mac window, and re-lays out live as the window resizes. Put content in a container with max-width: var(--amber-content-max) (1100 px), margin: 0 auto and side padding var(--amber-gutter). Use one column under 600 px, and from 900 px use the room (side-by-side sections, more history, bigger numbers) with @media (min-width: 900px) or the classes amber-narrow / amber-medium / amber-wide the app keeps on <html>. Never a fixed width, never a stretched phone layout. 
 One self-contained HTML document, at most 256 KB; the app's own data at most 4 MB.
 
 ## Workflow
@@ -77,19 +74,20 @@ Some apps need a service that wants an API key (weather, stocks, translation). K
 
 The app owns the note's title. Nothing around the app shows it (not the App side, not a shared web page, not a widget), so the app's first heading is the note's title, read from amber.note.title so it follows renames, and it appears once. Don't add a second heading with the title or the app's kind ("Habit tracker" above "Habits"). A widget-sized app can use a compact header, still the title. check_app flags a missing or doubled title.
 
-## Settings the person changes without you
+## Settings, inside the app
 
-Names, goals, limits, currencies, categories, the list of habits to track: declare them as settings instead of hardcoding them, so the person changes them in More › App Settings without asking an AI.
+Names, goals, limits, currencies, categories, the habits to track: the person should change them without asking an AI, in the app itself. Settings are part of the app's design, not an afterthought.
 
-- Declare: <meta name="amber-settings" content='{"settings": [{ "key": "budget", "label": "Monthly budget", "type": "number", "default": 15000 }, { "key": "currency", "label": "Currency", "type": "currency", "default": "SEK" }, { "key": "categories", "label": "Categories", "type": "list", "default": ["Food", "Home", "Fun"] }]}'>. Types: text, number, choice (with "options"), list (of strings), color (#rrggbb), currency (a code like SEK). "help" adds a line under the field.
-- Read amber.settings (defaults merged with what the person saved) inside your onChange render; onChange runs again when a setting changes. Values live in amber.data.values.settings: to set one for the person, update_page_data with values: { settings: { budget: 12000 } }.
+- One obvious place: a gear button that opens a settings screen or sheet, a Settings tab in an app with tabs, or a short section at the end of a one-screen app.
+- Sensible defaults, so the app works before anyone opens settings; changes apply instantly (no Save button), with real inputs that have labels.
+- Store them in the app's data, values.settings: read amber.data.values.settings (with your defaults merged in) and write amber.store.set("settings", { ...current, goal: 5 }) or amber.setData({ values: { settings: { goal: 5 } } }). An AI sets them for the person with update_page_data { values: { settings: { … } } }.
 - Settings aren't records: rows the person logs stay in the note's tables or the app's collections.
 
 ## Reading data robustly
 
 - Find tables and columns by name, case-insensitively, not by position: `const t = note.tables.find(t => t.columns.some(c => /^date$/i.test(c.name)))`. Fall back gracefully when a column is missing (show an empty state that says which column to add), never throw.
 - Cells are strings. Parse numbers leniently: `parseFloat(s.replace(/\s/g, "").replace(",", "."))`, treat NaN as empty. Treat ✓, x, yes, done, 1, true as done.
-- amber.data is there synchronously (amber.data.values, amber.data.collections, amber.settings); amber.store.get and the collection reads return promises, so await them or read amber.data. Never show "[object Promise]", "undefined" or "NaN": check_app flags them.
+- amber.data is there synchronously (amber.data.values, amber.data.collections); amber.store.get and the collection reads return promises, so await them or read amber.data. Never show "[object Promise]", "undefined" or "NaN": check_app flags them.
 - Dates are "yyyy-mm-dd" strings; compare them as strings. Use amber.note.today, not the clock, for "today".
 - Empty table or note: render a friendly empty state with what to add, not a blank page.
 - Apps must handle 0 rows and 500 rows. Build HTML strings once per render, not per cell with appendChild in a loop.
@@ -106,7 +104,7 @@ Names, goals, limits, currencies, categories, the list of habits to track: decla
 - Give every input a stable id or name: when a new version of the app arrives while it's in use, the person switches to it and what they typed carries over by id or name.
 - Write values the way the note already writes them (✓ vs x, "4" vs "4.00", the same date format).
 - Where data lives: records the person reads or edits as text (expenses, runs, contacts, a reading list) go in a table or checklist in the note, so they're visible under Text and work with every tool. The page's own data (amber.data) holds what isn't text: settings and goals (amber.store.set), a flashcard schedule, the chosen view, and app-only records such as timed sets or photo logs (collections). Don't copy table rows into data.
-- Things the person should be able to change without you (a budget limit, a goal, their name, categories, a currency) are settings: declare them in <meta name="amber-settings"> and read amber.settings. Amber Notes shows them under App Settings.
+- Things the person should be able to change without you (a budget limit, a goal, their name, categories, a currency) are settings in the app's own settings place, stored in values.settings (see Settings, inside the app).
 - Put data into the app's store from here with update_page_data (values, add, update, remove, import, files); query it with get_page_data (a collection, a where, a limit).
 
 ## Design: each app has its own look
@@ -115,12 +113,59 @@ Every app should look like it was made for what it does, in form and in characte
 
 - Pick a palette for the app: a background tint or none, one accent, and one or two supporting colors that suit its subject. Pick type that suits it too: size, weight, rounded (--amber-font-rounded) or mono (--amber-font-mono) where it fits, generous or dense spacing. Shapes can be your own: big dials, full-bleed bands, a board, a shelf of spines.
 - Readable and dark mode, always: body text at 4.5:1 contrast or better against what's behind it, in light and dark. Define your colors as CSS variables on :root and give each a dark variant in @media (prefers-color-scheme: dark) (lighter accents, deeper backgrounds). Test both; check_app measures contrast in both.
-- Don't set a background on html or body (the note's background shows there); put your background on the app's own container. --amber-text, --amber-bg and the rest stay useful as a base and for anything you don't restyle.
+- Don't set a background on html or body (amber-base.css gives body the note's background); put your background on the app's own container. The --amber-* variables stay useful as a base and for anything you don't restyle.
 - Pick the form from the job. A habit tracker can be a wall of days, a garden that grows, or a ring per habit. A budget can be a dial or a stacked bar over the month. A calculator is a keypad with a big display. A vocabulary note can be a game. Use type scale, space, grids, canvas and SVG, with motion where it explains something.
 - Still: one clear focus first, then details. Readable text (at least 12 px, contrast 4.5:1), tabular-nums for numbers, no emoji as icons (inline SVG), no motion that loops for nothing; respect prefers-reduced-motion.
-- Fields look like fields: every input, select and textarea has a solid fill and a 1px border in both themes. The app gives them background: var(--amber-field) and border: 1px solid var(--amber-field-border) by default; restyle them if you like, but never remove the border or make them see-through. Use solid colors (no translucent panels).
+- Fields look like fields: every input, select and textarea has a solid fill and a 1px border in both themes. amber-base.css gives them that (see The default look); restyle them in your own colours if you like, but never remove the border or make them see-through. Use solid colors (no translucent panels).
 - Accessibility: real <button>s and <input>s; every input has a <label> (or aria-label); icon-only buttons have aria-label; state that is shown by color is also shown another way; canvas and SVG views get role="img" and an aria-label, or a text equivalent; lang on <html>.
 - Keep it small: most good apps are 6-30 KB of HTML; libraries load by name and don't count (see Libraries).
+
+## The default look: amber-base.css
+
+Every app gets two stylesheets before its own. amber-tokens.css defines the variables (--amber-bg, --amber-surface, --amber-fill, --amber-text, --amber-text-secondary, --amber-separator, --amber-field, --amber-field-border, --amber-accent, --amber-accent-text, --amber-accent-soft, --amber-on-accent, --amber-danger, --amber-radius, --amber-radius-small, --amber-content-max, --amber-gutter, --amber-root-font, --amber-font, --amber-font-rounded, --amber-font-mono, --amber-safe-top, --amber-safe-right, --amber-safe-bottom, --amber-safe-left), already switched for light and dark and for iPhone or Mac. amber-base.css is the default look, and this is the whole file, exactly as the app ships it:
+
+```css
+/* amber-base.css, version 1 (Amber Notes). The default stylesheet every note's app gets.
+   It is loaded before the app's own styles, inside the cascade layer "amber-base", so any style the
+   app writes wins over it, whatever its specificity. There is nothing else: no other styles are
+   added to an app, and no rule here is marked important.
+   The colours and sizes are variables from amber-tokens.css (loaded first, layer "amber-tokens"),
+   already switched for light and dark. To style everything yourself:
+     <meta name="amber-base" content="none">   keeps amber-tokens.css, drops this file. */
+
+@layer amber-tokens, amber-base;
+
+@layer amber-base {
+  /* Page: the note's background, the system font at the reader's text size (iPhone: Dynamic Type,
+     so rem follows it; Mac: 14px). */
+  html { font: var(--amber-root-font); -webkit-text-size-adjust: 100%; color-scheme: light dark; }
+  body { margin: 0; font-size: 1rem; line-height: 1.35; background: var(--amber-bg); color: var(--amber-text); font-family: var(--amber-font); }
+
+  /* Never wider than the note: something too wide is clipped, not panned to. */
+  html, body { overflow-x: clip; }
+  :where(img, video, canvas, svg, iframe, pre) { max-width: 100%; }
+
+  /* Fields: every input visible as a field, in both themes. */
+  :where(input:not([type=checkbox], [type=radio], [type=range], [type=color], [type=file], [type=hidden]), select, textarea) {
+    background: var(--amber-field); color: var(--amber-text); border: 1px solid var(--amber-field-border);
+    border-radius: var(--amber-radius-small); font: inherit; padding: 6px 10px;
+  }
+  :where(input, select, textarea, button, a):focus-visible { outline: 2px solid var(--amber-accent); outline-offset: 1px; }
+  :where(input[type=checkbox], input[type=radio], input[type=range], progress) { accent-color: var(--amber-accent); }
+
+  /* Buttons: the app's font; the rest is up to the app. */
+  :where(button) { font: inherit; color: inherit; }
+
+  /* Links and lines. */
+  :where(a) { color: var(--amber-accent-text); }
+  :where(hr) { border: 0; border-top: 1px solid var(--amber-separator); margin: 16px 0; }
+}
+```
+
+That is all the styling an app is given; there is nothing hidden. Treat it as a starting point:
+- Override any of it by just writing your rule. Both files are in cascade layers, so your styles win whatever their specificity: never use !important (check_app flags it).
+- Opt out of all of it with <meta name="amber-base" content="none"> when the app's look is entirely its own (a game board, a full-bleed poster). The variables stay; fields, fonts and the no-sideways-overflow rule are then yours to set.
+- It keeps the page from scrolling sideways (overflow-x: clip): anything wider than the window is cut off, not reachable, so check_app still reports it.
 
 ## Focus and structure
 
@@ -206,7 +251,7 @@ A minimal correct page to build from:
   .num { font-variant-numeric: tabular-nums; font-weight: 600; }
   form { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px; }
   label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--amber-text-secondary); flex: 1 1 120px; }
-  input, select { font: inherit; color: var(--amber-text); background: var(--amber-fill); border: 0; border-radius: var(--amber-radius-small); padding: 10px 12px; min-height: 44px; width: 100%; }
+  input, select { font: inherit; border-radius: var(--amber-radius-small); padding: 10px 12px; min-height: 44px; width: 100%; }
   button { font: inherit; font-weight: 600; min-height: 44px; padding: 0 16px; border: 0; border-radius: var(--amber-radius-small); background: var(--amber-accent); color: var(--amber-on-accent); }
   .err { color: var(--amber-danger); padding: 0 16px 12px; min-height: 1em; }
   .empty { padding: 28px 16px; text-align: center; color: var(--amber-text-secondary); }
@@ -248,10 +293,10 @@ A minimal correct page to build from:
 ## Templates
 
 Tested, complete pages to start from (get_page_guide with template: "<name>" returns one). Adapt column names to the note's, never the note to the template, unless the note has no table yet.
-- budget: Spending this month against a monthly budget, by category, with a month picker and a quick add form. Budget, currency and categories are App Settings. Expects: A table with Date (yyyy-mm-dd), an amount column (Amount, Cost, Price, Kr or Sum) and optionally Item and Category columns.
-- crm: A sales pipeline: open value per stage, deals grouped by stage with a stage picker on each, search, and a form to add a contact. Currency and stages are App Settings. Expects: A table with a name column (Company, Name or Contact), a Stage (or Status) column, optionally Value, Email and Contact columns.
-- flashcards: Flip cards one at a time, mark each Known or Again; cards you don't know yet come first, and what you know is remembered in the app's data. Which side shows first is an App Setting. Expects: A table whose first two columns are the front and the back (e.g. Spanish | English, Question | Answer). Keeps amber.data.values.known, front text to the date it was known.
-- habit-tracker: Tick today's habits, see streaks, a 14-day grid and progress toward a weekly goal. The goal and which habits to show are App Settings. Expects: A table with a Date column (yyyy-mm-dd) and one column per habit; a done day is ✓ (x, yes and 1 also count).
-- reading-log: Books as cards with ratings, books per month against a yearly goal (an App Setting), the average rating, a want-to-read checklist and a form to log a finished book. Expects: A table with Title and Author, optionally Finished (yyyy-mm-dd) and Rating (1-5) columns; checklist items are shown as want-to-read.
-- trip-log: A trip at a glance: a countdown, the key facts, the day-by-day plan, and every checklist in the note (to do, ideas, packing) with tick boxes and progress. The start date is an App Setting. Expects: Optionally a table with Date (yyyy-mm-dd) and What/Plan columns (plus Time, Where); checklists under headings; key facts as Label: value lines.
-- workout-log: Weekly distance and time for the last eight weeks, this week's totals against a weekly goal (an App Setting), the latest sessions and a log form. Expects: A table with Date (yyyy-mm-dd), optionally Type (Run, Bike...), a distance column (Km, Distance) and a time column (Minutes, Time).
+- budget: Spending this month against a monthly budget, by category, with a month picker and a quick add form. Budget, currency and categories are settings at the end of the app. Expects: A table with Date (yyyy-mm-dd), an amount column (Amount, Cost, Price, Kr or Sum) and optionally Item and Category columns.
+- crm: A sales pipeline: open value per stage, deals grouped by stage with a stage picker on each, search, and a form to add a contact. Currency and stages are settings at the end of the app. Expects: A table with a name column (Company, Name or Contact), a Stage (or Status) column, optionally Value, Email and Contact columns.
+- flashcards: Flip cards one at a time, mark each Known or Again; cards you don't know yet come first, and what you know is remembered in the app's data. Which side shows first is a setting at the end of the app. Expects: A table whose first two columns are the front and the back (e.g. Spanish | English, Question | Answer). Keeps amber.data.values.known, front text to the date it was known.
+- habit-tracker: Tick today's habits, see streaks, a 14-day grid and progress toward a weekly goal. The goal and which habits to show are settings at the end of the app. Expects: A table with a Date column (yyyy-mm-dd) and one column per habit; a done day is ✓ (x, yes and 1 also count).
+- reading-log: Books as cards with ratings, books per month against a yearly goal (set in the app), the average rating, a want-to-read checklist and a form to log a finished book. Expects: A table with Title and Author, optionally Finished (yyyy-mm-dd) and Rating (1-5) columns; checklist items are shown as want-to-read.
+- trip-log: A trip at a glance: a countdown, the key facts, the day-by-day plan, and every checklist in the note (to do, ideas, packing) with tick boxes and progress. The start date is a setting at the end of the app. Expects: Optionally a table with Date (yyyy-mm-dd) and What/Plan columns (plus Time, Where); checklists under headings; key facts as Label: value lines.
+- workout-log: Weekly distance and time for the last eight weeks, this week's totals against a weekly goal (set in the app), the latest sessions and a log form. Expects: A table with Date (yyyy-mm-dd), optionally Type (Run, Bike...), a distance column (Km, Distance) and a time column (Minutes, Time).

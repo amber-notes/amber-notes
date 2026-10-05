@@ -11,7 +11,7 @@ import { scoreTask } from "./score.ts";
 import type { Task } from "./tasks.ts";
 
 // Each template's sample note (templates/<name>.sample.md, ready to ship as a sample app note), and
-// some saved App Settings and data, so the settings path is exercised too.
+// some saved settings (values.settings, set in each app) and data, so the settings path is exercised too.
 const dir = new URL("../../plugins/amber-notes/skills/note-pages/templates/", import.meta.url);
 const DATA: Record<string, Record<string, unknown>> = {
   "habit-tracker": { values: { settings: { goal: 4 } }, collections: {} },

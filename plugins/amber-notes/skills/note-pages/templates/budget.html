@@ -1,10 +1,9 @@
 <!doctype html>
-<!-- template: budget | Spending this month against a monthly budget, by category, with a month picker and a quick add form. Budget, currency and categories are App Settings. | A table with Date (yyyy-mm-dd), an amount column (Amount, Cost, Price, Kr or Sum) and optionally Item and Category columns. -->
+<!-- template: budget | Spending this month against a monthly budget, by category, with a month picker and a quick add form. Budget, currency and categories are settings at the end of the app. | A table with Date (yyyy-mm-dd), an amount column (Amount, Cost, Price, Kr or Sum) and optionally Item and Category columns. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="amber-settings" content='{"settings": [{"key": "budget", "label": "Monthly budget", "type": "number", "default": 0, "help": "0 for no limit"}, {"key": "currency", "label": "Currency", "type": "currency", "default": "SEK"}, {"key": "categories", "label": "Categories", "type": "list", "default": ["Food", "Home", "Transport", "Fun"]}]}'>
 <style>
   :root { --bg: var(--amber-bg); --card: var(--amber-surface); --ink: var(--amber-text); --muted: var(--amber-text-secondary); --line: var(--amber-separator); --accent: var(--amber-accent); --accent-ink: var(--amber-on-accent); --field: var(--amber-fill); --over: var(--amber-danger); --c0: var(--amber-accent); --c1: #2f7d5b; --c2: #3c63b0; --c3: #a3478a; --c4: var(--amber-text-secondary); }
   @media (prefers-color-scheme: dark) { :root { --c1: #5cc497; --c2: #8aa8ef; --c3: #e38ccb; } }
@@ -34,11 +33,35 @@
   .err { color: var(--over); padding: 0 16px 12px; min-height: 1em; }
   .empty { padding: 24px 16px; text-align: center; color: var(--muted); }
   select { -webkit-appearance: none; appearance: none; padding-right: 28px; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: right 14px center, right 9px center; background-size: 5px 5px; background-repeat: no-repeat; }
+  .settings { margin-top: 28px; }
+  .settings summary { cursor: pointer; color: var(--muted); min-height: 44px; padding: 11px 4px; }
+  .settings .card { display: grid; gap: 14px; padding: 14px 16px; }
+  .settings label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); min-width: 0; }
+  .settings input, .settings select { font: inherit; font-size: 16px; color: var(--ink); background: var(--amber-field); border: 1px solid var(--amber-field-border); border-radius: 10px; padding: 10px 12px; min-height: 44px; width: 100%; }
 </style>
 </head>
 <body>
 <main id="app" aria-live="polite"></main>
 <script>
+  // Settings live inside the app: a section at the end, saved in values.settings (an AI sets them with update_page_data).
+  const SETTINGS = [{"key": "budget", "label": "Monthly budget", "type": "number", "default": 0, "help": "0 for no limit"}, {"key": "currency", "label": "Currency", "type": "text", "default": "SEK"}, {"key": "categories", "label": "Categories", "type": "list", "default": ["Food", "Home", "Transport", "Fun"]}];
+  const settings = () => Object.assign(Object.fromEntries(SETTINGS.map((s) => [s.key, s.default])), (amber.data.values || {}).settings || {});
+  let settingsOpen = false;
+  function settingsHTML() {
+    const v = settings();
+    const field = (s) => s.type === "choice" ? `<select data-setting="${s.key}">${s.options.map((o) => `<option ${o === v[s.key] ? "selected" : ""}>${esc(o)}</option>`).join("")}</select>`
+      : `<input data-setting="${s.key}" ${s.type === "number" ? 'inputmode="decimal"' : ""} value="${esc(s.type === "list" ? (v[s.key] || []).join(", ") : v[s.key])}">`;
+    return `<details class="settings" id="settings" ${settingsOpen ? "open" : ""}><summary>Settings</summary><div class="card">${SETTINGS.map((s) => `<label>${esc(s.label)}${field(s)}${s.help ? `<span>${esc(s.help)}</span>` : ""}</label>`).join("")}</div></details>`;
+  }
+  function wireSettings() {
+    const box = document.getElementById("settings");
+    box.ontoggle = () => { settingsOpen = box.open; };
+    box.querySelectorAll("[data-setting]").forEach((el) => { el.onchange = () => {
+      const s = SETTINGS.find((x) => x.key === el.dataset.setting), raw = el.value.trim();
+      const value = s.type === "number" ? Number(raw.replace(",", ".")) || 0 : s.type === "list" ? raw.split(",").map((x) => x.trim()).filter(Boolean) : raw;
+      amber.setData({ values: { settings: { [s.key]: value } } }).then((r) => { if (!r.ok) { el.setCustomValidity(r.error); el.reportValidity(); } });
+    }; });
+  }
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const num = (s) => { const n = parseFloat(String(s ?? "").replace(/[\s ]/g, "").replace(/kr|sek|\$|€|£/gi, "").replace(",", ".")); return Number.isFinite(n) ? n : 0; };
   const col = (t, re) => t.columns.findIndex((c) => re.test(c.name));
@@ -49,7 +72,7 @@
     const t = note.tables.find((t) => col(t, /amount|cost|price|^kr$|sum|belopp/i) >= 0);
     if (!t) { app.innerHTML = `<h1>${esc(note.title)}</h1><div class="card empty">Add a table with Date, Item, Category and Amount columns to the note.</div>`; return; }
     const a = col(t, /amount|cost|price|^kr$|sum|belopp/i), d = col(t, /^date$|^day$|datum/i), c = col(t, /categ|kategori|type/i), it = col(t, /item|what|desc|name|vad/i);
-    const set = amber.settings;
+    const set = settings();
     const fmt = (() => { try { return new Intl.NumberFormat("sv-SE", { style: "currency", currency: set.currency || "SEK", maximumFractionDigits: 2 }); } catch { return new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 2 }); } })();
     const money = (n) => fmt.format(n);
     const months = [...new Set(t.rows.map((r) => (d >= 0 ? String(r[d]).slice(0, 7) : "")).filter((m) => /^\d{4}-\d{2}$/.test(m)))].sort();
@@ -83,7 +106,9 @@
         <div class="err" role="alert">${esc(error)}</div>
       </div>
       <h2>Latest</h2>
-      <div class="card">${rows.slice().reverse().slice(0, 8).map((x) => `<div class="row"><span class="grow">${esc(it >= 0 ? x.r[it] : "")}<br><span class="muted">${esc(d >= 0 ? x.r[d] : "")}${c >= 0 && x.r[c] ? " · " + esc(x.r[c]) : ""}</span></span><span class="num">${money(x.n)}</span></div>`).join("") || `<div class="empty">No expenses yet.</div>`}</div>`;
+      <div class="card">${rows.slice().reverse().slice(0, 8).map((x) => `<div class="row"><span class="grow">${esc(it >= 0 ? x.r[it] : "")}<br><span class="muted">${esc(d >= 0 ? x.r[d] : "")}${c >= 0 && x.r[c] ? " · " + esc(x.r[c]) : ""}</span></span><span class="num">${money(x.n)}</span></div>`).join("") || `<div class="empty">No expenses yet.</div>`}</div>
+      ${settingsHTML()}`;
+    wireSettings();
 
     const m = document.getElementById("month");
     if (m) m.onchange = () => { month = m.value; render(amber.note, amber.data); };

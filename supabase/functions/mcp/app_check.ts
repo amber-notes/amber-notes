@@ -3,7 +3,7 @@
 // (RENDER_URL, RENDER_SECRET). The service gets a sample note and sample data unless the person
 // turned on previews with real data.
 
-import { declaredHosts, pageProblems } from "./page.ts";
+import { declaredHosts, hostDeclared, pageProblems } from "./page.ts";
 import { pageWarnings } from "./page_lint.ts";
 import { libraryReport } from "./libraries.ts";
 
@@ -30,9 +30,9 @@ export function networkReport(html: string, keys: KeyInfo[]): string[] {
   const calls = [...html.matchAll(/amber\s*\.\s*fetch\s*\(\s*[`'"](https?:\/\/[^/`'"$?#]+)/gi)].map((m) => new URL(m[1]).host.toLowerCase());
   const usedKeys = [...html.matchAll(/\bkey\s*:\s*["']([^"']+)["']/g)].map((m) => m[1]);
   if (/amber\s*\.\s*fetch\s*\(/.test(html) && !/name=["']amber-needs["']/i.test(html)) out.push("amber.fetch is used but the app declares no hosts: add <meta name=\"amber-needs\" content='{\"hosts\": [\"…\"]}'>.");
-  for (const h of new Set(calls)) if (!declared.has(h)) out.push(`amber.fetch calls ${h}, which amber-needs doesn't declare; the app will refuse it.`);
+  for (const h of new Set(calls)) if (!hostDeclared(declared, h)) out.push(`amber.fetch calls ${h}, which amber-needs doesn't declare; the app will refuse it.`);
   const withoutNeeds = html.replace(/<meta[^>]*name=["']amber-needs["'][^>]*>/gi, "");
-  for (const h of needs.hosts) if (!calls.includes(h.toLowerCase()) && !withoutNeeds.includes(h)) out.push(`amber-needs declares ${h} but nothing calls it; remove it so the person isn't asked to allow it.`);
+  for (const h of needs.hosts) if (!calls.some((c) => hostDeclared(new Set([h.toLowerCase()]), c)) && !withoutNeeds.includes(h.replace(/^\*\./, ""))) out.push(`amber-needs declares ${h} but nothing calls it; remove it so the person isn't asked to allow it.`);
   for (const k of new Set(usedKeys)) {
     if (!needs.keys.some((d) => d.name === k)) out.push(`The app asks for the key "${k}" but amber-needs doesn't declare it.`);
   }

@@ -1,10 +1,9 @@
 <!doctype html>
-<!-- template: habit-tracker | Tick today's habits, see streaks, a 14-day grid and progress toward a weekly goal. The goal and which habits to show are App Settings. | A table with a Date column (yyyy-mm-dd) and one column per habit; a done day is ✓ (x, yes and 1 also count). -->
+<!-- template: habit-tracker | Tick today's habits, see streaks, a 14-day grid and progress toward a weekly goal. The goal and which habits to show are settings at the end of the app. | A table with a Date column (yyyy-mm-dd) and one column per habit; a done day is ✓ (x, yes and 1 also count). -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="amber-settings" content='{"settings": [{"key": "goal", "label": "Days a week per habit", "type": "number", "default": 5}, {"key": "habits", "label": "Habits to show", "type": "list", "default": [], "help": "Column names. Leave empty to show every habit in the table."}]}'>
 <style>
   :root { --bg: var(--amber-bg); --card: var(--amber-surface); --ink: var(--amber-text); --muted: var(--amber-text-secondary); --line: var(--amber-separator); --accent: var(--amber-accent); --accent-ink: var(--amber-on-accent); --soft: var(--amber-accent-soft); --empty: var(--amber-fill); --field: var(--amber-fill); }
   * { box-sizing: border-box; }
@@ -38,11 +37,35 @@
   /* This app's own look (garden green); Amber's tokens fill in the rest. */
   :root { --accent: #2f7d4f; --accent-ink: #ffffff; --soft: #dff1e6; --card: #f1f6f2; --empty: #e1eae3; --field: #e6eee8; }
   @media (prefers-color-scheme: dark) { :root { --accent: #5ccf8a; --accent-ink: #0e2318; --soft: #1d3a2a; --card: #1a221d; --empty: #2a332d; --field: #26302a; } }
+  .settings { margin-top: 28px; }
+  .settings summary { cursor: pointer; color: var(--muted); min-height: 44px; padding: 11px 4px; }
+  .settings .card { display: grid; gap: 14px; padding: 14px 16px; }
+  .settings label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); min-width: 0; }
+  .settings input, .settings select { font: inherit; font-size: 16px; color: var(--ink); background: var(--amber-field); border: 1px solid var(--amber-field-border); border-radius: 10px; padding: 10px 12px; min-height: 44px; width: 100%; }
 </style>
 </head>
 <body>
 <main id="app" aria-live="polite"></main>
 <script>
+  // Settings live inside the app: a section at the end, saved in values.settings (an AI sets them with update_page_data).
+  const SETTINGS = [{"key": "goal", "label": "Days a week per habit", "type": "number", "default": 5}, {"key": "habits", "label": "Habits to show", "type": "list", "default": [], "help": "Column names. Leave empty to show every habit in the table."}];
+  const settings = () => Object.assign(Object.fromEntries(SETTINGS.map((s) => [s.key, s.default])), (amber.data.values || {}).settings || {});
+  let settingsOpen = false;
+  function settingsHTML() {
+    const v = settings();
+    const field = (s) => s.type === "choice" ? `<select data-setting="${s.key}">${s.options.map((o) => `<option ${o === v[s.key] ? "selected" : ""}>${esc(o)}</option>`).join("")}</select>`
+      : `<input data-setting="${s.key}" ${s.type === "number" ? 'inputmode="decimal"' : ""} value="${esc(s.type === "list" ? (v[s.key] || []).join(", ") : v[s.key])}">`;
+    return `<details class="settings" id="settings" ${settingsOpen ? "open" : ""}><summary>Settings</summary><div class="card">${SETTINGS.map((s) => `<label>${esc(s.label)}${field(s)}${s.help ? `<span>${esc(s.help)}</span>` : ""}</label>`).join("")}</div></details>`;
+  }
+  function wireSettings() {
+    const box = document.getElementById("settings");
+    box.ontoggle = () => { settingsOpen = box.open; };
+    box.querySelectorAll("[data-setting]").forEach((el) => { el.onchange = () => {
+      const s = SETTINGS.find((x) => x.key === el.dataset.setting), raw = el.value.trim();
+      const value = s.type === "number" ? Number(raw.replace(",", ".")) || 0 : s.type === "list" ? raw.split(",").map((x) => x.trim()).filter(Boolean) : raw;
+      amber.setData({ values: { settings: { [s.key]: value } } }).then((r) => { if (!r.ok) { el.setCustomValidity(r.error); el.reportValidity(); } });
+    }; });
+  }
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const DONE = /^(✓|✔|x|yes|y|1|true|done)$/i;
   const tick = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent-ink)"/></svg>';
@@ -56,7 +79,7 @@
     const t = note.tables.find((t) => t.columns.some((c) => /^(date|day)$/i.test(c.name)));
     if (!t) { app.innerHTML = `<h1>${esc(note.title)}</h1><div class="card empty">Add a table with a Date column and one column per habit to the note.</div>`; return; }
     const dc = t.columns.findIndex((c) => /^(date|day)$/i.test(c.name));
-    const set = amber.settings;
+    const set = settings();
     const only = (Array.isArray(set.habits) ? set.habits : []).map((x) => String(x).trim().toLowerCase()).filter(Boolean);
     const habits = t.columns.map((c, i) => ({ name: c.name, i })).filter((h) => h.i !== dc && (!only.length || only.includes(h.name.toLowerCase())));
     const today = note.today;
@@ -83,7 +106,9 @@
           <span class="meta">${n}${g ? ` / ${g}` : ""}</span></div>`;
       }).join("")}</div>
       <h2>Last 14 days</h2>
-      <div class="card grid" role="img" aria-label="Which habits were done on each of the last 14 days">${habits.map((h) => `<div class="gr"><span class="h">${esc(h.name)}</span>${days.map((d) => `<span class="cell${done(d, h) ? " on" : ""}${d === today ? " today" : ""}"></span>`).join("")}</div>`).join("")}</div>`;
+      <div class="card grid" role="img" aria-label="Which habits were done on each of the last 14 days">${habits.map((h) => `<div class="gr"><span class="h">${esc(h.name)}</span>${days.map((d) => `<span class="cell${done(d, h) ? " on" : ""}${d === today ? " today" : ""}"></span>`).join("")}</div>`).join("")}</div>
+      ${settingsHTML()}`;
+    wireSettings();
 
     app.querySelectorAll(".habit").forEach((b) => b.addEventListener("click", async () => {
       const h = habits.find((x) => x.i === Number(b.dataset.h));

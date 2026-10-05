@@ -35,6 +35,9 @@ const { PAGE_GUIDE, PAGE_INSTRUCTIONS } = await import(new URL("supabase/functio
 const stamp = "<!-- Generated from supabase/functions/mcp/page_guide.ts by scripts/page-evals/build-skill.ts. Don't edit. -->";
 await Deno.mkdir(new URL("references/", skill), { recursive: true });
 await write(new URL("references/guide.md", skill), `${stamp}\n${PAGE_GUIDE}`);
+// The real default stylesheet, as the app ships it (amber-base.ts mirrors Pane/Resources/AppLibraries/amber-base.css).
+const { AMBER_BASE_CSS } = await import(new URL("supabase/functions/mcp/amber-base.ts", root).href);
+await write(new URL("references/amber-base.css", skill), AMBER_BASE_CSS);
 
 // The Claude skill: when to use it, the rules every client gets from the server, and the guide.
 const description = "Build, change, check and fill the apps in Amber Notes notes (a note's App side: habit trackers, budgets, reading or workout logs, CRMs, trip plans, flashcards, dashboards) through the amber-notes MCP server, and put data into them: rows, records, settings, files. Use when the person asks to make a note an app, change or fix a note's app, add or import data to it, or set up an API key for one.";
@@ -48,7 +51,7 @@ ${stamp}
 
 ${PAGE_INSTRUCTIONS}
 
-Read \`references/guide.md\` before building or changing an app: the window.amber contract, where data lives, design and accessibility, API keys, the check-before-done loop and a starter. \`templates/\` holds tested apps to start from; the server serves the same guide and templates through \`get_page_guide\`, so nothing here is needed for the tools to work.
+Read \`references/guide.md\` before building or changing an app: the window.amber contract, where data lives, design and accessibility, API keys, the check-before-done loop and a starter. \`references/amber-base.css\` is the default stylesheet every app starts with, the real file: override any rule (it sits in a cascade layer, so no !important) or opt out with \`<meta name="amber-base" content="none">\`. \`templates/\` holds tested apps to start from; the server serves the same guide and templates through \`get_page_guide\`, so nothing here is needed for the tools to work.
 `);
 
 // The same rules for Codex, Cursor and other agents that read AGENTS.md.
@@ -59,4 +62,10 @@ await write(new URL("plugins/amber-notes/AGENTS.md", root), `${stamp}
 Paste this into a project's AGENTS.md (Codex, Cursor and other agents read it) when you use the Amber Notes MCP server (https://mcp.ambernotes.app) there. The server already teaches all of this through its instructions and \`get_page_guide\`; this keeps it in front of agents that skim server instructions.
 
 ${PAGE_INSTRUCTIONS}
+
+The default look every app starts with, amber-base.css (the real file; override any rule, or opt out with \`<meta name="amber-base" content="none">\`):
+
+\`\`\`css
+${AMBER_BASE_CSS.trim()}
+\`\`\`
 `);
