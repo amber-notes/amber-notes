@@ -57,6 +57,7 @@
 		1D4FF721F8652972368E5901 /* RichTextToMarkdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99375A4ACF211AEE18EC4EC3 /* RichTextToMarkdown.swift */; };
 		1E19A90801FFFD1FDEBB3653 /* EvernoteImportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0FD3EFDF28989E46C2DEBCE /* EvernoteImportTests.swift */; };
 		1F3920D5C81239B5851606C5 /* habit-tracker.json in Resources */ = {isa = PBXBuildFile; fileRef = DEDD1370565EF6AB3859F03B /* habit-tracker.json */; };
+		200B4D52729EDEF49B3B26D6 /* ShareLinks.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AD2A5599581D39A27243D0F /* ShareLinks.swift */; };
 		20F4E1295A4016791245DD8A /* ScanPerfTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95DE547CFC93E05EB42F06C4 /* ScanPerfTests.swift */; };
 		2126B6954D09D7888E6BC7BA /* Updater.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBAD2D5CF280D4F4179CB2F7 /* Updater.swift */; };
 		21B3A13060F5A1F99F01DAEF /* ApplePins.swift in Sources */ = {isa = PBXBuildFile; fileRef = 187BCDDD3155D5979CC60AC7 /* ApplePins.swift */; };
@@ -236,6 +237,7 @@
 		9A4C902422F875CEC5697BA5 /* Push.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B20F92D2A50287948FFA111 /* Push.swift */; };
 		9A931A983A0828FAF1A3E667 /* TableGrid.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1C50C228D538B5E390EF49D /* TableGrid.swift */; };
 		9B7A13572B7D217C65DB502C /* E2EE.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE72D528EBDE663B26CDC39D /* E2EE.swift */; };
+		9B888A54169E0DEEA7664EF2 /* ShareLinks.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AD2A5599581D39A27243D0F /* ShareLinks.swift */; };
 		9C0EAC3CEB28D1B88D6F3E91 /* MarkdownEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 020E4F46F8521511BB37EAAA /* MarkdownEditor.swift */; };
 		9DBD5454DD9B221E059F12C7 /* AmberButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3D58E8E551A1584CC8A7AC7 /* AmberButton.swift */; };
 		9EBF673CD7CED1AC6CCA0108 /* NoteStructure.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0AC25F37C1666CBB35BBB0C /* NoteStructure.swift */; };
@@ -444,6 +446,7 @@
 		2902D289A3A2604F93C3100B /* NavigationStressUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationStressUITests.swift; sourceTree = "<group>"; };
 		2914F169F1D2661AA5B086B1 /* AddDeviceUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddDeviceUITests.swift; sourceTree = "<group>"; };
 		2AA02ED549CE37D8148F24D5 /* DateFoldTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateFoldTests.swift; sourceTree = "<group>"; };
+		2AD2A5599581D39A27243D0F /* ShareLinks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareLinks.swift; sourceTree = "<group>"; };
 		2C8C1097F11A537E7117D38F /* AddDeviceSnapshots.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddDeviceSnapshots.swift; sourceTree = "<group>"; };
 		2CC822E0A1ABBCCDB65B943A /* ShareExtensionUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareExtensionUITests.swift; sourceTree = "<group>"; };
 		2E2167FA347940753904964C /* PaneTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PaneTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -900,6 +903,7 @@
 				3C3136DA96503DF8954D6202 /* CollabSession.swift */,
 				930FD737A522ABA46963C7E1 /* CollabStore.swift */,
 				EA17BA72700473F0D52D9105 /* PresenceViews.swift */,
+				2AD2A5599581D39A27243D0F /* ShareLinks.swift */,
 			);
 			path = Collab;
 			sourceTree = "<group>";
@@ -1584,6 +1588,7 @@
 				C18DC6574D1F988EE78B00AE /* ShareAsk.swift in Sources */,
 				134A86093FD44478D798D100 /* ShareAskView.swift in Sources */,
 				AB9C2FD717B8F86DBA6CA71B /* ShareLinkMenu.swift in Sources */,
+				9B888A54169E0DEEA7664EF2 /* ShareLinks.swift in Sources */,
 				5412BD9D4BB407C05DA2D720 /* SharedItem.swift in Sources */,
 				4430BD8F09B8AF0C608223C2 /* SidebarView.swift in Sources */,
 				DE9535A124D745998C35A4FA /* SignInView.swift in Sources */,
@@ -1739,6 +1744,7 @@
 				A7F71D5F8B7E04C3D472E23E /* ShareAsk.swift in Sources */,
 				29D5ACBBF7035019C0FA3FEF /* ShareAskView.swift in Sources */,
 				069EEA48CE389EDDFE5913DA /* ShareLinkMenu.swift in Sources */,
+				200B4D52729EDEF49B3B26D6 /* ShareLinks.swift in Sources */,
 				3C7F2854475BF1AEADCC82A7 /* SharedItem.swift in Sources */,
 				B7A72D933239B040CC00665E /* SidebarView.swift in Sources */,
 				815A3505A0A85B6330FB1B7E /* SignInView.swift in Sources */,

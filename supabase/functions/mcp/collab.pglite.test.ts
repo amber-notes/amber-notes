@@ -158,3 +158,48 @@ Deno.test("an invite link works only with its secret, which the server never get
   const members = await app(pg, emil.id, `select * from public.collab_members($1)`, [note]);
   assert(members.some((m: any) => m.user_id === sara.id && m.role === "editor"));
 });
+
+Deno.test("a sealed link: only the sealed copy is stored, anyone reads it, rotation and stop take the old one down", async () => {
+  const { sealCopy, openCopy, toB64url } = await import("../../../web/lib/sealed-share.ts");
+  const pg = await schemaDB();
+  const emil = await person(pg, "Emil");
+  const note = crypto.randomUUID();
+  const anon = (sql: string, params: unknown[]) => pg.transaction(async (tx) => { await tx.exec(`set local role anon`); return (await tx.query<any>(sql, params)).rows; });
+  const link = async () => {
+    const id = toB64url(crypto.getRandomValues(new Uint8Array(16))), secret = crypto.getRandomValues(new Uint8Array(16));
+    const ct = await sealCopy({ v: 1, title: "Habit tracker", body: "Habit tracker\n\n| Date | Walk |", page: "<p>app</p>", updated_at: "2026-10-05" }, id, secret);
+    await app(pg, emil.id, `select public.publish_sealed_link($1, $2, $3)`, [id, note, ct]);
+    return { id, secret: toB64url(secret) };
+  };
+  const first = await link();
+  const [row] = await anon(`select * from public.sealed_link($1)`, [first.id]);
+  assert(!row.ct.includes("Habit"));
+  assertEquals((await openCopy(row.ct, first.id, first.secret)).page, "<p>app</p>");
+  await assertRejects(() => openCopy(row.ct, first.id, toB64url(crypto.getRandomValues(new Uint8Array(16)))));
+  // A new link for the same note: the old address stops at once.
+  const second = await link();
+  assertEquals(await anon(`select * from public.sealed_link($1)`, [first.id]), []);
+  assertEquals((await anon(`select * from public.sealed_link($1)`, [second.id])).length, 1);
+  await app(pg, emil.id, `select public.stop_sealed_link($1)`, [note]);
+  assertEquals(await anon(`select * from public.sealed_link($1)`, [second.id]), []);
+  // Nobody else can publish over it or read the table.
+  const eve = await person(pg, "Eve");
+  assertEquals(await app(pg, eve.id, `select * from public.sealed_links`), []);
+});
+
+Deno.test("a shared template is public, carries key names but never key values, and stops", async () => {
+  const pg = await schemaDB();
+  const emil = await person(pg, "Emil");
+  const note = crypto.randomUUID();
+  const t = { v: 1, title: "Habit tracker", note: "Habit tracker\n\n| Date | Walk |\n| --- | --- |\n", needs: { keys: [{ name: "Strava API key", host: "www.strava.com" }] } };
+  await app(pg, emil.id, `select public.publish_template('AbCdEfGhIjKlMnOp', $1, 'Emil', $2)`, [note, JSON.stringify(t)]);
+  const anon = (sql: string, params: unknown[]) => pg.transaction(async (tx) => { await tx.exec(`set local role anon`); return (await tx.query<any>(sql, params)).rows; });
+  const [row] = await anon(`select * from public.shared_template($1)`, ["AbCdEfGhIjKlMnOp"]);
+  assertEquals(row.template.needs.keys[0].name, "Strava API key");
+  const leaky = { ...t, needs: { keys: [{ name: "Strava API key", host: "www.strava.com", value: "sk_live_123" }] } };
+  await refused(app(pg, emil.id, `select public.publish_template('AbCdEfGhIjKlMnOq', $1, 'Emil', $2)`, [crypto.randomUUID(), JSON.stringify(leaky)]), "never carries");
+  const sneaky = { ...t, needs: { keys: [{ name: "Strava API key", value: "sk_live_123" }] } };
+  await refused(app(pg, emil.id, `select public.publish_template('AbCdEfGhIjKlMnOr', $1, 'Emil', $2)`, [crypto.randomUUID(), JSON.stringify(sneaky)]), "never carries");
+  await app(pg, emil.id, `select public.stop_template($1)`, [note]);
+  assertEquals(await anon(`select * from public.shared_template($1)`, ["AbCdEfGhIjKlMnOp"]), []);
+});

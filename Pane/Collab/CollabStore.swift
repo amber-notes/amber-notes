@@ -39,6 +39,14 @@ final class CollabStore {
     @ObservationIgnored private var keys: [UUID: (nk: SymmetricKey, epoch: Int)] = [:]
     @ObservationIgnored private var handled: Set<UUID> = []
     @ObservationIgnored var context: ModelContext?
+    /// Sealed links by note: the link's id and secret (in the product, kept in a synced Keychain
+    /// item so every device can republish the copy).
+    @ObservationIgnored var links: [UUID: (id: String, secret: Data)] = [:]
+    /// Shared templates by note.
+    @ObservationIgnored var templates: [UUID: String] = [:]
+    /// Note pages by note: a stand-in for NotePageStore on the note-pages branch.
+    var pages: [UUID: String] = [:]
+    var relayURLString: String { relayURL.absoluteString.hasSuffix("/") ? String(relayURL.absoluteString.dropLast()) : relayURL.absoluteString }
 
     static func fromArguments(_ args: [String] = ProcessInfo.processInfo.arguments) -> CollabStore? {
         guard let i = args.firstIndex(of: "-collab"), i + 1 < args.count else { return nil }

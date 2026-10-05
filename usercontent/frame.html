@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Note page</title>
+<!--
+  The read-only frame for a note's page on the web (prototype). Served ONLY from the user-content
+  origin (ambernotes-usercontent.app in the product; the relay's second port locally), never from
+  ambernotes.app, with this response header:
+
+    Content-Security-Policy: default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline';
+      img-src data:; font-src data:; media-src data:; connect-src 'none'; frame-src 'none';
+      form-action 'none'; base-uri 'none'; frame-ancestors <the site>
+
+  and embedded by the site as <iframe sandbox="allow-scripts">, so it runs in an opaque origin:
+  no cookies, no storage, no network, no navigation of the page that holds it.
+
+  The site posts {html, note, data} once. This loader writes the page with a read-only `amber`
+  bridge in front of it: the note's data to read, and every write refused. The page then tells the
+  site how tall it is, which is all it can say.
+-->
+<script>
+(() => {
+  let started = false;
+  const parentOrigin = new URLSearchParams(location.search).get("site") || "*";
+  addEventListener("message", (e) => {
+    if (started || e.source !== parent || (parentOrigin !== "*" && e.origin !== parentOrigin)) return;
+    const m = e.data;
+    if (!m || m.type !== "amber-page" || typeof m.html !== "string" || typeof m.note !== "object") return;
+    started = true;
+    const theme = `:root { color-scheme: light dark;
+      --amber-bg: #FFFEFD; --amber-surface: #F4F1EE; --amber-fill: #EBE6E1; --amber-text: #2A1D10; --amber-text-secondary: #74604C;
+      --amber-separator: rgba(138, 74, 28, 0.14); --amber-accent: #D96A06; --amber-accent-text: #A85700; --amber-accent-soft: #FFF1DC;
+      --amber-on-accent: #FFFFFF; --amber-danger: #C62828; --amber-radius: 14px; --amber-radius-small: 10px;
+      --amber-content-max: 1100px; --amber-gutter: clamp(16px, 3.5vw, 40px);
+      --amber-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; }
+    @media (prefers-color-scheme: dark) { :root {
+      --amber-bg: #1F1E1D; --amber-surface: #1C1B1A; --amber-fill: #2C2A28; --amber-text: #F6EFE7; --amber-text-secondary: #BCB0A3;
+      --amber-separator: rgba(255, 250, 245, 0.10); --amber-accent: #F4AD33; --amber-accent-text: #F4AD33; --amber-accent-soft: #423014;
+      --amber-on-accent: #1F1300; --amber-danger: #FF6B5E; } }
+    body { margin: 0; background: var(--amber-bg); color: var(--amber-text); font: 17px/1.35 var(--amber-font); }`;
+    const note = JSON.stringify(m.note).replace(/</g, "\\u003c");
+    const data = JSON.stringify(m.data || {}).replace(/</g, "\\u003c");
+    const bridge = `<style>${theme}</style><script>
+      (() => {
+        const note = Object.freeze(${note});
+        const data = Object.freeze(${data});
+        const refuse = () => Promise.resolve({ ok: false, error: "This is a read-only copy." });
+        window.amber = Object.freeze({
+          note, readOnly: true,
+          onChange(fn) { try { fn(note); } catch (e) { console.error(e); } },
+          update: refuse,
+          store: Object.freeze({ get: (k) => Promise.resolve(k in data ? data[k] : null), set: refuse, remove: refuse }),
+          files: Object.freeze({ list: () => Promise.resolve([]), add: refuse }),
+        });
+        // The page's own height, so the site can size the frame to it (the only thing it can say).
+        const report = () => parent.postMessage({ type: "amber-page-height", height: Math.ceil(document.body ? document.body.getBoundingClientRect().height : 0) }, "*");
+        addEventListener("DOMContentLoaded", () => { new ResizeObserver(report).observe(document.body); report(); });
+        addEventListener("load", report);
+      })();
+    <\/script>`;
+    // The bridge goes before the page's own markup, so it exists when the page's scripts run.
+    const html = m.html.replace(/<head[^>]*>/i, (h) => h + bridge);
+    document.open();
+    document.write(html === m.html ? bridge + m.html : html);
+    document.close();
+  });
+  parent.postMessage({ type: "amber-page-ready" }, "*");
+})();
+</script>
+</head>
+<body></body>
+</html>

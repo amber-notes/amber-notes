@@ -37,7 +37,16 @@ function broadcast(note: string, message: unknown, except?: Peer) {
 const rpcs: Record<string, number> = {
   create_account_key: 4, collab_publish_identity: 2, collab_find_person: 1, collab_members: 1, collab_share: 4,
   collab_invite: 5, collab_accept: 2, collab_remove: 4, collab_open_link: 2, collab_join_link: 4, collab_create_link: 6,
+  publish_sealed_link: 3, stop_sealed_link: 1, publish_template: 4, stop_template: 1,
 };
+
+/** As a visitor with no account (the anon role), like the site calling a public RPC. */
+async function asAnon<T>(sql: string, params: unknown[]): Promise<T[]> {
+  return await pg.transaction(async (tx) => {
+    await tx.exec(`set local role anon`);
+    return (await tx.query<T>(sql, params)).rows;
+  });
+}
 
 async function handle(req: Request): Promise<Response> {
   const url = new URL(req.url);
@@ -51,6 +60,15 @@ async function handle(req: Request): Promise<Response> {
     }
     log("user", name, id);
     return json({ id });
+  }
+
+  // What the site reads for /s/<id> and /t/<id>: public, no account.
+  const pub = /^\/public\/(sealed-link|template)\/([A-Za-z0-9_-]+)$/.exec(url.pathname);
+  if (pub) {
+    const rows = pub[1] === "sealed-link"
+      ? await asAnon(`select * from public.sealed_link($1)`, [pub[2]])
+      : await asAnon(`select * from public.shared_template($1)`, [pub[2]]);
+    return rows[0] ? json(rows[0]) : json(null, 404);
   }
 
   const me = caller(req);
@@ -134,7 +152,18 @@ async function handle(req: Request): Promise<Response> {
   }
 }
 
-log(`collab relay on http://127.0.0.1:${port}`);
+// The user-content origin: one other port, serving only the note-page frame, with a CSP that allows
+// no network at all. In the product this is its own domain (ambernotes-usercontent.app).
+const frame = await Deno.readTextFile(new URL("../usercontent/frame.html", import.meta.url));
+const frameCSP = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; font-src data:; media-src data:; " +
+  "connect-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors http://localhost:* http://127.0.0.1:*";
+Deno.serve({ port: port + 1, hostname: "127.0.0.1", onListen: () => {} }, (req) => {
+  if (new URL(req.url).pathname !== "/frame.html") return new Response("Not found", { status: 404 });
+  return new Response(frame, { headers: { "content-type": "text/html; charset=utf-8", "content-security-policy": frameCSP,
+    "x-content-type-options": "nosniff", "referrer-policy": "no-referrer", "cache-control": "no-store" } });
+});
+
+log(`collab relay on http://127.0.0.1:${port}, user content on http://127.0.0.1:${port + 1}`);
 Deno.serve({ port, hostname: "127.0.0.1", onListen: () => {} }, async (req) => {
   const upgrade = req.headers.get("upgrade");
   const path = new URL(req.url).pathname;

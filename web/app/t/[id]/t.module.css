@@ -1,0 +1,7 @@
+/* A shared template's page (prototype): only what the gallery's stylesheet doesn't have. */
+.needs { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.needs li { display: grid; gap: 2px; padding: 14px 16px 14px 46px; border-radius: 16px; background: var(--card); box-shadow: 0 0 0 1px var(--line); position: relative; min-width: 0; }
+.needs li::before { content: ""; position: absolute; left: 16px; top: 17px; width: 18px; height: 18px; border-radius: 5px;
+  background: var(--soft); box-shadow: inset 0 0 0 1.5px var(--muted); }
+.needs b { font-size: 16px; font-weight: 700; overflow-wrap: anywhere; }
+.needs span { color: var(--muted); font-size: 14.5px; line-height: 1.4; }

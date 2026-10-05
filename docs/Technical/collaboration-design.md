@@ -1,8 +1,16 @@
-# Collaboration: shared notes, edited together, still end-to-end encrypted
+# Collaboration and sharing: notes edited together, read-only links, and templates
 
 Status: design and prototype (branch `proto/collaboration`, 5 October 2026). Nothing here is live. The prototype runs two iPhone simulators against a local stand-in for the backend.
 
-What Emil asked for: colleagues editing the same note, including notes with pages, and seeing who is in the note with a little avatar.
+What Emil asked for (5 October 2026): colleagues editing the same note, including notes with pages, and seeing who is in the note with a little avatar; read-only links as today, now with the note's page on the web; and "Share as template" for notes with an app.
+
+Three ways to share, one rule each:
+
+| | Who | Can they edit | Encrypted end to end |
+|---|---|---|---|
+| **Collaborate** | People you invite, each with an account | Yes (or view only) | Yes: a note key sealed to each member |
+| **Share link** | Anyone with the link | No | Yes: the key is in the link's fragment |
+| **Share as template** | Anyone with the link | They get their own copy | No, on purpose: it's public, and holds no personal data |
 
 ## The short version
 
@@ -12,7 +20,10 @@ What Emil asked for: colleagues editing the same note, including notes with page
 - **Presence.** A private Realtime channel per note carries who's here, where their caret is and whether they're typing, all sealed with the note key. Avatars sit in the note's toolbar; other people's carets show in the text with a name flag; "Sara is editing" shows under the toolbar.
 - **AI.** Your AI connection already opens your data key; through it, it opens the note keys you hold. It reads and writes the shared note like your device does. Its edits are marked as yours and its own, so the note says "Sara's Claude".
 - **Permissions.** Owner, can edit, can view. Per note first; folders later.
-- **Recommendation:** build it this way. About 55 to 70 agent hours to a shippable first version, in the order under Plan.
+- **Read-only links** become sealed links: `ambernotes.app/s/<id>#<secret>`. The device seals the note, its page and the page's data under a key from the secret; the browser opens it. Today's readable links keep working until their owner stops or switches them.
+- **Pages on the web** run only on a separate user-content domain, in a sandboxed frame with no network, no storage and a bridge that refuses every write.
+- **Share as template** publishes a readable copy at `ambernotes.app/t/<id>`: the note's skeleton, its app, sample rows if you choose, and the names of the keys its app asks for. "Use template" opens the app and makes a fresh copy.
+- **Recommendation:** build it this way. About 80 to 100 agent hours for all three, in the order under Plan.
 
 ## 1. Keys
 
@@ -152,6 +163,79 @@ Caret positions in the prototype are UTF-16 offsets, moved locally through your 
 
 What enforces it: the server, with RLS and the triggers in the migration. A viewer holds NK (they must, to read), so cryptography alone can't stop them sealing a change; the server refuses it, and devices also drop changes whose author's role doesn't allow writing. That's the right trade for a notes app.
 
+## 6. Read-only links
+
+### How sharing works today
+
+`Share link` on a note publishes a readable copy: the device sends `{title, body, pages, files}` with `share_note` / `publish_share`, two seconds after each change, into `note_shares`, `note_share_pages` and `note_share_files`. The site (`/n/<slug>`) reads it through the public `shared_note()` function and renders it on the server. A share counts only when its tag (an HMAC under the data key) verifies, so only the owner's devices can publish. Stop Sharing, locking, trashing, deleting, moving a sub-note away, three reports or a takedown delete the copies at once; the page is rendered on every visit, so it goes down at once too.
+
+So today the server can read every shared note. That was the deliberate exception in the E2EE design ("a shared page shows a readable copy the device publishes"). A note's page isn't part of it.
+
+### Sealed links
+
+`https://ambernotes.app/s/<id>#<secret>`. The id is 16 random bytes and the secret another 16, both base64url, so the link stays about 70 characters.
+
+- The device seals `{title, body, page, data, shared_by, updated_at}` as `amb3r.<b64 nonce ‖ ct ‖ tag>`: AES-256-GCM under HKDF-SHA256(secret, salt `amber-notes/e2ee`, info `share <id>`), AAD `amb3r|<id>` (`web/lib/sealed-share.ts`, `Pane/Collab/ShareLinks.swift`).
+- `publish_sealed_link(id, note, ct)` stores it in `sealed_links`; editing the note republishes under the same id and secret, as today's links follow edits. The secret is kept in a synced Keychain item so every one of your devices can republish.
+- The site's server fetches only the sealed copy (`sealed_link(id)`) and sends it with the page. The browser takes the secret from `location.hash` (never sent to any server), opens the copy with WebCrypto and renders it with the same renderer and layout as `/n` pages.
+- Stop Sharing deletes the row: the next visit shows "This note isn't shared anymore". **Make a new link** (rotation) seals under a new id and secret; `publish_sealed_link` deletes the old row in the same statement, so the old address stops at once. Lock, trash and delete stop it as they stop today's links.
+- Files in the note go up sealed under the same link key, one object each, and the browser fetches and opens them.
+
+What changes compared with today:
+
+| | Today (`/n/<slug>`) | Sealed (`/s/<id>#<secret>`) |
+|---|---|---|
+| Server can read the copy | Yes | No |
+| Link previews (iMessage, Slack) | Title and first line | "A shared note · Amber Notes" only. An owner could choose to publish the title openly; not in v1 |
+| Reports and takedowns | We read the copy and act | A report can include the full link (the reporter has it), so we can read that one copy; without it we can only take the link down blind |
+| "Use this note" | Server hands the copy to the app | The page passes the secret to the app in the fragment of `ambernotes://copy-sealed/<id>#<secret>`; the app fetches and opens the copy itself |
+| The note's page | Not shown | Shown, read only, on the user-content domain |
+| Search engines | Not indexed (noindex) | Not indexed, and nothing to index |
+
+### Moving existing links (expand, coexist, contract)
+
+Links already sent must keep working; a sealed link can't take over an old address, because the key has to be in the link.
+
+1. **Expand.** Ship `sealed_links`, the `/s` route and the user-content domain. Apps that know them make sealed links for every new share. `/n` keeps serving.
+2. **Coexist.** A note with an old link says, in its share sheet: "This link shows a copy our server can read. Switch to an encrypted link?" Switching makes a sealed link and stops the old one, and says the old link stops working and to send the new one. Nothing switches by itself. Older apps keep publishing `/n` copies; the server keeps accepting them.
+3. **Contract.** Once no supported app version makes `/n` links, `share_note` refuses new ones. Live `/n` links keep working until their owners stop or switch them. Ending them entirely is a separate decision with notice in the app, and not needed.
+
+### Pages on the web
+
+A note's page is someone's HTML and JavaScript. It never runs on ambernotes.app:
+
+- **Its own domain.** `ambernotes-usercontent.app` (a separate registrable domain, so no cookie or storage can ever be shared with the site) serves one file: the frame (`usercontent/frame.html`), with `Content-Security-Policy: default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; font-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors https://ambernotes.app`.
+- **Sandboxed.** The site embeds it as `<iframe sandbox="allow-scripts">`: an opaque origin, no storage, no popups, no forms, no navigating the site. The site's own CSP allows frames only from that domain (`frame-src`, on `/s` and `/t` only).
+- **No network.** The frame's CSP blocks every request, the same rules the app's page sandbox uses.
+- **Read only.** The site posts the page and the note's data to the frame once. The frame puts a bridge in front of the page: `amber.note` (the same shape the app gives it), `amber.onChange` (called once), and `amber.update`, `amber.store.set` and `amber.files.add` all answer "This is a read-only copy." The page's stored data is a snapshot from when the copy was made. The only thing the frame can say back is its height.
+- **Device abilities** (calendar, contacts, location) don't exist on the web; a page that asks gets nothing. What the page showed from them on the owner's device is in the copy only if the page saved it into the note.
+
+The same frame serves today's `/n` links once their copies include the page (`note_share_pages` would get a sealed or readable page column like the note text).
+
+## 7. Share as template
+
+"Share as template" on a note with an app makes `https://ambernotes.app/t/<id>`, a public page that lets anyone start their own copy.
+
+**What goes in** (`SharedTemplate` in `Pane/Collab/ShareLinks.swift`):
+
+- the note's skeleton: its text with every table's rows taken out and checklists unticked;
+- the page (the app), and its widget spec if it has one;
+- the data layout: each table's columns;
+- sample data, only if the person turns on "Include sample data" (the note's rows as they are; the sheet says to leave it off if they're private);
+- the keys and hosts the page declares it needs, by name and host only (`<meta name="amber-needs" …>` in the page, or the widget spec). `publish_template` refuses a key entry with anything besides a name and a host.
+
+Never: other notes, the page's stored data, files, key values, the owner's email or account id. The maker's name is shown as they choose.
+
+**Why it isn't sealed.** A template is meant to be public, and sealing it would cost link previews, the gallery and search for nothing. The sheet says it plainly: "Anyone with the link can see and use this template. Your notes and data are not included." It's stored readable in `shared_templates` and reachable only by its id.
+
+**The page** (`web/app/t/[id]`) is built from the gallery's template pages (`web/app/templates/[slug]`), with their type, colours, buttons and note window: the title, the maker, a big Use template, Copy the markdown; the app live and read-only beside it on the user-content domain; "What it needs" listing keys and hosts (or "Nothing"); and the note with its sample data. Still to do: a screenshot fallback (the app already takes a snapshot of each page, `NotePageSnapshots` on the note-pages branch; it would go up with the template and show while the live preview loads, and in link previews).
+
+**Use template.** The button goes to `/open/shared-template/<id>`, the universal link (as `/open/template/<slug>` works for the gallery today), which opens `ambernotes://shared-template/<id>`. The app fetches the template, adds a fresh note with the sample (or the skeleton) and the page, and opens it. The new page starts with no network; any hosts and keys it declared wait for the new owner to allow them and type their own keys.
+
+**Stop sharing** deletes the row: the page and the Use template link both say the template isn't shared anymore. Copies people already made are theirs. Sharing again republishes under the same id (the latest note and page); a new id is only made after stopping.
+
+**Abuse.** Templates are public content on our domain, so they get today's report link and takedown. The page's code runs only in the sandboxed frame.
+
 ## Data model
 
 `supabase/migrations/20261005120000_collaboration.sql` (prototype, tested in `supabase/functions/mcp/collab.pglite.test.ts`):
@@ -164,9 +248,14 @@ What enforces it: the server, with RLS and the triggers in the migration. A view
 - Functions: `collab_publish_identity`, `collab_find_person`, `collab_members`, `collab_share`, `collab_invite`, `collab_accept`, `collab_remove`, `collab_create_link`, `collab_open_link`, `collab_join_link`, `collab_role`.
 - Realtime: `note_updates` and `note_members` published; RLS policies for the private `note:<id>` channels.
 
+`supabase/migrations/20261005170000_sealed_links_and_templates.sql` (same tests):
+
+- `sealed_links`: the sealed copy per note; `publish_sealed_link` (also rotation), `stop_sealed_link`, and the public `sealed_link(id)`.
+- `shared_templates`: the template JSON per note; `publish_template` (refuses key values), `stop_template`, and the public `shared_template(id)`.
+
 ## The prototype
 
-`proto/collaboration`. Run it with `scripts/collab-demo.sh`.
+`proto/collaboration`. Run collaboration with `scripts/collab-demo.sh` and sharing with `scripts/share-demo.sh` (it needs the site built; see the script).
 
 What is real:
 
@@ -176,6 +265,8 @@ What is real:
 - Presence sealed with the note key: the toolbar avatars, the typing pencil, "Sara is editing", carets with name flags.
 - The people sheet invite (lookup by email, safety code) and the invitation alert with the safety code.
 - Swift opens a wrap and a change made by the server's TypeScript (`CollabCryptoTests`), and a refused fake wrap.
+- Sharing, on one iPhone simulator against the same relay and the real site (`next build`, then `next start`): the app seals a habit tracker with its page into a sealed link and publishes it as a template. Safari on the phone opens the sealed link (the note and its app, live and read only, from the user-content port), then the template page and its live preview. The app is handed the template id and adds a fresh copy, as Use template's link does. Stop Sharing, and the old link says the note isn't shared anymore.
+- The server side of rotation and of refusing key values is tested (`collab.pglite.test.ts`).
 
 What stands in or is missing:
 
@@ -185,6 +276,7 @@ What stands in or is missing:
 - Nothing persists: no SwiftData storage of the document, no offline queue, no compaction beyond the first snapshot, no version history for shared notes, no removal UI, no join links in the app (the server side of both is tested).
 - The Mac app compiles with all of it but doesn't draw other people's carets.
 - No AI path: the MCP server doesn't read shared notes yet. `@automerge/automerge` 3.5 was checked to run under Deno; not inside an edge function.
+- Sharing: the user-content "domain" is the relay's second port; the site reads the relay instead of Supabase. The page HTML in the demo is the note-pages branch's habit tracker, copied; this branch doesn't render pages in the app, so the template's copy shows its text there. The `amber-needs` line in it is declared only to show the "What it needs" section. Use template's button would make iOS ask "Open in Amber Notes?"; the script can't tap that, so it brings the app forward and hands it the same id through a file. Files in sealed links, "Use this note" for sealed links, switching old links, the screenshot fallback and template link previews aren't built.
 
 ## Plan and effort
 
@@ -202,7 +294,11 @@ In agent hours, building on the prototype:
 | Remove, leave, rotation, roles UI; join links with the web page and universal link | 6 to 8 |
 | Version history for shared notes | 4 to 5 |
 | Tests (offscreen editor harness for concurrent typing, PGlite, e2e on the local stack), privacy policy and security review | 6 to 8 |
-| **Total** | **56 to 72** |
+| Sealed links: publish and republish from every device, the secret in a synced Keychain item, sealed files, the `/s` page, Use this note | 8 to 10 |
+| The user-content domain and frame, pages on `/s` and `/n`, tests for the sandbox | 3 to 4 |
+| Switching old links (share sheet copy, stopping the old one, server cutoff) | 2 to 3 |
+| Share as template: the sheet, publishing, the `/t` page with screenshot fallback and link previews, Use template in the app, report and takedown | 8 to 10 |
+| **Total** | **77 to 99** |
 
 ## Risks
 
@@ -213,6 +309,8 @@ In agent hours, building on the prototype:
 5. **The AI exposure.** The server decrypts a shared note during a member's AI request. Same as today for your own notes, but now it's other people's text too; the policy and the sharing sheet have to say it.
 6. **Removal can't unsee.** Anyone removed keeps what they already had. Normal for every product, worth saying in the confirmation.
 7. **Two sync engines.** Shared notes go through the document path, the rest through today's engine. Keeping one note in exactly one of them (the pointer row) is the thing to get right.
+8. **Sealed links lose previews and easy moderation.** A pasted link shows no title, and a report needs the reporter's full link for us to see the note.
+9. **Running other people's code on the web.** The frame's isolation is the whole defense; it needs its own security review, and the user-content domain must never serve anything else.
 
 ## Open questions for Emil
 
@@ -223,3 +321,6 @@ In agent hours, building on the prototype:
 5. Does a shared note keep its place in the owner's folders and land in "Shared with me" for others, or should there be one "Shared" folder for everyone?
 6. Free or paid? Collaboration is the clearest reason for a team plan, which runs against "no enterprise work this year"; a two-person share could stay free.
 7. Is it fine that a member's AI request lets the server see the shared note during that request, as it does for your own notes now?
+8. Sealed links show no title in link previews. Fine, or should the owner be able to publish the title openly?
+9. Should "Switch to an encrypted link" be offered to everyone with a live link, given that the old address stops working when they switch?
+10. Can anyone share a template, or only notes with an app? And do shared templates ever appear in the gallery (picked by us), or stay link-only?

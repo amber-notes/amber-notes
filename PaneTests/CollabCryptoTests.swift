@@ -12,6 +12,7 @@ import Testing
         var note: String; var epoch: Int; var from: String; var to: String
         var sender_d: String; var sender_public: String; var recipient_d: String; var recipient_public: String
         var note_key: String; var wrap: String; var update: String; var update_plain: String; var safety_code: String
+        var link_id: String; var link_secret: String; var link_sealed: String
     }
 
     let v: Vectors
@@ -54,6 +55,29 @@ import Testing
         let box = try CollabCrypto.wrapIdentity(id, dataKey: dk, user: user)
         #expect(try CollabCrypto.unwrapIdentity(box, dataKey: dk, user: user).publicRaw == id.publicRaw)
         #expect(throws: CollabCrypto.Failure.wrongKey) { try CollabCrypto.unwrapIdentity(box, dataKey: dk, user: UUID()) }
+    }
+
+    /// A sealed link made by the site's code opens here with the secret from the link, and not without it.
+    @Test func aSealedLinkFromTheSiteCodeOpens() throws {
+        var b64 = v.link_secret.replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
+        while b64.count % 4 != 0 { b64 += "=" }
+        let copy = try SealedLink.open(v.link_sealed, id: v.link_id, secret: Data(base64Encoded: b64)!)
+        #expect(copy.title == "Habit tracker" && copy.page == "<p>app</p>" && copy.shared_by?.name == "Emil")
+        #expect(throws: CollabCrypto.Failure.wrongKey) { try SealedLink.open(v.link_sealed, id: v.link_id, secret: E2EE.randomBytes(16)) }
+        let mine = try SealedLink.seal(copy, id: v.link_id, secret: Data(base64Encoded: b64)!)
+        #expect(try SealedLink.open(mine, id: v.link_id, secret: Data(base64Encoded: b64)!) == copy)
+    }
+
+    /// A template keeps the headings and columns, drops the rows unless asked, and names keys only.
+    @Test func aTemplateCarriesNoRowsUnlessAsked() {
+        let body = "Habit tracker\n\nA ✓ means done.\n\n| Date | Walk |\n| --- | --- |\n| 2026-10-05 | ✓ |\n\n- [x] Buy shoes\n"
+        let page = #"<meta name="amber-needs" content='{"keys":[{"name":"Strava access token","host":"www.strava.com","value":"secret"}],"hosts":[]}'>"#
+        let t = SharedTemplate.make(from: body, page: page, includeSample: false)
+        #expect(t.note == "Habit tracker\n\nA ✓ means done.\n\n| Date | Walk |\n| --- | --- |\n\n- [ ] Buy shoes\n")
+        #expect(t.sample == nil)
+        #expect(t.layout == [.init(table: 0, columns: ["Date", "Walk"])])
+        #expect(t.needs.keys == [.init(name: "Strava access token", host: "www.strava.com")])
+        #expect(SharedTemplate.make(from: body, page: nil, includeSample: true).sample == body)
     }
 
     /// Two documents typing at once at the same spot, merged both ways round, end the same; the

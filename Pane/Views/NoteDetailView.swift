@@ -21,6 +21,8 @@ struct NoteDetailView: View {
     @State private var lockProblem: String?
     /// Collaboration (prototype): the people sheet.
     @State private var showPeople = false
+    @State private var showLinkShare = false
+    @State private var showTemplateShare = false
     @Bindable var note: Note
     let controller: EditorController
     var autofocus = false
@@ -84,6 +86,13 @@ struct NoteDetailView: View {
             }
             .onChange(of: showHistory) { _, open in if open { FeatureUse.mark(.versionHistory) } }
             .modifier(CollabWiring(note: note, controller: controller, showPeople: $showPeople))
+            .sheet(isPresented: $showLinkShare) { if let store = CollabStore.shared { LinkShareSheet(note: note, store: store) } }
+            .sheet(isPresented: $showTemplateShare) { if let store = CollabStore.shared { TemplateShareSheet(note: note, store: store) } }
+            .onReceive(NotificationCenter.default.publisher(for: CollabDemo.showShare)) { n in
+                guard n.object as? String == "template" else { showLinkShare = true; return }
+                showLinkShare = false
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { showTemplateShare = true }
+            }
     }
 
     /// Collaboration (prototype): the open shared note's session, when there is one.
@@ -471,6 +480,8 @@ struct NoteDetailView: View {
                     }
                 }
                 .accessibilityIdentifier("collab.share")
+                Button("Share Link (Encrypted)…", systemImage: "link") { showLinkShare = true }
+                Button("Share as Template…", systemImage: "square.on.square") { showTemplateShare = true }
             }
         }
         ShareLinkMenuSection(store: shareLinks, note: note)

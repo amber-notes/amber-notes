@@ -106,6 +106,10 @@ const config: NextConfig = {
       { source: "/support", headers: security },
       { source: "/blog", headers: security },
       { source: "/blog/:slug", headers: security },
+      // Sealed links and shared templates (prototype) show a note's page in a frame from the
+      // user-content origin, never this one; everything else stays as strict as the rest.
+      ...["/s/:id", "/t/:id"].map((source) => ({ source, headers: [...security.filter((h) => h.key !== "Content-Security-Policy"),
+        { key: "Content-Security-Policy", value: csp("'self'") + `; frame-src ${process.env.NEXT_PUBLIC_USERCONTENT_ORIGIN ?? "http://127.0.0.1:56481"}` }] })),
       { source: "/templates", headers: security },
       { source: "/templates/:slug", headers: security },
       // The template data the app fetches: public and read-only, so any origin may read it.
