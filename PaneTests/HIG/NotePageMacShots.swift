@@ -24,6 +24,9 @@ import WebKit
         try ctx.save()
         NotePageStore.shared[habits.id] = .init(html: try String(contentsOf: demo.appending(path: "habit-tracker.html"), encoding: .utf8), by: "Claude", at: .now)
         NotePageStore.shared[budget.id] = .init(html: try String(contentsOf: demo.appending(path: "budget.html"), encoding: .utf8), by: "Claude", at: .now)
+        let training = ctx.createNote(in: .all, body: try String(contentsOf: demo.appending(path: "training.md"), encoding: .utf8))
+        training.updatedAt = .now.addingTimeInterval(-7200)
+        NotePageStore.shared[training.id] = .init(html: try String(contentsOf: demo.appending(path: "training.html"), encoding: .utf8), by: "Claude", at: .now)
         let stack = ctx.createNote(in: .all, body: try String(contentsOf: demo.appending(path: "reading-stack.md"), encoding: .utf8))
         stack.updatedAt = .now.addingTimeInterval(-3600)
         try ctx.save()
@@ -53,6 +56,7 @@ import WebKit
         func want(_ scene: String) -> Bool { scenes?.contains(scene) ?? true }
         try await toolbar(dir, want("toolbar"))
         try await libraries(dir, want("lib"))
+        try await training(dir, want("training"))
         try await marks(dir, want("mark"))
         guard want("pages") else { return }
         let sizes: [(String, CGSize)] = [("narrow", CGSize(width: 1000, height: 760)), ("typical", CGSize(width: 1440, height: 900)), ("wide", CGSize(width: 1920, height: 1160))]
@@ -108,6 +112,17 @@ import WebKit
         let three = try? await BestWeb.find(in: w.contentView)?.evaluateJavaScript("typeof THREE")
         try "THREE is \(three as? String ?? "unknown")".write(to: dir.appending(path: "lib-three.txt"), atomically: true, encoding: .utf8)
         try await MacStoreShots.shoot(dir, "lib-stack-light", [("main", w)])
+    }
+
+    /// Preact on the Mac: Training with its sidebar, light and dark, and narrow (tab bar).
+    func training(_ dir: URL, _ on: Bool) async throws {
+        guard on else { return }
+        for (name, width, dark) in [("wide-light", 1440.0, false), ("wide-dark", 1440.0, true), ("narrow-light", 1000.0, false)] {
+            let (w, _) = try await Self.open("Training", size: CGSize(width: width, height: 860), dark: dark)
+            defer { w.orderOut(nil); w.close() }
+            try? await Task.sleep(for: .seconds(1))
+            try await MacStoreShots.shoot(dir, "training-\(name)", [("main", w)])
+        }
     }
 
     /// The list's app mark, every candidate, on the Lisbon note so the list shows the app notes.

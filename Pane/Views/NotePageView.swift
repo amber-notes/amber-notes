@@ -29,7 +29,7 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
     /// Requests and navigations the sandbox stopped (for the Dev readout and tests).
     private(set) var blocked: [String] = []
 
-    static let policy = "default-src 'none'; script-src 'unsafe-inline' amber-lib:; style-src 'unsafe-inline'; img-src data: amber-file:; font-src data:; media-src data: amber-file:; "
+    static let policy = "default-src 'none'; script-src 'unsafe-inline' amber-lib:; style-src 'unsafe-inline' amber-lib:; img-src data: amber-file:; font-src data:; media-src data: amber-file:; "
         + "connect-src 'none'; frame-src 'none'; child-src 'none'; worker-src 'none'; object-src 'none'; manifest-src 'none'; form-action 'none'; base-uri 'none'"
 
     /// Every request is blocked; the page's own document is given as a string, not loaded.
@@ -122,7 +122,7 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
         let ucc = webView.configuration.userContentController
         ucc.removeAllUserScripts()
         libraries.allowed = Set(NotePageLibraries.declared(in: html).compactMap { if case .npm(let r) = $0 { r } else { nil } })
-        ucc.addUserScript(WKUserScript(source: Self.bootstrap(data: NotePage.data(of: body), store: data, restore: restore, settings: NotePageSettings.defaults(in: html), widget: isWidget),
+        ucc.addUserScript(WKUserScript(source: Self.bootstrap(data: NotePage.data(of: body), store: data, restore: restore, widget: isWidget),
                                        injectionTime: .atDocumentStart, forMainFrameOnly: true, in: .page))
         loading = true
         webView.loadHTMLString(Self.sandboxed(html), baseURL: nil)
@@ -138,7 +138,7 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
         while let f = rest.first, f.isWhitespace || f == "\u{FEFF}" { rest = rest.dropFirst() }
         if rest.prefix(9).lowercased() == "<!doctype", let end = rest.firstIndex(of: ">") { rest = rest[rest.index(after: end)...] }
         return #"<!doctype html><meta http-equiv="Content-Security-Policy" content="\#(policy)"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">"#
-            + #"<style id="amber-theme">\#(NotePageTheme.css)</style>"# + NotePageLibraries.scriptTags(for: html) + rest
+            + NotePageTheme.links(for: html) + NotePageLibraries.scriptTags(for: html) + rest
     }
 
     /// How the page is being used right now, for swapping in a new version: how long since you
@@ -150,15 +150,38 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
         return ((d["idle"] as? Double) ?? .infinity, (d["focused"] as? Bool) ?? false, json)
     }
 
-    static func bootstrap(data: [String: Any], store: NotePageData.Doc = NotePageData.empty(), restore: String? = nil, settings: [String: Any] = [:], widget: Bool = false) -> String {
-        let defaults = (try? JSONSerialization.data(withJSONObject: settings)).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
+    /// No sound from apps in tests, captures and demos (`-muteAudio`; implied by -uitest and the
+    /// unit test host): audio contexts stay suspended and media elements play muted.
+    static let muted: Bool = {
+        let args = ProcessInfo.processInfo.arguments
+        return args.contains("-muteAudio") || args.contains("-uitest") || PaneApp.isUnitTestHost
+    }()
+
+    static let mute = """
+    (() => {
+      for (const name of ["AudioContext", "webkitAudioContext", "OfflineAudioContext"]) {
+        const Base = window[name];
+        if (!Base) continue;
+        window[name] = class extends Base {
+          constructor(...a) { super(...a); if (name !== "OfflineAudioContext") super.suspend().catch(() => {}); }
+          resume() { return Promise.resolve(); }
+        };
+      }
+      const play = HTMLMediaElement.prototype.play;
+      HTMLMediaElement.prototype.play = function () { this.muted = true; this.volume = 0; return play.call(this); };
+      try { Object.defineProperty(window, "speechSynthesis", { value: { speak() {}, cancel() {}, pause() {}, resume() {}, getVoices() { return []; } } }); } catch (e) {}
+    })();
+
+    """
+
+    static func bootstrap(data: [String: Any], store: NotePageData.Doc = NotePageData.empty(), restore: String? = nil, widget: Bool = false) -> String {
         let libGlobals = (try? JSONSerialization.data(withJSONObject: Dictionary(NotePageLibraries.bundled.map { ($0.name, $0.global) }, uniquingKeysWith: { a, _ in a })))
             .flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
         let libRequires = (try? JSONSerialization.data(withJSONObject: Dictionary(NotePageLibraries.bundled.map { ($0.name, $0.requires ?? []) }, uniquingKeysWith: { a, _ in a })))
             .flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
         let json = (try? JSONSerialization.data(withJSONObject: data)).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
         let storeJSON = String(data: NotePageData.encode(store), encoding: .utf8) ?? "{}"
-        return """
+        return (muted ? mute : "") + """
         (() => {
           const listeners = [];
           // Load errors, and whether anything showed, go to the app once the first frame is drawn.
@@ -226,8 +249,6 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
             // Through the app, to hosts the page declared and you allowed, logged; keys added by the app.
             fetch: (url, o) => ask({ op: "fetch", url, ...(o || {}) }),
           };
-          // The native App Settings sheet (in a widget, nothing: Open the app first).
-          amber.openSettings = () => ask({ op: "app.settings" });
           // A write's reply carries the new data, so it's there as soon as the promise resolves.
           const ask = (msg) => window.webkit.messageHandlers.amberData.postMessage(msg)
             .then((r) => { if (r && r.data) amber.data = r.data; if (r) delete r.data; return r; })
@@ -265,9 +286,6 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
             try { window.webkit.messageHandlers.amberReady.postMessage({ focus: f }); } catch (e) {} };
           addEventListener("focusin", sendFocus, true);
           addEventListener("focusout", () => setTimeout(sendFocus, 0), true);
-          // App settings (<meta name="amber-settings">): the defaults, with what you set in App Settings.
-          const settingDefaults = \(defaults);
-          Object.defineProperty(amber, "settings", { get() { return Object.assign({}, settingDefaults, (amber.data.values && amber.data.values.settings) || {}); } });
           window.amber = amber;
           // For swapping in a new version while you use it: when you last touched the page, what's
           // in its fields and where it's scrolled; and putting that back into the new version.
@@ -608,12 +626,23 @@ enum NotePageTheme {
 
     /// Text size: on iPhone the reader's Dynamic Type size (so rem follows it too); on the Mac 14 px.
     #if os(iOS)
-    static let dynamicType = "html { font: -apple-system-body; } body { font-size: 1rem; }"
+    static let rootFont = "-apple-system-body"
     #else
-    static let dynamicType = "html { font-size: 14px; } body { font-size: 1rem; }"
+    static let rootFont = "14px/1.35 -apple-system, system-ui, sans-serif"
     #endif
 
-    static let css: String = {
+    /// The stylesheets an app starts with, before its own: amber-tokens.css always, and amber-base.css
+    /// unless the app says <meta name="amber-base" content="none">.
+    static func links(for html: String) -> String {
+        let none = html.range(of: #"<meta[^>]*name=["']amber-base["'][^>]*content=["']none["']"#, options: [.regularExpression, .caseInsensitive]) != nil
+        return #"<link rel="stylesheet" href="amber-lib:///amber-tokens.css">"# + (none ? "" : #"<link rel="stylesheet" href="amber-lib:///amber-base.css">"#)
+    }
+
+    /// amber-base.css as shipped (Pane/Resources/AppLibraries; page.ts has the same text for the AI).
+    static let base: String = Bundle.main.url(forResource: "amber-base", withExtension: "css").flatMap { try? String(contentsOf: $0, encoding: .utf8) } ?? ""
+
+    /// amber-tokens.css: the --amber-* variables for this device, light and dark.
+    static let tokens: String = {
         func hex(_ c: PColor, dark: Bool) -> String {
             var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
             #if os(iOS)
@@ -646,19 +675,17 @@ enum NotePageTheme {
             ].joined(separator: "; ")
         }
         return """
-        :root { color-scheme: light dark; \(vars(dark: false)); --amber-radius: \(radius.0)px; --amber-radius-small: \(radius.1)px; \
-        --amber-content-max: 1100px; --amber-gutter: clamp(16px, 3.5vw, 40px); \
-        --amber-font: -apple-system, system-ui, sans-serif; --amber-font-rounded: ui-rounded, -apple-system, system-ui, sans-serif; \
-        --amber-font-mono: ui-monospace, Menlo, monospace; }
-        @media (prefers-color-scheme: dark) { :root { \(vars(dark: true)); } }
-        \(dynamicType)
-        body { margin: 0; background: var(--amber-bg); color: var(--amber-text); font-family: var(--amber-font); line-height: 1.35; -webkit-text-size-adjust: 100%; }
-        html, body { overflow-x: clip; }
-        :where(img, video, canvas, svg, iframe, pre) { max-width: 100%; }
-        :where(input:not([type=checkbox], [type=radio], [type=range], [type=color], [type=file], [type=hidden]), select, textarea) { \
-        background: var(--amber-field); color: var(--amber-text); border: 1px solid var(--amber-field-border); \
-        border-radius: var(--amber-radius-small); font: inherit; padding: 6px 10px; }
-        :where(input, select, textarea):focus-visible { outline: 2px solid var(--amber-accent); outline-offset: 1px; }
+        /* amber-tokens.css (Amber Notes): the variables every app can use, for this device, light and dark. */
+        @layer amber-tokens {
+          :root { \(vars(dark: false)); --amber-radius: \(radius.0)px; --amber-radius-small: \(radius.1)px;
+            --amber-content-max: 1100px; --amber-gutter: clamp(16px, 3.5vw, 40px); --amber-root-font: \(rootFont);
+            --amber-font: -apple-system, system-ui, sans-serif; --amber-font-rounded: ui-rounded, -apple-system, system-ui, sans-serif;
+            --amber-font-mono: ui-monospace, Menlo, monospace;
+            --amber-safe-top: env(safe-area-inset-top, 0px); --amber-safe-right: env(safe-area-inset-right, 0px);
+            --amber-safe-bottom: env(safe-area-inset-bottom, 0px); --amber-safe-left: env(safe-area-inset-left, 0px); }
+          @media (prefers-color-scheme: dark) { :root { \(vars(dark: true)); } }
+        }
+
         """
     }()
 }

@@ -117,6 +117,16 @@ enum AIEdit {
             if created { return "\(by) wrote this note" }
             return lines == 0 ? "Updated by \(by)" : "\(by) changed \(lines == 1 ? "1 line" : "\(lines) lines")"
         }
+
+        /// For the navigation bar over a note's app, where there's room for a word or two.
+        var shortSummary: String {
+            switch kind {
+            case .pageEdit, .dataEdit: "Changed"
+            case .pageMade: "\(by) made it"
+            case .pageChanged: "\(by) updated it"
+            case .edit: created ? "\(by) wrote it" : "\(by) edited"
+            }
+        }
     }
 }
 

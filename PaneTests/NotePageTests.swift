@@ -291,14 +291,15 @@ import WebKit
     }
 
     @Test func everyPageGetsTheAppsThemeAsVariables() async throws {
-        #expect(NotePageSandbox.sandboxed("<p>x</p>").contains("<style id=\"amber-theme\">"))
-        #expect(NotePageTheme.css.contains("--amber-accent: #D96A06"))
-        #expect(NotePageTheme.css.contains("@media (prefers-color-scheme: dark) { :root { --amber-bg:"))
+        #expect(NotePageSandbox.sandboxed("<p>x</p>").contains(#"<link rel="stylesheet" href="amber-lib:///amber-base.css">"#))
+        #expect(!NotePageSandbox.sandboxed("<p>x</p>").contains("<style"))
+        #expect(NotePageTheme.tokens.contains("--amber-accent: #D96A06"))
+        #expect(NotePageTheme.tokens.contains("@media (prefers-color-scheme: dark) { :root { --amber-bg:"))
         let sandbox = NotePageSandbox(rules: try await NotePageSandbox.prepare())
         sandbox.load(html: "<style>p { color: var(--amber-accent-text); border-radius: var(--amber-radius) }</style><p id=p>x</p><script>amber.onChange(() => {})</script>", body: "x")
         try await run(sandbox.webView, until: "document.getElementById('p') !== null && document.readyState === 'complete'")
         let accent = try await sandbox.webView.evaluateJavaScript("getComputedStyle(document.documentElement).getPropertyValue('--amber-accent').trim()") as? String
-        #expect(accent == "#D96A06" || accent == "#F4AD33", "\(accent ?? "nil") in \(NotePageTheme.css)")
+        #expect(accent == "#D96A06" || accent == "#F4AD33", "\(accent ?? "nil") in \(NotePageTheme.tokens)")
         let font = try await sandbox.webView.evaluateJavaScript("getComputedStyle(document.body).fontFamily") as? String
         #expect(font?.contains("system-ui") == true)
     }
@@ -590,7 +591,7 @@ import WebKit
     }
 
     /// Every demo app loads and draws, with its own note.
-    @Test(arguments: ["habit-tracker", "budget", "budget-v2", "spending-chart", "expense-form", "savings-goal", "habit-reminders", "trip-log", "weather-key", "budget-dashboard", "reading-stack", "packing"])
+    @Test(arguments: ["habit-tracker", "budget", "budget-v2", "spending-chart", "expense-form", "savings-goal", "habit-reminders", "trip-log", "weather-key", "budget-dashboard", "reading-stack", "packing", "training", "budget-ledger"])
     func demoAppsLoad(_ name: String) async throws {
         let dir = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().appending(path: "demo/note-pages")
         let html = try String(contentsOf: dir.appending(path: name + ".html"), encoding: .utf8)
@@ -617,21 +618,6 @@ import WebKit
     }
 
     // MARK: App settings and Make It an App
-
-    @Test func appSettingsAreDeclaredAndReachThePage() async throws {
-        let html = #"<meta name="amber-settings" content='{"settings":[{"key":"budget","label":"Monthly budget","type":"number","default":15000},{"key":"cats","type":"list","default":["Home","Food"]},{"key":"x","type":"bogus"}]}'><p id=p></p><script>amber.onChange(() => { p.textContent = amber.settings.budget + "|" + amber.settings.cats.join(",") })</script>"#
-        let s = NotePageSettings.declared(in: html)
-        #expect(s.map(\.key) == ["budget", "cats"])
-        #expect(s.first?.title == "Monthly budget")
-        let sandbox = NotePageSandbox(rules: try await NotePageSandbox.prepare())
-        sandbox.load(html: html, body: "x")
-        try await run(sandbox.webView, until: "document.getElementById('p') && document.getElementById('p').textContent === '15000|Home,Food'")
-        // Saved values win over the defaults and reach the page as data.
-        var doc = NotePageData.empty()
-        doc["values"] = ["settings": ["budget": 20000]]
-        sandbox.push(body: "x", data: doc)
-        try await run(sandbox.webView, until: "document.getElementById('p').textContent === '20000|Home,Food'")
-    }
 
     @Test func makeItAnAppSuggestsFromWhatTheNoteHolds() {
         #expect(MakeAnApp.looksLikeAnApp(Capture.budgetNote))
@@ -739,30 +725,8 @@ import WebKit
         #expect(N.shown("*.archive.org") == "archive.org and its servers")
     }
 
-    @Test func settingsHaveTogglesTimesAndLabelledChoices() {
-        let html = #"<meta name="amber-settings" content='{"settings":[{"key":"party","type":"toggle","default":true},{"key":"at","type":"time","default":"21:30"},{"key":"rest","type":"choice","options":[{"value":120,"label":"2 minutes"},{"value":180,"label":"3 minutes"}],"default":120}]}'>"#
-        let s = NotePageSettings.declared(in: html)
-        #expect(s.map(\.type) == ["toggle", "time", "choice"])
-        #expect(s[2].options?.map(\.label) == ["2 minutes", "3 minutes"])
-        #expect(NotePageSettings.defaults(in: html)["rest"] as? Int == 120)
-        #expect(AppSettingsSheet.hhmm(AppSettingsSheet.time("21:30")) == "21:30")
-    }
-
-    @Test func settingsHaveSectionsRangesDatesMultiAndConditions() {
-        let html = #"<meta name="amber-settings" content='{"settings":[{"key":"rest","type":"number","min":30,"max":300,"step":15,"default":90,"section":"Timer"},{"key":"sound","type":"toggle","section":"Timer"},{"key":"tone","type":"choice","options":["Bell","Chime"],"showIf":"sound","section":"Timer"},{"key":"days","type":"multi","options":["Mon","Wed","Fri"],"default":["Mon"]},{"key":"start","type":"date","default":"2026-10-05"}]}'>"#
-        let s = NotePageSettings.declared(in: html)
-        #expect(s.map(\.type) == ["number", "toggle", "choice", "multi", "date"])
-        #expect(s[0].min == 30 && s[0].max == 300 && s[0].step == 15 && s[0].section == "Timer")
-        #expect(s[2].showIf?.holds(in: ["sound": false]) == false)
-        #expect(s[2].showIf?.holds(in: ["sound": true]) == true)
-        #expect(NotePageSettings.defaults(in: html)["days"] as? [String] == ["Mon"])
-        #expect(AppSettingsSheet.ymd(AppSettingsSheet.day("2026-10-05")) == "2026-10-05")
-    }
-
     /// Declarations written over several lines are read like one-line ones.
     @Test func declarationsCanSpanLines() {
-        let html = "<meta name=\"amber-settings\" content='{\"settings\":[\n {\"key\":\"a\",\"type\":\"toggle\"},\n {\"key\":\"b\",\"type\":\"text\"}\n]}'>"
-        #expect(NotePageSettings.declared(in: html).map(\.key) == ["a", "b"])
         #expect(NotePageNetwork.needs(of: "<meta name=\"amber-needs\" content='{\n\"hosts\": [\"api.example.com\"]\n}'>").hosts == ["api.example.com"])
         #expect(NotePageLibraries.declared(in: "<meta name=\"amber-libs\" content=\"chart,\n d3\">").count == 2)
     }
@@ -773,7 +737,7 @@ import WebKit
         sandbox.load(html: "<p id=p>x</p><script>amber.onChange(() => {})</script>", body: "x")
         try await run(sandbox.webView, until: "document.getElementById('p') !== null")
         #expect(try await sandbox.webView.evaluateJavaScript("document.documentElement.classList.contains('amber-widget')") as? Bool == true)
-        #expect(NotePageTheme.css.contains("html { font-size: 14px; }") || NotePageTheme.css.contains("-apple-system-body"))
+        #expect(NotePageTheme.tokens.contains("--amber-root-font: 14px") || NotePageTheme.tokens.contains("-apple-system-body"))
     }
 
     @Test func bundledLibrariesLoadByNameWithoutTheNetwork() async throws {
@@ -846,6 +810,51 @@ import WebKit
         _ = try await sandbox.webView.evaluateJavaScript("window.scrollTo(800, 0); 1")
         #expect(try await sandbox.webView.evaluateJavaScript("window.scrollX") as? Int == 0)
         #expect(try await sandbox.webView.evaluateJavaScript("document.getElementById('i').getBoundingClientRect().width <= window.innerWidth") as? Bool == true)
+    }
+
+    /// amber-base.css is the only styling an app gets, in a layer its own styles always beat; an app
+    /// can drop it and keep the tokens; the tokens still switch with dark mode.
+    @Test func theBaseStylesheetIsOverridableAndOptional() async throws {
+        #expect(!NotePageTheme.base.isEmpty && !NotePageTheme.base.contains("!important") && !NotePageTheme.tokens.contains("!important"))
+        let page = """
+        <style>
+          input.mine { border: 3px dashed rgb(1, 2, 3); background: rgb(4, 5, 6); border-radius: 0; }
+          button { background: rgb(7, 8, 9); }
+        </style>
+        <input id=plain><input id=mine class=mine><button id=b>Go</button>
+        <script>amber.onChange(() => {})</script>
+        """
+        func styles(_ html: String) async throws -> [String: String] {
+            let sandbox = NotePageSandbox(rules: try await NotePageSandbox.prepare())
+            sandbox.load(html: html, body: "x")
+            try await run(sandbox.webView, until: "document.getElementById('b') !== null && document.readyState === 'complete' && getComputedStyle(document.documentElement).getPropertyValue('--amber-accent') !== ''")
+            let js = """
+            JSON.stringify({ plain: getComputedStyle(document.getElementById('plain')).borderTopWidth, plainBg: getComputedStyle(document.getElementById('plain')).backgroundColor,
+              mine: getComputedStyle(document.getElementById('mine')).borderTopStyle, mineBg: getComputedStyle(document.getElementById('mine')).backgroundColor,
+              button: getComputedStyle(document.getElementById('b')).backgroundColor, overflow: getComputedStyle(document.body).overflowX,
+              accent: getComputedStyle(document.documentElement).getPropertyValue('--amber-accent').trim() })
+            """
+            let json = try await sandbox.webView.evaluateJavaScript(js) as? String ?? "{}"
+            return try JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: String] ?? [:]
+        }
+        let with = try await styles(page)
+        #expect(with["plain"] == "1px", "\(with)")
+        #expect(with["mine"] == "dashed" && with["mineBg"] == "rgb(4, 5, 6)", "the app's own field style wins: \(with)")
+        #expect(with["button"] == "rgb(7, 8, 9)" && with["overflow"] == "clip", "\(with)")
+        let without = try await styles(#"<meta name="amber-base" content="none">"# + page)
+        #expect(without["plain"] != "1px" || without["plainBg"] != with["plainBg"], "no base field style: \(without)")
+        #expect(without["overflow"] == "visible" && without["accent"]?.isEmpty == false, "tokens kept, base gone: \(without)")
+        // Dark mode: the tokens file switches every colour.
+        #expect(NotePageTheme.tokens.contains("@media (prefers-color-scheme: dark) { :root { --amber-bg:"))
+    }
+
+    /// The AI sees the real stylesheet: page.ts carries the same text as the file the app ships.
+    @Test func theAIGetsTheSameBaseStylesheet() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let shipped = try String(contentsOf: root.appending(path: "Pane/Resources/AppLibraries/amber-base.css"), encoding: .utf8)
+        let ts = try String(contentsOf: root.appending(path: "supabase/functions/mcp/amber-base.ts"), encoding: .utf8)
+        #expect(NotePageTheme.base == shipped)
+        #expect(ts.contains(shipped))
     }
 
     @Test func npmPackagesNeedAPinnedVersionAndAMatchingHash() async throws {

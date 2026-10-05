@@ -74,6 +74,8 @@ struct AITile: View {
 /// "ChatGPT changed 5 lines", with Undo: shown on the open note when an AI's edit lands on it.
 struct AIReceipt: View {
     let receipt: AIEdit.Receipt
+    /// Smaller, for the navigation bar over a note's app.
+    var compact = false
     let undo: () -> Void
 
     /// Rises in from the bottom edge; with Reduce Motion it only fades.
@@ -87,22 +89,24 @@ struct AIReceipt: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            AIGlyph(ai: receipt.by, size: 14)
-            Text(receipt.summary)
-                .font(.system(size: Self.text, weight: .semibold))
+            AIGlyph(ai: receipt.by, size: compact ? 12 : 14)
+            Text(compact ? receipt.shortSummary : receipt.summary)
+                .font(.system(size: compact ? 13 : Self.text, weight: .semibold))
+                .lineLimit(1)
                 .foregroundStyle(Color.amberInk)
             Divider().frame(height: 14)
             Button("Undo", action: undo)
                 .buttonStyle(.plain)
-                .font(.system(size: Self.text, weight: .semibold))
+                .font(.system(size: compact ? 13 : Self.text, weight: .semibold))
                 .foregroundStyle(Color.amberInk)
                 .contentShape(.rect)
                 .accessibilityHint("Puts the note back the way it was before \(receipt.by)'s edit")
         }
-        .padding(.horizontal, 14)
-        .frame(height: Self.height)
+        .padding(.horizontal, compact ? 11 : 14)
+        .frame(height: compact ? 32 : Self.height)
         .background(Color.amberSoft, in: .capsule)
-        .overlay(Capsule().strokeBorder(Color.amberInk.opacity(0.22), lineWidth: 0.5))
+        // A solid edge: the amber of the fill, a step deeper (nothing see-through).
+        .overlay(Capsule().strokeBorder(Color(light: Color(red: 0.96, green: 0.86, blue: 0.70), dark: Color(red: 0.36, green: 0.27, blue: 0.12)), lineWidth: 1))
         .shadow(color: Color(red: 0.24, green: 0.12, blue: 0.02).opacity(0.12), radius: 12, y: 6)
         .shadow(color: Color(red: 0.24, green: 0.12, blue: 0.02).opacity(0.08), radius: 2, y: 1)
         .accessibilityElement(children: .contain)

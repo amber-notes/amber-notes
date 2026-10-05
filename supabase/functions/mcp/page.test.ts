@@ -85,3 +85,11 @@ Deno.test("hosts: a *.domain pattern covers its servers, never a bare TLD or the
   assertEquals(hostDeclared(d, "example.org"), false);
   assertEquals(hostDeclared(d, "covers.openlibrary.org"), true);
 });
+
+import { AMBER_BASE_CSS, AMBER_TOKENS } from "./amber-base.ts";
+
+Deno.test("the AI's copy of amber-base.css is the file the app ships", () => {
+  assertEquals(AMBER_BASE_CSS, Deno.readTextFileSync(new URL("../../../Pane/Resources/AppLibraries/amber-base.css", import.meta.url)));
+  assertEquals(AMBER_BASE_CSS.includes("!important"), false);
+  for (const t of ["--amber-field", "--amber-root-font", "--amber-accent"]) assertEquals(AMBER_TOKENS.includes(t), true);
+});

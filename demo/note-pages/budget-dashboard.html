@@ -21,6 +21,7 @@
   </div>
 </main>
 <script>
+  const S = () => Object.assign({ budget: 15000, currency: "SEK", categories: ["Home", "Food", "Travel", "Fun"] }, ((amber.data && amber.data.values) || {}).settings || {});
   const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
   const kr = (n) => Math.round(n).toLocaleString("sv-SE") + " kr";
   const palette = () => [css("--amber-accent"), "#3f8f6b", "#4b74c9", "#b5579a", "#8a6d3b", "#5aa0a8"];
@@ -33,7 +34,7 @@
     const a = col(/amount/i), c = col(/categ/i), d = col(/date/i);
     const rows = t.rows.map((r) => ({ amount: parseFloat(String(r[a]).replace(/\s/g, "")) || 0, cat: r[c] || "Other", day: r[d] || "" }));
     const total = rows.reduce((s, r) => s + r.amount, 0);
-    const budget = Number(amber.settings.budget) || 0;
+    const budget = Number(S().budget) || 0;
     document.getElementById("total").textContent = kr(total);
     document.getElementById("sub").textContent = budget ? `${Math.round(total / budget * 100)} % of ${kr(budget)}, ${rows.length} items` : `${rows.length} items`;
     const byCat = {}; for (const r of rows) byCat[r.cat] = (byCat[r.cat] || 0) + r.amount;

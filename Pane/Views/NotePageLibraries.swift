@@ -126,7 +126,7 @@ enum NotePageLibraries {
         cacheDir.appending(path: E2EE.sha256Hex(ref.key) + ".js")
     }
 
-    /// Libraries this page declared that were downloaded, for App Settings › Internet.
+    /// Libraries this page declared that were downloaded, for App Info › Internet.
     static func downloaded(for html: String) -> [String] {
         declared(in: html).compactMap { d in
             if case .npm(let r) = d, FileManager.default.fileExists(atPath: cacheFile(r).path) { return r.label }
@@ -165,12 +165,15 @@ final class LibraryScheme: NSObject, WKURLSchemeHandler {
     func webView(_ webView: WKWebView, start task: any WKURLSchemeTask) {
         guard let url = task.request.url else { task.didFailWithError(URLError(.badURL)); return }
         let path = url.path.hasPrefix("/") ? String(url.path.dropFirst()) : url.path
-        func reply(_ data: Data) {
+        func reply(_ data: Data, type: String = "text/javascript") {
             guard !stopped.contains(ObjectIdentifier(task)) else { return }
-            task.didReceive(URLResponse(url: url, mimeType: "text/javascript", expectedContentLength: data.count, textEncodingName: "utf-8"))
+            task.didReceive(URLResponse(url: url, mimeType: type, expectedContentLength: data.count, textEncodingName: "utf-8"))
             task.didReceive(data)
             task.didFinish()
         }
+        // The stylesheets every app starts with (NotePageTheme.links).
+        if path == "amber-tokens.css" { reply(Data(NotePageTheme.tokens.utf8), type: "text/css"); return }
+        if path == "amber-base.css" { reply(Data(NotePageTheme.base.utf8), type: "text/css"); return }
         if path.hasPrefix("npm/") {
             let integrity = (url.query ?? "").removingPercentEncoding ?? ""
             let spec = String(path.dropFirst(4))

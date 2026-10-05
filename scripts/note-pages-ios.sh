@@ -14,6 +14,9 @@ xcrun simctl boot "$SIM" 2>/dev/null || true
 xcrun simctl bootstatus "$SIM" -b >/dev/null
 xcrun simctl status_bar "$SIM" override --time "9:41" --batteryLevel 100 --cellularBars 4 --wifiBars 3 2>/dev/null || true
 xcrun simctl ui "$SIM" appearance "${APPEARANCE:-light}"
+# Silent: no keyboard clicks or lock sounds from the simulator (apps are muted by -uitest too).
+xcrun simctl spawn "$SIM" defaults write com.apple.preferences.sounds keyboard -bool false 2>/dev/null || true
+xcrun simctl spawn "$SIM" defaults write com.apple.preferences.sounds lock-sound -bool false 2>/dev/null || true
 
 xcodegen generate >/dev/null
 if ! nice -n 10 xcodebuild -project Pane.xcodeproj -scheme Pane -destination "id=$SIM" -derivedDataPath build/dd \

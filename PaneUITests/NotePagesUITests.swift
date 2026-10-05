@@ -324,7 +324,7 @@ final class NotePagesUITests: XCTestCase {
         shot("40-weather-works")
         app.buttons["editor.more"].firstMatch.tap()
         pause(0.8)
-        app.buttons["editor.appSettings"].firstMatch.tap()
+        app.buttons["editor.appInfo"].firstMatch.tap()
         pause(1.5)
         shot("41-weather-log")
         pause(1)
@@ -415,43 +415,20 @@ final class NotePagesUITests: XCTestCase {
         pause(1)
     }
 
-    /// App Settings: change the budget, the currency and the categories; the app follows at once.
-    func testAppSettings() {
+    /// More › App Info: only what Amber Notes alone does for an app (internet, Previous, Remove).
+    func testAppInfo() {
         launch(["-open", "October budget", "-seedPage", "October budget=\(pages)/budget.html"])
-        mark("settings-start")
+        mark("info-start")
         pause(3)
-        shot("70-settings-before")
         app.buttons["editor.more"].firstMatch.tap()
         pause(1.2)
         shot("70-more-menu")
-        app.buttons["editor.appSettings"].firstMatch.tap()
+        app.buttons["editor.appInfo"].firstMatch.tap()
         pause(1.5)
-        shot("71-settings-sheet")
-        let budget = app.textFields["appSettings.budget"].firstMatch
-        XCTAssertTrue(budget.waitForExistence(timeout: 4))
-        budget.tap()
-        budget.press(forDuration: 1.0)
-        if app.menuItems["Select All"].waitForExistence(timeout: 2) { app.menuItems["Select All"].tap() }
-        budget.typeText("20000")
-        let currency = app.buttons["appSettings.currency"].firstMatch
-        if currency.waitForExistence(timeout: 2) {
-            currency.tap()
-            pause(0.8)
-            let eur = app.buttons["EUR"].firstMatch
-            if eur.waitForExistence(timeout: 2) { eur.tap() } else if app.staticTexts["EUR"].exists { app.staticTexts["EUR"].tap() }
-        }
-        let add = app.textFields["appSettings.categories.new"].firstMatch
-        if add.waitForExistence(timeout: 2) {
-            add.tap()
-            add.typeText("Health")
-            app.buttons["appSettings.categories.add"].firstMatch.tap()
-        }
+        shot("71-app-info")
+        app.buttons["appInfo.done"].firstMatch.tap()
         pause(1)
-        shot("72-settings-changed")
-        app.buttons["appSettings.done"].firstMatch.tap()
-        pause(2)
-        shot("73-settings-after")
-        mark("settings-end")
+        mark("info-end")
         pause(1)
     }
 
@@ -488,7 +465,7 @@ final class NotePagesUITests: XCTestCase {
     }
 
     /// A pinned npm package (qrcode-generator 1.4.4, checked by hash): a Wi-Fi card with a QR code,
-    /// then App Settings showing the one-time download.
+    /// then App Info showing the one-time download.
     func testLibNpm() {
         launch(["-seedNote", "\(pages)/wifi-card.md", "-open", "Wi-Fi at home", "-seedPage", "Wi-Fi at home=\(pages)/wifi-card.html"])
         mark("lib-start")
@@ -496,7 +473,7 @@ final class NotePagesUITests: XCTestCase {
         shot("84-lib-npm")
         app.buttons["editor.more"].firstMatch.tap()
         pause(0.8)
-        app.buttons["editor.appSettings"].firstMatch.tap()
+        app.buttons["editor.appInfo"].firstMatch.tap()
         pause(1.5)
         shot("85-lib-npm-settings")
         mark("lib-end")
@@ -550,27 +527,72 @@ final class NotePagesUITests: XCTestCase {
         pause(1)
     }
 
-    /// App Settings with sections, a slider, a condition, several choices, a date and a time,
-    /// opened from the app's own button (amber.openSettings).
-    func testSettingsTypes() {
-        launch(["-open", "October budget", "-seedPage", "October budget=\(pages)/rest-timer.html"])
-        mark("types-start")
-        pause(2.5)
-        shot("96-timer")
-        web("Settings").tap()
+
+    /// Preact: Training as three screens with a tab bar (Today, Plan, Progress), a pushed screen
+    /// and the app's own settings.
+    func testTraining() {
+        launch(["-seedNote", "\(pages)/training.md", "-open", "Training", "-seedPage", "Training=\(pages)/training.html"])
+        mark("training-start")
+        pause(3)
+        shot("t1-today")
+        let weight = app.webViews.textFields["Weight for Bench press"].firstMatch
+        if weight.waitForExistence(timeout: 3) { weight.tap(); weight.typeText("65") }
+        let log = app.webViews.buttons["Log"].firstMatch
+        if log.waitForExistence(timeout: 2) { log.tap() }
         pause(1.5)
-        shot("97-timer-settings")
-        let sound = app.switches["appSettings.sound"].firstMatch
-        if sound.waitForExistence(timeout: 3) { sound.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap() }
+        shot("t2-logged")
+        web("Plan").tap()
+        pause(1.2)
+        shot("t3-plan")
+        app.webViews.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "Wed · Lower")).firstMatch.tap()
+        pause(1.2)
+        shot("t4-plan-day")
+        web("Back").tap()
+        pause(0.8)
+        web("Progress").tap()
+        pause(1.5)
+        shot("t5-progress")
+        web("Squat").tap()
         pause(1)
-        shot("98-timer-sound-off")
-        let sat = app.buttons["appSettings.days.Sat"].firstMatch
-        if sat.waitForExistence(timeout: 2) { sat.tap() }
-        pause(0.6)
-        app.buttons["appSettings.done"].firstMatch.tap()
+        web("Settings").tap()
+        pause(1)
+        shot("t6-settings")
+        web("lb").tap()
+        pause(0.8)
+        web("Back").tap()
+        pause(1.2)
+        shot("t7-progress-lb")
+        mark("training-end")
+        pause(1)
+    }
+
+    /// What a page sees of the keyboard and the bottom edge (for best-apps).
+    func testViewportProbe() {
+        launch(["-open", "October budget", "-seedPage", "October budget=\(pages)/viewport-probe.html"])
+        pause(2.5)
+        shot("vp1-rest")
+        let f = app.webViews.textFields["Probe field"].firstMatch
+        if f.waitForExistence(timeout: 3) { f.tap() }
         pause(1.5)
-        shot("99-timer-after")
-        mark("types-end")
+        shot("vp2-keyboard")
+    }
+
+    /// An app that restyles everything amber-base.css gives it.
+    func testLedger() {
+        launch(["-open", "October budget", "-seedPage", "October budget=\(pages)/budget-ledger.html"])
+        mark("ledger-start")
+        pause(2.5)
+        shot("l1-ledger")
+        let item = app.webViews.textFields["Item"].firstMatch
+        if item.waitForExistence(timeout: 3) { item.tap(); item.typeText("Books") }
+        let amount = app.webViews.textFields["Amount"].firstMatch
+        if amount.waitForExistence(timeout: 2) { amount.tap(); amount.typeText("349") }
+        pause(0.8)
+        shot("l2-typing")
+        app.webViews.buttons.matching(NSPredicate(format: "label ==[c] %@", "Enter")).firstMatch.tap()
+        pause(1.5)
+        shot("l3-entered")
+        mark("ledger-end")
         pause(1)
     }
 }

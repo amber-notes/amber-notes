@@ -30,7 +30,7 @@ struct NoteDetailView: View {
     @State private var addingKey: APIKeyForm.Draft?
     @State private var showNetLog = false
     @State private var showMakeApp = false
-    @State private var showAppSettings = false
+    @State private var showAppInfo = false
     /// "Make this an app", once per note, on notes that look like one.
     @State private var showChip = false
 
@@ -96,14 +96,14 @@ struct NoteDetailView: View {
                 Button("Don't Allow", role: .cancel) { hostAsk?.answer(false); hostAsk = nil }
                 Button("Allow") { hostAsk?.answer(true); hostAsk = nil }
             } message: {
-                Text("Everything it sends there is listed in App Settings › Internet.")
+                Text("Everything it sends there is listed in App Info › Internet.")
             }
             .sheet(item: $addingKey) { d in APIKeyForm(draft: d) }
             .sheet(isPresented: $showNetLog) { NotePageNetLogView(noteID: note.id) }
             .sheet(isPresented: $showMakeApp) { MakeAppSheet(title: note.title, body_: note.body) }
-            .sheet(isPresented: $showAppSettings) {
+            .sheet(isPresented: $showAppInfo) {
                 if let p = notePage {
-                    AppSettingsSheet(noteID: note.id, html: p.html,
+                    AppInfoSheet(noteID: note.id, html: p.html,
                                      hasPrevious: NotePageStore.shared.previous(note.id) != nil,
                                      previous: { restorePreviousPage() },
                                      remove: {
@@ -206,13 +206,22 @@ struct NoteDetailView: View {
     @ViewBuilder
     private var aiReceipt: some View {
         if let receipt {
-            AIReceipt(receipt: receipt) { undo(receipt) }
-            #if os(macOS)
-            .padding(.bottom, 20)
+            #if os(iOS)
+            // Over a note's app it sits in the navigation bar instead (see toolbar): an app's own
+            // tab bar, sheets and the keyboard live at the bottom, its title at the top.
+            let inBar = showingPage
             #else
-            .padding(.bottom, 64)
+            let inBar = false
             #endif
-            .transition(AIReceipt.transition(reduceMotion: reduceMotion))
+            if !inBar {
+                AIReceipt(receipt: receipt) { undo(receipt) }
+                #if os(macOS)
+                .padding(.bottom, 20)
+                #else
+                .padding(.bottom, 64)
+                #endif
+                .transition(AIReceipt.transition(reduceMotion: reduceMotion))
+            }
         }
     }
 
@@ -333,7 +342,7 @@ struct NoteDetailView: View {
     /// Never over a field you're typing in, or under a sheet. A change made while a field has
     /// focus (a button pressed as the field lets go) shows once the focus has gone, if that's soon.
     private func showPageReceipt(_ r: AIEdit.Receipt) {
-        guard !showAppSettings else { return }
+        guard !showAppInfo else { return }
         guard !pageFieldFocused else { heldReceipt = r; return }
         heldReceipt = nil
         withAnimation(.spring(duration: 0.45, bounce: 0.25)) { receipt = r }
@@ -351,12 +360,7 @@ struct NoteDetailView: View {
     /// state (a ticked set, a rating): kept quietly, versioned on the server, without a receipt;
     /// receipts are for changes to the note's text.
     private func pageData(_ message: Any) async throws -> [String: Any] {
-        // amber.openSettings(): the native App Settings sheet, instead of a gear inside the app.
-        if (message as? [String: Any])?["op"] as? String == "app.settings" {
-            showAppSettings = true
-            return [:]
-        }
-        return try await NotePageActions.data(message, note: note, context: context, sync: sync, html: notePage?.html ?? "",
+        try await NotePageActions.data(message, note: note, context: context, sync: sync, html: notePage?.html ?? "",
                                        ask: askHost, needKey: { need in withAnimation(.smooth) { keyNeeded = need } }).reply
     }
 
@@ -454,8 +458,8 @@ struct NoteDetailView: View {
         }
         if notePage != nil {
             // Everything about the app in one place: its settings, the internet, Previous App, Remove App.
-            Button("App Settings…", systemImage: "slider.horizontal.3") { showAppSettings = true }
-                .accessibilityIdentifier("editor.appSettings")
+            Button("App Info…", systemImage: "info.circle") { showAppInfo = true }
+                .accessibilityIdentifier("editor.appInfo")
         }
     }
 
@@ -681,6 +685,13 @@ struct NoteDetailView: View {
         ToolbarSpacer(.flexible, placement: .bottomBar)
         ToolbarItem(placement: .bottomBar) {
             Button("New Note", systemImage: "square.and.pencil", action: onNewNote)
+        }
+        if showingPage, let receipt {
+            ToolbarItem(placement: .principal) {
+                AIReceipt(receipt: receipt, compact: true) { undo(receipt) }
+                    .transition(.opacity)
+            }
+            .sharedBackgroundVisibility(.hidden)
         }
         if notePage != nil {
             ToolbarItem(placement: .primaryAction) { modeButton }
