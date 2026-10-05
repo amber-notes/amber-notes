@@ -99,3 +99,47 @@ struct CollabGallery: View {
         }
     }
 }
+
+/// The toolbar badge options in place, for comparing them (`-collabGallery -badges -badgeOption A
+/// -badgeState lone-idle|lone-typing|three`): a note with its real toolbar and the avatars in it.
+struct BadgeGallery: View {
+    enum State: String, CaseIterable { case loneIdle = "lone-idle", loneTyping = "lone-typing", three }
+    let option: BadgeOption
+    let state: State
+
+    static func fromArguments() -> BadgeGallery {
+        BadgeGallery(option: .current, state: Capture.argument("-badgeState").flatMap(State.init(rawValue:)) ?? .loneIdle)
+    }
+
+    var people: [PresenceAvatars.Person] {
+        switch state {
+        case .loneIdle: [.init(id: CollabGallery.emil, name: "Emil Wagman", photo: CollabGallery.emilPhoto)]
+        case .loneTyping: [.init(id: CollabGallery.emil, name: "Emil Wagman", photo: CollabGallery.emilPhoto, typing: true)]
+        case .three: [.init(id: CollabGallery.emil, name: "Emil Wagman", photo: CollabGallery.emilPhoto, typing: true),
+                      .init(id: CollabGallery.sara, name: "Sara Lind"), .init(id: CollabGallery.emma, name: "Emma Holm")]
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Team offsite, 14 November").font(.system(size: 28, weight: .heavy))
+                    Text("Agenda").font(.title3.bold()).padding(.top, 8)
+                    ForEach(["09:00 Coffee and goals for Q1", "10:30 Roadmap review", "12:30 Lunch at Tranan"], id: \.self) { Text("–  " + $0) }
+                    Text("Option \(option.rawValue) · \(state.rawValue)").font(.caption).foregroundStyle(.secondary).padding(.top, 24)
+                }
+                .padding(20)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .background(Color.notePage)
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) { PresenceAvatars(people: people, option: option).padding(.horizontal, 2) }
+                ToolbarItem(placement: .primaryAction) { Button("More", systemImage: "ellipsis") {} }
+            }
+        }
+    }
+}

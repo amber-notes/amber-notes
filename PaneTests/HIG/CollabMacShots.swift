@@ -9,6 +9,24 @@ import Testing
 /// scripts/collab-mac-shots.sh with `screencapture -l`. Nothing appears on the display. Runs only
 /// when AMBER_COLLAB_MAC is set.
 @MainActor @Suite(.serialized) struct CollabMacShots {
+    /// The toolbar badge options A, B and C, each with one person idle, one typing, and three.
+    @Test func badges() async throws {
+        guard let dir = ProcessInfo.processInfo.environment["AMBER_COLLAB_MAC"].map({ URL(fileURLWithPath: $0) }) else { return }
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        for dark in [false, true] {
+            var windows: [(String, NSWindow)] = []
+            for option in BadgeOption.allCases {
+                for state in BadgeGallery.State.allCases {
+                    let w = MacStoreShots.window(BadgeGallery(option: option, state: state).tint(Color(PColor.paneAccent)), size: CGSize(width: 520, height: 260), dark: dark)
+                    windows.append(("\(option.rawValue)-\(state.rawValue)", w))
+                }
+            }
+            defer { for (_, w) in windows { w.orderOut(nil); w.close() } }
+            try? await Task.sleep(for: .seconds(1))
+            try await MacStoreShots.shoot(dir, "badges-\(dark ? "dark" : "light")", windows)
+        }
+    }
+
     @Test func frames() async throws {
         guard let dir = ProcessInfo.processInfo.environment["AMBER_COLLAB_MAC"].map({ URL(fileURLWithPath: $0) }) else { return }
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)

@@ -10,7 +10,7 @@ export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 TEST_RUNNER_AMBER_COLLAB_MAC="$OUT" TEST_RUNNER_AMBER_COLLAB_PHOTO="$PWD/web/public/emil-wagman.jpg" nice -n 10 xcodebuild -project Pane.xcodeproj -scheme Pane -configuration Debug -destination 'platform=macOS' \
   -derivedDataPath build/ddqa ENABLE_TESTABILITY=YES ENABLE_HARDENED_RUNTIME=NO ONLY_ACTIVE_ARCH=YES SWIFT_ACTIVE_COMPILATION_CONDITIONS='$(inherited) QA' \
   CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= PROVISIONING_PROFILE_SPECIFIER= \
-  test -only-testing:'PaneTests/CollabMacShots/frames()' > "$OUT/test.txt" 2>&1 &
+  test -only-testing:'PaneTests/CollabMacShots' > "$OUT/test.txt" 2>&1 &
 test_pid=$!
 while kill -0 $test_pid 2>/dev/null; do
   for ready in "$OUT"/ready-*(N); do
