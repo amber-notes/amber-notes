@@ -74,3 +74,14 @@ Deno.test("the bundled list here matches what the app ships", () => {
   const manifest = JSON.parse(Deno.readTextFileSync(new URL("../../../Pane/Resources/AppLibraries/libraries.json", import.meta.url)));
   assertEquals(Object.fromEntries(manifest.libraries.map((l: { name: string; global: string }) => [l.name, l.global])), BUNDLED_LIBS);
 });
+
+import { hostDeclared } from "./page.ts";
+
+Deno.test("hosts: a *.domain pattern covers its servers, never a bare TLD or the domain itself", () => {
+  const d = new Set(["*.archive.org", "*.org", "covers.openlibrary.org"]);
+  assertEquals(hostDeclared(d, "ia800505.us.archive.org"), true);
+  assertEquals(hostDeclared(d, "archive.org"), false);
+  assertEquals(hostDeclared(d, "evilarchive.org"), false);
+  assertEquals(hostDeclared(d, "example.org"), false);
+  assertEquals(hostDeclared(d, "covers.openlibrary.org"), true);
+});

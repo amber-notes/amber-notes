@@ -54,6 +54,22 @@ enum NotePageNetwork {
     }
 
     /// host[:port], as approvals and keys name it.
+    /// A declared host, or "*.example.org" for every server under example.org (whole labels; never
+    /// a bare top-level domain like "*.org", and not example.org itself).
+    static func matches(_ pattern: String, _ host: String) -> Bool {
+        guard pattern.hasPrefix("*.") else { return pattern == host }
+        let base = pattern.dropFirst(2)
+        return base.contains(".") && !base.contains("*") && host.hasSuffix("." + base)
+    }
+
+    /// The declared host or pattern a host falls under (an exact one first).
+    static func rule(for host: String, in declared: [String]) -> String? {
+        declared.first { $0 == host } ?? declared.first { matches($0, host) }
+    }
+
+    /// How a host or pattern is named when asking: "archive.org and its servers".
+    static func shown(_ rule: String) -> String { rule.hasPrefix("*.") ? "\(rule.dropFirst(2)) and its servers" : rule }
+
     static func hostKey(_ url: URL) -> String? {
         guard let h = url.host?.lowercased() else { return nil }
         return url.port.map { "\(h):\($0)" } ?? h
@@ -237,13 +253,18 @@ extension NotePageNetwork {
                 await needKey(need)
                 throw NotePage.OpError("This app needs the \(name) API key. Add it in Settings › API Keys.")
             }
-            guard need.hosts.contains(host), stored.hosts.contains(host) else { throw NotePage.OpError("The \(name) key isn't sent to \(host).") }
+            guard rule(for: host, in: need.hosts) != nil, rule(for: host, in: stored.hosts) != nil else { throw NotePage.OpError("The \(name) key isn't sent to \(host).") }
             key = (need, stored, value)
-        } else if !needs.hosts.contains(host) {
+        } else if rule(for: host, in: needs.hosts) == nil {
             throw NotePage.OpError("This app didn't declare \(host). Add it to <meta name=\"amber-needs\">.")
         }
         let log = NotePageNetLog.shared
-        if !log.isApproved(host, for: note.id) {
+        // Approved once per declared host or pattern.
+        let approval = rule(for: host, in: needs.hosts) ?? host
+        if key == nil, !log.isApproved(approval, for: note.id) {
+            guard await ask(shown(approval)) else { throw NotePage.OpError("You didn't allow this app to reach \(host).") }
+            log.approve(approval, for: note.id)
+        } else if key != nil, !log.isApproved(host, for: note.id) {
             guard await ask(host) else { throw NotePage.OpError("You didn't allow this app to reach \(host).") }
             log.approve(host, for: note.id)
         }
@@ -267,8 +288,8 @@ extension NotePageNetwork {
                                          carriesNoteText: carriesNoteText(shownURL + "\n" + body, note: note.body))
         // Redirects go only where the request itself could: a declared, approved host (or, with a
         // key, one of the key's hosts). Each hop is logged.
-        var allowed = Set(needs.hosts.filter { log.isApproved($0, for: note.id) })
-        if let key { allowed = Set(key.need.hosts).intersection(key.stored.hosts) }
+        var allowed = needs.hosts.filter { log.isApproved($0, for: note.id) }
+        if let key { allowed = key.need.hosts.filter { h in key.stored.hosts.contains(h) } }
         let guard_ = RedirectGuard(allowed: allowed)
         do {
             let (data, response) = try await URLSession(configuration: .ephemeral).data(for: request, delegate: guard_)
@@ -443,19 +464,19 @@ struct NotePageNetLogView: View {
 
 /// Follows a redirect only to an allowed host, and remembers each hop.
 private final class RedirectGuard: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
-    let allowed: Set<String>
+    let allowed: [String]
     private let lock = NSLock()
     private var _hops: [String] = []
     private var _refused: String?
     var hops: [String] { lock.withLock { _hops } }
     var refused: String? { lock.withLock { _refused } }
 
-    init(allowed: Set<String>) { self.allowed = allowed }
+    init(allowed: [String]) { self.allowed = allowed }
 
     func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
                     newRequest request: URLRequest, completionHandler: @escaping @Sendable (URLRequest?) -> Void) {
         guard let url = request.url else { completionHandler(nil); return }
-        if NotePageNetwork.allowedScheme(url), let host = NotePageNetwork.hostKey(url), allowed.contains(host) {
+        if NotePageNetwork.allowedScheme(url), let host = NotePageNetwork.hostKey(url), NotePageNetwork.rule(for: host, in: allowed) != nil {
             lock.withLock { _hops.append(url.absoluteString) }
             completionHandler(request)
         } else {

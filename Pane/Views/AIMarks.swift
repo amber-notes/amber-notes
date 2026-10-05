@@ -123,8 +123,12 @@ struct AIReceipt: View {
 ///   A capsule: a solid amber capsule with the word "App" (our feature has no other noun);
 ///   B tile: SF Symbol app.fill in amber, at the title's cap height;
 ///   C sparkles: SF Symbol sparkles in amber, "made by your AI".
+/// And A made quiet (Emil, 5 Oct: the amber capsule is too loud):
+///   A1 word: "App" in the secondary text colour, small caps, no fill, like metadata;
+///   A2 outline: a hairline capsule in the secondary colour, no fill;
+///   A3 soft: a soft solid grey capsule (not amber) with secondary text.
 enum NoteAppMark {
-    enum Style: String { case capsule, tile, sparkles }
+    enum Style: String, CaseIterable { case capsule, tile, sparkles, word, outline, soft }
     nonisolated(unsafe) static var style: Style = Capture.argument("-appMark").flatMap(Style.init(rawValue:)) ?? .capsule
 
     /// The symbol where a symbol is needed (Show App, menus): the capsule's needs one too.
@@ -155,6 +159,27 @@ struct AppMarkView: View {
             Image(systemName: "sparkles")
                 .font(.system(size: size * 0.82, weight: .semibold))
                 .foregroundStyle(Color(Palette.amberButton))
+                .accessibilityLabel("App")
+        case .word:
+            Text("App")
+                .font(.system(size: size * 0.92, weight: .medium).lowercaseSmallCaps())
+                .foregroundStyle(Color.muted)
+                .accessibilityLabel("App")
+        case .outline:
+            Text("App")
+                .font(.system(size: size * 0.74, weight: .semibold))
+                .foregroundStyle(Color.muted)
+                .padding(.horizontal, size * 0.38)
+                .frame(height: size * 1.12)
+                .overlay(Capsule().strokeBorder(Color.muted, lineWidth: 1))
+                .accessibilityLabel("App")
+        case .soft:
+            Text("App")
+                .font(.system(size: size * 0.74, weight: .semibold))
+                .foregroundStyle(Color.muted)
+                .padding(.horizontal, size * 0.4)
+                .frame(height: size * 1.12)
+                .background(Color(light: Color(red: 0.925, green: 0.906, blue: 0.886), dark: Color(red: 0.2, green: 0.192, blue: 0.184)), in: .capsule)
                 .accessibilityLabel("App")
         }
     }

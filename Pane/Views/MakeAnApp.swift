@@ -192,11 +192,25 @@ enum NotePageSettings {
         var key: String
         var label: String?
         var type: String
-        var options: [String]?
+        var options: [Option]?
         var help: String?
         var `default`: JSONValue?
         var id: String { key }
         var title: String { label ?? key }
+    }
+
+    /// A choice: "Oak", or { "value": 120, "label": "2 minutes" } when what's stored isn't what's shown.
+    struct Option: Decodable, Identifiable {
+        var value: JSONValue
+        var label: String
+        var id: String { "\(value.any)" }
+        init(from d: Decoder) throws {
+            if let s = try? d.singleValueContainer().decode(String.self) { value = .string(s); label = s; return }
+            enum K: String, CodingKey { case value, label }
+            let c = try d.container(keyedBy: K.self)
+            value = try c.decode(JSONValue.self, forKey: .value)
+            label = try c.decodeIfPresent(String.self, forKey: .label) ?? "\(value.any)"
+        }
     }
 
     /// Any JSON value a default can be.
@@ -226,7 +240,7 @@ enum NotePageSettings {
         let tag = String(html[r])
         guard let c = tag.range(of: #"content=(['"])(.*)\1"#, options: .regularExpression) else { return [] }
         let value = String(String(tag[c].dropFirst("content=".count)).dropFirst().dropLast()).replacingOccurrences(of: "&quot;", with: "\"")
-        let types = ["text", "number", "choice", "list", "color", "currency"]
+        let types = ["text", "number", "choice", "list", "color", "currency", "toggle", "time"]
         return ((try? JSONDecoder().decode(Declared.self, from: Data(value.utf8)))?.settings ?? []).filter { types.contains($0.type) }.prefix(30).map { $0 }
     }
 
@@ -306,9 +320,20 @@ struct AppSettingsSheet: View {
                 #endif
                 .accessibilityIdentifier("appSettings.\(s.key)")
         case "choice":
-            Picker(s.title, selection: Binding(get: { values[s.key] as? String ?? s.options?.first ?? "" }, set: { values[s.key] = $0 })) {
-                ForEach(s.options ?? [], id: \.self) { Text($0).tag($0) }
+            let options = s.options ?? []
+            Picker(s.title, selection: Binding(get: { values[s.key].map { "\($0)" } ?? options.first?.id ?? "" },
+                                               set: { id in values[s.key] = options.first { $0.id == id }?.value.any ?? id })) {
+                ForEach(options) { Text($0.label).tag($0.id) }
             }
+            .accessibilityIdentifier("appSettings.\(s.key)")
+        case "toggle":
+            Toggle(s.title, isOn: Binding(get: { values[s.key] as? Bool ?? false }, set: { values[s.key] = $0 }))
+                .accessibilityIdentifier("appSettings.\(s.key)")
+        case "time":
+            // "HH:mm", 24-hour, whatever the device shows.
+            DatePicker(s.title, selection: Binding(get: { Self.time(values[s.key] as? String) }, set: { values[s.key] = Self.hhmm($0) }),
+                       displayedComponents: .hourAndMinute)
+                .accessibilityIdentifier("appSettings.\(s.key)")
         case "currency":
             Picker(s.title, selection: Binding(get: { values[s.key] as? String ?? "SEK" }, set: { values[s.key] = $0 })) {
                 ForEach(NotePageSettings.currencies, id: \.self) { Text($0).tag($0) }
@@ -333,6 +358,16 @@ struct AppSettingsSheet: View {
             TextField(s.title, text: Binding(get: { values[s.key] as? String ?? "" }, set: { values[s.key] = $0 }))
                 .accessibilityIdentifier("appSettings.\(s.key)")
         }
+    }
+
+    static func time(_ hhmm: String?) -> Date {
+        let parts = (hhmm ?? "09:00").split(separator: ":").compactMap { Int($0) }
+        return Calendar.current.date(bySettingHour: parts.first ?? 9, minute: parts.count > 1 ? parts[1] : 0, second: 0, of: .now) ?? .now
+    }
+
+    static func hhmm(_ date: Date) -> String {
+        let c = Calendar.current.dateComponents([.hour, .minute], from: date)
+        return String(format: "%02d:%02d", c.hour ?? 0, c.minute ?? 0)
     }
 
     /// Which addresses the app may reach, and its last requests (keys hidden).

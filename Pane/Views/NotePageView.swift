@@ -219,6 +219,8 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
             // Through the app, to hosts the page declared and you allowed, logged; keys added by the app.
             fetch: (url, o) => ask({ op: "fetch", url, ...(o || {}) }),
           };
+          // The native App Settings sheet (in a widget, nothing: Open the app first).
+          amber.openSettings = () => ask({ op: "app.settings" });
           // A write's reply carries the new data, so it's there as soon as the promise resolves.
           const ask = (msg) => window.webkit.messageHandlers.amberData.postMessage(msg)
             .then((r) => { if (r && r.data) amber.data = r.data; if (r) delete r.data; return r; })
@@ -861,7 +863,10 @@ private final class FileScheme: NSObject, WKURLSchemeHandler {
                     if CGImageDestinationFinalize(dst) { data = out as Data; type = "image/jpeg" }
                 }
             }
-            task.didReceive(URLResponse(url: url, mimeType: type, expectedContentLength: data.count, textEncodingName: nil))
+            // CORS-readable, so a canvas or a WebGL texture made from it isn't tainted (with
+            // crossOrigin = "anonymous" on the image): the page already may read these bytes.
+            task.didReceive(HTTPURLResponse(url: url, statusCode: 200, httpVersion: "HTTP/1.1",
+                                            headerFields: ["Content-Type": type, "Content-Length": "\(data.count)", "Access-Control-Allow-Origin": "*"])!)
             task.didReceive(data)
             task.didFinish()
         }

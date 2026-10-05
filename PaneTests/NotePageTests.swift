@@ -700,6 +700,54 @@ import WebKit
         #expect(try await sandbox.webView.evaluateJavaScript("window.__r.b") as? String == "blocked")
     }
 
+    /// A note's picture can become a canvas or WebGL texture: reading its pixels back works.
+    @Test func noteFilesAreReadableByCanvas() async throws {
+        let dir = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let png = dir.appending(path: "dot.png")
+        let ctx = CGContext(data: nil, width: 4, height: 4, bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        ctx.setFillColor(red: 1, green: 0, blue: 0, alpha: 1); ctx.fill(CGRect(x: 0, y: 0, width: 4, height: 4))
+        let dst = CGImageDestinationCreateWithURL(png as CFURL, "public.png" as CFString, 1, nil)!
+        CGImageDestinationAddImage(dst, ctx.makeImage()!, nil); CGImageDestinationFinalize(dst)
+        let id = UUID()
+        let sandbox = NotePageSandbox(rules: try await NotePageSandbox.prepare())
+        sandbox.files = { $0 == id ? png : nil }
+        sandbox.load(html: """
+        <script>
+          amber.onChange(() => {});
+          const i = new Image(); i.crossOrigin = "anonymous";
+          i.onload = () => {
+            const c = document.createElement("canvas"); c.width = 4; c.height = 4;
+            const g = c.getContext("2d"); g.drawImage(i, 0, 0);
+            try { window.__r = String(g.getImageData(1, 1, 1, 1).data[0]); } catch (e) { window.__r = "tainted"; }
+          };
+          i.onerror = () => { window.__r = "blocked"; };
+          i.src = amber.files.url({ $file: "\(id.uuidString)" });
+        </script>
+        """, body: "x")
+        try await run(sandbox.webView, until: "window.__r !== undefined")
+        #expect(try await sandbox.webView.evaluateJavaScript("window.__r") as? String == "255")
+    }
+
+    @Test func wildcardHostsCoverWholeLabelsOnly() {
+        typealias N = NotePageNetwork
+        #expect(N.rule(for: "ia800505.us.archive.org", in: ["*.archive.org"]) == "*.archive.org")
+        #expect(N.rule(for: "archive.org", in: ["*.archive.org"]) == nil)
+        #expect(N.rule(for: "evilarchive.org", in: ["*.archive.org"]) == nil)
+        #expect(N.rule(for: "example.org", in: ["*.org"]) == nil)
+        #expect(N.rule(for: "covers.openlibrary.org", in: ["*.openlibrary.org", "covers.openlibrary.org"]) == "covers.openlibrary.org")
+        #expect(N.shown("*.archive.org") == "archive.org and its servers")
+    }
+
+    @Test func settingsHaveTogglesTimesAndLabelledChoices() {
+        let html = #"<meta name="amber-settings" content='{"settings":[{"key":"party","type":"toggle","default":true},{"key":"at","type":"time","default":"21:30"},{"key":"rest","type":"choice","options":[{"value":120,"label":"2 minutes"},{"value":180,"label":"3 minutes"}],"default":120}]}'>"#
+        let s = NotePageSettings.declared(in: html)
+        #expect(s.map(\.type) == ["toggle", "time", "choice"])
+        #expect(s[2].options?.map(\.label) == ["2 minutes", "3 minutes"])
+        #expect(NotePageSettings.defaults(in: html)["rest"] as? Int == 120)
+        #expect(AppSettingsSheet.hhmm(AppSettingsSheet.time("21:30")) == "21:30")
+    }
+
     @Test func aWidgetGetsItsClassAndTextFollowsTheReadersSize() async throws {
         let sandbox = NotePageSandbox(rules: try await NotePageSandbox.prepare())
         sandbox.isWidget = true
@@ -727,6 +775,20 @@ import WebKit
         #expect(r.contains(#""chart":"function""#) && r.contains(#""dayjs":"function""#), "\(r)")
         #expect(r.contains(#""d3":"function""#), "\(r)")
         #expect(r.contains(#""nope":"refused""#) && r.contains(#""context":"full""#) && r.contains(#""embedded":false"#), "\(r)")
+    }
+
+    /// Every bundled library defines its global in the sandbox (the big ones too).
+    @Test(arguments: NotePageLibraries.bundled.map(\.name))
+    func eachBundledLibraryDefinesItsGlobal(_ name: String) async throws {
+        let lib = try #require(NotePageLibraries.bundled.first { $0.name == name })
+        let sandbox = NotePageSandbox(rules: try await NotePageSandbox.prepare())
+        sandbox.load(html: """
+        <meta name="amber-libs" content="\(name)">
+        <script>window.__r = typeof window["\(lib.global)"];</script>
+        """, body: "x")
+        try await run(sandbox.webView, until: "window.__r !== undefined")
+        let r = try await sandbox.webView.evaluateJavaScript("window.__r") as? String
+        #expect(r != "undefined", "\(name): window.\(lib.global) is \(r ?? "?"); blocked: \(sandbox.blocked)")
     }
 
     @Test func npmPackagesNeedAPinnedVersionAndAMatchingHash() async throws {

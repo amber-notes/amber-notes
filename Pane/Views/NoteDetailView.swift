@@ -40,7 +40,9 @@ struct NoteDetailView: View {
     @State private var confirmLock = false
     @State private var lockProblem: String?
     /// Note pages (prototype): Page or Text, when the note has a page.
-    @State private var mode: NoteMode = .page
+    @State private var mode: NoteMode = NoteDetailView.startMode
+    /// Which side a note with an app opens on (Mac shots photograph both).
+    nonisolated(unsafe) static var startMode: NoteMode = .page
     /// The text before edits made on the page, tinted once Text shows again.
     @State private var pageTint: String?
     /// The page as last shown, to tell an AI's new page from one already seen.
@@ -90,7 +92,7 @@ struct NoteDetailView: View {
                 Button("Don't Allow", role: .cancel) { hostAsk?.answer(false); hostAsk = nil }
                 Button("Allow") { hostAsk?.answer(true); hostAsk = nil }
             } message: {
-                Text("Everything it sends there is listed in More › Network Activity.")
+                Text("Everything it sends there is listed in App Settings › Internet.")
             }
             .sheet(item: $addingKey) { d in APIKeyForm(draft: d) }
             .sheet(isPresented: $showNetLog) { NotePageNetLogView(noteID: note.id) }
@@ -141,7 +143,7 @@ struct NoteDetailView: View {
                 if shownPage != nil { NotePageTiming.open(note.id) }
                 showChip = false
                 pageTint = nil
-                mode = .page
+                mode = Self.startMode
                 showAIEdit()
                 #if os(macOS)
                 PaneTips.menuBarShown = MenuBarSettings.allowed && UserDefaults.standard.object(forKey: MenuBarSettings.key) as? Bool ?? true
@@ -327,7 +329,12 @@ struct NoteDetailView: View {
     /// state (a ticked set, a rating): kept quietly, versioned on the server, without a receipt;
     /// receipts are for changes to the note's text.
     private func pageData(_ message: Any) async throws -> [String: Any] {
-        try await NotePageActions.data(message, note: note, context: context, sync: sync, html: notePage?.html ?? "",
+        // amber.openSettings(): the native App Settings sheet, instead of a gear inside the app.
+        if (message as? [String: Any])?["op"] as? String == "app.settings" {
+            showAppSettings = true
+            return [:]
+        }
+        return try await NotePageActions.data(message, note: note, context: context, sync: sync, html: notePage?.html ?? "",
                                        ask: askHost, needKey: { need in withAnimation(.smooth) { keyNeeded = need } }).reply
     }
 
@@ -406,7 +413,7 @@ struct NoteDetailView: View {
         Button {
             withAnimation(.smooth(duration: 0.25)) { mode = mode == .page ? .text : .page }
         } label: {
-            Label(mode == .page ? "Show Text" : "Show App", systemImage: mode == .page ? "text.alignleft" : NoteAppMark.symbol)
+            Label(mode == .page ? "Show Text" : "Show App", systemImage: mode == .page ? "doc.plaintext" : NoteAppMark.symbol)
         }
         #if os(macOS)
         .tint(.primary)
@@ -669,8 +676,8 @@ struct NoteDetailView: View {
                 .accessibilityIdentifier("list.newNote")
         }
         ToolbarSpacer(.flexible)
-        // A page has no text to format: the writing tools go while it shows.
-        if !showingPage {
+        // The writing tools stay where they are on the App side, unavailable (an app has no text to
+        // format): both sides keep the same toolbar, so switching never moves anything.
         ToolbarItemGroup {
             formatMenu.disabled(hidden)
             Button("Checklist", systemImage: "checklist", action: controller.checklist)
@@ -681,8 +688,7 @@ struct NoteDetailView: View {
                 .disabled(hidden)
             Button("Attach", systemImage: "paperclip") { importing = true }
                 .help("Attach File (⇧⌘A)")
-                .disabled(note.isLocked)
-        }
+                .disabled(note.isLocked || showingPage)
         }
         ToolbarSpacer(.fixed)
         ToolbarItemGroup {

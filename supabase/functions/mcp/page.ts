@@ -32,13 +32,14 @@ The page's own data (not the note's text; for state the person wouldn't type, li
 The device, through the system's own prompts (results go to the page only; write to the note explicitly if wanted): amber.device.reminders.create({ title, due, repeat: "daily" }), calendar.today() -> { events: [{ title, start, end, location, attendees }] },
   notify({ title, body, at | in }) -> { id }, notify.cancel(id), reminders.complete(id) / reminders.delete(id) (only ones an app made), openURL(url), photos.pick({ limit }) / camera.take() -> { files: [{ $file, thumb }] }, contacts.pick() -> { contact: { name, organization, emails, phones, addresses, birthday?, photo? } }, files.pick(), location.once() -> { lat, lon, place },
   maps.open({ lat, lon | query, directions }), maps.snapshot({ lat, lon, km | pins: [{ lat, lon, label }], fit, pin, width, height, dark }) -> { dataURL, region, points: [{ x, y }] } (points: where each pin landed, to draw on top). On-device AI: amber.ai.available(), amber.ai.respond(prompt, { instructions }) -> { text }. Every call returns { ok, ... } or { ok: false, error }.
-Settings the person can change without an AI: declare <meta name="amber-settings" content='{"settings": [{ "key": "budget", "label": "Monthly budget", "type": "number", "default": 15000 }]}'> (types: text, number, choice with "options", list, color, currency).
+Settings the person can change without an AI: declare <meta name="amber-settings" content='{"settings": [{ "key": "budget", "label": "Monthly budget", "type": "number", "default": 15000 }]}'> (types: text, number, choice with "options" (strings, or { "value": 120, "label": "2 minutes" }), list, color, currency, toggle (true/false), time ("21:30")).
+  amber.openSettings() opens that sheet; don't build a settings screen or a gear of your own.
   Amber Notes shows them in App Settings; read amber.settings (defaults filled in); onChange runs when they change. Use settings for names, goals, limits, currencies and categories instead of hardcoding them.
 Libraries: Amber Notes ships chart (Chart.js 4.4.4 → Chart), d3 (7.9.0 → d3), three (0.160.0 → THREE), tone (14.8.49 → Tone), dayjs (1.11.13), marked (12.0.2), purify (DOMPurify 3.1.6, use it on marked output),
   anime (3.2.2), confetti (canvas-confetti 1.9.3), topojson (topojson-client 3.1.0), world (country shapes, TopoJSON → worldAtlas110m). Declare them: <meta name="amber-libs" content="chart, d3">, loaded before your scripts as those globals; or await amber.lib("three").
   Any other npm package: npm:name@1.2.3/path/to/file.min.js#sha384-<base64> in the same meta (a pinned version and an SRI hash, sha256/384/512); Amber Notes downloads it once from cdn.jsdelivr.net, checks the hash, keeps it on the device. Never paste a library into the page.
 Where the app is: amber.context = { embedded, width, height }; <html data-amber-context="widget|full">. The web view is the app's real size, with safe areas (env(safe-area-inset-*)); resizing and the keyboard work the standard web way.
-Network: the page itself can't reach anything. Declare hosts in <meta name="amber-needs" content='{"hosts": ["api.open-meteo.com"], "keys": [{ "name": "OpenWeather", "hosts": ["api.openweathermap.org"], "query": "appid={key}", "help": "How to get one" }]}'>
+Network: the page itself can't reach anything. Declare hosts ("*.archive.org" covers its servers, for services that redirect to numbered hosts) in <meta name="amber-needs" content='{"hosts": ["api.open-meteo.com"], "keys": [{ "name": "OpenWeather", "hosts": ["api.openweathermap.org"], "query": "appid={key}", "help": "How to get one" }]}'>
   and call amber.fetch(url, { method, headers, body, key }) -> { ok, status, body }. The person approves each host once and sees every request; with key, the app adds that API key (the page never sees it). Redirects are followed only to declared, approved hosts.
 Look like Amber Notes: the app sets these CSS variables on :root, already switched for light and dark, and gives body its font, text colour and background. Use them instead of your own colours and fonts:
   --amber-bg (the note's background), --amber-surface (cards and grouped rows), --amber-fill (controls, empty cells), --amber-text, --amber-text-secondary, --amber-separator,
@@ -88,6 +89,12 @@ export function declaredHosts(html: string): Set<string> {
   }
 }
 
+/** A host the page declared, exactly or under a "*.example.org" pattern (whole labels, not a bare TLD). */
+export function hostDeclared(declared: Set<string>, host: string): boolean {
+  if (declared.has(host)) return true;
+  return [...declared].some((d) => d.startsWith("*.") && d.slice(2).includes(".") && !d.slice(2).includes("*") && host.endsWith(d.slice(1)));
+}
+
 /** Why a page can't be stored, or null when it can. */
 export function pageProblems(html: string): string[] {
   const out: string[] = [];
@@ -100,7 +107,7 @@ export function pageProblems(html: string): string[] {
   const declared = declaredHosts(html);
   const urls = [...html.matchAll(/\b[a-z][a-z0-9+.-]*:\/\/[^\s"'<>)]*/gi)].map((m) => m[0])
     .filter((u) => !NAMESPACES.test(u.replace(/\/$/, "")) && !/^amber-(lib|file):/i.test(u))
-    .filter((u) => { try { const x = new URL(u); return !(/^https?:$/.test(x.protocol) && declared.has(x.host.toLowerCase())); } catch { return true; } });
+    .filter((u) => { try { const x = new URL(u); return !(/^https?:$/.test(x.protocol) && hostDeclared(declared, x.host.toLowerCase())); } catch { return true; } });
   if (urls.length) out.push(`External addresses aren't allowed: ${[...new Set(urls)].slice(0, 3).join(", ")}. The page has no network of its own; to call a service, declare its host in <meta name="amber-needs"> and use amber.fetch.`);
   // Protocol-relative addresses and stylesheet imports.
   if (/\b(src|href|action|formaction|poster|data|srcset|background)\s*=\s*["']?\s*\/\//i.test(html) || /url\(\s*["']?\s*\/\//i.test(html)) {
