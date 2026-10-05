@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="amber-settings" content='{"settings":[{"key":"servings","label":"Usual servings","type":"number","default":2,"help":"For dinners you plan from here."},{"key":"pantry","label":"Always at home","type":"list","default":["salt","pepper","olive oil"],"help":"Left off the shopping list."},{"key":"groupAisles","label":"Group the list by aisle","type":"toggle","default":true}]}'>
+<meta name="app-settings" content='{"settings":[{"key":"servings","label":"Usual servings","type":"number","default":2,"help":"For dinners you plan from here."},{"key":"pantry","label":"Always at home","type":"list","default":["salt","pepper","olive oil"],"help":"Left off the shopping list."},{"key":"groupAisles","label":"Group the list by aisle","type":"toggle","default":true}]}'>
 <title>Kitchen</title>
 <style>
 /* The shared look of the best-apps set: Amber Notes' variables, iOS-like grouped lists, sheets. */
@@ -167,6 +167,13 @@ html.sheet-open, html.sheet-open body { overflow: hidden; }
   .cols.side { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); }
   .top h1 { font-size: 2.2rem; }
 }
+
+/* Settings, inside the app. */
+.settings-list .setrow { flex-wrap: wrap; }
+.settings-list label.setrow { cursor: pointer; }
+.settings-list .setrow > label.grow { flex: 1 1 8rem; }
+.settings-list .set-input { flex: 0 1 11rem; min-width: 0; overflow: hidden; border-radius: var(--amber-radius-small); }
+.settings-list .set-input .in { display: block; width: 100%; min-width: 0; max-width: 100%; min-height: 2.5rem; }
 
 :root { --serif: "New York", ui-serif, Georgia, serif; }
 .tile { position: relative; overflow: hidden; background: var(--g); color: #fff; display: flex; flex-direction: column; justify-content: flex-end; }
@@ -371,13 +378,14 @@ const Kit = (() => {
   // The app's frame: a bottom tab bar on the phone and a sidebar from 900 px, with screens pushed
   // on top (a back button, a slide). screen(tab, note) returns a screen's HTML; after(tab) wires it.
   function app({ tabs, screen, after, header }) {
+    if (schema.length && !tabs.some((t) => t.id === "settings")) tabs = [...tabs, { id: "settings", label: "Settings", icon: "gear" }];
     const st = { tab: tabs[0].id, stack: [], scroll: {}, dir: "" };
     const root = document.getElementById("app");
     root.classList.add("shell-root");
     function draw(note = amber.note) {
       const top = st.stack[st.stack.length - 1];
       const t = tabs.find((x) => x.id === st.tab);
-      const content = top ? top.render(note) : screen(st.tab, note);
+      const content = top ? top.render(note) : st.tab === "settings" ? `<header class="top"><div class="titles"><h1>Settings</h1></div></header>${settingsHTML()}` : screen(st.tab, note);
       const titleHTML = top ? `<header class="push-h"><button class="backb" data-pop aria-label="Back to ${esc(top.backLabel || t.label)}">${ico("back")}<span>${esc(top.backLabel || t.label)}</span></button></header>` : "";
       root.innerHTML = `<div class="shell ${top && top.immersive ? "immersive" : ""}">
         <nav class="sidebar" aria-label="Sections"><div class="sb-title">${esc(note.title)}</div>${header ? header(note) : ""}${tabs.map((x) => `<button class="sb-item" data-tab="${x.id}" aria-current="${x.id === st.tab ? "page" : "false"}">${ico(x.icon)}<span>${esc(x.label)}</span>${x.badge && x.badge(note) ? `<i class="badge num">${x.badge(note)}</i>` : ""}</button>`).join("")}</nav>
@@ -385,7 +393,7 @@ const Kit = (() => {
         <nav class="tabbar" aria-label="Sections">${tabs.map((x) => `<button class="tb-item" data-tab="${x.id}" aria-current="${x.id === st.tab ? "page" : "false"}">${ico(x.icon)}<span>${esc(x.label)}</span>${x.badge && x.badge(note) ? `<i class="badge num">${x.badge(note)}</i>` : ""}</button>`).join("")}</nav>
       </div>`;
       st.dir = "";
-      if (top && top.after) top.after(document.getElementById("screen")); else if (!top && after) after(st.tab, document.getElementById("screen"));
+      if (top && top.after) top.after(document.getElementById("screen")); else if (!top && after && st.tab !== "settings") after(st.tab, document.getElementById("screen"));
     }
     root.addEventListener("click", (e) => {
       const tb = e.target.closest("[data-tab]");
@@ -403,9 +411,41 @@ const Kit = (() => {
     return { draw, push, pop, get tab() { return st.tab; }, set tab(v) { st.tab = v; st.stack = []; draw(); }, get depth() { return st.stack.length; } };
   }
 
-  // App settings are declared in <meta name="amber-settings"> and changed in Amber Notes' own
-  // App Settings sheet; amber.settings has the defaults filled in.
-  const settings = () => amber.settings || {};
+  // App settings: declared once in <meta name="app-settings"> (types: number, text, time, toggle,
+  // choice with options as strings or {value, label}, list, currency), shown inside the app as its
+  // own Settings screen, and kept in the app's own data under values.settings.
+  const schema = (() => { const m = document.querySelector('meta[name="app-settings"]'); try { return m ? JSON.parse(m.content).settings : []; } catch (e) { console.error("app-settings:", e.message); return []; } })();
+  const settings = () => Object.assign({}, ...schema.map((f) => ({ [f.key]: f.default })), (amber.data.values && amber.data.values.settings) || {});
+  const optVal = (o) => (o && typeof o === "object" ? o.value : o), optLabel = (o) => (o && typeof o === "object" ? o.label : o);
+  const CURRENCIES = ["SEK", "NOK", "DKK", "EUR", "USD", "GBP", "CHF", "JPY"];
+  function settingsHTML() {
+    const s = settings();
+    const row = (f) => {
+      const id = "set-" + f.key, v = s[f.key];
+      const help = f.help ? `<div class="muted small">${esc(f.help)}</div>` : "";
+      if (f.type === "toggle") return `<label class="row setrow" for="${id}"><span class="grow">${esc(f.label)}${help}</span><input class="switch" type="checkbox" role="switch" id="${id}" data-set="${f.key}" ${v ? "checked" : ""}></label>`;
+      let input;
+      if (f.type === "choice" || f.type === "currency") input = `<select class="in" id="${id}" data-set="${f.key}">${(f.type === "currency" ? CURRENCIES : f.options).map((o) => `<option value="${esc(optVal(o))}" ${String(optVal(o)) === String(v) ? "selected" : ""}>${esc(optLabel(o))}</option>`).join("")}</select>`;
+      else if (f.type === "list") input = `<input class="in" id="${id}" data-set="${f.key}" value="${esc((Array.isArray(v) ? v : []).join(", "))}">`;
+      else input = `<input class="in ${f.type === "number" ? "num" : ""}" id="${id}" data-set="${f.key}" type="${f.type === "number" ? "number" : f.type === "time" ? "time" : "text"}" ${f.type === "number" ? 'inputmode="decimal"' : ""} value="${esc(v ?? "")}">`;
+      return `<div class="row setrow"><label class="grow" for="${id}">${esc(f.label)}${help}</label><div class="set-input">${input}</div></div>`;
+    };
+    return `<section class="card list settings-list">${schema.map(row).join("")}</section><p class="muted small" style="margin:.7rem .3rem 0">Kept with this note's app, on all your devices.</p>`;
+  }
+  function saveSetting(el) {
+    const f = schema.find((x) => x.key === el.dataset.set); if (!f) return;
+    let v;
+    if (f.type === "toggle") v = el.checked;
+    else if (f.type === "number") { v = parseFloat(String(el.value).replace(",", ".")); if (!Number.isFinite(v)) v = f.default; }
+    else if (f.type === "list") v = el.value.split(",").map((x) => x.trim()).filter(Boolean);
+    else if (f.type === "choice") { const o = f.options.find((x) => String(optVal(x)) === el.value); v = o != null ? optVal(o) : el.value; }
+    else v = el.value;
+    return amber.setData({ values: { settings: { [f.key]: v } } });
+  }
+  document.addEventListener("change", (e) => { const el = e.target.closest && e.target.closest("[data-set]"); if (el) saveSetting(el); });
+  const openSettings = () => sheet("Settings", settingsHTML());
+  document.addEventListener("click", (e) => { if (e.target.closest && e.target.closest("[data-settings]")) openSettings(); });
+
   const on = (v) => v === true || v === "On" || v === "on" || v === "Yes";
 
   // Charts drawn at their real width (so 10 px labels stay 10 px): width(key) is the last measured
@@ -428,7 +468,7 @@ const Kit = (() => {
   const hash = (s) => { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); };
   const announce = (() => { let el; return (msg) => { if (!el) { el = document.createElement("div"); el.className = "sr"; el.setAttribute("aria-live", "polite"); document.body.appendChild(el); } el.textContent = ""; setTimeout(() => (el.textContent = msg), 30); }; })();
 
-  return { app, width, fit, onResize, esc, $, $$, ico, D, num, kr, fmtN, done, col, table, addRows, sheet, close, settings, on, once, hash, announce };
+  return { schema, settingsHTML, openSettings, app, width, fit, onResize, esc, $, $$, ico, D, num, kr, fmtN, done, col, table, addRows, sheet, close, settings, on, once, hash, announce };
 })();
 
 const { esc, ico, D, num, col, sheet, announce } = Kit;

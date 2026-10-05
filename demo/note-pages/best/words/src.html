@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="amber-settings" content='{"settings":[{"key":"seconds","label":"Round length","type":"choice","options":["30 seconds","60 seconds","90 seconds"],"default":"60 seconds"},{"key":"sound","label":"Sound when a round starts","type":"toggle","default":false,"help":"You can also turn it on with the speaker in the game."}]}'>
+<meta name="app-settings" content='{"settings":[{"key":"seconds","label":"Round length","type":"choice","options":["30 seconds","60 seconds","90 seconds"],"default":"60 seconds"},{"key":"sound","label":"Sound when a round starts","type":"toggle","default":false,"help":"You can also turn it on with the speaker in the game."}]}'>
 <title>Word Rush</title>
 <style>
 /*KIT_CSS*/
@@ -294,7 +294,7 @@ function render(note = amber.note) {
   const r = state === "done" && lastResult;
   app.innerHTML = `
   <header class="top"><div class="titles"><h1>${esc(note.title)}</h1><div class="sub">${W.list.length} words${tricky.length ? ` · ${tricky.length} tricky` : ""}</div></div>
-    <button class="round sound" id="snd" aria-pressed="${soundOn}" aria-label="Sound ${soundOn ? "on" : "off"}">${soundIcon()}</button></header>
+    <button class="round sound" id="snd" aria-pressed="${soundOn}" aria-label="Sound ${soundOn ? "on" : "off"}">${soundIcon()}</button><button class="round" data-settings aria-label="Settings">${ico("gear")}</button></header>
   <div class="homegrid"><div>
   ${r ? `<section class="card result rise"><div class="k muted small" style="font-weight:700;letter-spacing:.08em;text-transform:uppercase">Round over</div><div class="big num">${r.score}</div>
       ${r.newBest ? `<span class="badge">New best</span>` : `<p>Best is ${best}</p>`}

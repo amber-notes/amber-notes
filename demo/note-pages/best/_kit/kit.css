@@ -159,3 +159,10 @@ html.sheet-open, html.sheet-open body { overflow: hidden; }
   .cols.side { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); }
   .top h1 { font-size: 2.2rem; }
 }
+
+/* Settings, inside the app. */
+.settings-list .setrow { flex-wrap: wrap; }
+.settings-list label.setrow { cursor: pointer; }
+.settings-list .setrow > label.grow { flex: 1 1 8rem; }
+.settings-list .set-input { flex: 0 1 11rem; min-width: 0; overflow: hidden; border-radius: var(--amber-radius-small); }
+.settings-list .set-input .in { display: block; width: 100%; min-width: 0; max-width: 100%; min-height: 2.5rem; }

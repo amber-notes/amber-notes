@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="amber-settings" content='{"settings":[{"key":"tempo","label":"Tempo (BPM)","type":"number","default":100},{"key":"swing","label":"Swing","type":"choice","options":["None","Light","Heavy"],"default":"None"},{"key":"kit","label":"Kit","type":"choice","options":["Warm","Bright","Lo-fi"],"default":"Warm"},{"key":"chain","label":"After the last bar","type":"choice","options":["Loop this pattern","Play the next pattern"],"default":"Loop this pattern"}]}'>
+<meta name="app-settings" content='{"settings":[{"key":"tempo","label":"Tempo (BPM)","type":"number","default":100},{"key":"swing","label":"Swing","type":"choice","options":["None","Light","Heavy"],"default":"None"},{"key":"kit","label":"Kit","type":"choice","options":["Warm","Bright","Lo-fi"],"default":"Warm"},{"key":"chain","label":"After the last bar","type":"choice","options":["Loop this pattern","Play the next pattern"],"default":"Loop this pattern"}]}'>
 <title>Beat</title>
 <style>
 /*KIT_CSS*/
@@ -168,7 +168,7 @@ function render(note = amber.note) {
   if (page >= pages) page = 0;
   const from = page * per, cols = [...Array(per)].map((_, j) => from + j);
   app.innerHTML = `
-  <header class="top"><div class="titles"><h1>${esc(note.title)}</h1><div class="sub">${ps.length} ${ps.length === 1 ? "pattern" : "patterns"} · ${p.rows.length} sounds · ${p.steps} steps</div></div></header>
+  <header class="top"><div class="titles"><h1>${esc(note.title)}</h1><div class="sub">${ps.length} ${ps.length === 1 ? "pattern" : "patterns"} · ${p.rows.length} sounds · ${p.steps} steps</div></div><button class="round" data-settings aria-label="Settings">${ico("gear")}</button></header>
   <section class="deck" aria-label="Transport">
     <div class="transport">
       <button class="play" id="play" aria-label="${playing ? "Stop" : "Play"}">${playing ? `<svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>` : `<svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg>`}</button>

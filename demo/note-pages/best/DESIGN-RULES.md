@@ -33,7 +33,7 @@ What the best-apps set follows, after Emil's review. Written for the AI guide (p
 ## Look and data
 
 16. Only the --amber-* variables for colour, plus a small palette of your own with dark variants. Both themes designed, not inverted.
-17. Settings live in amber-settings (shown natively under App Settings). No in-app gear.
+17. Each app draws its own settings in one obvious place: a Settings tab in tabbed apps, a gear in single-screen ones. Good defaults; values kept in the app's own data.
 18. The note keeps what a person or AI should read (tables, checklists); the app's own data keeps state (a workout in progress, scores, schedules). App-data writes are quiet; note edits get a receipt with Undo, batched so one action is one Undo.
 19. Motion explains a change (a pushed screen slides, a sheet rises, a tick pops) and respects reduced motion.
 20. Check every screen and every sheet in light and dark at 320, 390 and 1440 px before calling it done.

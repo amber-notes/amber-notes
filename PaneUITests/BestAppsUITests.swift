@@ -427,4 +427,18 @@ final class BestAppsUITests: XCTestCase {
         pause(1.8)
         mark("end")
     }
+
+    /// Each app's own Settings: a tab in the tabbed apps, a gear in the single-screen ones.
+    func testSettings() {
+        for (dirName, title) in [("habits", "Habits"), ("money", "Money"), ("training", "Training"), ("reading", "Reading"), ("trip", "Rome"), ("people", "People"),
+                                 ("kitchen", "Kitchen"), ("study", "Biology: the cell"), ("words", "Swedish words"), ("beat", "Beat"), ("shelf", "Bookshelf")] {
+            launch(title)
+            pause(2)
+            if dirName == "trip" { allowHost(wait: 4) }
+            pause(1)
+            if ["words", "beat", "shelf"].contains(dirName) { tap(button("Settings"), then: 1.2) } else { tabTo("Settings"); pause(0.6) }
+            shot("\(dirName)-settings")
+            app.terminate()
+        }
+    }
 }
