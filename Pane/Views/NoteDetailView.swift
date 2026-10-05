@@ -17,6 +17,8 @@ struct NoteDetailView: View {
     @State private var undoFailed: String?
     /// For Undo of a page an AI made: the page before it (nil: none).
     @State private var undoPage: NotePageStore.Page?
+    /// For Undo of a change to the app's own data: the data before it.
+    @State private var undoData: NotePageData.Doc?
     /// Lock Note: setting the password up, asking for it, or confirming.
     @State private var lockSheet: LockSheet?
     @State private var confirmLock = false
@@ -183,6 +185,12 @@ struct NoteDetailView: View {
             return
         }
         if r.kind == .pageEdit { pageTint = nil }
+        if r.kind == .dataEdit {
+            // Back to the data before this run of changes; the note's text is untouched.
+            if let undoData { NotePageDataStore.shared.set(note.id, undoData) }
+            undoData = nil
+            return
+        }
         // The editor takes the old text as an outside change, which also clears the tint.
         let note = self.note
         Task { @MainActor in
@@ -211,7 +219,7 @@ struct NoteDetailView: View {
                     .allowsHitTesting(!showingPage)
                     .accessibilityHidden(showingPage)
                 if let page = notePage {
-                    NotePageView(noteID: note.id, html: page.html, text: text, onUpdate: applyPageEdit, onFailure: pageFailed)
+                    NotePageView(noteID: note.id, html: page.html, text: text, onUpdate: applyPageEdit, onFailure: pageFailed, onData: pageData)
                         .id(note.id)
                         .opacity(showingPage ? 1 : 0)
                         .allowsHitTesting(showingPage)
@@ -252,6 +260,44 @@ struct NoteDetailView: View {
             try? await Task.sleep(for: .seconds(10 * ChangeTint.slowMotion))
             while ChangeTint.holdForCapture, receipt == r { try? await Task.sleep(for: .seconds(0.1)) }
             if receipt == r { withAnimation(.easeIn(duration: 0.2)) { receipt = nil } }
+        }
+    }
+
+    /// The app's own data and files (amber.store, amber.files). Data changes are kept next to the
+    /// page, never in the note's text, and get a receipt with Undo like any other change.
+    private func pageData(_ message: Any) async throws -> [String: Any] {
+        let m = message as? [String: Any] ?? [:]
+        switch m["op"] as? String {
+        case "file.save":
+            guard let b64 = m["base64"] as? String, let bytes = Data(base64Encoded: b64) else { throw NotePage.OpError("Send { name, type, base64 }.") }
+            guard bytes.count <= 50 * 1024 * 1024 else { throw NotePage.OpError("Files can be at most 50 MB.") }
+            let name = (m["name"] as? String).map { String($0.prefix(200)) } ?? "File"
+            let type = (m["type"] as? String).flatMap { UTType(mimeType: $0) } ?? UTType(filenameExtension: (name as NSString).pathExtension) ?? .data
+            let a = try FileStore.importData(bytes, filename: name, type: type)
+            context.insert(a)
+            try? context.save()
+            SyncSignal.changed()
+            return ["file": ["$file": a.id.uuidString.lowercased(), "name": a.filename, "type": type.preferredMIMEType ?? "application/octet-stream", "size": a.size]]
+        case "file.read":
+            guard let s = m["id"] as? String, let id = UUID(uuidString: s), let a = context.attachment(id) else { throw NotePage.OpError("No such file.") }
+            if !FileStore.exists(a) { _ = await sync?.download(a) }
+            guard let bytes = try? Data(contentsOf: FileStore.url(for: a.id, filename: a.filename)) else { throw NotePage.OpError("That file isn't on this device yet.") }
+            guard bytes.count <= 20 * 1024 * 1024 else { throw NotePage.OpError("That file is too big to show in the app (20 MB at most).") }
+            return ["dataURL": "data:\(a.type.preferredMIMEType ?? "application/octet-stream");base64,\(bytes.base64EncodedString())", "name": a.filename]
+        default:
+            let store = NotePageDataStore.shared
+            let before = store.doc(note.id)
+            let (after, made) = try NotePageData.apply(try NotePageData.Op(message), to: before)
+            store.set(note.id, after)
+            if undoData == nil || receipt?.kind != .dataEdit { undoData = before }
+            let r = AIEdit.Receipt(noteID: note.id, by: AIGlyph.page, at: .now, previous: note.body, lines: 0, kind: .dataEdit)
+            withAnimation(.spring(duration: 0.45, bounce: 0.25)) { receipt = r }
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(6 * ChangeTint.slowMotion))
+                while ChangeTint.holdForCapture, receipt == r { try? await Task.sleep(for: .seconds(0.1)) }
+                if receipt == r { withAnimation(.easeIn(duration: 0.2)) { receipt = nil }; undoData = nil }
+            }
+            return ["data": after].merging(made.map { ["id": $0] } ?? [:]) { a, _ in a }
         }
     }
 

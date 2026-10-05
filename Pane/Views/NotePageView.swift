@@ -15,6 +15,8 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
     let webView: WKWebView
     /// Applies a page's edit to the note; throws to tell the page why not.
     var onUpdate: (NotePage.Op) throws -> Void = { _ in }
+    /// The page's own data and files (amber.store, amber.files): returns the reply.
+    var onData: @MainActor (Any) async throws -> [String: Any] = { _ in throw NotePage.OpError("Not available.") }
     /// The page has drawn its first frame: shown from then on, so it never flashes blank.
     var onReady: () -> Void = {}
     /// It threw while loading, or drew nothing: the reasons.
@@ -78,6 +80,7 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
         let proxy = WeakHandler(self)
         config.userContentController.addScriptMessageHandler(proxy, contentWorld: .page, name: "amber")
         config.userContentController.add(proxy, contentWorld: .page, name: "amberReady")
+        config.userContentController.addScriptMessageHandler(proxy, contentWorld: .page, name: "amberData")
         webView.navigationDelegate = self
         webView.uiDelegate = self
         #if os(iOS)
@@ -93,17 +96,17 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
     }
 
     /// Shows `html` with `body` as its note. The document's own <!doctype> gives way to the policy.
-    func load(html: String, body: String) {
+    func load(html: String, body: String, data: NotePageData.Doc = NotePageData.empty()) {
         let ucc = webView.configuration.userContentController
         ucc.removeAllUserScripts()
-        ucc.addUserScript(WKUserScript(source: Self.bootstrap(data: NotePage.data(of: body)), injectionTime: .atDocumentStart, forMainFrameOnly: true, in: .page))
+        ucc.addUserScript(WKUserScript(source: Self.bootstrap(data: NotePage.data(of: body), store: data), injectionTime: .atDocumentStart, forMainFrameOnly: true, in: .page))
         loading = true
         webView.loadHTMLString(Self.sandboxed(html), baseURL: nil)
     }
 
     /// The note changed (the page's own edit, typing elsewhere, sync, Undo): the page re-renders.
-    func push(body: String) {
-        webView.callAsyncJavaScript("window.amber && window.amber._receive(note)", arguments: ["note": NotePage.data(of: body)], in: nil, in: .page) { _ in }
+    func push(body: String, data: NotePageData.Doc? = nil) {
+        webView.callAsyncJavaScript("window.amber && window.amber._receive(note, data)", arguments: ["note": NotePage.data(of: body), "data": data ?? NSNull()], in: nil, in: .page) { _ in }
     }
 
     static func sandboxed(_ html: String) -> String {
@@ -114,8 +117,9 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
             + #"<style id="amber-theme">\#(NotePageTheme.css)</style>"# + rest
     }
 
-    static func bootstrap(data: [String: Any]) -> String {
+    static func bootstrap(data: [String: Any], store: NotePageData.Doc = NotePageData.empty()) -> String {
         let json = (try? JSONSerialization.data(withJSONObject: data)).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
+        let storeJSON = String(data: NotePageData.encode(store), encoding: .utf8) ?? "{}"
         return """
         (() => {
           const listeners = [];
@@ -129,12 +133,41 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
             },
             onChange(fn) {
               listeners.push(fn);
-              try { fn(amber.note); } catch (e) { failed(e); console.error(e); }
+              try { fn(amber.note, amber.data); } catch (e) { failed(e); console.error(e); }
+            },
+            // The page's own data: never in the note's text.
+            data: \(storeJSON),
+            setData(patch) { return ask({ op: "store.patch", patch }); },
+            store: {
+              get: (key) => Promise.resolve(amber.data.values[key]),
+              set: (key, value) => ask({ op: "store.set", key, value: value === undefined ? null : value }),
+              collection(name) {
+                const list = () => (amber.data.collections[name] || []).slice();
+                return {
+                  list: () => Promise.resolve(list()),
+                  query: (fn) => Promise.resolve(list().filter(fn)),
+                  get: (id) => Promise.resolve(list().find((r) => r.id === id)),
+                  add: (fields) => ask({ op: "collection.add", name, fields }),
+                  update: (id, patch) => ask({ op: "collection.update", name, id, patch }),
+                  remove: (id) => ask({ op: "collection.remove", name, id }),
+                };
+              },
+              subscribe(fn) { amber.onChange((note, data) => fn(data)); },
+            },
+            // Files (photos, recordings, PDFs) in the encrypted file storage; records keep the ref.
+            files: {
+              save: (file) => ask({ op: "file.save", ...file }),
+              read: (ref) => ask({ op: "file.read", id: (ref && ref.$file) || ref }),
             },
           };
-          Object.defineProperty(amber, "_receive", { value(note) {
+          // A write's reply carries the new data, so it's there as soon as the promise resolves.
+          const ask = (msg) => window.webkit.messageHandlers.amberData.postMessage(msg)
+            .then((r) => { if (r && r.data) amber.data = r.data; if (r) delete r.data; return r; })
+            .catch((e) => ({ ok: false, error: String((e && e.message) || e) }));
+          Object.defineProperty(amber, "_receive", { value(note, data) {
             amber.note = note;
-            for (const fn of listeners) { try { fn(note); } catch (e) { console.error(e); } }
+            if (data) amber.data = data;
+            for (const fn of listeners) { try { fn(note, amber.data); } catch (e) { console.error(e); } }
           } });
           window.amber = amber;
           // Width classes on <html>, kept current as the window resizes: narrow under 600 px,
@@ -167,6 +200,21 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
     // MARK: The bridge
 
     func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage, replyHandler: @escaping @MainActor @Sendable (Any?, String?) -> Void) {
+        if message.name == "amberData" {
+            // As JSON into the task: the message's own objects can't cross into it.
+            let json = try? JSONSerialization.data(withJSONObject: message.body)
+            Task { @MainActor in
+                do {
+                    let body: Any = json.flatMap { try? JSONSerialization.jsonObject(with: $0) } ?? [String: Any]()
+                    var reply = try await onData(body)
+                    reply["ok"] = true
+                    replyHandler(reply, nil)
+                } catch {
+                    replyHandler(["ok": false, "error": (error as? LocalizedError)?.errorDescription ?? "That didn't work."], nil)
+                }
+            }
+            return
+        }
         do {
             try onUpdate(try NotePage.Op(message.body))
             replyHandler(["ok": true], nil)
@@ -219,6 +267,7 @@ struct NotePageView: View {
     let onUpdate: (NotePage.Op) throws -> Void
     /// The page threw while loading or drew nothing.
     var onFailure: ([String]) -> Void = { _ in }
+    var onData: @MainActor (Any) async throws -> [String: Any] = { _ in throw NotePage.OpError("Not available.") }
     @State private var sandbox: NotePageSandbox?
     @State private var failed: String?
     @State private var ready = false
@@ -252,13 +301,15 @@ struct NotePageView: View {
                     }
                 }
                 s.onFailure = onFailure
-                s.load(html: html, body: text)
+                s.onData = onData
+                s.load(html: html, body: text, data: NotePageDataStore.shared.doc(noteID))
                 sandbox = s
             } catch {
                 failed = error.localizedDescription
             }
         }
-        .onChange(of: text) { _, now in sandbox?.push(body: now) }
+        .onChange(of: text) { _, now in sandbox?.push(body: now, data: NotePageDataStore.shared.doc(noteID)) }
+        .onChange(of: NotePageDataStore.shared.docs[noteID]) { _, _ in sandbox?.push(body: text, data: NotePageDataStore.shared.doc(noteID)) }
     }
 
     @ViewBuilder

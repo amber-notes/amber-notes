@@ -165,6 +165,7 @@ final class SyncEngine {
         if pulling { status = .syncing }
         do {
             let slowedDown = try await push(client, sealer: sealer)
+            await pushPageData(client, sealer: sealer)
             if pulling { try await pull(client); hasSynced = true }
             if slowedDown {
                 // The server asked us to slow down: the rest goes up in a little while.
@@ -805,6 +806,39 @@ final class SyncEngine {
         return lines.joined(separator: "\n")
     }
 
+    // MARK: Page data (prototype)
+
+    /// Pushes each app's own data that changed here. The server's copy is read first and merged
+    /// with this device's changes (NotePageData.merge), and the write only lands if nothing else
+    /// wrote in between; otherwise it merges again on the next run. A backend without the column
+    /// leaves the data here, unchanged.
+    private func pushPageData(_ client: SupabaseClient, sealer: Sealer) async {
+        struct Row: Decodable { var data_ct: String?; var server_updated_at: Date? }
+        struct Upsert: Encodable { var note_id: UUID; var data_ct: String }
+        let store = NotePageDataStore.shared
+        for id in store.dirty {
+            do {
+                let rows: [Row] = try await client.from("note_pages").select("data_ct,server_updated_at").eq("note_id", value: id).execute().value
+                let server = rows.first?.data_ct.flatMap { sealer.open($0, context: E2EE.pageData(id)) }.map { Data($0.utf8) }
+                if rows.first?.data_ct != nil, server == nil { continue }   // sealed with another key: leave it
+                store.take(id, server: server)
+                guard store.dirty.contains(id), let doc = store.docs[id], let json = String(data: doc, encoding: .utf8),
+                      let box = sealer.seal(json, context: E2EE.pageData(id)) else { continue }
+                if let stamp = rows.first?.server_updated_at {
+                    let at = stamp.formatted(Date.ISO8601FormatStyle(includingFractionalSeconds: true))
+                    let done: [Row] = try await client.from("note_pages").update(["data_ct": box]).eq("note_id", value: id)
+                        .eq("server_updated_at", value: at).select("data_ct,server_updated_at").execute().value
+                    if !done.isEmpty { store.pushed(id, doc) }
+                } else {
+                    try await client.from("note_pages").upsert(Upsert(note_id: id, data_ct: box), onConflict: "note_id").execute()
+                    store.pushed(id, doc)
+                }
+            } catch {
+                log.error("page data push failed: \(String(describing: error), privacy: .public)")
+            }
+        }
+    }
+
     // MARK: Pull
 
     private func pull(_ client: SupabaseClient) async throws {
@@ -883,10 +917,15 @@ final class SyncEngine {
         }
         if changed { try? context.save() }
         // Note pages (prototype): a backend without the table leaves this out; it never stops a sync.
-        if let pages: [NotePageDTO] = try? await client.from("note_pages").select("note_id,page_ct,client,updated_at,server_updated_at")
+        if let pages: [NotePageDTO] = try? await client.from("note_pages").select("note_id,page_ct,data_ct,client,updated_at,server_updated_at")
             .gt("server_updated_at", value: stamp).order("server_updated_at").execute().value {
             for r in pages {
                 NotePageStore.shared.take(r)
+                if let box = r.data_ct, let json = Wire.sealer?.open(box, context: E2EE.pageData(r.note_id)) {
+                    NotePageDataStore.shared.take(r.note_id, server: Data(json.utf8))
+                } else if r.data_ct == nil {
+                    NotePageDataStore.shared.take(r.note_id, server: nil)
+                }
                 if let s = r.server_updated_at, s > newest { newest = s }
             }
         }
@@ -1083,6 +1122,7 @@ struct FolderDTO: Codable {
 struct NotePageDTO: Decodable {
     var note_id: UUID
     var page_ct: String?
+    var data_ct: String?
     var client: String?
     var updated_at: Date
     var server_updated_at: Date?

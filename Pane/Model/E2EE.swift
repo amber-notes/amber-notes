@@ -43,6 +43,8 @@ enum E2EE {
     static func folder(_ id: UUID) -> String { "folder:" + id.uuidString.lowercased() }
     /// A note's page (prototype, NotePage).
     static func page(_ id: UUID) -> String { "page:" + id.uuidString.lowercased() }
+    /// A page's own data (prototype, NotePageData).
+    static func pageData(_ id: UUID) -> String { "page-data:" + id.uuidString.lowercased() }
     static func fileMeta(_ id: UUID) -> String { "file-meta:" + id.uuidString.lowercased() }
     static func file(_ id: UUID) -> String { "file:" + id.uuidString.lowercased() }
     static func wrap(_ purpose: String, user: UUID) -> String { "wrap:\(purpose):" + user.uuidString.lowercased() }

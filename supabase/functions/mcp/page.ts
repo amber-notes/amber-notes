@@ -20,6 +20,8 @@ Change the note only through amber.update(op), which returns a Promise of { ok: 
   { op: "toggle_checklist", line }            line from amber.note.checklists
   { op: "set_cell", table, row, col, value }  table index, row index (0-based, header excluded), col index or column name; plain one-line text
   { op: "append_row", table, values }         values: { columnName: text } or [text, ...]
+  { op: "delete_row", table, row }  { op: "move_row", table, from, to }
+  { op: "set_text", heading, text }            replaces the text under that heading (up to the next heading of the same level)
 Each change lands in the note's markdown as a normal edit the person can see and undo.
 Look like Amber Notes: the app sets these CSS variables on :root, already switched for light and dark, and gives body its font, text colour and background. Use them instead of your own colours and fonts:
   --amber-bg (the note's background), --amber-surface (cards and grouped rows), --amber-fill (controls, empty cells), --amber-text, --amber-text-secondary, --amber-separator,

@@ -79,6 +79,10 @@ enum NotePage {
         case toggleChecklist(line: Int)
         case setCell(table: Int, row: Int, col: Column, value: String)
         case appendRow(table: Int, values: Values)
+        case deleteRow(table: Int, row: Int)
+        case moveRow(table: Int, from: Int, to: Int)
+        /// Replaces the text under a heading (up to the next heading of the same or a higher level).
+        case setText(heading: String, text: String)
 
         enum Column: Equatable { case index(Int), name(String) }
         enum Values: Equatable { case byName([String: String]), inOrder([String]) }
@@ -106,6 +110,14 @@ enum NotePage {
                 } else {
                     throw OpError("values must be an object or a list.")
                 }
+            case "delete_row":
+                self = .deleteRow(table: try int("table"), row: try int("row"))
+            case "move_row":
+                self = .moveRow(table: try int("table"), from: try int("from"), to: try int("to"))
+            case "set_text":
+                guard let h = m["heading"] as? String, !h.trimmingCharacters(in: .whitespaces).isEmpty else { throw OpError("heading must be the heading's text.") }
+                guard let t = m["text"] as? String, t.count <= 20_000 else { throw OpError("text must be text, at most 20,000 characters.") }
+                self = .setText(heading: h, text: t)
             default:
                 throw OpError("Unknown op \(op).")
             }
@@ -165,6 +177,32 @@ enum NotePage {
                 for (name, x) in d { cells[try column(.name(name), of: table)] = x }
             }
             lines.insert(rowLine(cells), at: table.end)
+        case .deleteRow(let t, let row):
+            let table = try Self.table(t, in: lines)
+            guard row >= 0, row < table.rows.count else { throw OpError("Table \(t) has \(table.rows.count) rows (0-\(table.rows.count - 1)).") }
+            lines.remove(at: table.rowLines[row])
+        case .moveRow(let t, let from, let to):
+            let table = try Self.table(t, in: lines)
+            let n = table.rows.count
+            guard from >= 0, from < n, to >= 0, to < n else { throw OpError("Table \(t) has \(n) rows (0-\(n - 1)).") }
+            guard from != to else { return body }
+            let line = lines.remove(at: table.rowLines[from])
+            lines.insert(line, at: table.rowLines[to])
+        case .setText(let heading, let text):
+            let want = heading.trimmingCharacters(in: .whitespaces).lowercased()
+            func level(_ l: String) -> Int? {
+                let hashes = l.prefix { $0 == "#" }.count
+                return (1...6).contains(hashes) && l.dropFirst(hashes).first == " " ? hashes : nil
+            }
+            guard let at = lines.firstIndex(where: { l in level(l).map { _ in l.drop { $0 == "#" }.trimmingCharacters(in: .whitespaces).lowercased() == want } ?? false }),
+                  let lv = level(lines[at]) else { throw OpError("No heading \(heading).") }
+            var end = at + 1
+            while end < lines.count, (level(lines[end]).map { $0 > lv } ?? true) { end += 1 }
+            // The section's text, then one blank line before the next heading.
+            var section = text.replacingOccurrences(of: "\r", with: "").components(separatedBy: "\n")
+            while section.last?.trimmingCharacters(in: .whitespaces).isEmpty == true { section.removeLast() }
+            if end < lines.count { section.append("") }
+            lines.replaceSubrange((at + 1)..<end, with: section)
         }
         return lines.joined(separator: "\n")
     }

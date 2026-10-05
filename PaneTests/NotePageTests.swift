@@ -300,4 +300,114 @@ import WebKit
         let font = try await sandbox.webView.evaluateJavaScript("getComputedStyle(document.body).fontFamily") as? String
         #expect(font?.contains("system-ui") == true)
     }
+
+    // MARK: The app's own data
+
+    @Test func dataOpsAddUpdateRemoveAndPatch() throws {
+        var n = 0
+        let id = { n += 1; return "r\(n)" }
+        let at = Date(timeIntervalSince1970: 1_790_000_000)
+        var (d, made) = try NotePageData.apply(.set(key: "goal", value: 4), to: NotePageData.empty(), now: at, newID: id)
+        (d, made) = try NotePageData.apply(.add(collection: "runs", fields: ["km": 5.2]), to: d, now: at, newID: id)
+        #expect(made == "r1")
+        (d, _) = try NotePageData.apply(.add(collection: "runs", fields: ["km": 3]), to: d, now: at, newID: id)
+        (d, _) = try NotePageData.apply(.update(collection: "runs", id: "r1", patch: ["km": 6, "note": "hills"]), to: d, now: at, newID: id)
+        (d, _) = try NotePageData.apply(.remove(collection: "runs", id: "r2"), to: d, now: at, newID: id)
+        (d, _) = try NotePageData.apply(.patch(["values": ["goal": NSNull(), "unit": "km"]]), to: d, now: at, newID: id)
+        let runs = try #require((d["collections"] as? [String: Any])?["runs"] as? [[String: Any]])
+        #expect(runs.count == 1)
+        #expect(runs[0]["km"] as? Int == 6 && runs[0]["note"] as? String == "hills" && runs[0]["created"] as? String == ISO8601DateFormatter().string(from: at))
+        #expect(NotePageData.same(d["values"], ["unit": "km"]))
+        #expect(throws: NotePage.OpError.self) { try NotePageData.apply(.remove(collection: "runs", id: "nope"), to: d) }
+        let big = String(repeating: "x", count: NotePageData.maxBytes)
+        #expect(throws: NotePage.OpError("This app's data would be 4.0 MB; the limit is 4 MB. Keep photos and recordings as files.")) {
+            try NotePageData.apply(.set(key: "big", value: big), to: d)
+        }
+        #expect(throws: NotePage.OpError("Unknown op store.delete_all.")) { try NotePageData.Op(["op": "store.delete_all"]) }
+    }
+
+    @Test func twoDevicesWritingAtOnceLoseNothing() {
+        let base: NotePageData.Doc = ["values": ["goal": 4, "unit": "km"], "collections": ["runs": [
+            ["id": "a", "created": "1", "km": 5], ["id": "b", "created": "2", "km": 3], ["id": "c", "created": "3", "km": 8]]]]
+        // This device: new goal, edits run a's km, removes b, adds d.
+        let mine: NotePageData.Doc = ["values": ["goal": 5, "unit": "km"], "collections": ["runs": [
+            ["id": "a", "created": "1", "km": 6], ["id": "c", "created": "3", "km": 8], ["id": "d", "created": "4", "km": 1]]]]
+        // The other device: new unit, notes on run a, edits b, adds e.
+        let theirs: NotePageData.Doc = ["values": ["goal": 4, "unit": "mi"], "collections": ["runs": [
+            ["id": "a", "created": "1", "km": 5, "note": "hills"], ["id": "b", "created": "2", "km": 4], ["id": "c", "created": "3", "km": 8], ["id": "e", "created": "5", "km": 2]]]]
+        let m = NotePageData.merge(base: base, mine: mine, theirs: theirs)
+        #expect(NotePageData.same(m["values"], ["goal": 5, "unit": "mi"]))
+        let runs = (m["collections"] as? [String: Any])?["runs"] as? [[String: Any]] ?? []
+        #expect(runs.map { $0["id"] as? String } == ["a", "b", "c", "d", "e"])
+        // Different fields of one record both land; a record changed there isn't lost to a removal here.
+        #expect(runs[0]["km"] as? Int == 6 && runs[0]["note"] as? String == "hills")
+        #expect(runs[1]["km"] as? Int == 4)
+    }
+
+    @Test func theStoreMergesWhatArrivesWithChangesNotYetPushed() {
+        let store = NotePageDataStore(file: nil)
+        let id = UUID()
+        store.take(id, server: Data(#"{"values":{"a":1},"collections":{}}"#.utf8))
+        store.set(id, ["values": ["a": 1, "b": 2], "collections": [String: Any]()])
+        store.take(id, server: Data(#"{"values":{"a":1,"c":3},"collections":{}}"#.utf8))
+        #expect(NotePageData.same(store.doc(id)["values"], ["a": 1, "b": 2, "c": 3]))
+        #expect(store.dirty.contains(id))
+        store.pushed(id, store.docs[id]!)
+        #expect(!store.dirty.contains(id))
+    }
+
+    @Test func thePageKeepsItsDataThroughTheBridge() async throws {
+        let sandbox = NotePageSandbox(rules: try await NotePageSandbox.prepare())
+        var doc = NotePageData.empty()
+        sandbox.onData = { message in
+            let (after, made) = try NotePageData.apply(try NotePageData.Op(message), to: doc)
+            doc = after
+            return ["data": after].merging(made.map { ["id": $0] } ?? [:]) { a, _ in a }
+        }
+        let page = """
+        <main>x</main><script>
+          amber.onChange(() => {});
+          window.__go = async () => {
+            const runs = amber.store.collection("runs");
+            const a = await runs.add({ km: 5 });
+            await runs.add({ km: 3 });
+            await runs.update(a.id, { km: 6 });
+            await amber.store.set("goal", 4);
+            window.__list = (await runs.list()).map((r) => r.km);
+            window.__goal = await amber.store.get("goal");
+            window.__bad = await runs.remove("nope");
+            window.__done = true;
+          };
+        </script>
+        """
+        sandbox.load(html: page, body: "x", data: doc)
+        try await run(sandbox.webView, until: "typeof window.__go === 'function'")
+        _ = try? await sandbox.webView.evaluateJavaScript("window.__go(); 1")
+        try await run(sandbox.webView, until: "window.__done === true")
+        #expect(try await sandbox.webView.evaluateJavaScript("window.__list") as? [Int] == [6, 3])
+        #expect(try await sandbox.webView.evaluateJavaScript("window.__goal") as? Int == 4)
+        #expect((try await sandbox.webView.evaluateJavaScript("window.__bad.error") as? String)?.hasPrefix("No record nope") == true)
+        #expect(((doc["collections"] as? [String: Any])?["runs"] as? [Any])?.count == 2)
+    }
+
+    // MARK: More note ops
+
+    @Test func deleteAndMoveRowsTouchOnlyThoseLines() throws {
+        let deleted = try apply(["op": "delete_row", "table": 0, "row": 0])
+        #expect(deleted == Self.habits.replacingOccurrences(of: "| 2026-10-03 | ✓ | |\n", with: ""))
+        let moved = try apply(["op": "move_row", "table": 0, "from": 1, "to": 0])
+        #expect(moved.contains("| --- | --- | --- |\n| 2026-10-04 |  | ✓ |\n| 2026-10-03 | ✓ | |\n"))
+        #expect(try apply(["op": "move_row", "table": 0, "from": 0, "to": 0]) == Self.habits)
+        #expect(throws: NotePage.OpError.self) { try apply(["op": "delete_row", "table": 0, "row": 2]) }
+    }
+
+    @Test func setTextReplacesOneSection() throws {
+        let body = "Trip\n\n## Plan\nold line\n- [ ] keep?\n\n### Day 1\nwalk\n\n## Notes\nnotes stay"
+        // The section runs to the next heading of the same or a higher level: Day 1 is inside Plan.
+        let out = try apply(["op": "set_text", "heading": "plan", "text": "New plan\n- [ ] book\n\n"], to: body)
+        #expect(out == "Trip\n\n## Plan\nNew plan\n- [ ] book\n\n## Notes\nnotes stay")
+        let last = try apply(["op": "set_text", "heading": "Notes", "text": "replaced"], to: body)
+        #expect(last.hasSuffix("## Notes\nreplaced"))
+        #expect(throws: NotePage.OpError("No heading Budget.")) { try apply(["op": "set_text", "heading": "Budget", "text": "x"], to: body) }
+    }
 }

@@ -108,10 +108,10 @@ enum AIEdit {
         /// Note pages (prototype): an edit made on the note's page, or a page an AI made.
         var kind: Kind = .edit
 
-        enum Kind: Equatable { case edit, pageEdit, pageMade, pageChanged }
+        enum Kind: Equatable { case edit, pageEdit, dataEdit, pageMade, pageChanged }
 
         var summary: String {
-            if kind == .pageEdit { return "Changed in the app" }
+            if kind == .pageEdit || kind == .dataEdit { return "Changed in the app" }
             if kind == .pageMade { return "\(by) made this note an app" }
             if kind == .pageChanged { return "\(by) changed this note's app" }
             if created { return "\(by) wrote this note" }
