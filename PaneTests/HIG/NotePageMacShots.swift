@@ -116,7 +116,7 @@ import WebKit
         let only = ProcessInfo.processInfo.environment["AMBER_MARKS"].map { Set($0.split(separator: ",").map(String.init)) }
         for style in NoteAppMark.Style.allCases where only?.contains(style.rawValue) ?? true {
             NoteAppMark.style = style
-            defer { NoteAppMark.style = .capsule }
+            defer { NoteAppMark.style = .soft }
             for dark in [false, true] {
                 let (w, _) = try await Self.open("Lisbon", size: CGSize(width: 1280, height: 800), dark: dark, list: 560)
                 defer { w.orderOut(nil); w.close() }

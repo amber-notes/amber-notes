@@ -590,7 +590,7 @@ import WebKit
     }
 
     /// Every demo app loads and draws, with its own note.
-    @Test(arguments: ["habit-tracker", "budget", "budget-v2", "spending-chart", "expense-form", "savings-goal", "habit-reminders", "trip-log", "weather-key", "budget-dashboard", "reading-stack"])
+    @Test(arguments: ["habit-tracker", "budget", "budget-v2", "spending-chart", "expense-form", "savings-goal", "habit-reminders", "trip-log", "weather-key", "budget-dashboard", "reading-stack", "packing"])
     func demoAppsLoad(_ name: String) async throws {
         let dir = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().appending(path: "demo/note-pages")
         let html = try String(contentsOf: dir.appending(path: name + ".html"), encoding: .utf8)
@@ -748,6 +748,25 @@ import WebKit
         #expect(AppSettingsSheet.hhmm(AppSettingsSheet.time("21:30")) == "21:30")
     }
 
+    @Test func settingsHaveSectionsRangesDatesMultiAndConditions() {
+        let html = #"<meta name="amber-settings" content='{"settings":[{"key":"rest","type":"number","min":30,"max":300,"step":15,"default":90,"section":"Timer"},{"key":"sound","type":"toggle","section":"Timer"},{"key":"tone","type":"choice","options":["Bell","Chime"],"showIf":"sound","section":"Timer"},{"key":"days","type":"multi","options":["Mon","Wed","Fri"],"default":["Mon"]},{"key":"start","type":"date","default":"2026-10-05"}]}'>"#
+        let s = NotePageSettings.declared(in: html)
+        #expect(s.map(\.type) == ["number", "toggle", "choice", "multi", "date"])
+        #expect(s[0].min == 30 && s[0].max == 300 && s[0].step == 15 && s[0].section == "Timer")
+        #expect(s[2].showIf?.holds(in: ["sound": false]) == false)
+        #expect(s[2].showIf?.holds(in: ["sound": true]) == true)
+        #expect(NotePageSettings.defaults(in: html)["days"] as? [String] == ["Mon"])
+        #expect(AppSettingsSheet.ymd(AppSettingsSheet.day("2026-10-05")) == "2026-10-05")
+    }
+
+    /// Declarations written over several lines are read like one-line ones.
+    @Test func declarationsCanSpanLines() {
+        let html = "<meta name=\"amber-settings\" content='{\"settings\":[\n {\"key\":\"a\",\"type\":\"toggle\"},\n {\"key\":\"b\",\"type\":\"text\"}\n]}'>"
+        #expect(NotePageSettings.declared(in: html).map(\.key) == ["a", "b"])
+        #expect(NotePageNetwork.needs(of: "<meta name=\"amber-needs\" content='{\n\"hosts\": [\"api.example.com\"]\n}'>").hosts == ["api.example.com"])
+        #expect(NotePageLibraries.declared(in: "<meta name=\"amber-libs\" content=\"chart,\n d3\">").count == 2)
+    }
+
     @Test func aWidgetGetsItsClassAndTextFollowsTheReadersSize() async throws {
         let sandbox = NotePageSandbox(rules: try await NotePageSandbox.prepare())
         sandbox.isWidget = true
@@ -758,7 +777,7 @@ import WebKit
     }
 
     @Test func bundledLibrariesLoadByNameWithoutTheNetwork() async throws {
-        #expect(NotePageLibraries.bundled.count == 11)
+        #expect(NotePageLibraries.bundled.count == 15)
         for lib in NotePageLibraries.bundled { #expect(NotePageLibraries.bundledData(lib.name)?.count == lib.bytes, "\(lib.name)") }
         let sandbox = NotePageSandbox(rules: try await NotePageSandbox.prepare())
         sandbox.load(html: """
@@ -789,6 +808,44 @@ import WebKit
         try await run(sandbox.webView, until: "window.__r !== undefined")
         let r = try await sandbox.webView.evaluateJavaScript("window.__r") as? String
         #expect(r != "undefined", "\(name): window.\(lib.global) is \(r ?? "?"); blocked: \(sandbox.blocked)")
+    }
+
+    /// Preact with htm and the router: a real app with screens, no build step.
+    @Test func preactAppsRenderAndMoveBetweenScreens() async throws {
+        let sandbox = NotePageSandbox(rules: try await NotePageSandbox.prepare())
+        sandbox.load(html: """
+        <meta name="amber-libs" content="htm, router">
+        <div id="app"></div>
+        <script>
+          const html = htm.bind(preact.h);
+          const { useState } = preactHooks;
+          const { Router, route } = amberRouter;
+          const Home = () => { const [n, set] = useState(1); return html`<p id="home" onClick=${() => set(n + 1)}>home ${n}</p><a id="go" href="#/item/7">x</a>`; };
+          const Item = ({ id }) => html`<p id="item">item ${id}</p>`;
+          preact.render(html`<${Router}><${Home} path="/" default /><${Item} path="/item/:id" /></${Router}>`, document.getElementById("app"));
+          amber.onChange(() => {});
+        </script>
+        """, body: "x")
+        try await run(sandbox.webView, until: "document.getElementById('home') !== null")
+        _ = try await sandbox.webView.evaluateJavaScript("document.getElementById('home').click(); 1")
+        try await run(sandbox.webView, until: "document.getElementById('home').textContent === 'home 2'")
+        _ = try await sandbox.webView.evaluateJavaScript("document.getElementById('go').click(); 1")
+        try await run(sandbox.webView, until: "document.getElementById('item') !== null")
+        #expect(try await sandbox.webView.evaluateJavaScript("document.getElementById('item').textContent") as? String == "item 7")
+        #expect(sandbox.webView.url?.absoluteString == "about:blank")
+    }
+
+    /// Something too wide in an app never makes the whole page pan sideways.
+    @Test func aTooWidePageDoesNotScrollSideways() async throws {
+        let sandbox = NotePageSandbox(rules: try await NotePageSandbox.prepare())
+        sandbox.load(html: """
+        <div id=w style="width: 3000px; height: 50px; background: red"></div><img id=i width=4000 height=10 src="data:image/gif;base64,R0lGODlhAQABAAAAACw=">
+        <script>amber.onChange(() => {});</script>
+        """, body: "x")
+        try await run(sandbox.webView, until: "document.getElementById('w') !== null")
+        _ = try await sandbox.webView.evaluateJavaScript("window.scrollTo(800, 0); 1")
+        #expect(try await sandbox.webView.evaluateJavaScript("window.scrollX") as? Int == 0)
+        #expect(try await sandbox.webView.evaluateJavaScript("document.getElementById('i').getBoundingClientRect().width <= window.innerWidth") as? Bool == true)
     }
 
     @Test func npmPackagesNeedAPinnedVersionAndAMatchingHash() async throws {

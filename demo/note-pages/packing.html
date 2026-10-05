@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="amber-libs" content="preact, htm, router">
+<title>Packing</title>
+<style>
+  main { max-width: 640px; margin: 0 auto; padding: 16px var(--amber-gutter) 32px; }
+  h1 { font-size: 1.6rem; margin: 0 0 4px; letter-spacing: -0.02em; }
+  .muted { color: var(--amber-text-secondary); font-size: 0.9rem; }
+  .bar { height: 8px; border-radius: 4px; background: var(--amber-fill); margin: 10px 0 18px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--amber-accent); transition: width .3s; }
+  h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--amber-text-secondary); margin: 18px 4px 6px; display: flex; justify-content: space-between; }
+  ul { list-style: none; margin: 0; padding: 0; background: var(--amber-surface); border-radius: var(--amber-radius); overflow: hidden; }
+  li + li { border-top: 1px solid var(--amber-separator); }
+  li button { all: unset; box-sizing: border-box; width: 100%; display: flex; gap: 12px; align-items: center; padding: 13px 14px; font-size: 1.05rem; cursor: pointer; }
+  .box { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--amber-field-border); flex: none; display: grid; place-items: center; color: var(--amber-on-accent); font-size: 13px; }
+  .done .box { background: var(--amber-accent); border-color: var(--amber-accent); }
+  .done .t { color: var(--amber-text-secondary); text-decoration: line-through; }
+  nav { display: flex; gap: 8px; margin-top: 20px; }
+  a.btn, button.btn { font: inherit; font-weight: 600; border: 0; border-radius: var(--amber-radius-small); padding: 10px 16px; background: var(--amber-accent); color: var(--amber-on-accent); text-decoration: none; cursor: pointer; }
+  a.ghost { background: var(--amber-fill); color: var(--amber-text); }
+  form { display: grid; gap: 12px; margin-top: 12px; }
+  label { display: grid; gap: 6px; font-weight: 600; font-size: 0.9rem; }
+  input, select { font-size: 16px; width: 100%; box-sizing: border-box; }
+</style></head>
+<body><main id="app"></main>
+<script>
+  const html = htm.bind(preact.h);
+  const { useState, useEffect } = preactHooks;
+  const { Router, route } = amberRouter;
+
+  // Checklist lines grouped under the ## heading above them.
+  function groups(note) {
+    const lines = note.markdown.split("\n"), out = [];
+    let current = { heading: "Other", items: [] };
+    lines.forEach((l, i) => {
+      const h = l.match(/^##\s+(.+)/);
+      if (h) { if (current.items.length) out.push(current); current = { heading: h[1].trim(), items: [] }; return; }
+      const c = note.checklists.find((x) => x.line === i + 1);
+      if (c) current.items.push(c);
+    });
+    if (current.items.length) out.push(current);
+    return out;
+  }
+
+  function useNote() {
+    const [note, set] = useState(amber.note);
+    useEffect(() => amber.onChange((n) => set({ ...n })), []);
+    return note;
+  }
+
+  function List() {
+    const note = useNote(), gs = groups(note);
+    const all = gs.flatMap((g) => g.items), done = all.filter((c) => c.checked).length;
+    return html`
+      <h1>${note.title}</h1>
+      <div class="muted">${done} of ${all.length} packed</div>
+      <div class="bar"><i style=${{ width: (all.length ? done / all.length * 100 : 0) + "%" }}></i></div>
+      ${gs.map((g) => html`
+        <h2><span>${g.heading}</span><span>${g.items.filter((c) => c.checked).length}/${g.items.length}</span></h2>
+        <ul>${g.items.map((c) => html`
+          <li class=${c.checked ? "done" : ""}><button role="checkbox" aria-checked=${c.checked} onClick=${() => amber.update({ op: "toggle_checklist", line: c.line })}>
+            <span class="box">${c.checked ? "✓" : ""}</span><span class="t">${c.text}</span></button></li>`)}
+        </ul>`)}
+      <nav><a class="btn" href="#/add">Add Item</a></nav>`;
+  }
+
+  function Add() {
+    const note = useNote(), gs = groups(note);
+    const [text, setText] = useState(""), [under, setUnder] = useState(gs[0] ? gs[0].heading : "");
+    const save = async (e) => {
+      e.preventDefault();
+      if (!text.trim()) return;
+      const r = await amber.update({ op: "add_checklist_item", text: text.trim(), under_heading: under });
+      if (r.ok) route("/");
+    };
+    return html`
+      <h1>Add an item</h1>
+      <form onSubmit=${save}>
+        <label>What<input value=${text} onInput=${(e) => setText(e.target.value)} placeholder="Sun hat" /></label>
+        <label>Where<select value=${under} onChange=${(e) => setUnder(e.target.value)}>${gs.map((g) => html`<option>${g.heading}</option>`)}</select></label>
+        <nav><button class="btn">Add</button><a class="btn ghost" href="#/">Cancel</a></nav>
+      </form>`;
+  }
+
+  const App = () => html`<${Router}><${List} path="/" default /><${Add} path="/add" /></${Router}>`;
+  preact.render(html`<${App} />`, document.getElementById("app"));
+</script></body></html>

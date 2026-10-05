@@ -80,6 +80,7 @@
 		2B55D6E03EAB0E2ED1472F4A /* tone.js in Resources */ = {isa = PBXBuildFile; fileRef = F97B6D61534B25944539B296 /* tone.js */; };
 		2B69CBFA3196047D9F11B805 /* NotePageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34BFC88418CBABA209D07247 /* NotePageView.swift */; };
 		2BA1FC4BE153B407E5CE69F3 /* ImportPipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF617FC2BCA1C1A89CE29D77 /* ImportPipeline.swift */; };
+		2DD6CB3865B3B81FC250F8DF /* htm.js in Resources */ = {isa = PBXBuildFile; fileRef = F9AB7B84121134A7EF8CBE69 /* htm.js */; };
 		2E4EF9FAFC33E26233CC539F /* SaveTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAC7D1ED7E22C1612C2680B3 /* SaveTests.swift */; };
 		2F9C64719890C1BE63438C1F /* MenuBarPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72C1B655873A4CE5E1D4F0B3 /* MenuBarPanel.swift */; };
 		2FA68FA597287DDE2B9834A4 /* Library.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEFA368EF8F56909D229B913 /* Library.swift */; };
@@ -191,10 +192,12 @@
 		70D6F22AE875D9975C01CF0A /* NoteExportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2C3828F02A46D62F6896F82 /* NoteExportTests.swift */; };
 		70FD7776A93DA08BA735BF8F /* VersionHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90CC0B378983D3F5A7E49012 /* VersionHistoryView.swift */; };
 		7206852EDF250F2D4A72E0B9 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 409280D87901FB1375A2EBEC /* AppIcon.icon */; };
+		724FD55D6B4E21698BA7F35F /* preact-hooks.js in Resources */ = {isa = PBXBuildFile; fileRef = E37BFAF54A1A956AD495D1DE /* preact-hooks.js */; };
 		72B39C20D54050C92ACFAC0D /* sample-habit-tracker.html in Resources */ = {isa = PBXBuildFile; fileRef = 4F33B74A850251D3F2D92C97 /* sample-habit-tracker.html */; };
 		72BF360DECE14ECBBE9E5506 /* Push.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B20F92D2A50287948FFA111 /* Push.swift */; };
 		730DED4757B02155361FB0E4 /* NotePageDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DB0DAFE95B79BD85E820E69 /* NotePageDevice.swift */; };
 		7310D5C40BFE56AD010ECC6E /* SearchBarUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A3E8C508286ED65BD00189A /* SearchBarUITests.swift */; };
+		73A5D47993ADAE635DB2EEFA /* preact-hooks.js in Resources */ = {isa = PBXBuildFile; fileRef = E37BFAF54A1A956AD495D1DE /* preact-hooks.js */; };
 		743A2DC87EC039B90E4FE7A8 /* DateFoldTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AA02ED549CE37D8148F24D5 /* DateFoldTests.swift */; };
 		74DF77630513432E838767C8 /* AccountNotices.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED7F107D0DDA0B69E2BCE603 /* AccountNotices.swift */; };
 		76EEC0F802A3E143BF60CCBE /* Tips.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAEF55394E3ADF3DB9CF451B /* Tips.swift */; };
@@ -202,6 +205,7 @@
 		775D63D6F1202F5821D528CE /* Palette.swift in Sources */ = {isa = PBXBuildFile; fileRef = E64B3C5141EE3AF3984622FC /* Palette.swift */; };
 		779FB36891A0E3E0D6EC6260 /* ConnectGuide.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68B9BEDD3569D333B65785C6 /* ConnectGuide.swift */; };
 		7A098FE97DEFF91BC87CF24B /* AppleNotesImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 483CA88017A03E92EEC52DFD /* AppleNotesImport.swift */; };
+		7A39FF51239708385F72BE50 /* preact.js in Resources */ = {isa = PBXBuildFile; fileRef = 19D80BDF04976B1F5E2449A1 /* preact.js */; };
 		7A951D1AD8865AD449EADE19 /* MarkdownImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C463F2C3009AF9A4D91619E /* MarkdownImport.swift */; };
 		7B12D560FE4B97D3DCC04C56 /* NoteIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 667042B618528FF4943E6948 /* NoteIntents.swift */; };
 		7B1E97DC2CD6F2716187E790 /* LockLeakProbeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD2C6D6DA42D4F544B0E7737 /* LockLeakProbeTests.swift */; };
@@ -212,6 +216,7 @@
 		7F6BFCC3E30CB53BB780058D /* RichTextTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F02A8CE43D7031D271CA25B /* RichTextTests.swift */; };
 		7F9DED7F4A6D72014F374AF0 /* ShareExtensionUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CC822E0A1ABBCCDB65B943A /* ShareExtensionUITests.swift */; };
 		8074971A34AC94F5B9F9E20F /* MacDogfoodTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F84812729F33EB0AD525982F /* MacDogfoodTests.swift */; };
+		80E5F1164751A401C881FC04 /* preact.js in Resources */ = {isa = PBXBuildFile; fileRef = 19D80BDF04976B1F5E2449A1 /* preact.js */; };
 		810C645C26D79F76CCEE9B91 /* ShareAskSnapshots.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4588A553F34CCA6E69BAE2FB /* ShareAskSnapshots.swift */; };
 		815A3505A0A85B6330FB1B7E /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 508D7FDAAB7702C132913D85 /* SignInView.swift */; };
 		815B2825F87ACCB4644BFDEB /* RichTextToMarkdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99375A4ACF211AEE18EC4EC3 /* RichTextToMarkdown.swift */; };
@@ -288,11 +293,13 @@
 		B7A72D933239B040CC00665E /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDA33BB2FFE541AC66F2A224 /* SidebarView.swift */; };
 		B88F52D6647598EBCF2A195B /* SessionStorageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 550BEF23962BF4E461634AD1 /* SessionStorageTests.swift */; };
 		B8E32610DE26332AB8853B4D /* VersionHistorySnapshots.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64816024A9749AC715351868 /* VersionHistorySnapshots.swift */; };
+		B95B234DA31EE4E50A363495 /* router.js in Resources */ = {isa = PBXBuildFile; fileRef = F760CF7B8C66F8A3AD1A896E /* router.js */; };
 		BABD15AB84CC4A437789F4CC /* ConnectAsks.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2FFA510B01DACFC168BE214 /* ConnectAsks.swift */; };
 		BBA6796F083C64BB8DFF14AC /* SignInLayoutUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93CB314330255850EA06044C /* SignInLayoutUITests.swift */; };
 		BBF4C5B35A481BA9E9F080C2 /* AppleNotesLiveTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A537C18B9F9C98B1862B423 /* AppleNotesLiveTests.swift */; };
 		BC8F6F8C8E7ED9F06766A538 /* FormatBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66EF04EADC63E3E6A4AD79B4 /* FormatBar.swift */; };
 		BCDD7B1CA92367EEE7651EF9 /* NetFault.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20BEF7BDF0FB91CAF7F007D5 /* NetFault.swift */; };
+		BD7DC414B794B8845559A584 /* router.js in Resources */ = {isa = PBXBuildFile; fileRef = F760CF7B8C66F8A3AD1A896E /* router.js */; };
 		BE3EF29AF816EFA4BA6371DD /* ShareAskTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5BB88BE25221CC7CD3B1FF1 /* ShareAskTests.swift */; };
 		BEA8E72E2F808BDE1C3C1D5E /* NotePageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 899423D08E417A77E021D351 /* NotePageTests.swift */; };
 		BEE93E29CA3F8BE4E6B32A69 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 409280D87901FB1375A2EBEC /* AppIcon.icon */; };
@@ -303,6 +310,7 @@
 		C2A23F349B49F07B95A1E81C /* NoteListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AFF5865DFB1F37542A9EF3A /* NoteListView.swift */; };
 		C3FDDB755E2DAB9909A8ED0F /* TypedTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7D3C041048DAAB22B2FC870 /* TypedTable.swift */; };
 		C460E86BE2C39E1C8EBF62AC /* Inbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99F11FB36958597987AD023E /* Inbox.swift */; };
+		C67F73D849AF2E836059063E /* htm.js in Resources */ = {isa = PBXBuildFile; fileRef = F9AB7B84121134A7EF8CBE69 /* htm.js */; };
 		C6CC70E5569CA96C16D313AC /* Setup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E7A911BC92B36CB4123A6B0 /* Setup.swift */; };
 		C79D60B414B98495FEE8E0ED /* NoteExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C274796E62FCADF3B9FB8B0 /* NoteExport.swift */; };
 		C7BC38A0EA1E205AB1CA731C /* MenuBarModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E9CE1B4EE228D52D58729C2 /* MenuBarModel.swift */; };
@@ -457,6 +465,7 @@
 		17A49ECF5C2416ECB7428670 /* StressTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StressTests.swift; sourceTree = "<group>"; };
 		1805E7C32F1491EC4F48472E /* Fixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Fixtures.swift; sourceTree = "<group>"; };
 		187BCDDD3155D5979CC60AC7 /* ApplePins.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplePins.swift; sourceTree = "<group>"; };
+		19D80BDF04976B1F5E2449A1 /* preact.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = preact.js; sourceTree = "<group>"; };
 		1A7835B48C799CF04F5FF31C /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
 		1B6942657FF41A9E90A2C2DA /* topojson.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = topojson.js; sourceTree = "<group>"; };
 		1C274796E62FCADF3B9FB8B0 /* NoteExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteExport.swift; sourceTree = "<group>"; };
@@ -666,6 +675,7 @@
 		E10AB39932C3189F22847302 /* ListTitleUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListTitleUITests.swift; sourceTree = "<group>"; };
 		E14295A9361AF8E0895DD9D2 /* SharedItemTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedItemTests.swift; sourceTree = "<group>"; };
 		E37B37176F6CCA31F99951BE /* Pane-ios.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Pane-ios.entitlements"; sourceTree = "<group>"; };
+		E37BFAF54A1A956AD495D1DE /* preact-hooks.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "preact-hooks.js"; sourceTree = "<group>"; };
 		E43C8835EE05529FC6C66B17 /* LegalLinks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegalLinks.swift; sourceTree = "<group>"; };
 		E5A1AE108885E3A9E3B3583A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		E5FF211616E406434EE7DC37 /* SyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncTests.swift; sourceTree = "<group>"; };
@@ -685,6 +695,7 @@
 		F640AF3B161AEAD5FD260995 /* NoteLock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteLock.swift; sourceTree = "<group>"; };
 		F7306680E0E335C07172C36F /* ChecklistLookTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChecklistLookTests.swift; sourceTree = "<group>"; };
 		F743BED91F9AD58A3BFA6CCB /* LinkPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkPolicy.swift; sourceTree = "<group>"; };
+		F760CF7B8C66F8A3AD1A896E /* router.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = router.js; sourceTree = "<group>"; };
 		F7B3FEBC5E8B405D61B40897 /* TableInteractionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TableInteractionTests.swift; sourceTree = "<group>"; };
 		F7FCC3B1CE1BD0C5DAF0E77D /* NoteSourceSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteSourceSheet.swift; sourceTree = "<group>"; };
 		F84812729F33EB0AD525982F /* MacDogfoodTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacDogfoodTests.swift; sourceTree = "<group>"; };
@@ -692,6 +703,7 @@
 		F94EFE0F3B6CF26645227E4B /* hang-2026.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "hang-2026.txt"; sourceTree = "<group>"; };
 		F9539637FC0845A1B6AD2C29 /* d3.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = d3.js; sourceTree = "<group>"; };
 		F97B6D61534B25944539B296 /* tone.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = tone.js; sourceTree = "<group>"; };
+		F9AB7B84121134A7EF8CBE69 /* htm.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = htm.js; sourceTree = "<group>"; };
 		FA63BA9CC98D699F71D53B85 /* purify.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = purify.js; sourceTree = "<group>"; };
 		FB2BE2DFB59EFA5FB2874ED3 /* NoteHistoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteHistoryTests.swift; sourceTree = "<group>"; };
 		FC894B0D3C73CC7040468483 /* KeyFlowSnapshots.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyFlowSnapshots.swift; sourceTree = "<group>"; };
@@ -754,9 +766,13 @@
 				96E8277205CE8467252CB1A6 /* confetti.js */,
 				F9539637FC0845A1B6AD2C29 /* d3.js */,
 				451FCC96A1E65D0DCF2FB5B6 /* dayjs.js */,
+				F9AB7B84121134A7EF8CBE69 /* htm.js */,
 				31EE3E7E16D9DA7C161252EE /* libraries.json */,
 				CE878236645FC7961A369E8A /* marked.js */,
+				E37BFAF54A1A956AD495D1DE /* preact-hooks.js */,
+				19D80BDF04976B1F5E2449A1 /* preact.js */,
 				FA63BA9CC98D699F71D53B85 /* purify.js */,
+				F760CF7B8C66F8A3AD1A896E /* router.js */,
 				DECBA8160361EDF621DEF177 /* three.js */,
 				F97B6D61534B25944539B296 /* tone.js */,
 				1B6942657FF41A9E90A2C2DA /* topojson.js */,
@@ -1389,9 +1405,13 @@
 				CA4EE1A5852FF02205756316 /* confetti.js in Resources */,
 				D7137A72A44C0EF9BDED2C78 /* d3.js in Resources */,
 				257B536842B201E95D30D967 /* dayjs.js in Resources */,
+				2DD6CB3865B3B81FC250F8DF /* htm.js in Resources */,
 				6AF5B3376F82BF3A0BABB6E0 /* libraries.json in Resources */,
 				9957E4607D0E56C13A4EB547 /* marked.js in Resources */,
+				724FD55D6B4E21698BA7F35F /* preact-hooks.js in Resources */,
+				7A39FF51239708385F72BE50 /* preact.js in Resources */,
 				AAEEF706B53C7F9082F6C35F /* purify.js in Resources */,
+				B95B234DA31EE4E50A363495 /* router.js in Resources */,
 				72B39C20D54050C92ACFAC0D /* sample-habit-tracker.html in Resources */,
 				427F7CEE573ED4A1CEE3CADD /* three.js in Resources */,
 				8B8A2E2CBE4BF9A3224735F4 /* tone.js in Resources */,
@@ -1413,9 +1433,13 @@
 				533D2A7C30ABE59C3C26AABC /* confetti.js in Resources */,
 				63275A4C35ED4EFF7754101F /* d3.js in Resources */,
 				093583D1082D0EEA478EDFCF /* dayjs.js in Resources */,
+				C67F73D849AF2E836059063E /* htm.js in Resources */,
 				CE1DB02087AE2B23511AF3ED /* libraries.json in Resources */,
 				E0021816C242995928B1F014 /* marked.js in Resources */,
+				73A5D47993ADAE635DB2EEFA /* preact-hooks.js in Resources */,
+				80E5F1164751A401C881FC04 /* preact.js in Resources */,
 				D0B10CCF4167D29E4467B478 /* purify.js in Resources */,
+				BD7DC414B794B8845559A584 /* router.js in Resources */,
 				A70D13605754FCC0DAF6D739 /* sample-habit-tracker.html in Resources */,
 				5619E67CFC231B9156BA0844 /* three.js in Resources */,
 				2B55D6E03EAB0E2ED1472F4A /* tone.js in Resources */,

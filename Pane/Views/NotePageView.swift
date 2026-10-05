@@ -24,6 +24,8 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
     var onReady: () -> Void = {}
     /// It threw while loading, or drew nothing: the reasons.
     var onFailure: ([String]) -> Void = { _ in }
+    /// A text field in the page gained or lost focus (the app keeps receipts out of its way).
+    var onFocus: (Bool) -> Void = { _ in }
     /// Requests and navigations the sandbox stopped (for the Dev readout and tests).
     private(set) var blocked: [String] = []
 
@@ -96,6 +98,9 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
         webView.isOpaque = false
         webView.backgroundColor = .clear
         webView.scrollView.backgroundColor = .clear
+        // An app scrolls up and down; a page a little too wide never pans sideways.
+        webView.scrollView.alwaysBounceHorizontal = false
+        webView.scrollView.showsHorizontalScrollIndicator = false
         webView.accessibilityIdentifier = "notePage.web"
         #else
         webView.setValue(false, forKey: "drawsBackground")
@@ -148,6 +153,8 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
     static func bootstrap(data: [String: Any], store: NotePageData.Doc = NotePageData.empty(), restore: String? = nil, settings: [String: Any] = [:], widget: Bool = false) -> String {
         let defaults = (try? JSONSerialization.data(withJSONObject: settings)).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
         let libGlobals = (try? JSONSerialization.data(withJSONObject: Dictionary(NotePageLibraries.bundled.map { ($0.name, $0.global) }, uniquingKeysWith: { a, _ in a })))
+            .flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
+        let libRequires = (try? JSONSerialization.data(withJSONObject: Dictionary(NotePageLibraries.bundled.map { ($0.name, $0.requires ?? []) }, uniquingKeysWith: { a, _ in a })))
             .flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
         let json = (try? JSONSerialization.data(withJSONObject: data)).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
         let storeJSON = String(data: NotePageData.encode(store), encoding: .utf8) ?? "{}"
@@ -232,9 +239,11 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
           } });
           // Libraries: amber.lib("chart") loads a bundled one (declared ones are already there).
           const libGlobals = \(libGlobals);
-          amber.lib = (name) => {
+          const libRequires = \(libRequires);
+          amber.lib = async (name) => {
             const g = libGlobals[name];
-            if (g && window[g]) return Promise.resolve(window[g]);
+            if (g && window[g]) return window[g];
+            for (const r of libRequires[name] || []) await amber.lib(r);
             return new Promise((ok, no) => {
               const s = document.createElement("script");
               s.src = "amber-lib:///" + name;
@@ -248,6 +257,14 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
           const markContext = () => { if (document.documentElement) document.documentElement.dataset.amberContext = \(widget ? "\"widget\"" : "\"full\""); };
           markContext();
           addEventListener("DOMContentLoaded", markContext);
+          // Which field has focus, for the app: nothing of its own is drawn over a field you're typing in.
+          const isField = (e) => !!e && (e.tagName === "TEXTAREA" || e.tagName === "SELECT" || e.isContentEditable ||
+            (e.tagName === "INPUT" && !/^(checkbox|radio|button|submit|reset|range|color|file|image)$/i.test(e.type)));
+          let lastFocus = false;
+          const sendFocus = () => { const f = isField(document.activeElement); if (f === lastFocus) return; lastFocus = f;
+            try { window.webkit.messageHandlers.amberReady.postMessage({ focus: f }); } catch (e) {} };
+          addEventListener("focusin", sendFocus, true);
+          addEventListener("focusout", () => setTimeout(sendFocus, 0), true);
           // App settings (<meta name="amber-settings">): the defaults, with what you set in App Settings.
           const settingDefaults = \(defaults);
           Object.defineProperty(amber, "settings", { get() { return Object.assign({}, settingDefaults, (amber.data.values && amber.data.values.settings) || {}); } });
@@ -340,6 +357,7 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
     func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
         guard message.name == "amberReady" else { return }
         let m = message.body as? [String: Any]
+        if let focus = m?["focus"] as? Bool { onFocus(focus); return }
         let errors = (m?["errors"] as? [String]) ?? []
         if (m?["empty"] as? Bool) == true || !errors.isEmpty {
             onFailure(errors.isEmpty ? ["The page drew nothing."] : errors)
@@ -388,6 +406,8 @@ struct NotePageView: View {
     var onData: @MainActor (Any) async throws -> [String: Any] = { _ in throw NotePage.OpError("Not available.") }
     /// The note's files the app may show (amber.files.url).
     var files: @MainActor (UUID) -> URL? = { _ in nil }
+    /// A field in the app has focus, or not.
+    var onFocus: (Bool) -> Void = { _ in }
     @State private var sandbox: NotePageSandbox?
     @State private var failed: String?
     @State private var ready = false
@@ -441,6 +461,7 @@ struct NotePageView: View {
                     }
                 }
                 s.onFailure = onFailure
+                s.onFocus = onFocus
                 s.onData = onData
                 s.files = files
                 s.load(html: html, body: text, data: NotePageDataStore.shared.doc(noteID), restore: restore)
@@ -454,14 +475,16 @@ struct NotePageView: View {
     }
 
     /// "Claude updated this app · Switch", while you're in the middle of something.
-    /// A solid capsule floating over the app, in the ink colour so it reads on any app: dark with
-    /// white text in light mode, cream with dark text in dark mode. Every pair is 4.5:1 or better
-    /// (white on ink 16.4, amber on ink 8.5; ink on cream 14.4, deep amber on cream 4.6).
+    /// A solid capsule floating over the app, the same character in both themes: dark ink with white
+    /// text in light mode, a raised dark grey with light text in dark mode, the amber Switch on both.
+    /// Every pair is 4.5:1 or better (white on ink 16.4, amber on ink 8.5; cream on #3A3734 10.4,
+    /// amber on #3A3734 6.1).
     private var updateBar: some View {
         let by = NotePageStore.shared[noteID]?.by ?? "Your AI"
-        let text = Color(light: .white, dark: Color(red: 0x2A / 255, green: 0x1D / 255, blue: 0x10 / 255))
-        let accent = Color(light: Color(red: 0xF4 / 255, green: 0xAD / 255, blue: 0x33 / 255),
-                           dark: Color(red: 0xA8 / 255, green: 0x57 / 255, blue: 0x00 / 255))
+        let text = Color(light: .white, dark: Color(red: 0xF6 / 255, green: 0xEF / 255, blue: 0xE7 / 255))
+        let accent = Color(red: 0xF4 / 255, green: 0xAD / 255, blue: 0x33 / 255)
+        // Dark ink in light mode; in dark mode a raised dark grey, lighter than the ground, never cream.
+        let fill = Color(light: Color(red: 0x2A / 255, green: 0x1D / 255, blue: 0x10 / 255), dark: Color(red: 0x3A / 255, green: 0x37 / 255, blue: 0x34 / 255))
         return HStack(spacing: 10) {
             Image(systemName: "sparkles").foregroundStyle(accent)
             Text(by == AIGlyph.page ? "This app was updated" : "\(by) updated this app")
@@ -480,7 +503,7 @@ struct NotePageView: View {
         }
         .padding(.horizontal, 16)
         .frame(height: 44)
-        .background(Color.ink, in: .capsule)
+        .background(fill, in: .capsule)
         .shadow(color: .black.opacity(0.18), radius: 10, y: 3)
         .padding(.horizontal, 16)
         .padding(.top, 10)
@@ -630,6 +653,8 @@ enum NotePageTheme {
         @media (prefers-color-scheme: dark) { :root { \(vars(dark: true)); } }
         \(dynamicType)
         body { margin: 0; background: var(--amber-bg); color: var(--amber-text); font-family: var(--amber-font); line-height: 1.35; -webkit-text-size-adjust: 100%; }
+        html, body { overflow-x: clip; }
+        :where(img, video, canvas, svg, iframe, pre) { max-width: 100%; }
         :where(input:not([type=checkbox], [type=radio], [type=range], [type=color], [type=file], [type=hidden]), select, textarea) { \
         background: var(--amber-field); color: var(--amber-text); border: 1px solid var(--amber-field-border); \
         border-radius: var(--amber-radius-small); font: inherit; padding: 6px 10px; }

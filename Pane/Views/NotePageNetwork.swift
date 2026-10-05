@@ -45,7 +45,7 @@ enum NotePageNetwork {
     static func needs(of html: String) -> Needs {
         guard let r = html.range(of: #"<meta[^>]*name=["']amber-needs["'][^>]*>"#, options: .regularExpression) else { return Needs() }
         let tag = String(html[r])
-        guard let c = tag.range(of: #"content=(['"])(.*)\1"#, options: .regularExpression) else { return Needs() }
+        guard let c = tag.range(of: #"content=(['"])([\s\S]*)\1"#, options: .regularExpression) else { return Needs() }
         var value = String(tag[c].dropFirst("content=".count))
         value = String(value.dropFirst().dropLast()).replacingOccurrences(of: "&quot;", with: "\"").replacingOccurrences(of: "&#39;", with: "'")
         guard let n = try? JSONDecoder().decode(Needs.self, from: Data(value.utf8)) else { return Needs() }

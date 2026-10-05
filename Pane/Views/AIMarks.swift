@@ -118,8 +118,8 @@ struct AIReceipt: View {
 }
 
 /// The mark of a note that is also an app (it has a page; see NotePage): after the title in the note
-/// list and search results, on a sub-note's widget, and on Show App. Three designs while Emil picks
-/// (`-appMark capsule|tile|sparkles`):
+/// list and search results, on a sub-note's widget, and on Show App. PICKED: soft (A3), a soft grey
+/// capsule with "App" in the secondary colour. The candidates it was chosen from (`-appMark`, debug):
 ///   A capsule: a solid amber capsule with the word "App" (our feature has no other noun);
 ///   B tile: SF Symbol app.fill in amber, at the title's cap height;
 ///   C sparkles: SF Symbol sparkles in amber, "made by your AI".
@@ -129,7 +129,13 @@ struct AIReceipt: View {
 ///   A3 soft: a soft solid grey capsule (not amber) with secondary text.
 enum NoteAppMark {
     enum Style: String, CaseIterable { case capsule, tile, sparkles, word, outline, soft }
-    nonisolated(unsafe) static var style: Style = Capture.argument("-appMark").flatMap(Style.init(rawValue:)) ?? .capsule
+    /// A3, soft, is the mark (Emil, 5 Oct). The others stay for comparison behind -appMark in
+    /// development builds only.
+    #if DEBUG || QA
+    nonisolated(unsafe) static var style: Style = Capture.argument("-appMark").flatMap(Style.init(rawValue:)) ?? .soft
+    #else
+    static let style: Style = .soft
+    #endif
 
     /// The symbol where a symbol is needed (Show App, menus): the capsule's needs one too.
     static var symbol: String { style == .sparkles ? "sparkles" : "app.fill" }

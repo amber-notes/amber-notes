@@ -195,8 +195,37 @@ enum NotePageSettings {
         var options: [Option]?
         var help: String?
         var `default`: JSONValue?
+        /// Settings with the same section are grouped under it (in the order declared).
+        var section: String?
+        /// Numbers: the range (a slider when both ends are given) and the step.
+        var min: Double?
+        var max: Double?
+        var step: Double?
+        /// Shown only when another setting is on, or has a given value.
+        var showIf: ShowIf?
         var id: String { key }
         var title: String { label ?? key }
+
+        /// "showIf": "otherKey" (on, or not empty), or { "key": "otherKey", "equals": value }.
+        struct ShowIf: Decodable {
+            var key: String
+            var equals: JSONValue?
+            init(from d: Decoder) throws {
+                if let k = try? d.singleValueContainer().decode(String.self) { key = k; equals = nil; return }
+                enum K: String, CodingKey { case key, equals }
+                let c = try d.container(keyedBy: K.self)
+                key = try c.decode(String.self, forKey: .key)
+                equals = try c.decodeIfPresent(JSONValue.self, forKey: .equals)
+            }
+            func holds(in values: [String: Any]) -> Bool {
+                let v = values[key]
+                if let equals { return "\(v ?? "")" == "\(equals.any)" }
+                if let b = v as? Bool { return b }
+                if let l = v as? [Any] { return !l.isEmpty }
+                if let s = v as? String { return !s.isEmpty }
+                return v != nil
+            }
+        }
     }
 
     /// A choice: "Oak", or { "value": 120, "label": "2 minutes" } when what's stored isn't what's shown.
@@ -238,9 +267,9 @@ enum NotePageSettings {
     static func declared(in html: String) -> [Setting] {
         guard let r = html.range(of: #"<meta[^>]*name=["']amber-settings["'][^>]*>"#, options: .regularExpression) else { return [] }
         let tag = String(html[r])
-        guard let c = tag.range(of: #"content=(['"])(.*)\1"#, options: .regularExpression) else { return [] }
+        guard let c = tag.range(of: #"content=(['"])([\s\S]*)\1"#, options: .regularExpression) else { return [] }
         let value = String(String(tag[c].dropFirst("content=".count)).dropFirst().dropLast()).replacingOccurrences(of: "&quot;", with: "\"")
-        let types = ["text", "number", "choice", "list", "color", "currency", "toggle", "time"]
+        let types = ["text", "number", "choice", "list", "color", "currency", "toggle", "time", "date", "multi"]
         return ((try? JSONDecoder().decode(Declared.self, from: Data(value.utf8)))?.settings ?? []).filter { types.contains($0.type) }.prefix(30).map { $0 }
     }
 
@@ -269,13 +298,31 @@ struct AppSettingsSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                ForEach(settings) { s in
-                    Section {
-                        field(s)
-                    } header: {
-                        Text(s.title)
-                    } footer: {
-                        if let h = s.help { Text(h) }
+                ForEach(groups, id: \.id) { g in
+                    if let name = g.section {
+                        // A section: its settings together, each with its label and help.
+                        Section(name) {
+                            ForEach(g.settings) { s in
+                                if s.type == "list" || s.type == "multi" {
+                                    // Its name, then its rows as rows of their own.
+                                    Text(s.title).font(.subheadline.weight(.semibold))
+                                    field(s)
+                                } else {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        labelled(s)
+                                        if let h = s.help { Text(h).font(.footnote).foregroundStyle(.secondary) }
+                                    }
+                                }
+                            }
+                        }
+                    } else if let s = g.settings.first {
+                        Section {
+                            field(s)
+                        } header: {
+                            Text(s.title)
+                        } footer: {
+                            if let h = s.help { Text(h) }
+                        }
                     }
                 }
                 internet
@@ -309,9 +356,67 @@ struct AppSettingsSheet: View {
         #endif
     }
 
+    /// The visible settings, grouped: consecutive ones of a section together, the rest one by one.
+    private var groups: [(id: String, section: String?, settings: [NotePageSettings.Setting])] {
+        var out: [(id: String, section: String?, settings: [NotePageSettings.Setting])] = []
+        for s in settings where s.showIf?.holds(in: values) ?? true {
+            if let sec = s.section, let last = out.last, last.section == sec {
+                out[out.count - 1].settings.append(s)
+            } else {
+                out.append((id: s.key, section: s.section, settings: [s]))
+            }
+        }
+        return out
+    }
+
+    /// A field inside a section, where its name has to show next to it.
+    @ViewBuilder
+    private func labelled(_ s: NotePageSettings.Setting) -> some View {
+        switch s.type {
+        case "text", "number":
+            LabeledContent(s.title) { field(s).multilineTextAlignment(.trailing) }
+        default:
+            field(s)
+        }
+    }
+
     @ViewBuilder
     private func field(_ s: NotePageSettings.Setting) -> some View {
         switch s.type {
+        case "number" where s.min != nil && s.max != nil:
+            let lo = s.min ?? 0, hi = Swift.max(s.max ?? 1, lo), step = s.step ?? 1
+            let value = (values[s.key] as? Double) ?? (values[s.key] as? Int).map(Double.init) ?? lo
+            HStack {
+                Slider(value: Binding(get: { Swift.min(Swift.max(value, lo), hi) }, set: { values[s.key] = Self.number($0) }), in: lo...hi, step: step)
+                    .accessibilityIdentifier("appSettings.\(s.key)")
+                Text(Self.shown(value)).monospacedDigit().frame(minWidth: 44, alignment: .trailing)
+            }
+        case "date":
+            // "YYYY-MM-DD".
+            DatePicker(s.title, selection: Binding(get: { Self.day(values[s.key] as? String) }, set: { values[s.key] = Self.ymd($0) }),
+                       displayedComponents: .date)
+                .accessibilityIdentifier("appSettings.\(s.key)")
+        case "multi":
+            // Several of the options: stored as a list of their values.
+            let options = s.options ?? []
+            let chosen = (values[s.key] as? [Any])?.map { "\($0)" } ?? []
+            ForEach(options) { o in
+                Button {
+                    var now = (values[s.key] as? [Any]) ?? []
+                    if chosen.contains(o.id) { now.removeAll { "\($0)" == o.id } } else { now.append(o.value.any) }
+                    values[s.key] = now
+                } label: {
+                    HStack {
+                        Text(o.label).foregroundStyle(Color.primary)
+                        Spacer()
+                        if chosen.contains(o.id) { Image(systemName: "checkmark").foregroundStyle(Color.amberInk) }
+                    }
+                    .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(chosen.contains(o.id) ? .isSelected : [])
+                .accessibilityIdentifier("appSettings.\(s.key).\(o.id)")
+            }
         case "number":
             TextField(s.title, text: Binding(get: { (values[s.key]).map { "\($0)" } ?? "" },
                                              set: { values[s.key] = Double($0.replacingOccurrences(of: ",", with: ".")).map { $0 == $0.rounded() ? Int($0) as Any : $0 } ?? $0 }))
@@ -358,6 +463,19 @@ struct AppSettingsSheet: View {
             TextField(s.title, text: Binding(get: { values[s.key] as? String ?? "" }, set: { values[s.key] = $0 }))
                 .accessibilityIdentifier("appSettings.\(s.key)")
         }
+    }
+
+    static func number(_ d: Double) -> Any { d == d.rounded() ? Int(d) as Any : d }
+    static func shown(_ d: Double) -> String { d == d.rounded() ? "\(Int(d))" : String(format: "%.2g", d) }
+
+    static func day(_ ymd: String?) -> Date {
+        let f = DateFormatter(); f.calendar = Calendar(identifier: .gregorian); f.locale = Locale(identifier: "en_US_POSIX"); f.dateFormat = "yyyy-MM-dd"
+        return ymd.flatMap(f.date(from:)) ?? .now
+    }
+
+    static func ymd(_ date: Date) -> String {
+        let f = DateFormatter(); f.calendar = Calendar(identifier: .gregorian); f.locale = Locale(identifier: "en_US_POSIX"); f.dateFormat = "yyyy-MM-dd"
+        return f.string(from: date)
     }
 
     static func time(_ hhmm: String?) -> Date {
@@ -424,6 +542,11 @@ struct AppSettingsSheet: View {
 
     /// Kept in the app's own data, like anything else it keeps; the app updates at once.
     private func save() {
+        // Typed numbers stay inside the range the app declared.
+        for s in settings where s.type == "number" {
+            guard let d = (values[s.key] as? Double) ?? (values[s.key] as? Int).map(Double.init) else { continue }
+            values[s.key] = Self.number(Swift.min(Swift.max(d, s.min ?? -.infinity), s.max ?? .infinity))
+        }
         var doc = NotePageDataStore.shared.doc(noteID)
         var vals = doc["values"] as? [String: Any] ?? [:]
         vals["settings"] = values

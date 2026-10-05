@@ -14,6 +14,10 @@ struct NoteDetailView: View {
     @State private var showHistory = HistoryLaunch.open
     /// "ChatGPT changed 5 lines · Undo", while an AI's edit that just landed is on show.
     @State private var receipt: AIEdit.Receipt?
+    /// A text field in the note's app has focus: no receipt is drawn over it.
+    @State private var pageFieldFocused = false
+    /// A receipt waiting for the field to let go.
+    @State private var heldReceipt: AIEdit.Receipt?
     @State private var undoFailed: String?
     /// For Undo of a page an AI made: the page before it (nil: none).
     @State private var undoPage: NotePageStore.Page?
@@ -279,7 +283,16 @@ struct NoteDetailView: View {
                     .accessibilityHidden(showingPage)
                 if let page = notePage {
                     NotePageView(noteID: note.id, html: page.html, text: text, onUpdate: applyPageEdit, onFailure: pageFailed, onData: pageData,
-                                 files: { [context] id in NotePageActions.file(id, note: note, context: context) })
+                                 files: { [context] id in NotePageActions.file(id, note: note, context: context) },
+                                 onFocus: { focused in
+                                     pageFieldFocused = focused
+                                     // Typing in the app: a receipt steps out of the way (Undo stays in Edit and ⌘Z).
+                                     if focused, receipt != nil { withAnimation(.easeIn(duration: 0.15)) { receipt = nil } }
+                                     if !focused, let held = heldReceipt {
+                                         heldReceipt = nil
+                                         if held.at.timeIntervalSinceNow > -3 { showPageReceipt(held) }
+                                     }
+                                 })
                         .id(note.id)
                         .opacity(showingPage ? 1 : 0)
                         .allowsHitTesting(showingPage)
@@ -314,6 +327,15 @@ struct NoteDetailView: View {
         if pageTint == nil { pageTint = before }
         let r = AIEdit.Receipt(noteID: note.id, by: AIGlyph.page, at: .now, previous: before, after: after,
                                lines: ChangeTint.changedLines(from: before, to: after).count, kind: .pageEdit)
+        showPageReceipt(r)
+    }
+
+    /// Never over a field you're typing in, or under a sheet. A change made while a field has
+    /// focus (a button pressed as the field lets go) shows once the focus has gone, if that's soon.
+    private func showPageReceipt(_ r: AIEdit.Receipt) {
+        guard !showAppSettings else { return }
+        guard !pageFieldFocused else { heldReceipt = r; return }
+        heldReceipt = nil
         withAnimation(.spring(duration: 0.45, bounce: 0.25)) { receipt = r }
         Task { @MainActor in
             // Longer than an AI's: you may switch to Text to see the change before you undo it.
@@ -400,6 +422,7 @@ struct NoteDetailView: View {
         withAnimation(.smooth(duration: 0.3)) { mode = .page }
         let r = AIEdit.Receipt(noteID: note.id, by: now.by, at: now.at, previous: note.body, lines: 0, kind: before == nil ? .pageMade : .pageChanged)
         undoPage = before
+        guard !pageFieldFocused else { return }
         withAnimation(.spring(duration: 0.45, bounce: 0.25)) { receipt = r }
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(5.5 * ChangeTint.slowMotion))

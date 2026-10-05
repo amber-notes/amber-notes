@@ -22,6 +22,8 @@ enum NotePageLibraries {
         var version: String
         var license: String
         var bytes: Int
+        /// Libraries it needs loaded first (preact-hooks needs preact).
+        var requires: [String]?
     }
     private struct Manifest: Decodable { var libraries: [Bundled] }
 
@@ -85,12 +87,19 @@ enum NotePageLibraries {
     static func declared(in html: String) -> [Declared] {
         guard let r = html.range(of: #"<meta[^>]*name=["']amber-libs["'][^>]*>"#, options: .regularExpression) else { return [] }
         let tag = String(html[r])
-        guard let c = tag.range(of: #"content=(['"])(.*?)\1"#, options: .regularExpression) else { return [] }
+        guard let c = tag.range(of: #"content=(['"])([\s\S]*?)\1"#, options: .regularExpression) else { return [] }
         let content = String(tag[c].dropFirst("content=".count).dropFirst().dropLast())
-        return content.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.prefix(20).compactMap { item in
-            if let ref = NpmRef(item) { return .npm(ref) }
-            return bundled.contains { $0.name == item } ? .bundled(item) : nil
+        var out: [Declared] = []
+        // What a library needs comes before it, once.
+        func add(_ name: String) {
+            guard let lib = bundled.first(where: { $0.name == name }), !out.contains(.bundled(name)) else { return }
+            for r in lib.requires ?? [] { add(r) }
+            out.append(.bundled(name))
         }
+        for item in content.split(separator: ",").map({ $0.trimmingCharacters(in: .whitespacesAndNewlines) }).prefix(20) {
+            if let ref = NpmRef(item) { if !out.contains(.npm(ref)) { out.append(.npm(ref)) } } else { add(item) }
+        }
+        return out
     }
 
     /// The tags that load the declared libraries, before the page's own scripts.

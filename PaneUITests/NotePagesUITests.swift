@@ -202,7 +202,7 @@ final class NotePagesUITests: XCTestCase {
 
     /// The app mark in the list, both designs.
     func testAppMark() {
-        let style = ProcessInfo.processInfo.environment["APP_MARK"] ?? "capsule"
+        let style = ProcessInfo.processInfo.environment["APP_MARK"] ?? "soft"
         let look = ProcessInfo.processInfo.environment["APPEARANCE"] ?? "light"
         launch(["-seedPage", "Habit tracker=\(pages)/habit-tracker.html", "-appMark", style])
         let all = app.staticTexts["All Notes"].firstMatch
@@ -500,6 +500,77 @@ final class NotePagesUITests: XCTestCase {
         pause(1.5)
         shot("85-lib-npm-settings")
         mark("lib-end")
+        pause(1)
+    }
+
+    // MARK: Round 6
+
+    /// A receipt never sits on a field you're typing in: it steps away when a field gets focus.
+    func testReceiptStaysClear() {
+        launch(["-open", "October budget", "-seedPage", "October budget=\(pages)/budget.html"])
+        mark("receipt-start")
+        pause(2.5)
+        let what = app.webViews.textFields["What"].firstMatch
+        XCTAssertTrue(what.waitForExistence(timeout: 5))
+        what.tap()
+        what.typeText("Dinner")
+        let amount = app.webViews.textFields["kr"].firstMatch
+        amount.tap()
+        amount.typeText("420")
+        app.webViews.buttons["Add"].firstMatch.tap()
+        pause(1.2)
+        shot("90-receipt-after-add")
+        what.tap()
+        pause(1.2)
+        shot("91-receipt-while-typing")
+        what.typeText("Coffee")
+        pause(1)
+        shot("92-receipt-still-clear")
+        mark("receipt-end")
+        pause(1)
+    }
+
+    /// Preact, htm and the router: a packing list with two screens.
+    func testPacking() {
+        launch(["-seedNote", "\(pages)/packing.md", "-open", "Packing for Lisbon", "-seedPage", "Packing for Lisbon=\(pages)/packing.html"])
+        mark("packing-start")
+        pause(3)
+        shot("93-packing")
+        web("Walking shoes").tap()
+        pause(1.2)
+        web("Add Item").tap()
+        pause(1.2)
+        shot("94-packing-add")
+        let field = app.webViews.textFields.firstMatch
+        if field.waitForExistence(timeout: 3) { field.tap(); field.typeText("Sun hat") }
+        app.webViews.buttons["Add"].firstMatch.tap()
+        pause(1.5)
+        shot("95-packing-added")
+        mark("packing-end")
+        pause(1)
+    }
+
+    /// App Settings with sections, a slider, a condition, several choices, a date and a time,
+    /// opened from the app's own button (amber.openSettings).
+    func testSettingsTypes() {
+        launch(["-open", "October budget", "-seedPage", "October budget=\(pages)/rest-timer.html"])
+        mark("types-start")
+        pause(2.5)
+        shot("96-timer")
+        web("Settings").tap()
+        pause(1.5)
+        shot("97-timer-settings")
+        let sound = app.switches["appSettings.sound"].firstMatch
+        if sound.waitForExistence(timeout: 3) { sound.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap() }
+        pause(1)
+        shot("98-timer-sound-off")
+        let sat = app.buttons["appSettings.days.Sat"].firstMatch
+        if sat.waitForExistence(timeout: 2) { sat.tap() }
+        pause(0.6)
+        app.buttons["appSettings.done"].firstMatch.tap()
+        pause(1.5)
+        shot("99-timer-after")
+        mark("types-end")
         pause(1)
     }
 }
