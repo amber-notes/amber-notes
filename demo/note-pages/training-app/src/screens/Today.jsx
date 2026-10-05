@@ -1,27 +1,35 @@
 import { useState } from "preact/hooks";
-import { List, ListRow, Sheet, Input, Button, EmptyState, useNote, useData } from "amber-ui";
+import { useNote, useTable, useSettings } from "amber";
+import { List, ListRow, Sheet, Input, Button, EmptyState } from "amber-ui";
 import ScreenHeader from "../components/ScreenHeader.jsx";
-import { DAYS, tables, today, prefs, weight, lastSet, logSet } from "../data.js";
+import { DAYS, DEFAULTS, weight, exercisesOf, lastSet } from "../data.js";
 
 export default function Today() {
-  const note = useNote(), [data] = useData(), { plan, log } = tables(note), unit = prefs(data).unit;
+  const { today } = useNote();
+  const plan = useTable("Plan"), log = useTable("Log");
+  const [{ unit }] = useSettings(DEFAULTS);
   const [logging, setLogging] = useState(null), [kg, setKg] = useState("");
-  const day = DAYS[new Date(today(note) + "T12:00").getDay()];
-  const row = plan && (plan.rows.find((r) => r[0] === day) || plan.rows[0]);
-  if (!row) return <EmptyState title="No plan yet" body="Add a Plan table with Day, Workout and Exercises." />;
-  const exercises = row[2].split(",").map((s) => s.trim());
-  const done = (name) => log && log.rows.some((r) => r[0] === today(note) && r[1] === name);
-  const open = (name) => { const l = lastSet(log, name); setKg(l ? l[4] : ""); setLogging(name); };
-  const save = async () => { await logSet(note, log, logging, kg); setLogging(null); };
+
+  const dayName = DAYS[new Date(today + "T12:00").getDay()];
+  const day = plan.rows.find((r) => r.Day === dayName) || plan.rows[0];
+  if (!day) return <EmptyState title="No plan yet" body="Add a Plan table with Day, Workout and Exercises." />;
+  const done = (name) => log.rows.some((r) => r.Date === today && r.Exercise === name);
+
+  const open = (name) => { setKg(lastSet(log, name)?.Weight ?? ""); setLogging(name); };
+  const save = async () => {
+    const last = lastSet(log, logging);
+    await log.add({ Date: today, Exercise: logging, Sets: last?.Sets ?? "3", Reps: last?.Reps ?? "8", Weight: kg });
+    setLogging(null);
+  };
 
   return (
     <div class="screen">
-      <ScreenHeader title="Today" subtitle={`${row[1]} · ${row[0] === day ? "today" : row[0]}`} />
+      <ScreenHeader title="Today" subtitle={`${day.Workout} · ${day.Day === dayName ? "today" : day.Day}`} />
       <List>
-        {exercises.map((name) => {
-          const l = lastSet(log, name);
+        {exercisesOf(day).map((name) => {
+          const last = lastSet(log, name);
           return (
-            <ListRow title={name} subtitle={l ? `Last: ${l[2]} × ${l[3]} at ${weight(+l[4], unit)}` : "First time"}
+            <ListRow title={name} subtitle={last ? `Last: ${last.Sets} × ${last.Reps} at ${weight(+last.Weight, unit)}` : "First time"}
               trailing={done(name) ? <span class="logged">Logged</span> : null}
               onClick={done(name) ? undefined : () => open(name)} />
           );

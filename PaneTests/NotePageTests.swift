@@ -897,6 +897,46 @@ import WebKit
         #expect(sandbox.webView.url?.absoluteString == "amber-app:///index.html")
     }
 
+    /// The "amber" module: tables and checklists by heading, edits through the usual ops, batch()
+    /// as one change, and data and settings kept in the app's store.
+    @Test func theAmberHooksSpeakInNamesAndOps() async throws {
+        let main = """
+        import { h, render } from "preact";
+        import { useTable, useChecklist, useSettings, useNote, batch } from "amber";
+        window.__api = {};
+        function App() {
+          const log = useTable("Log"), packing = useChecklist("Packing"), [s, setS] = useSettings({ unit: "kg" }), note = useNote();
+          Object.assign(window.__api, { log, packing, s, setS, note });
+          return h("p", { id: "n" }, log.rows.length + " rows, " + packing.items.length + " items, " + s.unit);
+        }
+        render(h(App), document.getElementById("app"));
+        """
+        let project = ["amberApp": 1, "files": ["/index.html": #"<div id="app"></div><script type="module" src="/src/main.js"></script>"#, "/src/main.js": main], "compiled": [String: String]()] as [String: Any]
+        let stored = String(data: try JSONSerialization.data(withJSONObject: project), encoding: .utf8)!
+        let note = "Week\n\n## Log\n\n| Date | Exercise | Weight |\n| --- | --- | --- |\n| 2026-10-01 | Squat | 80 |\n| 2026-10-02 | Bench | 60 |\n\n## Packing\n\n- [ ] Towel\n- [x] Shoes\n"
+        var ops: [NotePage.Op] = []
+        let sandbox = NotePageSandbox(rules: try await NotePageSandbox.prepare())
+        sandbox.onUpdate = { ops.append($0) }
+        sandbox.load(html: stored, body: note)
+        try await run(sandbox.webView, until: "document.getElementById('n') !== null")
+        #expect(try await sandbox.webView.evaluateJavaScript("document.getElementById('n').textContent") as? String == "2 rows, 2 items, kg")
+        #expect(try await sandbox.webView.evaluateJavaScript("__api.log.rows[1].Exercise + '/' + __api.log.rows[1].Weight + '/' + __api.log.rows[1].id") as? String == "Bench/60/1")
+        _ = try await sandbox.webView.callAsyncJavaScript("""
+          await __api.log.add({ Date: "2026-10-03", Exercise: "Row", Weight: "50" });
+          await __api.log.update(0, { Exercise: "Front squat", Weight: 82.5 });
+          await __api.log.remove(1);
+          await __api.packing.toggle(__api.packing.items[0].id);
+          await __api.packing.add("Hat");
+        """, arguments: [:], contentWorld: .page)
+        #expect(ops.count == 5)
+        #expect(ops[0] == .appendRow(table: 0, values: .byName(["Date": "2026-10-03", "Exercise": "Row", "Weight": "50"])))
+        #expect(ops[1] == .batch([.setCell(table: 0, row: 0, col: .name("Exercise"), value: "Front squat"), .setCell(table: 0, row: 0, col: .name("Weight"), value: "82.5")]))
+        #expect(ops[2] == .deleteRow(table: 0, row: 1))
+        #expect(ops[3] == .toggleChecklist(line: 12))
+        #expect(ops[4] == .addChecklistItem(text: "Hat", underHeading: "Packing"))
+        _ = try await sandbox.webView.callAsyncJavaScript("await __api.setS({ unit: 'lb' })", arguments: [:], contentWorld: .page)
+    }
+
     @Test func projectsHaveLimitsAndMustBeCompiled() throws {
         func stored(_ files: [String: String], _ compiled: [String: String] = [:]) -> String {
             String(data: try! JSONSerialization.data(withJSONObject: ["amberApp": 1, "files": files, "compiled": compiled]), encoding: .utf8)!

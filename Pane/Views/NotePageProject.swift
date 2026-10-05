@@ -87,6 +87,7 @@ struct NotePageProject: Equatable {
             "preact/jsx-runtime": "amber-lib:///esm/preact-jsx-runtime.js",
             "htm": "amber-lib:///esm/htm.js",
             "amber-router": "amber-lib:///esm/amber-router.js",
+            "amber": "amber-lib:///esm/amber.js",
             "amber-ui": "amber-lib:///amber-ui/index.js",
         ]
         // The other bundled libraries by their npm names, each its global as the default export.

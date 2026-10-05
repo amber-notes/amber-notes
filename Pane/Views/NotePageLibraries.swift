@@ -151,7 +151,8 @@ enum NotePageLibraries {
 
     /// ES module builds, by the name after amber-lib:///esm/.
     static let modules = ["preact": "preact.module.js", "preact-hooks": "preact-hooks.module.js",
-                          "preact-jsx-runtime": "preact-jsx-runtime.module.js", "htm": "htm.module.js", "amber-router": "amber-router.module.js"]
+                          "preact-jsx-runtime": "preact-jsx-runtime.module.js", "htm": "htm.module.js", "amber-router": "amber-router.module.js",
+                          "amber": "amber.module.js"]
 
     static func resource(_ file: String) -> Data? {
         let base = (file as NSString).deletingPathExtension, ext = (file as NSString).pathExtension

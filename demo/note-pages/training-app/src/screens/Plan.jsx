@@ -1,14 +1,14 @@
-import { List, ListRow, useNote } from "amber-ui";
+import { useTable } from "amber";
+import { List, ListRow } from "amber-ui";
 import ScreenHeader from "../components/ScreenHeader.jsx";
-import { tables } from "../data.js";
 
 export default function Plan() {
-  const note = useNote(), { plan } = tables(note), rows = plan ? plan.rows : [];
+  const plan = useTable("Plan");
   return (
     <div class="screen">
-      <ScreenHeader title="Plan" subtitle={`${rows.length} sessions a week`} />
+      <ScreenHeader title="Plan" subtitle={`${plan.rows.length} sessions a week`} />
       <List>
-        {rows.map((r) => <ListRow title={`${r[0]} · ${r[1]}`} subtitle={r[2]} href={`#/plan/${r[0]}`} />)}
+        {plan.rows.map((d) => <ListRow title={`${d.Day} · ${d.Workout}`} subtitle={d.Exercises} href={`#/plan/${d.Day}`} />)}
       </List>
     </div>
   );

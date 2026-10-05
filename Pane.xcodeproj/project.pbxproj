@@ -99,6 +99,7 @@
 		3351028ED7A66AD203F9A841 /* Inbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99F11FB36958597987AD023E /* Inbox.swift */; };
 		339D9E976363CB6A903ACA42 /* Setup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E7A911BC92B36CB4123A6B0 /* Setup.swift */; };
 		35206ADBCCAB382C8DFF377E /* IncrementalStyleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 599DE60FE9E6F13C56486743 /* IncrementalStyleTests.swift */; };
+		3548897F5A2B168D95155650 /* amber.module.js in Resources */ = {isa = PBXBuildFile; fileRef = 97C940F267EB2E717FF9D745 /* amber.module.js */; };
 		36B499F5515EEF49E9F797EA /* NoteHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0F00B2175265FE9DFF9E83C /* NoteHistory.swift */; };
 		36CE7C6E4FA3BBA4BE51F371 /* Encryption.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9675E1E6CE2A9DBBE319BDF4 /* Encryption.swift */; };
 		36E6FA211A8FFB7B9FD39936 /* CheckPop.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE674CEBF2979E842FF6221C /* CheckPop.swift */; };
@@ -280,6 +281,7 @@
 		A6AA8911AB195561551D80DA /* NoteHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0F00B2175265FE9DFF9E83C /* NoteHistory.swift */; };
 		A70D13605754FCC0DAF6D739 /* sample-habit-tracker.html in Resources */ = {isa = PBXBuildFile; fileRef = 4F33B74A850251D3F2D92C97 /* sample-habit-tracker.html */; };
 		A7F71D5F8B7E04C3D472E23E /* ShareAsk.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DCC46BAF9DF564799127E10 /* ShareAsk.swift */; };
+		A97A0681910D561142FB118A /* amber.module.js in Resources */ = {isa = PBXBuildFile; fileRef = 97C940F267EB2E717FF9D745 /* amber.module.js */; };
 		A9B486B03ADF66D0605E46FE /* AccountLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 359BF7373A9A0550A24620EF /* AccountLibrary.swift */; };
 		AA369763B0C5777AAECE35A1 /* ImportPipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF617FC2BCA1C1A89CE29D77 /* ImportPipeline.swift */; };
 		AAEEF706B53C7F9082F6C35F /* purify.js in Resources */ = {isa = PBXBuildFile; fileRef = FA63BA9CC98D699F71D53B85 /* purify.js */; };
@@ -632,6 +634,7 @@
 		97049D2AEE2C89B14A54B08B /* NotePageNetwork.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotePageNetwork.swift; sourceTree = "<group>"; };
 		977A543BBB6A9AE0D3019BBE /* preact-jsx-runtime.module.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "preact-jsx-runtime.module.js"; sourceTree = "<group>"; };
 		97BBCF0A4A8EA967BB4FAE0E /* ENMLToMarkdown.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ENMLToMarkdown.swift; sourceTree = "<group>"; };
+		97C940F267EB2E717FF9D745 /* amber.module.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = amber.module.js; sourceTree = "<group>"; };
 		981BAC3EFB574BCE93F3A6DD /* Pane-mac-signed.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Pane-mac-signed.entitlements"; sourceTree = "<group>"; };
 		99375A4ACF211AEE18EC4EC3 /* RichTextToMarkdown.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextToMarkdown.swift; sourceTree = "<group>"; };
 		999D65FF932EF270CB1D17B4 /* NotePageLibraries.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotePageLibraries.swift; sourceTree = "<group>"; };
@@ -788,6 +791,7 @@
 				7C5A3BE24CB24DDD03944249 /* amber-base.css */,
 				F238F5CBF7C5E4F2F4B5172F /* amber-router.module.js */,
 				24D8355994666F6DBB272BC0 /* amber-ui.json */,
+				97C940F267EB2E717FF9D745 /* amber.module.js */,
 				CFFEC0432D36C47F49C28AEB /* anime.js */,
 				6A6208FEEA0F5F12A1F9C829 /* chart.js */,
 				96E8277205CE8467252CB1A6 /* confetti.js */,
@@ -1434,6 +1438,7 @@
 				27BF89E3E5F784861EE58524 /* amber-base.css in Resources */,
 				F933C4842DCCD1A6AE0B54A4 /* amber-router.module.js in Resources */,
 				16F81C7F50D02120E71CDFB5 /* amber-ui.json in Resources */,
+				3548897F5A2B168D95155650 /* amber.module.js in Resources */,
 				5464191780D6BA417D2ADA56 /* anime.js in Resources */,
 				D57E9678072EF60A03C09994 /* changelog.json in Resources */,
 				21DE1B041B3219E290CA9F69 /* chart.js in Resources */,
@@ -1469,6 +1474,7 @@
 				BF098AF84D129909C75C13CF /* amber-base.css in Resources */,
 				D3FB73D832E7F1736AD7C35B /* amber-router.module.js in Resources */,
 				B333717CEDA6A81DC8B20E72 /* amber-ui.json in Resources */,
+				A97A0681910D561142FB118A /* amber.module.js in Resources */,
 				635EB0854859743AEBF90BC5 /* anime.js in Resources */,
 				222A8316412AD1988A2068ED /* changelog.json in Resources */,
 				702D254A2BA6152E5195D309 /* chart.js in Resources */,

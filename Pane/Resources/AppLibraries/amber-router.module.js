@@ -1,6 +1,6 @@
 // amber-router 1.0.0 (Amber Notes, MIT): screens for a Preact app, in memory. A note's app runs on
 // a page that can't navigate (not even its #hash), so the route is kept here.
-//   import { Router, route, back, useRoute } from "amber-router";
+//   import { Router, Route, Link, route, back, useRoute } from "amber-router";
 //   <Router><List path="/" default /><Item path="/item/:id" /></Router>; links as <a href="#/item/3">.
 import { h } from "preact";
 import { useState, useLayoutEffect } from "preact/hooks";
@@ -34,6 +34,9 @@ export function Router({ children }) {
   const d = kids.find((c) => c.props.default);
   return d ? h(d.type, { ...d.props, path }) : null;
 }
+// <Route path="/plan/:day" component={PlanDay} />: a screen in a Router (or put the component itself).
+export function Route({ component: C, ...props }) { return h(C, props); }
+
 export function Link(props) {
   return h("a", { ...props, onClick: (e) => { e.preventDefault(); route(String(props.href || "/").replace(/^#/, "")); } });
 }

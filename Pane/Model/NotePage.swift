@@ -19,14 +19,27 @@ enum NotePage {
             "title": NoteText.title(of: body),
             "markdown": body,
             "today": TypedTable.day(today),
+            // Each with the heading it sits under (the nearest one above), so an app finds them by name.
             "tables": tables(in: lines).enumerated().map { i, t in
-                ["index": i, "columns": t.columns.map { ["name": $0.name, "type": $0.type.spec] }, "rows": t.rows] as [String: Any]
+                ["index": i, "heading": heading(above: t.header, in: lines) as Any, "columns": t.columns.map { ["name": $0.name, "type": $0.type.spec] }, "rows": t.rows] as [String: Any]
             },
             "checklists": lines.enumerated().compactMap { i, line -> [String: Any]? in
                 guard let p = ListPrefix(line: line), let checked = p.checkbox else { return nil }
-                return ["line": i + 1, "text": (line as NSString).substring(from: p.length), "checked": checked]
+                return ["line": i + 1, "text": (line as NSString).substring(from: p.length), "checked": checked, "heading": heading(above: i, in: lines) as Any]
             },
         ]
+    }
+
+    /// The text of the nearest markdown heading above a line, or NSNull.
+    static func heading(above line: Int, in lines: [String]) -> Any {
+        var i = line - 1
+        while i >= 0 {
+            if let r = lines[i].range(of: #"^#{1,6}\s+"#, options: .regularExpression) {
+                return String(lines[i][r.upperBound...]).trimmingCharacters(in: .whitespaces)
+            }
+            i -= 1
+        }
+        return NSNull()
     }
 
     /// A markdown table as the page sees it, and where its rows are in the note.

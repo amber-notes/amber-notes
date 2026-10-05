@@ -1,4 +1,4 @@
-import { Router } from "amber-router";
+import { Router, Route } from "amber-router";
 import { Shell, Icon } from "amber-ui";
 import Today from "./screens/Today.jsx";
 import Plan from "./screens/Plan.jsx";
@@ -16,11 +16,11 @@ export default function App() {
   return (
     <Shell items={screens} title="Training">
       <Router>
-        <Today path="/" default />
-        <Plan path="/plan" />
-        <PlanDay path="/plan/:day" />
-        <Progress path="/progress" />
-        <Settings path="/settings" />
+        <Route path="/" component={Today} default />
+        <Route path="/plan" component={Plan} />
+        <Route path="/plan/:day" component={PlanDay} />
+        <Route path="/progress" component={Progress} />
+        <Route path="/settings" component={Settings} />
       </Router>
     </Shell>
   );

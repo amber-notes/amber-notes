@@ -206,9 +206,11 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
             update(op) {
               return window.webkit.messageHandlers.amber.postMessage(op).catch((e) => ({ ok: false, error: String((e && e.message) || e) }));
             },
+            // Calls fn now and on every change; returns a function that stops it.
             onChange(fn) {
               listeners.push(fn);
               try { fn(amber.note, amber.data); } catch (e) { failed(e); console.error(e); }
+              return () => { const i = listeners.indexOf(fn); if (i >= 0) listeners.splice(i, 1); };
             },
             // The page's own data: never in the note's text.
             data: \(storeJSON),

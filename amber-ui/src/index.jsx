@@ -16,4 +16,4 @@ export { Tabs } from "./Tabs.jsx";
 export { TabBar, Shell } from "./TabBar.jsx";
 export { Toast, toast } from "./Toast.jsx";
 export { Icon } from "./Icon.jsx";
-export { useNote, useData } from "./hooks.js";
+export { useNote, useData, useAppData, useSettings, useTable, useChecklist } from "./hooks.js";
