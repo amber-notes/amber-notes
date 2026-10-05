@@ -98,7 +98,7 @@ async function saveProject(tx: Tx, c: Call, n: Note, unlinked: Project, changed:
   const problems = [...projectProblems(p), ...sourceProblems(p, (h) => hostDeclared(declared, h))];
   if (problems.length) throw new ToolError(`Not saved:\n- ${problems.join("\n- ")}`);
   // The file tools write often: within ten minutes, the same writer's earlier app isn't kept as
-  // another version (20261006130000_app_file_writes_coalesce.sql), so Previous App means "before".
+  // another version (20261007100600_app_file_writes_coalesce.sql), so Previous App means "before".
   await tx`select set_config('pane.coalesce', 'on', true)`;
   await tx`insert into public.note_pages (note_id, page_ct) values (${n.id}, ${await c.v.sealPage(n.id, stored)})
     on conflict (note_id) do update set page_ct = excluded.page_ct`;

@@ -2,7 +2,7 @@
 -- minutes. Each would push an earlier app out of the last 10 versions. When the file tools say so
 -- (pane.coalesce, set for their transaction only), a page that the same writer made in the last 10
 -- minutes is replaced without being kept: Previous App goes back to the app as it was before that
--- session. Everything else is kept exactly as before (20261005130000_page_data.sql).
+-- session. Everything else is kept exactly as before (20261007100200_page_data.sql).
 create or replace function public.pane_note_page_keep() returns trigger
 language plpgsql security definer set search_path = '' as $$
 declare
