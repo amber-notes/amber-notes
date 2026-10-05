@@ -35,6 +35,9 @@ export type Facts = {
   last_sent_at: Date | null;
   /// Every email row the account has, sent or failed.
   sent: string[];
+  /// Emails sent since the account's last sign of life (the app opened or synced, an AI connected,
+  /// used or editing, a click on one of these emails, or a reply).
+  sent_since_active: number;
 };
 
 /// Emails for features that haven't shipped wait behind these (env APPS_LIVE, APP_STORE_LIVE,
@@ -49,6 +52,15 @@ const DAY = 24 * HOUR;
 export function gapAfter(age: number): number {
   return age <= 10 * DAY ? 3 * DAY : 7 * DAY;
 }
+/// Silence: after one email with no sign of life since, the next waits the long gap; after two in a
+/// row, nothing until the person comes back. Then the normal gaps apply again.
+export const SILENT_STOP = 2;
+
+/// How long to wait after the last email: the normal gap, or the long one when the last went unanswered.
+export function gapFor(f: Pick<Facts, "signed_up_at" | "sent_since_active">, now: Date): number {
+  return f.sent_since_active >= 1 ? 7 * DAY : gapAfter(now.getTime() - f.signed_up_at.getTime());
+}
+
 /// Nothing automatic after the first 30 days, and at most 6 emails in them.
 export const LAST_DAY_MS = 30 * DAY;
 export const MAX_EMAILS = 6;
@@ -120,7 +132,8 @@ export function decide(f: Facts, now: Date, flags: Flags = NO_FLAGS): Kind | nul
   if (f.unsubscribed || !f.email) return null;
   const age = now.getTime() - f.signed_up_at.getTime();
   if (age > LAST_DAY_MS || f.sent.length >= MAX_EMAILS) return null;
-  if (f.last_sent_at && now.getTime() - f.last_sent_at.getTime() < gapAfter(age)) return null;
+  if (f.sent_since_active >= SILENT_STOP) return null;
+  if (f.last_sent_at && now.getTime() - f.last_sent_at.getTime() < gapFor(f, now)) return null;
   for (const rung of LADDER) {
     if (f.sent.includes(rung.kind) || !rung.for(f, flags) || rung.done(f)) continue;
     // The first rung that's due but not ready yet waits: nothing further up the ladder jumps it.

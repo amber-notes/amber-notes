@@ -11,7 +11,7 @@ const facts = (o: Partial<Facts> & { ageMs?: number } = {}): Facts => ({
   user_id: "0b6f6a5e-1d2c-4a8e-9f3b-2c1d0e9f8a7b", email: "sara@example.com",
   signed_up_at: ago(o.ageMs ?? 2 * D), note_count: 3, imported: false, biggest_folder_share: 100, utc_offset_minutes: null, on_mac: true, on_iphone: false,
   ai_connected_at: null, connect_tried: false, ai_edit_days: 0, history_opened: false, used_template: false,
-  has_app: false, shared: false, unsubscribed: false, last_sent_at: null, sent: [], ...o,
+  has_app: false, shared: false, unsubscribed: false, last_sent_at: null, sent: [], sent_since_active: 0, ...o,
 });
 /// Already sent, long enough ago that spacing doesn't block.
 const sent = (...kinds: string[]) => ({ sent: kinds, last_sent_at: ago(8 * D) });
@@ -114,6 +114,17 @@ Deno.test("at most 6 emails, and nothing after the first 30 days", () => {
   const six = { sent: ["stuck", "import", "connect", "try", "undo", "templates"], last_sent_at: ago(8 * D), ageMs: 25 * D };
   assertEquals(decide(facts({ ...six, has_app: false }), NOW, ON), null);
   assertEquals(decide(facts({ ageMs: 31 * D }), NOW), null);
+});
+
+Deno.test("silence: one unanswered email means the long gap; two in a row and nothing until they come back", () => {
+  const quiet = (n: number, lastAgo: number) => facts({ ageMs: 9 * D, sent: ["import", "connect"].slice(0, n), last_sent_at: ago(lastAgo), sent_since_active: n });
+  // Inside the first 10 days the gap is 3 days, but not after an email that went unanswered.
+  assertEquals(decide(facts({ ageMs: 9 * D, sent: ["import"], last_sent_at: ago(4 * D), sent_since_active: 0 }), NOW), "connect");
+  assertEquals(decide(quiet(1, 4 * D), NOW), null);
+  assertEquals(decide(quiet(1, 7 * D), NOW), "connect");
+  assertEquals(decide(quiet(2, 30 * D), NOW), null);
+  // They come back (any activity after the last email): the ladder goes on with the normal gaps.
+  assertEquals(decide(facts({ ageMs: 9 * D, sent: ["import", "connect"], last_sent_at: ago(3 * D), sent_since_active: 0, imported: true }), NOW), "templates");
 });
 
 Deno.test("never after unsubscribing, never without an address", () => {

@@ -68,7 +68,7 @@ Deno.test("the subject and preview are short enough for a phone's inbox", () => 
 
 Deno.test("a paper-cut picture on top of every email, and real captures only inside the note", () => {
   const captures = ["connect.jpg", "undo.jpg", "app-habits.jpg", "app-budget.jpg", "share.jpg",
-    "t-grocery-list.jpg", "t-trip-plan.jpg", "t-weekly-review.jpg", "mark.png", "emil.jpg"];
+    "tc-meal-plan.jpg", "tc-trip-plan.jpg", "tc-weekly-review.jpg", "mark.png", "emil.jpg"];
   for (const e of all) {
     const pics = [...e.html.matchAll(/src="https:\/\/ambernotes\.app\/email\/([^"]+)"/g)].map((m) => m[1]);
     assertEquals(pics.filter((p) => p.startsWith("hero-")).length, 1, `${e.kind}: one hero`);
@@ -113,7 +113,13 @@ Deno.test("two subject lines per email, both short", () => {
 
 Deno.test("templates link to Use template on the site", () => {
   const e = render("templates", ctx);
-  for (const slug of ["grocery-list", "trip-plan", "weekly-review"]) assertStringIncludes(e.html, `href="https://ambernotes.app/open/template/${slug}"`);
+  for (const slug of ["meal-plan", "trip-plan", "weekly-review"]) {
+    assertStringIncludes(e.html, `href="https://ambernotes.app/open/template/${slug}"`);
+    assertStringIncludes(e.html, `/email/tc-${slug}.jpg`);
+  }
+  // Three across on a desktop, stacked on a phone.
+  assertEquals((e.html.match(/class="tcol"/g) ?? []).length, 3);
+  assertStringIncludes(e.html, ".tcol { display: block !important; width: 100% !important;");
 });
 
 Deno.test("Try this first: each prompt as a chat bubble, with Ask ChatGPT and Ask Claude under it", () => {

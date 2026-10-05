@@ -63,8 +63,9 @@ type Draft = {
   blocks: Block[];
 };
 
+// Three with calm covers (the grocery list's trolley is out: Emil turned the cart down).
 const TEMPLATES: Template[] = [
-  { slug: "grocery-list", title: "Grocery list", tagline: "Sorted by aisle, before you get to the shop." },
+  { slug: "meal-plan", title: "Meal plan and groceries", tagline: "This week's dinners and the shopping list." },
   { slug: "trip-plan", title: "Trip plan", tagline: "Days, bookings and the packing list in one place." },
   { slug: "weekly-review", title: "Weekly review", tagline: "Five questions every Sunday, written up for you." },
 ];
@@ -192,8 +193,8 @@ function draft(kind: Kind, c: Context): Draft {
       };
     case "templates":
       return {
-        subject: ["Three notes your AI can keep for you", "A grocery list that sorts itself"],
-        preview: ["A grocery list, a trip plan and a weekly review, each with the instructions to give ChatGPT or Claude.",
+        subject: ["Three notes your AI can keep for you", "A trip plan your AI keeps up to date"],
+        preview: ["A meal plan, a trip plan and a weekly review, each with the instructions to give ChatGPT or Claude.",
           "Three templates: add the note, give your AI the instructions once, and it keeps the note up to date."],
         title: "Three templates to try",
         art: { file: "hero-templates.jpg", ground: "#1f4956", alt: "A paper-cut spiral notebook with its page split into sections, beside a pencil and a ruler" },
@@ -280,7 +281,10 @@ const DISPLAY = "-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Ro
 // inversion stays soft.
 const L = { ground: "#fff4e6", page: "#fffdf9", chrome: "#f6f5f3", edge: "#ebe6df", text: "#1d1d1f", secondary: "#6e6e73", circle: "#aeaeb2",
   accent: "#e39410", accentText: "#a85700", muted: "#74604c", link: "#a85700", cta: "#2a1d10", ctaInk: "#fff4e6",
-  bubble: "#f1efec", pillEdge: "#d9d2c6", shotEdge: "#e8e2d8" };
+  bubble: "#f1efec", pillEdge: "#d9d2c6", shotEdge: "#e8e2d8", paper: "#fffaf3", paperEdge: "#f0e2cf" };
+
+/// The site's template cards' corner radius (web/app/templates/templates.module.css, .card).
+const CARD_R = 22;
 
 function inline(s: string, linkClass: string, color: string): string {
   let out = "", last = 0;
@@ -344,15 +348,23 @@ function blockHTML(b: Block, c: Context): string {
   }
   if ("shot" in b) return shotHTML(c, b.shot);
   if ("prompts" in b) return promptsHTML(b.prompts, c);
-  // Templates: the top of each template's note as the site shows it on a phone (its title and what
-  // it's for, readable at phone width, so nothing repeats them), then the link that adds it.
-  return b.templates.map((t) => {
-    const use = `${c.site}/open/template/${t.slug}`;
-    return `${table(' width="100%" style="margin:0 0 22px;"')}<tr><td>
-<a href="${c.site}/templates/${t.slug}"><img class="shot" src="${c.assets}/t-${t.slug}.jpg" width="330" height="155" alt="The ${esc(t.title)} template note: ${esc(t.tagline)}" style="display:block;width:100%;max-width:330px;height:auto;border:1px solid ${L.shotEdge};border-radius:12px;color:${L.secondary};font-family:${SANS};font-size:13px;"></a>
-<a href="${use}" style="display:inline-block;margin-top:10px;font-family:${SANS};font-size:15px;font-weight:600;line-height:20px;color:${L.accentText};text-decoration:none;"><span class="lnk" style="color:${L.accentText};">Use the ${esc(t.title.toLowerCase())} template &rarr;</span></a>
-</td></tr></table>`;
+  // Templates: cards like the site's gallery (web/app/templates/Card.tsx), with the template's own
+  // paper-cut cover big on top, its title, one line and Use template. Three across on a desktop;
+  // stacked on a phone. Every part of a card links to the template, so the whole card is a link.
+  const cells = b.templates.map((t) => {
+    const use = esc(`${c.site}/open/template/${t.slug}`);
+    return `<td class="tcol" width="33%" valign="top" style="width:33%;padding:0 5px;">
+${table(` width="100%" class="tcard" bgcolor="${L.paper}" style="background:${L.paper};border:1px solid ${L.paperEdge};border-radius:${CARD_R}px;"`)}
+<tr><td style="line-height:0;font-size:0;"><a href="${use}"><img src="${c.assets}/tc-${t.slug}.jpg" width="142" height="99" alt="${esc(t.title)} template cover" style="display:block;width:100%;height:auto;border:0;border-radius:${CARD_R}px ${CARD_R}px 0 0;color:${L.secondary};font-family:${SANS};font-size:12px;"></a></td></tr>
+<tr><td class="tbody" height="124" valign="top" style="height:124px;padding:10px 12px 12px;font-family:${SANS};">
+<a href="${use}" style="text-decoration:none;"><span class="ink tct" style="display:block;font-family:${DISPLAY};font-size:15px;line-height:1.25;font-weight:700;color:${L.text};">${esc(t.title)}</span></a>
+<a href="${use}" style="text-decoration:none;"><span class="sec tcs" style="display:block;margin:4px 0 8px;font-size:13px;line-height:1.4;color:${L.secondary};">${esc(t.tagline)}</span></a>
+<a href="${use}" style="font-size:13px;font-weight:600;line-height:18px;color:${L.accentText};text-decoration:none;"><span class="lnk" style="color:${L.accentText};">Use template &rarr;</span></a>
+</td></tr></table></td>`;
   }).join("\n");
+  return `${table(' width="100%" style="margin:2px 0 18px;"')}<tr>
+${cells}
+</tr></table>`;
 }
 
 function htmlOf(d: Draft, c: Context): string {
@@ -387,6 +399,10 @@ function htmlOf(d: Draft, c: Context): string {
     .body { line-height: 1.62 !important; margin-bottom: 22px !important; }
     .small { line-height: 1.6 !important; }
     .crow { padding-bottom: 16px !important; }
+    .tcol { display: block !important; width: 100% !important; padding: 0 0 12px !important; }
+    .tbody { height: auto !important; padding: 12px 16px 14px !important; }
+    .tct { font-size: 18px !important; }
+    .tcs { font-size: 15px !important; }
   }
 </style>
 <style>
@@ -407,6 +423,7 @@ function htmlOf(d: Draft, c: Context): string {
     .rule { border-color: #333333 !important; }
     .bubble { background: #2c2c2e !important; }
     .shot { border-color: #3a3a3c !important; }
+    .tcard { background: #2a2a2a !important; border-color: #3a3a3c !important; }
   }
 </style>
 <style>
@@ -418,6 +435,7 @@ function htmlOf(d: Draft, c: Context): string {
   [data-ogsb] .window { background: #1e1e1e !important; }
   [data-ogsb] .chrome { background: #262626 !important; }
   [data-ogsb] .bubble { background: #2c2c2e !important; }
+  [data-ogsb] .tcard { background: #2a2a2a !important; }
 </style>
 </head>
 <body class="ground" style="margin:0;padding:0;background:${L.ground};-webkit-text-size-adjust:100%;">

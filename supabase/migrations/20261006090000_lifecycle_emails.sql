@@ -13,6 +13,7 @@
 -- lifecycle_facts()  the activity the function decides from, for accounts made since a date.
 -- lifecycle_tick()   what pg_cron runs every hour: asks the function to do a round. It does nothing
 --                    until pg_net is on and the vault holds the function's address and secret.
+-- email_replies      a reply, noted by hand: a sign of life like a click.
 -- email_clicks       a click on a link in one of these emails, when LIFECYCLE_TRACK_CLICKS is on:
 --                    which email and the link's host and path. No address, no query, no device.
 -- pane_devices       takes the device's UTC offset, so emails can go out at 9 in its morning.
@@ -56,6 +57,16 @@ revoke all on public.email_clicks from anon, authenticated;
 alter table public.pane_devices add column if not exists utc_offset_minutes smallint
   check (utc_offset_minutes is null or utc_offset_minutes between -720 and 840);
 
+-- A reply to one of these emails, noted by hand for now (insert a row when someone writes back):
+-- it counts as a sign of life, so the emails go on.
+create table public.email_replies (
+  id bigint generated always as identity primary key,
+  user_id uuid not null references auth.users (id) on delete cascade,
+  at timestamptz not null default now()
+);
+alter table public.email_replies enable row level security;
+revoke all on public.email_replies from anon, authenticated;
+
 create table public.email_unsubscribes (
   user_id uuid primary key references auth.users (id) on delete cascade,
   -- link: the page the email's link opens; header: a mail app's own unsubscribe button (RFC 8058).
@@ -73,7 +84,8 @@ returns table (
   on_mac boolean, on_iphone boolean,
   ai_connected_at timestamptz, connect_tried boolean, ai_edit_days integer,
   history_opened boolean, used_template boolean, has_app boolean, shared boolean,
-  unsubscribed boolean, last_sent_at timestamptz, sent text[]
+  unsubscribed boolean, last_sent_at timestamptz, sent text[],
+  last_active_at timestamptz, sent_since_active integer
 )
 language sql stable security definer set search_path = '' as $$
   select u.id, u.email, u.created_at,
@@ -94,8 +106,20 @@ language sql stable security definer set search_path = '' as $$
     exists (select 1 from public.pane_feature_use f where f.user_id = u.id and f.feature = 'shareLink'),
     exists (select 1 from public.email_unsubscribes x where x.user_id = u.id),
     (select max(s.created_at) from public.email_sends s where s.user_id = u.id),
-    coalesce((select array_agg(s.kind order by s.kind) from public.email_sends s where s.user_id = u.id), '{}')
+    coalesce((select array_agg(s.kind order by s.kind) from public.email_sends s where s.user_id = u.id), '{}'),
+    act.at,
+    (select count(*)::int from public.email_sends s where s.user_id = u.id and s.created_at > coalesce(act.at, '-infinity'))
   from auth.users u
+  -- The last sign of life: the app opened or a note changed (when, never what), an AI connected,
+  -- used or editing, a click on one of these emails, or a reply noted in email_replies.
+  cross join lateral (select greatest(
+    (select max(d.last_seen) from public.pane_devices d where d.user_id = u.id),
+    (select max(n.server_updated_at) from public.notes n where n.user_id = u.id),
+    (select max(greatest(t.created_at, coalesce(t.last_used_at, t.created_at))) from public.mcp_tokens t where t.user_id = u.id),
+    (select max(a.first_at) from public.pane_activity a where a.user_id = u.id),
+    (select max(c.at) from public.email_clicks c join public.email_sends s on s.id = c.send_id where s.user_id = u.id),
+    (select max(r.at) from public.email_replies r where r.user_id = u.id)
+  ) as at) act
   where u.created_at >= since
     and u.created_at >= now() - interval '30 days'
     and coalesce(u.email, '') <> ''

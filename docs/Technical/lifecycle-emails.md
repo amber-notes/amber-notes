@@ -21,7 +21,14 @@ soon after sign-up or after connecting) holds the ladder: nothing further up jum
 | 7b | `mac` | iPhone only | a Mac install | |
 | 8 | `share` | 3+ weeks in | `shareLink` used | `SHARING_LIVE` |
 
-Spacing: at least 3 days apart in the first 10 days after sign-up, then at least 7. At most 6 emails,
+Spacing: at least 3 days apart in the first 10 days after sign-up, then at least 7. Silence: an account
+with no sign of life since our last email (the app opened or synced, a note changed, an AI
+connected, used or editing, a click on one of these emails, or a reply noted in `email_replies`)
+gets at most one more email, after the long 7-day gap even in the first 10 days. After two emails in
+a row with nothing in between, the emails stop until the person comes back, and then the normal
+gaps apply again. `lifecycle_facts` gives the time of the last sign of life (`last_active_at`) and
+how many emails went out since (`sent_since_active`). Replies aren't seen automatically: insert a
+row into `email_replies` when someone writes back. At most 6 emails,
 all within the first 30 days; nothing automatic after that. Accounts made before `LIFECYCLE_SINCE`
 get nothing.
 
@@ -121,7 +128,7 @@ Real captures inside the note:
 | --- | --- | --- |
 | `connect.jpg` | connect (grocery list) | `web/public/blog/amber-notes-iphone-chatgpt-edited-checklist.webp` and the receipt `web/public/demo/720/pill-chatgpt-5-lines@2x.png` |
 | `receipt.png` | undo | the same receipt |
-| `t-*.jpg` | templates | the top of each template's note on ambernotes.app/templates at phone width |
+| `tc-*.jpg` | templates | each template's paper-cut cover from `web/public/templates/covers/`, cropped like the site's cards |
 | `app-habits.jpg`, `app-budget.jpg` | apps | the app-notes prototype; not in this repository until app notes ship |
 | `share.jpg` | share | a frame of the collaboration prototype; not in this repository until sharing ships |
 

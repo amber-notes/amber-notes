@@ -9,7 +9,7 @@
 // tried with the next email the same day.
 import type { Sql } from "npm:postgres@3.4.5";
 import { render } from "./emails.ts";
-import { clickable, type Config, decide, type Facts, gapAfter, type Kind, LADDER, linkName, localMorning, MAX_EMAILS, sortable, trackedLink, unsubscribeLinks, unsubscribeToken, variantOf } from "./logic.ts";
+import { clickable, type Config, decide, type Facts, gapFor, type Kind, LADDER, linkName, localMorning, MAX_EMAILS, sortable, trackedLink, unsubscribeLinks, unsubscribeToken, variantOf } from "./logic.ts";
 
 export type Message = {
   from: string;
@@ -26,7 +26,7 @@ export type Send = (m: Message) => Promise<SendResult>;
 
 export type Report = { enabled: boolean; accounts: number; due: Partial<Record<Kind, number>>; sent: number; failed: number; deferred: number };
 
-type Row = Omit<Facts, "signed_up_at" | "last_sent_at" | "ai_connected_at"> & { signed_up_at: Date | string; last_sent_at: Date | string | null; ai_connected_at: Date | string | null };
+type Row = Omit<Facts, "signed_up_at" | "last_sent_at" | "ai_connected_at"> & { last_active_at?: Date | string | null; signed_up_at: Date | string; last_sent_at: Date | string | null; ai_connected_at: Date | string | null };
 
 const asFacts = (r: Row): Facts => ({
   ...r,
@@ -37,6 +37,7 @@ const asFacts = (r: Row): Facts => ({
   biggest_folder_share: Number(r.biggest_folder_share ?? 0),
   utc_offset_minutes: r.utc_offset_minutes === null || r.utc_offset_minutes === undefined ? null : Number(r.utc_offset_minutes),
   ai_edit_days: Number(r.ai_edit_days ?? 0),
+  sent_since_active: Number(r.sent_since_active ?? 0),
   sent: r.sent ?? [],
 });
 
@@ -47,7 +48,7 @@ async function claim(sql: Sql, f: Facts, kind: Kind, variant: number, now: Date)
   return await sql.begin(async (tx) => {
     const t = tx as unknown as Sql;
     await t`select pg_advisory_xact_lock(hashtext(${"lifecycle:" + userId}))`;
-    const since = new Date(now.getTime() - gapAfter(now.getTime() - f.signed_up_at.getTime()));
+    const since = new Date(now.getTime() - gapFor(f, now));
     const [row] = await t<{ id: number }[]>`
       insert into public.email_sends (user_id, kind, variant)
       select ${userId}::uuid, ${kind}, ${variant}

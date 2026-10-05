@@ -84,7 +84,10 @@ Deno.test("never sends twice: a second round, and rounds at once, send each emai
   assertEquals(kinds(box), [S.import, S.connect]);
 });
 
-Deno.test("the ladder, a Mac account that does nothing: stuck, import, connect, templates, 3 days apart", async () => {
+/// The app opened on the account's Mac just now: a sign of life after the emails so far.
+const openApp = (pg: PGlite, id: string) => pg.query(`update public.pane_devices set last_seen = clock_timestamp() where user_id = $1`, [id]);
+
+Deno.test("the ladder, a Mac account that keeps opening the app: stuck, import, connect, templates, 3 days apart", async () => {
   const pg = await schemaDB();
   const a = await person(pg, { age: 26 * H, mac: true });
   const box = outbox();
@@ -95,10 +98,50 @@ Deno.test("the ladder, a Mac account that does nothing: stuck, import, connect, 
   await note(pg, a.account, "First");
   await round(at(3 * D + H));
   assertEquals(kinds(box), [S.stuck, S.import]);
+  await openApp(pg, a.id);
   await round(at(6 * D + 2 * H));
   assertEquals(kinds(box), [S.stuck, S.import, S.connect]);
+  await openApp(pg, a.id);
   await round(at(9 * D + 3 * H));
   assertEquals(kinds(box), [S.stuck, S.import, S.connect, S.templates]);
+});
+
+Deno.test("silence: an account that never comes back gets two emails, then nothing", async () => {
+  const pg = await schemaDB();
+  await person(pg, { age: 2 * D, notes: 1, mac: true });
+  const box = outbox();
+  for (const d of [0, 3, 7, 8, 15, 22]) await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), now: at(d * D + H), ...quick });
+  // The first goes; the second waits the long gap (not 3 days); then it stops.
+  assertEquals(kinds(box), [S.import, S.connect]);
+});
+
+Deno.test("silence: an account that comes back picks up the ladder with the normal gaps", async () => {
+  const pg = await schemaDB();
+  const a = await person(pg, { age: 2 * D, notes: 1, mac: true });
+  const box = outbox();
+  await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), now: at(H), ...quick });
+  await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), now: at(7 * D + 2 * H), ...quick });
+  await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), now: at(14 * D + 3 * H), ...quick });
+  assertEquals(box.sent.length, 2);
+  await openApp(pg, a.id);
+  await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), now: at(17 * D + 4 * H), ...quick });
+  assertEquals(kinds(box), [S.import, S.connect, S.templates]);
+});
+
+Deno.test("silence: a click counts as coming back, so a reader who clicks keeps getting the ladder", async () => {
+  const pg = await schemaDB();
+  await person(pg, { age: 2 * D, notes: 1, mac: true });
+  const box = outbox();
+  const clickLast = async () => {
+    const [row] = (await pg.query<{ id: number }>(`select id from public.email_sends order by id desc limit 1`)).rows;
+    await recordClick(sqlFor(pg), Number(row.id), "https://ambernotes.app/open/import");
+  };
+  await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), now: at(H), ...quick });
+  await clickLast();
+  await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), now: at(3 * D + 2 * H), ...quick });
+  await clickLast();
+  await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), now: at(6 * D + 3 * H), ...quick });
+  assertEquals(kinds(box), [S.import, S.connect, S.templates]);
 });
 
 Deno.test("stops at the goal: connecting skips connect; the first AI edit skips Try this first", async () => {
@@ -252,7 +295,7 @@ Deno.test("deleting an account deletes its email rows", async () => {
 
 Deno.test("clients can't read or write the email tables", async () => {
   const pg = await schemaDB();
-  for (const table of ["email_sends", "email_unsubscribes"]) {
+  for (const table of ["email_sends", "email_unsubscribes", "email_replies", "email_clicks"]) {
     for (const role of ["anon", "authenticated"]) {
       const ok = (await pg.query<{ ok: boolean }>(`select has_table_privilege($1, $2, 'select') or has_table_privilege($1, $2, 'insert') as ok`, [role, `public.${table}`])).rows[0].ok;
       assertEquals(ok, false, `${role} on ${table}`);

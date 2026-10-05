@@ -81,6 +81,7 @@ async function seed(pg: PGlite, me: string) {
   await pg.query(`insert into public.signup_allowlist (email) select lower(email) from auth.users where id = $1`, [me]);
   await pg.query(`insert into public.email_sends (user_id, kind, status, sent_at) values ($1, 'connect', 'sent', now())`, [me]);
   await pg.query(`insert into public.email_unsubscribes (user_id, source) values ($1, 'link')`, [me]);
+  await pg.query(`insert into public.email_replies (user_id) values ($1)`, [me]);
   await pg.query(`insert into auth.sessions (user_id, user_agent, ip) values ($1, 'Amber Notes/1.0 iPhone', '203.0.113.9')`, [me]);
   await pg.query(`insert into auth.audit_log_entries (payload, ip_address) values (json_build_object('actor_id', $1::text, 'actor_username', 'sara@example.com'), '203.0.113.9')`, [me]);
   return { folder, note, trashed, locked, slug, tokenHash, acct: a };
