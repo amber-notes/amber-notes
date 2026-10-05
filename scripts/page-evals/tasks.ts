@@ -748,7 +748,7 @@ export const TASKS: Task[] = [
     checks: (f) => [
       unchanged(f),
       check("keeps_score", /amber\.(store|setData)|update_page_data/.test((f.page ?? "") + JSON.stringify(f.calls.map((c) => c.name))), "nothing keeps scores or progress in the app's store"),
-      check("uses_the_words", /amber\.note|note\.tables/.test(f.page ?? ""), "the game doesn't use the note's words"),
+      check("uses_the_words", /\.tables\b|\.markdown\b/.test(f.page ?? "") && !/hablar[^]{0,200}comer[^]{0,200}vivir/.test(f.page ?? ""), "the game doesn't read the note's words (or copies them in)"),
     ],
   },
   {

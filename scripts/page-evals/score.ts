@@ -38,7 +38,7 @@ function generic(task: Task, f: Final, r: Render | undefined, pageProblems: (htm
   if (phoneLight?.under44Count !== undefined) c("phone_targets", phoneLight.under44Count === 0, `${phoneLight.under44Count} controls under 44 pt: ${(phoneLight.under44 ?? []).slice(0, 3).join(", ")}`);
   c("no_clipped_text", r.views.every((v) => (v.clippedCount ?? 0) === 0), r.views.flatMap((v) => v.clipped ?? []).slice(0, 3).join(", "));
   const light = r.views.find((v) => v.width < 600 && v.scheme === "light")!, dark = r.views.find((v) => v.width < 600 && v.scheme === "dark")!;
-  c("shows_data", light.textLength > 20 && (light.sampled === 0 || light.shown >= 1), `${light.shown}/${light.sampled} recent values visible, ${light.textLength} chars of text`);
+  if (!task.plays) c("shows_data", light.textLength > 20 && (light.sampled === 0 || light.shown >= 1), `${light.shown}/${light.sampled} recent values visible, ${light.textLength} chars of text`);
   c("dark_mode", dark.bgLuminance < 0.2 && dark.contrast >= 4.5, `dark bg ${dark.bg}, text ${dark.fg}, contrast ${dark.contrast.toFixed(1)}`);
   c("light_contrast", light.contrast >= 4.5, `contrast ${light.contrast.toFixed(1)}`);
   // Only pages the model wrote whole; a small edit to an older page keeps its colors.

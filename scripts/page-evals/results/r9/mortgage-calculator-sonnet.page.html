@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+*{box-sizing:border-box}
+main{max-width:var(--amber-content-max);margin:0 auto;padding:20px var(--amber-gutter) 64px}
+h1{font-size:28px;letter-spacing:-.02em;margin:4px 0 16px}
+.grid{display:grid;gap:16px;grid-template-columns:1fr}
+@media(min-width:900px){.grid{grid-template-columns:minmax(300px,380px) 1fr;align-items:start}}
+.card{background:var(--amber-surface);border:1px solid var(--amber-separator);border-radius:var(--amber-radius);padding:16px}
+.field{margin-bottom:18px}
+.field:last-child{margin-bottom:0}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
+.top label{font-size:14px;color:var(--amber-text-secondary)}
+.val{display:flex;align-items:baseline;gap:4px;background:var(--amber-fill);border-radius:var(--amber-radius-small);padding:0 10px;min-height:44px}
+.val input{font:inherit;font-size:20px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--amber-text);background:none;border:0;outline:0;text-align:right;width:9ch;min-width:0;padding:0;min-height:44px}
+.val span{color:var(--amber-text-secondary);font-size:14px}
+input[type=range]{width:100%;height:44px;min-height:44px;display:block;accent-color:var(--amber-accent);margin:0}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--amber-fill);padding:4px;border-radius:var(--amber-radius-small)}
+.seg button{font:inherit;font-weight:600;min-height:44px;border:0;border-radius:calc(var(--amber-radius-small) - 2px);background:none;color:var(--amber-text)}
+.seg button[aria-pressed=true]{background:var(--amber-surface);color:var(--amber-text);box-shadow:inset 0 0 0 2px var(--amber-accent)}
+input[type=range]{-webkit-appearance:none;appearance:none;background:none}
+input[type=range]::-webkit-slider-runnable-track{height:8px;border-radius:4px;background:var(--amber-fill)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;margin-top:-10px;border-radius:50%;background:var(--amber-accent);border:3px solid var(--amber-surface);box-shadow:0 0 0 1px var(--amber-separator)}
+input[type=range]::-moz-range-track{height:8px;border-radius:4px;background:var(--amber-fill)}
+input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:var(--amber-accent);border:3px solid var(--amber-surface)}
+.hero{background:var(--amber-accent-soft);border-color:transparent}
+.lbl{font-size:13px;color:var(--amber-text-secondary)}
+.big{font-family:var(--amber-font-rounded);font-weight:700;font-size:clamp(38px,9vw,64px);letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1.05;margin:4px 0}
+.big small{font-size:.35em;font-weight:600;color:var(--amber-text-secondary);letter-spacing:0}
+.sub{font-size:14px;color:var(--amber-text-secondary)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-top:16px}
+.stat{background:var(--amber-surface);border:1px solid var(--amber-separator);border-radius:var(--amber-radius-small);padding:12px}
+.stat b{display:block;font-size:20px;font-variant-numeric:tabular-nums;margin-top:2px}
+.bar{display:flex;height:14px;border-radius:7px;overflow:hidden;margin:14px 0 6px;background:var(--amber-fill)}
+.bar i{display:block;transition:width .25s}
+.dotp,.doti{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:baseline}
+.dotp{background:var(--amber-accent)}.doti{background:var(--amber-text-secondary);opacity:.55}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--amber-text-secondary)}
+svg{width:100%;height:auto;display:block;margin-top:8px}
+.ax{fill:var(--amber-text-secondary);font-size:12px}
+h2{font-size:16px;margin:0 0 2px}
+@media(prefers-reduced-motion:reduce){.bar i{transition:none}}
+</style>
+</head>
+<body>
+<main>
+<h1 id="t"></h1>
+<div class="grid">
+ <section class="card" aria-label="Loan inputs">
+  <div class="field"><div class="top"><label for="loan">Loan</label><div class="val"><input id="loan" inputmode="numeric" autocomplete="off"><span>kr</span></div></div>
+   <input type="range" id="loanR" min="100000" max="10000000" step="50000" aria-label="Loan slider"></div>
+  <div class="field"><div class="top"><label for="rate">Interest rate</label><div class="val"><input id="rate" inputmode="decimal" autocomplete="off"><span>%</span></div></div>
+   <input type="range" id="rateR" min="0" max="12" step="0.05" aria-label="Rate slider"></div>
+  <div class="field"><div class="top"><label for="years">Term</label><div class="val"><input id="years" inputmode="numeric" autocomplete="off"><span>years</span></div></div>
+   <input type="range" id="yearsR" min="1" max="50" step="1" aria-label="Years slider"></div>
+  <div class="field"><div class="lbl" style="margin-bottom:6px" id="amlbl">Amortization</div>
+   <div class="seg" role="group" aria-labelledby="amlbl"><button type="button" id="mStraight">Straight</button><button type="button" id="mAnn">Annuity</button></div></div>
+ </section>
+ <section>
+  <div class="card hero">
+   <div class="lbl" id="plabel">Monthly payment</div>
+   <div class="big" id="pay" aria-live="polite"></div>
+   <div class="sub" id="psub"></div>
+   <div class="bar" id="bar" role="img"></div>
+   <div class="legend"><span><i class="dotp"></i>Principal <b id="lp"></b></span><span><i class="doti"></i>Interest <b id="li"></b></span></div>
+  </div>
+  <div class="stats">
+   <div class="stat"><span class="lbl">Total interest</span><b id="ti"></b></div>
+   <div class="stat"><span class="lbl">Total paid</span><b id="tp"></b></div>
+   <div class="stat"><span class="lbl">Interest per year (yr 1)</span><b id="iy"></b></div>
+  </div>
+  <div class="card" style="margin-top:16px">
+   <h2>Monthly payment over time</h2>
+   <div class="sub" id="csub"></div>
+   <div id="chart"></div>
+  </div>
+ </section>
+</div>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const num=s=>parseFloat(String(s).replace(/[\s\u00a0]/g,"").replace(",","."));
+const fmt=n=>Math.round(n).toLocaleString("sv-SE").replace(/\u00a0/g," ");
+const kr=n=>fmt(n)+" kr";
+let S={loan:3200000,rate:4.1,years:25,mode:"straight"},seeded=false;
+
+function parse(md){
+  const g=re=>{const m=md.match(re);return m?num(m[1]):NaN};
+  const l=g(/loan:\s*([\d\s\u00a0.,]+)/i),r=g(/rate:\s*([\d.,]+)/i),y=g(/years:\s*([\d.,]+)/i);
+  const o={};if(l>0)o.loan=l;if(r>=0)o.rate=r;if(y>0)o.years=y;
+  if(/amortization:\s*annuity/i.test(md))o.mode="annuity";else if(/amortization:\s*straight/i.test(md))o.mode="straight";
+  return o;
+}
+function calc(){
+  const n=Math.round(S.years*12),r=S.rate/1200,L=S.loan;let bal=L,rows=[],ti=0;
+  const pa=n&&r>0?L*r/(1-Math.pow(1+r,-n)):L/n;
+  for(let k=0;k<n;k++){
+    const i=bal*r;let p=S.mode==="straight"?L/n:pa-i;
+    rows.push({i,p});ti+=i;bal-=p;
+  }
+  return{n,rows,ti};
+}
+function render(){
+  const c=calc(),{rows}=c;if(!rows.length)return;
+  const f=rows[0],l=rows[rows.length-1],first=f.i+f.p,last=l.i+l.p;
+  const straight=S.mode==="straight";
+  $("plabel").textContent=straight?"First monthly payment":"Monthly payment";
+  $("pay").innerHTML=fmt(first)+" <small>kr / month</small>";
+  $("psub").textContent=straight?"Falls to "+kr(last)+" by the final month as interest shrinks":"Same payment every month for "+S.years+" years";
+  const tot=S.loan+c.ti;
+  $("bar").style.cssText="";$("bar").innerHTML=`<i style="width:${S.loan/tot*100}%;background:var(--amber-accent)"></i><i style="width:${c.ti/tot*100}%;background:var(--amber-text-secondary);opacity:.55"></i>`;
+  $("bar").setAttribute("aria-label",`Of everything paid, ${Math.round(S.loan/tot*100)}% is principal and ${Math.round(c.ti/tot*100)}% is interest`);
+  $("lp").textContent=kr(f.p)+" now";$("li").textContent=kr(f.i)+" now";
+  $("ti").textContent=kr(c.ti);$("tp").textContent=kr(tot);
+  $("iy").textContent=kr(rows.slice(0,12).reduce((a,x)=>a+x.i,0));
+  $("csub").textContent="Principal and interest in each month, month 1 to "+c.n;
+  // chart
+  const W=360,H=230,pl=48,pb=22,pt=8,pr=8,iw=W-pl-pr,ih=H-pb-pt,max=Math.max(...rows.map(x=>x.i+x.p))*1.05;
+  const X=k=>pl+k/(rows.length-1||1)*iw,Y=v=>pt+ih-v/max*ih;
+  let top="",mid="";
+  rows.forEach((x,k)=>{top+=(k?"L":"M")+X(k).toFixed(1)+" "+Y(x.i+x.p).toFixed(1)});
+  const pts=rows.map((x,k)=>X(k).toFixed(1)+" "+Y(x.i).toFixed(1));
+  const iArea="M"+pl+" "+Y(0)+" L"+pts.join(" L")+" L"+X(rows.length-1)+" "+Y(0)+"Z";
+  const tArea="M"+rows.map((x,k)=>X(k).toFixed(1)+" "+Y(x.i+x.p).toFixed(1)).join(" L")+" L"+pts.slice().reverse().join(" L")+"Z";
+  let g="";for(let t=0;t<=4;t++){const v=max/1.05*t/4;g+=`<line x1="${pl}" x2="${W-pr}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--amber-separator)"/><text class="ax" x="${pl-6}" y="${Y(v)+4}" text-anchor="end">${v>=1000?Math.round(v/1000)+"k":Math.round(v)}</text>`}
+  const step=S.years>20?10:S.years>8?5:S.years>3?2:1;
+  for(let y=0;y<=S.years;y+=step){const k=Math.min(y*12,rows.length-1);g+=`<text class="ax" x="${X(k)}" y="${H-6}" text-anchor="middle">${y}y</text>`}
+  $("chart").innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Chart: monthly interest shrinks and principal fills the rest of the payment over ${S.years} years">${g}<path d="${tArea}" fill="var(--amber-accent)"/><path d="${iArea}" fill="var(--amber-text-secondary)" opacity=".55"/></svg>`;
+  $("mStraight").setAttribute("aria-pressed",straight);$("mAnn").setAttribute("aria-pressed",!straight);
+}
+function sync(skip){
+  if(skip!=="loan")$("loan").value=fmt(S.loan);
+  if(skip!=="rate")$("rate").value=String(S.rate).replace(".",",");
+  if(skip!=="years")$("years").value=S.years;
+  $("loanR").value=S.loan;$("rateR").value=S.rate;$("yearsR").value=S.years;
+}
+function save(){try{amber.store.set("calc",S)}catch(e){}}
+function set(k,v,skip){if(!(v>=0)||(k!=="rate"&&v<=0))return;S[k]=v;sync(skip);render();save();}
+const bind=(k,min,max)=>{
+  $(k).addEventListener("input",e=>{const v=num(e.target.value);if(v>=min&&v<=max)set(k,v,k)});
+  $(k).addEventListener("blur",()=>sync());
+  $(k+"R").addEventListener("input",e=>set(k,num(e.target.value)));
+};
+bind("loan",1000,100000000);bind("rate",0,30);bind("years",1,60);
+$("mStraight").onclick=()=>{S.mode="straight";render();save()};
+$("mAnn").onclick=()=>{S.mode="annuity";render();save()};
+amber.onChange((note,data)=>{
+  $("t").textContent=note.title;
+  if(!seeded){seeded=true;
+    const saved=data&&data.values&&data.values.calc;
+    S=Object.assign(S,parse(note.markdown),saved||{});
+    sync();render();
+  }
+});
+</script>
+</body>
+</html>

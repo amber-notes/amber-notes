@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="amber-settings" content='{"settings":[{"key":"goal","label":"Daily goal (glasses)","type":"number","default":8}]}'>
+<style>
+  :root { --water: #2272b8; --water-soft: #9cc6ea; }
+  @media (prefers-color-scheme: dark) { :root { --water: #5aa9e6; --water-soft: #2a4a68; } }
+  * { box-sizing: border-box; }
+  main { max-width: var(--amber-content-max); margin: 0 auto; padding: 20px var(--amber-gutter) 96px; }
+  h1 { font-size: 28px; letter-spacing: -.02em; margin: 4px 0 16px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--amber-text-secondary); margin: 0 0 12px; }
+  .card { background: var(--amber-surface); border: 1px solid var(--amber-separator); border-radius: var(--amber-radius); padding: 16px; margin-bottom: 16px; }
+  .top { display: grid; gap: 16px; }
+  @media (min-width: 900px) { .top { grid-template-columns: 1fr 1.4fr; } }
+  .today { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+  .ring { position: relative; width: 150px; height: 150px; flex: none; }
+  .ring .c { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; font-variant-numeric: tabular-nums; }
+  .ring .big { font-size: 40px; font-weight: 700; line-height: 1; font-family: var(--amber-font-rounded); }
+  .ring .sm { font-size: 13px; color: var(--amber-text-secondary); }
+  .msg { flex: 1 1 160px; min-width: 0; }
+  .msg b { display: block; font-size: 18px; margin-bottom: 4px; }
+  .msg span { color: var(--amber-text-secondary); font-size: 14px; }
+  button { font: inherit; font-weight: 600; min-height: 44px; padding: 0 18px; border: 0; border-radius: var(--amber-radius-small); background: var(--water); color: #fff; margin-top: 12px; }
+  @media (prefers-color-scheme: dark) { button { color: #04131f; } }
+  .err { color: var(--amber-danger); font-size: 13px; min-height: 1em; }
+  .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  @media (min-width: 500px) { .stats { grid-template-columns: repeat(4, 1fr); } }
+  .stat { background: var(--amber-fill); border-radius: var(--amber-radius-small); padding: 12px; }
+  .stat .v { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; font-family: var(--amber-font-rounded); }
+  .stat .l { font-size: 13px; color: var(--amber-text-secondary); }
+  .chart { position: relative; height: 220px; margin-top: 8px; }
+  .bars { position: absolute; inset: 0 0 26px 0; display: flex; align-items: flex-end; gap: clamp(2px, 1vw, 10px); }
+  .col { flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
+  .bar { width: 100%; border-radius: 6px 6px 2px 2px; background: var(--water-soft); min-height: 3px; }
+  .bar.met { background: var(--water); }
+  .bar.today { outline: 2px solid var(--amber-text); outline-offset: 1px; }
+  .n { font-size: 12px; font-variant-numeric: tabular-nums; margin-bottom: 3px; }
+  .d { position: absolute; bottom: 0; height: 22px; font-size: 12px; color: var(--amber-text-secondary); text-align: center; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .goal { position: absolute; left: 0; right: 0; border-top: 2px dashed var(--amber-text-secondary); pointer-events: none; }
+  .goal span { position: absolute; right: 0; top: -20px; font-size: 12px; color: var(--amber-text-secondary); background: var(--amber-surface); padding: 0 4px; }
+  .legend { display: flex; gap: 16px; font-size: 13px; color: var(--amber-text-secondary); flex-wrap: wrap; margin-top: 4px; }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 6px; }
+  .empty { padding: 28px 16px; text-align: center; color: var(--amber-text-secondary); }
+</style>
+</head>
+<body>
+<main id="app" aria-live="polite"></main>
+<script>
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  let error = "";
+  const num = (s) => { const n = parseFloat(String(s).replace(/\s/g, "").replace(",", ".")); return isNaN(n) ? null : n; };
+  const addDays = (d, k) => { const t = new Date(d + "T12:00:00Z"); t.setUTCDate(t.getUTCDate() + k); return t.toISOString().slice(0, 10); };
+
+  function render(note) {
+    const app = document.getElementById("app");
+    const t = note.tables.find((t) => t.columns.some((c) => /^date$/i.test(c.name)) && t.columns.some((c) => /glass|water|cups?/i.test(c.name)));
+    if (!t) { app.innerHTML = `<h1>${esc(note.title)}</h1><div class="card empty">Add a table with Date and Glasses columns to see it here.</div>`; return; }
+    const di = t.columns.findIndex((c) => /^date$/i.test(c.name));
+    const gi = t.columns.findIndex((c) => /glass|water|cups?/i.test(c.name));
+    const goal = Math.max(1, num((amber.settings || {}).goal) || 8);
+    const today = note.today;
+    const rows = t.rows.map((r, i) => ({ i, date: r[di], v: num(r[gi]) })).filter((r) => r.v !== null && /^\d{4}-\d\d-\d\d$/.test(r.date));
+    const map = {}; rows.forEach((r) => { map[r.date] = r; });
+    const todayRow = map[today];
+    const tv = todayRow ? todayRow.v : 0;
+
+    // streak
+    let s = 0, d = (map[today] && map[today].v >= goal) ? today : addDays(today, -1);
+    while (map[d] && map[d].v >= goal) { s++; d = addDays(d, -1); }
+
+    const last = []; for (let k = 13; k >= 0; k--) last.push(addDays(today, -k));
+    const logged = last.filter((x) => map[x]);
+    const hit = logged.filter((x) => map[x].v >= goal).length;
+    const avg = logged.length ? logged.reduce((a, x) => a + map[x].v, 0) / logged.length : 0;
+    const best = rows.length ? Math.max(...rows.map((r) => r.v)) : 0;
+
+    const R = 62, C = 2 * Math.PI * R, frac = Math.min(1, tv / goal);
+    const left = Math.max(0, goal - tv);
+    const head = tv >= goal ? "Goal reached" : left === 1 ? "One glass to go" : `${left} glasses to go`;
+    const sub = tv >= goal ? (tv > goal ? `${tv - goal} over today's goal.` : "Nicely done today.") : "Keep sipping.";
+
+    const max = Math.max(goal, ...last.map((x) => (map[x] ? map[x].v : 0))) * 1.1;
+    const bars = last.map((x) => {
+      const v = map[x] ? map[x].v : null;
+      const h = v === null ? 0 : (v / max) * 100;
+      return `<div class="col" title="${esc(x)}: ${v === null ? "no entry" : v}">
+        <div class="n">${v === null ? "–" : v}</div>
+        <div class="bar ${v !== null && v >= goal ? "met" : ""} ${x === today ? "today" : ""}" style="height:${h}%"></div></div>`;
+    }).join("");
+    const labels = last.map((x, k) => `<div class="d" style="left:calc(${(k + 0.5) / 14 * 100}% - 14px);width:28px">${x.slice(8)}</div>`).join("");
+
+    app.innerHTML = `
+      <h1>${esc(note.title)}</h1>
+      <div class="top">
+        <div class="card"><h2>Today</h2>
+          <div class="today">
+            <div class="ring" role="img" aria-label="${tv} of ${goal} glasses today">
+              <svg viewBox="0 0 150 150" width="150" height="150"><circle cx="75" cy="75" r="${R}" fill="none" stroke="var(--amber-fill)" stroke-width="16"/>
+              <circle cx="75" cy="75" r="${R}" fill="none" stroke="var(--water)" stroke-width="16" stroke-linecap="round" stroke-dasharray="${C * frac} ${C}" transform="rotate(-90 75 75)"/></svg>
+              <div class="c"><span class="big">${tv}</span><span class="sm">of ${goal}</span></div>
+            </div>
+            <div class="msg"><b>${head}</b><span>${sub}</span><br><button id="add" type="button">+ 1 glass</button><div class="err" role="alert">${esc(error)}</div></div>
+          </div>
+        </div>
+        <div class="card"><h2>Last 14 days</h2>
+          <div class="stats">
+            <div class="stat"><div class="v">${s}</div><div class="l">day streak</div></div>
+            <div class="stat"><div class="v">${hit}/${logged.length}</div><div class="l">goal days</div></div>
+            <div class="stat"><div class="v">${avg.toFixed(1)}</div><div class="l">daily average</div></div>
+            <div class="stat"><div class="v">${best}</div><div class="l">best day</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="card"><h2>Daily glasses</h2>
+        <div class="chart" role="img" aria-label="Bar chart of glasses per day for the last 14 days, goal ${goal}">
+          <div class="bars">${bars}</div>
+          <div class="goal" style="bottom:calc((100% - 26px) * ${goal / max} + 26px)"><span>Goal ${goal}</span></div>
+          ${labels}
+        </div>
+        <div class="legend"><span><i style="background:var(--water)"></i>Goal met</span><span><i style="background:var(--water-soft)"></i>Below goal</span><span>Outlined: today</span></div>
+      </div>`;
+
+    document.getElementById("add").onclick = async () => {
+      const r = todayRow
+        ? await amber.update({ op: "set_cell", table: t.index, row: todayRow.i, col: t.columns[gi].name, value: String(tv + 1) })
+        : await amber.update({ op: "append_row", table: t.index, values: { [t.columns[di].name]: today, [t.columns[gi].name]: "1" } });
+      error = r.ok ? "" : r.error;
+      if (!r.ok) render(amber.note);
+    };
+  }
+  amber.onChange(render);
+</script>
+</body>
+</html>

@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Habit tracker</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { -webkit-user-select: none; user-select: none; }
+  main { max-width: var(--amber-content-max); margin: 0 auto; padding: 8px var(--amber-gutter) 60px; position: relative; }
+  h1 { font-family: var(--amber-font-rounded); font-size: 28px; margin: 6px 0 14px; letter-spacing: -.02em; }
+  .label { font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--amber-text-secondary); margin: 18px 4px 8px; }
+  .layout { display: grid; gap: 0 28px; }
+  @media (min-width: 900px) { .layout { grid-template-columns: minmax(320px, 1fr) minmax(0, 1fr); align-items: start; } h1 { font-size: 34px; } }
+  .hero { display: flex; align-items: center; gap: 18px; background: var(--amber-accent-soft); border-radius: var(--amber-radius); padding: 16px 18px; }
+  .ring { position: relative; width: 92px; height: 92px; flex: none; }
+  .ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .ring .bg { stroke: var(--amber-bg); } .ring .fg { stroke: var(--amber-accent); transition: stroke-dashoffset .6s cubic-bezier(.3,1.4,.5,1); }
+  .ring .mid { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--amber-font-rounded); font-size: 26px; font-weight: 700; }
+  .hero .msg { font-family: var(--amber-font-rounded); font-size: 20px; font-weight: 700; line-height: 1.2; }
+  .hero .sm { color: var(--amber-text-secondary); font-size: 14px; margin-top: 4px; }
+  .lvl { margin-top: 8px; height: 8px; border-radius: 4px; background: var(--amber-bg); overflow: hidden; }
+  .lvl div { height: 100%; background: var(--amber-accent); border-radius: 4px; transition: width .5s; }
+  .tiles { display: grid; gap: 10px; grid-template-columns: 1fr; }
+  @media (min-width: 420px) { .tiles { grid-template-columns: 1fr 1fr; } }
+  .tile { position: relative; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; text-align: left; min-height: 120px; padding: 14px; border: 2px solid transparent; border-radius: var(--amber-radius); background: var(--amber-surface); color: var(--amber-text); font: inherit; cursor: pointer; transition: transform .25s cubic-bezier(.34,1.56,.64,1), background .2s, border-color .2s; }
+  .tile:active { transform: scale(.94); }
+  .tile .em { font-size: 34px; line-height: 1; transition: transform .4s cubic-bezier(.34,1.56,.64,1); }
+  .tile .nm { font-family: var(--amber-font-rounded); font-size: 18px; font-weight: 700; overflow-wrap: anywhere; }
+  .tile .st { font-size: 13px; color: var(--amber-text-secondary); }
+  .tile .st.hot { color: var(--amber-accent-text); font-weight: 600; }
+  .tile .wk { display: flex; gap: 4px; margin-top: auto; }
+  .tile .wk i { width: 10px; height: 10px; border-radius: 50%; background: var(--amber-fill); }
+  .tile .wk i.on { background: var(--amber-accent); } .tile .wk i.now { outline: 2px solid var(--amber-text); outline-offset: 1px; }
+  .tile .badge { position: absolute; top: 10px; right: 10px; width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--amber-separator); display: grid; place-items: center; }
+  .tile .badge svg { width: 16px; height: 16px; opacity: 0; }
+  .tile.done { background: var(--amber-accent-soft); border-color: var(--amber-accent); }
+  .tile.done .badge { background: var(--amber-accent); border-color: var(--amber-accent); } .tile.done .badge svg { opacity: 1; }
+  .tile.done .em { transform: scale(1.18) rotate(-8deg); }
+  .card { background: var(--amber-surface); border-radius: var(--amber-radius); overflow: hidden; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); }
+  .stat { padding: 14px 12px; border-left: .5px solid var(--amber-separator); text-align: center; }
+  .stat:first-child { border-left: 0; }
+  .stat .n { font-family: var(--amber-font-rounded); font-size: 26px; font-weight: 700; }
+  .stat .t { font-size: 12px; color: var(--amber-text-secondary); }
+  .badges { display: flex; flex-wrap: wrap; gap: 8px; padding: 14px; }
+  .bd { padding: 8px 12px; border-radius: 999px; background: var(--amber-fill); color: var(--amber-text-secondary); font-size: 14px; }
+  .bd.got { background: var(--amber-accent-soft); color: var(--amber-text); font-weight: 600; }
+  .bd:not(.got) { opacity: .75; }
+  .grid { padding: 14px; display: grid; gap: 5px; }
+  .row { display: grid; grid-template-columns: 78px repeat(var(--days), minmax(0, 1fr)); gap: 3px; align-items: center; }
+  .row .h { font-size: 13px; color: var(--amber-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cell { aspect-ratio: 1; border-radius: 5px; background: var(--amber-fill); }
+  .cell.on { background: var(--amber-accent); } .cell.perfect { box-shadow: 0 0 0 2px var(--amber-accent-soft); }
+  .cell.today { outline: 2px solid var(--amber-text); outline-offset: -2px; }
+  .err { color: var(--amber-danger); min-height: 18px; font-size: 14px; }
+  .empty { padding: 30px; text-align: center; color: var(--amber-text-secondary); }
+  .bit { position: fixed; width: 9px; height: 9px; border-radius: 2px; pointer-events: none; z-index: 9; animation: fly 1s ease-out forwards; }
+  @keyframes fly { 0% { transform: translate(0,0) rotate(0); opacity: 1; } 100% { transform: translate(var(--x), var(--y)) rotate(var(--r)); opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .bit { display: none; } .tile, .tile .em { transition: none; } }
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script>
+  const DONE = /^(✓|✔|x|yes|y|1|true|done)$/i;
+  const EMOJI = [[/walk|step|hike/, "🚶"], [/run|jog/, "🏃"], [/read|book/, "📚"], [/stretch|yoga/, "🧘"], [/water|drink/, "💧"], [/med/, "🌿"], [/write|journal/, "✍️"], [/sleep|bed/, "😴"], [/gym|lift|workout|exercise/, "💪"], [/code|study|learn/, "🧠"], [/eat|veg|fruit|cook/, "🥗"], [/clean|tidy/, "🧹"]];
+  const emoji = (n) => (EMOJI.find(([r]) => r.test(n.toLowerCase())) || [0, "✨"])[1];
+  const COLORS = ["#f5a524", "#ff6b6b", "#4dabf7", "#51cf66", "#cc5de8", "#ffd43b"];
+  const tick = '<svg viewBox="0 0 16 16"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="var(--amber-on-accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const flame = (n) => n >= 7 ? "🔥🔥" : "🔥";
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const addDays = (iso, n) => { const d = new Date(iso + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+  let error = "", burst = null;
+
+  function confetti(x, y, n) {
+    for (let i = 0; i < n; i++) {
+      const b = document.createElement("div"); b.className = "bit";
+      const a = Math.random() * Math.PI * 2, v = 60 + Math.random() * 140;
+      b.style.cssText = `left:${x}px;top:${y}px;background:${COLORS[i % COLORS.length]};--x:${Math.cos(a) * v}px;--y:${Math.sin(a) * v + 60}px;--r:${Math.random() * 720 - 360}deg`;
+      document.body.appendChild(b); setTimeout(() => b.remove(), 1000);
+    }
+  }
+
+  function render(note) {
+    const app = document.getElementById("app");
+    const t = note.tables.find((t) => t.columns.some((c) => /^(date|day)$/i.test(c.name)));
+    if (!t) { app.innerHTML = `<h1>${esc(note.title)}</h1><div class="card empty">Add a table with a Date column and one column per habit.</div>`; return; }
+    const dc = t.columns.findIndex((c) => /^(date|day)$/i.test(c.name));
+    const habits = t.columns.map((c, i) => ({ name: c.name, i })).filter((h) => h.i !== dc);
+    const today = note.today;
+    const byDate = new Map(t.rows.map((r, i) => [r[dc], { r, i }]));
+    const done = (d, h) => DONE.test(String(byDate.get(d)?.r[h.i] ?? "").trim());
+    const wd = (new Date(today + "T12:00:00Z").getUTCDay() + 6) % 7;
+    const week = Array.from({ length: 7 }, (_, k) => addDays(today, k - wd));
+    let totalTicks = 0, perfect = 0, bestAll = 0;
+    for (const h of habits) {
+      let n = 0, d = done(today, h) ? today : addDays(today, -1);
+      while (done(d, h)) { n++; d = addDays(d, -1); }
+      h.streak = n; h.today = done(today, h);
+      let run = 0, best = 0;
+      const dates = t.rows.map((r) => r[dc]).filter(Boolean).sort();
+      for (let k = 0; dates.length && k <= 400; k++) { const dd = addDays(dates[0], k); if (dd > today) break; if (done(dd, h)) { run++; best = Math.max(best, run); } else run = 0; }
+      h.best = best; bestAll = Math.max(bestAll, best);
+    }
+    for (const r of t.rows) { const c = habits.filter((h) => DONE.test(String(r[h.i] ?? "").trim())).length; totalTicks += c; if (habits.length && c === habits.length) perfect++; }
+    const doneToday = habits.filter((h) => h.today).length, total = habits.length || 1;
+    const xp = totalTicks * 10, lvl = Math.floor(xp / 100) + 1, into = xp % 100;
+    const pct = doneToday / total;
+    const msg = !habits.length ? "Add a habit column" : doneToday === habits.length ? "Perfect day! 🎉" : doneToday === 0 ? "Fresh day. Pick one!" : doneToday >= total / 2 ? "Over halfway. Keep going!" : "Nice start!";
+    const C = 2 * Math.PI * 40;
+    const hasS = (n) => habits.some((h) => h.streak >= n), hasB = (n) => bestAll >= n;
+    const badges = [["🌱 First tick", totalTicks >= 1], ["🔥 3-day streak", hasS(3) || hasB(3)], ["⚡ 7-day streak", hasS(7) || hasB(7)], ["🌟 Perfect day", perfect >= 1], ["🏆 Level 5", lvl >= 5], ["💯 50 ticks", totalTicks >= 50]];
+    const span = window.innerWidth >= 900 ? 28 : 14;
+    const days = Array.from({ length: span }, (_, k) => addDays(today, k - span + 1));
+    app.innerHTML = `
+      <h1>${esc(note.title)}</h1>
+      <div class="layout"><section>
+        <div class="hero">
+          <div class="ring" role="img" aria-label="${doneToday} of ${habits.length} done today"><svg viewBox="0 0 100 100"><circle class="bg" cx="50" cy="50" r="40" fill="none" stroke-width="12"/><circle class="fg" cx="50" cy="50" r="40" fill="none" stroke-width="12" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - pct)}"/></svg><div class="mid">${doneToday}/${habits.length}</div></div>
+          <div style="flex:1;min-width:0"><div class="msg">${msg}</div><div class="sm">Level ${lvl} · ${xp} XP</div><div class="lvl"><div style="width:${into}%"></div></div></div>
+        </div>
+        <div class="label">Today</div>
+        <div class="tiles">${habits.map((h) => `
+          <button class="tile ${h.today ? "done" : ""}" data-h="${h.i}" aria-pressed="${h.today}" aria-label="${esc(h.name)}">
+            <span class="em">${emoji(h.name)}</span><span class="nm">${esc(h.name)}</span>
+            <span class="st ${h.streak >= 3 ? "hot" : ""}">${h.streak ? flame(h.streak) + " " + h.streak + (h.streak > 1 ? " days" : " day") : "Start a streak"}</span>
+            <span class="wk">${week.map((d) => `<i class="${done(d, h) ? "on" : ""} ${d === today ? "now" : ""}"></i>`).join("")}</span>
+            <span class="badge">${tick}</span>
+          </button>`).join("")}</div>
+        <div class="err" role="alert">${esc(error)}</div>
+      </section><section>
+        <div class="label">Your stats</div>
+        <div class="card stats">
+          <div class="stat"><div class="n">${Math.max(0, ...habits.map((h) => h.streak))}🔥</div><div class="t">Streak now</div></div>
+          <div class="stat"><div class="n">${bestAll}</div><div class="t">Best run</div></div>
+          <div class="stat"><div class="n">${perfect}</div><div class="t">Perfect days</div></div>
+        </div>
+        <div class="label">Badges</div>
+        <div class="card badges">${badges.map(([n, g]) => `<span class="bd ${g ? "got" : ""}">${g ? n : "🔒 " + n.replace(/^\S+ /, "")}</span>`).join("")}</div>
+        <div class="label">Last ${days.length} days</div>
+        <div class="card grid" style="--days:${days.length}" role="img" aria-label="History of completed habits">${habits.map((h) => `<div class="row"><span class="h">${esc(h.name)}</span>${days.map((d) => `<span class="cell ${done(d, h) ? "on" : ""} ${d === today ? "today" : ""}"></span>`).join("")}</div>`).join("")}</div>
+      </section></div>`;
+    app.querySelectorAll(".tile").forEach((b) => b.addEventListener("click", async (e) => {
+      const h = habits.find((x) => x.i === Number(b.dataset.h));
+      const value = h.today ? "" : "✓";
+      if (value) {
+        const r = b.getBoundingClientRect();
+        confetti(r.left + r.width / 2, r.top + r.height / 2, doneToday + 1 === habits.length ? 60 : 18);
+      }
+      const row = byDate.get(today);
+      const res = row
+        ? await amber.update({ op: "set_cell", table: t.index, row: row.i, col: h.name, value })
+        : await amber.update({ op: "append_row", table: t.index, values: { [t.columns[dc].name]: today, [h.name]: value } });
+      error = res.ok ? "" : res.error;
+      if (!res.ok) render(amber.note);
+    }));
+  }
+  amber.onChange(render);
+  let wide = innerWidth >= 900;
+  addEventListener("resize", () => { if ((innerWidth >= 900) !== wide) { wide = !wide; render(amber.note); } });
+</script>
+</body>
+</html>
