@@ -164,6 +164,12 @@ enum NotePageLibraries {
     struct Kit: Decodable { var version: String; var src: [String: String]; var compiled: [String: String]; var css: String }
     static let kit: Kit? = resource("amber-ui.json").flatMap { try? JSONDecoder().decode(Kit.self, from: $0) }
 
+    /// The app stack (app-stack/ in the repository, built by its build.mjs): React through
+    /// preact/compat, Radix, shadcn's helpers, lucide, recharts, date-fns, zod, motion, sonner,
+    /// react-day-picker, as ES modules with shared chunks. map: bare name -> file.
+    struct Stack: Decodable { var versions: [String: String]; var licenses: [String: String]; var map: [String: String]; var modules: [String: String] }
+    static let stack: Stack? = resource("stack.json").flatMap { try? JSONDecoder().decode(Stack.self, from: $0) }
+
     static func bundledData(_ name: String) -> Data? {
         guard let lib = bundled.first(where: { $0.name == name }) else { return nil }
         let base = (lib.file as NSString).deletingPathExtension, ext = (lib.file as NSString).pathExtension
@@ -200,6 +206,10 @@ final class LibraryScheme: NSObject, WKURLSchemeHandler {
             if let lib = NotePageLibraries.bundled.first(where: { $0.name == name }) {
                 reply(Data("import \"amber-lib:///\(lib.name)\";\nexport default globalThis[\"\(lib.global)\"];\n".utf8)); return
             }
+            task.didFailWithError(URLError(.fileDoesNotExist)); return
+        }
+        if path.hasPrefix("stack/") {
+            if let js = NotePageLibraries.stack?.modules[String(path.dropFirst("stack/".count))] { reply(Data(js.utf8)); return }
             task.didFailWithError(URLError(.fileDoesNotExist)); return
         }
         if path.hasPrefix("amber-ui/"), let kit = NotePageLibraries.kit {

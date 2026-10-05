@@ -606,7 +606,7 @@ final class NotePagesUITests: XCTestCase {
     /// Training as a scaffolded project (index.html, src/main.jsx, App.jsx, screens, components,
     /// styles.css, data.js) on amber-ui: a sheet with the keyboard, tabs, a pushed screen, settings.
     func testTrainingProject() {
-        launch(["-seedNote", "\(pages)/training.md", "-open", "Training", "-seedPage", "Training=\(pages)/training-app.json"])
+        launch(["-seedNote", "\(pages)/training.md", "-open", "Training", "-seedPage", "Training=\(pages)/training-app.json", "-pageTimings"])
         mark("project-start")
         pause(3.5)
         shot("p1-today")
@@ -645,7 +645,7 @@ final class NotePagesUITests: XCTestCase {
     /// No Text side: the app note opens straight into the app; its data is JSON, imported once
     /// from the note's tables; the note list shows the app's summary line.
     func testAppOnly() {
-        launch(["-seedNote", "\(pages)/training.md", "-open", "Training", "-seedPage", "Training=\(pages)/training-app.json"])
+        launch(["-seedNote", "\(pages)/training.md", "-open", "Training", "-seedPage", "Training=\(pages)/training-app.json", "-pageTimings"])
         mark("apponly-start")
         pause(3.5)
         shot("a1-opens-in-app")
@@ -667,6 +667,33 @@ final class NotePagesUITests: XCTestCase {
         pause(1.5)
         shot("a4-list-summary")
         mark("apponly-end")
+        pause(1)
+    }
+
+    /// Training as a React + TypeScript + Tailwind + shadcn/ui + lucide + recharts project.
+    func testTrainingReact() {
+        launch(["-seedNote", "\(pages)/training.md", "-open", "Training", "-seedPage", "Training=\(pages)/training-react.json", "-pageTimings"])
+        mark("react-start")
+        pause(4)
+        shot("r1-today")
+        webStarting("Bench press").tap()
+        pause(1.5)
+        shot("r2-sheet-keyboard")
+        let field = app.webViews.textFields.firstMatch
+        if field.waitForExistence(timeout: 2) { field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 5) + "65") }
+        app.webViews.buttons["Log Set"].firstMatch.tap()
+        pause(1.5)
+        shot("r3-logged")
+        webStarting("Plan").tap()
+        pause(1.2)
+        shot("r4-plan")
+        webStarting("Progress").tap()
+        pause(2)
+        shot("r5-progress")
+        web("Settings").tap()
+        pause(1)
+        shot("r6-settings")
+        mark("react-end")
         pause(1)
     }
 }

@@ -985,6 +985,77 @@ import WebKit
         #expect(((imported["checklists"] as? [String: Any])?["Packing"] as? [[String: Any]])?.first?["checked"] as? Bool == true)
     }
 
+    /// The React stack: a TSX + Tailwind + shadcn/ui + lucide + recharts project runs on
+    /// preact/compat, with createRoot, @/ imports, files without extensions and an imported stylesheet.
+    @Test func aReactShadcnProjectRuns() async throws {
+        let dir = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().appending(path: "demo/note-pages")
+        let stored = try String(contentsOf: dir.appending(path: "training-react.json"), encoding: .utf8)
+        let note = try String(contentsOf: dir.appending(path: "training.md"), encoding: .utf8)
+        #expect(NotePageLibraries.stack?.map["react"] != nil && NotePageLibraries.stack?.map["react-dom"] == NotePageLibraries.stack?.map["react"])
+        let sandbox = NotePageSandbox(rules: try await NotePageSandbox.prepare())
+        var doc: NotePageData.Doc = ["values": ["imported": NotePageData.imported(from: note)], "collections": [String: Any]()]
+        sandbox.onData = { m in
+            let (after, made) = try NotePageData.apply(try NotePageData.Op(m), to: doc)
+            doc = after
+            return ["data": after].merging(made.map { ["id": $0] } ?? [:]) { a, _ in a }
+        }
+        sandbox.webView.frame = CGRect(x: 0, y: 0, width: 390, height: 844)
+        let start = ContinuousClock.now
+        sandbox.load(html: stored, body: note, data: doc)
+        try await run(sandbox.webView, until: "document.querySelector('h1') !== null && document.querySelectorAll('svg.lucide').length > 2")
+        print("REACT-LOAD \((ContinuousClock.now - start) / .milliseconds(1)) ms")
+        #expect(try await sandbox.webView.evaluateJavaScript("document.querySelector('h1').textContent") as? String == "Today")
+        // Tailwind and the tokens: the primary button colour is Amber's accent.
+        let bg = try await sandbox.webView.evaluateJavaScript("getComputedStyle(document.querySelector('nav a[aria-current=page]')).color") as? String
+        #expect(bg != nil && bg != "rgb(0, 0, 0)", "\(bg ?? "nil")")
+        // The Log sheet (Radix Dialog through a portal) opens with its field.
+        _ = try await sandbox.webView.evaluateJavaScript("[...document.querySelectorAll('main button')].find((b) => b.textContent.includes('Bench press')).click(); 1")
+        try await run(sandbox.webView, until: "document.querySelector('[role=dialog]') !== null")
+        let sheet = try await sandbox.webView.evaluateJavaScript("(() => { const d = document.querySelector('[role=dialog]'); const r = d.getBoundingClientRect(); const cs = getComputedStyle(d); return [Math.round(r.top), Math.round(r.height), cs.opacity, cs.visibility, cs.transform, d.dataset.state, document.querySelector('[role=dialog] input') ? 'input' : 'none'].join(' '); })()") as? String
+        #expect(sheet?.hasSuffix("open input") == true, "\(sheet ?? "nil")")
+        _ = try await sandbox.webView.evaluateJavaScript("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); 1")
+        // recharts draws on Progress.
+        _ = try await sandbox.webView.evaluateJavaScript("[...document.querySelectorAll('nav a')][2].click(); 1")
+        try await run(sandbox.webView, until: "document.querySelector('.recharts-area-curve') !== null")
+        #expect(((doc["collections"] as? [String: Any])?["log"] as? [Any])?.count == 11)
+    }
+
+    /// framer-motion, zod, date-fns and react-day-picker load on preact/compat.
+    @Test func theStacksOtherLibrariesRunOnCompat() async throws {
+        let main = """
+        import { createElement as h, useState } from "react";
+        import { createRoot } from "react-dom/client";
+        import { motion, AnimatePresence } from "framer-motion";
+        import { animate } from "motion";
+        import { z } from "zod";
+        import { format } from "date-fns";
+        import { DayPicker } from "react-day-picker";
+        import { Dialog } from "radix-ui";
+        window.__r = { zod: z.object({ kg: z.number() }).safeParse({ kg: 60 }).success, date: format(new Date(2026, 9, 5), "d MMM yyyy") };
+        function App() {
+          return h("div", null, h(motion.div, { id: "m", initial: { opacity: 0 }, animate: { opacity: 1 } }, "moving"), h(DayPicker, { mode: "single" }),
+            h(Dialog.Root, { open: true }, h(Dialog.Portal, null, h(Dialog.Overlay, { id: "do" }), h(Dialog.Content, { id: "dc" }, h(Dialog.Title, null, "T"), h(Dialog.Description, null, "D"), "hi"))),
+            h(Later));
+        }
+        // Opened after mount, like a sheet opened by a tap.
+        function Later() {
+          const [open, set] = useState(false);
+          window.__open = () => set(true);
+          return h(Dialog.Root, { open, onOpenChange: set }, h(Dialog.Portal, null, h(Dialog.Overlay, { id: "lo" }), h(Dialog.Content, { id: "lc" }, h(Dialog.Title, null, "T"), h(Dialog.Description, null, "D"), h("input", { autoFocus: true }), h(Dialog.Close, null, "x"))));
+        }
+        createRoot(document.getElementById("root")).render(h(App));
+        setTimeout(() => { window.__r.motion = !!document.getElementById("m"); window.__r.picker = document.querySelectorAll("button").length > 20; window.__r.dialog = !!document.getElementById("dc") + "/" + !!document.getElementById("do"); window.__open(); setTimeout(() => { window.__r.later = !!document.getElementById("lc") + "/" + !!document.getElementById("lo"); }, 300); }, 300);
+        """
+        let project = ["amberApp": 1, "files": ["/index.html": #"<div id="root"></div><script type="module" src="/src/main.js"></script>"#, "/src/main.js": main]] as [String: Any]
+        let stored = String(data: try JSONSerialization.data(withJSONObject: project), encoding: .utf8)!
+        let sandbox = NotePageSandbox(rules: try await NotePageSandbox.prepare())
+        sandbox.webView.frame = CGRect(x: 0, y: 0, width: 390, height: 844)
+        sandbox.load(html: stored, body: "x")
+        try await run(sandbox.webView, until: "window.__r && window.__r.later !== undefined")
+        let r = try await sandbox.webView.evaluateJavaScript("JSON.stringify(window.__r)") as? String
+        #expect(r == #"{"zod":true,"date":"5 Oct 2026","motion":true,"picker":true,"dialog":"true/true","later":"true/true"}"#, "\(r ?? "nil")")
+    }
+
     @Test func projectsHaveLimitsAndMustBeCompiled() throws {
         func stored(_ files: [String: String], _ compiled: [String: String] = [:]) -> String {
             String(data: try! JSONSerialization.data(withJSONObject: ["amberApp": 1, "files": files, "compiled": compiled]), encoding: .utf8)!

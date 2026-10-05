@@ -61,10 +61,26 @@ struct NotePageProject: Equatable {
         return parse(stored)?.index ?? ""
     }
 
-    /// A file as served: compiled JavaScript for .jsx/.tsx/.ts, the text otherwise, and its type.
-    func serve(_ path: String) -> (data: Data, type: String)? {
-        guard let text = Self.compiles(path) ? compiled[path] : files[path] else { return nil }
+    /// A file as served: compiled JavaScript for .jsx/.tsx/.ts, compiled CSS (Tailwind) when there
+    /// is some, the text otherwise, and its type. An import without an extension finds the file the
+    /// way bundlers do (.tsx, .ts, .jsx, .js, then index.*). A stylesheet imported from a module
+    /// (`import "./index.css"`, compiled to "./index.css?import") is a module that adds it.
+    func serve(_ path: String, query: String? = nil) -> (data: Data, type: String)? {
+        guard let path = resolve(path) else { return nil }
+        if query == "import", path.hasSuffix(".css") {
+            let js = "if (!document.querySelector('link[href=\"\(path)\"]')) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '\(path)'; document.head.appendChild(l); }\n"
+            return (Data(js.utf8), "text/javascript")
+        }
+        guard let text = Self.compiles(path) || path.hasSuffix(".css") ? (compiled[path] ?? files[path]) : files[path] else { return nil }
         return (Data(text.utf8), Self.mime(path))
+    }
+
+    func resolve(_ path: String) -> String? {
+        if files[path] != nil { return path }
+        for ext in [".tsx", ".ts", ".jsx", ".js", "/index.tsx", "/index.ts", "/index.jsx", "/index.js"] where files[path + ext] != nil {
+            return path + ext
+        }
+        return nil
     }
 
     static func mime(_ path: String) -> String {
@@ -86,6 +102,8 @@ struct NotePageProject: Equatable {
             "preact/hooks": "amber-lib:///esm/preact-hooks.js",
             "preact/jsx-runtime": "amber-lib:///esm/preact-jsx-runtime.js",
             "htm": "amber-lib:///esm/htm.js",
+            // Like a Vite project: "@/components/ui/button" is /src/components/ui/button.tsx.
+            "@/": "amber-app:///src/",
             "amber-router": "amber-lib:///esm/amber-router.js",
             "amber": "amber-lib:///esm/amber.js",
             "amber-ui": "amber-lib:///amber-ui/index.js",
@@ -94,6 +112,9 @@ struct NotePageProject: Equatable {
         for lib in NotePageLibraries.bundled where !["preact", "preact-hooks", "htm", "router"].contains(lib.name) {
             imports[lib.package] = "amber-lib:///esm/\(lib.name).js"
         }
+        // The app stack: React (preact/compat) and the libraries built on it, and Preact itself, so
+        // there is one Preact for everything.
+        for (name, file) in NotePageLibraries.stack?.map ?? [:] { imports[name] = "amber-lib:///stack/\(file)" }
         let json = (try? JSONSerialization.data(withJSONObject: ["imports": imports], options: [.sortedKeys])).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
         return #"<script type="importmap">"# + json.replacingOccurrences(of: "\\/", with: "/") + "</script>"
     }()
@@ -104,7 +125,7 @@ final class AppScheme: NSObject, WKURLSchemeHandler {
     nonisolated(unsafe) var project = NotePageProject(files: [:])
 
     func webView(_ webView: WKWebView, start task: any WKURLSchemeTask) {
-        guard let url = task.request.url, let (data, type) = project.serve(url.path.isEmpty ? "/index.html" : url.path) else {
+        guard let url = task.request.url, let (data, type) = project.serve(url.path.isEmpty ? "/index.html" : url.path, query: url.query) else {
             task.didFailWithError(URLError(.fileDoesNotExist))
             return
         }

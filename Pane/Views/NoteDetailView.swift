@@ -725,8 +725,8 @@ struct NoteDetailView: View {
                 .accessibilityIdentifier("list.newNote")
         }
         ToolbarSpacer(.flexible)
-        // The writing tools stay where they are on the App side, unavailable (an app has no text to
-        // format): both sides keep the same toolbar, so switching never moves anything.
+        // A note with an app is just the app: no writing tools.
+        if notePage == nil {
         ToolbarItemGroup {
             formatMenu.disabled(hidden)
             Button("Checklist", systemImage: "checklist", action: controller.checklist)
@@ -738,6 +738,7 @@ struct NoteDetailView: View {
             Button("Attach", systemImage: "paperclip") { importing = true }
                 .help("Attach File (⇧⌘A)")
                 .disabled(note.isLocked || showingPage)
+        }
         }
         ToolbarSpacer(.fixed)
         ToolbarItemGroup {

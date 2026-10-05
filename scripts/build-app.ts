@@ -7,17 +7,30 @@ import { walk } from "jsr:@std/fs@1/walk";
 import { relative } from "jsr:@std/path@1";
 
 await esbuild.initialize({});
-export const OPTIONS = { jsx: "automatic", jsxImportSource: "preact", format: "esm", target: "es2020" } as const;
+// React projects (anything importing "react") compile for react/jsx-runtime, which the import map
+// points at preact/compat; Preact projects for preact/jsx-runtime.
+export const OPTIONS = { jsx: "automatic", jsxImportSource: "react", format: "esm", target: "es2020" } as const;
 const loader = (p: string) => p.endsWith(".tsx") ? "tsx" : p.endsWith(".ts") ? "ts" : p.endsWith(".jsx") ? "jsx" : null;
 
-async function compileDir(dir: string) {
+async function compileDir(dir: string, jsxImportSource?: string) {
   const files: Record<string, string> = {}, compiled: Record<string, string> = {};
-  for await (const e of walk(dir, { includeDirs: false })) {
-    const path = "/" + relative(dir, e.path);
-    const text = await Deno.readTextFile(e.path);
-    files[path] = text;
+  for await (const e of walk(dir, { includeDirs: false })) files["/" + relative(dir, e.path)] = await Deno.readTextFile(e.path);
+  const react = jsxImportSource ?? (Object.values(files).some((t) => /from\s+["']react["']|from\s+["']react-dom/.test(t)) ? "react" : "preact");
+  for (const [path, text] of Object.entries(files)) {
     const l = loader(path);
-    if (l) compiled[path] = (await esbuild.transform(text, { ...OPTIONS, loader: l, sourcefile: path })).code;
+    if (!l) continue;
+    // CSS imported from a module (Vite style) is served as a module that adds the stylesheet.
+    compiled[path] = (await esbuild.transform(text, { ...OPTIONS, jsxImportSource: react, loader: l, sourcefile: path })).code
+      .replace(/(import\s*(?:[^"';]*from\s*)?)"([^"]+\.css)"/g, '$1"$2?import"');
+  }
+  // Tailwind: a stylesheet that starts from "tailwindcss" is compiled against the project's files.
+  for (const [path, text] of Object.entries(files)) {
+    if (!path.endsWith(".css") || !/@import\s+["']tailwindcss["']/.test(text)) continue;
+    const cli = new URL("../app-stack/node_modules/@tailwindcss/cli/dist/index.mjs", import.meta.url).pathname;
+    const out = await new Deno.Command("node", { args: [cli, "-i", "." + path, "--minify"], cwd: dir, stdout: "piped", stderr: "piped",
+      env: { NODE_PATH: new URL("../app-stack/node_modules", import.meta.url).pathname } }).output();
+    if (!out.success) throw new Error(new TextDecoder().decode(out.stderr));
+    compiled[path] = new TextDecoder().decode(out.stdout);
   }
   return { files, compiled };
 }
@@ -28,7 +41,7 @@ if (mode === "project") {
   await Deno.writeTextFile(b, JSON.stringify({ amberApp: 1, files, compiled }));
   console.log(`${Object.keys(files).length} files, ${Object.keys(compiled).length} compiled, ${JSON.stringify({ files, compiled }).length} bytes`);
 } else if (mode === "kit") {
-  const { files, compiled } = await compileDir("amber-ui/src");
+  const { files, compiled } = await compileDir("amber-ui/src", "preact");
   const css = await Deno.readTextFile("amber-ui/amber-ui.css");
   const strip = (o: Record<string, string>) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k.slice(1), v]));
   // .js files aren't compiled: they are served as they are.
