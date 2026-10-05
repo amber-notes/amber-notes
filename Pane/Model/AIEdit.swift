@@ -111,9 +111,9 @@ enum AIEdit {
         enum Kind: Equatable { case edit, pageEdit, pageMade, pageChanged }
 
         var summary: String {
-            if kind == .pageEdit { return "Changed on the page" }
-            if kind == .pageMade { return "\(by) made a page for this note" }
-            if kind == .pageChanged { return "\(by) changed this note's page" }
+            if kind == .pageEdit { return "Changed in the app" }
+            if kind == .pageMade { return "\(by) made this note an app" }
+            if kind == .pageChanged { return "\(by) changed this note's app" }
             if created { return "\(by) wrote this note" }
             return lines == 0 ? "Updated by \(by)" : "\(by) changed \(lines == 1 ? "1 line" : "\(lines) lines")"
         }

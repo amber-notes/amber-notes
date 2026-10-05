@@ -178,3 +178,56 @@ Deno.test("edit_note_page changes the page in place, keeps the one before, and c
   assertEquals((await tool(pg, a, "get_note_page", { id }, false)).html, got.html);
   assertEquals((await tool(pg, a, "edit_note_page", { id, edits: [{ old_text: "<main", new_text: "<main" }] })).page, "unchanged");
 });
+
+// MARK: Page data
+
+const writeData = async (pg: PGlite, a: Account, id: string, data: unknown) => {
+  const box = await a.vault.sealPageData(id, JSON.stringify(data));
+  await app(pg, a.id, `insert into public.note_pages (note_id, data_ct) values ($1, $2) on conflict (note_id) do update set data_ct = excluded.data_ct`, [id, box]);
+};
+
+Deno.test("a page's data is sealed next to it, readable by get_note_page, and never touches the note", async () => {
+  const pg = await schemaDB();
+  const a = await account(pg);
+  const id = await note(pg, a, HABITS);
+  await tool(pg, a, "set_note_page", { id, html: PAGE });
+  const before = await noteRow(pg, id);
+  const data = { values: { goal: 4 }, collections: { workouts: [{ id: "w1", created: "2026-10-05T07:00:00Z", kind: "Run", km: 5.2 }] } };
+  await writeData(pg, a, id, data);
+  const [row] = (await pg.query<{ data_ct: string }>(`select data_ct from public.note_pages where note_id = $1`, [id])).rows;
+  assert(row.data_ct.startsWith(`amb2.${a.keyId}.`) && !row.data_ct.includes("Run"));
+  const got = await tool(pg, a, "get_note_page", { id }, false);
+  assertEquals(got.data, data);
+  assertEquals(await noteRow(pg, id), before);
+  // A box from an old key is refused, and so is another account's write.
+  const stale = await account(pg);
+  const old = await stale.vault.sealPageData(id, "{}");
+  await assertRejects(() => app(pg, a.id, `update public.note_pages set data_ct = $2 where note_id = $1`, [id, old]), Error, "old key");
+  const b = await account(pg);
+  const theirs = await b.vault.sealPageData(id, "{}");
+  assertEquals(await app(pg, b.id, `update public.note_pages set data_ct = $2 where note_id = $1 returning 1`, [id, theirs]), []);
+});
+
+Deno.test("data changes keep a version at most once a minute; a new page keeps its data with it", async () => {
+  const pg = await schemaDB();
+  const a = await account(pg);
+  const id = await note(pg, a, HABITS);
+  await tool(pg, a, "set_note_page", { id, html: PAGE });
+  await writeData(pg, a, id, { values: { n: 1 }, collections: {} });
+  await writeData(pg, a, id, { values: { n: 2 }, collections: {} });
+  await writeData(pg, a, id, { values: { n: 3 }, collections: {} });
+  let got = await tool(pg, a, "get_note_page", { id }, false);
+  assertEquals(got.data.values, { n: 3 });
+  assertEquals(got.versions.map((v: { kept_because: string }) => v.kept_because), ["data changed"]);
+  assertEquals((await tool(pg, a, "get_note_page", { id, version_id: got.versions[0].version_id }, false)).data.values, { n: 1 });
+  // A minute later the next change is kept again.
+  await pg.query(`update public.note_page_versions set replaced_at = replaced_at - interval '2 minutes'`);
+  await writeData(pg, a, id, { values: { n: 4 }, collections: {} });
+  // Replacing the page keeps the old page together with the data it had.
+  await tool(pg, a, "set_note_page", { id, html: PAGE.replace("days", "entries") });
+  got = await tool(pg, a, "get_note_page", { id }, false);
+  assertEquals(got.versions.map((v: { kept_because: string }) => v.kept_because), ["page changed", "data changed", "data changed"]);
+  const kept = await tool(pg, a, "get_note_page", { id, version_id: got.versions[0].version_id }, false);
+  assertEquals([kept.html, kept.data.values], [PAGE, { n: 4 }]);
+  assertEquals(got.data.values, { n: 4 });
+});

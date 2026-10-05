@@ -9,7 +9,7 @@
 import type { PendingQuery, Row, Sql, TransactionSql } from "npm:postgres@3.4.5";
 import { toBase64, type Head, type Vault } from "../_shared/e2ee.ts";
 import { errorKind, log } from "../_shared/log.ts";
-import { MAX_PAGE_BYTES, PAGE_CONTRACT, PAGE_REWRITE, pageProblems } from "./page.ts";
+import { MAX_PAGE_BYTES, PAGE_CONTRACT, PAGE_REWRITE, pageDataView, pageProblems } from "./page.ts";
 import { appendText, applyEdits, coerce, findTables, fitLines, isTextType, mimeOf, outline, previewOf, replaceTable, searchFilter, searchInMemory, setChecklistItem, sliceLines, titleOf, typeSpec, type Edit, type Table } from "./notes.ts";
 
 export type ToolContext = { sql: Sql; userId: string; client: string; canWrite: boolean; vault: Vault };
@@ -1171,23 +1171,28 @@ const handlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<unknown>> =
 
   async get_note_page(tx, a, c) {
     const n = await findNote(tx, c, a, true);
-    const versions = await tx<{ id: string; page_ct: string; client: string | null; made_at: Date; replaced_at: Date }[]>`
-      select id, page_ct, client, made_at, replaced_at from public.note_page_versions where note_id = ${n.id} order by id desc limit 10`;
-    const list = versions.map((v) => ({ version_id: Number(v.id), made_by: v.client, made: iso(v.made_at), replaced: iso(v.replaced_at), bytes: Math.round(v.page_ct.length * 3 / 4) }));
+    const versions = await tx<{ id: string; page_ct: string | null; data_ct: string | null; client: string | null; made_at: Date; replaced_at: Date; reason: string }[]>`
+      select id, page_ct, data_ct, client, made_at, replaced_at, reason from public.note_page_versions where note_id = ${n.id} order by id desc limit 10`;
+    const list = versions.map((v) => ({ version_id: Number(v.id), kept_because: v.reason === "data" ? "data changed" : "page changed", made_by: v.client, made: iso(v.made_at), replaced: iso(v.replaced_at) }));
+    const data = async (ct: string | null) => {
+      if (!ct) return pageDataView(null);
+      try { return pageDataView(await c.v.openPageData(n.id, ct)); } catch { return { data_note: "This page's data can't be opened with this connection's key." }; }
+    };
     if (a.version_id !== undefined && a.version_id !== null) {
       const want = wholeNumber(a.version_id, "version_id");
       const v = versions.find((x) => Number(x.id) === want);
       if (!v) throw new ToolError(`No earlier page ${want} for this note. Versions: ${list.map((x) => x.version_id).join(", ") || "none"}.`);
-      let html: string;
-      try { html = await c.v.openPage(n.id, v.page_ct); } catch { throw new ToolError("That page can't be opened with this connection's key."); }
-      return { id: n.id, title: n.title, version_id: want, made_by: v.client, made: iso(v.made_at), html, note: "An earlier page. To bring it back, send this html to set_note_page." };
+      let html: string | null = null;
+      if (v.page_ct) try { html = await c.v.openPage(n.id, v.page_ct); } catch { throw new ToolError("That page can't be opened with this connection's key."); }
+      return { id: n.id, title: n.title, version_id: want, made_by: v.client, made: iso(v.made_at), html, ...(await data(v.data_ct)),
+        note: "An earlier version. To bring the page back, send its html to set_note_page; the data with set_page_data." };
     }
-    const [row] = await tx<{ page_ct: string | null; client: string | null; updated_at: Date }[]>`
-      select page_ct, client, updated_at from public.note_pages where note_id = ${n.id}`;
-    if (!row?.page_ct) return { id: n.id, title: n.title, has_page: false, rules: PAGE_CONTRACT, versions: list };
+    const [row] = await tx<{ page_ct: string | null; data_ct: string | null; client: string | null; updated_at: Date }[]>`
+      select page_ct, data_ct, client, updated_at from public.note_pages where note_id = ${n.id}`;
+    if (!row?.page_ct) return { id: n.id, title: n.title, has_page: false, rules: PAGE_CONTRACT, ...(await data(row?.data_ct ?? null)), versions: list };
     let html: string;
     try { html = await c.v.openPage(n.id, row.page_ct); } catch { throw new ToolError("This note's page can't be opened with this connection's key."); }
-    return { id: n.id, title: n.title, has_page: true, made_by: row.client, updated: iso(row.updated_at), rules: PAGE_CONTRACT, html, versions: list };
+    return { id: n.id, title: n.title, has_page: true, made_by: row.client, updated: iso(row.updated_at), rules: PAGE_CONTRACT, html, ...(await data(row.data_ct)), versions: list };
   },
 
   async search(tx, a, c) {

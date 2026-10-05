@@ -35,3 +35,17 @@ Deno.test("a page must read the note, and stay under the size cap", () => {
   assertStringIncludes(pageProblems(page("x".repeat(MAX_PAGE_BYTES))).join(), "the limit is 256 KB");
   assertStringIncludes(pageProblems("just text, amber.note").join(), "doesn't look like an HTML page");
 });
+
+import { MAX_PAGE_DATA_BYTES, pageDataProblems, pageDataView } from "./page.ts";
+
+Deno.test("page data is an object of values and collections of records with unique ids, under 4 MB", () => {
+  assertEquals(pageDataProblems({ values: { a: [1, { b: null }] }, collections: { runs: [{ id: "1", km: 5 }, { id: "2" }] } }), []);
+  assertStringIncludes(pageDataProblems([]).join(), "one JSON object");
+  assertStringIncludes(pageDataProblems({ rows: [] }).join(), "Unknown top-level key \"rows\"");
+  assertStringIncludes(pageDataProblems({ collections: { runs: [{ km: 5 }] } }).join(), "needs a string \"id\"");
+  assertStringIncludes(pageDataProblems({ collections: { runs: [{ id: "1" }, { id: "1" }] } }).join(), "two records with id \"1\"");
+  assertStringIncludes(pageDataProblems({ values: { big: "x".repeat(MAX_PAGE_DATA_BYTES) } }).join(), "the limit is 4 MB");
+  assertEquals(pageDataView(null).data, { values: {}, collections: {} });
+  const big = JSON.stringify({ values: { a: "x".repeat(70_000) }, collections: { runs: [{ id: "1" }] } });
+  assertEquals(pageDataView(big).data_outline, { values: ["a"], collections: { runs: 1 } });
+});

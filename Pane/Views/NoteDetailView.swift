@@ -291,11 +291,11 @@ struct NoteDetailView: View {
         Button {
             withAnimation(.smooth(duration: 0.25)) { mode = mode == .page ? .text : .page }
         } label: {
-            Label(mode == .page ? "Show Text" : "Show Page", systemImage: mode == .page ? "text.alignleft" : "rectangle.grid.1x2")
+            Label(mode == .page ? "Show Text" : "Show App", systemImage: mode == .page ? "text.alignleft" : NoteAppMark.symbol)
         }
         #if os(macOS)
         .tint(.primary)
-        .help(mode == .page ? "Show Text" : "Show Page")
+        .help(mode == .page ? "Show Text" : "Show App")
         #endif
         .accessibilityIdentifier("note.mode")
     }
@@ -307,17 +307,17 @@ struct NoteDetailView: View {
             Section {
                 if Self.pageToggle == .menu {
                     Picker("View as", selection: $mode.animation(.smooth(duration: 0.25))) {
-                        Label("Page", systemImage: "rectangle.grid.1x2").tag(NoteMode.page)
+                        Label("App", systemImage: NoteAppMark.symbol).tag(NoteMode.page)
                         Label("Text", systemImage: "text.alignleft").tag(NoteMode.text)
                     }
                     .pickerStyle(.inline)
                     .accessibilityIdentifier("note.modeMenu")
                 }
                 if NotePageStore.shared.previous(note.id) != nil {
-                    Button("Previous Page", systemImage: "arrow.uturn.backward") { restorePreviousPage() }
+                    Button("Previous Version of App", systemImage: "arrow.uturn.backward") { restorePreviousPage() }
                         .accessibilityIdentifier("editor.previousPage")
                 }
-                Button("Remove Page", systemImage: "rectangle.slash") {
+                Button("Remove App", systemImage: "xmark.square") {
                     // The note's text stays as it is, and the page is kept: Previous Page brings it back.
                     NotePageStore.shared[note.id] = nil
                     shownPage = nil
@@ -344,10 +344,10 @@ struct NoteDetailView: View {
         withAnimation(.smooth(duration: 0.2)) { receipt = nil }
         if let before = NotePageStore.shared.previous(note.id), !failedPages.contains(before.html) {
             restorePreviousPage()
-            notice("\(who) new page didn't load, so the previous page is back.")
+            notice("\(who) new version of the app didn't load, so the previous one is back.")
         } else {
             withAnimation(.smooth(duration: 0.25)) { mode = .text }
-            notice("This page didn't load. Showing the text.")
+            notice("This app didn't load. Showing the text.")
         }
     }
 

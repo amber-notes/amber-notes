@@ -24,8 +24,8 @@ Each change lands in the note's markdown as a normal edit the person can see and
 Look like Amber Notes: the app sets these CSS variables on :root, already switched for light and dark, and gives body its font, text colour and background. Use them instead of your own colours and fonts:
   --amber-bg (the note's background), --amber-surface (cards and grouped rows), --amber-fill (controls, empty cells), --amber-text, --amber-text-secondary, --amber-separator,
   --amber-accent (amber, for marks and filled controls), --amber-accent-text (amber for text), --amber-accent-soft (a soft amber fill), --amber-on-accent (text on --amber-accent),
-  --amber-danger, --amber-radius (cards), --amber-radius-small (controls), --amber-font (the system font), --amber-font-rounded, --amber-font-mono.
-Keep it readable on small screens; don't set a background on html or body.`;
+  --amber-danger, --amber-radius (cards), --amber-radius-small (controls), --amber-font (the system font), --amber-font-rounded, --amber-font-mono, --amber-content-max, --amber-gutter.
+Fit every width: the page fills the note, from 320 px on a small iPhone to 1,800 px in a full-screen Mac window, and re-lays out live as the window resizes. Put content in a container with max-width: var(--amber-content-max) (1100 px), margin: 0 auto and side padding var(--amber-gutter). Use one column under 600 px, and from 900 px use the room (side-by-side sections, more history, bigger numbers) with @media (min-width: 900px) or the classes amber-narrow / amber-medium / amber-wide the app keeps on <html>. Never a fixed width, never a stretched phone layout. Don't set a background on html or body.`;
 
 const NAMESPACES = /^https?:\/\/www\.w3\.org\/(2000\/svg|1999\/xhtml|1999\/xlink|XML\/1998\/namespace)$/;
 
@@ -52,4 +52,50 @@ export function pageProblems(html: string): string[] {
   if (apis.length) out.push(`The page can't use the network (${apis.join(", ")}). Read the note from window.amber.note and change it with amber.update.`);
   if (!/\bamber\s*\.\s*(note|onChange)\b/.test(html)) out.push("The page must read the note from window.amber.note (or amber.onChange), not carry a copy of its data.");
   return out;
+}
+
+// MARK: Page data
+
+/** A page's own data, next to it in the database (note_pages.data_ct), never in the markdown. */
+export const MAX_PAGE_DATA_BYTES = 4 * 1024 * 1024;
+
+export type PageData = { values: Record<string, unknown>; collections: Record<string, { id: string; created?: string; updated?: string; [k: string]: unknown }[]> };
+
+/** The data's shape, checked: an object with values and collections of records with ids. */
+export function pageDataProblems(data: unknown): string[] {
+  const out: string[] = [];
+  if (typeof data !== "object" || data === null || Array.isArray(data)) return ["Page data is one JSON object: {\"values\": {...}, \"collections\": {\"name\": [records]}}."];
+  const d = data as Record<string, unknown>;
+  for (const k of Object.keys(d)) if (k !== "values" && k !== "collections") out.push(`Unknown top-level key "${k}": only "values" and "collections".`);
+  if (d.values !== undefined && (typeof d.values !== "object" || d.values === null || Array.isArray(d.values))) out.push("values must be an object.");
+  if (d.collections !== undefined) {
+    if (typeof d.collections !== "object" || d.collections === null || Array.isArray(d.collections)) out.push("collections must be an object of arrays.");
+    else for (const [name, list] of Object.entries(d.collections as Record<string, unknown>)) {
+      if (!Array.isArray(list)) { out.push(`Collection "${name}" must be an array of records.`); continue; }
+      const ids = new Set<string>();
+      list.forEach((r, i) => {
+        const id = (r as { id?: unknown })?.id;
+        if (typeof r !== "object" || r === null || Array.isArray(r)) out.push(`${name}[${i}] must be an object.`);
+        else if (typeof id !== "string" || !id) out.push(`${name}[${i}] needs a string "id".`);
+        else if (ids.has(id)) out.push(`${name} has two records with id "${id}".`);
+        else ids.add(id);
+      });
+    }
+  }
+  const bytes = new TextEncoder().encode(JSON.stringify(data)).length;
+  if (bytes > MAX_PAGE_DATA_BYTES) out.push(`The data would be ${(bytes / 1048576).toFixed(1)} MB; the limit is 4 MB. Keep photos, recordings and other files as files ({"$file": id}).`);
+  return out;
+}
+
+/** What get_note_page shows of the data: all of it when small, else its outline. */
+export function pageDataView(json: string | null): Record<string, unknown> {
+  if (json === null) return { data: { values: {}, collections: {} } };
+  const bytes = new TextEncoder().encode(json).length;
+  const d = JSON.parse(json) as PageData;
+  if (bytes <= 60_000) return { data: d, data_bytes: bytes };
+  return {
+    data_bytes: bytes,
+    data_outline: { values: Object.keys(d.values ?? {}), collections: Object.fromEntries(Object.entries(d.collections ?? {}).map(([k, v]) => [k, v.length])) },
+    data_note: "The data is too big to show here; read it with get_page_data.",
+  };
 }

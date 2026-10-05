@@ -55,7 +55,7 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
     static func prepare() async throws -> WKContentRuleList {
         if let compiled { return compiled }
         guard let list = try await WKContentRuleListStore.default().compileContentRuleList(forIdentifier: "amber-note-page-v1", encodedContentRuleList: rules) else {
-            throw NotePage.OpError("The page sandbox couldn't start.")
+            throw NotePage.OpError("The app couldn't start.")
         }
         compiled = list
         return list
@@ -137,6 +137,14 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
             for (const fn of listeners) { try { fn(note); } catch (e) { console.error(e); } }
           } });
           window.amber = amber;
+          // Width classes on <html>, kept current as the window resizes: narrow under 600 px,
+          // medium to 900, wide from 900.
+          const sized = () => {
+            const w = window.innerWidth, c = document.documentElement.classList;
+            c.toggle("amber-narrow", w < 600); c.toggle("amber-medium", w >= 600 && w < 900); c.toggle("amber-wide", w >= 900);
+          };
+          sized();
+          addEventListener("resize", sized);
           addEventListener("error", (e) => failed(e.message || e));
           addEventListener("unhandledrejection", (e) => failed(e.reason));
           // After the first frame; a hidden view may never draw one, so a timer stands in.
@@ -226,7 +234,7 @@ struct NotePageView: View {
                 WebViewHost(view: sandbox.webView)
                     .opacity(ready ? 1 : 0)
             } else if let failed {
-                ContentUnavailableView("Can't show this page", systemImage: "exclamationmark.triangle", description: Text(failed))
+                ContentUnavailableView("Can't open this app", systemImage: "exclamationmark.triangle", description: Text(failed))
             }
         }
         .task(id: html) {
@@ -348,6 +356,7 @@ enum NotePageTheme {
         }
         return """
         :root { color-scheme: light dark; \(vars(dark: false)); --amber-radius: \(radius.0)px; --amber-radius-small: \(radius.1)px; \
+        --amber-content-max: 1100px; --amber-gutter: clamp(16px, 3.5vw, 40px); \
         --amber-font: -apple-system, system-ui, sans-serif; --amber-font-rounded: ui-rounded, -apple-system, system-ui, sans-serif; \
         --amber-font-mono: ui-monospace, Menlo, monospace; }
         @media (prefers-color-scheme: dark) { :root { \(vars(dark: true)); } }

@@ -12,7 +12,7 @@ struct AIGlyph: View {
     var body: some View {
         if ai == Self.page {
             // An edit made on a note's page (NotePage): the page's own mark.
-            Image(systemName: "square.grid.2x2").resizable().scaledToFit().frame(width: size * 0.85, height: size * 0.85)
+            Image(systemName: NoteAppMark.symbol).resizable().scaledToFit().frame(width: size * 0.85, height: size * 0.85)
                 .frame(width: size, height: size)
                 .foregroundStyle(Color.amberInk)
                 .accessibilityHidden(true)
@@ -35,7 +35,7 @@ struct AIGlyph: View {
     }
 
     /// Who made an edit on a note's page.
-    static let page = "Page"
+    static let page = "App"
 
     static func asset(_ ai: String) -> String? {
         switch ai {
@@ -115,4 +115,15 @@ struct AIReceipt: View {
     static let text: CGFloat = 15
     static let height: CGFloat = 40
     #endif
+}
+
+/// The mark of a note that is also an app (it has a page; see NotePage): in the note list and search
+/// results, on its toggle, and on a sub-note's link. Two designs while we choose (`-appMark title`
+/// puts an amber mark after the title; the default is a small grey glyph beside the date).
+enum NoteAppMark {
+    static let symbol = "square.grid.2x2"
+    enum Style { case detail, title }
+    nonisolated(unsafe) static var style: Style = Capture.argument("-appMark") == "title" ? .title : .detail
+
+    @MainActor static func has(_ note: Note) -> Bool { !note.isLocked && NotePageStore.shared[note.id] != nil }
 }
