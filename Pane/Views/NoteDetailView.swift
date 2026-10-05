@@ -9,6 +9,8 @@ struct NoteDetailView: View {
     @Environment(SyncEngine.self) private var sync: SyncEngine?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var importing = false
+    /// Dev: an app built outside (scripts/build-app.ts), from a file, into this note.
+    @State private var importingApp = false
     @State private var saver = DebouncedSave()
     @State private var shareLinks = ShareLinkStore()
     @State private var showHistory = HistoryLaunch.open
@@ -64,6 +66,18 @@ struct NoteDetailView: View {
         chrome(editor)
             .quickLookPreview(previewBinding)
             .fileImporter(isPresented: $importing, allowedContentTypes: [.item], allowsMultipleSelection: true, onCompletion: attach)
+            #if DEBUG || QA
+            .background {
+                Color.clear.fileImporter(isPresented: $importingApp, allowedContentTypes: [.json, .html, .plainText]) { result in
+                    guard case .success(let url) = result else { return }
+                    let access = url.startAccessingSecurityScopedResource()
+                    defer { if access { url.stopAccessingSecurityScopedResource() } }
+                    guard let text = try? String(contentsOf: url, encoding: .utf8), NotePageProject.parse(text) != nil else { return }
+                    NotePageStore.shared.setHere(note.id, .init(html: text, by: "File", at: .now))
+                    pageArrived(NotePageStore.shared[note.id])
+                }
+            }
+            #endif
             .onAppear(perform: wireController)
             .onDisappear { saver.flush() }
             .shareLinkChrome(shareLinks, note: note)
@@ -485,6 +499,13 @@ struct NoteDetailView: View {
             Button("App Info…", systemImage: "info.circle") { showAppInfo = true }
                 .accessibilityIdentifier("editor.appInfo")
         }
+        #if DEBUG || QA
+        if !note.isLocked, note.trashedAt == nil {
+            // An app built outside the AI tools (scripts/build-app.ts output, or one HTML file).
+            Button("Dev: Import App File…", systemImage: "square.and.arrow.down") { importingApp = true }
+                .accessibilityIdentifier("editor.devImportApp")
+        }
+        #endif
     }
 
     private func restorePreviousPage() {
