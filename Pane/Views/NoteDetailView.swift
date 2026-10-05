@@ -199,7 +199,7 @@ struct NoteDetailView: View {
         if r.kind == .pageMade || r.kind == .pageChanged {
             // The note's text never changed: the page goes back to what it was (the new one is kept).
             if undoPage != nil { restorePreviousPage() } else {
-                NotePageStore.shared[note.id] = nil
+                NotePageStore.shared.setHere(note.id, nil)
                 shownPage = nil
                 mode = .text
             }
@@ -404,14 +404,14 @@ struct NoteDetailView: View {
                     .accessibilityIdentifier("note.modeMenu")
                 }
                 if NotePageStore.shared.previous(note.id) != nil {
-                    Button("Previous Version of App", systemImage: "arrow.uturn.backward") { restorePreviousPage() }
+                    Button("Previous App", systemImage: "arrow.uturn.backward") { restorePreviousPage() }
                         .accessibilityIdentifier("editor.previousPage")
                 }
                 Button("Network Activity", systemImage: "network") { showNetLog = true }
                     .accessibilityIdentifier("editor.netLog")
                 Button("Remove App", systemImage: "xmark.square") {
-                    // The note's text stays as it is, and the page is kept: Previous Page brings it back.
-                    NotePageStore.shared[note.id] = nil
+                    // The note's text stays as it is, and the app is kept: Previous App brings it back.
+                    NotePageStore.shared.setHere(note.id, nil)
                     shownPage = nil
                     mode = .text
                 }
@@ -436,7 +436,7 @@ struct NoteDetailView: View {
         withAnimation(.smooth(duration: 0.2)) { receipt = nil }
         if let before = NotePageStore.shared.previous(note.id), !failedPages.contains(before.html) {
             restorePreviousPage()
-            notice("\(who) new version of the app didn't load, so the previous one is back.")
+            notice("\(who) new version of this app didn't load, so the previous app is back.")
         } else {
             withAnimation(.smooth(duration: 0.25)) { mode = .text }
             notice("This app didn't load. Showing the text.")

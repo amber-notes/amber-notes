@@ -165,6 +165,7 @@ final class SyncEngine {
         if pulling { status = .syncing }
         do {
             let slowedDown = try await push(client, sealer: sealer)
+            await pushPages(client, sealer: sealer)
             await pushPageData(client, sealer: sealer)
             await pushAPIKeyNames(client, sealer: sealer)
             if pulling { try await pull(client); hasSynced = true }
@@ -808,6 +809,23 @@ final class SyncEngine {
     }
 
     // MARK: Page data (prototype)
+
+    /// Pushes the apps changed here (Remove App, Previous App, a fallback), so the other devices
+    /// follow. The server keeps the one replaced among the last 10.
+    private func pushPages(_ client: SupabaseClient, sealer: Sealer) async {
+        struct Upsert: Encodable { var note_id: UUID; var page_ct: String? }
+        let store = NotePageStore.shared
+        for (id, at) in store.unpushed {
+            let box = store[id].flatMap { sealer.seal($0.html, context: E2EE.page(id)) }
+            if store[id] != nil, box == nil { continue }
+            do {
+                try await client.from("note_pages").upsert(Upsert(note_id: id, page_ct: box), onConflict: "note_id").execute()
+                store.pushed(id, at: at)
+            } catch {
+                log.error("page push failed: \(String(describing: error), privacy: .public)")
+            }
+        }
+    }
 
     /// Pushes each app's own data that changed here. The server's copy is read first and merged
     /// with this device's changes (NotePageData.merge), and the write only lands if nothing else

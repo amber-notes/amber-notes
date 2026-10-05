@@ -83,6 +83,9 @@ enum NotePage {
         case moveRow(table: Int, from: Int, to: Int)
         /// Replaces the text under a heading (up to the next heading of the same or a higher level).
         case setText(heading: String, text: String)
+        /// A new open item: after the last open item of the checklist under the heading (else the
+        /// note's first checklist; with none, a new list at the end).
+        case addChecklistItem(text: String, underHeading: String?)
 
         enum Column: Equatable { case index(Int), name(String) }
         enum Values: Equatable { case byName([String: String]), inOrder([String]) }
@@ -114,6 +117,9 @@ enum NotePage {
                 self = .deleteRow(table: try int("table"), row: try int("row"))
             case "move_row":
                 self = .moveRow(table: try int("table"), from: try int("from"), to: try int("to"))
+            case "add_checklist_item":
+                guard let t = m["text"] as? String, !t.trimmingCharacters(in: .whitespaces).isEmpty else { throw OpError("text must be the item's text.") }
+                self = .addChecklistItem(text: try Op.text(t), underHeading: m["under_heading"] as? String)
             case "set_text":
                 guard let h = m["heading"] as? String, !h.trimmingCharacters(in: .whitespaces).isEmpty else { throw OpError("heading must be the heading's text.") }
                 guard let t = m["text"] as? String, t.count <= 20_000 else { throw OpError("text must be text, at most 20,000 characters.") }
@@ -188,6 +194,42 @@ enum NotePage {
             guard from != to else { return body }
             let line = lines.remove(at: table.rowLines[from])
             lines.insert(line, at: table.rowLines[to])
+        case .addChecklistItem(let text, let under):
+            func level(_ l: String) -> Int? {
+                let hashes = l.prefix { $0 == "#" }.count
+                return (1...6).contains(hashes) && l.dropFirst(hashes).first == " " ? hashes : nil
+            }
+            var from = 0, to = lines.count
+            if let under {
+                let want = under.trimmingCharacters(in: .whitespaces).lowercased()
+                guard let at = lines.firstIndex(where: { l in level(l) != nil && l.drop { $0 == "#" }.trimmingCharacters(in: .whitespaces).lowercased() == want }) else {
+                    throw OpError("No heading \(under).")
+                }
+                let lv = level(lines[at])!
+                from = at + 1
+                to = from
+                while to < lines.count, (level(lines[to]).map { $0 > lv } ?? true) { to += 1 }
+            }
+            let item = "- [ ] " + text
+            var checks = (from..<to).filter { ListPrefix(line: lines[$0])?.checkbox != nil }
+            // One checklist: the run of checklist lines starting at the first.
+            if let first = checks.first {
+                var end = first
+                while end + 1 < to, ListPrefix(line: lines[end + 1])?.checkbox != nil { end += 1 }
+                checks = checks.filter { $0 <= end }
+            }
+            if let lastOpen = checks.last(where: { ListPrefix(line: lines[$0])?.checkbox == false }) {
+                let indent = ListPrefix(line: lines[lastOpen])?.indent ?? ""
+                lines.insert(indent + item, at: lastOpen + 1)
+            } else if let first = checks.first {
+                // Only ticked items: the new one goes above them, as open items do.
+                lines.insert((ListPrefix(line: lines[first])?.indent ?? "") + item, at: first)
+            } else {
+                var at = to
+                while at > from, lines[at - 1].trimmingCharacters(in: .whitespaces).isEmpty { at -= 1 }
+                lines.insert(item, at: at)
+                if at > 0, !lines[at - 1].trimmingCharacters(in: .whitespaces).isEmpty, ListPrefix(line: lines[at - 1]) == nil { lines.insert("", at: at) }
+            }
         case .setText(let heading, let text):
             let want = heading.trimmingCharacters(in: .whitespaces).lowercased()
             func level(_ l: String) -> Int? {
@@ -251,15 +293,18 @@ final class NotePageStore {
     private(set) var pages: [UUID: Page] = [:]
     /// Earlier pages per note, oldest first.
     private(set) var history: [UUID: [Page]] = [:]
+    /// Pages changed on this device (Remove App, Previous App, a fallback) and when, to push.
+    private(set) var unpushed: [UUID: Date] = [:]
     @ObservationIgnored private let file: URL?
 
-    private struct Saved: Codable { var pages: [UUID: Page]; var history: [UUID: [Page]] }
+    private struct Saved: Codable { var pages: [UUID: Page]; var history: [UUID: [Page]]; var unpushed: [UUID: Date]? }
 
     init(file: URL?) {
         self.file = file
         if let file, let data = try? Data(contentsOf: file), let saved = try? JSONDecoder().decode(Saved.self, from: data) {
             pages = saved.pages
             history = saved.history
+            unpushed = saved.unpushed ?? [:]
         }
         for (id, p) in pages { NoteWidgets.update(id, html: p.html) }
     }
@@ -284,7 +329,22 @@ final class NotePageStore {
     /// The page before this one, if any.
     func previous(_ id: UUID) -> Page? { history[id]?.last }
 
-    /// Brings the last earlier page back; the current one takes its place in history.
+    /// A change made here (Remove App): kept and pushed to the other devices.
+    func setHere(_ id: UUID, _ page: Page?) {
+        self[id] = page
+        unpushed[id] = .now
+        save()
+        SyncSignal.changed()
+    }
+
+    /// Pushed: the server has this device's page.
+    func pushed(_ id: UUID, at: Date) {
+        if unpushed[id] == at { unpushed[id] = nil }
+        save()
+    }
+
+    /// Brings the last earlier page back; the current one takes its place in history. Pushed to the
+    /// other devices like any change here.
     @discardableResult
     func restorePrevious(_ id: UUID) -> Page? {
         guard var h = history[id], let back = h.popLast() else { return nil }
@@ -292,7 +352,9 @@ final class NotePageStore {
         history[id] = h.suffix(Self.keep).map { $0 }
         pages[id] = back
         NoteWidgets.update(id, html: back.html)
+        unpushed[id] = .now
         save()
+        SyncSignal.changed()
         return back
     }
 
@@ -305,6 +367,11 @@ final class NotePageStore {
 
     /// A page from the server. One that won't open with this device's key is left as it was.
     func take(_ r: NotePageDTO) {
+        // A change here that the server hasn't seen yet wins over an older one from it.
+        if let mine = unpushed[r.note_id] {
+            if mine > r.updated_at { return }
+            unpushed[r.note_id] = nil
+        }
         guard let box = r.page_ct else { self[r.note_id] = nil; return }
         guard let html = Wire.sealer?.open(box, context: E2EE.page(r.note_id)) else { return }
         self[r.note_id] = Page(html: html, by: r.client ?? "AI", at: r.updated_at)
@@ -313,11 +380,12 @@ final class NotePageStore {
     func forgetAll() {
         pages = [:]
         history = [:]
+        unpushed = [:]
         if let file { try? FileManager.default.removeItem(at: file) }
     }
 
     private func save() {
-        guard let file, let data = try? JSONEncoder().encode(Saved(pages: pages, history: history)) else { return }
+        guard let file, let data = try? JSONEncoder().encode(Saved(pages: pages, history: history, unpushed: unpushed)) else { return }
         try? FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
         try? data.write(to: file, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
     }

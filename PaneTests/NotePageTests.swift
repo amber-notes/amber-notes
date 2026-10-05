@@ -529,4 +529,42 @@ import WebKit
             #expect(a["available"] as? Bool != true || error.localizedDescription.contains("couldn't answer"))
         }
     }
+
+    @Test func addChecklistItemKeepsChecklistsAsChecklists() throws {
+        let body = "Packing\n\n## Clothes\n- [ ] Socks\n- [x] Jacket\n\n## Documents\n- [ ] Passport\n\nNotes"
+        #expect(try apply(["op": "add_checklist_item", "text": "Scarf", "under_heading": "clothes"], to: body)
+            == "Packing\n\n## Clothes\n- [ ] Socks\n- [ ] Scarf\n- [x] Jacket\n\n## Documents\n- [ ] Passport\n\nNotes")
+        // No heading given: the note's first checklist.
+        #expect(try apply(["op": "add_checklist_item", "text": "Charger"], to: body).contains("- [ ] Socks\n- [ ] Charger\n"))
+        // Only ticked items: above them.
+        #expect(try apply(["op": "add_checklist_item", "text": "Hat"], to: "List\n- [x] Done") == "List\n- [ ] Hat\n- [x] Done")
+        // No checklist: a new one at the end, after a blank line.
+        #expect(try apply(["op": "add_checklist_item", "text": "First"], to: "Ideas\n\nSome text\n") == "Ideas\n\nSome text\n\n- [ ] First\n")
+        #expect(throws: NotePage.OpError("No heading Food.")) { try apply(["op": "add_checklist_item", "text": "x", "under_heading": "Food"], to: body) }
+    }
+
+    @Test func changesHereArePushedAndWinOverOlderOnesFromTheServer() {
+        let store = NotePageStore(file: nil)
+        let id = UUID()
+        func dto(_ html: String?, at: Date) -> NotePageDTO {
+            NotePageDTO(note_id: id, page_ct: nil, data_ct: nil, client: "Claude", updated_at: at, server_updated_at: at)
+        }
+        store[id] = .init(html: "<p>a</p>", by: "Claude", at: .now)
+        store[id] = .init(html: "<p>b</p>", by: "Claude", at: .now)
+        store.restorePrevious(id)
+        #expect(store[id]?.html == "<p>a</p>")
+        let at = try! #require(store.unpushed[id])
+        // An older row from the server (removed) doesn't undo the change made here.
+        store.take(dto(nil, at: at.addingTimeInterval(-60)))
+        #expect(store[id]?.html == "<p>a</p>")
+        // Once pushed, the server is followed again: a newer removal there removes it here.
+        store.pushed(id, at: at)
+        #expect(store.unpushed[id] == nil)
+        store.take(dto(nil, at: at.addingTimeInterval(60)))
+        #expect(store[id] == nil)
+        // Remove App here is pushed too.
+        store[id] = .init(html: "<p>c</p>", by: "Claude", at: .now)
+        store.setHere(id, nil)
+        #expect(store.unpushed[id] != nil && store.previous(id)?.html == "<p>c</p>")
+    }
 }

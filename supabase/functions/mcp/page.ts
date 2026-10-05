@@ -22,6 +22,7 @@ Change the note only through amber.update(op), which returns a Promise of { ok: 
   { op: "append_row", table, values }         values: { columnName: text } or [text, ...]
   { op: "delete_row", table, row }  { op: "move_row", table, from, to }
   { op: "set_text", heading, text }            replaces the text under that heading (up to the next heading of the same level)
+  { op: "add_checklist_item", text, under_heading? }  a new open "- [ ] text" after the last open item of that checklist (keep checklists as checklists)
 Each change lands in the note's markdown as a normal edit the person can see and undo.
 The page's own data (not the note's text; for state the person wouldn't type, like settings, logs, a schedule): amber.data = { values, collections };
   amber.store.get(key) / amber.store.set(key, value); amber.store.collection(name).list() / query(fn) / get(id) / add(fields) -> { id } / update(id, patch) / remove(id); amber.setData(mergePatch).

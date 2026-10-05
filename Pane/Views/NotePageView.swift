@@ -196,11 +196,13 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
           // Width classes on <html>, kept current as the window resizes: narrow under 600 px,
           // medium to 900, wide from 900.
           const sized = () => {
+            if (!document.documentElement) return;
             const w = window.innerWidth, c = document.documentElement.classList;
             c.toggle("amber-narrow", w < 600); c.toggle("amber-medium", w >= 600 && w < 900); c.toggle("amber-wide", w >= 900);
           };
           sized();
           addEventListener("resize", sized);
+          addEventListener("DOMContentLoaded", sized);
           addEventListener("error", (e) => failed(e.message || e));
           addEventListener("unhandledrejection", (e) => failed(e.reason));
           // After the first frame; a hidden view may never draw one, so a timer stands in.
