@@ -1,9 +1,10 @@
 <!doctype html>
-<!-- template: workout-log | Weekly distance and time for the last eight weeks, this week's totals against a goal in page data, the latest sessions and a log form. | A table with Date (yyyy-mm-dd), optionally Type (Run, Bike…), a distance column (Km, Distance) and a time column (Minutes, Time). Optional amber.data.values.weeklyKm. -->
+<!-- template: workout-log | Weekly distance and time for the last eight weeks, this week's totals against a weekly goal (an App Setting), the latest sessions and a log form. | A table with Date (yyyy-mm-dd), optionally Type (Run, Bike...), a distance column (Km, Distance) and a time column (Minutes, Time). -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="amber-settings" content='{"settings": [{"key": "weeklyKm", "label": "Weekly goal (km)", "type": "number", "default": 20, "help": "0 for no goal"}]}'>
 <style>
   :root { --bg: var(--amber-bg); --card: var(--amber-surface); --ink: var(--amber-text); --muted: var(--amber-text-secondary); --line: var(--amber-separator); --accent: var(--amber-accent); --accent-ink: var(--amber-on-accent); --field: var(--amber-fill); --soft: var(--amber-accent-soft); }
   * { box-sizing: border-box; }
@@ -58,7 +59,7 @@
     const perWeek = weeks.map((w) => (km >= 0 ? kmOf(inWeek(w)) : minOf(inWeek(w))));
     const top = Math.max(1, ...perWeek);
     const now = inWeek(weeks[7]);
-    const goal = Number(data && data.values && data.values.weeklyKm) || 0;
+    const goal = Number(amber.settings.weeklyKm) || 0;
     const unit = km >= 0 ? "km" : "min";
     app.innerHTML = `
       <h1>${esc(note.title)}</h1>
@@ -75,14 +76,12 @@
           <label>Date<input name="date" type="date" value="${note.today}" required></label>
           ${km >= 0 ? `<label>${esc(t.columns[km].name)}<input name="km" inputmode="decimal"></label>` : ""}
           ${mi >= 0 ? `<label>${esc(t.columns[mi].name)}<input name="min" inputmode="numeric"></label>` : ""}
-          <label>Weekly goal (km)<input name="goal" inputmode="decimal" value="${goal || ""}"></label>
           <button>Log it</button>
         </form>
         <div class="err" role="alert">${esc(error)}</div>
       </div>`;
 
     const f = document.getElementById("add");
-    f.goal.onchange = async () => { const r = await amber.setData({ values: { weeklyKm: f.goal.value.trim() ? num(f.goal.value) : null } }); error = r.ok ? "" : r.error; if (!r.ok) render(amber.note, amber.data); };
     f.onsubmit = async (e) => {
       e.preventDefault();
       const fd = new FormData(f);

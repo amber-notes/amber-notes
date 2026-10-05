@@ -57,6 +57,24 @@ type View = {
 };
 export type Rendered = { views: View[]; interaction: { tried: string; ok: boolean | null; error?: string }; probes: Record<string, { pass: boolean; detail?: string }>; blocked: string[]; ms: number };
 
+const same = (a: string, b: string) => a.toLowerCase().replace(/\s+/g, " ").trim() === b.toLowerCase().replace(/\s+/g, " ").trim();
+
+/**
+ * The app owns the note's title: its first heading is the title (nothing around the app draws it),
+ * and the title isn't shown twice.
+ */
+export function titleReport(r: Rendered, title: string): string[] {
+  const v = r.views[0];
+  if (!v?.headings) return [];
+  const out: string[] = [];
+  if (!v.headings.length || !same(v.headings[0], title)) {
+    out.push(`The app's first heading should be the note's title ("${title}"), read from amber.note.title: nothing around the app shows the title.${v.headings[0] ? ` Its first heading is "${v.headings[0]}".` : " It has no heading."}`);
+  }
+  const twice = v.headings.filter((h) => same(h, title)).length;
+  if (twice > 1) out.push(`The note's title is shown ${twice} times; show it once, as the first heading.`);
+  return out;
+}
+
 /** Findings from the browser, worded as fixes. */
 export function renderedReport(r: Rendered): string[] {
   const out: string[] = [];

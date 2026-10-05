@@ -1,7 +1,8 @@
 // check_app and preview_app: let an AI see what it built. See app_check.ts for the findings and
 // app_sample.ts for the sample a note's app is rendered over.
 
-import { type KeyInfo, render, renderedReport, staticReport } from "./app_check.ts";
+import { type KeyInfo, render, renderedReport, staticReport, titleReport } from "./app_check.ts";
+import { noteForPage } from "./page_input.ts";
 import { sampleData, sampleNote } from "./app_sample.ts";
 import { bodyOf, Content, findNote, ToolError, type Call, type Tx } from "./tools.ts";
 
@@ -13,7 +14,7 @@ const read = { readOnlyHint: true, destructiveHint: false, idempotentHint: true,
 export const appTools = [
   {
     name: "check_app", title: "Check a note's app",
-    description: "Checks a note's app and reports what to fix, as text: script errors, sideways scrolling at 390 px, text that is too small or low in contrast (light and dark), controls without labels, not using the --amber-* theme, an edit from the app that fails, breakage with an empty or 400-row note, unescaped note text, and network hosts or API keys declared vs used vs set up. " +
+    description: "Checks a note's app and reports what to fix, as text: the note's title as the app's first heading (and only once), script errors, sideways scrolling at 390 px, text that is too small or low in contrast (light and dark), controls without labels, not using the --amber-* theme, an edit from the app that fails, breakage with an empty or 400-row note, unescaped note text, and network hosts or API keys declared vs used vs set up. " +
       "Run it after every set_note_page or edit_note_page and fix what it finds before telling the person the app is done. It renders a sample with the note's shape, not the person's data.",
     inputSchema: { type: "object", properties: { ...noteRef } },
     annotations: read,
@@ -68,7 +69,7 @@ export const appHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<u
       html, markdown: sampleNote(body, t), data: sampleData(data, t), today: t,
       views: [{ width: 390, scheme: "light" }, { width: 390, scheme: "dark" }, { width: 1280, scheme: "light" }], interact: true, probes: true,
     });
-    const browser = typeof r === "string" ? null : renderedReport(r);
+    const browser = typeof r === "string" ? null : [...titleReport(r, noteForPage(sampleNote(body, t), t).title), ...renderedReport(r)];
     const issues = [...found.errors, ...found.warnings, ...(browser ?? [])];
     return {
       app: { id: n.id, title: n.title },
@@ -94,7 +95,7 @@ export const appHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<u
     const t = today();
     const r = await render({ html, markdown: real ? body : sampleNote(body, t), data: real ? data : sampleData(data, t), today: t, views, capture: true, interact: false, probes: false });
     if (typeof r === "string") return { app: { id: n.id, title: n.title }, previews: "unavailable", reason: r, instead: "Run check_app for the checks that need no browser." };
-    const issues = renderedReport(r);
+    const issues = [...titleReport(r, noteForPage(real ? body : sampleNote(body, t), t).title), ...renderedReport(r)];
     const blocks: Record<string, unknown>[] = [{
       type: "text",
       text: JSON.stringify({

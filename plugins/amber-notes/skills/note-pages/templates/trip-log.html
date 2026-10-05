@@ -1,9 +1,10 @@
 <!doctype html>
-<!-- template: trip-log | A trip at a glance: a countdown, the key facts, the day-by-day plan, and every checklist in the note (to do, ideas, packing) with tick boxes and progress. | Optionally a table with Date (yyyy-mm-dd) and What/Plan columns (plus Time, Where); checklists under headings. The trip start is the first date in the table, or amber.data.values.start. Key facts are "Label: value" lines, or amber.data.values.facts = [{ label, value }]. -->
+<!-- template: trip-log | A trip at a glance: a countdown, the key facts, the day-by-day plan, and every checklist in the note (to do, ideas, packing) with tick boxes and progress. The start date is an App Setting. | Optionally a table with Date (yyyy-mm-dd) and What/Plan columns (plus Time, Where); checklists under headings; key facts as Label: value lines. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="amber-settings" content='{"settings": [{"key": "start", "label": "Trip starts", "type": "text", "default": "", "help": "yyyy-mm-dd, for the countdown. Empty: the first date in the plan."}]}'>
 <style>
   :root { --bg: var(--amber-bg); --card: var(--amber-surface); --ink: var(--amber-text); --muted: var(--amber-text-secondary); --line: var(--amber-separator); --accent: var(--amber-accent); --accent-ink: var(--amber-on-accent); --soft: var(--amber-accent-soft); --field: var(--amber-fill); }
   * { box-sizing: border-box; }
@@ -55,7 +56,7 @@
     const d = t ? col(t, /^date$|^day$/i) : -1;
     const what = t ? col(t, /what|plan|activity|event|title|note/i) : -1, time = t ? col(t, /time|when/i) : -1, where = t ? col(t, /where|place|location/i) : -1;
     const plan = t ? t.rows.filter((r) => /^\d{4}-\d{2}-\d{2}$/.test(r[d])).sort((a, b) => (a[d] < b[d] ? -1 : 1)) : [];
-    const start = (data && data.values && data.values.start) || (plan[0] && plan[0][d]) || null;
+    const start = (/^\d{4}-\d{2}-\d{2}$/.test(amber.settings.start || "") && amber.settings.start) || (plan[0] && plan[0][d]) || null;
     const days = start ? Math.round((Date.parse(start + "T12:00:00Z") - Date.parse(note.today + "T12:00:00Z")) / 864e5) : null;
     const facts = (data && data.values && Array.isArray(data.values.facts) && data.values.facts.length ? data.values.facts : lines.map((l) => l.match(/^\s*(?:[-*]\s+)?\*{0,2}([A-Za-zÅÄÖåäö][\w ÅÄÖåäö/&.-]{1,24}?)\*{0,2}\s*:\s+(.{2,})$/)).filter(Boolean).filter((m) => !/^https?$/i.test(m[1])).map((m) => ({ label: m[1], value: m[2] })));
     const when = (iso) => { const x = new Date(iso + "T12:00:00Z"); return { day: x.getUTCDate(), wd: x.toLocaleString("en", { weekday: "short", timeZone: "UTC" }) }; };

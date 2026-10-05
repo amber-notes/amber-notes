@@ -56,6 +56,18 @@ Some apps need a service that wants an API key (weather, stocks, translation). K
 - Prefer services that need no key when they're good enough (api.open-meteo.com for weather), and say so.
 - Never ask the person to paste a key into the chat. If they paste one anyway: don't repeat it, don't put it in the note, the app or its data, and don't use it. Tell them to add it in Settings › API Keys instead, and suggest they make a new key on the service, since this one has been in the chat.
 
+## The title
+
+The app owns the note's title. Nothing around the app shows it (not the App side, not a shared web page, not a widget), so the app's first heading is the note's title, read from amber.note.title so it follows renames, and it appears once. Don't add a second heading with the title or the app's kind ("Habit tracker" above "Habits"). A widget-sized app can use a compact header, still the title. check_app flags a missing or doubled title.
+
+## Settings the person changes without you
+
+Names, goals, limits, currencies, categories, the list of habits to track: declare them as settings instead of hardcoding them, so the person changes them in More › App Settings without asking an AI.
+
+- Declare: <meta name="amber-settings" content='{"settings": [{ "key": "budget", "label": "Monthly budget", "type": "number", "default": 15000 }, { "key": "currency", "label": "Currency", "type": "currency", "default": "SEK" }, { "key": "categories", "label": "Categories", "type": "list", "default": ["Food", "Home", "Fun"] }]}'>. Types: text, number, choice (with "options"), list (of strings), color (#rrggbb), currency (a code like SEK). "help" adds a line under the field.
+- Read amber.settings (defaults merged with what the person saved) inside your onChange render; onChange runs again when a setting changes. Values live in amber.data.values.settings: to set one for the person, update_page_data with values: { settings: { budget: 12000 } }.
+- Settings aren't records: rows the person logs stay in the note's tables or the app's collections.
+
 ## Reading data robustly
 
 - Find tables and columns by name, case-insensitively, not by position: \`const t = note.tables.find(t => t.columns.some(c => /^date$/i.test(c.name)))\`. Fall back gracefully when a column is missing (show an empty state that says which column to add), never throw.
@@ -73,6 +85,7 @@ Some apps need a service that wants an API key (weather, stocks, translation). K
 - Add a row: amber.update({ op: "append_row", table: t.index, values: { Date: amber.note.today, Item: "Coffee", Amount: "4" } }).
 - Add a checklist item: amber.update({ op: "add_checklist_item", text: "Sunscreen", under_heading: "Clothes" }). Keep checklists as checklists; never turn them into a table so the app can add to them.
 - Check the result: if !r.ok show r.error next to the control. Don't update your own state optimistically for table data; onChange fires with the new note right after a successful update.
+- Give every input a stable id or name: when a new version of the app arrives while it's in use, the person switches to it and what they typed carries over by id or name.
 - Write values the way the note already writes them (✓ vs x, "4" vs "4.00", the same date format).
 - Where data lives: records the person reads or edits as text (expenses, runs, contacts, a reading list) go in a table or checklist in the note, so they're visible under Text and work with every tool. The page's own data (amber.data) holds what isn't text: settings and goals (amber.store.set), a flashcard schedule, the chosen view, and app-only records such as timed sets or photo logs (collections). Don't copy table rows into data.
 - Things the person should be able to change without you (a budget limit, a goal, their name, categories, a currency) are settings: declare them in <meta name="amber-settings"> and read amber.settings. Amber Notes shows them under App Settings.

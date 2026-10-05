@@ -1,9 +1,10 @@
 <!doctype html>
-<!-- template: crm | A sales pipeline: open value per stage, deals grouped by stage with a stage picker on each, search, and a form to add a contact. | A table with a name column (Company, Name or Contact), a Stage (or Status) column, optionally Value, Email and Contact columns. Stage options come from a choice type or the values used. -->
+<!-- template: crm | A sales pipeline: open value per stage, deals grouped by stage with a stage picker on each, search, and a form to add a contact. Currency and stages are App Settings. | A table with a name column (Company, Name or Contact), a Stage (or Status) column, optionally Value, Email and Contact columns. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="amber-settings" content='{"settings": [{"key": "currency", "label": "Currency", "type": "currency", "default": "SEK"}, {"key": "stages", "label": "Stages", "type": "list", "default": ["Lead", "Proposal", "Won", "Lost"], "help": "In order. Stages already used in the note are added."}]}'>
 <style>
   :root { --bg: var(--amber-bg); --card: var(--amber-surface); --ink: var(--amber-text); --muted: var(--amber-text-secondary); --line: var(--amber-separator); --accent: var(--amber-accent); --accent-ink: var(--amber-on-accent); --field: var(--amber-fill); --won: #2f7d5b; --lost: #8a8178; }
   @media (prefers-color-scheme: dark) { :root { --won: #5cc497; --lost: #a39a90; } }
@@ -52,9 +53,10 @@
     const typed = t.columns[st].type.startsWith("choice ") ? t.columns[st].type.slice(7).split("|") : null;
     const used = [...new Set(t.rows.map((r) => r[st]).filter(Boolean))];
     const rank = (s) => { const k = ORDER.indexOf(String(s).toLowerCase()); return k < 0 ? 3.5 : k; };
-    const stages = typed || used.sort((a, b) => rank(a) - rank(b));
-    const cur = (data && data.values && data.values.currency) || "kr";
-    const money = (n) => n.toLocaleString("sv-SE", { maximumFractionDigits: 0 }) + " " + cur;
+    const listed = (Array.isArray(amber.settings.stages) ? amber.settings.stages : []).map(String).filter(Boolean);
+    const stages = typed || [...new Set([...listed, ...used.sort((a, b) => rank(a) - rank(b))])];
+    const fmt = (() => { try { return new Intl.NumberFormat("sv-SE", { style: "currency", currency: amber.settings.currency || "SEK", maximumFractionDigits: 0 }); } catch { return new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 0 }); } })();
+    const money = (n) => fmt.format(n);
     const q = query.trim().toLowerCase();
     const deals = t.rows.map((r, i) => ({ r, i })).filter(({ r }) => !q || r.join(" ").toLowerCase().includes(q));
     const open = t.rows.filter((r) => !/won|lost/i.test(r[st]));

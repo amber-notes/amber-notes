@@ -61,6 +61,18 @@ Some apps need a service that wants an API key (weather, stocks, translation). K
 - Prefer services that need no key when they're good enough (api.open-meteo.com for weather), and say so.
 - Never ask the person to paste a key into the chat. If they paste one anyway: don't repeat it, don't put it in the note, the app or its data, and don't use it. Tell them to add it in Settings › API Keys instead, and suggest they make a new key on the service, since this one has been in the chat.
 
+## The title
+
+The app owns the note's title. Nothing around the app shows it (not the App side, not a shared web page, not a widget), so the app's first heading is the note's title, read from amber.note.title so it follows renames, and it appears once. Don't add a second heading with the title or the app's kind ("Habit tracker" above "Habits"). A widget-sized app can use a compact header, still the title. check_app flags a missing or doubled title.
+
+## Settings the person changes without you
+
+Names, goals, limits, currencies, categories, the list of habits to track: declare them as settings instead of hardcoding them, so the person changes them in More › App Settings without asking an AI.
+
+- Declare: <meta name="amber-settings" content='{"settings": [{ "key": "budget", "label": "Monthly budget", "type": "number", "default": 15000 }, { "key": "currency", "label": "Currency", "type": "currency", "default": "SEK" }, { "key": "categories", "label": "Categories", "type": "list", "default": ["Food", "Home", "Fun"] }]}'>. Types: text, number, choice (with "options"), list (of strings), color (#rrggbb), currency (a code like SEK). "help" adds a line under the field.
+- Read amber.settings (defaults merged with what the person saved) inside your onChange render; onChange runs again when a setting changes. Values live in amber.data.values.settings: to set one for the person, update_page_data with values: { settings: { budget: 12000 } }.
+- Settings aren't records: rows the person logs stay in the note's tables or the app's collections.
+
 ## Reading data robustly
 
 - Find tables and columns by name, case-insensitively, not by position: `const t = note.tables.find(t => t.columns.some(c => /^date$/i.test(c.name)))`. Fall back gracefully when a column is missing (show an empty state that says which column to add), never throw.
@@ -78,6 +90,7 @@ Some apps need a service that wants an API key (weather, stocks, translation). K
 - Add a row: amber.update({ op: "append_row", table: t.index, values: { Date: amber.note.today, Item: "Coffee", Amount: "4" } }).
 - Add a checklist item: amber.update({ op: "add_checklist_item", text: "Sunscreen", under_heading: "Clothes" }). Keep checklists as checklists; never turn them into a table so the app can add to them.
 - Check the result: if !r.ok show r.error next to the control. Don't update your own state optimistically for table data; onChange fires with the new note right after a successful update.
+- Give every input a stable id or name: when a new version of the app arrives while it's in use, the person switches to it and what they typed carries over by id or name.
 - Write values the way the note already writes them (✓ vs x, "4" vs "4.00", the same date format).
 - Where data lives: records the person reads or edits as text (expenses, runs, contacts, a reading list) go in a table or checklist in the note, so they're visible under Text and work with every tool. The page's own data (amber.data) holds what isn't text: settings and goals (amber.store.set), a flashcard schedule, the chosen view, and app-only records such as timed sets or photo logs (collections). Don't copy table rows into data.
 - Things the person should be able to change without you (a budget limit, a goal, their name, categories, a currency) are settings: declare them in <meta name="amber-settings"> and read amber.settings. Amber Notes shows them under App Settings.
@@ -164,10 +177,10 @@ A minimal correct page to build from:
 ## Templates
 
 Tested, complete pages to start from (get_page_guide with template: "<name>" returns one). Adapt column names to the note's, never the note to the template, unless the note has no table yet.
-- budget: Spending this month against a limit, by category, with a month picker and a quick add form. The limit lives in page data. Expects: A table with Date (yyyy-mm-dd), an amount column (Amount, Cost, Price, Kr or Sum) and optionally Item and Category columns. Optional amber.data.values.limit (a number) and amber.data.values.currency ("kr").
-- crm: A sales pipeline: open value per stage, deals grouped by stage with a stage picker on each, search, and a form to add a contact. Expects: A table with a name column (Company, Name or Contact), a Stage (or Status) column, optionally Value, Email and Contact columns. Stage options come from a choice type or the values used.
-- flashcards: Flip cards one at a time, mark each Known or Again; cards you don't know yet come first, and what you know is remembered in page data. Expects: A table whose first two columns are the front and the back (e.g. Spanish | English, Question | Answer). Keeps amber.data.values.known = { "front text": "yyyy-mm-dd" }.
-- habit-tracker: Tick today's habits, see streaks, a 14-day grid and progress toward weekly goals kept in page data. Expects: A table with a Date column (yyyy-mm-dd) and one column per habit; a done day is ✓ (x, yes and 1 also count). Optional amber.data.values.goals = { "Habit": days per week }.
-- reading-log: Books as cards with ratings, books per month, the average rating, a want-to-read checklist and a form to log a finished book. Expects: A table with Title and Author, optionally Finished (yyyy-mm-dd) and Rating (1-5) columns; checklist items are shown as want-to-read.
-- trip-log: A trip at a glance: a countdown, the key facts, the day-by-day plan, and every checklist in the note (to do, ideas, packing) with tick boxes and progress. Expects: Optionally a table with Date (yyyy-mm-dd) and What/Plan columns (plus Time, Where); checklists under headings. The trip start is the first date in the table, or amber.data.values.start. Key facts are "Label: value" lines, or amber.data.values.facts = [{ label, value }].
-- workout-log: Weekly distance and time for the last eight weeks, this week's totals against a goal in page data, the latest sessions and a log form. Expects: A table with Date (yyyy-mm-dd), optionally Type (Run, Bike…), a distance column (Km, Distance) and a time column (Minutes, Time). Optional amber.data.values.weeklyKm.
+- budget: Spending this month against a monthly budget, by category, with a month picker and a quick add form. Budget, currency and categories are App Settings. Expects: A table with Date (yyyy-mm-dd), an amount column (Amount, Cost, Price, Kr or Sum) and optionally Item and Category columns.
+- crm: A sales pipeline: open value per stage, deals grouped by stage with a stage picker on each, search, and a form to add a contact. Currency and stages are App Settings. Expects: A table with a name column (Company, Name or Contact), a Stage (or Status) column, optionally Value, Email and Contact columns.
+- flashcards: Flip cards one at a time, mark each Known or Again; cards you don't know yet come first, and what you know is remembered in the app's data. Which side shows first is an App Setting. Expects: A table whose first two columns are the front and the back (e.g. Spanish | English, Question | Answer). Keeps amber.data.values.known, front text to the date it was known.
+- habit-tracker: Tick today's habits, see streaks, a 14-day grid and progress toward a weekly goal. The goal and which habits to show are App Settings. Expects: A table with a Date column (yyyy-mm-dd) and one column per habit; a done day is ✓ (x, yes and 1 also count).
+- reading-log: Books as cards with ratings, books per month against a yearly goal (an App Setting), the average rating, a want-to-read checklist and a form to log a finished book. Expects: A table with Title and Author, optionally Finished (yyyy-mm-dd) and Rating (1-5) columns; checklist items are shown as want-to-read.
+- trip-log: A trip at a glance: a countdown, the key facts, the day-by-day plan, and every checklist in the note (to do, ideas, packing) with tick boxes and progress. The start date is an App Setting. Expects: Optionally a table with Date (yyyy-mm-dd) and What/Plan columns (plus Time, Where); checklists under headings; key facts as Label: value lines.
+- workout-log: Weekly distance and time for the last eight weeks, this week's totals against a weekly goal (an App Setting), the latest sessions and a log form. Expects: A table with Date (yyyy-mm-dd), optionally Type (Run, Bike...), a distance column (Km, Distance) and a time column (Minutes, Time).

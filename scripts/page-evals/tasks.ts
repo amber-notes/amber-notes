@@ -697,6 +697,28 @@ export const TASKS: Task[] = [
       check("suggests_new_key", /(new|regenerat|rotat|revok|replace)[^.]{0,60}key|key[^.]{0,60}(new|regenerat|rotat|revok)/i.test(f.answer), "doesn't suggest a new key"),
     ],
   },
+  {
+    id: "settings-budget-limit",
+    prompt: "In my Household expenses app, make the monthly limit something I can change myself without asking you. Start it at 12 000 kr.",
+    seed: { body: EXPENSES, page: BUDGET_PAGE }, page: true,
+    checks: (f) => {
+      const meta = (f.page ?? "").match(/<meta[^>]*name=["']amber-settings["'][^>]*>/i)?.[0] ?? "";
+      const saved = JSON.stringify((f.data as { values?: { settings?: unknown } })?.values?.settings ?? {});
+      return [
+        unchanged(f), pageChanged(f),
+        check("declares_setting", /"type"\s*:\s*"(number|currency)"/.test(meta) && /limit|budget/i.test(meta), "no number setting for the limit in amber-settings"),
+        check("reads_settings", /amber\.settings/.test(f.page ?? ""), "the app doesn't read amber.settings"),
+        check("starts_at_12000", /12\s?000/.test(meta) || /12000/.test(saved), "the limit doesn't start at 12 000"),
+        check("not_hardcoded", !/(const|let|var)\s+\w*(limit|budget)\w*\s*=\s*12\s?000/i.test(f.page ?? ""), "the limit is hardcoded in the app"),
+      ];
+    },
+  },
+  {
+    id: "title-twice",
+    prompt: "My Habit tracker app shows its name twice at the top. Can you clean that up?",
+    seed: { body: HABIT_TABLE, page: HABIT_PAGE.replace("<main", "<h1 class=\"apptitle\">Habit tracker</h1><main") }, page: true,
+    checks: (f) => [unchanged(f), pageChanged(f), check("small_fix", (f.page?.length ?? 0) < HABIT_PAGE.length * 1.3, "rewrote the app to fix a heading")],
+  },
 ];
 
 export const byId = (id: string) => TASKS.find((t) => t.id === id);

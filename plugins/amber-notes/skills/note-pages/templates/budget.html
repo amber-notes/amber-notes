@@ -1,9 +1,10 @@
 <!doctype html>
-<!-- template: budget | Spending this month against a limit, by category, with a month picker and a quick add form. The limit lives in page data. | A table with Date (yyyy-mm-dd), an amount column (Amount, Cost, Price, Kr or Sum) and optionally Item and Category columns. Optional amber.data.values.limit (a number) and amber.data.values.currency ("kr"). -->
+<!-- template: budget | Spending this month against a monthly budget, by category, with a month picker and a quick add form. Budget, currency and categories are App Settings. | A table with Date (yyyy-mm-dd), an amount column (Amount, Cost, Price, Kr or Sum) and optionally Item and Category columns. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="amber-settings" content='{"settings": [{"key": "budget", "label": "Monthly budget", "type": "number", "default": 0, "help": "0 for no limit"}, {"key": "currency", "label": "Currency", "type": "currency", "default": "SEK"}, {"key": "categories", "label": "Categories", "type": "list", "default": ["Food", "Home", "Transport", "Fun"]}]}'>
 <style>
   :root { --bg: var(--amber-bg); --card: var(--amber-surface); --ink: var(--amber-text); --muted: var(--amber-text-secondary); --line: var(--amber-separator); --accent: var(--amber-accent); --accent-ink: var(--amber-on-accent); --field: var(--amber-fill); --over: var(--amber-danger); --c0: var(--amber-accent); --c1: #2f7d5b; --c2: #3c63b0; --c3: #a3478a; --c4: var(--amber-text-secondary); }
   @media (prefers-color-scheme: dark) { :root { --c1: #5cc497; --c2: #8aa8ef; --c3: #e38ccb; } }
@@ -47,18 +48,19 @@
     const t = note.tables.find((t) => col(t, /amount|cost|price|^kr$|sum|belopp/i) >= 0);
     if (!t) { app.innerHTML = `<h1>${esc(note.title)}</h1><div class="card empty">Add a table with Date, Item, Category and Amount columns to the note.</div>`; return; }
     const a = col(t, /amount|cost|price|^kr$|sum|belopp/i), d = col(t, /^date$|^day$|datum/i), c = col(t, /categ|kategori|type/i), it = col(t, /item|what|desc|name|vad/i);
-    const cur = (data && data.values && data.values.currency) || "kr";
-    const money = (n) => n.toLocaleString("sv-SE", { maximumFractionDigits: 2 }) + " " + cur;
+    const set = amber.settings;
+    const fmt = (() => { try { return new Intl.NumberFormat("sv-SE", { style: "currency", currency: set.currency || "SEK", maximumFractionDigits: 2 }); } catch { return new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 2 }); } })();
+    const money = (n) => fmt.format(n);
     const months = [...new Set(t.rows.map((r) => (d >= 0 ? String(r[d]).slice(0, 7) : "")).filter((m) => /^\d{4}-\d{2}$/.test(m)))].sort();
     if (!month) month = months.includes(note.today.slice(0, 7)) ? note.today.slice(0, 7) : months[months.length - 1] || null;
     const rows = t.rows.map((r, i) => ({ r, i, n: num(r[a]) })).filter((x) => d < 0 || !month || String(x.r[d]).startsWith(month));
     const total = rows.reduce((s, x) => s + x.n, 0);
-    const limit = Number(data && data.values && data.values.limit) || 0;
+    const limit = Number(set.budget) || 0;
     const byCat = new Map();
     for (const x of rows) { const k = (c >= 0 && x.r[c]) || "Other"; byCat.set(k, (byCat.get(k) || 0) + x.n); }
     const cats = [...byCat].sort((p, q) => q[1] - p[1]);
     const color = (i) => `var(--c${Math.min(i, 4)})`;
-    const allCats = [...new Set(t.rows.map((r) => (c >= 0 ? r[c] : "")).filter(Boolean))];
+    const allCats = [...new Set([...(Array.isArray(set.categories) ? set.categories : []), ...t.rows.map((r) => (c >= 0 ? r[c] : "")).filter(Boolean)])];
     app.innerHTML = `
       <h1>${esc(note.title)}</h1>
       <div class="top">
@@ -75,7 +77,6 @@
           ${it >= 0 ? `<label>What<input name="item" required value="${esc(form.item)}"></label>` : ""}
           <label>Amount<input name="amount" inputmode="decimal" required value="${esc(form.amount)}"></label>
           ${c >= 0 ? `<label>Category<input name="cat" list="cats" value="${esc(form.cat)}"><datalist id="cats">${allCats.map((k) => `<option value="${esc(k)}">`).join("")}</datalist></label>` : ""}
-          <label>Limit this month<input name="limit" inputmode="decimal" value="${limit || ""}"></label>
           <button>Add</button>
         </form>
         <div class="err" role="alert">${esc(error)}</div>
@@ -86,7 +87,6 @@
     const m = document.getElementById("month");
     if (m) m.onchange = () => { month = m.value; render(amber.note, amber.data); };
     const f = document.getElementById("add");
-    f.limit.onchange = async () => { const r = await amber.setData({ values: { limit: f.limit.value.trim() ? num(f.limit.value) : null } }); error = r.ok ? "" : r.error; if (!r.ok) render(amber.note, amber.data); };
     f.onsubmit = async (e) => {
       e.preventDefault();
       const fd = new FormData(f);

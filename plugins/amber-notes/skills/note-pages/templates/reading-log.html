@@ -1,9 +1,10 @@
 <!doctype html>
-<!-- template: reading-log | Books as cards with ratings, books per month, the average rating, a want-to-read checklist and a form to log a finished book. | A table with Title and Author, optionally Finished (yyyy-mm-dd) and Rating (1-5) columns; checklist items are shown as want-to-read. -->
+<!-- template: reading-log | Books as cards with ratings, books per month against a yearly goal (an App Setting), the average rating, a want-to-read checklist and a form to log a finished book. | A table with Title and Author, optionally Finished (yyyy-mm-dd) and Rating (1-5) columns; checklist items are shown as want-to-read. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="amber-settings" content='{"settings": [{"key": "goal", "label": "Books a year", "type": "number", "default": 24, "help": "0 for no goal"}]}'>
 <style>
   :root { --bg: var(--amber-bg); --card: var(--amber-surface); --ink: var(--amber-text); --muted: var(--amber-text-secondary); --line: var(--amber-separator); --accent: var(--amber-accent); --accent-ink: var(--amber-on-accent); --field: var(--amber-fill); --star: var(--amber-accent-text); }
   * { box-sizing: border-box; }
@@ -63,7 +64,7 @@
       <h1>${esc(note.title)}</h1>
       <div class="stats">
         <div class="stat"><b>${books.length}</b><span>books</span></div>
-        <div class="stat"><b>${books.filter((b) => String(b.date).startsWith(year)).length}</b><span>in ${year}</span></div>
+        <div class="stat"><b>${books.filter((b) => String(b.date).startsWith(year)).length}${Number(amber.settings.goal) ? `<span style="font-size:15px;color:var(--muted)"> / ${Number(amber.settings.goal)}</span>` : ""}</b><span>in ${year}</span></div>
         <div class="stat"><b>${rated.length ? avg.toFixed(1) : "–"}</b><span>average rating</span></div>
       </div>
       ${fi >= 0 ? `<h2>Last six months</h2><div class="card chart" role="img" aria-label="Books finished per month: ${months.map((m, k) => `${m} ${perMonth[k]}`).join(", ")}">${months.map((m, k) => `<div class="m"><div class="b" style="height:${(70 * perMonth[k]) / top}px"></div><div class="l">${new Date(m + "-15T12:00:00Z").toLocaleString("en", { month: "short" })}</div></div>`).join("")}</div>` : ""}

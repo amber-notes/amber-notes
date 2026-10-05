@@ -1,9 +1,10 @@
 <!doctype html>
-<!-- template: habit-tracker | Tick today's habits, see streaks, a 14-day grid and progress toward weekly goals kept in page data. | A table with a Date column (yyyy-mm-dd) and one column per habit; a done day is ✓ (x, yes and 1 also count). Optional amber.data.values.goals = { "Habit": days per week }. -->
+<!-- template: habit-tracker | Tick today's habits, see streaks, a 14-day grid and progress toward a weekly goal. The goal and which habits to show are App Settings. | A table with a Date column (yyyy-mm-dd) and one column per habit; a done day is ✓ (x, yes and 1 also count). -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="amber-settings" content='{"settings": [{"key": "goal", "label": "Days a week per habit", "type": "number", "default": 5}, {"key": "habits", "label": "Habits to show", "type": "list", "default": [], "help": "Column names. Leave empty to show every habit in the table."}]}'>
 <style>
   :root { --bg: var(--amber-bg); --card: var(--amber-surface); --ink: var(--amber-text); --muted: var(--amber-text-secondary); --line: var(--amber-separator); --accent: var(--amber-accent); --accent-ink: var(--amber-on-accent); --soft: var(--amber-accent-soft); --empty: var(--amber-fill); --field: var(--amber-fill); }
   * { box-sizing: border-box; }
@@ -52,12 +53,14 @@
     const t = note.tables.find((t) => t.columns.some((c) => /^(date|day)$/i.test(c.name)));
     if (!t) { app.innerHTML = `<h1>${esc(note.title)}</h1><div class="card empty">Add a table with a Date column and one column per habit to the note.</div>`; return; }
     const dc = t.columns.findIndex((c) => /^(date|day)$/i.test(c.name));
-    const habits = t.columns.map((c, i) => ({ name: c.name, i })).filter((h) => h.i !== dc);
+    const set = amber.settings;
+    const only = (Array.isArray(set.habits) ? set.habits : []).map((x) => String(x).trim().toLowerCase()).filter(Boolean);
+    const habits = t.columns.map((c, i) => ({ name: c.name, i })).filter((h) => h.i !== dc && (!only.length || only.includes(h.name.toLowerCase())));
     const today = note.today;
     const byDate = new Map(t.rows.map((r, i) => [r[dc], { r, i }]));
     const done = (date, h) => DONE.test(String(byDate.get(date)?.r[h.i] ?? "").trim());
     const streak = (h) => { let n = 0, d = done(today, h) ? today : addDays(today, -1); while (done(d, h)) { n++; d = addDays(d, -1); } return n; };
-    const goals = (data && data.values && data.values.goals) || {};
+    const goal = Math.max(0, Math.min(7, Number(set.goal) || 0));
     const ws = weekStart(today);
     const week = Array.from({ length: 7 }, (_, k) => addDays(ws, k)).filter((d) => d <= today);
     const days = Array.from({ length: 14 }, (_, k) => addDays(today, k - 13));
@@ -70,12 +73,11 @@
         return `<button class="habit" data-h="${h.i}" aria-pressed="${on}"><span class="tick">${tick}</span><span class="name">${esc(h.name)}</span><span class="meta">${s ? `${s} day${s > 1 ? "s" : ""} in a row` : ""}</span></button>`;
       }).join("")}</div>
       <div class="err" role="alert">${esc(error)}</div>
-      <h2>This week</h2>
+      <h2>This week${goal ? ` · goal ${goal} days` : ""}</h2>
       <div class="card">${habits.map((h) => {
-        const n = week.filter((d) => done(d, h)).length, g = Number(goals[h.name]) || 0;
+        const n = week.filter((d) => done(d, h)).length, g = goal;
         return `<div class="goal"><span class="name">${esc(h.name)}</span><span class="bar" aria-hidden="true"><div style="width:${g ? Math.min(100, (100 * n) / g) : 0}%"></div></span>
-          <span class="meta">${n}${g ? ` / ${g}` : ""}</span>
-          <label><span class="sr" style="position:absolute;left:-9999px">Weekly goal for ${esc(h.name)}</span><input type="number" min="0" max="7" inputmode="numeric" data-goal="${esc(h.name)}" value="${g || ""}" placeholder="goal"></label></div>`;
+          <span class="meta">${n}${g ? ` / ${g}` : ""}</span></div>`;
       }).join("")}</div>
       <h2>Last 14 days</h2>
       <div class="card grid" role="img" aria-label="Which habits were done on each of the last 14 days">${habits.map((h) => `<div class="gr"><span class="h">${esc(h.name)}</span>${days.map((d) => `<span class="cell${done(d, h) ? " on" : ""}${d === today ? " today" : ""}"></span>`).join("")}</div>`).join("")}</div>`;
@@ -87,12 +89,6 @@
       const r = row
         ? await amber.update({ op: "set_cell", table: t.index, row: row.i, col: h.name, value })
         : await amber.update({ op: "append_row", table: t.index, values: { [t.columns[dc].name]: today, [h.name]: value } });
-      error = r.ok ? "" : r.error;
-      if (!r.ok) render(amber.note, amber.data);
-    }));
-    app.querySelectorAll("[data-goal]").forEach((input) => input.addEventListener("change", async () => {
-      const v = input.value === "" ? null : Math.max(0, Math.min(7, Math.round(Number(input.value))));
-      const r = await amber.setData({ values: { goals: { [input.dataset.goal]: v } } });
       error = r.ok ? "" : r.error;
       if (!r.ok) render(amber.note, amber.data);
     }));

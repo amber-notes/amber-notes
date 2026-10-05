@@ -262,7 +262,7 @@ async function renderOnce(html: string, markdown: string, data: unknown, opts: R
       const faint = texts.filter((el) => { const s = getComputedStyle(el); if (parseFloat(s.opacity) < 0.3) return false; const a = lumOf(s.color), b = lumOf(behind(el)); const [x, y] = [a, b].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05) < 4.5; }).map((el) => (el.textContent ?? "").trim().slice(0, 40));
       return {
         smallText: smallText.slice(0, 5), smallTextCount: smallText.length, faint: faint.slice(0, 5), faintCount: faint.length,
-        headings: [...document.querySelectorAll("h1, h2, h3")].filter(visible).map((h) => (h.textContent ?? "").trim().slice(0, 60)).slice(0, 12),
+        headings: [...document.querySelectorAll("h1, h2, h3, [role=heading]")].filter(visible).map((h) => (h.textContent ?? "").trim().slice(0, 80)).slice(0, 12),
         excerpt: text.replace(/\s+/g, " ").trim().slice(0, 500),
         overflow: Math.max(0, de.scrollWidth - window.innerWidth), textLength: text.trim().length,
         shown: want.filter((w) => flat.includes(w.toLowerCase().replace(/\s+/g, " ")) || (/^[\d\s.,\u00a0]+$/.test(w) && flat.replace(/[\s,\u00a0\u202f]/g, "").includes(w.replace(/[\s,\u00a0]/g, "")))).length,

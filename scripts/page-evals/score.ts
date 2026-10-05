@@ -2,6 +2,8 @@
 // mode and labels, survives changed notes), then the task's own (tasks.ts).
 import type { Render } from "../page-render/render.ts";
 import type { Check, Final, Task } from "./tasks.ts";
+import { titleReport, type Rendered } from "../../supabase/functions/mcp/app_check.ts";
+import { noteForPage } from "../../supabase/functions/mcp/page_input.ts";
 
 export function scoreTask(task: Task, f: Final, r: Render | undefined, pageProblems: (html: string) => string[]): Check[] {
   let specific: Check[];
@@ -38,6 +40,9 @@ function generic(task: Task, f: Final, r: Render | undefined, pageProblems: (htm
   if (!f.pageBefore || f.calls.some((k) => k.name === "set_note_page" && !k.error)) c("uses_theme", /var\(--amber-(bg|surface|fill|text|accent|separator)/.test(f.page), "doesn't use the app's --amber-* variables");
   c("labelled_controls", light.unnamedControls.length === 0, `${light.unnamedControls.length} unnamed: ${light.unnamedControls.slice(0, 2).join(" ")}`);
   if (task.interact) c("edits_from_page", r.interaction.ok === true, `${r.interaction.tried}: ${r.interaction.error ?? "no form or control"}`);
+  // The app owns the note's title: its first heading, shown once.
+  const title = titleReport(r as unknown as Rendered, noteForPage(f.after, "2026-10-05").title);
+  c("title_once", title.length === 0, title.join(" "));
   // Emil: people see a note's "App" side; the word page(s) is never theirs.
   c("says_app", /\bapps?\b/i.test(f.answer) && !/\bpages?\b/i.test(f.answer), "the reply calls it a page, or doesn't call it the app");
   // A new row only has to show on pages that list rows (most of the recent values visible).
