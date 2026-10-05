@@ -15,10 +15,10 @@ import Testing
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         for dark in [false, true] {
             var windows: [(String, NSWindow)] = []
-            for option in BadgeOption.allCases {
-                for state in BadgeGallery.State.allCases {
-                    let w = MacStoreShots.window(BadgeGallery(option: option, state: state).tint(Color(PColor.paneAccent)), size: CGSize(width: 520, height: 260), dark: dark)
-                    windows.append(("\(option.rawValue)-\(state.rawValue)", w))
+            for style in PencilStyle.allCases {
+                for state in [BadgeGallery.State.loneIdle, .three] {
+                    let w = MacStoreShots.window(BadgeGallery(option: .b, state: state, style: style).tint(Color(PColor.paneAccent)), size: CGSize(width: 520, height: 260), dark: dark)
+                    windows.append(("B-\(style.rawValue)-\(state.rawValue)", w))
                 }
             }
             defer { for (_, w) in windows { w.orderOut(nil); w.close() } }

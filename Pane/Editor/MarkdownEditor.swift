@@ -583,11 +583,17 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
                 || ns.substring(with: ns.lineRange(for: NSRange(location: line.location - 1, length: 0))).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             let size = v.flag.intrinsicContentSize
             let flagY = roomAbove ? rect.minY - size.height - 1 : rect.maxY + 1
-            UIView.animate(withDuration: 0.12, delay: 0, options: [.beginFromCurrentState, .allowUserInteraction]) {
+            // The caret and its flag jump to where the character is, in the same pass as the text
+            // change: a caret is tied to a character, so it never glides.
+            UIView.performWithoutAnimation {
                 v.bar.frame = CGRect(x: rect.minX - 1, y: rect.minY, width: 2, height: rect.height)
                 v.flag.frame = CGRect(x: min(rect.minX - 1, self.bounds.width - size.width - 4), y: flagY, width: size.width, height: size.height)
             }
-            UIView.animate(withDuration: c.showsName ? 0.15 : 0.6) { v.flag.alpha = c.showsName ? 1 : 0 }
+            // Only the flag fades, a moment after they stop.
+            let alpha: CGFloat = c.showsName ? 1 : 0
+            if v.flag.alpha != alpha {
+                if alpha == 1 { v.flag.alpha = 1 } else { UIView.animate(withDuration: 0.6) { v.flag.alpha = 0 } }
+            }
             v.selection.forEach { $0.removeFromSuperview() }
             v.selection = []
             if end > loc, let a = position(from: beginningOfDocument, offset: loc), let b = position(from: beginningOfDocument, offset: end),
@@ -1358,6 +1364,9 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
         tlm.ensureLayout(for: range)
         layoutCards()
     }
+
+    /// Other people's carets aren't drawn on the Mac yet (collaboration prototype).
+    func showRemoteCarets(_ carets: [RemoteCaret]) {}
 
     func syncExternal(_ new: String) {
         guard new != lastReported else { return }

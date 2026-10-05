@@ -46,20 +46,38 @@ struct PersonAvatar: View {
     var roomForBadge = false
     /// Draws only the badge, in the same place (the stack puts every badge on its own top layer).
     var badgeOnly = false
+    var pencilStyle: PencilStyle = .current
 
     /// The ring's width: 2 pt at toolbar size, a clean cut between overlapping avatars.
     static func ringWidth(_ size: CGFloat) -> CGFloat { max(2, (size / 14).rounded()) }
-    /// How far a badge reaches past the circle, right and down.
-    static func outset(_ size: CGFloat) -> CGFloat { (size * 0.18).rounded() }
+
+    /// Where a badge goes: tucked on the lower-right edge of its own circle, about a third of it
+    /// over the circle, at 55° below the horizontal so it reaches down more than sideways and stays
+    /// clear of the next person's avatar.
+    struct Geometry {
+        let outer: CGFloat, badge: CGFloat, center: CGPoint, frame: CGSize
+        /// The badge's right edge: the next avatar in a stack starts here.
+        var badgeRight: CGFloat { center.x + badge / 2 }
+    }
+
+    static func geometry(_ size: CGFloat) -> Geometry {
+        let ring = ringWidth(size)
+        let outer = size + ring * 2
+        let badge = size * 0.36 + ring * 0.75 * 2
+        let r = outer / 2, d = r + badge / 6, angle = 55.0 * .pi / 180
+        let center = CGPoint(x: r + d * cos(angle), y: r + d * sin(angle))
+        return Geometry(outer: outer, badge: badge, center: center,
+                        frame: CGSize(width: max(outer, center.x + badge / 2), height: max(outer, center.y + badge / 2)))
+    }
 
     var body: some View {
-        let outer = size + Self.ringWidth(size) * 2
-        let room = roomForBadge || badge != .none ? Self.outset(size) : 0
-        ZStack(alignment: .bottomTrailing) {
-            if badgeOnly { Color.clear } else { circle.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading) }
-            if badgeOnly || !roomForBadge { badgeView }
+        let g = Self.geometry(size)
+        let room = roomForBadge || badge != .none
+        ZStack(alignment: .topLeading) {
+            if !badgeOnly { circle }
+            if badgeOnly || !roomForBadge { badgeView.position(g.center) }
         }
-        .frame(width: outer + room, height: outer + room)
+        .frame(width: room ? g.frame.width : g.outer, height: room ? g.frame.height : g.outer, alignment: .topLeading)
         .animation(.easeOut(duration: 0.35), value: badge)
         .accessibilityHidden(true)
     }
@@ -84,26 +102,37 @@ struct PersonAvatar: View {
 
     @ViewBuilder
     private var badgeView: some View {
+        let inner = size * 0.36
         switch badge {
         case .none:
             EmptyView()
         case .pencil:
+            // The glyph about half the badge, with real room around it.
             Image(systemName: "pencil")
-                .font(.system(size: size * 0.26, weight: .bold))
-                .foregroundStyle(Color.avatarPencilInk)
-                .frame(width: size * 0.42, height: size * 0.42)
-                .background(Color.avatarPencil, in: .circle)
+                .resizable().scaledToFit()
+                .fontWeight(.bold)
+                .frame(width: inner * 0.52, height: inner * 0.52)
+                .foregroundStyle(pencilStyle == .colour ? Color.white : color)
+                .frame(width: inner, height: inner)
+                .background(pencilStyle == .colour ? color : Color.white, in: .circle)
                 .padding(Self.ringWidth(size) * 0.75)
                 .background(ring, in: .circle)
                 .transition(.opacity)
         case .dot:
             Circle().fill(Color.avatarLive)
-                .frame(width: size * 0.3, height: size * 0.3)
+                .frame(width: inner * 0.8, height: inner * 0.8)
                 .padding(Self.ringWidth(size) * 0.75)
                 .background(ring, in: .circle)
                 .transition(.opacity)
         }
     }
+}
+
+/// The pencil badge's look: the person's colour with a white pencil, or white with the pencil in
+/// their colour (`-pencilStyle white` while choosing).
+enum PencilStyle: String, CaseIterable {
+    case colour, white
+    static var current: PencilStyle { Capture.argument("-pencilStyle").flatMap(PencilStyle.init(rawValue:)) ?? .colour }
 }
 
 /// Everyone else in the note, gently overlapping, at most three and then "+n".
@@ -118,6 +147,7 @@ struct PresenceAvatars: View {
     let people: [Person]
     var size: CGFloat = 28
     var option: BadgeOption = .current
+    var pencilStyle: PencilStyle = .current
 
     var body: some View {
         row(badges: false)
@@ -132,10 +162,17 @@ struct PresenceAvatars: View {
     }
 
     private func row(badges: Bool) -> some View {
-        HStack(spacing: -(size * 0.22) - PersonAvatar.outset(size)) {
-            ForEach(people.prefix(3)) { p in
+        let g = PersonAvatar.geometry(size)
+        let shown = Array(people.prefix(3))
+        return HStack(spacing: 0) {
+            ForEach(Array(shown.enumerated()), id: \.element.id) { i, p in
+                let badge = option.badge(typing: p.typing, canEdit: p.canEdit)
                 PersonAvatar(name: p.name, color: CollabSession.color(for: p.id), size: size, photo: p.photo,
-                             badge: option.badge(typing: p.typing, canEdit: p.canEdit), roomForBadge: true, badgeOnly: badges)
+                             badge: badge, roomForBadge: true, badgeOnly: badges, pencilStyle: pencilStyle)
+                    // The next avatar overlaps this one gently, or, when this one has a badge, starts
+                    // where the badge ends, so a badge never sits on the next person.
+                    .padding(.trailing, i < shown.count - 1 || people.count > 3
+                             ? (badge == .none ? g.outer - size * 0.22 : g.badgeRight + 0.5) - g.frame.width : 0)
                     .transition(.scale(scale: 0.6).combined(with: .opacity))
             }
             if people.count > 3 {
@@ -146,8 +183,7 @@ struct PresenceAvatars: View {
                     .background(Color.avatarMore, in: .circle)
                     .padding(PersonAvatar.ringWidth(size))
                     .background(Color.avatarRing, in: .circle)
-                    .padding(.trailing, PersonAvatar.outset(size))
-                    .padding(.bottom, PersonAvatar.outset(size))
+                    .frame(height: g.frame.height, alignment: .top)
                     .opacity(badges ? 0 : 1)
             }
         }

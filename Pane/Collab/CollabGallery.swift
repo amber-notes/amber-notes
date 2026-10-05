@@ -106,6 +106,7 @@ struct BadgeGallery: View {
     enum State: String, CaseIterable { case loneIdle = "lone-idle", loneTyping = "lone-typing", three }
     let option: BadgeOption
     let state: State
+    var style: PencilStyle = .current
 
     static func fromArguments() -> BadgeGallery {
         BadgeGallery(option: .current, state: Capture.argument("-badgeState").flatMap(State.init(rawValue:)) ?? .loneIdle)
@@ -127,7 +128,7 @@ struct BadgeGallery: View {
                     Text("Team offsite, 14 November").font(.system(size: 28, weight: .heavy))
                     Text("Agenda").font(.title3.bold()).padding(.top, 8)
                     ForEach(["09:00 Coffee and goals for Q1", "10:30 Roadmap review", "12:30 Lunch at Tranan"], id: \.self) { Text("–  " + $0) }
-                    Text("Option \(option.rawValue) · \(state.rawValue)").font(.caption).foregroundStyle(.secondary).padding(.top, 24)
+                    Text("Option \(option.rawValue) · \(style.rawValue) · \(state.rawValue)").font(.caption).foregroundStyle(.secondary).padding(.top, 24)
                 }
                 .padding(20)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -137,7 +138,7 @@ struct BadgeGallery: View {
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
-                ToolbarItem(placement: .primaryAction) { PresenceAvatars(people: people, option: option).padding(.horizontal, 2) }
+                ToolbarItem(placement: .primaryAction) { PresenceAvatars(people: people, option: option, pencilStyle: style).padding(.horizontal, 2) }
                 ToolbarItem(placement: .primaryAction) { Button("More", systemImage: "ellipsis") {} }
             }
         }

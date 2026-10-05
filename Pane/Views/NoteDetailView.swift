@@ -563,6 +563,9 @@ private struct CollabWiring: ViewModifier {
             .task(id: session.map { ObjectIdentifier($0) }) {
                 guard let session else { controller.remoteCarets = []; return }
                 session.onRemoteText = { [weak controller] text in controller?.target?.syncExternal(text) }
+                // Carets go straight to the text view, not through SwiftUI's next update, so they move
+                // in the same frame as the text.
+                session.onCarets = { [weak controller] carets in controller?.target?.showRemoteCarets(carets) }
                 // Your caret, a few times a second (it also goes with every keystroke).
                 while !Task.isCancelled {
                     session.selectionChanged(controller.isEditing ? controller.target?.currentSelection : nil)

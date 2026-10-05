@@ -131,4 +131,6 @@ protocol EditorTarget: AnyObject {
     func clearTint()
     /// Takes text that changed elsewhere (sync, a collaborator), replacing only what differs.
     func syncExternal(_ new: String)
+    /// Places other people's carets now, in the same pass as a text change (collaboration).
+    func showRemoteCarets(_ carets: [RemoteCaret])
 }

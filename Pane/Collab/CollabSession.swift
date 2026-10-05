@@ -60,6 +60,9 @@ final class CollabSession {
     @ObservationIgnored private var applied: Set<Int64> = []
     /// Hands merged text to the open editor.
     @ObservationIgnored var onRemoteText: ((String) -> Void)?
+    /// Hands other people's carets to the open editor, straight after any change that moves them
+    /// (their text, yours, their presence), so text and carets change in the same frame.
+    @ObservationIgnored var onCarets: (([RemoteCaret]) -> Void)?
     /// Mirrors the text into the note (list title, search) once it settles.
     @ObservationIgnored var onSettled: ((String) -> Void)?
     @ObservationIgnored private var channel: CollabRelay.Channel?
@@ -316,6 +319,7 @@ final class CollabSession {
 
     /// Every peer's caret against the text as it is now. One that can't resolve yet keeps where it was.
     private func resolvePeers() {
+        defer { onCarets?(remoteCarets) }
         for (id, p) in peers {
             // Not editing: no caret to show.
             guard p.caret != nil else { if p.selection != nil { peers[id]?.selection = nil }; continue }
