@@ -1,0 +1,544 @@
+{
+  "task": "workout-tracker-open",
+  "rep": 1,
+  "model": "codex:default",
+  "round": "react-v1",
+  "skill": false,
+  "seconds": 222,
+  "score": 0.8571428571428571,
+  "passed": 18,
+  "total": 21,
+  "checks": [
+    {
+      "name": "has_page",
+      "pass": true
+    },
+    {
+      "name": "server_checks",
+      "pass": true
+    },
+    {
+      "name": "no_console_errors",
+      "pass": true
+    },
+    {
+      "name": "no_network",
+      "pass": true
+    },
+    {
+      "name": "fits_phone",
+      "pass": true
+    },
+    {
+      "name": "fits_desktop",
+      "pass": true
+    },
+    {
+      "name": "uses_wide_window",
+      "pass": true
+    },
+    {
+      "name": "phone_targets",
+      "pass": true
+    },
+    {
+      "name": "focused_screen",
+      "pass": false,
+      "detail": "7 sections on the first phone screen"
+    },
+    {
+      "name": "visible_fields",
+      "pass": true
+    },
+    {
+      "name": "no_junk_text",
+      "pass": true
+    },
+    {
+      "name": "no_clipped_text",
+      "pass": true
+    },
+    {
+      "name": "shows_data",
+      "pass": true
+    },
+    {
+      "name": "dark_mode",
+      "pass": true
+    },
+    {
+      "name": "light_contrast",
+      "pass": true
+    },
+    {
+      "name": "themed",
+      "pass": true
+    },
+    {
+      "name": "labelled_controls",
+      "pass": true
+    },
+    {
+      "name": "edits_from_page",
+      "pass": false,
+      "detail": "control: no control sent an edit"
+    },
+    {
+      "name": "title_once",
+      "pass": false,
+      "detail": "The note's title is shown 2 times; show it once, as the first heading."
+    },
+    {
+      "name": "says_app",
+      "pass": true
+    },
+    {
+      "name": "page_changed",
+      "pass": true
+    }
+  ],
+  "tool_calls": 19,
+  "tool_errors": 0,
+  "usage": {
+    "input": 51419,
+    "output": 8457,
+    "cacheRead": 335104,
+    "cacheWrite": 0,
+    "turns": 1,
+    "usd": 0
+  },
+  "usd": 0,
+  "page_bytes": 87415,
+  "data": null,
+  "answer": "Built your Workouts note’s app with set, rep, and weight logging, saved drafts, templates, a rest timer, workout history, and progress tracking.\n\nChecked phone and Mac layouts in light and dark mode. Open Workouts to start.",
+  "calls": [
+    {
+      "name": "get_overview",
+      "args": {},
+      "error": false,
+      "result": "{\n  \"total_notes\": 1,\n  \"folders\": [],\n  \"pinned\": [],\n  \"recently_edited\": [\n    {\n      \"id\": \"616a9c29-9d4e-453c-880d-f7007bbfb56b\",\n      \"title\": \"Workouts\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T22:04:12.939Z\",\n      \"preview\": \"\"\n    }\n  ],\n  \"recently_deleted\": 0\n}"
+    },
+    {
+      "name": "get_page_guide",
+      "args": {},
+      "error": false,
+      "result": "{\n  \"guide\": \"# Apps in Amber Notes\\n\\nA note can be an app: a habit tracker, a budget, a workout log, a game. The person opens the note and the app is all they see. This says where an app lives and what it can use. How it looks and works is your call; build it as well as you would anywhere.\\n\\n## Where it runs\\n\\n- Inside a note in Amber Notes, on iPhone (320-440 pt wide, safe areas at the edges, the keyboard shrinks the view) and on the Mac (a window from about 500 to 1,800 px, resized live). Both matter: a phone layout and a real wide layout.\\n- Light and dark mode follow the device (prefer… (8359 chars)"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "616a9c29-9d4e-453c-880d-f7007bbfb56b"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"616a9c29-9d4e-453c-880d-f7007bbfb56b\",\n  \"title\": \"Workouts\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T22:04:12.939Z\",\n  \"updated\": \"2026-10-05T22:04:12.939Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 2,\n    \"words\": 1\n  },\n  \"markdown\": \"Workouts\\n\"\n}"
+    },
+    {
+      "name": "create_app",
+      "args": {
+        "id": "616a9c29-9d4e-453c-880d-f7007bbfb56b"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"616a9c29-9d4e-453c-880d-f7007bbfb56b\",\n    \"title\": \"Workouts\"\n  },\n  \"saved\": \"a new project\",\n  \"files\": [\n    {\n      \"path\": \"/README.md\",\n      \"bytes\": 369,\n      \"lines\": 14\n    },\n    {\n      \"path\": \"/index.html\",\n      \"bytes\": 200,\n      \"lines\": 12\n    },\n    {\n      \"path\": \"/package.json\",\n      \"bytes\": 563,\n      \"lines\": 23\n    },\n    {\n      \"path\": \"/src/App.tsx\",\n      \"bytes\": 830,\n      \"lines\": 23\n    },\n    {\n      \"path\": \"/src/components/ui/button.tsx\",\n      \"bytes\": 1734,\n      \"lines\": 35\n    },\n    {\n      \"path\": \"/src/components/ui/card.t… (1673 chars)"
+    },
+    {
+      "name": "read_app_file",
+      "args": {
+        "id": "616a9c29-9d4e-453c-880d-f7007bbfb56b",
+        "path": "/src/index.css"
+      },
+      "error": false,
+      "result": "{\n  \"path\": \"/src/index.css\",\n  \"lines\": 72,\n  \"shown\": \"1-72\",\n  \"content\": \"     1\\t@import \\\"tailwindcss\\\";\\n     2\\t@import \\\"tw-animate-css\\\";\\n     3\\t\\n     4\\t/* Light and dark follow the device (prefers-color-scheme). */\\n     5\\t@custom-variant dark (@media (prefers-color-scheme: dark));\\n     6\\t\\n     7\\t/* shadcn/ui's variables, set from Amber's own (amber-tokens.css switches them for light and dark,\\n     8\\t   iPhone and Mac). Change any of them to give the app its own look. */\\n     9\\t:root {\\n    10\\t  --radius: var(--amber-radius-small);\\n    11\\t  --background: var(--amber-… (3252 chars)"
+    },
+    {
+      "name": "read_app_file",
+      "args": {
+        "id": "616a9c29-9d4e-453c-880d-f7007bbfb56b",
+        "path": "/README.md"
+      },
+      "error": false,
+      "result": "{\n  \"path\": \"/README.md\",\n  \"lines\": 14,\n  \"shown\": \"1-14\",\n  \"content\": \"     1\\t# Workouts\\n     2\\t\\n     3\\tWhat this app is for, in one sentence.\\n     4\\t\\n     5\\t## Screens\\n     6\\t- App (src/App.tsx)\\n     7\\t\\n     8\\t## Data\\n     9\\t- (Which keys and collections the app keeps, e.g. useCollection(\\\"workouts\\\"), useSettings({ unit: \\\"kg\\\" }).)\\n    10\\t\\n    11\\t## Files\\n    12\\t- src/components/ui/: shadcn/ui components (the app's own copies; change them freely).\\n    13\\t- src/lib/amber.ts: data hooks from Amber Notes. src/lib/utils.ts: cn().\\n    14\\t\"\n}"
+    },
+    {
+      "name": "read_app_file",
+      "args": {
+        "id": "616a9c29-9d4e-453c-880d-f7007bbfb56b",
+        "path": "/src/App.tsx"
+      },
+      "error": false,
+      "result": "{\n  \"path\": \"/src/App.tsx\",\n  \"lines\": 23,\n  \"shown\": \"1-23\",\n  \"content\": \"     1\\timport { useNote } from \\\"@/lib/amber\\\";\\n     2\\timport { Button } from \\\"@/components/ui/button\\\";\\n     3\\timport { Card, CardContent, CardDescription, CardHeader, CardTitle } from \\\"@/components/ui/card\\\";\\n     4\\timport { Sparkles } from \\\"lucide-react\\\";\\n     5\\t\\n     6\\texport default function App() {\\n     7\\t  const note = useNote();\\n     8\\t  return (\\n     9\\t    <main className=\\\"mx-auto w-full max-w-5xl px-4 py-6 sm:px-8\\\">\\n    10\\t      <h1 className=\\\"text-3xl font-semibold tracking-tight\\\">… (1133 chars)"
+    },
+    {
+      "name": "read_app_file",
+      "args": {
+        "id": "616a9c29-9d4e-453c-880d-f7007bbfb56b",
+        "path": "/src/lib/amber.ts"
+      },
+      "error": false,
+      "result": "{\n  \"path\": \"/src/lib/amber.ts\",\n  \"lines\": 8,\n  \"shown\": \"1-8\",\n  \"content\": \"     1\\t// The app's data and the device, from Amber Notes. Data is JSON, kept for this app only:\\n     2\\t// encrypted, synced across the person's devices, with Undo. localStorage works too (it is kept the\\n     3\\t// same way).\\n     4\\texport {\\n     5\\t  useStore, useAppData, useCollection, useSettings, batch, setSummary, useImported, useNote,\\n     6\\t  fetch, device, ai, files,\\n     7\\t} from \\\"amber\\\";\\n     8\\t\"\n}"
+    },
+    {
+      "name": "write_app_file",
+      "args": {
+        "id": "616a9c29-9d4e-453c-880d-f7007bbfb56b",
+        "path": "/src/App.tsx",
+        "content": "import { useEffect, useState } from \"react\";\nimport { useStore, useNote, setSummary } from \"@/lib/amber\";\nimport { Dumbbell, Plus, Check, Trash2, Timer, ArrowUpRight, RotateCcw } from \"lucide-react\";\n\ntype SetRow = { id: string; weight: string; reps: string; done: boolean };\ntype Exercise = { id: st… (14998 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"616a9c29-9d4e-453c-880d-f7007bbfb56b\",\n    \"title\": \"Workouts\"\n  },\n  \"saved\": \"/src/App.tsx (replaced)\",\n  \"files\": 13,\n  \"errors\": [\n    \"390-light: script error: pageerror: Importing binding name 'useEffect' is not found.\",\n    \"390-light: shows almost no text (a blank screen?).\",\n    \"1280-light: script error: pageerror: Importing binding name 'useEffect' is not found.\",\n    \"1280-light: shows almost no text (a blank screen?).\"\n  ],\n  \"next\": \"Fix the errors, then keep going.\"\n}"
+    },
+    {
+      "name": "write_app_file",
+      "args": {
+        "id": "616a9c29-9d4e-453c-880d-f7007bbfb56b",
+        "path": "/src/App.tsx",
+        "content": "import React from \"react\";\nconst { useEffect, useState } = React;\nimport { useStore, useNote, setSummary } from \"@/lib/amber\";\nimport { Dumbbell, Plus, Check, Trash2, Timer, ArrowUpRight, RotateCcw } from \"lucide-react\";\n\ntype SetRow = { id: string; weight: string; reps: string; done: boolean };\ntyp… (15019 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"616a9c29-9d4e-453c-880d-f7007bbfb56b\",\n    \"title\": \"Workouts\"\n  },\n  \"saved\": \"/src/App.tsx (replaced)\",\n  \"files\": 13,\n  \"opens\": \"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\n  \"notes\": [\n    \"390-light: 2 field(s) without a visible border or fill: , .\",\n    \"390-light: 7 control(s) smaller than 44 pt to tap (\\\"kglb\\\", \\\"Train\\\", \\\"History\\\").\",\n    \"390-light: the first screen stacks 7 separate sections.\",\n    \"1280-light: 2 field(s) without a visible border or fill: , .\"\n  ],\n  \"next\": \"Keep going; run check_app (and preview_app) when the app is … (608 chars)"
+    },
+    {
+      "name": "write_app_file",
+      "args": {
+        "id": "616a9c29-9d4e-453c-880d-f7007bbfb56b",
+        "path": "/src/index.css",
+        "content": "@import \"tailwindcss\";\n@import \"tw-animate-css\";\n*{box-sizing:border-box}\nbody{margin:0;background:var(--amber-bg);color:var(--amber-text);font-family:var(--amber-font)}\nbutton,input,select,textarea{font:inherit}\nbutton{min-height:44px;border:1px solid var(--amber-separator);border-radius:12px;backg… (8098 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"616a9c29-9d4e-453c-880d-f7007bbfb56b\",\n    \"title\": \"Workouts\"\n  },\n  \"saved\": \"/src/index.css (replaced)\",\n  \"files\": 13,\n  \"opens\": \"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\n  \"notes\": [\n    \"390-light: 1 text element(s) with contrast under 4.5:1 (\\\"Start a workout\\\").\",\n    \"390-light: 2 text element(s) under 12 px (\\\"YOUR TRAINING LOG\\\", \\\"MAKE TIME TO MOVE\\\").\",\n    \"390-light: the first screen stacks 7 separate sections.\",\n    \"1280-light: 1 text element(s) with contrast under 4.5:1 (\\\"Start a workout\\\").\"\n  ],\n  \"next\": \"Keep going; run che… (649 chars)"
+    },
+    {
+      "name": "read_app_file",
+      "args": {
+        "id": "616a9c29-9d4e-453c-880d-f7007bbfb56b",
+        "path": "/src/index.css",
+        "offset": "1",
+        "limit": "8"
+      },
+      "error": false,
+      "result": "{\n  \"path\": \"/src/index.css\",\n  \"lines\": 96,\n  \"shown\": \"1-8\",\n  \"content\": \"     1\\t@import \\\"tailwindcss\\\";\\n     2\\t@import \\\"tw-animate-css\\\";\\n     3\\t*{box-sizing:border-box}\\n     4\\tbody{margin:0;background:var(--amber-bg);color:var(--amber-text);font-family:var(--amber-font)}\\n     5\\tbutton,input,select,textarea{font:inherit}\\n     6\\tbutton{min-height:44px;border:1px solid var(--amber-separator);border-radius:12px;background:var(--amber-surface);color:var(--amber-text);padding:10px 16px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:… (711 chars)"
+    },
+    {
+      "name": "check_app",
+      "args": {
+        "id": "616a9c29-9d4e-453c-880d-f7007bbfb56b"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"616a9c29-9d4e-453c-880d-f7007bbfb56b\",\n    \"title\": \"Workouts\"\n  },\n  \"ok\": true,\n  \"errors\": [],\n  \"notes\": [\n    \"390-light: 1 text element(s) with contrast under 4.5:1 (\\\"Start a workout\\\").\",\n    \"390-light: 2 text element(s) under 12 px (\\\"YOUR TRAINING LOG\\\", \\\"MAKE TIME TO MOVE\\\").\",\n    \"390-light: the first screen stacks 7 separate sections.\",\n    \"390-dark: 2 text element(s) under 12 px (\\\"YOUR TRAINING LOG\\\", \\\"MAKE TIME TO MOVE\\\").\",\n    \"390-dark: the first screen stacks 7 separate sections.\",\n    \"320-light: 1 text element(s) with contrast under 4.5:1 (\\\"S… (1124 chars)"
+    },
+    {
+      "name": "read_app_file",
+      "args": {
+        "id": "616a9c29-9d4e-453c-880d-f7007bbfb56b",
+        "path": "/src/index.css",
+        "offset": "37",
+        "limit": "5"
+      },
+      "error": false,
+      "result": "{\n  \"path\": \"/src/index.css\",\n  \"lines\": 96,\n  \"shown\": \"37-41\",\n  \"content\": \"    37\\t.primary{background:var(--amber-accent);color:var(--amber-on-accent);border-color:transparent}\\n    38\\t.primary:hover{background:var(--amber-accent);filter:brightness(.95)}\\n    39\\t.template-list{margin-top:36px}\\n    40\\t.template{display:flex;justify-content:space-between;width:100%;text-align:left;padding:18px;margin-top:10px}\\n    41\\t.template div{min-width:0}\"\n}"
+    },
+    {
+      "name": "edit_app_file",
+      "args": {
+        "id": "616a9c29-9d4e-453c-880d-f7007bbfb56b",
+        "path": "/src/index.css",
+        "old_string": ".eyebrow{font-size:10px}",
+        "new_string": ".eyebrow{font-size:12px}"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"616a9c29-9d4e-453c-880d-f7007bbfb56b\",\n    \"title\": \"Workouts\"\n  },\n  \"saved\": \"/src/index.css (1 change)\",\n  \"files\": 13,\n  \"opens\": \"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\n  \"notes\": [\n    \"390-light: 1 text element(s) with contrast under 4.5:1 (\\\"Start a workout\\\").\",\n    \"390-light: the first screen stacks 7 separate sections.\",\n    \"1280-light: 1 text element(s) with contrast under 4.5:1 (\\\"Start a workout\\\").\"\n  ],\n  \"next\": \"Keep going; run check_app (and preview_app) when the app is done.\"\n}"
+    },
+    {
+      "name": "edit_app_file",
+      "args": {
+        "id": "616a9c29-9d4e-453c-880d-f7007bbfb56b",
+        "path": "/src/index.css",
+        "old_string": ".primary{background:var(--amber-accent);color:var(--amber-on-accent);border-color:transparent}\n.primary:hover{background:var(--amber-accent);filter:brightness(.95)}",
+        "new_string": ".primary{background:var(--amber-accent-soft);color:var(--amber-accent-text);border-color:var(--amber-accent)}\n.primary:hover{background:var(--amber-accent-soft);filter:brightness(.95)}"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"616a9c29-9d4e-453c-880d-f7007bbfb56b\",\n    \"title\": \"Workouts\"\n  },\n  \"saved\": \"/src/index.css (1 change)\",\n  \"files\": 13,\n  \"opens\": \"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\n  \"notes\": [\n    \"390-light: the first screen stacks 7 separate sections.\"\n  ],\n  \"next\": \"Keep going; run check_app (and preview_app) when the app is done.\"\n}"
+    },
+    {
+      "name": "write_app_file",
+      "args": {
+        "id": "616a9c29-9d4e-453c-880d-f7007bbfb56b",
+        "path": "/README.md",
+        "content": "# Workouts\n\nA workout tracker with saved drafts, set logging, rest timing, history and progress.\n\n## Screens\n\nTrain starts a blank session or a full body, upper body or lower body template. Add custom exercises, duplicate or remove sets, enter weight and reps, and mark sets complete. Each completed … (1639 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"616a9c29-9d4e-453c-880d-f7007bbfb56b\",\n    \"title\": \"Workouts\"\n  },\n  \"saved\": \"/README.md (replaced)\",\n  \"files\": 13,\n  \"opens\": \"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\n  \"notes\": [\n    \"390-light: the first screen stacks 7 separate sections.\"\n  ],\n  \"next\": \"Keep going; run check_app (and preview_app) when the app is done.\"\n}"
+    },
+    {
+      "name": "preview_app",
+      "args": {
+        "id": "616a9c29-9d4e-453c-880d-f7007bbfb56b",
+        "widths": "[390,1280]",
+        "themes": "[\"light\",\"dark\"]"
+      },
+      "error": false,
+      "result": "{\n  \"app\": \"Workouts\",\n  \"data\": \"a sample with the note's shape (not the person's data)\",\n  \"views\": [\n    {\n      \"view\": \"390-light\",\n      \"headings\": [\n        \"Sample note\",\n        \"Your next workout starts here.\",\n        \"Start with a template\",\n        \"Rest timer\",\n        \"Last session\"\n      ],\n      \"text\": \"YOUR TRAINING LOG Sample note Weight unit Last 7 days 0 workouts Total sessions 0 Completed sets 0 Train History Progress MAKE TIME TO MOVE Your next workout starts here. Track each set. Pick up where you left off. See what changes over time. Start a workout Start with a temp… (3243 chars)"
+    },
+    {
+      "name": "check_app",
+      "args": {
+        "id": "616a9c29-9d4e-453c-880d-f7007bbfb56b"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"616a9c29-9d4e-453c-880d-f7007bbfb56b\",\n    \"title\": \"Workouts\"\n  },\n  \"ok\": true,\n  \"errors\": [],\n  \"notes\": [\n    \"390-light: the first screen stacks 7 separate sections.\",\n    \"390-dark: the first screen stacks 7 separate sections.\",\n    \"320-light: the first screen stacks 7 separate sections.\",\n    \"Using the app's first control: no control sent an edit.\"\n  ],\n  \"browser_checked\": \"390 px and 1280 px in light and dark, and 320 px, over a sample of its data\",\n  \"next\": \"Nothing is broken. The notes are information; act on the ones you agree with.\"\n}"
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "390-light",
+        "width": 390,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 544,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 2,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/react-v1/shots/workout-tracker-open-codex-cli-390-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Workouts",
+          "Your next workout starts here.",
+          "Start with a template",
+          "Rest timer",
+          "Last session"
+        ],
+        "excerpt": "YOUR TRAINING LOG Workouts Weight unit Last 7 days 0 workouts Total sessions 0 Completed sets 0 Train History Progress MAKE TIME TO MOVE Your next workout starts here. Track each set. Pick up where you left off. See what changes over time. Start a workout Start with a template Full body Squat · Bench press · Row Upper body Bench press · Row · Overhead press Lower body Squat · Deadlift · Lunge Rest timer Ready 00:00 Rest between sets Start Reset Starts when you complete a set. Last session Your c",
+        "titleCount": 2,
+        "ghostFields": [],
+        "sections": 7,
+        "nav": true,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.8974358974358975,
+        "canvases": 0,
+        "svgShapes": 13,
+        "gridCols": 3,
+        "frames": 1,
+        "look": {
+          "accentHue": 31,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "390-dark",
+        "width": 390,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 544,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 2,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/react-v1/shots/workout-tracker-open-codex-cli-390-dark.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Workouts",
+          "Your next workout starts here.",
+          "Start with a template",
+          "Rest timer",
+          "Last session"
+        ],
+        "excerpt": "YOUR TRAINING LOG Workouts Weight unit Last 7 days 0 workouts Total sessions 0 Completed sets 0 Train History Progress MAKE TIME TO MOVE Your next workout starts here. Track each set. Pick up where you left off. See what changes over time. Start a workout Start with a template Full body Squat · Bench press · Row Upper body Bench press · Row · Overhead press Lower body Squat · Deadlift · Lunge Rest timer Ready 00:00 Rest between sets Start Reset Starts when you complete a set. Last session Your c",
+        "titleCount": 2,
+        "ghostFields": [],
+        "sections": 7,
+        "nav": true,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.8974358974358975,
+        "canvases": 0,
+        "svgShapes": 13,
+        "gridCols": 3,
+        "frames": 1,
+        "look": {
+          "accentHue": 37,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "320-light",
+        "width": 320,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 544,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 2,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/react-v1/shots/workout-tracker-open-codex-cli-320-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Workouts",
+          "Your next workout starts here.",
+          "Start with a template",
+          "Rest timer",
+          "Last session"
+        ],
+        "excerpt": "YOUR TRAINING LOG Workouts Weight unit Last 7 days 0 workouts Total sessions 0 Completed sets 0 Train History Progress MAKE TIME TO MOVE Your next workout starts here. Track each set. Pick up where you left off. See what changes over time. Start a workout Start with a template Full body Squat · Bench press · Row Upper body Bench press · Row · Overhead press Lower body Squat · Deadlift · Lunge Rest timer Ready 00:00 Rest between sets Start Reset Starts when you complete a set. Last session Your c",
+        "titleCount": 2,
+        "ghostFields": [],
+        "sections": 7,
+        "nav": true,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.925,
+        "canvases": 0,
+        "svgShapes": 8,
+        "gridCols": 3,
+        "frames": 1,
+        "look": {
+          "accentHue": 31,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 544,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 2,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/react-v1/shots/workout-tracker-open-codex-cli-1280-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Workouts",
+          "Your next workout starts here.",
+          "Start with a template",
+          "Rest timer",
+          "Last session"
+        ],
+        "excerpt": "YOUR TRAINING LOG Workouts Weight unit Last 7 days 0 workouts Total sessions 0 Completed sets 0 Train History Progress MAKE TIME TO MOVE Your next workout starts here. Track each set. Pick up where you left off. See what changes over time. Start a workout Start with a template Full body Squat · Bench press · Row Upper body Bench press · Row · Overhead press Lower body Squat · Deadlift · Lunge Rest timer Ready 00:00 Rest between sets Start Reset Starts when you complete a set. Last session Your c",
+        "titleCount": 2,
+        "ghostFields": [],
+        "sections": 7,
+        "nav": true,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.96875,
+        "canvases": 0,
+        "svgShapes": 13,
+        "gridCols": 3,
+        "frames": 1,
+        "look": {
+          "accentHue": 31,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 544,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 2,
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Workouts",
+          "Your next workout starts here.",
+          "Start with a template",
+          "Rest timer",
+          "Last session"
+        ],
+        "excerpt": "YOUR TRAINING LOG Workouts Weight unit Last 7 days 0 workouts Total sessions 0 Completed sets 0 Train History Progress MAKE TIME TO MOVE Your next workout starts here. Track each set. Pick up where you left off. See what changes over time. Start a workout Start with a template Full body Squat · Bench press · Row Upper body Bench press · Row · Overhead press Lower body Squat · Deadlift · Lunge Rest timer Ready 00:00 Rest between sets Start Reset Starts when you complete a set. Last session Your c",
+        "titleCount": 2,
+        "ghostFields": [],
+        "sections": 7,
+        "nav": true,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.96875,
+        "canvases": 0,
+        "svgShapes": 13,
+        "gridCols": 3,
+        "frames": 1,
+        "look": {
+          "accentHue": 37,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
+      }
+    ],
+    "blocked": [],
+    "updates": [],
+    "setData": 6,
+    "interaction": {
+      "tried": "control",
+      "ok": false,
+      "framesPerSecond": 0,
+      "error": "no control sent an edit"
+    },
+    "probes": {},
+    "dataAfter": {}
+  }
+}

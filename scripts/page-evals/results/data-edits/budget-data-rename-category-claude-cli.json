@@ -1,0 +1,152 @@
+{
+  "task": "budget-data-rename-category",
+  "rep": 1,
+  "model": "claude-code:sonnet",
+  "round": "data-edits",
+  "skill": false,
+  "seconds": 12,
+  "score": 1,
+  "passed": 5,
+  "total": 5,
+  "checks": [
+    {
+      "name": "app_unchanged",
+      "pass": true
+    },
+    {
+      "name": "records_renamed",
+      "pass": true
+    },
+    {
+      "name": "ids_kept",
+      "pass": true
+    },
+    {
+      "name": "setting_renamed",
+      "pass": true
+    },
+    {
+      "name": "limit_kept",
+      "pass": true
+    }
+  ],
+  "tool_calls": 5,
+  "tool_errors": 0,
+  "usage": {
+    "input": 8,
+    "output": 729,
+    "cacheRead": 71450,
+    "cacheWrite": 5002,
+    "turns": 7,
+    "equivalentUsd": 0.041604,
+    "usd": 0
+  },
+  "usd": 0,
+  "page_bytes": 209448,
+  "data": {
+    "values": {
+      "settings": {
+        "categories": [
+          "Groceries",
+          "Home",
+          "Fun"
+        ],
+        "limit": 12000
+      }
+    },
+    "collections": {
+      "expenses": [
+        {
+          "id": "e1",
+          "created": "2026-10-01T08:00:00Z",
+          "date": "2026-10-01",
+          "item": "Groceries ICA",
+          "category": "Groceries",
+          "amount": 640,
+          "updated": "2026-10-05T22:21:18.367Z"
+        },
+        {
+          "id": "e2",
+          "created": "2026-10-02T08:00:00Z",
+          "date": "2026-10-02",
+          "item": "Rent",
+          "category": "Home",
+          "amount": 9500
+        },
+        {
+          "id": "e3",
+          "created": "2026-10-03T08:00:00Z",
+          "date": "2026-10-03",
+          "item": "Lunch",
+          "category": "Groceries",
+          "amount": 125,
+          "updated": "2026-10-05T22:21:18.367Z"
+        },
+        {
+          "id": "e4",
+          "created": "2026-10-04T08:00:00Z",
+          "date": "2026-10-04",
+          "item": "Cinema",
+          "category": "Fun",
+          "amount": 260
+        },
+        {
+          "id": "e5",
+          "created": "2026-10-05T08:00:00Z",
+          "date": "2026-10-05",
+          "item": "Bakery",
+          "category": "Groceries",
+          "amount": 92,
+          "updated": "2026-10-05T22:21:18.367Z"
+        }
+      ]
+    }
+  },
+  "answer": "I renamed Food to Groceries in your Budget app. I didn't run the app's checks or preview it.\n\n- **Categories list:** it's now Groceries, Home, Fun.\n- **Expenses:** the three that were Food now use Groceries: Groceries ICA, Lunch and Bakery.\n\nThe Home screen builds its category cards from the categories list and matches expenses by category. Because both changed together, the Groceries card should show the same total as the old Food card (857). I left the expense named \"Groceries ICA\" as it was.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Budget"
+      },
+      "error": false,
+      "result": "{\"query\":\"Budget\",\"results\":[{\"id\":\"b8a0b372-55cd-42e0-a69e-90312bbbe1e1\",\"title\":\"Budget\",\"folder\":\"\",\"pinned\":false,\"updated\":\"2026-10-05T22:21:10.543Z\",\"snippet\":\"«Budget»\"}]}"
+    },
+    {
+      "name": "list_app_files",
+      "args": {
+        "id": "b8a0b372-55cd-42e0-a69e-90312bbbe1e1"
+      },
+      "error": false,
+      "result": "{\"app\":{\"id\":\"b8a0b372-55cd-42e0-a69e-90312bbbe1e1\",\"title\":\"Budget\"},\"files\":[{\"path\":\"/README.md\",\"bytes\":532,\"lines\":17},{\"path\":\"/index.html\",\"bytes\":216,\"lines\":12},{\"path\":\"/package.json\",\"bytes\":687,\"lines\":29},{\"path\":\"/src/App.tsx\",\"bytes\":906,\"lines\":27},{\"path\":\"/src/components/app-shell.tsx\",\"bytes\":2651,\"lines\":60},{\"path\":\"/src/components/stat-card.tsx\",\"bytes\":576,\"lines\":15},{\"path\":\"/src/components/ui/badge.tsx\",\"bytes\":1775,\"lines\":48},{\"path\":\"/src/components/ui/button.tsx\",\"bytes\":2391,\"lines\":64},{\"path\":\"/src/components/ui/calendar.tsx\",\"bytes\":7832,\"lines\":221},{\"path\":\"… (2649 chars)"
+    },
+    {
+      "name": "get_page_data",
+      "args": {
+        "id": "b8a0b372-55cd-42e0-a69e-90312bbbe1e1"
+      },
+      "error": false,
+      "result": "{\"note\":{\"id\":\"b8a0b372-55cd-42e0-a69e-90312bbbe1e1\",\"title\":\"Budget\"},\"shape\":{\"collections\":{\"object\":{\"expenses\":{\"list\":5,\"fields\":{\"id\":{\"type\":\"string\",\"examples\":[\"e1\",\"e2\"]},\"created\":{\"type\":\"date\",\"examples\":[\"2026-10-01T08:00:00Z\",\"2026-10-02T08:00:00Z\"]},\"date\":{\"type\":\"date\",\"examples\":[\"2026-10-01\",\"2026-10-02\"]},\"item\":{\"type\":\"string\",\"examples\":[\"Groceries ICA\",\"Rent\"]},\"category\":{\"type\":\"string\",\"examples\":[\"Food\",\"Home\"]},\"amount\":{\"type\":\"number\",\"examples\":[640,9500]}}}}},\"values\":{\"object\":{\"settings\":{\"object\":{\"categories\":\"list of string (3)\",\"limit\":\"number\"}}}}},\"re… (1412 chars)"
+    },
+    {
+      "name": "update_page_data",
+      "args": {
+        "id": "b8a0b372-55cd-42e0-a69e-90312bbbe1e1",
+        "values": "{\"settings\":{\"categories\":[\"Groceries\",\"Home\",\"Fun\"]}}",
+        "update": "{\"expenses\":[{\"id\":\"e1\",\"category\":\"Groceries\"},{\"id\":\"e3\",\"category\":\"Groceries\"},{\"id\":\"e5\",\"category\":\"Groceries\"}]}"
+      },
+      "error": false,
+      "result": "{\"note\":{\"id\":\"b8a0b372-55cd-42e0-a69e-90312bbbe1e1\",\"title\":\"Budget\"},\"changes\":4,\"data\":{\"values\":{\"settings\":{\"categories\":[\"Groceries\",\"Home\",\"Fun\"],\"limit\":12000}},\"collections\":{\"expenses\":[{\"id\":\"e1\",\"created\":\"2026-10-01T08:00:00Z\",\"date\":\"2026-10-01\",\"item\":\"Groceries ICA\",\"category\":\"Groceries\",\"amount\":640,\"updated\":\"2026-10-05T22:21:18.367Z\"},{\"id\":\"e2\",\"created\":\"2026-10-02T08:00:00Z\",\"date\":\"2026-10-02\",\"item\":\"Rent\",\"category\":\"Home\",\"amount\":9500},{\"id\":\"e3\",\"created\":\"2026-10-03T08:00:00Z\",\"date\":\"2026-10-03\",\"item\":\"Lunch\",\"category\":\"Groceries\",\"amount\":125,\"updated\":\"2026-1… (900 chars)"
+    },
+    {
+      "name": "read_app_file",
+      "args": {
+        "id": "b8a0b372-55cd-42e0-a69e-90312bbbe1e1",
+        "path": "/src/screens/home.tsx"
+      },
+      "error": false,
+      "result": "{\"path\":\"/src/screens/home.tsx\",\"lines\":19,\"shown\":\"1-19\",\"content\":\"     1\\timport { useCollection, useSettings } from \\\"@/lib/amber\\\"\\n     2\\timport { PageHeader } from \\\"@/components/app-shell\\\"\\n     3\\timport { Card } from \\\"@/components/ui/card\\\"\\n     4\\t\\n     5\\ttype Expense = { id: string; date: string; item: string; category: string; amount: number }\\n     6\\t\\n     7\\texport default function Home() {\\n     8\\t  const expenses = useCollection(\\\"expenses\\\")\\n     9\\t  const [settings] = useSettings({ categories: [] as string[], limit: 0 })\\n    10\\t  const items = expenses.items as … (1044 chars)"
+    }
+  ],
+  "render": null
+}

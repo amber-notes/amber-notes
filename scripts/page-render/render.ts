@@ -445,7 +445,7 @@ async function trial(open: (w: number, s: "light" | "dark") => Promise<{ page: P
     let ok = true, error: string | undefined;
     try {
       if ("tap" in step) await (await target(step.tap)).click({ timeout: 3000 });
-      else if ("expect" in step) { const w = pattern(step.expect); if (!(await page.getByText(w).first().isVisible().catch(() => false)) && !(await page.locator("input, textarea").evaluateAll((els, s) => els.some((e) => (e as HTMLInputElement).value.includes(s)), String(step.expect)).catch(() => false))) throw new Error(`"${step.expect}" isn't on screen.`); }
+      else if ("expect" in step) { const w = pattern(step.expect); const hits = page.getByText(w); const n = Math.min(await hits.count().catch(() => 0), 12); let seen = false; for (let i = 0; i < n && !seen; i++) seen = await hits.nth(i).isVisible().catch(() => false); if (!seen && !(await page.locator("input, textarea").evaluateAll((els, s) => els.some((e) => (e as HTMLInputElement).value.includes(s)), String(step.expect)).catch(() => false))) throw new Error(`"${step.expect}" isn't on screen.`); }
       else if ("type" in step) { const el = step.into ? await target(step.into, true) : page.locator("input:visible, textarea:visible").first(); await el.click({ timeout: 3000 }); await el.fill(String(step.type), { timeout: 3000 }).catch(async () => { await page.keyboard.type(String(step.type)); }); }
       else if ("scroll" in step) await page.mouse.wheel(0, step.scroll === "up" ? -600 : 600);
       else if ("wait" in step) typeof step.wait === "number" ? await page.waitForTimeout(Math.min(step.wait, 5000)) : await page.getByText(step.wait).first().waitFor({ timeout: 5000 });

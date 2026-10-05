@@ -1,0 +1,209 @@
+{
+  "task": "budget-data-rename-category",
+  "rep": 1,
+  "model": "codex:default",
+  "round": "data-edits",
+  "skill": false,
+  "seconds": 42,
+  "score": 1,
+  "passed": 5,
+  "total": 5,
+  "checks": [
+    {
+      "name": "app_unchanged",
+      "pass": true
+    },
+    {
+      "name": "records_renamed",
+      "pass": true
+    },
+    {
+      "name": "ids_kept",
+      "pass": true
+    },
+    {
+      "name": "setting_renamed",
+      "pass": true
+    },
+    {
+      "name": "limit_kept",
+      "pass": true
+    }
+  ],
+  "tool_calls": 12,
+  "tool_errors": 0,
+  "usage": {
+    "input": 33114,
+    "output": 659,
+    "cacheRead": 246272,
+    "cacheWrite": 0,
+    "turns": 1,
+    "usd": 0
+  },
+  "usd": 0,
+  "page_bytes": 209448,
+  "data": {
+    "values": {
+      "settings": {
+        "categories": [
+          "Groceries",
+          "Home",
+          "Fun"
+        ],
+        "limit": 12000
+      }
+    },
+    "collections": {
+      "expenses": [
+        {
+          "id": "e1",
+          "created": "2026-10-01T08:00:00Z",
+          "date": "2026-10-01",
+          "item": "Groceries ICA",
+          "category": "Groceries",
+          "amount": 640,
+          "updated": "2026-10-05T22:21:59.397Z"
+        },
+        {
+          "id": "e2",
+          "created": "2026-10-02T08:00:00Z",
+          "date": "2026-10-02",
+          "item": "Rent",
+          "category": "Home",
+          "amount": 9500
+        },
+        {
+          "id": "e3",
+          "created": "2026-10-03T08:00:00Z",
+          "date": "2026-10-03",
+          "item": "Lunch",
+          "category": "Groceries",
+          "amount": 125,
+          "updated": "2026-10-05T22:21:59.397Z"
+        },
+        {
+          "id": "e4",
+          "created": "2026-10-04T08:00:00Z",
+          "date": "2026-10-04",
+          "item": "Cinema",
+          "category": "Fun",
+          "amount": 260
+        },
+        {
+          "id": "e5",
+          "created": "2026-10-05T08:00:00Z",
+          "date": "2026-10-05",
+          "item": "Bakery",
+          "category": "Groceries",
+          "amount": 92,
+          "updated": "2026-10-05T22:21:59.397Z"
+        }
+      ]
+    }
+  },
+  "answer": "Renamed Food to Groceries everywhere in your Budget app, including all 3 matching expenses. Amounts and totals stayed unchanged.",
+  "calls": [
+    {
+      "name": "get_page_guide",
+      "args": {},
+      "error": false,
+      "result": "{\n  \"guide\": \"# Apps in Amber Notes\\n\\nA note can be an app: a habit tracker, a budget, a workout log, a game. The person opens the note and the app is all they see. This says where an app lives and what it can use. How it looks and works is your call; build it as well as you would anywhere.\\n\\n## Where it runs\\n\\n- Inside a note in Amber Notes, on iPhone (320-440 pt wide, safe areas at the edges, the keyboard shrinks the view) and on the Mac (a window from about 500 to 1,800 px, resized live). Both matter: a phone layout and a real wide layout.\\n- Light and dark mode follow the device (prefer… (9398 chars)"
+    },
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Budget"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Budget\",\n  \"results\": [\n    {\n      \"id\": \"369713cf-5a6d-48b2-9f8a-b658934152e5\",\n      \"title\": \"Budget\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T22:21:33.991Z\",\n      \"snippet\": \"«Budget»\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "369713cf-5a6d-48b2-9f8a-b658934152e5"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"369713cf-5a6d-48b2-9f8a-b658934152e5\",\n  \"title\": \"Budget\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T22:21:33.991Z\",\n  \"updated\": \"2026-10-05T22:21:33.991Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"has_page\": true,\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 2,\n    \"words\": 1\n  },\n  \"markdown\": \"Budget\\n\"\n}"
+    },
+    {
+      "name": "list_app_files",
+      "args": {
+        "id": "369713cf-5a6d-48b2-9f8a-b658934152e5"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"369713cf-5a6d-48b2-9f8a-b658934152e5\",\n    \"title\": \"Budget\"\n  },\n  \"files\": [\n    {\n      \"path\": \"/README.md\",\n      \"bytes\": 532,\n      \"lines\": 17\n    },\n    {\n      \"path\": \"/index.html\",\n      \"bytes\": 216,\n      \"lines\": 12\n    },\n    {\n      \"path\": \"/package.json\",\n      \"bytes\": 687,\n      \"lines\": 29\n    },\n    {\n      \"path\": \"/src/App.tsx\",\n      \"bytes\": 906,\n      \"lines\": 27\n    },\n    {\n      \"path\": \"/src/components/app-shell.tsx\",\n      \"bytes\": 2651,\n      \"lines\": 60\n    },\n    {\n      \"path\": \"/src/components/stat-card.tsx\",\n      \"bytes\": 576,\n   … (3806 chars)"
+    },
+    {
+      "name": "get_page_data",
+      "args": {
+        "id": "369713cf-5a6d-48b2-9f8a-b658934152e5"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"369713cf-5a6d-48b2-9f8a-b658934152e5\",\n    \"title\": \"Budget\"\n  },\n  \"shape\": {\n    \"collections\": {\n      \"object\": {\n        \"expenses\": {\n          \"list\": 5,\n          \"fields\": {\n            \"id\": {\n              \"type\": \"string\",\n              \"examples\": [\n                \"e1\",\n                \"e2\"\n              ]\n            },\n            \"created\": {\n              \"type\": \"date\",\n              \"examples\": [\n                \"2026-10-01T08:00:00Z\",\n                \"2026-10-02T08:00:00Z\"\n              ]\n            },\n            \"date\": {\n              \"type\": \"… (2838 chars)"
+    },
+    {
+      "name": "read_app_file",
+      "args": {
+        "id": "369713cf-5a6d-48b2-9f8a-b658934152e5",
+        "path": "/src/App.tsx"
+      },
+      "error": false,
+      "result": "{\n  \"path\": \"/src/App.tsx\",\n  \"lines\": 27,\n  \"shown\": \"1-27\",\n  \"content\": \"     1\\timport { Router, Route } from \\\"amber-router\\\"\\n     2\\timport { House, Settings as SettingsIcon } from \\\"lucide-react\\\"\\n     3\\timport { Toaster } from \\\"@/components/ui/sonner\\\"\\n     4\\timport { AppShell } from \\\"@/components/app-shell\\\"\\n     5\\timport Home from \\\"@/screens/home\\\"\\n     6\\timport Settings from \\\"@/screens/settings\\\"\\n     7\\t\\n     8\\t// The app's places: a tab bar on iPhone, a sidebar from 900 px (components/app-shell.tsx).\\n     9\\tconst screens = [\\n    10\\t  { path: \\\"/\\\", label: \\\"Hom… (1257 chars)"
+    },
+    {
+      "name": "read_app_file",
+      "args": {
+        "id": "369713cf-5a6d-48b2-9f8a-b658934152e5",
+        "path": "/src/screens/settings.tsx"
+      },
+      "error": false,
+      "result": "{\n  \"path\": \"/src/screens/settings.tsx\",\n  \"lines\": 24,\n  \"shown\": \"1-24\",\n  \"content\": \"     1\\timport { useSettings } from \\\"@/lib/amber\\\"\\n     2\\timport { PageHeader } from \\\"@/components/app-shell\\\"\\n     3\\timport { Card } from \\\"@/components/ui/card\\\"\\n     4\\timport { Input } from \\\"@/components/ui/input\\\"\\n     5\\timport { Label } from \\\"@/components/ui/label\\\"\\n     6\\t\\n     7\\tconst DEFAULTS = { name: \\\"\\\" }\\n     8\\t\\n     9\\t// What the person can change without asking an AI, kept in the app's data.\\n    10\\texport default function Settings() {\\n    11\\t  const [settings, update]… (1147 chars)"
+    },
+    {
+      "name": "read_app_file",
+      "args": {
+        "id": "369713cf-5a6d-48b2-9f8a-b658934152e5",
+        "path": "/src/screens/home.tsx"
+      },
+      "error": false,
+      "result": "{\n  \"path\": \"/src/screens/home.tsx\",\n  \"lines\": 19,\n  \"shown\": \"1-19\",\n  \"content\": \"     1\\timport { useCollection, useSettings } from \\\"@/lib/amber\\\"\\n     2\\timport { PageHeader } from \\\"@/components/app-shell\\\"\\n     3\\timport { Card } from \\\"@/components/ui/card\\\"\\n     4\\t\\n     5\\ttype Expense = { id: string; date: string; item: string; category: string; amount: number }\\n     6\\t\\n     7\\texport default function Home() {\\n     8\\t  const expenses = useCollection(\\\"expenses\\\")\\n     9\\t  const [settings] = useSettings({ categories: [] as string[], limit: 0 })\\n    10\\t  const items = ex… (1061 chars)"
+    },
+    {
+      "name": "update_page_data",
+      "args": {
+        "id": "369713cf-5a6d-48b2-9f8a-b658934152e5",
+        "values": "{\"settings\":{\"categories\":[\"Groceries\",\"Home\",\"Fun\"]}}",
+        "update": "{\"expenses\":[{\"id\":\"e1\",\"category\":\"Groceries\"},{\"id\":\"e3\",\"category\":\"Groceries\"},{\"id\":\"e5\",\"category\":\"Groceries\"}]}"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"369713cf-5a6d-48b2-9f8a-b658934152e5\",\n    \"title\": \"Budget\"\n  },\n  \"changes\": 4,\n  \"data\": {\n    \"values\": {\n      \"settings\": {\n        \"categories\": [\n          \"Groceries\",\n          \"Home\",\n          \"Fun\"\n        ],\n        \"limit\": 12000\n      }\n    },\n    \"collections\": {\n      \"expenses\": [\n        {\n          \"id\": \"e1\",\n          \"created\": \"2026-10-01T08:00:00Z\",\n          \"date\": \"2026-10-01\",\n          \"item\": \"Groceries ICA\",\n          \"category\": \"Groceries\",\n          \"amount\": 640,\n          \"updated\": \"2026-10-05T22:21:59.397Z\"\n        },\n        {\n … (1535 chars)"
+    },
+    {
+      "name": "check_app",
+      "args": {
+        "id": "369713cf-5a6d-48b2-9f8a-b658934152e5"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"369713cf-5a6d-48b2-9f8a-b658934152e5\",\n    \"title\": \"Budget\"\n  },\n  \"ok\": true,\n  \"errors\": [],\n  \"notes\": [\n    \"The app's first heading should be the note's title (\\\"Sample note\\\"), read from amber.note.title: nothing around the app shows the title. Its first heading is \\\"Budget\\\".\",\n    \"390-light: 1 text element(s) with contrast under 4.5:1 (\\\"Home\\\").\",\n    \"390-light: 2 text element(s) under 12 px (\\\"Home\\\", \\\"Settings\\\").\",\n    \"390-dark: 2 text element(s) under 12 px (\\\"Home\\\", \\\"Settings\\\").\",\n    \"320-light: 1 text element(s) with contrast under 4.5:1 (\\\"Home\\… (985 chars)"
+    },
+    {
+      "name": "get_page_data",
+      "args": {
+        "id": "369713cf-5a6d-48b2-9f8a-b658934152e5"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"369713cf-5a6d-48b2-9f8a-b658934152e5\",\n    \"title\": \"Budget\"\n  },\n  \"shape\": {\n    \"collections\": {\n      \"object\": {\n        \"expenses\": {\n          \"list\": 5,\n          \"fields\": {\n            \"id\": {\n              \"type\": \"string\",\n              \"examples\": [\n                \"e1\",\n                \"e2\"\n              ]\n            },\n            \"created\": {\n              \"type\": \"date\",\n              \"examples\": [\n                \"2026-10-01T08:00:00Z\",\n                \"2026-10-02T08:00:00Z\"\n              ]\n            },\n            \"date\": {\n              \"type\": \"… (3167 chars)"
+    },
+    {
+      "name": "preview_app",
+      "args": {
+        "id": "369713cf-5a6d-48b2-9f8a-b658934152e5",
+        "widths": "[390]",
+        "themes": "[\"light\"]"
+      },
+      "error": false,
+      "result": "{\n  \"app\": \"Budget\",\n  \"data\": \"a sample with the note's shape (not the person's data)\",\n  \"views\": [\n    {\n      \"view\": \"390-light\",\n      \"headings\": [\n        \"Budget\"\n      ],\n      \"text\": \"Budget 9255.39 of 4435.65 Sample 1: 770.7099999999999 Sample 2: 8111.16 Sample 3: 373.52 Home Settings\"\n    }\n  ],\n  \"issues\": [\n    \"390-light: 1 text element(s) with contrast under 4.5:1 (\\\"Home\\\").\",\n    \"390-light: 2 text element(s) under 12 px (\\\"Home\\\", \\\"Settings\\\").\"\n  ]\n}\n390-light:\n[image]"
+    }
+  ],
+  "render": null
+}
