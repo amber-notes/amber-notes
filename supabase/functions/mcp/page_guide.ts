@@ -73,6 +73,7 @@ Names, goals, limits, currencies, categories, the list of habits to track: decla
 
 - Find tables and columns by name, case-insensitively, not by position: \`const t = note.tables.find(t => t.columns.some(c => /^date$/i.test(c.name)))\`. Fall back gracefully when a column is missing (show an empty state that says which column to add), never throw.
 - Cells are strings. Parse numbers leniently: \`parseFloat(s.replace(/\\s/g, "").replace(",", "."))\`, treat NaN as empty. Treat ✓, x, yes, done, 1, true as done.
+- amber.data is there synchronously (amber.data.values, amber.data.collections, amber.settings); amber.store.get and the collection reads return promises, so await them or read amber.data. Never show "[object Promise]", "undefined" or "NaN": check_app flags them.
 - Dates are "yyyy-mm-dd" strings; compare them as strings. Use amber.note.today, not the clock, for "today".
 - Empty table or note: render a friendly empty state with what to add, not a blank page.
 - Apps must handle 0 rows and 500 rows. Build HTML strings once per render, not per cell with appendChild in a loop.

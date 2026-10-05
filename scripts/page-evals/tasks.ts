@@ -484,8 +484,9 @@ export const TASKS: Task[] = [
       const d = JSON.stringify(f.data ?? {});
       return [
         unchanged(f), pageChanged(f),
-        check("goals_in_page_data", /5/.test(d) && /4/.test(d) && /3/.test(d) && /walk/i.test(d), `page data: ${d.slice(0, 120)}`),
-        check("page_uses_setData", /amber\.setData\s*\(/.test(f.page ?? ""), "the page can't change the goals (no amber.setData)"),
+        // Goals are app state or App Settings: either way, not the note's text.
+        check("goals_saved", (/5/.test(d) && /4/.test(d) && /3/.test(d) && /walk/i.test(d)) || /name=["']amber-settings["'][^>]*walk[^>]*/i.test(f.page ?? ""), `page data: ${d.slice(0, 120)}`),
+        check("goals_changeable", /amber\.(setData|store\.set)\s*\(|name=["']amber-settings["']/.test(f.page ?? ""), "the goals can't be changed (no setData, store.set or App Settings)"),
         check("no_local_storage", !/localStorage/.test(f.page ?? ""), "uses localStorage"),
       ];
     },

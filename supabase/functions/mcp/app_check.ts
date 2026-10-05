@@ -54,7 +54,7 @@ type View = {
   name: string; width: number; scheme: string; errors: string[]; overflowPx: number; textLength: number; contrast: number; bgLuminance: number;
   unnamedControls: string[]; smallTargets: number; smallText?: string[]; smallTextCount?: number; faintText?: string[]; faintCount?: number;
   headings?: string[]; excerpt?: string; png?: string;
-  under44?: string[]; under44Count?: number; clipped?: string[]; clippedCount?: number; usedWidth?: number; canvases?: number; svgShapes?: number; gridCols?: number; frames?: number;
+  junk?: string[]; under44?: string[]; under44Count?: number; clipped?: string[]; clippedCount?: number; usedWidth?: number; canvases?: number; svgShapes?: number; gridCols?: number; frames?: number;
 };
 export type Rendered = { views: View[]; interaction: { tried: string; ok: boolean | null; error?: string; framesPerSecond?: number }; probes: Record<string, { pass: boolean; detail?: string }>; blocked: string[]; ms: number };
 
@@ -82,6 +82,7 @@ export function renderedReport(r: Rendered): string[] {
   for (const v of r.views) {
     for (const e of [...new Set(v.errors)].slice(0, 3)) out.push(`${v.name}: script error: ${e}`);
     if (v.overflowPx > 1) out.push(`${v.name}: wider than the screen by ${v.overflowPx} px (scrolls sideways). Use max-width/percentages, wrap or let wide tables scroll in their own box.`);
+    if (v.junk?.length) out.push(`${v.name}: shows ${v.junk.map((j) => `"${j}"`).join(", ")}: a value used before it was ready (amber.store.get returns a promise; read amber.data.values for sync use) or a missing field.`);
     if (v.textLength < 10) out.push(`${v.name}: shows almost no text (blank page?).`);
     if (v.contrast < 4.5) out.push(`${v.name}: body text contrast is ${v.contrast.toFixed(1)}:1 (needs 4.5:1). Use --amber-text on the app's background.`);
     if (v.scheme === "dark" && v.bgLuminance > 0.4) out.push(`${v.name}: the background stays light in dark mode. Use the --amber-* variables, which switch.`);

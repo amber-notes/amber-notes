@@ -24,9 +24,14 @@ for (const c of cols) {
 }
 md += `\n## Per task\n\n| Task | ${cols.map((c) => `${c.round} ${c.v}`).join(" | ")} |\n| --- | ${cols.map(() => "---").join(" | ")} |\n`;
 for (const t of tasks) {
-  md += `| ${t} | ${cols.map((c) => { const r = c.list.find((x) => x.task === t); return r ? `${Math.round(r.score * 100)}% (${r.tool_calls})` : ""; }).join(" | ")} |\n`;
+  md += `| ${t} | ${cols.map((c) => {
+    const rs = c.list.filter((x) => x.task === t);
+    if (!rs.length) return "";
+    const m = rs.reduce((x, r) => x + r.score, 0) / rs.length;
+    return rs.length > 1 ? `${Math.round(m * 100)}% (${rs.map((r) => Math.round(r.score * 100)).join("/")})` : `${Math.round(m * 100)}% (${rs[0].tool_calls})`;
+  }).join(" | ")} |\n`;
 }
-md += `\nIn parentheses: tool calls.\n\n## Failed checks\n\n`;
+md += `\nIn parentheses: tool calls, or each repeat's score when a task ran more than once.\n\n## Failed checks\n\n`;
 for (const c of cols) {
   const fails = c.list.flatMap((r) => r.checks.filter((k) => !k.pass).map((k) => `${r.task}: ${k.name}${k.detail ? ` (${String(k.detail).slice(0, 110).replace(/\|/g, "/").replace(/\n/g, " ")})` : ""}`));
   md += `### ${c.round} ${c.v}\n\n${fails.length ? fails.map((f) => `- ${f}`).join("\n") : "None."}\n\n`;

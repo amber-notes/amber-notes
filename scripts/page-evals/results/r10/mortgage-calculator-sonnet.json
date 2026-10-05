@@ -1,0 +1,407 @@
+{
+  "task": "mortgage-calculator",
+  "rep": 1,
+  "model": "claude-sonnet-5-5",
+  "round": "r10",
+  "skill": false,
+  "seconds": 82,
+  "score": 1,
+  "passed": 21,
+  "total": 21,
+  "checks": [
+    {
+      "name": "has_page",
+      "pass": true
+    },
+    {
+      "name": "server_checks",
+      "pass": true
+    },
+    {
+      "name": "no_console_errors",
+      "pass": true
+    },
+    {
+      "name": "no_network",
+      "pass": true
+    },
+    {
+      "name": "fits_phone",
+      "pass": true
+    },
+    {
+      "name": "fits_desktop",
+      "pass": true
+    },
+    {
+      "name": "uses_wide_window",
+      "pass": true
+    },
+    {
+      "name": "phone_targets",
+      "pass": true
+    },
+    {
+      "name": "no_junk_text",
+      "pass": true
+    },
+    {
+      "name": "no_clipped_text",
+      "pass": true
+    },
+    {
+      "name": "shows_data",
+      "pass": true
+    },
+    {
+      "name": "dark_mode",
+      "pass": true
+    },
+    {
+      "name": "light_contrast",
+      "pass": true
+    },
+    {
+      "name": "uses_theme",
+      "pass": true
+    },
+    {
+      "name": "labelled_controls",
+      "pass": true
+    },
+    {
+      "name": "title_once",
+      "pass": true
+    },
+    {
+      "name": "says_app",
+      "pass": true
+    },
+    {
+      "name": "not_a_list",
+      "pass": true
+    },
+    {
+      "name": "note_unchanged",
+      "pass": true
+    },
+    {
+      "name": "has_controls",
+      "pass": true
+    },
+    {
+      "name": "payment_math",
+      "pass": true
+    }
+  ],
+  "tool_calls": 12,
+  "tool_errors": 0,
+  "usage": {
+    "input": 20,
+    "output": 8181,
+    "cacheRead": 253214,
+    "cacheWrite": 38395,
+    "turns": 9
+  },
+  "usd": 0.2285,
+  "page_bytes": 10872,
+  "data": null,
+  "answer": "Your Mortgage note now has a calculator on its App side, and the automatic app check came back clean. I haven't looked at it on a real screen.\n\n- **Inputs:** Loan, rate and years each have a slider and a typed field. Everything recalculates as you change them.\n- **Results:** The monthly payment is the big number at the top. Below it are total interest, total paid and interest as a share of the loan. A bar shows principal against interest, and a chart shows the balance falling over time. A year-by-year table sits underneath.\n- **Amortization:** Your note says \"straight, monthly\". I took that to mean equal principal each month, so the first payment is the highest and it falls over time. A toggle switches to a fixed annuity payment if you meant that.\n- **Starting values:** It reads your note's Loan, Rate and Years lines and the amortization type. At first that's 3 200 000 kr, 4.1 % and 25 years.\n- **Saving:** Changes you make in the app are remembered, but they don't write back to the note's text. \"Reset to note values\" returns to what the note says.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Mortgage"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Mortgage\",\n  \"results\": [\n    {\n      \"id\": \"d5eab7d3-e914-4f38-afb3-45e7d2ee6d29\",\n      \"title\": \"Mortgage\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T15:07:05.963Z\",\n      \"snippet\": \"«Mortgage» Loan: 3 200 000 kr Rate: 4.1 % Years: 25 Amortization: straight, monthly\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "get_page_guide",
+      "args": {},
+      "error": false,
+      "result": "{\n  \"guide\": \"# Building apps in Amber Notes notes\\n\\nA note can have an app: one HTML document shown on the note's App side, next to its Text side. A habit grid, a budget with totals, flashcards, a trip planner. In the tools it's called the note's page (set_note_page, get_note_page); when you talk to the person, call it \\\"the note's app\\\" or \\\"the App side\\\", and never \\\"page\\\" or \\\"Pages\\\".\\n\\nThe note's text stays the person's own data: they can always flip to Text and see and edit every row. The app reads it, changes it through checked edits, and keeps its own data (settings, logs, records… (25706 chars)"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "d5eab7d3-e914-4f38-afb3-45e7d2ee6d29"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"d5eab7d3-e914-4f38-afb3-45e7d2ee6d29\",\n  \"title\": \"Mortgage\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T15:07:05.963Z\",\n  \"updated\": \"2026-10-05T15:07:05.963Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 7,\n    \"words\": 14\n  },\n  \"markdown\": \"Mortgage\\n\\nLoan: 3 200 000 kr\\nRate: 4.1 %\\nYears: 25\\nAmortization: straight, monthly\\n\"\n}"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "d5eab7d3-e914-4f38-afb3-45e7d2ee6d29"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"d5eab7d3-e914-4f38-afb3-45e7d2ee6d29\",\n  \"title\": \"Mortgage\",\n  \"has_page\": false,\n  \"rules\": \"The page runs in Amber Notes in a sandbox with no network: no fetch, no external scripts, styles, fonts or images. Put all CSS and JS inline; images only as data: URIs or inline SVG.\\nRead the note from window.amber.note, never hardcode its contents (the note changes; the page must follow):\\n  amber.note = { title, markdown, today: \\\"yyyy-mm-dd\\\", tables: [{ index, columns: [{ name, type }], rows: [[cell, ...], ...] }], checklists: [{ line, text, checked }] }\\n  amber.onChange(fn) calls fn… (6640 chars)"
+    },
+    {
+      "name": "set_note_page",
+      "args": {
+        "id": "d5eab7d3-e914-4f38-afb3-45e7d2ee6d29",
+        "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<style>\n*{box-sizing:border-box}\nmain{max-width:var(--amber-content-max);margin:0 auto;padding:20px var(--amber-gutter) 64px}\nh1{font-size:1.6rem;letter-spacing:-.02em;… (10777 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"d5eab7d3-e914-4f38-afb3-45e7d2ee6d29\",\n  \"title\": \"Mortgage\",\n  \"page\": \"created\",\n  \"bytes\": 10777,\n  \"note\": \"The person sees it on the note's App side (call it the note's app, not a page). The note's text is unchanged. Next: run check_app and fix what it finds.\"\n}"
+    },
+    {
+      "name": "check_app",
+      "args": {
+        "id": "d5eab7d3-e914-4f38-afb3-45e7d2ee6d29"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"d5eab7d3-e914-4f38-afb3-45e7d2ee6d29\",\n    \"title\": \"Mortgage\"\n  },\n  \"ok\": false,\n  \"issues\": [\n    \"375-light: 7 text element(s) under 12 px (\\\"0 y\\\", \\\"10 y\\\", \\\"20 y\\\").\",\n    \"375-light: 1 text element(s) with contrast under 4.5:1 (\\\"Annuity\\\").\",\n    \"375-light: 3 control(s) smaller than 44 pt to tap on iPhone (\\\"\\\", \\\"\\\", \\\"\\\").\",\n    \"375-dark: 7 text element(s) under 12 px (\\\"0 y\\\", \\\"10 y\\\", \\\"20 y\\\").\",\n    \"375-dark: 3 control(s) smaller than 44 pt to tap on iPhone (\\\"\\\", \\\"\\\", \\\"\\\").\",\n    \"768-light: 7 text element(s) under 12 px (\\\"0 y\\\", \\\"10 y\\\", \\\"20 y… (1024 chars)"
+    },
+    {
+      "name": "edit_note_page",
+      "args": {
+        "id": "d5eab7d3-e914-4f38-afb3-45e7d2ee6d29",
+        "edits": "[{\"old_text\":\".ax{fill:var(--amber-text-secondary);font-size:11px;\",\"new_text\":\".ax{fill:var(--amber-text-secondary);font-size:24px;\"},{\"old_text\":\"input[type=range]{width:100%;height:44px;\",\"new_text\":\"input[type=range]{display:block;width:100%;height:44px;min-height:44px;\"},{\"old_text\":\".seg butto… (696 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"d5eab7d3-e914-4f38-afb3-45e7d2ee6d29\",\n  \"title\": \"Mortgage\",\n  \"page\": \"replaced\",\n  \"bytes\": 10850,\n  \"note\": \"The person sees it on the note's App side (call it the note's app, not a page). The note's text is unchanged. The previous version is kept (get_note_page lists it). Next: run check_app and fix what it finds.\"\n}"
+    },
+    {
+      "name": "check_app",
+      "args": {
+        "id": "d5eab7d3-e914-4f38-afb3-45e7d2ee6d29"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"d5eab7d3-e914-4f38-afb3-45e7d2ee6d29\",\n    \"title\": \"Mortgage\"\n  },\n  \"ok\": false,\n  \"issues\": [\n    \"375-light: 3 control(s) smaller than 44 pt to tap on iPhone (\\\"\\\", \\\"\\\", \\\"\\\").\",\n    \"375-dark: 3 control(s) smaller than 44 pt to tap on iPhone (\\\"\\\", \\\"\\\", \\\"\\\").\"\n  ],\n  \"browser_checked\": \"375 px light and dark, 768 and 1280 px light, over a sample note\",\n  \"next\": \"Fix these with edit_note_page (or set_note_page), then run check_app again.\"\n}"
+    },
+    {
+      "name": "edit_note_page",
+      "args": {
+        "id": "d5eab7d3-e914-4f38-afb3-45e7d2ee6d29",
+        "edits": "[{\"old_text\":\"input[type=range]{display:block;width:100%;height:44px;min-height:44px;\",\"new_text\":\"input[type=range]{display:block;width:100%;height:48px;min-height:48px;padding:0;\"}]"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"d5eab7d3-e914-4f38-afb3-45e7d2ee6d29\",\n  \"title\": \"Mortgage\",\n  \"page\": \"replaced\",\n  \"bytes\": 10860,\n  \"note\": \"The person sees it on the note's App side (call it the note's app, not a page). The note's text is unchanged. The previous version is kept (get_note_page lists it). Next: run check_app and fix what it finds.\"\n}"
+    },
+    {
+      "name": "check_app",
+      "args": {
+        "id": "d5eab7d3-e914-4f38-afb3-45e7d2ee6d29"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"d5eab7d3-e914-4f38-afb3-45e7d2ee6d29\",\n    \"title\": \"Mortgage\"\n  },\n  \"ok\": false,\n  \"issues\": [\n    \"375-light: 3 control(s) smaller than 44 pt to tap on iPhone (\\\"\\\", \\\"\\\", \\\"\\\").\",\n    \"375-dark: 3 control(s) smaller than 44 pt to tap on iPhone (\\\"\\\", \\\"\\\", \\\"\\\").\"\n  ],\n  \"browser_checked\": \"375 px light and dark, 768 and 1280 px light, over a sample note\",\n  \"next\": \"Fix these with edit_note_page (or set_note_page), then run check_app again.\"\n}"
+    },
+    {
+      "name": "edit_note_page",
+      "args": {
+        "id": "d5eab7d3-e914-4f38-afb3-45e7d2ee6d29",
+        "edits": "[{\"old_text\":\"width:8.5em;min-width:0;padding:8px 0}\",\"new_text\":\"width:8.5em;min-width:0;padding:0;min-height:44px}\"}]"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"d5eab7d3-e914-4f38-afb3-45e7d2ee6d29\",\n  \"title\": \"Mortgage\",\n  \"page\": \"replaced\",\n  \"bytes\": 10872,\n  \"note\": \"The person sees it on the note's App side (call it the note's app, not a page). The note's text is unchanged. The previous version is kept (get_note_page lists it). Next: run check_app and fix what it finds.\"\n}"
+    },
+    {
+      "name": "check_app",
+      "args": {
+        "id": "d5eab7d3-e914-4f38-afb3-45e7d2ee6d29"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"d5eab7d3-e914-4f38-afb3-45e7d2ee6d29\",\n    \"title\": \"Mortgage\"\n  },\n  \"ok\": true,\n  \"issues\": [],\n  \"browser_checked\": \"375 px light and dark, 768 and 1280 px light, over a sample note\",\n  \"next\": \"Nothing to fix.\"\n}"
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "375-light",
+        "width": 375,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 1303,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r10/shots/mortgage-calculator-sonnet-375-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Mortgage",
+          "Remaining balance",
+          "Year by year"
+        ],
+        "excerpt": "Mortgage Loan kr Interest rate % Term years Amortization Annuity Straight Reset to note values FIRST MONTHLY PAYMENT 21 600 kr / month Falls to 10 703 kr in the last month TOTAL INTEREST 1 645 467 kr TOTAL PAID 4 845 467 kr INTEREST / LOAN 51 % Principal 3 200 000 kr Interest 1 645 467 kr Remaining balance 0 y 5 y 10 y 15 y 20 y 25 y half paid off after 13 y Year by year Year Interest Principal Balance 1 128 795 kr 128 000 kr 3 072 000 kr 2 123 547 kr 128 000 kr 2 944 000 kr 3 118 299 kr 128 000",
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.9146666666666666,
+        "canvases": 0,
+        "svgShapes": 2,
+        "gridCols": 2,
+        "frames": 0
+      },
+      {
+        "name": "375-dark",
+        "width": 375,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 1303,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r10/shots/mortgage-calculator-sonnet-375-dark.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Mortgage",
+          "Remaining balance",
+          "Year by year"
+        ],
+        "excerpt": "Mortgage Loan kr Interest rate % Term years Amortization Annuity Straight Reset to note values FIRST MONTHLY PAYMENT 21 600 kr / month Falls to 10 703 kr in the last month TOTAL INTEREST 1 645 467 kr TOTAL PAID 4 845 467 kr INTEREST / LOAN 51 % Principal 3 200 000 kr Interest 1 645 467 kr Remaining balance 0 y 5 y 10 y 15 y 20 y 25 y half paid off after 13 y Year by year Year Interest Principal Balance 1 128 795 kr 128 000 kr 3 072 000 kr 2 123 547 kr 128 000 kr 2 944 000 kr 3 118 299 kr 128 000",
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.9146666666666666,
+        "canvases": 0,
+        "svgShapes": 2,
+        "gridCols": 2,
+        "frames": 0
+      },
+      {
+        "name": "768-light",
+        "width": 768,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 1303,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r10/shots/mortgage-calculator-sonnet-768-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Mortgage",
+          "Remaining balance",
+          "Year by year"
+        ],
+        "excerpt": "Mortgage Loan kr Interest rate % Term years Amortization Annuity Straight Reset to note values FIRST MONTHLY PAYMENT 21 600 kr / month Falls to 10 703 kr in the last month TOTAL INTEREST 1 645 467 kr TOTAL PAID 4 845 467 kr INTEREST / LOAN 51 % Principal 3 200 000 kr Interest 1 645 467 kr Remaining balance 0 y 5 y 10 y 15 y 20 y 25 y half paid off after 13 y Year by year Year Interest Principal Balance 1 128 795 kr 128 000 kr 3 072 000 kr 2 123 547 kr 128 000 kr 2 944 000 kr 3 118 299 kr 128 000",
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.9300130208333334,
+        "canvases": 0,
+        "svgShapes": 2,
+        "gridCols": 4,
+        "frames": 0
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 1303,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r10/shots/mortgage-calculator-sonnet-1280-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Mortgage",
+          "Remaining balance",
+          "Year by year"
+        ],
+        "excerpt": "Mortgage Loan kr Interest rate % Term years Amortization Annuity Straight Reset to note values FIRST MONTHLY PAYMENT 21 600 kr / month Falls to 10 703 kr in the last month TOTAL INTEREST 1 645 467 kr TOTAL PAID 4 845 467 kr INTEREST / LOAN 51 % Principal 3 200 000 kr Interest 1 645 467 kr Remaining balance 0 y 5 y 10 y 15 y 20 y 25 y half paid off after 13 y Year by year Year Interest Principal Balance 1 128 795 kr 128 000 kr 3 072 000 kr 2 123 547 kr 128 000 kr 2 944 000 kr 3 118 299 kr 128 000",
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.796875,
+        "canvases": 0,
+        "svgShapes": 2,
+        "gridCols": 4,
+        "frames": 0
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 1303,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Mortgage",
+          "Remaining balance",
+          "Year by year"
+        ],
+        "excerpt": "Mortgage Loan kr Interest rate % Term years Amortization Annuity Straight Reset to note values FIRST MONTHLY PAYMENT 21 600 kr / month Falls to 10 703 kr in the last month TOTAL INTEREST 1 645 467 kr TOTAL PAID 4 845 467 kr INTEREST / LOAN 51 % Principal 3 200 000 kr Interest 1 645 467 kr Remaining balance 0 y 5 y 10 y 15 y 20 y 25 y half paid off after 13 y Year by year Year Interest Principal Balance 1 128 795 kr 128 000 kr 3 072 000 kr 2 123 547 kr 128 000 kr 2 944 000 kr 3 118 299 kr 128 000",
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.796875,
+        "canvases": 0,
+        "svgShapes": 2,
+        "gridCols": 4,
+        "frames": 0
+      }
+    ],
+    "blocked": [],
+    "updates": [],
+    "setData": 0,
+    "interaction": {
+      "tried": "none",
+      "ok": null
+    },
+    "probes": {},
+    "dataAfter": {}
+  }
+}

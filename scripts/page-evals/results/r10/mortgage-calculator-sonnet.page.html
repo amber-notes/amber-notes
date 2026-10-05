@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+*{box-sizing:border-box}
+main{max-width:var(--amber-content-max);margin:0 auto;padding:20px var(--amber-gutter) 64px}
+h1{font-size:1.6rem;letter-spacing:-.02em;margin:4px 0 16px}
+.grid{display:grid;gap:16px}
+@media(min-width:900px){.grid{grid-template-columns:minmax(300px,380px) 1fr;align-items:start}}
+.card{background:var(--amber-surface);border:1px solid var(--amber-separator);border-radius:var(--amber-radius);padding:16px}
+.hero{background:var(--amber-accent-soft);border-color:transparent;margin-bottom:16px}
+.k{font-size:.8rem;color:var(--amber-text-secondary);text-transform:uppercase;letter-spacing:.06em}
+.big{font-family:var(--amber-font-rounded);font-size:clamp(2.2rem,9vw,3.6rem);font-weight:700;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1.1;margin:4px 0}
+.big small{font-size:.4em;font-weight:600;color:var(--amber-text-secondary);letter-spacing:0}
+.sub{color:var(--amber-text-secondary);font-size:.9rem;font-variant-numeric:tabular-nums}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-top:14px}
+.stat b{display:block;font-size:1.15rem;font-variant-numeric:tabular-nums}
+.field{margin-bottom:18px}
+.field:last-child{margin-bottom:0}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
+label{font-weight:600;font-size:.95rem}
+.inp{display:flex;align-items:center;gap:6px;background:var(--amber-fill);border-radius:var(--amber-radius-small);padding:0 10px;min-height:44px}
+.inp input{font:inherit;font-weight:600;font-variant-numeric:tabular-nums;color:var(--amber-text);background:none;border:0;outline:0;text-align:right;width:8.5em;min-width:0;padding:0;min-height:44px}
+.inp:focus-within{outline:2px solid var(--amber-accent)}
+.inp span{color:var(--amber-text-secondary);font-size:.9rem}
+input[type=range]{display:block;width:100%;height:48px;min-height:48px;padding:0;accent-color:var(--amber-accent);margin:0}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--amber-fill);padding:4px;border-radius:var(--amber-radius-small)}
+.seg button{font:inherit;font-weight:600;min-height:44px;border:0;border-radius:calc(var(--amber-radius-small) - 2px);background:none;color:var(--amber-text)}
+.seg button[aria-pressed=true]{background:var(--amber-surface);color:var(--amber-text);box-shadow:inset 0 0 0 2px var(--amber-accent)}
+.split{display:flex;height:16px;border-radius:8px;overflow:hidden;margin:14px 0 8px;background:var(--amber-fill)}
+.split i{display:block;transition:width .25s}
+.pr{background:var(--amber-accent)}
+.in{background:var(--amber-text-secondary)}
+.leg{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:.88rem;font-variant-numeric:tabular-nums}
+.leg span:before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;background:currentColor}
+.leg .p:before{background:var(--amber-accent)}.leg .i:before{background:var(--amber-text-secondary)}
+svg{width:100%;height:auto;display:block}
+.ax{fill:var(--amber-text-secondary);font-size:24px;font-family:var(--amber-font)}
+.reset{font:inherit;font-weight:600;min-height:44px;padding:0 14px;border:0;border-radius:var(--amber-radius-small);background:var(--amber-fill);color:var(--amber-text);margin-top:14px}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:.9rem}
+th,td{text-align:right;padding:7px 4px;border-top:1px solid var(--amber-separator)}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--amber-text-secondary);font-weight:600;border-top:0;font-size:.8rem}
+.scroll{max-height:320px;overflow:auto}
+h2{font-size:1rem;margin:0 0 10px}
+@media(prefers-reduced-motion:reduce){.split i{transition:none}}
+</style>
+</head>
+<body>
+<main>
+<h1 id="title">Mortgage</h1>
+<div class="grid">
+<section class="card" aria-label="Inputs">
+  <div class="field"><div class="top"><label for="loanN">Loan</label><div class="inp"><input id="loanN" inputmode="numeric" autocomplete="off"><span>kr</span></div></div>
+    <input type="range" id="loanR" min="100000" max="10000000" step="50000" aria-label="Loan slider"></div>
+  <div class="field"><div class="top"><label for="rateN">Interest rate</label><div class="inp"><input id="rateN" inputmode="decimal" autocomplete="off"><span>%</span></div></div>
+    <input type="range" id="rateR" min="0" max="12" step="0.05" aria-label="Rate slider"></div>
+  <div class="field"><div class="top"><label for="yearsN">Term</label><div class="inp"><input id="yearsN" inputmode="numeric" autocomplete="off"><span>years</span></div></div>
+    <input type="range" id="yearsR" min="1" max="50" step="1" aria-label="Years slider"></div>
+  <div class="field"><div class="top"><label id="amL">Amortization</label></div>
+    <div class="seg" role="group" aria-labelledby="amL"><button type="button" id="mAnn">Annuity</button><button type="button" id="mStr">Straight</button></div></div>
+  <button class="reset" id="reset" type="button">Reset to note values</button>
+</section>
+<div>
+  <section class="card hero" aria-live="polite">
+    <div class="k" id="plabel">Monthly payment</div>
+    <div class="big" id="pay"></div>
+    <div class="sub" id="paySub"></div>
+    <div class="stats">
+      <div class="stat"><span class="k">Total interest</span><b id="tint"></b></div>
+      <div class="stat"><span class="k">Total paid</span><b id="ttot"></b></div>
+      <div class="stat"><span class="k">Interest / loan</span><b id="ratio"></b></div>
+    </div>
+    <div class="split" role="img" id="splitA"><i class="pr" id="sp"></i><i class="in" id="si"></i></div>
+    <div class="leg"><span class="p" id="lp"></span><span class="i" id="li"></span></div>
+  </section>
+  <section class="card" style="margin-bottom:16px"><h2>Remaining balance</h2><div id="chart"></div></section>
+  <section class="card"><h2>Year by year</h2><div class="scroll"><table><thead><tr><th>Year</th><th>Interest</th><th>Principal</th><th>Balance</th></tr></thead><tbody id="yrs"></tbody></table></div></section>
+</div>
+</div>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const fmt=n=>Math.round(n).toLocaleString('sv-SE')+' kr';
+const num=s=>{const v=parseFloat(String(s).replace(/\s|\u00a0/g,'').replace(',','.'));return isNaN(v)?NaN:v};
+let st=null, noteVals=null;
+
+function fromNote(md){
+  const g=re=>{const m=md.match(re);return m?num(m[1].replace(/[^\d.,\s]/g,'')):NaN};
+  const loan=g(/loan:\s*([\d\s\u00a0.,]+)/i), rate=g(/rate:\s*([\d.,]+)/i), years=g(/years:\s*([\d.,]+)/i);
+  const mode=/amortization:[^\n]*(annuit)/i.test(md)?'ann':(/amortization:[^\n]*straight/i.test(md)?'str':'ann');
+  return {loan:isNaN(loan)?3000000:loan,rate:isNaN(rate)?4:rate,years:isNaN(years)?25:years,mode};
+}
+function calc(s){
+  const n=Math.max(1,Math.round(s.years*12)), r=s.rate/100/12, L=s.loan;
+  let bal=L, rows=[], ti=0, first=0,last=0, yrI=0,yrP=0, years=[], pts=[[0,L]];
+  const ann=r===0?L/n:L*r/(1-Math.pow(1+r,-n));
+  for(let k=1;k<=n;k++){
+    const i=bal*r; let p= s.mode==='str'?L/n:ann-i; const pay=i+p;
+    if(k===1)first=pay; if(k===n)last=pay;
+    bal=Math.max(0,bal-p); ti+=i; yrI+=i; yrP+=p;
+    if(k%12===0||k===n){years.push({y:Math.ceil(k/12),i:yrI,p:yrP,b:bal});yrI=0;yrP=0;pts.push([k/12,bal]);}
+  }
+  return {n,first,last,ti,total:L+ti,years,pts};
+}
+function chart(c,s){
+  const W=600,H=240,pl=8,pr=8,pt=10,pb=34, mx=s.years<=0?1:c.n/12;
+  const X=v=>pl+(v/mx)*(W-pl-pr), Y=v=>pt+(1-v/s.loan)*(H-pt-pb);
+  const line=c.pts.map((p,i)=>(i?'L':'M')+X(p[0]).toFixed(1)+' '+Y(p[1]).toFixed(1)).join('');
+  const area=line+`L${X(mx)} ${Y(0)}L${X(0)} ${Y(0)}Z`;
+  let ticks='';const step=mx>30?10:mx>12?5:mx>6?2:1;
+  for(let y=0;y<=mx;y+=step)ticks+=`<text class="ax" x="${X(y)}" y="${H-8}" text-anchor="${y===0?'start':'middle'}">${y} y</text>`;
+  const half=c.pts.find(p=>p[1]<=s.loan/2);
+  $('chart').innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Loan balance falling from ${fmt(s.loan)} to zero over ${s.years} years">
+  <path d="${area}" fill="var(--amber-accent)" opacity=".18"/><path d="${line}" fill="none" stroke="var(--amber-accent)" stroke-width="2.5" stroke-linejoin="round"/>
+  <line x1="${pl}" x2="${W-pr}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--amber-separator)"/>${ticks}
+  ${half?`<text class="ax" x="${X(half[0])+6}" y="${Y(half[1])-6}">half paid off after ${half[0]} y</text>`:''}</svg>`;
+}
+function render(){
+  const c=calc(st);
+  const str=st.mode==='str';
+  $('plabel').textContent=str?'First monthly payment':'Monthly payment';
+  $('pay').innerHTML=Math.round(c.first).toLocaleString('sv-SE')+' <small>kr / month</small>';
+  $('paySub').textContent=str?`Falls to ${fmt(c.last)} in the last month`:`Same every month for ${st.years} years (${c.n} payments)`;
+  $('tint').textContent=fmt(c.ti);$('ttot').textContent=fmt(c.total);
+  $('ratio').textContent=Math.round(c.ti/st.loan*100)+' %';
+  const ip=c.total?c.ti/c.total*100:0;
+  $('sp').style.width=(100-ip)+'%';$('si').style.width=ip+'%';
+  $('splitA').setAttribute('aria-label',`Of everything paid, ${Math.round(100-ip)}% is principal and ${Math.round(ip)}% interest`);
+  $('lp').textContent='Principal '+fmt(st.loan);$('li').textContent='Interest '+fmt(c.ti);
+  $('mAnn').setAttribute('aria-pressed',!str);$('mStr').setAttribute('aria-pressed',str);
+  $('yrs').innerHTML=c.years.map(y=>`<tr><td>${y.y}</td><td>${fmt(y.i)}</td><td>${fmt(y.p)}</td><td>${fmt(y.b)}</td></tr>`).join('');
+  chart(c,st);
+}
+function sync(except){
+  if(except!=='loanN')$('loanN').value=Math.round(st.loan).toLocaleString('sv-SE');
+  if(except!=='rateN')$('rateN').value=String(st.rate);
+  if(except!=='yearsN')$('yearsN').value=String(st.years);
+  $('loanR').value=st.loan;$('rateR').value=st.rate;$('yearsR').value=st.years;
+}
+function save(){amber.store.set('calc',st);}
+function set(k,v,except){if(isNaN(v))return;st[k]=v;sync(except);render();save();}
+$('loanN').oninput=e=>{const v=num(e.target.value);if(v>0)set('loan',v,'loanN')};
+$('rateN').oninput=e=>{const v=num(e.target.value);if(v>=0&&v<=30)set('rate',v,'rateN')};
+$('yearsN').oninput=e=>{const v=num(e.target.value);if(v>=1&&v<=60)set('years',v,'yearsN')};
+$('loanR').oninput=e=>set('loan',+e.target.value);
+$('rateR').oninput=e=>set('rate',+e.target.value);
+$('yearsR').oninput=e=>set('years',+e.target.value);
+$('mAnn').onclick=()=>set('mode','ann');$('mStr').onclick=()=>set('mode','str');
+['loanN','rateN','yearsN'].forEach(id=>$(id).onblur=()=>sync());
+$('reset').onclick=()=>{st={...noteVals};sync();render();save();};
+amber.onChange((note,data)=>{
+  $('title').textContent=note.title;
+  noteVals=fromNote(note.markdown);
+  if(!st){
+    const saved=amber.store.get('calc');
+    st=saved&&saved.loan?{...noteVals,...saved}:{...noteVals};
+    sync();render();
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,40 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+*{box-sizing:border-box}
+main{max-width:var(--amber-content-max);margin:0 auto;padding:20px var(--amber-gutter) 48px}
+h1{font-size:1.75rem;letter-spacing:-.02em;margin:4px 0 16px}
+.days{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:600px){.days{grid-template-columns:repeat(2,1fr)}}
+@media (min-width:900px){.days{grid-template-columns:repeat(3,1fr)}}
+.card{background:var(--amber-surface);border:1px solid var(--amber-separator);border-radius:var(--amber-radius);padding:14px 16px;min-width:0}
+.card.today{border-color:var(--amber-accent);box-shadow:0 0 0 1px var(--amber-accent)}
+.head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+h2{font-size:1.1rem;margin:0}
+.badge{font-size:.8rem;font-weight:600;padding:3px 9px;border-radius:99px;background:var(--amber-accent-soft);color:var(--amber-accent-text);white-space:nowrap}
+.m{display:flex;gap:12px;padding:7px 0;border-top:1px solid var(--amber-separator)}
+.m:first-of-type{border-top:0}
+.k{flex:0 0 5.5rem;font-size:.85rem;color:var(--amber-text-secondary);padding-top:.1rem}
+.v{flex:1;min-width:0;overflow-wrap:anywhere}
+.note{margin-top:6px;font-size:.9rem;color:var(--amber-text-secondary);overflow-wrap:anywhere}
+.empty{padding:28px 16px;text-align:center;color:var(--amber-text-secondary)}
+</style></head><body><main id="app"></main><script>
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+amber.onChange(note=>{
+const app=document.getElementById("app");
+const tb=note.tables.find(t=>t.columns.some(c=>/^day$/i.test(c.name)))||note.tables[0];
+let h=`<h1>${esc(note.title)}</h1>`;
+if(!tb||!tb.rows.length){app.innerHTML=h+'<div class="card empty">Add a table with a Day column to see the plan.</div>';return}
+const cols=tb.columns.map(c=>c.name);
+const ix=re=>cols.findIndex(n=>re.test(n));
+const di=ix(/^day$/i),si=ix(/^shop$/i),ni=ix(/^notes?$/i);
+const todayName=new Date(note.today+"T12:00:00").toLocaleDateString("en-US",{weekday:"long"});
+h+='<div class="days">'+tb.rows.map(r=>{
+const day=r[di>=0?di:0];
+const meals=cols.map((n,i)=>i).filter(i=>i!==di&&i!==si&&i!==ni&&String(r[i]||"").trim());
+const shop=si>=0&&/^(yes|y|✓|x|1|true)$/i.test(String(r[si]).trim());
+const isT=String(day).toLowerCase()===todayName.toLowerCase();
+return `<section class="card${isT?" today":""}"><div class="head"><h2>${esc(day)}${isT?" · today":""}</h2>${shop?'<span class="badge">Shop</span>':""}</div>`+
+meals.map(i=>`<div class="m"><div class="k">${esc(cols[i])}</div><div class="v">${esc(r[i])}</div></div>`).join("")+
+(ni>=0&&String(r[ni]||"").trim()?`<div class="note">${esc(r[ni])}</div>`:"")+`</section>`}).join("")+"</div>";
+app.innerHTML=h});
+</script></body></html>

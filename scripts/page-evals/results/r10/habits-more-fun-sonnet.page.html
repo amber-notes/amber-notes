@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Habit tracker</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { -webkit-user-select: none; user-select: none; }
+  main { max-width: var(--amber-content-max); margin: 0 auto; padding: 8px var(--amber-gutter) 60px; position: relative; }
+  h1 { font-family: var(--amber-font-rounded); font-size: 1.75rem; margin: 6px 0 14px; letter-spacing: -.02em; }
+  h2 { font-size: .8rem; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--amber-text-secondary); margin: 22px 4px 8px; }
+  .card { background: var(--amber-surface); border-radius: var(--amber-radius); }
+  .hero { display: flex; align-items: center; gap: 18px; padding: 18px; background: linear-gradient(135deg, var(--amber-accent-soft), var(--amber-surface)); }
+  .ring { position: relative; width: 104px; height: 104px; flex: none; }
+  .ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .ring .bg { stroke: var(--amber-fill); } .ring .fg { stroke: var(--amber-accent); transition: stroke-dashoffset .6s cubic-bezier(.34,1.2,.64,1); }
+  .ring .mid { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--amber-font-rounded); font-size: 1.5rem; font-weight: 700; }
+  .msg { flex: 1; min-width: 0; }
+  .msg .big { font-family: var(--amber-font-rounded); font-size: 1.25rem; font-weight: 700; line-height: 1.2; }
+  .msg .small { color: var(--amber-text-secondary); font-size: .9rem; margin-top: 4px; }
+  .xp { height: 8px; border-radius: 4px; background: var(--amber-fill); margin-top: 10px; overflow: hidden; }
+  .xp div { height: 100%; background: var(--amber-accent); border-radius: 4px; transition: width .5s; }
+  .tiles { display: grid; grid-template-columns: 1fr; gap: 10px; }
+  @media (min-width: 600px) { .tiles { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); } }
+  .tile { position: relative; display: flex; align-items: center; gap: 14px; min-height: 76px; padding: 12px 16px; border: 2px solid transparent; border-radius: var(--amber-radius); background: var(--amber-surface); color: var(--amber-text); font: inherit; text-align: left; cursor: pointer; transition: transform .2s cubic-bezier(.34,1.56,.64,1), background .2s, border-color .2s; }
+  .tile:active { transform: scale(.96); }
+  .tile.done { background: var(--amber-accent-soft); border-color: var(--amber-accent); }
+  .tile .emo { font-size: 2rem; width: 2.4rem; text-align: center; flex: none; filter: grayscale(1); opacity: .6; transition: .2s; }
+  .tile.done .emo { filter: none; opacity: 1; transform: scale(1.15); }
+  .tile .nm { flex: 1; min-width: 0; font-size: 1.1rem; font-weight: 600; overflow-wrap: anywhere; }
+  .tile .st { display: block; font-size: .85rem; font-weight: 500; color: var(--amber-text-secondary); margin-top: 2px; }
+  .tile .st.hot { color: var(--amber-accent-text); font-weight: 600; }
+  .week { display: flex; gap: 4px; flex: none; }
+  .week i { width: 9px; height: 9px; border-radius: 50%; background: var(--amber-fill); }
+  .week i.on { background: var(--amber-accent); }
+  .tile .chk { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--amber-separator); display: grid; place-items: center; flex: none; }
+  .tile.done .chk { background: var(--amber-accent); border-color: var(--amber-accent); }
+  .tile .chk svg { width: 16px; height: 16px; opacity: 0; } .tile.done .chk svg { opacity: 1; }
+  .heat { padding: 14px; display: grid; gap: 5px; }
+  .row { display: grid; grid-template-columns: 5.5rem repeat(var(--days), minmax(0, 1fr)); gap: 4px; align-items: center; }
+  .row .h { font-size: .8rem; color: var(--amber-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cell { aspect-ratio: 1; border-radius: 5px; background: var(--amber-fill); }
+  .cell.on { background: var(--amber-accent); } .cell.today { box-shadow: inset 0 0 0 2px var(--amber-text); }
+  .dl { font-size: .75rem; color: var(--amber-text-secondary); text-align: center; }
+  .badges { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; }
+  .badge { padding: 12px 8px; text-align: center; border-radius: var(--amber-radius); background: var(--amber-surface); }
+  .badge .e { font-size: 1.8rem; } .badge .t { font-size: .8rem; margin-top: 4px; font-weight: 600; }
+  .badge .d { font-size: .75rem; color: var(--amber-text-secondary); }
+  .badge.lock { opacity: .5; } .badge.lock .e { filter: grayscale(1); }
+  .err { color: var(--amber-danger); min-height: 1.2em; font-size: .9rem; margin-top: 6px; }
+  .empty { padding: 30px 18px; text-align: center; color: var(--amber-text-secondary); }
+  .conf { position: fixed; width: 9px; height: 9px; border-radius: 2px; pointer-events: none; z-index: 9; animation: fall 1s ease-out forwards; }
+  @keyframes fall { to { transform: translate(var(--dx), var(--dy)) rotate(var(--r)); opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .conf { display: none; } * { transition: none !important; } }
+  @media (min-width: 900px) { .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; } }
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script>
+  const DONE = /^(✓|✔|x|yes|y|1|true|done)$/i;
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const addDays = (iso, n) => { const d = new Date(iso + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+  const EMO = [[/walk|run|step|jog/i, "🚶"], [/read|book/i, "📚"], [/stretch|yoga|mobil/i, "🧘"], [/water|drink/i, "💧"], [/med|mind/i, "🪷"], [/sleep/i, "😴"], [/write|journal/i, "✍️"], [/gym|lift|workout/i, "💪"], [/code|study|learn/i, "🧠"], [/eat|veg|fruit/i, "🥗"]];
+  const emoji = (n) => (EMO.find(([r]) => r.test(n)) || [0, "✨"])[1];
+  const tick = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="var(--amber-on-accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  let error = "", celebrate = false;
+
+  function confetti(x, y) {
+    const cols = ["var(--amber-accent)", "var(--amber-accent-text)", "var(--amber-danger)", "var(--amber-text)"];
+    for (let i = 0; i < 26; i++) {
+      const e = document.createElement("span"); e.className = "conf";
+      const a = Math.random() * Math.PI * 2, v = 60 + Math.random() * 110;
+      e.style.cssText = `left:${x}px;top:${y}px;background:${cols[i % 4]};--dx:${Math.cos(a) * v}px;--dy:${Math.sin(a) * v + 60}px;--r:${Math.random() * 720}deg`;
+      document.body.appendChild(e); setTimeout(() => e.remove(), 1100);
+    }
+  }
+
+  function render(note) {
+    const app = document.getElementById("app");
+    const t = note.tables.find((t) => t.columns.some((c) => /^(date|day)$/i.test(c.name)));
+    if (!t) { app.innerHTML = `<h1>${esc(note.title)}</h1><div class="card empty">Add a table with a Date column and one column per habit.</div>`; return; }
+    const dc = t.columns.findIndex((c) => /^(date|day)$/i.test(c.name));
+    const habits = t.columns.map((c, i) => ({ name: c.name, i })).filter((h) => h.i !== dc);
+    const today = note.today;
+    const by = new Map(t.rows.map((r, i) => [r[dc], { r, i }]));
+    const done = (d, h) => DONE.test(String(by.get(d)?.r[h.i] ?? "").trim());
+    let total = 0, perfectDays = 0;
+    for (const [d, v] of by) { const n = habits.filter((h) => DONE.test(String(v.r[h.i] ?? "").trim())).length; total += n; if (habits.length && n === habits.length) perfectDays++; }
+    let bestEver = 0;
+    for (const h of habits) {
+      let n = 0, d = done(today, h) ? today : addDays(today, -1);
+      while (done(d, h)) { n++; d = addDays(d, -1); }
+      h.streak = n; h.today = done(today, h);
+      let run = 0; h.best = 0;
+      for (let k = -90; k <= 0; k++) { if (done(addDays(today, k), h)) { run++; h.best = Math.max(h.best, run); } else run = 0; }
+      bestEver = Math.max(bestEver, h.best);
+      h.week = Array.from({ length: 7 }, (_, k) => done(addDays(today, k - 6), h));
+    }
+    const nd = habits.filter((h) => h.today).length, all = habits.length || 1;
+    const pct = nd / all, perfect = nd === habits.length && nd > 0;
+    const level = Math.floor(total / 10) + 1, into = total % 10;
+    const big = perfect ? "Perfect day! 🎉" : nd === 0 ? "Let's get started" : nd >= all / 2 ? "Over halfway, keep going!" : "Nice start!";
+    const small = perfect ? "Every habit ticked. See you tomorrow." : `${habits.length - nd} to go today`;
+    const C = 2 * Math.PI * 44;
+    const span = window.innerWidth >= 900 ? 28 : 14;
+    const days = Array.from({ length: span }, (_, i) => addDays(today, i - span + 1));
+    const hasStreak = (n) => habits.some((h) => h.streak >= n);
+    const badges = [
+      ["🔥", "On fire", "3-day streak", hasStreak(3)], ["⚡", "Week warrior", "7-day streak", hasStreak(7) || bestEver >= 7],
+      ["🌟", "Perfect day", "All habits in one day", perfectDays > 0], ["🏆", "Perfect x3", "3 perfect days", perfectDays >= 3],
+      ["🎯", "Level 5", "40 ticks", total >= 40], ["💯", "Centurion", "100 ticks", total >= 100]];
+    app.innerHTML = `
+      <h1>${esc(note.title)}</h1>
+      <div class="card hero">
+        <div class="ring"><svg viewBox="0 0 104 104" aria-hidden="true"><circle class="bg" cx="52" cy="52" r="44" fill="none" stroke-width="10"/><circle class="fg" cx="52" cy="52" r="44" fill="none" stroke-width="10" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - pct)}"/></svg><div class="mid" aria-label="${nd} of ${habits.length} done today">${nd}/${habits.length}</div></div>
+        <div class="msg"><div class="big">${big}</div><div class="small">${small}</div>
+          <div class="small">Level ${level} · ${total} ticks</div><div class="xp" role="img" aria-label="${into} of 10 ticks to next level"><div style="width:${into * 10}%"></div></div></div>
+      </div>
+      <h2>Today</h2>
+      <div class="tiles">${habits.map((h) => `
+        <button class="tile ${h.today ? "done" : ""}" data-h="${h.i}" aria-pressed="${h.today}">
+          <span class="emo" aria-hidden="true">${emoji(h.name)}</span>
+          <span class="nm">${esc(h.name)}<span class="st ${h.streak >= 3 ? "hot" : ""}">${h.streak ? `🔥 ${h.streak} day${h.streak > 1 ? "s" : ""} in a row` : "Start a streak today"}</span>
+            <span class="week" aria-hidden="true">${h.week.map((w) => `<i class="${w ? "on" : ""}"></i>`).join("")}</span></span>
+          <span class="chk">${tick}</span>
+        </button>`).join("")}</div>
+      <div class="err" role="alert">${esc(error)}</div>
+      <div class="cols"><div>
+      <h2>Last ${span === 28 ? "four" : "two"} weeks</h2>
+      <div class="card heat" role="img" aria-label="Habit history grid">
+        <div class="row" style="--days:${span}"><span></span>${days.map((d) => `<span class="dl">${"SMTWTFS"[new Date(d + "T12:00:00Z").getUTCDay()]}</span>`).join("")}</div>
+        ${habits.map((h) => `<div class="row" style="--days:${span}"><span class="h">${esc(h.name)}</span>${days.map((d) => `<span class="cell${done(d, h) ? " on" : ""}${d === today ? " today" : ""}"></span>`).join("")}</div>`).join("")}
+      </div></div><div>
+      <h2>Badges</h2>
+      <div class="badges">${badges.map(([e, t2, d, ok]) => `<div class="badge ${ok ? "" : "lock"}"><div class="e">${e}</div><div class="t">${t2}</div><div class="d">${ok ? "Unlocked!" : d}</div></div>`).join("")}</div>
+      </div></div>`;
+    app.querySelectorAll(".tile").forEach((b) => b.addEventListener("click", async () => {
+      const h = habits.find((x) => x.i === Number(b.dataset.h));
+      const rect = b.getBoundingClientRect();
+      const turningOn = !h.today;
+      if (turningOn) { celebrate = nd + 1 === habits.length; confetti(rect.left + rect.width - 30, rect.top + rect.height / 2); if (celebrate) setTimeout(() => confetti(innerWidth / 2, innerHeight / 3), 150); }
+      const row = by.get(today), value = turningOn ? "✓" : "";
+      const r = row
+        ? await amber.update({ op: "set_cell", table: t.index, row: row.i, col: h.name, value })
+        : await amber.update({ op: "append_row", table: t.index, values: { [t.columns[dc].name]: today, [h.name]: value } });
+      error = r.ok ? "" : r.error;
+      if (!r.ok) render(amber.note);
+    }));
+  }
+  amber.onChange(render);
+  let wide = innerWidth >= 900;
+  addEventListener("resize", () => { if ((innerWidth >= 900) !== wide) { wide = !wide; render(amber.note); } });
+</script>
+</body>
+</html>

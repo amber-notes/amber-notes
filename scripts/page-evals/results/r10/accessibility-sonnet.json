@@ -1,0 +1,393 @@
+{
+  "task": "accessibility",
+  "rep": 1,
+  "model": "claude-sonnet-5-5",
+  "round": "r10",
+  "skill": false,
+  "seconds": 54,
+  "score": 1,
+  "passed": 22,
+  "total": 22,
+  "checks": [
+    {
+      "name": "has_page",
+      "pass": true
+    },
+    {
+      "name": "server_checks",
+      "pass": true
+    },
+    {
+      "name": "no_console_errors",
+      "pass": true
+    },
+    {
+      "name": "no_network",
+      "pass": true
+    },
+    {
+      "name": "fits_phone",
+      "pass": true
+    },
+    {
+      "name": "fits_desktop",
+      "pass": true
+    },
+    {
+      "name": "uses_wide_window",
+      "pass": true
+    },
+    {
+      "name": "phone_targets",
+      "pass": true
+    },
+    {
+      "name": "no_junk_text",
+      "pass": true
+    },
+    {
+      "name": "no_clipped_text",
+      "pass": true
+    },
+    {
+      "name": "shows_data",
+      "pass": true
+    },
+    {
+      "name": "dark_mode",
+      "pass": true
+    },
+    {
+      "name": "light_contrast",
+      "pass": true
+    },
+    {
+      "name": "uses_theme",
+      "pass": true
+    },
+    {
+      "name": "labelled_controls",
+      "pass": true
+    },
+    {
+      "name": "edits_from_page",
+      "pass": true
+    },
+    {
+      "name": "title_once",
+      "pass": true
+    },
+    {
+      "name": "says_app",
+      "pass": true
+    },
+    {
+      "name": "prose_kept",
+      "pass": true
+    },
+    {
+      "name": "page_changed",
+      "pass": true
+    },
+    {
+      "name": "items_kept",
+      "pass": true
+    },
+    {
+      "name": "still_a_checklist",
+      "pass": true
+    }
+  ],
+  "tool_calls": 8,
+  "tool_errors": 0,
+  "usage": {
+    "input": 16,
+    "output": 4014,
+    "cacheRead": 174643,
+    "cacheWrite": 34681,
+    "turns": 7
+  },
+  "usd": 0.1618,
+  "page_bytes": 5668,
+  "data": null,
+  "answer": "I rebuilt the app on the Lisbon trip packing note's App side to work with VoiceOver, and it can now add items. `check_app` came back clean. I haven't tried it with VoiceOver myself.\n\n**Accessibility**\n- **Checkboxes:** each item is a real checkbox with its name as the label. Before, they were unlabelled boxes that VoiceOver couldn't read. Packed items are also struck through, so the state isn't shown by colour alone.\n- **Structure:** the note title is the main heading, and Clothes, Documents and Tech are headings with lists under them. Each heading also reads out how many items in it are packed. A line at the top gives the overall count (\"1 of 9 items packed\").\n- **Focus:** after you tick an item, focus stays on it instead of jumping away.\n- **Display:** touch targets are at least 44 pt, the focus outline is clear, text sizes follow the iPhone text-size setting, and it follows light and dark mode.\n\n**Adding items**\n- There's a labelled \"New item\" field, an \"Add to section\" menu and an \"Add item\" button.\n- New items go into the checklist you pick in the note.\n- A confirmation like \"Added Sunscreen to Clothes.\" is announced, or an error is if something fails. After a successful add, focus returns to the text field so you can add more.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Lisbon packing"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Lisbon packing\",\n  \"results\": [\n    {\n      \"id\": \"8c7d9649-c05a-4872-87e8-ec33a9db400b\",\n      \"title\": \"Lisbon trip packing\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T15:02:12.559Z\",\n      \"snippet\": \"«Lisbon» trip «packing» ## Clothes - [ ] T-shirts x4 - [ ] Linen shorts - [ ] Rain jacket - [x] Sneakers ## Documents - [ ] Passport - [ ] Boarding passes - [ ] Travel insurance card ## Tech - [ ] Phone charger - [ ] Adapter\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "get_page_guide",
+      "args": {},
+      "error": false,
+      "result": "{\n  \"guide\": \"# Building apps in Amber Notes notes\\n\\nA note can have an app: one HTML document shown on the note's App side, next to its Text side. A habit grid, a budget with totals, flashcards, a trip planner. In the tools it's called the note's page (set_note_page, get_note_page); when you talk to the person, call it \\\"the note's app\\\" or \\\"the App side\\\", and never \\\"page\\\" or \\\"Pages\\\".\\n\\nThe note's text stays the person's own data: they can always flip to Text and see and edit every row. The app reads it, changes it through checked edits, and keeps its own data (settings, logs, records… (25706 chars)"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "8c7d9649-c05a-4872-87e8-ec33a9db400b",
+        "line_numbers": "true"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"8c7d9649-c05a-4872-87e8-ec33a9db400b\",\n  \"title\": \"Lisbon trip packing\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T15:02:12.559Z\",\n  \"updated\": \"2026-10-05T15:02:12.559Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"has_page\": true,\n  \"outline\": {\n    \"headings\": [\n      {\n        \"line\": 3,\n        \"level\": 2,\n        \"text\": \"Clothes\"\n      },\n      {\n        \"line\": 9,\n        \"level\": 2,\n        \"text\": \"Documents\"\n      },\n      {\n        \"line\": 14,\n        \"level\": 2,\n        \"text\": \"Tech\"\n      }\n    ],\n    \"chec… (1019 chars)"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "8c7d9649-c05a-4872-87e8-ec33a9db400b"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"8c7d9649-c05a-4872-87e8-ec33a9db400b\",\n  \"title\": \"Lisbon trip packing\",\n  \"has_page\": true,\n  \"made_by\": \"Claude\",\n  \"updated\": \"2026-10-05T15:02:12.566Z\",\n  \"rules\": \"The page runs in Amber Notes in a sandbox with no network: no fetch, no external scripts, styles, fonts or images. Put all CSS and JS inline; images only as data: URIs or inline SVG.\\nRead the note from window.amber.note, never hardcode its contents (the note changes; the page must follow):\\n  amber.note = { title, markdown, today: \\\"yyyy-mm-dd\\\", tables: [{ index, columns: [{ name, type }], rows: [[cell, ...], ...] … (9459 chars)"
+    },
+    {
+      "name": "set_note_page",
+      "args": {
+        "id": "8c7d9649-c05a-4872-87e8-ec33a9db400b",
+        "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<style>\n*{box-sizing:border-box}\nmain{max-width:var(--amber-content-max);margin:0 auto;padding:20px var(--amber-gutter) 96px}\nh1{font-size:1.75rem;letter-spacing:-.02em… (5628 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"8c7d9649-c05a-4872-87e8-ec33a9db400b\",\n  \"title\": \"Lisbon trip packing\",\n  \"page\": \"replaced\",\n  \"bytes\": 5628,\n  \"note\": \"The person sees it on the note's App side (call it the note's app, not a page). The note's text is unchanged. The previous version is kept (get_note_page lists it). Next: run check_app and fix what it finds.\"\n}"
+    },
+    {
+      "name": "check_app",
+      "args": {
+        "id": "8c7d9649-c05a-4872-87e8-ec33a9db400b"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"8c7d9649-c05a-4872-87e8-ec33a9db400b\",\n    \"title\": \"Lisbon trip packing\"\n  },\n  \"ok\": false,\n  \"issues\": [\n    \"375-light: 1 text element(s) with contrast under 4.5:1 (\\\"Add item\\\").\",\n    \"768-light: 1 text element(s) with contrast under 4.5:1 (\\\"Add item\\\").\",\n    \"1280-light: 1 text element(s) with contrast under 4.5:1 (\\\"Add item\\\").\"\n  ],\n  \"browser_checked\": \"375 px light and dark, 768 and 1280 px light, over a sample note\",\n  \"next\": \"Fix these with edit_note_page (or set_note_page), then run check_app again.\"\n}"
+    },
+    {
+      "name": "edit_note_page",
+      "args": {
+        "id": "8c7d9649-c05a-4872-87e8-ec33a9db400b",
+        "edits": "[{\"old_text\":\"background:var(--amber-accent);color:var(--amber-on-accent);align-self\",\"new_text\":\"background:var(--amber-accent-soft);color:var(--amber-accent-text);border:2px solid var(--amber-accent-text);align-self\"},{\"old_text\":\"border:0;border-radius:var(--amber-radius-small);background:var(--a… (409 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"8c7d9649-c05a-4872-87e8-ec33a9db400b\",\n  \"title\": \"Lisbon trip packing\",\n  \"page\": \"replaced\",\n  \"bytes\": 5668,\n  \"note\": \"The person sees it on the note's App side (call it the note's app, not a page). The note's text is unchanged. The previous version is kept (get_note_page lists it). Next: run check_app and fix what it finds.\"\n}"
+    },
+    {
+      "name": "check_app",
+      "args": {
+        "id": "8c7d9649-c05a-4872-87e8-ec33a9db400b"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"8c7d9649-c05a-4872-87e8-ec33a9db400b\",\n    \"title\": \"Lisbon trip packing\"\n  },\n  \"ok\": true,\n  \"issues\": [],\n  \"browser_checked\": \"375 px light and dark, 768 and 1280 px light, over a sample note\",\n  \"next\": \"Nothing to fix.\"\n}"
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "375-light",
+        "width": 375,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 265,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 10,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r10/shots/accessibility-sonnet-375-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Lisbon trip packing",
+          "Clothes , 1 of 4 packed",
+          "Documents , 0 of 3 packed",
+          "Tech , 0 of 2 packed"
+        ],
+        "excerpt": "Lisbon trip packing 1 of 9 items packed Clothes , 1 of 4 packed T-shirts x4 Linen shorts Rain jacket Sneakers Documents , 0 of 3 packed Passport Boarding passes Travel insurance card Tech , 0 of 2 packed Phone charger Adapter (EU) New item Add to section Add item",
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.9146666666666666,
+        "canvases": 0,
+        "svgShapes": 0,
+        "gridCols": 0,
+        "frames": 0
+      },
+      {
+        "name": "375-dark",
+        "width": 375,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 265,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 10,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r10/shots/accessibility-sonnet-375-dark.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Lisbon trip packing",
+          "Clothes , 1 of 4 packed",
+          "Documents , 0 of 3 packed",
+          "Tech , 0 of 2 packed"
+        ],
+        "excerpt": "Lisbon trip packing 1 of 9 items packed Clothes , 1 of 4 packed T-shirts x4 Linen shorts Rain jacket Sneakers Documents , 0 of 3 packed Passport Boarding passes Travel insurance card Tech , 0 of 2 packed Phone charger Adapter (EU) New item Add to section Add item",
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.9146666666666666,
+        "canvases": 0,
+        "svgShapes": 0,
+        "gridCols": 0,
+        "frames": 0
+      },
+      {
+        "name": "768-light",
+        "width": 768,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 265,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 10,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r10/shots/accessibility-sonnet-768-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Lisbon trip packing",
+          "Clothes , 1 of 4 packed",
+          "Documents , 0 of 3 packed",
+          "Tech , 0 of 2 packed"
+        ],
+        "excerpt": "Lisbon trip packing 1 of 9 items packed Clothes , 1 of 4 packed T-shirts x4 Linen shorts Rain jacket Sneakers Documents , 0 of 3 packed Passport Boarding passes Travel insurance card Tech , 0 of 2 packed Phone charger Adapter (EU) New item Add to section Add item",
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.9300130208333334,
+        "canvases": 0,
+        "svgShapes": 0,
+        "gridCols": 0,
+        "frames": 0
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 265,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 10,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r10/shots/accessibility-sonnet-1280-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Lisbon trip packing",
+          "Clothes , 1 of 4 packed",
+          "Documents , 0 of 3 packed",
+          "Tech , 0 of 2 packed"
+        ],
+        "excerpt": "Lisbon trip packing 1 of 9 items packed Clothes , 1 of 4 packed T-shirts x4 Linen shorts Rain jacket Sneakers Documents , 0 of 3 packed Passport Boarding passes Travel insurance card Tech , 0 of 2 packed Phone charger Adapter (EU) New item Add to section Add item",
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.796875,
+        "canvases": 0,
+        "svgShapes": 0,
+        "gridCols": 3,
+        "frames": 0
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 265,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 10,
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Lisbon trip packing",
+          "Clothes , 1 of 4 packed",
+          "Documents , 0 of 3 packed",
+          "Tech , 0 of 2 packed"
+        ],
+        "excerpt": "Lisbon trip packing 1 of 9 items packed Clothes , 1 of 4 packed T-shirts x4 Linen shorts Rain jacket Sneakers Documents , 0 of 3 packed Passport Boarding passes Travel insurance card Tech , 0 of 2 packed Phone charger Adapter (EU) New item Add to section Add item",
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.796875,
+        "canvases": 0,
+        "svgShapes": 0,
+        "gridCols": 3,
+        "frames": 0
+      }
+    ],
+    "blocked": [],
+    "updates": [
+      {
+        "op": {
+          "op": "add_checklist_item",
+          "text": "Test entry",
+          "under_heading": "Clothes"
+        },
+        "ok": true
+      }
+    ],
+    "setData": 0,
+    "interaction": {
+      "tried": "form",
+      "ok": true,
+      "framesPerSecond": 0
+    },
+    "probes": {},
+    "dataAfter": {}
+  }
+}
