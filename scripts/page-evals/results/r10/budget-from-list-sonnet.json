@@ -62,7 +62,7 @@
       "pass": true
     },
     {
-      "name": "uses_theme",
+      "name": "themed",
       "pass": true
     },
     {
@@ -246,7 +246,12 @@
         "canvases": 0,
         "svgShapes": 0,
         "gridCols": 2,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0.0021726131729869072,
+          "tintedBg": false
+        }
       },
       {
         "name": "375-dark",
@@ -284,7 +289,12 @@
         "canvases": 0,
         "svgShapes": 0,
         "gridCols": 2,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 38,
+          "nonAmberVivid": 0.0021726131729869072,
+          "tintedBg": false
+        }
       },
       {
         "name": "768-light",
@@ -322,7 +332,12 @@
         "canvases": 0,
         "svgShapes": 0,
         "gridCols": 2,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0.0017873197386080214,
+          "tintedBg": false
+        }
       },
       {
         "name": "1280-light",
@@ -360,7 +375,12 @@
         "canvases": 0,
         "svgShapes": 0,
         "gridCols": 2,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0.003392295911764892,
+          "tintedBg": false
+        }
       },
       {
         "name": "1280-dark",
@@ -397,7 +417,12 @@
         "canvases": 0,
         "svgShapes": 0,
         "gridCols": 2,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 38,
+          "nonAmberVivid": 0.003392295911764892,
+          "tintedBg": false
+        }
       }
     ],
     "blocked": [],
@@ -436,7 +461,7 @@
       },
       "large": {
         "pass": true,
-        "detail": "581 ms to load 400 rows"
+        "detail": "598 ms to load 400 rows"
       }
     },
     "dataAfter": {}

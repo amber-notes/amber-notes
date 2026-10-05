@@ -232,7 +232,12 @@
         "canvases": 0,
         "svgShapes": 0,
         "gridCols": 0,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 31,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "375-dark",
@@ -267,7 +272,12 @@
         "canvases": 0,
         "svgShapes": 0,
         "gridCols": 0,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 38,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "768-light",
@@ -302,7 +312,12 @@
         "canvases": 0,
         "svgShapes": 0,
         "gridCols": 0,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 31,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "1280-light",
@@ -337,7 +352,12 @@
         "canvases": 0,
         "svgShapes": 0,
         "gridCols": 0,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 31,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "1280-dark",
@@ -371,7 +391,12 @@
         "canvases": 0,
         "svgShapes": 0,
         "gridCols": 0,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 38,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       }
     ],
     "blocked": [],
@@ -395,7 +420,7 @@
       },
       "large": {
         "pass": true,
-        "detail": "574 ms to load 400 rows"
+        "detail": "595 ms to load 400 rows"
       }
     },
     "dataAfter": {}

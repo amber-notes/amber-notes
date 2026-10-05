@@ -35,6 +35,9 @@
   .goal input { width: 64px; min-height: 40px; font: inherit; color: var(--ink); background: var(--field); border: 0; border-radius: 8px; padding: 6px 8px; text-align: center; }
   .err { color: var(--amber-danger); min-height: 1.2em; margin: 8px 4px; }
   .empty { padding: 28px 16px; text-align: center; color: var(--muted); }
+  /* This app's own look (garden green); Amber's tokens fill in the rest. */
+  :root { --accent: #2f7d4f; --accent-ink: #ffffff; --soft: #dff1e6; --card: #f1f6f2; --empty: #e1eae3; --field: #e6eee8; }
+  @media (prefers-color-scheme: dark) { :root { --accent: #5ccf8a; --accent-ink: #0e2318; --soft: #1d3a2a; --card: #1a221d; --empty: #2a332d; --field: #26302a; } }
 </style>
 </head>
 <body>

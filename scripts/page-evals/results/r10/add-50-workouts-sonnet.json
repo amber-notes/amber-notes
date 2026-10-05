@@ -117,7 +117,12 @@
         "canvases": 0,
         "svgShapes": 0,
         "gridCols": 0,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": null,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "375-dark",
@@ -152,7 +157,12 @@
         "canvases": 0,
         "svgShapes": 0,
         "gridCols": 0,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": null,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "768-light",
@@ -187,7 +197,12 @@
         "canvases": 0,
         "svgShapes": 0,
         "gridCols": 0,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": null,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "1280-light",
@@ -222,7 +237,12 @@
         "canvases": 0,
         "svgShapes": 0,
         "gridCols": 0,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": null,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "1280-dark",
@@ -256,7 +276,12 @@
         "canvases": 0,
         "svgShapes": 0,
         "gridCols": 0,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": null,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       }
     ],
     "blocked": [],
@@ -273,7 +298,7 @@
       },
       "large": {
         "pass": true,
-        "detail": "574 ms to load 400 rows"
+        "detail": "601 ms to load 400 rows"
       }
     },
     "dataAfter": {}

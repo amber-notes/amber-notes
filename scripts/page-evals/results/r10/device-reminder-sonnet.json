@@ -62,7 +62,7 @@
       "pass": true
     },
     {
-      "name": "uses_theme",
+      "name": "themed",
       "pass": true
     },
     {
@@ -210,7 +210,12 @@
         "canvases": 0,
         "svgShapes": 0,
         "gridCols": 2,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "375-dark",
@@ -249,7 +254,12 @@
         "canvases": 0,
         "svgShapes": 0,
         "gridCols": 2,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 37,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "768-light",
@@ -290,7 +300,12 @@
         "canvases": 0,
         "svgShapes": 0,
         "gridCols": 2,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "1280-light",
@@ -331,7 +346,12 @@
         "canvases": 0,
         "svgShapes": 0,
         "gridCols": 2,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "1280-dark",
@@ -369,7 +389,12 @@
         "canvases": 0,
         "svgShapes": 0,
         "gridCols": 2,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 37,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       }
     ],
     "blocked": [],

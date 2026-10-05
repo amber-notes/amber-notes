@@ -37,6 +37,10 @@
   .err { color: var(--amber-danger); padding: 0 16px 12px; min-height: 1em; }
   .empty { padding: 24px 16px; text-align: center; color: var(--muted); }
   select { -webkit-appearance: none; appearance: none; padding-right: 28px; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: right 14px center, right 9px center; background-size: 5px 5px; background-repeat: no-repeat; }
+  /* This app's own look (a bookshop: paper, oxblood and a serif); Amber's tokens fill in the rest. */
+  :root { --accent: #7a2e2e; --accent-ink: #ffffff; --card: #f7f1e6; --star: #9a6b00; --field: #efe6d6; --line: rgba(90,60,30,.18); }
+  @media (prefers-color-scheme: dark) { :root { --accent: #e8a0a0; --accent-ink: #2a0d0d; --card: #24201b; --star: #f2c14e; --field: #2f2a23; --line: rgba(255,235,210,.14); } }
+  h1, .book .t, .stat b { font-family: ui-serif, 'New York', Georgia, serif; }
 </style>
 </head>
 <body>

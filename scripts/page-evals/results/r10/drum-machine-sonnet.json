@@ -5,9 +5,9 @@
   "round": "r10",
   "skill": false,
   "seconds": 78,
-  "score": 1,
+  "score": 0.9583333333333334,
   "passed": 23,
-  "total": 23,
+  "total": 24,
   "checks": [
     {
       "name": "has_page",
@@ -58,8 +58,13 @@
       "pass": true
     },
     {
-      "name": "uses_theme",
+      "name": "themed",
       "pass": true
+    },
+    {
+      "name": "distinct_look",
+      "pass": false,
+      "detail": "accent hue 28, 0% non-amber color"
     },
     {
       "name": "labelled_controls",
@@ -245,7 +250,12 @@
         "canvases": 0,
         "svgShapes": 1,
         "gridCols": 4,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "375-dark",
@@ -283,7 +293,12 @@
         "canvases": 0,
         "svgShapes": 1,
         "gridCols": 4,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 38,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "768-light",
@@ -327,7 +342,12 @@
         "canvases": 0,
         "svgShapes": 1,
         "gridCols": 16,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "1280-light",
@@ -365,7 +385,12 @@
         "canvases": 0,
         "svgShapes": 1,
         "gridCols": 16,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       },
       {
         "name": "1280-dark",
@@ -402,7 +427,12 @@
         "canvases": 0,
         "svgShapes": 1,
         "gridCols": 16,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 38,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
       }
     ],
     "blocked": [],
@@ -515,7 +545,7 @@
     "interaction": {
       "tried": "control",
       "ok": true,
-      "framesPerSecond": 60
+      "framesPerSecond": 30
     },
     "probes": {
       "empty": {
@@ -524,7 +554,7 @@
       },
       "large": {
         "pass": true,
-        "detail": "578 ms to load 400 rows"
+        "detail": "604 ms to load 400 rows"
       }
     },
     "dataAfter": {}

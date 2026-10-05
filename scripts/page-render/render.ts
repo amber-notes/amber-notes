@@ -175,6 +175,7 @@ export type View = {
   unnamedControls: string[]; smallTargets: number; screenshot?: string;
   smallText: string[]; smallTextCount: number; faintText: string[]; faintCount: number; headings: string[]; excerpt: string; png?: string;
   junk: string[]; under44: string[]; under44Count: number; clipped: string[]; clippedCount: number; usedWidth: number; canvases: number; svgShapes: number; gridCols: number; frames: number;
+  look: { accentHue: number | null; nonAmberVivid: number; tintedBg: boolean };
 };
 export type Render = {
   views: View[]; blocked: string[]; updates: { op: unknown; ok: boolean; error?: string }[]; setData: number;
@@ -330,6 +331,46 @@ async function renderOnce(html: string, markdown: string, data: unknown, opts: R
         left = Math.min(left, r.left); right = Math.max(right, r.right);
       }
       const used = right > left ? (right - left) / window.innerWidth : 0;
+      // The look: colors by the area they cover (backgrounds) and by text, to tell an app with its
+      // own palette from one in the default amber and beige.
+      const rgb = (c: string) => (c.match(/[\d.]+/g) ?? []).map(Number);
+      const hsl = ([r, g, b]: number[]) => { r /= 255; g /= 255; b /= 255; const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn; if (!d) return [0, 0, l]; const s2 = d / (1 - Math.abs(2 * l - 1)); const h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; return [(h * 60 + 360) % 360, s2, l]; };
+      const area = new Map<string, number>();
+      for (const el of document.querySelectorAll("body *")) {
+        if (!visible(el)) continue;
+        const st = getComputedStyle(el);
+        const r = el.getBoundingClientRect();
+        const bgc = st.backgroundColor;
+        const v = rgb(bgc);
+        if (v.length >= 3 && (v[3] === undefined || v[3] > 0.3)) area.set(bgc, (area.get(bgc) ?? 0) + r.width * r.height);
+        if ([...el.childNodes].some((n) => n.nodeType === 3 && n.textContent!.trim())) area.set(st.color, (area.get(st.color) ?? 0) + r.width * r.height * 0.05);
+      }
+      // Drawn colors too: SVG fills and strokes, and a sample of each canvas's pixels.
+      for (const el of document.querySelectorAll("svg path, svg rect, svg circle, svg line, svg polyline, svg polygon, svg ellipse")) {
+        if (!visible(el)) continue;
+        const st = getComputedStyle(el), r = el.getBoundingClientRect(), a2 = Math.max(4, r.width * r.height * 0.3);
+        for (const c of [st.fill, st.stroke]) if (/^rgb/.test(c)) area.set(c, (area.get(c) ?? 0) + a2);
+      }
+      for (const cv of document.querySelectorAll("canvas")) {
+        if (!visible(cv)) continue;
+        try {
+          const g = (cv as HTMLCanvasElement).getContext("2d");
+          if (!g) continue;
+          const { width: w, height: h } = cv as HTMLCanvasElement;
+          const r = cv.getBoundingClientRect();
+          for (let k = 0; k < 300; k++) {
+            const px = g.getImageData(Math.floor(((k * 37) % 100) / 100 * w), Math.floor(((k * 61) % 100) / 100 * h), 1, 1).data;
+            if (px[3] < 128) continue;
+            const c = `rgb(${px[0]}, ${px[1]}, ${px[2]})`;
+            area.set(c, (area.get(c) ?? 0) + (r.width * r.height) / 300);
+          }
+        } catch { /* a WebGL canvas: not readable this way */ }
+      }
+      const total = [...area.values()].reduce((x, y) => x + y, 0) || 1;
+      const colors = [...area].map(([c, a]) => { const [h, s2, l] = hsl(rgb(c)); return { c, share: a / total, h, s: s2, l }; }).sort((x, y) => y.share - x.share);
+      const vivid = colors.filter((x) => x.s > 0.3 && x.l > 0.12 && x.l < 0.9);
+      const amberish = (x: { h: number }) => x.h >= 15 && x.h <= 45;
+      const look = { accentHue: vivid[0] ? Math.round(vivid[0].h) : null, nonAmberVivid: vivid.filter((x) => !amberish(x)).reduce((t, x) => t + x.share, 0), tintedBg: colors.filter((x) => x.share > 0.1 && x.s > 0.12 && !amberish(x)).length > 0 };
       // What kind of layout: canvas, drawn SVG, multi-column grids, or a stack of rows.
       const canvases = [...document.querySelectorAll("canvas")].filter(visible).length + [...document.querySelectorAll("img, svg")].filter((el) => { const r = el.getBoundingClientRect(); return visible(el) && r.width >= 120 && r.height >= 120; }).length;
       const svgShapes = [...document.querySelectorAll("svg path, svg rect, svg circle, svg line, svg polyline, svg polygon, svg ellipse")].filter(visible).length;
@@ -346,7 +387,7 @@ async function renderOnce(html: string, markdown: string, data: unknown, opts: R
         // Values a script showed by mistake: an unawaited promise, an object, undefined, NaN.
         junk: [...new Set((text.match(/\[object (Promise|Object)\]|\bundefined\b|\bNaN\b|Invalid Date/g) ?? []))],
         under44: under44.slice(0, 5), under44Count: under44.length, clipped: clipped.slice(0, 5), clippedCount: clipped.length, used,
-        canvases, svgShapes, gridCols, frames: (window as any).__frames as number,
+        canvases, svgShapes, gridCols, frames: (window as any).__frames as number, look,
         smallText: smallText.slice(0, 5), smallTextCount: smallText.length, faint: faint.slice(0, 5), faintCount: faint.length,
         headings: [...document.querySelectorAll("h1, h2, h3, [role=heading]")].filter(visible).map((h) => (h.textContent ?? "").trim().slice(0, 80)).slice(0, 12),
         excerpt: text.replace(/\s+/g, " ").trim().slice(0, 500),
@@ -354,7 +395,7 @@ async function renderOnce(html: string, markdown: string, data: unknown, opts: R
         shown: want.filter((w) => flat.includes(w.toLowerCase().replace(/\s+/g, " ")) || (/^[\d\s.,\u00a0]+$/.test(w) && flat.replace(/[\s,\u00a0\u202f]/g, "").includes(w.replace(/[\s,\u00a0]/g, "")))).length,
         bg, fg: bodyStyle.color, unnamed, small,
       };
-    }, want).catch((e) => ({ overflow: 0, textLength: 0, shown: 0, bg: "rgb(255,255,255)", fg: "rgb(0,0,0)", unnamed: [] as string[], small: 0, smallText: [] as string[], smallTextCount: 0, faint: [] as string[], faintCount: 0, headings: [] as string[], excerpt: "", junk: [] as string[], under44: [] as string[], under44Count: 0, clipped: [] as string[], clippedCount: 0, used: 0, canvases: 0, svgShapes: 0, gridCols: 0, frames: 0, err: String(e) }));
+    }, want).catch((e) => ({ overflow: 0, textLength: 0, shown: 0, bg: "rgb(255,255,255)", fg: "rgb(0,0,0)", unnamed: [] as string[], small: 0, smallText: [] as string[], smallTextCount: 0, faint: [] as string[], faintCount: 0, headings: [] as string[], excerpt: "", junk: [] as string[], under44: [] as string[], under44Count: 0, clipped: [] as string[], clippedCount: 0, used: 0, canvases: 0, svgShapes: 0, gridCols: 0, frames: 0, look: { accentHue: null as number | null, nonAmberVivid: 0, tintedBg: false }, err: String(e) }));
     let shot: string | undefined;
     if (opts.shots && (width < 600 || scheme === "light")) {
       shot = `${opts.shots}-${width}-${scheme}.png`;
@@ -369,7 +410,7 @@ async function renderOnce(html: string, markdown: string, data: unknown, opts: R
     views.push({ name: `${widget ? "widget" : width}-${scheme}`, width, scheme, errors, overflowPx: m.overflow, textLength: m.textLength, shown: m.shown, sampled: want.length,
       bg: m.bg, fg: m.fg, contrast: contrastOf(m.bg, m.fg), bgLuminance: lum(m.bg), unnamedControls: m.unnamed, smallTargets: m.small, screenshot: shot,
       smallText: m.smallText, smallTextCount: m.smallTextCount, faintText: m.faint, faintCount: m.faintCount, headings: m.headings, excerpt: m.excerpt,
-      junk: m.junk, under44: m.under44, under44Count: m.under44Count, clipped: m.clipped, clippedCount: m.clippedCount, usedWidth: m.used, canvases: m.canvases, svgShapes: m.svgShapes, gridCols: m.gridCols, frames: m.frames, ...(png ? { png } : {}) });
+      junk: m.junk, under44: m.under44, under44Count: m.under44Count, clipped: m.clipped, clippedCount: m.clippedCount, usedWidth: m.used, canvases: m.canvases, svgShapes: m.svgShapes, gridCols: m.gridCols, frames: m.frames, look: m.look, ...(png ? { png } : {}) });
 
     await page.context().close();
   }

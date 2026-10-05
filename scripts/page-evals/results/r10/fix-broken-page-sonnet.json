@@ -219,7 +219,12 @@
         "canvases": 0,
         "svgShapes": 0,
         "gridCols": 2,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0.0016115355551315276,
+          "tintedBg": false
+        }
       },
       {
         "name": "375-dark",
@@ -257,7 +262,12 @@
         "canvases": 0,
         "svgShapes": 0,
         "gridCols": 2,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 38,
+          "nonAmberVivid": 0.0016115355551315276,
+          "tintedBg": false
+        }
       },
       {
         "name": "768-light",
@@ -295,7 +305,12 @@
         "canvases": 0,
         "svgShapes": 0,
         "gridCols": 2,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0.0013945715691942137,
+          "tintedBg": false
+        }
       },
       {
         "name": "1280-light",
@@ -333,7 +348,12 @@
         "canvases": 0,
         "svgShapes": 0,
         "gridCols": 2,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0.0013945715691942137,
+          "tintedBg": false
+        }
       },
       {
         "name": "1280-dark",
@@ -370,7 +390,12 @@
         "canvases": 0,
         "svgShapes": 0,
         "gridCols": 2,
-        "frames": 0
+        "frames": 0,
+        "look": {
+          "accentHue": 38,
+          "nonAmberVivid": 0.0013945715691942137,
+          "tintedBg": false
+        }
       }
     ],
     "blocked": [],
@@ -394,7 +419,7 @@
       },
       "large": {
         "pass": true,
-        "detail": "596 ms to load 400 rows"
+        "detail": "605 ms to load 400 rows"
       }
     },
     "dataAfter": {}

@@ -43,7 +43,14 @@ function generic(task: Task, f: Final, r: Render | undefined, pageProblems: (htm
   c("dark_mode", dark.bgLuminance < 0.2 && dark.contrast >= 4.5, `dark bg ${dark.bg}, text ${dark.fg}, contrast ${dark.contrast.toFixed(1)}`);
   c("light_contrast", light.contrast >= 4.5, `contrast ${light.contrast.toFixed(1)}`);
   // Only pages the model wrote whole; a small edit to an older page keeps its colors.
-  if (!f.pageBefore || f.calls.some((k) => k.name === "set_note_page" && !k.error)) c("uses_theme", /var\(--amber-(bg|surface|fill|text|accent|separator)/.test(f.page), "doesn't use the app's --amber-* variables");
+  // Colors that follow dark mode: the app's --amber-* tokens, or its own with a dark variant.
+  if (!f.pageBefore || f.calls.some((k) => k.name === "set_note_page" && !k.error)) c("themed", /var\(--amber-(bg|surface|fill|text|accent|separator)/.test(f.page) || /prefers-color-scheme\s*:\s*dark/.test(f.page), "neither the --amber-* tokens nor its own dark-mode colors");
+  // A look of its own: an accent that isn't amber, or a background that isn't beige (for apps
+  // where the look is part of the job).
+  if (task.varied) {
+    const lk = r.views.find((v) => v.width >= 1000 && v.scheme === "light")?.look ?? r.views[0]?.look;
+    if (lk) c("distinct_look", lk.nonAmberVivid >= 0.03 || lk.tintedBg, `accent hue ${lk.accentHue ?? "none"}, ${Math.round(lk.nonAmberVivid * 100)}% non-amber color`);
+  }
   c("labelled_controls", light.unnamedControls.length === 0, `${light.unnamedControls.length} unnamed: ${light.unnamedControls.slice(0, 2).join(" ")}`);
   if (task.interact) c("edits_from_page", r.interaction.ok === true, `${r.interaction.tried}: ${r.interaction.error ?? "no form or control"}`);
   // The app owns the note's title: its first heading, shown once.

@@ -100,11 +100,13 @@ Names, goals, limits, currencies, categories, the list of habits to track: decla
 - Things the person should be able to change without you (a budget limit, a goal, their name, categories, a currency) are settings: declare them in <meta name="amber-settings"> and read amber.settings. Amber Notes shows them under App Settings.
 - Put data into the app's store from here with update_page_data (values, add, update, remove, import, files); query it with get_page_data (a collection, a where, a limit).
 
-## Design: Amber's theme is the base, not a cage
+## Design: each app has its own look
 
-Every app should look like it was made for what it does. A tracker, a game, a calculator, a planner and a music toy want different layouts; don't default to a card with a list.
+Every app should look like it was made for what it does, in form and in character. A reading log can feel like a bookshop, a water tracker cool and blue, a game bold, a budget calm and precise. Amber's tokens are the fallback when you have no better idea, not the default look.
 
-- Keep the base: text, background and accent from the --amber-* variables (listed in the contract above), so the app sits in Amber Notes and follows dark mode. Don't set a background on html or body. Surfaces, radius and fonts are defaults you may leave: a game board, a big dial, a full-bleed chart, a calendar wall or a keypad can have their own shapes, sizes and extra colors (give extra colors a dark variant in @media (prefers-color-scheme: dark)).
+- Pick a palette for the app: a background tint or none, one accent, and one or two supporting colors that suit its subject. Pick type that suits it too: size, weight, rounded (--amber-font-rounded) or mono (--amber-font-mono) where it fits, generous or dense spacing. Shapes can be your own: big dials, full-bleed bands, a board, a shelf of spines.
+- Readable and dark mode, always: body text at 4.5:1 contrast or better against what's behind it, in light and dark. Define your colors as CSS variables on :root and give each a dark variant in @media (prefers-color-scheme: dark) (lighter accents, deeper backgrounds). Test both; check_app measures contrast in both.
+- Don't set a background on html or body (the note's background shows there); put your background on the app's own container. --amber-text, --amber-bg and the rest stay useful as a base and for anything you don't restyle.
 - Pick the form from the job. A habit tracker can be a wall of days, a garden that grows, or a ring per habit. A budget can be a dial or a stacked bar over the month. A calculator is a keypad with a big display. A vocabulary note can be a game. Use type scale, space, grids, canvas and SVG, with motion where it explains something.
 - Still: one clear focus first, then details. Readable text (at least 12 px, contrast 4.5:1), tabular-nums for numbers, no emoji as icons (inline SVG), no motion that loops for nothing; respect prefers-reduced-motion.
 - Accessibility: real <button>s and <input>s; every input has a <label> (or aria-label); icon-only buttons have aria-label; state that is shown by color is also shown another way; canvas and SVG views get role="img" and an aria-label, or a text equivalent; lang on <html>.

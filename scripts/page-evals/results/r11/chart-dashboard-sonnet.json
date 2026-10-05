@@ -6,8 +6,8 @@
   "skill": false,
   "seconds": 45,
   "score": 1,
-  "passed": 26,
-  "total": 26,
+  "passed": 27,
+  "total": 27,
   "checks": [
     {
       "name": "has_page",
@@ -62,7 +62,11 @@
       "pass": true
     },
     {
-      "name": "uses_theme",
+      "name": "themed",
+      "pass": true
+    },
+    {
+      "name": "distinct_look",
       "pass": true
     },
     {
@@ -216,7 +220,12 @@
         "canvases": 3,
         "svgShapes": 0,
         "gridCols": 2,
-        "frames": 30
+        "frames": 18,
+        "look": {
+          "accentHue": 32,
+          "nonAmberVivid": 0.029643037400864172,
+          "tintedBg": false
+        }
       },
       {
         "name": "375-dark",
@@ -256,7 +265,12 @@
         "canvases": 3,
         "svgShapes": 0,
         "gridCols": 2,
-        "frames": 30
+        "frames": 17,
+        "look": {
+          "accentHue": 35,
+          "nonAmberVivid": 0.029643037400864172,
+          "tintedBg": false
+        }
       },
       {
         "name": "768-light",
@@ -296,7 +310,12 @@
         "canvases": 3,
         "svgShapes": 0,
         "gridCols": 2,
-        "frames": 30
+        "frames": 17,
+        "look": {
+          "accentHue": 32,
+          "nonAmberVivid": 0.028046994181417328,
+          "tintedBg": false
+        }
       },
       {
         "name": "1280-light",
@@ -336,7 +355,12 @@
         "canvases": 3,
         "svgShapes": 0,
         "gridCols": 4,
-        "frames": 29
+        "frames": 17,
+        "look": {
+          "accentHue": 32,
+          "nonAmberVivid": 0.030094655100863066,
+          "tintedBg": false
+        }
       },
       {
         "name": "1280-dark",
@@ -375,7 +399,12 @@
         "canvases": 3,
         "svgShapes": 0,
         "gridCols": 4,
-        "frames": 29
+        "frames": 18,
+        "look": {
+          "accentHue": 35,
+          "nonAmberVivid": 0.0295535279437359,
+          "tintedBg": false
+        }
       }
     ],
     "blocked": [],
@@ -399,7 +428,7 @@
       },
       "large": {
         "pass": true,
-        "detail": "614 ms to load 400 rows"
+        "detail": "669 ms to load 400 rows"
       }
     },
     "dataAfter": {}

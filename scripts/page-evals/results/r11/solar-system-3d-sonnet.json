@@ -6,8 +6,8 @@
   "skill": false,
   "seconds": 98,
   "score": 1,
-  "passed": 26,
-  "total": 26,
+  "passed": 27,
+  "total": 27,
   "checks": [
     {
       "name": "has_page",
@@ -58,7 +58,11 @@
       "pass": true
     },
     {
-      "name": "uses_theme",
+      "name": "themed",
+      "pass": true
+    },
+    {
+      "name": "distinct_look",
       "pass": true
     },
     {
@@ -229,7 +233,12 @@
         "canvases": 1,
         "svgShapes": 0,
         "gridCols": 0,
-        "frames": 25
+        "frames": 13,
+        "look": {
+          "accentHue": 229,
+          "nonAmberVivid": 0.0334732862204296,
+          "tintedBg": true
+        }
       },
       {
         "name": "375-dark",
@@ -265,7 +274,12 @@
         "canvases": 1,
         "svgShapes": 0,
         "gridCols": 0,
-        "frames": 26
+        "frames": 14,
+        "look": {
+          "accentHue": 229,
+          "nonAmberVivid": 0.0334732862204296,
+          "tintedBg": true
+        }
       },
       {
         "name": "768-light",
@@ -301,7 +315,12 @@
         "canvases": 1,
         "svgShapes": 0,
         "gridCols": 0,
-        "frames": 26
+        "frames": 14,
+        "look": {
+          "accentHue": 229,
+          "nonAmberVivid": 0.015522073669946738,
+          "tintedBg": true
+        }
       },
       {
         "name": "1280-light",
@@ -337,7 +356,12 @@
         "canvases": 1,
         "svgShapes": 0,
         "gridCols": 0,
-        "frames": 26
+        "frames": 14,
+        "look": {
+          "accentHue": 229,
+          "nonAmberVivid": 0.010937555597701935,
+          "tintedBg": true
+        }
       },
       {
         "name": "1280-dark",
@@ -372,7 +396,12 @@
         "canvases": 1,
         "svgShapes": 0,
         "gridCols": 0,
-        "frames": 26
+        "frames": 14,
+        "look": {
+          "accentHue": 229,
+          "nonAmberVivid": 0.010937555597701935,
+          "tintedBg": true
+        }
       }
     ],
     "blocked": [],
@@ -381,7 +410,7 @@
     "interaction": {
       "tried": "control",
       "ok": false,
-      "framesPerSecond": 61,
+      "framesPerSecond": 30,
       "error": "no control sent an edit"
     },
     "probes": {
@@ -398,7 +427,7 @@
       },
       "large": {
         "pass": true,
-        "detail": "616 ms to load 400 rows"
+        "detail": "683 ms to load 400 rows"
       }
     },
     "dataAfter": {}

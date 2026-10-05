@@ -34,6 +34,9 @@
   .err { color: var(--amber-danger); padding: 0 16px 12px; min-height: 1em; }
   .empty { padding: 24px 16px; text-align: center; color: var(--muted); }
   select { -webkit-appearance: none; appearance: none; padding-right: 28px; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: right 14px center, right 9px center; background-size: 5px 5px; background-repeat: no-repeat; }
+  /* This app's own look (track teal); Amber's tokens fill in the rest. */
+  :root { --accent: #0f766e; --accent-ink: #ffffff; --soft: #d5f0ec; --card: #eef6f5; --field: #e2efed; }
+  @media (prefers-color-scheme: dark) { :root { --accent: #2dd4bf; --accent-ink: #05201d; --soft: #123331; --card: #16201f; --field: #1f2b2a; } }
 </style>
 </head>
 <body>

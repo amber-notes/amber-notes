@@ -30,6 +30,9 @@
   .bar { height: 6px; border-radius: 3px; background: var(--field); overflow: hidden; margin: 0 4px 8px; }
   .bar div { height: 100%; background: var(--accent); }
   .err { color: var(--amber-danger); min-height: 1em; margin: 8px 4px; }
+  /* This app's own look (ocean blue); Amber's tokens fill in the rest. */
+  :root { --accent: #0369a1; --accent-ink: #ffffff; --soft: #dbeef8; --card: #eff6fa; --field: #e3eef5; }
+  @media (prefers-color-scheme: dark) { :root { --accent: #7cc4ee; --accent-ink: #05243a; --soft: #14304a; --card: #16212a; --field: #1f2c36; } }
 </style>
 </head>
 <body>

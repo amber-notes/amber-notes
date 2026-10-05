@@ -30,6 +30,10 @@
   .err { color: var(--amber-danger); min-height: 1em; margin: 8px 4px; }
   .empty { padding: 28px 16px; text-align: center; color: var(--muted); background: var(--card); border-radius: var(--amber-radius); border: 1px solid var(--line); }
   @media (prefers-reduced-motion: no-preference) { .flip { transition: transform .15s; } .flip:active { transform: scale(.98); } }
+  /* This app's own look (violet); Amber's tokens fill in the rest. */
+  :root { --accent: #6d28d9; --accent-ink: #ffffff; --card: #f5f2fb; --field: #ebe5f7; }
+  @media (prefers-color-scheme: dark) { :root { --accent: #c4a5ff; --accent-ink: #1e0f3d; --card: #1e1a27; --field: #2a2436; } }
+  .flip .word { font-family: var(--amber-font-rounded); }
 </style>
 </head>
 <body>

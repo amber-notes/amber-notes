@@ -10,7 +10,7 @@ export function pageWarnings(html: string, body?: string): string[] {
   const js = [...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/gi)].map((m) => m[1]).join("\n");
 
   const themed = /var\(--amber-/.test(html);
-  if (!themed) out.push("The app doesn't use the app's --amber-* variables (--amber-surface, --amber-text, --amber-accent…): it won't look like Amber Notes or follow dark mode.");
+  if (!themed && !/prefers-color-scheme\s*:\s*dark/i.test(html)) out.push("The app uses neither the --amber-* variables nor colors of its own with a dark variant (@media (prefers-color-scheme: dark)): it won't follow dark mode.");
   else {
     // Fixed colors in a themed page break dark mode unless they have a dark variant.
     const fixed = [...css.matchAll(/(?:^|[;{\s])(color|background(?:-color)?)\s*:\s*(#[0-9a-f]{3,8}\b|white|black|rgb\([^)]*\))/gi)].map((m) => `${m[1]}: ${m[2]}`);
