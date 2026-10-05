@@ -47,7 +47,7 @@ rm -f "$(xcrun simctl get_app_container "$S" dev.emilwagman.pane data)/Documents
 xcrun simctl io "$S" recordVideo --codec h264 --force "$OUT/share.mp4" 2>/dev/null &
 REC=$!
 sleep 1.5
-xcrun simctl launch "$S" dev.emilwagman.pane -uitest -demo -collabRelay "http://127.0.0.1:$PORT" -collab emil -collabName "Emil Wagman" \
+xcrun simctl launch "$S" dev.emilwagman.pane -uitest -demo -collabRelay "http://127.0.0.1:$PORT" -collab emil -collabName "Emil Wagman" -collabPhoto "$PWD/web/public/emil-wagman.jpg" \
   -collabScript share -collabPage "$PWD/demo/collab/habit-tracker.html" -shareSite "$SITE" >/dev/null
 DATA=$(xcrun simctl get_app_container "$S" dev.emilwagman.pane data)
 for i in {1..80}; do grep -q "^template " "$DATA/Documents/share-demo.txt" 2>/dev/null && break; sleep 0.5; done

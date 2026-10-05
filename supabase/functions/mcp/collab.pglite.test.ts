@@ -208,6 +208,7 @@ Deno.test("a shared template is public, carries key names but never key values, 
   assertEquals(row.template.needs.keys[0].name, "Strava API key");
   const leaky = { ...t, needs: { keys: [{ name: "Strava API key", host: "www.strava.com", value: "sk_live_123" }] } };
   await refused(app(pg, emil.id, `select public.publish_template('AbCdEfGhIjKlMnOq', $1, 'Emil', $2)`, [crypto.randomUUID(), JSON.stringify(leaky)]), "never carries");
+  await refused(app(pg, emil.id, `select public.publish_template('AbCdEfGhIjKlMnOs', $1, 'Emil', $2)`, [crypto.randomUUID(), JSON.stringify({ ...t, sample: "Habit tracker\n| 2026-10-05 | ✓ |" })]), "no rows");
   const sneaky = { ...t, needs: { keys: [{ name: "Strava API key", value: "sk_live_123" }] } };
   await refused(app(pg, emil.id, `select public.publish_template('AbCdEfGhIjKlMnOr', $1, 'Emil', $2)`, [crypto.randomUUID(), JSON.stringify(sneaky)]), "never carries");
   await app(pg, emil.id, `select public.stop_template($1)`, [note]);

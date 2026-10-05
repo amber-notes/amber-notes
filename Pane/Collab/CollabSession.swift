@@ -37,6 +37,8 @@ final class CollabSession {
         var role: String
         var publicKey: Data?
         var accepted: Bool
+        /// Their profile photo's name (profiles.avatar_path), when they have one.
+        var avatarPath: String? = nil
     }
 
     let noteID: UUID
@@ -151,7 +153,7 @@ final class CollabSession {
     func refreshMembers() async {
         guard let rows = try? await relay.rpc("collab_members", [noteID.uuidString.lowercased()], as: [CollabRelay.Member].self) else { return }
         members = rows.map { Member(id: $0.user_id, name: $0.display_name ?? "Someone", role: $0.role,
-                                    publicKey: $0.public_key.flatMap { Data(base64Encoded: $0) }, accepted: $0.accepted) }
+                                    publicKey: $0.public_key.flatMap { Data(base64Encoded: $0) }, accepted: $0.accepted, avatarPath: $0.avatar_path) }
     }
 
     private func catchUp() async {

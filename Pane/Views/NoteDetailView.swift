@@ -567,6 +567,7 @@ private struct CollabWiring: ViewModifier {
                 while !Task.isCancelled {
                     session.selectionChanged(controller.isEditing ? controller.target?.currentSelection : nil)
                     controller.remoteCarets = session.remoteCarets
+                    CollabStore.shared?.loadPhotos(session)
                     try? await Task.sleep(for: .seconds(0.1))
                 }
             }

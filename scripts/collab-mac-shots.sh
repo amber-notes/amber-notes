@@ -7,7 +7,7 @@ cd "$(dirname "$0")/.."
 OUT=${1:-$PWD/.shots/collab-mac}; [[ $OUT = /* ]] || OUT=$PWD/$OUT
 rm -rf "$OUT" && mkdir -p "$OUT"
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
-TEST_RUNNER_AMBER_COLLAB_MAC="$OUT" nice -n 10 xcodebuild -project Pane.xcodeproj -scheme Pane -configuration Debug -destination 'platform=macOS' \
+TEST_RUNNER_AMBER_COLLAB_MAC="$OUT" TEST_RUNNER_AMBER_COLLAB_PHOTO="$PWD/web/public/emil-wagman.jpg" nice -n 10 xcodebuild -project Pane.xcodeproj -scheme Pane -configuration Debug -destination 'platform=macOS' \
   -derivedDataPath build/ddqa ENABLE_TESTABILITY=YES ENABLE_HARDENED_RUNTIME=NO ONLY_ACTIVE_ARCH=YES SWIFT_ACTIVE_COMPILATION_CONDITIONS='$(inherited) QA' \
   CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= PROVISIONING_PROFILE_SPECIFIER= \
   test -only-testing:'PaneTests/CollabMacShots/frames()' > "$OUT/test.txt" 2>&1 &

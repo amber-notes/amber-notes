@@ -17,6 +17,7 @@ const pg = await schemaDB();
 const log = (...a: unknown[]) => console.log(new Date().toISOString().slice(11, 23), ...a);
 
 type Peer = { ws: WebSocket; user: string; presence?: string };
+const photos = new Map<string, Uint8Array>();
 const rooms = new Map<string, Set<Peer>>();
 
 // Bigints (update ids) go out as numbers; they stay far below 2^53 here.
@@ -79,8 +80,25 @@ async function handle(req: Request): Promise<Response> {
     return json({ ok: r?.ok === true });
   }
 
+  // Profile photos: the public avatars bucket in the product, by random name only.
+  const avatar = /^\/avatars\/([0-9a-f]{32}\.(jpg|png))$/.exec(url.pathname);
+  if (avatar) {
+    const bytes = photos.get(avatar[1]);
+    return bytes ? new Response(bytes, { headers: { "content-type": avatar[2] === "png" ? "image/png" : "image/jpeg" } }) : json(null, 404);
+  }
+
   const me = caller(req);
   if (!me) return json({ message: "Not signed in" }, 401);
+
+  // Setting your photo (Settings › your profile in the product): stored under a random name.
+  if (url.pathname === "/dev/photo" && req.method === "POST") {
+    const bytes = new Uint8Array(await req.arrayBuffer());
+    const name = Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, "0")).join("") + ".jpg";
+    photos.set(name, bytes);
+    await asUser(pg, me, `update public.profiles set avatar_path = $1 where user_id = auth.uid()`, [name]);
+    log("photo", me.slice(0, 8), name.slice(0, 8));
+    return json({ avatar_path: name });
+  }
 
   if (url.pathname === "/ws") {
     const note = url.searchParams.get("note") ?? "";

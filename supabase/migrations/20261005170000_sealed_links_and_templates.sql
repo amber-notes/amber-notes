@@ -7,9 +7,8 @@
 -- switches them.
 --
 -- Shared templates: `https://ambernotes.app/t/<id>`. Meant to be public, so they're stored
--- readable, and hold only what the person chose to put in them: the note's skeleton, its page,
--- the page's data layout, sample data if they chose to include it, and the names and hosts of any
--- keys the page needs (never a key itself).
+-- readable, and hold only the note's skeleton, its page, the page's data layout, and the names
+-- and hosts of any keys the page needs (never a key itself, never the note's rows).
 
 create table public.sealed_links (
   id text primary key check (id ~ '^[A-Za-z0-9_-]{22}$'),
@@ -64,7 +63,7 @@ create table public.shared_templates (
   note_id uuid not null,
   -- The maker's name as they chose to show it on the page.
   maker text check (maker is null or char_length(maker) between 1 and 60),
-  -- {v, title, description, note, sample, page, widget, layout, needs:{keys:[{name,host}],hosts}}.
+  -- {v, title, description, note, page, widget, layout, needs:{keys:[{name,host}],hosts}}.
   -- Checked again by the site; never a key's value.
   template jsonb not null check (octet_length(template::text) <= 1048576),
   created_at timestamptz not null default now(),
@@ -93,6 +92,10 @@ create or replace function public.publish_template(p_id text, p_note uuid, p_mak
 language plpgsql security definer set search_path = '' as $$
 begin
   perform public.pane_take('write');
+  -- A template is structure and an app, starting empty: never the sharer's rows.
+  if p_template ? 'sample' then
+    raise exception 'A template carries no rows of yours.' using errcode = '22023';
+  end if;
   if exists (select 1 from public.template_takedowns where note_id = p_note) then
     raise exception 'This template was taken down and can''t be shared again.' using errcode = '42501', hint = 'taken_down';
   end if;

@@ -8,8 +8,7 @@ import SwiftUI
 /// A sealed link is `<site>/s/<id>#<secret>`: the note, its page and the page's data, sealed here
 /// under a key from the secret, which only the link holds (web/lib/sealed-share.ts opens it).
 /// A shared template is `<site>/t/<id>`: published readable on purpose, holding only the note's
-/// skeleton, its page, its table layout, sample rows if you include them, and the names of keys
-/// the page asks for.
+/// skeleton, its page, its table layout and the names of keys the page asks for. Never rows.
 enum SealedLink {
     static func randomID(bytes n: Int) -> String {
         E2EE.randomBytes(n).base64EncodedString().replacingOccurrences(of: "+", with: "-")
@@ -49,8 +48,8 @@ enum SealedLink {
     }
 }
 
-/// What a shared template holds. Built from the note; never the note's real rows unless you choose
-/// to include them as sample data, and never a key's value.
+/// What a shared template holds: the note's structure and its app, starting empty. Never the
+/// note's rows, and never a key's value.
 struct SharedTemplate: Codable, Equatable {
     struct Key: Codable, Equatable { var name: String; var host: String? }
     struct Needs: Codable, Equatable { var keys: [Key]; var hosts: [String] }
@@ -59,6 +58,8 @@ struct SharedTemplate: Codable, Equatable {
     var title: String
     var description: String?
     var note: String
+    /// Never filled: a template is the structure and the app, starting empty. Kept so an older
+    /// template's JSON still reads.
     var sample: String?
     var page: String?
     var layout: [Layout]
@@ -98,7 +99,7 @@ struct SharedTemplate: Codable, Equatable {
         return Needs(keys: n.keys.map { Key(name: $0.name, host: $0.host) }, hosts: n.hosts)
     }
 
-    static func make(from body: String, page: String?, includeSample: Bool) -> SharedTemplate {
+    static func make(from body: String, page: String?) -> SharedTemplate {
         let lines = body.components(separatedBy: "\n")
         let layout = lines.indices.filter { i in
             lines[i].trimmingCharacters(in: .whitespaces).hasPrefix("|") && i + 1 < lines.count && lines[i + 1].contains("---")
@@ -108,7 +109,7 @@ struct SharedTemplate: Codable, Equatable {
         }
         let description = NoteText.head(of: body).preview
         return SharedTemplate(title: NoteText.title(of: body), description: description, note: skeleton(of: body),
-                              sample: includeSample ? body : nil, page: page, layout: layout, needs: needs(of: page))
+                              sample: nil, page: page, layout: layout, needs: needs(of: page))
     }
 }
 
@@ -137,10 +138,10 @@ extension CollabStore {
         links[note.id] = nil
     }
 
-    func publishTemplate(_ note: Note, includeSample: Bool) async throws -> URL {
+    func publishTemplate(_ note: Note) async throws -> URL {
         guard let relay else { throw CollabRelay.Problem(message: "Not connected") }
         let id = templates[note.id] ?? SealedLink.randomID(bytes: 12)
-        let t = SharedTemplate.make(from: note.body, page: pages[note.id], includeSample: includeSample)
+        let t = SharedTemplate.make(from: note.body, page: pages[note.id])
         let json = String(decoding: try JSONEncoder().encode(t), as: UTF8.self)
         try await relay.rpc("publish_template", [id, note.id.uuidString.lowercased(), name, json])
         templates[note.id] = id
@@ -159,7 +160,7 @@ extension CollabStore {
               let (data, _) = try? await URLSession.shared.data(from: url) else { return nil }
         struct Row: Decodable { let maker: String?; let template: SharedTemplate }
         guard let row = try? JSONDecoder().decode(Row.self, from: data) else { return nil }
-        let note = context.createNote(in: .all, body: row.template.sample ?? row.template.note)
+        let note = context.createNote(in: .all, body: row.template.note)
         pages[note.id] = row.template.page
         try? context.save()
         NoteOpener.shared.open(note.id)
@@ -167,8 +168,7 @@ extension CollabStore {
     }
 }
 
-/// "Share as template": a public page others can start from. Your notes and data stay out of it,
-/// unless you include this note's rows as sample data.
+/// "Share as template": a public page others can start from. Your notes and data stay out of it.
 struct TemplateShareSheet: View {
     let note: Note
     let store: CollabStore
@@ -183,13 +183,12 @@ struct TemplateShareSheet: View {
 }
 
 /// Share as Template's content: in its own sheet, or pushed from Share. A preview of the page
-/// people will see, one line, one toggle, one button. What the template's app needs is said on the
+/// people will see, one line, one button. What the template's app needs is said on the
 /// template page itself, not here.
 struct TemplateForm: View {
     let note: Note
     let store: CollabStore
     @Environment(\.dismiss) private var dismiss
-    @State private var includeRows = false
     @State private var url: URL?
     @State private var working = false
     @State private var copied = false
@@ -197,11 +196,10 @@ struct TemplateForm: View {
     var body: some View {
         Form {
             Section {
-                TemplateCard(template: SharedTemplate.make(from: note.body, page: store.pages[note.id], includeSample: includeRows), maker: store.name)
+                TemplateCard(template: SharedTemplate.make(from: note.body, page: store.pages[note.id]), maker: store.name)
                     .listRowInsets(EdgeInsets(top: 12, leading: 12, bottom: 12, trailing: 12))
             }
             Section {
-                Toggle("Include example rows", isOn: $includeRows)
                 Button { Task { await share() } } label: {
                     Label(copied ? "Link Copied" : working ? "Sharing…" : "Share Template Link", systemImage: copied ? "checkmark" : "square.and.arrow.up")
                 }
@@ -228,7 +226,6 @@ struct TemplateForm: View {
         .task {
             guard CollabDemo.autoShareTemplate else { return }
             CollabDemo.autoShareTemplate = false
-            includeRows = true
             try? await Task.sleep(for: .seconds(2.2))
             await share(present: false)
             try? await Task.sleep(for: .seconds(2))
@@ -241,7 +238,7 @@ struct TemplateForm: View {
     private func share(present: Bool = true) async {
         working = true
         defer { working = false }
-        guard let link = try? await store.publishTemplate(note, includeSample: includeRows) else { return }
+        guard let link = try? await store.publishTemplate(note) else { return }
         url = link
         CollabDemo.wrote("template", link)
         guard present else { return }
@@ -275,7 +272,7 @@ struct TemplateCard: View {
                     .background(Color(Palette.ink), in: .capsule)
             }
             Text(template.title).font(.headline)
-            // The first lines of what they'd get; with example rows, those show too.
+            // The first lines of what they'd get: the headings and the tables' columns.
             Text(preview).font(.caption).foregroundStyle(.secondary).lineLimit(5)
             if template.page != nil {
                 Label("With its app", systemImage: "square.grid.2x2").font(.caption).foregroundStyle(.secondary)
@@ -292,7 +289,7 @@ struct TemplateCard: View {
     /// The first lines of what people would get, as they read: table rows as "Date · Walk · Read",
     /// separator rows left out, checkboxes as circles.
     private var preview: String {
-        (template.sample ?? template.note).components(separatedBy: "\n").dropFirst().compactMap { line -> String? in
+        template.note.components(separatedBy: "\n").dropFirst().compactMap { line -> String? in
             let t = line.trimmingCharacters(in: .whitespaces)
             guard !t.isEmpty, !t.allSatisfy({ "|-: ".contains($0) }) else { return nil }
             if t.hasPrefix("|") {

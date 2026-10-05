@@ -14,8 +14,8 @@ struct PersonAvatar: View {
     /// The initials' colour: white on the people colours; the warm ink on your own amber.
     var ink: Color = .white
 
-    /// The ring's width: thin, about a twentieth of the circle, never under 1.5 pt.
-    static func ringWidth(_ size: CGFloat) -> CGFloat { max(1.5, (size / 20).rounded()) }
+    /// The ring's width: 2 pt at toolbar size, a clean cut between overlapping avatars.
+    static func ringWidth(_ size: CGFloat) -> CGFloat { max(2, (size / 14).rounded()) }
 
     var body: some View {
         Group {
@@ -60,18 +60,23 @@ struct PresenceAvatars: View {
             }
         }
         .animation(.snappy(duration: 0.3), value: people.map(\.id))
+        // Flattened into one opaque picture before the toolbar's glass gets it. Without this the
+        // glass blends each circle with what's behind it, the previous avatar included, so the
+        // white cut between them showed a tint of the avatar underneath (seen zoomed at 3x;
+        // compositingGroup wasn't enough).
+        .drawingGroup()
     }
 }
 
 extension Color {
-    /// The ring around an avatar: the colour of the toolbar it sits on, measured on screen.
-    /// iPhone: the capsule over the note shows #FFFEFD light and #191919 dark, and in dark mode the
-    /// toolbar lifts what it holds by about 13 levels, so the ring is set darker to land on it.
-    /// Mac: the capsule shows #F8F7F6 light and #272524 dark, with no lift.
+    /// The ring around an avatar, and where avatars overlap the cut between them: opaque white in
+    /// light mode; in dark mode the toolbar's own colour, measured on screen (#191919 on iPhone,
+    /// #272524 on the Mac). The stack is flattened before the glass gets it (drawingGroup), so
+    /// these land exactly as written.
     #if os(iOS)
-    static let avatarRing = Color(Palette.pair(0xFCFBFA, 0x0B0B0C))
+    static let avatarRing = Color(Palette.pair(0xFFFFFF, 0x191919))
     #else
-    static let avatarRing = Color(Palette.pair(0xF8F7F6, 0x272524))
+    static let avatarRing = Color(Palette.pair(0xFFFFFF, 0x272524))
     #endif
     /// The "+2" circle: solid and quiet.
     static let avatarMore = Color(Palette.pair(0xECE6DF, 0x3A3632))
@@ -93,7 +98,7 @@ struct PresenceStack: View {
             if here.isEmpty {
                 Label("People", systemImage: "person.2")
             } else {
-                PresenceAvatars(people: here.map { .init(id: $0.id, name: $0.name) })
+                PresenceAvatars(people: here.map { .init(id: $0.id, name: $0.name, photo: CollabStore.shared?.photos[$0.id]) })
                     .padding(.horizontal, 2)
             }
         }

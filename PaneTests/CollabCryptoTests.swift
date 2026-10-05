@@ -68,16 +68,15 @@ import Testing
         #expect(try SealedLink.open(mine, id: v.link_id, secret: Data(base64Encoded: b64)!) == copy)
     }
 
-    /// A template keeps the headings and columns, drops the rows unless asked, and names keys only.
-    @Test func aTemplateCarriesNoRowsUnlessAsked() {
+    /// A template keeps the headings and columns, never the rows, and names keys only.
+    @Test func aTemplateCarriesNoRows() {
         let body = "Habit tracker\n\nA ✓ means done.\n\n| Date | Walk |\n| --- | --- |\n| 2026-10-05 | ✓ |\n\n- [x] Buy shoes\n"
         let page = #"<meta name="amber-needs" content='{"keys":[{"name":"Strava access token","host":"www.strava.com","value":"secret"}],"hosts":[]}'>"#
-        let t = SharedTemplate.make(from: body, page: page, includeSample: false)
+        let t = SharedTemplate.make(from: body, page: page)
         #expect(t.note == "Habit tracker\n\nA ✓ means done.\n\n| Date | Walk |\n| --- | --- |\n\n- [ ] Buy shoes\n")
         #expect(t.sample == nil)
         #expect(t.layout == [.init(table: 0, columns: ["Date", "Walk"])])
         #expect(t.needs.keys == [.init(name: "Strava access token", host: "www.strava.com")])
-        #expect(SharedTemplate.make(from: body, page: nil, includeSample: true).sample == body)
     }
 
     /// Two documents typing at once at the same spot, merged both ways round, end the same; the

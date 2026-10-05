@@ -15,7 +15,7 @@ import Testing
         for dark in [false, true] {
             let mode = dark ? "dark" : "light"
             let avatars = MacStoreShots.window(CollabGallery().tint(Color(PColor.paneAccent)), size: CGSize(width: 720, height: 560), dark: dark)
-            let share = MacStoreShots.window(NavigationStack { ShareForm(title: "Team offsite", state: CollabGallery.share) }.tint(Color(PColor.paneAccent)),
+            let share = MacStoreShots.window(NavigationStack { ShareForm(title: "Team offsite", state: CollabGallery.shareWithPhoto) }.tint(Color(PColor.paneAccent)),
                                              size: CGSize(width: 480, height: 440), dark: dark)
             let template = MacStoreShots.window(CollabGallery.templateSheet().tint(Color(PColor.paneAccent)), size: CGSize(width: 480, height: 470), dark: dark)
             defer { for w in [avatars, share, template] { w.orderOut(nil); w.close() } }

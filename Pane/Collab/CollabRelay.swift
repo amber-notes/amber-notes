@@ -73,6 +73,7 @@ final class CollabRelay {
         let user_id: UUID
         let role: String
         let display_name: String?
+        let avatar_path: String?
         let public_key: String?
         let accepted: Bool
     }

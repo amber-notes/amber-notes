@@ -28,7 +28,7 @@ export default async function Page({ params }: Props) {
       href={`ambernotes://shared-template/${id}`}
       what="this template"
       lede={<>Amber Notes adds a fresh <b>{shared.template.title}</b> note{shared.template.page ? " with its app" : ""}.</>}
-      markdown={shared.template.sample ?? shared.template.note}
+      markdown={shared.template.note}
       back={{ href: `/t/${id}`, label: "Back to the template" }}
     />
   );

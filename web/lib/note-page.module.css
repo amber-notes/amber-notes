@@ -41,6 +41,8 @@
 .sharedLine { margin: 0 0 14px; color: var(--secondary); font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
 .sharedLine b { color: var(--text); font-weight: 650; }
 .sharedLine a { color: var(--accent-text); }
+.useRow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 0 0 22px; color: var(--secondary); font-size: 14px; }
+.useRow a:not(.use) { color: var(--accent-text); }
 .needs { margin: 18px 0 0; color: var(--secondary); font-size: 14px; }
 .needs b { color: var(--text); font-weight: 650; }
 .plain .initials { background: var(--accent-soft); color: var(--accent-text); font-size: 13px; }

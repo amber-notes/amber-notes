@@ -109,7 +109,7 @@ struct PaneApp: App {
                 if ProcessInfo.processInfo.arguments.contains("-template") {
                     CollabGallery.templateSheet().tint(Color(PColor.paneAccent))
                 } else if ProcessInfo.processInfo.arguments.contains("-share") {
-                    NavigationStack { ShareForm(title: "Team offsite", state: CollabGallery.share) }.tint(Color(PColor.paneAccent))
+                    NavigationStack { ShareForm(title: "Team offsite", state: CollabGallery.shareWithPhoto) }.tint(Color(PColor.paneAccent))
                 } else {
                     CollabGallery().tint(Color(PColor.paneAccent))
                 }

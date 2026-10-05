@@ -35,18 +35,21 @@ export default async function Page({ params }: Props) {
   }
   const t = shared.template;
   const keys = t.needs?.keys ?? [];
-  const example = t.sample ?? t.note;
+  // A template starts empty: the app shows its empty state, the note its headings and columns.
+  const example = t.note;
   const maker = shared.maker ?? "someone";
   const report = `mailto:${REPORT}?subject=${encodeURIComponent(`Report template ${id}`)}&body=${encodeURIComponent(`Template: https://ambernotes.app/t/${id}\n\nWhat's wrong with it:\n`)}`;
   return (
     <Shell className={s.plain}>
-      <TopBar href="/"><a className={s.use} href={`/open/shared-template/${id}`}>Use template</a></TopBar>
+      <TopBar href="/" />
       <main className={s.plainMain}>
+        <p className={s.sharedLine}><span className={s.sharerLabel}>Shared by </span><b>{maker}</b></p>
         {/* With an app, the app shows the title itself; without one, the note's title leads. */}
         {!t.page && <h1 className={s.bigTitle}>{t.title}</h1>}
-        <p className={s.sharedLine}>
-          <span className={s.sharerLabel}>A template shared by </span><b>{maker}</b>. Adds your own copy to Amber Notes. <a href="/download">Download it</a>
-        </p>
+        <div className={s.useRow}>
+          <a className={s.use} href={`/open/shared-template/${id}`}>Use template</a>
+          <span>Adds your own copy to Amber Notes. <a href="/download">Download</a></span>
+        </div>
         {t.page
           ? <PageFrame html={t.page} markdown={example} label={`${t.title}, a preview`} />
           : <article className="note" dangerouslySetInnerHTML={{ __html: renderNote(example.split("\n").slice(1).join("\n"), { files: {}, subNoteHref: () => null }) }} />}

@@ -8,6 +8,17 @@ struct CollabGallery: View {
     static let emma = UUID(uuidString: "3E4A0000-0000-4000-8000-000000000003")!
     static let li = UUID(uuidString: "7C4A0000-0000-4000-8000-000000000004")!
 
+    static let emil = UUID(uuidString: "E3110000-0000-4000-8000-000000000005")!
+    /// Emil's real profile photo when the gallery is given one (`-collabPhoto <path>`).
+    static var emilPhoto: PImage? {
+        (Capture.argument("-collabPhoto") ?? ProcessInfo.processInfo.environment["AMBER_COLLAB_PHOTO"])
+            .flatMap { FileManager.default.contents(atPath: $0) }.flatMap { PImage(data: $0) }
+    }
+    /// Someone with a photo, then people without.
+    static var withPhoto: [PresenceAvatars.Person] {
+        [.init(id: emil, name: "Emil Wagman", photo: emilPhoto), .init(id: sara, name: "Sara Lind"), .init(id: emma, name: "Emma Holm")]
+    }
+
     static let people: [PresenceAvatars.Person] = [
         .init(id: sara, name: "Sara Lind"), .init(id: jonas, name: "Jonas Berg"),
         .init(id: emma, name: "Emma Holm"), .init(id: li, name: "Li Wei"),
@@ -16,7 +27,7 @@ struct CollabGallery: View {
     static let share = ShareState(
         link: URL(string: "https://ambernotes.app/s/sEbHaDgYXLDfpSMmrziRgA#gIfSqgKHVsQcWBm2RTA0aw"), access: .edit,
         people: [
-            .init(id: UUID(), name: "Emil Wagman", isMe: true, role: "owner"),
+            .init(id: emil, name: "Emil Wagman", isMe: true, role: "owner"),
             .init(id: sara, name: "Sara Lind", role: "editor", safetyCode: "4821 0937 5512"),
             .init(id: jonas, name: "Jonas Berg", role: "viewer", safetyCode: "0712 8461 3495"),
         ])
@@ -29,6 +40,13 @@ struct CollabGallery: View {
         return NavigationStack { TemplateForm(note: note, store: store) }
     }
 
+    /// The Share sheet's sample state, with your photo when there is one.
+    static var shareWithPhoto: ShareState {
+        var s = share
+        s.people[0].photo = emilPhoto
+        return s
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -38,6 +56,7 @@ struct CollabGallery: View {
                     row("Two", Array(Self.people.prefix(2)))
                     row("Three", Array(Self.people.prefix(3)))
                     row("Four (+1)", Self.people)
+                    row("With a photo", Self.withPhoto)
                     Text("Sizes").font(.headline).padding(.top, 8)
                     HStack(spacing: 18) {
                         ForEach([24, 28, 32, 48], id: \.self) { s in
@@ -62,7 +81,7 @@ struct CollabGallery: View {
             #endif
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    PresenceAvatars(people: Array(Self.people.prefix(3))).padding(.horizontal, 2)
+                    PresenceAvatars(people: Self.withPhoto).padding(.horizontal, 2)
                 }
                 ToolbarItem(placement: .primaryAction) { Button("More", systemImage: "ellipsis") {} }
             }

@@ -17,8 +17,6 @@ export type SharedTemplate = {
   description?: string;
   /** The note's text skeleton, with headings and empty tables. */
   note: string;
-  /** The same note with the maker's sample rows, if they chose to include them. */
-  sample?: string | null;
   page?: string | null;
   widget?: unknown;
   /** The tables the page reads: their columns. */

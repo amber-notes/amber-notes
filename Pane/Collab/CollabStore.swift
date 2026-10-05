@@ -54,6 +54,24 @@ final class CollabStore {
     @ObservationIgnored var templates: [UUID: String] = [:]
     /// Note pages by note: a stand-in for NotePageStore on the note-pages branch.
     var pages: [UUID: String] = [:]
+    /// Profile photos by person, fetched once each (the public avatars bucket in the product).
+    var photos: [UUID: PImage] = [:]
+    @ObservationIgnored private var photoFetches: Set<String> = []
+
+    /// Fetches the photos of a note's members that aren't here yet.
+    func loadPhotos(_ session: CollabSession) {
+        for m in session.members {
+            guard let path = m.avatarPath, photos[m.id] == nil, !photoFetches.contains(path),
+                  let url = URL(string: "\(relayURLString)/avatars/\(path)") else { continue }
+            photoFetches.insert(path)
+            Task {
+                guard let (data, response) = try? await URLSession.shared.data(from: url),
+                      (response as? HTTPURLResponse)?.statusCode == 200, let image = PImage(data: data) else { return }
+                photos[m.id] = image
+            }
+        }
+    }
+
     var relayURLString: String { relayURL.absoluteString.hasSuffix("/") ? String(relayURL.absoluteString.dropLast()) : relayURL.absoluteString }
 
     static func fromArguments(_ args: [String] = ProcessInfo.processInfo.arguments) -> CollabStore? {
@@ -83,6 +101,15 @@ final class CollabStore {
             let row = try dataKey.serverRow(user: me)
             try await relay.rpc("create_account_key", [row.key_id, row.verifier, row.recovery_wrap, 0])
             try await relay.rpc("collab_publish_identity", [identity.publicBase64, try CollabCrypto.wrapIdentity(identity, dataKey: dataKey.key, user: me)])
+            // Your profile photo (`-collabPhoto <path>`): in the product it's the one in Settings.
+            if let path = Capture.argument("-collabPhoto"), let data = FileManager.default.contents(atPath: path) {
+                var req = URLRequest(url: relayURL.appending(path: "dev/photo"))
+                req.httpMethod = "POST"
+                req.setValue("Bearer proto.\(me.uuidString.lowercased())", forHTTPHeaderField: "Authorization")
+                req.httpBody = data
+                _ = try? await URLSession.shared.data(for: req)
+                photos[me] = PImage(data: data)
+            }
             self.me = me
             self.relay = relay
             log.info("collab ready as \(self.name, privacy: .public)")

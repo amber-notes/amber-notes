@@ -24,6 +24,7 @@ struct ShareState: Equatable {
         var isMe = false
         var role: String
         var safetyCode: String?
+        var photo: PImage? = nil
     }
     var link: URL?
     var access: Access = .view
@@ -70,7 +71,7 @@ struct ShareForm: View {
 
             Section {
                 Button("Share as Template…", action: template)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.primary)
                     .accessibilityIdentifier("share.template")
             }
         }
@@ -110,7 +111,7 @@ private struct PersonRow: View {
         HStack(spacing: 12) {
             // On its own in a row, an avatar needs no ring.
             PersonAvatar(name: person.name, color: person.isMe ? Color(PColor.paneAccent) : CollabSession.color(for: person.id), size: 32,
-                         ring: .clear, ink: person.isMe ? .avatarOnAmber : .white)
+                         photo: person.photo, ring: .clear, ink: person.isMe ? .avatarOnAmber : .white)
             Text(person.isMe ? "\(person.name) (you)" : person.name)
             Spacer()
             Text(person.role == "owner" ? "Owner" : person.role == "editor" ? "Can edit" : "Can view")
@@ -132,7 +133,7 @@ private struct PersonDetail: View {
         Form {
             Section {
                 HStack(spacing: 14) {
-                    PersonAvatar(name: person.name, color: CollabSession.color(for: person.id), size: 48, ring: .clear)
+                    PersonAvatar(name: person.name, color: CollabSession.color(for: person.id), size: 48, photo: person.photo, ring: .clear)
                     VStack(alignment: .leading) {
                         Text(person.name).font(.headline)
                         Text(person.role == "owner" ? "Owner" : person.role == "editor" ? "Can edit" : "Can view").foregroundStyle(.secondary)
@@ -179,6 +180,7 @@ struct ShareSheet: View {
             await run { if store.linkURL(note) == nil, !store.linkOff.contains(note.id) { try await store.ensureLink(note) } }
             // People come and go: keep the list current while the sheet is open.
             while !Task.isCancelled {
+                if let session = store.session(for: note.id) { store.loadPhotos(session) }
                 state.people = people
                 if let auto = CollabDemo.pendingAccess { CollabDemo.pendingAccess = nil; try? await Task.sleep(for: .seconds(1.2)); await set(auto) }
                 try? await Task.sleep(for: .seconds(0.5))
@@ -192,7 +194,12 @@ struct ShareSheet: View {
     /// Everyone in the note; before anyone else joins, just you.
     private var people: [ShareState.Person] {
         let list = store.people(in: note)
-        return list.isEmpty ? [.init(id: store.me ?? UUID(), name: store.name, isMe: true, role: "owner")] : list
+        let me = store.me ?? UUID()
+        return (list.isEmpty ? [.init(id: me, name: store.name, isMe: true, role: "owner")] : list).map { p in
+            var p = p
+            p.photo = store.photos[p.id]
+            return p
+        }
     }
 
     private func set(_ access: ShareState.Access) async {

@@ -57,7 +57,7 @@ DB=$(xcrun simctl get_app_container "$B" dev.emilwagman.pane data)
 rm -f "$DA/Documents/share-demo.txt" "$DB/Documents/demo-command.txt"
 xcrun simctl launch "$B" dev.emilwagman.pane "${ARGS[@]}" -collab sara -collabName "Sara Lind" -collabScript member >/dev/null
 sleep 0.4
-xcrun simctl launch "$A" dev.emilwagman.pane "${ARGS[@]}" -collab emil -collabName "Emil Wagman" -collabScript owner >/dev/null
+xcrun simctl launch "$A" dev.emilwagman.pane "${ARGS[@]}" -collab emil -collabName "Emil Wagman" -collabPhoto "$PWD/web/public/emil-wagman.jpg" -collabScript owner >/dev/null
 # Emil sets the link to Edit; it goes to Sara as a message would (her app gets it through a file:
 # a link from Messages would ask "Open in Amber Notes?", which nothing here can tap).
 for i in {1..80}; do grep -q "^edit-link " "$DA/Documents/share-demo.txt" 2>/dev/null && break; sleep 0.5; done
