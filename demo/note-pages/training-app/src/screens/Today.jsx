@@ -1,35 +1,37 @@
-import { useState } from "preact/hooks";
-import { useNote, useTable, useSettings } from "amber";
+import { useState, useLayoutEffect } from "preact/hooks";
+import { useSettings, setSummary } from "amber";
 import { List, ListRow, Sheet, Input, Button, EmptyState } from "amber-ui";
 import ScreenHeader from "../components/ScreenHeader.jsx";
-import { DAYS, DEFAULTS, weight, exercisesOf, lastSet } from "../data.js";
+import { DAYS, DEFAULTS, today, weight, lastSet, useTraining } from "../data.js";
 
 export default function Today() {
-  const { today } = useNote();
-  const plan = useTable("Plan"), log = useTable("Log");
+  const { plan, log } = useTraining();
   const [{ unit }] = useSettings(DEFAULTS);
   const [logging, setLogging] = useState(null), [kg, setKg] = useState("");
+  const date = today(), dayName = DAYS[new Date().getDay()];
+  const day = plan.find((d) => d.day === dayName) || plan[0];
 
-  const dayName = DAYS[new Date(today + "T12:00").getDay()];
-  const day = plan.rows.find((r) => r.Day === dayName) || plan.rows[0];
-  if (!day) return <EmptyState title="No plan yet" body="Add a Plan table with Day, Workout and Exercises." />;
-  const done = (name) => log.rows.some((r) => r.Date === today && r.Exercise === name);
+  // The line under "Training" in the note list.
+  const sessions = new Set(log.items.map((s) => s.date)).size;
+  useLayoutEffect(() => { if (sessions) setSummary(`${sessions} sessions, last on ${log.items[log.items.length - 1].date}`); }, [sessions]);
 
-  const open = (name) => { setKg(lastSet(log, name)?.Weight ?? ""); setLogging(name); };
+  if (!day) return <EmptyState title="No plan yet" body="Add the days you train in Plan." />;
+  const done = (name) => log.items.some((s) => s.date === date && s.exercise === name);
+  const open = (name) => { setKg(String(lastSet(log, name)?.weight ?? "")); setLogging(name); };
   const save = async () => {
     const last = lastSet(log, logging);
-    await log.add({ Date: today, Exercise: logging, Sets: last?.Sets ?? "3", Reps: last?.Reps ?? "8", Weight: kg });
+    await log.add({ date, exercise: logging, sets: last?.sets ?? 3, reps: last?.reps ?? 8, weight: +kg });
     setLogging(null);
   };
 
   return (
     <div class="screen">
-      <ScreenHeader title="Today" subtitle={`${day.Workout} · ${day.Day === dayName ? "today" : day.Day}`} />
+      <ScreenHeader title="Today" subtitle={`${day.workout} · ${day.day === dayName ? "today" : day.day}`} />
       <List>
-        {exercisesOf(day).map((name) => {
+        {day.exercises.map((name) => {
           const last = lastSet(log, name);
           return (
-            <ListRow title={name} subtitle={last ? `Last: ${last.Sets} × ${last.Reps} at ${weight(+last.Weight, unit)}` : "First time"}
+            <ListRow title={name} subtitle={last ? `Last: ${last.sets} × ${last.reps} at ${weight(last.weight, unit)}` : "First time"}
               trailing={done(name) ? <span class="logged">Logged</span> : null}
               onClick={done(name) ? undefined : () => open(name)} />
           );

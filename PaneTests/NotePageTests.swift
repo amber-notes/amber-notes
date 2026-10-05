@@ -883,8 +883,16 @@ import WebKit
         var result: (Bool, [String])?
         sandbox.onReady = { result = (true, []) }
         sandbox.onFailure = { result = (false, $0) }
-        sandbox.load(html: stored, body: note)
+        // Its data is JSON; the first time it starts from what the note held (imported by the host).
+        var doc: NotePageData.Doc = ["values": ["imported": NotePageData.imported(from: note)], "collections": [String: Any]()]
+        sandbox.onData = { m in
+            let (after, made) = try NotePageData.apply(try NotePageData.Op(m), to: doc)
+            doc = after
+            return ["data": after].merging(made.map { ["id": $0] } ?? [:]) { a, _ in a }
+        }
+        sandbox.load(html: stored, body: note, data: doc)
         try await run(sandbox.webView, until: "document.querySelector('.aui-tabbar') !== null && document.querySelector('h1') !== null")
+        #expect(((doc["collections"] as? [String: Any])?["log"] as? [Any])?.count == 11, "the Log table, imported once into the log collection")
         for _ in 0..<60 where result == nil { try await Task.sleep(for: .milliseconds(50)) }
         #expect(result?.0 == true, "\(String(describing: result))")
         #expect(try await sandbox.webView.evaluateJavaScript("document.querySelector('h1').textContent") as? String == "Today")
@@ -935,6 +943,46 @@ import WebKit
         #expect(ops[3] == .toggleChecklist(line: 12))
         #expect(ops[4] == .addChecklistItem(text: "Hat", underHeading: "Packing"))
         _ = try await sandbox.webView.callAsyncJavaScript("await __api.setS({ unit: 'lb' })", arguments: [:], contentWorld: .page)
+    }
+
+    /// App data is the app's JSON: localStorage lives in it (and comes back on the next load), a
+    /// batch is one change, IndexedDB isn't there, and a text note's tables are imported once.
+    @Test func appDataIsJSONWithLocalStorageAndBatches() async throws {
+        var doc = NotePageData.empty()
+        var messages: [String] = []
+        func sandbox(_ script: String) async throws -> NotePageSandbox {
+            let s = NotePageSandbox(rules: try await NotePageSandbox.prepare())
+            s.onData = { m in
+                messages.append((m as? [String: Any])?["op"] as? String ?? "?")
+                let (after, made) = try NotePageData.apply(try NotePageData.Op(m), to: doc)
+                doc = after
+                return ["data": after].merging(made.map { ["id": $0] } ?? [:]) { a, _ in a }
+            }
+            s.load(html: "<p id=p>x</p><script>amber.onChange(() => {});\n\(script)</script>", body: "x", data: doc)
+            try await run(s.webView, until: "document.getElementById('p') !== null")
+            return s
+        }
+        let a = try await sandbox("localStorage.setItem('streak', 4); localStorage.theme = 'dark'; sessionStorage.setItem('tab', 'x');")
+        try await run(a.webView, until: "true")
+        for _ in 0..<40 where messages.isEmpty { try await Task.sleep(for: .milliseconds(50)) }
+        #expect(messages == ["store.set"])
+        #expect(((doc["values"] as? [String: Any])?["localStorage"] as? [String: String]) == ["streak": "4", "theme": "dark"])
+        #expect(try await a.webView.evaluateJavaScript("String(window.indexedDB)") as? String == "undefined")
+        // Next time (another device, a reload): it's there.
+        let b = try await sandbox("window.__v = localStorage.getItem('streak') + '/' + localStorage.length + '/' + sessionStorage.length;")
+        try await run(b.webView, until: "window.__v !== undefined")
+        #expect(try await b.webView.evaluateJavaScript("window.__v") as? String == "4/2/0")
+        // A batch: one change.
+        messages = []
+        _ = try await b.webView.callAsyncJavaScript("""
+          await amber.batch(async () => { amber.store.set("a", 1); amber.store.collection("log").add({ kg: 60 }); amber.store.collection("log").add({ kg: 62.5 }); });
+        """, arguments: [:], contentWorld: .page)
+        #expect(messages == ["batch"])
+        #expect(((doc["collections"] as? [String: Any])?["log"] as? [[String: Any]])?.count == 2)
+        // A text note's tables and checklists, by heading.
+        let imported = NotePageData.imported(from: "Week\n\n## Log\n\n| Date | Kg |\n| --- | --- |\n| 10-01 | 60 |\n\n## Packing\n\n- [x] Shoes\n")
+        #expect(((imported["tables"] as? [String: Any])?["Log"] as? [[String: String]]) == [["Date": "10-01", "Kg": "60"]])
+        #expect(((imported["checklists"] as? [String: Any])?["Packing"] as? [[String: Any]])?.first?["checked"] as? Bool == true)
     }
 
     @Test func projectsHaveLimitsAndMustBeCompiled() throws {

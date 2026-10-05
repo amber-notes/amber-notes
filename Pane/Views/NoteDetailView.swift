@@ -144,6 +144,8 @@ struct NoteDetailView: View {
             .task(id: note.id) {
                 receipt = nil
                 shownPage = NotePageStore.shared[note.id]
+                // A note with an app is the app: what its text held goes into the app's data once.
+                if shownPage != nil { NotePageActions.importIfNeeded(note) }
                 if shownPage != nil { NotePageTiming.open(note.id) }
                 showChip = false
                 pageTint = nil
@@ -372,8 +374,24 @@ struct NoteDetailView: View {
     /// state (a ticked set, a rating): kept quietly, versioned on the server, without a receipt;
     /// receipts are for changes to the note's text.
     private func pageData(_ message: Any) async throws -> [String: Any] {
-        try await NotePageActions.data(message, note: note, context: context, sync: sync, html: notePage?.html ?? "",
-                                       ask: askHost, needKey: { need in withAnimation(.smooth) { keyNeeded = need } }).reply
+        let (reply, before) = try await NotePageActions.data(message, note: note, context: context, sync: sync, html: notePage?.html ?? "",
+                                                             ask: askHost, needKey: { need in withAnimation(.smooth) { keyNeeded = need } })
+        // A change you made gets a receipt; the app saving on its own is quiet (Undo still reaches it
+        // through version history).
+        if let before, (message as? [String: Any])?["_user"] as? Bool == true { dataChanged(before: before) }
+        return reply
+    }
+
+    /// The app's data is the app's content now: a change gets "Changed · Undo" like any edit. A run
+    /// of changes (typing, a game, a batch) is one receipt, and Undo goes back to before the run.
+    private func dataChanged(before: NotePageData.Doc) {
+        if let r = receipt ?? heldReceipt, r.kind == .dataEdit, r.at.timeIntervalSinceNow > -10, undoData != nil {
+            // Same run: the Undo point stays where the run began.
+        } else {
+            undoData = before
+        }
+        let r = AIEdit.Receipt(noteID: note.id, by: AIGlyph.page, at: .now, previous: note.body, lines: 0, kind: .dataEdit)
+        showPageReceipt(r)
     }
 
     private func askHost(_ host: String) async -> Bool {
@@ -434,6 +452,7 @@ struct NoteDetailView: View {
     private func pageArrived(_ now: NotePageStore.Page?) {
         let before = shownPage
         shownPage = now
+        if now != nil { NotePageActions.importIfNeeded(note) }
         guard let now, now != before, now.by != AIGlyph.page else { return }
         withAnimation(.smooth(duration: 0.3)) { mode = .page }
         let r = AIEdit.Receipt(noteID: note.id, by: now.by, at: now.at, previous: note.body, lines: 0, kind: before == nil ? .pageMade : .pageChanged)
@@ -447,21 +466,7 @@ struct NoteDetailView: View {
         }
     }
 
-    /// One button, like the note's other toolbar items: it shows what you'd switch to.
-    private var modeButton: some View {
-        Button {
-            withAnimation(.smooth(duration: 0.25)) { mode = mode == .page ? .text : .page }
-        } label: {
-            Label(mode == .page ? "Show Text" : "Show App", systemImage: mode == .page ? "doc.plaintext" : NoteAppMark.symbol)
-        }
-        #if os(macOS)
-        .tint(.primary)
-        .help(mode == .page ? "Show Text" : "Show App")
-        #endif
-        .accessibilityIdentifier("note.mode")
-    }
-
-    /// Page / Text as a choice in More, with the page's other actions.
+    /// The app's items in More: Make It an App, or App Info.
     @ViewBuilder
     private var pageMenuItems: some View {
         if notePage == nil, !note.isLocked, note.trashedAt == nil {
@@ -705,9 +710,7 @@ struct NoteDetailView: View {
             }
             .sharedBackgroundVisibility(.hidden)
         }
-        if notePage != nil {
-            ToolbarItem(placement: .primaryAction) { modeButton }
-        }
+
         ToolbarItem(placement: .primaryAction) { moreMenu }
         #else
         // Like Notes: compose first (just right of the divider), the writing tools together, then share and more.
@@ -738,7 +741,6 @@ struct NoteDetailView: View {
         }
         ToolbarSpacer(.fixed)
         ToolbarItemGroup {
-            if notePage != nil { modeButton }
             shareMenu
             moreMenu
         }

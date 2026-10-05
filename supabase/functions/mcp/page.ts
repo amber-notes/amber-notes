@@ -13,22 +13,19 @@ export const PAGE_REWRITE = `Before changing a note's page, call get_note_page a
 
 /** What the page is given and may do. The same words go to the AI in set_note_page's description. */
 export const PAGE_CONTRACT = `The page runs in Amber Notes in a sandbox with no network: no fetch, no external scripts, styles, fonts or images. Put all CSS and JS inline; images only as data: URIs or inline SVG.
-Read the note from window.amber.note, never hardcode its contents (the note changes; the page must follow):
-  amber.note = { title, markdown, today: "yyyy-mm-dd", tables: [{ index, columns: [{ name, type }], rows: [[cell, ...], ...] }], checklists: [{ line, text, checked }] }
-  amber.onChange(fn) calls fn(note) right away and again with fresh data after every change, the page's own included. Render from it.
-Change the note only through amber.update(op), which returns a Promise of { ok: true } or { ok: false, error }:
-  { op: "toggle_checklist", line }            line from amber.note.checklists
-  { op: "set_cell", table, row, col, value }  table index, row index (0-based, header excluded), col index or column name; plain one-line text
-  { op: "append_row", table, values }         values: { columnName: text } or [text, ...]
-  { op: "delete_row", table, row }  { op: "move_row", table, from, to }
-  { op: "set_text", heading, text }            replaces the text under that heading (up to the next heading of the same level)
-  { op: "add_checklist_item", text, under_heading? }  a new open "- [ ] text" after the last open item of that checklist (keep checklists as checklists)
-  { op: "add_column", table, name, type?, after? }  { op: "rename_column", table, col, to }
-  amber.update([op, op, ...]) applies several as ONE change with one Undo (all or nothing): use it for a workout's sets, imported rows, a grocery run. Each op sees the note as the ones before it left it (lines move down after added rows).
-Each change lands in the note's markdown as a normal edit the person can see and undo. Changes to the app's own data are quiet (no receipt): use the data for app state.
-The page's own data (not the note's text; for state the person wouldn't type, like settings, logs, a schedule): amber.data = { values, collections };
-  amber.store.get(key) / amber.store.set(key, value); amber.store.collection(name).list() / query(fn) / get(id) / add(fields) -> { id } / update(id, patch) / remove(id); amber.setData(mergePatch).
-  amber.onChange(fn) passes (note, data). Up to 4 MB. Files: amber.files.save({ name, type, base64 }) -> { file: { $file, ... } }; keep the ref in a record and show it with amber.files.url(ref, { width }) as an <img>/<audio>/<video> src (instant, no data: URLs in the data); amber.files.read(ref) -> { dataURL } when you need the bytes.
+An app note is just the app: it opens straight into the app, and there is no text side. Its data is JSON in the app's own store (encrypted, synced, versioned; every change you make gets "Changed · Undo"). The note's text is only its title and one summary line the app sets.
+In a project, import from "amber":
+  useStore(key, initial) / useAppData(key, initial) -> [value, set]   any JSON value
+  useCollection(name) -> { items: [{ id, created, updated, ...fields }], add(fields) -> id, update(id, patch), remove(id) }
+  useSettings(defaults) -> [settings, update(patch)]                 the app's own settings, drawn by the app
+  batch(async () => { ... })                                          several changes as one, with one Undo
+  setSummary("3 of 4 habits today")                                   the line under the title in the note list and search
+  useImported() -> { tables: { Heading: [rows by column] }, checklists: { Heading: [{ text, checked }] }, text } | null
+    what a text note held when it became an app: start from it once (in a batch), then keep everything in the store.
+  localStorage works and is kept in the same store (so it syncs); sessionStorage lasts while the app is open; IndexedDB isn't available.
+A one-file app has the same through window.amber: amber.data = { values, collections }; amber.store.get/set(key, value), amber.store.collection(name).list() / add(fields) -> { id } / update(id, patch) / remove(id); amber.batch(fn); amber.setSummary(text); amber.onChange(fn) calls fn(note, data) now and after every change.
+  Files: amber.files.save({ name, type, base64 }) -> { file: { $file, ... } }; keep the ref in a record and show it with amber.files.url(ref, { width }) as an <img>/<audio>/<video> src. Up to 4 MB of data; photos and recordings as files.
+Converting an older note only: amber.note.tables/checklists and amber.update(op) (toggle_checklist, set_cell, append_row, delete_row, move_row, set_text, add_checklist_item, add_column, rename_column; an array is one change), or useTable(heading) / useChecklist(heading) in a project. New apps keep their data in the store, not in the note's text.
 The device, through the system's own prompts (results go to the page only; write to the note explicitly if wanted): amber.device.reminders.create({ title, due, repeat: "daily" }), calendar.today() -> { events: [{ title, start, end, location, attendees }] },
   notify({ title, body, at | in }) -> { id }, notify.cancel(id), reminders.complete(id) / reminders.delete(id) (only ones an app made), openURL(url), photos.pick({ limit }) / camera.take() -> { files: [{ $file, thumb }] }, contacts.pick() -> { contact: { name, organization, emails, phones, addresses, birthday?, photo? } }, files.pick(), location.once() -> { lat, lon, place },
   maps.open({ lat, lon | query, directions }), maps.snapshot({ lat, lon, km | pins: [{ lat, lon, label }], fit, pin, width, height, dark }) -> { dataURL, region, points: [{ x, y }] } (points: where each pin landed, to draw on top). On-device AI: amber.ai.available(), amber.ai.respond(prompt, { instructions }) -> { text }. Every call returns { ok, ... } or { ok: false, error }.
@@ -126,7 +123,7 @@ export function pageProblems(html: string): string[] {
     .map((m) => m[1] ?? m[2] ?? m[0].replace(/\s*\($/, "")))];
   if (apis.length) out.push(`The page can't use the network itself (${apis.join(", ")}). Use amber.fetch for declared hosts, and amber.note / amber.update for the note.`);
   out.push(...libProblems(html));
-  if (!/\bamber\s*\.\s*(note|onChange)\b/.test(html)) out.push("The page must read the note from window.amber.note (or amber.onChange), not carry a copy of its data.");
+  if (!/\bamber\s*\.\s*(note|onChange|data|store|batch)\b|\blocalStorage\b/.test(html)) out.push("The app must keep its data in its store (amber.store, amber.data, localStorage) and render from amber.onChange, not carry a fixed copy of it.");
   return out;
 }
 

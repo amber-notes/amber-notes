@@ -30,8 +30,9 @@ Deno.test("network calls in the script are refused, by name", () => {
   assertEquals(pageProblems(page(`<p>Fetch the paper. A worker bee.</p>`)), []);
 });
 
-Deno.test("a page must read the note, and stay under the size cap", () => {
-  assertStringIncludes(pageProblems(`<div>Mon ✓ Tue ✓</div>`).join(), "window.amber.note");
+Deno.test("an app must keep its data in its store, and stay under the size cap", () => {
+  assertStringIncludes(pageProblems(`<div>Mon ✓ Tue ✓</div>`).join(), "keep its data in its store");
+  assertEquals(pageProblems(page(`<script>localStorage.setItem("a", "1")</script>`)).some((p) => p.includes("its store")), false);
   assertStringIncludes(pageProblems(page("x".repeat(MAX_PAGE_BYTES))).join(), "the limit is 256 KB");
   assertStringIncludes(pageProblems("just text, amber.note").join(), "doesn't look like an HTML page");
 });

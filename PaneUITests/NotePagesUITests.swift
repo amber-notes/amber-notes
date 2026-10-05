@@ -35,11 +35,10 @@ final class NotePagesUITests: XCTestCase {
         app.webViews.descendants(matching: .any).matching(NSPredicate(format: "label == %@", label)).firstMatch
     }
 
-    /// Page / Text: the toolbar button shows the one you'd switch to.
+    /// The Text / App switch is gone (an app note is just the app): older recordings skip it.
     func mode(_ name: String) {
         let b = app.buttons["note.mode"].firstMatch
-        XCTAssertTrue(b.waitForExistence(timeout: 5))
-        if b.label == "Show \(name)" { b.tap() }
+        if b.waitForExistence(timeout: 1), b.label == "Show \(name)" { b.tap() }
     }
 
     /// (a)-(e): text, Claude's page arriving, a tick on the page, the tick in the text, Undo.
@@ -49,7 +48,7 @@ final class NotePagesUITests: XCTestCase {
         pause(1.5)
         shot("01-habit-text")
         pause(4.5)
-        XCTAssertTrue(app.buttons["note.mode"].waitForExistence(timeout: 5), "the page should arrive")
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 8), "the page should arrive")
         pause(1.2)
         shot("02-habit-page-arrives")
         pause(3)
@@ -640,6 +639,34 @@ final class NotePagesUITests: XCTestCase {
         pause(1.2)
         shot("p8-progress-lb")
         mark("project-end")
+        pause(1)
+    }
+
+    /// No Text side: the app note opens straight into the app; its data is JSON, imported once
+    /// from the note's tables; the note list shows the app's summary line.
+    func testAppOnly() {
+        launch(["-seedNote", "\(pages)/training.md", "-open", "Training", "-seedPage", "Training=\(pages)/training-app.json"])
+        mark("apponly-start")
+        pause(3.5)
+        shot("a1-opens-in-app")
+        app.buttons["editor.more"].firstMatch.tap()
+        pause(1)
+        shot("a2-more")
+        app.buttons["editor.appInfo"].firstMatch.tap()
+        pause(1)
+        app.buttons["appInfo.done"].firstMatch.tap()
+        pause(0.8)
+        webStarting("Barbell row").tap()
+        pause(1.2)
+        let field = app.webViews.textFields.firstMatch
+        if field.waitForExistence(timeout: 2) { field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 5) + "52.5") }
+        app.webViews.buttons["Log Set"].firstMatch.tap()
+        pause(1.5)
+        shot("a3-data-receipt")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        pause(1.5)
+        shot("a4-list-summary")
+        mark("apponly-end")
         pause(1)
     }
 }

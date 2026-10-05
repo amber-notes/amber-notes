@@ -1,8 +1,9 @@
 # Training
 
-Strength training over the note's Plan and Log tables.
+A strength-training app. Its data is JSON in the app's own store (see `src/data.js`):
+`plan` (the days and their exercises) and the `log` collection (every set). The first time it
+opens, it starts from the tables the note held before it became an app.
 
 - `src/App.jsx`: the screens (Today, Plan, Progress) in an amber-ui Shell, plus Settings.
-- `src/data.js`: small helpers. The note's tables come from `useTable("Plan")` and `useTable("Log")` (from "amber"); logging a set is `log.add({...})`.
 - `src/screens/`: one file per screen. `src/components/`: pieces used by several screens.
-- Settings (units, weekly goal) are kept with useSettings, in the app's own data, not the note.
+- Settings (units, weekly goal) are kept with useSettings. The note-list line comes from setSummary.

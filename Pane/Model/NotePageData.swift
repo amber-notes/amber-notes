@@ -34,10 +34,31 @@ enum NotePageData {
         }
     }
 
+    /// What a text note held, for its new app to start from (once, when the note becomes an app):
+    /// its tables as rows keyed by column, its checklists, under their headings, and the text.
+    static func imported(from body: String) -> Doc {
+        let lines = body.components(separatedBy: "\n")
+        var tables = Doc(), checklists = Doc()
+        for (i, t) in NotePage.tables(in: lines).enumerated() {
+            let name = (NotePage.heading(above: t.header, in: lines) as? String) ?? "Table \(i + 1)"
+            tables[name] = t.rows.map { r in Dictionary(t.columns.enumerated().map { ($1.name, $0 < r.count ? r[$0] : "") }, uniquingKeysWith: { a, _ in a }) }
+        }
+        for (i, line) in lines.enumerated() {
+            guard let p = ListPrefix(line: line), let checked = p.checkbox else { continue }
+            let name = (NotePage.heading(above: i, in: lines) as? String) ?? "Checklist"
+            var list = checklists[name] as? [Doc] ?? []
+            list.append(["text": (line as NSString).substring(from: p.length), "checked": checked])
+            checklists[name] = list
+        }
+        return ["tables": tables, "checklists": checklists, "text": body]
+    }
+
     // MARK: Changes a page can ask for
 
-    enum Op {
+    indirect enum Op {
         case set(key: String, value: Any?)
+        /// Several changes as one (amber.batch): one Undo.
+        case batch([Op])
         case patch(Doc)
         case add(collection: String, fields: Doc)
         case update(collection: String, id: String, patch: Doc)
@@ -59,6 +80,9 @@ enum NotePageData {
             case "collection.add": self = .add(collection: try string("name"), fields: try object("fields"))
             case "collection.update": self = .update(collection: try string("name"), id: try string("id"), patch: try object("patch"))
             case "collection.remove": self = .remove(collection: try string("name"), id: try string("id"))
+            case "batch":
+                guard let ops = m["ops"] as? [Any], !ops.isEmpty, ops.count <= 500 else { throw NotePage.OpError("ops must be a list of up to 500 changes.") }
+                self = .batch(try ops.map { try Op($0) })
             default: throw NotePage.OpError("Unknown op \(op).")
             }
         }
@@ -71,7 +95,13 @@ enum NotePageData {
         var collections = d["collections"] as? Doc ?? Doc()
         let stamp = ISO8601DateFormatter().string(from: now)
         var made: String?
+        if case .batch(let ops) = op {
+            var doc = d
+            for o in ops { let r = try apply(o, to: doc, now: now, newID: newID); doc = r.0; made = r.1 ?? made }
+            return (doc, made)
+        }
         switch op {
+        case .batch: break
         case .set(let key, let value):
             values[key] = value
         case .patch(let patch):

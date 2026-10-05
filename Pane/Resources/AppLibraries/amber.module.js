@@ -1,8 +1,9 @@
-// amber 1.0.0 (Amber Notes): the note and the app's own data as Preact hooks.
-//   import { useNote, useTable, useChecklist, useAppData, useSettings, batch } from "amber";
-// Tables and checklists are found by the heading above them (or a table by a column name), never
-// by position. Changes go through the same note ops as window.amber.update, so each one is an
-// edit you can Undo; batch(() => { ... }) makes several one change with one Undo.
+// amber 1.1.0 (Amber Notes): an app's data as Preact hooks.
+//   import { useStore, useCollection, useSettings, setSummary, batch } from "amber";
+// An app keeps its data as JSON in its own store: encrypted, synced, versioned, with Undo. A note
+// with an app is just the app; its text is only the title and a summary line (setSummary).
+// localStorage works too (kept in the same store). useTable and useChecklist read what a text
+// note held before it became an app (also in useImported()); new apps don't use them.
 import { useState, useLayoutEffect, useMemo } from "preact/hooks";
 
 const bridge = window.amber;
@@ -10,18 +11,12 @@ export { bridge as amber };
 export const device = bridge.device, ai = bridge.ai, files = bridge.files;
 export const fetch = (url, options) => bridge.fetch(url, options);
 
-// Changes made inside batch() are collected and sent as one.
-let pending = null;
-function send(op) {
-  if (pending) { pending.push(op); return Promise.resolve({ ok: true }); }
-  return bridge.update(op);
-}
-export async function batch(fn) {
-  if (pending) return fn();
-  pending = [];
-  try { await fn(); } finally { const ops = pending; pending = null; if (ops.length) return bridge.update(ops); }
-  return { ok: true };
-}
+// Changes made inside batch() (data and note edits) are sent as one: one Undo.
+const send = (op) => bridge.update(op);
+export const batch = (fn) => bridge.batch(fn);
+
+/** The line under the app's title in the note list and search: setSummary("3 of 4 habits today"). */
+export const setSummary = (text) => bridge.setSummary(text);
 
 // Re-render with the note and the app's data as they change. (A layout effect: a hidden app may
 // never draw the frame a plain effect waits for.)
@@ -88,17 +83,37 @@ export function useChecklist(name) {
   }, [note, name]);
 }
 
+/** A list of records with ids: { items, add(fields) -> id, update(id, patch), remove(id) }. */
+export function useCollection(name) {
+  const { data } = useLive();
+  const items = ((data && data.collections) || {})[name] || [];
+  return useMemo(() => {
+    const c = bridge.store.collection(name);
+    return { items, add: async (f) => (await c.add(f)).id, update: (id, patch) => c.update(id, patch), remove: (id) => c.remove(id) };
+  }, [items, name]);
+}
+
+/** What the note held before it became an app ({ tables: { Heading: [rows] }, checklists, text }), or null. */
+export function useImported() {
+  const { data } = useLive();
+  return ((data && data.values) || {}).imported || null;
+}
+
 /** Like useState, kept in the app's own data (encrypted, synced, never in the note's text). */
 export function useAppData(key, initial) {
   const { data } = useLive();
   const values = (data && data.values) || {};
   const value = key in values ? values[key] : initial;
   const set = (next) => {
-    const v = typeof next === "function" ? next(key in (bridge.data.values || {}) ? bridge.data.values[key] : initial) : next;
+    const now = bridge.data.values || {};
+    const v = typeof next === "function" ? next(key in now ? now[key] : initial) : next;
     return bridge.store.set(key, v);
   };
   return [value, set];
 }
+
+/** useStore(key, initial): the same as useAppData. */
+export const useStore = (key, initial) => useAppData(key, initial);
 
 /** The app's settings with their defaults: [settings, update(patch)]. Kept like useAppData. */
 export function useSettings(defaults = {}) {

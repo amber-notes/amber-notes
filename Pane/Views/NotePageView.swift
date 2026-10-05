@@ -204,8 +204,11 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
           const amber = {
             note: \(json),
             update(op) {
+              if (batching) { batching.notes.push(...(Array.isArray(op) ? op : [op])); return Promise.resolve({ ok: true }); }
               return window.webkit.messageHandlers.amber.postMessage(op).catch((e) => ({ ok: false, error: String((e && e.message) || e) }));
             },
+            // The line under the title in the note list and search ("3 of 4 habits today").
+            setSummary(text) { return post({ op: "note.summary", text: String(text == null ? "" : text) }); },
             // Calls fn now and on every change; returns a function that stops it.
             onChange(fn) {
               listeners.push(fn);
@@ -266,9 +269,65 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
             fetch: (url, o) => ask({ op: "fetch", url, ...(o || {}) }),
           };
           // A write's reply carries the new data, so it's there as soon as the promise resolves.
-          const ask = (msg) => window.webkit.messageHandlers.amberData.postMessage(msg)
-            .then((r) => { if (r && r.data) amber.data = r.data; if (r) delete r.data; return r; })
+          // A change's reply carries the new data: it's there when the promise resolves, and the
+          // app's listeners hear of it at once (the host's own push follows).
+          // _user: made within 5 s of a touch or key (the app shows "Changed · Undo" only for those;
+          // an app saving on its own, like importing on first run, is quiet).
+          const post = (msg) => window.webkit.messageHandlers.amberData.postMessage(Object.assign({}, msg, { _user: Date.now() - touched < 5000 }))
+            .then((r) => {
+              if (r && r.data) {
+                amber.data = r.data;
+                for (const fn of listeners) { try { fn(amber.note, amber.data); } catch (e) { console.error(e); } }
+              }
+              if (r) delete r.data;
+              return r;
+            })
             .catch((e) => ({ ok: false, error: String((e && e.message) || e) }));
+          // Inside amber.batch(), data changes and note edits are collected and sent as one each.
+          let batching = null;
+          const ask = (msg) => (batching && /^(store|collection)\\./.test(msg.op)) ? (batching.data.push(msg), Promise.resolve({ ok: true })) : post(msg);
+          amber.batch = async (fn) => {
+            if (batching) return fn();
+            batching = { notes: [], data: [] };
+            let b;
+            try { await fn(); } finally { b = batching; batching = null; }
+            const results = [];
+            if (b.data.length) results.push(await post(b.data.length === 1 ? b.data[0] : { op: "batch", ops: b.data }));
+            if (b.notes.length) results.push(await amber.update(b.notes.length === 1 ? b.notes[0] : b.notes));
+            return results.find((r) => r && r.ok === false) || { ok: true };
+          };
+          // localStorage is the app's own data (values.localStorage): synced, encrypted, versioned,
+          // so code written for the web keeps its state across devices. sessionStorage lasts while the
+          // app is open. IndexedDB isn't available: libraries fall back to localStorage.
+          const storage = (persist) => {
+            let map = Object.assign({}, persist ? ((amber.data.values || {}).localStorage || {}) : {});
+            let timer = null;
+            const flush = () => { timer = null; post({ op: "store.set", key: "localStorage", value: map }); };
+            const changed = () => { if (!persist) return; clearTimeout(timer); timer = setTimeout(flush, 250); };
+            if (persist) {
+              addEventListener("pagehide", () => { if (timer) { clearTimeout(timer); flush(); } });
+              listeners.push((note, data) => { if (!timer && data && data.values) map = Object.assign({}, data.values.localStorage || {}); });
+            }
+            const api = {
+              getItem: (k) => Object.prototype.hasOwnProperty.call(map, k) ? map[k] : null,
+              setItem: (k, v) => { map[String(k)] = String(v); changed(); },
+              removeItem: (k) => { delete map[String(k)]; changed(); },
+              clear: () => { map = {}; changed(); },
+              key: (i) => Object.keys(map)[i] ?? null,
+              get length() { return Object.keys(map).length; },
+            };
+            return new Proxy(api, {
+              get: (t, k) => k in t ? t[k] : api.getItem(k),
+              set: (t, k, v) => { api.setItem(k, v); return true; },
+              deleteProperty: (t, k) => { api.removeItem(k); return true; },
+              has: (t, k) => k in t || Object.prototype.hasOwnProperty.call(map, k),
+              ownKeys: () => Object.keys(map),
+              getOwnPropertyDescriptor: (t, k) => Object.prototype.hasOwnProperty.call(map, k) ? { value: map[k], enumerable: true, configurable: true, writable: true } : undefined,
+            });
+          };
+          for (const [name, value] of [["localStorage", storage(true)], ["sessionStorage", storage(false)], ["indexedDB", undefined]]) {
+            try { Object.defineProperty(window, name, { value, configurable: true, writable: false }); } catch (e) {}
+          }
           Object.defineProperty(amber, "_receive", { value(note, data) {
             amber.note = note;
             if (data) amber.data = data;
@@ -802,6 +861,18 @@ enum NotePageActions {
         return before
     }
 
+    /// A text note that has just become an app: what it held goes into the app's data once
+    /// (values.imported: its tables by heading, checklists and text), for the app to start from.
+    static func importIfNeeded(_ note: Note) {
+        let store = NotePageDataStore.shared
+        var doc = store.doc(note.id)
+        var values = doc["values"] as? NotePageData.Doc ?? [:]
+        guard values["imported"] == nil else { return }
+        values["imported"] = NotePageData.imported(from: note.body)
+        doc["values"] = values
+        store.set(note.id, doc)
+    }
+
     /// A file the note's app may show: one the note or its app's data refers to, on this device.
     static func file(_ id: UUID, note: Note, context: ModelContext) -> URL? {
         let key = id.uuidString.lowercased()
@@ -821,6 +892,14 @@ enum NotePageActions {
             return (try await NotePageDevice.handle(d, context: context), nil)
         }
         switch m["op"] as? String {
+        case "note.summary":
+            // The note behind an app is its title and one line the app sets (for the list and search).
+            guard let summary = m["text"] as? String, summary.count <= 300 else { throw NotePage.OpError("setSummary takes a line of text, at most 300 characters.") }
+            let title = NoteText.title(of: note.body)
+            let line = summary.replacingOccurrences(of: "\n", with: " ").trimmingCharacters(in: .whitespaces)
+            let body = line.isEmpty ? title : "\(title)\n\n\(line)"
+            if body != note.body { note.body = body; note.touch(); try? context.save() }
+            return ([:], nil)
         case "fetch":
             return (try await NotePageNetwork.fetch(m, note: note, html: html, ask: ask, needKey: needKey), nil)
         case "file.save":
