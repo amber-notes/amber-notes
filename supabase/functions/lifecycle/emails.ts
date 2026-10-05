@@ -5,8 +5,10 @@
 // themselves). Tables and inline styles only, images with alt text and the words still complete
 // without them, a plain-text twin, and every HTML file well under Gmail's 102 KB clipping limit.
 //
-// The copy follows the house rules: Emil's voice, short, no em dashes, no invented features.
-// Nothing here knows anything about a person's notes: the only input is whether an AI is connected.
+// The copy follows the house rules: Emil's voice, short, no em dashes, no invented features. Every
+// before/after shows what the MCP tools can do today (supabase/functions/mcp/tools.ts: move_note
+// and create_folder, append_to_note and set_checklist_item, edit_note), with made-up notes.
+// Nothing here knows what a person's notes say: the inputs are a note count and a few yes/no facts.
 
 import type { Kind } from "./logic.ts";
 
@@ -19,20 +21,29 @@ export type Context = {
   assets: string;
   /// The page the "Stop these emails" link opens.
   unsubscribe: string;
-  /// Whether the account has connected an AI (the templates and Undo emails say a little more if not).
-  aiConnected: boolean;
+  /// How many notes the account has, and whether it used Bring your notes (the sorting email says the number).
+  noteCount: number;
+  imported: boolean;
+  /// An AI connection was started and not finished (the AI emails say how the last step goes).
+  connectTried: boolean;
 };
 
 export type Email = { kind: Kind; subject: string; preview: string; html: string; text: string };
 
 // ---- The words ------------------------------------------------------------------------------------
 
+/// A line in a small drawn note. `added` lines are tinted, the way the app tints what an AI changed.
+type Line = { t: string; check?: boolean; done?: boolean; folder?: number; heading?: boolean; added?: boolean };
+type Mini = { title: string; folder: string; lines: Line[] };
+
 /// A paragraph with [links](href). Written once, turned into HTML and into plain text.
 type Block =
   | { p: string; small?: boolean }
   | { checks: { done: boolean; text: string }[] }
   | { button: { label: string; href: string } }
-  | { receipt: { ai: string; text: string } }
+  | { receipt: { ai: "ChatGPT" | "Claude"; text: string } }
+  | { example: { before: Mini; ai: "ChatGPT" | "Claude"; ask: string; after: Mini } }
+  | { connect: { tried: boolean } }
   | { templates: Template[] };
 
 type Template = { slug: string; title: string; tagline: string; ground: string; light: boolean };
@@ -57,25 +68,100 @@ const TEMPLATES: Template[] = [
 
 const guide = (c: Context) => `${c.site}/blog/connect-chatgpt-to-your-notes`;
 
+/// The app's setup card (Pane/Views/SetupCard.swift), with the first step done.
+const SETUP: Block = { checks: [
+  { done: true, text: "Bring your notes" },
+  { done: false, text: "Connect your AI" },
+  { done: false, text: "Try it" },
+] };
+
+/// A big library gets its number; a small one doesn't.
+const many = (c: Context) => c.noteCount >= 20;
+
 function draft(kind: Kind, c: Context): Draft {
+  const connect: Block = { connect: { tried: c.connectTried } };
   switch (kind) {
-    case "connect":
+    case "ai_sort":
       return {
-        subject: "Let ChatGPT or Claude into your notes",
-        preview: "It takes a few minutes. You approve it on your own iPhone or Mac, and every change it makes has Undo.",
-        title: "Connect your AI",
+        subject: "Let ChatGPT sort your notes into folders",
+        preview: many(c)
+          ? `You have ${c.noteCount} notes in Amber Notes. ChatGPT or Claude can put them into folders for you.`
+          : "ChatGPT or Claude can look through your notes and put each one in a folder.",
+        title: many(c) ? `Put ${c.noteCount} notes in folders in one go` : "Put your notes in folders in one go",
         folder: "Notes",
-        art: { file: "connect.jpg", ground: "#2e346d", alt: "Two paper-cut armchairs with a mug each, ready for a chat" },
+        art: { file: "ai-sort.jpg", ground: "#e4ba8b", alt: "A paper-cut house with a ladder, a toolbox and a paint roller, ready for a tidy-up" },
         blocks: [
-          { p: "Hi, Emil here. I make Amber Notes. Your first notes are in, which leaves the one step I built the whole app for." },
-          { checks: [
-            { done: true, text: "Make an account" },
-            { done: true, text: "Add your first notes" },
-            { done: false, text: "Connect ChatGPT or Claude" },
-          ] },
-          { p: "Once it's connected, you can type \"Add oat milk to my groceries\" in ChatGPT and the line appears in your note a moment later. You approve each AI on your own iPhone or Mac first, and you can give it Read Only if you'd rather it just looked." },
-          { button: { label: "Show me how", href: guide(c) } },
-          { p: `In the app, it's Settings, then Connect an AI. Using Claude? [Add Amber Notes from Claude's directory](${CLAUDE_DIRECTORY_URL}) in one step.`, small: true },
+          { p: c.imported
+            ? "Hi, Emil here. Your notes made it over. If a lot of them sit loose in Notes, your AI can read through them and give each one a folder, which is the kind of job I built Amber Notes for."
+            : "Hi, Emil here. If a lot of your notes sit loose in Notes, your AI can read through them and give each one a folder, which is the kind of job I built Amber Notes for." },
+          { example: {
+            before: { title: "Notes", folder: "6 notes", lines: [
+              { t: "Tomato soup" }, { t: "Q4 goals" }, { t: "Lisbon hotels" }, { t: "Pasta with lemon" }, { t: "1:1 with Sara" }, { t: "Packing for Lisbon" },
+            ] },
+            ai: "ChatGPT",
+            ask: "Sort the notes in my Notes folder into folders. Make new folders where it makes sense.",
+            after: { title: "Folders", folder: "3 new", lines: [
+              { t: "Recipes", folder: 2, added: true }, { t: "Work", folder: 2, added: true }, { t: "Travel", folder: 2, added: true },
+            ] },
+          } },
+          { p: "If you'd like to check before anything moves, ask it to suggest the folders first." },
+          SETUP,
+          connect,
+        ],
+      };
+    case "ai_groceries":
+      return {
+        subject: "Your grocery list, kept by ChatGPT",
+        preview: "Tell ChatGPT what ran out, and the list in Amber Notes updates itself. Here's what that looks like.",
+        title: "Let your AI keep the grocery list",
+        folder: "Notes",
+        art: { file: "ai-groceries.jpg", ground: "#c83829", alt: "A paper-cut shopping trolley with two paper bags, a baguette, greens and bananas" },
+        blocks: [
+          { p: "Hi, Emil here. This is the smallest thing Amber Notes does once ChatGPT or Claude is connected, and a good first one to try." },
+          { example: {
+            before: { title: "Groceries", folder: "Notes", lines: [
+              { t: "Eggs", check: true }, { t: "Bread", check: true }, { t: "Coffee beans", check: true },
+            ] },
+            ai: "ChatGPT",
+            ask: "We're out of oat milk and lemons. And I already bought eggs.",
+            after: { title: "Groceries", folder: "Notes", lines: [
+              { t: "Eggs", check: true, done: true, added: true }, { t: "Bread", check: true }, { t: "Coffee beans", check: true },
+              { t: "Oat milk", check: true, added: true }, { t: "Lemons", check: true, added: true },
+            ] },
+          } },
+          { p: "The note on your Mac changes a moment later, with Undo in case it got something wrong." },
+          SETUP,
+          connect,
+        ],
+      };
+    case "ai_meeting":
+      return {
+        subject: "Turn a messy note into a to-do list",
+        preview: "Claude can read a note you wrote in a hurry and pull out who does what. Before and after inside.",
+        title: "From messy note to action items",
+        folder: "Notes",
+        art: { file: "ai-meeting.jpg", ground: "#ec7751", alt: "A paper-cut meeting table from above, with coffee cups, sticky notes and a notebook" },
+        blocks: [
+          { p: "Hi, Emil here. Notes written in a hurry rarely say who does what. Claude can read one and put the action items at the top, and leave the rest as you wrote it." },
+          { example: {
+            before: { title: "Monday sync", folder: "Work", lines: [
+              { t: "pricing page still not live, Sara thinks thu" }, { t: "jonas to check VAT for norway??" }, { t: "need new screenshots before launch" }, { t: "emma design review checkout" },
+            ] },
+            ai: "Claude",
+            ask: "Put the action items from my Monday sync note at the top as a checklist. Keep the rest as it is.",
+            after: { title: "Monday sync", folder: "Work", lines: [
+              { t: "Action items", heading: true, added: true },
+              { t: "Sara: pricing page live by Thursday", check: true, added: true },
+              { t: "Jonas: check VAT rules for Norway", check: true, added: true },
+              { t: "Emma: design review of the checkout", check: true, added: true },
+              { t: "New screenshots before launch (who?)", check: true, added: true },
+              { t: "pricing page still not live, Sara thinks thu" }, { t: "…" },
+            ] },
+          } },
+          { receipt: { ai: "Claude", text: "Claude changed 6 lines" } },
+          { p: "That bar shows on the note when the change lands. Undo puts the note back the way it was." },
+          SETUP,
+          connect,
         ],
       };
     case "templates":
@@ -85,10 +171,9 @@ function draft(kind: Kind, c: Context): Draft {
         title: "Three templates to try",
         folder: "Notes",
         blocks: [
-          { p: "A template is a note plus a few lines of instructions for your AI. Use template adds the note to Amber Notes. You paste the instructions into ChatGPT or Claude once, and from then on it keeps the note up to date for you." },
+          { p: "Your AI is connected, so here's something to give it. A template is a note plus a few lines of instructions for your AI. Use template adds the note to Amber Notes. You paste the instructions into ChatGPT or Claude once, and from then on it keeps the note up to date for you." },
           { templates: TEMPLATES },
           { p: `Each template's page has its instructions, with a Copy button. [See all the templates](${c.site}/templates).` },
-          ...(c.aiConnected ? [] : [{ p: `Templates need ChatGPT or Claude connected to Amber Notes. In the app, that's Settings, then Connect an AI, and [this guide](${guide(c)}) walks through it.`, small: true }]),
           { p: "If you make a template of your own, reply and show me. I'd love to see it." },
         ],
       };
@@ -102,16 +187,13 @@ function draft(kind: Kind, c: Context): Draft {
         blocks: [
           { p: "Letting an AI change your notes takes some trust. So I built Amber Notes to show you every change it makes, and to let you take any of them back." },
           { receipt: { ai: "Claude", text: "Claude changed 3 lines" } },
-          { p: c.aiConnected
-            ? "When your AI edits the note you have open, this appears at the bottom of it. Undo puts the note back the way it was. A note it changed while you were away is marked \"Edited by Claude\" (or ChatGPT) in the list until you open it."
-            : "Once you connect ChatGPT or Claude, this appears at the bottom of the note you have open whenever it edits that note. Undo puts the note back the way it was. A note it changed while you were away is marked \"Edited by Claude\" (or ChatGPT) in the list until you open it." },
+          { p: "When your AI edits the note you have open, this appears at the bottom of it. Undo puts the note back the way it was. A note it changed while you were away is marked \"Edited by Claude\" (or ChatGPT) in the list until you open it." },
           { p: "Older changes are in the note's version history. Try it on any note:" },
           { checks: [
             { done: false, text: "Open a note" },
             { done: false, text: "Choose More (•••), then Show Version History" },
           ] },
           { p: "Every earlier version is there by day, and you can bring any of them back. Versions that an AI made are kept for 90 days." },
-          ...(c.aiConnected ? [] : [{ button: { label: "Connect your AI", href: guide(c) } } as Block]),
         ],
       };
     case "stuck":
@@ -125,11 +207,22 @@ function draft(kind: Kind, c: Context): Draft {
           { p: "Hi, I'm Emil, and I make Amber Notes. You made an account recently, but no notes have arrived in it yet." },
           { p: "Maybe that's on purpose. But if a screen after signing in was confusing, or the app got stuck, I'd really like to hear about it, because then it's probably happening to other people too." },
           { p: "Reply with one line or a screenshot. I read every reply myself, and I'll help you get going." },
-          { button: { label: "Reply to Emil", href: "mailto:hello@ambernotes.app?subject=Stuck%20after%20signing%20in" } },
+          { button: { label: "Reply to Emil", href: "mailto:emil@ambernotes.app?subject=Stuck%20after%20signing%20in" } },
           { p: "Have notes in Apple Notes? On the Mac, choose File, then Import from Apple Notes. It brings them all over with their folders, and Apple Notes stays as it is.", small: true },
         ],
       };
   }
+}
+
+/// The two ways to connect, the same in every AI email.
+function connectWords(c: Context, tried: boolean) {
+  return {
+    heading: "Connect in a few minutes",
+    chatgpt: `In Amber Notes, open Settings and choose Connect an AI, then ChatGPT. The app shows each step. It needs ChatGPT Plus or higher, on chatgpt.com. [The guide](${guide(c)}) has pictures.`,
+    claude: `[Open Amber Notes in Claude's directory](${CLAUDE_DIRECTORY_URL}) and choose Connect to Claude.`,
+    approve: "Either way, you approve it on your iPhone or Mac by typing the number the page shows, and you can choose Read Only.",
+    tried: tried ? "Started connecting and it didn't finish? The last step happens on your iPhone or Mac: open Amber Notes there and type the number from the page." : null,
+  };
 }
 
 // ---- Plain text -----------------------------------------------------------------------------------
@@ -144,6 +237,14 @@ function textOf(d: Draft, c: Context): string {
     else if ("checks" in b) out.push(...b.checks.map((x) => `${x.done ? "[x]" : "[ ]"} ${x.text}`), "");
     else if ("button" in b) out.push(`${b.button.label}: ${b.button.href.replace(/^mailto:([^?]+).*/, "$1")}`, "");
     else if ("receipt" in b) out.push(`  ${b.receipt.text}  |  Undo`, "");
+    else if ("example" in b) {
+      const mini = (m: Mini) => [`  ${m.title} (${m.folder})`, ...m.lines.map((l) => `  ${l.check ? (l.done ? "[x] " : "[ ] ") : l.folder !== undefined ? "Folder: " : "- "}${l.t}${l.folder !== undefined ? ` (${l.folder})` : ""}`)];
+      out.push("Before:", ...mini(b.example.before), "", `You, in ${b.example.ai}: "${b.example.ask}"`, "", "After:", ...mini(b.example.after), "");
+    } else if ("connect" in b) {
+      const w = connectWords(c, b.connect.tried);
+      out.push(w.heading, "", `ChatGPT: ${plain(w.chatgpt)}`, "", `Claude: ${plain(w.claude)}`, "", w.approve, "");
+      if (w.tried) out.push(w.tried, "");
+    }
     else if ("templates" in b) {
       for (const t of b.templates) out.push(`${t.title}: ${t.tagline}`, `Use template: ${c.site}/open/template/${t.slug}`, "");
     }
@@ -163,7 +264,7 @@ const DISPLAY = "-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Ro
 
 // The site's tokens (web/app/site.css for the page, web/app/globals.css for the note).
 const L = { ground: "#fff4e6", page: "#ffffff", chrome: "#f6f5f3", edge: "#ebe6df", text: "#1d1d1f", secondary: "#6e6e73", circle: "#aeaeb2",
-  accent: "#e39410", accentText: "#b86e00", muted: "#74604c", link: "#a85700", cta: "#2a1d10", ctaInk: "#fff4e6", soft: "#fbe8c8", softInk: "#5c3400" };
+  accent: "#e39410", accentText: "#b86e00", muted: "#74604c", link: "#a85700", cta: "#2a1d10", ctaInk: "#fff4e6", soft: "#fbe8c8", softInk: "#5c3400", tray: "#f7f3ec", tint: "#fdf0d8" };
 
 function inline(s: string, linkClass: string, color: string): string {
   let out = "", last = 0;
@@ -173,6 +274,27 @@ function inline(s: string, linkClass: string, color: string): string {
     last = m.index! + m[0].length;
   }
   return out + esc(s.slice(last));
+}
+
+/// A small note, the way the app draws one: title, folder, lines; what an AI changed is tinted.
+function miniHTML(m: Mini): string {
+  const rows = m.lines.map((l) => {
+    const tint = l.added ? `background:${L.tint};` : "";
+    const lead = l.check
+      ? (l.done
+        ? `<span class="tick" style="display:inline-block;width:15px;height:15px;border-radius:8px;background:${L.accent};color:#ffffff;font-size:10px;line-height:15px;text-align:center;font-weight:700;">&#10003;</span>`
+        : `<span class="ring" style="display:inline-block;width:12px;height:12px;border-radius:8px;border:1.5px solid ${L.circle};"></span>`)
+      : l.folder !== undefined ? `<span style="color:${L.accent};font-size:13px;">&#9634;</span>` : "";
+    const text = l.heading
+      ? `<b class="ink" style="color:${L.text};font-size:15px;">${esc(l.t)}</b>`
+      : `<span class="${l.done ? "sec" : "ink"}" style="color:${l.done ? L.secondary : L.text};${l.done ? "text-decoration:line-through;" : ""}">${esc(l.t)}</span>`;
+    const count = l.folder !== undefined ? `<td class="sec${l.added ? " tint" : ""}" align="right" style="padding:3px 8px;font-size:13px;color:${L.secondary};${tint}">${l.folder}</td>` : "";
+    return `<tr><td width="22" class="${l.added ? "tint" : ""}" style="width:22px;padding:3px 0 3px 8px;${tint}">${lead}</td><td class="${l.added ? "tint" : ""}" style="padding:3px 8px 3px 4px;font-family:${SANS};font-size:14px;line-height:1.4;${tint}">${text}</td>${count}</tr>`;
+  }).join("");
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="mini" style="background:${L.page};border:1px solid ${L.edge};border-radius:10px;"><tr><td style="padding:10px 6px 8px;">
+<p class="ink" style="margin:0 8px 6px;font-family:${DISPLAY};font-size:15px;line-height:1.3;font-weight:700;color:${L.text};">${esc(m.title)} <span class="sec" style="font-weight:400;font-size:12px;color:${L.secondary};">· ${esc(m.folder)}</span></p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${rows}</table>
+</td></tr></table>`;
 }
 
 function blockHTML(b: Block, c: Context): string {
@@ -201,8 +323,34 @@ function blockHTML(b: Block, c: Context): string {
     // The app's own receipt (Pane/Views/AIMarks.swift, AIReceipt): a soft amber capsule, the AI's mark, the summary, Undo.
     return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:6px auto 22px;"><tr>
 <td class="pill" bgcolor="${L.soft}" style="background:${L.soft};border:1px solid #efd3a6;border-radius:22px;padding:10px 16px;font-family:${SANS};font-size:15px;line-height:20px;font-weight:600;color:${L.softInk};white-space:nowrap;">
-<img src="${c.assets}/claude.png" width="16" height="16" alt="" style="display:inline-block;width:16px;height:16px;border:0;vertical-align:-3px;">&nbsp; <span class="pill-ink" style="color:${L.softInk};">${esc(b.receipt.text)}</span>&nbsp;&nbsp;<span style="color:#d9b98a;">|</span>&nbsp;&nbsp;<span class="pill-ink" style="color:${L.softInk};">Undo</span>
+<img src="${c.assets}/${b.receipt.ai === "Claude" ? "claude" : "chatgpt"}.png" width="16" height="16" alt="" style="display:inline-block;width:16px;height:16px;border:0;vertical-align:-3px;">&nbsp; <span class="pill-ink" style="color:${L.softInk};">${esc(b.receipt.text)}</span>&nbsp;&nbsp;<span style="color:#d9b98a;">|</span>&nbsp;&nbsp;<span class="pill-ink" style="color:${L.softInk};">Undo</span>
 </td></tr></table>`;
+  }
+  if ("example" in b) {
+    const e = b.example;
+    const glyph = `${c.assets}/${e.ai === "Claude" ? "claude" : "chatgpt"}.png`;
+    const label = (t: string) => `<p class="sec" style="margin:0 0 6px;font-size:12px;line-height:1.3;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:${L.secondary};">${t}</p>`;
+    const ask = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:14px 0;"><tr><td align="right">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td style="background:#efece6;border-radius:18px;padding:10px 14px;font-family:${SANS};font-size:15px;line-height:1.4;color:#1d1d1f;">
+<img src="${glyph}" width="14" height="14" alt="" style="display:inline-block;width:14px;height:14px;border:0;vertical-align:-2px;"> <span style="color:#6e6e73;font-size:13px;font-weight:600;">You, in ${e.ai}</span><br><span style="color:#1d1d1f;">${esc(e.ask)}</span>
+</td></tr></table></td></tr></table>`;
+    return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:6px 0 18px;"><tr><td class="tray" style="background:${L.tray};border-radius:14px;padding:16px;">
+${label("Before")}${miniHTML(e.before)}
+${ask}
+${label("After")}${miniHTML(e.after)}
+</td></tr></table>`;
+  }
+  if ("connect" in b) {
+    const w = connectWords(c, b.connect.tried);
+    const row = (img: string, name: string, text: string) => `<tr><td width="34" valign="top" style="width:34px;padding:0 0 12px;"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td bgcolor="#ffffff" style="background:#ffffff;border:1px solid #e6e2dc;border-radius:7px;padding:4px;line-height:0;"><img src="${c.assets}/${img}.png" width="16" height="16" alt="" style="display:block;width:16px;height:16px;border:0;"></td></tr></table></td>
+<td class="ink" style="padding:0 0 12px;font-family:${SANS};font-size:15px;line-height:1.5;color:${L.text};"><b>${name}.</b> ${inline(text, "lnk", L.accentText)}</td></tr>`;
+    return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:6px 0 18px;"><tr><td class="tray" style="background:${L.tray};border-radius:14px;padding:16px 16px 6px;">
+<p class="ink" style="margin:0 0 12px;font-family:${DISPLAY};font-size:18px;line-height:1.3;font-weight:700;color:${L.text};">${esc(w.heading)}</p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${row("chatgpt", "ChatGPT", w.chatgpt)}${row("claude", "Claude", w.claude)}</table>
+<p class="sec" style="margin:0 0 10px;font-size:14px;line-height:1.5;color:${L.secondary};">${esc(w.approve)}</p>
+${w.tried ? `<p class="ink" style="margin:0 0 10px;font-size:14px;line-height:1.5;color:${L.text};">${esc(w.tried)}</p>` : ""}
+</td></tr></table>
+${blockHTML({ button: { label: "Show me how", href: guide(c) } }, c)}`;
   }
   // Templates: a card each, in its cover's colour, like the gallery on the site.
   return b.templates.map((t) => {
@@ -263,6 +411,9 @@ function htmlOf(d: Draft, c: Context): string {
     .pill { background: #4a3014 !important; border-color: #6b4a22 !important; }
     .pill-ink { color: #fbeedd !important; }
     .rule { border-color: #333333 !important; }
+    .tray { background: #2a2a2a !important; }
+    .mini { background: #1e1e1e !important; border-color: #3a3a3a !important; }
+    .tint { background: #3d2c12 !important; }
   }
   [data-ogsc] .ink { color: #f5f5f7 !important; }
   [data-ogsc] .sec { color: #a1a1a6 !important; }
@@ -330,4 +481,4 @@ export function render(kind: Kind, c: Context): Email {
   return { kind, subject: d.subject, preview: d.preview, html: htmlOf(d, c), text: textOf(d, c) };
 }
 
-export const KINDS: Kind[] = ["connect", "templates", "undo", "stuck"];
+export const KINDS: Kind[] = ["stuck", "ai_sort", "ai_groceries", "ai_meeting", "templates", "undo"];

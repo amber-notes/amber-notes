@@ -1,16 +1,23 @@
 // The lifecycle emails' decisions, without a database or a network: who gets which email and when,
 // the unsubscribe links, and the settings. docs/Technical/lifecycle-emails.md explains the whole.
 
-export type Kind = "stuck" | "connect" | "templates" | "undo";
+export type Kind = "stuck" | "ai_sort" | "ai_groceries" | "ai_meeting" | "templates" | "undo";
 
 /// What lifecycle_facts() says about one account. Activity only, never what a note says.
 export type Facts = {
   user_id: string;
   email: string | null;
   signed_up_at: Date;
-  has_note: boolean;
-  ai_connected: boolean;
-  ai_edited: boolean;
+  /// Notes in the account (a count of rows; no text is read).
+  note_count: number;
+  /// The account used Bring your notes (pane_setup.imported_at).
+  imported: boolean;
+  /// When the first AI was connected (mcp_tokens), or null.
+  ai_connected_at: Date | null;
+  /// An AI connection was asked for from a browser but never finished (connect_asks, no grant).
+  connect_tried: boolean;
+  /// Days on which an AI changed a note (pane_activity).
+  ai_edit_days: number;
   history_opened: boolean;
   unsubscribed: boolean;
   last_sent_at: Date | null;
@@ -20,43 +27,45 @@ export type Facts = {
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
 
-/// At most one email in any seven days, whatever the schedule says.
+/// At most one email in any seven days, whatever the step.
 export const GAP_MS = 7 * DAY;
+/// No email goes to an account older than this.
+export const LAST_DAY_MS = 45 * DAY;
 
-type Step = {
-  kind: Kind;
-  /// How long after sign-up the email may go, at the earliest and at the latest.
-  after: number;
-  until: number;
-  /// Who the email is for.
-  for: (f: Facts) => boolean;
-  /// What the email asks for. Once it has happened, the email is never sent.
-  goal: (f: Facts) => boolean;
-};
+/// The app's own setup card has three steps (Pane/Views/SetupCard.swift): Bring your notes,
+/// Connect your AI, Try it. The emails follow the same steps, one email at a time:
+///
+///   no note yet          → stuck (once, from a day after sign-up)
+///   notes, no AI         → one AI use case per email, each with the way to connect, until an AI
+///                          is connected (then the rest are never sent)
+///   an AI is connected   → templates (until the AI has edited notes on 3 days), then Undo and
+///                          version history (until history has been opened)
+export const AI_SERIES: Kind[] = ["ai_groceries", "ai_meeting", "ai_sort"];
 
-/// In order of priority: when two are due on the same day, the first one goes.
-export const SEQUENCE: Step[] = [
-  // No note a day after signing in: something may have gone wrong.
-  { kind: "stuck", after: DAY, until: 10 * DAY, for: () => true, goal: (f) => f.has_note },
-  // The step Amber Notes is for. The cron runs once a day, so this lands 12 to 36 hours in.
-  { kind: "connect", after: 12 * HOUR, until: 10 * DAY, for: (f) => f.has_note, goal: (f) => f.ai_connected },
-  // Something to do with a connected AI. Done once an AI has edited a note.
-  { kind: "templates", after: 3 * DAY, until: 21 * DAY, for: (f) => f.has_note, goal: (f) => f.ai_edited },
-  // Undo and version history. Done once version history has been opened.
-  { kind: "undo", after: 7 * DAY, until: 28 * DAY, for: (f) => f.has_note, goal: (f) => f.history_opened },
-];
+/// A big library goes first to sorting it: that's the use case it can see at once.
+export function aiOrder(f: Facts): Kind[] {
+  return f.imported || f.note_count >= 20 ? ["ai_sort", "ai_groceries", "ai_meeting"] : AI_SERIES;
+}
 
 /// The email this account should get now, or null.
 export function decide(f: Facts, now: Date): Kind | null {
   if (f.unsubscribed || !f.email) return null;
   if (f.last_sent_at && now.getTime() - f.last_sent_at.getTime() < GAP_MS) return null;
   const age = now.getTime() - f.signed_up_at.getTime();
-  for (const step of SEQUENCE) {
-    if (f.sent.includes(step.kind)) continue;
-    if (age < step.after || age > step.until) continue;
-    if (!step.for(f) || step.goal(f)) continue;
-    return step.kind;
+  if (age > LAST_DAY_MS) return null;
+  const unsent = (k: Kind) => !f.sent.includes(k);
+
+  if (f.note_count === 0) return age >= DAY && age <= 10 * DAY && unsent("stuck") ? "stuck" : null;
+
+  if (!f.ai_connected_at) {
+    if (age < 12 * HOUR) return null;
+    return aiOrder(f).find(unsent) ?? null;
   }
+
+  // Connected: give the AI a day before suggesting what to do with it.
+  if (now.getTime() - f.ai_connected_at.getTime() < DAY) return null;
+  if (unsent("templates") && f.ai_edit_days < 3) return "templates";
+  if (unsent("undo") && !f.history_opened) return "undo";
   return null;
 }
 
@@ -112,8 +121,8 @@ export type Config = {
   site: string;
 };
 
-export const FROM = "Emil at Amber Notes <hello@ambernotes.app>";
-export const REPLY_TO = "hello@ambernotes.app";
+export const FROM = "Emil at Amber Notes <emil@ambernotes.app>";
+export const REPLY_TO = "emil@ambernotes.app";
 export const SITE = "https://ambernotes.app";
 
 /// The settings, or why there are none. Missing secrets turn sending off rather than failing later.

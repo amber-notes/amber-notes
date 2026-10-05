@@ -14,7 +14,7 @@ const at = (ms: number) => new Date(NOW.getTime() + ms);
 
 const cfg = (o: Partial<Config> = {}): Config => ({
   enabled: true, since: at(-60 * D), only: null, resendKey: "re_test", unsubscribeSecret: "u".repeat(40), cronSecret: "c".repeat(40),
-  from: "Emil at Amber Notes <hello@ambernotes.app>", replyTo: "hello@ambernotes.app", site: "https://ambernotes.app", ...o,
+  from: "Emil at Amber Notes <emil@ambernotes.app>", replyTo: "emil@ambernotes.app", site: "https://ambernotes.app", ...o,
 });
 
 /// A fake Resend that remembers what it was given.
@@ -45,7 +45,7 @@ Deno.test("kill switch off: a round sends nothing and writes nothing, only count
   const report = await run({ sql: sqlFor(pg), send: box.send, cfg: cfg({ enabled: false }), ...quick });
   assertEquals(box.sent.length, 0);
   assertEquals(await rows(pg), []);
-  assertEquals(report.due, { connect: 1, stuck: 1 });
+  assertEquals(report.due, { ai_groceries: 1, stuck: 1 });
   assertEquals(report.sent, 0);
 });
 
@@ -58,26 +58,48 @@ Deno.test("never sends twice: a second round, and two rounds at once, send each 
   await Promise.all([1, 2, 3].map(() => run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), ...quick })));
   assertEquals(box.sent.length, 1);
   assertEquals(box.sent[0].to, sara.email);
-  assertEquals(box.sent[0].idempotencyKey, `lifecycle-connect-${sara.id}`);
-  assertEquals((await rows(pg)).map((r) => [r.kind, r.status]), [["connect", "sent"]]);
+  assertEquals(box.sent[0].idempotencyKey, `lifecycle-ai_groceries-${sara.id}`);
+  assertEquals((await rows(pg)).map((r) => [r.kind, r.status]), [["ai_groceries", "sent"]]);
   // Even a row from long ago keeps that email from going again.
   await pg.query(`update public.email_sends set created_at = now() - interval '20 days'`);
   await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), now: at(1 * D), ...quick });
   assertEquals(box.sent.filter((m) => m.subject === box.sent[0].subject).length, 1);
 });
 
-Deno.test("stops when its goal is met: no connect email once an AI is connected", async () => {
+Deno.test("stops when its goal is met: no AI use cases once an AI is connected, then templates and Undo", async () => {
   const pg = await schemaDB();
-  const done = await person(pg, { age: 2 * D, notes: 1, ai: true });
+  const done = await person(pg, { age: 2 * D, notes: 1 });
+  await pg.query(`insert into public.mcp_tokens (user_id, name, token_hash, created_at) values ($1, 'ChatGPT', $2, now() - interval '30 hours')`, [done.id, crypto.randomUUID()]);
   const box = outbox();
   await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), ...quick });
-  assertEquals(box.sent.length, 0);
-  // Day 3 with an AI that has already edited: no templates email either. Day 7, history never opened: Undo.
-  await pg.query(`insert into public.pane_activity (user_id, day, kind, n) values ($1, current_date, 'ai_edit', 2)`, [done.id]);
+  assertEquals(box.sent.map((m) => m.subject), ["Three notes your AI can keep for you"]);
+  // The AI edits on three days: no more templates goal; a week on, Undo. Once history is opened, nothing.
+  await pg.query(`insert into public.pane_activity (user_id, day, kind, n) select $1, current_date - g, 'ai_edit', 1 from generate_series(0, 2) g`, [done.id]);
+  await pg.query(`update public.email_sends set created_at = created_at - interval '8 days'`);
   await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), now: at(1 * D), ...quick });
-  assertEquals(box.sent.length, 0);
-  await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), now: at(5 * D), ...quick });
-  assertEquals(box.sent.map((m) => m.subject), ["Every AI edit comes with Undo"]);
+  assertEquals(box.sent.map((m) => m.subject), ["Three notes your AI can keep for you", "Every AI edit comes with Undo"]);
+});
+
+Deno.test("an account that connects mid-series gets no more use cases", async () => {
+  const pg = await schemaDB();
+  const a = await person(pg, { age: 1 * D, notes: 2 });
+  const box = outbox();
+  await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), ...quick });
+  assertEquals(box.sent.map((m) => m.subject), ["Your grocery list, kept by ChatGPT"] );
+  await pg.query(`insert into public.mcp_tokens (user_id, name, token_hash) values ($1, 'Claude', $2)`, [a.id, crypto.randomUUID()]);
+  await pg.query(`update public.email_sends set created_at = created_at - interval '8 days'`);
+  const report = await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), ...quick });
+  assertEquals([box.sent.length, report.due], [1, {}]);
+});
+
+Deno.test("an imported library of many notes starts with the sorting email, with its number", async () => {
+  const pg = await schemaDB();
+  const a = await person(pg, { age: 1 * D, notes: 21 });
+  const box = outbox();
+  await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), ...quick });
+  assertEquals(box.sent.map((m) => m.subject), ["Let ChatGPT sort your notes into folders"]);
+  assertStringIncludes(box.sent[0].text, "21 notes");
+  assertEquals(box.sent[0].to, a.email);
 });
 
 Deno.test("the stuck email goes to an account with no note after a day, and not once a note has arrived", async () => {
@@ -90,7 +112,7 @@ Deno.test("the stuck email goes to an account with no note after a day, and not 
   // The account with a note gets the next step instead.
   assertEquals(box.sent.map((m) => [m.to, m.subject]).sort(), [
     [empty.email, "Did something go wrong after signing in?"],
-    [started.email, "Let ChatGPT or Claude into your notes"],
+    [started.email, "Your grocery list, kept by ChatGPT"],
   ].sort());
 });
 
@@ -105,17 +127,17 @@ Deno.test("respects unsubscribe: nothing after it, from the link or the header",
   assertEquals(report.due, {});
 });
 
-Deno.test("one email a week: the Day 3 email waits for the gap, then goes", async () => {
+Deno.test("one email a week: the second use case waits for the gap, then goes", async () => {
   const pg = await schemaDB();
   await person(pg, { age: 1 * D, notes: 1 });
   const box = outbox();
   await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), ...quick });
   await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), now: at(2 * D), ...quick });
   await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), now: at(6 * D + 23 * H), ...quick });
-  assertEquals(box.sent.map((m) => m.subject), ["Let ChatGPT or Claude into your notes"]);
+  assertEquals(box.sent.map((m) => m.subject), ["Your grocery list, kept by ChatGPT"]);
   await pg.query(`update public.email_sends set created_at = created_at - interval '7 days 1 minute'`);
   await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), now: at(7 * D), ...quick });
-  assertEquals(box.sent.map((m) => m.subject), ["Let ChatGPT or Claude into your notes", "Three notes your AI can keep for you"]);
+  assertEquals(box.sent.map((m) => m.subject), ["Your grocery list, kept by ChatGPT", "Turn a messy note into a to-do list"]);
 });
 
 Deno.test("accounts made before LIFECYCLE_SINCE, and accounts not on LIFECYCLE_ONLY, get nothing", async () => {
@@ -136,7 +158,7 @@ Deno.test("each email carries an unsubscribe link and the one-click headers", as
   assertEquals(m.headers["List-Unsubscribe-Post"], "List-Unsubscribe=One-Click");
   assert(m.headers["List-Unsubscribe"].startsWith(`<https://ambernotes.app/unsubscribe/confirm?u=${a.id}&t=`));
   assertStringIncludes(m.text, `https://ambernotes.app/unsubscribe?u=${a.id}&t=`);
-  assertEquals(m.reply_to, "hello@ambernotes.app");
+  assertEquals(m.reply_to, "emil@ambernotes.app");
 });
 
 Deno.test("a refused send is kept and never retried; 'too many requests' is retried next round", async () => {

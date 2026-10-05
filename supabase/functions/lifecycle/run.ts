@@ -5,7 +5,8 @@
 // again, so two rounds at once can't both send. A row is only removed again when Resend says
 // "too many requests", which means it took nothing; any other failure keeps the row, so an email
 // whose fate is unknown is never sent a second time. Resend also gets an idempotency key per
-// account and email.
+// account and email. A failed email counts toward the seven-day gap too, so a bad address isn't
+// tried with the next email the same day.
 import type { Sql } from "npm:postgres@3.4.5";
 import { render } from "./emails.ts";
 import { type Config, decide, type Facts, GAP_MS, type Kind, unsubscribeLinks, unsubscribeToken } from "./logic.ts";
@@ -25,12 +26,15 @@ export type Send = (m: Message) => Promise<SendResult>;
 
 export type Report = { enabled: boolean; accounts: number; due: Partial<Record<Kind, number>>; sent: number; failed: number; deferred: number };
 
-type Row = Omit<Facts, "signed_up_at" | "last_sent_at"> & { signed_up_at: Date | string; last_sent_at: Date | string | null };
+type Row = Omit<Facts, "signed_up_at" | "last_sent_at" | "ai_connected_at"> & { signed_up_at: Date | string; last_sent_at: Date | string | null; ai_connected_at: Date | string | null };
 
 const asFacts = (r: Row): Facts => ({
   ...r,
   signed_up_at: new Date(r.signed_up_at),
   last_sent_at: r.last_sent_at ? new Date(r.last_sent_at) : null,
+  ai_connected_at: r.ai_connected_at ? new Date(r.ai_connected_at) : null,
+  note_count: Number(r.note_count ?? 0),
+  ai_edit_days: Number(r.ai_edit_days ?? 0),
   sent: r.sent ?? [],
 });
 
@@ -46,7 +50,7 @@ async function claim(sql: Sql, userId: string, kind: Kind, now: Date): Promise<n
       select ${userId}::uuid, ${kind}
       where not exists (select 1 from public.email_unsubscribes x where x.user_id = ${userId}::uuid)
         and not exists (select 1 from public.email_sends s where s.user_id = ${userId}::uuid
-                        and s.status <> 'failed' and s.created_at > ${since})
+                        and s.created_at > ${since})
       on conflict (user_id, kind) do nothing
       returning id`;
     return row ? Number(row.id) : null;
@@ -70,7 +74,7 @@ export async function run({ sql, send, cfg, now = new Date(), pause = (ms: numbe
     const id = await claim(sql, f.user_id, kind, now);
     if (id === null) continue;
     const links = unsubscribeLinks(cfg.site, f.user_id, await unsubscribeToken(cfg.unsubscribeSecret, f.user_id));
-    const email = render(kind, { site: cfg.site, assets: `${cfg.site}/email`, unsubscribe: links.page, aiConnected: f.ai_connected });
+    const email = render(kind, { site: cfg.site, assets: `${cfg.site}/email`, unsubscribe: links.page, noteCount: f.note_count, imported: f.imported, connectTried: f.connect_tried });
     let result: SendResult;
     try {
       result = await send({
