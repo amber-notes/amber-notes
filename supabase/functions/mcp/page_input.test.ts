@@ -25,3 +25,14 @@ Deno.test("page edits: tick (ticked items sink), set a cell, add a row, add a ch
   assertThrows(() => applyPageOp(BODY, { op: "toggle_checklist", line: 1 }), Error, "isn't a checklist item");
   assertThrows(() => applyPageOp(BODY, { op: "set_cell", table: 0, row: 0, col: "Pace", value: "1" }), Error, "No column Pace");
 });
+
+Deno.test("several ops as one change, and column ops keep a typed table's types", () => {
+  const typed = "Runs\n\n<!-- pane-table: Date=date; Km=number -->\n| Date | Km |\n| --- | --- |\n| 2026-10-01 | 5 |\n";
+  const out = applyPageOp(typed, [
+    { op: "add_column", table: 0, name: "Feel", type: "scale 1-5", after: "Date" },
+    { op: "rename_column", table: 0, col: "Km", to: "Distance" },
+    { op: "append_row", table: 0, values: { Date: "2026-10-02", Distance: "7", Feel: "4" } },
+  ]);
+  assertEquals(out, "Runs\n\n<!-- pane-table: Date=date; Feel=scale 1-5; Distance=number -->\n| Date | Feel | Distance |\n| --- | --- | --- |\n| 2026-10-01 |  | 5 |\n| 2026-10-02 | 4 | 7 |\n");
+  assertThrows(() => applyPageOp(typed, [{ op: "append_row", table: 0, values: { Date: "x" } }, { op: "rename_column", table: 0, col: "Nope", to: "X" }]), Error, "Op 2: No column Nope");
+});

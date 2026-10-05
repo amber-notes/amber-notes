@@ -89,8 +89,16 @@ const text = (v: unknown): string => {
 const whole = (v: unknown, k: string) => { if (typeof v !== "number" || !Number.isInteger(v)) throw new Error(`${k} must be a whole number.`); return v; };
 const rowLine = (cells: string[]) => "| " + cells.map((c) => c.replace(/\|/g, "\\|")).join(" | ") + " |";
 
-/** The note after a page's amber.update(op), or an error with the app's message. */
+/** The note after a page's amber.update(op) or amber.update([ops]) (one change, all or nothing). */
 export function applyPageOp(body: string, raw: unknown): string {
+  if (Array.isArray(raw)) {
+    if (!raw.length) throw new Error("Send at least one op.");
+    return raw.reduce((b: string, op, i) => { try { return applyOne(b, op); } catch (e) { throw new Error(`Op ${i + 1}: ${(e as Error).message}`); } }, body);
+  }
+  return applyOne(body, raw);
+}
+
+function applyOne(body: string, raw: unknown): string {
   const m = raw as Record<string, unknown>;
   if (!m || typeof m !== "object" || typeof m.op !== "string") throw new Error("Send { op, … }.");
   const lines = body.split("\n");
@@ -181,6 +189,39 @@ export function applyPageOp(body: string, raw: unknown): string {
       while (section.length && !section[section.length - 1].trim()) section.pop();
       if (end < lines.length) section.push("");
       lines.splice(at + 1, end - at - 1, ...section);
+      return lines.join("\n");
+    }
+    case "add_column": {
+      const t = table(whole(m.table, "table"));
+      const name = typeof m.name === "string" ? m.name.trim() : "";
+      if (!name || name.includes("|")) throw new Error("name must be a column name.");
+      if (t.columns.some((c) => c.name.toLowerCase() === name.toLowerCase())) throw new Error(`Table ${m.table} already has a column ${name}.`);
+      const at = m.after !== undefined ? column(t, m.after) + 1 : t.columns.length;
+      const ins = (cells: string[], v: string) => { const c = [...cells]; c.splice(at, 0, v); return c; };
+      const header = t.rowLines.length ? t.rowLines[0] - 2 : t.end - 2;
+      lines[header] = rowLine(ins(t.columns.map((c) => c.name), name));
+      lines[header + 1] = "|" + Array(t.columns.length + 1).fill(" --- ").join("|") + "|";
+      t.rowLines.forEach((k, r) => { lines[k] = rowLine(ins(t.rows[r], "")); });
+      const typeLine = header > 0 && lines[header - 1].includes("pane-table:") ? header - 1 : -1;
+      if (typeLine >= 0) {
+        const cols = t.columns.map((c) => `${c.name}=${c.type}`);
+        cols.splice(at, 0, `${name}=${typeof m.type === "string" ? m.type : "text"}`);
+        lines[typeLine] = `<!-- pane-table: ${cols.join("; ")} -->`;
+      }
+      return lines.join("\n");
+    }
+    case "rename_column": {
+      const t = table(whole(m.table, "table"));
+      const c = column(t, m.col);
+      const to = typeof m.to === "string" ? m.to.trim() : "";
+      if (!to || to.includes("|")) throw new Error("to must be a column name.");
+      if (t.columns.some((x, k) => k !== c && x.name.toLowerCase() === to.toLowerCase())) throw new Error(`Table ${m.table} already has a column ${to}.`);
+      const header = t.rowLines.length ? t.rowLines[0] - 2 : t.end - 2;
+      const names = t.columns.map((x) => x.name);
+      names[c] = to;
+      lines[header] = rowLine(names);
+      const typeLine = header > 0 && lines[header - 1].includes("pane-table:") ? header - 1 : -1;
+      if (typeLine >= 0) lines[typeLine] = `<!-- pane-table: ${t.columns.map((x, k) => `${k === c ? to : x.name}=${x.type}`).join("; ")} -->`;
       return lines.join("\n");
     }
     case "add_checklist_item": {

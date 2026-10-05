@@ -65,7 +65,7 @@ const bootstrap = (note: unknown, data: unknown, defaults: Record<string, unknow
       },
       subscribe(fn) { amber.onChange((note, data) => fn(data)); },
     },
-    files: { save: unavailable("Files"), read: unavailable("Files") },
+    files: { save: unavailable("Files"), read: unavailable("Files"), url: () => "data:image/gif;base64,R0lGODlhAQABAAAAACw=" },
     device: {
       reminders: { create: unavailable("Reminders") }, calendar: { today: unavailable("Calendar") }, notify: unavailable("Notifications"),
       openURL: unavailable("Opening links"), photos: { pick: unavailable("Photos") }, camera: { take: unavailable("The camera") },
@@ -85,6 +85,7 @@ const bootstrap = (note: unknown, data: unknown, defaults: Record<string, unknow
   const sized = () => { if (!document.documentElement) return addEventListener("DOMContentLoaded", sized, { once: true }); const w = window.innerWidth, c = document.documentElement.classList;
     c.toggle("amber-narrow", w < 600); c.toggle("amber-medium", w >= 600 && w < 900); c.toggle("amber-wide", w >= 900); };
   sized(); addEventListener("resize", sized);
+  if (window.__amberWidget) { const w = () => document.documentElement ? document.documentElement.classList.add("amber-widget") : addEventListener("DOMContentLoaded", w, { once: true }); w(); }
 })();`;
 
 /** <meta name="amber-settings">: each setting's default, as the app fills them in. */
@@ -160,11 +161,13 @@ function samples(markdown: string): string[] {
 export type RenderOptions = {
   shots?: string; today: string; interact?: boolean;
   /** Which widths and color schemes (default 375 light and dark, 768 light, 1280 light and dark). */
-  views?: { width: number; scheme: "light" | "dark" }[];
+  views?: { width: number; scheme: "light" | "dark"; widget?: boolean }[];
   /** Keep a PNG of each view in the result (for preview_app). */
   capture?: boolean;
   /** Skip the robustness probes (for a quick check). */
   probes?: boolean;
+  /** Also render as a widget in a parent note: a 340 x 260 strip with html.amber-widget. */
+  widget?: boolean;
 };
 
 /** Renders, starting WebKit again (once) if it went away under load. */
@@ -191,8 +194,8 @@ async function renderOnce(html: string, markdown: string, data: unknown, opts: R
   let interaction: Render["interaction"] = { tried: "none", ok: null };
   const want = samples(markdown);
 
-  const open = async (width: number, scheme: "light" | "dark"): Promise<{ page: Page; errors: string[] }> => {
-    const ctx = await browser!.newContext({ viewport: { width, height: width < 600 ? 844 : 900 }, colorScheme: scheme, deviceScaleFactor: width < 600 ? 2 : 1 });
+  const open = async (width: number, scheme: "light" | "dark", widget = false): Promise<{ page: Page; errors: string[] }> => {
+    const ctx = await browser!.newContext({ viewport: { width, height: widget ? 260 : width < 600 ? 844 : 900 }, colorScheme: scheme, deviceScaleFactor: width < 600 ? 2 : 1 });
     const page = await ctx.newPage();
     const errors: string[] = [];
     page.on("console", (m) => { if (m.type() === "error") errors.push(m.text().slice(0, 300)); });
@@ -228,16 +231,18 @@ async function renderOnce(html: string, markdown: string, data: unknown, opts: R
         return { ok: false, error: (e as Error).message };
       }
     });
+    if (widget) await page.addInitScript("window.__amberWidget = true;");
     await page.addInitScript(bootstrap(noteForPage(md, opts.today), store, settingDefaults(html)));
     await page.goto(home, { waitUntil: "load", timeout: 15000 }).catch((e) => errors.push(`load: ${(e as Error).message.slice(0, 200)}`));
     await page.waitForTimeout(400);
     return { page, errors };
   };
 
-  const wanted = opts.views ?? ([[375, "light"], [375, "dark"], [768, "light"], [1280, "light"], [1280, "dark"]] as const).map(([width, scheme]) => ({ width, scheme }));
-  for (const { width, scheme } of wanted) {
+  const wanted: { width: number; scheme: "light" | "dark"; widget?: boolean }[] = opts.views ?? ([[375, "light"], [375, "dark"], [768, "light"], [1280, "light"], [1280, "dark"]] as const).map(([width, scheme]) => ({ width, scheme }));
+  if (opts.widget && !wanted.some((v) => v.widget)) wanted.push({ width: 340, scheme: "light", widget: true });
+  for (const { width, scheme, widget } of wanted) {
     md = markdown; store = empty(data);
-    const { page, errors } = await open(width, scheme);
+    const { page, errors } = await open(width, scheme, widget);
     const m = await page.evaluate((want: string[]) => {
       const de = document.documentElement;
       const text = document.body?.innerText ?? "";
@@ -306,7 +311,7 @@ async function renderOnce(html: string, markdown: string, data: unknown, opts: R
       const buf = await page.screenshot({ clip: { x: 0, y: 0, width, height: Math.min(full, width < 600 ? 1700 : 1100) } }).catch(() => null);
       if (buf) png = btoa(Array.from(buf, (b) => String.fromCharCode(b)).join(""));
     }
-    views.push({ name: `${width}-${scheme}`, width, scheme, errors, overflowPx: m.overflow, textLength: m.textLength, shown: m.shown, sampled: want.length,
+    views.push({ name: `${widget ? "widget" : width}-${scheme}`, width, scheme, errors, overflowPx: m.overflow, textLength: m.textLength, shown: m.shown, sampled: want.length,
       bg: m.bg, fg: m.fg, contrast: contrastOf(m.bg, m.fg), bgLuminance: lum(m.bg), unnamedControls: m.unnamed, smallTargets: m.small, screenshot: shot,
       smallText: m.smallText, smallTextCount: m.smallTextCount, faintText: m.faint, faintCount: m.faintCount, headings: m.headings, excerpt: m.excerpt,
       under44: m.under44, under44Count: m.under44Count, clipped: m.clipped, clippedCount: m.clippedCount, usedWidth: m.used, canvases: m.canvases, svgShapes: m.svgShapes, gridCols: m.gridCols, frames: m.frames, ...(png ? { png } : {}) });

@@ -4,7 +4,7 @@
 //
 //   RENDER_SECRET=… deno run -A scripts/page-render/server.ts [--port 8790]
 //   POST /render  Authorization: Bearer <RENDER_SECRET>
-//     { html, markdown, data?, today?, views?: [{ width, scheme }], capture?: boolean, interact?: boolean, probes?: boolean }
+//     { html, markdown, data?, today?, views?: [{ width, scheme }], capture?: boolean, interact?: boolean, probes?: boolean, widget?: boolean }
 //   -> { views: [...], interaction, probes, blocked, ms }
 //
 // Nothing is stored or logged but timings and sizes. Each request gets fresh browser contexts with
@@ -26,7 +26,7 @@ export async function handle(req: Request): Promise<Response> {
   if (req.headers.get("authorization") !== `Bearer ${secret}`) return new Response("Unauthorized", { status: 401 });
   const text = await req.text();
   if (text.length > MAX_BODY) return new Response("Too big", { status: 413 });
-  let body: { html?: unknown; markdown?: unknown; data?: unknown; today?: unknown; views?: unknown; capture?: unknown; interact?: unknown; probes?: unknown };
+  let body: { html?: unknown; markdown?: unknown; data?: unknown; today?: unknown; views?: unknown; capture?: unknown; interact?: unknown; probes?: unknown; widget?: unknown };
   try { body = JSON.parse(text); } catch { return new Response("Bad JSON", { status: 400 }); }
   if (typeof body.html !== "string" || typeof body.markdown !== "string") return new Response("html and markdown are required", { status: 400 });
   const views = Array.isArray(body.views) ? (body.views as { width: number; scheme: string }[])
@@ -34,7 +34,7 @@ export async function handle(req: Request): Promise<Response> {
   const t0 = performance.now();
   const r = await serial(() => renderPage(body.html as string, body.markdown as string, body.data ?? {}, {
     today: typeof body.today === "string" ? body.today : new Date().toISOString().slice(0, 10),
-    views, capture: body.capture === true, interact: body.interact === true, probes: body.probes !== false,
+    views, capture: body.capture === true, interact: body.interact === true, probes: body.probes !== false, widget: body.widget === true,
   }));
   const ms = Math.round(performance.now() - t0);
   console.log(JSON.stringify({ at: new Date().toISOString(), ms, views: r.views.length, bytes: text.length }));

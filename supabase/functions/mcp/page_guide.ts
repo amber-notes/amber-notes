@@ -108,10 +108,11 @@ You own the layout at every size; the app must work and look intended across the
 
 - iPhone: 320-440 pt wide, portrait and landscape (up to about 930 pt wide in landscape, short height), safe areas at the edges, and the keyboard covering the bottom half while someone types.
 - Mac: a note window from about 500 to 1,400+ px wide, resized live. Use the room on wide windows: a 400 px column floating in a 1,280 px window is a phone layout stretched, not a design.
-- Embedded in another note (a sub-note shown inside its parent): a narrow strip, often 300-700 px wide and short. Keep a compact form that still makes sense.
+- Embedded in another note (a sub-note shown inside its parent): a short strip, often 300-700 px wide, with the class amber-widget on <html>. Keep a compact form that still makes sense there (the title, the one number or control that matters).
+- Text sizes in rem: on iPhone the root follows the reader's text size, so the layout must hold at larger text too.
 - Touch targets at least 44 pt on iPhone. Hover only as an extra on Mac, never the only way. Keyboard shortcuts are welcome on Mac (and for games).
 - Use what fits: CSS grid and flex with wrapping, container queries (container-type: inline-size; @container (min-width: …)), clamp() for type, and media queries. The app also sets the classes amber-narrow / amber-medium / amber-wide on <html> (under 600, to 900, from 900 px) as a convenience; don't rely on them.
-- check_app renders at 375, 768 and 1,280 px and reports overflow, clipped text, small targets on the phone and an empty wide window.
+- check_app renders at 375, 768 and 1,280 px (and the widget strip for sub-notes) and reports overflow, clipped text, small targets on the phone and an empty wide window.
 
 ## Games, toys and fun
 

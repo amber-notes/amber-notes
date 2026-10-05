@@ -68,6 +68,8 @@ export const appHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<u
     const r = await render({
       html, markdown: sampleNote(body, t), data: sampleData(data, t), today: t,
       views: [{ width: 375, scheme: "light" }, { width: 375, scheme: "dark" }, { width: 768, scheme: "light" }, { width: 1280, scheme: "light" }], interact: true, probes: true,
+      // Shown inside a parent note too: also as the widget strip.
+      widget: n.parent_id !== null || /amber-widget/.test(html),
     });
     const browser = typeof r === "string" ? null : [...titleReport(r, noteForPage(sampleNote(body, t), t).title), ...renderedReport(r)];
     const issues = [...found.errors, ...found.warnings, ...(browser ?? [])];
@@ -76,7 +78,7 @@ export const appHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<u
       ok: issues.length === 0 && browser !== null,
       ...(found.errors.length ? { refused_by_server: found.errors } : {}),
       issues,
-      ...(browser === null ? { browser: r } : { browser_checked: "375 px light and dark, 768 and 1280 px light, over a sample note" }),
+      ...(browser === null ? { browser: r } : { browser_checked: `375 px light and dark, 768 and 1280 px light${n.parent_id !== null || /amber-widget/.test(html) ? ", and the 340 px widget strip" : ""}, over a sample note` }),
       next: issues.length ? "Fix these with edit_note_page (or set_note_page), then run check_app again." : "Nothing to fix.",
     };
   },

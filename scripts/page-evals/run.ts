@@ -227,7 +227,8 @@ async function spent(): Promise<number> {
 
 // MARK: Run
 
-async function runTask(task: Task) {
+async function runTask(task: Task, rep = 1) {
+  const stem = `${task.id}-${variantKey}${rep > 1 ? `-r${rep}` : ""}`;
   const t0 = performance.now();
   const s = await setup(task);
   const before = await s.state(s.id);
@@ -242,7 +243,7 @@ async function runTask(task: Task) {
     calls: session.log.map((l) => ({ name: l.name, args: l.args, error: l.error })), answer: session.answer,
     others: othersBefore.map((o, i) => ({ before: o.body, after: othersAfter[i].body })), fileIds: s.fileIds,
   };
-  const shots = new URL(`shots/${task.id}-${variantKey}`, outDir).pathname;
+  const shots = new URL(`shots/${stem}`, outDir).pathname;
   await Deno.mkdir(new URL("shots/", outDir), { recursive: true });
   let render: Render | undefined;
   if (after.page && !args["no-render"] && (task.page || after.page !== before.page)) {
@@ -253,16 +254,16 @@ async function runTask(task: Task) {
   const usd = cost(session.usage);
   await Deno.writeTextFile(SPEND, JSON.stringify({ at: new Date().toISOString(), round, task: task.id, model: model.id, usd: +usd.toFixed(4), usage: session.usage }) + "\n", { append: true });
   const result = {
-    task: task.id, model: model.id, round, skill: !!skill, ...(hidden.size ? { hidden: [...hidden] } : {}), seconds: Math.round((performance.now() - t0) / 1000),
+    task: task.id, rep, model: model.id, round, skill: !!skill, ...(hidden.size ? { hidden: [...hidden] } : {}), seconds: Math.round((performance.now() - t0) / 1000),
     score: checks.filter((c) => c.pass).length / checks.length, passed: checks.filter((c) => c.pass).length, total: checks.length,
     checks, tool_calls: session.log.length, tool_errors: session.log.filter((l) => l.error).length, usage: session.usage, usd: +usd.toFixed(4),
     page_bytes: after.page ? new TextEncoder().encode(after.page).length : 0, data: after.data,
     answer: session.answer, calls: session.log.map((l) => ({ ...l, args: JSON.parse(short(l.args, 800).startsWith("{") ? JSON.stringify(Object.fromEntries(Object.entries(l.args).map(([k, v]) => [k, short(v, 300)]))) : "{}") })),
     render: render ? { ...render, markdownAfter: undefined } : null,
   };
-  await Deno.writeTextFile(new URL(`${task.id}-${variantKey}.json`, outDir), JSON.stringify(result, null, 2));
-  await Deno.writeTextFile(new URL(`${task.id}-${variantKey}.page.html`, outDir), after.page ?? "");
-  await Deno.writeTextFile(new URL(`${task.id}-${variantKey}.note.md`, outDir), after.body);
+  await Deno.writeTextFile(new URL(`${stem}.json`, outDir), JSON.stringify(result, null, 2));
+  await Deno.writeTextFile(new URL(`${stem}.page.html`, outDir), after.page ?? "");
+  await Deno.writeTextFile(new URL(`${stem}.note.md`, outDir), after.body);
   await s.pg.close();
   const failed = checks.filter((c) => !c.pass).map((c) => `${c.name}${c.detail ? ` (${c.detail.slice(0, 80)})` : ""}`);
   console.log(`${task.id.padEnd(26)} ${(result.score * 100).toFixed(0).padStart(3)}%  ${String(result.tool_calls).padStart(2)} calls  $${usd.toFixed(3)}  ${failed.length ? "FAIL: " + failed.join("; ") : ""}`);
@@ -270,14 +271,15 @@ async function runTask(task: Task) {
 }
 
 const wanted = args.tasks ? args.tasks.split(",").map((s) => s.trim()) : TASKS.map((t) => t.id);
-const queue = wanted.map((id) => { const t = TASKS.find((x) => x.id === id); if (!t) throw new Error(`No task ${id}`); return t; });
+const reps = Math.max(1, Number(args.repeat ?? 1));
+const queue = wanted.flatMap((id) => { const t = TASKS.find((x) => x.id === id); if (!t) throw new Error(`No task ${id}`); return Array.from({ length: reps }, (_, k) => ({ t, rep: k + 1 })); });
 const results: Awaited<ReturnType<typeof runTask>>[] = [];
 const workers = Number(args.concurrency ?? 3);
 await Promise.all(Array.from({ length: workers }, async () => {
   while (queue.length) {
     if (await spent() > BUDGET) { console.log(`Budget of $${BUDGET} reached; stopping.`); return; }
-    const t = queue.shift()!;
-    try { results.push(await runTask(t)); } catch (e) { console.error(`${t.id}: ${(e as Error).stack ?? e}`); }
+    const { t, rep } = queue.shift()!;
+    try { results.push(await runTask(t, rep)); } catch (e) { console.error(`${t.id}: ${(e as Error).stack ?? e}`); }
   }
 }));
 await closeBrowser();
