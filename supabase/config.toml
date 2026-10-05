@@ -405,3 +405,7 @@ verify_jwt = false
 # Share pages have no account: the slug is the secret.
 [functions.share-files]
 verify_jwt = false
+
+# The daily round checks its own secret (x-lifecycle-secret); an unsubscribe link carries its own HMAC.
+[functions.lifecycle]
+verify_jwt = false

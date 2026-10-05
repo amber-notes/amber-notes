@@ -1,0 +1,5 @@
+[
+  { "id": "call-mom", "text": "Add \"Call mom\" to a To-do note in my Amber Notes. Make the note if there isn't one." },
+  { "id": "latest", "text": "Search my Amber Notes and tell me what I wrote most recently." },
+  { "id": "action-items", "text": "Find my latest meeting note in Amber Notes and put its action items at the top as a checklist." }
+]
