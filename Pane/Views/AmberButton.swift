@@ -31,7 +31,8 @@ struct AmberProminentButtonStyle: ButtonStyle {
         #if os(macOS)
         .system(size: (height * 0.39).rounded(), weight: .semibold)
         #else
-        .system(size: (height * 0.41).rounded(), weight: .semibold)
+        // Measured on iOS 26: at 48 pt the native button's title is 18 pt medium.
+        .system(size: (height * 0.375).rounded(), weight: .medium)
         #endif
     }
 }
