@@ -355,14 +355,15 @@ In agent hours, building on the prototype:
 ## Open questions for Emil
 
 1. Is per-note sharing enough for the first version, or do colleagues need a shared folder from day one?
-2. With Edit on, anyone holding the link becomes an editor. Is that the default you want, or should the owner approve each new person (a knock: "Sara wants to edit")?
-3. Should editors be able to change the link (View/Edit, Reset) and remove people, or only the owner (the prototype)?
-4. Email invites as a later convenience next to the link, or never?
 5. Does a shared note keep its place in the owner's folders and land in "Shared with me" for others, or should there be one "Shared" folder for everyone?
 6. Free or paid? Collaboration is the clearest reason for a team plan, which runs against "no enterprise work this year"; a two-person share could stay free.
 7. Is it fine that a member's AI request lets the server see the shared note during that request, as it does for your own notes now?
 
 Decided for v1 (5 October 2026, team lead, pending Emil's say):
+
+- With Can edit, anyone who opens the link joins straight away; the owner doesn't approve each person (Emil).
+- Only the owner changes the link and removes people; editors can't (Emil).
+- Email invites come later, as a convenience next to the link; they don't replace it (Emil).
 
 - Sealed links show no title in link previews; the owner can't opt in to a public title yet.
 - Old `/n` links are never switched automatically. The Share sheet offers "Switch to an encrypted link", and switching stops the old address.
