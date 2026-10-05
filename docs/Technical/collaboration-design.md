@@ -355,9 +355,9 @@ In agent hours, building on the prototype:
 ## Open questions for Emil
 
 1. Is per-note sharing enough for the first version, or do colleagues need a shared folder from day one?
-5. Does a shared note keep its place in the owner's folders and land in "Shared with me" for others, or should there be one "Shared" folder for everyone?
-6. Free or paid? Collaboration is the clearest reason for a team plan, which runs against "no enterprise work this year"; a two-person share could stay free.
-7. Is it fine that a member's AI request lets the server see the shared note during that request, as it does for your own notes now?
+2. Does a shared note keep its place in the owner's folders and land in "Shared with me" for others, or should there be one "Shared" folder for everyone?
+3. Free or paid? Collaboration is the clearest reason for a team plan, which runs against "no enterprise work this year"; a two-person share could stay free.
+4. Is it fine that a member's AI request lets the server see the shared note during that request, as it does for your own notes now?
 
 Decided for v1 (5 October 2026, team lead, pending Emil's say):
 
