@@ -16,7 +16,7 @@ import { closeBrowser, renderPage, type Render } from "../page-render/render.ts"
 import { TASKS, type Check, type Final, type Task } from "./tasks.ts";
 import { scoreTask } from "./score.ts";
 
-const args = parseArgs(Deno.args, { string: ["round", "model", "tasks", "server", "concurrency", "budget", "repeat", "label", "hide", "cli-model"], boolean: ["skill", "no-render", "allow-paid"] });
+const args = parseArgs(Deno.args, { string: ["round", "model", "tasks", "server", "concurrency", "budget", "repeat", "label", "hide", "cli-model", "max-turns", "minutes"], boolean: ["skill", "no-render", "allow-paid"] });
 /** Tools taken out of tools/list for this run (an A/B on check_app and preview_app, say). */
 const hidden = new Set((args.hide ?? "").split(",").map((x) => x.trim()).filter(Boolean));
 const round = args.round ?? "dev";
@@ -59,6 +59,8 @@ const { schemaDB, sqlFor } = await import(mcp("mcp/pglite.ts"));
 const { account, app, file, note, opened } = await import(mcp("mcp/sealed.ts"));
 const { tokenKey, wrap } = await import(mcp("_shared/e2ee.ts"));
 const { pageProblems } = await import(mcp("mcp/page.ts"));
+const { renderedFindings } = await import(new URL("supabase/functions/mcp/app_check.ts", root).href);
+type Rendered = Parameters<typeof renderedFindings>[0];
 // What the server refuses: a one-file page's problems, or a project's (servers without projects: the page's).
 const { staticReport } = await import(mcp("mcp/app_check.ts")).catch(() => ({ staticReport: null }));
 const serverProblems = (stored: string): string[] => staticReport ? staticReport(stored, "", []).errors : pageProblems(stored);
@@ -242,6 +244,14 @@ async function openaiSession(system: string, tools: { name: string; description:
 // The CLIs see none of the person's own setup: no API keys in their environment (so they use the
 // subscription), a fresh empty working directory, no user or project settings or CLAUDE.md, and
 // only the Amber MCP server.
+/** A CLI session, stopped after --minutes (default 30) so one stuck task can't hold the round. */
+async function timed(cmd: Deno.Command): Promise<Deno.CommandOutput> {
+  const p = cmd.spawn();
+  const timer = setTimeout(() => { try { p.kill("SIGTERM"); } catch { /* gone */ } }, Number(args.minutes ?? 30) * 60_000);
+  try { return await p.output(); } finally { clearTimeout(timer); }
+}
+// Without try_app and run_app_tests (an experiment's control arm), the guide doesn't mention them.
+if (args.hide?.split(",").includes("try_app")) Deno.env.set("AMBER_GUIDE_WITHOUT_TRY", "1");
 const CLI_ENV = (() => { const e = Deno.env.toObject(); for (const k of ["ANTHROPIC_API_KEY", "OPENAI_API_KEY", "OPENROUTER_API_KEY", "RENDER_SECRET"]) delete e[k]; return e; })();
 const scratch = () => Deno.makeTempDir({ prefix: "amber-eval-" });
 
@@ -257,10 +267,10 @@ async function claudeCliSession(system: string, url: string, token: string, prom
     args: ["-n", "10", "claude", "-p", prompt, "--model", args["cli-model"] ?? "sonnet", "--system-prompt", system,
       "--setting-sources", "local", "--strict-mcp-config", "--mcp-config", config, "--tools", "", "--allowedTools", "mcp__amber__*",
       ...(hide.size ? ["--disallowedTools", ...[...hide].map((h) => `mcp__amber__${h}`)] : []),
-      "--output-format", "stream-json", "--verbose", "--no-session-persistence", "--max-turns", "40"],
+      "--output-format", "stream-json", "--verbose", "--no-session-persistence", "--max-turns", String(args["max-turns"] ?? 40)],
     cwd: dir, env: CLI_ENV, clearEnv: true, stdout: "piped", stderr: "piped",
   });
-  const out = await cmd.output();
+  const out = await timed(cmd);
   const usage: Usage & { equivalentUsd?: number } = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, turns: 0 };
   const log: Logged[] = [];
   const pending = new Map<string, Logged>();
@@ -311,7 +321,7 @@ async function codexCliSession(system: string, url: string, token: string, promp
       `${system}\n\n---\n\n${prompt}`],
     cwd: dir, env: { ...CLI_ENV, CODEX_HOME: home, AMBER_EVAL_TOKEN: token }, clearEnv: true, stdout: "piped", stderr: "piped",
   });
-  const out = await cmd.output();
+  const out = await timed(cmd);
   const usage: Usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, turns: 0 };
   const log: Logged[] = [];
   let answer = "";
@@ -437,6 +447,24 @@ async function runTask(task: Task, rep = 1) {
     f.render = render;
   }
   const checks: Check[] = scoreTask(task, f, render, serverProblems);
+  // The experiment's hidden scoring: a person's walkthrough, probe by probe, each on a fresh copy of
+  // the final app and its data, and the brief's features found in the project's source.
+  const walk: { name: string; pass: boolean; detail?: string }[] = [];
+  if (after.page && task.walkthrough && !args["no-render"]) {
+    for (const probe of task.walkthrough) {
+      const r = await renderPage(after.page, after.body, after.data ?? {}, { today: "2026-10-05", steps: probe.steps, views: [{ width: probe.desktop ? 1280 : 390, scheme: "light" }] }).catch((e) => ({ trial: [{ ok: false, error: String(e), errors: [] }] }) as unknown as Render);
+      const bad = (r.trial ?? []).find((t) => !t.ok || t.errors.length);
+      walk.push({ name: probe.name, pass: !!r.trial?.length && !bad, ...(bad ? { detail: `${JSON.stringify(bad.step)}: ${bad.error ?? bad.errors[0]}` } : {}) });
+    }
+    for (const w of walk) checks.push({ name: `walk_${w.name}`, pass: w.pass, ...(w.detail ? { detail: w.detail } : {}) });
+  }
+  if (task.features) {
+    // The model's own source: not the compiled output, not the starter's shadcn components.
+    let p = after.page ?? "";
+    try { const proj = JSON.parse(p); if (proj?.files) p = Object.entries(proj.files as Record<string, string>).filter(([k]) => !k.startsWith("/src/components/ui/")).map(([, v]) => v).join("\n"); } catch { /* one-file page */ }
+    for (const ft of task.features) checks.push({ name: `has_${ft.name}`, pass: ft.re.test(p), ...(ft.re.test(p) ? {} : { detail: String(ft.re) }) });
+  }
+  const breakage = render ? renderedFindings(render as unknown as Rendered).errors : [];
   const usd = (session.usage as { usd?: number }).usd ?? cost(session.usage);
   await Deno.writeTextFile(SPEND, JSON.stringify({ at: new Date().toISOString(), round, task: task.id, model: model.id, via: model.provider, usd: +usd.toFixed(4), usage: session.usage }) + "\n", { append: true });
   const result = {
@@ -446,6 +474,9 @@ async function runTask(task: Task, rep = 1) {
     page_bytes: after.page ? new TextEncoder().encode(after.page).length : 0, data: after.data,
     answer: session.answer, calls: session.log.map((l) => ({ ...l, args: JSON.parse(short(l.args, 800).startsWith("{") ? JSON.stringify(Object.fromEntries(Object.entries(l.args).map(([k, v]) => [k, short(v, 300)]))) : "{}") })),
     render: render ? { ...render, markdownAfter: undefined } : null,
+    breakage, walk,
+    used: { try_app: session.log.filter((l) => l.name.endsWith("try_app")).length, run_app_tests: session.log.filter((l) => l.name.endsWith("run_app_tests")).length,
+      test_files: Object.keys(((): Record<string, string> => { try { return JSON.parse(after.page ?? "{}").files ?? {}; } catch { return {}; } })()).filter((p) => /^\/tests?\//.test(p)).length },
   };
   await Deno.writeTextFile(new URL(`${stem}.json`, outDir), JSON.stringify(result, null, 2));
   await Deno.writeTextFile(new URL(`${stem}.page.html`, outDir), after.page ?? "");

@@ -4,7 +4,7 @@
 // ones here are about this task's data and intent.
 import { findTables } from "../../supabase/functions/mcp/notes.ts";
 import { libraryReport } from "../../supabase/functions/mcp/libraries.ts";
-import type { Render } from "../page-render/render.ts";
+import type { Render, Step } from "../page-render/render.ts";
 
 export type Seed = { body: string; page?: string; data?: { values?: Record<string, unknown>; collections?: Record<string, Record<string, unknown>[]> } };
 export type Final = {
@@ -30,6 +30,11 @@ export type Task = {
   /** Files already in their Amber Notes. */
   files?: { name: string; type: string; text: string }[];
   checks: (f: Final) => Check[];
+  /** Hidden from the model (the try_app experiment): a person's walkthrough, probe by probe, each a
+   *  list of try_app steps on a fresh copy of the final app and data; patterns like "/add|new/i". */
+  walkthrough?: { name: string; steps: Step[]; desktop?: boolean }[];
+  /** Features the brief asks for, looked for in the project's source. */
+  features?: { name: string; re: RegExp }[];
 };
 
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -891,6 +896,148 @@ export const TASKS: Task[] = [
       check("pinned_npm", /name=["']amber-libs["'][^>]*npm:[^"',]+@\d+\.\d+\.\d+[^"',]*#sha(256|384|512)-/.test(f.page ?? ""), "no pinned, hashed npm package in amber-libs"),
       check("wifi_payload", /WIFI:/.test(f.page ?? ""), "doesn't build a WIFI: QR payload"),
       check("reads_the_note", /amber\.note|\.markdown\b/.test(f.page ?? "") && !/kanelbulle-42/.test(f.page ?? ""), "the password is copied into the app instead of read from the note"),
+    ],
+  },
+  // MARK: The try_app experiment: six real apps, each with a hidden walkthrough and feature list.
+  {
+    id: "x-lift",
+    prompt: `Make my Lift note a Hevy-class strength-training app: the same category and depth of features as Hevy, with your own design and name (no Hevy branding, icons or media).
+- Routines: create, reorder, put in folders. Start a workout from a routine or empty.
+- Live workout: exercises with sets (weight x reps, optional RPE, warm-up/drop/failure set types), the PREVIOUS values inline on each set, a check to complete a set, an automatic rest timer per exercise, a workout duration clock, supersets, add/replace/reorder exercises mid-workout, and a finish summary (volume, sets, PRs, duration).
+- Exercise library: about 100 common exercises with muscle groups and equipment, search and filter, custom exercises.
+- History and progress: a calendar of workouts, per-exercise history, charts (best set, volume, estimated 1RM), personal records, the week's distribution across muscle groups.
+- Bodyweight measurements. No social feed. Settings: units, rest defaults, a plate calculator.
+- Seed realistic demo data: about 9 weeks of push/pull/legs training.`,
+    seed: { body: "Lift\n" }, page: true, interact: true, varied: false,
+    checks: (f) => [pageChanged(f)],
+    walkthrough: [
+      { name: "start_workout", steps: [{ tap: "/start|new workout|empty workout|quick start|begin/i" }, { wait: 300 }, { expect: "/exercise|set|reps|kg|lb/i" }] },
+      { name: "log_a_set", steps: [{ tap: "/start|new workout|empty workout|quick start|begin/i" }, { tap: "/add exercise|exercises?$|\\+ ?exercise/i" }, { type: "bench", into: "/search/i" }, { tap: "/bench press/i" }, { wait: 300 }, { expect: "/bench press/i" }] },
+      { name: "history", steps: [{ tap: "/history|calendar|log|workouts/i" }, { expect: "/(sep|oct|2026)/i" }] },
+      { name: "progress", steps: [{ tap: "/progress|stats|records|prs?$|insights/i" }, { expect: "/1rm|record|best|volume|pr/i" }] },
+      { name: "library_search", steps: [{ tap: "/exercises|library/i" }, { type: "squat", into: "/search/i" }, { expect: "/squat/i" }] },
+      { name: "settings", steps: [{ tap: "/settings|profile|more/i" }, { expect: "/kg|lb|unit/i" }] },
+      { name: "desktop", desktop: true, steps: [{ expect: "/history|progress|routines|workout/i" }] },
+    ],
+    features: [
+      { name: "rest_timer", re: /rest/i }, { name: "rpe", re: /\bRPE\b/ }, { name: "set_types", re: /warm.?up/i }, { name: "supersets", re: /superset/i },
+      { name: "one_rm", re: /1RM|one.?rep|epley|brzycki/i }, { name: "plate_calculator", re: /plate/i }, { name: "bodyweight", re: /body.?weight/i },
+      { name: "muscle_split", re: /muscle/i }, { name: "folders", re: /folder/i }, { name: "big_library", re: /face pull|hip thrust|romanian/i }, { name: "finish_summary", re: /summary/i },
+    ],
+  },
+  {
+    id: "x-evening",
+    prompt: `Make my Evening note a two-minute evening check-in app (I used to keep this in a spreadsheet).
+- Each evening: work hours, four ratings from 1 to 10 (energy, mood, focus, sleep quality), today's habits (only the ones planned for that weekday), a line on what helped or hurt, and tomorrow's one win.
+- An overview that opens on tonight (logged or not), today's win, the week's work hours against a weekly budget, how the days felt, and habits done of planned.
+- A Sunday week review with a note per week, trends over time (charts of the ratings and hours), and a plan screen for habits per weekday and the weekly hours budget.
+- Import rows pasted from the spreadsheet (CSV), and export CSV and JSON.
+- Seed six weeks of realistic demo data.`,
+    seed: { body: "Evening\n" }, page: true, interact: true,
+    checks: (f) => [pageChanged(f)],
+    walkthrough: [
+      { name: "log_tonight", steps: [{ tap: "/log|check.?in|start|tonight|today/i" }, { wait: 300 }, { expect: "/hours|energy|mood|focus|sleep/i" }] },
+      { name: "ratings", steps: [{ tap: "/log|check.?in|start|tonight|today/i" }, { expect: "/mood|energy/i" }] },
+      { name: "trends", steps: [{ tap: "/trends|insights|charts|history|stats/i" }, { expect: "/mood|energy|hours|average|avg/i" }] },
+      { name: "plan", steps: [{ tap: "/plan|habits|settings/i" }, { expect: "/habit|budget|mon/i" }] },
+      { name: "week", steps: [{ tap: "/week|review/i" }, { expect: "/hours|budget|week/i" }] },
+      { name: "desktop", desktop: true, steps: [{ expect: "/overview|tonight|week|trends/i" }] },
+    ],
+    features: [
+      { name: "ratings_1_10", re: /energy/i }, { name: "habits_by_weekday", re: /weekday|mon(day)?.*tue/i }, { name: "hours_budget", re: /budget/i },
+      { name: "csv_import", re: /csv|paste/i }, { name: "json_export", re: /JSON\.stringify[\s\S]{0,200}(download|share|blob|export)|export/i }, { name: "charts", re: /recharts|<svg|LineChart|BarChart/ }, { name: "tomorrow", re: /tomorrow/i },
+    ],
+  },
+  {
+    id: "x-budget",
+    prompt: `Make my Budget note a personal budget app.
+- Monthly budgets per category, and expenses with amount, category, date and a note. Add, edit and delete expenses quickly from the phone.
+- A month view: spent against budget overall and per category, what's left per day, and a chart of spending by category. Move between months.
+- Recurring expenses (rent, subscriptions) that fill in each month.
+- Search and filter expenses; export CSV.
+- Settings: currency, the month's start day, categories (add, rename, colour).
+- Seed three months of realistic demo data.`,
+    seed: { body: "Budget\n" }, page: true, interact: true,
+    checks: (f) => [pageChanged(f)],
+    walkthrough: [
+      { name: "add_expense", steps: [{ tap: "/add|new|expense|\\+/i" }, { type: "42", into: "/amount|sum|price/i" }, { type: "Coffee beans", into: "/note|description|what|item|name|title|merchant|payee/i" }, { tap: "/save|add|done|create/i" }, { wait: 300 }, { expect: "Coffee beans" }] },
+      { name: "month_view", steps: [{ expect: "/left|remaining|budget|spent/i" }] },
+      { name: "previous_month", steps: [{ tap: "/previous|prev|‹|←|back|last month/i" }, { expect: "/(jul|aug|sep)/i" }] },
+      { name: "search", steps: [{ tap: "/expenses|transactions|history|search/i" }, { type: "rent", into: "/search|filter/i" }, { expect: "/rent/i" }] },
+      { name: "settings", steps: [{ tap: "/settings|categories|more/i" }, { expect: "/currency|categor/i" }] },
+      { name: "desktop", desktop: true, steps: [{ expect: "/spent|budget|left|remaining/i" }] },
+    ],
+    features: [
+      { name: "recurring", re: /recurring|subscription/i }, { name: "per_day", re: /per day|\/ ?day|daily/i }, { name: "chart", re: /recharts|<svg|PieChart|BarChart/ },
+      { name: "csv_export", re: /csv/i }, { name: "currency", re: /currency/i }, { name: "month_start", re: /start.?day|month.?start|startDay/i }, { name: "edit_delete", re: /delete|remove/i },
+    ],
+  },
+  {
+    id: "x-game",
+    prompt: `Make my Games note a polished 2048 game.
+- Swipe on the phone, arrow keys on the Mac; smooth tile slides and merges.
+- Score and best score (kept), undo the last move, and a new game button.
+- A win screen at 2048 with "keep going", and a game-over screen.
+- A small stats screen: games played, best tile, average score.`,
+    seed: { body: "Games\n" }, page: true, interact: true, plays: true,
+    checks: (f) => [pageChanged(f)],
+    walkthrough: [
+      { name: "shows_score", steps: [{ expect: "/score/i" }] },
+      { name: "moves", steps: [{ press: "ArrowLeft" }, { press: "ArrowUp" }, { press: "ArrowRight" }, { press: "ArrowDown" }, { expect: "/score/i" }] },
+      { name: "new_game", steps: [{ press: "ArrowLeft" }, { tap: "/new game|restart|new/i" }, { expect: "/score/i" }] },
+      { name: "undo", steps: [{ press: "ArrowLeft" }, { tap: "/undo/i" }, { expect: "/score/i" }] },
+      { name: "stats", steps: [{ tap: "/stats|statistics/i" }, { expect: "/played|best|average/i" }] },
+      { name: "desktop", desktop: true, steps: [{ press: "ArrowLeft" }, { expect: "/score/i" }] },
+    ],
+    features: [
+      { name: "keyboard", re: /ArrowLeft/ }, { name: "touch", re: /touchstart|pointerdown|onTouchStart|onPointerDown/ }, { name: "undo", re: /undo/i }, { name: "best", re: /best/i },
+      { name: "win_2048", re: /2048/ }, { name: "keep_going", re: /keep going|continue/i }, { name: "game_over", re: /game over/i }, { name: "stats", re: /played/i },
+    ],
+  },
+  {
+    id: "x-kanban",
+    prompt: `Make my Projects note a kanban board app.
+- Several boards, each with columns (default To do, Doing, Done) that can be added, renamed and reordered.
+- Cards with a title, description, due date, labels and a checklist. Add a card fast; open it to edit details.
+- Move cards between columns (drag on the Mac, and a "move to" action on the phone) and reorder within a column.
+- Search, filter by label, show overdue cards, and archive done cards.
+- Seed two boards of realistic demo cards.`,
+    seed: { body: "Projects\n" }, page: true, interact: true,
+    checks: (f) => [pageChanged(f)],
+    walkthrough: [
+      { name: "columns", steps: [{ expect: "/to ?do/i" }, { expect: "/doing|in progress/i" }, { expect: "/done/i" }] },
+      { name: "add_card", steps: [{ tap: "/add( a)? card|new card|add task|\\+/i" }, { type: "Write the quarterly report", into: "/title|card|task|name/i" }, { press: "Enter" }, { wait: 300 }, { tap: "/^(add|save|create|done)$/i" }, { expect: "Write the quarterly report" }] },
+      { name: "open_card", steps: [{ tap: "/./" }, { expect: "/description|due|label|checklist/i" }] },
+      { name: "search", steps: [{ type: "a", into: "/search|filter/i" }, { expect: "/./" }] },
+      { name: "boards", steps: [{ tap: "/boards?/i" }, { expect: "/board/i" }] },
+      { name: "desktop", desktop: true, steps: [{ expect: "/to ?do/i" }, { expect: "/done/i" }] },
+    ],
+    features: [
+      { name: "drag", re: /drag/i }, { name: "move_to", re: /move to/i }, { name: "labels", re: /label/i }, { name: "due_dates", re: /due/i }, { name: "checklist", re: /checklist/i },
+      { name: "overdue", re: /overdue/i }, { name: "archive", re: /archive/i }, { name: "multiple_boards", re: /boards/i }, { name: "reorder_columns", re: /reorder|move (left|right)|rename/i },
+    ],
+  },
+  {
+    id: "x-recipes",
+    prompt: `Make my Recipes note a recipe and meal planning app.
+- A recipe library: ingredients (amount, unit), steps, servings, time and tags. Add and edit recipes; scale a recipe to a number of servings.
+- A weekly meal plan: put recipes on days (breakfast, lunch, dinner).
+- A shopping list made from the week's plan: ingredients added up across recipes, grouped by aisle, checkable, plus your own items.
+- Search recipes and filter by tag; a cooking mode that shows one step at a time with the screen kept large and readable.
+- Seed twelve realistic recipes and this week's plan.`,
+    seed: { body: "Recipes\n" }, page: true, interact: true,
+    checks: (f) => [pageChanged(f)],
+    walkthrough: [
+      { name: "library", steps: [{ tap: "/recipes|library/i" }, { expect: "/min|serv/i" }] },
+      { name: "search", steps: [{ tap: "/recipes|library/i" }, { type: "pasta", into: "/search/i" }, { expect: "/pasta/i" }] },
+      { name: "plan", steps: [{ tap: "/plan|week|meal/i" }, { expect: "/mon|tue|monday/i" }] },
+      { name: "shopping", steps: [{ tap: "/shopping|groceries|list/i" }, { expect: "/\\d/" }] },
+      { name: "open_recipe", steps: [{ tap: "/recipes|library/i" }, { type: "a", into: "/search/i" }, { press: "Enter" }, { expect: "/./" }] },
+      { name: "desktop", desktop: true, steps: [{ expect: "/recipes|plan|shopping/i" }] },
+    ],
+    features: [
+      { name: "scaling", re: /servings/i }, { name: "units", re: /\b(g|ml|tbsp|tsp)\b/ }, { name: "meal_slots", re: /breakfast/i }, { name: "aggregated_list", re: /aisle/i },
+      { name: "own_items", re: /custom|own item|add item/i }, { name: "tags", re: /tag/i }, { name: "cooking_mode", re: /cook(ing)? mode|step \{|next step|Step /i }, { name: "twelve_recipes", re: /(title|name)[\s\S]{0,4000}(title|name)/ },
     ],
   },
   {

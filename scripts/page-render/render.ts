@@ -382,7 +382,7 @@ export type Render = {
 /** One thing to do in the app, like a person would (try_app). */
 export type Step =
   | { tap: string } | { type: string; into: string } | { scroll: "down" | "up" | string } | { wait: number | string }
-  | { press: string } | { resize: "phone" | "desktop" } | { dark: boolean };
+  | { press: string } | { resize: "phone" | "desktop" } | { dark: boolean } | { expect: string };
 export type TrialStep = {
   step: Step; ok: boolean; error?: string; png?: string; errors: string[];
   /** Headings, buttons, links, fields and text the person can see now (short). */
@@ -425,10 +425,17 @@ async function trial(open: (w: number, s: "light" | "dark") => Promise<{ page: P
     return [...lines, `text: ${text.slice(0, 400)}${text.length > 400 ? "…" : ""}`];
   }).catch((e) => [`(the page didn't answer: ${String(e).slice(0, 100)})`]);
   // The element a person means: a selector, else a label, a role's name, or visible text.
-  const target = async (what: string) => {
+  // "/add|new/i" is a pattern (the evals' walkthroughs use them).
+  const pattern = (what: string): string | RegExp => { const m = what.match(/^\/(.+)\/([a-z]*)$/); return m ? new RegExp(m[1], m[2]) : what; };
+  const target = async (what: string, field = false) => {
     if (/^[#.\[]|^[a-z]+[#.\[]/.test(what)) return page.locator(what).first();
-    for (const l of [page.getByLabel(what, { exact: false }), page.getByRole("button", { name: what }), page.getByRole("link", { name: what }), page.getByRole("tab", { name: what }), page.getByPlaceholder(what), page.getByText(what, { exact: false })]) {
-      if (await l.first().isVisible().catch(() => false)) return l.first();
+    const w = pattern(what);
+    const order = field
+      ? [page.getByLabel(w, { exact: false }), page.getByPlaceholder(w), page.getByRole("textbox", { name: w }), page.getByRole("spinbutton", { name: w }), page.getByRole("combobox", { name: w })]
+      : [page.getByRole("button", { name: w }), page.getByRole("link", { name: w }), page.getByRole("tab", { name: w }), page.getByRole("menuitem", { name: w }), page.getByRole("option", { name: w }), page.getByRole("checkbox", { name: w }), page.getByRole("switch", { name: w }), page.getByLabel(w, { exact: false }), page.getByText(w, { exact: false })];
+    for (const l of order) {
+      const n = await l.count().catch(() => 0);
+      for (let i = 0; i < Math.min(n, 8); i++) if (await l.nth(i).isVisible().catch(() => false)) return l.nth(i);
     }
     throw new Error(`Nothing visible matches "${what}".`);
   };
@@ -438,7 +445,8 @@ async function trial(open: (w: number, s: "light" | "dark") => Promise<{ page: P
     let ok = true, error: string | undefined;
     try {
       if ("tap" in step) await (await target(step.tap)).click({ timeout: 3000 });
-      else if ("type" in step) { const el = await target(step.into); await el.click({ timeout: 3000 }); await el.fill(String(step.type), { timeout: 3000 }).catch(async () => { await page.keyboard.type(String(step.type)); }); }
+      else if ("expect" in step) { const w = pattern(step.expect); if (!(await page.getByText(w).first().isVisible().catch(() => false)) && !(await page.locator("input, textarea").evaluateAll((els, s) => els.some((e) => (e as HTMLInputElement).value.includes(s)), String(step.expect)).catch(() => false))) throw new Error(`"${step.expect}" isn't on screen.`); }
+      else if ("type" in step) { const el = step.into ? await target(step.into, true) : page.locator("input:visible, textarea:visible").first(); await el.click({ timeout: 3000 }); await el.fill(String(step.type), { timeout: 3000 }).catch(async () => { await page.keyboard.type(String(step.type)); }); }
       else if ("scroll" in step) await page.mouse.wheel(0, step.scroll === "up" ? -600 : 600);
       else if ("wait" in step) typeof step.wait === "number" ? await page.waitForTimeout(Math.min(step.wait, 5000)) : await page.getByText(step.wait).first().waitFor({ timeout: 5000 });
       else if ("press" in step) await page.keyboard.press(step.press);

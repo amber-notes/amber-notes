@@ -414,7 +414,8 @@ export const dataHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
       if (!t) throw new ToolError(`No template "${a.template}". Templates: ${PAGE_TEMPLATES.map((x) => x.name).join(", ")}.`);
       return { template: t.name, description: t.description, expects: t.expects, html: t.html };
     }
-    return { guide: PAGE_GUIDE };
+    // The evals' control arm (no try_app or run_app_tests): the guide doesn't mention them.
+    return { guide: Deno.env.get("AMBER_GUIDE_WITHOUT_TRY") ? PAGE_GUIDE.split("\n").filter((l) => !/try_app|run_app_tests/.test(l)).join("\n") : PAGE_GUIDE };
   },
 };
 
