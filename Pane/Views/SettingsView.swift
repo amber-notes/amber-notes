@@ -80,6 +80,7 @@ struct SettingsView: View {
                 if case .signedIn = backend.state, let client = backend.client {
                     ConnectAISection(client: client)
                         .id(SettingsRoute.connectAI)
+                    AppPreviewSection(client: client)
                 }
                 if case .signedIn = backend.state, AccountCrypto.shared.isReady {
                     let addDevice = backend.client.map { SupabaseAddDevice(client: $0) }

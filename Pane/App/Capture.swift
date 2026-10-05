@@ -406,6 +406,8 @@ extension Capture {
 ///   `-pageDemo`                                   seeds the two notes
 ///   `-seedPage "Budget=/path/budget.html"`        a page already there (made by Claude)
 ///   `-aiPage "Habit tracker=/path/page.html" -aiPageBy Claude -aiAfter 3`   one arriving later
+///   `-seedData "Habit tracker=/path/data.json"`   the app's own data for that note
+///   `-seedNote /path/note.md` (repeatable)       a note from a file, before the pages above
 extension Capture {
     /// Fourteen days of habits, ending yesterday with gaps, and today's row half done.
     static func habitNote(today: Date = .now) -> String {
@@ -441,6 +443,10 @@ extension Capture {
     @MainActor static func notePagesFromArguments(_ context: ModelContext) {
         let args = ProcessInfo.processInfo.arguments
         guard args.contains("-uitest") else { return }
+        // `-seedNote /path/note.md`, as often as needed: notes from files (the first line is the title).
+        for (i, a) in args.enumerated() where a == "-seedNote" && i + 1 < args.count {
+            if let body = try? String(contentsOfFile: args[i + 1], encoding: .utf8) { _ = context.createNote(in: .all, body: body) }
+        }
         if args.contains("-pageDemo") {
             let budget = context.createNote(in: .all, body: budgetNote)
             budget.updatedAt = .now.addingTimeInterval(-90)
@@ -464,6 +470,11 @@ extension Capture {
             let path = String(arg[arg.index(after: eq)...])
             guard let n = note(String(arg[..<eq])), let html = try? String(contentsOfFile: path, encoding: .utf8) else { return nil }
             return (n, html)
+        }
+        // `-seedData "Title=/path/data.json"`: the app's own data ({values, collections}) for that note.
+        if let arg = argument("-seedData"), let eq = arg.firstIndex(of: "="), let n = note(String(arg[..<eq])),
+           let json = try? Data(contentsOf: URL(fileURLWithPath: String(arg[arg.index(after: eq)...]))) {
+            NotePageDataStore.shared.set(n.id, NotePageData.decode(json))
         }
         let by = argument("-aiPageBy") ?? "Claude"
         if let arg = argument("-seedPage"), let (n, html) = split(arg) {

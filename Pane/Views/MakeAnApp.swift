@@ -364,3 +364,53 @@ extension Color {
         return String(format: "#%02X%02X%02X", Int(r * 255), Int(g * 255), Int(b * 255))
     }
 }
+
+import Supabase
+
+/// Settings › Apps in Notes: whether an AI may preview a note's app with the note's real data
+/// (pages-ai-tooling's preview_app; profiles.app_previews_real). Off by default: previews use made-up
+/// data shaped like the note. Hidden on a backend without the setting.
+struct AppPreviewSection: View {
+    let client: SupabaseClient
+    @State private var on = false
+    @State private var available = false
+    @State private var saving = false
+
+    private struct Row: Codable { var user_id: UUID?; var app_previews_real: Bool }
+
+    var body: some View {
+        Group {
+            if available {
+                Section {
+                    Toggle("Let AIs preview apps with my notes", isOn: Binding(get: { on }, set: { v in on = v; Task { await save(v) } }))
+                        .disabled(saving)
+                        .accessibilityIdentifier("settings.appPreviewsReal")
+                } header: {
+                    Text("Apps in Notes")
+                } footer: {
+                    Text("When your AI checks an app it made, it sees a picture of it. With this off, the picture uses made-up data shaped like your note. With it on, it shows your note's real data, decrypted for that check only.")
+                }
+            }
+        }
+        .task { await load() }
+    }
+
+    private func load() async {
+        guard let user = client.auth.currentUser?.id else { return }
+        let rows: [Row]? = try? await client.from("profiles").select("app_previews_real").eq("user_id", value: user).execute().value
+        guard let rows else { return }
+        on = rows.first?.app_previews_real ?? false
+        available = true
+    }
+
+    private func save(_ v: Bool) async {
+        guard let user = client.auth.currentUser?.id else { return }
+        saving = true
+        defer { saving = false }
+        do {
+            try await client.from("profiles").upsert(Row(user_id: user, app_previews_real: v), onConflict: "user_id").execute()
+        } catch {
+            on = !v
+        }
+    }
+}
