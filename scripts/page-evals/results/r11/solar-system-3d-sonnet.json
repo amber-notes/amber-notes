@@ -1,0 +1,406 @@
+{
+  "task": "solar-system-3d",
+  "rep": 1,
+  "model": "claude-sonnet-5-5",
+  "round": "r11",
+  "skill": false,
+  "seconds": 98,
+  "score": 1,
+  "passed": 26,
+  "total": 26,
+  "checks": [
+    {
+      "name": "has_page",
+      "pass": true
+    },
+    {
+      "name": "server_checks",
+      "pass": true
+    },
+    {
+      "name": "no_console_errors",
+      "pass": true
+    },
+    {
+      "name": "no_network",
+      "pass": true
+    },
+    {
+      "name": "fits_phone",
+      "pass": true
+    },
+    {
+      "name": "fits_desktop",
+      "pass": true
+    },
+    {
+      "name": "uses_wide_window",
+      "pass": true
+    },
+    {
+      "name": "phone_targets",
+      "pass": true
+    },
+    {
+      "name": "no_junk_text",
+      "pass": true
+    },
+    {
+      "name": "no_clipped_text",
+      "pass": true
+    },
+    {
+      "name": "dark_mode",
+      "pass": true
+    },
+    {
+      "name": "light_contrast",
+      "pass": true
+    },
+    {
+      "name": "uses_theme",
+      "pass": true
+    },
+    {
+      "name": "labelled_controls",
+      "pass": true
+    },
+    {
+      "name": "title_once",
+      "pass": true
+    },
+    {
+      "name": "says_app",
+      "pass": true
+    },
+    {
+      "name": "plays",
+      "pass": true
+    },
+    {
+      "name": "not_a_list",
+      "pass": true
+    },
+    {
+      "name": "probe_escapes",
+      "pass": true
+    },
+    {
+      "name": "probe_empty",
+      "pass": true
+    },
+    {
+      "name": "probe_large",
+      "pass": true
+    },
+    {
+      "name": "note_unchanged",
+      "pass": true
+    },
+    {
+      "name": "no_pasted_library",
+      "pass": true
+    },
+    {
+      "name": "libraries_ok",
+      "pass": true
+    },
+    {
+      "name": "uses_three",
+      "pass": true
+    },
+    {
+      "name": "reads_the_table",
+      "pass": true
+    }
+  ],
+  "tool_calls": 8,
+  "tool_errors": 0,
+  "usage": {
+    "input": 16,
+    "output": 8004,
+    "cacheRead": 187469,
+    "cacheWrite": 39203,
+    "turns": 7
+  },
+  "usd": 0.2156,
+  "page_bytes": 11268,
+  "data": null,
+  "answer": "The Planets note now has a 3D solar system on its App side. The note's table and text are unchanged.\n\n- **Controls:** Drag to spin it, and pinch or scroll to zoom. Tap a planet, or its label, to see its distance, radius and day length from the table.\n- **Squashing:** Spacing uses the square root of the distance in AU, so Saturn is only about 5 times as far out as Mercury. Size uses radius to the power 0.45, so Jupiter is big but Mercury is still visible. The Sun is just a marker and isn't to scale.\n- **Motion:** The planets orbit slowly and the view drifts on its own, unless your device is set to reduce motion. Saturn has rings.\n- **Edits:** It reads the table live, so editing or adding rows changes the scene.\n\n`check_app` is clean except for two notes. It flags the fixed dark \"space\" colours, which I kept on purpose so the stage looks the same in light and dark mode. It also says no control sent an edit, which is expected because the app only displays the table. I haven't looked at it in a preview, so the visuals are untested by eye.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Planets"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Planets\",\n  \"results\": [\n    {\n      \"id\": \"87314a54-f10d-40d8-923e-d16acdba207f\",\n      \"title\": \"Planets\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T15:18:58.298Z\",\n      \"snippet\": \"«Planets» | Planet | Distance (AU) | Radius (km) | Day (hours) | | --- | --- | --- | --- | | Mercury | 0.39 | 2440 | 4222 | | Venus | 0.72 | 6052 | 2802 | | Earth | 1.00 | 6371 | 24 | | Mars\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "get_page_guide",
+      "args": {},
+      "error": false,
+      "result": "{\n  \"guide\": \"# Building apps in Amber Notes notes\\n\\nA note can have an app: one HTML document shown on the note's App side, next to its Text side. A habit grid, a budget with totals, flashcards, a trip planner. In the tools it's called the note's page (set_note_page, get_note_page); when you talk to the person, call it \\\"the note's app\\\" or \\\"the App side\\\", and never \\\"page\\\" or \\\"Pages\\\".\\n\\nThe note's text stays the person's own data: they can always flip to Text and see and edit every row. The app reads it, changes it through checked edits, and keeps its own data (settings, logs, records… (27404 chars)"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "87314a54-f10d-40d8-923e-d16acdba207f"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"87314a54-f10d-40d8-923e-d16acdba207f\",\n  \"title\": \"Planets\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T15:18:58.298Z\",\n  \"updated\": \"2026-10-05T15:18:58.298Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 11,\n    \"words\": 76\n  },\n  \"markdown\": \"Planets\\n\\n| Planet | Distance (AU) | Radius (km) | Day (hours) |\\n| --- | --- | --- | --- |\\n| Mercury | 0.39 | 2440 | 4222 |\\n| Venus | 0.72 | 6052 | 2802 |\\n| Earth | 1.00 | 63… (708 chars)"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "87314a54-f10d-40d8-923e-d16acdba207f"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"87314a54-f10d-40d8-923e-d16acdba207f\",\n  \"title\": \"Planets\",\n  \"has_page\": false,\n  \"rules\": \"The page runs in Amber Notes in a sandbox with no network: no fetch, no external scripts, styles, fonts or images. Put all CSS and JS inline; images only as data: URIs or inline SVG.\\nRead the note from window.amber.note, never hardcode its contents (the note changes; the page must follow):\\n  amber.note = { title, markdown, today: \\\"yyyy-mm-dd\\\", tables: [{ index, columns: [{ name, type }], rows: [[cell, ...], ...] }], checklists: [{ line, text, checked }] }\\n  amber.onChange(fn) calls fn(… (7422 chars)"
+    },
+    {
+      "name": "set_note_page",
+      "args": {
+        "id": "87314a54-f10d-40d8-923e-d16acdba207f",
+        "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<style>\n* { box-sizing: border-box; }\nmain { max-width: var(--amber-content-max); margin: 0 auto; padding: 16px var(--amber-gutter) 32px; }\nh1 { font-size: 1.6rem; lett… (11144 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"87314a54-f10d-40d8-923e-d16acdba207f\",\n  \"title\": \"Planets\",\n  \"page\": \"created\",\n  \"bytes\": 11146,\n  \"note\": \"The person sees it on the note's App side (call it the note's app, not a page). The note's text is unchanged. Next: run check_app and fix what it finds.\",\n  \"warnings\": [\n    \"Fixed colors without a dark variant (background: #070a14, color: #f2f2f7, color: #c7c7cc): use --amber-* variables, or add @media (prefers-color-scheme: dark).\"\n  ],\n  \"fix_warnings\": \"Saved. Fix these with edit_note_page, then run check_app, before you reply.\"\n}"
+    },
+    {
+      "name": "check_app",
+      "args": {
+        "id": "87314a54-f10d-40d8-923e-d16acdba207f"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"87314a54-f10d-40d8-923e-d16acdba207f\",\n    \"title\": \"Planets\"\n  },\n  \"ok\": false,\n  \"issues\": [\n    \"Fixed colors without a dark variant (background: #070a14, color: #f2f2f7, color: #c7c7cc): use --amber-* variables, or add @media (prefers-color-scheme: dark).\",\n    \"375-light: 6 text element(s) with contrast under 4.5:1 (\\\"Planet 1\\\", \\\"Planet 2\\\", \\\"Planet 3\\\").\",\n    \"375-light: 6 control(s) smaller than 44 pt to tap on iPhone (\\\"Planet 1\\\", \\\"Planet 2\\\", \\\"Planet 3\\\").\",\n    \"375-dark: 6 text element(s) with contrast under 4.5:1 (\\\"Planet 1\\\", \\\"Planet 2\\\", \\\"Planet… (1177 chars)"
+    },
+    {
+      "name": "edit_note_page",
+      "args": {
+        "id": "87314a54-f10d-40d8-923e-d16acdba207f",
+        "edits": "[{\"old_text\":\"font: inherit; font-size: .8rem; color: #f2f2f7; background: rgba(255,255,255,.12); border: 0; border-radius: 99px; padding: 2px 9px; min-height: 28px; white-space: nowrap; will-change: transform; }\\n#labels button.sel { background: var(--amber-accent); color: var(--amber-on-accent); f… (1218 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"87314a54-f10d-40d8-923e-d16acdba207f\",\n  \"title\": \"Planets\",\n  \"page\": \"replaced\",\n  \"bytes\": 11268,\n  \"note\": \"The person sees it on the note's App side (call it the note's app, not a page). The note's text is unchanged. The previous version is kept (get_note_page lists it). Next: run check_app and fix what it finds.\",\n  \"warnings\": [\n    \"Fixed colors without a dark variant (background: #070a14, color: #ffffff, background: #2a3150): use --amber-* variables, or add @media (prefers-color-scheme: dark).\"\n  ],\n  \"fix_warnings\": \"Saved. Fix these with edit_note_page, then run check_app… (622 chars)"
+    },
+    {
+      "name": "check_app",
+      "args": {
+        "id": "87314a54-f10d-40d8-923e-d16acdba207f"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"87314a54-f10d-40d8-923e-d16acdba207f\",\n    \"title\": \"Planets\"\n  },\n  \"ok\": false,\n  \"issues\": [\n    \"Fixed colors without a dark variant (background: #070a14, color: #ffffff, background: #2a3150): use --amber-* variables, or add @media (prefers-color-scheme: dark).\",\n    \"Using the app's first control: no control sent an edit.\"\n  ],\n  \"browser_checked\": \"375 px light and dark, 768 and 1280 px light, over a sample note\",\n  \"next\": \"Fix these with edit_note_page (or set_note_page), then run check_app again.\"\n}"
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "375-light",
+        "width": 375,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 272,
+        "shown": 3,
+        "sampled": 12,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r11/shots/solar-system-3d-sonnet-375-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Planets",
+          "Tap a planet"
+        ],
+        "excerpt": "Planets MercuryVenusEarthMarsJupiterSaturnDrag to spin · scroll or pinch to zoom · tap a planet Tap a planet Its numbers from the table appear here. Squashed to fit: spacing uses the square root of distance, size uses radius to the power 0.45, and the Sun is not to scale.",
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.9146666666666666,
+        "canvases": 1,
+        "svgShapes": 0,
+        "gridCols": 0,
+        "frames": 25
+      },
+      {
+        "name": "375-dark",
+        "width": 375,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 272,
+        "shown": 3,
+        "sampled": 12,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r11/shots/solar-system-3d-sonnet-375-dark.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Planets",
+          "Tap a planet"
+        ],
+        "excerpt": "Planets MercuryVenusEarthMarsJupiterSaturnDrag to spin · scroll or pinch to zoom · tap a planet Tap a planet Its numbers from the table appear here. Squashed to fit: spacing uses the square root of distance, size uses radius to the power 0.45, and the Sun is not to scale.",
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.9146666666666666,
+        "canvases": 1,
+        "svgShapes": 0,
+        "gridCols": 0,
+        "frames": 26
+      },
+      {
+        "name": "768-light",
+        "width": 768,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 272,
+        "shown": 3,
+        "sampled": 12,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r11/shots/solar-system-3d-sonnet-768-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Planets",
+          "Tap a planet"
+        ],
+        "excerpt": "Planets MercuryVenusEarthMarsJupiterSaturnDrag to spin · scroll or pinch to zoom · tap a planet Tap a planet Its numbers from the table appear here. Squashed to fit: spacing uses the square root of distance, size uses radius to the power 0.45, and the Sun is not to scale.",
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.9300130208333334,
+        "canvases": 1,
+        "svgShapes": 0,
+        "gridCols": 0,
+        "frames": 26
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 272,
+        "shown": 3,
+        "sampled": 12,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r11/shots/solar-system-3d-sonnet-1280-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Planets",
+          "Tap a planet"
+        ],
+        "excerpt": "Planets MercuryVenusEarthMarsJupiterSaturnDrag to spin · scroll or pinch to zoom · tap a planet Tap a planet Its numbers from the table appear here. Squashed to fit: spacing uses the square root of distance, size uses radius to the power 0.45, and the Sun is not to scale.",
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.796875,
+        "canvases": 1,
+        "svgShapes": 0,
+        "gridCols": 0,
+        "frames": 26
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 272,
+        "shown": 3,
+        "sampled": 12,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Planets",
+          "Tap a planet"
+        ],
+        "excerpt": "Planets MercuryVenusEarthMarsJupiterSaturnDrag to spin · scroll or pinch to zoom · tap a planet Tap a planet Its numbers from the table appear here. Squashed to fit: spacing uses the square root of distance, size uses radius to the power 0.45, and the Sun is not to scale.",
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.796875,
+        "canvases": 1,
+        "svgShapes": 0,
+        "gridCols": 0,
+        "frames": 26
+      }
+    ],
+    "blocked": [],
+    "updates": [],
+    "setData": 0,
+    "interaction": {
+      "tried": "control",
+      "ok": false,
+      "framesPerSecond": 61,
+      "error": "no control sent an edit"
+    },
+    "probes": {
+      "follows": {
+        "pass": true,
+        "detail": "shown, but not as written"
+      },
+      "escapes": {
+        "pass": true
+      },
+      "empty": {
+        "pass": true,
+        "detail": "blank page"
+      },
+      "large": {
+        "pass": true,
+        "detail": "616 ms to load 400 rows"
+      }
+    },
+    "dataAfter": {}
+  }
+}

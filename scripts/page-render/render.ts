@@ -331,7 +331,7 @@ async function renderOnce(html: string, markdown: string, data: unknown, opts: R
       }
       const used = right > left ? (right - left) / window.innerWidth : 0;
       // What kind of layout: canvas, drawn SVG, multi-column grids, or a stack of rows.
-      const canvases = [...document.querySelectorAll("canvas")].filter(visible).length;
+      const canvases = [...document.querySelectorAll("canvas")].filter(visible).length + [...document.querySelectorAll("img, svg")].filter((el) => { const r = el.getBoundingClientRect(); return visible(el) && r.width >= 120 && r.height >= 120; }).length;
       const svgShapes = [...document.querySelectorAll("svg path, svg rect, svg circle, svg line, svg polyline, svg polygon, svg ellipse")].filter(visible).length;
       const gridCols = Math.max(0, ...[...document.querySelectorAll("body *")].filter(visible).map((el) => { const s = getComputedStyle(el); return s.display.includes("grid") ? s.gridTemplateColumns.split(" ").filter(Boolean).length : 0; }));
       // Text that is small or faint against what's behind it.

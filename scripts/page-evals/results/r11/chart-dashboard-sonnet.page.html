@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="amber-lib:chart.js"></script>
+<style>
+* { box-sizing: border-box; }
+main { max-width: var(--amber-content-max); margin: 0 auto; padding: 20px var(--amber-gutter) 64px; }
+h1 { font-size: 1.75rem; letter-spacing: -.02em; margin: 4px 0 4px; }
+h2 { font-size: 1rem; margin: 0 0 10px; }
+.sub { color: var(--amber-text-secondary); font-size: .875rem; margin-bottom: 16px; }
+.grid { display: grid; gap: 14px; grid-template-columns: 1fr; margin-bottom: 14px; }
+.card { background: var(--amber-surface); border: 1px solid var(--amber-separator); border-radius: var(--amber-radius); padding: 14px 16px; min-width: 0; }
+.kpis { display: grid; gap: 14px; grid-template-columns: repeat(2, 1fr); margin-bottom: 14px; }
+.kpi .v { font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.kpi .l { font-size: .8125rem; color: var(--amber-text-secondary); }
+.chart { position: relative; height: 260px; }
+.chart.tall { height: 300px; }
+.lines { display: grid; gap: 10px; }
+.line { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--amber-separator); flex-wrap: wrap; }
+.line:first-child { border-top: 0; }
+.dot { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+.name { font-weight: 600; flex: 1 1 90px; }
+.stat { font-variant-numeric: tabular-nums; font-size: .875rem; text-align: right; }
+.stat small { display: block; color: var(--amber-text-secondary); font-size: .75rem; }
+.up { color: var(--amber-accent-text); } .down { color: var(--amber-danger); }
+table { width: 100%; border-collapse: collapse; font-size: .875rem; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 8px 4px; border-top: 1px solid var(--amber-separator); }
+th { color: var(--amber-text-secondary); font-weight: 500; border-top: 0; }
+td.r, th.r { text-align: right; }
+.empty { padding: 28px 16px; text-align: center; color: var(--amber-text-secondary); }
+@media (min-width: 900px) {
+  .kpis { grid-template-columns: repeat(4, 1fr); }
+  .g2 { grid-template-columns: 3fr 2fr; }
+  .g3 { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script>
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+const num = s => { const n = parseFloat(String(s).replace(/\s/g, "").replace(",", ".")); return isNaN(n) ? 0 : n; };
+const fmt = n => Math.round(n).toLocaleString("en-US");
+const pct = n => (n >= 0 ? "+" : "") + (n * 100).toFixed(1) + "%";
+const charts = [];
+const dark = () => matchMedia("(prefers-color-scheme: dark)").matches;
+const palette = () => dark() ? ["#ffb347", "#6cb4ff", "#7ddc9a", "#ff8fa3", "#c4a1ff", "#8fe3e0"] : ["#d97706", "#2563eb", "#15803d", "#be185d", "#7c3aed", "#0e7490"];
+
+function render(note) {
+  charts.splice(0).forEach(c => c.destroy());
+  const app = document.getElementById("app");
+  const t = note.tables.find(t => t.columns.length > 2 && t.rows.length) || note.tables[0];
+  if (!t || t.columns.length < 2 || !t.rows.length) {
+    app.innerHTML = `<h1>${esc(note.title)}</h1><div class="card empty">Add a table with a Month column and one column per sales line.</div>`; return;
+  }
+  const months = t.rows.map(r => r[0]);
+  const names = t.columns.slice(1).map(c => c.name);
+  const series = names.map((n, i) => t.rows.map(r => num(r[i + 1])));
+  const totals = months.map((_, m) => series.reduce((a, s) => a + s[m], 0));
+  const grand = totals.reduce((a, b) => a + b, 0);
+  const pal = palette();
+  const txt = getComputedStyle(document.documentElement).getPropertyValue("--amber-text-secondary").trim() || "#888";
+  const grid = getComputedStyle(document.documentElement).getPropertyValue("--amber-separator").trim() || "#8884";
+  const n = months.length;
+  const maxI = totals.indexOf(Math.max(...totals)), minI = totals.indexOf(Math.min(...totals));
+  const last = n - 1, prev = n - 2;
+  const mom = prev >= 0 ? totals[last] / totals[prev] - 1 : 0;
+  const growth = totals[0] ? totals[last] / totals[0] - 1 : 0;
+
+  // trend per line: average monthly change via least squares, relative to mean
+  const lineStats = names.map((nm, i) => {
+    const y = series[i], mean = y.reduce((a, b) => a + b, 0) / n;
+    const xm = (n - 1) / 2;
+    let sxy = 0, sxx = 0; y.forEach((v, x) => { sxy += (x - xm) * (v - mean); sxx += (x - xm) ** 2; });
+    const slope = sxx ? sxy / sxx : 0;
+    const bi = y.indexOf(Math.max(...y)), wi = y.indexOf(Math.min(...y));
+    return { nm, total: y.reduce((a, b) => a + b, 0), slope, rel: mean ? slope / mean : 0,
+      change: y[0] ? y[last] / y[0] - 1 : 0, best: bi, worst: wi, y };
+  });
+
+  app.innerHTML = `
+    <h1>${esc(note.title)}</h1>
+    <div class="sub">${esc(months[0])} to ${esc(months[last])} · ${n} months · ${names.length} lines</div>
+    <div class="kpis">
+      <div class="card kpi"><div class="v">${fmt(grand)}</div><div class="l">Total sales</div></div>
+      <div class="card kpi"><div class="v">${fmt(totals[last])}</div><div class="l">${esc(months[last])}${prev >= 0 ? ` · <span class="${mom >= 0 ? "up" : "down"}">${pct(mom)} vs ${esc(months[prev])}</span>` : ""}</div></div>
+      <div class="card kpi"><div class="v">${esc(months[maxI])}</div><div class="l">Best month · ${fmt(totals[maxI])}</div></div>
+      <div class="card kpi"><div class="v">${esc(months[minI])}</div><div class="l">Weakest month · ${fmt(totals[minI])}</div></div>
+    </div>
+    <div class="grid g2">
+      <div class="card"><h2>Trend by line</h2><div class="chart tall"><canvas id="c1" role="img" aria-label="Line chart of monthly sales for each line"></canvas></div></div>
+      <div class="card"><h2>Sales mix</h2><div class="chart tall"><canvas id="c2" role="img" aria-label="Doughnut chart of each line's share of total sales"></canvas></div></div>
+    </div>
+    <div class="grid g3">
+      <div class="card"><h2>Monthly total (best and weakest highlighted)</h2><div class="chart"><canvas id="c3" role="img" aria-label="Bar chart of total sales per month, best and weakest month highlighted"></canvas></div></div>
+      <div class="card"><h2>Line trends</h2><div class="lines">
+        ${lineStats.map((s, i) => `<div class="line"><span class="dot" style="background:${pal[i % pal.length]}"></span><span class="name">${esc(s.nm)}</span>
+          <span class="stat">${fmt(s.total)}<small>${(s.total / grand * 100).toFixed(1)}% of sales</small></span>
+          <span class="stat ${s.slope >= 0 ? "up" : "down"}">${s.slope >= 0 ? "▲" : "▼"} ${fmt(Math.abs(s.slope))}/mo<small>${pct(s.change)} since ${esc(months[0])}</small></span></div>`).join("")}
+      </div></div>
+    </div>
+    <div class="card"><h2>Best and worst month per line</h2>
+      <table><thead><tr><th>Line</th><th class="r">Best</th><th class="r">Worst</th></tr></thead><tbody>
+      ${lineStats.map(s => `<tr><td>${esc(s.nm)}</td><td class="r">${esc(months[s.best])} · ${fmt(s.y[s.best])}</td><td class="r">${esc(months[s.worst])} · ${fmt(s.y[s.worst])}</td></tr>`).join("")}
+      </tbody></table></div>`;
+
+  Chart.defaults.color = txt;
+  const scales = { x: { grid: { display: false }, ticks: { color: txt } }, y: { grid: { color: grid }, ticks: { color: txt, callback: v => fmt(v) } } };
+  charts.push(new Chart(document.getElementById("c1"), { type: "line",
+    data: { labels: months, datasets: names.map((nm, i) => ({ label: nm, data: series[i], borderColor: pal[i % pal.length], backgroundColor: pal[i % pal.length], tension: .3, pointRadius: 3 })) },
+    options: { maintainAspectRatio: false, scales, plugins: { legend: { position: "bottom" } } } }));
+  charts.push(new Chart(document.getElementById("c2"), { type: "doughnut",
+    data: { labels: names, datasets: [{ data: lineStats.map(s => s.total), backgroundColor: names.map((_, i) => pal[i % pal.length]), borderWidth: 0 }] },
+    options: { maintainAspectRatio: false, cutout: "58%", plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: c => `${c.label}: ${fmt(c.parsed)} (${(c.parsed / grand * 100).toFixed(1)}%)` } } } } }));
+  charts.push(new Chart(document.getElementById("c3"), { type: "bar",
+    data: { labels: months, datasets: [{ label: "Total", data: totals,
+      backgroundColor: totals.map((_, i) => i === maxI ? pal[2] : i === minI ? pal[3] : pal[0]), borderRadius: 4 }] },
+    options: { maintainAspectRatio: false, scales, plugins: { legend: { display: false } } } }));
+}
+amber.onChange(render);
+</script>
+</body>
+</html>
