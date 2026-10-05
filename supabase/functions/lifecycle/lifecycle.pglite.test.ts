@@ -5,15 +5,15 @@ import { assert, assertEquals, assertStringIncludes } from "jsr:@std/assert@1";
 import type { PGlite } from "npm:@electric-sql/pglite@0.2.17";
 import { schemaDB, sqlFor } from "../mcp/pglite.ts";
 import { account, note } from "../mcp/sealed.ts";
-import type { Config } from "./logic.ts";
-import { type Message, run, type SendResult } from "./run.ts";
+import { type Config, variantOf } from "./logic.ts";
+import { type Message, recordClick, run, type SendResult, stats } from "./run.ts";
 
 const H = 3_600_000, D = 24 * H;
 const NOW = new Date();
 const at = (ms: number) => new Date(NOW.getTime() + ms);
 
 const cfg = (o: Partial<Config> = {}): Config => ({
-  enabled: true, flags: { apps: false, appStore: false, sharing: false }, since: at(-60 * D), only: null, resendKey: "re_test", unsubscribeSecret: "u".repeat(40), cronSecret: "c".repeat(40),
+  enabled: true, flags: { apps: false, appStore: false, sharing: false }, subjectTest: false, trackClicks: false, since: at(-60 * D), only: null, resendKey: "re_test", unsubscribeSecret: "u".repeat(40), cronSecret: "c".repeat(40),
   from: "Emil at Amber Notes <emil@ambernotes.app>", replyTo: "emil@ambernotes.app", site: "https://ambernotes.app", ...o,
 });
 
@@ -42,7 +42,7 @@ async function person(pg: PGlite, o: Person) {
 }
 
 const rows = async (pg: PGlite) => (await pg.query<{ user_id: string; kind: string; status: string }>(`select user_id, kind, status from public.email_sends order by id`)).rows;
-const quick = { pause: async () => {} };
+const quick = { pause: async () => {}, anyHour: true };
 const kinds = (box: { sent: Message[] }) => box.sent.map((m) => m.subject);
 /// Moves every email row back in time, as if the days between rounds had passed.
 const age = (pg: PGlite, days: number) => pg.query(`update public.email_sends set created_at = created_at - make_interval(days => $1)`, [days]);
@@ -137,13 +137,43 @@ Deno.test("at most 6 emails, even with every rung open", async () => {
   assertEquals(box.sent.length, 0);
 });
 
-Deno.test("a big imported library gets the sorting example, with its number", async () => {
+Deno.test("a big library mostly in one place gets the sorting example, with no number", async () => {
   const pg = await schemaDB();
   await person(pg, { age: 1 * D, notes: 21, imported: true });
   const box = outbox();
   await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), ...quick });
   assertEquals(kinds(box), ["Let ChatGPT sort your notes into folders"]);
-  assertStringIncludes(box.sent[0].text, "21 notes");
+  assert(!/\b21\b/.test(box.sent[0].subject + box.sent[0].text.split("--")[0].replace(/https:\S+/g, "")));
+});
+
+Deno.test("send time: an hourly round only sends where it's 9 in the morning", async () => {
+  const pg = await schemaDB();
+  const a = await person(pg, { age: 2 * D, notes: 6 });
+  const box = outbox();
+  const at10utc = new Date(NOW); at10utc.setUTCHours(10, 0, 0, 0);
+  await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), now: at10utc, pause: quick.pause });
+  assertEquals(box.sent.length, 0);
+  await pg.query(`insert into public.pane_devices (user_id, device_id, platform, utc_offset_minutes) values ($1, gen_random_uuid(), 'ios', -60)`, [a.id]);
+  await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), now: at10utc, pause: quick.pause });
+  assertEquals(box.sent.length, 1);
+});
+
+Deno.test("measurement: the subject variant is kept, links go through /go, clicks and steps done are counted", async () => {
+  const pg = await schemaDB();
+  const a = await person(pg, { age: 2 * D, notes: 6 });
+  const box = outbox();
+  await run({ sql: sqlFor(pg), send: box.send, cfg: cfg({ subjectTest: true, trackClicks: true }), ...quick });
+  const m = box.sent[0];
+  const [row] = (await pg.query<{ id: number; variant: number }>(`select id, variant from public.email_sends`)).rows;
+  assertEquals(row.variant, variantOf(a.id));
+  const goes = [...m.html.matchAll(/href="(https:\/\/ambernotes\.app\/go\?[^"]+)"/g)];
+  assert(goes.length >= 1, "links are counted");
+  assertStringIncludes(m.html, "/unsubscribe?u=");
+  assert(!/\/go\?[^"]*unsubscribe/.test(m.html), "the unsubscribe link isn't wrapped");
+  assertEquals(await recordClick(sqlFor(pg), Number(row.id), "https://ambernotes.app/blog/connect-chatgpt-to-your-notes?x=1"), true);
+  assertEquals((await pg.query<{ link: string }>(`select link from public.email_clicks`)).rows[0].link, "ambernotes.app/blog/connect-chatgpt-to-your-notes");
+  await pg.query(`insert into public.mcp_tokens (user_id, name, token_hash) values ($1, 'Claude', $2)`, [a.id, crypto.randomUUID()]);
+  assertEquals(await stats(sqlFor(pg)), [{ kind: "connect", variant: variantOf(a.id), sent: 1, clicked: 1, done: 1 }]);
 });
 
 Deno.test("respects unsubscribe: nothing after it, from the link or the header", async () => {

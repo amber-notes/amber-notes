@@ -6,6 +6,11 @@
 //   POST /functions/v1/lifecycle/unsubscribe?u=<account id>&t=<token>
 //        → 200 { ok: true } · 400 a link that isn't one. Called by ambernotes.app/unsubscribe/confirm,
 //        which is where the email's link and its List-Unsubscribe header point.
+//   POST /functions/v1/lifecycle/click?s=<send id>&to=<link>&t=<token>
+//        → 200 { ok: true } · 400 a link that isn't one. Called by ambernotes.app/go, which then
+//        sends the reader on. Records which email and the link's host and path; nothing else.
+//   POST /functions/v1/lifecycle/stats   (x-lifecycle-secret)
+//        → 200 [{ kind, variant, sent, clicked, done }]: counts per email and subject line.
 //
 // Sends nothing unless LIFECYCLE_ENABLED is "true", LIFECYCLE_SINCE is set, and RESEND_LIFECYCLE_KEY,
 // LIFECYCLE_UNSUBSCRIBE_SECRET and LIFECYCLE_CRON_SECRET are present. verify_jwt is off for this
@@ -13,8 +18,8 @@
 import { connect, readiness } from "../_shared/db.ts";
 import { atHome } from "../_shared/region.ts";
 import { errorKind, log } from "../_shared/log.ts";
-import { config, sameSecret, validUnsubscribe } from "./logic.ts";
-import { resend, run } from "./run.ts";
+import { config, sameSecret, validClick, validUnsubscribe } from "./logic.ts";
+import { recordClick, resend, run, stats } from "./run.ts";
 
 const sql = connect(Deno.env, 2);
 const ready = readiness(sql);
@@ -44,6 +49,27 @@ Deno.serve(atHome("lifecycle", async (req) => {
       log("lifecycle_unsubscribe", { status: "failed", ...errorKind(e) });
       return reply({ error: "unavailable" }, 500);
     }
+  }
+
+  if (path === "/click") {
+    const secret = (Deno.env.get("LIFECYCLE_UNSUBSCRIBE_SECRET") ?? "").trim();
+    const s = url.searchParams.get("s"), to = url.searchParams.get("to");
+    if (!secret || !(await validClick(secret, s, to, url.searchParams.get("t")))) return reply({ error: "bad link" }, 400);
+    await ready();
+    try {
+      await recordClick(sql, Number(s), to!);
+      return reply({ ok: true });
+    } catch (e) {
+      log("lifecycle_click", { status: "failed", ...errorKind(e) });
+      return reply({ error: "unavailable" }, 500);
+    }
+  }
+
+  if (path === "/stats") {
+    const settings = config(Deno.env);
+    if (!settings.ok || !sameSecret(req.headers.get("x-lifecycle-secret") ?? "", settings.config.cronSecret)) return reply({ error: "not allowed" }, 401);
+    await ready();
+    return reply(await stats(sql));
   }
 
   if (path === "/" || path === "/run") {

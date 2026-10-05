@@ -1,7 +1,9 @@
 // Renders every lifecycle email to a folder, as HTML (as sent, always light, and always dark as
 // Apple Mail shows it) and plain text, with the pictures next to them, so they can be opened in a browser or screenshotted.
 // Sends nothing and reads no database.
-//   deno run -A scripts/lifecycle-preview.ts <folder>
+//   deno run -A scripts/lifecycle-preview.ts <folder> [<folder of unreleased art>]
+// The apps and share emails show features that haven't shipped; their captures stay out of this
+// public repository until then (see docs/Technical/lifecycle-emails.md) and come from the second folder.
 import { KINDS, render } from "../supabase/functions/lifecycle/emails.ts";
 
 const out = Deno.args[0];
@@ -9,16 +11,13 @@ if (!out) throw new Error("Usage: deno run -A scripts/lifecycle-preview.ts <fold
 await Deno.mkdir(`${out}/email`, { recursive: true });
 const art = new URL("../web/public/email/", import.meta.url);
 for (const f of Deno.readDirSync(art)) await Deno.copyFile(new URL(f.name, art), `${out}/email/${f.name}`);
+if (Deno.args[1]) for (const f of Deno.readDirSync(Deno.args[1])) await Deno.copyFile(`${Deno.args[1]}/${f.name}`, `${out}/email/${f.name}`);
 
-const base = { site: "https://ambernotes.app", assets: "email", unsubscribe: "https://ambernotes.app/unsubscribe?u=preview&t=preview", noteCount: 3, imported: false, connectTried: false };
+const base = { site: "https://ambernotes.app", assets: "email", unsubscribe: "https://ambernotes.app/unsubscribe?u=preview&t=preview", sortable: false, connectTried: false };
 const variants = [
   ...KINDS.map((kind) => ({ kind, name: kind, ctx: base })),
-  // An imported library of 179 notes: the connect email shows sorting, with the number.
-  { kind: "connect" as const, name: "connect-imported", ctx: { ...base, noteCount: 179, imported: true } },
-  // A connection started and waiting: the last line says how to finish.
-  { kind: "connect" as const, name: "connect-tried", ctx: { ...base, connectTried: true } },
-  // The template cards' second option, for comparison.
-  { kind: "templates" as const, name: "templates-amber", ctx: { ...base, cards: "amber" as const } },
+  // A big library mostly in one folder: the connect email shows sorting instead.
+  { kind: "connect" as const, name: "connect-sorting", ctx: { ...base, sortable: true } },
 ];
 const index: unknown[] = [];
 for (const v of variants) {
@@ -31,7 +30,7 @@ for (const v of variants) {
   await Deno.writeTextFile(`${out}/${v.name}-light.html`, light);
   await Deno.writeTextFile(`${out}/${v.name}-dark.html`, dark);
   await Deno.writeTextFile(`${out}/${v.name}.txt`, `Subject: ${e.subject}\nPreview: ${e.preview}\n\n${e.text}`);
-  index.push({ name: v.name, kind: v.kind, noteCount: v.ctx.noteCount, imported: v.ctx.imported, connectTried: v.ctx.connectTried, subject: e.subject, preview: e.preview, bytes: new TextEncoder().encode(e.html).length });
+  index.push({ name: v.name, kind: v.kind, subjectB: render(v.kind, { ...v.ctx, variant: 1 }).subject, previewB: render(v.kind, { ...v.ctx, variant: 1 }).preview, subject: e.subject, preview: e.preview, bytes: new TextEncoder().encode(e.html).length });
 }
 await Deno.writeTextFile(`${out}/emails.json`, JSON.stringify(index, null, 2));
 console.log(`${variants.length} emails in ${out}`);

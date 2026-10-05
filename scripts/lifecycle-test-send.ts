@@ -28,10 +28,10 @@ if (to.length === 0 || to.length > 10 || to.some((a) => !/^[^\s@,]+@[^\s@,]+\.[^
 const key = Deno.env.get("RESEND_LIFECYCLE_KEY") ?? "";
 if (send && !key) { console.error("Set RESEND_LIFECYCLE_KEY."); Deno.exit(1); }
 
-const base = { site: SITE, assets, unsubscribe: `${SITE}/unsubscribe?u=test&t=test`, noteCount: 3, imported: false, connectTried: false };
+const base = { site: SITE, assets, unsubscribe: `${SITE}/unsubscribe?u=test&t=test`, sortable: false, connectTried: false };
 const variants = [
   ...KINDS.map((kind) => ({ kind, label: kind, ctx: base })),
-  { kind: "connect" as Kind, label: "connect, 179 imported notes", ctx: { ...base, noteCount: 179, imported: true } },
+  { kind: "connect" as Kind, label: "connect, sorting into folders", ctx: { ...base, sortable: true } },
   { kind: "connect" as Kind, label: "connect, connection waiting", ctx: { ...base, connectTried: true } },
 ].filter((v) => !only || only.includes(v.kind));
 

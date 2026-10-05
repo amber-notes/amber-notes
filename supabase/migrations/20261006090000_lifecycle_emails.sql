@@ -11,8 +11,12 @@
 --                    email is sent twice. No address and no content: the kind, the outcome, the time.
 -- email_unsubscribes accounts that said stop. Nothing is sent to them again.
 -- lifecycle_facts()  the activity the function decides from, for accounts made since a date.
--- lifecycle_tick()   what pg_cron runs once a day: asks the function to do a round. It does nothing
+-- lifecycle_tick()   what pg_cron runs every hour: asks the function to do a round. It does nothing
 --                    until pg_net is on and the vault holds the function's address and secret.
+-- email_clicks       a click on a link in one of these emails, when LIFECYCLE_TRACK_CLICKS is on:
+--                    which email and the link's host and path. No address, no query, no device.
+-- pane_devices       takes the device's UTC offset, so emails can go out at 9 in its morning.
+--                    The apps don't report it yet.
 -- pane_feature_use   takes two more first uses: 'template' (a template added from a link) and
 --                    'appNote' (an app made in a note). The apps don't report them yet.
 --
@@ -25,7 +29,9 @@ alter table public.pane_feature_use add constraint pane_feature_use_feature_chec
 create table public.email_sends (
   id bigint generated always as identity primary key,
   user_id uuid not null references auth.users (id) on delete cascade,
-  kind text not null check (kind in ('stuck', 'import', 'connect', 'try', 'undo', 'apps', 'templates', 'iphone', 'share')),
+  kind text not null check (kind in ('stuck', 'import', 'connect', 'try', 'undo', 'apps', 'templates', 'iphone', 'mac', 'share')),
+  -- Which of the email's two subject lines went out (0 unless LIFECYCLE_SUBJECT_TEST is on).
+  variant smallint not null default 0 check (variant in (0, 1)),
   -- sending: claimed, the provider not answered yet (a crash leaves it here, and it is never retried);
   -- sent: the provider took it; failed: the provider refused it (not retried either).
   status text not null default 'sending' check (status in ('sending', 'sent', 'failed')),
@@ -36,6 +42,19 @@ create table public.email_sends (
 );
 alter table public.email_sends enable row level security;
 revoke all on public.email_sends from anon, authenticated;
+
+create table public.email_clicks (
+  id bigint generated always as identity primary key,
+  send_id bigint not null references public.email_sends (id) on delete cascade,
+  link text not null check (char_length(link) <= 100),
+  at timestamptz not null default now()
+);
+create index email_clicks_send on public.email_clicks (send_id);
+alter table public.email_clicks enable row level security;
+revoke all on public.email_clicks from anon, authenticated;
+
+alter table public.pane_devices add column if not exists utc_offset_minutes smallint
+  check (utc_offset_minutes is null or utc_offset_minutes between -720 and 840);
 
 create table public.email_unsubscribes (
   user_id uuid primary key references auth.users (id) on delete cascade,
@@ -50,7 +69,8 @@ revoke all on public.email_unsubscribes from anon, authenticated;
 create or replace function public.lifecycle_facts(since timestamptz)
 returns table (
   user_id uuid, email text, signed_up_at timestamptz,
-  note_count integer, imported boolean, on_mac boolean, on_iphone boolean,
+  note_count integer, imported boolean, biggest_folder_share integer, utc_offset_minutes integer,
+  on_mac boolean, on_iphone boolean,
   ai_connected_at timestamptz, connect_tried boolean, ai_edit_days integer,
   history_opened boolean, used_template boolean, has_app boolean, shared boolean,
   unsubscribed boolean, last_sent_at timestamptz, sent text[]
@@ -59,6 +79,10 @@ language sql stable security definer set search_path = '' as $$
   select u.id, u.email, u.created_at,
     (select count(*)::int from public.notes n where n.user_id = u.id and n.deleted_at is null),
     exists (select 1 from public.pane_setup p where p.user_id = u.id and p.imported_at is not null),
+    coalesce((select (100 * max(c.n) / nullif(sum(c.n), 0))::int from (
+      select count(*) as n from public.notes n where n.user_id = u.id and n.deleted_at is null group by n.folder_id) c), 0),
+    (select d.utc_offset_minutes::int from public.pane_devices d where d.user_id = u.id and d.utc_offset_minutes is not null
+      order by d.last_seen desc limit 1),
     exists (select 1 from public.pane_devices d where d.user_id = u.id and d.platform = 'macos'),
     exists (select 1 from public.pane_devices d where d.user_id = u.id and d.platform = 'ios'),
     (select min(t.created_at) from public.mcp_tokens t where t.user_id = u.id),
@@ -96,10 +120,11 @@ begin
 end $$;
 revoke all on function public.lifecycle_tick() from public, anon, authenticated;
 
--- Once a day at 08:00 UTC (10:00 in Sweden), so an email arrives in the morning in Europe.
+-- Every hour on the hour: each round sends only to accounts where it's 9 in the morning (08:00 UTC
+-- for accounts whose time zone isn't known yet).
 do $$
 begin
   if exists (select 1 from pg_extension where extname = 'pg_cron') then
-    perform cron.schedule('amber-lifecycle-daily', '0 8 * * *', 'select public.lifecycle_tick()');
+    perform cron.schedule('amber-lifecycle-hourly', '0 * * * *', 'select public.lifecycle_tick()');
   end if;
 end $$;

@@ -27,6 +27,7 @@ const NOT_PER_ACCOUNT: Record<string, string> = {
   note_share_pages: "a shared page's copy; cascades from note_shares and notes",
   note_share_files: "a shared page's file copy; cascades from note_shares",
   site_downloads: "aggregate daily download totals, no account or personal data",
+  email_clicks: "a click on an onboarding email; cascades from email_sends",
 };
 
 /** An account with a row in every table an account can have rows in. */

@@ -69,7 +69,8 @@ export async function collect(sql: Sql, uid: string, now = new Date()): Promise<
   const [share_ask] = await sql<Row[]>`select choice, decided_at from public.pane_share_ask where user_id = ${uid}`;
   const features = await sql<Row[]>`select feature, first_at from public.pane_feature_use where user_id = ${uid}`;
   // The onboarding emails (supabase/functions/lifecycle): which went out, and whether you said stop.
-  const emails = await sql<Row[]>`select kind, status, created_at, sent_at from public.email_sends where user_id = ${uid} order by created_at`;
+  const emails = await sql<Row[]>`select s.kind, s.status, s.created_at, s.sent_at, (select count(*)::int from public.email_clicks c where c.send_id = s.id) as clicks
+    from public.email_sends s where s.user_id = ${uid} order by s.created_at`;
   const [unsubscribed] = await sql<Row[]>`select source, at from public.email_unsubscribes where user_id = ${uid}`;
   const sessions = await sql<Row[]>`
     select created_at, refreshed_at, user_agent, host(ip) as ip from auth.sessions where user_id = ${uid} order by created_at`;

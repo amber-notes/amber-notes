@@ -1,6 +1,6 @@
 // deno test -A supabase/functions/lifecycle/logic.test.ts
 import { assert, assertEquals } from "jsr:@std/assert@1";
-import { config, decide, type Facts, gapAfter, LADDER, sameSecret, unsubscribeLinks, unsubscribeToken, validUnsubscribe } from "./logic.ts";
+import { clickable, config, decide, type Facts, gapAfter, LADDER, linkName, localMorning, sameSecret, sortable, trackedLink, unsubscribeLinks, unsubscribeToken, validClick, validUnsubscribe, variantOf } from "./logic.ts";
 
 const H = 3_600_000, D = 24 * H;
 const NOW = new Date("2026-10-20T08:00:00Z");
@@ -9,7 +9,7 @@ const ON = { apps: true, appStore: true, sharing: true };
 /// A Mac account two days in with a few notes and nothing else done.
 const facts = (o: Partial<Facts> & { ageMs?: number } = {}): Facts => ({
   user_id: "0b6f6a5e-1d2c-4a8e-9f3b-2c1d0e9f8a7b", email: "sara@example.com",
-  signed_up_at: ago(o.ageMs ?? 2 * D), note_count: 3, imported: false, on_mac: true, on_iphone: false,
+  signed_up_at: ago(o.ageMs ?? 2 * D), note_count: 3, imported: false, biggest_folder_share: 100, utc_offset_minutes: null, on_mac: true, on_iphone: false,
   ai_connected_at: null, connect_tried: false, ai_edit_days: 0, history_opened: false, used_template: false,
   has_app: false, shared: false, unsubscribed: false, last_sent_at: null, sent: [], ...o,
 });
@@ -17,7 +17,7 @@ const facts = (o: Partial<Facts> & { ageMs?: number } = {}): Facts => ({
 const sent = (...kinds: string[]) => ({ sent: kinds, last_sent_at: ago(8 * D) });
 
 Deno.test("the ladder's order", () => {
-  assertEquals(LADDER.map((r) => r.kind), ["stuck", "import", "connect", "try", "undo", "apps", "templates", "iphone", "share"]);
+  assertEquals(LADDER.map((r) => r.kind), ["stuck", "import", "connect", "try", "undo", "apps", "templates", "iphone", "mac", "share"]);
 });
 
 Deno.test("rung 1: no note a day after sign-up gets the stuck email first", () => {
@@ -54,7 +54,46 @@ Deno.test("flags: apps, iPhone and sharing only when their feature is live", () 
   assertEquals(decide(facts({ ...all, has_app: true }), NOW, ON), "iphone");
   assertEquals(decide(facts({ ...all, has_app: true, on_iphone: true }), NOW, ON), "share");
   assertEquals(decide(facts({ ...all, has_app: true, on_iphone: true, shared: true }), NOW, ON), null);
-  assertEquals(decide(facts({ ...all, has_app: true, ageMs: 22 * D, on_mac: false, on_iphone: true }), NOW, ON), "share");
+  assertEquals(decide(facts({ ...all, has_app: true, ageMs: 22 * D, on_mac: false, on_iphone: true }), NOW, ON), "mac");
+});
+
+Deno.test("iPhone only: the Mac email, until a Mac install", () => {
+  const all = { imported: true, ai_connected_at: ago(3 * D), ai_edit_days: 2, history_opened: true, used_template: true, ageMs: 5 * D, on_mac: false, on_iphone: true };
+  assertEquals(decide(facts(all), NOW), "mac");
+  assertEquals(decide(facts({ ...all, on_mac: true }), NOW), null);
+});
+
+Deno.test("the connect email sorts into folders only for a big library mostly in one place", () => {
+  assertEquals(sortable({ note_count: 179, biggest_folder_share: 85 }), true);
+  assertEquals(sortable({ note_count: 179, biggest_folder_share: 40 }), false);
+  assertEquals(sortable({ note_count: 12, biggest_folder_share: 100 }), false);
+});
+
+Deno.test("send time: 9 in the person's morning, 08:00 UTC when the time zone isn't known", () => {
+  assertEquals(localMorning(new Date("2026-10-20T08:00:00Z"), null), true);
+  assertEquals(localMorning(new Date("2026-10-20T09:00:00Z"), null), false);
+  assertEquals(localMorning(new Date("2026-10-20T13:00:00Z"), -240), true);
+  assertEquals(localMorning(new Date("2026-10-20T03:30:00Z"), 330), true);
+});
+
+Deno.test("subject line variants: half and half, fixed per account", () => {
+  const ids = Array.from({ length: 400 }, () => crypto.randomUUID());
+  const ones = ids.filter((id) => variantOf(id) === 1).length;
+  assert(ones > 150 && ones < 250, String(ones));
+  assertEquals(variantOf(ids[0]), variantOf(ids[0]));
+});
+
+Deno.test("click links: signed per email and link, only to the emails' own hosts, and named without the query", async () => {
+  const s = "x".repeat(40);
+  const link = await trackedLink("https://ambernotes.app", s, 42, "https://chatgpt.com/?q=hi");
+  const q = new URL(link).searchParams;
+  assertEquals(new URL(link).pathname, "/go");
+  assert(await validClick(s, q.get("s"), q.get("to"), q.get("t")));
+  assert(!await validClick(s, "43", q.get("to"), q.get("t")));
+  assert(!await validClick(s, q.get("s"), "https://chatgpt.com/?q=other", q.get("t")));
+  assert(!await validClick(s, q.get("s"), "https://evil.example/", q.get("t")));
+  assertEquals([clickable("https://claude.ai/new"), clickable("http://ambernotes.app/"), clickable("https://evil.example/")], [true, false, false]);
+  assertEquals(linkName("https://chatgpt.com/?q=private"), "chatgpt.com/");
 });
 
 Deno.test("never twice: a rung already sent is skipped for the next one", () => {

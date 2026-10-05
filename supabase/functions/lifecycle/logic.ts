@@ -1,7 +1,7 @@
 // The lifecycle emails' decisions, without a database or a network: who gets which email and when,
 // the unsubscribe links, and the settings. docs/Technical/lifecycle-emails.md explains the whole.
 
-export type Kind = "stuck" | "import" | "connect" | "try" | "undo" | "apps" | "templates" | "iphone" | "share";
+export type Kind = "stuck" | "import" | "connect" | "try" | "undo" | "apps" | "templates" | "iphone" | "mac" | "share";
 
 /// What lifecycle_facts() says about one account. Activity only, never what a note says.
 export type Facts = {
@@ -12,6 +12,11 @@ export type Facts = {
   note_count: number;
   /// The account used Bring your notes (pane_setup.imported_at).
   imported: boolean;
+  /// The share of notes, in percent, that sit in the account's biggest folder (or in no folder):
+  /// from folder ids only, never folder names (they're encrypted).
+  biggest_folder_share: number;
+  /// The device's offset from UTC in minutes, when the app has reported it (null until it does).
+  utc_offset_minutes: number | null;
   /// Devices the app has been opened on (pane_devices).
   on_mac: boolean;
   on_iphone: boolean;
@@ -81,9 +86,34 @@ export const LADDER: Rung[] = [
   { kind: "templates", for: () => true, done: (f) => f.used_template, ready: (f, n) => after(f, n, 3 * DAY) },
   // 7. Only on the Mac (when the iPhone app is in the App Store).
   { kind: "iphone", for: (f, flags) => flags.appStore && f.on_mac && !f.on_iphone, done: (f) => f.on_iphone, ready: () => true },
+  // 7b. Only on the iPhone: the Mac app (a free download today, so no flag).
+  { kind: "mac", for: (f) => f.on_iphone && !f.on_mac, done: (f) => f.on_mac, ready: () => true },
   // 8. Three weeks on their own (when sharing with people ships).
   { kind: "share", for: (_f, flags) => flags.sharing, done: (f) => f.shared, ready: (f, n) => after(f, n, 21 * DAY) },
 ];
+
+/// The connect email shows sorting into folders when the library is big and mostly in one place;
+/// otherwise a grocery list. Never says a number.
+export function sortable(f: Pick<Facts, "note_count" | "biggest_folder_share">): boolean {
+  return f.note_count >= 20 && f.biggest_folder_share >= 70;
+}
+
+/// Emails go out at 9 in the morning where the person is. The app doesn't report a time zone yet;
+/// until it does, Central European time (UTC+1) is assumed, which is 08:00 UTC.
+export const SEND_HOUR = 9;
+export const DEFAULT_OFFSET_MINUTES = 60;
+export function localMorning(now: Date, offsetMinutes: number | null): boolean {
+  const local = new Date(now.getTime() + (offsetMinutes ?? DEFAULT_OFFSET_MINUTES) * 60_000);
+  return local.getUTCHours() === SEND_HOUR;
+}
+
+/// Which subject line an account gets when subject lines are being compared: half and half, fixed
+/// per account, decided from its id.
+export function variantOf(userId: string): 0 | 1 {
+  let h = 0;
+  for (const ch of userId) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return (h % 2) as 0 | 1;
+}
 
 /// The email this account should get now, or null.
 export function decide(f: Facts, now: Date, flags: Flags = NO_FLAGS): Kind | null {
@@ -131,6 +161,48 @@ export function unsubscribeLinks(site: string, userId: string, token: string) {
   return { page: `${site}/unsubscribe?${q}`, oneClick: `${site}/unsubscribe/confirm?${q}` };
 }
 
+// ---- Click links ---------------------------------------------------------------------------------
+
+/// Where a tracked link may lead. Anything else isn't wrapped, and the redirect refuses it.
+export const CLICK_HOSTS = ["ambernotes.app", "chatgpt.com", "claude.ai", "apps.apple.com"];
+
+export function clickable(url: string): boolean {
+  try {
+    const u = new URL(url);
+    return u.protocol === "https:" && CLICK_HOSTS.includes(u.hostname);
+  } catch {
+    return false;
+  }
+}
+
+/// The link's name in email_clicks: host and path only, never the query.
+export function linkName(url: string): string {
+  const u = new URL(url);
+  return `${u.hostname}${u.pathname}`.slice(0, 100);
+}
+
+async function clickSig(secret: string, sendId: number, url: string): Promise<string> {
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const mac = new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`click:${sendId}:${url}`)));
+  return b64url(mac).slice(0, 22);
+}
+
+/// A link through ambernotes.app/go that counts the click (which email, which link) and goes on.
+export async function trackedLink(site: string, secret: string, sendId: number, url: string): Promise<string> {
+  const q = new URLSearchParams({ s: String(sendId), to: url, t: await clickSig(secret, sendId, url) });
+  return `${site}/go?${q}`;
+}
+
+export async function validClick(secret: string, sendId: unknown, url: unknown, token: unknown): Promise<boolean> {
+  if (typeof sendId !== "string" || !/^\d{1,15}$/.test(sendId) || typeof url !== "string" || typeof token !== "string") return false;
+  if (!clickable(url)) return false;
+  const want = await clickSig(secret, Number(sendId), url);
+  if (want.length !== token.length) return false;
+  let diff = 0;
+  for (let i = 0; i < want.length; i++) diff |= want.charCodeAt(i) ^ token.charCodeAt(i);
+  return diff === 0;
+}
+
 // ---- Settings -------------------------------------------------------------------------------------
 
 export type Env = { get(name: string): string | undefined };
@@ -139,6 +211,10 @@ export type Config = {
   /// Nothing is sent unless LIFECYCLE_ENABLED is exactly "true".
   enabled: boolean;
   flags: Flags;
+  /// Measurement, each off unless its variable is "true": compare two subject lines per email
+  /// (LIFECYCLE_SUBJECT_TEST), count link clicks through ambernotes.app/go (LIFECYCLE_TRACK_CLICKS).
+  subjectTest: boolean;
+  trackClicks: boolean;
   /// Accounts made before this never get these emails (LIFECYCLE_SINCE, an ISO date).
   since: Date;
   /// When set (LIFECYCLE_ONLY, comma-separated account ids), only these accounts get email: for a
@@ -175,6 +251,8 @@ export function config(env: Env): { ok: true; config: Config } | { ok: false; re
     config: {
       enabled, since, resendKey, unsubscribeSecret, cronSecret,
       flags: { apps: on("APPS_LIVE"), appStore: on("APP_STORE_LIVE"), sharing: on("SHARING_LIVE") },
+      subjectTest: on("LIFECYCLE_SUBJECT_TEST"),
+      trackClicks: on("LIFECYCLE_TRACK_CLICKS"),
       only: onlyRaw.length ? new Set(onlyRaw) : null,
       from: env.get("LIFECYCLE_FROM")?.trim() || FROM,
       replyTo: REPLY_TO,

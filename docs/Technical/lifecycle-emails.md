@@ -12,12 +12,13 @@ soon after sign-up or after connecting) holds the ladder: nothing further up jum
 | --- | --- | --- | --- | --- |
 | 1 | `stuck` | no note, a day after sign-up | a note exists | |
 | 2 | `import` | Mac, fewer than 5 notes, never imported (from 12 h) | imported, or 5+ notes | |
-| 3 | `connect` | no AI connected (from 12 h); sorting for an imported or 20+ note library, a grocery list otherwise | an AI is connected | |
+| 3 | `connect` | no AI connected (from 12 h); sorting into folders when 20+ notes sit mostly (70%+) in one folder or none, a grocery list otherwise | an AI is connected | |
 | 4 | `try` | AI connected a day ago, no AI edit: three prompts to paste | an AI edited a note | |
 | 4b | `undo` | after the first AI edit | version history opened | |
 | 5 | `apps` | no app note | `appNote` used | `APPS_LIVE` |
 | 6 | `templates` | from day 3 | `template` used | |
 | 7 | `iphone` | Mac only | an iPhone install | `APP_STORE_LIVE` |
+| 7b | `mac` | iPhone only | a Mac install | |
 | 8 | `share` | 3+ weeks in | `shareLink` used | `SHARING_LIVE` |
 
 Spacing: at least 3 days apart in the first 10 days after sign-up, then at least 7. At most 6 emails,
@@ -31,7 +32,8 @@ checked against the shipped features before their flags go on.
 
 The `connect` email's examples use only what the MCP tools do today (`append_to_note`,
 `set_checklist_item`, `create_folder`, `move_note`); `try`'s prompts use `search_notes`,
-`create_note`, `append_to_note` and `edit_note`. An account whose browser connection is waiting
+`create_note`, `append_to_note` and `edit_note`. "Mostly in one folder" comes from folder ids alone
+(folder names are encrypted), and no email ever says a number about the person's notes. An account whose browser connection is waiting
 (`connect_asks`, which expire) gets a last line on typing the number.
 
 ## What decides, and what it never reads
@@ -46,7 +48,7 @@ checks the function's definition for note columns.
 
 ## How a round works
 
-pg_cron runs `public.lifecycle_tick()` daily at 08:00 UTC. It posts to the `lifecycle` function with
+pg_cron runs `public.lifecycle_tick()` every hour; each account's email goes in the round where it's 9 in its morning. It posts to the `lifecycle` function with
 `x-lifecycle-secret`, using two vault secrets (`lifecycle_url`, `lifecycle_cron_secret`), and does
 nothing while pg_net or either secret is missing.
 
@@ -83,18 +85,49 @@ A reply saying "stop" is handled by hand: add the account to `email_unsubscribes
 
 ## The emails, and real mail apps
 
-Each email is a note in an Amber Notes window on the cream page, as the 404 and template pages
-draw notes, under a paper-cut picture cut from the template covers (`web/public/email/`). On a
-phone (480 px and narrower) the card gets more inner padding, looser lines and checklist rows, and
-loses the "From Emil" line. The pictures are served from `https://ambernotes.app/email/`, so the
-site deploy that adds them must go out before the first email.
+Each email is a short note from Emil on the cream page, in a plain card: a title, one paragraph,
+at most one real capture of Amber Notes doing what the email is about (iPhone or Mac, cropped tight,
+shown at half its pixel width so it stays sharp and readable on a phone), a button, a line, the
+sign-off. No illustrations and no drawn window. The stuck, try and sorting emails have no picture,
+because no capture says them more clearly than the words. The captures are in `web/public/email/`:
+
+| File | From |
+| --- | --- |
+| `connect.jpg` | `web/public/blog/amber-notes-iphone-chatgpt-edited-checklist.webp` and the real receipt `web/public/demo/720/pill-chatgpt-5-lines@2x.png` |
+| `import.jpg` | `web/public/blog/amber-notes-import-from-apple-notes.webp` |
+| `receipt.png`, `undo.jpg` | the same receipt; `web/public/blog/amber-notes-version-history-chatgpt.webp` |
+| `app-habits.jpg`, `app-budget.jpg` | the app-notes prototype's captures; not in this repository until app notes ship |
+| `t-*.jpg` | each template's note on ambernotes.app/templates |
+| `iphone.jpg`, `mac.jpg` | the same iPhone capture; `web/public/demo/720/demo-0-before.webp` |
+| `share.jpg` | a frame of the collaboration prototype; not in this repository until sharing ships |
+
+The apps and share emails show features that haven't shipped, so their three captures are kept out
+of this public repository and out of the site. Add them to `web/public/email/` in the same change
+that turns `APPS_LIVE` or `SHARING_LIVE` on.
+
+The connect email has no capture of a ChatGPT conversation about groceries: none exists, and making
+one means a real ChatGPT account. The ask is in the words instead.
+
+**Try this first** shows each prompt as you'd type it, with "Ask ChatGPT" and "Ask Claude" under it.
+Checked on 5 October 2026 (from published sources; both sites block automated browsers, so neither
+was opened):
+
+- `https://chatgpt.com/?q=<prompt>` fills ChatGPT's composer. Since OpenAI's fix of April 2025
+  (Tenable TRA-2025-22) a link from another site no longer sends it by itself. The person still has
+  to add Amber Notes from the tools menu, which the email says.
+- `https://claude.ai/new?q=<prompt>` stopped filling the composer on claude.ai around 3 October 2025
+  (anthropics/claude-code#8827, closed as not planned) and isn't documented. Claude documents
+  `claude://claude.ai/new?q=` for the desktop app and `claude.ai/code/new?q=` for Claude Code only.
+  So "Ask Claude" goes to `ambernotes.app/copy/<id>`: one button copies the prompt, says so, and
+  opens claude.ai/new to paste it. The page only knows the emails' own prompts
+  (`supabase/functions/lifecycle/prompts.json`, the same list as `web/lib/try-prompts.json`).
 
 Checked against caniemail.com's data (16 September 2026) for Gmail (web, iOS, Android), Apple Mail
 (Mac, iOS), Outlook (Windows, Outlook.com, iOS, Mac) and Yahoo:
 
 - **Layout:** tables and inline styles; no flex, grid, background images, web fonts or SVG. The
   button is a VML shape in Outlook for Windows, which ignores `border-radius` and padding on links.
-- **Shapes:** checkboxes and window dots are table cells with a background or border, so Outlook
+- **Shapes:** checkboxes are table cells with a background or border, so Outlook
   for Windows shows them (square there); `display:inline-block` spans would vanish.
 - **Style blocks:** three of them (phone spacing; dark mode and `color-scheme`; Outlook.com's
   `[data-ogsc]`/`[data-ogsb]`), so a client that throws one away keeps the others. Gmail ignores
@@ -102,8 +135,8 @@ Checked against caniemail.com's data (16 September 2026) for Gmail (web, iOS, An
   non-Google accounts; those see the light layout from inline styles, which works at any width.
 - **Dark mode:** Apple Mail and the Outlook apps use the media query. Outlook.com uses the
   `[data-ogsc]` rules. Gmail's apps invert colours by themselves and never images: the page is
-  `#fffdf9` and text `#1d1d1f` (no pure white or black), and the ChatGPT and Claude marks carry
-  their own white tile inside the PNG so inversion can't hide them.
+  `#fffdf9` and text `#1d1d1f` (no pure white or black), and the light captures keep a hairline
+  edge on a dark page.
 - **Outlook for Windows:** `mso-line-height-rule:exactly` on body text, images with width and
   height attributes, a fixed 520 px table around the layout.
 - **Not fixable, acceptable:** square corners and no shadows in Outlook for Windows; no
@@ -113,6 +146,37 @@ Checked against caniemail.com's data (16 September 2026) for Gmail (web, iOS, An
 forced dark) to a folder; it sends nothing. `scripts/lifecycle-test-send.ts` sends every variant to
 up to 10 test addresses through Resend, marked "[Test n/N]", and only with `--send`; without it, it
 prints what it would send.
+
+## Open and read rates: the plan
+
+What to count, from most to least useful:
+
+1. **The step got done.** Each rung's goal is already the measure: did the person import, connect,
+   try, use a template after the email? `POST /lifecycle/stats` gives, per email and subject line,
+   how many went out and how many of those accounts have done the step since.
+2. **Replies.** Every email is from Emil and asks for a reply. Count them by hand in Gmail (a label
+   per email) until there are enough to matter.
+3. **Clicks.** With `LIFECYCLE_TRACK_CLICKS=true`, links to ambernotes.app, ChatGPT, Claude and the
+   App Store go through `ambernotes.app/go`, which tells the function which email and which link
+   (host and path, never the query) and sends the reader on within a moment. No third party, no
+   cookie, no address. The unsubscribe and privacy links are never wrapped. Microsoft's Safe Links
+   and similar scanners open links, so clicks run a little high, and more so for work addresses.
+4. **Opens: not measured.** Apple Mail Privacy Protection loads every image for a large share of
+   iPhone and Mac readers, so opens are noise there, and a tracking pixel in email from an
+   encrypted-notes app says the wrong thing about it. There's no pixel.
+
+**Subject lines.** Each email has two subjects and previews. With `LIFECYCLE_SUBJECT_TEST=true`,
+each account gets one of the two, fixed by its id, and the row keeps which (`email_sends.variant`).
+Compare by "step done" first and clicks second, per email, once each side has about 50 sends; below
+that, differences are noise. Keep the winner as the first line, write a new challenger, repeat.
+
+**Sender name.** Today `Emil at Amber Notes`. Next test: `Emil from Amber Notes`, the same way,
+through `LIFECYCLE_FROM`, one month each, compared on replies and steps done.
+
+**Send time.** The round runs every hour, and each account gets its email in the round where it's
+9 in the morning on its device. That needs the device's UTC offset in `pane_devices.utc_offset_minutes`,
+which the apps don't send yet (`pane_seen_device` needs a third argument; not built). Until they do,
+every account is treated as Central European time: 08:00 UTC.
 
 ## Settings
 
@@ -126,6 +190,7 @@ prints what it would send.
 | `LIFECYCLE_FROM` | Optional. Default `Emil at Amber Notes <emil@ambernotes.app>` (replies go to emil@ too). |
 | `LIFECYCLE_ONLY` | Optional. Comma-separated account ids that may get email; everyone else gets none. |
 | `APPS_LIVE`, `APP_STORE_LIVE`, `SHARING_LIVE` | `true` turns on the apps, iPhone and sharing rungs, once those features ship. |
+| `LIFECYCLE_SUBJECT_TEST`, `LIFECYCLE_TRACK_CLICKS` | `true` turns on the subject-line comparison and click counting. |
 
 Deploy with `supabase functions deploy lifecycle --no-verify-jwt`: the round checks its own secret
 and an unsubscribe link carries its own HMAC.
