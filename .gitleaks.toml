@@ -12,8 +12,8 @@ regexes = [
   # tests' KEY and OLD_KEY): made-up labels, not keys.
   '''^0123456789abcdef$''',
   '''^fedcba9876543210$''',
-  # A Swift type name in the collaboration prototype (Pane/Collab/CollabCrypto.swift on
-  # proto/collaboration), not a value.
+  # Swift/CryptoKit type name — "P256.KeyAgreement.PrivateKey" is a type declaration in
+  # CollabCrypto.swift, not a key value. Gitleaks matches the word "Key" in the property name.
   '''P256\.KeyAgreement\.PrivateKey''',
 ]
 paths = [
@@ -22,8 +22,8 @@ paths = [
   '''supabase/functions/_shared/e2ee-vectors\.json''',
   # The APNs test builds a throwaway key at runtime; the only match is the PEM template string.
   '''supabase/functions/_shared/apns\.test\.ts''',
-  # The collaboration prototype's test vectors (proto/collaboration): fixed, published inputs like
-  # e2ee-vectors.json above.
+  # Collaboration test vectors: fixed, published inputs used to verify cross-platform collab crypto.
+  # note_key and link_secret are made-up values generated once for the test suite, not credentials.
   '''supabase/functions/_shared/collab-vectors\.json''',
   # Page evals: a made-up key used to test that AIs don't keep keys pasted into a note, and the
   # results that quote it.
