@@ -96,15 +96,37 @@ Names, goals, limits, currencies, categories, the list of habits to track: decla
 - Things the person should be able to change without you (a budget limit, a goal, their name, categories, a currency) are settings: declare them in <meta name="amber-settings"> and read amber.settings. Amber Notes shows them under App Settings.
 - Put data into the app's store from here with update_page_data (values, add, update, remove, import, files); query it with get_page_data (a collection, a where, a limit).
 
-## Design
+## Design: Amber's theme is the base, not a cage
 
-- Look like Amber Notes: use the --amber-* variables the app sets (listed in the contract above) for every color, radius and font. They already switch for light and dark, so a page that uses only them gets dark mode for free. Don't set a background on html or body; cards use --amber-surface, inputs and empty cells --amber-fill, lines --amber-separator. Your own extra colors (chart series) need a dark variant in @media (prefers-color-scheme: dark).
-- Fit every width, phone first: one column at 390 px with nothing wider than the screen (tables of many columns become cards, or scroll inside their own box with overflow-x: auto). Wrap content in a container with max-width: var(--amber-content-max), margin: 0 auto, padding-inline: var(--amber-gutter); from 900 px (@media (min-width: 900px) or html.amber-wide) use the room: side-by-side sections, more history.
-- Type: the body already has the app's font and size. A large title (the note's title), --amber-text-secondary for secondary text, tabular-nums for numbers.
-- Touch: controls at least 44 px tall, padding 16-20 px at the edges, no hover-only affordances.
-- Accessibility: real <button>s and <input>s; every input has a <label> (or aria-label); icon-only buttons have aria-label; checkboxes reflect state (aria-pressed or a real checkbox); color is never the only signal; lang="en" on <html>.
-- An app is calm: one clear focus (a total, a streak, today's card), then details. No external fonts, no emoji as icons (use inline SVG), no gratuitous animation.
-- Keep it small: most good apps are 6-20 KB of HTML.
+Every app should look like it was made for what it does. A tracker, a game, a calculator, a planner and a music toy want different layouts; don't default to a card with a list.
+
+- Keep the base: text, background and accent from the --amber-* variables (listed in the contract above), so the app sits in Amber Notes and follows dark mode. Don't set a background on html or body. Surfaces, radius and fonts are defaults you may leave: a game board, a big dial, a full-bleed chart, a calendar wall or a keypad can have their own shapes, sizes and extra colors (give extra colors a dark variant in @media (prefers-color-scheme: dark)).
+- Pick the form from the job. A habit tracker can be a wall of days, a garden that grows, or a ring per habit. A budget can be a dial or a stacked bar over the month. A calculator is a keypad with a big display. A vocabulary note can be a game. Use type scale, space, grids, canvas and SVG, with motion where it explains something.
+- Still: one clear focus first, then details. Readable text (at least 12 px, contrast 4.5:1), tabular-nums for numbers, no emoji as icons (inline SVG), no motion that loops for nothing; respect prefers-reduced-motion.
+- Accessibility: real <button>s and <input>s; every input has a <label> (or aria-label); icon-only buttons have aria-label; state that is shown by color is also shown another way; canvas and SVG views get role="img" and an aria-label, or a text equivalent; lang on <html>.
+- Keep it small: most good apps are 6-30 KB of HTML (libraries don't count; see Libraries).
+
+## Sizes
+
+You own the layout at every size; the app must work and look intended across the whole range, with no sideways scrolling.
+
+- iPhone: 320-440 pt wide, portrait and landscape (up to about 930 pt wide in landscape, short height), safe areas at the edges, and the keyboard covering the bottom half while someone types.
+- Mac: a note window from about 500 to 1,400+ px wide, resized live. Use the room on wide windows: a 400 px column floating in a 1,280 px window is a phone layout stretched, not a design.
+- Embedded in another note (a sub-note shown inside its parent): a narrow strip, often 300-700 px wide and short. Keep a compact form that still makes sense.
+- Touch targets at least 44 pt on iPhone. Hover only as an extra on Mac, never the only way. Keyboard shortcuts are welcome on Mac (and for games).
+- Use what fits: CSS grid and flex with wrapping, container queries (container-type: inline-size; @container (min-width: …)), clamp() for type, and media queries. The app also sets the classes amber-narrow / amber-medium / amber-wide on <html> (under 600, to 900, from 900 px) as a convenience; don't rely on them.
+- check_app renders at 375, 768 and 1,280 px and reports overflow, clipped text, small targets on the phone and an empty wide window.
+
+## Games, toys and fun
+
+Fun is welcome: a game from a vocabulary note, a habit tracker that feels like a game, a drum machine whose pattern lives in the note, a 3D toy. Game basics:
+
+- An animation loop with requestAnimationFrame, time-based (use the frame's timestamp, not a fixed step per frame), drawn on a canvas sized to its container times devicePixelRatio.
+- Controls for touch and keyboard: pointer events (pointerdown/move/up) for taps and drags, keys for Mac. Big touch areas; no hover.
+- Pause when hidden (document.visibilityState, a Pause button) and when the person switches to Text.
+- Keep high scores, progress and game state in the app's store (amber.store.set, collections), so it survives closing the app; content to play with comes from the note.
+- Sound only after a tap (audio can't start on its own); a mute button; keep it short and quiet.
+- Make it start right away, show how to play in one line, and give a way to restart.
 
 ## Never
 

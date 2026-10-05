@@ -23,7 +23,7 @@ for await (const e of Deno.readDir(dir)) {
   };
   if (page && (task.page || page !== f.pageBefore)) {
     await Deno.mkdir(new URL("shots/", dir), { recursive: true });
-    f.render = await renderPage(page, after, r.data ?? {}, { shots: new URL(`shots/${stem}`, dir).pathname, today: "2026-10-05", interact: task.interact });
+    f.render = await renderPage(page, after, r.data ?? {}, { shots: new URL(`shots/${stem}`, dir).pathname, today: "2026-10-05", interact: task.interact || task.plays });
   }
   const checks = scoreTask(task, f, f.render, pageProblems);
   Object.assign(r, { checks, passed: checks.filter((c) => c.pass).length, total: checks.length, score: checks.filter((c) => c.pass).length / checks.length, render: f.render ? { ...f.render, markdownAfter: undefined } : null });

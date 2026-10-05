@@ -54,8 +54,9 @@ type View = {
   name: string; width: number; scheme: string; errors: string[]; overflowPx: number; textLength: number; contrast: number; bgLuminance: number;
   unnamedControls: string[]; smallTargets: number; smallText?: string[]; smallTextCount?: number; faintText?: string[]; faintCount?: number;
   headings?: string[]; excerpt?: string; png?: string;
+  under44?: string[]; under44Count?: number; clipped?: string[]; clippedCount?: number; usedWidth?: number; canvases?: number; svgShapes?: number; gridCols?: number; frames?: number;
 };
-export type Rendered = { views: View[]; interaction: { tried: string; ok: boolean | null; error?: string }; probes: Record<string, { pass: boolean; detail?: string }>; blocked: string[]; ms: number };
+export type Rendered = { views: View[]; interaction: { tried: string; ok: boolean | null; error?: string; framesPerSecond?: number }; probes: Record<string, { pass: boolean; detail?: string }>; blocked: string[]; ms: number };
 
 const same = (a: string, b: string) => a.toLowerCase().replace(/\s+/g, " ").trim() === b.toLowerCase().replace(/\s+/g, " ").trim();
 
@@ -87,7 +88,9 @@ export function renderedReport(r: Rendered): string[] {
     if ((v.smallTextCount ?? 0) > 0) out.push(`${v.name}: ${v.smallTextCount} text element(s) under 12 px (${(v.smallText ?? []).slice(0, 3).map((t) => `"${t}"`).join(", ")}).`);
     if ((v.faintCount ?? 0) > 0) out.push(`${v.name}: ${v.faintCount} text element(s) with contrast under 4.5:1 (${(v.faintText ?? []).slice(0, 3).map((t) => `"${t}"`).join(", ")}).`);
     if (v.unnamedControls.length) out.push(`${v.name}: ${v.unnamedControls.length} control(s) without a label VoiceOver can read: ${v.unnamedControls.slice(0, 2).join(" ")}`);
-    if (v.smallTargets > 0 && v.width < 600) out.push(`${v.name}: ${v.smallTargets} control(s) smaller than 28 px to tap; aim for 44.`);
+    if (v.width < 600 && (v.under44Count ?? 0) > 0) out.push(`${v.name}: ${v.under44Count} control(s) smaller than 44 pt to tap on iPhone (${(v.under44 ?? []).slice(0, 3).map((t) => `"${t}"`).join(", ")}).`);
+    if ((v.clippedCount ?? 0) > 0) out.push(`${v.name}: ${v.clippedCount} text element(s) cut off by their box (${(v.clipped ?? []).slice(0, 3).map((t) => `"${t}"`).join(", ")}). Let text wrap, or shorten it with an ellipsis on purpose.`);
+    if (v.width >= 1100 && v.usedWidth !== undefined && v.usedWidth > 0 && v.usedWidth < 0.45) out.push(`${v.name}: the content uses ${Math.round(v.usedWidth * 100)}% of the window's width, a phone column floating in a wide window. Use the room (more columns, a bigger view, side by side) from about 900 px.`);
   }
   if (r.interaction.tried !== "none" && r.interaction.ok === false) out.push(`Using the app's first control: ${r.interaction.error ?? "no edit reached the note"}.`);
   for (const [k, p] of Object.entries(r.probes ?? {})) {

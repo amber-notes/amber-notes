@@ -246,7 +246,7 @@ async function runTask(task: Task) {
   await Deno.mkdir(new URL("shots/", outDir), { recursive: true });
   let render: Render | undefined;
   if (after.page && !args["no-render"] && (task.page || after.page !== before.page)) {
-    render = await renderPage(after.page, after.body, after.data ?? {}, { shots, today: "2026-10-05", interact: task.interact }).catch((e) => { console.error(task.id, "render failed", e); return undefined; });
+    render = await renderPage(after.page, after.body, after.data ?? {}, { shots, today: "2026-10-05", interact: task.interact || task.plays }).catch((e) => { console.error(task.id, "render failed", e); return undefined; });
     f.render = render;
   }
   const checks: Check[] = scoreTask(task, f, render, pageProblems);

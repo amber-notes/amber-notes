@@ -20,6 +20,10 @@ export type Task = {
   page: boolean;
   /** Probe the page's first control. */
   interact?: boolean;
+  /** The app should move: score that it animates after the first tap, with no errors. */
+  plays?: boolean;
+  /** The app should not be a card with a list: score canvas, drawn SVG or a real grid. */
+  varied?: boolean;
   /** API keys the person has in Settings (names only). */
   apiKeys?: { name: string; hosts: string[]; set: boolean }[];
   /** Files already in their Amber Notes. */
@@ -337,6 +341,24 @@ const esc=(s)=>String(s??"").replace(/[&<>"']/g,(c)=>({"&":"&amp;","<":"&lt;",">
 amber.onChange((note, data) => { t.textContent = note.title; list.innerHTML = (data.collections.expenses || []).map((e) => '<div class="row"><span>' + esc(e.item) + (e.receipt ? ' <span class="muted">(receipt)</span>' : "") + "</span><b>" + esc(e.amount) + " kr</b></div>").join(""); });
 </script></body></html>`;
 
+
+const BEAT = `Beat
+
+Four on the floor with a backbeat. 120 bpm.
+
+| Step | Kick | Snare | Hat |
+| --- | --- | --- | --- |
+${Array.from({ length: 16 }, (_, i) => `| ${i + 1} | ${i % 4 === 0 ? "x" : ""} | ${i % 8 === 4 ? "x" : ""} | ${i % 2 === 0 ? "x" : ""} |`).join("\n")}
+`;
+const WATER = `Water
+
+Goal: 8 glasses a day.
+
+| Date | Glasses |
+| --- | --- |
+${Array.from({ length: 14 }, (_, i) => `| ${day(i - 13)} | ${[6, 8, 5, 9, 7, 8, 4, 8, 10, 6, 7, 8, 9, 3][i]} |`).join("\n")}
+`;
+
 // MARK: Tasks
 
 export const TASKS: Task[] = [
@@ -419,7 +441,7 @@ export const TASKS: Task[] = [
     seed: { body: EXPENSES, page: DARK_READY_PAGE.replace("/amt|amount/i", "/^amt$/i") }, page: true,
     checks: (f) => {
       const t = findTables(f.after)[0];
-      const shown = f.render?.views.find((v) => v.name === "390-light");
+      const shown = f.render?.views.find((v) => v.width < 600 && v.scheme === "light");
       return [
         check("renamed", cols(f.after).join("|") === "Date|Item|Category|Amount (kr)", cols(f.after).join("|")),
         check("values_kept", JSON.stringify(t?.rows) === JSON.stringify(rows(f.before)), "row values changed"),
@@ -718,6 +740,48 @@ export const TASKS: Task[] = [
     prompt: "My Habit tracker app shows its name twice at the top. Can you clean that up?",
     seed: { body: HABIT_TABLE, page: HABIT_PAGE.replace("<main", "<h1 class=\"apptitle\">Habit tracker</h1><main") }, page: true,
     checks: (f) => [unchanged(f), pageChanged(f), check("small_fix", (f.page?.length ?? 0) < HABIT_PAGE.length * 1.3, "rewrote the app to fix a heading")],
+  },
+  {
+    id: "game-from-vocabulary",
+    prompt: "Make a game out of my Spanish verbs note, something fun I can play on my phone for a few minutes a day.",
+    seed: { body: FLASH }, page: true, plays: true, varied: true,
+    checks: (f) => [
+      unchanged(f),
+      check("keeps_score", /amber\.(store|setData)|update_page_data/.test((f.page ?? "") + JSON.stringify(f.calls.map((c) => c.name))), "nothing keeps scores or progress in the app's store"),
+      check("uses_the_words", /amber\.note|note\.tables/.test(f.page ?? ""), "the game doesn't use the note's words"),
+    ],
+  },
+  {
+    id: "habits-more-fun",
+    prompt: "Make my Habit tracker more fun. It feels like a spreadsheet.",
+    seed: { body: HABIT_TABLE, page: HABIT_PAGE }, page: true, varied: true, interact: true,
+    checks: (f) => [unchanged(f), pageChanged(f)],
+  },
+  {
+    id: "drum-machine",
+    prompt: "Turn my Beat note into a drum machine: tap steps on and off, press play to hear it. The pattern should live in the note so I can see it as text too.",
+    seed: { body: BEAT }, page: true, plays: true, varied: true,
+    checks: (f) => [
+      rowsKept(f.before, f.after),
+      check("pattern_in_note", /set_cell/.test(f.page ?? "") && findTables(f.after).length >= 1, "steps aren't toggled in the note's table (set_cell)"),
+      check("sound_after_tap", /AudioContext|webkitAudioContext|Tone\./.test(f.page ?? ""), "no audio"),
+    ],
+  },
+  {
+    id: "mortgage-calculator",
+    prompt: "Make my Mortgage note a calculator: change the loan, rate and years and see the monthly payment and total interest right away. Make it feel like a real tool, not a form.",
+    seed: { body: "Mortgage\n\nLoan: 3 200 000 kr\nRate: 4.1 %\nYears: 25\nAmortization: straight, monthly\n" }, page: true, varied: true,
+    checks: (f) => [
+      unchanged(f),
+      check("has_controls", /type=["']?range|<input/.test(f.page ?? ""), "nothing to change"),
+      check("payment_math", /Math\.pow|\*\*/.test(f.page ?? ""), "no annuity math"),
+    ],
+  },
+  {
+    id: "visual-water-tracker",
+    prompt: "Make my Water note visual. I want to see at a glance how I'm doing, not read a list.",
+    seed: { body: WATER }, page: true, varied: true, interact: true,
+    checks: (f) => [unchanged(f)],
   },
 ];
 

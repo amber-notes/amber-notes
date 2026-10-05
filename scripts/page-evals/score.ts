@@ -29,10 +29,15 @@ function generic(task: Task, f: Final, r: Render | undefined, pageProblems: (htm
   const errs = r.views.flatMap((v) => v.errors.map((e) => `${v.name}: ${e}`));
   c("no_console_errors", errs.length === 0, errs.slice(0, 2).join(" | "));
   c("no_network", r.blocked.length === 0, r.blocked.slice(0, 2).join(", "));
-  const phone = r.views.filter((v) => v.width === 390);
-  c("fits_390", phone.every((v) => v.overflowPx <= 1), `overflows by ${Math.max(...phone.map((v) => v.overflowPx))} px`);
-  c("fits_1280", r.views.filter((v) => v.width === 1280).every((v) => v.overflowPx <= 1), "overflows at 1280");
-  const light = r.views.find((v) => v.name === "390-light")!, dark = r.views.find((v) => v.name === "390-dark")!;
+  const phone = r.views.filter((v) => v.width < 600);
+  c("fits_phone", phone.every((v) => v.overflowPx <= 1), `overflows by ${Math.max(...phone.map((v) => v.overflowPx))} px`);
+  c("fits_desktop", r.views.filter((v) => v.width >= 600).every((v) => v.overflowPx <= 1), "overflows at 768 or 1280");
+  const wide = r.views.find((v) => v.width === 1280 && v.scheme === "light");
+  if (wide?.usedWidth !== undefined) c("uses_wide_window", wide.usedWidth >= 0.45, `uses ${Math.round((wide.usedWidth ?? 0) * 100)}% of 1280 px`);
+  const phoneLight = r.views.find((v) => v.width < 600 && v.scheme === "light");
+  if (phoneLight?.under44Count !== undefined) c("phone_targets", phoneLight.under44Count === 0, `${phoneLight.under44Count} controls under 44 pt: ${(phoneLight.under44 ?? []).slice(0, 3).join(", ")}`);
+  c("no_clipped_text", r.views.every((v) => (v.clippedCount ?? 0) === 0), r.views.flatMap((v) => v.clipped ?? []).slice(0, 3).join(", "));
+  const light = r.views.find((v) => v.width < 600 && v.scheme === "light")!, dark = r.views.find((v) => v.width < 600 && v.scheme === "dark")!;
   c("shows_data", light.textLength > 20 && (light.sampled === 0 || light.shown >= 1), `${light.shown}/${light.sampled} recent values visible, ${light.textLength} chars of text`);
   c("dark_mode", dark.bgLuminance < 0.2 && dark.contrast >= 4.5, `dark bg ${dark.bg}, text ${dark.fg}, contrast ${dark.contrast.toFixed(1)}`);
   c("light_contrast", light.contrast >= 4.5, `contrast ${light.contrast.toFixed(1)}`);
@@ -45,6 +50,11 @@ function generic(task: Task, f: Final, r: Render | undefined, pageProblems: (htm
   c("title_once", title.length === 0, title.join(" "));
   // Emil: people see a note's "App" side; the word page(s) is never theirs.
   c("says_app", /\bapps?\b/i.test(f.answer) && !/\bpages?\b/i.test(f.answer), "the reply calls it a page, or doesn't call it the app");
+  if (task.plays) c("plays", (r.interaction.framesPerSecond ?? 0) >= 20 && r.views.every((v) => v.errors.length === 0), `${r.interaction.framesPerSecond ?? 0} frames in the second after the first tap`);
+  if (task.varied) {
+    const v = r.views.reduce((m, x) => ({ canvases: Math.max(m.canvases, x.canvases ?? 0), svg: Math.max(m.svg, x.svgShapes ?? 0), grid: Math.max(m.grid, x.gridCols ?? 0) }), { canvases: 0, svg: 0, grid: 0 });
+    c("not_a_list", v.canvases > 0 || v.svg >= 8 || v.grid >= 3, `no canvas, ${v.svg} drawn shapes, at most ${v.grid} grid columns`);
+  }
   // A new row only has to show on pages that list rows (most of the recent values visible).
   const lists = light.sampled > 0 && light.shown / light.sampled >= 0.5;
   for (const [k, v] of Object.entries(r.probes)) if (k !== "follows" || lists) c(`probe_${k}`, v!.pass, v!.detail);

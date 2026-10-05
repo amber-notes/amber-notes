@@ -42,6 +42,10 @@ const bootstrap = (note: unknown, data: unknown, defaults: Record<string, unknow
     .then((r) => { if (r && r.data) amber.data = r.data; if (r) delete r.data; return r; })
     .catch((e) => ({ ok: false, error: String((e && e.message) || e) }));
   const unavailable = (what) => () => Promise.resolve({ ok: false, error: what + " isn't available here." });
+  // Frames the page asks for, so a check can tell whether it animates (a game that plays).
+  window.__frames = 0;
+  const raf = window.requestAnimationFrame.bind(window);
+  window.requestAnimationFrame = (fn) => { window.__frames++; return raf(fn); };
   const amber = {
     note: ${JSON.stringify(note)},
     update(op) { return window.__amberUpdate(op).catch((e) => ({ ok: false, error: String((e && e.message) || e) })); },
@@ -125,10 +129,11 @@ export type View = {
   bg: string; fg: string; contrast: number; bgLuminance: number;
   unnamedControls: string[]; smallTargets: number; screenshot?: string;
   smallText: string[]; smallTextCount: number; faintText: string[]; faintCount: number; headings: string[]; excerpt: string; png?: string;
+  under44: string[]; under44Count: number; clipped: string[]; clippedCount: number; usedWidth: number; canvases: number; svgShapes: number; gridCols: number; frames: number;
 };
 export type Render = {
   views: View[]; blocked: string[]; updates: { op: unknown; ok: boolean; error?: string }[]; setData: number;
-  interaction: { tried: string; ok: boolean | null; error?: string };
+  interaction: { tried: string; ok: boolean | null; error?: string; framesPerSecond?: number };
   probes: Partial<Record<"follows" | "escapes" | "empty" | "large", { pass: boolean; detail?: string }>>;
   markdownAfter: string; dataAfter: unknown;
 };
@@ -154,7 +159,7 @@ function samples(markdown: string): string[] {
 
 export type RenderOptions = {
   shots?: string; today: string; interact?: boolean;
-  /** Which widths and color schemes (default 390 and 1280, light and dark). */
+  /** Which widths and color schemes (default 375 light and dark, 768 light, 1280 light and dark). */
   views?: { width: number; scheme: "light" | "dark" }[];
   /** Keep a PNG of each view in the result (for preview_app). */
   capture?: boolean;
@@ -229,7 +234,7 @@ async function renderOnce(html: string, markdown: string, data: unknown, opts: R
     return { page, errors };
   };
 
-  const wanted = opts.views ?? ([[390, "light"], [390, "dark"], [1280, "light"], [1280, "dark"]] as const).map(([width, scheme]) => ({ width, scheme }));
+  const wanted = opts.views ?? ([[375, "light"], [375, "dark"], [768, "light"], [1280, "light"], [1280, "dark"]] as const).map(([width, scheme]) => ({ width, scheme }));
   for (const { width, scheme } of wanted) {
     md = markdown; store = empty(data);
     const { page, errors } = await open(width, scheme);
@@ -254,13 +259,34 @@ async function renderOnce(html: string, markdown: string, data: unknown, opts: R
       const controls = [...document.querySelectorAll("input:not([type=hidden]), select, textarea, button, [role=button], [role=checkbox]")].filter(visible);
       const unnamed = controls.filter((el) => !name(el)).map((el) => el.outerHTML.slice(0, 120));
       const small = controls.filter((el) => { const r = el.getBoundingClientRect(); return r.height < 28 || r.width < 28; }).length;
+      // A control's tap area: its own box, or its label's when the label wraps it.
+      const tapBox = (el: Element) => { const r = el.getBoundingClientRect(); const l = (el as HTMLInputElement).labels?.[0]; if (!l) return r; const b = l.getBoundingClientRect(); return b.width * b.height > r.width * r.height ? b : r; };
+      const under44 = controls.filter((el) => { const r = tapBox(el); return r.height < 40 || r.width < 40; }).map((el) => (el.textContent ?? el.getAttribute("aria-label") ?? el.tagName).trim().slice(0, 30));
+      // How much of the window's width the content uses.
+      let left = Infinity, right = -Infinity;
+      for (const el of document.querySelectorAll("body *")) {
+        if (!visible(el)) continue;
+        const own = [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent!.trim()) || ["CANVAS", "SVG", "IMG", "INPUT", "BUTTON", "SELECT", "TEXTAREA"].includes(el.tagName.toUpperCase());
+        if (!own) continue;
+        const r = el.getBoundingClientRect();
+        left = Math.min(left, r.left); right = Math.max(right, r.right);
+      }
+      const used = right > left ? (right - left) / window.innerWidth : 0;
+      // What kind of layout: canvas, drawn SVG, multi-column grids, or a stack of rows.
+      const canvases = [...document.querySelectorAll("canvas")].filter(visible).length;
+      const svgShapes = [...document.querySelectorAll("svg path, svg rect, svg circle, svg line, svg polyline, svg polygon, svg ellipse")].filter(visible).length;
+      const gridCols = Math.max(0, ...[...document.querySelectorAll("body *")].filter(visible).map((el) => { const s = getComputedStyle(el); return s.display.includes("grid") ? s.gridTemplateColumns.split(" ").filter(Boolean).length : 0; }));
       // Text that is small or faint against what's behind it.
       const lumOf = (c: string) => { const m = c.match(/[\d.]+/g)?.map(Number) ?? [0, 0, 0]; const [r, g, b] = m.slice(0, 3).map((v) => { const x = v / 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
       const behind = (el: Element | null): string => { for (let e = el; e; e = e.parentElement) { const b = getComputedStyle(e).backgroundColor; if (!/rgba\(0, 0, 0, 0\)|transparent/.test(b) && !/rgba\([^)]*, 0(\.0+)?\)$/.test(b)) return b; } return bg; };
       const texts = [...document.querySelectorAll("body *")].filter((el) => visible(el) && [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent!.trim()));
+      // Text cut off by its box (no ellipsis meant).
+      const clipped = texts.filter((el) => { const s = getComputedStyle(el); return el.clientWidth > 2 && s.clip !== "rect(0px, 0px, 0px, 0px)" && !(s.position === "absolute" && el.clientWidth <= 2) && el.scrollWidth > el.clientWidth + 2 && s.overflowX !== "visible" && s.textOverflow !== "ellipsis" && s.overflowX !== "auto" && s.overflowX !== "scroll"; }).map((el) => (el.textContent ?? "").trim().slice(0, 40));
       const smallText = texts.filter((el) => parseFloat(getComputedStyle(el).fontSize) < 12).map((el) => (el.textContent ?? "").trim().slice(0, 40));
       const faint = texts.filter((el) => { const s = getComputedStyle(el); if (parseFloat(s.opacity) < 0.3) return false; const a = lumOf(s.color), b = lumOf(behind(el)); const [x, y] = [a, b].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05) < 4.5; }).map((el) => (el.textContent ?? "").trim().slice(0, 40));
       return {
+        under44: under44.slice(0, 5), under44Count: under44.length, clipped: clipped.slice(0, 5), clippedCount: clipped.length, used,
+        canvases, svgShapes, gridCols, frames: (window as any).__frames as number,
         smallText: smallText.slice(0, 5), smallTextCount: smallText.length, faint: faint.slice(0, 5), faintCount: faint.length,
         headings: [...document.querySelectorAll("h1, h2, h3, [role=heading]")].filter(visible).map((h) => (h.textContent ?? "").trim().slice(0, 80)).slice(0, 12),
         excerpt: text.replace(/\s+/g, " ").trim().slice(0, 500),
@@ -268,11 +294,11 @@ async function renderOnce(html: string, markdown: string, data: unknown, opts: R
         shown: want.filter((w) => flat.includes(w.toLowerCase().replace(/\s+/g, " ")) || (/^[\d\s.,\u00a0]+$/.test(w) && flat.replace(/[\s,\u00a0\u202f]/g, "").includes(w.replace(/[\s,\u00a0]/g, "")))).length,
         bg, fg: bodyStyle.color, unnamed, small,
       };
-    }, want).catch((e) => ({ overflow: 0, textLength: 0, shown: 0, bg: "rgb(255,255,255)", fg: "rgb(0,0,0)", unnamed: [] as string[], small: 0, smallText: [] as string[], smallTextCount: 0, faint: [] as string[], faintCount: 0, headings: [] as string[], excerpt: "", err: String(e) }));
+    }, want).catch((e) => ({ overflow: 0, textLength: 0, shown: 0, bg: "rgb(255,255,255)", fg: "rgb(0,0,0)", unnamed: [] as string[], small: 0, smallText: [] as string[], smallTextCount: 0, faint: [] as string[], faintCount: 0, headings: [] as string[], excerpt: "", under44: [] as string[], under44Count: 0, clipped: [] as string[], clippedCount: 0, used: 0, canvases: 0, svgShapes: 0, gridCols: 0, frames: 0, err: String(e) }));
     let shot: string | undefined;
-    if (opts.shots && (width === 390 || scheme === "light")) {
+    if (opts.shots && (width < 600 || scheme === "light")) {
       shot = `${opts.shots}-${width}-${scheme}.png`;
-      await page.screenshot({ path: shot, fullPage: width === 390 }).catch(() => (shot = undefined));
+      await page.screenshot({ path: shot, fullPage: width < 600 }).catch(() => (shot = undefined));
     }
     let png: string | undefined;
     if (opts.capture) {
@@ -282,7 +308,8 @@ async function renderOnce(html: string, markdown: string, data: unknown, opts: R
     }
     views.push({ name: `${width}-${scheme}`, width, scheme, errors, overflowPx: m.overflow, textLength: m.textLength, shown: m.shown, sampled: want.length,
       bg: m.bg, fg: m.fg, contrast: contrastOf(m.bg, m.fg), bgLuminance: lum(m.bg), unnamedControls: m.unnamed, smallTargets: m.small, screenshot: shot,
-      smallText: m.smallText, smallTextCount: m.smallTextCount, faintText: m.faint, faintCount: m.faintCount, headings: m.headings, excerpt: m.excerpt, ...(png ? { png } : {}) });
+      smallText: m.smallText, smallTextCount: m.smallTextCount, faintText: m.faint, faintCount: m.faintCount, headings: m.headings, excerpt: m.excerpt,
+      under44: m.under44, under44Count: m.under44Count, clipped: m.clipped, clippedCount: m.clippedCount, usedWidth: m.used, canvases: m.canvases, svgShapes: m.svgShapes, gridCols: m.gridCols, frames: m.frames, ...(png ? { png } : {}) });
 
     await page.context().close();
   }
@@ -292,7 +319,7 @@ async function renderOnce(html: string, markdown: string, data: unknown, opts: R
   md = markdown; store = empty(data);
   const viewUpdates = updates.length;
   if (opts.interact) {
-    const { page, errors } = await open(390, "light");
+    const { page, errors } = await open(375, "light");
     const errs = errors.length;
     const before = updates.length + setData;
     for (let k = 0; k < 8 && updates.length + setData === before; k++) {
@@ -321,6 +348,10 @@ async function renderOnce(html: string, markdown: string, data: unknown, opts: R
       interaction = { tried, ok: null };
       await page.waitForTimeout(300);
     }
+    // Does it move after that (a game or toy that plays)? Frames asked for over the next second.
+    const f0 = await page.evaluate(() => (window as any).__frames as number).catch(() => 0);
+    await page.waitForTimeout(1000);
+    interaction.framesPerSecond = (await page.evaluate(() => (window as any).__frames as number).catch(() => 0)) - f0;
     if (interaction.tried === "form" || interaction.tried === "control") {
       const fresh = updates.slice(viewUpdates);
       const landed = updates.length + setData > before;
@@ -344,7 +375,7 @@ async function renderOnce(html: string, markdown: string, data: unknown, opts: R
   const measure = async (body: string) => {
     md = body; store = empty(data);
     const t0 = performance.now();
-    const { page, errors } = await open(390, "light");
+    const { page, errors } = await open(375, "light");
     const ms = performance.now() - t0;
     const r = await page.evaluate((probe: string) => ({ text: document.body?.innerText ?? "", injected: [...document.querySelectorAll("b")].some((b) => b.textContent === "probe" && (b.parentElement?.textContent ?? "").includes("Zq")) }), PROBE).catch(() => ({ text: "", injected: false }));
     await page.context().close();
