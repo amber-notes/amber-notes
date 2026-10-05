@@ -55,7 +55,7 @@ type View = {
   name: string; width: number; scheme: string; errors: string[]; overflowPx: number; textLength: number; contrast: number; bgLuminance: number;
   unnamedControls: string[]; smallTargets: number; smallText?: string[]; smallTextCount?: number; faintText?: string[]; faintCount?: number;
   headings?: string[]; excerpt?: string; png?: string;
-  ghostFields?: string[]; junk?: string[]; under44?: string[]; under44Count?: number; clipped?: string[]; clippedCount?: number; usedWidth?: number; canvases?: number; svgShapes?: number; gridCols?: number; frames?: number;
+  ghostFields?: string[]; sections?: number; nav?: boolean; junk?: string[]; under44?: string[]; under44Count?: number; clipped?: string[]; clippedCount?: number; usedWidth?: number; canvases?: number; svgShapes?: number; gridCols?: number; frames?: number;
 };
 export type Rendered = { views: View[]; interaction: { tried: string; ok: boolean | null; error?: string; framesPerSecond?: number }; probes: Record<string, { pass: boolean; detail?: string }>; blocked: string[]; ms: number };
 
@@ -83,6 +83,7 @@ export function renderedReport(r: Rendered): string[] {
   for (const v of r.views) {
     for (const e of [...new Set(v.errors)].slice(0, 3)) out.push(`${v.name}: script error: ${e}`);
     if (v.overflowPx > 1) out.push(`${v.name}: wider than the screen by ${v.overflowPx} px (scrolls sideways). Use max-width/percentages, wrap or let wide tables scroll in their own box.`);
+    if (v.width < 600 && (v.sections ?? 0) > 5) out.push(`${v.name}: the first screen stacks ${v.sections} separate sections. Give the app one focus per screen: open on what the person does most, and move the rest to tabs, pushed screens or sheets.`);
     if (v.ghostFields?.length) out.push(`${v.name}: ${v.ghostFields.length} field(s) don't look like fields (missing a border or a solid fill): ${v.ghostFields.slice(0, 3).join(", ")}. Every input, select and textarea needs a solid fill and a 1px border in both themes (var(--amber-field), var(--amber-field-border)); don't set border: 0 or a transparent background.`);
     if (v.junk?.length) out.push(`${v.name}: shows ${v.junk.map((j) => `"${j}"`).join(", ")}: a value used before it was ready (amber.store.get returns a promise; read amber.data.values for sync use) or a missing field.`);
     if (v.textLength < 10) out.push(`${v.name}: shows almost no text (blank page?).`);

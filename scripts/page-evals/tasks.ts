@@ -836,6 +836,33 @@ export const TASKS: Task[] = [
       check("reads_the_note", /amber\.note|\.markdown\b/.test(f.page ?? "") && !/kanelbulle-42/.test(f.page ?? ""), "the password is copied into the app instead of read from the note"),
     ],
   },
+  {
+    id: "training-app-focus",
+    prompt: "Make my Training note an app I can use at the gym. I want to see what to do today, tick off sets, adjust the plan, and see my progress over time.",
+    seed: { body: `Training
+
+Plan (3 days a week)
+- Mon: squat 3x5, bench 3x5, row 3x8
+- Wed: deadlift 1x5, press 3x5, pull-ups 3x max
+- Fri: squat 3x5, bench 3x5, chin-ups 3x max
+
+| Date | Exercise | Weight | Reps |
+| --- | --- | --- | --- |
+| 2026-09-28 | Squat | 80 | 5,5,5 |
+| 2026-09-28 | Bench | 55 | 5,5,4 |
+| 2026-09-30 | Deadlift | 100 | 5 |
+| 2026-10-02 | Squat | 82.5 | 5,5,5 |
+| 2026-10-02 | Bench | 55 | 5,5,5 |
+` }, page: true, varied: true, interact: true,
+    checks: (f) => {
+      const first = f.render?.views.find((v) => v.width < 600 && v.scheme === "light");
+      return [
+        rowsKept(f.before, f.after),
+        check("opens_on_today", /today|monday|mon\b/i.test(first?.excerpt ?? "") , `first screen starts: ${(first?.excerpt ?? "").slice(0, 80)}`),
+        check("has_navigation", !!first?.nav || /role=["']tab|<nav\b|tablist/.test(f.page ?? ""), "no tabs or navigation between today, plan and progress"),
+      ];
+    },
+  },
 ];
 
 export const byId = (id: string) => TASKS.find((t) => t.id === id);

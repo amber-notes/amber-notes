@@ -59,10 +59,14 @@ const { account, app, file, note, opened } = await import(mcp("mcp/sealed.ts"));
 const { tokenKey, wrap } = await import(mcp("_shared/e2ee.ts"));
 const { pageProblems } = await import(mcp("mcp/page.ts"));
 
-const MODELS: Record<string, { id: string; provider: "anthropic" | "openai"; inPerM: number; outPerM: number; cacheReadPerM: number; cacheWritePerM: number }> = {
+const MODELS: Record<string, { id: string; provider: "anthropic" | "openai" | "openrouter"; inPerM: number; outPerM: number; cacheReadPerM: number; cacheWritePerM: number }> = {
+  // Through OpenRouter (its own cost accounting is what gets logged).
+  "or-sonnet": { id: "anthropic/claude-sonnet-5.5", provider: "openrouter", inPerM: 2, outPerM: 10, cacheReadPerM: 0.2, cacheWritePerM: 2.5 },
+  "or-opus": { id: "anthropic/claude-opus-5.5", provider: "openrouter", inPerM: 4, outPerM: 20, cacheReadPerM: 0.2, cacheWritePerM: 5 },
+  "or-gpt": { id: "openai/gpt-5.5", provider: "openrouter", inPerM: 5, outPerM: 30, cacheReadPerM: 0.5, cacheWritePerM: 5 },
   sonnet: { id: "claude-sonnet-5-5", provider: "anthropic", inPerM: 2, outPerM: 10, cacheReadPerM: 0.2, cacheWritePerM: 2.5 },
   opus: { id: "claude-opus-5-5", provider: "anthropic", inPerM: 4, outPerM: 20, cacheReadPerM: 0.2, cacheWritePerM: 5 },
-  openai: { id: Deno.env.get("OPENAI_EVAL_MODEL") ?? "gpt-5", provider: "openai", inPerM: 1.25, outPerM: 10, cacheReadPerM: 0.125, cacheWritePerM: 1.25 },
+  openai: { id: Deno.env.get("OPENAI_EVAL_MODEL") ?? "gpt-5.5", provider: "openai", inPerM: 5, outPerM: 30, cacheReadPerM: 0.5, cacheWritePerM: 5 },
 };
 const model = MODELS[modelKey];
 if (!model) throw new Error(`Unknown model ${modelKey}`);
@@ -218,6 +222,62 @@ async function openaiSession(system: string, tools: { name: string; description:
   return { usage, log, answer };
 }
 
+/**
+ * OpenRouter's chat completions with tools, for Claude and GPT alike. Anthropic models get cache
+ * breakpoints on the system prompt and the newest message; images from preview_app go in a user
+ * message after the tool results (tool messages are text there). Cost is OpenRouter's own figure.
+ */
+async function openrouterSession(system: string, tools: { name: string; description: string; inputSchema: unknown }[], prompt: string, call: (n: string, a: Record<string, unknown>) => Promise<Called>) {
+  const key = Deno.env.get("OPENROUTER_API_KEY");
+  if (!key) throw new Error("OPENROUTER_API_KEY isn't set");
+  const usage: Usage & { usd?: number } = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, turns: 0, usd: 0 };
+  const log: Logged[] = [];
+  let answer = "";
+  const anthropic = model.id.startsWith("anthropic/");
+  const cached = (text: string) => anthropic ? [{ type: "text", text, cache_control: { type: "ephemeral" } }] : text;
+  const defs = tools.map((t) => ({ type: "function", function: { name: t.name, description: t.description, parameters: t.inputSchema } }));
+  // deno-lint-ignore no-explicit-any
+  const messages: any[] = [{ role: "system", content: cached(system) }, { role: "user", content: prompt }];
+  for (let turn = 0; turn < 30; turn++) {
+    // The newest message carries the moving cache breakpoint; earlier ones lose theirs.
+    // deno-lint-ignore no-explicit-any
+    const send = messages.map((m: any, i: number) => (anthropic && i === messages.length - 1 && i > 0 && typeof m.content === "string" && m.content ? { ...m, content: cached(m.content) } : m));
+    const body = JSON.stringify({ model: model.id, messages: send, tools: defs, usage: { include: true }, reasoning: { effort: "medium" }, max_tokens: 48000 });
+    let res!: Response;
+    for (let attempt = 0; attempt < 4; attempt++) {
+      res = await fetch("https://openrouter.ai/api/v1/chat/completions", { method: "POST", headers: { authorization: `Bearer ${key}`, "content-type": "application/json", "x-title": "Amber Notes page evals" }, body, signal: AbortSignal.timeout(300_000) })
+        .catch((e) => new Response(String(e), { status: 599 }));
+      if (res.status < 500 && res.status !== 429) break;
+      await res.body?.cancel();
+      await new Promise((r) => setTimeout(r, 3000 * (attempt + 1)));
+    }
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok || j.error) throw new Error(`OpenRouter ${res.status}: ${short(j.error?.message ?? j, 300)}`);
+    usage.turns++;
+    const u = j.usage ?? {};
+    usage.cacheRead += u.prompt_tokens_details?.cached_tokens ?? 0;
+    usage.input += (u.prompt_tokens ?? 0) - (u.prompt_tokens_details?.cached_tokens ?? 0);
+    usage.output += u.completion_tokens ?? 0;
+    usage.usd! += Number(u.cost ?? 0);
+    const msg = j.choices?.[0]?.message ?? {};
+    if (typeof msg.content === "string" && msg.content.trim()) answer = msg.content;
+    const calls = (msg.tool_calls ?? []) as { id: string; function: { name: string; arguments: string } }[];
+    messages.push({ role: "assistant", content: msg.content ?? "", ...(calls.length ? { tool_calls: calls } : {}), ...(msg.reasoning_details ? { reasoning_details: msg.reasoning_details } : {}) });
+    if (!calls.length) break;
+    const images: { data: string; mimeType: string }[] = [];
+    for (const c of calls) {
+      let a: Record<string, unknown> = {};
+      try { a = JSON.parse(c.function.arguments || "{}"); } catch { /* sent as is */ }
+      const r: Called = await call(c.function.name, a).catch((e) => ({ text: String(e), isError: true }));
+      log.push({ name: c.function.name, args: a, error: r.isError, result: short(r.text, 600) });
+      messages.push({ role: "tool", tool_call_id: c.id, content: r.isError ? `Error: ${r.text}` : r.text });
+      images.push(...(r.images ?? []));
+    }
+    if (images.length) messages.push({ role: "user", content: [{ type: "text", text: "The screenshots preview_app returned:" }, ...images.map((im) => ({ type: "image_url", image_url: { url: `data:${im.mimeType};base64,${im.data}` } }))] });
+  }
+  return { usage, log, answer };
+}
+
 const cost = (u: Usage) => (u.input * model.inPerM + u.output * model.outPerM + u.cacheRead * model.cacheReadPerM + u.cacheWrite * model.cacheWritePerM) / 1e6;
 
 async function spent(): Promise<number> {
@@ -235,7 +295,9 @@ async function runTask(task: Task, rep = 1) {
   const othersBefore = await Promise.all(s.others.map((o) => s.state(o)));
   const listed = (await s.rpc("tools/list")).tools.filter((t: { name: string }) => !hidden.has(t.name));
   const system = `${CLIENT_SYSTEM}\n\n<mcp_server name="amber-notes">\n${s.init.instructions}\n</mcp_server>${skill ? `\n\n<skill name="note-pages">\n${skill}\n</skill>` : ""}`;
-  const session = model.provider === "anthropic" ? await claudeSession(system, listed, task.prompt, s.call) : await openaiSession(system, listed, task.prompt, s.call);
+  const session = model.provider === "anthropic" ? await claudeSession(system, listed, task.prompt, s.call)
+    : model.provider === "openrouter" ? await openrouterSession(system, listed, task.prompt, s.call)
+    : await openaiSession(system, listed, task.prompt, s.call);
   const after = await s.state(s.id);
   const othersAfter = await Promise.all(s.others.map((o) => s.state(o)));
   const f: Final = {
@@ -251,8 +313,8 @@ async function runTask(task: Task, rep = 1) {
     f.render = render;
   }
   const checks: Check[] = scoreTask(task, f, render, pageProblems);
-  const usd = cost(session.usage);
-  await Deno.writeTextFile(SPEND, JSON.stringify({ at: new Date().toISOString(), round, task: task.id, model: model.id, usd: +usd.toFixed(4), usage: session.usage }) + "\n", { append: true });
+  const usd = (session.usage as { usd?: number }).usd ?? cost(session.usage);
+  await Deno.writeTextFile(SPEND, JSON.stringify({ at: new Date().toISOString(), round, task: task.id, model: model.id, via: model.provider, usd: +usd.toFixed(4), usage: session.usage }) + "\n", { append: true });
   const result = {
     task: task.id, rep, model: model.id, round, skill: !!skill, ...(hidden.size ? { hidden: [...hidden] } : {}), seconds: Math.round((performance.now() - t0) / 1000),
     score: checks.filter((c) => c.pass).length / checks.length, passed: checks.filter((c) => c.pass).length, total: checks.length,

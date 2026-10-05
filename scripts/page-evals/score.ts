@@ -36,6 +36,8 @@ function generic(task: Task, f: Final, r: Render | undefined, pageProblems: (htm
   if (wide?.usedWidth !== undefined) c("uses_wide_window", wide.usedWidth >= 0.45, `uses ${Math.round((wide.usedWidth ?? 0) * 100)}% of 1280 px`);
   const phoneLight = r.views.find((v) => v.width < 600 && v.scheme === "light");
   if (phoneLight?.under44Count !== undefined) c("phone_targets", phoneLight.under44Count === 0, `${phoneLight.under44Count} controls under 44 pt: ${(phoneLight.under44 ?? []).slice(0, 3).join(", ")}`);
+  const first = r.views.find((v) => v.width < 600 && v.scheme === "light");
+  if (first?.sections !== undefined) c("focused_screen", first.sections <= 5, `${first.sections} sections on the first phone screen`);
   c("visible_fields", r.views.every((v) => !(v.ghostFields ?? []).length), r.views.flatMap((v) => v.ghostFields ?? []).slice(0, 3).join(", "));
   c("no_junk_text", r.views.every((v) => !(v.junk ?? []).length), r.views.flatMap((v) => v.junk ?? []).join(", "));
   c("no_clipped_text", r.views.every((v) => (v.clippedCount ?? 0) === 0), r.views.flatMap((v) => v.clipped ?? []).slice(0, 3).join(", "));

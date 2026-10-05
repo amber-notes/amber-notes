@@ -13,6 +13,7 @@ export const PAGE_INSTRUCTIONS = `Apps: a note can have an app side, a small HTM
 - Before making, redesigning or fixing an app, call get_page_guide once, then read_note and get_note_page.
 - Libraries load by name, never pasted in: bundled ones (chart, d3, three, tone, dayjs, marked, purify, anime, confetti, topojson, world) in <meta name="amber-libs" content="chart, d3">, any other npm package as a pinned, hashed entry from resolve_package in the same meta.
 - Every input, select and textarea is visible as a field in both themes: a solid fill and a 1px border (var(--amber-field), var(--amber-field-border)); never border: 0 or a transparent background.
+- Design around the person's job with one focus per screen; use tabs, pushed screens and sheets for the rest (a training app opens on today's workout; plan and progress are other screens).
 - Give each app its own form and look for its job (a bookshop shelf, a cool blue water gauge, a game board, a keypad), not a beige card with a list; Amber's tokens are the fallback. Keep text readable (4.5:1) in light and dark. Games and toys are welcome. It must work on an iPhone (320-440 pt) and in a Mac window (500-1400+ px).
 - After creating or changing an app, run check_app (and preview_app if you can see images) and fix what they report before telling the person it's done.
 - Data never needs the app rewritten: the note's tables and checklists change with add_table_rows, update_table_rows, delete_table_rows, edit_table_columns, add_checklist_items, update_checklist_items; the app's own data (values, collections of records, files) with get_page_data / update_page_data.
@@ -108,6 +109,16 @@ Every app should look like it was made for what it does, in form and in characte
 - Fields look like fields: every input, select and textarea has a solid fill and a 1px border in both themes. The app gives them background: var(--amber-field) and border: 1px solid var(--amber-field-border) by default; restyle them if you like, but never remove the border or make them see-through. Use solid colors (no translucent panels).
 - Accessibility: real <button>s and <input>s; every input has a <label> (or aria-label); icon-only buttons have aria-label; state that is shown by color is also shown another way; canvas and SVG views get role="img" and an aria-label, or a text equivalent; lang on <html>.
 - Keep it small: most good apps are 6-30 KB of HTML; libraries load by name and don't count (see Libraries).
+
+## Focus and structure
+
+Design around the person's job, with one focus per screen. Ask what they open the app to do most often, and make that the first screen; everything else lives one step away.
+
+- A training app opens on today's workout. Plan editing and progress are their own screens, not sections stacked under it. A budget opens on "how much is left this month" and the add button; categories and history are a tap away. A reading log opens on what you're reading now.
+- Real app structure is welcome: tabs (a bottom tab bar on iPhone, a sidebar or top tabs on a wide Mac window), pushed detail screens with a back button, sheets for adding or editing, and segmented controls to switch views. Keep it shallow: 2 to 5 places, each with one job.
+- Keep the current screen in the app's store (amber.store.set("screen", …)) so the app reopens where the person was, and in history (history.pushState) only if you handle the back gesture yourself.
+- On the first screen: one primary action, one or two key numbers, then a short list or view. If you're stacking more than four independent sections (a summary, a chart, a form, a history, settings…) on one screen, split them into screens or tabs. check_app warns when a screen holds too many.
+- Navigation controls are real buttons with labels (aria-current on the active tab), at least 44 pt, and the active place is obvious.
 
 ## Sizes
 

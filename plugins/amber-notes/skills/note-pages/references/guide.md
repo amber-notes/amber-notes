@@ -118,6 +118,16 @@ Every app should look like it was made for what it does, in form and in characte
 - Accessibility: real <button>s and <input>s; every input has a <label> (or aria-label); icon-only buttons have aria-label; state that is shown by color is also shown another way; canvas and SVG views get role="img" and an aria-label, or a text equivalent; lang on <html>.
 - Keep it small: most good apps are 6-30 KB of HTML; libraries load by name and don't count (see Libraries).
 
+## Focus and structure
+
+Design around the person's job, with one focus per screen. Ask what they open the app to do most often, and make that the first screen; everything else lives one step away.
+
+- A training app opens on today's workout. Plan editing and progress are their own screens, not sections stacked under it. A budget opens on "how much is left this month" and the add button; categories and history are a tap away. A reading log opens on what you're reading now.
+- Real app structure is welcome: tabs (a bottom tab bar on iPhone, a sidebar or top tabs on a wide Mac window), pushed detail screens with a back button, sheets for adding or editing, and segmented controls to switch views. Keep it shallow: 2 to 5 places, each with one job.
+- Keep the current screen in the app's store (amber.store.set("screen", …)) so the app reopens where the person was, and in history (history.pushState) only if you handle the back gesture yourself.
+- On the first screen: one primary action, one or two key numbers, then a short list or view. If you're stacking more than four independent sections (a summary, a chart, a form, a history, settings…) on one screen, split them into screens or tabs. check_app warns when a screen holds too many.
+- Navigation controls are real buttons with labels (aria-current on the active tab), at least 44 pt, and the active place is obvious.
+
 ## Sizes
 
 You own the layout at every size; the app must work and look intended across the whole range, with no sideways scrolling.

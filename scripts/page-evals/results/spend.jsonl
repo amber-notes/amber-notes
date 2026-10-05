@@ -552,3 +552,6 @@
 {"at":"2026-10-05T15:25:42.417Z","round":"r12","task":"mortgage-calculator","model":"claude-sonnet-5-5","usd":0.2068,"usage":{"input":16,"output":7525,"cacheRead":184341,"cacheWrite":37844,"turns":7}}
 {"at":"2026-10-05T15:26:17.731Z","round":"r12","task":"mortgage-calculator","model":"claude-sonnet-5-5","usd":0.1795,"usage":{"input":16,"output":8230,"cacheRead":202105,"cacheWrite":22696,"turns":7}}
 {"at":"2026-10-05T15:26:28.111Z","round":"r12","task":"visual-water-tracker","model":"claude-sonnet-5-5","usd":0.1806,"usage":{"input":16,"output":5424,"cacheRead":179734,"cacheWrite":36137,"turns":7}}
+{"at":"2026-10-05T19:47:22Z","round":"budget","note":"OpenRouter budget 25 USD starts here; earlier gpt-5.5 entries were estimates at 1.25/10, about 35.57 at list price","usd":0}
+{"at":"2026-10-05T19:47:28.435Z","round":"dev-or","task":"pasted-key","model":"anthropic/claude-sonnet-5.5","via":"openrouter","usd":0.0446,"usage":{"input":16990,"output":208,"cacheRead":0,"cacheWrite":0,"turns":1,"usd":0.044553}}
+{"at":"2026-10-05T19:48:06.007Z","round":"dev-or","task":"title-twice","model":"anthropic/claude-sonnet-5.5","via":"openrouter","usd":0.0556,"usage":{"input":10421,"output":883,"cacheRead":103450,"cacheWrite":0,"turns":5,"usd":0.055566500000000005}}
