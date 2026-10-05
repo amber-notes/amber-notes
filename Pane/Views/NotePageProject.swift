@@ -61,8 +61,8 @@ struct NotePageProject: Equatable {
         return parse(stored)?.index ?? ""
     }
 
-    /// A file as served: compiled JavaScript for .jsx/.tsx/.ts, compiled CSS (Tailwind) when there
-    /// is some, the text otherwise, and its type. An import without an extension finds the file the
+    /// A file as served: what the tooling compiled for it when there is something (JavaScript for
+    /// .jsx/.tsx/.ts and React .js, Tailwind's CSS), the text otherwise, and its type. An import without an extension finds the file the
     /// way bundlers do (.tsx, .ts, .jsx, .js, then index.*). A stylesheet imported from a module
     /// (`import "./index.css"`, compiled to "./index.css?import") is a module that adds it.
     func serve(_ path: String, query: String? = nil) -> (data: Data, type: String)? {
@@ -71,7 +71,8 @@ struct NotePageProject: Equatable {
             let js = "if (!document.querySelector('link[href=\"\(path)\"]')) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '\(path)'; document.head.appendChild(l); }\n"
             return (Data(js.utf8), "text/javascript")
         }
-        guard let text = Self.compiles(path) || path.hasSuffix(".css") ? (compiled[path] ?? files[path]) : files[path] else { return nil }
+        // Whatever the tooling compiled wins, any extension (TSX, JS in a React project, Tailwind CSS).
+        guard let text = compiled[path] ?? (Self.compiles(path) ? nil : files[path]) else { return nil }
         return (Data(text.utf8), Self.mime(path))
     }
 

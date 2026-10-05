@@ -1,4 +1,7 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (@media (prefers-color-scheme: dark));
 
 /* shadcn/ui's colours, from Amber Notes' tokens (they switch for dark mode by themselves). */
 :root {

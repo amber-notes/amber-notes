@@ -105,3 +105,12 @@ Deno.test("the AI's copy of amber-ui is the kit the app ships", () => {
     assertEquals(Object.values(AMBER_UI.src).some((s) => s.includes(`export function ${c}`)), true, c);
   }
 });
+
+import { SHADCN_UI } from "./shadcn-ui.ts";
+
+Deno.test("the scaffold's shadcn set is the one the demo runs", () => {
+  for (const [path, text] of Object.entries(SHADCN_UI)) {
+    assertEquals(text, Deno.readTextFileSync(new URL("../../../demo/note-pages/training-react" + path, import.meta.url)), path);
+  }
+  assertEquals(Object.keys(SHADCN_UI).filter((p) => p.startsWith("/src/components/ui/")).length, 20);
+});

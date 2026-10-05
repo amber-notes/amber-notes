@@ -1078,6 +1078,27 @@ import WebKit
         #expect(store.arrivals[id]?.at == at, "your own device: quiet")
     }
 
+    /// What the tooling compiled is served for any file (a React project's .js too), and Radix's own
+    /// package names resolve to the same modules as radix-ui.
+    @Test func compiledWinsAndRadixPackagesResolve() async throws {
+        let main = """
+        import { createElement as h } from "react";
+        import { createRoot } from "react-dom/client";
+        import { Slot } from "@radix-ui/react-slot";
+        import { Slot as Umbrella } from "radix-ui";
+        window.__r = { same: Slot === Umbrella.Slot || Slot === Umbrella.Root || typeof Slot === "function", compiled: true };
+        createRoot(document.getElementById("root")).render(h(Slot, { id: "s" }, h("button", null, "x")));
+        """
+        let project = ["amberApp": 1, "files": ["/index.html": #"<div id="root"></div><script type="module" src="/src/main.js"></script>"#, "/src/main.js": "window.__r = { compiled: false };"],
+                       "compiled": ["/src/main.js": main]] as [String: Any]
+        let stored = String(data: try JSONSerialization.data(withJSONObject: project), encoding: .utf8)!
+        let sandbox = NotePageSandbox(rules: try await NotePageSandbox.prepare())
+        sandbox.load(html: stored, body: "x")
+        try await run(sandbox.webView, until: "document.getElementById('s') !== null")
+        #expect(try await sandbox.webView.evaluateJavaScript("JSON.stringify(window.__r)") as? String == #"{"same":true,"compiled":true}"#)
+        #expect(try await sandbox.webView.evaluateJavaScript("document.getElementById('s').tagName") as? String == "BUTTON")
+    }
+
     @Test func projectsHaveLimitsAndMustBeCompiled() throws {
         func stored(_ files: [String: String], _ compiled: [String: String] = [:]) -> String {
             String(data: try! JSONSerialization.data(withJSONObject: ["amberApp": 1, "files": files, "compiled": compiled]), encoding: .utf8)!

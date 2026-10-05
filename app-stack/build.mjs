@@ -4,8 +4,10 @@
 // resolve to it, so React libraries (Radix, recharts, sonner, ...) run on one small Preact.
 // Shared code goes into chunks, so every library sees the same Preact and the same Radix internals.
 import * as esbuild from "esbuild";
-import { readFileSync, writeFileSync, rmSync } from "node:fs";
+import { readFileSync, writeFileSync, rmSync, realpathSync, existsSync } from "node:fs";
 import { createHash } from "node:crypto";
+import { createRequire } from "node:module";
+import { dirname, join } from "node:path";
 
 const pkg = JSON.parse(readFileSync("package.json", "utf8"));
 const entries = {
@@ -19,6 +21,18 @@ const entries = {
   // React's names: preact/compat, with React 19's ref-as-prop (shims/).
   "react": "./shims/react.js", "react-dom/client": "./shims/react-dom-client.js", "react/jsx-runtime": "./shims/react-jsx-runtime.js",
 };
+// Radix's own packages (@radix-ui/react-slot, @radix-ui/react-dialog, ...) by name too, for shadcn
+// sources that import them directly. They are the same modules radix-ui re-exports.
+const radixRequire = createRequire(realpathSync("node_modules/radix-ui/package.json"));
+for (const name of Object.keys(JSON.parse(readFileSync("node_modules/radix-ui/package.json", "utf8")).dependencies)) {
+  if (!name.startsWith("@radix-ui/react-")) continue;
+  let dir = dirname(radixRequire.resolve(name));
+  while (!existsSync(join(dir, "package.json"))) dir = dirname(dir);
+  const pkgFile = join(dir, "package.json");
+  const pkgJson = JSON.parse(readFileSync(pkgFile, "utf8"));
+  const entry = pkgJson.module ?? pkgJson.exports?.["."]?.import?.default ?? pkgJson.main;
+  entries[name] = join(dirname(pkgFile), entry);
+}
 const file = (name) => name.replace(/[@/]/g, "_") + ".js";
 
 rmSync("dist", { recursive: true, force: true });
