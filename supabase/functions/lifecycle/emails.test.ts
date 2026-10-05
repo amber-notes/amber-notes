@@ -145,6 +145,18 @@ Deno.test("every button goes somewhere specific: into the app, a page section, o
   }
 });
 
+Deno.test("nothing forces a width: pictures shrink with the column, corners are set one by one", () => {
+  for (const e of all) {
+    for (const img of e.html.matchAll(/<img [^>]*>/g)) {
+      const w = Number(img[0].match(/ width="(\d+)"/)![1]);
+      if (w > 60) assertStringIncludes(img[0], "width:100%", `${e.kind}: ${img[0].slice(0, 80)}`);
+    }
+    assert(!/min-width:\s*[1-9]/.test(e.html), e.kind);
+    assert(!/border-radius:\s*\d+px \d+px/.test(e.html), `${e.kind}: corner shorthand`);
+    assertStringIncludes(e.html, "border-bottom-left-radius:0;border-bottom-right-radius:0;padding:11px 14px");
+  }
+});
+
 Deno.test("replies go to Emil", () => {
   assertStringIncludes(render("stuck", ctx).html, "mailto:emil@ambernotes.app");
 });

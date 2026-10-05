@@ -332,7 +332,7 @@ const pill = (href: string, label: string) =>
 /// under it (chosen over a numbered list and a featured prompt, 5 October 2026).
 function promptsHTML(prompts: { id: string; text: string }[], c: Context): string {
   return prompts.map((x) => `${table(' width="100%" style="margin:0 0 18px;"')}<tr><td align="right">
-${table(' style="max-width:92%;"')}<tr><td class="bubble" bgcolor="${L.bubble}" style="background:${L.bubble};border-radius:20px 20px 6px 20px;padding:11px 15px;font-family:${SANS};font-size:16px;line-height:1.45;mso-line-height-rule:exactly;color:${L.text};"><span class="ink" style="color:${L.text};">${esc(x.text)}</span></td></tr></table>
+${table(' style="max-width:92%;"')}<tr><td class="bubble" bgcolor="${L.bubble}" style="background:${L.bubble};border-top-left-radius:20px;border-top-right-radius:20px;border-bottom-right-radius:6px;border-bottom-left-radius:20px;padding:11px 15px;font-family:${SANS};font-size:16px;line-height:1.45;mso-line-height-rule:exactly;color:${L.text};"><span class="ink" style="color:${L.text};">${esc(x.text)}</span></td></tr></table>
 </td></tr><tr><td align="right" style="padding-top:8px;">${pill(askChatGPT(x.text), "Ask ChatGPT &rsaquo;")}&nbsp;&nbsp;${pill(askClaude(c, x.id), "Ask Claude &rsaquo;")}</td></tr></table>`).join("\n");
 }
 
@@ -363,7 +363,7 @@ function blockHTML(b: Block, c: Context): string {
     const use = esc(`${c.site}/open/template/${t.slug}`);
     return `<td class="tcol" width="33%" valign="top" style="width:33%;padding:0 5px;">
 ${table(` width="100%" class="tcard" bgcolor="${L.paper}" style="background:${L.paper};border:1px solid ${L.paperEdge};border-radius:${CARD_R}px;"`)}
-<tr><td style="line-height:0;font-size:0;"><a href="${use}"><img src="${c.assets}/tc-${t.slug}.jpg" width="142" height="99" alt="${esc(t.title)} template cover" style="display:block;width:100%;height:auto;border:0;border-radius:${CARD_R}px ${CARD_R}px 0 0;color:${L.secondary};font-family:${SANS};font-size:12px;"></a></td></tr>
+<tr><td style="line-height:0;font-size:0;"><a href="${use}"><img src="${c.assets}/tc-${t.slug}.jpg" width="142" height="99" alt="${esc(t.title)} template cover" style="display:block;width:100%;height:auto;border:0;border-top-left-radius:${CARD_R}px;border-top-right-radius:${CARD_R}px;border-bottom-left-radius:0;border-bottom-right-radius:0;color:${L.secondary};font-family:${SANS};font-size:12px;"></a></td></tr>
 <tr><td class="tbody" height="104" valign="top" style="height:104px;padding:10px 12px 0;font-family:${SANS};vertical-align:top;">
 <a href="${use}" style="text-decoration:none;"><span class="ink tct" style="display:block;font-family:${DISPLAY};font-size:15px;line-height:1.25;font-weight:700;color:${L.text};">${esc(t.title)}</span></a>
 <a href="${use}" style="text-decoration:none;"><span class="sec tcs" style="display:block;margin:4px 0 0;font-size:13px;line-height:1.4;color:${L.secondary};">${esc(t.tagline)}</span></a>
@@ -452,11 +452,11 @@ function htmlOf(d: Draft, c: Context): string {
 </style>
 </head>
 <body class="ground" style="margin:0;padding:0;background:${L.ground};-webkit-text-size-adjust:100%;">
-<div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">${esc(d.preview[v])}${"&#847;&zwnj;&nbsp;".repeat(30)}</div>
-${table(` class="ground" width="100%" bgcolor="${L.ground}" style="background:${L.ground};"`)}
+<div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;overflow:hidden;opacity:0;mso-hide:all;">${esc(d.preview[v])}${"&#847; &zwnj; ".repeat(30)}</div>
+${table(` class="ground" width="100%" bgcolor="${L.ground}" style="width:100%;min-width:0;background:${L.ground};"`)}
 <tr><td class="outer" align="center" style="padding:28px 12px 40px;">
 <!--[if mso]><table role="presentation" width="520" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
-${table(' width="100%" style="max-width:520px;"')}
+${table(' width="100%" style="width:100%;max-width:520px;"')}
   <tr><td style="padding:0 4px 18px;">
     ${table()}<tr>
       <td style="padding-right:10px;">${table()}<tr><td width="28" height="28" align="center" valign="middle" bgcolor="#f0901a" style="width:28px;height:28px;background:#f0901a;border-radius:7px;text-align:center;"><img src="${a}/mark.png" width="28" height="28" alt="A" style="display:block;width:28px;height:28px;border:0;border-radius:7px;color:#fff4e6;font-family:${DISPLAY};font-size:16px;font-weight:800;line-height:28px;text-align:center;"></td></tr></table></td>
@@ -465,14 +465,14 @@ ${table(' width="100%" style="max-width:520px;"')}
   </td></tr>
 ${art}  <tr><td class="window" bgcolor="${L.page}" style="background:${L.page};border:1px solid ${L.edge};border-radius:14px;">
     ${table(' width="100%"')}
-      <tr><td class="chrome" bgcolor="${L.chrome}" style="background:${L.chrome};border-bottom:1px solid ${L.edge};border-radius:14px 14px 0 0;padding:11px 14px;font-family:${SANS};">
+      <tr><td class="chrome" bgcolor="${L.chrome}" style="background:${L.chrome};border-bottom:1px solid ${L.edge};border-top-left-radius:14px;border-top-right-radius:14px;border-bottom-left-radius:0;border-bottom-right-radius:0;padding:11px 14px;font-family:${SANS};">
         ${table(' width="100%"')}<tr>
           <td width="70" style="width:70px;">${table()}<tr>${dot("#ff5f57")}${dot("#febc2e")}${dot("#28c840")}</tr></table></td>
           <td class="sec" align="center" style="font-size:13px;font-weight:600;color:${L.secondary};">Notes</td>
           <td width="70" style="width:70px;">&nbsp;</td>
         </tr></table>
       </td></tr>
-      <tr><td class="pad padtop" style="padding:22px 32px 6px;font-family:${SANS};">
+      <tr><td class="pad padtop" style="padding:22px 32px 6px;font-family:${SANS};overflow-wrap:break-word;word-wrap:break-word;">
         <p class="sec dateline" style="margin:0 0 14px;text-align:center;font-size:13px;line-height:1.4;color:${L.secondary};">From Emil</p>
         <h1 class="ink h1" style="margin:0 0 14px;font-family:${DISPLAY};font-size:27px;line-height:1.2;font-weight:700;color:${L.text};">${esc(d.title)}</h1>
 ${body}
