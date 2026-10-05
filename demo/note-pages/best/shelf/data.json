@@ -2,7 +2,7 @@
  "values": {
   "settings": {
    "wood": "Oak",
-   "lamp": "On"
+   "lamp": true
   },
   "covers": {
    "tomorrow, and tomorrow, and tomorrow": {

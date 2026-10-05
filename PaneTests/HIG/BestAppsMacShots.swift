@@ -55,6 +55,8 @@ import Testing
                 try await MacStoreShots.shoot(out, "\(name)-mac-\(dark ? "dark" : "light")", [("main", w)])
                 // The 3D shelf's frame rate on this Mac: a two-second turn, frames counted by the page.
                 if name == "shelf", !dark, let web = Self.webView(in: w.contentView) {
+                    let probe = try? await web.callAsyncJavaScript("return [typeof window.THREE, typeof window.amber, (document.scripts[0] || {}).src || 'inline'].join(' ')", arguments: [:], contentWorld: .page)
+                    try? "\(probe ?? "none")".write(to: out.appending(path: "shelf-probe-mac.txt"), atomically: true, encoding: .utf8)
                     let fps = try? await web.callAsyncJavaScript("return window.__spin ? await window.__spin(2000) : -1", arguments: [:], contentWorld: .page)
                     try? "\(fps ?? "none")".write(to: out.appending(path: "shelf-fps-mac.txt"), atomically: true, encoding: .utf8)
                 }

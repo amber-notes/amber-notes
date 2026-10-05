@@ -2,7 +2,7 @@
  "values": {
   "settings": {
    "seconds": "30 seconds",
-   "sound": "Off",
+   "sound": false,
    "direction": "Swedish to English"
   }
  },

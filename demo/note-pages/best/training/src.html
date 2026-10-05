@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="amber-settings" content='{"settings":[{"key":"rest","label":"Rest between sets","type":"choice","options":["1 minute","1½ minutes","2 minutes","3 minutes","4 minutes","5 minutes"],"default":"2 minutes"},{"key":"step","label":"Weight step","type":"choice","options":["1.25 kg","2.5 kg","5 kg"],"default":"2.5 kg","help":"How much heavier the next workout suggests."},{"key":"notify","label":"Notify when rest is over","type":"choice","options":["On","Off"],"default":"On","help":"Even with the phone locked."}]}'>
+<meta name="amber-settings" content='{"settings":[{"key":"rest","label":"Rest between sets","type":"choice","options":[{"value":60,"label":"1 minute"},{"value":90,"label":"1½ minutes"},{"value":120,"label":"2 minutes"},{"value":180,"label":"3 minutes"},{"value":240,"label":"4 minutes"},{"value":300,"label":"5 minutes"}],"default":120},{"key":"step","label":"Weight step","type":"choice","options":[{"value":1.25,"label":"1.25 kg"},{"value":2.5,"label":"2.5 kg"},{"value":5,"label":"5 kg"}],"default":2.5,"help":"How much heavier the next workout suggests."},{"key":"notify","label":"Notify when rest is over","type":"toggle","default":true,"help":"Even with the phone locked."}]}'>
 <title>Training</title>
 <style>
 /*KIT_CSS*/
@@ -100,7 +100,7 @@
 <script>
 /*KIT_JS*/
 const { esc, ico, D, num, col, sheet, announce } = Kit;
-const S = { get: () => { const s = Kit.settings(); return { rest: Math.round((parseFloat(String(s.rest).replace("½", ".5")) || 2) * 60), step: parseFloat(String(s.step).replace(",", ".")) || 2.5, notify: Kit.on(s.notify) }; } };
+const S = { get: () => { const s = Kit.settings(); return { rest: typeof s.rest === "number" ? s.rest : Math.round((parseFloat(String(s.rest).replace("½", ".5")) || 2) * 60), step: parseFloat(String(s.step).replace(",", ".")) || 2.5, notify: Kit.on(s.notify) }; } };
 let restNote = null;
 let lift = null, record = null, restTimer = null, clockTimer = null;
 const kgText = (n) => (Math.round(n * 100) / 100).toString().replace(".", ",");

@@ -3,7 +3,7 @@
   "settings": {
    "goal": 24,
    "sort": "Most recent",
-   "covers": "On"
+   "covers": true
   },
   "books": {
    "tomorrow, and tomorrow, and tomorrow": {

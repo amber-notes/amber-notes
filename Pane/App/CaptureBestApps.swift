@@ -58,7 +58,7 @@ extension Capture {
     /// Captures only (`-inlineLibs <AppLibraries dir>`): for a build without bundled libraries yet,
     /// the declared libraries go into the page itself, so a 3D app can be recorded meanwhile.
     static func inlineLibs(_ html: String) -> String {
-        guard let dir = argument("-inlineLibs") ?? ProcessInfo.processInfo.environment["AMBER_INLINE_LIBS"],
+        guard let dir = argument("-inlineLibs") ?? ProcessInfo.processInfo.environment["AMBER_INLINE_LIBS"].flatMap({ $0.isEmpty ? nil : $0 }),
               let r = html.range(of: #"<meta[^>]*name=["']amber-libs["'][^>]*content=["']([^"']*)["'][^>]*>"#, options: .regularExpression) else { return html }
         let tag = String(html[r])
         let names = tag.replacingOccurrences(of: #"^.*content=["']([^"']*)["'].*$"#, with: "$1", options: .regularExpression).split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
