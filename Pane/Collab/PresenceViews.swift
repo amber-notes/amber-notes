@@ -51,9 +51,8 @@ struct PersonAvatar: View {
     /// The ring's width: 2 pt at toolbar size, a clean cut between overlapping avatars.
     static func ringWidth(_ size: CGFloat) -> CGFloat { max(2, (size / 14).rounded()) }
 
-    /// Where a badge goes: tucked on the lower-right edge of its own circle, about a third of it
-    /// over the circle, at 55° below the horizontal so it reaches down more than sideways and stays
-    /// clear of the next person's avatar.
+    /// Where a badge goes: on the lower-right edge of its own circle along the 45° diagonal, its
+    /// centre on the circle's edge so about half of it sits over the circle.
     struct Geometry {
         let outer: CGFloat, badge: CGFloat, center: CGPoint, frame: CGSize
         /// The badge's right edge: the next avatar in a stack starts here.
@@ -64,7 +63,7 @@ struct PersonAvatar: View {
         let ring = ringWidth(size)
         let outer = size + ring * 2
         let badge = size * 0.36 + ring * 0.75 * 2
-        let r = outer / 2, d = r + badge / 6, angle = 55.0 * .pi / 180
+        let r = outer / 2, d = r, angle = 45.0 * .pi / 180
         let center = CGPoint(x: r + d * cos(angle), y: r + d * sin(angle))
         return Geometry(outer: outer, badge: badge, center: center,
                         frame: CGSize(width: max(outer, center.x + badge / 2), height: max(outer, center.y + badge / 2)))
