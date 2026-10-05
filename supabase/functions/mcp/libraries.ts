@@ -5,7 +5,9 @@
 // npm:<name>@<x.y.z>[/<file>]#<sha256|sha384|sha512>-<base64>, which the app downloads once from
 // cdn.jsdelivr.net, checks against the hash and keeps on the device.
 
-/** Bundled with Amber Notes (the app's manifest): name, global, the npm file it's built from. */
+import { NPM_REF } from "./page.ts";
+
+/** Bundled with Amber Notes: name, global, the npm file it's built from (libraries.test.ts keeps this in step with page.ts BUNDLED_LIBS and the app's manifest). */
 export const BUNDLED: { name: string; global: string; version: string; npm: string; what: string; signature: RegExp }[] = [
   { name: "chart", global: "Chart", version: "4.4.4", npm: "chart.js@4.4.4/dist/chart.umd.js", what: "charts: line, bar, doughnut, radar", signature: /Chart\.js v\d|chartjs\.org/ },
   { name: "d3", global: "d3", version: "7.9.0", npm: "d3@7.9.0/dist/d3.min.js", what: "data-driven SVG, scales, shapes, geo projections", signature: /d3js\.org/ },
@@ -20,8 +22,8 @@ export const BUNDLED: { name: string; global: string; version: string; npm: stri
   { name: "world", global: "worldAtlas110m", version: "2.0.2", npm: "world-atlas@2.0.2/countries-110m.json", what: "country shapes, 1:110m TopoJSON", signature: /"objects":\s*\{\s*"countries"/ },
 ];
 
-/** npm:<name>@<x.y.z>[/<file>]#<sha256|sha384|sha512>-<base64> (as page.ts NPM_REF). */
-export const NPM_REF = /^npm:((?:@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*)@(\d+\.\d+\.\d+(?:[-.][0-9A-Za-z.]+)?)(\/[^#\s]+)?#(sha256|sha384|sha512)-[A-Za-z0-9+/]+={0,2}$/;
+/** npm:<name>@<x.y.z>[/<file>]#<sha256|sha384|sha512>-<base64>: the app's own rule (page.ts). */
+export { NPM_REF };
 
 /** The items of <meta name="amber-libs">. */
 export function declaredLibs(html: string): string[] {
