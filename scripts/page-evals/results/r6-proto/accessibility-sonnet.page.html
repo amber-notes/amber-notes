@@ -1,0 +1,57 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Lisbon trip packing</title><style>
+body{margin:0;font-family:var(--amber-font);color:var(--amber-text);line-height:1.5;font-size:17px}
+main{max-width:var(--amber-content-max);margin:0 auto;padding:16px var(--amber-gutter)}
+h1{font-size:1.5rem;margin:0 0 4px}h2{font-size:1.2rem;margin:24px 0 8px}
+.sum{color:var(--amber-text-secondary);margin:0 0 8px}
+ul{list-style:none;margin:0;padding:0;background:var(--amber-surface);border-radius:var(--amber-radius)}
+li{border-bottom:1px solid var(--amber-separator)}li:last-child{border-bottom:0}
+label{display:flex;align-items:center;gap:12px;min-height:44px;padding:6px 14px;cursor:pointer}
+input[type=checkbox]{width:24px;height:24px;flex:none;accent-color:var(--amber-accent);margin:0}
+input:checked+span{color:var(--amber-text-secondary);text-decoration:line-through}
+form{display:grid;gap:12px;margin-top:32px;padding:16px;background:var(--amber-surface);border-radius:var(--amber-radius)}
+form h2{margin:0}.row{display:grid;gap:4px}.row label{display:block;min-height:0;padding:0;font-weight:600}
+input[type=text],select{font:inherit;min-height:44px;padding:6px 10px;border:1px solid var(--amber-text-secondary);border-radius:var(--amber-radius-small);background:var(--amber-fill);color:var(--amber-text);box-sizing:border-box;width:100%}
+button{font:inherit;font-weight:600;min-height:44px;padding:6px 18px;border:0;border-radius:var(--amber-radius-small);background:var(--amber-accent);color:var(--amber-on-accent);cursor:pointer}
+:focus-visible{outline:3px solid var(--amber-text);outline-offset:2px}
+#msg{min-height:1.5em;margin:0}.err{color:var(--amber-danger);font-weight:600}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+@media(min-width:900px){#lists{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:0 24px;align-items:start}}
+</style></head><body><main>
+<h1 id="t"></h1><p class="sum" id="sum"></p>
+<div id="lists"></div>
+<form id="f"><h2 id="addh">Add an item</h2>
+<div class="row"><label for="new">Item name</label><input type="text" id="new" autocomplete="off" required></div>
+<div class="row"><label for="sec">Section</label><select id="sec"></select></div>
+<button type="submit">Add item</button>
+<p id="msg" role="status" aria-live="polite"></p></form>
+</main><script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+let cur=null,focusLine=null;
+function parse(md){const secs=[];let s=null;
+ md.split("\n").forEach((l,i)=>{let m=l.match(/^##\s+(.*)$/);if(m){s={name:m[1].trim(),lines:[],items:[]};secs.push(s);return}
+  if(!s)return;s.lines.push(l);if(/^\s*- \[[ xX]\]/.test(l))s.items.push(l)});
+ return secs}
+function say(t,e){const m=$("msg");m.className=e?"err":"";m.textContent="";setTimeout(()=>m.textContent=t,50)}
+amber.onChange(note=>{cur=note;$("t").textContent=note.title;
+ const secs=parse(note.markdown);let k=0;
+ const total=note.checklists.length,done=note.checklists.filter(c=>c.checked).length;
+ $("sum").textContent=done+" of "+total+" items packed";
+ $("lists").innerHTML=secs.map((s,si)=>{const its=s.items.map(()=>note.checklists[k++]).filter(Boolean);
+  return '<section aria-labelledby="h'+si+'"><h2 id="h'+si+'">'+esc(s.name)+'</h2><ul>'+its.map(c=>'<li><label><input type="checkbox" data-line="'+c.line+'"'+(c.checked?' checked':'')+'><span>'+esc(c.text)+'</span></label></li>').join("")+'</ul></section>'}).join("");
+ const sel=$("sec"),v=sel.value;sel.innerHTML=secs.map(s=>'<option>'+esc(s.name)+'</option>').join("");if(v)sel.value=v;
+ document.querySelectorAll('input[type=checkbox]').forEach(b=>b.onchange=async()=>{
+  const name=b.nextElementSibling.textContent,want=b.checked;focusLine=b.dataset.line;
+  const r=await amber.update({op:"toggle_checklist",line:+b.dataset.line});
+  if(!r.ok)say(r.error,1);else say(name+(want?" packed":" unpacked"));});
+ if(focusLine){const e=document.querySelector('input[data-line="'+focusLine+'"]');if(e)e.focus();focusLine=null}
+});
+$("f").onsubmit=async e=>{e.preventDefault();
+ const text=$("new").value.trim().replace(/\s+/g," ");if(!text){say("Please enter an item name.",1);$("new").focus();return}
+ const name=$("sec").value,sec=parse(cur.markdown).find(s=>s.name===name);
+ if(!sec){say("Section not found.",1);return}
+ const lines=sec.lines.slice();while(lines.length&&!lines[lines.length-1].trim())lines.pop();
+ lines.push("- [ ] "+text);
+ const r=await amber.update({op:"set_text",heading:name,text:lines.join("\n")});
+ if(r.ok){$("new").value="";say(text+" added to "+name);$("new").focus()}else say("Could not add: "+r.error,1)};
+</script></body></html>

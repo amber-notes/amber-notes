@@ -1,0 +1,64 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
+*{box-sizing:border-box}
+.wrap{max-width:var(--amber-content-max);margin:0 auto;padding:16px var(--amber-gutter) 32px}
+h1{font-family:var(--amber-font-rounded);font-size:28px;margin:8px 0 16px}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--amber-text-secondary);margin:24px 0 10px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.card{background:var(--amber-surface);border-radius:var(--amber-radius);padding:14px 16px}
+.big{font-family:var(--amber-font-rounded);font-size:34px;font-weight:700;color:var(--amber-accent-text)}
+.lbl{color:var(--amber-text-secondary);font-size:13px}
+.stars{color:var(--amber-accent);letter-spacing:2px}
+.months{display:flex;align-items:flex-end;gap:8px;height:130px;margin-top:6px}
+.m{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0}
+.bar{width:100%;max-width:48px;background:var(--amber-accent);border-radius:6px 6px 2px 2px;min-height:3px}
+.bar.z{background:var(--amber-fill)}
+.m span{font-size:11px;color:var(--amber-text-secondary);margin-top:4px}
+.m b{font-size:12px;margin-bottom:3px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px}
+.book{display:flex;flex-direction:column;gap:8px}
+.cover{aspect-ratio:2/3;border-radius:4px 10px 10px 4px;padding:14px 12px;display:flex;flex-direction:column;justify-content:space-between;color:#fff;box-shadow:inset 6px 0 0 rgba(0,0,0,.18),0 3px 10px rgba(0,0,0,.25);overflow:hidden}
+.cover .t{font-family:Georgia,serif;font-weight:700;font-size:16px;line-height:1.2;padding-left:6px}
+.cover .a{font-size:11px;opacity:.9;padding-left:6px;text-transform:uppercase;letter-spacing:.05em}
+.meta{font-size:12px;color:var(--amber-text-secondary);display:flex;justify-content:space-between}
+form{display:grid;grid-template-columns:1fr;gap:8px}
+input,select,button{font:inherit;padding:9px 10px;border-radius:var(--amber-radius-small);border:1px solid var(--amber-separator);background:var(--amber-fill);color:var(--amber-text)}
+button{background:var(--amber-accent);color:var(--amber-on-accent);border:0;font-weight:600}
+@media(min-width:600px){form{grid-template-columns:2fr 2fr 1fr 1fr auto}}
+@media(min-width:900px){.stats{grid-template-columns:1fr 1fr 2fr}.stats .wide{grid-row:span 1}.months{height:110px}}
+</style></head><body><div class="wrap">
+<h1>📚 Reading log</h1>
+<div class="stats">
+<div class="card"><div class="big" id="n">0</div><div class="lbl">books read</div></div>
+<div class="card"><div class="big" id="avg">–</div><div class="stars" id="st"></div><div class="lbl">average rating</div></div>
+<div class="card wide" style="grid-column:1/-1"><div class="lbl">Books per month</div><div class="months" id="mo"></div></div>
+</div>
+<h2>Shelf</h2><div class="grid" id="g"></div>
+<h2>Add a book</h2>
+<form id="f"><input name="t" placeholder="Title" required><input name="a" placeholder="Author"><input name="d" type="date"><select name="r"><option>5</option><option>4</option><option selected>3</option><option>2</option><option>1</option></select><button>Add</button></form>
+</div><script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function hue(s){let h=0;for(const c of s)h=(h*31+c.charCodeAt(0))%360;return h}
+function render(note){
+ let t=note.tables.find(x=>x.columns.map(c=>c.name).join()=='Title,Author,Finished,Rating')||note.tables[0];
+ const rows=(t?t.rows:[]).map((r,i)=>({i,t:r[0]||'',a:r[1]||'',d:r[2]||'',r:parseInt(r[3])||0})).filter(b=>b.t);
+ $('n').textContent=rows.length;
+ const rated=rows.filter(b=>b.r);
+ const avg=rated.length?rated.reduce((s,b)=>s+b.r,0)/rated.length:0;
+ $('avg').textContent=rated.length?avg.toFixed(1):'–';
+ $('st').textContent=rated.length?'★'.repeat(Math.round(avg))+'☆'.repeat(5-Math.round(avg)):'';
+ const cnt={};rows.forEach(b=>{const m=b.d.slice(0,7);if(/^\d{4}-\d\d$/.test(m))cnt[m]=(cnt[m]||0)+1});
+ const keys=Object.keys(cnt).sort();let months=[];
+ if(keys.length){let [y,m]=keys[0].split('-').map(Number);const [ey,em]=keys[keys.length-1].split('-').map(Number);
+  while(y<ey||(y==ey&&m<=em)){months.push(y+'-'+String(m).padStart(2,'0'));if(++m>12){m=1;y++}}}
+ months=months.slice(-12);
+ const mx=Math.max(1,...months.map(k=>cnt[k]||0));
+ $('mo').innerHTML=months.map(k=>{const c=cnt[k]||0;return `<div class="m"><b>${c||''}</b><div class="bar ${c?'':'z'}" style="height:${c/mx*80}%"></div><span>${MN[+k.slice(5)-1]}</span></div>`}).join('')||'<span class="lbl">No dates yet</span>';
+ const sorted=rows.slice().sort((a,b)=>b.d.localeCompare(a.d));
+ $('g').innerHTML=sorted.map(b=>{const h=hue(b.t);return `<div class="book"><div class="cover" style="background:linear-gradient(160deg,hsl(${h} 55% 42%),hsl(${(h+40)%360} 60% 28%))"><div class="t">${esc(b.t)}</div><div class="a">${esc(b.a)}</div></div><div class="meta"><span class="stars">${'★'.repeat(b.r)}${'☆'.repeat(5-b.r)}</span><span>${esc(b.d)}</span></div></div>`}).join('');
+}
+$('f').onsubmit=e=>{e.preventDefault();const f=e.target;
+ amber.update({op:'append_row',table:0,values:{Title:f.t.value,Author:f.a.value,Finished:f.d.value||amber.note.today,Rating:f.r.value}}).then(r=>{if(r.ok)f.reset()})};
+amber.onChange(render);
+</script></body></html>

@@ -1,0 +1,201 @@
+{
+  "task": "trip-from-messy",
+  "model": "claude-sonnet-5-5",
+  "round": "r0-baseline",
+  "skill": false,
+  "seconds": 26,
+  "score": 1,
+  "passed": 13,
+  "total": 13,
+  "checks": [
+    {
+      "name": "has_page",
+      "pass": true
+    },
+    {
+      "name": "server_checks",
+      "pass": true
+    },
+    {
+      "name": "no_console_errors",
+      "pass": true
+    },
+    {
+      "name": "no_network",
+      "pass": true
+    },
+    {
+      "name": "fits_390",
+      "pass": true
+    },
+    {
+      "name": "fits_1280",
+      "pass": true
+    },
+    {
+      "name": "shows_data",
+      "pass": true
+    },
+    {
+      "name": "dark_mode",
+      "pass": true
+    },
+    {
+      "name": "light_contrast",
+      "pass": true
+    },
+    {
+      "name": "labelled_controls",
+      "pass": true
+    },
+    {
+      "name": "edits_from_page",
+      "pass": true
+    },
+    {
+      "name": "facts_kept",
+      "pass": true
+    },
+    {
+      "name": "todos_kept",
+      "pass": true
+    }
+  ],
+  "tool_calls": 4,
+  "tool_errors": 0,
+  "usage": {
+    "input": 12,
+    "output": 2661,
+    "cacheRead": 29002,
+    "cacheWrite": 9820,
+    "turns": 5
+  },
+  "usd": 0.057,
+  "page_bytes": 2931,
+  "answer": "Your Porto weekend note now has a trip page. You can see it under the Page tab.\n\n- **Countdown:** it counts the days to your Friday 16 Oct flight, which is 11 days from today.\n- **Flights and hotel:** it shows both at a glance, including TP 781 and TP 784, the Casa do Conto address and the confirmation number. Your ~6000 kr budget is there too.\n- **Ideas:** the five ideas are now tick-off checkboxes.\n- **To-dos:** these are checkboxes too, and \"buy travel insurance\" is already ticked.\n\nYour ideas were plain bullets, so I changed them to `- [ ]` checklist items in the note. The text is otherwise unchanged.\n\nTicking a box on the page updates the note, and the page reads its details from the note, so editing the note updates the page.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Porto"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Porto\",\n  \"results\": [\n    {\n      \"id\": \"0f117282-8631-4deb-a483-22db5f9b77ce\",\n      \"title\": \"Porto weekend\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T12:29:58.508Z\",\n      \"snippet\": \"«Porto» weekend flights: out fri 16 oct 07:10 ARN->OPO (TP 781), back sun 18 oct 19:40 (TP 784) hotel: Casa do\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "0f117282-8631-4deb-a483-22db5f9b77ce",
+        "line_numbers": "true"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"0f117282-8631-4deb-a483-22db5f9b77ce\",\n  \"title\": \"Porto weekend\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T12:29:58.508Z\",\n  \"updated\": \"2026-10-05T12:29:58.508Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 2,\n      \"done\": 1\n    },\n    \"lines\": 18,\n    \"words\": 91\n  },\n  \"markdown\": \" 1│ Porto weekend\\n 2│ \\n 3│ flights: out fri 16 oct 07:10 ARN->OPO (TP 781), back sun 18 oct 19:40 (TP 784)\\n 4│ hotel: Casa do Conto, Rua da Boavista 703, conf #CC-55821, … (999 chars)"
+    },
+    {
+      "name": "edit_note",
+      "args": {
+        "id": "0f117282-8631-4deb-a483-22db5f9b77ce",
+        "edits": "[{\"old_text\":\"- livraria lello (book tickets online!!)\",\"new_text\":\"- [ ] livraria lello (book tickets online!!)\"},{\"old_text\":\"- port tasting in gaia - Graham's\",\"new_text\":\"- [ ] port tasting in gaia - Graham's\"},{\"old_text\":\"- francesinha at Café Santiago\",\"new_text\":\"- [ ] francesinha at Café Sa… (481 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"edited\": {\n    \"id\": \"0f117282-8631-4deb-a483-22db5f9b77ce\",\n    \"title\": \"Porto weekend\",\n    \"version\": 2,\n    \"updated\": \"2026-10-05T12:30:04.424Z\"\n  },\n  \"edits_applied\": 5\n}"
+    },
+    {
+      "name": "set_note_page",
+      "args": {
+        "id": "0f117282-8631-4deb-a483-22db5f9b77ce",
+        "html": "<!DOCTYPE html><html><head><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><style>\n:root{--bg:#fff8f0;--fg:#2b2118;--card:#fff;--mut:#8a7766;--acc:#d9622b;--bd:#f0e2d3}\n@media(prefers-color-scheme:dark){:root{--bg:#1c1713;--fg:#f3e9df;--card:#272019;--mut:#a39382;--acc:#f08a52;--b… (2919 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"0f117282-8631-4deb-a483-22db5f9b77ce\",\n  \"title\": \"Porto weekend\",\n  \"page\": \"created\",\n  \"bytes\": 2931,\n  \"note\": \"The person sees it in Amber Notes under Page. The note's markdown is unchanged.\"\n}"
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "390-light",
+        "width": 390,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 488,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(255, 248, 240)",
+        "fg": "rgb(43, 33, 24)",
+        "contrast": 14.95159806283172,
+        "bgLuminance": 0.9468607389992346,
+        "unnamedControls": [],
+        "smallTargets": 8,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r0-baseline/shots/trip-from-messy-sonnet-390-light.png"
+      },
+      {
+        "name": "390-dark",
+        "width": 390,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 488,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(28, 23, 19)",
+        "fg": "rgb(243, 233, 223)",
+        "contrast": 14.840847619262602,
+        "bgLuminance": 0.00906685972248204,
+        "unnamedControls": [],
+        "smallTargets": 8,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r0-baseline/shots/trip-from-messy-sonnet-390-dark.png"
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 488,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(255, 248, 240)",
+        "fg": "rgb(43, 33, 24)",
+        "contrast": 14.95159806283172,
+        "bgLuminance": 0.9468607389992346,
+        "unnamedControls": [],
+        "smallTargets": 8,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r0-baseline/shots/trip-from-messy-sonnet-1280-light.png"
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 488,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(28, 23, 19)",
+        "fg": "rgb(243, 233, 223)",
+        "contrast": 14.840847619262602,
+        "bgLuminance": 0.00906685972248204,
+        "unnamedControls": [],
+        "smallTargets": 8
+      }
+    ],
+    "blocked": [],
+    "updates": [
+      {
+        "op": {
+          "op": "toggle_checklist",
+          "line": 8
+        },
+        "ok": true
+      }
+    ],
+    "setData": 0,
+    "interaction": {
+      "tried": "control",
+      "ok": true
+    },
+    "probes": {},
+    "dataAfter": {}
+  }
+}

@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+*{box-sizing:border-box}body{padding:20px 18px 96px;max-width:760px;margin:0 auto}h1{font-size:30px;letter-spacing:-.03em;margin:4px 0 6px}.sub{color:var(--amber-text-secondary);margin:0 0 18px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}.card{background:var(--amber-surface);border:1px solid var(--amber-separator);border-radius:var(--amber-radius);margin-bottom:16px;overflow:hidden}.stat{padding:16px}.label{color:var(--amber-text-secondary);font-size:13px;margin-bottom:6px}.value{font-size:26px;font-weight:750;letter-spacing:-.02em;font-variant-numeric:tabular-nums}.small{font-size:14px;color:var(--amber-text-secondary)}.section{padding:16px 16px 8px;font-weight:700}.row{display:flex;align-items:center;gap:12px;min-height:50px;padding:12px 16px;border-top:1px solid var(--amber-separator)}.row:first-child{border-top:0}.grow{flex:1;min-width:0}.num{font-variant-numeric:tabular-nums;font-weight:650}.pill{display:inline-flex;align-items:center;min-height:28px;padding:4px 9px;border-radius:999px;background:var(--amber-accent-soft);color:var(--amber-accent-text);font-size:13px;font-weight:650}.barrow{display:grid;grid-template-columns:68px 1fr 56px;gap:10px;align-items:center;padding:8px 16px}.bartrack{height:12px;border-radius:999px;background:var(--amber-fill);overflow:hidden}.bar{height:100%;border-radius:999px;background:var(--amber-accent);min-width:2px}.toolbar{display:flex;gap:10px;align-items:end;flex-wrap:wrap;padding:12px 16px 16px;border-top:1px solid var(--amber-separator)}label{display:flex;flex-direction:column;gap:5px;font-size:13px;color:var(--amber-text-secondary);flex:1 1 120px}input,select{font:inherit;color:var(--amber-text);background:var(--amber-fill);border:0;border-radius:var(--amber-radius-small);padding:10px 12px;min-height:44px;width:100%}button{font:inherit;font-weight:700;min-height:44px;padding:0 16px;border:0;border-radius:var(--amber-radius-small);background:var(--amber-accent);color:var(--amber-on-accent)}.ghost{background:var(--amber-fill);color:var(--amber-text)}.empty{padding:28px 16px;text-align:center;color:var(--amber-text-secondary)}.err{color:var(--amber-danger);padding:0 16px 14px;min-height:1em}.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}.progress{height:10px;background:var(--amber-fill);border-radius:999px;overflow:hidden;margin-top:10px}.progress span{display:block;height:100%;background:var(--amber-accent);border-radius:999px}@media(max-width:620px){body{padding-left:14px;padding-right:14px}.grid,.two{grid-template-columns:1fr}.value{font-size:24px}.barrow{grid-template-columns:58px 1fr 48px;padding-left:12px;padding-right:12px}.hide-sm{display:none}}</style>
+</head>
+<body>
+<main id="app" aria-live="polite"></main>
+<script>
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+const col=(t,re)=>t.columns.findIndex(c=>re.test(c.name));
+const num=s=>{const n=parseFloat(String(s??"").replace(/\s/g,"").replace(",","."));return Number.isFinite(n)?n:0};
+const parseDate=s=>{const m=String(s).match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?new Date(Date.UTC(+m[1],+m[2]-1,+m[3])):null};
+const dateStr=d=>d.toISOString().slice(0,10);
+const weekStart=s=>{const d=parseDate(s);if(!d)return"";const day=d.getUTCDay()||7;d.setUTCDate(d.getUTCDate()-day+1);return dateStr(d)};
+const pace=(min,km)=>km>0&&min>0?`${Math.floor(min/km)}:${String(Math.round((min/km%1)*60)).padStart(2,"0")}/km`:"—";
+let error="";
+function findTable(note){return note.tables.find(t=>col(t,/^date$/i)>=0&&col(t,/distance|km/i)>=0)||note.tables[0];}
+function rows(t){const c={date:col(t,/^date$/i),dist:col(t,/distance|km/i),time:col(t,/moving time|minutes|min|time/i),hr:col(t,/avg hr|heart|hr/i)};return {c,items:t.rows.map((r,i)=>({i,date:r[c.date]||"",km:num(r[c.dist]),min:num(r[c.time]),hr:num(r[c.hr]),raw:r})).filter(r=>r.date).sort((a,b)=>a.date.localeCompare(b.date))};}
+function monthName(m){const d=parseDate(m+"-01");return d?d.toLocaleDateString(undefined,{month:"short",year:"numeric",timeZone:"UTC"}):m;}
+function render(note,data){
+ const app=document.getElementById("app"),t=findTable(note);
+ if(!t){app.innerHTML=`<h1>${esc(note.title)}</h1><p class="sub">Running dashboard</p><div class="card empty">Add a table with Date, Distance (km), Moving Time (min) and Avg HR columns.</div>`;return;}
+ const {c,items}=rows(t);
+ if(c.date<0||c.dist<0){app.innerHTML=`<h1>${esc(note.title)}</h1><div class="card empty">This page needs Date and Distance columns.</div>`;return;}
+ const total=items.reduce((s,r)=>s+r.km,0), mins=items.reduce((s,r)=>s+r.min,0), hrs=items.filter(r=>r.hr).map(r=>r.hr);
+ const latest=items[items.length-1];
+ const longest=items.reduce((a,r)=>r.km>(a?.km||0)?r:a,null);
+ const months=[...new Set(items.map(r=>r.date.slice(0,7)))].sort();
+ const selected=months.includes(data.month)?data.month:(months[months.length-1]||note.today.slice(0,7));
+ const monthRows=items.filter(r=>r.date.startsWith(selected));
+ const monthKm=monthRows.reduce((s,r)=>s+r.km,0), monthMin=monthRows.reduce((s,r)=>s+r.min,0);
+ const goal=Number(data.weeklyGoal)||24;
+ const thisWeek=weekStart(note.today), weekKm=items.filter(r=>weekStart(r.date)===thisWeek).reduce((s,r)=>s+r.km,0);
+ const weekStarts=[];let base=parseDate(thisWeek||weekStart(latest?.date||note.today));for(let i=7;i>=0;i--){let d=new Date(base);d.setUTCDate(d.getUTCDate()-i*7);weekStarts.push(dateStr(d));}
+ const weekTotals=weekStarts.map(w=>({w,km:items.filter(r=>weekStart(r.date)===w).reduce((s,r)=>s+r.km,0)}));
+ const maxWeek=Math.max(goal,...weekTotals.map(w=>w.km),1);
+ const recent=items.slice(-8).reverse();
+ app.innerHTML=`
+  <h1>${esc(note.title)}</h1><p class="sub">${items.length} runs logged · latest ${latest?esc(latest.date):"—"}</p>
+  <div class="grid">
+   <div class="card stat"><div class="label">Total distance</div><div class="value">${total.toFixed(1)} km</div><div class="small">${items.length} activities</div></div>
+   <div class="card stat"><div class="label">Average pace</div><div class="value">${pace(mins,total)}</div><div class="small">${Math.round(mins)} moving min</div></div>
+   <div class="card stat"><div class="label">Longest run</div><div class="value">${longest?longest.km.toFixed(1):"0.0"} km</div><div class="small">${longest?esc(longest.date):"No runs yet"}</div></div>
+   <div class="card stat"><div class="label">Average HR</div><div class="value">${hrs.length?Math.round(hrs.reduce((a,b)=>a+b,0)/hrs.length):"—"}</div><div class="small">beats per minute</div></div>
+  </div>
+  <div class="card"><div class="section">This week</div><div class="stat"><div class="value">${weekKm.toFixed(1)} / ${goal.toFixed(0)} km</div><div class="progress" aria-label="Weekly progress"><span style="width:${Math.min(100,weekKm/goal*100)}%"></span></div></div><form id="goal" class="toolbar"><label>Weekly goal (km)<input name="weeklyGoal" type="number" min="1" step="1" value="${esc(goal)}"></label><button class="ghost">Save goal</button></form></div>
+  <div class="two"><div class="card"><div class="section">Last 8 weeks</div>${weekTotals.map(w=>`<div class="barrow"><div class="small">${esc(w.w.slice(5))}</div><div class="bartrack"><div class="bar" style="width:${Math.min(100,w.km/maxWeek*100)}%"></div></div><div class="num">${w.km.toFixed(1)}</div></div>`).join("")}</div>
+  <div class="card"><div class="section">Month</div><form class="toolbar" id="month"><label>View month<select name="month">${months.map(m=>`<option value="${esc(m)}" ${m===selected?"selected":""}>${esc(monthName(m))}</option>`).join("")}</select></label></form><div class="stat"><div class="value">${monthKm.toFixed(1)} km</div><div class="small">${monthRows.length} runs · ${pace(monthMin,monthKm)}</div></div></div></div>
+  <div class="card"><div class="section">Recent runs</div>${recent.length?recent.map(r=>`<div class="row"><div class="grow"><div class="num">${esc(r.date)}</div><div class="small">${pace(r.min,r.km)}${r.hr?` · ${r.hr} bpm`:""}</div></div><span class="pill">${r.km.toFixed(1)} km</span><span class="hide-sm small">${r.min||"—"} min</span></div>`).join(""):"<div class='empty'>No runs yet.</div>"}</div>
+  <div class="card"><div class="section">Add a run</div><form id="add" class="toolbar"><label>Date<input name="date" type="date" required value="${esc(note.today)}"></label><label>Distance (km)<input name="km" type="number" min="0" step="0.1" required></label><label>Moving time (min)<input name="min" type="number" min="0" step="1" required></label><label>Avg HR<input name="hr" type="number" min="0" step="1"></label><button>Add</button></form><div class="err" role="alert">${esc(error)}</div></div>`;
+ document.getElementById("month")?.addEventListener("change",e=>amber.setData({month:new FormData(e.currentTarget).get("month")}));
+ document.getElementById("goal").onsubmit=async e=>{e.preventDefault();const v=Number(new FormData(e.target).get("weeklyGoal"));const r=await amber.setData({weeklyGoal:v});error=r.ok?"":r.error;if(!r.ok)render(amber.note,amber.data);};
+ document.getElementById("add").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target),vals={};vals[t.columns[c.date].name]=f.get("date");vals[t.columns[c.dist].name]=f.get("km");if(c.time>=0)vals[t.columns[c.time].name]=f.get("min");if(c.hr>=0)vals[t.columns[c.hr].name]=f.get("hr");const r=await amber.update({op:"append_row",table:t.index,values:vals});error=r.ok?"":r.error;if(!r.ok)render(amber.note,amber.data);};
+}
+amber.onChange(render);
+</script>
+</body>
+</html>

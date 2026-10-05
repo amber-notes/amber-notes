@@ -1,0 +1,81 @@
+{
+  "task": "checklist-add-tick",
+  "model": "gpt-5.5",
+  "round": "r5",
+  "skill": false,
+  "seconds": 12,
+  "score": 1,
+  "passed": 4,
+  "total": 4,
+  "checks": [
+    {
+      "name": "added_under_clothes",
+      "pass": true
+    },
+    {
+      "name": "ticked",
+      "pass": true
+    },
+    {
+      "name": "rest_untouched",
+      "pass": true
+    },
+    {
+      "name": "page_untouched",
+      "pass": true
+    }
+  ],
+  "tool_calls": 4,
+  "tool_errors": 0,
+  "usage": {
+    "input": 3655,
+    "output": 289,
+    "cacheRead": 29184,
+    "cacheWrite": 0,
+    "turns": 5
+  },
+  "usd": 0.0111,
+  "page_bytes": 1796,
+  "data": null,
+  "answer": "Done — added sunscreen, swimsuit, and sunglasses under Clothes, and marked passport and adapter as packed.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Lisbon OR packing OR passport adapter clothes",
+        "limit": "10"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Lisbon OR packing OR passport adapter clothes\",\n  \"results\": [\n    {\n      \"id\": \"859a453a-622e-4f7f-a856-e72c82807920\",\n      \"title\": \"Lisbon trip packing\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T13:15:02.940Z\",\n      \"snippet\": \"«Lisbon» trip «packing» ## «Clothes» - [ ] T-shirts x4 - [ ] Linen shorts - [ ] Rain jacket - [x] Sneakers ## Documents - [ ] «Passport» - [ ] Boarding passes - [ ] Travel insurance card ## Tech - [ ] Phone charger - [ ] «Adapter»\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "859a453a-622e-4f7f-a856-e72c82807920",
+        "line_numbers": "true"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"859a453a-622e-4f7f-a856-e72c82807920\",\n  \"title\": \"Lisbon trip packing\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T13:15:02.940Z\",\n  \"updated\": \"2026-10-05T13:15:02.940Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"has_page\": true,\n  \"outline\": {\n    \"headings\": [\n      {\n        \"line\": 3,\n        \"level\": 2,\n        \"text\": \"Clothes\"\n      },\n      {\n        \"line\": 9,\n        \"level\": 2,\n        \"text\": \"Documents\"\n      },\n      {\n        \"line\": 14,\n        \"level\": 2,\n        \"text\": \"Tech\"\n      }\n    ],\n    \"chec… (1019 chars)"
+    },
+    {
+      "name": "add_checklist_items",
+      "args": {
+        "id": "859a453a-622e-4f7f-a856-e72c82807920",
+        "under_heading": "Clothes",
+        "items": "[\"Sunscreen\",\"Swimsuit\",\"Sunglasses\"]"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"859a453a-622e-4f7f-a856-e72c82807920\",\n    \"title\": \"Lisbon trip packing\"\n  },\n  \"added\": [\n    \"Sunscreen\",\n    \"Swimsuit\",\n    \"Sunglasses\"\n  ]\n}"
+    },
+    {
+      "name": "update_checklist_items",
+      "args": {
+        "id": "859a453a-622e-4f7f-a856-e72c82807920",
+        "changes": "[{\"item\":\"Passport\",\"checked\":true},{\"item\":\"Adapter\",\"checked\":true}]"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"859a453a-622e-4f7f-a856-e72c82807920\",\n    \"title\": \"Lisbon trip packing\"\n  },\n  \"changed\": [\n    {\n      \"item\": \"Passport\",\n      \"did\": \"checked\"\n    },\n    {\n      \"item\": \"Adapter (EU)\",\n      \"did\": \"checked\"\n    }\n  ]\n}"
+    }
+  ],
+  "render": null
+}

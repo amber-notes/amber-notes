@@ -1,0 +1,29 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{--bg:#fbf8f3;--card:#fff;--ink:#1d1a16;--muted:#7a7168;--line:#e6ded4;--tag:#f1ebe3}
+@media (prefers-color-scheme:dark){:root{--bg:#1b1916;--card:#26231f;--ink:#f3eee8;--muted:#a39a90;--line:#3a352f;--tag:#34302a}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink)}
+body{font:16px/1.4 -apple-system,system-ui,sans-serif;padding:20px 18px 48px;max-width:680px;margin:0 auto;overflow-x:hidden}
+h1{font-size:28px;letter-spacing:-.02em;margin:4px 0 16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;margin-bottom:12px;overflow:hidden}
+.card h2{font-size:18px;margin:0;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.tag{font-size:13px;font-weight:600;background:var(--tag);border-radius:8px;padding:4px 8px}
+dl{margin:0}
+.r{display:flex;gap:12px;padding:10px 16px;border-top:1px solid var(--line)}
+dt{width:84px;flex:none;color:var(--muted);font-size:14px;padding-top:1px}
+dd{margin:0;flex:1;min-width:0;overflow-wrap:anywhere}
+.empty{padding:28px 16px;text-align:center;color:var(--muted)}
+</style></head><body><main id="app"></main><script>
+const esc=(s)=>String(s??"").replace(/[&<>"']/g,(c)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+amber.onChange((note)=>{
+const tb=note.tables[0];let h="<h1>"+esc(note.title)+"</h1>";
+if(!tb||!tb.rows.length){app.innerHTML=h+'<div class="card empty">No meals yet. Add rows to the table in the note.</div>';return}
+const cols=tb.columns.map((c)=>c.name);
+const shopI=cols.findIndex((c)=>/^shop$/i.test(c));
+h+=tb.rows.map((r)=>{
+const shop=shopI>=0&&/^(yes|y|✓|x|1|true)$/i.test((r[shopI]||"").trim());
+const rows=r.map((v,i)=>i===0||i===shopI||!String(v).trim()?"":'<div class="r"><dt>'+esc(cols[i])+'</dt><dd>'+esc(v)+'</dd></div>').join("");
+return '<section class="card"><h2><span>'+esc(r[0])+'</span>'+(shop?'<span class="tag">Shop</span>':'')+'</h2><dl>'+rows+'</dl></section>'}).join("");
+app.innerHTML=h});
+</script></body></html>

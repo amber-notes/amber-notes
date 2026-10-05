@@ -1,0 +1,240 @@
+{
+  "task": "fix-broken-page",
+  "model": "gpt-5.5",
+  "round": "r5",
+  "skill": false,
+  "seconds": 22,
+  "score": 1,
+  "passed": 17,
+  "total": 17,
+  "checks": [
+    {
+      "name": "has_page",
+      "pass": true
+    },
+    {
+      "name": "server_checks",
+      "pass": true
+    },
+    {
+      "name": "no_console_errors",
+      "pass": true
+    },
+    {
+      "name": "no_network",
+      "pass": true
+    },
+    {
+      "name": "fits_390",
+      "pass": true
+    },
+    {
+      "name": "fits_1280",
+      "pass": true
+    },
+    {
+      "name": "shows_data",
+      "pass": true
+    },
+    {
+      "name": "dark_mode",
+      "pass": true
+    },
+    {
+      "name": "light_contrast",
+      "pass": true
+    },
+    {
+      "name": "labelled_controls",
+      "pass": true
+    },
+    {
+      "name": "probe_follows",
+      "pass": true
+    },
+    {
+      "name": "probe_escapes",
+      "pass": true
+    },
+    {
+      "name": "probe_empty",
+      "pass": true
+    },
+    {
+      "name": "probe_large",
+      "pass": true
+    },
+    {
+      "name": "note_unchanged",
+      "pass": true
+    },
+    {
+      "name": "page_changed",
+      "pass": true
+    },
+    {
+      "name": "small_fix",
+      "pass": true
+    }
+  ],
+  "tool_calls": 6,
+  "tool_errors": 0,
+  "usage": {
+    "input": 16272,
+    "output": 887,
+    "cacheRead": 45568,
+    "cacheWrite": 0,
+    "turns": 5
+  },
+  "usd": 0.0349,
+  "page_bytes": 8659,
+  "data": null,
+  "answer": "Fixed the Household expenses page.\n\nIt was blank because the page script was looking for `note.table` instead of `note.tables`, and it didn’t recognize your `Amt` column as the amount column. I corrected both, leaving the note’s expense data unchanged.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "\"Household expenses\" OR \"Household\" \"expenses\"",
+        "limit": "10"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"\\\"Household expenses\\\" OR \\\"Household\\\" \\\"expenses\\\"\",\n  \"results\": [\n    {\n      \"id\": \"4af9a6f4-b348-4a0c-9e8b-3f960dd458ee\",\n      \"title\": \"Household expenses\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T13:13:54.217Z\",\n      \"snippet\": \"«Household expenses» | Date | Item | Category | Amt | | --- | --- | --- | --- | | 2026-09-02 | Electricity | Bills | 640 | | 2026-09-05 | Groceries | Food | 1 210 | | 2026-09-11 | Dentist | Health\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "get_page_guide",
+      "args": {},
+      "error": false,
+      "result": "{\n  \"guide\": \"# Building Amber Notes pages\\n\\nA page turns a note into a small app: a habit grid, a budget with totals, flashcards, a reading log. The note's markdown is the data and stays the source of truth: the person can always flip to Text and see and edit every row. The page is a view and a remote control for that data. Deleting or replacing a page never loses data.\\n\\n## The contract\\n\\nA page is one HTML document with all CSS and JS inline. It runs in a sandbox with no network: no fetch/XHR/WebSocket, no external scripts, styles, fonts or images (images only as data: URIs or inline SVG… (14689 chars)"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "4af9a6f4-b348-4a0c-9e8b-3f960dd458ee",
+        "line_numbers": "true"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"4af9a6f4-b348-4a0c-9e8b-3f960dd458ee\",\n  \"title\": \"Household expenses\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T13:13:54.217Z\",\n  \"updated\": \"2026-10-05T13:13:54.217Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"has_page\": true,\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 11,\n    \"words\": 76\n  },\n  \"markdown\": \" 1│ Household expenses\\n 2│ \\n 3│ | Date | Item | Category | Amt |\\n 4│ | --- | --- | --- | --- |\\n 5│ | 2026-09-02 | Electricity | Bills | 640 |\\n … (833 chars)"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "4af9a6f4-b348-4a0c-9e8b-3f960dd458ee"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"4af9a6f4-b348-4a0c-9e8b-3f960dd458ee\",\n  \"title\": \"Household expenses\",\n  \"has_page\": true,\n  \"made_by\": \"Claude\",\n  \"updated\": \"2026-10-05T13:13:54.224Z\",\n  \"rules\": \"A page is one HTML document with all CSS and JS inline. It runs in a sandbox with no network: no fetch/XHR/WebSocket, no external scripts, styles, fonts or images (images only as data: URIs or inline SVG), no <iframe>/<link>/<base>. At most 256 KB.\\nwindow.amber, ready before your script runs:\\n  amber.note = { title, markdown, today: \\\"yyyy-mm-dd\\\", tables: [{ index, columns: [{ name, type }], rows: [[\\\"cell\\\", ...],… (12743 chars)"
+    },
+    {
+      "name": "edit_note_page",
+      "args": {
+        "id": "4af9a6f4-b348-4a0c-9e8b-3f960dd458ee",
+        "edits": "[{\"old_text\":\"const t = note.table.find((t) => col(t, /amount|cost|price|^kr$|sum|belopp/i) >= 0);\",\"new_text\":\"const t = note.tables.find((t) => col(t, /amount|amt|cost|price|^kr$|sum|belopp/i) >= 0);\"},{\"old_text\":\"const a = col(t, /amount|cost|price|^kr$|sum|belopp/i), d = col(t, /^date$|^day$|da… (572 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"4af9a6f4-b348-4a0c-9e8b-3f960dd458ee\",\n  \"title\": \"Household expenses\",\n  \"page\": \"replaced\",\n  \"bytes\": 8659,\n  \"note\": \"The person sees it in Amber Notes under Page. The note's markdown is unchanged. The previous page is kept (get_note_page lists it).\"\n}"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "4af9a6f4-b348-4a0c-9e8b-3f960dd458ee"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"4af9a6f4-b348-4a0c-9e8b-3f960dd458ee\",\n  \"title\": \"Household expenses\",\n  \"has_page\": true,\n  \"made_by\": \"Claude\",\n  \"updated\": \"2026-10-05T13:14:05.735Z\",\n  \"rules\": \"A page is one HTML document with all CSS and JS inline. It runs in a sandbox with no network: no fetch/XHR/WebSocket, no external scripts, styles, fonts or images (images only as data: URIs or inline SVG), no <iframe>/<link>/<base>. At most 256 KB.\\nwindow.amber, ready before your script runs:\\n  amber.note = { title, markdown, today: \\\"yyyy-mm-dd\\\", tables: [{ index, columns: [{ name, type }], rows: [[\\\"cell\\\", ...],… (12925 chars)"
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "390-light",
+        "width": 390,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 227,
+        "shown": 6,
+        "sampled": 11,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 1,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r5/shots/fix-broken-page-openai-390-light.png"
+      },
+      {
+        "name": "390-dark",
+        "width": 390,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 227,
+        "shown": 6,
+        "sampled": 11,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 1,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r5/shots/fix-broken-page-openai-390-dark.png"
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 227,
+        "shown": 6,
+        "sampled": 11,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 1,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r5/shots/fix-broken-page-openai-1280-light.png"
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 227,
+        "shown": 6,
+        "sampled": 11,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 1
+      }
+    ],
+    "blocked": [],
+    "updates": [],
+    "setData": 0,
+    "interaction": {
+      "tried": "none",
+      "ok": null
+    },
+    "probes": {
+      "follows": {
+        "pass": true,
+        "detail": "shown, but not as written"
+      },
+      "escapes": {
+        "pass": true
+      },
+      "empty": {
+        "pass": true,
+        "detail": "blank page"
+      },
+      "large": {
+        "pass": true,
+        "detail": "566 ms to load 400 rows"
+      }
+    },
+    "dataAfter": {}
+  }
+}

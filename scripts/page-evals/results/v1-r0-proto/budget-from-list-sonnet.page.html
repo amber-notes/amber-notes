@@ -1,0 +1,49 @@
+<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>
+:root{--bg:#fff;--fg:#1c1c1e;--card:#f4f1ec;--mut:#78746c;--acc:#d9820b;--bad:#d03a2f;--ok:#2e9e5b}
+@media(prefers-color-scheme:dark){:root{--bg:#1b1a18;--fg:#f2efe9;--card:#2a2825;--mut:#a39e94}}
+body{margin:0;padding:16px;background:var(--bg);color:var(--fg);font:16px -apple-system,system-ui,sans-serif}
+.card{background:var(--card);border-radius:14px;padding:14px;margin-bottom:14px}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);margin:0 0 10px}
+.big{font-size:30px;font-weight:700}.mut{color:var(--mut);font-size:14px}
+.bar{height:12px;background:rgba(128,128,128,.25);border-radius:6px;overflow:hidden;margin:10px 0 6px}
+.fill{height:100%;background:var(--ok)}
+.row{margin:10px 0}.row .t{display:flex;justify-content:space-between;font-size:15px}
+.row .bar{height:8px;margin:4px 0}.row .fill{background:var(--acc)}
+form{display:grid;gap:8px}
+input,select,button{font:inherit;padding:12px;border-radius:10px;border:1px solid rgba(128,128,128,.4);background:var(--bg);color:var(--fg);width:100%;box-sizing:border-box}
+button{background:var(--acc);color:#fff;border:0;font-weight:600}
+.r{display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid rgba(128,128,128,.2);font-size:15px}
+#err{color:var(--bad);font-size:14px}
+</style></head><body>
+<div class="card"><h2>Spent vs limit</h2><div class="big" id="tot"></div><div class="bar"><div class="fill" id="f"></div></div><div class="mut" id="sub"></div></div>
+<div class="card"><h2>By category</h2><div id="cats"></div></div>
+<div class="card"><h2>Add expense</h2><form id="form">
+<input id="item" placeholder="What? (e.g. Lunch)" required>
+<input id="amt" type="number" inputmode="decimal" step="0.01" placeholder="Amount (kr)" required>
+<input id="cat" list="cl" placeholder="Category" required><datalist id="cl"></datalist>
+<button>Add expense</button><div id="err"></div></form></div>
+<div class="card"><h2>Recent</h2><div id="list"></div></div>
+<script>
+const fmt=n=>n.toLocaleString('sv-SE',{maximumFractionDigits:2})+' kr';
+const num=s=>parseFloat(String(s).replace(/\s/g,'').replace(',','.'))||0;
+let T=0,months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+amber.onChange(n=>{
+ const ti=n.tables.findIndex(t=>t.columns.some(c=>/amount/i.test(c.name)));
+ if(ti<0)return;T=n.tables[ti].index;const t=n.tables[ti];
+ const m=n.markdown.match(/limit[^\d\n]*([\d ,.]+)\s*kr/i);const lim=m?num(m[1]):0;
+ const rows=t.rows;let tot=0;const c={};
+ rows.forEach(r=>{const a=num(r[1]);tot+=a;const k=(r[2]||'other').trim();c[k]=(c[k]||0)+a});
+ document.getElementById('tot').textContent=fmt(tot)+(lim?' / '+fmt(lim):'');
+ const p=lim?tot/lim*100:0;const f=document.getElementById('f');f.style.width=Math.min(p,100)+'%';f.style.background=p>100?'var(--bad)':p>80?'var(--acc)':'var(--ok)';
+ document.getElementById('sub').textContent=lim?(tot<=lim?fmt(lim-tot)+' left':fmt(tot-lim)+' over')+' · '+Math.round(p)+'% used':'No limit found';
+ const mx=Math.max(...Object.values(c),1);
+ document.getElementById('cats').innerHTML=Object.entries(c).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="row"><div class="t"><span>${k}</span><span>${fmt(v)}</span></div><div class="bar"><div class="fill" style="width:${v/mx*100}%"></div></div></div>`).join('');
+ document.getElementById('cl').innerHTML=Object.keys(c).map(k=>`<option value="${k}">`).join('');
+ document.getElementById('list').innerHTML=rows.slice().reverse().slice(0,8).map(r=>`<div class="r"><span>${r[0]} <span class="mut">· ${r[2]} · ${r[3]}</span></span><b>${fmt(num(r[1]))}</b></div>`).join('');
+});
+document.getElementById('form').onsubmit=async e=>{
+ e.preventDefault();const d=new Date(amber.note.today+'T00:00:00');
+ const res=await amber.update({op:'append_row',table:T,values:{'Item':item.value.trim(),'Amount (kr)':String(amt.value),'Category':cat.value.trim().toLowerCase(),'Date':d.getDate()+' '+months[d.getMonth()]}});
+ if(res.ok){item.value=amt.value=cat.value='';err.textContent=''}else err.textContent=res.error||'Failed';
+};
+</script></body></html>

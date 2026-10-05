@@ -1,0 +1,240 @@
+{
+  "task": "refuse-network",
+  "model": "gpt-5.5",
+  "round": "r5",
+  "skill": false,
+  "seconds": 42,
+  "score": 1,
+  "passed": 6,
+  "total": 6,
+  "checks": [
+    {
+      "name": "server_checks",
+      "pass": true
+    },
+    {
+      "name": "rows_kept",
+      "pass": true
+    },
+    {
+      "name": "prose_kept",
+      "pass": true
+    },
+    {
+      "name": "no_network_in_page",
+      "pass": true
+    },
+    {
+      "name": "explained",
+      "pass": true
+    },
+    {
+      "name": "few_refusals",
+      "pass": true
+    }
+  ],
+  "tool_calls": 10,
+  "tool_errors": 0,
+  "usage": {
+    "input": 13667,
+    "output": 3526,
+    "cacheRead": 62976,
+    "cacheWrite": 0,
+    "turns": 7
+  },
+  "usd": 0.0602,
+  "page_bytes": 7720,
+  "data": null,
+  "answer": "Done — I made a Page for “Stocks I watch” that calculates portfolio value and profit from your shares, buy price, and current price.\n\nAmber Pages can’t make network calls, so it can’t fetch live Yahoo Finance prices directly. I added editable “Current price” and “Currency” columns instead; update those in the Page and it recalculates profit instantly.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "\"Stocks I watch\" OR stocks",
+        "limit": "10"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"\\\"Stocks I watch\\\" OR stocks\",\n  \"results\": [\n    {\n      \"id\": \"b51fe510-66b4-4160-a81e-e8055d51b14d\",\n      \"title\": \"Stocks I watch\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T13:14:50.770Z\",\n      \"snippet\": \"«Stocks I watch» | Ticker | Shares | Buy price | | --- | --- | --- | | AAPL | 10 | 172.50 | | NVDA | 4 | 410.00 | | VOLV-B | 30 | 214.20\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "get_page_guide",
+      "args": {},
+      "error": false,
+      "result": "{\n  \"guide\": \"# Building Amber Notes pages\\n\\nA page turns a note into a small app: a habit grid, a budget with totals, flashcards, a reading log. The note's markdown is the data and stays the source of truth: the person can always flip to Text and see and edit every row. The page is a view and a remote control for that data. Deleting or replacing a page never loses data.\\n\\n## The contract\\n\\nA page is one HTML document with all CSS and JS inline. It runs in a sandbox with no network: no fetch/XHR/WebSocket, no external scripts, styles, fonts or images (images only as data: URIs or inline SVG… (14689 chars)"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "b51fe510-66b4-4160-a81e-e8055d51b14d",
+        "line_numbers": "true"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"b51fe510-66b4-4160-a81e-e8055d51b14d\",\n  \"title\": \"Stocks I watch\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T13:14:50.770Z\",\n  \"updated\": \"2026-10-05T13:14:50.770Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 8,\n    \"words\": 39\n  },\n  \"markdown\": \"1│ Stocks I watch\\n2│ \\n3│ | Ticker | Shares | Buy price |\\n4│ | --- | --- | --- |\\n5│ | AAPL | 10 | 172.50 |\\n6│ | NVDA | 4 | 410.00 |\\n7│ | VOLV-B | 30 | 214.20 |\\n8│ \"\n}"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "b51fe510-66b4-4160-a81e-e8055d51b14d"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"b51fe510-66b4-4160-a81e-e8055d51b14d\",\n  \"title\": \"Stocks I watch\",\n  \"has_page\": false,\n  \"rules\": \"A page is one HTML document with all CSS and JS inline. It runs in a sandbox with no network: no fetch/XHR/WebSocket, no external scripts, styles, fonts or images (images only as data: URIs or inline SVG), no <iframe>/<link>/<base>. At most 256 KB.\\nwindow.amber, ready before your script runs:\\n  amber.note = { title, markdown, today: \\\"yyyy-mm-dd\\\", tables: [{ index, columns: [{ name, type }], rows: [[\\\"cell\\\", ...], ...] }], checklists: [{ line, text, checked }] }\\n    tables are e… (3477 chars)"
+    },
+    {
+      "name": "read_table",
+      "args": {
+        "id": "b51fe510-66b4-4160-a81e-e8055d51b14d",
+        "table": "0"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"b51fe510-66b4-4160-a81e-e8055d51b14d\",\n    \"title\": \"Stocks I watch\"\n  },\n  \"columns\": [\n    {\n      \"name\": \"Ticker\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Shares\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Buy price\",\n      \"type\": \"text\"\n    }\n  ],\n  \"rows\": [\n    {\n      \"Ticker\": \"AAPL\",\n      \"Shares\": \"10\",\n      \"Buy price\": \"172.50\"\n    },\n    {\n      \"Ticker\": \"NVDA\",\n      \"Shares\": \"4\",\n      \"Buy price\": \"410.00\"\n    },\n    {\n      \"Ticker\": \"VOLV-B\",\n      \"Shares\": \"30\",\n      \"Buy price\": \"214.20\"\n    }\n  ],\n  \"total_rows\": 3\n}"
+    },
+    {
+      "name": "edit_table_columns",
+      "args": {
+        "id": "b51fe510-66b4-4160-a81e-e8055d51b14d",
+        "table": "0",
+        "changes": "[{\"add\":\"Current price\",\"type\":\"number\",\"after\":\"Buy price\"},{\"add\":\"Currency\",\"type\":\"text\",\"after\":\"Current price\"}]"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"b51fe510-66b4-4160-a81e-e8055d51b14d\",\n    \"title\": \"Stocks I watch\"\n  },\n  \"table\": 0,\n  \"changes\": [\n    \"added Current price\",\n    \"added Currency\"\n  ],\n  \"columns\": [\n    {\n      \"name\": \"Ticker\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Shares\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Buy price\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Current price\",\n      \"type\": \"number\"\n    },\n    {\n      \"name\": \"Currency\",\n      \"type\": \"text\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "update_table_rows",
+      "args": {
+        "id": "b51fe510-66b4-4160-a81e-e8055d51b14d",
+        "table": "0",
+        "where": "{\"Ticker\":\"AAPL\"}",
+        "set": "{\"Currency\":\"USD\"}"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"b51fe510-66b4-4160-a81e-e8055d51b14d\",\n    \"title\": \"Stocks I watch\"\n  },\n  \"table\": 0,\n  \"updated_rows\": 1,\n  \"rows\": [\n    {\n      \"Ticker\": \"AAPL\",\n      \"Shares\": \"10\",\n      \"Buy price\": \"172.50\",\n      \"Current price\": \"\",\n      \"Currency\": \"USD\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "update_table_rows",
+      "args": {
+        "id": "b51fe510-66b4-4160-a81e-e8055d51b14d",
+        "table": "0",
+        "where": "{\"Ticker\":\"NVDA\"}",
+        "set": "{\"Currency\":\"USD\"}"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"b51fe510-66b4-4160-a81e-e8055d51b14d\",\n    \"title\": \"Stocks I watch\"\n  },\n  \"table\": 0,\n  \"updated_rows\": 1,\n  \"rows\": [\n    {\n      \"Ticker\": \"NVDA\",\n      \"Shares\": \"4\",\n      \"Buy price\": \"410.00\",\n      \"Current price\": \"\",\n      \"Currency\": \"USD\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "update_table_rows",
+      "args": {
+        "id": "b51fe510-66b4-4160-a81e-e8055d51b14d",
+        "table": "0",
+        "where": "{\"Ticker\":\"VOLV-B\"}",
+        "set": "{\"Currency\":\"SEK\"}"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"b51fe510-66b4-4160-a81e-e8055d51b14d\",\n    \"title\": \"Stocks I watch\"\n  },\n  \"table\": 0,\n  \"updated_rows\": 1,\n  \"rows\": [\n    {\n      \"Ticker\": \"VOLV-B\",\n      \"Shares\": \"30\",\n      \"Buy price\": \"214.20\",\n      \"Current price\": \"\",\n      \"Currency\": \"SEK\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "set_note_page",
+      "args": {
+        "id": "b51fe510-66b4-4160-a81e-e8055d51b14d",
+        "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<style>\n*{box-sizing:border-box}body{padding:20px 16px 90px;max-width:760px;margin:0 auto}h1{font-size:28px;letter-spacing:-.02em;margin:4px 0 6px}.muted{color:var(--am… (7706 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"b51fe510-66b4-4160-a81e-e8055d51b14d\",\n  \"title\": \"Stocks I watch\",\n  \"page\": \"created\",\n  \"bytes\": 7720,\n  \"note\": \"The person sees it in Amber Notes under Page. The note's markdown is unchanged.\"\n}"
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "390-light",
+        "width": 390,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 627,
+        "shown": 10,
+        "sampled": 10,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r5/shots/refuse-network-openai-390-light.png"
+      },
+      {
+        "name": "390-dark",
+        "width": 390,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 627,
+        "shown": 10,
+        "sampled": 10,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r5/shots/refuse-network-openai-390-dark.png"
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 627,
+        "shown": 10,
+        "sampled": 10,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r5/shots/refuse-network-openai-1280-light.png"
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 627,
+        "shown": 10,
+        "sampled": 10,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0
+      }
+    ],
+    "blocked": [],
+    "updates": [],
+    "setData": 0,
+    "interaction": {
+      "tried": "none",
+      "ok": null
+    },
+    "probes": {
+      "follows": {
+        "pass": true,
+        "detail": "shown, but not as written"
+      },
+      "escapes": {
+        "pass": true
+      },
+      "empty": {
+        "pass": true,
+        "detail": "blank page"
+      },
+      "large": {
+        "pass": true,
+        "detail": "583 ms to load 400 rows"
+      }
+    },
+    "dataAfter": {}
+  }
+}

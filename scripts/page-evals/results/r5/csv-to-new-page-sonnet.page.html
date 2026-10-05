@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { box-sizing: border-box; }
+body { padding: 20px 18px 96px; max-width: 680px; margin: 0 auto; }
+h1 { font-size: 28px; letter-spacing: -.02em; margin: 4px 0 16px; }
+h2 { font-size: 15px; margin: 0; padding: 14px 16px 4px; color: var(--amber-text-secondary); font-weight: 600; }
+.card { background: var(--amber-surface); border-radius: var(--amber-radius); border: 1px solid var(--amber-separator); margin-bottom: 16px; overflow: hidden; }
+.hero { padding: 16px; }
+.big { font-size: 40px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.big small { font-size: 16px; font-weight: 500; color: var(--amber-text-secondary); }
+.bar { height: 10px; border-radius: 5px; background: var(--amber-fill); margin-top: 10px; overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--amber-accent); }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
+.stat { background: var(--amber-surface); border: 1px solid var(--amber-separator); border-radius: var(--amber-radius); padding: 12px; }
+.stat b { display: block; font-size: 20px; font-variant-numeric: tabular-nums; }
+.muted { color: var(--amber-text-secondary); font-size: 13px; }
+.chart { display: flex; align-items: flex-end; gap: 6px; height: 140px; padding: 12px 16px 0; }
+.col { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; min-width: 0; }
+.col .v { font-size: 11px; font-variant-numeric: tabular-nums; color: var(--amber-text-secondary); }
+.col .b { width: 100%; background: var(--amber-accent); border-radius: 4px 4px 0 0; min-height: 2px; }
+.labels { display: flex; gap: 6px; padding: 4px 16px 12px; }
+.labels span { flex: 1; text-align: center; font-size: 11px; color: var(--amber-text-secondary); }
+.row { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-top: 1px solid var(--amber-separator); min-height: 48px; }
+.grow { flex: 1; min-width: 0; }
+.num { font-variant-numeric: tabular-nums; font-weight: 600; }
+form { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px; }
+label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--amber-text-secondary); flex: 1 1 100px; }
+input { font: inherit; color: var(--amber-text); background: var(--amber-fill); border: 0; border-radius: var(--amber-radius-small); padding: 10px 12px; min-height: 44px; width: 100%; }
+button { font: inherit; font-weight: 600; min-height: 44px; padding: 0 16px; border: 0; border-radius: var(--amber-radius-small); background: var(--amber-accent); color: var(--amber-on-accent); align-self: flex-end; }
+.err { color: var(--amber-danger); padding: 0 16px 12px; }
+.empty { padding: 28px 16px; text-align: center; color: var(--amber-text-secondary); }
+.goal { display: flex; align-items: center; gap: 8px; padding: 0 16px 14px; }
+.goal input { width: 90px; }
+</style>
+</head>
+<body>
+<main id="app" aria-live="polite"></main>
+<script>
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+const num = s => { const n = parseFloat(String(s).replace(/\s/g, "").replace(",", ".")); return isNaN(n) ? null : n; };
+const fci = (t, re) => t.columns.findIndex(c => re.test(c.name));
+let error = "";
+const D = s => { const [y,m,d] = s.split("-").map(Number); return Date.UTC(y, m-1, d); };
+const iso = ms => new Date(ms).toISOString().slice(0,10);
+const monday = s => { const ms = D(s); const wd = (new Date(ms).getUTCDay() + 6) % 7; return ms - wd * 864e5; };
+const pace = (min, km) => { if (!km) return "–"; const p = min / km; let m = Math.floor(p), s = Math.round((p - m) * 60); if (s === 60) { m++; s = 0; } return m + ":" + String(s).padStart(2, "0"); };
+const fmtDay = s => new Date(D(s)).toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" });
+
+function render(note, data) {
+  const app = document.getElementById("app");
+  const t = note.tables.find(t => fci(t, /date/i) >= 0 && fci(t, /dist|km/i) >= 0);
+  if (!t) { app.innerHTML = `<h1>${esc(note.title)}</h1><div class="card empty">Add a table with date and distance (km) columns to the note.</div>`; return; }
+  const ci = { d: fci(t, /date/i), k: fci(t, /dist|km/i), m: fci(t, /time|min/i), h: fci(t, /hr|heart/i) };
+  const runs = t.rows.map((r, i) => ({ i, date: r[ci.d], km: num(r[ci.k]), min: ci.m >= 0 ? num(r[ci.m]) : null, hr: ci.h >= 0 ? num(r[ci.h]) : null }))
+    .filter(r => /^\d{4}-\d{2}-\d{2}$/.test(r.date) && r.km !== null).sort((a, b) => a.date < b.date ? -1 : 1);
+  const goal = Number(data.weeklyKm) || 20;
+  const today = note.today;
+  const thisWeek = monday(today);
+  const weeks = [];
+  for (let w = 7; w >= 0; w--) weeks.push({ start: thisWeek - w * 7 * 864e5, km: 0 });
+  runs.forEach(r => { const w = weeks.find(w => w.start === monday(r.date)); if (w) w.km += r.km; });
+  const cur = weeks[7].km;
+  const maxKm = Math.max(goal, ...weeks.map(w => w.km), 1);
+  const totKm = runs.reduce((a, r) => a + r.km, 0);
+  const timed = runs.filter(r => r.min !== null);
+  const pk = timed.reduce((a, r) => a + r.km, 0), pm = timed.reduce((a, r) => a + r.min, 0);
+  const hrs = runs.filter(r => r.hr !== null);
+  const avgHr = hrs.length ? Math.round(hrs.reduce((a, r) => a + r.hr, 0) / hrs.length) : null;
+  const longest = runs.reduce((a, r) => Math.max(a, r.km), 0);
+  const latest = runs.slice().reverse().slice(0, 10);
+
+  app.innerHTML = `
+    <h1>${esc(note.title)}</h1>
+    <div class="card"><div class="hero">
+      <div class="muted">This week</div>
+      <div class="big">${cur.toFixed(1)} <small>/ ${goal} km</small></div>
+      <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="${goal}" aria-valuenow="${cur.toFixed(1)}"><i style="width:${Math.min(100, cur / goal * 100)}%"></i></div>
+    </div>
+    <div class="goal"><label for="g" style="flex:0 0 auto;flex-direction:row;align-items:center;gap:8px">Weekly goal (km)</label><input id="g" type="number" min="1" step="1" value="${goal}"></div></div>
+    <div class="stats">
+      <div class="stat"><b>${runs.length}</b><span class="muted">runs</span></div>
+      <div class="stat"><b>${totKm.toFixed(1)}</b><span class="muted">total km</span></div>
+      <div class="stat"><b>${longest.toFixed(1)}</b><span class="muted">longest km</span></div>
+      <div class="stat"><b>${pace(pm, pk)}</b><span class="muted">avg pace /km</span></div>
+      <div class="stat"><b>${avgHr ?? "–"}</b><span class="muted">avg HR</span></div>
+      <div class="stat"><b>${runs.length ? (totKm / runs.length).toFixed(1) : "–"}</b><span class="muted">avg km/run</span></div>
+    </div>
+    <div class="card"><h2>Weekly distance (km)</h2>
+      <div class="chart">${weeks.map(w => `<div class="col"><span class="v">${w.km ? w.km.toFixed(1) : ""}</span><div class="b" style="height:${w.km / maxKm * 100 * 0.8}%"></div></div>`).join("")}</div>
+      <div class="labels">${weeks.map(w => `<span>${esc(fmtDay(iso(w.start)))}</span>`).join("")}</div>
+    </div>
+    <div class="card"><h2>Latest runs</h2>
+      ${latest.length ? latest.map(r => `<div class="row"><div class="grow"><div class="num">${esc(fmtDay(r.date))}</div><div class="muted">${r.min !== null ? r.min + " min · " + pace(r.min, r.km) + " /km" : ""}${r.hr !== null ? " · " + r.hr + " bpm" : ""}</div></div><div class="num">${r.km.toFixed(1)} km</div></div>`).join("") : '<div class="empty">No runs yet.</div>'}
+    </div>
+    <div class="card"><h2>Log a run</h2>
+      <form id="add">
+        <label>Date<input name="d" type="date" value="${esc(today)}" required></label>
+        <label>Distance (km)<input name="k" type="number" step="0.1" min="0" required></label>
+        <label>Time (min)<input name="m" type="number" step="1" min="0"></label>
+        <label>Avg HR<input name="h" type="number" step="1" min="0"></label>
+        <button>Add run</button>
+      </form>
+      <div class="err" role="alert">${esc(error)}</div>
+    </div>`;
+
+  document.getElementById("g").onchange = e => { const v = Number(e.target.value); if (v > 0) amber.setData({ weeklyKm: v }); };
+  document.getElementById("add").onsubmit = async e => {
+    e.preventDefault();
+    const f = new FormData(e.target);
+    const values = {};
+    values[t.columns[ci.d].name] = f.get("d");
+    values[t.columns[ci.k].name] = f.get("k");
+    if (ci.m >= 0 && f.get("m")) values[t.columns[ci.m].name] = f.get("m");
+    if (ci.h >= 0 && f.get("h")) values[t.columns[ci.h].name] = f.get("h");
+    const r = await amber.update({ op: "append_row", table: t.index, values });
+    error = r.ok ? "" : r.error;
+    if (!r.ok) render(amber.note, amber.data);
+  };
+}
+amber.onChange(render);
+</script>
+</body>
+</html>

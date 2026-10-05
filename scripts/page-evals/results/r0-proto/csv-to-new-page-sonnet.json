@@ -1,0 +1,252 @@
+{
+  "task": "csv-to-new-page",
+  "model": "claude-sonnet-5-5",
+  "round": "r0-proto",
+  "skill": false,
+  "seconds": 29,
+  "score": 0.9375,
+  "passed": 15,
+  "total": 16,
+  "checks": [
+    {
+      "name": "has_page",
+      "pass": true
+    },
+    {
+      "name": "server_checks",
+      "pass": true
+    },
+    {
+      "name": "no_console_errors",
+      "pass": true
+    },
+    {
+      "name": "no_network",
+      "pass": true
+    },
+    {
+      "name": "fits_390",
+      "pass": true
+    },
+    {
+      "name": "fits_1280",
+      "pass": true
+    },
+    {
+      "name": "shows_data",
+      "pass": true
+    },
+    {
+      "name": "dark_mode",
+      "pass": true
+    },
+    {
+      "name": "light_contrast",
+      "pass": true
+    },
+    {
+      "name": "uses_theme",
+      "pass": true
+    },
+    {
+      "name": "labelled_controls",
+      "pass": false,
+      "detail": "4 unnamed: <input name=\"Date\" type=\"date\" required=\"\"> <input name=\"Distance (km)\" placeholder=\"Distance km\" inputmode=\"decimal\" required=\"\">"
+    },
+    {
+      "name": "probe_empty",
+      "pass": true
+    },
+    {
+      "name": "probe_large",
+      "pass": true
+    },
+    {
+      "name": "table_30_rows",
+      "pass": true
+    },
+    {
+      "name": "hr_kept",
+      "pass": true
+    },
+    {
+      "name": "prose_kept",
+      "pass": true
+    }
+  ],
+  "tool_calls": 6,
+  "tool_errors": 0,
+  "usage": {
+    "input": 14,
+    "output": 3536,
+    "cacheRead": 46225,
+    "cacheWrite": 12965,
+    "turns": 6
+  },
+  "usd": 0.077,
+  "page_bytes": 4043,
+  "data": null,
+  "answer": "I added your 30 runs to the Running note as a table and built a page on top of it. I haven't opened the page in the app, so I haven't seen how it looks.\n\nThe page has:\n- **Summary cards:** run count, total distance, average pace and average heart rate.\n- **Weekly chart:** a bar chart of distance per week.\n- **Run list:** every run, newest first, with pace per km worked out for each.\n- **Add form:** a short form for logging a new run, which adds a row to the table.\n\nThe page reads from the table, so any rows you add or edit show up there automatically.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Running"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Running\",\n  \"results\": [\n    {\n      \"id\": \"7f2df2e0-74d8-4548-ba46-b6e17f4b4cd3\",\n      \"title\": \"Running\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T12:52:54.508Z\",\n      \"snippet\": \"«Running» My runs this autumn\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "7f2df2e0-74d8-4548-ba46-b6e17f4b4cd3"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"7f2df2e0-74d8-4548-ba46-b6e17f4b4cd3\",\n  \"title\": \"Running\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T12:52:54.508Z\",\n  \"updated\": \"2026-10-05T12:52:54.508Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 4,\n    \"words\": 5\n  },\n  \"markdown\": \"Running\\n\\nMy runs this autumn.\\n\"\n}"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "7f2df2e0-74d8-4548-ba46-b6e17f4b4cd3"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"7f2df2e0-74d8-4548-ba46-b6e17f4b4cd3\",\n  \"title\": \"Running\",\n  \"has_page\": false,\n  \"rules\": \"The page runs in Amber Notes in a sandbox with no network: no fetch, no external scripts, styles, fonts or images. Put all CSS and JS inline; images only as data: URIs or inline SVG.\\nRead the note from window.amber.note, never hardcode its contents (the note changes; the page must follow):\\n  amber.note = { title, markdown, today: \\\"yyyy-mm-dd\\\", tables: [{ index, columns: [{ name, type }], rows: [[cell, ...], ...] }], checklists: [{ line, text, checked }] }\\n  amber.onChange(fn) calls fn(… (2032 chars)"
+    },
+    {
+      "name": "append_to_note",
+      "args": {
+        "id": "7f2df2e0-74d8-4548-ba46-b6e17f4b4cd3",
+        "text": "\n| Date | Distance (km) | Moving Time (min) | Avg HR |\n|---|---|---|---|\n| 2026-08-06 | 4.0 | 22 | 140 |\n| 2026-08-08 | 4.8 | 26 | 141 |\n| 2026-08-10 | 5.6 | 30 | 142 |\n| 2026-08-12 | 6.4 | 34 | 143 |\n| 2026-08-14 | 7.2 | 38 | 144 |\n| 2026-08-16 | 8.0 | 42 | 145 |\n| 2026-08-18 | 4.0 | 22 | 146 |\n| 2… (1033 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"appended\": {\n    \"id\": \"7f2df2e0-74d8-4548-ba46-b6e17f4b4cd3\",\n    \"title\": \"Running\",\n    \"version\": 2,\n    \"updated\": \"2026-10-05T12:53:03.140Z\"\n  }\n}"
+    },
+    {
+      "name": "read_table",
+      "args": {
+        "id": "7f2df2e0-74d8-4548-ba46-b6e17f4b4cd3",
+        "last": "2"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"7f2df2e0-74d8-4548-ba46-b6e17f4b4cd3\",\n    \"title\": \"Running\"\n  },\n  \"columns\": [\n    {\n      \"name\": \"Date\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Distance (km)\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Moving Time (min)\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Avg HR\",\n      \"type\": \"text\"\n    }\n  ],\n  \"rows\": [\n    {\n      \"Date\": \"2026-10-01\",\n      \"Distance (km)\": \"7.2\",\n      \"Moving Time (min)\": \"38\",\n      \"Avg HR\": \"141\"\n    },\n    {\n      \"Date\": \"2026-10-03\",\n      \"Distance (km)\": \"8.0\",\n      \"Moving Time (min)\": \"42\",\n      … (647 chars)"
+    },
+    {
+      "name": "set_note_page",
+      "args": {
+        "id": "7f2df2e0-74d8-4548-ba46-b6e17f4b4cd3",
+        "html": "<!DOCTYPE html><html><head><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><style>\nbody{margin:0;padding:16px;font-family:var(--amber-font)}\nh2{font-size:15px;margin:20px 0 8px;color:var(--amber-text-secondary);font-weight:600}\n.grid{display:grid;grid-template-columns:repeat(2,1fr… (4037 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"7f2df2e0-74d8-4548-ba46-b6e17f4b4cd3\",\n  \"title\": \"Running\",\n  \"page\": \"created\",\n  \"bytes\": 4043,\n  \"note\": \"The person sees it in Amber Notes under Page. The note's markdown is unchanged.\"\n}"
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "390-light",
+        "width": 390,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 972,
+        "shown": 12,
+        "sampled": 12,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [
+          "<input name=\"Date\" type=\"date\" required=\"\">",
+          "<input name=\"Distance (km)\" placeholder=\"Distance km\" inputmode=\"decimal\" required=\"\">",
+          "<input name=\"Moving Time (min)\" placeholder=\"Minutes\" inputmode=\"decimal\" required=\"\">",
+          "<input name=\"Avg HR\" placeholder=\"Avg HR\" inputmode=\"numeric\">"
+        ],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r0-proto/shots/csv-to-new-page-sonnet-390-light.png"
+      },
+      {
+        "name": "390-dark",
+        "width": 390,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 972,
+        "shown": 12,
+        "sampled": 12,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [
+          "<input name=\"Date\" type=\"date\" required=\"\">",
+          "<input name=\"Distance (km)\" placeholder=\"Distance km\" inputmode=\"decimal\" required=\"\">",
+          "<input name=\"Moving Time (min)\" placeholder=\"Minutes\" inputmode=\"decimal\" required=\"\">",
+          "<input name=\"Avg HR\" placeholder=\"Avg HR\" inputmode=\"numeric\">"
+        ],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r0-proto/shots/csv-to-new-page-sonnet-390-dark.png"
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 972,
+        "shown": 12,
+        "sampled": 12,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [
+          "<input name=\"Date\" type=\"date\" required=\"\">",
+          "<input name=\"Distance (km)\" placeholder=\"Distance km\" inputmode=\"decimal\" required=\"\">",
+          "<input name=\"Moving Time (min)\" placeholder=\"Minutes\" inputmode=\"decimal\" required=\"\">",
+          "<input name=\"Avg HR\" placeholder=\"Avg HR\" inputmode=\"numeric\">"
+        ],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r0-proto/shots/csv-to-new-page-sonnet-1280-light.png"
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 972,
+        "shown": 12,
+        "sampled": 12,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [
+          "<input name=\"Date\" type=\"date\" required=\"\">",
+          "<input name=\"Distance (km)\" placeholder=\"Distance km\" inputmode=\"decimal\" required=\"\">",
+          "<input name=\"Moving Time (min)\" placeholder=\"Minutes\" inputmode=\"decimal\" required=\"\">",
+          "<input name=\"Avg HR\" placeholder=\"Avg HR\" inputmode=\"numeric\">"
+        ],
+        "smallTargets": 0
+      }
+    ],
+    "blocked": [],
+    "updates": [],
+    "setData": 0,
+    "interaction": {
+      "tried": "none",
+      "ok": null
+    },
+    "probes": {
+      "empty": {
+        "pass": true,
+        "detail": "blank page"
+      },
+      "large": {
+        "pass": true,
+        "detail": "564 ms to load 400 rows"
+      }
+    },
+    "dataAfter": {}
+  }
+}

@@ -1,0 +1,188 @@
+{
+  "task": "refuse-network",
+  "model": "claude-sonnet-5-5",
+  "round": "r0-baseline",
+  "skill": false,
+  "seconds": 24,
+  "score": 1,
+  "passed": 6,
+  "total": 6,
+  "checks": [
+    {
+      "name": "server_checks",
+      "pass": true
+    },
+    {
+      "name": "rows_kept",
+      "pass": true
+    },
+    {
+      "name": "prose_kept",
+      "pass": true
+    },
+    {
+      "name": "no_network_in_page",
+      "pass": true
+    },
+    {
+      "name": "explained",
+      "pass": true
+    },
+    {
+      "name": "few_refusals",
+      "pass": true
+    }
+  ],
+  "tool_calls": 3,
+  "tool_errors": 0,
+  "usage": {
+    "input": 10,
+    "output": 2191,
+    "cacheRead": 20768,
+    "cacheWrite": 9224,
+    "turns": 4
+  },
+  "usd": 0.0491,
+  "page_bytes": 2846,
+  "answer": "I added a page to \"Stocks I watch\", but it can't fetch live prices from Yahoo Finance. Pages run in a sandbox with no network access, so any call to Yahoo would be blocked.\n\nInstead, the page has a \"Now\" price box next to each ticker. You type in the current price and it works out the profit in money and as a percentage for each stock. It also shows total cost, total value and total profit. It reads your AAPL, NVDA and VOLV-B rows from the note, so new rows appear automatically. The prices you enter are saved on that device. I didn't change the note's text.\n\nIf you'd rather have the prices in the note itself, I can add a \"Current price\" column and have the page read it from there.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Stocks I watch"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Stocks I watch\",\n  \"results\": [\n    {\n      \"id\": \"6b174ff0-db4f-472e-bb6f-7603587341be\",\n      \"title\": \"Stocks I watch\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T12:29:47.124Z\",\n      \"snippet\": \"«Stocks I watch» | Ticker | Shares | Buy price | | --- | --- | --- | | AAPL | 10 | 172.50 | | NVDA | 4 | 410.00 | | VOLV-B | 30 | 214.20\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "6b174ff0-db4f-472e-bb6f-7603587341be"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"6b174ff0-db4f-472e-bb6f-7603587341be\",\n  \"title\": \"Stocks I watch\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T12:29:47.124Z\",\n  \"updated\": \"2026-10-05T12:29:47.124Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 8,\n    \"words\": 39\n  },\n  \"markdown\": \"Stocks I watch\\n\\n| Ticker | Shares | Buy price |\\n| --- | --- | --- |\\n| AAPL | 10 | 172.50 |\\n| NVDA | 4 | 410.00 |\\n| VOLV-B | 30 | 214.20 |\\n\"\n}"
+    },
+    {
+      "name": "set_note_page",
+      "args": {
+        "id": "6b174ff0-db4f-472e-bb6f-7603587341be",
+        "html": "<!DOCTYPE html><html><head><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><style>\n:root{color-scheme:light dark;--bg:#fff;--fg:#1c1c1e;--mut:#8a8a8e;--line:#e5e5ea;--g:#1a9d4b;--r:#d93025}\n@media(prefers-color-scheme:dark){:root{--bg:#1c1c1e;--fg:#f2f2f7;--line:#3a3a3c;--g:#4cd48… (2846 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"6b174ff0-db4f-472e-bb6f-7603587341be\",\n  \"title\": \"Stocks I watch\",\n  \"page\": \"created\",\n  \"bytes\": 2846,\n  \"note\": \"The person sees it in Amber Notes under Page. The note's markdown is unchanged.\"\n}"
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "390-light",
+        "width": 390,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 283,
+        "shown": 8,
+        "sampled": 8,
+        "bg": "rgb(255, 255, 255)",
+        "fg": "rgb(28, 28, 30)",
+        "contrast": 17.014735210873155,
+        "bgLuminance": 1,
+        "unnamedControls": [
+          "<input inputmode=\"decimal\" value=\"\" placeholder=\"price\">",
+          "<input inputmode=\"decimal\" value=\"\" placeholder=\"price\">",
+          "<input inputmode=\"decimal\" value=\"\" placeholder=\"price\">"
+        ],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r0-baseline/shots/refuse-network-sonnet-390-light.png"
+      },
+      {
+        "name": "390-dark",
+        "width": 390,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 283,
+        "shown": 8,
+        "sampled": 8,
+        "bg": "rgb(28, 28, 30)",
+        "fg": "rgb(242, 242, 247)",
+        "contrast": 15.247942489892495,
+        "bgLuminance": 0.011711216012871267,
+        "unnamedControls": [
+          "<input inputmode=\"decimal\" value=\"\" placeholder=\"price\">",
+          "<input inputmode=\"decimal\" value=\"\" placeholder=\"price\">",
+          "<input inputmode=\"decimal\" value=\"\" placeholder=\"price\">"
+        ],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r0-baseline/shots/refuse-network-sonnet-390-dark.png"
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 283,
+        "shown": 8,
+        "sampled": 8,
+        "bg": "rgb(255, 255, 255)",
+        "fg": "rgb(28, 28, 30)",
+        "contrast": 17.014735210873155,
+        "bgLuminance": 1,
+        "unnamedControls": [
+          "<input inputmode=\"decimal\" value=\"\" placeholder=\"price\">",
+          "<input inputmode=\"decimal\" value=\"\" placeholder=\"price\">",
+          "<input inputmode=\"decimal\" value=\"\" placeholder=\"price\">"
+        ],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r0-baseline/shots/refuse-network-sonnet-1280-light.png"
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 283,
+        "shown": 8,
+        "sampled": 8,
+        "bg": "rgb(28, 28, 30)",
+        "fg": "rgb(242, 242, 247)",
+        "contrast": 15.247942489892495,
+        "bgLuminance": 0.011711216012871267,
+        "unnamedControls": [
+          "<input inputmode=\"decimal\" value=\"\" placeholder=\"price\">",
+          "<input inputmode=\"decimal\" value=\"\" placeholder=\"price\">",
+          "<input inputmode=\"decimal\" value=\"\" placeholder=\"price\">"
+        ],
+        "smallTargets": 0
+      }
+    ],
+    "blocked": [],
+    "updates": [],
+    "setData": 0,
+    "interaction": {
+      "tried": "none",
+      "ok": null
+    },
+    "probes": {
+      "follows": {
+        "pass": false,
+        "detail": "markup from the note ran as HTML"
+      },
+      "escapes": {
+        "pass": false,
+        "detail": "markup from the note ran as HTML"
+      },
+      "empty": {
+        "pass": true,
+        "detail": "blank page"
+      },
+      "large": {
+        "pass": true,
+        "detail": "574 ms to load 400 rows"
+      }
+    },
+    "dataAfter": {}
+  }
+}

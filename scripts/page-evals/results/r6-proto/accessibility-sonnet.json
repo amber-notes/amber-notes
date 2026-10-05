@@ -1,0 +1,214 @@
+{
+  "task": "accessibility",
+  "model": "claude-sonnet-5-5",
+  "round": "r6-proto",
+  "skill": false,
+  "seconds": 38,
+  "score": 1,
+  "passed": 16,
+  "total": 16,
+  "checks": [
+    {
+      "name": "has_page",
+      "pass": true
+    },
+    {
+      "name": "server_checks",
+      "pass": true
+    },
+    {
+      "name": "no_console_errors",
+      "pass": true
+    },
+    {
+      "name": "no_network",
+      "pass": true
+    },
+    {
+      "name": "fits_390",
+      "pass": true
+    },
+    {
+      "name": "fits_1280",
+      "pass": true
+    },
+    {
+      "name": "shows_data",
+      "pass": true
+    },
+    {
+      "name": "dark_mode",
+      "pass": true
+    },
+    {
+      "name": "light_contrast",
+      "pass": true
+    },
+    {
+      "name": "uses_theme",
+      "pass": true
+    },
+    {
+      "name": "labelled_controls",
+      "pass": true
+    },
+    {
+      "name": "edits_from_page",
+      "pass": true
+    },
+    {
+      "name": "prose_kept",
+      "pass": true
+    },
+    {
+      "name": "page_changed",
+      "pass": true
+    },
+    {
+      "name": "items_kept",
+      "pass": true
+    },
+    {
+      "name": "still_a_checklist",
+      "pass": true
+    }
+  ],
+  "tool_calls": 4,
+  "tool_errors": 0,
+  "usage": {
+    "input": 10,
+    "output": 3432,
+    "cacheRead": 27067,
+    "cacheWrite": 13943,
+    "turns": 4
+  },
+  "usd": 0.0746,
+  "page_bytes": 4817,
+  "data": null,
+  "answer": "I rebuilt the page on your Lisbon trip packing note so it works with VoiceOver, and you can now add items from the page. I haven't tested it with VoiceOver or in the app, so it's worth a quick try.\n\n**Accessibility**\n- **Checkboxes:** Each item is a real checkbox with its name as the label. VoiceOver reads it as \"Passport, checkbox, unchecked\". The old page used plain boxes with no labels.\n- **Headings:** Clothes, Documents and Tech are proper headings, so your partner can jump between them.\n- **Progress:** The page shows how many items are packed, for example \"1 of 9 items packed\".\n- **Spoken feedback:** Ticking or adding an item is announced, for example \"Passport packed\" or \"Socks added to Clothes\". Errors are announced too.\n- **Focus and targets:** Focus stays on the item after you tick it. Every control is at least 44 px tall, with a clear focus outline.\n- **Colours:** The page uses the app's own colours, so light and dark mode both work.\n\n**Adding items**\n- There's an \"Add an item\" form with a labelled text field and a Section dropdown. The Add item button, or Enter, adds the item as a new `- [ ]` line in that section of the note.\n- The old page's add button only said \"tell Claude\" and didn't add anything.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Lisbon packing"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Lisbon packing\",\n  \"results\": [\n    {\n      \"id\": \"e9435612-7d79-4359-9a53-d8c3a1508763\",\n      \"title\": \"Lisbon trip packing\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T13:27:07.021Z\",\n      \"snippet\": \"«Lisbon» trip «packing» ## Clothes - [ ] T-shirts x4 - [ ] Linen shorts - [ ] Rain jacket - [x] Sneakers ## Documents - [ ] Passport - [ ] Boarding passes - [ ] Travel insurance card ## Tech - [ ] Phone charger - [ ] Adapter\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "e9435612-7d79-4359-9a53-d8c3a1508763",
+        "line_numbers": "true"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"e9435612-7d79-4359-9a53-d8c3a1508763\",\n  \"title\": \"Lisbon trip packing\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T13:27:07.021Z\",\n  \"updated\": \"2026-10-05T13:27:07.021Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"has_page\": true,\n  \"outline\": {\n    \"headings\": [\n      {\n        \"line\": 3,\n        \"level\": 2,\n        \"text\": \"Clothes\"\n      },\n      {\n        \"line\": 9,\n        \"level\": 2,\n        \"text\": \"Documents\"\n      },\n      {\n        \"line\": 14,\n        \"level\": 2,\n        \"text\": \"Tech\"\n      }\n    ],\n    \"chec… (1019 chars)"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "e9435612-7d79-4359-9a53-d8c3a1508763"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"e9435612-7d79-4359-9a53-d8c3a1508763\",\n  \"title\": \"Lisbon trip packing\",\n  \"has_page\": true,\n  \"made_by\": \"Claude\",\n  \"updated\": \"2026-10-05T13:27:07.030Z\",\n  \"rules\": \"The page runs in Amber Notes in a sandbox with no network: no fetch, no external scripts, styles, fonts or images. Put all CSS and JS inline; images only as data: URIs or inline SVG.\\nRead the note from window.amber.note, never hardcode its contents (the note changes; the page must follow):\\n  amber.note = { title, markdown, today: \\\"yyyy-mm-dd\\\", tables: [{ index, columns: [{ name, type }], rows: [[cell, ...], ...] … (4824 chars)"
+    },
+    {
+      "name": "set_note_page",
+      "args": {
+        "id": "e9435612-7d79-4359-9a53-d8c3a1508763",
+        "html": "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Lisbon trip packing</title><style>\nbody{margin:0;font-family:var(--amber-font);color:var(--amber-text);line-height:1.5;font-size:17px}\nmain{max-width:var(--amber-conte… (4817 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"e9435612-7d79-4359-9a53-d8c3a1508763\",\n  \"title\": \"Lisbon trip packing\",\n  \"page\": \"replaced\",\n  \"bytes\": 4817,\n  \"note\": \"The person sees it in Amber Notes under Page. The note's markdown is unchanged. The previous page is kept (get_note_page lists it).\"\n}"
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "390-light",
+        "width": 390,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 223,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 10,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r6-proto/shots/accessibility-sonnet-390-light.png"
+      },
+      {
+        "name": "390-dark",
+        "width": 390,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 223,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 10,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r6-proto/shots/accessibility-sonnet-390-dark.png"
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 223,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 10,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r6-proto/shots/accessibility-sonnet-1280-light.png"
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 223,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 10
+      }
+    ],
+    "blocked": [],
+    "updates": [
+      {
+        "op": {
+          "op": "set_text",
+          "heading": "Clothes",
+          "text": "- [ ] T-shirts x4\n- [ ] Linen shorts\n- [ ] Rain jacket\n- [x] Sneakers\n- [ ] Test entry"
+        },
+        "ok": true
+      }
+    ],
+    "setData": 0,
+    "interaction": {
+      "tried": "form",
+      "ok": true
+    },
+    "probes": {},
+    "dataAfter": {}
+  }
+}

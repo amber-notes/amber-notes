@@ -18,6 +18,8 @@ import { errorKind, log } from "../_shared/log.ts";
 import { Content, runTool, ToolContext, ToolError, tools } from "./tools.ts";
 import { challenge, handleOAuth, isOAuthPath, publicBase, resolveAccessToken, subpath } from "./oauth.ts";
 import { SERVER_CARD_PATH, SERVER_INFO, serverCardResponse } from "./card.ts";
+import { GUIDE_URI, PAGE_GUIDE, PAGE_INSTRUCTIONS, PAGE_PROMPTS, templateUri } from "./page_guide.ts";
+import { PAGE_TEMPLATES } from "./page_templates.gen.ts";
 
 const PROTOCOL_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
 export const INSTRUCTIONS = `Amber Notes is the user's personal notes app. Notes are markdown; the first line is the title.
@@ -27,7 +29,7 @@ Tables are markdown tables; trackers are tables with typed columns. Use read_tab
 Checklists are "- [ ] item" lines; use set_checklist_item to tick them. A line like [Title](pane-note:<id>) links a sub-note: a whole note that lives inside
 its parent. Use create_sub_note to make one; read it with read_note(id). Deleted notes go to Recently Deleted
 and can be restored; every edit keeps the previous version (note_history / restore_revision).
-A note with has_page: true also has a page: a custom view of its data (set_note_page). Edit the markdown as usual; the page follows it.
+${PAGE_INSTRUCTIONS}
 A note marked locked: true is locked by the user with a separate password: its title is visible here, and nothing else.
 It can't be read, searched or changed here; only the user can open it, in Amber Notes.`;
 
@@ -184,7 +186,7 @@ async function respond(msg: Rpc, id: string | number | null, ctx: ToolContext): 
         const asked = String(msg.params?.protocolVersion ?? "");
         return ok(id, {
           protocolVersion: PROTOCOL_VERSIONS.includes(asked) ? asked : PROTOCOL_VERSIONS[0],
-          capabilities: { tools: { listChanged: false } },
+          capabilities: { tools: { listChanged: false }, resources: { listChanged: false }, prompts: { listChanged: false } },
           serverInfo: SERVER_INFO,
           instructions: INSTRUCTIONS,
         });
@@ -222,9 +224,25 @@ async function respond(msg: Rpc, id: string | number | null, ctx: ToolContext): 
         }
       }
       case "resources/list":
-        return ok(id, { resources: [] });
+        return ok(id, { resources: RESOURCES.map(({ text: _, ...r }) => r) });
+      case "resources/templates/list":
+        return ok(id, { resourceTemplates: [] });
+      case "resources/read": {
+        const uri = String(msg.params?.uri ?? "");
+        const r = RESOURCES.find((x) => x.uri === uri);
+        if (!r) return { jsonrpc: "2.0", id, error: { code: -32002, message: `Resource not found: ${uri}` } };
+        return ok(id, { contents: [{ uri: r.uri, mimeType: r.mimeType, text: r.text }] });
+      }
       case "prompts/list":
-        return ok(id, { prompts: [] });
+        return ok(id, { prompts: PAGE_PROMPTS.map(({ text: _, ...p }) => p) });
+      case "prompts/get": {
+        const p = PAGE_PROMPTS.find((x) => x.name === msg.params?.name);
+        if (!p) return { jsonrpc: "2.0", id, error: { code: -32602, message: `Unknown prompt: ${String(msg.params?.name ?? "")}` } };
+        const args = (msg.params?.arguments ?? {}) as Record<string, string>;
+        const missing = p.arguments.filter((x) => x.required && !String(args[x.name] ?? "").trim()).map((x) => x.name);
+        if (missing.length) return { jsonrpc: "2.0", id, error: { code: -32602, message: `Missing argument${missing.length > 1 ? "s" : ""}: ${missing.join(", ")}` } };
+        return ok(id, { description: p.description, messages: [{ role: "user", content: { type: "text", text: p.text(args) } }] });
+      }
       default:
         return { jsonrpc: "2.0", id, error: { code: -32601, message: `Method not found: ${msg.method}` } };
     }
@@ -233,6 +251,12 @@ async function respond(msg: Rpc, id: string | number | null, ctx: ToolContext): 
     return { jsonrpc: "2.0", id, error: { code: -32603, message: e instanceof Error ? e.message : String(e) } };
   }
 }
+
+/** Read-only documents a client can attach: the page guide and the tested page templates. */
+const RESOURCES = [
+  { uri: GUIDE_URI, name: "note-pages-guide", title: "Building note pages", description: "How to build and edit Amber Notes pages: the window.amber API, data model, design rules and a starter page.", mimeType: "text/markdown", text: PAGE_GUIDE },
+  ...PAGE_TEMPLATES.map((t) => ({ uri: templateUri(t.name), name: `page-template-${t.name}`, title: `Page template: ${t.name}`, description: `${t.description} Expects: ${t.expects}`, mimeType: "text/html", text: t.html })),
+];
 
 function ok(id: unknown, result: unknown) {
   return { jsonrpc: "2.0", id, result };

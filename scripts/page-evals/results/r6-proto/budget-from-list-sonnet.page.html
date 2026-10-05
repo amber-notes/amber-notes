@@ -1,0 +1,76 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--amber-font)}
+.wrap{max-width:var(--amber-content-max);margin:0 auto;padding:16px var(--amber-gutter) 40px}
+.card{background:var(--amber-surface);border-radius:var(--amber-radius);padding:16px;margin-bottom:16px}
+h1{font-size:22px;margin:0 0 12px}h2{font-size:15px;margin:0 0 12px;color:var(--amber-text-secondary);font-weight:600}
+.big{font-family:var(--amber-font-rounded);font-size:34px;font-weight:700}
+.sub{color:var(--amber-text-secondary);font-size:14px;margin-top:4px}
+.bar{height:12px;background:var(--amber-fill);border-radius:6px;overflow:hidden;margin-top:12px}
+.bar>i{display:block;height:100%;background:var(--amber-accent)}
+.over .bar>i{background:var(--amber-danger)}.over .big{color:var(--amber-danger)}
+.cat{margin-bottom:12px}.cat .row{display:flex;justify-content:space-between;font-size:15px}
+.cat .bar{height:8px;margin-top:4px}
+form{display:grid;gap:8px}
+input,select,button{font:inherit;font-size:16px;padding:10px;border-radius:var(--amber-radius-small);border:1px solid var(--amber-separator);background:var(--amber-fill);color:var(--amber-text);width:100%}
+button{background:var(--amber-accent);color:var(--amber-on-accent);border:0;font-weight:600}
+.li{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid var(--amber-separator);font-size:14px}
+.li small{color:var(--amber-text-secondary)}
+.err{color:var(--amber-danger);font-size:13px}
+.grid{display:block}
+@media(min-width:900px){.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.big{font-size:44px}}
+</style></head><body><div class="wrap">
+<h1 id="t">Budget</h1>
+<div class="grid">
+<div>
+<div class="card" id="sum"></div>
+<div class="card"><h2>By category</h2><div id="cats"></div></div>
+</div>
+<div>
+<div class="card"><h2>Add expense</h2>
+<form id="f">
+<input id="item" placeholder="What was it?" required>
+<input id="amt" type="number" inputmode="decimal" step="0.01" min="0" placeholder="Amount (kr)" required>
+<input id="cat" list="cl" placeholder="Category" required><datalist id="cl"></datalist>
+<button type="submit">Add expense</button><div class="err" id="err"></div>
+</form></div>
+<div class="card"><h2>Recent</h2><div id="rec"></div></div>
+</div></div></div>
+<script>
+const fmt=n=>(Math.round(n*100)/100).toLocaleString('sv-SE',{maximumFractionDigits:2})+' kr';
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let T=0;
+amber.onChange(n=>{
+  document.getElementById('t').textContent=n.title;
+  let idx=n.tables.findIndex(t=>t.columns.some(c=>/amount/i.test(c.name)));
+  if(idx<0)idx=0;T=n.tables[idx]?n.tables[idx].index:0;
+  const tb=n.tables[idx];const cols=tb?tb.columns.map(c=>c.name):[];
+  const ci=re=>cols.findIndex(c=>re.test(c));
+  const d=ci(/date/i),i=ci(/item/i),c=ci(/categ/i),a=ci(/amount/i);
+  const rows=tb?tb.rows:[];
+  const num=v=>parseFloat(String(v).replace(/\s/g,'').replace(',','.'))||0;
+  const m=n.markdown.match(/limit[^\n:]*:\s*([\d\s.,]+)/i);
+  const limit=m?num(m[1]):0;
+  const total=rows.reduce((s,r)=>s+num(r[a]),0);
+  const pct=limit?Math.min(100,total/limit*100):0;
+  const s=document.getElementById('sum');
+  s.className='card'+(limit&&total>limit?' over':'');
+  s.innerHTML='<h2>Spent vs limit</h2><div class="big">'+fmt(total)+'</div><div class="sub">of '+fmt(limit)+' · '+(limit-total>=0?fmt(limit-total)+' left':fmt(total-limit)+' over')+'</div><div class="bar"><i style="width:'+pct+'%"></i></div>';
+  const by={};rows.forEach(r=>{const k=(r[c]||'other').trim()||'other';by[k]=(by[k]||0)+num(r[a])});
+  const ents=Object.entries(by).sort((x,y)=>y[1]-x[1]);
+  document.getElementById('cats').innerHTML=ents.map(([k,v])=>'<div class="cat"><div class="row"><span>'+esc(k)+'</span><b>'+fmt(v)+'</b></div><div class="bar"><i style="width:'+(total?v/total*100:0)+'%"></i></div></div>').join('')||'<div class="sub">No expenses yet</div>';
+  document.getElementById('cl').innerHTML=ents.map(([k])=>'<option value="'+esc(k)+'">').join('');
+  document.getElementById('rec').innerHTML=rows.slice(-8).reverse().map(r=>'<div class="li"><span>'+esc(r[i])+'<br><small>'+esc(r[d])+' · '+esc(r[c])+'</small></span><b>'+fmt(num(r[a]))+'</b></div>').join('');
+  window._cols=cols;
+});
+document.getElementById('f').addEventListener('submit',e=>{
+  e.preventDefault();
+  const cols=window._cols||[];const v={};
+  const val={date:amber.note.today,item:item.value.trim(),categ:cat.value.trim().toLowerCase(),amount:String(amt.value)};
+  cols.forEach(n=>{for(const k in val)if(new RegExp(k,'i').test(n))v[n]=val[k]});
+  amber.update({op:'append_row',table:T,values:v}).then(r=>{
+    if(r.ok){item.value='';amt.value='';cat.value='';err.textContent=''}else err.textContent=r.error||'Could not add';
+  });
+});
+</script></body></html>

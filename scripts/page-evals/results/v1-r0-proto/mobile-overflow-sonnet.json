@@ -1,0 +1,219 @@
+{
+  "task": "mobile-overflow",
+  "model": "claude-sonnet-5-5",
+  "round": "r0-baseline",
+  "skill": false,
+  "seconds": 15,
+  "score": 1,
+  "passed": 16,
+  "total": 16,
+  "checks": [
+    {
+      "name": "has_page",
+      "pass": true
+    },
+    {
+      "name": "server_checks",
+      "pass": true
+    },
+    {
+      "name": "no_console_errors",
+      "pass": true
+    },
+    {
+      "name": "no_network",
+      "pass": true
+    },
+    {
+      "name": "fits_390",
+      "pass": true
+    },
+    {
+      "name": "fits_1280",
+      "pass": true
+    },
+    {
+      "name": "shows_data",
+      "pass": true
+    },
+    {
+      "name": "dark_mode",
+      "pass": true
+    },
+    {
+      "name": "light_contrast",
+      "pass": true
+    },
+    {
+      "name": "labelled_controls",
+      "pass": true
+    },
+    {
+      "name": "probe_follows",
+      "pass": true
+    },
+    {
+      "name": "probe_escapes",
+      "pass": true
+    },
+    {
+      "name": "probe_empty",
+      "pass": true
+    },
+    {
+      "name": "probe_large",
+      "pass": true
+    },
+    {
+      "name": "note_unchanged",
+      "pass": true
+    },
+    {
+      "name": "page_changed",
+      "pass": true
+    }
+  ],
+  "tool_calls": 4,
+  "tool_errors": 0,
+  "usage": {
+    "input": 10,
+    "output": 1377,
+    "cacheRead": 22283,
+    "cacheWrite": 9875,
+    "turns": 4
+  },
+  "usd": 0.0429,
+  "page_bytes": 1737,
+  "answer": "I fixed the Meal plan page so it fits an iPhone without sideways scrolling. I haven't opened it on a phone, so check it there.\n\nThe old page forced the table to 900px wide, which is why you had to scroll. On a narrow screen, each day now shows as its own card. The day name is the heading, and each meal sits on its own line with its label (Breakfast, Lunch and so on). Empty notes are hidden. On wider screens it's still a normal table.\n\nThe note's data didn't change, only the page layout.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Meal plan"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Meal plan\",\n  \"results\": [\n    {\n      \"id\": \"89b8c106-3b95-4001-bfc2-d22f49c9ff50\",\n      \"title\": \"Meal plan\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T12:29:11.252Z\",\n      \"snippet\": \"«Meal plan» | Day | Breakfast | Lunch | Dinner | Snack | Shop | Notes | | --- | --- | --- | --- | --- | --- | --- | | Monday | Oats with berries | Leftover curry | Salmon, potatoes | Apple | Yes | Kids at Mia's | | Tuesday\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "89b8c106-3b95-4001-bfc2-d22f49c9ff50"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"89b8c106-3b95-4001-bfc2-d22f49c9ff50\",\n  \"title\": \"Meal plan\",\n  \"has_page\": true,\n  \"made_by\": \"Claude\",\n  \"updated\": \"2026-10-05T12:29:11.259Z\",\n  \"rules\": \"The page runs in Amber Notes in a sandbox with no network: no fetch, no external scripts, styles, fonts or images. Put all CSS and JS inline; images only as data: URIs or inline SVG.\\nRead the note from window.amber.note, never hardcode its contents (the note changes; the page must follow):\\n  amber.note = { title, markdown, today: \\\"yyyy-mm-dd\\\", tables: [{ index, columns: [{ name, type }], rows: [[cell, ...], ...] }], checkl… (2349 chars)"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "89b8c106-3b95-4001-bfc2-d22f49c9ff50"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"89b8c106-3b95-4001-bfc2-d22f49c9ff50\",\n  \"title\": \"Meal plan\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T12:29:11.252Z\",\n  \"updated\": \"2026-10-05T12:29:11.252Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"has_page\": true,\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 10,\n    \"words\": 128\n  },\n  \"markdown\": \"Meal plan\\n\\n| Day | Breakfast | Lunch | Dinner | Snack | Shop | Notes |\\n| --- | --- | --- | --- | --- | --- | --- |\\n| Monday | Oats with berries | Leftov… (1005 chars)"
+    },
+    {
+      "name": "set_note_page",
+      "args": {
+        "id": "89b8c106-3b95-4001-bfc2-d22f49c9ff50",
+        "html": "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><style>\n:root{--bg:#fbf8f3;--ink:#1d1a16;--line:#e6ded4;--card:#fff;--mut:#7a7066}@media (prefers-color-scheme:dark){:root{--bg:#1b1916;--ink:#f3eee8;--line:#3a352f;--card:#2… (1737 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"89b8c106-3b95-4001-bfc2-d22f49c9ff50\",\n  \"title\": \"Meal plan\",\n  \"page\": \"replaced\",\n  \"bytes\": 1737,\n  \"note\": \"The person sees it in Amber Notes under Page. The note's markdown is unchanged.\"\n}"
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "390-light",
+        "width": 390,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 363,
+        "shown": 12,
+        "sampled": 12,
+        "bg": "rgb(251, 248, 243)",
+        "fg": "rgb(29, 26, 22)",
+        "contrast": 16.36122313595218,
+        "bgLuminance": 0.9411509766090667,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r0-baseline/shots/mobile-overflow-sonnet-390-light.png"
+      },
+      {
+        "name": "390-dark",
+        "width": 390,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 363,
+        "shown": 12,
+        "sampled": 12,
+        "bg": "rgb(27, 25, 22)",
+        "fg": "rgb(243, 238, 232)",
+        "contrast": 15.206632798714999,
+        "bgLuminance": 0.009862005146758307,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r0-baseline/shots/mobile-overflow-sonnet-390-dark.png"
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 408,
+        "shown": 12,
+        "sampled": 12,
+        "bg": "rgb(251, 248, 243)",
+        "fg": "rgb(29, 26, 22)",
+        "contrast": 16.36122313595218,
+        "bgLuminance": 0.9411509766090667,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r0-baseline/shots/mobile-overflow-sonnet-1280-light.png"
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 408,
+        "shown": 12,
+        "sampled": 12,
+        "bg": "rgb(27, 25, 22)",
+        "fg": "rgb(243, 238, 232)",
+        "contrast": 15.206632798714999,
+        "bgLuminance": 0.009862005146758307,
+        "unnamedControls": [],
+        "smallTargets": 0
+      }
+    ],
+    "blocked": [],
+    "updates": [],
+    "setData": 0,
+    "interaction": {
+      "tried": "none",
+      "ok": null
+    },
+    "probes": {
+      "follows": {
+        "pass": true,
+        "detail": "shown, but not as written"
+      },
+      "escapes": {
+        "pass": true
+      },
+      "empty": {
+        "pass": true,
+        "detail": "blank page"
+      },
+      "large": {
+        "pass": true,
+        "detail": "565 ms to load 400 rows"
+      }
+    },
+    "dataAfter": {}
+  }
+}

@@ -1,0 +1,61 @@
+<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>
+:root{--bg:#fff;--fg:#1c1c1e;--mut:#8a8a8e;--card:#f2f2f5;--acc:#e08a00;--ok:#2fa84f}
+@media(prefers-color-scheme:dark){:root{--bg:#1c1c1e;--fg:#f2f2f5;--mut:#9a9aa0;--card:#2c2c2f;--acc:#ffb340;--ok:#3ccf62}}
+*{box-sizing:border-box}body{margin:0;padding:16px;background:var(--bg);color:var(--fg);font:16px -apple-system,system-ui,sans-serif;max-width:560px;margin:auto}
+h1{font-size:22px;margin:0 0 2px}.sub{color:var(--mut);margin-bottom:16px;font-size:14px}
+.habit{display:flex;align-items:center;gap:12px;background:var(--card);border-radius:14px;padding:12px 14px;margin-bottom:10px}
+.btn{width:48px;height:48px;border-radius:50%;border:2px solid var(--mut);background:transparent;color:#fff;font-size:24px;flex:none}
+.btn.on{background:var(--ok);border-color:var(--ok)}
+.info{flex:1;min-width:0}.name{font-weight:600}.st{color:var(--mut);font-size:13px}
+.streak{font-size:22px;font-weight:700;color:var(--acc);text-align:right}.streak small{display:block;font-size:11px;color:var(--mut);font-weight:400}
+h2{font-size:14px;color:var(--mut);margin:20px 0 8px;text-transform:uppercase;letter-spacing:.05em}
+table{width:100%;border-collapse:collapse;font-size:13px}th{color:var(--mut);font-weight:500;padding:4px 2px;text-align:center}td{padding:3px 2px;text-align:center}td:first-child{text-align:left;color:var(--mut)}
+.d{display:inline-block;width:20px;height:20px;border-radius:6px;background:var(--card)}.d.y{background:var(--ok)}
+.err{color:#d33;font-size:13px}
+</style></head><body><h1>Habits</h1><div class="sub" id="sub"></div><div id="today"></div><h2>Last 14 days</h2><div id="grid"></div><div class="err" id="err"></div>
+<script>
+let note;
+const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const parse=s=>{const[a,b,c]=s.split('-').map(Number);return new Date(a,b-1,c)};
+const addDays=(s,n)=>{const d=parse(s);d.setDate(d.getDate()+n);return iso(d)};
+function model(){
+ const t=note.tables[0];if(!t)return null;
+ const cols=t.columns.map(c=>c.name);
+ const habits=[];cols.forEach((n,i)=>{if(i>0&&n.toLowerCase()!=='note')habits.push({name:n,col:i})});
+ const byDate={};t.rows.forEach((r,i)=>{byDate[r[0]]={i,r}});
+ return{t,habits,byDate,ncols:cols.length,cols};
+}
+const done=(m,h,d)=>{const e=m.byDate[d];return !!e&&/^(yes|true|y|1|✓)$/i.test((e.r[h.col]||'').trim())};
+function streaks(m,h){
+ const today=note.today;let d=done(m,h,today)?today:addDays(today,-1);let cur=0;
+ while(done(m,h,d)){cur++;d=addDays(d,-1)}
+ const dates=Object.keys(m.byDate).sort();let best=0,run=0,prev=null;
+ dates.forEach(x=>{if(done(m,h,x)){run=(prev&&addDays(prev,1)===x)?run+1:1;prev=x;best=Math.max(best,run)}else{run=0;prev=null}});
+ return{cur,best:Math.max(best,cur)};
+}
+async function toggle(h){
+ const m=model();const e=m.byDate[note.today];const on=done(m,h,note.today);let r;
+ if(e)r=await amber.update({op:'set_cell',table:m.t.index,row:e.i,col:h.col,value:on?'No':'Yes'});
+ else{const v={};m.cols.forEach((c,i)=>{v[c]=i===0?note.today:(i===h.col?'Yes':(c.toLowerCase()==='note'?'':'No'))});r=await amber.update({op:'append_row',table:m.t.index,values:v})}
+ document.getElementById('err').textContent=r.ok?'':(r.error||'Could not save');
+}
+function render(n){
+ note=n;const m=model();const T=document.getElementById('today');
+ if(!m){T.textContent='No table found in this note.';return}
+ document.getElementById('sub').textContent=parse(note.today).toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long'});
+ T.innerHTML='';
+ m.habits.forEach(h=>{
+  const s=streaks(m,h),on=done(m,h,note.today);
+  const el=document.createElement('div');el.className='habit';
+  el.innerHTML='<button class="btn'+(on?' on':'')+'">'+(on?'✓':'')+'</button><div class="info"><div class="name"></div><div class="st">Best: '+s.best+' day'+(s.best===1?'':'s')+'</div></div><div class="streak">'+s.cur+'<small>day streak</small></div>';
+  el.querySelector('.name').textContent=h.name;
+  el.querySelector('.btn').onclick=()=>toggle(h);
+  T.appendChild(el);
+ });
+ let html='<table><tr><th></th>'+m.habits.map(h=>'<th>'+h.name.slice(0,5).replace(/</g,'')+'</th>').join('')+'</tr>';
+ for(let k=0;k<14;k++){const d=addDays(note.today,-k);
+  html+='<tr><td>'+parse(d).toLocaleDateString(undefined,{weekday:'short',day:'numeric'})+'</td>'+m.habits.map(h=>'<td><span class="d'+(done(m,h,d)?' y':'')+'"></span></td>').join('')+'</tr>';}
+ document.getElementById('grid').innerHTML=html+'</table>';
+}
+amber.onChange(render);
+</script></body></html>

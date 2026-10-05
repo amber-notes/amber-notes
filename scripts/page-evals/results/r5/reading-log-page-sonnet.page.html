@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  * { box-sizing: border-box; }
+  body { padding: 20px 18px 96px; max-width: 680px; margin: 0 auto; }
+  h1 { font-size: 28px; letter-spacing: -.02em; margin: 4px 0 12px; }
+  h2 { font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--amber-text-secondary); margin: 22px 4px 8px; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .stat { background: var(--amber-surface); border: 1px solid var(--amber-separator); border-radius: 14px; padding: 12px; }
+  .stat b { display: block; font-size: 26px; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+  .stat span { color: var(--amber-text-secondary); font-size: 13px; }
+  .card { background: var(--amber-surface); border: 1px solid var(--amber-separator); border-radius: var(--amber-radius); overflow: hidden; }
+  .chart { display: flex; align-items: end; gap: 6px; height: 120px; padding: 12px 14px 0; }
+  .chart .m { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; min-width: 0; height: 100%; }
+  .chart .b { width: 100%; border-radius: 4px 4px 0 0; background: var(--amber-accent); min-height: 2px; }
+  .chart .n { font-size: 12px; font-variant-numeric: tabular-nums; }
+  .chart .l { font-size: 11px; color: var(--amber-text-secondary); padding-bottom: 8px; }
+  .books { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+  .book { background: var(--amber-surface); border: 1px solid var(--amber-separator); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+  .cover { height: 110px; display: flex; align-items: center; justify-content: center; font-family: var(--amber-font-rounded); font-size: 44px; font-weight: 700; color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,.25); border-left: 8px solid rgba(0,0,0,.18); }
+  .info { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 3px; }
+  .book .t { font-weight: 600; overflow-wrap: anywhere; }
+  .muted { color: var(--amber-text-secondary); font-size: 13px; }
+  .stars { color: var(--amber-accent-text); letter-spacing: 1px; }
+  .item { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-top: 1px solid var(--amber-separator); min-height: 48px; }
+  .item:first-child { border-top: 0; }
+  .item input { width: 22px; height: 22px; accent-color: var(--amber-accent); }
+  .item.done span { color: var(--amber-text-secondary); text-decoration: line-through; }
+  form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px; }
+  label.f { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--amber-text-secondary); min-width: 0; }
+  input:not([type=checkbox]), select { font: inherit; font-size: 16px; color: var(--amber-text); background: var(--amber-fill); border: 0; border-radius: 10px; padding: 10px 12px; min-height: 44px; width: 100%; }
+  button { grid-column: 1 / -1; font: inherit; font-weight: 600; min-height: 44px; border: 0; border-radius: 10px; background: var(--amber-accent); color: var(--amber-on-accent); }
+  .err { color: var(--amber-danger); padding: 0 16px 12px; min-height: 1em; }
+  .empty { padding: 24px 16px; text-align: center; color: var(--amber-text-secondary); }
+</style>
+</head>
+<body>
+<main id="app" aria-live="polite"></main>
+<script>
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const col = (t, re) => t.columns.findIndex((c) => re.test(c.name));
+  const hue = (s) => [...String(s)].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) % 360, 7);
+  let error = "";
+
+  function render(note) {
+    const app = document.getElementById("app");
+    const t = note.tables.find((t) => col(t, /^(title|book)$/i) >= 0);
+    if (!t) { app.innerHTML = `<h1>${esc(note.title)}</h1><div class="card empty">Add a table with Title, Author, Finished and Rating columns to the note.</div>`; return; }
+    const ti = col(t, /^(title|book)$/i), au = col(t, /author|by/i), fi = col(t, /finish|date|read on/i), ra = col(t, /rating|stars|score/i);
+    const books = t.rows.map((r) => ({ title: r[ti], author: au >= 0 ? r[au] : "", date: fi >= 0 ? r[fi] : "", rating: ra >= 0 ? parseFloat(r[ra]) : NaN }));
+    const rated = books.filter((b) => Number.isFinite(b.rating));
+    const avg = rated.length ? rated.reduce((s, b) => s + b.rating, 0) / rated.length : 0;
+    const year = note.today.slice(0, 4);
+    const months = Array.from({ length: 6 }, (_, k) => { const d = new Date(note.today.slice(0, 7) + "-15T12:00:00Z"); d.setUTCMonth(d.getUTCMonth() - 5 + k); return d.toISOString().slice(0, 7); });
+    const perMonth = months.map((m) => books.filter((b) => String(b.date).startsWith(m)).length);
+    const top = Math.max(1, ...perMonth);
+    const stars = (n) => Number.isFinite(n) ? `<span class="stars" aria-label="${n} out of 5">${"★".repeat(Math.round(n))}${"☆".repeat(Math.max(0, 5 - Math.round(n)))}</span>` : "";
+    const sorted = books.slice().sort((a, b) => String(b.date).localeCompare(String(a.date)));
+    const want = note.checklists;
+    app.innerHTML = `
+      <h1>${esc(note.title)}</h1>
+      <div class="stats">
+        <div class="stat"><b>${books.length}</b><span>books</span></div>
+        <div class="stat"><b>${books.filter((b) => String(b.date).startsWith(year)).length}</b><span>in ${year}</span></div>
+        <div class="stat"><b>${rated.length ? avg.toFixed(1) : "–"}</b><span>average rating</span></div>
+      </div>
+      ${fi >= 0 ? `<h2>Books per month</h2><div class="card chart" role="img" aria-label="Books finished per month: ${months.map((m, k) => `${m} ${perMonth[k]}`).join(", ")}">${months.map((m, k) => `<div class="m"><div class="n">${perMonth[k]}</div><div class="b" style="height:${(70 * perMonth[k]) / top}px"></div><div class="l">${new Date(m + "-15T12:00:00Z").toLocaleString("en", { month: "short" })}</div></div>`).join("")}</div>` : ""}
+      <h2>Read</h2>
+      <div class="books">${sorted.map((b) => `<article class="book"><div class="cover" style="background:linear-gradient(135deg,hsl(${hue(b.title)} 55% 50%),hsl(${(hue(b.title) + 40) % 360} 55% 38%))" aria-hidden="true">${esc(String(b.title).trim().charAt(0).toUpperCase())}</div><div class="info"><div class="t">${esc(b.title)}</div><div class="muted">${esc(b.author)}</div><div class="muted">${esc(b.date)}</div>${stars(b.rating)}</div></article>`).join("") || `<div class="card empty">No books yet.</div>`}</div>
+      ${want.length ? `<h2>Want to read</h2><div class="card">${want.map((c) => `<label class="item ${c.checked ? "done" : ""}"><input type="checkbox" data-line="${c.line}" ${c.checked ? "checked" : ""}><span>${esc(c.text)}</span></label>`).join("")}</div>` : ""}
+      <h2>Log a book</h2>
+      <div class="card">
+        <form id="add">
+          <label class="f">Title<input name="title" required></label>
+          ${au >= 0 ? `<label class="f">Author<input name="author"></label>` : ""}
+          ${ra >= 0 ? `<label class="f">Rating<select name="rating"><option value="">–</option>${[5, 4, 3, 2, 1].map((n) => `<option>${n}</option>`).join("")}</select></label>` : ""}
+          ${fi >= 0 ? `<label class="f">Finished<input name="date" type="date" value="${note.today}"></label>` : ""}
+          <button>Add book</button>
+        </form>
+        <div class="err" role="alert">${esc(error)}</div>
+      </div>`;
+
+    app.querySelectorAll("[data-line]").forEach((box) => box.addEventListener("change", async () => {
+      const r = await amber.update({ op: "toggle_checklist", line: Number(box.dataset.line) });
+      error = r.ok ? "" : r.error;
+      if (!r.ok) render(amber.note);
+    }));
+    document.getElementById("add").onsubmit = async (e) => {
+      e.preventDefault();
+      const f = new FormData(e.target);
+      const values = { [t.columns[ti].name]: String(f.get("title")).trim() };
+      if (au >= 0) values[t.columns[au].name] = String(f.get("author") ?? "").trim();
+      if (ra >= 0) values[t.columns[ra].name] = String(f.get("rating") ?? "");
+      if (fi >= 0) values[t.columns[fi].name] = String(f.get("date") || amber.note.today);
+      const r = await amber.update({ op: "append_row", table: t.index, values });
+      error = r.ok ? "" : r.error;
+      render(amber.note);
+    };
+  }
+  amber.onChange(render);
+</script>
+</body>
+</html>

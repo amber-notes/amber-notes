@@ -1,0 +1,74 @@
+{
+  "task": "import-200-csv",
+  "model": "claude-sonnet-5-5",
+  "round": "r2",
+  "skill": false,
+  "seconds": 40,
+  "score": 1,
+  "passed": 5,
+  "total": 5,
+  "checks": [
+    {
+      "name": "columns_kept",
+      "pass": true
+    },
+    {
+      "name": "all_200_added",
+      "pass": true
+    },
+    {
+      "name": "mapped_right",
+      "pass": true
+    },
+    {
+      "name": "rows_kept",
+      "pass": true
+    },
+    {
+      "name": "bulk_tool",
+      "pass": true
+    }
+  ],
+  "tool_calls": 3,
+  "tool_errors": 0,
+  "usage": {
+    "input": 10,
+    "output": 8448,
+    "cacheRead": 60199,
+    "cacheWrite": 28879,
+    "turns": 4
+  },
+  "usd": 0.1687,
+  "page_bytes": 0,
+  "data": null,
+  "answer": "I added all 200 CRM rows to your Clients note, below the 3 that were already there. It now has 203 rows.\n\nI matched the export's columns to the note's existing ones:\n- Firm went to Company.\n- Name went to Contact.\n- E-mail went to Email.\n- Status went to Stage.\n- Deal value went to Value.\n\nI didn't spot-check the rows in the note after the import. One firm name, `\"Andersson, Partners\" 8`, has literal quotes in the export. I kept it exactly as exported, so it will show with the quotes in the Company column.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Clients"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Clients\",\n  \"results\": [\n    {\n      \"id\": \"74f5a98f-22e0-4f27-ac07-27e4da5d627b\",\n      \"title\": \"Clients\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T12:43:51.050Z\",\n      \"snippet\": \"«Clients» | Company | Contact | Email | Stage | Value | | --- | --- | --- | --- | --- | | Acme AB | Sarah Lee | sarah@acme.se | Proposal | 8000 | | Nordljus | Erik Holm | erik@nordljus.se | Lead | 3000 | | Bergström\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "read_table",
+      "args": {
+        "id": "74f5a98f-22e0-4f27-ac07-27e4da5d627b"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"74f5a98f-22e0-4f27-ac07-27e4da5d627b\",\n    \"title\": \"Clients\"\n  },\n  \"columns\": [\n    {\n      \"name\": \"Company\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Contact\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Email\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Stage\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Value\",\n      \"type\": \"text\"\n    }\n  ],\n  \"rows\": [\n    {\n      \"Company\": \"Acme AB\",\n      \"Contact\": \"Sarah Lee\",\n      \"Email\": \"sarah@acme.se\",\n      \"Stage\": \"Proposal\",\n      \"Value\": \"8000\"\n    },\n    {\n      \"Company\": \"Nordljus\",\n … (898 chars)"
+    },
+    {
+      "name": "add_table_rows",
+      "args": {
+        "id": "74f5a98f-22e0-4f27-ac07-27e4da5d627b",
+        "column_map": "{\"Deal value\":\"Value\",\"Name\":\"Contact\",\"E-mail\":\"Email\",\"Firm\":\"Company\",\"Status\":\"Stage\"}",
+        "csv": "Deal value,Name,E-mail,Firm,Status\n1000,Maja Andersson,maja.andersson0@example.se,Andersson Design 1,Lead\n1137,Liam Andersson,liam.andersson1@example.se,Andersson Bygg 2,Proposal\n1274,Elsa Andersson,elsa.andersson2@example.se,Andersson Konsult 3,Won\n1411,Noah Andersson,noah.andersson3@example.se,And… (14434 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"74f5a98f-22e0-4f27-ac07-27e4da5d627b\",\n    \"title\": \"Clients\",\n    \"version\": 2\n  },\n  \"added_rows\": 200,\n  \"table\": {\n    \"index\": 0,\n    \"columns\": [\n      {\n        \"name\": \"Company\",\n        \"type\": \"text\"\n      },\n      {\n        \"name\": \"Contact\",\n        \"type\": \"text\"\n      },\n      {\n        \"name\": \"Email\",\n        \"type\": \"text\"\n      },\n      {\n        \"name\": \"Stage\",\n        \"type\": \"text\"\n      },\n      {\n        \"name\": \"Value\",\n        \"type\": \"text\"\n      }\n    ],\n    \"total_rows\": 203\n  }\n}"
+    }
+  ],
+  "render": null
+}

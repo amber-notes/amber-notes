@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { --bg: #fbf8f3; --card: #fff; --ink: #1d1a16; --muted: #6f665d; --line: rgba(60,40,20,.12); --accent: #b85f08; --accent-ink: #fff; --field: #f1ebe3; --over: #b3261e;
+    --c0: #b85f08; --c1: #2f7d5b; --c2: #3c63b0; --c3: #a3478a; --c4: #6f665d; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #1b1916; --card: #26231f; --ink: #f3eee8; --muted: #a39a90; --line: rgba(255,240,220,.12); --accent: #f0a04b; --accent-ink: #1b1916; --field: #34302a; --over: #ff8a80;
+    --c0: #f0a04b; --c1: #5cc497; --c2: #8aa8ef; --c3: #e38ccb; --c4: #a39a90; } }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); }
+  body { font: 16px/1.4 -apple-system, system-ui, sans-serif; padding: 20px 18px 96px; max-width: 680px; margin: 0 auto; }
+  h1 { font-size: 28px; letter-spacing: -.02em; margin: 4px 0 12px; }
+  h2 { font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin: 22px 4px 8px; }
+  .total { font-size: 42px; font-weight: 700; letter-spacing: -.03em; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .sub { color: var(--muted); }
+  .sub.over { color: var(--over); font-weight: 600; }
+  .meter { height: 10px; border-radius: 5px; background: var(--field); overflow: hidden; margin: 12px 0 4px; display: flex; }
+  .meter div { height: 100%; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+  .row { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-top: 1px solid var(--line); min-height: 48px; }
+  .row:first-child { border-top: 0; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+  .grow { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .muted { color: var(--muted); font-size: 14px; }
+  .num { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+  form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px; }
+  label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); min-width: 0; }
+  input { font: inherit; font-size: 16px; color: var(--ink); background: var(--field); border: 0; border-radius: 10px; padding: 10px 12px; min-height: 44px; width: 100%; }
+  button { font: inherit; font-weight: 600; min-height: 44px; padding: 0 16px; border: 0; border-radius: 10px; background: var(--accent); color: var(--accent-ink); }
+  form button { grid-column: 1 / -1; }
+  .err { color: var(--over); padding: 0 16px 12px; min-height: 1em; }
+  .empty { padding: 24px 16px; text-align: center; color: var(--muted); }
+</style>
+</head>
+<body>
+<main id="app" aria-live="polite"></main>
+<script>
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const num = (s) => { const n = parseFloat(String(s ?? "").replace(/[\s\u00a0]/g, "").replace(/kr|sek/gi, "").replace(",", ".")); return Number.isFinite(n) ? n : 0; };
+  const col = (t, re) => t.columns.findIndex((c) => re.test(c.name));
+  let error = "", form = { item: "", amount: "", cat: "" };
+
+  function render(note, data) {
+    const app = document.getElementById("app");
+    const t = note.tables.find((t) => col(t, /amount/i) >= 0);
+    if (!t) { app.innerHTML = `<h1>${esc(note.title)}</h1><div class="card empty">Add a table with Date, Item, Category and Amount columns.</div>`; return; }
+    const a = col(t, /amount/i), d = col(t, /^date$/i), c = col(t, /categ/i), it = col(t, /item/i);
+    const money = (n) => n.toLocaleString("sv-SE", { maximumFractionDigits: 2 }) + " kr";
+    const month = note.today.slice(0, 7);
+    const rows = t.rows.filter((r) => String(r[d]).startsWith(month)).map((r) => ({ r, n: num(r[a]) }));
+    const total = rows.reduce((s, x) => s + x.n, 0);
+    let limit = Number(data && data.limit) || 0;
+    if (!limit) { const m = note.markdown.match(/limit[^\n:]*:\s*([\d\s\u00a0.,]+)/i); if (m) limit = num(m[1]); }
+    const byCat = new Map();
+    for (const x of rows) { const k = (x.r[c] || "other"); byCat.set(k, (byCat.get(k) || 0) + x.n); }
+    const cats = [...byCat].sort((p, q) => q[1] - p[1]);
+    const color = (i) => `var(--c${Math.min(i, 4)})`;
+    const pct = limit ? Math.round(100 * total / limit) : 0;
+    app.innerHTML = `
+      <h1>${esc(note.title)}</h1>
+      <div class="total">${money(total)}</div>
+      <div class="sub${limit && total > limit ? " over" : ""}">${limit ? (total > limit ? `${money(total - limit)} over the ${money(limit)} limit` : `${money(limit - total)} left of ${money(limit)} (${pct}% used)`) : `${rows.length} expenses`}</div>
+      <div class="meter" role="img" aria-label="Spending by category">${cats.map(([k, v], i) => `<div style="width:${100 * v / Math.max(total, limit, 1)}%;background:${color(i)}"></div>`).join("")}</div>
+      <h2>By category</h2>
+      <div class="card">${cats.map(([k, v], i) => `<div class="row"><span class="dot" style="background:${color(i)}" aria-hidden="true"></span><span class="grow">${esc(k)}</span><span class="muted">${Math.round(100 * v / (total || 1))}%</span><span class="num">${money(v)}</span></div>`).join("") || `<div class="empty">Nothing this month.</div>`}</div>
+      <h2>Add an expense</h2>
+      <div class="card">
+        <form id="add">
+          <label>What<input name="item" required value="${esc(form.item)}"></label>
+          <label>Amount (kr)<input name="amount" inputmode="decimal" required value="${esc(form.amount)}"></label>
+          <label style="grid-column:1/-1">Category<input name="cat" list="cats" value="${esc(form.cat)}"><datalist id="cats">${[...new Set(t.rows.map((r) => r[c]).filter(Boolean))].map((k) => `<option value="${esc(k)}">`).join("")}</datalist></label>
+          <button>Add</button>
+        </form>
+        <div class="err" role="alert">${esc(error)}</div>
+      </div>
+      <h2>Latest</h2>
+      <div class="card">${rows.slice().reverse().slice(0, 8).map((x) => `<div class="row"><span class="grow">${esc(x.r[it])}<br><span class="muted">${esc(x.r[d])}${x.r[c] ? " · " + esc(x.r[c]) : ""}</span></span><span class="num">${money(x.n)}</span></div>`).join("")}</div>`;
+
+    const f = document.getElementById("add");
+    f.onsubmit = async (e) => {
+      e.preventDefault();
+      const fd = new FormData(f);
+      form = { item: String(fd.get("item") || ""), amount: String(fd.get("amount") || ""), cat: String(fd.get("cat") || "") };
+      if (!num(form.amount)) { error = "Write the amount as a number."; render(amber.note, amber.data); return; }
+      const values = { [t.columns[a].name]: String(num(form.amount)), [t.columns[it].name]: form.item.trim(), [t.columns[c].name]: form.cat.trim(), [t.columns[d].name]: note.today };
+      const r = await amber.update({ op: "append_row", table: t.index, values });
+      error = r.ok ? "" : r.error;
+      if (r.ok) form = { item: "", amount: "", cat: "" };
+      render(amber.note, amber.data);
+    };
+  }
+  amber.onChange(render);
+</script>
+</body>
+</html>

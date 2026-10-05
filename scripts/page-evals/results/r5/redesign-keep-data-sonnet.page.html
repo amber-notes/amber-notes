@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Household expenses</title>
+<style>
+  * { box-sizing: border-box; }
+  body { padding: 20px 18px 80px; max-width: 680px; margin: 0 auto; }
+  h1 { font-size: 28px; letter-spacing: -.02em; margin: 4px 0 4px; }
+  .lbl { font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--amber-text-secondary); margin: 22px 4px 8px; }
+  .total { font-size: 52px; font-weight: 700; letter-spacing: -.03em; font-variant-numeric: tabular-nums; line-height: 1.1; margin-top: 12px; }
+  .muted { color: var(--amber-text-secondary); font-size: 14px; }
+  .card { background: var(--amber-surface); border-radius: var(--amber-radius); border: 1px solid var(--amber-separator); overflow: hidden; }
+  .months { display: flex; flex-direction: column; gap: 6px; padding: 8px; }
+  .m { display: grid; grid-template-columns: 76px 1fr auto; align-items: center; gap: 10px; min-height: 44px; padding: 4px 8px; font: inherit; color: var(--amber-text); background: transparent; border: 0; border-radius: var(--amber-radius-small); text-align: left; font-weight: 400; }
+  .m[aria-pressed="true"] { background: var(--amber-accent-soft); font-weight: 600; }
+  .track { height: 14px; background: var(--amber-fill); border-radius: 7px; overflow: hidden; }
+  .fill { height: 100%; background: var(--amber-text-secondary); border-radius: 7px; min-width: 2px; }
+  .m[aria-pressed="true"] .fill { background: var(--amber-accent); }
+  .num { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+  .ghead, .row { display: flex; align-items: center; gap: 10px; padding: 12px 16px; }
+  .ghead { background: var(--amber-fill); font-weight: 600; }
+  .row { border-top: 1px solid var(--amber-separator); min-height: 48px; }
+  .grow { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .group { margin-bottom: 14px; }
+  form { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px; }
+  label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--amber-text-secondary); flex: 1 1 110px; }
+  input { font: inherit; color: var(--amber-text); background: var(--amber-fill); border: 0; border-radius: var(--amber-radius-small); padding: 10px 12px; min-height: 44px; width: 100%; }
+  button.add { font: inherit; font-weight: 600; min-height: 44px; padding: 0 20px; border: 0; border-radius: var(--amber-radius-small); background: var(--amber-accent); color: var(--amber-on-accent); align-self: flex-end; }
+  .err { color: var(--amber-danger); padding: 0 16px 12px; }
+  .empty { padding: 28px 16px; text-align: center; color: var(--amber-text-secondary); }
+</style>
+</head>
+<body>
+<main id="app" aria-live="polite"></main>
+<script>
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const kr = (n) => Math.round(n).toLocaleString("sv-SE", { maximumFractionDigits: 0 }) + " kr";
+  const MN = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const mlabel = (k) => MN[+k.slice(5, 7) - 1] + " " + k.slice(0, 4);
+  let error = "", sel = null;
+
+  function render(note, data) {
+    const app = document.getElementById("app");
+    const t = note.tables.find((t) => t.columns.some((c) => /^(amt|amount|cost|price|kr|sum)$/i.test(c.name)));
+    if (!t) { app.innerHTML = `<h1>${esc(note.title)}</h1><div class="card empty">Add a table with Date, Item, Category and Amt columns.</div>`; return; }
+    const ci = (re) => t.columns.findIndex((c) => re.test(c.name));
+    const a = ci(/^(amt|amount|cost|price|kr|sum)$/i), cat = ci(/categ/i), item = ci(/item|what|description/i), date = ci(/^date$/i);
+    const rows = t.rows.map((r, i) => ({
+      i, item: item >= 0 ? r[item] : "", cat: (cat >= 0 && r[cat]) || "Other", date: date >= 0 ? r[date] : "",
+      n: parseFloat(String(r[a]).replace(/\s/g, "").replace(",", ".")) || 0
+    }));
+    const byM = new Map();
+    for (const x of rows) { const k = (x.date || "").slice(0, 7) || "none"; byM.set(k, (byM.get(k) || 0) + x.n); }
+    const months = [...byM.keys()].sort();
+    const cur = (data && data.month && byM.has(data.month)) ? data.month : (months[months.length - 1] || null);
+    const max = Math.max(1, ...byM.values());
+    const inM = rows.filter((x) => ((x.date || "").slice(0, 7) || "none") === cur);
+    const total = inM.reduce((s, x) => s + x.n, 0);
+    const groups = new Map();
+    for (const x of inM) { if (!groups.has(x.cat)) groups.set(x.cat, []); groups.get(x.cat).push(x); }
+    const gl = [...groups].map(([k, l]) => [k, l, l.reduce((s, x) => s + x.n, 0)]).sort((p, q) => q[2] - p[2]);
+
+    app.innerHTML = `
+      <h1>${esc(note.title)}</h1>
+      <div class="total">${kr(total)}</div>
+      <div class="muted">${cur ? (cur === "none" ? "Undated" : mlabel(cur)) : "No entries"} · ${inM.length} ${inM.length === 1 ? "entry" : "entries"}</div>
+      <div class="lbl">By month</div>
+      <div class="card months">${months.length ? months.map((k) => `<button class="m" data-m="${k}" aria-pressed="${k === cur}"><span>${k === "none" ? "Undated" : mlabel(k)}</span><span class="track"><span class="fill" style="display:block;width:${(100 * byM.get(k) / max).toFixed(1)}%"></span></span><span class="num">${kr(byM.get(k))}</span></button>`).join("") : '<div class="empty">No expenses yet.</div>'}</div>
+      <div class="lbl">By category</div>
+      ${gl.map(([k, l, s]) => `<div class="card group"><div class="ghead"><div class="grow">${esc(k)}</div><div class="num">${kr(s)}</div></div>${l.slice().sort((p, q) => q.date.localeCompare(p.date)).map((x) => `<div class="row"><div class="grow">${esc(x.item)}<div class="muted">${esc(x.date)}</div></div><div class="num">${kr(x.n)}</div></div>`).join("")}</div>`).join("") || '<div class="card empty">Nothing this month.</div>'}
+      <div class="lbl">Add an expense</div>
+      <div class="card">
+        <form id="add">
+          <label>Item<input name="item" required></label>
+          <label>Category<input name="cat" list="cats" required></label>
+          <datalist id="cats">${[...new Set(rows.map((x) => x.cat))].map((c) => `<option value="${esc(c)}">`).join("")}</datalist>
+          <label>Amount<input name="amount" inputmode="decimal" required></label>
+          <button class="add">Add</button>
+        </form>
+        <div class="err" role="alert">${esc(error)}</div>
+      </div>`;
+    app.querySelectorAll(".m").forEach((b) => b.onclick = () => amber.setData({ month: b.dataset.m }));
+    document.getElementById("add").onsubmit = async (e) => {
+      e.preventDefault();
+      const f = new FormData(e.target);
+      const values = { [t.columns[a].name]: String(f.get("amount")).trim() };
+      if (item >= 0) values[t.columns[item].name] = String(f.get("item")).trim();
+      if (cat >= 0) values[t.columns[cat].name] = String(f.get("cat")).trim();
+      if (date >= 0) values[t.columns[date].name] = amber.note.today;
+      const r = await amber.update({ op: "append_row", table: t.index, values });
+      error = r.ok ? "" : r.error;
+      if (!r.ok) render(amber.note, amber.data);
+    };
+  }
+  amber.onChange(render);
+</script>
+</body>
+</html>

@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Household expenses</title>
+<style>
+  * { box-sizing: border-box; }
+  body { padding: 20px 18px 80px; max-width: 680px; margin: 0 auto; }
+  h1 { font-size: 28px; letter-spacing: -.02em; margin: 4px 0 12px; }
+  .hero { background: var(--amber-accent-soft); border-radius: var(--amber-radius); padding: 18px 20px; margin-bottom: 16px; }
+  .hero .m { color: var(--amber-text-secondary); font-size: 15px; }
+  .hero .t { font-size: 48px; font-weight: 700; letter-spacing: -.03em; font-variant-numeric: tabular-nums; line-height: 1.1; margin: 4px 0; overflow-wrap: anywhere; }
+  .hero .s { color: var(--amber-text-secondary); font-size: 14px; }
+  .label { font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--amber-text-secondary); margin: 8px 4px; }
+  .card { background: var(--amber-surface); border-radius: var(--amber-radius); border: 1px solid var(--amber-separator); margin-bottom: 18px; overflow: hidden; }
+  .months { display: flex; gap: 8px; align-items: flex-end; padding: 14px 12px 8px; overflow-x: auto; }
+  .mb { flex: 1 0 64px; display: flex; flex-direction: column; align-items: center; gap: 6px; background: none; color: var(--amber-text); border: 0; padding: 4px 2px; min-height: 44px; font: inherit; border-radius: var(--amber-radius-small); }
+  .mb .col { height: 120px; width: 100%; display: flex; align-items: flex-end; background: var(--amber-fill); border-radius: 8px; overflow: hidden; }
+  .mb .fill { width: 100%; background: var(--amber-text-secondary); opacity: .55; border-radius: 8px 8px 0 0; }
+  .mb[aria-pressed="true"] .fill { background: var(--amber-accent); opacity: 1; }
+  .mb[aria-pressed="true"] .nm { font-weight: 700; }
+  .mb .nm { font-size: 13px; }
+  .mb .v { font-size: 12px; color: var(--amber-text-secondary); font-variant-numeric: tabular-nums; }
+  .ghead { display: flex; justify-content: space-between; padding: 12px 16px; background: var(--amber-fill); font-weight: 600; }
+  .row { display: flex; gap: 12px; align-items: center; padding: 11px 16px; border-top: 1px solid var(--amber-separator); min-height: 48px; }
+  .grow { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .muted { color: var(--amber-text-secondary); font-size: 13px; }
+  .num { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+  form { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px; }
+  label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--amber-text-secondary); flex: 1 1 120px; }
+  input { font: inherit; color: var(--amber-text); background: var(--amber-fill); border: 0; border-radius: var(--amber-radius-small); padding: 10px 12px; min-height: 44px; width: 100%; }
+  .add { font: inherit; font-weight: 600; min-height: 44px; padding: 0 18px; border: 0; border-radius: var(--amber-radius-small); background: var(--amber-accent); color: var(--amber-on-accent); align-self: flex-end; }
+  .err { color: var(--amber-danger); padding: 0 16px 12px; }
+  .empty { padding: 24px 16px; text-align: center; color: var(--amber-text-secondary); }
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script>
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const kr = (n) => Math.round(n).toLocaleString("sv-SE") + " kr";
+  const MN = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const mname = (k, long) => { const m = MN[parseInt(k.slice(5, 7), 10) - 1] || k; return long ? m + " " + k.slice(0, 4) : m.slice(0, 3); };
+  let error = "";
+
+  function render(note, data) {
+    const app = document.getElementById("app");
+    const idx = (t, re) => t.columns.findIndex((c) => re.test(c.name));
+    const t = note.tables.find((t) => idx(t, /^(amt|amount|cost|price|kr|sum)$/i) >= 0 && idx(t, /^date$/i) >= 0);
+    if (!t) { app.innerHTML = `<h1>${esc(note.title)}</h1><div class="card empty">Add a table with Date and Amt columns.</div>`; return; }
+    const a = idx(t, /^(amt|amount|cost|price|kr|sum)$/i), d = idx(t, /^date$/i), c = idx(t, /categ/i), it = idx(t, /^(item|what|description)$/i);
+    const rows = t.rows.map((r, i) => ({
+      i, date: r[d] || "", month: (r[d] || "").slice(0, 7), item: it >= 0 ? r[it] : "", cat: (c >= 0 && r[c]) || "Other",
+      n: parseFloat(String(r[a]).replace(/\s/g, "").replace(",", ".")) || 0
+    })).filter((x) => /^\d{4}-\d{2}$/.test(x.month));
+    const byMonth = new Map();
+    for (const x of rows) byMonth.set(x.month, (byMonth.get(x.month) || 0) + x.n);
+    const months = [...byMonth.keys()].sort();
+    const todayM = note.today.slice(0, 7);
+    let sel = data && data.month;
+    if (!sel || !byMonth.has(sel)) sel = months.includes(todayM) || !months.length ? todayM : months[months.length - 1];
+    const max = Math.max(1, ...byMonth.values());
+    const total = byMonth.get(sel) || 0;
+    const inM = rows.filter((x) => x.month === sel);
+    const groups = new Map();
+    for (const x of inM) { if (!groups.has(x.cat)) groups.set(x.cat, []); groups.get(x.cat).push(x); }
+    const gl = [...groups].map(([k, v]) => [k, v, v.reduce((s, x) => s + x.n, 0)]).sort((p, q) => q[2] - p[2]);
+    const cats = [...new Set(rows.map((x) => x.cat))];
+
+    app.innerHTML = `
+      <h1>${esc(note.title)}</h1>
+      <section class="hero" aria-label="Total for ${esc(mname(sel, true))}">
+        <div class="m">${esc(mname(sel, true))}</div>
+        <div class="t">${kr(total)}</div>
+        <div class="s">${inM.length} ${inM.length === 1 ? "entry" : "entries"}</div>
+      </section>
+      <div class="label">By month</div>
+      <div class="card"><div class="months">${months.length ? months.map((m) => `
+        <button class="mb" data-m="${m}" aria-pressed="${m === sel}" aria-label="${esc(mname(m, true))}: ${kr(byMonth.get(m))}">
+          <div class="v">${kr(byMonth.get(m))}</div>
+          <div class="col"><div class="fill" style="height:${Math.max(3, 100 * byMonth.get(m) / max).toFixed(1)}%"></div></div>
+          <div class="nm">${esc(mname(m))}</div></button>`).join("") : '<div class="empty" style="flex:1">No dated expenses yet.</div>'}</div></div>
+      <div class="label">${esc(mname(sel))} by category</div>
+      <div class="card">${gl.length ? gl.map(([k, v, s]) => `
+        <div class="ghead"><span>${esc(k)}</span><span class="num">${kr(s)}</span></div>
+        ${v.slice().sort((p, q) => p.date < q.date ? 1 : -1).map((x) => `<div class="row"><div class="grow">${esc(x.item)}<div class="muted">${esc(x.date)}</div></div><div class="num">${kr(x.n)}</div></div>`).join("")}`).join("") : '<div class="empty">Nothing in this month.</div>'}</div>
+      <div class="label">Add an expense</div>
+      <div class="card">
+        <form id="add">
+          <label>What<input name="item" required></label>
+          <label>Category<input name="cat" list="cats" required></label>
+          <datalist id="cats">${cats.map((k) => `<option value="${esc(k)}">`).join("")}</datalist>
+          <label>Amount (kr)<input name="amount" inputmode="decimal" required></label>
+          <button class="add">Add</button>
+        </form>
+        ${error ? `<div class="err" role="alert">${esc(error)}</div>` : ""}
+      </div>`;
+
+    app.querySelectorAll(".mb").forEach((b) => b.onclick = () => amber.setData({ month: b.dataset.m }));
+    document.getElementById("add").onsubmit = async (e) => {
+      e.preventDefault();
+      const f = new FormData(e.target);
+      const values = {};
+      values[t.columns[a].name] = String(f.get("amount")).trim();
+      if (it >= 0) values[t.columns[it].name] = String(f.get("item")).trim();
+      if (c >= 0) values[t.columns[c].name] = String(f.get("cat")).trim();
+      values[t.columns[d].name] = amber.note.today;
+      const r = await amber.update({ op: "append_row", table: t.index, values });
+      error = r.ok ? "" : r.error;
+      if (!r.ok) render(amber.note, amber.data);
+    };
+  }
+  amber.onChange(render);
+</script>
+</body>
+</html>

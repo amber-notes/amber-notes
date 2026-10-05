@@ -9,7 +9,10 @@
 import type { PendingQuery, Row, Sql, TransactionSql } from "npm:postgres@3.4.5";
 import { toBase64, type Head, type Vault } from "../_shared/e2ee.ts";
 import { errorKind, log } from "../_shared/log.ts";
-import { MAX_PAGE_BYTES, PAGE_CONTRACT, PAGE_REWRITE, pageDataView, pageProblems } from "./page.ts";
+import { MAX_PAGE_BYTES, PAGE_REWRITE, pageDataView, pageProblems } from "./page.ts";
+import { PAGE_API } from "./page_guide.ts";
+import { pageWarnings } from "./page_lint.ts";
+import { dataHandlers, dataTools, pageExtras } from "./data_tools.ts";
 import { appendText, applyEdits, coerce, findTables, fitLines, isTextType, mimeOf, outline, previewOf, replaceTable, searchFilter, searchInMemory, setChecklistItem, sliceLines, titleOf, typeSpec, type Edit, type Table } from "./notes.ts";
 
 export type ToolContext = { sql: Sql; userId: string; client: string; canWrite: boolean; vault: Vault };
@@ -20,7 +23,7 @@ export class Content {
   constructor(readonly content: Record<string, unknown>[], readonly structured?: Record<string, unknown>) {}
 }
 
-type Tx = TransactionSql;
+export type Tx = TransactionSql;
 type Args = Record<string, unknown>;
 type Tool = {
   name: string;
@@ -226,16 +229,16 @@ export const tools: Tool[] = ([
   // Note pages (prototype): a view over a note's data, see page.ts.
   {
     name: "set_note_page", title: "Make a page for a note",
-    description: "Gives a note a page: a custom view of its data (a habit grid with streaks, a budget with totals, a reading log), shown in Amber Notes with a Page / Text switch. " +
-      "The note's markdown stays the data and the source of truth: this tool never changes it. Keep the note's table or checklist as it is (fix it first with the other tools if needed) and make the page read and change it. " +
-      "Replaces the note's current page, if any; an empty html removes it. The last 10 pages are kept, so nothing is lost.\n" + PAGE_REWRITE + "\n" + PAGE_CONTRACT +
-      `\nOne self-contained HTML document, at most ${MAX_PAGE_BYTES / 1024} KB. Pages with external addresses or network calls are refused.`,
+    description: "The note's app (what people see on its App side; call it \"the note's app\" with them, never \"page\"). Gives a note a page: a custom view of its data (a habit grid with streaks, a budget with totals, a reading log), shown in Amber Notes with a Page / Text switch. " +
+      "The note's markdown stays the data and the source of truth: this tool never changes it. Keep the note's table or checklist as it is (fix it first with the data tools if needed) and make the page read and change it. " +
+      "Replaces the note's current page, if any; an empty html removes it. The last 10 pages are kept, and the page's data (amber.data) stays, so nothing is lost. " +
+      "Call get_page_guide first. Pages with external addresses or network calls are refused; the result lists warnings to fix (dark mode, labels, overflow, copied data).\n" + PAGE_REWRITE + "\n" + PAGE_API,
     inputSchema: { type: "object", properties: { ...noteRef, html: str("The whole page: one HTML document with inline CSS and JS. Empty string removes the page.") }, required: ["html"] },
     annotations: { ...write, destructiveHint: true, idempotentHint: true },
   },
   {
     name: "edit_note_page", title: "Edit a note's page",
-    description: "Precise edits to a note's current page, like edit_note for notes: each old_text must match the page's HTML exactly once (copy it from get_note_page) and is replaced by new_text. " +
+    description: "The note's app (what people see on its App side; call it \"the note's app\" with them, never \"page\"). Precise edits to a note's current page, like edit_note for notes: each old_text must match the page's HTML exactly once (copy it from get_note_page) and is replaced by new_text. " +
       "Edits apply in order; if one doesn't match, or the result breaks the page rules, nothing changes. The page before the edit is kept (the last 10 are). The note's markdown is never changed.",
     inputSchema: {
       type: "object",
@@ -249,7 +252,7 @@ export const tools: Tool[] = ([
   },
   {
     name: "get_note_page", title: "Read a note's page",
-    description: "Returns a note's page (its HTML), the rules a page follows, and the earlier pages kept (the last 10, newest first). Pass version_id to read an earlier page; to bring it back, send its html to set_note_page. A note without a page returns has_page: false.",
+    description: "The note's app (what people see on its App side; call it \"the note's app\" with them, never \"page\"). Returns a note's page (its HTML), the rules a page follows, page_input (what the page is handed: amber.note with the first rows of each table, and amber.data), and the earlier pages kept (the last 10, newest first). Read it before changing a page. Pass version_id to read an earlier page; to bring it back, send its html to set_note_page. A note without a page returns has_page: false.",
     inputSchema: { type: "object", properties: { ...noteRef, version_id: int("An earlier page, from versions.") } },
     annotations: read,
   },
@@ -259,6 +262,7 @@ export const tools: Tool[] = ([
     inputSchema: { type: "object", properties: {} },
     annotations: read,
   },
+  ...dataTools,
   // ChatGPT's connector conventions.
   {
     name: "search", title: "Search",
@@ -277,7 +281,7 @@ export const tools: Tool[] = ([
 const writeTools = new Set(tools.filter((t) => !t.annotations.readOnlyHint).map((t) => t.name));
 
 /** One tool call: the vault, and how much scan time it spent (charged when it ends). */
-type Call = { v: Vault; ctx: ToolContext; scanMs: number };
+export type Call = { v: Vault; ctx: ToolContext; scanMs: number };
 
 export async function runTool(name: string, args: Args, ctx: ToolContext): Promise<unknown> {
   if (!tools.some((t) => t.name === name)) throw new ToolError(`Unknown tool ${name}.`);
@@ -332,7 +336,7 @@ async function withHead(v: Vault, n: NoteRow): Promise<Note> {
   return { ...n, title: h.title, ...(h.preview !== undefined ? { preview: h.preview } : {}) };
 }
 
-async function bodyOf(v: Vault, n: { id: string; body_ct?: string | null }): Promise<string> {
+export async function bodyOf(v: Vault, n: { id: string; body_ct?: string | null }): Promise<string> {
   if (!n.body_ct) throw new ToolError(LOCKED);
   try {
     return await v.openBody(n.id, n.body_ct);
@@ -567,7 +571,7 @@ async function findFolder(tx: Tx, v: Vault, ref: string, create: boolean): Promi
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-async function findNote(tx: Tx, c: Call, args: Args, includeTrashed = false): Promise<Note> {
+export async function findNote(tx: Tx, c: Call, args: Args, includeTrashed = false): Promise<Note> {
   const id = typeof args.id === "string" ? args.id : undefined;
   const title = typeof args.title === "string" ? args.title.trim() : undefined;
   if (id) {
@@ -614,7 +618,7 @@ function summary(n: Note, all: FolderRow[]) {
   };
 }
 
-const iso = (d: Date | null) => (d ? new Date(d).toISOString() : null);
+export const iso = (d: Date | null) => (d ? new Date(d).toISOString() : null);
 const clampInt = (v: unknown, def: number, max: number) => Math.max(0, Math.min(max, Number.isFinite(Number(v)) ? Math.floor(Number(v)) : def));
 
 /** Heads of notes by id, in the order given. */
@@ -630,7 +634,7 @@ async function notesById(tx: Tx, v: Vault, ids: string[]): Promise<Note[]> {
  * to the database, which would make a version. A shared note's public copy is rewritten in the
  * same transaction.
  */
-async function save(tx: Tx, c: Call, note: Note, before: string, body: string, expected?: unknown) {
+export async function save(tx: Tx, c: Call, note: Note, before: string, body: string, expected?: unknown) {
   checkSize(body);
   const want = expected !== undefined && expected !== null ? wholeNumber(expected, "expected_version") : undefined;
   if (body === before) {
@@ -728,13 +732,16 @@ async function savePage(tx: Tx, c: Call, n: Note, html: string) {
     insert into public.note_pages (note_id, page_ct) values (${n.id}, ${sealed})
     on conflict (note_id) do update set page_ct = excluded.page_ct
     returning (xmax = 0) as created`;
+  const warnings = pageWarnings(html, await bodyOf(c.v, n));
   return { id: n.id, title: n.title, page: created ? "created" : "replaced", bytes: new TextEncoder().encode(html).length,
-    note: "The person sees it in Amber Notes under Page. The note's markdown is unchanged." + (created ? "" : " The previous page is kept (get_note_page lists it).") };
+    note: "The person sees it on the note's App side (call it the note's app, not a page). The note's text is unchanged." + (created ? "" : " The previous version is kept (get_note_page lists it).") + " Next: run check_app and fix what it finds.",
+    ...(warnings.length ? { warnings, fix_warnings: "Saved. Fix these with edit_note_page, then run check_app, before you reply." } : {}) };
 }
 
 // MARK: Handlers
 
 const handlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<unknown>> = {
+  ...dataHandlers,
   async get_overview(tx, _a, c) {
     const all = await folders(tx, c.v);
     const { listed, counts, approximate } = await listedNotes(tx, c);
@@ -1191,14 +1198,15 @@ const handlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<unknown>> =
       let html: string | null = null;
       if (v.page_ct) try { html = await c.v.openPage(n.id, v.page_ct); } catch { throw new ToolError("That page can't be opened with this connection's key."); }
       return { id: n.id, title: n.title, version_id: want, made_by: v.client, made: iso(v.made_at), html, ...(await data(v.data_ct)),
-        note: "An earlier version. To bring the page back, send its html to set_note_page; the data with set_page_data." };
+        note: "An earlier version. To bring the page back, send its html to set_note_page; the data with update_page_data { replace }." };
     }
     const [row] = await tx<{ page_ct: string | null; data_ct: string | null; client: string | null; updated_at: Date }[]>`
       select page_ct, data_ct, client, updated_at from public.note_pages where note_id = ${n.id}`;
-    if (!row?.page_ct) return { id: n.id, title: n.title, has_page: false, rules: PAGE_CONTRACT, ...(await data(row?.data_ct ?? null)), versions: list };
+    const extras = n.body_ct ? pageExtras(await bodyOf(c.v, n)) : {};
+    if (!row?.page_ct) return { id: n.id, title: n.title, has_page: false, rules: PAGE_API, ...extras, ...(await data(row?.data_ct ?? null)), versions: list };
     let html: string;
     try { html = await c.v.openPage(n.id, row.page_ct); } catch { throw new ToolError("This note's page can't be opened with this connection's key."); }
-    return { id: n.id, title: n.title, has_page: true, made_by: row.client, updated: iso(row.updated_at), rules: PAGE_CONTRACT, html, ...(await data(row.data_ct)), versions: list };
+    return { id: n.id, title: n.title, has_page: true, made_by: row.client, updated: iso(row.updated_at), rules: PAGE_API, ...extras, html, ...(await data(row.data_ct)), versions: list };
   },
 
   async list_api_keys(tx, _a, c) {

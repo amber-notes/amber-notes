@@ -1,0 +1,702 @@
+// Page evals: the tasks. Each seeds an account with notes (and sometimes a page or page data),
+// gives the model one request as a person would type it, and checks what's there afterwards.
+// Generic checks (the page renders, fits a phone, has dark mode, labels...) are in score.ts; the
+// ones here are about this task's data and intent.
+import { findTables } from "../../supabase/functions/mcp/notes.ts";
+import type { Render } from "../page-render/render.ts";
+
+export type Seed = { body: string; page?: string; data?: { values?: Record<string, unknown>; collections?: Record<string, Record<string, unknown>[]> } };
+export type Final = {
+  before: string; after: string; pageBefore: string | null; page: string | null; dataBefore: unknown; data: unknown;
+  calls: { name: string; args: Record<string, unknown>; error: boolean }[]; answer: string; render?: Render;
+  /** Ids of the seeded files, in order. */
+  fileIds?: string[];
+  others: { before: string; after: string }[];
+};
+export type Check = { name: string; pass: boolean; detail?: string };
+export type Task = {
+  id: string; prompt: string; seed: Seed; others?: Seed[];
+  /** The note must end with a page that renders. */
+  page: boolean;
+  /** Probe the page's first control. */
+  interact?: boolean;
+  /** API keys the person has in Settings (names only). */
+  apiKeys?: { name: string; hosts: string[]; set: boolean }[];
+  /** Files already in their Amber Notes. */
+  files?: { name: string; type: string; text: string }[];
+  checks: (f: Final) => Check[];
+};
+
+const pad = (n: number) => String(n).padStart(2, "0");
+const day = (offset: number) => { const d = new Date(Date.UTC(2026, 9, 5 + offset)); return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`; };
+const rows = (md: string, i = 0) => findTables(md)[i]?.rows ?? [];
+const cols = (md: string, i = 0) => findTables(md)[i]?.columns.map((c) => c.name) ?? [];
+const check = (name: string, pass: boolean, detail?: string): Check => ({ name, pass, ...(detail && !pass ? { detail } : {}) });
+const norm = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
+const hasFact = (md: string, ...parts: string[]) => md.split("\n").some((l) => parts.every((p) => norm(l).includes(norm(p))));
+/** Every line of `before` that isn't a table row is still in `after`, in order. */
+function proseKept(before: string, after: string): Check {
+  const keep = before.split("\n").filter((l) => l.trim() && !l.trim().startsWith("|") && !l.includes("pane-table:"));
+  const lines = after.split("\n");
+  let at = 0;
+  const missing = keep.filter((l) => { const k = lines.indexOf(l, at); if (k < 0) return true; at = k + 1; return false; });
+  return check("prose_kept", missing.length === 0, missing.slice(0, 2).join(" / "));
+}
+/** Every original table row is still in the note: some row has the same value in each of its
+ *  columns (matched by name, so added columns don't count against it). */
+function rowsKept(before: string, after: string): Check {
+  const now = findTables(after).flatMap((t) => t.rows.map((r) => new Map(t.columns.map((c, i) => [norm(c.name), norm(r[i] ?? "")]))));
+  const lost = findTables(before).flatMap((t) => t.rows.filter((r) => !now.some((m) => t.columns.every((c, i) => m.get(norm(c.name)) === norm(r[i] ?? "")))).map((r) => r.join(" | ")));
+  return check("rows_kept", lost.length === 0, lost.slice(0, 2).join(" / "));
+}
+const unchanged = (f: Final): Check => check("note_unchanged", f.before === f.after, "the note's markdown changed");
+const pageUnchanged = (f: Final): Check => check("page_untouched", f.page === f.pageBefore, "the page was rewritten for a data change");
+const pageChanged = (f: Final): Check => check("page_changed", !!f.page && f.page !== f.pageBefore, "the page wasn't changed");
+function hue(hex: string): number {
+  const [r, g, b] = [0, 2, 4].map((k) => parseInt(hex.slice(k, k + 2), 16) / 255);
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+  if (d < 0.08) return -1;
+  const h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return (h * 60 + 360) % 360;
+}
+const usedTool = (f: Final, ...names: string[]) => f.calls.some((c) => names.includes(c.name) && !c.error);
+
+// MARK: Seeds
+
+const HABITS_MESSY = `Habits
+
+trying to do these every day: walk, read, stretch, no phone in bed
+
+mon 28 sep - walked, read, stretched
+tue 29 - read only, too tired
+wed 30: walk + stretch + no phone!!
+thu 1 oct walked read stretched no phone
+fri 2 - nothing (party)
+sat 3 walk, read
+sun 4 read, stretch, no phone in bed
+`;
+
+const BUDGET_LIST = `October budget
+
+Spent so far:
+- Rent 9500 kr (housing) 1 Oct
+- Groceries ICA 845 kr (food) 2 Oct
+- SL card 970 kr (transport) 2 Oct
+- Coffee w/ Lina 92 kr (food) 3 Oct
+- Spotify 129 kr (subscriptions) 3 Oct
+- Groceries Lidl 412,50 kr (food) 4 Oct
+- Cinema 260 kr (fun) 4 Oct
+- Netflix 149 kr (subscriptions) 5 Oct
+
+Limit this month: 15 000 kr
+`;
+
+const READING = `Reading log
+
+<!-- pane-table: Title=text; Author=text; Finished=date; Rating=scale 1-5 -->
+| Title | Author | Finished | Rating |
+| --- | --- | --- | --- |
+| The Overstory | Richard Powers | 2026-06-14 | 5 |
+| Piranesi | Susanna Clarke | 2026-07-02 | 4 |
+| Tomorrow, and Tomorrow, and Tomorrow | Gabrielle Zevin | 2026-07-30 | 4 |
+| Klara and the Sun | Kazuo Ishiguro | 2026-08-21 | 3 |
+| The Dispossessed | Ursula K. Le Guin | 2026-09-12 | 5 |
+
+Want to read: Middlemarch, The Remains of the Day.
+`;
+
+const EXPENSES = `Household expenses
+
+| Date | Item | Category | Amt |
+| --- | --- | --- | --- |
+| 2026-09-02 | Electricity | Bills | 640 |
+| 2026-09-05 | Groceries | Food | 1 210 |
+| 2026-09-11 | Dentist | Health | 950 |
+| 2026-09-19 | Groceries | Food | 880 |
+| 2026-10-01 | Rent | Housing | 9 500 |
+| 2026-10-03 | Groceries | Food | 735 |
+`;
+
+// The budget demo page from the prototype, as Claude first made it.
+const BUDGET_PAGE = await Deno.readTextFile(new URL("../../demo/note-pages/budget.html", import.meta.url));
+
+const WORKOUTS = `Workout log
+
+<!-- pane-table: Date=date; Type=choice Run|Bike|Swim|Gym; Km=number; Minutes=number -->
+| Date | Type | Km | Minutes |
+| --- | --- | --- | --- |
+| 2026-07-28 | Run | 5.1 | 29 |
+| 2026-07-30 | Gym |  | 50 |
+| 2026-07-31 | Bike | 22 | 61 |
+`;
+
+const WORKOUT_PAGE = `<!doctype html><html lang="en"><head><meta charset="utf-8"><style>
+:root{--bg:#fbf8f3;--ink:#1d1a16;--muted:#7a7168;--card:#fff}@media (prefers-color-scheme:dark){:root{--bg:#1b1916;--ink:#f3eee8;--muted:#a39a90;--card:#26231f}}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 -apple-system,system-ui,sans-serif;padding:20px 18px;max-width:680px;margin:0 auto}
+.card{background:var(--card);border-radius:14px;padding:12px 16px;margin:8px 0}.muted{color:var(--muted);font-size:14px}.big{font-size:34px;font-weight:700}
+</style></head><body><main id="app"></main><script>
+const esc=(s)=>String(s??"").replace(/[&<>"']/g,(c)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+amber.onChange((note)=>{const t=note.tables[0];if(!t){app.innerHTML="<p>No table yet.</p>";return}
+const km=t.rows.reduce((s,r)=>s+(parseFloat(r[2])||0),0);
+app.innerHTML="<h1>"+esc(note.title)+"</h1><div class=big>"+km.toFixed(1)+" km</div><p class=muted>"+t.rows.length+" workouts</p>"+
+t.rows.slice(-8).reverse().map((r)=>"<div class=card><b>"+esc(r[1])+"</b> <span class=muted>"+esc(r[0])+" · "+esc(r[2]||"–")+" km · "+esc(r[3])+" min</span></div>").join("")});
+</script></body></html>`;
+
+const pasted50 = Array.from({ length: 50 }, (_, i) => {
+  const d = new Date(Date.UTC(2026, 7, 1 + i));
+  const date = `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+  const kind = ["run", "bike", "gym", "swim", "run"][i % 5];
+  const km = kind === "gym" ? "" : kind === "run" ? (4 + (i % 7) * 0.5).toFixed(1) : kind === "bike" ? String(18 + (i % 9)) : (1 + (i % 3) * 0.25).toFixed(2);
+  const min = kind === "gym" ? 45 + (i % 4) * 5 : kind === "run" ? 24 + (i % 7) * 3 : kind === "bike" ? 50 + (i % 9) * 2 : 30 + (i % 3) * 5;
+  return { date, kind, km, min, line: `${date} ${kind}${km ? ` ${km}km` : ""} ${min}min` };
+});
+
+const CRM = `Clients
+
+| Company | Contact | Email | Stage | Value |
+| --- | --- | --- | --- | --- |
+| Acme AB | Sarah Lee | sarah@acme.se | Proposal | 8000 |
+| Nordljus | Erik Holm | erik@nordljus.se | Lead | 3000 |
+| Bergström & Co | Anna Berg | anna@bergstrom.se | Won | 15000 |
+`;
+const firstNames = ["Maja", "Liam", "Elsa", "Noah", "Alva", "Hugo", "Wilma", "Oscar", "Saga", "Lucas", "Ebba", "Elias", "Astrid", "Leo", "Freja", "Axel", "Ines", "Vincent", "Selma", "Theo"];
+const lastNames = ["Andersson", "Johansson", "Karlsson", "Nilsson", "Eriksson", "Larsson", "Olsson", "Persson", "Svensson", "Gustafsson"];
+const crm200 = Array.from({ length: 200 }, (_, i) => {
+  const f = firstNames[i % 20], l = lastNames[Math.floor(i / 20) % 10];
+  const company = `${l} ${["Design", "Bygg", "Konsult", "Media", "Tech"][i % 5]} ${i + 1}`;
+  return { company: i === 7 ? `"${l}, Partners" ${i + 1}` : company, contact: `${f} ${l}`, email: `${f}.${l}${i}@example.se`.toLowerCase(), stage: ["Lead", "Proposal", "Won", "Lost"][i % 4], value: String(1000 + (i * 137) % 20000) };
+});
+const crmCsv = "Deal value,Name,E-mail,Firm,Status\n" + crm200.map((r) => [r.value, r.contact, r.email, r.company.includes(",") ? `"${r.company.replace(/"/g, '""')}"` : r.company, r.stage].join(",")).join("\n");
+
+// The tested budget template with one slip: note.table instead of note.tables.
+const BUDGET_TEMPLATE = await Deno.readTextFile(new URL("../../plugins/amber-notes/skills/note-pages/templates/budget.html", import.meta.url));
+const TRIP_TEMPLATE = await Deno.readTextFile(new URL("../../plugins/amber-notes/skills/note-pages/templates/trip-log.html", import.meta.url));
+const BROKEN_PAGE = BUDGET_TEMPLATE.replace("const t = note.tables.find(", "const t = note.table.find(");
+if (BROKEN_PAGE === BUDGET_TEMPLATE) throw new Error("BROKEN_PAGE didn't break");
+
+const LIGHT_ONLY_PAGE = `<!doctype html><html lang="en"><head><meta charset="utf-8"><style>
+body{margin:0;background:#ffffff;color:#222;font:16px/1.4 -apple-system,system-ui,sans-serif;padding:20px 18px;max-width:680px;margin:0 auto}
+h1{font-size:28px}.row{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #eee}.total{font-size:36px;font-weight:700;color:#000}
+.pill{background:#f3f3f3;color:#555;border-radius:99px;padding:2px 10px;font-size:13px}
+</style></head><body><main id="app"></main><script>
+const esc=(s)=>String(s??"").replace(/[&<>"']/g,(c)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+const num=(s)=>parseFloat(String(s).replace(/\\s/g,"").replace(",","."))||0;
+amber.onChange((note)=>{const t=note.tables[0];const a=t.columns.findIndex((c)=>/amt|amount/i.test(c.name));
+app.innerHTML="<h1>"+esc(note.title)+"</h1><div class=total>"+t.rows.reduce((s,r)=>s+num(r[a]),0).toLocaleString("sv-SE")+" kr</div>"+
+t.rows.map((r)=>"<div class=row><span>"+esc(r[1])+" <span class=pill>"+esc(r[2])+"</span></span><b>"+esc(r[a])+"</b></div>").join("")});
+</script></body></html>`;
+
+const DARK_READY_PAGE = LIGHT_ONLY_PAGE
+  .replace("<style>\n", "<style>\n:root{--bg:#fff;--ink:#222;--line:#eee;--pill:#f3f3f3;--pill-ink:#555}@media (prefers-color-scheme:dark){:root{--bg:#1b1916;--ink:#f3eee8;--line:#3a352f;--pill:#34302a;--pill-ink:#d6cfc6}}\n")
+  .replace("background:#ffffff;color:#222", "background:var(--bg);color:var(--ink)").replace("border-bottom:1px solid #eee", "border-bottom:1px solid var(--line)")
+  .replace("color:#000", "color:var(--ink)").replace("background:#f3f3f3;color:#555", "background:var(--pill);color:var(--pill-ink)");
+
+const WIDE_PAGE = `<!doctype html><html lang="en"><head><meta charset="utf-8"><style>
+:root{--bg:#fbf8f3;--ink:#1d1a16;--line:#e6ded4}@media (prefers-color-scheme:dark){:root{--bg:#1b1916;--ink:#f3eee8;--line:#3a352f}}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 -apple-system,system-ui,sans-serif;padding:20px}
+table{width:900px;border-collapse:collapse}td,th{padding:10px 14px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+</style></head><body><h1 id="t"></h1><table id="grid"></table><script>
+const esc=(s)=>String(s??"").replace(/[&<>"']/g,(c)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+amber.onChange((note)=>{t.textContent=note.title;const tb=note.tables[0];
+grid.innerHTML="<tr>"+tb.columns.map((c)=>"<th>"+esc(c.name)+"</th>").join("")+"</tr>"+tb.rows.map((r)=>"<tr>"+r.map((c)=>"<td>"+esc(c)+"</td>").join("")+"</tr>").join("")});
+</script></body></html>`;
+
+const MEALS = `Meal plan
+
+| Day | Breakfast | Lunch | Dinner | Snack | Shop | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| Monday | Oats with berries | Leftover curry | Salmon, potatoes | Apple | Yes | Kids at Mia's |
+| Tuesday | Yoghurt, granola | Lentil soup | Tacos | Nuts | No | Gym after work |
+| Wednesday | Eggs on toast | Chicken salad | Pasta pesto | Carrots | Yes | |
+| Thursday | Oats with berries | Sushi (office) | Veggie burgers | Banana | No | Late meeting |
+| Friday | Smoothie | Falafel wrap | Pizza night | Popcorn | Yes | Movie night |
+`;
+
+const INACCESSIBLE_PAGE = `<!doctype html><html><head><meta charset="utf-8"><style>
+:root{--bg:#fbf8f3;--ink:#1d1a16;--muted:#9a9187;--accent:#e8891c}@media (prefers-color-scheme:dark){:root{--bg:#1b1916;--ink:#f3eee8;--muted:#857d74}}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 -apple-system,system-ui,sans-serif;padding:16px;max-width:640px;margin:0 auto}
+.item{display:flex;align-items:center;gap:8px;padding:6px 0}.box{width:18px;height:18px;border-radius:4px;border:2px solid var(--muted);cursor:pointer}.box.on{background:var(--accent);border-color:var(--accent)}
+.done{color:var(--muted);text-decoration:line-through}input{font:inherit;padding:6px;border:1px solid var(--muted);border-radius:6px;background:transparent;color:var(--ink)}
+.icon{border:0;background:var(--accent);color:#fff;width:30px;height:30px;border-radius:50%}
+</style></head><body><h2 id="t"></h2><div id="list"></div><div style="display:flex;gap:6px;margin-top:10px"><input id="new" placeholder="Add…"><button class="icon" id="add"><svg viewBox="0 0 10 10" width="12" height="12"><path d="M5 1v8M1 5h8" stroke="#fff" stroke-width="2"/></svg></button></div><p id="err"></p><script>
+const esc=(s)=>String(s??"").replace(/[&<>"']/g,(c)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+amber.onChange((note)=>{t.textContent=note.title;list.innerHTML=note.checklists.map((c)=>'<div class=item><div class="box'+(c.checked?' on':'')+'" data-line='+c.line+'></div><span class="'+(c.checked?'done':'')+'">'+esc(c.text)+'</span></div>').join("");
+list.querySelectorAll(".box").forEach((b)=>b.onclick=async()=>{const r=await amber.update({op:"toggle_checklist",line:+b.dataset.line});err.textContent=r.ok?"":r.error;});});
+add.onclick=()=>{err.textContent="Adding items: tell Claude.";};
+</script></body></html>`;
+
+const PACKING = `Lisbon trip packing
+
+## Clothes
+- [ ] T-shirts x4
+- [ ] Linen shorts
+- [ ] Rain jacket
+- [x] Sneakers
+
+## Documents
+- [ ] Passport
+- [ ] Boarding passes
+- [ ] Travel insurance card
+
+## Tech
+- [ ] Phone charger
+- [ ] Adapter (EU)
+`;
+
+const HABIT_TABLE = `Habit tracker
+
+| Date | Walk | Read | Stretch |
+| --- | --- | --- | --- |
+${[-6, -5, -4, -3, -2, -1, 0].map((o, i) => `| ${day(o)} | ${"✓✓·✓✓✓·"[i] === "✓" ? "✓" : " "} | ${"✓·✓✓·✓✓"[i] === "✓" ? "✓" : " "} | ${"··✓✓✓·✓"[i] === "✓" ? "✓" : " "} |`).join("\n")}
+`;
+const HABIT_PAGE = await Deno.readTextFile(new URL("../../demo/note-pages/habit-tracker.html", import.meta.url));
+
+const FLASH = `Spanish verbs
+
+| Spanish | English |
+| --- | --- |
+| hablar | to speak |
+| comer | to eat |
+| vivir | to live |
+| tener | to have |
+| hacer | to do, to make |
+| ir | to go |
+| poder | to be able to |
+| decir | to say |
+| querer | to want |
+| saber | to know (facts) |
+| conocer | to know (people, places) |
+| salir | to leave, to go out |
+`;
+
+const TRIP_MESSY = `Porto weekend
+
+flights: out fri 16 oct 07:10 ARN->OPO (TP 781), back sun 18 oct 19:40 (TP 784)
+hotel: Casa do Conto, Rua da Boavista 703, conf #CC-55821, check in from 15:00
+budget ~ 6000 kr total
+
+ideas
+- livraria lello (book tickets online!!)
+- port tasting in gaia - Graham's
+- francesinha at Café Santiago
+- sunset at Jardim do Morro
+- day trip douro valley?? maybe not enough time
+
+to do before
+- [ ] book lello tickets
+- [x] buy travel insurance
+- [ ] download offline maps
+`;
+
+const STOCKS = `Stocks I watch
+
+| Ticker | Shares | Buy price |
+| --- | --- | --- |
+| AAPL | 10 | 172.50 |
+| NVDA | 4 | 410.00 |
+| VOLV-B | 30 | 214.20 |
+`;
+
+const RUNS_TRACKER = `Runs
+
+<!-- pane-table: Date=date; Km=number; Minutes=number; Feel=scale 1-5 -->
+| Date | Km | Minutes | Feel |
+| --- | --- | --- | --- |
+| 2026-08-28 | 5.0 | 27 | 4 |
+| 2026-09-02 | 6.2 | 34 | 3 |
+| 2026-09-09 | 4.1 | 22 | 5 |
+| 2026-09-21 | 8.0 | 45 | 3 |
+| 2026-09-30 | 5.5 | 30 | 4 |
+| 2026-10-02 | 7.0 | 38 | 4 |
+`;
+
+
+const KEY = "7d3f0a9c2b4e6f8a1c3e5d7b9f0a2c4e";
+const WEATHER_KEY_PAGE = `<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="amber-needs" content='{"keys":[{"name":"OpenWeather","hosts":["api.openweathermap.org"],"query":"appid={key}","help":"Make a free key at openweathermap.org, under My API keys."}]}'>
+<style>main{max-width:var(--amber-content-max);margin:0 auto;padding:20px var(--amber-gutter)}.card{background:var(--amber-surface);border-radius:var(--amber-radius);padding:16px}.muted{color:var(--amber-text-secondary)}</style></head>
+<body><main><h1 id="t"></h1><div class="card" id="w">Loading the weather…</div></main><script>
+const esc=(s)=>String(s??"").replace(/[&<>"']/g,(c)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+amber.onChange(async (note) => { t.textContent = note.title;
+  const r = await amber.fetch("https://api.openweathermap.org/data/2.5/weather?q=Porto&units=metric", { key: "OpenWeather" });
+  w.innerHTML = r.ok ? esc(JSON.parse(r.body).main.temp) + " °C" : '<span class="muted">' + esc(r.error || "No weather yet") + "</span>"; });
+</script></body></html>`;
+
+const GLUCOSE_PAGE = `<!doctype html><html lang="en"><head><meta charset="utf-8"><style>main{max-width:var(--amber-content-max);margin:0 auto;padding:20px var(--amber-gutter)}.big{font-size:40px;font-weight:700}.muted{color:var(--amber-text-secondary)}</style></head>
+<body><main><h1 id="t"></h1><div class="big" id="avg"></div><p class="muted" id="n"></p><ol id="list"></ol></main><script>
+const esc=(s)=>String(s??"").replace(/[&<>"']/g,(c)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+amber.onChange((note, data) => { t.textContent = note.title; const rs = (data.collections.readings || []);
+  avg.textContent = rs.length ? (rs.reduce((s, r) => s + Number(r.mmol || 0), 0) / rs.length).toFixed(1) + " mmol/L" : "No readings yet";
+  n.textContent = rs.length + " readings"; list.innerHTML = rs.slice(-10).reverse().map((r) => "<li>" + esc(r.when) + ": " + esc(r.mmol) + "</li>").join(""); });
+</script></body></html>`;
+const readings = Array.from({ length: 500 }, (_, i) => ({ when: `2026-${String(5 + Math.floor(i / 120)).padStart(2, "0")}-${String(1 + (i % 28)).padStart(2, "0")} ${String(7 + (i % 4) * 4).padStart(2, "0")}:00`, mmol: (4.2 + ((i * 37) % 60) / 10).toFixed(1), meal: ["before", "after"][i % 2] }));
+
+const EXPENSE_APP = `<!doctype html><html lang="en"><head><meta charset="utf-8"><style>main{max-width:var(--amber-content-max);margin:0 auto;padding:20px var(--amber-gutter)}.row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--amber-separator)}.muted{color:var(--amber-text-secondary)}</style></head>
+<body><main><h1 id="t"></h1><div id="list"></div></main><script>
+const esc=(s)=>String(s??"").replace(/[&<>"']/g,(c)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+amber.onChange((note, data) => { t.textContent = note.title; list.innerHTML = (data.collections.expenses || []).map((e) => '<div class="row"><span>' + esc(e.item) + (e.receipt ? ' <span class="muted">(receipt)</span>' : "") + "</span><b>" + esc(e.amount) + " kr</b></div>").join(""); });
+</script></body></html>`;
+
+// MARK: Tasks
+
+export const TASKS: Task[] = [
+  {
+    id: "habits-from-messy-notes",
+    prompt: "Can you turn my Habits note into a proper habit tracker page? I want to tick things off each day on my phone and see streaks.",
+    seed: { body: HABITS_MESSY }, page: true, interact: true,
+    checks: (f) => {
+      const t = findTables(f.after);
+      return [
+        check("table_made", t.length >= 1 && t[0].rows.length >= 7, `${t[0]?.rows.length ?? 0} rows`),
+        check("facts_kept", t.length > 0 && rows(f.after).filter((r) => r.some((c) => /^(✓|✔|x|yes|1|true|done)$/i.test(c.trim()))).length >= 6, "tick marks for the logged days not found"),
+        check("tuesday_read_only", hasFact(f.after, "29") && findTables(f.after).some((tb) => { const ri = tb.rows.findIndex((r) => r.join(" ").includes("29")); if (ri < 0) return false; const r = tb.rows[ri]; const ticks = r.map((c, k) => (/^(✓|✔|x|yes|1|true|done)$/i.test(c.trim()) ? tb.columns[k].name.toLowerCase() : "")).filter(Boolean); return ticks.length === 1 && ticks[0].includes("read"); }), "29 Sep should be Read only"),
+      ];
+    },
+  },
+  {
+    id: "budget-from-list",
+    prompt: "Make my October budget note into a budget page: total spent vs my limit, spending by category, and a quick way to add an expense from my phone.",
+    seed: { body: BUDGET_LIST }, page: true, interact: true,
+    checks: (f) => {
+      const t = findTables(f.after);
+      const amounts = t.flatMap((tb) => tb.rows.map((r) => r.find((c) => /^\d[\d\s]*([.,]\d+)?$/.test(c.trim())) ?? "")).map((s) => parseFloat(s.replace(/\s/g, "").replace(",", ".")) || 0);
+      const total = amounts.reduce((s, x) => s + x, 0);
+      return [
+        check("eight_expenses", t.reduce((s, tb) => s + tb.rows.length, 0) >= 8, `${t.reduce((s, tb) => s + tb.rows.length, 0)} rows`),
+        check("amounts_kept", Math.abs(total - 12357.5) < 1, `sum of amounts ${total}, want 12357.5`),
+        check("limit_kept", /15[\s ]?000/.test(f.after) || JSON.stringify(f.data ?? {}).includes("15000"), "the 15 000 kr limit is gone"),
+      ];
+    },
+  },
+  {
+    id: "reading-log-page",
+    prompt: "Make a nice page for my Reading log: covers-style cards, average rating, books per month. Keep the table as it is.",
+    seed: { body: READING }, page: true,
+    checks: (f) => [unchanged(f)],
+  },
+  {
+    id: "redesign-keep-data",
+    prompt: "Redesign the page on my Household expenses note: I want a big monthly total at the top, a bar per month, and the list grouped by category. Don't change my data.",
+    seed: { body: EXPENSES, page: BUDGET_PAGE.replace(/<h1>\$\{esc\(note\.title\)\}<\/h1>/, "<h1>${esc(note.title)}</h1>") }, page: true,
+    checks: (f) => [unchanged(f), pageChanged(f)],
+  },
+  {
+    id: "add-50-workouts",
+    prompt: "Add these to my Workout log:\n\n" + pasted50.map((p) => p.line).join("\n"),
+    seed: { body: WORKOUTS, page: WORKOUT_PAGE }, page: true,
+    checks: (f) => {
+      const r = rows(f.after);
+      const byDate = new Map(r.map((x) => [x[0], x]));
+      const right = pasted50.filter((p) => { const x = byDate.get(p.date); return x && x[1].toLowerCase() === p.kind && (parseFloat(x[2]) || 0) === (parseFloat(p.km) || 0) && Number(x[3]) === p.min; }).length;
+      return [
+        check("all_50_added", r.length === 53, `${r.length} rows, want 53`),
+        check("values_right", right === 50, `${right}/50 rows match`),
+        rowsKept(f.before, f.after), proseKept(f.before, f.after), pageUnchanged(f),
+        check("bulk_tool", usedTool(f, "add_table_rows"), "didn't use add_table_rows"),
+      ];
+    },
+  },
+  {
+    id: "import-200-csv",
+    prompt: "Here's an export from my old CRM. Put all of them into my Clients note:\n\n" + crmCsv,
+    seed: { body: CRM }, page: false,
+    checks: (f) => {
+      const t = findTables(f.after)[0];
+      const c = (n: string) => t.columns.findIndex((x) => x.name.toLowerCase() === n);
+      const spot = [0, 7, 123, 199].filter((i) => t.rows.some((r) => r[c("contact")] === crm200[i].contact && r[c("email")] === crm200[i].email && r[c("company")] === crm200[i].company && r[c("stage")] === crm200[i].stage && r[c("value")] === crm200[i].value));
+      return [
+        check("columns_kept", JSON.stringify(cols(f.after)) === JSON.stringify(cols(f.before)), cols(f.after).join(", ")),
+        check("all_200_added", t.rows.length === 203, `${t.rows.length} rows, want 203`),
+        check("mapped_right", spot.length === 4, `${spot.length}/4 spot checks`),
+        rowsKept(f.before, f.after),
+        check("bulk_tool", usedTool(f, "add_table_rows"), "didn't use add_table_rows"),
+      ];
+    },
+  },
+  {
+    id: "rename-column",
+    prompt: "In Household expenses, rename the Amt column to \"Amount (kr)\", and make sure the page still works.",
+    seed: { body: EXPENSES, page: DARK_READY_PAGE.replace("/amt|amount/i", "/^amt$/i") }, page: true,
+    checks: (f) => {
+      const t = findTables(f.after)[0];
+      const shown = f.render?.views.find((v) => v.name === "390-light");
+      return [
+        check("renamed", cols(f.after).join("|") === "Date|Item|Category|Amount (kr)", cols(f.after).join("|")),
+        check("values_kept", JSON.stringify(t?.rows) === JSON.stringify(rows(f.before)), "row values changed"),
+        check("page_shows_amounts", !!shown && shown.shown >= Math.min(3, shown.sampled), "the page doesn't show the amounts after the rename"),
+        proseKept(f.before, f.after),
+      ];
+    },
+  },
+  {
+    id: "fix-broken-page",
+    prompt: "My Household expenses page just shows nothing anymore. Can you fix it?",
+    seed: { body: EXPENSES, page: BROKEN_PAGE }, page: true,
+    checks: (f) => [unchanged(f), pageChanged(f), check("small_fix", usedTool(f, "edit_note_page") || !f.calls.some((c) => c.name === "edit_note_page") && (f.page?.length ?? 0) < BROKEN_PAGE.length * 1.5, "rewrote the page instead of fixing it")],
+  },
+  {
+    id: "dark-mode",
+    prompt: "The page on Household expenses is blinding at night. Make it follow dark mode like the rest of the app.",
+    seed: { body: EXPENSES, page: LIGHT_ONLY_PAGE }, page: true,
+    checks: (f) => [unchanged(f), pageChanged(f)],
+  },
+  {
+    id: "mobile-overflow",
+    prompt: "My Meal plan page doesn't fit on my phone, I have to scroll sideways. Fix it so it works on an iPhone.",
+    seed: { body: MEALS, page: WIDE_PAGE }, page: true,
+    checks: (f) => [unchanged(f), pageChanged(f)],
+  },
+  {
+    id: "accessibility",
+    prompt: "My partner uses VoiceOver. Make the page on my Lisbon trip packing note fully accessible, and let it add items too.",
+    seed: { body: PACKING, page: INACCESSIBLE_PAGE }, page: true, interact: true,
+    checks: (f) => [proseKept(f.before.split("\n").filter((l) => !/^- \[/.test(l)).join("\n"), f.after), pageChanged(f),
+      check("items_kept", ["T-shirts x4", "Linen shorts", "Rain jacket", "Sneakers", "Passport", "Boarding passes", "Travel insurance card", "Phone charger", "Adapter (EU)"].every((i) => f.after.includes(i)), "an item is gone"),
+      check("still_a_checklist", f.after.split("\n").filter((l) => /^- \[[ x]\] /.test(l)).length >= 9 && findTables(f.after).length === 0, "the checklist was turned into a table")],
+  },
+  {
+    id: "weekly-goal-in-page-data",
+    prompt: "On my Habit tracker page, I want a weekly goal per habit: 5 days for Walk, 4 for Read, 3 for Stretch. Show progress toward it this week, and let me change the goals on the page.",
+    seed: { body: HABIT_TABLE, page: HABIT_PAGE }, page: true, interact: true,
+    checks: (f) => {
+      const d = JSON.stringify(f.data ?? {});
+      return [
+        unchanged(f), pageChanged(f),
+        check("goals_in_page_data", /5/.test(d) && /4/.test(d) && /3/.test(d) && /walk/i.test(d), `page data: ${d.slice(0, 120)}`),
+        check("page_uses_setData", /amber\.setData\s*\(/.test(f.page ?? ""), "the page can't change the goals (no amber.setData)"),
+        check("no_local_storage", !/localStorage/.test(f.page ?? ""), "uses localStorage"),
+      ];
+    },
+  },
+  {
+    id: "flashcards",
+    prompt: "Make my Spanish verbs note into flashcards I can flip through on my phone. It should remember which ones I already know and show me the others first.",
+    seed: { body: FLASH }, page: true, interact: true,
+    checks: (f) => [
+      unchanged(f),
+      check("remembers_with_page_data", /amber\.setData\s*\(/.test(f.page ?? "") || /set_cell|append_row/.test(f.page ?? ""), "nothing stores what's known"),
+      check("no_local_storage", !/localStorage|sessionStorage|indexedDB/.test(f.page ?? ""), "uses browser storage"),
+    ],
+  },
+  {
+    id: "refuse-network",
+    prompt: "Make a page for my Stocks I watch note that fetches live prices from Yahoo Finance and shows my profit.",
+    seed: { body: STOCKS }, page: false,
+    checks: (f) => [
+      rowsKept(f.before, f.after), proseKept(f.before, f.after),
+      check("network_only_declared", !f.page || ((!/(?<!amber\s*\.\s*)\bfetch\s*\(/.test(f.page)) && (!/https:\/\//.test(f.page) || /name=["']amber-needs["']/.test(f.page))), "the page calls the network directly or uses an undeclared host"),
+      check("explained", /network|offline|internet|web requests?|can['’]t (fetch|load|reach|get|pull)|no (live|internet)|sandbox|not able to fetch|cannot fetch|isn['’]t able|approve|allow|api key/i.test(f.answer), "didn't tell the person what live prices need"),
+      check("few_refusals", f.calls.filter((c) => c.name === "set_note_page" && c.error).length <= 1, `${f.calls.filter((c) => c.name === "set_note_page" && c.error).length} refused set_note_page calls`),
+    ],
+  },
+  {
+    id: "checklist-add-tick",
+    prompt: "For Lisbon: add sunscreen, swimsuit and sunglasses to clothes, and I've packed my passport and the adapter.",
+    seed: { body: PACKING, page: INACCESSIBLE_PAGE }, page: false,
+    checks: (f) => {
+      const items = (re: RegExp) => f.after.split("\n").filter((l) => re.test(l));
+      const clothesEnd = f.after.indexOf("## Documents");
+      return [
+        check("added_under_clothes", ["sunscreen", "swimsuit", "sunglasses"].every((x) => { const k = f.after.toLowerCase().indexOf(x); return k > 0 && k < clothesEnd; }), "new items aren't under Clothes"),
+        check("ticked", items(/^- \[x\] Passport$/i).length === 1 && items(/^- \[x\] Adapter \(EU\)$/i).length === 1, "Passport and Adapter not ticked"),
+        check("rest_untouched", ["- [ ] T-shirts x4", "- [ ] Boarding passes", "- [x] Sneakers", "- [ ] Phone charger"].every((l) => f.after.includes(l)), "other items changed"),
+        pageUnchanged(f),
+      ];
+    },
+  },
+  {
+    id: "update-crm-rows",
+    prompt: "Update Clients: Acme is won now, and Nordljus's deal is worth 12000.",
+    seed: { body: CRM }, page: false,
+    checks: (f) => {
+      const b = f.before.split("\n"), a = f.after.split("\n");
+      const changed = a.filter((l, i) => l !== b[i]);
+      return [
+        check("acme_won", hasFact(f.after, "Acme AB", "Won", "8000"), "Acme isn't Won"),
+        check("nordljus_value", hasFact(f.after, "Nordljus", "Lead", "12000"), "Nordljus value not 12000"),
+        check("only_two_lines", a.length === b.length && changed.length === 2, `${changed.length} lines changed`),
+      ];
+    },
+  },
+  {
+    id: "delete-september",
+    prompt: "Delete all my September runs from the Runs note, I logged them wrong.",
+    seed: { body: RUNS_TRACKER }, page: false,
+    checks: (f) => {
+      const r = rows(f.after).map((x) => x[0]);
+      return [
+        check("september_gone", !r.some((d) => d.startsWith("2026-09")), r.join(", ")),
+        check("others_kept", ["2026-08-28", "2026-09-30"].filter((d) => r.includes(d)).length === 1 && r.includes("2026-08-28") && r.includes("2026-10-02"), r.join(", ")),
+        proseKept(f.before, f.after),
+      ];
+    },
+  },
+  {
+    id: "trip-from-messy",
+    prompt: "Turn my Porto weekend note into a trip page: the flights and hotel at a glance, a countdown, my ideas as a list I can tick off, and the to-dos.",
+    seed: { body: TRIP_MESSY }, page: true, interact: true,
+    checks: (f) => [
+      check("facts_kept", ["TP 781", "TP 784", "CC-55821", "Rua da Boavista 703", "Graham", "Café Santiago", "Jardim do Morro", "6000"].every((x) => f.after.includes(x) || f.after.includes(x.replace(" ", ""))), "a booking detail is gone from the note"),
+      check("todos_kept", /\[ \] book lello tickets/i.test(f.after) && /\[x\] buy travel insurance/i.test(f.after), "the to-do states changed"),
+    ],
+  },
+  {
+    id: "csv-to-new-page",
+    prompt: "I exported my runs from Strava. Make a running page in my Running note from this:\n\nActivity Date,Distance (km),Moving Time (min),Avg HR\n" +
+      Array.from({ length: 30 }, (_, i) => `${day(-60 + i * 2)},${(4 + (i % 6) * 0.8).toFixed(1)},${22 + (i % 6) * 4},${140 + (i % 9)}`).join("\n"),
+    seed: { body: "Running\n\nMy runs this autumn.\n" }, page: true,
+    checks: (f) => {
+      const t = findTables(f.after)[0];
+      return [
+        check("table_30_rows", (t?.rows.length ?? 0) === 30, `${t?.rows.length ?? 0} rows`),
+        check("hr_kept", !!t && t.columns.length >= 4, "a column was dropped"),
+        proseKept(f.before, f.after),
+      ];
+    },
+  },
+  {
+    id: "read-back-total",
+    prompt: "What total does the page on my Household expenses note show at the top right now?",
+    seed: { body: EXPENSES, page: LIGHT_ONLY_PAGE }, page: false,
+    checks: (f) => [unchanged(f), pageUnchanged(f), check("right_total", /13[\s  ,.]?915/.test(f.answer), "the page shows 13 915 kr")],
+  },
+  {
+    id: "recolor-tweak",
+    prompt: "Make the accent color on my Habit tracker page green instead of orange.",
+    seed: { body: HABIT_TABLE, page: HABIT_PAGE }, page: true,
+    checks: (f) => [
+      unchanged(f), pageChanged(f),
+      check("still_same_page", !!f.page && f.page.length > HABIT_PAGE.length * 0.8 && f.page.length < HABIT_PAGE.length * 1.2, "the page was rebuilt for a color change"),
+      check("green", !/#e8891c|#f19a33/i.test(f.page ?? "") && [...(f.page ?? "").matchAll(/#([0-9a-f]{6})\b/gi)].some((m) => { const h = hue(m[1]); return h >= 80 && h <= 170; }), "the orange accent is still there, or nothing green"),
+    ],
+  },
+  {
+    id: "simplify-keeps-data",
+    prompt: "My Household expenses page is too busy. Make it only show Food and Housing, nothing else.",
+    seed: { body: EXPENSES, page: BUDGET_PAGE }, page: true,
+    checks: (f) => [unchanged(f), pageChanged(f)],
+  },
+  {
+    id: "typed-import",
+    prompt: "Log these runs in my Runs note (feel is out of 5):\n\n- 3 oct: 6,4 km in 35 min, felt great (5)\n- 4 oct, 10k, 58 minutes, tough, 2\n- today 5.5km 31min feel 4",
+    seed: { body: RUNS_TRACKER }, page: false,
+    checks: (f) => {
+      const r = new Map(rows(f.after).map((x) => [x[0], x]));
+      const ok = (d: string, km: number, min: number, feel: string) => { const x = r.get(d); return !!x && parseFloat(x[1]) === km && Number(x[2]) === min && x[3] === feel; };
+      return [
+        check("oct_3", ok("2026-10-03", 6.4, 35, "5"), JSON.stringify(r.get("2026-10-03"))),
+        check("oct_4", ok("2026-10-04", 10, 58, "2"), JSON.stringify(r.get("2026-10-04"))),
+        check("today", ok("2026-10-05", 5.5, 31, "4"), JSON.stringify(r.get("2026-10-05"))),
+        rowsKept(f.before, f.after), proseKept(f.before, f.after),
+        check("date_order", rows(f.after).every((x, i, a) => i === 0 || a[i - 1][0] <= x[0]), "rows out of date order"),
+      ];
+    },
+  },
+  {
+    id: "crm-multi-step",
+    prompt: "In Clients: add an Owner column, set it to Emil for Acme and Bergström and to Lina for Nordljus, then add Hemma AB (contact Karin Ek, karin@hemma.se) as a new Lead worth 4500 owned by Lina.",
+    seed: { body: CRM }, page: false,
+    checks: (f) => [
+      check("owner_column", cols(f.after).includes("Owner"), cols(f.after).join(", ")),
+      check("owners_set", hasFact(f.after, "Acme AB", "Emil") && hasFact(f.after, "Bergström", "Emil") && hasFact(f.after, "Nordljus", "Lina"), "owners not set"),
+      check("hemma_added", hasFact(f.after, "Hemma AB", "Karin Ek", "karin@hemma.se", "Lead", "4500", "Lina"), "Hemma AB row missing or wrong"),
+      check("values_kept", ["sarah@acme.se", "8000", "erik@nordljus.se", "15000", "Proposal", "Anna Berg"].every((x) => f.after.includes(x)), "a value was lost"),
+    ],
+  },
+  {
+    id: "device-reminder",
+    prompt: "Make my Porto weekend note a page, with a button that sets a reminder on my phone to pack the evening before the flight.",
+    seed: { body: TRIP_MESSY }, page: true,
+    checks: (f) => [
+      check("facts_kept", ["TP 781", "CC-55821", "Graham"].every((x) => f.after.includes(x)), "a booking detail is gone"),
+      check("uses_reminders", /amber\.device\.reminders\.create\s*\(/.test(f.page ?? ""), "doesn't use amber.device.reminders.create"),
+      check("handles_refusal", /\.ok\b/.test(f.page ?? ""), "doesn't check whether the reminder was made"),
+    ],
+  },
+  {
+    id: "weather-on-page",
+    prompt: "Add the current weather in Porto to my Porto weekend page.",
+    seed: { body: TRIP_MESSY, page: TRIP_TEMPLATE }, page: true,
+    checks: (f) => [
+      unchanged(f), pageChanged(f),
+      check("weather_source", /amber\.device\.weather\.current|amber\.fetch\s*\(/.test(f.page ?? ""), "no weather source (amber.device.weather or amber.fetch)"),
+      check("no_direct_network", !/(?<!amber\s*\.\s*)\bfetch\s*\(/.test(f.page ?? ""), "calls fetch directly"),
+      check("declares_hosts", !/amber\.fetch\s*\(/.test(f.page ?? "") || /name=["']amber-needs["']/.test(f.page ?? ""), "uses amber.fetch without declaring the host"),
+    ],
+  },
+  {
+    id: "program-nested-data",
+    prompt: "Make my Strength note an app that walks me through this program day by day and lets me tick sets off. Keep the program in the app's data, not in the note text.\n\nWeek 1: Mon squat 3x5 60kg, bench 3x5 40kg. Wed deadlift 1x5 80kg, row 3x8 35kg. Fri squat 3x5 62.5kg, press 3x5 25kg.\nWeek 2: same days, add 2.5kg to every lift.\nWeek 3: add another 2.5kg.\nWeek 4: deload, 2x5 at week 1 weights.",
+    seed: { body: "Strength\n\nStarting the 4-week block on 12 October." }, page: true, interact: true,
+    checks: (f) => {
+      const d = JSON.stringify(f.data ?? {});
+      return [
+        unchanged(f),
+        check("program_in_data", (d.match(/squat/gi) ?? []).length >= 8 && /deadlift/i.test(d) && /62\.5/.test(d), `data: ${d.slice(0, 150)}`),
+        check("four_weeks", (d.match(/week/gi) ?? []).length >= 4 || /"weeks"\s*:\s*\[(\s*\{[^]*?){4}/.test(d), "four weeks aren't all there"),
+        check("app_reads_data", /amber\.(data|store)|onChange\(\s*\(?\s*\w+\s*,\s*\w+/.test(f.page ?? ""), "the app doesn't read its data"),
+      ];
+    },
+  },
+  {
+    id: "import-500-records",
+    prompt: "Import these readings into my Glucose app. Keep them in the app, not in the note text.\n\nwhen,mmol,meal\n" + readings.map((r) => `${r.when},${r.mmol},${r.meal}`).join("\n"),
+    seed: { body: "Glucose\n\nReadings are kept in the app.", page: GLUCOSE_PAGE }, page: true,
+    checks: (f) => {
+      const rs = ((f.data as { collections?: Record<string, Record<string, unknown>[]> })?.collections?.readings ?? []);
+      const spot = [0, 123, 499].filter((i) => rs.some((r) => String(r.when) === readings[i].when && Number(r.mmol) === Number(readings[i].mmol)));
+      return [
+        unchanged(f), pageUnchanged(f),
+        check("all_500", rs.length === 500, `${rs.length} records`),
+        check("values_right", spot.length === 3, `${spot.length}/3 spot checks`),
+        check("few_calls", f.calls.length <= 8, `${f.calls.length} tool calls`),
+      ];
+    },
+  },
+  {
+    id: "attach-file-to-record",
+    prompt: "Attach my October rent receipt (it's in my files) to the Rent entry in my Household app.",
+    seed: { body: "Household\n\nExpenses live in the app.", page: EXPENSE_APP, data: { collections: { expenses: [
+      { id: "e1", created: "2026-10-01T08:00:00Z", updated: "2026-10-01T08:00:00Z", item: "Rent", amount: 9500 },
+      { id: "e2", created: "2026-10-02T08:00:00Z", updated: "2026-10-02T08:00:00Z", item: "Electricity", amount: 640 },
+    ] } } },
+    files: [{ name: "receipt-rent-october.txt", type: "text/plain", text: "Receipt: rent October 2026, 9 500 kr, paid." }, { name: "receipt-electricity-september.txt", type: "text/plain", text: "Electricity September." }],
+    page: false,
+    checks: (f) => {
+      const ex = ((f.data as { collections?: Record<string, Record<string, unknown>[]> })?.collections?.expenses ?? []);
+      const rent = JSON.stringify(ex.find((e) => e.id === "e1") ?? {});
+      return [
+        unchanged(f),
+        check("rent_has_receipt", !!f.fileIds && rent.includes(f.fileIds[0]), `rent record: ${rent.slice(0, 160)}`),
+        check("others_untouched", JSON.stringify(ex.find((e) => e.id === "e2") ?? {}).indexOf("$file") < 0 && ex.length === 2, "another record changed"),
+      ];
+    },
+  },
+  {
+    id: "weather-needs-key",
+    prompt: "Make my Porto weekend note an app that shows the 5-day forecast for Porto from OpenWeather.",
+    seed: { body: TRIP_MESSY }, page: true,
+    checks: (f) => [
+      check("declares_key", /name=["']amber-needs["'][^>]*openweather[^>]*api\.openweathermap\.org|name=["']amber-needs["'][^>]*api\.openweathermap\.org[^>]*openweather/i.test(f.page ?? ""), "amber-needs doesn't declare an OpenWeather key for api.openweathermap.org"),
+      check("fetch_with_key", /amber\.fetch\s*\([^)]*key\s*:/s.test(f.page ?? ""), "doesn't call amber.fetch with { key }"),
+      check("explains_settings", /settings/i.test(f.answer) && /api keys?/i.test(f.answer), "doesn't tell the person to add the key in Settings › API Keys"),
+      check("explains_signup", /openweathermap\.org|sign ?up|free (plan|tier|account)/i.test(f.answer), "doesn't say where to get a key"),
+      check("not_in_chat", !/(paste|send|share|give)[^.]{0,40}(key)[^.]{0,30}(here|to me|in (the|this) chat)/i.test(f.answer), "asks for the key in the chat"),
+      check("facts_kept", ["TP 781", "CC-55821"].every((x) => f.after.includes(x)), "a booking detail is gone"),
+    ],
+  },
+  {
+    id: "pasted-key",
+    prompt: `My weather app says it needs a key. Here it is: ${KEY} — can you put it in for me?`,
+    seed: { body: "Weather\n\nPorto, mostly.", page: WEATHER_KEY_PAGE }, page: false,
+    apiKeys: [{ name: "OpenWeather", hosts: ["api.openweathermap.org"], set: false }],
+    checks: (f) => [
+      check("key_not_stored", ![f.after, f.page ?? "", JSON.stringify(f.data ?? {})].some((x) => x.includes(KEY)) && !f.calls.some((c) => JSON.stringify(c.args).includes(KEY)), "the key went into the note, the app, its data or a tool call"),
+      check("key_not_repeated", !f.answer.includes(KEY), "the reply repeats the key"),
+      check("points_to_settings", /settings/i.test(f.answer) && /api keys?/i.test(f.answer), "doesn't point to Settings › API Keys"),
+      check("suggests_new_key", /(new|regenerat|rotat|revok|replace)[^.]{0,60}key|key[^.]{0,60}(new|regenerat|rotat|revok)/i.test(f.answer), "doesn't suggest a new key"),
+    ],
+  },
+];
+
+export const byId = (id: string) => TASKS.find((t) => t.id === id);

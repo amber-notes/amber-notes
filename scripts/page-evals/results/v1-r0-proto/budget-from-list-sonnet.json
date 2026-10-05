@@ -1,0 +1,272 @@
+{
+  "task": "budget-from-list",
+  "model": "claude-sonnet-5-5",
+  "round": "r0-baseline",
+  "skill": false,
+  "seconds": 29,
+  "score": 0.8333333333333334,
+  "passed": 15,
+  "total": 18,
+  "checks": [
+    {
+      "name": "has_page",
+      "pass": true
+    },
+    {
+      "name": "server_checks",
+      "pass": true
+    },
+    {
+      "name": "no_console_errors",
+      "pass": true
+    },
+    {
+      "name": "no_network",
+      "pass": true
+    },
+    {
+      "name": "fits_390",
+      "pass": true
+    },
+    {
+      "name": "fits_1280",
+      "pass": true
+    },
+    {
+      "name": "shows_data",
+      "pass": true
+    },
+    {
+      "name": "dark_mode",
+      "pass": true
+    },
+    {
+      "name": "light_contrast",
+      "pass": true
+    },
+    {
+      "name": "labelled_controls",
+      "pass": false,
+      "detail": "3 unnamed: <input id=\"item\" placeholder=\"What? (e.g. Lunch)\" required=\"\"> <input id=\"amt\" type=\"number\" inputmode=\"decimal\" step=\"0.01\" placeholder=\"Amount (kr)\" required=\"\">"
+    },
+    {
+      "name": "edits_from_page",
+      "pass": true
+    },
+    {
+      "name": "probe_follows",
+      "pass": false,
+      "detail": "markup from the note ran as HTML"
+    },
+    {
+      "name": "probe_escapes",
+      "pass": false,
+      "detail": "markup from the note ran as HTML"
+    },
+    {
+      "name": "probe_empty",
+      "pass": true
+    },
+    {
+      "name": "probe_large",
+      "pass": true
+    },
+    {
+      "name": "eight_expenses",
+      "pass": true
+    },
+    {
+      "name": "amounts_kept",
+      "pass": true
+    },
+    {
+      "name": "limit_kept",
+      "pass": true
+    }
+  ],
+  "tool_calls": 5,
+  "tool_errors": 0,
+  "usage": {
+    "input": 12,
+    "output": 3272,
+    "cacheRead": 29678,
+    "cacheWrite": 11002,
+    "turns": 5
+  },
+  "usd": 0.0662,
+  "page_bytes": 4159,
+  "answer": "Your October budget note now has a page. I haven't opened it in the app, so I haven't seen how it looks or tried adding an expense.\n\n- **Total vs limit:** It shows total spent against your 15 000 kr limit, with a progress bar and how much is left or over. The bar turns amber at 80% and red once you're over.\n- **By category:** Each category (food, housing, transport, subscriptions, fun) gets a bar and a total.\n- **Add an expense:** There's a form for item, amount and category. It dates the expense today and adds it to the table. It's laid out for phone screens and works in light and dark mode.\n- **Recent:** The eight latest expenses are listed below the form.\n\nTo make the page work, I changed your note. The bullet list is now a table with Item, Amount, Category and Date columns. All eight expenses are there, and I wrote Lidl as 412.50 instead of 412,50. The \"Limit this month: 15 000 kr\" line is still in the note, and the page reads your limit from it. The old version is saved in the note's history if you want it back.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "October budget"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"October budget\",\n  \"results\": [\n    {\n      \"id\": \"f45d3221-2536-49a2-ab3b-acf03441b2d1\",\n      \"title\": \"October budget\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T12:28:24.825Z\",\n      \"snippet\": \"«October budget» Spent so far: - Rent 9500 kr (housing) 1 Oct - Groceries ICA 845 kr (food) 2 Oct - SL card 970 kr (transport) 2\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "f45d3221-2536-49a2-ab3b-acf03441b2d1",
+        "line_numbers": "true"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"f45d3221-2536-49a2-ab3b-acf03441b2d1\",\n  \"title\": \"October budget\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T12:28:24.825Z\",\n  \"updated\": \"2026-10-05T12:28:24.825Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 14,\n    \"words\": 72\n  },\n  \"markdown\": \" 1│ October budget\\n 2│ \\n 3│ Spent so far:\\n 4│ - Rent 9500 kr (housing) 1 Oct\\n 5│ - Groceries ICA 845 kr (food) 2 Oct\\n 6│ - SL card 970 kr (transport) 2 Oct\\n 7│ - Coff… (843 chars)"
+    },
+    {
+      "name": "replace_note_body",
+      "args": {
+        "id": "f45d3221-2536-49a2-ab3b-acf03441b2d1",
+        "expected_version": "1",
+        "body": "October budget\n\nLimit this month: 15 000 kr\n\n| Item | Amount (kr) | Category | Date |\n| --- | --- | --- | --- |\n| Rent | 9500 | housing | 1 Oct |\n| Groceries ICA | 845 | food | 2 Oct |\n| SL card | 970 | transport | 2 Oct |\n| Coffee w/ Lina | 92 | food | 3 Oct |\n| Spotify | 129 | subscriptions | 3 Oc… (420 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"replaced\": {\n    \"id\": \"f45d3221-2536-49a2-ab3b-acf03441b2d1\",\n    \"title\": \"October budget\",\n    \"version\": 2,\n    \"updated\": \"2026-10-05T12:28:32.456Z\"\n  },\n  \"previous_version_saved\": true\n}"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "f45d3221-2536-49a2-ab3b-acf03441b2d1"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"f45d3221-2536-49a2-ab3b-acf03441b2d1\",\n  \"title\": \"October budget\",\n  \"has_page\": false,\n  \"rules\": \"The page runs in Amber Notes in a sandbox with no network: no fetch, no external scripts, styles, fonts or images. Put all CSS and JS inline; images only as data: URIs or inline SVG.\\nRead the note from window.amber.note, never hardcode its contents (the note changes; the page must follow):\\n  amber.note = { title, markdown, today: \\\"yyyy-mm-dd\\\", tables: [{ index, columns: [{ name, type }], rows: [[cell, ...], ...] }], checklists: [{ line, text, checked }] }\\n  amber.onChange(fn) ca… (1299 chars)"
+    },
+    {
+      "name": "set_note_page",
+      "args": {
+        "id": "f45d3221-2536-49a2-ab3b-acf03441b2d1",
+        "html": "<!DOCTYPE html><html><head><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><style>\n:root{--bg:#fff;--fg:#1c1c1e;--card:#f4f1ec;--mut:#78746c;--acc:#d9820b;--bad:#d03a2f;--ok:#2e9e5b}\n@media(prefers-color-scheme:dark){:root{--bg:#1b1a18;--fg:#f2efe9;--card:#2a2825;--mut:#a39e94}}\nb… (4156 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"f45d3221-2536-49a2-ab3b-acf03441b2d1\",\n  \"title\": \"October budget\",\n  \"page\": \"created\",\n  \"bytes\": 4159,\n  \"note\": \"The person sees it in Amber Notes under Page. The note's markdown is unchanged.\"\n}"
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "390-light",
+        "width": 390,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 491,
+        "shown": 11,
+        "sampled": 12,
+        "bg": "rgb(255, 255, 255)",
+        "fg": "rgb(28, 28, 30)",
+        "contrast": 17.014735210873155,
+        "bgLuminance": 1,
+        "unnamedControls": [
+          "<input id=\"item\" placeholder=\"What? (e.g. Lunch)\" required=\"\">",
+          "<input id=\"amt\" type=\"number\" inputmode=\"decimal\" step=\"0.01\" placeholder=\"Amount (kr)\" required=\"\">",
+          "<input id=\"cat\" list=\"cl\" placeholder=\"Category\" required=\"\">"
+        ],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r0-baseline/shots/budget-from-list-sonnet-390-light.png"
+      },
+      {
+        "name": "390-dark",
+        "width": 390,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 491,
+        "shown": 11,
+        "sampled": 12,
+        "bg": "rgb(27, 26, 24)",
+        "fg": "rgb(242, 239, 233)",
+        "contrast": 15.153569657609358,
+        "bgLuminance": 0.010377484454868927,
+        "unnamedControls": [
+          "<input id=\"item\" placeholder=\"What? (e.g. Lunch)\" required=\"\">",
+          "<input id=\"amt\" type=\"number\" inputmode=\"decimal\" step=\"0.01\" placeholder=\"Amount (kr)\" required=\"\">",
+          "<input id=\"cat\" list=\"cl\" placeholder=\"Category\" required=\"\">"
+        ],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r0-baseline/shots/budget-from-list-sonnet-390-dark.png"
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 491,
+        "shown": 11,
+        "sampled": 12,
+        "bg": "rgb(255, 255, 255)",
+        "fg": "rgb(28, 28, 30)",
+        "contrast": 17.014735210873155,
+        "bgLuminance": 1,
+        "unnamedControls": [
+          "<input id=\"item\" placeholder=\"What? (e.g. Lunch)\" required=\"\">",
+          "<input id=\"amt\" type=\"number\" inputmode=\"decimal\" step=\"0.01\" placeholder=\"Amount (kr)\" required=\"\">",
+          "<input id=\"cat\" list=\"cl\" placeholder=\"Category\" required=\"\">"
+        ],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r0-baseline/shots/budget-from-list-sonnet-1280-light.png"
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 491,
+        "shown": 11,
+        "sampled": 12,
+        "bg": "rgb(27, 26, 24)",
+        "fg": "rgb(242, 239, 233)",
+        "contrast": 15.153569657609358,
+        "bgLuminance": 0.010377484454868927,
+        "unnamedControls": [
+          "<input id=\"item\" placeholder=\"What? (e.g. Lunch)\" required=\"\">",
+          "<input id=\"amt\" type=\"number\" inputmode=\"decimal\" step=\"0.01\" placeholder=\"Amount (kr)\" required=\"\">",
+          "<input id=\"cat\" list=\"cl\" placeholder=\"Category\" required=\"\">"
+        ],
+        "smallTargets": 0
+      }
+    ],
+    "blocked": [],
+    "updates": [
+      {
+        "op": {
+          "op": "append_row",
+          "table": 0,
+          "values": {
+            "Item": "Test entry",
+            "Amount (kr)": "3",
+            "Category": "test entry",
+            "Date": "5 Oct"
+          }
+        },
+        "ok": true
+      }
+    ],
+    "setData": 0,
+    "interaction": {
+      "tried": "form",
+      "ok": true
+    },
+    "probes": {
+      "follows": {
+        "pass": false,
+        "detail": "markup from the note ran as HTML"
+      },
+      "escapes": {
+        "pass": false,
+        "detail": "markup from the note ran as HTML"
+      },
+      "empty": {
+        "pass": true,
+        "detail": "blank page"
+      },
+      "large": {
+        "pass": true,
+        "detail": "620 ms to load 400 rows"
+      }
+    },
+    "dataAfter": {}
+  }
+}

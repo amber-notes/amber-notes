@@ -1,0 +1,226 @@
+{
+  "task": "csv-to-new-page",
+  "model": "claude-sonnet-5-5",
+  "round": "r2",
+  "skill": false,
+  "seconds": 34,
+  "score": 1,
+  "passed": 15,
+  "total": 15,
+  "checks": [
+    {
+      "name": "has_page",
+      "pass": true
+    },
+    {
+      "name": "server_checks",
+      "pass": true
+    },
+    {
+      "name": "no_console_errors",
+      "pass": true
+    },
+    {
+      "name": "no_network",
+      "pass": true
+    },
+    {
+      "name": "fits_390",
+      "pass": true
+    },
+    {
+      "name": "fits_1280",
+      "pass": true
+    },
+    {
+      "name": "shows_data",
+      "pass": true
+    },
+    {
+      "name": "dark_mode",
+      "pass": true
+    },
+    {
+      "name": "light_contrast",
+      "pass": true
+    },
+    {
+      "name": "labelled_controls",
+      "pass": true
+    },
+    {
+      "name": "probe_empty",
+      "pass": true
+    },
+    {
+      "name": "probe_large",
+      "pass": true
+    },
+    {
+      "name": "table_30_rows",
+      "pass": true
+    },
+    {
+      "name": "hr_kept",
+      "pass": true
+    },
+    {
+      "name": "prose_kept",
+      "pass": true
+    }
+  ],
+  "tool_calls": 6,
+  "tool_errors": 0,
+  "usage": {
+    "input": 12,
+    "output": 5226,
+    "cacheRead": 77714,
+    "cacheWrite": 28228,
+    "turns": 5
+  },
+  "usd": 0.1384,
+  "page_bytes": 8142,
+  "data": null,
+  "answer": "I added a page to your Running note. Open it under Page in the note.\n\nI put your 30 runs into a table in the note, using the same four columns as the Strava export, so you can still edit them as text.\n\nThe page shows:\n- **This week:** your km so far.\n- **Totals:** km, average pace, average heart rate, number of runs, longest run and total time.\n- **Weekly chart:** km per week for the last eight weeks.\n- **Latest runs:** your 10 most recent, with pace and heart rate.\n- **Log a run:** a form that adds a new row to the table.\n\nEverything on the page is worked out from the table, so it updates when you add or change runs.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Running"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Running\",\n  \"results\": [\n    {\n      \"id\": \"5331914a-405f-48d7-aaf6-53e5dcab299e\",\n      \"title\": \"Running\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T12:45:23.525Z\",\n      \"snippet\": \"«Running» My runs this autumn\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "get_page_guide",
+      "args": {},
+      "error": false,
+      "result": "{\n  \"guide\": \"# Building Amber Notes pages\\n\\nA page turns a note into a small app: a habit grid, a budget with totals, flashcards, a reading log. The note's markdown is the data and stays the source of truth: the person can always flip to Text and see and edit every row. The page is a view and a remote control for that data. Deleting or replacing a page never loses data.\\n\\n## The contract\\n\\nA page is one HTML document with all CSS and JS inline. It runs in a sandbox with no network: no fetch/XHR/WebSocket, no external scripts, styles, fonts or images (images only as data: URIs or inline SVG… (13589 chars)"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "5331914a-405f-48d7-aaf6-53e5dcab299e"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"5331914a-405f-48d7-aaf6-53e5dcab299e\",\n  \"title\": \"Running\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T12:45:23.525Z\",\n  \"updated\": \"2026-10-05T12:45:23.525Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 4,\n    \"words\": 5\n  },\n  \"markdown\": \"Running\\n\\nMy runs this autumn.\\n\"\n}"
+    },
+    {
+      "name": "get_page_guide",
+      "args": {
+        "template": "workout-log"
+      },
+      "error": false,
+      "result": "{\n  \"template\": \"workout-log\",\n  \"description\": \"Weekly distance and time for the last eight weeks, this week's totals against a goal in page data, the latest sessions and a log form.\",\n  \"expects\": \"A table with Date (yyyy-mm-dd), optionally Type (Run, Bike…), a distance column (Km, Distance) and a time column (Minutes, Time). Optional amber.data.weeklyKm.\",\n  \"html\": \"<!doctype html>\\n<!-- template: workout-log | Weekly distance and time for the last eight weeks, this week's totals against a goal in page data, the latest sessions and a log form. | A table with Date (yyyy-mm-dd), optionally T… (9096 chars)"
+    },
+    {
+      "name": "add_table_rows",
+      "args": {
+        "id": "5331914a-405f-48d7-aaf6-53e5dcab299e",
+        "create_table": "true",
+        "column_types": "{\"Activity Date\":\"date\",\"Distance (km)\":\"number\",\"Moving Time (min)\":\"number\",\"Avg HR\":\"number\"}",
+        "csv": "Activity Date,Distance (km),Moving Time (min),Avg HR\n2026-08-06,4.0,22,140\n2026-08-08,4.8,26,141\n2026-08-10,5.6,30,142\n2026-08-12,6.4,34,143\n2026-08-14,7.2,38,144\n2026-08-16,8.0,42,145\n2026-08-18,4.0,22,146\n2026-08-20,4.8,26,147\n2026-08-22,5.6,30,148\n2026-08-24,6.4,34,140\n2026-08-26,7.2,38,141\n2026-… (712 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"5331914a-405f-48d7-aaf6-53e5dcab299e\",\n    \"title\": \"Running\",\n    \"version\": 2\n  },\n  \"created_table\": true,\n  \"added_rows\": 30,\n  \"table\": {\n    \"index\": 0,\n    \"columns\": [\n      {\n        \"name\": \"Activity Date\",\n        \"type\": \"date\"\n      },\n      {\n        \"name\": \"Distance (km)\",\n        \"type\": \"number\"\n      },\n      {\n        \"name\": \"Moving Time (min)\",\n        \"type\": \"number\"\n      },\n      {\n        \"name\": \"Avg HR\",\n        \"type\": \"number\"\n      }\n    ],\n    \"total_rows\": 30\n  }\n}"
+    },
+    {
+      "name": "set_note_page",
+      "args": {
+        "id": "5331914a-405f-48d7-aaf6-53e5dcab299e",
+        "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<style>\n  :root { --bg: #fbf8f3; --card: #fff; --ink: #1d1a16; --muted: #6f665d; --line: rgba(60,40,20,.12); --accent: #b85f08; --accent-ink: #fff; --field: #f1ebe3; --… (8133 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"5331914a-405f-48d7-aaf6-53e5dcab299e\",\n  \"title\": \"Running\",\n  \"page\": \"created\",\n  \"bytes\": 8142,\n  \"note\": \"The person sees it in Amber Notes under Page. The note's markdown is unchanged.\"\n}"
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "390-light",
+        "width": 390,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 708,
+        "shown": 11,
+        "sampled": 11,
+        "bg": "rgb(251, 248, 243)",
+        "fg": "rgb(29, 26, 22)",
+        "contrast": 16.36122313595218,
+        "bgLuminance": 0.9411509766090667,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r2/shots/csv-to-new-page-sonnet-390-light.png"
+      },
+      {
+        "name": "390-dark",
+        "width": 390,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 708,
+        "shown": 11,
+        "sampled": 11,
+        "bg": "rgb(27, 25, 22)",
+        "fg": "rgb(243, 238, 232)",
+        "contrast": 15.206632798714999,
+        "bgLuminance": 0.009862005146758307,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r2/shots/csv-to-new-page-sonnet-390-dark.png"
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 708,
+        "shown": 11,
+        "sampled": 11,
+        "bg": "rgb(251, 248, 243)",
+        "fg": "rgb(29, 26, 22)",
+        "contrast": 16.36122313595218,
+        "bgLuminance": 0.9411509766090667,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r2/shots/csv-to-new-page-sonnet-1280-light.png"
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 708,
+        "shown": 11,
+        "sampled": 11,
+        "bg": "rgb(27, 25, 22)",
+        "fg": "rgb(243, 238, 232)",
+        "contrast": 15.206632798714999,
+        "bgLuminance": 0.009862005146758307,
+        "unnamedControls": [],
+        "smallTargets": 0
+      }
+    ],
+    "blocked": [],
+    "updates": [],
+    "setData": 0,
+    "interaction": {
+      "tried": "none",
+      "ok": null
+    },
+    "probes": {
+      "empty": {
+        "pass": true,
+        "detail": "blank page"
+      },
+      "large": {
+        "pass": true,
+        "detail": "562 ms to load 400 rows"
+      }
+    },
+    "dataAfter": {}
+  }
+}

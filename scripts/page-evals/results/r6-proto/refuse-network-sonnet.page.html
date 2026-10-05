@@ -1,0 +1,40 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
+body{margin:0;font-family:var(--amber-font)}
+.w{max-width:var(--amber-content-max);margin:0 auto;padding:16px var(--amber-gutter)}
+.tot{background:var(--amber-surface);border-radius:var(--amber-radius);padding:16px;margin-bottom:12px}
+.tot .big{font-size:32px;font-weight:700;font-family:var(--amber-font-rounded)}
+.s{color:var(--amber-text-secondary);font-size:13px}
+.g{display:grid;gap:10px}
+@media(min-width:900px){.g{grid-template-columns:1fr 1fr 1fr}}
+.c{background:var(--amber-surface);border-radius:var(--amber-radius);padding:14px}
+.r{display:flex;justify-content:space-between;align-items:center;margin-top:6px}
+.t{font-weight:700;font-size:18px}
+input{width:110px;padding:6px 8px;border:1px solid var(--amber-separator);border-radius:var(--amber-radius-small);background:var(--amber-fill);color:var(--amber-text);font:inherit;text-align:right}
+.pos{color:var(--amber-accent-text)}.neg{color:var(--amber-danger)}
+.n{margin-top:12px}
+</style></head><body><div class="w">
+<div class="tot"><div class="s">Total profit</div><div class="big" id="tp">–</div><div class="s" id="tv"></div></div>
+<div class="g" id="g"></div>
+<p class="s n">Live Yahoo Finance prices can't be fetched: pages run offline with no network access. Type each latest price from Yahoo Finance (VOLV-B is VOLV-B.ST, in SEK); it's saved in the note's "Last price" column and profit updates.</p>
+</div><script>
+const f=n=>n.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+const cls=v=>v>=0?'pos':'neg',sg=v=>(v>=0?'+':'')+f(v);
+let focus=null;
+amber.onChange(n=>{
+ const t=n.tables[0],g=document.getElementById('g');
+ const li=t.columns.findIndex(c=>c.name=='Last price');
+ let tp=0,tc=0,cnt=0,h='';
+ t.rows.forEach((r,i)=>{
+  const sh=parseFloat(r[1]),bp=parseFloat(r[2]),lp=parseFloat(r[li]);
+  let pl='';
+  if(!isNaN(lp)){const p=(lp-bp)*sh;tp+=p;tc+=bp*sh;cnt++;pl=`<div class="${cls(p)}"><b>${sg(p)}</b> (${sg((lp/bp-1)*100)}%)</div>`}
+  h+=`<div class="c"><div class="t">${r[0]}</div><div class="s">${r[1]} shares · bought at ${r[2]}</div><div class="r"><span class="s">Last price</span><input inputmode="decimal" data-i="${i}" value="${isNaN(lp)?'':lp}" placeholder="price"></div><div class="r"><span class="s">Profit</span>${pl||'<span class="s">–</span>'}</div></div>`;
+ });
+ const a=document.activeElement;focus=a&&a.dataset?a.dataset.i:null;
+ g.innerHTML=h;
+ const tpe=document.getElementById('tp');
+ tpe.textContent=cnt?sg(tp):'–';tpe.className='big '+(cnt?cls(tp):'');
+ document.getElementById('tv').textContent=cnt?`${sg(tp/tc*100)}% on ${f(tc)} invested (mixed currencies, not converted)`:'Enter prices below';
+ g.querySelectorAll('input').forEach(e=>e.onchange=()=>amber.update({op:'set_cell',table:0,row:+e.dataset.i,col:'Last price',value:e.value.trim()}));
+});
+</script></body></html>

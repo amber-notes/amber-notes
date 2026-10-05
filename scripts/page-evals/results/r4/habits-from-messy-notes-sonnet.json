@@ -1,0 +1,270 @@
+{
+  "task": "habits-from-messy-notes",
+  "model": "claude-sonnet-5-5",
+  "round": "r4",
+  "skill": false,
+  "seconds": 37,
+  "score": 1,
+  "passed": 17,
+  "total": 17,
+  "checks": [
+    {
+      "name": "has_page",
+      "pass": true
+    },
+    {
+      "name": "server_checks",
+      "pass": true
+    },
+    {
+      "name": "no_console_errors",
+      "pass": true
+    },
+    {
+      "name": "no_network",
+      "pass": true
+    },
+    {
+      "name": "fits_390",
+      "pass": true
+    },
+    {
+      "name": "fits_1280",
+      "pass": true
+    },
+    {
+      "name": "shows_data",
+      "pass": true
+    },
+    {
+      "name": "dark_mode",
+      "pass": true
+    },
+    {
+      "name": "light_contrast",
+      "pass": true
+    },
+    {
+      "name": "uses_theme",
+      "pass": true
+    },
+    {
+      "name": "labelled_controls",
+      "pass": true
+    },
+    {
+      "name": "edits_from_page",
+      "pass": true
+    },
+    {
+      "name": "probe_empty",
+      "pass": true
+    },
+    {
+      "name": "probe_large",
+      "pass": true
+    },
+    {
+      "name": "table_made",
+      "pass": true
+    },
+    {
+      "name": "facts_kept",
+      "pass": true
+    },
+    {
+      "name": "tuesday_read_only",
+      "pass": true
+    }
+  ],
+  "tool_calls": 7,
+  "tool_errors": 0,
+  "usage": {
+    "input": 12,
+    "output": 4819,
+    "cacheRead": 65550,
+    "cacheWrite": 23288,
+    "turns": 5
+  },
+  "usd": 0.1195,
+  "page_bytes": 7589,
+  "data": {
+    "goals": {
+      "Walk": 7,
+      "Read": 7,
+      "Stretch": 7,
+      "No phone in bed": 7
+    }
+  },
+  "answer": "Your Habits note now has a tracker page. I haven't opened it on a phone, so I haven't seen how it looks there.\n\n- **Note:** I turned your free-text log into a table with a row per day (28 Sep to 4 Oct) and a column each for Walk, Read, Stretch and No phone in bed. The old version is in the note's history. Your \"too tired\" and \"party\" remarks are kept as a line under the table.\n- **Daily ticking:** the page has a big tap-to-tick button for each habit today, with its current streak (\"3 days in a row\") beside it. Ticking writes a ✓ into the note's table.\n- **Streaks and progress:** it also shows this week's progress against a weekly goal and a 14-day grid. I set each goal to 7 days a week, and you can change them on the page.\n\nToday's row gets added the first time you tick something.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Habits"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Habits\",\n  \"results\": [\n    {\n      \"id\": \"7f378e2d-a494-465c-9a72-d42b4aa0fe0c\",\n      \"title\": \"Habits\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T12:58:13.516Z\",\n      \"snippet\": \"«Habits» trying to do these every day: walk, read, stretch, no phone in bed mon 28 sep - walked, read, stretched tue 29 - read only\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "get_page_guide",
+      "args": {
+        "template": "habit-tracker"
+      },
+      "error": false,
+      "result": "{\n  \"template\": \"habit-tracker\",\n  \"description\": \"Tick today's habits, see streaks, a 14-day grid and progress toward weekly goals kept in page data.\",\n  \"expects\": \"A table with a Date column (yyyy-mm-dd) and one column per habit; a done day is ✓ (x, yes and 1 also count). Optional amber.data.goals = { \\\"Habit\\\": days per week }.\",\n  \"html\": \"<!doctype html>\\n<!-- template: habit-tracker | Tick today's habits, see streaks, a 14-day grid and progress toward weekly goals kept in page data. | A table with a Date column (yyyy-mm-dd) and one column per habit; a done day is ✓ (x, yes and 1 also co… (8443 chars)"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "7f378e2d-a494-465c-9a72-d42b4aa0fe0c"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"7f378e2d-a494-465c-9a72-d42b4aa0fe0c\",\n  \"title\": \"Habits\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T12:58:13.516Z\",\n  \"updated\": \"2026-10-05T12:58:13.516Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 12,\n    \"words\": 61\n  },\n  \"markdown\": \"Habits\\n\\ntrying to do these every day: walk, read, stretch, no phone in bed\\n\\nmon 28 sep - walked, read, stretched\\ntue 29 - read only, too tired\\nwed 30: walk + stretch + no pho… (732 chars)"
+    },
+    {
+      "name": "replace_note_body",
+      "args": {
+        "id": "7f378e2d-a494-465c-9a72-d42b4aa0fe0c",
+        "body": "Habits\n\nTrying to do these every day: walk, read, stretch, no phone in bed.\n\n| Date | Walk | Read | Stretch | No phone in bed |\n| --- | --- | --- | --- | --- |\n| 2026-09-28 | ✓ | ✓ | ✓ | |\n| 2026-09-29 | | ✓ | | |\n| 2026-09-30 | ✓ | | ✓ | ✓ |\n| 2026-10-01 | ✓ | ✓ | ✓ | ✓ |\n| 2026-10-02 | | | | |\n| 2… (404 chars)",
+        "expected_version": "1"
+      },
+      "error": false,
+      "result": "{\n  \"replaced\": {\n    \"id\": \"7f378e2d-a494-465c-9a72-d42b4aa0fe0c\",\n    \"title\": \"Habits\",\n    \"version\": 2,\n    \"updated\": \"2026-10-05T12:58:22.767Z\"\n  },\n  \"previous_version_saved\": true\n}"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "7f378e2d-a494-465c-9a72-d42b4aa0fe0c"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"7f378e2d-a494-465c-9a72-d42b4aa0fe0c\",\n  \"title\": \"Habits\",\n  \"has_page\": false,\n  \"rules\": \"A page is one HTML document with all CSS and JS inline. It runs in a sandbox with no network: no fetch/XHR/WebSocket, no external scripts, styles, fonts or images (images only as data: URIs or inline SVG), no <iframe>/<link>/<base>. At most 256 KB.\\nwindow.amber, ready before your script runs:\\n  amber.note = { title, markdown, today: \\\"yyyy-mm-dd\\\", tables: [{ index, columns: [{ name, type }], rows: [[\\\"cell\\\", ...], ...] }], checklists: [{ line, text, checked }] }\\n    tables are every mar… (3626 chars)"
+    },
+    {
+      "name": "set_note_page",
+      "args": {
+        "id": "7f378e2d-a494-465c-9a72-d42b4aa0fe0c",
+        "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<style>\n  :root { --bg: var(--amber-bg); --card: var(--amber-surface); --ink: var(--amber-text); --muted: var(--amber-text-secondary); --line: var(--amber-separator); -… (7583 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"7f378e2d-a494-465c-9a72-d42b4aa0fe0c\",\n  \"title\": \"Habits\",\n  \"page\": \"created\",\n  \"bytes\": 7589,\n  \"note\": \"The person sees it in Amber Notes under Page. The note's markdown is unchanged.\"\n}"
+    },
+    {
+      "name": "update_page_data",
+      "args": {
+        "id": "7f378e2d-a494-465c-9a72-d42b4aa0fe0c",
+        "patch": "{\"goals\":{\"Walk\":7,\"Read\":7,\"Stretch\":7,\"No phone in bed\":7}}"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"7f378e2d-a494-465c-9a72-d42b4aa0fe0c\",\n    \"title\": \"Habits\"\n  },\n  \"data\": {\n    \"goals\": {\n      \"Walk\": 7,\n      \"Read\": 7,\n      \"Stretch\": 7,\n      \"No phone in bed\": 7\n    }\n  },\n  \"bytes\": 61\n}"
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "390-light",
+        "width": 390,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 319,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r4/shots/habits-from-messy-notes-sonnet-390-light.png"
+      },
+      {
+        "name": "390-dark",
+        "width": 390,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 319,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r4/shots/habits-from-messy-notes-sonnet-390-dark.png"
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 319,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r4/shots/habits-from-messy-notes-sonnet-1280-light.png"
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 319,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0
+      }
+    ],
+    "blocked": [],
+    "updates": [
+      {
+        "op": {
+          "op": "append_row",
+          "table": 0,
+          "values": {
+            "Date": "2026-10-05",
+            "Walk": "✓"
+          }
+        },
+        "ok": true
+      }
+    ],
+    "setData": 0,
+    "interaction": {
+      "tried": "control",
+      "ok": true
+    },
+    "probes": {
+      "empty": {
+        "pass": true,
+        "detail": "blank page"
+      },
+      "large": {
+        "pass": true,
+        "detail": "559 ms to load 400 rows"
+      }
+    },
+    "dataAfter": {
+      "goals": {
+        "Walk": 7,
+        "Read": 7,
+        "Stretch": 7,
+        "No phone in bed": 7
+      }
+    }
+  }
+}

@@ -1,0 +1,46 @@
+<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>
+body{margin:0;padding:12px;font-family:var(--amber-font)}
+.total{background:var(--amber-surface);border-radius:var(--amber-radius);padding:16px;margin-bottom:12px}
+.total .l{color:var(--amber-text-secondary);font-size:13px}
+.total .v{font-family:var(--amber-font-rounded);font-size:30px;font-weight:700}
+.card{background:var(--amber-surface);border-radius:var(--amber-radius);padding:12px 14px;margin-bottom:8px;display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center}
+.t{font-weight:600;font-size:17px}.s{color:var(--amber-text-secondary);font-size:13px}
+.p{text-align:right;font-weight:600}
+.up{color:#2e9e5b}.down{color:var(--amber-danger)}
+input{width:90px;font:inherit;padding:6px;border-radius:var(--amber-radius-small);border:1px solid var(--amber-separator);background:var(--amber-fill);color:var(--amber-text);text-align:right}
+a{color:var(--amber-accent-text)}
+.note{color:var(--amber-text-secondary);font-size:12px;margin-top:10px}
+</style></head><body>
+<div class="total"><div class="l">Total profit / loss</div><div class="v" id="tot">–</div><div class="s" id="sub"></div></div>
+<div id="list"></div>
+<div class="note">Live prices can't be fetched here: pages run in a sandbox with no network access, so Yahoo Finance is unreachable. Type each current price in "Last price" (saved to the note); profit is calculated for you. Totals add figures as-is, so mixed currencies (e.g. VOLV-B in SEK) aren't converted.</div>
+<script>
+const n=x=>{const v=parseFloat(String(x).replace(',','.'));return isNaN(v)?null:v};
+const f=(x,d=2)=>x.toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d});
+const sg=x=>(x>0?'+':'')+f(x);
+let editing=false;
+function render(note){
+ if(editing)return;
+ const ti=note.tables.findIndex(t=>t.columns.some(c=>c.name==='Ticker'));
+ if(ti<0)return;
+ const T=note.tables[ti],ix=nm=>T.columns.findIndex(c=>c.name===nm);
+ const a=ix('Ticker'),b=ix('Shares'),c=ix('Buy price'),d=ix('Last price');
+ let tot=0,cost=0,any=false;const list=document.getElementById('list');list.innerHTML='';
+ T.rows.forEach((r,i)=>{
+  const sh=n(r[b]),bp=n(r[c]),lp=d>=0?n(r[d]):null;
+  let pl='',pc='';
+  if(sh!=null&&bp!=null&&lp!=null){const p=(lp-bp)*sh;tot+=p;cost+=bp*sh;any=true;
+   pl=`<span class="${p>=0?'up':'down'}">${sg(p)} (${sg((lp/bp-1)*100)}%)</span>`}
+  const el=document.createElement('div');el.className='card';
+  el.innerHTML=`<div><div class="t">${r[a]}</div><div class="s">${r[b]} sh @ ${r[c]}</div></div><div class="p">${pl||'<span class="s">enter price</span>'}</div><div class="s">Last price</div><div style="text-align:right"><input inputmode="decimal" value="${d>=0?r[d]:''}"></div>`;
+  const inp=el.querySelector('input');
+  inp.onfocus=()=>editing=true;
+  inp.onblur=()=>{editing=false;if(inp.value!==(r[d]||''))amber.update({op:'set_cell',table:T.index,row:i,col:'Last price',value:inp.value.trim()})};
+  inp.onkeydown=e=>{if(e.key==='Enter')inp.blur()};
+  list.appendChild(el)});
+ const tt=document.getElementById('tot');
+ tt.textContent=any?sg(tot):'–';tt.className='v '+(any?(tot>=0?'up':'down'):'');
+ document.getElementById('sub').textContent=any?`${sg(tot/cost*100)}% on ${f(cost)} invested`:'Enter last prices below';
+}
+amber.onChange(render);
+</script></body></html>

@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { --bg:#fbf8f3; --card:#fff; --ink:#1d1a16; --muted:#6f665d; --line:rgba(60,40,20,.12); --accent:#c46a0a; --field:#f1ebe3; --up:#1a7f3c; --down:#c0392b; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#1b1916; --card:#26231f; --ink:#f3eee8; --muted:#a39a90; --line:rgba(255,240,220,.12); --accent:#f0a04b; --field:#34302a; --up:#5fd08a; --down:#ff7b6b; } }
+  * { box-sizing:border-box; }
+  html,body { margin:0; background:var(--bg); color:var(--ink); }
+  body { font:16px/1.4 -apple-system,system-ui,sans-serif; padding:20px 18px 80px; max-width:680px; margin:0 auto; }
+  h1 { font-size:28px; letter-spacing:-.02em; margin:4px 0 16px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; margin-bottom:16px; overflow:hidden; }
+  .total { padding:18px 16px; }
+  .big { font-size:34px; font-weight:700; font-variant-numeric:tabular-nums; }
+  .muted { color:var(--muted); font-size:14px; }
+  .row { display:flex; gap:12px; align-items:center; padding:12px 16px; border-top:1px solid var(--line); }
+  .row:first-child { border-top:0; }
+  .grow { flex:1; min-width:0; }
+  .t { font-weight:700; }
+  .r { text-align:right; font-variant-numeric:tabular-nums; font-weight:600; }
+  .up { color:var(--up); } .down { color:var(--down); }
+  input { font:inherit; color:var(--ink); background:var(--field); border:0; border-radius:10px; padding:8px 10px; min-height:44px; width:100px; text-align:right; }
+  .note { padding:12px 16px; }
+  .empty { padding:28px 16px; text-align:center; color:var(--muted); }
+  .err { color:var(--down); padding:0 16px 12px; }
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script>
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+  const num = s => { const n = parseFloat(String(s ?? "").replace(/\s/g,"").replace(",",".")); return isNaN(n) ? null : n; };
+  const f = n => n.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+  const sg = n => (n>0?"+":n<0?"−":"") + f(Math.abs(n));
+  let error = "";
+  function render(note) {
+    const app = document.getElementById("app");
+    const ci = (t,re) => t.columns.findIndex(c => re.test(c.name));
+    const t = note.tables.find(t => ci(t,/^ticker$/i) >= 0);
+    if (!t) { app.innerHTML = `<h1>${esc(note.title)}</h1><div class="card empty">Add a table with Ticker, Shares, Buy price and Current price columns.</div>`; return; }
+    const iT=ci(t,/^ticker$/i), iS=ci(t,/shares/i), iB=ci(t,/buy/i), iC=ci(t,/current/i);
+    let cost=0, value=0, priced=0;
+    const rows = t.rows.map((r,i) => {
+      const sh=num(r[iS]), b=num(r[iB]), c=iC>=0?num(r[iC]):null;
+      let pl=null, pct=null;
+      if (sh!=null && b!=null) { cost += sh*b; if (c!=null) { value += sh*c; priced++; pl = sh*(c-b); pct = b? (c/b-1)*100 : null; } }
+      return {i, tk:r[iT], sh, b, c, pl, pct};
+    });
+    const costPriced = rows.reduce((a,r)=> a + (r.c!=null && r.sh!=null && r.b!=null ? r.sh*r.b : 0),0);
+    const total = value - costPriced;
+    const cls = n => n>0?"up":n<0?"down":"";
+    app.innerHTML = `<h1>${esc(note.title)}</h1>
+      <div class="card total">
+        <div class="muted">Total profit / loss</div>
+        <div class="big ${priced?cls(total):""}">${priced?sg(total):"–"}</div>
+        <div class="muted">${priced?`Value ${f(value)} · Invested ${f(costPriced)}${costPriced?` · ${sg((total/costPriced)*100)}%`:""}`:"Enter current prices below"}</div>
+      </div>
+      <div class="card">${rows.length ? rows.map(r => `<div class="row">
+        <div class="grow"><div class="t">${esc(r.tk)}</div><div class="muted">${r.sh??"?"} sh @ ${r.b!=null?f(r.b):"?"}</div></div>
+        <div class="r ${r.pl!=null?cls(r.pl):""}">${r.pl!=null?sg(r.pl)+`<div class="muted ${cls(r.pl)}">${r.pct!=null?sg(r.pct)+"%":""}</div>`:'<span class="muted">no price</span>'}</div>
+        <input inputmode="decimal" aria-label="Current price of ${esc(r.tk)}" data-i="${r.i}" value="${r.c!=null?r.c:""}" placeholder="Price">
+      </div>`).join("") : '<div class="empty">No stocks yet.</div>'}
+      <div class="err" role="alert">${esc(error)}</div></div>
+      <div class="card note muted">This page can't reach Yahoo Finance (pages run offline). Type the latest price for each stock; profit updates and the price is saved in the note.</div>`;
+    app.querySelectorAll("input").forEach(el => el.onchange = async () => {
+      const v = el.value.trim().replace(",",".");
+      if (v && num(v)==null) { error="Enter a number"; render(amber.note); return; }
+      const r = await amber.update({op:"set_cell", table:t.index, row:+el.dataset.i, col:"Current price", value:v});
+      error = r.ok ? "" : r.error;
+      if (!r.ok) render(amber.note);
+    });
+  }
+  amber.onChange(render);
+</script>
+</body>
+</html>

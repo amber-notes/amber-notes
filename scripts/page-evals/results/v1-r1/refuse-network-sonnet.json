@@ -1,0 +1,188 @@
+{
+  "task": "refuse-network",
+  "model": "claude-sonnet-5-5",
+  "round": "r1",
+  "skill": false,
+  "seconds": 27,
+  "score": 0.8333333333333334,
+  "passed": 5,
+  "total": 6,
+  "checks": [
+    {
+      "name": "server_checks",
+      "pass": true
+    },
+    {
+      "name": "rows_kept",
+      "pass": false,
+      "detail": "aapl | 10 | 172.50 / nvda | 4 | 410.00"
+    },
+    {
+      "name": "prose_kept",
+      "pass": true
+    },
+    {
+      "name": "no_network_in_page",
+      "pass": true
+    },
+    {
+      "name": "explained",
+      "pass": true
+    },
+    {
+      "name": "few_refusals",
+      "pass": true
+    }
+  ],
+  "tool_calls": 5,
+  "tool_errors": 0,
+  "usage": {
+    "input": 12,
+    "output": 3076,
+    "cacheRead": 62826,
+    "cacheWrite": 20219,
+    "turns": 5
+  },
+  "usd": 0.0939,
+  "page_bytes": 4947,
+  "data": null,
+  "answer": "I built the page, but it can't fetch live prices from Yahoo Finance. Note pages run in a sandbox with no network access. You'll have to type the prices in yourself.\n\n- **Prices:** I added a \"Current price\" column to your table. The page has a price box for each stock. Whatever you type is saved in the note.\n- **Profit:** The page shows profit or loss for each stock in money and as a percentage. At the top it shows the total profit or loss, the current value and the amount invested.\n- **Where to find it:** Open the note and look under **Page**.\n\nIf you want automatic prices, you'd need a different tool outside the notes app. I can also set up the page to make pasting a batch of prices easier.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Stocks I watch"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Stocks I watch\",\n  \"results\": [\n    {\n      \"id\": \"04f541d4-d77c-4398-ac34-e8b9d7d75433\",\n      \"title\": \"Stocks I watch\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T12:40:16.719Z\",\n      \"snippet\": \"«Stocks I watch» | Ticker | Shares | Buy price | | --- | --- | --- | | AAPL | 10 | 172.50 | | NVDA | 4 | 410.00 | | VOLV-B | 30 | 214.20\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "get_page_guide",
+      "args": {},
+      "error": false,
+      "result": "{\n  \"guide\": \"# Building Amber Notes pages\\n\\nA page turns a note into a small app: a habit grid, a budget with totals, flashcards, a reading log. The note's markdown is the data and stays the source of truth: the person can always flip to Text and see and edit every row. The page is a view and a remote control for that data. Deleting or replacing a page never loses data.\\n\\n## The contract\\n\\nA page is one HTML document with all CSS and JS inline. It runs in a sandbox with no network: no fetch/XHR/WebSocket, no external scripts, styles, fonts or images (images only as data: URIs or inline SVG… (13260 chars)"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "04f541d4-d77c-4398-ac34-e8b9d7d75433"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"04f541d4-d77c-4398-ac34-e8b9d7d75433\",\n  \"title\": \"Stocks I watch\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T12:40:16.719Z\",\n  \"updated\": \"2026-10-05T12:40:16.719Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 8,\n    \"words\": 39\n  },\n  \"markdown\": \"Stocks I watch\\n\\n| Ticker | Shares | Buy price |\\n| --- | --- | --- |\\n| AAPL | 10 | 172.50 |\\n| NVDA | 4 | 410.00 |\\n| VOLV-B | 30 | 214.20 |\\n\"\n}"
+    },
+    {
+      "name": "edit_table_columns",
+      "args": {
+        "id": "04f541d4-d77c-4398-ac34-e8b9d7d75433",
+        "changes": "[{\"add\":\"Current price\",\"type\":\"number\"}]"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"04f541d4-d77c-4398-ac34-e8b9d7d75433\",\n    \"title\": \"Stocks I watch\"\n  },\n  \"table\": 0,\n  \"changes\": [\n    \"added Current price\"\n  ],\n  \"columns\": [\n    {\n      \"name\": \"Ticker\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Shares\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Buy price\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Current price\",\n      \"type\": \"number\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "set_note_page",
+      "args": {
+        "id": "04f541d4-d77c-4398-ac34-e8b9d7d75433",
+        "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<style>\n  :root { --bg:#fbf8f3; --card:#fff; --ink:#1d1a16; --muted:#6f665d; --line:rgba(60,40,20,.12); --accent:#c46a0a; --field:#f1ebe3; --up:#1a7f3c; --down:#c0392b;… (4941 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"04f541d4-d77c-4398-ac34-e8b9d7d75433\",\n  \"title\": \"Stocks I watch\",\n  \"page\": \"created\",\n  \"bytes\": 4947,\n  \"note\": \"The person sees it in Amber Notes under Page. The note's markdown is unchanged.\"\n}"
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "390-light",
+        "width": 390,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 297,
+        "shown": 8,
+        "sampled": 8,
+        "bg": "rgb(251, 248, 243)",
+        "fg": "rgb(29, 26, 22)",
+        "contrast": 16.36122313595218,
+        "bgLuminance": 0.9411509766090667,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r1/shots/refuse-network-sonnet-390-light.png"
+      },
+      {
+        "name": "390-dark",
+        "width": 390,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 297,
+        "shown": 8,
+        "sampled": 8,
+        "bg": "rgb(27, 25, 22)",
+        "fg": "rgb(243, 238, 232)",
+        "contrast": 15.206632798714999,
+        "bgLuminance": 0.009862005146758307,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r1/shots/refuse-network-sonnet-390-dark.png"
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 297,
+        "shown": 8,
+        "sampled": 8,
+        "bg": "rgb(251, 248, 243)",
+        "fg": "rgb(29, 26, 22)",
+        "contrast": 16.36122313595218,
+        "bgLuminance": 0.9411509766090667,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r1/shots/refuse-network-sonnet-1280-light.png"
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 297,
+        "shown": 8,
+        "sampled": 8,
+        "bg": "rgb(27, 25, 22)",
+        "fg": "rgb(243, 238, 232)",
+        "contrast": 15.206632798714999,
+        "bgLuminance": 0.009862005146758307,
+        "unnamedControls": [],
+        "smallTargets": 0
+      }
+    ],
+    "blocked": [],
+    "updates": [],
+    "setData": 0,
+    "interaction": {
+      "tried": "none",
+      "ok": null
+    },
+    "probes": {
+      "follows": {
+        "pass": true,
+        "detail": "shown, but not as written"
+      },
+      "escapes": {
+        "pass": true
+      },
+      "empty": {
+        "pass": true,
+        "detail": "blank page"
+      },
+      "large": {
+        "pass": true,
+        "detail": "570 ms to load 400 rows"
+      }
+    },
+    "dataAfter": {}
+  }
+}

@@ -1,0 +1,220 @@
+{
+  "task": "reading-log-page",
+  "model": "claude-sonnet-5-5",
+  "round": "r0-proto",
+  "skill": false,
+  "seconds": 30,
+  "score": 1,
+  "passed": 16,
+  "total": 16,
+  "checks": [
+    {
+      "name": "has_page",
+      "pass": true
+    },
+    {
+      "name": "server_checks",
+      "pass": true
+    },
+    {
+      "name": "no_console_errors",
+      "pass": true
+    },
+    {
+      "name": "no_network",
+      "pass": true
+    },
+    {
+      "name": "fits_390",
+      "pass": true
+    },
+    {
+      "name": "fits_1280",
+      "pass": true
+    },
+    {
+      "name": "shows_data",
+      "pass": true
+    },
+    {
+      "name": "dark_mode",
+      "pass": true
+    },
+    {
+      "name": "light_contrast",
+      "pass": true
+    },
+    {
+      "name": "uses_theme",
+      "pass": true
+    },
+    {
+      "name": "labelled_controls",
+      "pass": true
+    },
+    {
+      "name": "probe_follows",
+      "pass": true
+    },
+    {
+      "name": "probe_escapes",
+      "pass": true
+    },
+    {
+      "name": "probe_empty",
+      "pass": true
+    },
+    {
+      "name": "probe_large",
+      "pass": true
+    },
+    {
+      "name": "note_unchanged",
+      "pass": true
+    }
+  ],
+  "tool_calls": 4,
+  "tool_errors": 0,
+  "usage": {
+    "input": 10,
+    "output": 2853,
+    "cacheRead": 24260,
+    "cacheWrite": 11732,
+    "turns": 4
+  },
+  "usd": 0.0627,
+  "page_bytes": 4470,
+  "data": null,
+  "answer": "I added a page to your Reading log. It has three parts:\n\n- **Stats:** total books read, average rating (currently 4.2 ★) and your best month.\n- **Books per month:** a bar chart that includes months with no books.\n- **Shelf:** cover-style cards, newest first. Each card has a generated colour cover with the title and author, plus a star rating and the finish date.\n\nThe page reads straight from your table, so new rows show up on their own. The table and the rest of the note are unchanged. You can see the page under the Page switch in the note.\n\nThe covers are generated colours, not real book art, since the page can't load images.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Reading log"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Reading log\",\n  \"results\": [\n    {\n      \"id\": \"4dec4710-593d-40e1-b628-d7c2a838bd7a\",\n      \"title\": \"Reading log\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T12:50:36.909Z\",\n      \"snippet\": \"«Reading log» <!-- pane-table: Title=text; Author=text; Finished=date; Rating=scale 1-5 --> | Title | Author | Finished | Rating | | --- | --- | --- | --- | | The Overstory | Richard Powers | 2026-06\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "4dec4710-593d-40e1-b628-d7c2a838bd7a"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"4dec4710-593d-40e1-b628-d7c2a838bd7a\",\n  \"title\": \"Reading log\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T12:50:36.909Z\",\n  \"updated\": \"2026-10-05T12:50:36.909Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 13,\n    \"words\": 98\n  },\n  \"markdown\": \"Reading log\\n\\n<!-- pane-table: Title=text; Author=text; Finished=date; Rating=scale 1-5 -->\\n| Title | Author | Finished | Rating |\\n| --- | --- | --- | --- |\\n| The Overstor… (937 chars)"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "4dec4710-593d-40e1-b628-d7c2a838bd7a"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"4dec4710-593d-40e1-b628-d7c2a838bd7a\",\n  \"title\": \"Reading log\",\n  \"has_page\": false,\n  \"rules\": \"The page runs in Amber Notes in a sandbox with no network: no fetch, no external scripts, styles, fonts or images. Put all CSS and JS inline; images only as data: URIs or inline SVG.\\nRead the note from window.amber.note, never hardcode its contents (the note changes; the page must follow):\\n  amber.note = { title, markdown, today: \\\"yyyy-mm-dd\\\", tables: [{ index, columns: [{ name, type }], rows: [[cell, ...], ...] }], checklists: [{ line, text, checked }] }\\n  amber.onChange(fn) calls… (2036 chars)"
+    },
+    {
+      "name": "set_note_page",
+      "args": {
+        "id": "4dec4710-593d-40e1-b628-d7c2a838bd7a",
+        "html": "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><style>\nbody{margin:0;padding:16px;font-family:var(--amber-font)}\n.stats{display:flex;gap:10px;margin-bottom:16px}\n.stat{flex:1;background:var(--amber-surface);border-radius:var(--ambe… (4458 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"4dec4710-593d-40e1-b628-d7c2a838bd7a\",\n  \"title\": \"Reading log\",\n  \"page\": \"created\",\n  \"bytes\": 4470,\n  \"note\": \"The person sees it in Amber Notes under Page. The note's markdown is unchanged.\"\n}"
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "390-light",
+        "width": 390,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 328,
+        "shown": 10,
+        "sampled": 10,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r0-proto/shots/reading-log-page-sonnet-390-light.png"
+      },
+      {
+        "name": "390-dark",
+        "width": 390,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 328,
+        "shown": 10,
+        "sampled": 10,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r0-proto/shots/reading-log-page-sonnet-390-dark.png"
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 328,
+        "shown": 10,
+        "sampled": 10,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r0-proto/shots/reading-log-page-sonnet-1280-light.png"
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 328,
+        "shown": 10,
+        "sampled": 10,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0
+      }
+    ],
+    "blocked": [],
+    "updates": [],
+    "setData": 0,
+    "interaction": {
+      "tried": "none",
+      "ok": null
+    },
+    "probes": {
+      "follows": {
+        "pass": true,
+        "detail": "shown, but not as written"
+      },
+      "escapes": {
+        "pass": true
+      },
+      "empty": {
+        "pass": true,
+        "detail": "blank page"
+      },
+      "large": {
+        "pass": true,
+        "detail": "557 ms to load 400 rows"
+      }
+    },
+    "dataAfter": {}
+  }
+}

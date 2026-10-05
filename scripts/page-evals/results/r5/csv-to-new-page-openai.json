@@ -1,0 +1,232 @@
+{
+  "task": "csv-to-new-page",
+  "model": "gpt-5.5",
+  "round": "r5",
+  "skill": false,
+  "seconds": 49,
+  "score": 1,
+  "passed": 16,
+  "total": 16,
+  "checks": [
+    {
+      "name": "has_page",
+      "pass": true
+    },
+    {
+      "name": "server_checks",
+      "pass": true
+    },
+    {
+      "name": "no_console_errors",
+      "pass": true
+    },
+    {
+      "name": "no_network",
+      "pass": true
+    },
+    {
+      "name": "fits_390",
+      "pass": true
+    },
+    {
+      "name": "fits_1280",
+      "pass": true
+    },
+    {
+      "name": "shows_data",
+      "pass": true
+    },
+    {
+      "name": "dark_mode",
+      "pass": true
+    },
+    {
+      "name": "light_contrast",
+      "pass": true
+    },
+    {
+      "name": "uses_theme",
+      "pass": true
+    },
+    {
+      "name": "labelled_controls",
+      "pass": true
+    },
+    {
+      "name": "probe_empty",
+      "pass": true
+    },
+    {
+      "name": "probe_large",
+      "pass": true
+    },
+    {
+      "name": "table_30_rows",
+      "pass": true
+    },
+    {
+      "name": "hr_kept",
+      "pass": true
+    },
+    {
+      "name": "prose_kept",
+      "pass": true
+    }
+  ],
+  "tool_calls": 6,
+  "tool_errors": 0,
+  "usage": {
+    "input": 14624,
+    "output": 4702,
+    "cacheRead": 43520,
+    "cacheWrite": 0,
+    "turns": 5
+  },
+  "usd": 0.0707,
+  "page_bytes": 9438,
+  "data": null,
+  "answer": "Done — I imported the 30 Strava runs into your **Running** note as a typed table and created a **Running page** under Page.\n\nIt shows total distance/time, average pace and HR, last-7-days goal progress, an 8-week distance chart, latest runs, and a form to log new runs.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Running",
+        "limit": "10"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Running\",\n  \"results\": [\n    {\n      \"id\": \"670e6cdf-6333-418e-91e6-5cc0d3efb2ae\",\n      \"title\": \"Running\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T13:15:26.975Z\",\n      \"snippet\": \"«Running» My runs this autumn\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "get_page_guide",
+      "args": {},
+      "error": false,
+      "result": "{\n  \"guide\": \"# Building Amber Notes pages\\n\\nA page turns a note into a small app: a habit grid, a budget with totals, flashcards, a reading log. The note's markdown is the data and stays the source of truth: the person can always flip to Text and see and edit every row. The page is a view and a remote control for that data. Deleting or replacing a page never loses data.\\n\\n## The contract\\n\\nA page is one HTML document with all CSS and JS inline. It runs in a sandbox with no network: no fetch/XHR/WebSocket, no external scripts, styles, fonts or images (images only as data: URIs or inline SVG… (14689 chars)"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "670e6cdf-6333-418e-91e6-5cc0d3efb2ae",
+        "line_numbers": "true"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"670e6cdf-6333-418e-91e6-5cc0d3efb2ae\",\n  \"title\": \"Running\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T13:15:26.975Z\",\n  \"updated\": \"2026-10-05T13:15:26.975Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 4,\n    \"words\": 5\n  },\n  \"markdown\": \"1│ Running\\n2│ \\n3│ My runs this autumn.\\n4│ \"\n}"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "670e6cdf-6333-418e-91e6-5cc0d3efb2ae"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"670e6cdf-6333-418e-91e6-5cc0d3efb2ae\",\n  \"title\": \"Running\",\n  \"has_page\": false,\n  \"rules\": \"A page is one HTML document with all CSS and JS inline. It runs in a sandbox with no network: no fetch/XHR/WebSocket, no external scripts, styles, fonts or images (images only as data: URIs or inline SVG), no <iframe>/<link>/<base>. At most 256 KB.\\nwindow.amber, ready before your script runs:\\n  amber.note = { title, markdown, today: \\\"yyyy-mm-dd\\\", tables: [{ index, columns: [{ name, type }], rows: [[\\\"cell\\\", ...], ...] }], checklists: [{ line, text, checked }] }\\n    tables are every ma… (2791 chars)"
+    },
+    {
+      "name": "add_table_rows",
+      "args": {
+        "id": "670e6cdf-6333-418e-91e6-5cc0d3efb2ae",
+        "csv": "Activity Date,Distance (km),Moving Time (min),Avg HR\n2026-08-06,4.0,22,140\n2026-08-08,4.8,26,141\n2026-08-10,5.6,30,142\n2026-08-12,6.4,34,143\n2026-08-14,7.2,38,144\n2026-08-16,8.0,42,145\n2026-08-18,4.0,22,146\n2026-08-20,4.8,26,147\n2026-08-22,5.6,30,148\n2026-08-24,6.4,34,140\n2026-08-26,7.2,38,141\n2026-… (712 chars)",
+        "create_table": "true",
+        "column_types": "{\"Activity Date\":\"date\",\"Distance (km)\":\"number\",\"Moving Time (min)\":\"number\",\"Avg HR\":\"number\"}"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"670e6cdf-6333-418e-91e6-5cc0d3efb2ae\",\n    \"title\": \"Running\",\n    \"version\": 2\n  },\n  \"created_table\": true,\n  \"added_rows\": 30,\n  \"table\": {\n    \"index\": 0,\n    \"columns\": [\n      {\n        \"name\": \"Activity Date\",\n        \"type\": \"date\"\n      },\n      {\n        \"name\": \"Distance (km)\",\n        \"type\": \"number\"\n      },\n      {\n        \"name\": \"Moving Time (min)\",\n        \"type\": \"number\"\n      },\n      {\n        \"name\": \"Avg HR\",\n        \"type\": \"number\"\n      }\n    ],\n    \"total_rows\": 30\n  }\n}"
+    },
+    {
+      "name": "set_note_page",
+      "args": {
+        "id": "670e6cdf-6333-418e-91e6-5cc0d3efb2ae",
+        "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<style>\n*{box-sizing:border-box}body{padding:20px 18px 96px;max-width:760px;margin:0 auto}h1{font-size:30px;letter-spacing:-.03em;margin:4px 0 6px}h2{font-size:18px;mar… (9429 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"670e6cdf-6333-418e-91e6-5cc0d3efb2ae\",\n  \"title\": \"Running\",\n  \"page\": \"created\",\n  \"bytes\": 9438,\n  \"note\": \"The person sees it in Amber Notes under Page. The note's markdown is unchanged.\"\n}"
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "390-light",
+        "width": 390,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 682,
+        "shown": 11,
+        "sampled": 11,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r5/shots/csv-to-new-page-openai-390-light.png"
+      },
+      {
+        "name": "390-dark",
+        "width": 390,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 682,
+        "shown": 11,
+        "sampled": 11,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r5/shots/csv-to-new-page-openai-390-dark.png"
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 682,
+        "shown": 11,
+        "sampled": 11,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r5/shots/csv-to-new-page-openai-1280-light.png"
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 682,
+        "shown": 11,
+        "sampled": 11,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0
+      }
+    ],
+    "blocked": [],
+    "updates": [],
+    "setData": 0,
+    "interaction": {
+      "tried": "none",
+      "ok": null
+    },
+    "probes": {
+      "empty": {
+        "pass": true,
+        "detail": "blank page"
+      },
+      "large": {
+        "pass": true,
+        "detail": "560 ms to load 400 rows"
+      }
+    },
+    "dataAfter": {}
+  }
+}

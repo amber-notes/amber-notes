@@ -1,0 +1,116 @@
+<!doctype html>
+<!-- template: crm | A sales pipeline: open value per stage, deals grouped by stage with a stage picker on each, search, and a form to add a contact. | A table with a name column (Company, Name or Contact), a Stage (or Status) column, optionally Value, Email and Contact columns. Stage options come from a choice type or the values used. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { --bg: var(--amber-bg); --card: var(--amber-surface); --ink: var(--amber-text); --muted: var(--amber-text-secondary); --line: var(--amber-separator); --accent: var(--amber-accent); --accent-ink: var(--amber-on-accent); --field: var(--amber-fill); --won: #2f7d5b; --lost: #8a8178; }
+  @media (prefers-color-scheme: dark) { :root { --won: #5cc497; --lost: #a39a90; } }
+  * { box-sizing: border-box; }
+  body { padding: 20px 18px 96px; max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 28px; letter-spacing: -.02em; margin: 4px 0 12px; }
+  h2 { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin: 22px 4px 8px; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+  .stat { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px; min-width: 0; }
+  .stat b { display: block; font-size: 22px; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+  .stat span { color: var(--muted); font-size: 13px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--amber-radius); overflow: hidden; }
+  .deal { display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 16px; border-top: 1px solid var(--line); min-height: 56px; flex-wrap: wrap; }
+  .deal:first-child { border-top: 0; }
+  .who { flex: 1 1 160px; min-width: 0; overflow-wrap: anywhere; }
+  .who b { display: block; }
+  .muted { color: var(--muted); font-size: 14px; }
+  .num { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+  select, input { font: inherit; font-size: 16px; color: var(--ink); background: var(--field); border: 0; border-radius: 10px; padding: 8px 10px; min-height: 44px; }
+  .deal select { width: 9.5em; }
+  .search { width: 100%; margin: 4px 0 0; }
+  form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px; }
+  label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); min-width: 0; }
+  form input, form select { width: 100%; }
+  button { grid-column: 1 / -1; font: inherit; font-weight: 600; min-height: 44px; border: 0; border-radius: 10px; background: var(--accent); color: var(--accent-ink); }
+  .won { color: var(--won); }
+  .err { color: var(--amber-danger); padding: 0 16px 12px; min-height: 1em; }
+  .empty { padding: 24px 16px; text-align: center; color: var(--muted); }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</head>
+<body>
+<main id="app" aria-live="polite"></main>
+<script>
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const num = (s) => { const n = parseFloat(String(s ?? "").replace(/[\s ]/g, "").replace(/kr|sek|\$|€|£/gi, "").replace(",", ".")); return Number.isFinite(n) ? n : 0; };
+  const col = (t, re) => t.columns.findIndex((c) => re.test(c.name));
+  const ORDER = ["lead", "contacted", "meeting", "proposal", "negotiation", "won", "lost"];
+  let error = "", query = "";
+
+  function render(note, data) {
+    const app = document.getElementById("app");
+    const t = note.tables.find((t) => col(t, /stage|status/i) >= 0);
+    if (!t) { app.innerHTML = `<h1>${esc(note.title)}</h1><div class="card empty">Add a table with Company, Contact, Stage and Value columns to the note.</div>`; return; }
+    const st = col(t, /stage|status/i), co = col(t, /company|org|firm|client|name/i), ct = col(t, /contact|person/i), em = col(t, /mail/i), va = col(t, /value|amount|deal|kr|price/i);
+    const typed = t.columns[st].type.startsWith("choice ") ? t.columns[st].type.slice(7).split("|") : null;
+    const used = [...new Set(t.rows.map((r) => r[st]).filter(Boolean))];
+    const rank = (s) => { const k = ORDER.indexOf(String(s).toLowerCase()); return k < 0 ? 3.5 : k; };
+    const stages = typed || used.sort((a, b) => rank(a) - rank(b));
+    const cur = (data && data.values && data.values.currency) || "kr";
+    const money = (n) => n.toLocaleString("sv-SE", { maximumFractionDigits: 0 }) + " " + cur;
+    const q = query.trim().toLowerCase();
+    const deals = t.rows.map((r, i) => ({ r, i })).filter(({ r }) => !q || r.join(" ").toLowerCase().includes(q));
+    const open = t.rows.filter((r) => !/won|lost/i.test(r[st]));
+    const won = t.rows.filter((r) => /won/i.test(r[st]));
+    app.innerHTML = `
+      <h1>${esc(note.title)}</h1>
+      <div class="stats">
+        <div class="stat"><b>${t.rows.length}</b><span>contacts</span></div>
+        ${va >= 0 ? `<div class="stat"><b>${money(open.reduce((s, r) => s + num(r[va]), 0))}</b><span>open pipeline</span></div><div class="stat"><b class="won">${money(won.reduce((s, r) => s + num(r[va]), 0))}</b><span>won</span></div>` : ""}
+      </div>
+      <label class="sr" for="q">Search contacts</label>
+      <input id="q" class="search" type="search" placeholder="Search" value="${esc(query)}">
+      ${stages.map((s) => {
+        const here = deals.filter(({ r }) => r[st] === s);
+        if (!here.length) return "";
+        return `<h2><span>${esc(s)}</span><span>${here.length}${va >= 0 ? ` · ${money(here.reduce((x, { r }) => x + num(r[va]), 0))}` : ""}</span></h2>
+          <div class="card">${here.map(({ r, i }) => `<div class="deal"><div class="who"><b>${esc(co >= 0 ? r[co] : r[0])}</b><span class="muted">${esc([ct >= 0 && ct !== co ? r[ct] : "", em >= 0 ? r[em] : ""].filter(Boolean).join(" · "))}</span></div>
+            ${va >= 0 ? `<span class="num">${r[va] ? money(num(r[va])) : ""}</span>` : ""}
+            <select data-row="${i}" aria-label="Stage for ${esc(co >= 0 ? r[co] : r[0])}">${[...new Set([...stages, r[st]])].map((o) => `<option ${o === r[st] ? "selected" : ""}>${esc(o)}</option>`).join("")}</select></div>`).join("")}</div>`;
+      }).join("")}
+      ${deals.filter(({ r }) => !stages.includes(r[st])).length ? `<h2>No stage</h2><div class="card">${deals.filter(({ r }) => !stages.includes(r[st])).map(({ r, i }) => `<div class="deal"><div class="who"><b>${esc(co >= 0 ? r[co] : r[0])}</b></div><select data-row="${i}" aria-label="Stage for ${esc(co >= 0 ? r[co] : r[0])}"><option></option>${stages.map((o) => `<option>${esc(o)}</option>`).join("")}</select></div>`).join("")}</div>` : ""}
+      ${!deals.length ? `<div class="card empty">${q ? "No contact matches." : "No contacts yet."}</div>` : ""}
+      <h2><span>Add a contact</span></h2>
+      <div class="card">
+        <form id="add">
+          ${co >= 0 ? `<label>${esc(t.columns[co].name)}<input name="co" required></label>` : ""}
+          ${ct >= 0 && ct !== co ? `<label>${esc(t.columns[ct].name)}<input name="ct"></label>` : ""}
+          ${em >= 0 ? `<label>${esc(t.columns[em].name)}<input name="em" type="email"></label>` : ""}
+          ${va >= 0 ? `<label>${esc(t.columns[va].name)}<input name="va" inputmode="decimal"></label>` : ""}
+          <label>${esc(t.columns[st].name)}<select name="st">${stages.map((o) => `<option>${esc(o)}</option>`).join("")}</select></label>
+          <button>Add</button>
+        </form>
+        <div class="err" role="alert">${esc(error)}</div>
+      </div>`;
+
+    const search = document.getElementById("q");
+    search.oninput = () => { query = search.value; render(amber.note, amber.data); const s = document.getElementById("q"); s.focus(); s.setSelectionRange(s.value.length, s.value.length); };
+    app.querySelectorAll("select[data-row]").forEach((sel) => sel.addEventListener("change", async () => {
+      const r = await amber.update({ op: "set_cell", table: t.index, row: Number(sel.dataset.row), col: t.columns[st].name, value: sel.value });
+      error = r.ok ? "" : r.error;
+      if (!r.ok) render(amber.note, amber.data);
+    }));
+    document.getElementById("add").onsubmit = async (e) => {
+      e.preventDefault();
+      const f = new FormData(e.target);
+      const values = { [t.columns[st].name]: String(f.get("st") ?? "") };
+      if (co >= 0) values[t.columns[co].name] = String(f.get("co") ?? "").trim();
+      if (ct >= 0 && ct !== co) values[t.columns[ct].name] = String(f.get("ct") ?? "").trim();
+      if (em >= 0) values[t.columns[em].name] = String(f.get("em") ?? "").trim();
+      if (va >= 0) values[t.columns[va].name] = String(f.get("va") ?? "").trim();
+      const r = await amber.update({ op: "append_row", table: t.index, values });
+      error = r.ok ? "" : r.error;
+      render(amber.note, amber.data);
+    };
+  }
+  amber.onChange(render);
+</script>
+</body>
+</html>

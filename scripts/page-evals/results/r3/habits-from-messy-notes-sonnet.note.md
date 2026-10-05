@@ -1,0 +1,13 @@
+Habits
+
+Trying to do these every day: walk, read, stretch, no phone in bed
+
+| Date | Walk | Read | Stretch | No phone in bed |
+| --- | --- | --- | --- | --- |
+| 2026-09-28 | ✓ | ✓ | ✓ | |
+| 2026-09-29 | | ✓ | | |
+| 2026-09-30 | ✓ | | ✓ | ✓ |
+| 2026-10-01 | ✓ | ✓ | ✓ | ✓ |
+| 2026-10-02 | | | | |
+| 2026-10-03 | ✓ | ✓ | | |
+| 2026-10-04 | | ✓ | ✓ | ✓ |

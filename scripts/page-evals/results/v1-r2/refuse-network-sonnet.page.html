@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { --bg:#fbf8f3; --card:#fff; --ink:#1d1a16; --muted:#6f665d; --line:rgba(60,40,20,.12); --accent:#c46a0a; --accent-ink:#fff; --field:#f1ebe3; --gain:#1b7a3d; --loss:#c0392b; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#1b1916; --card:#26231f; --ink:#f3eee8; --muted:#a39a90; --line:rgba(255,240,220,.12); --accent:#f0a04b; --accent-ink:#1b1916; --field:#34302a; --gain:#5fd18a; --loss:#ff8a7a; } }
+  * { box-sizing: border-box; }
+  html, body { margin:0; background:var(--bg); color:var(--ink); }
+  body { font:16px/1.4 -apple-system, system-ui, sans-serif; padding:20px 18px 64px; max-width:680px; margin:0 auto; }
+  h1 { font-size:28px; letter-spacing:-.02em; margin:4px 0 16px; }
+  .card { background:var(--card); border-radius:16px; border:1px solid var(--line); margin-bottom:16px; overflow:hidden; }
+  .hero { padding:18px 16px; }
+  .big { font-size:34px; font-weight:700; font-variant-numeric:tabular-nums; }
+  .muted { color:var(--muted); font-size:14px; }
+  .gain { color:var(--gain); } .loss { color:var(--loss); }
+  .row { display:flex; align-items:center; gap:12px; padding:12px 16px; border-top:1px solid var(--line); flex-wrap:wrap; }
+  .row:first-child { border-top:0; }
+  .grow { flex:1 1 120px; min-width:0; }
+  .tk { font-weight:700; }
+  .num { font-variant-numeric:tabular-nums; font-weight:600; text-align:right; }
+  label { display:flex; flex-direction:column; gap:4px; font-size:13px; color:var(--muted); }
+  input { font:inherit; color:var(--ink); background:var(--field); border:0; border-radius:10px; padding:10px 12px; min-height:44px; width:120px; font-variant-numeric:tabular-nums; }
+  .note { padding:12px 16px; }
+  .empty { padding:28px 16px; text-align:center; color:var(--muted); }
+  .err { color:var(--loss); padding:0 16px 12px; }
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script>
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+  const num = s => { const n = parseFloat(String(s ?? "").replace(/\s/g,"").replace(",",".")); return isNaN(n) ? null : n; };
+  const fmt = (n, d=2) => n.toLocaleString(undefined, {minimumFractionDigits:d, maximumFractionDigits:d});
+  const sgn = n => (n > 0 ? "+" : n < 0 ? "−" : "") + fmt(Math.abs(n));
+  const cls = n => n > 0 ? "gain" : n < 0 ? "loss" : "";
+  let error = "";
+
+  function render(note, data) {
+    const app = document.getElementById("app");
+    const find = (t, re) => t.columns.findIndex(c => re.test(c.name));
+    const t = note.tables.find(t => find(t,/ticker|symbol/i) >= 0 && find(t,/shares/i) >= 0 && find(t,/buy/i) >= 0);
+    if (!t) { app.innerHTML = `<h1>${esc(note.title)}</h1><div class="card empty">Add a table with Ticker, Shares and Buy price columns.</div>`; return; }
+    const ci = find(t,/ticker|symbol/i), cs = find(t,/shares/i), cb = find(t,/buy/i);
+    const prices = data.prices || {};
+    let cost = 0, value = 0, priced = 0;
+    const rows = t.rows.map(r => {
+      const tk = r[ci], sh = num(r[cs]), buy = num(r[cb]);
+      const p = num(prices[tk]);
+      const c = sh != null && buy != null ? sh*buy : null;
+      const v = sh != null && p != null ? sh*p : null;
+      if (c != null && v != null) { cost += c; value += v; priced++; }
+      return {tk, sh, buy, p, pl: c != null && v != null ? v-c : null, pct: buy && p != null ? (p/buy-1)*100 : null};
+    });
+    const total = value - cost;
+    app.innerHTML = `
+      <h1>${esc(note.title)}</h1>
+      <div class="card hero">
+        <div class="muted">Total profit (priced holdings)</div>
+        <div class="big ${cls(total)}">${priced ? sgn(total) : "–"}</div>
+        <div class="muted">${priced ? `Cost ${fmt(cost)} · Value ${fmt(value)}${cost ? ` · ${sgn(total/cost*100)}%` : ""}` : "Enter current prices below"}</div>
+      </div>
+      <div class="card">
+        ${rows.length ? rows.map((x,i) => `
+          <div class="row">
+            <div class="grow"><div class="tk">${esc(x.tk)}</div><div class="muted">${x.sh ?? "?"} shares @ ${x.buy != null ? fmt(x.buy) : "?"}</div></div>
+            <label>Current price<input inputmode="decimal" data-tk="${esc(x.tk)}" value="${esc(prices[x.tk] ?? "")}" placeholder="0.00"></label>
+            <div class="num ${cls(x.pl)}" style="min-width:90px">${x.pl != null ? sgn(x.pl) : "–"}<div class="muted ${cls(x.pct)}">${x.pct != null ? sgn(x.pct)+"%" : ""}</div></div>
+          </div>`).join("") : '<div class="empty">No holdings yet.</div>'}
+        <div class="err" role="alert">${esc(error)}</div>
+      </div>
+      <div class="card note muted">Live Yahoo Finance prices can't be loaded here: pages have no network access. Type each current price; it's saved with the page and profit updates. Amounts are in each stock's own currency, not converted.</div>`;
+    app.querySelectorAll("input[data-tk]").forEach(inp => {
+      inp.onchange = async () => {
+        const v = inp.value.trim();
+        const r = await amber.setData({ prices: { [inp.dataset.tk]: v === "" ? null : v } });
+        error = r.ok ? "" : r.error;
+        if (!r.ok) render(amber.note, amber.data);
+      };
+    });
+  }
+  amber.onChange(render);
+</script>
+</body>
+</html>

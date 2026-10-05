@@ -1,0 +1,104 @@
+{
+  "task": "crm-multi-step",
+  "model": "claude-sonnet-5-5",
+  "round": "r1",
+  "skill": false,
+  "seconds": 10,
+  "score": 1,
+  "passed": 4,
+  "total": 4,
+  "checks": [
+    {
+      "name": "owner_column",
+      "pass": true
+    },
+    {
+      "name": "owners_set",
+      "pass": true
+    },
+    {
+      "name": "hemma_added",
+      "pass": true
+    },
+    {
+      "name": "values_kept",
+      "pass": true
+    }
+  ],
+  "tool_calls": 7,
+  "tool_errors": 1,
+  "usage": {
+    "input": 14,
+    "output": 797,
+    "cacheRead": 59331,
+    "cacheWrite": 14384,
+    "turns": 6
+  },
+  "usd": 0.0558,
+  "page_bytes": 0,
+  "data": null,
+  "answer": "I updated the Clients note (it's a note, not a folder). I added an Owner column and set Acme AB and Bergström & Co to Emil and Nordljus to Lina. I also added Hemma AB as a new row: contact Karin Ek, karin@hemma.se, stage Lead, value 4500, owner Lina.",
+  "calls": [
+    {
+      "name": "list_notes",
+      "args": {
+        "folder": "Clients"
+      },
+      "error": true,
+      "result": "No folder \"Clients\". Folders: none."
+    },
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Clients"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Clients\",\n  \"results\": [\n    {\n      \"id\": \"95739ea4-dd5c-4049-b391-89ca3e7e5ae4\",\n      \"title\": \"Clients\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T12:44:07.362Z\",\n      \"snippet\": \"«Clients» | Company | Contact | Email | Stage | Value | | --- | --- | --- | --- | --- | | Acme AB | Sarah Lee | sarah@acme.se | Proposal | 8000 | | Nordljus | Erik Holm | erik@nordljus.se | Lead | 3000 | | Bergström\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "read_table",
+      "args": {
+        "id": "95739ea4-dd5c-4049-b391-89ca3e7e5ae4"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"95739ea4-dd5c-4049-b391-89ca3e7e5ae4\",\n    \"title\": \"Clients\"\n  },\n  \"columns\": [\n    {\n      \"name\": \"Company\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Contact\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Email\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Stage\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Value\",\n      \"type\": \"text\"\n    }\n  ],\n  \"rows\": [\n    {\n      \"Company\": \"Acme AB\",\n      \"Contact\": \"Sarah Lee\",\n      \"Email\": \"sarah@acme.se\",\n      \"Stage\": \"Proposal\",\n      \"Value\": \"8000\"\n    },\n    {\n      \"Company\": \"Nordljus\",\n … (898 chars)"
+    },
+    {
+      "name": "edit_table_columns",
+      "args": {
+        "id": "95739ea4-dd5c-4049-b391-89ca3e7e5ae4",
+        "changes": "[{\"add\":\"Owner\",\"type\":\"text\",\"value\":\"Emil\"}]"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"95739ea4-dd5c-4049-b391-89ca3e7e5ae4\",\n    \"title\": \"Clients\"\n  },\n  \"table\": 0,\n  \"changes\": [\n    \"added Owner\"\n  ],\n  \"columns\": [\n    {\n      \"name\": \"Company\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Contact\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Email\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Stage\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Value\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Owner\",\n      \"type\": \"text\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "95739ea4-dd5c-4049-b391-89ca3e7e5ae4"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"95739ea4-dd5c-4049-b391-89ca3e7e5ae4\",\n  \"title\": \"Clients\",\n  \"has_page\": false,\n  \"rules\": \"A page is one HTML document with all CSS and JS inline. It runs in a sandbox with no network: no fetch/XHR/WebSocket, no external scripts, styles, fonts or images (images only as data: URIs or inline SVG), no <iframe>/<link>/<base>. At most 256 KB.\\nwindow.amber, ready before your script runs:\\n  amber.note = { title, markdown, today: \\\"yyyy-mm-dd\\\", tables: [{ index, columns: [{ name, type }], rows: [[\\\"cell\\\", ...], ...] }], checklists: [{ line, text, checked }] }\\n    tables are every ma… (3040 chars)"
+    },
+    {
+      "name": "update_table_rows",
+      "args": {
+        "id": "95739ea4-dd5c-4049-b391-89ca3e7e5ae4",
+        "where": "{\"Company\":\"Nordljus\"}",
+        "set": "{\"Owner\":\"Lina\"}"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"95739ea4-dd5c-4049-b391-89ca3e7e5ae4\",\n    \"title\": \"Clients\"\n  },\n  \"table\": 0,\n  \"updated_rows\": 1,\n  \"rows\": [\n    {\n      \"Company\": \"Nordljus\",\n      \"Contact\": \"Erik Holm\",\n      \"Email\": \"erik@nordljus.se\",\n      \"Stage\": \"Lead\",\n      \"Value\": \"3000\",\n      \"Owner\": \"Lina\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "add_table_rows",
+      "args": {
+        "id": "95739ea4-dd5c-4049-b391-89ca3e7e5ae4",
+        "rows": "[{\"Company\":\"Hemma AB\",\"Contact\":\"Karin Ek\",\"Email\":\"karin@hemma.se\",\"Stage\":\"Lead\",\"Value\":\"4500\",\"Owner\":\"Lina\"}]"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"95739ea4-dd5c-4049-b391-89ca3e7e5ae4\",\n    \"title\": \"Clients\",\n    \"version\": 4\n  },\n  \"added_rows\": 1,\n  \"table\": {\n    \"index\": 0,\n    \"columns\": [\n      {\n        \"name\": \"Company\",\n        \"type\": \"text\"\n      },\n      {\n        \"name\": \"Contact\",\n        \"type\": \"text\"\n      },\n      {\n        \"name\": \"Email\",\n        \"type\": \"text\"\n      },\n      {\n        \"name\": \"Stage\",\n        \"type\": \"text\"\n      },\n      {\n        \"name\": \"Value\",\n        \"type\": \"text\"\n      },\n      {\n        \"name\": \"Owner\",\n        \"type\": \"text\"\n      }\n    ],\n    \"total_rows\": 4\n  }\n}"
+    }
+  ],
+  "render": null
+}

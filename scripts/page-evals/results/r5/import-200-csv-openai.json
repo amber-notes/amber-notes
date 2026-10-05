@@ -1,0 +1,77 @@
+{
+  "task": "import-200-csv",
+  "model": "gpt-5.5",
+  "round": "r5",
+  "skill": false,
+  "seconds": 41,
+  "score": 1,
+  "passed": 5,
+  "total": 5,
+  "checks": [
+    {
+      "name": "columns_kept",
+      "pass": true
+    },
+    {
+      "name": "all_200_added",
+      "pass": true
+    },
+    {
+      "name": "mapped_right",
+      "pass": true
+    },
+    {
+      "name": "rows_kept",
+      "pass": true
+    },
+    {
+      "name": "bulk_tool",
+      "pass": true
+    }
+  ],
+  "tool_calls": 3,
+  "tool_errors": 0,
+  "usage": {
+    "input": 12796,
+    "output": 5288,
+    "cacheRead": 37888,
+    "cacheWrite": 0,
+    "turns": 4
+  },
+  "usd": 0.0736,
+  "page_bytes": 0,
+  "data": null,
+  "answer": "Done — I added all 200 exported CRM rows into your `Clients` note, mapped into its existing columns:\n\n- Firm → Company\n- Name → Contact\n- E-mail → Email\n- Status → Stage\n- Deal value → Value",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Clients",
+        "limit": "10"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Clients\",\n  \"results\": [\n    {\n      \"id\": \"a0e82e4d-0f41-4033-b007-e3dc83991df3\",\n      \"title\": \"Clients\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T13:13:28.534Z\",\n      \"snippet\": \"«Clients» | Company | Contact | Email | Stage | Value | | --- | --- | --- | --- | --- | | Acme AB | Sarah Lee | sarah@acme.se | Proposal | 8000 | | Nordljus | Erik Holm | erik@nordljus.se | Lead | 3000 | | Bergström\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "a0e82e4d-0f41-4033-b007-e3dc83991df3",
+        "line_numbers": "true"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"a0e82e4d-0f41-4033-b007-e3dc83991df3\",\n  \"title\": \"Clients\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T13:13:28.534Z\",\n  \"updated\": \"2026-10-05T13:13:28.534Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 8,\n    \"words\": 62\n  },\n  \"markdown\": \"1│ Clients\\n2│ \\n3│ | Company | Contact | Email | Stage | Value |\\n4│ | --- | --- | --- | --- | --- |\\n5│ | Acme AB | Sarah Lee | sarah@acme.se | Proposal | 8000 |\\n6│ | Nordljus |… (722 chars)"
+    },
+    {
+      "name": "add_table_rows",
+      "args": {
+        "id": "a0e82e4d-0f41-4033-b007-e3dc83991df3",
+        "table": "0",
+        "csv": "Deal value,Name,E-mail,Firm,Status\n1000,Maja Andersson,maja.andersson0@example.se,Andersson Design 1,Lead\n1137,Liam Andersson,liam.andersson1@example.se,Andersson Bygg 2,Proposal\n1274,Elsa Andersson,elsa.andersson2@example.se,Andersson Konsult 3,Won\n1411,Noah Andersson,noah.andersson3@example.se,And… (14434 chars)",
+        "column_map": "{\"Deal value\":\"Value\",\"Name\":\"Contact\",\"E-mail\":\"Email\",\"Firm\":\"Company\",\"Status\":\"Stage\"}"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"a0e82e4d-0f41-4033-b007-e3dc83991df3\",\n    \"title\": \"Clients\",\n    \"version\": 2\n  },\n  \"added_rows\": 200,\n  \"table\": {\n    \"index\": 0,\n    \"columns\": [\n      {\n        \"name\": \"Company\",\n        \"type\": \"text\"\n      },\n      {\n        \"name\": \"Contact\",\n        \"type\": \"text\"\n      },\n      {\n        \"name\": \"Email\",\n        \"type\": \"text\"\n      },\n      {\n        \"name\": \"Stage\",\n        \"type\": \"text\"\n      },\n      {\n        \"name\": \"Value\",\n        \"type\": \"text\"\n      }\n    ],\n    \"total_rows\": 203\n  }\n}"
+    }
+  ],
+  "render": null
+}

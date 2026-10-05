@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  * { box-sizing: border-box; }
+  body { padding: 20px 18px 96px; max-width: 680px; margin: 0 auto; }
+  h1 { font-size: 28px; letter-spacing: -.02em; margin: 4px 0 16px; }
+  .card { background: var(--amber-surface); border-radius: var(--amber-radius); border: 1px solid var(--amber-separator); margin-bottom: 16px; overflow: hidden; }
+  .hero { padding: 18px 16px; }
+  .big { font-size: 34px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+  .row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--amber-separator); min-height: 56px; flex-wrap: wrap; }
+  .row:first-child { border-top: 0; }
+  .grow { flex: 1 1 120px; min-width: 0; overflow-wrap: anywhere; }
+  .muted { color: var(--amber-text-secondary); font-size: 14px; }
+  .num { font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; }
+  .loss { color: var(--amber-danger); }
+  .gain { color: var(--amber-accent-text); }
+  label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--amber-text-secondary); width: 110px; }
+  input { font: inherit; color: var(--amber-text); background: var(--amber-fill); border: 0; border-radius: var(--amber-radius-small); padding: 10px 12px; min-height: 44px; width: 100%; font-variant-numeric: tabular-nums; }
+  .err { color: var(--amber-danger); padding: 0 16px 12px; min-height: 1em; }
+  .empty { padding: 28px 16px; text-align: center; color: var(--amber-text-secondary); }
+  .note { padding: 12px 16px; font-size: 13px; color: var(--amber-text-secondary); }
+</style>
+</head>
+<body>
+<main id="app" aria-live="polite"></main>
+<script>
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const col = (t, re) => t.columns.findIndex((c) => re.test(c.name));
+  const num = (s) => { const n = parseFloat(String(s ?? "").replace(/\s/g, "").replace(",", ".")); return isNaN(n) ? null : n; };
+  const money = (n) => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const signed = (n) => (n > 0 ? "+" : n < 0 ? "−" : "") + money(Math.abs(n));
+  let error = "";
+
+  function render(note) {
+    const app = document.getElementById("app");
+    const t = note.tables.find((t) => col(t, /^ticker$/i) >= 0);
+    if (!t) { app.innerHTML = `<h1>${esc(note.title)}</h1><div class="card empty">Add a table with Ticker, Shares and Buy price columns.</div>`; return; }
+    const ci = col(t, /^ticker$/i), cs = col(t, /^shares$/i), cb = col(t, /^buy/i), cn = col(t, /^price now$/i);
+    if (cs < 0 || cb < 0 || cn < 0) { app.innerHTML = `<h1>${esc(note.title)}</h1><div class="card empty">The table needs Shares, Buy price and Price now columns.</div>`; return; }
+    let cost = 0, value = 0, priced = 0;
+    const rows = t.rows.map((r, i) => {
+      const sh = num(r[cs]), bp = num(r[cb]), np = num(r[cn]);
+      let pl = null, pct = null;
+      if (sh != null && bp != null && np != null) {
+        pl = (np - bp) * sh; pct = bp ? (np / bp - 1) * 100 : null;
+        cost += bp * sh; value += np * sh; priced++;
+      }
+      return `<div class="row">
+        <div class="grow"><strong>${esc(r[ci])}</strong><div class="muted">${esc(r[cs])} shares @ ${esc(r[cb])}</div></div>
+        <label>Price now<input inputmode="decimal" data-row="${i}" value="${esc(r[cn])}" aria-label="Price now for ${esc(r[ci])}"></label>
+        <div class="num ${pl != null && pl < 0 ? "loss" : "gain"}" style="width:96px">${pl == null ? '<span class="muted">–</span>' : signed(pl) + `<div class="muted">${pct == null ? "" : signed(pct) + "%"}</div>`}</div>
+      </div>`;
+    }).join("");
+    const total = value - cost;
+    app.innerHTML = `
+      <h1>${esc(note.title)}</h1>
+      <div class="card hero">
+        <div class="muted">Total profit${priced < t.rows.length ? " (priced stocks only)" : ""}</div>
+        <div class="big ${total < 0 ? "loss" : "gain"}">${priced ? signed(total) : "–"}</div>
+        <div class="muted">${priced ? `Value ${money(value)} · Cost ${money(cost)}${cost ? " · " + signed(total / cost * 100) + "%" : ""}` : "Enter a current price for each stock"}</div>
+      </div>
+      <div class="card">${t.rows.length ? rows : '<div class="empty">No stocks yet.</div>'}
+        <div class="err" role="alert">${esc(error)}</div>
+      </div>
+      <div class="note">Pages can't reach the internet, so prices aren't fetched live. Type each current price; it's saved in the note's Price now column.</div>`;
+    app.querySelectorAll("input[data-row]").forEach((inp) => {
+      inp.onchange = async () => {
+        const r = await amber.update({ op: "set_cell", table: t.index, row: +inp.dataset.row, col: "Price now", value: inp.value.trim() });
+        error = r.ok ? "" : r.error;
+        if (!r.ok) render(amber.note);
+      };
+    });
+  }
+  amber.onChange(render);
+</script>
+</body>
+</html>

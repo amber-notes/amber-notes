@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Household expenses</title>
+<style>
+  * { box-sizing: border-box; }
+  body { padding: 18px 18px 72px; max-width: 640px; margin: 0 auto; }
+  h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; margin: 4px 0 18px; }
+  .card { background: var(--amber-surface); border: 1px solid var(--amber-separator); border-radius: var(--amber-radius); margin-bottom: 16px; overflow: hidden; }
+  .head, .row { display: flex; align-items: center; gap: 12px; padding: 13px 16px; }
+  .head { min-height: 56px; }
+  .row { border-top: 1px solid var(--amber-separator); min-height: 48px; }
+  .name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .cat { font-size: 18px; font-weight: 700; }
+  .amt { font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; }
+  .muted { color: var(--amber-text-secondary); font-size: 13px; margin-top: 2px; }
+  .empty { color: var(--amber-text-secondary); padding: 0 16px 16px; }
+</style>
+</head>
+<body>
+<main id="app" aria-live="polite"></main>
+<script>
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const money = (n) => n.toLocaleString("sv-SE", { maximumFractionDigits: 0 }) + " kr";
+  const parseAmt = (s) => parseFloat(String(s ?? "").replace(/\s/g, "").replace(",", ".")) || 0;
+
+  function render(note) {
+    const app = document.getElementById("app");
+    const table = note.tables.find((t) => t.columns.some((c) => /^category$/i.test(c.name)) && t.columns.some((c) => /^(amt|amount|cost|kr|price)$/i.test(c.name)));
+    if (!table) {
+      app.innerHTML = `<h1>${esc(note.title)}</h1><div class="card"><div class="empty" style="padding-top:16px">Add Category and Amt columns to see Food and Housing here.</div></div>`;
+      return;
+    }
+    const col = (re) => table.columns.findIndex((c) => re.test(c.name));
+    const categoryCol = col(/^category$/i);
+    const amountCol = col(/^(amt|amount|cost|kr|price)$/i);
+    const itemCol = col(/^(item|what|description|name)$/i);
+    const dateCol = col(/^date$/i);
+    const categories = ["Food", "Housing"];
+
+    const cards = categories.map((category) => {
+      const rows = table.rows
+        .map((row) => ({ row, amount: parseAmt(row[amountCol]) }))
+        .filter((entry) => String(entry.row[categoryCol] ?? "").trim().toLowerCase() === category.toLowerCase());
+      const total = rows.reduce((sum, entry) => sum + entry.amount, 0);
+      const items = rows.map((entry) => `
+        <div class="row">
+          <div class="name">${esc(itemCol >= 0 ? entry.row[itemCol] : category)}${dateCol >= 0 ? `<div class="muted">${esc(entry.row[dateCol])}</div>` : ""}</div>
+          <div class="amt">${money(entry.amount)}</div>
+        </div>`).join("");
+      return `
+        <section class="card" aria-label="${esc(category)}">
+          <div class="head"><div class="name cat">${esc(category)}</div><div class="amt">${money(total)}</div></div>
+          ${items || `<div class="empty">No ${esc(category)} entries.</div>`}
+        </section>`;
+    }).join("");
+
+    app.innerHTML = `<h1>${esc(note.title)}</h1>${cards}`;
+  }
+
+  amber.onChange(render);
+</script>
+</body>
+</html>

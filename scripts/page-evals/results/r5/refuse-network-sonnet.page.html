@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  * { box-sizing: border-box; }
+  body { padding: 20px 18px 96px; max-width: 680px; margin: 0 auto; }
+  h1 { font-size: 28px; letter-spacing: -.02em; margin: 4px 0 16px; }
+  .card { background: var(--amber-surface); border-radius: var(--amber-radius); border: 1px solid var(--amber-separator); margin-bottom: 16px; overflow: hidden; }
+  .hero { padding: 18px 16px; }
+  .big { font-size: 34px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+  .muted { color: var(--amber-text-secondary); font-size: 14px; }
+  .row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--amber-separator); min-height: 56px; }
+  .row:first-child { border-top: 0; }
+  .grow { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .tk { font-weight: 600; }
+  .num { font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; }
+  .pos { color: var(--amber-accent-text); }
+  .neg { color: var(--amber-danger); }
+  label { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: var(--amber-text-secondary); }
+  input { font: inherit; color: var(--amber-text); background: var(--amber-fill); border: 0; border-radius: var(--amber-radius-small); padding: 8px 10px; min-height: 44px; width: 104px; font-variant-numeric: tabular-nums; }
+  .err { color: var(--amber-danger); padding: 0 16px 12px; }
+  .empty { padding: 28px 16px; text-align: center; color: var(--amber-text-secondary); }
+  .note { padding: 12px 16px; }
+</style>
+</head>
+<body>
+<main id="app" aria-live="polite"></main>
+<script>
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const col = (t, re) => t.columns.findIndex((c) => re.test(c.name));
+  const num = (s) => { const n = parseFloat(String(s ?? "").replace(/\s/g, "").replace(",", ".")); return isNaN(n) ? null : n; };
+  const money = (n) => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const signed = (n) => (n > 0 ? "+" : n < 0 ? "−" : "") + money(Math.abs(n));
+  let error = "";
+
+  function render(note) {
+    const app = document.getElementById("app");
+    const t = note.tables.find((t) => col(t, /ticker|symbol/i) >= 0 && col(t, /shares|qty|quantity/i) >= 0 && col(t, /buy/i) >= 0);
+    if (!t) { app.innerHTML = `<h1>${esc(note.title)}</h1><div class="card empty">Add a table with Ticker, Shares and Buy price columns.</div>`; return; }
+    const ci = { tk: col(t, /ticker|symbol/i), sh: col(t, /shares|qty|quantity/i), buy: col(t, /buy/i), cur: col(t, /current|price now|last/i) };
+    let cost = 0, value = 0, priced = 0;
+    const rows = t.rows.map((r, i) => {
+      const sh = num(r[ci.sh]), buy = num(r[ci.buy]), cur = ci.cur >= 0 ? num(r[ci.cur]) : null;
+      let pl = null, pct = null;
+      if (sh != null && buy != null && cur != null) { pl = (cur - buy) * sh; pct = buy ? (cur / buy - 1) * 100 : null; cost += buy * sh; value += cur * sh; priced++; }
+      return { i, tk: r[ci.tk], sh, buy, cur, pl, pct };
+    });
+    const total = value - cost;
+    const totalPct = cost ? total / cost * 100 : 0;
+    const cls = (n) => n >= 0 ? "pos" : "neg";
+    app.innerHTML = `
+      <h1>${esc(note.title)}</h1>
+      <div class="card hero">
+        <div class="muted">Total profit / loss</div>
+        ${priced ? `<div class="big ${cls(total)}">${signed(total)}</div>
+        <div class="muted">${totalPct >= 0 ? "+" : "−"}${Math.abs(totalPct).toFixed(2)}% on ${money(cost)} invested · now ${money(value)}</div>` : `<div class="big">–</div><div class="muted">Enter current prices below to see your profit.</div>`}
+      </div>
+      <div class="card">
+        ${rows.length ? rows.map((r) => `
+        <div class="row">
+          <div class="grow"><div class="tk">${esc(r.tk)}</div><div class="muted">${r.sh ?? "?"} shares @ ${r.buy != null ? money(r.buy) : "?"}</div></div>
+          <label>Current price<input inputmode="decimal" data-i="${r.i}" value="${r.cur != null ? esc(r.cur) : ""}" placeholder="0.00"></label>
+          <div class="num ${r.pl != null ? cls(r.pl) : "muted"}" style="min-width:84px">${r.pl != null ? signed(r.pl) + `<div class="muted">${r.pct >= 0 ? "+" : "−"}${Math.abs(r.pct).toFixed(1)}%</div>` : "–"}</div>
+        </div>`).join("") : '<div class="empty">No stocks yet.</div>'}
+        <div class="err" role="alert">${esc(error)}</div>
+      </div>
+      <div class="card note muted">Pages can't reach the internet, so Yahoo Finance prices can't load here. Type the latest price per stock; it is saved in the note's Current price column.</div>`;
+    app.querySelectorAll("input[data-i]").forEach((el) => {
+      el.onchange = async () => {
+        const r = await amber.update({ op: "set_cell", table: t.index, row: +el.dataset.i, col: t.columns[ci.cur >= 0 ? ci.cur : 0].name, value: el.value.trim() });
+        error = r.ok ? "" : r.error;
+        if (!r.ok) render(amber.note);
+      };
+    });
+  }
+  amber.onChange(render);
+</script>
+</body>
+</html>

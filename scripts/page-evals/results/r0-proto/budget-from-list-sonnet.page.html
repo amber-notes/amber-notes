@@ -1,0 +1,61 @@
+<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>
+body{margin:0;padding:16px;font-family:var(--amber-font)}
+.card{background:var(--amber-surface);border-radius:var(--amber-radius);padding:16px;margin-bottom:14px}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--amber-text-secondary);margin:0 0 10px}
+.big{font-family:var(--amber-font-rounded);font-size:32px;font-weight:700}
+.sub{color:var(--amber-text-secondary);font-size:14px;margin-top:2px}
+.bar{height:10px;background:var(--amber-fill);border-radius:5px;overflow:hidden;margin:12px 0 6px}
+.bar>div{height:100%;background:var(--amber-accent)}
+.over .bar>div{background:var(--amber-danger)}.over .big{color:var(--amber-danger)}
+.cat{margin:10px 0}.cat .row{display:flex;justify-content:space-between;font-size:15px}
+.cat .bar{height:6px;margin:5px 0 0}
+form{display:flex;flex-direction:column;gap:8px}
+input,select,button{font:inherit;font-size:16px;padding:10px;border-radius:var(--amber-radius-small);border:1px solid var(--amber-separator);background:var(--amber-fill);color:var(--amber-text)}
+button{background:var(--amber-accent);color:var(--amber-on-accent);border:0;font-weight:600}
+.err{color:var(--amber-danger);font-size:14px}
+.item{display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--amber-separator);font-size:15px}
+.item small{color:var(--amber-text-secondary);display:block}
+</style></head><body>
+<div class="card" id="sum"></div>
+<div class="card"><h2>By category</h2><div id="cats"></div></div>
+<div class="card"><h2>Add expense</h2>
+<form id="f"><input id="name" placeholder="What for?" required>
+<input id="amt" type="number" inputmode="decimal" step="0.01" placeholder="Amount (kr)" required>
+<input id="cat" list="cl" placeholder="Category" required><datalist id="cl"></datalist>
+<button>Add expense</button><div class="err" id="err"></div></form></div>
+<div class="card"><h2>Recent</h2><div id="list"></div></div>
+<script>
+const fmt=n=>(Math.round(n*100)/100).toLocaleString('sv-SE',{maximumFractionDigits:2})+' kr';
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+let T=null;
+function num(s){return parseFloat(String(s).replace(/\s/g,'').replace(',','.'))||0}
+amber.onChange(n=>{
+ const idx=n.tables.findIndex(t=>t.columns.some(c=>/amount/i.test(c.name)));
+ if(idx<0){document.getElementById('sum').textContent='No expense table found.';return}
+ const t=n.tables[idx];T=t;window._idx=t.index;
+ const ci=re=>t.columns.findIndex(c=>re.test(c.name));
+ const iI=ci(/item/i),iA=ci(/amount/i),iC=ci(/categ/i),iD=ci(/date/i);
+ const m=n.markdown.match(/limit[^\n\d]*([\d\s.,]+)\s*kr/i);
+ const limit=m?num(m[1]):0;
+ const rows=t.rows.map(r=>({i:r[iI],a:num(r[iA]),c:(r[iC]||'other').trim(),d:r[iD]}));
+ const total=rows.reduce((s,r)=>s+r.a,0);
+ const pct=limit?Math.min(100,total/limit*100):0;
+ const s=document.getElementById('sum');
+ s.className='card'+(limit&&total>limit?' over':'');
+ s.innerHTML='<div class="big">'+fmt(total)+'</div><div class="sub">spent of '+fmt(limit)+' limit</div><div class="bar"><div style="width:'+pct+'%"></div></div><div class="sub">'+(total>limit?fmt(total-limit)+' over limit':fmt(limit-total)+' left')+'</div>';
+ const by={};rows.forEach(r=>by[r.c]=(by[r.c]||0)+r.a);
+ const ks=Object.keys(by).sort((a,b)=>by[b]-by[a]);
+ document.getElementById('cats').innerHTML=ks.map(k=>'<div class="cat"><div class="row"><span>'+k+'</span><span>'+fmt(by[k])+'</span></div><div class="bar"><div style="width:'+(by[k]/total*100)+'%"></div></div></div>').join('');
+ document.getElementById('cl').innerHTML=ks.map(k=>'<option value="'+k+'">').join('');
+ document.getElementById('list').innerHTML=rows.slice().reverse().slice(0,8).map(r=>'<div class="item"><span>'+r.i+'<small>'+r.c+' · '+r.d+'</small></span><span>'+fmt(r.a)+'</span></div>').join('');
+ window._cols={iI,iA,iC,iD};window._today=n.today;
+});
+document.getElementById('f').onsubmit=async e=>{
+ e.preventDefault();
+ const d=window._today.split('-'),date=(+d[2])+' '+MON[+d[1]-1];
+ const c=window._cols,vals=[];
+ vals[c.iI]=name.value.trim().replace(/\|/g,'/');vals[c.iA]=String(amt.value);vals[c.iC]=cat.value.trim().toLowerCase().replace(/\|/g,'/');vals[c.iD]=date;
+ const r=await amber.update({op:'append_row',table:window._idx,values:vals});
+ if(r.ok){e.target.reset();err.textContent=''}else err.textContent=r.error||'Could not add';
+};
+</script></body></html>

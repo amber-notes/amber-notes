@@ -1,0 +1,259 @@
+{
+  "task": "add-50-workouts",
+  "model": "claude-sonnet-5-5",
+  "round": "r0-baseline",
+  "skill": false,
+  "seconds": 24,
+  "score": 0.9444444444444444,
+  "passed": 17,
+  "total": 18,
+  "checks": [
+    {
+      "name": "has_page",
+      "pass": true
+    },
+    {
+      "name": "server_checks",
+      "pass": true
+    },
+    {
+      "name": "no_console_errors",
+      "pass": true
+    },
+    {
+      "name": "no_network",
+      "pass": true
+    },
+    {
+      "name": "fits_390",
+      "pass": true
+    },
+    {
+      "name": "fits_1280",
+      "pass": true
+    },
+    {
+      "name": "shows_data",
+      "pass": true
+    },
+    {
+      "name": "dark_mode",
+      "pass": true
+    },
+    {
+      "name": "light_contrast",
+      "pass": true
+    },
+    {
+      "name": "labelled_controls",
+      "pass": true
+    },
+    {
+      "name": "probe_empty",
+      "pass": true
+    },
+    {
+      "name": "probe_large",
+      "pass": true
+    },
+    {
+      "name": "all_50_added",
+      "pass": true
+    },
+    {
+      "name": "values_right",
+      "pass": true
+    },
+    {
+      "name": "rows_kept",
+      "pass": true
+    },
+    {
+      "name": "prose_kept",
+      "pass": true
+    },
+    {
+      "name": "page_untouched",
+      "pass": true
+    },
+    {
+      "name": "bulk_tool",
+      "pass": false,
+      "detail": "didn't use add_table_rows"
+    }
+  ],
+  "tool_calls": 8,
+  "tool_errors": 0,
+  "usage": {
+    "input": 16,
+    "output": 2207,
+    "cacheRead": 53292,
+    "cacheWrite": 11738,
+    "turns": 7
+  },
+  "usd": 0.0621,
+  "page_bytes": 1202,
+  "answer": "I added all 50 workouts, from 2026-08-01 to 2026-09-19, to your Workout log. The table now has 53 rows, counting the 3 that were already there.\n\nGym sessions have no distance, so their Km cell is blank, as in your existing gym entry.\n\nMy first append left a blank line that split the table in two. I removed it, and the table now reads as one.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Workout log"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Workout log\",\n  \"results\": [\n    {\n      \"id\": \"103f3ad3-6c4b-4ab9-be31-7b3462782bcf\",\n      \"title\": \"Workout log\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T12:28:47.142Z\",\n      \"snippet\": \"«Workout log» <!-- pane-table: Date=date; Type=choice Run|Bike|Swim|Gym; Km=number; Minutes=number --> | Date | Type | Km | Minutes | | --- | --- | --- | --- | | 2026-07-28 | Run\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "read_table",
+      "args": {
+        "id": "103f3ad3-6c4b-4ab9-be31-7b3462782bcf"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"103f3ad3-6c4b-4ab9-be31-7b3462782bcf\",\n    \"title\": \"Workout log\"\n  },\n  \"columns\": [\n    {\n      \"name\": \"Date\",\n      \"type\": \"date\"\n    },\n    {\n      \"name\": \"Type\",\n      \"type\": \"choice Run|Bike|Swim|Gym\"\n    },\n    {\n      \"name\": \"Km\",\n      \"type\": \"number\"\n    },\n    {\n      \"name\": \"Minutes\",\n      \"type\": \"number\"\n    }\n  ],\n  \"rows\": [\n    {\n      \"Date\": \"2026-07-28\",\n      \"Type\": \"Run\",\n      \"Km\": \"5.1\",\n      \"Minutes\": \"29\"\n    },\n    {\n      \"Date\": \"2026-07-30\",\n      \"Type\": \"Gym\",\n      \"Km\": \"\",\n      \"Minutes\": \"50\"\n    },\n    {\n      \"Date\": \"… (705 chars)"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "103f3ad3-6c4b-4ab9-be31-7b3462782bcf"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"103f3ad3-6c4b-4ab9-be31-7b3462782bcf\",\n  \"title\": \"Workout log\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T12:28:47.142Z\",\n  \"updated\": \"2026-10-05T12:28:47.142Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"has_page\": true,\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 9,\n    \"words\": 54\n  },\n  \"markdown\": \"Workout log\\n\\n<!-- pane-table: Date=date; Type=choice Run|Bike|Swim|Gym; Km=number; Minutes=number -->\\n| Date | Type | Km | Minutes |\\n| --- | --- | --- |… (707 chars)"
+    },
+    {
+      "name": "append_to_note",
+      "args": {
+        "id": "103f3ad3-6c4b-4ab9-be31-7b3462782bcf",
+        "text": "| 2026-08-01 | Run | 4.0 | 24 |\n| 2026-08-02 | Bike | 19 | 52 |\n| 2026-08-03 | Gym |  | 55 |\n| 2026-08-04 | Swim | 1.00 | 30 |\n| 2026-08-05 | Run | 6.0 | 36 |\n| 2026-08-06 | Run | 6.5 | 39 |\n| 2026-08-07 | Bike | 24 | 62 |\n| 2026-08-08 | Gym |  | 60 |\n| 2026-08-09 | Swim | 1.50 | 40 |\n| 2026-08-10 |… (1589 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"appended\": {\n    \"id\": \"103f3ad3-6c4b-4ab9-be31-7b3462782bcf\",\n    \"title\": \"Workout log\",\n    \"version\": 2,\n    \"updated\": \"2026-10-05T12:29:00.169Z\"\n  }\n}"
+    },
+    {
+      "name": "read_table",
+      "args": {
+        "id": "103f3ad3-6c4b-4ab9-be31-7b3462782bcf",
+        "last": "2"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"103f3ad3-6c4b-4ab9-be31-7b3462782bcf\",\n    \"title\": \"Workout log\"\n  },\n  \"columns\": [\n    {\n      \"name\": \"Date\",\n      \"type\": \"date\"\n    },\n    {\n      \"name\": \"Type\",\n      \"type\": \"choice Run|Bike|Swim|Gym\"\n    },\n    {\n      \"name\": \"Km\",\n      \"type\": \"number\"\n    },\n    {\n      \"name\": \"Minutes\",\n      \"type\": \"number\"\n    }\n  ],\n  \"rows\": [\n    {\n      \"Date\": \"2026-07-30\",\n      \"Type\": \"Gym\",\n      \"Km\": \"\",\n      \"Minutes\": \"50\"\n    },\n    {\n      \"Date\": \"2026-07-31\",\n      \"Type\": \"Bike\",\n      \"Km\": \"22\",\n      \"Minutes\": \"61\"\n    }\n  ],\n  \"total_rows\": 3… (602 chars)"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "103f3ad3-6c4b-4ab9-be31-7b3462782bcf",
+        "start_line": "8",
+        "end_line": "14",
+        "line_numbers": "true"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"103f3ad3-6c4b-4ab9-be31-7b3462782bcf\",\n  \"title\": \"Workout log\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T12:28:47.142Z\",\n  \"updated\": \"2026-10-05T12:29:00.169Z\",\n  \"version\": 2,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"has_page\": true,\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 60,\n    \"words\": 494\n  },\n  \"lines\": \"8-14\",\n  \"markdown\": \" 8│ | 2026-07-31 | Bike | 22 | 61 |\\n 9│ \\n10│ | 2026-08-01 | Run | 4.0 | 24 |\\n11│ | 2026-08-02 | Bike | 19 | 52 |\\n12│ | 2026-08-03 |… (693 chars)"
+    },
+    {
+      "name": "edit_note",
+      "args": {
+        "id": "103f3ad3-6c4b-4ab9-be31-7b3462782bcf",
+        "edits": "[{\"old_text\":\"| 2026-07-31 | Bike | 22 | 61 |\\n\\n| 2026-08-01\",\"new_text\":\"| 2026-07-31 | Bike | 22 | 61 |\\n| 2026-08-01\"}]"
+      },
+      "error": false,
+      "result": "{\n  \"edited\": {\n    \"id\": \"103f3ad3-6c4b-4ab9-be31-7b3462782bcf\",\n    \"title\": \"Workout log\",\n    \"version\": 3,\n    \"updated\": \"2026-10-05T12:29:05.697Z\"\n  },\n  \"edits_applied\": 1\n}"
+    },
+    {
+      "name": "read_table",
+      "args": {
+        "id": "103f3ad3-6c4b-4ab9-be31-7b3462782bcf",
+        "last": "1"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"103f3ad3-6c4b-4ab9-be31-7b3462782bcf\",\n    \"title\": \"Workout log\"\n  },\n  \"columns\": [\n    {\n      \"name\": \"Date\",\n      \"type\": \"date\"\n    },\n    {\n      \"name\": \"Type\",\n      \"type\": \"choice Run|Bike|Swim|Gym\"\n    },\n    {\n      \"name\": \"Km\",\n      \"type\": \"number\"\n    },\n    {\n      \"name\": \"Minutes\",\n      \"type\": \"number\"\n    }\n  ],\n  \"rows\": [\n    {\n      \"Date\": \"2026-09-19\",\n      \"Type\": \"Run\",\n      \"Km\": \"4.0\",\n      \"Minutes\": \"24\"\n    }\n  ],\n  \"total_rows\": 53\n}"
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "390-light",
+        "width": 390,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 298,
+        "shown": 8,
+        "sampled": 11,
+        "bg": "rgb(251, 248, 243)",
+        "fg": "rgb(29, 26, 22)",
+        "contrast": 16.36122313595218,
+        "bgLuminance": 0.9411509766090667,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r0-baseline/shots/add-50-workouts-sonnet-390-light.png"
+      },
+      {
+        "name": "390-dark",
+        "width": 390,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 298,
+        "shown": 8,
+        "sampled": 11,
+        "bg": "rgb(27, 25, 22)",
+        "fg": "rgb(243, 238, 232)",
+        "contrast": 15.206632798714999,
+        "bgLuminance": 0.009862005146758307,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r0-baseline/shots/add-50-workouts-sonnet-390-dark.png"
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 298,
+        "shown": 8,
+        "sampled": 11,
+        "bg": "rgb(251, 248, 243)",
+        "fg": "rgb(29, 26, 22)",
+        "contrast": 16.36122313595218,
+        "bgLuminance": 0.9411509766090667,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r0-baseline/shots/add-50-workouts-sonnet-1280-light.png"
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 298,
+        "shown": 8,
+        "sampled": 11,
+        "bg": "rgb(27, 25, 22)",
+        "fg": "rgb(243, 238, 232)",
+        "contrast": 15.206632798714999,
+        "bgLuminance": 0.009862005146758307,
+        "unnamedControls": [],
+        "smallTargets": 0
+      }
+    ],
+    "blocked": [],
+    "updates": [],
+    "setData": 0,
+    "interaction": {
+      "tried": "none",
+      "ok": null
+    },
+    "probes": {
+      "empty": {
+        "pass": true,
+        "detail": "blank page"
+      },
+      "large": {
+        "pass": true,
+        "detail": "564 ms to load 400 rows"
+      }
+    },
+    "dataAfter": {}
+  }
+}

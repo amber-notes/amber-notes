@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  * { box-sizing: border-box; }
+  body { padding: 20px 18px 80px; max-width: 680px; margin: 0 auto; }
+  h1 { font-size: 28px; letter-spacing: -.02em; margin: 4px 0 12px; }
+  h2 { font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--amber-text-secondary); margin: 22px 4px 8px; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .stat { background: var(--amber-surface); border: 1px solid var(--amber-separator); border-radius: 14px; padding: 12px; }
+  .stat b { display: block; font-size: 26px; font-variant-numeric: tabular-nums; }
+  .stat span { color: var(--amber-text-secondary); font-size: 13px; }
+  .card { background: var(--amber-surface); border: 1px solid var(--amber-separator); border-radius: var(--amber-radius); }
+  .chart { display: flex; align-items: end; gap: 8px; height: 130px; padding: 12px 14px 0; }
+  .chart .m { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; height: 100%; min-width: 0; }
+  .chart .b { width: 100%; border-radius: 4px 4px 0 0; background: var(--amber-accent); min-height: 2px; }
+  .chart .n { font-size: 12px; font-variant-numeric: tabular-nums; }
+  .chart .l { font-size: 11px; color: var(--amber-text-secondary); padding-bottom: 8px; }
+  .books { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+  .book { min-width: 0; }
+  .cover { aspect-ratio: 2/3; border-radius: 4px 10px 10px 4px; padding: 14px 12px 12px 18px; display: flex; flex-direction: column; justify-content: space-between; color: #fff; box-shadow: inset 6px 0 0 rgba(0,0,0,.18), 0 2px 8px rgba(0,0,0,.2); overflow: hidden; }
+  .cover .t { font-weight: 700; font-size: 16px; line-height: 1.2; overflow-wrap: anywhere; font-family: Georgia, serif; text-shadow: 0 1px 2px rgba(0,0,0,.35); }
+  .cover .a { font-size: 12px; opacity: .92; text-shadow: 0 1px 2px rgba(0,0,0,.35); }
+  .meta { padding: 6px 2px 0; font-size: 13px; color: var(--amber-text-secondary); }
+  .stars { color: var(--amber-accent-text); letter-spacing: 1px; font-size: 15px; }
+  .empty { padding: 24px 16px; text-align: center; color: var(--amber-text-secondary); }
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script>
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const hue = (s) => [...String(s)].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) % 360, 7);
+  const col = (t, re) => t.columns.findIndex((c) => re.test(c.name));
+  function render(note) {
+    const app = document.getElementById("app");
+    const t = note.tables.find((t) => col(t, /^title$/i) >= 0);
+    if (!t) { app.innerHTML = `<h1>${esc(note.title)}</h1><div class="card empty">No table found.</div>`; return; }
+    const ti = col(t, /title/i), au = col(t, /author/i), fi = col(t, /finish/i), ra = col(t, /rating/i);
+    const books = t.rows.map((r) => ({ title: r[ti], author: r[au], date: r[fi], rating: parseFloat(r[ra]) }));
+    const rated = books.filter((b) => Number.isFinite(b.rating));
+    const avg = rated.length ? rated.reduce((s, b) => s + b.rating, 0) / rated.length : 0;
+    const year = note.today.slice(0, 4);
+    const months = Array.from({ length: 6 }, (_, k) => { const d = new Date(note.today.slice(0, 7) + "-15T12:00:00Z"); d.setUTCMonth(d.getUTCMonth() - 5 + k); return d.toISOString().slice(0, 7); });
+    const per = months.map((m) => books.filter((b) => String(b.date).startsWith(m)).length);
+    const top = Math.max(1, ...per);
+    const stars = (n) => Number.isFinite(n) ? `<span class="stars" role="img" aria-label="${n} out of 5">${"★".repeat(Math.round(n))}${"☆".repeat(5 - Math.round(n))}</span>` : "";
+    app.innerHTML = `
+      <h1>${esc(note.title)}</h1>
+      <div class="stats">
+        <div class="stat"><b>${books.length}</b><span>books</span></div>
+        <div class="stat"><b>${books.filter((b) => String(b.date).startsWith(year)).length}</b><span>in ${year}</span></div>
+        <div class="stat"><b>${rated.length ? avg.toFixed(1) : "–"}</b><span>average rating</span></div>
+      </div>
+      <h2>Books per month</h2>
+      <div class="card chart" role="img" aria-label="Books per month: ${months.map((m, k) => m + " " + per[k]).join(", ")}">
+        ${months.map((m, k) => `<div class="m"><div class="n">${per[k]}</div><div class="b" style="height:${70 * per[k] / top}px"></div><div class="l">${new Date(m + "-15T12:00:00Z").toLocaleString("en", { month: "short" })}</div></div>`).join("")}
+      </div>
+      <h2>Shelf</h2>
+      <div class="books">${books.slice().reverse().map((b) => { const h = hue(b.title); return `<article class="book"><div class="cover" style="background:linear-gradient(160deg,hsl(${h} 50% 42%),hsl(${(h + 40) % 360} 55% 28%))"><div class="t">${esc(b.title)}</div><div class="a">${esc(b.author)}</div></div><div class="meta">${stars(b.rating)}<br>${esc(b.date)}</div></article>`; }).join("") || `<div class="card empty">No books yet.</div>`}</div>`;
+  }
+  amber.onChange(render);
+</script>
+</body>
+</html>

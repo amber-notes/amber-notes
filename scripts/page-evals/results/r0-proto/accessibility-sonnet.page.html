@@ -1,0 +1,68 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
+body{margin:0 auto;padding:16px;max-width:640px;line-height:1.4;font-size:17px}
+h1{font-size:1.4em;margin:0 0 4px}h2{font-size:1.15em;margin:20px 0 6px}
+.sum{color:var(--amber-text-secondary);margin:0 0 8px}
+ul{list-style:none;margin:0;padding:0;background:var(--amber-surface);border-radius:var(--amber-radius)}
+li{border-bottom:1px solid var(--amber-separator)}li:last-child{border-bottom:0}
+label{display:flex;align-items:center;gap:12px;min-height:44px;padding:4px 12px;cursor:pointer}
+input[type=checkbox]{width:24px;height:24px;flex:none;accent-color:var(--amber-accent)}
+input:checked+span{color:var(--amber-text-secondary);text-decoration:line-through}
+.add{display:flex;gap:8px;margin-top:20px;flex-wrap:wrap}
+.add label{display:block;width:100%;padding:0;min-height:0;font-weight:600}
+input[type=text]{flex:1;min-width:0;font:inherit;min-height:44px;box-sizing:border-box;padding:6px 10px;border:1px solid var(--amber-text-secondary);border-radius:var(--amber-radius-small);background:var(--amber-fill);color:var(--amber-text)}
+button{font:inherit;font-weight:600;min-height:44px;padding:0 18px;border:0;border-radius:var(--amber-radius-small);background:var(--amber-accent);color:var(--amber-on-accent);cursor:pointer}
+:focus-visible{outline:3px solid var(--amber-text);outline-offset:2px}
+#status{min-height:1.4em;margin-top:8px}.error{color:var(--amber-danger)}
+.empty{color:var(--amber-text-secondary);margin:0}
+</style></head><body><main>
+<h1 id="t"></h1><p class="sum" id="sum"></p><div id="groups"></div>
+<form class="add" id="form"><label for="new">Add an item to the list</label><input type="text" id="new" autocomplete="off" enterkeyhint="done"><button type="submit">Add item</button></form>
+<div id="status" role="status" aria-live="polite"></div>
+</main><script>
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+const $=id=>document.getElementById(id);
+let focusKey=null;
+function say(m,err){const s=$("status");s.className=err?"error":"";s.textContent="";setTimeout(()=>s.textContent=m,30);}
+function render(note){
+  $("t").textContent=note.title;document.title=note.title;
+  // group checklist items under their headings
+  const groups=[];let cur=null,i=0;
+  note.markdown.split("\n").forEach(l=>{
+    const h=l.match(/^#{2,6}\s+(.*)$/);
+    if(h){cur={name:h[1].trim(),items:[],rows:null};groups.push(cur);}
+    else if(/^\s*- \[[ xX]\]/.test(l)){const c=note.checklists[i++];if(!cur){cur={name:"Items",items:[]};groups.push(cur);}if(c)cur.items.push(c);}
+  });
+  const ti=note.tables.length?note.tables[note.tables.length-1]:null;
+  let total=0,done=0;
+  let html=groups.filter(g=>g.items.length).map((g,gi)=>{
+    const lis=g.items.map(c=>{total++;if(c.checked)done++;
+      return '<li><label><input type="checkbox" data-line="'+c.line+'" id="c'+c.line+'"'+(c.checked?' checked':'')+'><span>'+esc(c.text)+'</span></label></li>';}).join("");
+    return '<section aria-labelledby="g'+gi+'"><h2 id="g'+gi+'">'+esc(g.name)+'</h2><ul>'+lis+'</ul></section>';
+  }).join("");
+  html+='<section aria-labelledby="gx"><h2 id="gx">Added items</h2>';
+  if(ti&&ti.rows.length){html+='<ul>'+ti.rows.map((r,ri)=>{total++;const on=String(r[1]).trim().toLowerCase()==="yes";if(on)done++;
+    return '<li><label><input type="checkbox" data-row="'+ri+'" id="r'+ri+'"'+(on?' checked':'')+'><span>'+esc(r[0])+'</span></label></li>';}).join("")+'</ul>';}
+  else html+='<p class="empty">No added items yet.</p>';
+  html+='</section>';
+  $("groups").innerHTML=html;
+  $("sum").textContent=done+" of "+total+" items packed";
+  if(focusKey){const e=$(focusKey);if(e)e.focus();}
+  document.querySelectorAll("input[type=checkbox]").forEach(b=>b.addEventListener("change",async()=>{
+    focusKey=b.id;let r;
+    const name=b.nextElementSibling.textContent;
+    if(b.dataset.line)r=await amber.update({op:"toggle_checklist",line:+b.dataset.line});
+    else r=await amber.update({op:"set_cell",table:ti.index,row:+b.dataset.row,col:"Packed",value:b.checked?"Yes":"No"});
+    if(r.ok)say(name+(b.checked?", packed":", not packed"));else say("Could not update "+name+": "+r.error,true);
+  }));
+}
+amber.onChange(n=>{window.__n=n;render(n);});
+$("form").addEventListener("submit",async e=>{
+  e.preventDefault();const v=$("new").value.trim();
+  if(!v){say("Type an item name first.",true);$("new").focus();return;}
+  const n=window.__n,ti=n.tables[n.tables.length-1];
+  if(!ti){say("The added items table is missing.",true);return;}
+  const r=await amber.update({op:"append_row",table:ti.index,values:{Item:v.replace(/[|\n]/g," "),Packed:"No"}});
+  if(r.ok){$("new").value="";say(v+" added");}else say("Could not add item: "+r.error,true);
+  $("new").focus();
+});
+</script></body></html>

@@ -1,0 +1,176 @@
+{
+  "task": "add-50-workouts",
+  "model": "gpt-5.5",
+  "round": "r4",
+  "skill": false,
+  "seconds": 19,
+  "score": 1,
+  "passed": 8,
+  "total": 8,
+  "checks": [
+    {
+      "name": "has_page",
+      "pass": true
+    },
+    {
+      "name": "still_renders",
+      "pass": true
+    },
+    {
+      "name": "all_50_added",
+      "pass": true
+    },
+    {
+      "name": "values_right",
+      "pass": true
+    },
+    {
+      "name": "rows_kept",
+      "pass": true
+    },
+    {
+      "name": "prose_kept",
+      "pass": true
+    },
+    {
+      "name": "page_untouched",
+      "pass": true
+    },
+    {
+      "name": "bulk_tool",
+      "pass": true
+    }
+  ],
+  "tool_calls": 3,
+  "tool_errors": 0,
+  "usage": {
+    "input": 4959,
+    "output": 1365,
+    "cacheRead": 24576,
+    "cacheWrite": 0,
+    "turns": 4
+  },
+  "usd": 0.0229,
+  "page_bytes": 1202,
+  "data": null,
+  "answer": "Added all 50 workout entries to your Workout log.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "\"Workout log\" OR workout",
+        "limit": "10"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"\\\"Workout log\\\" OR workout\",\n  \"results\": [\n    {\n      \"id\": \"53617eec-a3ad-49e1-bd04-2f8328849a8b\",\n      \"title\": \"Workout log\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T13:02:20.619Z\",\n      \"snippet\": \"«Workout log» <!-- pane-table: Date=date; Type=choice Run|Bike|Swim|Gym; Km=number; Minutes=number --> | Date | Type | Km | Minutes | | --- | --- | --- | --- | | 2026-07-28 | Run\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "53617eec-a3ad-49e1-bd04-2f8328849a8b",
+        "line_numbers": "true"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"53617eec-a3ad-49e1-bd04-2f8328849a8b\",\n  \"title\": \"Workout log\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T13:02:20.619Z\",\n  \"updated\": \"2026-10-05T13:02:20.619Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"has_page\": true,\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 9,\n    \"words\": 54\n  },\n  \"markdown\": \"1│ Workout log\\n2│ \\n3│ <!-- pane-table: Date=date; Type=choice Run|Bike|Swim|Gym; Km=number; Minutes=number -->\\n4│ | Date | Type | Km | Minutes |\\n5│ | --… (734 chars)"
+    },
+    {
+      "name": "add_table_rows",
+      "args": {
+        "id": "53617eec-a3ad-49e1-bd04-2f8328849a8b",
+        "table": "0",
+        "rows": "[{\"Date\":\"2026-08-01\",\"Type\":\"Run\",\"Km\":4,\"Minutes\":24},{\"Date\":\"2026-08-02\",\"Type\":\"Bike\",\"Km\":19,\"Minutes\":52},{\"Date\":\"2026-08-03\",\"Type\":\"Gym\",\"Km\":\"\",\"Minutes\":55},{\"Date\":\"2026-08-04\",\"Type\":\"Swim\",\"Km\":1,\"Minutes\":30},{\"Date\":\"2026-08-05\",\"Type\":\"Run\",\"Km\":6,\"Minutes\":36},{\"Date\":\"2026-08-06\"… (2822 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"53617eec-a3ad-49e1-bd04-2f8328849a8b\",\n    \"title\": \"Workout log\",\n    \"version\": 2\n  },\n  \"added_rows\": 50,\n  \"table\": {\n    \"index\": 0,\n    \"columns\": [\n      {\n        \"name\": \"Date\",\n        \"type\": \"date\"\n      },\n      {\n        \"name\": \"Type\",\n        \"type\": \"choice Run|Bike|Swim|Gym\"\n      },\n      {\n        \"name\": \"Km\",\n        \"type\": \"number\"\n      },\n      {\n        \"name\": \"Minutes\",\n        \"type\": \"number\"\n      }\n    ],\n    \"total_rows\": 53\n  }\n}"
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "390-light",
+        "width": 390,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 291,
+        "shown": 6,
+        "sampled": 9,
+        "bg": "rgb(251, 248, 243)",
+        "fg": "rgb(29, 26, 22)",
+        "contrast": 16.36122313595218,
+        "bgLuminance": 0.9411509766090667,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r4/shots/add-50-workouts-openai-390-light.png"
+      },
+      {
+        "name": "390-dark",
+        "width": 390,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 291,
+        "shown": 6,
+        "sampled": 9,
+        "bg": "rgb(27, 25, 22)",
+        "fg": "rgb(243, 238, 232)",
+        "contrast": 15.206632798714999,
+        "bgLuminance": 0.009862005146758307,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r4/shots/add-50-workouts-openai-390-dark.png"
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 291,
+        "shown": 6,
+        "sampled": 9,
+        "bg": "rgb(251, 248, 243)",
+        "fg": "rgb(29, 26, 22)",
+        "contrast": 16.36122313595218,
+        "bgLuminance": 0.9411509766090667,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r4/shots/add-50-workouts-openai-1280-light.png"
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 291,
+        "shown": 6,
+        "sampled": 9,
+        "bg": "rgb(27, 25, 22)",
+        "fg": "rgb(243, 238, 232)",
+        "contrast": 15.206632798714999,
+        "bgLuminance": 0.009862005146758307,
+        "unnamedControls": [],
+        "smallTargets": 0
+      }
+    ],
+    "blocked": [],
+    "updates": [],
+    "setData": 0,
+    "interaction": {
+      "tried": "none",
+      "ok": null
+    },
+    "probes": {
+      "empty": {
+        "pass": true,
+        "detail": "blank page"
+      },
+      "large": {
+        "pass": true,
+        "detail": "551 ms to load 400 rows"
+      }
+    },
+    "dataAfter": {}
+  }
+}

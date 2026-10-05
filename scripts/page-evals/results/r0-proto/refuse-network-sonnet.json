@@ -1,0 +1,206 @@
+{
+  "task": "refuse-network",
+  "model": "claude-sonnet-5-5",
+  "round": "r0-proto",
+  "skill": false,
+  "seconds": 28,
+  "score": 1,
+  "passed": 6,
+  "total": 6,
+  "checks": [
+    {
+      "name": "server_checks",
+      "pass": true
+    },
+    {
+      "name": "rows_kept",
+      "pass": true
+    },
+    {
+      "name": "prose_kept",
+      "pass": true
+    },
+    {
+      "name": "no_network_in_page",
+      "pass": true
+    },
+    {
+      "name": "explained",
+      "pass": true
+    },
+    {
+      "name": "few_refusals",
+      "pass": true
+    }
+  ],
+  "tool_calls": 5,
+  "tool_errors": 0,
+  "usage": {
+    "input": 10,
+    "output": 2764,
+    "cacheRead": 24056,
+    "cacheWrite": 11524,
+    "turns": 4
+  },
+  "usd": 0.0613,
+  "page_bytes": 3359,
+  "data": null,
+  "answer": "I made the page for \"Stocks I watch\", but it can't fetch live prices from Yahoo Finance. Pages run in a sandbox with no network access, so that call isn't possible. A page that tried to make one would be refused.\n\nInstead, I added an empty **Last price** column to your table. The page shows an input for each stock. When you type a price, it's saved to that column in the note. The page then shows each stock's profit or loss in amount and percent, plus a total with the percent return on what you invested.\n\nI didn't add any prices, so the profit figures stay blank until you enter some. The totals add the numbers as they are, with no currency conversion. VOLV-B is probably in SEK, so the total mixes currencies.\n\nIf you want live prices, I can update the Last price column from here whenever you ask. I'd need the prices from you, because I can't look them up either.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Stocks I watch"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Stocks I watch\",\n  \"results\": [\n    {\n      \"id\": \"da79dbb1-29a8-4198-a237-17138d31b455\",\n      \"title\": \"Stocks I watch\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T12:52:36.029Z\",\n      \"snippet\": \"«Stocks I watch» | Ticker | Shares | Buy price | | --- | --- | --- | | AAPL | 10 | 172.50 | | NVDA | 4 | 410.00 | | VOLV-B | 30 | 214.20\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "da79dbb1-29a8-4198-a237-17138d31b455"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"da79dbb1-29a8-4198-a237-17138d31b455\",\n  \"title\": \"Stocks I watch\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T12:52:36.029Z\",\n  \"updated\": \"2026-10-05T12:52:36.029Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 8,\n    \"words\": 39\n  },\n  \"markdown\": \"Stocks I watch\\n\\n| Ticker | Shares | Buy price |\\n| --- | --- | --- |\\n| AAPL | 10 | 172.50 |\\n| NVDA | 4 | 410.00 |\\n| VOLV-B | 30 | 214.20 |\\n\"\n}"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "da79dbb1-29a8-4198-a237-17138d31b455"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"da79dbb1-29a8-4198-a237-17138d31b455\",\n  \"title\": \"Stocks I watch\",\n  \"has_page\": false,\n  \"rules\": \"The page runs in Amber Notes in a sandbox with no network: no fetch, no external scripts, styles, fonts or images. Put all CSS and JS inline; images only as data: URIs or inline SVG.\\nRead the note from window.amber.note, never hardcode its contents (the note changes; the page must follow):\\n  amber.note = { title, markdown, today: \\\"yyyy-mm-dd\\\", tables: [{ index, columns: [{ name, type }], rows: [[cell, ...], ...] }], checklists: [{ line, text, checked }] }\\n  amber.onChange(fn) ca… (2039 chars)"
+    },
+    {
+      "name": "edit_note",
+      "args": {
+        "id": "da79dbb1-29a8-4198-a237-17138d31b455",
+        "edits": "[{\"old_text\":\"| Ticker | Shares | Buy price |\\n| --- | --- | --- |\\n| AAPL | 10 | 172.50 |\\n| NVDA | 4 | 410.00 |\\n| VOLV-B | 30 | 214.20 |\",\"new_text\":\"| Ticker | Shares | Buy price | Last price |\\n| --- | --- | --- | --- |\\n| AAPL | 10 | 172.50 | |\\n| NVDA | 4 | 410.00 | |\\n| VOLV-B | 30 | 214.20 … (306 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"edited\": {\n    \"id\": \"da79dbb1-29a8-4198-a237-17138d31b455\",\n    \"title\": \"Stocks I watch\",\n    \"version\": 2,\n    \"updated\": \"2026-10-05T12:52:55.047Z\"\n  },\n  \"edits_applied\": 1\n}"
+    },
+    {
+      "name": "set_note_page",
+      "args": {
+        "id": "da79dbb1-29a8-4198-a237-17138d31b455",
+        "html": "<!doctype html><html><head><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><style>\nbody{margin:0;padding:12px;font-family:var(--amber-font)}\n.total{background:var(--amber-surface);border-radius:var(--amber-radius);padding:16px;margin-bottom:12px}\n.total .l{color:var(--amber-text-s… (3355 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"da79dbb1-29a8-4198-a237-17138d31b455\",\n  \"title\": \"Stocks I watch\",\n  \"page\": \"created\",\n  \"bytes\": 3359,\n  \"note\": \"The person sees it in Amber Notes under Page. The note's markdown is unchanged.\"\n}"
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "390-light",
+        "width": 390,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 471,
+        "shown": 8,
+        "sampled": 8,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [
+          "<input inputmode=\"decimal\" value=\"\">",
+          "<input inputmode=\"decimal\" value=\"\">",
+          "<input inputmode=\"decimal\" value=\"\">"
+        ],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r0-proto/shots/refuse-network-sonnet-390-light.png"
+      },
+      {
+        "name": "390-dark",
+        "width": 390,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 471,
+        "shown": 8,
+        "sampled": 8,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [
+          "<input inputmode=\"decimal\" value=\"\">",
+          "<input inputmode=\"decimal\" value=\"\">",
+          "<input inputmode=\"decimal\" value=\"\">"
+        ],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r0-proto/shots/refuse-network-sonnet-390-dark.png"
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 471,
+        "shown": 8,
+        "sampled": 8,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [
+          "<input inputmode=\"decimal\" value=\"\">",
+          "<input inputmode=\"decimal\" value=\"\">",
+          "<input inputmode=\"decimal\" value=\"\">"
+        ],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r0-proto/shots/refuse-network-sonnet-1280-light.png"
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 471,
+        "shown": 8,
+        "sampled": 8,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [
+          "<input inputmode=\"decimal\" value=\"\">",
+          "<input inputmode=\"decimal\" value=\"\">",
+          "<input inputmode=\"decimal\" value=\"\">"
+        ],
+        "smallTargets": 0
+      }
+    ],
+    "blocked": [],
+    "updates": [],
+    "setData": 0,
+    "interaction": {
+      "tried": "none",
+      "ok": null
+    },
+    "probes": {
+      "follows": {
+        "pass": false,
+        "detail": "markup from the note ran as HTML"
+      },
+      "escapes": {
+        "pass": false,
+        "detail": "markup from the note ran as HTML"
+      },
+      "empty": {
+        "pass": true,
+        "detail": "blank page"
+      },
+      "large": {
+        "pass": true,
+        "detail": "583 ms to load 400 rows"
+      }
+    },
+    "dataAfter": {}
+  }
+}

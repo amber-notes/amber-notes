@@ -1,0 +1,43 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Packing list</title><style>
+:root{--bg:#fbf8f3;--ink:#1d1a16;--muted:#5e564d;--accent:#9a4f00;--line:#8a8076}
+@media (prefers-color-scheme:dark){:root{--bg:#1b1916;--ink:#f3eee8;--muted:#c2b9ae;--accent:#ffb55c;--line:#a39a90}}
+body{margin:0 auto;background:var(--bg);color:var(--ink);font:17px/1.5 -apple-system,system-ui,sans-serif;padding:16px;max-width:640px}
+h1{font-size:1.4em;margin:0 0 4px}h2{font-size:1.15em;margin:20px 0 4px}
+ul{list-style:none;margin:0;padding:0}
+li{margin:0}
+label{display:flex;align-items:center;gap:12px;min-height:44px;padding:4px 0;cursor:pointer}
+input[type=checkbox]{width:24px;height:24px;flex:none;accent-color:var(--accent);margin:0}
+input[type=checkbox]:checked+span{color:var(--muted)}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+#summary,#note{color:var(--muted);margin:0}
+#note{margin-top:24px}
+#err{color:var(--ink);font-weight:600;margin:8px 0 0}
+</style></head><body><main><h1 id="t"></h1><p id="summary"></p><div id="list"></div>
+<p id="note">Adding items isn't available on this page. Ask Claude to add items to the list.</p>
+<p id="err" role="alert"></p><div id="live" class="sr" role="status" aria-live="polite" style="position:absolute;left:-9999px"></div></main><script>
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+let focusLine=null,msg="";
+amber.onChange(note=>{
+t.textContent=note.title;document.title=note.title;
+const cl=note.checklists;let ci=0,html="",open=false,hid=0;
+for(const raw of note.markdown.split("\n")){
+ const h=raw.match(/^#{2,6}\s+(.*)$/);
+ if(h){if(open)html+="</ul></section>";hid++;html+='<section aria-labelledby="h'+hid+'"><h2 id="h'+hid+'">'+esc(h[1])+'</h2><ul>';open=true;continue;}
+ if(/^\s*-\s\[[ xX]\]\s/.test(raw)&&cl[ci]){
+  if(!open){html+="<section><ul>";open=true;}
+  const c=cl[ci++];
+  html+='<li><label><input type="checkbox" data-line="'+c.line+'"'+(c.checked?' checked':'')+'><span>'+esc(c.text)+'</span></label></li>';
+ }}
+if(open)html+="</ul></section>";
+list.innerHTML=html;
+const done=cl.filter(c=>c.checked).length;
+summary.textContent=done+" of "+cl.length+" items packed";
+if(msg){live.textContent=msg;msg="";}
+if(focusLine!==null){const e=list.querySelector('[data-line="'+focusLine+'"]');if(e)e.focus();focusLine=null;}
+list.querySelectorAll("input").forEach(b=>b.onchange=async()=>{
+ focusLine=b.dataset.line;const name=b.nextElementSibling.textContent;msg=name+(b.checked?" packed":" not packed");
+ const r=await amber.update({op:"toggle_checklist",line:+b.dataset.line});
+ err.textContent=r.ok?"":("Couldn't update: "+r.error);
+});
+});
+</script></body></html>

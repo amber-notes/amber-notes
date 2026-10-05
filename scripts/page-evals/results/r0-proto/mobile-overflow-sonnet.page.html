@@ -1,0 +1,21 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
+*{box-sizing:border-box}
+body{margin:0;padding:16px;max-width:100%;overflow-x:hidden}
+h1{font-size:24px;margin:0 0 14px;font-family:var(--amber-font-rounded)}
+.card{background:var(--amber-surface);border-radius:var(--amber-radius);padding:12px 14px;margin-bottom:10px}
+.day{font-weight:700;color:var(--amber-accent-text);margin-bottom:6px;display:flex;justify-content:space-between;gap:8px;align-items:center}
+.tag{font-size:12px;font-weight:600;background:var(--amber-accent-soft);color:var(--amber-accent-text);border-radius:99px;padding:2px 8px}
+.row{display:flex;gap:10px;padding:5px 0;border-top:1px solid var(--amber-separator)}
+.row:first-of-type{border-top:0}
+.k{flex:0 0 84px;color:var(--amber-text-secondary);font-size:14px}
+.v{flex:1;min-width:0;overflow-wrap:anywhere}
+</style></head><body><h1 id="t"></h1><div id="grid"></div><script>
+const esc=(s)=>String(s??"").replace(/[&<>"']/g,(c)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+amber.onChange((note)=>{t.textContent=note.title;const tb=note.tables[0];const cols=tb.columns.map(c=>c.name);
+const shopI=cols.indexOf("Shop");
+grid.innerHTML=tb.rows.map((r)=>{
+let h='<div class="card"><div class="day"><span>'+esc(r[0])+'</span>'+(shopI>0&&/^yes$/i.test(r[shopI])?'<span class="tag">Shop</span>':'')+'</div>';
+for(let i=1;i<cols.length;i++){if(i===shopI||!String(r[i]??"").trim())continue;
+h+='<div class="row"><div class="k">'+esc(cols[i])+'</div><div class="v">'+esc(r[i])+'</div></div>'}
+return h+'</div>'}).join("")});
+</script></body></html>

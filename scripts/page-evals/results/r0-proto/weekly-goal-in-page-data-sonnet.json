@@ -1,0 +1,244 @@
+{
+  "task": "weekly-goal-in-page-data",
+  "model": "claude-sonnet-5-5",
+  "round": "r0-proto",
+  "skill": false,
+  "seconds": 28,
+  "score": 0.8333333333333334,
+  "passed": 15,
+  "total": 18,
+  "checks": [
+    {
+      "name": "has_page",
+      "pass": true
+    },
+    {
+      "name": "server_checks",
+      "pass": true
+    },
+    {
+      "name": "no_console_errors",
+      "pass": true
+    },
+    {
+      "name": "no_network",
+      "pass": true
+    },
+    {
+      "name": "fits_390",
+      "pass": true
+    },
+    {
+      "name": "fits_1280",
+      "pass": true
+    },
+    {
+      "name": "shows_data",
+      "pass": true
+    },
+    {
+      "name": "dark_mode",
+      "pass": true
+    },
+    {
+      "name": "light_contrast",
+      "pass": true
+    },
+    {
+      "name": "labelled_controls",
+      "pass": true
+    },
+    {
+      "name": "edits_from_page",
+      "pass": true
+    },
+    {
+      "name": "probe_empty",
+      "pass": true
+    },
+    {
+      "name": "probe_large",
+      "pass": true
+    },
+    {
+      "name": "note_unchanged",
+      "pass": false,
+      "detail": "the note's markdown changed"
+    },
+    {
+      "name": "page_changed",
+      "pass": true
+    },
+    {
+      "name": "goals_in_page_data",
+      "pass": false,
+      "detail": "page data: {}"
+    },
+    {
+      "name": "page_uses_setData",
+      "pass": false,
+      "detail": "the page can't change the goals (no amber.setData)"
+    },
+    {
+      "name": "no_local_storage",
+      "pass": true
+    }
+  ],
+  "tool_calls": 5,
+  "tool_errors": 0,
+  "usage": {
+    "input": 12,
+    "output": 2868,
+    "cacheRead": 43040,
+    "cacheWrite": 16224,
+    "turns": 5
+  },
+  "usd": 0.0779,
+  "page_bytes": 11620,
+  "data": null,
+  "answer": "Your Habit tracker page now has a \"Weekly goals\" section. I haven't opened the page in the app, so I haven't seen it render.\n\n- **Goals:** Walk 5, Read 4 and Stretch 3 are saved in a small \"Habit / Weekly goal\" table at the bottom of the note.\n- **Progress:** each habit shows days done out of its goal, for example \"1 / 5 days\", with a progress bar. A ✓ appears once you reach the goal.\n- **Changing goals:** the − and + buttons on each habit change its goal, from 1 to 7. They update the table in the note, and you can also edit the table directly.\n- **\"This week\":** I counted Monday to Sunday. Today is Monday, so only today's ticks count so far.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Habit tracker"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Habit tracker\",\n  \"results\": [\n    {\n      \"id\": \"300f9aed-6176-4f54-b90f-1a755c052b11\",\n      \"title\": \"Habit tracker\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T12:52:08.025Z\",\n      \"snippet\": \"«Habit tracker» | Date | Walk | Read | Stretch | | --- | --- | --- | --- | | 2026-09-29 | ✓ | ✓ | | | 2026-09-30 | ✓ | | | | 2026-10-01 | | ✓ | ✓ | | 2026-10-02 | ✓ | ✓ | ✓ | | 2026-10-03 | ✓ | | ✓ | | 2026-10-04\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "300f9aed-6176-4f54-b90f-1a755c052b11"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"300f9aed-6176-4f54-b90f-1a755c052b11\",\n  \"title\": \"Habit tracker\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T12:52:08.025Z\",\n  \"updated\": \"2026-10-05T12:52:08.025Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"has_page\": true,\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 12,\n    \"words\": 76\n  },\n  \"markdown\": \"Habit tracker\\n\\n| Date | Walk | Read | Stretch |\\n| --- | --- | --- | --- |\\n| 2026-09-29 | ✓ | ✓ |   |\\n| 2026-09-30 | ✓ |   |   |\\n| 2026-10-01 |   | … (724 chars)"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "300f9aed-6176-4f54-b90f-1a755c052b11"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"300f9aed-6176-4f54-b90f-1a755c052b11\",\n  \"title\": \"Habit tracker\",\n  \"has_page\": true,\n  \"made_by\": \"Claude\",\n  \"updated\": \"2026-10-05T12:52:08.038Z\",\n  \"rules\": \"The page runs in Amber Notes in a sandbox with no network: no fetch, no external scripts, styles, fonts or images. Put all CSS and JS inline; images only as data: URIs or inline SVG.\\nRead the note from window.amber.note, never hardcode its contents (the note changes; the page must follow):\\n  amber.note = { title, markdown, today: \\\"yyyy-mm-dd\\\", tables: [{ index, columns: [{ name, type }], rows: [[cell, ...], ...] }], ch… (11007 chars)"
+    },
+    {
+      "name": "append_to_note",
+      "args": {
+        "id": "300f9aed-6176-4f54-b90f-1a755c052b11",
+        "text": "\n| Habit | Weekly goal |\n| --- | --- |\n| Walk | 5 |\n| Read | 4 |\n| Stretch | 3 |\n"
+      },
+      "error": false,
+      "result": "{\n  \"appended\": {\n    \"id\": \"300f9aed-6176-4f54-b90f-1a755c052b11\",\n    \"title\": \"Habit tracker\",\n    \"version\": 2,\n    \"updated\": \"2026-10-05T12:52:18.280Z\"\n  }\n}"
+    },
+    {
+      "name": "edit_note_page",
+      "args": {
+        "id": "300f9aed-6176-4f54-b90f-1a755c052b11",
+        "edits": "[{\"old_text\":\"  .empty { padding: 30px 18px;\",\"new_text\":\"  .goal { padding: 14px 16px; border-top: 0.5px solid var(--line); }\\n  .goal:first-child { border-top: 0; }\\n  .goal .top { display: flex; align-items: center; gap: 10px; }\\n  .goal .gn { flex: 1; font-size: 17px; }\\n  .goal .gp { font-size:… (3596 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"300f9aed-6176-4f54-b90f-1a755c052b11\",\n  \"title\": \"Habit tracker\",\n  \"page\": \"replaced\",\n  \"bytes\": 11620,\n  \"note\": \"The person sees it in Amber Notes under Page. The note's markdown is unchanged. The previous page is kept (get_note_page lists it).\"\n}"
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "390-light",
+        "width": 390,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 318,
+        "shown": 3,
+        "sampled": 3,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r0-proto/shots/weekly-goal-in-page-data-sonnet-390-light.png"
+      },
+      {
+        "name": "390-dark",
+        "width": 390,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 318,
+        "shown": 3,
+        "sampled": 3,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r0-proto/shots/weekly-goal-in-page-data-sonnet-390-dark.png"
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 318,
+        "shown": 3,
+        "sampled": 3,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r0-proto/shots/weekly-goal-in-page-data-sonnet-1280-light.png"
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 318,
+        "shown": 3,
+        "sampled": 3,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0
+      }
+    ],
+    "blocked": [],
+    "updates": [
+      {
+        "op": {
+          "op": "set_cell",
+          "table": 0,
+          "row": 6,
+          "col": "Walk",
+          "value": "✓"
+        },
+        "ok": true
+      }
+    ],
+    "setData": 0,
+    "interaction": {
+      "tried": "control",
+      "ok": true
+    },
+    "probes": {
+      "empty": {
+        "pass": true,
+        "detail": "blank page"
+      },
+      "large": {
+        "pass": true,
+        "detail": "568 ms to load 400 rows"
+      }
+    },
+    "dataAfter": {}
+  }
+}

@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  * { box-sizing: border-box; }
+  body { padding: 20px 18px 96px; max-width: 680px; margin: 0 auto; }
+  h1 { font-size: 28px; letter-spacing: -.02em; margin: 4px 0 12px; }
+  h2 { font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--amber-text-secondary); margin: 22px 4px 8px; }
+  .big { font-size: 42px; font-weight: 700; letter-spacing: -.03em; font-variant-numeric: tabular-nums; line-height: 1.05; }
+  .muted { color: var(--amber-text-secondary); font-size: 14px; }
+  .card { background: var(--amber-surface); border: 1px solid var(--amber-separator); border-radius: var(--amber-radius); overflow: hidden; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; }
+  .stat { background: var(--amber-surface); border: 1px solid var(--amber-separator); border-radius: var(--amber-radius); padding: 12px; }
+  .stat b { display: block; font-size: 20px; font-variant-numeric: tabular-nums; }
+  .chart { display: flex; align-items: end; gap: 6px; height: 140px; padding: 12px 14px 0; }
+  .wk { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; justify-content: end; height: 100%; }
+  .wk .v { font-size: 10px; color: var(--amber-text-secondary); font-variant-numeric: tabular-nums; }
+  .wk .b { width: 100%; border-radius: 4px 4px 0 0; background: var(--amber-accent); min-height: 2px; }
+  .wk.cur .b { background: var(--amber-text); }
+  .wk .l { font-size: 10px; color: var(--amber-text-secondary); padding-bottom: 8px; font-variant-numeric: tabular-nums; }
+  .row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--amber-separator); min-height: 52px; }
+  .row:first-child { border-top: 0; }
+  .grow { flex: 1; min-width: 0; }
+  .num { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+  form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px; }
+  label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--amber-text-secondary); min-width: 0; }
+  input { font: inherit; font-size: 16px; color: var(--amber-text); background: var(--amber-fill); border: 0; border-radius: var(--amber-radius-small); padding: 10px 12px; min-height: 44px; width: 100%; }
+  button { grid-column: 1 / -1; font: inherit; font-weight: 600; min-height: 44px; border: 0; border-radius: var(--amber-radius-small); background: var(--amber-accent); color: var(--amber-on-accent); }
+  .err { color: var(--amber-danger); padding: 0 16px 12px; min-height: 1em; }
+  .empty { padding: 24px 16px; text-align: center; color: var(--amber-text-secondary); }
+</style>
+</head>
+<body>
+<main id="app" aria-live="polite"></main>
+<script>
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const num = (s) => { const n = parseFloat(String(s ?? "").replace(/\s/g, "").replace(",", ".")); return Number.isFinite(n) ? n : 0; };
+  const col = (t, re) => t.columns.findIndex((c) => re.test(c.name));
+  const addDays = (iso, n) => { const d = new Date(iso + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+  const monday = (iso) => { const d = new Date(iso + "T12:00:00Z"); return addDays(iso, -((d.getUTCDay() + 6) % 7)); };
+  const pace = (min, km) => { if (!km) return "–"; const p = min / km; let m = Math.floor(p), s = Math.round((p - m) * 60); if (s === 60) { m++; s = 0; } return m + ":" + String(s).padStart(2, "0"); };
+  let error = "";
+
+  function render(note) {
+    const app = document.getElementById("app");
+    const t = note.tables.find((t) => col(t, /date/i) >= 0 && col(t, /dist|km/i) >= 0);
+    if (!t) { app.innerHTML = `<h1>${esc(note.title)}</h1><div class="card empty">Add a table with Activity Date, Distance (km), Moving Time (min) and Avg HR columns.</div>`; return; }
+    const d = col(t, /date/i), km = col(t, /dist|km/i), mi = col(t, /time|min/i), hr = col(t, /hr|heart/i);
+    const runs = t.rows.filter((r) => r[d]);
+    const K = (r) => num(r[km]), M = (r) => (mi >= 0 ? num(r[mi]) : 0);
+    const sum = (rows, f) => rows.reduce((s, r) => s + f(r), 0);
+    const weeks = Array.from({ length: 8 }, (_, k) => addDays(monday(note.today), (k - 7) * 7));
+    const inWeek = (w) => runs.filter((r) => r[d] >= w && r[d] < addDays(w, 7));
+    const perWeek = weeks.map((w) => sum(inWeek(w), K));
+    const top = Math.max(1, ...perWeek);
+    const now = inWeek(weeks[7]);
+    const totKm = sum(runs, K), totMin = sum(runs, M);
+    const hrs = hr >= 0 ? runs.map((r) => num(r[hr])).filter(Boolean) : [];
+    const avgHr = hrs.length ? Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length) : null;
+    const longest = runs.reduce((m, r) => Math.max(m, K(r)), 0);
+    app.innerHTML = `
+      <h1>${esc(note.title)}</h1>
+      <div class="big">${sum(now, K).toFixed(1)} km</div>
+      <div class="muted">this week · ${now.length} run${now.length === 1 ? "" : "s"}</div>
+      <div class="stats">
+        <div class="stat"><span class="muted">Total</span><b>${totKm.toFixed(1)} km</b></div>
+        <div class="stat"><span class="muted">Avg pace</span><b>${pace(totMin, totKm)} /km</b></div>
+        <div class="stat"><span class="muted">Avg HR</span><b>${avgHr ?? "–"}${avgHr ? " bpm" : ""}</b></div>
+        <div class="stat"><span class="muted">Runs</span><b>${runs.length}</b></div>
+        <div class="stat"><span class="muted">Longest</span><b>${longest.toFixed(1)} km</b></div>
+        <div class="stat"><span class="muted">Time</span><b>${Math.floor(totMin / 60)}h ${Math.round(totMin % 60)}m</b></div>
+      </div>
+      <h2>Km per week</h2>
+      <div class="card chart" role="img" aria-label="Km per week: ${perWeek.map((v) => v.toFixed(1)).join(", ")}">${weeks.map((w, k) => `<div class="wk${k === 7 ? " cur" : ""}"><div class="v">${perWeek[k].toFixed(0)}</div><div class="b" style="height:${(85 * perWeek[k]) / top}px"></div><div class="l">${w.slice(8)}/${Number(w.slice(5, 7))}</div></div>`).join("")}</div>
+      <h2>Latest runs</h2>
+      <div class="card">${runs.slice().sort((a, b) => (a[d] < b[d] ? 1 : -1)).slice(0, 10).map((r) => `<div class="row"><span class="grow muted">${esc(r[d])}</span><span class="num">${K(r).toFixed(1)} km</span><span class="num muted">${pace(M(r), K(r))}/km</span>${hr >= 0 && r[hr] ? `<span class="num muted">${esc(r[hr])} bpm</span>` : ""}</div>`).join("") || '<div class="empty">No runs yet.</div>'}</div>
+      <h2>Log a run</h2>
+      <div class="card">
+        <form id="add">
+          <label>Date<input name="date" type="date" value="${note.today}" required></label>
+          <label>Distance (km)<input name="km" inputmode="decimal" required></label>
+          <label>Moving time (min)<input name="min" inputmode="numeric"></label>
+          <label>Avg HR<input name="hr" inputmode="numeric"></label>
+          <button>Log it</button>
+        </form>
+        <div class="err" role="alert">${esc(error)}</div>
+      </div>`;
+    const f = document.getElementById("add");
+    f.onsubmit = async (e) => {
+      e.preventDefault();
+      const fd = new FormData(f);
+      const values = { [t.columns[d].name]: String(fd.get("date")) };
+      values[t.columns[km].name] = String(fd.get("km")).replace(",", ".").trim();
+      if (mi >= 0) values[t.columns[mi].name] = String(fd.get("min")).trim();
+      if (hr >= 0) values[t.columns[hr].name] = String(fd.get("hr")).trim();
+      const r = await amber.update({ op: "append_row", table: t.index, values });
+      error = r.ok ? "" : r.error;
+      if (!r.ok) render(amber.note);
+    };
+  }
+  amber.onChange(render);
+</script>
+</body>
+</html>

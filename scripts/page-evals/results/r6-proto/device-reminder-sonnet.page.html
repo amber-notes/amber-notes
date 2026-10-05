@@ -1,0 +1,58 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+body{margin:0;font-family:var(--amber-font)}
+.w{max-width:var(--amber-content-max);margin:0 auto;padding:16px var(--amber-gutter) 32px}
+h1{font-family:var(--amber-font-rounded);margin:8px 0 16px}
+.g{display:grid;gap:14px;grid-template-columns:1fr}
+@media(min-width:900px){.g{grid-template-columns:1fr 1fr}}
+.c{background:var(--amber-surface);border-radius:var(--amber-radius);padding:14px 16px}
+.c h2{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--amber-text-secondary);margin:0 0 8px}
+.c p,.c li{margin:6px 0}.c ul{padding-left:18px;margin:0}
+.k{color:var(--amber-text-secondary);font-size:13px}
+.t{display:flex;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--amber-separator);cursor:pointer}
+.t:first-of-type{border-top:0}.d{text-decoration:line-through;color:var(--amber-text-secondary)}
+button{font:inherit;border:0;border-radius:var(--amber-radius-small);background:var(--amber-accent);color:var(--amber-on-accent);padding:10px 14px;font-weight:600;cursor:pointer}
+#m{margin-top:8px;font-size:13px;color:var(--amber-text-secondary)}
+textarea{width:100%;box-sizing:border-box;margin-top:8px;background:var(--amber-fill);color:var(--amber-text);border:0;border-radius:var(--amber-radius-small);padding:8px;font-family:var(--amber-font-mono);font-size:12px;height:120px}
+</style></head><body><div class="w"><h1 id="ti"></h1><div class="g" id="g"></div></div>
+<script>
+const M={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+const p2=n=>String(n).padStart(2,'0');
+const esc=s=>s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+function ics(n){
+  const l=n.markdown.split('\n').find(x=>/^flights:/i.test(x))||'';
+  const m=l.match(/out\s+\w*\s*(\d{1,2})\s+([a-z]{3})/i);
+  if(!m)return null;
+  const y=+n.today.slice(0,4),mo=M[m[2].toLowerCase()];
+  const dt=new Date(Date.UTC(y,mo-1,+m[1]-1));
+  const ds=''+dt.getUTCFullYear()+p2(dt.getUTCMonth()+1)+p2(dt.getUTCDate());
+  const now=new Date().toISOString().replace(/[-:]/g,'').slice(0,15)+'Z';
+  return {ds,text:['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Amber Notes//EN','BEGIN:VEVENT','UID:porto-pack-'+ds+'@amber','DTSTAMP:'+now,
+  'DTSTART:'+ds+'T200000','DTEND:'+ds+'T201500','SUMMARY:Pack for Porto (flight tomorrow 07:10)','DESCRIPTION:Flight TP 781 ARN->OPO tomorrow morning.',
+  'BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:Pack for Porto','TRIGGER:PT0S','END:VALARM','END:VEVENT','END:VCALENDAR'].join('\r\n')};
+}
+function render(n){
+  document.getElementById('ti').textContent=n.title;
+  const L=n.markdown.split('\n');let kv='',ideas=[],sec='';
+  const info=[];
+  L.slice(1).forEach(x=>{
+    if(/^(ideas|to do before)\s*$/i.test(x)){sec=x.trim().toLowerCase();return}
+    if(sec==='ideas'&&/^- /.test(x))ideas.push(x.slice(2));
+    else if(!sec&&x.trim())info.push(x);
+  });
+  let h='<div class="c"><h2>Trip</h2>'+info.map(x=>{const i=x.indexOf(':');return i>0&&i<12?'<p><span class="k">'+esc(x.slice(0,i))+'</span><br>'+esc(x.slice(i+1).trim())+'</p>':'<p>'+esc(x)+'</p>'}).join('')+'</div>';
+  h+='<div class="c"><h2>Before you go</h2>'+n.checklists.map(c=>'<div class="t" data-l="'+c.line+'"><input type="checkbox" '+(c.checked?'checked':'')+' style="pointer-events:none"><span class="'+(c.checked?'d':'')+'">'+esc(c.text)+'</span></div>').join('')+
+  '<div style="margin-top:12px"><button id="b">⏰ Remind me to pack</button><div id="m"></div></div></div>';
+  h+='<div class="c"><h2>Ideas</h2><ul>'+ideas.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></div>';
+  document.getElementById('g').innerHTML=h;
+  document.querySelectorAll('.t').forEach(e=>e.onclick=()=>amber.update({op:'toggle_checklist',line:+e.dataset.l}));
+  document.getElementById('b').onclick=()=>{
+    const r=ics(n),m=document.getElementById('m');
+    if(!r){m.textContent='Could not find the outbound flight date in the note.';return}
+    m.innerHTML='Reminder for '+r.ds.slice(6)+'/'+r.ds.slice(4,6)+' at 20:00 (evening before your flight). If the file doesn\'t open, copy this into a .ics file:';
+    const a=document.createElement('a');a.href='data:text/calendar;charset=utf-8,'+encodeURIComponent(r.text);a.download='pack-for-porto.ics';document.body.appendChild(a);a.click();a.remove();
+    const t=document.createElement('textarea');t.readOnly=true;t.value=r.text;m.appendChild(t);
+  };
+}
+amber.onChange(render);
+</script></body></html>

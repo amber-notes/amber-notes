@@ -1,0 +1,280 @@
+{
+  "task": "habits-from-messy-notes",
+  "model": "claude-sonnet-5-5",
+  "round": "r0-proto",
+  "skill": false,
+  "seconds": 37,
+  "score": 0.9444444444444444,
+  "passed": 17,
+  "total": 18,
+  "checks": [
+    {
+      "name": "has_page",
+      "pass": true
+    },
+    {
+      "name": "server_checks",
+      "pass": true
+    },
+    {
+      "name": "no_console_errors",
+      "pass": true
+    },
+    {
+      "name": "no_network",
+      "pass": true
+    },
+    {
+      "name": "fits_390",
+      "pass": true
+    },
+    {
+      "name": "fits_1280",
+      "pass": true
+    },
+    {
+      "name": "shows_data",
+      "pass": true
+    },
+    {
+      "name": "dark_mode",
+      "pass": true
+    },
+    {
+      "name": "light_contrast",
+      "pass": true
+    },
+    {
+      "name": "uses_theme",
+      "pass": true
+    },
+    {
+      "name": "labelled_controls",
+      "pass": false,
+      "detail": "4 unnamed: <button class=\"chk\"></button> <button class=\"chk\"></button>"
+    },
+    {
+      "name": "edits_from_page",
+      "pass": true
+    },
+    {
+      "name": "probe_escapes",
+      "pass": true
+    },
+    {
+      "name": "probe_empty",
+      "pass": true
+    },
+    {
+      "name": "probe_large",
+      "pass": true
+    },
+    {
+      "name": "table_made",
+      "pass": true
+    },
+    {
+      "name": "facts_kept",
+      "pass": true
+    },
+    {
+      "name": "tuesday_read_only",
+      "pass": true
+    }
+  ],
+  "tool_calls": 5,
+  "tool_errors": 0,
+  "usage": {
+    "input": 12,
+    "output": 3345,
+    "cacheRead": 33864,
+    "cacheWrite": 12030,
+    "turns": 5
+  },
+  "usd": 0.0703,
+  "page_bytes": 4168,
+  "data": null,
+  "answer": "Your Habits note now has a tracker page. You'll find it under the Page tab.\n\n- **Note data:** I turned your daily lines into a table with a row per day and Yes/No columns for Walk, Read, Stretch and No phone in bed. It covers 28 Sep to 4 Oct, and I added a row for today. I kept your comments (\"too tired\", \"party\") in a Note column.\n- **Ticking off:** Each habit has a big round button for today, so it's easy to tap on your phone. Tapping it again unticks it. If today has no row yet, the page adds one.\n- **Streaks:** Each habit shows its current streak and your best streak. If you haven't ticked a habit yet today, the current streak counts up to yesterday, so it doesn't reset until the day is over.\n- **History:** A 14-day grid underneath shows which habits you did each day.\n\nI rewrote the note's text as the table, but the old version is saved in its history if you want it back.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Habits"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Habits\",\n  \"results\": [\n    {\n      \"id\": \"9c9af710-e263-43a5-b268-2dd60dfdb579\",\n      \"title\": \"Habits\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T12:50:36.845Z\",\n      \"snippet\": \"«Habits» trying to do these every day: walk, read, stretch, no phone in bed mon 28 sep - walked, read, stretched tue 29 - read only\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "9c9af710-e263-43a5-b268-2dd60dfdb579"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"9c9af710-e263-43a5-b268-2dd60dfdb579\",\n  \"title\": \"Habits\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T12:50:36.845Z\",\n  \"updated\": \"2026-10-05T12:50:36.845Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 12,\n    \"words\": 61\n  },\n  \"markdown\": \"Habits\\n\\ntrying to do these every day: walk, read, stretch, no phone in bed\\n\\nmon 28 sep - walked, read, stretched\\ntue 29 - read only, too tired\\nwed 30: walk + stretch + no pho… (732 chars)"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "9c9af710-e263-43a5-b268-2dd60dfdb579"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"9c9af710-e263-43a5-b268-2dd60dfdb579\",\n  \"title\": \"Habits\",\n  \"has_page\": false,\n  \"rules\": \"The page runs in Amber Notes in a sandbox with no network: no fetch, no external scripts, styles, fonts or images. Put all CSS and JS inline; images only as data: URIs or inline SVG.\\nRead the note from window.amber.note, never hardcode its contents (the note changes; the page must follow):\\n  amber.note = { title, markdown, today: \\\"yyyy-mm-dd\\\", tables: [{ index, columns: [{ name, type }], rows: [[cell, ...], ...] }], checklists: [{ line, text, checked }] }\\n  amber.onChange(fn) calls fn(n… (2031 chars)"
+    },
+    {
+      "name": "replace_note_body",
+      "args": {
+        "id": "9c9af710-e263-43a5-b268-2dd60dfdb579",
+        "expected_version": "1",
+        "body": "Habits\n\ntrying to do these every day: walk, read, stretch, no phone in bed\n\n| Date | Walk | Read | Stretch | No phone in bed | Note |\n| --- | --- | --- | --- | --- | --- |\n| 2026-09-28 | Yes | Yes | Yes | No |  |\n| 2026-09-29 | No | Yes | No | No | too tired |\n| 2026-09-30 | Yes | No | Yes | Yes |  … (506 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"replaced\": {\n    \"id\": \"9c9af710-e263-43a5-b268-2dd60dfdb579\",\n    \"title\": \"Habits\",\n    \"version\": 2,\n    \"updated\": \"2026-10-05T12:50:47.181Z\"\n  },\n  \"previous_version_saved\": true\n}"
+    },
+    {
+      "name": "set_note_page",
+      "args": {
+        "id": "9c9af710-e263-43a5-b268-2dd60dfdb579",
+        "html": "<!DOCTYPE html><html><head><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><style>\nbody{margin:0;padding:16px;font-family:var(--amber-font)}\nh1{font-size:22px;margin:0 0 4px}\n.sub{color:var(--amber-text-secondary);font-size:14px;margin-bottom:14px}\n.card{background:var(--amber-sur… (4161 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"9c9af710-e263-43a5-b268-2dd60dfdb579\",\n  \"title\": \"Habits\",\n  \"page\": \"created\",\n  \"bytes\": 4168,\n  \"note\": \"The person sees it in Amber Notes under Page. The note's markdown is unchanged.\"\n}"
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "390-light",
+        "width": 390,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 254,
+        "shown": 1,
+        "sampled": 3,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [
+          "<button class=\"chk\"></button>",
+          "<button class=\"chk\"></button>",
+          "<button class=\"chk\"></button>",
+          "<button class=\"chk\"></button>"
+        ],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r0-proto/shots/habits-from-messy-notes-sonnet-390-light.png"
+      },
+      {
+        "name": "390-dark",
+        "width": 390,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 254,
+        "shown": 1,
+        "sampled": 3,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [
+          "<button class=\"chk\"></button>",
+          "<button class=\"chk\"></button>",
+          "<button class=\"chk\"></button>",
+          "<button class=\"chk\"></button>"
+        ],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r0-proto/shots/habits-from-messy-notes-sonnet-390-dark.png"
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 254,
+        "shown": 1,
+        "sampled": 3,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [
+          "<button class=\"chk\"></button>",
+          "<button class=\"chk\"></button>",
+          "<button class=\"chk\"></button>",
+          "<button class=\"chk\"></button>"
+        ],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r0-proto/shots/habits-from-messy-notes-sonnet-1280-light.png"
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 254,
+        "shown": 1,
+        "sampled": 3,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [
+          "<button class=\"chk\"></button>",
+          "<button class=\"chk\"></button>",
+          "<button class=\"chk\"></button>",
+          "<button class=\"chk\"></button>"
+        ],
+        "smallTargets": 0
+      }
+    ],
+    "blocked": [],
+    "updates": [
+      {
+        "op": {
+          "op": "set_cell",
+          "table": 0,
+          "row": 7,
+          "col": "Walk",
+          "value": "Yes"
+        },
+        "ok": true
+      },
+      {
+        "op": {
+          "op": "append_row",
+          "table": 0,
+          "values": {
+            "Date": "2026-10-05"
+          }
+        },
+        "ok": true
+      }
+    ],
+    "setData": 0,
+    "interaction": {
+      "tried": "control",
+      "ok": true
+    },
+    "probes": {
+      "follows": {
+        "pass": false,
+        "detail": "a new row in the note doesn't show"
+      },
+      "escapes": {
+        "pass": true
+      },
+      "empty": {
+        "pass": true,
+        "detail": "blank page"
+      },
+      "large": {
+        "pass": true,
+        "detail": "576 ms to load 400 rows"
+      }
+    },
+    "dataAfter": {}
+  }
+}

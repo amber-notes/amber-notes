@@ -1,0 +1,94 @@
+{
+  "task": "update-crm-rows",
+  "model": "gpt-5.5",
+  "round": "r5",
+  "skill": false,
+  "seconds": 12,
+  "score": 1,
+  "passed": 3,
+  "total": 3,
+  "checks": [
+    {
+      "name": "acme_won",
+      "pass": true
+    },
+    {
+      "name": "nordljus_value",
+      "pass": true
+    },
+    {
+      "name": "only_two_lines",
+      "pass": true
+    }
+  ],
+  "tool_calls": 6,
+  "tool_errors": 0,
+  "usage": {
+    "input": 5209,
+    "output": 402,
+    "cacheRead": 35840,
+    "cacheWrite": 0,
+    "turns": 6
+  },
+  "usd": 0.015,
+  "page_bytes": 0,
+  "data": null,
+  "answer": "Done — updated Clients: Acme is now Won, and Nordljus’s value is 12000.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Clients Acme Nordljus",
+        "limit": "10"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Clients Acme Nordljus\",\n  \"results\": [\n    {\n      \"id\": \"1ce872db-9d5c-49f8-b7ae-6e4e9fcfab0e\",\n      \"title\": \"Clients\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T13:15:14.819Z\",\n      \"snippet\": \"«Clients» | Company | Contact | Email | Stage | Value | | --- | --- | --- | --- | --- | | «Acme» AB | Sarah Lee | sarah@«acme».se | Proposal | 8000 | | «Nordljus» | Erik Holm | erik@«nordljus».se | Lead | 3000 | | Bergström\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "1ce872db-9d5c-49f8-b7ae-6e4e9fcfab0e",
+        "line_numbers": "true"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"1ce872db-9d5c-49f8-b7ae-6e4e9fcfab0e\",\n  \"title\": \"Clients\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T13:15:14.819Z\",\n  \"updated\": \"2026-10-05T13:15:14.819Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 8,\n    \"words\": 62\n  },\n  \"markdown\": \"1│ Clients\\n2│ \\n3│ | Company | Contact | Email | Stage | Value |\\n4│ | --- | --- | --- | --- | --- |\\n5│ | Acme AB | Sarah Lee | sarah@acme.se | Proposal | 8000 |\\n6│ | Nordljus |… (722 chars)"
+    },
+    {
+      "name": "read_table",
+      "args": {
+        "id": "1ce872db-9d5c-49f8-b7ae-6e4e9fcfab0e"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"1ce872db-9d5c-49f8-b7ae-6e4e9fcfab0e\",\n    \"title\": \"Clients\"\n  },\n  \"columns\": [\n    {\n      \"name\": \"Company\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Contact\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Email\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Stage\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Value\",\n      \"type\": \"text\"\n    }\n  ],\n  \"rows\": [\n    {\n      \"Company\": \"Acme AB\",\n      \"Contact\": \"Sarah Lee\",\n      \"Email\": \"sarah@acme.se\",\n      \"Stage\": \"Proposal\",\n      \"Value\": \"8000\"\n    },\n    {\n      \"Company\": \"Nordljus\",\n … (898 chars)"
+    },
+    {
+      "name": "update_table_rows",
+      "args": {
+        "id": "1ce872db-9d5c-49f8-b7ae-6e4e9fcfab0e",
+        "where": "{\"Company\":{\"contains\":\"Acme\"}}",
+        "set": "{\"Stage\":\"Won\"}"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"1ce872db-9d5c-49f8-b7ae-6e4e9fcfab0e\",\n    \"title\": \"Clients\"\n  },\n  \"table\": 0,\n  \"updated_rows\": 1,\n  \"rows\": [\n    {\n      \"Company\": \"Acme AB\",\n      \"Contact\": \"Sarah Lee\",\n      \"Email\": \"sarah@acme.se\",\n      \"Stage\": \"Won\",\n      \"Value\": \"8000\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "update_table_rows",
+      "args": {
+        "id": "1ce872db-9d5c-49f8-b7ae-6e4e9fcfab0e",
+        "where": "{\"Company\":\"Nordljus\"}",
+        "set": "{\"Value\":\"12000\"}"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"1ce872db-9d5c-49f8-b7ae-6e4e9fcfab0e\",\n    \"title\": \"Clients\"\n  },\n  \"table\": 0,\n  \"updated_rows\": 1,\n  \"rows\": [\n    {\n      \"Company\": \"Nordljus\",\n      \"Contact\": \"Erik Holm\",\n      \"Email\": \"erik@nordljus.se\",\n      \"Stage\": \"Lead\",\n      \"Value\": \"12000\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "read_table",
+      "args": {
+        "id": "1ce872db-9d5c-49f8-b7ae-6e4e9fcfab0e"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"1ce872db-9d5c-49f8-b7ae-6e4e9fcfab0e\",\n    \"title\": \"Clients\"\n  },\n  \"columns\": [\n    {\n      \"name\": \"Company\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Contact\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Email\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Stage\",\n      \"type\": \"text\"\n    },\n    {\n      \"name\": \"Value\",\n      \"type\": \"text\"\n    }\n  ],\n  \"rows\": [\n    {\n      \"Company\": \"Acme AB\",\n      \"Contact\": \"Sarah Lee\",\n      \"Email\": \"sarah@acme.se\",\n      \"Stage\": \"Won\",\n      \"Value\": \"8000\"\n    },\n    {\n      \"Company\": \"Nordljus\",\n      … (894 chars)"
+    }
+  ],
+  "render": null
+}

@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lisbon trip packing</title>
+<style>
+  * { box-sizing: border-box; }
+  body { padding: 20px 18px 96px; max-width: 680px; margin: 0 auto; }
+  h1 { font-size: 28px; letter-spacing: -.02em; margin: 4px 0 4px; }
+  h2 { font-size: 18px; margin: 0; padding: 14px 16px 8px; }
+  .summary { color: var(--amber-text-secondary); margin: 0 0 16px; }
+  section { background: var(--amber-surface); border: 1px solid var(--amber-separator); border-radius: var(--amber-radius); margin-bottom: 16px; overflow: hidden; }
+  ul { list-style: none; margin: 0; padding: 0; }
+  li { border-top: 1px solid var(--amber-separator); }
+  li label { display: flex; align-items: center; gap: 14px; min-height: 48px; padding: 8px 16px; cursor: pointer; overflow-wrap: anywhere; }
+  input[type=checkbox] { width: 26px; height: 26px; flex: none; margin: 0; accent-color: var(--amber-accent); }
+  li.done span { color: var(--amber-text-secondary); text-decoration: line-through; }
+  .empty { padding: 12px 16px 16px; color: var(--amber-text-secondary); }
+  form { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 16px 16px; align-items: flex-end; }
+  form label { display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: var(--amber-text-secondary); flex: 1 1 180px; }
+  input[type=text] { font: inherit; color: var(--amber-text); background: var(--amber-fill); border: 1px solid var(--amber-separator); border-radius: var(--amber-radius-small); padding: 10px 12px; min-height: 44px; width: 100%; }
+  button { font: inherit; font-weight: 600; min-height: 44px; padding: 0 20px; border: 0; border-radius: var(--amber-radius-small); background: var(--amber-accent); color: var(--amber-on-accent); }
+  :focus-visible { outline: 3px solid var(--amber-text); outline-offset: 2px; }
+  #status { padding: 0 16px 14px; min-height: 1.4em; margin: 0; }
+  #status.error { color: var(--amber-danger); }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</head>
+<body>
+<main>
+  <h1 id="title"></h1>
+  <p class="summary" id="summary"></p>
+  <div id="lists"></div>
+  <section aria-labelledby="addh">
+    <h2 id="addh">Add an item</h2>
+    <form id="add">
+      <label for="newitem">Item name<input type="text" id="newitem" autocomplete="off"></label>
+      <button type="submit">Add item</button>
+    </form>
+    <p id="status" role="status" aria-live="polite"></p>
+  </section>
+</main>
+<script>
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const status = document.getElementById("status");
+  let message = "", isError = false, focusKey = null;
+
+  function say(text, err) { message = text; isError = !!err; status.textContent = text; status.className = err ? "error" : ""; }
+
+  function render(note) {
+    document.getElementById("title").textContent = note.title;
+    const lines = note.markdown.split("\n");
+    const headingFor = (line) => {
+      for (let i = Math.min(line, lines.length) - 1; i >= 0; i--) {
+        const m = /^#{1,6}\s+(.*)$/.exec(lines[i]);
+        if (m && i > 0) return m[1].trim();
+      }
+      return "Other";
+    };
+    const groups = [];
+    note.checklists.forEach((c) => {
+      const h = headingFor(c.line);
+      let g = groups.find((g) => g.name === h);
+      if (!g) { g = { name: h, items: [] }; groups.push(g); }
+      g.items.push({ key: "c" + c.line, text: c.text, checked: c.checked, op: { op: "toggle_checklist", line: c.line } });
+    });
+    const t = note.tables.find((t) => t.columns.some((c) => /^item$/i.test(c.name)) && t.columns.some((c) => /^packed$/i.test(c.name)));
+    if (t) {
+      const ii = t.columns.findIndex((c) => /^item$/i.test(c.name));
+      const pi = t.columns.findIndex((c) => /^packed$/i.test(c.name));
+      const items = t.rows.map((r, i) => ({ key: "t" + i, text: r[ii], checked: /^(yes|x|✓|1|true|done)$/i.test((r[pi] || "").trim()), row: i, packedCol: t.columns[pi].name, table: t.index }));
+      if (items.length) groups.push({ name: "Added items", items });
+    }
+    const all = groups.flatMap((g) => g.items);
+    const done = all.filter((i) => i.checked).length;
+    document.getElementById("summary").textContent = all.length ? done + " of " + all.length + " items packed" : "Nothing to pack yet";
+
+    const lists = document.getElementById("lists");
+    lists.innerHTML = groups.length ? groups.map((g, gi) => {
+      const d = g.items.filter((i) => i.checked).length;
+      return `<section aria-labelledby="g${gi}"><h2 id="g${gi}">${esc(g.name)} <span class="sr">, ${d} of ${g.items.length} packed</span></h2><ul>` +
+        g.items.map((i) => `<li class="${i.checked ? "done" : ""}"><label><input type="checkbox" data-key="${i.key}" ${i.checked ? "checked" : ""}><span>${esc(i.text)}</span></label></li>`).join("") +
+        `</ul></section>`;
+    }).join("") : '<section><p class="empty">No items yet. Add one below.</p></section>';
+
+    lists.querySelectorAll("input[type=checkbox]").forEach((box) => {
+      const item = all.find((i) => i.key === box.dataset.key);
+      box.onchange = async () => {
+        focusKey = item.key;
+        const want = box.checked;
+        let r;
+        if (item.op) r = await amber.update(item.op);
+        else r = await amber.update({ op: "set_cell", table: item.table, row: item.row, col: item.packedCol, value: want ? "Yes" : "No" });
+        if (r.ok) say(item.text + (want ? " packed" : " not packed"), false);
+        else { say("Could not update " + item.text + ": " + r.error, true); box.checked = !want; }
+      };
+    });
+    if (focusKey) {
+      const el = lists.querySelector('[data-key="' + focusKey + '"]');
+      if (el) el.focus();
+      focusKey = null;
+    }
+    status.textContent = message; status.className = isError ? "error" : "";
+  }
+
+  document.getElementById("add").onsubmit = async (e) => {
+    e.preventDefault();
+    const input = document.getElementById("newitem");
+    const v = input.value.trim().replace(/\s+/g, " ");
+    if (!v) { say("Type an item name first.", true); input.focus(); return; }
+    const t = amber.note.tables.find((t) => t.columns.some((c) => /^item$/i.test(c.name)) && t.columns.some((c) => /^packed$/i.test(c.name)));
+    if (!t) { say("Add a table with Item and Packed columns to the note to enable adding.", true); return; }
+    const r = await amber.update({ op: "append_row", table: t.index, values: { Item: v, Packed: "No" } });
+    if (r.ok) { input.value = ""; say(v + " added to Added items", false); }
+    else say("Could not add item: " + r.error, true);
+    input.focus();
+  };
+  amber.onChange(render);
+</script>
+</body>
+</html>

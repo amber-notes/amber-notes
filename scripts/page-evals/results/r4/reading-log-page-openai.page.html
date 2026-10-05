@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reading log</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0 auto;padding:22px 18px 42px;max-width:980px;font-family:var(--amber-font);color:var(--amber-text)}
+  .hero{display:grid;grid-template-columns:1.15fr .85fr;gap:14px;align-items:stretch;margin-bottom:16px}
+  .panel{background:var(--amber-surface);border:1px solid var(--amber-separator);border-radius:var(--amber-radius);box-shadow:0 1px 0 rgba(0,0,0,.02);overflow:hidden}
+  .intro{padding:20px;min-height:188px;display:flex;flex-direction:column;justify-content:space-between;position:relative}
+  h1{font-size:34px;line-height:1.04;letter-spacing:-.04em;margin:0 0 10px;font-family:var(--amber-font-rounded,var(--amber-font))}
+  .sub{color:var(--amber-text-secondary);font-size:15px;line-height:1.45;max-width:52ch}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:20px}
+  .stat{background:var(--amber-fill);border-radius:var(--amber-radius-small);padding:12px;min-width:0}
+  .stat b{display:block;font-size:28px;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.035em}
+  .stat span{display:block;margin-top:5px;color:var(--amber-text-secondary);font-size:12px;text-transform:uppercase;letter-spacing:.055em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .chartWrap{padding:16px 16px 10px;display:flex;flex-direction:column;min-height:188px}
+  .sectionTitle{margin:0 0 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;color:var(--amber-text-secondary);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.075em}
+  .chart{flex:1;display:flex;align-items:end;gap:7px;min-height:112px;padding-top:8px}
+  .month{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:end;gap:6px;height:100%}
+  .bar{width:100%;max-width:28px;border-radius:8px 8px 3px 3px;background:linear-gradient(180deg,var(--amber-accent),var(--amber-accent-text));min-height:3px;position:relative}
+  .bar[data-count]:not([data-count="0"])::before{content:attr(data-count);position:absolute;top:-20px;left:50%;transform:translateX(-50%);font-size:11px;color:var(--amber-text-secondary);font-variant-numeric:tabular-nums}
+  .mlabel{font-size:11px;color:var(--amber-text-secondary);white-space:nowrap}
+  h2{font-size:13px;line-height:1;margin:24px 2px 12px;color:var(--amber-text-secondary);text-transform:uppercase;letter-spacing:.075em}
+  .shelf{display:grid;grid-template-columns:repeat(auto-fill,minmax(154px,1fr));gap:14px}
+  .book{border:1px solid var(--amber-separator);background:var(--amber-surface);border-radius:18px;padding:12px;display:flex;flex-direction:column;gap:10px;min-width:0}
+  .cover{height:205px;border-radius:13px;position:relative;overflow:hidden;color:var(--amber-on-accent);padding:18px 14px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:inset 8px 0 0 rgba(0,0,0,.14), inset 0 0 0 1px rgba(255,255,255,.16)}
+  .cover::before{content:"";position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.18),transparent 42%,rgba(0,0,0,.18));pointer-events:none}
+  .cover::after{content:"";position:absolute;right:-36px;top:-28px;width:118px;height:118px;border:1px solid rgba(255,255,255,.35);border-radius:50%;opacity:.7}
+  .coverTitle{position:relative;font-family:var(--amber-font-rounded,var(--amber-font));font-weight:800;font-size:20px;line-height:1.05;letter-spacing:-.035em;overflow-wrap:anywhere;text-shadow:0 1px 1px rgba(0,0,0,.18)}
+  .coverAuthor{position:relative;font-size:12px;text-transform:uppercase;letter-spacing:.09em;opacity:.9;line-height:1.25;text-shadow:0 1px 1px rgba(0,0,0,.18)}
+  .meta{display:flex;flex-direction:column;gap:4px;min-height:58px}
+  .title{font-weight:700;line-height:1.18;overflow-wrap:anywhere}
+  .muted{color:var(--amber-text-secondary);font-size:13px;line-height:1.25}
+  .stars{letter-spacing:1px;color:var(--amber-accent-text);font-size:14px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px}
+  .pill{border:1px solid var(--amber-separator);background:var(--amber-surface);border-radius:999px;padding:8px 11px;font-size:14px;color:var(--amber-text)}
+  .empty{padding:28px 18px;text-align:center;color:var(--amber-text-secondary)}
+  @media (max-width:720px){body{padding:18px 14px 34px}.hero{grid-template-columns:1fr}.stats{grid-template-columns:repeat(3,minmax(0,1fr))}h1{font-size:30px}.shelf{grid-template-columns:repeat(auto-fill,minmax(138px,1fr));gap:10px}.cover{height:184px}.stat{padding:10px}.stat b{font-size:24px}}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const col=(t,rx)=>t.columns.findIndex(c=>rx.test(c.name));
+const hash=s=>{let h=19; for(const ch of String(s||"")) h=(h*37+ch.charCodeAt(0))%360; return h};
+const monthName=m=>new Date(m+"-15T12:00:00Z").toLocaleString(undefined,{month:"short"});
+const niceDate=d=>/^\d{4}-\d{2}-\d{2}$/.test(d)?new Date(d+"T12:00:00Z").toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"}):d;
+function stars(r){const n=Math.round(Number(r)); if(!n) return ""; return `<span class="stars" aria-label="${esc(r)} out of 5">${"★".repeat(n)}${"☆".repeat(Math.max(0,5-n))}</span>`}
+function wantToRead(markdown){const m=String(markdown||"").match(/(?:^|\n)\s*Want to read:\s*([^\n]+)/i); if(!m) return []; return m[1].replace(/[.]\s*$/,'').split(/,|;|\band\b/i).map(x=>x.trim()).filter(Boolean)}
+function render(note){
+  const table=note.tables.find(t=>col(t,/^(title|book)$/i)>=0) || note.tables[0];
+  if(!table){$("#app").innerHTML=`<section class="panel empty">No reading table found.</section>`;return}
+  const ti=col(table,/^(title|book)$/i), ai=col(table,/author|by/i), fi=col(table,/finish|date|read/i), ri=col(table,/rating|stars|score/i);
+  const books=table.rows.map(r=>({title:r[ti]||"Untitled",author:ai>=0?r[ai]:"",finished:fi>=0?r[fi]:"",rating:ri>=0?Number(r[ri]):NaN}));
+  const read=books.filter(b=>b.title && b.title!=="Untitled");
+  const rated=read.filter(b=>Number.isFinite(b.rating)&&b.rating>0);
+  const avg=rated.length?rated.reduce((a,b)=>a+b.rating,0)/rated.length:0;
+  const byMonth={}; read.forEach(b=>{if(/^\d{4}-\d{2}/.test(b.finished)){const m=b.finished.slice(0,7); byMonth[m]=(byMonth[m]||0)+1}});
+  let months=Object.keys(byMonth).sort();
+  if(!months.length){const today=note.today.slice(0,7); months=[today]}
+  const last=months.slice(-8), max=Math.max(1,...last.map(m=>byMonth[m]||0));
+  const pace=months.length?(read.filter(b=>/^\d{4}-\d{2}/.test(b.finished)).length/months.length):0;
+  const sorted=read.slice().sort((a,b)=>String(b.finished).localeCompare(String(a.finished))||a.title.localeCompare(b.title));
+  const wants=wantToRead(note.markdown);
+  $("#app").innerHTML=`
+    <section class="hero">
+      <div class="panel intro">
+        <div><h1>${esc(note.title)}</h1><div class="sub">A visual shelf of finished books, generated from the existing table in this note.</div></div>
+        <div class="stats" aria-label="Reading statistics">
+          <div class="stat"><b>${read.length}</b><span>books read</span></div>
+          <div class="stat"><b>${rated.length?avg.toFixed(1):"–"}</b><span>avg rating</span></div>
+          <div class="stat"><b>${pace?pace.toFixed(1):"–"}</b><span>books / month</span></div>
+        </div>
+      </div>
+      <div class="panel chartWrap">
+        <div class="sectionTitle"><span>Books per month</span><span>${last[0]||""}${last.length>1?" – "+last[last.length-1]:""}</span></div>
+        <div class="chart" role="img" aria-label="Books per month: ${last.map(m=>`${m} ${byMonth[m]||0}`).join(', ')}">
+          ${last.map(m=>`<div class="month"><div class="bar" data-count="${byMonth[m]||0}" style="height:${Math.max(3,((byMonth[m]||0)/max)*92)}px"></div><div class="mlabel">${esc(monthName(m))}</div></div>`).join("")}
+        </div>
+      </div>
+    </section>
+    <h2>Cover shelf</h2>
+    <section class="shelf">${sorted.map(b=>{const h=hash(b.title);return `<article class="book"><div class="cover" style="background:linear-gradient(150deg,hsl(${h} 58% 38%),hsl(${(h+38)%360} 62% 28%))"><div class="coverTitle">${esc(b.title)}</div><div class="coverAuthor">${esc(b.author||"Unknown author")}</div></div><div class="meta"><div class="title">${esc(b.title)}</div><div class="muted">${esc(b.author)}</div><div class="muted">${esc(niceDate(b.finished))}</div>${stars(b.rating)}</div></article>`}).join("")||`<div class="panel empty">Add books to the table to build your cover shelf.</div>`}</section>
+    ${wants.length?`<h2>Want to read</h2><section class="pills">${wants.map(w=>`<span class="pill">${esc(w)}</span>`).join("")}</section>`:""}
+  `;
+}
+amber.onChange(render);
+</script>
+</body>
+</html>

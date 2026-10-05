@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:18px 16px 80px;max-width:760px;margin-inline:auto;color:var(--amber-text);font:16px/1.4 var(--amber-font)}
+h1{font-size:28px;line-height:1.12;letter-spacing:-.02em;margin:2px 0 16px}
+.table-wrap{width:100%}
+table{width:100%;border-collapse:collapse;table-layout:fixed;background:var(--amber-surface);border:1px solid var(--amber-separator);border-radius:var(--amber-radius);overflow:hidden}
+th,td{padding:11px 10px;border-bottom:1px solid var(--amber-separator);text-align:left;vertical-align:top;white-space:normal;overflow-wrap:anywhere}
+th{color:var(--amber-text-secondary);font-size:13px;font-weight:600;background:var(--amber-fill)}
+tr:last-child td{border-bottom:0}
+.empty{padding:24px 16px;border:1px solid var(--amber-separator);border-radius:var(--amber-radius);background:var(--amber-surface);color:var(--amber-text-secondary);text-align:center}
+@media (max-width:600px){
+  body{padding:16px 14px 72px}
+  h1{font-size:26px;margin-bottom:14px}
+  table{display:block;border:0;background:transparent;overflow:visible}
+  thead{display:none}
+  tbody{display:block}
+  tr{display:block;background:var(--amber-surface);border:1px solid var(--amber-separator);border-radius:var(--amber-radius);margin:0 0 12px;overflow:hidden}
+  td{display:grid;grid-template-columns:minmax(86px,32%) 1fr;gap:12px;align-items:start;min-width:0;padding:11px 12px;border-bottom:1px solid var(--amber-separator)}
+  td:last-child{border-bottom:0}
+  td::before{content:attr(data-label);color:var(--amber-text-secondary);font-size:13px;font-weight:600;line-height:1.3;overflow-wrap:anywhere}
+}
+</style>
+</head>
+<body>
+<main>
+<h1 id="title"></h1>
+<div class="table-wrap" id="content"></div>
+</main>
+<script>
+const esc=(s)=>String(s??"").replace(/[&<>"']/g,(c)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+amber.onChange((note)=>{
+  document.getElementById("title").textContent=note.title;
+  const content=document.getElementById("content");
+  const tb=note.tables[0];
+  if(!tb){content.innerHTML='<div class="empty">Add a meal plan table to see it here.</div>';return;}
+  const heads=tb.columns.map((c)=>c.name);
+  const thead="<thead><tr>"+heads.map((h)=>"<th>"+esc(h)+"</th>").join("")+"</tr></thead>";
+  const rows=tb.rows.map((r)=>"<tr>"+heads.map((h,i)=>"<td data-label=\""+esc(h)+"\">"+esc(r[i])+"</td>").join("")+"</tr>").join("");
+  content.innerHTML=tb.rows.length?"<table>"+thead+"<tbody>"+rows+"</tbody></table>":'<div class="empty">No meals planned yet.</div>';
+});
+</script>
+</body>
+</html>

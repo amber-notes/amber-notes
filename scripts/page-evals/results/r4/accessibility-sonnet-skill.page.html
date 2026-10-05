@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  * { box-sizing: border-box; }
+  body { padding: 20px 18px 96px; max-width: 680px; margin: 0 auto; }
+  h1 { font-size: 28px; letter-spacing: -.02em; margin: 4px 0 4px; }
+  h2 { font-size: 18px; margin: 0; padding: 12px 16px 4px; }
+  .sum { color: var(--amber-text-secondary); margin: 0 0 16px; }
+  section { background: var(--amber-surface); border: 1px solid var(--amber-separator); border-radius: var(--amber-radius); margin-bottom: 16px; overflow: hidden; }
+  ul { list-style: none; margin: 0; padding: 0; }
+  li { border-top: 1px solid var(--amber-separator); }
+  li:first-child { border-top: 0; }
+  .cb { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 8px 16px; cursor: pointer; }
+  .cb input { width: 24px; height: 24px; flex: none; margin: 0; accent-color: var(--amber-accent); }
+  .cb span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .cb input:checked + span { color: var(--amber-text-secondary); text-decoration: line-through; }
+  input:focus-visible, button:focus-visible { outline: 3px solid var(--amber-accent-text); outline-offset: 2px; }
+  form { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 16px 16px; align-items: flex-end; }
+  label.f { display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: var(--amber-text-secondary); flex: 1 1 200px; }
+  .f input { font: inherit; color: var(--amber-text); background: var(--amber-fill); border: 1px solid var(--amber-separator); border-radius: var(--amber-radius-small); padding: 10px 12px; min-height: 44px; width: 100%; }
+  button { font: inherit; font-weight: 600; min-height: 44px; padding: 0 20px; border: 0; border-radius: var(--amber-radius-small); background: var(--amber-accent); color: var(--amber-on-accent); }
+  .msg { padding: 0 16px 12px; min-height: 1.2em; margin: 0; }
+  .err { color: var(--amber-danger); }
+  .empty { padding: 8px 16px 16px; color: var(--amber-text-secondary); margin: 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1 id="title"></h1>
+  <p class="sum" id="sum"></p>
+  <div id="lists"></div>
+  <section aria-labelledby="addh">
+    <h2 id="addh">Add an item</h2>
+    <form id="add">
+      <label class="f" for="nv">New item name<input id="nv" name="v" autocomplete="off" required></label>
+      <button type="submit">Add item</button>
+    </form>
+    <p class="msg" id="msg" role="status" aria-live="polite"></p>
+  </section>
+</main>
+<script>
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const done = (s) => /^(✓|x|yes|done|1|true)$/i.test(String(s).trim());
+  let msg = "", isErr = false;
+
+  function setMsg(t, e) { msg = t; isErr = !!e; const m = document.getElementById("msg"); m.textContent = t; m.className = "msg" + (e ? " err" : ""); }
+
+  function render(note) {
+    const focusId = document.activeElement && document.activeElement.id;
+    document.getElementById("title").textContent = note.title;
+    const lines = note.markdown.split("\n");
+    const headingFor = (ln) => { for (let i = ln - 1; i >= 0; i--) { const m = /^#{2,6}\s+(.*)$/.exec(lines[i]); if (m) return m[1].trim(); } return "Items"; };
+    const groups = [], idx = {};
+    const g = (n) => idx[n] || (idx[n] = (groups.push({ name: n, items: [] }), groups[groups.length - 1]));
+    note.checklists.forEach((c) => g(headingFor(c.line)).items.push({ id: "c" + c.line, text: c.text, checked: c.checked, op: { op: "toggle_checklist", line: c.line } }));
+    const t = note.tables.find((t) => t.columns.some((c) => /^item$/i.test(c.name)));
+    if (t) {
+      const ii = t.columns.findIndex((c) => /^item$/i.test(c.name));
+      const pi = t.columns.findIndex((c) => /^packed$/i.test(c.name));
+      const grp = g("Other");
+      t.rows.forEach((r, i) => grp.items.push({ id: "t" + i, text: r[ii], checked: pi >= 0 && done(r[pi]), op: pi >= 0 ? { op: "set_cell", table: t.index, row: i, col: t.columns[pi].name, value: done(r[pi]) ? "" : "✓" } : null }));
+    }
+    const all = groups.flatMap((x) => x.items);
+    const n = all.filter((i) => i.checked).length;
+    document.getElementById("sum").textContent = all.length ? `${n} of ${all.length} items packed` : "No items yet.";
+    window._ops = {};
+    document.getElementById("lists").innerHTML = groups.map((gr) => {
+      const gn = gr.items.filter((i) => i.checked).length;
+      const hid = "h-" + gr.name.replace(/\W+/g, "-");
+      return `<section aria-labelledby="${hid}"><h2 id="${hid}">${esc(gr.name)} <span class="sum" style="font-weight:400;font-size:14px">(${gn} of ${gr.items.length} packed)</span></h2>` +
+        (gr.items.length ? `<ul>${gr.items.map((i) => { window._ops[i.id] = i.op; return `<li><label class="cb"><input type="checkbox" id="${i.id}" ${i.checked ? "checked" : ""}><span>${esc(i.text)}</span></label></li>`; }).join("")}</ul>` : `<p class="empty">Nothing here yet. Use Add an item below.</p>`) +
+        `</section>`;
+    }).join("");
+    document.querySelectorAll("#lists input[type=checkbox]").forEach((cb) => {
+      cb.onchange = async () => {
+        const op = window._ops[cb.id];
+        const name = cb.parentNode.querySelector("span").textContent;
+        if (!op) { cb.checked = !cb.checked; setMsg("This item can't be changed here.", true); return; }
+        const r = await amber.update(op);
+        if (r.ok) setMsg(`${name} ${cb.checked ? "packed" : "not packed"}`, false);
+        else { cb.checked = !cb.checked; setMsg(r.error || "Could not save.", true); }
+      };
+    });
+    if (focusId && document.getElementById(focusId)) document.getElementById(focusId).focus();
+    document.getElementById("msg").textContent = msg;
+  }
+
+  document.getElementById("add").onsubmit = async (e) => {
+    e.preventDefault();
+    const inp = document.getElementById("nv");
+    const v = inp.value.trim();
+    if (!v) { setMsg("Type an item name first.", true); inp.focus(); return; }
+    const t = amber.note.tables.find((t) => t.columns.some((c) => /^item$/i.test(c.name)));
+    if (!t) { setMsg("Add an Other table with Item and Packed columns to the note first.", true); return; }
+    const pc = t.columns.find((c) => /^packed$/i.test(c.name));
+    const values = { [t.columns.find((c) => /^item$/i.test(c.name)).name]: v };
+    if (pc) values[pc.name] = "";
+    const r = await amber.update({ op: "append_row", table: t.index, values });
+    if (r.ok) { inp.value = ""; setMsg(`${v} added to Other`, false); } else setMsg(r.error || "Could not add the item.", true);
+    inp.focus();
+  };
+  amber.onChange(render);
+</script>
+</body>
+</html>

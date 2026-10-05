@@ -1,0 +1,238 @@
+{
+  "task": "flashcards",
+  "model": "gpt-5.5",
+  "round": "r4",
+  "skill": false,
+  "seconds": 30,
+  "score": 1,
+  "passed": 18,
+  "total": 18,
+  "checks": [
+    {
+      "name": "has_page",
+      "pass": true
+    },
+    {
+      "name": "server_checks",
+      "pass": true
+    },
+    {
+      "name": "no_console_errors",
+      "pass": true
+    },
+    {
+      "name": "no_network",
+      "pass": true
+    },
+    {
+      "name": "fits_390",
+      "pass": true
+    },
+    {
+      "name": "fits_1280",
+      "pass": true
+    },
+    {
+      "name": "shows_data",
+      "pass": true
+    },
+    {
+      "name": "dark_mode",
+      "pass": true
+    },
+    {
+      "name": "light_contrast",
+      "pass": true
+    },
+    {
+      "name": "uses_theme",
+      "pass": true
+    },
+    {
+      "name": "labelled_controls",
+      "pass": true
+    },
+    {
+      "name": "edits_from_page",
+      "pass": true
+    },
+    {
+      "name": "probe_escapes",
+      "pass": true
+    },
+    {
+      "name": "probe_empty",
+      "pass": true
+    },
+    {
+      "name": "probe_large",
+      "pass": true
+    },
+    {
+      "name": "note_unchanged",
+      "pass": true
+    },
+    {
+      "name": "remembers_with_page_data",
+      "pass": true
+    },
+    {
+      "name": "no_local_storage",
+      "pass": true
+    }
+  ],
+  "tool_calls": 5,
+  "tool_errors": 0,
+  "usage": {
+    "input": 8424,
+    "output": 2536,
+    "cacheRead": 25600,
+    "cacheWrite": 0,
+    "turns": 4
+  },
+  "usd": 0.0391,
+  "page_bytes": 6456,
+  "data": null,
+  "answer": "Done — I turned your “Spanish verbs” note into a phone-friendly flashcard page.\n\nIt uses your Spanish/English table, lets you tap to flip cards, tracks which verbs you mark as known, shows unknown ones first, and includes a “Start over” option if you want to reset progress.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Spanish verbs",
+        "limit": "10"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Spanish verbs\",\n  \"results\": [\n    {\n      \"id\": \"2295ddca-7c7c-40bf-896d-f5ed64faf8f8\",\n      \"title\": \"Spanish verbs\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T13:03:42.909Z\",\n      \"snippet\": \"«Spanish verbs» | «Spanish» | English | | --- | --- | | hablar | to speak | | comer | to eat | | vivir | to live | | tener | to have | | hacer | to do, to make | | ir | to go\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "get_page_guide",
+      "args": {
+        "template": "flashcards"
+      },
+      "error": false,
+      "result": "{\n  \"template\": \"flashcards\",\n  \"description\": \"Flip cards one at a time, mark each Known or Again; cards you don't know yet come first, and what you know is remembered in page data.\",\n  \"expects\": \"A table whose first two columns are the front and the back (e.g. Spanish | English, Question | Answer). Keeps amber.data.known = { \\\"front text\\\": \\\"yyyy-mm-dd\\\" }.\",\n  \"html\": \"<!doctype html>\\n<!-- template: flashcards | Flip cards one at a time, mark each Known or Again; cards you don't know yet come first, and what you know is remembered in page data. | A table whose first two columns are the f… (7047 chars)"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "2295ddca-7c7c-40bf-896d-f5ed64faf8f8",
+        "line_numbers": "true"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"2295ddca-7c7c-40bf-896d-f5ed64faf8f8\",\n  \"title\": \"Spanish verbs\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T13:03:42.909Z\",\n  \"updated\": \"2026-10-05T13:03:42.909Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 17,\n    \"words\": 94\n  },\n  \"markdown\": \" 1│ Spanish verbs\\n 2│ \\n 3│ | Spanish | English |\\n 4│ | --- | --- |\\n 5│ | hablar | to speak |\\n 6│ | comer | to eat |\\n 7│ | vivir | to live |\\n 8│ | tener | to have |\\n … (853 chars)"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "2295ddca-7c7c-40bf-896d-f5ed64faf8f8"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"2295ddca-7c7c-40bf-896d-f5ed64faf8f8\",\n  \"title\": \"Spanish verbs\",\n  \"has_page\": false,\n  \"rules\": \"A page is one HTML document with all CSS and JS inline. It runs in a sandbox with no network: no fetch/XHR/WebSocket, no external scripts, styles, fonts or images (images only as data: URIs or inline SVG), no <iframe>/<link>/<base>. At most 256 KB.\\nwindow.amber, ready before your script runs:\\n  amber.note = { title, markdown, today: \\\"yyyy-mm-dd\\\", tables: [{ index, columns: [{ name, type }], rows: [[\\\"cell\\\", ...], ...] }], checklists: [{ line, text, checked }] }\\n    tables are ev… (3206 chars)"
+    },
+    {
+      "name": "set_note_page",
+      "args": {
+        "id": "2295ddca-7c7c-40bf-896d-f5ed64faf8f8",
+        "html": "<!doctype html>\n<!-- template: flashcards | Flip cards one at a time, mark each Known or Again; cards you don't know yet come first, and what you know is remembered in page data. | A table whose first two columns are the front and the back (e.g. Spanish | English, Question | Answer). Keeps amber.dat… (6453 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"2295ddca-7c7c-40bf-896d-f5ed64faf8f8\",\n  \"title\": \"Spanish verbs\",\n  \"page\": \"created\",\n  \"bytes\": 6456,\n  \"note\": \"The person sees it in Amber Notes under Page. The note's markdown is unchanged.\"\n}"
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "390-light",
+        "width": 390,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 103,
+        "shown": 1,
+        "sampled": 10,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r4/shots/flashcards-openai-390-light.png"
+      },
+      {
+        "name": "390-dark",
+        "width": 390,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 103,
+        "shown": 1,
+        "sampled": 10,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r4/shots/flashcards-openai-390-dark.png"
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 103,
+        "shown": 1,
+        "sampled": 10,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r4/shots/flashcards-openai-1280-light.png"
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 103,
+        "shown": 1,
+        "sampled": 10,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0
+      }
+    ],
+    "blocked": [],
+    "updates": [],
+    "setData": 1,
+    "interaction": {
+      "tried": "control",
+      "ok": true
+    },
+    "probes": {
+      "follows": {
+        "pass": false,
+        "detail": "a new row in the note doesn't show"
+      },
+      "escapes": {
+        "pass": true
+      },
+      "empty": {
+        "pass": true,
+        "detail": "blank page"
+      },
+      "large": {
+        "pass": true,
+        "detail": "557 ms to load 400 rows"
+      }
+    },
+    "dataAfter": {}
+  }
+}

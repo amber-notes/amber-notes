@@ -1,0 +1,210 @@
+{
+  "task": "csv-to-new-page",
+  "model": "claude-sonnet-5-5",
+  "round": "r0-baseline",
+  "skill": false,
+  "seconds": 26,
+  "score": 0.9333333333333333,
+  "passed": 14,
+  "total": 15,
+  "checks": [
+    {
+      "name": "has_page",
+      "pass": true
+    },
+    {
+      "name": "server_checks",
+      "pass": true
+    },
+    {
+      "name": "no_console_errors",
+      "pass": true
+    },
+    {
+      "name": "no_network",
+      "pass": true
+    },
+    {
+      "name": "fits_390",
+      "pass": true
+    },
+    {
+      "name": "fits_1280",
+      "pass": true
+    },
+    {
+      "name": "shows_data",
+      "pass": true
+    },
+    {
+      "name": "dark_mode",
+      "pass": true
+    },
+    {
+      "name": "light_contrast",
+      "pass": true
+    },
+    {
+      "name": "labelled_controls",
+      "pass": true
+    },
+    {
+      "name": "probe_empty",
+      "pass": true
+    },
+    {
+      "name": "probe_large",
+      "pass": false,
+      "detail": "Error: Invalid negative value for <rect> attribute width=\"-2.62\""
+    },
+    {
+      "name": "table_30_rows",
+      "pass": true
+    },
+    {
+      "name": "hr_kept",
+      "pass": true
+    },
+    {
+      "name": "prose_kept",
+      "pass": true
+    }
+  ],
+  "tool_calls": 4,
+  "tool_errors": 0,
+  "usage": {
+    "input": 12,
+    "output": 3162,
+    "cacheRead": 30434,
+    "cacheWrite": 10589,
+    "turns": 5
+  },
+  "usd": 0.0642,
+  "page_bytes": 3359,
+  "answer": "I added a page to your Running note. I haven't opened it in Amber Notes, so I haven't seen how it looks.\n\n- **Data:** your note had no table, so I added your 30 Strava runs as one, with the same four columns. The page reads from that table. If you add a row, the page updates.\n- **Summary cards:** number of runs, total km, average pace in min/km, average heart rate and longest run.\n- **Charts:** weekly distance and average heart rate per run, in bar charts.\n- **Run list:** every run, newest first, with a pace column I calculated from distance and moving time.\n\nThe page follows light and dark mode.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Running"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Running\",\n  \"results\": [\n    {\n      \"id\": \"484aa888-b895-41ab-8602-13121546a04c\",\n      \"title\": \"Running\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T12:30:05.144Z\",\n      \"snippet\": \"«Running» My runs this autumn\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "484aa888-b895-41ab-8602-13121546a04c"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"484aa888-b895-41ab-8602-13121546a04c\",\n  \"title\": \"Running\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T12:30:05.144Z\",\n  \"updated\": \"2026-10-05T12:30:05.144Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 4,\n    \"words\": 5\n  },\n  \"markdown\": \"Running\\n\\nMy runs this autumn.\\n\"\n}"
+    },
+    {
+      "name": "append_to_note",
+      "args": {
+        "id": "484aa888-b895-41ab-8602-13121546a04c",
+        "text": "\n| Date | Distance (km) | Moving Time (min) | Avg HR |\n|---|---|---|---|\n| 2026-08-06 | 4.0 | 22 | 140 |\n| 2026-08-08 | 4.8 | 26 | 141 |\n| 2026-08-10 | 5.6 | 30 | 142 |\n| 2026-08-12 | 6.4 | 34 | 143 |\n| 2026-08-14 | 7.2 | 38 | 144 |\n| 2026-08-16 | 8.0 | 42 | 145 |\n| 2026-08-18 | 4.0 | 22 | 146 |\n| 2… (1033 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"appended\": {\n    \"id\": \"484aa888-b895-41ab-8602-13121546a04c\",\n    \"title\": \"Running\",\n    \"version\": 2,\n    \"updated\": \"2026-10-05T12:30:13.384Z\"\n  }\n}"
+    },
+    {
+      "name": "set_note_page",
+      "args": {
+        "id": "484aa888-b895-41ab-8602-13121546a04c",
+        "html": "<!DOCTYPE html><html><head><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><style>\n:root{--bg:#fff;--fg:#222;--mut:#777;--card:#f4f1ec;--acc:#d9822b;--line:#e3ddd3}\n@media(prefers-color-scheme:dark){:root{--bg:#1b1b1b;--fg:#eee;--mut:#999;--card:#272624;--acc:#f0a050;--line:#3a383… (3359 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"484aa888-b895-41ab-8602-13121546a04c\",\n  \"title\": \"Running\",\n  \"page\": \"created\",\n  \"bytes\": 3359,\n  \"note\": \"The person sees it in Amber Notes under Page. The note's markdown is unchanged.\"\n}"
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "390-light",
+        "width": 390,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 1023,
+        "shown": 12,
+        "sampled": 12,
+        "bg": "rgb(255, 255, 255)",
+        "fg": "rgb(34, 34, 34)",
+        "contrast": 15.909984431773273,
+        "bgLuminance": 1,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r0-baseline/shots/csv-to-new-page-sonnet-390-light.png"
+      },
+      {
+        "name": "390-dark",
+        "width": 390,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 1023,
+        "shown": 12,
+        "sampled": 12,
+        "bg": "rgb(27, 27, 27)",
+        "fg": "rgb(238, 238, 238)",
+        "contrast": 14.845656373625532,
+        "bgLuminance": 0.010960094006488246,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r0-baseline/shots/csv-to-new-page-sonnet-390-dark.png"
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 1023,
+        "shown": 12,
+        "sampled": 12,
+        "bg": "rgb(255, 255, 255)",
+        "fg": "rgb(34, 34, 34)",
+        "contrast": 15.909984431773273,
+        "bgLuminance": 1,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r0-baseline/shots/csv-to-new-page-sonnet-1280-light.png"
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 1023,
+        "shown": 12,
+        "sampled": 12,
+        "bg": "rgb(27, 27, 27)",
+        "fg": "rgb(238, 238, 238)",
+        "contrast": 14.845656373625532,
+        "bgLuminance": 0.010960094006488246,
+        "unnamedControls": [],
+        "smallTargets": 0
+      }
+    ],
+    "blocked": [],
+    "updates": [],
+    "setData": 0,
+    "interaction": {
+      "tried": "none",
+      "ok": null
+    },
+    "probes": {
+      "empty": {
+        "pass": true,
+        "detail": "blank page"
+      },
+      "large": {
+        "pass": false,
+        "detail": "Error: Invalid negative value for <rect> attribute width=\"-2.62\""
+      }
+    },
+    "dataAfter": {}
+  }
+}

@@ -1,0 +1,32 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>
+:root{--bg:#fbf8f3;--card:#fff;--ink:#1d1a16;--muted:#7a7168;--line:#e6ded4;--chip:#f1ebe3}
+@media (prefers-color-scheme:dark){:root{--bg:#1b1916;--card:#26231f;--ink:#f3eee8;--muted:#a39a90;--line:#3a352f;--chip:#34302a}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink)}
+body{font:16px/1.4 -apple-system,system-ui,sans-serif;padding:20px 18px 40px;max-width:680px;margin:0 auto;overflow-x:hidden}
+h1{font-size:28px;letter-spacing:-.02em;margin:4px 0 16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;margin-bottom:12px;padding:14px 16px}
+.head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
+.day{font-size:18px;font-weight:700}
+.chip{font-size:13px;background:var(--chip);border-radius:20px;padding:4px 10px;white-space:nowrap}
+dl{margin:0}
+.r{display:flex;gap:12px;padding:6px 0;border-top:1px solid var(--line)}
+.r:first-of-type{border-top:0}
+dt{width:84px;flex:none;color:var(--muted);font-size:14px;padding-top:1px}
+dd{margin:0;flex:1;min-width:0;overflow-wrap:anywhere}
+.empty{color:var(--muted);text-align:center;padding:28px 0}
+</style></head><body><h1 id="t"></h1><main id="grid"></main><script>
+const esc=(s)=>String(s??"").replace(/[&<>"']/g,(c)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+amber.onChange((note)=>{
+document.getElementById("t").textContent=note.title;
+const tb=note.tables[0];const g=document.getElementById("grid");
+if(!tb||!tb.rows.length){g.innerHTML='<div class="empty">No meals yet. Add rows to the table in the note.</div>';return;}
+const cols=tb.columns.map(c=>c.name);
+const shop=cols.findIndex(n=>/^shop$/i.test(n));
+g.innerHTML=tb.rows.map(r=>{
+const items=cols.map((n,i)=>i===0||i===shop||!String(r[i]||"").trim()?"":'<div class="r"><dt>'+esc(n)+'</dt><dd>'+esc(r[i])+'</dd></div>').join("");
+const chip=shop>=0&&/^(yes|y|✓|x|1|true)$/i.test(String(r[shop]).trim())?'<span class="chip">Shop</span>':"";
+return '<section class="card"><div class="head"><span class="day">'+esc(r[0])+'</span>'+chip+'</div><dl>'+items+'</dl></section>';
+}).join("");
+});
+</script></body></html>

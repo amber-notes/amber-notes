@@ -1,0 +1,29 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>
+*{box-sizing:border-box}
+body{margin:0 auto;padding:20px 18px 40px;max-width:680px}
+h1{font-size:28px;letter-spacing:-.02em;margin:4px 0 16px}
+.card{background:var(--amber-surface);border:1px solid var(--amber-separator);border-radius:var(--amber-radius);margin-bottom:12px;overflow:hidden}
+.head{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px 16px;font-weight:700;font-size:18px}
+.tag{font-size:13px;font-weight:600;padding:4px 10px;border-radius:99px;background:var(--amber-accent-soft);color:var(--amber-accent-text)}
+.m{display:flex;gap:12px;padding:10px 16px;border-top:1px solid var(--amber-separator)}
+.m .k{flex:0 0 84px;color:var(--amber-text-secondary);font-size:14px}
+.m .v{flex:1;min-width:0;overflow-wrap:anywhere}
+.note{padding:10px 16px;border-top:1px solid var(--amber-separator);color:var(--amber-text-secondary);font-size:14px;overflow-wrap:anywhere}
+.empty{padding:28px 16px;text-align:center;color:var(--amber-text-secondary)}
+</style></head><body><main id="app"></main><script>
+const esc=(s)=>String(s??"").replace(/[&<>"']/g,(c)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+amber.onChange((note)=>{
+const tb=note.tables[0];let h="<h1>"+esc(note.title)+"</h1>";
+if(!tb||!tb.rows.length){document.getElementById("app").innerHTML=h+'<div class="card empty">No meals yet. Add rows to the table in the note.</div>';return}
+const ci=(re)=>tb.columns.findIndex((c)=>re.test(c.name));
+const day=ci(/^day$/i)>=0?ci(/^day$/i):0,shop=ci(/^shop$/i),notes=ci(/^notes?$/i);
+h+=tb.rows.map((r)=>{
+let s='<section class="card"><div class="head"><span>'+esc(r[day])+'</span>';
+if(shop>=0&&/^(y|yes|✓|true|1)/i.test((r[shop]||"").trim()))s+='<span class="tag">Shop</span>';
+s+='</div>';
+tb.columns.forEach((c,i)=>{if(i===day||i===shop||i===notes||!(r[i]||"").trim())return;
+s+='<div class="m"><span class="k">'+esc(c.name)+'</span><span class="v">'+esc(r[i])+'</span></div>'});
+if(notes>=0&&(r[notes]||"").trim())s+='<div class="note">'+esc(r[notes])+'</div>';
+return s+'</section>'}).join("");
+document.getElementById("app").innerHTML=h});
+</script></body></html>

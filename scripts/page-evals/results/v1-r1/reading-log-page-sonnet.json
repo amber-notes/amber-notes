@@ -1,0 +1,208 @@
+{
+  "task": "reading-log-page",
+  "model": "claude-sonnet-5-5",
+  "round": "r1",
+  "skill": false,
+  "seconds": 29,
+  "score": 1,
+  "passed": 15,
+  "total": 15,
+  "checks": [
+    {
+      "name": "has_page",
+      "pass": true
+    },
+    {
+      "name": "server_checks",
+      "pass": true
+    },
+    {
+      "name": "no_console_errors",
+      "pass": true
+    },
+    {
+      "name": "no_network",
+      "pass": true
+    },
+    {
+      "name": "fits_390",
+      "pass": true
+    },
+    {
+      "name": "fits_1280",
+      "pass": true
+    },
+    {
+      "name": "shows_data",
+      "pass": true
+    },
+    {
+      "name": "dark_mode",
+      "pass": true
+    },
+    {
+      "name": "light_contrast",
+      "pass": true
+    },
+    {
+      "name": "labelled_controls",
+      "pass": true
+    },
+    {
+      "name": "probe_follows",
+      "pass": true
+    },
+    {
+      "name": "probe_escapes",
+      "pass": true
+    },
+    {
+      "name": "probe_empty",
+      "pass": true
+    },
+    {
+      "name": "probe_large",
+      "pass": true
+    },
+    {
+      "name": "note_unchanged",
+      "pass": true
+    }
+  ],
+  "tool_calls": 3,
+  "tool_errors": 0,
+  "usage": {
+    "input": 8,
+    "output": 4139,
+    "cacheRead": 26800,
+    "cacheWrite": 19702,
+    "turns": 3
+  },
+  "usd": 0.096,
+  "page_bytes": 7862,
+  "data": null,
+  "answer": "I added a page to your Reading log note. It has:\n\n- **Cover-style cards:** each book is a colored cover with its title and author. The star rating and finish date sit underneath, newest first.\n- **Average rating:** shown at the top next to your total books and the number finished in 2026.\n- **Books per month:** a bar chart covering the last 12 months.\n- **Log a book:** a small form at the bottom that adds a new row to your table.\n\nI haven't opened the page myself, so I haven't seen how it looks. Your table and note text are unchanged. You can switch between Page and Text in the app.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Reading log"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Reading log\",\n  \"results\": [\n    {\n      \"id\": \"55c92f7e-7bc2-4a11-a2ca-0d5079a8a15d\",\n      \"title\": \"Reading log\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T12:39:01.699Z\",\n      \"snippet\": \"«Reading log» <!-- pane-table: Title=text; Author=text; Finished=date; Rating=scale 1-5 --> | Title | Author | Finished | Rating | | --- | --- | --- | --- | | The Overstory | Richard Powers | 2026-06\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "get_page_guide",
+      "args": {
+        "template": "reading-log"
+      },
+      "error": false,
+      "result": "{\n  \"template\": \"reading-log\",\n  \"description\": \"Books as cards with ratings, books per month, the average rating, a want-to-read checklist and a form to log a finished book.\",\n  \"expects\": \"A table with Title and Author, optionally Finished (yyyy-mm-dd) and Rating (1-5) columns; checklist items are shown as want-to-read.\",\n  \"html\": \"<!doctype html>\\n<!-- template: reading-log | Books as cards with ratings, books per month, the average rating, a want-to-read checklist and a form to log a finished book. | A table with Title and Author, optionally Finished (yyyy-mm-dd) and Rating (1-5) columns;… (9112 chars)"
+    },
+    {
+      "name": "set_note_page",
+      "args": {
+        "id": "55c92f7e-7bc2-4a11-a2ca-0d5079a8a15d",
+        "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<style>\n  :root { --bg: #fbf8f3; --card: #fff; --ink: #1d1a16; --muted: #6f665d; --line: rgba(60,40,20,.12); --accent: #b85f08; --accent-ink: #fff; --field: #f1ebe3; --… (7854 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"55c92f7e-7bc2-4a11-a2ca-0d5079a8a15d\",\n  \"title\": \"Reading log\",\n  \"page\": \"created\",\n  \"bytes\": 7862,\n  \"note\": \"The person sees it in Amber Notes under Page. The note's markdown is unchanged.\"\n}"
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "390-light",
+        "width": 390,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 409,
+        "shown": 10,
+        "sampled": 10,
+        "bg": "rgb(251, 248, 243)",
+        "fg": "rgb(29, 26, 22)",
+        "contrast": 16.36122313595218,
+        "bgLuminance": 0.9411509766090667,
+        "unnamedControls": [],
+        "smallTargets": 1,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r1/shots/reading-log-page-sonnet-390-light.png"
+      },
+      {
+        "name": "390-dark",
+        "width": 390,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 409,
+        "shown": 10,
+        "sampled": 10,
+        "bg": "rgb(27, 25, 22)",
+        "fg": "rgb(243, 238, 232)",
+        "contrast": 15.206632798714999,
+        "bgLuminance": 0.009862005146758307,
+        "unnamedControls": [],
+        "smallTargets": 1,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r1/shots/reading-log-page-sonnet-390-dark.png"
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 409,
+        "shown": 10,
+        "sampled": 10,
+        "bg": "rgb(251, 248, 243)",
+        "fg": "rgb(29, 26, 22)",
+        "contrast": 16.36122313595218,
+        "bgLuminance": 0.9411509766090667,
+        "unnamedControls": [],
+        "smallTargets": 1,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r1/shots/reading-log-page-sonnet-1280-light.png"
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 409,
+        "shown": 10,
+        "sampled": 10,
+        "bg": "rgb(27, 25, 22)",
+        "fg": "rgb(243, 238, 232)",
+        "contrast": 15.206632798714999,
+        "bgLuminance": 0.009862005146758307,
+        "unnamedControls": [],
+        "smallTargets": 1
+      }
+    ],
+    "blocked": [],
+    "updates": [],
+    "setData": 0,
+    "interaction": {
+      "tried": "none",
+      "ok": null
+    },
+    "probes": {
+      "follows": {
+        "pass": true,
+        "detail": "shown, but not as written"
+      },
+      "escapes": {
+        "pass": true
+      },
+      "empty": {
+        "pass": true,
+        "detail": "blank page"
+      },
+      "large": {
+        "pass": true,
+        "detail": "592 ms to load 400 rows"
+      }
+    },
+    "dataAfter": {}
+  }
+}

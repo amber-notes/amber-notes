@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { --bg: var(--amber-bg); --card: var(--amber-surface); --ink: var(--amber-text); --muted: var(--amber-text-secondary); --line: var(--amber-separator); --accent: var(--amber-accent); --accent-ink: var(--amber-on-accent); --soft: var(--amber-accent-soft); --empty: var(--amber-fill); --field: var(--amber-fill); }
+  * { box-sizing: border-box; }
+  body { padding: 20px 18px 96px; max-width: 680px; margin: 0 auto; }
+  h1 { font-size: 28px; letter-spacing: -.02em; margin: 4px 0 4px; }
+  h2 { font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin: 22px 4px 8px; }
+  .sub { color: var(--muted); margin: 0 0 18px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--amber-radius); overflow: hidden; }
+  .habit { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px; padding: 10px 16px; border: 0; border-top: 1px solid var(--line); background: none; color: inherit; font: inherit; text-align: left; }
+  .habit:first-child { border-top: 0; }
+  .habit .name { flex: 1; min-width: 0; font-size: 17px; overflow-wrap: anywhere; }
+  .habit .meta { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+  .tick { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--line); display: grid; place-items: center; flex: none; }
+  .habit[aria-pressed="true"] .tick { background: var(--accent); border-color: var(--accent); }
+  .tick svg { width: 16px; height: 16px; opacity: 0; }
+  .habit[aria-pressed="true"] .tick svg { opacity: 1; }
+  .grid { padding: 12px 14px; display: grid; gap: 5px; overflow-x: auto; }
+  .gr { display: grid; grid-template-columns: minmax(64px, 96px) repeat(14, minmax(12px, 1fr)); gap: 3px; align-items: center; }
+  .gr .h { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 6px; }
+  .cell { aspect-ratio: 1; border-radius: 4px; background: var(--empty); }
+  .cell.on { background: var(--accent); }
+  .cell.today { outline: 2px solid var(--ink); outline-offset: -2px; }
+  .goal { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-top: 1px solid var(--line); min-height: 52px; }
+  .goal:first-child { border-top: 0; }
+  .goal .name { flex: 1; min-width: 0; }
+  .goal .meta { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+  .bar { flex: 2; height: 8px; border-radius: 4px; background: var(--empty); overflow: hidden; }
+  .bar div { height: 100%; background: var(--accent); }
+  .goal input { width: 64px; min-height: 40px; font: inherit; color: var(--ink); background: var(--field); border: 0; border-radius: 8px; padding: 6px 8px; text-align: center; }
+  .err { color: var(--amber-danger); min-height: 1.2em; margin: 8px 4px; }
+  .empty { padding: 28px 16px; text-align: center; color: var(--muted); }
+</style>
+</head>
+<body>
+<main id="app" aria-live="polite"></main>
+<script>
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const DONE = /^(✓|✔|x|yes|y|1|true|done)$/i;
+  const tick = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent-ink)"/></svg>';
+  let error = "";
+
+  const addDays = (iso, n) => { const d = new Date(iso + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+  const weekStart = (iso) => { const d = new Date(iso + "T12:00:00Z"); return addDays(iso, -((d.getUTCDay() + 6) % 7)); };
+
+  function render(note, data) {
+    const app = document.getElementById("app");
+    const t = note.tables.find((t) => t.columns.some((c) => /^(date|day)$/i.test(c.name)));
+    if (!t) { app.innerHTML = `<h1>${esc(note.title)}</h1><div class="card empty">Add a table with a Date column and one column per habit to the note.</div>`; return; }
+    const dc = t.columns.findIndex((c) => /^(date|day)$/i.test(c.name));
+    const habits = t.columns.map((c, i) => ({ name: c.name, i })).filter((h) => h.i !== dc);
+    const today = note.today;
+    const byDate = new Map(t.rows.map((r, i) => [r[dc], { r, i }]));
+    const done = (date, h) => DONE.test(String(byDate.get(date)?.r[h.i] ?? "").trim());
+    const streak = (h) => { let n = 0, d = done(today, h) ? today : addDays(today, -1); while (done(d, h)) { n++; d = addDays(d, -1); } return n; };
+    const goals = (data && data.values && data.values.goals) || {};
+    const ws = weekStart(today);
+    const week = Array.from({ length: 7 }, (_, k) => addDays(ws, k)).filter((d) => d <= today);
+    const days = Array.from({ length: 14 }, (_, k) => addDays(today, k - 13));
+    const doneToday = habits.filter((h) => done(today, h)).length;
+    app.innerHTML = `
+      <h1>${esc(note.title)}</h1>
+      <p class="sub">${doneToday} of ${habits.length} done today</p>
+      <div class="card" role="group" aria-label="Today">${habits.map((h) => {
+        const on = done(today, h), s = streak(h);
+        return `<button class="habit" data-h="${h.i}" aria-pressed="${on}"><span class="tick">${tick}</span><span class="name">${esc(h.name)}</span><span class="meta">${s ? `${s} day${s > 1 ? "s" : ""} in a row` : ""}</span></button>`;
+      }).join("")}</div>
+      <div class="err" role="alert">${esc(error)}</div>
+      <h2>This week</h2>
+      <div class="card">${habits.map((h) => {
+        const n = week.filter((d) => done(d, h)).length, g = Number(goals[h.name]) || 0;
+        return `<div class="goal"><span class="name">${esc(h.name)}</span><span class="bar" aria-hidden="true"><div style="width:${g ? Math.min(100, (100 * n) / g) : 0}%"></div></span>
+          <span class="meta">${n}${g ? ` / ${g}` : ""}</span>
+          <label><span style="position:absolute;left:-9999px">Weekly goal for ${esc(h.name)}</span><input type="number" min="0" max="7" inputmode="numeric" data-goal="${esc(h.name)}" value="${g || ""}" placeholder="goal"></label></div>`;
+      }).join("")}</div>
+      <h2>Last 14 days</h2>
+      <div class="card grid" role="img" aria-label="Which habits were done on each of the last 14 days">${habits.map((h) => `<div class="gr"><span class="h">${esc(h.name)}</span>${days.map((d) => `<span class="cell${done(d, h) ? " on" : ""}${d === today ? " today" : ""}"></span>`).join("")}</div>`).join("")}</div>`;
+
+    app.querySelectorAll(".habit").forEach((b) => b.addEventListener("click", async () => {
+      const h = habits.find((x) => x.i === Number(b.dataset.h));
+      const row = byDate.get(today);
+      const value = done(today, h) ? "" : "✓";
+      const r = row
+        ? await amber.update({ op: "set_cell", table: t.index, row: row.i, col: h.name, value })
+        : await amber.update({ op: "append_row", table: t.index, values: { [t.columns[dc].name]: today, [h.name]: value } });
+      error = r.ok ? "" : r.error;
+      if (!r.ok) render(amber.note, amber.data);
+    }));
+    app.querySelectorAll("[data-goal]").forEach((input) => input.addEventListener("change", async () => {
+      const v = input.value === "" ? null : Math.max(0, Math.min(7, Math.round(Number(input.value))));
+      const r = await amber.setData({ values: { goals: { [input.dataset.goal]: v } } });
+      error = r.ok ? "" : r.error;
+      if (!r.ok) render(amber.note, amber.data);
+    }));
+  }
+  amber.onChange(render);
+</script>
+</body>
+</html>

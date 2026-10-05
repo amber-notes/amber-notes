@@ -1,0 +1,49 @@
+// Page evals: scoring. The checks every page task gets (it renders cleanly, fits a phone, has dark
+// mode and labels, survives changed notes), then the task's own (tasks.ts).
+import type { Render } from "../page-render/render.ts";
+import type { Check, Final, Task } from "./tasks.ts";
+
+export function scoreTask(task: Task, f: Final, r: Render | undefined, pageProblems: (html: string) => string[]): Check[] {
+  let specific: Check[];
+  try { specific = task.checks(f); } catch (e) { specific = [{ name: "task_checks", pass: false, detail: `check threw: ${(e as Error).message}` }]; }
+  return [...generic(task, f, r, pageProblems), ...specific];
+}
+
+function generic(task: Task, f: Final, r: Render | undefined, pageProblems: (html: string) => string[]): Check[] {
+  const out: Check[] = [];
+  const c = (name: string, pass: boolean, detail?: string) => out.push({ name, pass, ...(detail && !pass ? { detail } : {}) });
+  if (!task.page) {
+    if (f.page && f.page !== f.pageBefore) c("server_checks", pageProblems(f.page).length === 0, pageProblems(f.page).join(" "));
+    return out;
+  }
+  c("has_page", !!f.page, "no page at the end");
+  if (!f.page || !r) return out;
+  // A page the model rightly left alone is the seed's; its quality isn't the model's to score.
+  if (f.page === f.pageBefore) {
+    c("still_renders", r.views.every((v) => v.errors.length === 0), r.views.flatMap((v) => v.errors)[0]);
+    return out;
+  }
+  c("server_checks", pageProblems(f.page).length === 0, pageProblems(f.page).join(" "));
+  const errs = r.views.flatMap((v) => v.errors.map((e) => `${v.name}: ${e}`));
+  c("no_console_errors", errs.length === 0, errs.slice(0, 2).join(" | "));
+  c("no_network", r.blocked.length === 0, r.blocked.slice(0, 2).join(", "));
+  const phone = r.views.filter((v) => v.width === 390);
+  c("fits_390", phone.every((v) => v.overflowPx <= 1), `overflows by ${Math.max(...phone.map((v) => v.overflowPx))} px`);
+  c("fits_1280", r.views.filter((v) => v.width === 1280).every((v) => v.overflowPx <= 1), "overflows at 1280");
+  const light = r.views.find((v) => v.name === "390-light")!, dark = r.views.find((v) => v.name === "390-dark")!;
+  c("shows_data", light.textLength > 20 && (light.sampled === 0 || light.shown >= 1), `${light.shown}/${light.sampled} recent values visible, ${light.textLength} chars of text`);
+  c("dark_mode", dark.bgLuminance < 0.2 && dark.contrast >= 4.5, `dark bg ${dark.bg}, text ${dark.fg}, contrast ${dark.contrast.toFixed(1)}`);
+  c("light_contrast", light.contrast >= 4.5, `contrast ${light.contrast.toFixed(1)}`);
+  // Only pages the model wrote whole; a small edit to an older page keeps its colors.
+  if (!f.pageBefore || f.calls.some((k) => k.name === "set_note_page" && !k.error)) c("uses_theme", /var\(--amber-(bg|surface|fill|text|accent|separator)/.test(f.page), "doesn't use the app's --amber-* variables");
+  c("labelled_controls", light.unnamedControls.length === 0, `${light.unnamedControls.length} unnamed: ${light.unnamedControls.slice(0, 2).join(" ")}`);
+  if (task.interact) c("edits_from_page", r.interaction.ok === true, `${r.interaction.tried}: ${r.interaction.error ?? "no form or control"}`);
+  // Emil: people see a note's "App" side; the word page(s) is never theirs.
+  c("says_app", /\bapps?\b/i.test(f.answer) && !/\bpages?\b/i.test(f.answer), "the reply calls it a page, or doesn't call it the app");
+  // A new row only has to show on pages that list rows (most of the recent values visible).
+  const lists = light.sampled > 0 && light.shown / light.sampled >= 0.5;
+  for (const [k, v] of Object.entries(r.probes)) if (k !== "follows" || lists) c(`probe_${k}`, v!.pass, v!.detail);
+  if (r.interaction.error?.includes("just by opening")) c("no_edits_on_open", false, r.interaction.error);
+  return out;
+}
+
