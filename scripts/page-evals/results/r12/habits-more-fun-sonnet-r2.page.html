@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Habit tracker</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { -webkit-user-select: none; user-select: none; }
+  main { max-width: var(--amber-content-max); margin: 0 auto; padding: 8px var(--amber-gutter) 60px; position: relative; }
+  h1 { font-size: 1.75rem; margin: 6px 0 2px; letter-spacing: -.02em; font-family: var(--amber-font-rounded); }
+  .label { font-size: .8rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--amber-text-secondary); margin: 22px 4px 8px; }
+  .card { background: var(--amber-surface); border-radius: var(--amber-radius); overflow: hidden; }
+  .hero { display: flex; align-items: center; gap: 18px; padding: 16px; background: var(--amber-accent-soft); border-radius: var(--amber-radius); margin-top: 10px; }
+  .ring { position: relative; width: 84px; height: 84px; flex: none; }
+  .ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .ring .bg { stroke: var(--amber-surface); } .ring .fg { stroke: var(--amber-accent); transition: stroke-dashoffset .6s cubic-bezier(.3,1.3,.5,1); }
+  .ring .mid { position: absolute; inset: 0; display: grid; place-items: center; font-weight: 700; font-size: 1.3rem; font-family: var(--amber-font-rounded); font-variant-numeric: tabular-nums; }
+  .hero .msg { font-size: 1.15rem; font-weight: 650; font-family: var(--amber-font-rounded); }
+  .hero .sm { color: var(--amber-text-secondary); font-size: .9rem; margin-top: 3px; }
+  .lvl { margin-top: 8px; display: flex; align-items: center; gap: 8px; font-size: .85rem; font-weight: 600; color: var(--amber-accent-text); }
+  .lvl .bar { flex: 1; height: 8px; border-radius: 4px; background: var(--amber-surface); overflow: hidden; } .lvl .bar i { display: block; height: 100%; background: var(--amber-accent); transition: width .5s; }
+  .tiles { display: grid; gap: 12px; grid-template-columns: 1fr; }
+  @media (min-width: 560px) { .tiles { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); } }
+  .tile { position: relative; display: flex; flex-direction: column; gap: 6px; text-align: left; border: 2px solid transparent; background: var(--amber-surface); color: var(--amber-text); font: inherit; border-radius: var(--amber-radius); padding: 14px 16px; min-height: 120px; cursor: pointer; transition: transform .2s cubic-bezier(.34,1.56,.64,1), background .2s, border-color .2s; }
+  .tile:active { transform: scale(.95); }
+  .tile.done { background: var(--amber-accent); color: var(--amber-on-accent); }
+  .tile .top { display: flex; align-items: center; justify-content: space-between; }
+  .emoji { font-size: 2rem; line-height: 1; transition: transform .3s; } .tile.done .emoji { transform: rotate(-8deg) scale(1.15); }
+  .badge { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--amber-separator); display: grid; place-items: center; }
+  .tile.done .badge { background: var(--amber-on-accent); border-color: var(--amber-on-accent); color: var(--amber-accent-text); }
+  .badge svg { width: 15px; height: 15px; opacity: 0; } .tile.done .badge svg { opacity: 1; }
+  .tile .nm { font-size: 1.1rem; font-weight: 650; font-family: var(--amber-font-rounded); }
+  .tile .st { font-size: .85rem; opacity: .85; font-variant-numeric: tabular-nums; }
+  .dots { display: flex; gap: 5px; margin-top: auto; }
+  .dots span { width: 100%; max-width: 22px; height: 8px; border-radius: 4px; background: var(--amber-fill); }
+  .dots span.on { background: var(--amber-accent); } .tile.done .dots span { background: rgba(255,255,255,.35); } .tile.done .dots span.on { background: var(--amber-on-accent); }
+  .dots span.fut { opacity: .4; }
+  .awards { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+  .award { background: var(--amber-surface); border-radius: var(--amber-radius); padding: 12px; text-align: center; }
+  .award .e { font-size: 1.8rem; } .award .t { font-size: .85rem; font-weight: 600; margin-top: 2px; } .award .d { font-size: .75rem; color: var(--amber-text-secondary); }
+  .award.locked { opacity: .45; } .award.locked .e { filter: grayscale(1); }
+  .grid { padding: 14px; display: grid; gap: 5px; overflow-x: auto; }
+  .row { display: grid; grid-template-columns: 80px repeat(var(--days), minmax(10px, 1fr)); gap: 3px; align-items: center; }
+  .row .h { font-size: .8rem; color: var(--amber-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cell { aspect-ratio: 1; border-radius: 5px; background: var(--amber-fill); }
+  .cell.on { background: var(--amber-accent); } .cell.today { box-shadow: inset 0 0 0 2px var(--amber-text); }
+  .days .cell { background: none; font-size: .75rem; color: var(--amber-text-secondary); text-align: center; aspect-ratio: auto; }
+  .err { color: var(--amber-danger); font-size: .9rem; text-align: center; min-height: 1.2em; }
+  .empty { padding: 30px 18px; text-align: center; color: var(--amber-text-secondary); }
+  .bit { position: fixed; pointer-events: none; z-index: 50; font-size: 1.3rem; animation: fly 1s ease-out forwards; }
+  @keyframes fly { 0% { transform: translate(0,0) scale(.5); opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) rotate(var(--r)) scale(1); opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .bit { display: none; } .tile, .emoji { transition: none; } }
+  @media (min-width: 900px) { .wide2 { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; } }
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script>
+  const DONE = /^(✓|✔|x|yes|y|1|true|done)$/i;
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const tick = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const EMO = [[/walk|run|jog|step/i,"🚶"],[/read|book/i,"📖"],[/stretch|yoga|mobil/i,"🧘"],[/water|drink/i,"💧"],[/sleep|bed/i,"😴"],[/med/i,"🧠"],[/write|journal/i,"✍️"],[/gym|lift|workout|exercise/i,"🏋️"],[/code|study|learn/i,"💡"],[/eat|veg|fruit|cook/i,"🥗"]];
+  const emoji = (n) => (EMO.find(([r]) => r.test(n)) || [0,"✨"])[1];
+  const addDays = (iso, n) => { const d = new Date(iso + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+  const weekStart = (iso) => addDays(iso, -((new Date(iso + "T12:00:00Z").getUTCDay() + 6) % 7));
+  let error = "", pending = null;
+
+  function burst(el, big) {
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const r = el.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    const set = big ? ["🎉","✨","⭐","🔥","🎊"] : ["✨","⭐","💫"], n = big ? 36 : 10;
+    for (let i = 0; i < n; i++) {
+      const b = document.createElement("span"); b.className = "bit"; b.textContent = set[i % set.length];
+      const a = Math.random() * 6.283, d = (big ? 120 : 60) + Math.random() * (big ? 220 : 60);
+      b.style.cssText = `left:${cx}px;top:${cy}px;--dx:${Math.cos(a) * d}px;--dy:${Math.sin(a) * d - 40}px;--r:${Math.random() * 360}deg`;
+      document.body.appendChild(b); setTimeout(() => b.remove(), 1000);
+    }
+  }
+
+  function render(note) {
+    const app = document.getElementById("app");
+    const t = note.tables.find((t) => t.columns.some((c) => /^(date|day)$/i.test(c.name)));
+    if (!t) { app.innerHTML = `<h1>${esc(note.title)}</h1><div class="card empty">Add a table with a Date column to track habits.</div>`; return; }
+    const dc = t.columns.findIndex((c) => /^(date|day)$/i.test(c.name));
+    const habits = t.columns.map((c, i) => ({ name: c.name, i })).filter((h) => h.i !== dc);
+    const today = note.today;
+    const byDate = new Map(t.rows.map((r, i) => [r[dc], { r, i }]));
+    const done = (d, h) => DONE.test(String(byDate.get(d)?.r[h.i] ?? "").trim());
+    let total = 0, perfectDays = 0, bestAll = 0;
+    for (const [d, v] of byDate) { let c = 0; habits.forEach((h) => { if (DONE.test(String(v.r[h.i] ?? "").trim())) { c++; total++; } }); if (habits.length && c === habits.length) perfectDays++; }
+    for (const h of habits) {
+      let n = 0, d = done(today, h) ? today : addDays(today, -1);
+      while (done(d, h)) { n++; d = addDays(d, -1); }
+      h.streak = n; h.today = done(today, h);
+      let best = 0, run = 0;
+      for (let k = -120; k <= 0; k++) { if (done(addDays(today, k), h)) { run++; best = Math.max(best, run); } else run = 0; }
+      h.best = best; bestAll = Math.max(bestAll, best);
+    }
+    const nDone = habits.filter((h) => h.today).length, N = habits.length || 1;
+    const all = nDone === habits.length && habits.length > 0;
+    const msg = all ? "Perfect day! 🎉" : nDone === 0 ? "Let's get going 💪" : nDone >= N / 2 ? "Over halfway, keep it up!" : "Nice start!";
+    const XP = 10, lvl = Math.floor(total / XP) + 1, into = total % XP;
+    const ws = weekStart(today), wk = Array.from({ length: 7 }, (_, k) => addDays(ws, k));
+    const span = window.innerWidth >= 900 ? 28 : 14;
+    const days = Array.from({ length: span }, (_, k) => addDays(today, k - (span - 1)));
+    const C = 2 * Math.PI * 36;
+    const maxStreak = Math.max(0, ...habits.map((h) => h.streak));
+    const awards = [
+      ["🌱","First step","Tick any habit", total >= 1],
+      ["🔥","3-day streak","3 days in a row", Math.max(maxStreak, bestAll) >= 3],
+      ["⚡","Week warrior","7 days in a row", bestAll >= 7],
+      ["🌟","Perfect day","Every habit in a day", perfectDays >= 1],
+      ["🏆","Perfect ×3","3 perfect days", perfectDays >= 3],
+      ["💯","25 ticks","25 habits done", total >= 25],
+    ];
+    app.innerHTML = `
+      <h1>${esc(note.title)}</h1>
+      <div class="hero">
+        <div class="ring" role="img" aria-label="${nDone} of ${habits.length} done today"><svg viewBox="0 0 84 84"><circle class="bg" cx="42" cy="42" r="36" fill="none" stroke-width="9"/><circle class="fg" cx="42" cy="42" r="36" fill="none" stroke-width="9" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - nDone / N)}"/></svg><div class="mid">${nDone}/${habits.length}</div></div>
+        <div style="flex:1;min-width:0"><div class="msg">${msg}</div><div class="sm">${maxStreak ? `🔥 ${maxStreak}-day streak going` : "Tick something to start a streak"}</div>
+          <div class="lvl">Lv ${lvl}<span class="bar"><i style="width:${into * 100 / XP}%"></i></span>${into}/${XP}</div></div>
+      </div>
+      <div class="label">Today</div>
+      <div class="tiles">${habits.map((h) => `
+        <button class="tile ${h.today ? "done" : ""}" data-i="${h.i}" aria-pressed="${h.today}">
+          <div class="top"><span class="emoji">${emoji(h.name)}</span><span class="badge">${tick}</span></div>
+          <div class="nm">${esc(h.name)}</div>
+          <div class="st">${h.streak ? `🔥 ${h.streak} day${h.streak > 1 ? "s" : ""}` : "Start a streak"} · best ${h.best}</div>
+          <div class="dots" aria-hidden="true">${wk.map((d) => `<span class="${done(d, h) ? "on" : ""}${d > today ? " fut" : ""}"></span>`).join("")}</div>
+        </button>`).join("")}</div>
+      <div class="err" role="alert">${esc(error)}</div>
+      <div class="wide2"><section><div class="label">Badges · ${awards.filter((a) => a[3]).length}/${awards.length}</div>
+      <div class="awards">${awards.map((a) => `<div class="award ${a[3] ? "" : "locked"}"><div class="e">${a[0]}</div><div class="t">${a[1]}</div><div class="d">${a[2]}</div></div>`).join("")}</div></section>
+      <section><div class="label">Last ${span === 28 ? "four" : "two"} weeks</div>
+      <div class="card grid" style="--days:${span}">
+        <div class="row days"><div></div>${days.map((d) => `<div class="cell">${"SMTWTFS"[new Date(d + "T12:00:00Z").getUTCDay()]}</div>`).join("")}</div>
+        ${habits.map((h) => `<div class="row"><div class="h">${esc(h.name)}</div>${days.map((d) => `<div class="cell${done(d, h) ? " on" : ""}${d === today ? " today" : ""}"></div>`).join("")}</div>`).join("")}
+      </div></section></div>`;
+    if (pending) { const p = pending; pending = null; const el = app.querySelector(`.tile[data-i="${p.i}"]`); if (el && p.on) burst(el, all && p.all); }
+    app.querySelectorAll(".tile").forEach((b) => b.addEventListener("click", async () => {
+      const h = habits.find((x) => x.i === Number(b.dataset.i));
+      const row = byDate.get(today), value = h.today ? "" : "✓";
+      pending = { i: h.i, on: !h.today, all: nDone + 1 === habits.length };
+      const r = row
+        ? await amber.update({ op: "set_cell", table: t.index, row: row.i, col: h.name, value })
+        : await amber.update({ op: "append_row", table: t.index, values: { [t.columns[dc].name]: today, [h.name]: value } });
+      error = r.ok ? "" : r.error;
+      if (!r.ok) { pending = null; render(amber.note); }
+    }));
+  }
+  amber.onChange(render);
+  let wide = innerWidth >= 900;
+  addEventListener("resize", () => { if ((innerWidth >= 900) !== wide) { wide = !wide; render(amber.note); } });
+</script>
+</body>
+</html>

@@ -539,3 +539,16 @@
 {"at":"2026-10-05T15:19:42.308Z","round":"r11","task":"chart-dashboard","model":"claude-sonnet-5-5","usd":0.1595,"usage":{"input":12,"output":4950,"cacheRead":108899,"cacheWrite":35276,"turns":5}}
 {"at":"2026-10-05T15:19:51.312Z","round":"r11","task":"wifi-qr-npm","model":"claude-sonnet-5-5","usd":0.1407,"usage":{"input":16,"output":3069,"cacheRead":162377,"cacheWrite":31012,"turns":7}}
 {"at":"2026-10-05T15:20:34.608Z","round":"r11","task":"solar-system-3d","model":"claude-sonnet-5-5","usd":0.2156,"usage":{"input":16,"output":8004,"cacheRead":187469,"cacheWrite":39203,"turns":7}}
+{"at":"2026-10-05T15:22:24.967Z","round":"r12","task":"game-from-vocabulary","model":"claude-sonnet-5-5","usd":0.1871,"usage":{"input":14,"output":6504,"cacheRead":144986,"cacheWrite":37212,"turns":6}}
+{"at":"2026-10-05T15:22:33.867Z","round":"r12","task":"game-from-vocabulary","model":"claude-sonnet-5-5","usd":0.2067,"usage":{"input":16,"output":7487,"cacheRead":184459,"cacheWrite":37953,"turns":7}}
+{"at":"2026-10-05T15:22:52.840Z","round":"r12","task":"game-from-vocabulary","model":"claude-sonnet-5-5","usd":0.2355,"usage":{"input":20,"output":8281,"cacheRead":264367,"cacheWrite":39917,"turns":9}}
+{"at":"2026-10-05T15:23:34.514Z","round":"r12","task":"habits-more-fun","model":"claude-sonnet-5-5","usd":0.1989,"usage":{"input":14,"output":7888,"cacheRead":138213,"cacheWrite":36938,"turns":6}}
+{"at":"2026-10-05T15:23:39.682Z","round":"r12","task":"habits-more-fun","model":"claude-sonnet-5-5","usd":0.1563,"usage":{"input":14,"output":7462,"cacheRead":153614,"cacheWrite":20365,"turns":6}}
+{"at":"2026-10-05T15:23:57.617Z","round":"r12","task":"habits-more-fun","model":"claude-sonnet-5-5","usd":0.1595,"usage":{"input":14,"output":7690,"cacheRead":154170,"cacheWrite":20684,"turns":6}}
+{"at":"2026-10-05T15:24:35.470Z","round":"r12","task":"drum-machine","model":"claude-sonnet-5-5","usd":0.1926,"usage":{"input":16,"output":6348,"cacheRead":182318,"cacheWrite":37034,"turns":7}}
+{"at":"2026-10-05T15:24:41.546Z","round":"r12","task":"drum-machine","model":"claude-sonnet-5-5","usd":0.1481,"usage":{"input":14,"output":6355,"cacheRead":161765,"cacheWrite":20880,"turns":6}}
+{"at":"2026-10-05T15:25:00.191Z","round":"r12","task":"drum-machine","model":"claude-sonnet-5-5","usd":0.1567,"usage":{"input":16,"output":6459,"cacheRead":199202,"cacheWrite":20908,"turns":7}}
+{"at":"2026-10-05T15:25:26.271Z","round":"r12","task":"mortgage-calculator","model":"claude-sonnet-5-5","usd":0.1288,"usage":{"input":12,"output":5582,"cacheRead":124670,"cacheWrite":19204,"turns":5}}
+{"at":"2026-10-05T15:25:42.417Z","round":"r12","task":"mortgage-calculator","model":"claude-sonnet-5-5","usd":0.2068,"usage":{"input":16,"output":7525,"cacheRead":184341,"cacheWrite":37844,"turns":7}}
+{"at":"2026-10-05T15:26:17.731Z","round":"r12","task":"mortgage-calculator","model":"claude-sonnet-5-5","usd":0.1795,"usage":{"input":16,"output":8230,"cacheRead":202105,"cacheWrite":22696,"turns":7}}
+{"at":"2026-10-05T15:26:28.111Z","round":"r12","task":"visual-water-tracker","model":"claude-sonnet-5-5","usd":0.1806,"usage":{"input":16,"output":5424,"cacheRead":179734,"cacheWrite":36137,"turns":7}}
