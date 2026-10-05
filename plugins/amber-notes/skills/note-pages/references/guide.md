@@ -18,21 +18,24 @@ Change the note only through amber.update(op), which returns a Promise of { ok: 
   { op: "delete_row", table, row }  { op: "move_row", table, from, to }
   { op: "set_text", heading, text }            replaces the text under that heading (up to the next heading of the same level)
   { op: "add_checklist_item", text, under_heading? }  a new open "- [ ] text" after the last open item of that checklist (keep checklists as checklists)
-Each change lands in the note's markdown as a normal edit the person can see and undo.
+  { op: "add_column", table, name, type?, after? }  { op: "rename_column", table, col, to }
+  amber.update([op, op, ...]) applies several as ONE change with one Undo (all or nothing): use it for a workout's sets, imported rows, a grocery run. Each op sees the note as the ones before it left it (lines move down after added rows).
+Each change lands in the note's markdown as a normal edit the person can see and undo. Changes to the app's own data are quiet (no receipt): use the data for app state.
 The page's own data (not the note's text; for state the person wouldn't type, like settings, logs, a schedule): amber.data = { values, collections };
   amber.store.get(key) / amber.store.set(key, value); amber.store.collection(name).list() / query(fn) / get(id) / add(fields) -> { id } / update(id, patch) / remove(id); amber.setData(mergePatch).
-  amber.onChange(fn) passes (note, data). Up to 4 MB. Files: amber.files.save({ name, type, base64 }) -> { file: { $file, ... } }, amber.files.read(ref) -> { dataURL }; keep the ref in a record.
+  amber.onChange(fn) passes (note, data). Up to 4 MB. Files: amber.files.save({ name, type, base64 }) -> { file: { $file, ... } }; keep the ref in a record and show it with amber.files.url(ref, { width }) as an <img>/<audio>/<video> src (instant, no data: URLs in the data); amber.files.read(ref) -> { dataURL } when you need the bytes.
 The device, through the system's own prompts (results go to the page only; write to the note explicitly if wanted): amber.device.reminders.create({ title, due, repeat: "daily" }), calendar.today() -> { events: [{ title, start, end, location, attendees }] },
-  notify({ title, body, at | in }), openURL(url), photos.pick({ limit }) / camera.take() -> { files: [{ $file, thumb }] }, contacts.pick() -> { contact }, files.pick(), location.once() -> { lat, lon, place },
-  maps.open({ lat, lon | query, directions }), maps.snapshot({ lat, lon, km, width, height, dark }) -> { dataURL }. On-device AI: amber.ai.available(), amber.ai.respond(prompt, { instructions }) -> { text }. Every call returns { ok, ... } or { ok: false, error }.
+  notify({ title, body, at | in }) -> { id }, notify.cancel(id), reminders.complete(id) / reminders.delete(id) (only ones an app made), openURL(url), photos.pick({ limit }) / camera.take() -> { files: [{ $file, thumb }] }, contacts.pick() -> { contact: { name, organization, emails, phones, addresses, birthday?, photo? } }, files.pick(), location.once() -> { lat, lon, place },
+  maps.open({ lat, lon | query, directions }), maps.snapshot({ lat, lon, km | pins: [{ lat, lon, label }], fit, pin, width, height, dark }) -> { dataURL, region, points: [{ x, y }] } (points: where each pin landed, to draw on top). On-device AI: amber.ai.available(), amber.ai.respond(prompt, { instructions }) -> { text }. Every call returns { ok, ... } or { ok: false, error }.
 Settings the person can change without an AI: declare <meta name="amber-settings" content='{"settings": [{ "key": "budget", "label": "Monthly budget", "type": "number", "default": 15000 }]}'> (types: text, number, choice with "options", list, color, currency).
   Amber Notes shows them in App Settings; read amber.settings (defaults filled in); onChange runs when they change. Use settings for names, goals, limits, currencies and categories instead of hardcoding them.
 Network: the page itself can't reach anything. Declare hosts in <meta name="amber-needs" content='{"hosts": ["api.open-meteo.com"], "keys": [{ "name": "OpenWeather", "hosts": ["api.openweathermap.org"], "query": "appid={key}", "help": "How to get one" }]}'>
-  and call amber.fetch(url, { method, headers, body, key }) -> { ok, status, body }. The person approves each host once and sees every request; with key, the app adds that API key (the page never sees it).
+  and call amber.fetch(url, { method, headers, body, key }) -> { ok, status, body }. The person approves each host once and sees every request; with key, the app adds that API key (the page never sees it). Redirects are followed only to declared, approved hosts.
 Look like Amber Notes: the app sets these CSS variables on :root, already switched for light and dark, and gives body its font, text colour and background. Use them instead of your own colours and fonts:
   --amber-bg (the note's background), --amber-surface (cards and grouped rows), --amber-fill (controls, empty cells), --amber-text, --amber-text-secondary, --amber-separator,
   --amber-accent (amber, for marks and filled controls), --amber-accent-text (amber for text), --amber-accent-soft (a soft amber fill), --amber-on-accent (text on --amber-accent),
   --amber-danger, --amber-radius (cards), --amber-radius-small (controls), --amber-font (the system font), --amber-font-rounded, --amber-font-mono, --amber-content-max, --amber-gutter.
+Size text in rem: on iPhone the root follows the reader's text size. In a parent note the app can show as a small widget: <html> then has the class amber-widget; use a compact layout.
 Fit every width: the page fills the note, from 320 px on a small iPhone to 1,800 px in a full-screen Mac window, and re-lays out live as the window resizes. Put content in a container with max-width: var(--amber-content-max) (1100 px), margin: 0 auto and side padding var(--amber-gutter). Use one column under 600 px, and from 900 px use the room (side-by-side sections, more history, bigger numbers) with @media (min-width: 900px) or the classes amber-narrow / amber-medium / amber-wide the app keeps on <html>. Never a fixed width, never a stretched phone layout. Don't set a background on html or body.
 One self-contained HTML document, at most 256 KB; the app's own data at most 4 MB.
 
@@ -77,6 +80,7 @@ Names, goals, limits, currencies, categories, the list of habits to track: decla
 
 - Find tables and columns by name, case-insensitively, not by position: `const t = note.tables.find(t => t.columns.some(c => /^date$/i.test(c.name)))`. Fall back gracefully when a column is missing (show an empty state that says which column to add), never throw.
 - Cells are strings. Parse numbers leniently: `parseFloat(s.replace(/\s/g, "").replace(",", "."))`, treat NaN as empty. Treat ✓, x, yes, done, 1, true as done.
+- amber.data is there synchronously (amber.data.values, amber.data.collections, amber.settings); amber.store.get and the collection reads return promises, so await them or read amber.data. Never show "[object Promise]", "undefined" or "NaN": check_app flags them.
 - Dates are "yyyy-mm-dd" strings; compare them as strings. Use amber.note.today, not the clock, for "today".
 - Empty table or note: render a friendly empty state with what to add, not a blank page.
 - Apps must handle 0 rows and 500 rows. Build HTML strings once per render, not per cell with appendChild in a loop.
@@ -104,7 +108,7 @@ Every app should look like it was made for what it does. A tracker, a game, a ca
 - Pick the form from the job. A habit tracker can be a wall of days, a garden that grows, or a ring per habit. A budget can be a dial or a stacked bar over the month. A calculator is a keypad with a big display. A vocabulary note can be a game. Use type scale, space, grids, canvas and SVG, with motion where it explains something.
 - Still: one clear focus first, then details. Readable text (at least 12 px, contrast 4.5:1), tabular-nums for numbers, no emoji as icons (inline SVG), no motion that loops for nothing; respect prefers-reduced-motion.
 - Accessibility: real <button>s and <input>s; every input has a <label> (or aria-label); icon-only buttons have aria-label; state that is shown by color is also shown another way; canvas and SVG views get role="img" and an aria-label, or a text equivalent; lang on <html>.
-- Keep it small: most good apps are 6-30 KB of HTML (libraries don't count; see Libraries).
+- Keep it small: most good apps are 6-30 KB of HTML; libraries load by name and don't count (see Libraries).
 
 ## Sizes
 
@@ -112,10 +116,19 @@ You own the layout at every size; the app must work and look intended across the
 
 - iPhone: 320-440 pt wide, portrait and landscape (up to about 930 pt wide in landscape, short height), safe areas at the edges, and the keyboard covering the bottom half while someone types.
 - Mac: a note window from about 500 to 1,400+ px wide, resized live. Use the room on wide windows: a 400 px column floating in a 1,280 px window is a phone layout stretched, not a design.
-- Embedded in another note (a sub-note shown inside its parent): a narrow strip, often 300-700 px wide and short. Keep a compact form that still makes sense.
+- Embedded in another note (a sub-note shown inside its parent): a short strip, often 300-700 px wide, with the class amber-widget on <html>. Keep a compact form that still makes sense there (the title, the one number or control that matters).
+- Text sizes in rem: on iPhone the root follows the reader's text size, so the layout must hold at larger text too.
 - Touch targets at least 44 pt on iPhone. Hover only as an extra on Mac, never the only way. Keyboard shortcuts are welcome on Mac (and for games).
 - Use what fits: CSS grid and flex with wrapping, container queries (container-type: inline-size; @container (min-width: …)), clamp() for type, and media queries. The app also sets the classes amber-narrow / amber-medium / amber-wide on <html> (under 600, to 900, from 900 px) as a convenience; don't rely on them.
-- check_app renders at 375, 768 and 1,280 px and reports overflow, clipped text, small targets on the phone and an empty wide window.
+- check_app renders at 375, 768 and 1,280 px (and the widget strip for sub-notes) and reports overflow, clipped text, small targets on the phone and an empty wide window.
+
+## Libraries
+
+Libraries load by name, never pasted into the app:
+- Bundled with Amber Notes (no network, instant): chart.js 4.4.4 (charts: bar, line, doughnut, radar, scatter; global Chart); d3 7.9.0 (custom data visualizations, scales, shapes, layouts; global d3); three 0.169.0 (3D: scenes, cameras, meshes, lights (an ES module: import * as THREE from "three")); tone 15.0.4 (music and sound: synths, samplers, sequencers, transport; global Tone); dayjs 1.11.13 (dates: parse, format, add, diff; global dayjs); marked 14.1.3 (markdown to HTML (escape or sanitize what you show); global marked).
+  Classic: <script src="amber-lib:chart.js"></script>. ES module: <script type="importmap">{"imports": {"three": "amber-lib:three"}}</script> then <script type="module">import * as THREE from "three"; …</script>.
+- Anything else on npm, pinned and hashed: call resolve_package { name, version?, file? } and paste the tag it returns, like <script src="amber-lib:npm/qrcode@1.5.4/build/qrcode.js" integrity="sha256-…"></script>. Amber Notes downloads that exact file once, checks the hash and serves it locally; a reference without an exact version and integrity is refused. Prefer a bundled library when one does the job; keep npm packages small and few.
+- Never paste a library's code into the app (it bloats the app and can't be updated or checked); check_app flags inlined copies.
 
 ## Games, toys and fun
 

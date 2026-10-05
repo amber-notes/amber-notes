@@ -3,6 +3,7 @@
 
 import { type KeyInfo, render, renderedReport, staticReport, titleReport } from "./app_check.ts";
 import { noteForPage } from "./page_input.ts";
+import { resolvePackage } from "./libraries.ts";
 import { sampleData, sampleNote } from "./app_sample.ts";
 import { bodyOf, Content, findNote, ToolError, type Call, type Tx } from "./tools.ts";
 
@@ -33,6 +34,12 @@ export const appTools = [
       },
     },
     annotations: read,
+  },
+  {
+    name: "resolve_package", title: "Pin an npm package for an app",
+    description: "For a library Amber Notes doesn't bundle: looks up an npm package's file at an exact version and returns the tag to put in the note's app, with its integrity hash, e.g. <script src=\"amber-lib:npm/qrcode@1.5.4/build/qrcode.js\" integrity=\"sha256-…\">. Amber Notes downloads that exact file once, checks the hash and serves it locally. Never paste a library's code into an app, and prefer the bundled ones (get_page_guide lists them).",
+    inputSchema: { type: "object", properties: { name: str("npm package name, e.g. \"qrcode\" or \"@scope/pkg\"."), version: str("Exact version or range; default latest."), file: str("A file in the package, e.g. \"build/qrcode.js\"; default the package's browser build.") }, required: ["name"] },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
   },
 ];
 
@@ -81,6 +88,10 @@ export const appHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<u
       ...(browser === null ? { browser: r } : { browser_checked: `375 px light and dark, 768 and 1280 px light${n.parent_id !== null || /amber-widget/.test(html) ? ", and the 340 px widget strip" : ""}, over a sample note` }),
       next: issues.length ? "Fix these with edit_note_page (or set_note_page), then run check_app again." : "Nothing to fix.",
     };
+  },
+
+  async resolve_package(_tx, a) {
+    try { return await resolvePackage(String(a.name ?? "").trim(), typeof a.version === "string" && a.version.trim() ? a.version.trim() : undefined, typeof a.file === "string" && a.file.trim() ? a.file.trim() : undefined); } catch (e) { throw new ToolError((e as Error).message); }
   },
 
   async preview_app(tx, a, c) {

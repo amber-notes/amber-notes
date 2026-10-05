@@ -5,6 +5,7 @@ import { assert, assertEquals, assertStringIncludes } from "jsr:@std/assert@1";
 import type { PGlite } from "npm:@electric-sql/pglite@0.2.17";
 import { sampleData, sampleNote } from "./app_sample.ts";
 import { networkReport } from "./app_check.ts";
+import { libraryReport } from "./libraries.ts";
 import { findTables } from "./notes.ts";
 import { schemaDB } from "./pglite.ts";
 import { type Account, account, app, note, toolContext } from "./sealed.ts";
@@ -36,6 +37,17 @@ Deno.test("network and keys: declared vs used vs set up, and keys pasted into th
   assertStringIncludes(r, "has no value yet");
   assertStringIncludes(r, "looks like an API key");
   assertStringIncludes(networkReport(html, []).join(), "isn't in Settings › API Keys yet");
+});
+
+Deno.test("libraries: pasted copies, unpinned or unhashed npm references and unknown names are flagged", () => {
+  const pasted = `<script>/*! Chart.js v4.4.4 | https://www.chartjs.org */${"x".repeat(6000)}</script><script>amber.onChange(() => {})</script>`;
+  assertStringIncludes(libraryReport(pasted).join(), "pasted copy of chart.js");
+  assertStringIncludes(libraryReport(`<script>${"y".repeat(70000)}</script>`).join(), "looks like a pasted library");
+  assertStringIncludes(libraryReport(`<script src="amber-lib:npm/qrcode-generator@^2/dist/qrcode.js"></script>`).join(), "pin an exact version");
+  assertStringIncludes(libraryReport(`<script src="amber-lib:npm/qrcode-generator@2.0.4/dist/qrcode.js"></script>`).join(), "no integrity hash");
+  assertEquals(libraryReport(`<script src="amber-lib:npm/qrcode-generator@2.0.4/dist/qrcode.js" integrity="sha256-eeyG+ChWAFsciHkFz8z8++w4Icphx/1alS+qX3ePeRw="></script><script src="amber-lib:chart.js"></script>`), []);
+  assertEquals(libraryReport(`<script type="importmap">{"imports": {"three": "amber-lib:three"}}</script>`), []);
+  assertStringIncludes(libraryReport(`<script src="amber-lib:leaflet"></script>`).join(), "isn't a bundled library");
 });
 
 Deno.test("check_app and preview_app render a sample through the render service", async () => {

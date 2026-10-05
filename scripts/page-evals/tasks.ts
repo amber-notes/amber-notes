@@ -3,6 +3,7 @@
 // Generic checks (the page renders, fits a phone, has dark mode, labels...) are in score.ts; the
 // ones here are about this task's data and intent.
 import { findTables } from "../../supabase/functions/mcp/notes.ts";
+import { libraryReport } from "../../supabase/functions/mcp/libraries.ts";
 import type { Render } from "../page-render/render.ts";
 
 export type Seed = { body: string; page?: string; data?: { values?: Record<string, unknown>; collections?: Record<string, Record<string, unknown>[]> } };
@@ -358,6 +359,27 @@ Goal: 8 glasses a day.
 | --- | --- |
 ${Array.from({ length: 14 }, (_, i) => `| ${day(i - 13)} | ${[6, 8, 5, 9, 7, 8, 4, 8, 10, 6, 7, 8, 9, 3][i]} |`).join("\n")}
 `;
+
+
+const SALES = `Sales 2026
+
+| Month | Coffee | Pastries | Merch |
+| --- | --- | --- | --- |
+${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep"].map((m, i) => `| ${m} | ${42000 + i * 1800 + (i % 3) * 2500} | ${15000 + i * 900 - (i % 2) * 1200} | ${3000 + ((i * 1700) % 5000)} |`).join("\n")}
+`;
+const PLANETS = `Planets
+
+| Planet | Distance (AU) | Radius (km) | Day (hours) |
+| --- | --- | --- | --- |
+| Mercury | 0.39 | 2440 | 4222 |
+| Venus | 0.72 | 6052 | 2802 |
+| Earth | 1.00 | 6371 | 24 |
+| Mars | 1.52 | 3390 | 25 |
+| Jupiter | 5.20 | 69911 | 10 |
+| Saturn | 9.58 | 58232 | 11 |
+`;
+const noPasted = (f: Final) => check("no_pasted_library", !libraryReport(f.page ?? "").some((x) => /pasted/.test(x)), "a library is pasted into the app");
+const libsOk = (f: Final) => check("libraries_ok", libraryReport(f.page ?? "").length === 0, libraryReport(f.page ?? "").join(" "));
 
 // MARK: Tasks
 
@@ -783,6 +805,36 @@ export const TASKS: Task[] = [
     prompt: "Make my Water note visual. I want to see at a glance how I'm doing, not read a list.",
     seed: { body: WATER }, page: true, varied: true, interact: true,
     checks: (f) => [unchanged(f)],
+  },
+  {
+    id: "chart-dashboard",
+    prompt: "Make my Sales 2026 note a dashboard: how each line is trending, the mix, and the best and worst months. Charts, please.",
+    seed: { body: SALES }, page: true, varied: true,
+    checks: (f) => [
+      unchanged(f), noPasted(f), libsOk(f),
+      check("uses_a_chart_library", /amber-lib:(chart\.js|d3)/.test(f.page ?? "") || ((f.page ?? "").match(/<(path|rect|line|polyline)\b/g) ?? []).length >= 5 || /<svg/.test(f.page ?? ""), "no bundled chart library and no drawn charts"),
+    ],
+  },
+  {
+    id: "solar-system-3d",
+    prompt: "Make my Planets note a 3D solar system I can spin with my finger, planets sized and spaced from the table (squashed so it fits).",
+    seed: { body: PLANETS }, page: true, plays: true, varied: true,
+    checks: (f) => [
+      unchanged(f), noPasted(f), libsOk(f),
+      check("uses_three", /amber-lib:three/.test(f.page ?? ""), "doesn't load the bundled three.js"),
+      check("reads_the_table", /\.tables\b/.test(f.page ?? "") && !/69911[^]{0,300}58232/.test(f.page ?? ""), "planets aren't read from the note"),
+    ],
+  },
+  {
+    id: "wifi-qr-npm",
+    prompt: "My Guest wifi note has the network name and password. Make it an app that shows a big QR code guests can scan with their phone camera to join.",
+    seed: { body: "Guest wifi\n\nNetwork: Lindgren Guest\nPassword: kanelbulle-42\nSecurity: WPA2\n" }, page: true, varied: true,
+    checks: (f) => [
+      unchanged(f), noPasted(f), libsOk(f),
+      check("pinned_npm_or_own_code", /amber-lib:npm\/[^"']+@\d+\.\d+\.\d+[^"']*["'][^>]*integrity=|["']amber-lib:npm\/[^"']+["']\s*:\s*["']sha/.test(f.page ?? "") || f.calls.some((c) => c.name === "resolve_package" && !c.error), "no pinned, hashed npm package"),
+      check("wifi_payload", /WIFI:/.test(f.page ?? ""), "doesn't build a WIFI: QR payload"),
+      check("reads_the_note", /amber\.note|\.markdown\b/.test(f.page ?? "") && !/kanelbulle-42/.test(f.page ?? ""), "the password is copied into the app instead of read from the note"),
+    ],
   },
 ];
 

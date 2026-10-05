@@ -31,7 +31,7 @@ type Tool = {
   description: string;
   inputSchema: Record<string, unknown>;
   // title is repeated here because Claude's directory reads annotations.title.
-  annotations: { title?: string; readOnlyHint: boolean; destructiveHint: boolean; idempotentHint?: boolean; openWorldHint: false };
+  annotations: { title?: string; readOnlyHint: boolean; destructiveHint: boolean; idempotentHint?: boolean; openWorldHint: boolean };
   // ChatGPT reads this per tool: which OAuth scope the call needs.
   securitySchemes?: { type: "oauth2"; scopes: string[] }[];
 };

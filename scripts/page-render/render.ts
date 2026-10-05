@@ -4,6 +4,7 @@
 // overflow, contrast, small or faint text, unlabeled controls, an edit from the app, and probes
 // over changed notes. Used by the render service (server.ts, behind check_app and preview_app) and
 // by the evals. Edits run through page_input.ts, the TypeScript twin of Pane/Model/NotePage.swift.
+import { Buffer } from "node:buffer";
 import { webkit, type Browser, type Page } from "npm:playwright-core@1.63.0";
 import { applyPageOp, noteForPage } from "../../supabase/functions/mcp/page_input.ts";
 import { mergePatch } from "../../supabase/functions/mcp/data_ops.ts";
@@ -26,11 +27,54 @@ export const THEME = `:root { color-scheme: light dark; ${vars(false)}; --amber-
   `@media (prefers-color-scheme: dark) { :root { ${vars(true)}; } }\n` +
   `body { margin: 0; background: var(--amber-bg); color: var(--amber-text); font: 17px/1.35 var(--amber-font); -webkit-text-size-adjust: 100%; }`;
 
+// Libraries (amber-lib:…, see supabase/functions/mcp/libraries.ts). The app serves them from its own
+// copy; here they're served from a local cache of the same npm files at a made-up host the CSP allows,
+// and a hash the page declares is checked here (the browser can't for these requests).
+const LIB_HOST = "https://lib.amber.invalid/";
+const libCache = new URL("./.libcache/", import.meta.url);
+
+/** The page as the app loads it, plus the integrity hashes it declares for its libraries. */
 export function sandboxed(html: string): string {
+  return prepare(html).html;
+}
+
+function prepare(html: string): { html: string; integrity: Map<string, string> } {
   let rest = html.replace(/^[\s\uFEFF]+/, "");
   if (/^<!doctype/i.test(rest)) rest = rest.slice(rest.indexOf(">") + 1);
-  return `<!doctype html><meta http-equiv="Content-Security-Policy" content="${POLICY}"><meta name="viewport" content="width=device-width, initial-scale=1">` +
-    `<style id="amber-theme">${THEME}</style>` + rest;
+  const integrity = new Map<string, string>();
+  for (const m of rest.matchAll(/["'](amber-lib:[^"']+)["'][^>]*?integrity\s*=\s*["']([^"']+)["']/gi)) integrity.set(m[1], m[2]);
+  for (const m of rest.matchAll(/["'](amber-lib:[^"']+)["']\s*:\s*["'](sha(?:256|384|512)-[^"']+)["']/g)) integrity.set(m[1], m[2]);
+  rest = rest.replace(/\sintegrity\s*=\s*["'][^"']*["']/gi, "").replace(/,?\s*"integrity"\s*:\s*\{[^}]*\}/g, "").replace(/amber-lib:/g, LIB_HOST);
+  const policy = POLICY.replace("script-src 'unsafe-inline'", `script-src 'unsafe-inline' ${LIB_HOST}`);
+  return {
+    html: `<!doctype html><meta http-equiv="Content-Security-Policy" content="${policy}"><meta name="viewport" content="width=device-width, initial-scale=1">` +
+      `<style id="amber-theme">${THEME}</style>` + rest,
+    integrity,
+  };
+}
+
+/** A library's bytes: a bundled one by name, or a pinned npm file; cached on disk after the first time. */
+async function library(path: string): Promise<Uint8Array | null> {
+  const { BUNDLED } = await import("../../supabase/functions/mcp/libraries.ts");
+  const bundled = BUNDLED.find((b) => b.name === path);
+  const npm = bundled ? bundled.npm : path.startsWith("npm/") ? path.slice(4) : null;
+  if (!npm || !/@\d+\.\d+\.\d+/.test(npm)) return null;
+  const file = new URL(npm.replace(/[^\w.@-]/g, "_"), libCache);
+  try { return await Deno.readFile(file); } catch { /* not cached yet */ }
+  const res = await fetch(`https://cdn.jsdelivr.net/npm/${npm}`);
+  if (!res.ok) { await res.body?.cancel(); return null; }
+  const bytes = new Uint8Array(await res.arrayBuffer());
+  await Deno.mkdir(libCache, { recursive: true });
+  await Deno.writeFile(file, bytes);
+  return bytes;
+}
+
+async function sri(bytes: Uint8Array, want: string): Promise<boolean> {
+  const [alg, b64] = want.split(/-(.*)/s);
+  const name = alg === "sha256" ? "SHA-256" : alg === "sha384" ? "SHA-384" : alg === "sha512" ? "SHA-512" : null;
+  if (!name) return false;
+  const got = btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.digest(name, new Uint8Array(bytes)))));
+  return got === b64;
 }
 
 // Pane/Views/NotePageView.swift bootstrap(data:store:), with the app's message handlers replaced by
@@ -203,9 +247,18 @@ async function renderOnce(html: string, markdown: string, data: unknown, opts: R
     // The document is served at one made-up address, so init scripts run on it like the app's
     // user script; every other request is recorded and refused.
     const home = "https://page.amber.invalid/";
+    const prepared = prepare(html);
     await page.route("**/*", (r) => {
       const u = r.request().url();
-      if (u === home) return r.fulfill({ status: 200, contentType: "text/html; charset=utf-8", body: sandboxed(html) });
+      if (u === home) return r.fulfill({ status: 200, contentType: "text/html; charset=utf-8", body: prepared.html });
+      if (u.startsWith(LIB_HOST)) {
+        const path = decodeURIComponent(u.slice(LIB_HOST.length));
+        return library(path).then(async (bytes) => {
+          const want = prepared.integrity.get(`amber-lib:${path}`);
+          if (!bytes || (path.startsWith("npm/") && (!want || !(await sri(bytes, want))))) { blocked.push(`amber-lib:${path}${bytes ? " (hash missing or wrong)" : ""}`); return r.abort(); }
+          return r.fulfill({ status: 200, contentType: "text/javascript; charset=utf-8", headers: { "access-control-allow-origin": "*" }, body: Buffer.from(bytes) });
+        });
+      }
       if (u.startsWith("data:")) return r.continue();
       blocked.push(u);
       return r.abort();

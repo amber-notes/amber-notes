@@ -5,6 +5,7 @@
 
 import { declaredHosts, pageProblems } from "./page.ts";
 import { pageWarnings } from "./page_lint.ts";
+import { libraryReport } from "./libraries.ts";
 
 export type KeyInfo = { name: string; hosts: string[]; set: boolean };
 
@@ -47,7 +48,7 @@ export function networkReport(html: string, keys: KeyInfo[]): string[] {
 
 /** Findings that need only the HTML: the server's refusals and warnings, and the network. */
 export function staticReport(html: string, body: string, keys: KeyInfo[]): { errors: string[]; warnings: string[] } {
-  return { errors: pageProblems(html), warnings: [...pageWarnings(html, body), ...networkReport(html, keys)] };
+  return { errors: pageProblems(html), warnings: [...pageWarnings(html, body), ...networkReport(html, keys), ...libraryReport(html)] };
 }
 
 type View = {

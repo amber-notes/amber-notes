@@ -5,11 +5,13 @@
 
 import { MAX_PAGE_BYTES, MAX_PAGE_DATA_BYTES, PAGE_CONTRACT } from "./page.ts";
 import { PAGE_TEMPLATES } from "./page_templates.gen.ts";
+import { LIBRARY_GUIDE } from "./libraries.ts";
 
 /** The few lines every client sees in the server's instructions. Clients differ in what else they
  *  read (resources, prompts, skills), so this and the tool descriptions carry the essentials. */
 export const PAGE_INSTRUCTIONS = `Apps: a note can have an app side, a small HTML app (a habit grid, a budget, flashcards) next to its Text side. In tools it's the note's "page"; with the person always call it "the note's app" and the "App" side, never "page".
 - Before making, redesigning or fixing an app, call get_page_guide once, then read_note and get_note_page.
+- Libraries load by name, never pasted in: bundled ones (charts, D3, three.js, Tone.js, dates, markdown) as <script src="amber-lib:name">, any other npm package through resolve_package (pinned and hashed).
 - Make each app fit its job (a game, a dial, a calendar wall, a keypad), not always a card with a list; Amber's colors and dark mode are the base. Games and toys are welcome. It must work on an iPhone (320-440 pt) and in a Mac window (500-1400+ px).
 - After creating or changing an app, run check_app (and preview_app if you can see images) and fix what they report before telling the person it's done.
 - Data never needs the app rewritten: the note's tables and checklists change with add_table_rows, update_table_rows, delete_table_rows, edit_table_columns, add_checklist_items, update_checklist_items; the app's own data (values, collections of records, files) with get_page_data / update_page_data.
@@ -101,7 +103,7 @@ Every app should look like it was made for what it does. A tracker, a game, a ca
 - Pick the form from the job. A habit tracker can be a wall of days, a garden that grows, or a ring per habit. A budget can be a dial or a stacked bar over the month. A calculator is a keypad with a big display. A vocabulary note can be a game. Use type scale, space, grids, canvas and SVG, with motion where it explains something.
 - Still: one clear focus first, then details. Readable text (at least 12 px, contrast 4.5:1), tabular-nums for numbers, no emoji as icons (inline SVG), no motion that loops for nothing; respect prefers-reduced-motion.
 - Accessibility: real <button>s and <input>s; every input has a <label> (or aria-label); icon-only buttons have aria-label; state that is shown by color is also shown another way; canvas and SVG views get role="img" and an aria-label, or a text equivalent; lang on <html>.
-- Keep it small: most good apps are 6-30 KB of HTML (libraries don't count; see Libraries).
+- Keep it small: most good apps are 6-30 KB of HTML; libraries load by name and don't count (see Libraries).
 
 ## Sizes
 
@@ -114,6 +116,10 @@ You own the layout at every size; the app must work and look intended across the
 - Touch targets at least 44 pt on iPhone. Hover only as an extra on Mac, never the only way. Keyboard shortcuts are welcome on Mac (and for games).
 - Use what fits: CSS grid and flex with wrapping, container queries (container-type: inline-size; @container (min-width: …)), clamp() for type, and media queries. The app also sets the classes amber-narrow / amber-medium / amber-wide on <html> (under 600, to 900, from 900 px) as a convenience; don't rely on them.
 - check_app renders at 375, 768 and 1,280 px (and the widget strip for sub-notes) and reports overflow, clipped text, small targets on the phone and an empty wide window.
+
+## Libraries
+
+${LIBRARY_GUIDE}
 
 ## Games, toys and fun
 
