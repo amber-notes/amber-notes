@@ -72,7 +72,7 @@ export const fileTools = [
   },
 ];
 
-async function projectOf(tx: Tx, c: Call, id: string): Promise<{ project: Project; exists: boolean }> {
+export async function projectOf(tx: Tx, c: Call, id: string): Promise<{ project: Project; exists: boolean }> {
   const [row] = await tx<{ page_ct: string | null }[]>`select page_ct from public.note_pages where note_id = ${id} for update`;
   if (!row?.page_ct) return { project: parseStored(null), exists: false };
   try { return { project: parseStored(await c.v.openPage(id, row.page_ct)), exists: true }; } catch { throw new ToolError("This note's app can't be opened with this connection's key."); }
@@ -86,10 +86,10 @@ async function dataOf(tx: Tx, c: Call, id: string): Promise<unknown> {
 }
 
 const lines = (t: string) => t.split("\n").length;
-const fileList = (p: Project) => Object.keys(p.files).sort().map((path) => ({ path, bytes: new TextEncoder().encode(p.files[path]).length, lines: lines(p.files[path]) }));
+export const fileList = (p: Project) => Object.keys(p.files).sort().map((path) => ({ path, bytes: new TextEncoder().encode(p.files[path]).length, lines: lines(p.files[path]) }));
 
 /** Checks, stores and reports a project after one change. Refuses what the app couldn't run. */
-async function saveProject(tx: Tx, c: Call, n: Note, unlinked: Project, changed: string, a: Args) {
+export async function saveProject(tx: Tx, c: Call, n: Note, unlinked: Project, changed: string, a: Args) {
   const linked = await linkProject(unlinked);
   if (linked.error) throw new ToolError(`Not saved: the CSS doesn't compile.\n${linked.error}`);
   const p = linked.project;
@@ -132,7 +132,7 @@ async function saveProject(tx: Tx, c: Call, n: Note, unlinked: Project, changed:
 }
 
 /** A project with one file set: compiled if it needs it. A syntax error refuses the write. */
-async function withFile(p: Project, path: string, content: string): Promise<Project> {
+export async function withFile(p: Project, path: string, content: string): Promise<Project> {
   const next: Project = { amberApp: 1, files: { ...p.files, [path]: content }, compiled: { ...p.compiled } };
   const react = isReact(next);
   if (needsCompile(path, react)) {

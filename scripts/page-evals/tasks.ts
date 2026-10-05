@@ -6,13 +6,23 @@ import { findTables } from "../../supabase/functions/mcp/notes.ts";
 import { libraryReport } from "../../supabase/functions/mcp/libraries.ts";
 import type { Render, Step } from "../page-render/render.ts";
 
-export type Seed = { body: string; page?: string; data?: { values?: Record<string, unknown>; collections?: Record<string, Record<string, unknown>[]> } };
+export type Seed = {
+  body: string; page?: string; data?: { values?: Record<string, unknown>; collections?: Record<string, Record<string, unknown>[]> };
+  /** Its folder's path ("Work/Clients"), created as needed; none: no folder. */
+  folder?: string; pinned?: boolean;
+  /** Earlier texts, oldest first: the note is created with the first and saved as each, then as body (history). */
+  earlier?: string[];
+};
+/** Every note in the account after the session, for checks across notes. */
+export type NoteState = { id: string; title: string; body: string; folder: string; pinned: boolean; trashed: boolean; parent: string | null };
 export type Final = {
   before: string; after: string; pageBefore: string | null; page: string | null; dataBefore: unknown; data: unknown;
   calls: { name: string; args: Record<string, unknown>; error: boolean }[]; answer: string; render?: Render;
   /** Ids of the seeded files, in order. */
   fileIds?: string[];
   others: { before: string; after: string }[];
+  /** The whole account after the session (notes tasks). */
+  notes?: NoteState[];
 };
 export type Check = { name: string; pass: boolean; detail?: string };
 export type Task = {
@@ -443,6 +453,17 @@ export default function Home() {
   )
 }
 ` });
+
+// The tool-set benchmark's notes.
+const N_GROCERIES = "Groceries\n\n## Dairy\n- [ ] Milk\n- [ ] Butter\n\n## Fruit\n- [x] Apples\n- [ ] Bananas\n";
+const N_MOOD = "Mood\n\n<!-- pane-table: Date=date; Mood=scale 1-5; Walk=choice Yes|No -->\n| Date | Mood | Walk |\n| --- | --- | --- |\n| 2026-10-01 | 3 | Yes |\n| 2026-10-02 | 2 | No |\n| 2026-10-03 | 4 | Yes |\n";
+const N_TRIP = "Lisbon trip\n\nSpent in Lisbon with Ana.\n\n| Date | Item | Category | Amount |\n| --- | --- | --- | --- |\n| 2026-10-01 | Hotel Avenida | Stay | 1 450 |\n| 2026-10-02 | Pastéis | Food | 12,50 |\n";
+const N_INBOX = "Inbox\n\n- Renew passport\n- Book the car service\n";
+const N_WEEKLY = "Weekly\n\n## Goals\n- Ship v2\n- Run 3x\n- Read 2 books\n- Fix the bike\n- Call grandma\n\n## Notes\nQuiet week. Rain on Thursday.\n";
+const N_MEETING = "Meeting\n\nBudget review with Sara on Monday.\n- Headcount\n- Q4 targets\n";
+const WEEK_LOG = ["2026-09-29", "2026-09-30", "2026-10-01", "2026-10-02", "2026-10-03", "2026-10-04", "2026-10-05"].map((date, k) => ({ date, walk: [0, 1, 2, 4, 6].includes(k), read: [1, 3, 5].includes(k) }));
+/** The text under a heading, up to the next heading. */
+const section = (body: string, heading: string) => body.match(new RegExp(`^#+\\s*${heading}\\s*\\n([\\s\\S]*?)(?=^#|$(?![\\s\\S]))`, "m"))?.[1] ?? "";
 
 export const TASKS: Task[] = [
   {
@@ -896,6 +917,183 @@ export const TASKS: Task[] = [
       check("pinned_npm", /name=["']amber-libs["'][^>]*npm:[^"',]+@\d+\.\d+\.\d+[^"',]*#sha(256|384|512)-/.test(f.page ?? ""), "no pinned, hashed npm package in amber-libs"),
       check("wifi_payload", /WIFI:/.test(f.page ?? ""), "doesn't build a WIFI: QR payload"),
       check("reads_the_note", /amber\.note|\.markdown\b/.test(f.page ?? "") && !/kanelbulle-42/.test(f.page ?? ""), "the password is copied into the app instead of read from the note"),
+    ],
+  },
+  // MARK: The tool-set benchmark: normal notes first (old tools vs the file-like set), then apps.
+  {
+    id: "n-tick",
+    prompt: "In my Groceries note, tick off Milk and Butter, and untick Apples.",
+    seed: { body: N_GROCERIES, folder: "Home" }, page: false,
+    checks: (f) => [
+      check("ticked", /- \[x\] Milk/.test(f.after) && /- \[x\] Butter/.test(f.after), "Milk or Butter not ticked"),
+      check("unticked", /- \[ \] Apples/.test(f.after), "Apples still ticked"),
+      check("rest_kept", f.after.replace(/- \[[ x]\] /g, "") === f.before.replace(/- \[[ x]\] /g, ""), "other text changed"),
+    ],
+  },
+  {
+    id: "n-add-under",
+    prompt: "Add oat milk and yogurt to the Dairy list in my Groceries note.",
+    seed: { body: N_GROCERIES, folder: "Home" }, page: false,
+    checks: (f) => {
+      const dairy = section(f.after, "Dairy");
+      return [
+        check("added_under_dairy", /- \[ \] oat milk/i.test(dairy) && /- \[ \] yogurt/i.test(dairy), `Dairy: ${dairy.slice(0, 120)}`),
+        check("not_elsewhere", !/oat milk|yogurt/i.test(section(f.after, "Fruit")), "added under Fruit"),
+        check("kept", ["Milk", "Butter", "Apples", "Bananas"].every((x) => f.after.includes(x)), "an item is gone"),
+      ];
+    },
+  },
+  {
+    id: "n-rename-remove",
+    prompt: "In my Groceries note, rename Butter to Salted butter, and remove Bananas.",
+    seed: { body: N_GROCERIES, folder: "Home" }, page: false,
+    checks: (f) => [
+      check("renamed", /- \[ \] Salted butter/.test(f.after) && !/- \[ \] Butter/.test(f.after), "Butter not renamed"),
+      check("removed", !/Bananas/.test(f.after), "Bananas still there"),
+      check("kept", ["Milk", "Apples"].every((x) => f.after.includes(x)), "an item is gone"),
+    ],
+  },
+  {
+    id: "n-tracker-today",
+    prompt: "Log today in my Mood note: mood 4, and yes I went for a walk.",
+    seed: { body: N_MOOD, folder: "Health" }, page: false,
+    checks: (f) => {
+      const t = findTables(f.after)[0];
+      const today = t?.rows.find((r) => /^2026-10-0[567]$/.test(r[0]) && !N_MOOD.includes(`| ${r[0]} |`));
+      return [
+        check("tracker_kept", /<!-- pane-table: Date=date; Mood=scale 1-5; Walk=choice Yes\|No -->/.test(f.after), "the tracker's type line changed"),
+        check("row_for_today", !!today && today[1] === "4" && today[2] === "Yes", `rows: ${JSON.stringify(t?.rows.slice(-2))}`),
+        check("one_row_added", (t?.rows.length ?? 0) === 4, `${t?.rows.length} rows`),
+      ];
+    },
+  },
+  {
+    id: "n-tracker-update",
+    prompt: "In my Mood note, my mood on 2 October was actually 5, not 2. Fix it.",
+    seed: { body: N_MOOD, folder: "Health" }, page: false,
+    checks: (f) => {
+      const t = findTables(f.after)[0];
+      return [
+        check("updated", t?.rows.find((r) => r[0] === "2026-10-02")?.[1] === "5", JSON.stringify(t?.rows)),
+        check("no_new_row", (t?.rows.length ?? 0) === 3, `${t?.rows.length} rows`),
+        check("tracker_kept", /<!-- pane-table: Date=date; Mood=scale 1-5/.test(f.after), "type line changed"),
+      ];
+    },
+  },
+  {
+    id: "n-table-row",
+    prompt: "In my Lisbon trip note, add a row to the costs: 2026-10-04, Museum, Fun, 18. And the hotel was 1 500, not 1 450.",
+    seed: { body: N_TRIP, folder: "Travel" }, page: false,
+    checks: (f) => {
+      const t = findTables(f.after)[0];
+      return [
+        check("row_added", !!t?.rows.some((r) => r.join("|").includes("Museum") && r.join("|").includes("18")), JSON.stringify(t?.rows)),
+        check("hotel_fixed", !!t?.rows.some((r) => /hotel/i.test(r.join(" ")) && /1 ?500/.test(r.join(" "))), "hotel not 1 500"),
+        check("columns_kept", JSON.stringify(t?.columns.map((c) => c.name)) === JSON.stringify(["Date", "Item", "Category", "Amount"]), "columns changed"),
+        check("prose_kept", f.after.includes("Spent in Lisbon with Ana."), "prose changed"),
+      ];
+    },
+  },
+  {
+    id: "n-create-sub",
+    prompt: "Create a note called Porto in my Travel folder with one line about the trip in November, and inside it a sub-note called Packing with a checklist: passport, charger, adapter.",
+    seed: { body: N_TRIP, folder: "Travel" }, page: false,
+    checks: (f) => {
+      const porto = f.notes?.find((n) => n.title === "Porto" && !n.trashed), packing = f.notes?.find((n) => n.title === "Packing" && !n.trashed);
+      return [
+        check("porto_in_travel", porto?.folder === "Travel", `Porto in ${porto?.folder ?? "nowhere"}`),
+        check("packing_is_sub_note", !!porto && packing?.parent === porto.id && porto.body.includes(`pane-note:${packing?.id}`), "Packing isn't Porto's sub-note"),
+        check("checklist", ["passport", "charger", "adapter"].every((x) => new RegExp(`- \\[ \\] ${x}`, "i").test(packing?.body ?? "")), packing?.body ?? ""),
+      ];
+    },
+  },
+  {
+    id: "n-append-rewrite",
+    prompt: "Add 'Call the plumber on Friday' at the end of my Inbox note. Then rewrite the Goals section of my Weekly note to just three bullets: Ship v2, Run 3x, Read 2 books.",
+    seed: { body: N_INBOX }, others: [{ body: N_WEEKLY, folder: "Work" }], page: false,
+    checks: (f) => {
+      const weekly = f.others[0].after;
+      const goals = section(weekly, "Goals");
+      return [
+        check("appended_at_end", /Call the plumber on Friday\s*$/.test(f.after.trimEnd()) && f.after.startsWith(N_INBOX.trimEnd()), f.after.slice(-120)),
+        check("goals_rewritten", ["Ship v2", "Run 3x", "Read 2 books"].every((x) => goals.includes(x)) && (goals.match(/^\s*[-*] /gm) ?? []).length === 3, goals),
+        check("other_sections_kept", section(weekly, "Notes") === section(N_WEEKLY, "Notes"), "the Notes section changed"),
+      ];
+    },
+  },
+  {
+    id: "n-organize",
+    prompt: "Move my Groceries note to a folder called Kitchen, rename my Meeting note to 'Q4 planning meeting' and pin it, and rename the folder Work to Office.",
+    seed: { body: N_GROCERIES, folder: "Home" }, others: [{ body: N_MEETING, folder: "Work" }], page: false,
+    checks: (f) => {
+      const g = f.notes?.find((n) => n.body.includes("Bananas")), m = f.notes?.find((n) => n.body.includes("Budget review"));
+      return [
+        check("moved", g?.folder === "Kitchen", `Groceries in ${g?.folder}`),
+        check("renamed", m?.title === "Q4 planning meeting", `title ${m?.title}`),
+        check("pinned", m?.pinned === true, "not pinned"),
+        check("folder_renamed", m?.folder === "Office", `meeting in ${m?.folder}`),
+        check("bodies_kept", !!m && m.body.includes("Budget review") && !!g && g.body.includes("Butter"), "text lost"),
+      ];
+    },
+  },
+  {
+    id: "n-delete-restore",
+    prompt: "Delete my Old ideas note. Oh wait, I need it after all, bring it back. And my Weekly note: put it back to how it was before today's change.",
+    seed: { body: "Old ideas\n\n- A bike rack app\n- Sourdough schedule\n" }, others: [{ body: N_WEEKLY.replace("- Ship v2\n", "- Ship v2\n- Learn Rust\n- Learn Go\n"), folder: "Work", earlier: [N_WEEKLY] }], page: false,
+    checks: (f) => {
+      const old = f.notes?.find((n) => n.title === "Old ideas");
+      return [
+        check("restored", !!old && !old.trashed && old.body.includes("Sourdough"), old ? (old.trashed ? "still deleted" : "changed") : "gone"),
+        check("weekly_restored", f.others[0].after === N_WEEKLY, f.others[0].after.slice(0, 200)),
+      ];
+    },
+  },
+  {
+    id: "n-what-about",
+    prompt: "What did I write about the dentist?",
+    seed: { body: "Health\n\nDentist: Tuesday 14 October at 14:00, Dr. Lind. Bring the X-ray referral.\n", folder: "Health" },
+    others: [{ body: N_GROCERIES, folder: "Home" }, { body: N_MEETING, folder: "Work" }, { body: "Calls\n\nCall the dentist to move the cleaning to November.\n" }], page: false,
+    checks: (f) => [
+      check("found_appointment", /14 Oct|14 October|October 14|Tuesday/i.test(f.answer) && /14[:.]00|2 ?pm/i.test(f.answer), f.answer.slice(0, 200)),
+      check("found_the_call", /november|cleaning|move/i.test(f.answer), "missed the second note"),
+      check("nothing_changed", f.after === f.before && f.others.every((o) => o.after === o.before), "a note changed"),
+    ],
+  },
+  {
+    id: "n-sort-folders",
+    prompt: "Sort my loose notes into folders: work things in Work, home things in Home, travel in Travel.",
+    seed: { body: N_MEETING }, others: [{ body: N_GROCERIES }, { body: N_TRIP }, { body: "Plumber\n\nThe kitchen tap drips. Call on Friday.\n" }, { body: "Hiring\n\nInterview two designers next week.\n" }, { body: "Packing list\n\n- [ ] Passport\n- [ ] Sunscreen\n" }], page: false,
+    checks: (f) => {
+      const where = (needle: string) => f.notes?.find((n) => n.body.includes(needle))?.folder ?? "?";
+      return [
+        check("work", where("Budget review") === "Work" && where("designers") === "Work", `${where("Budget review")}, ${where("designers")}`),
+        check("home", where("Bananas") === "Home" && where("tap drips") === "Home", `${where("Bananas")}, ${where("tap drips")}`),
+        check("travel", where("Spent in Lisbon") === "Travel" && where("Sunscreen") === "Travel", `${where("Spent in Lisbon")}, ${where("Sunscreen")}`),
+        check("nothing_lost", (f.notes ?? []).filter((n) => !n.trashed).length === 6 && (f.notes ?? []).every((n) => !n.trashed), "a note was deleted"),
+      ];
+    },
+  },
+  {
+    id: "a-workout",
+    prompt: "Make my Workouts note a workout tracker app.",
+    seed: { body: "Workouts\n" }, page: true, interact: true,
+    checks: (f) => [pageChanged(f)],
+  },
+  {
+    id: "a-change-feature",
+    prompt: "In my Habits app, add a way to log today: one tap marks today as walked.",
+    seed: { body: "Habits\n", page: HABIT_APP, data: { values: { localStorage: { habits: JSON.stringify(HABIT_LOG), theme: "dark" } } } }, page: true, interact: true,
+    checks: (f) => [pageChanged(f)],
+    walkthrough: [{ name: "log_today", steps: [{ tap: "/walk|today|log|mark/i" }, { wait: 300 }] }],
+  },
+  {
+    id: "a-how-week",
+    prompt: "How was my week in my Habits app (29 September to 5 October)? How many days did I walk, and how many did I read?",
+    seed: { body: "Habits\n", page: HABIT_APP, data: { values: { localStorage: { habits: JSON.stringify(WEEK_LOG), theme: "dark" } } } }, page: false,
+    checks: (f) => [
+      check("walk_count", /\b5\b[^.\n]{0,40}walk|walk[^.\n]{0,40}\b5\b|five[^.\n]{0,40}walk|walk[^.\n]{0,40}five/i.test(f.answer), f.answer.slice(0, 200)),
+      check("read_count", /\b3\b[^.\n]{0,40}read|read[^.\n]{0,40}\b3\b|three[^.\n]{0,40}read|read[^.\n]{0,40}three/i.test(f.answer), f.answer.slice(0, 200)),
+      check("app_unchanged", f.page === f.pageBefore && JSON.stringify(f.data) === JSON.stringify(f.dataBefore), "something changed"),
     ],
   },
   // MARK: The try_app experiment: six real apps, each with a hidden walkthrough and feature list.

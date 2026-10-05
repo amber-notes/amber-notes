@@ -13,10 +13,10 @@
 import Anthropic from "npm:@anthropic-ai/sdk@0.131.0";
 import { parseArgs } from "jsr:@std/cli@1/parse-args";
 import { closeBrowser, renderPage, type Render } from "../page-render/render.ts";
-import { TASKS, type Check, type Final, type Task } from "./tasks.ts";
+import { TASKS, type Check, type Final, type NoteState, type Seed, type Task } from "./tasks.ts";
 import { scoreTask } from "./score.ts";
 
-const args = parseArgs(Deno.args, { string: ["round", "model", "tasks", "server", "concurrency", "budget", "repeat", "label", "hide", "cli-model", "max-turns", "minutes"], boolean: ["skill", "no-render", "allow-paid"] });
+const args = parseArgs(Deno.args, { string: ["round", "model", "tasks", "server", "concurrency", "budget", "repeat", "label", "hide", "cli-model", "max-turns", "minutes", "tools"], boolean: ["skill", "no-render", "allow-paid"] });
 /** Tools taken out of tools/list for this run (an A/B on check_app and preview_app, say). */
 const hidden = new Set((args.hide ?? "").split(",").map((x) => x.trim()).filter(Boolean));
 const round = args.round ?? "dev";
@@ -56,7 +56,7 @@ globalThis.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
 const mcp = (p: string) => new URL(`supabase/functions/${p}`, root).href;
 const { handleRequest } = await import(mcp("mcp/server.ts"));
 const { schemaDB, sqlFor } = await import(mcp("mcp/pglite.ts"));
-const { account, app, file, note, opened } = await import(mcp("mcp/sealed.ts"));
+const { account, app, edit, file, folder, note, opened } = await import(mcp("mcp/sealed.ts"));
 const { tokenKey, wrap } = await import(mcp("_shared/e2ee.ts"));
 const { pageProblems } = await import(mcp("mcp/page.ts"));
 const { renderedFindings } = await import(new URL("supabase/functions/mcp/app_check.ts", root).href);
@@ -84,7 +84,7 @@ if (paid && !args["allow-paid"]) throw new Error(`${modelKey} bills per token. U
 
 // What a chat client tells the model around an MCP server, kept short and neutral.
 const CLIENT_SYSTEM = `You are an AI assistant. The person has connected their Amber Notes app to you with an MCP server, and its tools are available. The person is busy and won't answer questions before you finish: make sensible choices, do the whole task with the tools, then reply briefly with what you did. Today is 2026-10-05.`;
-const variantKey = modelKey + (args.skill ? "-skill" : "") + (hidden.size ? `-no-${[...hidden].join("-")}` : "");
+const variantKey = modelKey + (args.tools === "files" ? "-files" : "") + (args.skill ? "-skill" : "") + (hidden.size ? `-no-${[...hidden].join("-")}` : "");
 const skill = args.skill ? await Deno.readTextFile(new URL("plugins/amber-notes/skills/note-pages/SKILL.md", root)).catch(() => "") : "";
 
 // MARK: An account and a connection
@@ -93,9 +93,26 @@ async function setup(task: Task) {
   const pg = await schemaDB();
   const sql = sqlFor(pg);
   const a = await account(pg);
-  const id = await note(pg, a, task.seed.body);
+  // Folders by path, created as needed; earlier texts become the note's history.
+  const folderIds = new Map<string, string>();
+  const folderOf = async (path?: string): Promise<string | undefined> => {
+    if (!path) return undefined;
+    let parent: string | null = null, at = "";
+    for (const part of path.split("/").filter(Boolean)) {
+      at = at ? `${at}/${part}` : part;
+      if (!folderIds.has(at)) folderIds.set(at, await folder(pg, a, part, parent));
+      parent = folderIds.get(at)!;
+    }
+    return parent ?? undefined;
+  };
+  const seedNote = async (s: Seed) => {
+    const nid = await note(pg, a, s.earlier?.[0] ?? s.body, { folder: await folderOf(s.folder), pinned: s.pinned });
+    for (const b of [...(s.earlier ?? []).slice(1), ...(s.earlier?.length ? [s.body] : [])]) await edit(pg, a, nid, b);
+    return nid;
+  };
+  const id = await seedNote(task.seed);
   const others: string[] = [];
-  for (const o of task.others ?? []) others.push(await note(pg, a, o.body));
+  for (const o of task.others ?? []) others.push(await seedNote(o));
   const token = "pane_" + [...crypto.getRandomValues(new Uint8Array(32))].map((b) => b.toString(16).padStart(2, "0")).join("");
   const hash = [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token)))].map((b) => b.toString(16).padStart(2, "0")).join("");
   await app(pg, a.id, `select public.create_mcp_token('Claude', true, $1, $2)`, [hash, await wrap(a.dk.slice(), await tokenKey(token, "pane"), "pane", a.id)]);
@@ -149,7 +166,18 @@ async function setup(task: Task) {
     return handleRequest(new Request(`http://127.0.0.1/functions/v1/mcp${u.pathname === "/" ? "" : u.pathname}`, req), sql);
   });
   const url = `http://127.0.0.1:${http.addr.port}/`;
-  return { pg, id, others, rpc, call, init, state, fileIds, url, token, http };
+  // Every note: title, text, folder path, pinned, in Recently Deleted, parent.
+  const snapshot = async (): Promise<NoteState[]> => {
+    const fs = (await pg.query(`select id, name_ct, parent_id from public.folders where deleted_at is null`)).rows as { id: string; name_ct: string; parent_id: string | null }[];
+    const names = new Map<string, { name: string; parent: string | null }>();
+    for (const f of fs) names.set(f.id, { name: await a.vault.openFolder(f.id, f.name_ct), parent: f.parent_id });
+    const pathOf = (fid: string | null): string => { const parts: string[] = []; for (let k = fid, g = 0; k && g < 20; g++) { const f = names.get(k); if (!f) break; parts.unshift(f.name); k = f.parent; } return parts.join("/"); };
+    const rows = (await pg.query(`select id, folder_id, parent_id, is_pinned, trashed_at from public.notes where deleted_at is null`)).rows as { id: string; folder_id: string | null; parent_id: string | null; is_pinned: boolean; trashed_at: string | null }[];
+    const out: NoteState[] = [];
+    for (const r of rows) { const o = await opened(pg, a, r.id); out.push({ id: r.id, title: o.head?.title ?? "", body: o.body ?? "", folder: pathOf(r.folder_id), pinned: r.is_pinned, trashed: r.trashed_at !== null, parent: r.parent_id }); }
+    return out;
+  };
+  return { pg, id, others, rpc, call, init, state, fileIds, url, token, http, snapshot };
 }
 
 // MARK: A model session
@@ -250,6 +278,8 @@ async function timed(cmd: Deno.Command): Promise<Deno.CommandOutput> {
   const timer = setTimeout(() => { try { p.kill("SIGTERM"); } catch { /* gone */ } }, Number(args.minutes ?? 30) * 60_000);
   try { return await p.output(); } finally { clearTimeout(timer); }
 }
+// --tools files: the file-like tool set (files_tools.ts) instead of the classic one.
+if (args.tools === "files") Deno.env.set("AMBER_MCP_TOOLS", "files");
 // Without try_app and run_app_tests (an experiment's control arm), the guide doesn't mention them.
 if (args.hide?.split(",").includes("try_app")) Deno.env.set("AMBER_GUIDE_WITHOUT_TRY", "1");
 const CLI_ENV = (() => { const e = Deno.env.toObject(); for (const k of ["ANTHROPIC_API_KEY", "OPENAI_API_KEY", "OPENROUTER_API_KEY", "RENDER_SECRET"]) delete e[k]; return e; })();
@@ -434,10 +464,11 @@ async function runTask(task: Task, rep = 1) {
     if (made[0]) after = await s.state(made[0].id);
   }
   const othersAfter = await Promise.all(s.others.map((o) => s.state(o)));
+  const notesAfter = await s.snapshot();
   const f: Final = {
     before: before.body, after: after.body, pageBefore: before.page, page: after.page, dataBefore: before.data, data: after.data,
     calls: session.log.map((l) => ({ name: l.name, args: l.args, error: l.error })), answer: session.answer,
-    others: othersBefore.map((o, i) => ({ before: o.body, after: othersAfter[i].body })), fileIds: s.fileIds,
+    others: othersBefore.map((o, i) => ({ before: o.body, after: othersAfter[i].body })), fileIds: s.fileIds, notes: notesAfter,
   };
   const shots = new URL(`shots/${stem}`, outDir).pathname;
   await Deno.mkdir(new URL("shots/", outDir), { recursive: true });

@@ -15,7 +15,10 @@
 import type { Sql } from "npm:postgres@3.4.5";
 import { tokenKey, unwrap, Vault } from "../_shared/e2ee.ts";
 import { errorKind, log } from "../_shared/log.ts";
-import { Content, runTool, ToolContext, ToolError, tools } from "./tools.ts";
+import { Content, runTool, ToolContext, ToolError, tools as classicTools } from "./tools.ts";
+import { FILE_INSTRUCTIONS, FILE_TOOLS, runFileTool } from "./files_tools.ts";
+// The file-like tool set (prototype) when AMBER_MCP_TOOLS=files; the classic one otherwise.
+const fileSet = () => Deno.env.get("AMBER_MCP_TOOLS") === "files";
 import { challenge, handleOAuth, isOAuthPath, publicBase, resolveAccessToken, subpath } from "./oauth.ts";
 import { SERVER_CARD_PATH, SERVER_INFO, serverCardResponse } from "./card.ts";
 import { BASE_CSS_URI, GUIDE_URI, PAGE_GUIDE, PAGE_INSTRUCTIONS, PAGE_PROMPTS } from "./page_guide.ts";
@@ -189,16 +192,16 @@ async function respond(msg: Rpc, id: string | number | null, ctx: ToolContext): 
           protocolVersion: PROTOCOL_VERSIONS.includes(asked) ? asked : PROTOCOL_VERSIONS[0],
           capabilities: { tools: { listChanged: false }, resources: { listChanged: false }, prompts: { listChanged: false } },
           serverInfo: SERVER_INFO,
-          instructions: INSTRUCTIONS,
+          instructions: fileSet() ? FILE_INSTRUCTIONS : INSTRUCTIONS,
         });
       }
       case "ping":
         return ok(id, {});
       case "tools/list":
-        return ok(id, { tools: tools.filter((t) => ctx.canWrite || t.annotations.readOnlyHint) });
+        return ok(id, { tools: (fileSet() ? FILE_TOOLS : classicTools).filter((t) => ctx.canWrite || t.annotations.readOnlyHint) });
       case "tools/call": {
         const name = String(msg.params?.name ?? "");
-        if (!tools.some((t) => t.name === name)) {
+        if (!(fileSet() ? FILE_TOOLS : classicTools).some((t) => t.name === name)) {
           return { jsonrpc: "2.0", id, error: { code: -32602, message: `Unknown tool: ${name || "(none)"}` } };
         }
         const given = msg.params?.arguments ?? {};
@@ -208,7 +211,7 @@ async function respond(msg: Rpc, id: string | number | null, ctx: ToolContext): 
         const args = given as Record<string, unknown>;
         const started = performance.now();
         try {
-          const result = await runTool(name, args, ctx);
+          const result = fileSet() ? await runFileTool(name, args, ctx) : await runTool(name, args, ctx);
           if (result instanceof Content) {
             return ok(id, { content: result.content, ...(result.structured ? { structuredContent: result.structured } : {}) });
           }
@@ -225,7 +228,7 @@ async function respond(msg: Rpc, id: string | number | null, ctx: ToolContext): 
         }
       }
       case "resources/list":
-        return ok(id, { resources: RESOURCES.map(({ text: _, ...r }) => r) });
+        return ok(id, { resources: fileSet() ? [] : RESOURCES.map(({ text: _, ...r }) => r) });
       case "resources/templates/list":
         return ok(id, { resourceTemplates: [] });
       case "resources/read": {
@@ -235,7 +238,7 @@ async function respond(msg: Rpc, id: string | number | null, ctx: ToolContext): 
         return ok(id, { contents: [{ uri: r.uri, mimeType: r.mimeType, text: r.text }] });
       }
       case "prompts/list":
-        return ok(id, { prompts: PAGE_PROMPTS.map(({ text: _, ...p }) => p) });
+        return ok(id, { prompts: fileSet() ? [] : PAGE_PROMPTS.map(({ text: _, ...p }) => p) });
       case "prompts/get": {
         const p = PAGE_PROMPTS.find((x) => x.name === msg.params?.name);
         if (!p) return { jsonrpc: "2.0", id, error: { code: -32602, message: `Unknown prompt: ${String(msg.params?.name ?? "")}` } };

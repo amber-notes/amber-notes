@@ -190,7 +190,7 @@ export const dataTools = [
   ...fileTools,
 ];
 
-async function pageDataOf(tx: Tx, c: Call, id: string): Promise<PageData> {
+export async function pageDataOf(tx: Tx, c: Call, id: string): Promise<PageData> {
   const [row] = await tx<{ data_ct: string | null }[]>`select data_ct from public.note_pages where note_id = ${id} for update`;
   if (!row?.data_ct) return { values: {}, collections: {} };
   let d: Partial<PageData>;
@@ -210,7 +210,7 @@ async function readmeData(tx: Tx, c: Call, id: string): Promise<string | null> {
   } catch { return null; }
 }
 
-async function storePageData(tx: Tx, c: Call, id: string, data: unknown) {
+export async function storePageData(tx: Tx, c: Call, id: string, data: unknown) {
   const problems = pageDataProblems(data);
   if (problems.length) throw new ToolError(`The data wasn't saved:\n- ${problems.join("\n- ")}`);
   const json = JSON.stringify(closeStored(data as PageData));

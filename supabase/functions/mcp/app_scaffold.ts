@@ -5,11 +5,23 @@
 // stack's own starter (app_stack.gen.ts).
 
 import { STACK_FILES } from "./app_stack.gen.ts";
+import { SHADCN_UI } from "./shadcn-ui.ts";
+
+/** How an app runs in Amber Notes: part of every app's README, so any AI working on it reads it. */
+export const APP_GUIDE = `## How this app runs in Amber Notes
+
+- It is the note: opening the note opens the app, on iPhone (320-440 pt wide, safe areas, the keyboard shrinks the view) and on the Mac (a window from about 500 to 1,800 px, resized live). Light and dark follow the device.
+- A normal Vite + React 19 + TypeScript + Tailwind 4 + shadcn/ui project. Amber Notes compiles it when a file is saved (TSX, the @/ alias, imports without extensions, Tailwind from the classes used) and says what broke; nothing is installed. React runs on preact/compat.
+- Available by name: react, react-dom, radix-ui, lucide-react, recharts, date-fns, zod, motion, sonner, react-day-picker, clsx, tailwind-merge, class-variance-authority, amber-router (Router, Route, route(), back()), chart.js, d3, three, tone, dayjs, marked, dompurify, animejs, canvas-confetti.
+- Data is JSON that Amber Notes keeps for the app (encrypted, synced, with Undo): useStore(key, initial), useCollection(name), useSettings(defaults), batch(fn), setSummary(text) from "@/lib/amber". localStorage works too and is kept the same way. The person's AI reads and edits it as data.json, so keep its shape simple and describe it under Data above.
+- No network except hosts the person allows: declare them in index.html with <meta name="amber-needs" content='{"hosts": ["api.open-meteo.com"]}'> and call fetch(url) from "@/lib/amber"; API keys live in Amber Notes › Settings › API Keys (declare { "keys": [{ "name", "hosts", "query" or "header" }] } and pass { key: name }).
+- The device, through its own prompts: device.reminders, calendar, notify, photos, camera, contacts, location, maps, weather; on-device AI with ai.respond.`;
 
 export function scaffold(title: string, lang = "en"): Record<string, string> {
   const safe = title.replace(/[<>&"`$\\{}]/g, "").trim() || "App";
   return {
     ...STACK_FILES,
+    ...SHADCN_UI,
     "/package.json": JSON.stringify({
       name: safe.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "app",
       private: true, type: "module",
@@ -124,13 +136,10 @@ What this app is for, in one sentence.
 - Settings (src/screens/settings.tsx)
 
 ## Data
-The app's data, as the person's AI reaches it through the data tools. Keep this current.
+The app's data, as the person's AI reaches it in data.json. Keep this current.
 - settings: { name } (useSettings)
 
-## Files
-- src/components/app-shell.tsx: the frame (tab bar on iPhone, sidebar from 900 px) and PageHeader.
-- src/components/ui/: shadcn/ui components, plain source to change.
-- src/lib/amber.ts: the app's data and the device, from Amber Notes. src/lib/utils.ts: cn().
+${APP_GUIDE}
 `,
   };
 }
