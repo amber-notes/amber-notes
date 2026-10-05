@@ -322,14 +322,13 @@ function blockHTML(b: Block, c: Context): string {
 <a href="${esc(askChatGPT(x.text))}" style="color:${L.accentText};text-decoration:none;"><span class="lnk" style="color:${L.accentText};">Ask ChatGPT</span></a><span class="sec" style="color:${L.secondary};">&nbsp;&nbsp;·&nbsp;&nbsp;</span><a href="${esc(askClaude(c, x.id))}" style="color:${L.accentText};text-decoration:none;"><span class="lnk" style="color:${L.accentText};">Ask Claude</span></a>
 </td></tr></table>`).join("\n") + `<div style="height:4px;line-height:4px;font-size:0;">&nbsp;</div>`;
   }
-  // Templates: the note itself as the site shows it (its title is in the picture, so not again),
-  // then what it does and the link that adds it.
+  // Templates: the top of each template's note as the site shows it on a phone (its title and what
+  // it's for, readable at phone width, so nothing repeats them), then the link that adds it.
   return b.templates.map((t) => {
     const use = `${c.site}/open/template/${t.slug}`;
     return `${table(' width="100%" style="margin:0 0 22px;"')}<tr><td>
-<a href="${c.site}/templates/${t.slug}"><img class="shot" src="${c.assets}/t-${t.slug}.jpg" width="476" height="181" alt="The ${esc(t.title)} template note" style="display:block;width:100%;max-width:476px;height:auto;border:1px solid ${L.shotEdge};border-radius:12px;color:${L.secondary};font-family:${SANS};font-size:13px;"></a>
-<p class="sec" style="margin:10px 0 4px;font-family:${SANS};font-size:15px;line-height:1.45;color:${L.secondary};">${esc(t.tagline)}</p>
-<a href="${use}" style="font-family:${SANS};font-size:15px;font-weight:600;line-height:20px;color:${L.accentText};text-decoration:none;"><span class="lnk" style="color:${L.accentText};">Use template &rarr;</span></a>
+<a href="${c.site}/templates/${t.slug}"><img class="shot" src="${c.assets}/t-${t.slug}.jpg" width="330" height="155" alt="The ${esc(t.title)} template note: ${esc(t.tagline)}" style="display:block;width:100%;max-width:330px;height:auto;border:1px solid ${L.shotEdge};border-radius:12px;color:${L.secondary};font-family:${SANS};font-size:13px;"></a>
+<a href="${use}" style="display:inline-block;margin-top:10px;font-family:${SANS};font-size:15px;font-weight:600;line-height:20px;color:${L.accentText};text-decoration:none;"><span class="lnk" style="color:${L.accentText};">Use the ${esc(t.title.toLowerCase())} template &rarr;</span></a>
 </td></tr></table>`;
   }).join("\n");
 }
