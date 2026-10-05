@@ -12,6 +12,9 @@ regexes = [
   # tests' KEY and OLD_KEY): made-up labels, not keys.
   '''^0123456789abcdef$''',
   '''^fedcba9876543210$''',
+  # A Swift type name in the collaboration prototype (Pane/Collab/CollabCrypto.swift on
+  # proto/collaboration), not a value.
+  '''P256\.KeyAgreement\.PrivateKey''',
 ]
 paths = [
   # Cross-platform encryption test vectors: fixed, published inputs (the data key is the bytes 1 to 32
@@ -19,4 +22,11 @@ paths = [
   '''supabase/functions/_shared/e2ee-vectors\.json''',
   # The APNs test builds a throwaway key at runtime; the only match is the PEM template string.
   '''supabase/functions/_shared/apns\.test\.ts''',
+  # The collaboration prototype's test vectors (proto/collaboration): fixed, published inputs like
+  # e2ee-vectors.json above.
+  '''supabase/functions/_shared/collab-vectors\.json''',
+  # Page evals: a made-up key used to test that AIs don't keep keys pasted into a note, and the
+  # results that quote it.
+  '''scripts/page-evals/tasks\.ts''',
+  '''scripts/page-evals/results/''',
 ]
