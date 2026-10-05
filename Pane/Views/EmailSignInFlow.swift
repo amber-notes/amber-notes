@@ -4,7 +4,8 @@ import Foundation
 enum AccountStatus: Equatable {
     /// An account that signs in with a password.
     case password
-    /// An account made with Sign in with Apple: it has no password.
+    /// An account with no password: it signs in with Apple or Google (the name stays from when
+    /// Apple was the only one).
     case appleOnly
     /// Nobody has this email yet.
     case new
@@ -23,7 +24,7 @@ struct EmailSignInFlow: Equatable {
         case signIn(fallback: Bool)
         /// A new email: choose a password.
         case create
-        /// The email belongs to a Sign in with Apple account.
+        /// The email belongs to an account that signs in with Apple or Google.
         case apple
         /// "Forgot password?": send a reset link to the email. `sending` while it goes out.
         case forgot(sending: Bool)
@@ -54,7 +55,7 @@ struct EmailSignInFlow: Equatable {
     /// jump; it can't be changed meanwhile (`emailLocked`). After that it's text.
     var showsEmailField: Bool { step == .email || step == .checking }
 
-    /// Sign in with Apple, above the email: everywhere but the password and reset steps, where
+    /// Sign in with Apple and Google, above the email: everywhere but the password and reset steps, where
     /// the email has an account that signs in with a password ("Use a different email" brings
     /// it back).
     var showsApple: Bool {

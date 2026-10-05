@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Sign in: Sign in with Apple, or email first. Type your email, Continue, and the screen asks
+/// Sign in: Sign in with Apple, Sign in with Google, or email first. Type your email, Continue, and the screen asks
 /// for your password or for a new one, depending on whether the email has an account.
 /// Signed out, it sits beside the welcome's picture (WelcomeFlow); on its own (captures and
 /// snapshots) it's the old card: the whole window on the Mac, a glass card on iPhone.
@@ -33,6 +33,9 @@ struct SignInView: View {
 
     /// Email sign-in sits under Sign in with Apple.
     static let emailFallback = true
+
+    /// Sign in with Google sits directly under Sign in with Apple.
+    static let offersGoogle = true
 
     /// One size and shape for every row (Apple button, fields, the main button), so the card reads as one form.
     enum Row {
@@ -111,7 +114,7 @@ struct SignInView: View {
             }
 
             VStack(spacing: 12) {
-                // Asking for a password, the Apple row folds away as the password row comes in,
+                // Asking for a password, the Apple and Google rows fold away as the password row comes in,
                 // so the main button keeps its place and the whole form fits above the keyboard.
                 if flow.showsApple {
                     VStack(spacing: 12) {
@@ -124,6 +127,13 @@ struct SignInView: View {
                         .disabled(working)
                         .opacity(working ? 0.6 : 1)
                         .accessibilityIdentifier("signin.apple")
+
+                        // Directly under Apple, which stays first (App Review guideline 4.8).
+                        if Self.offersGoogle {
+                            GoogleAuthButton(height: Row.height, cornerRadius: Row.radius, action: signInWithGoogle)
+                                .disabled(working)
+                                .accessibilityIdentifier("signin.google")
+                        }
 
                         if Self.emailFallback { orDivider }
                     }
@@ -246,7 +256,7 @@ struct SignInView: View {
             }
 
             if flow.step == .apple {
-                Text("This email signs in with Apple. Use Sign in with Apple above.")
+                Text(Self.noPasswordNote)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -370,6 +380,21 @@ struct SignInView: View {
         #else
         return nil
         #endif
+    }
+
+    /// An account with no password signs in with Apple or Google; which one isn't said, so the
+    /// screen tells nobody more about an email than that it has an account.
+    static let noPasswordNote = "This email signs in with Apple or Google. Use one of the buttons above."
+
+    private func signInWithGoogle() {
+        working = true
+        error = nil
+        Task {
+            do { try await backend.signInWithGoogle() } catch where !Backend.isCanceled(error) {
+                self.error = Backend.googleMessage(for: error)
+            } catch {}
+            working = false
+        }
     }
 
     private func signIn(_ credential: AppleSignIn.Credential) {

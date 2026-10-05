@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { APPLE_ON_WEB } from "@/lib/connect";
+import { APPLE_ON_WEB, GOOGLE_ON_WEB } from "@/lib/connect";
 import { afterCheck, emailLooksValid, parseEmailStatus, type Devices, type EmailStatus, type EmailStep, type Lead } from "@/lib/connect-flow";
 import { APP_STORE_LIVE, APP_STORE_URL } from "@/lib/site";
 import { DeviceScreen } from "./DeviceLead";
@@ -8,6 +8,10 @@ import styles from "./connect.module.css";
 
 // What the connect page shows, one screen per state, from props only. ConnectFlow does the work and
 // picks the screen; /connect/preview shows each one without a network. See lib/connect.ts.
+
+/// An account without a password signs in with Apple or Google; which one isn't said, so the page
+/// tells nobody more about an email than that it has an account.
+export const NO_PASSWORD = "This email signs in with Apple or Google. Use one of the buttons above.";
 
 /// While Sign in with Apple is off on the web (APPLE_ON_WEB), what Apple accounts do instead.
 export const APPLE_INSTEAD = "Signed up with Apple? Scan the code with your iPhone instead.";
@@ -48,7 +52,7 @@ export function ScanScreen({ to, link, macLink, onNotify, onRecover }: {
 
 export type SignInProps = {
   email: string; password: string; onEmail: (v: string) => void; onPassword: (v: string) => void;
-  onApple: () => void; busy: boolean; ready: boolean; failure: string | null;
+  onApple: () => void; onGoogle?: () => void; busy: boolean; ready: boolean; failure: string | null;
 };
 
 /// "Get a notification instead": sign in so Amber Notes knows which account's devices to ask.
@@ -59,7 +63,7 @@ export function NotifySignInScreen({ to, onSubmit, onScan, ...signIn }: SignInPr
     <>
       <h1 className={styles.title}>Sign in to get a notification</h1>
       <AccessLine to={to} />
-      {APPLE_ON_WEB ? <SignInButtons onApple={signIn.onApple} busy={signIn.busy} /> : <p className={styles.small}>{APPLE_INSTEAD}</p>}
+      {APPLE_ON_WEB ? <SignInButtons onApple={signIn.onApple} onGoogle={signIn.onGoogle} busy={signIn.busy} /> : <p className={styles.small}>{APPLE_INSTEAD}</p>}
       <EmailFirst {...signIn} onSubmit={onSubmit} />
       <BottomLinks>
         <button type="button" className={styles.link} onClick={onScan}>Scan the code instead</button>
@@ -142,7 +146,7 @@ export function RecoverScreen({ to, signedIn, recoveryKey, onRecoveryKey, access
       <>
         <h1 className={styles.title}>Use your recovery key</h1>
         <p className={styles.lede}>Sign in first. Then enter your recovery key to allow <b>{where}</b>.</p>
-        {APPLE_ON_WEB && <SignInButtons onApple={signIn.onApple} busy={signIn.busy} />}
+        {APPLE_ON_WEB && <SignInButtons onApple={signIn.onApple} onGoogle={signIn.onGoogle} busy={signIn.busy} />}
         <EmailFirst {...signIn} onSubmit={onSignIn} />
         {!APPLE_ON_WEB && <p className={styles.small}>{appleInstead}</p>}
         {back}
@@ -209,12 +213,18 @@ function BottomLinks({ children }: { children: React.ReactNode }) {
   return <div className={styles.links}>{children}</div>;
 }
 
-export function SignInButtons({ onApple, busy }: { onApple: () => void; busy: boolean }) {
+/// Sign in with Apple, then Sign in with Google directly under it (Apple stays first, as in the app).
+export function SignInButtons({ onApple, onGoogle, busy }: { onApple: () => void; onGoogle?: () => void; busy: boolean }) {
   return (
     <>
       <button type="button" className={styles.apple} onClick={onApple} disabled={busy}>
         <AppleGlyph /> Sign in with Apple
       </button>
+      {GOOGLE_ON_WEB && onGoogle && (
+        <button type="button" className={styles.google} onClick={onGoogle} disabled={busy}>
+          <GoogleG /> Sign in with Google
+        </button>
+      )}
       <div className={styles.or}><span>or with email</span></div>
     </>
   );
@@ -235,7 +245,7 @@ export async function askEmailStatus(email: string): Promise<EmailStatus | null>
 /// Email first, as the app's sign-in does it (Pane/Views/EmailSignInFlow.swift): one Email field and
 /// Continue; the answer decides what comes next. An account with a password: the Password field
 /// opens under the email (still editable; changing it starts over) and the button becomes Sign in.
-/// An Apple account: Sign in with Apple, above. No account: the web can't make one, because an
+/// An account without a password (Apple or Google): the buttons above. No account: the web can't make one, because an
 /// account's key is made on its first device, so the page says so and points to the app. The
 /// password field is in the form from the start, so a password manager that fills both at once
 /// can: Continue then signs in straight away. `onSubmit` is the page's own email and password
@@ -280,7 +290,7 @@ export function EmailFirst({ email, password, onEmail, onPassword, busy, ready, 
           value={password} onChange={(e) => onPassword(e.target.value)}
         />
       </label>
-      {step.kind === "apple" && <p className={styles.said} role="status">This email signs in with Apple. Use Sign in with Apple above.</p>}
+      {step.kind === "apple" && <p className={styles.said} role="status">{NO_PASSWORD}</p>}
       {step.kind === "none" ? (
         <div className={styles.said} role="status">
           <p><b>No Amber Notes account uses this email.</b></p>
@@ -342,6 +352,18 @@ function AppleGlyph() {
   return (
     <svg width="16" height="19" viewBox="0 0 17 20" fill="currentColor" aria-hidden="true">
       <path d="M14.1 10.6c0-2.6 2.1-3.8 2.2-3.9-1.2-1.8-3.1-2-3.7-2-1.6-.2-3.1.9-3.9.9-.8 0-2-.9-3.4-.9-1.7 0-3.3 1-4.2 2.6-1.8 3.1-.5 7.7 1.3 10.2.9 1.2 1.9 2.6 3.2 2.6 1.3-.1 1.8-.8 3.3-.8 1.6 0 2 .8 3.4.8 1.4 0 2.3-1.3 3.1-2.5 1-1.4 1.4-2.8 1.4-2.9 0 0-2.7-1-2.7-4.1zM11.6 3c.7-.9 1.2-2 1-3.2-1 0-2.3.7-3 1.6-.7.8-1.3 2-1.1 3.1 1.2.1 2.3-.6 3.1-1.5z" />
+    </svg>
+  );
+}
+
+/// Google's standard "G", in its own four colours: never recoloured or stretched.
+function GoogleG() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
     </svg>
   );
 }

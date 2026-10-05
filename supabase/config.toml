@@ -316,6 +316,19 @@ skip_nonce_check = false
 # If enabled, it will allow the user to successfully authenticate when the provider does not return an email address.
 email_optional = false
 
+[auth.external.google]
+# Sign in with Google (docs/Technical/google-sign-in.md): the app and /connect go through
+# Supabase's OAuth flow with Google's Web client, so only that client's id and secret are needed.
+# Off on the local stack; to try it locally, put a Web client's values in the environment and
+# set enabled = true. The live project's values are set in the dashboard, not here: a
+# `supabase config push` from this file would turn Google off there.
+enabled = false
+client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
+redirect_uri = ""
+url = ""
+skip_nonce_check = false
+
 # Allow Solana wallet holders to sign in to your project via the Sign in with Solana (SIWS, EIP-4361) standard.
 # You can configure "web3" rate limit in the [auth.rate_limit] section and set up [auth.captcha] if self-hosting.
 [auth.web3.solana]

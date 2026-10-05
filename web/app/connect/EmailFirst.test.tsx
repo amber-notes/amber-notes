@@ -132,7 +132,7 @@ describe("email first, as the app does it", () => {
     render("apple");
     act(() => type("connect-email", "apple@example.com"));
     await submit();
-    expect(container.textContent).toContain("This email signs in with Apple. Use Sign in with Apple above.");
+    expect(container.textContent).toContain("This email signs in with Apple or Google. Use one of the buttons above.");
     expect(hidden("connect-password")).toBe(true);
     expect(container.querySelector('button[type="submit"]')).toBeNull();
   });

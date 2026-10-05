@@ -1,6 +1,6 @@
 # Privacy Policy
 
-Last updated: 2 October 2026
+Last updated: 5 October 2026
 
 ## The short version
 
@@ -27,6 +27,7 @@ This policy covers the Amber Notes apps for iPhone and Mac, the service that let
 **Your account**
 
 - **Sign in with Apple:** Apple gives us an identifier for your account and an email address. If you choose Hide My Email, we only ever see Apple's relay address. We never see your Apple ID password.
+- **Sign in with Google:** Google gives us an identifier for your Google account, its email address, your name and the address of your profile picture. We ask Google for nothing else: not your contacts, files, mail or calendar. We use these only to sign you in. We never see your Google password.
 - **Email and password:** your email address and a one-way hash of your password. We never store the password itself.
 - **Sign-in records:** when you sign in, the sign-in service records the time, your email address and the IP address of the request, to keep your account secure. We delete these records after 30 days. While you're signed in on a device, that sign-in also keeps the IP address and device type from its last refresh, until you sign out or delete your account.
 
@@ -161,6 +162,7 @@ Nothing reaches an AI assistant unless you connect one. When you connect ChatGPT
 | Vercel, Inc. | The website, shared note pages, the address AI apps connect to (mcp.ambernotes.app), Mac app downloads, update checks, website page view counts | Pages are built in Frankfurt, Germany (EU) and delivered through Vercel's global network | EU-U.S. Data Privacy Framework ([privacy policy](https://vercel.com/legal/privacy-policy), [sub-processors](https://vercel.com/legal/sub-processors)) |
 | PostHog, Inc. | Website usage only: page views, clicks, where on a page people click, and scroll depth. Never on shared notes or the connect pages, and never in the apps | Frankfurt, Germany (EU) | Standard Contractual Clauses, in its [data processing agreement](https://posthog.com/dpa) ([sub-processors](https://posthog.com/subprocessors)) |
 | Apple | Sign in with Apple and the App Store, if you use them | Under Apple's own privacy policy | Apple's own terms |
+| Google | Sign in with Google, if you use it | Under Google's own privacy policy | Google's own terms |
 | Forward Email and Google (Gmail) | Email you send to hello@ambernotes.app: Forward Email passes it on, and it's read and kept in Gmail | United States | Under each company's own terms |
 
 Your encrypted notes and files are stored only at Supabase, in Frankfurt. Supabase processes them only on our instructions. Our server functions do their work in Frankfurt too. A request to one enters Supabase's network at the location nearest whoever sent it, which can be outside the EU, and is passed to Frankfurt, where it is handled. If Frankfurt can't be reached, a request that only reads is answered where it arrived, and a request that changes something fails so it can be tried again. Vercel handles requests to the website on their way through: it sees a shared note while it shows the page, and the requests AI apps send to mcp.ambernotes.app, including the text of the notes they read or write, but it doesn't store your notes. Either company's support staff could access data from outside the EU; those transfers are covered as the table says.
@@ -214,7 +216,7 @@ Write to **hello@ambernotes.app**. We answer within one month. If you think we'v
 
 The website sets no cookies. Its page view counts (Vercel Web Analytics) and its click and scroll counts (PostHog) store nothing in your browser; PostHog's random visit id lives only in the open page's memory. Only the page where you connect an AI (ambernotes.app/connect) stores anything in your browser, and only what that page needs to work:
 
-- **sessionStorage, `amber.connect.pkce`:** a one-time code for Sign in with Apple, kept while you go to Apple and back, and deleted as soon as you return.
+- **sessionStorage, `amber.connect.pkce`:** a one-time code for Sign in with Apple or Google, kept while you go to Apple or Google and back, and deleted as soon as you return.
 
 Everything else on that page stays in its memory and is gone when you close it: your sign-in (which it ends when the connection is allowed, declined or expires, or when you close the page), the key and secret it uses to receive your device's approval, and, if you use it, your recovery key. Because these are strictly necessary for something you asked for, there's no cookie banner.
 

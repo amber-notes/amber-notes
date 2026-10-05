@@ -147,7 +147,7 @@ export function signInError(status: number, body: { error_code?: string } | null
   return "Couldn't sign in. Check your connection and try again.";
 }
 
-/// Where Supabase sends the browser back after Sign in with Apple. `recover` brings the page back
+/// Where Supabase sends the browser back after Sign in with Apple or Google. `recover` brings the page back
 /// to the recovery key.
 /// `qr` keeps a tester's ?qr=1 (see qrConnectLive) through the sign-in.
 export const returnURL = (origin: string, id: string, recover = false, qr = false) =>
@@ -174,16 +174,38 @@ export function qrConnectLive(publicVersion: string | null, override?: string): 
 /// scripts/apple-web-secret.py. Without it Supabase answers "Unsupported provider: missing OAuth secret".
 export const APPLE_ON_WEB = true;
 
-/// Supabase's OAuth start for Apple, with a PKCE challenge.
-export function appleSignInURL(supabaseURL: string, returnTo: string, challenge: string): string {
+/// Whether the page offers Sign in with Google, under Apple. It needs the Google provider on in
+/// Supabase with the Web client's id and secret (docs/Technical/google-sign-in.md). Without it
+/// Supabase answers "Unsupported provider: provider is not enabled".
+export const GOOGLE_ON_WEB = true;
+
+/// The ways in that leave the page for the provider's own and come back with a code.
+export type OAuthProvider = "apple" | "google";
+
+/// What each provider is called in the page's words.
+export const PROVIDER_NAME: Record<OAuthProvider, string> = { apple: "Sign in with Apple", google: "Sign in with Google" };
+
+/// Supabase's OAuth start for a provider, with a PKCE challenge. Apple is asked for the name and
+/// email; Google gets Supabase's default (openid, email, profile) and shows its account chooser.
+export function oauthSignInURL(provider: OAuthProvider, supabaseURL: string, returnTo: string, challenge: string): string {
   const u = new URL(`${supabaseURL.replace(/\/+$/, "")}/auth/v1/authorize`);
-  u.searchParams.set("provider", "apple");
+  u.searchParams.set("provider", provider);
   u.searchParams.set("redirect_to", returnTo);
-  u.searchParams.set("scopes", "name email");
+  if (provider === "apple") u.searchParams.set("scopes", "name email");
+  if (provider === "google") u.searchParams.set("prompt", "select_account");
   u.searchParams.set("code_challenge", challenge);
   u.searchParams.set("code_challenge_method", "s256");
   return u.toString();
 }
+
+/// Words for a provider's sign-in that came back without a session. Apple when the page can't
+/// tell which one it was (an old tab, or storage the browser cleared).
+export const didntFinish = (provider?: unknown) =>
+  `${provider === "google" ? PROVIDER_NAME.google : PROVIDER_NAME.apple} didn't finish. Try again.`;
+
+/// Supabase's OAuth start for Apple, with a PKCE challenge.
+export const appleSignInURL = (supabaseURL: string, returnTo: string, challenge: string) =>
+  oauthSignInURL("apple", supabaseURL, returnTo, challenge);
 
 const b64url = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
