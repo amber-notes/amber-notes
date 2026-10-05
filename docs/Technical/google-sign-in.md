@@ -66,7 +66,7 @@ person has proven it to Google.
 = false`), so a password account proves nothing about its address. Without a guard, someone could
 sign up with another person's Gmail address and a password, wait for that person to choose Sign in
 with Google (which would land them in the same account), and keep signing in with the password.
-`pane_google_joins_account` (migration `20261005120000_google_sign_in.sql`) runs when a Google
+`pane_google_joins_account` (migration `20261006230000_google_sign_in.sql`) runs when a Google
 identity is added to an account that has a password: it clears the password and deletes the
 account's earlier sessions, in the same transaction, before Supabase makes the Google session.
 Supabase does the same on its own only for unconfirmed addresses; here every address is

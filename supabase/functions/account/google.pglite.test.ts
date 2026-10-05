@@ -1,4 +1,4 @@
-// Sign in with Google joining an existing account (migration 20261005120000_google_sign_in.sql,
+// Sign in with Google joining an existing account (migration 20261006230000_google_sign_in.sql,
 // docs/Technical/google-sign-in.md), on the whole schema in an in-process Postgres (PGlite):
 //   deno test -A supabase/functions/account/google.pglite.test.ts
 // Supabase's auth server inserts the identity, as supabase_auth_admin; the test does the same.
