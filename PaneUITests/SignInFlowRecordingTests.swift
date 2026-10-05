@@ -56,6 +56,8 @@ final class SignInFlowRecordingTests: XCTestCase {
         mark("gate.shown"); pause(3)
         mark("useRecovery.tap"); useRecovery.tap()
         XCTAssertTrue(recoveryField.waitForExistence(timeout: 10), "the recovery key screen")
+        XCTAssertEqual(recoveryField.label, "Recovery key",
+                       "VoiceOver must read \"Recovery key\" — not the placeholder")
         mark("recovery.shown"); pause()
         mark("recovery.tap"); recoveryField.tap(); pause()
         mark("recovery.type"); recoveryField.typeText(recovery); pause()
