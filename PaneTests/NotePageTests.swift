@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import Network
 import SwiftData
@@ -589,7 +590,7 @@ import WebKit
     }
 
     /// Every demo app loads and draws, with its own note.
-    @Test(arguments: ["habit-tracker", "budget", "budget-v2", "spending-chart", "expense-form", "savings-goal", "habit-reminders", "trip-log", "weather-key"])
+    @Test(arguments: ["habit-tracker", "budget", "budget-v2", "spending-chart", "expense-form", "savings-goal", "habit-reminders", "trip-log", "weather-key", "budget-dashboard", "reading-stack"])
     func demoAppsLoad(_ name: String) async throws {
         let dir = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().appending(path: "demo/note-pages")
         let html = try String(contentsOf: dir.appending(path: name + ".html"), encoding: .utf8)
@@ -706,6 +707,58 @@ import WebKit
         try await run(sandbox.webView, until: "document.getElementById('p') !== null")
         #expect(try await sandbox.webView.evaluateJavaScript("document.documentElement.classList.contains('amber-widget')") as? Bool == true)
         #expect(NotePageTheme.css.contains("html { font-size: 14px; }") || NotePageTheme.css.contains("-apple-system-body"))
+    }
+
+    @Test func bundledLibrariesLoadByNameWithoutTheNetwork() async throws {
+        #expect(NotePageLibraries.bundled.count == 11)
+        for lib in NotePageLibraries.bundled { #expect(NotePageLibraries.bundledData(lib.name)?.count == lib.bytes, "\(lib.name)") }
+        let sandbox = NotePageSandbox(rules: try await NotePageSandbox.prepare())
+        sandbox.load(html: """
+        <meta name="amber-libs" content="chart, dayjs">
+        <p id=p>x</p>
+        <script>
+          window.__r = { chart: typeof Chart, dayjs: typeof dayjs, context: document.documentElement.dataset.amberContext, embedded: amber.context.embedded };
+          amber.lib("d3").then((d3) => { __r.d3 = typeof d3.scaleLinear; }, (e) => { __r.d3 = String(e); });
+          amber.lib("nope").then(() => { __r.nope = "loaded"; }, (e) => { __r.nope = "refused"; });
+        </script>
+        """, body: "x")
+        try await run(sandbox.webView, until: "window.__r && window.__r.d3 !== undefined && window.__r.nope !== undefined")
+        let r = try await sandbox.webView.evaluateJavaScript("JSON.stringify(window.__r)") as? String ?? ""
+        #expect(r.contains(#""chart":"function""#) && r.contains(#""dayjs":"function""#), "\(r)")
+        #expect(r.contains(#""d3":"function""#), "\(r)")
+        #expect(r.contains(#""nope":"refused""#) && r.contains(#""context":"full""#) && r.contains(#""embedded":false"#), "\(r)")
+    }
+
+    @Test func npmPackagesNeedAPinnedVersionAndAMatchingHash() async throws {
+        typealias Ref = NotePageLibraries.NpmRef
+        let js = Data("window.__pkg = 'from the device';".utf8)
+        let good = "sha384-" + Data(SHA384.hash(data: js)).base64EncodedString()
+        #expect(Ref("npm:tiny-pkg@1.0.0/index.js#\(good)")?.matches(js) == true)
+        #expect(Ref("npm:tiny-pkg@1.0.0/index.js#\(good)")?.matches(Data("tampered".utf8)) == false)
+        #expect(Ref("npm:@scope/pkg@2.1.0#\(good)")?.name == "@scope/pkg")
+        for bad in ["npm:tiny-pkg@^1.0.0#\(good)", "npm:tiny-pkg@latest#\(good)", "npm:tiny-pkg@1.0.0", "npm:tiny-pkg@1.0.0#md5-AAAA",
+                    "npm:tiny-pkg@1.0.0/../../x.js#\(good)"] {
+            #expect(Ref(bad) == nil, "\(bad)")
+        }
+        // A package already on the device (checked against its hash) is served; one the page
+        // didn't declare is refused even when it's there.
+        let ref = try #require(Ref("npm:tiny-pkg@1.0.0/index.js#\(good)"))
+        try js.write(to: NotePageLibraries.cacheFile(ref))
+        let sandbox = NotePageSandbox(rules: try await NotePageSandbox.prepare())
+        sandbox.load(html: """
+        <meta name="amber-libs" content="npm:tiny-pkg@1.0.0/index.js#\(good)">
+        <script>
+          window.__r = { pkg: window.__pkg };
+          const s = document.createElement("script");
+          s.src = "amber-lib:///npm/other-pkg@1.0.0?\(good.addingPercentEncoding(withAllowedCharacters: .alphanumerics)!)";
+          s.onload = () => { __r.other = "loaded"; }; s.onerror = () => { __r.other = "refused"; };
+          document.head.appendChild(s);
+        </script>
+        """, body: "x")
+        try await run(sandbox.webView, until: "window.__r && window.__r.other !== undefined")
+        #expect(try await sandbox.webView.evaluateJavaScript("window.__r.pkg") as? String == "from the device")
+        #expect(try await sandbox.webView.evaluateJavaScript("window.__r.other") as? String == "refused")
+        #expect(NotePageLibraries.downloaded(for: "<meta name=\"amber-libs\" content=\"npm:tiny-pkg@1.0.0/index.js#\(good)\">") == ["tiny-pkg 1.0.0"])
     }
 
     @Test func redirectsGoOnlyToDeclaredAllowedHosts() async throws {

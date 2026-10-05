@@ -58,3 +58,19 @@ Deno.test("declared hosts may appear for amber.fetch; the page's own fetch still
   assertStringIncludes(p(`amber.fetch("https://evil.example/x")`).join(), "evil.example");
   assertStringIncludes(p(`fetch("https://api.open-meteo.com/v1")`).join(), "itself (fetch)");
 });
+
+import { BUNDLED_LIBS, libProblems } from "./page.ts";
+
+Deno.test("libraries: bundled names and hashed npm packages pass; anything else is refused", () => {
+  const meta = (c: string) => `<meta name="amber-libs" content="${c}">` + page(`<script src="amber-lib:///chart"></script>`);
+  assertEquals(pageProblems(meta("chart, d3, npm:lodash@4.17.21/lodash.min.js#sha384-AAAA")), []);
+  assertStringIncludes(libProblems(meta("chartjs")).join(), "No bundled library \"chartjs\"");
+  assertStringIncludes(libProblems(meta("npm:lodash@^4.17.21")).join(), "needs a pinned version and a hash");
+  assertStringIncludes(libProblems(meta("npm:lodash@4.17.21")).join(), "needs a pinned version and a hash");
+  assertStringIncludes(libProblems(meta("npm:lodash@latest#sha384-AAAA")).join(), "needs a pinned version");
+});
+
+Deno.test("the bundled list here matches what the app ships", () => {
+  const manifest = JSON.parse(Deno.readTextFileSync(new URL("../../../Pane/Resources/AppLibraries/libraries.json", import.meta.url)));
+  assertEquals(Object.fromEntries(manifest.libraries.map((l: { name: string; global: string }) => [l.name, l.global])), BUNDLED_LIBS);
+});

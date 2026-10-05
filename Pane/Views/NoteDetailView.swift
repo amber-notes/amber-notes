@@ -95,7 +95,19 @@ struct NoteDetailView: View {
             .sheet(item: $addingKey) { d in APIKeyForm(draft: d) }
             .sheet(isPresented: $showNetLog) { NotePageNetLogView(noteID: note.id) }
             .sheet(isPresented: $showMakeApp) { MakeAppSheet(title: note.title, body_: note.body) }
-            .sheet(isPresented: $showAppSettings) { if let p = notePage { AppSettingsSheet(noteID: note.id, html: p.html) } }
+            .sheet(isPresented: $showAppSettings) {
+                if let p = notePage {
+                    AppSettingsSheet(noteID: note.id, html: p.html,
+                                     hasPrevious: NotePageStore.shared.previous(note.id) != nil,
+                                     previous: { restorePreviousPage() },
+                                     remove: {
+                                         // The note's text stays as it is, and the app is kept: Previous App brings it back.
+                                         NotePageStore.shared.setHere(note.id, nil)
+                                         shownPage = nil
+                                         mode = .text
+                                     })
+                }
+            }
             .overlay(alignment: .bottom) {
                 if showChip, notePage == nil, receipt == nil {
                     MakeAppChip(open: { showChip = false; showMakeApp = true }, dismiss: { withAnimation(.smooth) { showChip = false } })
@@ -389,11 +401,6 @@ struct NoteDetailView: View {
         }
     }
 
-    /// Where Page / Text lives (prototype, two designs): a toolbar button beside More (the default),
-    /// or a choice inside More (`-pageToggle menu`).
-    enum PageToggle { case button, menu }
-    static let pageToggle: PageToggle = Capture.argument("-pageToggle") == "menu" ? .menu : .button
-
     /// One button, like the note's other toolbar items: it shows what you'd switch to.
     private var modeButton: some View {
         Button {
@@ -415,34 +422,10 @@ struct NoteDetailView: View {
             Button("Make It an App…", systemImage: NoteAppMark.symbol) { showMakeApp = true }
                 .accessibilityIdentifier("editor.makeApp")
         }
-        if let page = notePage {
-            Section {
-                if !NotePageSettings.declared(in: page.html).isEmpty {
-                    Button("App Settings…", systemImage: "slider.horizontal.3") { showAppSettings = true }
-                        .accessibilityIdentifier("editor.appSettings")
-                }
-                if Self.pageToggle == .menu {
-                    Picker("View as", selection: $mode.animation(.smooth(duration: 0.25))) {
-                        Label("App", systemImage: NoteAppMark.symbol).tag(NoteMode.page)
-                        Label("Text", systemImage: "text.alignleft").tag(NoteMode.text)
-                    }
-                    .pickerStyle(.inline)
-                    .accessibilityIdentifier("note.modeMenu")
-                }
-                if NotePageStore.shared.previous(note.id) != nil {
-                    Button("Previous App", systemImage: "arrow.uturn.backward") { restorePreviousPage() }
-                        .accessibilityIdentifier("editor.previousPage")
-                }
-                Button("Network Activity", systemImage: "network") { showNetLog = true }
-                    .accessibilityIdentifier("editor.netLog")
-                Button("Remove App", systemImage: "xmark.square") {
-                    // The note's text stays as it is, and the app is kept: Previous App brings it back.
-                    NotePageStore.shared.setHere(note.id, nil)
-                    shownPage = nil
-                    mode = .text
-                }
-                .accessibilityIdentifier("editor.removePage")
-            }
+        if notePage != nil {
+            // Everything about the app in one place: its settings, the internet, Previous App, Remove App.
+            Button("App Settings…", systemImage: "slider.horizontal.3") { showAppSettings = true }
+                .accessibilityIdentifier("editor.appSettings")
         }
     }
 
@@ -669,7 +652,7 @@ struct NoteDetailView: View {
         ToolbarItem(placement: .bottomBar) {
             Button("New Note", systemImage: "square.and.pencil", action: onNewNote)
         }
-        if notePage != nil, Self.pageToggle == .button {
+        if notePage != nil {
             ToolbarItem(placement: .primaryAction) { modeButton }
         }
         ToolbarItem(placement: .primaryAction) { moreMenu }
@@ -703,7 +686,7 @@ struct NoteDetailView: View {
         }
         ToolbarSpacer(.fixed)
         ToolbarItemGroup {
-            if notePage != nil, Self.pageToggle == .button { modeButton }
+            if notePage != nil { modeButton }
             shareMenu
             moreMenu
         }

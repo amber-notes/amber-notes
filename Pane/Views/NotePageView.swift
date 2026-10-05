@@ -27,12 +27,12 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
     /// Requests and navigations the sandbox stopped (for the Dev readout and tests).
     private(set) var blocked: [String] = []
 
-    static let policy = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: amber-file:; font-src data:; media-src data: amber-file:; "
+    static let policy = "default-src 'none'; script-src 'unsafe-inline' amber-lib:; style-src 'unsafe-inline'; img-src data: amber-file:; font-src data:; media-src data: amber-file:; "
         + "connect-src 'none'; frame-src 'none'; child-src 'none'; worker-src 'none'; object-src 'none'; manifest-src 'none'; form-action 'none'; base-uri 'none'"
 
     /// Every request is blocked; the page's own document is given as a string, not loaded.
     /// The note's own files (amber-file:, served by the app from this device) are the one exception.
-    static let rules = #"[{"trigger":{"url-filter":".*"},"action":{"type":"block"}},{"trigger":{"url-filter":"^amber-file:"},"action":{"type":"ignore-previous-rules"}}]"#
+    static let rules = #"[{"trigger":{"url-filter":".*"},"action":{"type":"block"}},{"trigger":{"url-filter":"^amber-file:"},"action":{"type":"ignore-previous-rules"}},{"trigger":{"url-filter":"^amber-lib:"},"action":{"type":"ignore-previous-rules"}}]"#
     private static var compiled: WKContentRuleList?
 
     /// One sandbox made ahead of time, its web content process already running, so opening a note
@@ -60,7 +60,7 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
     /// Compiles the rule list once. Pages wait for it: none loads without it.
     static func prepare() async throws -> WKContentRuleList {
         if let compiled { return compiled }
-        guard let list = try await WKContentRuleListStore.default().compileContentRuleList(forIdentifier: "amber-note-page-v2", encodedContentRuleList: rules) else {
+        guard let list = try await WKContentRuleListStore.default().compileContentRuleList(forIdentifier: "amber-note-page-v3", encodedContentRuleList: rules) else {
             throw NotePage.OpError("The app couldn't start.")
         }
         compiled = list
@@ -75,6 +75,7 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
         config.userContentController.add(rules)
         let scheme = FileScheme()
         config.setURLSchemeHandler(scheme, forURLScheme: "amber-file")
+        config.setURLSchemeHandler(libraries, forURLScheme: "amber-lib")
         #if os(iOS)
         config.dataDetectorTypes = []
         config.allowsInlineMediaPlayback = false
@@ -103,6 +104,9 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
     }
 
     /// Shows `html` with `body` as its note. The document's own <!doctype> gives way to the policy.
+    /// Libraries (amber-lib:): the bundled set, and the npm packages this page declared.
+    private let libraries = LibraryScheme()
+
     /// The note's files the page may show (amber.files.url): nil for any other.
     var files: @MainActor (UUID) -> URL? = { _ in nil }
 
@@ -112,6 +116,7 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
     func load(html: String, body: String, data: NotePageData.Doc = NotePageData.empty(), restore: String? = nil) {
         let ucc = webView.configuration.userContentController
         ucc.removeAllUserScripts()
+        libraries.allowed = Set(NotePageLibraries.declared(in: html).compactMap { if case .npm(let r) = $0 { r } else { nil } })
         ucc.addUserScript(WKUserScript(source: Self.bootstrap(data: NotePage.data(of: body), store: data, restore: restore, settings: NotePageSettings.defaults(in: html), widget: isWidget),
                                        injectionTime: .atDocumentStart, forMainFrameOnly: true, in: .page))
         loading = true
@@ -127,8 +132,8 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
         var rest = Substring(html)
         while let f = rest.first, f.isWhitespace || f == "\u{FEFF}" { rest = rest.dropFirst() }
         if rest.prefix(9).lowercased() == "<!doctype", let end = rest.firstIndex(of: ">") { rest = rest[rest.index(after: end)...] }
-        return #"<!doctype html><meta http-equiv="Content-Security-Policy" content="\#(policy)"><meta name="viewport" content="width=device-width, initial-scale=1">"#
-            + #"<style id="amber-theme">\#(NotePageTheme.css)</style>"# + rest
+        return #"<!doctype html><meta http-equiv="Content-Security-Policy" content="\#(policy)"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">"#
+            + #"<style id="amber-theme">\#(NotePageTheme.css)</style>"# + NotePageLibraries.scriptTags(for: html) + rest
     }
 
     /// How the page is being used right now, for swapping in a new version: how long since you
@@ -142,6 +147,8 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
 
     static func bootstrap(data: [String: Any], store: NotePageData.Doc = NotePageData.empty(), restore: String? = nil, settings: [String: Any] = [:], widget: Bool = false) -> String {
         let defaults = (try? JSONSerialization.data(withJSONObject: settings)).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
+        let libGlobals = (try? JSONSerialization.data(withJSONObject: Dictionary(NotePageLibraries.bundled.map { ($0.name, $0.global) }, uniquingKeysWith: { a, _ in a })))
+            .flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
         let json = (try? JSONSerialization.data(withJSONObject: data)).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
         let storeJSON = String(data: NotePageData.encode(store), encoding: .utf8) ?? "{}"
         return """
@@ -221,6 +228,24 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
             if (data) amber.data = data;
             for (const fn of listeners) { try { fn(note, amber.data); } catch (e) { console.error(e); } }
           } });
+          // Libraries: amber.lib("chart") loads a bundled one (declared ones are already there).
+          const libGlobals = \(libGlobals);
+          amber.lib = (name) => {
+            const g = libGlobals[name];
+            if (g && window[g]) return Promise.resolve(window[g]);
+            return new Promise((ok, no) => {
+              const s = document.createElement("script");
+              s.src = "amber-lib:///" + name;
+              s.onload = () => ok(g ? window[g] : true);
+              s.onerror = () => no(new Error("No library " + name + ". Bundled: " + Object.keys(libGlobals).join(", ")));
+              document.head.appendChild(s);
+            });
+          };
+          // Where the app is: full screen, or a widget in its parent note; its real size.
+          Object.defineProperty(amber, "context", { get() { return { embedded: \(widget ? "true" : "false"), width: window.innerWidth, height: window.innerHeight }; } });
+          const markContext = () => { if (document.documentElement) document.documentElement.dataset.amberContext = \(widget ? "\"widget\"" : "\"full\""); };
+          markContext();
+          addEventListener("DOMContentLoaded", markContext);
           // App settings (<meta name="amber-settings">): the defaults, with what you set in App Settings.
           const settingDefaults = \(defaults);
           Object.defineProperty(amber, "settings", { get() { return Object.assign({}, settingDefaults, (amber.data.values && amber.data.values.settings) || {}); } });
@@ -427,23 +452,36 @@ struct NotePageView: View {
     }
 
     /// "Claude updated this app · Switch", while you're in the middle of something.
+    /// A solid capsule floating over the app, in the ink colour so it reads on any app: dark with
+    /// white text in light mode, cream with dark text in dark mode. Every pair is 4.5:1 or better
+    /// (white on ink 16.4, amber on ink 8.5; ink on cream 14.4, deep amber on cream 4.6).
     private var updateBar: some View {
         let by = NotePageStore.shared[noteID]?.by ?? "Your AI"
+        let text = Color(light: .white, dark: Color(red: 0x2A / 255, green: 0x1D / 255, blue: 0x10 / 255))
+        let accent = Color(light: Color(red: 0xF4 / 255, green: 0xAD / 255, blue: 0x33 / 255),
+                           dark: Color(red: 0xA8 / 255, green: 0x57 / 255, blue: 0x00 / 255))
         return HStack(spacing: 10) {
-            Image(systemName: "sparkles").foregroundStyle(Color.amberInk)
+            Image(systemName: "sparkles").foregroundStyle(accent)
             Text(by == AIGlyph.page ? "This app was updated" : "\(by) updated this app")
                 .font(.subheadline.weight(.semibold))
+                .foregroundStyle(text)
+                .lineLimit(1)
             Spacer(minLength: 8)
             Button("Switch") { Task { await swap() } }
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Color.amberInk)
+                .buttonStyle(.plain)
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(accent)
+                .padding(.horizontal, 6)
+                .frame(maxHeight: .infinity)
+                .contentShape(.rect)
                 .accessibilityIdentifier("app.switch")
         }
-        .padding(.horizontal, 14)
-        .frame(height: 40)
-        .background(.regularMaterial, in: .capsule)
         .padding(.horizontal, 16)
-        .padding(.top, 8)
+        .frame(height: 44)
+        .background(Color.ink, in: .capsule)
+        .shadow(color: .black.opacity(0.18), radius: 10, y: 3)
+        .padding(.horizontal, 16)
+        .padding(.top, 10)
         .accessibilityElement(children: .contain)
     }
 
@@ -571,7 +609,10 @@ enum NotePageTheme {
                 "--amber-fill: \(h(d ? fill.1 : fill.0))",
                 "--amber-text: \(hex(Palette.ink, dark: d))",
                 "--amber-text-secondary: \(hex(Palette.muted, dark: d))",
-                "--amber-separator: \(d ? "rgba(255, 250, 245, 0.10)" : "rgba(138, 74, 28, 0.14)")",
+                // Solid, never see-through: lines and field edges read the same over any surface.
+                "--amber-separator: \(hex(Palette.line, dark: d))",
+                "--amber-field: \(d ? "#1A1918" : "#FFFFFF")",
+                "--amber-field-border: \(d ? "#7A716A" : "#9A8673")",
                 "--amber-accent: \(hex(Palette.amber, dark: d))",
                 "--amber-accent-text: \(hex(Palette.amberInk, dark: d))",
                 "--amber-accent-soft: \(hex(Palette.amberSoft, dark: d))",
@@ -587,6 +628,10 @@ enum NotePageTheme {
         @media (prefers-color-scheme: dark) { :root { \(vars(dark: true)); } }
         \(dynamicType)
         body { margin: 0; background: var(--amber-bg); color: var(--amber-text); font-family: var(--amber-font); line-height: 1.35; -webkit-text-size-adjust: 100%; }
+        :where(input:not([type=checkbox], [type=radio], [type=range], [type=color], [type=file], [type=hidden]), select, textarea) { \
+        background: var(--amber-field); color: var(--amber-text); border: 1px solid var(--amber-field-border); \
+        border-radius: var(--amber-radius-small); font: inherit; padding: 6px 10px; }
+        :where(input, select, textarea):focus-visible { outline: 2px solid var(--amber-accent); outline-offset: 1px; }
         """
     }()
 }
@@ -734,9 +779,7 @@ struct SubNoteWidget: View {
         let page = NotePageStore.shared[id]
         VStack(spacing: 0) {
             HStack(spacing: 8) {
-                Image(systemName: NoteAppMark.symbol)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Color.amberInk)
+                AppMarkView(size: 13)
                 Text(note?.title ?? name)
                     .font(.system(size: EditorMetrics.body * 0.88, weight: .semibold))
                     .lineLimit(1)
@@ -751,7 +794,7 @@ struct SubNoteWidget: View {
             }
             .padding(.horizontal, 12)
             .frame(height: WidgetMetrics.header)
-            Divider().opacity(0.5)
+            Rectangle().fill(Color.line).frame(height: 1)
             ZStack(alignment: .top) {
                 if let page, let note, live || NotePageSnapshots.shared.image(id, html: page.html, dark: scheme == .dark, variant: "widget") == nil {
                     NotePageView(noteID: id, html: page.html, text: note.body, snapshotVariant: "widget", scrolls: false,
@@ -774,8 +817,10 @@ struct SubNoteWidget: View {
             }
             .clipped()
         }
-        .background(Color.paneChip, in: .rect(cornerRadius: 14, style: .continuous))
+        // One solid card: the app's own ground, the header inside it, a solid line round it.
+        .background(Color.notePage, in: .rect(cornerRadius: 14, style: .continuous))
         .clipShape(.rect(cornerRadius: 14, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.line, lineWidth: 1))
         .contextMenu {
             Button("Open", systemImage: "arrow.right") { controller?.openNote(id) }
             Divider()

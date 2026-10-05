@@ -238,9 +238,14 @@ enum NotePageSettings {
     static let currencies = ["SEK", "EUR", "USD", "GBP", "NOK", "DKK", "CHF", "JPY"]
 }
 
+/// App Settings: everything about a note's app in one sheet. Its own settings (when it declares
+/// any), the internet (which addresses it may reach and what it sent), Previous App, Remove App.
 struct AppSettingsSheet: View {
     let noteID: UUID
     let html: String
+    var hasPrevious = false
+    var previous: () -> Void = {}
+    var remove: () -> Void = {}
     @Environment(\.dismiss) private var dismiss
     @State private var values: [String: Any] = [:]
     @State private var newItem: [String: String] = [:]
@@ -250,9 +255,6 @@ struct AppSettingsSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                if settings.isEmpty {
-                    Text("This app has no settings. Ask your AI to add some.").foregroundStyle(.secondary)
-                }
                 ForEach(settings) { s in
                     Section {
                         field(s)
@@ -261,6 +263,18 @@ struct AppSettingsSheet: View {
                     } footer: {
                         if let h = s.help { Text(h) }
                     }
+                }
+                internet
+                Section {
+                    if hasPrevious {
+                        Button("Previous App") { previous(); dismiss() }
+                            .accessibilityIdentifier("appSettings.previous")
+                    }
+                    Button("Remove App", role: .destructive) { remove(); dismiss() }
+                        .foregroundStyle(.red)
+                        .accessibilityIdentifier("appSettings.remove")
+                } footer: {
+                    Text(hasPrevious ? "Removing the app keeps the note as it is. Previous App brings the one before back." : "Removing the app keeps the note as it is.")
                 }
             }
             .formStyle(.grouped)
@@ -318,6 +332,43 @@ struct AppSettingsSheet: View {
         default:
             TextField(s.title, text: Binding(get: { values[s.key] as? String ?? "" }, set: { values[s.key] = $0 }))
                 .accessibilityIdentifier("appSettings.\(s.key)")
+        }
+    }
+
+    /// Which addresses the app may reach, and its last requests (keys hidden).
+    @ViewBuilder
+    private var internet: some View {
+        let log = NotePageNetLog.shared
+        let hosts = (log.approved[noteID] ?? []).sorted()
+        let entries = Array((log.entries[noteID] ?? []).suffix(8).reversed())
+        let libs = NotePageLibraries.downloaded(for: html)
+        Section {
+            if hosts.isEmpty && entries.isEmpty && libs.isEmpty {
+                Text("This app hasn't used the internet.").foregroundStyle(.secondary)
+            }
+            ForEach(libs, id: \.self) { l in Label("Downloaded library: \(l)", systemImage: "shippingbox") }
+            ForEach(hosts, id: \.self) { h in Label(h, systemImage: "checkmark.circle") }
+            ForEach(entries) { e in
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack {
+                        Text(e.method).font(.caption.monospaced().weight(.semibold))
+                        Text(e.status.map(String.init) ?? e.error ?? "").font(.caption).foregroundStyle(.secondary)
+                        Spacer()
+                        Text(e.at, style: .time).font(.caption).foregroundStyle(.secondary)
+                    }
+                    Text(e.url).font(.caption.monospaced()).lineLimit(3).textSelection(.enabled)
+                    if e.carriesNoteText {
+                        Label("Includes text from this note", systemImage: "text.quote").font(.caption.weight(.semibold)).foregroundStyle(Color.amberInk)
+                    }
+                }
+            }
+            if !hosts.isEmpty {
+                Button("Forget Allowed Addresses", role: .destructive) { log.forget(noteID) }
+            }
+        } header: {
+            Text("Internet")
+        } footer: {
+            Text("The app asks before it reaches a new address. Everything it sends is listed here.")
         }
     }
 

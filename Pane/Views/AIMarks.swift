@@ -117,13 +117,45 @@ struct AIReceipt: View {
     #endif
 }
 
-/// The mark of a note that is also an app (it has a page; see NotePage): in the note list and search
-/// results, on its toggle, and on a sub-note's link. Two designs: an amber mark after the title (picked)
-/// or, with `-appMark detail`, a small grey glyph beside the date.
+/// The mark of a note that is also an app (it has a page; see NotePage): after the title in the note
+/// list and search results, on a sub-note's widget, and on Show App. Three designs while Emil picks
+/// (`-appMark capsule|tile|sparkles`):
+///   A capsule: a solid amber capsule with the word "App" (our feature has no other noun);
+///   B tile: SF Symbol app.fill in amber, at the title's cap height;
+///   C sparkles: SF Symbol sparkles in amber, "made by your AI".
 enum NoteAppMark {
-    static let symbol = "square.grid.2x2"
-    enum Style { case detail, title }
-    nonisolated(unsafe) static var style: Style = Capture.argument("-appMark") == "detail" ? .detail : .title
+    enum Style: String { case capsule, tile, sparkles }
+    nonisolated(unsafe) static var style: Style = Capture.argument("-appMark").flatMap(Style.init(rawValue:)) ?? .capsule
+
+    /// The symbol where a symbol is needed (Show App, menus): the capsule's needs one too.
+    static var symbol: String { style == .sparkles ? "sparkles" : "app.fill" }
 
     @MainActor static func has(_ note: Note) -> Bool { !note.isLocked && NotePageStore.shared[note.id] != nil }
+}
+
+/// The mark itself, sized for the text it sits after.
+struct AppMarkView: View {
+    var size: CGFloat = 13
+    var body: some View {
+        switch NoteAppMark.style {
+        case .capsule:
+            Text("App")
+                .font(.system(size: size * 0.78, weight: .bold))
+                .foregroundStyle(.white)
+                .padding(.horizontal, size * 0.42)
+                .frame(height: size * 1.15)
+                .background(Color(Palette.amberButton), in: .capsule)
+                .accessibilityLabel("App")
+        case .tile:
+            Image(systemName: "app.fill")
+                .font(.system(size: size * 0.82, weight: .semibold))
+                .foregroundStyle(Color(Palette.amberButton))
+                .accessibilityLabel("App")
+        case .sparkles:
+            Image(systemName: "sparkles")
+                .font(.system(size: size * 0.82, weight: .semibold))
+                .foregroundStyle(Color(Palette.amberButton))
+                .accessibilityLabel("App")
+        }
+    }
 }

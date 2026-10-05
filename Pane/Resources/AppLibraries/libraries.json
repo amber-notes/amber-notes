@@ -1,0 +1,137 @@
+{
+ "libraries": [
+  {
+   "name": "chart",
+   "file": "chart.js",
+   "global": "Chart",
+   "package": "chart.js",
+   "version": "4.4.4",
+   "license": "MIT",
+   "source": "https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.js",
+   "what": "Charts: line, bar, doughnut, radar",
+   "bytes": 205475,
+   "sha384": "sha384-G436+Z2nlA8+PNoeRvWdxKbvOf8E/y+lYxqht2iBwNHTQDV5CJr3+AGVj8fGZi5t"
+  },
+  {
+   "name": "d3",
+   "file": "d3.js",
+   "global": "d3",
+   "package": "d3",
+   "version": "7.9.0",
+   "license": "ISC",
+   "source": "https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js",
+   "what": "Data-driven SVG, scales, shapes, geo projections",
+   "bytes": 279706,
+   "sha384": "sha384-CjloA8y00+1SDAUkjs099PVfnY2KmDC2BZnws9kh8D/lX1s46w6EPhpXdqMfjK6i"
+  },
+  {
+   "name": "three",
+   "file": "three.js",
+   "global": "THREE",
+   "package": "three",
+   "version": "0.160.0",
+   "license": "MIT",
+   "source": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js",
+   "what": "3D with WebGL",
+   "bytes": 669884,
+   "sha384": "sha384-qOkzR5Ke/XkQxuGVJ9hpFEpDlcoLtWwVYhnJf06cLIZa2vaIptSqaubivErzmD5O"
+  },
+  {
+   "name": "tone",
+   "file": "tone.js",
+   "global": "Tone",
+   "package": "tone",
+   "version": "14.8.49",
+   "license": "MIT",
+   "source": "https://cdn.jsdelivr.net/npm/tone@14.8.49/build/Tone.js",
+   "what": "Sound and music in the browser",
+   "bytes": 349169,
+   "sha384": "sha384-c6Uo4N9c3SOEigMVzP6IshUG1wQ5uMp3xeoQFiHWAQ86joWdgyajkvopySyKy/Z6"
+  },
+  {
+   "name": "dayjs",
+   "file": "dayjs.js",
+   "global": "dayjs",
+   "package": "dayjs",
+   "version": "1.11.13",
+   "license": "MIT",
+   "source": "https://cdn.jsdelivr.net/npm/dayjs@1.11.13/dayjs.min.js",
+   "what": "Dates",
+   "bytes": 7160,
+   "sha384": "sha384-DpVxUeeBWjUvUV1czyIHJAjh+jYUZFu2lLakbdua5vbwOrBGi1UgaKCHjTC+x3Ky"
+  },
+  {
+   "name": "marked",
+   "file": "marked.js",
+   "global": "marked",
+   "package": "marked",
+   "version": "12.0.2",
+   "license": "MIT",
+   "source": "https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js",
+   "what": "Markdown to HTML",
+   "bytes": 35479,
+   "sha384": "sha384-/TQbtLCAerC3jgaim+N78RZSDYV7ryeoBCVqTuzRrFec2akfBkHS7ACQ3PQhvMVi"
+  },
+  {
+   "name": "purify",
+   "file": "purify.js",
+   "global": "DOMPurify",
+   "package": "dompurify",
+   "version": "3.1.6",
+   "license": "Apache-2.0 OR MPL-2.0",
+   "source": "https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js",
+   "what": "Cleans HTML (use with marked)",
+   "bytes": 21496,
+   "sha384": "sha384-+VfUPEb0PdtChMwmBcBmykRMDd+v6D/oFmB3rZM/puCMDYcIvF968OimRh4KQY9a"
+  },
+  {
+   "name": "anime",
+   "file": "anime.js",
+   "global": "anime",
+   "package": "animejs",
+   "version": "3.2.2",
+   "license": "MIT",
+   "source": "https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js",
+   "what": "Animation",
+   "bytes": 17384,
+   "sha384": "sha384-oLmuahJgYYR1aWgZwdMQQ2AClE6A2eEwV2x1Z7cbIHehfkkmommQLH3wX1NDEszb"
+  },
+  {
+   "name": "confetti",
+   "file": "confetti.js",
+   "global": "confetti",
+   "package": "canvas-confetti",
+   "version": "1.9.3",
+   "license": "ISC",
+   "source": "https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.js",
+   "what": "Confetti",
+   "bytes": 24906,
+   "sha384": "sha384-/Ko/tqVwPYurnBe+Mj8WWw+39WmyOZn/kU+neqXn4hRxGI575k07mB/hIekAT51+"
+  },
+  {
+   "name": "topojson",
+   "file": "topojson.js",
+   "global": "topojson",
+   "package": "topojson-client",
+   "version": "3.1.0",
+   "license": "ISC",
+   "source": "https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js",
+   "what": "TopoJSON to GeoJSON (maps with d3)",
+   "bytes": 7169,
+   "sha384": "sha384-Ukv1p/xTma6P4/2bY5KzWBw+ydSpXmhCMtyciIQVDJ1RmOxtCYNMF1uXT9T63H67"
+  },
+  {
+   "name": "world",
+   "file": "world.js",
+   "global": "worldAtlas110m",
+   "package": "world-atlas",
+   "version": "2.0.2",
+   "license": "ISC (data: Natural Earth, public domain)",
+   "source": "https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json",
+   "what": "Country shapes, 1:110m (TopoJSON)",
+   "bytes": 107787,
+   "sha384": "sha384-UAEn3tXYZQSwy7HX2Z2sLVFH4jPKq6ZRiIlS66Kk+jE+71IsXVXGB/WyRHTxCeJO"
+  }
+ ],
+ "totalBytes": 1725615
+}

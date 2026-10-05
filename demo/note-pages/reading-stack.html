@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="amber-libs" content="three">
+<title>Reading stack</title>
+<style>
+  html, body { height: 100%; }
+  main { height: 100%; display: flex; flex-direction: column; }
+  header { max-width: var(--amber-content-max); width: 100%; box-sizing: border-box; margin: 0 auto; padding: 16px var(--amber-gutter) 4px; }
+  h1 { font-size: 1.6rem; margin: 0; letter-spacing: -0.02em; }
+  .muted { color: var(--amber-text-secondary); font-size: 0.9rem; }
+  #scene { flex: 1; min-height: 320px; touch-action: none; }
+  #tip { text-align: center; padding: 6px 16px calc(14px + env(safe-area-inset-bottom)); }
+</style></head>
+<body><main>
+  <header><h1 id="title"></h1><div class="muted" id="sub"></div></header>
+  <div id="scene"></div>
+  <div class="muted" id="tip">Drag to turn the stack. Tap a book to mark it read.</div>
+</main>
+<script>
+  const el = document.getElementById("scene");
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  el.appendChild(renderer.domElement);
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x8a4a1c, 1.3));
+  const sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(3, 6, 4); scene.add(sun);
+  const stack = new THREE.Group(); scene.add(stack);
+  const colors = [0xd96a06, 0x3f8f6b, 0x4b74c9, 0xb5579a, 0x8a6d3b, 0x5aa0a8, 0xc0453a];
+  let books = [], table = 0, cols = {}, angle = 0.6, spin = 0.004, dragging = false, lastX = 0, moved = 0;
+
+  function size() {
+    const w = el.clientWidth, h = el.clientHeight;
+    renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix();
+  }
+  new ResizeObserver(size).observe(el);
+
+  function build(note) {
+    document.getElementById("title").textContent = note.title;
+    const t = note.tables.find((t) => t.columns.some((c) => /pages/i.test(c.name)));
+    stack.clear(); books = [];
+    if (!t) { document.getElementById("sub").textContent = "Add a table: Title, Pages, Read."; return; }
+    table = t.index;
+    const find = (re) => t.columns.findIndex((c) => re.test(c.name));
+    cols = { title: find(/title|book/i), pages: find(/pages/i), read: find(/read|done/i) };
+    let y = 0, read = 0, pages = 0;
+    t.rows.forEach((r, i) => {
+      const p = parseInt(r[cols.pages]) || 200, done = /^(x|yes|true|✓|1)$/i.test(String(r[cols.read] || "").trim());
+      const h = 0.12 + p / 2500, w = 1.5 + (i % 3) * 0.12, d = 1.05 + (i % 2) * 0.08;
+      const mat = new THREE.MeshStandardMaterial({ color: colors[i % colors.length], roughness: 0.55 });
+      if (!done) mat.color.lerp(new THREE.Color(0xd8d2cc), 0.55);
+      const book = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+      const pagesBlock = new THREE.Mesh(new THREE.BoxGeometry(w - 0.06, h - 0.03, d + 0.002), new THREE.MeshStandardMaterial({ color: 0xf6efe7, roughness: 0.9 }));
+      pagesBlock.position.x = 0.03; book.add(pagesBlock);
+      book.position.y = y + h / 2; book.rotation.y = (i % 2 ? 1 : -1) * 0.08 * ((i * 7) % 5) / 4;
+      book.userData = { row: i, done };
+      stack.add(book); books.push(book);
+      y += h; pages += p; if (done) read++;
+    });
+    stack.position.y = -y / 2;
+    camera.position.set(0, 1.2 + y * 0.35, 4.2 + y * 0.9); camera.lookAt(0, 0, 0);
+    document.getElementById("sub").textContent = `${read} of ${t.rows.length} read, ${pages.toLocaleString("en")} pages in the stack`;
+  }
+
+  const ray = new THREE.Raycaster(), ptr = new THREE.Vector2();
+  el.addEventListener("pointerdown", (e) => { dragging = true; lastX = e.clientX; moved = 0; el.setPointerCapture(e.pointerId); });
+  el.addEventListener("pointermove", (e) => { if (!dragging) return; const dx = e.clientX - lastX; lastX = e.clientX; moved += Math.abs(dx); angle += dx * 0.01; spin = 0; });
+  el.addEventListener("pointerup", async (e) => {
+    dragging = false;
+    if (moved > 6) { setTimeout(() => (spin = 0.004), 2500); return; }
+    const r = el.getBoundingClientRect();
+    ptr.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+    ray.setFromCamera(ptr, camera);
+    const hit = ray.intersectObjects(books, true)[0];
+    if (!hit) return;
+    let b = hit.object; while (!books.includes(b)) b = b.parent;
+    if (cols.read < 0) return;
+    await amber.update({ op: "set_cell", table, row: b.userData.row, col: cols.read, value: b.userData.done ? "" : "x" });
+  });
+
+  (function loop() { angle += spin; stack.rotation.y = angle; renderer.render(scene, camera); requestAnimationFrame(loop); })();
+  amber.onChange(build);
+</script></body></html>

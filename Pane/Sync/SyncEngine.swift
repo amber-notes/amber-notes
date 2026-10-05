@@ -865,6 +865,8 @@ final class SyncEngine {
         let keys = APIKeyStore.shared.keys
         let stamp = keys.map { "\($0.name)|\($0.hosts.joined(separator: ","))" }.joined(separator: ";")
         guard stamp != lastKeyNames else { return }
+        // Nothing set up here, and nothing sent yet: nothing to say.
+        if keys.isEmpty, lastKeyNames == nil { lastKeyNames = stamp; return }
         do {
             let rows: [Row] = keys.compactMap { k in
                 let id = APIKeyStore.rowID(k.name)
@@ -873,7 +875,11 @@ final class SyncEngine {
             }
             if !rows.isEmpty { try await client.from("api_key_names").upsert(rows).execute() }
             let keep = rows.map { $0.id.uuidString.lowercased() }
-            try await client.from("api_key_names").delete().not("id", operator: .in, value: "(\(keep.joined(separator: ",")))").execute()
+            if keep.isEmpty {
+                try await client.from("api_key_names").delete().neq("id", value: UUID().uuidString).execute()
+            } else {
+                try await client.from("api_key_names").delete().not("id", operator: .in, value: "(\(keep.joined(separator: ",")))").execute()
+            }
             lastKeyNames = stamp
         } catch {
             log.error("api key names push failed: \(String(describing: error), privacy: .public)")

@@ -31,6 +31,8 @@ enum Palette {
     static let amberInk = pair(0xA85700, 0xF4AD33)
     /// The soft amber fill behind an AI's receipt.
     static let amberSoft = pair(0xFFF1DC, 0x423014)
+    /// A solid hairline: card edges and dividers that read the same over any surface.
+    static let line = pair(0xE6DCD2, 0x3A3633)
 
     /// The note itself: nearly white, and nearly native in the dark.
     #if os(iOS)
@@ -88,6 +90,7 @@ extension Color {
     static let muted = Color(Palette.muted)
     static let amberInk = Color(Palette.amberInk)
     static let amberSoft = Color(Palette.amberSoft)
+    static let line = Color(Palette.line)
     /// The note itself sits on a lighter page than the list and sidebar, like Apple Notes.
     static let notePage = Color(Palette.page)
 

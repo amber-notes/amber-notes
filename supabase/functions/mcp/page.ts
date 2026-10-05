@@ -34,14 +34,44 @@ The device, through the system's own prompts (results go to the page only; write
   maps.open({ lat, lon | query, directions }), maps.snapshot({ lat, lon, km | pins: [{ lat, lon, label }], fit, pin, width, height, dark }) -> { dataURL, region, points: [{ x, y }] } (points: where each pin landed, to draw on top). On-device AI: amber.ai.available(), amber.ai.respond(prompt, { instructions }) -> { text }. Every call returns { ok, ... } or { ok: false, error }.
 Settings the person can change without an AI: declare <meta name="amber-settings" content='{"settings": [{ "key": "budget", "label": "Monthly budget", "type": "number", "default": 15000 }]}'> (types: text, number, choice with "options", list, color, currency).
   Amber Notes shows them in App Settings; read amber.settings (defaults filled in); onChange runs when they change. Use settings for names, goals, limits, currencies and categories instead of hardcoding them.
+Libraries: Amber Notes ships chart (Chart.js 4.4.4 → Chart), d3 (7.9.0 → d3), three (0.160.0 → THREE), tone (14.8.49 → Tone), dayjs (1.11.13), marked (12.0.2), purify (DOMPurify 3.1.6, use it on marked output),
+  anime (3.2.2), confetti (canvas-confetti 1.9.3), topojson (topojson-client 3.1.0), world (country shapes, TopoJSON → worldAtlas110m). Declare them: <meta name="amber-libs" content="chart, d3">, loaded before your scripts as those globals; or await amber.lib("three").
+  Any other npm package: npm:name@1.2.3/path/to/file.min.js#sha384-<base64> in the same meta (a pinned version and an SRI hash, sha256/384/512); Amber Notes downloads it once from cdn.jsdelivr.net, checks the hash, keeps it on the device. Never paste a library into the page.
+Where the app is: amber.context = { embedded, width, height }; <html data-amber-context="widget|full">. The web view is the app's real size, with safe areas (env(safe-area-inset-*)); resizing and the keyboard work the standard web way.
 Network: the page itself can't reach anything. Declare hosts in <meta name="amber-needs" content='{"hosts": ["api.open-meteo.com"], "keys": [{ "name": "OpenWeather", "hosts": ["api.openweathermap.org"], "query": "appid={key}", "help": "How to get one" }]}'>
   and call amber.fetch(url, { method, headers, body, key }) -> { ok, status, body }. The person approves each host once and sees every request; with key, the app adds that API key (the page never sees it). Redirects are followed only to declared, approved hosts.
 Look like Amber Notes: the app sets these CSS variables on :root, already switched for light and dark, and gives body its font, text colour and background. Use them instead of your own colours and fonts:
   --amber-bg (the note's background), --amber-surface (cards and grouped rows), --amber-fill (controls, empty cells), --amber-text, --amber-text-secondary, --amber-separator,
   --amber-accent (amber, for marks and filled controls), --amber-accent-text (amber for text), --amber-accent-soft (a soft amber fill), --amber-on-accent (text on --amber-accent),
-  --amber-danger, --amber-radius (cards), --amber-radius-small (controls), --amber-font (the system font), --amber-font-rounded, --amber-font-mono, --amber-content-max, --amber-gutter.
+  --amber-danger, --amber-field and --amber-field-border (inputs), --amber-radius (cards), --amber-radius-small (controls), --amber-font (the system font), --amber-font-rounded, --amber-font-mono, --amber-content-max, --amber-gutter.
+Every input, select and textarea is visible as a field in both themes: a solid fill and a 1px border (inputs get background: var(--amber-field); border: 1px solid var(--amber-field-border) by default; don't remove them). Nothing see-through: solid colours only.
 Size text in rem: on iPhone the root follows the reader's text size. In a parent note the app can show as a small widget: <html> then has the class amber-widget; use a compact layout.
 Fit every width: the page fills the note, from 320 px on a small iPhone to 1,800 px in a full-screen Mac window, and re-lays out live as the window resizes. Put content in a container with max-width: var(--amber-content-max) (1100 px), margin: 0 auto and side padding var(--amber-gutter). Use one column under 600 px, and from 900 px use the room (side-by-side sections, more history, bigger numbers) with @media (min-width: 900px) or the classes amber-narrow / amber-medium / amber-wide the app keeps on <html>. Never a fixed width, never a stretched phone layout. Don't set a background on html or body.`;
+
+/** Libraries Amber Notes ships (Pane/Resources/AppLibraries/libraries.json): name → the global it defines. */
+export const BUNDLED_LIBS: Record<string, string> = {
+  chart: "Chart", d3: "d3", three: "THREE", tone: "Tone", dayjs: "dayjs", marked: "marked", purify: "DOMPurify",
+  anime: "anime", confetti: "confetti", topojson: "topojson", world: "worldAtlas110m",
+};
+
+/** npm:<name>@<x.y.z>[/<file>]#<sha256|sha384|sha512>-<base64>: a pinned package, checked by hash. */
+export const NPM_REF = /^npm:((?:@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*)@(\d+\.\d+\.\d+(?:[-.][0-9A-Za-z.]+)?)(\/[^#\s]+)?#(sha256|sha384|sha512)-[A-Za-z0-9+/]+={0,2}$/;
+
+/** What <meta name="amber-libs"> asks for that can't be served. */
+export function libProblems(html: string): string[] {
+  const tag = html.match(/<meta[^>]*name=["']amber-libs["'][^>]*>/i)?.[0];
+  const content = tag?.match(/content=(['"])([\s\S]*?)\1/)?.[2];
+  if (!content) return [];
+  const out: string[] = [];
+  for (const item of content.split(",").map((x) => x.trim()).filter(Boolean)) {
+    if (item.startsWith("npm:")) {
+      if (!NPM_REF.test(item)) out.push(`"${item}" needs a pinned version and a hash: npm:name@1.2.3/file.min.js#sha384-… (sha256, sha384 or sha512, base64).`);
+    } else if (!(item in BUNDLED_LIBS)) {
+      out.push(`No bundled library "${item}". Bundled: ${Object.keys(BUNDLED_LIBS).join(", ")}; anything else as npm:name@version#hash.`);
+    }
+  }
+  return out;
+}
 
 const NAMESPACES = /^https?:\/\/www\.w3\.org\/(2000\/svg|1999\/xhtml|1999\/xlink|XML\/1998\/namespace)$/;
 
@@ -69,7 +99,7 @@ export function pageProblems(html: string): string[] {
   // and the hosts the page declares for amber.fetch.
   const declared = declaredHosts(html);
   const urls = [...html.matchAll(/\b[a-z][a-z0-9+.-]*:\/\/[^\s"'<>)]*/gi)].map((m) => m[0])
-    .filter((u) => !NAMESPACES.test(u.replace(/\/$/, "")))
+    .filter((u) => !NAMESPACES.test(u.replace(/\/$/, "")) && !/^amber-(lib|file):/i.test(u))
     .filter((u) => { try { const x = new URL(u); return !(/^https?:$/.test(x.protocol) && declared.has(x.host.toLowerCase())); } catch { return true; } });
   if (urls.length) out.push(`External addresses aren't allowed: ${[...new Set(urls)].slice(0, 3).join(", ")}. The page has no network of its own; to call a service, declare its host in <meta name="amber-needs"> and use amber.fetch.`);
   // Protocol-relative addresses and stylesheet imports.
@@ -83,6 +113,7 @@ export function pageProblems(html: string): string[] {
   const apis = [...new Set([...html.matchAll(/(?<!amber\s*\.\s*)\b(fetch|sendBeacon|importScripts)\s*\(|\bnew\s+(XMLHttpRequest|WebSocket|EventSource|Worker|SharedWorker|RTCPeerConnection)\b|\bnavigator\.serviceWorker\b|\bwindow\.open\s*\(/g)]
     .map((m) => m[1] ?? m[2] ?? m[0].replace(/\s*\($/, "")))];
   if (apis.length) out.push(`The page can't use the network itself (${apis.join(", ")}). Use amber.fetch for declared hosts, and amber.note / amber.update for the note.`);
+  out.push(...libProblems(html));
   if (!/\bamber\s*\.\s*(note|onChange)\b/.test(html)) out.push("The page must read the note from window.amber.note (or amber.onChange), not carry a copy of its data.");
   return out;
 }

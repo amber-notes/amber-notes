@@ -69,14 +69,15 @@ import Testing
             defer { w.orderOut(nil); w.close() }
             try await MacStoreShots.shoot(dir, "budget-\(name)-light", [("main", w)])
         }
-        // The list's app mark, both designs, on the Lisbon note so the list shows the two app notes.
-        for style in [NoteAppMark.Style.detail, .title] {
+        // The list's app mark, the three candidates (A capsule, B app.fill, C sparkles), on the Lisbon
+        // note so the list shows the app notes.
+        for (letter, style) in [("a", NoteAppMark.Style.capsule), ("b", .tile), ("c", .sparkles)] {
             NoteAppMark.style = style
-            defer { NoteAppMark.style = .title }
+            defer { NoteAppMark.style = .capsule }
             for dark in [false, true] {
                 let (w, _) = try await Self.open("Lisbon", size: CGSize(width: 1280, height: 800), dark: dark, list: 560)
                 defer { w.orderOut(nil); w.close() }
-                try await MacStoreShots.shoot(dir, "mark-\(style == .detail ? "a" : "b")-\(dark ? "dark" : "light")", [("main", w)])
+                try await MacStoreShots.shoot(dir, "mark-\(letter)-\(dark ? "dark" : "light")", [("main", w)])
             }
         }
     }

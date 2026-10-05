@@ -567,7 +567,10 @@ enum RowMetrics {
     static let vertical: CGFloat = 5
     static let leading: CGFloat = 12
     static let dotOffset: CGFloat = -12
+    /// The app mark's size: about the title's cap height.
+    static let markSize: CGFloat = 13
     #else
+    static let markSize: CGFloat = 16
     static let title = Font.headline
     static let detail = Font.subheadline
     static let spacing: CGFloat = 3
@@ -636,12 +639,8 @@ struct NoteRow: View {
                     .font(RowMetrics.title)
                     .foregroundStyle(Color.ink)
                     .lineLimit(large ? 3 : 1)
-                if app, NoteAppMark.style == .title {
-                    Image(systemName: NoteAppMark.symbol + ".fill")
-                        .font(RowMetrics.detail)
-                        .imageScale(.small)
-                        .foregroundStyle(Color.amberInk)
-                        .accessibilityHidden(true)
+                if app {
+                    AppMarkView(size: RowMetrics.markSize)
                         .accessibilityIdentifier("note.app")
                 }
             }
@@ -655,13 +654,6 @@ struct NoteRow: View {
             }
             detail {
                 HStack(spacing: 4) {
-                    if app, NoteAppMark.style == .detail {
-                        Image(systemName: NoteAppMark.symbol)
-                            .imageScale(.small)
-                            .foregroundStyle(Color.muted)
-                            .accessibilityHidden(true)
-                            .accessibilityIdentifier("note.app")
-                    }
                     if shared {
                         Image(systemName: "link")
                             .imageScale(.small)

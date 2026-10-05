@@ -527,6 +527,18 @@ extension NetworkFaults {
         return String(decoding: try JSONSerialization.data(withJSONObject: rows), as: UTF8.self) + opened.joined(separator: "\n")
     }
 
+    /// The lock has landed on the server: the row holds the sealed text and no readable box.
+    /// (What the tests below wait for before the other device acts, instead of sleeping.)
+    func lockLanded(_ id: UUID) -> Bool {
+        guard let row = StubSupabase.note(id) else { return false }
+        return row["locked_body"] is String && row["body_ct"] is NSNull
+    }
+
+    /// Everything the server was sent and holds, for a failure message: the evidence.
+    func evidence() -> String {
+        "requests:\n" + StubSupabase.requests.joined(separator: "\n") + "\nserver:\n" + ((try? serverText()) ?? "?")
+    }
+
     func copies(_ d: Device) throws -> [Note] {
         try d.context.fetch(FetchDescriptor<Note>()).filter { $0.title.contains("(conflicted copy)") }
     }
@@ -642,14 +654,16 @@ extension NetworkFaults {
             try await mac.vault.setUp(password: "pw", hint: nil)
             try mac.vault.lock(n)
             await mac.engine.sync()
-            // Still offline, the phone edits the note it has.
-            try await Task.sleep(for: .milliseconds(20))
+            try #require(lockLanded(n.id), "the lock didn't reach the server: \(evidence())")
+            // Still offline, the phone edits the note it has, after the lock.
             p.body = "Bank\n\nPIN 1234\nPUK 5678"
             p.touch()
+            p.updatedAt = n.updatedAt.addingTimeInterval(1)
             await phone.engine.sync()
             await phone.engine.sync()
             let everything = try serverText()
-            #expect(!everything.contains("PUK") && !everything.contains("1234"), "plaintext of a locked note reached the server")
+            #expect(!everything.contains("PUK"), "the phone's edit of a locked note reached the server: \(evidence())")
+            #expect(!everything.contains("1234"), "the text from before the lock is still readable on the server: \(evidence())")
             await mac.engine.stop()
             await phone.engine.stop()
         }
@@ -667,16 +681,19 @@ extension NetworkFaults {
             try await mac.vault.setUp(password: "pw", hint: nil)
             try mac.vault.lock(n)
             await mac.engine.sync()
-            try await Task.sleep(for: .milliseconds(20))
+            try #require(lockLanded(n.id), "the lock didn't reach the server: \(evidence())")
+            // An edit made after the lock (a later edit time), deterministically.
             p.body = "Bank\n\nPIN 1234\nPUK 5678"
-            p.updatedAt = .now
+            p.updatedAt = n.updatedAt.addingTimeInterval(1)
             p.dirty = true
             await phone.engine.sync(); await phone.engine.sync()
-            #expect(try !serverText().contains("PUK") && !serverText().contains("1234"))
+            #expect(try !serverText().contains("PUK"), "the phone's edit reached the server: \(evidence())")
+            #expect(try !serverText().contains("1234"), "the text from before the lock is readable on the server: \(evidence())")
             await phone.vault.refresh()
             try await phone.vault.unlock(password: "pw")
             await phone.engine.sync(); await phone.engine.sync()
-            #expect(try !serverText().contains("PUK") && !serverText().contains("1234"))
+            #expect(try !serverText().contains("PUK"), "after unlocking, the phone's edit reached the server: \(evidence())")
+            #expect(try !serverText().contains("1234"), "after unlocking, readable text is on the server: \(evidence())")
             let copy = try #require(try copies(phone).first)
             #expect(copy.isLocked && phone.vault.text(of: copy)?.contains("PUK 5678") == true)
             await mac.engine.stop(); await phone.engine.stop()

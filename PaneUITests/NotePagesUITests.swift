@@ -158,15 +158,6 @@ final class NotePagesUITests: XCTestCase {
         shot("toggle-a-text")
     }
 
-    func testToggleMenu() {
-        launch(["-open", "Habit tracker", "-seedPage", "Habit tracker=\(pages)/habit-tracker.html", "-pageToggle", "menu"])
-        pause(2.5)
-        shot("toggle-b-page")
-        app.buttons["editor.more"].firstMatch.tap()
-        pause(1.2)
-        shot("toggle-b-menu")
-    }
-
     /// Apps inside a note: Budget 2026 with three sub-notes shown as widgets.
     func testWidgets() {
         launch(["-open", "Budget 2026", "-widgetDemo", pages])
@@ -211,12 +202,18 @@ final class NotePagesUITests: XCTestCase {
 
     /// The app mark in the list, both designs.
     func testAppMark() {
-        let style = ProcessInfo.processInfo.environment["APP_MARK"] ?? "detail"
+        let style = ProcessInfo.processInfo.environment["APP_MARK"] ?? "capsule"
+        let look = ProcessInfo.processInfo.environment["APPEARANCE"] ?? "light"
         launch(["-seedPage", "Habit tracker=\(pages)/habit-tracker.html", "-appMark", style])
         let all = app.staticTexts["All Notes"].firstMatch
         if all.waitForExistence(timeout: 4) { all.tap() }
         pause(1.5)
-        shot("mark-\(style)")
+        shot("mark-\(style)-\(look)-list")
+        // The same mark on an embedded app's header.
+        app.terminate()
+        launch(["-open", "Budget 2026", "-widgetDemo", pages, "-appMark", style])
+        pause(3.5)
+        shot("mark-\(style)-\(look)-widget")
     }
 
     // MARK: Showcase
@@ -327,7 +324,7 @@ final class NotePagesUITests: XCTestCase {
         shot("40-weather-works")
         app.buttons["editor.more"].firstMatch.tap()
         pause(0.8)
-        app.buttons["editor.netLog"].firstMatch.tap()
+        app.buttons["editor.appSettings"].firstMatch.tap()
         pause(1.5)
         shot("41-weather-log")
         pause(1)
@@ -425,7 +422,8 @@ final class NotePagesUITests: XCTestCase {
         pause(3)
         shot("70-settings-before")
         app.buttons["editor.more"].firstMatch.tap()
-        pause(0.8)
+        pause(1.2)
+        shot("70-more-menu")
         app.buttons["editor.appSettings"].firstMatch.tap()
         pause(1.5)
         shot("71-settings-sheet")
@@ -454,6 +452,54 @@ final class NotePagesUITests: XCTestCase {
         pause(2)
         shot("73-settings-after")
         mark("settings-end")
+        pause(1)
+    }
+
+    // MARK: Libraries
+
+    /// Chart.js, bundled: a dashboard over the October budget.
+    func testLibDashboard() {
+        launch(["-open", "October budget", "-seedPage", "October budget=\(pages)/budget-dashboard.html"])
+        mark("lib-start")
+        pause(3.5)
+        shot("80-lib-dashboard")
+        app.webViews.firstMatch.swipeUp(velocity: .slow)
+        pause(1.5)
+        shot("81-lib-dashboard-scrolled")
+        mark("lib-end")
+        pause(1)
+    }
+
+    /// three.js, bundled: a reading list as a stack of books. Drag turns it; a tap marks a book read.
+    func testLibStack() {
+        launch(["-seedNote", "\(pages)/reading-stack.md", "-open", "Reading stack", "-seedPage", "Reading stack=\(pages)/reading-stack.html"])
+        mark("lib-start")
+        pause(4)
+        shot("82-lib-stack")
+        let web = app.webViews.firstMatch
+        let middle = web.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.55))
+        middle.press(forDuration: 0.1, thenDragTo: web.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.55)))
+        pause(1.5)
+        middle.tap()
+        pause(2)
+        shot("83-lib-stack-read")
+        mark("lib-end")
+        pause(1)
+    }
+
+    /// A pinned npm package (qrcode-generator 1.4.4, checked by hash): a Wi-Fi card with a QR code,
+    /// then App Settings showing the one-time download.
+    func testLibNpm() {
+        launch(["-seedNote", "\(pages)/wifi-card.md", "-open", "Wi-Fi at home", "-seedPage", "Wi-Fi at home=\(pages)/wifi-card.html"])
+        mark("lib-start")
+        pause(5)
+        shot("84-lib-npm")
+        app.buttons["editor.more"].firstMatch.tap()
+        pause(0.8)
+        app.buttons["editor.appSettings"].firstMatch.tap()
+        pause(1.5)
+        shot("85-lib-npm-settings")
+        mark("lib-end")
         pause(1)
     }
 }
