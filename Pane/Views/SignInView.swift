@@ -2,9 +2,11 @@ import SwiftUI
 
 /// Sign in: Sign in with Apple, or email first. Type your email, Continue, and the screen asks
 /// for your password or for a new one, depending on whether the email has an account.
-/// On the Mac this is the whole window; on iPhone it's a glass card over a warm backdrop.
+/// Signed out, it sits beside the welcome's picture (WelcomeFlow); on its own (captures and
+/// snapshots) it's the old card: the whole window on the Mac, a glass card on iPhone.
 struct SignInView: View {
     let backend: Backend
+    let heading: Heading
     @State private var flow: EmailSignInFlow
     @State private var working = false
     @State private var error: String?
@@ -14,8 +16,16 @@ struct SignInView: View {
 
     enum Field { case email, password }
 
-    init(backend: Backend, flow: EmailSignInFlow = EmailSignInFlow()) {
+    /// The words above the form: the card's own (icon, title and promise, centred), or a title
+    /// and a line from the welcome flow, which sets the form beside its picture.
+    enum Heading: Equatable {
+        case card
+        case beside(title: String, line: String)
+    }
+
+    init(backend: Backend, flow: EmailSignInFlow = EmailSignInFlow(), heading: Heading = .card) {
         self.backend = backend
+        self.heading = heading
         _flow = State(initialValue: flow)
     }
 
@@ -36,6 +46,15 @@ struct SignInView: View {
     }
 
     var body: some View {
+        if case .beside = heading {
+            // The welcome flow places it.
+            card
+        } else {
+            cardScreen
+        }
+    }
+
+    private var cardScreen: some View {
         #if os(macOS)
         card
             .padding(.horizontal, 36)
@@ -61,15 +80,32 @@ struct SignInView: View {
 
     private var card: some View {
         VStack(spacing: 24) {
-            VStack(spacing: 14) {
-                AppMark(size: 72)
-                // The website's display type: heavy and tight.
-                Text("Sign in to Amber Notes")
-                    .font(.title2.weight(.heavy))
-                    .tracking(-0.6)
-                    .foregroundStyle(Color.ink)
-                    .multilineTextAlignment(.center)
-                promise
+            switch heading {
+            case .card:
+                VStack(spacing: 14) {
+                    AppMark(size: 72)
+                    // The website's display type: heavy and tight.
+                    Text("Sign in to Amber Notes")
+                        .font(.title2.weight(.heavy))
+                        .tracking(-0.6)
+                        .foregroundStyle(Color.ink)
+                        .multilineTextAlignment(.center)
+                    promise
+                }
+            case .beside(let title, let line):
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(title)
+                        .font(.title2.weight(.heavy))
+                        .tracking(-0.6)
+                        .foregroundStyle(Color.ink)
+                        .accessibilityAddTraits(.isHeader)
+                        .accessibilityIdentifier("signin.title")
+                    Text(line)
+                        .font(.subheadline)
+                        .foregroundStyle(Color.muted)
+                }
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
 
             VStack(spacing: 12) {
@@ -411,7 +447,10 @@ struct Backdrop: View {
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        (scheme == .dark ? Color(red: 0.105, green: 0.1, blue: 0.11) : Color(red: 0.975, green: 0.968, blue: 0.955))
-            .ignoresSafeArea()
+        Self.color(scheme).ignoresSafeArea()
+    }
+
+    static func color(_ scheme: ColorScheme) -> Color {
+        scheme == .dark ? Color(red: 0.105, green: 0.1, blue: 0.11) : Color(red: 0.975, green: 0.968, blue: 0.955)
     }
 }

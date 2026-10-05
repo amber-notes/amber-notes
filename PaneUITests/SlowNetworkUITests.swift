@@ -13,7 +13,7 @@ final class SlowNetworkUITests: XCTestCase {
     }
 
     func launch(_ args: [String]) {
-        app.launchArguments = args + ["-signout"]
+        app.launchArguments = args + ["-signout", "-skipWelcome"]
         app.launch()
     }
 

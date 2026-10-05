@@ -375,7 +375,7 @@ struct AppGate: View {
         Group {
             switch backend.state {
             case .signedOut:
-                SignInView(backend: backend)
+                WelcomeFlow(backend: backend)
                     #if os(macOS)
                     .fixedSize()
                     .onGeometryChange(for: CGSize.self, of: \.size) { cardSize = $0 }
@@ -662,7 +662,7 @@ private struct WindowCloser: NSViewRepresentable {
 
 /// Captures only (`-uitest`): one screen on its own, or the setup card at a given step, so the
 /// iPhone simulator can show them without anyone tapping through.
-///   `-captureScreen connect`, `connect-chatgpt`, `connect-claude`, `connected-chatgpt`, `connect-incredible`, `settings`, `template`, `template-added`, `copy`, `signin`, `new-device`, `add-device` (the sheet as this device opens it), `add-device-type`, `add-device-confirm`, `add-device-done`, `key-kept`, `key-kept-unconfirmed`, `key-kept-only`, `key-checking` or `device-added-notice`; `-captureSetup 1…4` (4: the moment after your AI's first edit).
+///   `-captureScreen connect`, `connect-chatgpt`, `connect-claude`, `connected-chatgpt`, `connect-incredible`, `settings`, `template`, `template-added`, `copy`, `signin`, `welcome`, `welcome-signin`, `new-device`, `add-device` (the sheet as this device opens it), `add-device-type`, `add-device-confirm`, `add-device-done`, `key-kept`, `key-kept-unconfirmed`, `key-kept-only`, `key-checking` or `device-added-notice`; `-captureSetup 1…4` (4: the moment after your AI's first edit).
 struct CaptureScreen: View {
     let name: String
     let backend: Backend
@@ -738,6 +738,10 @@ struct CaptureScreen: View {
             NoteSourceCapture(name: name)
         case let screen where screen.hasPrefix("add-device") || screen == "new-device" || screen == "key-checking" || screen.hasPrefix("key-kept") || screen == "device-added-notice":
             AddDeviceCapture(name: screen)
+        case "welcome":
+            WelcomeFlow(backend: backend, stage: .welcome)
+        case "welcome-signin":
+            WelcomeFlow(backend: backend, stage: .signIn(returning: false))
         default:
             SignInView(backend: backend)
         }

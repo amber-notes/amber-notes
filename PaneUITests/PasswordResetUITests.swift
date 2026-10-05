@@ -16,7 +16,7 @@ final class PasswordResetUITests: XCTestCase {
     func testForgotPasswordSendsALink() throws {
         guard let address = env["PANE_RESET_EMAIL"] else { throw XCTSkip("No local account given") }
         let app = XCUIApplication()
-        app.launchArguments = ["-synctest", "-signout"]
+        app.launchArguments = ["-synctest", "-signout", "-skipWelcome"]
         app.launch()
 
         let email = app.textFields["signin.email"]
