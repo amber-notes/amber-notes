@@ -10,7 +10,7 @@ import type { CaptureResult, PostHogConfig } from "posthog-js";
 
 export const POSTHOG_DEFAULT_HOST = "https://eu.i.posthog.com";
 
-const PRIVATE = /^\/(?:n|open|report|reset-password|account)(?:\/|$)|^\/connect|^\/download\/mac(?:\/|$)/;
+const PRIVATE = /^\/(?:n|open|report|reset-password|account|unsubscribe)(?:\/|$)|^\/connect|^\/download\/mac(?:\/|$)/;
 
 /// The marketing pages, the only ones where click positions, rage clicks and dead clicks are kept:
 /// home, download, the templates and each template, the blog and its posts, help, the changelog and

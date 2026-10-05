@@ -78,6 +78,8 @@ async function seed(pg: PGlite, me: string) {
   await pg.query(`insert into public.pane_feature_use (user_id, feature) values ($1, 'shareLink')`, [me]);
   await pg.query(`insert into public.pane_rate (user_id, bucket, tokens) values ($1, 'write', 10) on conflict do nothing`, [me]);
   await pg.query(`insert into public.signup_allowlist (email) select lower(email) from auth.users where id = $1`, [me]);
+  await pg.query(`insert into public.email_sends (user_id, kind, status, sent_at) values ($1, 'connect', 'sent', now())`, [me]);
+  await pg.query(`insert into public.email_unsubscribes (user_id, source) values ($1, 'link')`, [me]);
   await pg.query(`insert into auth.sessions (user_id, user_agent, ip) values ($1, 'Amber Notes/1.0 iPhone', '203.0.113.9')`, [me]);
   await pg.query(`insert into auth.audit_log_entries (payload, ip_address) values (json_build_object('actor_id', $1::text, 'actor_username', 'sara@example.com'), '203.0.113.9')`, [me]);
   return { folder, note, trashed, locked, slug, tokenHash, acct: a };
@@ -157,6 +159,7 @@ Deno.test("the export has everything the server can read, no note text or names,
   assertEquals(data.usage.ai_edits_per_day.length, 1);
   assertEquals(data.usage.devices.length, 1);
   assertEquals([data.usage.key_devices.length, data.usage.key_devices[0].how, data.usage.key_devices[0].name_ct], [1, "added", undefined], "the devices that hold the key, without their sealed names");
+  assertEquals([data.onboarding_emails.sent.length, data.onboarding_emails.sent[0].kind, data.onboarding_emails.unsubscribed.source], [1, "connect", "link"]);
   assertEquals(data.sign_ins[0].ip, "203.0.113.9");
   assert(data.notes.find((n: { id: string }) => n.id === as.locked).locked, "locked notes are marked");
 
