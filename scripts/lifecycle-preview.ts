@@ -18,6 +18,8 @@ const variants = [
   ...KINDS.map((kind) => ({ kind, name: kind, ctx: base })),
   // A big library mostly in one folder: the connect email shows sorting instead.
   { kind: "connect" as const, name: "connect-sorting", ctx: { ...base, sortable: true } },
+  // Try this first in its three prompt layouts, to compare.
+  ...(["bubbles", "list", "featured"] as const).map((promptStyle) => ({ kind: "try" as const, name: `try-${promptStyle}`, ctx: { ...base, promptStyle } })),
 ];
 const index: unknown[] = [];
 for (const v of variants) {

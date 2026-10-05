@@ -30,7 +30,7 @@ Deno.test("every email has a plain-text twin with the same links and a way to st
 
 Deno.test("one short paragraph before the first picture or button", () => {
   for (const e of all) {
-    const head = e.html.split(/<!--\[if mso\]><v:roundrect|class="shot"|class="composer"/)[0];
+    const head = e.html.split(/<!--\[if mso\]><v:roundrect|class="shot"|class="bubble"|font-size:21px/)[0];
     const paragraphs = (head.match(/class="ink body"/g) ?? []).length;
     assert(paragraphs <= 1, `${e.kind}: ${paragraphs} paragraphs before the button`);
     const first = head.match(/class="ink body"[^>]*>([^<]*)/)?.[1] ?? "";
@@ -67,7 +67,7 @@ Deno.test("the subject and preview are short enough for a phone's inbox", () => 
 });
 
 Deno.test("a paper-cut picture on top of every email, and real captures only inside the note", () => {
-  const captures = ["connect.jpg", "receipt.png", "app-habits.jpg", "app-budget.jpg", "share.jpg",
+  const captures = ["connect.jpg", "undo.jpg", "app-habits.jpg", "app-budget.jpg", "share.jpg",
     "t-grocery-list.jpg", "t-trip-plan.jpg", "t-weekly-review.jpg", "mark.png", "emil.jpg"];
   for (const e of all) {
     const pics = [...e.html.matchAll(/src="https:\/\/ambernotes\.app\/email\/([^"]+)"/g)].map((m) => m[1]);
@@ -114,6 +114,27 @@ Deno.test("two subject lines per email, both short", () => {
 Deno.test("templates link to Use template on the site", () => {
   const e = render("templates", ctx);
   for (const slug of ["grocery-list", "trip-plan", "weekly-review"]) assertStringIncludes(e.html, `href="https://ambernotes.app/open/template/${slug}"`);
+});
+
+Deno.test("every capture spans the text column, lined up with the text", () => {
+  for (const e of all) for (const img of e.html.matchAll(/<img class="shot"[^>]*>/g)) {
+    assertStringIncludes(img[0], 'width="456"');
+    assertStringIncludes(img[0], "width:100%;height:auto");
+    assert(!/max-width/.test(img[0]), e.kind);
+  }
+  for (const e of all) assert(!/<td align="center">\s*<img class="shot"/.test(e.html), `${e.kind}: centred capture`);
+});
+
+Deno.test("Try this first in each of its three layouts links every prompt both ways", () => {
+  for (const promptStyle of ["bubbles", "list", "featured"] as const) {
+    const e = render("try", { ...ctx, promptStyle });
+    for (const p of PROMPTS) assertStringIncludes(e.html, `href="https://ambernotes.app/copy/${p.id}"`);
+    assert(!/border-left/.test(e.html), promptStyle);
+  }
+});
+
+Deno.test("the apps email leads to the templates gallery's Apps filter", () => {
+  assertStringIncludes(render("apps", ctx).html, 'href="https://ambernotes.app/templates?category=apps"');
 });
 
 Deno.test("replies go to Emil", () => {

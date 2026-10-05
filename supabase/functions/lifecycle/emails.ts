@@ -33,7 +33,13 @@ export type Context = {
   connectTried: boolean;
   /// Which subject line and preview (0 or 1) when two are being compared.
   variant?: 0 | 1;
+  /// How Try this first lays out its prompts. The default is the chosen one; the others are kept
+  /// so the three can be compared in the previews.
+  promptStyle?: PromptStyle;
 };
+
+export type PromptStyle = "bubbles" | "list" | "featured";
+export const PROMPT_STYLE: PromptStyle = "featured";
 
 export type Email = { kind: Kind; subject: string; preview: string; html: string; text: string };
 
@@ -166,7 +172,7 @@ function draft(kind: Kind, c: Context): Draft {
         art: { file: "hero-undo.jpg", ground: "#754024", alt: "A paper-cut signpost where a path splits in two, with a compass in the grass" },
         blocks: [
           { p: "Your AI made its first change. When it edits a note you have open, this bar appears, and Undo puts the note back." },
-          { shot: { file: "receipt.png", w: 295, h: 78, alt: "ChatGPT changed 5 lines, Undo", round: 0 } },
+          { shot: { file: "undo.jpg", w: 640, h: 660, alt: "A Groceries note on a Mac with five lines ChatGPT added marked in amber, and the bar ChatGPT changed 5 lines, Undo" } },
           { p: "Older changes are in each note's version history: on a note, choose More (•••), then Show Version History." },
           { p: "Versions an AI made are kept for 90 days.", small: true },
         ],
@@ -183,7 +189,7 @@ function draft(kind: Kind, c: Context): Draft {
           { p: "Hi, Emil here. A note can hold a small app now. Here are two: a habit tracker you tick off every day, and a budget that adds up as you go." },
           { shot: { file: "app-habits.jpg", w: 300, h: 214, alt: "A habit tracker app in an Amber Notes note: four of four done today" } },
           { shot: { file: "app-budget.jpg", w: 300, h: 219, alt: "A budget app in an Amber Notes note: October budget with spending by category" } },
-          { button: { label: "Use the habit tracker", href: `${c.site}/open/template/habit-tracker` } },
+          { button: { label: "See apps you can start from", href: `${c.site}/templates?category=apps` } },
         ],
       };
     case "templates":
@@ -274,7 +280,7 @@ const DISPLAY = "-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Ro
 // inversion stays soft.
 const L = { ground: "#fff4e6", page: "#fffdf9", chrome: "#f6f5f3", edge: "#ebe6df", text: "#1d1d1f", secondary: "#6e6e73", circle: "#aeaeb2",
   accent: "#e39410", accentText: "#a85700", muted: "#74604c", link: "#a85700", cta: "#2a1d10", ctaInk: "#fff4e6",
-  composer: "#f2f1ef", composerEdge: "#e6e3de", shotEdge: "#e8e2d8" };
+  bubble: "#f1efec", pillEdge: "#d9d2c6", shotEdge: "#e8e2d8" };
 
 function inline(s: string, linkClass: string, color: string): string {
   let out = "", last = 0;
@@ -297,12 +303,49 @@ function box(done: boolean, size = 20): string {
 
 /// A capture, centred, at most its own width, with a hairline so a light screenshot holds its edge
 /// on a dark page.
+/// The width of the note's text column on a desktop (the card is 520 wide with 32 on each side).
+const TEXT_W = 456;
+
+/// A capture, as wide as the text and lined up with it, at every width, with a hairline so a
+/// light screenshot holds its edge on a dark page.
 function shotHTML(c: Context, x: Shot): string {
   const r = x.round ?? 12;
-  const edge = r === 0 ? "" : `border:1px solid ${L.shotEdge};border-radius:${r}px;`;
-  return `${table(' width="100%" style="margin:2px 0 20px;"')}<tr><td align="center">
-<img class="shot" src="${c.assets}/${x.file}" width="${x.w}" height="${x.h}" alt="${esc(x.alt)}" style="display:block;width:100%;max-width:${x.w}px;height:auto;${edge}color:${L.secondary};font-family:${SANS};font-size:13px;">
+  const h = Math.round(x.h * TEXT_W / x.w);
+  return `${table(' width="100%" style="margin:2px 0 20px;"')}<tr><td align="left">
+<img class="shot" src="${c.assets}/${x.file}" width="${TEXT_W}" height="${h}" alt="${esc(x.alt)}" style="display:block;width:100%;height:auto;border:1px solid ${L.shotEdge};border-radius:${r}px;color:${L.secondary};font-family:${SANS};font-size:13px;">
 </td></tr></table>`;
+}
+
+const pill = (href: string, label: string) =>
+  `<a href="${esc(href)}" style="display:inline-block;padding:5px 11px;border:1px solid ${L.pillEdge};border-radius:14px;font-family:${SANS};font-size:13px;font-weight:600;line-height:16px;color:${L.text};text-decoration:none;"><span class="ink" style="color:${L.text};">${label}</span></a>`;
+
+/// Try this first's prompts, in one of three layouts (PromptStyle).
+function promptsHTML(prompts: { id: string; text: string }[], c: Context): string {
+  const style = c.promptStyle ?? PROMPT_STYLE;
+  const gpt = (x: { text: string }) => askChatGPT(x.text), cl = (x: { id: string }) => askClaude(c, x.id);
+  if (style === "bubbles") {
+    // As sent in a chat: the prompt in a bubble on the right, and where to send it under it.
+    return prompts.map((x) => `${table(' width="100%" style="margin:0 0 18px;"')}<tr><td align="right">
+${table(' style="max-width:92%;"')}<tr><td class="bubble" bgcolor="${L.bubble}" style="background:${L.bubble};border-radius:20px 20px 6px 20px;padding:11px 15px;font-family:${SANS};font-size:16px;line-height:1.45;mso-line-height-rule:exactly;color:${L.text};"><span class="ink" style="color:${L.text};">${esc(x.text)}</span></td></tr></table>
+</td></tr><tr><td align="right" style="padding-top:8px;">${pill(gpt(x), "Ask ChatGPT &rsaquo;")}&nbsp;&nbsp;${pill(cl(x), "Ask Claude &rsaquo;")}</td></tr></table>`).join("\n");
+  }
+  if (style === "list") {
+    // A numbered list of the prompts as quotes, with where to send each on the right.
+    return `${table(' width="100%" style="margin:0 0 14px;"')}` + prompts.map((x, i) => `<tr>
+<td class="sec" width="22" valign="top" style="width:22px;padding:14px 0;border-top:1px solid ${L.edge};font-family:${SANS};font-size:16px;line-height:1.45;color:${L.secondary};">${i + 1}.</td>
+<td valign="top" style="padding:14px 10px 14px 0;border-top:1px solid ${L.edge};font-family:${SANS};font-size:16px;line-height:1.45;mso-line-height-rule:exactly;"><span class="ink" style="color:${L.text};">${esc(x.text)}</span></td>
+<td width="92" valign="top" align="right" style="width:92px;padding:14px 0;border-top:1px solid ${L.edge};">${pill(gpt(x), "ChatGPT")}<div style="height:6px;line-height:6px;font-size:0;">&nbsp;</div>${pill(cl(x), "Claude")}</td>
+</tr>`).join("") + `</table>`;
+  }
+  // Featured: the first prompt large, with its two buttons; the others as short links under it.
+  const [first, ...rest] = prompts;
+  const button = (href: string, label: string, dark: boolean) => dark
+    ? `<a href="${esc(href)}" style="display:inline-block;padding:10px 16px;border-radius:12px;font-family:${SANS};font-size:15px;font-weight:600;line-height:20px;color:${L.ctaInk};text-decoration:none;"><span class="btn-ink" style="color:${L.ctaInk};">${label}</span></a>`
+    : `<a href="${esc(href)}" style="display:inline-block;padding:9px 15px;border:1px solid ${L.pillEdge};border-radius:12px;font-family:${SANS};font-size:15px;font-weight:600;line-height:20px;color:${L.text};text-decoration:none;"><span class="ink" style="color:${L.text};">${label}</span></a>`;
+  return `<p class="ink" style="margin:4px 0 14px;font-family:${DISPLAY};font-size:21px;line-height:1.35;font-weight:600;color:${L.text};">${esc(first.text)}</p>
+${table(' style="margin:0 0 24px;"')}<tr><td class="btn" bgcolor="${L.cta}" style="background:${L.cta};border-radius:12px;">${button(gpt(first), "Ask ChatGPT", true)}</td><td width="10" style="width:10px;">&nbsp;</td><td>${button(cl(first), "Ask Claude", false)}</td></tr></table>
+<p class="sec" style="margin:0 0 8px;font-family:${SANS};font-size:14px;line-height:1.4;color:${L.secondary};">Or try one of these:</p>
+` + rest.map((x) => `<p class="ink" style="margin:0 0 12px;font-family:${SANS};font-size:16px;line-height:1.45;color:${L.text};">${esc(x.text)} <span style="white-space:nowrap;"><a class="lnk" href="${esc(gpt(x))}" style="color:${L.accentText};font-weight:600;text-decoration:none;">ChatGPT</a><span class="sec" style="color:${L.secondary};"> · </span><a class="lnk" href="${esc(cl(x))}" style="color:${L.accentText};font-weight:600;text-decoration:none;">Claude</a></span></p>`).join("\n") + `<div style="height:8px;line-height:8px;font-size:0;">&nbsp;</div>`;
 }
 
 function blockHTML(b: Block, c: Context): string {
@@ -324,20 +367,13 @@ function blockHTML(b: Block, c: Context): string {
 </td></tr></table>`;
   }
   if ("shot" in b) return shotHTML(c, b.shot);
-  if ("prompts" in b) {
-    // Each prompt as you'd type it: a plain composer row, then where to send it.
-    return b.prompts.map((x) => `${table(' width="100%" style="margin:0 0 16px;"')}
-<tr><td class="composer" bgcolor="${L.composer}" style="background:${L.composer};border:1px solid ${L.composerEdge};border-radius:20px;padding:12px 16px;font-family:${SANS};font-size:16px;line-height:1.45;mso-line-height-rule:exactly;color:${L.text};"><span class="ink" style="color:${L.text};">${esc(x.text)}</span></td></tr>
-<tr><td style="padding:8px 4px 0;font-family:${SANS};font-size:15px;line-height:20px;font-weight:600;">
-<a href="${esc(askChatGPT(x.text))}" style="color:${L.accentText};text-decoration:none;"><span class="lnk" style="color:${L.accentText};">Ask ChatGPT</span></a><span class="sec" style="color:${L.secondary};">&nbsp;&nbsp;·&nbsp;&nbsp;</span><a href="${esc(askClaude(c, x.id))}" style="color:${L.accentText};text-decoration:none;"><span class="lnk" style="color:${L.accentText};">Ask Claude</span></a>
-</td></tr></table>`).join("\n") + `<div style="height:4px;line-height:4px;font-size:0;">&nbsp;</div>`;
-  }
+  if ("prompts" in b) return promptsHTML(b.prompts, c);
   // Templates: the top of each template's note as the site shows it on a phone (its title and what
   // it's for, readable at phone width, so nothing repeats them), then the link that adds it.
   return b.templates.map((t) => {
     const use = `${c.site}/open/template/${t.slug}`;
     return `${table(' width="100%" style="margin:0 0 22px;"')}<tr><td>
-<a href="${c.site}/templates/${t.slug}"><img class="shot" src="${c.assets}/t-${t.slug}.jpg" width="330" height="155" alt="The ${esc(t.title)} template note: ${esc(t.tagline)}" style="display:block;width:100%;max-width:330px;height:auto;border:1px solid ${L.shotEdge};border-radius:12px;color:${L.secondary};font-family:${SANS};font-size:13px;"></a>
+<a href="${c.site}/templates/${t.slug}"><img class="shot" src="${c.assets}/t-${t.slug}.jpg" width="${TEXT_W}" height="${Math.round(465 * TEXT_W / 990)}" alt="The ${esc(t.title)} template note: ${esc(t.tagline)}" style="display:block;width:100%;height:auto;border:1px solid ${L.shotEdge};border-radius:12px;color:${L.secondary};font-family:${SANS};font-size:13px;"></a>
 <a href="${use}" style="display:inline-block;margin-top:10px;font-family:${SANS};font-size:15px;font-weight:600;line-height:20px;color:${L.accentText};text-decoration:none;"><span class="lnk" style="color:${L.accentText};">Use the ${esc(t.title.toLowerCase())} template &rarr;</span></a>
 </td></tr></table>`;
   }).join("\n");
@@ -393,7 +429,7 @@ function htmlOf(d: Draft, c: Context): string {
     .btn { background: #fbeedd !important; }
     .btn-ink { color: #2e180a !important; }
     .rule { border-color: #333333 !important; }
-    .composer { background: #2c2c2e !important; border-color: #3a3a3c !important; }
+    .bubble { background: #2c2c2e !important; }
     .shot { border-color: #3a3a3c !important; }
   }
 </style>
@@ -405,7 +441,7 @@ function htmlOf(d: Draft, c: Context): string {
   [data-ogsb] .ground { background: #2e180a !important; }
   [data-ogsb] .window { background: #1e1e1e !important; }
   [data-ogsb] .chrome { background: #262626 !important; }
-  [data-ogsb] .composer { background: #2c2c2e !important; }
+  [data-ogsb] .bubble { background: #2c2c2e !important; }
 </style>
 </head>
 <body class="ground" style="margin:0;padding:0;background:${L.ground};-webkit-text-size-adjust:100%;">
