@@ -38,6 +38,9 @@ export type Template = {
   tagline: string;
   /// The search title, when "<title> template for ChatGPT and Claude" isn't the best one.
   seoTitle?: string;
+  /// The note holds an app (a habit tracker you tick, a budget that adds up). Set once app notes
+  /// ship; the gallery then offers an Apps filter (?category=apps), which the onboarding emails link to.
+  app?: boolean;
   /// The folder the app suggests for it.
   folder: string;
   /// The note itself, as Amber Notes markdown. Its first line is the title.
