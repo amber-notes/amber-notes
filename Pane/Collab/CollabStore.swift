@@ -30,14 +30,20 @@ final class CollabStore {
     private let relayURL: URL
     private(set) var me: UUID?
     private(set) var relay: CollabRelay?
-    private let identity = CollabCrypto.Identity()
-    private let dataKey = StoredKey.generate()
+    let identity = CollabCrypto.Identity()
+    let dataKey = StoredKey.generate()
     /// Open shared notes, by note id.
-    private(set) var sessions: [UUID: CollabSession] = [:]
+    var sessions: [UUID: CollabSession] = [:]
     /// An invitation waiting for an answer.
     var invite: Invite?
-    @ObservationIgnored private var keys: [UUID: (nk: SymmetricKey, epoch: Int)] = [:]
-    @ObservationIgnored private var handled: Set<UUID> = []
+    @ObservationIgnored var keys: [UUID: (nk: SymmetricKey, epoch: Int)] = [:]
+    @ObservationIgnored var handled: Set<UUID> = []
+    /// Notes whose link lets people edit (Share › Anyone with the link can: Edit).
+    var editable: Set<UUID> = []
+    /// Why the last link didn't open, shown to the person.
+    var joinProblem: String?
+    /// Notes you were removed from: they stay on this device as they were, and stop syncing.
+    var removedFrom: Set<UUID> = []
     @ObservationIgnored var context: ModelContext?
     /// Sealed links by note: the link's id and secret (in the product, kept in a synced Keychain
     /// item so every device can republish the copy).
@@ -100,7 +106,7 @@ final class CollabStore {
         _ = try await relay.post("snapshots", ["note_id": note.id.uuidString.lowercased(), "upto": 0, "epoch": 1,
                                                "ct": try session.sealedSnapshot(upto: 0)], as: CollabRelay.AnyRow.self)
         keys[note.id] = (nk, 1)
-        open(session, note: note)
+        openSession(session, note: note)
         return session
     }
 
@@ -131,8 +137,9 @@ final class CollabStore {
     }
 
     private func checkInvites() async {
-        guard let relay, invite == nil,
-              let rows = try? await relay.get("memberships", as: [CollabRelay.Membership].self) else { return }
+        guard let relay, let rows = try? await relay.get("memberships", as: [CollabRelay.Membership].self) else { return }
+        await followKeys(rows)
+        guard invite == nil else { return }
         for row in rows where row.accepted_at == nil && !handled.contains(row.note_id) {
             guard let opened = try? await openKey(row) else { continue }
             let head = row.head_ct.flatMap { try? CollabCrypto.open(.head, $0, nk: opened.nk, note: row.note_id) }
@@ -144,7 +151,7 @@ final class CollabStore {
     }
 
     /// Opens NK from your membership, checking it was sealed by the member the row names.
-    private func openKey(_ row: CollabRelay.Membership) async throws -> (nk: SymmetricKey, from: CollabRelay.Member) {
+    func openKey(_ row: CollabRelay.Membership) async throws -> (nk: SymmetricKey, from: CollabRelay.Member) {
         guard let relay, let me else { throw CollabRelay.Problem(message: "Not connected") }
         let members = try await relay.rpc("collab_members", [row.note_id.uuidString.lowercased()], as: [CollabRelay.Member].self)
         guard let sealer = members.first(where: { $0.user_id == row.wrapped_by }), let key = sealer.public_key.flatMap({ Data(base64Encoded: $0) }) else {
@@ -175,7 +182,7 @@ final class CollabStore {
             note.body = session.text
             note.updatedAt = .now
             try? context.save()
-            open(session, note: note)
+            openSession(session, note: note)
             NoteOpener.shared.open(note.id)
         } catch {
             log.error("accepting failed: \(String(describing: error), privacy: .public)")
@@ -187,7 +194,7 @@ final class CollabStore {
         handled.insert(invite.id)
     }
 
-    private func open(_ session: CollabSession, note: Note) {
+    func openSession(_ session: CollabSession, note: Note) {
         sessions[note.id] = session
         session.onSettled = { [weak note] text in
             guard let note, note.body != text else { return }

@@ -52,10 +52,24 @@ xcrun simctl io "$B" recordVideo --codec h264 --force "$OUT/sara.mp4" 2>/dev/nul
 RB=$!
 sleep 1.5
 ARGS=(-uitest -demo -collabRelay "http://127.0.0.1:$PORT")
+DA=$(xcrun simctl get_app_container "$A" dev.emilwagman.pane data)
+DB=$(xcrun simctl get_app_container "$B" dev.emilwagman.pane data)
+rm -f "$DA/Documents/share-demo.txt" "$DB/Documents/demo-command.txt"
 xcrun simctl launch "$B" dev.emilwagman.pane "${ARGS[@]}" -collab sara -collabName "Sara Lind" -collabScript member >/dev/null
 sleep 0.4
 xcrun simctl launch "$A" dev.emilwagman.pane "${ARGS[@]}" -collab emil -collabName "Emil Wagman" -collabScript owner >/dev/null
-sleep "${DURATION:-40}"
+# Emil sets the link to Edit; it goes to Sara as a message would (her app gets it through a file:
+# a link from Messages would ask "Open in Amber Notes?", which nothing here can tap).
+for i in {1..80}; do grep -q "^edit-link " "$DA/Documents/share-demo.txt" 2>/dev/null && break; sleep 0.5; done
+LINK=$(grep "^edit-link " "$DA/Documents/share-demo.txt" | tail -1 | cut -d' ' -f2)
+echo "edit link: $LINK"
+sleep 1.5
+xcrun simctl io "$A" screenshot "$OUT/emil-share-edit.png" >/dev/null 2>&1 || true
+echo "join $LINK" > "$DB/Documents/demo-command.txt"
+sleep 3.5
+xcrun simctl io "$A" screenshot "$OUT/emil-share-people.png" >/dev/null 2>&1 || true
+xcrun simctl io "$B" screenshot "$OUT/sara-joined.png" >/dev/null 2>&1 || true
+sleep "${DURATION:-34}"
 xcrun simctl io "$A" screenshot "$OUT/emil-end.png" >/dev/null 2>&1 || true
 xcrun simctl io "$B" screenshot "$OUT/sara-end.png" >/dev/null 2>&1 || true
 kill -INT $RA $RB; wait $RA $RB 2>/dev/null || true

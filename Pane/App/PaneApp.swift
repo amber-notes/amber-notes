@@ -104,6 +104,13 @@ struct PaneApp: App {
         WindowGroup(id: Self.mainWindowID) {
             if Self.isUnitTestHost {
                 UnitTestHostView()
+            } else if ProcessInfo.processInfo.arguments.contains("-collabGallery") {
+                // Collaboration prototype: avatars and Share with sample people (CollabGallery).
+                if ProcessInfo.processInfo.arguments.contains("-share") {
+                    NavigationStack { ShareForm(title: "Team offsite", state: CollabGallery.share) }.tint(Color(PColor.paneAccent))
+                } else {
+                    CollabGallery().tint(Color(PColor.paneAccent))
+                }
             } else {
                 AppGate(backend: backend, sync: sync)
                     .connectHandler(backend: backend)

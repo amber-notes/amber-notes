@@ -16,7 +16,7 @@ export default async function Page({ params }: Props) {
   const { id } = await params;
   const copy = await sealedLink(id);
   if (!copy) return <Gone />;
-  return <SealedNote id={id} ct={copy.ct} />;
+  return <SealedNote id={id} ct={copy.ct} editable={copy.editable === true} />;
 }
 
 function Gone() {

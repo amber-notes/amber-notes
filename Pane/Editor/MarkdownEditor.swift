@@ -461,9 +461,9 @@ private struct PlatformEditor: UIViewRepresentable {
 private final class PaddedLabel: UILabel {
     override var intrinsicContentSize: CGSize {
         let s = super.intrinsicContentSize
-        return CGSize(width: s.width + 10, height: s.height + 4)
+        return CGSize(width: s.width + 8, height: s.height + 2)
     }
-    override func drawText(in rect: CGRect) { super.drawText(in: rect.insetBy(dx: 5, dy: 2)) }
+    override func drawText(in rect: CGRect) { super.drawText(in: rect.insetBy(dx: 4, dy: 1)) }
 }
 
 final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestureRecognizerDelegate, UITextDropDelegate {
@@ -536,15 +536,19 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
         layoutRemoteCarets()
     }
 
-    /// A bar in the person's colour where their caret is, their first name on a flag above it, and
-    /// a tint over what they've selected. Not hit-testable: you type and tap through them.
+    /// A bar in the person's colour where their caret is, exactly the line's height, and a tint over
+    /// what they've selected. Their first name sits on a small flag that never hides text it can
+    /// avoid: above the line when the line above is empty (or there is none), below it otherwise.
+    /// The flag shows while they type or just after their caret moves, then fades. Not
+    /// hit-testable: you type and tap through them.
     private func layoutRemoteCarets() {
         let live = Set(remoteCarets.map(\.id))
         for (id, v) in caretViews where !live.contains(id) {
             v.bar.removeFromSuperview(); v.flag.removeFromSuperview(); v.selection.forEach { $0.removeFromSuperview() }
             caretViews[id] = nil
         }
-        let length = (text as NSString).length
+        let ns = text as NSString
+        let length = ns.length
         for c in remoteCarets {
             let color = UIColor(c.color)
             var v = caretViews[c.id] ?? {
@@ -552,24 +556,29 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
                 bar.isUserInteractionEnabled = false
                 bar.layer.cornerRadius = 1
                 flag.isUserInteractionEnabled = false
-                flag.font = .systemFont(ofSize: 11, weight: .semibold)
+                flag.font = .systemFont(ofSize: 10, weight: .semibold)
                 flag.textColor = .white
-                flag.layer.cornerRadius = 4
+                flag.layer.cornerRadius = 3
                 flag.layer.masksToBounds = true
                 addSubview(bar); addSubview(flag)
                 return (bar, flag as UILabel, [])
             }()
             v.bar.backgroundColor = color
-            v.flag.backgroundColor = color
+            v.flag.backgroundColor = color.withAlphaComponent(0.88)
             v.flag.text = c.name
             let loc = min(c.range.location, length), end = min(NSMaxRange(c.range), length)
             guard let pos = position(from: beginningOfDocument, offset: loc) else { continue }
             let rect = caretRect(for: pos)
+            let line = ns.lineRange(for: NSRange(location: loc, length: 0))
+            let roomAbove = line.location == 0
+                || ns.substring(with: ns.lineRange(for: NSRange(location: line.location - 1, length: 0))).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            let size = v.flag.intrinsicContentSize
+            let flagY = roomAbove ? rect.minY - size.height - 1 : rect.maxY + 1
             UIView.animate(withDuration: 0.12, delay: 0, options: [.beginFromCurrentState, .allowUserInteraction]) {
-                v.bar.frame = CGRect(x: rect.minX, y: rect.minY, width: 2, height: rect.height)
-                let size = v.flag.intrinsicContentSize
-                v.flag.frame = CGRect(x: rect.minX, y: rect.minY - size.height - 1, width: size.width, height: size.height)
+                v.bar.frame = CGRect(x: rect.minX - 1, y: rect.minY, width: 2, height: rect.height)
+                v.flag.frame = CGRect(x: min(rect.minX - 1, self.bounds.width - size.width - 4), y: flagY, width: size.width, height: size.height)
             }
+            UIView.animate(withDuration: c.showsName ? 0.15 : 0.6) { v.flag.alpha = c.showsName ? 1 : 0 }
             v.selection.forEach { $0.removeFromSuperview() }
             v.selection = []
             if end > loc, let a = position(from: beginningOfDocument, offset: loc), let b = position(from: beginningOfDocument, offset: end),

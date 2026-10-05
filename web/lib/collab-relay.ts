@@ -5,10 +5,10 @@ export const RELAY = process.env.COLLAB_RELAY_URL ?? "http://127.0.0.1:56480";
 /** The separate origin note pages run on: never this site. ambernotes-usercontent.app in the product. */
 export const USERCONTENT = process.env.NEXT_PUBLIC_USERCONTENT_ORIGIN ?? "http://127.0.0.1:56481";
 
-export async function sealedLink(id: string): Promise<{ ct: string; updated_at: string } | null> {
+export async function sealedLink(id: string): Promise<{ ct: string; updated_at: string; editable?: boolean } | null> {
   if (!/^[A-Za-z0-9_-]{22}$/.test(id)) return null;
   const res = await fetch(`${RELAY}/public/sealed-link/${id}`, { cache: "no-store" }).catch(() => null);
-  return res?.ok ? ((await res.json()) as { ct: string; updated_at: string } | null) : null;
+  return res?.ok ? await res.json() : null;
 }
 
 export type SharedTemplate = {

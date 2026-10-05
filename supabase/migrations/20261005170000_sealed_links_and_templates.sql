@@ -51,9 +51,11 @@ language sql security definer set search_path = '' as $$
 $$;
 
 -- What a visitor's browser gets: the sealed copy and when it changed, nothing about the account.
-create or replace function public.sealed_link(p_id text) returns table (ct text, updated_at timestamptz)
+-- `editable`: the link's Edit is on, so the page offers to open it in Amber Notes to edit.
+create or replace function public.sealed_link(p_id text) returns table (ct text, updated_at timestamptz, editable boolean)
 language sql stable security definer set search_path = '' as $$
-  select l.ct, l.updated_at from public.sealed_links l where p_id ~ '^[A-Za-z0-9_-]{22}$' and l.id = p_id
+  select l.ct, l.updated_at, exists (select 1 from public.note_invite_links i where i.id = l.id)
+  from public.sealed_links l where p_id ~ '^[A-Za-z0-9_-]{22}$' and l.id = p_id
 $$;
 
 create table public.shared_templates (

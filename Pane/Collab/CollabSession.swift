@@ -21,7 +21,13 @@ final class CollabSession {
         let id: UUID
         var name: String
         var selection: NSRange?
+        /// Where their caret and selection end are, as stable positions in the document; resolved
+        /// against the text here whenever it changes.
+        var caret: Anchor?
+        var end: Anchor?
         var typingUntil: Date?
+        /// When their caret last moved or they last typed: the name flag shows for a moment after.
+        var movedAt: Date = .now
         var isTyping: Bool { (typingUntil ?? .distantPast) > .now }
     }
 
@@ -34,10 +40,10 @@ final class CollabSession {
     }
 
     let noteID: UUID
-    let epoch: Int
+    private(set) var epoch: Int
     let me: UUID
     let myName: String
-    private let nk: SymmetricKey
+    private var nk: SymmetricKey
     private let relay: CollabRelay
     private let doc: Document
     private let body: ObjId
@@ -77,11 +83,11 @@ final class CollabSession {
         var last: Int64 = 0
         if let s = pull.snapshot {
             let saved = try CollabCrypto.open(.snapshot, s.ct, nk: nk, note: note, extra: String(s.upto))
-            try doc.applyEncodedChanges(encoded: saved)
+            try absorb(saved, into: doc)
             last = s.upto
         }
         for u in pull.updates {
-            try doc.applyEncodedChanges(encoded: try CollabCrypto.open(.update, u.ct, nk: nk, note: note, extra: u.author_id.uuidString))
+            try absorb(try CollabCrypto.open(.update, u.ct, nk: nk, note: note, extra: u.author_id.uuidString), into: doc)
             last = max(last, u.id)
         }
         let loaded = Set(pull.updates.map(\.id))
@@ -102,6 +108,14 @@ final class CollabSession {
         self.me = me
         myName = name
         text = (try? doc.text(obj: body)) ?? ""
+    }
+
+    /// The note has a new key (someone was removed, or Reset Link): everything from here on is
+    /// sealed with it. The document itself doesn't change.
+    func reseal(nk: SymmetricKey, epoch: Int) {
+        self.nk = nk
+        self.epoch = epoch
+        sendPresence()
     }
 
     /// The whole document sealed, for the server to hand to devices starting out.
@@ -155,9 +169,12 @@ final class CollabSession {
             var peer = peers[user] ?? Peer(id: user, name: p.name)
             let wasHere = peers[user] != nil
             peer.name = p.name
-            peer.selection = p.loc.map { NSRange(location: $0, length: p.len ?? 0) }
-            if p.typing == true { peer.typingUntil = .now.addingTimeInterval(1.6) }
+            if peer.caret != p.caret || peer.end != p.end { peer.movedAt = .now }
+            peer.caret = p.caret
+            peer.end = p.end
+            if p.typing == true { peer.typingUntil = .now.addingTimeInterval(1.6); peer.movedAt = .now }
             peers[user] = peer
+            resolvePeers()
             if !wasHere { Task { await refreshMembers() }; sendPresence() }
         case .leave(let user):
             peers[user] = nil
@@ -171,16 +188,16 @@ final class CollabSession {
         guard u.author_id != me else { return }
         do {
             let change = try CollabCrypto.open(.update, u.ct, nk: nk, note: noteID, extra: u.author_id.uuidString)
-            try doc.applyEncodedChanges(encoded: change)
+            try Self.absorb(change, into: doc)
         } catch {
             log.error("a change didn't open or apply: \(String(describing: error), privacy: .public)")
             return
         }
         let merged = (try? doc.text(obj: body)) ?? text
-        guard merged != text else { return }
-        // Their cursor moves with what they typed; ours is mapped by the editor itself.
+        guard merged != text else { resolvePeers(); return }
         text = merged
         onRemoteText?(merged)
+        resolvePeers()
         settle()
     }
 
@@ -188,8 +205,11 @@ final class CollabSession {
 
     /// The editor's text after a keystroke: the difference goes into the document and up.
     func local(_ new: String, selection: NSRange?) {
-        if let selection { mySelection = selection }
-        guard let edit = TextDiff.edit(from: text, to: new) else { return }
+        guard let edit = TextDiff.edit(from: text, to: new) else { if let selection { mySelection = selection }; return }
+        // Your caret is right after what you typed. The text view's own selection can still be the
+        // one from before the keystroke at this point, which would put your caret a character
+        // behind on everyone else's screen; the 0.1 s check corrects anything else (a selection).
+        mySelection = NSRange(location: edit.range.location + (edit.replacement as NSString).length, length: 0)
         do {
             try doc.spliceText(obj: body, start: UInt64(edit.range.location), delete: Int64(edit.range.length),
                                value: edit.replacement.isEmpty ? nil : edit.replacement)
@@ -200,8 +220,7 @@ final class CollabSession {
         let merged = (try? doc.text(obj: body)) ?? new
         text = merged
         if merged != new { onRemoteText?(merged) }
-        // Other people's carets after this point move with the text until their next presence.
-        for (id, p) in peers { if let sel = p.selection { peers[id]?.selection = TextDiff.map(sel, through: edit) } }
+        resolvePeers()
         outbox.append(doc.encodeNewChanges())
         typingAt = .now
         flush()
@@ -209,8 +228,12 @@ final class CollabSession {
         settle()
     }
 
-    func selectionChanged(_ selection: NSRange) {
+    /// Your caret, or nil while you aren't editing (then nobody sees a caret for you).
+    func selectionChanged(_ selection: NSRange?) {
         guard selection != mySelection else { return }
+        // While you type, your caret goes with each keystroke (local); the text view's own
+        // selection can trail it there, so it isn't taken until you pause.
+        if selection != nil, Date.now.timeIntervalSince(typingAt) < 0.6 { return }
         mySelection = selection
         sendPresence()
     }
@@ -246,16 +269,67 @@ final class CollabSession {
 
     // MARK: Presence
 
+    /// A stable position: an Automerge cursor (hex) on the character after the caret, or, at the end
+    /// of the text, on the last character with `after` set. Edits anywhere, merges included, move it
+    /// with its character, so it resolves to the same place on every device.
+    struct Anchor: Codable, Equatable {
+        var c: String
+        var after: Bool?
+    }
+
     private struct Presence: Codable {
         var name: String
-        var loc: Int?
-        var len: Int?
+        var caret: Anchor?
+        var end: Anchor?
         var typing: Bool?
+    }
+
+    /// The anchor for a UTF-16 offset in this document's text.
+    func anchor(at offset: Int) -> Anchor? { Self.anchor(in: doc, body, at: offset) }
+
+    /// Where an anchor is in this document now (UTF-16), or nil when it names a character that
+    /// hasn't arrived here yet (their presence can outrun their change).
+    func offset(of a: Anchor?) -> Int? { Self.offset(of: a, in: doc, body) }
+
+    nonisolated static func anchor(in doc: Document, _ body: ObjId, at offset: Int) -> Anchor? {
+        let length = doc.length(obj: body)
+        guard length > 0 else { return nil }
+        if offset < Int(length), let c = try? doc.cursor(obj: body, position: UInt64(max(0, offset))) { return Anchor(c: c.description) }
+        guard let c = try? doc.cursor(obj: body, position: length - 1) else { return nil }
+        return Anchor(c: c.description, after: true)
+    }
+
+    nonisolated static func offset(of a: Anchor?, in doc: Document, _ body: ObjId) -> Int? {
+        guard let a else { return doc.length(obj: body) == 0 ? 0 : nil }
+        guard let c = Cursor(hex: a.c), let p = try? doc.position(obj: body, cursor: c) else { return nil }
+        return Int(p) + (a.after == true ? 1 : 0)
+    }
+
+    /// Takes changes (or a whole saved document) into `doc`. Into an empty document automerge-swift
+    /// swaps in a freshly loaded one, which counts text in Unicode scalars instead of UTF-16, and
+    /// every splice after that lands in the wrong place next to an emoji. Merging keeps the encoding.
+    nonisolated static func absorb(_ bytes: Data, into doc: Document) throws {
+        if doc.heads().isEmpty { try doc.merge(other: try Document(bytes)) } else { try doc.applyEncodedChanges(encoded: bytes) }
+    }
+
+    /// Every peer's caret against the text as it is now. One that can't resolve yet keeps where it was.
+    private func resolvePeers() {
+        for (id, p) in peers {
+            // Not editing: no caret to show.
+            guard p.caret != nil else { if p.selection != nil { peers[id]?.selection = nil }; continue }
+            guard let start = offset(of: p.caret) else { continue }
+            let end = p.end.flatMap { offset(of: $0) } ?? start
+            let range = NSRange(location: min(start, end), length: abs(end - start))
+            if peers[id]?.selection != range { peers[id]?.selection = range }
+        }
     }
 
     private func sendPresence() {
         guard let channel else { return }
-        let p = Presence(name: myName, loc: mySelection?.location, len: mySelection?.length, typing: Date.now.timeIntervalSince(typingAt) < 1.2)
+        let sel = mySelection
+        let p = Presence(name: myName, caret: sel.flatMap { anchor(at: $0.location) },
+                         end: sel.flatMap { $0.length > 0 ? anchor(at: NSMaxRange($0)) : nil },
+                         typing: Date.now.timeIntervalSince(typingAt) < 1.2)
         guard let data = try? JSONEncoder().encode(p),
               let ct = try? CollabCrypto.seal(.presence, data, nk: nk, note: noteID, epoch: epoch, extra: me.uuidString) else { return }
         channel.send(presence: ct)
@@ -275,7 +349,8 @@ final class CollabSession {
     var remoteCarets: [RemoteCaret] {
         peers.values.compactMap { p in
             guard let s = p.selection else { return nil }
-            return RemoteCaret(id: p.id, name: p.name.split(separator: " ").first.map(String.init) ?? p.name, color: Self.color(for: p.id), range: s)
+            return RemoteCaret(id: p.id, name: p.name.split(separator: " ").first.map(String.init) ?? p.name, color: Self.color(for: p.id), range: s,
+                               showsName: Date.now.timeIntervalSince(p.movedAt) < 2.5)
         }.sorted { $0.id.uuidString < $1.id.uuidString }
     }
 }
@@ -286,4 +361,6 @@ struct RemoteCaret: Equatable, Identifiable {
     let name: String
     let color: Color
     let range: NSRange
+    /// The name flag shows while they type or just after their caret moves, then fades.
+    var showsName = true
 }

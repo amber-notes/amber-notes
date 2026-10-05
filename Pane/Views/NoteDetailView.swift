@@ -20,8 +20,8 @@ struct NoteDetailView: View {
     @State private var confirmLock = false
     @State private var lockProblem: String?
     /// Collaboration (prototype): the people sheet.
+    /// Collaboration and sharing (prototype): the one Share sheet, and Share as Template on its own (demo).
     @State private var showPeople = false
-    @State private var showLinkShare = false
     @State private var showTemplateShare = false
     @Bindable var note: Note
     let controller: EditorController
@@ -86,11 +86,12 @@ struct NoteDetailView: View {
             }
             .onChange(of: showHistory) { _, open in if open { FeatureUse.mark(.versionHistory) } }
             .modifier(CollabWiring(note: note, controller: controller, showPeople: $showPeople))
-            .sheet(isPresented: $showLinkShare) { if let store = CollabStore.shared { LinkShareSheet(note: note, store: store) } }
+            .sheet(isPresented: $showPeople) { if let store = CollabStore.shared { ShareSheet(note: note, store: store) } }
             .sheet(isPresented: $showTemplateShare) { if let store = CollabStore.shared { TemplateShareSheet(note: note, store: store) } }
+            .onReceive(NotificationCenter.default.publisher(for: CollabDemo.closeShare)) { _ in showPeople = false }
             .onReceive(NotificationCenter.default.publisher(for: CollabDemo.showShare)) { n in
-                guard n.object as? String == "template" else { showLinkShare = true; return }
-                showLinkShare = false
+                guard n.object as? String == "template" else { showPeople = true; return }
+                showPeople = false
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { showTemplateShare = true }
             }
     }
@@ -473,15 +474,9 @@ struct NoteDetailView: View {
     private var shareItems: some View {
         if let store = CollabStore.shared, store.isReady {
             Section {
-                Button(collab == nil ? "Collaborate…" : "People…", systemImage: "person.2") {
-                    Task { @MainActor in
-                        if collab == nil { try? await store.share(note) }
-                        showPeople = true
-                    }
-                }
-                .accessibilityIdentifier("collab.share")
-                Button("Share Link (Encrypted)…", systemImage: "link") { showLinkShare = true }
-                Button("Share as Template…", systemImage: "square.on.square") { showTemplateShare = true }
+                // One Share: a link anyone can View or Edit with, the people in the note, and Share as Template.
+                Button("Share…", systemImage: "person.crop.circle.badge.plus") { showPeople = true }
+                    .accessibilityIdentifier("collab.share")
             }
         }
         ShareLinkMenuSection(store: shareLinks, note: note)
@@ -571,14 +566,9 @@ private struct CollabWiring: ViewModifier {
                 session.onRemoteText = { [weak controller] text in controller?.target?.syncExternal(text) }
                 // Your caret, a few times a second (it also goes with every keystroke).
                 while !Task.isCancelled {
-                    if let sel = controller.target?.currentSelection { session.selectionChanged(sel) }
+                    session.selectionChanged(controller.isEditing ? controller.target?.currentSelection : nil)
                     controller.remoteCarets = session.remoteCarets
                     try? await Task.sleep(for: .seconds(0.1))
-                }
-            }
-            .sheet(isPresented: $showPeople) {
-                if let session, let store = CollabStore.shared {
-                    PeopleSheet(session: session, store: store)
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: CollabDemo.invite)) { _ in showPeople = true }

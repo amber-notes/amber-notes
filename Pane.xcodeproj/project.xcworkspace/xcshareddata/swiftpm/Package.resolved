@@ -1,15 +1,5 @@
 {
-  "originHash" : "086fe1990291ad257088a4d70a337d3abb48b36ded60d11ddc4aeed1cde4e6d9",
   "pins" : [
-    {
-      "identity" : "automerge-swift",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/automerge/automerge-swift",
-      "state" : {
-        "revision" : "aa45d17ac92cef2b8ded63b47e65a28dc85e3418",
-        "version" : "0.7.2"
-      }
-    },
     {
       "identity" : "sparkle",
       "kind" : "remoteSourceControl",
@@ -110,5 +100,5 @@
       }
     }
   ],
-  "version" : 3
+  "version" : 2
 }

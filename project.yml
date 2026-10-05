@@ -17,8 +17,8 @@ packages:
     from: 0.6.0
   # Collaboration prototype: the text CRDT behind shared notes (docs/Technical/collaboration-design.md).
   Automerge:
-    url: https://github.com/automerge/automerge-swift
-    from: 0.7.2
+    # 0.7.2 with a public Cursor initializer (Vendor/README.md).
+    path: Vendor/automerge-swift
   # Updates for the Mac download only (target PaneDirect); App Store builds never link it.
   Sparkle:
     url: https://github.com/sparkle-project/Sparkle

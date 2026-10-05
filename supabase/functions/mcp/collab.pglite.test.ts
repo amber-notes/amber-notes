@@ -142,7 +142,7 @@ Deno.test("an invite link works only with its secret, which the server never get
   const pg = await schemaDB();
   const emil = await person(pg, "Emil"), sara = await person(pg, "Sara");
   const { note, nk } = await share(pg, emil);
-  const link = crypto.randomUUID(), secret = crypto.getRandomValues(new Uint8Array(16));
+  const link = "Ab".repeat(11), secret = crypto.getRandomValues(new Uint8Array(16));
   const { answer, key } = await linkKeys(secret, link);
   const answerHash = hex(new Uint8Array(await crypto.subtle.digest("SHA-256", Uint8Array.from(answer.match(/../g)!, (h) => parseInt(h, 16)))));
   const wrap = await seal(toBase64(nk), key, await keyIdOf(nk), `invite:${link}`);
@@ -157,6 +157,16 @@ Deno.test("an invite link works only with its secret, which the server never get
   await app(pg, sara.id, `select public.collab_join_link($1, $2, $3, $4)`, [link, answer, toSelf, await selfWrap(sara, nkSara, note, 1)]);
   const members = await app(pg, emil.id, `select * from public.collab_members($1)`, [note]);
   assert(members.some((m: any) => m.user_id === sara.id && m.role === "editor"));
+
+  // Reset Link (a new key, nobody removed): the old link stops working.
+  const nk2 = newDataKey();
+  const wraps = [emil, sara].map(async (p) => ({ user_id: p.id, key_wrap: await sealNoteKey(nk2, emil.identity, p.identity.publicRaw, { note, epoch: 2, from: emil.id, to: p.id }) }));
+  await app(pg, emil.id, `select public.collab_remove($1, null, 2, $2)`, [note, JSON.stringify(await Promise.all(wraps))]);
+  await refused(app(pg, sara.id, `select * from public.collab_open_link($1, $2)`, [link, answer]), "expired");
+  // Edit turned off: same.
+  await app(pg, emil.id, `select public.collab_create_link($1, $2, 'editor', 2, $3, $4)`, [link, note, answerHash, wrap]);
+  await app(pg, emil.id, `select public.collab_stop_link($1)`, [note]);
+  await refused(app(pg, sara.id, `select * from public.collab_open_link($1, $2)`, [link, answer]), "expired");
 });
 
 Deno.test("a sealed link: only the sealed copy is stored, anyone reads it, rotation and stop take the old one down", async () => {

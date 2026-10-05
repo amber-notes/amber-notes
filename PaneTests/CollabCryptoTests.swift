@@ -87,7 +87,7 @@ import Testing
         let body = try a.putObject(obj: .ROOT, key: "body", ty: .Text)
         try a.spliceText(obj: body, start: 0, delete: 0, value: "Agenda 👋\n- Lunch\n")
         let b = Document(textEncoding: .utf16)
-        try b.applyEncodedChanges(encoded: a.save())
+        try CollabSession.absorb(a.save(), into: b)
         _ = a.encodeNewChanges()
         let end = UInt64(("Agenda 👋\n- Lunch" as NSString).length)
         try a.spliceText(obj: body, start: end, delete: 0, value: " at noon")
@@ -103,3 +103,87 @@ import Testing
     }
 }
 private final class CollabVectorsToken {}
+
+/// Remote carets: a cursor sent from one device resolves to the same insertion point on another,
+/// through concurrent edits, at line ends, in lists and tables, and with emoji and CJK (UTF-16).
+@Suite struct CollabCursorTests {
+    typealias Session = CollabSession
+
+    /// Two replicas of one document.
+    func pair(_ text: String) throws -> (Document, Document, ObjId) {
+        let a = Document(textEncoding: .utf16)
+        let body = try a.putObject(obj: .ROOT, key: "body", ty: .Text)
+        try a.spliceText(obj: body, start: 0, delete: 0, value: text)
+        let b = Document(textEncoding: .utf16)
+        try Session.absorb(a.save(), into: b)
+        #expect(b.textEncoding == .utf16)
+        _ = a.encodeNewChanges()
+        return (a, b, body)
+    }
+
+    func sync(_ from: Document, _ to: Document) throws { try to.applyEncodedChanges(encoded: from.encodeNewChanges()) }
+    func u16(_ s: String) -> Int { (s as NSString).length }
+
+    @Test func aCaretFollowsItsOwnersTypingAndOthersEdits() throws {
+        let start = "Agenda 👋 会议\n- Lunch\n| Day | Plan |\n| --- | --- |\n| Mon | 🍣 寿司 |"
+        let (sara, emil, body) = try pair(start)
+        // Sara's caret right after "Lunch", at the end of the list line.
+        var caret = u16("Agenda 👋 会议\n- Lunch")
+        // Emil types before it at the same time (an emoji and CJK at the top).
+        try emil.spliceText(obj: body, start: 0, delete: 0, value: "🎉 新 ")
+        // Sara types at her caret, then sends where her caret is now.
+        try sara.spliceText(obj: body, start: UInt64(caret), delete: 0, value: " at noon")
+        caret += u16(" at noon")
+        let anchor = try #require(Session.anchor(in: sara, body, at: caret))
+        // Her presence reaches Emil before her change: her caret is anchored on the line break after
+        // it, which Emil has, so it already sits at the end of her line there.
+        #expect(Session.offset(of: anchor, in: emil, body) == u16("🎉 新 Agenda 👋 会议\n- Lunch"))
+        // Each side sends what it wrote (as the app does after every splice), then takes the other's.
+        let fromSara = sara.encodeNewChanges(), fromEmil = emil.encodeNewChanges()
+        try emil.applyEncodedChanges(encoded: fromSara)
+        try sara.applyEncodedChanges(encoded: fromEmil)
+        let merged = try emil.text(obj: body)
+        #expect(try sara.text(obj: body) == merged)
+        // On both devices it sits exactly after what she typed.
+        let expected = u16("🎉 新 Agenda 👋 会议\n- Lunch at noon")
+        #expect(Session.offset(of: anchor, in: emil, body) == expected)
+        #expect(Session.offset(of: anchor, in: sara, body) == expected)
+        #expect((merged as NSString).substring(to: expected).hasSuffix("Lunch at noon"))
+        // (A document that took a saved copy the plain way counts scalars: the bug absorb avoids.)
+        let plain = Document(textEncoding: .utf16)
+        try plain.applyEncodedChanges(encoded: emil.save())
+        #expect(plain.textEncoding != .utf16)
+    }
+
+    @Test func aCaretInATableCellAndAtTheEnd() throws {
+        let text = "Plan\n| Day | Dish |\n| --- | --- |\n| Mon | 🍣 |"
+        let (sara, emil, body) = try pair(text)
+        // Inside a cell, just after the emoji.
+        let cell = u16("Plan\n| Day | Dish |\n| --- | --- |\n| Mon | 🍣")
+        let inCell = try #require(Session.anchor(in: sara, body, at: cell))
+        // At the very end of the note.
+        let end = try #require(Session.anchor(in: sara, body, at: u16(text)))
+        #expect(end.after == true)
+        try emil.spliceText(obj: body, start: 0, delete: 4, value: "Weekly plan")
+        try sync(emil, sara)
+        let now = try sara.text(obj: body)
+        #expect((now as NSString).substring(to: try #require(Session.offset(of: inCell, in: sara, body))).hasSuffix("| Mon | 🍣"))
+        #expect(Session.offset(of: end, in: sara, body) == u16(now))
+    }
+
+    @Test func aDeletedCharacterStillResolves() throws {
+        let (sara, emil, body) = try pair("one two three")
+        let anchor = try #require(Session.anchor(in: sara, body, at: 4)) // before "two"
+        try emil.spliceText(obj: body, start: 4, delete: 4, value: nil) // "two " goes
+        try sync(emil, sara)
+        // Automerge keeps the deleted character's place: the caret lands where "two " was.
+        #expect(Session.offset(of: anchor, in: sara, body) == 4)
+    }
+
+    @Test func anEmptyNoteHasItsCaretAtTheStart() throws {
+        let a = Document(textEncoding: .utf16)
+        let body = try a.putObject(obj: .ROOT, key: "body", ty: .Text)
+        #expect(Session.anchor(in: a, body, at: 0) == nil)
+        #expect(Session.offset(of: nil, in: a, body) == 0)
+    }
+}

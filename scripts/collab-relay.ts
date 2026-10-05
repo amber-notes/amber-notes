@@ -37,7 +37,7 @@ function broadcast(note: string, message: unknown, except?: Peer) {
 const rpcs: Record<string, number> = {
   create_account_key: 4, collab_publish_identity: 2, collab_find_person: 1, collab_members: 1, collab_share: 4,
   collab_invite: 5, collab_accept: 2, collab_remove: 4, collab_open_link: 2, collab_join_link: 4, collab_create_link: 6,
-  publish_sealed_link: 3, stop_sealed_link: 1, publish_template: 4, stop_template: 1,
+  publish_sealed_link: 3, stop_sealed_link: 1, publish_template: 4, stop_template: 1, collab_stop_link: 1,
 };
 
 /** As a visitor with no account (the anon role), like the site calling a public RPC. */
@@ -121,7 +121,7 @@ async function handle(req: Request): Promise<Response> {
     if (url.pathname === "/updates") {
       const note = url.searchParams.get("note"), after = Number(url.searchParams.get("after") ?? 0);
       // A device starting out (after 0) or one behind the newest snapshot gets the snapshot first.
-      const [snapshot] = await asUser<{ upto: number }>(pg, me, `select * from public.note_snapshots where note_id = $1 order by upto desc limit 1`, [note]);
+      const [snapshot] = await asUser<{ upto: number }>(pg, me, `select * from public.note_snapshots where note_id = $1 order by upto desc, epoch desc limit 1`, [note]);
       const upto = Number(snapshot?.upto ?? 0);
       const useSnapshot = snapshot !== undefined && (after === 0 || after < upto);
       const rows = await asUser(pg, me, `select * from public.note_updates where note_id = $1 and id > $2 order by id`, [note, useSnapshot ? upto : after]);

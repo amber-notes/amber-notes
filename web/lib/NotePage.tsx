@@ -35,12 +35,14 @@ function GetAmberNotes() {
 
 /// A shared note: the page is the note, as in the app. The bar holds only the logo and "Use this note";
 /// who shared it sits under the title.
-export function NotePage({ slug, note, files, page, sealed = false }: {
+export function NotePage({ slug, note, files, page, sealed = false, editHref = null }: {
   slug: string; note: SharedNote; files: Record<string, SharedFile>;
   /** The note's page, shown above its text (sealed links, prototype). */
   page?: React.ReactNode;
   /** A sealed link (/s/<id>#…): the copy opened in this browser; no Use this note or report link yet. */
   sealed?: boolean;
+  /** An Edit link: where the app opens it to join the note. */
+  editHref?: string | null;
 }) {
   const html = renderNote(withoutTitle(note.body), {
     files,
@@ -67,7 +69,9 @@ export function NotePage({ slug, note, files, page, sealed = false }: {
     </nav>
   );
   // Copies the whole note into the visitor's own Amber Notes, once the app handles the link.
-  const use = !sealed && APP_TEMPLATES.live && <a className={s.use} href={copyLink(slug)}>Use this note</a>;
+  const use = editHref
+    ? <a className={s.use} href={editHref}>Edit in Amber Notes</a>
+    : !sealed && APP_TEMPLATES.live && <a className={s.use} href={copyLink(slug)}>Use this note</a>;
 
   return (
     <Shell className={s.plain}>

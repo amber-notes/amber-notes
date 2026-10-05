@@ -1,29 +1,33 @@
 # Collaboration and sharing: notes edited together, read-only links, and templates
 
-Status: design and prototype (branch `proto/collaboration`, 5 October 2026). Nothing here is live. The prototype runs two iPhone simulators against a local stand-in for the backend.
+Status: design and prototype (branch `proto/collaboration`, 5 October 2026). Nothing here is live. The prototype runs iPhone simulators against a local stand-in for the backend.
+
+Revised the same day after Emil's review: sharing is now **one link** with one choice, "Anyone with the link can: View / Edit". Email invites are out of v1 (people who sign in with Apple often hide their address, so an email can't find them). Remote carets now use stable Automerge cursors, and the avatar's typing badge is never clipped.
 
 What Emil asked for (5 October 2026): colleagues editing the same note, including notes with pages, and seeing who is in the note with a little avatar; read-only links as today, now with the note's page on the web; and "Share as template" for notes with an app.
 
-Three ways to share, one rule each:
+One Share sheet, built around one link per note:
 
-| | Who | Can they edit | Encrypted end to end |
+| The link's setting | What opening it does | Account | Encrypted end to end |
 |---|---|---|---|
-| **Collaborate** | People you invite, each with an account | Yes (or view only) | Yes: a note key sealed to each member |
-| **Share link** | Anyone with the link | No | Yes: the key is in the link's fragment |
-| **Share as template** | Anyone with the link | They get their own copy | No, on purpose: it's public, and holds no personal data |
+| **View** (the default) | A read-only page in the browser, the note's app included, read only; in Amber Notes if they have it | Not needed | Yes: the key is in the link's fragment |
+| **Edit** | The same page, plus "Edit in Amber Notes": opening it in the app adds them to the note as an editor, with their avatar in People | Needed to edit (they sign in if they must) | Yes: the fragment also carries the join secret; the server keeps a hash |
+| **Share as Template…** (its own item in the sheet) | A public page anyone can start their own copy from | Not needed | No, on purpose: public, with no personal data |
+
+Under the link, People lists everyone in the note with Remove on each. Removing someone, or Reset Link, makes a new note key and a new link. Checking someone's safety code lives on their row ("Verify Sara"), out of the main flow.
 
 ## The short version
 
-- **Keys.** Every account gets an identity key pair (P-256). The private half is sealed under the account's data key and kept on the server, so any device that can open the notes can share. A shared note gets its own random note key. Inviting someone seals that key to their public key; accepting re-seals it under their own data key. The server never holds a key that opens anything.
+- **Keys.** Every account gets an identity key pair (P-256). The private half is sealed under the account's data key and kept on the server, so any device that can open the notes can share. A note set to Edit gets its own random note key. Joining through the link opens that key and seals it to your own identity and data keys. The server never holds a key that opens anything.
 - **Proving who sent the key.** The wrap mixes in the sender's identity key, so a server can't slip someone a key of its own. People can compare a 12-digit safety code if they want to be sure the server gave them each other's real keys.
 - **Editing at the same time.** The note's text becomes an Automerge document (a text CRDT). Each keystroke burst is a small change, sealed with the note key, stored and relayed by the server, merged on each device. Devices write sealed snapshots now and then and the server drops the changes they cover.
-- **Presence.** A private Realtime channel per note carries who's here, where their caret is and whether they're typing, all sealed with the note key. Avatars sit in the note's toolbar; other people's carets show in the text with a name flag; "Sara is editing" shows under the toolbar.
+- **Presence.** A private Realtime channel per note carries who's here, where their caret is (as an Automerge cursor, so it lands on the same character on every device) and whether they're typing, all sealed with the note key. Avatars sit in the note's toolbar; other people's carets show in the text with a small name flag that avoids covering text and fades; "Sara is editing" shows under the toolbar.
 - **AI.** Your AI connection already opens your data key; through it, it opens the note keys you hold. It reads and writes the shared note like your device does. Its edits are marked as yours and its own, so the note says "Sara's Claude".
 - **Permissions.** Owner, can edit, can view. Per note first; folders later.
 - **Read-only links** become sealed links: `ambernotes.app/s/<id>#<secret>`. The device seals the note, its page and the page's data under a key from the secret; the browser opens it. Today's readable links keep working until their owner stops or switches them.
 - **Pages on the web** run only on a separate user-content domain, in a sandboxed frame with no network, no storage and a bridge that refuses every write.
 - **Share as template** publishes a readable copy at `ambernotes.app/t/<id>`: the note's skeleton, its app, sample rows if you choose, and the names of the keys its app asks for. "Use template" opens the app and makes a fresh copy.
-- **Recommendation:** build it this way. About 80 to 100 agent hours for all three, in the order under Plan.
+- **Recommendation:** build it this way. About 76 to 98 agent hours for all of it, in the order under Plan.
 
 ## 1. Keys
 
@@ -55,36 +59,34 @@ Formats (`Pane/Collab/CollabCrypto.swift`, `supabase/functions/_shared/collab.ts
 
 The second ECDH in the wrap is what makes it authenticated: only the holder of the sender's identity key could have produced it. The recipient checks it against the public key of the member named in `wrapped_by`. The author id in a change's AAD means the server can't pass Sara's change off as Emil's.
 
-### Inviting by email
+### Sharing with a link (View or Edit)
 
-1. The owner types an address. `collab_find_person(email)` returns the account's id, name, photo and public key, or nothing. It is rate limited (it tells you whether an address has an account).
-2. The owner's device seals NK to that key and calls `collab_invite(note, user, role, wrap, epoch)`.
-3. The invitee's devices see the new row (Realtime on `note_members`, a push in the product). The app asks: "Emil Wagman shared "Team offsite" with you", with the safety code, Not now and Open.
-4. Open: the device checks the wrap against Emil's public key, opens NK, seals it under its own data key (`collab_accept`) and pulls the document.
+Email invites were the first design and are out of v1: someone who signs in with Apple usually has a private relay address, so an email lookup can't find them. A link always reaches them, through whatever app the person sends it with.
 
-Someone without an account gets an email with a link to the App Store and a join link (below). The note isn't shared with them until they have an account and an identity key.
+`https://ambernotes.app/s/<id>#<secret>`, one per note. The secret is in the fragment, which browsers never send to a server. From it come (HKDF-SHA256, salt `amber-notes/e2ee`):
+
+- `share <id>`: the key the read-only copy is sealed under (section 6). The link always works this way, View or Edit.
+- `invite answer <id>`: what proves you hold the link. The server keeps only its SHA-256 (`note_invite_links.answer_hash`).
+- `invite key <id>`: the key the note key is sealed under for whoever joins (`note_invite_links.key_wrap`, an `amb2` box with context `invite:<id>`).
+
+Switching the link to **Edit** turns the note into a shared note (its own key, `collab_share`) and publishes the join row (`collab_create_link`). Switching back to **View** deletes the join row (`collab_stop_link`): the link opens the read-only page again, and people already in the note stay until removed.
+
+Opening an Edit link in Amber Notes (the "Edit in Amber Notes" button on the page, or the universal link): the app proves the answer (`collab_open_link`), gets the sealed note key, opens it, seals it to its own identity key and data key, and joins as an editor (`collab_join_link`). It then appears in the owner's People with its avatar. Someone without the app gets the read-only page and the App Store; someone without an account signs in first.
+
+A link makes a member of whoever holds it, as "anyone with the link" does everywhere; the sheet says so, People shows who joined, and Remove takes them out.
 
 ### Verifying it's really them
 
-The weak point of any server-run key directory is that the server could hand out its own public key for an address and read what's shared. Two defenses:
+The weak point of any server-run key directory is that the server could hand out its own public key for someone and read what's shared. Two defenses:
 
-- **Safety code.** The people sheet and the invitation show a 12-digit code made from both public keys. Read it out in person or on a call; if it matches, the server gave each of you the other's real key. This is optional, like Signal's safety numbers. Most people won't, and that's fine for a notes app.
+- **Safety code.** On a person's row in People ("Verify Sara"), out of the main flow, a 12-digit code made from both public keys. Read it out in person or on a call; if it matches, the server gave each of you the other's real key. This is optional, like Signal's safety numbers. Most people won't, and that's fine for a notes app.
 - **Key change warnings.** The app remembers each person's public key the first time it sees it (trust on first use). Since identity keys never change except through Start fresh, a different key for the same person is shown plainly: "Sara's key changed. If she didn't start fresh, don't share with her until you've checked the code."
 
 Key transparency (a public log of identity keys) would close the gap entirely. It is not worth it before there are users who need it.
 
-### Join links
+### Removing someone, Reset Link, and leaving
 
-`https://ambernotes.app/join/<link id>#<secret>`. The secret lives in the fragment, which browsers never send to a server.
-
-- The owner's device derives two values from the secret with HKDF: an answer (the server keeps its SHA-256) and a key that NK is sealed under (`note_invite_links.key_wrap`). The server can open neither.
-- Whoever opens the link proves they have the secret (`collab_open_link`), gets the sealed NK, opens it, seals it to their own identity and data keys, and joins with the link's role (`collab_join_link`).
-- Links expire after 7 days, stop working when the note key changes, and the owner sees who joined and can remove them. A link makes a member of whoever holds it, as "anyone with the link" does everywhere. The app says so when making one.
-- The universal link opens the app; without the app, the page offers the App Store. Joining happens in the app, never on the web page.
-
-### Removing someone, and leaving
-
-Removing a member makes a new note key: the owner's device makes NK', seals it to every remaining member, and sends all wraps in one call (`collab_remove`, which refuses an incomplete set). The epoch goes up. From then on:
+Removing a member, and Reset Link, make a new note key and a new link. The old link would let a removed person straight back in, so it always goes with the key. Removing: the owner's device makes NK', seals it to every remaining member, and sends all wraps in one call (`collab_remove`, which refuses an incomplete set). The epoch goes up. From then on:
 
 - The server refuses changes sealed for an old epoch, so a removed person's devices can't write.
 - New text is sealed with NK', which the removed person never had.
@@ -134,17 +136,19 @@ Today a note syncs as a whole body with a version check, and a conflict keeps th
 
 ## 3. Presence
 
-A Realtime private channel `note:<id>` per open note, with RLS on `realtime.messages` so only members can join (the policies are in the migration). Each device tracks a sealed presence payload: `{name, caret, selection length, typing}`, re-sent when the caret moves, with each burst of typing, and every 2 seconds. Leaving the note, backgrounding the app or losing the connection drops it.
+A Realtime private channel `note:<id>` per open note, with RLS on `realtime.messages` so only members can join (the policies are in the migration). Each device tracks a sealed presence payload: `{name, caret, end, typing}`, re-sent when the caret moves, with each keystroke, and every 2 seconds. Leaving the note, backgrounding the app or losing the connection drops it. Someone who isn't editing (the keyboard is down) sends no caret.
+
+**Where a caret is.** `caret` and `end` are anchors, not offsets: the Automerge cursor (its bytes in hex) of the character just after the insertion point, or, at the very end of the note, of the last character with `after: true`. The receiver resolves them against its own merged text every time that text changes, so the caret sits exactly where the other person's insertion point is, after merges, at line ends, in lists and tables, and next to emoji and CJK (Automerge counts in UTF-16 here, as the editor does). A caret whose character hasn't arrived yet (presence travels faster than changes) keeps its last place until it does. While someone types, their caret is taken from the edit itself (right after what they typed), not from the text view, whose selection can trail a keystroke. `CollabCursorTests` round-trips cursors through concurrent edits, emoji, CJK, a table cell, a deleted character and the end of the note.
+
+`automerge-swift` 0.7.2 has no public way to rebuild a cursor from its bytes, so the prototype vendors it (`Vendor/automerge-swift`, one initializer added, the released XCFramework unchanged); it's a small upstream pull request. Building it also showed a real bug for later: applying a saved document to an empty `Document(textEncoding: .utf16)` swaps in one that counts Unicode scalars, which puts every later splice next to an emoji in the wrong place. Documents now take a snapshot by merging (`CollabSession.absorb`), and a test pins it.
 
 Where it shows:
 
-- **Toolbar avatars.** iPhone: in the navigation bar, left of the More button. Mac: next to Share. Overlapping 28 pt circles, initials on the person's colour (their profile photo when they have one), a ring in the page colour so they read as separate, at most three and then "+2". A small pencil badge while someone types. Tapping opens the people sheet. With nobody else here the button is a plain "person.2" glyph, so a shared note always shows it is shared.
+- **Toolbar avatars.** iPhone: in the navigation bar, left of the More button. Mac: next to Share. Overlapping 28 pt circles, initials on the person's colour (their profile photo when they have one), a ring in the page colour so they read as separate, at most three and then "+2". A pencil badge while someone types, with its own ring in the page colour so it reads on any avatar colour. Each avatar's view is a little larger than its circle and the badge sits inside it, at the lower left, so the toolbar never clips it and in a stack it lies over the neighbour instead of under the next avatar. Tapping opens Share. With nobody else here the button is a plain "person.2" glyph.
 - **"Sara is editing"** under the toolbar while someone types, with a dot in her colour. VoiceOver reads the avatars as "In this note: Sara Lind, editing".
-- **Carets.** A 2 pt bar in the person's colour where their caret is, their first name on a small flag above, and their selection tinted. Not hit-testable; you type through them.
+- **Carets.** A 2 pt bar in the person's colour, exactly the line's height, and their selection tinted. Their first name sits on a small, slightly see-through flag above the line only when the line above is empty (or it's the first line), otherwise below it; it shows while they type or just after their caret moves and fades about 2.5 seconds later. Not hit-testable; you type through them.
 - **Colours.** Six fixed colours, picked from the user id, the same on every device: teal, blue, violet, rose, green, slate. Amber is kept for AI edits, as it is today.
-- **People sheet.** Everyone in the note with role and state (Here now, Editing now, Not here, Invited), your own row in amber, the invite field, and the safety code after an invite.
-
-Caret positions in the prototype are UTF-16 offsets, moved locally through your own edits until the next presence arrives. The product should send Automerge cursors (stable through concurrent edits). `automerge-swift` exposes a cursor's bytes only as a hex description and has no initializer from them; that needs a small upstream change or a fork, a known gap.
+- **People, in Share.** Everyone in the note with role and state (Here now, Editing now, Not here), your own row in amber, Remove on each other row, and their safety code behind the row.
 
 ## 4. AI and collaboration
 
@@ -238,14 +242,14 @@ Never: other notes, the page's stored data, files, key values, the owner's email
 
 ## Data model
 
-`supabase/migrations/20261005120000_collaboration.sql` (prototype, tested in `supabase/functions/mcp/collab.pglite.test.ts`):
+`supabase/migrations/20261005160000_collaboration.sql` (prototype, tested in `supabase/functions/mcp/collab.pglite.test.ts`):
 
 - `identity_keys`: public key, sealed private key.
 - `shared_notes`: owner, epoch, sealed head and page.
 - `note_members`: role, epoch, `key_wrap`, `wrapped_by`, `self_wrap`, invited by, accepted.
 - `note_updates`, `note_snapshots`: sealed changes and snapshots, refused for stale epochs and for viewers; a snapshot drops the changes it covers.
-- `note_invite_links`: hashed answer, sealed NK, expiry.
-- Functions: `collab_publish_identity`, `collab_find_person`, `collab_members`, `collab_share`, `collab_invite`, `collab_accept`, `collab_remove`, `collab_create_link`, `collab_open_link`, `collab_join_link`, `collab_role`.
+- `note_invite_links`: the Edit side of a note's link (the same id as its sealed link), with the hashed answer and NK sealed under the link's key.
+- Functions: `collab_publish_identity`, `collab_find_person`, `collab_members`, `collab_share`, `collab_invite` (kept for a later email invite), `collab_accept`, `collab_remove` (with no one removed it is Reset Link), `collab_create_link`, `collab_stop_link`, `collab_open_link`, `collab_join_link`, `collab_role`.
 - Realtime: `note_updates` and `note_members` published; RLS policies for the private `note:<id>` channels.
 
 `supabase/migrations/20261005170000_sealed_links_and_templates.sql` (same tests):
@@ -259,11 +263,12 @@ Never: other notes, the page's stored data, files, key values, the owner's email
 
 What is real:
 
-- The identity keys, the note key sealed from Emil to Sara (`amb3k`, with the sender proof), her check of it against his public key, her `self_wrap`.
+- The Share sheet (iPhone and Mac, light and dark): the link, "Anyone with the link can: View / Edit", Copy Link and Send Link, People with Remove and Verify, Reset Link, Stop Sharing, Share as Template.
+- The Edit-link round trip: Emil sets the link to Edit; Sara's app opens the link, proves the answer, opens the note key with the link's key, seals it to herself and joins; she appears in Emil's People with her avatar, and they type together. The same link in a browser shows the read-only page with "Edit in Amber Notes".
+- The identity keys, the sender proof on every note-key wrap, `self_wrap`, and new keys on Remove and Reset Link (server side tested; owner and member re-keying wired in the app, not recorded).
 - Automerge documents on both phones; every change sealed with the note key, sent, stored, relayed and merged; the first snapshot sealed by the owner.
 - The schema and its rules, under row-level security, in a real Postgres (PGlite) with every existing migration.
-- Presence sealed with the note key: the toolbar avatars, the typing pencil, "Sara is editing", carets with name flags.
-- The people sheet invite (lookup by email, safety code) and the invitation alert with the safety code.
+- Presence sealed with the note key: the toolbar avatars, the typing pencil, "Sara is editing", carets on Automerge cursors with name flags that avoid text and fade.
 - Swift opens a wrap and a change made by the server's TypeScript (`CollabCryptoTests`), and a refused fake wrap.
 - Sharing, on one iPhone simulator against the same relay and the real site (`next build`, then `next start`): the app seals a habit tracker with its page into a sealed link and publishes it as a template. Safari on the phone opens the sealed link (the note and its app, live and read only, from the user-content port), then the template page and its live preview. The app is handed the template id and adds a fresh copy, as Use template's link does. Stop Sharing, and the old link says the note isn't shared anymore.
 - The server side of rotation and of refusing key values is tested (`collab.pglite.test.ts`).
@@ -273,7 +278,8 @@ What stands in or is missing:
 - The backend is `scripts/collab-relay.ts`, a local stand-in for PostgREST and Realtime (Docker wasn't usable). The caller is named by a header, not a signed JWT.
 - Accounts are made by the relay; there's no sign-in. The data key is made at launch, not taken from `AccountCrypto`.
 - The typing is scripted inside the app through the text view's own input path (`insertText`, and Return through the editor's delegate so lists continue). No input events are posted and nothing drives the simulators from outside.
-- Nothing persists: no SwiftData storage of the document, no offline queue, no compaction beyond the first snapshot, no version history for shared notes, no removal UI, no join links in the app (the server side of both is tested).
+- Sara gets Emil's link through a file the script puts in her app's container, standing in for a link sent in Messages (opening one from another app makes iOS ask "Open in Amber Notes?", which the script can't tap).
+- Nothing persists: no SwiftData storage of the document, no offline queue, no compaction beyond the first snapshot and the re-key snapshot, no version history for shared notes. A View link opened in the app isn't handled yet (it says the link is view only; the product opens the read-only copy there too).
 - The Mac app compiles with all of it but doesn't draw other people's carets.
 - No AI path: the MCP server doesn't read shared notes yet. `@automerge/automerge` 3.5 was checked to run under Deno; not inside an edge function.
 - Sharing: the user-content "domain" is the relay's second port; the site reads the relay instead of Supabase. The page HTML in the demo is the note-pages branch's habit tracker, copied; this branch doesn't render pages in the app, so the template's copy shows its text there. The `amber-needs` line in it is declared only to show the "What it needs" section. Use template's button would make iOS ask "Open in Amber Notes?"; the script can't tap that, so it brings the app forward and hands it the same id through a file. Files in sealed links, "Use this note" for sealed links, switching old links, the screenshot fallback and template link previews aren't built.
@@ -287,18 +293,19 @@ In agent hours, building on the prototype:
 | Identity keys from `AccountCrypto` (publish on startup, unwrap on new devices), key change warnings | 4 to 5 |
 | Shared notes in the library: the `notes` pointer, "Shared with me", accept and decline, push for invites | 6 to 8 |
 | Document storage and sync: SwiftData persistence, offline queue, catch-up by cursor, snapshots and compaction, migrating a note into a document on share | 10 to 12 |
-| Editor: Mac carets and selections, per-user undo, IME and dictation cases, Automerge cursors | 6 to 8 |
-| Presence on Realtime private channels with RLS; people sheet polish; avatars with photos | 4 to 5 |
+| Editor: Mac carets and selections, per-user undo, IME and dictation cases (Automerge cursors done) | 5 to 7 |
+| Presence on Realtime private channels with RLS; avatars with photos | 3 to 4 |
+| The Share sheet: one link, View/Edit, People, Verify, Remove, Reset Link; View links in the app; upstreaming the cursor initializer | 5 to 6 |
 | MCP server: read and write shared notes through `self_wrap`, Automerge in the edge function, attribution in tints and history | 7 to 9 |
 | Note pages in shared notes | 3 to 4 |
-| Remove, leave, rotation, roles UI; join links with the web page and universal link | 6 to 8 |
+| Leave, roles beyond editor, the universal link for joining | 3 to 4 |
 | Version history for shared notes | 4 to 5 |
 | Tests (offscreen editor harness for concurrent typing, PGlite, e2e on the local stack), privacy policy and security review | 6 to 8 |
 | Sealed links: publish and republish from every device, the secret in a synced Keychain item, sealed files, the `/s` page, Use this note | 8 to 10 |
 | The user-content domain and frame, pages on `/s` and `/n`, tests for the sandbox | 3 to 4 |
 | Switching old links (share sheet copy, stopping the old one, server cutoff) | 2 to 3 |
 | Share as template: the sheet, publishing, the `/t` page with screenshot fallback and link previews, Use template in the app, report and takedown | 8 to 10 |
-| **Total** | **77 to 99** |
+| **Total** | **76 to 98** |
 
 ## Risks
 
@@ -315,9 +322,9 @@ In agent hours, building on the prototype:
 ## Open questions for Emil
 
 1. Is per-note sharing enough for the first version, or do colleagues need a shared folder from day one?
-2. Should invites go only to people with an Amber Notes account, or also send an email to someone without one?
-3. Do you want join links in the first version, given that anyone holding the link becomes a member?
-4. Who can invite: only the owner (the prototype), or every editor?
+2. With Edit on, anyone holding the link becomes an editor. Is that the default you want, or should the owner approve each new person (a knock: "Sara wants to edit")?
+3. Should editors be able to change the link (View/Edit, Reset) and remove people, or only the owner (the prototype)?
+4. Email invites as a later convenience next to the link, or never?
 5. Does a shared note keep its place in the owner's folders and land in "Shared with me" for others, or should there be one "Shared" folder for everyone?
 6. Free or paid? Collaboration is the clearest reason for a team plan, which runs against "no enterprise work this year"; a two-person share could stay free.
 7. Is it fine that a member's AI request lets the server see the shared note during that request, as it does for your own notes now?

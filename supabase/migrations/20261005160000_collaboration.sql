@@ -162,7 +162,7 @@ begin
   if not found then raise exception 'That invitation is gone.' using errcode = 'P0002'; end if;
 end $$;
 
--- Removing someone (or leaving): a new key for everyone who stays. The owner's device makes NK',
+-- Removing someone (or leaving, or Reset Link with p_user null): a new key for everyone who stays. The owner's device makes NK',
 -- seals it to each remaining member, and sends the wraps in one call, so there is never a moment
 -- where the removed person could read new text. p_wraps: [{user_id, key_wrap}] for every member
 -- who stays, the owner included; self_wraps are made again by each member when they next open it.
@@ -176,12 +176,14 @@ begin
   if public.collab_role(p_note) is distinct from 'owner' then
     raise exception 'Only the owner can remove people.' using errcode = '42501', hint = 'not_owner';
   end if;
-  if p_user = auth.uid() then raise exception 'The owner can''t remove themselves.' using errcode = '22023'; end if;
+  if p_user is not null and p_user = auth.uid() then raise exception 'The owner can''t remove themselves.' using errcode = '22023'; end if;
   select epoch into current_epoch from public.shared_notes where id = p_note for update;
   if p_epoch <> current_epoch + 1 then
     raise exception 'The note''s key changed. Try again.' using errcode = '40001', hint = 'stale_epoch';
   end if;
+  -- p_user null: only a new key (Reset Link). Every live link was made for the old key and stops.
   delete from public.note_members where note_id = p_note and user_id = p_user;
+  delete from public.note_invite_links where note_id = p_note;
   select count(*) into stay from public.note_members where note_id = p_note;
   if (select count(*) from jsonb_array_elements(p_wraps) w
       join public.note_members m on m.note_id = p_note and m.user_id = (w->>'user_id')::uuid) <> stay then
@@ -217,7 +219,8 @@ create table public.note_snapshots (
   author_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
   ct text not null check (octet_length(ct) <= 4194304),
   created_at timestamptz not null default now(),
-  primary key (note_id, upto)
+  -- A new key re-seals the document at the same point: one snapshot per point and key.
+  primary key (note_id, upto, epoch)
 );
 
 create or replace function public.collab_update_guard() returns trigger
@@ -264,11 +267,12 @@ begin
 end $$;
 create trigger note_snapshots_compact after insert on public.note_snapshots for each row execute function public.collab_compact();
 
--- Invite links: `https://ambernotes.app/join/<link id>#<secret>`. The secret stays in the fragment,
+-- Edit links: `https://ambernotes.app/s/<link id>#<secret>` with Edit on. The secret stays in the fragment,
 -- which browsers never send. The server keeps a hash of a value derived from it (to find the
 -- link) and NK sealed under another value derived from it; it can open neither.
 create table public.note_invite_links (
-  id uuid primary key,
+  -- The same id as the note's sealed link: one link, View or Edit (ambernotes.app/s/<id>#<secret>).
+  id text primary key check (id ~ '^[A-Za-z0-9_-]{22}$'),
   note_id uuid not null references public.shared_notes (id) on delete cascade,
   role text not null check (role in ('editor', 'viewer')),
   epoch int not null,
@@ -285,7 +289,7 @@ revoke all on public.note_invite_links from anon, authenticated;
 -- link's key. Their device opens it, seals NK to its own identity key and data key, and joins with
 -- the link's role (collab_join_link). Links make a member of whoever holds them, like any
 -- "anyone with the link" share; the owner sees who joined and can remove them.
-create or replace function public.collab_open_link(p_link uuid, p_answer text)
+create or replace function public.collab_open_link(p_link text, p_answer text)
 returns table (note_id uuid, role text, epoch int, key_wrap text)
 language plpgsql security definer set search_path = '' as $$
 declare
@@ -300,7 +304,7 @@ begin
   return query select l.note_id, l.role, l.epoch, l.key_wrap;
 end $$;
 
-create or replace function public.collab_join_link(p_link uuid, p_answer text, p_key_wrap text, p_self_wrap text) returns void
+create or replace function public.collab_join_link(p_link text, p_answer text, p_key_wrap text, p_self_wrap text) returns void
 language plpgsql security definer set search_path = '' as $$
 declare
   l record;
@@ -312,25 +316,37 @@ begin
   on conflict (note_id, user_id) do nothing;
 end $$;
 
-create or replace function public.collab_create_link(p_link uuid, p_note uuid, p_role text, p_epoch int, p_answer_hash text, p_key_wrap text) returns void
+create or replace function public.collab_create_link(p_link text, p_note uuid, p_role text, p_epoch int, p_answer_hash text, p_key_wrap text) returns void
 language plpgsql security definer set search_path = '' as $$
 begin
   perform public.pane_take('write');
   if public.collab_role(p_note) is distinct from 'owner' then
     raise exception 'Only the owner can make an invite link.' using errcode = '42501', hint = 'not_owner';
   end if;
+  delete from public.note_invite_links where note_id = p_note and id <> p_link;
   insert into public.note_invite_links (id, note_id, role, epoch, answer_hash, key_wrap)
-  values (p_link, p_note, p_role, p_epoch, p_answer_hash, p_key_wrap);
+  values (p_link, p_note, p_role, p_epoch, p_answer_hash, p_key_wrap)
+  on conflict (id) do update set role = excluded.role, epoch = excluded.epoch, answer_hash = excluded.answer_hash, key_wrap = excluded.key_wrap;
+end $$;
+
+-- Edit turned off (the link goes back to View): opening it no longer adds anyone.
+create or replace function public.collab_stop_link(p_note uuid) returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  if public.collab_role(p_note) is distinct from 'owner' then
+    raise exception 'Only the owner can change the link.' using errcode = '42501', hint = 'not_owner';
+  end if;
+  delete from public.note_invite_links where note_id = p_note;
 end $$;
 
 revoke all on function public.collab_role(uuid, uuid), public.collab_members(uuid), public.collab_share(uuid, text, text, text),
   public.collab_invite(uuid, uuid, text, text, int), public.collab_accept(uuid, text), public.collab_remove(uuid, uuid, int, jsonb),
-  public.collab_publish_identity(text, text), public.collab_find_person(text), public.collab_open_link(uuid, text),
-  public.collab_join_link(uuid, text, text, text), public.collab_create_link(uuid, uuid, text, int, text, text) from public, anon;
+  public.collab_publish_identity(text, text), public.collab_find_person(text), public.collab_open_link(text, text),
+  public.collab_join_link(text, text, text, text), public.collab_create_link(text, uuid, text, int, text, text), public.collab_stop_link(uuid) from public, anon;
 grant execute on function public.collab_role(uuid, uuid), public.collab_members(uuid), public.collab_share(uuid, text, text, text),
   public.collab_invite(uuid, uuid, text, text, int), public.collab_accept(uuid, text), public.collab_remove(uuid, uuid, int, jsonb),
-  public.collab_publish_identity(text, text), public.collab_find_person(text), public.collab_open_link(uuid, text),
-  public.collab_join_link(uuid, text, text, text), public.collab_create_link(uuid, uuid, text, int, text, text) to authenticated;
+  public.collab_publish_identity(text, text), public.collab_find_person(text), public.collab_open_link(text, text),
+  public.collab_join_link(text, text, text, text), public.collab_create_link(text, uuid, text, int, text, text), public.collab_stop_link(uuid) to authenticated;
 
 -- Live: new updates reach members through Realtime, and presence (who's here, where their cursor
 -- is, sealed under NK) goes over a private channel `note:<id>` only members may join.

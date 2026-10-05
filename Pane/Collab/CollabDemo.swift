@@ -5,8 +5,9 @@ import UIKit
 #endif
 
 /// Collaboration (prototype): the scripted demo two simulators play side by side
-/// (scripts/collab-demo.sh). `-collabScript owner` shares "Team offsite" and invites Sara;
-/// `-collabScript member` accepts. Then both type into the note at once.
+/// (scripts/collab-demo.sh). `-collabScript owner` opens Share on "Team offsite" and sets the link
+/// to Edit; the script hands that link to `-collabScript member`, whose app opens it and joins.
+/// Then both type into the note at once.
 ///
 /// The typing goes through the text view's own keyboard path (`insertText`), so lists continue on
 /// Return and every keystroke takes the same route as a real one. Nothing is driven from outside the
@@ -14,8 +15,9 @@ import UIKit
 @MainActor
 enum CollabDemo {
     static let invite = Notification.Name("pane.collabDemoInvite")
-    /// The address the people sheet types and invites when it next opens.
-    static var pendingInvite: String?
+    static let closeShare = Notification.Name("pane.collabDemoCloseShare")
+    /// What the Share sheet sets the link to when it next opens.
+    static var pendingAccess: ShareState.Access?
     static let showShare = Notification.Name("pane.collabDemoShowShare")
     /// The template sheet shares by itself when it opens (the demo).
     static var autoShareTemplate = false
@@ -24,7 +26,7 @@ enum CollabDemo {
 
     /// The demo's links, for scripts/share-demo.sh to open in Safari: Documents/share-demo.txt.
     static func wrote(_ kind: String, _ url: URL) {
-        guard Capture.argument("-collabScript") == "share" else { return }
+        guard Capture.argument("-collabScript") != nil else { return }
         let file = URL.documentsDirectory.appending(path: "share-demo.txt")
         let line = "\(kind) \(url.absoluteString)\n"
         if let h = try? FileHandle(forWritingTo: file) { h.seekToEndOfFile(); h.write(Data(line.utf8)); try? h.close() }
@@ -63,14 +65,16 @@ enum CollabDemo {
         await pause(1.2)
         NoteOpener.shared.open(note.id)
         await pause(2.5)
-        guard let session = try? await store.share(note) else { return }
-        // Sara's phone has made her account by now; invite her from the people sheet.
-        while (try? await store.find("sara@example.com")) == nil { await pause(0.5) }
-        pendingInvite = "sara@example.com"
+        // Share, with Edit: the link goes to Sara (the script passes it on, as a message would).
+        pendingAccess = .edit
         NotificationCenter.default.post(name: invite, object: nil)
-        // Wait for her to open it, then write together.
+        while store.session(for: note.id) == nil { await pause(0.3) }
+        let session = store.session(for: note.id)!
+        // She opens it and shows up in People; then write together.
         while session.peers.isEmpty { await pause(0.3) }
-        await pause(2.0)
+        await pause(5.0)
+        NotificationCenter.default.post(name: closeShare, object: nil)
+        await pause(1.5)
         await type("\n15:00 Customer stories, Sara and Emil", after: "12:30 Lunch at Tranan", context)
         await pause(1.2)
         await type(" (bring the Q3 numbers)", after: "10:30 Roadmap review", context)
@@ -124,10 +128,25 @@ enum CollabDemo {
             + rows.joined(separator: "\n") + "\n"
     }
 
+    /// Lines the script hands over in Documents/demo-command.txt, in place of what the person taps or
+    /// receives: "join <link>" (a link someone sent), "use <template id>", "stop".
+    static func nextCommand() async -> [String] {
+        let file = URL.documentsDirectory.appending(path: "demo-command.txt")
+        while true {
+            await pause(0.4)
+            guard let text = try? String(contentsOf: file, encoding: .utf8) else { continue }
+            try? FileManager.default.removeItem(at: file)
+            return text.trimmingCharacters(in: .whitespacesAndNewlines).split(separator: " ").map(String.init)
+        }
+    }
+
     private static func member(store: CollabStore) async {
-        while store.invite == nil { await pause(0.3) }
-        await pause(2.6)
-        if let invite = store.invite { await store.accept(invite) }
+        try? FileManager.default.removeItem(at: URL.documentsDirectory.appending(path: "demo-command.txt"))
+        // Sara opens the link Emil sent: the app joins the note and opens it.
+        while true {
+            let c = await nextCommand()
+            if c.first == "join", c.count == 2, let url = URL(string: c[1]), await store.join(url) { break }
+        }
         await pause(3.2)
         await type(" and decide the top three bets", after: "Coffee and goals for Q1", nil)
         await pause(0.8)
@@ -187,6 +206,8 @@ struct CollabInviteAlert: ViewModifier {
             content
             // "Use template" on a shared template's page (ambernotes://shared-template/<id>).
             .onOpenURL { url in
+                // A share link (…/s/<id>#<secret>): with Edit on, opening it joins the note.
+                if CollabStore.parseLink(url) != nil { Task { await store.join(url) }; return }
                 guard url.scheme == "ambernotes" else { return }
                 if url.host == "shared-template", let id = url.pathComponents.dropFirst().first { Task { _ = await store.useTemplate(id) } }
                 // scripts/share-demo.sh: Stop Sharing on the demo note, as its sheet would.

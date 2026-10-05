@@ -167,58 +167,23 @@ extension CollabStore {
     }
 }
 
-/// "Share link": a read-only copy anyone with the link can open, sealed so we can't read it.
-struct LinkShareSheet: View {
-    let note: Note
-    let store: CollabStore
-    @Environment(\.dismiss) private var dismiss
-    @State private var url: URL?
-    @State private var problem: String?
-
-    var body: some View {
-        NavigationStack {
-            List {
-                Section {
-                    if let url {
-                        Text(url.absoluteString).font(.footnote.monospaced()).textSelection(.enabled).accessibilityIdentifier("share.link")
-                        Button("Copy Link", systemImage: "doc.on.doc") { copy(url) }
-                        Button("Make a New Link", systemImage: "arrow.triangle.2.circlepath") { Task { await publish(rotate: true) } }
-                        Button("Stop Sharing", systemImage: "xmark.circle", role: .destructive) {
-                            Task { try? await store.stopLink(note); self.url = nil; dismiss() }
-                        }
-                    } else {
-                        ProgressView()
-                    }
-                } footer: {
-                    Text("Anyone with the link can read this note\(store.pages[note.id] == nil ? "" : " and use its app, read only"). The end of the link is the key that opens it, so we can't read the copy. A new link stops the old one.")
-                }
-                if let problem { Text(problem).foregroundStyle(.red) }
-            }
-            .navigationTitle("Share Link")
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
-            .task { await publish(rotate: false) }
-        }
-    }
-
-    private func publish(rotate: Bool) async {
-        do { let u = try await store.publishLink(note, rotate: rotate); url = u; CollabDemo.wrote("link", u) } catch { problem = error.localizedDescription }
-    }
-
-    private func copy(_ url: URL) {
-        #if os(iOS)
-        UIPasteboard.general.url = url
-        #else
-        NSPasteboard.general.clearContents(); NSPasteboard.general.setString(url.absoluteString, forType: .string)
-        #endif
-    }
-}
-
 /// "Share as template": a public page others can start from. Your notes and data stay out of it,
 /// unless you include this note's rows as sample data.
 struct TemplateShareSheet: View {
+    let note: Note
+    let store: CollabStore
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            TemplateForm(note: note, store: store)
+                .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+        }
+    }
+}
+
+/// Share as Template's content: in its own sheet, or pushed from Share.
+struct TemplateForm: View {
     let note: Note
     let store: CollabStore
     @Environment(\.dismiss) private var dismiss
@@ -227,8 +192,7 @@ struct TemplateShareSheet: View {
     @State private var working = false
 
     var body: some View {
-        NavigationStack {
-            List {
+            Form {
                 Section {
                     Toggle("Include sample data", isOn: $includeSample).disabled(url != nil)
                 } footer: {
@@ -250,14 +214,14 @@ struct TemplateShareSheet: View {
                             .accessibilityIdentifier("template.share")
                     }
                 } footer: {
-                    Text("Anyone with the link can see and use this template. Your notes and data are not included, and keys are listed by name only.")
+                    Text("Anyone with the link can see and use this template. Your notes and data aren't included, and keys are listed by name only.")
                 }
             }
+            .formStyle(.grouped)
             .navigationTitle("Share as Template")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
             .task {
                 guard CollabDemo.autoShareTemplate else { return }
                 CollabDemo.autoShareTemplate = false
@@ -266,7 +230,6 @@ struct TemplateShareSheet: View {
                 try? await Task.sleep(for: .seconds(3))
                 dismiss()
             }
-        }
     }
 
     private func share() async {
