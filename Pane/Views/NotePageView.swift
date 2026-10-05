@@ -129,6 +129,12 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
     }
 
     /// The note changed (the page's own edit, typing elsewhere, sync, Undo): the page re-renders.
+    /// How much of the app's bottom edge Amber's own things cover (the receipt over an app on the
+    /// Mac): --amber-inset-bottom, and the amber:insets event.
+    func setInsets(bottom: CGFloat) {
+        webView.callAsyncJavaScript("window.amber && window.amber._insets(bottom)", arguments: ["bottom": Double(bottom)], in: nil, in: .page) { _ in }
+    }
+
     func push(body: String, data: NotePageData.Doc? = nil) {
         webView.callAsyncJavaScript("window.amber && window.amber._receive(note, data)", arguments: ["note": NotePage.data(of: body), "data": data ?? NSNull()], in: nil, in: .page) { _ in }
     }
@@ -286,6 +292,17 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
             try { window.webkit.messageHandlers.amberReady.postMessage({ focus: f }); } catch (e) {} };
           addEventListener("focusin", sendFocus, true);
           addEventListener("focusout", () => setTimeout(sendFocus, 0), true);
+          // What Amber's own things cover at the bottom edge, as a variable in the tokens' layer (so the
+          // app can still override it) and an event.
+          const insetSheet = new CSSStyleSheet();
+          document.adoptedStyleSheets = [...document.adoptedStyleSheets, insetSheet];
+          let insetBottom = 0;
+          Object.defineProperty(amber, "insets", { get() { return { bottom: insetBottom }; } });
+          Object.defineProperty(amber, "_insets", { value(bottom) {
+            insetBottom = bottom;
+            insetSheet.replaceSync("@layer amber-tokens { :root { --amber-inset-bottom: " + bottom + "px; } }");
+            dispatchEvent(new CustomEvent("amber:insets", { detail: { bottom } }));
+          } });
           window.amber = amber;
           // For swapping in a new version while you use it: when you last touched the page, what's
           // in its fields and where it's scrolled; and putting that back into the new version.
@@ -426,6 +443,8 @@ struct NotePageView: View {
     var files: @MainActor (UUID) -> URL? = { _ in nil }
     /// A field in the app has focus, or not.
     var onFocus: (Bool) -> Void = { _ in }
+    /// What Amber's own things cover at the bottom of the app (see NotePageSandbox.setInsets).
+    var insetBottom: CGFloat = 0
     @State private var sandbox: NotePageSandbox?
     @State private var failed: String?
     @State private var ready = false
@@ -489,6 +508,8 @@ struct NotePageView: View {
             }
         }
         .onChange(of: text) { _, now in sandbox?.push(body: now, data: NotePageDataStore.shared.doc(noteID)) }
+        .onChange(of: insetBottom) { _, now in sandbox?.setInsets(bottom: now) }
+        .onChange(of: ready) { _, now in if now, insetBottom > 0 { sandbox?.setInsets(bottom: insetBottom) } }
         .onChange(of: NotePageDataStore.shared.docs[noteID]) { _, _ in sandbox?.push(body: text, data: NotePageDataStore.shared.doc(noteID)) }
     }
 
@@ -682,7 +703,8 @@ enum NotePageTheme {
             --amber-font: -apple-system, system-ui, sans-serif; --amber-font-rounded: ui-rounded, -apple-system, system-ui, sans-serif;
             --amber-font-mono: ui-monospace, Menlo, monospace;
             --amber-safe-top: env(safe-area-inset-top, 0px); --amber-safe-right: env(safe-area-inset-right, 0px);
-            --amber-safe-bottom: env(safe-area-inset-bottom, 0px); --amber-safe-left: env(safe-area-inset-left, 0px); }
+            --amber-safe-bottom: env(safe-area-inset-bottom, 0px); --amber-safe-left: env(safe-area-inset-left, 0px);
+            --amber-inset-bottom: 0px; --amber-keyboard: 0px; }
           @media (prefers-color-scheme: dark) { :root { \(vars(dark: true)); } }
         }
 

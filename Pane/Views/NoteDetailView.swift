@@ -301,7 +301,8 @@ struct NoteDetailView: View {
                                          heldReceipt = nil
                                          if held.at.timeIntervalSinceNow > -3 { showPageReceipt(held) }
                                      }
-                                 })
+                                 },
+                                 insetBottom: pageInsetBottom)
                         .id(note.id)
                         .opacity(showingPage ? 1 : 0)
                         .allowsHitTesting(showingPage)
@@ -323,6 +324,17 @@ struct NoteDetailView: View {
     /// The note's page, unless the note is locked (a locked note never shows one).
     private var notePage: NotePageStore.Page? { note.isLocked ? nil : NotePageStore.shared[note.id] }
     private var showingPage: Bool { notePage != nil && mode == .page }
+
+    /// What of the app's bottom edge Amber covers: on the Mac the receipt (its height, its margin and
+    /// a gap); on iPhone nothing (the receipt goes in the navigation bar, and the App side has no
+    /// bottom toolbar).
+    private var pageInsetBottom: CGFloat {
+        #if os(macOS)
+        receipt != nil && showingPage ? AIReceipt.height + 20 + 8 : 0
+        #else
+        0
+        #endif
+    }
 
     /// An edit the page asked for, applied to the markdown as an edit of yours: it syncs, keeps a
     /// version, and the receipt offers Undo. The page re-renders from the new text.

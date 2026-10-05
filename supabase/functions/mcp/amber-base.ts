@@ -42,5 +42,5 @@ export const AMBER_TOKENS = [
   "--amber-bg", "--amber-surface", "--amber-fill", "--amber-text", "--amber-text-secondary", "--amber-separator",
   "--amber-field", "--amber-field-border", "--amber-accent", "--amber-accent-text", "--amber-accent-soft", "--amber-on-accent",
   "--amber-danger", "--amber-radius", "--amber-radius-small", "--amber-content-max", "--amber-gutter", "--amber-root-font",
-  "--amber-font", "--amber-font-rounded", "--amber-font-mono", "--amber-safe-top", "--amber-safe-right", "--amber-safe-bottom", "--amber-safe-left",
+  "--amber-font", "--amber-font-rounded", "--amber-font-mono", "--amber-safe-top", "--amber-safe-right", "--amber-safe-bottom", "--amber-safe-left", "--amber-inset-bottom", "--amber-keyboard",
 ];

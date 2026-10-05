@@ -519,7 +519,11 @@ final class NotePagesUITests: XCTestCase {
         pause(1.2)
         shot("94-packing-add")
         let field = app.webViews.textFields.firstMatch
-        if field.waitForExistence(timeout: 3) { field.tap(); field.typeText("Sun hat") }
+        if field.waitForExistence(timeout: 3) { field.tap() }
+        pause(1.2)
+        shot("94b-packing-sheet-keyboard")
+        field.typeText("Sun hat")
+        pause(0.6)
         app.webViews.buttons["Add"].firstMatch.tap()
         pause(1.5)
         shot("95-packing-added")

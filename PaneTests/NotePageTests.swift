@@ -857,6 +857,20 @@ import WebKit
         #expect(ts.contains(shipped))
     }
 
+    /// What Amber covers at the bottom reaches the app as a variable and an event; the app can override it.
+    @Test func bottomInsetsReachTheApp() async throws {
+        let sandbox = NotePageSandbox(rules: try await NotePageSandbox.prepare())
+        sandbox.load(html: """
+        <div id=bar style="position: fixed; bottom: 0; padding-bottom: var(--amber-inset-bottom)">x</div>
+        <script>window.__e = []; addEventListener("amber:insets", (e) => __e.push(e.detail.bottom)); amber.onChange(() => {});</script>
+        """, body: "x")
+        try await run(sandbox.webView, until: "document.getElementById('bar') !== null && document.readyState === 'complete'")
+        #expect(try await sandbox.webView.evaluateJavaScript("getComputedStyle(document.getElementById('bar')).paddingBottom") as? String == "0px")
+        sandbox.setInsets(bottom: 58)
+        try await run(sandbox.webView, until: "getComputedStyle(document.getElementById('bar')).paddingBottom === '58px'")
+        #expect(try await sandbox.webView.evaluateJavaScript("JSON.stringify([window.__e, amber.insets.bottom])") as? String == "[[58],58]")
+    }
+
     @Test func npmPackagesNeedAPinnedVersionAndAMatchingHash() async throws {
         typealias Ref = NotePageLibraries.NpmRef
         let js = Data("window.__pkg = 'from the device';".utf8)
