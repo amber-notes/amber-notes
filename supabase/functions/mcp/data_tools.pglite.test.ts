@@ -138,3 +138,23 @@ Deno.test("query_app_data answers over an app's JSON: collections, lists in valu
   assertEquals((await tool(pg, a, "query_app_data", { id, from: "log", group_by: "kind", sort: "count" }, false)).groups[0], { kind: "Run", count: 3 });
   assertStringIncludes(await fails(tool(pg, a, "query_app_data", { id, from: "nope" }, false)), "sessions (collection)");
 });
+
+Deno.test("an app's localStorage data reads as records and is written back as the strings the app expects", async () => {
+  const pg = await schemaDB();
+  const a = await account(pg);
+  const id = await note(pg, a, "Habits\n");
+  const habits = [{ date: "2026-10-02", walk: true }, { date: "2026-10-03", walk: true }, { date: "2026-10-04", walk: false }, { date: "2026-10-05", walk: true }, { date: "2026-10-06", walk: true }];
+  // As the app saves it: localStorage.setItem("habits", JSON.stringify(...)).
+  await tool(pg, a, "update_page_data", { id, replace: { values: { localStorage: { habits: JSON.stringify(habits), theme: "dark" } }, collections: {} } });
+  const read = await tool(pg, a, "get_page_data", { id }, false);
+  assertEquals(read.data.values.localStorage.habits.length, 5);
+  assertEquals(read.data.values.localStorage.theme, "dark");
+  assertEquals(read.shape.values.object.localStorage.object.habits.fields.date.type, "date");
+  // "Remove the entries for 3 to 5 October", behind the app's back, in one write.
+  await tool(pg, a, "update_page_data", { id, values: { localStorage: { habits: read.data.values.localStorage.habits.filter((h: { date: string }) => h.date < "2026-10-03" || h.date > "2026-10-05") } } });
+  const [row] = (await pg.query(`select data_ct from public.note_pages where note_id = $1`, [id])).rows as { data_ct: string }[];
+  const raw = JSON.parse(await a.vault.openPageData(id, row.data_ct));
+  assertEquals(typeof raw.values.localStorage.habits, "string");
+  assertEquals(JSON.parse(raw.values.localStorage.habits).map((h: { date: string }) => h.date), ["2026-10-02", "2026-10-06"]);
+  assertEquals(raw.values.localStorage.theme, "dark");
+});

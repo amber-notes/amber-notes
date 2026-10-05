@@ -6,11 +6,12 @@
 // own lines, and anything that would drop a value (a column with values, several rows at once)
 // has to be asked for by name.
 
-import { addChecklistItems, addRows, aggregate, atPath, recordsAt, changeStore, DataError, fileRefs, newFiles, placeFiles, queryRecords, recordsFromCsv, deleteRows, hasTable, newTable, parseDelimited, editColumns, pastedRows, updateChecklistItems, updateRows, type ChecklistChange, type ColumnChange, type RowInput } from "./data_ops.ts";
+import { addChecklistItems, addRows, aggregate, atPath, closeStored, dataShape, openStored, recordsAt, changeStore, DataError, fileRefs, newFiles, placeFiles, queryRecords, recordsFromCsv, deleteRows, hasTable, newTable, parseDelimited, editColumns, pastedRows, updateChecklistItems, updateRows, type ChecklistChange, type ColumnChange, type RowInput } from "./data_ops.ts";
 import { findTables, mimeOf, typeSpec } from "./notes.ts";
 import { PAGE_GUIDE } from "./page_guide.ts";
 import { noteForPage } from "./page_input.ts";
 import { appHandlers, appTools } from "./app_tools.ts";
+import { parseStored } from "./app_project.ts";
 import { APP_EXAMPLES } from "./app_examples.gen.ts";
 import { AMBER_UI } from "./amber-ui.ts";
 const KIT_COMPONENTS = Object.keys(AMBER_UI.src).filter((f) => f.endsWith(".jsx") && f !== "index.jsx").map((f) => f.replace(".jsx", ""));
@@ -121,7 +122,7 @@ export const dataTools = [
   },
   {
     name: "get_page_data", title: "Read a note's app data",
-    description: "Reads the data a note's app keeps for itself, next to the note and never in its text: { values: { … }, collections: { name: [records with id, created, updated, …] } }. " +
+    description: "Reads the data a note's app keeps for itself (JSON, never in the note's text): { values: { … }, collections: { name: [records with id, created, updated, …] } }, with shape (each list's fields, their types and examples) and what the app's README says about its data. What the app keeps in localStorage is under values.localStorage, already parsed: change it with update_page_data as JSON, it's saved back as the app expects. " +
       "With collection, returns that collection's records, filtered by where (field → value, or a test like { \"date\": { \"from\": \"2026-09-01\" } }, { \"name\": { \"contains\": \"ann\" } }; dotted fields reach nested values), limit/offset paged, optionally only some fields. path reads one part, like \"values.goal\". Files in records are { \"$file\": id }; open one with get_file.",
     inputSchema: {
       type: "object",
@@ -194,13 +195,25 @@ async function pageDataOf(tx: Tx, c: Call, id: string): Promise<PageData> {
   if (!row?.data_ct) return { values: {}, collections: {} };
   let d: Partial<PageData>;
   try { d = JSON.parse(await c.v.openPageData(id, row.data_ct)); } catch { throw new ToolError("This page's data can't be opened with this connection's key."); }
-  return { values: d.values ?? {}, collections: d.collections ?? {} };
+  // localStorage blobs come parsed: the AI reads and changes records, storePageData writes strings back.
+  return openStored({ values: d.values ?? {}, collections: d.collections ?? {} });
+}
+
+/** The Data section of the app's README.md (what the app's author says its data means), if any. */
+async function readmeData(tx: Tx, c: Call, id: string): Promise<string | null> {
+  const [row] = await tx<{ page_ct: string | null }[]>`select page_ct from public.note_pages where note_id = ${id}`;
+  if (!row?.page_ct) return null;
+  try {
+    const readme = parseStored(await c.v.openPage(id, row.page_ct)).files["/README.md"] ?? "";
+    const m = readme.match(/^##\s*Data\s*\n([\s\S]*?)(?=^##\s|$(?![\s\S]))/m);
+    return m ? m[1].trim() || null : null;
+  } catch { return null; }
 }
 
 async function storePageData(tx: Tx, c: Call, id: string, data: unknown) {
   const problems = pageDataProblems(data);
   if (problems.length) throw new ToolError(`The data wasn't saved:\n- ${problems.join("\n- ")}`);
-  const json = JSON.stringify(data);
+  const json = JSON.stringify(closeStored(data as PageData));
   await tx`insert into public.note_pages (note_id, data_ct) values (${id}, ${await c.v.sealPageData(id, json)})
     on conflict (note_id) do update set data_ct = excluded.data_ct`;
   return { bytes: new TextEncoder().encode(json).length };
@@ -321,8 +334,10 @@ export const dataHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
     }
     if (typeof a.path === "string" && a.path.trim()) return { note, path: a.path, value: atPath(data, a.path) ?? null };
     const json = JSON.stringify(data);
-    if (json.length <= 60_000) return { note, data };
-    return { note, outline: outline(data), bytes: json.length, more: "Too big to show whole: read a collection with collection (and where/limit), or a part with path." };
+    const shape = { collections: dataShape(data.collections), values: dataShape(data.values) };
+    const readme = await readmeData(tx, c, n.id);
+    if (json.length <= 60_000) return { note, shape, ...(readme ? { readme_data: readme } : {}), data };
+    return { note, shape, ...(readme ? { readme_data: readme } : {}), bytes: json.length, more: "Too big to show whole: read a collection with collection (and where/limit), or a part with path." };
   },
 
   async query_app_data(tx, a, c) {

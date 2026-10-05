@@ -384,6 +384,61 @@ const libsOk = (f: Final) => check("libraries_ok", libraryReport(f.page ?? "").l
 
 // MARK: Tasks
 
+// Two React apps whose data lives in their store, for the behind-the-scenes data tasks.
+const HABIT_LOG = Array.from({ length: 10 }, (_, k) => ({ date: day(k - 8), walk: k % 3 !== 0, read: k % 2 === 0 }));
+const BUDGET_EXPENSES = [
+  { id: "e1", created: "2026-10-01T08:00:00Z", date: "2026-10-01", item: "Groceries ICA", category: "Food", amount: 640 },
+  { id: "e2", created: "2026-10-02T08:00:00Z", date: "2026-10-02", item: "Rent", category: "Home", amount: 9500 },
+  { id: "e3", created: "2026-10-03T08:00:00Z", date: "2026-10-03", item: "Lunch", category: "Food", amount: 125 },
+  { id: "e4", created: "2026-10-04T08:00:00Z", date: "2026-10-04", item: "Cinema", category: "Fun", amount: 260 },
+  { id: "e5", created: "2026-10-05T08:00:00Z", date: "2026-10-05", item: "Bakery", category: "Food", amount: 92 },
+];
+async function reactApp(title: string, files: Record<string, string>): Promise<string> {
+  const { scaffold } = await import("../../supabase/functions/mcp/app_scaffold.ts");
+  const { compile, linkProject, needsCompile, serialize } = await import("../../supabase/functions/mcp/app_project.ts");
+  const all = { ...scaffold(title), ...files };
+  const p = { amberApp: 1 as const, files: all, compiled: {} as Record<string, string> };
+  for (const f of Object.keys(all)) if (needsCompile(f, true)) { const r = await compile(f, all[f], "react"); if ("error" in r) throw new Error(r.error); p.compiled[f] = r.code; }
+  return serialize((await linkProject(p)).project);
+}
+const HABIT_APP = await reactApp("Habits", { "/src/screens/home.tsx": `import { useEffect, useState } from "react"
+import { PageHeader } from "@/components/app-shell"
+import { Card } from "@/components/ui/card"
+
+type Day = { date: string; walk: boolean; read: boolean }
+const load = (): Day[] => { try { return JSON.parse(localStorage.getItem("habits") || "[]") } catch { return [] } }
+
+export default function Home() {
+  const [days, setDays] = useState<Day[]>(load)
+  useEffect(() => { const f = () => setDays(load()); addEventListener("storage", f); return () => removeEventListener("storage", f) }, [])
+  return (
+    <>
+      <PageHeader title="Habits" subtitle={days.length + " days logged"} />
+      <Card className="gap-0 py-0">{days.map((d) => <div key={d.date} className="flex gap-3 border-t px-4 py-3 first:border-0"><span className="flex-1">{d.date}</span><span>{d.walk ? "Walk" : ""}</span><span>{d.read ? "Read" : ""}</span></div>)}</Card>
+    </>
+  )
+}
+` });
+const BUDGET_APP = await reactApp("Budget", { "/src/screens/home.tsx": `import { useCollection, useSettings } from "@/lib/amber"
+import { PageHeader } from "@/components/app-shell"
+import { Card } from "@/components/ui/card"
+
+type Expense = { id: string; date: string; item: string; category: string; amount: number }
+
+export default function Home() {
+  const expenses = useCollection("expenses")
+  const [settings] = useSettings({ categories: [] as string[], limit: 0 })
+  const items = expenses.items as unknown as Expense[]
+  const total = items.reduce((s, e) => s + e.amount, 0)
+  return (
+    <>
+      <PageHeader title="Budget" subtitle={total + " of " + settings.limit} />
+      {settings.categories.map((c) => <Card key={c} className="mb-3 px-4 py-3">{c}: {items.filter((e) => e.category === c).reduce((s, e) => s + e.amount, 0)}</Card>)}
+    </>
+  )
+}
+` });
+
 export const TASKS: Task[] = [
   {
     id: "habits-from-messy-notes",
@@ -837,6 +892,42 @@ export const TASKS: Task[] = [
       check("wifi_payload", /WIFI:/.test(f.page ?? ""), "doesn't build a WIFI: QR payload"),
       check("reads_the_note", /amber\.note|\.markdown\b/.test(f.page ?? "") && !/kanelbulle-42/.test(f.page ?? ""), "the password is copied into the app instead of read from the note"),
     ],
+  },
+  {
+    // The person's AI changes an app's data behind the scenes: the app stays as it is.
+    id: "habit-data-remove-dates",
+    prompt: "In my Habits app, remove the entries for 3, 4 and 5 October. They were logged by mistake.",
+    seed: { body: "Habits\n", page: HABIT_APP, data: { values: { localStorage: { habits: JSON.stringify(HABIT_LOG), theme: "dark" } } } }, page: false,
+    checks: (f) => {
+      const ls = (f.data as { values?: { localStorage?: Record<string, unknown> } })?.values?.localStorage ?? {};
+      const raw = ls.habits;
+      let rows: { date: string }[] = [];
+      try { rows = typeof raw === "string" ? JSON.parse(raw) : []; } catch { /* checked below */ }
+      const dates = rows.map((r) => r.date);
+      return [
+        check("app_unchanged", f.page === f.pageBefore, "the app was changed"),
+        check("still_a_string", typeof raw === "string", "localStorage.habits isn't the JSON string the app reads any more"),
+        check("dates_removed", !dates.some((d) => d >= "2026-10-03" && d <= "2026-10-05"), `left: ${dates.filter((d) => d >= "2026-10-03" && d <= "2026-10-05").join(", ")}`),
+        check("others_kept", dates.length === HABIT_LOG.length - 3 && HABIT_LOG.filter((h) => h.date < "2026-10-03" || h.date > "2026-10-05").every((h) => dates.includes(h.date)), `${dates.length} entries left`),
+        check("settings_kept", ls.theme === "dark", "another localStorage key was lost"),
+      ];
+    },
+  },
+  {
+    id: "budget-data-rename-category",
+    prompt: "In my Budget app, rename the category Food to Groceries everywhere.",
+    seed: { body: "Budget\n", page: BUDGET_APP, data: { values: { settings: { categories: ["Food", "Home", "Fun"], limit: 12000 } }, collections: { expenses: BUDGET_EXPENSES } } }, page: false,
+    checks: (f) => {
+      const d = f.data as { values?: { settings?: { categories?: string[]; limit?: number } }; collections?: { expenses?: { id: string; category: string; amount: number }[] } };
+      const ex = d?.collections?.expenses ?? [];
+      return [
+        check("app_unchanged", f.page === f.pageBefore, "the app was changed"),
+        check("records_renamed", ex.length === BUDGET_EXPENSES.length && !ex.some((e) => e.category === "Food") && ex.filter((e) => e.category === "Groceries").length === BUDGET_EXPENSES.filter((e) => e.category === "Food").length, `${ex.filter((e) => e.category === "Food").length} still Food`),
+        check("ids_kept", BUDGET_EXPENSES.every((b) => ex.some((e) => e.id === b.id && e.amount === b.amount)), "records lost their ids or amounts"),
+        check("setting_renamed", JSON.stringify(d?.values?.settings?.categories) === JSON.stringify(["Groceries", "Home", "Fun"]), `categories: ${JSON.stringify(d?.values?.settings?.categories)}`),
+        check("limit_kept", d?.values?.settings?.limit === 12000, "the limit changed"),
+      ];
+    },
   },
   {
     // The baseline comparison (baseline.ts): the same bare request Claude Code and Codex get in an

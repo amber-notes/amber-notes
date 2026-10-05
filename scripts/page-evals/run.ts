@@ -112,7 +112,9 @@ async function setup(task: Task) {
     return { text: blocks.map((c) => (c.type === "text" ? c.text : `[${c.type}]`)).join("\n"), isError: r.isError === true, images: blocks.filter((c) => c.type === "image").map((c) => ({ data: c.data!, mimeType: c.mimeType! })) };
   };
   for (const [nid, s] of [[id, task.seed], ...(task.others ?? []).map((o, i) => [others[i], o] as const)] as const) {
-    if (s.page) { const r = await call("set_note_page", { id: nid, html: s.page }); if (r.isError) throw new Error(`seed page: ${r.text}`); }
+    // A project (compiled JSON) goes in as the app stores it; a one-file page through the tool.
+    if (s.page?.startsWith("{")) await app(pg, a.id, `insert into public.note_pages (note_id, page_ct) values ($1, $2) on conflict (note_id) do update set page_ct = excluded.page_ct`, [nid, await a.vault.sealPage(nid, s.page)]);
+    else if (s.page) { const r = await call("set_note_page", { id: nid, html: s.page }); if (r.isError) throw new Error(`seed page: ${r.text}`); }
     if (s.data) {
       const box = await a.vault.sealPageData(nid, JSON.stringify({ values: {}, collections: {}, ...s.data }));
       await app(pg, a.id, `insert into public.note_pages (note_id, data_ct) values ($1, $2) on conflict (note_id) do update set data_ct = excluded.data_ct`, [nid, box]);

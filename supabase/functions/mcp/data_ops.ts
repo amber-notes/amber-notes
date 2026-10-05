@@ -758,3 +758,53 @@ export function aggregate(records: Record<string, unknown>[], q: { where?: Recor
   const limit = Math.min(Math.max(1, q.limit ?? 100), 500);
   return { matched: hits.length, of: records.length, total, groups: list.slice(0, limit), ...(list.length > limit ? { more_groups: list.length - limit } : {}) };
 }
+
+/**
+ * The app's data as an AI should see it: what the app keeps in localStorage (values.localStorage,
+ * strings, usually JSON.stringify'd) parsed into JSON, so records read and change as records.
+ * closeStored turns them back into strings before the data is saved, as the app expects them.
+ */
+export function openStored<T extends { values: Record<string, unknown> }>(data: T): T {
+  const ls = data.values?.localStorage;
+  if (!ls || typeof ls !== "object" || Array.isArray(ls)) return data;
+  const parsed: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(ls as Record<string, unknown>)) {
+    if (typeof v === "string" && /^\s*[\[{"]|^\s*(true|false|null|-?\d)/.test(v)) { try { parsed[k] = JSON.parse(v); continue; } catch { /* plain text */ } }
+    parsed[k] = v;
+  }
+  return { ...data, values: { ...data.values, localStorage: parsed } };
+}
+export function closeStored<T extends { values: Record<string, unknown> }>(data: T): T {
+  const ls = data.values?.localStorage;
+  if (!ls || typeof ls !== "object" || Array.isArray(ls)) return data;
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(ls as Record<string, unknown>)) if (v !== null && v !== undefined) out[k] = typeof v === "string" ? v : JSON.stringify(v);
+  return { ...data, values: { ...data.values, localStorage: out } };
+}
+
+type Shape = string | { list: number; fields: Record<string, { type: string; examples: unknown[] }> } | { object: Record<string, Shape> };
+const typeOf = (v: unknown) => (v === null ? "null" : Array.isArray(v) ? "list" : typeof v === "string" && /^\d{4}-\d{2}-\d{2}/.test(v) ? "date" : typeof v === "object" && v && "$file" in (v as object) ? "file" : typeof v);
+/** The data's structure, inferred: lists of records with each field's type and a couple of example
+ *  values, objects by key, and plain values by type. */
+export function dataShape(v: unknown, depth = 0): Shape {
+  if (Array.isArray(v)) {
+    const recs = v.filter((x) => x && typeof x === "object" && !Array.isArray(x)) as Record<string, unknown>[];
+    if (!recs.length) return `list of ${[...new Set(v.map(typeOf))].join(" | ") || "nothing"} (${v.length})`;
+    const fields: Record<string, { type: string; examples: unknown[] }> = {};
+    for (const r of recs.slice(0, 200)) for (const [k, x] of Object.entries(r)) {
+      const f = (fields[k] ??= { type: typeOf(x), examples: [] });
+      if (f.type !== typeOf(x) && x !== null) f.type = [...new Set([...f.type.split(" | "), typeOf(x)])].join(" | ");
+      const ex = typeof x === "object" && x !== null ? JSON.stringify(x).slice(0, 60) : typeof x === "string" ? x.slice(0, 60) : x;
+      if (f.examples.length < 2 && !f.examples.some((e) => JSON.stringify(e) === JSON.stringify(ex))) f.examples.push(ex);
+    }
+    return { list: v.length, fields };
+  }
+  if (v && typeof v === "object") {
+    if (depth > 3) return "object";
+    // An object keyed by dates or ids, with records as values: shown as such.
+    const entries = Object.entries(v as Record<string, unknown>);
+    if (entries.length > 6 && entries.every(([, x]) => x && typeof x === "object")) return { object: { [`(${entries.length} keys like "${entries[0][0]}")`]: dataShape(entries.map(([, x]) => x), depth + 1) } };
+    return { object: Object.fromEntries(entries.map(([k, x]) => [k, dataShape(x, depth + 1)])) };
+  }
+  return typeOf(v);
+}
