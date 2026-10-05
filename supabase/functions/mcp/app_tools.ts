@@ -15,20 +15,20 @@ const read = { readOnlyHint: true, destructiveHint: false, idempotentHint: true,
 export const appTools = [
   {
     name: "check_app", title: "Check a note's app",
-    description: "Checks a note's app and reports what to fix, as text: the note's title as the app's first heading (and only once), script errors, at 375, 768 and 1280 px: sideways scrolling, clipped text, a layout that leaves most of a wide window empty, text that is too small or low in contrast (light and dark), controls without labels or under 44 px on the phone, not using the --amber-* theme, an edit from the app that fails, breakage with an empty or 400-row note, unescaped note text, and network hosts or API keys declared vs used vs set up. " +
+    description: "Checks a note's app and reports what to fix, as text: the note's title as the app's first heading (and only once), script errors, at 390 and 320 px (iPhone) and 1280 px (Mac): sideways scrolling, clipped text, a layout that leaves most of a wide window empty, text that is too small or low in contrast (light and dark), controls without labels or under 44 px on the phone, not using the --amber-* theme, an edit from the app that fails, breakage with an empty or 400-row note, unescaped note text, and network hosts or API keys declared vs used vs set up. " +
       "Run it after every set_note_page or edit_note_page and fix what it finds before telling the person the app is done. It renders a sample with the note's shape, not the person's data.",
     inputSchema: { type: "object", properties: { ...noteRef } },
     annotations: read,
   },
   {
     name: "preview_app", title: "See a note's app",
-    description: "Screenshots of a note's app as images, at the widths and in the color schemes asked for (default a 375 px phone and a 1280 px window, light and dark), with a text description of each for clients that can't show images. " +
+    description: "Screenshots of a note's app as images, at the widths and in the color schemes asked for (default a 390 px iPhone and a 1280 px Mac window, light and dark), with a text description of each for clients that can't show images. " +
       "Use it after building or changing an app, when you can see images, to judge layout and design; fix what looks wrong. By default the app shows a sample with the note's shape and none of its content; data: \"real\" works only if the person turned on previews with real data in Amber Notes.",
     inputSchema: {
       type: "object",
       properties: {
         ...noteRef,
-        widths: { type: "array", items: { type: "integer" }, description: "Widths in px, 320-1800. Default [375, 1280]." },
+        widths: { type: "array", items: { type: "integer" }, description: "Widths in px, 320-1800. Default [390, 1280] (iPhone and Mac)." },
         themes: { type: "array", items: { type: "string", enum: ["light", "dark"] }, description: "Default [\"light\", \"dark\"]." },
         data: { type: "string", enum: ["sample", "real"], description: "Default sample." },
       },
@@ -74,7 +74,7 @@ export const appHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<u
     const found = staticReport(html, body, await keysOf(tx, c));
     const r = await render({
       html, markdown: sampleNote(body, t), data: sampleData(data, t), today: t,
-      views: [{ width: 375, scheme: "light" }, { width: 375, scheme: "dark" }, { width: 768, scheme: "light" }, { width: 1280, scheme: "light" }], interact: true, probes: true,
+      views: [{ width: 390, scheme: "light" }, { width: 390, scheme: "dark" }, { width: 320, scheme: "light" }, { width: 1280, scheme: "light" }, { width: 1280, scheme: "dark" }], interact: true, probes: true,
       // Shown inside a parent note too: also as the widget strip.
       widget: n.parent_id !== null || /amber-widget/.test(html),
     });
@@ -85,7 +85,7 @@ export const appHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<u
       ok: issues.length === 0 && browser !== null,
       ...(found.errors.length ? { refused_by_server: found.errors } : {}),
       issues,
-      ...(browser === null ? { browser: r } : { browser_checked: `375 px light and dark, 768 and 1280 px light${n.parent_id !== null || /amber-widget/.test(html) ? ", and the 340 px widget strip" : ""}, over a sample note` }),
+      ...(browser === null ? { browser: r } : { browser_checked: `390 px and 1280 px in light and dark, and 320 px${n.parent_id !== null || /amber-widget/.test(html) ? ", and the 340 px widget strip" : ""}, over a sample note` }),
       next: issues.length ? "Fix these (edit_app_file for a project of files, edit_note_page for a one-file app), then run check_app again." : "Nothing to fix.",
     };
   },
@@ -96,7 +96,7 @@ export const appHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<u
 
   async preview_app(tx, a, c) {
     const { n, html, data, body } = await appOf(tx, c, a);
-    const widths = (Array.isArray(a.widths) && a.widths.length ? a.widths : [375, 1280]).map(Number).filter((w) => Number.isInteger(w) && w >= 320 && w <= 1800).slice(0, 3);
+    const widths = (Array.isArray(a.widths) && a.widths.length ? a.widths : [390, 1280]).map(Number).filter((w) => Number.isInteger(w) && w >= 320 && w <= 1800).slice(0, 3);
     const themes = (Array.isArray(a.themes) && a.themes.length ? a.themes : ["light", "dark"]).filter((x) => x === "light" || x === "dark") as ("light" | "dark")[];
     const views = widths.flatMap((width) => themes.map((scheme) => ({ width, scheme }))).slice(0, 4);
     if (!views.length) throw new ToolError("Give widths between 320 and 1800 and themes light or dark.");

@@ -31,7 +31,7 @@ function generic(task: Task, f: Final, r: Render | undefined, pageProblems: (htm
   c("no_network", r.blocked.length === 0, r.blocked.slice(0, 2).join(", "));
   const phone = r.views.filter((v) => v.width < 600);
   c("fits_phone", phone.every((v) => v.overflowPx <= 1), `overflows by ${Math.max(...phone.map((v) => v.overflowPx))} px`);
-  c("fits_desktop", r.views.filter((v) => v.width >= 600).every((v) => v.overflowPx <= 1), "overflows at 768 or 1280");
+  c("fits_desktop", r.views.filter((v) => v.width >= 600).every((v) => v.overflowPx <= 1), "overflows at 1280");
   const wide = r.views.find((v) => v.width === 1280 && v.scheme === "light");
   if (wide?.usedWidth !== undefined) c("uses_wide_window", wide.usedWidth >= 0.45, `uses ${Math.round((wide.usedWidth ?? 0) * 100)}% of 1280 px`);
   const phoneLight = r.views.find((v) => v.width < 600 && v.scheme === "light");

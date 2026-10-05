@@ -135,6 +135,9 @@ function moduleFile(path: string): { body: string; type: string } | null {
 async function library(path: string): Promise<Uint8Array | null> {
   const { BUNDLED } = await import("../../supabase/functions/mcp/libraries.ts");
   const bundled = BUNDLED.find((b) => b.name === path);
+  // The app's own copy first (Pane/Resources/AppLibraries), so a render needs no network.
+  const shipped = bundledLibs().find((l) => l.name === path) as (Bundled & { file?: string }) | undefined;
+  if (shipped?.file) { const local = await Deno.readFile(new URL(shipped.file, APP_LIBS)).catch(() => null); if (local) return local; }
   if (bundled?.npm.startsWith("local:")) return await Deno.readFile(new URL(`../../${bundled.npm.slice(6)}`, import.meta.url)).catch(() => null);
   const npm = bundled ? bundled.npm : path.startsWith("npm/") ? path.slice(4) : null;
   if (!npm || !/@\d+\.\d+\.\d+/.test(npm)) return null;
@@ -301,7 +304,7 @@ function samples(markdown: string): string[] {
 
 export type RenderOptions = {
   shots?: string; today: string; interact?: boolean;
-  /** Which widths and color schemes (default 375 light and dark, 768 light, 1280 light and dark). */
+  /** Which widths and color schemes (default 390 light and dark, 320 light, 1280 light and dark: iPhone and Mac, no tablet). */
   views?: { width: number; scheme: "light" | "dark"; widget?: boolean }[];
   /** Keep a PNG of each view in the result (for preview_app). */
   capture?: boolean;
@@ -336,8 +339,11 @@ async function renderOnce(html: string, markdown: string, data: unknown, opts: R
   const want = samples(markdown);
 
   const open = async (width: number, scheme: "light" | "dark", widget = false): Promise<{ page: Page; errors: string[] }> => {
-    const ctx = await browser!.newContext({ viewport: { width, height: widget ? 260 : width < 600 ? 844 : 900 }, colorScheme: scheme, deviceScaleFactor: width < 600 ? 2 : 1 });
+    const ctx = await browser!.newContext({ viewport: { width, height: widget ? 260 : width < 600 ? 844 : 900 }, colorScheme: scheme, deviceScaleFactor: width < 600 ? 2 : 1, serviceWorkers: "block" });
     const page = await ctx.newPage();
+    // A window the page opens is another page in this context: closed at once (the routes below
+    // cover the whole context, so even its first request is refused).
+    ctx.on("page", (p) => { blocked.push("window.open"); p.close().catch(() => {}); });
     const errors: string[] = [];
     page.on("console", (m) => { if (m.type() === "error") errors.push(m.text().slice(0, 300)); });
     page.on("pageerror", (e) => errors.push(`pageerror: ${String(e.message).slice(0, 300)}`));
@@ -346,7 +352,7 @@ async function renderOnce(html: string, markdown: string, data: unknown, opts: R
     const project = projectOf(html);
     const home = project ? `${APP_HOST}index.html` : "https://page.amber.invalid/";
     const prepared = project ? { html: prepareProject(project), integrity: new Map<string, string>() } : prepare(html);
-    await page.route("**/*", (r) => {
+    await ctx.route("**/*", (r) => {
       const u = r.request().url();
       if (u === home) return r.fulfill({ status: 200, contentType: "text/html; charset=utf-8", body: prepared.html });
       if (project && u.startsWith(APP_HOST)) {
@@ -396,7 +402,7 @@ async function renderOnce(html: string, markdown: string, data: unknown, opts: R
     return { page, errors };
   };
 
-  const wanted: { width: number; scheme: "light" | "dark"; widget?: boolean }[] = opts.views ?? ([[375, "light"], [375, "dark"], [768, "light"], [1280, "light"], [1280, "dark"]] as const).map(([width, scheme]) => ({ width, scheme }));
+  const wanted: { width: number; scheme: "light" | "dark"; widget?: boolean }[] = opts.views ?? ([[390, "light"], [390, "dark"], [320, "light"], [1280, "light"], [1280, "dark"]] as const).map(([width, scheme]) => ({ width, scheme }));
   if (opts.widget && !wanted.some((v) => v.widget)) wanted.push({ width: 340, scheme: "light", widget: true });
   for (const { width, scheme, widget } of wanted) {
     md = markdown; store = empty(data);

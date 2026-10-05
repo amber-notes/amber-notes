@@ -19,6 +19,11 @@ if (!secret) throw new Error("Set RENDER_SECRET.");
 let chain: Promise<unknown> = Promise.resolve();
 const serial = <T>(fn: () => Promise<T>): Promise<T> => { const run = chain.then(fn, fn); chain = run.catch(() => {}); return run; };
 
+/** The container's memory in use (cgroup v2, on Linux), WebKit included; null elsewhere. */
+function memory(): number | null {
+  try { return Number(Deno.readTextFileSync("/sys/fs/cgroup/memory.current").trim()); } catch { return null; }
+}
+
 export async function handle(req: Request): Promise<Response> {
   const url = new URL(req.url);
   if (req.method === "GET" && url.pathname === "/health") return new Response("ok");
@@ -37,11 +42,13 @@ export async function handle(req: Request): Promise<Response> {
     views, capture: body.capture === true, interact: body.interact === true, probes: body.probes !== false, widget: body.widget === true,
   }));
   const ms = Math.round(performance.now() - t0);
-  console.log(JSON.stringify({ at: new Date().toISOString(), ms, views: r.views.length, bytes: text.length }));
-  return Response.json({ views: r.views.map(({ screenshot: _, ...v }) => v), interaction: r.interaction, probes: r.probes, blocked: r.blocked, ms });
+  console.log(JSON.stringify({ at: new Date().toISOString(), ms, views: r.views.length, bytes: text.length, memoryBytes: memory() }));
+  return Response.json({ views: r.views.map(({ screenshot: _, ...v }) => v), interaction: r.interaction, probes: r.probes, blocked: r.blocked, ms, memoryBytes: memory() });
 }
 
 if (import.meta.main) {
-  const port = Number(Deno.args[Deno.args.indexOf("--port") + 1]) || 8790;
-  Deno.serve({ port, hostname: "127.0.0.1" }, handle);
+  // Hosted (Railway): $PORT on every interface. On a Mac: 127.0.0.1 only.
+  const hosted = Deno.env.get("PORT");
+  const port = Number(hosted) || Number(Deno.args[Deno.args.indexOf("--port") + 1]) || 8790;
+  Deno.serve({ port, hostname: hosted ? "0.0.0.0" : "127.0.0.1" }, handle);
 }
