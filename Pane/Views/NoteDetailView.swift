@@ -384,6 +384,7 @@ struct NoteDetailView: View {
         controller.resolveNote = { id in context.note(id).map { ($0.title, $0.preview) } }
         controller.openNote = { id in onOpenNote(id, false) }
         controller.openWiki = { target in followWikiLink(target) }
+        controller.suggestTitles = { [id = note.id] typed in WikiDirectory.suggestions(typed, excluding: id, in: context) }
         // A locked note's files and sub-notes would stay readable: it can't take them.
         controller.newSubNote = { if !note.isLocked { createSubNote() } }
         controller.download = { a in await sync?.download(a) ?? false }

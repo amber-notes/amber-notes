@@ -131,6 +131,21 @@ enum WikiLinks {
         return out
     }
 
+    /// While a link is being typed: what's typed after `[[` up to the caret, when the caret is
+    /// in an unfinished link on its line.
+    static func typingQuery(in text: String, caret: Int) -> NSRange? {
+        let ns = text as NSString
+        guard caret >= 2, caret <= ns.length else { return nil }
+        let line = ns.lineRange(for: NSRange(location: caret, length: 0))
+        let start = max(line.location, caret - 80)
+        let before = ns.substring(with: NSRange(location: start, length: caret - start))
+        guard let open = before.range(of: "[[", options: .backwards) else { return nil }
+        let typed = before[open.upperBound...]
+        guard !typed.contains(where: { "[]|#\n".contains($0) }) else { return nil }
+        let at = caret - typed.utf16.count
+        return NSRange(location: at, length: caret - at)
+    }
+
     /// Links read as plain text, for previews and summaries: `[[Page|Alias]]` → "Alias".
     static func plain(_ line: String) -> String {
         guard line.contains("[[") else { return line }
@@ -237,6 +252,17 @@ enum WikiDirectory {
     }
 
     static func invalidate() { cached = nil }
+
+    /// Titles to offer after `[[`: those starting with what's typed, then those containing it,
+    /// each edited last first. Every title once; never the note being written.
+    static func suggestions(_ typed: String, excluding id: UUID, in context: ModelContext, limit: Int = 5) -> [String] {
+        let q = WikiLinks.key(typed)
+        let entries = index(context).entries.filter { $0.id != id && !$0.title.isEmpty }.sorted { $0.updated > $1.updated }
+        let starts = entries.filter { q.isEmpty || WikiLinks.key($0.title).hasPrefix(q) }
+        let contains = q.isEmpty ? [] : entries.filter { e in let k = WikiLinks.key(e.title); return !k.hasPrefix(q) && k.contains(q) }
+        var seen = Set<String>()
+        return (starts + contains).map(\.title).filter { seen.insert(WikiLinks.key($0)).inserted }.prefix(limit).map { $0 }
+    }
 
     /// The index as the editor of `note` sees it.
     static func scope(for note: Note, in context: ModelContext) -> WikiScope {

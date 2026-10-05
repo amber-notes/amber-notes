@@ -10,6 +10,29 @@ struct FormatBar: View {
     var body: some View {
         GlassEffectContainer(spacing: 10) {
             HStack(spacing: 10) {
+                if controller.wikiSuggestions.isEmpty { tools } else {
+                    WikiSuggestionRow(controller: controller)
+                        .glassEffect(.regular.interactive(), in: .capsule)
+                }
+
+                Spacer(minLength: 0)
+
+                Button(action: dismiss) {
+                    BarIcon(systemName: "keyboard.chevron.compact.down")
+                }
+                .buttonStyle(PressScale())
+                .accessibilityLabel("Hide keyboard")
+                .accessibilityIdentifier("editor.done")
+                .padding(.horizontal, 4)
+                .glassEffect(.regular.interactive(), in: .circle)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+        }
+    }
+
+    /// The writing tools; while a `[[link` is typed, note titles take their place.
+    private var tools: some View {
                 HStack(spacing: 2) {
                     Menu {
                         Section {
@@ -42,21 +65,6 @@ struct FormatBar: View {
                 }
                 .padding(.horizontal, 4)
                 .glassEffect(.regular.interactive(), in: .capsule)
-
-                Spacer(minLength: 0)
-
-                Button(action: dismiss) {
-                    BarIcon(systemName: "keyboard.chevron.compact.down")
-                }
-                .buttonStyle(PressScale())
-                .accessibilityLabel("Hide keyboard")
-                .accessibilityIdentifier("editor.done")
-                .padding(.horizontal, 4)
-                .glassEffect(.regular.interactive(), in: .circle)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-        }
     }
 }
 

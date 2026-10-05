@@ -114,6 +114,57 @@ final class EditorController {
     var wiki: WikiScope?
     /// Follows a wiki link by its target, or offers to make the note (set by the note screen).
     @ObservationIgnored var openWiki: (String) -> Void = { _ in }
+
+    // MARK: Typing a wiki link
+
+    /// Note titles offered while a wiki link is typed after `[[`, best first.
+    private(set) var wikiSuggestions: [String] = []
+    /// The one Return takes (Mac).
+    var wikiChoice = 0
+    /// Titles for what's typed (set by the note screen).
+    @ObservationIgnored var suggestTitles: (String) -> [String] = { _ in [] }
+    /// Where the typed part of the link is.
+    @ObservationIgnored private(set) var wikiQuery: NSRange?
+    /// A link whose suggestions were put away (Escape): not offered again while typing it.
+    @ObservationIgnored private var wikiDismissed: Int?
+
+    /// The text or caret changed: offer titles when the caret is in an unfinished `[[link`.
+    func typingChanged(text: String, selection: NSRange?) {
+        guard let sel = selection, sel.length == 0, let q = WikiLinks.typingQuery(in: text, caret: sel.location) else {
+            wikiDismissed = nil
+            clearWikiSuggestions()
+            return
+        }
+        guard q.location != wikiDismissed else { clearWikiSuggestions(); return }
+        wikiQuery = q
+        let titles = suggestTitles((text as NSString).substring(with: q))
+        if titles != wikiSuggestions {
+            wikiSuggestions = titles
+            wikiChoice = 0
+        }
+    }
+
+    /// Finishes the link being typed with `title`, and puts the caret after it.
+    func completeWiki(_ title: String) {
+        guard let q = wikiQuery else { return }
+        perform { text, _ in
+            let ns = text as NSString
+            guard NSMaxRange(q) <= ns.length else { return nil }
+            let closed = NSMaxRange(q) + 2 <= ns.length && ns.substring(with: NSRange(location: NSMaxRange(q), length: 2)) == "]]"
+            return TextEdit(range: q, replacement: title + (closed ? "" : "]]"), caret: q.location + (title as NSString).length + 2)
+        }
+        clearWikiSuggestions()
+    }
+
+    func dismissWikiSuggestions() {
+        wikiDismissed = wikiQuery?.location
+        clearWikiSuggestions()
+    }
+
+    private func clearWikiSuggestions() {
+        wikiQuery = nil
+        if !wikiSuggestions.isEmpty { wikiSuggestions = [] }
+    }
     /// Creates a sub-note linked from here (set by the note screen).
     @ObservationIgnored var newSubNote: () -> Void = {}
 }
