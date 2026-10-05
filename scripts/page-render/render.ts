@@ -104,6 +104,18 @@ const bootstrap = (note: unknown, data: unknown, defaults: Record<string, unknow
     .then((r) => { if (r && r.data) amber.data = r.data; if (r) delete r.data; return r; })
     .catch((e) => ({ ok: false, error: String((e && e.message) || e) }));
   const unavailable = (what) => () => Promise.resolve({ ok: false, error: what + " isn't available here." });
+  // Silent: every live audio context's destination is a gain of 0 in front of the real one (Tone.js
+  // and any wrapper reach it through the same getter), and media elements start muted.
+  {
+    const proto = (window.BaseAudioContext || window.AudioContext || window.webkitAudioContext || function () {}).prototype;
+    const real = Object.getOwnPropertyDescriptor(proto, "destination");
+    if (real && real.get) Object.defineProperty(proto, "destination", { configurable: true, get() {
+      if (window.OfflineAudioContext && this instanceof window.OfflineAudioContext) return real.get.call(this);
+      if (!this.__muted) { const g = proto.createGain.call(this); g.gain.value = 0; g.connect(real.get.call(this)); Object.defineProperty(this, "__muted", { value: g }); }
+      return this.__muted;
+    } });
+  }
+  addEventListener("play", (e) => { if (e.target instanceof HTMLMediaElement) e.target.muted = true; }, true);
   // Frames the page asks for, so a check can tell whether it animates (a game that plays).
   window.__frames = 0;
   const raf = window.requestAnimationFrame.bind(window);
