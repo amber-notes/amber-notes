@@ -15,8 +15,8 @@ struct NotePageWidget: Widget {
             WidgetView(entry: entry)
                 .containerBackground(for: .widget) { Color.notePage }
         }
-        .configurationDisplayName("Note page")
-        .description("A note's page at a glance, made by the AI that made the page.")
+        .configurationDisplayName("Note")
+        .description("A note at a glance, made by the AI that built the note's app.")
         .supportedFamilies(families)
     }
 
@@ -131,7 +131,7 @@ struct WidgetView: View {
         } else {
             VStack(alignment: .leading, spacing: 4) {
                 Text(entry.noteID == nil ? "No widgets yet" : entry.title).font(.headline).foregroundStyle(Color.ink)
-                Text(entry.noteID == nil ? "Ask the AI that made a note's page to add a widget." : "This page has no widget at this size.")
+                Text(entry.noteID == nil ? "Ask the AI that built a note's app to add a widget." : "This note has no widget at this size.")
                     .font(.caption).foregroundStyle(Color.muted)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)

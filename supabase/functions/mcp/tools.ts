@@ -245,7 +245,7 @@ export const tools: Tool[] = ([
     name: "set_note_widget", title: "Make a widget for a note",
     description: "Gives a note a home-screen widget (iPhone home and Lock Screen, Mac desktop): a few native blocks whose values bind to the note's tables and checklists, " +
       "such as a habit streak with a ring and a Done button, or this month's total. Widgets can't run HTML, so this is a separate small spec, usually made alongside a page (set_note_page). " +
-      "Replaces the note's widget; null or an empty object removes it. The person adds it from the home screen's widget gallery.\n" + WIDGET_CONTRACT,
+      "Replaces the note's widget; null or an empty object removes it. The person adds it from the home screen's widget gallery (Amber Notes, Note). When talking to the person, call the page the note's app.\n" + WIDGET_CONTRACT,
     inputSchema: { type: "object", properties: { ...noteRef, widget: { type: ["object", "null"], description: "The widget spec, or null to remove it." } }, required: ["widget"] },
     annotations: { ...write, destructiveHint: true, idempotentHint: true },
   },
@@ -1170,7 +1170,7 @@ const handlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<unknown>> =
       on conflict (note_id) do update set widget_ct = excluded.widget_ct
       returning (xmax = 0) as created`;
     return { id: n.id, title: n.title, widget: created ? "created" : "replaced",
-      note: "The person adds it from the home screen's widget gallery (Amber Notes, Note page). It updates as the note changes." };
+      note: "The person adds it from the home screen's widget gallery (Amber Notes, Note). It updates as the note changes." };
   },
 
   async search(tx, a, c) {

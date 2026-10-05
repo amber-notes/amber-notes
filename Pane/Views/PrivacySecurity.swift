@@ -468,7 +468,7 @@ struct WidgetPrivacySection: View {
                 .accessibilityIdentifier("privacy.widgetHideOnLock")
                 .onChange(of: hideOnLock) { NoteWidgets.reload() }
         } footer: {
-            Text("Widgets show only what their page puts on them, never the whole note. With this on, they show a placeholder until you unlock.")
+            Text("Widgets show only what a note's app puts on them, never the whole note. With this on, they show a placeholder until you unlock.")
         }
     }
 }
