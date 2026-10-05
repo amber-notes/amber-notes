@@ -34,14 +34,14 @@ function fake(v: string, labels: Map<string, string>, prefix: string, today: str
   return labels.get(t)!;
 }
 
-/** The note's markdown, every word replaced, its tables, checklists and headings kept in shape. */
+/** The note's markdown, every word replaced except headings and column names (the shape the app reads). */
 export function sampleNote(markdown: string, today: string): string {
   const lines = markdown.split("\n");
   const inTable = new Set<number>();
   const tables = findTables(markdown);
   const labels = new Map<string, string>();
   for (const t of tables) for (let k = t.start; k <= t.end; k++) inTable.add(k);
-  let titled = false, heading = 0, item = 0, para = 0;
+  let titled = false, item = 0, para = 0;
   return lines.map((l, k) => {
     if (inTable.has(k)) {
       if (l.includes("pane-table:") || /^[\s|:-]+$/.test(l)) return l;
@@ -53,8 +53,9 @@ export function sampleNote(markdown: string, today: string): string {
     }
     if (!l.trim()) return l;
     if (!titled) { titled = true; return l.match(/^#+\s/) ? l.replace(/^(#+\s).*/, "$1Sample note") : "Sample note"; }
-    const h = l.match(/^(#{1,6}\s+)/);
-    if (h) return `${h[1]}Section ${++heading}`;
+    // Headings stay, like column names: apps find their tables and checklists by the heading above
+    // them (useTable("Log")), so they're the shape the app reads.
+    if (/^#{1,6}\s+/.test(l)) return l;
     const c = l.match(/^(\s*[-*+]\s+\[[ xX]\]\s+)/);
     if (c) return `${c[1]}Item ${++item}`;
     const b = l.match(/^(\s*(?:[-*+]|\d+[.)])\s+)/);

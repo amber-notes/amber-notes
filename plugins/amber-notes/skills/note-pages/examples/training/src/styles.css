@@ -1,0 +1,13 @@
+/* Training's own styles. Plain CSS: it wins over amber-base and amber-ui, which sit in layers. */
+.screen { max-width: 720px; margin: 0 auto; padding: 16px var(--amber-gutter) 24px; }
+.screen-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.screen-header__text { flex: 1; min-width: 0; }
+.screen-header h1 { font-size: 1.7rem; margin: 0; letter-spacing: -0.02em; }
+.screen-header p { margin: 2px 0 0; color: var(--amber-text-secondary); }
+.round { width: 36px; min-height: 36px; padding: 0; border-radius: 50%; }
+.logged { color: var(--amber-accent-text); font-weight: 600; }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 18px; }
+.chart-card { margin-top: 12px; padding: 8px; }
+.chart { width: 100%; height: auto; display: block; }
+.chart text { fill: var(--amber-text-secondary); font: 11px var(--amber-font); }
+.muted { color: var(--amber-text-secondary); }

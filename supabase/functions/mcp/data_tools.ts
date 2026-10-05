@@ -11,6 +11,10 @@ import { findTables, mimeOf, typeSpec } from "./notes.ts";
 import { PAGE_GUIDE } from "./page_guide.ts";
 import { noteForPage } from "./page_input.ts";
 import { appHandlers, appTools } from "./app_tools.ts";
+import { APP_EXAMPLES } from "./app_examples.gen.ts";
+import { AMBER_UI } from "./amber-ui.ts";
+const KIT_COMPONENTS = Object.keys(AMBER_UI.src).filter((f) => f.endsWith(".jsx") && f !== "index.jsx").map((f) => f.replace(".jsx", ""));
+import { fileHandlers, fileTools } from "./app_files.ts";
 import { pageDataProblems, type PageData } from "./page.ts";
 import { PAGE_TEMPLATES } from "./page_templates.gen.ts";
 import { bodyOf, findNote, save, ToolError, type Call, type Tx } from "./tools.ts";
@@ -155,11 +159,15 @@ export const dataTools = [
   },
   {
     name: "get_page_guide", title: "How to build note pages",
-    description: "The guide to building and editing note pages: the window.amber API, the data model, design and accessibility rules, the workflow and a starter page, plus a list of tested templates. Call once before making, redesigning or fixing a page. With template, returns that template's HTML.",
-    inputSchema: { type: "object", properties: { template: { type: "string", enum: PAGE_TEMPLATES.map((t) => t.name), description: "A template's name." } } },
+    description: "The guide to building and changing a note's app: the project (Preact, the \"amber\" hooks, amber-ui, amber-router), where data lives, design and accessibility, the default stylesheet and the workflow. Call once before making, redesigning or fixing an app. With example, returns a complete example project's files; with kit, one amber-ui component's source to copy into the app.",
+    inputSchema: { type: "object", properties: {
+      example: { type: "string", enum: Object.keys(APP_EXAMPLES), description: "A complete example project." },
+      kit: { type: "string", enum: KIT_COMPONENTS, description: "An amber-ui component's source file." },
+    } },
     annotations: read,
   },
   ...appTools,
+  ...fileTools,
 ];
 
 async function pageDataOf(tx: Tx, c: Call, id: string): Promise<PageData> {
@@ -216,6 +224,7 @@ function tableSummary(body: string, index: number) {
 
 export const dataHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<unknown>> = {
   ...appHandlers,
+  ...fileHandlers,
   async add_table_rows(tx, a, c) {
     const n = await findNote(tx, c, a);
     const before = await bodyOf(c.v, n);
@@ -344,6 +353,18 @@ export const dataHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
 
   // deno-lint-ignore require-await
   async get_page_guide(_tx, a) {
+    if (typeof a.example === "string" && a.example) {
+      const ex = APP_EXAMPLES[a.example];
+      if (!ex) throw new ToolError(`No example "${a.example}". Examples: ${Object.keys(APP_EXAMPLES).join(", ")}.`);
+      return { example: a.example, files: ex.files };
+    }
+    if (typeof a.kit === "string" && a.kit) {
+      const file = Object.keys(AMBER_UI.src).find((f) => f.replace(/\.jsx?$/, "").toLowerCase() === String(a.kit).toLowerCase() || (AMBER_UI.src[f as keyof typeof AMBER_UI.src] as string).includes(`export function ${a.kit}(`));
+      if (!file) throw new ToolError(`No amber-ui component "${a.kit}". Files: ${KIT_COMPONENTS.join(", ")}.`);
+      return { kit: a.kit, file, source: AMBER_UI.src[file as keyof typeof AMBER_UI.src],
+        note: `To customise it, write it to /src/components/${file} and import it from there instead of "amber-ui". Its relative imports (./Icon.jsx and so on) become imports from "amber-ui" unless you copy those too. Its classes are styled in amber-ui.css (the amber-ui layer); your CSS wins.` };
+    }
+    // One-file templates (the older style), kept for apps that were made from them.
     if (typeof a.template === "string" && a.template) {
       const t = PAGE_TEMPLATES.find((x) => x.name === a.template);
       if (!t) throw new ToolError(`No template "${a.template}". Templates: ${PAGE_TEMPLATES.map((x) => x.name).join(", ")}.`);

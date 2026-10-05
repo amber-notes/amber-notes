@@ -6,6 +6,7 @@
 import { declaredHosts, hostDeclared, pageProblems } from "./page.ts";
 import { pageWarnings } from "./page_lint.ts";
 import { libraryReport } from "./libraries.ts";
+import { brokenImports, parseStored, projectProblems, sourceProblems, styleWarnings } from "./app_project.ts";
 
 export type KeyInfo = { name: string; hosts: string[]; set: boolean };
 
@@ -48,6 +49,13 @@ export function networkReport(html: string, keys: KeyInfo[]): string[] {
 
 /** Findings that need only the HTML: the server's refusals and warnings, and the network. */
 export function staticReport(html: string, body: string, keys: KeyInfo[]): { errors: string[]; warnings: string[] } {
+  const p = parseStored(html);
+  if (Object.keys(p.files).length > 1 || Object.keys(p.compiled).length) {
+    // A project of files: its own checks, and the network report over all of its code.
+    const declared = declaredHosts(p.files["/index.html"] ?? "");
+    const all = Object.entries(p.files).filter(([f]) => !f.endsWith(".md")).map(([, t]) => t).join("\n").replace(/(?<![\w.])fetch\s*\(/g, "amber.fetch(");
+    return { errors: [...projectProblems(p), ...sourceProblems(p, (h) => hostDeclared(declared, h))], warnings: [...brokenImports(p), ...styleWarnings(p), ...networkReport(all, keys)] };
+  }
   return { errors: pageProblems(html), warnings: [...pageWarnings(html, body), ...networkReport(html, keys), ...libraryReport(html)] };
 }
 

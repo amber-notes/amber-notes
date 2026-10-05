@@ -10,15 +10,15 @@ export type PageNote = {
   title: string;
   markdown: string;
   today: string;
-  tables: { index: number; columns: { name: string; type: string }[]; rows: string[][] }[];
-  checklists: { line: number; text: string; checked: boolean }[];
+  tables: { index: number; heading: string | null; columns: { name: string; type: string }[]; rows: string[][] }[];
+  checklists: { line: number; text: string; checked: boolean; heading: string | null }[];
 };
 
 const isRow = (l: string) => l.trim().startsWith("|");
 const isSeparator = (l: string) => { const t = l.trim(); return t.startsWith("|") && t.includes("-") && [...t].every((c) => "|-: ".includes(c)); };
 const CHECK = /^([ \t]*)([-*+])([ \t]+)\[([ xX])\][ \t]+/;
 
-type Found = { columns: { name: string; type: string }[]; rows: string[][]; rowLines: number[]; end: number };
+type Found = { columns: { name: string; type: string }[]; rows: string[][]; rowLines: number[]; header: number; end: number };
 
 function tables(lines: string[]): Found[] {
   const out: Found[] = [];
@@ -43,7 +43,7 @@ function tables(lines: string[]): Found[] {
       rowLines.push(j);
       j++;
     }
-    out.push({ columns: header.map((name) => ({ name, type: types.get(name) ?? "text" })), rows, rowLines, end: j });
+    out.push({ columns: header.map((name) => ({ name, type: types.get(name) ?? "text" })), rows, rowLines, header: i, end: j });
     i = j;
   }
   return out;
@@ -58,16 +58,23 @@ function titleOf(body: string): string {
 }
 
 /** window.amber.note for a note's markdown. */
+/** The text of the nearest markdown heading above a line (NotePage.heading(above:in:)), or null. */
+function headingAbove(lines: string[], line: number): string | null {
+  for (let i = line - 1; i >= 0; i--) { const m = lines[i].match(/^#{1,6}\s+(.*)$/); if (m) return m[1].trim(); }
+  return null;
+}
+
 export function noteForPage(body: string, today: string): PageNote {
   const lines = body.split("\n");
   return {
     title: titleOf(body),
     markdown: body,
     today,
-    tables: tables(lines).map((t, index) => ({ index, columns: t.columns, rows: t.rows })),
+    // Each with the heading it sits under (the nearest one above), so an app finds them by name.
+    tables: tables(lines).map((t, index) => ({ index, heading: headingAbove(lines, t.header), columns: t.columns, rows: t.rows })),
     checklists: lines.flatMap((l, i) => {
       const m = l.match(CHECK);
-      return m ? [{ line: i + 1, text: l.slice(m[0].length), checked: m[4] !== " " }] : [];
+      return m ? [{ line: i + 1, text: l.slice(m[0].length), checked: m[4] !== " ", heading: headingAbove(lines, i) }] : [];
     }),
   };
 }

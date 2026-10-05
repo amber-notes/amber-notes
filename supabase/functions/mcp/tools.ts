@@ -13,6 +13,8 @@ import { MAX_PAGE_BYTES, PAGE_REWRITE, pageDataView, pageProblems } from "./page
 import { PAGE_API } from "./page_guide.ts";
 import { pageWarnings } from "./page_lint.ts";
 import { dataHandlers, dataTools, pageExtras } from "./data_tools.ts";
+import { parseStored } from "./app_project.ts";
+const isProject = (stored: string) => { const p = parseStored(stored); return Object.keys(p.files).length > 1 || Object.keys(p.compiled).length > 0; };
 import { appendText, applyEdits, coerce, findTables, fitLines, isTextType, mimeOf, outline, previewOf, replaceTable, searchFilter, searchInMemory, setChecklistItem, sliceLines, titleOf, typeSpec, type Edit, type Table } from "./notes.ts";
 
 export type ToolContext = { sql: Sql; userId: string; client: string; canWrite: boolean; vault: Vault };
@@ -321,7 +323,7 @@ type NoteRow = {
   is_pinned: boolean; created_at: Date; updated_at: Date; trashed_at: Date | null; version: string;
 };
 /** A note with its head (title and preview) opened. */
-type Note = NoteRow & { title: string; preview?: string };
+export type Note = NoteRow & { title: string; preview?: string };
 type FolderRow = { id: string; name: string; parent_id: string | null; sort_index: number };
 
 /** Everything but the body, for lists: bodies can be megabytes. */
@@ -1174,6 +1176,7 @@ const handlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<unknown>> =
     const n = await findNote(tx, c, a);
     const current = await pageOf(tx, c, n.id);
     if (current === null) throw new ToolError(`"${n.title}" has no page. Make one with set_note_page.`);
+    if (isProject(current)) throw new ToolError(`"${n.title}"'s app is a project of files: change it with edit_app_file or write_app_file (list_app_files shows them).`);
     if (!Array.isArray(a.edits) || !a.edits.length) throw new ToolError("edits must be a non-empty list of { old_text, new_text }.");
     let html: string;
     try { html = applyEdits(current, a.edits as Edit[]); } catch (e) { throw new ToolError((e as Error).message.replace("Read the note again", "Read the page again (get_note_page)").replace("append_to_note", "set_note_page")); }
@@ -1206,6 +1209,11 @@ const handlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<unknown>> =
     if (!row?.page_ct) return { id: n.id, title: n.title, has_page: false, rules: PAGE_API, ...extras, ...(await data(row?.data_ct ?? null)), versions: list };
     let html: string;
     try { html = await c.v.openPage(n.id, row.page_ct); } catch { throw new ToolError("This note's page can't be opened with this connection's key."); }
+    if (isProject(html)) {
+      const p = parseStored(html);
+      return { id: n.id, title: n.title, has_page: true, project: true, made_by: row.client, updated: iso(row.updated_at), files: Object.keys(p.files).sort(), ...(p.files["/README.md"] ? { readme: p.files["/README.md"] } : {}),
+        note: "This app is a project of files: read them with read_app_file and change them with edit_app_file or write_app_file.", ...extras, ...(await data(row.data_ct)), versions: list };
+    }
     return { id: n.id, title: n.title, has_page: true, made_by: row.client, updated: iso(row.updated_at), rules: PAGE_API, ...extras, html, ...(await data(row.data_ct)), versions: list };
   },
 

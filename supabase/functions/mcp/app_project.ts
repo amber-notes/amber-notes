@@ -134,3 +134,47 @@ export function brokenImports(p: Project): string[] {
   }
   return out;
 }
+
+const NAMESPACES = /^https?:\/\/www\.w3\.org\/(2000\/svg|1999\/xhtml|1999\/xlink|XML\/1998\/namespace)$/;
+const isCode = (path: string) => /\.(m?js|jsx|tsx?)$/.test(path);
+
+/** What would make the app refuse to run or reach the network, across every file. */
+export function sourceProblems(p: Project, declared: (host: string) => boolean): string[] {
+  const out: string[] = [];
+  for (const [path, text] of Object.entries(p.files)) {
+    if (path.endsWith(".md")) continue;
+    const urls = [...text.matchAll(/\b[a-z][a-z0-9+.-]*:\/\/[^\s"'`<>)]*/gi)].map((m) => m[0])
+      .filter((u) => !NAMESPACES.test(u.replace(/\/$/, "")) && !/^amber-(lib|file|app):/i.test(u))
+      .filter((u) => { try { const x = new URL(u); return !(/^https?:$/.test(x.protocol) && declared(x.host.toLowerCase())); } catch { return true; } });
+    if (urls.length) out.push(`${path}: external addresses aren't allowed (${[...new Set(urls)].slice(0, 3).join(", ")}). The app has no network; declare a host in amber-needs (in /index.html) and use fetch from "amber".`);
+    if (path.endsWith(".html")) {
+      const tags = [...new Set([...text.matchAll(/<(base|iframe|frame|frameset|object|embed|portal|applet)\b/gi)].map((m) => m[1].toLowerCase()))];
+      if (tags.length) out.push(`${path}: <${tags.join(">, <")}> isn't allowed.`);
+    }
+    if (isCode(path) || path.endsWith(".html")) {
+      // fetch of the app's own files ("/src/data.json", "./x.json") is fine; anything else isn't.
+      const apis = [...new Set([...text.matchAll(/\bnew\s+(XMLHttpRequest|WebSocket|EventSource|Worker|SharedWorker|RTCPeerConnection)\b|\bnavigator\.(sendBeacon|serviceWorker)\b|\bimportScripts\s*\(|\bwindow\.open\s*\(/g)].map((m) => m[1] ?? m[0].replace(/\s*\($/, ""))), ...(/(?<![\w.])fetch\s*\(\s*(?!["'`]\.?\/)/.test(text) && !/import\s*\{[^}]*\bfetch\b[^}]*\}\s*from\s*["']amber["']/.test(text) ? ["fetch"] : [])];
+      if (apis.length) out.push(`${path}: the app can't use the network itself (${apis.join(", ")}). Use fetch from "amber" for hosts declared in amber-needs; plain fetch("/src/x.json") reads the app's own files.`);
+    }
+  }
+  return out;
+}
+
+/** The style a project should be written in: hooks from "amber", tables by name. */
+export function styleWarnings(p: Project): string[] {
+  const out: string[] = [];
+  const code = Object.entries(p.files).filter(([path]) => isCode(path));
+  const globals = code.filter(([, t]) => /\bwindow\.amber\b|(?<![\w.])amber\s*\.\s*(note|update|onChange|setData|store|data)\b/.test(t)).map(([path]) => path);
+  if (globals.length) out.push(`${globals.slice(0, 3).join(", ")} use window.amber directly. In a project use the hooks: import { useNote, useTable, useChecklist, useAppData, useSettings, batch } from "amber".`);
+  const byIndex = code.filter(([, t]) => /\.tables\s*\[\s*\d|\btable\s*:\s*\d|useTable\s*\(\s*\)|useChecklist\s*\(\s*\)/.test(t)).map(([path]) => path);
+  if (byIndex.length) out.push(`${byIndex.slice(0, 3).join(", ")} find a table or checklist by position. Name it: useTable("Log") (the heading above it, or a column name), useChecklist("Packing"); positions break when the person edits the note.`);
+  if (!p.files["/README.md"]) out.push("Add /README.md: what the app is for, its screens and files, and where its data lives (the note's tables by heading, the app's own data). Keep it current; the next AI reads it first.");
+  if (!/<html[^>]*\blang\s*=/i.test(p.files["/index.html"] ?? "")) out.push('Add lang="en" (or the note\'s language) to <html> in /index.html.');
+  if (code.some(([, t]) => /\b(localStorage|sessionStorage|indexedDB|document\.cookie)\b/.test(t))) out.push("localStorage, sessionStorage, IndexedDB and cookies aren't kept. Use useAppData or useSettings from \"amber\".");
+  if (code.some(([, t]) => /(?<![\w.])(alert|confirm|prompt)\s*\(/.test(t))) out.push("alert/confirm/prompt don't show. Use a Sheet or Dialog from amber-ui, or an inline message.");
+  const css = Object.entries(p.files).filter(([path]) => path.endsWith(".css")).map(([, t]) => t).join("\n");
+  const important = (css.match(/!\s*important/gi) ?? []).length;
+  if (important) out.push(`!important appears ${important} time${important > 1 ? "s" : ""}: it isn't needed. amber-base.css and amber-ui sit in cascade layers, so any rule the app writes already wins.`);
+  if (/(^|[\s,}])(html|body)\s*[,{][^}]*background/i.test(css)) out.push("Don't set a background on html or body: put it on the app's own container.");
+  return out;
+}

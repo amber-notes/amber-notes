@@ -4,20 +4,29 @@
 // scripts/page-evals/build-skill.ts), so none of them drift.
 
 import { MAX_PAGE_BYTES, MAX_PAGE_DATA_BYTES, PAGE_CONTRACT } from "./page.ts";
-import { PAGE_TEMPLATES } from "./page_templates.gen.ts";
-import { LIBRARY_GUIDE } from "./libraries.ts";
 import { AMBER_BASE_CSS, AMBER_TOKENS } from "./amber-base.ts";
+import { AMBER_UI } from "./amber-ui.ts";
+import { APP_EXAMPLES } from "./app_examples.gen.ts";
+import { scaffold } from "./app_scaffold.ts";
+
+const SCAFFOLD = scaffold("Example");
+/** What "amber-ui" exports (its index.jsx). */
+export const AMBER_UI_EXPORTS = [...AMBER_UI.src["index.jsx"].matchAll(/export \{([^}]+)\}/g)].flatMap((m) => m[1].split(",").map((x) => x.trim()))
+  .filter((x) => x && !/^use/.test(x)).join(", ");
+const LIBS_BY_PACKAGE = "chart.js (Chart), d3, three (THREE), tone (Tone), dayjs, marked, dompurify (DOMPurify), animejs (anime), canvas-confetti (confetti), topojson-client (topojson) and world-atlas (country shapes)";
+const EXAMPLE_TODAY = APP_EXAMPLES.training.files["/src/screens/Today.jsx"].trim();
 
 /** The few lines every client sees in the server's instructions. Clients differ in what else they
  *  read (resources, prompts, skills), so this and the tool descriptions carry the essentials. */
-export const PAGE_INSTRUCTIONS = `Apps: a note can have an app side, a small HTML app (a habit grid, a budget, flashcards) next to its Text side. In tools it's the note's "page"; with the person always call it "the note's app" and the "App" side, never "page".
-- Before making, redesigning or fixing an app, call get_page_guide once, then read_note and get_note_page.
-- Libraries load by name, never pasted in: bundled ones (chart, d3, three, tone, dayjs, marked, purify, anime, confetti, topojson, world) in <meta name="amber-libs" content="chart, d3">, any other npm package as a pinned, hashed entry from resolve_package in the same meta.
-- Every app starts with amber-base.css, the default look (get_page_guide shows the real file): it sits in a cascade layer, so any style you write wins over it without !important; restyle anything, or opt out with <meta name="amber-base" content="none">. Keep every input, select and textarea visible as a field in both themes (a solid fill and a 1px border).
-- Design around the person's job with one focus per screen; use tabs, pushed screens and sheets for the rest (a training app opens on today's workout; plan and progress are other screens).
-- Give each app its own form and look for its job (a bookshop shelf, a cool blue water gauge, a game board, a keypad), not a beige card with a list; Amber's tokens are the fallback. Keep text readable (4.5:1) in light and dark. Games and toys are welcome. It must work on an iPhone (320-440 pt) and in a Mac window (500-1400+ px).
-- After creating or changing an app, run check_app (and preview_app if you can see images) and fix what they report before telling the person it's done.
-- Data never needs the app rewritten: the note's tables and checklists change with add_table_rows, update_table_rows, delete_table_rows, edit_table_columns, add_checklist_items, update_checklist_items; the app's own data (values, collections of records, files) with get_page_data / update_page_data.
+export const PAGE_INSTRUCTIONS = `Apps: a note can have an app side, a small app (a habit tracker, a budget, a training log) next to its Text side. With the person always call it "the note's app" and the "App" side, never "page" (some tools still say page).
+- Before making, redesigning or fixing an app, call get_page_guide once, then read_note; for an existing app, list_app_files and its README.md.
+- An app is a normal small Preact project: create_app makes it (index.html, src/main.jsx, src/App.jsx with a tab bar on iPhone and a sidebar from 900 px, src/screens/, src/components/, src/styles.css, README.md); read_app_file, write_app_file and edit_app_file change it like any codebase. Every write compiles JSX and answers with what to fix.
+- Use the hooks: import { useNote, useTable, useChecklist, useAppData, useSettings, batch } from "amber"; tables and checklists by the heading above them (useTable("Log")), never by position, never window.amber. Components from "amber-ui" (Shell, List, ListRow, Sheet, Input, Button, Stat, Icon…), screens with "amber-router", libraries by npm name (import Chart from "chart.js").
+- Every app starts with amber-base.css, the default look (get_page_guide shows the real file): it sits in a cascade layer, so any style you write wins over it without !important. Keep every input visible as a field in both themes.
+- Design around the person's job with one focus per screen; other screens, pushed screens and sheets for the rest (a training app opens on today's workout; plan and progress are other screens). Settings live inside the app (useSettings, a Settings screen).
+- Give each app its own look for its job, not a beige card with a list; keep text readable (4.5:1) in light and dark. Games and toys are welcome. It must work on an iPhone (320-440 pt) and in a Mac window (500-1400+ px), using the room when it's wide.
+- When it's done, run check_app (and preview_app if you can see images) and fix what they report before telling the person.
+- Data never needs the app rewritten: the note's tables and checklists change with add_table_rows, update_table_rows, delete_table_rows, edit_table_columns, add_checklist_items, update_checklist_items; the app's own data with get_page_data / update_page_data.
 - API keys: apps declare the keys they need; list_api_keys shows which exist (never values). Walk the person through getting a key and adding it in Amber Notes › Settings › API Keys. Never ask for a key in the chat; if one is pasted, don't store or repeat it: tell them to add it in Settings.`;
 
 const kb = (n: number) => (n >= 1048576 ? `${n / 1048576} MB` : `${n / 1024} KB`);
@@ -39,24 +48,46 @@ ${PAGE_API}
 
 ## Workflow
 
-1. read_note: the text, its tables (columns, row count) and checklists.
-2. Shape the data first, with the data tools, never inside the app's HTML:
-   - The note has no table yet but the app needs rows the person will read: add_table_rows with create_table: true (and column_types like { "Date": "date", "Km": "number" }) makes the table and fills it in one call.
+1. read_note: the text, its tables (columns, row count) and checklists, and the headings they sit under.
+2. Shape the data first, with the data tools, never inside the app:
+   - The note has no table yet but the app needs rows the person will read: add_table_rows with create_table: true (and column_types like { "Date": "date", "Km": "number" }, and under_heading: "Log") makes the table under a heading and fills it in one call. Give every table and checklist a heading: the app finds it by that name.
    - Messy notes ("Mon: ran 5k"): turn them into a table in the note first, keeping every fact, then build the app over the table.
    - Keep the columns the person already has. Rename only when asked, with edit_table_columns (it keeps every value). Never drop a column or rows to make an app simpler.
-3. get_note_page: if the note has an app, read it before changing it. The result shows page_input (what your app will receive as amber.note) and the app's data.
-4. Write the app:
-   - new app or a full redesign: set_note_page with the whole HTML. Start from the closest template (get_page_guide with template).
-   - a fix or a tweak (a color, a label, a bug, a new button): edit_note_page with exact find/replace edits copied from get_note_page.
-5. Check it: check_app reports script errors, overflow at 390 px, small or low-contrast text, missing labels, theme use and network hosts. If your client shows images, preview_app shows you the app at phone and desktop widths in light and dark. Fix what they find (edit_note_page) and check again. Don't tell the person it's done before check_app is clean.
-6. Data the person asks to add: rows for the note's tables with add_table_rows (rows or pasted csv, one call even for hundreds); records, settings and files for the app's own store with update_page_data (values, add, update, remove, import of csv, files). Changes and removals: update_table_rows / delete_table_rows take where with a value or a test ({ "Date": { "from": "2026-09-01", "to": "2026-09-30" } }, starts_with, contains, empty). None of this touches the app: it re-renders.
-7. Reply in one or two lines: what the app does, and that it's on the note's App side.
+3. If the note has an app, list_app_files and read its README.md first, then the files you'll change.
+4. A new app: create_app, then make it yours. It's a normal small Preact project (see The project): decide the job in one sentence and the screens, then write screens and components with write_app_file and change files with edit_app_file. Keep README.md current.
+5. Every write answers with what to fix: a compile error (the write is refused), imports that point at nothing, the project's style (window.amber instead of the hooks, a table by position), and what a browser saw at 390 and 1280 px. Fix as you go. Pass look: true now and then to see it (if your client shows images).
+6. When it's done: check_app (and preview_app if you can see images) for the full checks at 375, 768 and 1280 px in light and dark, with an empty and a 400-row note. Don't tell the person it's done before check_app is clean.
+7. Data the person asks to add: rows for the note's tables with add_table_rows (rows or pasted csv, one call even for hundreds); records, settings and files for the app's own data with update_page_data. Changes and removals: update_table_rows / delete_table_rows take where with a value or a test ({ "Date": { "from": "2026-09-01", "to": "2026-09-30" } }, starts_with, contains, empty). None of this touches the app: it re-renders.
+8. Reply in one or two lines: what the app does, and that it's on the note's App side.
+
+## The project
+
+A note's app is a small web project, and you work on it the way you would on any codebase: read before you change, small focused files, one component per file, names that say what things are. It starts from create_app:
+
+\`\`\`
+${Object.keys(SCAFFOLD).sort().join("\n")}
+\`\`\`
+
+- /index.html links /src/styles.css and loads /src/main.jsx as a module; main.jsx renders App. JSX, TSX and TS are compiled when you write them; plain .js and .css are served as they are. Put screens in /src/screens/, pieces used in several places in /src/components/, helpers and defaults in /src/data.js.
+- Import by bare name: preact, preact/hooks, amber, amber-router, amber-ui, and the bundled libraries by their npm names (import Chart from "chart.js", import d3 from "d3": each library's global is its default export). Relative imports between your files ("../components/SetRow.jsx"). No import map of your own, no URLs, no globals.
+- "amber" is the note and the app's data as hooks:
+  - const note = useNote(): { title, today, markdown, tables, checklists }, live.
+  - const log = useTable("Log"): the table under the heading Log (or one with a column named Log): { found, columns, rows: [{ id, Date, Exercise, … }], add(values), update(id, patch), remove(id), move(id, to) }. Always by name, never by position.
+  - const packing = useChecklist("Packing"): { items: [{ id, text, checked }], toggle(id), add(text), remove(id) }.
+  - const [plan, setPlan] = useAppData("plan", []): like useState, kept in the app's own data (synced, never in the note's text).
+  - const [settings, update] = useSettings({ unit: "kg", goal: 3 }): settings with their defaults; update({ goal: 4 }).
+  - batch(async () => { await log.add(a); await log.add(b); }): several note edits as one change with one Undo.
+  - Also device, ai, files and fetch (for hosts declared in amber-needs).
+- "amber-router": <Router>, <Route path="/plan/:day" component={PlanDay} />, route("/plan"), back(), useRoute(); links as <a href="#/plan">. The screen is kept in memory (the app can't navigate).
+- "amber-ui": ${AMBER_UI_EXPORTS}. Shell gives an app with several screens its frame: a tab bar on iPhone, a sidebar from 900 px. Every component is in the amber-ui layer, so your CSS wins; to change one deeply, copy its source (get_page_guide with kit: "Sheet") into /src/components/ and import yours.
+- README.md: what the app is for, its screens and files, and where its data lives (which tables and checklists by heading, which app data keys). The next AI reads it first; keep it current when you add a screen or change where data lives.
+- A one-file app (a single /index.html with an inline script) is only for something truly tiny. It can still use the same imports in <script type="module">, without JSX (htm).
 
 ## API keys
 
 Some apps need a service that wants an API key (weather, stocks, translation). Keys live in Amber Notes › Settings › API Keys on the person's devices; the app adds a key to requests for the hosts it was declared for, and neither the app's HTML nor you ever see its value.
 
-- Declare each key the app needs in amber-needs: { "name": "OpenWeather", "hosts": ["api.openweathermap.org"], "query": "appid={key}" } (or "header": "Authorization: Bearer {key}"), with "help": one line on where to get it. Call amber.fetch(url, { key: "OpenWeather" }) and show a clear message in the app when the key is missing or rejected.
+- Declare each key the app needs in amber-needs: { "name": "OpenWeather", "hosts": ["api.openweathermap.org"], "query": "appid={key}" } (or "header": "Authorization: Bearer {key}"), with "help": one line on where to get it. Call fetch(url, { key: "OpenWeather" }) with fetch imported from "amber" and show a clear message in the app when the key is missing or rejected.
 - Call list_api_keys to see which key names exist and whether each is set (never values). Use the same name if one exists.
 - Walk the person through it: which site to sign up on, whether there's a free plan and its limits, where the key is on that site after signing in, then "In Amber Notes, open Settings › API Keys, add a key named OpenWeather, and paste it there."
 - Prefer services that need no key when they're good enough (api.open-meteo.com for weather), and say so.
@@ -64,41 +95,40 @@ Some apps need a service that wants an API key (weather, stocks, translation). K
 
 ## The title
 
-The app owns the note's title. Nothing around the app shows it (not the App side, not a shared web page, not a widget), so the app's first heading is the note's title, read from amber.note.title so it follows renames, and it appears once. Don't add a second heading with the title or the app's kind ("Habit tracker" above "Habits"). A widget-sized app can use a compact header, still the title. check_app flags a missing or doubled title.
+The app owns the note's title. Nothing around the app shows it (not the App side, not a shared web page, not a widget), so the first screen's first heading is the note's title, from useNote().title so it follows renames, and it appears once. Other screens head with their own name (Plan, Progress, Settings). Don't add a second heading with the title or the app's kind ("Habit tracker" above "Habits"). check_app flags a missing or doubled title.
 
 ## Settings, inside the app
 
 Names, goals, limits, currencies, categories, the habits to track: the person should change them without asking an AI, in the app itself. Settings are part of the app's design, not an afterthought.
 
-- One obvious place: a gear button that opens a settings screen or sheet, a Settings tab in an app with tabs, or a short section at the end of a one-screen app.
-- Sensible defaults, so the app works before anyone opens settings; changes apply instantly (no Save button), with real inputs that have labels.
-- Store them in the app's data, values.settings: read amber.data.values.settings (with your defaults merged in) and write amber.store.set("settings", { ...current, goal: 5 }) or amber.setData({ values: { settings: { goal: 5 } } }). An AI sets them for the person with update_page_data { values: { settings: { … } } }.
-- Settings aren't records: rows the person logs stay in the note's tables or the app's collections.
+- One obvious place: a Settings screen in the tab bar or sidebar of an app with screens, or a gear that opens a Sheet in a one-screen app.
+- Sensible defaults in code (DEFAULTS in /src/data.js), so the app works before anyone opens settings; changes apply instantly (no Save button), with labelled fields (amber-ui Input, Select, Toggle, Slider).
+- const [settings, update] = useSettings(DEFAULTS). They're kept in the app's data as values.settings; an AI sets them for the person with update_page_data { values: { settings: { goal: 4 } } }.
+- Settings aren't records: rows the person logs stay in the note's tables or the app's own data.
 - There is no native settings form: <meta name="amber-settings">, amber.settings and amber.openSettings() are gone (check_app flags them).
 
 ## Reading data robustly
 
-- Find tables and columns by name, case-insensitively, not by position: \`const t = note.tables.find(t => t.columns.some(c => /^date$/i.test(c.name)))\`. Fall back gracefully when a column is missing (show an empty state that says which column to add), never throw.
+- Find tables and checklists by name: useTable("Log") is the table under the heading Log, or the one with a column called Log. When found is false, show an empty state that says what to add ("Add a table under a Log heading with Date, Exercise and Kg"), never throw.
+- Read columns by the names the note uses (row.Date, row["Weight (kg)"]); if a name might differ, look it up case-insensitively in columns.
 - Cells are strings. Parse numbers leniently: \`parseFloat(s.replace(/\\s/g, "").replace(",", "."))\`, treat NaN as empty. Treat ✓, x, yes, done, 1, true as done.
-- amber.data is there synchronously (amber.data.values, amber.data.collections); amber.store.get and the collection reads return promises, so await them or read amber.data. Never show "[object Promise]", "undefined" or "NaN": check_app flags them.
-- Dates are "yyyy-mm-dd" strings; compare them as strings. Use amber.note.today, not the clock, for "today".
-- Empty table or note: render a friendly empty state with what to add, not a blank page.
-- Apps must handle 0 rows and 500 rows. Build HTML strings once per render, not per cell with appendChild in a loop.
-- Escape every value from the note before putting it in HTML: \`const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c])\`. Notes contain <, &, quotes.
-- Never hardcode the note's rows, totals or names in the HTML. The note changes; the app must follow.
+- Never show "[object Promise]", "undefined" or "NaN": check_app flags them.
+- Dates are "yyyy-mm-dd" strings; compare them as strings. Use useNote().today, not the clock, for "today".
+- An empty note, table or list gets a friendly empty state (amber-ui EmptyState) with what to add.
+- Apps must handle 0 rows and 500 rows: compute in useMemo, render lists with keys.
+- JSX escapes text for you; never use dangerouslySetInnerHTML with the note's text.
+- Never hardcode the note's rows, totals or names. The note changes; the app must follow.
 
-## Changing data from the page
+## Changing data from the app
 
-- Tick: amber.update({ op: "toggle_checklist", line: item.line }).
-- Edit a cell: amber.update({ op: "set_cell", table: t.index, row: i, col: "Amount", value: "120" }).
-- Add a row: amber.update({ op: "append_row", table: t.index, values: { Date: amber.note.today, Item: "Coffee", Amount: "4" } }).
-- Add a checklist item: amber.update({ op: "add_checklist_item", text: "Sunscreen", under_heading: "Clothes" }). Keep checklists as checklists; never turn them into a table so the app can add to them.
-- Check the result: if !r.ok show r.error next to the control. Don't update your own state optimistically for table data; onChange fires with the new note right after a successful update.
+- Tick: packing.toggle(item.id). Add an item: packing.add("Sunscreen") (it goes under that checklist's heading). Keep checklists as checklists; never turn them into a table so the app can add to them.
+- Add a row: log.add({ Date: note.today, Exercise: "Squat", Kg: "80" }). Edit: log.update(row.id, { Kg: "82.5" }). Remove: log.remove(row.id). A row's id is its position when you read it: use it in the same render.
+- Several edits for one action (log a whole workout): batch(async () => { … }), so it's one Undo.
+- Each returns { ok, error }: show the error next to the control when ok is false. Don't keep your own copy of table data; the hooks re-render with the new note right after a change.
 - Give every input a stable id or name: when a new version of the app arrives while it's in use, the person switches to it and what they typed carries over by id or name.
 - Write values the way the note already writes them (✓ vs x, "4" vs "4.00", the same date format).
-- Where data lives: records the person reads or edits as text (expenses, runs, contacts, a reading list) go in a table or checklist in the note, so they're visible under Text and work with every tool. The page's own data (amber.data) holds what isn't text: settings and goals (amber.store.set), a flashcard schedule, the chosen view, and app-only records such as timed sets or photo logs (collections). Don't copy table rows into data.
-- Things the person should be able to change without you (a budget limit, a goal, their name, categories, a currency) are settings in the app's own settings place, stored in values.settings (see Settings, inside the app).
-- Put data into the app's store from here with update_page_data (values, add, update, remove, import, files); query it with get_page_data (a collection, a where, a limit).
+- Where data lives: records the person reads or edits as text (expenses, runs, contacts, a reading list) go in a table or checklist in the note, so they're visible under Text and work with every tool. The app's own data (useAppData, useSettings) holds what isn't text: settings and goals, a flashcard schedule, a workout in progress, scores. Don't copy table rows into the app's data.
+- Put data into the app's own data from here with update_page_data (values, add, update, remove, import, files); query it with get_page_data.
 
 ## Design: each app has its own look
 
@@ -133,22 +163,9 @@ Design around the person's job, with one focus per screen. Name the job in one s
 - A training app opens on today's workout. Plan editing and progress are their own screens, not sections stacked under it. A budget opens on "how much is left this month" and the add button; categories and history are a tap away. A reading log opens on what you're reading now.
 - One primary action per screen, big and obvious (Start, Add, Study now); everything else is quieter. Summary before detail: the number that matters at the top, the list after, history on its own tab.
 - Real app structure is welcome. Tabs: 2 to 4 sections named by what the person does or looks at (Today, Plan, Progress), a bottom tab bar on iPhone and a sidebar from 900 px. Push a screen for one thing (one workout, one person) with a back button that names where it goes. A doing mode (a workout, a review, cooking) hides the tabs and shows one step at a time. Sheets for short tasks that return to where you were (add, edit, pick), never for whole sections. Segmented controls switch views.
-- Keep the current screen in the app's store (amber.store.set("screen", …)) so the app reopens where the person was, and in history (history.pushState) only if you handle the back gesture yourself.
-- On the first screen: one primary action, one or two key numbers, then a short list or view. If you're stacking more than four independent sections (a summary, a chart, a form, a history, settings…) on one screen, split them into screens or tabs. check_app warns when a screen holds too many.
-- Navigation controls are real buttons with labels (aria-current on the active tab), at least 44 pt, and the active place is obvious.
-- For an app with several screens and state, use Preact without a build step (bundled): <meta name="amber-libs" content="preact, preact-hooks, htm, router">, then
-
-\`\`\`js
-const html = htm.bind(preact.h);
-const { useState } = preactHooks;
-const { Router, route, back } = amberRouter;
-function Today() { return html\`<main><h1>\${amber.note.title}</h1><button onClick=\${() => route("/plan")}>Plan</button></main>\`; }
-function Plan() { return html\`<main><button onClick=\${back}>Back</button><h2>Plan</h2></main>\`; }
-function App() { return html\`<\${Router}><\${Today} path="/" default /><\${Plan} path="/plan" /></\${Router}>\`; }
-amber.onChange(() => preact.render(html\`<\${App} />\`, document.body));
-\`\`\`
-
-  The router keeps the screen in memory (the page can't navigate): links as <a href="#/item/3">, route("/add"), back(), useRoute(); a route like path="/item/:id" passes id. Re-render from amber.onChange so every screen follows the note. Plain JavaScript is fine for a one-screen app.
+- The screens are routes (amber-router) inside amber-ui's Shell: <Route path="/" component={Today} default />, <Route path="/plan/:day" component={PlanDay} />. A pushed screen has a back button that names where it goes (back()). Keep a doing mode (a workout in progress) in useAppData so the app reopens where the person was.
+- On the first screen: one primary action, one or two key numbers, then a short list or view. If you're stacking more than four independent sections (a summary, a chart, a form, a history, settings…) on one screen, split them into screens. check_app warns when a screen holds too many.
+- Navigation controls are real buttons or links with labels (Shell's tab bar sets aria-current), at least 44 pt, and the active place is obvious.
 
 ## Sheets and popups
 
@@ -177,7 +194,9 @@ You own the layout at every size; the app must work and look intended across the
 
 ## Libraries
 
-${LIBRARY_GUIDE}
+- In a project, import what you need by name: preact, preact/hooks, htm, amber-router, amber-ui, and ${LIBS_BY_PACKAGE}. Each of the last is the library's global as the default export: import Chart from "chart.js"; new Chart(canvas, config). They're on the device: nothing loads from the network.
+- Any other npm package: call resolve_package { name, version?, file? } and add the entry it returns to <meta name="amber-libs" content="npm:qrcode-generator@1.4.4/qrcode.js#sha384-…"> in /index.html; Amber Notes downloads that exact file once, checks the hash and keeps it, and it loads before your modules as a global (window.qrcode). Pick a UMD or global build. Prefer a bundled library when one does the job.
+- Never paste a library's code into a file: it bloats the app and can't be checked or updated. check_app flags pasted copies.
 
 ## Games, toys and fun
 
@@ -186,82 +205,29 @@ Fun is welcome: a game from a vocabulary note, a habit tracker that feels like a
 - An animation loop with requestAnimationFrame, time-based (use the frame's timestamp, not a fixed step per frame), drawn on a canvas sized to its container times devicePixelRatio.
 - Controls for touch and keyboard: pointer events (pointerdown/move/up) for taps and drags, keys for Mac. Big touch areas; no hover.
 - Pause when hidden (document.visibilityState, a Pause button) and when the person switches to Text.
-- Keep high scores, progress and game state in the app's store (amber.store.set, collections), so it survives closing the app; content to play with comes from the note.
+- Keep high scores, progress and game state in the app's own data (useAppData), so it survives closing the app; content to play with comes from the note.
 - Sound only after a tap (audio can't start on its own); a mute button; keep it short and quiet.
 - Make it start right away, show how to play in one line, and give a way to restart.
 
 ## Never
 
-- No direct network: no fetch()/XHR, no external URLs in src/href (not even in comments), no <link>, no @import, no web fonts. The app is refused if it has them; it couldn't load them anyway. Live data (prices, weather) only through amber.fetch to hosts declared in amber-needs, which the person approves once (see API keys).
-- No localStorage/sessionStorage/IndexedDB/cookies: the sandbox doesn't keep them. Use amber.store.
-- No alert/confirm/prompt dialogs: show inline messages.
-- Don't copy the note's rows into the app's HTML or its data to edit them there: change the note through amber.update or the data tools.
+- No direct network: no fetch() or XHR to the internet, no external URLs (not even in comments), no @import, no web fonts. The app is refused if it has them; it couldn't load them anyway. Live data (prices, weather) only through fetch from "amber" to hosts declared in amber-needs, which the person approves once (see API keys). fetch("/src/words.json") reads the app's own files.
+- No localStorage/sessionStorage/IndexedDB/cookies: the sandbox doesn't keep them. Use useAppData.
+- No alert/confirm/prompt dialogs: use a Sheet or Dialog from amber-ui, or an inline message.
+- No window.amber, op objects or table positions in a project: the hooks from "amber" do that, by name.
+- Don't copy the note's rows into the app's files or its data to edit them there: change the note through the hooks or the data tools.
 
-## Starter
+## A complete example
 
-A minimal correct page to build from:
+Training (get_page_guide with example: "training" returns every file): strength training over the note's Plan and Log tables. Today is the first screen and does one job (log today's sets); Plan and Progress are their own screens in the Shell; logging is a Sheet; units and the weekly goal are in Settings with useSettings. Its Today screen:
 
-\`\`\`html
-${"<!doctype html>"}
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>
-  * { box-sizing: border-box; }
-  main { max-width: var(--amber-content-max); margin: 0 auto; padding: 20px var(--amber-gutter) 96px; }
-  h1 { font-size: 28px; letter-spacing: -.02em; margin: 4px 0 16px; }
-  .card { background: var(--amber-surface); border-radius: var(--amber-radius); border: 1px solid var(--amber-separator); margin-bottom: 16px; overflow: hidden; }
-  .row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--amber-separator); min-height: 48px; }
-  .row:first-child { border-top: 0; }
-  .grow { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-  .muted { color: var(--amber-text-secondary); font-size: 14px; }
-  .num { font-variant-numeric: tabular-nums; font-weight: 600; }
-  form { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px; }
-  label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--amber-text-secondary); flex: 1 1 120px; }
-  input, select { font: inherit; border-radius: var(--amber-radius-small); padding: 10px 12px; min-height: 44px; width: 100%; }
-  button { font: inherit; font-weight: 600; min-height: 44px; padding: 0 16px; border: 0; border-radius: var(--amber-radius-small); background: var(--amber-accent); color: var(--amber-on-accent); }
-  .err { color: var(--amber-danger); padding: 0 16px 12px; min-height: 1em; }
-  .empty { padding: 28px 16px; text-align: center; color: var(--amber-text-secondary); }
-</style>
-</head>
-<body>
-<main id="app" aria-live="polite"></main>
-<script>
-  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-  const col = (t, re) => t.columns.findIndex((c) => re.test(c.name));
-  let error = "";
-
-  function render(note, data) {
-    const app = document.getElementById("app");
-    const t = note.tables.find((t) => col(t, /^(item|name|title)$/i) >= 0);
-    if (!t) { app.innerHTML = \`<h1>\${esc(note.title)}</h1><div class="card empty">Add a table with an Item column to the note to see it here.</div>\`; return; }
-    const item = col(t, /^(item|name|title)$/i);
-    app.innerHTML = \`
-      <h1>\${esc(note.title)}</h1>
-      <div class="card">\${t.rows.length ? t.rows.map((r) => \`<div class="row"><div class="grow">\${esc(r[item])}</div></div>\`).join("") : '<div class="empty">Nothing yet.</div>'}</div>
-      <div class="card">
-        <form id="add"><label>New item<input name="v" required></label><button>Add</button></form>
-        <div class="err" role="alert">\${esc(error)}</div>
-      </div>\`;
-    document.getElementById("add").onsubmit = async (e) => {
-      e.preventDefault();
-      const v = new FormData(e.target).get("v").trim();
-      const r = await amber.update({ op: "append_row", table: t.index, values: { [t.columns[item].name]: v } });
-      error = r.ok ? "" : r.error;
-      if (!r.ok) render(amber.note, amber.data);
-    };
-  }
-  amber.onChange(render);
-</script>
-</body>
-</html>
+\`\`\`jsx
+${EXAMPLE_TODAY}
 \`\`\`
 
-## Templates
+## Copying a kit component
 
-Tested, complete pages to start from (get_page_guide with template: "<name>" returns one). Adapt column names to the note's, never the note to the template, unless the note has no table yet.
-${PAGE_TEMPLATES.map((t) => `- ${t.name}: ${t.description} Expects: ${t.expects}`).join("\n")}
+The amber-ui components are small Preact files. To change one beyond CSS, get its source (get_page_guide with kit: "Sheet"), write it to /src/components/Sheet.jsx, and import yours instead. The kit's components: ${Object.keys(AMBER_UI.src).filter((f) => f.endsWith(".jsx") && f !== "index.jsx").map((f) => f.replace(".jsx", "")).join(", ")}.
 `;
 
 /** MCP prompts: starting points a client can offer the person. */
@@ -270,8 +236,8 @@ export const PAGE_PROMPTS = [
     name: "make_app",
     title: "Make this note an app",
     description: "Give a note an app: a tracker, a budget, flashcards, a planner, over the note's data.",
-    arguments: [{ name: "note", description: "The note's title or id.", required: true }, { name: "idea", description: "What the page should do, if you have something in mind.", required: false }],
-    text: (a: Record<string, string>) => `Make my note "${a.note}" an app${a.idea ? `: ${a.idea}` : ""}. Call get_page_guide first, then read the note, shape its data into tables if needed (keeping every fact), build the app with set_note_page and run check_app. Tell me what it does in a line or two.`,
+    arguments: [{ name: "note", description: "The note's title or id.", required: true }, { name: "idea", description: "What the app should do, if you have something in mind.", required: false }],
+    text: (a: Record<string, string>) => `Make my note "${a.note}" an app${a.idea ? `: ${a.idea}` : ""}. Call get_page_guide first, then read the note, shape its data into tables under headings if needed (keeping every fact), start the project with create_app, build its screens and components, and run check_app. Tell me what it does in a line or two.`,
   },
   {
     name: "add_data",
@@ -285,7 +251,7 @@ export const PAGE_PROMPTS = [
     title: "Change a note's app",
     description: "Change how a note's app looks or works, without touching its data.",
     arguments: [{ name: "note", description: "The note's title or id.", required: true }, { name: "change", description: "What to change.", required: true }],
-    text: (a: Record<string, string>) => `Change the app of my note "${a.note}": ${a.change}. Call get_page_guide, read the note and its app (get_note_page) first. Keep the note's data and columns exactly as they are; use edit_note_page for small changes and set_note_page for a full redesign, then run check_app.`,
+    text: (a: Record<string, string>) => `Change the app of my note "${a.note}": ${a.change}. Call get_page_guide, read the note, then the app's README.md and the files you need (list_app_files, read_app_file). Keep the note's data and columns exactly as they are; change files with edit_app_file (write_app_file for new ones), keep README.md current, then run check_app.`,
   },
 ] as const;
 

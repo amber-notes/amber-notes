@@ -16,9 +16,9 @@ Deno.test("every tool has a title, also in annotations, and all three hints as e
 Deno.test("tools that change or remove anything already there are destructive", () => {
   const destructive = tools.filter((t) => t.annotations.destructiveHint).map((t) => t.name).sort();
   assertEquals(destructive, [
-    "delete_folder", "delete_note", "delete_table_row", "delete_table_rows", "edit_note", "edit_note_page", "edit_table_columns", "log_table_row",
-    "move_note", "pin_note", "rename_folder", "replace_note_body", "restore_revision", "set_checklist_item", "set_note_page",
-    "update_checklist_items", "update_page_data", "update_table_rows",
+    "create_app", "delete_app_file", "delete_folder", "delete_note", "delete_table_row", "delete_table_rows", "edit_app_file", "edit_note", "edit_note_page", "edit_table_columns", "log_table_row",
+    "move_app_file", "move_note", "pin_note", "rename_folder", "replace_note_body", "restore_revision", "set_checklist_item", "set_note_page",
+    "update_checklist_items", "update_page_data", "update_table_rows", "write_app_file",
   ]);
 });
 

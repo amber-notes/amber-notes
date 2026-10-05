@@ -86,7 +86,7 @@ export const appHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<u
       ...(found.errors.length ? { refused_by_server: found.errors } : {}),
       issues,
       ...(browser === null ? { browser: r } : { browser_checked: `375 px light and dark, 768 and 1280 px light${n.parent_id !== null || /amber-widget/.test(html) ? ", and the 340 px widget strip" : ""}, over a sample note` }),
-      next: issues.length ? "Fix these with edit_note_page (or set_note_page), then run check_app again." : "Nothing to fix.",
+      next: issues.length ? "Fix these (edit_app_file for a project of files, edit_note_page for a one-file app), then run check_app again." : "Nothing to fix.",
     };
   },
 

@@ -9,8 +9,9 @@ const BODY = "Trip\n\n## Pack\n- [ ] Passport\n- [x] Charger\n\n| Date | Km |\n|
 Deno.test("the note as a page sees it", () => {
   const n = noteForPage(BODY, "2026-10-05");
   assertEquals(n.title, "Trip");
-  assertEquals(n.checklists, [{ line: 4, text: "Passport", checked: false }, { line: 5, text: "Charger", checked: true }]);
-  assertEquals(n.tables, [{ index: 0, columns: [{ name: "Date", type: "text" }, { name: "Km", type: "text" }], rows: [["2026-10-01", "5"]] }]);
+  assertEquals(n.checklists, [{ line: 4, text: "Passport", checked: false, heading: "Pack" }, { line: 5, text: "Charger", checked: true, heading: "Pack" }]);
+  assertEquals(noteForPage("Trip\n| A |\n|---|\n| 1 |", "2026-10-05").tables[0].heading, null);
+  assertEquals(n.tables, [{ index: 0, heading: "Pack", columns: [{ name: "Date", type: "text" }, { name: "Km", type: "text" }], rows: [["2026-10-01", "5"]] }]);
 });
 
 Deno.test("page edits: tick (ticked items sink), set a cell, add a row, add a checklist item", () => {

@@ -59,6 +59,9 @@ const { schemaDB, sqlFor } = await import(mcp("mcp/pglite.ts"));
 const { account, app, file, note, opened } = await import(mcp("mcp/sealed.ts"));
 const { tokenKey, wrap } = await import(mcp("_shared/e2ee.ts"));
 const { pageProblems } = await import(mcp("mcp/page.ts"));
+// What the server refuses: a one-file page's problems, or a project's (servers without projects: the page's).
+const { staticReport } = await import(mcp("mcp/app_check.ts")).catch(() => ({ staticReport: null }));
+const serverProblems = (stored: string): string[] => staticReport ? staticReport(stored, "", []).errors : pageProblems(stored);
 
 const MODELS: Record<string, { id: string; provider: "anthropic" | "openai" | "openrouter" | "claude-cli" | "codex-cli"; inPerM: number; outPerM: number; cacheReadPerM: number; cacheWritePerM: number }> = {
   // Subscription CLIs (no per-token billing): Claude Code headless and the Codex CLI.
@@ -431,7 +434,7 @@ async function runTask(task: Task, rep = 1) {
     render = await renderPage(after.page, after.body, after.data ?? {}, { shots, today: "2026-10-05", interact: task.interact || task.plays }).catch((e) => { console.error(task.id, "render failed", e); return undefined; });
     f.render = render;
   }
-  const checks: Check[] = scoreTask(task, f, render, pageProblems);
+  const checks: Check[] = scoreTask(task, f, render, serverProblems);
   const usd = (session.usage as { usd?: number }).usd ?? cost(session.usage);
   await Deno.writeTextFile(SPEND, JSON.stringify({ at: new Date().toISOString(), round, task: task.id, model: model.id, via: model.provider, usd: +usd.toFixed(4), usage: session.usage }) + "\n", { append: true });
   const result = {

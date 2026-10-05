@@ -2,6 +2,9 @@
 // task's checks) without running the models: the saved page, note, data and calls are re-read.
 //   deno run -A scripts/page-evals/rescore.ts <round>
 import { pageProblems } from "../../supabase/functions/mcp/page.ts";
+import { staticReport } from "../../supabase/functions/mcp/app_check.ts";
+// What the server refuses: a one-file page\'s problems, or a project\'s.
+const serverProblems = (stored: string) => staticReport(stored, "", []).errors;
 import { closeBrowser, renderPage } from "../page-render/render.ts";
 import { scoreTask } from "./score.ts";
 import { TASKS, type Final } from "./tasks.ts";
@@ -25,7 +28,7 @@ for await (const e of Deno.readDir(dir)) {
     await Deno.mkdir(new URL("shots/", dir), { recursive: true });
     f.render = await renderPage(page, after, r.data ?? {}, { shots: new URL(`shots/${stem}`, dir).pathname, today: "2026-10-05", interact: task.interact || task.plays });
   }
-  const checks = scoreTask(task, f, f.render, pageProblems);
+  const checks = scoreTask(task, f, f.render, serverProblems);
   Object.assign(r, { checks, passed: checks.filter((c) => c.pass).length, total: checks.length, score: checks.filter((c) => c.pass).length / checks.length, render: f.render ? { ...f.render, markdownAfter: undefined } : null });
   await Deno.writeTextFile(path, JSON.stringify(r, null, 2));
   const failed = checks.filter((c) => !c.pass).map((c) => `${c.name}${c.detail ? ` (${String(c.detail).slice(0, 70)})` : ""}`);

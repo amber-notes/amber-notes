@@ -66,6 +66,71 @@ function prepare(html: string): { html: string; integrity: Map<string, string> }
   };
 }
 
+// Apps that are projects of files (Pane/Views/NotePageProject.swift): the files at a made-up
+// origin standing in for amber-app:///, compiled JavaScript at each source path, and the import map
+// of bare names over the ES modules the app ships (Pane/Resources/AppLibraries) at LIB_HOST.
+const APP_HOST = "https://app.amber.invalid/";
+const APP_LIBS = new URL("../../Pane/Resources/AppLibraries/", import.meta.url);
+const ESM: Record<string, string> = { preact: "preact.module.js", "preact-hooks": "preact-hooks.module.js", "preact-jsx-runtime": "preact-jsx-runtime.module.js",
+  htm: "htm.module.js", "amber-router": "amber-router.module.js", amber: "amber.module.js" };
+type Bundled = { name: string; global: string; package: string };
+const bundledLibs = (): Bundled[] => JSON.parse(Deno.readTextFileSync(new URL("libraries.json", APP_LIBS))).libraries;
+const kit = (() => { let k: { src: Record<string, string>; compiled: Record<string, string>; css: string } | null = null; return () => (k ??= JSON.parse(Deno.readTextFileSync(new URL("amber-ui.json", APP_LIBS)))); })();
+/** amber-lib:/// and amber-app:/// as this harness serves them. */
+const hosts = (text: string) => text.replaceAll("amber-lib:///", LIB_HOST).replaceAll("amber-app:///", APP_HOST);
+
+export type AppProject = { files: Record<string, string>; compiled: Record<string, string> };
+export function projectOf(stored: string): AppProject | null {
+  if (!stored.trimStart().startsWith("{") || !stored.includes('"amberApp"')) return null;
+  try { const p = JSON.parse(stored); return p?.amberApp === 1 && p.files ? { files: p.files, compiled: p.compiled ?? {} } : null; } catch { return null; }
+}
+
+function importMap(): string {
+  const imports: Record<string, string> = {
+    preact: `${LIB_HOST}esm/preact.js`, "preact/hooks": `${LIB_HOST}esm/preact-hooks.js`, "preact/jsx-runtime": `${LIB_HOST}esm/preact-jsx-runtime.js`,
+    htm: `${LIB_HOST}esm/htm.js`, "amber-router": `${LIB_HOST}esm/amber-router.js`, amber: `${LIB_HOST}esm/amber.js`, "amber-ui": `${LIB_HOST}amber-ui/index.js`,
+  };
+  for (const l of bundledLibs()) if (!["preact", "preact-hooks", "htm", "router"].includes(l.name)) imports[l.package] = `${LIB_HOST}esm/${l.name}.js`;
+  return `<script type="importmap">${JSON.stringify({ imports })}</script>`;
+}
+
+/** The project's /index.html as the app loads it: CSP, viewport, the two stylesheets and the import map first. */
+function prepareProject(p: AppProject): string {
+  let rest = (p.files["/index.html"] ?? "").replace(/^[\s\uFEFF]+/, "");
+  if (/^<!doctype/i.test(rest)) rest = rest.slice(rest.indexOf(">") + 1);
+  const policy = `default-src 'none'; script-src 'unsafe-inline' ${APP_HOST} ${LIB_HOST}; style-src 'unsafe-inline' ${APP_HOST} ${LIB_HOST}; img-src data: ${APP_HOST}; font-src data: ${APP_HOST}; media-src data: ${APP_HOST}; ` +
+    `connect-src ${APP_HOST}; frame-src 'none'; child-src 'none'; worker-src 'none'; object-src 'none'; manifest-src 'none'; form-action 'none'; base-uri 'none'`;
+  return `<!doctype html><meta http-equiv="Content-Security-Policy" content="${policy}"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">` +
+    `<style id="amber-tokens">${TOKENS}</style>` + (baseOptOut(rest) ? "" : `<style id="amber-base">${AMBER_BASE_CSS}</style>`) + importMap() + hosts(rest);
+}
+
+const MIME: Record<string, string> = { html: "text/html", css: "text/css", js: "text/javascript", mjs: "text/javascript", jsx: "text/javascript", tsx: "text/javascript", ts: "text/javascript", json: "application/json", svg: "image/svg+xml", md: "text/plain", txt: "text/plain" };
+/** A project file as served: compiled JavaScript at a .jsx/.tsx/.ts path, the text otherwise. */
+function serveFile(p: AppProject, path: string): { body: string; type: string } | null {
+  const text = /\.(jsx|tsx|ts)$/.test(path) ? p.compiled[path] : p.files[path];
+  if (text === undefined) return null;
+  return { body: /\.(m?js|jsx|tsx|ts|css|html)$/.test(path) ? hosts(text) : text, type: MIME[path.split(".").pop()!] ?? "text/plain" };
+}
+
+/** LIB_HOST paths only projects use: esm/<name>.js and amber-ui/…. */
+function moduleFile(path: string): { body: string; type: string } | null {
+  if (path.startsWith("esm/")) {
+    const name = path.slice(4).replace(/\.js$/, "");
+    if (ESM[name]) return { body: hosts(Deno.readTextFileSync(new URL(ESM[name], APP_LIBS))), type: "text/javascript" };
+    const lib = bundledLibs().find((l) => l.name === name);
+    if (lib) return { body: `import "${LIB_HOST}${lib.name}";\nexport default globalThis["${lib.global}"];\n`, type: "text/javascript" };
+    return null;
+  }
+  if (path.startsWith("amber-ui/")) {
+    const rest = path.slice(9), k = kit();
+    if (rest === "amber-ui.css") return { body: k.css, type: "text/css" };
+    if (rest.startsWith("src/") && k.src[rest.slice(4)]) return { body: k.src[rest.slice(4)], type: "text/plain" };
+    const js = k.compiled[rest === "index.js" ? "index.jsx" : rest];
+    return js === undefined ? null : { body: hosts(js), type: "text/javascript" };
+  }
+  return null;
+}
+
 /** A library's bytes: a bundled one by name, or a pinned npm file; cached on disk after the first time. */
 async function library(path: string): Promise<Uint8Array | null> {
   const { BUNDLED } = await import("../../supabase/functions/mcp/libraries.ts");
@@ -124,7 +189,8 @@ const bootstrap = (note: unknown, data: unknown) => `(() => {
   const amber = {
     note: ${JSON.stringify(note)},
     update(op) { return window.__amberUpdate(op).catch((e) => ({ ok: false, error: String((e && e.message) || e) })); },
-    onChange(fn) { listeners.push(fn); try { fn(amber.note, amber.data); } catch (e) { console.error(e); } },
+    onChange(fn) { listeners.push(fn); try { fn(amber.note, amber.data); } catch (e) { console.error(e); } return () => { const i = listeners.indexOf(fn); if (i >= 0) listeners.splice(i, 1); }; },
+    insets: { top: 0, bottom: 0 },
     data: ${JSON.stringify(data)},
     setData(patch) { return ask({ op: "store.patch", patch }); },
     store: {
@@ -277,11 +343,19 @@ async function renderOnce(html: string, markdown: string, data: unknown, opts: R
     page.on("pageerror", (e) => errors.push(`pageerror: ${String(e.message).slice(0, 300)}`));
     // The document is served at one made-up address, so init scripts run on it like the app's
     // user script; every other request is recorded and refused.
-    const home = "https://page.amber.invalid/";
-    const prepared = prepare(html);
+    const project = projectOf(html);
+    const home = project ? `${APP_HOST}index.html` : "https://page.amber.invalid/";
+    const prepared = project ? { html: prepareProject(project), integrity: new Map<string, string>() } : prepare(html);
     await page.route("**/*", (r) => {
       const u = r.request().url();
       if (u === home) return r.fulfill({ status: 200, contentType: "text/html; charset=utf-8", body: prepared.html });
+      if (project && u.startsWith(APP_HOST)) {
+        const f = serveFile(project, "/" + decodeURIComponent(new URL(u).pathname.slice(1)));
+        if (!f) { errors.push(`missing file: ${new URL(u).pathname}`); return r.fulfill({ status: 404, body: "" }); }
+        return r.fulfill({ status: 200, contentType: `${f.type}; charset=utf-8`, headers: { "access-control-allow-origin": "*" }, body: f.body });
+      }
+      const mod = u.startsWith(LIB_HOST) ? moduleFile(decodeURIComponent(u.slice(LIB_HOST.length))) : null;
+      if (mod) return r.fulfill({ status: 200, contentType: `${mod.type}; charset=utf-8`, headers: { "access-control-allow-origin": "*" }, body: mod.body });
       if (u.startsWith(LIB_HOST)) {
         const path = decodeURIComponent(u.slice(LIB_HOST.length));
         return library(path).then(async (bytes) => {

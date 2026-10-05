@@ -174,8 +174,8 @@ const crm200 = Array.from({ length: 200 }, (_, i) => {
 const crmCsv = "Deal value,Name,E-mail,Firm,Status\n" + crm200.map((r) => [r.value, r.contact, r.email, r.company.includes(",") ? `"${r.company.replace(/"/g, '""')}"` : r.company, r.stage].join(",")).join("\n");
 
 // The tested budget template with one slip: note.table instead of note.tables.
-const BUDGET_TEMPLATE = await Deno.readTextFile(new URL("../../plugins/amber-notes/skills/note-pages/templates/budget.html", import.meta.url));
-const TRIP_TEMPLATE = await Deno.readTextFile(new URL("../../plugins/amber-notes/skills/note-pages/templates/trip-log.html", import.meta.url));
+const BUDGET_TEMPLATE = await Deno.readTextFile(new URL("./one-file-templates/budget.html", import.meta.url));
+const TRIP_TEMPLATE = await Deno.readTextFile(new URL("./one-file-templates/trip-log.html", import.meta.url));
 const BROKEN_PAGE = BUDGET_TEMPLATE.replace("const t = note.tables.find(", "const t = note.table.find(");
 if (BROKEN_PAGE === BUDGET_TEMPLATE) throw new Error("BROKEN_PAGE didn't break");
 

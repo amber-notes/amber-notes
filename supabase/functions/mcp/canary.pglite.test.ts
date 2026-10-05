@@ -209,6 +209,15 @@ Deno.test("no text of an encrypted account is stored or logged readably, whateve
     assertEquals(added.data.values, { note: CANARY, more: CANARY });
     assertEquals((await tool("get_page_data", { id: tracker, collection: "runs", where: { what: { contains: "imported" } } })).records[0].km, 5);
     assertStringIncludes((await tool("get_page_guide")).guide, "amber.onChange");
+    // The app as a project of files: the canary in a source file, its compiled module and the README.
+    await tool("create_app", { id: tracker, replace: true });
+    await tool("write_app_file", { id: tracker, path: "/src/canary.js", content: `export const c = "${CANARY}";` });
+    await tool("write_app_file", { id: tracker, path: "/src/Canary.jsx", content: `export default () => <p>${CANARY}</p>;` });
+    await tool("edit_app_file", { id: tracker, path: "/README.md", old_string: "What this app is for", new_string: `For ${CANARY}` });
+    await tool("move_app_file", { id: tracker, from: "/src/canary.js", to: "/src/canary-moved.js" });
+    await tool("delete_app_file", { id: tracker, path: "/src/canary-moved.js" });
+    assertStringIncludes((await tool("read_app_file", { id: tracker, path: "/src/Canary.jsx" })).content, CANARY);
+    assertStringIncludes((await tool("list_app_files", { id: tracker })).readme, CANARY);
     // No renderer is configured here: check_app does what needs no browser, preview_app says so.
     assert(Array.isArray((await tool("check_app", { id: tracker })).issues));
     assertEquals((await tool("preview_app", { id: tracker })).previews, "unavailable");
