@@ -252,6 +252,8 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
               calendar: { today: () => ask({ op: "device.calendar.today" }) },
               notify: Object.assign((n) => ask({ op: "device.notify", ...n }), { cancel: (id) => ask({ op: "device.notify.cancel", id }) }),
               openURL: (url) => ask({ op: "device.openURL", url }),
+              // An export through the share sheet (iPhone) or a Save panel (Mac): { name, type, text | base64 }.
+              share: (o) => ask({ op: "device.share", ...(o || {}) }),
               photos: { pick: (o) => ask({ op: "device.photos.pick", ...(o || {}) }) },
               camera: { take: () => ask({ op: "device.camera.take" }) },
               contacts: { pick: () => ask({ op: "device.contacts.pick" }) },
@@ -306,7 +308,19 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
             const changed = () => { if (!persist) return; clearTimeout(timer); timer = setTimeout(flush, 250); };
             if (persist) {
               addEventListener("pagehide", () => { if (timer) { clearTimeout(timer); flush(); } });
-              listeners.push((note, data) => { if (!timer && data && data.values) map = Object.assign({}, data.values.localStorage || {}); });
+              // A change from elsewhere (an AI, another device): the new values, and a "storage"
+              // event per key, as the web does for other tabs.
+              listeners.push((note, data) => {
+                if (timer || !data || !data.values) return;
+                const next = Object.assign({}, data.values.localStorage || {});
+                const keys = new Set([...Object.keys(map), ...Object.keys(next)]);
+                const old = map;
+                map = next;
+                for (const key of keys) {
+                  if (old[key] === next[key]) continue;
+                  try { dispatchEvent(new StorageEvent("storage", { key, oldValue: old[key] ?? null, newValue: next[key] ?? null, url: location.href })); } catch (e) {}
+                }
+              });
             }
             const api = {
               getItem: (k) => Object.prototype.hasOwnProperty.call(map, k) ? map[k] : null,

@@ -202,6 +202,8 @@ final class SyncEngine {
         let notes = ch.postgresChange(AnyAction.self, schema: "public", table: "notes")
         let folders = ch.postgresChange(AnyAction.self, schema: "public", table: "folders")
         let files = ch.postgresChange(AnyAction.self, schema: "public", table: "attachments")
+        // Note apps (prototype): an app or its data changed elsewhere (an AI's update_page_data).
+        let pages = ch.postgresChange(AnyAction.self, schema: "public", table: "note_pages")
         let joins = ch.statusChange
         try? await ch.subscribeWithError()
         channel = ch
@@ -210,7 +212,7 @@ final class SyncEngine {
         realtimeTasks.append(Task { [weak self] in
             for await action in notes { await self?.received(action) }
         })
-        for stream in [folders, files] {
+        for stream in [folders, files, pages] {
             realtimeTasks.append(Task { [weak self] in
                 for await _ in stream { self?.schedule(after: 0.25) }
             })
@@ -233,6 +235,14 @@ final class SyncEngine {
                 self?.schedule(after: 0)
             }
         })
+    }
+
+    /// Who wrote a note app's row, for its receipt: an AI's name (the MCP tools set pane.client), or
+    /// nil for one of your devices (they send x-pane-device: iPhone, iPad or Mac).
+    nonisolated static func writer(_ client: String?) -> String? {
+        guard let c = client?.trimmingCharacters(in: .whitespaces), !c.isEmpty else { return nil }
+        if ["iPhone", "iPad", "Mac"].contains(c) || UUID(uuidString: c) != nil { return nil }
+        return c
     }
 
     /// Another device (or an AI) changed a note: apply the row it carries, or fetch it.
@@ -969,9 +979,9 @@ final class SyncEngine {
             for r in pages {
                 NotePageStore.shared.take(r)
                 if let box = r.data_ct, let json = Wire.sealer?.open(box, context: E2EE.pageData(r.note_id)) {
-                    NotePageDataStore.shared.take(r.note_id, server: Data(json.utf8))
+                    NotePageDataStore.shared.take(r.note_id, server: Data(json.utf8), by: Self.writer(r.client))
                 } else if r.data_ct == nil {
-                    NotePageDataStore.shared.take(r.note_id, server: nil)
+                    NotePageDataStore.shared.take(r.note_id, server: nil, by: Self.writer(r.client))
                 }
                 if let s = r.server_updated_at, s > newest { newest = s }
             }

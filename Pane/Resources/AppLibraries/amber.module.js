@@ -9,6 +9,8 @@ import { useState, useLayoutEffect, useMemo } from "preact/hooks";
 const bridge = window.amber;
 export { bridge as amber };
 export const device = bridge.device, ai = bridge.ai, files = bridge.files;
+/** Export a file: share({ name: "lift.csv", type: "text/csv", text }) - the share sheet, or a Save panel on the Mac. */
+export const share = (file) => bridge.device.share(file);
 export const fetch = (url, options) => bridge.fetch(url, options);
 
 // Changes made inside batch() (data and note edits) are sent as one: one Undo.

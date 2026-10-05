@@ -111,6 +111,7 @@ enum AIEdit {
         enum Kind: Equatable { case edit, pageEdit, dataEdit, pageMade, pageChanged }
 
         var summary: String {
+            if kind == .dataEdit, by != AIGlyph.page { return "\(by) changed this app's data" }
             if kind == .pageEdit || kind == .dataEdit { return "Changed in the app" }
             if kind == .pageMade { return "\(by) made this note an app" }
             if kind == .pageChanged { return "\(by) changed this note's app" }
@@ -121,6 +122,7 @@ enum AIEdit {
         /// For the navigation bar over a note's app, where there's room for a word or two.
         var shortSummary: String {
             switch kind {
+            case .dataEdit where by != AIGlyph.page: "\(by) changed it"
             case .pageEdit, .dataEdit: "Changed"
             case .pageMade: "\(by) made it"
             case .pageChanged: "\(by) updated it"

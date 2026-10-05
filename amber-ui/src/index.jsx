@@ -15,5 +15,5 @@ export { Sheet, Dialog } from "./Sheet.jsx";
 export { Tabs } from "./Tabs.jsx";
 export { TabBar, Shell } from "./TabBar.jsx";
 export { Toast, toast } from "./Toast.jsx";
-export { Icon } from "./Icon.jsx";
+export { Icon, iconNames } from "./Icon.jsx";
 export { useNote, useData, useAppData, useStore, useCollection, useSettings } from "./hooks.js";

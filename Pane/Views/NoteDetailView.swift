@@ -128,6 +128,13 @@ struct NoteDetailView: View {
             .onChange(of: note.aiEditedAt) { _, _ in showAIEdit() }
             .onChange(of: NotePageStore.shared[note.id]) { _, now in pageArrived(now) }
             .onChange(of: mode) { _, now in if now == .text { tintPageEdits() } }
+            // An AI (or MCP tool) changed the app's data while it's open: the app already shows it;
+            // say who, and offer Undo back to before.
+            .onChange(of: NotePageDataStore.shared.arrivals[note.id]) { _, a in
+                guard let a, showingPage else { return }
+                undoData = NotePageData.decode(a.before)
+                showPageReceipt(AIEdit.Receipt(noteID: note.id, by: a.by, at: a.at, previous: note.body, lines: 0, kind: .dataEdit))
+            }
             // Captures: `-lockCapture setup` or `confirm` (see Capture).
             .onReceive(NotificationCenter.default.publisher(for: Capture.lockCapture)) { n in
                 switch n.object as? String {

@@ -690,10 +690,41 @@ final class NotePagesUITests: XCTestCase {
         webStarting("Progress").tap()
         pause(2)
         shot("r5-progress")
+        webStarting("Plan").tap()
+        pause(1)
         web("Settings").tap()
         pause(1)
         shot("r6-settings")
         mark("react-end")
+        pause(1)
+    }
+
+    /// An AI removes 3 records from the open app's data through MCP: the app updates without a
+    /// reload, the receipt names the AI, and Undo puts them back.
+    func testAIDataEdit() {
+        launch(["-seedNote", "\(pages)/training.md", "-open", "Training", "-seedPage", "Training=\(pages)/training-react.json",
+                "-aiDataRemove", "Training=log:3", "-aiPageBy", "Claude", "-aiAfter", "9"])
+        mark("aidata-start")
+        pause(3.5)
+        webStarting("Progress").tap()
+        pause(1.5)
+        let sessions = app.webViews.staticTexts.matching(NSPredicate(format: "label ENDSWITH ' sessions'")).firstMatch
+        XCTAssertTrue(sessions.waitForExistence(timeout: 4))
+        let before = sessions.label
+        shot("d1-before")
+        // The AI's change arrives.
+        let undo = app.buttons["Undo"].firstMatch
+        XCTAssertTrue(undo.waitForExistence(timeout: 12), "the receipt with Undo")
+        pause(1)
+        let after = app.webViews.staticTexts.matching(NSPredicate(format: "label ENDSWITH ' sessions'")).firstMatch.label
+        shot("d2-after")
+        XCTAssertNotEqual(before, after, "the open app shows the AI's change")
+        undo.tap()
+        pause(1.5)
+        let restored = app.webViews.staticTexts.matching(NSPredicate(format: "label ENDSWITH ' sessions'")).firstMatch.label
+        shot("d3-undone")
+        XCTAssertEqual(before, restored, "Undo brings the records back")
+        mark("aidata-end")
         pause(1)
     }
 }

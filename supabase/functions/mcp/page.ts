@@ -20,6 +20,7 @@ In a project, import from "amber":
   useSettings(defaults) -> [settings, update(patch)]                 the app's own settings, drawn by the app
   batch(async () => { ... })                                          several changes as one, with one Undo
   setSummary("3 of 4 habits today")                                   the line under the title in the note list and search
+  share({ name: "lift.csv", type: "text/csv", text })                 export a file: the share sheet on iPhone, a Save panel on the Mac
   useImported() -> { tables: { Heading: [rows by column] }, checklists: { Heading: [{ text, checked }] }, text } | null
     what a text note held when it became an app: start from it once (in a batch), then keep everything in the store.
   localStorage works and is kept in the same store (so it syncs); sessionStorage lasts while the app is open; IndexedDB isn't available.

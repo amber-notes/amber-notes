@@ -1056,6 +1056,28 @@ import WebKit
         #expect(r == #"{"zod":true,"date":"5 Oct 2026","motion":true,"picker":true,"dialog":"true/true","later":"true/true"}"#, "\(r ?? "nil")")
     }
 
+    /// A change to an app's data from elsewhere: an AI's is announced with what was there before
+    /// (for its receipt and Undo); one of your devices' is taken quietly; the same data is no news.
+    @Test func dataFromAnAIIsAnnouncedWithWhatWasThere() {
+        #expect(SyncEngine.writer("Claude") == "Claude")
+        #expect(SyncEngine.writer("iPhone") == nil && SyncEngine.writer("Mac") == nil && SyncEngine.writer(nil) == nil)
+        let store = NotePageDataStore(file: nil)
+        let id = UUID()
+        let mine: NotePageData.Doc = ["values": [:], "collections": ["log": [["id": "a"], ["id": "b"], ["id": "c"]]]]
+        store.set(id, mine)
+        store.pushed(id, NotePageData.encode(mine))
+        let theirs: NotePageData.Doc = ["values": [:], "collections": ["log": [["id": "a"]]]]
+        store.take(id, server: NotePageData.encode(theirs), by: "Claude")
+        #expect(store.arrivals[id]?.by == "Claude")
+        #expect(((NotePageData.decode(store.arrivals[id]?.before)["collections"] as? [String: Any])?["log"] as? [Any])?.count == 3)
+        #expect(((store.doc(id)["collections"] as? [String: Any])?["log"] as? [Any])?.count == 1)
+        let at = store.arrivals[id]?.at
+        store.take(id, server: NotePageData.encode(theirs), by: "Claude")
+        #expect(store.arrivals[id]?.at == at, "nothing new")
+        store.take(id, server: NotePageData.encode(mine), by: nil)
+        #expect(store.arrivals[id]?.at == at, "your own device: quiet")
+    }
+
     @Test func projectsHaveLimitsAndMustBeCompiled() throws {
         func stored(_ files: [String: String], _ compiled: [String: String] = [:]) -> String {
             String(data: try! JSONSerialization.data(withJSONObject: ["amberApp": 1, "files": files, "compiled": compiled]), encoding: .utf8)!

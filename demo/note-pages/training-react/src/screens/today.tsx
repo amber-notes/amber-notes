@@ -4,7 +4,6 @@ import { toast } from "sonner"
 import { setSummary, useSettings } from "@/lib/amber"
 import { DAYS, DEFAULTS, today, weight, useTraining } from "@/lib/training"
 import { PageHeader } from "@/components/app-shell"
-import { SettingsButton } from "@/screens/settings-button"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -35,7 +34,7 @@ export default function Today() {
 
   return (
     <>
-      <PageHeader title="Today" subtitle={`${day.workout} · ${day.day === dayName ? "today" : day.day}`} action={<SettingsButton />} />
+      <PageHeader title="Today" subtitle={`${day.workout} · ${day.day === dayName ? "today" : day.day}`} />
       <Card className="gap-0 py-0">
         {day.exercises.map((name, i) => {
           const last = lastSet(name)

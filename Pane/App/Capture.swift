@@ -486,6 +486,25 @@ extension Capture {
                 if let (n, html) = split(arg) { NotePageStore.shared[n.id] = .init(html: html, by: by, at: .now) }
             }
         }
+        // `-aiDataRemove "Title=log:3"`: an AI removes the last 3 records of that collection
+        // through MCP while the app is open. Arrives as the server's copy would after a pull (what
+        // was here counts as synced first, as it would be after a push).
+        if let arg = argument("-aiDataRemove"), let eq = arg.firstIndex(of: "="), let colon = arg.lastIndex(of: ":") {
+            let title = String(arg[..<eq]), name = String(arg[arg.index(after: eq)..<colon]), count = Int(arg[arg.index(after: colon)...]) ?? 1
+            let delay = argument("-aiAfter").flatMap(Double.init) ?? 6
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                guard let n = note(title) else { return }
+                let store = NotePageDataStore.shared
+                var doc = store.doc(n.id)
+                store.pushed(n.id, NotePageData.encode(doc))
+                var collections = doc["collections"] as? NotePageData.Doc ?? [:]
+                var list = collections[name] as? [NotePageData.Doc] ?? []
+                list.removeLast(min(count, list.count))
+                collections[name] = list
+                doc["collections"] = collections
+                store.take(n.id, server: NotePageData.encode(doc), by: argument("-aiPageBy") ?? "Claude")
+            }
+        }
     }
 }
 

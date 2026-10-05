@@ -41,6 +41,7 @@ enum NotePageDevice {
         case "calendar.today": return try await today()
         case "notify": return try await notify(m)
         case "openURL": return try openURL(m)
+        case "share": return try await share(m)
         case "photos.pick": return try await pickPhotos(m, context: context)
         case "camera.take": return try await takePhoto(context: context)
         case "contacts.pick": return try await pickContact()
@@ -273,6 +274,42 @@ enum NotePageDevice {
         try? context.save()
         SyncSignal.changed()
         return ["$file": a.id.uuidString.lowercased(), "name": a.filename, "type": a.type.preferredMIMEType ?? "application/octet-stream", "size": a.size]
+    }
+
+    /// amber.device.share({ name, type, text | base64 }): an export (CSV, JSON, a picture) through the
+    /// share sheet on iPhone, or a Save panel on the Mac. Nothing leaves without the person choosing where.
+    @MainActor
+    static func share(_ m: [String: Any]) async throws -> [String: Any] {
+        let name = ((m["name"] as? String) ?? "Export.txt").replacingOccurrences(of: "/", with: "-").prefix(120)
+        let data: Data
+        if let t = m["text"] as? String { data = Data(t.utf8) }
+        else if let b = m["base64"] as? String, let d = Data(base64Encoded: b) { data = d }
+        else { throw NotePage.OpError("Send { name, text } or { name, base64 }.") }
+        guard data.count <= 50 * 1024 * 1024 else { throw NotePage.OpError("An export can be at most 50 MB.") }
+        #if os(iOS)
+        let dir = FileManager.default.temporaryDirectory.appending(path: "amber-export-\(UUID().uuidString)", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let url = dir.appending(path: String(name))
+        try data.write(to: url)
+        let shared: Bool = await withCheckedContinuation { c in
+            let sheet = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+            sheet.completionWithItemsHandler = { _, done, _, _ in
+                try? FileManager.default.removeItem(at: dir)
+                c.resume(returning: done)
+            }
+            guard let top = try? top() else { c.resume(returning: false); return }
+            sheet.popoverPresentationController?.sourceView = top.view
+            sheet.popoverPresentationController?.sourceRect = CGRect(x: top.view.bounds.midX, y: top.view.bounds.maxY - 40, width: 1, height: 1)
+            top.present(sheet, animated: true)
+        }
+        return ["shared": shared]
+        #else
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = String(name)
+        guard await panel.begin() == .OK, let url = panel.url else { return ["shared": false] }
+        try data.write(to: url, options: .atomic)
+        return ["shared": true]
+        #endif
     }
 
     #if os(iOS)

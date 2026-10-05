@@ -5,7 +5,6 @@ import { useSettings } from "@/lib/amber"
 import { DEFAULTS, today, weight, useTraining } from "@/lib/training"
 import { PageHeader } from "@/components/app-shell"
 import { StatCard } from "@/components/stat-card"
-import { SettingsButton } from "@/screens/settings-button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
@@ -21,7 +20,7 @@ export default function Progress() {
 
   return (
     <>
-      <PageHeader title="Progress" subtitle={`${sessions} sessions`} action={<SettingsButton />} />
+      <PageHeader title="Progress" subtitle={`${sessions} sessions`} />
       <div className="grid grid-cols-3 gap-3">
         <StatCard icon={CalendarCheck} value={sessions} label="sessions" />
         <StatCard icon={Flame} value={(sessions / weeks).toFixed(1)} label={`a week, goal ${goal}`} />

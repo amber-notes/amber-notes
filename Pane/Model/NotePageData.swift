@@ -196,6 +196,10 @@ final class NotePageDataStore {
     private(set) var docs: [UUID: Data] = [:]
     private(set) var synced: [UUID: Data] = [:]
     private(set) var dirty: Set<UUID> = []
+    /// The last change to an app's data that came from elsewhere (an AI through MCP, another
+    /// device): who, and the data before it, for "Claude changed this · Undo" in an open app.
+    struct Arrival: Equatable { var by: String; var at: Date; var before: Data? }
+    private(set) var arrivals: [UUID: Arrival] = [:]
     @ObservationIgnored private let file: URL?
 
     private struct Saved: Codable { var docs: [UUID: Data]; var synced: [UUID: Data]; var dirty: Set<UUID> }
@@ -222,7 +226,13 @@ final class NotePageDataStore {
     }
 
     /// The server's copy arrived. Changes made here since the last sync are merged in, not lost.
-    func take(_ id: UUID, server: Data?) {
+    func take(_ id: UUID, server: Data?, by: String? = nil) {
+        let before = docs[id]
+        defer {
+            if let by, !NotePageData.same(NotePageData.decode(before), doc(id)) {
+                arrivals[id] = Arrival(by: by, at: .now, before: before)
+            }
+        }
         let theirs = NotePageData.decode(server)
         if dirty.contains(id) {
             let merged = NotePageData.merge(base: NotePageData.decode(synced[id]), mine: doc(id), theirs: theirs)
