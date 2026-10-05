@@ -2,6 +2,9 @@
 # system libraries, browsers at /ms-playwright) with Deno. Built from the folder deploy.sh stages.
 FROM mcr.microsoft.com/playwright:v1.63.0-noble
 COPY --from=denoland/deno:bin-2.9.7 /deno /usr/local/bin/deno
+# Inter stands in for Apple's system font (fonts.conf), JetBrains Mono for ui-monospace.
+RUN apt-get update && apt-get install -y --no-install-recommends fonts-inter fonts-jetbrains-mono && rm -rf /var/lib/apt/lists/*
+COPY fonts.conf /etc/fonts/local.conf
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright DENO_DIR=/deno-dir DENO_NO_UPDATE_CHECK=1
 WORKDIR /app
 COPY . .

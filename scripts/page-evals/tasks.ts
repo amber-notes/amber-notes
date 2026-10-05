@@ -316,7 +316,8 @@ const RUNS_TRACKER = `Runs
 `;
 
 
-const KEY = "7d3f0a9c2b4e6f8a1c3e5d7b9f0a2c4e";
+// A made-up key (not a real OpenWeather or any other key) for the pasted-key task. gitleaks:allow
+const KEY = "7d3f0a9c2b4e6f8a1c3e5d7b9f0a2c4e"; // fake
 const WEATHER_KEY_PAGE = `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="amber-needs" content='{"keys":[{"name":"OpenWeather","hosts":["api.openweathermap.org"],"query":"appid={key}","help":"Make a free key at openweathermap.org, under My API keys."}]}'>
 <style>main{max-width:var(--amber-content-max);margin:0 auto;padding:20px var(--amber-gutter)}.card{background:var(--amber-surface);border-radius:var(--amber-radius);padding:16px}.muted{color:var(--amber-text-secondary)}</style></head>

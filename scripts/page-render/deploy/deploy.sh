@@ -12,7 +12,7 @@ cp -R "$root/scripts/page-render/vendor" "$stage/scripts/page-render/"
 for f in amber-base.ts data_ops.ts libraries.ts notes.ts page.ts page_input.ts; do cp "$root/supabase/functions/mcp/$f" "$stage/supabase/functions/mcp/"; done
 cp -R "$root/Pane/Resources/AppLibraries" "$stage/Pane/Resources/"
 mkdir -p "$stage/scripts/page-render/.libcache"
-cp "$root/scripts/page-render/deploy/Dockerfile" "$root/scripts/page-render/deploy/railway.json" "$stage/"
+cp "$root/scripts/page-render/deploy/Dockerfile" "$root/scripts/page-render/deploy/railway.json" "$root/scripts/page-render/deploy/fonts.conf" "$stage/"
 # railway links this folder to the project; the upload is the staged folder.
 cd "$root/scripts/page-render/deploy"
 railway up "$stage" --path-as-root --ci --service amber-render
