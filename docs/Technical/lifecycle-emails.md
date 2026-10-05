@@ -93,7 +93,7 @@ explains something, it goes inside the note as proof. On a phone the "From Emil"
 Paper-cut pictures (`web/public/email/hero-*.jpg`): stuck, import, try, undo, sorting and templates
 are cut from the template covers in `web/public/templates/covers/`; connect, apps, iPhone, Mac and
 share were made for these emails in the same style (prompts and the candidates in
-`~/content-tools/projects/amber-emails/art`, outside this repository).
+`~/content-tools/projects/amber-emails-art`, outside this repository).
 
 Real captures inside the note:
 
