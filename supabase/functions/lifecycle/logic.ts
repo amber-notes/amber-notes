@@ -1,7 +1,7 @@
 // The lifecycle emails' decisions, without a database or a network: who gets which email and when,
 // the unsubscribe links, and the settings. docs/Technical/lifecycle-emails.md explains the whole.
 
-export type Kind = "stuck" | "ai_sort" | "ai_groceries" | "ai_meeting" | "templates" | "undo";
+export type Kind = "stuck" | "import" | "connect" | "try" | "undo" | "apps" | "templates" | "iphone" | "share";
 
 /// What lifecycle_facts() says about one account. Activity only, never what a note says.
 export type Facts = {
@@ -12,60 +12,90 @@ export type Facts = {
   note_count: number;
   /// The account used Bring your notes (pane_setup.imported_at).
   imported: boolean;
-  /// When the first AI was connected (mcp_tokens), or null.
+  /// Devices the app has been opened on (pane_devices).
+  on_mac: boolean;
+  on_iphone: boolean;
+  /// When the first AI was connected (mcp_tokens, OAuth grants included), or null.
   ai_connected_at: Date | null;
-  /// An AI connection was asked for from a browser but never finished (connect_asks, no grant).
+  /// An AI connection was asked for from a browser and is still waiting (connect_asks).
   connect_tried: boolean;
   /// Days on which an AI changed a note (pane_activity).
   ai_edit_days: number;
+  /// pane_feature_use: version history opened, a template added, an app note made, a note shared.
   history_opened: boolean;
+  used_template: boolean;
+  has_app: boolean;
+  shared: boolean;
   unsubscribed: boolean;
   last_sent_at: Date | null;
+  /// Every email row the account has, sent or failed.
   sent: string[];
 };
+
+/// Emails for features that haven't shipped wait behind these (env APPS_LIVE, APP_STORE_LIVE,
+/// SHARING_LIVE, each "true" to turn on).
+export type Flags = { apps: boolean; appStore: boolean; sharing: boolean };
+export const NO_FLAGS: Flags = { apps: false, appStore: false, sharing: false };
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
 
-/// At most one email in any seven days, whatever the step.
-export const GAP_MS = 7 * DAY;
-/// No email goes to an account older than this.
-export const LAST_DAY_MS = 45 * DAY;
-
-/// The app's own setup card has three steps (Pane/Views/SetupCard.swift): Bring your notes,
-/// Connect your AI, Try it. The emails follow the same steps, one email at a time:
-///
-///   no note yet          → stuck (once, from a day after sign-up)
-///   notes, no AI         → one AI use case per email, each with the way to connect, until an AI
-///                          is connected (then the rest are never sent)
-///   an AI is connected   → templates (until the AI has edited notes on 3 days), then Undo and
-///                          version history (until history has been opened)
-export const AI_SERIES: Kind[] = ["ai_groceries", "ai_meeting", "ai_sort"];
-
-/// A big library goes first to sorting it: that's the use case it can see at once.
-export function aiOrder(f: Facts): Kind[] {
-  return f.imported || f.note_count >= 20 ? ["ai_sort", "ai_groceries", "ai_meeting"] : AI_SERIES;
+/// Spacing: at least 3 days apart in the first 10 days after sign-up, then at least 7.
+export function gapAfter(age: number): number {
+  return age <= 10 * DAY ? 3 * DAY : 7 * DAY;
 }
+/// Nothing automatic after the first 30 days, and at most 6 emails in them.
+export const LAST_DAY_MS = 30 * DAY;
+export const MAX_EMAILS = 6;
+
+type Rung = {
+  kind: Kind;
+  /// Whether this rung is for the account at all (its flag is on, it has the device, and so on).
+  for: (f: Facts, flags: Flags) => boolean;
+  /// Done: the email is never sent.
+  done: (f: Facts) => boolean;
+  /// Not before this moment.
+  ready: (f: Facts, now: Date) => boolean;
+};
+
+const after = (f: Facts, now: Date, ms: number) => now.getTime() - f.signed_up_at.getTime() >= ms;
+
+/// The next-step ladder. Each round an account gets the first rung it hasn't done and hasn't been
+/// sent. The app's own setup card (Pane/Views/SetupCard.swift: Bring your notes, Connect your AI,
+/// Try it) is rungs 1 to 4.
+export const LADDER: Rung[] = [
+  // 1. Signed in, no note a day later.
+  { kind: "stuck", for: () => true, done: (f) => f.note_count > 0, ready: (f, n) => after(f, n, DAY) },
+  // 2. A few notes on a Mac that never imported: Bring your Apple Notes over.
+  { kind: "import", for: (f) => f.on_mac, done: (f) => f.imported || f.note_count >= 5, ready: (f, n) => after(f, n, 12 * HOUR) },
+  // 3. No AI connected: one concrete use case and the way to connect.
+  { kind: "connect", for: () => true, done: (f) => f.ai_connected_at !== null, ready: (f, n) => after(f, n, 12 * HOUR) },
+  // 4. Connected a day ago, no AI edit yet: three prompts to paste.
+  { kind: "try", for: (f) => f.ai_connected_at !== null, done: (f) => f.ai_edit_days > 0,
+    ready: (f, n) => f.ai_connected_at !== null && n.getTime() - f.ai_connected_at.getTime() >= DAY },
+  // 4b. After the first AI edit: Undo and version history.
+  { kind: "undo", for: (f) => f.ai_edit_days > 0, done: (f) => f.history_opened, ready: () => true },
+  // 5. Apps in notes (when they ship).
+  { kind: "apps", for: (_f, flags) => flags.apps, done: (f) => f.has_app, ready: () => true },
+  // 6. Templates, until one is used.
+  { kind: "templates", for: () => true, done: (f) => f.used_template, ready: (f, n) => after(f, n, 3 * DAY) },
+  // 7. Only on the Mac (when the iPhone app is in the App Store).
+  { kind: "iphone", for: (f, flags) => flags.appStore && f.on_mac && !f.on_iphone, done: (f) => f.on_iphone, ready: () => true },
+  // 8. Three weeks on their own (when sharing with people ships).
+  { kind: "share", for: (_f, flags) => flags.sharing, done: (f) => f.shared, ready: (f, n) => after(f, n, 21 * DAY) },
+];
 
 /// The email this account should get now, or null.
-export function decide(f: Facts, now: Date): Kind | null {
+export function decide(f: Facts, now: Date, flags: Flags = NO_FLAGS): Kind | null {
   if (f.unsubscribed || !f.email) return null;
-  if (f.last_sent_at && now.getTime() - f.last_sent_at.getTime() < GAP_MS) return null;
   const age = now.getTime() - f.signed_up_at.getTime();
-  if (age > LAST_DAY_MS) return null;
-  const unsent = (k: Kind) => !f.sent.includes(k);
-
-  if (f.note_count === 0) return age >= DAY && age <= 10 * DAY && unsent("stuck") ? "stuck" : null;
-
-  if (!f.ai_connected_at) {
-    if (age < 12 * HOUR) return null;
-    return aiOrder(f).find(unsent) ?? null;
+  if (age > LAST_DAY_MS || f.sent.length >= MAX_EMAILS) return null;
+  if (f.last_sent_at && now.getTime() - f.last_sent_at.getTime() < gapAfter(age)) return null;
+  for (const rung of LADDER) {
+    if (f.sent.includes(rung.kind) || !rung.for(f, flags) || rung.done(f)) continue;
+    // The first rung that's due but not ready yet waits: nothing further up the ladder jumps it.
+    return rung.ready(f, now) ? rung.kind : null;
   }
-
-  // Connected: give the AI a day before suggesting what to do with it.
-  if (now.getTime() - f.ai_connected_at.getTime() < DAY) return null;
-  if (unsent("templates") && f.ai_edit_days < 3) return "templates";
-  if (unsent("undo") && !f.history_opened) return "undo";
   return null;
 }
 
@@ -108,6 +138,7 @@ export type Env = { get(name: string): string | undefined };
 export type Config = {
   /// Nothing is sent unless LIFECYCLE_ENABLED is exactly "true".
   enabled: boolean;
+  flags: Flags;
   /// Accounts made before this never get these emails (LIFECYCLE_SINCE, an ISO date).
   since: Date;
   /// When set (LIFECYCLE_ONLY, comma-separated account ids), only these accounts get email: for a
@@ -127,7 +158,8 @@ export const SITE = "https://ambernotes.app";
 
 /// The settings, or why there are none. Missing secrets turn sending off rather than failing later.
 export function config(env: Env): { ok: true; config: Config } | { ok: false; reason: string } {
-  const enabled = (env.get("LIFECYCLE_ENABLED") ?? "").trim() === "true";
+  const on = (name: string) => (env.get(name) ?? "").trim() === "true";
+  const enabled = on("LIFECYCLE_ENABLED");
   const sinceRaw = (env.get("LIFECYCLE_SINCE") ?? "").trim();
   const since = new Date(sinceRaw);
   const resendKey = (env.get("RESEND_LIFECYCLE_KEY") ?? "").trim();
@@ -142,6 +174,7 @@ export function config(env: Env): { ok: true; config: Config } | { ok: false; re
     ok: true,
     config: {
       enabled, since, resendKey, unsubscribeSecret, cronSecret,
+      flags: { apps: on("APPS_LIVE"), appStore: on("APP_STORE_LIVE"), sharing: on("SHARING_LIVE") },
       only: onlyRaw.length ? new Set(onlyRaw) : null,
       from: env.get("LIFECYCLE_FROM")?.trim() || FROM,
       replyTo: REPLY_TO,

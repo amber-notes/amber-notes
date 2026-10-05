@@ -1,15 +1,15 @@
 // One round of lifecycle emails: read the activity, decide, claim, send, record.
 //
 // Never twice: before an email goes out, its row in email_sends is written (unique per account and
-// email) inside a transaction that also takes a per-account lock and checks the seven-day gap
+// email) inside a transaction that also takes a per-account lock and checks the spacing and the cap
 // again, so two rounds at once can't both send. A row is only removed again when Resend says
 // "too many requests", which means it took nothing; any other failure keeps the row, so an email
 // whose fate is unknown is never sent a second time. Resend also gets an idempotency key per
-// account and email. A failed email counts toward the seven-day gap too, so a bad address isn't
+// account and email. A failed email counts toward the spacing and the cap too, so a bad address isn't
 // tried with the next email the same day.
 import type { Sql } from "npm:postgres@3.4.5";
 import { render } from "./emails.ts";
-import { type Config, decide, type Facts, GAP_MS, type Kind, unsubscribeLinks, unsubscribeToken } from "./logic.ts";
+import { type Config, decide, type Facts, gapAfter, type Kind, MAX_EMAILS, unsubscribeLinks, unsubscribeToken } from "./logic.ts";
 
 export type Message = {
   from: string;
@@ -40,17 +40,19 @@ const asFacts = (r: Row): Facts => ({
 
 /// Claims the email for the account, or says it can't go (already sent, sent something within the
 /// gap, unsubscribed meanwhile). Returns the row's id.
-async function claim(sql: Sql, userId: string, kind: Kind, now: Date): Promise<number | null> {
+async function claim(sql: Sql, f: Facts, kind: Kind, now: Date): Promise<number | null> {
+  const userId = f.user_id;
   return await sql.begin(async (tx) => {
     const t = tx as unknown as Sql;
     await t`select pg_advisory_xact_lock(hashtext(${"lifecycle:" + userId}))`;
-    const since = new Date(now.getTime() - GAP_MS);
+    const since = new Date(now.getTime() - gapAfter(now.getTime() - f.signed_up_at.getTime()));
     const [row] = await t<{ id: number }[]>`
       insert into public.email_sends (user_id, kind)
       select ${userId}::uuid, ${kind}
       where not exists (select 1 from public.email_unsubscribes x where x.user_id = ${userId}::uuid)
         and not exists (select 1 from public.email_sends s where s.user_id = ${userId}::uuid
                         and s.created_at > ${since})
+        and (select count(*) from public.email_sends s where s.user_id = ${userId}::uuid) < ${MAX_EMAILS}
       on conflict (user_id, kind) do nothing
       returning id`;
     return row ? Number(row.id) : null;
@@ -64,14 +66,14 @@ export async function run({ sql, send, cfg, now = new Date(), pause = (ms: numbe
   report.accounts = rows.length;
   for (const r of rows) {
     const f = asFacts(r);
-    const kind = decide(f, now);
+    const kind = decide(f, now, cfg.flags);
     if (!kind || !f.email) continue;
     if (cfg.only && !cfg.only.has(f.user_id.toLowerCase())) continue;
     report.due[kind] = (report.due[kind] ?? 0) + 1;
     // The kill switch: with sending off, a round only counts what would go.
     if (!cfg.enabled) continue;
 
-    const id = await claim(sql, f.user_id, kind, now);
+    const id = await claim(sql, f, kind, now);
     if (id === null) continue;
     const links = unsubscribeLinks(cfg.site, f.user_id, await unsubscribeToken(cfg.unsubscribeSecret, f.user_id));
     const email = render(kind, { site: cfg.site, assets: `${cfg.site}/email`, unsubscribe: links.page, noteCount: f.note_count, imported: f.imported, connectTried: f.connect_tried });

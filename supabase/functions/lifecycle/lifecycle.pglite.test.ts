@@ -13,7 +13,7 @@ const NOW = new Date();
 const at = (ms: number) => new Date(NOW.getTime() + ms);
 
 const cfg = (o: Partial<Config> = {}): Config => ({
-  enabled: true, since: at(-60 * D), only: null, resendKey: "re_test", unsubscribeSecret: "u".repeat(40), cronSecret: "c".repeat(40),
+  enabled: true, flags: { apps: false, appStore: false, sharing: false }, since: at(-60 * D), only: null, resendKey: "re_test", unsubscribeSecret: "u".repeat(40), cronSecret: "c".repeat(40),
   from: "Emil at Amber Notes <emil@ambernotes.app>", replyTo: "emil@ambernotes.app", site: "https://ambernotes.app", ...o,
 });
 
@@ -23,97 +23,127 @@ function outbox(answer: (m: Message) => SendResult = () => ({ ok: true, id: cryp
   return { sent, send: async (m: Message) => { sent.push(m); return answer(m); } };
 }
 
-async function person(pg: PGlite, o: { age: number; notes?: number; ai?: boolean; aiEdit?: boolean; history?: boolean }) {
+type Person = { age: number; notes?: number; mac?: boolean; iphone?: boolean; imported?: boolean; ai?: number; aiEdit?: boolean; history?: boolean; template?: boolean };
+
+/// An account `age` ms old, with what it has done. `ai` is how long ago an AI was connected.
+async function person(pg: PGlite, o: Person) {
   const a = await account(pg);
   await pg.query(`update auth.users set created_at = $2 where id = $1`, [a.id, at(-o.age)]);
   for (let i = 0; i < (o.notes ?? 0); i++) await note(pg, a, `Note ${i}\n\nSomething private.`);
-  if (o.ai) await pg.query(`insert into public.mcp_tokens (user_id, name, token_hash) values ($1, 'ChatGPT', $2)`, [a.id, crypto.randomUUID()]);
+  if (o.mac) await pg.query(`insert into public.pane_devices (user_id, device_id, platform) values ($1, gen_random_uuid(), 'macos')`, [a.id]);
+  if (o.iphone) await pg.query(`insert into public.pane_devices (user_id, device_id, platform) values ($1, gen_random_uuid(), 'ios')`, [a.id]);
+  if (o.imported) await pg.query(`insert into public.pane_setup (user_id, imported_at) values ($1, now())`, [a.id]);
+  if (o.ai !== undefined) await pg.query(`insert into public.mcp_tokens (user_id, name, token_hash, created_at) values ($1, 'ChatGPT', $2, $3)`, [a.id, crypto.randomUUID(), at(-o.ai)]);
   if (o.aiEdit) await pg.query(`insert into public.pane_activity (user_id, day, kind, n) values ($1, current_date, 'ai_edit', 1)`, [a.id]);
   if (o.history) await pg.query(`insert into public.pane_feature_use (user_id, feature) values ($1, 'versionHistory')`, [a.id]);
+  if (o.template) await pg.query(`insert into public.pane_feature_use (user_id, feature) values ($1, 'template')`, [a.id]);
   const email = (await pg.query<{ email: string }>(`select email from auth.users where id = $1`, [a.id])).rows[0].email;
   return { id: a.id, email, account: a };
 }
 
 const rows = async (pg: PGlite) => (await pg.query<{ user_id: string; kind: string; status: string }>(`select user_id, kind, status from public.email_sends order by id`)).rows;
 const quick = { pause: async () => {} };
+const kinds = (box: { sent: Message[] }) => box.sent.map((m) => m.subject);
+/// Moves every email row back in time, as if the days between rounds had passed.
+const age = (pg: PGlite, days: number) => pg.query(`update public.email_sends set created_at = created_at - make_interval(days => $1)`, [days]);
+
+const S = {
+  stuck: "Did something go wrong after signing in?",
+  import: "Bring your Apple Notes over",
+  connect: "Your grocery list, kept by ChatGPT",
+  try: "Three things to ask your AI first",
+  undo: "Every AI edit comes with Undo",
+  templates: "Three notes your AI can keep for you",
+};
 
 Deno.test("kill switch off: a round sends nothing and writes nothing, only counts", async () => {
   const pg = await schemaDB();
-  await person(pg, { age: 2 * D, notes: 1 });
+  await person(pg, { age: 2 * D, notes: 1, mac: true });
   await person(pg, { age: 2 * D });
   const box = outbox();
   const report = await run({ sql: sqlFor(pg), send: box.send, cfg: cfg({ enabled: false }), ...quick });
   assertEquals(box.sent.length, 0);
   assertEquals(await rows(pg), []);
-  assertEquals(report.due, { ai_groceries: 1, stuck: 1 });
+  assertEquals(report.due, { import: 1, stuck: 1 });
   assertEquals(report.sent, 0);
 });
 
-Deno.test("never sends twice: a second round, and two rounds at once, send each email once", async () => {
+Deno.test("never sends twice: a second round, and rounds at once, send each email once", async () => {
   const pg = await schemaDB();
-  const sara = await person(pg, { age: 2 * D, notes: 2 });
+  const sara = await person(pg, { age: 2 * D, notes: 2, mac: true });
   const box = outbox();
   await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), ...quick });
   await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), ...quick });
   await Promise.all([1, 2, 3].map(() => run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), ...quick })));
-  assertEquals(box.sent.length, 1);
+  assertEquals(kinds(box), [S.import]);
   assertEquals(box.sent[0].to, sara.email);
-  assertEquals(box.sent[0].idempotencyKey, `lifecycle-ai_groceries-${sara.id}`);
-  assertEquals((await rows(pg)).map((r) => [r.kind, r.status]), [["ai_groceries", "sent"]]);
-  // Even a row from long ago keeps that email from going again.
-  await pg.query(`update public.email_sends set created_at = now() - interval '20 days'`);
-  await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), now: at(1 * D), ...quick });
-  assertEquals(box.sent.filter((m) => m.subject === box.sent[0].subject).length, 1);
+  assertEquals(box.sent[0].idempotencyKey, `lifecycle-import-${sara.id}`);
+  // Even long after, the same rung is never sent again: the next round moves up the ladder.
+  await age(pg, 20);
+  await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), ...quick });
+  assertEquals(kinds(box), [S.import, S.connect]);
 });
 
-Deno.test("stops when its goal is met: no AI use cases once an AI is connected, then templates and Undo", async () => {
+Deno.test("the ladder, a Mac account that does nothing: stuck, import, connect, templates, 3 days apart", async () => {
   const pg = await schemaDB();
-  const done = await person(pg, { age: 2 * D, notes: 1 });
-  await pg.query(`insert into public.mcp_tokens (user_id, name, token_hash, created_at) values ($1, 'ChatGPT', $2, now() - interval '30 hours')`, [done.id, crypto.randomUUID()]);
+  const a = await person(pg, { age: 26 * H, mac: true });
   const box = outbox();
-  await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), ...quick });
-  assertEquals(box.sent.map((m) => m.subject), ["Three notes your AI can keep for you"]);
-  // The AI edits on three days: no more templates goal; a week on, Undo. Once history is opened, nothing.
-  await pg.query(`insert into public.pane_activity (user_id, day, kind, n) select $1, current_date - g, 'ai_edit', 1 from generate_series(0, 2) g`, [done.id]);
-  await pg.query(`update public.email_sends set created_at = created_at - interval '8 days'`);
-  await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), now: at(1 * D), ...quick });
-  assertEquals(box.sent.map((m) => m.subject), ["Three notes your AI can keep for you", "Every AI edit comes with Undo"]);
+  const round = async (now = NOW) => await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), now, ...quick });
+  await round();
+  await round(at(2 * D));
+  assertEquals(kinds(box), [S.stuck]);
+  await note(pg, a.account, "First");
+  await round(at(3 * D + H));
+  assertEquals(kinds(box), [S.stuck, S.import]);
+  await round(at(6 * D + 2 * H));
+  assertEquals(kinds(box), [S.stuck, S.import, S.connect]);
+  await round(at(9 * D + 3 * H));
+  assertEquals(kinds(box), [S.stuck, S.import, S.connect, S.templates]);
 });
 
-Deno.test("an account that connects mid-series gets no more use cases", async () => {
+Deno.test("stops at the goal: connecting skips connect; the first AI edit skips Try this first", async () => {
   const pg = await schemaDB();
-  const a = await person(pg, { age: 1 * D, notes: 2 });
+  const a = await person(pg, { age: 2 * D, notes: 6, ai: 30 * H });
   const box = outbox();
   await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), ...quick });
-  assertEquals(box.sent.map((m) => m.subject), ["Your grocery list, kept by ChatGPT"] );
-  await pg.query(`insert into public.mcp_tokens (user_id, name, token_hash) values ($1, 'Claude', $2)`, [a.id, crypto.randomUUID()]);
-  await pg.query(`update public.email_sends set created_at = created_at - interval '8 days'`);
-  const report = await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), ...quick });
-  assertEquals([box.sent.length, report.due], [1, {}]);
+  assertEquals(kinds(box), [S.try]);
+  await pg.query(`insert into public.pane_activity (user_id, day, kind, n) values ($1, current_date, 'ai_edit', 1)`, [a.id]);
+  await age(pg, 3);
+  await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), ...quick });
+  assertEquals(kinds(box), [S.try, S.undo]);
+  await pg.query(`insert into public.pane_feature_use (user_id, feature) values ($1, 'versionHistory'), ($1, 'template')`, [a.id]);
+  await age(pg, 3);
+  const report = await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), now: at(2 * D), ...quick });
+  assertEquals([box.sent.length, report.due], [2, {}]);
 });
 
-Deno.test("an imported library of many notes starts with the sorting email, with its number", async () => {
+Deno.test("flags: the apps email waits for APPS_LIVE", async () => {
   const pg = await schemaDB();
-  const a = await person(pg, { age: 1 * D, notes: 21 });
+  await person(pg, { age: 4 * D, notes: 6, ai: 3 * D, aiEdit: true, history: true, template: true });
+  const off = outbox(), on = outbox();
+  await run({ sql: sqlFor(pg), send: off.send, cfg: cfg(), ...quick });
+  assertEquals(off.sent.length, 0);
+  await run({ sql: sqlFor(pg), send: on.send, cfg: cfg({ flags: { apps: true, appStore: false, sharing: false } }), ...quick });
+  assertEquals(kinds(on), ["Your notes can be apps"]);
+});
+
+Deno.test("at most 6 emails, even with every rung open", async () => {
+  const pg = await schemaDB();
+  const a = await person(pg, { age: 25 * D, notes: 1, mac: true, ai: 20 * D });
+  await pg.query(`insert into public.email_sends (user_id, kind, status, created_at) select $1, k, 'sent', now() - interval '20 days'
+    from unnest(array['stuck', 'import', 'connect', 'try', 'apps', 'iphone']) k`, [a.id]);
+  const box = outbox();
+  await run({ sql: sqlFor(pg), send: box.send, cfg: cfg({ flags: { apps: true, appStore: true, sharing: true } }), ...quick });
+  assertEquals(box.sent.length, 0);
+});
+
+Deno.test("a big imported library gets the sorting example, with its number", async () => {
+  const pg = await schemaDB();
+  await person(pg, { age: 1 * D, notes: 21, imported: true });
   const box = outbox();
   await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), ...quick });
-  assertEquals(box.sent.map((m) => m.subject), ["Let ChatGPT sort your notes into folders"]);
+  assertEquals(kinds(box), ["Let ChatGPT sort your notes into folders"]);
   assertStringIncludes(box.sent[0].text, "21 notes");
-  assertEquals(box.sent[0].to, a.email);
-});
-
-Deno.test("the stuck email goes to an account with no note after a day, and not once a note has arrived", async () => {
-  const pg = await schemaDB();
-  const empty = await person(pg, { age: 30 * H });
-  const started = await person(pg, { age: 30 * H });
-  await note(pg, started.account, "First note");
-  const box = outbox();
-  await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), ...quick });
-  // The account with a note gets the next step instead.
-  assertEquals(box.sent.map((m) => [m.to, m.subject]).sort(), [
-    [empty.email, "Did something go wrong after signing in?"],
-    [started.email, "Your grocery list, kept by ChatGPT"],
-  ].sort());
 });
 
 Deno.test("respects unsubscribe: nothing after it, from the link or the header", async () => {
@@ -127,19 +157,6 @@ Deno.test("respects unsubscribe: nothing after it, from the link or the header",
   assertEquals(report.due, {});
 });
 
-Deno.test("one email a week: the second use case waits for the gap, then goes", async () => {
-  const pg = await schemaDB();
-  await person(pg, { age: 1 * D, notes: 1 });
-  const box = outbox();
-  await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), ...quick });
-  await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), now: at(2 * D), ...quick });
-  await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), now: at(6 * D + 23 * H), ...quick });
-  assertEquals(box.sent.map((m) => m.subject), ["Your grocery list, kept by ChatGPT"]);
-  await pg.query(`update public.email_sends set created_at = created_at - interval '7 days 1 minute'`);
-  await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), now: at(7 * D), ...quick });
-  assertEquals(box.sent.map((m) => m.subject), ["Your grocery list, kept by ChatGPT", "Turn a messy note into a to-do list"]);
-});
-
 Deno.test("accounts made before LIFECYCLE_SINCE, and accounts not on LIFECYCLE_ONLY, get nothing", async () => {
   const pg = await schemaDB();
   await person(pg, { age: 2 * D, notes: 1 });
@@ -147,6 +164,12 @@ Deno.test("accounts made before LIFECYCLE_SINCE, and accounts not on LIFECYCLE_O
   await run({ sql: sqlFor(pg), send: box.send, cfg: cfg({ since: at(-1 * D) }), ...quick });
   await run({ sql: sqlFor(pg), send: box.send, cfg: cfg({ only: new Set(["00000000-0000-0000-0000-000000000000"]) }), ...quick });
   assertEquals(box.sent.length, 0);
+});
+
+Deno.test("the apps can now record a template added and an app made", async () => {
+  const pg = await schemaDB();
+  const a = await person(pg, { age: 1 * D });
+  await pg.query(`insert into public.pane_feature_use (user_id, feature) values ($1, 'template'), ($1, 'appNote')`, [a.id]);
 });
 
 Deno.test("each email carries an unsubscribe link and the one-click headers", async () => {

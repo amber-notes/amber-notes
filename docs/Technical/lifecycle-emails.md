@@ -1,43 +1,47 @@
 # Onboarding emails
 
-Short emails to new accounts from Emil, following the app's own setup card
-(`Pane/Views/SetupCard.swift`: Bring your notes, Connect your AI, Try it). Built on
-`feat/lifecycle-emails`; nothing is sent until the function is deployed, its secrets are set and
-`LIFECYCLE_ENABLED` is `true`. They come from `Emil at Amber Notes <emil@ambernotes.app>`, and
-replies go to the same address.
+Short emails from Emil to new accounts, as a next-step ladder. Built on `feat/lifecycle-emails`;
+nothing is sent until the function is deployed, its secrets are set and `LIFECYCLE_ENABLED` is
+`true`. They come from `Emil at Amber Notes <emil@ambernotes.app>`, and replies go to emil@.
 
-Which email an account gets depends on where it is in setup:
+Each round, an account gets the first rung it hasn't done and hasn't been sent. Every email goes
+once at most, and is never sent once its step is done. A rung that applies but isn't ready yet (too
+soon after sign-up or after connecting) holds the ladder: nothing further up jumps it.
 
-| Where the account is | Email | Subject | Never sent once |
-| --- | --- | --- | --- |
-| No note, 1 to 10 days after sign-up | `stuck` | Did something go wrong after signing in? | it has a note |
-| Notes, no AI connected | `ai_groceries` | Your grocery list, kept by ChatGPT | an AI is connected |
-| | `ai_meeting` | Turn a messy note into a to-do list | an AI is connected |
-| | `ai_sort` | Let ChatGPT sort your notes into folders | an AI is connected |
-| AI connected (a day after) | `templates` | Three notes your AI can keep for you | an AI edited notes on 3 days |
-| | `undo` | Every AI edit comes with Undo | version history was opened |
+| # | Email | For | Never sent once | Flag |
+| --- | --- | --- | --- | --- |
+| 1 | `stuck` | no note, a day after sign-up | a note exists | |
+| 2 | `import` | Mac, fewer than 5 notes, never imported (from 12 h) | imported, or 5+ notes | |
+| 3 | `connect` | no AI connected (from 12 h); sorting for an imported or 20+ note library, a grocery list otherwise | an AI is connected | |
+| 4 | `try` | AI connected a day ago, no AI edit: three prompts to paste | an AI edited a note | |
+| 4b | `undo` | after the first AI edit | version history opened | |
+| 5 | `apps` | no app note | `appNote` used | `APPS_LIVE` |
+| 6 | `templates` | from day 3 | `template` used | |
+| 7 | `iphone` | Mac only | an iPhone install | `APP_STORE_LIVE` |
+| 8 | `share` | 3+ weeks in | `shareLink` used | `SHARING_LIVE` |
 
-The three AI emails each show one real before/after (made-up notes, but only what the MCP tools do
-today: `append_to_note` and `set_checklist_item`, `edit_note`, `create_folder` and `move_note`),
-the setup card's three steps with the first one ticked, and both ways to connect: Settings, Connect
-an AI, ChatGPT in the app, or Claude's directory. An account that imported or has 20+ notes gets
-the sorting email first, with its note count in the title. An account whose connection was started
-from a browser but not finished in the last day or so (`connect_asks`, which expire) gets one more
-line on the last step: typing the number on the iPhone or Mac.
+Spacing: at least 3 days apart in the first 10 days after sign-up, then at least 7. At most 6 emails,
+all within the first 30 days; nothing automatic after that. Accounts made before `LIFECYCLE_SINCE`
+get nothing.
 
-At most one email in any seven days, and none after 45 days. Someone who never connects gets the
-three AI emails on about days 1, 8 and 15; someone who connects stops getting them at once, and
-gets templates a day after connecting, then Undo a week later. Accounts made before
-`LIFECYCLE_SINCE` get nothing.
+The migration adds `template` and `appNote` to `pane_feature_use`. The apps don't report either
+yet: until the app calls `pane_feature_used('template')` when it adds a template from a link,
+every account reaching rung 6 gets the templates email once. The `apps` and `share` words must be
+checked against the shipped features before their flags go on.
+
+The `connect` email's examples use only what the MCP tools do today (`append_to_note`,
+`set_checklist_item`, `create_folder`, `move_note`); `try`'s prompts use `search_notes`,
+`create_note`, `append_to_note` and `edit_note`. An account whose browser connection is waiting
+(`connect_asks`, which expire) gets a last line on typing the number.
 
 ## What decides, and what it never reads
 
 `public.lifecycle_facts(since)` (migration `20261006090000_lifecycle_emails.sql`) gives, per
 account: the address, the sign-up time, the number of notes (`count(*)` on `notes.user_id`, never a
-column of the note), whether it imported (`pane_setup.imported_at`), when an AI was first connected
-(`mcp_tokens`, which also holds OAuth grants), whether a connection is waiting
-(`connect_asks`), on how many days an AI edited (`pane_activity`), whether version history was
-opened (`pane_feature_use`), plus what was already sent and whether the account said stop. A test
+column of the note), whether it imported (`pane_setup.imported_at`), its device kinds
+(`pane_devices`), when an AI was first connected (`mcp_tokens`, OAuth grants included), whether a
+connection is waiting (`connect_asks`), on how many days an AI edited (`pane_activity`), the
+features it used (`pane_feature_use`), what was already sent and whether it said stop. A test
 checks the function's definition for note columns.
 
 ## How a round works
@@ -53,7 +57,7 @@ The function (`supabase/functions/lifecycle/`):
 - `run.ts`: for each account due an email, claims it in `email_sends` inside a transaction with a
   per-account advisory lock that re-checks the gap and unsubscribes, then sends through Resend with
   an idempotency key, then records the outcome. A refused or unanswered send keeps its row, is
-  never retried and counts toward the seven-day gap; only 429 (Resend took nothing) removes the row
+  never retried and counts toward the spacing and the limit; only 429 (Resend took nothing) removes the row
   so the next round tries again.
 - `index.ts`: `POST /lifecycle` (the round) and `POST /lifecycle/unsubscribe?u=&t=`.
 
@@ -77,18 +81,38 @@ bulk senders. `t` is an HMAC of the account id under `LIFECYCLE_UNSUBSCRIBE_SECR
 A reply saying "stop" is handled by hand: add the account to `email_unsubscribes` with source
 `link`.
 
-## The emails
+## The emails, and real mail apps
 
-Each is a note in an Amber Notes window on the site's cream page, the way the 404 and template
-pages draw notes, under a paper-cut picture from the template covers (`web/public/email/`, made from
-`web/public/templates/covers/`). Tables and inline styles, the mark and Emil's photo as images,
-a VML button for classic Outlook, dark mode through `prefers-color-scheme` (Apple Mail, Outlook for
-Mac and iOS) and `[data-ogsc]` (Outlook.com), a plain-text twin, each HTML under 25 KB. The pictures
-are served from `https://ambernotes.app/email/`, so the site deploy that adds them must go out
-before the first email.
+Each email is a note in an Amber Notes window on the cream page, as the 404 and template pages
+draw notes, under a paper-cut picture cut from the template covers (`web/public/email/`). On a
+phone (480 px and narrower) the card gets more inner padding, looser lines and checklist rows, and
+loses the "From Emil" line. The pictures are served from `https://ambernotes.app/email/`, so the
+site deploy that adds them must go out before the first email.
 
-`deno run -A scripts/lifecycle-preview.ts <folder>` writes every email (and its dark version) to a
-folder to open in a browser. It sends nothing.
+Checked against caniemail.com's data (16 September 2026) for Gmail (web, iOS, Android), Apple Mail
+(Mac, iOS), Outlook (Windows, Outlook.com, iOS, Mac) and Yahoo:
+
+- **Layout:** tables and inline styles; no flex, grid, background images, web fonts or SVG. The
+  button is a VML shape in Outlook for Windows, which ignores `border-radius` and padding on links.
+- **Shapes:** checkboxes and window dots are table cells with a background or border, so Outlook
+  for Windows shows them (square there); `display:inline-block` spans would vanish.
+- **Style blocks:** three of them (phone spacing; dark mode and `color-scheme`; Outlook.com's
+  `[data-ogsc]`/`[data-ogsb]`), so a client that throws one away keeps the others. Gmail ignores
+  `prefers-color-scheme` and attribute selectors, and its apps ignore `<style>` entirely for
+  non-Google accounts; those see the light layout from inline styles, which works at any width.
+- **Dark mode:** Apple Mail and the Outlook apps use the media query. Outlook.com uses the
+  `[data-ogsc]` rules. Gmail's apps invert colours by themselves and never images: the page is
+  `#fffdf9` and text `#1d1d1f` (no pure white or black), and the ChatGPT and Claude marks carry
+  their own white tile inside the PNG so inversion can't hide them.
+- **Outlook for Windows:** `mso-line-height-rule:exactly` on body text, images with width and
+  height attributes, a fixed 520 px table around the layout.
+- **Not fixable, acceptable:** square corners and no shadows in Outlook for Windows; no
+  `line-through` on done items for Gmail with non-Google accounts.
+
+`deno run -A scripts/lifecycle-preview.ts <folder>` writes every email (as sent, forced light,
+forced dark) to a folder; it sends nothing. `scripts/lifecycle-test-send.ts` sends every variant to
+up to 10 test addresses through Resend, marked "[Test n/N]", and only with `--send`; without it, it
+prints what it would send.
 
 ## Settings
 
@@ -101,19 +125,21 @@ folder to open in a browser. It sends nothing.
 | `LIFECYCLE_CRON_SECRET` | 32+ random characters, the same value as the vault's `lifecycle_cron_secret`. |
 | `LIFECYCLE_FROM` | Optional. Default `Emil at Amber Notes <emil@ambernotes.app>` (replies go to emil@ too). |
 | `LIFECYCLE_ONLY` | Optional. Comma-separated account ids that may get email; everyone else gets none. |
+| `APPS_LIVE`, `APP_STORE_LIVE`, `SHARING_LIVE` | `true` turns on the apps, iPhone and sharing rungs, once those features ship. |
 
 Deploy with `supabase functions deploy lifecycle --no-verify-jwt`: the round checks its own secret
 and an unsubscribe link carries its own HMAC.
 
 ## Testing
 
-`deno test -A supabase/functions/lifecycle/` runs the schedule, the emails (size, no dashes, links
-in both versions, image addresses, dark mode) and the round against every migration in PGlite with
-a fake Resend: never twice (including rounds at once), stops when the goal is met, respects
-unsubscribe, the kill switch, the seven-day gap, the series stopping when an AI connects, the
-sorting email first for a big library, `LIFECYCLE_SINCE` and `LIFECYCLE_ONLY`, failures and
-429, and that clients can't reach the tables. `cd web && pnpm exec vitest run app/unsubscribe` runs
-the page and the route.
+`deno test -A supabase/functions/lifecycle/` runs the ladder (order, each rung's goal, the flags,
+spacing, the limit of 6, the 30 days), the emails (size, no dashes, links in both versions, one
+paragraph before the button, image addresses and sizes, no flex, grid, background images, pure
+white or black, three style blocks) and the round against every migration in PGlite with a fake
+Resend: never twice (including rounds at once), a Mac account walked up the ladder, stops at the
+goal, flags, the limit, unsubscribe, the kill switch, `LIFECYCLE_SINCE` and `LIFECYCLE_ONLY`,
+failures and 429, and that clients can't reach the tables. `cd web && pnpm exec vitest run
+app/unsubscribe` runs the page and the route.
 
 ## The same steps in the app (not built)
 

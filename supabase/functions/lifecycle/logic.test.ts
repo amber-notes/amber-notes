@@ -1,59 +1,85 @@
 // deno test -A supabase/functions/lifecycle/logic.test.ts
 import { assert, assertEquals } from "jsr:@std/assert@1";
-import { config, decide, type Facts, sameSecret, unsubscribeLinks, unsubscribeToken, validUnsubscribe } from "./logic.ts";
+import { config, decide, type Facts, gapAfter, LADDER, sameSecret, unsubscribeLinks, unsubscribeToken, validUnsubscribe } from "./logic.ts";
 
 const H = 3_600_000, D = 24 * H;
 const NOW = new Date("2026-10-20T08:00:00Z");
 const ago = (ms: number) => new Date(NOW.getTime() - ms);
-const facts = (o: Partial<Facts> & { ageMs: number }): Facts => ({
+const ON = { apps: true, appStore: true, sharing: true };
+/// A Mac account two days in with a few notes and nothing else done.
+const facts = (o: Partial<Facts> & { ageMs?: number } = {}): Facts => ({
   user_id: "0b6f6a5e-1d2c-4a8e-9f3b-2c1d0e9f8a7b", email: "sara@example.com",
-  signed_up_at: ago(o.ageMs), note_count: 3, imported: false, ai_connected_at: null, connect_tried: false,
-  ai_edit_days: 0, history_opened: false, unsubscribed: false, last_sent_at: null, sent: [], ...o,
+  signed_up_at: ago(o.ageMs ?? 2 * D), note_count: 3, imported: false, on_mac: true, on_iphone: false,
+  ai_connected_at: null, connect_tried: false, ai_edit_days: 0, history_opened: false, used_template: false,
+  has_app: false, shared: false, unsubscribed: false, last_sent_at: null, sent: [], ...o,
 });
-const sentLongAgo = (...kinds: string[]) => ({ sent: kinds, last_sent_at: ago(8 * D) });
+/// Already sent, long enough ago that spacing doesn't block.
+const sent = (...kinds: string[]) => ({ sent: kinds, last_sent_at: ago(8 * D) });
 
-Deno.test("no note yet: the stuck email, from a day after sign-up, once, and nothing else", () => {
+Deno.test("the ladder's order", () => {
+  assertEquals(LADDER.map((r) => r.kind), ["stuck", "import", "connect", "try", "undo", "apps", "templates", "iphone", "share"]);
+});
+
+Deno.test("rung 1: no note a day after sign-up gets the stuck email first", () => {
   assertEquals(decide(facts({ ageMs: 20 * H, note_count: 0 }), NOW), null);
   assertEquals(decide(facts({ ageMs: 25 * H, note_count: 0 }), NOW), "stuck");
-  assertEquals(decide(facts({ ageMs: 9 * D, note_count: 0, ...sentLongAgo("stuck") }), NOW), null);
-  assertEquals(decide(facts({ ageMs: 11 * D, note_count: 0 }), NOW), null);
 });
 
-Deno.test("notes but no AI: one use case per email, from 12 hours, until all are sent", () => {
-  assertEquals(decide(facts({ ageMs: 11 * H }), NOW), null);
-  assertEquals(decide(facts({ ageMs: 13 * H }), NOW), "ai_groceries");
-  assertEquals(decide(facts({ ageMs: 9 * D, ...sentLongAgo("ai_groceries") }), NOW), "ai_meeting");
-  assertEquals(decide(facts({ ageMs: 16 * D, ...sentLongAgo("ai_groceries", "ai_meeting") }), NOW), "ai_sort");
-  assertEquals(decide(facts({ ageMs: 23 * D, ...sentLongAgo("ai_groceries", "ai_meeting", "ai_sort") }), NOW), null);
+Deno.test("rung 2: a few notes on a Mac, never imported: Bring your Apple Notes over", () => {
+  assertEquals(decide(facts(), NOW), "import");
+  assertEquals(decide(facts({ imported: true }), NOW), "connect");
+  assertEquals(decide(facts({ note_count: 5 }), NOW), "connect");
+  assertEquals(decide(facts({ on_mac: false, on_iphone: true }), NOW), "connect");
 });
 
-Deno.test("a big or imported library starts with sorting it", () => {
-  assertEquals(decide(facts({ ageMs: 13 * H, note_count: 179 }), NOW), "ai_sort");
-  assertEquals(decide(facts({ ageMs: 13 * H, note_count: 5, imported: true }), NOW), "ai_sort");
-  assertEquals(decide(facts({ ageMs: 9 * D, note_count: 179, ...sentLongAgo("ai_sort") }), NOW), "ai_groceries");
+Deno.test("rung 3 to 4: connect until an AI is connected; Try this first a day after, until the first AI edit", () => {
+  assertEquals(decide(facts(sent("import")), NOW), "connect");
+  assertEquals(decide(facts({ ...sent("import"), ai_connected_at: ago(2 * H) }), NOW), null);
+  assertEquals(decide(facts({ ...sent("import"), ai_connected_at: ago(2 * D) }), NOW), "try");
+  assertEquals(decide(facts({ ...sent("import"), ai_connected_at: ago(2 * D), ai_edit_days: 1 }), NOW), "undo");
 });
 
-Deno.test("the use cases stop the moment an AI is connected; templates follow a day later", () => {
-  assertEquals(decide(facts({ ageMs: 9 * D, ai_connected_at: ago(2 * H), ...sentLongAgo("ai_groceries") }), NOW), null);
-  assertEquals(decide(facts({ ageMs: 9 * D, ai_connected_at: ago(2 * D), ...sentLongAgo("ai_groceries") }), NOW), "templates");
+Deno.test("after the first AI edit: Undo until history is opened, then templates (from day 3)", () => {
+  const done = { ai_connected_at: ago(3 * D), ai_edit_days: 2, imported: true };
+  assertEquals(decide(facts({ ...done, ageMs: 4 * D }), NOW), "undo");
+  assertEquals(decide(facts({ ...done, ageMs: 4 * D, history_opened: true }), NOW), "templates");
+  assertEquals(decide(facts({ ...done, ageMs: 2 * D, history_opened: true }), NOW), null);
+  assertEquals(decide(facts({ ...done, ageMs: 4 * D, history_opened: true, used_template: true }), NOW), null);
 });
 
-Deno.test("connected: templates until the AI edits on 3 days, Undo until history is opened", () => {
-  assertEquals(decide(facts({ ageMs: 3 * D, ai_connected_at: ago(2 * D), ai_edit_days: 3 }), NOW), "undo");
-  assertEquals(decide(facts({ ageMs: 3 * D, ai_connected_at: ago(2 * D), ai_edit_days: 3, history_opened: true }), NOW), null);
-  assertEquals(decide(facts({ ageMs: 12 * D, ai_connected_at: ago(9 * D), ...sentLongAgo("templates") }), NOW), "undo");
-  assertEquals(decide(facts({ ageMs: 20 * D, ai_connected_at: ago(9 * D), ...sentLongAgo("templates", "undo") }), NOW), null);
+Deno.test("flags: apps, iPhone and sharing only when their feature is live", () => {
+  const all = { imported: true, ai_connected_at: ago(3 * D), ai_edit_days: 2, history_opened: true, used_template: true, ageMs: 22 * D };
+  assertEquals(decide(facts(all), NOW), null);
+  assertEquals(decide(facts(all), NOW, ON), "apps");
+  assertEquals(decide(facts({ ...all, has_app: true }), NOW, ON), "iphone");
+  assertEquals(decide(facts({ ...all, has_app: true, on_iphone: true }), NOW, ON), "share");
+  assertEquals(decide(facts({ ...all, has_app: true, on_iphone: true, shared: true }), NOW, ON), null);
+  assertEquals(decide(facts({ ...all, has_app: true, ageMs: 22 * D, on_mac: false, on_iphone: true }), NOW, ON), "share");
 });
 
-Deno.test("at most one email in seven days", () => {
-  assertEquals(decide(facts({ ageMs: 3 * D, sent: ["ai_groceries"], last_sent_at: ago(2 * D) }), NOW), null);
-  assertEquals(decide(facts({ ageMs: 9 * D, sent: ["ai_groceries"], last_sent_at: ago(7 * D) }), NOW), "ai_meeting");
+Deno.test("never twice: a rung already sent is skipped for the next one", () => {
+  assertEquals(decide(facts({ ...sent("import", "connect"), ageMs: 4 * D }), NOW), "templates");
+  assertEquals(decide(facts({ ageMs: 9 * D, note_count: 0, ...sent("stuck") }), NOW), "import");
 });
 
-Deno.test("never after unsubscribing, never without an address, never after 45 days", () => {
-  assertEquals(decide(facts({ ageMs: 2 * D, unsubscribed: true }), NOW), null);
-  assertEquals(decide(facts({ ageMs: 2 * D, email: null }), NOW), null);
-  assertEquals(decide(facts({ ageMs: 46 * D }), NOW), null);
+Deno.test("spacing: 3 days apart in the first 10 days, then 7", () => {
+  assertEquals(gapAfter(10 * D), 3 * D);
+  assertEquals(gapAfter(11 * D), 7 * D);
+  assertEquals(decide(facts({ ageMs: 5 * D, sent: ["import"], last_sent_at: ago(2 * D) }), NOW), null);
+  assertEquals(decide(facts({ ageMs: 5 * D, sent: ["import"], last_sent_at: ago(3 * D) }), NOW), "connect");
+  assertEquals(decide(facts({ ageMs: 14 * D, sent: ["import"], last_sent_at: ago(5 * D) }), NOW), null);
+  assertEquals(decide(facts({ ageMs: 14 * D, sent: ["import"], last_sent_at: ago(7 * D) }), NOW), "connect");
+});
+
+Deno.test("at most 6 emails, and nothing after the first 30 days", () => {
+  const six = { sent: ["stuck", "import", "connect", "try", "undo", "templates"], last_sent_at: ago(8 * D), ageMs: 25 * D };
+  assertEquals(decide(facts({ ...six, has_app: false }), NOW, ON), null);
+  assertEquals(decide(facts({ ageMs: 31 * D }), NOW), null);
+});
+
+Deno.test("never after unsubscribing, never without an address", () => {
+  assertEquals(decide(facts({ unsubscribed: true }), NOW), null);
+  assertEquals(decide(facts({ email: null }), NOW), null);
 });
 
 Deno.test("unsubscribe tokens work for their own account only", async () => {
@@ -75,6 +101,9 @@ Deno.test("settings: off unless LIFECYCLE_ENABLED is exactly true; missing secre
   const full = { LIFECYCLE_SINCE: "2026-10-06", RESEND_LIFECYCLE_KEY: "re_x", LIFECYCLE_UNSUBSCRIBE_SECRET: "u".repeat(32), LIFECYCLE_CRON_SECRET: "c".repeat(32) };
   const on = (o: Record<string, string>) => { const c = config(env(o)); return c.ok ? c.config.enabled : c.reason; };
   assertEquals(on(full), false);
+  const flags = (o: Record<string, string>) => { const c = config(env(o)); return c.ok ? c.config.flags : null; };
+  assertEquals(flags(full), { apps: false, appStore: false, sharing: false });
+  assertEquals(flags({ ...full, APPS_LIVE: "true", APP_STORE_LIVE: "yes" }), { apps: true, appStore: false, sharing: false });
   assertEquals(on({ ...full, LIFECYCLE_ENABLED: "1" }), false);
   assertEquals(on({ ...full, LIFECYCLE_ENABLED: "true" }), true);
   assertEquals(on({ ...full, LIFECYCLE_ENABLED: "true", LIFECYCLE_SINCE: "" }), "since_missing");

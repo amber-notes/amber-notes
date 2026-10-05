@@ -10,13 +10,15 @@ await Deno.mkdir(`${out}/email`, { recursive: true });
 const art = new URL("../web/public/email/", import.meta.url);
 for (const f of Deno.readDirSync(art)) await Deno.copyFile(new URL(f.name, art), `${out}/email/${f.name}`);
 
-const base = { site: "https://ambernotes.app", assets: "email", unsubscribe: "https://ambernotes.app/unsubscribe?u=preview&t=preview", noteCount: 12, imported: false, connectTried: false };
+const base = { site: "https://ambernotes.app", assets: "email", unsubscribe: "https://ambernotes.app/unsubscribe?u=preview&t=preview", noteCount: 3, imported: false, connectTried: false };
 const variants = [
   ...KINDS.map((kind) => ({ kind, name: kind, ctx: base })),
-  // An imported library of 179 notes: the sorting email says the number.
-  { kind: "ai_sort" as const, name: "ai_sort-imported", ctx: { ...base, noteCount: 179, imported: true } },
-  // A connection started and not finished: the AI emails add how the last step goes.
-  { kind: "ai_groceries" as const, name: "ai_groceries-tried", ctx: { ...base, connectTried: true } },
+  // An imported library of 179 notes: the connect email shows sorting, with the number.
+  { kind: "connect" as const, name: "connect-imported", ctx: { ...base, noteCount: 179, imported: true } },
+  // A connection started and waiting: the last line says how to finish.
+  { kind: "connect" as const, name: "connect-tried", ctx: { ...base, connectTried: true } },
+  // The template cards' second option, for comparison.
+  { kind: "templates" as const, name: "templates-amber", ctx: { ...base, cards: "amber" as const } },
 ];
 const index: unknown[] = [];
 for (const v of variants) {
