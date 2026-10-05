@@ -71,6 +71,14 @@ async function handle(req: Request): Promise<Response> {
     return rows[0] ? json(rows[0]) : json(null, 404);
   }
 
+  // Our side of a report (the service role in the product): POST /dev/takedown {id, reason}.
+  if (url.pathname === "/dev/takedown" && req.method === "POST") {
+    const { id, reason } = await req.json();
+    const [r] = (await pg.query<{ ok: boolean }>(`select public.takedown_template($1, $2) as ok`, [id, reason ?? null])).rows;
+    log("takedown", id, r?.ok);
+    return json({ ok: r?.ok === true });
+  }
+
   const me = caller(req);
   if (!me) return json({ message: "Not signed in" }, 401);
 

@@ -213,3 +213,20 @@ Deno.test("a shared template is public, carries key names but never key values, 
   await app(pg, emil.id, `select public.stop_template($1)`, [note]);
   assertEquals(await anon(`select * from public.shared_template($1)`, ["AbCdEfGhIjKlMnOp"]), []);
 });
+
+Deno.test("a takedown removes a template at once, keeps it down, and only we can do it", async () => {
+  const pg = await schemaDB();
+  const emil = await person(pg, "Emil");
+  const note = crypto.randomUUID();
+  const t = { v: 1, title: "Something reported", note: "Something reported\n" };
+  await app(pg, emil.id, `select public.publish_template('TkDnTkDnTkDnTkDn', $1, 'Emil', $2)`, [note, JSON.stringify(t)]);
+  // Nobody signed in, nor the owner, can call it.
+  await refused(app(pg, emil.id, `select public.takedown_template('TkDnTkDnTkDnTkDn')`), "permission denied");
+  // Ours (the service role, as the takedown command runs).
+  const [r] = (await pg.query<any>(`select public.takedown_template('TkDnTkDnTkDnTkDn', 'reported: test') as ok`)).rows;
+  assert(r.ok);
+  const anon = (sql: string, params: unknown[]) => pg.transaction(async (tx) => { await tx.exec(`set local role anon`); return (await tx.query<any>(sql, params)).rows; });
+  assertEquals(await anon(`select * from public.shared_template($1)`, ["TkDnTkDnTkDnTkDn"]), []);
+  // Sharing the same note again, under any id, is refused.
+  await refused(app(pg, emil.id, `select public.publish_template('TkDnTkDnTkDnTkDo', $1, 'Emil', $2)`, [note, JSON.stringify(t)]), "taken down");
+});

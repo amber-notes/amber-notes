@@ -78,10 +78,24 @@ create policy "own templates" on public.shared_templates for all to authenticate
 revoke all on public.shared_templates from anon, authenticated;
 grant select, insert, update, delete on public.shared_templates to authenticated;
 
+-- Templates we took down (a report, or our own review): the note can't be published again.
+create table public.template_takedowns (
+  note_id uuid primary key,
+  user_id uuid references auth.users (id) on delete cascade,
+  template_id text not null,
+  reason text,
+  taken_down_at timestamptz not null default now()
+);
+alter table public.template_takedowns enable row level security;
+revoke all on public.template_takedowns from anon, authenticated;
+
 create or replace function public.publish_template(p_id text, p_note uuid, p_maker text, p_template jsonb) returns void
 language plpgsql security definer set search_path = '' as $$
 begin
   perform public.pane_take('write');
+  if exists (select 1 from public.template_takedowns where note_id = p_note) then
+    raise exception 'This template was taken down and can''t be shared again.' using errcode = '42501', hint = 'taken_down';
+  end if;
   -- Key values must never be in a template: only {name, host} pairs.
   if exists (select 1 from jsonb_array_elements(coalesce(p_template #> '{needs,keys}', '[]'::jsonb)) k
              where jsonb_typeof(k) <> 'object' or not (k ? 'name')
@@ -103,6 +117,22 @@ create or replace function public.shared_template(p_id text) returns table (make
 language sql stable security definer set search_path = '' as $$
   select t.maker, t.template, t.updated_at from public.shared_templates t where p_id ~ '^[A-Za-z0-9_-]{16}$' and t.id = p_id
 $$;
+
+-- Our side of a report: takes a template down at once and keeps it down. Service role only:
+--   select public.takedown_template('<template id>', 'reported: <why>');
+create or replace function public.takedown_template(p_id text, p_reason text default null) returns boolean
+language plpgsql security definer set search_path = '' as $$
+declare
+  t public.shared_templates;
+begin
+  delete from public.shared_templates where id = p_id returning * into t;
+  if t.id is null then return false; end if;
+  insert into public.template_takedowns (note_id, user_id, template_id, reason) values (t.note_id, t.user_id, t.id, p_reason)
+  on conflict (note_id) do nothing;
+  return true;
+end $$;
+revoke all on function public.takedown_template(text, text) from public, anon, authenticated;
+grant execute on function public.takedown_template(text, text) to service_role;
 
 revoke all on function public.publish_sealed_link(text, uuid, text), public.stop_sealed_link(uuid),
   public.publish_template(text, uuid, text, jsonb), public.stop_template(uuid) from public, anon;

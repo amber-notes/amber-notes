@@ -78,14 +78,23 @@ export function NotePage({ slug, note, files, page, sealed = false, editHref = n
       <TopBar href={sealed ? "/" : `/n/${slug}`}>{use}</TopBar>
       <main className={s.plainMain}>
         {parent}
-        <h1 className={s.bigTitle}>{note.title}</h1>
-        <div className={s.byline} title={email ? `${name} · ${email}` : name}>
-          <Avatar by={note.shared_by} size={36} />
-          <p>
-            <span className={s.bylineName}><span className={s.sharerLabel}>Shared by </span>{name}</span>
-            <span className={s.bylineDate}>Edited {edited(note.updated_at)}</span>
+        {page ? (
+          // A note with an app: the app shows the note's title itself, so the page doesn't repeat it.
+          <p className={s.sharedLine} title={email ? `${name} · ${email}` : name}>
+            <span className={s.sharerLabel}>Shared by </span><b>{name}</b> · Edited {edited(note.updated_at)}
           </p>
-        </div>
+        ) : (
+          <>
+            <h1 className={s.bigTitle}>{note.title}</h1>
+            <div className={s.byline} title={email ? `${name} · ${email}` : name}>
+              <Avatar by={note.shared_by} size={36} />
+              <p>
+                <span className={s.bylineName}><span className={s.sharerLabel}>Shared by </span>{name}</span>
+                <span className={s.bylineDate}>Edited {edited(note.updated_at)}</span>
+              </p>
+            </div>
+          </>
+        )}
         {page}
         <article className="note" dangerouslySetInnerHTML={{ __html: html }} />
         {subnotes}

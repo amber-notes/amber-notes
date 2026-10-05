@@ -212,6 +212,8 @@ Links already sent must keep working; a sealed link can't take over an old addre
 
 ### Pages on the web
 
+**No double titles.** When a note has an app, the app shows the note's title itself, so the page doesn't: the header becomes one quiet line under the Amber Notes mark, "Shared by Emil Wagman · Edited 5 October 2026", then the app. A note without an app keeps its title and byline. The same rule holds on the template page. (Apps showing the note's title, and `check_app` checking it, is the note-pages side.)
+
 A note's page is someone's HTML and JavaScript. It never runs on ambernotes.app:
 
 - **Its own domain.** `ambernotes-usercontent.app` (a separate registrable domain, so no cookie or storage can ever be shared with the site) serves one file: the frame (`usercontent/frame.html`), with `Content-Security-Policy: default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; font-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors https://ambernotes.app`.
@@ -231,20 +233,39 @@ The same frame serves today's `/n` links once their copies include the page (`no
 - the note's skeleton: its text with every table's rows taken out and checklists unticked;
 - the page (the app), and its widget spec if it has one;
 - the data layout: each table's columns;
-- sample data, only if the person turns on "Include sample data" (the note's rows as they are; the sheet says to leave it off if they're private);
+- example rows, only if the person turns on "Include example rows" (off by default; the note's rows as they are);
 - the keys and hosts the page declares it needs, by name and host only (`<meta name="amber-needs" …>` in the page, or the widget spec). `publish_template` refuses a key entry with anything besides a name and a host.
 
 Never: other notes, the page's stored data, files, key values, the owner's email or account id. The maker's name is shown as they choose.
 
-**Why it isn't sealed.** A template is meant to be public, and sealing it would cost link previews, the gallery and search for nothing. The sheet says it plainly: "Anyone with the link can see and use this template. Your notes and data are not included." It's stored readable in `shared_templates` and reachable only by its id.
+**The sheet** (Share › Share as Template…, iPhone and Mac) is four things: a small preview of the card as people will see it (who shared it, the title, the first lines, "With its app"), one line, "Your notes and data aren't included.", one toggle, "Include example rows" (off), and one button, "Share Template Link" (the system share sheet on iPhone; on the Mac it copies the link and says "Link Copied"). Once shared, a quiet "Stop Sharing Template" appears. What the app needs (keys, hosts) is said on the template page, not in the sheet.
 
-**The page** (`web/app/t/[id]`) is built from the gallery's template pages (`web/app/templates/[slug]`), with their type, colours, buttons and note window: the title, the maker, a big Use template, Copy the markdown; the app live and read-only beside it on the user-content domain; "What it needs" listing keys and hosts (or "Nothing"); and the note with its sample data. Still to do: a screenshot fallback (the app already takes a snapshot of each page, `NotePageSnapshots` on the note-pages branch; it would go up with the template and show while the live preview loads, and in link previews).
+**Why it isn't sealed.** A template is meant to be public, and sealing it would cost link previews for nothing. It's stored readable in `shared_templates` and reachable only by its id.
+
+**The page** (`web/app/t/[id]`) reads as something a person shared, never as part of our Templates gallery: the same quiet page as a shared note (`/n`, `/s`), outside the site's header and navigation, with the Amber Notes mark and one "Use template" button in its bar. Under it one line: "A template shared by Emil Wagman. Adds your own copy to Amber Notes. Download it". Then the app, live and read only on the user-content domain (or, without an app, the note's title and text), and, when keys are needed, one line such as "Needs a Strava access token, which you add yourself." The footer has "Report this template", which emails hello@ambernotes.app with the template's id and link.
+
+It is kept out of sight, checked on the built site:
+
+- `<meta name="robots" content="noindex, nofollow">` on the page (and on `/open/shared-template/<id>`);
+- `X-Robots-Tag: noindex, nofollow` in the response (the site's catch-all header rule; `/t` isn't on its list of indexable paths);
+- not in `sitemap.xml` (the sitemap lists only fixed pages and the gallery's own templates);
+- not linked from any page of ours (no `/t/` link in the app source or the built pages).
+
+Still to do: a screenshot fallback (the app already takes a snapshot of each page, `NotePageSnapshots` on the note-pages branch; it would go up with the template and show while the live preview loads, and in link previews).
 
 **Use template.** The button goes to `/open/shared-template/<id>`, the universal link (as `/open/template/<slug>` works for the gallery today), which opens `ambernotes://shared-template/<id>`. The app fetches the template, adds a fresh note with the sample (or the skeleton) and the page, and opens it. The new page starts with no network; any hosts and keys it declared wait for the new owner to allow them and type their own keys.
 
 **Stop sharing** deletes the row: the page and the Use template link both say the template isn't shared anymore. Copies people already made are theirs. Sharing again republishes under the same id (the latest note and page); a new id is only made after stopping.
 
-**Abuse.** Templates are public content on our domain, so they get today's report link and takedown. The page's code runs only in the sandboxed frame.
+**Reports and takedowns.** "Report this template" emails us the id. Taking one down, with the service role (in the product: the SQL editor, or `psql` with the database URL):
+
+```sql
+select public.takedown_template('<template id>', 'reported: <why>');
+```
+
+It deletes the template at once (the page and its Use template link say it isn't shared anymore) and records the note in `template_takedowns`, so `publish_template` refuses to share it again under any id. Owners can't call it. Tested in `collab.pglite.test.ts`; the sharing demo takes one down at the end (`/dev/takedown` on the relay stands in for the service role). The page's code runs only in the sandboxed frame.
+
+**A gallery of people's templates (later idea, not built).** Shared templates stay link-only: nothing anyone shares appears on our site by itself. If a community gallery is ever wanted, every template in it goes through review before it's listed, because whatever is there appears under our name.
 
 ## Data model
 
@@ -262,6 +283,7 @@ Never: other notes, the page's stored data, files, key values, the owner's email
 
 - `sealed_links`: the sealed copy per note; `publish_sealed_link` (also rotation), `stop_sealed_link`, and the public `sealed_link(id)`.
 - `shared_templates`: the template JSON per note; `publish_template` (refuses key values), `stop_template`, and the public `shared_template(id)`.
+- `template_takedowns` and `takedown_template(id, reason)` (service role only): our side of a report.
 
 ## The prototype
 

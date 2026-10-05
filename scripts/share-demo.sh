@@ -32,7 +32,8 @@ RELAY=$!
 (cd web && COLLAB_RELAY_URL=http://127.0.0.1:$PORT NEXT_PUBLIC_USERCONTENT_ORIGIN=http://127.0.0.1:$((PORT + 1)) \
   node_modules/.bin/next start -H localhost -p 5230 > "$OUT/web.log" 2>&1) &
 WEB=$!
-trap 'kill $RELAY 2>/dev/null; pkill -P $WEB 2>/dev/null; kill $WEB 2>/dev/null; true' EXIT
+# Stop exactly what this run started: the relay, and whatever listens on the site's port from this subshell.
+trap 'kill $RELAY 2>/dev/null; for p in $(lsof -tiTCP:5230 -sTCP:LISTEN 2>/dev/null); do [[ $(lsof -p $p | awk "\$4==\"cwd\"{print \$9}") == $PWD/web ]] && kill $p; done; true' EXIT
 for i in {1..60}; do curl -s "$SITE/" >/dev/null && curl -s "http://127.0.0.1:$PORT/" >/dev/null && break; sleep 0.5; done
 
 # Safari's first-run tips show once, before the recording.
@@ -81,5 +82,10 @@ sleep 2.5
 xcrun simctl openurl "$S" "$LINK"
 sleep 5
 xcrun simctl io "$S" screenshot "$OUT/stopped.png" >/dev/null 2>&1
+# A report came in: we take the template down, and its page goes at once.
+curl -s -X POST "http://127.0.0.1:$PORT/dev/takedown" -d "{\"id\":\"$ID\",\"reason\":\"demo\"}" >/dev/null
+xcrun simctl openurl "$S" "$TEMPLATE"
+sleep 5
+xcrun simctl io "$S" screenshot "$OUT/taken-down.png" >/dev/null 2>&1
 kill -INT $REC; wait $REC 2>/dev/null || true
 echo "$OUT"
