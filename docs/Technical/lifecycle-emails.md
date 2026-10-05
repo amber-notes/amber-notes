@@ -85,21 +85,25 @@ A reply saying "stop" is handled by hand: add the account to `email_unsubscribes
 
 ## The emails, and real mail apps
 
-Each email is a short note from Emil on the cream page, in a plain card: a title, one paragraph,
-at most one real capture of Amber Notes doing what the email is about (iPhone or Mac, cropped tight,
-shown at half its pixel width so it stays sharp and readable on a phone), a button, a line, the
-sign-off. No illustrations and no drawn window. The stuck, try and sorting emails have no picture,
-because no capture says them more clearly than the words. The captures are in `web/public/email/`:
+Each email is a note from Emil, drawn the way the site draws notes (the 404 and template pages): a
+paper-cut picture on top, then an Amber Notes window with "From Emil", the title, one paragraph, a
+button, a line and the sign-off. The pictures are for warmth; where a real capture of the app
+explains something, it goes inside the note as proof. On a phone the "From Emil" line is hidden.
 
-| File | From |
-| --- | --- |
-| `connect.jpg` | `web/public/blog/amber-notes-iphone-chatgpt-edited-checklist.webp` and the real receipt `web/public/demo/720/pill-chatgpt-5-lines@2x.png` |
-| `import.jpg` | `web/public/blog/amber-notes-import-from-apple-notes.webp` |
-| `receipt.png`, `undo.jpg` | the same receipt; `web/public/blog/amber-notes-version-history-chatgpt.webp` |
-| `app-habits.jpg`, `app-budget.jpg` | the app-notes prototype's captures; not in this repository until app notes ship |
-| `t-*.jpg` | each template's note on ambernotes.app/templates |
-| `iphone.jpg`, `mac.jpg` | the same iPhone capture; `web/public/demo/720/demo-0-before.webp` |
-| `share.jpg` | a frame of the collaboration prototype; not in this repository until sharing ships |
+Paper-cut pictures (`web/public/email/hero-*.jpg`): stuck, import, try, undo, sorting and templates
+are cut from the template covers in `web/public/templates/covers/`; connect, apps, iPhone, Mac and
+share were made for these emails in the same style (prompts and the candidates in
+`~/content-tools/projects/amber-emails/art`, outside this repository).
+
+Real captures inside the note:
+
+| File | Email | From |
+| --- | --- | --- |
+| `connect.jpg` | connect (grocery list) | `web/public/blog/amber-notes-iphone-chatgpt-edited-checklist.webp` and the receipt `web/public/demo/720/pill-chatgpt-5-lines@2x.png` |
+| `receipt.png` | undo | the same receipt |
+| `t-*.jpg` | templates | the top of each template's note on ambernotes.app/templates at phone width |
+| `app-habits.jpg`, `app-budget.jpg` | apps | the app-notes prototype; not in this repository until app notes ship |
+| `share.jpg` | share | a frame of the collaboration prototype; not in this repository until sharing ships |
 
 The apps and share emails show features that haven't shipped, so their three captures are kept out
 of this public repository and out of the site. Add them to `web/public/email/` in the same change

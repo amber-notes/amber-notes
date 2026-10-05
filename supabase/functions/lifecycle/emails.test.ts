@@ -66,13 +66,15 @@ Deno.test("the subject and preview are short enough for a phone's inbox", () => 
   }
 });
 
-Deno.test("no illustrations and no drawn window: every picture is a capture of the app", () => {
-  const captures = ["import.jpg", "connect.jpg", "receipt.png", "undo.jpg", "app-habits.jpg", "app-budget.jpg", "iphone.jpg", "mac.jpg", "share.jpg",
+Deno.test("a paper-cut picture on top of every email, and real captures only inside the note", () => {
+  const captures = ["connect.jpg", "receipt.png", "app-habits.jpg", "app-budget.jpg", "share.jpg",
     "t-grocery-list.jpg", "t-trip-plan.jpg", "t-weekly-review.jpg", "mark.png", "emil.jpg"];
   for (const e of all) {
-    for (const m of e.html.matchAll(/src="https:\/\/ambernotes\.app\/email\/([^"]+)"/g)) assert(captures.includes(m[1]), `${e.kind}: ${m[1]}`);
-    assert(!/#ff5f57|From Emil/.test(e.html), `${e.kind}: window chrome`);
-    assertEquals((e.html.match(/class="shot"/g) ?? []).length <= 3, true, e.kind);
+    const pics = [...e.html.matchAll(/src="https:\/\/ambernotes\.app\/email\/([^"]+)"/g)].map((m) => m[1]);
+    assertEquals(pics.filter((p) => p.startsWith("hero-")).length, 1, `${e.kind}: one hero`);
+    assert(pics[1].startsWith("hero-"), `${e.kind}: the hero comes first, after the mark`);
+    for (const p of pics.filter((p) => !p.startsWith("hero-"))) assert(captures.includes(p), `${e.kind}: ${p}`);
+    assertStringIncludes(e.html, "From Emil");
   }
 });
 

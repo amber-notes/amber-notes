@@ -1,6 +1,7 @@
-// The lifecycle emails, in words and in HTML: a short note from Emil on the cream page, with at most
-// one real capture of Amber Notes (iPhone or Mac) doing what the email is about, cropped tight. No
-// illustrations and no drawn window around the words. Where no capture says it clearly, no picture.
+// The lifecycle emails, in words and in HTML. Each is a note from Emil, drawn the way the site draws
+// notes (the 404 page, the template pages): a paper-cut picture on top for warmth, then an Amber
+// Notes window with the words, and inside it, where one explains something, a real capture of the
+// app for proof (the grocery note with its Undo bar, the apps, the templates, a shared note).
 //
 // Built for real mail apps (docs/Technical/lifecycle-emails.md has the client notes):
 // - tables and inline styles; no flex, grid, background images, web fonts or SVG;
@@ -57,6 +58,8 @@ type Draft = {
   subject: [string, string];
   preview: [string, string];
   title: string;
+  /// The paper-cut picture on top (web/public/email/hero-*.jpg), its ground colour and what it shows.
+  art: { file: string; ground: string; alt: string };
   blocks: Block[];
 };
 
@@ -88,6 +91,7 @@ function draft(kind: Kind, c: Context): Draft {
         preview: ["Your Amber Notes account has no notes yet. If the app got in your way, I'd like to know.",
           "No notes have arrived yet. If something got stuck after signing in, tell me."],
         title: "Did something get stuck?",
+        art: { file: "hero-stuck.jpg", ground: "#e9a82a", alt: "A paper-cut ladybird on a leaf, next to a magnifying glass and a toolbox" },
         blocks: [
           { p: "Hi, I'm Emil, and I make Amber Notes. You made an account, but no notes have arrived yet. If something after signing in was confusing or got stuck, tell me and I'll help you get going." },
           { button: { label: "Reply to Emil", href: "mailto:emil@ambernotes.app?subject=Stuck%20after%20signing%20in" } },
@@ -100,9 +104,9 @@ function draft(kind: Kind, c: Context): Draft {
         preview: ["One menu on the Mac brings your notes across with their folders. Apple Notes stays as it is.",
           "Choose File, then Import from Apple Notes. Folders come along, and Apple Notes stays as it is."],
         title: "Bring your Apple Notes over",
+        art: { file: "hero-import.jpg", ground: "#e4ba8b", alt: "A paper-cut house with a ladder, a toolbox and a paint roller, ready to move in" },
         blocks: [
           { p: "Hi, Emil here. On your Mac, choose File, then Import from Apple Notes. Your notes come over with their folders, and Apple Notes stays exactly as it is." },
-          { shot: { file: "import.jpg", w: 330, h: 278, alt: "Amber Notes on a Mac: the Import from Apple Notes window, with notes ticked to bring over" } },
           { button: { label: "How importing works", href: `${c.site}/blog/move-from-apple-notes` } },
           { p: "You can bring all of them, or pick some.", small: true },
         ],
@@ -117,6 +121,7 @@ function draft(kind: Kind, c: Context): Draft {
           preview: ["Connect ChatGPT or Claude and ask it to sort your notes. It makes the folders and moves each note.",
             "Ask ChatGPT or Claude to sort your notes into folders, and it does the moving."],
           title: "Sort your notes into folders",
+          art: { file: "hero-sorting.jpg", ground: "#3f5c86", alt: "A paper-cut stack of books under a warm desk lamp, beside a plant" },
           blocks: [
             { p: "Hi, Emil here. Connect ChatGPT or Claude, then ask it to sort your notes into folders. It reads them, makes the folders and moves each note, and you can ask it to suggest the folders first." },
             SETUP,
@@ -129,6 +134,7 @@ function draft(kind: Kind, c: Context): Draft {
           preview: ["Tell ChatGPT what you need, and the list in Amber Notes changes. Every change is marked, with Undo.",
             "Connect ChatGPT or Claude, then just ask. The change lands in your note, marked, with Undo."],
           title: "Let your AI keep the grocery list",
+          art: { file: "hero-connect.jpg", ground: "#86b994", alt: "A paper-cut fridge with a grocery list held up by an amber magnet, beside a lemon and a pot of basil" },
           blocks: [
             { p: "Hi, Emil here. Connect ChatGPT or Claude, then say \"Add what I need for paella on Sunday.\" The lines appear in your note, marked, with Undo." },
             { shot: { file: "connect.jpg", w: 350, h: 337, alt: "A Groceries note on an iPhone with five new lines marked in amber, and the bar ChatGPT changed 5 lines, Undo" } },
@@ -144,6 +150,7 @@ function draft(kind: Kind, c: Context): Draft {
         preview: ["Tap one and it opens in ChatGPT or Claude, ready to send.",
           "Three first asks for ChatGPT or Claude, one tap each."],
         title: "Try this first",
+        art: { file: "hero-try.jpg", ground: "#2e346d", alt: "Two paper-cut armchairs with a mug each, ready for a chat" },
         blocks: [
           { p: "Your AI is connected. Tap one of these, and it opens in ChatGPT or Claude ready to send." },
           { prompts: PROMPTS },
@@ -156,11 +163,11 @@ function draft(kind: Kind, c: Context): Draft {
         preview: ["Your AI made its first change. Here's how to see it, and how to take any change back.",
           "Every change your AI makes is marked, with Undo and the earlier versions kept."],
         title: "You can always put it back",
+        art: { file: "hero-undo.jpg", ground: "#754024", alt: "A paper-cut signpost where a path splits in two, with a compass in the grass" },
         blocks: [
           { p: "Your AI made its first change. When it edits a note you have open, this bar appears, and Undo puts the note back." },
           { shot: { file: "receipt.png", w: 295, h: 78, alt: "ChatGPT changed 5 lines, Undo", round: 0 } },
           { p: "Older changes are in each note's version history: on a note, choose More (•••), then Show Version History." },
-          { shot: { file: "undo.jpg", w: 260, h: 280, alt: "Version History on a Mac: the current version, and the one ChatGPT made at 4:35" } },
           { p: "Versions an AI made are kept for 90 days.", small: true },
         ],
       };
@@ -171,6 +178,7 @@ function draft(kind: Kind, c: Context): Draft {
         preview: ["A note in Amber Notes can be a small app now, like a habit tracker or a budget.",
           "Ask your AI to turn a note into an app, or start from a template."],
         title: "Your notes can be apps",
+        art: { file: "hero-apps.jpg", ground: "#0c5c63", alt: "A paper-cut open notebook whose pieces rise and fit together into a little gadget with a ring gauge and buttons" },
         blocks: [
           { p: "Hi, Emil here. A note can hold a small app now. Here are two: a habit tracker you tick off every day, and a budget that adds up as you go." },
           { shot: { file: "app-habits.jpg", w: 300, h: 214, alt: "A habit tracker app in an Amber Notes note: four of four done today" } },
@@ -184,6 +192,7 @@ function draft(kind: Kind, c: Context): Draft {
         preview: ["A grocery list, a trip plan and a weekly review, each with the instructions to give ChatGPT or Claude.",
           "Three templates: add the note, give your AI the instructions once, and it keeps the note up to date."],
         title: "Three templates to try",
+        art: { file: "hero-templates.jpg", ground: "#1f4956", alt: "A paper-cut spiral notebook with its page split into sections, beside a pencil and a ruler" },
         blocks: [
           { p: "A template is a note plus instructions for your AI. Add the note, paste the instructions into ChatGPT or Claude once, and it keeps the note up to date." },
           { templates: TEMPLATES },
@@ -197,9 +206,9 @@ function draft(kind: Kind, c: Context): Draft {
         preview: ["Sign in with the same account and your notes are there, with your AI's changes.",
           "Amber Notes is in the App Store. Your notes are waiting there."],
         title: "Your notes, on your iPhone",
+        art: { file: "hero-iphone.jpg", ground: "#86936b", alt: "A paper-cut phone standing by a window, a note on its screen, with a plant and a cup of coffee" },
         blocks: [
           { p: "Hi, Emil here. Amber Notes is in the App Store. Sign in with the same account, and your notes are there, with everything your AI changed." },
-          { shot: { file: "iphone.jpg", w: 300, h: 323, alt: "Amber Notes on an iPhone: a Groceries note with lines ChatGPT added", round: 24 } },
           { button: { label: "Get it on the App Store", href: APP_STORE_URL } },
           { p: "Your key comes along through iCloud Keychain, so your notes open right away.", small: true },
         ],
@@ -210,9 +219,9 @@ function draft(kind: Kind, c: Context): Draft {
         preview: ["The Mac app is free. Sign in with the same account, and it can bring your Apple Notes over too.",
           "Amber Notes for Mac is a free download. Your notes are already there."],
         title: "Amber Notes on your Mac",
+        art: { file: "hero-mac.jpg", ground: "#e0ae78", alt: "A paper-cut laptop on a warm desk with a notes window on its screen, beside a plant and a mug" },
         blocks: [
           { p: "Hi, Emil here. Amber Notes is on the Mac too, and it's free. Sign in with the same account, and on the Mac it can also bring your Apple Notes over." },
-          { shot: { file: "mac.jpg", w: 350, h: 320, alt: "Amber Notes on a Mac: the folders and the note list" } },
           { button: { label: "Download for Mac", href: `${c.site}/download` } },
           { p: "It needs macOS 26 or later.", small: true },
         ],
@@ -224,9 +233,10 @@ function draft(kind: Kind, c: Context): Draft {
         preview: ["Share a note with someone, and you both see each other's cursor as you write.",
           "A trip plan for two, a list for the house: share it and write in it together."],
         title: "Write a note together",
+        art: { file: "hero-share.jpg", ground: "#7d3446", alt: "Two paper-cut hands, one from each side, writing on the same sheet of paper" },
         blocks: [
           { p: "Hi, Emil here. You can share a note with someone now and write in it together. You see their cursor as they type, and they see yours." },
-          { shot: { file: "share.jpg", w: 352, h: 350, alt: "A shared note on an iPhone, with the other person's avatar at the top and their cursor and name where they type" } },
+          { shot: { file: "share.jpg", w: 274, h: 250, alt: "A shared note on Sara's iPhone: Emil's photo at the top, and his cursor with his name where he is typing", round: 18 } },
           { button: { label: "How sharing works", href: `${c.site}/help` } },
         ],
       };
@@ -262,7 +272,7 @@ const DISPLAY = "-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Ro
 
 // The site's tokens (web/app/site.css), with white and near-black kept off the extremes so forced
 // inversion stays soft.
-const L = { ground: "#fff4e6", page: "#fffdf9", edge: "#efe6d8", text: "#1d1d1f", secondary: "#6e6e73", circle: "#aeaeb2",
+const L = { ground: "#fff4e6", page: "#fffdf9", chrome: "#f6f5f3", edge: "#ebe6df", text: "#1d1d1f", secondary: "#6e6e73", circle: "#aeaeb2",
   accent: "#e39410", accentText: "#a85700", muted: "#74604c", link: "#a85700", cta: "#2a1d10", ctaInk: "#fff4e6",
   composer: "#f2f1ef", composerEdge: "#e6e3de", shotEdge: "#e8e2d8" };
 
@@ -337,6 +347,12 @@ function htmlOf(d: Draft, c: Context): string {
   const a = c.assets;
   const v = c.variant ?? 0;
   const body = d.blocks.map((b) => blockHTML(b, c)).join("\n");
+  const dot = (color: string) => `<td width="10" height="10" bgcolor="${color}" style="width:10px;height:10px;border-radius:5px;background:${color};font-size:0;line-height:0;">&nbsp;</td><td width="6" style="width:6px;font-size:0;line-height:0;">&nbsp;</td>`;
+  const art = `  <tr><td bgcolor="${d.art.ground}" style="background:${d.art.ground};border-radius:20px;line-height:0;font-size:0;">
+    <img src="${a}/${d.art.file}" width="520" height="312" alt="${esc(d.art.alt)}" style="display:block;width:100%;max-width:520px;height:auto;border:0;border-radius:20px;color:#fff4e6;font-family:${SANS};font-size:14px;line-height:1.4;">
+  </td></tr>
+  <tr><td class="gap" style="height:16px;line-height:16px;font-size:0;">&nbsp;</td></tr>
+`;
   return `<!doctype html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
@@ -352,7 +368,9 @@ function htmlOf(d: Draft, c: Context): string {
   @media (max-width: 480px) {
     .outer { padding: 16px 8px 32px !important; }
     .pad { padding-left: 24px !important; padding-right: 24px !important; }
-    .padtop { padding-top: 28px !important; }
+    .padtop { padding-top: 26px !important; }
+    .dateline { display: none !important; }
+    .gap { height: 12px !important; }
     .h1 { font-size: 25px !important; line-height: 1.2 !important; margin-bottom: 16px !important; }
     .body { line-height: 1.62 !important; margin-bottom: 22px !important; }
     .small { line-height: 1.6 !important; }
@@ -363,7 +381,8 @@ function htmlOf(d: Draft, c: Context): string {
   :root { color-scheme: light dark; supported-color-schemes: light dark; }
   @media (prefers-color-scheme: dark) {
     .ground { background: #2e180a !important; }
-    .card { background: #1e1e1e !important; border-color: #3a2a1c !important; }
+    .window { background: #1e1e1e !important; border-color: #3a2a1c !important; }
+    .chrome { background: #262626 !important; border-color: #333333 !important; }
     .ink { color: #f5f5f7 !important; }
     .sec { color: #a1a1a6 !important; }
     .muted { color: #d9bf9f !important; }
@@ -384,7 +403,8 @@ function htmlOf(d: Draft, c: Context): string {
   [data-ogsc] .muted { color: #d9bf9f !important; }
   [data-ogsc] .lnk { color: #f5ad33 !important; }
   [data-ogsb] .ground { background: #2e180a !important; }
-  [data-ogsb] .card { background: #1e1e1e !important; }
+  [data-ogsb] .window { background: #1e1e1e !important; }
+  [data-ogsb] .chrome { background: #262626 !important; }
   [data-ogsb] .composer { background: #2c2c2e !important; }
 </style>
 </head>
@@ -400,9 +420,17 @@ ${table(' width="100%" style="max-width:520px;"')}
       <td class="ink" style="font-family:${DISPLAY};font-size:18px;font-weight:700;color:#2a1d10;">Amber Notes</td>
     </tr></table>
   </td></tr>
-  <tr><td class="card" bgcolor="${L.page}" style="background:${L.page};border:1px solid ${L.edge};border-radius:18px;">
+${art}  <tr><td class="window" bgcolor="${L.page}" style="background:${L.page};border:1px solid ${L.edge};border-radius:14px;">
     ${table(' width="100%"')}
-      <tr><td class="pad padtop" style="padding:30px 32px 6px;font-family:${SANS};">
+      <tr><td class="chrome" bgcolor="${L.chrome}" style="background:${L.chrome};border-bottom:1px solid ${L.edge};border-radius:14px 14px 0 0;padding:11px 14px;font-family:${SANS};">
+        ${table(' width="100%"')}<tr>
+          <td width="70" style="width:70px;">${table()}<tr>${dot("#ff5f57")}${dot("#febc2e")}${dot("#28c840")}</tr></table></td>
+          <td class="sec" align="center" style="font-size:13px;font-weight:600;color:${L.secondary};">Notes</td>
+          <td width="70" style="width:70px;">&nbsp;</td>
+        </tr></table>
+      </td></tr>
+      <tr><td class="pad padtop" style="padding:22px 32px 6px;font-family:${SANS};">
+        <p class="sec dateline" style="margin:0 0 14px;text-align:center;font-size:13px;line-height:1.4;color:${L.secondary};">From Emil</p>
         <h1 class="ink h1" style="margin:0 0 14px;font-family:${DISPLAY};font-size:27px;line-height:1.2;font-weight:700;color:${L.text};">${esc(d.title)}</h1>
 ${body}
       </td></tr>
