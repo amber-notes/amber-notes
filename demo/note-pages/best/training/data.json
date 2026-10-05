@@ -1,0 +1,52 @@
+{
+ "values": {
+  "settings": {
+   "rest": 120,
+   "step": 2.5,
+   "bar": 20
+  },
+  "plans": [
+   {
+    "name": "Workout A",
+    "lifts": [
+     {
+      "name": "Squat",
+      "sets": 5,
+      "reps": 5
+     },
+     {
+      "name": "Bench press",
+      "sets": 5,
+      "reps": 5
+     },
+     {
+      "name": "Barbell row",
+      "sets": 5,
+      "reps": 5
+     }
+    ]
+   },
+   {
+    "name": "Workout B",
+    "lifts": [
+     {
+      "name": "Squat",
+      "sets": 5,
+      "reps": 5
+     },
+     {
+      "name": "Overhead press",
+      "sets": 5,
+      "reps": 5
+     },
+     {
+      "name": "Deadlift",
+      "sets": 1,
+      "reps": 5
+     }
+    ]
+   }
+  ]
+ },
+ "collections": {}
+}

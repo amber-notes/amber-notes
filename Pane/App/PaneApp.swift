@@ -69,6 +69,7 @@ struct PaneApp: App {
         PaneTips.configure()
         Capture.scheduleFromArguments(container.mainContext)
         Capture.notePagesFromArguments(container.mainContext)
+        Capture.bestAppsFromArguments(container.mainContext)
         #if os(iOS)
         FrameProbe.startFromArguments()
         #endif

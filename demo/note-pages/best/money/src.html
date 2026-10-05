@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Money</title>
+<style>
+/*KIT_CSS*/
+.safe { padding: 1.2rem 1.25rem 1.1rem; position: relative; }
+.safe .k { font-size: .85rem; font-weight: 600; color: var(--amber-text-secondary); }
+.safe .v { font-size: 3rem; font-weight: 700; letter-spacing: -.035em; line-height: 1.05; margin: .25rem 0 .35rem; font-family: var(--amber-font-rounded); }
+.safe .v small { font-size: 1.3rem; font-weight: 600; letter-spacing: 0; margin-left: .2rem; color: var(--amber-text-secondary); }
+.safe .v.low { color: var(--amber-danger); }
+.safe p { font-size: .9rem; color: var(--amber-text-secondary); }
+.period { display: flex; gap: .3rem; margin-top: 1rem; }
+.period i { flex: 1; height: .32rem; border-radius: 99px; background: var(--amber-fill); }
+.period i.past { background: color-mix(in srgb, var(--amber-accent) 45%, var(--amber-fill)); }
+.period i.now { background: var(--amber-accent); }
+.trio { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; margin-top: 1rem; }
+.trio div { font-size: .75rem; color: var(--amber-text-secondary); }
+.trio b { display: block; font-size: 1.02rem; color: var(--amber-text); font-weight: 650; }
+.addbig { position: absolute; right: 1rem; top: 1rem; }
+
+.env { padding: .75rem 1rem; display: block !important; }
+.env .line { display: flex; align-items: baseline; gap: .5rem; }
+.env .dot { width: .6rem; height: .6rem; border-radius: 50%; background: var(--cc); flex: none; align-self: center; }
+.env .name { font-weight: 600; flex: 1; }
+.env .left { font-size: .85rem; color: var(--amber-text-secondary); }
+.env .left.over { color: var(--amber-danger); font-weight: 600; }
+.bar { height: .5rem; border-radius: 99px; background: var(--amber-fill); margin-top: .5rem; position: relative; overflow: visible; }
+.bar b { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 99px; background: var(--cc); transition: width .6s var(--ease-out); }
+.bar b.over { background: var(--amber-danger); }
+.bar .pace { position: absolute; top: -.2rem; bottom: -.2rem; width: 2px; border-radius: 2px; background: var(--amber-text); opacity: .55; }
+
+.chart { padding: 1rem 1rem .7rem; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart .ax { fill: var(--amber-text-secondary); font: 600 10px var(--amber-font); }
+.chart .grid { stroke: var(--amber-separator); }
+.chart .pace { stroke: var(--amber-text-secondary); stroke-dasharray: 3 4; opacity: .7; }
+.chart .spent { stroke: var(--amber-accent); fill: none; stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+.chart .area { fill: var(--amber-accent); opacity: .12; }
+.chart .head { display: flex; align-items: baseline; gap: .5rem; margin-bottom: .6rem; }
+.chart .head b { font-size: 1.05rem; }
+.mix { display: flex; height: .7rem; border-radius: 99px; overflow: hidden; gap: 2px; margin: .9rem 0 .6rem; }
+.mix i { background: var(--cc); }
+.keys { display: flex; flex-wrap: wrap; gap: .3rem .9rem; font-size: .8rem; color: var(--amber-text-secondary); }
+.keys span { display: inline-flex; align-items: center; gap: .3rem; }
+.keys i { width: .55rem; height: .55rem; border-radius: 50%; background: var(--cc); }
+
+.bill .when { width: 2.7rem; text-align: center; flex: none; line-height: 1.05; }
+.bill .when b { display: block; font-size: 1.1rem; }
+.bill .when span { font-size: .68rem; text-transform: uppercase; color: var(--amber-text-secondary); font-weight: 600; }
+.bill.paid .grow, .bill.paid .num { opacity: .5; }
+.paidmark { font-size: .78rem; font-weight: 600; color: var(--good); display: inline-flex; align-items: center; gap: .2rem; }
+.paidmark svg { width: .85rem; height: .85rem; stroke-width: 3; }
+.pay { min-height: 2.1rem; padding: 0 .85rem; font-size: .85rem; }
+
+.day { font-size: .78rem; font-weight: 600; color: var(--amber-text-secondary); padding: .7rem 1rem .25rem; display: flex; }
+.day span:first-child { flex: 1; }
+.tx { min-height: 3.1rem !important; }
+.tx .ic { width: 2.1rem; height: 2.1rem; border-radius: 50%; background: color-mix(in srgb, var(--cc) 18%, transparent); color: var(--cc); display: grid; place-items: center; font-weight: 700; font-size: .85rem; flex: none; }
+.tx .cat { font-size: .78rem; color: var(--amber-text-secondary); }
+.tx .amt { font-weight: 600; }
+.new { animation: flashrow 1.6s var(--ease-out); }
+@keyframes flashrow { 0% { background: var(--amber-accent-soft); } 100% { background: transparent; } }
+
+.amount-in { font-size: 2.6rem !important; font-weight: 700; text-align: center; letter-spacing: -.02em; min-height: 4rem !important; font-family: var(--amber-font-rounded); }
+.catpick { display: flex; flex-wrap: wrap; gap: .4rem; }
+.catpick button { border: 0; border-radius: 999px; padding: .4rem .8rem; min-height: 2.2rem; font-size: .88rem; font-weight: 600; background: var(--amber-fill); color: var(--amber-text); display: inline-flex; align-items: center; gap: .35rem; }
+.catpick button i { width: .55rem; height: .55rem; border-radius: 50%; background: var(--cc); }
+.catpick button[aria-pressed="true"] { background: var(--amber-text); color: var(--amber-bg); }
+
+.preview { max-height: 46vh; overflow: auto; margin-top: .8rem; }
+.preview .row { gap: .6rem !important; }
+.preview .dup { opacity: .45; }
+.preview select { width: 8.2rem; min-height: 2.2rem; padding: .3rem .5rem; font-size: .85rem; border-radius: 8px; border: 0; background: var(--amber-fill); color: var(--amber-text); }
+.preview input[type=checkbox] { width: 1.25rem; height: 1.25rem; accent-color: var(--amber-accent); flex: none; }
+.summary { display: flex; align-items: center; gap: .6rem; margin-top: .9rem; font-size: .88rem; color: var(--amber-text-secondary); }
+.summary .grow { min-width: 0; }
+.budgets .row input { width: 7rem; text-align: right; min-height: 2.3rem; }
+@media (min-width: 900px) { .safe .v { font-size: 3.6rem; } }
+</style>
+</head>
+<body>
+<main class="wrap" id="app" aria-live="polite"></main>
+<script>
+/*KIT_JS*/
+const { esc, ico, D, num, kr, col, sheet, announce } = Kit;
+const S = Kit.settings([
+  { key: "income", label: "Income a month", type: "number", unit: "kr", default: 30000, step: 100, help: "After tax." },
+  { key: "save", label: "Saving a month", type: "number", unit: "kr", default: 3000, step: 100, help: "Set aside first, never counted as safe to spend." },
+  { key: "payday", label: "Payday", type: "select", default: 25, options: [...Array(28)].map((_, i) => [i + 1, `The ${ord(i + 1)}`]), help: "The budget month runs from payday to payday." },
+]);
+function ord(n) { return n + (n % 10 === 1 && n !== 11 ? "st" : n % 10 === 2 && n !== 12 ? "nd" : n % 10 === 3 && n !== 13 ? "rd" : "th"); }
+const PALETTE = { Groceries: 2, "Eating out": 1, Transport: 3, Fun: 4, Shopping: 6, Health: 5, Home: 7, Bills: 7, Other: 7 };
+const cc = (c) => `var(--c${PALETTE[c] || (Math.abs([...c].reduce((a, x) => a + x.charCodeAt(0), 0)) % 6) + 1})`;
+let showAll = false, fresh = null;
+
+function period(today, payday) {
+  const t = D.parse(today); let y = t.getUTCFullYear(), m = t.getUTCMonth();
+  if (t.getUTCDate() < payday) m -= 1;
+  const start = D.iso(new Date(Date.UTC(y, m, payday)));
+  const end = D.add(D.iso(new Date(Date.UTC(y, m + 1, payday))), -1);
+  return { start, end, days: D.diff(end, start) + 1, index: D.diff(today, start), left: D.diff(end, today) + 1 };
+}
+
+function model(note) {
+  const t = Kit.table(note, /^date$/i, /^amount$/i);
+  if (!t) return null;
+  const c = { date: col(t, /^date$/i), item: col(t, /^(item|what|description|name)$/i), cat: col(t, /^category$/i), amt: col(t, /^amount$/i) };
+  const bt = note.tables.find((x) => x !== t && col(x, /^bill$/i) >= 0);
+  const s = S.get();
+  const p = period(note.today, Number(s.payday) || 25);
+  const tx = t.rows.map((r, i) => ({ i, date: (r[c.date] || "").trim(), item: c.item >= 0 ? r[c.item] : "", cat: (c.cat >= 0 && r[c.cat].trim()) || "Other", amt: num(r[c.amt]) }))
+    .filter((x) => D.parse(x.date) && Number.isFinite(x.amt));
+  const inP = tx.filter((x) => x.date >= p.start && x.date <= note.today);
+  const bills = bt ? bt.rows.map((r, i) => {
+    const name = r[col(bt, /^bill$/i)], day = parseInt(r[col(bt, /^day$/i)]) || 1, amt = num(r[col(bt, /^amount$/i)]) || 0;
+    let due = p.start.slice(0, 8) + String(day).padStart(2, "0");
+    if (due < p.start) due = D.iso(new Date(Date.UTC(+p.start.slice(0, 4), +p.start.slice(5, 7), day)));
+    const paid = inP.find((x) => x.item.toLowerCase().includes(name.toLowerCase()) || name.toLowerCase().includes(x.item.toLowerCase()) && x.item.length > 2);
+    return { i, name, day, amt, due, paid };
+  }).sort((a, b) => a.due.localeCompare(b.due)) : [];
+  const billNames = new Set(bills.filter((b) => b.paid).map((b) => b.paid.i));
+  const flexTx = inP.filter((x) => !billNames.has(x.i) && !/^bills?$/i.test(x.cat));
+  const billsTotal = bills.reduce((a, b) => a + b.amt, 0);
+  const flexible = (Number(s.income) || 0) - (Number(s.save) || 0) - billsTotal;
+  const spent = flexTx.reduce((a, x) => a + x.amt, 0);
+  const spentToday = flexTx.filter((x) => x.date === note.today).reduce((a, x) => a + x.amt, 0);
+  const safe = (flexible - (spent - spentToday)) / p.left - spentToday;
+  const env = amber.data.values.envelopes || {};
+  const cats = [...new Set([...Object.keys(env), ...flexTx.map((x) => x.cat)])];
+  const envs = cats.map((name) => ({ name, budget: Number(env[name]) || 0, spent: flexTx.filter((x) => x.cat === name).reduce((a, x) => a + x.amt, 0) }))
+    .sort((a, b) => (b.budget ? 1 : 0) - (a.budget ? 1 : 0) || b.spent - a.spent);
+  return { t, c, bt, p, tx, inP, flexTx, bills, flexible, spent, spentToday, safe, envs, s };
+}
+
+function chart(m) {
+  const W = Math.round(Math.max(260, Kit.width("chart", innerWidth - 64))), H = Math.round(Math.min(220, Math.max(150, W * 0.42))), L = 4, R = 4, T = 10, B = 22;
+  const max = Math.max(m.flexible, m.spent) * 1.05 || 1;
+  const x = (i) => L + (i / (m.p.days - 1)) * (W - L - R), y = (v) => T + (1 - v / max) * (H - T - B);
+  let acc = 0; const pts = [];
+  for (let i = 0; i <= m.p.index; i++) { const d = D.add(m.p.start, i); acc += m.flexTx.filter((t) => t.date === d).reduce((a, t) => a + t.amt, 0); pts.push([x(i), y(acc)]); }
+  const line = pts.map((p, k) => (k ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" ");
+  const area = line + ` L ${pts[pts.length - 1][0].toFixed(1)} ${y(0)} L ${x(0)} ${y(0)} Z`;
+  const last = pts[pts.length - 1];
+  const paceNow = m.flexible * (m.p.index + 1) / m.p.days;
+  const ahead = acc - paceNow;
+  return `<div class="head"><b>${kr(acc)}</b><span class="muted small">spent of ${kr(m.flexible)} · ${ahead > 0 ? `${kr(ahead)} over pace` : `${kr(-ahead)} under pace`}</span></div>
+  <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Spending so far against an even pace">
+    ${[0.25, 0.5, 0.75, 1].map((f) => `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(m.flexible * f)}" y2="${y(m.flexible * f)}"/>`).join("")}
+    <line class="pace" x1="${x(0)}" y1="${y(0)}" x2="${x(m.p.days - 1)}" y2="${y(m.flexible)}"/>
+    <path class="area" d="${area}"/><path class="spent" d="${line}"/>
+    <circle cx="${last[0]}" cy="${last[1]}" r="4.5" fill="var(--amber-accent)" stroke="var(--amber-surface)" stroke-width="2"/>
+    <text class="ax" x="${L}" y="${H - 4}">${D.fmt(m.p.start, { day: "numeric", month: "short" })}</text>
+    <text class="ax" x="${Math.min(Math.max(last[0], 60), W - 120)}" y="${H - 4}" text-anchor="middle">Today</text>
+    <text class="ax" x="${W - R}" y="${H - 4}" text-anchor="end">${D.fmt(m.p.end, { day: "numeric", month: "short" })}</text>
+  </svg>
+  <div class="mix" aria-hidden="true">${m.envs.filter((e) => e.spent > 0).map((e) => `<i style="--cc:${cc(e.name)};flex:${e.spent}"></i>`).join("")}</div>
+  <div class="keys">${m.envs.filter((e) => e.spent > 0).map((e) => `<span style="--cc:${cc(e.name)}"><i></i>${esc(e.name)} ${Math.round(e.spent / Math.max(1, m.spent) * 100)}%</span>`).join("")}</div>`;
+}
+
+function render(note = amber.note) {
+  const app = document.getElementById("app");
+  const m = model(note);
+  if (!m) {
+    app.innerHTML = `<header class="top"><div class="titles"><h1>${esc(note.title || "Money")}</h1></div><button class="round" id="settings" aria-label="Settings">${ico("gear")}</button></header>
+      <div class="card empty">${ico("coins")}<h3>Nothing spent yet</h3><p>Spending goes in a table in this note with Date, Item, Category and Amount. Add the first one here, or paste a bank export.</p>
+      <button class="btn primary" id="first">${ico("plus")} Add spending</button></div>`;
+    document.getElementById("first").onclick = () => amber.update({ op: "set_text", heading: "Spending", text: "| Date | Item | Category | Amount |\n| --- | --- | --- | --- |" }).then((r) => !r.ok && amber.update({ op: "set_text", heading: note.title, text: "" }));
+    return;
+  }
+  const { p } = m;
+  const safe = Math.max(0, Math.floor(m.safe / 10) * 10);
+  const leftAll = m.flexible - m.spent;
+  const upcoming = m.bills.filter((b) => !b.paid);
+  const days = [...new Set(m.inP.map((x) => x.date))].sort().reverse();
+  const listDays = showAll ? days : days.slice(0, 4);
+  const rowsFor = (d) => m.inP.filter((x) => x.date === d).sort((a, b) => b.i - a.i);
+  const txRow = (x) => `<button class="row tx ${fresh === x.i ? "new" : ""}" data-tx="${x.i}" style="--cc:${cc(x.cat)}"><span class="ic" aria-hidden="true">${esc((x.item || x.cat).trim()[0] || "·").toUpperCase()}</span>
+      <span class="grow"><span class="ellipsis" style="display:block">${esc(x.item || x.cat)}</span><span class="cat">${esc(x.cat)}</span></span><span class="amt num">${kr(x.amt)}</span></button>`;
+  app.innerHTML = `
+  <header class="top"><div class="titles"><h1>${esc(note.title)}</h1><div class="sub">${D.fmt(p.start, { day: "numeric", month: "short" })} to ${D.fmt(p.end, { day: "numeric", month: "short" })} · day ${p.index + 1} of ${p.days}</div></div>
+    <button class="round" id="import" aria-label="Import from your bank">${ico("upload")}</button><button class="round" id="settings" aria-label="Settings">${ico("gear")}</button></header>
+  <div class="cols side">
+    <div>
+      <section class="card safe" aria-label="Safe to spend today">
+        <div class="k">Safe to spend today</div>
+        <div class="v num ${m.safe < 0 ? "low" : ""}">${Kit.fmtN(safe)}<small>kr</small></div>
+        <p>${m.safe < 0 ? "Today's spending is past what's left per day. Tomorrow resets." : `${kr(leftAll)} left for ${p.left} ${p.left === 1 ? "day" : "days"}, after bills and saving.`}</p>
+        <button class="btn primary addbig" id="add" aria-label="Add spending">${ico("plus")} Add</button>
+        <div class="period" aria-hidden="true">${[...Array(p.days)].map((_, i) => `<i class="${i < p.index ? "past" : i === p.index ? "now" : ""}"></i>`).join("")}</div>
+        <div class="trio"><div><b class="num">${kr(m.spentToday)}</b>Spent today</div><div><b class="num">${kr(upcoming.reduce((a, b) => a + b.amt, 0))}</b>Bills to come</div><div><b class="num">${kr(m.s.save)}</b>Saving</div></div>
+      </section>
+      <div class="label"><span class="grow">This month</span></div>
+      <section class="card chart"><div data-w="chart"></div>${chart(m)}</section>
+      <div class="label"><span class="grow">Budgets</span><button id="budgets">Edit</button></div>
+      <section class="card list">${m.envs.map((e) => {
+        const over = e.budget && e.spent > e.budget, f = e.budget ? Math.min(1, e.spent / e.budget) : 0;
+        return `<div class="row env" style="--cc:${cc(e.name)}"><div class="line"><span class="dot"></span><span class="name">${esc(e.name)}</span>
+          <span class="left num ${over ? "over" : ""}">${e.budget ? (over ? `${kr(e.spent - e.budget)} over` : `${kr(e.budget - e.spent)} left`) : kr(e.spent)}</span></div>
+          ${e.budget ? `<div class="bar" role="meter" aria-label="${esc(e.name)}" aria-valuemin="0" aria-valuemax="${e.budget}" aria-valuenow="${Math.round(e.spent)}"><b class="${over ? "over" : ""}" style="width:${f * 100}%"></b><span class="pace" style="left:${((p.index + 1) / p.days) * 100}%" title="Where an even pace would be today"></span></div>` : ""}</div>`;
+      }).join("")}</section>
+      <p class="muted small" style="margin:.5rem .3rem 0">The line in each bar is where an even pace would be today.</p>
+    </div>
+    <div>
+      <div class="label"><span class="grow">Bills</span><span class="small num" style="text-transform:none">${kr(m.bills.reduce((a, b) => a + b.amt, 0))} a month</span></div>
+      <section class="card list">${m.bills.length ? m.bills.map((b) => `<div class="row bill ${b.paid ? "paid" : ""}"><span class="when"><b class="num">${+b.due.slice(8)}</b><span>${D.fmt(b.due, { month: "short" })}</span></span>
+        <span class="grow ellipsis">${esc(b.name)}<div class="small muted">${b.paid ? "" : D.rel(b.due, note.today)}</div></span><span class="num">${kr(b.amt)}</span>
+        ${b.paid ? `<span class="paidmark">${ico("check")}Paid</span>` : `<button class="btn tint pay" data-pay="${b.i}" aria-label="Mark ${esc(b.name)} paid">Paid</button>`}</div>`).join("")
+        : `<div class="empty"><p>Add a Bills table to the note (Bill, Day, Amount) and they show here.</p></div>`}</section>
+      <div class="label"><span class="grow">Spending</span>${days.length > 4 ? `<button id="all">${showAll ? "Show less" : "Show all"}</button>` : ""}</div>
+      <section class="card">${listDays.length ? listDays.map((d) => `<div class="day"><span>${dayName(d, note.today)}</span><span class="num">${kr(rowsFor(d).reduce((a, x) => a + x.amt, 0))}</span></div><div class="list">${rowsFor(d).map(txRow).join("")}</div>`).join("")
+        : `<div class="empty"><p>Nothing spent since payday.</p></div>`}</section>
+    </div>
+  </div>`;
+  fresh = null;
+  Kit.fit(() => render());
+}
+
+function dayName(d, today) {
+  const n = D.diff(d, today), date = D.fmt(d, { day: "numeric", month: "short" });
+  return n === 0 ? `Today, ${date}` : n === -1 ? `Yesterday, ${date}` : D.fmt(d, { weekday: "long", day: "numeric", month: "short" });
+}
+Kit.onResize(() => render());
+
+function cats(m) { return [...new Set([...m.envs.map((e) => e.name), "Bills", "Other"])]; }
+
+function addSheet(edit) {
+  const m = model(amber.note); if (!m) return;
+  const x = edit != null ? m.tx.find((t) => t.i === edit) : null;
+  let cat = x ? x.cat : m.envs[0] ? m.envs[0].name : "Other";
+  sheet(x ? "Edit spending" : "Add spending", `<form id="f" class="fields">
+    <label class="sr" for="amt">Amount in kronor</label><input id="amt" class="in amount-in num" inputmode="decimal" placeholder="0 kr" value="${x ? x.amt : ""}" autofocus required>
+    <label class="field">What<input id="item" value="${esc(x ? x.item : "")}" placeholder="Lunch" maxlength="80"></label>
+    <div class="field">Category<div class="catpick" role="group" aria-label="Category">${cats(m).map((c) => `<button type="button" data-c="${esc(c)}" style="--cc:${cc(c)}" aria-pressed="${c === cat}"><i></i>${esc(c)}</button>`).join("")}</div></div>
+    <label class="field">Date<input id="date" type="date" value="${x ? x.date : amber.note.today}"></label>
+    <div class="err" id="err" role="alert"></div>
+    <button class="btn primary block">${x ? "Save" : "Add"}</button>${x ? `<button type="button" class="btn danger block" id="del">${ico("trash")} Delete</button>` : ""}</form>`, {
+    mount(root, close) {
+      root.querySelector(".catpick").onclick = (e) => { const b = e.target.closest("[data-c]"); if (!b) return; cat = b.dataset.c; root.querySelectorAll("[data-c]").forEach((y) => y.setAttribute("aria-pressed", y === b)); };
+      root.querySelector("#f").onsubmit = async (e) => {
+        e.preventDefault();
+        const amt = num(root.querySelector("#amt").value), item = root.querySelector("#item").value.trim() || cat, date = root.querySelector("#date").value || amber.note.today;
+        if (!(amt > 0)) return (root.querySelector("#err").textContent = "Type an amount.");
+        const name = (k) => m.t.columns[m.c[k]].name;
+        let r;
+        if (x) {
+          const changes = [["date", date, x.date], ["item", item, x.item], ["cat", cat, x.cat], ["amt", amountText(amt), amountText(x.amt)]].filter(([k, v, o]) => m.c[k] >= 0 && v !== o);
+          r = { ok: true };
+          for (const [k, v] of changes) { r = await amber.update({ op: "set_cell", table: m.t.index, row: x.i, col: name(k), value: v }); if (!r.ok) break; }
+        } else {
+          const values = { [name("date")]: date, [name("amt")]: amountText(amt) };
+          if (m.c.item >= 0) values[name("item")] = item;
+          if (m.c.cat >= 0) values[name("cat")] = cat;
+          r = await amber.update({ op: "append_row", table: m.t.index, values });
+          fresh = m.t.rows.length;
+        }
+        if (!r.ok) return (root.querySelector("#err").textContent = r.error);
+        close(); announce(`${kr(amt)} for ${item}.`);
+      };
+      const del = root.querySelector("#del");
+      if (del) del.onclick = async () => { const r = await amber.update({ op: "delete_row", table: m.t.index, row: x.i }); if (r.ok) close(); else root.querySelector("#err").textContent = r.error; };
+    },
+  });
+}
+
+async function payBill(i) {
+  const m = model(amber.note); const b = m.bills.find((x) => x.i === i); if (!b) return;
+  const name = (k) => m.t.columns[m.c[k]].name;
+  const values = { [name("date")]: amber.note.today, [name("amt")]: String(b.amt) };
+  if (m.c.item >= 0) values[name("item")] = b.name;
+  if (m.c.cat >= 0) values[name("cat")] = "Bills";
+  fresh = m.t.rows.length;
+  await amber.update({ op: "append_row", table: m.t.index, values });
+}
+
+function budgetsSheet() {
+  const m = model(amber.note);
+  const env = amber.data.values.envelopes || {};
+  const names = [...new Set([...Object.keys(env), ...m.envs.map((e) => e.name)])];
+  const total = () => names.reduce((a, n) => a + (Number(env[n]) || 0), 0);
+  sheet("Budgets", `<p class="muted small" style="margin:0 .2rem .8rem">${kr(m.flexible)} a month is free after bills and saving.</p>
+    <div class="card list budgets">${names.map((n) => `<label class="row" style="--cc:${cc(n)}"><span class="grow" style="display:flex;align-items:center;gap:.5rem"><i style="width:.6rem;height:.6rem;border-radius:50%;background:var(--cc)"></i>${esc(n)}</span><input class="in num" inputmode="numeric" data-env="${esc(n)}" value="${env[n] || ""}" placeholder="No budget" aria-label="${esc(n)} budget"></label>`).join("")}</div>
+    <form id="nb" class="fields two" style="margin-top:.8rem"><input class="in" id="nbn" placeholder="New category" aria-label="New category" maxlength="30"><button class="btn tint">${ico("plus")} Add</button></form>
+    <p class="summary"><span class="grow" id="tot"></span></p>`, {
+    mount(root, close) {
+      const upd = () => { const t = total(); root.querySelector("#tot").innerHTML = `Budgeted <b class="num">${kr(t)}</b> of ${kr(m.flexible)}${t > m.flexible ? ` · <span style="color:var(--amber-danger)">${kr(t - m.flexible)} more than you have</span>` : ""}`; };
+      upd();
+      root.addEventListener("change", async (e) => { const el = e.target.closest("[data-env]"); if (!el) return; const v = num(el.value); env[el.dataset.env] = Number.isFinite(v) ? v : 0; await amber.setData({ values: { envelopes: { [el.dataset.env]: Number.isFinite(v) && v > 0 ? v : null } } }); upd(); });
+      root.querySelector("#nb").onsubmit = async (e) => { e.preventDefault(); const n = root.querySelector("#nbn").value.trim(); if (!n) return; await amber.setData({ values: { envelopes: { [n]: 500 } } }); close(); budgetsSheet(); };
+    },
+  });
+}
+
+// Paste rows from a bank's export (CSV or copied from the web bank); each row gets a category from the rules.
+function parseBank(text, m) {
+  const rules = amber.data.values.rules || {};
+  const out = [], skipped = { income: 0, other: 0 };
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim(); if (!line) continue;
+    const delim = line.includes("\t") ? "\t" : line.includes(";") ? ";" : ",";
+    const f = line.split(delim).map((s) => s.trim().replace(/^"|"$/g, ""));
+    let date = null, amt = null, item = "";
+    for (const v of f) {
+      const iso = /^(\d{4})[-/.](\d\d)[-/.](\d\d)$/.exec(v), eu = /^(\d\d)[-/.](\d\d)[-/.](\d{4})$/.exec(v);
+      if (!date && (iso || eu)) { date = iso ? `${iso[1]}-${iso[2]}-${iso[3]}` : `${eu[3]}-${eu[2]}-${eu[1]}`; continue; }
+      if (/^[-+−]?\s?[\d\s ]+([.,]\d{1,2})?(\s?kr)?$/i.test(v) && /\d/.test(v)) { amt = num(v.replace("−", "-")); continue; }
+      if (v.length > item.length && /[a-zåäö]/i.test(v)) item = v;
+    }
+    if (!date || amt == null || !item) { skipped.other++; continue; }
+    if (amt > 0 && /-/.test(text)) { skipped.income++; continue; }
+    amt = Math.abs(amt);
+    const low = item.toLowerCase() + " ";
+    const hit = Object.keys(rules).sort((a, b) => b.length - a.length).find((k) => low.includes(k));
+    const dup = m.tx.some((x) => x.date === date && Math.abs(x.amt - amt) < 0.01);
+    out.push({ date, item: item.replace(/\s+/g, " ").slice(0, 60), amt, cat: hit ? rules[hit] : "Other", dup, use: !dup });
+  }
+  return { rows: out, skipped };
+}
+
+const amountText = (n) => Number.isInteger(n) ? String(n) : n.toFixed(2).replace(".", ",");
+function importSheet() {
+  const m = model(amber.note);
+  let parsed = null;
+  const draw = (root) => {
+    const pv = root.querySelector("#pv");
+    if (!parsed) { pv.innerHTML = ""; return; }
+    const n = parsed.rows.filter((r) => r.use).length;
+    pv.innerHTML = parsed.rows.length ? `<div class="card list preview">${parsed.rows.map((r, k) => `<label class="row ${r.dup ? "dup" : ""}"><input type="checkbox" data-use="${k}" ${r.use ? "checked" : ""} aria-label="Import ${esc(r.item)}">
+      <span class="grow"><span class="ellipsis" style="display:block">${esc(r.item)}</span><span class="small muted">${D.fmt(r.date)}${r.dup ? " · already in the note" : ""}</span></span>
+      <span class="num small" style="font-weight:600">${kr(r.amt)}</span><select data-cat="${k}" aria-label="Category for ${esc(r.item)}">${cats(m).map((c) => `<option ${c === r.cat ? "selected" : ""}>${esc(c)}</option>`).join("")}</select></label>`).join("")}</div>
+      <div class="summary"><span class="grow">${parsed.rows.length} rows${parsed.skipped.income ? ` · ${parsed.skipped.income} incoming skipped` : ""}${parsed.rows.some((r) => r.dup) ? ` · ${parsed.rows.filter((r) => r.dup).length} already there` : ""}</span>
+      <button class="btn primary" id="go" ${n ? "" : "disabled"}>Add ${n} ${n === 1 ? "row" : "rows"}</button></div>`
+      : `<p class="err">No rows found. Each line needs a date, a description and an amount.</p>`;
+  };
+  sheet("Import from your bank", `<p class="muted small" style="margin:0 .2rem .7rem">Paste rows from your bank's CSV export or its web page. Money going out is added to Spending; categories come from your rules, and the ones you change are remembered.</p>
+    <label class="sr" for="csv">Rows from your bank</label><textarea id="csv" class="in" rows="5" placeholder="2026-10-04;ICA Nära Odenplan;-318,00" style="font-family:var(--amber-font-mono);font-size:.82rem"></textarea>
+    <div id="pv"></div>`, {
+    wide: true,
+    mount(root, close) {
+      const ta = root.querySelector("#csv");
+      ta.addEventListener("input", () => { parsed = ta.value.trim() ? parseBank(ta.value, m) : null; draw(root); });
+      root.addEventListener("change", async (e) => {
+        const u = e.target.closest("[data-use]"), c = e.target.closest("[data-cat]");
+        if (u) { parsed.rows[+u.dataset.use].use = u.checked; draw(root); }
+        if (c) {
+          const r = parsed.rows[+c.dataset.cat]; r.cat = c.value;
+          const key = r.item.toLowerCase().split(/\s+/)[0];
+          if (key.length > 2) { await amber.setData({ values: { rules: { [key]: c.value } } }); parsed.rows.forEach((x) => { if (x.item.toLowerCase().startsWith(key)) x.cat = c.value; }); draw(root); }
+        }
+      });
+      root.addEventListener("click", async (e) => {
+        if (!e.target.closest("#go")) return;
+        const rows = parsed.rows.filter((r) => r.use).sort((a, b) => a.date.localeCompare(b.date));
+        const name = (k) => m.t.columns[m.c[k]].name;
+        const r = await Kit.addRows(m.t.index, rows.map((x) => ({ [name("date")]: x.date, ...(m.c.item >= 0 ? { [name("item")]: x.item } : {}), ...(m.c.cat >= 0 ? { [name("cat")]: x.cat } : {}), [name("amt")]: amountText(x.amt) })));
+        if (!r.ok) { root.querySelector("#pv").insertAdjacentHTML("beforeend", `<p class="err">${esc(r.error)}</p>`); return; }
+        close(); announce(`Added ${rows.length} rows.`);
+      });
+    },
+  });
+}
+
+document.addEventListener("click", (e) => {
+  const t = e.target.closest("#add,#settings,#import,#budgets,#all,[data-tx],[data-pay]"); if (!t) return;
+  if (t.id === "add") addSheet();
+  else if (t.id === "settings") S.open("Money settings");
+  else if (t.id === "import") importSheet();
+  else if (t.id === "budgets") budgetsSheet();
+  else if (t.id === "all") { showAll = !showAll; render(); }
+  else if (t.dataset.tx) addSheet(+t.dataset.tx);
+  else if (t.dataset.pay) payBill(+t.dataset.pay);
+});
+amber.onChange((note) => render(note));
+</script>
+</body>
+</html>

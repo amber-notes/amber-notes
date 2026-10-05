@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Training</title>
+<style>
+/*KIT_CSS*/
+.next { padding: 1.15rem 1.2rem; }
+.next .k { font-size: .82rem; font-weight: 600; color: var(--amber-text-secondary); }
+.next h2 { font-size: 1.6rem; font-weight: 700; letter-spacing: -.02em; margin: .15rem 0 .8rem; }
+.plan { display: grid; gap: .35rem; margin-bottom: 1rem; }
+.plan div { display: flex; gap: .6rem; align-items: baseline; }
+.plan b { font-weight: 600; flex: 1; }
+.plan span { color: var(--amber-text-secondary); font-size: .9rem; }
+.planpick { display: flex; gap: .4rem; margin-bottom: .9rem; }
+.week { display: flex; gap: .35rem; margin-top: .25rem; }
+.week div { flex: 1; text-align: center; font-size: .68rem; font-weight: 600; color: var(--amber-text-secondary); }
+.week i { display: grid; place-items: center; height: 1.9rem; border-radius: .6rem; background: var(--amber-fill); margin-bottom: .25rem; color: var(--amber-on-accent); }
+.week i svg { width: .9rem; height: .9rem; stroke-width: 3; }
+.week .on i { background: var(--amber-accent); }
+.week .today i { box-shadow: inset 0 0 0 2px var(--amber-text); }
+
+.prs { display: grid; grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); gap: .6rem; }
+.pr { background: var(--amber-surface); border-radius: var(--amber-radius); padding: .85rem .95rem .7rem; border: 0; text-align: left; color: inherit; position: relative; transition: transform .15s; }
+.pr:active { transform: scale(.98); }
+.pr[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--amber-accent); }
+.pr h3 { font-size: .85rem; font-weight: 600; color: var(--amber-text-secondary); }
+.pr .big { font-size: 1.65rem; font-weight: 700; letter-spacing: -.02em; margin-top: .2rem; }
+.pr .big small { font-size: .85rem; color: var(--amber-text-secondary); font-weight: 600; }
+.pr .up { font-size: .78rem; font-weight: 600; color: var(--good); }
+.pr .flat { font-size: .78rem; color: var(--amber-text-secondary); }
+.pr svg.sp { display: block; width: 100%; height: 1.9rem; margin-top: .45rem; }
+.pr svg.sp path { fill: none; stroke: var(--amber-accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+
+.prog { padding: 1rem 1rem .8rem; }
+.prog svg { display: block; width: 100%; height: auto; overflow: visible; }
+.prog .ax { fill: var(--amber-text-secondary); font: 600 10px var(--amber-font); }
+.prog .grid { stroke: var(--amber-separator); }
+.prog .ln { fill: none; stroke: var(--amber-accent); stroke-width: 2.5; stroke-linejoin: round; }
+.prog .area { fill: var(--amber-accent); opacity: .1; }
+.prog .pt { fill: var(--amber-surface); stroke: var(--amber-accent); stroke-width: 2; }
+.prog .rec { fill: var(--amber-accent); }
+.prog .head { display: flex; align-items: baseline; gap: .5rem; flex-wrap: wrap; margin-bottom: .5rem; }
+.prog .head b { font-size: 1.05rem; }
+.segwrap { overflow-x: auto; scrollbar-width: none; margin-bottom: .8rem; }
+.segwrap::-webkit-scrollbar { display: none; }
+
+.sess .when { font-weight: 600; }
+.sess .what { font-size: .85rem; color: var(--amber-text-secondary); margin-top: .1rem; }
+.sess .badge { font-size: .72rem; font-weight: 700; color: var(--amber-accent-text); background: var(--amber-accent-soft); border-radius: 99px; padding: .15rem .5rem; display: inline-flex; gap: .2rem; align-items: center; }
+.sess .badge svg { width: .75rem; height: .75rem; }
+
+/* The workout in progress. */
+.live-head { display: flex; align-items: center; gap: .8rem; padding: 1rem 1.1rem; }
+.live-head .clock { font-family: var(--amber-font-rounded); font-size: 1.9rem; font-weight: 700; letter-spacing: -.02em; }
+.live-head .grow .k { font-size: .8rem; color: var(--amber-text-secondary); font-weight: 600; }
+.ex { margin-top: .8rem; }
+.ex .exh { display: flex; align-items: baseline; gap: .5rem; padding: .85rem 1rem .4rem; }
+.ex .exh h3 { font-size: 1.1rem; flex: 1; }
+.ex .last { font-size: .8rem; color: var(--amber-text-secondary); padding: 0 1rem .5rem; }
+.set { display: grid; grid-template-columns: 1.8rem 1fr 1fr 2.9rem; gap: .5rem; align-items: center; padding: .35rem 1rem; transition: background .3s; }
+.set.hd { font-size: .7rem; font-weight: 700; color: var(--amber-text-secondary); text-transform: uppercase; letter-spacing: .03em; padding-top: 0; padding-bottom: 0; }
+.set .n { font-weight: 700; color: var(--amber-text-secondary); text-align: center; }
+.set input { width: 100%; text-align: center; font-weight: 600; font-size: 1.05rem; min-height: 2.6rem; border: 0; border-radius: var(--amber-radius-small); background: var(--amber-fill); color: var(--amber-text); }
+.set.done input { background: transparent; }
+.set.done { background: color-mix(in srgb, var(--good) 9%, transparent); }
+.set .ok { width: 2.6rem; height: 2.6rem; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--amber-text-secondary) 40%, transparent); background: transparent; display: grid; place-items: center; color: #fff; transition: background .2s, border-color .2s, transform .15s; }
+.set .ok svg { width: 1.2rem; height: 1.2rem; stroke-width: 3; opacity: 0; transition: opacity .2s; }
+.set.done .ok { background: var(--good); border-color: var(--good); }
+.set.done .ok svg { opacity: 1; }
+.set .ok:active { transform: scale(.9); }
+.addset { margin: .3rem 1rem .9rem; }
+.finish { margin-top: 1.2rem; }
+
+.rest { position: fixed; left: 50%; bottom: calc(1rem + env(safe-area-inset-bottom)); transform: translate(-50%, 160%); z-index: 40; display: flex; align-items: center; gap: .7rem; padding: .55rem .6rem .55rem .7rem; border-radius: 999px; background: var(--amber-text); color: var(--amber-bg); box-shadow: var(--shadow); transition: transform .45s var(--ease-pop); min-width: 17rem; }
+.rest:not(.on) { visibility: hidden; transition: transform .45s var(--ease-pop), visibility 0s .45s; }
+.rest.on { transform: translate(-50%, 0); }
+.rest .time small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 9rem; }
+.seg button { white-space: nowrap; }
+.rest .r { width: 2.6rem; height: 2.6rem; position: relative; flex: none; }
+.rest .r svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.rest .r circle { fill: none; stroke-width: 4; }
+.rest .r .t { stroke: color-mix(in srgb, var(--amber-bg) 25%, transparent); }
+.rest .r .b { stroke: var(--amber-accent); stroke-linecap: round; transition: stroke-dashoffset 1s linear; }
+.rest .time { font-family: var(--amber-font-rounded); font-size: 1.35rem; font-weight: 700; flex: 1; }
+.rest .time small { display: block; font-family: var(--amber-font); font-size: .72rem; font-weight: 600; opacity: .7; }
+.rest button { border: 0; border-radius: 999px; min-height: 2.4rem; padding: 0 .8rem; font-weight: 700; background: color-mix(in srgb, var(--amber-bg) 18%, transparent); color: inherit; }
+.record { padding: 1.2rem; text-align: center; background: var(--amber-accent-soft); }
+.record svg { width: 2.2rem; height: 2.2rem; color: var(--amber-accent-text); animation: pop .6s var(--ease-pop); }
+.record h2 { font-size: 1.2rem; margin: .4rem 0 .2rem; }
+.record p { color: var(--amber-text-secondary); font-size: .92rem; }
+@media (min-width: 900px) { .prs { grid-template-columns: repeat(5, 1fr); } }
+</style>
+</head>
+<body>
+<main class="wrap" id="app" aria-live="polite"></main>
+<div class="rest" id="rest" role="timer" aria-live="off"></div>
+<script>
+/*KIT_JS*/
+const { esc, ico, D, num, col, sheet, announce } = Kit;
+const S = Kit.settings([
+  { key: "rest", label: "Rest between sets", type: "select", default: 120, options: [[60, "1 minute"], [90, "1½ minutes"], [120, "2 minutes"], [180, "3 minutes"], [240, "4 minutes"], [300, "5 minutes"]] },
+  { key: "step", label: "Weight step", type: "select", default: 2.5, options: [[1.25, "1.25 kg"], [2.5, "2.5 kg"], [5, "5 kg"]], help: "How much the − and + buttons change." },
+  { key: "notify", label: "Notify when rest is over", type: "toggle", default: true, help: "Even with the phone locked." },
+]);
+let lift = null, record = null, restTimer = null, clockTimer = null;
+const kgText = (n) => (Math.round(n * 100) / 100).toString().replace(".", ",");
+const e1rm = (kg, reps) => kg * (1 + Math.min(reps, 12) / 30);
+
+function model(note) {
+  const t = Kit.table(note, /^date$/i, /^exercise$/i);
+  if (!t) return null;
+  const c = { date: col(t, /^date$/i), ex: col(t, /^exercise$/i), sets: col(t, /^sets$/i), reps: col(t, /^reps$/i), kg: col(t, /^(kg|weight)$/i) };
+  const rows = t.rows.map((r, i) => ({ i, date: r[c.date].trim(), ex: r[c.ex].trim(), sets: parseInt(r[c.sets]) || 1, reps: parseInt(r[c.reps]) || 0, kg: num(r[c.kg]) }))
+    .filter((r) => D.parse(r.date) && r.ex && Number.isFinite(r.kg));
+  const lifts = {};
+  for (const r of rows) {
+    const L = lifts[r.ex] || (lifts[r.ex] = { name: r.ex, pts: [], best: 0, bestRow: null, last: null, records: new Set() });
+    const v = e1rm(r.kg, r.reps);
+    if (v > L.best + 0.01) { L.best = v; L.bestRow = r; L.records.add(r.i); }
+    L.pts.push({ date: r.date, v, r });
+    L.last = r;
+  }
+  const sessions = [...new Set(rows.map((r) => r.date))].sort().reverse().map((d) => ({ date: d, rows: rows.filter((r) => r.date === d) }));
+  return { t, c, rows, lifts, sessions };
+}
+
+function nextPlan(m) {
+  const plans = amber.data.values.plans || [];
+  if (!plans.length) return null;
+  const last = m.sessions[0];
+  if (!last) return plans[0];
+  const names = new Set(last.rows.map((r) => r.ex));
+  const score = (p) => p.lifts.filter((l) => names.has(l.name)).length - p.lifts.length / 100;
+  const idx = plans.reduce((b, p, k) => (score(p) > score(plans[b]) ? k : b), 0);
+  return plans[(idx + 1) % plans.length] || plans[0];
+}
+
+function spark(L) {
+  const pts = L.pts.slice(-12); if (pts.length < 2) return "";
+  const vs = pts.map((p) => p.v), lo = Math.min(...vs), hi = Math.max(...vs) || 1;
+  return `<svg class="sp" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true"><path vector-effect="non-scaling-stroke" d="${pts.map((p, k) => `${k ? "L" : "M"}${(k / (pts.length - 1)) * 100} ${22 - ((p.v - lo) / Math.max(1, hi - lo)) * 20}`).join(" ")}"/></svg>`;
+}
+
+function chart(m, name) {
+  const L = m.lifts[name]; if (!L || L.pts.length < 2) return `<p class="muted">Log ${esc(name)} a few times to see it climb.</p>`;
+  const W = Math.round(Math.max(260, Kit.width("prog", innerWidth - 64))), H = Math.round(Math.min(230, Math.max(160, W * .45))), Lp = 30, R = 8, T = 10, B = 20;
+  const t0 = D.parse(L.pts[0].date), t1 = D.parse(L.pts[L.pts.length - 1].date);
+  const vs = L.pts.map((p) => p.v), lo = Math.floor(Math.min(...vs) / 10) * 10, hi = Math.ceil(Math.max(...vs) / 10) * 10 || 10;
+  const x = (d) => Lp + ((D.parse(d) - t0) / Math.max(1, t1 - t0)) * (W - Lp - R), y = (v) => T + (1 - (v - lo) / Math.max(1, hi - lo)) * (H - T - B);
+  const path = L.pts.map((p, k) => `${k ? "L" : "M"}${x(p.date).toFixed(1)} ${y(p.v).toFixed(1)}`).join(" ");
+  const ticks = [lo, (lo + hi) / 2, hi];
+  const first = L.pts[0].v, gain = L.best - first;
+  return `<div class="head"><b class="num">${Math.round(L.best)} kg</b><span class="muted small">estimated one-rep max · up ${Math.round(gain)} kg since ${D.fmt(L.pts[0].date, { day: "numeric", month: "short" })}</span></div>
+    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(name)}: estimated one-rep max from ${Math.round(first)} to ${Math.round(L.best)} kilograms">
+    ${ticks.map((v) => `<line class="grid" x1="${Lp}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text class="ax" x="0" y="${y(v) + 3}">${Math.round(v)}</text>`).join("")}
+    <path class="area" d="${path} L ${x(L.pts[L.pts.length - 1].date)} ${H - B} L ${x(L.pts[0].date)} ${H - B} Z"/><path class="ln" d="${path}"/>
+    ${L.pts.map((p) => `<circle class="${L.records.has(p.r.i) ? "rec" : "pt"}" cx="${x(p.date)}" cy="${y(p.v)}" r="${L.records.has(p.r.i) ? 3.2 : 2.6}"><title>${D.fmt(p.date)}: ${p.r.sets}×${p.r.reps} at ${kgText(p.r.kg)} kg</title></circle>`).join("")}
+    <text class="ax" x="${Lp}" y="${H - 4}">${D.fmt(L.pts[0].date, { day: "numeric", month: "short" })}</text><text class="ax" x="${W - R}" y="${H - 4}" text-anchor="end">${D.fmt(L.pts[L.pts.length - 1].date, { day: "numeric", month: "short" })}</text></svg>
+    <p class="muted small" style="margin-top:.4rem">Filled dots are personal records.</p>`;
+}
+
+function render(note = amber.note) {
+  const app = document.getElementById("app");
+  const m = model(note);
+  const session = amber.data.values.session;
+  if (!m) {
+    app.innerHTML = `<header class="top"><div class="titles"><h1>${esc(note.title || "Training")}</h1></div></header>
+      <div class="card empty">${ico("dumbbell")}<h3>No workouts yet</h3><p>Workouts go in a table in this note: Date, Exercise, Sets, Reps and Kg. Ask your AI to add one, or add the table under a Log heading.</p></div>`;
+    return;
+  }
+  const names = Object.keys(m.lifts);
+  if (!lift || !m.lifts[lift]) lift = names.sort((a, b) => m.lifts[b].pts.length - m.lifts[a].pts.length)[0];
+  const today = note.today, ws = D.weekStart(today);
+  const thisWeek = m.sessions.filter((s) => s.date >= ws).length;
+  const last = m.sessions[0];
+  const plan = nextPlan(m);
+  const plans = amber.data.values.plans || [];
+  const lastOf = (name) => m.lifts[name] && m.lifts[name].last;
+
+  const hero = session ? live(m, session) : `<section class="card next">
+      <div class="k">${last ? `Last workout ${D.rel(last.date, today).toLowerCase()}` : "First workout"}${thisWeek ? ` · ${thisWeek} this week` : ""}</div>
+      <h2>${plan ? esc(plan.name) : "Workout"}</h2>
+      ${plans.length > 1 ? `<div class="planpick seg" role="group" aria-label="Workout">${plans.map((p) => `<button data-plan="${esc(p.name)}" aria-pressed="${plan && p.name === plan.name}">${esc(p.name)}</button>`).join("")}</div>` : ""}
+      <div class="plan">${plan ? plan.lifts.map((l) => { const lt = lastOf(l.name); return `<div><b>${esc(l.name)}</b><span class="num">${l.sets}×${l.reps}${lt ? ` · ${kgText(nextKg(m, l))} kg` : ""}</span></div>`; }).join("") : ""}</div>
+      <button class="btn primary block" id="start" ${plan ? "" : "disabled"}>${ico("play")} Start workout</button>
+      <div class="week" aria-label="This week" style="margin-top:1rem">${[...Array(7)].map((_, k) => { const d = D.add(ws, k), on = m.sessions.some((s) => s.date === d); return `<div class="${on ? "on" : ""} ${d === today ? "today" : ""}"><i>${on ? ico("check") : ""}</i>${D.fmt(d, { weekday: "narrow" })}</div>`; }).join("")}</div>
+    </section>`;
+
+  app.innerHTML = `
+  <header class="top"><div class="titles"><h1>${esc(note.title)}</h1><div class="sub">${m.sessions.length} workouts since ${D.fmt(m.sessions[m.sessions.length - 1].date, { day: "numeric", month: "long" })}</div></div>
+    <button class="round" id="settings" aria-label="Settings">${ico("gear")}</button></header>
+  ${record ? `<section class="card record rise" style="margin-bottom:1rem">${ico("trophy")}<h2>${record.length === 1 ? "New personal record" : `${record.length} new personal records`}</h2><p>${record.map((r) => `${esc(r.ex)}: ${r.sets}×${r.reps} at ${kgText(r.kg)} kg`).join("<br>")}</p></section>` : ""}
+  <div class="cols side">
+    <div>${hero}</div>
+    <div>
+      <div class="label" ${session ? "" : 'style="margin-top:0"'}><span class="grow">Progress</span></div>
+      <section class="card prog"><div class="segwrap" data-w="prog"><div class="seg" role="group" aria-label="Lift">${names.map((n) => `<button data-lift="${esc(n)}" aria-pressed="${n === lift}">${esc(n)}</button>`).join("")}</div></div>${chart(m, lift)}</section>
+    </div>
+  </div>
+  <div class="label"><span class="grow">Records</span></div>
+  <section class="prs">${names.map((n) => {
+    const L = m.lifts[n], ago = L.pts.filter((p) => p.date <= D.add(today, -28)).pop(), d = ago ? L.best - ago.v : 0;
+    return `<button class="pr" data-lift="${esc(n)}" aria-pressed="${n === lift}"><h3 class="ellipsis">${esc(n)}</h3><div class="big num">${kgText(L.bestRow.kg)}<small> kg × ${L.bestRow.reps}</small></div>
+      ${d > 0.5 ? `<div class="up">+${Math.round(d)} kg in 4 weeks</div>` : `<div class="flat">Same as 4 weeks ago</div>`}${spark(L)}</button>`;
+  }).join("")}</section>
+  <div class="label"><span class="grow">History</span></div>
+  <section class="card list">${m.sessions.slice(0, 8).map((s) => {
+    const prs = s.rows.filter((r) => m.lifts[r.ex].records.has(r.i)).length;
+    return `<div class="row sess"><div class="grow"><div class="when">${D.fmt(s.date, { weekday: "long", day: "numeric", month: "short" })} ${prs ? `<span class="badge">${ico("trophy")}${prs} PR</span>` : ""}</div>
+      <div class="what">${s.rows.map((r) => `${esc(r.ex)} ${r.sets}×${r.reps} ${kgText(r.kg)}`).join(" · ")}</div></div></div>`;
+  }).join("")}</section>`;
+  if (session) tickClock(); else clearInterval(clockTimer);
+  Kit.fit(() => render());
+}
+Kit.onResize(() => render());
+
+// What to lift next time: the last weight, plus a step when every set was done at the plan's reps.
+function nextKg(m, l) {
+  const lt = m.lifts[l.name] && m.lifts[l.name].last;
+  if (!lt) return 20;
+  const step = Number(S.get().step) || 2.5;
+  return lt.reps >= l.reps ? lt.kg + (/press|bench/i.test(l.name) ? step / 2 : step) : lt.kg;
+}
+
+function live(m, s) {
+  const doneSets = s.lifts.reduce((a, l) => a + l.sets.filter((x) => x.done).length, 0), all = s.lifts.reduce((a, l) => a + l.sets.length, 0);
+  return `<section class="card live-head"><div class="grow"><div class="k">${esc(s.name)} · ${doneSets} of ${all} sets</div><div class="clock num" id="clock">0:00</div></div>
+      <button class="btn danger" id="discard">Discard</button></section>
+    ${s.lifts.map((l, li) => { const lt = m.lifts[l.name] && m.lifts[l.name].last; return `<section class="card ex">
+      <div class="exh"><h3>${esc(l.name)}</h3><span class="muted small num">${l.sets.filter((x) => x.done).length}/${l.sets.length}</span></div>
+      ${lt ? `<div class="last">Last time ${lt.sets}×${lt.reps} at ${kgText(lt.kg)} kg, ${D.rel(lt.date, amber.note.today).toLowerCase()}</div>` : ""}
+      <div class="set hd"><span>Set</span><span style="text-align:center">kg</span><span style="text-align:center">Reps</span><span></span></div>
+      ${l.sets.map((x, si) => `<div class="set ${x.done ? "done" : ""}"><span class="n">${si + 1}</span>
+        <input inputmode="decimal" aria-label="${esc(l.name)} set ${si + 1}, kilograms" data-kg="${li}.${si}" value="${kgText(x.kg)}">
+        <input inputmode="numeric" aria-label="${esc(l.name)} set ${si + 1}, reps" data-reps="${li}.${si}" value="${x.reps}">
+        <button class="ok" data-set="${li}.${si}" aria-pressed="${!!x.done}" aria-label="${esc(l.name)} set ${si + 1} ${x.done ? "done" : "done?"}">${ico("check")}</button></div>`).join("")}
+      <button class="btn plain addset" data-addset="${li}">${ico("plus")} Add a set</button></section>`; }).join("")}
+    <button class="btn primary block finish" id="finish" ${doneSets ? "" : "disabled"}>Finish and save to the note</button>
+    <p class="muted small" style="margin:.6rem .3rem 0">Each exercise becomes one row in the log: sets done, reps and the top weight.</p>`;
+}
+
+function tickClock() {
+  clearInterval(clockTimer);
+  const s = amber.data.values.session; if (!s) return;
+  const f = () => { const el = document.getElementById("clock"); if (!el) return; const sec = Math.max(0, Math.floor((Date.now() - Date.parse(s.started)) / 1000)); el.textContent = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`; };
+  f(); clockTimer = setInterval(f, 1000);
+}
+
+async function start(planName) {
+  const m = model(amber.note);
+  const plans = amber.data.values.plans || [];
+  const plan = plans.find((p) => p.name === planName) || nextPlan(m);
+  record = null;
+  await amber.store.set("session", { name: plan.name, started: new Date().toISOString(), lifts: plan.lifts.map((l) => ({ name: l.name, sets: [...Array(l.sets)].map(() => ({ kg: nextKg(m, l), reps: l.reps, done: false })) })) });
+  scrollTo({ top: 0, behavior: "smooth" });
+}
+
+async function patchSession(fn) { const s = JSON.parse(JSON.stringify(amber.data.values.session)); fn(s); await amber.store.set("session", s); }
+
+// Rest: a countdown on screen and, if allowed, a notification for when it's over.
+function rest(label) {
+  const secs = Number(S.get().rest) || 120;
+  const ends = Date.now() + secs * 1000;
+  clearInterval(restTimer);
+  const el = document.getElementById("rest");
+  let end = ends;
+  const C = 2 * Math.PI * 18;
+  const draw = () => {
+    const left = Math.max(0, Math.round((end - Date.now()) / 1000));
+    el.innerHTML = `<div class="r"><svg viewBox="0 0 44 44"><circle class="t" cx="22" cy="22" r="18"/><circle class="b" cx="22" cy="22" r="18" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - left / secs)}"/></svg></div>
+      <div class="time num" aria-label="Rest, ${left} seconds left">${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}<small>Next: ${esc(label)}</small></div>
+      <button data-rest="30" aria-label="Thirty seconds more">+30s</button><button data-rest="0">Skip</button>`;
+    if (left <= 0) { stopRest(); announce("Rest's over."); }
+  };
+  el.onclick = (e) => { const b = e.target.closest("[data-rest]"); if (!b) return; if (b.dataset.rest === "0") stopRest(); else { end += 30000; draw(); } };
+  draw(); el.classList.add("on");
+  restTimer = setInterval(draw, 1000);
+  if (S.get().notify) amber.device.notify({ title: "Rest's over", body: `Next: ${label}`, in: secs });
+}
+function stopRest() { clearInterval(restTimer); document.getElementById("rest").classList.remove("on"); }
+
+async function finish() {
+  const m = model(amber.note); const s = amber.data.values.session;
+  const today = amber.note.today;
+  const rows = [], prs = [];
+  for (const l of s.lifts) {
+    const done = l.sets.filter((x) => x.done); if (!done.length) continue;
+    const kg = Math.max(...done.map((x) => x.kg)), reps = Math.min(...done.filter((x) => x.kg === kg).map((x) => x.reps));
+    const r = { date: today, ex: l.name, sets: done.length, reps, kg };
+    rows.push(r);
+    const L = m.lifts[l.name]; if (!L || e1rm(kg, reps) > L.best + 0.01) prs.push(r);
+  }
+  const n = (k) => m.t.columns[m.c[k]].name;
+  const res = await Kit.addRows(m.t.index, rows.map((r) => ({ [n("date")]: r.date, [n("ex")]: r.ex, [n("sets")]: String(r.sets), [n("reps")]: String(r.reps), [n("kg")]: kgText(r.kg) })));
+  if (!res.ok) { announce(res.error); return; }
+  await amber.store.collection("workouts").add({ date: today, name: s.name, started: s.started, minutes: Math.round((Date.now() - Date.parse(s.started)) / 60000), lifts: s.lifts });
+  record = prs.length ? prs : null;
+  stopRest();
+  await amber.store.set("session", null);
+  scrollTo({ top: 0, behavior: "smooth" });
+}
+
+document.addEventListener("click", async (e) => {
+  const t = e.target.closest("#start,#settings,#finish,#discard,[data-lift],[data-plan],[data-set],[data-addset]"); if (!t) return;
+  if (t.id === "start") start(document.querySelector("[data-plan][aria-pressed=true]")?.dataset.plan);
+  else if (t.id === "settings") S.open("Training settings");
+  else if (t.id === "finish") finish();
+  else if (t.id === "discard") { if (t.dataset.sure) { stopRest(); await amber.store.set("session", null); } else { t.dataset.sure = 1; t.textContent = "Discard workout?"; } }
+  else if (t.dataset.lift) { lift = t.dataset.lift; render(); }
+  else if (t.dataset.plan) { document.querySelectorAll("[data-plan]").forEach((b) => b.setAttribute("aria-pressed", b === t)); const m = model(amber.note), p = (amber.data.values.plans || []).find((x) => x.name === t.dataset.plan); document.querySelector(".next h2").textContent = p.name; document.querySelector(".plan").innerHTML = p.lifts.map((l) => `<div><b>${esc(l.name)}</b><span class="num">${l.sets}×${l.reps} · ${kgText(nextKg(m, l))} kg</span></div>`).join(""); }
+  else if (t.dataset.set) {
+    const [li, si] = t.dataset.set.split(".").map(Number);
+    const s = amber.data.values.session, l = s.lifts[li], was = l.sets[si].done;
+    await patchSession((x) => { x.lifts[li].sets[si].done = !was; });
+    if (!was) {
+      const nextSet = l.sets.findIndex((x, k) => k > si && !x.done);
+      const nextLift = s.lifts.slice(li + 1).find((x) => x.sets.some((y) => !y.done));
+      const label = nextSet >= 0 ? `${l.name}, set ${nextSet + 1}` : nextLift ? nextLift.name : "";
+      if (label) rest(label); else stopRest();
+    }
+  }
+  else if (t.dataset.addset) { const li = +t.dataset.addset; await patchSession((x) => { const l = x.lifts[li]; const lastSet = l.sets[l.sets.length - 1]; l.sets.push({ kg: lastSet.kg, reps: lastSet.reps, done: false }); }); }
+});
+document.addEventListener("change", async (e) => {
+  const k = e.target.dataset.kg, r = e.target.dataset.reps;
+  if (!k && !r) return;
+  const [li, si] = (k || r).split(".").map(Number), v = num(e.target.value);
+  if (!Number.isFinite(v)) return;
+  await patchSession((x) => { if (k) { x.lifts[li].sets.forEach((s, j) => { if (j >= si && !s.done) s.kg = v; }); } else x.lifts[li].sets[si].reps = Math.round(v); });
+});
+amber.onChange((note) => render(note));
+</script>
+</body>
+</html>

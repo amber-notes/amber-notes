@@ -1,0 +1,597 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>People</title>
+<style>
+/* The shared look of the best-apps set: Amber Notes' variables, iOS-like grouped lists, sheets. */
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html { font-size: 17px; }
+body { font-size: 1rem; line-height: 1.35; }
+:root {
+  --c1: #D96A06; --c2: #2F8577; --c3: #3D6DB5; --c4: #9A4E8E; --c5: #7C8A24; --c6: #C4455B; --c7: #8A6A4A;
+  --good: #2E7D4F; --ease-out: cubic-bezier(.2, .8, .2, 1); --ease-pop: cubic-bezier(.3, 1.4, .5, 1);
+  --shadow: 0 1px 2px rgba(60, 30, 0, .06), 0 6px 24px rgba(60, 30, 0, .07);
+}
+@media (prefers-color-scheme: dark) {
+  :root { --c1: #F4AD33; --c2: #4FC1AE; --c3: #7DA6F0; --c4: #D58ACB; --c5: #B9C95A; --c6: #F07D90; --c7: #C9A57F; --good: #5BD08A; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 28px rgba(0,0,0,.35); }
+}
+main.wrap { max-width: var(--amber-content-max); margin: 0 auto; padding: .5rem var(--amber-gutter) 6rem; }
+h1, h2, h3, p { margin: 0; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2.5px solid var(--amber-accent); outline-offset: 2px; border-radius: 6px; }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--amber-text-secondary); }
+.small { font-size: .82rem; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Header: large title, a line under it, round buttons on the right. */
+.top { display: flex; align-items: flex-end; gap: .75rem; padding: .35rem 0 1rem; }
+.top .titles { flex: 1; min-width: 0; }
+.top h1 { font-size: 2rem; font-weight: 700; letter-spacing: -.025em; line-height: 1.1; overflow-wrap: anywhere; }
+.top .sub { color: var(--amber-text-secondary); margin-top: .2rem; font-size: .94rem; }
+.round { width: 2.6rem; height: 2.6rem; border-radius: 50%; border: 0; background: var(--amber-fill); color: var(--amber-text); display: inline-grid; place-items: center; flex: none; transition: transform .15s var(--ease-out), background .2s; }
+.round svg { width: 1.2rem; height: 1.2rem; }
+.round:active { transform: scale(.92); }
+.round.accent { background: var(--amber-accent); color: var(--amber-on-accent); }
+
+/* Section labels and cards. */
+.label { font-size: .8rem; font-weight: 600; letter-spacing: .02em; text-transform: uppercase; color: var(--amber-text-secondary); margin: 1.4rem .25rem .5rem; display: flex; align-items: baseline; gap: .5rem; }
+.label .grow { flex: 1; }
+.label button { text-transform: none; letter-spacing: 0; font-size: .88rem; font-weight: 600; color: var(--amber-accent-text); background: none; border: 0; padding: .3rem .2rem; }
+.card { background: var(--amber-surface); border-radius: var(--amber-radius); overflow: hidden; }
+.card.pad { padding: 1rem; }
+.list > .row, .list > li { display: flex; align-items: center; gap: .75rem; min-height: 2.9rem; padding: .6rem 1rem; position: relative; }
+.list > .row + .row::before, .list > li + li::before { content: ""; position: absolute; top: 0; left: 1rem; right: 0; border-top: 1px solid var(--amber-separator); }
+.list.inset > .row + .row::before { left: 3.6rem; }
+ul.list { list-style: none; margin: 0; padding: 0; }
+button.row { width: 100%; text-align: left; border: 0; background: none; color: inherit; font: inherit; transition: background .2s; }
+button.row:active { background: var(--amber-fill); }
+.grow { flex: 1; min-width: 0; }
+.ellipsis { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chev { color: var(--amber-text-secondary); opacity: .6; width: .7rem; flex: none; }
+
+/* Buttons. */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; min-height: 2.75rem; padding: 0 1.1rem; border: 0; border-radius: 999px; font-weight: 600; background: var(--amber-fill); color: var(--amber-text); transition: transform .15s var(--ease-out), opacity .2s, background .2s; white-space: nowrap; }
+.btn svg { width: 1.1rem; height: 1.1rem; }
+.btn:active { transform: scale(.96); }
+.btn.primary { background: var(--amber-accent); color: var(--amber-on-accent); }
+.btn.tint { background: var(--amber-accent-soft); color: var(--amber-accent-text); }
+.btn.plain { background: none; color: var(--amber-accent-text); padding: 0 .6rem; }
+.btn.danger { background: none; color: var(--amber-danger); }
+.btn.block { width: 100%; }
+.btn[disabled] { opacity: .45; pointer-events: none; }
+
+/* Segmented control. */
+.seg { display: inline-flex; background: var(--amber-fill); border-radius: 999px; padding: 3px; gap: 2px; position: relative; }
+.seg button { border: 0; background: none; border-radius: 999px; padding: .42rem .9rem; font-size: .88rem; font-weight: 600; color: var(--amber-text-secondary); min-height: 2.2rem; transition: color .2s, background .25s var(--ease-out), box-shadow .25s; }
+.seg button[aria-pressed="true"] { background: var(--amber-bg); color: var(--amber-text); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+
+/* Forms. */
+.field { display: flex; flex-direction: column; gap: .3rem; font-size: .8rem; font-weight: 600; color: var(--amber-text-secondary); }
+.field input, .field select, .field textarea, input.in, select.in, textarea.in { font-size: 1rem; font-weight: 400; color: var(--amber-text); background: var(--amber-fill); border: 0; border-radius: var(--amber-radius-small); padding: .65rem .8rem; min-height: 2.75rem; width: 100%; outline-offset: 0; }
+textarea { resize: vertical; line-height: 1.4; }
+.fields { display: grid; gap: .8rem; }
+.fields.two { grid-template-columns: 1fr 1fr; }
+.err { color: var(--amber-danger); font-size: .88rem; min-height: 1.2em; }
+.switch { appearance: none; -webkit-appearance: none; width: 3.1rem; height: 1.9rem; border-radius: 999px; background: var(--amber-fill); position: relative; flex: none; transition: background .25s; margin: 0; }
+.switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: calc(1.9rem - 4px); height: calc(1.9rem - 4px); border-radius: 50%; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,.2); transition: transform .3s var(--ease-pop); }
+.switch:checked { background: var(--good); }
+.switch:checked::after { transform: translateX(1.2rem); }
+
+/* Sheet: a bottom sheet on the phone, a centered panel when wide. */
+.scrim { position: fixed; inset: 0; background: rgba(20, 10, 0, .32); opacity: 0; transition: opacity .28s; z-index: 50; }
+.sheet { position: fixed; left: 0; right: 0; bottom: 0; max-height: 92vh; overflow: auto; background: var(--amber-bg); border-radius: 1.2rem 1.2rem 0 0; padding: .6rem 1.1rem calc(1.4rem + env(safe-area-inset-bottom)); z-index: 51; transform: translateY(105%); transition: transform .38s var(--ease-out); box-shadow: 0 -8px 40px rgba(0,0,0,.18); }
+.sheet .grab { width: 2.4rem; height: .3rem; border-radius: 99px; background: var(--amber-separator); margin: 0 auto .8rem; }
+.sheet header { display: flex; align-items: center; gap: .5rem; margin-bottom: 1rem; }
+.sheet header h2 { flex: 1; font-size: 1.2rem; font-weight: 700; }
+.open .scrim { opacity: 1; }
+.open .sheet { transform: none; }
+@media (min-width: 700px) {
+  .sheet { left: 50%; right: auto; bottom: auto; top: 50%; width: min(34rem, 92vw); border-radius: 1.2rem; transform: translate(-50%, -46%) scale(.97); opacity: 0; transition: transform .3s var(--ease-out), opacity .2s; padding: 1.2rem 1.4rem 1.4rem; }
+  .open .sheet { transform: translate(-50%, -50%); opacity: 1; }
+  .sheet .grab { display: none; }
+}
+@media (prefers-color-scheme: dark) { .sheet { background: var(--amber-surface); } .sheet .field input, .sheet .field select, .sheet .field textarea, .sheet .in { background: var(--amber-fill); } }
+
+/* Empty states. */
+.empty { text-align: center; padding: 2.2rem 1.2rem; color: var(--amber-text-secondary); }
+.empty svg { width: 2.6rem; height: 2.6rem; color: var(--amber-accent); opacity: .85; margin-bottom: .6rem; }
+.empty h3 { color: var(--amber-text); font-size: 1.05rem; margin-bottom: .3rem; }
+.empty p { max-width: 22rem; margin: 0 auto 1rem; font-size: .94rem; }
+
+/* A quiet confirmation under the header, for things that don't change the note. */
+.note-line { font-size: .85rem; color: var(--amber-text-secondary); min-height: 1.2em; transition: opacity .3s; }
+
+/* Motion: things that arrive rise in; nothing moves when asked not to. */
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes pop { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
+.rise { animation: rise .35s var(--ease-out) both; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+
+/* Wide: two columns where the app asks for them. */
+.cols { display: grid; gap: 0 1.6rem; grid-template-columns: minmax(0, 1fr); }
+.cols > * { min-width: 0; }
+@media (min-width: 900px) {
+  .cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  .cols.side { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); }
+  .top h1 { font-size: 2.2rem; }
+}
+
+.av { width: 2.7rem; height: 2.7rem; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: .95rem; color: #fff; flex: none; background: var(--g); letter-spacing: .02em; position: relative; }
+.av.big { width: 4.6rem; height: 4.6rem; font-size: 1.6rem; }
+.av .due { position: absolute; inset: -4px; border-radius: 50%; }
+.av .due svg { width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
+
+.catch { display: grid; gap: .6rem; }
+.cu { display: flex; gap: .85rem; align-items: flex-start; padding: .9rem 1rem; }
+.cu .acts .round { width: 2.25rem; height: 2.25rem; background: var(--amber-accent-soft); color: var(--amber-accent-text); }
+.cu .acts .round[aria-pressed="true"] svg { fill: currentColor; }
+.cu .acts .round svg { width: 1rem; height: 1rem; }
+.cu .grow h3 { font-size: 1.02rem; font-weight: 600; }
+.cu .grow p { font-size: .82rem; color: var(--amber-text-secondary); margin-top: .1rem; }
+.cu .grow p.late { color: var(--amber-danger); font-weight: 600; }
+.cu .last { font-size: .82rem; color: var(--amber-text); margin-top: .35rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; border-left: 2px solid var(--amber-separator); padding-left: .5rem; }
+.cu .acts { display: flex; gap: .4rem; margin-top: .6rem; flex-wrap: wrap; }
+.cu .acts .btn { min-height: 2.25rem; padding: 0 .85rem; font-size: .86rem; }
+.cu.out { animation: out .45s var(--ease-out) forwards; }
+@keyframes out { to { opacity: 0; transform: translateX(30%); } }
+
+.bday { display: flex; align-items: center; gap: .8rem; }
+.cal { width: 2.7rem; flex: none; text-align: center; border-radius: .55rem; overflow: hidden; background: var(--amber-bg); box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+@media (prefers-color-scheme: dark) { .cal { background: var(--amber-fill); } }
+.cal span { display: block; font-size: .6rem; font-weight: 800; text-transform: uppercase; background: var(--c6); color: #fff; padding: .1rem 0; letter-spacing: .05em; }
+.cal b { display: block; font-size: 1.15rem; padding: .1rem 0 .15rem; }
+.bday .soon { color: var(--c6); font-weight: 700; }
+.bellb { border: 0; background: none; width: 2.5rem; height: 2.5rem; border-radius: 50%; display: grid; place-items: center; color: var(--amber-text-secondary); }
+.bellb svg { width: 1.1rem; height: 1.1rem; }
+.bellb[aria-pressed="true"] { color: var(--amber-accent-text); }
+.bellb[aria-pressed="true"] svg { fill: var(--amber-accent-soft); }
+
+.search { position: relative; margin-bottom: .6rem; }
+.search svg { position: absolute; left: .75rem; top: 50%; transform: translateY(-50%); width: 1rem; height: 1rem; color: var(--amber-text-secondary); }
+.search input { padding-left: 2.3rem !important; }
+.every { font-size: .78rem; color: var(--amber-text-secondary); }
+.meter { width: 3.2rem; height: .32rem; border-radius: 99px; background: var(--amber-fill); overflow: hidden; flex: none; }
+.meter b { display: block; height: 100%; background: var(--good); border-radius: 99px; }
+.meter b.warn { background: var(--c1); } .meter b.late { background: var(--amber-danger); }
+
+.ph { text-align: center; margin-bottom: 1rem; }
+.ph .av { margin: 0 auto .6rem; }
+.ph h3 { font-size: 1.35rem; }
+.ph p { color: var(--amber-text-secondary); font-size: .9rem; margin-top: .2rem; }
+.qa { display: flex; justify-content: center; gap: .6rem; margin: .9rem 0 1rem; }
+.qa button { display: flex; flex-direction: column; align-items: center; gap: .25rem; border: 0; background: var(--amber-surface); border-radius: var(--amber-radius-small); padding: .6rem .3rem; width: 4.6rem; font-size: .74rem; font-weight: 600; color: var(--amber-accent-text); }
+@media (prefers-color-scheme: dark) { .qa button { background: var(--amber-fill); } }
+.qa button svg { width: 1.25rem; height: 1.25rem; }
+.qa button[disabled] { opacity: .35; }
+.facts { margin-bottom: 1rem; }
+.facts .row { font-size: .92rem; }
+.facts .k { color: var(--amber-text-secondary); width: 6.5rem; flex: none; }
+.tlog { display: grid; gap: 0; }
+.tlog .e { display: grid; grid-template-columns: .8rem 1fr; gap: .7rem; padding-bottom: .9rem; position: relative; }
+.tlog .e::before { content: ""; position: absolute; left: .32rem; top: .9rem; bottom: 0; width: 2px; background: var(--amber-separator); }
+.tlog .e:last-child::before { display: none; }
+.tlog .dot { width: .75rem; height: .75rem; border-radius: 50%; background: var(--amber-accent); margin-top: .3rem; }
+.tlog .when { font-size: .78rem; color: var(--amber-text-secondary); font-weight: 600; }
+.tlog .txt { font-size: .94rem; margin-top: .1rem; }
+.kinds { display: flex; flex-wrap: wrap; gap: .35rem; }
+.kinds button { border: 0; border-radius: 99px; padding: .35rem .8rem; min-height: 2.1rem; font-size: .85rem; font-weight: 600; background: var(--amber-fill); color: var(--amber-text); }
+.kinds button[aria-pressed="true"] { background: var(--amber-text); color: var(--amber-bg); }
+@media (min-width: 900px) { .catch { grid-template-columns: 1fr 1fr; } }
+</style>
+</head>
+<body>
+<main class="wrap" id="app" aria-live="polite"></main>
+<script>
+// The shared helpers of the best-apps set. Everything here reads the note through amber.note and
+// changes it only through amber.update; the app's own state goes through amber.store.
+const Kit = (() => {
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+
+  // Type follows the system: on the iPhone the body size follows Dynamic Type; the Mac is denser.
+  (function baseSize() {
+    const apply = () => {
+      const body = parseFloat(getComputedStyle(document.body).fontSize) || 17;
+      let size = body;
+      if (body >= 16) {
+        const p = document.createElement("span");
+        p.style.font = "-apple-system-body";
+        document.body.appendChild(p);
+        const dyn = parseFloat(getComputedStyle(p).fontSize);
+        p.remove();
+        if (p.style.font && dyn >= 14 && dyn <= 40) size = dyn;
+      }
+      document.documentElement.style.fontSize = size + "px";
+    };
+    if (document.body) apply(); else addEventListener("DOMContentLoaded", apply);
+  })();
+
+  // Icons: inline SVG, drawn on a 24 grid with a 2 px stroke, like SF Symbols' regular weight.
+  const paths = {
+    gear: '<circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+    close: '<path d="M6 6l12 12M18 6L6 18"/>',
+    bell: '<path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
+    flame: '<path d="M12 2c1 3.5 5 6 5 11a5 5 0 0 1-10 0c0-2.5 1.2-4 2.5-5.5C10 10 11 11 11.5 12c.5-3 .5-6.5.5-10z"/>',
+    chevron: '<path d="M9 5l7 7-7 7"/>',
+    back: '<path d="M15 5l-7 7 7 7"/>',
+    trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
+    search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>',
+    calendar: '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+    cart: '<path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.5L21 8H6"/><circle cx="10" cy="20.5" r="1.3"/><circle cx="17" cy="20.5" r="1.3"/>',
+    timer: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2h5"/>',
+    play: '<path d="M7 4.5v15l12.5-7.5z"/>',
+    pause: '<path d="M8 5v14M16 5v14"/>',
+    book: '<path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v16H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/>',
+    quote: '<path d="M7 11h4v6H5v-4a6 6 0 0 1 4-5.7M17 11h4v6h-6v-4a6 6 0 0 1 4-5.7"/>',
+    pin: '<path d="M12 22s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/>',
+    person: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+    gift: '<rect x="3" y="8" width="18" height="5" rx="1"/><path d="M5 13v8h14v-8M12 8v13M12 8S10.5 3 8 3.5 7 8 12 8zm0 0s1.5-5 4-4.5S17 8 12 8z"/>',
+    chat: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>',
+    upload: '<path d="M12 16V4M7 9l5-5 5 5M4 17v3h16v-3"/>',
+    list: '<path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/>',
+    sparkle: '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/>',
+    repeat: '<path d="M17 2l3 3-3 3"/><path d="M4 11V9a4 4 0 0 1 4-4h12M7 22l-3-3 3-3"/><path d="M20 13v2a4 4 0 0 1-4 4H4"/>',
+    trophy: '<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3"/>',
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+    cloud: '<path d="M7 18a4.5 4.5 0 1 1 .9-8.9A6 6 0 0 1 19.5 11 3.5 3.5 0 0 1 18 18z"/>',
+    rain: '<path d="M7 15a4.5 4.5 0 1 1 .9-8.9A6 6 0 0 1 19.5 8 3.5 3.5 0 0 1 18 15z"/><path d="M8 18l-1 3M12 18l-1 3M16 18l-1 3"/>',
+    suitcase: '<rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M9 7V4.5h6V7M3 12h18"/>',
+    coins: '<ellipse cx="9" cy="7" rx="6" ry="3"/><path d="M3 7v5c0 1.7 2.7 3 6 3s6-1.3 6-3V7"/><path d="M9 15v2c0 1.7 2.7 3 6 3s6-1.3 6-3v-5c0-1.7-2.7-3-6-3"/>',
+    knife: '<path d="M4 20L18 6a2.8 2.8 0 0 1 2 4L9 21z"/>',
+    pot: '<path d="M4 10h16v6a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4zM2 10h20M9 6c0-1.5 1-2 1-3M14 6c0-1.5 1-2 1-3"/>',
+    cards: '<rect x="3" y="6" width="14" height="15" rx="2.5"/><path d="M7 3h11.5A2.5 2.5 0 0 1 21 5.5V18"/>',
+    dumbbell: '<path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/>',
+    map: '<path d="M9 4L3 6.5v14L9 18l6 2.5 6-2.5V4l-6 2.5zM9 4v14M15 6.5v14"/>',
+    edit: '<path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"/>',
+    note: '<path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h5"/>',
+  };
+  const ico = (n, extra = "") => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}>${paths[n] || ""}</svg>`;
+
+  // Dates are "yyyy-mm-dd" strings from the note; the clock is amber.note.today.
+  const D = {
+    parse: (s) => { const m = /^(\d{4})-(\d\d)-(\d\d)/.exec(String(s || "").trim()); return m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])) : null; },
+    iso: (d) => d.toISOString().slice(0, 10),
+    add: (s, n) => { const d = D.parse(s); d.setUTCDate(d.getUTCDate() + n); return D.iso(d); },
+    diff: (a, b) => Math.round((D.parse(a) - D.parse(b)) / 86400000),
+    wd: (s) => (D.parse(s).getUTCDay() + 6) % 7, // 0 = Monday
+    weekStart: (s) => D.add(s, -D.wd(s)),
+    fmt: (s, o = { weekday: "short", day: "numeric", month: "short" }) => { const d = D.parse(s); return d ? d.toLocaleDateString("en-GB", { timeZone: "UTC", ...o }) : ""; },
+    month: (s) => D.fmt(s, { month: "long" }),
+    rel: (s, today) => { const n = D.diff(s, today); return n === 0 ? "Today" : n === 1 ? "Tomorrow" : n === -1 ? "Yesterday" : n > 1 && n < 7 ? D.fmt(s, { weekday: "long" }) : n > 0 ? `In ${n} days` : `${-n} days ago`; },
+  };
+
+  const num = (s) => { const n = parseFloat(String(s ?? "").replace(/\s| /g, "").replace(/kr|sek|€|\$/gi, "").replace(",", ".")); return Number.isFinite(n) ? n : NaN; };
+  const kr = (n, o = {}) => new Intl.NumberFormat("sv-SE", { maximumFractionDigits: o.dec ?? 0, minimumFractionDigits: o.dec ?? 0 }).format(Math.round(n * 10 ** (o.dec ?? 0)) / 10 ** (o.dec ?? 0)) + (o.unit === false ? "" : " " + (o.unit || "kr"));
+  const fmtN = (n, dec = 0) => new Intl.NumberFormat("sv-SE", { maximumFractionDigits: dec }).format(n);
+  const done = (s) => /^(✓|✔|x|yes|done|1|true)$/i.test(String(s ?? "").trim());
+  const col = (t, re) => t ? t.columns.findIndex((c) => re.test(c.name.trim())) : -1;
+  const table = (note, ...res) => note.tables.find((t) => res.every((re) => col(t, re) >= 0));
+
+  // Where each table sits in the markdown, so several rows can go in with one edit (one Undo).
+  function tableLines(md) {
+    const lines = md.split("\n"), out = [];
+    const isRow = (l) => l.trim().startsWith("|");
+    const isSep = (l) => { const t = l.trim(); return t.startsWith("|") && t.includes("-") && [...t].every((c) => "|-: ".includes(c)); };
+    for (let i = 0; i < lines.length;) {
+      if (!(isRow(lines[i]) && isSep(lines[i + 1] || ""))) { i++; continue; }
+      let j = i + 2; while (j < lines.length && isRow(lines[j])) j++;
+      out.push({ start: i, end: j }); i = j;
+    }
+    return { lines, tables: out };
+  }
+  const level = (l) => { const m = /^(#{1,6}) /.exec(l); return m ? m[1].length : 0; };
+  const cellText = (v) => String(v ?? "").replace(/\n/g, " ").replace(/\|/g, "\\|");
+  /** Adds rows to table `index` in one edit: the section around the table is rewritten with set_text. */
+  async function addRows(index, rows, columns) {
+    const note = amber.note, t = note.tables[index];
+    const asCells = rows.map((r) => Array.isArray(r) ? r : (columns || t.columns.map((c) => c.name)).map((n) => r[n] ?? ""));
+    const { lines, tables } = tableLines(note.markdown);
+    const at = tables[index];
+    let h = -1; for (let k = at.start - 1; k >= 0; k--) if (level(lines[k])) { h = k; break; }
+    if (h < 0 || rows.length === 1) {
+      for (const r of asCells) { const res = await amber.update({ op: "append_row", table: index, values: r }); if (!res.ok) return res; }
+      return { ok: true };
+    }
+    const lv = level(lines[h]); let end = h + 1; while (end < lines.length && !(level(lines[end]) && level(lines[end]) <= lv)) end++;
+    const section = [...lines.slice(h + 1, at.end), ...asCells.map((c) => "| " + c.map(cellText).join(" | ") + " |"), ...lines.slice(at.end, end)];
+    return amber.update({ op: "set_text", heading: lines[h].replace(/^#+\s*/, ""), text: section.join("\n") });
+  }
+
+  // A sheet: one at a time, Escape or the scrim closes it, focus goes in and comes back.
+  let current = null;
+  function sheet(title, html, { mount, wide, actions = "" } = {}) {
+    close();
+    const back = document.activeElement;
+    const host = document.createElement("div");
+    host.className = "sheet-host";
+    host.innerHTML = `<div class="scrim" data-close></div><section class="sheet" role="dialog" aria-modal="true" aria-label="${esc(title)}" ${wide ? 'style="width:min(46rem,94vw)"' : ""}>
+      <div class="grab"></div><header><h2>${esc(title)}</h2>${actions}<button class="round" data-close aria-label="Close">${ico("close")}</button></header><div class="sheet-body">${html}</div></section>`;
+    document.body.appendChild(host);
+    const onKey = (e) => { if (e.key === "Escape") close(); };
+    host.addEventListener("click", (e) => { if (e.target.closest("[data-close]")) close(); });
+    addEventListener("keydown", onKey);
+    current = { host, back, onKey };
+    requestAnimationFrame(() => requestAnimationFrame(() => host.classList.add("open")));
+    mount && mount(host.querySelector(".sheet-body"), close);
+    setTimeout(() => (host.querySelector("[autofocus]") || host.querySelector(".sheet header .round")).focus({ preventScroll: true }), 60);
+    return close;
+  }
+  function close() {
+    if (!current) return;
+    const { host, back, onKey } = current;
+    current = null;
+    removeEventListener("keydown", onKey);
+    host.classList.remove("open");
+    setTimeout(() => host.remove(), 380);
+    back && back.focus && back.focus({ preventScroll: true });
+  }
+
+  // App settings: declared once with defaults, changed in a sheet without asking an AI. Kept in the
+  // app's own data under "settings" (amber.settings when the app offers it).
+  function settings(schema) {
+    const get = () => {
+      const saved = (amber.settings && amber.settings.values) || (amber.data.values.settings || {});
+      return Object.fromEntries(schema.map((f) => [f.key, saved[f.key] ?? f.default]));
+    };
+    const save = (key, value) => amber.settings && amber.settings.set ? amber.settings.set(key, value) : amber.setData({ values: { settings: { [key]: value } } });
+    function open(title = "Settings", extra = "") {
+      const s = get();
+      const field = (f) => {
+        const id = "set-" + f.key;
+        if (f.type === "toggle") return `<label class="row" for="${id}"><span class="grow">${esc(f.label)}${f.help ? `<div class="muted small">${esc(f.help)}</div>` : ""}</span><input class="switch" type="checkbox" id="${id}" data-key="${f.key}" ${s[f.key] ? "checked" : ""}></label>`;
+        const input = f.type === "select"
+          ? `<select class="in" id="${id}" data-key="${f.key}">${f.options.map((o) => `<option value="${esc(o[0])}" ${String(s[f.key]) === String(o[0]) ? "selected" : ""}>${esc(o[1])}</option>`).join("")}</select>`
+          : `<input class="in num" id="${id}" data-key="${f.key}" type="${f.type === "number" ? "number" : f.type === "time" ? "time" : "text"}" ${f.type === "number" ? `inputmode="decimal" step="${f.step || 1}" min="${f.min ?? 0}"` : ""} value="${esc(s[f.key])}">`;
+        return `<div class="row stack"><label for="${id}" class="grow">${esc(f.label)}${f.unit ? ` <span class="muted">(${esc(f.unit)})</span>` : ""}${f.help ? `<div class="muted small">${esc(f.help)}</div>` : ""}</label><div class="set-input">${input}</div></div>`;
+      };
+      sheet(title, `<div class="card list settings-list">${schema.map(field).join("")}</div>${extra}<p class="muted small" style="margin:.9rem .3rem 0">Settings are kept in this note's app, on all your devices.</p>`, {
+        mount(root) {
+          root.addEventListener("change", (e) => {
+            const el = e.target.closest("[data-key]"); if (!el) return;
+            const f = schema.find((x) => x.key === el.dataset.key);
+            const v = f.type === "toggle" ? el.checked : f.type === "number" ? (Number.isFinite(parseFloat(el.value)) ? parseFloat(el.value) : f.default) : el.value;
+            save(f.key, v);
+          });
+        },
+      });
+    }
+    return { get, open, save };
+  }
+
+  const style = document.createElement("style");
+  style.textContent = `.settings-list .row.stack { flex-wrap: wrap; } .settings-list .set-input { width: 9.5rem; } .settings-list .set-input .in { text-align: right; } .settings-list label.row { cursor: pointer; }
+  @media (max-width: 420px) { .settings-list .set-input { width: 8rem; } }`;
+  document.head.appendChild(style);
+
+  // Charts drawn at their real width (so 10 px labels stay 10 px): width(key) is the last measured
+  // width of the element with data-w="key"; fit(render) re-renders once when a width changed.
+  const widths = {};
+  const width = (key, fallback) => widths[key] || fallback;
+  function fit(render) {
+    let changed = false;
+    for (const el of document.querySelectorAll("[data-w]")) {
+      const cs = getComputedStyle(el);
+      const w = Math.round(el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight));
+      if (w && Math.abs((widths[el.dataset.w] || 0) - w) > 4) { widths[el.dataset.w] = w; changed = true; }
+    }
+    if (changed) render();
+  }
+  let resizeT;
+  const onResize = (render) => addEventListener("resize", () => { clearTimeout(resizeT); resizeT = setTimeout(() => { for (const k in widths) delete widths[k]; render(); fit(render); }, 120); });
+
+  const once = (fn) => { let p; return () => p || (p = fn()); };
+  const hash = (s) => { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); };
+  const announce = (() => { let el; return (msg) => { if (!el) { el = document.createElement("div"); el.className = "sr"; el.setAttribute("aria-live", "polite"); document.body.appendChild(el); } el.textContent = ""; setTimeout(() => (el.textContent = msg), 30); }; })();
+
+  return { width, fit, onResize, esc, $, $$, ico, D, num, kr, fmtN, done, col, table, addRows, sheet, close, settings, once, hash, announce };
+})();
+
+const { esc, ico, D, col, sheet, announce } = Kit;
+const S = Kit.settings([
+  { key: "soon", label: "Show birthdays coming in", type: "select", default: 45, options: [[14, "2 weeks"], [30, "1 month"], [45, "6 weeks"], [90, "3 months"]] },
+  { key: "remindAt", label: "Remind me at", type: "time", default: "18:00", help: "For catch-up and birthday reminders." },
+  { key: "defaultEvery", label: "New people, keep in touch every", type: "select", default: "1 month", options: [["1 week", "Week"], ["2 weeks", "2 weeks"], ["1 month", "Month"], ["3 months", "3 months"], ["6 months", "6 months"]] },
+]);
+const EVERY = ["1 week", "2 weeks", "1 month", "2 months", "3 months", "6 months", "1 year"];
+let q = "", showAll = false;
+const key = (n) => String(n).trim().toLowerCase();
+const days = (every) => { const m = /(\d+)\s*(day|week|month|year)/i.exec(every || ""); if (!m) return 0; return +m[1] * { day: 1, week: 7, month: 30, year: 365 }[m[2].toLowerCase()]; };
+const hue = (s) => [...s].reduce((a, ch) => (a * 33 + ch.charCodeAt(0)) % 360, 11);
+const initials = (n) => n.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+const avatar = (p, big = "") => `<span class="av ${big}" style="--g:linear-gradient(145deg, hsl(${hue(p.name)} 55% 58%), hsl(${(hue(p.name) + 40) % 360} 50% 42%))" aria-hidden="true">${esc(initials(p.name))}</span>`;
+const ago = (n) => n <= 0 ? "today" : n === 1 ? "yesterday" : n < 14 ? `${n} days ago` : n < 60 ? `${Math.round(n / 7)} weeks ago` : n < 365 ? `${Math.round(n / 30)} months ago` : "over a year ago";
+
+function model(note) {
+  const t = Kit.table(note, /^name$/i);
+  if (!t) return null;
+  const c = { name: col(t, /^name$/i), bday: col(t, /^birthday$/i), last: col(t, /^last( talked| seen| contact)?$/i), every: col(t, /^(every|cadence)$/i) };
+  const contacts = amber.data.values.contacts || {};
+  const notes = amber.data.collections.notes || [];
+  const people = t.rows.map((r, i) => {
+    const name = r[c.name].trim(), last = c.last >= 0 ? r[c.last].trim() : "", every = c.every >= 0 ? r[c.every].trim() : "";
+    const since = D.parse(last) ? D.diff(note.today, last) : null, cad = days(every);
+    let bnext = null, age = null; const b = c.bday >= 0 ? r[c.bday].trim() : "";
+    const bm = /^(\d{4}-)?(\d\d)-(\d\d)$/.exec(b);
+    if (bm) {
+      const y = +note.today.slice(0, 4);
+      bnext = `${y}-${bm[2]}-${bm[3]}`; if (bnext < note.today) bnext = `${y + 1}-${bm[2]}-${bm[3]}`;
+      if (bm[1]) age = +bnext.slice(0, 4) - +bm[1].slice(0, 4);
+    }
+    const pn = notes.filter((x) => x.person === key(name)).sort((a, b) => (b.date || b.created || "").localeCompare(a.date || a.created || ""));
+    return { i, name, last, every, since, cad, due: cad && since != null ? since - cad : null, bday: b, bnext, age, info: contacts[key(name)] || {}, notes: pn };
+  }).filter((p) => p.name);
+  return { t, c, people };
+}
+
+function ring(p) {
+  if (!p.cad || p.since == null) return "";
+  const f = Math.min(1, p.since / p.cad), C = 2 * Math.PI * 23;
+  const color = p.since > p.cad ? "var(--amber-danger)" : f > .75 ? "var(--c1)" : "var(--good)";
+  return `<span class="due"><svg viewBox="0 0 50 50"><circle cx="25" cy="25" r="23" fill="none" stroke="var(--amber-fill)" stroke-width="2.5"/><circle cx="25" cy="25" r="23" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - f)}"/></svg></span>`;
+}
+
+function render(note = amber.note) {
+  const app = document.getElementById("app");
+  const m = model(note);
+  if (!m) {
+    app.innerHTML = `<header class="top"><div class="titles"><h1>${esc(note.title || "People")}</h1></div></header>
+      <div class="card empty">${ico("person")}<h3>No one here yet</h3><p>People go in a table in this note: Name, Birthday, Last talked and Every. Add someone from your contacts to start it.</p><button class="btn primary" id="add">${ico("plus")} Add someone</button></div>`;
+    return;
+  }
+  const s = S.get(), today = note.today;
+  const due = m.people.filter((p) => p.due != null && p.due >= -3).sort((a, b) => b.due - a.due);
+  const bdays = m.people.filter((p) => p.bnext && D.diff(p.bnext, today) <= Number(s.soon)).sort((a, b) => a.bnext.localeCompare(b.bnext));
+  const all = m.people.filter((p) => !q || p.name.toLowerCase().includes(q.toLowerCase())).sort((a, b) => a.name.localeCompare(b.name, "sv"));
+  const rem = amber.data.values.reminded || {};
+  app.innerHTML = `
+  <header class="top"><div class="titles"><h1>${esc(note.title)}</h1><div class="sub">${due.length ? `${due.length} to catch up` : "All caught up"}${bdays.length ? ` · ${bdays.length} ${bdays.length === 1 ? "birthday" : "birthdays"}` : ""}</div></div>
+    <button class="round" id="add" aria-label="Add someone">${ico("plus")}</button><button class="round" id="settings" aria-label="Settings">${ico("gear")}</button></header>
+  <div class="label" style="margin-top:.2rem"><span class="grow">Catch up</span>${due.length > (innerWidth >= 900 ? 4 : 3) ? `<button id="more">${showAll ? "Show less" : `Show all ${due.length}`}</button>` : ""}</div>
+  ${due.length ? `<section class="catch">${due.slice(0, showAll ? 99 : innerWidth >= 900 ? 4 : 3).map((p) => `<article class="card cu" data-row="${p.i}">
+      <button class="av-btn" data-person="${p.i}" style="border:0;background:none;padding:0" aria-label="Open ${esc(p.name)}">${avatar(p).replace("</span>", ring(p) + "</span>")}</button>
+      <div class="grow"><h3>${esc(p.name)}</h3><p class="${p.due > 0 ? "late" : ""}">Talked ${ago(p.since)}${p.every ? ` · every ${esc(p.every.replace(/^1 /, ""))}` : ""}</p>
+        ${p.notes[0] ? `<div class="last">${esc(p.notes[0].text)}</div>` : ""}
+        <div class="acts"><button class="btn primary" data-talked="${p.i}">${ico("check")} Talked today</button><button class="round" data-remind="${p.i}" aria-pressed="${!!rem[key(p.name)]}" aria-label="${rem[key(p.name)] ? "Reminder set for tomorrow" : `Remind me to catch up with ${esc(p.name)} tomorrow`}">${ico("bell")}</button></div></div></article>`).join("")}</section>`
+    : `<div class="card empty" style="padding:1.4rem"><p style="margin:0">Nobody's due. Nice.</p></div>`}
+  <div class="cols">
+    <div>
+      <div class="label"><span class="grow">Birthdays</span></div>
+      <section class="card list">${bdays.length ? bdays.map((p) => { const n = D.diff(p.bnext, today); return `<div class="row bday"><span class="cal"><span>${D.fmt(p.bnext, { month: "short" })}</span><b class="num">${+p.bnext.slice(8)}</b></span>
+        <div class="grow"><div style="font-weight:600">${esc(p.name)}</div><div class="small ${n <= 7 ? "soon" : "muted"}">${n === 0 ? "Today" : n === 1 ? "Tomorrow" : n < 7 ? D.fmt(p.bnext, { weekday: "long" }) : `In ${n} days`}${p.age ? ` · turns ${p.age}` : ""}</div></div>
+        <button class="bellb" data-bday="${p.i}" aria-pressed="${!!rem["bday:" + key(p.name)]}" aria-label="Remind me of ${esc(p.name)}'s birthday">${ico("gift")}</button></div>`; }).join("")
+        : `<div class="empty" style="padding:1.2rem"><p style="margin:0">No birthdays in the next ${s.soon} days.</p></div>`}</section>
+    </div>
+    <div>
+      <div class="label"><span class="grow">Everyone</span><span class="small num" style="text-transform:none">${m.people.length}</span></div>
+      <div class="search">${ico("search")}<label class="sr" for="q">Search people</label><input class="in" id="q" type="search" placeholder="Search" value="${esc(q)}"></div>
+      <section class="card list inset">${all.map((p) => { const f = p.cad && p.since != null ? Math.min(1, p.since / p.cad) : 0; return `<button class="row" data-person="${p.i}">${avatar(p)}
+        <span class="grow"><span style="font-weight:600;display:block" class="ellipsis">${esc(p.name)}</span><span class="every">${p.since != null ? `Talked ${ago(p.since)}` : "Not yet"}</span></span>
+        ${p.cad ? `<span class="meter" aria-hidden="true"><b class="${p.since > p.cad ? "late" : f > .75 ? "warn" : ""}" style="width:${Math.max(6, f * 100)}%"></b></span>` : ""}<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 5l7 7-7 7"/></svg></button>`; }).join("") || `<div class="empty"><p>No one called “${esc(q)}”.</p></div>`}</section>
+    </div>
+  </div>`;
+}
+
+const cell = (m, p, k, v) => m.c[k] >= 0 ? amber.update({ op: "set_cell", table: m.t.index, row: p.i, col: m.t.columns[m.c[k]].name, value: v }) : Promise.resolve({ ok: false, error: `Add a ${k === "last" ? "Last talked" : k} column to the note.` });
+
+async function talked(i, fromSheet) {
+  const m = model(amber.note); const p = m.people.find((x) => x.i === i);
+  const card = document.querySelector(`.cu[data-row="${i}"]`);
+  if (card && !fromSheet) { card.classList.add("out"); await new Promise((r) => setTimeout(r, 380)); }
+  const r = await cell(m, p, "last", amber.note.today);
+  if (!r.ok) { announce(r.error); render(); return; }
+  if (amber.data.values.reminded && amber.data.values.reminded[key(p.name)]) await amber.setData({ values: { reminded: { [key(p.name)]: null } } });
+  if (!fromSheet) noteSheet(i, true);
+}
+
+async function remind(i, bday) {
+  const m = model(amber.note); const p = m.people.find((x) => x.i === i);
+  const at = S.get().remindAt || "18:00";
+  const due = bday ? `${p.bnext}T09:00` : `${D.add(amber.note.today, 1)}T${at}`;
+  const r = await amber.device.reminders.create({ title: bday ? `${p.name}'s birthday${p.age ? ` (${p.age})` : ""}` : `Catch up with ${p.name}`, notes: p.notes[0] ? `Last time: ${p.notes[0].text}` : "", due });
+  if (!r.ok) { announce(r.error); return; }
+  await amber.setData({ values: { reminded: { [(bday ? "bday:" : "") + key(p.name)]: r.id || true } } });
+  announce(bday ? `Reminder on ${D.fmt(p.bnext)}.` : `Reminder tomorrow at ${at}.`);
+}
+
+function noteSheet(i, justTalked) {
+  const m = model(amber.note); const p = m.people.find((x) => x.i === i);
+  let kind = "Call";
+  sheet(justTalked ? `How was it with ${p.name.split(" ")[0]}?` : `Note about ${p.name.split(" ")[0]}`, `<form id="nf" class="fields">
+    <div class="kinds" role="group" aria-label="How">${["Call", "Coffee", "Message", "Dinner", "Walk"].map((k) => `<button type="button" data-k="${k}" aria-pressed="${k === kind}">${k}</button>`).join("")}</div>
+    <label class="field">What you talked about<textarea id="nt" rows="4" autofocus placeholder="Anything worth remembering for next time"></textarea></label>
+    <div class="fields two"><button type="button" class="btn" data-close>${justTalked ? "Skip" : "Cancel"}</button><button class="btn primary">Save</button></div></form>`, {
+    mount(root, close) {
+      root.querySelector(".kinds").onclick = (e) => { const b = e.target.closest("[data-k]"); if (!b) return; kind = b.dataset.k; root.querySelectorAll("[data-k]").forEach((x) => x.setAttribute("aria-pressed", x === b)); };
+      root.querySelector("#nf").onsubmit = async (e) => {
+        e.preventDefault();
+        const text = root.querySelector("#nt").value.trim(); if (!text) { close(); return; }
+        await amber.store.collection("notes").add({ person: key(p.name), kind, text, date: amber.note.today });
+        close(); announce("Saved.");
+      };
+    },
+  });
+}
+
+function personSheet(i) {
+  const m = model(amber.note); const p = m.people.find((x) => x.i === i);
+  const phone = p.info.phone, email = p.info.email;
+  sheet(p.name, `<div class="ph">${avatar(p, "big")}<h3>${esc(p.name)}</h3><p>${p.since != null ? `Talked ${ago(p.since)}` : "Not talked yet"}${p.info.how ? ` · ${esc(p.info.how)}` : ""}</p></div>
+    <div class="qa"><button data-act="tel" ${phone ? "" : "disabled"}>${ico("chat")}Call</button><button data-act="sms" ${phone ? "" : "disabled"}>${ico("chat")}Message</button><button data-act="mail" ${email ? "" : "disabled"}>${ico("note")}Email</button><button data-act="talked">${ico("check")}Talked</button></div>
+    <div class="card list facts">
+      <label class="row"><span class="k">Keep in touch</span><select class="in grow" id="ev" style="min-height:2.3rem">${["", ...EVERY].map((e) => `<option value="${e}" ${e === p.every ? "selected" : ""}>${e ? "Every " + e.replace(/^1 /, "") : "No reminder"}</option>`).join("")}</select></label>
+      <label class="row"><span class="k">Birthday</span><input class="in grow" id="bd" type="date" value="${/^\d{4}-\d\d-\d\d$/.test(p.bday) ? p.bday : ""}" style="min-height:2.3rem"></label>
+      ${phone ? `<div class="row"><span class="k">Phone</span><span class="grow num">${esc(phone)}</span></div>` : ""}${email ? `<div class="row"><span class="k">Email</span><span class="grow ellipsis">${esc(email)}</span></div>` : ""}
+    </div>
+    <div class="label" style="margin-top:0"><span class="grow">Notes</span><button data-act="note">Add</button></div>
+    ${p.notes.length ? `<div class="tlog">${p.notes.map((n) => `<div class="e"><span class="dot"></span><div><div class="when">${esc(n.kind || "Note")} · ${D.fmt(n.date || n.created.slice(0, 10), { day: "numeric", month: "short", year: "numeric" })}</div><div class="txt">${esc(n.text)}</div></div></div>`).join("")}</div>`
+      : `<p class="muted small" style="margin:0 .2rem">Notes from each catch-up show here, newest first.</p>`}
+    <div class="err" id="err" role="alert"></div>`, {
+    mount(root, close) {
+      root.addEventListener("click", async (e) => {
+        const a = e.target.closest("[data-act]"); if (!a) return;
+        const act = a.dataset.act, digits = (phone || "").replace(/[^\d+]/g, "");
+        if (act === "tel") amber.device.openURL(`tel:${digits}`);
+        if (act === "sms") amber.device.openURL(`sms:${digits}`);
+        if (act === "mail") amber.device.openURL(`mailto:${email}`);
+        if (act === "talked") { close(); await talked(i, true); setTimeout(() => noteSheet(i, true), 360); }
+        if (act === "note") { close(); setTimeout(() => noteSheet(i, false), 360); }
+      });
+      root.querySelector("#ev").onchange = async (e) => { const r = await cell(m, p, "every", e.target.value); if (!r.ok) root.querySelector("#err").textContent = r.error; };
+      root.querySelector("#bd").onchange = async (e) => { const r = await cell(m, p, "bday", e.target.value); if (!r.ok) root.querySelector("#err").textContent = r.error; };
+    },
+  });
+}
+
+// From Contacts: the system's picker hands over one person; the name goes in the note, numbers stay in the app.
+async function addPerson() {
+  const m = model(amber.note);
+  const r = await amber.device.contacts.pick();
+  let name = "", info = {};
+  if (r.ok && r.contact) { name = r.contact.name || r.contact.organization || ""; info = { phone: (r.contact.phones || [])[0] || null, email: (r.contact.emails || [])[0] || null }; }
+  sheet("Add someone", `<form id="af" class="fields">${r.ok ? "" : `<p class="muted small" style="margin:0">${esc(r.error || "Contacts isn't available here.")} Type the name instead.</p>`}
+    <label class="field">Name<input id="an" required value="${esc(name)}" ${name ? "" : "autofocus"}></label>
+    <label class="field">Birthday<input id="ab" type="date"></label>
+    <label class="field">Keep in touch<select id="ae">${EVERY.map((e) => `<option ${e === S.get().defaultEvery ? "selected" : ""}>${e}</option>`).join("")}</select></label>
+    <div class="err" id="err" role="alert"></div><button class="btn primary block" ${name ? "autofocus" : ""}>Add</button></form>`, {
+    mount(root, close) {
+      root.querySelector("#af").onsubmit = async (e) => {
+        e.preventDefault();
+        const n = root.querySelector("#an").value.trim(); if (!n) return;
+        const same = m && m.people.find((x) => x.name.toLowerCase() === n.toLowerCase());
+        if (same) { close(); setTimeout(() => personSheet(same.i), 360); return; }
+        if (!m) { const x = await amber.update({ op: "set_text", heading: "People", text: `| Name | Birthday | Last talked | Every |\n| --- | --- | --- | --- |\n| ${n.replace(/\|/g, "/")} | ${root.querySelector("#ab").value} | ${amber.note.today} | ${root.querySelector("#ae").value} |` }); if (!x.ok) root.querySelector("#err").textContent = "Add a heading named People to the note, and the table goes under it."; else close(); return; }
+        const col2 = (k) => m.t.columns[m.c[k]].name, values = { [col2("name")]: n };
+        if (m.c.bday >= 0) values[col2("bday")] = root.querySelector("#ab").value;
+        if (m.c.last >= 0) values[col2("last")] = amber.note.today;
+        if (m.c.every >= 0) values[col2("every")] = root.querySelector("#ae").value;
+        const x = await amber.update({ op: "append_row", table: m.t.index, values });
+        if (!x.ok) { root.querySelector("#err").textContent = x.error; return; }
+        if (info.phone || info.email) await amber.setData({ values: { contacts: { [key(n)]: info } } });
+        close(); announce(`${n} added.`);
+      };
+    },
+  });
+}
+
+document.addEventListener("click", (e) => {
+  if (e.target.closest("#more")) { showAll = !showAll; render(); return; }
+  const t = e.target.closest("#add,#settings,[data-talked],[data-remind],[data-bday],[data-person]"); if (!t || t.closest(".sheet")) return;
+  if (t.id === "add") addPerson();
+  else if (t.id === "settings") S.open("People settings");
+  else if (t.dataset.talked) talked(+t.dataset.talked);
+  else if (t.dataset.remind) remind(+t.dataset.remind);
+  else if (t.dataset.bday) remind(+t.dataset.bday, true);
+  else if (t.dataset.person) personSheet(+t.dataset.person);
+});
+document.addEventListener("input", (e) => { if (e.target.id === "q") { q = e.target.value; const pos = e.target.selectionStart; render(); const el = document.getElementById("q"); el.focus(); el.setSelectionRange(pos, pos); } });
+amber.onChange((note) => render(note));
+</script>
+</body>
+</html>

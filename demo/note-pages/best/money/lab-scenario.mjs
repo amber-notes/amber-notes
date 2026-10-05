@@ -1,0 +1,15 @@
+export default async (p, { shot }) => {
+  await p.click('#add'); await p.waitForTimeout(500);
+  await p.fill('#amt', '149'); await p.fill('#item', 'Lunch at Bröd & Salt'); await p.click('[data-c="Eating out"]');
+  await shot("add");
+  await p.click('#f button.primary'); await p.waitForTimeout(600);
+  await p.click('[data-pay]'); await p.waitForTimeout(400);
+  await p.click('#import'); await p.waitForTimeout(500);
+  await p.fill('#csv', "Datum;Text;Belopp\n2026-10-03;ICA Nära Odenplan;-318,00\n2026-10-04;Willys Hornstull;-642,50\n2026-10-04;Swish Linnea Berg;-150,00\n2026-10-04;Lön;25 000,00\n2026-10-05;Voi scooter;-27,00\n2026-10-05;Max Burgers;-119,00");
+  await p.waitForTimeout(300);
+  await p.selectOption('[data-cat="2"]', 'Fun');
+  await p.waitForTimeout(300);
+  await shot("import");
+  await p.click('#go'); await p.waitForTimeout(700);
+  await shot("after");
+};

@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="amber-needs" content='{"hosts": ["api.open-meteo.com", "nominatim.openstreetmap.org"]}'>
+<title>Trip</title>
+<style>
+/*KIT_CSS*/
+.hero { position: relative; border-radius: var(--amber-radius); overflow: hidden; background: var(--amber-surface); }
+.hero .mapimg { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: var(--amber-fill); }
+.hero .mapimg.ph { background: linear-gradient(120deg, var(--amber-fill), var(--amber-surface)); }
+.hero .over { position: absolute; left: .8rem; top: .8rem; background: color-mix(in srgb, var(--amber-bg) 88%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-radius: 1rem; padding: .55rem .85rem .6rem; box-shadow: var(--shadow); }
+.hero .over b { font-size: 1.55rem; letter-spacing: -.02em; display: block; line-height: 1.1; font-family: var(--amber-font-rounded); }
+.hero .over span { font-size: .8rem; color: var(--amber-text-secondary); font-weight: 600; }
+.wx { display: grid; grid-template-columns: repeat(var(--n), 1fr); border-top: 1px solid var(--amber-separator); }
+.wx button { border: 0; background: none; color: inherit; font: inherit; padding: .65rem .2rem .7rem; text-align: center; display: flex; flex-direction: column; align-items: center; gap: .15rem; transition: background .2s; }
+.wx button + button { border-left: 1px solid var(--amber-separator); }
+.wx button[aria-pressed="true"] { background: var(--amber-accent-soft); }
+.wx .d { font-size: .74rem; font-weight: 700; color: var(--amber-text-secondary); text-transform: uppercase; letter-spacing: .03em; }
+.wx svg { width: 1.5rem; height: 1.5rem; }
+.wx .sun { color: #E39A0B; } .wx .cloud { color: var(--amber-text-secondary); } .wx .rain { color: var(--c3); }
+.wx .t { font-weight: 700; font-size: .95rem; }
+.wx .t small { color: var(--amber-text-secondary); font-weight: 500; }
+.wx .p { font-size: .7rem; color: var(--c3); font-weight: 600; min-height: 1em; }
+
+.dayhead { display: flex; align-items: baseline; gap: .6rem; margin: 1.4rem .25rem .6rem; }
+.dayhead h2 { font-size: 1.35rem; letter-spacing: -.015em; flex: 1; }
+.dayhead .w { font-size: .88rem; color: var(--amber-text-secondary); }
+.daymap { position: relative; border-radius: var(--amber-radius); overflow: hidden; background: var(--amber-fill); margin-bottom: .75rem; }
+.daymap img { display: block; width: 100%; height: auto; }
+.daymap .pin { position: absolute; transform: translate(-50%, -50%); width: 1.55rem; height: 1.55rem; border-radius: 50%; background: var(--amber-accent); color: var(--amber-on-accent); font-size: .78rem; font-weight: 800; display: grid; place-items: center; box-shadow: 0 0 0 2.5px #fff, 0 3px 8px rgba(0,0,0,.3); animation: drop .45s var(--ease-pop) both; animation-delay: calc(var(--i) * 70ms); }
+@keyframes drop { from { opacity: 0; transform: translate(-50%, -120%) scale(.6); } to { opacity: 1; transform: translate(-50%, -50%); } }
+.daymap .note2 { position: absolute; right: .5rem; bottom: .5rem; font-size: .7rem; font-weight: 600; background: color-mix(in srgb, var(--amber-bg) 85%, transparent); padding: .2rem .5rem; border-radius: 99px; color: var(--amber-text-secondary); }
+.tl { position: relative; }
+.stop { display: grid !important; grid-template-columns: 3.1rem 1.6rem 1fr auto; align-items: start !important; gap: .4rem .5rem !important; padding: .75rem 1rem !important; }
+.stop .tm { font-weight: 700; font-variant-numeric: tabular-nums; padding-top: .05rem; }
+.stop .no { width: 1.45rem; height: 1.45rem; border-radius: 50%; background: var(--amber-accent-soft); color: var(--amber-accent-text); font-size: .74rem; font-weight: 800; display: grid; place-items: center; }
+.stop .no.none { background: var(--amber-fill); color: var(--amber-text-secondary); }
+.stop .wh { font-weight: 600; line-height: 1.25; }
+.stop .pl { font-size: .82rem; color: var(--amber-text-secondary); margin-top: .1rem; }
+.stop .go { border: 0; background: none; color: var(--amber-accent-text); width: 2.4rem; height: 2.4rem; border-radius: 50%; display: grid; place-items: center; margin: -.3rem -.4rem 0 0; }
+.stop .go svg { width: 1.15rem; height: 1.15rem; }
+.stop.past { opacity: .5; }
+
+.pack { padding: .2rem 0; }
+.packhead { display: flex; align-items: center; gap: .8rem; padding: .9rem 1rem .6rem; }
+.packhead .ring { width: 2.6rem; height: 2.6rem; flex: none; }
+.packhead .ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.packhead b { font-size: 1.05rem; }
+.item { cursor: pointer; }
+.item .box { width: 1.55rem; height: 1.55rem; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--amber-text-secondary) 45%, transparent); display: grid; place-items: center; flex: none; color: var(--amber-on-accent); transition: background .2s, border-color .2s; }
+.item .box svg { width: .95rem; height: .95rem; stroke-width: 3.2; opacity: 0; }
+.item[aria-checked="true"] .box { background: var(--amber-accent); border-color: var(--amber-accent); }
+.item[aria-checked="true"] .box svg { opacity: 1; }
+.item[aria-checked="true"] .txt { color: var(--amber-text-secondary); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--amber-text-secondary) 60%, transparent); }
+.additem { display: flex; gap: .5rem; padding: .5rem 1rem .9rem; }
+.additem input { flex: 1; }
+
+.money { padding: 1rem 1.1rem; }
+.money .tot { display: flex; align-items: baseline; gap: .5rem; }
+.money .tot b { font-size: 1.5rem; letter-spacing: -.02em; }
+.people { display: grid; grid-template-columns: repeat(auto-fit, minmax(5.4rem, 1fr)); gap: .5rem; margin: .9rem 0; }
+.people div { background: var(--amber-bg); border-radius: var(--amber-radius-small); padding: .55rem .7rem; }
+@media (prefers-color-scheme: dark) { .people div { background: var(--amber-fill); } }
+.people span { font-size: .78rem; color: var(--amber-text-secondary); font-weight: 600; display: block; }
+.people b { font-size: .98rem; }
+.people .pos { color: var(--good); } .people .neg { color: var(--amber-danger); }
+.settle { display: grid; gap: .45rem; }
+.settle div { display: flex; align-items: center; gap: .5rem; font-size: .92rem; }
+.settle svg { width: 1rem; height: 1rem; color: var(--amber-text-secondary); flex: none; }
+.settle b { font-weight: 650; }
+.costs .row { min-height: 2.6rem !important; font-size: .92rem; }
+.who { display: flex; flex-wrap: wrap; gap: .4rem; }
+.who button { border: 0; border-radius: 999px; padding: .4rem .9rem; min-height: 2.3rem; font-weight: 600; background: var(--amber-fill); color: var(--amber-text); }
+.who button[aria-pressed="true"] { background: var(--amber-text); color: var(--amber-bg); }
+.days { display: flex; gap: .4rem; overflow-x: auto; scrollbar-width: none; }
+.days::-webkit-scrollbar { display: none; }
+@media (min-width: 900px) { .hero .mapimg { aspect-ratio: 21 / 8; } }
+</style>
+</head>
+<body>
+<main class="wrap" id="app" aria-live="polite"></main>
+<script>
+/*KIT_JS*/
+const { esc, ico, D, num, kr, col, sheet, announce } = Kit;
+const S = Kit.settings([
+  { key: "people", label: "Who's going", type: "text", default: "Me", help: "Names with commas. Costs are split evenly between them." },
+  { key: "currency", label: "Currency", type: "select", default: "kr", options: [["kr", "kr"], ["€", "€"], ["$", "$"], ["£", "£"]] },
+  { key: "units", label: "Temperatures", type: "select", default: "celsius", options: [["celsius", "Celsius"], ["fahrenheit", "Fahrenheit"]] },
+]);
+let day = null, wxErr = "", maps = {}, cityMap = null, adding = "";
+const dark = () => matchMedia("(prefers-color-scheme: dark)").matches;
+const place = (n) => (amber.data.values.places || {})[String(n).trim().toLowerCase()];
+const money = (n) => { const c = S.get().currency; return c === "kr" ? kr(n) : c + Kit.fmtN(n); };
+
+function model(note) {
+  const plan = Kit.table(note, /^(day|date)$/i, /^what$/i);
+  const costs = note.tables.find((t) => col(t, /^paid by$/i) >= 0);
+  const c = plan && { day: col(plan, /^(day|date)$/i), time: col(plan, /^time$/i), what: col(plan, /^what$/i), where: col(plan, /^(where|place)$/i) };
+  const stops = plan ? plan.rows.map((r, i) => ({ i, day: r[c.day].trim(), time: c.time >= 0 ? r[c.time].trim() : "", what: r[c.what].trim(), where: c.where >= 0 ? r[c.where].trim() : "" })).filter((s) => D.parse(s.day)) : [];
+  const days = [...new Set(stops.map((s) => s.day))].sort();
+  const lines = note.markdown.split("\n");
+  let h = -1; lines.forEach((l, k) => { if (/^#{1,6}\s+packing/i.test(l)) h = k; });
+  const packing = note.checklists.filter((x) => h < 0 || x.line - 1 > h);
+  return { plan, c, stops, days, costs, packing, hasPackingHeading: h >= 0 };
+}
+
+const wmo = (code) => code == null ? null : code <= 1 ? ["sun", "Clear"] : code <= 3 ? ["cloud", "Cloudy"] : code < 50 ? ["cloud", "Fog"] : code < 70 || (code >= 80 && code < 83) ? ["rain", "Rain"] : code < 80 ? ["cloud", "Snow"] : ["rain", "Storms"];
+const wxIcon = (code) => { const w = wmo(code); return w ? `<span class="${w[0]}">${ico(w[0])}</span>` : `<span class="cloud" style="opacity:.3">${ico("cloud")}</span>`; };
+const temp = (c) => (S.get().units === "fahrenheit" ? Math.round(c * 9 / 5 + 32) : Math.round(c)) + "°";
+
+// The forecast for the trip's days, kept with the app so it shows offline; refreshed after 3 hours.
+async function weather(m) {
+  const city = amber.data.values.city; if (!city || !m.days.length) return;
+  const w = amber.data.values.weather;
+  const last = m.days[m.days.length - 1];
+  if (w && Date.now() - Date.parse(w.at) < 3 * 3600e3 && m.days.every((d) => w.days[d])) return;
+  if (D.diff(m.days[0], amber.note.today) > 15) { wxErr = "The forecast comes 16 days ahead."; return; }
+  const r = await amber.fetch(`https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lon}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&start_date=${m.days[0] < amber.note.today ? amber.note.today : m.days[0]}&end_date=${last}`);
+  if (!r.ok || r.status !== 200) { wxErr = r.error || "No forecast right now."; render(); return; }
+  const j = JSON.parse(r.body).daily, days = {};
+  j.time.forEach((d, k) => (days[d] = { code: j.weather_code[k], max: j.temperature_2m_max[k], min: j.temperature_2m_min[k], rain: j.precipitation_probability_max[k] }));
+  wxErr = "";
+  await amber.store.set("weather", { at: new Date().toISOString(), days });
+}
+
+// A map picture of the day's stops, centered on the first, with numbered pins laid over it.
+const inflight = new Set();
+async function dayMap(m, d, width) {
+  const ks = `${d}-${dark()}-${width}`; if (maps[ks] || inflight.has(ks)) return null;
+  inflight.add(ks);
+  const pts = m.stops.filter((s) => s.day === d).map((s, k) => ({ k: k + 1, s, p: place(s.where) })).filter((x) => x.p);
+  if (!pts.length) return null;
+  const c = pts[0].p, mx = (p) => (p.lon - c.lon) * 111320 * Math.cos(c.lat * Math.PI / 180), my = (p) => (p.lat - c.lat) * 110540;
+  const near = pts.filter((x) => Math.hypot(mx(x.p), my(x.p)) < 8000);
+  const far = pts.length - near.length;
+  const reach = Math.max(600, ...near.map((x) => Math.max(Math.abs(mx(x.p)) * 9 / 16, Math.abs(my(x.p)))));
+  const W = Math.min(1200, Math.round(width * 2)), H = Math.round(W * 9 / 16);
+  const km = (reach * 2 * 1.35) / 1000;
+  const r = await amber.device.maps.snapshot({ lat: c.lat, lon: c.lon, km, width: W, height: H, dark: dark() });
+  inflight.delete(ks);
+  if (!r.ok) return null;
+  const mpp = (km * 1000) / H;
+  maps[ks] = { url: r.dataURL, pins: near.map((x) => ({ k: x.k, x: (W / 2 + mx(x.p) / mpp) / W * 100, y: (H / 2 - my(x.p) / mpp) / H * 100 })), far };
+  return maps[ks];
+}
+
+async function heroMap(width) {
+  const city = amber.data.values.city; if (!city) return;
+  const k = `${dark()}-${width}`; if ((cityMap && cityMap.k === k) || inflight.has(k)) return;
+  inflight.add(k);
+  const W = Math.min(1200, Math.round(width * 2)), H = Math.round(W * (width >= 860 ? 8 / 21 : 9 / 16));
+  const r = await amber.device.maps.snapshot({ lat: city.lat, lon: city.lon, km: 9, width: W, height: H, dark: dark() });
+  inflight.delete(k);
+  if (r.ok) { cityMap = { k, url: r.dataURL }; render(); }
+}
+
+function settle(names, costs) {
+  const bal = Object.fromEntries(names.map((n) => [n, 0]));
+  for (const c of costs) { const share = c.amt / names.length; for (const n of names) bal[n] -= share; if (bal[c.by] != null) bal[c.by] += c.amt; }
+  const debt = names.map((n) => ({ n, v: bal[n] })).filter((x) => x.v < -0.5).sort((a, b) => a.v - b.v);
+  const cred = names.map((n) => ({ n, v: bal[n] })).filter((x) => x.v > 0.5).sort((a, b) => b.v - a.v);
+  const out = [];
+  for (const d of debt) for (const c of cred) { if (d.v >= -0.5) break; const x = Math.min(-d.v, c.v); if (x < 0.5) continue; out.push({ from: d.n, to: c.n, amt: x }); d.v += x; c.v -= x; }
+  return { bal, out };
+}
+
+function render(note = amber.note) {
+  const app = document.getElementById("app");
+  const m = model(note), today = note.today;
+  if (!m.days.length) {
+    app.innerHTML = `<header class="top"><div class="titles"><h1>${esc(note.title || "Trip")}</h1></div><button class="round" id="settings" aria-label="Settings">${ico("gear")}</button></header>
+      <div class="card empty">${ico("suitcase")}<h3>No plan yet</h3><p>The plan goes in a table in this note with Day, Time, What and Where. A Packing checklist and a Costs table (Date, What, Paid by, Amount) show up here too.</p></div>`;
+    return;
+  }
+  const first = m.days[0], last = m.days[m.days.length - 1];
+  if (!day || !m.days.includes(day)) day = today >= first && today <= last ? today : first;
+  const until = D.diff(first, today), w = (amber.data.values.weather || {}).days || {};
+  const big = until > 0 ? `${until} ${until === 1 ? "day" : "days"} to go` : today <= last ? `Day ${D.diff(today, first) + 1} of ${m.days.length}` : "Back home";
+  const range = `${D.fmt(first, { weekday: "short", day: "numeric" })} to ${D.fmt(last, { weekday: "short", day: "numeric", month: "short" })}`;
+  const stops = m.stops.filter((s) => s.day === day);
+  const wd = w[day];
+  const packed = m.packing.filter((x) => x.checked).length;
+  const people = S.get().people.split(",").map((s) => s.trim()).filter(Boolean);
+  let costs = [], cc = null;
+  if (m.costs) {
+    cc = { date: col(m.costs, /^date$/i), what: col(m.costs, /^what$/i), by: col(m.costs, /^paid by$/i), amt: col(m.costs, /^amount$/i) };
+    costs = m.costs.rows.map((r, i) => ({ i, date: cc.date >= 0 ? r[cc.date] : "", what: cc.what >= 0 ? r[cc.what] : "", by: r[cc.by].trim(), amt: num(r[cc.amt]) })).filter((x) => Number.isFinite(x.amt));
+  }
+  const total = costs.reduce((a, x) => a + x.amt, 0);
+  const st = settle(people, costs);
+  const dm = maps[`${day}-${dark()}-${Kit.width("daymap", 340)}`];
+  const R = 15.9, C = 2 * Math.PI * R;
+
+  app.innerHTML = `
+  <header class="top"><div class="titles"><h1>${esc(note.title)}</h1><div class="sub">${range}</div></div><button class="round" id="settings" aria-label="Settings">${ico("gear")}</button></header>
+  <section class="hero" data-w="hero">${cityMap ? `<img class="mapimg" src="${cityMap.url}" alt="Map of ${esc((amber.data.values.city || {}).name || note.title)}">` : `<div class="mapimg ph"></div>`}
+    <div class="over"><b>${big}</b><span>${esc((amber.data.values.city || {}).name || "")}${m.stops.length ? ` · ${m.stops.length} plans` : ""}</span></div>
+    <div class="wx" style="--n:${m.days.length}" role="group" aria-label="Days">${m.days.map((d) => { const x = w[d]; return `<button data-day="${d}" aria-pressed="${d === day}" aria-label="${D.fmt(d, { weekday: "long", day: "numeric", month: "long" })}${x ? `, ${wmo(x.code)[1]}, ${temp(x.max)}` : ""}">
+      <span class="d">${D.fmt(d, { weekday: "short" })} ${+d.slice(8)}</span>${wxIcon(x && x.code)}<span class="t num">${x ? `${temp(x.max)}<small> ${temp(x.min)}</small>` : "–"}</span><span class="p">${x && x.rain >= 20 ? `${x.rain}% rain` : ""}</span></button>`; }).join("")}</div></section>
+  ${wxErr ? `<p class="muted small" style="margin:.5rem .3rem 0">${esc(wxErr)}</p>` : ""}
+  <div class="cols side">
+    <div>
+      <div class="dayhead"><h2>${D.fmt(day, { weekday: "long", day: "numeric", month: "long" })}</h2><span class="w">${wd ? `${wmo(wd.code)[1]}, ${temp(wd.max)}` : ""}</span></div>
+      <div class="daymap" data-w="daymap" ${dm ? "" : 'style="aspect-ratio:16/9"'}>${dm ? `<img src="${dm.url}" alt="Map of the day's stops">${dm.pins.map((p, k) => `<span class="pin" style="left:${p.x}%;top:${p.y}%;--i:${k}" aria-hidden="true">${p.k}</span>`).join("")}${dm.far ? `<span class="note2">${dm.far} more out of town</span>` : ""}` : ""}</div>
+      <section class="card list tl">${stops.map((s, k) => `<div class="row stop ${day < today || (day === today && s.time && s.time < nowTime()) ? "past" : ""}"><span class="tm">${esc(s.time)}</span><span class="no ${place(s.where) ? "" : "none"}">${k + 1}</span>
+        <div><div class="wh">${esc(s.what)}</div>${s.where ? `<div class="pl">${esc(s.where)}</div>` : ""}</div>
+        ${s.where ? `<button class="go" data-go="${s.i}" aria-label="Directions to ${esc(s.where)}">${ico("pin")}</button>` : "<span></span>"}</div>`).join("")}</section>
+      <button class="btn plain" id="addstop" style="margin-top:.4rem">${ico("plus")} Add to ${D.fmt(day, { weekday: "long" })}</button>
+    </div>
+    <div>
+      <div class="label"><span class="grow">Packing</span></div>
+      <section class="card pack">
+        <div class="packhead"><div class="ring"><svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="${R}" fill="none" stroke="var(--amber-fill)" stroke-width="4"/><circle cx="18" cy="18" r="${R}" fill="none" stroke="var(--amber-accent)" stroke-width="4" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - (m.packing.length ? packed / m.packing.length : 0))}" style="transition:stroke-dashoffset .6s var(--ease-out)"/></svg></div>
+          <div class="grow"><b class="num">${packed} of ${m.packing.length} packed</b><div class="small muted">${m.packing.length - packed ? `${m.packing.length - packed} to go` : "All packed"}</div></div></div>
+        <div class="list">${m.packing.map((x) => `<div class="row item" role="checkbox" tabindex="0" aria-checked="${x.checked}" data-line="${x.line}"><span class="box">${ico("check")}</span><span class="txt grow">${esc(x.text)}</span></div>`).join("")}</div>
+        <form class="additem" id="addpack"><label class="sr" for="pi">Add to packing</label><input class="in" id="pi" placeholder="Add something" value="${esc(adding)}"><button class="btn tint" aria-label="Add">${ico("plus")}</button></form>
+      </section>
+      <div class="label"><span class="grow">Shared costs</span><button id="addcost" aria-label="Add a shared cost">Add</button></div>
+      <section class="card money">
+        <div class="tot"><b class="num">${money(total)}</b><span class="muted small">${people.length > 1 ? `${money(total / people.length)} each` : ""}</span></div>
+        <div class="people">${people.map((n) => { const v = st.bal[n] || 0; return `<div><span>${esc(n)}</span><b class="num ${v > 0.5 ? "pos" : v < -0.5 ? "neg" : ""}">${v > 0.5 ? "+" : v < -0.5 ? "−" : ""}${money(Math.abs(v))}</b></div>`; }).join("")}</div>
+        <div class="settle">${st.out.length ? st.out.map((x) => `<div><span><b>${esc(x.from)}</b> owes <b>${esc(x.to)}</b></span><span class="grow"></span><span class="num">${money(x.amt)}</span></div>`).join("") : `<div class="muted">All square.</div>`}</div>
+      </section>
+      ${costs.length ? `<section class="card list costs" style="margin-top:.6rem">${costs.slice().reverse().map((x) => `<div class="row"><span class="grow ellipsis">${esc(x.what)}<div class="small muted">${esc(x.by)}${x.date ? ` · ${D.fmt(x.date, { day: "numeric", month: "short" })}` : ""}</div></span><span class="num">${money(x.amt)}</span></div>`).join("")}</section>` : ""}
+    </div>
+  </div>`;
+  Kit.fit(() => render());
+  const dw = Kit.width("daymap", 0), hw = Kit.width("hero", 0);
+  if (hw) heroMap(hw);
+  if (dw && !dm) dayMap(m, day, dw).then((x) => x && render());
+}
+const nowTime = () => new Date().toTimeString().slice(0, 5);
+
+async function toggle(line) { const r = await amber.update({ op: "toggle_checklist", line: +line }); if (!r.ok) announce(r.error); }
+
+function costSheet() {
+  const m = model(amber.note);
+  const people = S.get().people.split(",").map((s) => s.trim()).filter(Boolean);
+  let by = people[people.length - 1];
+  sheet("Add a shared cost", `<form id="cf" class="fields"><label class="field">What<input id="cw" autofocus required placeholder="Dinner at Da Remo" maxlength="80"></label>
+    <label class="field">Amount (${esc(S.get().currency)})<input id="ca" inputmode="decimal" required class="num"></label>
+    <div class="field">Paid by<div class="who" role="group" aria-label="Paid by">${people.map((p) => `<button type="button" data-by="${esc(p)}" aria-pressed="${p === by}">${esc(p)}</button>`).join("")}</div></div>
+    <div class="err" id="err" role="alert"></div><button class="btn primary block">Add cost</button></form>`, {
+    mount(root, close) {
+      root.querySelector(".who").onclick = (e) => { const b = e.target.closest("[data-by]"); if (!b) return; by = b.dataset.by; root.querySelectorAll("[data-by]").forEach((x) => x.setAttribute("aria-pressed", x === b)); };
+      root.querySelector("#cf").onsubmit = async (e) => {
+        e.preventDefault();
+        const what = root.querySelector("#cw").value.trim(), amt = num(root.querySelector("#ca").value);
+        if (!(amt > 0)) return (root.querySelector("#err").textContent = "Type an amount.");
+        const t = m.costs; if (!t) return (root.querySelector("#err").textContent = "Add a Costs table (Date, What, Paid by, Amount) to the note first.");
+        const n = (re) => t.columns[col(t, re)];
+        const values = { [n(/^paid by$/i).name]: by, [n(/^amount$/i).name]: String(amt) };
+        if (col(t, /^what$/i) >= 0) values[n(/^what$/i).name] = what;
+        if (col(t, /^date$/i) >= 0) values[n(/^date$/i).name] = amber.note.today;
+        const r = await amber.update({ op: "append_row", table: t.index, values });
+        if (!r.ok) return (root.querySelector("#err").textContent = r.error);
+        close();
+      };
+    },
+  });
+}
+
+function stopSheet() {
+  const m = model(amber.note);
+  sheet(`Add to ${D.fmt(day, { weekday: "long" })}`, `<form id="sf" class="fields"><div class="fields two"><label class="field">Time<input id="st" type="time" value="12:00"></label><label class="field">Day<input id="sd" type="date" value="${day}"></label></div>
+    <label class="field">What<input id="sw" required autofocus placeholder="Lunch"></label><label class="field">Where<input id="sp" placeholder="Name of the place"></label>
+    <div class="err" id="err" role="alert"></div><button class="btn primary block">Add</button></form>`, {
+    mount(root, close) {
+      root.querySelector("#sf").onsubmit = async (e) => {
+        e.preventDefault();
+        const t = m.plan, v = { day: root.querySelector("#sd").value, time: root.querySelector("#st").value, what: root.querySelector("#sw").value.trim(), where: root.querySelector("#sp").value.trim() };
+        // Rows stay in time order: the new one goes after the last stop that comes before it.
+        const before = m.stops.filter((s) => s.day < v.day || (s.day === v.day && s.time <= v.time)).pop();
+        const r = await amber.update({ op: "append_row", table: t.index, values: { [t.columns[m.c.day].name]: v.day, ...(m.c.time >= 0 ? { [t.columns[m.c.time].name]: v.time } : {}), [t.columns[m.c.what].name]: v.what, ...(m.c.where >= 0 ? { [t.columns[m.c.where].name]: v.where } : {}) } });
+        if (!r.ok) return (root.querySelector("#err").textContent = r.error);
+        const to = before ? before.i + 1 : 0;
+        if (to < t.rows.length) await amber.update({ op: "move_row", table: t.index, from: t.rows.length, to });
+        if (v.where && !place(v.where)) locate(v.where);
+        day = v.day; close();
+      };
+    },
+  });
+}
+
+// Where a new place is, from OpenStreetMap, kept with the app for the day's map.
+async function locate(q) {
+  const city = amber.data.values.city || {};
+  const r = await amber.fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q + (city.name ? ", " + city.name : ""))}`, { headers: { "User-Agent": "AmberNotes-TripApp/1.0" } });
+  if (!r.ok || r.status !== 200) return;
+  const hit = JSON.parse(r.body)[0]; if (!hit) return;
+  maps = {};
+  await amber.setData({ values: { places: { [q.toLowerCase()]: { lat: +hit.lat, lon: +hit.lon } } } });
+}
+
+document.addEventListener("click", (e) => {
+  const t = e.target.closest("#settings,#addcost,#addstop,[data-day],[data-line],[data-go]"); if (!t) return;
+  if (t.id === "settings") S.open("Trip settings");
+  else if (t.id === "addcost") costSheet();
+  else if (t.id === "addstop") stopSheet();
+  else if (t.dataset.day) { day = t.dataset.day; render(); }
+  else if (t.dataset.line) toggle(t.dataset.line);
+  else if (t.dataset.go) { const m = model(amber.note), s = m.stops.find((x) => x.i === +t.dataset.go), p = place(s.where); amber.device.maps.open(p ? { lat: p.lat, lon: p.lon, name: s.where, directions: true } : { query: s.where, directions: true }); }
+});
+document.addEventListener("keydown", (e) => { const t = e.target.closest("[data-line]"); if (t && (e.key === " " || e.key === "Enter")) { e.preventDefault(); toggle(t.dataset.line); } });
+document.addEventListener("submit", async (e) => {
+  if (e.target.id !== "addpack") return;
+  e.preventDefault();
+  const v = document.getElementById("pi").value.trim(); if (!v) return;
+  const m = model(amber.note);
+  const r = await amber.update({ op: "add_checklist_item", text: v, ...(m.hasPackingHeading ? { under_heading: "Packing" } : {}) });
+  if (r.ok) { adding = ""; requestAnimationFrame(() => document.getElementById("pi")?.focus()); } else announce(r.error);
+});
+document.addEventListener("input", (e) => { if (e.target.id === "pi") adding = e.target.value; });
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { maps = {}; cityMap = null; render(); });
+Kit.onResize(() => { maps = {}; cityMap = null; render(); });
+let first = true;
+amber.onChange((note) => { render(note); if (first) { first = false; weather(model(note)); } });
+</script>
+</body>
+</html>

@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Study</title>
+<style>
+/*KIT_CSS*/
+:root { --serif: "New York", ui-serif, Georgia, serif; }
+.due { padding: 1.2rem 1.25rem; display: flex; gap: 1rem; align-items: center; }
+.due .n { font-size: 3.4rem; font-weight: 700; letter-spacing: -.04em; line-height: 1; font-family: var(--amber-font-rounded); }
+.due .grow h2 { font-size: 1.1rem; }
+.due .grow p { font-size: .88rem; color: var(--amber-text-secondary); margin-top: .15rem; }
+.due .btn { margin-top: .7rem; }
+.chips2 { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .7rem; }
+.chip2 { display: inline-flex; align-items: center; gap: .3rem; font-size: .8rem; font-weight: 600; padding: .25rem .6rem; border-radius: 99px; background: var(--amber-bg); color: var(--amber-text-secondary); }
+@media (prefers-color-scheme: dark) { .chip2 { background: var(--amber-fill); } }
+.chip2 svg { width: .85rem; height: .85rem; }
+.chip2.fire { color: var(--amber-accent-text); }
+
+.fc { padding: 1rem 1rem .8rem; }
+.fc svg { display: block; width: 100%; height: auto; }
+.fc .b { fill: var(--amber-accent); } .fc .b.t { fill: var(--amber-text); }
+.fc text { fill: var(--amber-text-secondary); font: 600 10px var(--amber-font); }
+.fc text.v { fill: var(--amber-text); font-weight: 700; }
+.mix { display: flex; height: .6rem; border-radius: 99px; overflow: hidden; gap: 2px; margin: .2rem 0 .6rem; }
+.mix i { display: block; }
+.keys2 { display: flex; gap: 1rem; flex-wrap: wrap; font-size: .82rem; color: var(--amber-text-secondary); }
+.keys2 b { color: var(--amber-text); }
+.keys2 span::before { content: ""; display: inline-block; width: .55rem; height: .55rem; border-radius: 50%; background: var(--cc); margin-right: .35rem; }
+
+.cards .row { align-items: flex-start !important; }
+.cards .q { font-weight: 600; font-size: .95rem; }
+.cards .a { font-size: .85rem; color: var(--amber-text-secondary); margin-top: .1rem; }
+.cards .when { font-size: .75rem; font-weight: 700; white-space: nowrap; padding: .15rem .5rem; border-radius: 99px; background: var(--amber-fill); color: var(--amber-text-secondary); margin-top: .1rem; }
+.cards .when.now { background: var(--amber-accent-soft); color: var(--amber-accent-text); }
+.cards .when.new { background: color-mix(in srgb, var(--c3) 15%, transparent); color: var(--c3); }
+
+.sug { padding: 1rem 1.1rem; }
+.sug h3 { font-size: 1rem; display: flex; gap: .4rem; align-items: center; }
+.sug h3 svg { width: 1.1rem; height: 1.1rem; color: var(--amber-accent-text); }
+.sug p.note { font-size: .85rem; color: var(--amber-text-secondary); margin: .3rem 0 .8rem; }
+.sug .s { display: flex; gap: .7rem; align-items: flex-start; padding: .7rem 0; border-top: 1px solid var(--amber-separator); }
+.sug .s .grow .q { font-weight: 600; font-size: .95rem; }
+.sug .s .grow .a { font-size: .85rem; color: var(--amber-text-secondary); margin-top: .1rem; }
+.sug .s .btn { min-height: 2.2rem; padding: 0 .8rem; font-size: .85rem; }
+.sug .s.added { opacity: .5; }
+
+/* Review */
+.review { position: fixed; inset: 0; z-index: 30; background: var(--amber-bg); display: flex; flex-direction: column; padding: max(.8rem, env(safe-area-inset-top)) var(--amber-gutter) calc(1rem + env(safe-area-inset-bottom)); transform: translateY(100%); transition: transform .45s var(--ease-out); }
+.review.on { transform: none; }
+.review[hidden] { display: none; }
+.review .bar { display: flex; align-items: center; gap: .8rem; }
+.review .pg { flex: 1; height: .35rem; border-radius: 99px; background: var(--amber-fill); overflow: hidden; }
+.review .pg b { display: block; height: 100%; background: var(--amber-accent); transition: width .4s var(--ease-out); }
+.review .stage { flex: 1; display: grid; place-items: center; perspective: 1400px; padding: 1.2rem 0; }
+.flip { width: min(100%, 34rem); min-height: min(58vh, 24rem); position: relative; transform-style: preserve-3d; transition: transform .55s var(--ease-out); cursor: pointer; }
+.flip.back { transform: rotateY(180deg); }
+.flip .face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; border-radius: 1.4rem; background: var(--amber-surface); box-shadow: var(--shadow); display: flex; flex-direction: column; justify-content: center; padding: 2rem 1.6rem; text-align: center; }
+.flip .face.b { transform: rotateY(180deg); }
+.flip .k { font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--amber-text-secondary); position: absolute; top: 1.2rem; left: 0; right: 0; }
+.flip .txt { font-family: var(--serif); font-size: 1.55rem; line-height: 1.3; }
+.flip .face.b .txt { font-size: 1.35rem; }
+.flip .face.b .qq { font-size: .85rem; color: var(--amber-text-secondary); margin-bottom: .9rem; }
+.flip.in { animation: cardin .4s var(--ease-out); }
+@keyframes cardin { from { opacity: 0; transform: translateX(18%) rotate(2deg); } to { opacity: 1; transform: none; } }
+.grades { display: grid; grid-template-columns: repeat(4, 1fr); gap: .5rem; max-width: 34rem; width: 100%; margin: 0 auto; }
+.grades button { border: 0; border-radius: var(--amber-radius-small); padding: .6rem .2rem; min-height: 3.6rem; font-weight: 700; font-size: .95rem; display: flex; flex-direction: column; align-items: center; gap: .1rem; color: var(--amber-text); background: var(--amber-fill); transition: transform .12s; }
+.grades button small { font-weight: 600; font-size: .72rem; color: var(--amber-text-secondary); }
+.grades button:active { transform: scale(.95); }
+.grades .again { color: var(--amber-danger); } .grades .good { background: var(--amber-accent); color: var(--amber-on-accent); } .grades .good small { color: inherit; opacity: .8; }
+.show { max-width: 34rem; width: 100%; margin: 0 auto; }
+.doneview { text-align: center; max-width: 26rem; margin: auto; }
+.doneview .big { font-size: 4rem; font-weight: 800; font-family: var(--amber-font-rounded); letter-spacing: -.03em; }
+.doneview p { color: var(--amber-text-secondary); margin: .4rem 0 1.4rem; }
+@media (min-width: 900px) { .due .n { font-size: 4rem; } }
+</style>
+</head>
+<body>
+<main class="wrap" id="app" aria-live="polite"></main>
+<section class="review" id="review" role="dialog" aria-modal="true" aria-label="Review" hidden></section>
+<script>
+/*KIT_JS*/
+const { esc, ico, D, col, sheet, announce, hash } = Kit;
+const S = Kit.settings([
+  { key: "exam", label: "Exam date", type: "text", default: "", help: "yyyy-mm-dd. Shows a countdown and keeps intervals short before it." },
+  { key: "newPerDay", label: "New cards a day", type: "number", default: 10, min: 0 },
+  { key: "order", label: "Order", type: "select", default: "due", options: [["due", "Most overdue first"], ["shuffle", "Shuffled"]] },
+]);
+let session = null, suggestions = null, sugNote = "", sugBusy = false;
+
+function model(note) {
+  const t = Kit.table(note, /^(front|question|term|q)$/i, /^(back|answer|definition|a)$/i);
+  if (!t) return null;
+  const f = col(t, /^(front|question|term|q)$/i), b = col(t, /^(back|answer|definition|a)$/i);
+  const sched = amber.data.values.schedule || {};
+  const cards = t.rows.map((r, i) => ({ i, q: r[f].trim(), a: r[b].trim(), id: hash(r[f].trim()) })).filter((c) => c.q).map((c) => ({ ...c, s: sched[c.id] || null }));
+  return { t, f, b, cards };
+}
+
+// SM-2: grade 0-5; an interval in days and an ease factor per card. Again (1) starts the card over.
+function sm2(s, grade, today) {
+  let { ef = 2.5, interval = 0, reps = 0, lapses = 0 } = s || {};
+  if (grade < 3) { reps = 0; interval = 1; lapses++; }
+  else { reps++; interval = reps === 1 ? 1 : reps === 2 ? (grade === 5 ? 4 : 3) : Math.round(interval * ef * (grade === 3 ? .8 : grade === 5 ? 1.3 : 1)); }
+  ef = Math.max(1.3, ef + (0.1 - (5 - grade) * (0.08 + (5 - grade) * 0.02)));
+  const exam = S.get().exam;
+  if (D.parse(exam) && exam > today) interval = Math.max(1, Math.min(interval, Math.ceil(D.diff(exam, today) / 2)));
+  return { ef: Math.round(ef * 100) / 100, interval, reps, lapses, due: grade < 3 ? today : D.add(today, interval), last: today };
+}
+const GRADES = [["again", "Again", 1], ["hard", "Hard", 3], ["good", "Good", 4], ["easy", "Easy", 5]];
+const span = (d) => d <= 0 ? "today" : d === 1 ? "1 day" : d < 30 ? `${d} days` : `${Math.round(d / 30)} mo`;
+
+function queue(m, today) {
+  const due = m.cards.filter((c) => c.s && c.s.due <= today).sort((a, b) => a.s.due.localeCompare(b.s.due));
+  const fresh = m.cards.filter((c) => !c.s).slice(0, Number(S.get().newPerDay) || 0);
+  let q = [...due, ...fresh];
+  if (S.get().order === "shuffle") q = q.map((c) => [Math.random(), c]).sort((a, b) => a[0] - b[0]).map((x) => x[1]);
+  return q;
+}
+
+function streak(today) {
+  const days = amber.data.values.days || {}; let n = 0, d = days[today] ? today : D.add(today, -1);
+  while (days[d]) { n++; d = D.add(d, -1); }
+  return n;
+}
+
+function render(note = amber.note) {
+  const app = document.getElementById("app");
+  const m = model(note), today = note.today;
+  if (!m) {
+    app.innerHTML = `<header class="top"><div class="titles"><h1>${esc(note.title || "Study")}</h1></div></header>
+      <div class="card empty">${ico("cards")}<h3>No cards yet</h3><p>Cards go in a table in this note with Front and Back. Your notes can suggest the first ones.</p><button class="btn primary" id="suggest">${ico("sparkle")} Suggest cards</button></div>`;
+    return;
+  }
+  const q = queue(m, today), st = streak(today), exam = S.get().exam;
+  const toExam = D.parse(exam) ? D.diff(exam, today) : null;
+  const learned = m.cards.filter((c) => c.s && c.s.interval >= 21).length, learning = m.cards.filter((c) => c.s && c.s.interval < 21).length, fresh = m.cards.filter((c) => !c.s).length;
+  const forecast = [...Array(7)].map((_, k) => { const d = D.add(today, k); return { d, n: m.cards.filter((c) => c.s && (k === 0 ? c.s.due <= d : c.s.due === d)).length + (k === 0 ? Math.min(fresh, Number(S.get().newPerDay) || 0) : 0) }; });
+  const fmax = Math.max(1, ...forecast.map((f) => f.n));
+  const W = Math.round(Math.max(260, Kit.width("fc", 320))), H = 96, bw = (W - 6 * 8) / 7;
+  const reviewedToday = (amber.data.values.days || {})[today] || 0;
+  app.innerHTML = `
+  <header class="top"><div class="titles"><h1>${esc(note.title)}</h1><div class="sub">${m.cards.length} cards${toExam != null && toExam >= 0 ? ` · exam ${toExam === 0 ? "today" : toExam === 1 ? "tomorrow" : `in ${toExam} days`}` : ""}</div></div>
+    <button class="round" id="add" aria-label="Add a card">${ico("plus")}</button><button class="round" id="settings" aria-label="Settings">${ico("gear")}</button></header>
+  <div class="cols side">
+    <div>
+      <section class="card due"><div class="n num">${q.length}</div><div class="grow"><h2>${q.length ? (q.length === 1 ? "card to review" : "cards to review") : "All done for today"}</h2>
+        <p>${q.length ? `${q.filter((c) => !c.s).length ? `${q.filter((c) => !c.s).length} new, ` : ""}about ${Math.max(1, Math.round(q.length * 8 / 60))} min` : reviewedToday ? `${reviewedToday} reviewed today. Next ones tomorrow.` : "Nothing due. Come back tomorrow."}</p>
+        ${q.length ? `<button class="btn primary" id="study">${ico("play")} Study now</button>` : ""}
+        <div class="chips2">${st ? `<span class="chip2 fire">${ico("flame")}${st}-day streak</span>` : ""}${reviewedToday ? `<span class="chip2">${reviewedToday} today</span>` : ""}</div></div></section>
+      <div class="label"><span class="grow">Next 7 days</span></div>
+      <section class="card fc" data-w="fc"><svg viewBox="0 0 ${W} ${H + 30}" role="img" aria-label="Cards due over the next week">${forecast.map((f, k) => { const h = Math.max(2, (f.n / fmax) * H); return `<rect class="b ${k === 0 ? "t" : ""}" x="${k * (bw + 8)}" y="${H - h + 14}" width="${bw}" height="${h}" rx="5"/><text class="v" x="${k * (bw + 8) + bw / 2}" y="${H - h + 9}" text-anchor="middle">${f.n || ""}</text><text x="${k * (bw + 8) + bw / 2}" y="${H + 28}" text-anchor="middle">${k === 0 ? "Today" : D.fmt(f.d, { weekday: "short" })}</text>`; }).join("")}</svg>
+        <div class="mix" aria-hidden="true" style="margin-top:.9rem"><i style="flex:${learned};background:var(--good)"></i><i style="flex:${learning};background:var(--amber-accent)"></i><i style="flex:${fresh};background:var(--c3)"></i></div>
+        <div class="keys2"><span style="--cc:var(--good)"><b>${learned}</b> known</span><span style="--cc:var(--amber-accent)"><b>${learning}</b> learning</span><span style="--cc:var(--c3)"><b>${fresh}</b> new</span></div></section>
+      <div class="label"><span class="grow">From your notes</span></div>
+      <section class="card sug" id="sugbox">${sugHTML()}</section>
+    </div>
+    <div>
+      <div class="label"><span class="grow">Cards</span><span class="small num" style="text-transform:none">${m.cards.length}</span></div>
+      <section class="card list cards">${m.cards.slice().sort((a, b) => { const r = (c) => (c.s && c.s.due <= today ? "0" + c.s.due : !c.s ? "1" : "2" + c.s.due); return r(a).localeCompare(r(b)); }).map((c) => { const d = c.s ? D.diff(c.s.due, today) : null; return `<div class="row"><div class="grow"><div class="q">${esc(c.q)}</div><div class="a">${esc(c.a)}</div></div>
+        <span class="when ${!c.s ? "new" : d <= 0 ? "now" : ""}">${!c.s ? "New" : d <= 0 ? "Due" : `In ${span(d)}`}</span></div>`; }).join("")}</section>
+    </div>
+  </div>`;
+  Kit.fit(() => render());
+}
+
+function sugHTML() {
+  if (sugBusy) return `<h3>${ico("sparkle")} Suggesting cards…</h3><p class="note">Reading your notes on this device.</p>`;
+  if (!suggestions) return `<h3>${ico("sparkle")} Suggest cards</h3><p class="note">Turns what's under Notes into question and answer cards. Apple's on-device model does it when it can; nothing leaves your device.</p><button class="btn tint" id="suggest">${ico("sparkle")} Suggest cards</button>`;
+  const m = model(amber.note), have = new Set((m ? m.cards : []).map((c) => c.q.toLowerCase()));
+  return `<h3>${ico("sparkle")} ${suggestions.length} suggested cards</h3><p class="note">${esc(sugNote)}</p>
+    ${suggestions.map((s, k) => `<div class="s ${have.has(s.q.toLowerCase()) ? "added" : ""}"><div class="grow"><div class="q">${esc(s.q)}</div><div class="a">${esc(s.a)}</div></div>${have.has(s.q.toLowerCase()) ? `<span class="small muted">Added</span>` : `<button class="btn tint" data-sug="${k}" aria-label="Add card: ${esc(s.q)}">${ico("plus")} Add</button>`}</div>`).join("")}
+    ${suggestions.some((s) => !have.has(s.q.toLowerCase())) ? `<button class="btn plain" id="addall" style="margin-top:.4rem">Add all</button>` : ""}`;
+}
+
+function notesText() {
+  const md = amber.note.markdown, m = /^#{1,6}\s+notes\s*$/im.exec(md);
+  if (!m) return md.split("\n").filter((l) => !l.trim().startsWith("|")).join("\n");
+  const rest = md.slice(m.index + m[0].length), end = rest.search(/^#{1,2}\s/m);
+  return (end >= 0 ? rest.slice(0, end) : rest).trim();
+}
+
+// Without the model, cards come from lines that define something: "Term: what it is", "X is Y".
+function findInNotes(text) {
+  const out = [];
+  for (const raw of text.split(/\n|(?<=\.)\s+(?=[A-Z])/)) {
+    const l = raw.trim(); if (l.length < 12 || l.startsWith("|") || l.startsWith("#")) continue;
+    let m = /^([A-Z][\w\s-]{2,40}):\s+(.{8,})$/.exec(l);
+    if (m) { out.push({ q: `What ${/s$/.test(m[1].trim()) ? "are" : "is"} ${m[1].trim().toLowerCase()}?`, a: m[2].replace(/\.$/, "").replace(/^./, (c) => c.toUpperCase()) + "." }); continue; }
+    m = /^((?:[A-Z][\w-]*)(?:\s[\w-]+){0,3}) (is|are) (an? |the )?(.{10,})$/.exec(l);
+    if (m && !/^(The|This|It|They|There|All|New)\b/.test(m[1])) out.push({ q: `What ${m[2]} ${m[1].toLowerCase()}?`, a: (m[3] || "") .trim() ? `${m[3]}${m[4]}`.replace(/^./, (c) => c.toUpperCase()) : m[4].replace(/^./, (c) => c.toUpperCase()) });
+  }
+  return out.slice(0, 8);
+}
+
+async function suggest() {
+  sugBusy = true; redrawSug();
+  const text = notesText();
+  const av = await amber.ai.available();
+  if (av.ok && av.available) {
+    const r = await amber.ai.respond(`Write up to 8 flashcards from these study notes. One per line, as "Q: question | A: short answer". Only facts from the notes.\n\n${text}`, { instructions: "You write clear, short exam flashcards." });
+    if (r.ok) {
+      suggestions = r.text.split("\n").map((l) => /Q:\s*(.+?)\s*\|\s*A:\s*(.+)/.exec(l)).filter(Boolean).map((x) => ({ q: x[1].trim(), a: x[2].trim() }));
+      sugNote = "Written on this device by Apple's model, from your notes. Check them before adding.";
+    }
+  }
+  if (!suggestions || !suggestions.length) {
+    suggestions = findInNotes(text);
+    const why = av.ok && !av.available ? `On-device AI isn't available here (${av.reason}), so these` : "These";
+    sugNote = suggestions.length ? `${why} come straight from definitions in your notes.` : `${why === "These" ? "No" : why.replace(", so these", ". No")} definitions found in your notes to make cards from.`;
+  }
+  sugBusy = false; redrawSug();
+}
+function redrawSug() { const el = document.getElementById("sugbox"); if (el) el.innerHTML = sugHTML(); }
+
+async function addCards(list) {
+  const m = model(amber.note);
+  const rows = list.map((s) => ({ [m.t.columns[m.f].name]: s.q, [m.t.columns[m.b].name]: s.a }));
+  const r = await Kit.addRows(m.t.index, rows);
+  if (!r.ok) announce(r.error);
+}
+
+// Review: a card, tap to turn it over, grade it; SM-2 sets the next date in the app's data.
+function startReview() {
+  const m = model(amber.note);
+  session = { q: queue(m, amber.note.today), k: 0, right: 0, back: false };
+  const el = document.getElementById("review");
+  el.hidden = false; requestAnimationFrame(() => el.classList.add("on"));
+  drawReview(true);
+}
+function drawReview(fresh) {
+  const el = document.getElementById("review"), s = session;
+  if (s.k >= s.q.length) {
+    const st = streak(amber.note.today);
+    el.innerHTML = `<div class="bar"><span class="grow"></span><button class="round" data-end aria-label="Close">${ico("close")}</button></div>
+      <div class="doneview rise"><div class="big num">${Math.round((s.right / Math.max(1, s.q.length)) * 100)}%</div><h2>Done for today</h2><p>${s.q.length} cards, ${s.right} right the first time.${st > 1 ? ` That's a ${st}-day streak.` : ""}</p><button class="btn primary block" data-end>Back to the deck</button></div>`;
+    return;
+  }
+  const c = s.q[s.k], today = amber.note.today;
+  const next = GRADES.map(([cls, label, g]) => [cls, label, g, sm2(c.s, g, today)]);
+  el.innerHTML = `<div class="bar"><button class="round" data-end aria-label="Stop reviewing">${ico("close")}</button><div class="pg" role="progressbar" aria-valuenow="${s.k}" aria-valuemax="${s.q.length}"><b style="width:${(s.k / s.q.length) * 100}%"></b></div><span class="small muted num">${s.k + 1} / ${s.q.length}</span></div>
+    <div class="stage"><div class="flip ${s.back ? "back" : ""} ${fresh ? "in" : ""}" id="flip" role="button" tabindex="0" aria-label="${s.back ? "Answer shown" : "Show the answer"}">
+      <div class="face"><div class="k">${c.s ? "Question" : "New card"}</div><div class="txt">${esc(c.q)}</div></div>
+      <div class="face b"><div class="k">Answer</div><div class="qq">${esc(c.q)}</div><div class="txt">${esc(c.a)}</div></div></div></div>
+    <div id="ctl">${controls(next)}</div>`;
+}
+function controls(next) {
+  return session.back ? `<div class="grades rise" role="group" aria-label="How well did you know it?">${next.map(([cls, label, g, n]) => `<button class="${cls}" data-grade="${g}">${label}<small>${n.interval && g >= 3 ? span(n.interval) : "again"}</small></button>`).join("")}</div>`
+    : `<button class="btn primary block show" id="turn">Show answer</button>`;
+}
+function turn() {
+  if (!session || session.back) return;
+  session.back = true;
+  const c = session.q[session.k], today = amber.note.today;
+  document.getElementById("flip").classList.add("back");
+  document.getElementById("ctl").innerHTML = controls(GRADES.map(([cls, label, g]) => [cls, label, g, sm2(c.s, g, today)]));
+}
+async function grade(g) {
+  const s = session, c = s.q[s.k], today = amber.note.today;
+  const n = sm2(c.s, g, today);
+  const days = amber.data.values.days || {};
+  await amber.setData({ values: { schedule: { [c.id]: n }, days: { [today]: (days[today] || 0) + 1 } } });
+  if (g >= 3 && !c.again) s.right++;
+  if (g < 3) { s.q.push({ ...c, s: n, again: true }); }
+  s.k++; s.back = false; drawReview(true);
+}
+function endReview() { const el = document.getElementById("review"); el.classList.remove("on"); setTimeout(() => { el.hidden = true; el.innerHTML = ""; }, 450); session = null; render(); }
+
+function addSheet() {
+  sheet("New card", `<form id="nf" class="fields"><label class="field">Front<textarea id="nq" rows="2" required autofocus></textarea></label><label class="field">Back<textarea id="na" rows="3" required></textarea></label><button class="btn primary block">Add card</button></form>`, {
+    mount(root, close) { root.querySelector("#nf").onsubmit = async (e) => { e.preventDefault(); await addCards([{ q: root.querySelector("#nq").value.trim().replace(/\n/g, " "), a: root.querySelector("#na").value.trim().replace(/\n/g, " ") }]); close(); }; },
+  });
+}
+
+document.addEventListener("click", (e) => {
+  const t = e.target.closest("#study,#settings,#add,#suggest,#addall,#turn,#flip,[data-sug],[data-grade],[data-end]"); if (!t) return;
+  if (t.id === "study") startReview();
+  else if (t.id === "settings") S.open("Study settings");
+  else if (t.id === "add") addSheet();
+  else if (t.id === "suggest") suggest();
+  else if (t.id === "addall") { const m = model(amber.note), have = new Set(m.cards.map((c) => c.q.toLowerCase())); addCards(suggestions.filter((s) => !have.has(s.q.toLowerCase()))); }
+  else if (t.dataset.sug) addCards([suggestions[+t.dataset.sug]]);
+  else if (t.id === "turn" || t.id === "flip") turn();
+  else if (t.dataset.grade) grade(+t.dataset.grade);
+  else if (t.hasAttribute("data-end")) endReview();
+});
+document.addEventListener("keydown", (e) => {
+  if (!session) return;
+  if (e.key === " " && !session.back) { e.preventDefault(); turn(); }
+  else if (session.back && ["1", "2", "3", "4"].includes(e.key)) grade(GRADES[+e.key - 1][2]);
+  else if (e.key === "Escape") endReview();
+});
+amber.onChange((note) => { if (!session) render(note); else { render(note); } });
+</script>
+</body>
+</html>

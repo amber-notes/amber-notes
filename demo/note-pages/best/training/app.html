@@ -1,0 +1,656 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Training</title>
+<style>
+/* The shared look of the best-apps set: Amber Notes' variables, iOS-like grouped lists, sheets. */
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html { font-size: 17px; }
+body { font-size: 1rem; line-height: 1.35; }
+:root {
+  --c1: #D96A06; --c2: #2F8577; --c3: #3D6DB5; --c4: #9A4E8E; --c5: #7C8A24; --c6: #C4455B; --c7: #8A6A4A;
+  --good: #2E7D4F; --ease-out: cubic-bezier(.2, .8, .2, 1); --ease-pop: cubic-bezier(.3, 1.4, .5, 1);
+  --shadow: 0 1px 2px rgba(60, 30, 0, .06), 0 6px 24px rgba(60, 30, 0, .07);
+}
+@media (prefers-color-scheme: dark) {
+  :root { --c1: #F4AD33; --c2: #4FC1AE; --c3: #7DA6F0; --c4: #D58ACB; --c5: #B9C95A; --c6: #F07D90; --c7: #C9A57F; --good: #5BD08A; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 28px rgba(0,0,0,.35); }
+}
+main.wrap { max-width: var(--amber-content-max); margin: 0 auto; padding: .5rem var(--amber-gutter) 6rem; }
+h1, h2, h3, p { margin: 0; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2.5px solid var(--amber-accent); outline-offset: 2px; border-radius: 6px; }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--amber-text-secondary); }
+.small { font-size: .82rem; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Header: large title, a line under it, round buttons on the right. */
+.top { display: flex; align-items: flex-end; gap: .75rem; padding: .35rem 0 1rem; }
+.top .titles { flex: 1; min-width: 0; }
+.top h1 { font-size: 2rem; font-weight: 700; letter-spacing: -.025em; line-height: 1.1; overflow-wrap: anywhere; }
+.top .sub { color: var(--amber-text-secondary); margin-top: .2rem; font-size: .94rem; }
+.round { width: 2.6rem; height: 2.6rem; border-radius: 50%; border: 0; background: var(--amber-fill); color: var(--amber-text); display: inline-grid; place-items: center; flex: none; transition: transform .15s var(--ease-out), background .2s; }
+.round svg { width: 1.2rem; height: 1.2rem; }
+.round:active { transform: scale(.92); }
+.round.accent { background: var(--amber-accent); color: var(--amber-on-accent); }
+
+/* Section labels and cards. */
+.label { font-size: .8rem; font-weight: 600; letter-spacing: .02em; text-transform: uppercase; color: var(--amber-text-secondary); margin: 1.4rem .25rem .5rem; display: flex; align-items: baseline; gap: .5rem; }
+.label .grow { flex: 1; }
+.label button { text-transform: none; letter-spacing: 0; font-size: .88rem; font-weight: 600; color: var(--amber-accent-text); background: none; border: 0; padding: .3rem .2rem; }
+.card { background: var(--amber-surface); border-radius: var(--amber-radius); overflow: hidden; }
+.card.pad { padding: 1rem; }
+.list > .row, .list > li { display: flex; align-items: center; gap: .75rem; min-height: 2.9rem; padding: .6rem 1rem; position: relative; }
+.list > .row + .row::before, .list > li + li::before { content: ""; position: absolute; top: 0; left: 1rem; right: 0; border-top: 1px solid var(--amber-separator); }
+.list.inset > .row + .row::before { left: 3.6rem; }
+ul.list { list-style: none; margin: 0; padding: 0; }
+button.row { width: 100%; text-align: left; border: 0; background: none; color: inherit; font: inherit; transition: background .2s; }
+button.row:active { background: var(--amber-fill); }
+.grow { flex: 1; min-width: 0; }
+.ellipsis { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chev { color: var(--amber-text-secondary); opacity: .6; width: .7rem; flex: none; }
+
+/* Buttons. */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; min-height: 2.75rem; padding: 0 1.1rem; border: 0; border-radius: 999px; font-weight: 600; background: var(--amber-fill); color: var(--amber-text); transition: transform .15s var(--ease-out), opacity .2s, background .2s; white-space: nowrap; }
+.btn svg { width: 1.1rem; height: 1.1rem; }
+.btn:active { transform: scale(.96); }
+.btn.primary { background: var(--amber-accent); color: var(--amber-on-accent); }
+.btn.tint { background: var(--amber-accent-soft); color: var(--amber-accent-text); }
+.btn.plain { background: none; color: var(--amber-accent-text); padding: 0 .6rem; }
+.btn.danger { background: none; color: var(--amber-danger); }
+.btn.block { width: 100%; }
+.btn[disabled] { opacity: .45; pointer-events: none; }
+
+/* Segmented control. */
+.seg { display: inline-flex; background: var(--amber-fill); border-radius: 999px; padding: 3px; gap: 2px; position: relative; }
+.seg button { border: 0; background: none; border-radius: 999px; padding: .42rem .9rem; font-size: .88rem; font-weight: 600; color: var(--amber-text-secondary); min-height: 2.2rem; transition: color .2s, background .25s var(--ease-out), box-shadow .25s; }
+.seg button[aria-pressed="true"] { background: var(--amber-bg); color: var(--amber-text); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+
+/* Forms. */
+.field { display: flex; flex-direction: column; gap: .3rem; font-size: .8rem; font-weight: 600; color: var(--amber-text-secondary); }
+.field input, .field select, .field textarea, input.in, select.in, textarea.in { font-size: 1rem; font-weight: 400; color: var(--amber-text); background: var(--amber-fill); border: 0; border-radius: var(--amber-radius-small); padding: .65rem .8rem; min-height: 2.75rem; width: 100%; outline-offset: 0; }
+textarea { resize: vertical; line-height: 1.4; }
+.fields { display: grid; gap: .8rem; }
+.fields.two { grid-template-columns: 1fr 1fr; }
+.err { color: var(--amber-danger); font-size: .88rem; min-height: 1.2em; }
+.switch { appearance: none; -webkit-appearance: none; width: 3.1rem; height: 1.9rem; border-radius: 999px; background: var(--amber-fill); position: relative; flex: none; transition: background .25s; margin: 0; }
+.switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: calc(1.9rem - 4px); height: calc(1.9rem - 4px); border-radius: 50%; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,.2); transition: transform .3s var(--ease-pop); }
+.switch:checked { background: var(--good); }
+.switch:checked::after { transform: translateX(1.2rem); }
+
+/* Sheet: a bottom sheet on the phone, a centered panel when wide. */
+.scrim { position: fixed; inset: 0; background: rgba(20, 10, 0, .32); opacity: 0; transition: opacity .28s; z-index: 50; }
+.sheet { position: fixed; left: 0; right: 0; bottom: 0; max-height: 92vh; overflow: auto; background: var(--amber-bg); border-radius: 1.2rem 1.2rem 0 0; padding: .6rem 1.1rem calc(1.4rem + env(safe-area-inset-bottom)); z-index: 51; transform: translateY(105%); transition: transform .38s var(--ease-out); box-shadow: 0 -8px 40px rgba(0,0,0,.18); }
+.sheet .grab { width: 2.4rem; height: .3rem; border-radius: 99px; background: var(--amber-separator); margin: 0 auto .8rem; }
+.sheet header { display: flex; align-items: center; gap: .5rem; margin-bottom: 1rem; }
+.sheet header h2 { flex: 1; font-size: 1.2rem; font-weight: 700; }
+.open .scrim { opacity: 1; }
+.open .sheet { transform: none; }
+@media (min-width: 700px) {
+  .sheet { left: 50%; right: auto; bottom: auto; top: 50%; width: min(34rem, 92vw); border-radius: 1.2rem; transform: translate(-50%, -46%) scale(.97); opacity: 0; transition: transform .3s var(--ease-out), opacity .2s; padding: 1.2rem 1.4rem 1.4rem; }
+  .open .sheet { transform: translate(-50%, -50%); opacity: 1; }
+  .sheet .grab { display: none; }
+}
+@media (prefers-color-scheme: dark) { .sheet { background: var(--amber-surface); } .sheet .field input, .sheet .field select, .sheet .field textarea, .sheet .in { background: var(--amber-fill); } }
+
+/* Empty states. */
+.empty { text-align: center; padding: 2.2rem 1.2rem; color: var(--amber-text-secondary); }
+.empty svg { width: 2.6rem; height: 2.6rem; color: var(--amber-accent); opacity: .85; margin-bottom: .6rem; }
+.empty h3 { color: var(--amber-text); font-size: 1.05rem; margin-bottom: .3rem; }
+.empty p { max-width: 22rem; margin: 0 auto 1rem; font-size: .94rem; }
+
+/* A quiet confirmation under the header, for things that don't change the note. */
+.note-line { font-size: .85rem; color: var(--amber-text-secondary); min-height: 1.2em; transition: opacity .3s; }
+
+/* Motion: things that arrive rise in; nothing moves when asked not to. */
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes pop { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
+.rise { animation: rise .35s var(--ease-out) both; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+
+/* Wide: two columns where the app asks for them. */
+.cols { display: grid; gap: 0 1.6rem; grid-template-columns: minmax(0, 1fr); }
+.cols > * { min-width: 0; }
+@media (min-width: 900px) {
+  .cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  .cols.side { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); }
+  .top h1 { font-size: 2.2rem; }
+}
+
+.next { padding: 1.15rem 1.2rem; }
+.next .k { font-size: .82rem; font-weight: 600; color: var(--amber-text-secondary); }
+.next h2 { font-size: 1.6rem; font-weight: 700; letter-spacing: -.02em; margin: .15rem 0 .8rem; }
+.plan { display: grid; gap: .35rem; margin-bottom: 1rem; }
+.plan div { display: flex; gap: .6rem; align-items: baseline; }
+.plan b { font-weight: 600; flex: 1; }
+.plan span { color: var(--amber-text-secondary); font-size: .9rem; }
+.planpick { display: flex; gap: .4rem; margin-bottom: .9rem; }
+.week { display: flex; gap: .35rem; margin-top: .25rem; }
+.week div { flex: 1; text-align: center; font-size: .68rem; font-weight: 600; color: var(--amber-text-secondary); }
+.week i { display: grid; place-items: center; height: 1.9rem; border-radius: .6rem; background: var(--amber-fill); margin-bottom: .25rem; color: var(--amber-on-accent); }
+.week i svg { width: .9rem; height: .9rem; stroke-width: 3; }
+.week .on i { background: var(--amber-accent); }
+.week .today i { box-shadow: inset 0 0 0 2px var(--amber-text); }
+
+.prs { display: grid; grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); gap: .6rem; }
+.pr { background: var(--amber-surface); border-radius: var(--amber-radius); padding: .85rem .95rem .7rem; border: 0; text-align: left; color: inherit; position: relative; transition: transform .15s; }
+.pr:active { transform: scale(.98); }
+.pr[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--amber-accent); }
+.pr h3 { font-size: .85rem; font-weight: 600; color: var(--amber-text-secondary); }
+.pr .big { font-size: 1.65rem; font-weight: 700; letter-spacing: -.02em; margin-top: .2rem; }
+.pr .big small { font-size: .85rem; color: var(--amber-text-secondary); font-weight: 600; }
+.pr .up { font-size: .78rem; font-weight: 600; color: var(--good); }
+.pr .flat { font-size: .78rem; color: var(--amber-text-secondary); }
+.pr svg.sp { display: block; width: 100%; height: 1.9rem; margin-top: .45rem; }
+.pr svg.sp path { fill: none; stroke: var(--amber-accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+
+.prog { padding: 1rem 1rem .8rem; }
+.prog svg { display: block; width: 100%; height: auto; overflow: visible; }
+.prog .ax { fill: var(--amber-text-secondary); font: 600 10px var(--amber-font); }
+.prog .grid { stroke: var(--amber-separator); }
+.prog .ln { fill: none; stroke: var(--amber-accent); stroke-width: 2.5; stroke-linejoin: round; }
+.prog .area { fill: var(--amber-accent); opacity: .1; }
+.prog .pt { fill: var(--amber-surface); stroke: var(--amber-accent); stroke-width: 2; }
+.prog .rec { fill: var(--amber-accent); }
+.prog .head { display: flex; align-items: baseline; gap: .5rem; flex-wrap: wrap; margin-bottom: .5rem; }
+.prog .head b { font-size: 1.05rem; }
+.segwrap { overflow-x: auto; scrollbar-width: none; margin-bottom: .8rem; }
+.segwrap::-webkit-scrollbar { display: none; }
+
+.sess .when { font-weight: 600; }
+.sess .what { font-size: .85rem; color: var(--amber-text-secondary); margin-top: .1rem; }
+.sess .badge { font-size: .72rem; font-weight: 700; color: var(--amber-accent-text); background: var(--amber-accent-soft); border-radius: 99px; padding: .15rem .5rem; display: inline-flex; gap: .2rem; align-items: center; }
+.sess .badge svg { width: .75rem; height: .75rem; }
+
+/* The workout in progress. */
+.live-head { display: flex; align-items: center; gap: .8rem; padding: 1rem 1.1rem; }
+.live-head .clock { font-family: var(--amber-font-rounded); font-size: 1.9rem; font-weight: 700; letter-spacing: -.02em; }
+.live-head .grow .k { font-size: .8rem; color: var(--amber-text-secondary); font-weight: 600; }
+.ex { margin-top: .8rem; }
+.ex .exh { display: flex; align-items: baseline; gap: .5rem; padding: .85rem 1rem .4rem; }
+.ex .exh h3 { font-size: 1.1rem; flex: 1; }
+.ex .last { font-size: .8rem; color: var(--amber-text-secondary); padding: 0 1rem .5rem; }
+.set { display: grid; grid-template-columns: 1.8rem 1fr 1fr 2.9rem; gap: .5rem; align-items: center; padding: .35rem 1rem; transition: background .3s; }
+.set.hd { font-size: .7rem; font-weight: 700; color: var(--amber-text-secondary); text-transform: uppercase; letter-spacing: .03em; padding-top: 0; padding-bottom: 0; }
+.set .n { font-weight: 700; color: var(--amber-text-secondary); text-align: center; }
+.set input { width: 100%; text-align: center; font-weight: 600; font-size: 1.05rem; min-height: 2.6rem; border: 0; border-radius: var(--amber-radius-small); background: var(--amber-fill); color: var(--amber-text); }
+.set.done input { background: transparent; }
+.set.done { background: color-mix(in srgb, var(--good) 9%, transparent); }
+.set .ok { width: 2.6rem; height: 2.6rem; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--amber-text-secondary) 40%, transparent); background: transparent; display: grid; place-items: center; color: #fff; transition: background .2s, border-color .2s, transform .15s; }
+.set .ok svg { width: 1.2rem; height: 1.2rem; stroke-width: 3; opacity: 0; transition: opacity .2s; }
+.set.done .ok { background: var(--good); border-color: var(--good); }
+.set.done .ok svg { opacity: 1; }
+.set .ok:active { transform: scale(.9); }
+.addset { margin: .3rem 1rem .9rem; }
+.finish { margin-top: 1.2rem; }
+
+.rest { position: fixed; left: 50%; bottom: calc(1rem + env(safe-area-inset-bottom)); transform: translate(-50%, 160%); z-index: 40; display: flex; align-items: center; gap: .7rem; padding: .55rem .6rem .55rem .7rem; border-radius: 999px; background: var(--amber-text); color: var(--amber-bg); box-shadow: var(--shadow); transition: transform .45s var(--ease-pop); min-width: 17rem; }
+.rest:not(.on) { visibility: hidden; transition: transform .45s var(--ease-pop), visibility 0s .45s; }
+.rest.on { transform: translate(-50%, 0); }
+.rest .time small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 9rem; }
+.seg button { white-space: nowrap; }
+.rest .r { width: 2.6rem; height: 2.6rem; position: relative; flex: none; }
+.rest .r svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.rest .r circle { fill: none; stroke-width: 4; }
+.rest .r .t { stroke: color-mix(in srgb, var(--amber-bg) 25%, transparent); }
+.rest .r .b { stroke: var(--amber-accent); stroke-linecap: round; transition: stroke-dashoffset 1s linear; }
+.rest .time { font-family: var(--amber-font-rounded); font-size: 1.35rem; font-weight: 700; flex: 1; }
+.rest .time small { display: block; font-family: var(--amber-font); font-size: .72rem; font-weight: 600; opacity: .7; }
+.rest button { border: 0; border-radius: 999px; min-height: 2.4rem; padding: 0 .8rem; font-weight: 700; background: color-mix(in srgb, var(--amber-bg) 18%, transparent); color: inherit; }
+.record { padding: 1.2rem; text-align: center; background: var(--amber-accent-soft); }
+.record svg { width: 2.2rem; height: 2.2rem; color: var(--amber-accent-text); animation: pop .6s var(--ease-pop); }
+.record h2 { font-size: 1.2rem; margin: .4rem 0 .2rem; }
+.record p { color: var(--amber-text-secondary); font-size: .92rem; }
+@media (min-width: 900px) { .prs { grid-template-columns: repeat(5, 1fr); } }
+</style>
+</head>
+<body>
+<main class="wrap" id="app" aria-live="polite"></main>
+<div class="rest" id="rest" role="timer" aria-live="off"></div>
+<script>
+// The shared helpers of the best-apps set. Everything here reads the note through amber.note and
+// changes it only through amber.update; the app's own state goes through amber.store.
+const Kit = (() => {
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+
+  // Type follows the system: on the iPhone the body size follows Dynamic Type; the Mac is denser.
+  (function baseSize() {
+    const apply = () => {
+      const body = parseFloat(getComputedStyle(document.body).fontSize) || 17;
+      let size = body;
+      if (body >= 16) {
+        const p = document.createElement("span");
+        p.style.font = "-apple-system-body";
+        document.body.appendChild(p);
+        const dyn = parseFloat(getComputedStyle(p).fontSize);
+        p.remove();
+        if (p.style.font && dyn >= 14 && dyn <= 40) size = dyn;
+      }
+      document.documentElement.style.fontSize = size + "px";
+    };
+    if (document.body) apply(); else addEventListener("DOMContentLoaded", apply);
+  })();
+
+  // Icons: inline SVG, drawn on a 24 grid with a 2 px stroke, like SF Symbols' regular weight.
+  const paths = {
+    gear: '<circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+    close: '<path d="M6 6l12 12M18 6L6 18"/>',
+    bell: '<path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
+    flame: '<path d="M12 2c1 3.5 5 6 5 11a5 5 0 0 1-10 0c0-2.5 1.2-4 2.5-5.5C10 10 11 11 11.5 12c.5-3 .5-6.5.5-10z"/>',
+    chevron: '<path d="M9 5l7 7-7 7"/>',
+    back: '<path d="M15 5l-7 7 7 7"/>',
+    trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
+    search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>',
+    calendar: '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+    cart: '<path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.5L21 8H6"/><circle cx="10" cy="20.5" r="1.3"/><circle cx="17" cy="20.5" r="1.3"/>',
+    timer: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2h5"/>',
+    play: '<path d="M7 4.5v15l12.5-7.5z"/>',
+    pause: '<path d="M8 5v14M16 5v14"/>',
+    book: '<path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v16H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/>',
+    quote: '<path d="M7 11h4v6H5v-4a6 6 0 0 1 4-5.7M17 11h4v6h-6v-4a6 6 0 0 1 4-5.7"/>',
+    pin: '<path d="M12 22s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/>',
+    person: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+    gift: '<rect x="3" y="8" width="18" height="5" rx="1"/><path d="M5 13v8h14v-8M12 8v13M12 8S10.5 3 8 3.5 7 8 12 8zm0 0s1.5-5 4-4.5S17 8 12 8z"/>',
+    chat: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>',
+    upload: '<path d="M12 16V4M7 9l5-5 5 5M4 17v3h16v-3"/>',
+    list: '<path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/>',
+    sparkle: '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/>',
+    repeat: '<path d="M17 2l3 3-3 3"/><path d="M4 11V9a4 4 0 0 1 4-4h12M7 22l-3-3 3-3"/><path d="M20 13v2a4 4 0 0 1-4 4H4"/>',
+    trophy: '<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3"/>',
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+    cloud: '<path d="M7 18a4.5 4.5 0 1 1 .9-8.9A6 6 0 0 1 19.5 11 3.5 3.5 0 0 1 18 18z"/>',
+    rain: '<path d="M7 15a4.5 4.5 0 1 1 .9-8.9A6 6 0 0 1 19.5 8 3.5 3.5 0 0 1 18 15z"/><path d="M8 18l-1 3M12 18l-1 3M16 18l-1 3"/>',
+    suitcase: '<rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M9 7V4.5h6V7M3 12h18"/>',
+    coins: '<ellipse cx="9" cy="7" rx="6" ry="3"/><path d="M3 7v5c0 1.7 2.7 3 6 3s6-1.3 6-3V7"/><path d="M9 15v2c0 1.7 2.7 3 6 3s6-1.3 6-3v-5c0-1.7-2.7-3-6-3"/>',
+    knife: '<path d="M4 20L18 6a2.8 2.8 0 0 1 2 4L9 21z"/>',
+    pot: '<path d="M4 10h16v6a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4zM2 10h20M9 6c0-1.5 1-2 1-3M14 6c0-1.5 1-2 1-3"/>',
+    cards: '<rect x="3" y="6" width="14" height="15" rx="2.5"/><path d="M7 3h11.5A2.5 2.5 0 0 1 21 5.5V18"/>',
+    dumbbell: '<path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/>',
+    map: '<path d="M9 4L3 6.5v14L9 18l6 2.5 6-2.5V4l-6 2.5zM9 4v14M15 6.5v14"/>',
+    edit: '<path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"/>',
+    note: '<path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h5"/>',
+  };
+  const ico = (n, extra = "") => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}>${paths[n] || ""}</svg>`;
+
+  // Dates are "yyyy-mm-dd" strings from the note; the clock is amber.note.today.
+  const D = {
+    parse: (s) => { const m = /^(\d{4})-(\d\d)-(\d\d)/.exec(String(s || "").trim()); return m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])) : null; },
+    iso: (d) => d.toISOString().slice(0, 10),
+    add: (s, n) => { const d = D.parse(s); d.setUTCDate(d.getUTCDate() + n); return D.iso(d); },
+    diff: (a, b) => Math.round((D.parse(a) - D.parse(b)) / 86400000),
+    wd: (s) => (D.parse(s).getUTCDay() + 6) % 7, // 0 = Monday
+    weekStart: (s) => D.add(s, -D.wd(s)),
+    fmt: (s, o = { weekday: "short", day: "numeric", month: "short" }) => { const d = D.parse(s); return d ? d.toLocaleDateString("en-GB", { timeZone: "UTC", ...o }) : ""; },
+    month: (s) => D.fmt(s, { month: "long" }),
+    rel: (s, today) => { const n = D.diff(s, today); return n === 0 ? "Today" : n === 1 ? "Tomorrow" : n === -1 ? "Yesterday" : n > 1 && n < 7 ? D.fmt(s, { weekday: "long" }) : n > 0 ? `In ${n} days` : `${-n} days ago`; },
+  };
+
+  const num = (s) => { const n = parseFloat(String(s ?? "").replace(/\s| /g, "").replace(/kr|sek|€|\$/gi, "").replace(",", ".")); return Number.isFinite(n) ? n : NaN; };
+  const kr = (n, o = {}) => new Intl.NumberFormat("sv-SE", { maximumFractionDigits: o.dec ?? 0, minimumFractionDigits: o.dec ?? 0 }).format(Math.round(n * 10 ** (o.dec ?? 0)) / 10 ** (o.dec ?? 0)) + (o.unit === false ? "" : " " + (o.unit || "kr"));
+  const fmtN = (n, dec = 0) => new Intl.NumberFormat("sv-SE", { maximumFractionDigits: dec }).format(n);
+  const done = (s) => /^(✓|✔|x|yes|done|1|true)$/i.test(String(s ?? "").trim());
+  const col = (t, re) => t ? t.columns.findIndex((c) => re.test(c.name.trim())) : -1;
+  const table = (note, ...res) => note.tables.find((t) => res.every((re) => col(t, re) >= 0));
+
+  // Where each table sits in the markdown, so several rows can go in with one edit (one Undo).
+  function tableLines(md) {
+    const lines = md.split("\n"), out = [];
+    const isRow = (l) => l.trim().startsWith("|");
+    const isSep = (l) => { const t = l.trim(); return t.startsWith("|") && t.includes("-") && [...t].every((c) => "|-: ".includes(c)); };
+    for (let i = 0; i < lines.length;) {
+      if (!(isRow(lines[i]) && isSep(lines[i + 1] || ""))) { i++; continue; }
+      let j = i + 2; while (j < lines.length && isRow(lines[j])) j++;
+      out.push({ start: i, end: j }); i = j;
+    }
+    return { lines, tables: out };
+  }
+  const level = (l) => { const m = /^(#{1,6}) /.exec(l); return m ? m[1].length : 0; };
+  const cellText = (v) => String(v ?? "").replace(/\n/g, " ").replace(/\|/g, "\\|");
+  /** Adds rows to table `index` in one edit: the section around the table is rewritten with set_text. */
+  async function addRows(index, rows, columns) {
+    const note = amber.note, t = note.tables[index];
+    const asCells = rows.map((r) => Array.isArray(r) ? r : (columns || t.columns.map((c) => c.name)).map((n) => r[n] ?? ""));
+    const { lines, tables } = tableLines(note.markdown);
+    const at = tables[index];
+    let h = -1; for (let k = at.start - 1; k >= 0; k--) if (level(lines[k])) { h = k; break; }
+    if (h < 0 || rows.length === 1) {
+      for (const r of asCells) { const res = await amber.update({ op: "append_row", table: index, values: r }); if (!res.ok) return res; }
+      return { ok: true };
+    }
+    const lv = level(lines[h]); let end = h + 1; while (end < lines.length && !(level(lines[end]) && level(lines[end]) <= lv)) end++;
+    const section = [...lines.slice(h + 1, at.end), ...asCells.map((c) => "| " + c.map(cellText).join(" | ") + " |"), ...lines.slice(at.end, end)];
+    return amber.update({ op: "set_text", heading: lines[h].replace(/^#+\s*/, ""), text: section.join("\n") });
+  }
+
+  // A sheet: one at a time, Escape or the scrim closes it, focus goes in and comes back.
+  let current = null;
+  function sheet(title, html, { mount, wide, actions = "" } = {}) {
+    close();
+    const back = document.activeElement;
+    const host = document.createElement("div");
+    host.className = "sheet-host";
+    host.innerHTML = `<div class="scrim" data-close></div><section class="sheet" role="dialog" aria-modal="true" aria-label="${esc(title)}" ${wide ? 'style="width:min(46rem,94vw)"' : ""}>
+      <div class="grab"></div><header><h2>${esc(title)}</h2>${actions}<button class="round" data-close aria-label="Close">${ico("close")}</button></header><div class="sheet-body">${html}</div></section>`;
+    document.body.appendChild(host);
+    const onKey = (e) => { if (e.key === "Escape") close(); };
+    host.addEventListener("click", (e) => { if (e.target.closest("[data-close]")) close(); });
+    addEventListener("keydown", onKey);
+    current = { host, back, onKey };
+    requestAnimationFrame(() => requestAnimationFrame(() => host.classList.add("open")));
+    mount && mount(host.querySelector(".sheet-body"), close);
+    setTimeout(() => (host.querySelector("[autofocus]") || host.querySelector(".sheet header .round")).focus({ preventScroll: true }), 60);
+    return close;
+  }
+  function close() {
+    if (!current) return;
+    const { host, back, onKey } = current;
+    current = null;
+    removeEventListener("keydown", onKey);
+    host.classList.remove("open");
+    setTimeout(() => host.remove(), 380);
+    back && back.focus && back.focus({ preventScroll: true });
+  }
+
+  // App settings: declared once with defaults, changed in a sheet without asking an AI. Kept in the
+  // app's own data under "settings" (amber.settings when the app offers it).
+  function settings(schema) {
+    const get = () => {
+      const saved = (amber.settings && amber.settings.values) || (amber.data.values.settings || {});
+      return Object.fromEntries(schema.map((f) => [f.key, saved[f.key] ?? f.default]));
+    };
+    const save = (key, value) => amber.settings && amber.settings.set ? amber.settings.set(key, value) : amber.setData({ values: { settings: { [key]: value } } });
+    function open(title = "Settings", extra = "") {
+      const s = get();
+      const field = (f) => {
+        const id = "set-" + f.key;
+        if (f.type === "toggle") return `<label class="row" for="${id}"><span class="grow">${esc(f.label)}${f.help ? `<div class="muted small">${esc(f.help)}</div>` : ""}</span><input class="switch" type="checkbox" id="${id}" data-key="${f.key}" ${s[f.key] ? "checked" : ""}></label>`;
+        const input = f.type === "select"
+          ? `<select class="in" id="${id}" data-key="${f.key}">${f.options.map((o) => `<option value="${esc(o[0])}" ${String(s[f.key]) === String(o[0]) ? "selected" : ""}>${esc(o[1])}</option>`).join("")}</select>`
+          : `<input class="in num" id="${id}" data-key="${f.key}" type="${f.type === "number" ? "number" : f.type === "time" ? "time" : "text"}" ${f.type === "number" ? `inputmode="decimal" step="${f.step || 1}" min="${f.min ?? 0}"` : ""} value="${esc(s[f.key])}">`;
+        return `<div class="row stack"><label for="${id}" class="grow">${esc(f.label)}${f.unit ? ` <span class="muted">(${esc(f.unit)})</span>` : ""}${f.help ? `<div class="muted small">${esc(f.help)}</div>` : ""}</label><div class="set-input">${input}</div></div>`;
+      };
+      sheet(title, `<div class="card list settings-list">${schema.map(field).join("")}</div>${extra}<p class="muted small" style="margin:.9rem .3rem 0">Settings are kept in this note's app, on all your devices.</p>`, {
+        mount(root) {
+          root.addEventListener("change", (e) => {
+            const el = e.target.closest("[data-key]"); if (!el) return;
+            const f = schema.find((x) => x.key === el.dataset.key);
+            const v = f.type === "toggle" ? el.checked : f.type === "number" ? (Number.isFinite(parseFloat(el.value)) ? parseFloat(el.value) : f.default) : el.value;
+            save(f.key, v);
+          });
+        },
+      });
+    }
+    return { get, open, save };
+  }
+
+  const style = document.createElement("style");
+  style.textContent = `.settings-list .row.stack { flex-wrap: wrap; } .settings-list .set-input { width: 9.5rem; } .settings-list .set-input .in { text-align: right; } .settings-list label.row { cursor: pointer; }
+  @media (max-width: 420px) { .settings-list .set-input { width: 8rem; } }`;
+  document.head.appendChild(style);
+
+  // Charts drawn at their real width (so 10 px labels stay 10 px): width(key) is the last measured
+  // width of the element with data-w="key"; fit(render) re-renders once when a width changed.
+  const widths = {};
+  const width = (key, fallback) => widths[key] || fallback;
+  function fit(render) {
+    let changed = false;
+    for (const el of document.querySelectorAll("[data-w]")) {
+      const cs = getComputedStyle(el);
+      const w = Math.round(el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight));
+      if (w && Math.abs((widths[el.dataset.w] || 0) - w) > 4) { widths[el.dataset.w] = w; changed = true; }
+    }
+    if (changed) render();
+  }
+  let resizeT;
+  const onResize = (render) => addEventListener("resize", () => { clearTimeout(resizeT); resizeT = setTimeout(() => { for (const k in widths) delete widths[k]; render(); fit(render); }, 120); });
+
+  const once = (fn) => { let p; return () => p || (p = fn()); };
+  const hash = (s) => { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); };
+  const announce = (() => { let el; return (msg) => { if (!el) { el = document.createElement("div"); el.className = "sr"; el.setAttribute("aria-live", "polite"); document.body.appendChild(el); } el.textContent = ""; setTimeout(() => (el.textContent = msg), 30); }; })();
+
+  return { width, fit, onResize, esc, $, $$, ico, D, num, kr, fmtN, done, col, table, addRows, sheet, close, settings, once, hash, announce };
+})();
+
+const { esc, ico, D, num, col, sheet, announce } = Kit;
+const S = Kit.settings([
+  { key: "rest", label: "Rest between sets", type: "select", default: 120, options: [[60, "1 minute"], [90, "1½ minutes"], [120, "2 minutes"], [180, "3 minutes"], [240, "4 minutes"], [300, "5 minutes"]] },
+  { key: "step", label: "Weight step", type: "select", default: 2.5, options: [[1.25, "1.25 kg"], [2.5, "2.5 kg"], [5, "5 kg"]], help: "How much the − and + buttons change." },
+  { key: "notify", label: "Notify when rest is over", type: "toggle", default: true, help: "Even with the phone locked." },
+]);
+let lift = null, record = null, restTimer = null, clockTimer = null;
+const kgText = (n) => (Math.round(n * 100) / 100).toString().replace(".", ",");
+const e1rm = (kg, reps) => kg * (1 + Math.min(reps, 12) / 30);
+
+function model(note) {
+  const t = Kit.table(note, /^date$/i, /^exercise$/i);
+  if (!t) return null;
+  const c = { date: col(t, /^date$/i), ex: col(t, /^exercise$/i), sets: col(t, /^sets$/i), reps: col(t, /^reps$/i), kg: col(t, /^(kg|weight)$/i) };
+  const rows = t.rows.map((r, i) => ({ i, date: r[c.date].trim(), ex: r[c.ex].trim(), sets: parseInt(r[c.sets]) || 1, reps: parseInt(r[c.reps]) || 0, kg: num(r[c.kg]) }))
+    .filter((r) => D.parse(r.date) && r.ex && Number.isFinite(r.kg));
+  const lifts = {};
+  for (const r of rows) {
+    const L = lifts[r.ex] || (lifts[r.ex] = { name: r.ex, pts: [], best: 0, bestRow: null, last: null, records: new Set() });
+    const v = e1rm(r.kg, r.reps);
+    if (v > L.best + 0.01) { L.best = v; L.bestRow = r; L.records.add(r.i); }
+    L.pts.push({ date: r.date, v, r });
+    L.last = r;
+  }
+  const sessions = [...new Set(rows.map((r) => r.date))].sort().reverse().map((d) => ({ date: d, rows: rows.filter((r) => r.date === d) }));
+  return { t, c, rows, lifts, sessions };
+}
+
+function nextPlan(m) {
+  const plans = amber.data.values.plans || [];
+  if (!plans.length) return null;
+  const last = m.sessions[0];
+  if (!last) return plans[0];
+  const names = new Set(last.rows.map((r) => r.ex));
+  const score = (p) => p.lifts.filter((l) => names.has(l.name)).length - p.lifts.length / 100;
+  const idx = plans.reduce((b, p, k) => (score(p) > score(plans[b]) ? k : b), 0);
+  return plans[(idx + 1) % plans.length] || plans[0];
+}
+
+function spark(L) {
+  const pts = L.pts.slice(-12); if (pts.length < 2) return "";
+  const vs = pts.map((p) => p.v), lo = Math.min(...vs), hi = Math.max(...vs) || 1;
+  return `<svg class="sp" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true"><path vector-effect="non-scaling-stroke" d="${pts.map((p, k) => `${k ? "L" : "M"}${(k / (pts.length - 1)) * 100} ${22 - ((p.v - lo) / Math.max(1, hi - lo)) * 20}`).join(" ")}"/></svg>`;
+}
+
+function chart(m, name) {
+  const L = m.lifts[name]; if (!L || L.pts.length < 2) return `<p class="muted">Log ${esc(name)} a few times to see it climb.</p>`;
+  const W = Math.round(Math.max(260, Kit.width("prog", innerWidth - 64))), H = Math.round(Math.min(230, Math.max(160, W * .45))), Lp = 30, R = 8, T = 10, B = 20;
+  const t0 = D.parse(L.pts[0].date), t1 = D.parse(L.pts[L.pts.length - 1].date);
+  const vs = L.pts.map((p) => p.v), lo = Math.floor(Math.min(...vs) / 10) * 10, hi = Math.ceil(Math.max(...vs) / 10) * 10 || 10;
+  const x = (d) => Lp + ((D.parse(d) - t0) / Math.max(1, t1 - t0)) * (W - Lp - R), y = (v) => T + (1 - (v - lo) / Math.max(1, hi - lo)) * (H - T - B);
+  const path = L.pts.map((p, k) => `${k ? "L" : "M"}${x(p.date).toFixed(1)} ${y(p.v).toFixed(1)}`).join(" ");
+  const ticks = [lo, (lo + hi) / 2, hi];
+  const first = L.pts[0].v, gain = L.best - first;
+  return `<div class="head"><b class="num">${Math.round(L.best)} kg</b><span class="muted small">estimated one-rep max · up ${Math.round(gain)} kg since ${D.fmt(L.pts[0].date, { day: "numeric", month: "short" })}</span></div>
+    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(name)}: estimated one-rep max from ${Math.round(first)} to ${Math.round(L.best)} kilograms">
+    ${ticks.map((v) => `<line class="grid" x1="${Lp}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text class="ax" x="0" y="${y(v) + 3}">${Math.round(v)}</text>`).join("")}
+    <path class="area" d="${path} L ${x(L.pts[L.pts.length - 1].date)} ${H - B} L ${x(L.pts[0].date)} ${H - B} Z"/><path class="ln" d="${path}"/>
+    ${L.pts.map((p) => `<circle class="${L.records.has(p.r.i) ? "rec" : "pt"}" cx="${x(p.date)}" cy="${y(p.v)}" r="${L.records.has(p.r.i) ? 3.2 : 2.6}"><title>${D.fmt(p.date)}: ${p.r.sets}×${p.r.reps} at ${kgText(p.r.kg)} kg</title></circle>`).join("")}
+    <text class="ax" x="${Lp}" y="${H - 4}">${D.fmt(L.pts[0].date, { day: "numeric", month: "short" })}</text><text class="ax" x="${W - R}" y="${H - 4}" text-anchor="end">${D.fmt(L.pts[L.pts.length - 1].date, { day: "numeric", month: "short" })}</text></svg>
+    <p class="muted small" style="margin-top:.4rem">Filled dots are personal records.</p>`;
+}
+
+function render(note = amber.note) {
+  const app = document.getElementById("app");
+  const m = model(note);
+  const session = amber.data.values.session;
+  if (!m) {
+    app.innerHTML = `<header class="top"><div class="titles"><h1>${esc(note.title || "Training")}</h1></div></header>
+      <div class="card empty">${ico("dumbbell")}<h3>No workouts yet</h3><p>Workouts go in a table in this note: Date, Exercise, Sets, Reps and Kg. Ask your AI to add one, or add the table under a Log heading.</p></div>`;
+    return;
+  }
+  const names = Object.keys(m.lifts);
+  if (!lift || !m.lifts[lift]) lift = names.sort((a, b) => m.lifts[b].pts.length - m.lifts[a].pts.length)[0];
+  const today = note.today, ws = D.weekStart(today);
+  const thisWeek = m.sessions.filter((s) => s.date >= ws).length;
+  const last = m.sessions[0];
+  const plan = nextPlan(m);
+  const plans = amber.data.values.plans || [];
+  const lastOf = (name) => m.lifts[name] && m.lifts[name].last;
+
+  const hero = session ? live(m, session) : `<section class="card next">
+      <div class="k">${last ? `Last workout ${D.rel(last.date, today).toLowerCase()}` : "First workout"}${thisWeek ? ` · ${thisWeek} this week` : ""}</div>
+      <h2>${plan ? esc(plan.name) : "Workout"}</h2>
+      ${plans.length > 1 ? `<div class="planpick seg" role="group" aria-label="Workout">${plans.map((p) => `<button data-plan="${esc(p.name)}" aria-pressed="${plan && p.name === plan.name}">${esc(p.name)}</button>`).join("")}</div>` : ""}
+      <div class="plan">${plan ? plan.lifts.map((l) => { const lt = lastOf(l.name); return `<div><b>${esc(l.name)}</b><span class="num">${l.sets}×${l.reps}${lt ? ` · ${kgText(nextKg(m, l))} kg` : ""}</span></div>`; }).join("") : ""}</div>
+      <button class="btn primary block" id="start" ${plan ? "" : "disabled"}>${ico("play")} Start workout</button>
+      <div class="week" aria-label="This week" style="margin-top:1rem">${[...Array(7)].map((_, k) => { const d = D.add(ws, k), on = m.sessions.some((s) => s.date === d); return `<div class="${on ? "on" : ""} ${d === today ? "today" : ""}"><i>${on ? ico("check") : ""}</i>${D.fmt(d, { weekday: "narrow" })}</div>`; }).join("")}</div>
+    </section>`;
+
+  app.innerHTML = `
+  <header class="top"><div class="titles"><h1>${esc(note.title)}</h1><div class="sub">${m.sessions.length} workouts since ${D.fmt(m.sessions[m.sessions.length - 1].date, { day: "numeric", month: "long" })}</div></div>
+    <button class="round" id="settings" aria-label="Settings">${ico("gear")}</button></header>
+  ${record ? `<section class="card record rise" style="margin-bottom:1rem">${ico("trophy")}<h2>${record.length === 1 ? "New personal record" : `${record.length} new personal records`}</h2><p>${record.map((r) => `${esc(r.ex)}: ${r.sets}×${r.reps} at ${kgText(r.kg)} kg`).join("<br>")}</p></section>` : ""}
+  <div class="cols side">
+    <div>${hero}</div>
+    <div>
+      <div class="label" ${session ? "" : 'style="margin-top:0"'}><span class="grow">Progress</span></div>
+      <section class="card prog"><div class="segwrap" data-w="prog"><div class="seg" role="group" aria-label="Lift">${names.map((n) => `<button data-lift="${esc(n)}" aria-pressed="${n === lift}">${esc(n)}</button>`).join("")}</div></div>${chart(m, lift)}</section>
+    </div>
+  </div>
+  <div class="label"><span class="grow">Records</span></div>
+  <section class="prs">${names.map((n) => {
+    const L = m.lifts[n], ago = L.pts.filter((p) => p.date <= D.add(today, -28)).pop(), d = ago ? L.best - ago.v : 0;
+    return `<button class="pr" data-lift="${esc(n)}" aria-pressed="${n === lift}"><h3 class="ellipsis">${esc(n)}</h3><div class="big num">${kgText(L.bestRow.kg)}<small> kg × ${L.bestRow.reps}</small></div>
+      ${d > 0.5 ? `<div class="up">+${Math.round(d)} kg in 4 weeks</div>` : `<div class="flat">Same as 4 weeks ago</div>`}${spark(L)}</button>`;
+  }).join("")}</section>
+  <div class="label"><span class="grow">History</span></div>
+  <section class="card list">${m.sessions.slice(0, 8).map((s) => {
+    const prs = s.rows.filter((r) => m.lifts[r.ex].records.has(r.i)).length;
+    return `<div class="row sess"><div class="grow"><div class="when">${D.fmt(s.date, { weekday: "long", day: "numeric", month: "short" })} ${prs ? `<span class="badge">${ico("trophy")}${prs} PR</span>` : ""}</div>
+      <div class="what">${s.rows.map((r) => `${esc(r.ex)} ${r.sets}×${r.reps} ${kgText(r.kg)}`).join(" · ")}</div></div></div>`;
+  }).join("")}</section>`;
+  if (session) tickClock(); else clearInterval(clockTimer);
+  Kit.fit(() => render());
+}
+Kit.onResize(() => render());
+
+// What to lift next time: the last weight, plus a step when every set was done at the plan's reps.
+function nextKg(m, l) {
+  const lt = m.lifts[l.name] && m.lifts[l.name].last;
+  if (!lt) return 20;
+  const step = Number(S.get().step) || 2.5;
+  return lt.reps >= l.reps ? lt.kg + (/press|bench/i.test(l.name) ? step / 2 : step) : lt.kg;
+}
+
+function live(m, s) {
+  const doneSets = s.lifts.reduce((a, l) => a + l.sets.filter((x) => x.done).length, 0), all = s.lifts.reduce((a, l) => a + l.sets.length, 0);
+  return `<section class="card live-head"><div class="grow"><div class="k">${esc(s.name)} · ${doneSets} of ${all} sets</div><div class="clock num" id="clock">0:00</div></div>
+      <button class="btn danger" id="discard">Discard</button></section>
+    ${s.lifts.map((l, li) => { const lt = m.lifts[l.name] && m.lifts[l.name].last; return `<section class="card ex">
+      <div class="exh"><h3>${esc(l.name)}</h3><span class="muted small num">${l.sets.filter((x) => x.done).length}/${l.sets.length}</span></div>
+      ${lt ? `<div class="last">Last time ${lt.sets}×${lt.reps} at ${kgText(lt.kg)} kg, ${D.rel(lt.date, amber.note.today).toLowerCase()}</div>` : ""}
+      <div class="set hd"><span>Set</span><span style="text-align:center">kg</span><span style="text-align:center">Reps</span><span></span></div>
+      ${l.sets.map((x, si) => `<div class="set ${x.done ? "done" : ""}"><span class="n">${si + 1}</span>
+        <input inputmode="decimal" aria-label="${esc(l.name)} set ${si + 1}, kilograms" data-kg="${li}.${si}" value="${kgText(x.kg)}">
+        <input inputmode="numeric" aria-label="${esc(l.name)} set ${si + 1}, reps" data-reps="${li}.${si}" value="${x.reps}">
+        <button class="ok" data-set="${li}.${si}" aria-pressed="${!!x.done}" aria-label="${esc(l.name)} set ${si + 1} ${x.done ? "done" : "done?"}">${ico("check")}</button></div>`).join("")}
+      <button class="btn plain addset" data-addset="${li}">${ico("plus")} Add a set</button></section>`; }).join("")}
+    <button class="btn primary block finish" id="finish" ${doneSets ? "" : "disabled"}>Finish and save to the note</button>
+    <p class="muted small" style="margin:.6rem .3rem 0">Each exercise becomes one row in the log: sets done, reps and the top weight.</p>`;
+}
+
+function tickClock() {
+  clearInterval(clockTimer);
+  const s = amber.data.values.session; if (!s) return;
+  const f = () => { const el = document.getElementById("clock"); if (!el) return; const sec = Math.max(0, Math.floor((Date.now() - Date.parse(s.started)) / 1000)); el.textContent = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`; };
+  f(); clockTimer = setInterval(f, 1000);
+}
+
+async function start(planName) {
+  const m = model(amber.note);
+  const plans = amber.data.values.plans || [];
+  const plan = plans.find((p) => p.name === planName) || nextPlan(m);
+  record = null;
+  await amber.store.set("session", { name: plan.name, started: new Date().toISOString(), lifts: plan.lifts.map((l) => ({ name: l.name, sets: [...Array(l.sets)].map(() => ({ kg: nextKg(m, l), reps: l.reps, done: false })) })) });
+  scrollTo({ top: 0, behavior: "smooth" });
+}
+
+async function patchSession(fn) { const s = JSON.parse(JSON.stringify(amber.data.values.session)); fn(s); await amber.store.set("session", s); }
+
+// Rest: a countdown on screen and, if allowed, a notification for when it's over.
+function rest(label) {
+  const secs = Number(S.get().rest) || 120;
+  const ends = Date.now() + secs * 1000;
+  clearInterval(restTimer);
+  const el = document.getElementById("rest");
+  let end = ends;
+  const C = 2 * Math.PI * 18;
+  const draw = () => {
+    const left = Math.max(0, Math.round((end - Date.now()) / 1000));
+    el.innerHTML = `<div class="r"><svg viewBox="0 0 44 44"><circle class="t" cx="22" cy="22" r="18"/><circle class="b" cx="22" cy="22" r="18" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - left / secs)}"/></svg></div>
+      <div class="time num" aria-label="Rest, ${left} seconds left">${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}<small>Next: ${esc(label)}</small></div>
+      <button data-rest="30" aria-label="Thirty seconds more">+30s</button><button data-rest="0">Skip</button>`;
+    if (left <= 0) { stopRest(); announce("Rest's over."); }
+  };
+  el.onclick = (e) => { const b = e.target.closest("[data-rest]"); if (!b) return; if (b.dataset.rest === "0") stopRest(); else { end += 30000; draw(); } };
+  draw(); el.classList.add("on");
+  restTimer = setInterval(draw, 1000);
+  if (S.get().notify) amber.device.notify({ title: "Rest's over", body: `Next: ${label}`, in: secs });
+}
+function stopRest() { clearInterval(restTimer); document.getElementById("rest").classList.remove("on"); }
+
+async function finish() {
+  const m = model(amber.note); const s = amber.data.values.session;
+  const today = amber.note.today;
+  const rows = [], prs = [];
+  for (const l of s.lifts) {
+    const done = l.sets.filter((x) => x.done); if (!done.length) continue;
+    const kg = Math.max(...done.map((x) => x.kg)), reps = Math.min(...done.filter((x) => x.kg === kg).map((x) => x.reps));
+    const r = { date: today, ex: l.name, sets: done.length, reps, kg };
+    rows.push(r);
+    const L = m.lifts[l.name]; if (!L || e1rm(kg, reps) > L.best + 0.01) prs.push(r);
+  }
+  const n = (k) => m.t.columns[m.c[k]].name;
+  const res = await Kit.addRows(m.t.index, rows.map((r) => ({ [n("date")]: r.date, [n("ex")]: r.ex, [n("sets")]: String(r.sets), [n("reps")]: String(r.reps), [n("kg")]: kgText(r.kg) })));
+  if (!res.ok) { announce(res.error); return; }
+  await amber.store.collection("workouts").add({ date: today, name: s.name, started: s.started, minutes: Math.round((Date.now() - Date.parse(s.started)) / 60000), lifts: s.lifts });
+  record = prs.length ? prs : null;
+  stopRest();
+  await amber.store.set("session", null);
+  scrollTo({ top: 0, behavior: "smooth" });
+}
+
+document.addEventListener("click", async (e) => {
+  const t = e.target.closest("#start,#settings,#finish,#discard,[data-lift],[data-plan],[data-set],[data-addset]"); if (!t) return;
+  if (t.id === "start") start(document.querySelector("[data-plan][aria-pressed=true]")?.dataset.plan);
+  else if (t.id === "settings") S.open("Training settings");
+  else if (t.id === "finish") finish();
+  else if (t.id === "discard") { if (t.dataset.sure) { stopRest(); await amber.store.set("session", null); } else { t.dataset.sure = 1; t.textContent = "Discard workout?"; } }
+  else if (t.dataset.lift) { lift = t.dataset.lift; render(); }
+  else if (t.dataset.plan) { document.querySelectorAll("[data-plan]").forEach((b) => b.setAttribute("aria-pressed", b === t)); const m = model(amber.note), p = (amber.data.values.plans || []).find((x) => x.name === t.dataset.plan); document.querySelector(".next h2").textContent = p.name; document.querySelector(".plan").innerHTML = p.lifts.map((l) => `<div><b>${esc(l.name)}</b><span class="num">${l.sets}×${l.reps} · ${kgText(nextKg(m, l))} kg</span></div>`).join(""); }
+  else if (t.dataset.set) {
+    const [li, si] = t.dataset.set.split(".").map(Number);
+    const s = amber.data.values.session, l = s.lifts[li], was = l.sets[si].done;
+    await patchSession((x) => { x.lifts[li].sets[si].done = !was; });
+    if (!was) {
+      const nextSet = l.sets.findIndex((x, k) => k > si && !x.done);
+      const nextLift = s.lifts.slice(li + 1).find((x) => x.sets.some((y) => !y.done));
+      const label = nextSet >= 0 ? `${l.name}, set ${nextSet + 1}` : nextLift ? nextLift.name : "";
+      if (label) rest(label); else stopRest();
+    }
+  }
+  else if (t.dataset.addset) { const li = +t.dataset.addset; await patchSession((x) => { const l = x.lifts[li]; const lastSet = l.sets[l.sets.length - 1]; l.sets.push({ kg: lastSet.kg, reps: lastSet.reps, done: false }); }); }
+});
+document.addEventListener("change", async (e) => {
+  const k = e.target.dataset.kg, r = e.target.dataset.reps;
+  if (!k && !r) return;
+  const [li, si] = (k || r).split(".").map(Number), v = num(e.target.value);
+  if (!Number.isFinite(v)) return;
+  await patchSession((x) => { if (k) { x.lifts[li].sets.forEach((s, j) => { if (j >= si && !s.done) s.kg = v; }); } else x.lifts[li].sets[si].reps = Math.round(v); });
+});
+amber.onChange((note) => render(note));
+</script>
+</body>
+</html>

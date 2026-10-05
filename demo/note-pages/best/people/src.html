@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>People</title>
+<style>
+/*KIT_CSS*/
+.av { width: 2.7rem; height: 2.7rem; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: .95rem; color: #fff; flex: none; background: var(--g); letter-spacing: .02em; position: relative; }
+.av.big { width: 4.6rem; height: 4.6rem; font-size: 1.6rem; }
+.av .due { position: absolute; inset: -4px; border-radius: 50%; }
+.av .due svg { width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
+
+.catch { display: grid; gap: .6rem; }
+.cu { display: flex; gap: .85rem; align-items: flex-start; padding: .9rem 1rem; }
+.cu .acts .round { width: 2.25rem; height: 2.25rem; background: var(--amber-accent-soft); color: var(--amber-accent-text); }
+.cu .acts .round[aria-pressed="true"] svg { fill: currentColor; }
+.cu .acts .round svg { width: 1rem; height: 1rem; }
+.cu .grow h3 { font-size: 1.02rem; font-weight: 600; }
+.cu .grow p { font-size: .82rem; color: var(--amber-text-secondary); margin-top: .1rem; }
+.cu .grow p.late { color: var(--amber-danger); font-weight: 600; }
+.cu .last { font-size: .82rem; color: var(--amber-text); margin-top: .35rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; border-left: 2px solid var(--amber-separator); padding-left: .5rem; }
+.cu .acts { display: flex; gap: .4rem; margin-top: .6rem; flex-wrap: wrap; }
+.cu .acts .btn { min-height: 2.25rem; padding: 0 .85rem; font-size: .86rem; }
+.cu.out { animation: out .45s var(--ease-out) forwards; }
+@keyframes out { to { opacity: 0; transform: translateX(30%); } }
+
+.bday { display: flex; align-items: center; gap: .8rem; }
+.cal { width: 2.7rem; flex: none; text-align: center; border-radius: .55rem; overflow: hidden; background: var(--amber-bg); box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+@media (prefers-color-scheme: dark) { .cal { background: var(--amber-fill); } }
+.cal span { display: block; font-size: .6rem; font-weight: 800; text-transform: uppercase; background: var(--c6); color: #fff; padding: .1rem 0; letter-spacing: .05em; }
+.cal b { display: block; font-size: 1.15rem; padding: .1rem 0 .15rem; }
+.bday .soon { color: var(--c6); font-weight: 700; }
+.bellb { border: 0; background: none; width: 2.5rem; height: 2.5rem; border-radius: 50%; display: grid; place-items: center; color: var(--amber-text-secondary); }
+.bellb svg { width: 1.1rem; height: 1.1rem; }
+.bellb[aria-pressed="true"] { color: var(--amber-accent-text); }
+.bellb[aria-pressed="true"] svg { fill: var(--amber-accent-soft); }
+
+.search { position: relative; margin-bottom: .6rem; }
+.search svg { position: absolute; left: .75rem; top: 50%; transform: translateY(-50%); width: 1rem; height: 1rem; color: var(--amber-text-secondary); }
+.search input { padding-left: 2.3rem !important; }
+.every { font-size: .78rem; color: var(--amber-text-secondary); }
+.meter { width: 3.2rem; height: .32rem; border-radius: 99px; background: var(--amber-fill); overflow: hidden; flex: none; }
+.meter b { display: block; height: 100%; background: var(--good); border-radius: 99px; }
+.meter b.warn { background: var(--c1); } .meter b.late { background: var(--amber-danger); }
+
+.ph { text-align: center; margin-bottom: 1rem; }
+.ph .av { margin: 0 auto .6rem; }
+.ph h3 { font-size: 1.35rem; }
+.ph p { color: var(--amber-text-secondary); font-size: .9rem; margin-top: .2rem; }
+.qa { display: flex; justify-content: center; gap: .6rem; margin: .9rem 0 1rem; }
+.qa button { display: flex; flex-direction: column; align-items: center; gap: .25rem; border: 0; background: var(--amber-surface); border-radius: var(--amber-radius-small); padding: .6rem .3rem; width: 4.6rem; font-size: .74rem; font-weight: 600; color: var(--amber-accent-text); }
+@media (prefers-color-scheme: dark) { .qa button { background: var(--amber-fill); } }
+.qa button svg { width: 1.25rem; height: 1.25rem; }
+.qa button[disabled] { opacity: .35; }
+.facts { margin-bottom: 1rem; }
+.facts .row { font-size: .92rem; }
+.facts .k { color: var(--amber-text-secondary); width: 6.5rem; flex: none; }
+.tlog { display: grid; gap: 0; }
+.tlog .e { display: grid; grid-template-columns: .8rem 1fr; gap: .7rem; padding-bottom: .9rem; position: relative; }
+.tlog .e::before { content: ""; position: absolute; left: .32rem; top: .9rem; bottom: 0; width: 2px; background: var(--amber-separator); }
+.tlog .e:last-child::before { display: none; }
+.tlog .dot { width: .75rem; height: .75rem; border-radius: 50%; background: var(--amber-accent); margin-top: .3rem; }
+.tlog .when { font-size: .78rem; color: var(--amber-text-secondary); font-weight: 600; }
+.tlog .txt { font-size: .94rem; margin-top: .1rem; }
+.kinds { display: flex; flex-wrap: wrap; gap: .35rem; }
+.kinds button { border: 0; border-radius: 99px; padding: .35rem .8rem; min-height: 2.1rem; font-size: .85rem; font-weight: 600; background: var(--amber-fill); color: var(--amber-text); }
+.kinds button[aria-pressed="true"] { background: var(--amber-text); color: var(--amber-bg); }
+@media (min-width: 900px) { .catch { grid-template-columns: 1fr 1fr; } }
+</style>
+</head>
+<body>
+<main class="wrap" id="app" aria-live="polite"></main>
+<script>
+/*KIT_JS*/
+const { esc, ico, D, col, sheet, announce } = Kit;
+const S = Kit.settings([
+  { key: "soon", label: "Show birthdays coming in", type: "select", default: 45, options: [[14, "2 weeks"], [30, "1 month"], [45, "6 weeks"], [90, "3 months"]] },
+  { key: "remindAt", label: "Remind me at", type: "time", default: "18:00", help: "For catch-up and birthday reminders." },
+  { key: "defaultEvery", label: "New people, keep in touch every", type: "select", default: "1 month", options: [["1 week", "Week"], ["2 weeks", "2 weeks"], ["1 month", "Month"], ["3 months", "3 months"], ["6 months", "6 months"]] },
+]);
+const EVERY = ["1 week", "2 weeks", "1 month", "2 months", "3 months", "6 months", "1 year"];
+let q = "", showAll = false;
+const key = (n) => String(n).trim().toLowerCase();
+const days = (every) => { const m = /(\d+)\s*(day|week|month|year)/i.exec(every || ""); if (!m) return 0; return +m[1] * { day: 1, week: 7, month: 30, year: 365 }[m[2].toLowerCase()]; };
+const hue = (s) => [...s].reduce((a, ch) => (a * 33 + ch.charCodeAt(0)) % 360, 11);
+const initials = (n) => n.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+const avatar = (p, big = "") => `<span class="av ${big}" style="--g:linear-gradient(145deg, hsl(${hue(p.name)} 55% 58%), hsl(${(hue(p.name) + 40) % 360} 50% 42%))" aria-hidden="true">${esc(initials(p.name))}</span>`;
+const ago = (n) => n <= 0 ? "today" : n === 1 ? "yesterday" : n < 14 ? `${n} days ago` : n < 60 ? `${Math.round(n / 7)} weeks ago` : n < 365 ? `${Math.round(n / 30)} months ago` : "over a year ago";
+
+function model(note) {
+  const t = Kit.table(note, /^name$/i);
+  if (!t) return null;
+  const c = { name: col(t, /^name$/i), bday: col(t, /^birthday$/i), last: col(t, /^last( talked| seen| contact)?$/i), every: col(t, /^(every|cadence)$/i) };
+  const contacts = amber.data.values.contacts || {};
+  const notes = amber.data.collections.notes || [];
+  const people = t.rows.map((r, i) => {
+    const name = r[c.name].trim(), last = c.last >= 0 ? r[c.last].trim() : "", every = c.every >= 0 ? r[c.every].trim() : "";
+    const since = D.parse(last) ? D.diff(note.today, last) : null, cad = days(every);
+    let bnext = null, age = null; const b = c.bday >= 0 ? r[c.bday].trim() : "";
+    const bm = /^(\d{4}-)?(\d\d)-(\d\d)$/.exec(b);
+    if (bm) {
+      const y = +note.today.slice(0, 4);
+      bnext = `${y}-${bm[2]}-${bm[3]}`; if (bnext < note.today) bnext = `${y + 1}-${bm[2]}-${bm[3]}`;
+      if (bm[1]) age = +bnext.slice(0, 4) - +bm[1].slice(0, 4);
+    }
+    const pn = notes.filter((x) => x.person === key(name)).sort((a, b) => (b.date || b.created || "").localeCompare(a.date || a.created || ""));
+    return { i, name, last, every, since, cad, due: cad && since != null ? since - cad : null, bday: b, bnext, age, info: contacts[key(name)] || {}, notes: pn };
+  }).filter((p) => p.name);
+  return { t, c, people };
+}
+
+function ring(p) {
+  if (!p.cad || p.since == null) return "";
+  const f = Math.min(1, p.since / p.cad), C = 2 * Math.PI * 23;
+  const color = p.since > p.cad ? "var(--amber-danger)" : f > .75 ? "var(--c1)" : "var(--good)";
+  return `<span class="due"><svg viewBox="0 0 50 50"><circle cx="25" cy="25" r="23" fill="none" stroke="var(--amber-fill)" stroke-width="2.5"/><circle cx="25" cy="25" r="23" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - f)}"/></svg></span>`;
+}
+
+function render(note = amber.note) {
+  const app = document.getElementById("app");
+  const m = model(note);
+  if (!m) {
+    app.innerHTML = `<header class="top"><div class="titles"><h1>${esc(note.title || "People")}</h1></div></header>
+      <div class="card empty">${ico("person")}<h3>No one here yet</h3><p>People go in a table in this note: Name, Birthday, Last talked and Every. Add someone from your contacts to start it.</p><button class="btn primary" id="add">${ico("plus")} Add someone</button></div>`;
+    return;
+  }
+  const s = S.get(), today = note.today;
+  const due = m.people.filter((p) => p.due != null && p.due >= -3).sort((a, b) => b.due - a.due);
+  const bdays = m.people.filter((p) => p.bnext && D.diff(p.bnext, today) <= Number(s.soon)).sort((a, b) => a.bnext.localeCompare(b.bnext));
+  const all = m.people.filter((p) => !q || p.name.toLowerCase().includes(q.toLowerCase())).sort((a, b) => a.name.localeCompare(b.name, "sv"));
+  const rem = amber.data.values.reminded || {};
+  app.innerHTML = `
+  <header class="top"><div class="titles"><h1>${esc(note.title)}</h1><div class="sub">${due.length ? `${due.length} to catch up` : "All caught up"}${bdays.length ? ` · ${bdays.length} ${bdays.length === 1 ? "birthday" : "birthdays"}` : ""}</div></div>
+    <button class="round" id="add" aria-label="Add someone">${ico("plus")}</button><button class="round" id="settings" aria-label="Settings">${ico("gear")}</button></header>
+  <div class="label" style="margin-top:.2rem"><span class="grow">Catch up</span>${due.length > (innerWidth >= 900 ? 4 : 3) ? `<button id="more">${showAll ? "Show less" : `Show all ${due.length}`}</button>` : ""}</div>
+  ${due.length ? `<section class="catch">${due.slice(0, showAll ? 99 : innerWidth >= 900 ? 4 : 3).map((p) => `<article class="card cu" data-row="${p.i}">
+      <button class="av-btn" data-person="${p.i}" style="border:0;background:none;padding:0" aria-label="Open ${esc(p.name)}">${avatar(p).replace("</span>", ring(p) + "</span>")}</button>
+      <div class="grow"><h3>${esc(p.name)}</h3><p class="${p.due > 0 ? "late" : ""}">Talked ${ago(p.since)}${p.every ? ` · every ${esc(p.every.replace(/^1 /, ""))}` : ""}</p>
+        ${p.notes[0] ? `<div class="last">${esc(p.notes[0].text)}</div>` : ""}
+        <div class="acts"><button class="btn primary" data-talked="${p.i}">${ico("check")} Talked today</button><button class="round" data-remind="${p.i}" aria-pressed="${!!rem[key(p.name)]}" aria-label="${rem[key(p.name)] ? "Reminder set for tomorrow" : `Remind me to catch up with ${esc(p.name)} tomorrow`}">${ico("bell")}</button></div></div></article>`).join("")}</section>`
+    : `<div class="card empty" style="padding:1.4rem"><p style="margin:0">Nobody's due. Nice.</p></div>`}
+  <div class="cols">
+    <div>
+      <div class="label"><span class="grow">Birthdays</span></div>
+      <section class="card list">${bdays.length ? bdays.map((p) => { const n = D.diff(p.bnext, today); return `<div class="row bday"><span class="cal"><span>${D.fmt(p.bnext, { month: "short" })}</span><b class="num">${+p.bnext.slice(8)}</b></span>
+        <div class="grow"><div style="font-weight:600">${esc(p.name)}</div><div class="small ${n <= 7 ? "soon" : "muted"}">${n === 0 ? "Today" : n === 1 ? "Tomorrow" : n < 7 ? D.fmt(p.bnext, { weekday: "long" }) : `In ${n} days`}${p.age ? ` · turns ${p.age}` : ""}</div></div>
+        <button class="bellb" data-bday="${p.i}" aria-pressed="${!!rem["bday:" + key(p.name)]}" aria-label="Remind me of ${esc(p.name)}'s birthday">${ico("gift")}</button></div>`; }).join("")
+        : `<div class="empty" style="padding:1.2rem"><p style="margin:0">No birthdays in the next ${s.soon} days.</p></div>`}</section>
+    </div>
+    <div>
+      <div class="label"><span class="grow">Everyone</span><span class="small num" style="text-transform:none">${m.people.length}</span></div>
+      <div class="search">${ico("search")}<label class="sr" for="q">Search people</label><input class="in" id="q" type="search" placeholder="Search" value="${esc(q)}"></div>
+      <section class="card list inset">${all.map((p) => { const f = p.cad && p.since != null ? Math.min(1, p.since / p.cad) : 0; return `<button class="row" data-person="${p.i}">${avatar(p)}
+        <span class="grow"><span style="font-weight:600;display:block" class="ellipsis">${esc(p.name)}</span><span class="every">${p.since != null ? `Talked ${ago(p.since)}` : "Not yet"}</span></span>
+        ${p.cad ? `<span class="meter" aria-hidden="true"><b class="${p.since > p.cad ? "late" : f > .75 ? "warn" : ""}" style="width:${Math.max(6, f * 100)}%"></b></span>` : ""}<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 5l7 7-7 7"/></svg></button>`; }).join("") || `<div class="empty"><p>No one called “${esc(q)}”.</p></div>`}</section>
+    </div>
+  </div>`;
+}
+
+const cell = (m, p, k, v) => m.c[k] >= 0 ? amber.update({ op: "set_cell", table: m.t.index, row: p.i, col: m.t.columns[m.c[k]].name, value: v }) : Promise.resolve({ ok: false, error: `Add a ${k === "last" ? "Last talked" : k} column to the note.` });
+
+async function talked(i, fromSheet) {
+  const m = model(amber.note); const p = m.people.find((x) => x.i === i);
+  const card = document.querySelector(`.cu[data-row="${i}"]`);
+  if (card && !fromSheet) { card.classList.add("out"); await new Promise((r) => setTimeout(r, 380)); }
+  const r = await cell(m, p, "last", amber.note.today);
+  if (!r.ok) { announce(r.error); render(); return; }
+  if (amber.data.values.reminded && amber.data.values.reminded[key(p.name)]) await amber.setData({ values: { reminded: { [key(p.name)]: null } } });
+  if (!fromSheet) noteSheet(i, true);
+}
+
+async function remind(i, bday) {
+  const m = model(amber.note); const p = m.people.find((x) => x.i === i);
+  const at = S.get().remindAt || "18:00";
+  const due = bday ? `${p.bnext}T09:00` : `${D.add(amber.note.today, 1)}T${at}`;
+  const r = await amber.device.reminders.create({ title: bday ? `${p.name}'s birthday${p.age ? ` (${p.age})` : ""}` : `Catch up with ${p.name}`, notes: p.notes[0] ? `Last time: ${p.notes[0].text}` : "", due });
+  if (!r.ok) { announce(r.error); return; }
+  await amber.setData({ values: { reminded: { [(bday ? "bday:" : "") + key(p.name)]: r.id || true } } });
+  announce(bday ? `Reminder on ${D.fmt(p.bnext)}.` : `Reminder tomorrow at ${at}.`);
+}
+
+function noteSheet(i, justTalked) {
+  const m = model(amber.note); const p = m.people.find((x) => x.i === i);
+  let kind = "Call";
+  sheet(justTalked ? `How was it with ${p.name.split(" ")[0]}?` : `Note about ${p.name.split(" ")[0]}`, `<form id="nf" class="fields">
+    <div class="kinds" role="group" aria-label="How">${["Call", "Coffee", "Message", "Dinner", "Walk"].map((k) => `<button type="button" data-k="${k}" aria-pressed="${k === kind}">${k}</button>`).join("")}</div>
+    <label class="field">What you talked about<textarea id="nt" rows="4" autofocus placeholder="Anything worth remembering for next time"></textarea></label>
+    <div class="fields two"><button type="button" class="btn" data-close>${justTalked ? "Skip" : "Cancel"}</button><button class="btn primary">Save</button></div></form>`, {
+    mount(root, close) {
+      root.querySelector(".kinds").onclick = (e) => { const b = e.target.closest("[data-k]"); if (!b) return; kind = b.dataset.k; root.querySelectorAll("[data-k]").forEach((x) => x.setAttribute("aria-pressed", x === b)); };
+      root.querySelector("#nf").onsubmit = async (e) => {
+        e.preventDefault();
+        const text = root.querySelector("#nt").value.trim(); if (!text) { close(); return; }
+        await amber.store.collection("notes").add({ person: key(p.name), kind, text, date: amber.note.today });
+        close(); announce("Saved.");
+      };
+    },
+  });
+}
+
+function personSheet(i) {
+  const m = model(amber.note); const p = m.people.find((x) => x.i === i);
+  const phone = p.info.phone, email = p.info.email;
+  sheet(p.name, `<div class="ph">${avatar(p, "big")}<h3>${esc(p.name)}</h3><p>${p.since != null ? `Talked ${ago(p.since)}` : "Not talked yet"}${p.info.how ? ` · ${esc(p.info.how)}` : ""}</p></div>
+    <div class="qa"><button data-act="tel" ${phone ? "" : "disabled"}>${ico("chat")}Call</button><button data-act="sms" ${phone ? "" : "disabled"}>${ico("chat")}Message</button><button data-act="mail" ${email ? "" : "disabled"}>${ico("note")}Email</button><button data-act="talked">${ico("check")}Talked</button></div>
+    <div class="card list facts">
+      <label class="row"><span class="k">Keep in touch</span><select class="in grow" id="ev" style="min-height:2.3rem">${["", ...EVERY].map((e) => `<option value="${e}" ${e === p.every ? "selected" : ""}>${e ? "Every " + e.replace(/^1 /, "") : "No reminder"}</option>`).join("")}</select></label>
+      <label class="row"><span class="k">Birthday</span><input class="in grow" id="bd" type="date" value="${/^\d{4}-\d\d-\d\d$/.test(p.bday) ? p.bday : ""}" style="min-height:2.3rem"></label>
+      ${phone ? `<div class="row"><span class="k">Phone</span><span class="grow num">${esc(phone)}</span></div>` : ""}${email ? `<div class="row"><span class="k">Email</span><span class="grow ellipsis">${esc(email)}</span></div>` : ""}
+    </div>
+    <div class="label" style="margin-top:0"><span class="grow">Notes</span><button data-act="note">Add</button></div>
+    ${p.notes.length ? `<div class="tlog">${p.notes.map((n) => `<div class="e"><span class="dot"></span><div><div class="when">${esc(n.kind || "Note")} · ${D.fmt(n.date || n.created.slice(0, 10), { day: "numeric", month: "short", year: "numeric" })}</div><div class="txt">${esc(n.text)}</div></div></div>`).join("")}</div>`
+      : `<p class="muted small" style="margin:0 .2rem">Notes from each catch-up show here, newest first.</p>`}
+    <div class="err" id="err" role="alert"></div>`, {
+    mount(root, close) {
+      root.addEventListener("click", async (e) => {
+        const a = e.target.closest("[data-act]"); if (!a) return;
+        const act = a.dataset.act, digits = (phone || "").replace(/[^\d+]/g, "");
+        if (act === "tel") amber.device.openURL(`tel:${digits}`);
+        if (act === "sms") amber.device.openURL(`sms:${digits}`);
+        if (act === "mail") amber.device.openURL(`mailto:${email}`);
+        if (act === "talked") { close(); await talked(i, true); setTimeout(() => noteSheet(i, true), 360); }
+        if (act === "note") { close(); setTimeout(() => noteSheet(i, false), 360); }
+      });
+      root.querySelector("#ev").onchange = async (e) => { const r = await cell(m, p, "every", e.target.value); if (!r.ok) root.querySelector("#err").textContent = r.error; };
+      root.querySelector("#bd").onchange = async (e) => { const r = await cell(m, p, "bday", e.target.value); if (!r.ok) root.querySelector("#err").textContent = r.error; };
+    },
+  });
+}
+
+// From Contacts: the system's picker hands over one person; the name goes in the note, numbers stay in the app.
+async function addPerson() {
+  const m = model(amber.note);
+  const r = await amber.device.contacts.pick();
+  let name = "", info = {};
+  if (r.ok && r.contact) { name = r.contact.name || r.contact.organization || ""; info = { phone: (r.contact.phones || [])[0] || null, email: (r.contact.emails || [])[0] || null }; }
+  sheet("Add someone", `<form id="af" class="fields">${r.ok ? "" : `<p class="muted small" style="margin:0">${esc(r.error || "Contacts isn't available here.")} Type the name instead.</p>`}
+    <label class="field">Name<input id="an" required value="${esc(name)}" ${name ? "" : "autofocus"}></label>
+    <label class="field">Birthday<input id="ab" type="date"></label>
+    <label class="field">Keep in touch<select id="ae">${EVERY.map((e) => `<option ${e === S.get().defaultEvery ? "selected" : ""}>${e}</option>`).join("")}</select></label>
+    <div class="err" id="err" role="alert"></div><button class="btn primary block" ${name ? "autofocus" : ""}>Add</button></form>`, {
+    mount(root, close) {
+      root.querySelector("#af").onsubmit = async (e) => {
+        e.preventDefault();
+        const n = root.querySelector("#an").value.trim(); if (!n) return;
+        const same = m && m.people.find((x) => x.name.toLowerCase() === n.toLowerCase());
+        if (same) { close(); setTimeout(() => personSheet(same.i), 360); return; }
+        if (!m) { const x = await amber.update({ op: "set_text", heading: "People", text: `| Name | Birthday | Last talked | Every |\n| --- | --- | --- | --- |\n| ${n.replace(/\|/g, "/")} | ${root.querySelector("#ab").value} | ${amber.note.today} | ${root.querySelector("#ae").value} |` }); if (!x.ok) root.querySelector("#err").textContent = "Add a heading named People to the note, and the table goes under it."; else close(); return; }
+        const col2 = (k) => m.t.columns[m.c[k]].name, values = { [col2("name")]: n };
+        if (m.c.bday >= 0) values[col2("bday")] = root.querySelector("#ab").value;
+        if (m.c.last >= 0) values[col2("last")] = amber.note.today;
+        if (m.c.every >= 0) values[col2("every")] = root.querySelector("#ae").value;
+        const x = await amber.update({ op: "append_row", table: m.t.index, values });
+        if (!x.ok) { root.querySelector("#err").textContent = x.error; return; }
+        if (info.phone || info.email) await amber.setData({ values: { contacts: { [key(n)]: info } } });
+        close(); announce(`${n} added.`);
+      };
+    },
+  });
+}
+
+document.addEventListener("click", (e) => {
+  if (e.target.closest("#more")) { showAll = !showAll; render(); return; }
+  const t = e.target.closest("#add,#settings,[data-talked],[data-remind],[data-bday],[data-person]"); if (!t || t.closest(".sheet")) return;
+  if (t.id === "add") addPerson();
+  else if (t.id === "settings") S.open("People settings");
+  else if (t.dataset.talked) talked(+t.dataset.talked);
+  else if (t.dataset.remind) remind(+t.dataset.remind);
+  else if (t.dataset.bday) remind(+t.dataset.bday, true);
+  else if (t.dataset.person) personSheet(+t.dataset.person);
+});
+document.addEventListener("input", (e) => { if (e.target.id === "q") { q = e.target.value; const pos = e.target.selectionStart; render(); const el = document.getElementById("q"); el.focus(); el.setSelectionRange(pos, pos); } });
+amber.onChange((note) => render(note));
+</script>
+</body>
+</html>
