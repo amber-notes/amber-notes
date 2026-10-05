@@ -49,7 +49,9 @@ function prepare(html: string): { html: string; integrity: Map<string, string> }
   const tags: string[] = [];
   const tag = rest.match(/<meta[^>]*name=["']amber-libs["'][^>]*>/i)?.[0];
   const content = tag?.match(/content=(['"])([\s\S]*?)\1/)?.[2] ?? "";
-  for (const item of content.split(",").map((x) => x.trim()).filter(Boolean)) {
+  // What a library needs loads first, as in the app (preact before its hooks, htm and the router).
+  const rank = (x: string) => ({ preact: 0, "preact-hooks": 1, htm: 1, router: 2 } as Record<string, number>)[x] ?? 3;
+  for (const item of content.split(",").map((x) => x.trim()).filter(Boolean).sort((a, b) => rank(a) - rank(b))) {
     const npm = item.match(/^npm:(.+?)#((?:sha256|sha384|sha512)-.+)$/);
     const path = npm ? `npm/${npm[1]}` : item;
     if (npm) integrity.set(path, npm[2]);
@@ -67,6 +69,7 @@ function prepare(html: string): { html: string; integrity: Map<string, string> }
 async function library(path: string): Promise<Uint8Array | null> {
   const { BUNDLED } = await import("../../supabase/functions/mcp/libraries.ts");
   const bundled = BUNDLED.find((b) => b.name === path);
+  if (bundled?.npm.startsWith("local:")) return await Deno.readFile(new URL(`../../${bundled.npm.slice(6)}`, import.meta.url)).catch(() => null);
   const npm = bundled ? bundled.npm : path.startsWith("npm/") ? path.slice(4) : null;
   if (!npm || !/@\d+\.\d+\.\d+/.test(npm)) return null;
   const file = new URL(npm.replace(/[^\w.@-]/g, "_"), libCache);
@@ -133,7 +136,7 @@ const bootstrap = (note: unknown, data: unknown, defaults: Record<string, unknow
     },
     ai: { available: () => Promise.resolve({ ok: true, available: false }), respond: unavailable("The on-device model") },
     lib: (name) => new Promise((ok, fail) => {
-      const g = ${JSON.stringify(Object.fromEntries([["chart","Chart"],["d3","d3"],["three","THREE"],["tone","Tone"],["dayjs","dayjs"],["marked","marked"],["purify","DOMPurify"],["anime","anime"],["confetti","confetti"],["topojson","topojson"],["world","worldAtlas110m"]]))}[name];
+      const g = ${JSON.stringify(Object.fromEntries([["chart","Chart"],["d3","d3"],["three","THREE"],["tone","Tone"],["dayjs","dayjs"],["marked","marked"],["purify","DOMPurify"],["anime","anime"],["confetti","confetti"],["topojson","topojson"],["world","worldAtlas110m"],["preact","preact"],["preact-hooks","preactHooks"],["htm","htm"],["router","amberRouter"]]))}[name];
       if (!g) return fail(new Error("No bundled library " + name));
       if (window[g]) return ok(window[g]);
       const s = document.createElement("script"); s.src = "${LIB_HOST}" + name; s.onload = () => ok(window[g]); s.onerror = () => fail(new Error("Couldn't load " + name)); document.head.append(s);

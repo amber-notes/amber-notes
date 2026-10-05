@@ -27,13 +27,17 @@ The page's own data (not the note's text; for state the person wouldn't type, li
 The device, through the system's own prompts (results go to the page only; write to the note explicitly if wanted): amber.device.reminders.create({ title, due, repeat: "daily" }), calendar.today() -> { events: [{ title, start, end, location, attendees }] },
   notify({ title, body, at | in }) -> { id }, notify.cancel(id), reminders.complete(id) / reminders.delete(id) (only ones an app made), openURL(url), photos.pick({ limit }) / camera.take() -> { files: [{ $file, thumb }] }, contacts.pick() -> { contact: { name, organization, emails, phones, addresses, birthday?, photo? } }, files.pick(), location.once() -> { lat, lon, place },
   maps.open({ lat, lon | query, directions }), maps.snapshot({ lat, lon, km | pins: [{ lat, lon, label }], fit, pin, width, height, dark }) -> { dataURL, region, points: [{ x, y }] } (points: where each pin landed, to draw on top). On-device AI: amber.ai.available(), amber.ai.respond(prompt, { instructions }) -> { text }. Every call returns { ok, ... } or { ok: false, error }.
-Settings the person can change without an AI: declare <meta name="amber-settings" content='{"settings": [{ "key": "budget", "label": "Monthly budget", "type": "number", "default": 15000 }]}'> (types: text, number, choice with "options", list, color, currency).
+Settings the person can change without an AI: declare <meta name="amber-settings" content='{"settings": [{ "key": "budget", "label": "Monthly budget", "type": "number", "default": 15000 }]}'> (types: text, number (with "min", "max", "step": a slider when both ends are given), choice with "options" (strings, or { "value": 120, "label": "2 minutes" }), multi (several options, a list), list, color, currency, toggle (true/false), time ("21:30"), date ("2026-10-05")).
+  Each may have "help" (a line under it), "section" (settings with the same section are grouped under that heading) and "showIf": "otherKey" or { "key": "otherKey", "equals": value } (shown only then).
+  amber.openSettings() opens that sheet; don't build a settings screen or a gear of your own.
   Amber Notes shows them in App Settings; read amber.settings (defaults filled in); onChange runs when they change. Use settings for names, goals, limits, currencies and categories instead of hardcoding them.
 Libraries: Amber Notes ships chart (Chart.js 4.4.4 → Chart), d3 (7.9.0 → d3), three (0.160.0 → THREE), tone (14.8.49 → Tone), dayjs (1.11.13), marked (12.0.2), purify (DOMPurify 3.1.6, use it on marked output),
-  anime (3.2.2), confetti (canvas-confetti 1.9.3), topojson (topojson-client 3.1.0), world (country shapes, TopoJSON → worldAtlas110m). Declare them: <meta name="amber-libs" content="chart, d3">, loaded before your scripts as those globals; or await amber.lib("three").
+  anime (3.2.2), confetti (canvas-confetti 1.9.3), topojson (topojson-client 3.1.0), world (country shapes, TopoJSON → worldAtlas110m).
+  For a real application with several screens and state, use Preact without a build step: preact (10.24.3 → preact), preact-hooks (→ preactHooks), htm (3.1.1 → htm), router (Amber Notes, 1 kB → amberRouter: <Router> with path="/item/:id", <a href="#/add">, route(), back(); kept in memory, the page cannot navigate).
+  <meta name="amber-libs" content="preact, preact-hooks, htm, router"> (what a library needs is loaded first), then const html = htm.bind(preact.h); const { useState } = preactHooks; preact.render(html`<${App} />`, document.body). Declare them: <meta name="amber-libs" content="chart, d3">, loaded before your scripts as those globals; or await amber.lib("three").
   Any other npm package: npm:name@1.2.3/path/to/file.min.js#sha384-<base64> in the same meta (a pinned version and an SRI hash, sha256/384/512); Amber Notes downloads it once from cdn.jsdelivr.net, checks the hash, keeps it on the device. Never paste a library into the page.
 Where the app is: amber.context = { embedded, width, height }; <html data-amber-context="widget|full">. The web view is the app's real size, with safe areas (env(safe-area-inset-*)); resizing and the keyboard work the standard web way.
-Network: the page itself can't reach anything. Declare hosts in <meta name="amber-needs" content='{"hosts": ["api.open-meteo.com"], "keys": [{ "name": "OpenWeather", "hosts": ["api.openweathermap.org"], "query": "appid={key}", "help": "How to get one" }]}'>
+Network: the page itself can't reach anything. Declare hosts ("*.archive.org" covers its servers, for services that redirect to numbered hosts) in <meta name="amber-needs" content='{"hosts": ["api.open-meteo.com"], "keys": [{ "name": "OpenWeather", "hosts": ["api.openweathermap.org"], "query": "appid={key}", "help": "How to get one" }]}'>
   and call amber.fetch(url, { method, headers, body, key }) -> { ok, status, body }. The person approves each host once and sees every request; with key, the app adds that API key (the page never sees it). Redirects are followed only to declared, approved hosts.
 Look like Amber Notes: the app sets these CSS variables on :root, already switched for light and dark, and gives body its font, text colour and background. Use them instead of your own colours and fonts:
   --amber-bg (the note's background), --amber-surface (cards and grouped rows), --amber-fill (controls, empty cells), --amber-text, --amber-text-secondary, --amber-separator,
@@ -127,6 +131,19 @@ Design around the person's job, with one focus per screen. Ask what they open th
 - Keep the current screen in the app's store (amber.store.set("screen", …)) so the app reopens where the person was, and in history (history.pushState) only if you handle the back gesture yourself.
 - On the first screen: one primary action, one or two key numbers, then a short list or view. If you're stacking more than four independent sections (a summary, a chart, a form, a history, settings…) on one screen, split them into screens or tabs. check_app warns when a screen holds too many.
 - Navigation controls are real buttons with labels (aria-current on the active tab), at least 44 pt, and the active place is obvious.
+- For an app with several screens and state, use Preact without a build step (bundled): <meta name="amber-libs" content="preact, preact-hooks, htm, router">, then
+
+```js
+const html = htm.bind(preact.h);
+const { useState } = preactHooks;
+const { Router, route, back } = amberRouter;
+function Today() { return html`<main><h1>${amber.note.title}</h1><button onClick=${() => route("/plan")}>Plan</button></main>`; }
+function Plan() { return html`<main><button onClick=${back}>Back</button><h2>Plan</h2></main>`; }
+function App() { return html`<${Router}><${Today} path="/" default /><${Plan} path="/plan" /></${Router}>`; }
+amber.onChange(() => preact.render(html`<${App} />`, document.body));
+```
+
+  The router keeps the screen in memory (the page can't navigate): links as <a href="#/item/3">, route("/add"), back(), useRoute(); a route like path="/item/:id" passes id. Re-render from amber.onChange so every screen follows the note. Plain JavaScript is fine for a one-screen app.
 
 ## Sizes
 
@@ -144,7 +161,7 @@ You own the layout at every size; the app must work and look intended across the
 ## Libraries
 
 Libraries load by name, never pasted into the app:
-- Bundled with Amber Notes (on the device, instant): chart (charts: line, bar, doughnut, radar; global Chart), d3 (data-driven SVG, scales, shapes, geo projections; global d3), three (3D with WebGL; global THREE), tone (sound and music (start audio after a tap); global Tone), dayjs (dates; global dayjs), marked (markdown to HTML (clean the result with purify); global marked), purify (cleans HTML; global DOMPurify), anime (animation; global anime), confetti (confetti; global confetti), topojson (TopoJSON to GeoJSON (maps with d3); global topojson), world (country shapes, 1:110m TopoJSON; global worldAtlas110m).
+- Bundled with Amber Notes (on the device, instant): chart (charts: line, bar, doughnut, radar; global Chart), d3 (data-driven SVG, scales, shapes, geo projections; global d3), three (3D with WebGL; global THREE), tone (sound and music (start audio after a tap); global Tone), dayjs (dates; global dayjs), marked (markdown to HTML (clean the result with purify); global marked), purify (cleans HTML; global DOMPurify), anime (animation; global anime), confetti (confetti; global confetti), topojson (TopoJSON to GeoJSON (maps with d3); global topojson), world (country shapes, 1:110m TopoJSON; global worldAtlas110m), preact (components and state for real multi-screen apps (with htm, no build step); global preact), preact-hooks (useState, useEffect, useMemo and the other hooks; global preactHooks), htm (JSX-like templates in plain JavaScript: html`<${App} />`; global htm), router (screens for a Preact app, kept in memory: <Router>, route(), back(), useRoute(); global amberRouter).
   Declare them: <meta name="amber-libs" content="chart, dayjs">; they load before your scripts. Or load one when needed: const THREE = await amber.lib("three").
 - Any other npm package: call resolve_package { name, version?, file? } and add the entry it returns to the same meta, like <meta name="amber-libs" content="chart, npm:qrcode-generator@1.4.4/qrcode.js#sha384-…">. Amber Notes downloads that exact file once, checks the hash and keeps it on the device; an entry without an exact version and a hash is refused. Pick a UMD or global build (it defines a global), not an ES module with imports. Prefer a bundled library when one does the job.
 - Never paste a library's code into the app: it bloats the app and can't be checked or updated. check_app flags pasted copies.

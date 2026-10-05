@@ -119,6 +119,19 @@ Design around the person's job, with one focus per screen. Ask what they open th
 - Keep the current screen in the app's store (amber.store.set("screen", …)) so the app reopens where the person was, and in history (history.pushState) only if you handle the back gesture yourself.
 - On the first screen: one primary action, one or two key numbers, then a short list or view. If you're stacking more than four independent sections (a summary, a chart, a form, a history, settings…) on one screen, split them into screens or tabs. check_app warns when a screen holds too many.
 - Navigation controls are real buttons with labels (aria-current on the active tab), at least 44 pt, and the active place is obvious.
+- For an app with several screens and state, use Preact without a build step (bundled): <meta name="amber-libs" content="preact, preact-hooks, htm, router">, then
+
+\`\`\`js
+const html = htm.bind(preact.h);
+const { useState } = preactHooks;
+const { Router, route, back } = amberRouter;
+function Today() { return html\`<main><h1>\${amber.note.title}</h1><button onClick=\${() => route("/plan")}>Plan</button></main>\`; }
+function Plan() { return html\`<main><button onClick=\${back}>Back</button><h2>Plan</h2></main>\`; }
+function App() { return html\`<\${Router}><\${Today} path="/" default /><\${Plan} path="/plan" /></\${Router}>\`; }
+amber.onChange(() => preact.render(html\`<\${App} />\`, document.body));
+\`\`\`
+
+  The router keeps the screen in memory (the page can't navigate): links as <a href="#/item/3">, route("/add"), back(), useRoute(); a route like path="/item/:id" passes id. Re-render from amber.onChange so every screen follows the note. Plain JavaScript is fine for a one-screen app.
 
 ## Sizes
 

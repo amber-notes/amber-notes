@@ -20,6 +20,10 @@ export const BUNDLED: { name: string; global: string; version: string; npm: stri
   { name: "confetti", global: "confetti", version: "1.9.3", npm: "canvas-confetti@1.9.3/dist/confetti.browser.js", what: "confetti", signature: /canvas-confetti|confettiCannon/ },
   { name: "topojson", global: "topojson", version: "3.1.0", npm: "topojson-client@3.1.0/dist/topojson-client.min.js", what: "TopoJSON to GeoJSON (maps with d3)", signature: /topojson-client|https:\/\/github\.com\/topojson/ },
   { name: "world", global: "worldAtlas110m", version: "2.0.2", npm: "world-atlas@2.0.2/countries-110m.json", what: "country shapes, 1:110m TopoJSON", signature: /"objects":\s*\{\s*"countries"/ },
+  { name: "preact", global: "preact", version: "10.24.3", npm: "preact@10.24.3/dist/preact.umd.js", what: "components and state for real multi-screen apps (with htm, no build step)", signature: /preactjs|__H:|\.__k\b/ },
+  { name: "preact-hooks", global: "preactHooks", version: "10.24.3", npm: "preact@10.24.3/hooks/dist/hooks.umd.js", what: "useState, useEffect, useMemo and the other hooks", signature: /preactHooks/ },
+  { name: "htm", global: "htm", version: "3.1.1", npm: "htm@3.1.1/dist/htm.umd.js", what: "JSX-like templates in plain JavaScript: html`<${App} />`", signature: /htm\.umd|\bhtm=function/ },
+  { name: "router", global: "amberRouter", version: "1.0.0", npm: "local:Pane/Resources/AppLibraries/router.js", what: "screens for a Preact app, kept in memory: <Router>, route(), back(), useRoute()", signature: /amberRouter\s*=/ },
 ];
 
 /** npm:<name>@<x.y.z>[/<file>]#<sha256|sha384|sha512>-<base64>: the app's own rule (page.ts). */
