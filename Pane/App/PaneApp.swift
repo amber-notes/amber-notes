@@ -624,6 +624,16 @@ enum Seed {
         // The imported-library capture shows exactly the imported counts, with no welcome note.
         if (welcome || demo) && !DemoData.importedLibrary { context.createNote(in: .folder(notes.id), body: Self.welcome) }
         if demo { DemoData.load(into: context, main: notes) }
+        // A note that is already an app, next to the welcome note, so the first day shows what
+        // your AI can make of a note.
+        if welcome, !demo, !DemoData.importedLibrary, let url = Bundle.main.url(forResource: "sample-habit-tracker", withExtension: "html"),
+           let html = try? String(contentsOf: url, encoding: .utf8) {
+            let habits = context.createNote(in: .folder(notes.id), body: Capture.habitNote().replacingOccurrences(
+                of: "Small things, most days. A ✓ means done.",
+                with: "Small things, most days. A ✓ means done. This note is also an app, made by AI: switch between App and Text at the top."))
+            habits.updatedAt = .now.addingTimeInterval(-60)
+            NotePageStore.shared.setHere(habits.id, .init(html: html, by: "Amber Notes", at: .now))
+        }
     }
 
     static let welcome = """

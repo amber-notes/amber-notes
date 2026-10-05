@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>Budget</title>
+<meta name="amber-settings" content='{"settings":[{"key":"budget","label":"Monthly budget","type":"number","default":15000},{"key":"currency","label":"Currency","type":"currency","default":"SEK"},{"key":"categories","label":"Categories","type":"list","default":["Home","Food","Travel","Fun"],"help":"The choices when you add an expense."}]}'>
 <style>
   /* Amber Notes' own colours and type, from the app (--amber-*); categories get the amber first. */
   :root { --bg: var(--amber-bg); --card: var(--amber-surface); --ink: var(--amber-text); --muted: var(--amber-text-secondary); --line: var(--amber-separator);
@@ -41,7 +42,8 @@
 <main id="app"></main>
 <script>
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-  const kr = (n) => n.toLocaleString("sv-SE", { maximumFractionDigits: 0 }) + " kr";
+  // Money in the currency from App Settings (amber.settings), no AI needed to change it.
+  const kr = (n) => { const c = amber.settings.currency || "SEK"; return c === "SEK" ? n.toLocaleString("sv-SE", { maximumFractionDigits: 0 }) + " kr" : n.toLocaleString("en-GB", { style: "currency", currency: c, maximumFractionDigits: 0 }); };
   let lastCount = null, error = "";
 
   function render(note) {
@@ -62,7 +64,7 @@
       <h1>${esc(note.title)}</h1>
       <div class="layout"><section>
       <div class="total">${kr(total)}</div>
-      <div class="sub">${rows.length} entries</div>
+      <div class="sub">${rows.length} entries · ${kr(Math.max(0, (amber.settings.budget || 0) - total))} left of ${kr(amber.settings.budget || 0)}</div>
       <div class="bar">${cats.map(([k, v], i) => `<div style="width:${(100 * v / (total || 1)).toFixed(2)}%;background:${color(i)}"></div>`).join("")}</div>
       <div class="card">${cats.map(([k, v], i) => `<div class="cat"><div class="dot" style="background:${color(i)}"></div><div class="grow">${esc(k)}</div><div class="muted">${Math.round(100 * v / (total || 1))}%</div><div class="amt">${kr(v)}</div></div>`).join("")}</div>
       </section><section>
@@ -70,7 +72,7 @@
       <div class="card">
         <form id="add">
           <input name="item" placeholder="What" required>
-          <select name="cat">${cats.map(([k]) => `<option>${esc(k)}</option>`).join("")}</select>
+          <select name="cat">${[...new Set([...(amber.settings.categories || []), ...cats.map(([k]) => k)])].map((k) => `<option>${esc(k)}</option>`).join("")}</select>
           <input name="amount" placeholder="kr" inputmode="decimal" required>
           <button>Add</button>
         </form>

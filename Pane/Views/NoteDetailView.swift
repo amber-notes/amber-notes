@@ -25,6 +25,10 @@ struct NoteDetailView: View {
     @State private var keyNeeded: NotePageNetwork.KeyNeed?
     @State private var addingKey: APIKeyForm.Draft?
     @State private var showNetLog = false
+    @State private var showMakeApp = false
+    @State private var showAppSettings = false
+    /// "Make this an app", once per note, on notes that look like one.
+    @State private var showChip = false
 
     struct HostAsk: Identifiable {
         let host: String
@@ -90,6 +94,19 @@ struct NoteDetailView: View {
             }
             .sheet(item: $addingKey) { d in APIKeyForm(draft: d) }
             .sheet(isPresented: $showNetLog) { NotePageNetLogView(noteID: note.id) }
+            .sheet(isPresented: $showMakeApp) { MakeAppSheet(title: note.title, body_: note.body) }
+            .sheet(isPresented: $showAppSettings) { if let p = notePage { AppSettingsSheet(noteID: note.id, html: p.html) } }
+            .overlay(alignment: .bottom) {
+                if showChip, notePage == nil, receipt == nil {
+                    MakeAppChip(open: { showChip = false; showMakeApp = true }, dismiss: { withAnimation(.smooth) { showChip = false } })
+                        #if os(macOS)
+                        .padding(.bottom, 20)
+                        #else
+                        .padding(.bottom, 64)
+                        #endif
+                        .transition(AIReceipt.transition(reduceMotion: reduceMotion))
+                }
+            }
             .onChange(of: note.aiEditedAt) { _, _ in showAIEdit() }
             .onChange(of: NotePageStore.shared[note.id]) { _, now in pageArrived(now) }
             .onChange(of: mode) { _, now in if now == .text { tintPageEdits() } }
@@ -110,6 +127,12 @@ struct NoteDetailView: View {
                 receipt = nil
                 shownPage = NotePageStore.shared[note.id]
                 if shownPage != nil { NotePageTiming.open(note.id) }
+                showChip = false
+                if shownPage == nil, !note.isLocked, !MakeAnApp.chipShown(note.id), MakeAnApp.looksLikeAnApp(note.body) {
+                    MakeAnApp.markChipShown(note.id)
+                    try? await Task.sleep(for: .seconds(1.2))
+                    withAnimation(.spring(duration: 0.45, bounce: 0.25)) { showChip = true }
+                }
                 pageTint = nil
                 mode = .page
                 showAIEdit()
@@ -393,8 +416,16 @@ struct NoteDetailView: View {
     /// Page / Text as a choice in More, with the page's other actions.
     @ViewBuilder
     private var pageMenuItems: some View {
-        if notePage != nil {
+        if notePage == nil, !note.isLocked, note.trashedAt == nil {
+            Button("Make It an App…", systemImage: NoteAppMark.symbol) { showMakeApp = true }
+                .accessibilityIdentifier("editor.makeApp")
+        }
+        if let page = notePage {
             Section {
+                if !NotePageSettings.declared(in: page.html).isEmpty {
+                    Button("App Settings…", systemImage: "slider.horizontal.3") { showAppSettings = true }
+                        .accessibilityIdentifier("editor.appSettings")
+                }
                 if Self.pageToggle == .menu {
                     Picker("View as", selection: $mode.animation(.smooth(duration: 0.25))) {
                         Label("App", systemImage: NoteAppMark.symbol).tag(NoteMode.page)

@@ -101,7 +101,8 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
     func load(html: String, body: String, data: NotePageData.Doc = NotePageData.empty(), restore: String? = nil) {
         let ucc = webView.configuration.userContentController
         ucc.removeAllUserScripts()
-        ucc.addUserScript(WKUserScript(source: Self.bootstrap(data: NotePage.data(of: body), store: data, restore: restore), injectionTime: .atDocumentStart, forMainFrameOnly: true, in: .page))
+        ucc.addUserScript(WKUserScript(source: Self.bootstrap(data: NotePage.data(of: body), store: data, restore: restore, settings: NotePageSettings.defaults(in: html)),
+                                       injectionTime: .atDocumentStart, forMainFrameOnly: true, in: .page))
         loading = true
         webView.loadHTMLString(Self.sandboxed(html), baseURL: nil)
     }
@@ -128,7 +129,8 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
         return ((d["idle"] as? Double) ?? .infinity, (d["focused"] as? Bool) ?? false, json)
     }
 
-    static func bootstrap(data: [String: Any], store: NotePageData.Doc = NotePageData.empty(), restore: String? = nil) -> String {
+    static func bootstrap(data: [String: Any], store: NotePageData.Doc = NotePageData.empty(), restore: String? = nil, settings: [String: Any] = [:]) -> String {
+        let defaults = (try? JSONSerialization.data(withJSONObject: settings)).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
         let json = (try? JSONSerialization.data(withJSONObject: data)).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
         let storeJSON = String(data: NotePageData.encode(store), encoding: .utf8) ?? "{}"
         return """
@@ -201,6 +203,9 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
             if (data) amber.data = data;
             for (const fn of listeners) { try { fn(note, amber.data); } catch (e) { console.error(e); } }
           } });
+          // App settings (<meta name="amber-settings">): the defaults, with what you set in App Settings.
+          const settingDefaults = \(defaults);
+          Object.defineProperty(amber, "settings", { get() { return Object.assign({}, settingDefaults, (amber.data.values && amber.data.values.settings) || {}); } });
           window.amber = amber;
           // For swapping in a new version while you use it: when you last touched the page, what's
           // in its fields and where it's scrolled; and putting that back into the new version.

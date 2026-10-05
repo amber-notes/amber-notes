@@ -614,4 +614,30 @@ import WebKit
         for _ in 0..<100 where result == nil { try await Task.sleep(for: .milliseconds(50)) }
         #expect(result?.0 == true, "\(result?.1 ?? ["no answer"])")
     }
+
+    // MARK: App settings and Make It an App
+
+    @Test func appSettingsAreDeclaredAndReachThePage() async throws {
+        let html = #"<meta name="amber-settings" content='{"settings":[{"key":"budget","label":"Monthly budget","type":"number","default":15000},{"key":"cats","type":"list","default":["Home","Food"]},{"key":"x","type":"bogus"}]}'><p id=p></p><script>amber.onChange(() => { p.textContent = amber.settings.budget + "|" + amber.settings.cats.join(",") })</script>"#
+        let s = NotePageSettings.declared(in: html)
+        #expect(s.map(\.key) == ["budget", "cats"])
+        #expect(s.first?.title == "Monthly budget")
+        let sandbox = NotePageSandbox(rules: try await NotePageSandbox.prepare())
+        sandbox.load(html: html, body: "x")
+        try await run(sandbox.webView, until: "document.getElementById('p') && document.getElementById('p').textContent === '15000|Home,Food'")
+        // Saved values win over the defaults and reach the page as data.
+        var doc = NotePageData.empty()
+        doc["values"] = ["settings": ["budget": 20000]]
+        sandbox.push(body: "x", data: doc)
+        try await run(sandbox.webView, until: "document.getElementById('p').textContent === '20000|Home,Food'")
+    }
+
+    @Test func makeItAnAppSuggestsFromWhatTheNoteHolds() {
+        #expect(MakeAnApp.looksLikeAnApp(Capture.budgetNote))
+        #expect(MakeAnApp.looksLikeAnApp("List\n- [ ] a\n- [ ] b\n- [x] c"))
+        #expect(!MakeAnApp.looksLikeAnApp("Just thoughts\n\nNothing to track."))
+        #expect(MakeAnApp.idea(for: Capture.budgetNote).hasPrefix("a budget app"))
+        #expect(MakeAnApp.idea(for: Capture.habitNote()).hasPrefix("a tracker app"))
+        #expect(MakeAnApp.prompt(title: "Packing", body: "Packing\n- [ ] a\n- [ ] b\n- [ ] c").contains("make my note \u{201C}Packing\u{201D} an app: a checklist app"))
+    }
 }

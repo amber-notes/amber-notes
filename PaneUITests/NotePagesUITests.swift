@@ -13,8 +13,9 @@ final class NotePagesUITests: XCTestCase {
 
     func launch(_ extra: [String]) {
         app = XCUIApplication()
-        // The showcase brings its own notes (its habit tracker would clash with the demo's).
-        app.launchArguments = ["-uitest", "-demo"] + (extra.contains("-showcase") ? [] : ["-pageDemo"]) + extra
+        // The showcase brings its own notes; a first launch has no demo library at all.
+        let base = extra.contains("-firstLaunch") ? ["-uitest"] : ["-uitest", "-demo"] + (extra.contains("-showcase") ? [] : ["-pageDemo"])
+        app.launchArguments = base + extra.filter { $0 != "-firstLaunch" }
         app.launch()
     }
 
@@ -360,6 +361,99 @@ final class NotePagesUITests: XCTestCase {
         pause(1.5)
         shot("52-live-continue")
         mark("live-end")
+        pause(1)
+    }
+
+    // MARK: Discovery
+
+    /// A new account: next to the welcome note, a habit tracker that is already an app.
+    func testFirstLaunch() {
+        launch(["-firstLaunch"])
+        mark("first-start")
+        pause(2.5)
+        let all = app.staticTexts["All Notes"].firstMatch
+        if all.waitForExistence(timeout: 4) { all.tap() }
+        pause(2)
+        shot("60-first-list")
+        let row = app.staticTexts["Habit tracker"].firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 4))
+        row.tap()
+        pause(3)
+        shot("61-first-app")
+        mode("Text")
+        pause(2)
+        shot("62-first-text")
+        mark("first-end")
+        pause(1)
+    }
+
+    /// A note that looks like a tracker suggests itself once; with no AI connected, the sheet leads
+    /// to connecting one, then the prompt.
+    func testMakeItAnApp() {
+        launch(["-open", "Evening tracker"] + (ProcessInfo.processInfo.environment["AI_CONNECTED"] == "1" ? ["-aiConnected"] : []))
+        mark("make-start")
+        let chip = app.buttons["makeApp.chip"].firstMatch
+        XCTAssertTrue(chip.waitForExistence(timeout: 6), "the suggestion shows")
+        pause(1.2)
+        shot("63-make-chip")
+        chip.tap()
+        pause(1.5)
+        shot("64-make-sheet")
+        let connect = app.buttons["makeApp.connect"].firstMatch
+        if connect.exists {
+            connect.tap()
+            pause(2)
+            shot("65-make-connect")
+            // Settings opens on the account (sign-in first, without one); back to the prompt.
+            app.swipeDown(velocity: .fast)
+            pause(1.2)
+            app.buttons["makeApp.showPrompt"].firstMatch.tap()
+            pause(1.2)
+        }
+        shot("66-make-prompt")
+        app.buttons["makeApp.copy"].firstMatch.tap()
+        pause(1.5)
+        shot("67-make-copied")
+        mark("make-end")
+        pause(1)
+    }
+
+    /// App Settings: change the budget, the currency and the categories; the app follows at once.
+    func testAppSettings() {
+        launch(["-open", "October budget", "-seedPage", "October budget=\(pages)/budget.html"])
+        mark("settings-start")
+        pause(3)
+        shot("70-settings-before")
+        app.buttons["editor.more"].firstMatch.tap()
+        pause(0.8)
+        app.buttons["editor.appSettings"].firstMatch.tap()
+        pause(1.5)
+        shot("71-settings-sheet")
+        let budget = app.textFields["appSettings.budget"].firstMatch
+        XCTAssertTrue(budget.waitForExistence(timeout: 4))
+        budget.tap()
+        budget.press(forDuration: 1.0)
+        if app.menuItems["Select All"].waitForExistence(timeout: 2) { app.menuItems["Select All"].tap() }
+        budget.typeText("20000")
+        let currency = app.buttons["appSettings.currency"].firstMatch
+        if currency.waitForExistence(timeout: 2) {
+            currency.tap()
+            pause(0.8)
+            let eur = app.buttons["EUR"].firstMatch
+            if eur.waitForExistence(timeout: 2) { eur.tap() } else if app.staticTexts["EUR"].exists { app.staticTexts["EUR"].tap() }
+        }
+        let add = app.textFields["appSettings.categories.new"].firstMatch
+        if add.waitForExistence(timeout: 2) {
+            add.tap()
+            add.typeText("Health")
+            app.buttons["appSettings.categories.add"].firstMatch.tap()
+        }
+        pause(1)
+        shot("72-settings-changed")
+        app.buttons["appSettings.done"].firstMatch.tap()
+        pause(2)
+        shot("73-settings-after")
+        mark("settings-end")
         pause(1)
     }
 }
