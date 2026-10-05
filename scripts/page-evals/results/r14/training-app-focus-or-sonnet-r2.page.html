@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="amber-settings" content='{"settings": [{"key": "unit", "label": "Weight unit", "type": "choice", "options": ["kg", "lb"], "default": "kg"}, {"key": "step", "label": "Weight step", "type": "number", "default": 2.5, "min": 0.5, "max": 10, "step": 0.5, "help": "How much the + and − buttons change the weight"}]}'>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  .wrap { max-width: var(--amber-content-max); margin: 0 auto; padding: 16px var(--amber-gutter, 16px) 64px; }
+  h1 { font-size: 1.75rem; letter-spacing: -.02em; margin: 4px 0 12px; }
+  h2 { font-size: .8rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--amber-text-secondary); margin: 22px 2px 8px; }
+  h3 { font-size: 1.15rem; margin: 0; }
+  button { font: inherit; color: var(--amber-text); cursor: pointer; }
+  .tabs { display: flex; gap: 4px; padding: 4px; background: var(--amber-fill); border-radius: 14px; margin-bottom: 14px; }
+  .tabs button { flex: 1; min-height: 44px; border: 0; background: transparent; border-radius: 10px; font-weight: 600; }
+  .tabs button[aria-selected="true"] { background: var(--amber-text); color: var(--amber-bg); }
+  .days { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .day { min-height: 44px; min-width: 64px; padding: 0 16px; border-radius: 99px; border: 1px solid var(--amber-separator); background: var(--amber-surface); font-weight: 600; }
+  .day[aria-pressed="true"] { background: var(--amber-text); color: var(--amber-bg); border-color: var(--amber-text); }
+  .day small { font-weight: 500; opacity: .8; }
+  .muted { color: var(--amber-text-secondary); font-size: .9rem; }
+  .card { background: var(--amber-surface); border: 1px solid var(--amber-separator); border-radius: var(--amber-radius); padding: 14px; }
+  .hero { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .big { font-size: 2.2rem; font-weight: 800; letter-spacing: -.03em; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .meter { height: 10px; border-radius: 5px; background: var(--amber-accent-soft); overflow: hidden; margin: 10px 0 2px; }
+  .meter div { height: 100%; background: var(--amber-accent); transition: width .2s; }
+  .grid { display: grid; gap: 12px; margin-top: 12px; grid-template-columns: 1fr; }
+  @media (min-width: 900px) { .grid { grid-template-columns: 1fr 1fr; } .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; } }
+  .ex.done { border-color: var(--amber-accent); }
+  .exhead { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .target { font-weight: 700; font-variant-numeric: tabular-nums; background: var(--amber-accent-soft); color: var(--amber-accent-text); padding: 2px 10px; border-radius: 99px; font-size: .9rem; white-space: nowrap; }
+  .wt { display: flex; align-items: center; gap: 10px; margin: 12px 0 6px; }
+  .wt .v { flex: 1; text-align: center; font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .round { width: 48px; height: 48px; border-radius: 50%; border: 1px solid var(--amber-separator); background: var(--amber-fill); font-size: 1.5rem; line-height: 1; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .chip { width: 60px; height: 60px; border-radius: 16px; border: 2px dashed var(--amber-separator); background: var(--amber-fill); font-size: 1.4rem; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--amber-text-secondary); }
+  .chip.on { border: 2px solid var(--amber-accent); background: var(--amber-accent); color: var(--amber-on-accent); }
+  .chip.fail { background: var(--amber-surface); border: 2px solid var(--amber-danger); color: var(--amber-danger); }
+  .chip.plus { border-style: solid; font-size: 1rem; }
+  .link { border: 0; background: none; color: var(--amber-accent-text); font-weight: 600; min-height: 44px; padding: 0 8px; text-decoration: underline; }
+  .row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--amber-separator); min-height: 48px; }
+  .row:first-child { border-top: 0; }
+  .grow { flex: 1; min-width: 0; }
+  input, select { font: inherit; font-size: 1rem; color: var(--amber-text); background: var(--amber-field); border: 1px solid var(--amber-field-border); border-radius: 10px; padding: 8px 10px; min-height: 44px; width: 100%; }
+  .sm { width: 72px; text-align: center; }
+  .btn { min-height: 44px; border: 0; border-radius: 10px; background: var(--amber-accent); color: var(--amber-on-accent); font-weight: 700; padding: 0 16px; }
+  .btn.ghost { background: var(--amber-fill); color: var(--amber-text); border: 1px solid var(--amber-separator); }
+  .del { min-width: 44px; min-height: 44px; border: 0; background: none; color: var(--amber-danger); font-size: 1.3rem; }
+  .add { display: flex; gap: 8px; align-items: end; flex-wrap: wrap; margin-top: 10px; }
+  .add label { display: flex; flex-direction: column; gap: 3px; font-size: .8rem; color: var(--amber-text-secondary); }
+  .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 12px 0; }
+  @media (min-width: 600px) { .stats { grid-template-columns: repeat(4, 1fr); } }
+  .stat { background: var(--amber-surface); border: 1px solid var(--amber-separator); border-radius: var(--amber-radius); padding: 12px; }
+  .stat b { display: block; font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+  svg { width: 100%; height: auto; display: block; }
+  .axis { fill: var(--amber-text-secondary); font-size: 10px; }
+  .ln { stroke: var(--amber-accent); fill: none; stroke-width: 2.5; stroke-linejoin: round; }
+  .dot { fill: var(--amber-accent); stroke: var(--amber-surface); stroke-width: 2; }
+  .grid-l { stroke: var(--amber-separator); stroke-width: 1; }
+  .err { color: var(--amber-danger); min-height: 1.2em; }
+  .tag { font-size: .75rem; font-weight: 700; color: var(--amber-accent-text); }
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script>
+const DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" })[c]);
+const cap = (s) => { s = String(s).trim(); return s.charAt(0).toUpperCase() + s.slice(1); };
+const keyOf = (s) => String(s).trim().toLowerCase();
+const fmt = (n) => (Math.round(n * 100) / 100).toString();
+const dayOf = (iso) => DAYS[(new Date(iso + "T12:00:00Z").getUTCDay() + 6) % 7];
+const addDays = (iso, n) => { const d = new Date(iso + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+const monday = (iso) => addDays(iso, -DAYS.indexOf(dayOf(iso)));
+const unit = () => amber.settings.unit || "kg";
+const step = () => Number(amber.settings.step) || 2.5;
+
+let tab = "today", selDay = null, selEx = null, error = "";
+let local = {};      // key -> reps[] while saving
+let wLocal = {};     // key -> weight chosen today
+let pending = 0, queue = Promise.resolve();
+
+function findTable(note) {
+  return note.tables.find((t) => t.columns.some((c) => /^date$/i.test(c.name)) && t.columns.some((c) => /exercise/i.test(c.name)));
+}
+function cols(t) {
+  const f = (re) => t.columns.findIndex((c) => re.test(c.name));
+  return { d: f(/^date$/i), e: f(/exercise/i), w: f(/weight/i), r: f(/reps/i) };
+}
+function logRows(note) {
+  const t = findTable(note); if (!t) return [];
+  const c = cols(t);
+  return t.rows.map((r, i) => ({ i, date: r[c.d], name: r[c.e], key: keyOf(r[c.e] || ""), w: parseFloat(String(r[c.w]).replace(",", ".")) || 0,
+    reps: String(r[c.r] || "").split(/[,\s]+/).filter(Boolean).map(Number).filter(Number.isFinite) })).filter((r) => r.date && r.key);
+}
+function parsePlan(md) {
+  const lines = md.split("\n"); const out = []; let inPlan = false;
+  for (const l of lines) {
+    if (/^#{1,6}\s/.test(l)) { inPlan = /^#{1,6}\s*plan\b/i.test(l); continue; }
+    if (!inPlan) continue;
+    const m = l.match(/^\s*[-*]\s*([A-Za-z]{3})[a-z]*\s*:\s*(.*)$/); if (!m) continue;
+    const day = DAYS.find((d) => d.toLowerCase() === m[1].toLowerCase()); if (!day) continue;
+    const items = m[2].split(",").map((s) => s.trim()).filter(Boolean).map((s) => {
+      const x = s.match(/^(.+?)\s+(\d+)\s*[x×]\s*(\d+|max)$/i);
+      return x ? { name: x[1].trim(), sets: +x[2], reps: /max/i.test(x[3]) ? "max" : +x[3] } : { name: s, sets: 3, reps: 5 };
+    });
+    out.push({ day, items });
+  }
+  return out.sort((a, b) => DAYS.indexOf(a.day) - DAYS.indexOf(b.day));
+}
+function savePlan(plan) {
+  const text = plan.filter((p) => p.items.length || true).map((p) => `- ${p.day}: ${p.items.map((i) => `${i.name} ${i.sets}x${i.reps}`).join(", ")}`).join("\n");
+  return amber.update({ op: "set_text", heading: "Plan", text }).then((r) => { error = r.ok ? "" : r.error; if (!r.ok) render(); });
+}
+const clonePlan = () => JSON.parse(JSON.stringify(parsePlan(amber.note.markdown)));
+
+function defaultDay(plan, today) {
+  if (!plan.length) return null;
+  const ti = DAYS.indexOf(dayOf(today));
+  for (let k = 0; k < 7; k++) { const d = DAYS[(ti + k) % 7]; if (plan.some((p) => p.day === d)) return d; }
+  return plan[0].day;
+}
+
+function exState(note, rows, item) {
+  const key = keyOf(item.name), today = note.today;
+  const mine = rows.filter((r) => r.key === key);
+  const todayRow = mine.find((r) => r.date === today);
+  const prev = mine.filter((r) => r.date < today).sort((a, b) => (a.date < b.date ? -1 : 1)).pop();
+  const reps = local[key] ?? (todayRow ? todayRow.reps : []);
+  const base = todayRow ? todayRow.w : prev ? prev.w : item.reps === "max" ? 0 : 20;
+  const w = wLocal[key] ?? base;
+  let suggest = null;
+  if (prev && prev.w > 0 && typeof item.reps === "number" && prev.reps.length >= item.sets && prev.reps.every((x) => x >= item.reps)) suggest = prev.w + step();
+  return { key, reps, w, prev, todayRow, suggest };
+}
+
+function enqueue(name, key, w, reps) {
+  pending++;
+  queue = queue.then(async () => {
+    const note = amber.note, t = findTable(note); if (!t) return;
+    const c = cols(t), today = note.today;
+    const idx = t.rows.findIndex((r) => r[c.d] === today && keyOf(r[c.e]) === key);
+    let res;
+    if (!reps.length && wLocal[key] === undefined) res = { ok: true };
+    else if (!reps.length) res = idx >= 0 ? await amber.update({ op: "delete_row", table: t.index, row: idx }) : { ok: true };
+    else if (idx >= 0) res = await amber.update([
+      { op: "set_cell", table: t.index, row: idx, col: t.columns[c.w].name, value: fmt(w) },
+      { op: "set_cell", table: t.index, row: idx, col: t.columns[c.r].name, value: reps.join(",") }]);
+    else res = await amber.update({ op: "append_row", table: t.index, values: { [t.columns[c.d].name]: today, [t.columns[c.e].name]: cap(name), [t.columns[c.w].name]: fmt(w), [t.columns[c.r].name]: reps.join(",") } });
+    error = res.ok ? "" : res.error;
+  }).catch((e) => { error = String(e); }).finally(() => { pending--; if (!pending) { local = {}; } render(); });
+}
+
+function tapSet(item, i) {
+  const st = exState(amber.note, logRows(amber.note), item);
+  const reps = st.reps.slice();
+  const dflt = () => item.reps === "max" ? (st.prev?.reps[reps.length] ?? st.prev?.reps.at(-1) ?? 8) : item.reps;
+  if (i >= reps.length) reps.push(dflt());
+  else if (reps[i] > 0) reps[i]--;
+  else if (i === reps.length - 1) reps.pop();
+  else reps[i] = dflt();
+  local[st.key] = reps; render();
+  enqueue(item.name, st.key, st.w, reps);
+}
+function setWeight(item, w) {
+  const st = exState(amber.note, logRows(amber.note), item);
+  wLocal[st.key] = Math.max(0, w); render();
+  if (st.reps.length) enqueue(item.name, st.key, wLocal[st.key], st.reps);
+}
+
+function viewToday(note, rows, plan) {
+  if (!plan.length) return `<div class="card">No plan yet. Open the Plan tab to add a day.</div><h2>Recent log</h2><div class="card">${rows.slice().reverse().slice(0, 6).map((r) => `<div class="row"><span class="grow">${esc(cap(r.name))}<br><span class="muted">${esc(r.date)}</span></span><b>${r.w ? fmt(r.w) + " " + unit() : "BW"}</b><span>× ${esc(r.reps.join(", "))}</span></div>`).join("") || `<div class="muted">Nothing logged yet.</div>`}</div>`;
+  const day = plan.some((p) => p.day === selDay) ? selDay : defaultDay(plan, note.today);
+  const p = plan.find((x) => x.day === day);
+  const isToday = day === dayOf(note.today);
+  const states = p.items.map((it) => exState(note, rows, it));
+  const total = p.items.reduce((s, it) => s + it.sets, 0);
+  const done = p.items.reduce((s, it, k) => s + Math.min(it.sets, states[k].reps.length), 0);
+  return `
+  <div class="days" role="group" aria-label="Training day">${plan.map((x) => `<button class="day" data-act="day" data-day="${x.day}" aria-pressed="${x.day === day}">${x.day}${x.day === dayOf(note.today) ? " <small>· today</small>" : ""}</button>`).join("")}</div>
+  <div class="card"><div class="hero"><div><div class="big">${done}/${total} sets</div><div class="muted">${isToday ? "Today" : `${day} session, logged under today's date`} · ${p.items.length} exercise${p.items.length === 1 ? "" : "s"}${done === total && total ? " · Done 💪" : ""}</div></div></div>
+  <div class="meter" role="img" aria-label="${done} of ${total} sets done"><div style="width:${total ? 100 * done / total : 0}%"></div></div></div>
+  ${!isToday && !plan.some((x) => x.day === dayOf(note.today)) ? `<p class="muted">Rest day today — next up is ${esc(day)}.</p>` : ""}
+  <div class="grid">${p.items.map((it, k) => {
+    const st = states[k], n = Math.max(it.sets, st.reps.length);
+    const complete = st.reps.length >= it.sets;
+    const chips = Array.from({ length: n }, (_, i) => {
+      const v = st.reps[i];
+      const has = v !== undefined;
+      const fail = has && typeof it.reps === "number" && v < it.reps;
+      return `<button class="chip${has ? (fail ? " fail" : " on") : ""}" data-act="set" data-ex="${k}" data-i="${i}" aria-label="${esc(cap(it.name))} set ${i + 1}: ${has ? v + " reps" : "not done"}">${has ? v : (it.reps === "max" ? "max" : it.reps)}</button>`;
+    }).join("");
+    return `<div class="card ex${complete ? " done" : ""}">
+      <div class="exhead"><h3>${esc(cap(it.name))}</h3><span class="target">${it.sets} × ${it.reps}</span></div>
+      <div class="wt"><button class="round" data-act="w" data-ex="${k}" data-d="-1" aria-label="Lower weight">−</button>
+        <div class="v">${st.w ? fmt(st.w) + " " + unit() : "Bodyweight"}</div>
+        <button class="round" data-act="w" data-ex="${k}" data-d="1" aria-label="Raise weight">+</button></div>
+      <div class="muted">${st.prev ? `Last time ${fmt(st.prev.w)} ${unit()} × ${esc(st.prev.reps.join(", "))}` : "First time — pick a starting weight"}${st.suggest && st.w !== st.suggest ? ` · <button class="link" data-act="sugg" data-ex="${k}">Try ${fmt(st.suggest)}</button>` : ""}</div>
+      <div class="chips">${chips}${complete ? `<button class="chip plus" data-act="set" data-ex="${k}" data-i="${st.reps.length}" aria-label="Add an extra set for ${esc(cap(it.name))}">+ set</button>` : ""}</div>
+    </div>`;
+  }).join("")}</div>
+  <h2>Recent log</h2><div class="card">${rows.slice().sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : b.i - a.i)).slice(0, 6).map((r) => `<div class="row"><span class="grow">${esc(cap(r.name))}<br><span class="muted">${esc(r.date)}</span></span><b>${r.w ? fmt(r.w) + " " + unit() : "BW"}</b><span>× ${esc(r.reps.join(", "))}</span></div>`).join("") || `<div class="muted">Nothing logged yet.</div>`}</div>
+  <p class="muted">Tap a set when done. Tap it again to lower the reps if you missed some; at 0 it clears.</p>`;
+}
+
+function viewPlan(note, plan) {
+  const missing = DAYS.filter((d) => !plan.some((p) => p.day === d));
+  return `<div class="two">${plan.map((p, pi) => `<div class="card" style="margin-bottom:12px"><div class="exhead"><h3>${p.day}</h3><button class="link" data-act="delday" data-p="${pi}" style="color:var(--amber-danger)">Remove day</button></div>
+    ${p.items.map((it, ii) => `<div class="row"><div class="grow"><input data-act="pname" data-p="${pi}" data-i="${ii}" value="${esc(it.name)}" aria-label="Exercise name"></div>
+      <input class="sm" inputmode="numeric" data-act="psets" data-p="${pi}" data-i="${ii}" value="${it.sets}" aria-label="Sets">
+      <span aria-hidden="true">×</span>
+      <input class="sm" data-act="preps" data-p="${pi}" data-i="${ii}" value="${esc(it.reps)}" aria-label="Reps, a number or max">
+      <button class="del" data-act="delex" data-p="${pi}" data-i="${ii}" aria-label="Remove ${esc(it.name)}">✕</button></div>`).join("") || `<div class="muted">No exercises yet.</div>`}
+    <form class="add" data-act="addex" data-p="${pi}"><label class="grow">Exercise<input name="n" required placeholder="e.g. curls"></label>
+      <label>Sets<input class="sm" name="s" inputmode="numeric" value="3"></label><label>Reps<input class="sm" name="r" value="8"></label>
+      <button class="btn">Add</button></form></div>`).join("")}</div>
+    ${missing.length ? `<form class="card add" data-act="addday"><label class="grow">Add a training day<select name="d">${missing.map((d) => `<option>${d}</option>`).join("")}</select></label><button class="btn">Add day</button></form>` : ""}
+    <p class="muted">Reps can be a number or "max". Changes are saved to the Plan section of the note.</p>`;
+}
+
+function chartSvg(pts, label) {
+  if (!pts.length) return `<div class="muted">No sessions yet.</div>`;
+  const W = 360, H = 170, L = 38, R = 12, T = 14, B = 26;
+  const vs = pts.map((p) => p.v); let lo = Math.min(...vs), hi = Math.max(...vs); if (lo === hi) { lo -= 1; hi += 1; }
+  const x = (i) => pts.length === 1 ? (L + W - R) / 2 : L + (i * (W - L - R)) / (pts.length - 1);
+  const y = (v) => T + (H - T - B) * (1 - (v - lo) / (hi - lo));
+  const path = pts.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join(" ");
+  const ticks = [lo, (lo + hi) / 2, hi];
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}: ${pts.map((p) => p.date + " " + fmt(p.v)).join(", ")}">
+    ${ticks.map((v) => `<line class="grid-l" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text class="axis" x="${L - 5}" y="${y(v) + 3}" text-anchor="end">${fmt(v)}</text>`).join("")}
+    <path class="ln" d="${path}"/>${pts.map((p, i) => `<circle class="dot" cx="${x(i)}" cy="${y(p.v)}" r="4.5"/>`).join("")}
+    <text class="axis" x="${L}" y="${H - 8}">${esc(pts[0].date.slice(5))}</text><text class="axis" x="${W - R}" y="${H - 8}" text-anchor="end">${esc(pts.at(-1).date.slice(5))}</text></svg>`;
+}
+
+function viewProgress(note, rows, plan) {
+  const names = []; const seen = new Set();
+  for (const r of rows.slice().sort((a, b) => (a.date < b.date ? -1 : 1))) if (!seen.has(r.key)) { seen.add(r.key); names.push(r); }
+  if (!names.length) return `<div class="card">Log a few sets and your progress shows up here.</div>`;
+  if (!selEx || !seen.has(selEx)) selEx = names[0].key;
+  const mine = rows.filter((r) => r.key === selEx).sort((a, b) => (a.date < b.date ? -1 : 1));
+  const bw = mine.every((r) => !r.w);
+  const metric = (r) => bw ? r.reps.reduce((a, b) => a + b, 0) : r.w;
+  const pts = mine.map((r) => ({ date: r.date, v: metric(r) }));
+  const best = Math.max(...pts.map((p) => p.v)), first = pts[0].v, last = pts.at(-1).v;
+  const dates = [...new Set(rows.map((r) => r.date))];
+  const wk = monday(note.today);
+  const thisWeek = dates.filter((d) => d >= wk && d <= addDays(wk, 6)).length;
+  const goal = plan.length;
+  const vol = mine.reduce((s, r) => s + r.reps.reduce((a, b) => a + b, 0) * (r.w || 1), 0);
+  const u = bw ? "reps" : unit();
+  return `<div class="stats">
+    <div class="stat"><span class="muted">This week</span><b>${thisWeek}${goal ? " / " + goal : ""}</b><span class="muted">sessions</span></div>
+    <div class="stat"><span class="muted">Total</span><b>${dates.length}</b><span class="muted">training days</span></div>
+    <div class="stat"><span class="muted">Best ${esc(cap(mine[0].name))}</span><b>${fmt(best)} ${u}</b></div>
+    <div class="stat"><span class="muted">Since first</span><b>${last - first >= 0 ? "+" : ""}${fmt(last - first)} ${u}</b></div></div>
+  <label class="muted" for="exsel">Exercise</label>
+  <select id="exsel" data-act="exsel">${names.map((n) => `<option value="${esc(n.key)}"${n.key === selEx ? " selected" : ""}>${esc(cap(n.name))}</option>`).join("")}</select>
+  <h2>${bw ? "Total reps per session" : "Working weight (" + unit() + ")"}</h2>
+  <div class="card">${chartSvg(pts, cap(mine[0].name))}</div>
+  <h2>Sessions</h2>
+  <div class="card">${mine.slice().reverse().map((r) => `<div class="row"><span class="grow muted">${esc(dayOf(r.date))} ${esc(r.date)}</span><b>${r.w ? fmt(r.w) + " " + unit() : "BW"}</b><span>× ${esc(r.reps.join(", "))}</span></div>`).join("")}</div>
+  <p class="muted">Total volume on this lift: ${Math.round(vol).toLocaleString()}</p>`;
+}
+
+function render() {
+  const note = amber.note, app = document.getElementById("app");
+  const active = document.activeElement;
+  if (active && /INPUT|SELECT/.test(active.tagName) && active.dataset.act !== "exsel" && !active.closest("form")) {}
+  const rows = logRows(note), plan = parsePlan(note.markdown);
+  app.innerHTML = `<h1>${esc(note.title)}</h1>
+    <div class="tabs" role="tablist">${[["today", "Today"], ["plan", "Plan"], ["progress", "Progress"]].map(([k, l]) => `<button role="tab" data-act="tab" data-tab="${k}" aria-selected="${tab === k}">${l}</button>`).join("")}</div>
+    ${!findTable(note) ? `<div class="card">Add a table with Date, Exercise, Weight and Reps columns to log sets.</div>` : ""}
+    ${tab === "today" ? viewToday(note, rows, plan) : tab === "plan" ? viewPlan(note, plan) : viewProgress(note, rows, plan)}
+    <div class="err" role="alert">${esc(error)}</div>`;
+}
+
+function itemAt(el) {
+  const plan = parsePlan(amber.note.markdown); const day = plan.some((p) => p.day === selDay) ? selDay : defaultDay(plan, amber.note.today);
+  return plan.find((p) => p.day === day)?.items[+el.dataset.ex];
+}
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-act]"); if (!b || b.tagName === "INPUT" || b.tagName === "SELECT" || b.tagName === "FORM") return;
+  const a = b.dataset.act;
+  if (a === "tab") { tab = b.dataset.tab; render(); }
+  else if (a === "day") { selDay = b.dataset.day; render(); }
+  else if (a === "set") { const it = itemAt(b); if (it) tapSet(it, +b.dataset.i); }
+  else if (a === "w") { const it = itemAt(b); if (it) { const st = exState(amber.note, logRows(amber.note), it); setWeight(it, st.w + (+b.dataset.d) * step()); } }
+  else if (a === "sugg") { const it = itemAt(b); if (it) setWeight(it, exState(amber.note, logRows(amber.note), it).suggest); }
+  else if (a === "delex") { const p = clonePlan(); p[+b.dataset.p].items.splice(+b.dataset.i, 1); savePlan(p); }
+  else if (a === "delday") { const p = clonePlan(); p.splice(+b.dataset.p, 1); savePlan(p); }
+});
+document.addEventListener("change", (e) => {
+  const el = e.target, a = el.dataset.act;
+  if (a === "exsel") { selEx = el.value; render(); return; }
+  if (!["pname", "psets", "preps"].includes(a)) return;
+  const p = clonePlan(), it = p[+el.dataset.p].items[+el.dataset.i]; if (!it) return;
+  const v = el.value.trim();
+  if (a === "pname" && v) it.name = v.replace(/,/g, " ");
+  if (a === "psets" && +v > 0) it.sets = Math.min(20, Math.round(+v));
+  if (a === "preps") it.reps = /^max$/i.test(v) ? "max" : (+v > 0 ? Math.round(+v) : it.reps);
+  savePlan(p);
+});
+document.addEventListener("submit", (e) => {
+  e.preventDefault(); const f = e.target, a = f.dataset.act, fd = new FormData(f), p = clonePlan();
+  if (a === "addex") {
+    const n = String(fd.get("n") || "").trim().replace(/,/g, " "); if (!n) return;
+    const r = String(fd.get("r") || "").trim();
+    p[+f.dataset.p].items.push({ name: n, sets: Math.max(1, Math.round(+fd.get("s")) || 3), reps: /^max$/i.test(r) ? "max" : Math.max(1, Math.round(+r) || 5) });
+    savePlan(p);
+  } else if (a === "addday") {
+    p.push({ day: String(fd.get("d")), items: [] }); p.sort((x, y) => DAYS.indexOf(x.day) - DAYS.indexOf(y.day)); savePlan(p);
+  }
+});
+amber.onChange(() => { if (!pending) render(); });
+</script>
+</body>
+</html>

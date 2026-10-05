@@ -1,0 +1,498 @@
+{
+  "task": "training-app-focus",
+  "rep": 3,
+  "model": "anthropic/claude-sonnet-5.5",
+  "round": "r14",
+  "skill": false,
+  "seconds": 125,
+  "score": 0.896551724137931,
+  "passed": 26,
+  "total": 29,
+  "checks": [
+    {
+      "name": "has_page",
+      "pass": true
+    },
+    {
+      "name": "server_checks",
+      "pass": true
+    },
+    {
+      "name": "no_console_errors",
+      "pass": true
+    },
+    {
+      "name": "no_network",
+      "pass": true
+    },
+    {
+      "name": "fits_phone",
+      "pass": true
+    },
+    {
+      "name": "fits_desktop",
+      "pass": true
+    },
+    {
+      "name": "uses_wide_window",
+      "pass": true
+    },
+    {
+      "name": "phone_targets",
+      "pass": true
+    },
+    {
+      "name": "focused_screen",
+      "pass": true
+    },
+    {
+      "name": "visible_fields",
+      "pass": true
+    },
+    {
+      "name": "no_junk_text",
+      "pass": true
+    },
+    {
+      "name": "no_clipped_text",
+      "pass": true
+    },
+    {
+      "name": "shows_data",
+      "pass": true
+    },
+    {
+      "name": "dark_mode",
+      "pass": true
+    },
+    {
+      "name": "light_contrast",
+      "pass": true
+    },
+    {
+      "name": "themed",
+      "pass": true
+    },
+    {
+      "name": "distinct_look",
+      "pass": false,
+      "detail": "accent hue 28, 0% non-amber color"
+    },
+    {
+      "name": "labelled_controls",
+      "pass": true
+    },
+    {
+      "name": "edits_from_page",
+      "pass": true
+    },
+    {
+      "name": "title_once",
+      "pass": true
+    },
+    {
+      "name": "says_app",
+      "pass": true
+    },
+    {
+      "name": "not_a_list",
+      "pass": false,
+      "detail": "no canvas, 0 drawn shapes, at most 2 grid columns"
+    },
+    {
+      "name": "probe_follows",
+      "pass": false,
+      "detail": "a new row in the note doesn't show"
+    },
+    {
+      "name": "probe_escapes",
+      "pass": true
+    },
+    {
+      "name": "probe_empty",
+      "pass": true
+    },
+    {
+      "name": "probe_large",
+      "pass": true
+    },
+    {
+      "name": "rows_kept",
+      "pass": true
+    },
+    {
+      "name": "opens_on_today",
+      "pass": true
+    },
+    {
+      "name": "has_navigation",
+      "pass": true
+    }
+  ],
+  "tool_calls": 9,
+  "tool_errors": 0,
+  "usage": {
+    "input": 48800,
+    "output": 13343,
+    "cacheRead": 265892,
+    "cacheWrite": 0,
+    "turns": 8,
+    "usd": 0.30859939999999997
+  },
+  "usd": 0.3086,
+  "page_bytes": 17305,
+  "data": null,
+  "answer": "Your Training note now has an app on its App side, and the app check came back clean. I haven't tried it with your real data on a phone.\n\n- **Today:** It opens on your next workout. Today is Monday, so you get Mon's squat, bench and row. Pick Mon, Wed or Fri with the day buttons. Each exercise has big set buttons. Tap a set to mark it done at the target reps. Tap again for one rep fewer, and keep tapping to clear it. It shows your last weight and suggests a bump (+2.5 kg, or +5 on deadlift) once you've hit every rep. Save adds a row to your log table, or updates today's row if there is one.\n- **Plan:** You can rename exercises and change sets and reps (a number or \"max\"). You can also add or remove exercises and days. Every change goes straight into the plan text in your note.\n- **Progress:** It shows a weight-over-time chart per exercise, your best weight, and training days in total and this month. Below that is a history with volume.\n\nI made two small changes to the note's text. The old \"Plan (3 days a week)\" line is now a \"Plan\" heading, because the app needs a heading to write the plan back to. The log table now sits under a \"Log\" heading. Your plan lines and log rows are unchanged.\n\nAdding a day in the Plan tab starts it with a placeholder \"New exercise\", so rename it there.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Training"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Training\",\n  \"results\": [\n    {\n      \"id\": \"a7e0b2fe-8efc-48e6-a91d-c8027e3f2cc0\",\n      \"title\": \"Training\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T20:32:47.289Z\",\n      \"snippet\": \"«Training» Plan (3 days a week) - Mon: squat 3x5, bench 3x5, row 3x8 - Wed: deadlift 1x5, press 3x5, pull-ups 3x max - Fri: squat\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "get_page_guide",
+      "args": {},
+      "error": false,
+      "result": "{\n  \"guide\": \"# Building apps in Amber Notes notes\\n\\nA note can have an app: one HTML document shown on the note's App side, next to its Text side. A habit grid, a budget with totals, flashcards, a trip planner. In the tools it's called the note's page (set_note_page, get_note_page); when you talk to the person, call it \\\"the note's app\\\" or \\\"the App side\\\", and never \\\"page\\\" or \\\"Pages\\\".\\n\\nThe note's text stays the person's own data: they can always flip to Text and see and edit every row. The app reads it, changes it through checked edits, and keeps its own data (settings, logs, records… (33843 chars)"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "a7e0b2fe-8efc-48e6-a91d-c8027e3f2cc0",
+        "line_numbers": "true"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"a7e0b2fe-8efc-48e6-a91d-c8027e3f2cc0\",\n  \"title\": \"Training\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T20:32:47.289Z\",\n  \"updated\": \"2026-10-05T20:32:47.289Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 15,\n    \"words\": 95\n  },\n  \"markdown\": \" 1│ Training\\n 2│ \\n 3│ Plan (3 days a week)\\n 4│ - Mon: squat 3x5, bench 3x5, row 3x8\\n 5│ - Wed: deadlift 1x5, press 3x5, pull-ups 3x max\\n 6│ - Fri: squat 3x5, bench 3x5, chin… (905 chars)"
+    },
+    {
+      "name": "get_note_page",
+      "args": {
+        "id": "a7e0b2fe-8efc-48e6-a91d-c8027e3f2cc0"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"a7e0b2fe-8efc-48e6-a91d-c8027e3f2cc0\",\n  \"title\": \"Training\",\n  \"has_page\": false,\n  \"rules\": \"The page runs in Amber Notes in a sandbox with no network: no fetch, no external scripts, styles, fonts or images. Put all CSS and JS inline; images only as data: URIs or inline SVG.\\nRead the note from window.amber.note, never hardcode its contents (the note changes; the page must follow):\\n  amber.note = { title, markdown, today: \\\"yyyy-mm-dd\\\", tables: [{ index, columns: [{ name, type }], rows: [[cell, ...], ...] }], checklists: [{ line, text, checked }] }\\n  amber.onChange(fn) calls fn… (9915 chars)"
+    },
+    {
+      "name": "edit_note",
+      "args": {
+        "id": "a7e0b2fe-8efc-48e6-a91d-c8027e3f2cc0",
+        "edits": "[{\"old_text\":\"Plan (3 days a week)\\n\",\"new_text\":\"## Plan\\n\"},{\"old_text\":\"| Date | Exercise | Weight | Reps |\",\"new_text\":\"## Log\\n\\n| Date | Exercise | Weight | Reps |\"}]"
+      },
+      "error": false,
+      "result": "{\n  \"edited\": {\n    \"id\": \"a7e0b2fe-8efc-48e6-a91d-c8027e3f2cc0\",\n    \"title\": \"Training\",\n    \"version\": 2,\n    \"updated\": \"2026-10-05T20:33:26.398Z\"\n  },\n  \"edits_applied\": 2\n}"
+    },
+    {
+      "name": "set_note_page",
+      "args": {
+        "id": "a7e0b2fe-8efc-48e6-a91d-c8027e3f2cc0",
+        "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover\">\n<meta name=\"amber-libs\" content=\"chart\">\n<style>\n*{box-sizing:border-box}\n:root{--ok:#1f7a45;--ok-bg:#dff3e5;--ok-t:#14532d}\n@media (prefers-color-s… (17023 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"a7e0b2fe-8efc-48e6-a91d-c8027e3f2cc0\",\n  \"title\": \"Training\",\n  \"page\": \"created\",\n  \"bytes\": 17037,\n  \"note\": \"The person sees it on the note's App side (call it the note's app, not a page). The note's text is unchanged. Next: run check_app and fix what it finds.\"\n}"
+    },
+    {
+      "name": "check_app",
+      "args": {
+        "id": "a7e0b2fe-8efc-48e6-a91d-c8027e3f2cc0"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"a7e0b2fe-8efc-48e6-a91d-c8027e3f2cc0\",\n    \"title\": \"Training\"\n  },\n  \"ok\": false,\n  \"issues\": [\n    \"375-light: 1 text element(s) with contrast under 4.5:1 (\\\"Today\\\").\",\n    \"768-light: 1 text element(s) with contrast under 4.5:1 (\\\"Today\\\").\",\n    \"1280-light: 1 text element(s) with contrast under 4.5:1 (\\\"Today\\\").\",\n    \"A new row in the note doesn't show in the app: a new row in the note doesn't show. Render from amber.note in amber.onChange.\"\n  ],\n  \"browser_checked\": \"375 px light and dark, 768 and 1280 px light, over a sample note\",\n  \"next\": \"Fix these with ed… (661 chars)"
+    },
+    {
+      "name": "edit_note_page",
+      "args": {
+        "id": "a7e0b2fe-8efc-48e6-a91d-c8027e3f2cc0",
+        "edits": "[{\"old_text\":\".tabs button[aria-current=page]{background:var(--amber-accent);color:var(--amber-on-accent)}\",\"new_text\":\".tabs button[aria-current=page]{background:var(--amber-text);color:var(--amber-bg)}\"},{\"old_text\":\"if(!plan.length)return `<div class=\\\"card empty\\\">No plan yet. Add one in the Pla… (707 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"a7e0b2fe-8efc-48e6-a91d-c8027e3f2cc0\",\n  \"title\": \"Training\",\n  \"page\": \"replaced\",\n  \"bytes\": 17305,\n  \"note\": \"The person sees it on the note's App side (call it the note's app, not a page). The note's text is unchanged. The previous version is kept (get_note_page lists it). Next: run check_app and fix what it finds.\"\n}"
+    },
+    {
+      "name": "check_app",
+      "args": {
+        "id": "a7e0b2fe-8efc-48e6-a91d-c8027e3f2cc0"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"a7e0b2fe-8efc-48e6-a91d-c8027e3f2cc0\",\n    \"title\": \"Training\"\n  },\n  \"ok\": true,\n  \"issues\": [],\n  \"browser_checked\": \"375 px light and dark, 768 and 1280 px light, over a sample note\",\n  \"next\": \"Nothing to fix.\"\n}"
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "375-light",
+        "width": 375,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 341,
+        "shown": 5,
+        "sampled": 9,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r14/shots/training-app-focus-or-sonnet-r3-375-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [
+          "Save",
+          "Save",
+          "Save"
+        ],
+        "faintCount": 3,
+        "headings": [
+          "Training",
+          "Squat",
+          "Bench",
+          "Row"
+        ],
+        "excerpt": "Training Today Plan Progress Mon Wed Fri 0/3 Today · Mon · exercises logged Tap a set when done. Tap again for one rep fewer; keep tapping to clear. Squat 3 × 5 Last: 82.5 kg × 5, 5, 5 · try 85 kg · · · Weight (kg) Save Bench 3 × 5 Last: 55 kg × 5, 5, 5 · try 57.5 kg · · · Weight (kg) Save Row 3 × 8 No previous log · · · Weight (kg) Save",
+        "titleCount": 1,
+        "ghostFields": [],
+        "sections": 2,
+        "nav": true,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.9146666666666666,
+        "canvases": 0,
+        "svgShapes": 0,
+        "gridCols": 1,
+        "frames": 0,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "375-dark",
+        "width": 375,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 341,
+        "shown": 5,
+        "sampled": 9,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r14/shots/training-app-focus-or-sonnet-r3-375-dark.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Training",
+          "Squat",
+          "Bench",
+          "Row"
+        ],
+        "excerpt": "Training Today Plan Progress Mon Wed Fri 0/3 Today · Mon · exercises logged Tap a set when done. Tap again for one rep fewer; keep tapping to clear. Squat 3 × 5 Last: 82.5 kg × 5, 5, 5 · try 85 kg · · · Weight (kg) Save Bench 3 × 5 Last: 55 kg × 5, 5, 5 · try 57.5 kg · · · Weight (kg) Save Row 3 × 8 No previous log · · · Weight (kg) Save",
+        "titleCount": 1,
+        "ghostFields": [],
+        "sections": 2,
+        "nav": true,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.9146666666666666,
+        "canvases": 0,
+        "svgShapes": 0,
+        "gridCols": 1,
+        "frames": 0,
+        "look": {
+          "accentHue": 38,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "768-light",
+        "width": 768,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 341,
+        "shown": 5,
+        "sampled": 9,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r14/shots/training-app-focus-or-sonnet-r3-768-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [
+          "Save",
+          "Save",
+          "Save"
+        ],
+        "faintCount": 3,
+        "headings": [
+          "Training",
+          "Squat",
+          "Bench",
+          "Row"
+        ],
+        "excerpt": "Training Today Plan Progress Mon Wed Fri 0/3 Today · Mon · exercises logged Tap a set when done. Tap again for one rep fewer; keep tapping to clear. Squat 3 × 5 Last: 82.5 kg × 5, 5, 5 · try 85 kg · · · Weight (kg) Save Bench 3 × 5 Last: 55 kg × 5, 5, 5 · try 57.5 kg · · · Weight (kg) Save Row 3 × 8 No previous log · · · Weight (kg) Save",
+        "titleCount": 1,
+        "ghostFields": [],
+        "sections": 2,
+        "nav": true,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.9300130208333334,
+        "canvases": 0,
+        "svgShapes": 0,
+        "gridCols": 1,
+        "frames": 0,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 341,
+        "shown": 5,
+        "sampled": 9,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/r14/shots/training-app-focus-or-sonnet-r3-1280-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [
+          "Save",
+          "Save",
+          "Save"
+        ],
+        "faintCount": 3,
+        "headings": [
+          "Training",
+          "Squat",
+          "Bench",
+          "Row"
+        ],
+        "excerpt": "Training Today Plan Progress Mon Wed Fri 0/3 Today · Mon · exercises logged Tap a set when done. Tap again for one rep fewer; keep tapping to clear. Squat 3 × 5 Last: 82.5 kg × 5, 5, 5 · try 85 kg · · · Weight (kg) Save Bench 3 × 5 Last: 55 kg × 5, 5, 5 · try 57.5 kg · · · Weight (kg) Save Row 3 × 8 No previous log · · · Weight (kg) Save",
+        "titleCount": 1,
+        "ghostFields": [],
+        "sections": 2,
+        "nav": true,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.796875,
+        "canvases": 0,
+        "svgShapes": 0,
+        "gridCols": 2,
+        "frames": 0,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 341,
+        "shown": 5,
+        "sampled": 9,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Training",
+          "Squat",
+          "Bench",
+          "Row"
+        ],
+        "excerpt": "Training Today Plan Progress Mon Wed Fri 0/3 Today · Mon · exercises logged Tap a set when done. Tap again for one rep fewer; keep tapping to clear. Squat 3 × 5 Last: 82.5 kg × 5, 5, 5 · try 85 kg · · · Weight (kg) Save Bench 3 × 5 Last: 55 kg × 5, 5, 5 · try 57.5 kg · · · Weight (kg) Save Row 3 × 8 No previous log · · · Weight (kg) Save",
+        "titleCount": 1,
+        "ghostFields": [],
+        "sections": 2,
+        "nav": true,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.796875,
+        "canvases": 0,
+        "svgShapes": 0,
+        "gridCols": 2,
+        "frames": 0,
+        "look": {
+          "accentHue": 38,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
+      }
+    ],
+    "blocked": [],
+    "updates": [],
+    "setData": 1,
+    "interaction": {
+      "tried": "control",
+      "ok": true,
+      "framesPerSecond": 0
+    },
+    "probes": {
+      "follows": {
+        "pass": false,
+        "detail": "a new row in the note doesn't show"
+      },
+      "escapes": {
+        "pass": true
+      },
+      "empty": {
+        "pass": true,
+        "detail": "blank page"
+      },
+      "large": {
+        "pass": true,
+        "detail": "631 ms to load 400 rows"
+      }
+    },
+    "dataAfter": {}
+  }
+}

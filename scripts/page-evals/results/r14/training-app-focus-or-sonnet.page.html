@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 0 0 env(safe-area-inset-bottom); }
+  .wrap { max-width: var(--amber-content-max); margin: 0 auto; padding: 14px var(--amber-gutter) 90px; }
+  h1 { font-size: 1.6rem; margin: 6px 0 2px; letter-spacing: -.02em; }
+  h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; color: var(--amber-text-secondary); margin: 20px 4px 8px; }
+  .muted { color: var(--amber-text-secondary); font-size: .9rem; }
+  .tabs { display: flex; gap: 4px; background: var(--amber-fill); padding: 4px; border-radius: 12px; margin: 10px 0 14px; position: sticky; top: 0; z-index: 2; }
+  .tabs button { flex: 1; min-height: 44px; border: 0; border-radius: 9px; background: transparent; color: var(--amber-text); font: inherit; font-weight: 600; }
+  .tabs button[aria-selected="true"] { background: var(--amber-surface); color: var(--amber-text); box-shadow: inset 0 -3px 0 var(--amber-accent); }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+  .chip { min-height: 44px; padding: 0 16px; border-radius: 22px; border: 1px solid var(--amber-separator); background: var(--amber-surface); color: var(--amber-text); font: inherit; font-weight: 600; }
+  .chip[aria-pressed="true"] { background: var(--amber-accent-soft); border-color: var(--amber-accent); color: var(--amber-text); }
+  .grid { display: grid; gap: 12px; }
+  @media (min-width: 900px) { .grid { grid-template-columns: 1fr 1fr; align-items: start; } }
+  .card { background: var(--amber-surface); border: 1px solid var(--amber-separator); border-radius: var(--amber-radius); padding: 14px; }
+  .head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .name { font-size: 1.15rem; font-weight: 700; }
+  .badge { font-size: .75rem; font-weight: 700; padding: 3px 10px; border-radius: 99px; background: var(--amber-accent-soft); }
+  .wt { display: flex; align-items: center; gap: 8px; margin: 10px 0; }
+  .wt input { width: 5.5rem; text-align: center; font-weight: 700; }
+  .step { min-width: 44px; min-height: 44px; border-radius: 10px; border: 1px solid var(--amber-separator); background: var(--amber-fill); color: var(--amber-text); font: inherit; font-size: 1.1rem; font-weight: 700; }
+  .sets { display: flex; gap: 8px; flex-wrap: wrap; }
+  .set { width: 58px; height: 58px; border-radius: 50%; border: 2px solid var(--amber-separator); background: var(--amber-fill); color: var(--amber-text); font: inherit; font-size: 1.3rem; font-weight: 700; }
+  .set.on { background: var(--amber-accent); border-color: var(--amber-accent); color: var(--amber-on-accent); }
+  .set.fail { background: var(--amber-accent-soft); border-color: var(--amber-accent); color: var(--amber-text); }
+  .mx { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .mx .v { width: 58px; height: 44px; display: grid; place-items: center; font-size: 1.3rem; font-weight: 700; border-radius: 10px; background: var(--amber-fill); }
+  .mx .v.on { background: var(--amber-accent); color: var(--amber-on-accent); }
+  .mx button { width: 58px; min-height: 44px; }
+  .primary { width: 100%; min-height: 52px; border: 0; border-radius: 12px; background: var(--amber-accent); color: var(--amber-on-accent); font: inherit; font-weight: 700; font-size: 1.05rem; margin-top: 16px; }
+  .primary:disabled { opacity: .45; }
+  .ghost { min-height: 44px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--amber-separator); background: var(--amber-fill); color: var(--amber-text); font: inherit; font-weight: 600; }
+  .danger { color: var(--amber-danger); }
+  input, select { font: inherit; font-size: 1rem; color: var(--amber-text); background: var(--amber-field); border: 1px solid var(--amber-field-border); border-radius: 10px; padding: 8px 10px; min-height: 44px; min-width: 0; }
+  .prow { display: grid; grid-template-columns: 1fr 3.5rem 4.5rem 44px; gap: 6px; margin-bottom: 8px; align-items: center; }
+  .prow input { width: 100%; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+  .stat .n { font-size: 1.8rem; font-weight: 800; letter-spacing: -.02em; }
+  svg { width: 100%; height: auto; display: block; }
+  .ax { fill: var(--amber-text-secondary); font-size: 11px; }
+  .hist { display: flex; justify-content: space-between; gap: 8px; padding: 8px 0; border-top: 1px solid var(--amber-separator); font-variant-numeric: tabular-nums; }
+  .hist:first-child { border-top: 0; }
+  .toast { padding: 10px 14px; border-radius: 10px; background: var(--amber-accent-soft); margin-bottom: 10px; font-weight: 600; }
+  .empty { text-align: center; padding: 28px 10px; color: var(--amber-text-secondary); }
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script>
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const ORDER = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+const cap = s => s.trim().replace(/^./, c => c.toUpperCase());
+const fmt = n => (Math.round(n * 100) / 100).toString();
+const isBW = n => /pull-?ups?|chin-?ups?|dips?|push-?ups?/i.test(n);
+let NOTE = null, V = {}, tab = "today", selDay = null, selEx = null, toast = "";
+
+function parsePlan(md) {
+  const plan = [];
+  for (const line of md.split("\n")) {
+    const m = line.match(/^\s*[-*]\s*(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\w*:\s*(.+)$/i);
+    if (!m) continue;
+    const items = [];
+    for (const part of m[2].split(",")) {
+      const x = part.trim().match(/^(.+?)\s+(\d+)\s*x\s*(\d+|max)$/i);
+      if (x) items.push({ name: cap(x[1]), sets: +x[2], reps: x[3].toLowerCase() });
+    }
+    plan.push({ day: cap(m[1].slice(0, 3).toLowerCase()), items });
+  }
+  return plan;
+}
+function setV(k, val) { V[k] = val; amber.store.set(k, val); }
+function plan() { return V.plan || []; }
+function history() {
+  const t = NOTE.tables.find(t => t.columns.some(c => /^exercise$/i.test(c.name)) && t.columns.some(c => /^date$/i.test(c.name)));
+  if (!t) return { t: null, rows: [] };
+  const ix = re => t.columns.findIndex(c => re.test(c.name));
+  const d = ix(/^date$/i), e = ix(/^exercise$/i), w = ix(/weight/i), r = ix(/reps/i);
+  const rows = t.rows.map(x => {
+    const reps = String(x[r] ?? "").split(/[,\s/]+/).map(Number).filter(n => n > 0);
+    const wn = parseFloat(String(x[w] ?? "").replace(",", "."));
+    return { date: x[d], name: String(x[e]).trim(), w: Number.isFinite(wn) ? wn : 0, reps };
+  }).filter(x => x.date && x.name);
+  rows.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+  return { t, rows, cols: { d, e, w, r } };
+}
+function lastOf(rows, name, before) {
+  const l = rows.filter(x => x.name.toLowerCase() === name.toLowerCase() && x.date < before);
+  return l[l.length - 1];
+}
+function defaultDay() {
+  const names = plan().map(p => p.day);
+  if (!names.length) return null;
+  const ti = ORDER.indexOf(DAYS[new Date(NOTE.today + "T12:00:00Z").getUTCDay()]);
+  for (let k = 0; k < 7; k++) { const n = ORDER[(ti + k) % 7]; if (names.includes(n)) return n; }
+  return names[0];
+}
+function sessionKey() { return NOTE.today + "|" + selDay; }
+function exState(item, rows) {
+  const S = V.session && V.session.key === sessionKey() ? V.session : null;
+  if (S && S.ex[item.name]) return S.ex[item.name];
+  const last = lastOf(rows, item.name, "9999");
+  const bw = isBW(item.name);
+  let w = "", hint = "";
+  const target = item.reps === "max" ? 0 : +item.reps;
+  if (last && !bw && last.w) {
+    const hit = target && last.reps.length >= item.sets && last.reps.every(r => r >= target);
+    const inc = /deadlift/i.test(item.name) ? 5 : 2.5;
+    w = fmt(hit ? last.w + inc : last.w);
+    hint = `Last ${fmt(last.w)} kg × ${last.reps.join(", ")}` + (hit ? ` → try ${w}` : "");
+  } else if (last) hint = `Last: ${last.reps.join(", ")} reps`;
+  else hint = "First time: set a starting weight";
+  return { w, hint, sets: Array(item.sets).fill(null), base: last && last.reps.length ? Math.max(...last.reps) : 8 };
+}
+function saveEx(name, st) {
+  let S = V.session && V.session.key === sessionKey() ? V.session : { key: sessionKey(), ex: {} };
+  S = { key: S.key, ex: { ...S.ex, [name]: st } };
+  setV("session", S);
+}
+
+function render() {
+  if (!NOTE) return;
+  const app = document.getElementById("app");
+  const { rows } = history();
+  if (!selDay || !plan().some(p => p.day === selDay)) selDay = defaultDay();
+  app.innerHTML = `<h1>${esc(NOTE.title)}</h1>
+    <div class="tabs" role="tablist">${[["today","Today"],["plan","Plan"],["progress","Progress"]].map(([k,l]) => `<button role="tab" aria-selected="${tab===k}" data-act="tab" data-v="${k}">${l}</button>`).join("")}</div>
+    ${toast ? `<div class="toast" role="status">${esc(toast)}</div>` : ""}
+    ${tab === "today" ? viewToday(rows) : tab === "plan" ? viewPlan() : viewProgress(rows)}`;
+}
+
+function viewToday(rows) {
+  const P = plan();
+  if (!P.length) return `<div class="card empty">No plan yet. Add days in the Plan tab.</div>`;
+  const day = P.find(p => p.day === selDay);
+  const isToday = DAYS[new Date(NOTE.today + "T12:00:00Z").getUTCDay()] === selDay;
+  const chips = `<div class="chips" role="group" aria-label="Workout day">${P.map(p => `<button class="chip" aria-pressed="${p.day===selDay}" data-act="day" data-v="${p.day}">${p.day}</button>`).join("")}</div>`;
+  let any = false;
+  const cards = day.items.map((it, i) => {
+    const st = exState(it, rows);
+    const logged = rows.some(r => r.date === NOTE.today && r.name.toLowerCase() === it.name.toLowerCase());
+    const max = it.reps === "max", target = +it.reps;
+    if (st.sets.some(s => s)) any = true;
+    const bw = isBW(it.name);
+    const sets = st.sets.map((v, k) => {
+      if (max) return `<div class="mx"><button class="step" data-act="inc" data-i="${i}" data-k="${k}" aria-label="Set ${k+1} more reps">+</button><div class="v ${v?"on":""}" aria-label="Set ${k+1}: ${v||0} reps">${v||"–"}</div><button class="step" data-act="dec" data-i="${i}" data-k="${k}" aria-label="Set ${k+1} fewer reps">−</button></div>`;
+      return `<button class="set ${v ? (v>=target?"on":"fail") : ""}" data-act="set" data-i="${i}" data-k="${k}" aria-label="Set ${k+1} of ${st.sets.length}, ${v ? v + " reps done" : "not done"}">${v ?? target}</button>`;
+    }).join("");
+    return `<div class="card"><div class="head"><span class="name">${esc(it.name)}</span><span class="muted">${it.sets} × ${esc(it.reps)}${logged ? ' <span class="badge">Logged today</span>' : ""}</span></div>
+      <div class="muted">${esc(st.hint)}</div>
+      ${bw ? "" : `<div class="wt"><button class="step" data-act="wminus" data-i="${i}" aria-label="Lower weight 2.5">−</button><input data-act="w" data-i="${i}" inputmode="decimal" value="${esc(st.w)}" aria-label="${esc(it.name)} weight in kg" placeholder="kg"><span class="muted">kg</span><button class="step" data-act="wplus" data-i="${i}" aria-label="Raise weight 2.5">+</button></div>`}
+      <div class="sets" style="margin-top:${bw?10:0}px">${sets}</div></div>`;
+  }).join("");
+  return `${chips}<div class="muted" style="margin:0 4px 10px">${isToday ? "Today's workout" : "Next workout"} · ${esc(selDay)}${rows.length ? "" : ""}</div>
+    <div class="grid">${cards || '<div class="card empty">No exercises for this day.</div>'}</div>
+    <button class="primary" data-act="finish" ${any ? "" : "disabled"}>Finish &amp; save workout</button>
+    <h2>Recently logged</h2><div class="card">${rows.slice(-5).reverse().map(r => `<div class="hist"><span class="muted">${esc(r.date)} · ${esc(r.name)}</span><span>${r.w ? fmt(r.w) + " kg · " : ""}${esc(r.reps.join(", "))}</span></div>`).join("") || '<div class="empty">Nothing logged yet.</div>'}</div>`;
+}
+
+function viewPlan() {
+  const P = plan();
+  const days = P.map((p, di) => `<div class="card"><div class="head"><span class="name">${esc(p.day)}</span><button class="ghost danger" data-act="rmday" data-d="${di}">Remove day</button></div>
+    <div class="muted" style="margin:6px 0">Exercise · sets · reps (or max)</div>
+    ${p.items.map((it, ii) => `<div class="prow"><input data-act="pname" data-d="${di}" data-i="${ii}" value="${esc(it.name)}" aria-label="Exercise name"><input data-act="psets" data-d="${di}" data-i="${ii}" value="${esc(it.sets)}" inputmode="numeric" aria-label="Sets"><input data-act="preps" data-d="${di}" data-i="${ii}" value="${esc(it.reps)}" aria-label="Reps"><button class="step danger" data-act="rmex" data-d="${di}" data-i="${ii}" aria-label="Remove ${esc(it.name)}">✕</button></div>`).join("")}
+    <button class="ghost" data-act="addex" data-d="${di}">+ Add exercise</button></div>`).join("");
+  const free = ORDER.filter(d => !P.some(p => p.day === d));
+  return `<div class="grid">${days}</div>
+    ${free.length ? `<h2>Add a training day</h2><div class="chips">${free.map(d => `<button class="chip" data-act="addday" data-v="${d}">${d}</button>`).join("")}</div>` : ""}
+    <p class="muted">Changes apply to your next workouts. Past logs stay as they are.</p>`;
+}
+
+function viewProgress(rows) {
+  if (!rows.length) return `<div class="card empty">Finish a workout and your progress shows up here.</div>`;
+  const dates = [...new Set(rows.map(r => r.date))];
+  const addD = (iso, n) => { const d = new Date(iso + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+  const mon = iso => addD(iso, -((new Date(iso + "T12:00:00Z").getUTCDay() + 6) % 7));
+  const weeks = Array.from({ length: 8 }, (_, k) => addD(mon(NOTE.today), (k - 7) * 7));
+  const perWeek = weeks.map(w => dates.filter(d => d >= w && d < addD(w, 7)).length);
+  const vol = rows.filter(r => r.date >= weeks[7]).reduce((s, r) => s + r.reps.reduce((a, b) => a + b, 0) * (r.w || 1), 0);
+  const names = [...new Set(rows.map(r => r.name))];
+  if (!selEx || !names.includes(selEx)) selEx = names[0];
+  const ex = rows.filter(r => r.name === selEx);
+  const useW = ex.some(r => r.w > 0);
+  const val = r => useW ? r.w : Math.max(0, ...r.reps);
+  const pts = ex.map(r => ({ d: r.date, v: val(r) }));
+  const best = Math.max(...pts.map(p => p.v));
+  const first = pts[0].v, lastv = pts[pts.length - 1].v;
+  const W = 600, H = 220, pl = 36, pr = 12, pt = 14, pb = 28;
+  const lo = Math.min(...pts.map(p => p.v)), hi = Math.max(...pts.map(p => p.v));
+  const min = Math.max(0, lo - (hi - lo || 5) * .3), max = hi + (hi - lo || 5) * .3;
+  const t0 = new Date(pts[0].d + "T12:00:00Z").getTime(), t1 = new Date(pts[pts.length - 1].d + "T12:00:00Z").getTime();
+  const X = d => pts.length < 2 || t1 === t0 ? (pl + W - pr) / 2 : pl + (new Date(d + "T12:00:00Z").getTime() - t0) / (t1 - t0) * (W - pl - pr);
+  const Y = v => pt + (1 - (v - min) / (max - min)) * (H - pt - pb);
+  const line = pts.map((p, i) => (i ? "L" : "M") + X(p.d).toFixed(1) + " " + Y(p.v).toFixed(1)).join(" ");
+  const grid = [0, .5, 1].map(f => { const v = min + (max - min) * f; return `<line x1="${pl}" x2="${W-pr}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--amber-separator)"/><text class="ax" x="${pl-6}" y="${Y(v)+4}" text-anchor="end">${fmt(Math.round(v*2)/2)}</text>`; }).join("");
+  const wmax = Math.max(1, ...perWeek);
+  const bars = perWeek.map((n, k) => `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;justify-content:flex-end"><div style="width:100%;height:${n/wmax*70}px;min-height:3px;border-radius:4px 4px 0 0;background:${k===7?"var(--amber-text)":"var(--amber-accent)"}"></div><span class="muted" style="font-size:.7rem">${weeks[k].slice(8)}/${+weeks[k].slice(5,7)}</span></div>`).join("");
+  return `<div class="stats"><div class="card stat"><div class="n">${perWeek[7]}</div><div class="muted">sessions this week</div></div><div class="card stat"><div class="n">${dates.length}</div><div class="muted">sessions logged</div></div><div class="card stat"><div class="n">${Math.round(vol).toLocaleString()}</div><div class="muted">kg lifted this week</div></div></div>
+    <h2>Sessions per week</h2><div class="card" style="display:flex;gap:6px;height:110px;align-items:flex-end" role="img" aria-label="Sessions per week: ${perWeek.join(", ")}">${bars}</div>
+    <h2>Exercise</h2><div class="chips">${names.map(n => `<button class="chip" aria-pressed="${n===selEx}" data-act="ex" data-v="${esc(n)}">${esc(n)}</button>`).join("")}</div>
+    <div class="card"><div class="head"><span class="name">${esc(selEx)}</span><span class="muted">${useW ? "weight, kg" : "best set, reps"} · best ${fmt(best)} · ${lastv >= first ? "+" : ""}${fmt(lastv - first)} since start</span></div>
+    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(selEx)} ${useW?"weight":"reps"} over time: ${pts.map(p=>p.d+" "+fmt(p.v)).join(", ")}">${grid}<path d="${line}" fill="none" stroke="var(--amber-accent)" stroke-width="3" stroke-linejoin="round"/>${pts.map(p => `<circle cx="${X(p.d)}" cy="${Y(p.v)}" r="5" fill="var(--amber-accent)"/>`).join("")}<text class="ax" x="${pl}" y="${H-6}">${pts[0].d.slice(5)}</text><text class="ax" x="${W-pr}" y="${H-6}" text-anchor="end">${pts[pts.length-1].d.slice(5)}</text></svg></div>
+    <h2>History</h2><div class="card">${ex.slice().reverse().slice(0, 12).map(r => `<div class="hist"><span class="muted">${esc(r.date)}</span><span>${r.w ? fmt(r.w) + " kg · " : ""}${esc(r.reps.join(", "))}</span></div>`).join("")}</div>`;
+}
+
+function itemAt(i) { return plan().find(p => p.day === selDay).items[i]; }
+function editPlan(fn) { const P = JSON.parse(JSON.stringify(plan())); fn(P); setV("plan", P); render(); }
+
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-act]"); if (!b || b.tagName === "INPUT") return;
+  const a = b.dataset.act, i = +b.dataset.i, k = +b.dataset.k, d = +b.dataset.d, v = b.dataset.v;
+  toast = a === "finish" ? toast : "";
+  const { rows } = history();
+  if (a === "tab") { tab = v; }
+  else if (a === "day") { selDay = v; }
+  else if (a === "ex") { selEx = v; }
+  else if (a === "set" || a === "inc" || a === "dec") {
+    const it = itemAt(i), st = JSON.parse(JSON.stringify(exState(it, rows)));
+    const cur = st.sets[k];
+    if (a === "set") { const t = +it.reps; st.sets[k] = cur == null ? t : cur > 1 ? cur - 1 : null; }
+    else if (a === "inc") st.sets[k] = cur == null ? st.base : cur + 1;
+    else st.sets[k] = cur == null ? null : cur > 1 ? cur - 1 : null;
+    saveEx(it.name, st);
+  }
+  else if (a === "wplus" || a === "wminus") {
+    const it = itemAt(i), st = JSON.parse(JSON.stringify(exState(it, rows)));
+    st.w = fmt(Math.max(0, (parseFloat(st.w) || 0) + (a === "wplus" ? 2.5 : -2.5))); saveEx(it.name, st);
+  }
+  else if (a === "finish") {
+    const day = plan().find(p => p.day === selDay);
+    const ops = [];
+    for (const it of day.items) {
+      const st = exState(it, rows), done = st.sets.filter(Boolean);
+      if (!done.length) continue;
+      ops.push({ op: "append_row", table: history().t.index, values: { Date: NOTE.today, Exercise: it.name, Weight: isBW(it.name) && !st.w ? "BW" : (st.w || "0"), Reps: done.join(",") } });
+    }
+    if (ops.length) { const r = await amber.update(ops); toast = r.ok ? `Saved ${ops.length} exercise${ops.length>1?"s":""}. Nice work!` : "Couldn't save: " + r.error; if (r.ok) setV("session", null); }
+  }
+  else if (a === "addex") editPlan(P => P[d].items.push({ name: "New exercise", sets: 3, reps: "5" }));
+  else if (a === "rmex") editPlan(P => P[d].items.splice(i, 1));
+  else if (a === "rmday") editPlan(P => P.splice(d, 1));
+  else if (a === "addday") editPlan(P => { P.push({ day: v, items: [] }); P.sort((x, y) => ORDER.indexOf(x.day) - ORDER.indexOf(y.day)); });
+  render();
+});
+document.addEventListener("change", e => {
+  const el = e.target, a = el.dataset.act; if (!a) return;
+  const i = +el.dataset.i, d = +el.dataset.d;
+  if (a === "w") { const it = itemAt(i), st = JSON.parse(JSON.stringify(exState(it, history().rows))); st.w = el.value.replace(",", ".").trim(); saveEx(it.name, st); render(); }
+  else if (a === "pname") editPlan(P => { if (el.value.trim()) P[d].items[i].name = cap(el.value); });
+  else if (a === "psets") editPlan(P => { P[d].items[i].sets = Math.max(1, Math.min(20, parseInt(el.value) || 1)); });
+  else if (a === "preps") editPlan(P => { const t = el.value.trim().toLowerCase(); P[d].items[i].reps = t === "max" ? "max" : String(Math.max(1, parseInt(t) || 5)); });
+});
+
+amber.onChange((note, data) => {
+  NOTE = note; V = { ...(data && data.values || {}), ...(V.__pending || {}) };
+  if (!V.plan) { const p = parsePlan(note.markdown); if (p.length) { V.plan = p; amber.store.set("plan", p); } }
+  render();
+});
+</script>
+</body>
+</html>
