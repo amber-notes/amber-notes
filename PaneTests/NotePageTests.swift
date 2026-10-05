@@ -410,4 +410,102 @@ import WebKit
         #expect(last.hasSuffix("## Notes\nreplaced"))
         #expect(throws: NotePage.OpError("No heading Budget.")) { try apply(["op": "set_text", "heading": "Budget", "text": "x"], to: body) }
     }
+
+    // MARK: Network and API keys
+
+    /// A local server that answers {"ok":true} and keeps what it was sent.
+    final class Echo: @unchecked Sendable {
+        let listener: NWListener
+        private let lock = NSLock()
+        private var got: [String] = []
+        var requests: [String] { lock.withLock { got } }
+
+        init() throws {
+            let params = NWParameters.tcp
+            params.requiredLocalEndpoint = .hostPort(host: "127.0.0.1", port: .any)
+            listener = try NWListener(using: params)
+            listener.newConnectionHandler = { [weak self] c in
+                guard let me = self else { return }
+                c.start(queue: .global())
+                c.receive(minimumIncompleteLength: 1, maximumLength: 65536) { data, _, _, _ in
+                    if let data, let s = String(data: data, encoding: .utf8) { me.lock.withLock { me.got.append(s) } }
+                    let body = #"{"ok":true}"#
+                    c.send(content: Data("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: \(body.utf8.count)\r\nConnection: close\r\n\r\n\(body)".utf8),
+                           completion: .contentProcessed { _ in c.cancel() })
+                }
+            }
+        }
+
+        func start() async throws -> UInt16 {
+            listener.start(queue: .global())
+            for _ in 0..<100 {
+                if let p = listener.port?.rawValue, p != 0 { return p }
+                try await Task.sleep(for: .milliseconds(20))
+            }
+            throw CancellationError()
+        }
+    }
+
+    @Test func aPageDeclaresHostsAndKeys() {
+        let html = #"<meta name="amber-needs" content='{"hosts":["API.Open-Meteo.com"],"keys":[{"name":"OpenWeather","hosts":["api.openweathermap.org"],"query":"appid={key}","help":"Free at openweathermap.org"}]}'><p>x</p>"#
+        let n = NotePageNetwork.needs(of: html)
+        #expect(n.hosts == ["api.open-meteo.com"])
+        #expect(n.keys.first?.name == "OpenWeather" && n.keys.first?.query == "appid={key}")
+        #expect(NotePageNetwork.needs(of: "<p>none</p>") == .init())
+        var r = URLRequest(url: URL(string: "https://api.openweathermap.org/data?q=Lisbon")!)
+        try? NotePageNetwork.inject(n.keys[0], value: "s3cret", into: &r)
+        #expect(r.url?.absoluteString == "https://api.openweathermap.org/data?q=Lisbon&appid=s3cret")
+        var h = URLRequest(url: URL(string: "https://api.example.com/x")!)
+        try? NotePageNetwork.inject(.init(name: "X", hosts: [], header: "Authorization: Bearer {key}"), value: "s3cret", into: &h)
+        #expect(h.value(forHTTPHeaderField: "Authorization") == "Bearer s3cret")
+        #expect(NotePageNetwork.carriesNoteText("https://x.example/?q=Buy%20running%20shoes", note: "Todo\n- [ ] Buy running shoes"))
+        #expect(!NotePageNetwork.carriesNoteText("https://x.example/?q=weather", note: "Todo\n- [ ] Buy running shoes"))
+    }
+
+    @Test func fetchGoesOnlyWhereAllowedAndKeepsTheKeyOutOfThePageAndTheLog() async throws {
+        let echo = try Echo()
+        let port = try await echo.start()
+        defer { echo.listener.cancel() }
+        let host = "127.0.0.1:\(port)"
+        let html = #"<meta name="amber-needs" content='{"hosts":["\#(host)"],"keys":[{"name":"Demo","hosts":["\#(host)"],"header":"X-Api-Key: {key}"}]}'>"#
+        let note = Note(body: "Trip\n\nMeet Sara at the Alfama gate")
+        var asked: [String] = []
+        var needed: [String] = []
+        func fetch(_ m: [String: Any], allow: Bool = true) async throws -> [String: Any] {
+            try await NotePageNetwork.fetch(m, note: note, html: html, ask: { asked.append($0); return allow }, needKey: { needed.append($0.name) })
+        }
+        // Undeclared hosts never go out; a refusal sends nothing.
+        await #expect(throws: NotePage.OpError.self) { _ = try await fetch(["url": "https://example.com/"]) }
+        await #expect(throws: NotePage.OpError("You didn't allow this app to reach \(host).")) { _ = try await fetch(["url": "http://\(host)/a"], allow: false) }
+        #expect(echo.requests.isEmpty)
+        // Allowed once, then not asked again; what was sent is logged, marked when it carries note text.
+        let r = try await fetch(["url": "http://\(host)/a?q=Meet%20Sara%20at%20the%20Alfama%20gate"])
+        #expect(r["status"] as? Int == 200 && r["body"] as? String == #"{"ok":true}"#)
+        _ = try await fetch(["url": "http://\(host)/b"])
+        #expect(asked == [host, host])
+        let log = NotePageNetLog.shared.entries[note.id] ?? []
+        #expect(log.count == 2 && log[0].carriesNoteText && !log[1].carriesNoteText)
+        // A key that isn't set up shows the card instead of sending.
+        await #expect(throws: NotePage.OpError.self) { _ = try await fetch(["url": "http://\(host)/k", "key": "Demo"]) }
+        #expect(needed == ["Demo"])
+        // Set up, it's added by the app: the server gets it; the log and the page don't.
+        APIKeyStore.shared.save(.init(name: "Demo", hosts: [host], header: "X-Api-Key: {key}"), value: "s3cret-value")
+        defer { APIKeyStore.shared.remove("Demo") }
+        let k = try await fetch(["url": "http://\(host)/k?echo=s3cret-value", "key": "Demo"])
+        #expect(!(k.description.contains("s3cret-value") && !(k["body"] as? String ?? "").contains("s3cret")))
+        #expect(echo.requests.last?.contains("X-Api-Key: s3cret-value") == true)
+        #expect(NotePageNetLog.shared.entries[note.id]?.last?.url.contains("s3cret-value") == false)
+        #expect(NotePageNetLog.shared.entries[note.id]?.last?.key == "Demo")
+        // A key listed for other hosts isn't sent here.
+        APIKeyStore.shared.save(.init(name: "Demo", hosts: ["api.example.com"], header: "X-Api-Key: {key}"), value: "s3cret-value")
+        await #expect(throws: NotePage.OpError("The Demo key isn't sent to \(host).")) { _ = try await fetch(["url": "http://\(host)/k", "key": "Demo"]) }
+    }
+
+    // MARK: Shortcuts
+
+    @Test func shortcutsAddToTheEndOfANote() {
+        #expect(NoteIntents.appending("Milk", to: "Groceries\n- Eggs") == "Groceries\n- Eggs\nMilk\n")
+        #expect(NoteIntents.appending("Milk\n\n", to: "Groceries\n") == "Groceries\nMilk\n")
+        #expect(NoteIntents.appending("", to: "Groceries") == "Groceries")
+    }
 }

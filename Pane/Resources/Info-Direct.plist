@@ -59,10 +59,18 @@
 	</dict>
 	<key>NSAppleEventsUsageDescription</key>
 	<string>Amber Notes reads the Apple Notes you choose to import. It never changes them.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>A note that is an app can show today's events, such as a meeting prep note. Nothing from your calendar leaves this device.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Amber Notes uses the camera to scan the code on a device you add.</string>
+	<string>Amber Notes uses the camera to scan the code on a device you add, and to take photos for a note that is an app.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Amber Notes uses Face ID to open your locked notes, show your recovery key, approve AI connections and add a device.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>A note that is an app can use your location once, such as a trip log noting where you are.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>A note that is an app can save photos you take with it.</string>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>A note that is an app can add reminders for you, such as a daily nudge for a habit. It asks each time it wants to.</string>
 	<key>NSUserActivityTypes</key>
 	<array>
 		<string>dev.emilwagman.pane.connect</string>

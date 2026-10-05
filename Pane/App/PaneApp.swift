@@ -20,6 +20,9 @@ struct PaneApp: App {
         ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil && !ProcessInfo.processInfo.arguments.contains("-uitest")
     }
 
+    /// The library, for Shortcuts (NoteIntents), which run without a window.
+    @MainActor static var sharedContainer: ModelContainer?
+
     init() {
         #if os(macOS)
         if Self.isUnitTestHost { NSApplication.shared.setActivationPolicy(.accessory) }
@@ -31,6 +34,7 @@ struct PaneApp: App {
         if inMemory { UserDefaults.standard.removeObject(forKey: "lastScope") }
         let config = ModelConfiguration("Pane", isStoredInMemoryOnly: inMemory)
         container = try! ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: config)
+        Self.sharedContainer = container
         let backend = Backend()
         let context = container.mainContext
         backend.willSignIn = { user in AccountLibrary.adopt(user, context: context) }

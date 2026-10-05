@@ -161,6 +161,27 @@ final class NotePageSandbox: NSObject, WKScriptMessageHandlerWithReply, WKScript
               save: (file) => ask({ op: "file.save", ...file }),
               read: (ref) => ask({ op: "file.read", id: (ref && ref.$file) || ref }),
             },
+            // The device, through the system's own prompts and pickers. Results go to the page only.
+            device: {
+              reminders: { create: (r) => ask({ op: "device.reminders.create", ...r }) },
+              calendar: { today: () => ask({ op: "device.calendar.today" }) },
+              notify: (n) => ask({ op: "device.notify", ...n }),
+              openURL: (url) => ask({ op: "device.openURL", url }),
+              photos: { pick: (o) => ask({ op: "device.photos.pick", ...(o || {}) }) },
+              camera: { take: () => ask({ op: "device.camera.take" }) },
+              contacts: { pick: () => ask({ op: "device.contacts.pick" }) },
+              files: { pick: () => ask({ op: "device.files.pick" }) },
+              location: { once: () => ask({ op: "device.location.once" }) },
+              maps: { open: (p) => ask({ op: "device.maps.open", ...p }), snapshot: (p) => ask({ op: "device.maps.snapshot", ...p }) },
+              weather: { current: (p) => ask({ op: "device.weather.current", ...(p || {}) }) },
+            },
+            // Apple's on-device model: nothing leaves the device.
+            ai: {
+              available: () => ask({ op: "device.ai.available" }),
+              respond: (prompt, o) => ask({ op: "device.ai.respond", prompt, ...(o || {}) }),
+            },
+            // Through the app, to hosts the page declared and you allowed, logged; keys added by the app.
+            fetch: (url, o) => ask({ op: "fetch", url, ...(o || {}) }),
           };
           // A write's reply carries the new data, so it's there as soon as the promise resolves.
           const ask = (msg) => window.webkit.messageHandlers.amberData.postMessage(msg)
@@ -499,9 +520,17 @@ enum NotePageActions {
 
     /// The app's own data and files (amber.store, amber.files). Returns the reply for the page, and
     /// the data before a data change (nil for files), for Undo.
-    static func data(_ message: Any, note: Note, context: ModelContext, sync: SyncEngine?) async throws -> (reply: [String: Any], before: NotePageData.Doc?) {
+    static func data(_ message: Any, note: Note, context: ModelContext, sync: SyncEngine?, html: String = "",
+                     ask: (String) async -> Bool = { _ in false }, needKey: (NotePageNetwork.KeyNeed) async -> Void = { _ in }) async throws -> (reply: [String: Any], before: NotePageData.Doc?) {
         let m = message as? [String: Any] ?? [:]
+        if let op = m["op"] as? String, op.hasPrefix("device.") {
+            var d = m
+            d["op"] = String(op.dropFirst("device.".count))
+            return (try await NotePageDevice.handle(d, context: context), nil)
+        }
         switch m["op"] as? String {
+        case "fetch":
+            return (try await NotePageNetwork.fetch(m, note: note, html: html, ask: ask, needKey: needKey), nil)
         case "file.save":
             guard let b64 = m["base64"] as? String, let bytes = Data(base64Encoded: b64) else { throw NotePage.OpError("Send { name, type, base64 }.") }
             guard bytes.count <= 50 * 1024 * 1024 else { throw NotePage.OpError("Files can be at most 50 MB.") }

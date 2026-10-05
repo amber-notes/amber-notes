@@ -19,6 +19,18 @@ struct NoteDetailView: View {
     @State private var undoPage: NotePageStore.Page?
     /// For Undo of a change to the app's own data: the data before it.
     @State private var undoData: NotePageData.Doc?
+    /// The app asks to reach a host: shown as a question, answered once per host.
+    @State private var hostAsk: HostAsk?
+    /// The app needs an API key that isn't set up: the card that offers to add it.
+    @State private var keyNeeded: NotePageNetwork.KeyNeed?
+    @State private var addingKey: APIKeyForm.Draft?
+    @State private var showNetLog = false
+
+    struct HostAsk: Identifiable {
+        let host: String
+        let answer: (Bool) -> Void
+        var id: String { host }
+    }
     /// Lock Note: setting the password up, asking for it, or confirming.
     @State private var lockSheet: LockSheet?
     @State private var confirmLock = false
@@ -69,6 +81,15 @@ struct NoteDetailView: View {
             #endif
             .overlay(alignment: .bottom) { aiReceipt }
             .overlay(alignment: .bottom) { undoProblem }
+            .overlay(alignment: .bottom) { keyCard }
+            .alert("This app wants to reach \(hostAsk?.host ?? "")", isPresented: Binding(get: { hostAsk != nil }, set: { if !$0, let a = hostAsk { a.answer(false); hostAsk = nil } })) {
+                Button("Don't Allow", role: .cancel) { hostAsk?.answer(false); hostAsk = nil }
+                Button("Allow") { hostAsk?.answer(true); hostAsk = nil }
+            } message: {
+                Text("Everything it sends there is listed in More › Network Activity.")
+            }
+            .sheet(item: $addingKey) { d in APIKeyForm(draft: d) }
+            .sheet(isPresented: $showNetLog) { NotePageNetLogView(noteID: note.id) }
             .onChange(of: note.aiEditedAt) { _, _ in showAIEdit() }
             .onChange(of: NotePageStore.shared[note.id]) { _, now in pageArrived(now) }
             .onChange(of: mode) { _, now in if now == .text { tintPageEdits() } }
@@ -266,7 +287,8 @@ struct NoteDetailView: View {
     /// The app's own data and files (amber.store, amber.files). Data changes are kept next to the
     /// page, never in the note's text, and get a receipt with Undo like any other change.
     private func pageData(_ message: Any) async throws -> [String: Any] {
-        let (reply, before) = try await NotePageActions.data(message, note: note, context: context, sync: sync)
+        let (reply, before) = try await NotePageActions.data(message, note: note, context: context, sync: sync, html: notePage?.html ?? "",
+                                                             ask: askHost, needKey: { need in withAnimation(.smooth) { keyNeeded = need } })
         guard let before else { return reply }
         if undoData == nil || receipt?.kind != .dataEdit { undoData = before }
         let r = AIEdit.Receipt(noteID: note.id, by: AIGlyph.page, at: .now, previous: note.body, lines: 0, kind: .dataEdit)
@@ -277,6 +299,50 @@ struct NoteDetailView: View {
             if receipt == r { withAnimation(.easeIn(duration: 0.2)) { receipt = nil }; undoData = nil }
         }
         return reply
+    }
+
+    private func askHost(_ host: String) async -> Bool {
+        await withCheckedContinuation { c in
+            // Answered once, whichever way the alert goes away.
+            final class Once { var done = false }
+            let once = Once()
+            hostAsk = HostAsk(host: host) { ok in
+                guard !once.done else { return }
+                once.done = true
+                c.resume(returning: ok)
+            }
+        }
+    }
+
+    /// "This app needs an OpenWeather API key", with Add Key and how to get one.
+    @ViewBuilder
+    private var keyCard: some View {
+        if let need = keyNeeded, showingPage {
+            VStack(alignment: .leading, spacing: 10) {
+                Label("This app needs \(need.name.first.map { "AEIOU".contains($0) } == true ? "an" : "a") \(need.name) API key", systemImage: "key.fill")
+                    .font(.headline)
+                if let help = need.help { Text(help).font(.subheadline).foregroundStyle(.secondary) }
+                Text("It's sent only to \(need.hosts.joined(separator: ", ")). The app never sees it.")
+                    .font(.footnote).foregroundStyle(.secondary)
+                HStack {
+                    Button("Not Now") { withAnimation(.smooth) { keyNeeded = nil } }
+                    Spacer()
+                    Button("Add Key") { addingKey = APIKeyForm.Draft(need); keyNeeded = nil }
+                        .buttonStyle(.amberProminent)
+                        .accessibilityIdentifier("keycard.add")
+                }
+            }
+            .padding(16)
+            .background(.regularMaterial, in: .rect(cornerRadius: 20, style: .continuous))
+            .padding(.horizontal, 16)
+            #if os(macOS)
+            .frame(maxWidth: 460)
+            .padding(.bottom, 20)
+            #else
+            .padding(.bottom, 24)
+            #endif
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+        }
     }
 
     /// Back in Text: what the page changed is tinted, as an AI's edit is.
@@ -341,6 +407,8 @@ struct NoteDetailView: View {
                     Button("Previous Version of App", systemImage: "arrow.uturn.backward") { restorePreviousPage() }
                         .accessibilityIdentifier("editor.previousPage")
                 }
+                Button("Network Activity", systemImage: "network") { showNetLog = true }
+                    .accessibilityIdentifier("editor.netLog")
                 Button("Remove App", systemImage: "xmark.square") {
                     // The note's text stays as it is, and the page is kept: Previous Page brings it back.
                     NotePageStore.shared[note.id] = nil

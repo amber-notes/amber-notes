@@ -231,3 +231,15 @@ Deno.test("data changes keep a version at most once a minute; a new page keeps i
   assertEquals([kept.html, kept.data.values], [PAGE, { n: 4 }]);
   assertEquals(got.data.values, { n: 4 });
 });
+
+Deno.test("list_api_keys shows names, hosts and whether set, never values", async () => {
+  const pg = await schemaDB();
+  const a = await account(pg);
+  const id = crypto.randomUUID();
+  const meta = await a.vault.sealAPIKeyMeta(id, JSON.stringify({ name: "OpenWeather", hosts: ["api.openweathermap.org"], set: true }));
+  await app(pg, a.id, `insert into public.api_key_names (id, meta_ct) values ($1, $2)`, [id, meta]);
+  const r = await tool(pg, a, "list_api_keys", {}, false);
+  assertEquals(r.keys, [{ name: "OpenWeather", hosts: ["api.openweathermap.org"], set: true }]);
+  const b = await account(pg);
+  assertEquals((await tool(pg, b, "list_api_keys", {}, false)).keys, []);
+});

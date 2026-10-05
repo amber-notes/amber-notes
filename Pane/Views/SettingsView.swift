@@ -106,6 +106,7 @@ struct SettingsView: View {
                     #endif
                 }
                 LockedNotesSection(sync: sync)
+                APIKeysSection()
                 #if os(macOS)
                 MenuBarSection()
                 #else
