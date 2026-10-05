@@ -14,3 +14,4 @@ supabase/functions/.env.local
 .secrets/
 *.p8
 __pycache__/
+demo/note-pages/best/_tools/node_modules/

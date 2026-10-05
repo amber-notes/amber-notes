@@ -71,7 +71,7 @@ final class BestAppsUITests: XCTestCase {
     func testStills() {
         let only = ProcessInfo.processInfo.environment["ONLY"].flatMap { $0.isEmpty ? nil : $0 }.map { Set($0.split(separator: ",").map(String.init)) }
         for (dirName, title) in [("habits", "Habits"), ("money", "Money"), ("training", "Training"), ("reading", "Reading"),
-                                 ("trip", "Rome"), ("people", "People"), ("kitchen", "Kitchen"), ("study", "Biology: the cell"), ("words", "Swedish words"), ("beat", "Beat"), ("shelf", "Bookshelf")] {
+                                 ("trip", "Rome"), ("people", "People"), ("kitchen", "Kitchen"), ("study", "Biology: the cell"), ("lift", "Lifting"), ("words", "Swedish words"), ("beat", "Beat"), ("shelf", "Bookshelf")] {
             guard FileManager.default.fileExists(atPath: "\(dir)/\(dirName)/app.html"), only?.contains(dirName) ?? true else { continue }
             launch(title)
             pause(1.5)
@@ -440,5 +440,60 @@ final class BestAppsUITests: XCTestCase {
             shot("\(dirName)-settings")
             app.terminate()
         }
+    }
+
+    /// The tappable things in the web view whose label matches, top to bottom.
+    func webMatches(_ test: (String) -> Bool) -> [CGRect] {
+        webSnapshot().filter { test($0.label) && $0.frame.height > 10 && $0.frame.minY > 90 && $0.frame.maxY < app.frame.height - 10 }.map(\.frame).sorted { $0.minY < $1.minY }
+    }
+
+    /// Lift, used: a routine started, sets checked, rest, an exercise added, finished, then the record.
+    func testLift() {
+        launch("Lifting")
+        pause(2.5)
+        mark("start")
+        tap(app.webViews.buttons.matching(NSPredicate(format: "label == 'Start'")).element(boundBy: 0), then: 1.6)
+        for k in 0..<3 {
+            if let f = webMatches({ $0.hasSuffix("not done") }).first { tapAt(f); pause(0.9) }
+            if k == 0 { allowSystem(["Allow"], wait: 3) }
+        }
+        pause(2.0)
+        shot("lift-rest")
+        func skip() { let b = app.webViews.buttons["Skip"].firstMatch; if b.exists { b.tap(); pause(0.5) } }
+        skip()
+        for k in 0..<5 {
+            if let f = webMatches({ $0.hasSuffix("not done") }).first { tapAt(f); pause(0.8) }
+            skip()
+            if k == 2 { scroll(0.4) }
+        }
+        let more = app.webViews.buttons.matching(NSPredicate(format: "label BEGINSWITH 'More for Lateral'")).firstMatch
+        for _ in 0..<5 where !more.isHittable { scroll(0.5) }
+        tap(more, then: 1.0)
+        shot("lift-menu")
+        app.webViews.buttons.matching(NSPredicate(format: "label == 'Close'")).firstMatch.tap(); pause(0.6)
+        let add = button("Add exercises")
+        for _ in 0..<6 where !add.isHittable { scroll(0.5) }
+        tap(add, then: 1.0)
+        type(app.webViews.searchFields.firstMatch.exists ? app.webViews.searchFields.firstMatch : app.webViews.textFields["Search exercises"].firstMatch, "curl")
+        pause(0.8)
+        let choose = app.webViews.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH 'Choose Hammer'")).firstMatch
+        if choose.waitForExistence(timeout: 3) { choose.tap(); pause(0.6) }
+        shot("lift-picker")
+        tap(webBegins("Add 1"), then: 1.2)
+        let fin = app.webViews.buttons.matching(NSPredicate(format: "label == 'Finish'")).firstMatch
+        for _ in 0..<8 where !fin.isHittable { scroll(-0.6) }
+        tap(fin, then: 1.0)
+        if let f = webMatches({ $0 == "Finish" }).last { tapAt(f) }
+        pause(4.0)
+        shot("lift-done")
+        tap(button("Done"), then: 1.0)
+        tabTo("Exercises"); pause(1.0)
+        let bench = app.webViews.links.matching(NSPredicate(format: "label BEGINSWITH 'Bench Press'")).firstMatch
+        if bench.waitForExistence(timeout: 3) { bench.tap(); pause(1.4) }
+        tap(button("Heaviest"), then: 1.2)
+        shot("lift-exercise")
+        tabTo("History"); pause(1.4)
+        tabTo("Progress"); pause(1.2); scroll(0.5); pause(1.2)
+        mark("end")
     }
 }

@@ -45,6 +45,10 @@
   "minutesAgo": 1200
  },
  {
+  "dir": "lift",
+  "minutesAgo": 20
+ },
+ {
   "body": "Today\n\nMonday plan: groceries after work, call Maja about the weekend.\n\n{{link:habits}}\n\n- [ ] Book the dentist\n- [ ] Return the library books\n",
   "pinned": true,
   "minutesAgo": 1
