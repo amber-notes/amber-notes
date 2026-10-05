@@ -838,6 +838,23 @@ export const TASKS: Task[] = [
     ],
   },
   {
+    // The baseline comparison (baseline.ts): the same bare request Claude Code and Codex get in an
+    // empty folder. The person is in an empty note called Workouts.
+    id: "workout-tracker-open",
+    prompt: "build me a workout tracker app",
+    seed: { body: "Workouts\n" }, page: true, interact: true,
+    checks: (f) => [pageChanged(f)],
+  },
+  {
+    // The same, with a log to show: both sides get it in the request.
+    id: "workout-tracker-data",
+    prompt: `build me a workout tracker app. Here's what I've done the last two weeks:
+${["2026-09-22 squat 80kg 5x5, bench 55kg 5x5", "2026-09-24 deadlift 100kg 1x5, press 35kg 5x5, 5 km run 28 min", "2026-09-26 squat 82.5kg 5x5, bench 57.5kg 5,5,5,4,4",
+  "2026-09-29 squat 85kg 5x5, bench 57.5kg 5x5, row 50kg 3x8", "2026-10-01 deadlift 105kg 1x5, press 37.5kg 5,5,4,4,3, 6 km run 33 min", "2026-10-03 squat 87.5kg 5x5, bench 60kg 5,5,5,5,3"].join("\n")}`,
+    seed: { body: "Workouts\n" }, page: true, interact: true,
+    checks: (f) => [pageChanged(f), check("has_log", /87\.?5/.test(f.after + JSON.stringify(f.data ?? {})), "the log isn't in the note or the app's data")],
+  },
+  {
     id: "training-app-focus",
     prompt: "Make my Training note an app I can use at the gym. I want to see what to do today, tick off sets, adjust the plan, and see my progress over time.",
     seed: { body: `Training

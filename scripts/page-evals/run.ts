@@ -411,7 +411,13 @@ async function runTask(task: Task, rep = 1) {
     : model.provider === "anthropic" ? await claudeSession(system, listed, task.prompt, s.call)
     : model.provider === "openrouter" ? await openrouterSession(system, listed, task.prompt, s.call)
     : await openaiSession(system, listed, task.prompt, s.call);
-  const after = await s.state(s.id);
+  // An open request ("build me a workout tracker app") may get a new note of its own: score that one
+  // when the seeded note was left without an app.
+  let after = await s.state(s.id);
+  if (!after.page && task.seed.body.trim().split("\n").length <= 1) {
+    const made = (await s.pg.query(`select n.id from public.notes n join public.note_pages p on p.note_id = n.id where p.page_ct is not null and n.id <> $1 order by n.created_at desc limit 1`, [s.id])).rows as { id: string }[];
+    if (made[0]) after = await s.state(made[0].id);
+  }
   const othersAfter = await Promise.all(s.others.map((o) => s.state(o)));
   const f: Final = {
     before: before.body, after: after.body, pageBefore: before.page, page: after.page, dataBefore: before.data, data: after.data,

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="amber-libs" content="preact"><style>
+*{box-sizing:border-box} :root{--track:#17634e;--track-ink:#fff;--track-soft:#e0efe7} @media(prefers-color-scheme:dark){:root{--track:#91dfbd;--track-ink:#092419;--track-soft:#19382a}}
+main{max-width:var(--amber-content-max);margin:auto;padding:24px var(--amber-gutter) calc(32px + env(safe-area-inset-bottom));color:var(--amber-text)}
+h1{font-size:2rem;letter-spacing:-.04em;margin:0} h2{font-size:1.4rem;margin:0 0 18px} h3{font-size:1.1rem;margin:0 0 10px}
+p{line-height:1.5}.sub{color:var(--amber-text-secondary);margin:6px 0 20px}.num{font-family:var(--amber-font-mono);font-variant-numeric:tabular-nums}
+nav{display:flex;gap:6px;flex-wrap:wrap;margin:20px 0 28px;border-bottom:1px solid var(--amber-separator);padding-bottom:12px}
+button{min-height:44px;padding:10px 16px;border-radius:8px;border:1px solid var(--amber-separator);background:var(--amber-fill);color:var(--amber-text);font-weight:600;cursor:pointer}button.primary,nav button[aria-current=page]{background:var(--track);color:var(--track-ink);border-color:var(--track)}button:disabled{opacity:.6;cursor:wait}
+.layout{display:grid;gap:24px}.panel{padding:22px;background:var(--amber-surface);border:1px solid var(--amber-separator);border-radius:12px;min-width:0}
+label{display:flex;flex-direction:column;gap:6px;min-width:0;font-size:1rem}input,select,textarea{width:100%;min-height:46px;border:1px solid var(--amber-field-border);background:var(--amber-field);color:var(--amber-text);padding:10px 12px;border-radius:8px;font:inherit}
+form{display:grid;gap:16px}.fields{display:grid;gap:16px;grid-template-columns:repeat(2,minmax(0,1fr))}.full{grid-column:1/-1}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.entry{padding:14px 0;border-top:1px solid var(--amber-separator);display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px}.entry:first-child{border-top:0}.entry>div{min-width:0;overflow-wrap:anywhere}.entry p{margin:4px 0}.pill{display:inline-block;background:var(--track-soft);padding:4px 8px;border-radius:4px;color:var(--amber-text)}
+.big{font-size:2.6rem;font-weight:750;letter-spacing:-.05em}.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:20px 0}.stat{border-left:4px solid var(--track);padding-left:16px;min-width:0}
+.error{color:var(--amber-danger)}.message{min-height:1.5em;margin:16px 0}.muted{color:var(--amber-text-secondary)}.reps{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.rep{min-width:34px;padding:8px;text-align:center;background:var(--track-soft);border-radius:5px;font-family:var(--amber-font-mono)}
+svg{width:100%;height:auto;color:var(--track)}.chart{border-bottom:1px solid var(--amber-separator);margin:12px 0}details{margin:12px 0}summary{min-height:44px;cursor:pointer;padding:12px 0;font-weight:600}
+@media(min-width:900px){.layout{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr)}main{padding-top:36px}.history{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}.stats .big{font-size:3.2rem}}
+@media(max-width:360px){.fields{grid-template-columns:1fr}.panel{padding:16px}nav button{padding:10px 12px}}
+</style></head><body><main id="root"></main><script>
+const H=preact.h;
+let note=amber.note,data=amber.data;
+const n=v=>{const x=parseFloat(String(v??"").replace(/\s/g,"").replace(",","."));return Number.isFinite(x)?x:0};
+const col=(t,k)=>t.columns.findIndex(c=>c.name.toLowerCase()===k.toLowerCase());
+function table(k){return (note.tables||[]).find(t=>col(t,k)>=0)}
+function records(t){return t?t.rows.map((r,i)=>Object.assign({row:i,table:t.index},Object.fromEntries(t.columns.map((c,j)=>[c.name.toLowerCase(),r[j]??""])))):[]}
+function reps(s){s=String(s).trim();let m=s.match(/^(\d+)\s*[x×]\s*(\d+)$/i);return m?Array.from({length:Math.min(50,+m[1])},()=>+m[2]):s.split(",").map(x=>+x.trim())}
+function validReps(s){return /^([1-9]\d?\s*[x×]\s*\d{1,3}|\d{1,3}(\s*,\s*\d{1,3})*)$/i.test(s.trim())}
+const pace=r=>{const sec=Math.round(n(r.minutes)/n(r.km)*60);return n(r.km)>0?Math.floor(sec/60)+":"+String(sec%60).padStart(2,"0")+" /km":"No pace"};
+function field(label,name,value,onChange,props={}){return H("label",{},label,H("input",Object.assign({id:name,name,value,onInput:e=>onChange(e.target.value)},props)))}
+function sets(s){return H("div",{class:"reps","aria-label":"Actual reps per set"},reps(s).filter(Number.isFinite).map((r,i)=>H("span",{class:"rep",key:i,title:"Set "+(i+1)},r)))}
+function rowView(r){const lift=r.exercise!==undefined;return H("div",{},H("strong",{},lift?r.exercise:"Run"),H("p",{class:"num"},lift?n(r["weight kg"])+" kg":n(r.km)+" km · "+n(r.minutes)+" min"),lift?sets(r.reps):H("span",{class:"muted"},pace(r)))}
+class App extends preact.Component { render(){
+let cursor=0; const state=initial=>{const key="field"+cursor++;if(!(key in this.state))this.state[key]=initial;return [this.state[key],value=>this.setState({[key]:value})]};
+const [screen,setScreen]=state((data.values||{}).screen||"Today"),[date,setDate]=state(note.today),[kind,setKind]=state("Lift"),[exercise,setExercise]=state((records(table("Exercise"))[0]?.exercise||"")),[weight,setWeight]=state(""),[rs,setRs]=state("5x5"),[km,setKm]=state(""),[minutes,setMinutes]=state(""),[draft,setDraft]=state([]),[msg,setMsg]=state(""),[busy,setBusy]=state(false),[edit,setEdit]=state(null),[confirmDelete,setConfirmDelete]=state(false),[selected,setSelected]=state((records(table("Exercise"))[0]?.exercise||""));
+const settings=Object.assign({weeklySessions:3,weeklyKm:0,exercises:[]},(data.values||{}).settings||{});
+const lifts=records(table("Exercise")),runs=records(table("Km")),all=lifts.concat(runs).sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+const names=[...new Set([...(Array.isArray(settings.exercises)?settings.exercises:[]),...lifts.map(r=>r.exercise)])].filter(Boolean);
+function go(s){setMsg("");setEdit(null);setScreen(s);amber.store.set("screen",s).catch(e=>setMsg(e.message))}
+function startEdit(r){setEdit(r);setDate(r.date);setKind(r.exercise!==undefined?"Lift":"Run");setExercise(r.exercise||names[0]||(records(table("Exercise"))[0]?.exercise||""));setWeight(String(r["weight kg"]??""));setRs(r.reps||"5x5");setKm(String(r.km??""));setMinutes(String(r.minutes??""));setConfirmDelete(false);setMsg("")}
+function build(){
+if(!date||!/^\d{4}-\d{2}-\d{2}$/.test(date))throw Error("Choose a date.");
+if(kind==="Lift"){if(!exercise.trim())throw Error("Enter an exercise.");if(weight.trim()===""||!Number.isFinite(Number(weight))||Number(weight)<0)throw Error("Enter a weight of 0 kg or more.");if(!validReps(rs))throw Error("Enter actual reps, such as 5x5 or 5,5,5,4,4.");return {Date:date,Exercise:exercise.trim(),"Weight kg":Number(weight),Reps:reps(rs).join(",")}}
+if(!km.trim()||!minutes.trim()||!Number.isFinite(Number(km))||!Number.isFinite(Number(minutes))||Number(km)<=0||Number(minutes)<=0)throw Error("Enter a positive distance and duration.");
+return {Date:date,Km:Number(km),Minutes:Number(minutes)}
+}
+async function save(rows,isEdit=false){setBusy(true);setMsg("");try{
+const ops=rows.flatMap(v=>{const t=table(v.Exercise!==undefined?"Exercise":"Km");if(!t)throw Error("Missing workout table. Add the Lifting or Running table on the Text side.");if(isEdit)return Object.entries(v).map(([k,value])=>({op:"set_cell",table:t.index,row:edit.row,col:t.columns[col(t,k)].name,value:String(value)}));return [{op:"append_row",table:t.index,values:Object.fromEntries(Object.entries(v).map(([k,value])=>[t.columns[col(t,k)].name,String(value)]))}]});
+const result=await amber.update(ops);if(!result.ok)throw Error(result.error);setDraft([]);setEdit(null);setConfirmDelete(false);setMsg(isEdit?"Entry updated.":"Workout saved.");if(isEdit)setScreen("History");
+}catch(e){setMsg(e.message)}finally{setBusy(false)}}
+function add(e){e.preventDefault();try{const v=build();if(edit)save([v],true);else{setDraft(draft.concat(v));setMsg("Added to this workout. Save when you're finished.");}}catch(e){setMsg(e.message)}}
+const last=lifts.filter(r=>r.exercise===exercise&&r.date<=note.today).at(-1);
+const form=H("form",{onSubmit:add},H("div",{class:"fields"},
+field("Date","date",date,setDate,{type:"date",required:true,class:"full"}),
+H("label",{}, "Activity",H("select",{id:"activity",name:"activity",value:kind,disabled:!!edit,onChange:e=>setKind(e.target.value)},["Lift","Run"].map(x=>H("option",{},x)))),
+kind==="Lift"?H("label",{},"Exercise",H("input",{id:"exercise",name:"exercise",list:"exercise-list",value:exercise,onInput:e=>setExercise(e.target.value),required:true}),H("datalist",{id:"exercise-list"},names.map(x=>H("option",{value:x})))):null,
+kind==="Lift"?field("Weight in kg","weight",weight,setWeight,{type:"number",min:0,step:"any",required:true}):field("Distance in km","km",km,setKm,{type:"number",min:0.01,step:"any",required:true}),
+kind==="Lift"?field("Actual reps per set","reps",rs,setRs,{required:true,placeholder:"5x5 or 5,5,5,4,4"}):field("Time in minutes","minutes",minutes,setMinutes,{type:"number",min:0.01,step:"any",required:true})),
+kind==="Lift"?H("p",{class:"muted"},"Enter sets × reps or list each set's reps. Zero records a missed set."):null,
+!edit&&kind==="Lift"&&last?H("button",{type:"button",onClick:()=>{setWeight(String(last["weight kg"]));setRs(last.reps)}},"Use last entry · "+last["weight kg"]+" kg"):null,
+H("button",{type:"submit",class:edit?"primary":"",disabled:busy},edit?"Save changes":"Add exercise or run"));
+const todayRows=all.filter(r=>r.date===note.today);
+const active=all.filter(r=>r.date<=note.today);
+const d=new Date(note.today+"T12:00:00Z");d.setUTCDate(d.getUTCDate()-((d.getUTCDay()+6)%7));const monday=d.toISOString().slice(0,10);
+const weekly=active.filter(r=>r.date>=monday),sessionCount=new Set(weekly.map(r=>r.date)).size;
+let content;
+if(edit){content=H("div",{class:"layout"},H("section",{class:"panel"},H("h2",{},"Edit entry"),form,H("div",{class:"actions"},H("button",{onClick:()=>setEdit(null)},"Back to history"),H("button",{onClick:()=>setConfirmDelete(true)},"Delete entry")),confirmDelete?H("div",{},H("p",{},"Delete this entry?"),H("button",{disabled:busy,onClick:async()=>{setBusy(true);try{const r=await amber.update({op:"delete_row",table:edit.table,row:edit.row});if(!r.ok)throw Error(r.error);setEdit(null);setMsg("Entry deleted.")}catch(e){setMsg(e.message)}finally{setBusy(false)}}},"Confirm deletion"),H("button",{onClick:()=>setConfirmDelete(false)},"Keep entry")):null),H("section",{class:"panel"},rowView(edit)))}
+else if(screen==="Today"){
+content=H("div",{},H("h2",{},"Today's workout"),H("p",{class:"sub"},note.today+" · "+(todayRows.length?"Keep logging your session.":"Ready for your next session.")),H("div",{class:"layout"},H("section",{class:"panel"},form),H("section",{class:"panel"},H("h3",{},"This workout"),draft.length?draft.map((r,i)=>H("div",{class:"entry"},rowView(Object.fromEntries(Object.entries(r).map(([k,v])=>[k.toLowerCase(),v]))),H("div",{},H("span",{class:"muted"},r.Date),H("button",{onClick:()=>setDraft(draft.filter((_,j)=>i!==j)),"aria-label":"Remove draft entry "+(i+1)},"Remove")))):H("div",{},H("p",{class:"muted"},"Add exercises and runs, then save them together."),H("h3",{},"Last logged"),[lifts.at(-1),runs.at(-1)].filter(Boolean).map(r=>H("div",{class:"entry"},H("div",{},H("span",{class:"muted"},r.date),rowView(r))))),draft.length?H("button",{class:"primary",disabled:busy,onClick:()=>save(draft)},"Save workout · "+draft.length+" entries"):null,todayRows.length?H("details",{},H("summary",{},"Saved today · "+todayRows.length+" entries"),todayRows.map(r=>H("div",{class:"entry"},rowView(r)))):null)))}
+else if(screen==="History"){
+const dates=[...new Set(all.map(r=>r.date))].sort().reverse();
+content=H("div",{},H("h2",{},"Session history"),H("p",{class:"sub"},dates.length+" sessions · "+lifts.length+" lifting entries · "+runs.length+" runs"),H("div",{class:"history"},dates.length?dates.map(dt=>H("section",{class:"panel"},H("h3",{class:"num"},dt),all.filter(r=>r.date===dt).map(r=>H("div",{class:"entry"},rowView(r),H("button",{onClick:()=>startEdit(r),"aria-label":"Edit "+(r.exercise||"run")+" on "+dt},"Edit"))))):H("p",{},"No sessions yet. Log your first workout on Today.")))}
+else if(screen==="Progress"){
+const series=lifts.filter(r=>r.exercise===selected&&r.date<=note.today),top=Math.max(1,...series.map(r=>n(r["weight kg"]))),pts=series.map((r,i)=>(24+(series.length===1?0:i*552/(series.length-1)))+","+(160-n(r["weight kg"])/top*130)).join(" ");
+content=H("div",{},H("h2",{},"Progress"),H("div",{class:"stats"},H("div",{class:"stat"},H("div",{class:"big num"},sessionCount),H("span",{},"sessions this week"+(settings.weeklySessions?" / "+settings.weeklySessions+" goal":""))),H("div",{class:"stat"},H("div",{class:"big num"},weekly.filter(r=>r.km!==undefined).reduce((s,r)=>s+n(r.km),0)+" km"),H("span",{},"running this week"+(settings.weeklyKm?" / "+settings.weeklyKm+" km goal":"")))),H("div",{class:"layout"},H("section",{class:"panel"},H("h3",{},"Lifting"),H("label",{},"Exercise",H("select",{id:"progress-exercise",name:"progress-exercise",value:selected,onChange:e=>setSelected(e.target.value)},names.map(x=>H("option",{},x)))),series.length?H("div",{},H("p",{class:"num"},n(series.at(-1)["weight kg"])+" kg latest · "+(n(series.at(-1)["weight kg"])-n(series[0]["weight kg"]))+" kg since first entry"),H("svg",{viewBox:"0 0 600 180",role:"img","aria-label":selected+" weight over time. Exact weights and reps are listed below.",class:"chart"},H("polyline",{points:pts,fill:"none",stroke:"currentColor","stroke-width":4}),series.map((r,i)=>H("circle",{cx:24+(series.length===1?0:i*552/(series.length-1)),cy:160-n(r["weight kg"])/top*130,r:5,fill:"currentColor"}))),series.slice().reverse().map(r=>H("div",{class:"entry"},H("div",{},H("span",{class:"muted"},r.date),H("p",{class:"num"},r["weight kg"]+" kg"),sets(r.reps)),H("span",{class:"pill"},(n(r["weight kg"])*reps(r.reps).reduce((s,v)=>s+(Number.isFinite(v)?v:0),0)).toLocaleString()+" kg volume")))):H("p",{},"No lifting entries for this exercise.")),H("section",{class:"panel"},H("h3",{},"Running"),H("p",{class:"muted"},"Pace is minutes per kilometre."),runs.length?runs.slice().reverse().map(r=>H("div",{class:"entry"},H("div",{},H("span",{class:"muted"},r.date),rowView(r)))):H("p",{},"No runs logged yet."))))}
+else{
+content=H("section",{class:"panel"},H("h2",{},"Settings"),H("p",{class:"muted"},"Goals are optional. Use 0 to turn a goal off. Changes save automatically."),
+field("Weekly session goal","goal-sessions",settings.weeklySessions,async v=>{const r=await amber.store.set("settings",Object.assign({},settings,{weeklySessions:Math.max(0,n(v))}));if(r&&r.ok===false)setMsg(r.error)},{type:"number",min:0,step:1}),
+field("Weekly running goal in km","goal-km",settings.weeklyKm,async v=>{const r=await amber.store.set("settings",Object.assign({},settings,{weeklyKm:Math.max(0,n(v))}));if(r&&r.ok===false)setMsg(r.error)},{type:"number",min:0,step:"any"}),
+H("label",{},"Exercise names, separated by commas",H("input",{id:"exercise-names",name:"exercise-names",defaultValue:settings.exercises.join(", "),onChange:async e=>{const r=await amber.store.set("settings",Object.assign({},settings,{exercises:e.target.value.split(",").map(x=>x.trim()).filter(Boolean)}));if(r&&r.ok===false)setMsg(r.error)}})),H("p",{class:"muted"},"Weights are in kg and distances are in km. Your full log is also available on the Text side."))}
+return H("div",{},H("header",{},H("h1",{},note.title),H("p",{class:"sub"},"Lift. Run. Record.")),H("nav",{"aria-label":"Workout screens"},["Today","History","Progress","Settings"].map(s=>H("button",{"aria-current":screen===s?"page":null,onClick:()=>go(s)},s))),H("div",{class:"message",role:"status"},msg),content);
+}}
+amber.onChange((next,store)=>{note=next;data=store||amber.data;preact.render(H(App),document.getElementById("root"))});
+</script></body></html>

@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  .wrap { max-width: var(--amber-content-max); margin: 0 auto; padding: 18px var(--amber-gutter) 104px; }
+  h1 { font-size: 1.75rem; letter-spacing: -.02em; margin: 4px 0 4px; }
+  h2 { font-size: .8rem; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--amber-text-secondary); margin: 22px 4px 8px; }
+  .muted { color: var(--amber-text-secondary); font-size: .9rem; }
+  .card { background: var(--amber-surface); border: 1px solid var(--amber-separator); border-radius: var(--amber-radius); overflow: hidden; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+  .stat { background: var(--amber-surface); border: 1px solid var(--amber-separator); border-radius: var(--amber-radius); padding: 12px; min-width: 0; }
+  .stat b { display: block; font-size: 1.6rem; font-variant-numeric: tabular-nums; letter-spacing: -.02em; line-height: 1.1; }
+  .stat span { font-size: .78rem; color: var(--amber-text-secondary); }
+  .day { margin-bottom: 14px; }
+  .dayhead { display: flex; justify-content: space-between; align-items: baseline; padding: 0 4px 6px; }
+  .dayhead b { font-size: 1rem; }
+  .ex { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-top: 1px solid var(--amber-separator); min-height: 48px; }
+  .ex:first-child { border-top: 0; }
+  .ex .n { flex: 1; min-width: 0; font-weight: 600; }
+  .ex .n small { display: block; font-weight: 400; color: var(--amber-text-secondary); font-size: .8rem; }
+  .ex .v { font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; white-space: nowrap; }
+  .ex .v small { display: block; font-weight: 400; color: var(--amber-text-secondary); font-size: .8rem; }
+  .pr { font-size: .78rem; font-weight: 700; background: var(--amber-accent-soft); color: var(--amber-accent-text); padding: 2px 7px; border-radius: 99px; margin-left: 6px; }
+  .del { min-width: 44px; min-height: 44px; border: 0; background: transparent; color: var(--amber-text-secondary); font-size: 1.2rem; border-radius: 10px; }
+  .grid { display: grid; gap: 12px; grid-template-columns: 1fr; }
+  @media (min-width: 700px) { .grid { grid-template-columns: 1fr 1fr; } }
+  @media (min-width: 1000px) { .grid { grid-template-columns: 1fr 1fr 1fr; } .stat b { font-size: 2rem; } }
+  .lift { padding: 14px; }
+  .lift .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .lift .top b { font-size: 1.05rem; }
+  .lift .big { font-size: 1.7rem; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+  .up { color: var(--amber-accent-text); font-weight: 600; font-size: .85rem; }
+  svg { display: block; width: 100%; height: 70px; margin-top: 8px; overflow: visible; }
+  .ln { fill: none; stroke: var(--amber-accent); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+  .dot { fill: var(--amber-accent); }
+  form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 14px; }
+  label { display: flex; flex-direction: column; gap: 4px; font-size: .8rem; color: var(--amber-text-secondary); min-width: 0; }
+  label.full { grid-column: 1 / -1; }
+  input { font: inherit; font-size: 1rem; color: var(--amber-text); background: var(--amber-field); border: 1px solid var(--amber-field-border); border-radius: var(--amber-radius-small); padding: 10px 12px; min-height: 44px; width: 100%; }
+  .primary { grid-column: 1 / -1; font: inherit; font-weight: 600; min-height: 48px; border: 0; border-radius: var(--amber-radius-small); background: var(--amber-accent); color: var(--amber-on-accent); }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; grid-column: 1 / -1; }
+  .chip { font: inherit; font-size: .85rem; min-height: 44px; padding: 0 14px; border-radius: 99px; border: 1px solid var(--amber-separator); background: var(--amber-fill); color: var(--amber-text); }
+  .err { color: var(--amber-danger); grid-column: 1 / -1; min-height: 1em; }
+  .empty { padding: 28px 16px; text-align: center; color: var(--amber-text-secondary); }
+  nav { position: fixed; left: 0; right: 0; bottom: 0; background: var(--amber-surface); border-top: 1px solid var(--amber-separator); display: flex; justify-content: center; gap: 6px; padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); }
+  nav button { flex: 1; max-width: 220px; min-height: 48px; font: inherit; font-weight: 600; border: 0; border-radius: 12px; background: transparent; color: var(--amber-text-secondary); }
+  nav button[aria-selected="true"] { background: var(--amber-accent-soft); color: var(--amber-accent-text); }
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<nav role="tablist" aria-label="Sections">
+  <button role="tab" data-tab="log" aria-label="Sessions">Sessions</button>
+  <button role="tab" data-tab="progress" aria-label="Progress">Progress</button>
+  <button role="tab" data-tab="add" aria-label="Log a workout">+ Log</button>
+</nav>
+<script>
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const num = (s) => { const n = parseFloat(String(s ?? "").replace(",", ".")); return Number.isFinite(n) ? n : 0; };
+  const addDays = (iso, n) => { const d = new Date(iso + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+  const monday = (iso) => addDays(iso, -((new Date(iso + "T12:00:00Z").getUTCDay() + 6) % 7));
+  const nice = (iso) => new Date(iso + "T12:00:00Z").toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+  const fmt = (n) => (Math.round(n * 10) / 10).toString();
+  const CARDIO = /run|bike|cycle|swim|walk|jog|cardio/i;
+  let tab = "log", error = "", draft = {};
+
+  function totalReps(s) {
+    s = String(s || "").trim().toLowerCase();
+    let m = s.match(/^(\d+)\s*[x×*]\s*(\d+)$/);
+    if (m) return +m[1] * +m[2];
+    if (/^\d+([,\s]+\d+)*$/.test(s)) return s.split(/[,\s]+/).reduce((a, b) => a + +b, 0);
+    return 0;
+  }
+  function setsOf(s) {
+    s = String(s || "").trim().toLowerCase();
+    const m = s.match(/^(\d+)\s*[x×*]\s*(\d+)$/);
+    if (m) return `${m[1]}×${m[2]}`;
+    return s.replace(/[,\s]+/g, " · ");
+  }
+
+  function parse(note) {
+    const t = note.tables.find((t) => t.columns.some((c) => /^exercise$/i.test(c.name)));
+    if (!t) return null;
+    const ix = (re) => t.columns.findIndex((c) => re.test(c.name));
+    const c = { d: ix(/^date$/i), e: ix(/exercise/i), w: ix(/weight/i), r: ix(/reps/i), k: ix(/^km/i), m: ix(/min/i) };
+    const rows = t.rows.map((r, i) => ({ i, date: r[c.d], ex: (r[c.e] || "").trim(), w: num(r[c.w]), reps: r[c.r] || "", km: num(r[c.k]), min: num(r[c.m]) }))
+      .filter((r) => r.date && r.ex);
+    return { t, c, rows };
+  }
+
+  function render(note) {
+    const app = document.getElementById("app");
+    document.querySelectorAll("nav button").forEach((b) => b.setAttribute("aria-selected", b.dataset.tab === tab));
+    const P = parse(note);
+    if (!P) { app.innerHTML = `<h1>${esc(note.title)}</h1><div class="card empty">Add a table with Date, Exercise, Weight (kg), Reps, Km and Minutes columns.</div>`; return; }
+    const { rows } = P;
+    // personal bests: first date each lift reached its max weight so far
+    const lifts = {};
+    [...rows].sort((a, b) => a.date.localeCompare(b.date) || a.i - b.i).forEach((r) => { if (r.w > 0) (lifts[r.ex] = lifts[r.ex] || []).push(r); });
+    const prKeys = new Set();
+    Object.values(lifts).forEach((list) => { let best = 0; list.forEach((r, k) => { if (r.w > best) { if (k > 0) prKeys.add(r.i); best = r.w; } }); });
+    app.innerHTML = tab === "log" ? sessions(note, P, prKeys) : tab === "progress" ? progress(lifts) : addForm(P);
+    wire(note, P);
+  }
+
+  function sessions(note, P, prKeys) {
+    const { rows } = P;
+    const wk = monday(note.today), pw = addDays(wk, -7);
+    const days = (a, b) => new Set(rows.filter((r) => r.date >= a && r.date < b).map((r) => r.date)).size;
+    const last = rows.map((r) => r.date).sort().pop();
+    const daysSince = last ? Math.round((new Date(note.today) - new Date(last)) / 864e5) : null;
+    const vol = (a, b) => rows.filter((r) => r.date >= a && r.date < b).reduce((s, r) => s + r.w * totalReps(r.reps), 0);
+    const byDate = {};
+    rows.forEach((r) => (byDate[r.date] = byDate[r.date] || []).push(r));
+    const dates = Object.keys(byDate).sort().reverse();
+    return `<h1>${esc(note.title)}</h1>
+      <div class="muted">${daysSince === null ? "No sessions yet" : daysSince === 0 ? "Trained today" : `Last trained ${daysSince} day${daysSince === 1 ? "" : "s"} ago`}</div>
+      <div class="stats">
+        <div class="stat"><b>${days(wk, addDays(wk, 7))}</b><span>sessions this week</span></div>
+        <div class="stat"><b>${days(pw, wk)}</b><span>last week</span></div>
+        <div class="stat"><b>${fmt(vol(pw, wk) / 1000)}t</b><span>lifted last week</span></div>
+      </div>
+      <h2>History</h2>
+      ${dates.map((d) => `<section class="day"><div class="dayhead"><b>${nice(d)}</b><span class="muted">${byDate[d].length} exercise${byDate[d].length === 1 ? "" : "s"}</span></div><div class="card">${byDate[d].map((r) => {
+        const cardio = r.km > 0 || r.min > 0;
+        const main = cardio ? `${r.km ? fmt(r.km) + " km" : ""}${r.km && r.min ? " · " : ""}${r.min ? r.min + " min" : ""}` : `${fmt(r.w)} kg`;
+        const sub = cardio ? (r.km && r.min ? `${Math.floor(r.min / r.km)}:${String(Math.round(((r.min / r.km) % 1) * 60)).padStart(2, "0")} /km` : "") : `${setsOf(r.reps)}${totalReps(r.reps) ? " · " + totalReps(r.reps) + " reps" : ""}`;
+        return `<div class="ex"><div class="n">${esc(r.ex)}${prKeys.has(r.i) ? '<span class="pr">PR</span>' : ""}</div><div class="v">${esc(main)}<small>${esc(sub)}</small></div><button class="del" data-del="${r.i}" aria-label="Delete ${esc(r.ex)} on ${esc(d)}">✕</button></div>`;
+      }).join("")}</div></section>`).join("") || '<div class="card empty">No workouts yet. Tap + Log.</div>'}`;
+  }
+
+  function spark(vals) {
+    if (vals.length < 2) return "";
+    const W = 300, H = 60, min = Math.min(...vals), max = Math.max(...vals), span = max - min || 1;
+    const pts = vals.map((v, k) => [(k / (vals.length - 1)) * W, H - 6 - ((v - min) / span) * (H - 12)]);
+    return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Weight over time: ${vals.join(", ")} kg"><polyline class="ln" vector-effect="non-scaling-stroke" points="${pts.map((p) => p.join(",")).join(" ")}"/></svg>`;
+  }
+
+  function progress(lifts) {
+    const names = Object.keys(lifts);
+    if (!names.length) return '<h1>Progress</h1><div class="card empty">Log a lift to see progress.</div>';
+    return `<h1>Progress</h1><div class="muted">Working weight per session</div><h2>Lifts</h2><div class="grid">${names.map((n) => {
+      const l = lifts[n], first = l[0], now = l[l.length - 1], diff = now.w - first.w;
+      return `<div class="card lift"><div class="top"><b>${esc(n)}</b><span class="muted">${l.length} session${l.length === 1 ? "" : "s"}</span></div>
+        <div class="top"><span class="big">${fmt(now.w)} kg</span><span class="up">${diff ? (diff > 0 ? "+" : "") + fmt(diff) + " kg" : "no change"}</span></div>
+        <div class="muted">${setsOf(now.reps)} on ${nice(now.date)}</div>${spark(l.map((x) => x.w))}</div>`;
+    }).join("")}</div>`;
+  }
+
+  function addForm(P) {
+    const names = [...new Set(P.rows.map((r) => r.ex))];
+    const cardio = CARDIO.test(draft.ex || "") || P.rows.some((r) => r.ex.toLowerCase() === (draft.ex || "").toLowerCase() && (r.km || r.min));
+    return `<h1>Log a workout</h1><div class="muted">One exercise at a time</div><h2>Exercise</h2>
+      <div class="card"><form id="add">
+        <div class="chips">${names.map((n) => `<button type="button" class="chip" data-pick="${esc(n)}">${esc(n)}</button>`).join("")}</div>
+        <label>Exercise<input name="ex" list="exs" value="${esc(draft.ex || "")}" required autocomplete="off"></label>
+        <label>Date<input name="date" type="date" value="${esc(draft.date || amber.note.today)}" required></label>
+        ${cardio ? `<label>Distance (km)<input name="km" inputmode="decimal" value="${esc(draft.km || "")}"></label><label>Minutes<input name="min" inputmode="numeric" value="${esc(draft.min || "")}"></label>`
+          : `<label>Weight (kg)<input name="w" inputmode="decimal" value="${esc(draft.w || "")}"></label><label>Reps (5x5 or 5,5,4)<input name="reps" value="${esc(draft.reps || "")}" placeholder="5x5"></label>`}
+        <datalist id="exs">${names.map((n) => `<option value="${esc(n)}">`).join("")}</datalist>
+        <div class="err" role="alert">${esc(error)}</div>
+        <button class="primary">Save</button>
+      </form></div>`;
+  }
+
+  function wire(note, P) {
+    document.querySelectorAll("[data-del]").forEach((b) => b.onclick = async () => {
+      const r = await amber.update({ op: "delete_row", table: P.t.index, row: +b.dataset.del });
+      if (!r.ok) { error = r.error; }
+    });
+    const f = document.getElementById("add");
+    if (!f) return;
+    const keep = () => { const fd = new FormData(f); draft = { ex: fd.get("ex") || "", date: fd.get("date") || "", w: fd.get("w") || "", reps: fd.get("reps") || "", km: fd.get("km") || "", min: fd.get("min") || "" }; };
+    const pick = (name) => {
+      const last = [...P.rows].reverse().sort((a, b) => b.date.localeCompare(a.date)).find((r) => r.ex.toLowerCase() === name.toLowerCase());
+      keep(); draft.ex = name;
+      if (last) { draft.w = last.w ? fmt(last.w) : ""; draft.reps = last.reps; draft.km = last.km ? fmt(last.km) : ""; draft.min = last.min ? String(last.min) : ""; }
+      render(amber.note);
+    };
+    f.querySelectorAll("[data-pick]").forEach((b) => b.onclick = () => pick(b.dataset.pick));
+    f.elements.ex.onchange = () => pick(f.elements.ex.value.trim());
+    f.onsubmit = async (e) => {
+      e.preventDefault();
+      const fd = new FormData(f), c = P.t.columns, nm = (i) => c[i].name;
+      const v = { [nm(P.c.d)]: fd.get("date"), [nm(P.c.e)]: String(fd.get("ex")).trim() };
+      const put = (i, val) => { val = String(val ?? "").replace(",", ".").trim(); if (i >= 0 && val) v[nm(i)] = val; };
+      put(P.c.w, fd.get("w")); if (fd.get("reps")) v[nm(P.c.r)] = String(fd.get("reps")).trim(); put(P.c.k, fd.get("km")); put(P.c.m, fd.get("min"));
+      const r = await amber.update({ op: "append_row", table: P.t.index, values: v });
+      error = r.ok ? "" : r.error;
+      if (r.ok) { draft = {}; tab = "log"; }
+      render(amber.note);
+    };
+  }
+
+  document.querySelectorAll("nav button").forEach((b) => b.onclick = () => { tab = b.dataset.tab; error = ""; render(amber.note); window.scrollTo(0, 0); });
+  amber.onChange((note) => render(note));
+</script>
+</body>
+</html>
