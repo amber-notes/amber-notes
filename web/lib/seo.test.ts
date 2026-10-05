@@ -59,6 +59,17 @@ describe("search and AI crawlers", () => {
     expect(redirects).toContainEqual({ source: "/guides/:slug", destination: "/blog/:slug", permanent: true });
   });
 
+  it("sends a stray-ampersand address to the home page for good, and nothing else", async () => {
+    // The matcher Next.js itself compiles redirect sources with (it ships without types).
+    const compiled = "next/dist/compiled/path-to-regexp";
+    const { pathToRegexp } = (await import(compiled)) as { pathToRegexp: (source: string, keys: unknown[]) => RegExp };
+    const redirect = (await nextConfig.redirects!()).find((r) => r.destination === "/" && !r.has);
+    expect(redirect?.permanent).toBe(true);
+    const re = pathToRegexp(redirect!.source, []);
+    for (const path of ["/&", "/&amp;", "/&utm_source=x&utm_medium=y"]) expect(re.test(path), path).toBe(true);
+    for (const path of ["/", "/blog", "/blog/a&b", "/n/x&y"]) expect(re.test(path), path).toBe(false);
+  });
+
   it("writes /llms.txt with the one-line description, the MCP address and the published posts only", () => {
     const txt = llmsTxt();
     expect(txt.startsWith("# Amber Notes\n\n> Amber Notes is a free, open-source notes app for iPhone and Mac")).toBe(true);

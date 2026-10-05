@@ -39,7 +39,8 @@ export default function Page() {
       </p>
       <p>
         If there&apos;s no iCloud heading, turn on iCloud for Notes. On iOS 26, open Settings, tap your name, tap iCloud and turn on
-        Notes. On iOS 27, tap See All next to Saved to iCloud first, then turn on Notes.
+        Notes. On iOS 27, tap See All next to Saved to iCloud first, then turn on Notes. If your notes are in iCloud and still don&apos;t
+        reach your other devices, see <a href="/blog/apple-notes-not-syncing">Apple Notes not syncing between iPhone and Mac</a>.
       </p>
 
       <h2>Before you move anything</h2>
