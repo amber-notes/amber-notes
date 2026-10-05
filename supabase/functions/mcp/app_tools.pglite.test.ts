@@ -39,15 +39,16 @@ Deno.test("network and keys: declared vs used vs set up, and keys pasted into th
   assertStringIncludes(networkReport(html, []).join(), "isn't in Settings › API Keys yet");
 });
 
-Deno.test("libraries: pasted copies, unpinned or unhashed npm references and unknown names are flagged", () => {
+Deno.test("libraries: pasted copies, unpinned or unhashed npm entries, unknown names and undeclared globals are flagged", () => {
   const pasted = `<script>/*! Chart.js v4.4.4 | https://www.chartjs.org */${"x".repeat(6000)}</script><script>amber.onChange(() => {})</script>`;
-  assertStringIncludes(libraryReport(pasted).join(), "pasted copy of chart.js");
+  assertStringIncludes(libraryReport(pasted).join(), "pasted copy of chart");
   assertStringIncludes(libraryReport(`<script>${"y".repeat(70000)}</script>`).join(), "looks like a pasted library");
-  assertStringIncludes(libraryReport(`<script src="amber-lib:npm/qrcode-generator@^2/dist/qrcode.js"></script>`).join(), "pin an exact version");
-  assertStringIncludes(libraryReport(`<script src="amber-lib:npm/qrcode-generator@2.0.4/dist/qrcode.js"></script>`).join(), "no integrity hash");
-  assertEquals(libraryReport(`<script src="amber-lib:npm/qrcode-generator@2.0.4/dist/qrcode.js" integrity="sha256-eeyG+ChWAFsciHkFz8z8++w4Icphx/1alS+qX3ePeRw="></script><script src="amber-lib:chart.js"></script>`), []);
-  assertEquals(libraryReport(`<script type="importmap">{"imports": {"three": "amber-lib:three"}}</script>`), []);
-  assertStringIncludes(libraryReport(`<script src="amber-lib:leaflet"></script>`).join(), "isn't a bundled library");
+  assertStringIncludes(libraryReport(`<meta name="amber-libs" content="npm:qrcode-generator@^1/qrcode.js#sha256-abc=">`).join(), "exact version and a hash");
+  assertStringIncludes(libraryReport(`<meta name="amber-libs" content="npm:qrcode-generator@1.4.4/qrcode.js">`).join(), "exact version and a hash");
+  assertEquals(libraryReport(`<meta name="amber-libs" content="chart, npm:qrcode-generator@1.4.4/qrcode.js#sha384-8FWZA6BGMXhsfO+BLtrJK0We6gg5o1JyO8xQm6peWDEUs17ACA5ziE/NIAkl9z2k"><script>new Chart(c, {})</script>`), []);
+  assertEquals(libraryReport(`<script>const THREE = await amber.lib("three"); new THREE.Scene()</script>`), []);
+  assertStringIncludes(libraryReport(`<meta name="amber-libs" content="leaflet">`).join(), "No bundled library");
+  assertStringIncludes(libraryReport(`<script>new Chart(c, {})</script>`).join(), "doesn't declare it");
 });
 
 Deno.test("check_app and preview_app render a sample through the render service", async () => {

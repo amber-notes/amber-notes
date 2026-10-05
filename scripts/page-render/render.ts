@@ -21,19 +21,23 @@ const vars = (d: boolean) => [
   ["--amber-separator", d ? "rgba(255, 250, 245, 0.10)" : "rgba(138, 74, 28, 0.14)"], ["--amber-accent", d ? "#F4AD33" : "#D96A06"],
   ["--amber-accent-text", d ? "#F4AD33" : "#A85700"], ["--amber-accent-soft", d ? "#423014" : "#FFF1DC"], ["--amber-on-accent", d ? "#1F1300" : "#FFFFFF"],
   ["--amber-danger", d ? "#FF6B5E" : "#C62828"],
+  ["--amber-field", d ? "#1A1918" : "#FFFFFF"], ["--amber-field-border", d ? "#7A716A" : "#9A8673"],
 ].map(([k, v]) => `${k}: ${v}`).join("; ");
 export const THEME = `:root { color-scheme: light dark; ${vars(false)}; --amber-radius: 14px; --amber-radius-small: 10px; --amber-content-max: 1100px; --amber-gutter: clamp(16px, 3.5vw, 40px); ` +
   `--amber-font: -apple-system, system-ui, sans-serif; --amber-font-rounded: ui-rounded, -apple-system, system-ui, sans-serif; --amber-font-mono: ui-monospace, Menlo, monospace; }\n` +
   `@media (prefers-color-scheme: dark) { :root { ${vars(true)}; } }\n` +
-  `body { margin: 0; background: var(--amber-bg); color: var(--amber-text); font: 17px/1.35 var(--amber-font); -webkit-text-size-adjust: 100%; }`;
+  `body { margin: 0; background: var(--amber-bg); color: var(--amber-text); font: 17px/1.35 var(--amber-font); -webkit-text-size-adjust: 100%; }\n` +
+  // The app's default fields: a solid fill and a border, low specificity so a page can restyle them.
+  `:where(input:not([type=checkbox], [type=radio], [type=range], [type=color], [type=file], [type=hidden]), select, textarea) { background: var(--amber-field); color: var(--amber-text); border: 1px solid var(--amber-field-border); }\n` +
+  `:where(input, select, textarea):focus-visible { outline: 2px solid var(--amber-accent); outline-offset: 1px; }`;
 
-// Libraries (amber-lib:…, see supabase/functions/mcp/libraries.ts). The app serves them from its own
-// copy; here they're served from a local cache of the same npm files at a made-up host the CSP allows,
-// and a hash the page declares is checked here (the browser can't for these requests).
+// Libraries (<meta name="amber-libs">, see supabase/functions/mcp/libraries.ts). The app serves them
+// from its own copies; here the same npm files come from a local cache at a made-up host the CSP
+// allows, injected before the page's scripts as the app does, and npm hashes are checked here.
 const LIB_HOST = "https://lib.amber.invalid/";
 const libCache = new URL("./.libcache/", import.meta.url);
 
-/** The page as the app loads it, plus the integrity hashes it declares for its libraries. */
+/** The page as the app loads it. */
 export function sandboxed(html: string): string {
   return prepare(html).html;
 }
@@ -42,13 +46,19 @@ function prepare(html: string): { html: string; integrity: Map<string, string> }
   let rest = html.replace(/^[\s\uFEFF]+/, "");
   if (/^<!doctype/i.test(rest)) rest = rest.slice(rest.indexOf(">") + 1);
   const integrity = new Map<string, string>();
-  for (const m of rest.matchAll(/["'](amber-lib:[^"']+)["'][^>]*?integrity\s*=\s*["']([^"']+)["']/gi)) integrity.set(m[1], m[2]);
-  for (const m of rest.matchAll(/["'](amber-lib:[^"']+)["']\s*:\s*["'](sha(?:256|384|512)-[^"']+)["']/g)) integrity.set(m[1], m[2]);
-  rest = rest.replace(/\sintegrity\s*=\s*["'][^"']*["']/gi, "").replace(/,?\s*"integrity"\s*:\s*\{[^}]*\}/g, "").replace(/amber-lib:/g, LIB_HOST);
+  const tags: string[] = [];
+  const tag = rest.match(/<meta[^>]*name=["']amber-libs["'][^>]*>/i)?.[0];
+  const content = tag?.match(/content=(['"])([\s\S]*?)\1/)?.[2] ?? "";
+  for (const item of content.split(",").map((x) => x.trim()).filter(Boolean)) {
+    const npm = item.match(/^npm:(.+?)#((?:sha256|sha384|sha512)-.+)$/);
+    const path = npm ? `npm/${npm[1]}` : item;
+    if (npm) integrity.set(path, npm[2]);
+    tags.push(`<script src="${LIB_HOST}${encodeURI(path)}"></script>`);
+  }
   const policy = POLICY.replace("script-src 'unsafe-inline'", `script-src 'unsafe-inline' ${LIB_HOST}`);
   return {
-    html: `<!doctype html><meta http-equiv="Content-Security-Policy" content="${policy}"><meta name="viewport" content="width=device-width, initial-scale=1">` +
-      `<style id="amber-theme">${THEME}</style>` + rest,
+    html: `<!doctype html><meta http-equiv="Content-Security-Policy" content="${policy}"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">` +
+      `<style id="amber-theme">${THEME}</style>` + tags.join("") + rest,
     integrity,
   };
 }
@@ -60,12 +70,17 @@ async function library(path: string): Promise<Uint8Array | null> {
   const npm = bundled ? bundled.npm : path.startsWith("npm/") ? path.slice(4) : null;
   if (!npm || !/@\d+\.\d+\.\d+/.test(npm)) return null;
   const file = new URL(npm.replace(/[^\w.@-]/g, "_"), libCache);
-  try { return await Deno.readFile(file); } catch { /* not cached yet */ }
-  const res = await fetch(`https://cdn.jsdelivr.net/npm/${npm}`);
-  if (!res.ok) { await res.body?.cancel(); return null; }
-  const bytes = new Uint8Array(await res.arrayBuffer());
-  await Deno.mkdir(libCache, { recursive: true });
-  await Deno.writeFile(file, bytes);
+  let bytes: Uint8Array | null = null;
+  try { bytes = await Deno.readFile(file); } catch { /* not cached yet */ }
+  if (!bytes) {
+    const res = await fetch(`https://cdn.jsdelivr.net/npm/${npm}`);
+    if (!res.ok) { await res.body?.cancel(); return null; }
+    bytes = new Uint8Array(await res.arrayBuffer());
+    await Deno.mkdir(libCache, { recursive: true });
+    await Deno.writeFile(file, bytes);
+  }
+  // A data library (world's TopoJSON) arrives as its global, like the app serves it.
+  if (bundled && npm.endsWith(".json")) return new TextEncoder().encode(`window.${bundled.global} = ${new TextDecoder().decode(bytes)};`);
   return bytes;
 }
 
@@ -117,6 +132,13 @@ const bootstrap = (note: unknown, data: unknown, defaults: Record<string, unknow
       maps: { open: unavailable("Maps"), snapshot: unavailable("Maps") }, weather: { current: unavailable("Weather") },
     },
     ai: { available: () => Promise.resolve({ ok: true, available: false }), respond: unavailable("The on-device model") },
+    lib: (name) => new Promise((ok, fail) => {
+      const g = ${JSON.stringify(Object.fromEntries([["chart","Chart"],["d3","d3"],["three","THREE"],["tone","Tone"],["dayjs","dayjs"],["marked","marked"],["purify","DOMPurify"],["anime","anime"],["confetti","confetti"],["topojson","topojson"],["world","worldAtlas110m"]]))}[name];
+      if (!g) return fail(new Error("No bundled library " + name));
+      if (window[g]) return ok(window[g]);
+      const s = document.createElement("script"); s.src = "${LIB_HOST}" + name; s.onload = () => ok(window[g]); s.onerror = () => fail(new Error("Couldn't load " + name)); document.head.append(s);
+    }),
+    context: { embedded: !!window.__amberWidget, width: innerWidth, height: innerHeight },
     fetch: (url) => { window.__amberFetched && window.__amberFetched(String(url)); return Promise.resolve({ ok: false, error: "The person hasn't allowed this host yet." }); },
   };
   Object.defineProperty(amber, "_receive", { value(note, data) {
@@ -129,7 +151,7 @@ const bootstrap = (note: unknown, data: unknown, defaults: Record<string, unknow
   const sized = () => { if (!document.documentElement) return addEventListener("DOMContentLoaded", sized, { once: true }); const w = window.innerWidth, c = document.documentElement.classList;
     c.toggle("amber-narrow", w < 600); c.toggle("amber-medium", w >= 600 && w < 900); c.toggle("amber-wide", w >= 900); };
   sized(); addEventListener("resize", sized);
-  if (window.__amberWidget) { const w = () => document.documentElement ? document.documentElement.classList.add("amber-widget") : addEventListener("DOMContentLoaded", w, { once: true }); w(); }
+  { const w = () => { if (!document.documentElement) return addEventListener("DOMContentLoaded", w, { once: true }); document.documentElement.dataset.amberContext = window.__amberWidget ? "widget" : "full"; if (window.__amberWidget) document.documentElement.classList.add("amber-widget"); }; w(); }
 })();`;
 
 /** <meta name="amber-settings">: each setting's default, as the app fills them in. */
@@ -174,7 +196,7 @@ export type View = {
   bg: string; fg: string; contrast: number; bgLuminance: number;
   unnamedControls: string[]; smallTargets: number; screenshot?: string;
   smallText: string[]; smallTextCount: number; faintText: string[]; faintCount: number; headings: string[]; excerpt: string; png?: string;
-  junk: string[]; under44: string[]; under44Count: number; clipped: string[]; clippedCount: number; usedWidth: number; canvases: number; svgShapes: number; gridCols: number; frames: number;
+  ghostFields: string[]; junk: string[]; under44: string[]; under44Count: number; clipped: string[]; clippedCount: number; usedWidth: number; canvases: number; svgShapes: number; gridCols: number; frames: number;
   look: { accentHue: number | null; nonAmberVivid: number; tintedBg: boolean };
 };
 export type Render = {
@@ -255,8 +277,8 @@ async function renderOnce(html: string, markdown: string, data: unknown, opts: R
       if (u.startsWith(LIB_HOST)) {
         const path = decodeURIComponent(u.slice(LIB_HOST.length));
         return library(path).then(async (bytes) => {
-          const want = prepared.integrity.get(`amber-lib:${path}`);
-          if (!bytes || (path.startsWith("npm/") && (!want || !(await sri(bytes, want))))) { blocked.push(`amber-lib:${path}${bytes ? " (hash missing or wrong)" : ""}`); return r.abort(); }
+          const want = prepared.integrity.get(path);
+          if (!bytes || (path.startsWith("npm/") && (!want || !(await sri(bytes, want))))) { blocked.push(`library ${path}${bytes ? " (hash missing or wrong)" : " (unknown)"}`); return r.abort(); }
           return r.fulfill({ status: 200, contentType: "text/javascript; charset=utf-8", headers: { "access-control-allow-origin": "*" }, body: Buffer.from(bytes) });
         });
       }
@@ -320,6 +342,14 @@ async function renderOnce(html: string, markdown: string, data: unknown, opts: R
       const small = controls.filter((el) => { const r = el.getBoundingClientRect(); return r.height < 28 || r.width < 28; }).length;
       // A control's tap area: its own box, or its label's when the label wraps it.
       const tapBox = (el: Element) => { const r = el.getBoundingClientRect(); const l = (el as HTMLInputElement).labels?.[0]; if (!l) return r; const b = l.getBoundingClientRect(); return b.width * b.height > r.width * r.height ? b : r; };
+      // Fields that don't look like fields: each needs a border and a solid fill of its own.
+      const ghostFields = [...document.querySelectorAll("input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]):not([type=hidden]):not([type=submit]):not([type=button]), select, textarea")].filter(visible).filter((el) => {
+        const st = getComputedStyle(el);
+        const border = ["Top", "Right", "Bottom", "Left"].some((k) => parseFloat((st as any)[`border${k}Width`]) >= 1 && !/rgba\([^)]*, 0\)$|transparent/.test((st as any)[`border${k}Color`]));
+        const v = (st.backgroundColor.match(/[\d.]+/g) ?? []).map(Number);
+        const fill = v.length >= 3 && (v[3] === undefined || v[3] > 0.5) && st.backgroundColor !== getComputedStyle(el.parentElement ?? document.body).backgroundColor;
+        return !border || !fill;
+      }).map((el) => (el.getAttribute("name") ?? el.id ?? el.tagName).slice(0, 30));
       const under44 = controls.filter((el) => { const r = tapBox(el); return r.height < 40 || r.width < 40; }).map((el) => (el.textContent ?? el.getAttribute("aria-label") ?? el.tagName).trim().slice(0, 30));
       // How much of the window's width the content uses.
       let left = Infinity, right = -Infinity;
@@ -385,6 +415,7 @@ async function renderOnce(html: string, markdown: string, data: unknown, opts: R
       const faint = texts.filter((el) => { const s = getComputedStyle(el); if (parseFloat(s.opacity) < 0.3) return false; const a = lumOf(s.color), b = lumOf(behind(el)); const [x, y] = [a, b].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05) < 4.5; }).map((el) => (el.textContent ?? "").trim().slice(0, 40));
       return {
         // Values a script showed by mistake: an unawaited promise, an object, undefined, NaN.
+        ghostFields,
         junk: [...new Set((text.match(/\[object (Promise|Object)\]|\bundefined\b|\bNaN\b|Invalid Date/g) ?? []))],
         under44: under44.slice(0, 5), under44Count: under44.length, clipped: clipped.slice(0, 5), clippedCount: clipped.length, used,
         canvases, svgShapes, gridCols, frames: (window as any).__frames as number, look,
@@ -395,7 +426,7 @@ async function renderOnce(html: string, markdown: string, data: unknown, opts: R
         shown: want.filter((w) => flat.includes(w.toLowerCase().replace(/\s+/g, " ")) || (/^[\d\s.,\u00a0]+$/.test(w) && flat.replace(/[\s,\u00a0\u202f]/g, "").includes(w.replace(/[\s,\u00a0]/g, "")))).length,
         bg, fg: bodyStyle.color, unnamed, small,
       };
-    }, want).catch((e) => ({ overflow: 0, textLength: 0, shown: 0, bg: "rgb(255,255,255)", fg: "rgb(0,0,0)", unnamed: [] as string[], small: 0, smallText: [] as string[], smallTextCount: 0, faint: [] as string[], faintCount: 0, headings: [] as string[], excerpt: "", junk: [] as string[], under44: [] as string[], under44Count: 0, clipped: [] as string[], clippedCount: 0, used: 0, canvases: 0, svgShapes: 0, gridCols: 0, frames: 0, look: { accentHue: null as number | null, nonAmberVivid: 0, tintedBg: false }, err: String(e) }));
+    }, want).catch((e) => ({ overflow: 0, textLength: 0, shown: 0, bg: "rgb(255,255,255)", fg: "rgb(0,0,0)", unnamed: [] as string[], small: 0, smallText: [] as string[], smallTextCount: 0, faint: [] as string[], faintCount: 0, headings: [] as string[], excerpt: "", ghostFields: [] as string[], junk: [] as string[], under44: [] as string[], under44Count: 0, clipped: [] as string[], clippedCount: 0, used: 0, canvases: 0, svgShapes: 0, gridCols: 0, frames: 0, look: { accentHue: null as number | null, nonAmberVivid: 0, tintedBg: false }, err: String(e) }));
     let shot: string | undefined;
     if (opts.shots && (width < 600 || scheme === "light")) {
       shot = `${opts.shots}-${width}-${scheme}.png`;
@@ -410,7 +441,7 @@ async function renderOnce(html: string, markdown: string, data: unknown, opts: R
     views.push({ name: `${widget ? "widget" : width}-${scheme}`, width, scheme, errors, overflowPx: m.overflow, textLength: m.textLength, shown: m.shown, sampled: want.length,
       bg: m.bg, fg: m.fg, contrast: contrastOf(m.bg, m.fg), bgLuminance: lum(m.bg), unnamedControls: m.unnamed, smallTargets: m.small, screenshot: shot,
       smallText: m.smallText, smallTextCount: m.smallTextCount, faintText: m.faint, faintCount: m.faintCount, headings: m.headings, excerpt: m.excerpt,
-      junk: m.junk, under44: m.under44, under44Count: m.under44Count, clipped: m.clipped, clippedCount: m.clippedCount, usedWidth: m.used, canvases: m.canvases, svgShapes: m.svgShapes, gridCols: m.gridCols, frames: m.frames, look: m.look, ...(png ? { png } : {}) });
+      ghostFields: m.ghostFields, junk: m.junk, under44: m.under44, under44Count: m.under44Count, clipped: m.clipped, clippedCount: m.clippedCount, usedWidth: m.used, canvases: m.canvases, svgShapes: m.svgShapes, gridCols: m.gridCols, frames: m.frames, look: m.look, ...(png ? { png } : {}) });
 
     await page.context().close();
   }

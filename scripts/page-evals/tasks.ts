@@ -812,7 +812,7 @@ export const TASKS: Task[] = [
     seed: { body: SALES }, page: true, varied: true,
     checks: (f) => [
       unchanged(f), noPasted(f), libsOk(f),
-      check("uses_a_chart_library", /amber-lib:(chart\.js|d3)/.test(f.page ?? "") || ((f.page ?? "").match(/<(path|rect|line|polyline)\b/g) ?? []).length >= 5 || /<svg/.test(f.page ?? ""), "no bundled chart library and no drawn charts"),
+      check("uses_a_chart_library", /name=["']amber-libs["'][^>]*content=["'][^"']*\b(chart|d3)\b/.test(f.page ?? "") || ((f.page ?? "").match(/<(path|rect|line|polyline)\b/g) ?? []).length >= 5 || /<svg/.test(f.page ?? ""), "no bundled chart library and no drawn charts"),
     ],
   },
   {
@@ -821,7 +821,7 @@ export const TASKS: Task[] = [
     seed: { body: PLANETS }, page: true, plays: true, varied: true,
     checks: (f) => [
       unchanged(f), noPasted(f), libsOk(f),
-      check("uses_three", /amber-lib:three/.test(f.page ?? ""), "doesn't load the bundled three.js"),
+      check("uses_three", /name=["']amber-libs["'][^>]*content=["'][^"']*\bthree\b|amber\.lib\(\s*["']three["']/.test(f.page ?? ""), "doesn't load the bundled three"),
       check("reads_the_table", /\.tables\b/.test(f.page ?? "") && !/69911[^]{0,300}58232/.test(f.page ?? ""), "planets aren't read from the note"),
     ],
   },
@@ -831,7 +831,7 @@ export const TASKS: Task[] = [
     seed: { body: "Guest wifi\n\nNetwork: Lindgren Guest\nPassword: kanelbulle-42\nSecurity: WPA2\n" }, page: true, varied: true,
     checks: (f) => [
       unchanged(f), noPasted(f), libsOk(f),
-      check("pinned_npm_or_own_code", /amber-lib:npm\/[^"']+@\d+\.\d+\.\d+[^"']*["'][^>]*integrity=|["']amber-lib:npm\/[^"']+["']\s*:\s*["']sha/.test(f.page ?? "") || f.calls.some((c) => c.name === "resolve_package" && !c.error), "no pinned, hashed npm package"),
+      check("pinned_npm", /name=["']amber-libs["'][^>]*npm:[^"',]+@\d+\.\d+\.\d+[^"',]*#sha(256|384|512)-/.test(f.page ?? ""), "no pinned, hashed npm package in amber-libs"),
       check("wifi_payload", /WIFI:/.test(f.page ?? ""), "doesn't build a WIFI: QR payload"),
       check("reads_the_note", /amber\.note|\.markdown\b/.test(f.page ?? "") && !/kanelbulle-42/.test(f.page ?? ""), "the password is copied into the app instead of read from the note"),
     ],

@@ -37,7 +37,7 @@ export const appTools = [
   },
   {
     name: "resolve_package", title: "Pin an npm package for an app",
-    description: "For a library Amber Notes doesn't bundle: looks up an npm package's file at an exact version and returns the tag to put in the note's app, with its integrity hash, e.g. <script src=\"amber-lib:npm/qrcode@1.5.4/build/qrcode.js\" integrity=\"sha256-…\">. Amber Notes downloads that exact file once, checks the hash and serves it locally. Never paste a library's code into an app, and prefer the bundled ones (get_page_guide lists them).",
+    description: "For a library Amber Notes doesn't bundle: looks up an npm package's file at an exact version and returns the entry to add to the note's app, with its hash, e.g. <meta name=\"amber-libs\" content=\"npm:qrcode-generator@1.4.4/qrcode.js#sha256-…\">. Amber Notes downloads that exact file once, checks the hash and keeps it on the device. Pick a UMD or global build. Never paste a library's code into an app, and prefer the bundled ones (chart, d3, three, tone, dayjs, marked, purify, anime, confetti, topojson, world).",
     inputSchema: { type: "object", properties: { name: str("npm package name, e.g. \"qrcode\" or \"@scope/pkg\"."), version: str("Exact version or range; default latest."), file: str("A file in the package, e.g. \"build/qrcode.js\"; default the package's browser build.") }, required: ["name"] },
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
   },

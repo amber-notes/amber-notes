@@ -11,7 +11,8 @@ import { LIBRARY_GUIDE } from "./libraries.ts";
  *  read (resources, prompts, skills), so this and the tool descriptions carry the essentials. */
 export const PAGE_INSTRUCTIONS = `Apps: a note can have an app side, a small HTML app (a habit grid, a budget, flashcards) next to its Text side. In tools it's the note's "page"; with the person always call it "the note's app" and the "App" side, never "page".
 - Before making, redesigning or fixing an app, call get_page_guide once, then read_note and get_note_page.
-- Libraries load by name, never pasted in: bundled ones (charts, D3, three.js, Tone.js, dates, markdown) as <script src="amber-lib:name">, any other npm package through resolve_package (pinned and hashed).
+- Libraries load by name, never pasted in: bundled ones (chart, d3, three, tone, dayjs, marked, purify, anime, confetti, topojson, world) in <meta name="amber-libs" content="chart, d3">, any other npm package as a pinned, hashed entry from resolve_package in the same meta.
+- Every input, select and textarea is visible as a field in both themes: a solid fill and a 1px border (var(--amber-field), var(--amber-field-border)); never border: 0 or a transparent background.
 - Give each app its own form and look for its job (a bookshop shelf, a cool blue water gauge, a game board, a keypad), not a beige card with a list; Amber's tokens are the fallback. Keep text readable (4.5:1) in light and dark. Games and toys are welcome. It must work on an iPhone (320-440 pt) and in a Mac window (500-1400+ px).
 - After creating or changing an app, run check_app (and preview_app if you can see images) and fix what they report before telling the person it's done.
 - Data never needs the app rewritten: the note's tables and checklists change with add_table_rows, update_table_rows, delete_table_rows, edit_table_columns, add_checklist_items, update_checklist_items; the app's own data (values, collections of records, files) with get_page_data / update_page_data.
@@ -104,6 +105,7 @@ Every app should look like it was made for what it does, in form and in characte
 - Don't set a background on html or body (the note's background shows there); put your background on the app's own container. --amber-text, --amber-bg and the rest stay useful as a base and for anything you don't restyle.
 - Pick the form from the job. A habit tracker can be a wall of days, a garden that grows, or a ring per habit. A budget can be a dial or a stacked bar over the month. A calculator is a keypad with a big display. A vocabulary note can be a game. Use type scale, space, grids, canvas and SVG, with motion where it explains something.
 - Still: one clear focus first, then details. Readable text (at least 12 px, contrast 4.5:1), tabular-nums for numbers, no emoji as icons (inline SVG), no motion that loops for nothing; respect prefers-reduced-motion.
+- Fields look like fields: every input, select and textarea has a solid fill and a 1px border in both themes. The app gives them background: var(--amber-field) and border: 1px solid var(--amber-field-border) by default; restyle them if you like, but never remove the border or make them see-through. Use solid colors (no translucent panels).
 - Accessibility: real <button>s and <input>s; every input has a <label> (or aria-label); icon-only buttons have aria-label; state that is shown by color is also shown another way; canvas and SVG views get role="img" and an aria-label, or a text equivalent; lang on <html>.
 - Keep it small: most good apps are 6-30 KB of HTML; libraries load by name and don't count (see Libraries).
 
@@ -111,9 +113,10 @@ Every app should look like it was made for what it does, in form and in characte
 
 You own the layout at every size; the app must work and look intended across the whole range, with no sideways scrolling.
 
+- The app's web view is its real size, with viewport-fit=cover, so env(safe-area-inset-*) works; resizing and the keyboard behave the standard web way.
 - iPhone: 320-440 pt wide, portrait and landscape (up to about 930 pt wide in landscape, short height), safe areas at the edges, and the keyboard covering the bottom half while someone types.
 - Mac: a note window from about 500 to 1,400+ px wide, resized live. Use the room on wide windows: a 400 px column floating in a 1,280 px window is a phone layout stretched, not a design.
-- Embedded in another note (a sub-note shown inside its parent): a short strip, often 300-700 px wide, with the class amber-widget on <html>. Keep a compact form that still makes sense there (the title, the one number or control that matters).
+- Embedded in another note (a sub-note shown inside its parent): a short strip, often 300-700 px wide; <html data-amber-context="widget"> (and the class amber-widget) and amber.context = { embedded, width, height } tell you. Keep a compact form that still makes sense there (the title, the one number or control that matters).
 - Text sizes in rem: on iPhone the root follows the reader's text size, so the layout must hold at larger text too.
 - Touch targets at least 44 pt on iPhone. Hover only as an extra on Mac, never the only way. Keyboard shortcuts are welcome on Mac (and for games).
 - Use what fits: CSS grid and flex with wrapping, container queries (container-type: inline-size; @container (min-width: …)), clamp() for type, and media queries. The app also sets the classes amber-narrow / amber-medium / amber-wide on <html> (under 600, to 900, from 900 px) as a convenience; don't rely on them.

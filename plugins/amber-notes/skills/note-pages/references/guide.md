@@ -109,6 +109,7 @@ Every app should look like it was made for what it does, in form and in characte
 - Don't set a background on html or body (the note's background shows there); put your background on the app's own container. --amber-text, --amber-bg and the rest stay useful as a base and for anything you don't restyle.
 - Pick the form from the job. A habit tracker can be a wall of days, a garden that grows, or a ring per habit. A budget can be a dial or a stacked bar over the month. A calculator is a keypad with a big display. A vocabulary note can be a game. Use type scale, space, grids, canvas and SVG, with motion where it explains something.
 - Still: one clear focus first, then details. Readable text (at least 12 px, contrast 4.5:1), tabular-nums for numbers, no emoji as icons (inline SVG), no motion that loops for nothing; respect prefers-reduced-motion.
+- Fields look like fields: every input, select and textarea has a solid fill and a 1px border in both themes. The app gives them background: var(--amber-field) and border: 1px solid var(--amber-field-border) by default; restyle them if you like, but never remove the border or make them see-through. Use solid colors (no translucent panels).
 - Accessibility: real <button>s and <input>s; every input has a <label> (or aria-label); icon-only buttons have aria-label; state that is shown by color is also shown another way; canvas and SVG views get role="img" and an aria-label, or a text equivalent; lang on <html>.
 - Keep it small: most good apps are 6-30 KB of HTML; libraries load by name and don't count (see Libraries).
 
@@ -116,9 +117,10 @@ Every app should look like it was made for what it does, in form and in characte
 
 You own the layout at every size; the app must work and look intended across the whole range, with no sideways scrolling.
 
+- The app's web view is its real size, with viewport-fit=cover, so env(safe-area-inset-*) works; resizing and the keyboard behave the standard web way.
 - iPhone: 320-440 pt wide, portrait and landscape (up to about 930 pt wide in landscape, short height), safe areas at the edges, and the keyboard covering the bottom half while someone types.
 - Mac: a note window from about 500 to 1,400+ px wide, resized live. Use the room on wide windows: a 400 px column floating in a 1,280 px window is a phone layout stretched, not a design.
-- Embedded in another note (a sub-note shown inside its parent): a short strip, often 300-700 px wide, with the class amber-widget on <html>. Keep a compact form that still makes sense there (the title, the one number or control that matters).
+- Embedded in another note (a sub-note shown inside its parent): a short strip, often 300-700 px wide; <html data-amber-context="widget"> (and the class amber-widget) and amber.context = { embedded, width, height } tell you. Keep a compact form that still makes sense there (the title, the one number or control that matters).
 - Text sizes in rem: on iPhone the root follows the reader's text size, so the layout must hold at larger text too.
 - Touch targets at least 44 pt on iPhone. Hover only as an extra on Mac, never the only way. Keyboard shortcuts are welcome on Mac (and for games).
 - Use what fits: CSS grid and flex with wrapping, container queries (container-type: inline-size; @container (min-width: …)), clamp() for type, and media queries. The app also sets the classes amber-narrow / amber-medium / amber-wide on <html> (under 600, to 900, from 900 px) as a convenience; don't rely on them.
@@ -127,10 +129,10 @@ You own the layout at every size; the app must work and look intended across the
 ## Libraries
 
 Libraries load by name, never pasted into the app:
-- Bundled with Amber Notes (no network, instant): chart.js 4.4.4 (charts: bar, line, doughnut, radar, scatter; global Chart); d3 7.9.0 (custom data visualizations, scales, shapes, layouts; global d3); three 0.169.0 (3D: scenes, cameras, meshes, lights (an ES module: import * as THREE from "three")); tone 15.0.4 (music and sound: synths, samplers, sequencers, transport; global Tone); dayjs 1.11.13 (dates: parse, format, add, diff; global dayjs); marked 14.1.3 (markdown to HTML (escape or sanitize what you show); global marked).
-  Classic: <script src="amber-lib:chart.js"></script>. ES module: <script type="importmap">{"imports": {"three": "amber-lib:three"}}</script> then <script type="module">import * as THREE from "three"; …</script>.
-- Anything else on npm, pinned and hashed: call resolve_package { name, version?, file? } and paste the tag it returns, like <script src="amber-lib:npm/qrcode@1.5.4/build/qrcode.js" integrity="sha256-…"></script>. Amber Notes downloads that exact file once, checks the hash and serves it locally; a reference without an exact version and integrity is refused. Prefer a bundled library when one does the job; keep npm packages small and few.
-- Never paste a library's code into the app (it bloats the app and can't be updated or checked); check_app flags inlined copies.
+- Bundled with Amber Notes (on the device, instant): chart (charts: line, bar, doughnut, radar; global Chart), d3 (data-driven SVG, scales, shapes, geo projections; global d3), three (3D with WebGL; global THREE), tone (sound and music (start audio after a tap); global Tone), dayjs (dates; global dayjs), marked (markdown to HTML (clean the result with purify); global marked), purify (cleans HTML; global DOMPurify), anime (animation; global anime), confetti (confetti; global confetti), topojson (TopoJSON to GeoJSON (maps with d3); global topojson), world (country shapes, 1:110m TopoJSON; global worldAtlas110m).
+  Declare them: <meta name="amber-libs" content="chart, dayjs">; they load before your scripts. Or load one when needed: const THREE = await amber.lib("three").
+- Any other npm package: call resolve_package { name, version?, file? } and add the entry it returns to the same meta, like <meta name="amber-libs" content="chart, npm:qrcode-generator@1.4.4/qrcode.js#sha384-…">. Amber Notes downloads that exact file once, checks the hash and keeps it on the device; an entry without an exact version and a hash is refused. Pick a UMD or global build (it defines a global), not an ES module with imports. Prefer a bundled library when one does the job.
+- Never paste a library's code into the app: it bloats the app and can't be checked or updated. check_app flags pasted copies.
 
 ## Games, toys and fun
 
