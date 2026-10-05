@@ -35,6 +35,8 @@ export const folderContext = (id: string) => `folder:${id.toLowerCase()}`;
 export const fileMetaContext = (id: string) => `file-meta:${id.toLowerCase()}`;
 export const fileContext = (id: string) => `file:${id.toLowerCase()}`;
 export const pageContext = (id: string) => `page:${id.toLowerCase()}`;
+/** Note page widgets (prototype): a page's widget spec. */
+export const widgetContext = (id: string) => `widget:${id.toLowerCase()}`;
 export const wrapContext = (purpose: WrapPurpose, userId: string) => `wrap:${purpose}:${userId.toLowerCase()}`;
 
 /** What a note shows in lists, sealed next to its body. A locked note's head is its title only. */
@@ -576,6 +578,8 @@ export class Vault {
   }
   sealPage(id: string, html: string) { return seal(html, this.key, this.keyId, pageContext(id)); }
   openPage(id: string, sealed: string) { return open(sealed, this.key, pageContext(id)); }
+  sealWidget(id: string, json: string) { return seal(json, this.key, this.keyId, widgetContext(id)); }
+  openWidget(id: string, sealed: string) { return open(sealed, this.key, widgetContext(id)); }
   sealFolder(id: string, name: string) { return seal(name, this.key, this.keyId, folderContext(id)); }
   openFolder(id: string, sealed: string) { return open(sealed, this.key, folderContext(id)); }
   sealFileMeta(id: string, meta: FileMeta) { return seal(JSON.stringify(meta), this.key, this.keyId, fileMetaContext(id)); }

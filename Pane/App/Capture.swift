@@ -467,3 +467,37 @@ extension Capture {
         }
     }
 }
+
+/// Note page widgets (prototype, NoteWidget), for recordings:
+///   `-widgetDemo`                                          a habit tracker, Walk done 12 days running, not yet today
+///   `-seedWidget "Habit tracker=/path/spec.json"`          its widget, set by Claude
+extension Capture {
+    static func widgetHabitNote(today: Date = .now) -> String {
+        // Walk: done the twelve days before today, missed the day before those. Today: Read only.
+        let marks = ["✓✓·✓", "·✓✓·", "✓✓✓✓", "✓·✓✓", "✓✓✓·", "✓·✓✓", "✓✓✓✓", "✓✓·✓", "✓✓✓✓", "✓·✓✓", "✓✓✓✓", "✓✓✓·", "✓✓✓✓", "✓·✓✓", "·✓··"]
+        var rows: [String] = []
+        for (i, m) in marks.enumerated() {
+            let d = Calendar.current.date(byAdding: .day, value: i - (marks.count - 1), to: today)!
+            rows.append("| \(TypedTable.day(d)) | " + m.map { $0 == "✓" ? "✓" : " " }.joined(separator: " | ") + " |")
+        }
+        return "Habit tracker\n\nSmall things, most days. A ✓ means done.\n\n| Date | Walk | Read | Stretch | No phone in bed |\n| --- | --- | --- | --- | --- |\n"
+            + rows.joined(separator: "\n") + "\n"
+    }
+
+    @MainActor static func noteWidgetsFromArguments(_ context: ModelContext) {
+        let args = ProcessInfo.processInfo.arguments
+        guard args.contains("-uitest") else { return }
+        if args.contains("-widgetDemo") {
+            let habits = context.createNote(in: .all, body: widgetHabitNote())
+            habits.isPinned = true
+            try? context.save()
+        }
+        if let arg = argument("-seedWidget"), let eq = arg.firstIndex(of: "=") {
+            let title = String(arg[..<eq]), path = String(arg[arg.index(after: eq)...])
+            let note = ((try? context.fetch(FetchDescriptor<Note>())) ?? []).first { $0.title == title && $0.deletedAt == nil }
+            if let note, let spec = try? String(contentsOfFile: path, encoding: .utf8) {
+                NoteWidgetStore.shared[note.id] = .init(spec: spec, by: argument("-aiPageBy") ?? "Claude", at: .now)
+            }
+        }
+    }
+}

@@ -99,6 +99,7 @@ extension ModelContext {
         try? FileManager.default.removeItem(at: files ?? FileStore.root)
         AIEditStore.shared.forgetAll()
         NotePageStore.shared.forgetAll()
+        NoteWidgetStore.shared.forgetAll()
     }
 }
 

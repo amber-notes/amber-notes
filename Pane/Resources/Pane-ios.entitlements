@@ -9,7 +9,11 @@
 	<!-- The account's encryption key in iCloud Keychain, shared by the iPhone and Mac apps
 	     (KeychainAccountKeyStore uses this group, the first, by default). -->
 	<key>keychain-access-groups</key>
-	<array><string>$(AppIdentifierPrefix)dev.emilwagman.pane</string></array>
+	<array>
+		<string>$(AppIdentifierPrefix)dev.emilwagman.pane</string>
+		<!-- Note page widgets (prototype): the widget key only (WidgetVault), shared with the extension. -->
+		<string>$(AppIdentifierPrefix)dev.emilwagman.pane.widgets</string>
+	</array>
 	<!-- https://ambernotes.app/open/connect opens the app (approving an AI connection). -->
 	<key>com.apple.developer.associated-domains</key>
 	<array><string>applinks:ambernotes.app</string></array>

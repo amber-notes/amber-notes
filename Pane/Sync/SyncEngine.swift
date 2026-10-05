@@ -883,10 +883,11 @@ final class SyncEngine {
         }
         if changed { try? context.save() }
         // Note pages (prototype): a backend without the table leaves this out; it never stops a sync.
-        if let pages: [NotePageDTO] = try? await client.from("note_pages").select("note_id,page_ct,client,updated_at,server_updated_at")
+        if let pages: [NotePageDTO] = try? await client.from("note_pages").select("note_id,page_ct,widget_ct,client,updated_at,server_updated_at")
             .gt("server_updated_at", value: stamp).order("server_updated_at").execute().value {
             for r in pages {
                 NotePageStore.shared.take(r)
+                NoteWidgetStore.shared.take(r)
                 if let s = r.server_updated_at, s > newest { newest = s }
             }
         }
@@ -1083,6 +1084,8 @@ struct FolderDTO: Codable {
 struct NotePageDTO: Decodable {
     var note_id: UUID
     var page_ct: String?
+    /// Note page widgets (prototype): the widget spec, sealed (NoteWidget).
+    var widget_ct: String?
     var client: String?
     var updated_at: Date
     var server_updated_at: Date?

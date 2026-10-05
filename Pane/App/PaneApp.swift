@@ -64,7 +64,10 @@ struct PaneApp: App {
         FeatureUse.client = backend.client
         PaneTips.configure()
         Capture.scheduleFromArguments(container.mainContext)
+        Capture.noteWidgetsFromArguments(container.mainContext)
         Capture.notePagesFromArguments(container.mainContext)
+        // Note page widgets (prototype): keep the extension's copies current, apply its presses.
+        if !Self.isUnitTestHost { NoteWidgets.listen(container.mainContext) }
         #if os(macOS)
         Capture.demoSequenceFromArguments(container.mainContext)
         Capture.importSequenceFromArguments()
@@ -509,6 +512,7 @@ struct AppGate: View {
                     await KeyDevices.shared.refresh(AccountCrypto.shared)
                 }
                 context.drainInbox()
+                NoteWidgets.applyPresses(context)
                 sync.schedule()
             } else {
                 connectAsks?.setForeground(false)

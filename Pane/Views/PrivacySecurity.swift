@@ -136,6 +136,7 @@ struct PrivacySecuritySection: View {
             // "Optional" only while something else is known to open the notes.
             Text((recoveryStatus == "Optional" ? "Optional. " : "") + PrivacyCopy.recoveryFooter)
         }
+        WidgetPrivacySection()
         Section {
             ExportNotesButton()
         } footer: {
@@ -454,5 +455,20 @@ struct PDFFile: FileDocument {
 
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
         FileWrapper(regularFileWithContents: data)
+    }
+}
+
+/// Note page widgets (prototype): what a widget shows while the device is locked.
+struct WidgetPrivacySection: View {
+    @AppStorage(WidgetShared.hideOnLockKey, store: WidgetShared.defaults) private var hideOnLock = false
+
+    var body: some View {
+        Section {
+            Toggle("Hide widget content on the Lock Screen", isOn: $hideOnLock)
+                .accessibilityIdentifier("privacy.widgetHideOnLock")
+                .onChange(of: hideOnLock) { NoteWidgets.reload() }
+        } footer: {
+            Text("Widgets show only what their page puts on them, never the whole note. With this on, they show a placeholder until you unlock.")
+        }
     }
 }

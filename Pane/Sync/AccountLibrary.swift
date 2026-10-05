@@ -29,6 +29,7 @@ enum AccountLibrary {
         try? FileManager.default.removeItem(at: files ?? FileStore.root)
         AIEditStore.shared.forgetAll()
         NotePageStore.shared.forgetAll()
+        NoteWidgetStore.shared.forgetAll()
         memoryKeys.forEach { defaults.removeObject(forKey: $0) }
         // The sync cursor was keyed with either spelling of the old id.
         for key in ["syncCursor.\(previous)", "syncCursor.\(previous.uppercased())"] { defaults.removeObject(forKey: key) }

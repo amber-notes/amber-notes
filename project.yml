@@ -52,6 +52,8 @@ targets:
       - package: ZIPFoundation
       - target: PaneShare
         platformFilter: iOS
+      # Note page widgets (prototype): the home screen, Lock Screen and Mac desktop.
+      - target: PaneWidgets
     # SwiftPM resource bundles (ZIPFoundation's and swift-crypto's privacy manifests, and any
     # added later) arrive in Contents/Resources signed with the archive's Apple Development
     # identity. The App Store export re-signs only the app and its nested code, so Apple
@@ -94,6 +96,8 @@ targets:
         PaneSupabaseKey: $(PANE_SUPABASE_KEY)
         PaneShareURL: $(PANE_SHARE_URL)
         PaneMCPURL: $(PANE_MCP_URL)
+        # Where the widget key lives (WidgetVault), shared with the widget extension.
+        PaneWidgetKeychainGroup: $(AppIdentifierPrefix)dev.emilwagman.pane.widgets
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
         NSAppleEventsUsageDescription: Amber Notes reads the Apple Notes you choose to import. It never changes them.
@@ -209,6 +213,33 @@ targets:
         CODE_SIGN_ENTITLEMENTS: PaneShare/PaneShare.entitlements
         ASSETCATALOG_COMPILER_APPICON_NAME: ""
         SKIP_INSTALL: YES
+  # Note page widgets (prototype): draws what the app worked out (WidgetShared), never the note.
+  PaneWidgets:
+    type: app-extension
+    supportedDestinations: [iOS, macOS]
+    sources:
+      - PaneWidgets
+      - Pane/Model/WidgetShared.swift
+      - Pane/Editor/Platform.swift
+      - Pane/Editor/Palette.swift
+    info:
+      path: PaneWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: Amber Notes
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        PaneWidgetKeychainGroup: $(AppIdentifierPrefix)dev.emilwagman.pane.widgets
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.emilwagman.pane.widgets
+        GENERATE_INFOPLIST_FILE: NO
+        "CODE_SIGN_ENTITLEMENTS[sdk=iphone*]": PaneWidgets/PaneWidgets-ios.entitlements
+        "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": PaneWidgets/PaneWidgets-mac.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: ""
+        SKIP_INSTALL: YES
+        ENABLE_HARDENED_RUNTIME: YES
   PaneTests:
     type: bundle.unit-test
     supportedDestinations: [iOS, macOS]

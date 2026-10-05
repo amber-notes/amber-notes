@@ -75,6 +75,8 @@
 	<string>$(PANE_SUPABASE_KEY)</string>
 	<key>PaneSupabaseURL</key>
 	<string>$(PANE_SUPABASE_URL)</string>
+	<key>PaneWidgetKeychainGroup</key>
+	<string>$(AppIdentifierPrefix)dev.emilwagman.pane.widgets</string>
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
 	<key>SUFeedURL</key>

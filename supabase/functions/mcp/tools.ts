@@ -10,6 +10,7 @@ import type { PendingQuery, Row, Sql, TransactionSql } from "npm:postgres@3.4.5"
 import { toBase64, type Head, type Vault } from "../_shared/e2ee.ts";
 import { errorKind, log } from "../_shared/log.ts";
 import { MAX_PAGE_BYTES, PAGE_CONTRACT, pageProblems } from "./page.ts";
+import { WIDGET_CONTRACT, widgetProblems } from "./widget.ts";
 import { appendText, applyEdits, coerce, findTables, fitLines, isTextType, mimeOf, outline, previewOf, replaceTable, searchFilter, searchInMemory, setChecklistItem, sliceLines, titleOf, typeSpec, type Edit, type Table } from "./notes.ts";
 
 export type ToolContext = { sql: Sql; userId: string; client: string; canWrite: boolean; vault: Vault };
@@ -238,6 +239,15 @@ export const tools: Tool[] = ([
     description: "Returns a note's page (the HTML set with set_note_page) and the rules a page follows, so you can change it. A note without a page returns has_page: false.",
     inputSchema: { type: "object", properties: { ...noteRef } },
     annotations: read,
+  },
+  // Note page widgets (prototype): a home-screen widget for a note, see widget.ts.
+  {
+    name: "set_note_widget", title: "Make a widget for a note",
+    description: "Gives a note a home-screen widget (iPhone home and Lock Screen, Mac desktop): a few native blocks whose values bind to the note's tables and checklists, " +
+      "such as a habit streak with a ring and a Done button, or this month's total. Widgets can't run HTML, so this is a separate small spec, usually made alongside a page (set_note_page). " +
+      "Replaces the note's widget; null or an empty object removes it. The person adds it from the home screen's widget gallery.\n" + WIDGET_CONTRACT,
+    inputSchema: { type: "object", properties: { ...noteRef, widget: { type: ["object", "null"], description: "The widget spec, or null to remove it." } }, required: ["widget"] },
+    annotations: { ...write, destructiveHint: true, idempotentHint: true },
   },
   // ChatGPT's connector conventions.
   {
@@ -1131,12 +1141,36 @@ const handlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<unknown>> =
 
   async get_note_page(tx, a, c) {
     const n = await findNote(tx, c, a, true);
-    const [row] = await tx<{ page_ct: string | null; client: string | null; updated_at: Date }[]>`
-      select page_ct, client, updated_at from public.note_pages where note_id = ${n.id}`;
-    if (!row?.page_ct) return { id: n.id, title: n.title, has_page: false, rules: PAGE_CONTRACT };
+    const [row] = await tx<{ page_ct: string | null; widget_ct: string | null; client: string | null; updated_at: Date }[]>`
+      select page_ct, widget_ct, client, updated_at from public.note_pages where note_id = ${n.id}`;
+    let widget: unknown;
+    if (row?.widget_ct) {
+      try { widget = JSON.parse(await c.v.openWidget(n.id, row.widget_ct)); } catch { widget = undefined; }
+    }
+    const w = widget === undefined ? {} : { widget };
+    if (!row?.page_ct) return { id: n.id, title: n.title, has_page: false, rules: PAGE_CONTRACT, ...w };
     let html: string;
     try { html = await c.v.openPage(n.id, row.page_ct); } catch { throw new ToolError("This note's page can't be opened with this connection's key."); }
-    return { id: n.id, title: n.title, has_page: true, made_by: row.client, updated: iso(row.updated_at), rules: PAGE_CONTRACT, html };
+    return { id: n.id, title: n.title, has_page: true, made_by: row.client, updated: iso(row.updated_at), rules: PAGE_CONTRACT, html, ...w };
+  },
+
+  async set_note_widget(tx, a, c) {
+    const n = await findNote(tx, c, a);
+    const w = a.widget;
+    if (w === null || w === undefined || (typeof w === "object" && !Array.isArray(w) && !Object.keys(w).length)) {
+      const gone = await tx`update public.note_pages set widget_ct = null where note_id = ${n.id} and widget_ct is not null returning note_id`;
+      return { id: n.id, title: n.title, widget: gone.length ? "removed" : "none" };
+    }
+    const problems = widgetProblems(w);
+    if (problems.length) throw new ToolError(`The widget wasn't saved:\n- ${problems.join("\n- ")}`);
+    const json = typeof w === "string" ? w : JSON.stringify(w);
+    const sealed = await c.v.sealWidget(n.id, json);
+    const [{ created }] = await tx<{ created: boolean }[]>`
+      insert into public.note_pages (note_id, widget_ct) values (${n.id}, ${sealed})
+      on conflict (note_id) do update set widget_ct = excluded.widget_ct
+      returning (xmax = 0) as created`;
+    return { id: n.id, title: n.title, widget: created ? "created" : "replaced",
+      note: "The person adds it from the home screen's widget gallery (Amber Notes, Note page). It updates as the note changes." };
   },
 
   async search(tx, a, c) {

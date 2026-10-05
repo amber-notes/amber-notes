@@ -1,0 +1,32 @@
+{
+  "small": [
+    { "type": "title", "text": "Walk" },
+    { "type": "ring", "value": { "done_days": { "table": 0, "column": "Walk", "days": 7 } }, "max": 7,
+      "center": { "streak": { "table": 0, "column": "Walk" } }, "label": "day streak" },
+    { "type": "button", "label": "Walk", "op": { "op": "toggle_today", "table": 0, "column": "Walk" } }
+  ],
+  "medium": [
+    { "type": "row", "blocks": [
+      { "type": "title", "text": { "title": {} }, "sub": [{ "done_count_today": { "table": 0 } }, " of ", { "habits": { "table": 0 } }, " done today"] },
+      { "type": "button", "label": "Walk", "op": { "op": "toggle_today", "table": 0, "column": "Walk" } }
+    ] },
+    { "type": "grid", "table": 0, "days": 7 }
+  ],
+  "large": [
+    { "type": "title", "text": { "title": {} }, "sub": [{ "done_count_today": { "table": 0 } }, " of ", { "habits": { "table": 0 } }, " done today"] },
+    { "type": "grid", "table": 0, "days": 14 },
+    { "type": "row", "blocks": [
+      { "type": "number", "value": { "streak": { "table": 0, "column": "Walk" } }, "label": "Walk streak" },
+      { "type": "number", "value": { "streak": { "table": 0, "column": "Read" } }, "label": "Read streak" }
+    ] },
+    { "type": "button", "label": "Walk", "op": { "op": "toggle_today", "table": 0, "column": "Walk" } }
+  ],
+  "circular": [
+    { "type": "ring", "value": { "done_days": { "table": 0, "column": "Walk", "days": 7 } }, "max": 7,
+      "center": { "streak": { "table": 0, "column": "Walk" } }, "label": "Walk" }
+  ],
+  "rectangular": [
+    { "type": "title", "text": "Walk", "sub": [{ "streak": { "table": 0, "column": "Walk" } }, "-day streak"] },
+    { "type": "bar", "value": { "done_days": { "table": 0, "column": "Walk", "days": 7 } }, "max": 7 }
+  ]
+}

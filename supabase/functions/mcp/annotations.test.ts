@@ -17,7 +17,7 @@ Deno.test("tools that change or remove anything already there are destructive", 
   const destructive = tools.filter((t) => t.annotations.destructiveHint).map((t) => t.name).sort();
   assertEquals(destructive, [
     "delete_folder", "delete_note", "delete_table_row", "edit_note", "log_table_row", "move_note", "pin_note", "rename_folder",
-    "replace_note_body", "restore_revision", "set_checklist_item", "set_note_page",
+    "replace_note_body", "restore_revision", "set_checklist_item", "set_note_page", "set_note_widget",
   ]);
 });
 
