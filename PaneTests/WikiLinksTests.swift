@@ -177,4 +177,47 @@ import Testing
         #expect(r.context.resolveWikiLink("Sourdough bread", from: home)?.title == "Sourdough bread")
         #expect(r.context.backlinks(to: try r.note("Inbox")).map(\.title) == ["Home"])
     }
+
+    /// A realistic vault (PaneTests/Fixtures/Markdown/Linked vault, made by
+    /// make-vault.py): 52 notes in nested folders. Every link leads where Obsidian's does,
+    /// apart from the ones to notes not written yet.
+    @Test func aRealisticVault() async throws {
+        let r = try await MarkdownImportTests.importing([try MarkdownImportTests.fixture("Linked vault")], container: try Self.container())
+        defer { r.cleanUp() }
+        #expect(r.summary.notes == 52 && r.summary.attachments == 2 && r.summary.filesMissing == 0)
+        WikiDirectory.invalidate()
+        let notYetWritten: Set<String> = ["Garden irrigation", "Learn Rust", "wiki links", "{{yesterday}}"]
+        var links = 0
+        for n in r.notes {
+            for link in WikiLinks.links(in: n.body) {
+                links += 1
+                let found = r.context.resolveWikiLink(link.target, from: n)
+                #expect((found == nil) == notYetWritten.contains(link.target), "\(n.title): [[\(link.target)]]")
+            }
+        }
+        #expect(links > 100)
+
+        /// Where the link that shows `shown` in note `from` leads.
+        func lead(_ from: String, _ shown: String) -> String? {
+            guard let n = r.notes.first(where: { $0.title == from }),
+                  let link = WikiLinks.links(in: n.body).first(where: { WikiLinks.display($0) == shown }),
+                  let to = r.context.resolveWikiLink(link.target, from: n) else { return nil }
+            return r.path(to) + "/" + to.title
+        }
+        let v = "Linked vault"
+        #expect(lead("Garden", "Notes") == "\(v)/Projects/Garden/Notes", "same name in two folders: its own folder's")
+        #expect(lead("2026-10-03 Notes review", "Notes") == "\(v)/Meetings/2026/Notes")
+        #expect(lead("MCP memory for agents", "README") == "\(v)/Projects/Amber/Amber Notes import", "README next to it")
+        #expect(lead("Planting calendar", "beds") == "\(v)/Projects/Garden/Garden")
+        #expect(lead("Amber Notes import", "Index") == "\(v)/Projects/Projects", "the Index nearest")
+        #expect(lead("Obsidian workflow", "Planting calendar") == "\(v)/Projects/Garden/Planting calendar", "a relative path")
+        #expect(lead("Quick capture", "Inbox") == "\(v)/Inbox", "a .md ending")
+        #expect(lead("Home", "PARA") == "\(v)/PARA method", "a front-matter title")
+        #expect(lead("Smörgåsbord", "Café list") == "\(v)/Café list")
+        let quick = try r.note("Quick capture")
+        #expect(quick.body.contains("[[Home|Home page]]") && quick.body.contains("[[Planting calendar|the calendar]]"), "markdown links to notes become wiki links")
+        #expect(try r.note("Amber Notes import").body.contains("Code keeps [[not a link]] as typed."))
+        #expect(r.context.backlinks(to: try r.note("Giulia")).count == 6)
+    }
 }
+

@@ -9,7 +9,7 @@
 import type { PendingQuery, Row, Sql, TransactionSql } from "npm:postgres@3.4.5";
 import { toBase64, type Head, type Vault } from "../_shared/e2ee.ts";
 import { errorKind, log } from "../_shared/log.ts";
-import { appendText, applyEdits, coerce, findTables, fitLines, isTextType, mimeOf, outline, previewOf, replaceTable, searchFilter, searchInMemory, setChecklistItem, sliceLines, titleOf, typeSpec, type Edit, type Table } from "./notes.ts";
+import { appendText, applyEdits, coerce, findTables, fitLines, isTextType, mimeOf, outline, previewOf, replaceTable, searchFilter, searchInMemory, setChecklistItem, sliceLines, titleOf, typeSpec, wikiLinks, type Edit, type Table } from "./notes.ts";
 
 export type ToolContext = { sql: Sql; userId: string; client: string; canWrite: boolean; vault: Vault };
 export class ToolError extends Error {}
@@ -77,7 +77,7 @@ export const tools: Tool[] = ([
   },
   {
     name: "read_note", title: "Read a note",
-    description: "Returns a note's markdown with its folder, dates, version and outline. For long notes, read a line range; set line_numbers to see where headings are.",
+    description: "Returns a note's markdown with its folder, dates, version and outline, and the notes it links to with [[wiki links]] (open one with read_note and its title). For long notes, read a line range; set line_numbers to see where headings are.",
     inputSchema: { type: "object", properties: { ...noteRef, start_line: int("First line, 1-based."), end_line: int("Last line, inclusive."), line_numbers: bool("Prefix each line with its number.") } },
     annotations: read,
   },
@@ -764,6 +764,7 @@ const handlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<unknown>> =
     const body = await bodyOf(c.v, n);
     const all = await folders(tx, c.v);
     const o = outline(body);
+    const links = wikiLinks(body);
     const ranged = a.start_line !== undefined || a.end_line !== undefined;
     const start = a.start_line === undefined ? undefined : wholeNumber(a.start_line, "start_line");
     const end = a.end_line === undefined ? undefined : wholeNumber(a.end_line, "end_line");
@@ -780,6 +781,7 @@ const handlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<unknown>> =
       in_recently_deleted: n.trashed_at !== null,
       parent: parentRow ? { id: parentRow.id, title: parentRow.title } : null,
       sub_notes: subs,
+      ...(links.length ? { links } : {}),
       outline: o,
       ...(shown.truncated
         ? { lines: `${first}-${first + shown.lines - 1}`, truncated: true, next_start_line: first + shown.lines }

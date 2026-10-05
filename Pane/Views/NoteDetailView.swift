@@ -47,6 +47,13 @@ struct NoteDetailView: View {
             } message: {
                 Text("No note has this title yet.")
             }
+            // Captures: yes to making the note a link named.
+            .onReceive(NotificationCenter.default.publisher(for: Capture.wikiCreate)) { _ in
+                if let name = missingNote {
+                    missingNote = nil
+                    createLinkedNote(name)
+                }
+            }
             .onReceive(NotificationCenter.default.publisher(for: ModelContext.didSave)) { _ in
                 WikiDirectory.invalidate()
                 refreshLinks()
@@ -340,6 +347,8 @@ struct NoteDetailView: View {
 
     /// A wiki link was tapped: open its note, or offer to make it, as Obsidian does.
     private func followWikiLink(_ target: String) {
+        // What was just typed here counts in the next note's "Linked from".
+        saver.flush()
         if let linked = context.resolveWikiLink(target, from: note) {
             onOpenNote(linked.id, false)
         } else {
