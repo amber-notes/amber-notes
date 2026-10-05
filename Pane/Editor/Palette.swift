@@ -24,6 +24,10 @@ enum Palette {
     /// The fill of amber primary buttons, in light and dark alike: the deeper amber, so their
     /// white label stays readable (the dark-mode amber is too light under white).
     static let amberButton = pair(0xD96A06, 0xD96A06)
+    /// A primary button that can't be pressed yet: a quiet warm grey with muted text, not a faded
+    /// amber, so it reads as "not yet" rather than as broken.
+    static let disabledButton = pair(brown, 0.13, 0xFFFFFF, 0.11)
+    static let disabledButtonLabel = pair(0x6A5743, 0xB0A498)
     /// The fill of destructive primary buttons (Start fresh), in light and dark alike: a red deep
     /// enough for the same white label.
     static let destructiveButton = pair(0xC62828, 0xC62828)
@@ -54,10 +58,12 @@ enum Palette {
     #endif
 
     // Sign-in.
-    /// The email field: an off-white with a hairline; in the dark, the native translucent field
-    /// with the barest warmth, so it sits on the window's own grey.
-    static let field = pair(0xF7F5F3, 1, 0xFFFAF5, 0.085)
-    static let fieldHairline = pair(brown, 0.12, 0xFFFFFF, 0.08)
+    /// The email field: white with a warm border on the cream ground, so it reads as a field at a
+    /// glance; in the dark, a lighter translucent fill with a border of its own.
+    static let field = pair(0xFFFFFF, 1, 0xFFFAF5, 0.10)
+    static let fieldHairline = pair(brown, 0.30, 0xFFFFFF, 0.22)
+    /// A field's placeholder: the muted text, dimmed, still about 4:1 on the field.
+    static let placeholder = pair(0x74604C, 0.85, 0xBCB0A3, 0.80)
     /// The website's low marker under "your AI".
     static let underline = pair(0xF0901A, 0.42, 0xF5A53A, 0.50)
 

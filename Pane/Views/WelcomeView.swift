@@ -2,14 +2,15 @@ import SwiftUI
 
 /// The first screen when you're signed out: what Amber Notes is, then the way in. "Get started"
 /// and "I already have an account" both lead to sign-in in the same frame, with a way back.
-/// On the Mac it's a wide window split in two, a paper-cut picture on one side and the words on
-/// the other; on iPhone the picture sits on top.
+/// On the Mac it's a wide window split in two, a paper-cut picture (an amber leaf on a stack of
+/// notes, at dusk in dark mode) on the left and the words on the right; on iPhone the picture
+/// sits on top.
 struct WelcomeFlow: View {
     let backend: Backend
-    var look: WelcomeLook = .current
+    /// Captures: sign-in opens with the cursor in the email field.
+    var focusEmail = false
     @State private var stage: Stage
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.colorScheme) private var scheme
     @Environment(\.dynamicTypeSize) private var typeSize
 
     enum Stage: Equatable {
@@ -24,9 +25,9 @@ struct WelcomeFlow: View {
         }
     }
 
-    init(backend: Backend, look: WelcomeLook = .current, stage: Stage = .first()) {
+    init(backend: Backend, stage: Stage = .first(), focusEmail: Bool = false) {
         self.backend = backend
-        self.look = look
+        self.focusEmail = focusEmail
         _stage = State(initialValue: stage)
     }
 
@@ -37,14 +38,13 @@ struct WelcomeFlow: View {
     var body: some View {
         #if os(macOS)
         HStack(spacing: 0) {
-            if look.artLeading { art }
+            art
             words
                 .padding(.horizontal, 52)
                 .padding(.top, 48)
                 .padding(.bottom, 36)
                 .frame(width: Self.size.width / 2)
                 .frame(maxHeight: .infinity)
-            if !look.artLeading { art }
         }
         // Its ideal size is the window's: the app fits the window to it (WindowShaper).
         .frame(width: Self.size.width)
@@ -177,7 +177,8 @@ struct WelcomeFlow: View {
             #endif
             SignInView(backend: backend, heading: returning
                        ? .beside(title: "Welcome back", line: "Sign in with Apple or your email.")
-                       : .beside(title: "Create your account", line: "Already have one? This signs you in too."))
+                       : .beside(title: "Create your account", line: "Already have one? This signs you in too."),
+                       focusEmail: focusEmail)
                 #if os(macOS)
                 // Top-anchored, so the form keeps its place as its steps come and go, but low
                 // enough that the first step sits near the middle of the window.
@@ -199,7 +200,7 @@ struct WelcomeFlow: View {
 
     /// Decorative: the words say everything, so VoiceOver skips it.
     private var picture: some View {
-        Image(look.imageName)
+        Image("Welcome")
             .resizable()
             .interpolation(.high)
             .scaledToFill()
@@ -207,33 +208,21 @@ struct WelcomeFlow: View {
     }
 
     #if os(macOS)
+    /// Edge to edge, the window buttons on it.
     private var art: some View {
-        let inset: CGFloat = look.inset ? 14 : 0
-        return Color.clear
-            .frame(width: Self.size.width / 2 - inset * 2)
+        Color.clear
+            .frame(width: Self.size.width / 2)
             .frame(maxHeight: .infinity)
             .overlay { picture }
-            .clipShape(.rect(cornerRadius: look.inset ? 18 : 0, style: .continuous))
-            .padding(inset)
+            .clipped()
     }
     #else
     /// The picture across the top, under the status bar. `share` is its part of the screen's height.
     private func phoneArt(share: CGFloat) -> some View {
-        let inset: CGFloat = look.inset ? 12 : 0
-        return Color.clear
+        Color.clear
             .containerRelativeFrame(.vertical) { height, _ in height * share }
             .overlay { picture }
-            .clipShape(.rect(cornerRadius: look.inset ? 28 : 0, style: .continuous))
-            .padding(.horizontal, inset)
-            .padding(.top, look.inset ? 56 : 0)
-            // B: the words come up over the picture on a sheet with round top corners.
-            .overlay(alignment: .bottom) {
-                if look.sheet {
-                    UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28, style: .continuous)
-                        .fill(Backdrop.color(scheme))
-                        .frame(height: 28)
-                }
-            }
+            .clipped()
             .animation(reduceMotion ? nil : .smooth(duration: 0.35), value: share)
     }
 
@@ -258,32 +247,4 @@ struct WelcomeFlow: View {
         }
     }
     #endif
-}
-
-/// The welcome's look, three to choose from. Debug builds take `-welcomeVariant a|b|c`; every
-/// other build shows the default, so production stays one design.
-enum WelcomeLook: String, CaseIterable {
-    /// The amber leaf on a stack of notes, picture on the left, edge to edge.
-    case a
-    /// A notebook with a speech bubble and a spark, picture on the right; on iPhone the words
-    /// come up on a sheet.
-    case b
-    /// A calm desk with a Mac and an iPhone, picture on the right in a rounded frame.
-    case c
-
-    static var current: WelcomeLook {
-        #if DEBUG
-        if let asked = UserDefaults.standard.string(forKey: "welcomeVariant"), let look = WelcomeLook(rawValue: asked.lowercased()) {
-            return look
-        }
-        #endif
-        return .a
-    }
-
-    /// The asset, with its own dark-mode picture where the light one would glare.
-    var imageName: String { "Welcome\(rawValue.uppercased())" }
-    /// The Mac's window buttons sit on the picture when it's on the left, so the framed one goes right.
-    var artLeading: Bool { self == .a }
-    var inset: Bool { self == .c }
-    var sheet: Bool { self == .b }
 }

@@ -12,10 +12,4 @@ import Testing
     @Test func testsCanGoStraightToSignIn() {
         #expect(WelcomeFlow.Stage.first(arguments: ["-signout", "-skipWelcome"]) == .signIn(returning: true))
     }
-
-    @Test func everyLookHasItsPicture() {
-        for look in WelcomeLook.allCases {
-            #expect(look.imageName == "Welcome\(look.rawValue.uppercased())")
-        }
-    }
 }

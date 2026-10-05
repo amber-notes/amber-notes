@@ -2,8 +2,8 @@ import SwiftUI
 
 /// The app's primary button: the deeper amber with a bold white label, the same in light and dark
 /// (the system's prominent style takes the dark-mode amber, under which white text reads at about
-/// 2:1). Presses dip, keyboard focus shows a ring, disabled fades like the system's, and an iPhone
-/// target is at least 44 pt tall. A destructive button (`Button(role: .destructive)`) is the deeper
+/// 2:1). Presses dip, keyboard focus shows a ring, disabled turns a quiet warm grey with muted
+/// text, and an iPhone target is at least 44 pt tall. A destructive button (`Button(role: .destructive)`) is the deeper
 /// red instead. Two shapes:
 ///
 ///     Button("Done") { … }.buttonStyle(.amberProminent)                        // a capsule
@@ -22,6 +22,18 @@ struct AmberProminentButtonStyle: ButtonStyle {
     static let fill = Palette.amberButton
     static let destructiveFill = Palette.destructiveButton
     static let label = PColor.white
+    static let disabledFill = Palette.disabledButton
+    static let disabledLabel = Palette.disabledButtonLabel
+
+    /// A full-width row's title: the size Sign in with Apple draws at the same height, so the
+    /// form's buttons read as one family (Apple's button sizes its title from its height).
+    static func rowTitle(height: CGFloat) -> Font {
+        #if os(macOS)
+        .system(size: (height * 0.39).rounded(), weight: .semibold)
+        #else
+        .system(size: (height * 0.41).rounded(), weight: .semibold)
+        #endif
+    }
 }
 
 extension ButtonStyle where Self == AmberProminentButtonStyle {
@@ -55,10 +67,13 @@ private struct AmberProminentButton: View {
 
     var body: some View {
         let shape: AnyShape = row.map { AnyShape(RoundedRectangle(cornerRadius: $0.cornerRadius, style: .continuous)) } ?? AnyShape(Capsule())
-        let fill = configuration.role == .destructive ? AmberProminentButtonStyle.destructiveFill : AmberProminentButtonStyle.fill
+        // A busy button stays solid: it's working, not unavailable.
+        let off = !isEnabled && !busy
+        let fill = off ? AmberProminentButtonStyle.disabledFill
+            : configuration.role == .destructive ? AmberProminentButtonStyle.destructiveFill : AmberProminentButtonStyle.fill
         return configuration.label
-            .font(font)
-            .foregroundStyle(Color(AmberProminentButtonStyle.label))
+            .font(row.map { AmberProminentButtonStyle.rowTitle(height: $0.height) } ?? font)
+            .foregroundStyle(Color(off ? AmberProminentButtonStyle.disabledLabel : AmberProminentButtonStyle.label))
             .lineLimit(1)
             // Busy: the label keeps its place (so nothing moves) and a spinner sits on it.
             .opacity(busy ? 0 : 1)
@@ -77,8 +92,6 @@ private struct AmberProminentButton: View {
                 }
             }
             .contentShape(shape)
-            // A busy button stays solid: it's working, not unavailable.
-            .opacity(isEnabled || busy ? 1 : 0.42)
             .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
             .animation(.snappy(duration: 0.15), value: configuration.isPressed)
             .accessibilityValue(busy ? Text("Working") : Text(""))
@@ -93,7 +106,7 @@ private struct AmberProminentButton: View {
     }
 
     #if os(macOS)
-    private var font: Font { row != nil || controlSize == .large || controlSize == .extraLarge ? .system(size: 14, weight: .bold) : .system(size: 13, weight: .bold) }
+    private var font: Font { controlSize == .large || controlSize == .extraLarge ? .system(size: 14, weight: .bold) : .system(size: 13, weight: .bold) }
     private var minHeight: CGFloat {
         switch controlSize {
         case .mini, .small: 22
