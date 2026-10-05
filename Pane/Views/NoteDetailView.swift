@@ -128,11 +128,6 @@ struct NoteDetailView: View {
                 shownPage = NotePageStore.shared[note.id]
                 if shownPage != nil { NotePageTiming.open(note.id) }
                 showChip = false
-                if shownPage == nil, !note.isLocked, !MakeAnApp.chipShown(note.id), MakeAnApp.looksLikeAnApp(note.body) {
-                    MakeAnApp.markChipShown(note.id)
-                    try? await Task.sleep(for: .seconds(1.2))
-                    withAnimation(.spring(duration: 0.45, bounce: 0.25)) { showChip = true }
-                }
                 pageTint = nil
                 mode = .page
                 showAIEdit()
@@ -141,6 +136,12 @@ struct NoteDetailView: View {
                 #endif
                 PaneTips.noteOpened(note.body)
                 ShareAsk.noteUsed()
+                // "Make this an app", once per note, a moment after it opens (last: it waits).
+                if shownPage == nil, !note.isLocked, !MakeAnApp.chipShown(note.id), MakeAnApp.looksLikeAnApp(note.body) {
+                    MakeAnApp.markChipShown(note.id)
+                    try? await Task.sleep(for: .seconds(1.2))
+                    if !Task.isCancelled { withAnimation(.spring(duration: 0.45, bounce: 0.25)) { showChip = true } }
+                }
             }
             .onChange(of: showHistory) { _, open in if open { FeatureUse.mark(.versionHistory) } }
     }

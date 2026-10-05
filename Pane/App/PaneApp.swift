@@ -630,11 +630,14 @@ enum Seed {
            let html = try? String(contentsOf: url, encoding: .utf8) {
             let habits = context.createNote(in: .folder(notes.id), body: Capture.habitNote().replacingOccurrences(
                 of: "Small things, most days. A ✓ means done.",
-                with: "Small things, most days. A ✓ means done. This note is also an app, made by AI: switch between App and Text at the top."))
+                with: "Small things, most days. A ✓ means done. " + Self.sampleAppLine))
             habits.updatedAt = .now.addingTimeInterval(-60)
             NotePageStore.shared.setHere(habits.id, .init(html: html, by: "Amber Notes", at: .now))
         }
     }
+
+    /// The line that marks the sample app note (it counts as seeded, like the welcome note).
+    static let sampleAppLine = "This note is also an app, made by AI: switch between App and Text at the top."
 
     static let welcome = """
     Welcome to Amber Notes
