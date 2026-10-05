@@ -1,7 +1,7 @@
 // The app-project format, path rules, edits, compile and import checks.
 //   cd supabase/functions/mcp && deno test -A app_project.test.ts
 import { assert, assertEquals, assertStringIncludes, assertThrows } from "jsr:@std/assert@1";
-import { brokenImports, cleanPath, compile, editText, numbered, parseStored, projectProblems, resolveFrom, serialize } from "./app_project.ts";
+import { brokenImports, cleanPath, compile, editText, numbered, parseStored, projectProblems, resolveFrom, serialize, STACK_NAMES } from "./app_project.ts";
 
 Deno.test("a one-file app stays plain HTML; a project round-trips as JSON", () => {
   const html = "<!doctype html><p>hi</p>";
@@ -76,7 +76,7 @@ Deno.test("a React + Tailwind project links like Vite: @/ alias, no extensions, 
   console.log(`compile ${Math.round(t1 - t0)} ms (4 files), link + tailwind ${Math.round(t2 - t1)} ms (tailwind ${linked.ms.tailwind} ms)`);
   const c = linked.project.compiled;
   assertStringIncludes(c["/src/main.tsx"], `from "/src/App.tsx"`);
-  assertStringIncludes(c["/src/main.tsx"], `l.href = "/src/index.css"`);
+  assertStringIncludes(c["/src/main.tsx"], `import "/src/index.css?import";`);
   assertStringIncludes(c["/src/main.tsx"], `from "react/jsx-runtime"`);
   assertStringIncludes(c["/src/App.tsx"], `from "/src/lib/utils.ts"`);
   assertStringIncludes(c["/src/App.tsx"], `from "/src/components/ui/button.tsx"`);
@@ -84,4 +84,11 @@ Deno.test("a React + Tailwind project links like Vite: @/ alias, no extensions, 
   assertEquals(brokenImports(linked.project), []);
   // Linking again changes nothing.
   assertEquals((await linkProject(linked.project)).project.compiled, c);
+});
+
+Deno.test("the stack's bare names match the app's import map", () => {
+  const map = JSON.parse(Deno.readTextFileSync(new URL("../../../Pane/Resources/AppLibraries/stack.json", import.meta.url))).map as Record<string, string>;
+  const ours = new Set(STACK_NAMES);
+  for (const name of Object.keys(map)) if (!name.startsWith("@radix-ui/") && !/^preact(\/hooks|\/jsx-runtime)?$/.test(name)) assert(ours.has(name), `${name} is in stack.json but not in STACK_NAMES`);
+  for (const name of STACK_NAMES) assert(name in map, `${name} isn't in stack.json`);
 });

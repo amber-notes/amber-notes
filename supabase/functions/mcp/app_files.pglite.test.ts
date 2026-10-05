@@ -27,25 +27,26 @@ Deno.test("a project app: scaffold, files, edits, compile errors, checks and ver
     // The app's data is JSON in its store (the sample keeps its shape).
     await tool(pg, a, "update_page_data", { id, values: { log: [{ Date: "2026-10-01", Exercise: "Squat", Kg: "80" }, { Date: "2026-10-03", Exercise: "Bench", Kg: "60" }] } });
     const made = await tool(pg, a, "create_app", { id });
-    assertEquals(made.files.map((f: { path: string }) => f.path), ["/README.md", "/index.html", "/package.json", "/src/App.tsx", "/src/components/ui/button.tsx", "/src/components/ui/card.tsx", "/src/components/ui/input.tsx", "/src/components/ui/label.tsx", "/src/index.css", "/src/lib/amber.ts", "/src/lib/utils.ts", "/src/main.tsx", "/tsconfig.json"]);
+    const paths = made.files.map((f: { path: string }) => f.path);
+    for (const f of ["/README.md", "/index.html", "/package.json", "/tsconfig.json", "/src/main.tsx", "/src/App.tsx", "/src/index.css", "/src/lib/amber.ts", "/src/lib/utils.ts", "/src/components/app-shell.tsx", "/src/components/ui/button.tsx", "/src/components/ui/sheet.tsx", "/src/screens/home.tsx", "/src/screens/settings.tsx"]) assert(paths.includes(f), f);
     assertEquals(made.opens, "Opens cleanly at 390 and 1280 px (over a sample of its data).");
     assertStringIncludes(await fails(tool(pg, a, "create_app", { id })), "already has an app");
 
     const listed = await tool(pg, a, "list_app_files", { id }, false);
     assertStringIncludes(listed.readme, "# Training");
     const main = await tool(pg, a, "read_app_file", { id, path: "src/main.tsx" }, false);
-    assertStringIncludes(main.content, "     1\timport { StrictMode } from \"react\";");
+    assertStringIncludes(main.content, "     1\timport { createRoot } from \"react-dom/client\"");
 
     // A list over the app's log, through a new component, the way it's done in any React app.
     await tool(pg, a, "write_app_file", { id, path: "/src/components/Entry.tsx", content: `import { Dumbbell } from "lucide-react";\nexport default function Entry({ row }: { row: { Exercise: string; Date: string; Kg: string } }) { return <li className="flex items-center gap-3 py-2"><Dumbbell className="size-4" /><span className="flex-1">{row.Exercise}</span><span className="text-muted-foreground">{row.Kg} kg</span></li>; }\n` });
     const edited = await tool(pg, a, "edit_app_file", {
-      id, path: "/src/App.tsx",
-      old_string: `import { useNote } from "@/lib/amber";`,
-      new_string: `import { useNote, useStore } from "@/lib/amber";\nimport Entry from "@/components/Entry";`,
+      id, path: "/src/screens/home.tsx",
+      old_string: `import { Sparkles } from "lucide-react"`,
+      new_string: `import { Sparkles } from "lucide-react"\nimport { useStore } from "@/lib/amber"\nimport Entry from "@/components/Entry"`,
     });
     assertStringIncludes(JSON.stringify(edited), "saved");
     const r2 = await tool(pg, a, "edit_app_file", {
-      id, path: "/src/App.tsx",
+      id, path: "/src/screens/home.tsx",
       old_string: `          <Button>Get started</Button>`,
       new_string: `          <ul>{useStore("log", [] as { Exercise: string; Date: string; Kg: string }[])[0].map((r, i) => <Entry key={i} row={r} />)}</ul>`,
       look: true,
@@ -72,7 +73,7 @@ Deno.test("a project app: scaffold, files, edits, compile errors, checks and ver
     // Moving a file breaks its importer until that's fixed.
     const moved = await tool(pg, a, "move_app_file", { id, from: "/src/components/Entry.tsx", to: "/src/components/LogEntry.tsx" });
     assertStringIncludes(moved.errors.join("\n"), "@/components/Entry");
-    await tool(pg, a, "edit_app_file", { id, path: "/src/App.tsx", old_string: "@/components/Entry", new_string: "@/components/LogEntry" });
+    await tool(pg, a, "edit_app_file", { id, path: "/src/screens/home.tsx", old_string: "@/components/Entry", new_string: "@/components/LogEntry" });
     assertStringIncludes(await fails(tool(pg, a, "delete_app_file", { id, path: "/index.html" })), "can't be deleted");
 
     // check_app knows projects; edit_note_page points to the file tools; get_note_page lists files.

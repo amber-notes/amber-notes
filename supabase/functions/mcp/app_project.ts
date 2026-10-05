@@ -9,12 +9,20 @@ export const MAX_FILES = 200;
 export const MAX_FILE_BYTES = 512 * 1024;
 export const MAX_PROJECT_BYTES = 3 * 1024 * 1024;
 
+/** The stack's bare names: React on preact/compat, shadcn v4's radix-ui and the rest. Radix's own
+ *  @radix-ui/react-* packages are in the map only because radix-ui is built from them. */
+export const STACK_NAMES = [
+  "react", "react-dom", "react-dom/client", "react/jsx-runtime", "react/jsx-dev-runtime",
+  "preact/compat", "preact/compat/client", "preact/compat/jsx-runtime",
+  "radix-ui", "class-variance-authority", "clsx", "tailwind-merge", "lucide-react", "recharts", "date-fns", "zod", "framer-motion", "motion", "sonner", "react-day-picker",
+];
+
 /** Bare names the app's import map resolves (the host owns the map; the page never writes one). */
 export const BARE_IMPORTS = [
   "preact", "preact/hooks", "preact/jsx-runtime", "htm", "amber", "amber-ui", "amber-router",
   "chart.js", "d3", "three", "tone", "dayjs", "marked", "dompurify", "animejs", "canvas-confetti", "topojson-client", "world-atlas",
-  // The React stack (on preact/compat) and shadcn/ui's dependencies, as the app's import map has them.
-  "react", "react-dom", "react-dom/client", "react/jsx-runtime", "clsx", "tailwind-merge", "class-variance-authority", "lucide-react", "@radix-ui/*",
+  // The React stack (Pane/Resources/AppLibraries/stack.json; app_project.test.ts keeps this in step).
+  ...STACK_NAMES,
 ];
 
 const COMPILED = /\.(jsx|tsx|ts)$/;
@@ -116,12 +124,11 @@ export function resolveImport(p: Project, from: string, spec: string): string | 
   return null;
 }
 
-const CSS_LINK = (href: string) => `(() => { if (!document.querySelector('link[href="${href}"]')) { const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "${href}"; document.head.appendChild(l); } })();`;
 
 /**
  * Links a project after a change, as a bundler would but file by file: every compiled module's
  * imports point at the exact file they mean ("@/lib/utils" → "/src/lib/utils.ts"), a CSS import
- * becomes a <link> to it, and each stylesheet that imports Tailwind is generated from the classes
+ * becomes "/src/x.css?import" (the app serves that as a module that adds the stylesheet), and each stylesheet that imports Tailwind is generated from the classes
  * the project's files use. The device serves the result as it is.
  */
 export async function linkProject(p: Project): Promise<{ project: Project; ms: { tailwind: number }; error?: string }> {
@@ -130,7 +137,7 @@ export async function linkProject(p: Project): Promise<{ project: Project; ms: {
     if (path.endsWith(".css")) continue;
     let out = code.replace(/(^|[;\n])\s*import\s*["']([^"']+\.css)["'];?/g, (m, lead, spec) => {
       const to = resolveImport(p, path, spec);
-      return to ? `${lead}${CSS_LINK(to)}` : m;
+      return to ? `${lead}import "${to}?import";` : m;
     });
     out = out.replace(/(\bfrom\s*|\bimport\s*\(\s*|(?:^|[;\n])\s*import\s*)(["'])([^"']+)\2/g, (m, lead, q, spec) => {
       const to = resolveImport(p, path, spec);
@@ -188,7 +195,7 @@ export function brokenImports(p: Project): string[] {
       for (const spec of importsOf(text)) {
         if (/^https?:|^\/\//.test(spec)) out.push(`${path} imports ${spec}: the app has no network. Use a bundled library or a file in the project.`);
         else if (spec.startsWith(".") || spec.startsWith("/") || spec.startsWith("@/")) { if (!resolveImport(p, path, spec)) out.push(`${path} imports ${spec}, but there's no such file.`); }
-        else if (!BARE_IMPORTS.includes(spec) && !BARE_IMPORTS.some((b) => b.endsWith("/*") && spec.startsWith(b.slice(0, -1)))) out.push(`${path} imports "${spec}", which isn't available (${BARE_IMPORTS.filter((b) => !b.endsWith("/*")).join(", ")}). Use one of those, or add the code as a file.`);
+        else if (!BARE_IMPORTS.includes(spec) && !spec.startsWith("@radix-ui/")) out.push(`${path} imports "${spec}", which isn't available (${BARE_IMPORTS.join(", ")}). Use one of those, pin an npm file with resolve_package, or add the code as a file.`);
       }
     }
     if (path.endsWith(".html")) {
@@ -236,6 +243,8 @@ export function styleWarnings(p: Project): string[] {
   // The app's data is JSON in its own store; the note's text is only read once, to convert an old note.
   const noteData = code.filter(([, t]) => /\buse(Table|Checklist)\s*\(|\.tables\s*\[|\bop\s*:\s*["'](append_row|set_cell|toggle_checklist|add_checklist_item|delete_row)/.test(t)).map(([path]) => path);
   if (noteData.length) out.push(`${noteData.slice(0, 3).join(", ")} keep data in the note's tables or checklists. An app's data is JSON in its own store: useStore / useCollection / useSettings from "amber" (or localStorage, which syncs). useImported() gives what an older note held, to start from once.`);
+  const radix = code.filter(([, t]) => /from\s*["']@radix-ui\/react-/.test(t)).map(([path]) => path);
+  if (radix.length) out.push(`${radix.slice(0, 3).join(", ")} import @radix-ui/react-* directly. The app ships Radix as the radix-ui package (what shadcn v4 uses): import { Dialog as DialogPrimitive } from "radix-ui".`);
   if (!p.files["/README.md"]) out.push("Add /README.md: what the app is for, its screens and files, and where its data lives (the note's tables by heading, the app's own data). Keep it current; the next AI reads it first.");
   if (!/<html[^>]*\blang\s*=/i.test(p.files["/index.html"] ?? "")) out.push('Add lang="en" (or the note\'s language) to <html> in /index.html.');
   if (code.some(([, t]) => /\b(indexedDB|document\.cookie)\b/.test(t))) out.push("IndexedDB and cookies aren't available. Use the store (useStore, useCollection) or localStorage, which is kept and synced.");

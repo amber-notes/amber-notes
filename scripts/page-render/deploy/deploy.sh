@@ -8,7 +8,6 @@ stage=$(mktemp -d "${TMPDIR:-/tmp}/amber-render.XXXXXX")
 trap 'rm -rf "$stage"' EXIT
 mkdir -p "$stage/scripts/page-render" "$stage/supabase/functions/mcp" "$stage/Pane/Resources"
 cp "$root/scripts/page-render/render.ts" "$root/scripts/page-render/server.ts" "$stage/scripts/page-render/"
-cp -R "$root/scripts/page-render/vendor" "$stage/scripts/page-render/"
 for f in amber-base.ts data_ops.ts libraries.ts notes.ts page.ts page_input.ts; do cp "$root/supabase/functions/mcp/$f" "$stage/supabase/functions/mcp/"; done
 cp -R "$root/Pane/Resources/AppLibraries" "$stage/Pane/Resources/"
 mkdir -p "$stage/scripts/page-render/.libcache"
