@@ -44,6 +44,14 @@ const Kit = (() => {
     dumbbell: '<path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/>',
     map: '<path d="M9 4L3 6.5v14L9 18l6 2.5 6-2.5V4l-6 2.5zM9 4v14M15 6.5v14"/>',
     edit: '<path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"/>',
+    chart: '<path d="M4 20V11M10 20V5M16 20v-6M21 20H3"/>',
+    home: '<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
+    grid: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>',
+    wallet: '<rect x="3" y="6" width="18" height="14" rx="2.5"/><path d="M16 13h2M3 10h18M6 6l9-3 2 3"/>',
+    people: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5a5 5 0 0 1 3.5 5.5"/>',
+    receipt: '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6M9 16h4"/>',
+    up: '<path d="M6 15l6-6 6 6"/>', down: '<path d="M6 9l6 6 6-6"/>',
+    more: '<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>',
     note: '<path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h5"/>',
   };
   const ico = (n, extra = "") => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}>${paths[n] || ""}</svg>`;
@@ -73,33 +81,77 @@ const Kit = (() => {
     return amber.update(rows.map((values) => ({ op: "append_row", table: index, values })));
   }
 
-  // A sheet: one at a time, Escape or the scrim closes it, focus goes in and comes back.
+  // A sheet: one at a time, Escape or the scrim closes it, focus goes in and comes back. On the
+  // phone it rises from the bottom and stays above the keyboard; from 700 px it's a centred panel.
   let current = null;
   function sheet(title, html, { mount, wide, actions = "" } = {}) {
-    close();
+    close(true);
     const back = document.activeElement;
     const host = document.createElement("div");
     host.className = "sheet-host";
-    host.innerHTML = `<div class="scrim" data-close></div><section class="sheet" role="dialog" aria-modal="true" aria-label="${esc(title)}" ${wide ? 'style="width:min(46rem,94vw)"' : ""}>
-      <div class="grab"></div><header><h2>${esc(title)}</h2>${actions}<button class="round" data-close aria-label="Close">${ico("close")}</button></header><div class="sheet-body">${html}</div></section>`;
+    host.innerHTML = `<div class="scrim" data-close></div><section class="sheet ${wide ? "wide" : ""}" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+      <header><div class="grab" aria-hidden="true"></div><h2>${esc(title)}</h2>${actions}<button class="round" data-close aria-label="Close">${ico("close")}</button></header><div class="sheet-body">${html}</div></section>`;
     document.body.appendChild(host);
+    document.documentElement.classList.add("sheet-open");
     const onKey = (e) => { if (e.key === "Escape") close(); };
     host.addEventListener("click", (e) => { if (e.target.closest("[data-close]")) close(); });
     addEventListener("keydown", onKey);
-    current = { host, back, onKey };
+    const vv = window.visualViewport;
+    const fitKeyboard = () => { if (!vv) return; const kb = Math.max(0, innerHeight - vv.height - vv.offsetTop); host.style.setProperty("--kb", kb + "px"); host.style.setProperty("--vvh", vv.height + "px"); };
+    fitKeyboard(); vv && vv.addEventListener("resize", fitKeyboard); vv && vv.addEventListener("scroll", fitKeyboard);
+    // A focused field scrolls into the part of the sheet you can see.
+    host.addEventListener("focusin", (e) => { if (e.target.matches("input, textarea, select")) setTimeout(() => e.target.scrollIntoView({ block: "nearest", behavior: "smooth" }), 320); });
+    current = { host, back, onKey, fitKeyboard };
     requestAnimationFrame(() => requestAnimationFrame(() => host.classList.add("open")));
     mount && mount(host.querySelector(".sheet-body"), close);
     setTimeout(() => (host.querySelector("[autofocus]") || host.querySelector(".sheet header .round")).focus({ preventScroll: true }), 60);
     return close;
   }
-  function close() {
+  function close(instant) {
     if (!current) return;
-    const { host, back, onKey } = current;
+    const { host, back, onKey, fitKeyboard } = current;
     current = null;
     removeEventListener("keydown", onKey);
+    window.visualViewport && visualViewport.removeEventListener("resize", fitKeyboard);
     host.classList.remove("open");
-    setTimeout(() => host.remove(), 380);
-    back && back.focus && back.focus({ preventScroll: true });
+    document.documentElement.classList.remove("sheet-open");
+    setTimeout(() => host.remove(), instant === true ? 0 : 380);
+    back && back.isConnected && back.focus && back.focus({ preventScroll: true });
+  }
+
+  // The app's frame: a bottom tab bar on the phone and a sidebar from 900 px, with screens pushed
+  // on top (a back button, a slide). screen(tab, note) returns a screen's HTML; after(tab) wires it.
+  function app({ tabs, screen, after, header }) {
+    const st = { tab: tabs[0].id, stack: [], scroll: {}, dir: "" };
+    const root = document.getElementById("app");
+    root.classList.add("shell-root");
+    function draw(note = amber.note) {
+      const top = st.stack[st.stack.length - 1];
+      const t = tabs.find((x) => x.id === st.tab);
+      const content = top ? top.render(note) : screen(st.tab, note);
+      const titleHTML = top ? `<header class="push-h"><button class="backb" data-pop aria-label="Back to ${esc(top.backLabel || t.label)}">${ico("back")}<span>${esc(top.backLabel || t.label)}</span></button></header>` : "";
+      root.innerHTML = `<div class="shell ${top && top.immersive ? "immersive" : ""}">
+        <nav class="sidebar" aria-label="Sections"><div class="sb-title">${esc(note.title)}</div>${header ? header(note) : ""}${tabs.map((x) => `<button class="sb-item" data-tab="${x.id}" aria-current="${x.id === st.tab ? "page" : "false"}">${ico(x.icon)}<span>${esc(x.label)}</span>${x.badge && x.badge(note) ? `<i class="badge num">${x.badge(note)}</i>` : ""}</button>`).join("")}</nav>
+        <div class="screen ${st.dir}" id="screen">${titleHTML}${content}</div>
+        <nav class="tabbar" aria-label="Sections">${tabs.map((x) => `<button class="tb-item" data-tab="${x.id}" aria-current="${x.id === st.tab ? "page" : "false"}">${ico(x.icon)}<span>${esc(x.label)}</span>${x.badge && x.badge(note) ? `<i class="badge num">${x.badge(note)}</i>` : ""}</button>`).join("")}</nav>
+      </div>`;
+      st.dir = "";
+      if (top && top.after) top.after(document.getElementById("screen")); else if (!top && after) after(st.tab, document.getElementById("screen"));
+    }
+    root.addEventListener("click", (e) => {
+      const tb = e.target.closest("[data-tab]");
+      if (tb) {
+        st.scroll[st.tab] = scrollY;
+        const same = tb.dataset.tab === st.tab;
+        st.tab = tb.dataset.tab; st.stack = []; st.dir = same ? "" : "fade";
+        draw(); scrollTo(0, same ? 0 : st.scroll[st.tab] || 0); return;
+      }
+      if (e.target.closest("[data-pop]")) pop();
+    });
+    addEventListener("keydown", (e) => { if (e.key === "Escape" && st.stack.length && !current) pop(); });
+    function push(scr) { st.scroll["push" + st.stack.length] = scrollY; st.stack.push(scr); st.dir = "in"; draw(); scrollTo(0, 0); }
+    function pop() { if (!st.stack.length) return; st.stack.pop(); st.dir = "out"; draw(); scrollTo(0, st.scroll["push" + st.stack.length] || 0); }
+    return { draw, push, pop, get tab() { return st.tab; }, set tab(v) { st.tab = v; st.stack = []; draw(); }, get depth() { return st.stack.length; } };
   }
 
   // App settings are declared in <meta name="amber-settings"> and changed in Amber Notes' own
@@ -127,5 +179,5 @@ const Kit = (() => {
   const hash = (s) => { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); };
   const announce = (() => { let el; return (msg) => { if (!el) { el = document.createElement("div"); el.className = "sr"; el.setAttribute("aria-live", "polite"); document.body.appendChild(el); } el.textContent = ""; setTimeout(() => (el.textContent = msg), 30); }; })();
 
-  return { width, fit, onResize, esc, $, $$, ico, D, num, kr, fmtN, done, col, table, addRows, sheet, close, settings, on, once, hash, announce };
+  return { app, width, fit, onResize, esc, $, $$, ico, D, num, kr, fmtN, done, col, table, addRows, sheet, close, settings, on, once, hash, announce };
 })();

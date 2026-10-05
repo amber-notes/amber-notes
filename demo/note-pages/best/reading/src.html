@@ -95,7 +95,7 @@ input[type=range] { width: 100%; accent-color: var(--amber-accent); height: 2.4r
 </style>
 </head>
 <body>
-<main class="wrap" id="app" aria-live="polite"></main>
+<main id="app" aria-live="polite"></main>
 <script>
 /*KIT_JS*/
 const { esc, ico, D, num, col, sheet, announce } = Kit;
@@ -139,13 +139,13 @@ function pace(b) {
   return `About ${left} ${left === 1 ? "day" : "days"} left at ${Math.round(per)} pages a day`;
 }
 
-function render(note = amber.note) {
+function screens(note) {
   const app = document.getElementById("app");
   const m = model(note);
   if (!m) {
     app.innerHTML = `<header class="top"><div class="titles"><h1>${esc(note.title || "Reading")}</h1></div></header>
       <div class="card empty">${ico("book")}<h3>No books yet</h3><p>Books go in a table in this note with Title, Author and Status. Search for the first one and it's added for you.</p><button class="btn primary" id="add">${ico("search")} Find a book</button></div>`;
-    return;
+    return null;
   }
   const s = S.get(), year = note.today.slice(0, 4);
   const reading = m.books.filter((b) => b.status === "Reading");
@@ -159,8 +159,8 @@ function render(note = amber.note) {
   const quotes = (amber.data.collections.quotes || []).slice().sort((a, b) => (b.created || "").localeCompare(a.created || ""));
   const bookOf = (k) => m.books.find((b) => key(b.title) === k);
 
-  app.innerHTML = `
-  <header class="top"><div class="titles"><h1>${esc(note.title)}</h1><div class="sub">${readYear.length} ${readYear.length === 1 ? "book" : "books"} in ${year}${reading.length ? ` · ${reading.length} on the go` : ""}</div></div>
+  return {
+    now: `  <header class="top"><div class="titles"><h1>${esc(note.title)}</h1><div class="sub">${readYear.length} ${readYear.length === 1 ? "book" : "books"} in ${year}${reading.length ? ` · ${reading.length} on the go` : ""}</div></div>
     <button class="round" id="add" aria-label="Add a book">${ico("plus")}</button></header>
   ${reading.length ? `<div class="nows">${reading.map((b) => {
     const f = b.pages && b.page ? Math.min(1, b.page / b.pages) : 0;
@@ -172,10 +172,22 @@ function render(note = amber.note) {
   <div class="label"><span class="grow">${year} goal</span></div>
   <section class="card goal"><div class="gh"><b class="num">${readYear.length} of ${goal}</b><span class="grow">books</span><span class="pace ${diff >= 0 ? "ahead" : ""}">${paceTxt}</span></div>
     <div class="slots" role="img" aria-label="${readYear.length} of ${goal} books read">${[...Array(Math.max(goal, readYear.length))].map((_, k) => readYear[k] ? `<div class="rise" style="--i:${k}">${cover(readYear[k])}</div>` : `<div class="empty-slot"></div>`).join("")}</div></section>
-  <div class="tabs"><div class="seg" role="group" aria-label="Shelf">${["Read", "Want to read", "Reading"].map((x) => `<button data-tab="${x}" aria-pressed="${tab === x}">${x === "Want to read" ? "Up next" : x}</button>`).join("")}</div><span class="grow"></span><span class="muted small num">${shelf.length}</span></div>
+`,
+    shelf: `<header class="top"><div class="titles"><h1>Shelf</h1><div class="sub">${m.books.length} books</div></div><button class="round" id="add" aria-label="Add a book">${ico("plus")}</button></header>
+  <div class="tabs"><div class="seg" role="group" aria-label="Shelf">${["Read", "Want to read", "Reading"].map((x) => `<button data-shelf="${x}" aria-pressed="${tab === x}">${x === "Want to read" ? "Up next" : x}</button>`).join("")}</div><span class="grow"></span><span class="muted small num">${shelf.length}</span></div>
   ${shelf.length ? `<section class="shelf">${shelf.map((b) => `<button class="book" data-book="${b.i}" aria-label="${esc(b.title)} by ${esc(b.author)}">${cover(b)}<div class="t">${esc(b.title)}</div><div class="a">${b.rating ? stars(b.rating) : esc(b.author)}</div></button>`).join("")}</section>`
     : `<div class="card empty"><p>${tab === "Want to read" ? "Nothing up next. Add a book you want to read." : "Nothing here yet."}</p></div>`}
-  ${quotes.length ? `<div class="label"><span class="grow">Quotes</span></div><section class="quotes">${quotes.slice(0, 4).map((q) => { const b = bookOf(q.book); return `<blockquote class="card quote" style="margin:0"><p>“${esc(q.text)}”</p><div class="src">${esc(b ? b.title : q.book)}${q.page ? `, page ${q.page}` : ""}</div></blockquote>`; }).join("")}</section>` : ""}`;
+`,
+    quotes: `<header class="top"><div class="titles"><h1>Quotes</h1><div class="sub">${quotes.length} saved</div></div></header>
+  ${quotes.length ? `<section class="quotes">${quotes.map((q) => { const b = bookOf(q.book); return `<blockquote class="card quote" style="margin:0"><p>“${esc(q.text)}”</p><div class="src">${esc(b ? b.title : q.book)}${q.page ? `, page ${q.page}` : ""}</div></blockquote>`; }).join("")}</section>` : ""} ${quotes.length ? "" : `<div class="card empty">${ico("quote")}<h3>No quotes yet</h3><p>Save a line from the book you're reading, and it's kept here with its page.</p></div>`}`,
+  };
+}
+
+let shell = null;
+function render(note = amber.note) {
+  const v = screens(note); if (!v) return;
+  if (!shell) shell = Kit.app({ tabs: [{ id: "now", label: "Reading", icon: "book" }, { id: "shelf", label: "Shelf", icon: "grid" }, { id: "quotes", label: "Quotes", icon: "quote" }], screen: (t, n) => screens(n)[t] });
+  shell.draw(note);
 }
 
 async function setCell(m, b, k, v) {
@@ -318,17 +330,17 @@ function addSheet() {
         let ref = null;
         if (d.thumb) { const f = await amber.files.save({ name: `${d.title}.jpg`, type: "image/jpeg", base64: d.thumb.split(",")[1] }); if (f.ok) ref = { $file: f.file.$file }; }
         await amber.setData({ values: { books: { [key(d.title)]: { cover: ref, year: d.year || null, pages: d.pages || null } } } });
-        tab = "Want to read"; close(); announce(`${d.title} added to Up next.`);
+        tab = "Want to read"; shell.tab = "shelf"; close(); announce(`${d.title} added to Up next.`);
       });
     },
   });
 }
 
 document.addEventListener("click", (e) => {
-  const t = e.target.closest("#add,#settings,[data-tab],[data-book],[data-page],[data-quote]"); if (!t) return;
+  const t = e.target.closest("#add,[data-shelf],[data-book],[data-page],[data-quote]"); if (!t) return;
   if (t.closest(".sheet") && !t.dataset.quote) return;
   if (t.id === "add") addSheet();
-  else if (t.dataset.tab) { tab = t.dataset.tab; render(); }
+  else if (t.dataset.shelf) { tab = t.dataset.shelf; render(); }
   else if (t.dataset.book) bookSheet(+t.dataset.book);
   else if (t.dataset.page) pageSheet(+t.dataset.page);
   else if (t.dataset.quote) { Kit.close(); setTimeout(() => quoteSheet(+t.dataset.quote), t.closest(".sheet") ? 350 : 0); }

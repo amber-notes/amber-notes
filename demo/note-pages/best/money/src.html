@@ -72,18 +72,21 @@
 .catpick button[aria-pressed="true"] { background: var(--amber-text); color: var(--amber-bg); }
 
 .preview { max-height: 46vh; overflow: auto; margin-top: .8rem; }
-.preview .row { gap: .6rem !important; }
+.preview .row { gap: .7rem !important; align-items: flex-start !important; }
+.preview input[type=checkbox] { margin-top: .15rem; }
 .preview .dup { opacity: .45; }
-.preview select { width: 8.2rem; min-height: 2.2rem; padding: .3rem .5rem; font-size: .85rem; border-radius: 8px; border: 0; background: var(--amber-fill); color: var(--amber-text); }
+.preview select { display: block; margin-top: .35rem; width: auto; max-width: 100%; min-height: 2.2rem; padding: .3rem .5rem; font-size: .85rem; border-radius: 8px; border: 0; background: var(--amber-fill); color: var(--amber-text); }
 .preview input[type=checkbox] { width: 1.25rem; height: 1.25rem; accent-color: var(--amber-accent); flex: none; }
 .summary { display: flex; align-items: center; gap: .6rem; margin-top: .9rem; font-size: .88rem; color: var(--amber-text-secondary); }
 .summary .grow { min-width: 0; }
 .budgets .row input { width: 7rem; text-align: right; min-height: 2.3rem; }
 @media (min-width: 900px) { .safe .v { font-size: 3.6rem; } }
+.budgrid { display: grid; gap: 0 1.4rem; }
+@media (min-width: 1100px) { .budgrid { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: start; } }
 </style>
 </head>
 <body>
-<main class="wrap" id="app" aria-live="polite"></main>
+<main id="app" aria-live="polite"></main>
 <script>
 /*KIT_JS*/
 const { esc, ico, D, num, kr, col, sheet, announce } = Kit;
@@ -157,15 +160,15 @@ function chart(m) {
   <div class="keys">${m.envs.filter((e) => e.spent > 0).map((e) => `<span style="--cc:${cc(e.name)}"><i></i>${esc(e.name)} ${Math.round(e.spent / Math.max(1, m.spent) * 100)}%</span>`).join("")}</div>`;
 }
 
-function render(note = amber.note) {
+function screens(note) {
   const app = document.getElementById("app");
   const m = model(note);
   if (!m) {
     app.innerHTML = `<header class="top"><div class="titles"><h1>${esc(note.title || "Money")}</h1></div></header>
       <div class="card empty">${ico("coins")}<h3>Nothing spent yet</h3><p>Spending goes in a table in this note with Date, Item, Category and Amount. Add the first one here, or paste a bank export.</p>
       <button class="btn primary" id="first">${ico("plus")} Add spending</button></div>`;
-    document.getElementById("first").onclick = () => amber.update({ op: "set_text", heading: "Spending", text: "| Date | Item | Category | Amount |\n| --- | --- | --- | --- |" }).then((r) => !r.ok && amber.update({ op: "set_text", heading: note.title, text: "" }));
-    return;
+    document.getElementById("first").onclick = () => amber.update({ op: "set_text", heading: "Spending", text: "| Date | Item | Category | Amount |\n| --- | --- | --- | --- |" });
+    return null;
   }
   const { p } = m;
   const safe = Math.max(0, Math.floor(m.safe / 10) * 10);
@@ -176,11 +179,11 @@ function render(note = amber.note) {
   const rowsFor = (d) => m.inP.filter((x) => x.date === d).sort((a, b) => b.i - a.i);
   const txRow = (x) => `<button class="row tx ${fresh === x.i ? "new" : ""}" data-tx="${x.i}" style="--cc:${cc(x.cat)}"><span class="ic" aria-hidden="true">${esc((x.item || x.cat).trim()[0] || "·").toUpperCase()}</span>
       <span class="grow"><span class="ellipsis" style="display:block">${esc(x.item || x.cat)}</span><span class="cat">${esc(x.cat)}</span></span><span class="amt num">${kr(x.amt)}</span></button>`;
-  app.innerHTML = `
-  <header class="top"><div class="titles"><h1>${esc(note.title)}</h1><div class="sub">${D.fmt(p.start, { day: "numeric", month: "short" })} to ${D.fmt(p.end, { day: "numeric", month: "short" })} · day ${p.index + 1} of ${p.days}</div></div>
-    <button class="round" id="import" aria-label="Import from your bank">${ico("upload")}</button></header>
-  <div class="cols side">
-    <div>
+  const sub = `${D.fmt(p.start, { day: "numeric", month: "short" })} to ${D.fmt(p.end, { day: "numeric", month: "short" })} · day ${p.index + 1} of ${p.days}`;
+  const dayList = (ds) => ds.length ? ds.map((d) => `<div class="day"><span>${dayName(d, note.today)}</span><span class="num">${kr(rowsFor(d).reduce((a, x) => a + x.amt, 0))}</span></div><div class="list">${rowsFor(d).map(txRow).join("")}</div>`).join("") : `<div class="empty"><p>Nothing spent since payday.</p></div>`;
+  const soon = upcoming.filter((b) => D.diff(b.due, note.today) <= 7);
+  return {
+    today: `<header class="top"><div class="titles"><h1>${esc(note.title)}</h1><div class="sub">${sub}</div></div></header>
       <section class="card safe" aria-label="Safe to spend today">
         <div class="k">Safe to spend today</div>
         <div class="v num ${m.safe < 0 ? "low" : ""}">${Kit.fmtN(safe)}<small>kr</small></div>
@@ -189,9 +192,14 @@ function render(note = amber.note) {
         <div class="period" aria-hidden="true">${[...Array(p.days)].map((_, i) => `<i class="${i < p.index ? "past" : i === p.index ? "now" : ""}"></i>`).join("")}</div>
         <div class="trio"><div><b class="num">${kr(m.spentToday)}</b>Spent today</div><div><b class="num">${kr(upcoming.reduce((a, b) => a + b.amt, 0))}</b>Bills to come</div><div><b class="num">${kr(m.s.save)}</b>Saving</div></div>
       </section>
-      <div class="label"><span class="grow">This month</span></div>
+      <div class="label"><span class="grow">Recent</span><button data-go="spending">See all</button></div>
+      <section class="card">${dayList(days.slice(0, 2))}</section>
+      ${soon.length ? `<div class="label"><span class="grow">Bills this week</span><button data-go="bills">All bills</button></div><section class="card list">${soon.map((b) => `<div class="row bill"><span class="when"><b class="num">${+b.due.slice(8)}</b><span>${D.fmt(b.due, { month: "short" })}</span></span><span class="grow ellipsis">${esc(b.name)}<div class="small muted">${D.rel(b.due, note.today)}</div></span><span class="num">${kr(b.amt)}</span></div>`).join("")}</section>` : ""}`,
+    budgets: `<header class="top"><div class="titles"><h1>Budgets</h1><div class="sub">${kr(m.flexible)} a month after bills and saving</div></div><button class="round" id="budgets" aria-label="Edit budgets">${ico("edit")}</button></header>
+      <div class="budgrid"><div>
+      <div class="label" style="margin-top:.2rem"><span class="grow">This month</span></div>
       <section class="card chart"><div data-w="chart"></div>${chart(m)}</section>
-      <div class="label"><span class="grow">Budgets</span><button id="budgets">Edit</button></div>
+      </div><div><div class="label" style="margin-top:.2rem"><span class="grow">By category</span></div>
       <section class="card list">${m.envs.map((e) => {
         const over = e.budget && e.spent > e.budget, f = e.budget ? Math.min(1, e.spent / e.budget) : 0;
         return `<div class="row env" style="--cc:${cc(e.name)}"><div class="line"><span class="dot"></span><span class="name">${esc(e.name)}</span>
@@ -199,20 +207,30 @@ function render(note = amber.note) {
           ${e.budget ? `<div class="bar" role="meter" aria-label="${esc(e.name)}" aria-valuemin="0" aria-valuemax="${e.budget}" aria-valuenow="${Math.round(e.spent)}"><b class="${over ? "over" : ""}" style="width:${f * 100}%"></b><span class="pace" style="left:${((p.index + 1) / p.days) * 100}%" title="Where an even pace would be today"></span></div>` : ""}</div>`;
       }).join("")}</section>
       <p class="muted small" style="margin:.5rem .3rem 0">The line in each bar is where an even pace would be today.</p>
-    </div>
-    <div>
-      <div class="label"><span class="grow">Bills</span><span class="small num" style="text-transform:none">${kr(m.bills.reduce((a, b) => a + b.amt, 0))} a month</span></div>
+      </div></div>`,
+    bills: `<header class="top"><div class="titles"><h1>Bills</h1><div class="sub">${kr(m.bills.reduce((a, b) => a + b.amt, 0))} a month · ${upcoming.length} still to pay</div></div></header>
       <section class="card list">${m.bills.length ? m.bills.map((b) => `<div class="row bill ${b.paid ? "paid" : ""}"><span class="when"><b class="num">${+b.due.slice(8)}</b><span>${D.fmt(b.due, { month: "short" })}</span></span>
         <span class="grow ellipsis">${esc(b.name)}<div class="small muted">${b.paid ? "" : D.rel(b.due, note.today)}</div></span><span class="num">${kr(b.amt)}</span>
         ${b.paid ? `<span class="paidmark">${ico("check")}Paid</span>` : `<button class="btn tint pay" data-pay="${b.i}" aria-label="Mark ${esc(b.name)} paid">Paid</button>`}</div>`).join("")
         : `<div class="empty"><p>Add a Bills table to the note (Bill, Day, Amount) and they show here.</p></div>`}</section>
-      <div class="label"><span class="grow">Spending</span>${days.length > 4 ? `<button id="all">${showAll ? "Show less" : "Show all"}</button>` : ""}</div>
-      <section class="card">${listDays.length ? listDays.map((d) => `<div class="day"><span>${dayName(d, note.today)}</span><span class="num">${kr(rowsFor(d).reduce((a, x) => a + x.amt, 0))}</span></div><div class="list">${rowsFor(d).map(txRow).join("")}</div>`).join("")
-        : `<div class="empty"><p>Nothing spent since payday.</p></div>`}</section>
-    </div>
-  </div>`;
-  fresh = null;
-  Kit.fit(() => render());
+`,
+    spending: `<header class="top"><div class="titles"><h1>Spending</h1><div class="sub">${kr(m.inP.reduce((a, x) => a + x.amt, 0))} since payday</div></div><button class="round" id="import" aria-label="Import from your bank">${ico("upload")}</button><button class="round accent" id="add" aria-label="Add spending">${ico("plus")}</button></header>
+      <section class="card">${dayList(days)}</section>`,
+  };
+}
+
+let shell = null;
+function render(note = amber.note) {
+  const v = screens(note);
+  if (!v) return;
+  if (!shell) shell = Kit.app({
+    tabs: [{ id: "today", label: "Today", icon: "wallet" }, { id: "budgets", label: "Budgets", icon: "chart" },
+      { id: "bills", label: "Bills", icon: "receipt", badge: () => { const m = model(amber.note); return m ? m.bills.filter((b) => !b.paid && D.diff(b.due, amber.note.today) <= 3).length || "" : ""; } },
+      { id: "spending", label: "Spending", icon: "list" }],
+    screen: (tab, n) => screens(n)[tab],
+    after: () => { fresh = null; Kit.fit(() => shell.draw()); },
+  });
+  shell.draw(note);
 }
 
 function dayName(d, today) {
@@ -325,9 +343,10 @@ function importSheet() {
     if (!parsed) { pv.innerHTML = ""; return; }
     const n = parsed.rows.filter((r) => r.use).length;
     pv.innerHTML = parsed.rows.length ? `<div class="card list preview">${parsed.rows.map((r, k) => `<label class="row ${r.dup ? "dup" : ""}"><input type="checkbox" data-use="${k}" ${r.use ? "checked" : ""} aria-label="Import ${esc(r.item)}">
-      <span class="grow"><span class="ellipsis" style="display:block">${esc(r.item)}</span><span class="small muted">${D.fmt(r.date)}${r.dup ? " · already in the note" : ""}</span></span>
-      <span class="num small" style="font-weight:600">${kr(r.amt)}</span><select data-cat="${k}" aria-label="Category for ${esc(r.item)}">${cats(m).map((c) => `<option ${c === r.cat ? "selected" : ""}>${esc(c)}</option>`).join("")}</select></label>`).join("")}</div>
-      <div class="summary"><span class="grow">${parsed.rows.length} rows${parsed.skipped.income ? ` · ${parsed.skipped.income} incoming skipped` : ""}${parsed.rows.some((r) => r.dup) ? ` · ${parsed.rows.filter((r) => r.dup).length} already there` : ""}</span>
+      <span class="grow"><span style="display:block;font-weight:600">${esc(r.item)}</span><span class="small muted">${D.fmt(r.date)}${r.dup ? " · already in the note" : ""}</span>
+      <select data-cat="${k}" aria-label="Category for ${esc(r.item)}">${cats(m).map((c) => `<option ${c === r.cat ? "selected" : ""}>${esc(c)}</option>`).join("")}</select></span>
+      <span class="num" style="font-weight:600;align-self:flex-start">${kr(r.amt)}</span></label>`).join("")}</div>
+      <div class="summary sheet-foot" style="display:flex"><span class="grow">${parsed.rows.length} rows${parsed.skipped.income ? ` · ${parsed.skipped.income} incoming skipped` : ""}${parsed.rows.some((r) => r.dup) ? ` · ${parsed.rows.filter((r) => r.dup).length} already there` : ""}</span>
       <button class="btn primary" id="go" ${n ? "" : "disabled"}>Add ${n} ${n === 1 ? "row" : "rows"}</button></div>`
       : `<p class="err">No rows found. Each line needs a date, a description and an amount.</p>`;
   };
@@ -360,11 +379,11 @@ function importSheet() {
 }
 
 document.addEventListener("click", (e) => {
-  const t = e.target.closest("#add,#settings,#import,#budgets,#all,[data-tx],[data-pay]"); if (!t) return;
+  const t = e.target.closest("#add,#import,#budgets,[data-go],[data-tx],[data-pay]"); if (!t) return;
   if (t.id === "add") addSheet();
   else if (t.id === "import") importSheet();
   else if (t.id === "budgets") budgetsSheet();
-  else if (t.id === "all") { showAll = !showAll; render(); }
+  else if (t.dataset.go) { shell.tab = t.dataset.go; scrollTo(0, 0); }
   else if (t.dataset.tx) addSheet(+t.dataset.tx);
   else if (t.dataset.pay) payBill(+t.dataset.pay);
 });

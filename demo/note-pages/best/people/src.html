@@ -71,7 +71,7 @@
 </style>
 </head>
 <body>
-<main class="wrap" id="app" aria-live="polite"></main>
+<main id="app" aria-live="polite"></main>
 <script>
 /*KIT_JS*/
 const { esc, ico, D, col, sheet, announce } = Kit;
@@ -114,45 +114,52 @@ function ring(p) {
   return `<span class="due"><svg viewBox="0 0 50 50"><circle cx="25" cy="25" r="23" fill="none" stroke="var(--amber-fill)" stroke-width="2.5"/><circle cx="25" cy="25" r="23" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - f)}"/></svg></span>`;
 }
 
-function render(note = amber.note) {
+function screens(note) {
   const app = document.getElementById("app");
   const m = model(note);
   if (!m) {
     app.innerHTML = `<header class="top"><div class="titles"><h1>${esc(note.title || "People")}</h1></div></header>
       <div class="card empty">${ico("person")}<h3>No one here yet</h3><p>People go in a table in this note: Name, Birthday, Last talked and Every. Add someone from your contacts to start it.</p><button class="btn primary" id="add">${ico("plus")} Add someone</button></div>`;
-    return;
+    return null;
   }
   const s = S.get(), today = note.today;
   const due = m.people.filter((p) => p.due != null && p.due >= -3).sort((a, b) => b.due - a.due);
   const bdays = m.people.filter((p) => p.bnext && D.diff(p.bnext, today) <= Number(s.soon)).sort((a, b) => a.bnext.localeCompare(b.bnext));
   const all = m.people.filter((p) => !q || p.name.toLowerCase().includes(q.toLowerCase())).sort((a, b) => a.name.localeCompare(b.name, "sv"));
   const rem = amber.data.values.reminded || {};
-  app.innerHTML = `
-  <header class="top"><div class="titles"><h1>${esc(note.title)}</h1><div class="sub">${due.length ? `${due.length} to catch up` : "All caught up"}${bdays.length ? ` · ${bdays.length} ${bdays.length === 1 ? "birthday" : "birthdays"}` : ""}</div></div>
+  return {
+    catch: `  <header class="top"><div class="titles"><h1>${esc(note.title)}</h1><div class="sub">${due.length ? `${due.length} to catch up` : "All caught up"}${bdays.length ? ` · ${bdays.length} ${bdays.length === 1 ? "birthday" : "birthdays"}` : ""}</div></div>
     <button class="round" id="add" aria-label="Add someone">${ico("plus")}</button></header>
-  <div class="label" style="margin-top:.2rem"><span class="grow">Catch up</span>${due.length > (innerWidth >= 900 ? 4 : 3) ? `<button id="more">${showAll ? "Show less" : `Show all ${due.length}`}</button>` : ""}</div>
-  ${due.length ? `<section class="catch">${due.slice(0, showAll ? 99 : innerWidth >= 900 ? 4 : 3).map((p) => `<article class="card cu" data-row="${p.i}">
+  <div class="label" style="margin-top:.2rem"><span class="grow">Due now</span>${due.length > (innerWidth >= 900 ? 6 : 4) ? `<button id="more">${showAll ? "Show less" : `Show all ${due.length}`}</button>` : ""}</div>
+  ${due.length ? `<section class="catch">${due.slice(0, showAll ? 99 : innerWidth >= 900 ? 6 : 4).map((p) => `<article class="card cu" data-row="${p.i}">
       <button class="av-btn" data-person="${p.i}" style="border:0;background:none;padding:0" aria-label="Open ${esc(p.name)}">${avatar(p).replace("</span>", ring(p) + "</span>")}</button>
       <div class="grow"><h3>${esc(p.name)}</h3><p class="${p.due > 0 ? "late" : ""}">Talked ${ago(p.since)}${p.every ? ` · every ${esc(p.every.replace(/^1 /, ""))}` : ""}</p>
         ${p.notes[0] ? `<div class="last">${esc(p.notes[0].text)}</div>` : ""}
         <div class="acts"><button class="btn primary" data-talked="${p.i}">${ico("check")} Talked today</button><button class="round" data-remind="${p.i}" aria-pressed="${!!rem[key(p.name)]}" aria-label="${rem[key(p.name)] ? "Reminder set for tomorrow" : `Remind me to catch up with ${esc(p.name)} tomorrow`}">${ico("bell")}</button></div></div></article>`).join("")}</section>`
     : `<div class="card empty" style="padding:1.4rem"><p style="margin:0">Nobody's due. Nice.</p></div>`}
-  <div class="cols">
-    <div>
-      <div class="label"><span class="grow">Birthdays</span></div>
-      <section class="card list">${bdays.length ? bdays.map((p) => { const n = D.diff(p.bnext, today); return `<div class="row bday"><span class="cal"><span>${D.fmt(p.bnext, { month: "short" })}</span><b class="num">${+p.bnext.slice(8)}</b></span>
+`,
+    bdays: `<header class="top"><div class="titles"><h1>Birthdays</h1><div class="sub">The next ${esc(s.soonText)}</div></div></header>      <section class="card list">${bdays.length ? bdays.map((p) => { const n = D.diff(p.bnext, today); return `<div class="row bday"><span class="cal"><span>${D.fmt(p.bnext, { month: "short" })}</span><b class="num">${+p.bnext.slice(8)}</b></span>
         <div class="grow"><div style="font-weight:600">${esc(p.name)}</div><div class="small ${n <= 7 ? "soon" : "muted"}">${n === 0 ? "Today" : n === 1 ? "Tomorrow" : n < 7 ? D.fmt(p.bnext, { weekday: "long" }) : `In ${n} days`}${p.age ? ` · turns ${p.age}` : ""}</div></div>
         <button class="bellb" data-bday="${p.i}" aria-pressed="${!!rem["bday:" + key(p.name)]}" aria-label="Remind me of ${esc(p.name)}'s birthday">${ico("gift")}</button></div>`; }).join("")
         : `<div class="empty" style="padding:1.2rem"><p style="margin:0">No birthdays in the next ${esc(s.soonText)}.</p></div>`}</section>
-    </div>
-    <div>
-      <div class="label"><span class="grow">Everyone</span><span class="small num" style="text-transform:none">${m.people.length}</span></div>
-      <div class="search">${ico("search")}<label class="sr" for="q">Search people</label><input class="in" id="q" type="search" placeholder="Search" value="${esc(q)}"></div>
+`,
+    all: `<header class="top"><div class="titles"><h1>Everyone</h1><div class="sub">${m.people.length} people</div></div><button class="round accent" id="add" aria-label="Add someone">${ico("plus")}</button></header>      <div class="search">${ico("search")}<label class="sr" for="q">Search people</label><input class="in" id="q" type="search" placeholder="Search" value="${esc(q)}"></div>
       <section class="card list inset">${all.map((p) => { const f = p.cad && p.since != null ? Math.min(1, p.since / p.cad) : 0; return `<button class="row" data-person="${p.i}">${avatar(p)}
         <span class="grow"><span style="font-weight:600;display:block" class="ellipsis">${esc(p.name)}</span><span class="every">${p.since != null ? `Talked ${ago(p.since)}` : "Not yet"}</span></span>
         ${p.cad ? `<span class="meter" aria-hidden="true"><b class="${p.since > p.cad ? "late" : f > .75 ? "warn" : ""}" style="width:${Math.max(6, f * 100)}%"></b></span>` : ""}<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 5l7 7-7 7"/></svg></button>`; }).join("") || `<div class="empty"><p>No one called “${esc(q)}”.</p></div>`}</section>
-    </div>
-  </div>`;
+`,
+  };
+}
+
+let shell = null;
+function render(note = amber.note) {
+  const v = screens(note); if (!v) return;
+  if (!shell) shell = Kit.app({
+    tabs: [{ id: "catch", label: "Catch up", icon: "chat", badge: (n) => { const x = model(n); return x ? x.people.filter((p) => p.due != null && p.due > 0).length || "" : ""; } },
+      { id: "bdays", label: "Birthdays", icon: "gift" }, { id: "all", label: "Everyone", icon: "people" }],
+    screen: (t, n) => screens(n)[t],
+  });
+  shell.draw(note);
 }
 
 const cell = (m, p, k, v) => m.c[k] >= 0 ? amber.update({ op: "set_cell", table: m.t.index, row: p.i, col: m.t.columns[m.c[k]].name, value: v }) : Promise.resolve({ ok: false, error: `Add a ${k === "last" ? "Last talked" : k} column to the note.` });

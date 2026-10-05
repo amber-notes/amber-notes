@@ -84,7 +84,7 @@
 </style>
 </head>
 <body>
-<main class="wrap" id="app" aria-live="polite"></main>
+<main id="app" aria-live="polite"></main>
 <script>
 /*KIT_JS*/
 const { esc, ico, D, num, col, sheet, announce } = Kit;
@@ -111,7 +111,7 @@ function model(note) {
   return { t, c, plan, groc, grocHeading: h >= 0 ? lines[h].replace(/^#+\s*/, "") : null };
 }
 
-function render(note = amber.note) {
+function screens(note) {
   const app = document.getElementById("app");
   const m = model(note), today = note.today;
   const tonight = m.plan.find((p) => p.day === today);
@@ -120,31 +120,37 @@ function render(note = amber.note) {
   const planned = upcoming.filter((p) => p.dish).length;
   const done = m.groc.filter((g) => g.checked).length;
   const aisles = [...new Set(m.groc.map((g) => g.aisle || ""))];
-  app.innerHTML = `
-  <header class="top"><div class="titles"><h1>${esc(note.title)}</h1><div class="sub">${planned} ${planned === 1 ? "dinner" : "dinners"} planned${m.groc.length ? ` · ${m.groc.length - done} to buy` : ""}</div></div>
-    <button class="round" id="newr" aria-label="New recipe">${ico("plus")}</button></header>
-  <div class="cols side">
-    <div>
+  const next = m.plan.filter((p) => p.day > today && p.dish).slice(0, 3);
+  return {
+    tonight: `  <header class="top"><div class="titles"><h1>${esc(note.title)}</h1><div class="sub">${planned} ${planned === 1 ? "dinner" : "dinners"} planned${m.groc.length ? ` · ${m.groc.length - done} to buy` : ""}</div></div>
+    </header>
       ${tr ? `<section class="tile tonight" style="--g:${grad(tr.name)}">${art(tr)}<div class="shade" style="background:linear-gradient(180deg, rgba(20,10,0,0) 15%, rgba(20,10,0,.8))"></div>
         <div class="k">Tonight</div><h2>${esc(tr.name)}</h2><div class="m"><span>${tr.minutes} min</span><span>${tonight.servings || tr.servings} servings</span></div>
         <div class="row2"><button class="btn" data-cook="${esc(tr.id)}" data-sv="${tonight.servings || tr.servings}">${ico("pot")} Start cooking</button><button class="btn ghost" data-recipe="${esc(tr.id)}">Recipe</button></div></section>`
       : `<section class="card empty" style="padding:1.6rem">${ico("pot")}<h3>Nothing planned tonight</h3><p>Pick something from your recipes.</p>${m.t ? `<button class="btn primary" data-plan="${today}">Plan tonight</button>` : ""}</section>`}
-      <div class="label"><span class="grow">This week</span></div>
-      ${m.t ? `<section class="card list week">${m.plan.filter((p) => p.day >= D.add(today, -1)).map((p) => { const r = byName(p.dish); return `<button class="row ${p.day === today ? "today" : ""}" data-plan="${p.day}">
+${next.length ? `<div class="label"><span class="grow">Coming up</span><button data-go="week">The week</button></div><section class="card list week">${next.map((p) => { const r = byName(p.dish); return `<button class="row" data-plan="${p.day}"><span class="dd"><b>${D.fmt(p.day, { weekday: "short" })}</b><span>${+p.day.slice(8)} ${D.fmt(p.day, { month: "short" })}</span></span><span class="sw" style="--g:${grad(p.dish)}">${r && r.photo ? `<img src="${photo(r, 120)}" alt="">` : ""}</span><span class="grow"><span class="dish ellipsis" style="display:block">${esc(p.dish)}</span><span class="sv">${r ? `${r.minutes} min · ` : ""}${p.servings || "?"} servings</span></span>${ico("chevron", 'class="chev"')}</button>`; }).join("")}</section>` : ""}`,
+    week: `<header class="top"><div class="titles"><h1>This week</h1><div class="sub">${planned} ${planned === 1 ? "dinner" : "dinners"} planned</div></div></header>      ${m.t ? `<section class="card list week">${m.plan.filter((p) => p.day >= D.add(today, -1)).map((p) => { const r = byName(p.dish); return `<button class="row ${p.day === today ? "today" : ""}" data-plan="${p.day}">
           <span class="dd"><b>${D.fmt(p.day, { weekday: "short" })}</b><span>${+p.day.slice(8)} ${D.fmt(p.day, { month: "short" })}</span></span><span class="sw ${p.dish ? "" : "none"}" style="--g:${p.dish ? grad(p.dish) : ""}">${r && r.photo ? `<img src="${photo(r, 120)}" alt="">` : ""}</span>
           <span class="grow">${p.dish ? `<span class="dish ellipsis" style="display:block">${esc(p.dish)}</span><span class="sv">${r ? `${r.minutes} min · ` : ""}${p.servings || "?"} servings</span>` : `<span class="plan">Plan something</span>`}</span>${ico("chevron", 'class="chev"')}</button>`; }).join("")}</section>
         <div class="mk"><button class="btn primary" id="make">${ico("cart")} Make grocery list</button><span class="muted small">From the dinners ahead</span></div>`
       : `<div class="card empty"><p>Add a table with Day, Dinner and Servings under a "This week" heading to plan dinners.</p></div>`}
-    </div>
-    <div>
-      <div class="label"><span class="grow">Groceries</span>${done ? `<button id="clear">Clear ${done} bought</button>` : ""}</div>
-      <section class="card groc">${m.groc.length ? `<div class="gh"><b class="num">${done} of ${m.groc.length}</b><span class="muted small">in the basket</span></div><div class="bar2"><b style="width:${(done / m.groc.length) * 100}%"></b></div>
+`,
+    groc: `<header class="top"><div class="titles"><h1>Groceries</h1><div class="sub">${m.groc.length - done} to buy</div></div>${done ? `<button class="btn plain" id="clear">Clear ${done} bought</button>` : ""}</header>      <section class="card groc">${m.groc.length ? `<div class="gh"><b class="num">${done} of ${m.groc.length}</b><span class="muted small">in the basket</span></div><div class="bar2"><b style="width:${(done / m.groc.length) * 100}%"></b></div>
         ${aisles.map((a) => `${a ? `<div class="aisle">${esc(a)}</div>` : ""}<div class="list">${m.groc.filter((g) => (g.aisle || "") === a).map((g) => `<div class="row item" role="checkbox" tabindex="0" aria-checked="${g.checked}" data-line="${g.line}"><span class="box">${ico("check")}</span><span class="txt grow">${esc(g.text)}</span></div>`).join("")}</div>`).join("")}`
         : `<div class="empty" style="padding:1.4rem"><p style="margin:0">The list is empty. Make one from the week's dinners.</p></div>`}</section>
-    </div>
-  </div>
-  <div class="label"><span class="grow">Recipes</span><span class="small num" style="text-transform:none">${recipes().length}</span></div>
-  <section class="grid">${recipes().map((r) => `<button class="tile rc" style="--g:${grad(r.name)}" data-recipe="${esc(r.id)}">${art(r)}<div class="shade"></div><b>${esc(r.name)}</b><span>${r.minutes} min · ${esc((r.tags || []).join(", "))}</span></button>`).join("")}</section>`;
+`,
+    recipes: `<header class="top"><div class="titles"><h1>Recipes</h1><div class="sub">${recipes().length} recipes</div></div><button class="round accent" id="newr" aria-label="New recipe">${ico("plus")}</button></header>  <section class="grid">${recipes().map((r) => `<button class="tile rc" style="--g:${grad(r.name)}" data-recipe="${esc(r.id)}">${art(r)}<div class="shade"></div><b>${esc(r.name)}</b><span>${r.minutes} min · ${esc((r.tags || []).join(", "))}</span></button>`).join("")}</section>`,
+  };
+}
+
+let shell = null;
+function render(note = amber.note) {
+  if (!shell) shell = Kit.app({
+    tabs: [{ id: "tonight", label: "Tonight", icon: "pot" }, { id: "week", label: "Week", icon: "calendar" },
+      { id: "groc", label: "Groceries", icon: "cart", badge: (n) => model(n).groc.filter((g) => !g.checked).length || "" }, { id: "recipes", label: "Recipes", icon: "grid" }],
+    screen: (t, n) => screens(n)[t],
+  });
+  shell.draw(note);
 }
 
 function ingredientsHTML(r, k) {
@@ -227,7 +233,7 @@ function groceryList() {
   const draw = () => { const aisles = [...new Set(items.map((i) => i.aisle || "Other"))]; return `<p class="muted small" style="margin:0 .2rem .7rem">${items.length} things for ${m.plan.filter((x) => x.day >= today && x.dish).length} dinners. Untick what you already have.</p>
     <div class="card preview">${aisles.map((a) => `<div class="aisle">${esc(a)}</div><div class="list">${items.map((it, k) => (it.aisle || "Other") === a ? `<label class="row"><input type="checkbox" data-k="${k}" ${it.use ? "checked" : ""}><span class="grow">${esc(it.text)}<div class="for">${esc(it.for.join(", "))}</div></span></label>` : "").join("")}</div>`).join("")}</div>
     ${keep.length ? `<p class="muted small" style="margin:.7rem .2rem 0">Also kept on the list: ${esc(keep.map((g) => g.text).join(", "))}.</p>` : ""}
-    <div class="err" id="err" role="alert"></div><button class="btn primary block" id="write" style="margin-top:.8rem">${ico("cart")} Put it in the note</button>`; };
+    <div class="sheet-foot"><div class="err" id="err" role="alert"></div><button class="btn primary block" id="write">${ico("cart")} Put it in the note</button></div>`; };
   sheet("Grocery list", draw(), {
     mount(root, close) {
       root.addEventListener("change", (e) => { const c = e.target.closest("[data-k]"); if (c) items[+c.dataset.k].use = c.checked; });
@@ -242,7 +248,7 @@ function groceryList() {
         } else text = [...keep.map((g) => g.text), ...use.map((i) => i.text)].map((t) => `- [ ] ${t}`).join("\n");
         let r = await amber.update({ op: "set_text", heading: m.grocHeading || "Groceries", text: "\n" + text });
         if (!r.ok) { root.querySelector("#err").textContent = "Add a heading named Groceries to the note, and the list goes under it."; return; }
-        close(); announce(`${use.length} things on the list.`);
+        close(); shell.tab = "groc"; announce(`${use.length} things on the list.`);
       });
     },
   });
@@ -266,7 +272,7 @@ function cook(id, sv) {
   const body = () => `<div class="cook"><div class="dots3">${r.steps.map((_, k) => `<i class="${k <= n ? "on" : ""}"></i>`).join("")}</div>
     ${n === 0 ? `<div class="label" style="margin-top:0">You need, for ${sv}</div>${ingredientsHTML(r, sv / r.servings)}<div style="height:1rem"></div>` : ""}
     <div class="stepn">Step ${n + 1} of ${r.steps.length}</div><p class="big">${withTimers(r.steps[n])}</p>
-    <div class="fields two"><button class="btn" data-step="-1" ${n ? "" : "disabled"}>Back</button><button class="btn primary" data-step="1">${n === r.steps.length - 1 ? "Done" : "Next"}</button></div></div>`;
+    <div class="sheet-foot fields two"><button class="btn" data-step="-1" ${n ? "" : "disabled"}>Back</button><button class="btn primary" data-step="1">${n === r.steps.length - 1 ? "Done" : "Next"}</button></div></div>`;
   sheet(r.name, body(), {
     wide: true,
     mount(root, close) {
@@ -308,7 +314,8 @@ function newRecipe() {
 
 document.addEventListener("click", (e) => {
   const tm = e.target.closest("[data-timer]"); if (tm) { timer(tm); return; }
-  const t = e.target.closest("#settings,#make,#clear,#newr,[data-recipe],[data-cook],[data-plan],[data-line]"); if (!t || t.closest(".sheet")) return;
+  const t = e.target.closest("#make,#clear,#newr,[data-go],[data-recipe],[data-cook],[data-plan],[data-line]"); if (!t || t.closest(".sheet")) return;
+  if (t.dataset.go) { shell.tab = t.dataset.go; scrollTo(0, 0); return; }
   if (t.id === "make") groceryList();
   else if (t.id === "clear") clearBought();
   else if (t.id === "newr") newRecipe();

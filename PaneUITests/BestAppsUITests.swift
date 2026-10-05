@@ -110,6 +110,14 @@ final class BestAppsUITests: XCTestCase {
         return any.exists ? any : app.webViews.buttons[label].firstMatch
     }
 
+    /// A tab in the app's own tab bar.
+    func tabTo(_ label: String) {
+        // The tab bar is the lowest row of the page: pick the item whose label starts with this name.
+        let snap = webSnapshot()
+        let bottom = snap.filter { $0.label == label || $0.label.hasPrefix(label + " ") }.max { $0.frame.minY < $1.frame.minY }
+        if let b = bottom { tapAt(b.frame); pause(1.0) } else { XCTFail("no tab \(label)") }
+    }
+
     /// Today's note with the habits widget: tick from the widget, open the app, finish the day.
     func testHabits() {
         launch("Today")
@@ -122,10 +130,10 @@ final class BestAppsUITests: XCTestCase {
         tap(webBegins("Stretch,"), then: 1.0)
         tap(webBegins("No phone in bed,"), then: 2.4)
         shot("habits-done")
-        scroll(0.5); pause(0.6)
-        scroll(0.45); pause(1.0)
-        tap(button("Read"), then: 1.6)
+        tabTo("Progress"); pause(1.0)
+        scroll(0.5); pause(1.2)
         shot("habits-history")
+        tabTo("Today"); pause(0.8)
         mode("Text"); pause(2.2)
         mark("end")
     }
@@ -139,13 +147,15 @@ final class BestAppsUITests: XCTestCase {
         type(app.webViews.textFields["What"].firstMatch, "Lunch at Bröd & Salt")
         tap(button("Eating out"), then: 0.5)
         tap(app.webViews.buttons.matching(NSPredicate(format: "label == 'Add'")).element(boundBy: 0), then: 1.8)
+        tabTo("Budgets"); pause(1.6)
+        tabTo("Spending")
         tap(button("Import from your bank"), then: 0.8)
         type(app.webViews.textViews.firstMatch, "2026-10-04;Willys Hornstull;-642,50\n2026-10-04;Swish Linnea Berg;-150,00\n2026-10-05;Voi scooter;-27,00\n2026-10-05;Max Burgers;-119,00")
         pause(1.0)
         tap(webBegins("Add 4"), then: 1.8)
         shot("money-imported")
-        scroll(0.5); pause(1.2)
         mode("Text"); pause(2.0)
+        shot("money-text")
         mark("end")
     }
 
@@ -153,22 +163,19 @@ final class BestAppsUITests: XCTestCase {
         launch("Training")
         pause(2.2)
         mark("start")
-        tap(button("Start workout"), then: 1.2)
-        tap(button("Squat set 1 done?"), then: 0.8)
+        tap(button("Start"), then: 1.4)
+        tap(button("Heavier"), then: 0.6)
+        tap(button("Done"), then: 0.8)
         allowSystem(["Allow"], wait: 3)
-        pause(1.6)
+        pause(1.8)
         shot("training-rest")
-        tap(button("Thirty seconds more"), then: 0.8)
-        tap(button("Skip"), then: 0.6)
-        for k in 2...5 { tap(button("Squat set \(k) done?"), then: 0.5) }
-        tap(button("Skip"), then: 0.6)
-        tap(button("Bench press set 1 done?"), then: 0.5)
-        tap(button("Skip"), then: 0.5)
-        let finish = button("Finish and save to the note")
-        for _ in 0..<5 where !finish.isHittable { scroll(0.5) }
-        tap(finish, then: 2.2)
+        tap(button("Skip rest"), then: 0.8)
+        for _ in 0..<4 { tap(button("Done"), then: 0.6); tap(button("Skip rest"), then: 0.5) }
+        pause(0.6)
+        tap(button("Finish early"), then: 2.2)
         shot("training-record")
-        pause(1.5)
+        tabTo("Plan"); pause(1.2)
+        tabTo("Progress"); pause(1.6)
         mark("end")
     }
 
@@ -203,9 +210,10 @@ final class BestAppsUITests: XCTestCase {
         shot("trip-top")
         tap(webBegins("Saturday"), then: 2.4)
         shot("trip-saturday")
-        scroll(0.55); pause(0.6)
+        scroll(0.5); pause(0.8)
+        tabTo("Packing")
         tap(app.webViews.descendants(matching: .any).matching(NSPredicate(format: "label == 'Passports'")).firstMatch, then: 0.8)
-        scroll(0.4); pause(0.5)
+        tabTo("Costs")
         tap(button("Add a shared cost"), then: 0.8)
         type(app.webViews.textFields["What"].firstMatch, "Dinner at Da Remo")
         type(app.webViews.textFields["Amount (kr)"].firstMatch, "1140")
@@ -227,11 +235,13 @@ final class BestAppsUITests: XCTestCase {
         allowSystem(["Allow Full Access", "Allow"], wait: 4)
         pause(1.2)
         shot("people-caught-up")
+        tabTo("Birthdays"); pause(1.4)
+        tabTo("Everyone")
         tap(button("Add someone"), then: 1.6)
         let kate = app.staticTexts["Kate Bell"].firstMatch
         if kate.waitForExistence(timeout: 4) { kate.tap(); pause(1.2) }
         tap(app.webViews.buttons.matching(NSPredicate(format: "label == 'Add'")).element(boundBy: 0), then: 1.6)
-        scroll(0.6); pause(0.4); scroll(0.6); pause(1.4)
+        scroll(0.5); pause(1.4)
         shot("people-everyone")
         mark("end")
     }
@@ -240,19 +250,19 @@ final class BestAppsUITests: XCTestCase {
         launch("Kitchen")
         pause(2.2)
         mark("start")
+        tabTo("Week")
         tap(webBegins("Wed"), then: 0.9)
         tap(webBegins("Shakshuka"), then: 1.4)
         tap(button("Make grocery list"), then: 1.6)
         scroll(0.3); pause(0.6)
         tap(button("Put it in the note"), then: 1.8)
-        scroll(0.5); pause(0.5)
         for name in ["2 dl crème fraîche", "1 avocado", "4 eggs"] {
             let e = app.webViews.descendants(matching: .any).matching(NSPredicate(format: "label == %@", name)).firstMatch
             if e.exists { e.tap(); pause(0.5) }
         }
         shot("kitchen-list")
         mode("Text"); pause(2.2); mode("App")
-        scroll(-0.6); scroll(-0.6); pause(0.6)
+        tabTo("Tonight")
         tap(button("Start cooking"), then: 1.2)
         tap(webBegins("Start a 9 minute timer"), then: 0.6)
         allowSystem(["Allow"], wait: 3)
@@ -272,8 +282,9 @@ final class BestAppsUITests: XCTestCase {
         }
         shot("study-review")
         tap(button("Stop reviewing"), then: 1.2)
+        tabTo("Cards")
         let s = button("Suggest cards")
-        for _ in 0..<3 where !s.isHittable { scroll(0.4) }
+        for _ in 0..<4 where !s.isHittable { scroll(0.5) }
         tap(s, then: 1.2)
         scroll(0.35); pause(0.8)
         shot("study-suggest")

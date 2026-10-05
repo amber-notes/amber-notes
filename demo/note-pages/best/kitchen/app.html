@@ -81,20 +81,68 @@ textarea { resize: vertical; line-height: 1.4; }
 .switch:checked { background: var(--good); }
 .switch:checked::after { transform: translateX(1.2rem); }
 
-/* Sheet: a bottom sheet on the phone, a centered panel when wide. */
-.scrim { position: fixed; inset: 0; background: rgba(20, 10, 0, .32); opacity: 0; transition: opacity .28s; z-index: 50; }
-.sheet { position: fixed; left: 0; right: 0; bottom: 0; max-height: 92vh; overflow: auto; background: var(--amber-bg); border-radius: 1.2rem 1.2rem 0 0; padding: .6rem 1.1rem calc(1.4rem + env(safe-area-inset-bottom)); z-index: 51; transform: translateY(105%); transition: transform .38s var(--ease-out); box-shadow: 0 -8px 40px rgba(0,0,0,.18); }
-.sheet .grab { width: 2.4rem; height: .3rem; border-radius: 99px; background: var(--amber-separator); margin: 0 auto .8rem; }
-.sheet header { display: flex; align-items: center; gap: .5rem; margin-bottom: 1rem; }
-.sheet header h2 { flex: 1; font-size: 1.2rem; font-weight: 700; }
+/* Sheet: a bottom sheet on the phone (above the keyboard), a centred panel from 700 px. */
+.scrim { position: fixed; inset: 0; background: rgba(20, 10, 0, .34); opacity: 0; transition: opacity .28s; z-index: 50; }
+.sheet { position: fixed; left: 0; right: 0; bottom: var(--kb, 0px); max-height: calc(var(--vvh, 100vh) - 3.5rem); display: flex; flex-direction: column; background: var(--amber-bg); border-radius: 1.25rem 1.25rem 0 0; z-index: 51; transform: translateY(105%); transition: transform .38s var(--ease-out), bottom .25s var(--ease-out); box-shadow: 0 -8px 40px rgba(0,0,0,.18); }
+.sheet header { position: relative; display: flex; align-items: center; gap: .5rem; padding: 1.1rem 1.1rem .7rem; flex: none; }
+.sheet .grab { position: absolute; top: .45rem; left: 50%; transform: translateX(-50%); width: 2.4rem; height: .3rem; border-radius: 99px; background: var(--amber-separator); }
+.sheet header h2 { flex: 1; min-width: 0; font-size: 1.15rem; font-weight: 700; overflow-wrap: anywhere; }
+.sheet header .round { width: 2.2rem; height: 2.2rem; }
+.sheet-body { overflow: auto; overscroll-behavior: contain; padding: .2rem 1.1rem calc(1.4rem + env(safe-area-inset-bottom) + var(--amber-inset-bottom, 0px)); min-width: 0; }
 .open .scrim { opacity: 1; }
 .open .sheet { transform: none; }
+html.sheet-open, html.sheet-open body { overflow: hidden; }
+/* A sheet's main action stays in reach at the bottom while its content scrolls. */
+.sheet-foot { --pb: calc(1.4rem + env(safe-area-inset-bottom) + var(--amber-inset-bottom, 0px)); position: sticky; bottom: calc(-1 * var(--pb)); margin: .6rem -1.1rem calc(-1 * var(--pb)); padding: .7rem 1.1rem var(--pb); background: linear-gradient(to bottom, transparent, var(--amber-bg) .7rem); display: grid; gap: .5rem; z-index: 1; }
+@media (min-width: 700px) { .sheet-foot { --pb: 1.4rem; margin: .6rem -1.4rem calc(-1 * var(--pb)); padding: .7rem 1.4rem var(--pb); } }
+@media (prefers-color-scheme: dark) { .sheet-foot { background: linear-gradient(to bottom, transparent, var(--amber-surface) .7rem); } }
 @media (min-width: 700px) {
-  .sheet { left: 50%; right: auto; bottom: auto; top: 50%; width: min(34rem, 92vw); border-radius: 1.2rem; transform: translate(-50%, -46%) scale(.97); opacity: 0; transition: transform .3s var(--ease-out), opacity .2s; padding: 1.2rem 1.4rem 1.4rem; }
+  .sheet { left: 50%; right: auto; bottom: auto; top: 50%; width: min(34rem, calc(100vw - 3rem)); max-height: min(44rem, calc(100vh - 4rem)); border-radius: 1.2rem; transform: translate(-50%, -46%) scale(.97); opacity: 0; transition: transform .3s var(--ease-out), opacity .2s; }
+  .sheet.wide { width: min(46rem, calc(100vw - 3rem)); }
   .open .sheet { transform: translate(-50%, -50%); opacity: 1; }
   .sheet .grab { display: none; }
+  .sheet header { padding: 1.2rem 1.4rem .7rem; }
+  .sheet-body { padding: .2rem 1.4rem 1.4rem; }
 }
-@media (prefers-color-scheme: dark) { .sheet { background: var(--amber-surface); } .sheet .field input, .sheet .field select, .sheet .field textarea, .sheet .in { background: var(--amber-fill); } }
+@media (prefers-color-scheme: dark) { .sheet { background: var(--amber-surface); } .sheet .card { background: var(--amber-fill); } .sheet .field input, .sheet .field select, .sheet .field textarea, .sheet .in { background: color-mix(in srgb, var(--amber-text) 9%, var(--amber-surface)); } }
+.fields.two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.field input, .field select, .field textarea, input.in, select.in, textarea.in { min-width: 0; max-width: 100%; }
+
+/* The app's frame: tabs at the bottom on the phone, a sidebar from 900 px; pushed screens slide. */
+.shell-root { max-width: none !important; padding: 0 !important; }
+.shell { min-height: 100vh; }
+.screen { max-width: var(--amber-content-max); margin: 0 auto; padding: .5rem var(--amber-gutter) calc(6.2rem + env(safe-area-inset-bottom) + var(--amber-inset-bottom, 0px)); min-width: 0; }
+.screen.in { animation: pushin .32s var(--ease-out); }
+.screen.out { animation: popin .32s var(--ease-out); }
+.screen.fade { animation: rise .25s var(--ease-out); }
+@keyframes pushin { from { transform: translateX(14%); opacity: 0; } }
+@keyframes popin { from { transform: translateX(-10%); opacity: 0; } }
+.sidebar { display: none; }
+.shell.immersive .tabbar { display: none !important; }
+.shell.immersive .screen { padding-bottom: calc(2rem + env(safe-area-inset-bottom) + var(--amber-inset-bottom, 0px)); }
+.tabbar { position: fixed; left: 0; right: 0; bottom: var(--amber-inset-bottom, 0px); z-index: 40; display: flex; justify-content: space-around; padding: .35rem .4rem calc(.35rem + env(safe-area-inset-bottom)); background: color-mix(in srgb, var(--amber-bg) 86%, transparent); -webkit-backdrop-filter: blur(20px) saturate(1.4); backdrop-filter: blur(20px) saturate(1.4); border-top: 1px solid var(--amber-separator); }
+.tb-item { position: relative; flex: 1; max-width: 7rem; border: 0; background: none; color: var(--amber-text-secondary); display: flex; flex-direction: column; align-items: center; gap: .15rem; padding: .3rem 0; font-size: .68rem; font-weight: 600; min-height: 2.9rem; border-radius: .8rem; }
+.tb-item svg { width: 1.45rem; height: 1.45rem; }
+.tb-item[aria-current="page"] { color: var(--amber-accent-text); }
+.badge { position: absolute; font-style: normal; font-size: .62rem; font-weight: 800; min-width: 1.1rem; height: 1.1rem; padding: 0 .3rem; border-radius: 99px; background: var(--amber-danger); color: #fff; display: grid; place-items: center; }
+.tb-item .badge { top: .05rem; left: calc(50% + .4rem); }
+.push-h { display: flex; align-items: center; min-height: 2.6rem; margin: 0 -.4rem .2rem; }
+.backb { display: inline-flex; align-items: center; gap: .15rem; border: 0; background: none; color: var(--amber-accent-text); font-weight: 600; padding: .4rem .4rem; min-height: 2.6rem; border-radius: .6rem; }
+.backb svg { width: 1.25rem; height: 1.25rem; }
+@media (min-width: 900px) {
+  .shell { display: grid; grid-template-columns: 15.5rem minmax(0, 1fr); }
+  .tabbar { display: none; }
+  .sidebar { display: flex; flex-direction: column; gap: .15rem; position: sticky; top: 0; align-self: start; height: 100vh; padding: 1.4rem .9rem; border-right: 1px solid var(--amber-separator); }
+  .sb-title { font-size: 1.25rem; font-weight: 800; letter-spacing: -.01em; padding: .2rem .6rem 1rem; overflow-wrap: anywhere; }
+  .sb-item { position: relative; display: flex; align-items: center; gap: .65rem; border: 0; background: none; color: var(--amber-text); font-weight: 600; text-align: left; padding: .55rem .7rem; border-radius: .6rem; min-height: 2.5rem; }
+  .sb-item svg { width: 1.15rem; height: 1.15rem; color: var(--amber-accent-text); }
+  .sb-item[aria-current="page"] { background: var(--amber-accent-soft); }
+  .sb-item .badge { position: static; margin-left: auto; }
+  .screen { padding: 1.6rem 2.4rem 4rem; margin: 0; max-width: 64rem; }
+  .shell.immersive { grid-template-columns: minmax(0, 1fr); }
+  .shell.immersive .sidebar { display: none; }
+  .shell.immersive .screen { margin: 0 auto; width: 100%; }
+}
 
 /* Empty states. */
 .empty { text-align: center; padding: 2.2rem 1.2rem; color: var(--amber-text-secondary); }
@@ -197,7 +245,7 @@ textarea { resize: vertical; line-height: 1.4; }
 </style>
 </head>
 <body>
-<main class="wrap" id="app" aria-live="polite"></main>
+<main id="app" aria-live="polite"></main>
 <script>
 // The shared helpers of the best-apps set. Everything here reads the note through amber.note and
 // changes it only through amber.update; the app's own state goes through amber.store.
@@ -245,6 +293,14 @@ const Kit = (() => {
     dumbbell: '<path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/>',
     map: '<path d="M9 4L3 6.5v14L9 18l6 2.5 6-2.5V4l-6 2.5zM9 4v14M15 6.5v14"/>',
     edit: '<path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"/>',
+    chart: '<path d="M4 20V11M10 20V5M16 20v-6M21 20H3"/>',
+    home: '<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
+    grid: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>',
+    wallet: '<rect x="3" y="6" width="18" height="14" rx="2.5"/><path d="M16 13h2M3 10h18M6 6l9-3 2 3"/>',
+    people: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5a5 5 0 0 1 3.5 5.5"/>',
+    receipt: '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6M9 16h4"/>',
+    up: '<path d="M6 15l6-6 6 6"/>', down: '<path d="M6 9l6 6 6-6"/>',
+    more: '<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>',
     note: '<path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h5"/>',
   };
   const ico = (n, extra = "") => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}>${paths[n] || ""}</svg>`;
@@ -274,33 +330,77 @@ const Kit = (() => {
     return amber.update(rows.map((values) => ({ op: "append_row", table: index, values })));
   }
 
-  // A sheet: one at a time, Escape or the scrim closes it, focus goes in and comes back.
+  // A sheet: one at a time, Escape or the scrim closes it, focus goes in and comes back. On the
+  // phone it rises from the bottom and stays above the keyboard; from 700 px it's a centred panel.
   let current = null;
   function sheet(title, html, { mount, wide, actions = "" } = {}) {
-    close();
+    close(true);
     const back = document.activeElement;
     const host = document.createElement("div");
     host.className = "sheet-host";
-    host.innerHTML = `<div class="scrim" data-close></div><section class="sheet" role="dialog" aria-modal="true" aria-label="${esc(title)}" ${wide ? 'style="width:min(46rem,94vw)"' : ""}>
-      <div class="grab"></div><header><h2>${esc(title)}</h2>${actions}<button class="round" data-close aria-label="Close">${ico("close")}</button></header><div class="sheet-body">${html}</div></section>`;
+    host.innerHTML = `<div class="scrim" data-close></div><section class="sheet ${wide ? "wide" : ""}" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+      <header><div class="grab" aria-hidden="true"></div><h2>${esc(title)}</h2>${actions}<button class="round" data-close aria-label="Close">${ico("close")}</button></header><div class="sheet-body">${html}</div></section>`;
     document.body.appendChild(host);
+    document.documentElement.classList.add("sheet-open");
     const onKey = (e) => { if (e.key === "Escape") close(); };
     host.addEventListener("click", (e) => { if (e.target.closest("[data-close]")) close(); });
     addEventListener("keydown", onKey);
-    current = { host, back, onKey };
+    const vv = window.visualViewport;
+    const fitKeyboard = () => { if (!vv) return; const kb = Math.max(0, innerHeight - vv.height - vv.offsetTop); host.style.setProperty("--kb", kb + "px"); host.style.setProperty("--vvh", vv.height + "px"); };
+    fitKeyboard(); vv && vv.addEventListener("resize", fitKeyboard); vv && vv.addEventListener("scroll", fitKeyboard);
+    // A focused field scrolls into the part of the sheet you can see.
+    host.addEventListener("focusin", (e) => { if (e.target.matches("input, textarea, select")) setTimeout(() => e.target.scrollIntoView({ block: "nearest", behavior: "smooth" }), 320); });
+    current = { host, back, onKey, fitKeyboard };
     requestAnimationFrame(() => requestAnimationFrame(() => host.classList.add("open")));
     mount && mount(host.querySelector(".sheet-body"), close);
     setTimeout(() => (host.querySelector("[autofocus]") || host.querySelector(".sheet header .round")).focus({ preventScroll: true }), 60);
     return close;
   }
-  function close() {
+  function close(instant) {
     if (!current) return;
-    const { host, back, onKey } = current;
+    const { host, back, onKey, fitKeyboard } = current;
     current = null;
     removeEventListener("keydown", onKey);
+    window.visualViewport && visualViewport.removeEventListener("resize", fitKeyboard);
     host.classList.remove("open");
-    setTimeout(() => host.remove(), 380);
-    back && back.focus && back.focus({ preventScroll: true });
+    document.documentElement.classList.remove("sheet-open");
+    setTimeout(() => host.remove(), instant === true ? 0 : 380);
+    back && back.isConnected && back.focus && back.focus({ preventScroll: true });
+  }
+
+  // The app's frame: a bottom tab bar on the phone and a sidebar from 900 px, with screens pushed
+  // on top (a back button, a slide). screen(tab, note) returns a screen's HTML; after(tab) wires it.
+  function app({ tabs, screen, after, header }) {
+    const st = { tab: tabs[0].id, stack: [], scroll: {}, dir: "" };
+    const root = document.getElementById("app");
+    root.classList.add("shell-root");
+    function draw(note = amber.note) {
+      const top = st.stack[st.stack.length - 1];
+      const t = tabs.find((x) => x.id === st.tab);
+      const content = top ? top.render(note) : screen(st.tab, note);
+      const titleHTML = top ? `<header class="push-h"><button class="backb" data-pop aria-label="Back to ${esc(top.backLabel || t.label)}">${ico("back")}<span>${esc(top.backLabel || t.label)}</span></button></header>` : "";
+      root.innerHTML = `<div class="shell ${top && top.immersive ? "immersive" : ""}">
+        <nav class="sidebar" aria-label="Sections"><div class="sb-title">${esc(note.title)}</div>${header ? header(note) : ""}${tabs.map((x) => `<button class="sb-item" data-tab="${x.id}" aria-current="${x.id === st.tab ? "page" : "false"}">${ico(x.icon)}<span>${esc(x.label)}</span>${x.badge && x.badge(note) ? `<i class="badge num">${x.badge(note)}</i>` : ""}</button>`).join("")}</nav>
+        <div class="screen ${st.dir}" id="screen">${titleHTML}${content}</div>
+        <nav class="tabbar" aria-label="Sections">${tabs.map((x) => `<button class="tb-item" data-tab="${x.id}" aria-current="${x.id === st.tab ? "page" : "false"}">${ico(x.icon)}<span>${esc(x.label)}</span>${x.badge && x.badge(note) ? `<i class="badge num">${x.badge(note)}</i>` : ""}</button>`).join("")}</nav>
+      </div>`;
+      st.dir = "";
+      if (top && top.after) top.after(document.getElementById("screen")); else if (!top && after) after(st.tab, document.getElementById("screen"));
+    }
+    root.addEventListener("click", (e) => {
+      const tb = e.target.closest("[data-tab]");
+      if (tb) {
+        st.scroll[st.tab] = scrollY;
+        const same = tb.dataset.tab === st.tab;
+        st.tab = tb.dataset.tab; st.stack = []; st.dir = same ? "" : "fade";
+        draw(); scrollTo(0, same ? 0 : st.scroll[st.tab] || 0); return;
+      }
+      if (e.target.closest("[data-pop]")) pop();
+    });
+    addEventListener("keydown", (e) => { if (e.key === "Escape" && st.stack.length && !current) pop(); });
+    function push(scr) { st.scroll["push" + st.stack.length] = scrollY; st.stack.push(scr); st.dir = "in"; draw(); scrollTo(0, 0); }
+    function pop() { if (!st.stack.length) return; st.stack.pop(); st.dir = "out"; draw(); scrollTo(0, st.scroll["push" + st.stack.length] || 0); }
+    return { draw, push, pop, get tab() { return st.tab; }, set tab(v) { st.tab = v; st.stack = []; draw(); }, get depth() { return st.stack.length; } };
   }
 
   // App settings are declared in <meta name="amber-settings"> and changed in Amber Notes' own
@@ -328,7 +428,7 @@ const Kit = (() => {
   const hash = (s) => { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); };
   const announce = (() => { let el; return (msg) => { if (!el) { el = document.createElement("div"); el.className = "sr"; el.setAttribute("aria-live", "polite"); document.body.appendChild(el); } el.textContent = ""; setTimeout(() => (el.textContent = msg), 30); }; })();
 
-  return { width, fit, onResize, esc, $, $$, ico, D, num, kr, fmtN, done, col, table, addRows, sheet, close, settings, on, once, hash, announce };
+  return { app, width, fit, onResize, esc, $, $$, ico, D, num, kr, fmtN, done, col, table, addRows, sheet, close, settings, on, once, hash, announce };
 })();
 
 const { esc, ico, D, num, col, sheet, announce } = Kit;
@@ -355,7 +455,7 @@ function model(note) {
   return { t, c, plan, groc, grocHeading: h >= 0 ? lines[h].replace(/^#+\s*/, "") : null };
 }
 
-function render(note = amber.note) {
+function screens(note) {
   const app = document.getElementById("app");
   const m = model(note), today = note.today;
   const tonight = m.plan.find((p) => p.day === today);
@@ -364,31 +464,37 @@ function render(note = amber.note) {
   const planned = upcoming.filter((p) => p.dish).length;
   const done = m.groc.filter((g) => g.checked).length;
   const aisles = [...new Set(m.groc.map((g) => g.aisle || ""))];
-  app.innerHTML = `
-  <header class="top"><div class="titles"><h1>${esc(note.title)}</h1><div class="sub">${planned} ${planned === 1 ? "dinner" : "dinners"} planned${m.groc.length ? ` · ${m.groc.length - done} to buy` : ""}</div></div>
-    <button class="round" id="newr" aria-label="New recipe">${ico("plus")}</button></header>
-  <div class="cols side">
-    <div>
+  const next = m.plan.filter((p) => p.day > today && p.dish).slice(0, 3);
+  return {
+    tonight: `  <header class="top"><div class="titles"><h1>${esc(note.title)}</h1><div class="sub">${planned} ${planned === 1 ? "dinner" : "dinners"} planned${m.groc.length ? ` · ${m.groc.length - done} to buy` : ""}</div></div>
+    </header>
       ${tr ? `<section class="tile tonight" style="--g:${grad(tr.name)}">${art(tr)}<div class="shade" style="background:linear-gradient(180deg, rgba(20,10,0,0) 15%, rgba(20,10,0,.8))"></div>
         <div class="k">Tonight</div><h2>${esc(tr.name)}</h2><div class="m"><span>${tr.minutes} min</span><span>${tonight.servings || tr.servings} servings</span></div>
         <div class="row2"><button class="btn" data-cook="${esc(tr.id)}" data-sv="${tonight.servings || tr.servings}">${ico("pot")} Start cooking</button><button class="btn ghost" data-recipe="${esc(tr.id)}">Recipe</button></div></section>`
       : `<section class="card empty" style="padding:1.6rem">${ico("pot")}<h3>Nothing planned tonight</h3><p>Pick something from your recipes.</p>${m.t ? `<button class="btn primary" data-plan="${today}">Plan tonight</button>` : ""}</section>`}
-      <div class="label"><span class="grow">This week</span></div>
-      ${m.t ? `<section class="card list week">${m.plan.filter((p) => p.day >= D.add(today, -1)).map((p) => { const r = byName(p.dish); return `<button class="row ${p.day === today ? "today" : ""}" data-plan="${p.day}">
+${next.length ? `<div class="label"><span class="grow">Coming up</span><button data-go="week">The week</button></div><section class="card list week">${next.map((p) => { const r = byName(p.dish); return `<button class="row" data-plan="${p.day}"><span class="dd"><b>${D.fmt(p.day, { weekday: "short" })}</b><span>${+p.day.slice(8)} ${D.fmt(p.day, { month: "short" })}</span></span><span class="sw" style="--g:${grad(p.dish)}">${r && r.photo ? `<img src="${photo(r, 120)}" alt="">` : ""}</span><span class="grow"><span class="dish ellipsis" style="display:block">${esc(p.dish)}</span><span class="sv">${r ? `${r.minutes} min · ` : ""}${p.servings || "?"} servings</span></span>${ico("chevron", 'class="chev"')}</button>`; }).join("")}</section>` : ""}`,
+    week: `<header class="top"><div class="titles"><h1>This week</h1><div class="sub">${planned} ${planned === 1 ? "dinner" : "dinners"} planned</div></div></header>      ${m.t ? `<section class="card list week">${m.plan.filter((p) => p.day >= D.add(today, -1)).map((p) => { const r = byName(p.dish); return `<button class="row ${p.day === today ? "today" : ""}" data-plan="${p.day}">
           <span class="dd"><b>${D.fmt(p.day, { weekday: "short" })}</b><span>${+p.day.slice(8)} ${D.fmt(p.day, { month: "short" })}</span></span><span class="sw ${p.dish ? "" : "none"}" style="--g:${p.dish ? grad(p.dish) : ""}">${r && r.photo ? `<img src="${photo(r, 120)}" alt="">` : ""}</span>
           <span class="grow">${p.dish ? `<span class="dish ellipsis" style="display:block">${esc(p.dish)}</span><span class="sv">${r ? `${r.minutes} min · ` : ""}${p.servings || "?"} servings</span>` : `<span class="plan">Plan something</span>`}</span>${ico("chevron", 'class="chev"')}</button>`; }).join("")}</section>
         <div class="mk"><button class="btn primary" id="make">${ico("cart")} Make grocery list</button><span class="muted small">From the dinners ahead</span></div>`
       : `<div class="card empty"><p>Add a table with Day, Dinner and Servings under a "This week" heading to plan dinners.</p></div>`}
-    </div>
-    <div>
-      <div class="label"><span class="grow">Groceries</span>${done ? `<button id="clear">Clear ${done} bought</button>` : ""}</div>
-      <section class="card groc">${m.groc.length ? `<div class="gh"><b class="num">${done} of ${m.groc.length}</b><span class="muted small">in the basket</span></div><div class="bar2"><b style="width:${(done / m.groc.length) * 100}%"></b></div>
+`,
+    groc: `<header class="top"><div class="titles"><h1>Groceries</h1><div class="sub">${m.groc.length - done} to buy</div></div>${done ? `<button class="btn plain" id="clear">Clear ${done} bought</button>` : ""}</header>      <section class="card groc">${m.groc.length ? `<div class="gh"><b class="num">${done} of ${m.groc.length}</b><span class="muted small">in the basket</span></div><div class="bar2"><b style="width:${(done / m.groc.length) * 100}%"></b></div>
         ${aisles.map((a) => `${a ? `<div class="aisle">${esc(a)}</div>` : ""}<div class="list">${m.groc.filter((g) => (g.aisle || "") === a).map((g) => `<div class="row item" role="checkbox" tabindex="0" aria-checked="${g.checked}" data-line="${g.line}"><span class="box">${ico("check")}</span><span class="txt grow">${esc(g.text)}</span></div>`).join("")}</div>`).join("")}`
         : `<div class="empty" style="padding:1.4rem"><p style="margin:0">The list is empty. Make one from the week's dinners.</p></div>`}</section>
-    </div>
-  </div>
-  <div class="label"><span class="grow">Recipes</span><span class="small num" style="text-transform:none">${recipes().length}</span></div>
-  <section class="grid">${recipes().map((r) => `<button class="tile rc" style="--g:${grad(r.name)}" data-recipe="${esc(r.id)}">${art(r)}<div class="shade"></div><b>${esc(r.name)}</b><span>${r.minutes} min · ${esc((r.tags || []).join(", "))}</span></button>`).join("")}</section>`;
+`,
+    recipes: `<header class="top"><div class="titles"><h1>Recipes</h1><div class="sub">${recipes().length} recipes</div></div><button class="round accent" id="newr" aria-label="New recipe">${ico("plus")}</button></header>  <section class="grid">${recipes().map((r) => `<button class="tile rc" style="--g:${grad(r.name)}" data-recipe="${esc(r.id)}">${art(r)}<div class="shade"></div><b>${esc(r.name)}</b><span>${r.minutes} min · ${esc((r.tags || []).join(", "))}</span></button>`).join("")}</section>`,
+  };
+}
+
+let shell = null;
+function render(note = amber.note) {
+  if (!shell) shell = Kit.app({
+    tabs: [{ id: "tonight", label: "Tonight", icon: "pot" }, { id: "week", label: "Week", icon: "calendar" },
+      { id: "groc", label: "Groceries", icon: "cart", badge: (n) => model(n).groc.filter((g) => !g.checked).length || "" }, { id: "recipes", label: "Recipes", icon: "grid" }],
+    screen: (t, n) => screens(n)[t],
+  });
+  shell.draw(note);
 }
 
 function ingredientsHTML(r, k) {
@@ -471,7 +577,7 @@ function groceryList() {
   const draw = () => { const aisles = [...new Set(items.map((i) => i.aisle || "Other"))]; return `<p class="muted small" style="margin:0 .2rem .7rem">${items.length} things for ${m.plan.filter((x) => x.day >= today && x.dish).length} dinners. Untick what you already have.</p>
     <div class="card preview">${aisles.map((a) => `<div class="aisle">${esc(a)}</div><div class="list">${items.map((it, k) => (it.aisle || "Other") === a ? `<label class="row"><input type="checkbox" data-k="${k}" ${it.use ? "checked" : ""}><span class="grow">${esc(it.text)}<div class="for">${esc(it.for.join(", "))}</div></span></label>` : "").join("")}</div>`).join("")}</div>
     ${keep.length ? `<p class="muted small" style="margin:.7rem .2rem 0">Also kept on the list: ${esc(keep.map((g) => g.text).join(", "))}.</p>` : ""}
-    <div class="err" id="err" role="alert"></div><button class="btn primary block" id="write" style="margin-top:.8rem">${ico("cart")} Put it in the note</button>`; };
+    <div class="sheet-foot"><div class="err" id="err" role="alert"></div><button class="btn primary block" id="write">${ico("cart")} Put it in the note</button></div>`; };
   sheet("Grocery list", draw(), {
     mount(root, close) {
       root.addEventListener("change", (e) => { const c = e.target.closest("[data-k]"); if (c) items[+c.dataset.k].use = c.checked; });
@@ -486,7 +592,7 @@ function groceryList() {
         } else text = [...keep.map((g) => g.text), ...use.map((i) => i.text)].map((t) => `- [ ] ${t}`).join("\n");
         let r = await amber.update({ op: "set_text", heading: m.grocHeading || "Groceries", text: "\n" + text });
         if (!r.ok) { root.querySelector("#err").textContent = "Add a heading named Groceries to the note, and the list goes under it."; return; }
-        close(); announce(`${use.length} things on the list.`);
+        close(); shell.tab = "groc"; announce(`${use.length} things on the list.`);
       });
     },
   });
@@ -510,7 +616,7 @@ function cook(id, sv) {
   const body = () => `<div class="cook"><div class="dots3">${r.steps.map((_, k) => `<i class="${k <= n ? "on" : ""}"></i>`).join("")}</div>
     ${n === 0 ? `<div class="label" style="margin-top:0">You need, for ${sv}</div>${ingredientsHTML(r, sv / r.servings)}<div style="height:1rem"></div>` : ""}
     <div class="stepn">Step ${n + 1} of ${r.steps.length}</div><p class="big">${withTimers(r.steps[n])}</p>
-    <div class="fields two"><button class="btn" data-step="-1" ${n ? "" : "disabled"}>Back</button><button class="btn primary" data-step="1">${n === r.steps.length - 1 ? "Done" : "Next"}</button></div></div>`;
+    <div class="sheet-foot fields two"><button class="btn" data-step="-1" ${n ? "" : "disabled"}>Back</button><button class="btn primary" data-step="1">${n === r.steps.length - 1 ? "Done" : "Next"}</button></div></div>`;
   sheet(r.name, body(), {
     wide: true,
     mount(root, close) {
@@ -552,7 +658,8 @@ function newRecipe() {
 
 document.addEventListener("click", (e) => {
   const tm = e.target.closest("[data-timer]"); if (tm) { timer(tm); return; }
-  const t = e.target.closest("#settings,#make,#clear,#newr,[data-recipe],[data-cook],[data-plan],[data-line]"); if (!t || t.closest(".sheet")) return;
+  const t = e.target.closest("#make,#clear,#newr,[data-go],[data-recipe],[data-cook],[data-plan],[data-line]"); if (!t || t.closest(".sheet")) return;
+  if (t.dataset.go) { shell.tab = t.dataset.go; scrollTo(0, 0); return; }
   if (t.id === "make") groceryList();
   else if (t.id === "clear") clearBought();
   else if (t.id === "newr") newRecipe();

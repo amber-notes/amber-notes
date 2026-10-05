@@ -78,10 +78,11 @@
 .days { display: flex; gap: .4rem; overflow-x: auto; scrollbar-width: none; }
 .days::-webkit-scrollbar { display: none; }
 @media (min-width: 900px) { .hero .mapimg { aspect-ratio: 21 / 8; } }
+@media (min-width: 1100px) { .tripgrid > div { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 0 1.2rem; align-items: start; } .tripgrid .dayhead { grid-column: 1 / -1; } .tripgrid .daymap { grid-row: span 2; } }
 </style>
 </head>
 <body>
-<main class="wrap" id="app" aria-live="polite"></main>
+<main id="app" aria-live="polite"></main>
 <script>
 /*KIT_JS*/
 const { esc, ico, D, num, kr, col, sheet, announce } = Kit;
@@ -147,7 +148,7 @@ async function heroMap(width) {
   const W = Math.min(1200, Math.round(width * 2)), H = Math.round(W * (width >= 860 ? 8 / 21 : 9 / 16));
   const r = await amber.device.maps.snapshot({ lat: city.lat, lon: city.lon, km: 9, width: W, height: H, dark: dark(), pin: false });
   inflight.delete(k);
-  if (r.ok) { cityMap = { k, url: r.dataURL }; render(); }
+  if (r.ok) { cityMap = { k, url: r.dataURL }; shell && shell.draw(); }
 }
 
 function settle(names, costs) {
@@ -160,13 +161,13 @@ function settle(names, costs) {
   return { bal, out };
 }
 
-function render(note = amber.note) {
+function screens(note) {
   const app = document.getElementById("app");
   const m = model(note), today = note.today;
   if (!m.days.length) {
     app.innerHTML = `<header class="top"><div class="titles"><h1>${esc(note.title || "Trip")}</h1></div></header>
       <div class="card empty">${ico("suitcase")}<h3>No plan yet</h3><p>The plan goes in a table in this note with Day, Time, What and Where. A Packing checklist and a Costs table (Date, What, Paid by, Amount) show up here too.</p></div>`;
-    return;
+    return null;
   }
   const first = m.days[0], last = m.days[m.days.length - 1];
   if (!day || !m.days.includes(day)) day = today >= first && today <= last ? today : first;
@@ -187,43 +188,50 @@ function render(note = amber.note) {
   const dm = maps[`${day}-${dark()}-${Kit.width("daymap", 340)}`];
   const R = 15.9, C = 2 * Math.PI * R;
 
-  app.innerHTML = `
-  <header class="top"><div class="titles"><h1>${esc(note.title)}</h1><div class="sub">${range}</div></div></header>
+  return {
+    plan: `  <header class="top"><div class="titles"><h1>${esc(note.title)}</h1><div class="sub">${range}</div></div></header>
   <section class="hero" data-w="hero">${cityMap ? `<img class="mapimg" src="${cityMap.url}" alt="Map of ${esc((amber.data.values.city || {}).name || note.title)}">` : `<div class="mapimg ph"></div>`}
     <div class="over"><b>${big}</b><span>${esc((amber.data.values.city || {}).name || "")}${m.stops.length ? ` · ${m.stops.length} plans` : ""}</span></div>
     <div class="wx" style="--n:${m.days.length}" role="group" aria-label="Days">${m.days.map((d) => { const x = w[d]; return `<button data-day="${d}" aria-pressed="${d === day}" aria-label="${D.fmt(d, { weekday: "long", day: "numeric", month: "long" })}${x ? `, ${wmo(x.code)[1]}, ${temp(x.max)}` : ""}">
       <span class="d">${D.fmt(d, { weekday: "short" })} ${+d.slice(8)}</span>${wxIcon(x && x.code)}<span class="t num">${x ? `${temp(x.max)}<small> ${temp(x.min)}</small>` : "–"}</span><span class="p">${x && x.rain >= 20 ? `${x.rain}% rain` : ""}</span></button>`; }).join("")}</div></section>
   ${wxErr ? `<p class="muted small" style="margin:.5rem .3rem 0">${esc(wxErr)}</p>` : ""}
-  <div class="cols side">
-    <div>
-      <div class="dayhead"><h2>${D.fmt(day, { weekday: "long", day: "numeric", month: "long" })}</h2><span class="w">${wd ? `${wmo(wd.code)[1]}, ${temp(wd.max)}` : ""}</span></div>
+<div class="tripgrid"><div>      <div class="dayhead"><h2>${D.fmt(day, { weekday: "long", day: "numeric", month: "long" })}</h2><span class="w">${wd ? `${wmo(wd.code)[1]}, ${temp(wd.max)}` : ""}</span></div>
       <div class="daymap" data-w="daymap" ${dm ? "" : 'style="aspect-ratio:16/9"'}>${dm ? `<img src="${dm.url}" alt="Map of the day's stops">${dm.far ? `<span class="note2">${dm.far} more out of town</span>` : ""}` : ""}</div>
       <section class="card list tl">${stops.map((s, k) => `<div class="row stop ${day < today || (day === today && s.time && s.time < nowTime()) ? "past" : ""}"><span class="tm">${esc(s.time)}</span><span class="no ${place(s.where) ? "" : "none"}">${k + 1}</span>
         <div><div class="wh">${esc(s.what)}</div>${s.where ? `<div class="pl">${esc(s.where)}</div>` : ""}</div>
         ${s.where ? `<button class="go" data-go="${s.i}" aria-label="Directions to ${esc(s.where)}">${ico("pin")}</button>` : "<span></span>"}</div>`).join("")}</section>
       <button class="btn plain" id="addstop" style="margin-top:.4rem">${ico("plus")} Add to ${D.fmt(day, { weekday: "long" })}</button>
-    </div>
-    <div>
-      <div class="label"><span class="grow">Packing</span></div>
-      <section class="card pack">
+</div></div>`,
+    packing: `<header class="top"><div class="titles"><h1>Packing</h1><div class="sub">${m.packing.length - packed ? `${m.packing.length - packed} things to pack` : "All packed"}</div></div></header>      <section class="card pack">
         <div class="packhead"><div class="ring"><svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="${R}" fill="none" stroke="var(--amber-fill)" stroke-width="4"/><circle cx="18" cy="18" r="${R}" fill="none" stroke="var(--amber-accent)" stroke-width="4" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - (m.packing.length ? packed / m.packing.length : 0))}" style="transition:stroke-dashoffset .6s var(--ease-out)"/></svg></div>
           <div class="grow"><b class="num">${packed} of ${m.packing.length} packed</b><div class="small muted">${m.packing.length - packed ? `${m.packing.length - packed} to go` : "All packed"}</div></div></div>
         <div class="list">${m.packing.map((x) => `<div class="row item" role="checkbox" tabindex="0" aria-checked="${x.checked}" data-line="${x.line}"><span class="box">${ico("check")}</span><span class="txt grow">${esc(x.text)}</span></div>`).join("")}</div>
         <form class="additem" id="addpack"><label class="sr" for="pi">Add to packing</label><input class="in" id="pi" placeholder="Add something" value="${esc(adding)}"><button class="btn tint" aria-label="Add">${ico("plus")}</button></form>
       </section>
-      <div class="label"><span class="grow">Shared costs</span><button id="addcost" aria-label="Add a shared cost">Add</button></div>
-      <section class="card money">
+`,
+    costs: `<header class="top"><div class="titles"><h1>Costs</h1><div class="sub">${people.join(", ")}</div></div><button class="round accent" id="addcost" aria-label="Add a shared cost">${ico("plus")}</button></header>      <section class="card money">
         <div class="tot"><b class="num">${money(total)}</b><span class="muted small">${people.length > 1 ? `${money(total / people.length)} each` : ""}</span></div>
         <div class="people">${people.map((n) => { const v = st.bal[n] || 0; return `<div><span>${esc(n)}</span><b class="num ${v > 0.5 ? "pos" : v < -0.5 ? "neg" : ""}">${v > 0.5 ? "+" : v < -0.5 ? "−" : ""}${money(Math.abs(v))}</b></div>`; }).join("")}</div>
         <div class="settle">${st.out.length ? st.out.map((x) => `<div><span><b>${esc(x.from)}</b> owes <b>${esc(x.to)}</b></span><span class="grow"></span><span class="num">${money(x.amt)}</span></div>`).join("") : `<div class="muted">All square.</div>`}</div>
       </section>
       ${costs.length ? `<section class="card list costs" style="margin-top:.6rem">${costs.slice().reverse().map((x) => `<div class="row"><span class="grow ellipsis">${esc(x.what)}<div class="small muted">${esc(x.by)}${x.date ? ` · ${D.fmt(x.date, { day: "numeric", month: "short" })}` : ""}</div></span><span class="num">${money(x.amt)}</span></div>`).join("")}</section>` : ""}
-    </div>
-  </div>`;
-  Kit.fit(() => render());
-  const dw = Kit.width("daymap", 0), hw = Kit.width("hero", 0);
-  if (hw) heroMap(hw);
-  if (dw && !dm) dayMap(m, day, dw).then((x) => x && render());
+`,
+    dm,
+  };
+}
+
+let shell = null;
+function render(note = amber.note) {
+  const v = screens(note); if (!v) return;
+  if (!shell) shell = Kit.app({
+    tabs: [{ id: "plan", label: "Plan", icon: "map" }, { id: "packing", label: "Packing", icon: "suitcase", badge: (n) => { const x = model(n); return x.packing.filter((p) => !p.checked).length || ""; } }, { id: "costs", label: "Costs", icon: "coins" }],
+    screen: (t, n) => screens(n)[t],
+    after: (t) => { if (t !== "plan") return; Kit.fit(() => shell.draw());
+      const dw = Kit.width("daymap", 0), hw = Kit.width("hero", 0), x = screens(amber.note);
+      if (hw) heroMap(hw);
+      if (dw && !x.dm) dayMap(model(amber.note), day, dw).then((y) => y && shell.draw()); },
+  });
+  shell.draw(note);
 }
 const nowTime = () => new Date().toTimeString().slice(0, 5);
 

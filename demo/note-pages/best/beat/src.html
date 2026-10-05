@@ -47,6 +47,7 @@ canvas.scope { display: block; width: 100%; height: 3.2rem; margin-top: .8rem; b
 @media (max-width: 699px) { .patterns .pages { display: inline-flex; } }
 .pages button { position: relative; }
 .pages button.playing::after { content: ""; position: absolute; top: .3rem; right: .45rem; width: .4rem; height: .4rem; border-radius: 50%; background: var(--amber-accent); }
+@media (max-width: 360px) { .lcd > div:nth-child(2) { display: none; } }
 @media (max-width: 520px) { .lcd { gap: .6rem; padding: .4rem .55rem; } .lcd b { font-size: 1.05rem; } .lcd .pname { display: none; } .play { width: 3.2rem; height: 3.2rem; } .grid, .steps { grid-template-columns: 3.9rem repeat(var(--steps), minmax(0, 1fr)); } }
 </style>
 </head>

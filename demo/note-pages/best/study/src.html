@@ -48,7 +48,7 @@
 .sug .s.added { opacity: .5; }
 
 /* Review */
-.review { position: fixed; inset: 0; z-index: 30; background: var(--amber-bg); display: flex; flex-direction: column; padding: max(.8rem, env(safe-area-inset-top)) var(--amber-gutter) calc(1rem + env(safe-area-inset-bottom)); transform: translateY(100%); transition: transform .45s var(--ease-out); }
+.review { position: fixed; inset: 0; z-index: 45; background: var(--amber-bg); display: flex; flex-direction: column; padding: max(.8rem, env(safe-area-inset-top)) var(--amber-gutter) calc(1rem + env(safe-area-inset-bottom)); transform: translateY(100%); transition: transform .45s var(--ease-out); }
 .review.on { transform: none; }
 .review[hidden] { display: none; }
 .review .bar { display: flex; align-items: center; gap: .8rem; }
@@ -75,10 +75,12 @@
 .doneview .big { font-size: 4rem; font-weight: 800; font-family: var(--amber-font-rounded); letter-spacing: -.03em; }
 .doneview p { color: var(--amber-text-secondary); margin: .4rem 0 1.4rem; }
 @media (min-width: 900px) { .due .n { font-size: 4rem; } }
+.revgrid, .cardsgrid { display: grid; gap: 0 1.4rem; }
+@media (min-width: 1100px) { .revgrid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; } .revgrid .revnext { margin-top: .2rem; } .cardsgrid { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); align-items: start; } .cardsgrid .sugl { margin-top: 0; } }
 </style>
 </head>
 <body>
-<main class="wrap" id="app" aria-live="polite"></main>
+<main id="app" aria-live="polite"></main>
 <section class="review" id="review" role="dialog" aria-modal="true" aria-label="Review" hidden></section>
 <script>
 /*KIT_JS*/
@@ -122,13 +124,13 @@ function streak(today) {
   return n;
 }
 
-function render(note = amber.note) {
+function screens(note) {
   const app = document.getElementById("app");
   const m = model(note), today = note.today;
   if (!m) {
     app.innerHTML = `<header class="top"><div class="titles"><h1>${esc(note.title || "Study")}</h1></div></header>
       <div class="card empty">${ico("cards")}<h3>No cards yet</h3><p>Cards go in a table in this note with Front and Back. Your notes can suggest the first ones.</p><button class="btn primary" id="suggest">${ico("sparkle")} Suggest cards</button></div>`;
-    return;
+    return null;
   }
   const q = queue(m, today), st = streak(today), exam = S.get().exam;
   const toExam = D.parse(exam) ? D.diff(exam, today) : null;
@@ -137,29 +139,36 @@ function render(note = amber.note) {
   const fmax = Math.max(1, ...forecast.map((f) => f.n));
   const W = Math.round(Math.max(260, Kit.width("fc", 320))), H = 96, bw = (W - 6 * 8) / 7;
   const reviewedToday = (amber.data.values.days || {})[today] || 0;
-  app.innerHTML = `
-  <header class="top"><div class="titles"><h1>${esc(note.title)}</h1><div class="sub">${m.cards.length} cards${toExam != null && toExam >= 0 ? ` · exam ${toExam === 0 ? "today" : toExam === 1 ? "tomorrow" : `in ${toExam} days`}` : ""}</div></div>
-    <button class="round" id="add" aria-label="Add a card">${ico("plus")}</button></header>
-  <div class="cols side">
-    <div>
-      <section class="card due"><div class="n num">${q.length}</div><div class="grow"><h2>${q.length ? (q.length === 1 ? "card to review" : "cards to review") : "All done for today"}</h2>
+  return {
+    review: `  <header class="top"><div class="titles"><h1>${esc(note.title)}</h1><div class="sub">${m.cards.length} cards${toExam != null && toExam >= 0 ? ` · exam ${toExam === 0 ? "today" : toExam === 1 ? "tomorrow" : `in ${toExam} days`}` : ""}</div></div>
+    </header>
+<div class="revgrid"><div>      <section class="card due"><div class="n num">${q.length}</div><div class="grow"><h2>${q.length ? (q.length === 1 ? "card to review" : "cards to review") : "All done for today"}</h2>
         <p>${q.length ? `${q.filter((c) => !c.s).length ? `${q.filter((c) => !c.s).length} new, ` : ""}about ${Math.max(1, Math.round(q.length * 8 / 60))} min` : reviewedToday ? `${reviewedToday} reviewed today. Next ones tomorrow.` : "Nothing due. Come back tomorrow."}</p>
         ${q.length ? `<button class="btn primary" id="study">${ico("play")} Study now</button>` : ""}
         <div class="chips2">${st ? `<span class="chip2 fire">${ico("flame")}${st}-day streak</span>` : ""}${reviewedToday ? `<span class="chip2">${reviewedToday} today</span>` : ""}</div></div></section>
-      <div class="label"><span class="grow">Next 7 days</span></div>
+      </div><div><div class="label revnext"><span class="grow">Next 7 days</span></div>
       <section class="card fc" data-w="fc"><svg viewBox="0 0 ${W} ${H + 30}" role="img" aria-label="Cards due over the next week">${forecast.map((f, k) => { const h = Math.max(2, (f.n / fmax) * H); return `<rect class="b ${k === 0 ? "t" : ""}" x="${k * (bw + 8)}" y="${H - h + 14}" width="${bw}" height="${h}" rx="5"/><text class="v" x="${k * (bw + 8) + bw / 2}" y="${H - h + 9}" text-anchor="middle">${f.n || ""}</text><text x="${k * (bw + 8) + bw / 2}" y="${H + 28}" text-anchor="middle">${k === 0 ? "Today" : D.fmt(f.d, { weekday: "short" })}</text>`; }).join("")}</svg>
         <div class="mix" aria-hidden="true" style="margin-top:.9rem"><i style="flex:${learned};background:var(--good)"></i><i style="flex:${learning};background:var(--amber-accent)"></i><i style="flex:${fresh};background:var(--c3)"></i></div>
         <div class="keys2"><span style="--cc:var(--good)"><b>${learned}</b> known</span><span style="--cc:var(--amber-accent)"><b>${learning}</b> learning</span><span style="--cc:var(--c3)"><b>${fresh}</b> new</span></div></section>
-      <div class="label"><span class="grow">From your notes</span></div>
-      <section class="card sug" id="sugbox">${sugHTML()}</section>
-    </div>
-    <div>
-      <div class="label"><span class="grow">Cards</span><span class="small num" style="text-transform:none">${m.cards.length}</span></div>
-      <section class="card list cards">${m.cards.slice().sort((a, b) => { const r = (c) => (c.s && c.s.due <= today ? "0" + c.s.due : !c.s ? "1" : "2" + c.s.due); return r(a).localeCompare(r(b)); }).map((c) => { const d = c.s ? D.diff(c.s.due, today) : null; return `<div class="row"><div class="grow"><div class="q">${esc(c.q)}</div><div class="a">${esc(c.a)}</div></div>
+</div></div>`,
+    cards: `<header class="top"><div class="titles"><h1>Cards</h1><div class="sub">${m.cards.length} cards · ${fresh} new</div></div><button class="round accent" id="add" aria-label="Add a card">${ico("plus")}</button></header>
+      <div class="cardsgrid"><div>      <section class="card list cards">${m.cards.slice().sort((a, b) => { const r = (c) => (c.s && c.s.due <= today ? "0" + c.s.due : !c.s ? "1" : "2" + c.s.due); return r(a).localeCompare(r(b)); }).map((c) => { const d = c.s ? D.diff(c.s.due, today) : null; return `<div class="row"><div class="grow"><div class="q">${esc(c.q)}</div><div class="a">${esc(c.a)}</div></div>
         <span class="when ${!c.s ? "new" : d <= 0 ? "now" : ""}">${!c.s ? "New" : d <= 0 ? "Due" : `In ${span(d)}`}</span></div>`; }).join("")}</section>
-    </div>
-  </div>`;
-  Kit.fit(() => render());
+</div><div>      <div class="label sugl"><span class="grow">From your notes</span></div>
+      <section class="card sug" id="sugbox">${sugHTML()}</section>
+</div></div>`,
+  };
+}
+
+let shell = null;
+function render(note = amber.note) {
+  const v = screens(note); if (!v) return;
+  if (!shell) shell = Kit.app({
+    tabs: [{ id: "review", label: "Review", icon: "cards", badge: (n) => { const x = model(n); return x ? queue(x, n.today).length || "" : ""; } }, { id: "cards", label: "Cards", icon: "list" }],
+    screen: (t, n) => screens(n)[t],
+    after: () => Kit.fit(() => shell.draw()),
+  });
+  shell.draw(note);
 }
 
 function sugHTML() {
@@ -287,7 +296,7 @@ document.addEventListener("keydown", (e) => {
   else if (session.back && ["1", "2", "3", "4"].includes(e.key)) grade(GRADES[+e.key - 1][2]);
   else if (e.key === "Escape") endReview();
 });
-amber.onChange((note) => { if (!session) render(note); else { render(note); } });
+amber.onChange((note) => render(note));
 </script>
 </body>
 </html>
