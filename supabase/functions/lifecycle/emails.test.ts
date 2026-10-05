@@ -116,13 +116,14 @@ Deno.test("templates link to Use template on the site", () => {
   for (const slug of ["grocery-list", "trip-plan", "weekly-review"]) assertStringIncludes(e.html, `href="https://ambernotes.app/open/template/${slug}"`);
 });
 
-Deno.test("every capture spans the text column, lined up with the text", () => {
+Deno.test("captures line up with the text on the left, never centred, and never wider than their text allows", () => {
   for (const e of all) for (const img of e.html.matchAll(/<img class="shot"[^>]*>/g)) {
-    assertStringIncludes(img[0], 'width="456"');
-    assertStringIncludes(img[0], "width:100%;height:auto");
-    assert(!/max-width/.test(img[0]), e.kind);
+    const w = Number(img[0].match(/ width="(\d+)"/)![1]);
+    assert(w >= 280 && w <= 380, `${e.kind}: ${w}`);
+    assertStringIncludes(img[0], `max-width:${w}px`);
+    assertStringIncludes(img[0], "width:100%");
   }
-  for (const e of all) assert(!/<td align="center">\s*<img class="shot"/.test(e.html), `${e.kind}: centred capture`);
+  for (const e of all) assert(!/<td align="center">\s*(<a [^>]*>)?<img class="shot"/.test(e.html), `${e.kind}: centred capture`);
 });
 
 Deno.test("Try this first: each prompt as a chat bubble, with Ask ChatGPT and Ask Claude under it", () => {
