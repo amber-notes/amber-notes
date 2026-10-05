@@ -36,6 +36,26 @@ The `connect` email's examples use only what the MCP tools do today (`append_to_
 (folder names are encrypted), and no email ever says a number about the person's notes. An account whose browser connection is waiting
 (`connect_asks`, which expire) gets a last line on typing the number.
 
+## Where each button goes
+
+Every button leads somewhere specific: into the app through a universal link under `/open/` (the
+site's apple-app-site-association claims `/open/*`), a section of the site, or a store. Each
+`/open/` place has a page at the same address (`web/app/open/`) that tries the app and otherwise
+says how to do it by hand, with Open in Amber Notes and the download.
+
+| Email | Button | Goes to | In the app (`Pane/Model/AppPlace.swift`) |
+| --- | --- | --- | --- |
+| stuck | Reply to Emil | `mailto:emil@ambernotes.app` | |
+| import | Import my Apple Notes | `/open/import` | Mac: Import from Apple Notes; iPhone: says to do it on the Mac |
+| connect | Connect in a few minutes | `/open/connect-ai` | Settings at Connect an AI |
+| try | Ask ChatGPT / Ask Claude | `chatgpt.com/?q=` / `/copy/<id>` | |
+| undo | See your note's history | `/open/history` | version history of the note an AI changed last, or the notes |
+| apps | See apps you can start from | `/templates?category=apps` | |
+| templates | Use the … template / See all templates | `/open/template/<slug>` / `/templates` | adds the template note |
+| iphone | Get it on the App Store | the App Store listing | |
+| mac | Download for Mac | `/download` | |
+| share | How sharing works | `/help#share` | when sharing with people ships: `/open/share-help` or its own help section |
+
 ## What decides, and what it never reads
 
 `public.lifecycle_facts(since)` (migration `20261006090000_lifecycle_emails.sql`) gives, per

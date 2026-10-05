@@ -86,7 +86,7 @@ Deno.test("the connect email: a grocery list with its capture, or sorting into f
   const groceries = render("connect", ctx), sorting = render("connect", { ...ctx, sortable: true });
   assertStringIncludes(groceries.html, "/email/connect.jpg");
   assertStringIncludes(sorting.text, "Sort your notes into folders");
-  for (const e of [groceries, sorting]) for (const s of ["Bring your notes", "connect-chatgpt-to-your-notes"]) assertStringIncludes(e.text, s);
+  for (const e of [groceries, sorting]) for (const s of ["Bring your notes", "https://ambernotes.app/open/connect-ai"]) assertStringIncludes(e.text, s);
 });
 
 Deno.test("a waiting connection gets the line about the last step", () => {
@@ -124,6 +124,19 @@ Deno.test("Try this first: each prompt as a chat bubble, with Ask ChatGPT and As
 
 Deno.test("the apps email leads to the templates gallery's Apps filter", () => {
   assertStringIncludes(render("apps", ctx).html, 'href="https://ambernotes.app/templates?category=apps"');
+});
+
+Deno.test("every button goes somewhere specific: into the app, a page section, or a store", () => {
+  const want: Record<string, string> = {
+    stuck: "mailto:emil@ambernotes.app", import: "https://ambernotes.app/open/import", connect: "https://ambernotes.app/open/connect-ai",
+    undo: "https://ambernotes.app/open/history", apps: "https://ambernotes.app/templates?category=apps", templates: "https://ambernotes.app/templates",
+    iphone: "https://apps.apple.com/", mac: "https://ambernotes.app/download", share: "https://ambernotes.app/help#share",
+  };
+  for (const [kind, href] of Object.entries(want)) {
+    const e = render(kind as never, ctx);
+    const button = e.html.match(/<v:roundrect[^>]*href="([^"]+)"/)?.[1].replace(/&amp;/g, "&") ?? "";
+    assert(button.startsWith(href), `${kind}: ${button}`);
+  }
 });
 
 Deno.test("replies go to Emil", () => {

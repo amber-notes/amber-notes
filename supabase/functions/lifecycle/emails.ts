@@ -69,7 +69,10 @@ const TEMPLATES: Template[] = [
   { slug: "weekly-review", title: "Weekly review", tagline: "Five questions every Sunday, written up for you." },
 ];
 
-const guide = (c: Context) => `${c.site}/blog/connect-chatgpt-to-your-notes`;
+/// Every button goes somewhere specific: into the app through a universal link under /open/
+/// (Pane/Model/AppPlace.swift), with a page at the same address that says how by hand when the app
+/// isn't on this device (web/app/open/).
+const connectAI = (c: Context) => `${c.site}/open/connect-ai`;
 
 /// Opens ChatGPT with the prompt in its composer. Claude's web app no longer takes a prompt in its
 /// address (October 2025), so Claude goes through ambernotes.app/copy, which copies it on a tap.
@@ -107,7 +110,7 @@ function draft(kind: Kind, c: Context): Draft {
         art: { file: "hero-import.jpg", ground: "#e4ba8b", alt: "A paper-cut house with a ladder, a toolbox and a paint roller, ready to move in" },
         blocks: [
           { p: "Hi, Emil here. On your Mac, choose File, then Import from Apple Notes. Your notes come over with their folders, and Apple Notes stays exactly as it is." },
-          { button: { label: "How importing works", href: `${c.site}/blog/move-from-apple-notes` } },
+          { button: { label: "Import my Apple Notes", href: `${c.site}/open/import` } },
           { p: "You can bring all of them, or pick some.", small: true },
         ],
       };
@@ -125,7 +128,7 @@ function draft(kind: Kind, c: Context): Draft {
           blocks: [
             { p: "Hi, Emil here. Connect ChatGPT or Claude, then ask it to sort your notes into folders. It reads them, makes the folders and moves each note, and you can ask it to suggest the folders first." },
             SETUP,
-            { button: { label: "Connect in a few minutes", href: guide(c) } },
+            { button: { label: "Connect in a few minutes", href: connectAI(c) } },
             { p: last, small: true },
           ],
         }
@@ -139,7 +142,7 @@ function draft(kind: Kind, c: Context): Draft {
             { p: "Hi, Emil here. Connect ChatGPT or Claude, then say \"Add what I need for paella on Sunday.\" The lines appear in your note, marked, with Undo." },
             { shot: { file: "connect.jpg", w: 350, h: 337, alt: "A Groceries note on an iPhone with five new lines marked in amber, and the bar ChatGPT changed 5 lines, Undo" } },
             SETUP,
-            { button: { label: "Connect in a few minutes", href: guide(c) } },
+            { button: { label: "Connect in a few minutes", href: connectAI(c) } },
             { p: last, small: true },
           ],
         };
@@ -168,6 +171,7 @@ function draft(kind: Kind, c: Context): Draft {
           { p: "Your AI made its first change. When it edits a note you have open, this bar appears, and Undo puts the note back." },
           { shot: { file: "undo.jpg", w: 395, h: 330, alt: "A Groceries note on a Mac with five lines ChatGPT added marked in amber, and the bar ChatGPT changed 5 lines, Undo" } },
           { p: "Older changes are in each note's version history: on a note, choose More (•••), then Show Version History." },
+          { button: { label: "See your note's history", href: `${c.site}/open/history` } },
           { p: "Versions an AI made are kept for 90 days.", small: true },
         ],
       };
@@ -236,8 +240,10 @@ function draft(kind: Kind, c: Context): Draft {
         art: { file: "hero-share.jpg", ground: "#7d3446", alt: "Two paper-cut hands, one from each side, writing on the same sheet of paper" },
         blocks: [
           { p: "Hi, Emil here. You can share a note with someone now and write in it together. You see their cursor as they type, and they see yours." },
-          { shot: { file: "share.jpg", w: 274, h: 250, alt: "A shared note on Sara's iPhone: Emil's photo at the top, and his cursor with his name where he is typing", round: 18 } },
-          { button: { label: "How sharing works", href: `${c.site}/help` } },
+          { shot: { file: "share.jpg", w: 300, h: 251, alt: "A shared note on an iPhone: Emil's and Sara's avatars at the top, and Sara's cursor with her name where she is typing", round: 18 } },
+          // The help page's sharing question for now; when sharing with people ships, point this at
+          // the app (ambernotes.app/open/share-help) or its own help section.
+          { button: { label: "How sharing works", href: `${c.site}/help#share` } },
         ],
       };
   }
