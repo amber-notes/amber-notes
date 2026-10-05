@@ -106,7 +106,9 @@ struct PaneApp: App {
                 UnitTestHostView()
             } else if ProcessInfo.processInfo.arguments.contains("-collabGallery") {
                 // Collaboration prototype: avatars and Share with sample people (CollabGallery).
-                if ProcessInfo.processInfo.arguments.contains("-badges") {
+                if ProcessInfo.processInfo.arguments.contains("-emailStill") {
+                    EmailStill().tint(Color(PColor.paneAccent))
+                } else if ProcessInfo.processInfo.arguments.contains("-badges") {
                     BadgeGallery.fromArguments().tint(Color(PColor.paneAccent))
                 } else if ProcessInfo.processInfo.arguments.contains("-template") {
                     CollabGallery.templateSheet().tint(Color(PColor.paneAccent))

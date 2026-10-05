@@ -144,3 +144,42 @@ struct BadgeGallery: View {
         }
     }
 }
+
+/// The still for the onboarding share email (`-collabGallery -emailStill`): the shared "Team
+/// offsite" note on iPhone, as the note screen draws it, with two co-editors in the toolbar (the
+/// final pencil badge, one with Emil's real photo) and Sara's caret in the middle of a line.
+struct EmailStill: View {
+    @State private var controller = EditorController()
+    @State private var path = [1]
+
+    var body: some View {
+        NavigationStack(path: $path) {
+            Color.notePage
+                .navigationDestination(for: Int.self) { _ in note }
+        }
+    }
+
+    private var note: some View {
+        MarkdownEditor(initialText: CollabDemo.offsite, header: DateBucket.header(.now), controller: controller, onChange: { _ in })
+            .background(Color.notePage.ignoresSafeArea())
+            .navigationTitle("")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    PresenceAvatars(people: [.init(id: CollabGallery.emil, name: "Emil Wagman", photo: CollabGallery.emilPhoto),
+                                             .init(id: CollabGallery.sara, name: "Sara Lind")], option: .b, pencilStyle: .colour)
+                        .padding(.horizontal, 2)
+                }
+                ToolbarItem(placement: .primaryAction) { Button("More", systemImage: "ellipsis") {} }
+            }
+            .task {
+                // Sara's caret inside the lunch line, after "Lunch": its flag falls in the blank line below.
+                try? await Task.sleep(for: .seconds(0.6))
+                let at = (CollabDemo.offsite as NSString).range(of: "12:30 Lunch").upperBound
+                controller.remoteCarets = [RemoteCaret(id: CollabGallery.sara, name: "Sara", color: CollabSession.color(for: CollabGallery.sara),
+                                                       range: NSRange(location: at, length: 0))]
+            }
+    }
+}
