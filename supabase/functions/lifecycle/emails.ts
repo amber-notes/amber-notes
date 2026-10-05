@@ -39,8 +39,7 @@ export type Email = { kind: Kind; subject: string; preview: string; html: string
 
 // ---- The words ------------------------------------------------------------------------------------
 
-/// A real capture: its file in web/public/email, its largest width and height on the page (chosen so
-/// its text reads no bigger than the email's own), and what it shows.
+/// A real capture: its file in web/public/email, its width on the page (half its pixel width), what it shows.
 type Shot = { file: string; w: number; h: number; alt: string; round?: number };
 
 /// A paragraph with [links](href). Written once, turned into HTML and into plain text.
@@ -167,7 +166,7 @@ function draft(kind: Kind, c: Context): Draft {
         art: { file: "hero-undo.jpg", ground: "#754024", alt: "A paper-cut signpost where a path splits in two, with a compass in the grass" },
         blocks: [
           { p: "Your AI made its first change. When it edits a note you have open, this bar appears, and Undo puts the note back." },
-          { shot: { file: "undo.jpg", w: 380, h: 317, alt: "A Groceries note on a Mac with five lines ChatGPT added marked in amber, and the bar ChatGPT changed 5 lines, Undo" } },
+          { shot: { file: "undo.jpg", w: 395, h: 330, alt: "A Groceries note on a Mac with five lines ChatGPT added marked in amber, and the bar ChatGPT changed 5 lines, Undo" } },
           { p: "Older changes are in each note's version history: on a note, choose More (•••), then Show Version History." },
           { p: "Versions an AI made are kept for 90 days.", small: true },
         ],
@@ -182,8 +181,8 @@ function draft(kind: Kind, c: Context): Draft {
         art: { file: "hero-apps.jpg", ground: "#0c5c63", alt: "A paper-cut open notebook whose pieces rise and fit together into a little gadget with a ring gauge and buttons" },
         blocks: [
           { p: "Hi, Emil here. A note can hold a small app now. Here are two: a habit tracker you tick off every day, and a budget that adds up as you go." },
-          { shot: { file: "app-habits.jpg", w: 330, h: 235, alt: "A habit tracker app in an Amber Notes note: four of four done today" } },
-          { shot: { file: "app-budget.jpg", w: 330, h: 241, alt: "A budget app in an Amber Notes note: October budget with spending by category" } },
+          { shot: { file: "app-habits.jpg", w: 300, h: 214, alt: "A habit tracker app in an Amber Notes note: four of four done today" } },
+          { shot: { file: "app-budget.jpg", w: 300, h: 219, alt: "A budget app in an Amber Notes note: October budget with spending by category" } },
           { button: { label: "See apps you can start from", href: `${c.site}/templates?category=apps` } },
         ],
       };
@@ -237,7 +236,7 @@ function draft(kind: Kind, c: Context): Draft {
         art: { file: "hero-share.jpg", ground: "#7d3446", alt: "Two paper-cut hands, one from each side, writing on the same sheet of paper" },
         blocks: [
           { p: "Hi, Emil here. You can share a note with someone now and write in it together. You see their cursor as they type, and they see yours." },
-          { shot: { file: "share.jpg", w: 310, h: 283, alt: "A shared note on Sara's iPhone: Emil's photo at the top, and his cursor with his name where he is typing", round: 18 } },
+          { shot: { file: "share.jpg", w: 274, h: 250, alt: "A shared note on Sara's iPhone: Emil's photo at the top, and his cursor with his name where he is typing", round: 18 } },
           { button: { label: "How sharing works", href: `${c.site}/help` } },
         ],
       };
@@ -298,13 +297,13 @@ function box(done: boolean, size = 20): string {
 
 /// A capture, centred, at most its own width, with a hairline so a light screenshot holds its edge
 /// on a dark page.
-/// A capture, lined up with the text on its left (never centred), at a width where the text inside
-/// it reads about the size of the email's own text or a little smaller, never bigger. On a phone it
-/// takes the column's width when that's narrower.
+/// A capture, centred, at most its own width (half its pixel width, so it stays sharp), with a
+/// hairline so a light screenshot holds its edge on a dark page.
 function shotHTML(c: Context, x: Shot): string {
   const r = x.round ?? 12;
-  return `${table(' width="100%" style="margin:2px 0 20px;"')}<tr><td align="left">
-<img class="shot" src="${c.assets}/${x.file}" width="${x.w}" height="${x.h}" alt="${esc(x.alt)}" style="display:block;width:100%;max-width:${x.w}px;height:auto;border:1px solid ${L.shotEdge};border-radius:${r}px;color:${L.secondary};font-family:${SANS};font-size:13px;">
+  const edge = r === 0 ? "" : `border:1px solid ${L.shotEdge};border-radius:${r}px;`;
+  return `${table(' width="100%" style="margin:2px 0 20px;"')}<tr><td align="center">
+<img class="shot" src="${c.assets}/${x.file}" width="${x.w}" height="${x.h}" alt="${esc(x.alt)}" style="display:block;width:100%;max-width:${x.w}px;height:auto;${edge}color:${L.secondary};font-family:${SANS};font-size:13px;">
 </td></tr></table>`;
 }
 
@@ -344,7 +343,7 @@ function blockHTML(b: Block, c: Context): string {
   return b.templates.map((t) => {
     const use = `${c.site}/open/template/${t.slug}`;
     return `${table(' width="100%" style="margin:0 0 22px;"')}<tr><td>
-<a href="${c.site}/templates/${t.slug}"><img class="shot" src="${c.assets}/t-${t.slug}.jpg" width="320" height="150" alt="The ${esc(t.title)} template note: ${esc(t.tagline)}" style="display:block;width:100%;max-width:320px;height:auto;border:1px solid ${L.shotEdge};border-radius:12px;color:${L.secondary};font-family:${SANS};font-size:13px;"></a>
+<a href="${c.site}/templates/${t.slug}"><img class="shot" src="${c.assets}/t-${t.slug}.jpg" width="330" height="155" alt="The ${esc(t.title)} template note: ${esc(t.tagline)}" style="display:block;width:100%;max-width:330px;height:auto;border:1px solid ${L.shotEdge};border-radius:12px;color:${L.secondary};font-family:${SANS};font-size:13px;"></a>
 <a href="${use}" style="display:inline-block;margin-top:10px;font-family:${SANS};font-size:15px;font-weight:600;line-height:20px;color:${L.accentText};text-decoration:none;"><span class="lnk" style="color:${L.accentText};">Use the ${esc(t.title.toLowerCase())} template &rarr;</span></a>
 </td></tr></table>`;
   }).join("\n");
