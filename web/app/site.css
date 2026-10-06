@@ -232,6 +232,51 @@ html[data-theme] ::selection { background: var(--mark); }
 .site-wordmark { display: block; width: 100%; height: auto; margin-top: 24px; margin-bottom: -2.2%; overflow: visible; user-select: none; }
 .site-wordmark text { fill: var(--wordmark); font: 800 176px -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif; letter-spacing: -8px; }
 
+/* Footer effects under review, one per ?footer=a|b|c (lib/footer-fx.ts). Without the parameter
+   none of this applies. A reader who asks for reduced motion gets each one's finished state. */
+
+/* A: the name rises out of the page's bottom edge and inks in from faint to amber, scrubbed by
+   its own view timeline. Overflow clip, since hidden would make the footer the timeline's
+   scroller. A browser without scroll-driven animations shows the inked name. */
+html[data-footer="a"] .site-footer { overflow: clip; }
+.site-wordmark-well { width: 100%; margin: 24px 0 -2.2%; view-timeline: --site-wordmark block; }
+.site-wordmark-rise { display: grid; }
+.site-wordmark-rise > .site-wordmark { grid-area: 1 / 1; margin: 0; }
+.site-wordmark-ink text { fill: var(--amber); }
+
+/* B: the page is a sheet lifted off the footer, which waits underneath in its own deeper colour.
+   <html> takes that colour near the bottom (SiteChrome.tsx), so the rubber band matches it. */
+html[data-footer="b"] { --foot: #f4dcb9; }
+html[data-footer="b"][data-theme="leaf"] { --foot: #1f0f05; }
+html[data-footer="b"][data-foot-end] { background: var(--foot); }
+html[data-footer="b"] .site-main { position: relative; z-index: 1; background: var(--bg); overflow: clip; padding-bottom: 120px; border-radius: 0 0 32px 32px; box-shadow: 0 28px 48px -28px rgba(var(--shade), 0.55); }
+html[data-footer="b"] .site-footer { margin-top: 0; max-width: none; padding: 72px max(var(--gutter), calc((100% - 1240px) / 2 + var(--gutter))) 0; background: var(--foot); }
+@media (prefers-reduced-motion: no-preference) {
+  html[data-footer="b"] .site-footer { position: sticky; bottom: 0; }
+}
+
+/* C: once the name is in view, honey pours into the letters (SiteChrome.tsx marks it poured):
+   the level rises with a small slosh while the surface rolls one wave sideways and settles.
+   It plays on a clock, not the scroll, because the name is on screen for only the last stretch. */
+.site-wordmark { --honey-top: #ffd27c; --honey: #f5a53a; --honey-deep: #dc7d12; }
+.site-wordmark-level { transform: translateY(16px); }
+.site-wordmark-honey { transform: translateX(-250px); }
+@media (prefers-reduced-motion: no-preference) {
+  html[data-footer="c"] .site-wordmark:not([data-poured]) .site-wordmark-level { transform: translateY(172px); }
+  html[data-footer="c"] .site-wordmark:not([data-poured]) .site-wordmark-honey { transform: none; }
+  html[data-footer="c"] .site-wordmark[data-poured] .site-wordmark-level { transition: transform 1.5s cubic-bezier(0.3, 1.25, 0.5, 1); }
+  html[data-footer="c"] .site-wordmark[data-poured] .site-wordmark-honey { transition: transform 1.9s cubic-bezier(0.2, 0.6, 0.3, 1); }
+}
+
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    html[data-footer="a"] .site-wordmark-rise { animation: wordmark-rise both linear; animation-timeline: --site-wordmark; animation-range: entry 0% entry 85%; }
+    html[data-footer="a"] .site-wordmark-ink { animation: wordmark-ink both linear; animation-timeline: --site-wordmark; animation-range: entry 20% entry 85%; }
+  }
+}
+@keyframes wordmark-rise { from { transform: translateY(30%); } to { transform: none; } }
+@keyframes wordmark-ink { from { opacity: 0; } to { opacity: 1; } }
+
 /* Content entrance: blur, lift and fade into focus, in order (style="--i: n"). Runs on load and
    after every navigation. Exits are handled by the view transition (a quick fade). */
 @media (prefers-reduced-motion: no-preference) {

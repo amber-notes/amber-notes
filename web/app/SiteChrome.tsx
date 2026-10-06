@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import DownloadLink from "./DownloadLink";
 import GitHubLink, { GitHubGlyph } from "./GitHubLink";
@@ -8,6 +8,7 @@ import PlatformNote from "./PlatformNote";
 import MobileMenu from "./MobileMenu";
 import { themeFor } from "@/lib/theme";
 import { CONSENT_OPEN_EVENT } from "@/lib/consent";
+import { footerFx, type FooterFx } from "@/lib/footer-fx";
 
 const GITHUB = "https://github.com/amber-notes/amber-notes";
 const X_URL = "https://x.com/EmilWagman";
@@ -19,6 +20,7 @@ export default function SiteChrome({ version, stars, children }: { version: stri
   const router = useRouter();
   const done = useRef<(() => void) | null>(null);
   const site = themeFor(path) !== null;
+  const [fx, setFx] = useState<FooterFx | null>(null);
 
   // Keep the theme in step with the page (also for back/forward), and finish a pending transition.
   useEffect(() => {
@@ -27,6 +29,31 @@ export default function SiteChrome({ version, stars, children }: { version: stri
     else delete document.documentElement.dataset.theme;
     done.current?.();
     done.current = null;
+  }, [path]);
+
+  // Review only: ?footer=a|b|c turns on one of the footer effects (lib/footer-fx.ts, app/site.css).
+  useEffect(() => {
+    let store: Storage | null = null;
+    try { store = sessionStorage; } catch { /* blocked: the address alone decides */ }
+    const chosen = footerFx(location.search, store);
+    setFx(chosen);
+    const html = document.documentElement;
+    if (chosen) html.dataset.footer = chosen;
+    else delete html.dataset.footer;
+    if (chosen !== "b") return;
+    // B gives the footer its own colour, so the rubber band below it must show that colour too:
+    // <html> takes the footer's colour once the reader is past the middle of the page.
+    const onScroll = () => {
+      const half = (document.documentElement.scrollHeight - innerHeight) / 2;
+      const low = half > 0 && scrollY > half;
+      if (low !== ("footEnd" in html.dataset)) {
+        if (low) html.dataset.footEnd = "";
+        else delete html.dataset.footEnd;
+      }
+    };
+    onScroll();
+    addEventListener("scroll", onScroll, { passive: true });
+    return () => { removeEventListener("scroll", onScroll); delete html.dataset.footEnd; };
   }, [path]);
 
   // Same-site links between site pages navigate inside a view transition.
@@ -105,13 +132,68 @@ export default function SiteChrome({ version, stars, children }: { version: stri
           </div>
         </div>
         <p className="site-credit">Made by <a className="site-maker" href={MAKER_URL} target="_blank" rel="me noopener">Emil Wagman</a> at <a className="site-maker" href="https://incredible.one" target="_blank" rel="noopener">Incredible</a>. Works with ChatGPT and Claude; not affiliated with Apple, OpenAI or Anthropic.</p>
-        <svg className="site-wordmark" viewBox="0 0 1000 170" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
-          <text x="500" y="160" textAnchor="middle" textLength="980" lengthAdjust="spacingAndGlyphs">Amber Notes</text>
-        </svg>
+        <Wordmark fx={fx} />
       </footer>
     </div>
   );
 }
+
+/// The big faded name at the bottom. Effect A stacks an amber copy over it that rises and inks in;
+/// effect C pours honey into the letters (a wave clipped to them) once they come into view.
+/// B and the default are the plain name.
+function Wordmark({ fx }: { fx: FooterFx | null }) {
+  const pour = useRef<SVGSVGElement>(null);
+  // C pours once, when most of the name is in view.
+  useEffect(() => {
+    const svg = pour.current;
+    if (!svg) return;
+    const seen = new IntersectionObserver(([e]) => {
+      if (!e.isIntersecting) return;
+      svg.dataset.poured = "";
+      seen.disconnect();
+    }, { threshold: 0.5 });
+    seen.observe(svg);
+    return () => seen.disconnect();
+  }, [fx]);
+  const word = <text x="500" y="160" textAnchor="middle" textLength="980" lengthAdjust="spacingAndGlyphs">Amber Notes</text>;
+  const plain = (className: string) => (
+    <svg className={className} viewBox="0 0 1000 170" preserveAspectRatio="xMidYMax meet" aria-hidden="true">{word}</svg>
+  );
+  if (fx === "a") {
+    return (
+      <div className="site-wordmark-well">
+        <div className="site-wordmark-rise">
+          {plain("site-wordmark")}
+          {plain("site-wordmark site-wordmark-ink")}
+        </div>
+      </div>
+    );
+  }
+  if (fx === "c") {
+    return (
+      <svg ref={pour} className="site-wordmark" viewBox="0 0 1000 170" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
+        <defs>
+          <clipPath id="site-wordmark-letters">{word}</clipPath>
+          <linearGradient id="site-honey" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="var(--honey-top)" />
+            <stop offset="0.05" stopColor="var(--honey)" />
+            <stop offset="1" stopColor="var(--honey-deep)" />
+          </linearGradient>
+        </defs>
+        {word}
+        <g clipPath="url(#site-wordmark-letters)">
+          <g className="site-wordmark-level">
+            <path className="site-wordmark-honey" fill="url(#site-honey)" d={HONEY} />
+          </g>
+        </g>
+      </svg>
+    );
+  }
+  return plain("site-wordmark");
+}
+
+// Honey with a gentle surface: a wave every 250 units, 1500 wide so it can drift 250 sideways.
+const HONEY = "M0 10" + " q62.5 -10 125 0 t125 0".repeat(6) + " V400 H0 Z";
 
 export function AppleGlyph() {
   return (
