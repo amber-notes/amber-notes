@@ -15,7 +15,7 @@
 import type { Sql } from "npm:postgres@3.4.5";
 import { tokenKey, unwrap, Vault } from "../_shared/e2ee.ts";
 import { errorKind, log } from "../_shared/log.ts";
-import { Content, runTool, ToolContext, ToolError, tools } from "./tools.ts";
+import { Content, runTool, servedTools, ToolContext, ToolError } from "./tools.ts";
 import { challenge, handleOAuth, isOAuthPath, publicBase, resolveAccessToken, subpath } from "./oauth.ts";
 import { SERVER_CARD_PATH, SERVER_INFO, serverCardResponse } from "./card.ts";
 
@@ -192,10 +192,10 @@ async function respond(msg: Rpc, id: string | number | null, ctx: ToolContext): 
       case "ping":
         return ok(id, {});
       case "tools/list":
-        return ok(id, { tools: tools.filter((t) => ctx.canWrite || t.annotations.readOnlyHint) });
+        return ok(id, { tools: servedTools().filter((t) => ctx.canWrite || t.annotations.readOnlyHint) });
       case "tools/call": {
         const name = String(msg.params?.name ?? "");
-        if (!tools.some((t) => t.name === name)) {
+        if (!servedTools().some((t) => t.name === name)) {
           return { jsonrpc: "2.0", id, error: { code: -32602, message: `Unknown tool: ${name || "(none)"}` } };
         }
         const given = msg.params?.arguments ?? {};

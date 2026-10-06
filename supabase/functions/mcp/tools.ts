@@ -274,13 +274,22 @@ export const tools: Tool[] = ([
   },
 ] satisfies Tool[]).map((t) => ({ ...t, annotations: { title: t.title, ...t.annotations }, securitySchemes: [{ type: "oauth2" as const, scopes: [t.annotations.readOnlyHint ? "notes:read" : "notes:write"] }] }));
 
+/** Tools still in prototype: served only with AMBER_MCP_TOOLS=pages, so production serves what the
+ *  site lists (web/lib/mcp-tools.ts; site_tools.test.ts checks the two agree). */
+export const PROTOTYPE_TOOLS = new Set(["set_note_page", "edit_note_page", "get_note_page", "list_api_keys"]);
+
+/** The tools this server offers, by the AMBER_MCP_TOOLS setting (unset or "": production's). */
+export function servedTools(set: string | undefined = Deno.env.get("AMBER_MCP_TOOLS")): typeof tools {
+  return set === "pages" ? tools : tools.filter((t) => !PROTOTYPE_TOOLS.has(t.name));
+}
+
 const writeTools = new Set(tools.filter((t) => !t.annotations.readOnlyHint).map((t) => t.name));
 
 /** One tool call: the vault, and how much scan time it spent (charged when it ends). */
 type Call = { v: Vault; ctx: ToolContext; scanMs: number };
 
 export async function runTool(name: string, args: Args, ctx: ToolContext): Promise<unknown> {
-  if (!tools.some((t) => t.name === name)) throw new ToolError(`Unknown tool ${name}.`);
+  if (!servedTools().some((t) => t.name === name)) throw new ToolError(`Unknown tool ${name}.`);
   if (writeTools.has(name) && !ctx.canWrite) throw new ToolError("This access token is read-only.");
   const claims = JSON.stringify({ sub: ctx.userId, role: "authenticated" });
   // Every call costs one from the account's MCP bucket (600, then 5 a second). Taken in its
