@@ -1,232 +1,263 @@
-# amber end-to-end run, 2026-10-06T06:43Z
-binary: cli/dist/amber-macos-arm64 (darwin aarch64); server: http://127.0.0.1:56934/mcp, the real MCP request handler with the files tools
-on a fresh database with every migration, and a seeded end-to-end encrypted test account. Paths are relative to a temporary folder.
+# amber end-to-end run, 2026-10-06T07:09Z
+binary cli/dist/amber-macos-arm64 (darwin aarch64) against http://127.0.0.1:59165/mcp: the real MCP request handler and OAuth
+(supabase/functions/mcp, unchanged), files tools, a fresh database with every migration and a seeded end-to-end encrypted test account.
 
-## Sign in
+## Help
 
 $ amber --version
-0.1.0
-$ amber login --server http://127.0.0.1:56934/mcp < token.txt
-Signed in to http://127.0.0.1:56934/mcp (files tools). Token saved in config/amber/config.json, readable only by you.
-$ stat -f %Lp config/amber/config.json
-600
-  PASS the token file is mode 600
-  PASS the token is never printed
+0.2.0
+$ amber help
+amber: your Amber Notes from the terminal
+
+Notes are paths like "Work/Acme.md"; folders end in "/". A note's id works too.
+
+  amber search <words>               find notes ("quoted phrase", OR, -word)
+  amber list [<folder>/]             overview, or a folder's notes
+  amber read <note> [--lines 40-90]  print a note's markdown
+  amber create <folder> [<text>]     new note; the first line is its title (text or stdin)
+  amber edit <note> <old> <new>      replace exact text, once (--all for every match)
+  amber write <note>                 replace the whole note with stdin
+  amber move <note> <to>             to a folder ("Archive/") or a new name ("Work/New.md")
+  amber delete <note>                to Recently Deleted
+  amber history <note>               earlier versions
+  amber restore <note> [<version>]   undelete, or bring back a version
+  amber pin <note> [--off]
+
+  amber login                        connect: approve in Amber Notes on your iPhone or Mac
+  amber logout                       disconnect this terminal
+  amber status                       who and where
+
+Add --json for the server's full answer (for scripts and agents).
+amber help <command> for more.
+  PASS amber help fits on one screen (23 lines)
+
+## Sign in: browser, approve in Amber Notes
+
+$ amber login        # the browser opens the consent page; Allow
+Connected to Amber Notes (read & edit). Tokens are kept in the macOS Keychain (amber-cli-e2e).
+Disconnect any time: amber logout, or Settings › Connect an AI in the app.
+Opened your browser to connect. Approve in Amber Notes on your iPhone or Mac.
+If it didn't open, go to:
+
+  http://127.0.0.1:59165/mcp/authorize?response_type=code&client_id=amb_client_99a6ccf552657c1845f3f38efeb2ca31&redirect_uri=http%3A%2F%2F127.0.0.1%3A59174%2Fcallback&code_challenge=Suw94TWIPFBn52DeBGEecr3DWFbbjHh7ttWhIbOQWCs&code_challenge_method=S256&state=S5KZWeHmHQs0gqqcpGPatA&scope=notes%3Aread+notes%3Awrite&resource=http%3A%2F%2F127.0.0.1%3A59165%2Fmcp
+  PASS connected with read & edit
+[Amber Notes › Settings › Connect an AI]
+  Access token  (Read and edit)
+  An app on this computer  (Read and edit)
+  PASS Settings lists it as "An app on this computer", like any app signing in from this computer
+$ security find-generic-password -s amber-cli-e2e -a http://127.0.0.1:59165/mcp   # attributes only
+class: "genp"
+    "acct"<blob>="http://127.0.0.1:59165/mcp"
+    "svce"<blob>="amber-cli-e2e"
+  PASS the tokens are in the macOS Keychain
+$ ls config/amber
+config.json
+  PASS and not in a file
 $ amber status
-server   http://127.0.0.1:56934/mcp
-token    from config/amber/config.json
-account  8 notes (1 locked, not synced), files tools
+server  http://127.0.0.1:59165/mcp
+access  read & edit (signed in; tokens in the macOS Keychain (amber-cli-e2e))
+tools   files
 
-## Pull the account into a folder
+## Read
 
-$ amber pull notes
-down    Travel/Trip/Packing.md
-down    Travel/Trip.md
-down    Work/Weekly review.md
-down    Work/Clients/Acme.md
-down    Groceries.md
-down    Recipes.md
-down    Work/Habits.md
-skipped Work/Diary.md (locked: only the app can open it)
-pull notes: 7 down (files tools)
-$ find notes -name '*.md'
-notes/Groceries.md
-notes/Recipes.md
-notes/Travel/Trip.md
-notes/Travel/Trip/Packing.md
-notes/Work/Clients/Acme.md
-notes/Work/Habits.md
-notes/Work/Weekly review.md
-$ cat notes/Groceries.md
-Groceries
+$ amber list
+7 notes
 
-## Dairy
-- [ ] Milk
-- [ ] Butter
+Folders
+  Work/                         2
+  Work/Clients/                 1
+  Travel/                       2
 
-See [[Recipes]] for ideas.
+Pinned
+  Groceries.md  2026-10-06 07:09  pinned
 
-  PASS [[wikilinks]] stay as written
-  PASS a sub-note sits in its parent's folder
-  PASS the locked note is skipped
-  PASS the note's app is skipped; its text syncs (Work/Habits.md)
-
-## Edit here, see it in Amber
-
-$ sed -i '' 's/- \[ \] Milk/- [x] Milk/' notes/Groceries.md
-$ amber sync notes
-up      Groceries.md
-skipped Work/Diary.md (locked: only the app can open it)
-sync notes: 1 up (files tools)
-[Amber] fetch Groceries.md
-Groceries
-
-## Dairy
-- [x] Milk
-- [ ] Butter
-
-See [[Recipes]] for ideas.
-
-  PASS the tick is in Amber
-  PASS Amber's history names the token that made the change
-
-## Change a note in Amber, see the file change
-
-[Amber, the iPhone app] edits Work/Clients/Acme.md: "Kickoff Monday 10:00." becomes "Kickoff Tuesday 09:00."
-$ amber sync notes
-down    Work/Clients/Acme.md
-skipped Work/Diary.md (locked: only the app can open it)
-sync notes: 1 down (files tools)
-$ cat notes/Work/Clients/Acme.md
+Recently edited
+  Work/Diary.md           2026-10-06 07:09  locked
+  Travel/Trip/Packing.md  2026-10-06 07:09
+  Travel/Trip.md          2026-10-06 07:09
+  Work/Weekly review.md   2026-10-06 07:09
+  Work/Clients/Acme.md    2026-10-06 07:09
+  Recipes.md              2026-10-06 07:09
+  Groceries.md            2026-10-06 07:09  pinned
+$ amber list Work/
+Work/
+  Work/Clients/
+  Work/Diary.md          2026-10-06 07:09  locked
+  Work/Weekly review.md  2026-10-06 07:09
+$ amber search butter
+Groceries.md
+  Groceries ## Dairy - [ ] Milk - [ ] «Butter» See [[Recipes]] for ideas
+  PASS search finds the note by a word in it
+$ amber read Work/Clients/Acme.md
 # Acme
 
-Kickoff Tuesday 09:00.
+Kickoff Monday 10:00 with Dana and Lee.
 
 ## Open questions
-- Budget?
+- Budget for Q1?
+- Who owns the rollout?
+  PASS read prints the markdown exactly
+$ amber read Groceries.md --json | jq '{id, title, version: .metadata.version, links: .metadata.links}'
+{
+  "id": "db43d787-3cd6-4ff2-ac67-d4a0f62ff598",
+  "title": "Groceries",
+  "version": 1,
+  "links": [
+    "Recipes"
+  ]
+}
+  PASS --json gives the server's full answer ([[links]] included)
+$ amber read Work/Diary.md
+amber: "Diary": This note is locked. Its text is encrypted on the user's devices: it can't be read, searched or changed here. The user can open it in Amber Notes.
+(exit 1)
+  PASS a locked note stays closed, with a reason and exit code 1
 
-  PASS the file has the app's edit
+## Change
 
-## Create, both ways
+$ amber create Work $'Standup\n\n- Shipped the CLI\n- Next: tests'
+Created Work/Standup.md
+  PASS create
+$ printf -- '- tomatoes\n- basil\n' | amber create Ideas/Garden.md
+Created Ideas/Garden.md
+  PASS create from stdin, titled by the file name
+$ amber edit Groceries.md '- [ ] Milk' '- [x] Milk'
+Edited Groceries.md (version 2)
+  PASS edit (exact search and replace)
+$ amber edit Groceries.md 'Oat milk' 'Milk'
+amber: Edit 1: old_text was not found. Read the note again and copy the exact text, including markdown and spacing.
+(exit 1)
+  PASS edit with text that isn't there changes nothing and says so
+$ amber edit Groceries.md '- [ ] Butter' '-[ ] Butter'
+Edited Groceries.md (version 3)
+  check: "-[ ] Butter" won't show as a checklist item: write "- [ ] text" (or "- [x] text").
+  PASS edit reports what the change broke
+$ printf 'Standup\n\n- Shipped the CLI\n- Next: the brew formula\n' | amber write Work/Standup.md
+Wrote Work/Standup.md (version 2)
+  PASS write from stdin
+$ amber move Work/Standup.md Archive/
+Moved to Archive/Standup.md
+  PASS move to a folder
+$ amber move 'Archive/Standup.md' 'Archive/Standup 10-06.md'
+Moved to Archive/Standup 10-06.md
+  PASS rename
+$ amber history 'Archive/Standup 10-06.md'
+"Standup 10-06", now version 4. Earlier versions, newest first:
+  5       2026-10-06 07:09  An app on this computer  Standup
+  4       2026-10-06 07:09  An app on this computer  Standup
 
-$ mkdir notes/Ideas && printf -- '- tomatoes\n- basil\n' > notes/Ideas/Garden.md
-[Amber, the iPhone app] creates "Standup" in Work
-$ amber sync notes
-down    Work/Standup.md
-created Ideas/Garden.md
-skipped Work/Diary.md (locked: only the app can open it)
-sync notes: 1 down, 1 created (files tools)
-  PASS Ideas/Garden.md is a note in Amber
-[Amber] fetch Ideas/Garden.md
-Garden
+Bring one back with: amber restore <note> <version>
+  PASS history lists earlier versions
+$ amber restore 'Archive/Standup 10-06.md' 4
+Restored "Standup" (now version 5).
+  PASS restore a version
+$ amber read Archive/Standup.md
+Standup
 
-- tomatoes
-- basil
+- Shipped the CLI
+- Next: tests
+  PASS the old text is back, with its old title (the first line), so its old name
+$ amber delete Ideas/Garden.md
+Moved "Garden" to Recently Deleted. Bring it back with: amber restore c11ff1c6-bee2-424d-be9a-bb49d36b5530
+  PASS delete moves it to Recently Deleted, and says how to bring it back
+$ amber list 'Recently Deleted/'
+Recently Deleted/
+  Ideas/Garden.md  2026-10-06 07:09  deleted 2026-10-06 07:09
+$ amber restore c11ff1c6-bee2-424d-be9a-bb49d36b5530
+Restored "Garden" to Ideas/.
+  PASS restore from Recently Deleted
+$ amber pin Work/Clients/Acme.md
+Pinned Work/Clients/Acme.md
+$ amber pin Groceries.md --off
+Unpinned Groceries.md
+  PASS pin and unpin
 
-  PASS a file without a title line gets its name as the first line
-  PASS the app's new note is a file
+## Signed in for longer than an hour: five amber commands at once renew the token once
 
-## Move and rename, both ways
+$ stat -f %Lp config-file/amber/credentials.json   # the Linux store, AMBER_NO_KEYCHAIN=1
+600
+  PASS the Linux credentials file is mode 600
+(the access token's expiry set an hour back)
+$ for i in 1 2 3 4 5; do amber list Work/ & done; wait
+  PASS all five succeed (exit codes 0 0 0 0 0)
+  PASS the token was renewed
+  PASS and the connection is still there (no refresh token was used twice)
 
-$ mkdir notes/Archive && mv "notes/Work/Weekly review.md" notes/Archive/
-$ mv notes/Recipes.md notes/Cooking.md
-[Amber, Claude on the phone] move Travel/Trip.md → Work/
-$ amber sync notes
-down    Work/Trip/Packing.md
-down    Work/Trip.md
-moved   Work/Weekly review.md → Archive/Weekly review.md
-moved   Recipes.md → Cooking.md
-skipped Work/Diary.md (locked: only the app can open it)
-sync notes: 2 down, 2 moved (files tools)
-  PASS the move here is a move in Amber
-  PASS the rename here renames the note in Amber
-$ head -1 notes/Cooking.md
-Cooking
-  PASS and its first line (the title) follows
-  PASS Amber's move moves the file, its sub-note with it
+## Disconnect it in the app: the terminal is turned away
 
-## Delete, both ways
+[Amber Notes › Settings › Connect an AI]
+  Access token  (Read and edit)
+  An app on this computer  (Read and edit)
+[Amber Notes › Settings › Connect an AI] Disconnect "An app on this computer"
+$ amber list
+amber: This terminal was disconnected from Amber Notes (Settings › Connect an AI). Run `amber login` to connect again.
+(exit 1)
+  PASS the next command fails and says to run amber login
+[Amber Notes › Settings › Connect an AI]
+  Access token  (Read and edit)
 
-$ rm notes/Work/Standup.md
-[Amber, Claude on the phone] delete Cooking.md
-$ amber sync notes
-deleted Cooking.md (deleted in Amber; kept in .amber/trash/2026-10-06/)
-deleted Work/Standup.md (in Amber: Recently Deleted keeps it 30 days)
-skipped Work/Diary.md (locked: only the app can open it)
-sync notes: 2 deleted (files tools)
-  PASS the file deleted here is in Amber's Recently Deleted
-  PASS the note deleted in Amber is gone from the folder
-$ ls notes/.amber/trash/2026-10-06
-Cooking.md
-  PASS and kept in .amber/trash
+## Don't Allow
 
-## A conflict: the same note changed on both sides
+$ amber login        # this time: Don't Allow
+Opened your browser to connect. Approve in Amber Notes on your iPhone or Mac.
+If it didn't open, go to:
 
-$ printf '\n- Bring the slides.\n' >> notes/Work/Clients/Acme.md
-[Amber, the iPhone app] edits Work/Clients/Acme.md: kickoff moves to Wednesday
-$ amber sync notes
-conflict Work/Clients/Acme.md: this folder's text kept as Work/Clients/Acme (conflict 2026-10-06).md
-created Work/Clients/Acme (conflict 2026-10-06).md
-skipped Work/Diary.md (locked: only the app can open it)
-sync notes: 1 created, 1 conflict (files tools)
-$ ls notes/Work/Clients
-Acme (conflict 2026-10-06).md
-Acme.md
-$ cat notes/Work/Clients/Acme.md
-# Acme
+  http://127.0.0.1:59165/mcp/authorize?response_type=code&client_id=amb_client_7ab7eafe95e8de829809b778b291415d&redirect_uri=http%3A%2F%2F127.0.0.1%3A59251%2Fcallback&code_challenge=Yma0np5AV0CKbPhGwBG-vsNgYUPS4pw3T-9KMvuDkvY&code_challenge_method=S256&state=yFSHRWH8Jxl8N69Ymvl8pg&scope=notes%3Aread+notes%3Awrite&resource=http%3A%2F%2F127.0.0.1%3A59165%2Fmcp
 
-Kickoff Wednesday 14:00.
+amber: Declined in Amber Notes. Nothing was connected.
+(exit 1)
+  PASS declining connects nothing
 
-## Open questions
-- Budget?
+## A server without a browser: amber login --no-browser
 
-$ cat "notes/Work/Clients/Acme (conflict 2026-10-06).md"
-# Acme (conflict 2026-10-06)
+$ amber login --no-browser
+Open this in a browser:
 
-Kickoff Tuesday 09:00.
+  http://127.0.0.1:59165/mcp/authorize?response_type=code&client_id=amb_client_182fdd3e10886025381142b439a76a47&redirect_uri=http%3A%2F%2F127.0.0.1%3A59256%2Fcallback&code_challenge=ttG--jKgpJUuia46cPL-8W97J7V9-75wjoGRepw6kyw&code_challenge_method=S256&state=Zt7OrL1i4U5ZquFhAOpCBA&scope=notes%3Aread+notes%3Awrite&resource=http%3A%2F%2F127.0.0.1%3A59165%2Fmcp
 
-## Open questions
-- Budget?
+Approve in Amber Notes. If the browser is on another machine, it ends on a page that won't load:
+copy that page's address (it starts with http://127.0.0.1) and paste it here.
+Address: http://127.0.0.1:59256/callback?state=Zt7OrL1i4U5ZquFhAOpCBA&iss=http%3A%2F%2F127.0.0.1%3A59165%2Fmcp&code=…
+Connected to Amber Notes (read & edit). Tokens are kept in the macOS Keychain (amber-cli-e2e).
+Disconnect any time: amber logout, or Settings › Connect an AI in the app.
+  PASS pasting the address the browser landed on connects
+$ amber search 'Lisbon'
+Travel/Trip.md
+  Trip «Lisbon» in May
+  PASS and amber works
 
-- Bring the slides.
+## CI: AMBER_TOKEN, or amber login --token
 
-  PASS the note's file has Amber's text
-  PASS this folder's text is kept as a conflict copy
-  PASS the conflict copy is a note in Amber too, so the phone sees both
+$ AMBER_TOKEN=<access token from Settings› Connect an AI> amber status
+server  http://127.0.0.1:59165/mcp
+access  read & edit (AMBER_TOKEN)
+tools   files
+  PASS AMBER_TOKEN works without signing in
+$ amber login --token < token.txt
+Connected to Amber Notes (the token's access). Tokens are kept in the macOS Keychain (amber-cli-e2e-ci).
+Disconnect any time: amber logout, or Settings › Connect an AI in the app.
+  PASS login --token saves a pasted token
+$ amber logout
+Forgot the access token here. It keeps working until you delete it in Amber Notes › Settings › Connect an AI.
 
-## Watch: changes go both ways without running sync by hand
+## Signing in again replaces the old connection
 
-$ amber sync notes --watch --interval 5 &
-$ printf '\n- Pears\n' >> notes/Groceries.md
-  PASS the local edit reached Amber in 1.5s
-[Amber, the iPhone app] ticks "Plan next week" in Archive/Weekly review.md
-  PASS Amber's edit reached the file in 4.5s (polling every 5s)
-$ kill %1   # the watch printed:
-skipped Work/Diary.md (locked: only the app can open it)
-sync notes: up to date (files tools)
-up      Groceries.md
-sync notes: 1 up (files tools)
-down    Archive/Weekly review.md
-sync notes: 1 down (files tools)
+[Amber Notes › Settings › Connect an AI]
+  Access token  (Read and edit)
+  An app on this computer  (Read and edit)
+  PASS one "An app on this computer", not two (1)
 
-## Status
+## Sign out
 
-$ amber status notes
-server   http://127.0.0.1:56934/mcp
-token    from config/amber/config.json
-account  9 notes (1 locked, not synced), files tools
-folder   notes: 8 notes tracked, last sync 2026-10-06T06:43:29.138Z
-here     0 changed, 0 new, 0 deleted since the last sync
-conflicts 1 conflict copy to look at:
-  Work/Clients/Acme (conflict 2026-10-06).md
+$ amber logout
+Disconnected this terminal from Amber Notes.
+[Amber Notes › Settings › Connect an AI]
+  Access token  (Read and edit)
+  PASS amber logout disconnects it in the app too
+  PASS and removes it from the Keychain
 
-## The same against the classic tools (what production runs today)
+## Tokens never show
 
-$ amber login --server http://127.0.0.1:56973/mcp < token.txt
-Signed in to http://127.0.0.1:56973/mcp (classic tools). Token saved in config/amber/config.json, readable only by you.
-$ amber pull classic
-down    Work/Habits.md
-down    Travel/Trip/Packing.md
-down    Travel/Trip.md
-down    Work/Weekly review.md
-down    Work/Clients/Acme.md
-down    Recipes.md
-down    Groceries.md
-skipped Work/Diary.md (locked: only the app can open it)
-pull classic: 7 down (classic tools)
-$ sed -i '' 's/- \[ \] Butter/- [x] Butter/' classic/Groceries.md
-$ printf 'Made with classic tools\n' > classic/Work/New.md
-$ amber sync classic
-up      Groceries.md
-created Work/New.md
-skipped Work/Diary.md (locked: only the app can open it)
-sync classic: 1 up, 1 created (classic tools)
-  PASS the edit is in Amber through edit_note
-  PASS the new file is a note through create_note, titled by its file name
-  PASS sub-notes get the same paths as with the files tools
-
-## Token hygiene
-
-  PASS no token in any synced file, state file or trash
+  PASS no token in any config file
+(and the transcript above is checked for token patterns after it is written)
 
 All checks passed.

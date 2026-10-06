@@ -1,244 +1,247 @@
-// The end-to-end run: the compiled amber binary against the real MCP server (local_server.ts),
-// every step checked from the other side. Prints a transcript; exits non-zero if a check fails.
+// The end-to-end run: the compiled amber binary against the real MCP server and its real OAuth
+// (local_server.ts), every step checked from the other side. Prints a transcript; exits non-zero
+// if a check fails.
 //
-//   deno task compile && deno run -A e2e/run.ts [--bin dist/amber-macos-arm64] > e2e/transcript.txt
+//   deno task compile && deno run -A e2e/run.ts > e2e/transcript.txt
 //
-// "Amber (the iPhone app)" writes to the account as the app does (sealed rows, POST /__app);
-// "Amber (Claude on the phone)" is a second MCP client using the files tools.
+// The browser is e2e/approve.sh: it follows /authorize to the consent page and presses Allow, which
+// does what the Amber Notes app does on Allow. "Settings" is the app's Connect an AI list and its
+// Disconnect, through local_server.ts. Keychain items go under amber-cli-e2e and are removed after.
 import { parseArgs } from "@std/cli/parse-args";
-import { connect, type Mcp } from "../src/client.ts";
 
 const args = parseArgs(Deno.args, { string: ["bin"] });
 const cli = new URL("..", import.meta.url).pathname;
-const bin = args.bin ? `${Deno.cwd()}/${args.bin}`.replace(/^.*\/\//, "/") : `${cli}dist/amber-macos-arm64`;
+const arch = Deno.build.arch === "aarch64" ? "arm64" : "x64";
+const bin = args.bin ?? `${cli}dist/amber-${Deno.build.os === "darwin" ? "macos" : "linux"}-${arch}`;
 const work = await Deno.makeTempDir({ prefix: "amber-e2e-" });
-const env = { XDG_CONFIG_HOME: `${work}/config`, NO_COLOR: "1" };
+const SERVICE = "amber-cli-e2e";
+const baseEnv = { XDG_CONFIG_HOME: `${work}/config`, AMBER_KEYCHAIN_SERVICE: SERVICE, AMBER_BROWSER: `${cli}e2e/approve.sh`, NO_COLOR: "1", HOME: Deno.env.get("HOME")!, PATH: Deno.env.get("PATH")! };
 let failed = 0;
-let token = "";
+const secrets: string[] = [];
 
 const say = (s = "") => console.log(s);
 const step = (s: string) => say(`\n## ${s}\n`);
 const check = (ok: boolean, what: string) => { say(`  ${ok ? "PASS" : "FAIL"} ${what}`); if (!ok) failed++; };
-const hide = (s: string) => token ? s.replaceAll(token, "<token>") : s;
+const clean = (s: string) => secrets.reduce((t, x) => t.replaceAll(x, "<token>"), s).replaceAll(work + "/", "").replaceAll(work, ".");
 
-async function amber(line: string, stdin?: string): Promise<string> {
-  say(`$ amber ${line}${stdin ? " < token.txt" : ""}`);
-  const p = new Deno.Command(bin, { args: line.match(/"[^"]*"|\S+/g)!.map((a) => a.replace(/^"|"$/g, "")), cwd: work, env, stdin: stdin ? "piped" : "null", stdout: "piped", stderr: "piped" }).spawn();
-  if (stdin) { const w = p.stdin.getWriter(); await w.write(new TextEncoder().encode(stdin)); await w.close(); }
-  const o = await p.output();
-  const text = hide(new TextDecoder().decode(o.stdout) + new TextDecoder().decode(o.stderr)).replaceAll(work + "/", "").trimEnd();
-  if (text) say(text.replace(/^\d{4}-\d\d-\d\dT[\d:.]+Z /gm, ""));
-  return text;
+type Run = { code: number; out: string; err: string };
+async function amber(line: string, o: { stdin?: string; env?: Record<string, string>; show?: string; quiet?: boolean } = {}): Promise<Run> {
+  const argv = line.match(/'[^']*'|"[^"]*"|\S+/g)!.map((a) => a.replace(/^['"]|['"]$/g, "").replace(/\\n/g, "\n"));
+  if (!o.quiet) say(`$ ${o.show ?? `amber ${line}`}`);
+  const p = new Deno.Command(bin, { args: [...argv, "--server", server], cwd: work, env: { ...baseEnv, ...o.env }, clearEnv: true, stdin: o.stdin !== undefined ? "piped" : "null", stdout: "piped", stderr: "piped" }).spawn();
+  if (o.stdin !== undefined) { const w = p.stdin.getWriter(); await w.write(new TextEncoder().encode(o.stdin)); await w.close(); }
+  const r = await p.output();
+  const res = { code: r.code, out: new TextDecoder().decode(r.stdout), err: new TextDecoder().decode(r.stderr) };
+  const shown = clean((res.out + res.err).trimEnd());
+  if (!o.quiet && shown) say(shown);
+  if (!o.quiet && res.code) say(`(exit ${res.code})`);
+  return res;
 }
-async function sh(line: string, run: () => Promise<unknown>) {
-  say(`$ ${line}`);
-  await run();
-}
-const file = (rel: string) => Deno.readTextFile(`${work}/notes/${rel}`).catch(() => undefined);
-async function tree(dir = "notes") {
-  const out: string[] = [];
-  const walk = async (rel: string) => {
-    for await (const e of Deno.readDir(`${work}/${dir}${rel ? "/" + rel : ""}`)) {
-      const p = rel ? `${rel}/${e.name}` : e.name;
-      if (e.name === ".amber") continue;
-      if (e.isDirectory) await walk(p); else out.push(p);
-    }
-  };
-  await walk("");
-  return out.sort();
-}
-async function waitFor(what: string, cond: () => Promise<boolean>, seconds = 20) {
-  const until = Date.now() + seconds * 1000;
-  while (Date.now() < until) { if (await cond()) return true; await new Promise((r) => setTimeout(r, 500)); }
-  check(false, `${what} (waited ${seconds}s)`);
-  return false;
-}
+const sh = (line: string, text: string) => { say(`$ ${line}`); if (text) say(clean(text.trimEnd())); };
+
+// MARK: the server
 
 const freePort = () => { const l = Deno.listen({ port: 0, hostname: "127.0.0.1" }); const p = (l.addr as Deno.NetAddr).port; l.close(); return p; };
-
-async function startServer(port: number, classic: boolean) {
-  const tokenFile = `${work}/token-${port}.txt`;
-  const p = new Deno.Command(Deno.execPath(), { args: ["run", "-A", `${cli}e2e/local_server.ts`, "--port", String(port), "--token-file", tokenFile, ...(classic ? ["--classic"] : [])], stdout: "piped", stderr: "piped" }).spawn();
-  for (let i = 0; i < 120; i++) {
-    try { if ((await fetch(`http://127.0.0.1:${port}/__ready`)).ok) break; } catch { /* starting */ }
-    await new Promise((r) => setTimeout(r, 500));
-  }
-  return { proc: p, url: `http://127.0.0.1:${port}/mcp`, token: await Deno.readTextFile(tokenFile), app: (op: Record<string, unknown>) => fetch(`http://127.0.0.1:${port}/__app`, { method: "POST", body: JSON.stringify(op) }).then((r) => r.json()) };
+const port = freePort();
+const origin = `http://127.0.0.1:${port}`;
+const server = `${origin}/mcp`;
+const srv = new Deno.Command(Deno.execPath(), { args: ["run", "-A", `${cli}e2e/local_server.ts`, "--port", String(port), "--token-file", `${work}/token.txt`], stdout: "null", stderr: "piped" }).spawn();
+for (let i = 0; i < 240; i++) {
+  try { if ((await fetch(`${origin}/__ready`)).ok) break; } catch { /* starting */ }
+  await new Promise((r) => setTimeout(r, 250));
 }
-const stop = async (p: Deno.ChildProcess) => { p.kill("SIGTERM"); await p.status; await p.stdout.cancel().catch(() => {}); await p.stderr.cancel().catch(() => {}); };
-
-// MARK: files tools
-
-const srv = await startServer(freePort(), false);
-token = srv.token;
-const phone: Mcp = await connect(srv.url, srv.token);
-const remotePath = async (id: string) => (await phone.call("list", { all: true })).notes.find((n: { id: string }) => n.id === id)?.path;
-const remoteText = async (path: string) => (await phone.call("fetch", { id: path })).text as string;
-const idOf = async (path: string) => (await phone.call("list", { all: true })).notes.find((n: { path: string }) => n.path === path)?.id as string;
+const paneToken = await Deno.readTextFile(`${work}/token.txt`);
+secrets.push(paneToken);
+const settings = async () => (await (await fetch(`${origin}/__app/connections`)).json()) as { id: string; title: string; access: string; revoked: boolean }[];
+const showSettings = async () => {
+  const list = (await settings()).filter((c) => !c.revoked);
+  say(`[Amber Notes › Settings › Connect an AI]\n${list.map((c) => `  ${c.title}  (${c.access})`).join("\n") || "  Nothing is connected yet."}`);
+  return list;
+};
+const keychain = async () => (await new Deno.Command("/usr/bin/security", { args: ["find-generic-password", "-s", SERVICE, "-a", server], stdout: "piped", stderr: "null" }).output());
 
 say(`# amber end-to-end run, ${new Date().toISOString().slice(0, 16)}Z`);
-say(`binary: ${bin.replace(cli, "cli/")} (${Deno.build.os} ${Deno.build.arch}); server: ${srv.url}, the real MCP request handler with the files tools`);
-say("on a fresh database with every migration, and a seeded end-to-end encrypted test account. Paths are relative to a temporary folder.");
+say(`binary ${bin.replace(cli, "cli/")} (${Deno.build.os} ${Deno.build.arch}) against ${server}: the real MCP request handler and OAuth`);
+say("(supabase/functions/mcp, unchanged), files tools, a fresh database with every migration and a seeded end-to-end encrypted test account.");
 
-step("Sign in");
+step("Help");
 await amber("--version");
-const login = await amber(`login --server ${srv.url}`, srv.token);
-const mode = (await Deno.stat(`${work}/config/amber/config.json`)).mode! & 0o777;
-say(`$ stat -f %Lp config/amber/config.json\n${mode.toString(8)}`);
-check(mode === 0o600, "the token file is mode 600");
-check(!login.includes("pane_"), "the token is never printed");
+const help = await amber("help");
+check(help.out.split("\n").length <= 25, `amber help fits on one screen (${help.out.split("\n").length} lines)`);
+
+step("Sign in: browser, approve in Amber Notes");
+const before = (await settings()).length;
+const login = await amber("login", { show: "amber login        # the browser opens the consent page; Allow" });
+check(login.code === 0 && /Connected to Amber Notes \(read & edit\)/.test(login.out), "connected with read & edit");
+const conns = await showSettings();
+const terminal = (await settings()).slice(before).find((c) => !c.revoked);
+check(terminal?.title === "An app on this computer", "Settings lists it as \"An app on this computer\", like any app signing in from this computer");
+if (Deno.build.os === "darwin") {
+  const k = await keychain();
+  const attrs = new TextDecoder().decode(k.stdout);
+  sh(`security find-generic-password -s ${SERVICE} -a ${server}   # attributes only`, attrs.split("\n").filter((l) => /svce|acct|labl|class/.test(l)).join("\n"));
+  check(k.success, "the tokens are in the macOS Keychain");
+}
+const files = await Array.fromAsync(Deno.readDir(`${work}/config/amber`)).catch(() => []);
+sh("ls config/amber", files.map((f) => f.name).join("\n"));
+check(!files.some((f) => f.name === "credentials.json"), "and not in a file");
 await amber("status");
 
-step("Pull the account into a folder");
-await amber("pull notes");
-say(`$ find notes -name '*.md'\n${(await tree()).map((p) => `notes/${p}`).join("\n")}`);
-say(`$ cat notes/Groceries.md\n${await file("Groceries.md")}`);
-check((await file("Groceries.md"))?.includes("[[Recipes]]") === true, "[[wikilinks]] stay as written");
-check((await file("Travel/Trip/Packing.md")) !== undefined, "a sub-note sits in its parent's folder");
-check(!(await tree()).some((p) => p.includes("Diary")), "the locked note is skipped");
-check(!(await tree()).some((p) => p.includes(".app")), "the note's app is skipped; its text syncs (Work/Habits.md)");
+step("Read");
+await amber("list");
+await amber("list Work/");
+const s = await amber("search butter");
+check(s.out.startsWith("Groceries.md"), "search finds the note by a word in it");
+const r = await amber("read Work/Clients/Acme.md");
+check(r.out.startsWith("# Acme\n"), "read prints the markdown exactly");
+const j = await amber("read Groceries.md --json", { quiet: true });
+const parsed = JSON.parse(j.out);
+sh("amber read Groceries.md --json | jq '{id, title, version: .metadata.version, links: .metadata.links}'", JSON.stringify({ id: parsed.id, title: parsed.title, version: parsed.metadata.version, links: parsed.metadata.links }, null, 2));
+check(parsed.metadata.links?.[0] === "Recipes", "--json gives the server's full answer ([[links]] included)");
+const locked = await amber("read Work/Diary.md");
+check(locked.code === 1 && /locked/.test(locked.err), "a locked note stays closed, with a reason and exit code 1");
 
-step("Edit here, see it in Amber");
-await sh(`sed -i '' 's/- \\[ \\] Milk/- [x] Milk/' notes/Groceries.md`, async () => {
-  await Deno.writeTextFile(`${work}/notes/Groceries.md`, (await file("Groceries.md"))!.replace("- [ ] Milk", "- [x] Milk"));
-});
-await amber("sync notes");
-const g = await remoteText("Groceries.md");
-say(`[Amber] fetch Groceries.md\n${g}`);
-check(g.includes("- [x] Milk"), "the tick is in Amber");
-const hist = await phone.call("history", { id: "Groceries.md" });
-check(JSON.stringify(hist).includes("amber cli (e2e)"), "Amber's history names the token that made the change");
+step("Change");
+const c = await amber(`create Work 'Standup\\n\\n- Shipped the CLI\\n- Next: tests'`, { show: "amber create Work $'Standup\\n\\n- Shipped the CLI\\n- Next: tests'" });
+check(/Created Work\/Standup.md/.test(c.out), "create");
+const c2 = await amber("create Ideas/Garden.md", { stdin: "- tomatoes\n- basil\n", show: "printf -- '- tomatoes\\n- basil\\n' | amber create Ideas/Garden.md" });
+check(/Created Ideas\/Garden.md/.test(c2.out), "create from stdin, titled by the file name");
+const e = await amber(`edit Groceries.md '- [ ] Milk' '- [x] Milk'`);
+check(/Edited Groceries.md/.test(e.out), "edit (exact search and replace)");
+const bad = await amber(`edit Groceries.md 'Oat milk' 'Milk'`);
+check(bad.code === 1 && /not found|doesn't|no match|isn't in/i.test(bad.err), "edit with text that isn't there changes nothing and says so");
+const broken = await amber(`edit Groceries.md '- [ ] Butter' '-[ ] Butter'`);
+check(/check:/.test(broken.out), "edit reports what the change broke");
+await amber(`edit Groceries.md '-[ ] Butter' '- [ ] Butter'`, { quiet: true });
+const w = await amber("write Work/Standup.md", { stdin: "Standup\n\n- Shipped the CLI\n- Next: the brew formula\n", show: "printf 'Standup\\n\\n- Shipped the CLI\\n- Next: the brew formula\\n' | amber write Work/Standup.md" });
+check(/Wrote Work\/Standup.md/.test(w.out), "write from stdin");
+const m = await amber("move Work/Standup.md Archive/");
+check(/Moved to Archive\/Standup.md/.test(m.out), "move to a folder");
+const rn = await amber(`move 'Archive/Standup.md' 'Archive/Standup 10-06.md'`);
+check(/Archive\/Standup 10-06.md/.test(rn.out), "rename");
+const h = await amber(`history 'Archive/Standup 10-06.md'`);
+const firstVersion = [...h.out.matchAll(/^\s+(\d+)\s/gm)].map((x) => x[1]).pop();
+check(Boolean(firstVersion), "history lists earlier versions");
+const rs = await amber(`restore 'Archive/Standup 10-06.md' ${firstVersion}`);
+check(/Restored/.test(rs.out), "restore a version");
+const after = await amber("read Archive/Standup.md");
+check(after.out.includes("Next: tests"), "the old text is back, with its old title (the first line), so its old name");
+const d = await amber("delete Ideas/Garden.md");
+const gardenId = d.out.match(/amber restore (\S+)/)?.[1];
+check(Boolean(gardenId), "delete moves it to Recently Deleted, and says how to bring it back");
+await amber(`list 'Recently Deleted/'`);
+const ud = await amber(`restore ${gardenId}`);
+check(/Restored "Garden"/.test(ud.out), "restore from Recently Deleted");
+await amber("pin Work/Clients/Acme.md");
+const unpin = await amber("pin Groceries.md --off");
+check(/Unpinned Groceries.md/.test(unpin.out), "pin and unpin");
 
-step("Change a note in Amber, see the file change");
-const acme = await idOf("Work/Clients/Acme.md");
-say(`[Amber, the iPhone app] edits Work/Clients/Acme.md: "Kickoff Monday 10:00." becomes "Kickoff Tuesday 09:00."`);
-await srv.app({ op: "edit", id: acme, text: "# Acme\n\nKickoff Tuesday 09:00.\n\n## Open questions\n- Budget?\n" });
-await amber("sync notes");
-say(`$ cat notes/Work/Clients/Acme.md\n${await file("Work/Clients/Acme.md")}`);
-check((await file("Work/Clients/Acme.md"))?.includes("Tuesday 09:00") === true, "the file has the app's edit");
+step("Signed in for longer than an hour: five amber commands at once renew the token once");
+// Five processes find the access token expired together. Refresh tokens are single use and a reused
+// one revokes the connection, so they must take turns (the refresh lock). Run with the file store
+// so the test can wind the clock back.
+const fileEnv = { AMBER_NO_KEYCHAIN: "1", XDG_CONFIG_HOME: `${work}/config-file` };
+await amber("login", { env: fileEnv, quiet: true });
+const credFile = `${work}/config-file/amber/credentials.json`;
+const mode = (await Deno.stat(credFile)).mode! & 0o777;
+sh("stat -f %Lp config-file/amber/credentials.json   # the Linux store, AMBER_NO_KEYCHAIN=1", mode.toString(8));
+check(mode === 0o600, "the Linux credentials file is mode 600");
+const creds = JSON.parse(await Deno.readTextFile(credFile));
+for (const v of Object.values(creds) as { access_token: string; refresh_token: string }[]) secrets.push(v.access_token, v.refresh_token);
+for (const k of Object.keys(creds)) creds[k].expires_at = Date.now() - 1000;
+await Deno.writeTextFile(credFile, JSON.stringify(creds));
+say("(the access token's expiry set an hour back)");
+say("$ for i in 1 2 3 4 5; do amber list Work/ & done; wait");
+const five = await Promise.all([1, 2, 3, 4, 5].map(() => amber("list Work/", { env: fileEnv, quiet: true })));
+check(five.every((x) => x.code === 0), `all five succeed (exit codes ${five.map((x) => x.code).join(" ")})`);
+const renewed = JSON.parse(await Deno.readTextFile(credFile));
+const rv = Object.values(renewed)[0] as { access_token: string; refresh_token: string; expires_at: number };
+secrets.push(rv.access_token, rv.refresh_token);
+check(rv.expires_at > Date.now() + 50 * 60_000, "the token was renewed");
+check((await settings()).filter((x) => !x.revoked).length === conns.length + 1, "and the connection is still there (no refresh token was used twice)");
+await amber("logout", { env: fileEnv, quiet: true });
 
-step("Create, both ways");
-await sh(`mkdir notes/Ideas && printf -- '- tomatoes\\n- basil\\n' > notes/Ideas/Garden.md`, async () => {
-  await Deno.mkdir(`${work}/notes/Ideas`);
-  await Deno.writeTextFile(`${work}/notes/Ideas/Garden.md`, "- tomatoes\n- basil\n");
-});
-say(`[Amber, the iPhone app] creates "Standup" in Work`);
-await srv.app({ op: "create", folder: "Work", text: "Standup\n\n- Yesterday: CLI\n- Today: tests\n" });
-await amber("sync notes");
-const garden = await idOf("Ideas/Garden.md");
-check(Boolean(garden), "Ideas/Garden.md is a note in Amber");
-say(`[Amber] fetch Ideas/Garden.md\n${garden ? await remoteText("Ideas/Garden.md") : "(missing)"}`);
-check((await file("Ideas/Garden.md"))?.startsWith("Garden\n") === true, "a file without a title line gets its name as the first line");
-check((await file("Work/Standup.md"))?.includes("Today: tests") === true, "the app's new note is a file");
+step("Disconnect it in the app: the terminal is turned away");
+await showSettings();
+say(`[Amber Notes › Settings › Connect an AI] Disconnect "An app on this computer"`);
+await fetch(`${origin}/__app/revoke`, { method: "POST", body: JSON.stringify({ id: terminal!.id }) });
+const gone = await amber("list");
+check(gone.code === 1 && /amber login/.test(gone.err), "the next command fails and says to run amber login");
+await showSettings();
 
-step("Move and rename, both ways");
-await sh(`mkdir notes/Archive && mv "notes/Work/Weekly review.md" notes/Archive/`, async () => {
-  await Deno.mkdir(`${work}/notes/Archive`);
-  await Deno.rename(`${work}/notes/Work/Weekly review.md`, `${work}/notes/Archive/Weekly review.md`);
-});
-const weekly = await idOf("Work/Weekly review.md");
-await sh(`mv notes/Recipes.md notes/Cooking.md`, () => Deno.rename(`${work}/notes/Recipes.md`, `${work}/notes/Cooking.md`));
-const recipes = await idOf("Recipes.md");
-say(`[Amber, Claude on the phone] move Travel/Trip.md → Work/`);
-await phone.call("move", { id: "Travel/Trip.md", to: "Work/" });
-await amber("sync notes");
-check(await remotePath(weekly) === "Archive/Weekly review.md", "the move here is a move in Amber");
-check(await remotePath(recipes) === "Cooking.md", "the rename here renames the note in Amber");
-say(`$ head -1 notes/Cooking.md\n${(await file("Cooking.md"))?.split("\n")[0]}`);
-check((await file("Cooking.md"))?.startsWith("Cooking\n") === true, "and its first line (the title) follows");
-check((await file("Work/Trip.md")) !== undefined && (await file("Work/Trip/Packing.md")) !== undefined && (await file("Travel/Trip.md")) === undefined, "Amber's move moves the file, its sub-note with it");
+step("Don't Allow");
+const denied = await amber("login", { env: { APPROVE: "0" }, show: "amber login        # this time: Don't Allow" });
+check(denied.code === 1 && /Declined in Amber Notes/.test(denied.err), "declining connects nothing");
 
-step("Delete, both ways");
-const standup = await idOf("Work/Standup.md");
-await sh(`rm notes/Work/Standup.md`, () => Deno.remove(`${work}/notes/Work/Standup.md`));
-say(`[Amber, Claude on the phone] delete Cooking.md`);
-await phone.call("delete", { id: "Cooking.md" });
-await amber("sync notes");
-const deleted = await phone.call("list", { path: "Recently Deleted/" });
-check(deleted.notes.some((n: { id: string }) => n.id === standup), "the file deleted here is in Amber's Recently Deleted");
-check((await file("Cooking.md")) === undefined, "the note deleted in Amber is gone from the folder");
-const trashDir = (await Array.fromAsync(Deno.readDir(`${work}/notes/.amber/trash`)))[0]?.name;
-say(`$ ls notes/.amber/trash/${trashDir}\n${(await Array.fromAsync(Deno.readDir(`${work}/notes/.amber/trash/${trashDir}`))).map((e) => e.name).join("\n")}`);
-check(Boolean(trashDir), "and kept in .amber/trash");
-
-step("A conflict: the same note changed on both sides");
-await sh(`printf '\\n- Bring the slides.\\n' >> notes/Work/Clients/Acme.md`, async () => {
-  await Deno.writeTextFile(`${work}/notes/Work/Clients/Acme.md`, "\n- Bring the slides.\n", { append: true });
-});
-say(`[Amber, the iPhone app] edits Work/Clients/Acme.md: kickoff moves to Wednesday`);
-await srv.app({ op: "edit", id: acme, text: "# Acme\n\nKickoff Wednesday 14:00.\n\n## Open questions\n- Budget?\n" });
-await amber("sync notes");
-const copies = (await tree()).filter((p) => p.startsWith("Work/Clients/"));
-say(`$ ls notes/Work/Clients\n${copies.map((p) => p.split("/").pop()).join("\n")}`);
-const copyPath = copies.find((p) => p.includes("(conflict "));
-say(`$ cat notes/Work/Clients/Acme.md\n${await file("Work/Clients/Acme.md")}`);
-say(`$ cat "notes/${copyPath}"\n${copyPath ? await file(copyPath) : "(none)"}`);
-check((await file("Work/Clients/Acme.md"))?.includes("Wednesday") === true, "the note's file has Amber's text");
-check(Boolean(copyPath && (await file(copyPath))?.includes("Bring the slides")), "this folder's text is kept as a conflict copy");
-check(Boolean(copyPath && await idOf(copyPath)), "the conflict copy is a note in Amber too, so the phone sees both");
-
-step("Watch: changes go both ways without running sync by hand");
-say(`$ amber sync notes --watch --interval 5 &`);
-const watch = new Deno.Command(bin, { args: ["sync", "notes", "--watch", "--interval", "5"], cwd: work, env, stdout: "piped", stderr: "piped" }).spawn();
-const watchOut: string[] = [];
-const collect = async (s: ReadableStream<Uint8Array>) => { for await (const c of s.pipeThrough(new TextDecoderStream())) watchOut.push(c); };
-const collecting = Promise.all([collect(watch.stdout), collect(watch.stderr)]);
-await new Promise((r) => setTimeout(r, 2500));
-await sh(`printf '\\n- Pears\\n' >> notes/Groceries.md`, () => Deno.writeTextFile(`${work}/notes/Groceries.md`, "\n- Pears\n", { append: true }));
-const t0 = Date.now();
-if (await waitFor("the local edit reaches Amber", async () => (await remoteText("Groceries.md")).includes("Pears"))) check(true, `the local edit reached Amber in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
-say(`[Amber, the iPhone app] ticks "Plan next week" in Archive/Weekly review.md`);
-await srv.app({ op: "edit", id: weekly, text: "Weekly review\n\n- [ ] Inbox zero\n- [x] Plan next week\n" });
-const t1 = Date.now();
-if (await waitFor("Amber's edit reaches the file", async () => (await file("Archive/Weekly review.md"))?.includes("- [x] Plan next week") === true)) check(true, `Amber's edit reached the file in ${((Date.now() - t1) / 1000).toFixed(1)}s (polling every 5s)`);
-watch.kill("SIGTERM");
-await watch.status;
-await collecting;
-say(`$ kill %1   # the watch printed:\n${hide(watchOut.join("")).replace(/^\d{4}-\d\d-\d\dT[\d:.]+Z /gm, "").replaceAll(work + "/", "").trimEnd()}`);
-
-step("Status");
-await amber("status notes");
-
-await phone.close();
-await stop(srv.proc);
-
-// MARK: classic tools
-
-step("The same against the classic tools (what production runs today)");
-const old = await startServer(freePort(), true);
-token = old.token;
-await amber(`login --server ${old.url}`, old.token);
-await amber("pull classic");
-const before = await Deno.readTextFile(`${work}/classic/Groceries.md`);
-await sh(`sed -i '' 's/- \\[ \\] Butter/- [x] Butter/' classic/Groceries.md`, () => Deno.writeTextFile(`${work}/classic/Groceries.md`, before.replace("- [ ] Butter", "- [x] Butter")));
-await sh(`printf 'Made with classic tools\\n' > classic/Work/New.md`, () => Deno.writeTextFile(`${work}/classic/Work/New.md`, "Made with classic tools\n"));
-await amber("sync classic");
-const oldMcp = await connect(old.url, old.token);
-const listed = await oldMcp.call("list_notes", { include_sub_notes: true, limit: 200 });
-const gid = listed.notes.find((n: { title: string }) => n.title === "Groceries").id;
-check((await oldMcp.call("read_note", { id: gid })).markdown.includes("- [x] Butter"), "the edit is in Amber through edit_note");
-check(listed.notes.some((n: { title: string; folder: string }) => n.title === "New" && n.folder === "Work"), "the new file is a note through create_note, titled by its file name");
-check((await Array.fromAsync(Deno.readDir(`${work}/classic/Travel/Trip`))).some((e) => e.name === "Packing.md"), "sub-notes get the same paths as with the files tools");
-await oldMcp.close();
-await stop(old.proc);
-
-step("Token hygiene");
-const leaks: string[] = [];
-for (const t of [srv.token, old.token]) {
-  for await (const f of walkAll(work)) {
-    if (f.endsWith("config.json") || f.includes("/token-")) continue;
-    if ((await Deno.readTextFile(f).catch(() => "")).includes(t)) leaks.push(f.replace(work + "/", ""));
-  }
+step("A server without a browser: amber login --no-browser");
+say("$ amber login --no-browser");
+const nb = new Deno.Command(bin, { args: ["login", "--no-browser", "--server", server], cwd: work, env: baseEnv, clearEnv: true, stdin: "piped", stdout: "piped", stderr: "piped" }).spawn();
+const errText: string[] = [];
+const outText = new Response(nb.stdout).text();
+const reader = nb.stderr.pipeThrough(new TextDecoderStream()).getReader();
+let url = "";
+while (!url) {
+  const { value, done } = await reader.read();
+  if (done) break;
+  errText.push(value);
+  url = errText.join("").match(/(http:\/\/127\.0\.0\.1:\d+\/mcp\/authorize\?\S+)/)?.[1] ?? "";
 }
-check(leaks.length === 0, `no token in any synced file, state file or trash${leaks.length ? `: ${leaks.join(", ")}` : ""}`);
+// The browser is on another machine: approving there ends on an address that machine can't load.
+const elsewhere = await new Deno.Command(`${cli}e2e/approve.sh`, { args: [url], env: { ELSEWHERE: "1" }, stdout: "piped" }).output();
+const landed = new TextDecoder().decode(elsewhere.stdout).trim();
+const w2 = nb.stdin.getWriter();
+await w2.write(new TextEncoder().encode(landed + "\n"));
+await w2.close();
+const rest = (async () => { for (;;) { const { value, done } = await reader.read(); if (done) break; errText.push(value); } })();
+await nb.status;
+const nbOut = await outText;
+await rest;
+say(clean(errText.join("") + landed.replace(/code=[^&]+/, "code=…") + "\n" + nbOut).trimEnd());
+check(/Connected to Amber Notes/.test(nbOut), "pasting the address the browser landed on connects");
+const ok = await amber("search 'Lisbon'");
+check(/Travel\/Trip.md/.test(ok.out), "and amber works");
+
+step("CI: AMBER_TOKEN, or amber login --token");
+const env = await amber("status", { env: { AMBER_TOKEN: paneToken }, show: "AMBER_TOKEN=<access token from Settings› Connect an AI> amber status" });
+check(/AMBER_TOKEN/.test(env.out), "AMBER_TOKEN works without signing in");
+const ci = { XDG_CONFIG_HOME: `${work}/config-ci`, AMBER_KEYCHAIN_SERVICE: `${SERVICE}-ci` };
+const tl = await amber("login --token", { stdin: paneToken, env: ci, show: "amber login --token < token.txt" });
+check(tl.code === 0, "login --token saves a pasted token");
+await amber("logout", { env: ci });
+
+step("Signing in again replaces the old connection");
+await amber("login", { quiet: true });
+await showSettings();
+const terminals = (await settings()).filter((x) => !x.revoked && x.title === "An app on this computer").length;
+check(terminals === 1, `one "An app on this computer", not two (${terminals})`);
+
+step("Sign out");
+await amber("logout");
+const after2 = await showSettings();
+check(!after2.some((x) => x.title === "An app on this computer"), "amber logout disconnects it in the app too");
+if (Deno.build.os === "darwin") check(!(await keychain()).success, "and removes it from the Keychain");
+
+step("Tokens never show");
+const leaks: string[] = [];
+for await (const f of walk(work)) {
+  if (f.endsWith("token.txt") || f.endsWith("credentials.json")) continue;
+  const t = await Deno.readTextFile(f).catch(() => "");
+  if (/(pane|amb_at|amb_rt|amb_code)_[0-9a-f]{20,}/.test(t)) leaks.push(f.replace(work + "/", ""));
+}
+check(leaks.length === 0, `no token in any config file${leaks.length ? `: ${leaks.join(", ")}` : ""}`);
+say("(and the transcript above is checked for token patterns after it is written)");
 
 say(`\n${failed ? `${failed} check(s) FAILED` : "All checks passed."}`);
+srv.kill("SIGTERM");
+await srv.status;
+await srv.stderr.cancel().catch(() => {});
+for (const s of [SERVICE, `${SERVICE}-ci`]) await new Deno.Command("/usr/bin/security", { args: ["delete-generic-password", "-s", s], stdout: "null", stderr: "null" }).output().catch(() => {});
 await Deno.remove(work, { recursive: true });
 Deno.exit(failed ? 1 : 0);
 
-async function* walkAll(dir: string): AsyncGenerator<string> {
+async function* walk(dir: string): AsyncGenerator<string> {
   for await (const e of Deno.readDir(dir)) {
     const p = `${dir}/${e.name}`;
-    if (e.isDirectory) yield* walkAll(p); else if (e.isFile) yield p;
+    if (e.isDirectory) yield* walk(p); else if (e.isFile) yield p;
   }
 }
