@@ -80,3 +80,36 @@ extension EditorPerfTests {
     }
 }
 #endif
+
+#if os(macOS)
+extension EditorPerfTests {
+    /// Hiding or showing the sidebar widens or narrows the note a little every frame for a quarter
+    /// of a second. Each of those frames has to fit in a frame's time, or the sidebar stutters.
+    @Test func widthChangeLikeTheSidebar() async {
+        for (name, text, budget) in [("blocks", PerfFixtures.blockyNote(), 8.0), ("5000 lines", PerfFixtures.longNote(), 8.0), ("80 lines", PerfFixtures.longNote(lines: 80), 4.0)] {
+            let h = await EditorHarness(text, width: 760, focus: false)
+            h.window.displayIfNeeded()
+            await h.settle(0.3)
+            let clock = ContinuousClock()
+            var steps: [Double] = []
+            // 15 frames from 760 to 990 points wide, and back: the sidebar's width.
+            let widths = (0...15).map { 760 + 230 * Double($0) / 15 }
+            for w in widths + widths.reversed() {
+                steps.append(ms(clock.measure {
+                    h.window.setContentSize(NSSize(width: w, height: 900))
+                    h.scroll.frame.size = NSSize(width: w, height: 900)
+                    h.window.contentView?.layoutSubtreeIfNeeded()
+                    // What the next turn of the run loop does after a resize.
+                    h.view.layoutCards()
+                    h.window.displayIfNeeded()
+                }))
+            }
+            steps.sort()
+            let median = steps[steps.count / 2]
+            print("PERF sidebar-like width change [\(name)]: median \(String(format: "%.2f", median)) ms, max \(String(format: "%.2f", steps.last!)) ms a frame")
+            #expect(median < budget * PerfBudget.slack, "each frame of the sidebar's animation fits in a frame")
+            h.close()
+        }
+    }
+}
+#endif

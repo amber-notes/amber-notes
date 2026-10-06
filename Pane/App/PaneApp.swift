@@ -32,7 +32,9 @@ struct PaneApp: App {
         let args = ProcessInfo.processInfo.arguments
         let inMemory = args.contains("-uitest") || args.contains("-synctest") || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
         if inMemory { UserDefaults.standard.removeObject(forKey: "lastScope") }
-        let config = ModelConfiguration("Pane", isStoredInMemoryOnly: inMemory)
+        // Performance runs can keep their library on disk, as the app does: `-uitest -perfStore /tmp/probe.store`.
+        let perfStore = args.contains("-uitest") ? Capture.argument("-perfStore") : nil
+        let config = perfStore.map { ModelConfiguration(url: URL(fileURLWithPath: $0)) } ?? ModelConfiguration("Pane", isStoredInMemoryOnly: inMemory)
         container = try! ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: config)
         Self.sharedContainer = container
         let backend = Backend()
@@ -71,6 +73,9 @@ struct PaneApp: App {
         Capture.importVaultFromArguments(container.mainContext)
         Capture.notePagesFromArguments(container.mainContext)
         Capture.bestAppsFromArguments(container.mainContext)
+        #if os(macOS)
+        PerfProbe.startFromArguments(container.mainContext)
+        #endif
         #if os(iOS)
         FrameProbe.startFromArguments()
         #endif
