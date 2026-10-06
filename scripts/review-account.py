@@ -125,7 +125,7 @@ class Account:
                 with open(SECRETS, "w") as f:
                     f.write(text)
                 sys.exit("Another device made this account's key just now. Save its recovery key to .secrets/appreview.txt and run this again.")
-            print("Made the account's key and saved its recovery key to .secrets/appreview.txt (not printed).")
+            print(f"Made the account's key and saved its recovery key to {SECRETS} (not printed).")
             print("Add that recovery key to the App Review notes: the reviewer's device will ask for it.")
             return k["dk"]
         key = saved_recovery_key(text)

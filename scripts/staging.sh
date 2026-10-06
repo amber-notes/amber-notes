@@ -162,6 +162,8 @@ for d in a.get("applinks", {}).get("details", []):
     if "appID" in d: d["appID"] = app
 json.dump(a, open(path, "w"), indent=2)
 PY
+  # A project made from the CLI has no framework preset; without Next.js the middleware doesn't build.
+  python3 -c 'import json,sys;p=sys.argv[1];v=json.load(open(p));v["framework"]="nextjs";json.dump(v,open(p,"w"),indent=2)' "$stage/vercel.json"
   [[ -n ${STAGING_REPORT_SALT:-} ]] || { STAGING_REPORT_SALT=$(openssl rand -hex 32); save "STAGING_REPORT_SALT=$STAGING_REPORT_SALT"; }
   cd "$stage"
   vercel link --yes --project "$WEB_PROJECT" --scope "$TEAM" >/dev/null
