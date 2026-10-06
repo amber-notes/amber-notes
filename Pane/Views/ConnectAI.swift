@@ -24,9 +24,9 @@ import UIKit
 // MARK: Pure pieces (tested)
 
 enum ConnectLink {
-    static let scheme = "ambernotes"
+    static let scheme = AppIdentity.scheme
     /// The site's universal link for the same thing: https://ambernotes.app/open/connect?request=<uuid>.
-    static let webHosts: Set<String> = ["ambernotes.app", "www.ambernotes.app"]
+    static let webHosts = AppIdentity.webHosts
     static let webPath = "/open/connect"
 
     /// The request id in ambernotes://connect?request=<uuid> or its universal link, if this is one.

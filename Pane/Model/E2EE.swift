@@ -511,7 +511,7 @@ final class MemoryAccountKeyStore: AccountKeyStore, @unchecked Sendable {
 /// provisioning profile: `errSecMissingEntitlement`) keep the key on this device only, where the
 /// session is kept (`SessionStorage`); such a device gets the key from the recovery key.
 struct KeychainAccountKeyStore: AccountKeyStore {
-    static let service = "dev.emilwagman.pane.data-key"
+    static let service = AppIdentity.keychainPrefix + ".data-key"
 
     static let dataProtectionAvailable: Bool = {
         var q = query(UUID(), slot: .synced)

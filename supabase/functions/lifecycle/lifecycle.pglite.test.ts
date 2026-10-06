@@ -14,7 +14,7 @@ const at = (ms: number) => new Date(NOW.getTime() + ms);
 
 const cfg = (o: Partial<Config> = {}): Config => ({
   enabled: true, flags: { apps: false, appStore: false, sharing: false }, subjectTest: false, trackClicks: false, since: at(-60 * D), only: null, resendKey: "re_test", unsubscribeSecret: "u".repeat(40), cronSecret: "c".repeat(40),
-  from: "Emil at Amber Notes <emil@ambernotes.app>", replyTo: "emil@ambernotes.app", site: "https://ambernotes.app", ...o,
+  from: "Emil at Amber Notes <emil@ambernotes.app>", replyTo: "emil@ambernotes.app", site: "https://ambernotes.app", subjectPrefix: "", manualRounds: false, ...o,
 });
 
 /// A fake Resend that remembers what it was given.
@@ -312,4 +312,15 @@ Deno.test("clients can't read or write the email tables", async () => {
 Deno.test("lifecycle_tick does nothing without pg_net and the vault", async () => {
   const pg = await schemaDB();
   await pg.query(`select public.lifecycle_tick()`);
+});
+
+Deno.test("staging: subjects carry the prefix and links open the staging site", async () => {
+  const pg = await schemaDB();
+  await person(pg, { age: 2 * D, notes: 1, mac: true });
+  const box = outbox();
+  await run({ sql: sqlFor(pg), send: box.send, cfg: cfg({ site: "https://amber-notes-staging.vercel.app", subjectPrefix: "[Staging] " }), ...quick });
+  assertEquals(kinds(box), [`[Staging] ${S.import}`]);
+  assert(box.sent[0].html.includes("https://amber-notes-staging.vercel.app/open/import"));
+  assert(!box.sent[0].html.includes("https://ambernotes.app/open/"));
+  assert(box.sent[0].headers["List-Unsubscribe"].startsWith("<https://amber-notes-staging.vercel.app/unsubscribe/confirm?"));
 });

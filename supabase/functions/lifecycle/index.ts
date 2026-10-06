@@ -81,7 +81,9 @@ Deno.serve(atHome("lifecycle", async (req) => {
     if (!sameSecret(req.headers.get("x-lifecycle-secret") ?? "", settings.config.cronSecret)) return reply({ error: "not allowed" }, 401);
     await ready();
     try {
-      const report = await run({ sql, send: resend(settings.config.resendKey), cfg: settings.config });
+      // ?any_hour=1 skips the 9 o'clock rule, only where manual rounds are allowed (staging).
+      const anyHour = settings.config.manualRounds && url.searchParams.get("any_hour") === "1";
+      const report = await run({ sql, send: resend(settings.config.resendKey), cfg: settings.config, anyHour });
       log("lifecycle_round", { status: report.enabled ? "on" : "off", count: report.sent, attempts: report.failed });
       return reply(report);
     } catch (e) {

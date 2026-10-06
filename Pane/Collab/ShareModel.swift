@@ -129,7 +129,7 @@ extension CollabStore {
     nonisolated static func parseLink(_ url: URL) -> (id: String, secret: Data)? {
         let parts = url.path.split(separator: "/").map(String.init)
         let id: String
-        if url.scheme == "ambernotes", url.host == "s", let first = parts.first { id = first }
+        if url.scheme == AppIdentity.scheme, url.host == "s", let first = parts.first { id = first }
         else if let i = parts.firstIndex(of: "s"), i + 1 < parts.count { id = parts[i + 1] }
         else { return nil }
         guard id.range(of: #"^[A-Za-z0-9_-]{22}$"#, options: .regularExpression) != nil, let frag = url.fragment,
