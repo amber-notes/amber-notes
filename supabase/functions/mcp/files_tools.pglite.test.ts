@@ -134,6 +134,11 @@ Deno.test("search like grep and ranked, list like glob, at scale-ish", async () 
   const paged = await tool(pg, a, "search", { pattern: "Daily", limit: 10, offset: 10 });
   assertEquals(paged.files.length, 10);
   assertStringIncludes(paged.more, "10 more: offset 20");
+  // The word index narrows, never hides: substrings inside words, notes changed since it was built.
+  assertEquals((await tool(pg, a, "search", { pattern: "posit" })).files.length, 2);
+  await note(pg, a, "Late\n\nAnother deposit, added after the index.", { folder: work });
+  assertEquals((await tool(pg, a, "search", { pattern: "deposit" })).files.length, 3);
+  assertEquals((await tool(pg, a, "search", { query: "another deposit" })).results[0].id, "Work/Late.md");
   // list: glob, newest first, paging.
   assertEquals((await tool(pg, a, "list", { pattern: "**/Acme*.md" })).matches.length, 2);
   assertEquals((await tool(pg, a, "list", { path: "Work/", pattern: "Daily 1*" })).matches.length, 11);
@@ -157,6 +162,9 @@ Deno.test("a note's files live in its folder, and links show paths", async () =>
     assertStringIncludes(n.text, "![contract.txt](<Acme/contract.txt>)");
     assertEquals(n.metadata.files, ["Acme/contract.txt"]);
     assertStringIncludes(JSON.stringify(await tool(pg, a, "fetch", { id: "Acme/contract.txt" })), "Signed 2026-09-30.");
+    // A glob and a search by name find it too (from the word index).
+    assertEquals((await tool(pg, a, "list", { pattern: "**/*.txt" })).matches, [{ path: "Acme/contract.txt", type: "file" }]);
+    assertEquals((await tool(pg, a, "search", { pattern: "contract", type: "file" })).files, ["Acme/contract.txt"]);
     // Editing around the link keeps it a file link.
     await tool(pg, a, "edit", { path: "Acme.md", old_string: "Acme\n", new_string: "Acme\n\nThe contract:" });
     assertStringIncludes((await opened(pg, a, id)).body!, `![contract.txt](pane-file:${f.id})`);

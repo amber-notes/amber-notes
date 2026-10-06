@@ -9,6 +9,7 @@ import { schemaDB } from "../../supabase/functions/mcp/pglite.ts";
 import { account, app, file, folder, note, toolContext } from "../../supabase/functions/mcp/sealed.ts";
 import { runFileTool } from "../../supabase/functions/mcp/files_tools.ts";
 import { scaffold } from "../../supabase/functions/mcp/app_scaffold.ts";
+import { previewOf, titleOf } from "../../supabase/functions/mcp/notes.ts";
 import { withFiles } from "../../supabase/functions/mcp/app_files.ts";
 import { linkProject, serialize } from "../../supabase/functions/mcp/app_project.ts";
 
@@ -28,10 +29,18 @@ async function seed(n: number) {
   const nf = Math.max(4, Math.round(n / 25));
   for (let i = 0; i < nf; i++) folders.push(await folder(pg, a, `Folder ${i}`, i < 8 ? null : folders[(i * 3) % Math.min(i, 40)]));
   const ids: string[] = [];
+  // Straight into the table (as the database owner, triggers off): the account's write limit is
+  // for people, not for seeding 20,000 notes.
+  await pg.query(`set session_replication_role = replica`);
   for (let i = 0; i < n; i++) {
     const parent = i % 20 === 19 ? ids[i - 1] : null;
-    ids.push(await note(pg, a, body(i), { folder: folders[i % nf], parent }));
+    const id = crypto.randomUUID();
+    const b = body(i);
+    await pg.query(`insert into public.notes (id, user_id, body_ct, head_ct, folder_id, parent_id) values ($1, $2, $3, $4, $5, $6)`,
+      [id, a.id, await a.vault.sealBody(id, b), await a.vault.sealHead(id, { title: titleOf(b), preview: previewOf(b) }), folders[i % nf], parent]);
+    ids.push(id);
   }
+  await pg.query(`set session_replication_role = origin`);
   // The Lisbon deposit, somewhere deep.
   await note(pg, a, "Apartment hunt\n\nLisbon apartment: the deposit is 2 months' rent.\n", { folder: folders[nf - 1] });
   for (let k = 0; k < 10; k++) {
@@ -67,12 +76,14 @@ for (const n of sizes) {
     ["search ranked", "search", { query: "lisbon deposit" }],
     ["search grep", "search", { pattern: "deposit", output: "content" }],
     ["search grep scoped", "search", { pattern: "todo", path: deep.split("/")[0] + "/" }],
+    ["search grep rare", "search", { pattern: "months' rent", output: "content" }],
+    ["search ranked rare", "search", { query: "apartment hunt" }],
     ["edit note", "edit", { path: deep, old_string: `## ${pick(3, 1)}`, new_string: `## ${pick(3, 1)}!` }],
   ];
   const results = new Map<string, Row[]>();
   for (let r = 0; r < repeat; r++) {
     // The first round starts cold (no titles cached), like a new isolate.
-    if (r === 0) await app(pg, a.id, `delete from public.mcp_title_index`);
+    if (r === 0) { await app(pg, a.id, `delete from public.mcp_title_index`); await app(pg, a.id, `delete from public.mcp_word_index`); }
     for (const [label, name, x] of ops) {
       // The edit goes back and forth, so each round has something to change.
       const row = await time(ctxOf, label, name, label === "edit note" && r % 2 ? { ...x, old_string: x.new_string, new_string: x.old_string } : x);
@@ -84,7 +95,7 @@ for (const n of sizes) {
     const warm = rows.slice(1).map((r) => r.ms);
     const p = rows[0].parts;
     console.log(label.padEnd(22), String(Math.round(rows[0].ms)).padStart(8), String(Math.round(warm.length ? Math.min(...warm) : NaN)).padStart(8),
-      `  rows ${p.notes ?? "-"}, titles opened ${p.paths_opened ?? 0} (${Math.round(p.paths_open ?? 0)} ms), db ${Math.round(p.paths_db ?? 0)} ms, build ${Math.round(p.paths_build ?? 0)} ms${p.search_notes ? `, texts opened ${p.search_notes} (${Math.round(p.search_open ?? 0)} ms)` : ""}${rows[0].op !== label ? `  ${rows[0].op}` : ""}`);
+      `  rows ${p.notes ?? "-"}, titles opened ${p.paths_opened ?? 0} (${Math.round(p.paths_open ?? 0)} ms), db ${Math.round(p.paths_db ?? 0)} ms, build ${Math.round(p.paths_build ?? 0)} ms${p.search_candidates !== undefined ? `, texts opened ${p.search_candidates}, words index ${p.words_load} ms (${p.words_indexed} notes)` : ""}${rows[0].op !== label ? `  ${rows[0].op}` : ""}`);
   }
   await pg.close();
 }

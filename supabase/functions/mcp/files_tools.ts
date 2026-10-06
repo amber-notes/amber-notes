@@ -21,6 +21,7 @@ import {
   wholeNumber, withHead, checkSize,
 } from "./tools.ts";
 import { DELETED, type Entry, Paths, safeName } from "./paths.ts";
+import { needles, WordIndex } from "./words.ts";
 
 type Args = Record<string, unknown>;
 const str = (d: string) => ({ type: "string", description: d });
@@ -543,9 +544,10 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
 
     // Files by name, and app code: what type asks for.
     if (a.type === "file") {
-      const hits: string[] = [];
-      for (const e of notes) for (const f of await noteFiles(tx, c, P, e.note).catch(() => [])) if (nameHit(f.name)) hits.push(f.path);
-      return { files: hits.slice(pg.offset, pg.offset + pg.limit), ...more(hits.length, pg.offset, Math.min(pg.limit, hits.length - pg.offset)) };
+      // By name, from a glob over every file the notes show (list keeps the word index current).
+      const listed = await fileHandlers.list(tx, { pattern: "**/*", limit: 1000 }, c) as { matches: { path: string; type: string }[] };
+      const hits = listed.matches.filter((m) => m.type === "file" && inScope(m.path) && nameHit(m.path.split("/").pop()!)).map((m) => m.path);
+      return { files: hits.slice(pg.offset, pg.offset + pg.limit), ...more(hits.length, pg.offset, Math.min(pg.limit, Math.max(0, hits.length - pg.offset))) };
     }
     if (a.type === "app" || /\.app(\/|$)/i.test(scope)) {
       const apps = notes.filter((e) => e.app);
@@ -566,9 +568,22 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
       return { files: files.slice(pg.offset, pg.offset + pg.limit), ...more(files.length, pg.offset, Math.min(pg.limit, files.length)) };
     }
 
-    // Notes: open each text (sealed) newest first, within the scan's time.
+    // Notes: the word index says which texts can match; those (and any it hasn't seen at their
+    // version) are opened, newest first, within the scan's time, and indexed as they're opened.
     const scan = await Scan.start(tx, c);
-    const ids = notes.filter((e) => !e.note.locked_body && a.title_only !== true).map((e) => e.note.id);
+    const W = await WordIndex.load(tx, c);
+    const readable = notes.filter((e) => !e.note.locked_body && a.title_only !== true);
+    const plain = pattern && !/[\\^$.|?*+()[\]{}]/.test(source);
+    const ns = output === "ranked" ? needles(query.replace(/(^|\s)-\S+/g, " ").replace(/\bOR\b/g, " ")) : plain ? needles(source) : [];
+    const unseen = readable.filter((e) => !W.get(e.note.id, e.note.version));
+    const known = readable.filter((e) => W.get(e.note.id, e.note.version));
+    const fits = output === "ranked"
+      // Ranked: the notes with the most query words, at most 400 of them, are read and ranked.
+      ? known.map((e) => ({ e, h: WordIndex.hits(W.get(e.note.id, e.note.version)!, ns) })).filter((x) => x.h > 0)
+        .sort((x, y) => y.h - x.h || +new Date(y.e.note.updated_at) - +new Date(x.e.note.updated_at)).slice(0, 400).map((x) => x.e)
+      : ns.length ? known.filter((e) => WordIndex.has(W.get(e.note.id, e.note.version)!, ns)) : known;
+    const ids = [...unseen, ...fits].sort((x, y) => +new Date(y.note.updated_at) - +new Date(x.note.updated_at)).map((e) => e.note.id);
+    const versions = new Map(readable.map((e) => [e.note.id, e.note.version]));
     const bodies = new Map<string, string>();
     for (let i = 0; i < ids.length && !scan.over; i += 500) {
       const chunk = ids.slice(i, i + 500);
@@ -578,9 +593,13 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
       });
       scan.seen += rows.length;
     }
+    await indexOpened(tx, c, W, bodies, versions);
+    W.keep(new Set(P.all().flatMap((e) => e.kind === "note" ? [e.note.id] : [])));
+    await W.save(tx, c);
     const looked = bodies.size;
     const skipped = ids.length - looked;
-    const searched = skipped > 0 ? { searched: `the ${looked.toLocaleString("en-US")} most recently edited notes of ${ids.length.toLocaleString("en-US")} (time ran out; narrow with path, type or modified_after)` } : {};
+    const searched = skipped > 0 ? { searched: `${looked.toLocaleString("en-US")} of the ${ids.length.toLocaleString("en-US")} notes that could match (time ran out; search again to finish, or narrow with path, type or modified_after)` } : {};
+    if (c.ctx.timing) { c.ctx.timing.words_load = W.ms; c.ctx.timing.words_indexed = W.size; c.ctx.timing.search_candidates = ids.length; }
     if (c.ctx.timing) { c.ctx.timing.search_open = performance.now() - t0; c.ctx.timing.search_notes = looked; }
 
     if (output === "ranked") {
@@ -641,7 +660,38 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
       const hits = P.all().filter((e) => e.path.toLowerCase().startsWith(dir.toLowerCase()) && (dir.toLowerCase().startsWith(DELETED.toLowerCase()) || !e.path.startsWith(DELETED)))
         .flatMap((e) => [e, ...(e.kind === "note" && e.app ? [{ ...e, path: e.path.replace(/\.md$/, ".app/") } as Entry] : [])])
         .filter((e) => re.test(e.path)).sort(newest);
-      return { pattern: a.pattern, ...(dir ? { path: dir } : {}), matches: hits.slice(pg.offset, pg.offset + pg.limit).map((e) => e.path.endsWith(".app/") ? { path: e.path, type: "app" } : entryOut(e)), ...more(hits.length, pg.offset, Math.min(pg.limit, hits.length)) };
+      // Notes' files, from the word index (named as in their note's folder). Notes it hasn't seen
+      // at their version are opened first, within the scan's time.
+      const W = await WordIndex.load(tx, c);
+      if (!/\.(md|app\/?)$|\/$/i.test(a.pattern.trim())) {
+        const scan = await Scan.start(tx, c);
+        const unseen = P.all().flatMap((e) => e.kind === "note" && !e.note.locked_body && !W.get(e.note.id, e.note.version) ? [e.note] : []);
+        const bodies = new Map<string, string>();
+        for (let i = 0; i < unseen.length && !scan.over; i += 500) {
+          const rows = await tx<{ id: string; body_ct: string | null }[]>`select id, body_ct from public.notes where id = any(${unseen.slice(i, i + 500).map((n) => n.id)}::uuid[])`;
+          await scan.timed(async () => { await Promise.all(rows.map(async (r) => { if (r.body_ct) bodies.set(r.id, await c.v.openBody(r.id, r.body_ct).catch(() => "")); })); });
+        }
+        await indexOpened(tx, c, W, bodies, new Map(unseen.map((n) => [n.id, n.version])));
+        await W.save(tx, c);
+      }
+      const files: { path: string; type: string }[] = [];
+      for (const e of P.all()) {
+        if (e.kind !== "note" || (!dir.toLowerCase().startsWith(DELETED.toLowerCase()) && e.path.startsWith(DELETED))) continue;
+        const list = W.files(e.note.id);
+        if (!list.length) continue;
+        const fdir = e.path.replace(/\.md$/, "/");
+        const taken = new Set(P.children(fdir).map((x) => x.path.slice(fdir.length).replace(/\/$/, "").toLowerCase()));
+        for (const [, name] of list) {
+          const dot = name.lastIndexOf(".");
+          const [stem, ext] = dot > 0 ? [name.slice(0, dot), name.slice(dot)] : [name, ""];
+          let k = 1, nm = name;
+          while (taken.has(nm.toLowerCase())) nm = `${stem} (${++k})${ext}`;
+          taken.add(nm.toLowerCase());
+          if (re.test(fdir + nm) && (fdir + nm).toLowerCase().startsWith(dir.toLowerCase())) files.push({ path: fdir + nm, type: "file" });
+        }
+      }
+      const all = [...hits.map((e) => e.path.endsWith(".app/") ? { path: e.path, type: "app" } : entryOut(e)), ...files];
+      return { pattern: a.pattern, ...(dir ? { path: dir } : {}), matches: all.slice(pg.offset, pg.offset + pg.limit), ...more(all.length, pg.offset, Math.min(pg.limit, all.length)) };
     }
     const kids = P.children(dir).sort(newest);
     const owner = P.noteOfDir(dir);
@@ -773,7 +823,8 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
       const [row] = await tx<{ version: string }[]>`select version from public.notes where id = ${n.id}`;
       await markRead(tx, c, noteItem(n.id), String(row.version));
       const checks = noteChecks(before, body, today());
-      const now = (await pathsOf(tx, c, true)).pathOf(n.id)!;
+      // Its path only moves when its title did.
+      const now = titleOf(body) === titleOf(before) ? r.path : (await pathsOf(tx, c, true)).pathOf(n.id)!;
       return { edited: now, ...(now !== r.path ? { renamed_from: r.path } : {}), checks: checks.length ? checks : "ok" };
     }
     if (r.kind === "data") {
@@ -993,6 +1044,25 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
     return seen instanceof Content ? new Content([{ type: "text", text: JSON.stringify(failure) }, ...seen.content], { ...seen.structured, ...failure }) : { ...strip(seen as object), ...failure };
   },
 };
+
+/** Notes opened at a version the word index hasn't seen go into it, with the files they show. */
+async function indexOpened(tx: Tx, c: Call, W: WordIndex, bodies: Map<string, string>, versions: Map<string, string>) {
+  // What was opened at a new version goes into the index, with the files it shows.
+  const fresh = [...bodies.keys()].filter((id) => !W.get(id, versions.get(id)!));
+  if (fresh.length) {
+    const fileIds = [...new Set(fresh.flatMap((id) => [...bodies.get(id)!.matchAll(/pane-file:([0-9a-f-]{36})/gi)].map((m) => m[1].toLowerCase())))];
+    const names = new Map<string, string>();
+    if (fileIds.length) {
+      const metas = await tx<{ id: string; meta_ct: string }[]>`select id, meta_ct from public.attachments where id = any(${fileIds}::uuid[]) and deleted_at is null`;
+      await Promise.all(metas.map(async (m) => { const meta = await c.v.openFileMeta(m.id, m.meta_ct).catch(() => null); if (meta) names.set(m.id, safeName(meta.name)); }));
+    }
+    for (const id of fresh) {
+      const body = bodies.get(id)!;
+      const files = [...new Set([...body.matchAll(/pane-file:([0-9a-f-]{36})/gi)].map((m) => m[1].toLowerCase()))].flatMap((f) => names.has(f) ? [[f, names.get(f)!] as [string, string]] : []);
+      W.set(id, versions.get(id)!, body, files);
+    }
+  }
+}
 
 /** What a scope (a folder, a note, a glob, an app) lets through. */
 async function scopeTest(tx: Tx, c: Call, P: Paths, scope: string): Promise<(path: string) => boolean> {

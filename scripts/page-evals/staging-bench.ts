@@ -66,6 +66,8 @@ async function seed(secretsFile: string, n: number) {
     const b = body(i);
     rows.push({ id, body_ct: await v.sealBody(id, b), head_ct: await v.sealHead(id, { title: titleOf(b), preview: previewOf(b) }), folder_id: folders[i % nf].id, parent_id: null, is_pinned: i % 97 === 0 });
   }
+  // One note to find among them all.
+  { const id = crypto.randomUUID(); const b = "Apartment hunt\n\nLisbon apartment: the deposit is 2 months' rent.\n"; ids.push(id); rows.push({ id, body_ct: await v.sealBody(id, b), head_ct: await v.sealHead(id, { title: titleOf(b), preview: previewOf(b) }), folder_id: folders[nf - 1].id, parent_id: null, is_pinned: false }); }
   // Sub-notes: every 20th note under the one before it.
   for (let i = 19; i < n; i += 20) rows[i].parent_id = ids[i - 1];
   const parents = rows.filter((r) => !r.parent_id), children = rows.filter((r) => r.parent_id);
@@ -94,6 +96,8 @@ async function bench(url: string, tokenFile: string, repeat: number) {
     return { ...r, text, error: r.j.result?.isError === true || r.status !== 200 };
   };
   const parse = (t: string) => { try { return JSON.parse(t); } catch { return {}; } };
+  // The one note to find (accounts seeded before it existed get it here; "already exists" is fine).
+  await call("create", { path: "Archive/Apartment hunt.md", content: "Lisbon apartment: the deposit is 2 months' rent." });
   // The older tools have no glob: find the note by searching for it instead.
   const g = parse((await call("list", { pattern: "**/Note 3 *.md" })).text).matches?.[0]?.path
     ?? parse((await call("search", { query: "\"Note 3 " + pick(3, 0) + "\"" })).text).results?.find((x: { title: string }) => x.title.startsWith("Note 3 "))?.path ?? "Note 3.md";
@@ -108,6 +112,8 @@ async function bench(url: string, tokenFile: string, repeat: number) {
     ["search ranked", "search", { query: "lisbon deposit" }],
     ["search grep", "search", { pattern: "deposit", output: "files" }],
     ["search grep scoped", "search", { pattern: "todo", path: top, output: "count" }],
+    ["search grep rare", "search", { pattern: "months' rent", output: "content" }],
+    ["search ranked rare", "search", { query: "apartment hunt" }],
     ["edit note", "edit", { path: g, old_string: `## ${pick(3, 1)}\n`, new_string: `## ${pick(3, 1)}!\n` }],
   ];
   const rows = new Map<string, { cold: number[]; warm: number[]; coldTotal: number[]; warmTotal: number[]; parts: Record<string, number>; err?: string }>();
