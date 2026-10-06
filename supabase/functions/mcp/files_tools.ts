@@ -18,11 +18,11 @@ import type { PageData } from "./page.ts";
 import {
   bodyOf, Content, descendants, findFolder, handlers as classic, iso, LOCKED, MAX_READ_CHARS,
   type Note, type NoteRow, quote, refuseLocked, runIn, save, Scan, type Tool, type ToolContext, ToolError, type Tx, type Call, UUID,
-  wholeNumber, withHead, checkSize,
+  wholeNumber, withHead, checkSize, readCapped,
 } from "./tools.ts";
 import { DELETED, type Entry, Paths, safeName } from "./paths.ts";
 import { toBase64, fromBase64 } from "../_shared/e2ee.ts";
-import { extract, fileOut, type FolderFile, fileVersions, isTextFile, moveFile, readFile, restoreFile, restoreFileVersion, trashFile, utiOf, writeFile } from "./folder_files.ts";
+import { AI_FILE_BYTES, extract, fileOut, type FolderFile, fileVersions, isTextFile, moveFile, readFile, restoreFile, restoreFileVersion, trashFile, utiOf, writeFile } from "./folder_files.ts";
 
 type Args = Record<string, unknown>;
 const str = (d: string) => ({ type: "string", description: d });
@@ -106,7 +106,16 @@ export const FILE_TOOLS: Tool[] = ([
   {
     name: "write", title: "Write",
     description: "Writes a whole note, app file, data.json or file: creates it, or replaces it (read it first). Prefer edit for changes; the old version stays in history. A file (\"To read/Summary.txt\", \"To read/Paper.pdf\") takes content for text, or content_base64 with mime_type for anything else (a PDF, a picture, a spreadsheet), up to 10 MB. Answers with the same checks as edit. Notes are markdown: checklists \"- [ ] item\", links to notes [[Title]], and a tracker is a table with a line like <!-- pane-table: Date=date; Mood=scale 1-5; Walk=choice Yes|No --> above it (keep values in range).",
-    inputSchema: { type: "object", properties: { path: str(PATH), content: str("The whole text (data.json: JSON)."), content_base64: str("A file's bytes, base64 (up to 10 MB)."), mime_type: str("With content_base64, like \"application/pdf\".") }, required: ["path"] },
+    inputSchema: {
+      type: "object",
+      properties: {
+        path: str(PATH), content: str("The whole text (data.json: JSON)."), content_base64: str("A file's bytes, base64 (up to 10 MB)."), mime_type: str("With content_base64, like \"application/pdf\"."),
+        file: { type: "object", description: "A file from the chat (ChatGPT hands these over), instead of content_base64.", properties: { download_url: { type: "string" }, file_id: { type: "string" }, mime_type: { type: "string" }, file_name: { type: "string" } } },
+      },
+      required: ["path"],
+    },
+    // ChatGPT passes a file from the chat (one the person attached, or one it made) as a download link.
+    _meta: { "openai/fileParams": ["file"] },
     annotations: change,
   },
   {
@@ -772,7 +781,7 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
   },
 
   async write(tx, a, c) {
-    if (typeof a.content_base64 === "string" || (typeof a.content === "string" && looksLikeFile(clean(a.path)))) return await writeFileTool(tx, a, c);
+    if (typeof a.content_base64 === "string" || (a.file && typeof a.file === "object") || (typeof a.content === "string" && looksLikeFile(clean(a.path)))) return await writeFileTool(tx, a, c);
     if (typeof a.content !== "string") throw new ToolError("content is the whole new text (content_base64 with mime_type for a file's bytes).");
     const content = a.content;
     let r: Ref;
@@ -1023,6 +1032,19 @@ function appResult(out: Record<string, unknown> | Content, path: string): unknow
 const looksLikeFile = (path: string) => /\.[A-Za-z0-9]{1,10}$/.test(path) && !/\.md$/i.test(path) && !/\.app(\/|$)/i.test(path) && !path.includes(".app/");
 const IMAGE_BLOCKS = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
 
+/** A file a chat client hands over by link (ChatGPT's openai/fileParams): fetched once, over HTTPS
+ *  from a public address, at most 10 MB. */
+async function chatFile(f: Record<string, unknown>): Promise<Uint8Array> {
+  let url: URL;
+  try { url = new URL(String(f.download_url ?? "")); } catch { throw new ToolError("file.download_url isn't a link."); }
+  if (url.protocol !== "https:" || /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.|\[|0\.)/i.test(url.hostname) || !url.hostname.includes(".")) {
+    throw new ToolError("file.download_url must be a public https link.");
+  }
+  const res = await fetch(url, { redirect: "follow" });
+  if (!res.ok) { await res.body?.cancel(); throw new ToolError(`The file couldn't be downloaded from the chat (${res.status}).`); }
+  return await readCapped(res, AI_FILE_BYTES).catch(() => { throw new ToolError("The file is over 10 MB. The AI can write files up to 10 MB; larger ones are added in Amber Notes."); });
+}
+
 /** A file as the AI reads it: text to edit, extracted text, a picture, or (raw) its bytes. */
 async function fetchFile(tx: Tx, a: Args, c: Call, r: Extract<Ref, { kind: "file" }>) {
   const { bytes, meta, version } = await readFile(tx, c, r.id, r.path);
@@ -1055,6 +1077,9 @@ async function writeFileTool(tx: Tx, a: Args, c: Call) {
   let bytes: Uint8Array;
   if (typeof a.content_base64 === "string") {
     try { bytes = fromBase64(a.content_base64.replace(/^data:[^,]*,/, "").replace(/\s+/g, "")); } catch { throw new ToolError("content_base64 isn't base64."); }
+  } else if (a.file && typeof a.file === "object") {
+    bytes = await chatFile(a.file as Record<string, unknown>);
+    if (typeof a.mime_type !== "string" && typeof (a.file as Record<string, unknown>).mime_type === "string") a.mime_type = (a.file as Record<string, unknown>).mime_type;
   } else if (typeof a.content === "string") bytes = new TextEncoder().encode(a.content);
   else throw new ToolError("A file takes content (text) or content_base64 with mime_type.");
   let r: Ref | null = null;

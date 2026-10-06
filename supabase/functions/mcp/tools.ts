@@ -38,6 +38,8 @@ export type Tool = {
   annotations: { title?: string; readOnlyHint: boolean; destructiveHint: boolean; idempotentHint?: boolean; openWorldHint: boolean };
   // ChatGPT reads this per tool: which OAuth scope the call needs.
   securitySchemes?: { type: "oauth2"; scopes: string[] }[];
+  // Per-client extras, like ChatGPT's "openai/fileParams" (which arguments are files it hands over).
+  _meta?: Record<string, unknown>;
 };
 
 const str = (d: string) => ({ type: "string", description: d });

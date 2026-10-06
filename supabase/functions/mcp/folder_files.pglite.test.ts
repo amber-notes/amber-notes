@@ -7,7 +7,8 @@ import type { PGlite } from "npm:@electric-sql/pglite@0.2.17";
 import { schemaDB } from "./pglite.ts";
 import { type Account, account, app, file, folder, note, opened, stubStorage, toolContext } from "./sealed.ts";
 import { runTool, ToolError } from "./tools.ts";
-import { runFileTool } from "./files_tools.ts";
+import { FILE_TOOLS, runFileTool } from "./files_tools.ts";
+const FILE_TOOLS_META = () => FILE_TOOLS.find((t) => t.name === "write")!._meta;
 
 // deno-lint-ignore no-explicit-any
 const tool = async (pg: PGlite, a: Account, name: string, args: Record<string, unknown> = {}) => await runFileTool(name, args, await toolContext(pg, a, true)) as any;
@@ -328,4 +329,27 @@ Deno.test("the AI hears how full the account is and what to delete", async () =>
     assertStringIncludes(why, "emptying Recently Deleted or deleting large files");
     assertStringIncludes(await fails(tool(pg, a, "create", { path: "To read/Plan.md", content: "Plan\n\nMore." })), "Amber Notes is full");
   } finally { unstub(); }
+});
+
+Deno.test("ChatGPT hands a file over by link (openai/fileParams): fetched once, https only, 10 MB", async () => {
+  const { objects, unstub } = storageStub();
+  const real = globalThis.fetch;
+  const inner = globalThis.fetch;
+  globalThis.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input instanceof Request ? input.url : input);
+    if (url.startsWith("https://files.oaiusercontent.com/")) return Promise.resolve(new Response(PDF));
+    return inner(input, init);
+  };
+  try {
+    const pg = await schemaDB();
+    const a = await account(pg);
+    await folder(pg, a, "To Read");
+    assertEquals(FILE_TOOLS_META(), { "openai/fileParams": ["file"] });
+    const made = await tool(pg, a, "write", { path: "To Read/Scan.pdf", file: { download_url: "https://files.oaiusercontent.com/file-abc", file_id: "file-abc", mime_type: "application/pdf", file_name: "scan.pdf" } });
+    assertEquals(made.created, "To Read/Scan.pdf");
+    assertEquals(made.bytes, PDF.length);
+    assert(objects.size === 1);
+    assertStringIncludes(await fails(tool(pg, a, "write", { path: "To Read/X.pdf", file: { download_url: "http://files.oaiusercontent.com/x", file_id: "x" } })), "public https link");
+    assertStringIncludes(await fails(tool(pg, a, "write", { path: "To Read/X.pdf", file: { download_url: "https://169.254.169.254/latest", file_id: "x" } })), "public https link");
+  } finally { globalThis.fetch = real; unstub(); }
 });
