@@ -96,20 +96,24 @@ import ZIPFoundation
         ```
         [[code]] ![[cabin.png]]
         ```
-        """, file: { files[$0] }, noteTitle: { $0.hasPrefix("Packing") ? "Packing list" : nil }, missing: { missing += 1 })
+        `[[in code]]` stays
+        """, file: { files[$0] }, note: { raw, wiki in
+            wiki ? ["Projects/Kitchen remodel": "Kitchen remodel", "Kitchen remodel": "Kitchen remodel"][raw] : raw.hasPrefix("Packing") ? "Packing list" : nil
+        }, missing: { missing += 1 })
         #expect(out == """
-        See the kitchen, Reading list and Kitchen remodel.
+        See [[Kitchen remodel|the kitchen]], [[Reading list]] and [[Kitchen remodel#Budget]].
         ![cabin.png](pane-file:1)
         after
         ![cabin.png](pane-file:1)
         Text  and the plan and [web](https://example.com/a) and [top](#top).
         ![IMG.png](pane-file:2)
         [plan.pdf](pane-file:3)
-        and Packing
+        and [[Packing list|Packing]]
         ![cabin.png](pane-file:1)
         ```
         [[code]] ![[cabin.png]]
         ```
+        `[[in code]]` stays
         """)
         #expect(missing == 1)
         #expect(MarkdownImporter.cleanName("Trip to Porto 3f2a9c1b7d4e4f0a8b6c5d4e3f2a1b0c") == "Trip to Porto")
@@ -126,7 +130,7 @@ import ZIPFoundation
         let cabin = try #require(r.files.first { $0.filename == "cabin.png" })
         #expect(welcome.body == """
         Welcome
-        This vault is for the kitchen and Reading list.
+        This vault is for the [[Kitchen remodel|kitchen]] and [[Reading list]].
 
         \(cabin.markdown)
 
@@ -141,7 +145,7 @@ import ZIPFoundation
         [[not a link]] stays as typed
         ```
 
-        Kitchen remodel
+        [[Kitchen remodel]]
 
         #inbox #ideas
 
@@ -152,7 +156,7 @@ import ZIPFoundation
         #expect(r.path(kitchen) == "Obsidian vault/Projects")
         let plan = try #require(r.files.first { $0.filename == "floor plan.pdf" })
         #expect(kitchen.body.hasPrefix("Kitchen remodel\nPlan below. #home\n\n\(plan.markdown)"))
-        #expect(try r.note("2024-03-02").body == "2024-03-02\nMet Jonas about the budget.\n")
+        #expect(try r.note("2024-03-02").body == "2024-03-02\nMet Jonas about the [[Kitchen remodel#Budget|budget]].\n")
         #expect(r.path(try r.note("2024-03-02")) == "Obsidian vault/Daily")
         #expect(!r.notes.contains { $0.title == "Old idea" }, "the vault's trash stays out")
         #expect(FileStore.exists(cabin) && cabin.contentType == "public.png")
@@ -168,7 +172,7 @@ import ZIPFoundation
             #expect(r.summary.notes == 3 && r.summary.attachments == 1 && r.summary.notNotes == 1, "the database CSV is left out, its pages kept")
             let trip = try r.note("Trip to Porto")
             let img = try #require(r.files.first { $0.filename == "IMG_0042.png" })
-            #expect(trip.body == "Trip to Porto\nFlights on **Friday**. See Packing list.\n\n\(img.markdown)\n\nHotel: [Casa do Rio](https://example.com/casa-do-rio)\n\n#travel #family\n")
+            #expect(trip.body == "Trip to Porto\nFlights on **Friday**. See [[Packing list]].\n\n\(img.markdown)\n\nHotel: [Casa do Rio](https://example.com/casa-do-rio)\n\n#travel #family\n")
             var september = DateComponents(year: 2023, month: 9, day: 12, hour: 15, minute: 4)
             september.timeZone = .current
             #expect(trip.createdAt == Calendar.current.date(from: september))
@@ -211,9 +215,9 @@ import ZIPFoundation
         #expect(r.summary.notes == 2 && r.summary.attachments == 1 && r.summary.notNotes == 0, "logseq/ settings are skipped, not counted")
         let club = try r.note("Book club")
         let photo = try #require(r.files.first)
-        #expect(club.body == "Book club\n- Next meeting Mar 14th, 2024\n- [ ] pick the next book\n- [x] send invites\n\t- [ ] book a table\n\(photo.markdown)\n\n#reading #friends\n")
+        #expect(club.body == "Book club\n- Next meeting [[Mar 14th, 2024]]\n- [ ] pick the next book\n- [x] send invites\n\t- [ ] book a table\n\(photo.markdown)\n\n#reading #friends\n")
         #expect(r.path(club) == "Logseq graph/pages")
-        #expect(try r.note("2024_03_14").body == "2024_03_14\n- Talked about Book club\n- #reading Piranesi chapter 3\n")
+        #expect(try r.note("2024_03_14").body == "2024_03_14\n- Talked about [[Book club]]\n- #reading Piranesi chapter 3\n")
     }
 
     @Test func simplenoteText() async throws {

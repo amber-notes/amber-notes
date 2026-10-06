@@ -66,6 +66,8 @@ extension PColor {
 
     /// The warm amber accent: deeper in light mode so it still reads on white.
     static var paneAccent: PColor { PColor(named: "AccentColor") ?? Palette.amber }
+    /// A link to a note that doesn't exist yet.
+    static var paneAccentFaded: PColor { Palette.amberFaded }
     /// The note's page, for colours mixed over it by hand.
     static var panePage: PColor { Palette.page }
 }

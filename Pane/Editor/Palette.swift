@@ -31,6 +31,9 @@ enum Palette {
     /// The fill of destructive primary buttons (Start fresh), in light and dark alike: a red deep
     /// enough for the same white label.
     static let destructiveButton = pair(0xC62828, 0xC62828)
+    /// A wiki link to a note that doesn't exist yet: the accent, faded toward the page (solid,
+    /// so it reads the same over any background).
+    static let amberFaded = pair(0xE69E5D, 0xAA7B2B)
     /// Amber as text beside an AI's mark: dark enough to read on white.
     static let amberInk = pair(0xA85700, 0xF4AD33)
     /// The soft amber fill behind an AI's receipt.

@@ -131,6 +131,14 @@ final class EditorCore {
         publish(blocks)
     }
 
+    /// The library's titles changed (or the note moved): wiki links are coloured again.
+    func setWiki(_ wiki: WikiScope?, storage: NSTextStorage, selection: NSRange?) {
+        guard styler.wiki != wiki else { return }
+        styler.wiki = wiki
+        needsFull = true
+        restyle(storage, selection: selection, force: true)
+    }
+
     /// The last few restyle regions, for tests that check incremental styling.
     private(set) var lastRegions: [String] = []
 
@@ -430,6 +438,7 @@ private struct PlatformEditor: UIViewRepresentable {
     func makeUIView(context: Context) -> PaneTextView {
         let view = PaneTextView(frame: .zero)
         view.core.styler.firstLineIsTitle = titleLine
+        view.core.styler.wiki = controller.wiki
         view.configure(text: initialText, header: header)
         view.accessibilityIdentifier = identifier
         view.core.onChange = onChange
@@ -446,6 +455,7 @@ private struct PlatformEditor: UIViewRepresentable {
         view.setHeader(header)
         view.syncExternal(initialText)
         if controller.target !== view { controller.target = view }
+        view.setWiki(controller.wiki)
         // Read here so a change to it lays the text out again.
         _ = controller.bottomReserve
         view.setNeedsLayout()
@@ -693,6 +703,7 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
         lastReported = text
         remember(text)
         core.onChange(text)
+        controller?.typingChanged(text: text, selection: editingSelection)
     }
 
     /// The last body we reported or received, to tell outside edits from our own.
@@ -788,9 +799,12 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
             return
         }
         core.restyle(textStorage, selection: editingSelection, force: false)
+        controller?.typingChanged(text: text, selection: editingSelection)
     }
 
     private var editingSelection: NSRange? { isFirstResponder ? selectedRange : nil }
+
+    func setWiki(_ wiki: WikiScope?) { core.setWiki(wiki, storage: textStorage, selection: editingSelection) }
 
     func textViewDidBeginEditing(_ textView: UITextView) {
         controller?.isEditing = true
@@ -799,6 +813,7 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
 
     func textViewDidEndEditing(_ textView: UITextView) {
         controller?.isEditing = false
+        controller?.typingChanged(text: text, selection: nil)
         core.restyle(textStorage, selection: nil, force: true)
     }
 
@@ -807,6 +822,7 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
         switch LinkPolicy.action(for: url) {
         case .open(let url): return UIAction { _ in UIApplication.shared.open(url) }
         case .note(let id): return UIAction { [weak self] _ in self?.controller?.openNote(id) }
+        case .wiki(let target): return UIAction { [weak self] _ in self?.controller?.openWiki(target) }
         case .nothing: return nil
         }
     }
@@ -974,6 +990,7 @@ private struct PlatformEditor: NSViewRepresentable {
         scroll.scrollerStyle = .overlay
         let view = PaneTextView(frame: .zero)
         view.core.styler.firstLineIsTitle = titleLine
+        view.core.styler.wiki = controller.wiki
         view.configure(text: initialText, header: header)
         view.setAccessibilityIdentifier(identifier)
         view.core.onChange = onChange
@@ -991,6 +1008,7 @@ private struct PlatformEditor: NSViewRepresentable {
         view.setHeader(header)
         view.syncExternal(initialText)
         if controller.target !== view { controller.target = view }
+        view.setWiki(controller.wiki)
     }
 }
 
@@ -1179,12 +1197,25 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
         switch LinkPolicy.action(for: link) {
         case .open(let url): NSWorkspace.shared.open(url)
         case .note(let id): controller?.openNote(id)
+        case .wiki(let target): controller?.openWiki(target)
         case .nothing: NSSound.beep()
         }
         return true
     }
 
     func textView(_ textView: NSTextView, doCommandBy selector: Selector) -> Bool {
+        if let c = controller, !c.wikiSuggestions.isEmpty {
+            switch selector {
+            case #selector(moveDown(_:)): c.wikiChoice = min(c.wikiChoice + 1, c.wikiSuggestions.count - 1); return true
+            case #selector(moveUp(_:)): c.wikiChoice = max(c.wikiChoice - 1, 0); return true
+            case #selector(insertNewline(_:)), #selector(insertTab(_:)):
+                c.completeWiki(c.wikiSuggestions[min(c.wikiChoice, c.wikiSuggestions.count - 1)])
+                layoutWikiSuggestions()
+                return true
+            case #selector(cancelOperation(_:)): c.dismissWikiSuggestions(); layoutWikiSuggestions(); return true
+            default: break
+            }
+        }
         switch selector {
         case #selector(insertNewline(_:)):
             if let e = ListEditing.returnKey(in: string, selection: selectedRange()) { apply(e); return true }
@@ -1216,6 +1247,8 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
         lastReported = string
         remember(string)
         core.onChange(string)
+        controller?.typingChanged(text: string, selection: editingSelection)
+        layoutWikiSuggestions()
     }
 
     /// The last body we reported or received, to tell outside edits from our own.
@@ -1312,9 +1345,46 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
             return
         }
         core.restyle(storage, selection: editingSelection, force: false)
+        controller?.typingChanged(text: string, selection: editingSelection)
+        layoutWikiSuggestions()
+    }
+
+    // MARK: Wiki link suggestions
+
+    private var wikiHost: NSHostingView<WikiSuggestionList>?
+
+    /// Shows the titles for the `[[link` being typed just under it, or takes them away.
+    func layoutWikiSuggestions() {
+        guard let controller, let q = controller.wikiQuery, !controller.wikiSuggestions.isEmpty else {
+            wikiHost?.removeFromSuperview()
+            wikiHost = nil
+            return
+        }
+        let host = wikiHost ?? {
+            let h = NSHostingView(rootView: WikiSuggestionList(controller: controller))
+            h.sizingOptions = []
+            addSubview(h)
+            wikiHost = h
+            return h
+        }()
+        guard let tlm = textLayoutManager, let tcm = tlm.textContentManager,
+              let loc = tcm.location(tcm.documentRange.location, offsetBy: max(q.location - 2, 0)) else { return }
+        var caret: CGRect?
+        tlm.enumerateTextSegments(in: NSTextRange(location: loc), type: .standard, options: []) { _, r, _, _ in caret = r; return false }
+        // Under the line the link is on (its paragraph may wrap onto several).
+        guard let caret, let frag = tlm.textLayoutFragment(for: loc) else { return }
+        let inFrag = tcm.offset(from: frag.rangeInElement.location, to: loc)
+        let lines = frag.textLineFragments
+        let line = lines.first { NSLocationInRange(inFrag, $0.characterRange) } ?? lines.last
+        let bottom = frag.layoutFragmentFrame.minY + (line?.typographicBounds.maxY ?? frag.layoutFragmentFrame.height) + textContainerOrigin.y
+        let size = WikiSuggestionList.size(rows: controller.wikiSuggestions.count)
+        let x = min(max(caret.minX + textContainerOrigin.x - 8, 0), max(bounds.width - size.width, 0))
+        host.frame = CGRect(origin: CGPoint(x: x, y: bottom + 4), size: size)
     }
 
     private var editingSelection: NSRange? { window?.firstResponder === self ? selectedRange() : nil }
+
+    func setWiki(_ wiki: WikiScope?) { if let storage = textStorage { core.setWiki(wiki, storage: storage, selection: editingSelection) } }
 
     override func becomeFirstResponder() -> Bool {
         let ok = super.becomeFirstResponder()
@@ -1330,6 +1400,8 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
         if ok, let storage = textStorage {
             controller?.isEditing = false
             core.restyle(storage, selection: nil, force: true)
+            controller?.typingChanged(text: string, selection: nil)
+            layoutWikiSuggestions()
         }
         return ok
     }
