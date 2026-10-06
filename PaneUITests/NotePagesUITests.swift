@@ -727,4 +727,37 @@ final class NotePagesUITests: XCTestCase {
         mark("aidata-end")
         pause(1)
     }
+
+    /// Apps always open: an AI saves a version that failed its checks (held back, the working one
+    /// stays), then one that crashes on the device (reverted, with Undo), then a fix (it goes live).
+    func testLastGoodVersion() {
+        let v = { (name: String) in "\(self.pages)/training-react-\(name).json" }
+        launch(["-seedNote", "\(pages)/training.md", "-open", "Training", "-seedPage", "Training=\(pages)/training-react.json",
+                "-aiPages", "Training=\(v("held")),\(v("crash")),\(v("fixed"))", "-aiPageBy", "Claude", "-aiAfter", "5", "-aiEvery", "7"])
+        mark("lastgood-start")
+        let title = { self.app.webViews.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Today'")).firstMatch }
+        XCTAssertTrue(title().waitForExistence(timeout: 6))
+        shot("g1-working")
+        // 1. Failed its checks: held back; the working version stays, with a quiet notice.
+        let kept = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'Kept the working one' OR label CONTAINS 'kept the working one'")).firstMatch
+        XCTAssertTrue(kept.waitForExistence(timeout: 8))
+        pause(0.8)
+        shot("g2-held-back")
+        XCTAssertTrue(title().waitForExistence(timeout: 3))
+        XCTAssertEqual(title().label, "Today", "the held-back version must not run")
+        // 2. Passed its checks but crashes here: reverted to the last working version, with Undo.
+        let reverted = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'Reverted'")).firstMatch
+        XCTAssertTrue(reverted.waitForExistence(timeout: 12))
+        pause(0.8)
+        shot("g3-reverted")
+        XCTAssertTrue(title().waitForExistence(timeout: 6))
+        XCTAssertEqual(title().label, "Today")
+        // 3. The fix goes live.
+        let fixed = app.webViews.staticTexts["Today's workout"].firstMatch
+        XCTAssertTrue(fixed.waitForExistence(timeout: 12), "the fixed version runs")
+        pause(1)
+        shot("g4-fixed")
+        mark("lastgood-end")
+        pause(1)
+    }
 }

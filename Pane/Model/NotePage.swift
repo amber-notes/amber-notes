@@ -372,13 +372,20 @@ final class NotePageStore {
     private(set) var unpushed: [UUID: Date] = [:]
     @ObservationIgnored private let file: URL?
 
-    private struct Saved: Codable { var pages: [UUID: Page]; var history: [UUID: [Page]]; var unpushed: [UUID: Date]? }
+    /// Versions that didn't open on this device (a script error, nothing drawn, too slow), by their
+    /// text's hash: never shown again unless you ask (Undo on "Reverted…").
+    private(set) var broken: [UUID: Set<String>] = [:]
+    /// A version you asked for after it was reverted: shown even though it failed.
+    private(set) var forced: [UUID: String] = [:]
+
+    private struct Saved: Codable { var pages: [UUID: Page]; var history: [UUID: [Page]]; var unpushed: [UUID: Date]?; var broken: [UUID: Set<String>]? }
 
     init(file: URL?) {
         self.file = file
         if let file, let data = try? Data(contentsOf: file), let saved = try? JSONDecoder().decode(Saved.self, from: data) {
             pages = saved.pages
             history = saved.history
+            broken = saved.broken ?? [:]
             unpushed = saved.unpushed ?? [:]
         }
         for (id, p) in pages { NoteWidgets.update(id, html: p.html) }
@@ -394,11 +401,53 @@ final class NotePageStore {
         set {
             let old = pages[id]
             guard old != newValue else { return }
-            if let old, old.html != newValue?.html { remember(old, for: id) }
+            if let old, old.html != newValue?.html { remember(old, for: id); forced[id] = nil }
             pages[id] = newValue
             NoteWidgets.update(id, html: newValue?.html)
             save()
         }
+    }
+
+    /// The version to run: the newest one that passed its checks (a project the tooling tested; a
+    /// one-file app has none and counts as passing) and hasn't failed to open here. A newer version
+    /// that failed is kept, in its place in history, and goes live once a passing one follows it.
+    /// With none that qualifies, the newest.
+    func live(_ id: UUID) -> Page? {
+        guard let now = pages[id] else { return nil }
+        let candidates = [now] + (history[id] ?? []).reversed()
+        if let f = forced[id], let page = candidates.first(where: { Self.hash($0.html) == f }) { return page }
+        return candidates.first { Self.passes($0.html) && !(broken[id]?.contains(Self.hash($0.html)) ?? false) } ?? now
+    }
+
+    /// The tooling's verdict, in the project: "checks": { "passed": false, ... } holds a version back.
+    static func passes(_ stored: String) -> Bool {
+        guard NotePageProject.isProject(stored),
+              let o = try? JSONSerialization.jsonObject(with: Data(stored.utf8)) as? [String: Any],
+              let checks = o["checks"] as? [String: Any] else { return true }
+        return checks["passed"] as? Bool ?? true
+    }
+
+    /// Why a version was held back, from its checks.
+    static func checkProblems(_ stored: String) -> [String] {
+        guard let o = try? JSONSerialization.jsonObject(with: Data(stored.utf8)) as? [String: Any],
+              let checks = o["checks"] as? [String: Any] else { return [] }
+        return (checks["errors"] as? [String]) ?? []
+    }
+
+    static func hash(_ text: String) -> String { E2EE.sha256Hex(text) }
+
+    /// It didn't open here: the next one back runs instead.
+    func markBroken(_ id: UUID, _ page: Page) {
+        broken[id, default: []].insert(Self.hash(page.html))
+        if forced[id] == Self.hash(page.html) { forced[id] = nil }
+        save()
+    }
+
+    /// Undo on "Reverted…": run this version anyway.
+    func force(_ id: UUID, _ page: Page) {
+        forced[id] = Self.hash(page.html)
+        broken[id]?.remove(Self.hash(page.html))
+        save()
     }
 
     /// The page before this one, if any.
@@ -460,7 +509,7 @@ final class NotePageStore {
     }
 
     private func save() {
-        guard let file, let data = try? JSONEncoder().encode(Saved(pages: pages, history: history, unpushed: unpushed)) else { return }
+        guard let file, let data = try? JSONEncoder().encode(Saved(pages: pages, history: history, unpushed: unpushed, broken: broken)) else { return }
         try? FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
         try? data.write(to: file, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
     }

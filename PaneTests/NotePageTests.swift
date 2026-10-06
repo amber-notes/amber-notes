@@ -1099,6 +1099,35 @@ import WebKit
         #expect(try await sandbox.webView.evaluateJavaScript("document.getElementById('s').tagName") as? String == "BUTTON")
     }
 
+    /// The version that runs: the newest that passed its checks and opens here; a failed one is kept.
+    @Test func theLastGoodVersionRuns() {
+        let store = NotePageStore(file: nil)
+        let id = UUID()
+        func project(_ marker: String, passed: Bool?) -> String {
+            var o: [String: Any] = ["amberApp": 1, "files": ["/index.html": marker], "compiled": [String: String]()]
+            if let passed { o["checks"] = ["passed": passed, "errors": passed ? [] : ["x.test.tsx failed"]] }
+            return String(data: try! JSONSerialization.data(withJSONObject: o), encoding: .utf8)!
+        }
+        let good = NotePageStore.Page(html: project("good", passed: true), by: "Claude", at: .now)
+        let held = NotePageStore.Page(html: project("held", passed: false), by: "Claude", at: .now)
+        let crash = NotePageStore.Page(html: project("crash", passed: true), by: "Claude", at: .now)
+        let fixed = NotePageStore.Page(html: project("fixed", passed: nil), by: "Claude", at: .now)
+        store[id] = good
+        store[id] = held
+        #expect(store.live(id) == good, "failed its checks: held back")
+        #expect(store[id] == held, "but kept as the newest")
+        #expect(NotePageStore.checkProblems(held.html) == ["x.test.tsx failed"])
+        store[id] = crash
+        #expect(store.live(id) == crash)
+        store.markBroken(id, crash)
+        #expect(store.live(id) == good, "didn't open here: the last good one runs")
+        store.force(id, crash)
+        #expect(store.live(id) == crash, "Undo: run it anyway")
+        store[id] = fixed
+        #expect(store.live(id) == fixed, "a fix goes live")
+        #expect(NotePageStore.passes("<p>one file</p>"))
+    }
+
     @Test func projectsHaveLimitsAndMustBeCompiled() throws {
         func stored(_ files: [String: String], _ compiled: [String: String] = [:]) -> String {
             String(data: try! JSONSerialization.data(withJSONObject: ["amberApp": 1, "files": files, "compiled": compiled]), encoding: .utf8)!

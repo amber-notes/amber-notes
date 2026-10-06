@@ -480,6 +480,18 @@ extension Capture {
         if let arg = argument("-seedPage"), let (n, html) = split(arg) {
             NotePageStore.shared[n.id] = .init(html: html, by: by, at: .now.addingTimeInterval(-3600))
         }
+        // `-aiPages "Title=/a.json,/b.json" -aiEvery 6`: an AI saves several versions in a row.
+        if let arg = argument("-aiPages"), let eq = arg.firstIndex(of: "=") {
+            let title = String(arg[..<eq]), paths = arg[arg.index(after: eq)...].split(separator: ",").map(String.init)
+            let first = argument("-aiAfter").flatMap(Double.init) ?? 4, every = argument("-aiEvery").flatMap(Double.init) ?? 6
+            for (i, path) in paths.enumerated() {
+                DispatchQueue.main.asyncAfter(deadline: .now() + first + every * Double(i)) {
+                    if let n = note(title), let html = try? String(contentsOfFile: path, encoding: .utf8) {
+                        NotePageStore.shared[n.id] = .init(html: html, by: by, at: .now)
+                    }
+                }
+            }
+        }
         if let arg = argument("-aiPage") {
             let delay = argument("-aiAfter").flatMap(Double.init) ?? 2.5
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
