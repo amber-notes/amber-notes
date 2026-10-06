@@ -11,7 +11,7 @@ describe("website analytics", () => {
   });
 
   it("never counts shared notes, connect, password reset, report or universal-link pages", () => {
-    for (const path of ["/n/abc123", "/n", "/connect", "/connect?code=1", "/open/connect", "/open/note/x", "/report/abc123", "/reset-password", "/reset-password?token_hash=abc&type=recovery"]) {
+    for (const path of ["/n/abc123", "/n", "/connect", "/connect?code=1", "/open/connect", "/open/note/x", "/report/abc123", "/reset-password", "/reset-password?token_hash=abc&type=recovery", "/unsubscribe", "/unsubscribe?u=x&t=y"]) {
       expect(send(`https://ambernotes.app${path}`), path).toBeNull();
     }
   });

@@ -23,6 +23,10 @@ struct RootView: View {
     @State private var launchAlert = ProcessInfo.processInfo.arguments.contains("-uitest") && ProcessInfo.processInfo.arguments.contains("-launchAlert")
     #endif
     @State private var showImport = false
+    #if os(iOS)
+    /// "Import from Apple Notes" from an email, on an iPhone: it's a Mac feature.
+    @State private var importOnMac = false
+    #endif
     @State private var importingSheet = false
     @State private var importError: String?
     /// The import sheet showing (Evernote, Markdown…).
@@ -122,6 +126,41 @@ struct RootView: View {
             .onChange(of: selectedNote) { old, new in noteChanged(from: old, to: new) }
             // A note opened from the menu bar.
             .onChange(of: NoteOpener.shared.request) { _, id in reveal(id) }
+            // From the onboarding emails: ambernotes.app/open/import and /open/history.
+            .onChange(of: AppPlaceCenter.shared.pending, initial: true) { _, place in openPlace(place) }
+            #if os(iOS)
+            .alert("Import on your Mac", isPresented: $importOnMac) {
+                Button("OK") {}
+            } message: { Text("To bring everything at once, use Import from Apple Notes in Amber Notes on your Mac. It syncs here a second later.") }
+            #endif
+    }
+
+    /// Opens the place an email linked to, if it's one this view owns, then clears it.
+    private func openPlace(_ place: AppPlace?) {
+        let center = AppPlaceCenter.shared
+        switch place {
+        case .importNotes:
+            center.pending = nil
+            #if os(macOS)
+            showImport = true
+            #else
+            importOnMac = true
+            #endif
+        case .history:
+            center.pending = nil
+            let notes = (try? context.fetch(FetchDescriptor<Note>())) ?? []
+            let live = notes.filter { $0.deletedAt == nil && $0.trashedAt == nil && !$0.isLocked }
+            guard let id = AppPlace.historyNote(live.map { (id: $0.id, aiEditedAt: $0.aiEditedAt) }) else {
+                // No note an AI changed yet: the notes, so the person can pick one.
+                scope = .all
+                selectedNote = nil
+                return
+            }
+            center.historyFor = id
+            reveal(id)
+        default:
+            break
+        }
     }
 
     private func rememberScope(_ new: Scope?) {

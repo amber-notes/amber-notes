@@ -94,6 +94,12 @@ struct NoteDetailView: View {
                 showPeople = false
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { showTemplateShare = true }
             }
+            // "See your note's history" from an email opened this note to show its history.
+            .onChange(of: AppPlaceCenter.shared.historyFor, initial: true) { _, id in
+                guard id == note.id else { return }
+                AppPlaceCenter.shared.historyFor = nil
+                if !note.isLocked { showHistory = true }
+            }
     }
 
     /// Collaboration (prototype): the open shared note's session, when there is one.
