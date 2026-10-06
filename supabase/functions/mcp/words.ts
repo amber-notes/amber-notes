@@ -71,6 +71,8 @@ export class WordIndex {
   get size(): number { let n = 0; for (const s of this.shards.values()) n += Object.keys(s).length; return n; }
 
   async save(tx: Tx, c: Call) {
+    // A benchmark's call without the index never writes over it.
+    if (c.ctx.cold) return;
     for (const k of this.dirty) {
       const sealed = await c.v.sealWordShard(k, await gzip(JSON.stringify(this.shards.get(k) ?? {})));
       await tx`insert into public.mcp_word_index (shard, shard_ct) values (${k}, ${sealed})

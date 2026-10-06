@@ -85,7 +85,7 @@ export class Paths {
     const live = new Set(rows.map((r) => r.id)), liveFolders = new Set(frows.map((f) => f.id));
     for (const id of Object.keys(index.notes)) if (!live.has(id)) { delete index.notes[id]; changed = true; }
     for (const id of Object.keys(index.folders)) if (!liveFolders.has(id)) { delete index.folders[id]; changed = true; }
-    if (changed) {
+    if (changed && !c.ctx.cold) {
       const sealed = await c.v.sealTitleIndex(JSON.stringify(index));
       await tx`insert into public.mcp_title_index (index_ct) values (${sealed})
         on conflict (user_id) do update set index_ct = excluded.index_ct, updated_at = now()`;

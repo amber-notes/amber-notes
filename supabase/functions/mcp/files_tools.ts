@@ -582,23 +582,33 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
       ? known.map((e) => ({ e, h: WordIndex.hits(W.get(e.note.id, e.note.version)!, ns) })).filter((x) => x.h > 0)
         .sort((x, y) => y.h - x.h || +new Date(y.e.note.updated_at) - +new Date(x.e.note.updated_at)).slice(0, 400).map((x) => x.e)
       : ns.length ? known.filter((e) => WordIndex.has(W.get(e.note.id, e.note.version)!, ns)) : known;
-    const ids = [...unseen, ...fits].sort((x, y) => +new Date(y.note.updated_at) - +new Date(x.note.updated_at)).map((e) => e.note.id);
+    // The notes that can match first, then ones the index hasn't seen at their version (at most
+    // 2,000 a call: on a big account the index fills over a few searches), newest first.
+    const newest = (x: { note: Note }, y: { note: Note }) => +new Date(y.note.updated_at) - +new Date(x.note.updated_at);
+    const ids = [...fits.sort(newest), ...unseen.sort(newest).slice(0, 2000)].map((e) => e.note.id);
+    const notIndexed = Math.max(0, unseen.length - 2000);
     const versions = new Map(readable.map((e) => [e.note.id, e.note.version]));
     const bodies = new Map<string, string>();
     for (let i = 0; i < ids.length && !scan.over; i += 500) {
       const chunk = ids.slice(i, i + 500);
       const rows = await tx<{ id: string; body_ct: string | null }[]>`select id, body_ct from public.notes where id = any(${chunk}::uuid[])`;
+      const opened = new Map<string, string>();
       await scan.timed(async () => {
-        await Promise.all(rows.map(async (r) => { if (r.body_ct) bodies.set(r.id, await c.v.openBody(r.id, r.body_ct).catch(() => "")); }));
+        await Promise.all(rows.map(async (r) => { if (r.body_ct) opened.set(r.id, await c.v.openBody(r.id, r.body_ct).catch(() => "")); }));
       });
       scan.seen += rows.length;
+      // Indexed now; only the texts that can match are kept.
+      await indexOpened(tx, c, W, opened, versions);
+      for (const [id, body] of opened) {
+        const e = W.get(id, versions.get(id)!);
+        if (!e || !ns.length || (output === "ranked" ? WordIndex.hits(e, ns) > 0 : WordIndex.has(e, ns))) bodies.set(id, body);
+      }
     }
-    await indexOpened(tx, c, W, bodies, versions);
     W.keep(new Set(P.all().flatMap((e) => e.kind === "note" ? [e.note.id] : [])));
     await W.save(tx, c);
-    const looked = bodies.size;
-    const skipped = ids.length - looked;
-    const searched = skipped > 0 ? { searched: `${looked.toLocaleString("en-US")} of the ${ids.length.toLocaleString("en-US")} notes that could match (time ran out; search again to finish, or narrow with path, type or modified_after)` } : {};
+    const looked = Math.min(ids.length, scan.seen);
+    const skipped = ids.length - looked + notIndexed;
+    const searched = skipped > 0 ? { searched: `${looked.toLocaleString("en-US")} of the ${(ids.length + notIndexed).toLocaleString("en-US")} notes that could match; ${skipped.toLocaleString("en-US")} not yet (the search index is still filling: search again to finish, or narrow with path, type or modified_after)` } : {};
     if (c.ctx.timing) { c.ctx.timing.words_load = W.ms; c.ctx.timing.words_indexed = W.size; c.ctx.timing.search_candidates = ids.length; }
     if (c.ctx.timing) { c.ctx.timing.search_open = performance.now() - t0; c.ctx.timing.search_notes = looked; }
 
