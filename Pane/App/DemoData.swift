@@ -79,20 +79,37 @@ enum DemoData {
         try? context.save()
     }
 
+    /// Files in folders as Emil pictures them: Personal holds a note and an app, To Read a book.
     static func loadFolderFiles(into context: ModelContext) {
-        let toRead = context.createFolder(named: "To read")
-        let plan = context.createNote(in: .folder(toRead.id), body: "Reading plan\n\nOne paper a week, notes in this folder.\n\n- [x] Attention is all you need\n- [ ] The bitter lesson\n- [ ] As we may think")
-        plan.updatedAt = .now.addingTimeInterval(-4 * 3600)
-        let files: [(Data, String, UTType, TimeInterval)] = [
-            (paperPDF(title: "Attention Is All You Need", lines: 34), "Attention is all you need.pdf", .pdf, -20 * 60),
-            (paperPDF(title: "The Bitter Lesson", lines: 22), "The bitter lesson.pdf", .pdf, -26 * 3600),
-            (samplePNG(), "Whiteboard.png", .png, -3 * 86400),
-            (Data("Paper,Pages,Read\nAttention is all you need,15,Yes\nThe bitter lesson,2,No\nAs we may think,12,No\n".utf8), "Reading log.csv", .commaSeparatedText, -9 * 86400),
-        ]
-        for (data, name, type, offset) in files {
-            guard let a = try? FileStore.importData(data, filename: name, type: type) else { continue }
+        let personal = context.createFolder(named: "Personal")
+        let todo = context.createNote(in: .folder(personal.id), body: "TODO\n\n- [ ] Renew passport\n- [ ] Call the dentist\n- [x] Pay the electricity bill\n- [ ] Book the train to Gothenburg")
+        todo.updatedAt = .now.addingTimeInterval(-2 * 3600)
+        let habits = context.createNote(in: .folder(personal.id), body: Capture.habitNote())
+        habits.updatedAt = .now.addingTimeInterval(-26 * 3600)
+        if let url = Bundle.main.url(forResource: "sample-habit-tracker", withExtension: "html"), let html = try? String(contentsOf: url, encoding: .utf8) {
+            NotePageStore.shared.setHere(habits.id, .init(html: html, by: "Claude", at: .now))
+        }
+        let toRead = context.createFolder(named: "To Read")
+        if let a = try? FileStore.importData(paperPDF(title: "Fluent Python", lines: 34), filename: "Fluent Python.pdf", type: .pdf) {
             a.folderID = toRead.id
-            a.createdAt = .now.addingTimeInterval(offset)
+            a.createdAt = .now.addingTimeInterval(-20 * 60)
+            a.modifiedAt = a.createdAt
+            context.insert(a)
+        }
+        // Captures of every kind the app shows (`-demoTypes <dir>`): each file in that folder.
+        if let i = ProcessInfo.processInfo.arguments.firstIndex(of: "-demoTypes"), i + 1 < ProcessInfo.processInfo.arguments.count {
+            loadKinds(from: URL(fileURLWithPath: ProcessInfo.processInfo.arguments[i + 1]), into: context)
+        }
+    }
+
+    /// Every file in `dir`, in a folder "All kinds".
+    static func loadKinds(from dir: URL, into context: ModelContext) {
+        let folder = context.createFolder(named: "All kinds")
+        let urls = ((try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []).sorted { $0.lastPathComponent < $1.lastPathComponent }
+        for (i, url) in urls.enumerated() {
+            guard let a = try? FileStore.importFile(at: url) else { continue }
+            a.folderID = folder.id
+            a.createdAt = .now.addingTimeInterval(-Double(i) * 60)
             a.modifiedAt = a.createdAt
             context.insert(a)
         }
@@ -116,8 +133,10 @@ enum DemoData {
             CTLineDraw(line, ctx)
         }
         text(title, size: 22, bold: true, at: CGPoint(x: 64, y: 760))
-        text("Abstract", size: 12, bold: true, at: CGPoint(x: 64, y: 718))
-        let words = "The dominant sequence models are based on complex recurrent or convolutional networks. We propose a simpler architecture that relies on attention alone, and it trains faster while reading better."
+        if title == "Fluent Python" { text("Clear, concise, and effective programming", size: 13, bold: false, at: CGPoint(x: 64, y: 736)) }
+        let book = title == "Fluent Python"
+        text(book ? "Preface" : "Abstract", size: 12, bold: true, at: CGPoint(x: 64, y: 718))
+        let words = book ? "Python is an easy to learn, powerful programming language, and its simplicity lets you become productive quickly, but this often means you aren't using everything it has to offer. This book shows how to write effective, modern Python by leaning on its best ideas: the data model, sequences, functions as objects, and concurrency." : "The dominant sequence models are based on complex recurrent or convolutional networks. We propose a simpler architecture that relies on attention alone, and it trains faster while reading better."
         let filler = Array(repeating: words, count: 8).joined(separator: " ").split(separator: " ")
         var i = 0
         for row in 0 ..< lines {

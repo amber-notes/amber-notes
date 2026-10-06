@@ -130,6 +130,26 @@ extension ModelContext {
         return n
     }
 
+    /// Sub-notes made before the parent was recorded (older builds, imports) get it from the link
+    /// in their parent's text, so every device and the AI see the same tree (notes.parent_id).
+    /// Only a missing parent is filled in; one already set is never changed. Returns how many.
+    @discardableResult
+    func backfillSubNoteParents() -> Int {
+        let notes = ((try? fetch(FetchDescriptor<Note>())) ?? []).filter { $0.deletedAt == nil }
+        let byID = Dictionary(notes.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        var filled = 0
+        for parent in notes where !parent.isLocked && parent.body.contains("pane-note:") {
+            for m in parent.body.matches(of: /pane-note:([0-9a-fA-F-]{36})/) {
+                guard let id = UUID(uuidString: String(m.1)), id != parent.id, let child = byID[id], child.parentID == nil else { continue }
+                child.parentID = parent.id
+                child.dirty = true
+                filled += 1
+            }
+        }
+        if filled > 0 { try? save(); SyncSignal.changed() }
+        return filled
+    }
+
     /// True when a sub-note is still linked from its parent, so it lives there, not in the list.
     func isNested(_ note: Note) -> Bool {
         guard let pid = note.parentID, let parent = self.note(pid), parent.deletedAt == nil else { return false }
@@ -226,6 +246,12 @@ extension ModelContext {
         var made: [UUID] = []
         for url in urls {
             let ext = url.pathExtension.lowercased()
+            // A folder from Finder: a folder here, with its files.
+            if (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true, !FileKinds.isPackageDocument(url) {
+                let parent: Folder? = { if case .folder(let id) = scope { return folder(id) } else { return nil } }()
+                made += addFolder(url, into: parent).map(\.id)
+                continue
+            }
             if ["md", "markdown", "txt", "text"].contains(ext) {
                 let access = url.startAccessingSecurityScopedResource()
                 defer { if access { url.stopAccessingSecurityScopedResource() } }
@@ -252,9 +278,9 @@ extension ModelContext {
         try? fetch(FetchDescriptor<Attachment>(predicate: #Predicate { $0.id == id })).first
     }
 
-    /// Copies files into Pane for embedding in a note.
+    /// Copies files into Pane for embedding in a note (kinds the app can't show are refused).
     func addAttachments(_ urls: [URL]) -> [Attachment] {
-        let files = urls.compactMap { try? FileStore.importFile(at: $0) }
+        let files = FileKinds.accept(urls).compactMap { try? FileStore.importFile(at: $0) }
         files.forEach(insert)
         try? save()
         SyncSignal.changed()

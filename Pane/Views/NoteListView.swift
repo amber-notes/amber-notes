@@ -34,6 +34,8 @@ struct NoteListView: View {
     @State private var connecting = false
     @State private var sharingHowTo = false
     @State private var connectCenter = ConnectCenter.shared
+    /// How full the account is: a warning near 2 GB and at it.
+    @State private var storage = StorageStore.shared
     /// "What's new" after a major update (WhatsNew.swift), and whether the list has settled.
     @State private var whatsNew = WhatsNewStore.shared
     @State private var settled = false
@@ -102,7 +104,8 @@ struct NoteListView: View {
     private func countText(notes: Int, files: Int, capitalized: Bool) -> String {
         let n = notes == 1 ? "1 \(capitalized ? "Note" : "note")" : "\(notes) \(capitalized ? "Notes" : "notes")"
         guard files > 0 else { return n }
-        return n + ", " + (files == 1 ? "1 \(capitalized ? "File" : "file")" : "\(files) \(capitalized ? "Files" : "files")")
+        let f = files == 1 ? "1 \(capitalized ? "File" : "file")" : "\(files) \(capitalized ? "Files" : "files")"
+        return notes == 0 ? f : n + ", " + f
     }
 
     private func filtered(from scoped: [Note]) -> [Note] {
@@ -144,6 +147,17 @@ struct NoteListView: View {
                 .listRowBackground(Color(Palette.row))
                 #else
                 ConnectWaitingRow(ask: ask)
+                    .listRowInsets(EdgeInsets(top: 6, leading: 10, bottom: 10, trailing: 10))
+                    .listRowSeparator(.hidden)
+                    .selectionDisabled()
+                #endif
+            }
+            if scope != .trash, search.isEmpty, let usage = storage.usage, usage.level != .fine {
+                #if os(iOS)
+                Section { StorageWarningRow(usage: usage).selectionDisabled() }
+                    .listRowBackground(Color(Palette.row))
+                #else
+                StorageWarningRow(usage: usage)
                     .listRowInsets(EdgeInsets(top: 6, leading: 10, bottom: 10, trailing: 10))
                     .listRowSeparator(.hidden)
                     .selectionDisabled()
@@ -276,6 +290,23 @@ struct NoteListView: View {
         }
         #endif
         .onChange(of: AppPlaceCenter.shared.pending, initial: true) { _, place in openConnectAI(place) }
+        // Captures: `-uitest -openSettings` shows Settings over the list.
+        .task {
+            guard ProcessInfo.processInfo.arguments.contains("-uitest"), ProcessInfo.processInfo.arguments.contains("-openSettings") else { return }
+            try? await Task.sleep(for: .seconds(1))
+            #if os(iOS)
+            showSettings = true
+            #else
+            openSettings()
+            #endif
+        }
+        .task {
+            // How full the account is, now and every few minutes.
+            while !Task.isCancelled {
+                await storage.refresh(backend?.client)
+                try? await Task.sleep(for: .seconds(300))
+            }
+        }
         .task {
             // A moment after the list first shows, so the card never lands mid-transition.
             try? await Task.sleep(for: .seconds(1))
@@ -315,7 +346,7 @@ struct NoteListView: View {
         #if os(macOS)
         .navigationSubtitle("")
         #endif
-        .fileImporter(isPresented: $addingFiles, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
+        .fileImporter(isPresented: $addingFiles, allowedContentTypes: FileKinds.contentTypes, allowsMultipleSelection: true) { result in
             guard case .success(let urls) = result else { return }
             let made = context.addFiles(urls, to: context.folderForFiles(scope))
             if let first = made.first { selection = [first.id] }

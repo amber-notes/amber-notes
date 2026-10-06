@@ -713,8 +713,13 @@ final class SyncEngine {
                 }
                 try await client.from("attachments").upsert(AttachmentDTO(a, path: path)).execute()
                 a.dirty = false
-                // Deleted for good here: the sealed bytes leave Storage too (the row stays as a tombstone).
-                if a.deletedAt != nil { _ = try? await client.storage.from("files").remove(paths: [path]) }
+                // Deleted for good here: the sealed bytes leave Storage too, with its earlier versions
+                // (the row stays as a tombstone).
+                if a.deletedAt != nil {
+                    struct Version: Decodable { var storage_path: String }
+                    let versions: [Version] = (try? await client.from("attachment_versions").select("storage_path").eq("attachment_id", value: a.id).execute().value) ?? []
+                    _ = try? await client.storage.from("files").remove(paths: [path] + versions.map(\.storage_path))
+                }
             } catch {
                 switch Self.refusal(error) {
                 case .tooFast?: return true
@@ -980,6 +985,11 @@ final class SyncEngine {
             a.deletedAt = r.deleted_at
             a.folderID = r.folder_id
             a.trashedAt = r.trashed_at
+            // New bytes elsewhere (the AI changed the file): this copy is stale, fetched again when opened.
+            if r.content_version != a.contentVersion {
+                if known != nil { FileStore.remove(a) }
+                a.contentVersion = r.content_version
+            }
             a.modifiedAt = r.updated_at
             a.uploaded = true
             a.dirty = false
@@ -1371,10 +1381,12 @@ struct AttachmentDTO: Codable {
     /// Recently Deleted. Older builds neither send nor read these; an upsert keeps what it doesn't send.
     var folder_id: UUID?
     var trashed_at: Date?
+    /// Read, never sent: the server counts replacements of the bytes.
+    var content_version: Int = 0
     /// Doesn't open with this device's key: never applied.
     var unreadable = false
 
-    enum CodingKeys: String, CodingKey { case id, meta_ct, size, storage_path, created_at, updated_at, deleted_at, server_updated_at, folder_id, trashed_at }
+    enum CodingKeys: String, CodingKey { case id, meta_ct, size, storage_path, created_at, updated_at, deleted_at, server_updated_at, folder_id, trashed_at, content_version }
 
     /// Sealing adds the header, the nonce and the tag to the file's bytes.
     static let sealOverhead: Int64 = 5 + 16 + 12 + 16
@@ -1403,6 +1415,7 @@ struct AttachmentDTO: Codable {
         server_updated_at = try c.decodeIfPresent(Date.self, forKey: .server_updated_at)
         folder_id = try c.decodeIfPresent(UUID.self, forKey: .folder_id)
         trashed_at = try c.decodeIfPresent(Date.self, forKey: .trashed_at)
+        content_version = try c.decodeIfPresent(Int.self, forKey: .content_version) ?? 0
         if let box = try c.decodeIfPresent(String.self, forKey: .meta_ct), let json = Wire.sealer?.open(box, context: E2EE.fileMeta(id)),
            let m = try? JSONDecoder().decode(FileMeta.self, from: Data(json.utf8)) {
             filename = m.name

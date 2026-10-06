@@ -355,25 +355,32 @@ private struct FolderTree: View {
         .draggable(PaneDragItem(kind: .folder, id: folder.id)) {
             Label(folder.name, systemImage: "folder").padding(8).glassEffect(.regular, in: .capsule)
         }
-        .dropDestination(for: PaneDragItem.self) { items, _ in
-            var moved = false
-            for item in items {
-                switch item.kind {
-                case .note:
-                    // A dragged multi-selection moves together.
-                    for id in item.ids {
-                        if let n = context.note(id) { context.move(n, to: folder); moved = true }
-                    }
-                case .folder:
-                    if item.id != folder.id, let f = context.folder(item.id) { context.move(f, into: folder); moved = true }
-                case .file:
-                    if let f = context.attachment(item.id), f.folderID != nil { context.move(f, to: folder); moved = true }
-                }
-            }
-            if moved { expanded = true }
-            return moved
-        } isTargeted: { over in
+        // Notes, folders and files from inside the app, and files and folders from Finder, Mail or
+        // Safari: they land in this folder.
+        .onDrop(of: [.paneItem, .fileURL], isTargeted: Binding(get: { dropTarget == folder.id }, set: { over in
             withAnimation(.snappy(duration: 0.18)) { dropTarget = over ? folder.id : (dropTarget == folder.id ? nil : dropTarget) }
+        })) { providers in
+            DropLoader.load(providers) { items, urls in
+                var moved = false
+                for item in items {
+                    switch item.kind {
+                    case .note:
+                        // A dragged multi-selection moves together.
+                        for id in item.ids {
+                            if let n = context.note(id) { context.move(n, to: folder); moved = true }
+                        }
+                    case .folder:
+                        if item.id != folder.id, let f = context.folder(item.id) { context.move(f, into: folder); moved = true }
+                    case .file:
+                        for id in item.ids {
+                            if let f = context.attachment(id), f.folderID != nil { context.move(f, to: folder); moved = true }
+                        }
+                    }
+                }
+                if !urls.isEmpty, !context.importFiles(urls, into: .folder(folder.id)).isEmpty { moved = true }
+                if moved { withAnimation(.snappy) { expanded = true } }
+            }
+            return true
         }
         .contextMenu {
             Button("New Folder Inside", systemImage: "folder.badge.plus") { newSub(folder) }

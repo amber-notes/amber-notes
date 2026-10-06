@@ -86,6 +86,9 @@ struct PaneApp: App {
         #if os(macOS)
         Capture.demoSequenceFromArguments(container.mainContext)
         Capture.importSequenceFromArguments()
+        #if os(macOS)
+        Capture.windowShotFromArguments(container)
+        #endif
         #endif
     }
 
@@ -546,6 +549,7 @@ struct AppGate: View {
                     await KeyDevices.shared.refresh(AccountCrypto.shared)
                 }
                 context.drainInbox()
+                context.backfillSubNoteParents()
                 sync.schedule()
             } else {
                 connectAsks?.setForeground(false)

@@ -34,6 +34,8 @@ struct RootView: View {
     /// Files the import sheet opens with (shared, opened from Files, dropped on the app).
     @State private var importFiles: [URL] = []
     @AppStorage("lastScope") private var lastScopeData: Data = Data()
+    /// Files that weren't added (a kind the app can't show, or over 100 MB), said once.
+    @State private var refusal: FileRefusal?
     @AppStorage("lastNote") private var lastNote: String = ""
 
     /// The single open note, when exactly one is selected.
@@ -54,6 +56,10 @@ struct RootView: View {
             .noteSourceHandler()
             // Collaboration (prototype): an invitation to someone else's note.
             .modifier(CollabInviteAlert())
+            .onReceive(NotificationCenter.default.publisher(for: FileRefusal.notification)) { n in refusal = n.object as? FileRefusal }
+            .alert(refusal?.title ?? "", isPresented: Binding(get: { refusal != nil }, set: { if !$0 { refusal = nil } })) {
+                Button("OK") {}
+            } message: { Text(refusal?.message ?? "") }
             #if os(iOS)
             .alert("Launch alert", isPresented: $launchAlert) { Button("OK", role: .cancel) {} }
             #endif

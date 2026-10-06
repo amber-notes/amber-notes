@@ -2,6 +2,7 @@ import QuickLook
 import QuickLookThumbnailing
 import SwiftData
 import SwiftUI
+import UniformTypeIdentifiers
 #if os(macOS)
 import Quartz
 #endif
@@ -47,6 +48,51 @@ enum ListItem: Identifiable, DatedListItem {
     }
 }
 
+/// A file dragged from the list: to a folder in the sidebar (as a PaneDragItem, the same JSON), or
+/// out of the app to Finder, Mail or another app (its local copy).
+struct FileDragItem: Codable, Transferable {
+    var kind = PaneDragItem.Kind.file
+    var id: UUID
+    var others: [UUID]? = nil
+    var url: URL?
+
+    enum CodingKeys: String, CodingKey { case kind, id, others }
+
+    static var transferRepresentation: some TransferRepresentation {
+        CodableRepresentation(contentType: .paneItem)
+        FileRepresentation(exportedContentType: .data) { item in
+            guard let url = item.url else { throw CocoaError(.fileNoSuchFile) }
+            return SentTransferredFile(url)
+        }
+    }
+}
+
+/// What a drop carries: items from inside the app, and file or folder URLs from outside it.
+enum DropLoader {
+    @MainActor
+    static func load(_ providers: [NSItemProvider], then handle: @escaping @MainActor ([PaneDragItem], [URL]) -> Void) {
+        let group = DispatchGroup()
+        final class Box: @unchecked Sendable { var items: [PaneDragItem] = []; var urls: [URL] = []; let lock = NSLock() }
+        let box = Box()
+        for p in providers {
+            if p.hasItemConformingToTypeIdentifier(UTType.paneItem.identifier) {
+                group.enter()
+                _ = p.loadDataRepresentation(forTypeIdentifier: UTType.paneItem.identifier) { data, _ in
+                    if let data, let item = try? JSONDecoder().decode(PaneDragItem.self, from: data) { box.lock.withLock { box.items.append(item) } }
+                    group.leave()
+                }
+            } else if p.canLoadObject(ofClass: URL.self) {
+                group.enter()
+                _ = p.loadObject(ofClass: URL.self) { url, _ in
+                    if let url, url.isFileURL { box.lock.withLock { box.urls.append(url) } }
+                    group.leave()
+                }
+            }
+        }
+        group.notify(queue: .main) { MainActor.assumeIsolated { handle(box.items, box.urls) } }
+    }
+}
+
 /// A file in the list, with its drag and swipe actions, beside the notes.
 struct FileListRow: View {
     let file: Attachment
@@ -56,7 +102,7 @@ struct FileListRow: View {
 
     var body: some View {
         FileRow(file: file, showFolder: showFolder)
-            .draggable(PaneDragItem(kind: .file, id: file.id)) {
+            .draggable(FileDragItem(id: file.id, url: FileStore.exists(file) ? FileStore.url(for: file.id, filename: file.filename) : nil)) {
                 Label(file.filename, systemImage: file.symbol)
                     .padding(.horizontal, 12).padding(.vertical, 8)
                     .glassEffect(.regular, in: .capsule)
@@ -202,9 +248,16 @@ struct FileDetailView: View {
     private var content: some View {
         switch state {
         case .ready(let url):
-            FilePreview(url: url)
-                .id(url)
-                .accessibilityIdentifier("file.preview")
+            if CSVTable.handles(file.filename) {
+                // Quick Look shows CSV as plain text on iPhone: a table reads it as what it is.
+                CSVTableView(url: url, separator: CSVTable.separator(file.filename))
+                    .id(url)
+                    .accessibilityIdentifier("file.table")
+            } else {
+                FilePreview(url: url)
+                    .id(url)
+                    .accessibilityIdentifier("file.preview")
+            }
         case .checking:
             Color.clear
         case .downloading:
@@ -290,6 +343,75 @@ struct FileDetailView: View {
             }
             .menuIndicator(.hidden)
             .accessibilityIdentifier("file.more")
+        }
+    }
+}
+
+/// Comma- and tab-separated text, as rows and columns.
+enum CSVTable {
+    static func handles(_ name: String) -> Bool { ["csv", "tsv"].contains((name as NSString).pathExtension.lowercased()) }
+    static func separator(_ name: String) -> Character { (name as NSString).pathExtension.lowercased() == "tsv" ? "\t" : "," }
+
+    /// RFC 4180: quoted fields may hold the separator, newlines and doubled quotes.
+    static func parse(_ text: String, separator: Character = ",", maxRows: Int = 5000) -> [[String]] {
+        var rows: [[String]] = [], row: [String] = [], field = ""
+        var quoted = false, i = text.startIndex
+        while i < text.endIndex, rows.count < maxRows {
+            let ch = text[i]
+            if quoted {
+                if ch == "\"" {
+                    let next = text.index(after: i)
+                    if next < text.endIndex, text[next] == "\"" { field.append("\""); i = next } else { quoted = false }
+                } else { field.append(ch) }
+            } else if ch == "\"" && field.isEmpty {
+                quoted = true
+            } else if ch == separator {
+                row.append(field); field = ""
+            } else if ch == "\n" || ch == "\r\n" || ch == "\r" {
+                row.append(field); field = ""
+                rows.append(row); row = []
+            } else { field.append(ch) }
+            i = text.index(after: i)
+        }
+        if !field.isEmpty || !row.isEmpty { row.append(field); rows.append(row) }
+        return rows
+    }
+}
+
+struct CSVTableView: View {
+    let url: URL
+    let separator: Character
+    @State private var rows: [[String]] = []
+
+    var body: some View {
+        let width = rows.map(\.count).max() ?? 0
+        ScrollView([.horizontal, .vertical]) {
+            Grid(alignment: .leading, horizontalSpacing: 0, verticalSpacing: 0) {
+                ForEach(Array(rows.enumerated()), id: \.offset) { r, row in
+                    GridRow {
+                        ForEach(0 ..< width, id: \.self) { c in
+                            Text(c < row.count ? row[c] : "")
+                                .font(r == 0 ? .callout.weight(.semibold) : .callout)
+                                .monospacedDigit()
+                                .lineLimit(3)
+                                .frame(minWidth: 60, maxWidth: 280, alignment: .leading)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 7)
+                                .background(r == 0 ? Color.ink.opacity(0.06) : r.isMultiple(of: 2) ? Color.ink.opacity(0.025) : Color.clear)
+                                .overlay(alignment: .trailing) { Rectangle().fill(Color.ink.opacity(0.08)).frame(width: 0.5) }
+                        }
+                    }
+                }
+            }
+            .overlay { RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Color.ink.opacity(0.12), lineWidth: 0.5) }
+            .clipShape(.rect(cornerRadius: 8, style: .continuous))
+            .padding(20)
+        }
+        // A table starts where it starts, top left, as in Numbers.
+        .defaultScrollAnchor(.topLeading)
+        .task(id: url) {
+            let text = (try? String(contentsOf: url, encoding: .utf8)) ?? (try? String(contentsOf: url, encoding: .isoLatin1)) ?? ""
+            rows = CSVTable.parse(text, separator: separator)
         }
     }
 }
