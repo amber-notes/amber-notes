@@ -374,6 +374,8 @@ export type Render = {
   markdownAfter: string; dataAfter: unknown;
   /** try_app: what each step did. */
   trial?: TrialStep[];
+  /** The save gate's smoke check. */
+  smoke?: { ok: boolean; problems: string[]; taps: number };
   /** run_app_tests: each test's result. */
   tests?: { name: string; ok: boolean; error?: string; ms: number; file?: string }[];
   testErrors?: string[];
@@ -522,6 +524,8 @@ export type RenderOptions = {
   steps?: Step[];
   /** run_app_tests: run the project's tests/*.test.* files instead of opening the app. */
   tests?: boolean;
+  /** The save gate's smoke check: open at 390 and 1280 and tap each visible tab and button once. */
+  smoke?: boolean;
 };
 
 /** Renders, starting WebKit again (once) if it went away under load. */
@@ -548,6 +552,7 @@ async function renderOnce(html: string, markdown: string, data: unknown, opts: R
   const updates: Render["updates"] = [];
   const blocked: string[] = [];
   let setData = 0;
+  const dataErrors: string[] = [];
   const views: View[] = [];
   let interaction: Render["interaction"] = { tried: "none", ok: null };
   const want = samples(markdown);
@@ -606,6 +611,7 @@ async function renderOnce(html: string, markdown: string, data: unknown, opts: R
         await page.evaluate(([n, x]) => (window as any).amber._receive(n, x), [noteForPage(md, opts.today), store]);
         return { ok: true, ...(id ? { id } : {}), data: store };
       } catch (e) {
+        dataErrors.push((e as Error).message);
         return { ok: false, error: (e as Error).message };
       }
     });
@@ -623,6 +629,45 @@ async function renderOnce(html: string, markdown: string, data: unknown, opts: R
 
   if (opts.steps?.length) { md = markdown; store = empty(data); return await trial(open, () => store, opts); }
   if (opts.tests) { md = markdown; store = empty(data); return await runTests(open); }
+  if (opts.smoke) {
+    const problems: string[] = [];
+    let taps = 0;
+    for (const width of [390, 1280]) {
+      md = markdown; store = empty(data);
+      const { page, errors: raw } = await open(width, "light");
+      // Console noise that isn't the app's (a refused load is reported as blocked instead).
+      const errs = () => raw.filter((e) => !/^Failed to load resource/.test(e));
+      const at = (what: string) => `${width} px${what ? `, after tapping "${what}"` : ""}`;
+      const text = await page.evaluate(() => (document.body?.innerText ?? "").trim().length).catch(() => 0);
+      if (text < 10) problems.push(`${at("")}: the app shows nothing (a blank screen).`);
+      problems.push(...[...new Set(errs())].slice(0, 2).map((e) => `${at("")}: ${e}`));
+      // Each visible tab and button once (on this throwaway copy), closing whatever it opened.
+      const names: string[] = await page.evaluate(() => {
+        const out: string[] = [];
+        for (const el of document.querySelectorAll("button, [role=tab], [role=button], a[href^='#']")) {
+          const r = el.getBoundingClientRect();
+          if (!r.width || !r.height || (el as HTMLButtonElement).disabled) continue;
+          const name = (el.getAttribute("aria-label") || (el as HTMLElement).innerText || "").replace(/\s+/g, " ").trim().slice(0, 60);
+          if (name && !out.includes(name)) out.push(name);
+        }
+        return out.slice(0, 20);
+      }).catch(() => []);
+      for (const name of names) {
+        const before = errs().length, dataBefore = dataErrors.length;
+        const el = page.getByRole("button", { name, exact: true }).or(page.getByRole("tab", { name, exact: true })).or(page.getByRole("link", { name, exact: true })).first();
+        if (!(await el.isVisible().catch(() => false))) continue;
+        await el.click({ timeout: 2000 }).catch(() => {});
+        taps++;
+        await page.waitForTimeout(150);
+        if (errs().length > before) problems.push(...[...new Set(errs().slice(before))].slice(0, 2).map((e) => `${at(name)}: ${e}`));
+        if (dataErrors.length > dataBefore) problems.push(`${at(name)}: saving its data failed: ${dataErrors[dataErrors.length - 1]}`);
+        if (!(await page.evaluate(() => (document.body?.innerText ?? "").trim().length).catch(() => 0))) { problems.push(`${at(name)}: the screen went blank.`); break; }
+        await page.keyboard.press("Escape").catch(() => {});
+      }
+      await page.context().close();
+    }
+    return { views: [], blocked: [...new Set(blocked)], updates, setData, interaction: { tried: "none", ok: null }, probes: {}, markdownAfter: markdown, dataAfter: store, smoke: { ok: problems.length === 0, problems: [...new Set(problems)].slice(0, 8), taps } };
+  }
 
   const wanted: { width: number; scheme: "light" | "dark"; widget?: boolean }[] = opts.views ?? ([[390, "light"], [390, "dark"], [320, "light"], [1280, "light"], [1280, "dark"]] as const).map(([width, scheme]) => ({ width, scheme }));
   if (opts.widget && !wanted.some((v) => v.widget)) wanted.push({ width: 340, scheme: "light", widget: true });

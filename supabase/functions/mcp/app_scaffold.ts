@@ -7,9 +7,6 @@
 import { STACK_FILES } from "./app_stack.gen.ts";
 import { SHADCN_UI } from "./shadcn-ui.ts";
 
-// The experiment's control arm (AMBER_NO_TRY=1) has no trying or tests, so its README doesn't mention them.
-const TRY_LINE = () => Deno.env.get("AMBER_NO_TRY") === "1" ? "" : "\n- You can try your app with see_app steps and write tests in tests/ (Vitest and Testing Library style; they run on every save); do it for anything non-trivial.";
-
 /** How an app runs in Amber Notes: part of every app's README, so any AI working on it reads it. */
 export const appGuide = () => `## How this app runs in Amber Notes
 
@@ -18,7 +15,7 @@ export const appGuide = () => `## How this app runs in Amber Notes
 - Available by name: react, react-dom, radix-ui, lucide-react, recharts, date-fns, zod, motion, sonner, react-day-picker, clsx, tailwind-merge, class-variance-authority, amber-router (Router, Route, route(), back()), chart.js, d3, three, tone, dayjs, marked, dompurify, animejs, canvas-confetti.
 - Data is JSON that Amber Notes keeps for the app (encrypted, synced, with Undo): useStore(key, initial), useCollection(name), useSettings(defaults), batch(fn), setSummary(text) from "@/lib/amber". localStorage works too and is kept the same way. The person's AI reads and edits it as data.json, so keep its shape simple and describe it under Data above.
 - No network except hosts the person allows: declare them in index.html with <meta name="amber-needs" content='{"hosts": ["api.open-meteo.com"]}'> and call fetch(url) from "@/lib/amber"; API keys live in Amber Notes › Settings › API Keys (declare { "keys": [{ "name", "hosts", "query" or "header" }] } and pass { key: name }).
-- The device, through its own prompts: device.reminders, calendar, notify, photos, camera, contacts, location, maps, weather; on-device AI with ai.respond.${TRY_LINE()}`;
+- The device, through its own prompts: device.reminders, calendar, notify, photos, camera, contacts, location, maps, weather; on-device AI with ai.respond.`;
 
 export function scaffold(title: string, lang = "en"): Record<string, string> {
   const safe = title.replace(/[<>&"`$\\{}]/g, "").trim() || "App";
@@ -28,12 +25,13 @@ export function scaffold(title: string, lang = "en"): Record<string, string> {
     "/package.json": JSON.stringify({
       name: safe.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "app",
       private: true, type: "module",
+      scripts: { dev: "vite", build: "vite build", test: "vitest" },
       "//": "Amber Notes compiles this project when a file is saved and runs it inside the note. Nothing is installed: these are the packages the app provides.",
       dependencies: {
         react: "19", "react-dom": "19", "radix-ui": "1.4", "lucide-react": "0.544", recharts: "2.15", "date-fns": "4", zod: "3.25", motion: "11", sonner: "2", "react-day-picker": "9",
         clsx: "2", "tailwind-merge": "3", "class-variance-authority": "0.7", amber: "*", "amber-router": "*",
       },
-      devDependencies: { typescript: "5", vite: "7", tailwindcss: "4" },
+      devDependencies: { typescript: "5", vite: "7", tailwindcss: "4", vitest: "3", "@testing-library/react": "16", "@testing-library/user-event": "14", "@testing-library/jest-dom": "6" },
     }, null, 2) + "\n",
     "/tsconfig.json": JSON.stringify({
       compilerOptions: { target: "ES2020", module: "ESNext", moduleResolution: "bundler", jsx: "react-jsx", strict: true, skipLibCheck: true, baseUrl: ".", paths: { "@/*": ["./src/*"] } },
@@ -84,27 +82,70 @@ export default function App() {
   )
 }
 `,
-    "/src/screens/home.tsx": `import { Sparkles } from "lucide-react"
+    "/src/screens/home.tsx": `import { useState } from "react"
+import { Plus, Trash2 } from "lucide-react"
+import { useCollection } from "@/lib/amber"
 import { PageHeader } from "@/components/app-shell"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+
+type Item = { id: string; text: string }
 
 export default function Home() {
+  const items = useCollection("items")
+  const list = items.items as Item[]
+  const [text, setText] = useState("")
+  const add = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!text.trim()) return
+    await items.add({ text: text.trim() })
+    setText("")
+  }
   return (
     <>
       <PageHeader title="${safe}" />
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Sparkles className="size-5" /> Nothing here yet</CardTitle>
-          <CardDescription>This is where the app does its job.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button>Get started</Button>
-        </CardContent>
+      <form onSubmit={add} className="flex gap-2">
+        <Label htmlFor="new-item" className="sr-only">New item</Label>
+        <Input id="new-item" placeholder="New item" value={text} onChange={(e) => setText(e.currentTarget.value)} />
+        <Button type="submit"><Plus /> Add</Button>
+      </form>
+      <Card className="mt-4 gap-0 py-0">
+        {list.length ? list.map((item) => (
+          <div key={item.id} className="flex items-center gap-3 border-t px-4 py-2 first:border-0">
+            <span className="min-w-0 flex-1">{item.text}</span>
+            <Button variant="ghost" size="icon" aria-label={\`Remove \${item.text}\`} onClick={() => items.remove(item.id)}><Trash2 /></Button>
+          </div>
+        )) : <p className="px-4 py-6 text-center text-muted-foreground">Nothing here yet.</p>}
       </Card>
     </>
   )
 }
+`,
+    "/tests/app.test.tsx": `import { describe, it, expect } from "vitest"
+import { render, screen, waitFor } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
+import { amber } from "amber"
+import App from "@/App"
+
+describe("Home", () => {
+  it("adds an item, lists it and saves it", async () => {
+    render(<App />)
+    await userEvent.type(screen.getByLabelText("New item"), "Milk")
+    await userEvent.click(screen.getByRole("button", { name: "Add" }))
+    expect(await screen.findByText("Milk")).toBeInTheDocument()
+    expect(amber.data.collections.items.map((item: { text: string }) => item.text)).toContain("Milk")
+  })
+
+  it("removes an item", async () => {
+    render(<App />)
+    await userEvent.type(screen.getByLabelText("New item"), "Bread")
+    await userEvent.click(screen.getByRole("button", { name: "Add" }))
+    await userEvent.click(await screen.findByRole("button", { name: "Remove Bread" }))
+    await waitFor(() => expect(screen.queryByText("Bread")).not.toBeInTheDocument())
+  })
+})
 `,
     "/src/screens/settings.tsx": `import { useSettings } from "@/lib/amber"
 import { PageHeader } from "@/components/app-shell"
@@ -140,7 +181,11 @@ What this app is for, in one sentence.
 
 ## Data
 The app's data, as the person's AI reaches it in data.json. Keep this current.
+- items: [{ id, text }] (useCollection("items"))
 - settings: { name } (useSettings)
+
+## Tests
+\`npm test\` runs Vitest. Tests live in tests/*.test.tsx and use Testing Library (render, screen, userEvent) with the jest-dom matchers; data starts empty for each test, and \`amber\` (from "amber") shows what was saved. Amber Notes runs them, and a quick check that the app opens and its buttons work, on every save: a version that fails isn't shown to the person; the last one that passed keeps running until the failures are fixed.
 
 ${appGuide()}
 `,

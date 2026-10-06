@@ -67,7 +67,7 @@ type View = {
 };
 export type Rendered = { views: View[]; interaction: { tried: string; ok: boolean | null; error?: string; framesPerSecond?: number }; probes: Record<string, { pass: boolean; detail?: string }>; blocked: string[]; ms: number;
   trial?: { step: Record<string, unknown>; ok: boolean; error?: string; png?: string; errors: string[]; screen: string[]; data: string[] }[];
-  tests?: { name: string; ok: boolean; error?: string; ms: number; file?: string }[]; testErrors?: string[] };
+  tests?: { name: string; ok: boolean; error?: string; ms: number; file?: string }[]; testErrors?: string[]; smoke?: { ok: boolean; problems: string[]; taps: number } };
 
 /** run_app_tests' answer: counts, and each failure with its message. */
 export function testSummary(r: Rendered): { passed: number; failed: number; failures: string[] } {

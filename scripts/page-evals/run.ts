@@ -508,6 +508,14 @@ async function runTask(task: Task, rep = 1) {
     answer: session.answer, calls: session.log.map((l) => ({ ...l, args: JSON.parse(short(l.args, 800).startsWith("{") ? JSON.stringify(Object.fromEntries(Object.entries(l.args).map(([k, v]) => [k, short(v, 300)]))) : "{}") })),
     render: render ? { ...render, markdownAfter: undefined } : null,
     breakage, walk,
+    gate: await (async () => {
+      const held = session.log.filter((l) => /Held back/.test(String((l as { result?: string }).result ?? ""))).length;
+      const live = session.log.filter((l) => /"live": "Live/.test(String((l as { result?: string }).result ?? ""))).length;
+      const [row] = (await s.pg.query(`select draft_ct is not null as draft from public.note_pages where note_id = (select note_id from public.note_pages order by updated_at desc limit 1)`).catch(() => ({ rows: [] }))).rows as { draft: boolean }[];
+      // Tests in the final app (live, else the draft the AI left), beyond the starter's two.
+      return { held_back_saves: held, live_saves: live, ended_with_draft: !!row?.draft };
+    })(),
+    tests_written: (() => { try { const f = JSON.parse(after.page ?? "{}").files ?? {}; return Object.entries(f as Record<string, string>).filter(([p]) => /^\/tests?\//.test(p)).reduce((n, [, t]) => n + (t.match(/\b(it|test)\s*\(/g) ?? []).length, 0); } catch { return 0; } })(),
     used: { try_app: session.log.filter((l) => l.name.endsWith("try_app") || (l.name.endsWith("see_app") && Array.isArray((l.args as { steps?: unknown }).steps))).length, see_app: session.log.filter((l) => l.name.endsWith("see_app")).length, run_app_tests: session.log.filter((l) => l.name.endsWith("run_app_tests")).length,
       test_files: Object.keys(((): Record<string, string> => { try { return JSON.parse(after.page ?? "{}").files ?? {}; } catch { return {}; } })()).filter((p) => /^\/tests?\//.test(p)).length },
   };
