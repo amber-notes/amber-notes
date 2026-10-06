@@ -1,0 +1,12 @@
+{
+  "tasks": {
+    "test": "deno test -A src/",
+    "e2e": "deno run -A e2e/run.ts",
+    "compile": "deno run -A scripts/compile.ts"
+  },
+  "imports": {
+    "@modelcontextprotocol/sdk/": "npm:/@modelcontextprotocol/sdk@1.32.0/",
+    "@std/cli": "jsr:@std/cli@1",
+    "@std/assert": "jsr:@std/assert@1"
+  }
+}
