@@ -63,9 +63,12 @@ function summary(r: Report): string {
 async function run(dir: string, mode: Mode, server: string, flags: { watch: boolean; interval: number; force: boolean; quiet: boolean }) {
   const { mcp, remote } = await session(server);
   const log = flags.quiet ? undefined : (l: string) => out(l);
+  let first = true;
   const once = async () => {
     const r = await syncOnce({ dir, server, remote, mode, force: flags.force, log });
-    for (const s of r.skipped) log?.(`skipped ${s}`);
+    // Locked notes and the like don't change between passes: said once.
+    if (first) for (const s of r.skipped) log?.(`skipped ${s}`);
+    first = false;
     for (const s of r.pending) log?.(`pending ${s}`);
     out(`${new Date().toISOString()} ${mode} ${dir}: ${summary(r)} (${remote.kind} tools)`);
     return r;
@@ -78,7 +81,7 @@ async function run(dir: string, mode: Mode, server: string, flags: { watch: bool
   let wake: (() => void) | undefined;
   let quietUntil = 0;
   (async () => {
-    let timer: number | undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     for await (const ev of Deno.watchFs(dir, { recursive: true })) {
       if (Date.now() < quietUntil || ev.paths.every((p) => p.includes("/.amber/") || !/\.md$/i.test(p))) continue;
       clearTimeout(timer);
