@@ -16,6 +16,7 @@ A normal Vite + React 19 + TypeScript + Tailwind CSS 4 + shadcn/ui project. crea
 
 ```
 /README.md
+/docs/README.md
 /index.html
 /package.json
 /src/App.tsx
@@ -47,6 +48,7 @@ A normal Vite + React 19 + TypeScript + Tailwind CSS 4 + shadcn/ui project. crea
 /src/main.tsx
 /src/screens/home.tsx
 /src/screens/settings.tsx
+/tests/app.test.tsx
 /tsconfig.json
 ```
 
